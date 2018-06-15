@@ -3,7 +3,7 @@
 ! Author: Fabien Bruneval
 !
 ! This file contains
-! the subroutines to calculate the static dipole and static quadrupole tenso
+! the subroutines to calculate the static dipole and static quadrupole tensor
 !
 !=========================================================================
 subroutine static_dipole(nstate,basis,occupation,c_matrix)

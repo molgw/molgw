@@ -15,7 +15,7 @@ module m_warning
  character(len=100),private :: warning_list(NWARNINGMAX)
 
  character(len=128)         :: msg
- 
+
 
 contains
 
@@ -23,7 +23,7 @@ contains
 !=========================================================================
 subroutine init_warning()
  implicit none
- 
+
  nwarning=0
  warning_list(:)=''
 
@@ -34,8 +34,8 @@ end subroutine init_warning
 subroutine issue_warning(msgw)
  implicit none
  character(len=*),intent(in) :: msgw
-!===== 
-  
+!=====
+
  write(stdout,'(/,a,a)') ' WARNING: ',TRIM(msgw)
 
  !

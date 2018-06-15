@@ -18,12 +18,12 @@
 
 #ifdef HAVE_LIBINT_ONEBODY
 
-/* ==========================================================================                    
+/* ==========================================================================
  *                           Overlap
  * ========================================================================== */
 
 extern "C" {
-void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [],
                          int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
                          double overlapABx [], double overlapABy [], double overlapABz []) {
 
@@ -72,13 +72,13 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
      int12->_0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_x[0] * int12->AB_x[0] / alphaP );
-     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
+     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP )
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_y[0] * int12->AB_y[0] / alphaP );
-     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
+     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP )
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_z[0] * int12->AB_z[0] / alphaP );
- 
+
      int12->oo2z[0] = 0.5 / alphaP ;
-    
+
      int12->veclen = 1 ;
      int12->contrdepth = contrdepth2 ;
 
@@ -112,12 +112,12 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
 }
 
 
-/* ==========================================================================                    
+/* ==========================================================================
  *                           Kinetic
  * ========================================================================== */
 
 extern "C" {
-void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [],
                          int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
                          double kineticABx [], double kineticABy [], double kineticABz [] ) {
 
@@ -166,7 +166,7 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
      int12->PB_y[0] = B[1] - P[1] ;
      int12->PB_z[0] = B[2] - P[2] ;
 
-     ab2 =  int12->AB_x[0] * int12->AB_x[0] 
+     ab2 =  int12->AB_x[0] * int12->AB_x[0]
           + int12->AB_y[0] * int12->AB_y[0]
           + int12->AB_z[0] * int12->AB_z[0] ;
 
@@ -174,13 +174,13 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
      int12->_0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_x[0] * int12->AB_x[0] / alphaP );
-     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
+     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP )
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_y[0] * int12->AB_y[0] / alphaP );
-     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
+     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP )
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_z[0] * int12->AB_z[0] / alphaP );
 
      int12->oo2z[0] = 0.5 / alphaP ;
-    
+
      int12->veclen = 1 ;
      int12->contrdepth = contrdepth2 ;
 
@@ -214,12 +214,12 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
 }
 
 
-/* ==========================================================================                    
- *                           ElecPot         
+/* ==========================================================================
+ *                           ElecPot
  * ========================================================================== */
 
 extern "C" {
-void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [],
                          int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
                          double C [],
                          double elecpotAx [], double elecpotAy [], double elecpotAz [],
@@ -272,19 +272,19 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
      int12->PC_y[0] = C[1] - P[1] ;
      int12->PC_z[0] = C[2] - P[2] ;
 
-     ab2 =  int12->AB_x[0] * int12->AB_x[0] 
+     ab2 =  int12->AB_x[0] * int12->AB_x[0]
           + int12->AB_y[0] * int12->AB_y[0]
           + int12->AB_z[0] * int12->AB_z[0] ;
 
-     int12->_0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am) 
+     int12->_0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_x[0] * int12->AB_x[0] / alphaP );
-     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
+     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP )
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_y[0] * int12->AB_y[0] / alphaP );
-     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
+     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP )
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_z[0] * int12->AB_z[0] / alphaP );
- 
+
      int12->oo2z[0] = 0.5 / alphaP ;
-    
+
      int12->veclen = 1 ;
      int12->contrdepth = contrdepth2 ;
 

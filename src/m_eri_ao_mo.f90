@@ -112,7 +112,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
      do jbf=1,nbf
 
        do ibf=1,nbf
-         eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin) 
+         eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin)
        enddo
 
 
@@ -131,7 +131,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  enddo
 
 
-  
+
  do klspin=1,nspin
 
    do lbf=1,nbf
@@ -188,7 +188,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
  eri_4center_eigen_uks(:,:,:,:) = 0.0_dp
 
  allocate(eri_tmp3(nbf,nbf,nbf),eri_tmp2(nstate_min:nstate_max,nbf,nbf),eri_tmp1(nstate_min:nstate_max,nbf))
- 
+
  allocate(id(nbf))
  forall(ibf=1:nbf)
    id(ibf) = ibf
@@ -428,7 +428,7 @@ subroutine calculate_eri_3center_eigen_mixed(c_matrix)
  call clean_allocate('3-center mixed MO integrals',eri_3center_eigen_mixed,nauxil_3center,nstate,nstate,nspin)
  eri_3center_eigen_mixed(:,:,:,:) = 0.0_dp
 
- allocate(eri_3center_tmp(nauxil_3center,nbf,nstate)) 
+ allocate(eri_3center_tmp(nauxil_3center,nbf,nstate))
 
  !TODO fix all this mess here to make it more similar to the previous subroutine
  do klspin=1,nspin

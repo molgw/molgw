@@ -496,7 +496,7 @@ subroutine scf_loop(is_restart,&
 
 
    endif
-  
+
    call clean_deallocate('Temporary density matrix',p_matrix_out)
    write(stdout,*)
 

@@ -43,7 +43,7 @@ module m_eri
 
  integer,private   :: nbf_eri         ! local copy of nbf
  integer,protected :: nsize           ! size of the eri_4center array
- integer,protected :: npair           ! number of independent pairs (i,j) with i<=j 
+ integer,protected :: npair           ! number of independent pairs (i,j) with i<=j
 
  integer,protected :: nauxil_3center     ! size of the 3-center matrix
                                          ! may differ from the total number of 3-center integrals due to
@@ -72,10 +72,10 @@ contains
 subroutine prepare_eri(basis)
  use m_inputparam,only: integral_level
  implicit none
-!===== 
+!=====
  type(basis_set),intent(in) :: basis
-!===== 
-!===== 
+!=====
+!=====
 
  nbf_eri = basis%nbf
 
@@ -178,7 +178,7 @@ pure function index_eri(ibf,jbf,kbf,lbf)
 !=====
  integer            :: klmin,ijmax
  integer            :: index_ij,index_kl
-!===== 
+!=====
 
  index_ij = index_pair(ibf,jbf)
  index_kl = index_pair(kbf,lbf)
@@ -263,7 +263,7 @@ function eri_ri(ibf,jbf,kbf,lbf)
  else
    index_ij = index_pair(ibf,jbf)
    index_kl = index_pair(kbf,lbf)
-  
+
    eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
 
    call xsum_auxil(eri_ri)
@@ -348,8 +348,8 @@ subroutine setup_basispair()
 
  ijbf = nbf_eri
 
- do ibf=1,nbf_eri 
-   do jbf=ibf+1,nbf_eri  ! Skip the diagonal terms since it is already included 
+ do ibf=1,nbf_eri
+   do jbf=ibf+1,nbf_eri  ! Skip the diagonal terms since it is already included
      ijbf = ijbf + 1
      if( .NOT. negligible_basispair(ibf,jbf) ) then
        npair = npair + 1
@@ -387,7 +387,7 @@ end function negligible_basispair
 !=========================================================================
 !
 ! Find negligible shell pairs with
-! Cauchy-Schwarz inequality: (ij|1/r|kl)**2 <= (ij|1/r|ij) (kl|1/r|(kl) 
+! Cauchy-Schwarz inequality: (ij|1/r|kl)**2 <= (ij|1/r|ij) (kl|1/r|(kl)
 !
 !=========================================================================
 subroutine identify_negligible_shellpair(basis)
@@ -516,7 +516,7 @@ subroutine setup_shellpair(basis)
  ishellpair = 0
  jshellpair = 0
  do jshell=1,basis%nshell
-   do ishell=1,jshell 
+   do ishell=1,jshell
      jshellpair = jshellpair + 1
      ! skip the identified negligible shell pairs
      if( negligible_shellpair(ishell,jshell) ) cycle
@@ -717,7 +717,7 @@ logical function read_eri(rcut)
  else
    filename='molgw_eri_lr.data'
  endif
- 
+
  inquire(file=TRIM(filename),exist=read_eri)
 
  if(read_eri) then
@@ -752,9 +752,9 @@ end function read_eri
 
 
 !=========================================================================
-! Rough evaluation of the CPU time to get an ERI as a function of the 
+! Rough evaluation of the CPU time to get an ERI as a function of the
 ! angular momentum
-! 
+!
 !=========================================================================
 function cost_function_eri(am)
  implicit none
@@ -762,7 +762,7 @@ function cost_function_eri(am)
  real(dp)            :: cost_function_eri
 !=====
 
- cost_function_eri = am**2 + 4.6_dp 
+ cost_function_eri = am**2 + 4.6_dp
 
 end function cost_function_eri
 
@@ -842,7 +842,7 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 !=====
  integer :: ibf,ibf_local
 !=====
-   
+
 #ifdef HAVE_SCALAPACK
 
  do iproc=0,nprow_auxil-1

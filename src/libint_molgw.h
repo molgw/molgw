@@ -1,7 +1,7 @@
 /*
  * This file is part of MOLGW.
  * C/C++ wrapper to the libint library
- * 
+ *
  * Header
  *
  * Author: F. Bruneval

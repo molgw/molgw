@@ -16,7 +16,7 @@ module m_scf
  use m_scalapack
  use m_tools,only: invert
 
- 
+
  integer,private              :: nhistmax
  integer,private              :: nhist_current
 

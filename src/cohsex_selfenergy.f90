@@ -8,7 +8,7 @@
 subroutine cohsex_selfenergy(nstate,basis,occupation,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
- use m_timing 
+ use m_timing
  use m_inputparam
  use m_warning,only: issue_warning,msg
  use m_basis_set
@@ -167,7 +167,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,c_matrix,wpol,se)
 
 
 
-     case default 
+     case default
        call die('BUG')
      end select
 
@@ -207,7 +207,7 @@ end subroutine cohsex_selfenergy
 subroutine cohsex_selfenergy_lr(nstate,basis,occupation,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
- use m_timing 
+ use m_timing
  use m_inputparam
  use m_warning,only: issue_warning,msg
  use m_basis_set
@@ -377,7 +377,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,c_matrix,wpol,se)
 
        do pstate=nsemin,nsemax
          !
-         ! LR-SEX 
+         ! LR-SEX
          !
          se%sigma(0,pstate,ipspin) = se%sigma(0,pstate,ipspin) &
                     -  DOT_PRODUCT( eri_3center_eigen_lr(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
@@ -394,7 +394,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,c_matrix,wpol,se)
        enddo
 
 
-     case default 
+     case default
        call die('BUG')
      end select
 

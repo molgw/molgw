@@ -88,7 +88,7 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
    write(stdout,'(/,/,1x,a,i4)') 'Cycle: ',icycle
    !
    ! A) \epsilon part
-   ! 
+   !
    b_matrix(:,:) = 0.0_dp
    b_matrix(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1) = siginf_pq(:,:)
    jmat = 0
@@ -98,10 +98,10 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
        b_matrix(jmat,jmat) = energy(pstate,pspin)
      enddo
    enddo
-  
+
    !
    ! B) U part
-   ! 
+   !
    do pstate=ncore_G+1,nvirtual_G-1
      imat = pstate - ncore_G
      jmat = nhole + npart
@@ -125,12 +125,12 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
          enddo
        enddo
      enddo
-  
+
    enddo
-  
+
    !
    ! C) K part
-   ! 
+   !
    !
    ! Part I: 2 particles - 1 hole
    jmat = nhole + npart
@@ -154,11 +154,11 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
        enddo
      enddo
    enddo
-  
-  
+
+
    !
    ! D) C part
-   ! 
+   !
    if( TWOPH_TDA ) then
      ! Part I: 2ph-TDA
      imat = nhole + npart
@@ -167,7 +167,7 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
          do bstate=astate,nvirtual_G-1
            imat = imat + 1
            jmat = nhole + npart
-    
+
            do jstate=ncore_G+1,nhomo
              do cstate=nlumo,nvirtual_G-1
                do dstate=cstate,nvirtual_G-1
@@ -181,11 +181,11 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
                enddo
              enddo
            enddo
-    
+
          enddo
        enddo
      enddo
-    
+
      ! Part II: 2ph-TDA
      imat = nhole + npart + nhole * (npart * (npart+1)) / 2
      do istate=ncore_G+1,nhomo
@@ -193,7 +193,7 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
          do astate=nlumo,nvirtual_G-1
            imat = imat + 1
            jmat = nhole + npart + nhole * (npart * (npart+1)) / 2
-    
+
            do kstate=ncore_G+1,nhomo
              do lstate=kstate,nhomo
                do bstate=nlumo,nvirtual_G-1
@@ -207,35 +207,35 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
                enddo
              enddo
            enddo
-    
+
          enddo
        enddo
      enddo
-  
+
    endif
-  
-  
-  
+
+
+
    ! Symmetrize the matrix B
    do imat=1,bmat
      do jmat=imat+1,bmat
        b_matrix(jmat,imat) = b_matrix(imat,jmat)
      enddo
    enddo
-  
-  
-  
+
+
+
    call diagonalize(b_matrix,eigenvalue,x_matrix)
-  
+
    write(stdout,'(/,1x,a)') '================================='
    write(stdout,'(1x,a)') 'G Poles (eV)'
    do imat=1,bmat
-     if( NORM2(x_matrix(1:nhole+npart,imat)) > 0.10_dp ) & 
+     if( NORM2(x_matrix(1:nhole+npart,imat)) > 0.10_dp ) &
        write(stdout,'(2(2x,f12.6))') eigenvalue(imat) * Ha_eV,NORM2(x_matrix(1:nhole+npart,imat))
    enddo
    write(stdout,'(1x,a,/)') '================================='
-  
-  
+
+
    siginf_pq(:,:) = 0.0_dp
    do istate=ncore_G+1,nhomo
      do pstate=ncore_G+1,nvirtual_G-1

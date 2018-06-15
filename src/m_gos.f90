@@ -112,7 +112,7 @@ subroutine setup_gos_llp()
  gos(l1,l2)%gamma  (1) = 1
  gos(l1,l2)%delta  (1) = 0
  gos(l1,l2)%epsilon(1) = 0
- 
+
  ! new
  l1 = 1 ; l2 = 1
  call gos_allocate(l1,l2,2)

@@ -14,7 +14,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools 
+ use m_tools
  use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
@@ -61,9 +61,9 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
 
  rpa_correlation = 0.0_dp
  !
- ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B) 
+ ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B)
  !
- 
+
  ! First loops over the SCALAPACK grid
  do ipcol=0,npcol_sd-1
    do iprow=0,nprow_sd-1
@@ -81,24 +81,24 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
        jstate = wpol%transition_table_apb(1,t_jb_global)
        bstate = wpol%transition_table_apb(2,t_jb_global)
        jbspin = wpol%transition_table_apb(3,t_jb_global)
-    
+
        if( .NOT. has_auxil_basis ) then
          jbmin = MIN(jstate,bstate)
          j_is_jbmin = (jbmin == jstate)
          call calculate_eri_4center_eigen(nbf,nstate,c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
        endif
-    
+
        do t_ia=1,m_apb_block
          t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
          istate = wpol%transition_table_apb(1,t_ia_global)
          astate = wpol%transition_table_apb(2,t_ia_global)
          iaspin = wpol%transition_table_apb(3,t_ia_global)
-    
+
          !
          ! Only calculate the lower triangle
          ! Symmetrization will be performed later (in the diago subroutines)
          if( t_ia_global < t_jb_global ) cycle
-    
+
          if(has_auxil_basis) then
            eri_eigen_iajb = eri_eigen_ri_paral(istate,astate,iaspin,jstate,bstate,jbspin)
          else
@@ -108,14 +108,14 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
              eri_eigen_iajb = eri_eigenstate_jbmin(jstate,istate,astate,iaspin)
            endif
          endif
-    
+
          if( .NOT. is_triplet) then
            apb_block(t_ia,t_jb) = 2.0_dp * eri_eigen_iajb * spin_fact
          else
            apb_block(t_ia,t_jb) = 0.0_dp
          endif
          amb_block(t_ia,t_jb) = 0.0_dp
-    
+
          if( alpha_local > 1.0e-6_dp ) then
            if( iaspin == jbspin ) then
              if(has_auxil_basis) then
@@ -134,7 +134,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
              amb_block(t_ia,t_jb) = amb_block(t_ia,t_jb) - eri_eigen_ijab * alpha_local + eri_eigen_ibaj * alpha_local
            endif
          endif
-    
+
          if( t_ia_global == t_jb_global ) then
            !
            ! Only one proc should add the diagonal
@@ -145,10 +145,10 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
            ! First part of the RPA correlation energy: sum over diagonal terms
            rpa_correlation = rpa_correlation - 0.25_dp * ( apb_block(t_ia,t_jb) + amb_block(t_ia,t_jb) )
          endif
-    
-       enddo 
-    
-     enddo 
+
+       enddo
+
+     enddo
 
 
      call xsum_auxil(amb_block)
@@ -162,8 +162,8 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
 
      deallocate(amb_block)
      deallocate(apb_block)
-   enddo 
- enddo 
+   enddo
+ enddo
 
 #ifdef HAVE_SCALAPACK
  call xsum_world(rpa_correlation)
@@ -171,7 +171,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
 
  !
  ! Set up the diagonal of A-B in the RPA approximation
- ! 
+ !
  do t_ia_global=1,nmat
    istate = wpol%transition_table_apb(1,t_ia_global)
    astate = wpol%transition_table_apb(2,t_ia_global)
@@ -198,7 +198,7 @@ subroutine build_amb_apb_diag_auxil(nmat,nstate,energy,wpol,m_apb,n_apb,amb_matr
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools 
+ use m_tools
  use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
@@ -246,7 +246,7 @@ subroutine get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correl
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools 
+ use m_tools
  use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
@@ -270,7 +270,7 @@ subroutine get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correl
    ! If the diagonal element belongs to this proc, then add it.
    if( t_ia > 0 .AND. t_jb > 0 ) then
      rpa_correlation = rpa_correlation - 0.25_dp * apb_matrix(t_ia,t_jb)   &
-                                       - 0.25_dp * amb_matrix(t_ia,t_jb) 
+                                       - 0.25_dp * amb_matrix(t_ia,t_jb)
    endif
  enddo
 
@@ -319,7 +319,7 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
     write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
 
 
- 
+
  ! First loops over the SCALAPACK grid
  do ipcol=0,npcol_sd-1
    do iprow=0,nprow_sd-1
@@ -347,15 +347,15 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
          jbspin = wpol%transition_table_apb(3,t_jb_global)
 
          eri_3center_right(t_jb) = eri_3center_eigen(ibf_auxil,jstate,bstate,jbspin)
-  
+
        enddo
-    
+
        do t_ia=1,m_apb_block
          t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
          istate = wpol%transition_table_apb(1,t_ia_global)
          astate = wpol%transition_table_apb(2,t_ia_global)
          iaspin = wpol%transition_table_apb(3,t_ia_global)
-    
+
          eri_3center_left(t_ia) = eri_3center_eigen(ibf_auxil,istate,astate,iaspin)
 
        enddo
@@ -363,7 +363,7 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
        call DGER(m_apb_block,n_apb_block,2.0_dp*spin_fact,eri_3center_left,1,eri_3center_right,1,apb_block,m_apb_block)
 
      enddo
-     
+
      deallocate(eri_3center_left,eri_3center_right)
 
      call xsum_auxil(apb_block)
@@ -374,8 +374,8 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
 
 
      deallocate(apb_block)
-   enddo 
- enddo 
+   enddo
+ enddo
 
 
  call stop_clock(timing_build_common)
@@ -450,7 +450,7 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
                                          DBLE(1.0_dp),apb_matrix,1,1,desc_apb)
 
  call clean_deallocate('TMP 3-center integrals',eri_3tmp_sd)
-#endif 
+#endif
 
 
  call stop_clock(timing_build_common)
@@ -468,7 +468,7 @@ subroutine build_a_diag_common(nbf,nstate,c_matrix,energy,wpol,a_diag)
  use m_mpi
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools 
+ use m_tools
  implicit none
 
  integer,intent(in)                 :: nbf,nstate
@@ -504,7 +504,7 @@ subroutine build_a_diag_common(nbf,nstate,c_matrix,energy,wpol,a_diag)
  endif
 
  !
- ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B) 
+ ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B)
  !
 
 
@@ -533,7 +533,7 @@ subroutine build_a_diag_common(nbf,nstate,c_matrix,energy,wpol,a_diag)
    a_diag(t_jb) = eri_eigen_jbjb * spin_fact + energy(bstate,jbspin) - energy(jstate,jbspin)
    a_diag(t_jb) = a_diag(t_jb) * empirical_fact
 
- enddo 
+ enddo
 
  if(ALLOCATED(eri_eigenstate_jbmin)) deallocate(eri_eigenstate_jbmin)
 
@@ -605,19 +605,19 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
        jstate = wpol%transition_table_apb(1,t_jb_global)
        bstate = wpol%transition_table_apb(2,t_jb_global)
        jbspin = wpol%transition_table_apb(3,t_jb_global)
-    
+
        do t_ia=1,m_apb_block
          t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
          istate = wpol%transition_table_apb(1,t_ia_global)
          astate = wpol%transition_table_apb(2,t_ia_global)
          iaspin = wpol%transition_table_apb(3,t_ia_global)
-    
+
          !
          ! Only calculate the lower triangle
          ! Symmetrization will be performed later (in the diago subroutines)
          if( t_ia_global < t_jb_global ) cycle
-    
-         if( nspin == 1 ) then 
+
+         if( nspin == 1 ) then
            if( .NOT. is_triplet ) then
              xctmp = eval_fxc_rks_singlet(istate,astate,iaspin,jstate,bstate,jbspin)
            else
@@ -626,11 +626,11 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
          else
            xctmp =  eval_fxc_uks(istate,astate,iaspin,jstate,bstate,jbspin)
          endif
-    
-    
+
+
          ! The factor two accounts for (A+B), and not A or B.
          apb_block(t_ia,t_jb) = apb_block(t_ia,t_jb) + 2.0_dp * xctmp
-    
+
        enddo
      enddo
 
@@ -666,7 +666,7 @@ subroutine build_amb_apb_bse(wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
- use m_tools 
+ use m_tools
  implicit none
 
  type(spectral_function),intent(in) :: wpol,wpol_static
@@ -729,7 +729,7 @@ subroutine build_amb_apb_bse(wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
      kbf = index_prodstate(istate,bstate) + nprodbasis * (iaspin-1)
      bra(:) = wpol_static%residue_left(kbf,:)
      kbf = index_prodstate(astate,jstate) + nprodbasis * (jbspin-1)
-     ket(:) = wpol_static%residue_left(kbf,:)  
+     ket(:) = wpol_static%residue_left(kbf,:)
 
      wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
      apb_matrix(t_ia,t_jb) =  apb_matrix(t_ia,t_jb) - wtmp
@@ -761,7 +761,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
- use m_tools 
+ use m_tools
  implicit none
 
  real(dp),intent(in)                :: alpha_local
@@ -793,7 +793,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  call start_clock(timing_build_bse)
  if( .NOT. has_auxil_basis ) call die('Does not have auxil basis. This should not happen')
 
- write(stdout,'(a)')       ' Build W part Auxil' 
+ write(stdout,'(a)')       ' Build W part Auxil'
  write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
 
  nmat = desc_apb(M_)
@@ -803,7 +803,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
 
  !
  ! Distribution over the "ortho" parallelization direction
- ! 
+ !
  jstate_min = ncore_W+1
  jstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol%npole_reso_apb) )
  do irank=0,rank_ortho
@@ -819,16 +819,16 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  if( is_bse ) then
 #ifndef HAVE_SCALAPACK
    do iaspin=1,nspin
-  
+
      allocate(vsqrt_chi_vsqrt(nauxil_2center,nauxil_2center))
-  
-  
+
+
      !
      ! Test if chi is already available or if we need to calculate it first
      if( ALLOCATED(wpol_static%chi) ) then
-  
+
        vsqrt_chi_vsqrt(:,:) = wpol_static%chi(:,:,1)
-  
+
      else if( ALLOCATED(wpol_static%residue_left) ) then
 
        vsqrt_chi_vsqrt(:,:) = 0.0_dp
@@ -839,66 +839,66 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
                       * wpol_static%residue_left(jbf_auxil,ipole) * 2.0_dp / wpol_static%pole(ipole)
          enddo
        enddo
-  
+
      endif
-      
+
      !
      ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
-     ! Be careful not to forget it in the following 
+     ! Be careful not to forget it in the following
      do jstate=jstate_min,jstate_max
        wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = MATMUL( vsqrt_chi_vsqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
      enddo
-    
+
      deallocate(vsqrt_chi_vsqrt)
-  
+
    enddo
 
 #else
 
    do iaspin=1,nspin
-  
+
      !
      ! Test if chi is already available or if we need to calculate it first
      if( ALLOCATED(wpol_static%chi) ) then
-  
+
        allocate(wp0_i(ncore_W+1:nvirtual_W-1,jstate_min:jstate_max))
        allocate(w0_local(nauxil_3center))
-  
+
        do ibf_auxil_global=1,nauxil_2center
-  
+
          do jbf_auxil=1,nauxil_3center
            jbf_auxil_global = ibf_auxil_g(jbf_auxil)
            w0_local(jbf_auxil) = wpol_static%chi(ibf_auxil_global,jbf_auxil_global,1)
          enddo
-  
+
          do jstate=jstate_min,jstate_max
            wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( w0_local(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
          enddo
          call xsum_auxil(wp0_i)
-  
+
          if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil ) then
            wp0(ibf_auxil_l(ibf_auxil_global),:,:,iaspin) = wp0_i(:,:)
          endif
-  
+
        enddo
        deallocate(wp0_i)
        deallocate(w0_local)
-  
+
      else if( ALLOCATED(wpol_static%residue_left) ) then
-  
+
        allocate(vsqrt_chi_vsqrt_i(nauxil_3center))
        allocate(residue_i(wpol_static%npole_reso))
        allocate(wp0_i(ncore_W+1:nvirtual_W-1,jstate_min:jstate_max))
-      
+
        do ibf_auxil=1,nauxil_2center
-      
+
          if( iproc_ibf_auxil(ibf_auxil) == rank_auxil ) then
            residue_i(:) = wpol_static%residue_left(ibf_auxil_l(ibf_auxil),:)
          else
            residue_i(:) = 0.0_dp
          endif
          call xsum_auxil(residue_i)
-      
+
          vsqrt_chi_vsqrt_i(:) = 0.0_dp
          do ipole=1,wpol_static%npole_reso
            vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
@@ -911,23 +911,23 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
            wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( vsqrt_chi_vsqrt_i(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
          enddo
          call xsum_auxil(wp0_i)
-      
+
          if( iproc_ibf_auxil(ibf_auxil) == rank_auxil ) then
            wp0(ibf_auxil_l(ibf_auxil),:,:,iaspin) = wp0_i(:,:)
          endif
-      
+
        enddo
-      
+
        deallocate(vsqrt_chi_vsqrt_i,residue_i,wp0_i)
-  
+
      endif
-  
+
    enddo
 #endif
  endif
 
 
- ! 
+ !
  ! Add the exact exchange here
  if( alpha_local > 1.0e-6_dp ) then
 
@@ -939,11 +939,11 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
    enddo
 
  endif
- 
+
 
  if( nprow_sd * npcol_sd > 1 ) &
     write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
- 
+
  ! First loops over the SCALAPACK grid
  do ipcol=0,npcol_sd-1
    do iprow=0,nprow_sd-1

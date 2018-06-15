@@ -324,13 +324,13 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
      do lbf=1,nbf
        if( negligible_basispair(lbf,jbf) ) cycle
        do kbf=1,nbf
-!         if( ABS(p_matrix(kbf,lbf,ispin)) <  1.0e-12_dp ) cycle 
+!         if( ABS(p_matrix(kbf,lbf,ispin)) <  1.0e-12_dp ) cycle
          do ibf=1,nbf
            if( negligible_basispair(ibf,kbf) ) cycle
            !
            ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
            exchange_ij(ibf,jbf,ispin) = exchange_ij(ibf,jbf,ispin) &
-                      - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact 
+                      - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
          enddo
        enddo
      enddo
@@ -514,7 +514,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
            !
            ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
            exchange_ij(ibf,jbf,ispin) = exchange_ij(ibf,jbf,ispin) &
-                      - eri_lr(kbf,ibf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact 
+                      - eri_lr(kbf,ibf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
          enddo
        enddo
      enddo
@@ -679,13 +679,13 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
  if( temperature < 1.0e-8_dp ) then
 
    occupation(:,:)=0.0_dp
-  
+
    inquire(file='manual_occupations',exist=file_exists)
-  
+
    if(.NOT. file_exists) then
      remaining_electrons(1) = (electrons+magnetization) / REAL(nspin,dp)
      if(nspin==2) remaining_electrons(2) = (electrons-magnetization) / REAL(nspin,dp)
-  
+
      do istate=1,nstate
        occupation(istate,:) = MIN(remaining_electrons(:), spin_fact)
        remaining_electrons(:)  = remaining_electrons(:) - occupation(istate,:)
@@ -711,7 +711,7 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
    !
    ! Finite temperature case
    !
-   write(stdout,'(1x,a,f12.6,3x,f15.3)') 'Find new the occupations and Fermi level for temperature (Ha) (K): ', & 
+   write(stdout,'(1x,a,f12.6,3x,f15.3)') 'Find new the occupations and Fermi level for temperature (Ha) (K): ', &
                                          temperature,temperature * Ha_K
 
    ! First, set mu half way between the HOMO and the LUMO
@@ -754,7 +754,7 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
      write(stdout,*) istate,occupation(istate,:)
    enddo
    call die('FAILURE in set_occupation')
- endif 
+ endif
 
  call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
 
@@ -905,7 +905,7 @@ subroutine level_shifting_up(s_matrix,c_matrix,occupation,level_shifting_energy,
      matrix_tmp(:,istate) =  c_matrix(:,istate,ispin) * sqrt_level_shifting(istate)
    end forall
 
-   ! 
+   !
    ! M = C * E * tC
    matrix_tmp(:,:) = MATMUL( matrix_tmp(:,1:nstate) , TRANSPOSE(matrix_tmp(:,1:nstate)) )
    ! M = S * M * S
@@ -915,11 +915,11 @@ subroutine level_shifting_up(s_matrix,c_matrix,occupation,level_shifting_energy,
    hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + matrix_tmp(:,:)
 
  enddo
- 
+
  deallocate(matrix_tmp)
  deallocate(sqrt_level_shifting)
 
- 
+
 end subroutine level_shifting_up
 
 
@@ -972,7 +972,7 @@ subroutine level_shifting_down(s_matrix,c_matrix,occupation,level_shifting_energ
      matrix_tmp(:,istate) =  c_matrix(:,istate,ispin) * sqrt_level_shifting(istate)
    end forall
 
-   ! 
+   !
    ! M = C * E * tC
    matrix_tmp(:,:) = MATMUL( matrix_tmp(:,1:nstate) , TRANSPOSE(matrix_tmp(:,1:nstate)) )
    ! M = S * M * S
@@ -982,7 +982,7 @@ subroutine level_shifting_down(s_matrix,c_matrix,occupation,level_shifting_energ
    hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) - matrix_tmp(:,:)
 
  enddo
- 
+
  deallocate(matrix_tmp)
  deallocate(sqrt_level_shifting)
 
@@ -1167,7 +1167,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
  write(stdout,*) 'Calculate DFT XC potential'
  if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
- 
+
 
  normalization(:) = 0.0_dp
 
@@ -1185,7 +1185,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    allocate(vrho_batch(nspin,nr))
    allocate(dedd_r_batch(nspin,nr))
 
-   if( dft_xc_needs_gradient ) then 
+   if( dft_xc_needs_gradient ) then
      allocate(basis_function_gradr_batch(basis%nbf,nr,3))
      allocate(grad_rhor_batch(nspin,nr,3))
      allocate(dedgd_r_batch(3,nr,nspin))
@@ -1203,7 +1203,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-   if( .NOT. dft_xc_needs_gradient ) then 
+   if( .NOT. dft_xc_needs_gradient ) then
      call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
 
    else
@@ -1238,7 +1238,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
        call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
-       
+
        ! Remove too small densities to stabilize the computation
        ! especially useful for Becke88
        do ir=1,nr
@@ -1274,7 +1274,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
          do ir=1,nr
            dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1) &
                      + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
-                                 + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc) 
+                                 + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc)
 
            dedgd_r_batch(:,ir,2) = dedgd_r_batch(:,ir,2) &
                      + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
@@ -1321,7 +1321,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    deallocate(rhor_batch)
    deallocate(vrho_batch)
    deallocate(dedd_r_batch)
-   if( dft_xc_needs_gradient ) then 
+   if( dft_xc_needs_gradient ) then
      deallocate(basis_function_gradr_batch)
      deallocate(grad_rhor_batch)
      deallocate(sigma_batch)
@@ -1337,7 +1337,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  ! Symmetrize now
  do ispin=1,nspin
    do jbf=1,basis%nbf
-     do ibf=jbf+1,basis%nbf 
+     do ibf=jbf+1,basis%nbf
        vxc_ij(jbf,ibf,ispin) = vxc_ij(ibf,jbf,ispin)
      enddo
    enddo
@@ -1403,7 +1403,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
 
    call calculate_eri_approximate_hartree(basis,basis%nbf,basis%nbf,xatom(:,iatom),ngau,coeff,alpha,vhgau)
-   vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) 
+   vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:)
 
    deallocate(alpha,coeff)
  enddo

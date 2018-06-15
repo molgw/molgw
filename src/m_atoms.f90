@@ -67,8 +67,8 @@ subroutine init_atoms(zatom_read,x_read,calculate_forces)
  ! xbasis and zbasis designate the basis centers and nature
  allocate(zbasis(natom_basis))
  allocate(xbasis(3,natom_basis))
- 
- ! For relaxation or dynamics only 
+
+ ! For relaxation or dynamics only
  if( calculate_forces ) then
    allocate(force(3,natom))
    allocate(force_nuc_nuc(3,natom))
@@ -164,7 +164,7 @@ function atoms_core_states()
  do iatom=1,natom
    atoms_core_states = atoms_core_states + element_core(zvalence(iatom),zatom(iatom))
  enddo
- 
+
 end function atoms_core_states
 
 

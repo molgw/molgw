@@ -35,7 +35,7 @@ module m_libint_tools
      real(C_DOUBLE),intent(in) :: alphaB(*)
      real(C_DOUBLE),intent(in) :: cB(*)
      real(C_DOUBLE),intent(out) :: overlapAB(*)
-     
+
    end subroutine libint_overlap
 
    subroutine libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
@@ -53,7 +53,7 @@ module m_libint_tools
      real(C_DOUBLE),intent(out) :: overlapABx(*)
      real(C_DOUBLE),intent(out) :: overlapABy(*)
      real(C_DOUBLE),intent(out) :: overlapABz(*)
-     
+
    end subroutine libint_overlap_grad
 
    subroutine libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
@@ -104,7 +104,7 @@ module m_libint_tools
      real(C_DOUBLE),intent(in)    :: cB(*)
      real(C_DOUBLE),intent(in)    :: C(*)
      real(C_DOUBLE),intent(inout) :: elecpotAB(*)
-     
+
    end subroutine libint_elecpot
 
    subroutine libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
@@ -127,7 +127,7 @@ module m_libint_tools
      real(C_DOUBLE),intent(inout) :: elecpotBx(*)
      real(C_DOUBLE),intent(inout) :: elecpotBy(*)
      real(C_DOUBLE),intent(inout) :: elecpotBz(*)
-     
+
    end subroutine libint_elecpot_grad
 
    subroutine libint_4center_grad(amA,contrdepthA,A,alphaA,cA, &
@@ -169,7 +169,7 @@ module m_libint_tools
      real(C_DOUBLE),intent(inout) :: eriDx(*)
      real(C_DOUBLE),intent(inout) :: eriDy(*)
      real(C_DOUBLE),intent(inout) :: eriDz(*)
-     
+
    end subroutine libint_4center_grad
 #endif
 

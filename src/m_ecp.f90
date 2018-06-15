@@ -69,10 +69,10 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
  case(low)       ! accuracy not guaranted, just for quick test runs
    nradial_ecp     =  12
    nangular_ecp    =   6
- case(medium)    
+ case(medium)
    nradial_ecp     =  20
    nangular_ecp    =  26
- case(high)     
+ case(high)
    nradial_ecp     =  35
    nangular_ecp    =  38
  case(very_high) ! almost perfect potentials
@@ -96,7 +96,7 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
    string = string(inextblank+1:)
    ilen = LEN(TRIM(string))
 
- enddo 
+ enddo
 
  nelement_ecp = SIZE(element_ecp)
  allocate(ecp(nelement_ecp))
@@ -133,7 +133,7 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
                          amc, &
                          ecp(ielement_ecp)%nk(iecp), &
                          ecp(ielement_ecp)%zetak(iecp), &
-                         ecp(ielement_ecp)%dk(iecp) 
+                         ecp(ielement_ecp)%dk(iecp)
    enddo
 
  enddo
@@ -166,7 +166,7 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
  line='_____'   ! Five underscores '_____' means 'advance to next line'
  do while(.NOT. end_of_file)
    iline = iline + 1
-   if( line(1:5) == '_____' ) then 
+   if( line(1:5) == '_____' ) then
      read(ecpunit,'(a)',iostat=istat) line
      if( istat == iostat_end ) then
        end_of_file = .TRUE.
@@ -235,7 +235,7 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
      write(stdout,*) capitalize(line(1:i2-1)),line(1:i2-1)
      call die('problem reading ECP file')
    endif
-     
+
 
  enddo
 

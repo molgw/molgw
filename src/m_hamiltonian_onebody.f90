@@ -109,7 +109,7 @@ subroutine setup_overlap(basis,s_matrix)
  title='=== Overlap matrix S (LIBINT) ==='
  call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix)
 
- 
+
  call stop_clock(timing_overlap)
 
 
@@ -198,7 +198,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
    deallocate(alphaB,cB)
  enddo
 
- 
+
  call stop_clock(timing_overlap)
 
 
@@ -564,7 +564,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
-       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:) 
+       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
 #else
        ij = 0
        do i_cart=1,ni_cart
@@ -906,7 +906,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  call start_clock(timing_ecp)
 
  !
- ! Since there will be an allreduce operation in the end, 
+ ! Since there will be an allreduce operation in the end,
  ! anticipate by dividing the input value of Hnucl by the number of procs
  if( nproc_world > 1 ) then
    hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) / nproc_world
@@ -960,12 +960,12 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        element_has_ecp = .TRUE.
        exit
      endif
-   enddo 
+   enddo
 
    if( .NOT. element_has_ecp ) cycle
 
    necp = ecp(ie)%necp
-     
+
 
    nproj = 0
    do iecp=1,necp
@@ -974,7 +974,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
      endif
    enddo
    allocate(int_fixed_r(basis%nbf,nproj))
-  
+
    do iradial=1,nradial_ecp
      if( MODULO(iradial-1,nproc_world) /= rank_world ) cycle
 
@@ -984,10 +984,10 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        rr(2) = xa(iradial) * y1(i1) + xatom(2,iatom)
        rr(3) = xa(iradial) * z1(i1) + xatom(3,iatom)
        call calculate_basis_functions_r(basis,rr,basis_function_r)
-  
+
        cos_theta = z1(i1)
        phi       = ATAN2(y1(i1),x1(i1))
-  
+
        iproj = 0
        do iecp=1,necp
 
@@ -1006,13 +1006,13 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
              iproj = iproj + 1
              int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
                                        * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
-                                          * w1(i1) * 4.0_dp * pi  
+                                          * w1(i1) * 4.0_dp * pi
            enddo
          endif
 
        enddo
      enddo ! (theta, phi) points
-  
+
      iproj = 0
      do iecp=1,necp
        if( ecp(ie)%lk(iecp) /= -1 ) then
@@ -1028,12 +1028,12 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
          enddo
        endif
      enddo
-  
+
    enddo
-  
+
    deallocate(int_fixed_r)
 
- enddo 
+ enddo
 
  call xsum_world(hamiltonian_nucleus)
 

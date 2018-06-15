@@ -32,7 +32,7 @@ subroutine boys_function_c(fnt,nn,tt)  BIND(C)
  et = EXP(-tt)
  t2 = 2.0_C_DOUBLE * tt
 
- if( tt > 20.0_C_DOUBLE ) then ! For big tt's do upward recursion 
+ if( tt > 20.0_C_DOUBLE ) then ! For big tt's do upward recursion
 
    t_sqrt  = SQRT(tt)
    fnt(0) = kk * ERF(t_sqrt) / t_sqrt
@@ -55,9 +55,9 @@ subroutine boys_function_c(fnt,nn,tt)  BIND(C)
      sum = sum + term1
      if( ABS(term1) < eps ) exit
    enddo
-   fnt(nn) = sum * et 
+   fnt(nn) = sum * et
    !
-   ! And then do downward recursion 
+   ! And then do downward recursion
    do mm=nn-1,0,-1
      fnt(mm)= ( t2 * fnt(mm+1) + et ) / ( 2 * mm + 1 )
    enddo

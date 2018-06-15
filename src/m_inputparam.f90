@@ -82,10 +82,10 @@ module m_inputparam
  integer,protected                :: selfenergy_state_min
  integer,protected                :: selfenergy_state_max
  integer,protected                :: selfenergy_state_range
- integer,protected                :: ncoreg 
- integer,protected                :: ncorew 
- integer,protected                :: nvirtualg 
- integer,protected                :: nvirtualw 
+ integer,protected                :: ncoreg
+ integer,protected                :: ncorew
+ integer,protected                :: nvirtualg
+ integer,protected                :: nvirtualw
  integer,protected                :: nvirtualspa
  logical,protected                :: is_frozencore
  logical,protected                :: is_tda,is_triplet
@@ -175,7 +175,7 @@ module m_inputparam
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
  real(dp),protected               :: alpha_hybrid_lr = 0.0_dp
  real(dp),protected               :: rcut            = 0.0_dp
- real(dp),protected               :: gamma_hybrid  
+ real(dp),protected               :: gamma_hybrid
 
  integer,protected                :: ndft_xc = 0
  integer,protected,allocatable    :: dft_xc_type(:)
@@ -552,14 +552,14 @@ subroutine init_dft_type(key,calc_type)
    rcut            = 1.0_dp / 0.11_dp
  case('CAM-B3LYP')
    dft_xc_type(1)  = XC_HYB_GGA_XC_CAM_B3LYP
-   alpha_hybrid    =  0.19_dp 
-   alpha_hybrid_lr =  0.46_dp 
-   rcut            =  1.0_dp / 0.33_dp  
+   alpha_hybrid    =  0.19_dp
+   alpha_hybrid_lr =  0.46_dp
+   rcut            =  1.0_dp / 0.33_dp
  case('TUNED-CAM-B3LYP')
    dft_xc_type(1)  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
-   alpha_hybrid    =  0.0799_dp 
+   alpha_hybrid    =  0.0799_dp
    alpha_hybrid_lr =  0.9201_dp
-   rcut            =  1.0_dp / 0.150_dp  
+   rcut            =  1.0_dp / 0.150_dp
  case('RSH')
    dft_xc_type(1) = XC_GGA_X_PBE
    dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
@@ -577,10 +577,10 @@ subroutine init_dft_type(key,calc_type)
  ! Testing
  case('TESTHSE')
    dft_xc_type(1) = XC_GGA_X_PBE
-   dft_xc_type(2) = XC_GGA_X_HJS_PBE ! XC_GGA_X_WPBEH ! 2001  
+   dft_xc_type(2) = XC_GGA_X_HJS_PBE ! XC_GGA_X_WPBEH ! 2001
    dft_xc_type(3) = XC_GGA_C_PBE
    alpha_hybrid   =  0.25_dp
-   dft_xc_coef(1) =  1.00_dp 
+   dft_xc_coef(1) =  1.00_dp
    dft_xc_coef(2) = -0.25_dp
    dft_xc_coef(3) =  1.00_dp
    alpha_hybrid_lr = -alpha_hybrid
@@ -785,7 +785,7 @@ subroutine read_inputfile_namelist()
 
  ! Get the number of inline arguments with the new Fortran 2003 statement
  ninput_argument = COMMAND_ARGUMENT_COUNT()
- 
+
  select case(ninput_argument)
  case(1)
    call GET_COMMAND_ARGUMENT(1,VALUE=input_file_name)
@@ -813,9 +813,9 @@ subroutine read_inputfile_namelist()
  write(stdout,'(/,1x,a,/)') ' ================================================'
 
 
- ieta = (0.0_dp,1.0_dp) * eta 
+ ieta = (0.0_dp,1.0_dp) * eta
  alpha_hybrid_lr = beta_hybrid
- 
+
 
  scf                = capitalize(scf)
  postscf            = capitalize(postscf)
@@ -978,7 +978,7 @@ subroutine read_inputfile_namelist()
    if( natom /= 0 .AND. natom+nghost /= natom_read ) then
      call die('the number of atoms in the input file does not correspond to the number of atoms in the xyz file')
    endif
-   read(xyzfile,*) 
+   read(xyzfile,*)
 
    natom = natom_read-nghost
 
@@ -1011,7 +1011,7 @@ subroutine read_inputfile_namelist()
    enddo
 
    close(xyzfile)
-   
+
 
    if( ABS(length_factor - 1.0_dp ) < 1.0e-6_dp  ) then
      write(stdout,*) 'xyz files are always in Angstrom. However, length_unit was set to bohr'
@@ -1085,14 +1085,14 @@ subroutine read_inputfile_namelist()
  call summary_input(grid_quality,integral_quality)
 
 
-contains  
+contains
 
 
 function interpret_quality(quality) result(quality_level)
  implicit none
  character(len=12),intent(in) :: quality
  integer                      :: quality_level
-!===== 
+!=====
 
  select case(TRIM(quality))
  case('LOW','L')
@@ -1116,7 +1116,7 @@ function yesno(char3)
  character(len=3),intent(in) :: char3
  logical                     :: yesno
 !=====
- 
+
  select case(TRIM(capitalize(char3)))
  case('YES','Y')
    yesno=.TRUE.
@@ -1125,7 +1125,7 @@ function yesno(char3)
  case default
   call die('Yes or No, I cannot interpret this input')
  end select
- 
+
 end function yesno
 
 

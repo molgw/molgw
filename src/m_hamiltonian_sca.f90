@@ -301,7 +301,7 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
      iglobal = rowindex_local_to_global('H',ilocal)
      if( negligible_basispair(iglobal,jglobal) ) cycle
 
-     partial_sum(:) = partial_sum(:) + eri_3center(:,index_pair(iglobal,jglobal)) * SUM( p_matrix(ilocal,jlocal,:) )  
+     partial_sum(:) = partial_sum(:) + eri_3center(:,index_pair(iglobal,jglobal)) * SUM( p_matrix(ilocal,jlocal,:) )
 
    enddo
  enddo
@@ -323,7 +323,7 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
    enddo
  enddo
 
- 
+
  deallocate(partial_sum)
 
  !
@@ -437,7 +437,7 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
        if( jlocal /= 0 ) then
          do ilocal=1,m_c
            iglobal = rowindex_local_to_global('H',ilocal)
-           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin) 
+           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin)
          enddo
        endif
      endif
@@ -665,7 +665,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
  c_matrix(:,:,:) = 0.0_dp
 
  !
- ! Participate to the diagonalization only if the CPU has been selected 
+ ! Participate to the diagonalization only if the CPU has been selected
  ! in the grid
  if(cntxt > 0 ) then
 
@@ -696,7 +696,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
        s_matrix_local(ilocal,jlocal) = s_matrix_sqrt_inv(iglobal,jglobal)
      enddo
    enddo
-  
+
 
 
    do ispin=1,nspin_local
@@ -736,11 +736,11 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 !     c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
 
      !
-     ! C = S^{-1/2} C_small 
+     ! C = S^{-1/2} C_small
      call PDGEMM('N','N',nbf,nstate,nstate,             &
                   1.0_dp,s_matrix_local,1,1,descc,      &
                   h_small,1,1,descs,                    &
-                  0.0_dp,c_matrix_local,1,1,descc) 
+                  0.0_dp,c_matrix_local,1,1,descc)
 
 
      do jlocal=1,nc
@@ -785,7 +785,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 
 
    h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-                            MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) ) 
+                            MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
 
    call diagonalize(nstate,h_small,energy(1:nstate,ispin))
 
@@ -866,11 +866,11 @@ subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,de
 
 
      !
-     ! C = S^{-1/2} C_small 
+     ! C = S^{-1/2} C_small
      call PDGEMM('N','N',nbf,nstate,nstate,                   &
                   1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,     &
                                  h_small,1,1,desc_small,      &
-                  0.0_dp,c_matrix(1,1,ispin),1,1,desc_sqrt) 
+                  0.0_dp,c_matrix(1,1,ispin),1,1,desc_sqrt)
 
 
      call stop_clock(timing_diago_hamiltonian)
@@ -946,12 +946,12 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
 
    nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
-   ! 
+   !
    ! Initialize the descriptor of the rectangular matric S^{-1/2}
    msqrt = NUMROC(nbf   ,desc_s(MB_),iprow,desc_s(RSRC_),nprow)
    nsqrt = NUMROC(nstate,desc_s(NB_),ipcol,desc_s(CSRC_),npcol)
    call DESCINIT(desc_sqrt,nbf,nstate,desc_s(MB_),desc_s(NB_),desc_s(RSRC_),desc_s(CSRC_),cntxt,msqrt,info)
-   
+
  else
    nstate = 0
    msqrt    = 0
@@ -1106,7 +1106,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
    call element_atomicdensity(zvalence(iatom),zatom(iatom),coeff,alpha)
 
    call calculate_eri_approximate_hartree(basis,m_ham,n_ham,xatom(:,iatom),ngau,coeff,alpha,vhgau)
-   vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) 
+   vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:)
 
    deallocate(alpha,coeff)
  enddo

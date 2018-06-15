@@ -16,7 +16,7 @@ module m_mpi_trans
 
  !
  ! "trans" communicator
- ! 
+ !
  integer,public    :: comm_trans        ! communicator over trans processors
  integer,public    :: nproc_trans  = 1  ! number of procs in the trans communicator
  integer,public    :: rank_trans   = 0  ! index           in the trans communicator

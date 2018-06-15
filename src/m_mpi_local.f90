@@ -16,7 +16,7 @@ module m_mpi_local
 
  !
  ! "local" communicator
- ! 
+ !
  integer,public    :: comm_local        ! communicator over local processors
  integer,public    :: nproc_local  = 1  ! number of procs in the local communicator
  integer,public    :: rank_local   = 0  ! index           in the local communicator

@@ -22,7 +22,7 @@ module m_ci
 
  integer,parameter,private     :: key_int=8
 
- 
+
  integer,private              :: nfrozen_ci
  integer,private              :: nstate_ci
 
@@ -69,7 +69,7 @@ module m_ci
  end type
 
 
-contains 
+contains
 
 
 !==================================================================
@@ -251,7 +251,7 @@ subroutine destroy_ci()
  implicit none
 !=====
 !=====
- 
+
  call clean_deallocate('Eigenstate-Fock operator',h_1body)
 
  if( ALLOCATED(conf_0%keyud) ) deallocate(conf_0%keyud)
@@ -364,7 +364,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
      keyud_ref(:,iref) = 0_key_int
      do isporb=1,SIZE(ref_sporb)
        ispin = MODULO(isporb-1,2) + 1
-       istate = (isporb+1)/2 
+       istate = (isporb+1)/2
        if( ref_sporb(isporb) == 1 ) &
          keyud_ref(ispin,iref) = keyud_ref(ispin,iref) + SHIFTL(1_key_int,istate-1)
      enddo
@@ -400,7 +400,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
 
  iconf = 0
  ! Spin up loop
- do 
+ do
    do ielec=1,conf%nelec_valence_down
      sporbdown(ielec) = ielec + nfrozen_ci
    enddo
@@ -707,12 +707,12 @@ function hamiltonian_ci(keyudi,keyudj) RESULT(h_ci_ij)
      ispin = 1
      kspin = 1
      istate = TRAILZ(keyudii(1)) + nfrozen_ci + 1
-     kstate = TRAILZ(keyudjj(1)) + nfrozen_ci + 1 
+     kstate = TRAILZ(keyudjj(1)) + nfrozen_ci + 1
    else
      ispin = -1
      kspin = -1
      istate = TRAILZ(keyudii(2)) + nfrozen_ci + 1
-     kstate = TRAILZ(keyudjj(2)) + nfrozen_ci + 1 
+     kstate = TRAILZ(keyudjj(2)) + nfrozen_ci + 1
    endif
 
    sign_factor = gamma_sign_keyud(keyudi,istate,ispin) * gamma_sign_keyud(keyudj,kstate,kspin)
@@ -779,16 +779,16 @@ function hamiltonian_ci(keyudi,keyudj) RESULT(h_ci_ij)
      kspin =  1
      lspin = -1
      istate = TRAILZ(keyudii(1)) + nfrozen_ci + 1
-     kstate = TRAILZ(keyudjj(1)) + nfrozen_ci + 1 
+     kstate = TRAILZ(keyudjj(1)) + nfrozen_ci + 1
      jstate = TRAILZ(keyudii(2)) + nfrozen_ci + 1
-     lstate = TRAILZ(keyudjj(2)) + nfrozen_ci + 1 
+     lstate = TRAILZ(keyudjj(2)) + nfrozen_ci + 1
    case(0)
      ispin = -1
      jspin = -1
      kspin = -1
      lspin = -1
      istate = TRAILZ(keyudii(2)) + nfrozen_ci + 1
-     kstate = TRAILZ(keyudjj(2)) + nfrozen_ci + 1 
+     kstate = TRAILZ(keyudjj(2)) + nfrozen_ci + 1
      jstate = BIT_SIZE(0_key_int) - LEADZ(keyudii(2)) + nfrozen_ci
      lstate = BIT_SIZE(0_key_int) - LEADZ(keyudjj(2)) + nfrozen_ci
    case(4)
@@ -797,7 +797,7 @@ function hamiltonian_ci(keyudi,keyudj) RESULT(h_ci_ij)
      kspin = 1
      lspin = 1
      istate = TRAILZ(keyudii(1)) + nfrozen_ci + 1
-     kstate = TRAILZ(keyudjj(1)) + nfrozen_ci + 1 
+     kstate = TRAILZ(keyudjj(1)) + nfrozen_ci + 1
      jstate = BIT_SIZE(0_key_int) - LEADZ(keyudii(1)) + nfrozen_ci
      lstate = BIT_SIZE(0_key_int) - LEADZ(keyudjj(1)) + nfrozen_ci
    end select
@@ -876,14 +876,14 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  cntxt = desc(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  mvec = NUMROC(conf%nconf,desc(MB_),iprow,first_row,nprow)
- 
+
  call start_clock(timing_zeroes_ci)
  !
  ! Find the maximum size of the sparse CI hamiltonian
  h%nnz = 0
  do jconf=1,mvec
    jconf_global = rowindex_local_to_global(desc,jconf)
-   do iconf=1,jconf_global-1   ! Use symmetry of H 
+   do iconf=1,jconf_global-1   ! Use symmetry of H
      if( keyud_diff_order(conf%keyud(:,iconf),conf%keyud(:,jconf_global)) <= 4 ) h%nnz = h%nnz + 1
    enddo
  enddo
@@ -913,7 +913,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  do jconf=1,mvec
    jconf_global = rowindex_local_to_global(desc,jconf)
 
-   do iconf=1,jconf_global-1  ! Use symmetry of H 
+   do iconf=1,jconf_global-1  ! Use symmetry of H
 
      h_ij  = hamiltonian_ci(conf%keyud(:,iconf),conf%keyud(:,jconf_global))
 
@@ -1107,7 +1107,7 @@ subroutine full_ci_nelectrons_selfenergy()
 
  !
  ! Setup the frequency grid
- ! 
+ !
  do istate=nsemin,nsemax
    energy0_dummy(istate,:) = 0.0_dp
  enddo
@@ -1225,13 +1225,13 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  select case(save_coefficients)
  case(0)
    conf => conf_0
-   filename_eigvec = 'EIGVEC_CI_0' 
+   filename_eigvec = 'EIGVEC_CI_0'
  case(-1)
    conf => conf_m
-   filename_eigvec = 'EIGVEC_CI_M' 
+   filename_eigvec = 'EIGVEC_CI_M'
  case(1)
    conf => conf_p
-   filename_eigvec = 'EIGVEC_CI_P' 
+   filename_eigvec = 'EIGVEC_CI_P'
  case default
    call die('full_ci_nelectrons: error')
  end select
@@ -1250,15 +1250,15 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
    mham = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
    nham = NUMROC(conf%nconf,block_col,ipcol_sd,first_col,npcol_sd)
    call DESCINIT(desc_ham,conf%nconf,conf%nconf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mham),info)
-  
+
    if( nprow_sd * npcol_sd > 1 ) then
      write(stdout,'(1x,a,i5,a,i5)') 'Use SCALAPACK proc grid: ',nprow_sd,' x ',npcol_sd
      write(stdout,'(1x,a,i5,a,i5)') '        Sub-matrix size: ',mham,' x ',nham
    endif
-  
+
    call clean_allocate('CI hamiltonian',h_ci,mham,nham)
-  
-  
+
+
    call build_ci_hamiltonian(conf,desc_ham,h_ci)
 
 
@@ -1266,7 +1266,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
    nvec = NUMROC(conf%nstate,block_col,ipcol_sd,first_col,npcol_sd)
    call DESCINIT(desc_vec,conf%nconf,conf%nstate,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mvec),info)
    call clean_allocate('CI eigenvectors',eigvec,mvec,nvec)
- 
+
  else
    !
    ! cntxt_auxil is a row-only distribution: ( Ncore x 1 )
@@ -1305,7 +1305,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
 
    else
 
-   
+
      call read_eigvec_ci(filename_eigvec,conf,desc_vec,eigvec,energy,nstate_read,residual_norm,read_status)
 
      if( read_status /= 0 ) then
@@ -1451,7 +1451,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    write(stdout,'(1x,a,i4)') 'Number of Davidson steps has been reduced to ',nstep
  endif
 
- ! 
+ !
  ! Find the smallest diagonal terms => good candidates for initial trial vectors
  still_available(:) = .TRUE.
  do ieig=1,neig_calc
@@ -1494,7 +1494,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  ! Then override them in case eigvec isn't empty
  rtmp = ABS(eigvec(1,1))
  call xsum_auxil(rtmp)
- if( rtmp > 1.0e-12_dp ) then 
+ if( rtmp > 1.0e-12_dp ) then
    write(stdout,*) 'Found existing eigenvectors'
    bb(:,1:neig_calc) = eigvec(:,:)
  endif
@@ -1645,11 +1645,11 @@ subroutine get_ab()
      deallocate(ab_iblock)
    enddo
 
- else 
+ else
 
    allocate(ab_i(conf%nconf),bb_i(conf%nconf))
    do ieig=mm+1,mm+neig_calc
-  
+
      bb_i(:) = 0.0_dp
      do iconf=1,mvec
        iconf_global = rowindex_local_to_global(desc_bb,iconf)
@@ -1673,14 +1673,14 @@ subroutine get_ab()
          ab_i(h%row_ind(ii)) = ab_i(h%row_ind(ii)) + h%val(ii) * bb(kconf,ieig)
        enddo
      enddo
-  
+
      call DGSUM2D(cntxt,'A',' ',conf%nconf,1,ab_i,1,-1,-1)
-  
+
      do iconf=1,mvec
        iconf_global = rowindex_local_to_global(desc_bb,iconf)
        ab(iconf,ieig) = ab_i(iconf_global)
      enddo
-  
+
    enddo
    deallocate(ab_i,bb_i)
 

@@ -15,12 +15,12 @@ module m_mpi_auxil
 
 
 !===================================================
-! MPI distribution 
+! MPI distribution
 !  Example: nproc_ortho = 2 x  nproc_auxil = 8  = nproc_world = 16
 !
 ! comm_world
-!                                        
-! rank_auxil         0 |  1 |  2 |     |  7 
+!
+! rank_auxil         0 |  1 |  2 |     |  7
 ! rank_ortho       ---------------------------
 !      0             0 |  2 |  4 | ... | 14 |-> comm_auxil
 !      1             1 |  3 |  5 | ... | 15 |-> comm_auxil
@@ -32,7 +32,7 @@ module m_mpi_auxil
 
  !
  ! "auxil" communicator
- ! 
+ !
  integer,public    :: comm_auxil             ! communicator over auxiliary basis functions
  integer,public    :: nproc_auxil = 1        ! number of procs in the auxil communicator
  integer,public    :: rank_auxil  = 0        ! index           in the auxil communicator
