@@ -235,7 +235,7 @@ subroutine scf_loop(is_restart,&
      call dump_out_matrix(.FALSE.,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
      call destroy_spectral_function(wpol)
 
-     hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:)
      deallocate(matrix_tmp)
 
    endif
@@ -260,7 +260,7 @@ subroutine scf_loop(is_restart,&
 
      call dump_out_matrix(.FALSE.,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
 
-     hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:)
      deallocate(matrix_tmp)
 
    endif

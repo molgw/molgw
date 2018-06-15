@@ -130,7 +130,7 @@ subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,occupation
    do iomega=-se%nomega,se%nomega
      spectral_function_w(:) = 1.0_dp / pi * ABS(   &
                                        AIMAG( 1.0_dp   &
-                                         / ( se%energy0(pstate,:) + se%omega(iomega) - energy0(pstate,:) + ieta * sign_occ(:) &  
+                                         / ( se%energy0(pstate,:) + se%omega(iomega) - energy0(pstate,:) + ieta * sign_occ(:) &
                                                - exchange_m_vxc(pstate,:) - se%sigma(iomega,pstate,:) ) ) )
 
      write(selfenergyfile,'(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,             &
@@ -286,7 +286,7 @@ function find_fixed_point(nx,xx,fx,info) result(fixed_point)
 
  if( imin1 == 1000000 .AND. imin2 == 1000000 ) then
 
-   if( gx(0) > 0.0_dp ) then 
+   if( gx(0) > 0.0_dp ) then
      info =  1
      fixed_point = xx(nx)
    else
@@ -296,14 +296,14 @@ function find_fixed_point(nx,xx,fx,info) result(fixed_point)
 
  else
    info = 0
-   ! 
+   !
    ! If sign change found, interpolate the abscissa between 2 grid points
    if( ABS(imin1) <= ABS(imin2) )  then
      gpx = ( gx(imin1+1) - gx(imin1) ) / ( xx(imin1+1) - xx(imin1) )
-     fixed_point = xx(imin1) - gx(imin1) / gpx 
+     fixed_point = xx(imin1) - gx(imin1) / gpx
    else
      gpx = ( gx(imin2) - gx(imin2-1) ) / ( xx(imin2) - xx(imin2-1) )
-     fixed_point = xx(imin2-1) - gx(imin2-1) / gpx 
+     fixed_point = xx(imin2-1) - gx(imin2-1) / gpx
    endif
  endif
 
@@ -314,7 +314,7 @@ end function find_fixed_point
 !=========================================================================
 subroutine output_qp_energy(calcname,nstate,energy0,exchange_m_vxc,ncomponent,se,energy1,energy2,zz)
  implicit none
- 
+
  character(len=*)             :: calcname
  integer                      :: nstate,ncomponent
  real(dp),intent(in)          :: energy0(nstate,nspin),exchange_m_vxc(nstate,nspin)
@@ -338,7 +338,7 @@ subroutine output_qp_energy(calcname,nstate,energy0,exchange_m_vxc,ncomponent,se
      sigc_label = 'SigC_1                  SigC_2'
    endif
  endif
- 
+
 
  write(stdout,'(/,1x,a,1x,a)') TRIM(calcname),'eigenvalues (eV)'
 
@@ -401,7 +401,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
  se%nomega  = 0
 
  select case(selfenergy_technique)
- 
+
  case(EVSC,static_selfenergy)
 
    allocate(se%omega(-se%nomega:se%nomega))
@@ -486,7 +486,7 @@ end subroutine destroy_selfenergy_grid
 
 
 !=========================================================================
-subroutine setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
+subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -494,26 +494,27 @@ subroutine setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamilton
  implicit none
 
  type(basis_set),intent(in)    :: basis
- integer,intent(in)            :: nstate
- real(dp),intent(in)           :: occupation(nstate,nspin)
- real(dp),intent(in)           :: energy(nstate,nspin)
- real(dp),intent(in)           :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)           :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
- real(dp),intent(out)          :: exchange_m_vxc_diag(nstate,nspin)
- real(dp),intent(out),optional :: exchange_m_vxc(nstate,nstate,nspin)
+ real(dp),intent(in)           :: occupation(:,:)
+ real(dp),intent(in)           :: energy(:,:)
+ real(dp),intent(in)           :: c_matrix(:,:,:)
+ real(dp),intent(in)           :: hamiltonian_fock(:,:,:)
+ real(dp),intent(out)          :: exchange_m_vxc_diag(:,:)
+ real(dp),intent(out),optional :: exchange_m_vxc(:,:,:)
 !=====
  integer,parameter    :: BATCH_SIZE = 64
+ integer              :: nstate
  integer              :: ispin,istate
  real(dp)             :: exc
  real(dp),allocatable :: occupation_tmp(:,:)
  real(dp),allocatable :: p_matrix_tmp(:,:,:)
  real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
 !=====
- 
+
  if( PRESENT(exchange_m_vxc) ) then
    write(stdout,*) 'Calculate the full \Sigma_x - Vxc matrix'
  endif
 
+ nstate = SIZE(occupation,DIM=1)
 
  !
  ! Testing the core/valence splitting
@@ -545,7 +546,7 @@ subroutine setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamilton
    call calculate_exchange(basis,p_matrix_tmp,hexx_val,occupation=occupation_tmp,c_matrix=c_matrix)
 
    hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)
-   hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:) 
+   hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:)
 
    deallocate(occupation_tmp,p_matrix_tmp)
 
@@ -628,7 +629,7 @@ subroutine apply_qs_approximation(nbf,nstate,s_matrix,c_matrix,selfenergy)
  enddo
 
 end subroutine apply_qs_approximation
- 
+
 
 !=========================================================================
 subroutine self_energy_fit(se)
@@ -672,7 +673,7 @@ subroutine self_energy_fit(se)
        do ipp=1,npp
          do ii=1,nparam
            coeffdq(:) = coeff(:)
-           coeffdq(ii+(ipp-1)*nparam) = coeffdq(ii+(ipp-1)*nparam) + dq 
+           coeffdq(ii+(ipp-1)*nparam) = coeffdq(ii+(ipp-1)*nparam) + dq
            dchi2(ii+(ipp-1)*nparam) = ( eval_chi2(coeffdq) - eval_chi2(coeff) ) / dq
          enddo
        enddo
@@ -702,7 +703,7 @@ subroutine self_energy_fit(se)
                                          eval_func(coeff, se%omegai(iomega) + se%energy0(pstate,pspin) )*Ha_eV
      enddo
 
-      
+
      ! Extrapolate to the final desired omega's
      do iomega=-se%nomega,se%nomega
        se%sigma(iomega,pstate,pspin) = eval_func(coeff, se%omega(iomega) + se%energy0(pstate,pspin) )
@@ -756,8 +757,8 @@ function eval_chi2(coeff_in)
                       - eval_func(coeff_in, se%omegai(iomegai) + se%energy0(pstate,pspin) ) )**2 &
                       * weight
    norm = norm + weight
-                              
- enddo 
+
+ enddo
  eval_chi2 = eval_chi2 / norm
 
 
