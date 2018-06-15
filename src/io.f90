@@ -41,7 +41,7 @@ subroutine header()
 
  write(stdout,'(1x,70("="))')
  write(stdout,'(/,/,12x,a,/)') 'Welcome to the fascinating world of MOLGW'
- write(stdout,'(24x,a)')       'version 1.F'
+ write(stdout,'(24x,a)')       'version 1.G'
  write(stdout,'(/,/,1x,70("="))')
 
  write(stdout,'(/,a,a,/)') ' MOLGW commit git SHA: ',git_sha
