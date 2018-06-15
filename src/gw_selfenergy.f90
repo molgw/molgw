@@ -671,7 +671,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
 
  ! Kotani's hermitianization trick
- call apply_qs_approximation(basis%nbf,nstate,s_matrix,c_matrix,selfenergy)
+ call apply_qs_approximation(s_matrix,c_matrix,selfenergy)
 
 
  call clean_deallocate('Temporary array',bra)

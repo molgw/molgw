@@ -169,7 +169,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    endif
 
 
-   call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se)
+   call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se)
 
 
 
@@ -257,17 +257,17 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        ! Output the G0W0 results in the small basis first
        allocate(energy_qp_z(nstate,nspin))
        allocate(energy_qp_new(nstate,nspin))
-       allocate(zz(nsemin:nsemax,nspin))
-       call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-       call find_qp_energy_graphical(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-       call output_qp_energy('GW small basis',nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+       allocate(zz(nstate,nspin))
+       call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+       call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new)
+       call output_qp_energy('GW small basis',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
        deallocate(zz)
        deallocate(energy_qp_z)
        call output_new_homolumo('GW small basis',nstate,occupation,energy_qp_new,nsemin,nsemax)
        deallocate(energy_qp_new)
 
-       call init_selfenergy_grid(static_selfenergy,nstate,energy,se2)
-       call init_selfenergy_grid(static_selfenergy,nstate,energy,se3)
+       call init_selfenergy_grid(static_selfenergy,energy,se2)
+       call init_selfenergy_grid(static_selfenergy,energy,se3)
 
        ! Sigma^2 = Sigma^{1-ring}_small
        call onering_selfenergy(nstate_small,basis,occupation(1:nstate_small,:), &
@@ -282,9 +282,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call onering_selfenergy(nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
 
        if( print_sigma_ ) then
-         call write_selfenergy_omega('selfenergy_GW_small'   ,nstate,exchange_m_vxc_diag,occupation,energy_g,se)
-         call write_selfenergy_omega('selfenergy_1ring_big'  ,nstate,exchange_m_vxc_diag,occupation,energy_g,se3)
-         call write_selfenergy_omega('selfenergy_1ring_small',nstate,exchange_m_vxc_diag,occupation,energy_g,se2)
+         call write_selfenergy_omega('selfenergy_GW_small'   ,exchange_m_vxc_diag,occupation,energy_g,se)
+         call write_selfenergy_omega('selfenergy_1ring_big'  ,exchange_m_vxc_diag,occupation,energy_g,se3)
+         call write_selfenergy_omega('selfenergy_1ring_small',exchange_m_vxc_diag,occupation,energy_g,se2)
        endif
 
        !
@@ -317,10 +317,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      ! Output the G0W0 results first
      allocate(energy_qp_z(nstate,nspin))
      allocate(energy_qp_new(nstate,nspin))
-     allocate(zz(nsemin:nsemax,nspin))
-     call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-     call find_qp_energy_graphical(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-     call output_qp_energy('GW',nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+     allocate(zz(nstate,nspin))
+     call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+     call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new)
+     call output_qp_energy('GW',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
      deallocate(zz)
      deallocate(energy_qp_z)
      call output_new_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax)
@@ -349,7 +349,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      !
      ! Second perform a standard SOX calculation
      !
-     call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se_sox)
+     call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_sox)
      call pt2_selfenergy(SOX,nstate,basis,occupation,energy_g,c_matrix,se_sox,en%mp2)
 
 
@@ -408,7 +408,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      !
      ! Second perform a PT3 calculation minus the ring diagrams
      !
-     call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se_gwpt3)
+     call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_gwpt3)
      call pt3_selfenergy(GWPT3,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se_gwpt3,en%mp2)
 
      !
@@ -507,30 +507,30 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    ! Output the quasiparticle energies, the self-energy etc.
    !
    if( print_sigma_ ) then
-     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,occupation,energy_g,se)
+     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),exchange_m_vxc_diag,occupation,energy_g,se)
    endif
 
 
    allocate(energy_qp_new(nstate,nspin))
 
    if( calc_type%selfenergy_technique == EVSC ) then
-     call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-     call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_new)
+     call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
+     call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
    else
      select case(calc_type%selfenergy_approx)
      case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA,GWSOX,GWPT3)
        allocate(energy_qp_z(nstate,nspin))
-       allocate(zz(nsemin:nsemax,nspin))
-       call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-       call find_qp_energy_graphical(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+       allocate(zz(nstate,nspin))
+       call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+       call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new)
 
-       call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+       call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
        deallocate(zz)
        deallocate(energy_qp_z)
 
      case(GnWn,GnW0,GV,COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
-       call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-       call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_new)
+       call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
+       call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
      end select
    endif
 

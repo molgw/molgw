@@ -43,20 +43,20 @@ contains
 
 
 !=========================================================================
-subroutine selfenergy_set_state_range(nstate,occupation)
+subroutine selfenergy_set_state_range(nstate_in,occupation)
  implicit none
- integer             :: nstate
+ integer             :: nstate_in
  real(dp),intent(in) :: occupation(:,:)
 !=====
  integer :: istate
 !=====
 
- if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
+ if( nstate_in > SIZE( occupation(:,:) , DIM=1 ) ) then
    call die('selfenergy_set_state_range: nstate is too large')
  endif
 
  ncore_G      = ncoreg
- nvirtual_G   = MIN(nvirtualg,nstate+1)
+ nvirtual_G   = MIN(nvirtualg,nstate_in+1)
 
  if(is_frozencore) then
    if( ncore_G == 0) ncore_G = atoms_core_states()
@@ -67,21 +67,21 @@ subroutine selfenergy_set_state_range(nstate,occupation)
    call issue_warning(msg)
  endif
 
- if( nvirtual_G <= nstate ) then
+ if( nvirtual_G <= nstate_in ) then
    write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation in G switched on starting with state = ',nvirtual_G
    call issue_warning(msg)
  endif
 
  ! Find the HOMO index
  nhomo_G = 1
- do istate=1,nstate
+ do istate=1,nstate_in
    if( .NOT. ANY( occupation(istate,:) < completely_empty ) ) then
      nhomo_G = MAX(nhomo_G,istate)
    endif
  enddo
 
  nsemin = MAX(ncore_G+1,selfenergy_state_min,1,nhomo_G-selfenergy_state_range)
- nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate,nhomo_G+selfenergy_state_range)
+ nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate_in,nhomo_G+selfenergy_state_range)
 
  write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
 
@@ -89,25 +89,27 @@ end subroutine selfenergy_set_state_range
 
 
 !=========================================================================
-subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,occupation,energy0,se)
+subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy0,se)
  implicit none
 
  character(len=*)    :: filename_root
- integer,intent(in)  :: nstate
- real(dp),intent(in) :: exchange_m_vxc(nstate,nspin)
- real(dp),intent(in) :: occupation(nstate,nspin),energy0(nstate,nspin)
+ real(dp),intent(in) :: exchange_m_vxc(:,:)
+ real(dp),intent(in) :: occupation(:,:),energy0(:,:)
  type(selfenergy_grid),intent(in) :: se
 !=====
+ integer            :: nstate
  character(len=3)   :: ctmp
  character(len=256) :: filename
- integer :: selfenergyfile
- integer :: pstate,pspin
- integer :: iomega
- real(dp) :: spectral_function_w(nspin),sign_occ(nspin)
+ integer            :: selfenergyfile
+ integer            :: pstate,pspin
+ integer            :: iomega
+ real(dp)           :: spectral_function_w(nspin),sign_occ(nspin)
 !=====
 
  ! Just the master writes
  if( .NOT. is_iomaster ) return
+
+ nstate = SIZE(exchange_m_vxc,DIM=1)
 
  write(stdout,'(/,1x,a)') 'Write Sigma(omega) on file'
 
@@ -157,18 +159,20 @@ end subroutine write_selfenergy_omega
 
 
 !=========================================================================
-subroutine find_qp_energy_linearization(se,nstate,exchange_m_vxc,energy0,energy_qp_z,zz)
+subroutine find_qp_energy_linearization(se,exchange_m_vxc,energy0,energy_qp_z,zz)
  implicit none
 
  type(selfenergy_grid),intent(in) :: se
- integer,intent(in)               :: nstate
- real(dp),intent(in)              :: exchange_m_vxc(nstate,nspin),energy0(nstate,nspin)
- real(dp),intent(out)             :: energy_qp_z(nstate,nspin)
- real(dp),intent(out),optional    :: zz(nsemin:nsemax,nspin)
+ real(dp),intent(in)              :: exchange_m_vxc(:,:),energy0(:,:)
+ real(dp),intent(out)             :: energy_qp_z(:,:)
+ real(dp),intent(out),optional    :: zz(:,:)
 !=====
+ integer  :: nstate
  integer  :: pstate,pspin
  real(dp) :: zz_p(nspin)
 !=====
+
+ nstate = SIZE(exchange_m_vxc,DIM=1)
 
  ! First, a dummy initialization
  energy_qp_z(:,:) = energy0(:,:)
@@ -202,18 +206,20 @@ end subroutine find_qp_energy_linearization
 
 
 !=========================================================================
-subroutine find_qp_energy_graphical(se,nstate,exchange_m_vxc,energy0,energy_qp_g)
+subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
  implicit none
 
  type(selfenergy_grid),intent(in) :: se
- integer,intent(in)   :: nstate
- real(dp),intent(in)  :: exchange_m_vxc(nstate,nspin),energy0(nstate,nspin)
- real(dp),intent(out) :: energy_qp_g(nstate,nspin)
+ real(dp),intent(in)  :: exchange_m_vxc(:,:),energy0(:,:)
+ real(dp),intent(out) :: energy_qp_g(:,:)
 !=====
+ integer  :: nstate
  integer  :: pstate,pspin
  integer  :: info
  real(dp) :: sigma_xc_m_vxc(-se%nomega:se%nomega)
 !=====
+
+ nstate = SIZE(exchange_m_vxc,DIM=1)
 
  ! First, a dummy initialization
  energy_qp_g(:,:) = 0.0_dp
@@ -257,10 +263,11 @@ function find_fixed_point(nx,xx,fx,info) result(fixed_point)
  integer,intent(out) :: info
  real(dp)            :: fixed_point
 !=====
- integer             :: ix,imin1,imin2
- real(dp)            :: gx(-nx:nx)
- real(dp)            :: gpx
+ integer  :: ix,imin1,imin2
+ real(dp) :: gx(-nx:nx)
+ real(dp) :: gpx
 !=====
+
 
  !
  ! g(x) contains f(x) - x
@@ -312,15 +319,15 @@ end function find_fixed_point
 
 
 !=========================================================================
-subroutine output_qp_energy(calcname,nstate,energy0,exchange_m_vxc,ncomponent,se,energy1,energy2,zz)
+subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy1,energy2,zz)
  implicit none
 
  character(len=*)             :: calcname
- integer                      :: nstate,ncomponent
- real(dp),intent(in)          :: energy0(nstate,nspin),exchange_m_vxc(nstate,nspin)
+ integer                      :: ncomponent
+ real(dp),intent(in)          :: energy0(:,:),exchange_m_vxc(:,:)
  type(selfenergy_grid),intent(in) :: se
- real(dp),intent(in)          :: energy1(nstate,nspin)
- real(dp),intent(in),optional :: energy2(nstate,nspin),zz(nsemin:nsemax,nspin)
+ real(dp),intent(in)          :: energy1(:,:)
+ real(dp),intent(in),optional :: energy2(:,:),zz(:,:)
 !=====
  integer           :: pstate,ii
  character(len=36) :: sigc_label
@@ -386,12 +393,12 @@ end subroutine output_qp_energy
 
 
 !=========================================================================
-subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
+subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  use m_atoms
  implicit none
 
- integer,intent(in)                  :: selfenergy_technique,nstate
- real(dp),intent(in)                 :: energy0(nstate,nspin)
+ integer,intent(in)                  :: selfenergy_technique
+ real(dp),intent(in)                 :: energy0(:,:)
  type(selfenergy_grid),intent(inout) :: se
 !=====
  integer :: iomega,pstate
@@ -601,12 +608,11 @@ end subroutine setup_exchange_m_vxc
 
 
 !=========================================================================
-subroutine apply_qs_approximation(nbf,nstate,s_matrix,c_matrix,selfenergy)
+subroutine apply_qs_approximation(s_matrix,c_matrix,selfenergy)
  implicit none
 
- integer,intent(in)     :: nbf,nstate
- real(dp),intent(in)    :: s_matrix(nbf,nbf),c_matrix(nbf,nstate,nspin)
- real(dp),intent(inout) :: selfenergy(nbf,nbf,nspin)
+ real(dp),intent(in)    :: s_matrix(:,:),c_matrix(:,:,:)
+ real(dp),intent(inout) :: selfenergy(:,:,:)
 !=====
  integer :: ispin
 !=====

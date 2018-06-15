@@ -1111,7 +1111,7 @@ subroutine full_ci_nelectrons_selfenergy()
  do istate=nsemin,nsemax
    energy0_dummy(istate,:) = 0.0_dp
  enddo
- call init_selfenergy_grid(one_shot,nsemax,energy0_dummy,se)
+ call init_selfenergy_grid(one_shot,energy0_dummy,se)
 
 
  !

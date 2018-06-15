@@ -407,7 +407,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
 
  selfenergy(:,:,:) = REAL( selfenergy_ring(:,:,:) + selfenergy_sox(:,:,:) ,dp)
 
- call apply_qs_approximation(basis%nbf,nstate,s_matrix,c_matrix,selfenergy)
+ call apply_qs_approximation(s_matrix,c_matrix,selfenergy)
 
 
  if( ALLOCATED(eri_eigenstate_i) ) deallocate(eri_eigenstate_i)
