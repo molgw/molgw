@@ -590,4 +590,14 @@ SCF Total Energy          ,   -113.1959990723   , 0 , 1.0e-7
 PT1PT2 HOMO energy        ,    -13.100347       , 0 , 1.0e-4
 PT1PT2 LUMO energy        ,      3.058181       , 0 , 1.0e-4
 
+sih4_sc-cohsex.in         , sc-COHSEX for SiH4 to prepare a subsequent G0W0 calculation
+SCF Total Energy          ,   -291.2399059845   , 0 , 1.0e-7
+gKS HOMO energy           ,    -13.781513       , 0 , 1.0e-4
+gKS LUMO energy           ,      3.880683       , 0 , 1.0e-4
+
+sih4_g0w0@sc-cohsex.in    , G0W0 for SiH4 based on the previous sc-COHSEX run, Restart
+GW HOMO energy            ,    -12.855076       , 0 , 1.0e-4
+GW LUMO energy            ,      4.073908       , 0 , 1.0e-4
+
+
 
