@@ -524,7 +524,7 @@ subroutine orthogonalize(vec)
 !=====
  real(dp),intent(inout) :: vec(:,:)
 !=====
- integer :: ii,ivec,jvec,nvec
+ integer :: ivec,jvec,nvec
 !=====
 
  nvec = SIZE(vec(:,:),DIM=2)

@@ -450,9 +450,9 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
  integer                 :: iomega
  integer                 :: istate,jstate,kstate,lstate
  integer                 :: astate,bstate,cstate,dstate
- integer                 :: jkspin,pqspin
+ integer                 :: pqspin
  complex(dp)             :: omega
- complex(dp)             :: denom1,denom2,denom3
+ complex(dp)             :: denom1,denom2
  real(dp)                :: num1,num2,num3
  real(dp)                :: num1a,num1b,num2a,num2b,num3a,num3b
  real(dp)                :: numgw
