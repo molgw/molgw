@@ -75,7 +75,7 @@ subroutine setup_overlap(basis,s_matrix)
 
      allocate(array_cart(ni_cart*nj_cart))
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -167,8 +167,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 
      allocate(array_cart(ni_cart*nj_cart))
 
-#ifdef HAVE_LIBINT_ONEBODY
-
+#if defined(HAVE_LIBINT_ONEBODY)
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -255,12 +254,12 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
      call libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
 #else
-     call die('overlap gradient not implemented without LIBINT one-body terms')
+     call die('overlap gradient not implemented without LIBINT one-body gradient terms')
 #endif
 
      deallocate(alphaA,cA)
@@ -352,7 +351,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
      allocate(array_cart(ni_cart*nj_cart))
 
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
      call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -442,7 +441,7 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
      call libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
@@ -516,7 +515,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
 
  call start_clock(timing_hamiltonian_nuc)
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
@@ -560,7 +559,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
        endif
 
        C(:) = xatom(:,iatom)
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
@@ -581,7 +580,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
      enddo
      deallocate(alphaA,cA)
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #else
      call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
@@ -687,14 +686,14 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 
        C(:) = xatom(:,iatom)
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
        call libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
                                 amB,contrdepthB,B,alphaB,cB, &
                                 C,                           &
                                 array_cart_gradAx,array_cart_gradAy,array_cart_gradAz, &
                                 array_cart_gradBx,array_cart_gradBy,array_cart_gradBz)
 #else
-       call die('nuclear potential gradient not implemented without LIBINT one-body terms')
+       call die('nuclear potential gradient not implemented without LIBINT one-body and gradient terms')
 #endif
        array_cart_gradAx(:) = array_cart_gradAx(:) * (-zvalence(iatom))
        array_cart_gradAy(:) = array_cart_gradAy(:) * (-zvalence(iatom))

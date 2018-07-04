@@ -440,7 +440,7 @@ subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
  allocate(gradDy(n1c*n2c*n3c*n4c))
  allocate(gradDz(n1c*n2c*n3c*n4c))
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
  call libint_4center_grad(am1,ng1,x01,alpha1,coeff1, &
                           am2,ng2,x02,alpha2,coeff2, &
                           am3,ng3,x03,alpha3,coeff3, &

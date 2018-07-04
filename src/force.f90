@@ -43,8 +43,8 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  logical,allocatable     :: skip_shellpair(:,:)
 !=====
 
-#ifndef HAVE_LIBINT_ONEBODY
- call issue_warning('calculate_force: impossible to calculate gradient if LIBINT does support the gradients')
+#if !defined(HAVE_LIBINT_ONEBODY) || !defined(HAVE_LIBINT_GRADIENTS)
+ call issue_warning('calculate_force: impossible to calculate gradient if LIBINT does not support the gradients')
  return
 #endif
 

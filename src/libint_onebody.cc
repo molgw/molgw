@@ -15,7 +15,7 @@
 
 
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
 
 /* ==========================================================================
  *                           Overlap

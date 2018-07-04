@@ -38,6 +38,41 @@ module m_libint_tools
 
    end subroutine libint_overlap
 
+   subroutine libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
+                             amB,contrdepthB,B,alphaB,cB, &
+                             kineticAB) bind(C)
+     import :: C_INT,C_DOUBLE
+     integer(C_INT),value       :: amA,contrdepthA
+     real(C_DOUBLE),intent(in)  :: A(*)
+     real(C_DOUBLE),intent(in)  :: alphaA(*)
+     real(C_DOUBLE),intent(in)  :: cA(*)
+     integer(C_INT),value       :: amB,contrdepthB
+     real(C_DOUBLE),intent(in)  :: B(*)
+     real(C_DOUBLE),intent(in)  :: alphaB(*)
+     real(C_DOUBLE),intent(in)  :: cB(*)
+     real(C_DOUBLE),intent(out) :: kineticAB(*)
+
+   end subroutine libint_kinetic
+
+   subroutine libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
+                             amB,contrdepthB,B,alphaB,cB, &
+                             C,elecpotAB) bind(C)
+     import :: C_INT,C_DOUBLE
+     integer(C_INT),value         :: amA,contrdepthA
+     real(C_DOUBLE),intent(in)    :: A(*)
+     real(C_DOUBLE),intent(in)    :: alphaA(*)
+     real(C_DOUBLE),intent(in)    :: cA(*)
+     integer(C_INT),value         :: amB,contrdepthB
+     real(C_DOUBLE),intent(in)    :: B(*)
+     real(C_DOUBLE),intent(in)    :: alphaB(*)
+     real(C_DOUBLE),intent(in)    :: cB(*)
+     real(C_DOUBLE),intent(in)    :: C(*)
+     real(C_DOUBLE),intent(inout) :: elecpotAB(*)
+
+   end subroutine libint_elecpot
+#endif
+
+#if defined(HAVE_LIBINT_GRADIENTS)
    subroutine libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              overlapABx,overlapABy,overlapABz) bind(C)
@@ -56,22 +91,6 @@ module m_libint_tools
 
    end subroutine libint_overlap_grad
 
-   subroutine libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
-                             amB,contrdepthB,B,alphaB,cB, &
-                             kineticAB) bind(C)
-     import :: C_INT,C_DOUBLE
-     integer(C_INT),value       :: amA,contrdepthA
-     real(C_DOUBLE),intent(in)  :: A(*)
-     real(C_DOUBLE),intent(in)  :: alphaA(*)
-     real(C_DOUBLE),intent(in)  :: cA(*)
-     integer(C_INT),value       :: amB,contrdepthB
-     real(C_DOUBLE),intent(in)  :: B(*)
-     real(C_DOUBLE),intent(in)  :: alphaB(*)
-     real(C_DOUBLE),intent(in)  :: cB(*)
-     real(C_DOUBLE),intent(out) :: kineticAB(*)
-
-   end subroutine libint_kinetic
-
    subroutine libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
                                   amB,contrdepthB,B,alphaB,cB, &
                                   kineticABx,kineticABy,kineticABz) bind(C)
@@ -89,23 +108,6 @@ module m_libint_tools
      real(C_DOUBLE),intent(out) :: kineticABz(*)
 
    end subroutine libint_kinetic_grad
-
-   subroutine libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
-                             amB,contrdepthB,B,alphaB,cB, &
-                             C,elecpotAB) bind(C)
-     import :: C_INT,C_DOUBLE
-     integer(C_INT),value         :: amA,contrdepthA
-     real(C_DOUBLE),intent(in)    :: A(*)
-     real(C_DOUBLE),intent(in)    :: alphaA(*)
-     real(C_DOUBLE),intent(in)    :: cA(*)
-     integer(C_INT),value         :: amB,contrdepthB
-     real(C_DOUBLE),intent(in)    :: B(*)
-     real(C_DOUBLE),intent(in)    :: alphaB(*)
-     real(C_DOUBLE),intent(in)    :: cB(*)
-     real(C_DOUBLE),intent(in)    :: C(*)
-     real(C_DOUBLE),intent(inout) :: elecpotAB(*)
-
-   end subroutine libint_elecpot
 
    subroutine libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
                                   amB,contrdepthB,B,alphaB,cB, &

@@ -115,9 +115,11 @@ subroutine header()
                                 ammax,orbital_momentum_name(ammax)
  call set_molgw_lmax(ammax)
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
  if( .NOT. has_onebody ) &
    call die('MOLGW compiled with LIBINT one-body terms, however the LIBINT compilation does not calculate the one-body terms')
+#endif
+#if defined(HAVE_LIBINT_GRADIENTS)
  if( .NOT. has_gradient ) &
    call die('LIBINT compilation does not have the first derivative')
  write(stdout,'(1x,a)') 'Using LIBINT for the one-body parts of the Hamiltonian as well'

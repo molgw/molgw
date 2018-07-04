@@ -16,7 +16,7 @@
 
 /* Code */
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY) && defined(HAVE_LIBINT_GRADIENTS)
 
 /* ==========================================================================
  *                           Overlap

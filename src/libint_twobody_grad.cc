@@ -16,7 +16,7 @@
 
 /* Code */
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
 
 /* ==========================================================================
  *                           2-center integrals

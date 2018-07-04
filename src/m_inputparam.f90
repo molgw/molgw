@@ -1020,9 +1020,9 @@ subroutine read_inputfile_namelist()
 
  endif
 
-#ifndef HAVE_LIBINT_ONEBODY
+#if !defined(HAVE_LIBINT_ONEBODY) || !defined(HAVE_LIBINT_GRADIENTS)
  if( move_nuclei /= 'no' ) then
-   call die('Need to compile MOLGW with HAVE_LIBINT_ONEBODY to have move_nuclei different from no')
+   call die('Need to compile MOLGW with HAVE_LIBINT_ONEBODY and HAVE_LIBINT_GRADIENTS to have move_nuclei different from no')
  endif
 #endif
 
