@@ -21,7 +21,7 @@ module m_libint_tools
 
  interface
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
    subroutine libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              overlapAB) bind(C)

@@ -52,7 +52,11 @@ subroutine setup_overlap(basis,s_matrix)
  integer :: ibf_cart,jbf_cart
 !=====
  call start_clock(timing_overlap)
+#if defined(HAVE_LIBINT_ONEBODY)
  write(stdout,'(/,a)') ' Setup overlap matrix S (LIBINT)'
+#else
+ write(stdout,'(/,a)') ' Setup overlap matrix S (internal)'
+#endif
 
  do jshell=1,basis%nshell
    lj      = basis%shell(jshell)%am
@@ -106,7 +110,7 @@ subroutine setup_overlap(basis,s_matrix)
    deallocate(alphaB,cB)
  enddo
 
- title='=== Overlap matrix S (LIBINT) ==='
+ title='=== Overlap matrix S ==='
  call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix)
 
 
@@ -142,7 +146,11 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 !=====
 
  call start_clock(timing_overlap)
+#if defined(HAVE_LIBINT_ONEBODY)
  write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBINT)'
+#else
+ write(stdout,'(/,a)') ' Setup mixed overlap matrix S (internal)'
+#endif
 
  if( basis1%gaussian_type /= basis2%gaussian_type ) call die('setup_overlap_mixedbasis_libint: case not implemented')
 
@@ -326,7 +334,11 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
 !=====
 
  call start_clock(timing_hamiltonian_kin)
+#if defined(HAVE_LIBINT_ONEBODY)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBINT)'
+#else
+ write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (internal)'
+#endif
 
 
  do jshell=1,basis%nshell
@@ -382,7 +394,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
    deallocate(alphaB,cB)
  enddo
 
- title='===  Kinetic energy contribution (LIBINT) ==='
+ title='===  Kinetic energy contribution ==='
  call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic)
 
  call stop_clock(timing_hamiltonian_kin)
