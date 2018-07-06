@@ -87,7 +87,7 @@ gKS HOMO energy           ,  -8.086232         , 0 , 1.0e-4
 gKS LUMO energy           ,   1.864607         , 0 , 1.0e-4
 
 zn2_ecp.in                , PBE zinc dimer with ECP and RI
-SCF Total Energy          , -454.2107706479    , 0 , 1.0e-7
+SCF Total Energy          , -454.2107706479    , 0 , 5.0e-4   # Loosened criterium
 gKS HOMO energy           ,  -5.216078         , 0 , 1.0e-4
 gKS LUMO energy           ,  -1.700107         , 0 , 1.0e-4
 
@@ -197,8 +197,8 @@ GW HOMO energy            ,    -11.039136      , 0 , 1.0e-4
 GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
 
 cdo_ecp_gw.in             , CdO- (ECP) within GW@PBE0 with level shifting
-SCF Total Energy          ,    -242.8403302221 , 0 , 1.0e-7
-RPA correlation energy    ,      -0.9666472866 , 0 , 1.0e-7
+SCF Total Energy          ,    -242.8403302221 , 0 , 5.0e-4     # Loosened criterium
+RPA correlation energy    ,      -0.9666472866 , 0 , 1.0e-5     # Loosened criterium
 GW HOMO energy            ,      -1.787172     , 0 , 1.0e-4
 GW HOMO energy            ,      -1.350967     , 1 , 1.0e-4
 GW LUMO energy            ,       3.687306     , 0 , 1.0e-4
