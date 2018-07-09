@@ -66,9 +66,11 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
      int12->AB_x[0] = AB_x ;
      int12->AB_y[0] = AB_y ;
      int12->AB_z[0] = AB_z ;
+#if LIBINT2_DEFINED(eri, BA_x) && LIBINT2_DEFINED(eri, BA_y) && LIBINT2_DEFINED(eri, BA_z)
      int12->BA_x[0] = -AB_x ;
      int12->BA_y[0] = -AB_y ;
      int12->BA_z[0] = -AB_z ;
+#endif
      int12->PA_x[0] = P[0] - A[0] ;
      int12->PA_y[0] = P[1] - A[1] ;
      int12->PA_z[0] = P[2] - A[2] ;

@@ -37,7 +37,7 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  write(stdout,'(/,a)') ' Calculate the static polarizability within RPA'
 
  if( .NOT. has_auxil_basis ) then
-   call die('static_polarizability requires an auxiliary basis')
+   call die('static_polarizability: this implementation requires an auxiliary basis')
  endif
 
  call clean_allocate('Static W',wpol_out%chi,nauxil_2center,nauxil_2center,1)
