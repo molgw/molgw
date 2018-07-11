@@ -302,7 +302,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  call clean_deallocate('X-Y',xmy_matrix)
 
  !
- ! Calculate Wp= v * chi * v    if necessary
+ ! Calculate Wp = v * chi * v    if necessary
  ! and then write it down on file
  !
  if( print_w_ .OR. calculate_w ) then
@@ -968,7 +968,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
  call start_clock(timing_vchiv)
 
- write(stdout,'(/,a)') ' Build W = v * chi * v'
+ write(stdout,'(/,a)') ' Build Wp = v * chi * v'
  if(has_auxil_basis) then
    call die('you should not be here')
  endif

@@ -133,8 +133,6 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
    call die('init_spectral_function: nstate is too large')
  endif
 
- sf%nprodbasis_total = nauxil_2center
-
  ncore_W      = ncorew
  nvirtual_W   = MIN(nvirtualw,nstate+1)
  nvirtual_SPA = MIN(nvirtualspa,nstate+1)
@@ -261,6 +259,12 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
  if( sf%npole_reso_apb /= sf%npole_reso ) then
    write(msg,'(a,i6,2x,i6)') 'using single pole approximation with # poles instead of # ',sf%npole_reso_apb,sf%npole_reso
    call issue_warning(msg)
+ endif
+
+ if( has_auxil_basis ) then
+   sf%nprodbasis_total = nauxil_2center
+ else
+   sf%nprodbasis_total = index_prodstate(nvirtual_W-1,nvirtual_W-1) * nspin
  endif
 
  !

@@ -1,0 +1,19 @@
+&molgw
+ scf='lda'
+ print_restart='yes'
+
+ basis='6-31G*'
+ gaussian_type='cart'
+
+ postscf='gw'
+ print_w='yes'
+ frozencore='yes'
+ nomega_sigma=151
+
+ natom=4
+/
+H   0.000000   0.934473    -0.588078
+H   0.000000  -0.934473    -0.588078
+C   0.000000   0.000000     0.000000
+O   0.000000   0.000000     1.221104
+
