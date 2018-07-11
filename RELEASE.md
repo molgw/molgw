@@ -2,6 +2,16 @@
 #    MOLGW: Release Notes
 -----------------------------------------
 
+## What's new in version 1.H
+### Overview
+Bug fixes and speed-up
+
+### Changes affecting the compilation
+- MOLGW is not compatible with LIBINT versions 2.4.x
+- Possibility to compile MOLGW with LIBINT having the one-body integrals, but not the gradients.
+Use the preprocessor flags -DHAVE_LIBINT_ONEBODY and/or -DHAVE_LIBINT_GRADIENTS
+
+
 ## What's new in version 1.G
 ### Overview
 Bug fixes, cleaning, and speed-up.
@@ -12,6 +22,7 @@ Bug fixes, cleaning, and speed-up.
 ### Changes affecting the usage
 - The default value for **read_restart** is now set to 'no'
 - Speed-up in the semi-local DFT Vxc calculations thanks to the use of batches
+
 
 ## What's new in version 1.F
 ### Overview
