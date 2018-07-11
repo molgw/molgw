@@ -4,10 +4,10 @@
 
 ## What's new in version 1.H
 ### Overview
-Bug fixes and speed-up
+Bug fixes
 
 ### Changes affecting the compilation
-- MOLGW is not compatible with LIBINT versions 2.4.x
+- MOLGW is now compatible with LIBINT versions 2.4.x
 - Possibility to compile MOLGW with LIBINT having the one-body integrals, but not the gradients.
 Use the preprocessor flags -DHAVE_LIBINT_ONEBODY and/or -DHAVE_LIBINT_GRADIENTS
 
