@@ -41,7 +41,7 @@ subroutine header()
 
  write(stdout,'(1x,70("="))')
  write(stdout,'(/,/,12x,a,/)') 'Welcome to the fascinating world of MOLGW'
- write(stdout,'(24x,a)')       'version 1.G'
+ write(stdout,'(24x,a)')       'version 1.H'
  write(stdout,'(/,/,1x,70("="))')
 
  write(stdout,'(/,a,a,/)') ' MOLGW commit git SHA: ',git_sha
@@ -82,22 +82,23 @@ subroutine header()
 
  write(stdout,'(/,1x,a)') 'Linking options:'
 #ifdef HAVE_LIBXC
-!#ifndef LIBXC_SVN
 ! call xc_f90_version(values(1),values(2))
 ! write(chartmp,'(i2,a,i2)') values(1),'.',values(2)
-!#else
+! 
 ! call xc_f90_version(values(1),values(2),values(3))
 ! write(chartmp,'(i2,a,i2,a,i2)') values(1),'.',values(2),'.',values(3)
-!#endif
 ! write(stdout,*) 'LIBXC version '//TRIM(chartmp)
  write(stdout,*) 'Running with LIBXC'
 #endif
+
+
+ ! Parallelization details
 #ifdef _OPENMP
  write(msg,'(i6)') OMP_get_max_threads()
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
-#if defined HAVE_MPI && defined HAVE_SCALAPACK
+#if defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
  write(stdout,*) 'Running with MPI'
  write(stdout,*) 'Running with SCALAPACK'
 #endif
@@ -108,21 +109,30 @@ subroutine header()
  call die('Code compiled with MPI, but without SCALAPACK. This is not permitted')
 #endif
 
+
  ! LIBINT details
  call libint_init(ammax,has_onebody,has_gradient)
- write(stdout,'(1x,a)')        'Running with LIBINT (to calculate the Coulomb integrals)'
+ write(stdout,'(1x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
  write(stdout,'(6x,a,i5,3x,a)') 'max angular momentum handled by your LIBINT compilation: ', &
                                 ammax,orbital_momentum_name(ammax)
  call set_molgw_lmax(ammax)
 
+#if defined(HAVE_LIBINT_GRADIENTS) && !defined(HAVE_LIBINT_ONEBODY) 
+ call die('MOLGW gradients requires both compilations HAVE_LIBINT_GRADIENTS and HAVE_LIBINT_ONEBODY')
+#endif
+
 #if defined(HAVE_LIBINT_ONEBODY)
  if( .NOT. has_onebody ) &
    call die('MOLGW compiled with LIBINT one-body terms, however the LIBINT compilation does not calculate the one-body terms')
+ write(stdout,'(1x,a)')  'Code compiled with external LIBINT calculation of the one-body operators (faster)'
+#else
+ write(stdout,'(1x,a)')  'Code compiled with internal calculation of the one-body operators (slower)'
 #endif
+
 #if defined(HAVE_LIBINT_GRADIENTS)
  if( .NOT. has_gradient ) &
    call die('LIBINT compilation does not have the first derivative')
- write(stdout,'(1x,a)') 'Using LIBINT for the one-body parts of the Hamiltonian as well'
+ write(stdout,'(1x,a)') 'Code compiled with external LIBINT calculation of the gradients of the integrals'
 #endif
  write(stdout,*)
  write(stdout,*)
