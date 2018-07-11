@@ -2406,25 +2406,30 @@ subroutine invert_sca(desc,matrix,matrix_inv)
  real(dp),allocatable :: work(:)
  integer ,allocatable :: iwork(:)
  integer ,allocatable :: ipiv(:)
+ integer  :: cntxt
+ integer  :: nprow,npcol,iprow,ipcol
  integer  :: mlocal,nlocal
- integer  :: n
+ integer  :: nmat
  integer  :: info
  integer  :: lwork,liwork
 !=====
 
 #ifdef HAVE_SCALAPACK
- if( nprow_ham * npcol_ham > 1 ) then
+ cntxt = desc(CTXT_)
+ call BLACS_GRIDINFO(cntxt,nprow,npcol,iprow,ipcol)
 
-   if( cntxt_ham > 0 ) then
+ if( nprow * npcol > 1 ) then
 
-     n = desc(M_)
+   if( iprow >= 0 ) then
+
+     nmat = desc(M_)
      mlocal = SIZE( matrix , DIM=1 )
      nlocal = SIZE( matrix , DIM=2 )
      matrix_inv(:,:) = matrix(:,:)
 
      allocate(ipiv(block_row+mlocal))
 
-     call PDGETRF(n,n,matrix_inv,1,1,desc,ipiv,info)
+     call PDGETRF(nmat,nmat,matrix_inv,1,1,desc,ipiv,info)
 
      if(info/=0) call die('FAILURE in PDGETRF')
 
@@ -2432,14 +2437,14 @@ subroutine invert_sca(desc,matrix,matrix_inv)
      allocate(work(1),iwork(1))
      lwork  = -1
      liwork = -1
-     call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
+     call PDGETRI(nmat,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
      if(info/=0) call die('FAILURE in PDGETRI')
 
      lwork  = NINT(work(1))
      liwork = iwork(1)
      deallocate(work,iwork)
      allocate(work(lwork),iwork(liwork))
-     call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
+     call PDGETRI(nmat,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
      if(info/=0) call die('FAILURE in PDGETRI')
 
      deallocate(ipiv)
@@ -2796,16 +2801,16 @@ end subroutine sum_sca_sd
 
 
 !=========================================================================
-subroutine max_matrix_sca_sd(m,n,real_matrix)
+subroutine max_matrix_sca_sd(mmat,nmat,real_matrix)
  implicit none
- integer, intent(in)    :: m,n
- real(dp),intent(inout) :: real_matrix(m,n)
+ integer, intent(in)    :: mmat,nmat
+ real(dp),intent(inout) :: real_matrix(mmat,nmat)
 !=====
  integer :: idum1(1),idum2(1)
 !=====
 
 #ifdef HAVE_SCALAPACK
- call dgamx2d(cntxt_sd,'All',' ',m,n,real_matrix,m,-1,idum1,idum2,-1,-1)
+ call dgamx2d(cntxt_sd,'All',' ',mmat,nmat,real_matrix,mmat,-1,idum1,idum2,-1,-1)
 #endif
 
 

@@ -153,8 +153,8 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
    call diagonalize_eigval_sca(nauxil_2center,wpol%desc_chi,one_m_chi0m1,eigval)
    erpa = erpa + SUM( LOG(eigval(:)) + 1.0_dp - eigval(:) ) / (2.0_dp * pi) * wpol%weight_quad(iomega)
 
-
    call invert_sca(wpol%desc_chi,one_m_chi0,one_m_chi0m1)
+
 
 #ifdef HAVE_SCALAPACK
    call PDGEMM('N','N',nauxil_2center,nauxil_2center,nauxil_2center, &
@@ -217,6 +217,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  integer              :: info
  real(dp),allocatable :: eri3_sca(:,:)
  real(dp),allocatable :: chi_eri3_sca(:,:)
+ real(dp)             :: v_chi_v_p
  integer              :: desc_eri3_t(NDEL)
  integer              :: iprow,ipcol,nprow,npcol
  integer              :: desc_eri3_final(NDEL)
@@ -233,9 +234,12 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  call start_clock(timing_gw_self)
 
  write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies'
- call BLACS_GRIDINFO(wpol%desc_chi(CTXT_),nprow,npcol,iprow,ipcol)
 
+ nprow = 1
+ npcol = 1
 #ifdef HAVE_SCALAPACK
+ ! Get the processor grid included in the input wpol%desc_chi
+ call BLACS_GRIDINFO(wpol%desc_chi(CTXT_),nprow,npcol,iprow,ipcol)
  write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow,' x ',npcol
 #endif
 
@@ -245,7 +249,6 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
 
  prange = nvirtual_G - ncore_G - 1
 
- ! Get the processor grid included in the input wpol%desc_chi
  meri3 = NUMROC(nauxil_2center,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
  neri3 = NUMROC(prange        ,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol)
  call DESCINIT(desc_eri3_final,nauxil_2center,prange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
@@ -255,6 +258,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca,meri3,neri3)
 
  call DESCINIT(desc_eri3_t,nauxil_2center,prange,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
+
 
  se%sigmai(:,:,:) = 0.0_dp
 
@@ -282,16 +286,18 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
                   0.0_dp,chi_eri3_sca        ,nauxil_2center)
 #endif
 
-       do iomegas=0,se%nomegai
-         do plocal=1,neri3
-           pstate = INDXL2G(plocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
+       do plocal=1,neri3
+         pstate = INDXL2G(plocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
+
+         v_chi_v_p = DOT_PRODUCT( eri3_sca(:,plocal) , chi_eri3_sca(:,plocal) )
+
+         do iomegas=0,se%nomegai
            se%sigmai(iomegas,mstate,mpspin) = se%sigmai(iomegas,mstate,mpspin) &
                          - wpol%weight_quad(iomega) * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(iomegas) - energy(pstate,mpspin) ) &
                                                                   + im * wpol%omega_quad(iomega) )   &
                                                        + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(iomegas) - energy(pstate,mpspin) )  &
                                                                   - im * wpol%omega_quad(iomega) )  ) &
-                            * DOT_PRODUCT( eri3_sca(:,plocal) , chi_eri3_sca(:,plocal) )  &
-                                  /  (2.0_dp * pi)
+                            * v_chi_v_p /  (2.0_dp * pi)
          enddo
        enddo
 
