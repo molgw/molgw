@@ -42,6 +42,7 @@ contains
 
 !=========================================================================
 function matrix_trace(matrix)
+ implicit none
  real(dp),intent(in) :: matrix(:,:)
  real(dp)            :: matrix_trace
 !=====
@@ -62,13 +63,14 @@ end function matrix_trace
 subroutine init_seed(iseed)
  implicit none
  integer,intent(in),optional :: iseed
-
- integer :: i,j
+!=====
+ integer :: itmp,jtmp
+!=====
 
  if(PRESENT(iseed)) then
   idum=iseed
  else
-  call system_clock(idum,i,j)
+  call system_clock(idum,itmp,jtmp)
  endif
 
  write(stdout,'(a,1x,i12)') 'Random seed set to',idum
@@ -88,19 +90,18 @@ end function random
 
 
 !=========================================================================
-function matrix_is_symmetric(n,matrix)
+function matrix_is_symmetric(matrix)
  implicit none
  logical             :: matrix_is_symmetric
- integer,intent(in)  :: n
- real(dp),intent(in) :: matrix(n,n)
+ real(dp),intent(in) :: matrix(:,:)
 !=====
- integer :: ii,jj
+ integer :: imat,jmat
 !=====
 
  matrix_is_symmetric = .TRUE.
- do ii=1,n
-   do jj=1,ii-1
-     if( ABS( matrix(ii,jj) - matrix(jj,ii) ) > 1.0e-5_dp ) then
+ do imat=1,SIZE(matrix,DIM=1)
+   do jmat=1,imat-1
+     if( ABS( matrix(imat,jmat) - matrix(jmat,imat) ) > 1.0e-5_dp ) then
        matrix_is_symmetric=.FALSE.
        return
      endif
@@ -800,47 +801,52 @@ end subroutine gequad
 
 
 !=========================================================================
-subroutine check_unitarity(n,cmat)
+subroutine check_unitarity(cmat)
  implicit none
- integer,intent(in) :: n
- complex(dp),intent(in) :: cmat(n,n)
-!
+ complex(dp),intent(in) :: cmat(:,:)
+!=====
  real(dp),parameter :: tol=1.0e-9_dp
- integer :: i,j
- complex(dp) :: cmat_tmp(n,n)
-!
-  cmat_tmp = MATMUL( cmat , TRANSPOSE(CONJG(cmat)) )
-  do i=1,n
-    do j=1,n
-      if(i==j) then
-       if(ABS(cmat_tmp(i,j)-1.0_dp)>tol) then
-         write(stdout,*) i,j,cmat_tmp(i,j)
-         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-       endif
-      else
-       if(ABS(cmat_tmp(i,j))>tol) then
-         write(stdout,*) i,j,cmat_tmp(i,j)
-         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-       endif
+ integer :: nmat
+ integer :: imat,jmat
+ complex(dp),allocatable :: cmat_tmp(:,:)
+!=====
+
+ nmat = SIZE(cmat,DIM=1)
+ allocate(cmat_tmp,MOLD=cmat)
+  
+ cmat_tmp = MATMUL( cmat , TRANSPOSE(CONJG(cmat)) )
+ do imat=1,nmat
+   do jmat=1,nmat
+     if(imat==jmat) then
+      if(ABS(cmat_tmp(imat,jmat)-1.0_dp)>tol) then
+        write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
+        call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
       endif
-    enddo
-  enddo
-  cmat_tmp = MATMUL( TRANSPOSE(CONJG(cmat)) , cmat )
-  do i=1,n
-    do j=1,n
-      if(i==j) then
-       if(ABS(cmat_tmp(i,j)-1.0_dp)>tol) then
-         write(stdout,*) i,j,cmat_tmp(i,j)
-         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-       endif
-      else
-       if(ABS(cmat_tmp(i,j))>tol) then
-         write(stdout,*) i,j,cmat_tmp(i,j)
-         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-       endif
+     else
+      if(ABS(cmat_tmp(imat,jmat))>tol) then
+        write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
+        call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
       endif
-    enddo
-  enddo
+     endif
+   enddo
+ enddo
+ cmat_tmp = MATMUL( TRANSPOSE(CONJG(cmat)) , cmat )
+ do imat=1,nmat
+   do jmat=1,nmat
+     if(imat==jmat) then
+      if(ABS(cmat_tmp(imat,jmat)-1.0_dp)>tol) then
+        write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
+        call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
+      endif
+     else
+      if(ABS(cmat_tmp(imat,jmat))>tol) then
+        write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
+        call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
+      endif
+     endif
+   enddo
+ enddo
+
 end subroutine check_unitarity
 
 
@@ -849,6 +855,7 @@ subroutine cross_product(u1,u2,u3)
  implicit none
  real(dp),intent(in)  :: u1(3),u2(3)
  real(dp),intent(out) :: u3(3)
+!=====
 !=====
 
  u3(1) = u1(2) * u2(3) - u1(3) * u2(2)
@@ -1019,59 +1026,66 @@ end subroutine append_to_list_r
 
 
 !=========================================================================
-function pade(n,z,f,zz)
+function pade(z_in,f_in,z_out) RESULT(f_out)
  implicit none
 
- integer,intent(in)     :: n
- complex(dp),intent(in) :: zz
- complex(dp),intent(in) :: z(n),f(n)
- complex(dp) :: pade
+ complex(dp),intent(in) :: z_in(:),f_in(:)
+ complex(dp),intent(in) :: z_out
+ complex(dp) :: f_out
 !=====
- complex(dp) :: a(n)
- complex(dp) :: Az(0:n), Bz(0:n)
- integer     :: i
+ integer     :: ip,np
+ complex(dp),allocatable :: aa(:)
+ complex(dp),allocatable :: Az(:), Bz(:)
 !=====
 
- call calculate_pade_a(a,n,z,f)
+ np = SIZE(z_in)
+ allocate(aa(np),Az(0:np),Bz(0:np))
+
+ call calculate_pade_a(aa,z_in,f_in)
 
  Az(0) = (0.0_dp,0.0_dp)
- Az(1) = a(1)
+ Az(1) = aa(1)
  Bz(0) = (1.0_dp,0.0_dp)
  Bz(1) = (1.0_dp,0.0_dp)
 
- do i=1,n-1
-   Az(i+1) = Az(i) + ( zz - z(i) ) * a(i+1) * Az(i-1)
-   Bz(i+1) = Bz(i) + ( zz - z(i) ) * a(i+1) * Bz(i-1)
+ do ip=1,np-1
+   Az(ip+1) = Az(ip) + ( z_out - z_in(ip) ) * aa(ip+1) * Az(ip-1)
+   Bz(ip+1) = Bz(ip) + ( z_out - z_in(ip) ) * aa(ip+1) * Bz(ip-1)
  enddo
 
- pade = Az(n) / Bz(n)
+ f_out = Az(np) / Bz(np)
+
+ deallocate(aa,Az,Bz)
 
 end function pade
 
 
 !=========================================================================
-subroutine calculate_pade_a(a,n,z,f)
+subroutine calculate_pade_a(aa,z_in,f_in)
  implicit none
 
- integer,intent(in)      :: n
- complex(dp),intent(in)  :: z(n),f(n)
- complex(dp),intent(out) :: a(n)
+ complex(dp),intent(in)  :: z_in(:),f_in(:)
+ complex(dp),intent(out) :: aa(:)
 !=====
- integer     :: i,j
- complex(dp) :: g(n,n)
+ integer     :: np,ip,jp
+ complex(dp),allocatable :: gtmp(:,:)
 !=====
 
- g(1,1:n) = f(1:n)
+ np = SIZE(z_in)
+ allocate(gtmp(np,np))
 
- do i=2,n
-   do j=i,n
-     g(i,j) = (g(i-1,i-1) - g(i-1,j)) / ( (z(j) - z(i-1)) * g(i-1,j) )
+ gtmp(1,1:np) = f_in(1:np)
+
+ do ip=2,np
+   do jp=ip,np
+     gtmp(ip,jp) = (gtmp(ip-1,ip-1) - gtmp(ip-1,jp)) / ( (z_in(jp) - z_in(ip-1)) * gtmp(ip-1,jp) )
    enddo
  enddo
- do i=1,n
-   a(i) = g(i,i)
+ do ip=1,np
+   aa(ip) = gtmp(ip,ip)
  enddo
 
+ deallocate(gtmp)
 
 end subroutine calculate_pade_a
 
@@ -1082,20 +1096,20 @@ pure function get_number_of_elements(string) result(num)
  character(len=*),intent(in)  :: string
  integer                      :: num
 !=====
- integer   :: i,pos
+ integer   :: ip,pos
 !=====
 
- pos=1
- num=0
+ pos = 1
+ num = 0
 
  do
-   i = VERIFY(string(pos:),' ')  !-- Find next non-blank
-   if( i == 0 ) exit             !-- No word found
+   ip = VERIFY(string(pos:),' ')  !-- Find next non-blank
+   if( ip == 0 ) exit             !-- No word found
    num = num + 1                 !-- Found something
-   pos = pos + i - 1             !-- Move to start of the word
-   i = SCAN(string(pos:),' ')    !-- Find next blank
-   if( i == 0 ) exit             !-- No blank found
-   pos = pos + i - 1             !-- Move to the blank
+   pos = pos + ip - 1             !-- Move to start of the word
+   ip = SCAN(string(pos:),' ')    !-- Find next blank
+   if( ip == 0 ) exit             !-- No blank found
+   pos = pos + ip - 1             !-- Move to the blank
  end do
 
 end function get_number_of_elements

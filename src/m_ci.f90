@@ -220,7 +220,6 @@ subroutine prepare_ci(basis,nstate_in,nfrozen_in,c_matrix)
 !=====
  real(dp) :: h_1e(basis%nbf,basis%nbf)
  real(dp) :: hnuc(basis%nbf,basis%nbf)
- integer :: ipos
 !=====
 
  nstate_ci  = nstate_in
@@ -287,11 +286,10 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  integer :: nref,iref
  integer(kind=key_int) :: keyud_test(2)
  integer(kind=key_int),allocatable :: keyud_ref(:,:)
- integer :: fu,is
+ integer :: fu
  logical :: file_exists
  character(len=142) :: string
  character(len=2)   :: ctmp2
- integer :: active_states(nstate_ci-nfrozen_ci+1)
  integer :: ref_sporb(2*(nstate_ci-nfrozen_ci+1))
  integer,allocatable :: sporbup(:),sporbdown(:)
  integer :: order_up,order_down
@@ -864,7 +862,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
 !=====
  integer :: ii,mvec,nnztmp
  integer :: iconf,jconf
- integer :: iconf_global,jconf_global
+ integer :: jconf_global
  integer :: cntxt,nprow,npcol,iprow,ipcol
  real(dp) :: h_ij
 !=====
@@ -958,8 +956,6 @@ subroutine full_ci_nelectrons_selfenergy()
  integer               :: unit_gf
  real(dp)              :: eigvec0(conf_0%nconf)
  real(dp)              :: energy0_dummy(nsemax,nspin)
- logical               :: found
- integer               :: ielec,jelec
  integer(kind=key_int) :: keyudi(2),keyudj(2)
 !=====
 

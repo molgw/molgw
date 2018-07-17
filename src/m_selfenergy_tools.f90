@@ -790,7 +790,7 @@ subroutine self_energy_pade(se)
    do pstate=nsemin,nsemax
      do iomega=-se%nomega,se%nomega
        sign_eta = -SIGN( 1.0_dp , REAL(se%omega(iomega),dp) )
-       se%sigma(iomega,pstate,pspin) = pade( 2*se%nomegai+1, se%omegai(:) + se%energy0(pstate,pspin), se%sigmai(:,pstate,pspin)  , &
+       se%sigma(iomega,pstate,pspin) = pade( se%omegai(:) + se%energy0(pstate,pspin), se%sigmai(:,pstate,pspin)  , &
                                               se%omega(iomega) + se%energy0(pstate,pspin) + ieta * sign_eta )
      enddo
    enddo
