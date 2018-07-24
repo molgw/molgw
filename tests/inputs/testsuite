@@ -1,14 +1,22 @@
 #####################################################
 #
-# Database for the MOLGW test suite 
+# Database for the MOLGW test suite
 #
 # There are two types of statements
+<<<<<<< HEAD
 # 1. Input line comprises 2 or 3 fiels: 
+=======
+# 1. Input line comprises 2 or 3 commas:
+>>>>>>> ee4334b6b79913c076b27e0b2de4c8f1b9952b6a
 #    a. Input file name
 #    b. Comment to be written in the output
 #    c. (Optional) Restart from a previous calculation
 #
+<<<<<<< HEAD
 # 2. Test line comprises 4 fields: 
+=======
+# 2. Test line comprises 4 commas:
+>>>>>>> ee4334b6b79913c076b27e0b2de4c8f1b9952b6a
 #    a. Text key to search in the out file
 #    b. Reference value
 #    c. Position after the text key and a colon delimiter ':'
@@ -87,7 +95,7 @@ gKS HOMO energy           ,  -8.086232         , 0 , 1.0e-4
 gKS LUMO energy           ,   1.864607         , 0 , 1.0e-4
 
 zn2_ecp.in                , PBE zinc dimer with ECP and RI
-SCF Total Energy          , -454.2107706479    , 0 , 1.0e-7
+SCF Total Energy          , -454.2107706479    , 0 , 5.0e-4   # Loosened criterium
 gKS HOMO energy           ,  -5.216078         , 0 , 1.0e-4
 gKS LUMO energy           ,  -1.700107         , 0 , 1.0e-4
 
@@ -197,8 +205,8 @@ GW HOMO energy            ,    -11.039136      , 0 , 1.0e-4
 GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
 
 cdo_ecp_gw.in             , CdO- (ECP) within GW@PBE0 with level shifting
-SCF Total Energy          ,    -242.8403302221 , 0 , 1.0e-7
-RPA correlation energy    ,      -0.9666472866 , 0 , 1.0e-7
+SCF Total Energy          ,    -242.8403302221 , 0 , 5.0e-4     # Loosened criterium
+RPA correlation energy    ,      -0.9666472866 , 0 , 1.0e-5     # Loosened criterium
 GW HOMO energy            ,      -1.787172     , 0 , 1.0e-4
 GW HOMO energy            ,      -1.350967     , 1 , 1.0e-4
 GW LUMO energy            ,       3.687306     , 0 , 1.0e-4
@@ -232,16 +240,16 @@ GW LUMO energy            ,      1.474561      , 0 , 1.0e-4
 h2_hse06_overlap_gw.in    , HSE06 H2 molecule aug-cc-pVDZ and G0W0 with a filtered overlap
 Exchange Energy           ,     -0.1340583009  , 0 , 1.0e-7
 XC Energy                 ,     -0.5589344847  , 0 , 1.0e-7
-gKS HOMO energy           ,    -11.541033      , 0 , 1.0e-4   
-gKS LUMO energy           ,      0.507931      , 0 , 1.0e-4   
-GW HOMO energy            ,    -15.804859      , 0 , 1.0e-4   
+gKS HOMO energy           ,    -11.541033      , 0 , 1.0e-4
+gKS LUMO energy           ,      0.507931      , 0 , 1.0e-4
+GW HOMO energy            ,    -15.804859      , 0 , 1.0e-4
 GW LUMO energy            ,      1.785876      , 0 , 1.0e-4
 
 h2_rsh_overlap_ci.in      , RSH recipe for HSE08 H2 molecule no RI and CI with a filtered overlap
 Exchange Energy           ,     -0.1340776991  , 0 , 1.0e-7
 XC Energy                 ,     -0.5585487906  , 0 , 1.0e-7
-gKS HOMO energy           ,    -11.534702      , 0 , 1.0e-4   
-gKS LUMO energy           ,      0.508373      , 0 , 1.0e-4   
+gKS HOMO energy           ,    -11.534702      , 0 , 1.0e-4
+gKS LUMO energy           ,      0.508373      , 0 , 1.0e-4
 CI ground-state energy    ,     -1.1645948686  , 0 , 1.0e-7
 CI 1st excited-state energy,    -0.7782051515  , 0 , 1.0e-7
 CI 2nd excited-state energy,    -0.7076536165  , 0 , 1.0e-7
@@ -273,7 +281,7 @@ Total Spin S**2           ,      0.0000        , 0 , 1.0e-3
 MP2 Total Energy          ,     -1.0578154072  , 0 , 1.0e-7
 
 h2_mp2_ri.in              , MP2 energy of H2 molecule with RI and ferromagnetic configuration
-SCF Total Energy          ,     -0.9561408560  , 0 , 1.0e-7 
+SCF Total Energy          ,     -0.9561408560  , 0 , 1.0e-7
 Total Spin S**2           ,      2.0000        , 0 , 1.0e-3
 2-ring diagram            ,     -0.0373333132  , 0 , 1.0e-7
 SOX diagram               ,      0.0373293160  , 0 , 1.0e-7
@@ -328,6 +336,21 @@ Sum over oscillator strengths ,  4.642395       , 0 , 1.0e-4
 polarizability trace      ,     17.627303       , 0 , 1.0e-4
 Mean excitation energy    ,     14.812805       , 0 , 1.0e-4
 
+ch2o_gw_wori.in           , GW@LDA wo RI on formaldehyde to prepare BSE
+SCF Total Energy          ,   -113.5803830624   , 0 , 1.0e-7
+RPA Total energy          ,   -114.3099788424   , 0 , 1.0e-4
+GW HOMO energy            ,     -9.641505       , 0 , 1.0e-4
+GW LUMO energy            ,      2.436318       , 0 , 1.0e-4
+
+ch2o_bse_wori.in          , GW@LDA wo RI on formaldehyde using previous run, Restart
+Lowest neutral excitation ,      3.061668       , 0 , 1.0e-4
+0002 :                    ,      8.10899840     , 0 , 1.0e-4
+0002 :                    ,      0.00208595     , 1 , 1.0e-4
+0003 :                    ,      8.49965447     , 0 , 1.0e-4
+0003 :                    ,      0.13696417     , 1 , 1.0e-4
+Sum over oscillator strengths , 11.153281       , 0 , 1.0e-4
+polarizability trace      ,     13.470219       , 0 , 1.0e-4
+
 ch2o_gw.in                , GW@B3LYP on formaldehyde to prepare BSE
 SCF Total Energy          ,   -114.5110479343   , 0 , 1.0e-7
 Est. HF Energy            ,   -113.8786939682   , 0 , 1.0e-7
@@ -338,7 +361,7 @@ GW LUMO energy            ,      2.494864       , 0 , 1.0e-4
 
 ch2o_bse.in               , BSE on formaldehyde , Restart
 Lowest neutral excitation ,      3.388914       , 0 , 1.0e-4
-0002 :                    ,      7.92591508     , 0 , 1.0e-4   
+0002 :                    ,      7.92591508     , 0 , 1.0e-4
 0002 :                    ,      0.11513601     , 1 , 1.0e-4
 Sum over oscillator strengths , 11.957363       , 0 , 1.0e-4
 polarizability trace      ,     13.358524       , 0 , 1.0e-4
@@ -635,4 +658,11 @@ SCF Total Energy          ,   -113.1959990723   , 0 , 1.0e-7
 PT1PT2 HOMO energy        ,    -13.100347       , 0 , 1.0e-4
 PT1PT2 LUMO energy        ,      3.058181       , 0 , 1.0e-4
 
+sih4_sc-cohsex.in         , sc-COHSEX for SiH4 to prepare a subsequent G0W0 calculation
+SCF Total Energy          ,   -291.2399059845   , 0 , 1.0e-7
+gKS HOMO energy           ,    -13.781513       , 0 , 1.0e-4
+gKS LUMO energy           ,      3.880683       , 0 , 1.0e-4
 
+sih4_g0w0@sc-cohsex.in    , G0W0 for SiH4 based on the previous sc-COHSEX run, Restart
+GW HOMO energy            ,    -12.855076       , 0 , 1.0e-4
+GW LUMO energy            ,      4.073908       , 0 , 1.0e-4

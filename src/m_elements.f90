@@ -47,7 +47,7 @@ function element_core(zval,zatom)
  if( ABS(zval - zatom) > 1.0e-3_dp ) then
    element_core = 0
  else
- 
+
    if( zval <= 4.00001 ) then  ! up to Be
      element_core = 0
    else if( zval <= 12.00001 ) then  ! up to Mg
@@ -154,7 +154,7 @@ function element_covalent_radius(zatom)
    ! If not available, then invent one!
    element_covalent_radius = 150.
  end select
-  
+
  !
  ! pm to bohr conversion
  element_covalent_radius = element_covalent_radius / bohr_A * 0.01_dp
@@ -182,7 +182,7 @@ function element_number(element_name)
  enddo
 
  element_number = ielement
- 
+
 
 end function element_number
 
@@ -220,44 +220,44 @@ subroutine element_atomicdensity(zval,zatom,coeff,alpha)
 
  select case(NINT(zatom))
  case( 1)
-  alpha(1) = 0.191852  
-  alpha(2) = 5.6143    
-  alpha(3) = 0.510303  
-  alpha(4) = 1.47022   
-  coeff(1) = 0.208981  
-  coeff(2) = 0.0287008 
-  coeff(3) = 0.358982  
-  coeff(4) = 0.168689  
+  alpha(1) = 0.191852
+  alpha(2) = 5.6143
+  alpha(3) = 0.510303
+  alpha(4) = 1.47022
+  coeff(1) = 0.208981
+  coeff(2) = 0.0287008
+  coeff(3) = 0.358982
+  coeff(4) = 0.168689
  case( 6)
-   alpha(1) = 0.294412 
-   alpha(2) = 68.2412  
-   alpha(3) = 16.7565  
-   alpha(4) = 0.852332 
-   coeff(1) = 1.90506  
-   coeff(2) = 0.485794 
-   coeff(3) = 1.2976   
-   coeff(4) = 2.24937  
+   alpha(1) = 0.294412
+   alpha(2) = 68.2412
+   alpha(3) = 16.7565
+   alpha(4) = 0.852332
+   coeff(1) = 1.90506
+   coeff(2) = 0.485794
+   coeff(3) = 1.2976
+   coeff(4) = 2.24937
  case( 7)
-   alpha(1) = 0.404121 
-   alpha(2) = 23.2108  
-   alpha(3) = 1.24119  
-   alpha(4) = 93.8394  
-   coeff(1) = 2.37996  
-   coeff(2) = 1.29369  
-   coeff(3) = 2.7861   
-   coeff(4) = 0.49092  
+   alpha(1) = 0.404121
+   alpha(2) = 23.2108
+   alpha(3) = 1.24119
+   alpha(4) = 93.8394
+   coeff(1) = 2.37996
+   coeff(2) = 1.29369
+   coeff(3) = 2.7861
+   coeff(4) = 0.49092
  case( 8)
-   alpha(1) = 122.833 
-   alpha(2) = 30.5529 
+   alpha(1) = 122.833
+   alpha(2) = 30.5529
    alpha(3) = 0.536011
-   alpha(4) = 1.71315 
+   alpha(4) = 1.71315
    coeff(1) = 0.495436
-   coeff(2) = 1.27809 
-   coeff(3) = 2.85614 
-   coeff(4) = 3.27719 
+   coeff(2) = 1.27809
+   coeff(3) = 2.85614
+   coeff(4) = 3.27719
  case(79) ! Au
    if( NINT(zval) == 19 ) then   ! Au ECP
-     coeff(1) = zval -2.0_dp + 4.1_dp 
+     coeff(1) = zval -2.0_dp + 4.1_dp
      alpha(1) = 1.0_dp
      coeff(2) = 0.2_dp
      alpha(2) = 2.0_dp
@@ -269,7 +269,7 @@ subroutine element_atomicdensity(zval,zatom,coeff,alpha)
      alpha(1) = 0.3_dp
      coeff(1) = 2.0_dp
      alpha(2) = 2.6_dp
-     coeff(2) = zval - coeff(1) 
+     coeff(2) = zval - coeff(1)
      coeff(3) = 0.0_dp
      coeff(4) = 0.0_dp
      alpha(3) = 1.0_dp
@@ -279,7 +279,7 @@ subroutine element_atomicdensity(zval,zatom,coeff,alpha)
    alpha(1) = 0.3_dp
    coeff(1) = 2.0_dp
    alpha(2) = 2.6_dp
-   coeff(2) = zval - coeff(1) 
+   coeff(2) = zval - coeff(1)
    coeff(3) = 0.0_dp
    coeff(4) = 0.0_dp
    alpha(3) = 1.0_dp

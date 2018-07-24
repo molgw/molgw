@@ -7,9 +7,6 @@
 ! and the corresponding optical spectra
 !
 !=========================================================================
-
-
-!=========================================================================
 subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
  use m_definitions
  use m_timing
@@ -67,12 +64,12 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  ! Set up all the switches to be able to treat
  ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
 
- ! 
+ !
  ! Set up flag is_tddft and is_bse
  is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
  is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
 
- ! 
+ !
  ! Set up exchange content alpha_local
  ! manual_tdhf can override anything
  inquire(file='manual_tdhf',exist=has_manual_tdhf)
@@ -100,14 +97,14 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  ! Prepare the QP energies
  !
  if( is_bse ) then
-   ! Get energy_qp 
+   ! Get energy_qp
    call get_energy_qp(nstate,energy,occupation,energy_qp)
  else
    ! For any other type of calculation, just fill energy_qp array with energy
    energy_qp(:,:) = energy(:,:)
  endif
 
- ! 
+ !
  ! BSE needs the static screening from a previous calculation
  ! It is stored in object wpol_static
  !
@@ -118,6 +115,10 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    ! If a SCREENED_COULOMB file cannot be found,
    ! then recalculate it from scratch
    if( reading_status /= 0 ) then
+     if( .NOT. has_auxil_basis ) then
+       call die('polarizability: BSE calculation without having a precalculated SCREENED_COULOMB file is impossible' &
+                // 'unless when using an auxiliary basis')
+     endif
      wpol_static%nprodbasis = nauxil_3center
      call static_polarizability(nstate,occupation,energy,wpol_static)
    endif
@@ -126,7 +127,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
 
  !
  ! Prepare the big matrices (A+B) and (A-B)
- ! 
+ !
  nmat = wpol_out%npole_reso_apb
  !
  ! The distribution of the two matrices have to be the same for A-B and A+B
@@ -148,7 +149,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
 
  ! Calculate the diagonal separately: it is needed for the single pole approximation
- if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
+ if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) &
      call build_a_diag_common(basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
 
  apb_matrix(:,:) = 0.0_dp
@@ -216,7 +217,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    ! Tamm-Dancoff approximation consists in setting B matrix to zero
    ! Then A+B = A-B = A
    apb_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
-   amb_matrix(:,:) = apb_matrix(:,:) 
+   amb_matrix(:,:) = apb_matrix(:,:)
  endif
  ! Construction done!
  if(has_auxil_basis) call destroy_eri_3center_eigen()
@@ -224,7 +225,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  call stop_clock(timing_build_h2p)
 
  if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
- 
+
 
  !
  ! Prepare the second dimension of xpy_matrix and xmy_matrix
@@ -233,7 +234,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
 
  allocate(eigenvalue(nmat))
 
- ! Allocate (X+Y) 
+ ! Allocate (X+Y)
  ! Allocate (X-Y) only if actually needed
  call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
 
@@ -253,7 +254,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
 
    else ! Partial diagonalization with Davidson
      ! The following call works with AND without SCALAPACK
-     call diago_4blocks_davidson(toldav,nstep_dav,nexcitation,nmat,amb_diag_rpa,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, & 
+     call diago_4blocks_davidson(toldav,nstep_dav,nexcitation,nmat,amb_diag_rpa,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, &
                                  eigenvalue,desc_x,m_x,n_x,xpy_matrix,xmy_matrix)
    endif
  else
@@ -268,7 +269,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  write(stdout,*) 'Deallocate (A+B) and possibly (A-B)'
  call clean_deallocate('A+B',apb_matrix)
  !
- ! (A-B) may have been already deallocated earlier in the case of RPA 
+ ! (A-B) may have been already deallocated earlier in the case of RPA
  ! Relax: this is indeed tolerated by clean_deallocate
  call clean_deallocate('A-B',amb_matrix)
 
@@ -301,7 +302,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  call clean_deallocate('X-Y',xmy_matrix)
 
  !
- ! Calculate Wp= v * chi * v    if necessary
+ ! Calculate Wp = v * chi * v    if necessary
  ! and then write it down on file
  !
  if( print_w_ .OR. calculate_w ) then
@@ -310,17 +311,17 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if( is_rpa ) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
-     
+
      ! Add the single pole approximation for the poles that have been neglected
      ! in the diagonalization
-     if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
+     if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) &
         call chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol_out)
 
    else
      call chi_to_vchiv(basis%nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol_out)
    endif
-  
- 
+
+
    ! If requested write the spectral function on file
    if( print_w_ ) call write_spectral_function(wpol_out)
 
@@ -492,13 +493,13 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
 
 
- write(stdout,'(/,5x,a)') 'Excitation energies (eV)     Oscil. strengths   [Symmetry] '  
+ write(stdout,'(/,5x,a)') 'Excitation energies (eV)     Oscil. strengths   [Symmetry] '
  trk_sumrule=0.0_dp
  mean_excitation=0.0_dp
  do t_jb_global=1,nexc
    t_jb = colindex_global_to_local('S',t_jb_global)
 
-   if( is_triplet ) then 
+   if( is_triplet ) then
      oscillator_strength = 0.0_dp
    else
      oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residue(:,t_jb_global),residue(:,t_jb_global)) * eigenvalue(t_jb_global)
@@ -516,11 +517,11 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
      !
      ! Test the parity in case of molecule with inversion symmetry
-    
+
      t_ia_global = 0
      do t_ia=1,m_x
        ! t_jb is zero if the proc is not in charge of this process
-       if( t_jb /=0 ) then 
+       if( t_jb /=0 ) then
          if( 0.5_dp * ABS( xpy_matrix(t_ia,t_jb) + xmy_matrix(t_ia,t_jb) ) > 0.1_dp ) then
            t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
            exit
@@ -572,7 +573,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
        endif
      enddo
      call xsum_world(coeff)
-     
+
 
      do t_ia_global=1,chi%npole_reso_apb
        istate = chi%transition_table_apb(1,t_ia_global)
@@ -607,10 +608,10 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-10.00/Ha_eV)
  omega(nomega)=MIN(50.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+10.00/Ha_eV)
  do iomega=2,nomega-1
-   omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1) 
+   omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1)
  enddo
  ! Add the broadening
- omega(:) = omega(:) + ieta 
+ omega(:) = omega(:) + ieta
 
  dynamical_pol(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp
@@ -658,7 +659,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
      write(photocrossfile,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
                                               (photoabsorp_cross(iomega,1,1)+photoabsorp_cross(iomega,2,2)+photoabsorp_cross(iomega,3,3))/3.0_dp, &
                                               photoabsorp_cross(iomega,:,:)
-   enddo 
+   enddo
 
    close(dynpolfile)
    close(photocrossfile)
@@ -753,9 +754,9 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  enddo
  ! Add the broadening
  omega(:) = omega(:) + im * 0.10/Ha_eV
-  
 
- 
+
+
  do iq=1,nq
    qvec(1) = 0.0_dp
    qvec(2) = 0.0_dp
@@ -773,7 +774,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
      jbf1    = basis%shell(jshell)%istart
      jbf1_cart = basis%shell(jshell)%istart_cart
      jbf2    = basis%shell(jshell)%iend
-  
+
      do ishell=1,basis%nshell
        li      = basis%shell(ishell)%am
        ni_cart = number_basis_function_am('CART',li)
@@ -785,52 +786,52 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
 
        allocate(gos_cart(ni_cart,nj_cart))
-  
+
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
            call gos_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),qvec,gos_cart(i_cart,j_cart))
          enddo
        enddo
-  
+
        gos_basis(ibf1:ibf2,jbf1:jbf2) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
                                                 MATMUL(  gos_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
-  
+
        deallocate(gos_cart)
-  
+
      enddo
    enddo
-  
+
    !
    ! Get the gos oscillator strength on states
    allocate(gos_state(basis%nbf,basis%nbf,nspin))
-  
+
    do mpspin=1,nspin
      gos_state(:,:,mpspin) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) ,  MATMUL( gos_basis(:,:) , c_matrix(:,:,mpspin) ) )
    enddo
    deallocate(gos_basis)
-  
-  
+
+
    nmat=chi%npole_reso_apb
    allocate(residue(chi%npole_reso_apb))
-  
+
    residue(:) = 0.0_dp
    do t_ia=1,m_x
      t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
      istate = chi%transition_table_apb(1,t_ia_global)
      astate = chi%transition_table_apb(2,t_ia_global)
      iaspin = chi%transition_table_apb(3,t_ia_global)
-  
+
      ! Let use (i <-> j) symmetry to halve the loop
      do t_jb=1,n_x
        t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
-  
+
        residue(t_jb_global) = residue(t_jb_global) &
                     + gos_state(istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
      enddo
-  
+
    enddo
    call xsum_world(residue)
-  
+
    deallocate(gos_state)
 
    fnq(:) = 2.0_dp * ABS( residue(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
@@ -838,7 +839,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
    write(stdout,*) 'bethe_sumrule',NORM2(qvec(:)),SUM(fnq(:))
 
 
-  
+
    dynamical_pol(:) = 0.0_dp
    do t_ia=1,nmat
      dynamical_pol(:) = dynamical_pol(:) &
@@ -869,7 +870,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 !   enddo
 
 
- enddo 
+ enddo
 
 ! do iv=1,nv
 !   vv = iv * 0.1_dp
@@ -949,7 +950,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  use m_eri_ao_mo
  use m_spectral_function
  implicit none
- 
+
  integer,intent(in)                    :: nbf,nstate
  real(dp),intent(in)                   :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(inout) :: wpol
@@ -967,7 +968,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
  call start_clock(timing_vchiv)
 
- write(stdout,'(/,a)') ' Build W = v * chi * v'
+ write(stdout,'(/,a)') ' Build Wp = v * chi * v'
  if(has_auxil_basis) then
    call die('you should not be here')
  endif
@@ -984,7 +985,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  nmat = wpol%npole_reso_apb
 
  wpol%residue_left(:,:) = 0.0_dp
- do t_jb=1,nmat 
+ do t_jb=1,nmat
    jstate = wpol%transition_table_apb(1,t_jb)
    bstate = wpol%transition_table_apb(2,t_jb)
    jbspin = wpol%transition_table_apb(3,t_jb)
@@ -1033,7 +1034,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  use m_eri_ao_mo
  use m_spectral_function
  implicit none
- 
+
  integer,intent(in)                    :: m_x,n_x
  integer,intent(in)                    :: desc_x(NDEL)
  real(dp),intent(inout)                :: xpy_matrix(m_x,n_x)
@@ -1084,7 +1085,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
 
  deallocate(eri_3tmp)
 
-#else 
+#else
 
  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_3center,nmat)
  do t_jb=1,nmat
@@ -1108,7 +1109,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
                                 eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
 
  call clean_deallocate('TMP 3-center integrals',eri_3tmp)
- 
+
  !
  !   SQRT(spin_fact) * v**1/2 * ( X + Y )
  call clean_allocate('TMP v**1/2 * (X+Y)',vsqrt_xpy,mlocal,nlocal)
@@ -1160,7 +1161,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol)
  use m_eri_ao_mo
  use m_spectral_function
  implicit none
- 
+
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: a_diag(wpol%npole_reso_spa)
 !=====
@@ -1180,7 +1181,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol)
    jbspin = wpol%transition_table_spa(3,t_jb)
 
 
-   wpol%residue_left(:,wpol%npole_reso_apb+t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact) 
+   wpol%residue_left(:,wpol%npole_reso_apb+t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
 
  enddo
 

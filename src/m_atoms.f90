@@ -191,7 +191,7 @@ function atoms_core_states()
  do iatom=1,natom
    atoms_core_states = atoms_core_states + element_core(zvalence(iatom),zatom(iatom))
  enddo
- 
+
 end function atoms_core_states
 
 

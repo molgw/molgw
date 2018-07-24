@@ -36,23 +36,23 @@ module m_lbfgs
   logical              :: line_bracket
   logical              :: line_stage1
  end type
- 
+
 
 
 contains
 
 
 !=========================================================================
-subroutine lbfgs_init(lbfgs_plan,ndim,history_record,diag_guess) 
+subroutine lbfgs_init(lbfgs_plan,ndim,history_record,diag_guess)
  implicit none
- 
+
  type(lbfgs_state),intent(inout) :: lbfgs_plan
  integer,intent(in)              :: ndim
  integer,intent(in)              :: history_record
  real(dp),optional,intent(in)    :: diag_guess
-!===== 
+!=====
  integer :: nwork
-!===== 
+!=====
 
  lbfgs_plan%lbfgs_status = 0
  lbfgs_plan%iter   = 0
@@ -91,14 +91,14 @@ end subroutine lbfgs_destroy
 
 
 !=========================================================================
-function lbfgs_execute(lbfgs_plan,x,f,gradf) 
+function lbfgs_execute(lbfgs_plan,x,f,gradf)
  implicit none
  type(lbfgs_state),intent(inout) :: lbfgs_plan
  real(dp),intent(inout)          :: x(lbfgs_plan%ndim)
  real(dp),intent(in)             :: f
  real(dp),intent(in)             :: gradf(lbfgs_plan%ndim)
  integer                         :: lbfgs_execute
- 
+
  call lbfgs(lbfgs_plan%ndim, lbfgs_plan%history_record, x, f, gradf, lbfgs_plan%diag, lbfgs_plan%work, lbfgs_plan%lbfgs_status, &
        lbfgs_plan%gtol, lbfgs_plan%line_stpmin, lbfgs_plan%line_stpmax, lbfgs_plan%line_stp, lbfgs_plan%iter,                   &
        lbfgs_plan%line_info, lbfgs_plan%line_nfev,                                                   &
@@ -122,7 +122,7 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
                  LINE_STX,LINE_FX,LINE_DGX,   &
                  LINE_STY,LINE_FY,LINE_DGY,   &
                  LINE_STMIN,LINE_STMAX,       &
-                 LINE_BRACKT,LINE_STAGE1,LINE_INFOC) 
+                 LINE_BRACKT,LINE_STAGE1,LINE_INFOC)
  implicit none
 
  integer,intent(inout) :: LINE_INFOC
@@ -155,7 +155,7 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
  MAXFEV = 20
 
  ISPT = N + 2 * M
- IYPT = ISPT + N * M     
+ IYPT = ISPT + N * M
  POINT = MAX( 0 , MOD(ITER-1,M) )
  NPT = POINT * N
  ITER  = ITER + 1
@@ -177,7 +177,7 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
                LINE_STMIN,LINE_STMAX, &
                LINE_BRACKT,LINE_STAGE1,LINE_INFOC)
    !
-   ! Compute the new step and gradient change 
+   ! Compute the new step and gradient change
    !
    NPT = POINT * N
    W(ISPT+NPT+1:ISPT+NPT+N) = STP * W(ISPT+NPT+1:ISPT+NPT+N)
@@ -209,7 +209,7 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
      IYCN = IYPT + CP * N
      W(INMC)= W(N+CP+1) * SQ
      W(1:N) = W(1:N) - W(INMC) * W(IYCN+1:IYCN+N)
-   enddo     
+   enddo
 
    W(1:N) = DIAG(1:N) * W(1:N)
 
@@ -223,7 +223,7 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
      CP = CP + 1
      if (CP == M) CP = 0
    enddo
- 
+
 !
 !  STORE THE NEW SEARCH DIRECTION
    W(ISPT+POINT*N+1:ISPT+POINT*N+N) = W(1:N)
@@ -231,7 +231,7 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
  endif
 
 !
-! Obtain the one-dimensional minimizer of the function 
+! Obtain the one-dimensional minimizer of the function
 ! by using the line search routine mcsrch
 !----------------------------------------------------
  NFEV = 0

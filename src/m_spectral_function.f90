@@ -9,7 +9,7 @@
 module m_spectral_function
  use m_definitions
  use m_mpi
- use m_timing 
+ use m_timing
  use m_warning
  use m_memory
  use m_scalapack
@@ -24,7 +24,7 @@ module m_spectral_function
  ! sf_ij(z) = \sum_n L_n(i) R_n(j) / ( z - w_n )
  !
 
- type spectral_function 
+ type spectral_function
 
    integer              :: nprodbasis_total       ! total over all procs
    integer              :: nprodbasis             ! for this proc
@@ -133,8 +133,6 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
    call die('init_spectral_function: nstate is too large')
  endif
 
- sf%nprodbasis_total = nauxil_2center
-
  ncore_W      = ncorew
  nvirtual_W   = MIN(nvirtualw,nstate+1)
  nvirtual_SPA = MIN(nvirtualspa,nstate+1)
@@ -190,9 +188,9 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
    enddo
  enddo
 
- sf%npole_reso = itrans  
+ sf%npole_reso = itrans
  allocate(sf%transition_table(3,sf%npole_reso))
- ! Set the transition_table 
+ ! Set the transition_table
  itrans=0
  do ijspin=1,nspin
    do istate=1,nstate
@@ -210,8 +208,8 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
 
  !
  ! The same but only for the poles that will be actually calculated by
- ! diagonalization 
- ! 
+ ! diagonalization
+ !
 
  !
  ! First, count the number of resonant transitions
@@ -231,7 +229,7 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
  sf%npole_reso_spa = sf%npole_reso - sf%npole_reso_apb
  allocate(sf%transition_table_apb(3,sf%npole_reso_apb))
  allocate(sf%transition_table_spa(3,sf%npole_reso_spa))
- ! Set the transition_table 
+ ! Set the transition_table
  itrans=0
  jtrans=0
  do ijspin=1,nspin
@@ -263,6 +261,12 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
    call issue_warning(msg)
  endif
 
+ if( has_auxil_basis ) then
+   sf%nprodbasis_total = nauxil_2center
+ else
+   sf%nprodbasis_total = index_prodstate(nvirtual_W-1,nvirtual_W-1) * nspin
+ endif
+
  !
  ! Set the sampling points for Chi (quadrature)
  sf%nomega_quad    = nomega_in
@@ -273,7 +277,7 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
 
    if( sf%nomega_quad > 1 ) then
      call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
-  
+
      write(stdout,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
      ! Variable change [0,1] -> [0,+\inf[
      write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
@@ -308,7 +312,7 @@ subroutine allocate_spectral_function(nprodbasis,sf)
 
  allocate(sf%pole(sf%npole_reso))
  call clean_allocate('Left residue',sf%residue_left,sf%nprodbasis,sf%npole_reso)
- 
+
 
 end subroutine allocate_spectral_function
 
@@ -400,7 +404,7 @@ subroutine write_spectral_function(sf)
  integer :: ipole
 !=====
 
- write(stdout,'(/,a,/)') ' Writing the spectral function on file: SCREENED_COULOMB' 
+ write(stdout,'(/,a,/)') ' Writing the spectral function on file: SCREENED_COULOMB'
 
  write(stdout,*) 'Number of poles written down:',sf%npole_reso
 
@@ -422,9 +426,9 @@ subroutine write_spectral_function(sf)
 
 #else
 
- call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', & 
-                    MPI_MODE_WRONLY + MPI_MODE_CREATE, & 
-                    MPI_INFO_NULL,wfile,ierr) 
+ call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', &
+                    MPI_MODE_WRONLY + MPI_MODE_CREATE, &
+                    MPI_INFO_NULL,wfile,ierr)
 
  ! Only one proc has to write the poles
  disp  = 0
@@ -498,7 +502,7 @@ subroutine read_spectral_function(sf,reading_status)
 #endif
 !=====
 
- write(stdout,'(/,a)') ' Try to read spectral function from file SCREENED_COULOMB' 
+ write(stdout,'(/,a)') ' Try to read spectral function from file SCREENED_COULOMB'
 
  inquire(file='SCREENED_COULOMB',exist=file_exists)
  if( .NOT. file_exists ) then
@@ -531,9 +535,9 @@ subroutine read_spectral_function(sf,reading_status)
 #else
 
  write(stdout,*) 'Reading file SCREENED_COULOMB'
- call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', & 
-                    MPI_MODE_RDONLY, & 
-                    MPI_INFO_NULL,wfile,ierr) 
+ call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', &
+                    MPI_MODE_RDONLY, &
+                    MPI_INFO_NULL,wfile,ierr)
 
  disp = 0
  call MPI_FILE_READ_AT(wfile,disp,postscf_name_read,LEN(postscf_name_read),MPI_CHARACTER,MPI_STATUS_IGNORE,ierr)

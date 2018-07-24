@@ -22,13 +22,13 @@ module m_tddft_fxc
 
  !
  ! fxc kernel
- ! Second derivatives with respect to rho, sigma 
+ ! Second derivatives with respect to rho, sigma
  real(dp),allocatable,protected :: v2rho2(:,:)
  real(dp),allocatable,protected :: vsigma(:,:)
  real(dp),allocatable,protected :: v2rhosigma(:,:)
  real(dp),allocatable,protected :: v2sigma2(:,:)
 
- ! 
+ !
  ! Wfn and gradients evaluated on the grid points
  real(dp),allocatable,protected :: wf_r(:,:,:)
  real(dp),allocatable,protected :: wf_gradr(:,:,:,:)
@@ -119,7 +119,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
 
  !
  ! calculate rho, grad rho and the kernel
- ! 
+ !
  ! Setup the density matrix P from C
  call setup_density_matrix(c_matrix,occupation,p_matrix)
 
@@ -190,7 +190,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
 
    !
    ! Calculate the kernel
-   ! 
+   !
    do idft_xc=1,ndft_xc
      if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
 
@@ -256,7 +256,7 @@ function eval_fxc_rks_singlet(istate,jstate,ijspin,kstate,lstate,klspin)
  integer,intent(in) :: istate,jstate,kstate,lstate
  integer,intent(in) :: ijspin,klspin
 !=====
- 
+
  eval_fxc_rks_singlet = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                     * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                     * v2rho2(:,ijspin) * 2.0_dp )
@@ -325,9 +325,9 @@ function eval_fxc_uks(istate,jstate,ijspin,kstate,lstate,klspin)
                 + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
                    * ( v2rhosigma(:,1) + v2rhosigma(:,2) + v2rhosigma(:,3) )  )
  endif
-    
+
 end function eval_fxc_uks
-    
+
 
 !=========================================================================
 function eval_fxc_rks_triplet(istate,jstate,ijspin,kstate,lstate,klspin)
@@ -337,7 +337,7 @@ function eval_fxc_rks_triplet(istate,jstate,ijspin,kstate,lstate,klspin)
  integer,intent(in) :: istate,jstate,kstate,lstate
  integer,intent(in) :: ijspin,klspin
 !=====
- 
+
  eval_fxc_rks_triplet = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                                 * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                                 * ( v2rho2(:,1) - v2rho2(:,2) ) )
@@ -366,7 +366,7 @@ function eval_fxc_rks_triplet(istate,jstate,ijspin,kstate,lstate,klspin)
  endif
 
 end function eval_fxc_rks_triplet
-    
+
 
 !=========================================================================
 subroutine destroy_tddft()

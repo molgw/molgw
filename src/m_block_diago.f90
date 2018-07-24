@@ -75,7 +75,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
 
  !
  ! the subroutine returns X and Y, but we want (X+Y) and (X-Y)
- ! 
+ !
  ! Save X in (A+B)
  call PDLACPY('A',nmat,nmat,xpy_matrix,1,1,desc_x,apb_matrix,1,1,desc_apb)
  ! Save Y in (A-B)
@@ -276,7 +276,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
  allocate(qr(nmat,nexcitation))
 
  ! Current dimension of the iterative subspace
- nbbc = nexcitation 
+ nbbc = nexcitation
 
  !
  ! Initialize with a stupid guess based on the diagonal
@@ -288,7 +288,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
  do ibb=1,nbbc
    jbb = MINLOC( amb_diag_rpa(:) ,DIM=1, MASK=maskmin(:))
    bb(jbb,ibb) = 1.0_dp
-   maskmin(jbb) = .FALSE. 
+   maskmin(jbb) = .FALSE.
  enddo
  deallocate(maskmin)
  ! Gram-Schmidt orthonormalization of the initial guesses
@@ -303,7 +303,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
    bb(:,ibb) = bb(:,ibb) / NORM2( bb(:,ibb) )
  enddo
 
- ! 
+ !
  ! The time-consumming operation:
  ! Calculate (A-B) b  and  (A+B) b
 #ifndef HAVE_SCALAPACK
@@ -402,7 +402,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
    call DSYEV('V','L',nbbc,apb_tilde,nbbc,bigomega_tmp,work,lwork,info)
    lwork = NINT(work(1))
    deallocate(work)
-  
+
    allocate(work(lwork))
    call DSYEV('V','L',nbbc,apb_tilde,nbbc,bigomega_tmp,work,lwork,info)
    deallocate(work)
@@ -414,10 +414,10 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
 
    ! Calculate L * Z
    call DTRMM('L','L','N','N',nbbc,nbbc,1.0_dp,amb_tilde,nbbc,eigvec_right,nbbc)
-  
+
    ! Calculate L^{-T} * Z
    call DTRSM('L','L','T','N',nbbc,nbbc,1.0_dp,amb_tilde,nbbc,eigvec_left,nbbc)
-  
+
    !
    ! X-Y = L * Z / Omega^{1/2}
    ! X+Y = L^{-T} * Z * Omega^{1/2}
@@ -431,7 +431,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
    do ibb=1,nexcitation
      ql(:,ibb) = MATMUL( apb_bb(:,1:nbbc) ,  eigvec_right(:,ibb) ) &
                    - bigomega_tmp(ibb) * MATMUL( bb(:,1:nbbc) , eigvec_left(:,ibb) )
-     qr(:,ibb) = MATMUL( amb_bb(:,1:nbbc) ,  eigvec_left(:,ibb) )  &  
+     qr(:,ibb) = MATMUL( amb_bb(:,1:nbbc) ,  eigvec_left(:,ibb) )  &
                    - bigomega_tmp(ibb) * MATMUL( bb(:,1:nbbc) , eigvec_right(:,ibb) )
    enddo
 
@@ -500,7 +500,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
     mb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
     nb = NUMROC(nbba,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
     call DESCINIT(descb,nmat,nbba,block_row,SMALL_BLOCK,first_row,first_col,cntxt_sd,MAX(1,mb),info)
-  
+
     allocate(bb_local(mb,nb),ab_local(mb,nb))
     do jb=1,nb
       jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
@@ -509,14 +509,14 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
         bb_local(ib,jb) = bb(iglobal,nbbc+jglobal)
       enddo
     enddo
-  
+
     !
     ! Calculate (A-B) b
     call PDSYMM('L','L',nmat,nbba,              &
                 1.0_dp,amb_matrix,1,1,desc_apb, &
                 bb_local,1,1,descb,             &
                 0.0_dp,ab_local,1,1,descb)
-  
+
     amb_bb(:,nbbc+1:nbbc+nbba) = 0.0_dp
     do jb=1,nb
       jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
@@ -526,14 +526,14 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
       enddo
     enddo
     call xsum_world(amb_bb(:,nbbc+1:nbbc+nbba))
-  
+
     !
     ! Calculate (A+B) b
     call PDSYMM('L','L',nmat,nbba,              &
                 1.0_dp,apb_matrix,1,1,desc_apb, &
                 bb_local,1,1,descb,             &
                 0.0_dp,ab_local,1,1,descb)
-  
+
     apb_bb(:,nbbc+1:nbbc+nbba) = 0.0_dp
     do jb=1,nb
       jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
@@ -543,8 +543,8 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
       enddo
     enddo
     call xsum_world(apb_bb(:,nbbc+1:nbbc+nbba))
-  
-  
+
+
     deallocate(bb_local,ab_local)
 #endif
 
@@ -591,7 +591,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
  mb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
  nb = NUMROC(nbbc,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
  call DESCINIT(descb,nmat,nbbc,block_row,SMALL_BLOCK,first_row,first_col,cntxt_sd,MAX(1,mb),info)
-  
+
  allocate(bb_local(mb,nb))
  do jb=1,nb
    jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
@@ -648,7 +648,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
  deallocate(c_tilde)
  deallocate(amb_sqrt_tilde,amb_sqrt_inv_tilde)
  deallocate(eigvec_left,eigvec_right)
-  
+
 
  call stop_clock(timing_diago_h2p)
 

@@ -15,12 +15,12 @@ module m_mpi_world
 
 
 !===================================================
-! MPI distribution 
+! MPI distribution
 !  Example: nproc_ortho = 2 x  nproc_auxil = 8  = nproc_world = 16
 !
 ! comm_world
-!                                        
-! rank_auxil         0 |  1 |  2 |     |  7 
+!
+! rank_auxil         0 |  1 |  2 |     |  7
 ! rank_ortho       ---------------------------
 !      0             0 |  2 |  4 | ... | 14 |-> comm_auxil
 !      1             1 |  3 |  5 | ... | 15 |-> comm_auxil
@@ -32,7 +32,7 @@ module m_mpi_world
 
  !
  ! "world" communicator
- ! 
+ !
  integer,public    :: comm_world             ! communicator over all the procs (=world)
  integer,public    :: nproc_world  = 1       ! number of procs in the world communicator
  integer,public    :: rank_world   = 0       ! index           in the world communicator
@@ -52,7 +52,7 @@ module m_mpi_world
    module procedure xmax_world_ia2d
    module procedure xmax_world_ra1d
  end interface
- 
+
  interface xsum_world
    module procedure xsum_world_r
    module procedure xsum_world_ra1d

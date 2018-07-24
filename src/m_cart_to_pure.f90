@@ -37,7 +37,7 @@ function get_gaussian_type_tag(gaussian_type)
  case('PURE')
    get_gaussian_type_tag = PUREG
  end select
- 
+
 end function get_gaussian_type_tag
 
 
@@ -68,63 +68,63 @@ pure function double_factorial(intin)
  ! just hard coded for some small integers
 
  select case (intin)
- case(-1) 
+ case(-1)
    double_factorial = 1.0_dp
- case( 0) 
+ case( 0)
    double_factorial = 1.0_dp
- case( 1) 
+ case( 1)
    double_factorial = 1.0_dp
- case( 2) 
+ case( 2)
    double_factorial = 2.0_dp
- case( 3) 
+ case( 3)
    double_factorial = 3.0_dp
- case( 4) 
+ case( 4)
    double_factorial = 8.0_dp
- case( 5) 
+ case( 5)
    double_factorial = 15.0_dp
- case( 6) 
+ case( 6)
    double_factorial = 48.0_dp
- case( 7) 
+ case( 7)
    double_factorial = 105.0_dp
- case( 8) 
+ case( 8)
    double_factorial = 384.0_dp
- case( 9) 
+ case( 9)
    double_factorial = 945.0_dp
- case(10) 
+ case(10)
    double_factorial = 3840.0_dp
- case(11) 
+ case(11)
    double_factorial = 10395.0_dp
- case(12) 
+ case(12)
    double_factorial = 46080.0_dp
- case(13) 
+ case(13)
    double_factorial = 135135.0_dp
- case(14) 
+ case(14)
    double_factorial = 645120.0_dp
  case(15)
    double_factorial = 2027025.0_dp
- case(16) 
+ case(16)
    double_factorial = 10321920.0_dp
- case(17) 
+ case(17)
    double_factorial = 34459425.0_dp
- case(18) 
+ case(18)
    double_factorial = 185794560.0_dp
- case(19) 
+ case(19)
    double_factorial = 654729075.0_dp
- case(20) 
+ case(20)
    double_factorial = 3715891200.0_dp
- case(21) 
+ case(21)
    double_factorial = 13749310575.0_dp
  case(22)
    double_factorial = 81749606400.0_dp
- case(23) 
+ case(23)
    double_factorial = 316234143225.0_dp
- case(25) 
+ case(25)
    double_factorial = 7905853580625.0_dp
- case(27) 
+ case(27)
    double_factorial = 213458046676875.0_dp
- case(29) 
+ case(29)
    double_factorial = 6190283353629375.0_dp
- case(31) 
+ case(31)
    double_factorial = 191898783962510625.0_dp
  end select
 
@@ -206,7 +206,7 @@ subroutine setup_cart_to_pure_transforms()
              enddo
            enddo
          enddo
-         cart_to_pure_norm(il,PUREG)%matrix(kk,il+1-im) = rtmp / SQRT( double_factorial(2*il-1) ) 
+         cart_to_pure_norm(il,PUREG)%matrix(kk,il+1-im) = rtmp / SQRT( double_factorial(2*il-1) )
        enddo
 
        do im=1,il
@@ -231,7 +231,7 @@ subroutine setup_cart_to_pure_transforms()
      enddo
    enddo
  enddo
- 
+
 
  !
  ! Introduce the normalization coefficient part that depends on (nx,ny,nz)
@@ -255,7 +255,7 @@ subroutine setup_cart_to_pure_transforms()
 
 
  write(stdout,*) 'Transformations set up completed for both CARTESIAN and PURE Gaussians'
- write(stdout,*) 
+ write(stdout,*)
 
 end subroutine setup_cart_to_pure_transforms
 

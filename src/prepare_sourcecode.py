@@ -130,6 +130,3 @@ if do_copy:
   shutil.copyfile('git_sha.f90_tmp','git_sha.f90')
 
 os.remove('git_sha.f90_tmp')
-
-
-

@@ -115,7 +115,7 @@ subroutine broadcast_hamiltonian_sca(matrix_local)
  n_ham = SIZE(matrix_local,DIM=2)
 
 #ifdef HAVE_SCALAPACK
- 
+
  ! buffer is first divided by the number of procs,
  ! since there will be an allreduce operation at the end
  buffer(:,:) = buffer(:,:) / REAL( nproc_world , dp )
@@ -318,7 +318,7 @@ subroutine setup_exchange_ri_buffer_sca(occupation,c_matrix,p_matrix,exchange_ij
        if( jlocal /= 0 ) then
          do ilocal=1,m_c
            iglobal = rowindex_local_to_global('H',ilocal)
-           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin) 
+           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin)
          enddo
        endif
      endif
@@ -421,7 +421,7 @@ subroutine setup_exchange_longrange_ri_buffer_sca(occupation,c_matrix,p_matrix,e
        if( jlocal /= 0 ) then
          do ilocal=1,m_c
            iglobal = rowindex_local_to_global('H',ilocal)
-           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin) 
+           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin)
          enddo
        endif
      endif
@@ -532,7 +532,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 
  write(stdout,'(1x,a)') 'Calculate DFT XC potential: SCALAPACK buffer'
  if( batch_size /= 1 ) write(stdout,'(1x,a,1x,i4)') 'Using batches of size',batch_size
- 
+
 
  normalization(:) = 0.0_dp
 
@@ -554,7 +554,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      allocate(basis_function_r_batch(basis%nbf,nr))
      allocate(rhor_batch(1,nr))
 
-     if( dft_xc_needs_gradient ) then 
+     if( dft_xc_needs_gradient ) then
        allocate(basis_function_gradr_batch(basis%nbf,nr,3))
        allocate(grad_rhor_batch(1,nr,3))
      endif
@@ -571,7 +571,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      !
      ! Calculate the density at points r for spin up and spin down
      ! Calculate grad rho at points r for spin up and spin down
-     if( .NOT. dft_xc_needs_gradient ) then 
+     if( .NOT. dft_xc_needs_gradient ) then
        call calc_density_r_batch(1,basis%nbf,nstate,nr,occupation(:,ispin),buffer(:,1:nstate),basis_function_r_batch,rhor_batch)
      else
        call calc_density_gradr_batch(1,basis%nbf,nstate,nr,occupation(:,ispin),buffer(:,1:nstate), &
@@ -580,7 +580,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 
      ! Save the whole rhor and gradr
      rhor(ispin,igrid_start:igrid_end) = rhor_batch(1,1:nr)
-     if( dft_xc_needs_gradient ) then 
+     if( dft_xc_needs_gradient ) then
        grad_rhor(ispin,igrid_start:igrid_end,:) = grad_rhor_batch(1,1:nr,:)
      endif
 
@@ -592,7 +592,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      deallocate(basis_function_r_batch)
      deallocate(rhor_batch)
 
-     if( dft_xc_needs_gradient ) then 
+     if( dft_xc_needs_gradient ) then
        deallocate(basis_function_gradr_batch)
        deallocate(grad_rhor_batch)
      endif
@@ -626,7 +626,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      allocate(exc_batch(nr))
      allocate(rhor_batch(nspin,nr))
 
-     if( dft_xc_needs_gradient ) then 
+     if( dft_xc_needs_gradient ) then
        allocate(grad_rhor_batch(nspin,nr,3))
        allocate(sigma_batch(2*nspin-1,nr))
        allocate(vsigma_batch(2*nspin-1,nr))
@@ -639,7 +639,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      !
      ! Get the batch density and gradient from the saved rhor and gradr
      rhor_batch(:,1:nr) = rhor(:,igrid_start:igrid_end)
-     if( dft_xc_needs_gradient ) then 
+     if( dft_xc_needs_gradient ) then
         grad_rhor_batch(:,1:nr,:) = grad_rhor(:,igrid_start:igrid_end,:)
      endif
 
@@ -665,10 +665,10 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
        select case(xc_f90_info_family(calc_type%xc_info(idft_xc)))
        case(XC_FAMILY_LDA)
          call xc_f90_lda_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
-       
+
        case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
          call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
-  
+
          ! Remove too small densities to stabilize the computation
          ! especially useful for Becke88
          do ir=1,nr
@@ -678,9 +678,9 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
              vsigma_batch(:,ir) = 0.0_dp
            endif
          enddo
-  
+
        case default
-         call die('functional is not LDA nor GGA nor hybrid') 
+         call die('functional is not LDA nor GGA nor hybrid')
        end select
 
 
@@ -689,27 +689,27 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 
        dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc_coef(idft_xc)
 
-       !   
+       !
        ! Set up divergence term if needed (GGA case)
        !
        if( dft_xc_needs_gradient ) then
          do ir=1,nr
            if( nspin == 1 ) then
-             
+
              dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1)  &
                         + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_coef(idft_xc)
-  
-           else 
-           
+
+           else
+
              dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1) &
                        + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
                                    + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc)
-  
+
              dedgd_r_batch(:,ir,2) = dedgd_r_batch(:,ir,2) &
                        + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
                                    + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc_coef(idft_xc)
            endif
-  
+
          enddo
        endif
 
@@ -727,7 +727,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      forall(ir=1:nr)
        tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
      end forall
-  
+
      call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,buffer,basis%nbf)
 
      !
@@ -736,9 +736,9 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
        do ir=1,nr
          tmp_batch(:,ir) = MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
        enddo
-  
+
        call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,buffer,basis%nbf)
-  
+
      endif
      deallocate(tmp_batch)
 

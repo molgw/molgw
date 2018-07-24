@@ -39,7 +39,7 @@ function real_spherical_harmonics(ll,mm,cos_theta,phi) result(slm)
  endif
 
  slm = slm * factor * legendre_polynomial(ll,abs_mm,cos_theta)
-  
+
 end function real_spherical_harmonics
 
 
@@ -57,7 +57,7 @@ function legendre_polynomial(ll,mm,xx) result(plgndr)
  integer  :: i,ill
  real(dp) ::  fact,pll,pmm,pmmp1,somx2
 !=====
- 
+
  if( mm < 0 .OR. mm > ll .OR. ABS(xx) > 1.0 ) stop 'bad arguments in plgndr'
 
  pmm = 1.0
@@ -78,13 +78,13 @@ function legendre_polynomial(ll,mm,xx) result(plgndr)
    pmmp1 = xx * (2*mm+1) * pmm ! Compute P mm mm+1.
    if(ll == mm+1) then
      plgndr=pmmp1
-   else 
+   else
      ! Compute P mm ll , ll>mm + 1.
      do ill=mm+2,ll
        pll = (xx*(2*ill-1) * pmmp1 - (ill+mm-1)*pmm) / ( ill - mm )
        pmm = pmmp1
        pmmp1 = pll
-     enddo 
+     enddo
      plgndr = pll
    endif
  endif

@@ -2,6 +2,27 @@
 #    MOLGW: Release Notes
 -----------------------------------------
 
+## What's new in version 1.H
+### Overview
+Bug fixes
+
+### Changes affecting the compilation
+- MOLGW is now compatible with LIBINT versions 2.4.x
+- Possibility to compile MOLGW with LIBINT having the one-body integrals, but not the gradients.
+Use the preprocessor flags -DHAVE_LIBINT_ONEBODY and/or -DHAVE_LIBINT_GRADIENTS
+
+
+## What's new in version 1.G
+### Overview
+Bug fixes, cleaning, and speed-up.
+
+### Changes affecting the compilation
+- Still not possible to link with the versions 4 of LIBXC, due to missing functions on their side
+
+### Changes affecting the usage
+- The default value for **read_restart** is now set to 'no'
+- Speed-up in the semi-local DFT Vxc calculations thanks to the use of batches
+
 
 ## What's new in version 1.F
 ### Overview
@@ -33,5 +54,3 @@ Together with some internal refactoring of the code and small bug fixes.
 ### Changes affecting the usage
 - Input variable **no_4center** has been removed.
 From now on, the calculations use or do not use resolution-of-identity from the beginning to end.
-
-

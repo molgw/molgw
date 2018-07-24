@@ -10,7 +10,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  use m_definitions
  use m_mpi
  use m_mpi_ortho
- use m_timing 
+ use m_timing
  use m_inputparam
  use m_warning,only: issue_warning
  use m_basis_set
@@ -96,8 +96,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  select case(selfenergy_approx)
  case(LW,LW2)
    allocate(omegac(1:se%nomega))
-   
-   allocate(x1(se%nomega),weights(se%nomega))  
+
+   allocate(x1(se%nomega),weights(se%nomega))
    call coeffs_gausslegint(0.0_dp,1.0_dp,x1,weights,se%nomega)
 
    mu =-0.10_dp
@@ -212,7 +212,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
          do pstate=nsemin,nsemax
            do iomega=-se%nomega,se%nomega
              se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
-                      + bra(ipole,pstate) * bra(ipole,pstate)                                          & 
+                      + bra(ipole,pstate) * bra(ipole,pstate)                                          &
                         * ( fact_full_i  / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
                           + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
@@ -243,7 +243,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
          !
          ! Do nothing: no correlation in this case
          !
-       case default 
+       case default
          call die('BUG')
        end select
 
@@ -303,9 +303,9 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
    enddo
 
 
-   write(stdout,*) 'Tr[Log(1-GSigma)] ',tr_log_gsigma 
-   write(stdout,*) 'Tr[GSigma]        ',tr_gsigma 
-   write(stdout,*) 'Sum               ',(tr_log_gsigma+tr_gsigma) 
+   write(stdout,*) 'Tr[Log(1-GSigma)] ',tr_log_gsigma
+   write(stdout,*) 'Tr[GSigma]        ',tr_gsigma
+   write(stdout,*) 'Sum               ',(tr_log_gsigma+tr_gsigma)
    deallocate(matrix,eigvec,eigval)
 
  case(LW2)
@@ -333,7 +333,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
    enddo
 
 
-   write(stdout,*) 'Tr[tGSigma*tGSigma]        ',tr_gsigma 
+   write(stdout,*) 'Tr[tGSigma*tGSigma]        ',tr_gsigma
    deallocate(matrix,eigvec,eigval)
 
  end select
@@ -363,7 +363,7 @@ end subroutine gw_selfenergy
 !=========================================================================
 subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
- use m_timing 
+ use m_timing
  use m_warning,only: issue_warning
  use m_mpi
  use m_scalapack
@@ -438,8 +438,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  call PDGEMR2D(nauxil_2center,wpol%npole_reso,wpol%residue_left,1,1,desc_wauxil, &
                                                     wresidue_sd,1,1,desc_wsd,cntxt_sd)
 
- ! TODO maybe I should deallocate here wpol%residue_left 
- 
+ ! TODO maybe I should deallocate here wpol%residue_left
+
 
  se%sigma(:,:,:)  = 0.0_dp
 
@@ -506,7 +506,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
          do iomega=-se%nomega,se%nomega
            se%sigma(iomega,pstate,pspin) = se%sigma(iomega,pstate,pspin) &
-                    + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    & 
+                    + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    &
                       * ( fact_full_i  / ( se%energy0(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
                         + fact_empty_i / ( se%energy0(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
          enddo !iomega
@@ -539,7 +539,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  use m_definitions
  use m_mpi
  use m_mpi_ortho
- use m_timing 
+ use m_timing
  use m_inputparam
  use m_warning,only: issue_warning
  use m_basis_set
@@ -629,21 +629,21 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
            do pstate=nsemin,nsemax
 
              selfenergy(pstate,qstate,ispin) = selfenergy(pstate,qstate,ispin) &
-                        + bra(ipole,pstate) * bra(ipole,qstate)                            &  
+                        + bra(ipole,pstate) * bra(ipole,qstate)                            &
                           * ( REAL(  fact_full_i  / ( energy(qstate,ispin) - ieta  - energy(istate,ispin) + wpol%pole(ipole) ) , dp ) &
                             + REAL(  fact_empty_i / ( energy(qstate,ispin) + ieta  - energy(istate,ispin) - wpol%pole(ipole) ) , dp ) )
 
            enddo
          enddo
 
-       case(COHSEX) 
+       case(COHSEX)
          do qstate=nsemin,nsemax
            do pstate=nsemin,nsemax
              !
              ! SEX
              !
              selfenergy(pstate,qstate,ispin) = selfenergy(pstate,qstate,ispin) &
-                        + bra(ipole,pstate) * bra(ipole,qstate)                                & 
+                        + bra(ipole,pstate) * bra(ipole,qstate)                                &
                               * fact_full_i / wpol%pole(ipole) * 2.0_dp                        &
                               * beta_cohsex
 
@@ -651,13 +651,13 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
              ! COH
              !
              selfenergy(pstate,qstate,ispin) = selfenergy(pstate,qstate,ispin) &
-                        - bra(ipole,pstate) * bra(ipole,qstate) & 
+                        - bra(ipole,pstate) * bra(ipole,qstate) &
                               / wpol%pole(ipole)                &
                               * alpha_cohsex
            enddo
          enddo
 
-       case default 
+       case default
          call die('BUG')
        end select
 
@@ -671,7 +671,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
 
  ! Kotani's hermitianization trick
- call apply_qs_approximation(basis%nbf,nstate,s_matrix,c_matrix,selfenergy)
+ call apply_qs_approximation(s_matrix,c_matrix,selfenergy)
 
 
  call clean_deallocate('Temporary array',bra)

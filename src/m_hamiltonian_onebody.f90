@@ -53,7 +53,11 @@ subroutine setup_overlap(basis,s_matrix)
  integer :: ibf_cart,jbf_cart
 !=====
  call start_clock(timing_overlap)
+#if defined(HAVE_LIBINT_ONEBODY)
  write(stdout,'(/,a)') ' Setup overlap matrix S (LIBINT)'
+#else
+ write(stdout,'(/,a)') ' Setup overlap matrix S (internal)'
+#endif
 
  do jshell=1,basis%nshell
    lj      = basis%shell(jshell)%am
@@ -76,7 +80,7 @@ subroutine setup_overlap(basis,s_matrix)
 
      allocate(array_cart(ni_cart*nj_cart))
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -107,10 +111,10 @@ subroutine setup_overlap(basis,s_matrix)
    deallocate(alphaB,cB)
  enddo
 
- title='=== Overlap matrix S (LIBINT) ==='
+ title='=== Overlap matrix S ==='
  call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix)
 
- 
+
  call stop_clock(timing_overlap)
 
 
@@ -143,7 +147,11 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 !=====
 
  call start_clock(timing_overlap)
+#if defined(HAVE_LIBINT_ONEBODY)
  write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBINT)'
+#else
+ write(stdout,'(/,a)') ' Setup mixed overlap matrix S (internal)'
+#endif
 
  if( basis1%gaussian_type /= basis2%gaussian_type ) call die('setup_overlap_mixedbasis_libint: case not implemented')
 
@@ -168,8 +176,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 
      allocate(array_cart(ni_cart*nj_cart))
 
-#ifdef HAVE_LIBINT_ONEBODY
-
+#if defined(HAVE_LIBINT_ONEBODY)
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -199,7 +206,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
    deallocate(alphaB,cB)
  enddo
 
- 
+
  call stop_clock(timing_overlap)
 
 
@@ -256,12 +263,12 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
      call libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
 #else
-     call die('overlap gradient not implemented without LIBINT one-body terms')
+     call die('overlap gradient not implemented without LIBINT one-body gradient terms')
 #endif
 
      deallocate(alphaA,cA)
@@ -328,7 +335,11 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
 !=====
 
  call start_clock(timing_hamiltonian_kin)
+#if defined(HAVE_LIBINT_ONEBODY)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBINT)'
+#else
+ write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (internal)'
+#endif
 
 
  do jshell=1,basis%nshell
@@ -353,7 +364,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
      allocate(array_cart(ni_cart*nj_cart))
 
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
      call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -384,7 +395,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
    deallocate(alphaB,cB)
  enddo
 
- title='===  Kinetic energy contribution (LIBINT) ==='
+ title='===  Kinetic energy contribution ==='
  call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic)
 
  call stop_clock(timing_hamiltonian_kin)
@@ -443,7 +454,7 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
      call libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
@@ -521,8 +532,8 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
    call start_clock(timing_hamiltonian_nuc)
  end if
 
-#ifdef HAVE_LIBINT_ONEBODY
-   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
+#if defined(HAVE_LIBINT_ONEBODY)
+ write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
    write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
 #endif
@@ -565,11 +576,11 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
        endif
 
        C(:) = xatom(:,iatom)
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
-       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:) 
+       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
 #else
        ij = 0
        do i_cart=1,ni_cart
@@ -586,7 +597,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
      enddo
      deallocate(alphaA,cA)
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_ONEBODY)
      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #else
      call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
@@ -696,14 +707,14 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 
        C(:) = xatom(:,iatom)
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
        call libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
                                 amB,contrdepthB,B,alphaB,cB, &
                                 C,                           &
                                 array_cart_gradAx,array_cart_gradAy,array_cart_gradAz, &
                                 array_cart_gradBx,array_cart_gradBy,array_cart_gradBz)
 #else
-       call die('nuclear potential gradient not implemented without LIBINT one-body terms')
+       call die('nuclear potential gradient not implemented without LIBINT one-body and gradient terms')
 #endif
        array_cart_gradAx(:) = array_cart_gradAx(:) * (-zvalence(iatom))
        array_cart_gradAy(:) = array_cart_gradAy(:) * (-zvalence(iatom))
@@ -915,7 +926,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  call start_clock(timing_ecp)
 
  !
- ! Since there will be an allreduce operation in the end, 
+ ! Since there will be an allreduce operation in the end,
  ! anticipate by dividing the input value of Hnucl by the number of procs
  if( nproc_world > 1 ) then
    hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) / nproc_world
@@ -969,12 +980,12 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        element_has_ecp = .TRUE.
        exit
      endif
-   enddo 
+   enddo
 
    if( .NOT. element_has_ecp ) cycle
 
    necp = ecp(ie)%necp
-     
+
 
    nproj = 0
    do iecp=1,necp
@@ -983,7 +994,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
      endif
    enddo
    allocate(int_fixed_r(basis%nbf,nproj))
-  
+
    do iradial=1,nradial_ecp
      if( MODULO(iradial-1,nproc_world) /= rank_world ) cycle
 
@@ -993,10 +1004,10 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        rr(2) = xa(iradial) * y1(i1) + xatom(2,iatom)
        rr(3) = xa(iradial) * z1(i1) + xatom(3,iatom)
        call calculate_basis_functions_r(basis,rr,basis_function_r)
-  
+
        cos_theta = z1(i1)
        phi       = ATAN2(y1(i1),x1(i1))
-  
+
        iproj = 0
        do iecp=1,necp
 
@@ -1015,13 +1026,13 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
              iproj = iproj + 1
              int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
                                        * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
-                                          * w1(i1) * 4.0_dp * pi  
+                                          * w1(i1) * 4.0_dp * pi
            enddo
          endif
 
        enddo
      enddo ! (theta, phi) points
-  
+
      iproj = 0
      do iecp=1,necp
        if( ecp(ie)%lk(iecp) /= -1 ) then
@@ -1037,12 +1048,12 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
          enddo
        endif
      enddo
-  
+
    enddo
-  
+
    deallocate(int_fixed_r)
 
- enddo 
+ enddo
 
  call xsum_world(hamiltonian_nucleus)
 

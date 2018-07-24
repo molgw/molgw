@@ -6,7 +6,7 @@ FC=gfortran -ffree-line-length-none
 CXX=g++
 CC=gcc
 FCOPTS=
-CXXOPTS= 
+CXXOPTS=
 CCOPTS=
 OPENMP=
 CPPFLAGS=
@@ -41,7 +41,7 @@ FFTW_INCS=-I$(FFTW_ROOT)/include/
 
 ####################################################
 # Parallel make execution requires a bit of ordering
-all: 
+all:
 	+make  prepare_sourcecode
 	+make  level000
 	+make  level005
@@ -63,9 +63,9 @@ all:
 	+make  ../spectrum
 
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
-          lebedev_quadrature.o pdbssolver1.o boys_function.o 
+          lebedev_quadrature.o pdbssolver1.o boys_function.o
 
-level005: m_warning.o m_gos.o real_spherical_harmonics.o 
+level005: m_warning.o m_gos.o real_spherical_harmonics.o
 
 level008: m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o
 
@@ -245,7 +245,7 @@ restart.o: m_definitions.f90 m_timing.f90 m_mpi.f90 m_atoms.f90 m_basis_set.f90 
 
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_mpi.f90 m_cart_to_pure.f90 m_tools.f90 \
        m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 m_hamiltonian.f90 m_dft_grid.f90 \
-       mp2.f90 
+       mp2.f90
 	$(FC_W_OPTS) -c mp2.f90 $(LIBXC_INCS)
 
 m_virtual_orbital_space.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_scalapack.f90 m_tools.f90 \
@@ -293,19 +293,19 @@ m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_warning.f90 m_ca
 	$(FC_W_OPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
 
 m_ci.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_tools.f90 m_basis_set.f90 m_eri_ao_mo.f90 m_inputparam.f90 m_scalapack.f90 m_selfenergy_tools.f90 \
-                       m_ci.f90 
+                       m_ci.f90
 	$(FC_W_OPTS) -c m_ci.f90 $(LIBXC_INCS)
 
 m_adc.o: m_definitions.f90 m_tools.f90 m_basis_set.f90 m_eri_ao_mo.f90 m_inputparam.f90 m_selfenergy_tools.f90 \
-                       m_adc.f90 
+                       m_adc.f90
 	$(FC_W_OPTS) -c m_adc.f90 $(LIBXC_INCS)
 
 m_spectral_function.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_tools.f90 m_scalapack.f90 m_eri.f90 m_eri_calculate.f90 m_inputparam.f90 \
-                       m_spectral_function.f90 
+                       m_spectral_function.f90
 	$(FC_W_OPTS) -c m_spectral_function.f90 $(LIBXC_INCS)
 
 m_eri_ao_mo.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 \
-                   m_eri.f90 m_eri_ao_mo.f90 
+                   m_eri.f90 m_eri_ao_mo.f90
 	$(FC_W_OPTS) -c m_eri_ao_mo.f90 $(LIBXC_INCS)
 
 m_tddft_fxc.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_dft_grid.f90 m_hamiltonian.f90 \
@@ -316,10 +316,10 @@ m_eri_calculate.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_timing.f90 m_wa
                    m_libint_tools.f90 m_eri.f90 m_eri_calculate.f90
 	$(FC_W_OPTS) -c m_eri_calculate.f90 $(LIBXC_INCS)
 
-m_eri.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_memory.f90 m_warning.f90 m_scalapack.f90 m_cart_to_pure.f90 m_basis_set.f90 m_inputparam.f90 m_libint_tools.f90 m_eri.f90 
+m_eri.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_memory.f90 m_warning.f90 m_scalapack.f90 m_cart_to_pure.f90 m_basis_set.f90 m_inputparam.f90 m_libint_tools.f90 m_eri.f90
 	$(FC_W_OPTS) -c m_eri.f90 $(LIBXC_INCS)
 
-m_basis_set.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_gaussian.f90 m_mpi.f90 m_ecp.f90 m_cart_to_pure.f90 m_tools.f90 m_atoms.f90 m_basis_set.f90 
+m_basis_set.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_gaussian.f90 m_mpi.f90 m_ecp.f90 m_cart_to_pure.f90 m_tools.f90 m_atoms.f90 m_basis_set.f90
 	$(FC_W_OPTS) -c m_basis_set.f90 $(LIBXC_INCS)
 
 m_gaussian.o: m_definitions.f90 m_tools.f90 m_gos.f90 m_mpi.f90 m_cart_to_pure.f90 m_gaussian.f90
@@ -432,8 +432,8 @@ input:
 	$(PYTHON) ../utils/input_variables.py
 
 docs:
-	pdflatex ../docs/notes.tex	
-	pdflatex ../docs/notes.tex	
+	pdflatex ../docs/notes.tex
+	pdflatex ../docs/notes.tex
 	rm -f notes.aux notes.log notesNotes.bib
 	mv notes.pdf ../docs/notes.pdf
 

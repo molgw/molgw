@@ -35,7 +35,7 @@ module m_definitions
  complex(dp),parameter  :: im    = (0.0_dp,1.0_dp)
 
 
- ! 
+ !
  ! Thresholds
  real(dp),parameter :: completely_empty = 1.0e-5_dp
 
@@ -83,7 +83,7 @@ end subroutine set_molgw_lmax
 
 !=========================================================================
 subroutine set_standard_output(unit_stdout)
- implicit none 
+ implicit none
  integer,intent(in) :: unit_stdout
 !=====
 !=====

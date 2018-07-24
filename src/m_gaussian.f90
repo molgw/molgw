@@ -55,8 +55,8 @@ subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
  ga%alpha = alpha
 
  ga%common_norm_factor = ( 2.0_dp / pi )**0.75_dp &
-                 * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) ) 
-                 
+                 * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) )
+
  ga%norm_factor = ga%common_norm_factor &
                    / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
 
@@ -70,8 +70,8 @@ function compare_gaussian(g1,g2) result(same_gaussian)
  implicit none
  logical                   :: same_gaussian
  type(gaussian),intent(in) :: g1,g2
-!===== 
-!===== 
+!=====
+!=====
 
  same_gaussian = .TRUE.
 
@@ -135,8 +135,8 @@ function eval_gaussian_grad(ga,x)
  gp_z = -2.0_dp * ga%alpha * dx(3)**(ga%nz+1)
  if(ga%nz>0) gp_z = gp_z + REAL(ga%nz,dp) * dx(3)**(ga%nz-1)
 
- eval_gaussian_grad(1) = gp_x * g_y  * g_z 
- eval_gaussian_grad(2) = g_x  * gp_y * g_z 
+ eval_gaussian_grad(1) = gp_x * g_y  * g_z
+ eval_gaussian_grad(2) = g_x  * gp_y * g_z
  eval_gaussian_grad(3) = g_x  * g_y  * gp_z
 
  !
@@ -178,8 +178,8 @@ function eval_gaussian_lapl(ga,x)
  if(ga%nz>0) gpp_z = gpp_z - 2.0_dp * ga%alpha * REAL(ga%nz,dp) * dx(3)**(ga%nz)
  if(ga%nz>1) gpp_z = gpp_z + 2.0_dp * ga%alpha * REAL(ga%nz*(ga%nz-1),dp) * dx(3)**(ga%nz-1)
 
- eval_gaussian_lapl(1) = gpp_x * g_y   * g_z 
- eval_gaussian_lapl(2) = g_x   * gpp_y * g_z 
+ eval_gaussian_lapl(1) = gpp_x * g_y   * g_z
+ eval_gaussian_lapl(2) = g_x   * gpp_y * g_z
  eval_gaussian_lapl(3) = g_x   * g_y   * gpp_z
 
  !
@@ -332,7 +332,7 @@ subroutine overlap_recurrence(ga,gb,s_ab)
  enddo
 
 
- s_ab = s_tmp_z(ga%nz,gb%nz) * ga%norm_factor * gb%norm_factor 
+ s_ab = s_tmp_z(ga%nz,gb%nz) * ga%norm_factor * gb%norm_factor
 
 
 end subroutine overlap_recurrence
@@ -501,12 +501,12 @@ subroutine kinetic_recurrence(ga,gb,k_ab)
  !
  ! overlap is a by-product
  !
- s_ab = s_tmp_z(ga%nz,gb%nz) * ga%norm_factor * gb%norm_factor 
+ s_ab = s_tmp_z(ga%nz,gb%nz) * ga%norm_factor * gb%norm_factor
 
  !
  ! final result
  !
- k_ab = k_tmp_z(ga%nz,gb%nz) * ga%norm_factor * gb%norm_factor 
+ k_ab = k_tmp_z(ga%nz,gb%nz) * ga%norm_factor * gb%norm_factor
 
 
 end subroutine kinetic_recurrence
@@ -588,11 +588,11 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
          if(ixbp>0) v_tmp_x_m(ixa,ixbp+1) = v_tmp_x_m(ixa,ixbp+1) + fact * ixbp * ( v_tmp_x_m(ixa,ixbp-1) -  v_tmp_x_mp1(ixa,ixbp-1) )
          if(ixa>0)  v_tmp_x_m(ixa,ixbp+1) = v_tmp_x_m(ixa,ixbp+1) + fact * ixa  * ( v_tmp_x_m(ixa-1,ixbp) -  v_tmp_x_mp1(ixa-1,ixbp) )
        endif
-  
+
      enddo
-  
+
    enddo
-  
+
    !
    ! direction Y
    !
@@ -618,11 +618,11 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
          if(iybp>0) v_tmp_y_m(iya,iybp+1) = v_tmp_y_m(iya,iybp+1) + fact * iybp * ( v_tmp_y_m(iya,iybp-1) -  v_tmp_y_mp1(iya,iybp-1) )
          if(iya>0)  v_tmp_y_m(iya,iybp+1) = v_tmp_y_m(iya,iybp+1) + fact * iya  * ( v_tmp_y_m(iya-1,iybp) -  v_tmp_y_mp1(iya-1,iybp) )
        endif
-  
+
      enddo
-  
+
    enddo
-  
+
    !
    ! direction Z
    !
@@ -648,9 +648,9 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
          if(izbp>0) v_tmp_z_m(iza,izbp+1) = v_tmp_z_m(iza,izbp+1) + fact * izbp * ( v_tmp_z_m(iza,izbp-1) -  v_tmp_z_mp1(iza,izbp-1) )
          if(iza>0)  v_tmp_z_m(iza,izbp+1) = v_tmp_z_m(iza,izbp+1) + fact * iza  * ( v_tmp_z_m(iza-1,izbp) -  v_tmp_z_mp1(iza-1,izbp) )
        endif
-  
+
      enddo
-  
+
    enddo
 
    v_tmp_x_mp1(0:ixam,0:ixbm) =  v_tmp_x_m(0:ixam,0:ixbm)
@@ -742,4 +742,3 @@ end subroutine evaluate_gos
 
 !=========================================================================
 end module m_gaussian
-

@@ -16,7 +16,8 @@ today=time.strftime("%Y")+'_'+time.strftime("%m")+'_'+time.strftime("%d")
 start_time = time.time()
 keeptmp = False
 
-selected_input_file=''
+selected_input_files= []
+excluded_input_files= []
 mpirun=''
 nprocs=1
 debug=False
@@ -166,6 +167,7 @@ def check_output(out,testinfo):
 ###################################
 # Parse the command line
 
+option_list = ['--keep','--np','--mpirun','--input','--exclude','--debug']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
@@ -173,26 +175,50 @@ if len(sys.argv) > 1:
     print('  --keep             Keep the temporary folder')
     print('  --np     n         Set the number of cores to n')
     print('  --mpirun launcher  Set the MPI launcher name')
-    print('  --input  file      Only run this input file')
-    print('  --debug            Outputs debug information for this script')
+    print('  --input files      Only run these input files')
+    print('  --exclude files    Run all input files but these ones')
+    print('  --debug            Output debug information for this script')
     sys.exit(0)
+
+  for argument in sys.argv:
+    if '--' in argument and  argument not in ['--keep','--np','--mpirun','--input','--exclude','--debug']:
+      print('Unknown option: ' + argument)
+      sys.exit(1)
+
   if '--keep' in sys.argv or '-keep' in sys.argv:
     keeptmp = True
+
   if '--np' in sys.argv:
     i = sys.argv.index('--np') + 1
     nprocs = int( sys.argv[i] )
     mpirun='mpirun'
+
   if '--mpirun' in sys.argv:
     i = sys.argv.index('--mpirun') + 1
     mpirun = sys.argv[i]
+
   if '--input' in sys.argv:
     i = sys.argv.index('--input') + 1
-    selected_input_file = sys.argv[i]
-  if '-input' in sys.argv:
-    i = sys.argv.index('-input') + 1
-    selected_input_file = sys.argv[i]
+    for j in range(i,len(sys.argv)):
+      if '--' in sys.argv[j]:
+        break
+      selected_input_files.append(sys.argv[j])
+
+  if '--exclude' in sys.argv:
+    i = sys.argv.index('--exclude') + 1
+    for j in range(i,len(sys.argv)):
+      if '--' in sys.argv[j]:
+        break
+      excluded_input_files.append(sys.argv[j])
+
   if '--debug' in sys.argv:
     debug = True
+
+  if len(selected_input_files) * len(excluded_input_files) > 0:
+    print('--input and --exclude options are mutually exclusive. Select the one you really want.')
+    sys.exit(1)
+
+
 
 print('\n===============================')
 print('Starting MOLGW test suite\n')
@@ -243,21 +269,43 @@ for line in ftestsuite:
 
 ftestsuite.close()
 
-if len(selected_input_file) == 0:
+
+###################################
+# Check the selection and the exclusion lists
+###################################
+if len(selected_input_files) == 0 and len(excluded_input_files) == 0:
   ninput2 = ninput
+
+elif len(selected_input_files) > 0:
+  ninput2 = len(selected_input_files)
+
+  for i in range(len(selected_input_files)): 
+    if not '.in' in selected_input_files[i]:
+      selected_input_files[i] = selected_input_files[i] + '.in'
+
+    if '/' in selected_input_files[i]:
+      parsing  = selected_input_files[i].split('/')
+      selected_input_files[i] = parsing[len(parsing)-1]
+
+    if not selected_input_files[i] in input_files:
+      print('Input file name:',selected_input_files[i],'not present in the test suite')
+      sys.exit(1)
+
 else:
-  ninput2 = 1
+  ninput2 = ninput - len(excluded_input_files)
 
-  if not '.in' in selected_input_file:
-    selected_input_file = selected_input_file + '.in'
+  for i in range(len(excluded_input_files)):
+    if not '.in' in excluded_input_files[i]:
+      excluded_input_files[i] = excluded_input_files[i] + '.in'
 
-  if '/' in selected_input_file:
-    parsing  = selected_input_file.split('/')
-    selected_input_file = parsing[len(parsing)-1]
+    if '/' in excluded_input_files[i]:
+      parsing  = excluded_input_files[i].split('/')
+      excluded_input_files[i] = parsing[len(parsing)-1]
 
-  if not selected_input_file in input_files:
-    print('Input file name:',selected_input_file,'not present in the test suite')
-    sys.exit(1)
+    if not excluded_input_files[i] in input_files:
+      print('Input file name:',excluded_input_files[i],'not present in the test suite')
+      sys.exit(1)
+
 
 
 print('Input files to be run:',ninput2)
@@ -282,7 +330,9 @@ fdiff.write('#  test index          calculated                   reference      
 
 for iinput in range(ninput):
 
-  if len(selected_input_file) != 0 and selected_input_file != input_files[iinput]:
+  if len(selected_input_files) != 0 and not input_files[iinput] in selected_input_files:
+    continue
+  if len(excluded_input_files) != 0 and input_files[iinput] in excluded_input_files:
     continue
 
   inp     = input_files[iinput]

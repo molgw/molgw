@@ -16,14 +16,14 @@
 
 /* Code */
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
 
-/* ==========================================================================                    
+/* ==========================================================================
  *                           2-center integrals
  * ========================================================================== */
 
 extern "C" {
-void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [],
                          int amC, int contrdepthC , double C [] , double alphaC [], double cC [],
                          double rcut,
                          double eriAC [] ) {
@@ -127,7 +127,7 @@ void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
      pfac = 2 * pi_2p5 / (alphaP * alphaQ * sqrt(alphaP + alphaQ)) * cA[icontrdepthA] * cC[icontrdepthC] ;
      U = PQ2 * gammapq_rc2 ;
-   
+
      boys_function_c(F, am, U);
 
      pfac *= sqrt(gammapq_ratio);
@@ -141,7 +141,7 @@ void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA 
      int12->_0_Overlap_0_x[0] = 0.0 ;
      int12->_0_Overlap_0_y[0] = 0.0 ;
      int12->_0_Overlap_0_z[0] = 0.0 ;
- 
+
      int12->veclen = 1 ;
      int12->contrdepth = contrdepth2 ;
 
@@ -167,14 +167,14 @@ void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
 
-/* ==========================================================================                    
+/* ==========================================================================
  *                           3-center integrals
  * ========================================================================== */
 
 
 extern "C" {
-void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
-                         int amC, int contrdepthC , double C [] , double alphaC [], double cC [], 
+void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [],
+                         int amC, int contrdepthC , double C [] , double alphaC [], double cC [],
                          int amD, int contrdepthD , double D [] , double alphaD [], double cD [],
                          double rcut,
                          double eriACD [] ) {
@@ -237,7 +237,7 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
        Q[1] = (alphaC[icontrdepthC] * C[1] + alphaD[icontrdepthD] * D[1]) / alphaQ ;
        Q[2] = (alphaC[icontrdepthC] * C[2] + alphaD[icontrdepthD] * D[2]) / alphaQ ;
 
-  
+
        int12->PA_x[0] = 0.0 ;
        int12->PA_y[0] = 0.0 ;
        int12->PA_z[0] = 0.0 ;
@@ -250,29 +250,29 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
        int12->oo2z[0] = 0.5 / alphaP ;
 
        AB2 = 0.0 ;
-  
+
        gammapq = alphaP * alphaQ / (alphaP + alphaQ);
-  
+
        /*
          Treat the LR integrals by simply modifying gammapq into gammapq_rc2
          And introducing gammapq_ratio = gammapq_rc2 / gammapq
         */
-  
+
        gammapq_rc2   =   alphaP * alphaQ   / ( alphaP + alphaQ + alphaP * alphaQ * rcut * rcut );
        gammapq_ratio = ( alphaP + alphaQ ) / ( alphaP + alphaQ + alphaP * alphaQ * rcut * rcut );
-  
-  
+
+
        int12->QC_x[0] = Q[0] - C[0] ;
        int12->QC_y[0] = Q[1] - C[1] ;
        int12->QC_z[0] = Q[2] - C[2] ;
        int12->CD_x[0] = C[0] - D[0] ;
        int12->CD_y[0] = C[1] - D[1] ;
        int12->CD_z[0] = C[2] - D[2] ;
-       CD2 = int12->CD_x[0] * int12->CD_x[0] 
-           + int12->CD_y[0] * int12->CD_y[0] 
+       CD2 = int12->CD_x[0] * int12->CD_x[0]
+           + int12->CD_y[0] * int12->CD_y[0]
            + int12->CD_z[0] * int12->CD_z[0] ;
        int12->oo2e[0] = 0.5 / alphaQ;
-  
+
 
        PQx = P[0] - Q[0];
        PQy = P[1] - Q[1];
@@ -281,7 +281,7 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
        Wx = (alphaP * P[0] + alphaQ * Q[0]) / (alphaP + alphaQ);
        Wy = (alphaP * P[1] + alphaQ * Q[1]) / (alphaP + alphaQ);
        Wz = (alphaP * P[2] + alphaQ * Q[2]) / (alphaP + alphaQ);
-  
+
        int12->WP_x[0] = Wx - P[0];
        int12->WP_y[0] = Wy - P[1];
        int12->WP_z[0] = Wz - P[2];
@@ -298,10 +298,10 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
        pfac = 2 * pi_2p5 / (alphaP * alphaQ * sqrt(alphaP + alphaQ))
-                 * exp(-alphaC[icontrdepthC] * alphaD[icontrdepthD] * CD2 / alphaQ) 
+                 * exp(-alphaC[icontrdepthC] * alphaD[icontrdepthD] * CD2 / alphaQ)
                   * cA[icontrdepthA] * cC[icontrdepthC] * cD[icontrdepthD] ;
        U = PQ2 * gammapq_rc2 ;
-   
+
        boys_function_c(F, am, U);
 
        pfac *= sqrt(gammapq_ratio);
@@ -316,7 +316,7 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
        int12->_0_Overlap_0_x[0] = 0.0 ;
        int12->_0_Overlap_0_y[0] = 0.0 ;
        int12->_0_Overlap_0_z[0] = 0.0 ;
- 
+
        int12->veclen = 1 ;
        int12->contrdepth = contrdepth3 ;
 
@@ -341,20 +341,20 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 }
 
 
-/* ==========================================================================                    
+/* ==========================================================================
  *                           4-center integrals
  * ========================================================================== */
 
 
 extern "C" {
-void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
-                         int amB, int contrdepthB , double B [] , double alphaB [], double cB [], 
-                         int amC, int contrdepthC , double C [] , double alphaC [], double cC [], 
+void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [],
+                         int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
+                         int amC, int contrdepthC , double C [] , double alphaC [], double cC [],
                          int amD, int contrdepthD , double D [] , double alphaD [], double cD [],
                          double rcut,
-                         double eriAx [], double eriAy [], double eriAz [], 
-                         double eriBx [], double eriBy [], double eriBz [], 
-                         double eriCx [], double eriCy [], double eriCz [], 
+                         double eriAx [], double eriAy [], double eriAz [],
+                         double eriBx [], double eriBy [], double eriBz [],
+                         double eriCx [], double eriCy [], double eriCz [],
                          double eriDx [], double eriDy [], double eriDz [] ) {
 
  const unsigned int contrdepth4 = contrdepthA * contrdepthB * contrdepthC * contrdepthD ;
@@ -418,7 +418,7 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
          Q[1] = (alphaC[icontrdepthC] * C[1] + alphaD[icontrdepthD] * D[1]) / alphaQ ;
          Q[2] = (alphaC[icontrdepthC] * C[2] + alphaD[icontrdepthD] * D[2]) / alphaQ ;
 
-    
+
          int12->PA_x[0] = P[0] - A[0] ;
          int12->PA_y[0] = P[1] - A[1] ;
          int12->PA_z[0] = P[2] - A[2] ;
@@ -430,32 +430,32 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
          int12->AB_z[0] = A[2] - B[2] ;
          int12->oo2z[0] = 0.5 / alphaP ;
 
-         AB2 = int12->AB_x[0] * int12->AB_x[0] 
-             + int12->AB_y[0] * int12->AB_y[0] 
+         AB2 = int12->AB_x[0] * int12->AB_x[0]
+             + int12->AB_y[0] * int12->AB_y[0]
              + int12->AB_z[0] * int12->AB_z[0] ;
-    
+
          gammapq = alphaP * alphaQ / (alphaP + alphaQ);
-    
+
          /*
            Treat the LR integrals by simply modifying gammapq into gammapq_rc2
            And introducing gammapq_ratio = gammapq_rc2 / gammapq
           */
-    
+
          gammapq_rc2   =   alphaP * alphaQ   / ( alphaP + alphaQ + alphaP * alphaQ * rcut * rcut );
          gammapq_ratio = ( alphaP + alphaQ ) / ( alphaP + alphaQ + alphaP * alphaQ * rcut * rcut );
-    
-    
+
+
          int12->QC_x[0] = Q[0] - C[0] ;
          int12->QC_y[0] = Q[1] - C[1] ;
          int12->QC_z[0] = Q[2] - C[2] ;
          int12->CD_x[0] = C[0] - D[0] ;
          int12->CD_y[0] = C[1] - D[1] ;
          int12->CD_z[0] = C[2] - D[2] ;
-         CD2 = int12->CD_x[0] * int12->CD_x[0] 
-             + int12->CD_y[0] * int12->CD_y[0] 
+         CD2 = int12->CD_x[0] * int12->CD_x[0]
+             + int12->CD_y[0] * int12->CD_y[0]
              + int12->CD_z[0] * int12->CD_z[0] ;
          int12->oo2e[0] = 0.5 / alphaQ;
-    
+
 
          PQx = P[0] - Q[0];
          PQy = P[1] - Q[1];
@@ -464,7 +464,7 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
          Wx = (alphaP * P[0] + alphaQ * Q[0]) / (alphaP + alphaQ);
          Wy = (alphaP * P[1] + alphaQ * Q[1]) / (alphaP + alphaQ);
          Wz = (alphaP * P[2] + alphaQ * Q[2]) / (alphaP + alphaQ);
-  
+
          int12->WP_x[0] = Wx - P[0];
          int12->WP_y[0] = Wy - P[1];
          int12->WP_z[0] = Wz - P[2];
@@ -531,11 +531,11 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
          pfac = 2 * pi_2p5 / (alphaP * alphaQ * sqrt(alphaP + alphaQ))
-                   * exp(-alphaA[icontrdepthA] * alphaB[icontrdepthB] * AB2 / alphaP) 
-                   * exp(-alphaC[icontrdepthC] * alphaD[icontrdepthD] * CD2 / alphaQ) 
+                   * exp(-alphaA[icontrdepthA] * alphaB[icontrdepthB] * AB2 / alphaP)
+                   * exp(-alphaC[icontrdepthC] * alphaD[icontrdepthD] * CD2 / alphaQ)
                     * cA[icontrdepthA] * cB[icontrdepthB] * cC[icontrdepthC] * cD[icontrdepthD] ;
          U = PQ2 * gammapq_rc2 ;
-     
+
          boys_function_c(F, am+1, U);
 
          pfac *= sqrt(gammapq_ratio);
@@ -548,7 +548,7 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
          int12->_0_Overlap_0_x[0] = 0.0 ;
          int12->_0_Overlap_0_y[0] = 0.0 ;
          int12->_0_Overlap_0_z[0] = 0.0 ;
-   
+
          int12->veclen = 1 ;
          int12->contrdepth = contrdepth4 ;
 

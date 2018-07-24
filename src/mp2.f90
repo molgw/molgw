@@ -74,7 +74,7 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
      do jbspin=1,nspin
 
        do jstate=ncore+1,nocc(jbspin)
-       
+
          do astate=ncore+1,nstate_mp2
            if( occupation(astate,iaspin) > spin_fact - completely_empty ) cycle
 
@@ -92,7 +92,7 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
                cycle
              endif
 
-             energy_denom =  fact / energy_denom 
+             energy_denom =  fact / energy_denom
 
              tmp_iajb = eri_eigen_ri(istate,astate,iaspin,jstate,bstate,jbspin)
 
@@ -201,7 +201,7 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
              if( iaspin == jbspin ) numer1 = numer1 - eri_eigen_ri(astate,jstate,iaspin,bstate,istate,jbspin) / spin_fact
 
              !
-             ! Contrib1 
+             ! Contrib1
              cspin = iaspin
              dspin = jbspin
              do cstate=nocc(iaspin)+1,nstate_mp3
@@ -216,13 +216,13 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
                                       * eri_eigen_ri(astate,cstate,iaspin,bstate,dstate,jbspin)
                  if( cspin == dspin ) &
                    contrib1 = contrib1 - 0.125_dp * numer1 / denom1 * numer2 / denom2 &
-                                      * eri_eigen_ri(astate,dstate,iaspin,bstate,cstate,jbspin) / spin_fact 
+                                      * eri_eigen_ri(astate,dstate,iaspin,bstate,cstate,jbspin) / spin_fact
 
                enddo
              enddo
 
              !
-             ! Contrib2 
+             ! Contrib2
              kspin = iaspin
              lspin = jbspin
              do kstate=ncore+1,nocc(iaspin)
@@ -234,10 +234,10 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
                  if( kspin == lspin ) numer2 = numer2 - eri_eigen_ri(astate,lstate,iaspin,bstate,kstate,jbspin) / spin_fact
 
                  contrib2 = contrib2 + 0.125_dp * numer1 / denom1 * numer2 / denom2 &
-                                      * eri_eigen_ri(kstate,istate,iaspin,lstate,jstate,jbspin) 
+                                      * eri_eigen_ri(kstate,istate,iaspin,lstate,jstate,jbspin)
                  if( kspin == lspin ) &
                    contrib2 = contrib2 - 0.125_dp * numer1 / denom1 * numer2 / denom2 &
-                                      * eri_eigen_ri(kstate,jstate,iaspin,lstate,istate,jbspin) / spin_fact 
+                                      * eri_eigen_ri(kstate,jstate,iaspin,lstate,istate,jbspin) / spin_fact
 
                enddo
              enddo
@@ -291,7 +291,7 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
 
          x_ijab = 0.0_dp
          !
-         ! Contrib1 
+         ! Contrib1
          do cstate=nocc(iaspin)+1,nstate_mp3
            do dstate=nocc(iaspin)+1,nstate_mp3
 
@@ -304,7 +304,7 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
          enddo
 
          !
-         ! Contrib2 
+         ! Contrib2
          do kstate=ncore+1,nocc(iaspin)
            do lstate=ncore+1,nocc(iaspin)
 
@@ -434,7 +434,7 @@ subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
      do jbspin=1,nspin
        do jstate=ncoreg+1,nstate
          if( occupation(jstate,jbspin) < completely_empty ) cycle
-       
+
          tmp_ixjx(:,:) = 0.0_dp
          do bbf=1,basis%nbf
            do jbf=1,basis%nbf
@@ -454,7 +454,7 @@ subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
              enddo
            enddo
 
-           if(iaspin==jbspin) then 
+           if(iaspin==jbspin) then
              tmp_ixja(:) = 0.0_dp
              do abf=1,basis%nbf
                do bbf=1,basis%nbf
@@ -477,11 +477,11 @@ subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
                cycle
              endif
 
-             energy_denom =  fact / energy_denom 
+             energy_denom =  fact / energy_denom
 
              tmp_iajb = SUM( tmp_iajx(:) * c_matrix(:,bstate,jbspin) )
 
-             contrib1 = contrib1 + 0.5_dp * energy_denom * tmp_iajb**2 
+             contrib1 = contrib1 + 0.5_dp * energy_denom * tmp_iajb**2
 
              if(iaspin==jbspin) then
                tmp_ibja = SUM( tmp_ixja(:) * c_matrix(:,bstate,jbspin) )
@@ -553,7 +553,7 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,
    write(stdout,*) 'Skip this step that is too memory demanding'
    return
  endif
- 
+
  fock_matrix_eigen(:,:,:) = fock_matrix(:,:,:)
  !
  ! Rotate the Fock matrix to the eigenstate basis

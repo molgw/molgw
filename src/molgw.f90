@@ -320,7 +320,6 @@ program molgw
                                               energy,c_matrix)
      endif
 
-
      !
      ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
      ! ignore the restart file if it is not a big one
@@ -495,13 +494,14 @@ program molgw
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
 
    allocate(exchange_m_vxc_diag(nstate,nspin))
+
    if( calc_type%selfenergy_static ) then
      !
      ! Calculate the static part of the self-energy at the first order and store it in exchange_m_vxc_diag
      !
      allocate(exchange_m_vxc(nstate,nstate,nspin))
 
-     call setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
+     call setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
 
      call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
      call pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,exchange_m_vxc_diag)
@@ -509,8 +509,9 @@ program molgw
      deallocate(exchange_m_vxc)
 
    else
-     call setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
+     call setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
    endif
+
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
 

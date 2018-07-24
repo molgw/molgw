@@ -1,0 +1,21 @@
+&molgw
+ scf='lda'  ! Fake SCF cycles
+ nscf=0
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ read_restart='yes'
+ print_restart='no'
+
+ postscf='g0w0'
+
+ selfenergy_state_range=3
+ natom=5
+/
+Si                     0.00000000     0.00000000     0.00000000
+ H                     0.86114743    -0.86114743     0.86114743
+ H                    -0.86114743     0.86114743     0.86114743
+ H                     0.86114743     0.86114743    -0.86114743
+ H                    -0.86114743    -0.86114743    -0.86114743
+

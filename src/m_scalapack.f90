@@ -4,7 +4,7 @@
 !
 ! This file contains
 ! a module with some SCALAPACK wrappers
-! These wrappers are meant to be independant from the global variables 
+! These wrappers are meant to be independant from the global variables
 ! defined in module m_mpi:
 ! All the required SCALAPACK proc grid information, block size are contained in a descriptor
 !
@@ -40,7 +40,7 @@ module m_scalapack
  integer,parameter :: block_col = 32
  integer,parameter :: first_row = 0
  integer,parameter :: first_col = 0
- 
+
  ! Specific values for the MPI / SCALAPACK transposition
  integer,protected :: MBLOCK_AUXIL = 1
  integer,parameter :: NBLOCK_AUXIL = 1
@@ -150,7 +150,7 @@ module m_scalapack
    module procedure matmul_abc_scalapack_dp
    module procedure matmul_abc_scalapack_cdp
  end interface matmul_abc_scalapack
- 
+
  interface matmul_transaba_scalapack
    module procedure matmul_transaba_scalapack_dp
    module procedure matmul_transaba_scalapack_cdp
@@ -186,7 +186,7 @@ function INDXL2G(indxloc, nb, iproc, isrcproc, nprocs )
  implicit none
  integer,intent(in)  :: indxloc, iproc, isrcproc, nb, nprocs
  integer             :: INDXL2G
-!===== 
+!=====
 
   INDXL2G = nprocs * nb *( ( indxloc - 1 ) / nb ) + MOD( indxloc - 1 , nb ) &
              + MOD( nprocs + iproc - isrcproc , nprocs ) * nb + 1
@@ -216,8 +216,8 @@ function INDXG2L(iglobal,idum1,idum2,idum3,idum4)
  implicit none
  integer,intent(in)  :: iglobal
  integer,intent(in)  :: idum1,idum2,idum3,idum4
- integer             :: INDXG2L 
-!===== 
+ integer             :: INDXG2L
+!=====
 
  INDXG2L = iglobal
 
@@ -229,8 +229,8 @@ function INDXG2P(iglobal,idum1,idum2,idum3,idum4)
  implicit none
  integer,intent(in)  :: iglobal
  integer,intent(in)  :: idum1,idum2,idum3,idum4
- integer             :: INDXG2P 
-!===== 
+ integer             :: INDXG2P
+!=====
 
  INDXG2P = 0
 
@@ -242,8 +242,8 @@ subroutine BLACS_GRIDINFO(icntxt,nprow,npcol,iprow,ipcol)
  implicit none
  integer,intent(in)  :: icntxt
  integer,intent(out) :: nprow,npcol,iprow,ipcol
-!===== 
-!===== 
+!=====
+!=====
  nprow = 1
  npcol = 1
  iprow = 0
@@ -266,8 +266,8 @@ end subroutine BLACS_GRIDINFO
 pure function indxl2g_pure(indxloc, nb, iproc, isrcproc, nprocs ) RESULT(indxl2g)
  implicit none
  integer,intent(in)  :: indxloc, iproc, isrcproc, nb, nprocs
- integer             :: indxl2g 
-!===== 
+ integer             :: indxl2g
+!=====
 
   indxl2g = nprocs * nb *( ( indxloc - 1 ) / nb ) + MOD( indxloc - 1 , nb ) &
              + MOD( nprocs + iproc - isrcproc , nprocs ) * nb + 1
@@ -469,7 +469,7 @@ subroutine gather_distributed_copy_spin_dp(desc,matrix,matrix_global)
    mglobal = SIZE( matrix_global , DIM=1 )
    nglobal = SIZE( matrix_global , DIM=2 )
    ndim3   = SIZE( matrix , DIM=3 )
-  
+
    matrix_global(:,:,:) = 0.0_dp
    do idim3=1,ndim3
      do jlocal=1,nlocal
@@ -479,7 +479,7 @@ subroutine gather_distributed_copy_spin_dp(desc,matrix,matrix_global)
          matrix_global(iglobal,jglobal,idim3) = matrix(ilocal,jlocal,idim3)
        enddo
      enddo
-  
+
      ! Only the master proc (0,0) gets the complete information
      call DGSUM2D(cntxt,'A',' ',mglobal,nglobal,matrix_global(1,1,idim3),nglobal,0,0)
    enddo
@@ -556,7 +556,7 @@ end subroutine gather_distributed_copy_nospin_cdp
 
 
 !=========================================================================
-! Multiply on the left or on the right a distributed square matrix 
+! Multiply on the left or on the right a distributed square matrix
 ! with a non-distributed diagonal
 !=========================================================================
 subroutine matmul_diag_sca(side,diag,desc,matrix)
@@ -1058,14 +1058,14 @@ subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigva
    call xmax_world(rank_master)
 
    !
-   ! Participate to the diagonalization only if the CPU has been selected 
+   ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
    if( cntxt > 0 ) then
      mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
      nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
 
      allocate(matrix(mlocal,nlocal))
-      
+
      call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
 
      ! Set up the local copy of the matrix_global
@@ -1143,14 +1143,14 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
    call xmax_world(rank_master)
 
    !
-   ! Participate to the diagonalization only if the CPU has been selected 
+   ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
    if( cntxt > 0 ) then
      mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
      nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
 
      allocate(matrix(mlocal,nlocal))
-      
+
      call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
 
      ! Set up the local copy of the matrix_global
@@ -1231,12 +1231,12 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-  
+
    !
-   ! Participate to the calculation only if the CPU has been selected 
+   ! Participate to the calculation only if the CPU has been selected
    ! in the grid
    if( cntxt > 0 ) then
-  
+
      !
      ! Distribute A
      ma = NUMROC(mmat,block_row,iprow,first_row,nprow)
@@ -1259,7 +1259,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
      nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
      allocate(c_matrix_local(mc,nc))
      call DESCINIT(descc,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
-  
+
      ! Calculate C = A * B
      call PDGEMM('N','N',mmat,nmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
                   b_matrix_local,1,1,descb,0.0_dp,c_matrix_local,1,1,descc)
@@ -1268,7 +1268,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
 
 
    endif
-  
+
    call gather_distributed_copy(descc,c_matrix_local,c_matrix)
 
    if( cntxt > 0 ) then
@@ -1281,7 +1281,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
 
 !   c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
    call DGEMM('N','N',mmat,nmat,kmat,1.0_dp,a_matrix,mmat,b_matrix,kmat,0.0_dp,c_matrix,mmat)
-  
+
  endif
 
 #else
@@ -1346,10 +1346,10 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
 
    !
-   ! Participate to the calculation only if the CPU has been selected 
+   ! Participate to the calculation only if the CPU has been selected
    ! in the grid
    if( cntxt > 0 ) then
-  
+
      !
      ! Distribute A
      ma = NUMROC(mmat,block_row,iprow,first_row,nprow)
@@ -1372,7 +1372,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
      nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
      allocate(c_matrix_local(mc,nc))
      call DESCINIT(descc,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
-  
+
      ! Calculate C = A * B
      call PZGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix_local,1,1,desca,    &
                   b_matrix_local,1,1,descb,ZERO,c_matrix_local,1,1,descc)
@@ -1381,7 +1381,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
 
 
    endif
-  
+
    call gather_distributed_copy(descc,c_matrix_local,c_matrix)
 
    if( cntxt > 0 ) then
@@ -1394,7 +1394,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
 
 !   c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
    call ZGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,c_matrix,mmat)
-  
+
  endif
 
 #else
@@ -1462,13 +1462,13 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matri
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-  
-  
+
+
    !
-   ! Participate to the diagonalization only if the CPU has been selected 
+   ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
    if( cntxt > 0 ) then
-  
+
      !
      ! Distribute A
      ma = NUMROC(mmat,block_row,iprow,first_row,nprow)
@@ -1491,7 +1491,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matri
      nm = NUMROC(lmat,block_col,ipcol,first_col,npcol)
      allocate(m_matrix_local(mm,nm))
      call DESCINIT(descm,mmat,lmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
-  
+
      ! Calculate M = A * B
      call PDGEMM('N','N',mmat,lmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
                   b_matrix_local,1,1,descb,0.0_dp,m_matrix_local,1,1,descm)
@@ -1521,7 +1521,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matri
      deallocate(m_matrix_local,c_matrix_local)
 
    endif
-  
+
    call gather_distributed_copy(descd,d_matrix_local,d_matrix)
 
    if( cntxt > 0 ) then
@@ -1533,13 +1533,13 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matri
  else ! Only one SCALAPACK proc
 
    allocate(m_matrix(mmat,lmat))
-  
+
 !   m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
 !   d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
    call DGEMM('N','N',mmat,lmat,kmat,1.0_dp,a_matrix,mmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
    call DGEMM('N','N',mmat,nmat,lmat,1.0_dp,m_matrix,mmat,c_matrix,lmat,0.0_dp,d_matrix,mmat)
 
-  
+
    deallocate(m_matrix)
 
  endif
@@ -1620,10 +1620,10 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
 
 
    !
-   ! Participate to the diagonalization only if the CPU has been selected 
+   ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
    if( cntxt > 0 ) then
-  
+
      !
      ! Distribute A
      ma = NUMROC(mmat,block_row,iprow,first_row,nprow)
@@ -1646,7 +1646,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
      nm = NUMROC(lmat,block_col,ipcol,first_col,npcol)
      allocate(m_matrix_local(mm,nm))
      call DESCINIT(descm,mmat,lmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
-  
+
      ! Calculate M = A * B
      call PZGEMM('N','N',mmat,lmat,kmat,ONE,a_matrix_local,1,1,desca,    &
                   b_matrix_local,1,1,descb,ZERO,m_matrix_local,1,1,descm)
@@ -1676,7 +1676,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
      deallocate(m_matrix_local,c_matrix_local)
 
    endif
-  
+
    call gather_distributed_copy(descd,d_matrix_local,d_matrix)
 
    if( cntxt > 0 ) then
@@ -1688,13 +1688,13 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
  else ! Only one SCALAPACK proc
 
    allocate(m_matrix(mmat,lmat))
-  
+
 !   m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
 !   d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
    call ZGEMM('N','N',mmat,lmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,m_matrix,mmat)
    call ZGEMM('N','N',mmat,nmat,lmat,ONE,m_matrix,mmat,c_matrix,lmat,ZERO,d_matrix,mmat)
 
-  
+
    deallocate(m_matrix)
 
  endif
@@ -1778,12 +1778,12 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-  
+
    !
-   ! Participate to the diagonalization only if the CPU has been selected 
+   ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
    if( cntxt > 0 ) then
-  
+
      !
      ! Distribute A
      ma = NUMROC(kmat,block_row,iprow,first_row,nprow)
@@ -1806,7 +1806,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_
      nm = NUMROC(kmat,block_col,ipcol,first_col,npcol)
      allocate(m_matrix_local(mm,nm))
      call DESCINIT(descm,mmat,kmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
-  
+
      ! Calculate M = A^T * B
      call PDGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
                   b_matrix_local,1,1,descb,0.0_dp,m_matrix_local,1,1,descm)
@@ -1839,12 +1839,12 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_
  else ! Only one SCALAPACK proc
 
    allocate(m_matrix(mmat,kmat))
-  
+
 !   m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
 !   c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
    call DGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix,kmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
    call DGEMM('N','N',mmat,mmat,kmat,1.0_dp,m_matrix,mmat,a_matrix,kmat,0.0_dp,c_matrix,mmat)
-  
+
    deallocate(m_matrix)
 
  endif
@@ -1933,10 +1933,10 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
 
    !
-   ! Participate to the diagonalization only if the CPU has been selected 
+   ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
    if( cntxt > 0 ) then
-  
+
      !
      ! Distribute A
      ma = NUMROC(kmat,block_row,iprow,first_row,nprow)
@@ -1959,7 +1959,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
      nm = NUMROC(kmat,block_col,ipcol,first_col,npcol)
      allocate(m_matrix_local(mm,nm))
      call DESCINIT(descm,mmat,kmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
-  
+
      ! Calculate M = A^T * B
      call PZGEMM('T','N',mmat,kmat,kmat,ONE,a_matrix_local,1,1,desca,    &
                   b_matrix_local,1,1,descb,ZERO,m_matrix_local,1,1,descm)
@@ -1992,12 +1992,12 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
  else ! Only one SCALAPACK proc
 
    allocate(m_matrix(mmat,kmat))
-  
+
 !   m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
 !   c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
    call ZGEMM('T','N',mmat,kmat,kmat,ONE,a_matrix,kmat,b_matrix,kmat,ZERO,m_matrix,mmat)
    call ZGEMM('N','N',mmat,mmat,kmat,ONE,m_matrix,mmat,a_matrix,kmat,ZERO,c_matrix,mmat)
-  
+
    deallocate(m_matrix)
 
  endif
@@ -2069,12 +2069,12 @@ subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trac
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
    write(stdout,'(a,i4,a,i4)') ' Trace of matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-  
+
    !
-   ! Participate to the calculation only if the CPU has been selected 
+   ! Participate to the calculation only if the CPU has been selected
    ! in the grid
    if( cntxt > 0 ) then
-  
+
      !
      ! Distribute A
      ma = NUMROC(kmat1,block_row,iprow,first_row,nprow)
@@ -2097,7 +2097,7 @@ subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trac
      nm = NUMROC(mmat2,block_col,ipcol,first_col,npcol)
      allocate(m_matrix_local(mm,nm))
      call DESCINIT(descm,kmat2,mmat2,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
-  
+
      ! Calculate M = A^T * B
      call PDGEMM('T','N',kmat2,mmat2,mmat1,1.0_dp,a_matrix_local,1,1,desca,    &
                   b_matrix_local,1,1,descb,0.0_dp,m_matrix_local,1,1,descm)
@@ -2120,14 +2120,14 @@ subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trac
  else ! Only one SCALAPACK proc
 
    allocate(m_matrix(kmat2,mmat2))
-  
+
    m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
    ab_trace = matrix_trace(m_matrix)
 
 ! FIXME the following coding
 !   call DGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix,kmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
 !   call DGEMM('N','N',mmat,mmat,kmat,1.0_dp,m_matrix,mmat,a_matrix,kmat,0.0_dp,c_matrix,mmat)
-  
+
    deallocate(m_matrix)
 
  endif
@@ -2196,7 +2196,7 @@ subroutine matmul_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matr
  write(stdout,'(a,i4,a,i4)') ' Matrix product A * B * C using SCALAPACK with a grid',nprow,' x ',npcol
 
  !
- ! Participate to the diagonalization only if the CPU has been selected 
+ ! Participate to the diagonalization only if the CPU has been selected
  ! in the grid
  if( cntxt > 0 ) then
 
@@ -2278,19 +2278,19 @@ subroutine matmul_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c
  cntxt = desca(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') ' Matrix product A**T * B * A using SCALAPACK with a grid',nprow,' x ',npcol
- 
+
  !
- ! Participate to the diagonalization only if the CPU has been selected 
+ ! Participate to the diagonalization only if the CPU has been selected
  ! in the grid
  if( cntxt > 0 ) then
- 
+
    !
    ! Prepare M = A^T * B
    mm = NUMROC(mmat,block_row,iprow,first_row,nprow)
    nm = NUMROC(kmat,block_col,ipcol,first_col,npcol)
    allocate(m_matrix_local(mm,nm))
    call DESCINIT(descm,mmat,kmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
- 
+
    ! Calculate M = A^T * B
    call PDGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
                 b_matrix_local,1,1,descb,0.0_dp,m_matrix_local,1,1,descm)
@@ -2302,7 +2302,7 @@ subroutine matmul_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c
    deallocate(m_matrix_local)
 
  endif
- 
+
 #else
   c_matrix_local(:,:) = MATMUL( TRANSPOSE(a_matrix_local) , MATMUL( b_matrix_local , a_matrix_local ) )
 #endif
@@ -2420,42 +2420,47 @@ subroutine invert_sca(desc,matrix,matrix_inv)
  real(dp),allocatable :: work(:)
  integer ,allocatable :: iwork(:)
  integer ,allocatable :: ipiv(:)
+ integer  :: cntxt
+ integer  :: nprow,npcol,iprow,ipcol
  integer  :: mlocal,nlocal
- integer  :: n
+ integer  :: nmat
  integer  :: info
  integer  :: lwork,liwork
 !=====
 
 #ifdef HAVE_SCALAPACK
- if( nprow_ham * npcol_ham > 1 ) then
+ cntxt = desc(CTXT_)
+ call BLACS_GRIDINFO(cntxt,nprow,npcol,iprow,ipcol)
 
-   if( cntxt_ham > 0 ) then
+ if( nprow * npcol > 1 ) then
 
-     n = desc(M_)
+   if( iprow >= 0 ) then
+
+     nmat = desc(M_)
      mlocal = SIZE( matrix , DIM=1 )
      nlocal = SIZE( matrix , DIM=2 )
      matrix_inv(:,:) = matrix(:,:)
-    
+
      allocate(ipiv(block_row+mlocal))
-    
-     call PDGETRF(n,n,matrix_inv,1,1,desc,ipiv,info)
-    
+
+     call PDGETRF(nmat,nmat,matrix_inv,1,1,desc,ipiv,info)
+
      if(info/=0) call die('FAILURE in PDGETRF')
-    
+
      ! Query
      allocate(work(1),iwork(1))
      lwork  = -1
      liwork = -1
-     call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
+     call PDGETRI(nmat,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
      if(info/=0) call die('FAILURE in PDGETRI')
-     
+
      lwork  = NINT(work(1))
      liwork = iwork(1)
      deallocate(work,iwork)
      allocate(work(lwork),iwork(liwork))
-     call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
+     call PDGETRI(nmat,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
      if(info/=0) call die('FAILURE in PDGETRI')
-    
+
      deallocate(ipiv)
      deallocate(work,iwork)
 
@@ -2485,7 +2490,7 @@ subroutine init_scalapack()
 
  ! Get iproc_sca and nproc_sca
  call BLACS_PINFO( iproc_sca, nproc_sca )
- 
+
  ! Set nprow, npcol
 
  ! Squared division of tasks
@@ -2523,7 +2528,7 @@ subroutine init_scalapack()
 
  ! Column-only division of tasks
  nprow_cd = 1
- npcol_cd = nproc_sca 
+ npcol_cd = nproc_sca
  call BLACS_GET( -1, 0, cntxt_cd )
  call BLACS_GRIDINIT( cntxt_cd, 'R', nprow_cd, npcol_cd )
  call BLACS_GRIDINFO( cntxt_cd, nprow_cd, npcol_cd, iprow_cd, ipcol_cd )
@@ -2559,7 +2564,7 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 #ifdef DEBUG
  integer          :: fileunit
  character(len=3) :: ctmp
-#endif 
+#endif
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -2666,11 +2671,11 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
 #ifdef HAVE_SCALAPACK
  !
- ! Create the SCALAPACK context cntxt_auxil 
+ ! Create the SCALAPACK context cntxt_auxil
  ! that precisely matches the MPI_COMMUNICATOR comm_auxil
  !
  call BLACS_GET( -1, 0, cntxt_auxil )
- 
+
  if( rank_world /= iproc_sca ) then
    call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
  endif
@@ -2693,18 +2698,18 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 #ifdef DEBUG
  write(ctmp,'(i3.3)') rank_world
  open(newunit=fileunit,file='DEBUG_mpiinfo_rank'//TRIM(ctmp))
- write(fileunit,*) 'nproc_world:',nproc_world 
- write(fileunit,*) 'rank_world:',rank_world 
- write(fileunit,*) 
+ write(fileunit,*) 'nproc_world:',nproc_world
+ write(fileunit,*) 'rank_world:',rank_world
+ write(fileunit,*)
  write(fileunit,*) 'nproc_local:',nproc_local
  write(fileunit,*) 'rank_local:',rank_local
- write(fileunit,*) 
+ write(fileunit,*)
  write(fileunit,*) 'nproc_trans:',nproc_trans
  write(fileunit,*) 'rank_trans:',rank_trans
- write(fileunit,*) 
+ write(fileunit,*)
  write(fileunit,*) 'nproc_auxil:',nproc_auxil
  write(fileunit,*) 'rank_auxil:',rank_auxil
- write(fileunit,*) 
+ write(fileunit,*)
  write(fileunit,*) 'nproc_grid:',nproc_grid
  write(fileunit,*) 'rank_grid:',rank_grid
  close(fileunit)
@@ -2810,16 +2815,16 @@ end subroutine sum_sca_sd
 
 
 !=========================================================================
-subroutine max_matrix_sca_sd(m,n,real_matrix)
+subroutine max_matrix_sca_sd(mmat,nmat,real_matrix)
  implicit none
- integer, intent(in)    :: m,n
- real(dp),intent(inout) :: real_matrix(m,n)
+ integer, intent(in)    :: mmat,nmat
+ real(dp),intent(inout) :: real_matrix(mmat,nmat)
 !=====
  integer :: idum1(1),idum2(1)
 !=====
 
 #ifdef HAVE_SCALAPACK
- call dgamx2d(cntxt_sd,'All',' ',m,n,real_matrix,m,-1,idum1,idum2,-1,-1)
+ call dgamx2d(cntxt_sd,'All',' ',mmat,nmat,real_matrix,mmat,-1,idum1,idum2,-1,-1)
 #endif
 
 
@@ -2836,7 +2841,7 @@ function rowindex_global_to_local_distrib(distribution,iglobal) result(ilocal)
 !=====
  !
  ! returns the local index if this is proc in charge
- ! else returns 0 
+ ! else returns 0
 
 #ifdef HAVE_SCALAPACK
  select case(distribution)
@@ -2885,7 +2890,7 @@ function colindex_global_to_local_distrib(distribution,jglobal) result(jlocal)
 !=====
  !
  ! returns the local index if this is proc in charge
- ! else returns 0 
+ ! else returns 0
 
 #ifdef HAVE_SCALAPACK
  select case(distribution)
@@ -3388,12 +3393,12 @@ subroutine select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 !=====
  integer :: max_dim
 !=====
- 
+
  max_dim = MAX(mmat,nmat)
 
  ! If mmat ~ nmat (within some tolerance, then use a square distribution!
- if( ABS( REAL(mmat-nmat,dp) ) / REAL(max_dim,dp) < 0.50_dp ) then 
- 
+ if( ABS( REAL(mmat-nmat,dp) ) / REAL(max_dim,dp) < 0.50_dp ) then
+
    nprow = MIN( FLOOR(SQRT(REAL(nproc_sca,dp))) , max_dim / scalapack_block_min )
    nprow = MAX(nprow,1)
    npcol = MIN( FLOOR(SQRT(REAL(nproc_sca,dp))) , max_dim / scalapack_block_min )

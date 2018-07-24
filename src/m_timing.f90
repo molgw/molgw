@@ -69,7 +69,7 @@ module m_timing
  integer,parameter :: timing_aomo_pola           = 50
  integer,parameter :: timing_aomo_ci             = 51
  integer,parameter :: timing_aomo_self           = 52
- 
+
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
  integer,parameter :: timing_tmp2                = 92
@@ -103,14 +103,14 @@ module m_timing
  real(dp)          :: time_start(NTIMING)
  real(dp)          :: timing(NTIMING)
  integer(dp)       :: calls(NTIMING)
- 
+
 contains
 
 
 !=========================================================================
 subroutine init_timing()
  implicit none
- 
+
  time_running(:) = .FALSE.
  timing(:)       = 0.0_dp
  calls(:)        = 0
@@ -125,7 +125,7 @@ subroutine start_clock(itiming)
 !=====
  integer            :: count_tmp
 !=====
- 
+
  if(time_running(itiming)) then
    write(stdout,*) 'clock # is already started:',itiming
    call die('error in start clock')
@@ -138,7 +138,7 @@ subroutine start_clock(itiming)
  calls(itiming) = calls(itiming) + 1
 
 end subroutine start_clock
- 
+
 
 !=========================================================================
 subroutine stop_clock(itiming)
@@ -146,15 +146,15 @@ subroutine stop_clock(itiming)
  integer,intent(in) :: itiming
 !=====
  integer            :: count_tmp
-!===== 
-  
+!=====
+
  if(.NOT.time_running(itiming)) then
    write(stdout,*) 'clock # has not been started:',itiming
    call die('error in stop clock')
  endif
 
 
- time_running(itiming)=.FALSE. 
+ time_running(itiming)=.FALSE.
 
  call system_clock(COUNT=count_tmp)
  timing(itiming) = timing(itiming) + MODULO( count_tmp - NINT(time_start(itiming)) , count_max) / REAL(count_rate,dp)

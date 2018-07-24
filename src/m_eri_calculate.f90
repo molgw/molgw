@@ -43,7 +43,7 @@ subroutine calculate_eri(print_eri_,basis,rcut)
 
  if( incore_ ) then
    write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
-  
+
    if( rcut < 1.0e-12_dp ) then
      call clean_allocate('4-center integrals',eri_4center,nsize)
      eri_4center(:) = 0.0_dp
@@ -51,7 +51,7 @@ subroutine calculate_eri(print_eri_,basis,rcut)
      call clean_allocate('4-center LR integrals',eri_4center_lr,nsize)
      eri_4center_lr(:) = 0.0_dp
    endif
-  
+
    if( .NOT. read_eri(rcut) ) then
      call calculate_eri_4center(basis,rcut)
      if( print_eri_ ) then
@@ -95,7 +95,7 @@ subroutine calculate_eri_4center(basis,rcut)
 
  is_longrange = (rcut > 1.0e-12_dp)
  rcut_libint = rcut
- if( .NOT. is_longrange ) then 
+ if( .NOT. is_longrange ) then
    write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals'
  else
    write(stdout,'(/,a)') ' Calculate and store the 4-center Long-Range-only Coulomb integrals'
@@ -143,7 +143,7 @@ subroutine calculate_eri_4center(basis,rcut)
      ng3 = basis%shell(kshell)%ng
      ng4 = basis%shell(lshell)%ng
      allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
-     alpha1(:) = basis%shell(ishell)%alpha(:) 
+     alpha1(:) = basis%shell(ishell)%alpha(:)
      alpha2(:) = basis%shell(jshell)%alpha(:)
      alpha3(:) = basis%shell(kshell)%alpha(:)
      alpha4(:) = basis%shell(lshell)%alpha(:)
@@ -286,7 +286,7 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
  ng3 = basis%shell(kshell)%ng
  ng4 = basis%shell(lshell)%ng
  allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
- alpha1(:) = basis%shell(ishell)%alpha(:) 
+ alpha1(:) = basis%shell(ishell)%alpha(:)
  alpha2(:) = basis%shell(jshell)%alpha(:)
  alpha3(:) = basis%shell(kshell)%alpha(:)
  alpha4(:) = basis%shell(lshell)%alpha(:)
@@ -410,7 +410,7 @@ subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
  ng3 = basis%shell(kshell)%ng
  ng4 = basis%shell(lshell)%ng
  allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
- alpha1(:) = basis%shell(ishell)%alpha(:) 
+ alpha1(:) = basis%shell(ishell)%alpha(:)
  alpha2(:) = basis%shell(jshell)%alpha(:)
  alpha3(:) = basis%shell(kshell)%alpha(:)
  alpha4(:) = basis%shell(lshell)%alpha(:)
@@ -440,7 +440,7 @@ subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
  allocate(gradDy(n1c*n2c*n3c*n4c))
  allocate(gradDz(n1c*n2c*n3c*n4c))
 
-#ifdef HAVE_LIBINT_ONEBODY
+#if defined(HAVE_LIBINT_GRADIENTS)
  call libint_4center_grad(am1,ng1,x01,alpha1,coeff1, &
                           am2,ng2,x02,alpha2,coeff2, &
                           am3,ng3,x03,alpha3,coeff3, &
@@ -453,29 +453,29 @@ subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
 #endif
 
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradAx,grad_tmp)
- shell_gradA(:,:,:,:,1) = grad_tmp(:,:,:,:) 
+ shell_gradA(:,:,:,:,1) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradAy,grad_tmp)
- shell_gradA(:,:,:,:,2) = grad_tmp(:,:,:,:) 
+ shell_gradA(:,:,:,:,2) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradAz,grad_tmp)
- shell_gradA(:,:,:,:,3) = grad_tmp(:,:,:,:) 
+ shell_gradA(:,:,:,:,3) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradBx,grad_tmp)
- shell_gradB(:,:,:,:,1) = grad_tmp(:,:,:,:) 
+ shell_gradB(:,:,:,:,1) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradBy,grad_tmp)
- shell_gradB(:,:,:,:,2) = grad_tmp(:,:,:,:) 
+ shell_gradB(:,:,:,:,2) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradBz,grad_tmp)
- shell_gradB(:,:,:,:,3) = grad_tmp(:,:,:,:) 
+ shell_gradB(:,:,:,:,3) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradCx,grad_tmp)
- shell_gradC(:,:,:,:,1) = grad_tmp(:,:,:,:) 
+ shell_gradC(:,:,:,:,1) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradCy,grad_tmp)
- shell_gradC(:,:,:,:,2) = grad_tmp(:,:,:,:) 
+ shell_gradC(:,:,:,:,2) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradCz,grad_tmp)
- shell_gradC(:,:,:,:,3) = grad_tmp(:,:,:,:) 
+ shell_gradC(:,:,:,:,3) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradDx,grad_tmp)
- shell_gradD(:,:,:,:,1) = grad_tmp(:,:,:,:) 
+ shell_gradD(:,:,:,:,1) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradDy,grad_tmp)
- shell_gradD(:,:,:,:,2) = grad_tmp(:,:,:,:) 
+ shell_gradD(:,:,:,:,2) = grad_tmp(:,:,:,:)
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradDz,grad_tmp)
- shell_gradD(:,:,:,:,3) = grad_tmp(:,:,:,:) 
+ shell_gradD(:,:,:,:,3) = grad_tmp(:,:,:,:)
 
 
  deallocate(grad_tmp)
@@ -595,7 +595,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
    if( skip_shell ) cycle
 
- 
+
    do ishell=1,auxil_basis%nshell
      ami = auxil_basis%shell(ishell)%am
      ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
@@ -628,7 +628,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
      ng1 = auxil_basis%shell(ishell)%ng
      ng3 = auxil_basis%shell(kshell)%ng
      allocate(alpha1(ng1),alpha3(ng3))
-     alpha1(:) = auxil_basis%shell(ishell)%alpha(:) 
+     alpha1(:) = auxil_basis%shell(ishell)%alpha(:)
      alpha3(:) = auxil_basis%shell(kshell)%alpha(:)
      x01(:) = auxil_basis%shell(ishell)%x0(:)
      x03(:) = auxil_basis%shell(kshell)%x0(:)
@@ -650,7 +650,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
      deallocate(int_shell)
 
-     
+
      do kbf=1,nk
        kglobal = auxil_basis%shell(kshell)%istart + kbf - 1
 
@@ -674,7 +674,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
        enddo
      enddo
- 
+
      deallocate(integrals)
 
    enddo   ! ishell
@@ -879,7 +879,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
  !  Allocate the 3-center integral array
  !
- ! 3-CENTER INTEGRALS 
+ ! 3-CENTER INTEGRALS
  !
  call clean_allocate('TMP 3-center integrals',eri_3center_tmp,mlocal,nlocal)
 
@@ -934,7 +934,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      ng4 = basis%shell(lshell)%ng
      allocate(alpha1(ng1),alpha3(ng3),alpha4(ng4))
      allocate(coeff1(ng1),coeff3(ng3),coeff4(ng4))
-     alpha1(:) = auxil_basis%shell(ishell)%alpha(:) 
+     alpha1(:) = auxil_basis%shell(ishell)%alpha(:)
      alpha3(:) = basis%shell(kshell)%alpha(:)
      alpha4(:) = basis%shell(lshell)%alpha(:)
      coeff1(:) = auxil_basis%shell(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
@@ -954,7 +954,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
      call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
 
-     
+
      do lbf=1,nl
        do kbf=1,nk
          klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
@@ -1086,7 +1086,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
  call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
 
- 
+
 #endif
 
 
@@ -1128,13 +1128,13 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
- if( parallel_ham .AND. parallel_buffer ) then    
+ if( parallel_ham .AND. parallel_buffer ) then
    if( mv /= basis%nbf .OR. nv /= basis%nbf ) call die('calculate_eri_approximate_hartree: wrong dimension for the buffer')
  endif
 
  ! Nullify vhrho just for safety.
  ! I guess this is useless.
- if( .NOT. ( parallel_ham .AND. parallel_buffer )  ) then    
+ if( .NOT. ( parallel_ham .AND. parallel_buffer )  ) then
    vhrho(:,:) = 0.0_dp
  endif
 
@@ -1177,19 +1177,19 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
 
    call transform_libint_to_molgw(basis%gaussian_type,0,basis%gaussian_type,amk,aml,int_shell,integrals)
 
-     
 
-   if( parallel_ham .AND. parallel_buffer ) then    
+
+   if( parallel_ham .AND. parallel_buffer ) then
      do lbf=1,nl
        do kbf=1,nk
          iglobal = basis%shell(kshell)%istart+kbf-1
          jglobal = basis%shell(lshell)%istart+lbf-1
          ilocal = iglobal
          jlocal = jglobal
-         if( kshell == lshell ) then ! To avoid double-counting   
-           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)  * 0.5_dp 
+         if( kshell == lshell ) then ! To avoid double-counting
+           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)  * 0.5_dp
          else
-           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf) 
+           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)
          endif
        enddo
      enddo

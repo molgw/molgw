@@ -440,7 +440,7 @@ subroutine calc_density_gradr_laplr(nspin,nbf,p_matrix,basis_function_r,basis_fu
 
        grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
             *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
-             + basis_function_gradr(:,jbf) * basis_function_r(ibf) ) 
+             + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
 
        tau(ispin)        = tau(ispin)        + p_matrix(ibf,jbf,ispin) &
             * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) )
@@ -486,7 +486,7 @@ subroutine teter_lda_vxc_exc(nr,rhor,vxc,exc)
  real(dp)           :: rs(nr)
 !=====
 
- rs(:) = ( 3.0_dp / (4.0_dp*pi*rhor(:)) )**(1.0_dp/3.0_dp) 
+ rs(:) = ( 3.0_dp / (4.0_dp*pi*rhor(:)) )**(1.0_dp/3.0_dp)
  n1(:) = a0p + rs(:) * (a1p + rs(:) * ( a2p + rs(:) * a3p ) )
  d1(:) = rs(:) * ( b1p + rs(:) * ( b2p + rs(:) * ( b3p + rs(:) * b4p ) ) )
 
@@ -587,7 +587,7 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
    db4=0.004200005045691381_dp
  case(1000)
    !
-   ! full range RPA 
+   ! full range RPA
    a0p= 0.00033959499_dp
    a1p= 0.1912460_dp
    a2p= 0.8008790_dp
@@ -670,7 +670,7 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
 
  if (nspin==1) then
 
-       rs=( 3.0_dp / (4.0_dp*pi*rhor(1)) )**(1.0_dp/3.0_dp) 
+       rs=( 3.0_dp / (4.0_dp*pi*rhor(1)) )**(1.0_dp/3.0_dp)
        n1=a0p+rs*(a1p+rs*(a2p+rs*a3p))
        d1=rs*(b1p+rs*(b2p+rs*(b3p+rs*b4p)))
        d1m1=1.0_dp/d1
@@ -686,11 +686,11 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
        dexcdrs=-(dn1drs+exc*dd1drs)*d1m1
        vxc(1)=exc-rs*dexcdrs/3.0_dp
 
- else 
+ else
 
 !    Allow for spin polarization. This part could be optimized for speed.
 
-       rs=( 3.0_dp / (4.0_dp*pi*SUM(rhor(:))) )**(1.0_dp/3.0_dp) 
+       rs=( 3.0_dp / (4.0_dp*pi*SUM(rhor(:))) )**(1.0_dp/3.0_dp)
        zet= ( rhor(1) - rhor(2) ) / SUM( rhor(:) )
        zetp=1.0_dp+zet*alpha_zeta
        zetm=1.0_dp-zet*alpha_zeta
@@ -810,8 +810,8 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
  real(dp) :: hb1,hb2,hb3,hb4,hb5,hb6,hb7,hb8,hb9
  real(dp) :: zero,one,two,three,four,five,six,seven,eight
  real(dp) :: nine,ten
- real(dp) :: H,hnum,hden 
- real(dp) :: d1H,d1hnum,d1hden 
+ real(dp) :: H,hnum,hden
+ real(dp) :: d1H,d1hnum,d1hden
  real(dp) :: s2,s3,s4,s5,s6,s7,s8,s9
  real(dp) :: Fs, d1Fs
  real(dp) :: zeta, lambda, eta, kf, nu, chi, lambda2
@@ -854,7 +854,7 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 !
  Data zero,one,two,three,four,five,six,seven,eight,nine,ten &
       / 0D0,1D0,2D0,3D0,4D0,5D0,6D0,7D0,8D0,9D0,10D0 /
-  
+
  Data r11,r12,r14,r15,r16,r18,r20,r24,r27,r30,r32 &
       / 11D0,12D0,14D0,15D0,16D0,18D0,20D0,24D0,27d0,30D0,32D0 /
 
@@ -890,7 +890,7 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 !
 !Calculate H(s) the model exhange hole
 !
- hnum = ha2*s2 + ha3*s3 + ha4*s4 + ha5*s5 + ha6*s6 + ha7*s7 
+ hnum = ha2*s2 + ha3*s3 + ha4*s4 + ha5*s5 + ha6*s6 + ha7*s7
  hden = one + hb1*s + hb2*s2 + hb3*s3 + hb4*s4 + hb5*s5 + &
         hb6*s6 + hb7*s7 + hb8*s8 + hb9*s9
  H = hnum/hden
@@ -902,9 +902,9 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
  eta = A + zeta
  lambda = D + zeta
  if (ipol.eq.1) then
-    kf = (three*pi2*rho)**f13 
+    kf = (three*pi2*rho)**f13
  else
-    kf = (six*pi2*rho)**f13 
+    kf = (six*pi2*rho)**f13
  endif
  nu = omega/kf
  chi = nu/dsqrt(lambda+nu**two)
@@ -916,29 +916,29 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
  Fs = one-s2/(r27*C*(one+s02))-zeta/(two*C)
 
 !
-!Calculate EG(s) 
+!Calculate EG(s)
 !
  EGs = -(two/five)*C*Fs*lambda - (four/r15)*B*lambda**two - &
        (six/five)*A*lambda**three - &
        (four/five)*srpi*lambda**(seven/two) -&
        (r12/five)*(lambda**(seven/two))*(dsqrt(zeta)-dsqrt(eta))
- 
+
 !
 !Calculate the denominators needed
 !
 
  nu2 = nu*nu
- Js = (dsqrt(zeta+nu2)+dsqrt(eta+nu2))*(dsqrt(zeta+nu2)+nu) 
- Ks = (dsqrt(zeta+nu2)+dsqrt(eta+nu2))*(dsqrt(eta+nu2)+nu) 
- Ms = (dsqrt(zeta+nu2)+dsqrt(lambda+nu2))*(dsqrt(lambda+nu2)+nu) 
- Ns = (dsqrt(eta+nu2)+dsqrt(lambda+nu2))*(dsqrt(lambda+nu2)+nu) 
+ Js = (dsqrt(zeta+nu2)+dsqrt(eta+nu2))*(dsqrt(zeta+nu2)+nu)
+ Ks = (dsqrt(zeta+nu2)+dsqrt(eta+nu2))*(dsqrt(eta+nu2)+nu)
+ Ms = (dsqrt(zeta+nu2)+dsqrt(lambda+nu2))*(dsqrt(lambda+nu2)+nu)
+ Ns = (dsqrt(eta+nu2)+dsqrt(lambda+nu2))*(dsqrt(lambda+nu2)+nu)
 
 !
 !  The final value for the enhancement factor is
 !
  tmp1 = one + f12*chi
- tmp2 = one + (nine/eight)*chi + (three/eight)*chi**two 
- Fxhse1  = A*(zeta/Js + eta/Ks) 
+ tmp2 = one + (nine/eight)*chi + (three/eight)*chi**two
+ Fxhse1  = A*(zeta/Js + eta/Ks)
  Fxhse2  = -(four/nine)*B/lambda2
  Fxhse3  = -(four/nine)*C*Fs*tmp1/lambda2**two
  Fxhse4  = -(eight/nine)*EGs*tmp2/lambda2**three
@@ -955,7 +955,7 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 
  d1hden  = hb1 + two*hb2*s +three*hb3*s2 + four*hb4*s3 + &
            five*hb5*s4 + six*hb6*s5 + seven*hb7*s6 +&
-           eight*hb8*s7 + nine*hb9*s8 
+           eight*hb8*s7 + nine*hb9*s8
  d1H =   (hden*d1hnum -hnum*d1hden)/hden**two
 
 !
@@ -989,14 +989,14 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 !Calculate the first derivate of denominators needed with respect
 !to s
 !
- tmp1 = (dsqrt(zeta+nu2)+nu)/(dsqrt(eta+nu2)) 
+ tmp1 = (dsqrt(zeta+nu2)+nu)/(dsqrt(eta+nu2))
  tmp2 = (dsqrt(eta+nu2)+nu)/(dsqrt(zeta+nu2))
 
  d1Js = f12*d1zeta*(two+tmp1+tmp2)
  d1Ks = d1Js
 
  tmp3 = (dsqrt(zeta+nu2)+nu)/(dsqrt(lambda+nu2))
- tmp4 = (dsqrt(lambda+nu2)+nu)/(dsqrt(zeta+nu2)) 
+ tmp4 = (dsqrt(lambda+nu2)+nu)/(dsqrt(zeta+nu2))
  d1Ms = f12*d1zeta*(two +tmp3+tmp4)
 
  tmp5 = (dsqrt(lambda+nu2)+nu)/(dsqrt(eta+nu2))
@@ -1008,9 +1008,9 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
  L2 = lambda2*lambda2
  L3 = lambda2*lambda2*lambda2
  d1Fxhse1  = A*( (Js*d1zeta - zeta*d1Js)/(Js*Js) +&
-                 (Ks*d1zeta - eta*d1Ks)/(Ks*Ks) ) 
+                 (Ks*d1zeta - eta*d1Ks)/(Ks*Ks) )
 
- d1Fxhse2  = (four/nine)*B*d1lambda2/L2 
+ d1Fxhse2  = (four/nine)*B*d1lambda2/L2
 
  tmp9 = d1lambda2/lambda2
  tmp7 = d1Fs - two*Fs*tmp9
@@ -1026,10 +1026,10 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
   d1Fxhse4 = -(eight/(nine*L3))*((d1EGs-three*EGs*tmp9)*tmp7 &
             + EGs*tmp8)
  d1Fxhse5  = two*d1zeta*dlog(one-D/Ms) + &
-            two*zeta*D*d1Ms/(Ms*Ms*(one-D/Ms)) 
+            two*zeta*D*d1Ms/(Ms*Ms*(one-D/Ms))
 
  d1Fxhse6  = -two*d1eta*dlog(one- (D-A)/Ns) - &
-            two*eta*(D-A)*d1Ns/(Ns*Ns*(one-(D-A)/Ns)) 
+            two*eta*(D-A)*d1Ns/(Ns*Ns*(one-(D-A)/Ns))
 
  d10Fxhse = d1Fxhse1+d1Fxhse2+d1Fxhse3+d1Fxhse4+d1Fxhse5+d1Fxhse6
 !
@@ -1072,7 +1072,7 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 
 
  d01Fxhse = d1Fxhse1+d1Fxhse2+d1Fxhse3+d1Fxhse4+d1Fxhse5+d1Fxhse6+d1Fxhse7
- 
+
 end subroutine HSE08Fx
 
 !=========================================================================

@@ -16,7 +16,7 @@ module m_dft_grid
  use m_cart_to_pure
  use m_inputparam,only: partition_scheme,grid_memory
  use m_basis_set
- 
+
  !
  ! Grid definition
  integer,protected    :: ngrid
@@ -66,7 +66,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  real(dp),allocatable :: z1(:),z2(:)
  real(dp),allocatable :: w1(:),w2(:)
  real(dp),allocatable :: xa(:,:),wxa(:,:)
- real(dp)             :: p_becke(natom_basis),s_becke(natom_basis,natom_basis),fact_becke 
+ real(dp)             :: p_becke(natom_basis),s_becke(natom_basis,natom_basis),fact_becke
  real(dp)             :: mu,alpha,xtmp,mu_aa
  integer              :: jatom,katom
  real(dp),allocatable :: rr_grid_tmp(:,:)
@@ -89,9 +89,9 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    nangular_fine   = 110
    nangular_coarse =  38
  case(very_high) ! almost perfect potentials
-   nradial         =  70 
-   nangular_fine   = 170 
-   nangular_coarse =  50 
+   nradial         =  70
+   nangular_fine   = 170
+   nangular_coarse =  50
  case(insane)    ! overdoing a lot
    nradial         = 200
    nangular_fine   = 434
@@ -230,7 +230,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  ! Temporary storage before the screening of the low weights
  allocate(rr_grid_tmp(3,ngridmax),w_grid_tmp(ngridmax))
 
- rr_grid_tmp(:,:) = 0.0_dp 
+ rr_grid_tmp(:,:) = 0.0_dp
  w_grid_tmp(:)    = 0.0_dp
  ir    = 0
  do iatom=1,natom_basis
@@ -292,7 +292,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
                s_becke(katom,jatom) = 1.0_dp
              else if( mu > aa ) then
                s_becke(katom,jatom) = 0.0_dp
-             else 
+             else
                mu_aa = mu / aa
                s_becke(katom,jatom) = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
 
@@ -363,7 +363,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
 
  !
- ! Once the grid is set up, 
+ ! Once the grid is set up,
  ! precalculate the wavefunctions and their gradient on a part of the grid
  !
 
@@ -415,7 +415,7 @@ subroutine destroy_dft_grid()
    call clean_deallocate('basis grad ftns on grid',bfgr)
  endif
  call destroy_dft_grid_distribution()
- 
+
 end subroutine destroy_dft_grid
 
 

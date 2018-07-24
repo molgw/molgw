@@ -16,7 +16,7 @@ module m_mpi_grid
 
  !
  ! "grid" communicator
- ! 
+ !
  integer,public    :: comm_grid        ! communicator over DFT grid points
  integer,public    :: nproc_grid  = 1  ! number of procs in the grid communicator
  integer,public    :: rank_grid   = 0  ! index           in the grid communicator

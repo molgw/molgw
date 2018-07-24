@@ -56,12 +56,10 @@ Some scripts for <span style="font-variant: small-caps">molgw</span> use Python3
 <ul>
 <li><b>BLAS/LAPACK</b> (<i>mandatory</i>) for linear algegra from <a href='http://www.netlib.org/lapack/'>netlib.org</a> or better from the vendor of your specific machine.
  <li><b>Libint</b> (<i>mandatory</i>) for the Coulomb integrals evaluation:
-        <a href='http://sourceforge.net/projects/libint/files/libint-for-mpqc/' target="_blank">Download page on SourceForge</a> or
-        <a href='https://github.com/evaleev/libint/releases/tag/release-2-0-5' target="_blank">Download page on GitHub</a> <br>
-        Versions 2.0.x and 2.1.x <br>
-        MOLGW is <u>not</u> compatible with the latest interface (versions &ge; 2.1).
- <li><b>Libxc</b> (<i>mandatory</i>) for the exchange-correlation approximation of DFT. <a href='http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:download'>Download Page</a> <br>
-        Version &ge; 3.0.0
+        <a href='https://github.com/evaleev/libint/archive/v2.4.2.tar.gz' target="_blank">Download page</a> <br>
+        MOLGW has been tested up to version 2.4.3 as of today.
+ <li><b>Libxc</b> (<i>mandatory</i>) for the exchange-correlation approximation of DFT. <a href='http://www.tddft.org/programs/octopus/down.php?file=libxc/3.0.1/libxc-3.0.1.tar.gz'>Download</a> <br>
+        Please use version 3.0.1. More recent versions have broken the Fortran interface to the hybrid functional tuning.
 </ul>
 
 <p><span style="font-variant: small-caps">molgw</span> needs two external libraries to run in parallel:
@@ -130,7 +128,6 @@ The shortest parallel input possible reads</p>
  <pre>&amp;molgw
    basis='cc-pVDZ'
    auxil_basis='cc-pVDZ'    ! An auxiliary basis is used for the resolution-of-identity (RI)
-   no_4center='yes'         ! Trigger the RI approximation for the SCF cycles too
    scf='lda'
    natom=1
  /
@@ -143,7 +140,7 @@ The shortest parallel input possible reads</p>
 <div class="codebox">
  <pre>&amp;molgw                                                                           
    ! Formaldehyde
-   basis='6-31Gs'           ! This is the Pople basis 6-31G*
+   basis='6-31G*'           ! This is the Pople basis 6-31G*
    gaussian_type='CART'     ! Pople basis set uses cartesian gaussian functions
    basis_path='./basis/'    ! Path to the folder containing the basis files
 
@@ -197,7 +194,7 @@ The shortest parallel input possible reads</p>
   <li> <code>ENERGY_QP</code><br>
     The ENERGY_QP file is written down at the end of the <i>GW</i> run.
     It contains the quasiparticle energies necessary for a subsequent BSE run or a eigenvalue-self-consistent <i>GW</i>.
-    Note that this file is human-readable.
+    Note that this file is human-readable if you are familiar with atomic units.
 
   <li> <code>SCREENED_COULOMB</code><br>
     The SCREENED_COULOMB file contains the spectral decomposition of <i>W</i>.

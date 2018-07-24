@@ -15,12 +15,12 @@ module m_mpi_ortho
 
 
 !===================================================
-! MPI distribution 
+! MPI distribution
 !  Example: nproc_ortho = 2 x  nproc_auxil = 8  = nproc_world = 16
 !
 ! comm_world
-!                                        
-! rank_auxil         0 |  1 |  2 |     |  7 
+!
+! rank_auxil         0 |  1 |  2 |     |  7
 ! rank_ortho       ---------------------------
 !      0             0 |  2 |  4 | ... | 14 |-> comm_auxil
 !      1             1 |  3 |  5 | ... | 15 |-> comm_auxil
@@ -32,7 +32,7 @@ module m_mpi_ortho
 
  !
  ! "ortho" communicator
- ! 
+ !
  integer,public    :: comm_ortho             ! communicator over the rest (=ortho)
  integer,public    :: nproc_ortho  = 1       ! number of procs in the ortho communicator
  integer,public    :: rank_ortho   = 0       ! index           in the ortho communicator
@@ -45,7 +45,7 @@ module m_mpi_ortho
  interface xmax_ortho
    module procedure xmax_ortho_i
  end interface
- 
+
  interface xsum_ortho
    module procedure xsum_ortho_r
    module procedure xsum_ortho_ra1d

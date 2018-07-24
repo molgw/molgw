@@ -9,9 +9,9 @@ module m_memory
  use m_definitions
  use m_warning,only: die
 
- real(dp),private :: total_memory=0.0_dp     ! Total memory occupied 
+ real(dp),private :: total_memory=0.0_dp     ! Total memory occupied
                                              ! by the big arrays in Mb
- real(dp),private :: peak_memory=0.0_dp      ! Max memory occupied 
+ real(dp),private :: peak_memory=0.0_dp      ! Max memory occupied
                                              ! by the big arrays in Mb
 
  interface clean_allocate
@@ -184,7 +184,7 @@ subroutine clean_allocate_1d(array_name,array,n1)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_1d
 
@@ -219,7 +219,7 @@ subroutine clean_allocate_2d(array_name,array,n1,n2)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_2d
 
@@ -254,7 +254,7 @@ subroutine clean_allocate_2d_range(array_name,array,n1s,n1f,n2s,n2f)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_2d_range
 
@@ -289,7 +289,7 @@ subroutine clean_allocate_3d(array_name,array,n1,n2,n3)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_3d
 
@@ -324,7 +324,7 @@ subroutine clean_allocate_3d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_3d_range
 
@@ -359,7 +359,7 @@ subroutine clean_allocate_4d(array_name,array,n1,n2,n3,n4)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_4d
 
@@ -394,7 +394,7 @@ subroutine clean_allocate_4d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f,n4s,
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_4d_range
 
@@ -616,7 +616,7 @@ subroutine clean_deallocate_1d(array_name,array)
 
  total_memory = total_memory - mem_mb
 
- call write_memory_deallocate(array_name,mem_mb) 
+ call write_memory_deallocate(array_name,mem_mb)
 
 end subroutine clean_deallocate_1d
 
@@ -644,7 +644,7 @@ subroutine clean_deallocate_2d(array_name,array)
 
  total_memory = total_memory - mem_mb
 
- call write_memory_deallocate(array_name,mem_mb) 
+ call write_memory_deallocate(array_name,mem_mb)
 
 end subroutine clean_deallocate_2d
 
@@ -673,7 +673,7 @@ subroutine clean_deallocate_3d(array_name,array)
 
  total_memory = total_memory - mem_mb
 
- call write_memory_deallocate(array_name,mem_mb) 
+ call write_memory_deallocate(array_name,mem_mb)
 
 end subroutine clean_deallocate_3d
 
@@ -703,7 +703,7 @@ subroutine clean_deallocate_4d(array_name,array)
 
  total_memory = total_memory - mem_mb
 
- call write_memory_deallocate(array_name,mem_mb) 
+ call write_memory_deallocate(array_name,mem_mb)
 
 end subroutine clean_deallocate_4d
 
@@ -852,7 +852,7 @@ subroutine clean_allocate_s1d(array_name,array,n1)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_s1d
 
@@ -887,7 +887,7 @@ subroutine clean_allocate_s2d(array_name,array,n1,n2)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_s2d
 
@@ -922,7 +922,7 @@ subroutine clean_allocate_s3d(array_name,array,n1,n2,n3)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_s3d
 
@@ -957,7 +957,7 @@ subroutine clean_allocate_s4d(array_name,array,n1,n2,n3,n4)
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
 
- call write_memory_allocate(array_name,mem_mb) 
+ call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_s4d
 
@@ -984,7 +984,7 @@ subroutine clean_deallocate_s1d(array_name,array)
 
  total_memory = total_memory - mem_mb
 
- call write_memory_deallocate(array_name,mem_mb) 
+ call write_memory_deallocate(array_name,mem_mb)
 
 end subroutine clean_deallocate_s1d
 
@@ -1012,7 +1012,7 @@ subroutine clean_deallocate_s2d(array_name,array)
 
  total_memory = total_memory - mem_mb
 
- call write_memory_deallocate(array_name,mem_mb) 
+ call write_memory_deallocate(array_name,mem_mb)
 
 end subroutine clean_deallocate_s2d
 
@@ -1041,7 +1041,7 @@ subroutine clean_deallocate_s3d(array_name,array)
 
  total_memory = total_memory - mem_mb
 
- call write_memory_deallocate(array_name,mem_mb) 
+ call write_memory_deallocate(array_name,mem_mb)
 
 end subroutine clean_deallocate_s3d
 
@@ -1071,7 +1071,7 @@ subroutine clean_deallocate_s4d(array_name,array)
 
  total_memory = total_memory - mem_mb
 
- call write_memory_deallocate(array_name,mem_mb) 
+ call write_memory_deallocate(array_name,mem_mb)
 
 end subroutine clean_deallocate_s4d
 
