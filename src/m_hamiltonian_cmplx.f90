@@ -418,7 +418,7 @@ subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
 end subroutine static_dipole_fast_cmplx
 
 !=========================================================================
-subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,num)
+subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,num,time_cur)
  use m_inputparam
  use m_dft_grid
  use m_atoms
@@ -429,8 +429,9 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
  real(dp),intent(in)        :: occupation(:,:)
  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
  integer,intent(in)         :: num
+ real(dp),intent(in)        :: time_cur
 !=====
- real(dp),parameter   :: length=10.0_dp
+ real(dp)             :: length
  integer              :: nstate,ndisc
  integer              :: ibf,jbf,ispin
  integer              :: idft_xc
@@ -446,15 +447,16 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
  real(dp),allocatable :: rhor_batch(:,:)
  real(dp)             :: dz_disc
  real(dp),allocatable :: charge_disc(:,:)
- real(dp),allocatable :: count_z_section(:,:)
+ real(dp),allocatable :: charge_out(:,:)
+ integer(dp),allocatable :: count_z_section(:,:)
  integer              :: idisc,i_max_atom,nocc
+ logical              :: file_exists
+ integer              :: imanual
 !=====
 
  call start_clock(timing_calc_dens_disc)
 
  nocc = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
-
- ndisc=50
 
  if( excit_type%form==EXCIT_PROJECTILE ) then
    i_max_atom=natom-nprojectile
@@ -462,6 +464,17 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
    i_max_atom=natom
  endif
 
+ inquire(file='manual_disc_dft_grid',exist=file_exists)
+ if(file_exists) then
+   open(newunit=imanual,file='manual_disc_dft_grid',status='old')
+   read(imanual,*) ndisc
+   read(imanual,*) length
+   close(imanual)
+ else
+   ndisc=100
+   length=10.0_dp
+   call issue_warning('calc_density_in_disc_cmplx_dft_grid: manual file was not found')
+ endif
 
  z_min =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
  z_max =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
@@ -475,8 +488,10 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
  !
 
  allocate(charge_disc(ndisc,nspin))
+ allocate(charge_out(2,nspin))
  allocate(count_z_section(ndisc,nspin))
  charge_disc(:,:) = 0.0_dp
+ charge_out(:,:) = 0.0_dp
  count_z_section(:,:) = 0
 
  dz_disc=(z_max-z_min)/ndisc
@@ -504,6 +519,12 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
          charge_disc(idisc,ispin)=charge_disc(idisc,ispin)+rhor_batch(ispin,ir) * weight_batch(ir)
          count_z_section(idisc,ispin)=count_z_section(idisc,ispin)+1
        end if
+       if( idisc <= 0 ) then
+         charge_out(1,ispin)=charge_out(1,ispin)+rhor_batch(ispin,ir) * weight_batch(ir)
+       end if
+       if( idisc > ndisc ) then
+         charge_out(2,ispin)=charge_out(2,ispin)+rhor_batch(ispin,ir) * weight_batch(ir)
+       end if
      enddo ! loop on the ispin
    enddo ! loop on ir
 
@@ -522,12 +543,13 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
    enddo
 
    do ispin=1,nspin
-     write(file_out(ispin),'(a,3F12.6)') '# Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
+     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
      do idisc=1,ndisc  
-       write(file_out(ispin),'(2F16.4,i6)') (z_min+idisc*dz_disc)*bohr_A,charge_disc(idisc,ispin),count_z_section(idisc,ispin)
+       write(file_out(ispin),'(F16.4,F19.10,i6)') (z_min+idisc*dz_disc)*bohr_A,charge_disc(idisc,ispin),count_z_section(idisc,ispin)
      end do
      close(file_out(ispin))
    end do
+   write(stdout,'(A,2F12.6)') "Charge out of region, left and right:",charge_out(:,1)
 
  end if
  !

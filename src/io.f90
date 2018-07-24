@@ -1329,7 +1329,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 end subroutine plot_cube_wfn_cmplx
 
 !=========================================================================
-subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num)
+subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
  use m_definitions
  use m_mpi
  use m_tddft_variables
@@ -1345,14 +1345,15 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
  complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
- integer                    :: num
+ integer,intent(in)         :: num
+ real(dp),intent(in)        :: time_cur
 !=====
  integer                    :: gt
  integer                    :: nx
  integer                    :: ny
  integer                    :: nz
  integer                    :: nocc(2),nocc_max
- real(dp),parameter         :: length=4.0_dp
+ real(dp)                   :: length
  integer                    :: ibf
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
@@ -1373,7 +1374,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
  real(dp),allocatable       :: charge_layer(:)
 !=====
 
- call start_clock(timing_print_cube_rho_tddft)
+ call start_clock(timing_calc_dens_disc)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -1397,15 +1398,18 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
  istate1= 1
  istate2= nocc_max
 
- inquire(file='manual_cubewfn_tddft',exist=file_exists)
+ inquire(file='manual_disc_density',exist=file_exists)
  if(file_exists) then
    open(newunit=icubefile,file='manual_disc_density',status='old')
    read(icubefile,*) nx,ny,nz
+   read(icubefile,*) length
    close(icubefile)
  else
    nx=40
    ny=40
    nz=256
+   length=10.0_dp
+   call issue_warning('calc_density_in_disc_cmplx_regular: manual file was not found')
  endif
  allocate(phi_cmplx(istate1:istate2,nspin))
 
@@ -1428,9 +1432,9 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
 
  if( is_iomaster ) then
    do ispin=1,nspin
-     write(file_name,'(a,i3.3,a,i1,a,i3.3,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",INT(r_disc),r_disc-INT(r_disc),".dat"
+     write(file_name,'(a,i4.4,a,i1,a,i3.3,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",INT(r_disc),r_disc-INT(r_disc),".dat"
      open(newunit=file_out(ispin),file=file_name)
-     write(file_out(ispin),'(a,3F12.6)') '# Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
+     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
    enddo
  end if
 
@@ -1446,11 +1450,11 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
        rr(1) = ( xmin + (ix-1)*dx ) 
        do iy=1,ny
          rr(2) = ( ymin + (iy-1)*dy ) 
-         
+   
          if( (rr(1)**2+rr(2)**2)**0.5_dp <= r_disc ) then
            call calculate_basis_functions_r(basis,rr,basis_function_r)
            phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
-           charge_layer(iz)=charge_layer(iz)+SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact
+           charge_layer(iz)=charge_layer(iz)+SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact 
          end if
 
        enddo
@@ -1459,10 +1463,12 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
 
    call xsum_world(charge_layer(:))
 
+   charge_layer = charge_layer * dx*dy
+
    if( is_iomaster ) then
      do iz=1,nz
        rr(3) = ( zmin + (iz-1)*dz )
-       write(file_out(ispin),'(2F16.4)') rr(3)*bohr_A,charge_layer(iz)
+       write(file_out(ispin),'(F16.4,F19.10)') rr(3)*bohr_A,charge_layer(iz)
      end do
      close(file_out(ispin))
    end if
@@ -1471,7 +1477,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
 
  deallocate(phi_cmplx)
 
- call stop_clock(timing_print_cube_rho_tddft)
+ call stop_clock(timing_calc_dens_disc)
 
 end subroutine calc_density_in_disc_cmplx_regular
 

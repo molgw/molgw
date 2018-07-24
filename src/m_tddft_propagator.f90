@@ -253,8 +253,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
    call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,cube_density_start,nx,ny,nz)
  end if
 
-! if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,0) 
- if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,0) 
+ if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,0,time_min) 
+! if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min) 
 
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
@@ -324,8 +324,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
      if( print_line_rho_tddft_  ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
      if( print_cube_rho_tddft_  ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
      if( print_cube_diff_tddft_ ) call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
-!     if( calc_dens_disc_ )        call calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx,iwrite_step) 
-     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
+     if( calc_dens_disc_ )        call calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur) 
+!     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
   
      if(calc_q_matrix_) call calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur) 
 
@@ -404,13 +404,13 @@ subroutine echo_tddft_variables()
  implicit none
 
  write(stdout,'(/,1x,a)') 'The most important variables of this section:'
- write(stdout,'(2x,a30,2x,es16.8)') 'Simulation time: time_sim',time_sim
- write(stdout,'(2x,a30,2x,es16.8)') 'Time step: time_step',time_step
- write(stdout,'(2x,a30,2x,i8)') 'Number of iterations: ntau',NINT((time_sim)/time_step)
- write(stdout,'(2x,a30,6x,a)')      'Predictor-corrector: pred_corr',pred_corr
- write(stdout,'(2x,a30,6x,a)')      'Propagator: prop_type',prop_type
- write(stdout,'(2x,a30,2x,i8)')     'Number of occupied states: nocc',nocc
- write(stdout,'(2x,a30,2x,i8)')     'Historic of Hamiltonian: n_hist',n_hist
+ write(stdout,'(2x,a32,2x,es16.8)') 'Simulation time: time_sim',time_sim
+ write(stdout,'(2x,a32,2x,es16.8)') 'Time step: time_step',time_step
+ write(stdout,'(2x,a32,2x,i8)') 'Number of iterations: ntau',NINT((time_sim)/time_step)
+ write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector: pred_corr',pred_corr
+ write(stdout,'(2x,a32,6x,a)')      'Propagator: prop_type',prop_type
+ write(stdout,'(2x,a32,2x,i8)')     'Number of occupied states: nocc',nocc
+ write(stdout,'(2x,a32,2x,i8)')     'Historic of Hamiltonian: n_hist',n_hist
  write(stdout,*) 
 
 end subroutine echo_tddft_variables
