@@ -772,7 +772,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                           + ( eri_pbia * eri_iajc * 4.0_dp * eri_qbjc ) / ( denom1 * denom2 )
                selfenergy(iomega,DRINGS,pstate,pqspin) = selfenergy(iomega,DRINGS,pstate,pqspin) &
                           + (  eri_paib * eri_iajc * num3a &
-                             + eri_pbia * eri_iajc * (-2.0_dp)*num3a ) / ( denom1 * denom2 )
+                             + eri_pbia * eri_iajc * (-2.0_dp) * num3a ) / ( denom1 * denom2 )
                selfenergy(iomega,Deh,pstate,pqspin) = selfenergy(iomega,Deh,pstate,pqspin) &
                           + (  eri_paib * eri_ijac * num3b &
                              + eri_pbia * eri_ijac * num3a )   / ( denom1 * denom2 )
@@ -876,7 +876,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                selfenergy(iomega,TWORINGS,pstate,pqspin) = selfenergy(iomega,TWORINGS,pstate,pqspin) &
                           - 4.0_dp * num1a * num2a * eri_qkjb / ( denom1 * denom2 )
                selfenergy(iomega,DRINGS,pstate,pqspin) = selfenergy(iomega,DRINGS,pstate,pqspin) &
-                          -(  num1a * num2a * -(2.0_dp)*num3a  &
+                          -(  num1a * num2a * (-2.0_dp) * num3a  &
                             + num1b * num2a * num3a            ) / ( denom1 * denom2 )
                selfenergy(iomega,Deh,pstate,pqspin) = selfenergy(iomega,Deh,pstate,pqspin) &
                           -(  num1a * num2b * num3a &

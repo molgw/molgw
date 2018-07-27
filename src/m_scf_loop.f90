@@ -448,6 +448,7 @@ subroutine scf_loop(is_restart,&
  ! Is there a Gaussian formatted checkpoint file to be read?
  if( read_fchk /= 'NO' ) then
    call clean_allocate('Temporary density matrix',p_matrix_out,basis%nbf,basis%nbf,nspin)
+   p_matrix_out(:,:,:) = 0.0_dp
 
    select case(TRIM(read_fchk))
    ! Move all these possibilites in molgw.f90 next to PT1 calculation

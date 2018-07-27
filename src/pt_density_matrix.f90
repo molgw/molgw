@@ -50,6 +50,7 @@ subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m
  enddo
 
 ! ! Add the SCF density matrix to get to the total density matrix
+! call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
 ! do pstate=ncore_G+1,nvirtual_G-1
 !   p_matrix_pt1(pstate,pstate) = p_matrix_pt1(pstate,pstate) + occupation(pstate,iaspin)
 ! enddo
@@ -207,6 +208,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
 ! close(111)
 
  ! Add the SCF density matrix to get to the total density matrix
+ call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
  do pstate=1,nstate
    p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
  enddo
@@ -378,6 +380,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
 ! close(111)
 
  ! Add the SCF density matrix to get to the total density matrix
+ call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
  do pstate=1,nstate
    p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
  enddo
@@ -564,6 +567,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 ! close(111)
 
  ! Add the SCF density matrix to get to the total density matrix
+ call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
  do pstate=1,nstate
    p_matrix_gw(pstate,pstate) = p_matrix_gw(pstate,pstate) + occupation(pstate,pqspin)
  enddo

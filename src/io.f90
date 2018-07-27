@@ -84,7 +84,7 @@ subroutine header()
 #ifdef HAVE_LIBXC
 ! call xc_f90_version(values(1),values(2))
 ! write(chartmp,'(i2,a,i2)') values(1),'.',values(2)
-! 
+!
 ! call xc_f90_version(values(1),values(2),values(3))
 ! write(chartmp,'(i2,a,i2,a,i2)') values(1),'.',values(2),'.',values(3)
 ! write(stdout,*) 'LIBXC version '//TRIM(chartmp)
@@ -117,7 +117,7 @@ subroutine header()
                                 ammax,orbital_momentum_name(ammax)
  call set_molgw_lmax(ammax)
 
-#if defined(HAVE_LIBINT_GRADIENTS) && !defined(HAVE_LIBINT_ONEBODY) 
+#if defined(HAVE_LIBINT_GRADIENTS) && !defined(HAVE_LIBINT_ONEBODY)
  call die('MOLGW gradients requires both compilations HAVE_LIBINT_GRADIENTS and HAVE_LIBINT_ONEBODY')
 #endif
 
@@ -942,7 +942,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
  implicit none
 
  type(basis_set),intent(in) :: basis
- real(dp),intent(out) :: p_matrix_out(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)       :: p_matrix_out(basis%nbf,basis%nbf,nspin)
 !=====
  character(len=64),parameter :: file_name='gaussian.fchk'
  integer,parameter :: stride=5
@@ -965,12 +965,12 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
  if( .NOT. is_iomaster ) return
 
  if( nspin /= 1 ) then
-   write(stdout,*) 'read_gaussian_fchk: unrestricted calculations not coded yet'
+   call issue_warning('read_gaussian_fchk: unrestricted calculations not coded yet')
    return
  endif
 
  if( basis%gaussian_type /= 'CART' ) then
-   write(stdout,*) 'read_gaussian_fchk: Pure gaussians not coded yet'
+   call issue_warning('read_gaussian_fchk: Pure gaussians not coded yet')
    return
  endif
 
@@ -982,7 +982,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
  case('MP2')
    keyword = 'Total MP2 Density'
  case default
-   write(stdout,*) 'Unknown density type in read_fchk'
+   call issue_warning('Unknown density type in read_fchk')
    return
  end select
 
@@ -990,7 +990,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
                             TRIM(file_name)
  inquire(file=file_name,exist=file_exists)
  if( .NOT. file_exists) then
-   write(stdout,*) 'File not found:',TRIM(file_name)
+   call issue_warning('File not found:' // TRIM(file_name))
    return
  endif
 
@@ -1017,7 +1017,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
    do ijbf=1,(nel/stride-1)*stride+1,stride
      read(fu,*) p_matrix_read(ijbf:ijbf+stride-1)
    enddo
-   if( modulo(nel,stride) /=0 ) read(fu,*) p_matrix_read((nel/stride)*stride+1:nel)
+   if( MODULO(nel,stride) /=0 ) read(fu,*) p_matrix_read((nel/stride)*stride+1:nel)
    ijbf = 0
    do ibf=1,basis%nbf
      do jbf=1,ibf
@@ -1053,21 +1053,21 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
                            0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
                            0, 0, 1, 0, 0, 0, 0, 0, 0, 0 ] , [ 10, 10 ] )    !OK
 
- block_g(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                           0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                           0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                           0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
-                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
-                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
-                           0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+ block_g(:,:) = RESHAPE( [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
-                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
-                           0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
-                           0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                           0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
                            0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
-                           0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 15, 15 ] )
+                           0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 15, 15 ] )
 
  swap(:,:) = 0.0_dp
  ibf = 1
@@ -1094,6 +1094,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
  p_matrix_out(:,:,1) = MATMUL( TRANSPOSE(swap), MATMUL(p_matrix_out(:,:,1),swap) )
 
 
+ !call dump_out_matrix(.TRUE.,'gaussian density matrix',SIZE(p_matrix_out,DIM=1),SIZE(p_matrix_out,DIM=3),p_matrix_out)
 
 
  deallocate(p_matrix_read)
