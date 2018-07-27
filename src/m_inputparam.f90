@@ -120,6 +120,7 @@ module m_inputparam
  character(len=12),protected      :: init_hamiltonian
  character(len=12),protected      :: ci_greens_function
  character(len=12),protected      :: ci_type
+ character(len=12),protected      :: pt3_a_diagrams
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
@@ -155,7 +156,6 @@ module m_inputparam
  real(dp),protected               :: grid_memory
 
  logical,protected                :: gwgamma_tddft_
- logical,protected                :: pt3_a_diagrams_
  logical,protected                :: read_restart_
  logical,protected                :: ignore_bigrestart_
  logical,protected                :: force_energy_qp_
@@ -749,7 +749,6 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_exchange
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
  character(len=3)     :: gwgamma_tddft
- character(len=3)     :: pt3_a_diagrams
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -830,6 +829,7 @@ subroutine read_inputfile_namelist()
  ci_greens_function = capitalize(ci_greens_function)
  ci_type            = capitalize(ci_type)
  read_fchk          = capitalize(read_fchk)
+ pt3_a_diagrams     = capitalize(pt3_a_diagrams)
 
  read_restart_      = yesno(read_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)
@@ -852,7 +852,6 @@ subroutine read_inputfile_namelist()
  print_hartree_     = yesno(print_hartree)
  print_exchange_    = yesno(print_exchange)
  gwgamma_tddft_     = yesno(gwgamma_tddft)
- pt3_a_diagrams_    = yesno(pt3_a_diagrams)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
@@ -873,6 +872,12 @@ subroutine read_inputfile_namelist()
    length_factor=1.0_dp
  case default
    call die('units for lengths in input file not understood')
+ end select
+
+ select case(TRIM(pt3_a_diagrams))
+ case('YES','NO','ONLY')
+ case default
+   call die('pt3_a_diagram input variable can only be yes, no, or only')
  end select
 
  !

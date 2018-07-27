@@ -111,7 +111,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  p_matrix_pt2(:,:) = 0.0_dp
  pqspin = 1
 
- ! A1
+ ! A1 P_ij sum over k and a,b
  do istate=ncore_G+1,nhomo_G
  do jstate=ncore_G+1,nhomo_G
    do kstate=ncore_G+1,nhomo_G
@@ -134,7 +134,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  enddo
  enddo
 
- ! A2
+ ! A2 P_ab sum over  i,j  and c
  do astate=nhomo_G+1,nvirtual_G-1
  do bstate=nhomo_G+1,nvirtual_G-1
    do cstate=nhomo_G+1,nvirtual_G-1
@@ -157,8 +157,8 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  enddo
  enddo
 
- ! A3    P_cj  sum over i,a,b
- ! A4    P_jc  sum over i,a,b
+ ! A3    P_cj  sum over i, and a,b
+ ! A4    P_jc  sum over i, and a,b
  do cstate=nhomo_G+1,nvirtual_G-1
  do jstate=ncore_G+1,nhomo_G
    do astate=nhomo_G+1,nvirtual_G-1

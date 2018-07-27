@@ -559,8 +559,9 @@ i = len(vl) - 1
 vl[i].keyword  ='pt3_a_diagrams'
 vl[i].family   ='post'
 vl[i].default  ='yes'
-vl[i].datatype ='yes/no'
-vl[i].comment  ='Switch whether to calculate the A diagrams family in PT3. A diagrams are the self-consistent diagrams (PT2 inclusions in the Green\'s function).'
+vl[i].datatype ='characters'
+vl[i].comment  ='Switch whether to calculate the A diagrams family in PT3. A diagrams are the self-consistent diagrams (PT2 inclusions in the Green\'s function). \
+                Valid choices include: \'yes\', \'no\', or \'only\'.'
 
 #================================
 vl.append(variable())
