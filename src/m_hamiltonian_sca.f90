@@ -787,7 +787,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
    h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
                             MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
 
-   call diagonalize(nstate,h_small,energy(1:nstate,ispin))
+   call diagonalize(h_small,energy(1:nstate,ispin))
 
    c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
 

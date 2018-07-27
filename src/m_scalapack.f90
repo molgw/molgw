@@ -841,7 +841,7 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
 
 #else
 
- call diagonalize(nglobal,matrix,eigval,eigvec)
+ call diagonalize(matrix,eigval,eigvec)
 
 #endif
 
@@ -918,7 +918,7 @@ subroutine diagonalize_sca_pdsyevr(nglobal,desc,matrix,eigval,desc_eigvec,eigvec
 
 #else
 
- call diagonalize(nglobal,matrix,eigval,eigvec)
+ call diagonalize(matrix,eigval,eigvec)
 
 #endif
 
