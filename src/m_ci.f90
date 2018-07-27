@@ -1409,6 +1409,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  logical              :: still_available(conf%nconf)
 !=====
 
+#if defined(HAVE_SCALAPACK)
  write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig_calc
  if( PRESENT(h) ) then
    write(stdout,'(1x,a,f10.3)') 'Sparse matrix incore implementation with storage size (Mb): ', &
@@ -1594,6 +1595,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  call clean_deallocate('Hamiltonian applications',ab)
  call clean_deallocate('Error vectors',qq)
 
+
 contains
 
 subroutine get_ab()
@@ -1633,6 +1635,7 @@ subroutine get_ab()
                 0.0_dp,ab_iblock,mb_local)
 
      call DGSUM2D(cntxt,'A',' ',mb_local,neig_calc,ab_iblock,1,rdest,0)
+
      if( iprow == rdest ) then
        iconf = rowindex_global_to_local(desc_bb,iconf_min)
        ab(iconf:iconf+mb_local-1,mm+1:mm+neig_calc) = ab_iblock(:,:)
@@ -1651,6 +1654,7 @@ subroutine get_ab()
        iconf_global = rowindex_local_to_global(desc_bb,iconf)
        bb_i(iconf_global) =  bb(iconf,ieig)
      enddo
+
      call DGSUM2D(cntxt,'A',' ',conf%nconf,1,bb_i,1,-1,-1)
 
      ab_i(:) = 0.0_dp
@@ -1683,6 +1687,10 @@ subroutine get_ab()
  endif
 
 end subroutine get_ab
+
+#else
+ call die('diagonalize_davidson_ci: only works with a compilation using SCALAPACK')
+#endif
 
 end subroutine diagonalize_davidson_ci
 
