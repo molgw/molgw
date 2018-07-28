@@ -539,6 +539,7 @@ program molgw
 
    call prepare_ci(basis,MIN(nstate,nvirtualg-1),ncoreg,c_matrix)
 
+#ifdef HAVE_SCALAPACK
    call full_ci_nelectrons(0,NINT(electrons),ci_spin_multiplicity-1,en%nuc_nuc)
 
    if(calc_type%is_selfenergy) then
@@ -550,6 +551,9 @@ program molgw
      endif
      call full_ci_nelectrons_selfenergy()
    endif
+#else
+   write(6,*) 'only with scalapack'
+#endif
 
 
    if(has_auxil_basis) then

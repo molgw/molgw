@@ -1181,6 +1181,7 @@ subroutine full_ci_nelectrons_selfenergy()
 end subroutine full_ci_nelectrons_selfenergy
 
 
+#ifdef HAVE_SCALAPACK
 !==================================================================
 subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  implicit none
@@ -1368,6 +1369,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
 
 
 end subroutine full_ci_nelectrons
+
 
 
 !=========================================================================
@@ -1693,7 +1695,7 @@ end subroutine get_ab
 #endif
 
 end subroutine diagonalize_davidson_ci
-
+#endif
 
 
 !==================================================================
