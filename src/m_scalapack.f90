@@ -3141,7 +3141,7 @@ subroutine finish_scalapack()
 
 end subroutine finish_scalapack
 
-
+#ifdef HAVE_SCALAPACK
 !=========================================================================
 subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,eigvec)
  implicit none
@@ -3332,8 +3332,9 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
 
 
 end subroutine diagonalize_davidson_sca
+#endif
 
-
+#ifdef HAVE_SCALAPACK
 !=========================================================================
 subroutine orthogonalize_sca(desc_vec,mvec_ortho,nvec_ortho,vec)
  implicit none
@@ -3368,7 +3369,7 @@ subroutine orthogonalize_sca(desc_vec,mvec_ortho,nvec_ortho,vec)
 
 
 end subroutine orthogonalize_sca
-
+#endif
 
 !=========================================================================
 subroutine select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
