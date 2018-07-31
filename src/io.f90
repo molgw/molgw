@@ -975,22 +975,21 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
  endif
 
  select case(TRIM(read_fchk))
- case('SCF')
-   keyword = 'Total SCF Density'
  case('CC')
    keyword = 'Total CC Density'
  case('MP2')
    keyword = 'Total MP2 Density'
  case default
-   call issue_warning('Unknown density type in read_fchk')
-   return
+   keyword = 'Total SCF Density'
  end select
 
  write(stdout,'(/,1x,a,a)') 'Reading an existing Gaussian formatted checkpoint point: ',&
                             TRIM(file_name)
+ write(stdout,'(1x,a,a)')   'Reading field: ',TRIM(keyword)
+
  inquire(file=file_name,exist=file_exists)
  if( .NOT. file_exists) then
-   call issue_warning('File not found:' // TRIM(file_name))
+   call issue_warning('File not found: ' // TRIM(file_name))
    return
  endif
 

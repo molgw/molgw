@@ -68,7 +68,7 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
- real(dp)                :: nucleus_ii(nstate,nspin),hartree_ii(nstate,nspin),exchange_ii(nstate,nspin)
+ real(dp)                :: hartree_ii(nstate,nspin),exchange_ii(nstate,nspin)
 !=============================
  real(dp),allocatable :: c_matrix_restart(:,:,:)
  real(dp),allocatable :: hfock_restart(:,:,:)
@@ -401,7 +401,7 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Print out some expectation values if requested
- ! Hartree
+ ! 
  if( print_hartree_ ) then
 
 
@@ -415,7 +415,6 @@ subroutine scf_loop(is_restart,&
      write(stdout,'(1x,a,a)') 'RESTART file read: ',restart_filename
      do ispin=1,nspin
        do istate=1,nstate
-          nucleus_ii(istate,ispin)  = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_nucleus(:,:) , c_matrix_restart(:,istate,ispin) ) )
           hartree_ii(istate,ispin)  = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix_restart(:,istate,ispin) ) )
           exchange_ii(istate,ispin) = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix_restart(:,istate,ispin) ) )
        enddo
@@ -425,7 +424,6 @@ subroutine scf_loop(is_restart,&
      write(stdout,'(1x,a)') 'no RESTART file read'
      do ispin=1,nspin
        do istate=1,nstate
-          nucleus_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_nucleus(:,:) , c_matrix(:,istate,ispin) ) )
           hartree_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix(:,istate,ispin) ) )
           exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
        enddo
@@ -434,9 +432,6 @@ subroutine scf_loop(is_restart,&
    endif
    call dump_out_energy('=== Hartree expectation value ===',nstate,nspin,occupation,hartree_ii)
    call dump_out_energy('=== Exchange expectation value ===',nstate,nspin,occupation,exchange_ii)
-   !call dump_out_energy('=== Nucleus expectation value ===',nstate,nspin,occupation,nucleus_ii)
-   !nucleus_ii(:,:) = hartree_ii(:,:) + nucleus_ii(:,:)
-   !call dump_out_energy('=== Total electrostatic expectation value ===',nstate,nspin,occupation,nucleus_ii)
 
    call clean_deallocate('RESTART: C',c_matrix_restart)
    call clean_deallocate('RESTART: H',hfock_restart)
@@ -449,6 +444,9 @@ subroutine scf_loop(is_restart,&
  if( read_fchk /= 'NO' ) then
    call clean_allocate('Temporary density matrix',p_matrix_out,basis%nbf,basis%nbf,nspin)
    p_matrix_out(:,:,:) = 0.0_dp
+
+   ! Always read the gaussian.fchk file
+   call read_gaussian_fchk(basis,p_matrix_out)
 
    select case(TRIM(read_fchk))
    ! Move all these possibilites in molgw.f90 next to PT1 calculation
@@ -466,9 +464,6 @@ subroutine scf_loop(is_restart,&
      call selfenergy_set_state_range(nstate,occupation)
      call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_out)
      call destroy_spectral_function(wpol)
-
-   case default
-     call read_gaussian_fchk(basis,p_matrix_out)
    end select
 
    ! Check if a p_matrix was effectively read

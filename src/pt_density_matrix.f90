@@ -50,7 +50,7 @@ subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m
  enddo
 
 ! ! Add the SCF density matrix to get to the total density matrix
-! call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
+! call issue_warning('pt1_density_matrix: this is not correct when starting from something else than HF')
 ! do pstate=ncore_G+1,nvirtual_G-1
 !   p_matrix_pt1(pstate,pstate) = p_matrix_pt1(pstate,pstate) + occupation(pstate,iaspin)
 ! enddo
@@ -82,7 +82,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)       :: p_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(inout)     :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  integer                 :: pstate,qstate
  integer                 :: istate,jstate,kstate,lstate
@@ -106,9 +106,10 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  endif
 
 
-! Full calculation of the MP2 density matrix
+ ! Full calculation of the PT2 density matrix
 
  p_matrix_pt2(:,:) = 0.0_dp
+ ! so far, only spin-restricted calculation are possible
  pqspin = 1
 
  ! A1 P_ij sum over k and a,b
@@ -207,24 +208,16 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
 ! enddo
 ! close(111)
 
- ! Add the SCF density matrix to get to the total density matrix
- call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
- do pstate=1,nstate
-   p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
- enddo
+ if( ALL( ABS(p_matrix) < 1.0e-6_dp ) ) then
+   ! Add the SCF density matrix to get to the total density matrix
+   call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
+   do pstate=1,nstate
+     p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
+   enddo
+ endif
 
- p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,:,pqspin)  , &
-                          MATMUL( p_matrix_pt2(:,:), &
-                             TRANSPOSE(c_matrix(:,:,pqspin)) ) )
-
-!block
-! real(dp) :: hh(basis%nbf,basis%nbf)
-! real(dp) :: hartree_ii(nstate)
-! call calculate_hartree(basis,p_matrix,hh)
-! do istate=1,nstate
-!   write(stdout,'(1x,a,i5,2x,f12.6)') 'Occ Occ Hartree ii ',istate,DOT_PRODUCT( c_matrix(:,istate,pqspin), MATMUL( hh(:,:), c_matrix(:,istate,pqspin) ) ) * Ha_eV
-! enddo
-!end block
+ p_matrix(:,:,pqspin) = p_matrix(:,:,pqspin) + MATMUL( c_matrix(:,:,pqspin)  , &
+                                                       MATMUL( p_matrix_pt2(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
 
  if(has_auxil_basis) then
@@ -269,7 +262,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
 
 
 
- write(stdout,'(/,a)') ' Calculate the PT2 density matrix'
+ write(stdout,'(/,a)') ' Calculate the 1-ring density matrix'
 
  if( nspin /= 1 ) call die('pt2_density_matrix: only implemented for spin restricted calculations')
 
@@ -379,24 +372,19 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
 ! enddo
 ! close(111)
 
- ! Add the SCF density matrix to get to the total density matrix
- call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
- do pstate=1,nstate
-   p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
- enddo
 
- p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,:,pqspin)  , &
-                          MATMUL( p_matrix_pt2(:,:), &
-                             TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
-!block
-! real(dp) :: hh(basis%nbf,basis%nbf)
-! real(dp) :: hartree_ii(nstate)
-! call calculate_hartree(basis,p_matrix,hh)
-! do istate=1,nstate
-!   write(stdout,'(1x,a,i5,2x,f12.6)') 'Occ Occ Hartree ii ',istate,DOT_PRODUCT( c_matrix(:,istate,pqspin), MATMUL( hh(:,:), c_matrix(:,istate,pqspin) ) ) * Ha_eV
-! enddo
-!end block
+ if( ALL( ABS(p_matrix) < 1.0e-6_dp ) ) then
+   ! Add the SCF density matrix to get to the total density matrix
+   call issue_warning('onering_density_matrix: this is not correct when starting from something else than HF')
+   do pstate=1,nstate
+     p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
+   enddo
+ endif
+
+ p_matrix(:,:,pqspin) = p_matrix(:,:,pqspin) + MATMUL( c_matrix(:,:,pqspin)  , &
+                                                       MATMUL( p_matrix_pt2(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
+
 
 
  if(has_auxil_basis) then
@@ -457,7 +445,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  endif
 
 
-! Full calculation of the MP2 density matrix
+ ! First order calculation of the GW density matrix
 
  p_matrix_gw(:,:) = 0.0_dp
  pqspin = 1
@@ -566,15 +554,17 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 ! enddo
 ! close(111)
 
- ! Add the SCF density matrix to get to the total density matrix
- call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
- do pstate=1,nstate
-   p_matrix_gw(pstate,pstate) = p_matrix_gw(pstate,pstate) + occupation(pstate,pqspin)
- enddo
+ if( ALL( ABS(p_matrix) < 1.0e-6_dp ) ) then
+   ! Add the SCF density matrix to get to the total density matrix
+   call issue_warning('gw_density_matrix: this is not correct when starting from something else than HF')
+   do pstate=1,nstate
+     p_matrix_gw(pstate,pstate) = p_matrix_gw(pstate,pstate) + occupation(pstate,pqspin)
+   enddo
+ endif
 
- p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,:,pqspin)  , &
-                          MATMUL( p_matrix_gw(:,:), &
-                             TRANSPOSE(c_matrix(:,:,pqspin)) ) )
+ p_matrix(:,:,pqspin) = p_matrix(:,:,pqspin) + MATMUL( c_matrix(:,:,pqspin)  , &
+                                                       MATMUL( p_matrix_gw(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
+
 
 
  if(has_auxil_basis) then
