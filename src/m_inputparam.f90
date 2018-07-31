@@ -155,6 +155,7 @@ module m_inputparam
  real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
  real(dp),protected               :: grid_memory
 
+ logical,protected                :: use_correlated_p_matrix_
  logical,protected                :: gwgamma_tddft_
  logical,protected                :: read_restart_
  logical,protected                :: ignore_bigrestart_
@@ -748,7 +749,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_exchange
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
- character(len=3)     :: gwgamma_tddft
+ character(len=3)     :: gwgamma_tddft,use_correlated_p_matrix
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -831,27 +832,28 @@ subroutine read_inputfile_namelist()
  read_fchk          = capitalize(read_fchk)
  pt3_a_diagrams     = capitalize(pt3_a_diagrams)
 
- read_restart_      = yesno(read_restart)
- ignore_bigrestart_ = yesno(ignore_bigrestart)
- force_energy_qp_   = yesno(force_energy_qp)
- is_tda             = yesno(tda)
- is_triplet         = yesno(triplet)
- is_frozencore      = yesno(frozencore)
- is_virtual_fno     = yesno(virtual_fno)
- incore_            = yesno(incore)
+ read_restart_            = yesno(read_restart)
+ ignore_bigrestart_       = yesno(ignore_bigrestart)
+ force_energy_qp_         = yesno(force_energy_qp)
+ is_tda                   = yesno(tda)
+ is_triplet               = yesno(triplet)
+ is_frozencore            = yesno(frozencore)
+ is_virtual_fno           = yesno(virtual_fno)
+ incore_                  = yesno(incore)
 
- print_eri_         = yesno(print_eri)
- print_wfn_         = yesno(print_wfn)
- print_w_           = yesno(print_w)
- print_sigma_       = yesno(print_sigma)
- print_restart_     = yesno(print_restart)
- print_bigrestart_  = yesno(print_bigrestart)
- print_pdos_        = yesno(print_pdos)
- print_multipole_   = yesno(print_multipole)
- print_cube_        = yesno(print_cube)
- print_hartree_     = yesno(print_hartree)
- print_exchange_    = yesno(print_exchange)
- gwgamma_tddft_     = yesno(gwgamma_tddft)
+ print_eri_               = yesno(print_eri)
+ print_wfn_               = yesno(print_wfn)
+ print_w_                 = yesno(print_w)
+ print_sigma_             = yesno(print_sigma)
+ print_restart_           = yesno(print_restart)
+ print_bigrestart_        = yesno(print_bigrestart)
+ print_pdos_              = yesno(print_pdos)
+ print_multipole_         = yesno(print_multipole)
+ print_cube_              = yesno(print_cube)
+ print_hartree_           = yesno(print_hartree)
+ print_exchange_          = yesno(print_exchange)
+ gwgamma_tddft_           = yesno(gwgamma_tddft)
+ use_correlated_p_matrix_ = yesno(use_correlated_p_matrix)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
