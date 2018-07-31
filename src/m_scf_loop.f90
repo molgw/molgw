@@ -469,10 +469,10 @@ subroutine scf_loop(is_restart,&
    if( ANY( ABS(p_matrix_corr(:,:,:)) > 0.01_dp ) ) then
 
      call calculate_hartree(basis,p_matrix_corr,hamiltonian_hartree_corr,eh=energy_tmp)
-     write(stdout,'(a50,1x,f19.10)') 'Hartree energy from correlated density matrix [Ha]:',energy_tmp
+     write(stdout,'(a50,1x,f19.10)') 'Hartree energy from correlated dm [Ha]:',energy_tmp
 
      call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=energy_tmp)
-     write(stdout,'(a50,1x,f19.10)') 'Exchange energy from correlated density matrix [Ha]:',energy_tmp
+     write(stdout,'(a50,1x,f19.10)') 'Exchange energy from correlated dm [Ha]:',energy_tmp
 
      do ispin=1,nspin
        do istate=1,nstate
