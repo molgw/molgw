@@ -3,20 +3,12 @@
 # Database for the MOLGW test suite
 #
 # There are two types of statements
-<<<<<<< HEAD
-# 1. Input line comprises 2 or 3 fiels: 
-=======
 # 1. Input line comprises 2 or 3 commas:
->>>>>>> ee4334b6b79913c076b27e0b2de4c8f1b9952b6a
 #    a. Input file name
 #    b. Comment to be written in the output
 #    c. (Optional) Restart from a previous calculation
 #
-<<<<<<< HEAD
-# 2. Test line comprises 4 fields: 
-=======
 # 2. Test line comprises 4 commas:
->>>>>>> ee4334b6b79913c076b27e0b2de4c8f1b9952b6a
 #    a. Text key to search in the out file
 #    b. Reference value
 #    c. Position after the text key and a colon delimiter ':'
