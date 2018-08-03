@@ -827,7 +827,6 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: calc_spectrum
  character(len=3)     :: read_tddft_restart
  character(len=3)     :: print_tddft_restart
- character(len=3)     :: pt3_a_diagrams
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -937,8 +936,6 @@ subroutine read_inputfile_namelist()
  gwgamma_tddft_         = yesno(gwgamma_tddft)
  use_correlated_p_matrix_ = yesno(use_correlated_p_matrix)
  print_tddft_matrices_  = yesno(print_tddft_matrices)
- pt3_a_diagrams_        = yesno(pt3_a_diagrams)
- print_cube_rho_tddft_  = yesno(print_cube_rho_tddft)
  print_cube_diff_tddft_ = yesno(print_cube_diff_tddft)
  print_line_rho_tddft_  = yesno(print_line_rho_tddft)
  print_dens_traj_tddft_ = yesno(print_dens_traj_tddft)
