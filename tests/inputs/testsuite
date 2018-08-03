@@ -636,8 +636,8 @@ ne_rings.in               , Perturbation theory with only 1- and 2-ring diagrams
 SCF Total Energy          ,   -128.4900916481   , 0 , 1.0e-7
 gKS HOMO energy           ,    -22.639065       , 0 , 1.0e-4
 gKS LUMO energy           ,     46.110304       , 0 , 1.0e-4
-TWO_RINGS HOMO energy     ,    -20.964659       , 0 , 1.0e-4
-TWO_RINGS LUMO energy     ,     45.419598       , 0 , 1.0e-4
+TWO_RINGS HOMO energy     ,    -22.788691       , 0 , 1.0e-4
+TWO_RINGS LUMO energy     ,     46.034447       , 0 , 1.0e-4
 
 h2o_temperature.in        , for a restart test with non-zero temperature
 SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7

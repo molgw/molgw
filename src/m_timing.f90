@@ -68,7 +68,7 @@ module m_timing
  integer,parameter :: timing_density_matrix_cmplx= 49
  integer,parameter :: timing_aomo_pola           = 50
  integer,parameter :: timing_aomo_ci             = 51
- integer,parameter :: timing_aomo_self           = 52
+ integer,parameter :: timing_mbpt_dm             = 52
 
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -225,6 +225,8 @@ subroutine output_timing()
  call output_timing_line('Optical spectrum',timing_spectrum,2)
 
  ! Self-energies
+ call output_timing_line('MBPT density matrix',timing_mbpt_dm,1)
+
  call output_timing_line('GW self-energy',timing_gw_self,1)
  call output_timing_line('PT self-energy',timing_pt_self,1)
  call output_timing_line('GWGamma self-energy',timing_gwgamma_self,1)

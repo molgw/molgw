@@ -138,6 +138,7 @@ module m_inputparam
  character(len=12),protected      :: excit_name
  character(len=12),protected      :: ci_greens_function
  character(len=12),protected      :: ci_type
+ character(len=12),protected      :: pt3_a_diagrams
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
@@ -172,8 +173,8 @@ module m_inputparam
  real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
  real(dp),protected               :: grid_memory
 
+ logical,protected                :: use_correlated_p_matrix_
  logical,protected                :: gwgamma_tddft_
- logical,protected                :: pt3_a_diagrams_
  logical,protected                :: read_restart_
  logical,protected                :: ignore_bigrestart_
  logical,protected                :: force_energy_qp_
@@ -190,6 +191,7 @@ module m_inputparam
  logical,protected                :: print_exchange_
  real(dp),protected               :: rcut_mbpt
 
+ logical,protected                :: pt3_a_diagrams_
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
  real(dp),protected               :: alpha_hybrid_lr = 0.0_dp
  real(dp),protected               :: rcut            = 0.0_dp
@@ -813,7 +815,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_exchange
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
- character(len=3)     :: gwgamma_tddft
+ character(len=3)     :: gwgamma_tddft,use_correlated_p_matrix
  character(len=3)     :: print_tddft_matrices
  character(len=3)     :: print_cube_rho_tddft
  character(len=3)     :: print_cube_diff_tddft
@@ -910,6 +912,7 @@ subroutine read_inputfile_namelist()
  ci_greens_function = capitalize(ci_greens_function)
  ci_type            = capitalize(ci_type)
  read_fchk          = capitalize(read_fchk)
+ pt3_a_diagrams     = capitalize(pt3_a_diagrams)
 
  read_restart_      = yesno(read_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)
@@ -932,6 +935,7 @@ subroutine read_inputfile_namelist()
  print_hartree_         = yesno(print_hartree)
  print_exchange_        = yesno(print_exchange)
  gwgamma_tddft_         = yesno(gwgamma_tddft)
+ use_correlated_p_matrix_ = yesno(use_correlated_p_matrix)
  print_tddft_matrices_  = yesno(print_tddft_matrices)
  pt3_a_diagrams_        = yesno(pt3_a_diagrams)
  print_cube_rho_tddft_  = yesno(print_cube_rho_tddft)
@@ -964,6 +968,12 @@ subroutine read_inputfile_namelist()
    length_factor=1.0_dp
  case default
    call die('units for lengths in input file not understood')
+ end select
+
+ select case(TRIM(pt3_a_diagrams))
+ case('YES','NO','ONLY')
+ case default
+   call die('pt3_a_diagram input variable can only be yes, no, or only')
  end select
 
  !

@@ -490,7 +490,7 @@ program molgw
 
  !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
- ! for the forthcoming GW or PT2 corrections
+ ! for the forthcoming GW or PT corrections
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
 
    allocate(exchange_m_vxc_diag(nstate,nspin))

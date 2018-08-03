@@ -441,10 +441,11 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
  type(selfenergy_grid),intent(inout) :: se
  real(dp),intent(out)       :: emp3
 !=====
- integer,parameter       :: A1=1,A2=2,A3=3,A5=4
- integer,parameter       :: C1=5,C2=6,C4=7,C6=8
- integer,parameter       :: D1=9,D2=10,D4=11,D6=12
- integer,parameter       :: B1=13,B2=14,RINGS=15
+ integer,parameter       :: ONERING=1,SOX_=2
+ integer,parameter       :: Ah=3,Ax=4
+ integer,parameter       :: Cd=5,Cx=6
+ integer,parameter       :: DRINGS=7,Deh=8
+ integer,parameter       :: TWORINGS=9
  integer                 :: pstate,qstate
  complex(dp),allocatable :: selfenergy(:,:,:,:)
  integer                 :: iomega
@@ -456,20 +457,30 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
  real(dp)                :: num1,num2,num3
  real(dp)                :: num1a,num1b,num2a,num2b,num3a,num3b
  real(dp)                :: numgw
- logical                 :: selfconsistent_diagrams
+ real(dp)                :: eri_pqjk,eri_pjqk,eri_pqbc,eri_pbqc,eri_pqjc,eri_pjqc,eri_pqkb,eri_pkqb
+ real(dp)                :: eri_paib,eri_pbia,eri_iajc,eri_ijac,eri_qcjb,eri_qbjc
+ real(dp)                :: eri_pija,eri_pjia,eri_qija,eri_qaib
+ real(dp)                :: eri_pkla,eri_plka
+ real(dp)                :: eri_qjbc,eri_qjkb,eri_qkjb,eri_qbik,eri_qkib
+ real(dp)                :: eri_kaib,eri_icja,eri_acib,eri_ikja
 !=====
 
  call start_clock(timing_pt_self)
 
+ ! Emp3 is not calculated so far
  emp3 = 0.0_dp
- selfconsistent_diagrams = selfenergy_technique /= EVSC .AND. pt3_a_diagrams_
 
  write(stdout,'(/,a)') ' Perform the third-order self-energy calculation'
- if( selfconsistent_diagrams ) then
-   write(stdout,'(1x,a)') 'Include all the diagrams'
- else
-   write(stdout,'(1x,a)') 'Do not include the A family of diagrams'
- endif
+ select case(pt3_a_diagrams)
+ case('YES')
+   write(stdout,'(1x,a)') 'Include all the 2nd and 3rd order diagrams'
+ case('NO')
+   write(stdout,'(1x,a)') 'Discard the A diagrams: the PT2 density matrix effect on Hartree and Exchange'
+ case('ONLY')
+   write(stdout,'(1x,a)') 'Only calculate the A diagrams: the PT2 density matrix effect on Hartree and Exchange'
+ case default
+   call die('pt3_selfenergy: pt3_a_diagrams option not valid')
+ end select
 
  if( nspin /= 1 ) call die('pt3_selfenergy: only implemented for spin restricted calculations')
 
@@ -480,10 +491,12 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
  endif
 
 
- allocate(selfenergy(-se%nomega:se%nomega,A1:RINGS,nsemin:nsemax,nspin))
+ allocate(selfenergy(-se%nomega:se%nomega,ONERING:TWORINGS,nsemin:nsemax,nspin))
 
- write(stdout,'(/,1x,a,8x,a)') ' state    2nd order diagrams    3rd order diagrams   1-2-ring diagrams', &
-                               'A diagrams           C diagrams           D diagrams'
+ write(stdout,'(/,2x,a5,*(a11,3x))') 'state','PT2','1-ring','SOX', &
+                                             'PT3','A diagrams','A hartree','A exch', &
+                                             'C diagrams','ladder','ladder X', &
+                                             'D diagrams','2-rings','2-rings & X','el-hole & X'
 
  selfenergy(:,:,:,:) = 0.0_dp
 
@@ -492,493 +505,427 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
    qstate = pstate
 
 
-   select case(selfenergy_approx)
+   !
+   ! A diagrams family
+   !
+   if( pt3_a_diagrams == 'ONLY' .OR. pt3_a_diagrams == 'YES' ) then
 
-   case(TWO_RINGS)
+     ! A1   i,j,k   a,b
+     do astate=nhomo_G+1,nvirtual_G-1
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do bstate=nhomo_G+1,nvirtual_G-1
+         do istate=ncore_G+1,nhomo_G
+           do jstate=ncore_G+1,nhomo_G
+             num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+             denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
 
+             do kstate=ncore_G+1,nhomo_G
+               denom2 = energy(kstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+               eri_pqjk = eri_eigen(pstate,qstate,pqspin,jstate,kstate,pqspin)
+               eri_pjqk = eri_eigen(pstate,jstate,pqspin,kstate,qstate,pqspin)
+
+               eri_kaib = eri_eigen(astate,kstate,pqspin,bstate,istate,pqspin)
+
+               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) - 2.0_dp * eri_pqjk * num2 * eri_kaib / ( denom1 * denom2 )
+               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) +          eri_pjqk * num2 * eri_kaib / ( denom1 * denom2 )
+
+             enddo
+           enddo
+         enddo
+       enddo
+     enddo
+
+     ! A2   i,j   a,b,c
+     do astate=nhomo_G+1,nvirtual_G-1
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do bstate=nhomo_G+1,nvirtual_G-1
+         do cstate=nhomo_G+1,nvirtual_G-1
+           eri_pqbc = eri_eigen(pstate,qstate,pqspin,cstate,bstate,pqspin)
+           eri_pbqc = eri_eigen(pstate,bstate,pqspin,qstate,cstate,pqspin)
+
+           do istate=ncore_G+1,nhomo_G
+             do jstate=ncore_G+1,nhomo_G
+               denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+               denom2 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin)
+
+               num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+               eri_icja = eri_eigen(istate,cstate,pqspin,jstate,astate,pqspin)
+
+               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) + 2.0_dp * eri_pqbc * num2 * eri_icja / ( denom1 * denom2 )
+               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) -          eri_pbqc * num2 * eri_icja / ( denom1 * denom2 )
+
+
+             enddo
+           enddo
+         enddo
+       enddo
+     enddo
+
+     ! A3,A4   i,j   a,b,c
+     do astate=nhomo_G+1,nvirtual_G-1
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do bstate=nhomo_G+1,nvirtual_G-1
+         do istate=ncore_G+1,nhomo_G
+           do jstate=ncore_G+1,nhomo_G
+             num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+             denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+
+             do cstate=nhomo_G+1,nvirtual_G-1
+               denom2 = energy(jstate,pqspin) - energy(cstate,pqspin)
+               eri_pqjc = eri_eigen(pstate,qstate,pqspin,jstate,cstate,pqspin)
+               eri_pjqc = eri_eigen(pstate,jstate,pqspin,qstate,cstate,pqspin)
+
+               eri_acib = eri_eigen(astate,cstate,pqspin,istate,bstate,pqspin)
+
+               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) + 4.0_dp * eri_pqjc * num2 * eri_acib / ( denom1 * denom2 )
+               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) - 2.0_dp * eri_pjqc * num2 * eri_acib / ( denom1 * denom2 )
+
+             enddo
+           enddo
+         enddo
+       enddo
+     enddo
+
+     ! A5,A6   i,j,k   a,b
+     do astate=nhomo_G+1,nvirtual_G-1
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do bstate=nhomo_G+1,nvirtual_G-1
+         do istate=ncore_G+1,nhomo_G
+           do jstate=ncore_G+1,nhomo_G
+             num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+             denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+
+             do kstate=ncore_G+1,nhomo_G
+               denom2 = energy(kstate,pqspin) - energy(bstate,pqspin)
+               eri_pqkb = eri_eigen(pstate,qstate,pqspin,kstate,bstate,pqspin)
+               eri_pkqb = eri_eigen(pstate,kstate,pqspin,bstate,qstate,pqspin)
+
+               eri_ikja = eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
+
+               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) - 4.0_dp * eri_pqkb  * num2 * eri_ikja / ( denom1 * denom2 )
+               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) + 2.0_dp * eri_pkqb  * num2 * eri_ikja / ( denom1 * denom2 )
+
+             enddo
+           enddo
+         enddo
+       enddo
+     enddo
+
+   endif
+
+
+   if( pt3_a_diagrams == 'NO' .OR. pt3_a_diagrams == 'YES' ) then
+     !
+     ! B diagrams family (= 2nd order diagrams)
+     !
      ! B1 i,j    a
      do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
        do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-         num2 = eri_eigen(qstate,istate,pqspin,astate,jstate,pqspin)
-         numgw = 2.0_dp * eri_eigen(pstate,istate,pqspin,astate,jstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) + numgw * num2 / denom1
+         do jstate=ncore_G+1,nhomo_G
+           eri_pija = eri_eigen(pstate,istate,pqspin,jstate,astate,pqspin)
+           eri_pjia = eri_eigen(pstate,jstate,pqspin,istate,astate,pqspin)
+           eri_qija = eri_eigen(qstate,istate,pqspin,jstate,astate,pqspin)
+           do iomega=-se%nomega,se%nomega
+             omega = energy(qstate,pqspin) + se%omega(iomega)
+             denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
+             selfenergy(iomega,ONERING,pstate,pqspin) = selfenergy(iomega,ONERING,pstate,pqspin) + 2.0_dp * eri_pija * eri_qija / denom1
+             selfenergy(iomega,SOX_,pstate,pqspin)    = selfenergy(iomega,SOX_,pstate,pqspin)    -          eri_pjia * eri_qija / denom1
+           enddo
          enddo
        enddo
      enddo
-     enddo
-
+  
      ! B2 i    a,b
      do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-         num2 = eri_eigen(qstate,astate,pqspin,istate,bstate,pqspin)
-         numgw = 2.0_dp * eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) + numgw * num2 / denom1
-         enddo
-       enddo
-       enddo
-     enddo
-
-     ! D1   i,j   a,b,c
-     do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-     do cstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-         num1b = eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
-         num2a = eri_eigen(astate,istate,pqspin,jstate,cstate,pqspin)
-         numgw = 4.0_dp * eri_eigen(qstate,bstate,pqspin,jstate,cstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           denom2 = omega + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin) + ieta
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) &
-                      + num1b * num2a * numgw / ( denom1 * denom2 )
-         enddo
-       enddo
-       enddo
-       enddo
-     enddo
-     enddo
-
-     ! D2+D3   i,j   a,b,c
-     do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-     do cstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-         num1a = eri_eigen(pstate,cstate,pqspin,istate,astate,pqspin)
-         num2a = eri_eigen(astate,istate,pqspin,bstate,jstate,pqspin)
-         numgw = 4.0_dp * eri_eigen(qstate,cstate,pqspin,bstate,jstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin) + ieta
-           denom2 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) &
-                      + 2.0_dp * num1a * num2a * numgw / ( denom1 * denom2 )
-         enddo
-       enddo
-       enddo
-       enddo
-     enddo
-     enddo
-
-     ! D4+D5   i,j,k   a,b
-     do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-       do kstate=ncore_G+1,nhomo_G
-         num1a = eri_eigen(pstate,kstate,pqspin,astate,jstate,pqspin)
-         num2a = eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
-         numgw = 4.0_dp * eri_eigen(qstate,kstate,pqspin,istate,bstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(astate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin) - ieta
-           denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) &
-                      + 2.0_dp * num1a * num2a * numgw / ( denom1 * denom2 )
-         enddo
-       enddo
-       enddo
-     enddo
-     enddo
-     enddo
-
-     ! D6   i,j,k   a,b
-     do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-       do kstate=ncore_G+1,nhomo_G
-         num1a = eri_eigen(pstate,kstate,pqspin,astate,istate,pqspin)
-         num2a = eri_eigen(istate,astate,pqspin,bstate,jstate,pqspin)
-         numgw = 4.0_dp * eri_eigen(qstate,kstate,pqspin,bstate,jstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(kstate,pqspin) - ieta
-           denom2 = omega + energy(bstate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin) - ieta
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) &
-                      - num1a * num2a * numgw / ( denom1 * denom2 )
-         enddo
-       enddo
-       enddo
-       enddo
-     enddo
-     enddo
-
-
-
-   case(PT3,GWPT3)
-
-     ! B1 i,j    a
-     do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-         num1 = 2.0_dp * eri_eigen(pstate,istate,pqspin,astate,jstate,pqspin) - eri_eigen(pstate,jstate,pqspin,astate,istate,pqspin)
-         num2 = eri_eigen(qstate,istate,pqspin,astate,jstate,pqspin)
-         numgw = 2.0_dp * eri_eigen(pstate,istate,pqspin,astate,jstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
-           selfenergy(iomega,B1,pstate,pqspin)    = selfenergy(iomega,B1,pstate,pqspin)    + num1  * num2 / denom1
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) + numgw * num2 / denom1
-         enddo
-       enddo
-     enddo
-     enddo
-
-     ! B2 i    a,b
-     do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-         num1 = 2.0_dp * eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
-         num2 = eri_eigen(qstate,astate,pqspin,istate,bstate,pqspin)
-         numgw = 2.0_dp * eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           selfenergy(iomega,B2,pstate,pqspin)    = selfenergy(iomega,B2,pstate,pqspin)    + num1  * num2 / denom1
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) + numgw * num2 / denom1
-         enddo
-       enddo
-       enddo
-     enddo
-
-     !
-     ! A diagrams family
-     !
-     if( selfconsistent_diagrams ) then
-
-       ! A1   i,j,k   a,b
-       do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
-         do jstate=ncore_G+1,nhomo_G
-         do kstate=ncore_G+1,nhomo_G
-           denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-           denom2 = energy(kstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-           num1 = 2.0_dp * eri_eigen(pstate,qstate,pqspin,kstate,jstate,pqspin) - eri_eigen(pstate,jstate,pqspin,kstate,qstate,pqspin)
-           num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
-           num3 = eri_eigen(astate,kstate,pqspin,bstate,istate,pqspin)
-           selfenergy(:,A1,pstate,pqspin) = selfenergy(:,A1,pstate,pqspin) - num1 * num2 * num3 / ( denom1 * denom2 )
-         enddo
-         enddo
-       enddo
-       enddo
-       enddo
-
-       ! A2   i,j   a,b,c
-       do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-       do bstate=nhomo_G+1,nvirtual_G-1
-       do cstate=nhomo_G+1,nvirtual_G-1
-         do istate=ncore_G+1,nhomo_G
-         do jstate=ncore_G+1,nhomo_G
-           denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-           denom2 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin)
-           num1 = 2.0_dp * eri_eigen(pstate,qstate,pqspin,cstate,bstate,pqspin) - eri_eigen(pstate,bstate,pqspin,cstate,qstate,pqspin)
-           num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
-           num3 = eri_eigen(istate,cstate,pqspin,jstate,astate,pqspin)
-           selfenergy(:,A2,pstate,pqspin) = selfenergy(:,A2,pstate,pqspin) + num1 * num2 * num3 / ( denom1 * denom2 )
-         enddo
-         enddo
+           eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
+           eri_pbia = eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
+           eri_qaib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
+           do iomega=-se%nomega,se%nomega
+             omega = energy(qstate,pqspin) + se%omega(iomega)
+             denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
+             selfenergy(iomega,ONERING,pstate,pqspin) = selfenergy(iomega,ONERING,pstate,pqspin) + 2.0_dp * eri_paib * eri_qaib / denom1
+             selfenergy(iomega,SOX_,pstate,pqspin)    = selfenergy(iomega,SOX_,pstate,pqspin)    -          eri_pbia * eri_qaib / denom1
+           enddo
          enddo
        enddo
-       enddo
-
-       ! A3,A4   i,j   a,b,c
-       do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-       do bstate=nhomo_G+1,nvirtual_G-1
-       do cstate=nhomo_G+1,nvirtual_G-1
-         do istate=ncore_G+1,nhomo_G
-         do jstate=ncore_G+1,nhomo_G
-           denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-           denom2 = energy(jstate,pqspin) - energy(cstate,pqspin)
-           num1 = 2.0_dp * eri_eigen(pstate,qstate,pqspin,cstate,jstate,pqspin) - eri_eigen(pstate,jstate,pqspin,cstate,qstate,pqspin)
-           num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
-           num3 = eri_eigen(astate,cstate,pqspin,bstate,istate,pqspin)
-           selfenergy(:,A3,pstate,pqspin) = selfenergy(:,A3,pstate,pqspin) + 2.0_dp * num1 * num2 * num3 / ( denom1 * denom2 )
-         enddo
-         enddo
-         enddo
-       enddo
-       enddo
-
-       ! A5,A6   i,j,k   a,b
-       do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-       do bstate=nhomo_G+1,nvirtual_G-1
-         do istate=ncore_G+1,nhomo_G
-         do jstate=ncore_G+1,nhomo_G
-         do kstate=ncore_G+1,nhomo_G
-           denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-           denom2 = energy(kstate,pqspin) - energy(bstate,pqspin)
-           num1 = 2.0_dp * eri_eigen(pstate,qstate,pqspin,bstate,kstate,pqspin) - eri_eigen(pstate,kstate,pqspin,bstate,qstate,pqspin)
-           num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
-           num3 = eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
-           selfenergy(:,A5,pstate,pqspin) = selfenergy(:,A5,pstate,pqspin) - 2.0_dp * num1 * num2 * num3 / ( denom1 * denom2 )
-         enddo
-         enddo
-       enddo
-       enddo
-       enddo
-
-     endif
-
+     enddo
+  
      !
      ! C diagrams family
      !
      ! C1   i   a,b,c,d
      do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-     do cstate=nhomo_G+1,nvirtual_G-1
-     do dstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-         num1 = 2.0_dp * eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
-         num2 = eri_eigen(astate,cstate,pqspin,bstate,dstate,pqspin)
-         num3 = eri_eigen(qstate,cstate,pqspin,istate,dstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           denom2 = omega + energy(istate,pqspin) - energy(cstate,pqspin) - energy(dstate,pqspin) + ieta
-           selfenergy(iomega,C1,pstate,pqspin) = selfenergy(iomega,C1,pstate,pqspin) + num1 * num2 * num3 / ( denom1 * denom2 )
-         enddo
-       enddo
-       enddo
-       enddo
-     enddo
-     enddo
-
-     ! C6   i,j,k,l   a
-     do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-       do kstate=ncore_G+1,nhomo_G
-       do lstate=ncore_G+1,nhomo_G
-         num1 = 2.0_dp * eri_eigen(pstate,kstate,pqspin,astate,lstate,pqspin) - eri_eigen(pstate,lstate,pqspin,astate,kstate,pqspin)
-         num2 = eri_eigen(kstate,istate,pqspin,lstate,jstate,pqspin)
-         num3 = eri_eigen(qstate,istate,pqspin,astate,jstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
-           denom2 = omega + energy(astate,pqspin) - energy(kstate,pqspin) - energy(lstate,pqspin) - ieta
-           ! Minus sign from Domcke-Cederbaum book chapter 1977 (forgotten in von niessen review in 1983)
-           selfenergy(iomega,C6,pstate,pqspin) = selfenergy(iomega,C6,pstate,pqspin) - num1 * num2 * num3 / ( denom1 * denom2 )
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do bstate=nhomo_G+1,nvirtual_G-1
+         do istate=ncore_G+1,nhomo_G
+           eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
+           eri_pbia = eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
+  
+           do cstate=nhomo_G+1,nvirtual_G-1
+             do dstate=nhomo_G+1,nvirtual_G-1
+               num2 = eri_eigen(astate,cstate,pqspin,bstate,dstate,pqspin)
+               num3 = eri_eigen(qstate,cstate,pqspin,istate,dstate,pqspin)
+               do iomega=-se%nomega,se%nomega
+                 omega = energy(qstate,pqspin) + se%omega(iomega)
+                 denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
+                 denom2 = omega + energy(istate,pqspin) - energy(cstate,pqspin) - energy(dstate,pqspin) + ieta
+                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) + 2.0_dp * eri_paib * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) -          eri_pbia * num2 * num3 / ( denom1 * denom2 )
+               enddo
+             enddo
+           enddo
          enddo
        enddo
      enddo
-     enddo
-     enddo
-     enddo
-
+  
      ! C2+C3   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-       do kstate=ncore_G+1,nhomo_G
-         num1 = 2.0_dp * eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
-         num2 = eri_eigen(astate,jstate,pqspin,bstate,kstate,pqspin)
-         num3 = eri_eigen(qstate,jstate,pqspin,istate,kstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           denom2 = energy(jstate,pqspin) + energy(kstate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-           selfenergy(iomega,C2,pstate,pqspin) = selfenergy(iomega,C2,pstate,pqspin) + 2.0_dp * num1 * num2 * num3 / ( denom1 * denom2 )
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do bstate=nhomo_G+1,nvirtual_G-1
+         do istate=ncore_G+1,nhomo_G
+           eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
+           eri_pbia = eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
+  
+           do jstate=ncore_G+1,nhomo_G
+             do kstate=ncore_G+1,nhomo_G
+               num2 = eri_eigen(astate,jstate,pqspin,bstate,kstate,pqspin)
+               num3 = eri_eigen(qstate,jstate,pqspin,istate,kstate,pqspin)
+               denom2 = energy(jstate,pqspin) + energy(kstate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+               do iomega=-se%nomega,se%nomega
+                 omega = energy(qstate,pqspin) + se%omega(iomega)
+                 denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
+                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) + 4.0_dp * eri_paib * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) - 2.0_dp * eri_pbia * num2 * num3 / ( denom1 * denom2 )
+               enddo
+             enddo
+           enddo
          enddo
        enddo
-       enddo
      enddo
-     enddo
-     enddo
-
+  
      ! C4+C5   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-     do cstate=nhomo_G+1,nvirtual_G-1
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
        do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-         num1 = 2.0_dp * eri_eigen(pstate,istate,pqspin,astate,jstate,pqspin) - eri_eigen(pstate,jstate,pqspin,astate,istate,pqspin)
-         num2 = eri_eigen(istate,bstate,pqspin,jstate,cstate,pqspin)
-         num3 = eri_eigen(qstate,bstate,pqspin,astate,cstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
-           denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin)
-           selfenergy(iomega,C4,pstate,pqspin) = selfenergy(iomega,C4,pstate,pqspin) + 2.0_dp * num1 * num2 * num3 / ( denom1 * denom2 )
+         do jstate=ncore_G+1,nhomo_G
+           eri_pija = eri_eigen(pstate,istate,pqspin,jstate,astate,pqspin)
+           eri_pjia = eri_eigen(pstate,jstate,pqspin,istate,astate,pqspin)
+           do bstate=nhomo_G+1,nvirtual_G-1
+             do cstate=nhomo_G+1,nvirtual_G-1
+               num2 = eri_eigen(istate,bstate,pqspin,jstate,cstate,pqspin)
+               num3 = eri_eigen(qstate,bstate,pqspin,astate,cstate,pqspin)
+               do iomega=-se%nomega,se%nomega
+                 omega = energy(qstate,pqspin) + se%omega(iomega)
+                 denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
+                 denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin)
+                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) + 4.0_dp * eri_pija * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) - 2.0_dp * eri_pjia * num2 * num3 / ( denom1 * denom2 )
+               enddo
+             enddo
+           enddo
          enddo
        enddo
-       enddo
+     enddo
+  
+     ! C6   i,j,k,l   a
+     do astate=nhomo_G+1,nvirtual_G-1
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do kstate=ncore_G+1,nhomo_G
+         do lstate=ncore_G+1,nhomo_G
+           eri_pkla = eri_eigen(pstate,kstate,pqspin,lstate,astate,pqspin)
+           eri_plka = eri_eigen(pstate,lstate,pqspin,kstate,astate,pqspin)
+           do istate=ncore_G+1,nhomo_G
+             do jstate=ncore_G+1,nhomo_G
+               num2 = eri_eigen(kstate,istate,pqspin,lstate,jstate,pqspin)
+               num3 = eri_eigen(qstate,istate,pqspin,astate,jstate,pqspin)
+               do iomega=-se%nomega,se%nomega
+                 omega = energy(qstate,pqspin) + se%omega(iomega)
+                 denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
+                 denom2 = omega + energy(astate,pqspin) - energy(kstate,pqspin) - energy(lstate,pqspin) - ieta
+                 ! Minus sign from Domcke-Cederbaum book chapter 1977 (forgotten in von niessen review in 1983)
+                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) - 2.0_dp *  eri_pkla * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) +           eri_plka * num2 * num3 / ( denom1 * denom2 )
+               enddo
+             enddo
+           enddo
+         enddo
        enddo
      enddo
-     enddo
-
-
+  
      !
      ! D diagrams family
      !
      ! D1   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-     do cstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-         num1a = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
-         num1b = eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
-         num2a = eri_eigen(astate,istate,pqspin,jstate,cstate,pqspin)
-         num2b = eri_eigen(astate,cstate,pqspin,jstate,istate,pqspin)
-         num3a = eri_eigen(qstate,cstate,pqspin,jstate,bstate,pqspin) - 2.0_dp * eri_eigen(qstate,bstate,pqspin,jstate,cstate,pqspin)
-         num3b = eri_eigen(qstate,bstate,pqspin,jstate,cstate,pqspin) - 2.0_dp * eri_eigen(qstate,cstate,pqspin,jstate,bstate,pqspin)
-         numgw = 4.0_dp * eri_eigen(qstate,bstate,pqspin,jstate,cstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           denom2 = omega + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin) + ieta
-           selfenergy(iomega,D1,pstate,pqspin) = selfenergy(iomega,D1,pstate,pqspin) &
-                      + ( num1a * ( num2a * num3a + num2b * num3b ) + num1b * ( num2a * (-2.0_dp)*num3a + num2b * num3a ) )   / ( denom1 * denom2 )
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) &
-                      + ( num1b * num2a * numgw ) / ( denom1 * denom2 )
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do cstate=nhomo_G+1,nvirtual_G-1
+         do istate=ncore_G+1,nhomo_G
+           do jstate=ncore_G+1,nhomo_G
+             eri_iajc = eri_eigen(istate,astate,pqspin,jstate,cstate,pqspin)
+             eri_ijac = eri_eigen(istate,jstate,pqspin,astate,cstate,pqspin)
+             do bstate=nhomo_G+1,nvirtual_G-1
+               eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
+               eri_pbia = eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
+               eri_qcjb = eri_eigen(qstate,cstate,pqspin,jstate,bstate,pqspin)
+               eri_qbjc = eri_eigen(qstate,bstate,pqspin,jstate,cstate,pqspin)
+               num3a = eri_qcjb - 2.0_dp * eri_qbjc
+               num3b = eri_qbjc - 2.0_dp * eri_qcjb
+               do iomega=-se%nomega,se%nomega
+                 omega = energy(qstate,pqspin) + se%omega(iomega)
+                 denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
+                 denom2 = omega + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin) + ieta
+                 selfenergy(iomega,TWORINGS,pstate,pqspin) = selfenergy(iomega,TWORINGS,pstate,pqspin) &
+                            + ( eri_pbia * eri_iajc * 4.0_dp * eri_qbjc ) / ( denom1 * denom2 )
+                 selfenergy(iomega,DRINGS,pstate,pqspin) = selfenergy(iomega,DRINGS,pstate,pqspin) &
+                            + (  eri_paib * eri_iajc * num3a &
+                               + eri_pbia * eri_iajc * (-2.0_dp) * num3a ) / ( denom1 * denom2 )
+                 selfenergy(iomega,Deh,pstate,pqspin) = selfenergy(iomega,Deh,pstate,pqspin) &
+                            + (  eri_paib * eri_ijac * num3b &
+                               + eri_pbia * eri_ijac * num3a )   / ( denom1 * denom2 )
+               enddo
+             enddo
+           enddo
          enddo
        enddo
-       enddo
-       enddo
      enddo
-     enddo
-
-
+  
+  
      ! D2+D3   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-     do cstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-         num1a = eri_eigen(pstate,cstate,pqspin,istate,astate,pqspin)
-         num1b = eri_eigen(pstate,astate,pqspin,istate,cstate,pqspin)
-         num2a = eri_eigen(astate,istate,pqspin,bstate,jstate,pqspin)
-         num2b = eri_eigen(astate,jstate,pqspin,bstate,istate,pqspin)
-         num3a = eri_eigen(qstate,jstate,pqspin,bstate,cstate,pqspin) - 2.0_dp * eri_eigen(qstate,cstate,pqspin,bstate,jstate,pqspin)
-         num3b = eri_eigen(qstate,cstate,pqspin,bstate,jstate,pqspin) - 2.0_dp * eri_eigen(qstate,jstate,pqspin,bstate,cstate,pqspin)
-         numgw = 4.0_dp * eri_eigen(qstate,cstate,pqspin,bstate,jstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin) + ieta
-           denom2 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           selfenergy(iomega,D2,pstate,pqspin) = selfenergy(iomega,D2,pstate,pqspin) &
-                      + 2.0_dp * ( num1a * ( num2a * -(2.0_dp)*num3a + num2b * num3a ) + num1b * ( num2a * num3a + num2b * num3b ) )   / ( denom1 * denom2 )
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) &
-                      + 2.0_dp * num1a * num2a * numgw / ( denom1 * denom2 )
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do bstate=nhomo_G+1,nvirtual_G-1
+         do istate=ncore_G+1,nhomo_G
+           do jstate=ncore_G+1,nhomo_G
+             num2a = eri_eigen(astate,istate,pqspin,bstate,jstate,pqspin)
+             num2b = eri_eigen(astate,jstate,pqspin,bstate,istate,pqspin)
+             do cstate=nhomo_G+1,nvirtual_G-1
+               num1a = eri_eigen(pstate,cstate,pqspin,istate,astate,pqspin)
+               num1b = eri_eigen(pstate,astate,pqspin,istate,cstate,pqspin)
+               eri_qcjb = eri_eigen(qstate,cstate,pqspin,jstate,bstate,pqspin)
+               eri_qjbc = eri_eigen(qstate,jstate,pqspin,bstate,cstate,pqspin)
+               num3a = eri_qjbc - 2.0_dp * eri_qcjb
+               num3b = eri_qcjb - 2.0_dp * eri_qjbc
+               denom2 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
+               do iomega=-se%nomega,se%nomega
+                 omega = energy(qstate,pqspin) + se%omega(iomega)
+                 denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin) + ieta
+                 selfenergy(iomega,TWORINGS,pstate,pqspin) = selfenergy(iomega,TWORINGS,pstate,pqspin) &
+                            + 8.0_dp * num1a * num2a * eri_qcjb / ( denom1 * denom2 )
+                 selfenergy(iomega,DRINGS,pstate,pqspin) = selfenergy(iomega,DRINGS,pstate,pqspin) &
+                            + 2.0_dp * (  num1a * num2a * (-2.0_dp) * num3a  &
+                                        + num1b * num2a * num3a ) / ( denom1 * denom2 )
+                 selfenergy(iomega,Deh,pstate,pqspin) = selfenergy(iomega,Deh,pstate,pqspin) &
+                            + 2.0_dp * (  num1a * num2b * num3a &
+                                        + num1b * num2b * num3b )   / ( denom1 * denom2 )
+               enddo
+             enddo
+           enddo
          enddo
        enddo
-       enddo
-       enddo
      enddo
-     enddo
-
-
+  
+  
      ! D4+D5   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-       do kstate=ncore_G+1,nhomo_G
-         num1a = eri_eigen(pstate,kstate,pqspin,astate,jstate,pqspin)
-         num1b = eri_eigen(pstate,jstate,pqspin,astate,kstate,pqspin)
-         num2a = eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
-         num2b = eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
-         num3a = eri_eigen(qstate,bstate,pqspin,istate,kstate,pqspin) - 2.0_dp * eri_eigen(qstate,kstate,pqspin,istate,bstate,pqspin)
-         num3b = eri_eigen(qstate,kstate,pqspin,istate,bstate,pqspin) - 2.0_dp * eri_eigen(qstate,bstate,pqspin,istate,kstate,pqspin)
-         numgw = 4.0_dp * eri_eigen(qstate,kstate,pqspin,istate,bstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(astate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin) - ieta
-           denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-           selfenergy(iomega,D4,pstate,pqspin) = selfenergy(iomega,D4,pstate,pqspin) &
-                      + 2.0_dp * ( num1a * ( num2a * -(2.0_dp)*num3a + num2b * num3a ) + num1b * ( num2a * num3a + num2b * num3b ) )   / ( denom1 * denom2 )
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) &
-                      + 2.0_dp * num1a * num2a * numgw / ( denom1 * denom2 )
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do bstate=nhomo_G+1,nvirtual_G-1
+         do istate=ncore_G+1,nhomo_G
+           do jstate=ncore_G+1,nhomo_G
+             num2a = eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
+             num2b = eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+             do kstate=ncore_G+1,nhomo_G
+               num1a = eri_eigen(pstate,kstate,pqspin,astate,jstate,pqspin)
+               num1b = eri_eigen(pstate,jstate,pqspin,astate,kstate,pqspin)
+               eri_qbik = eri_eigen(qstate,bstate,pqspin,istate,kstate,pqspin)
+               eri_qkib = eri_eigen(qstate,kstate,pqspin,istate,bstate,pqspin)
+               num3a = eri_qbik - 2.0_dp * eri_qkib
+               num3b = eri_qkib - 2.0_dp * eri_qbik
+               denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
+               do iomega=-se%nomega,se%nomega
+                 omega = energy(qstate,pqspin) + se%omega(iomega)
+                 denom1 = omega + energy(astate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin) - ieta
+                 selfenergy(iomega,TWORINGS,pstate,pqspin) = selfenergy(iomega,TWORINGS,pstate,pqspin) &
+                            + 8.0_dp * num1a * num2a * eri_qkib / ( denom1 * denom2 )
+                 selfenergy(iomega,DRINGS,pstate,pqspin) = selfenergy(iomega,DRINGS,pstate,pqspin) &
+                            + 2.0_dp * (  num1a * num2a * (-2.0_dp) * num3a  &
+                                        + num1b * num2a * num3a              ) / ( denom1 * denom2 )
+                 selfenergy(iomega,Deh,pstate,pqspin) = selfenergy(iomega,Deh,pstate,pqspin) &
+                            + 2.0_dp * (  num1a * num2b * num3a &
+                                        + num1b * num2b * num3b )   / ( denom1 * denom2 )
+               enddo
+             enddo
+           enddo
          enddo
        enddo
-       enddo
      enddo
-     enddo
-     enddo
-
+  
      ! D6   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
-     if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
-     do bstate=nhomo_G+1,nvirtual_G-1
-       do istate=ncore_G+1,nhomo_G
-       do jstate=ncore_G+1,nhomo_G
-       do kstate=ncore_G+1,nhomo_G
-         num1a = eri_eigen(pstate,kstate,pqspin,astate,istate,pqspin)
-         num1b = eri_eigen(pstate,istate,pqspin,astate,kstate,pqspin)
-         num2a = eri_eigen(istate,astate,pqspin,bstate,jstate,pqspin)
-         num2b = eri_eigen(istate,jstate,pqspin,bstate,astate,pqspin)
-         num3a = eri_eigen(qstate,jstate,pqspin,bstate,kstate,pqspin) - 2.0_dp * eri_eigen(qstate,kstate,pqspin,bstate,jstate,pqspin)
-         num3b = eri_eigen(qstate,kstate,pqspin,bstate,jstate,pqspin) - 2.0_dp * eri_eigen(qstate,jstate,pqspin,bstate,kstate,pqspin)
-         numgw = 4.0_dp * eri_eigen(qstate,kstate,pqspin,bstate,jstate,pqspin)
-         do iomega=-se%nomega,se%nomega
-           omega = energy(qstate,pqspin) + se%omega(iomega)
-           denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(kstate,pqspin) - ieta
-           denom2 = omega + energy(bstate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin) - ieta
-           selfenergy(iomega,D6,pstate,pqspin) = selfenergy(iomega,D6,pstate,pqspin) &
-                      -( num1a * ( num2a * -(2.0_dp)*num3a + num2b * num3a ) + num1b * ( num2a * num3a + num2b * num3b ) )   / ( denom1 * denom2 )
-           selfenergy(iomega,RINGS,pstate,pqspin) = selfenergy(iomega,RINGS,pstate,pqspin) &
-                      -( num1a * num2a * numgw )   / ( denom1 * denom2 )
+       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       do bstate=nhomo_G+1,nvirtual_G-1
+         do istate=ncore_G+1,nhomo_G
+           do jstate=ncore_G+1,nhomo_G
+             num2a = eri_eigen(istate,astate,pqspin,bstate,jstate,pqspin)
+             num2b = eri_eigen(istate,jstate,pqspin,bstate,astate,pqspin)
+  
+             do kstate=ncore_G+1,nhomo_G
+               num1a = eri_eigen(pstate,kstate,pqspin,astate,istate,pqspin)
+               num1b = eri_eigen(pstate,istate,pqspin,astate,kstate,pqspin)
+               eri_qjkb = eri_eigen(qstate,jstate,pqspin,kstate,bstate,pqspin)
+               eri_qkjb = eri_eigen(qstate,kstate,pqspin,jstate,bstate,pqspin)
+               num3a = eri_qjkb - 2.0_dp * eri_qkjb
+               num3b = eri_qkjb - 2.0_dp * eri_qjkb
+               do iomega=-se%nomega,se%nomega
+                 omega = energy(qstate,pqspin) + se%omega(iomega)
+                 denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(kstate,pqspin) - ieta
+                 denom2 = omega + energy(bstate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin) - ieta
+                 selfenergy(iomega,TWORINGS,pstate,pqspin) = selfenergy(iomega,TWORINGS,pstate,pqspin) &
+                            - 4.0_dp * num1a * num2a * eri_qkjb / ( denom1 * denom2 )
+                 selfenergy(iomega,DRINGS,pstate,pqspin) = selfenergy(iomega,DRINGS,pstate,pqspin) &
+                            -(  num1a * num2a * (-2.0_dp) * num3a  &
+                              + num1b * num2a * num3a            ) / ( denom1 * denom2 )
+                 selfenergy(iomega,Deh,pstate,pqspin) = selfenergy(iomega,Deh,pstate,pqspin) &
+                            -(  num1a * num2b * num3a &
+                              + num1b * num2b * num3b ) / ( denom1 * denom2 )
+               enddo
+             enddo
+           enddo
          enddo
        enddo
-       enddo
-     enddo
-     enddo
      enddo
 
-   case default
-     call die('pt3_selfenergy: invalid choice of diagrams')
-   end select
+   endif
 
    call xsum_ortho(selfenergy(:,:,pstate,:))
 
-   write(stdout,'(i4,*(7x,f14.6))') pstate, &
-                                    SUM(REAL(selfenergy(0,B1:B2,pstate,pqspin),dp),DIM=1) * Ha_eV,  &
-                                    SUM(REAL(selfenergy(0,A1:D6,pstate,:),dp),DIM=1) * Ha_eV, &
-                                    REAL(selfenergy(0,RINGS,pstate,pqspin),dp) * Ha_eV,     &
-                                    SUM(REAL(selfenergy(0,A1:A5,pstate,pqspin),dp),DIM=1) * Ha_eV, &
-                                    SUM(REAL(selfenergy(0,C1:C6,pstate,pqspin),dp),DIM=1) * Ha_eV, &
-                                    SUM(REAL(selfenergy(0,D1:D6,pstate,pqspin),dp),DIM=1) * Ha_eV
+   write(stdout,'(i4,*(2x,f12.4))') pstate, &
+                                    SUM(REAL(selfenergy(0,ONERING:SOX_,pstate,pqspin),dp),DIM=1) * Ha_eV, &
+                                    REAL(selfenergy(0,ONERING,pstate,pqspin),dp) * Ha_eV,          &
+                                    REAL(selfenergy(0,SOX_,pstate,pqspin),dp) * Ha_eV,             &
+                                    SUM(REAL(selfenergy(0,Ah:Deh,pstate,:),dp),DIM=1) * Ha_eV,      &
+                                    SUM(REAL(selfenergy(0,Ah:Ax,pstate,pqspin),dp),DIM=1) * Ha_eV, &
+                                    REAL(selfenergy(0,Ah,pstate,pqspin),dp) * Ha_eV,               &
+                                    REAL(selfenergy(0,Ax,pstate,pqspin),dp) * Ha_eV,               &
+                                    SUM(REAL(selfenergy(0,Cd:Cx,pstate,pqspin),dp),DIM=1) * Ha_eV, &
+                                    REAL(selfenergy(0,Cd,pstate,pqspin),dp) * Ha_eV,               &
+                                    REAL(selfenergy(0,Cx,pstate,pqspin),dp) * Ha_eV,               &
+                                    SUM(REAL(selfenergy(0,DRINGS:Deh,pstate,pqspin),dp),DIM=1) * Ha_eV, &
+                                    REAL(selfenergy(0,TWORINGS,pstate,pqspin),dp) * Ha_eV,         &
+                                    REAL(selfenergy(0,DRINGS,pstate,pqspin),dp) * Ha_eV,           &
+                                    REAL(selfenergy(0,Deh,pstate,pqspin),dp) * Ha_eV
  enddo
 
  select case(selfenergy_approx)
  case(PT3)
-   se%sigma(:,:,:) = SUM(selfenergy(:,A1:B2,:,:),DIM=2)
+   se%sigma(:,:,:) = SUM(selfenergy(:,ONERING:Deh,:,:),DIM=2)
  case(GWPT3)
-   se%sigma(:,:,:) = SUM(selfenergy(:,A1:B2,:,:),DIM=2) - selfenergy(:,RINGS,:,:)
+   se%sigma(:,:,:) = SUM(selfenergy(:,SOX_:Deh,:,:),DIM=2) - selfenergy(:,TWORINGS,:,:)
  case(TWO_RINGS)
-   se%sigma(:,:,:) = selfenergy(:,RINGS,:,:)
+   se%sigma(:,:,:) = selfenergy(:,ONERING,:,:) + selfenergy(:,TWORINGS,:,:)
  case default
    call die('pt3_selfenergy: invalid choice of diagrams')
  end select

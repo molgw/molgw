@@ -559,8 +559,19 @@ i = len(vl) - 1
 vl[i].keyword  ='pt3_a_diagrams'
 vl[i].family   ='post'
 vl[i].default  ='yes'
+vl[i].datatype ='characters'
+vl[i].comment  ='Switch whether to calculate the A diagrams family in PT3. A diagrams are the self-consistent diagrams (PT2 inclusions in the Green\'s function). \
+                Valid choices include: \'yes\', \'no\', or \'only\'.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='use_correlated_p_matrix'
+vl[i].family   ='post'
+vl[i].default  ='no'
 vl[i].datatype ='yes/no'
-vl[i].comment  ='Switch whether to calculate the A diagrams family in PT3. A diagrams are the self-consistent diagrams (PT2 inclusions in the Green\'s function).'
+vl[i].comment  ='Choose to use a better density matrix P for the Fock hamiltonian to be employed in self-energy calculations. \
+                 Used in conjonction with \'read_fchk.\''
 
 #================================
 vl.append(variable())

@@ -851,7 +851,7 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
 
 #else
 
- call diagonalize(nglobal,matrix,eigval,eigvec)
+ call diagonalize(matrix,eigval,eigvec)
 
 #endif
 
@@ -928,7 +928,7 @@ subroutine diagonalize_sca_pdsyevr(nglobal,desc,matrix,eigval,desc_eigvec,eigvec
 
 #else
 
- call diagonalize(nglobal,matrix,eigval,eigvec)
+ call diagonalize(matrix,eigval,eigvec)
 
 #endif
 
@@ -3185,6 +3185,7 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
  real(dp),allocatable :: ham_diag(:)
 !=====
 
+#if defined(HAVE_SCALAPACK)
  write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig
 
  eigval(:) = 0.0_dp
@@ -3344,6 +3345,9 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
  if( ALLOCATED(lambda) ) deallocate(lambda)
  deallocate(ab,qq,bb,ham_diag)
 
+#else
+ call die('diagonalize_davidson_sca: should not be called when not compiled with HAVE_SCALAPACK')
+#endif
 
 end subroutine diagonalize_davidson_sca
 
@@ -3361,6 +3365,7 @@ subroutine orthogonalize_sca(desc_vec,mvec_ortho,nvec_ortho,vec)
  real(dp) :: norm_i
 !=====
 
+#if defined(HAVE_SCALAPACK)
  mglobal = desc_vec(M_)
 
  do ivec=mvec_ortho,nvec_ortho
@@ -3380,6 +3385,9 @@ subroutine orthogonalize_sca(desc_vec,mvec_ortho,nvec_ortho,vec)
 
  enddo
 
+#else
+ call die('diagonalize_davidson_sca: should not be called when not compiled with HAVE_SCALAPACK')
+#endif
 
 end subroutine orthogonalize_sca
 
