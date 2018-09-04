@@ -796,6 +796,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
 
  write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, diagonalized and stored'
+ write(stdout,'(1x,a,es16.6)') 'Lowest eigenvalue: ',MINVAL(eigval(:))
  write(stdout,'(1x,a,i6)')     'Some have been eliminated due to too large overlap ',nauxil_neglect
  write(stdout,'(1x,a,es16.6)') 'because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
 

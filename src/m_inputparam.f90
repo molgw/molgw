@@ -170,7 +170,7 @@ module m_inputparam
  logical,protected                :: print_cube_
  logical,protected                :: print_multipole_
  logical,protected                :: print_hartree_
- logical,protected                :: print_exchange_
+ logical,protected                :: print_density_matrix_
  real(dp),protected               :: rcut_mbpt
 
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
@@ -747,7 +747,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: read_restart,ignore_bigrestart,force_energy_qp
  character(len=3)     :: print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
- character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_exchange
+ character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
  character(len=3)     :: gwgamma_tddft,use_correlated_p_matrix
  real(dp)             :: length_factor,eta
@@ -851,7 +851,7 @@ subroutine read_inputfile_namelist()
  print_multipole_         = yesno(print_multipole)
  print_cube_              = yesno(print_cube)
  print_hartree_           = yesno(print_hartree)
- print_exchange_          = yesno(print_exchange)
+ print_density_matrix_    = yesno(print_density_matrix)
  gwgamma_tddft_           = yesno(gwgamma_tddft)
  use_correlated_p_matrix_ = yesno(use_correlated_p_matrix)
 

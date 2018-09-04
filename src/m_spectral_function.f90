@@ -125,6 +125,8 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
 !=====
  integer                               :: ijspin,istate,jstate,itrans,jtrans
  integer                               :: iomega
+ integer                               :: nlumo_W_spin(nspin)
+ integer                               :: nhomo_W_spin(nspin)
  real(dp),parameter                    :: alpha=1.0_dp ! 0.50_dp
  real(dp),parameter                    :: beta=1.0_dp ! 6.0_dp
 !=====
@@ -152,28 +154,39 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
 
  !
  ! Find the highest occupied state
- nhomo_W = 0
+ nhomo_W         = 0
+ nhomo_W_spin(:) = 0
  do ijspin=1,nspin
    do istate=1,nstate
      if( occupation(istate,ijspin) / spin_fact < completely_empty ) cycle
-     nhomo_W = MAX(nhomo_W,istate)
+     nhomo_W              = MAX(nhomo_W,istate)
+     nhomo_W_spin(ijspin) = MAX(nhomo_W_spin(ijspin),istate)
    enddo
  enddo
 
  !
  ! Find the lowest occupied state
- nlumo_W = 100000
+ nlumo_W         = 100000
+ nlumo_W_spin(:) = 100000
  do ijspin=1,nspin
    do istate=1,nstate
      if( (spin_fact - occupation(istate,ijspin)) / spin_fact < completely_empty) cycle
-     nlumo_W = MIN(nlumo_W,istate)
+     nlumo_W              = MIN(nlumo_W,istate)
+     nlumo_W_spin(ijspin) = MIN(nlumo_W_spin(ijspin),istate)
    enddo
  enddo
 
  write(stdout,'(/,1x,a)') 'Prepare a polarizability spectral function with'
- write(stdout,'(30x,a,i8)') ' Occupied states: ',nhomo_W-ncore_W
- write(stdout,'(30x,a,i8)') '  Virtual states: ',nvirtual_W-nlumo_W
- write(stdout,'(30x,a,i8)') 'Transition space: ',(nvirtual_W-nlumo_W)*(nhomo_W-ncore_W)
+ if( nspin == 1 ) then
+   write(stdout,'(30x,a,i8)') ' Occupied states: ',nhomo_W-ncore_W
+   write(stdout,'(30x,a,i8)') '  Virtual states: ',nvirtual_W-nlumo_W
+   write(stdout,'(30x,a,i8)') 'Transition space: ',(nvirtual_W-nlumo_W)*(nhomo_W-ncore_W)
+ else
+   write(stdout,'(30x,a,i8,2x,i8)') ' Occupied states: ',nhomo_W_spin(:)-ncore_W
+   write(stdout,'(30x,a,i8,2x,i8)') '  Virtual states: ',nvirtual_W-nlumo_W_spin(:)
+   write(stdout,'(30x,a,i8)')       'Transition space: ',(nvirtual_W-nlumo_W_spin(1))*(nhomo_W_spin(1)-ncore_W) &
+                                                         + (nvirtual_W-nlumo_W_spin(nspin))*(nhomo_W_spin(nspin)-ncore_W)
+ endif
 
  !
  ! First, count the number of resonant transitions
@@ -511,7 +524,7 @@ subroutine read_spectral_function(sf,reading_status)
    return
  endif
 
-#ifndef HAVE_MPI
+#if !defined(HAVE_MPI)
  open(newunit=wfile,file='SCREENED_COULOMB',status='old',form='unformatted')
 
  read(wfile) postscf_name_read
