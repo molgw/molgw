@@ -1,0 +1,19 @@
+&molgw
+ scf='HF'
+ read_restart='yes'
+
+ basis='cc-pVDZ_gaussian'
+ auxil_basis='cc-pVDZ-RI'
+ gaussian_type='CART'
+
+ frozencore='yes'
+
+ use_correlated_p_matrix='yes'
+
+ postscf='GW'
+ selfenergy_state_range=1
+
+ natom = 2
+/
+8           .000000     .000000     .493003
+6           .000000     .000000    -.657337

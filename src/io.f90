@@ -980,28 +980,30 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
      keyword = 'Total CC Density'
    case('MP2')
      keyword = 'Total MP2 Density'
-   case default
+   case('SCF')
      keyword = 'Total SCF Density'
+   case default
+     call die('read_gaussian_fchk: invalid choice for input variable read_fchk')
    end select
-  
+
    write(stdout,'(/,1x,a,a)') 'Reading an existing Gaussian formatted checkpoint point: ',&
                               TRIM(file_name)
    write(stdout,'(1x,a,a)')   'Reading field: ',TRIM(keyword)
-  
+
    inquire(file=file_name,exist=file_exists)
    if( .NOT. file_exists) then
      call issue_warning('File not found: ' // TRIM(file_name))
      return
    endif
-  
+
    write(stdout,'(1x,a,a)') 'Density matrix read: ',TRIM(read_fchk)
-  
+
    nel = (basis%nbf*(basis%nbf+1))/2
    allocate(p_matrix_read(nel))
-  
-  
+
+
    open(newunit=fu,file=TRIM(file_name),status='old',action='read')
-  
+
    ! Read the fchk file until the keyword is found
    found = .FALSE.
    do while( .NOT. found )
@@ -1012,7 +1014,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
      endif
      found = ( INDEX(line,TRIM(keyword)) /= 0 )
    enddo
-  
+
    do ispin=1,nspin
      do ijbf=1,(nel/stride-1)*stride+1,stride
        read(fu,*) p_matrix_read(ijbf:ijbf+stride-1)
@@ -1028,20 +1030,20 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
      enddo
    enddo
    close(fu)
-  
-  
+
+
    ! Reorder the basis functions from Gaussian to Libint convention
    ! s and p orbitals are unchanged
    ! gaussian d orbital order is xx, yy, zz, xy, yz, xz
    ! libint   d orbital order is xx, xy, xz, yy, yz, zz
-  
+
    block_d(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, &
                              0, 0, 0, 1, 0, 0, &
                              0, 0, 0, 0, 1, 0, &
                              0, 1, 0, 0, 0, 0, &
                              0, 0, 0, 0, 0, 1, &
                              0, 0, 1, 0, 0, 0 ] , [ 6, 6 ] )
-  
+
    block_f(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
                              0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
                              0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
@@ -1052,7 +1054,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
                              0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
                              0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
                              0, 0, 1, 0, 0, 0, 0, 0, 0, 0 ] , [ 10, 10 ] )    !OK
-  
+
    block_g(:,:) = RESHAPE( [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
@@ -1068,7 +1070,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
                              0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
                              0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
                              1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 15, 15 ] )
-  
+
    swap(:,:) = 0.0_dp
    ibf = 1
    do while( ibf <= basis%nbf )
@@ -1090,13 +1092,13 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
      end select
      ibf = ibf + number_basis_function_am('CART',basis%bfc(ibf)%am)
    enddo
-  
+
    p_matrix_out(:,:,1) = MATMUL( TRANSPOSE(swap), MATMUL(p_matrix_out(:,:,1),swap) )
-  
-  
+
+
    !call dump_out_matrix(.TRUE.,'gaussian density matrix',SIZE(p_matrix_out,DIM=1),SIZE(p_matrix_out,DIM=3),p_matrix_out)
-  
-  
+
+
    deallocate(p_matrix_read)
 
  endif

@@ -107,6 +107,7 @@ module m_inputparam
  character(len=100),protected     :: xyz_file
  character(len=100),protected     :: basis_path
  character(len=100),protected     :: read_fchk
+ character(len=100),protected     :: pt_density_matrix
  character(len=100),allocatable,protected :: basis_name(:)
  character(len=100),allocatable,protected :: auxil_basis_name(:)
  character(len=100),allocatable,protected :: small_basis_name(:)
@@ -830,6 +831,7 @@ subroutine read_inputfile_namelist()
  ci_greens_function = capitalize(ci_greens_function)
  ci_type            = capitalize(ci_type)
  read_fchk          = capitalize(read_fchk)
+ pt_density_matrix  = capitalize(pt_density_matrix)
  pt3_a_diagrams     = capitalize(pt3_a_diagrams)
 
  read_restart_            = yesno(read_restart)

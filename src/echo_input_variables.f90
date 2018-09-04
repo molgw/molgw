@@ -58,6 +58,7 @@
  write(stdout,'(1x,a24,2x,i8)') 'nomega_sigma',nomega_sigma 
  write(stdout,'(1x,a24,2x,es16.8)') 'step_sigma',step_sigma 
  write(stdout,'(1x,a24,6x,a)') 'pt3_a_diagrams',pt3_a_diagrams 
+ write(stdout,'(1x,a24,6x,a)') 'pt_density_matrix',pt_density_matrix 
  write(stdout,'(1x,a24,6x,a)') 'use_correlated_p_matrix',use_correlated_p_matrix 
  write(stdout,'(1x,a24,6x,a)') 'read_restart',read_restart 
  write(stdout,'(1x,a24,6x,a)') 'ignore_bigrestart',ignore_bigrestart 

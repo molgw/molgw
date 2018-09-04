@@ -566,12 +566,22 @@ vl[i].comment  ='Switch whether to calculate the A diagrams family in PT3. A dia
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='pt_density_matrix'
+vl[i].family   ='post'
+vl[i].default  ='no'
+vl[i].datatype ='characters'
+vl[i].comment  ='Triggers the calculation of a correlated density matrix within MBPT. \
+                Valid choices include: \'no\', \'PT2\', \'ONE-RING\', or \'GW\'.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='use_correlated_p_matrix'
 vl[i].family   ='post'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Choose to use a better density matrix P for the Fock hamiltonian to be employed in self-energy calculations. \
-                 Used in conjonction with \'read_fchk.\''
+                 Used in conjonction with \'pt_density_matrix\' or with \'read_fchk\' or read an existing DENSITY_MATRIX file.'
 
 #================================
 vl.append(variable())

@@ -613,3 +613,18 @@ gKS LUMO energy           ,      3.880683       , 0 , 1.0e-4
 sih4_g0w0@sc-cohsex.in    , G0W0 for SiH4 based on the previous sc-COHSEX run, Restart
 GW HOMO energy            ,    -12.855076       , 0 , 1.0e-4
 GW LUMO energy            ,      4.073908       , 0 , 1.0e-4
+
+co_gw_dm.in               , G0W0 based on G0W0 density matrix
+SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
+GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
+
+co_gw_dm_restart.in       , G0W0 based on G0W0 density matrix, Restart
+GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
+GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
+
+co_gw_pt2_dm.in           , G0W0 based on PT2 density matrix
+SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+GW HOMO energy            ,    -13.500329       , 0 , 1.0e-4
+GW LUMO energy            ,      3.390125       , 0 , 1.0e-4
+

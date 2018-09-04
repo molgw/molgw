@@ -25,7 +25,7 @@ subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: exchange_m_vxc(nstate,nstate,nspin)
- real(dp),intent(out)       :: p_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(inout)     :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  integer                 :: pstate,istate,astate
  integer                 :: iaspin
@@ -57,6 +57,7 @@ subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m
 !   p_matrix_pt1(pstate,pstate) = p_matrix_pt1(pstate,pstate) + occupation(pstate,iaspin)
 ! enddo
 
+ ! Transform from MO to AO
  p_matrix(:,:,iaspin) = MATMUL( c_matrix(:,:,iaspin)  , &
                           MATMUL( p_matrix_pt1(:,:), &
                              TRANSPOSE(c_matrix(:,:,iaspin)) ) )
@@ -87,9 +88,10 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(inout)     :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
+ integer                 :: file_density_matrix
  integer                 :: pstate,qstate
- integer                 :: istate,jstate,kstate,lstate
- integer                 :: astate,bstate,cstate,dstate
+ integer                 :: istate,jstate,kstate
+ integer                 :: astate,bstate,cstate
  integer                 :: pqspin
  real(dp)                :: denom1,denom2
  real(dp)                :: num1,num2
@@ -206,22 +208,26 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  enddo
  enddo
 
-! open(111,file='p_matrix_pt2.dat',action='write')
-! do pstate=1,nstate
-!   write(111,'(*(2x,f12.6))') p_matrix_pt2(pstate,:)
-! enddo
-! close(111)
-
  if( ALL( ABS(p_matrix) < 1.0e-6_dp ) ) then
+   if( TRIM(calc_type%scf_name) /= 'HF' ) &
+               call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
    ! Add the SCF density matrix to get to the total density matrix
-   call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
    do pstate=1,nstate
      p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
    enddo
  endif
 
+ ! Transform from MO to AO
  p_matrix(:,:,pqspin) = p_matrix(:,:,pqspin) + MATMUL( c_matrix(:,:,pqspin)  , &
                                                        MATMUL( p_matrix_pt2(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
+
+ if( print_density_matrix_ .AND. is_iomaster ) then
+   open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='write')
+   do pqspin=1,nspin
+     write(file_density_matrix) p_matrix(:,:,pqspin)
+   enddo
+   close(file_density_matrix)
+ endif
 
 
  if(has_auxil_basis) then
@@ -256,9 +262,10 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(out)       :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
+ integer                 :: file_density_matrix
  integer                 :: pstate,qstate
  integer                 :: istate,jstate,kstate
- integer                 :: astate,bstate,cstate,dstate
+ integer                 :: astate,bstate,cstate
  integer                 :: pqspin
  real(dp)                :: denom1,denom2
  real(dp)                :: num1,num2
@@ -279,7 +286,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  endif
 
 
-! Full calculation of the MP2 density matrix
+! Full calculation of the 1-ring density matrix
 
  p_matrix_pt2(:,:) = 0.0_dp
  pqspin = 1
@@ -372,25 +379,28 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  enddo
  enddo
 
-! open(111,file='p_matrix_pt2.dat',action='write')
-! do pstate=1,nstate
-!   write(111,'(*(2x,f12.6))') p_matrix_pt2(pstate,:)
-! enddo
-! close(111)
-
 
 
  if( ALL( ABS(p_matrix) < 1.0e-6_dp ) ) then
+   if( TRIM(calc_type%scf_name) /= 'HF' ) &
+               call issue_warning('onering_density_matrix: this is not correct when starting from something else than HF')
    ! Add the SCF density matrix to get to the total density matrix
-   call issue_warning('onering_density_matrix: this is not correct when starting from something else than HF')
    do pstate=1,nstate
      p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
    enddo
  endif
 
+ ! Transform from MO to AO
  p_matrix(:,:,pqspin) = p_matrix(:,:,pqspin) + MATMUL( c_matrix(:,:,pqspin)  , &
                                                        MATMUL( p_matrix_pt2(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
+ if( print_density_matrix_ .AND. is_iomaster ) then
+   open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='write')
+   do pqspin=1,nspin
+     write(file_density_matrix) p_matrix(:,:,pqspin)
+   enddo
+   close(file_density_matrix)
+ endif
 
 
  if(has_auxil_basis) then
@@ -428,8 +438,8 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  real(dp),intent(out)               :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  integer  :: pstate,qstate
- integer  :: istate,jstate,kstate
- integer  :: astate,bstate,cstate
+ integer  :: istate,jstate
+ integer  :: astate,bstate
  integer  :: pqspin
  integer  :: ipole
  integer  :: npole_local,ipole_local
@@ -466,8 +476,6 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  npole_local = NUMROC(wpol%npole_reso,1,rank_auxil,0,nproc_auxil)
  allocate(bra_occ_local(npole_local,ncore_G+1:nhomo_G))
  allocate(bra_virt_local(npole_local,nhomo_G+1:nvirtual_G-1))
- write(stdout,*) 'FBFB nstate_occ,nstate_virt',nstate_occ,nstate_virt
- write(stdout,*) 'FBFB npole_local',npole_local
 
  do astate=nhomo_G+1,nvirtual_G-1
    if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
@@ -547,9 +555,9 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  enddo
 
  ! A common factor 1/(e_j-e_c) is to be added for the occupied-virtual block (terms A3,A4,A5,A6)
- do cstate=nhomo_G+1,nvirtual_G-1
+ do bstate=nhomo_G+1,nvirtual_G-1
    do jstate=ncore_G+1,nhomo_G
-     p_matrix_gw(jstate,cstate) = p_matrix_gw(jstate,cstate) / ( energy(jstate,pqspin) - energy(cstate,pqspin) )
+     p_matrix_gw(jstate,bstate) = p_matrix_gw(jstate,bstate) / ( energy(jstate,pqspin) - energy(bstate,pqspin) )
    enddo
  enddo
 
@@ -557,6 +565,8 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
  deallocate(bra_occ)
  deallocate(bra_virt)
+ deallocate(bra_occ_local)
+ deallocate(bra_virt_local)
 
  ! Symmetrization of the p_matrix here
  ! Only the upper triangle was set up before
@@ -568,8 +578,9 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
 
  if( ALL( ABS(p_matrix) < 1.0e-6_dp ) ) then
+   if( TRIM(calc_type%scf_name) /= 'HF' ) &
+               call issue_warning('gw_density_matrix: this is not correct when starting from something else than HF')
    ! Add the SCF density matrix to get to the total density matrix
-   call issue_warning('gw_density_matrix: this is not correct when starting from something else than HF')
    do pstate=1,nstate
      p_matrix_gw(pstate,pstate) = p_matrix_gw(pstate,pstate) + occupation(pstate,pqspin)
    enddo
@@ -580,7 +591,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  p_matrix(:,:,pqspin) = p_matrix(:,:,pqspin) + MATMUL( c_matrix(:,:,pqspin)  , &
                                                        MATMUL( p_matrix_gw(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
- if( print_density_matrix_ ) then
+ if( print_density_matrix_ .AND. is_iomaster ) then
    open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='write')
    do pqspin=1,nspin
      write(file_density_matrix) p_matrix(:,:,pqspin)

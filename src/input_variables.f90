@@ -59,6 +59,7 @@
     nomega_sigma,       &
     step_sigma,       &
     pt3_a_diagrams,       &
+    pt_density_matrix,       &
     use_correlated_p_matrix,       &
     read_restart,       &
     ignore_bigrestart,       &
@@ -161,6 +162,7 @@
  nomega_sigma=51
  step_sigma=0.01_dp 
  pt3_a_diagrams='yes'
+ pt_density_matrix='no'
  use_correlated_p_matrix='no'
  read_restart='no'
  ignore_bigrestart='no'
