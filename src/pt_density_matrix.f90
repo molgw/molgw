@@ -486,7 +486,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
    ipole_local = 0
    do ipole=1,wpol%npole_reso
-     if( MODULO( ipole , nproc_auxil ) /= rank_auxil ) cycle
+     if( MODULO( ipole-1 , nproc_auxil ) /= rank_auxil ) cycle
      ipole_local = ipole_local + 1
      do jstate=ncore_G+1,nhomo_G
        bra_occ_local(ipole_local,jstate) = bra_occ(ipole,jstate) &
@@ -504,7 +504,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
    ipole_local = 0
    do ipole=1,wpol%npole_reso
-     if( MODULO( ipole , nproc_auxil ) /= rank_auxil ) cycle
+     if( MODULO( ipole-1 , nproc_auxil ) /= rank_auxil ) cycle
      ipole_local = ipole_local + 1
      do bstate=nhomo_G+1,nvirtual_G-1
        bra_virt_local(ipole_local,bstate) = bra_virt(ipole,bstate)
@@ -525,7 +525,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
    ipole_local = 0
    do ipole=1,wpol%npole_reso
-     if( MODULO( ipole , nproc_auxil ) /= rank_auxil ) cycle
+     if( MODULO( ipole-1 , nproc_auxil ) /= rank_auxil ) cycle
      ipole_local = ipole_local + 1
      do bstate=nhomo_G+1,nvirtual_G-1
        bra_virt_local(ipole_local,bstate) = bra_virt(ipole,bstate) &
@@ -542,7 +542,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
    ipole_local = 0
    do ipole=1,wpol%npole_reso
-     if( MODULO( ipole , nproc_auxil ) /= rank_auxil ) cycle
+     if( MODULO( ipole-1 , nproc_auxil ) /= rank_auxil ) cycle
      ipole_local = ipole_local + 1
      do jstate=ncore_G+1,nhomo_G
        bra_occ_local(ipole_local,jstate) = bra_occ(ipole,jstate)
