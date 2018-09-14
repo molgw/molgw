@@ -222,6 +222,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
                                                        MATMUL( p_matrix_pt2(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
  if( print_density_matrix_ .AND. is_iomaster ) then
+   write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
    open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='write')
    do pqspin=1,nspin
      write(file_density_matrix) p_matrix(:,:,pqspin)
@@ -395,6 +396,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
                                                        MATMUL( p_matrix_pt2(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
  if( print_density_matrix_ .AND. is_iomaster ) then
+   write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
    open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='write')
    do pqspin=1,nspin
      write(file_density_matrix) p_matrix(:,:,pqspin)
@@ -592,6 +594,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
                                                        MATMUL( p_matrix_gw(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
  if( print_density_matrix_ .AND. is_iomaster ) then
+   write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
    open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='write')
    do pqspin=1,nspin
      write(file_density_matrix) p_matrix(:,:,pqspin)

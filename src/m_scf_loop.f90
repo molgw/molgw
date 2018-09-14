@@ -58,9 +58,11 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
 !=====
  type(spectral_function) :: wpol
+ character(len=64)       :: restart_filename
  logical                 :: is_converged,stopfile_found,density_matrix_found
  integer                 :: file_density_matrix
  integer                 :: ispin,iscf,istate
+ integer                 :: restart_type
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
@@ -71,16 +73,12 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: p_matrix_corr(:,:,:)
  real(dp),allocatable    :: hamiltonian_hartree_corr(:,:)
  real(dp),allocatable    :: hamiltonian_exx_corr(:,:,:)
+ real(dp),allocatable    :: hfock_restart(:,:,:)
+ real(dp),allocatable    :: c_matrix_restart(:,:,:)
+ real(dp),allocatable    :: c_matrix_tmp(:,:,:)
+ real(dp),allocatable    :: occupation_tmp(:,:)
  real(dp)                :: hartree_ii(nstate,nspin),exchange_ii(nstate,nspin)
-!=============================
- real(dp),allocatable :: c_matrix_restart(:,:,:)
- real(dp),allocatable :: hfock_restart(:,:,:)
- real(dp)             :: energy_restart(nstate,nspin)
- integer              :: restart_type
- character(len=64)    :: restart_filename
-!=====
- real(dp) :: c_matrix_tmp(basis%nbf,basis%nbf,nspin)
- real(dp) :: occupation_tmp(basis%nbf,nspin)
+ real(dp)                :: energy_restart(nstate,nspin)
 !=====
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
@@ -488,22 +486,39 @@ subroutine scf_loop(is_restart,&
 
    endif
 
-   call calculate_hartree(basis,p_matrix_corr,hamiltonian_hartree_corr,eh=energy_tmp)
-   write(stdout,'(a50,1x,f19.10)') 'Hartree energy from correlated dm [Ha]:',energy_tmp
+   if( print_hartree_ ) then
+     call calculate_hartree(basis,p_matrix_corr,hamiltonian_hartree_corr,eh=energy_tmp)
+     write(stdout,'(a50,1x,f19.10)') 'Hartree energy from correlated dm [Ha]:',energy_tmp
 
-   call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=energy_tmp)
-   write(stdout,'(a50,1x,f19.10)') 'Exchange energy from correlated dm [Ha]:',energy_tmp
+     call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=energy_tmp)
+     write(stdout,'(a50,1x,f19.10)') 'Exchange energy from correlated dm [Ha]:',energy_tmp
 
-   do ispin=1,nspin
-     do istate=1,nstate
-        hartree_ii(istate,ispin)  =  DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                                  MATMUL( hamiltonian_hartree_corr(:,:) , c_matrix(:,istate,ispin) ) )
-        exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                                  MATMUL( hamiltonian_exx_corr(:,:,ispin) , c_matrix(:,istate,ispin) ) )
+     do ispin=1,nspin
+       do istate=1,nstate
+          hartree_ii(istate,ispin)  =  DOT_PRODUCT( c_matrix(:,istate,ispin) , &
+                                                    MATMUL( hamiltonian_hartree_corr(:,:) , c_matrix(:,istate,ispin) ) )
+          exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , &
+                                                    MATMUL( hamiltonian_exx_corr(:,:,ispin) , c_matrix(:,istate,ispin) ) )
+       enddo
      enddo
-   enddo
-   call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',nstate,nspin,occupation,hartree_ii)
-   call dump_out_energy('=== Exchange expectation value from correlated density matrix ===',nstate,nspin,occupation,exchange_ii)
+     call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',nstate,nspin,occupation,hartree_ii)
+     call dump_out_energy('=== Exchange expectation value from correlated density matrix ===',nstate,nspin,occupation,exchange_ii)
+   endif
+
+   if( print_multipole_ .OR. print_cube_ ) then
+     allocate(c_matrix_tmp,MOLD=p_matrix)
+     allocate(occupation_tmp(basis%nbf,nspin))
+     call get_c_matrix_from_p_matrix(p_matrix_corr,c_matrix_tmp,occupation_tmp)
+     if( print_multipole_ ) then
+       call static_dipole(basis%nbf,basis,occupation_tmp,c_matrix_tmp)
+       call static_quadrupole(basis%nbf,basis,occupation_tmp,c_matrix_tmp)
+     endif
+     if( print_cube_ ) then
+       call plot_cube_wfn('MBPT',basis%nbf,basis,occupation_tmp,c_matrix_tmp)
+     endif
+     deallocate(c_matrix_tmp)
+     deallocate(occupation_tmp)
+   endif
 
    if( use_correlated_p_matrix_) then
      !

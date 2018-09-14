@@ -478,7 +478,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 #endif
 
      call cohsex_selfenergy(nstate,basis,occupation, &
-                            c_matrix,wpol,matrix_tmp,sigc,en%gw)
+                            c_matrix,wpol,se)
 
 
      !
@@ -491,7 +491,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call calculate_eri_3center_scalapack(basis,auxil_basis,rcut_mbpt)
 
        call cohsex_selfenergy_lr(nstate,basis,occupation, &
-                                 c_matrix,wpol,matrix_tmp,sigc,en%gw)
+                                 c_matrix,wpol,se)
      endif
 
      deallocate(matrix_tmp)

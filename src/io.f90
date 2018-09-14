@@ -396,7 +396,6 @@ subroutine plot_wfn(nstate,basis,c_matrix)
 !=====
  integer,parameter          :: nr=2000
  real(dp),parameter         :: length=10.0_dp
- integer                    :: gt
  integer                    :: ir
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
@@ -410,7 +409,6 @@ subroutine plot_wfn(nstate,basis,c_matrix)
 
  if( .NOT. is_iomaster ) return
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
  write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions'
  inquire(file='manual_plotwfn',exist=file_exists)
@@ -485,7 +483,6 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
 !=====
  integer,parameter          :: nr=5000
  real(dp),parameter         :: length=4.0_dp
- integer                    :: gt
  integer                    :: ir
  integer                    :: ispin
  real(dp)                   :: rr(3)
@@ -501,7 +498,6 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
 
  write(stdout,'(/,1x,a)') 'Plotting the density'
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
  inquire(file='manual_plotrho',exist=file_exists)
  if(file_exists) then
@@ -561,7 +557,6 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                    :: gt
  integer                    :: ispin
  real(dp)                   :: rr(3)
  real(dp),allocatable       :: phi(:,:)
@@ -583,7 +578,6 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
 
  write(stdout,'(/,1x,a)') 'Plotting the density'
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
  inquire(file='manual_plotrho',exist=file_exists)
  if(file_exists) then
@@ -626,7 +620,7 @@ end subroutine plot_rho_list
 
 
 !=========================================================================
-subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
+subroutine plot_cube_wfn(rootname,nstate,basis,occupation,c_matrix)
  use m_definitions
  use m_mpi
  use m_inputparam, only: nspin
@@ -635,12 +629,12 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  use m_basis_set
  use m_dft_grid,only: calculate_basis_functions_r
  implicit none
+ character(len=*)           :: rootname
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                    :: gt
  integer                    :: nx,ny,nz
  real(dp),parameter         :: length=3.499470_dp
  integer                    :: istate1,istate2,istate,ispin
@@ -662,7 +656,6 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
 
  write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
  inquire(file='manual_cubewfn',exist=file_exists)
  if(file_exists) then
@@ -677,6 +670,9 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
    ny=40
    nz=40
  endif
+ istate1 = MAX(istate1,1)
+ istate2 = MIN(istate2,nstate)
+ 
  allocate(phi(istate1:istate2,nspin))
  write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
@@ -700,7 +696,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
 
  do istate=istate1,istate2
    do ispin=1,nspin
-     write(file_name,'(a,i3.3,a,i1,a)') 'wfn_',istate,'_',ispin,'.cube'
+     write(file_name,'(a,i3.3,a,i1,a)') 'wfn_'//TRIM(rootname)//'_',istate,'_',ispin,'.cube'
      open(newunit=ocubefile(istate,ispin),file=file_name)
      write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
      write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate1
@@ -718,7 +714,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  ! check whether istate1:istate2 spans all the occupied states
  if( ALL( occupation(istate2+1,:) < completely_empty ) ) then
    do ispin=1,nspin
-     write(file_name,'(a,i1,a)') 'rho_',ispin,'.cube'
+     write(file_name,'(a,i1,a)') 'rho_'//TRIM(rootname)//'_',ispin,'.cube'
      open(newunit=ocuberho(ispin),file=file_name)
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
      write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
