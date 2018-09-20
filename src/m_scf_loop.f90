@@ -434,7 +434,7 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Is there a correlated density matrix to be read or to be calculated
- if( read_fchk /= 'NO' .OR. TRIM(pt_density_matrix) /= 'NO' .OR. use_correlated_p_matrix_ ) then
+ if( read_fchk /= 'NO' .OR. TRIM(pt_density_matrix) /= 'NO' .OR. use_correlated_density_matrix_ ) then
 
    call clean_allocate('Correlated density matrix',p_matrix_corr,basis%nbf,basis%nbf,nspin)
    call clean_allocate('Correlated Hartree potential',hamiltonian_hartree_corr,basis%nbf,basis%nbf)
@@ -486,7 +486,7 @@ subroutine scf_loop(is_restart,&
 
    endif
 
-   if( print_hartree_ ) then
+   if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
      call calculate_hartree(basis,p_matrix_corr,hamiltonian_hartree_corr,eh=energy_tmp)
      write(stdout,'(a50,1x,f19.10)') 'Hartree energy from correlated dm [Ha]:',energy_tmp
 
@@ -520,7 +520,7 @@ subroutine scf_loop(is_restart,&
      deallocate(occupation_tmp)
    endif
 
-   if( use_correlated_p_matrix_) then
+   if( use_correlated_density_matrix_ ) then
      !
      ! Since the density matrix p_matrix is updated,
      ! one needs to recalculate the hartree and the exchange potentials

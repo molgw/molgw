@@ -576,11 +576,11 @@ vl[i].comment  ='Triggers the calculation of a correlated density matrix within 
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='use_correlated_p_matrix'
+vl[i].keyword  ='use_correlated_density_matrix'
 vl[i].family   ='post'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
-vl[i].comment  ='Choose to use a better density matrix P for the Fock hamiltonian to be employed in self-energy calculations. \
+vl[i].comment  ='Chooses to use another density matrix for the Fock hamiltonian to be employed in self-energy calculations. \
                  Used in conjonction with \'pt_density_matrix\' or with \'read_fchk\' or read an existing DENSITY_MATRIX file.'
 
 #================================

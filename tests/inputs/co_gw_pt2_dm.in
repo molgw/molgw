@@ -9,7 +9,7 @@
 
  print_density_matrix='yes'
  pt_density_matrix='PT2'
- use_correlated_p_matrix='yes'
+ use_correlated_density_matrix='yes'
 
  postscf='GW'
  selfenergy_state_range=1

@@ -156,7 +156,7 @@ module m_inputparam
  real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
  real(dp),protected               :: grid_memory
 
- logical,protected                :: use_correlated_p_matrix_
+ logical,protected                :: use_correlated_density_matrix_
  logical,protected                :: gwgamma_tddft_
  logical,protected                :: read_restart_
  logical,protected                :: ignore_bigrestart_
@@ -750,7 +750,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
- character(len=3)     :: gwgamma_tddft,use_correlated_p_matrix
+ character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -855,7 +855,7 @@ subroutine read_inputfile_namelist()
  print_hartree_           = yesno(print_hartree)
  print_density_matrix_    = yesno(print_density_matrix)
  gwgamma_tddft_           = yesno(gwgamma_tddft)
- use_correlated_p_matrix_ = yesno(use_correlated_p_matrix)
+ use_correlated_density_matrix_ = yesno(use_correlated_density_matrix)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
