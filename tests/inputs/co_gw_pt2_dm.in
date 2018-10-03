@@ -1,0 +1,20 @@
+&molgw
+ scf='HF'
+
+ basis='cc-pVDZ_gaussian'
+ auxil_basis='cc-pVDZ-RI'
+ gaussian_type='CART'
+
+ frozencore='yes'
+
+ print_density_matrix='yes'
+ pt_density_matrix='PT2'
+ use_correlated_density_matrix='yes'
+
+ postscf='GW'
+ selfenergy_state_range=1
+
+ natom = 2
+/
+8           .000000     .000000     .493003
+6           .000000     .000000    -.657337

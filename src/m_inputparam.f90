@@ -122,6 +122,7 @@ module m_inputparam
  character(len=100),protected     :: xyz_file
  character(len=100),protected     :: basis_path
  character(len=100),protected     :: read_fchk
+ character(len=100),protected     :: pt_density_matrix
  character(len=100),allocatable,protected :: basis_name(:)
  character(len=100),allocatable,protected :: auxil_basis_name(:)
  character(len=100),allocatable,protected :: small_basis_name(:)
@@ -173,7 +174,7 @@ module m_inputparam
  real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
  real(dp),protected               :: grid_memory
 
- logical,protected                :: use_correlated_p_matrix_
+ logical,protected                :: use_correlated_density_matrix_
  logical,protected                :: gwgamma_tddft_
  logical,protected                :: read_restart_
  logical,protected                :: ignore_bigrestart_
@@ -188,7 +189,7 @@ module m_inputparam
  logical,protected                :: print_cube_
  logical,protected                :: print_multipole_
  logical,protected                :: print_hartree_
- logical,protected                :: print_exchange_
+ logical,protected                :: print_density_matrix_
  real(dp),protected               :: rcut_mbpt
 
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
@@ -812,9 +813,9 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: read_restart,ignore_bigrestart,force_energy_qp
  character(len=3)     :: print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
- character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_exchange
+ character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
- character(len=3)     :: gwgamma_tddft,use_correlated_p_matrix
+ character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix
  character(len=3)     :: print_tddft_matrices
  character(len=3)     :: print_cube_rho_tddft
  character(len=3)     :: print_cube_diff_tddft
@@ -910,30 +911,31 @@ subroutine read_inputfile_namelist()
  ci_greens_function = capitalize(ci_greens_function)
  ci_type            = capitalize(ci_type)
  read_fchk          = capitalize(read_fchk)
+ pt_density_matrix  = capitalize(pt_density_matrix)
  pt3_a_diagrams     = capitalize(pt3_a_diagrams)
 
- read_restart_      = yesno(read_restart)
- ignore_bigrestart_ = yesno(ignore_bigrestart)
- force_energy_qp_   = yesno(force_energy_qp)
- is_tda             = yesno(tda)
- is_triplet         = yesno(triplet)
- is_frozencore      = yesno(frozencore)
- is_virtual_fno     = yesno(virtual_fno)
- incore_            = yesno(incore)
+ read_restart_            = yesno(read_restart)
+ ignore_bigrestart_       = yesno(ignore_bigrestart)
+ force_energy_qp_         = yesno(force_energy_qp)
+ is_tda                   = yesno(tda)
+ is_triplet               = yesno(triplet)
+ is_frozencore            = yesno(frozencore)
+ is_virtual_fno           = yesno(virtual_fno)
+ incore_                  = yesno(incore)
 
- print_eri_             = yesno(print_eri)
- print_wfn_             = yesno(print_wfn)
- print_w_               = yesno(print_w)
- print_sigma_           = yesno(print_sigma)
- print_restart_         = yesno(print_restart)
- print_bigrestart_      = yesno(print_bigrestart)
- print_pdos_            = yesno(print_pdos)
- print_multipole_       = yesno(print_multipole)
- print_cube_            = yesno(print_cube)
- print_hartree_         = yesno(print_hartree)
- print_exchange_        = yesno(print_exchange)
- gwgamma_tddft_         = yesno(gwgamma_tddft)
- use_correlated_p_matrix_ = yesno(use_correlated_p_matrix)
+ print_eri_               = yesno(print_eri)
+ print_wfn_               = yesno(print_wfn)
+ print_w_                 = yesno(print_w)
+ print_sigma_             = yesno(print_sigma)
+ print_restart_           = yesno(print_restart)
+ print_bigrestart_        = yesno(print_bigrestart)
+ print_pdos_              = yesno(print_pdos)
+ print_multipole_         = yesno(print_multipole)
+ print_cube_              = yesno(print_cube)
+ print_hartree_           = yesno(print_hartree)
+ print_density_matrix_    = yesno(print_density_matrix)
+ gwgamma_tddft_           = yesno(gwgamma_tddft)
+ use_correlated_density_matrix_ = yesno(use_correlated_density_matrix)
  print_tddft_matrices_  = yesno(print_tddft_matrices)
  print_cube_diff_tddft_ = yesno(print_cube_diff_tddft)
  print_line_rho_tddft_  = yesno(print_line_rho_tddft)

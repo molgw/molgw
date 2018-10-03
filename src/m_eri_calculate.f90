@@ -796,6 +796,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
 
  write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, diagonalized and stored'
+ write(stdout,'(1x,a,es16.6)') 'Lowest eigenvalue: ',MINVAL(eigval(:))
  write(stdout,'(1x,a,i6)')     'Some have been eliminated due to too large overlap ',nauxil_neglect
  write(stdout,'(1x,a,es16.6)') 'because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
 
@@ -883,6 +884,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  !
  call clean_allocate('TMP 3-center integrals',eri_3center_tmp,mlocal,nlocal)
 
+ call start_clock(timing_eri_3center_ints)
 
 
  do klshellpair=1,nshellpair
@@ -908,6 +910,11 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    if( skip_shell ) cycle
 
 
+   !$OMP PARALLEL PRIVATE(ami,ni,skip_shell,iglobal,am1,am3,am4, &
+   !$OMP&                 n1c,n3c,n4c,ng1,ng3,ng4,alpha1,alpha3,alpha4, &
+   !$OMP&                 coeff1,coeff3,coeff4,x01,x03,x04,int_shell,integrals, &
+   !$OMP&                 klpair_global,ilocal,jlocal,ibf_auxil_global )
+   !$OMP DO 
    do ishell=1,auxil_basis%nshell
 
      ami = auxil_basis%shell(ishell)%am
@@ -979,9 +986,12 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      deallocate(coeff1,coeff3,coeff4)
 
    enddo ! ishell
+   !$OMP END DO
+   !$OMP END PARALLEL
 
  enddo ! klshellpair
 
+ call stop_clock(timing_eri_3center_ints)
 
  ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
  ! Set nlocal => npair
@@ -992,6 +1002,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 
 
+ call start_clock(timing_eri_3center_matmul)
 #ifdef HAVE_SCALAPACK
  call clean_allocate('3-center integrals SCALAPACK',eri_3center_sca,mlocal,nlocal)
 
@@ -1088,6 +1099,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 
 #endif
+ call stop_clock(timing_eri_3center_matmul)
 
 
 

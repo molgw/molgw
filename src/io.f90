@@ -396,7 +396,6 @@ subroutine plot_wfn(nstate,basis,c_matrix)
 !=====
  integer,parameter          :: nr=2000
  real(dp),parameter         :: length=10.0_dp
- integer                    :: gt
  integer                    :: ir
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
@@ -410,7 +409,6 @@ subroutine plot_wfn(nstate,basis,c_matrix)
 
  if( .NOT. is_iomaster ) return
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
  write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions'
  inquire(file='manual_plotwfn',exist=file_exists)
@@ -485,7 +483,6 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
 !=====
  integer,parameter          :: nr=5000
  real(dp),parameter         :: length=4.0_dp
- integer                    :: gt
  integer                    :: ir
  integer                    :: ispin
  real(dp)                   :: rr(3)
@@ -501,7 +498,6 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
 
  write(stdout,'(/,1x,a)') 'Plotting the density'
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
  inquire(file='manual_plotrho',exist=file_exists)
  if(file_exists) then
@@ -560,7 +556,6 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                    :: gt
  integer                    :: ispin
  real(dp)                   :: rr(3)
  real(dp),allocatable       :: phi(:,:)
@@ -582,7 +577,6 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
 
  write(stdout,'(/,1x,a)') 'Plotting the density'
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
  inquire(file='manual_plotrho',exist=file_exists)
  if(file_exists) then
@@ -625,7 +619,7 @@ end subroutine plot_rho_list
 
 
 !=========================================================================
-subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
+subroutine plot_cube_wfn(rootname,nstate,basis,occupation,c_matrix)
  use m_definitions
  use m_mpi
  use m_inputparam, only: nspin
@@ -634,12 +628,12 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  use m_basis_set
  use m_dft_grid,only: calculate_basis_functions_r
  implicit none
+ character(len=*)           :: rootname
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                    :: gt
  integer                    :: nx,ny,nz
  real(dp),parameter         :: length=3.499470_dp
  integer                    :: istate1,istate2,istate,ispin
@@ -661,7 +655,6 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
 
  write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
  inquire(file='manual_cubewfn',exist=file_exists)
  if(file_exists) then
@@ -676,6 +669,9 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
    ny=40
    nz=40
  endif
+ istate1 = MAX(istate1,1)
+ istate2 = MIN(istate2,nstate)
+ 
  allocate(phi(istate1:istate2,nspin))
  write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
@@ -699,7 +695,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
 
  do istate=istate1,istate2
    do ispin=1,nspin
-     write(file_name,'(a,i3.3,a,i1,a)') 'wfn_',istate,'_',ispin,'.cube'
+     write(file_name,'(a,i3.3,a,i1,a)') 'wfn_'//TRIM(rootname)//'_',istate,'_',ispin,'.cube'
      open(newunit=ocubefile(istate,ispin),file=file_name)
      write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
      write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate1
@@ -717,7 +713,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  ! check whether istate1:istate2 spans all the occupied states
  if( ALL( occupation(istate2+1,:) < completely_empty ) ) then
    do ispin=1,nspin
-     write(file_name,'(a,i1,a)') 'rho_',ispin,'.cube'
+     write(file_name,'(a,i1,a)') 'rho_'//TRIM(rootname)//'_',ispin,'.cube'
      open(newunit=ocuberho(ispin),file=file_name)
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
      write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
@@ -2210,28 +2206,30 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
      keyword = 'Total CC Density'
    case('MP2')
      keyword = 'Total MP2 Density'
-   case default
+   case('SCF')
      keyword = 'Total SCF Density'
+   case default
+     call die('read_gaussian_fchk: invalid choice for input variable read_fchk')
    end select
-  
+
    write(stdout,'(/,1x,a,a)') 'Reading an existing Gaussian formatted checkpoint point: ',&
                               TRIM(file_name)
    write(stdout,'(1x,a,a)')   'Reading field: ',TRIM(keyword)
-  
+
    inquire(file=file_name,exist=file_exists)
    if( .NOT. file_exists) then
      call issue_warning('File not found: ' // TRIM(file_name))
      return
    endif
-  
+
    write(stdout,'(1x,a,a)') 'Density matrix read: ',TRIM(read_fchk)
-  
+
    nel = (basis%nbf*(basis%nbf+1))/2
    allocate(p_matrix_read(nel))
-  
-  
+
+
    open(newunit=fu,file=TRIM(file_name),status='old',action='read')
-  
+
    ! Read the fchk file until the keyword is found
    found = .FALSE.
    do while( .NOT. found )
@@ -2242,7 +2240,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
      endif
      found = ( INDEX(line,TRIM(keyword)) /= 0 )
    enddo
-  
+
    do ispin=1,nspin
      do ijbf=1,(nel/stride-1)*stride+1,stride
        read(fu,*) p_matrix_read(ijbf:ijbf+stride-1)
@@ -2258,20 +2256,20 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
      enddo
    enddo
    close(fu)
-  
-  
+
+
    ! Reorder the basis functions from Gaussian to Libint convention
    ! s and p orbitals are unchanged
    ! gaussian d orbital order is xx, yy, zz, xy, yz, xz
    ! libint   d orbital order is xx, xy, xz, yy, yz, zz
-  
+
    block_d(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, &
                              0, 0, 0, 1, 0, 0, &
                              0, 0, 0, 0, 1, 0, &
                              0, 1, 0, 0, 0, 0, &
                              0, 0, 0, 0, 0, 1, &
                              0, 0, 1, 0, 0, 0 ] , [ 6, 6 ] )
-  
+
    block_f(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
                              0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
                              0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
@@ -2282,7 +2280,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
                              0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
                              0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
                              0, 0, 1, 0, 0, 0, 0, 0, 0, 0 ] , [ 10, 10 ] )    !OK
-  
+
    block_g(:,:) = RESHAPE( [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
@@ -2298,7 +2296,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
                              0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
                              0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
                              1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 15, 15 ] )
-  
+
    swap(:,:) = 0.0_dp
    ibf = 1
    do while( ibf <= basis%nbf )
@@ -2320,13 +2318,13 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
      end select
      ibf = ibf + number_basis_function_am('CART',basis%bfc(ibf)%am)
    enddo
-  
+
    p_matrix_out(:,:,1) = MATMUL( TRANSPOSE(swap), MATMUL(p_matrix_out(:,:,1),swap) )
-  
-  
+
+
    !call dump_out_matrix(.TRUE.,'gaussian density matrix',SIZE(p_matrix_out,DIM=1),SIZE(p_matrix_out,DIM=3),p_matrix_out)
-  
-  
+
+
    deallocate(p_matrix_read)
 
  endif

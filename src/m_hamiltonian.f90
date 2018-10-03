@@ -254,18 +254,25 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
- do ipair=1,npair
+ do ipair=1,nbf
+   kbf = index_basis(1,ipair)
+   partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * SUM( p_matrix(kbf,kbf,:) )
+ enddo
+ !$OMP PARALLEL PRIVATE(kbf,lbf)
+ !$OMP DO REDUCTION(+:partial_sum)
+ do ipair=nbf+1,npair
    kbf = index_basis(1,ipair)
    lbf = index_basis(2,ipair)
    ! Factor 2 comes from the symmetry of p_matrix
    partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-   ! Then diagonal terms have been counted twice and should be removed once.
-   if( kbf == lbf ) &
-     partial_sum(:) = partial_sum(:) - eri_3center(:,ipair) * SUM( p_matrix(kbf,kbf,:) )
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
  ! Hartree potential is not sensitive to spin
  hartree_ij(:,:) = 0.0_dp
+ !$OMP PARALLEL PRIVATE(ibf,jbf,rtmp)
+ !$OMP DO 
  do ipair=1,npair
    ibf = index_basis(1,ipair)
    jbf = index_basis(2,ipair)
@@ -273,6 +280,8 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
    hartree_ij(ibf,jbf) = rtmp
    hartree_ij(jbf,ibf) = rtmp
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
  deallocate(partial_sum)
 
@@ -375,22 +384,35 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
 
      if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
+     !call start_clock(timing_tmp5)
      tmp(:,:) = 0.0_dp
+     !$OMP PARALLEL PRIVATE(ibf,jbf) 
+     !$OMP DO REDUCTION(+:tmp)
      do ipair=1,nbf
        ibf = index_basis(1,ipair)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     !$OMP PARALLEL PRIVATE(ibf,jbf) 
+     !$OMP DO REDUCTION(+:tmp)
      do ipair=nbf+1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
        tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     !call stop_clock(timing_tmp5)
 
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C ; C - exchange_ij(:,:,ispin); A - tmp
+     ! C = A^T * A + C
+     !call start_clock(timing_tmp9)
      call DSYRK('L','T',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center,1.0_dp,exchange_ij(:,:,ispin),nbf)
+     !call stop_clock(timing_tmp9)
    enddo
 
    !
@@ -541,7 +563,7 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
- if( ANY( occupation(:,:) < 0.0_dp ) ) call die('setup_density_matrix: negative occupation number should not happen here.')
+ if( ANY( occupation(:,:) < -1.0e-6_dp ) ) call die('setup_density_matrix: negative occupation number should not happen here.')
  ! Find the number of occupatied states
  nocc = get_number_occupied_states(occupation)
 
@@ -800,15 +822,28 @@ subroutine matrix_basis_to_eigen(c_matrix,matrix_inout)
 !=====
  integer                 :: nbf,nstate
  integer                 :: ispin
+ real(dp),allocatable    :: matrix_tmp(:,:)
 !=====
 
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
- do ispin=1,nspin
-   matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
- enddo
 
+ allocate(matrix_tmp(nbf,nstate))
+
+ do ispin=1,nspin
+   !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
+   ! H * C
+   call DGEMM('N','N',nbf,nstate,nbf,1.0d0,matrix_inout(:,:,ispin),nbf, &
+                                           c_matrix(:,:,ispin),nbf,     &
+                                     0.0d0,matrix_tmp,nbf)
+   ! C**T * (H * C)
+   call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(:,:,ispin),nbf,  &
+                                              matrix_tmp,nbf,           &
+                                        0.0d0,matrix_inout,nbf)
+
+ enddo
+ deallocate(matrix_tmp)
 
 end subroutine matrix_basis_to_eigen
 
