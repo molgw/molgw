@@ -471,7 +471,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
  emp3 = 0.0_dp
 
  write(stdout,'(/,a)') ' Perform the third-order self-energy calculation'
- select case(pt3_a_diagrams)
+ select case(TRIM(pt3_a_diagrams))
  case('YES')
    write(stdout,'(1x,a)') 'Include all the 2nd and 3rd order diagrams'
  case('NO')

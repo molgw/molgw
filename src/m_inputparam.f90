@@ -191,7 +191,6 @@ module m_inputparam
  logical,protected                :: print_exchange_
  real(dp),protected               :: rcut_mbpt
 
- logical,protected                :: pt3_a_diagrams_
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
  real(dp),protected               :: alpha_hybrid_lr = 0.0_dp
  real(dp),protected               :: rcut            = 0.0_dp
