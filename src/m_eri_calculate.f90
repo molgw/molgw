@@ -909,6 +909,11 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    if( skip_shell ) cycle
 
 
+   !$OMP PARALLEL PRIVATE(ami,ni,skip_shell,iglobal,am1,am3,am4, &
+   !$OMP&                 n1c,n3c,n4c,ng1,ng3,ng4,alpha1,alpha3,alpha4, &
+   !$OMP&                 coeff1,coeff3,coeff4,x01,x03,x04,int_shell,integrals, &
+   !$OMP&                 klpair_global,ilocal,jlocal,ibf_auxil_global )
+   !$OMP DO 
    do ishell=1,auxil_basis%nshell
 
      ami = auxil_basis%shell(ishell)%am
@@ -980,6 +985,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      deallocate(coeff1,coeff3,coeff4)
 
    enddo ! ishell
+   !$OMP END DO
+   !$OMP END PARALLEL
 
  enddo ! klshellpair
 

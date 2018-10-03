@@ -382,22 +382,34 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
 
      if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
+     !call start_clock(timing_tmp5)
      tmp(:,:) = 0.0_dp
+     !$OMP PARALLEL PRIVATE(ibf,jbf) 
+     !$OMP DO REDUCTION(+:tmp)
      do ipair=1,nbf
        ibf = index_basis(1,ipair)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     !$OMP PARALLEL PRIVATE(ibf,jbf) 
+     !$OMP DO REDUCTION(+:tmp)
      do ipair=nbf+1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
        tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     !call stop_clock(timing_tmp5)
 
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
+     !call start_clock(timing_tmp9)
      call DSYRK('L','T',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center,1.0_dp,exchange_ij(:,:,ispin),nbf)
+     !call stop_clock(timing_tmp9)
    enddo
 
    !
