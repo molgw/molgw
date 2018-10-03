@@ -884,6 +884,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  !
  call clean_allocate('TMP 3-center integrals',eri_3center_tmp,mlocal,nlocal)
 
+ call start_clock(timing_eri_3center_ints)
 
 
  do klshellpair=1,nshellpair
@@ -990,6 +991,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
  enddo ! klshellpair
 
+ call stop_clock(timing_eri_3center_ints)
 
  ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
  ! Set nlocal => npair
@@ -1000,6 +1002,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 
 
+ call start_clock(timing_eri_3center_matmul)
 #ifdef HAVE_SCALAPACK
  call clean_allocate('3-center integrals SCALAPACK',eri_3center_sca,mlocal,nlocal)
 
@@ -1096,6 +1099,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 
 #endif
+ call stop_clock(timing_eri_3center_matmul)
 
 
 

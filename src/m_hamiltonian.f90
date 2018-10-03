@@ -260,18 +260,25 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
- do ipair=1,npair
+ do ipair=1,nbf
+   kbf = index_basis(1,ipair)
+   partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * SUM( p_matrix(kbf,kbf,:) )
+ enddo
+ !$OMP PARALLEL PRIVATE(kbf,lbf)
+ !$OMP DO REDUCTION(+:partial_sum)
+ do ipair=nbf+1,npair
    kbf = index_basis(1,ipair)
    lbf = index_basis(2,ipair)
    ! Factor 2 comes from the symmetry of p_matrix
    partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-   ! Then diagonal terms have been counted twice and should be removed once.
-   if( kbf == lbf ) &
-     partial_sum(:) = partial_sum(:) - eri_3center(:,ipair) * SUM( p_matrix(kbf,kbf,:) )
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
  ! Hartree potential is not sensitive to spin
  hartree_ij(:,:) = 0.0_dp
+ !$OMP PARALLEL PRIVATE(ibf,jbf,rtmp)
+ !$OMP DO 
  do ipair=1,npair
    ibf = index_basis(1,ipair)
    jbf = index_basis(2,ipair)
@@ -279,6 +286,8 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
    hartree_ij(ibf,jbf) = rtmp
    hartree_ij(jbf,ibf) = rtmp
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
  deallocate(partial_sum)
 
@@ -821,15 +830,28 @@ subroutine matrix_basis_to_eigen(c_matrix,matrix_inout)
 !=====
  integer                 :: nbf,nstate
  integer                 :: ispin
+ real(dp),allocatable    :: matrix_tmp(:,:)
 !=====
 
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
- do ispin=1,nspin
-   matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
- enddo
 
+ allocate(matrix_tmp(nbf,nstate))
+
+ do ispin=1,nspin
+   !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
+   ! H * C
+   call DGEMM('N','N',nbf,nstate,nbf,1.0d0,matrix_inout(:,:,ispin),nbf, &
+                                           c_matrix(:,:,ispin),nbf,     &
+                                     0.0d0,matrix_tmp,nbf)
+   ! C**T * (H * C)
+   call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(:,:,ispin),nbf,  &
+                                              matrix_tmp,nbf,           &
+                                        0.0d0,matrix_inout,nbf)
+
+ enddo
+ deallocate(matrix_tmp)
 
 end subroutine matrix_basis_to_eigen
 

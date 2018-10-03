@@ -69,6 +69,8 @@ module m_timing
  integer,parameter :: timing_aomo_pola           = 50
  integer,parameter :: timing_aomo_ci             = 51
  integer,parameter :: timing_mbpt_dm             = 52
+ integer,parameter :: timing_eri_3center_ints    = 53
+ integer,parameter :: timing_eri_3center_matmul  = 54
 
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -168,6 +170,8 @@ subroutine output_timing()
  call output_timing_line('4-center integrals',timing_eri_4center,1)
  call output_timing_line('2-center integrals',timing_eri_2center,1)
  call output_timing_line('3-center integrals',timing_eri_3center,1)
+ call output_timing_line('Integrals evalution',timing_eri_3center_ints,2)
+ call output_timing_line('Matrix multiplication',timing_eri_3center_matmul,2)
  call output_timing_line('Overlap matrix S',timing_overlap,1)
  call output_timing_line('Approximate guess Hamiltonian',timing_approx_ham,1)
  call output_timing_line('Kinetic Hamiltonian',timing_hamiltonian_kin,1)
