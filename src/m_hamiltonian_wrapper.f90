@@ -105,7 +105,11 @@ subroutine calculate_exchange_real(basis,p_matrix,hexx,ex,occupation,c_matrix)
    else
 
      if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
+#ifndef SCASCA
        call setup_exchange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
+#else
+       call setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,hexx,eexx)
+#endif
      else
        !
        ! c_matrix is not provided, then calculate it from the square-root of P

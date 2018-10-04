@@ -333,9 +333,6 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
 
  nauxil_local = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
  npair_local  = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
- write(stdout,*) 'FBFB',nprow_3center,' x ',npcol_3center
- write(stdout,*) 'FBFB',nauxil_2center,nauxil_local,SIZE(eri_3center_sca,DIM=1)
- write(stdout,*) 'FBFB',npair,npair_local,SIZE(eri_3center_sca,DIM=2)
 
 
  allocate(partial_sum(nauxil_local))
@@ -522,6 +519,91 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  call stop_clock(timing_exchange)
 
 end subroutine setup_exchange_ri
+
+
+!=========================================================================
+subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+ implicit none
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
+ real(dp),intent(out) :: eexchange
+!=====
+ integer              :: nauxil_local,npair_local
+ integer              :: nbf,nstate
+ integer              :: ibf,jbf,ispin,istate
+ integer              :: nocc
+ real(dp),allocatable :: tmp(:,:)
+ integer              :: ipair,ipair_local
+!=====
+
+ call start_clock(timing_exchange)
+
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: versatile version'
+
+ exchange_ij(:,:,:) = 0.0_dp
+
+ nbf    = SIZE(exchange_ij,DIM=1)
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ nauxil_local = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
+ npair_local  = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
+
+
+ allocate(tmp(nauxil_local,nbf))
+
+ ! Find highest occupied state
+ nocc = get_number_occupied_states(occupation)
+
+ do ispin=1,nspin
+
+   do istate=1,nocc
+     if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+
+     if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+     tmp(:,:) = 0.0_dp
+     !$OMP PARALLEL PRIVATE(ibf,jbf)
+     !$OMP DO REDUCTION(+:tmp)
+     do ipair_local=1,npair_local
+       ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+       ibf = index_basis(1,ipair)
+       jbf = index_basis(2,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_sca(:,ipair_local)
+       if( ibf /= jbf) &
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_sca(:,ipair_local)
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
+
+     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+     !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     ! C = A^T * A + C
+     call DSYRK('L','T',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp,nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+   enddo
+
+   !
+   ! Need to symmetrize exchange_ij
+   do ibf=1,nbf
+     do jbf=ibf+1,nbf
+       exchange_ij(ibf,jbf,ispin) = exchange_ij(jbf,ibf,ispin)
+     enddo
+   enddo
+
+ enddo
+ deallocate(tmp)
+
+ call xsum_world(exchange_ij)
+ ! FBFB dirty coding: to be clean up in the near future
+ exchange_ij(:,:,:) = exchange_ij(:,:,:) / REAL(npcol_3center,dp)
+
+ eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
+
+ call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_versatile_ri
 
 
 !=========================================================================
