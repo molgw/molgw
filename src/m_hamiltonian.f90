@@ -310,6 +310,93 @@ end subroutine setup_hartree_ri
 
 
 !=========================================================================
+subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
+ implicit none
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: hartree_ij(:,:)
+ real(dp),intent(out) :: ehartree
+!=====
+ integer              :: nauxil_local,npair_local
+ integer              :: nbf
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: ipair,ipair_local
+ real(dp),allocatable :: partial_sum(:)
+ real(dp)             :: rtmp
+ character(len=100)   :: title
+!=====
+
+ call start_clock(timing_hartree)
+
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: versatile version'
+
+ nbf = SIZE(hartree_ij(:,:),DIM=1)
+
+ nauxil_local = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
+ npair_local  = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
+ write(stdout,*) 'FBFB',nprow_3center,' x ',npcol_3center
+ write(stdout,*) 'FBFB',nauxil_2center,nauxil_local,SIZE(eri_3center_sca,DIM=1)
+ write(stdout,*) 'FBFB',npair,npair_local,SIZE(eri_3center_sca,DIM=2)
+
+
+ allocate(partial_sum(nauxil_local))
+
+ partial_sum(:) = 0.0_dp
+ !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
+ !$OMP DO REDUCTION(+:partial_sum)
+ do ipair_local=1,npair_local
+   ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+   kbf = index_basis(1,ipair)
+   lbf = index_basis(2,ipair)
+   ! Factor 2 comes from the symmetry of p_matrix
+   partial_sum(:) = partial_sum(:) + eri_3center_sca(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
+   if( kbf == lbf ) partial_sum(:) = partial_sum(:) - eri_3center_sca(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) )
+ enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
+
+ !FBFB ortho parallelization is not taken into account here!
+ call xsum_auxil(partial_sum)
+
+ ! Hartree potential is not sensitive to spin
+ hartree_ij(:,:) = 0.0_dp
+
+ !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
+ !$OMP DO 
+ do ipair_local=1,npair_local
+   ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+
+   rtmp = DOT_PRODUCT( eri_3center_sca(:,ipair_local) , partial_sum(:) )
+
+   ibf = index_basis(1,ipair)
+   jbf = index_basis(2,ipair)
+   hartree_ij(ibf,jbf) = rtmp
+   hartree_ij(jbf,ibf) = rtmp
+ enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
+
+ deallocate(partial_sum)
+
+ !
+ ! Sum up the different contribution from different procs only if needed
+ !FBFB ortho parallelization is not taken into account here!
+ call xsum_auxil(hartree_ij)
+
+
+ title='=== Hartree contribution ==='
+ call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
+
+ ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
+ if( nspin == 2 ) then
+   ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
+ endif
+
+ call stop_clock(timing_hartree)
+
+end subroutine setup_hartree_versatile_ri
+
+
+!=========================================================================
 subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
