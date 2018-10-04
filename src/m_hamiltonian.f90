@@ -278,7 +278,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  ! Hartree potential is not sensitive to spin
  hartree_ij(:,:) = 0.0_dp
  !$OMP PARALLEL PRIVATE(ibf,jbf,rtmp)
- !$OMP DO 
+ !$OMP DO
  do ipair=1,npair
    ibf = index_basis(1,ipair)
    jbf = index_basis(2,ipair)
@@ -354,14 +354,14 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  !$OMP END DO
  !$OMP END PARALLEL
 
- !FBFB ortho parallelization is not taken into account here!
- call xsum_auxil(partial_sum)
+ !FIXME ortho parallelization is not taken into account here!
+ call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,1,partial_sum,nauxil_local,-1,-1)
 
  ! Hartree potential is not sensitive to spin
  hartree_ij(:,:) = 0.0_dp
 
  !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
- !$OMP DO 
+ !$OMP DO
  do ipair_local=1,npair_local
    ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
 
@@ -379,8 +379,8 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
 
  !
  ! Sum up the different contribution from different procs only if needed
- !FBFB ortho parallelization is not taken into account here!
- call xsum_auxil(hartree_ij)
+ !FIXME ortho parallelization is not taken into account here!
+ call xsum_world(hartree_ij)
 
 
  title='=== Hartree contribution ==='
@@ -479,7 +479,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
      if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
      tmp(:,:) = 0.0_dp
-     !$OMP PARALLEL PRIVATE(ibf,jbf) 
+     !$OMP PARALLEL PRIVATE(ibf,jbf)
      !$OMP DO REDUCTION(+:tmp)
      do ipair=1,nbf
        ibf = index_basis(1,ipair)
@@ -487,7 +487,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
      enddo
      !$OMP END DO
      !$OMP END PARALLEL
-     !$OMP PARALLEL PRIVATE(ibf,jbf) 
+     !$OMP PARALLEL PRIVATE(ibf,jbf)
      !$OMP DO REDUCTION(+:tmp)
      do ipair=nbf+1,npair
        ibf=index_basis(1,ipair)
