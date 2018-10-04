@@ -53,7 +53,7 @@ module m_scalapack
  integer,protected :: cntxt_auxil
  integer,protected :: nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil
 
- ! SCALAPACK grid: square distribution
+ ! SCALAPACK grid for 3 center integrals
  integer,protected :: cntxt_3center
  integer,protected :: nprow_3center
  integer,protected :: npcol_3center
@@ -2499,8 +2499,8 @@ subroutine init_scalapack()
  call BLACS_GRIDINFO( cntxt_sd, nprow_sd, npcol_sd, iprow_sd, ipcol_sd )
 
  ! 3center integrals distribution
- nprow_3center = nprow_sd
- npcol_3center = npcol_sd
+ nprow_3center = 1           ! nprow_sd
+ npcol_3center = nproc_sca   ! npcol_sd
  call BLACS_GET( -1, 0, cntxt_3center )
  call BLACS_GRIDINIT( cntxt_3center, 'R', nprow_3center, npcol_3center )
  call BLACS_GRIDINFO( cntxt_3center, nprow_3center, npcol_3center, iprow_3center, ipcol_3center )
