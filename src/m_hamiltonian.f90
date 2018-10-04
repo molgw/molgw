@@ -387,11 +387,10 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  do ispin=1,nspin
 
    do istate=1,nocc
-     if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
 
      if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
-     !call start_clock(timing_tmp5)
      tmp(:,:) = 0.0_dp
      !$OMP PARALLEL PRIVATE(ibf,jbf) 
      !$OMP DO REDUCTION(+:tmp)
@@ -411,14 +410,11 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
      enddo
      !$OMP END DO
      !$OMP END PARALLEL
-     !call stop_clock(timing_tmp5)
 
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     !call start_clock(timing_tmp9)
      call DSYRK('L','T',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center,1.0_dp,exchange_ij(:,:,ispin),nbf)
-     !call stop_clock(timing_tmp9)
    enddo
 
    !
@@ -1034,7 +1030,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
  integer  :: nbf
- integer  :: ibf,jbf
+ integer  :: istate,jbf
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
@@ -1059,11 +1055,11 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
 
- ibf=0
+ istate = 0
  do jbf=1,nbf
    if( s_eigval(jbf) > TOL_OVERLAP ) then
-     ibf = ibf + 1
-     s_matrix_sqrt_inv(:,ibf) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
+     istate = istate + 1
+     s_matrix_sqrt_inv(:,istate) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
    endif
  enddo
 
