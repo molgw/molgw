@@ -826,7 +826,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  real(dp),allocatable         :: integrals(:,:,:)
  real(dp),allocatable         :: eri_3center_tmp(:,:)
  integer                      :: klpair_global
- integer                      :: ibf_auxil_global
  integer                      :: mlocal,nlocal
  integer                      :: iglobal,ilocal,jlocal
  integer                      :: desc3center(NDEL)
@@ -887,11 +886,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  call start_clock(timing_eri_3center_ints)
 
 
- !$OMP PARALLEL PRIVATE(ami,amk,aml,ni,nk,nl,kshell,lshell,skip_shell,iglobal,am1,am3,am4, &
- !$OMP&                 n1c,n3c,n4c,ng1,ng3,ng4,alpha1,alpha3,alpha4, &
- !$OMP&                 coeff1,coeff3,coeff4,x01,x03,x04,int_shell,integrals, &
- !$OMP&                 klpair_global,ilocal,jlocal,ibf_auxil_global )
- !$OMP DO 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
@@ -914,7 +908,24 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
    if( skip_shell ) cycle
 
+   am3 = amk
+   am4 = aml
+   n3c = number_basis_function_am( 'CART' , amk )
+   n4c = number_basis_function_am( 'CART' , aml )
+   ng3 = basis%shell(kshell)%ng
+   ng4 = basis%shell(lshell)%ng
+   allocate(alpha3(ng3),alpha4(ng4))
+   allocate(coeff3(ng3),coeff4(ng4))
+   alpha3(:) = basis%shell(kshell)%alpha(:)
+   alpha4(:) = basis%shell(lshell)%alpha(:)
+   coeff3(:) = basis%shell(kshell)%coeff(:)
+   coeff4(:) = basis%shell(lshell)%coeff(:)
+   x03(:) = basis%shell(kshell)%x0(:)
+   x04(:) = basis%shell(lshell)%x0(:)
 
+   !$OMP PARALLEL PRIVATE(ami,ni,skip_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
+   !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
+   !$OMP DO 
    do ishell=1,auxil_basis%nshell
 
      ami = auxil_basis%shell(ishell)%am
@@ -931,28 +942,16 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 
      am1 = ami
-     am3 = amk
-     am4 = aml
      n1c = number_basis_function_am( 'CART' , ami )
-     n3c = number_basis_function_am( 'CART' , amk )
-     n4c = number_basis_function_am( 'CART' , aml )
      ng1 = auxil_basis%shell(ishell)%ng
-     ng3 = basis%shell(kshell)%ng
-     ng4 = basis%shell(lshell)%ng
-     allocate(alpha1(ng1),alpha3(ng3),alpha4(ng4))
-     allocate(coeff1(ng1),coeff3(ng3),coeff4(ng4))
+     allocate(alpha1(ng1))
+     allocate(coeff1(ng1))
      alpha1(:) = auxil_basis%shell(ishell)%alpha(:)
-     alpha3(:) = basis%shell(kshell)%alpha(:)
-     alpha4(:) = basis%shell(lshell)%alpha(:)
      coeff1(:) = auxil_basis%shell(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
-     coeff3(:) = basis%shell(kshell)%coeff(:)
-     coeff4(:) = basis%shell(lshell)%coeff(:)
      x01(:) = auxil_basis%shell(ishell)%x0(:)
-     x03(:) = basis%shell(kshell)%x0(:)
-     x04(:) = basis%shell(lshell)%x0(:)
 
 
-     allocate( int_shell(n1c*n3c*n4c) )
+     allocate(int_shell(n1c*n3c*n4c))
 
      call libint_3center(am1,ng1,x01,alpha1,coeff1, &
                          am3,ng3,x03,alpha3,coeff3, &
@@ -969,9 +968,9 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
          jlocal = INDXG2L(klpair_global,block_col,0,first_col,npcol_3center)
 
          do ibf=1,ni
-           ibf_auxil_global = auxil_basis%shell(ishell)%istart+ibf-1
-           if( iprow_3center /= INDXG2P(ibf_auxil_global,block_row,0,first_row,nprow_3center) ) cycle
-           ilocal = INDXG2L(ibf_auxil_global,block_row,0,first_row,nprow_3center)
+           iglobal = auxil_basis%shell(ishell)%istart+ibf-1
+           if( iprow_3center /= INDXG2P(iglobal,block_row,0,first_row,nprow_3center) ) cycle
+           ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_3center)
 
            eri_3center_tmp(ilocal,jlocal) = integrals(ibf,kbf,lbf)
 
@@ -982,14 +981,16 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
      deallocate(integrals)
      deallocate(int_shell)
-     deallocate(alpha1,alpha3,alpha4)
-     deallocate(coeff1,coeff3,coeff4)
+     deallocate(alpha1,coeff1)
 
    enddo ! ishell
+   !$OMP END DO
+   !$OMP END PARALLEL
+
+   deallocate(alpha3,alpha4)
+   deallocate(coeff3,coeff4)
 
  enddo ! klshellpair
- !$OMP END DO
- !$OMP END PARALLEL
 
  call stop_clock(timing_eri_3center_ints)
 
