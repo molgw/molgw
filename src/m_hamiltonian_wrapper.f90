@@ -52,7 +52,12 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
        call setup_hartree_ri_sca(p_matrix,hhartree,ehartree)
      endif
    else
+#ifndef SCASCA
      call setup_hartree_ri(p_matrix,hhartree,ehartree)
+#else
+     call issue_warning('FBFB setup_hartree_versatile_ri')
+     call setup_hartree_versatile_ri(p_matrix,hhartree,ehartree)
+#endif
    endif
  endif
 
