@@ -810,6 +810,27 @@ If scalapack_block_min=500, then a 900x900 matrix will no be distributed.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='eri3_nprow'
+vl[i].family   ='hardware'
+vl[i].default  = 1
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets number of row processors for the distribution of the 3-center integrals.  \
+eri3_nprow X eri3_npcol must be equal to the number of MPI threads else MOLGW decides on its own.'
+
+#===============================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='eri3_npcol'
+vl[i].family   ='hardware'
+vl[i].default  = 1
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets number of column processors for the distribution of the 3-center integrals.  \
+eri3_nprow X eri3_npcol must be equal to the number of MPI threads else MOLGW decides on its own.'
+
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='scalapack_nprow'
 vl[i].family   ='hardware'
 vl[i].default  =1

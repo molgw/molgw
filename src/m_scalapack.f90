@@ -2498,13 +2498,6 @@ subroutine init_scalapack()
  call BLACS_GRIDINIT( cntxt_sd, 'R', nprow_sd, npcol_sd )
  call BLACS_GRIDINFO( cntxt_sd, nprow_sd, npcol_sd, iprow_sd, ipcol_sd )
 
- ! 3center integrals distribution
- nprow_3center = 1           ! nprow_sd
- npcol_3center = nproc_sca   ! npcol_sd
- call BLACS_GET( -1, 0, cntxt_3center )
- call BLACS_GRIDINIT( cntxt_3center, 'R', nprow_3center, npcol_3center )
- call BLACS_GRIDINFO( cntxt_3center, nprow_3center, npcol_3center, iprow_3center, ipcol_3center )
-
  ! Row-only division of tasks
  nprow_rd = nproc_sca
  npcol_rd = 1
@@ -2536,10 +2529,11 @@ end subroutine init_scalapack
 
 
 !=========================================================================
-subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
+subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  implicit none
 
  integer,intent(in)  :: nbf
+ integer,intent(in)  :: eri3_nprow,eri3_npcol
  integer,intent(in)  :: scalapack_nprow,scalapack_npcol
  integer,intent(out) :: m_ham,n_ham
 !=====
@@ -2554,6 +2548,21 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 !=====
 
 #ifdef HAVE_SCALAPACK
+
+ ! 3center integrals distribution
+ if( eri3_nprow * eri3_npcol == nproc_sca ) then
+   nprow_3center = eri3_nprow
+   npcol_3center = eri3_npcol
+ else
+   if( eri3_nprow * eri3_npcol /= 1 ) &
+      call issue_warning('eri3 distribution was not consistent with the number of MPI threads. MOLGW will override user selection')
+   nprow_3center = nprow_sd
+   npcol_3center = npcol_sd
+ endif
+ call BLACS_GET( -1, 0, cntxt_3center )
+ call BLACS_GRIDINIT( cntxt_3center, 'R', nprow_3center, npcol_3center )
+ call BLACS_GRIDINFO( cntxt_3center, nprow_3center, npcol_3center, iprow_3center, ipcol_3center )
+
  parallel_ham = scalapack_nprow * scalapack_npcol > 1
 
  if( parallel_ham ) then
@@ -2634,7 +2643,13 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
 #else
 
- ! Fake values
+ ! If SCALAPACK is not present, fill the variable with fake values
+ cntxt_3center = 1
+ nprow_3center = 1
+ npcol_3center = 1
+ ipcol_3center = 0
+ iprow_3center = 0
+
  if( rank_world == 0 ) then
    cntxt_ham = 1
  else
