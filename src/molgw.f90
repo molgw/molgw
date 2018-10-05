@@ -140,8 +140,8 @@ program molgw
    call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
 
    !
-   ! SCALAPACK distribution of the hamiltonian
-   call init_scalapack_other(basis%nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
+   ! SCALAPACK distribution that depends on the system specific size, parameters etc.
+   call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    if( m_ham /= basis%nbf .OR. n_ham /= basis%nbf ) then
      call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
    endif
