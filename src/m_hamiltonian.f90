@@ -536,6 +536,7 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:)
  integer              :: ipair,ipair_local
+ integer              :: ibf_auxil_first,nbf_auxil_core
 !=====
 
  call start_clock(timing_exchange)
@@ -549,6 +550,13 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
 
  nauxil_local = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
  npair_local  = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
+
+ ! Prepare a sub-division of tasks after the reduction DGSUM2D
+ nbf_auxil_core  = CEILING( REAL(nauxil_local,dp) / REAL(npcol_3center,dp) )
+ ibf_auxil_first = ipcol_3center * nbf_auxil_core + 1
+ ! Be careful when a core has fewer data or no data at all
+ if( ibf_auxil_first + nbf_auxil_core - 1 > nauxil_local ) nbf_auxil_core = nauxil_local - ibf_auxil_first + 1
+ if( ibf_auxil_first > nauxil_local ) nbf_auxil_core = 0
 
 
  allocate(tmp(nauxil_local,nbf))
@@ -564,7 +572,7 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
      if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
      tmp(:,:) = 0.0_dp
-     !$OMP PARALLEL PRIVATE(ibf,jbf)
+     !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
      !$OMP DO REDUCTION(+:tmp)
      do ipair_local=1,npair_local
        ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
@@ -581,7 +589,9 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp,nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+     if( nbf_auxil_core > 0 ) &
+       call DSYRK('L','T',nbf,nbf_auxil_core,-occupation(istate,ispin)/spin_fact,tmp(ibf_auxil_first,1),nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+
    enddo
 
    !
@@ -596,8 +606,6 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
  deallocate(tmp)
 
  call xsum_world(exchange_ij)
- ! FBFB dirty coding: to be clean up in the near future
- exchange_ij(:,:,:) = exchange_ij(:,:,:) / REAL(npcol_3center,dp)
 
  eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
 
