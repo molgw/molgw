@@ -20,9 +20,6 @@ module m_eri_calculate
  use m_libint_tools
 
 
- integer,protected :: nauxil_2center     ! size of the 2-center matrix
- integer,protected :: nauxil_2center_lr  ! size of the 2-center LR matrix
-
  real(dp),private,allocatable :: eri_2center(:,:)
  real(dp),private,allocatable :: eri_2center_lr(:,:)
  integer,private              :: desc_2center(NDEL)
@@ -806,7 +803,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 end subroutine calculate_eri_2center_scalapack
 
 
-
 !=========================================================================
 subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  implicit none
@@ -829,8 +825,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  integer                      :: mlocal,nlocal
  integer                      :: iglobal,ilocal,jlocal
  integer                      :: desc3center(NDEL)
- integer                      :: desc3tmp(NDEL)
- integer                      :: desc3final(NDEL)
  integer                      :: nauxil_kept
  logical                      :: skip_shell
 !=====
@@ -994,81 +988,66 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
  call stop_clock(timing_eri_3center_ints)
 
- ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
- ! Set nlocal => npair
- mlocal = NUMROC(nauxil_kept,block_row,iprow_3center,first_row,nprow_3center)
- nlocal = NUMROC(npair      ,block_col,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desc3tmp,nauxil_kept,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
-
-
 
 
  call start_clock(timing_eri_3center_matmul)
 #ifdef HAVE_SCALAPACK
- call clean_allocate('3-center integrals SCALAPACK',eri_3center_sca,mlocal,nlocal)
 
  if( .NOT. is_longrange ) then
+   !
+   ! Full Range
+   !
+   ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
+   ! Set nlocal => npair
+   mlocal = NUMROC(nauxil_kept,block_row,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(npair      ,block_col,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc_eri3,nauxil_kept,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+
+   call clean_allocate('3-center integrals SCALAPACK',eri_3center,mlocal,nlocal)
    call PDGEMM('T','N',nauxil_kept,npair,auxil_basis%nbf, &
                1.0_dp,eri_2center    ,1,1,desc_2center,  &
                       eri_3center_tmp,1,1,desc3center,   &
-               0.0_dp,eri_3center_sca,1,1,desc3tmp)
+               0.0_dp,eri_3center,1,1,desc_eri3)
+
+   call clean_deallocate('Distributed 2-center integrals',eri_2center)
+
+!FIXME
+!   !
+!   ! Propagate to the ortho MPI direction
+!   if( cntxt_auxil <= 0 ) then
+!     eri_3center(:,:) = 0.0_dp
+!   endif
+!   call xsum_ortho(eri_3center)
+
  else
+   !
+   ! Long-Range
+   !
+   ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
+   ! Set nlocal => npair
+   mlocal = NUMROC(nauxil_kept,block_row,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(npair      ,block_col,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc_eri3_lr,nauxil_kept,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+
+   call clean_allocate('LR 3-center integrals SCALAPACK',eri_3center_lr,mlocal,nlocal)
    call PDGEMM('T','N',nauxil_kept,npair,auxil_basis%nbf, &
                1.0_dp,eri_2center_lr ,1,1,desc_2center,  &
                       eri_3center_tmp,1,1,desc3center,   &
-               0.0_dp,eri_3center_sca,1,1,desc3tmp)
- endif
+               0.0_dp,eri_3center_lr,1,1,desc_eri3_lr)
 
- write(stdout,'(a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_auxil,' x ',npcol_auxil
+   call clean_deallocate('Distributed LR 2-center integrals',eri_2center_lr)
 
- if( cntxt_auxil > 0 ) then
-   mlocal = NUMROC(nauxil_kept,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
-   nlocal = NUMROC(npair      ,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
- else
-   mlocal = -1
-   nlocal = -1
+!FIXME
+!   !
+!   ! Propagate to the ortho MPI direction
+!   if( cntxt_auxil <= 0 ) then
+!     eri_3center_lr(:,:) = 0.0_dp
+!   endif
+!   call xsum_ortho(eri_3center_lr)
+
  endif
- call xmax_ortho(mlocal)
- call xmax_ortho(nlocal)
 
  call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
-
- !
- ! Final distribution on Full-Range or Long-Range arrays
- !
- call DESCINIT(desc3final,nauxil_kept,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
- if( .NOT. is_longrange ) then
-   call clean_deallocate('Distributed 2-center integrals',eri_2center)
-   call clean_allocate('3-center integrals',eri_3center,mlocal,nlocal)
-   call PDGEMR2D(nauxil_kept,npair,eri_3center_sca,1,1,desc3tmp,eri_3center,1,1,desc3final,cntxt_3center)
-   !
-   ! Propagate to the ortho MPI direction
-   if( cntxt_auxil <= 0 ) then
-     eri_3center(:,:) = 0.0_dp
-   endif
-   call xsum_ortho(eri_3center)
-
-   ! Development version
-#ifndef SCASCA
-   call clean_deallocate('3-center integrals SCALAPACK',eri_3center_sca)
-#endif
-
- else
-   call clean_deallocate('Distributed LR 2-center integrals',eri_2center_lr)
-   call clean_allocate('LR 3-center integrals',eri_3center_lr,mlocal,nlocal)
-   call PDGEMR2D(nauxil_kept,npair,eri_3center_sca,1,1,desc3tmp,eri_3center_lr,1,1,desc3final,cntxt_3center)
-   !
-   ! Propagate to the ortho MPI direction
-   if( cntxt_auxil <= 0 ) then
-     eri_3center_lr(:,:) = 0.0_dp
-   endif
-   call xsum_ortho(eri_3center_lr)
-
-  ! Development version
-#ifndef SCASCA
-   call clean_deallocate('3-center integrals SCALAPACK',eri_3center_sca)
-#endif
- endif
 
 
 #else
@@ -1096,6 +1075,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call clean_deallocate('Distributed 2-center integrals',eri_2center_lr)
 
  endif
+
  call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
 
 

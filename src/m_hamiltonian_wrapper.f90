@@ -52,12 +52,7 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
        call setup_hartree_ri_sca(p_matrix,hhartree,ehartree)
      endif
    else
-#ifndef SCASCA
-     call setup_hartree_ri(p_matrix,hhartree,ehartree)
-#else
-     call issue_warning('FBFB devel SCASCA')
      call setup_hartree_versatile_ri(p_matrix,hhartree,ehartree)
-#endif
    endif
  endif
 
@@ -105,18 +100,14 @@ subroutine calculate_exchange_real(basis,p_matrix,hexx,ex,occupation,c_matrix)
    else
 
      if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
-#ifndef SCASCA
-       call setup_exchange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
-#else
        call setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,hexx,eexx)
-#endif
      else
        !
        ! c_matrix is not provided, then calculate it from the square-root of P
        allocate(c_matrix_tmp,MOLD=p_matrix)
        allocate(occupation_tmp(SIZE(p_matrix,DIM=1),nspin))
        call get_c_matrix_from_p_matrix(p_matrix,c_matrix_tmp,occupation_tmp)
-       call setup_exchange_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
+       call setup_exchange_versatile_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
        deallocate(c_matrix_tmp)
        deallocate(occupation_tmp)
 
@@ -162,14 +153,14 @@ subroutine calculate_exchange_lr(basis,p_matrix,hexx,ex,occupation,c_matrix)
    else
 
      if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
-       call setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
+       call setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
      else
        !
        ! c_matrix is not provided, then calculate it from the square-root of P
        allocate(c_matrix_tmp,MOLD=p_matrix)
        allocate(occupation_tmp(SIZE(p_matrix,DIM=1),nspin))
        call get_c_matrix_from_p_matrix(p_matrix,c_matrix_tmp,occupation_tmp)
-       call setup_exchange_longrange_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
+       call setup_exchange_versatile_longrange_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
        deallocate(c_matrix_tmp)
        deallocate(occupation_tmp)
 

@@ -420,7 +420,7 @@ program molgw
        ! If it is not the last step, then deallocate everything and start over
        if( istep /= nstep ) then
          call deallocate_eri()
-         if(has_auxil_basis) call destroy_eri_3center()
+         if( has_auxil_basis ) call destroy_eri_3center()
          if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
          call clean_deallocate('Overlap matrix S',s_matrix)
          call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
@@ -481,6 +481,19 @@ program molgw
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
 
  !
+ !
+ ! Post-processing start here
+ !
+ !
+
+ ! Performs a distribution strategy change here for the 3-center integrals
+ ! ( nprow_3center x npcol_3center ) => ( nprow_auxil x 1 )
+ if( calc_type%selfenergy_approx > 0 .OR. calc_type%is_ci .OR. calc_type%is_td &
+     .OR. calc_type%is_mp2 .OR. calc_type%is_mp3 .OR. calc_type%is_bse ) then
+   call reshuffle_distribution_3center()
+ endif
+
+ !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW or PT corrections
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
@@ -507,12 +520,6 @@ program molgw
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
 
-
- !
- !
- ! Post-processing start here
- !
- !
 
 
  !
