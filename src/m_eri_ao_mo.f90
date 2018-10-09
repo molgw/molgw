@@ -10,6 +10,7 @@ module m_eri_ao_mo
  use m_definitions
  use m_mpi
  use m_mpi_ortho
+ use m_scalapack
  use m_memory
  use m_warning
  use m_basis_set
@@ -345,6 +346,9 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix)
  call start_clock(timing_eri_3center_eigen)
 
  write(stdout,'(/,a)') ' Calculate LR 3-center integrals on eigenstates'
+
+ if( npcol_3center > 1 ) call die('calculate_eri_3center_eigen_lr: incompatible with npcol_3center > 1')
+
  nbf    = SIZE(c_matrix,DIM=1)
  nstate = SIZE(c_matrix,DIM=2)
 
