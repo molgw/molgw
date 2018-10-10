@@ -538,7 +538,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
  if( is_iomaster ) then
 
    do ispin=1,nspin
-     write(file_name(ispin),'(a,i3.3,a,i1,a,i3.3,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",INT(r_disc),r_disc-INT(r_disc),".dat"
+     write(file_name(ispin),'(a,i4.4,a,i1,a,i3.3,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",INT(r_disc),r_disc-INT(r_disc),".dat"
      open(newunit=file_out(ispin),file=file_name(ispin))
    enddo
 

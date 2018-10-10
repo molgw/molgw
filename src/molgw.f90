@@ -310,15 +310,14 @@ program molgw
 
 
    if( (.NOT. restart_tddft_is_correct) .OR. (.NOT. read_tddft_restart_) ) then
-
      if( is_basis_restart ) then
        !
        ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
        if( parallel_ham ) call die('basis_restart not implemented with distributed hamiltonian')
        call issue_warning('basis restart is not fully implemented: use with care')
-       call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,hamiltonian_fock,s_matrix_sqrt_inv, &
-                                              energy,c_matrix)
+       call diagonalize_hamiltonian_scalapack(hamiltonian_fock,s_matrix_sqrt_inv,energy,c_matrix)
      endif
+
 
      !
      ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
@@ -360,12 +359,10 @@ program molgw
 
 
        write(stdout,'(/,a)') ' Approximate hamiltonian'
-
        if( parallel_ham ) then
-         call diagonalize_hamiltonian_sca(1,1,desc_ham,hamiltonian_tmp,desc_c,s_matrix_sqrt_inv,energy,c_matrix)
+         call diagonalize_hamiltonian_sca(desc_ham,hamiltonian_tmp(:,:,1:1),desc_c,s_matrix_sqrt_inv,energy(:,1:1),c_matrix(:,:,1:1))
        else
-         call diagonalize_hamiltonian_scalapack(1,basis%nbf,nstate,hamiltonian_tmp(:,:,1),s_matrix_sqrt_inv,&
-                                                energy(:,1),c_matrix(:,:,1))
+         call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),s_matrix_sqrt_inv,energy(:,1:1),c_matrix(:,:,1:1))
        endif
 
        deallocate(hamiltonian_tmp)
