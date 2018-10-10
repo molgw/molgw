@@ -1363,6 +1363,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    else
      call calc_density_gradr_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix, &
                                    basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+     !$OMP PARALLEL DO
      do ir=1,nr
        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
        if( nspin == 2 ) then
@@ -1370,6 +1371,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
          sigma_batch(3,ir) = DOT_PRODUCT( grad_rhor_batch(2,ir,:) , grad_rhor_batch(2,ir,:) )
        endif
      enddo
+     !$OMP END PARALLEL DO
 
    endif
 
@@ -1456,31 +1458,29 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     !
-     ! LDA and GGA
-     !
-     ! GGA-only
      if( dft_xc_needs_gradient ) then
-       !$OMP PARALLEL
-       !$OMP DO
+       !
+       ! GGA
+       !
+       !$OMP PARALLEL DO
        do ir=1,nr
          tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
          tmp_batch(:,ir) = tmp_batch(:,ir) &
                           +  MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
        enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
+       !$OMP END PARALLEL DO
      else
-       !$OMP PARALLEL
-       !$OMP DO
+       !
+       ! LDA
+       !
+       !$OMP PARALLEL DO
        do ir=1,nr
          tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
        enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
+       !$OMP END PARALLEL DO
      endif
-
      call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+
    enddo
    deallocate(tmp_batch)
 
