@@ -259,52 +259,54 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
 
  nbf = SIZE(hartree_ij(:,:),DIM=1)
 
- nauxil_local = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
- npair_local  = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
+ nauxil_local = SIZE(eri_3center,DIM=1)
+ npair_local  = SIZE(eri_3center,DIM=2)
 
-
- allocate(partial_sum(nauxil_local))
-
- partial_sum(:) = 0.0_dp
- !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
- !$OMP DO REDUCTION(+:partial_sum)
- do ipair_local=1,npair_local
-   ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
-   kbf = index_basis(1,ipair)
-   lbf = index_basis(2,ipair)
-   ! Factor 2 comes from the symmetry of p_matrix
-   partial_sum(:) = partial_sum(:) + eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-   if( kbf == lbf ) partial_sum(:) = partial_sum(:) - eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) )
- enddo
- !$OMP END DO
- !$OMP END PARALLEL
-
- !FIXME ortho parallelization is not taken into account here!
- call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,1,partial_sum,nauxil_local,-1,-1)
-
- ! Hartree potential is not sensitive to spin
  hartree_ij(:,:) = 0.0_dp
 
- !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
- !$OMP DO
- do ipair_local=1,npair_local
-   ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+ ! Ortho parallelization is not used in Hartree
+ ! This is a concious waste (however very small)
+ if( cntxt_3center > 0 ) then
 
-   rtmp = DOT_PRODUCT( eri_3center(:,ipair_local) , partial_sum(:) )
+   allocate(partial_sum(nauxil_local))
 
-   ibf = index_basis(1,ipair)
-   jbf = index_basis(2,ipair)
-   hartree_ij(ibf,jbf) = rtmp
-   hartree_ij(jbf,ibf) = rtmp
- enddo
- !$OMP END DO
- !$OMP END PARALLEL
+   partial_sum(:) = 0.0_dp
+   !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
+   !$OMP DO REDUCTION(+:partial_sum)
+   do ipair_local=1,npair_local
+     ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+     kbf = index_basis(1,ipair)
+     lbf = index_basis(2,ipair)
+     ! Factor 2 comes from the symmetry of p_matrix
+     partial_sum(:) = partial_sum(:) + eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
+     if( kbf == lbf ) partial_sum(:) = partial_sum(:) - eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) )
+   enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
 
- deallocate(partial_sum)
+   !FIXME ortho parallelization is not taken into account here!
+   call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,1,partial_sum,nauxil_local,-1,-1)
 
+
+   !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
+   !$OMP DO
+   do ipair_local=1,npair_local
+     ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+
+     rtmp = DOT_PRODUCT( eri_3center(:,ipair_local) , partial_sum(:) )
+
+     ibf = index_basis(1,ipair)
+     jbf = index_basis(2,ipair)
+     hartree_ij(ibf,jbf) = rtmp
+     hartree_ij(jbf,ibf) = rtmp
+   enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
+
+   deallocate(partial_sum)
+ endif
  !
- ! Sum up the different contribution from different procs only if needed
- !FIXME ortho parallelization is not taken into account here!
+ ! Sum up the different contribution from different procs
  call xsum_world(hartree_ij)
 
 
@@ -390,66 +392,102 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
 
  exchange_ij(:,:,:) = 0.0_dp
 
- nbf    = SIZE(exchange_ij,DIM=1)
- nstate = SIZE(occupation(:,:),DIM=1)
-
- nauxil_local = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
- npair_local  = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
-
- ! Prepare a sub-division of tasks after the reduction DGSUM2D
- nbf_auxil_core  = CEILING( REAL(nauxil_local,dp) / REAL(npcol_3center,dp) )
- ibf_auxil_first = ipcol_3center * nbf_auxil_core + 1
- ! Be careful when a core has fewer data or no data at all
- if( ibf_auxil_first + nbf_auxil_core - 1 > nauxil_local ) nbf_auxil_core = nauxil_local - ibf_auxil_first + 1
- if( ibf_auxil_first > nauxil_local ) nbf_auxil_core = 0
-
-
- allocate(tmp(nauxil_local,nbf))
-
  ! Find highest occupied state
  nocc = get_number_occupied_states(occupation)
 
- do ispin=1,nspin
+ nbf    = SIZE(exchange_ij,DIM=1)
+ nstate = SIZE(occupation(:,:),DIM=1)
 
-   do istate=1,nocc
-     if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+ nauxil_local = SIZE(eri_3center,DIM=1)
+ npair_local  = SIZE(eri_3center,DIM=2)
 
-     if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+ if( npcol_3center > 1 ) then
+   ! Prepare a sub-division of tasks after the reduction DGSUM2D
+   nbf_auxil_core  = CEILING( REAL(nauxil_local,dp) / REAL(npcol_3center,dp) )
+   ibf_auxil_first = ipcol_3center * nbf_auxil_core + 1
+   ! Be careful when a core has fewer data or no data at all
+   if( ibf_auxil_first + nbf_auxil_core - 1 > nauxil_local ) nbf_auxil_core = nauxil_local - ibf_auxil_first + 1
+   if( ibf_auxil_first > nauxil_local ) nbf_auxil_core = 0
 
-     tmp(:,:) = 0.0_dp
-     !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
-     !$OMP DO REDUCTION(+:tmp)
-     do ipair_local=1,npair_local
-       ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
-       ibf = index_basis(1,ipair)
-       jbf = index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair_local)
-       if( ibf /= jbf) &
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair_local)
+   allocate(tmp(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp(:,:) = 0.0_dp
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp)
+       do ipair_local=1,npair_local
+         ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair_local)
+         if( ibf /= jbf) &
+           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair_local)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+       call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       if( nbf_auxil_core > 0 ) &
+         call DSYRK('L','T',nbf,nbf_auxil_core,-occupation(istate,ispin)/spin_fact,tmp(ibf_auxil_first,1),nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+
      enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
-     call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
-
-     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-     !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-     ! C = A^T * A + C
-     if( nbf_auxil_core > 0 ) &
-       call DSYRK('L','T',nbf,nbf_auxil_core,-occupation(istate,ispin)/spin_fact,tmp(ibf_auxil_first,1),nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
 
    enddo
+   deallocate(tmp)
 
-   !
-   ! Need to symmetrize exchange_ij
+ else
+   ! npcol_row is equal to 1 => no parallelization over basis pairs
+
+   allocate(tmp(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+       if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp(:,:) = 0.0_dp
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp)
+       do ipair=1,npair
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
+         if( ibf /= jbf) &
+           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       call DSYRK('L','T',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp,nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+
+     enddo
+   enddo
+   deallocate(tmp)
+
+ endif
+
+ !
+ ! Need to symmetrize exchange_ij
+ do ispin=1,nspin
    do ibf=1,nbf
      do jbf=ibf+1,nbf
        exchange_ij(ibf,jbf,ispin) = exchange_ij(jbf,ibf,ispin)
      enddo
    enddo
-
  enddo
- deallocate(tmp)
-
  call xsum_world(exchange_ij)
 
  eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
@@ -479,70 +517,106 @@ subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,ex
 
  call start_clock(timing_exchange)
 
- write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: versatile version'
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: versatile version'
 
  exchange_ij(:,:,:) = 0.0_dp
-
- nbf    = SIZE(exchange_ij,DIM=1)
- nstate = SIZE(occupation(:,:),DIM=1)
-
- nauxil_local = NUMROC(nauxil_2center_lr,block_row,iprow_3center,first_row,nprow_3center)
- npair_local  = NUMROC(npair            ,block_col,ipcol_3center,first_col,npcol_3center)
-
- ! Prepare a sub-division of tasks after the reduction DGSUM2D
- nbf_auxil_core  = CEILING( REAL(nauxil_local,dp) / REAL(npcol_3center,dp) )
- ibf_auxil_first = ipcol_3center * nbf_auxil_core + 1
- ! Be careful when a core has fewer data or no data at all
- if( ibf_auxil_first + nbf_auxil_core - 1 > nauxil_local ) nbf_auxil_core = nauxil_local - ibf_auxil_first + 1
- if( ibf_auxil_first > nauxil_local ) nbf_auxil_core = 0
-
-
- allocate(tmp(nauxil_local,nbf))
 
  ! Find highest occupied state
  nocc = get_number_occupied_states(occupation)
 
- do ispin=1,nspin
+ nbf    = SIZE(exchange_ij,DIM=1)
+ nstate = SIZE(occupation(:,:),DIM=1)
 
-   do istate=1,nocc
-     if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+ nauxil_local = SIZE(eri_3center_lr,DIM=1)
+ npair_local  = SIZE(eri_3center_lr,DIM=2)
 
-     if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+ if( npcol_3center > 1 ) then
+   ! Prepare a sub-division of tasks after the reduction DGSUM2D
+   nbf_auxil_core  = CEILING( REAL(nauxil_local,dp) / REAL(npcol_3center,dp) )
+   ibf_auxil_first = ipcol_3center * nbf_auxil_core + 1
+   ! Be careful when a core has fewer data or no data at all
+   if( ibf_auxil_first + nbf_auxil_core - 1 > nauxil_local ) nbf_auxil_core = nauxil_local - ibf_auxil_first + 1
+   if( ibf_auxil_first > nauxil_local ) nbf_auxil_core = 0
 
-     tmp(:,:) = 0.0_dp
-     !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
-     !$OMP DO REDUCTION(+:tmp)
-     do ipair_local=1,npair_local
-       ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
-       ibf = index_basis(1,ipair)
-       jbf = index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair_local)
-       if( ibf /= jbf) &
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair_local)
+   allocate(tmp(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp(:,:) = 0.0_dp
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp)
+       do ipair_local=1,npair_local
+         ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair_local)
+         if( ibf /= jbf) &
+           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair_local)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+       call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       if( nbf_auxil_core > 0 ) &
+         call DSYRK('L','T',nbf,nbf_auxil_core,-occupation(istate,ispin)/spin_fact,tmp(ibf_auxil_first,1),nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+
      enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
-     call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
-
-     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-     !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-     ! C = A^T * A + C
-     if( nbf_auxil_core > 0 ) &
-       call DSYRK('L','T',nbf,nbf_auxil_core,-occupation(istate,ispin)/spin_fact,tmp(ibf_auxil_first,1),nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
 
    enddo
+   deallocate(tmp)
 
-   !
-   ! Need to symmetrize exchange_ij
+ else
+   ! npcol_row is equal to 1 => no parallelization over basis pairs
+
+   allocate(tmp(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+       if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp(:,:) = 0.0_dp
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp)
+       do ipair=1,npair
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair)
+         if( ibf /= jbf) &
+           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       call DSYRK('L','T',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp,nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+
+     enddo
+   enddo
+   deallocate(tmp)
+
+ endif
+
+ !
+ ! Need to symmetrize exchange_ij
+ do ispin=1,nspin
    do ibf=1,nbf
      do jbf=ibf+1,nbf
        exchange_ij(ibf,jbf,ispin) = exchange_ij(jbf,ibf,ispin)
      enddo
    enddo
-
  enddo
- deallocate(tmp)
-
  call xsum_world(exchange_ij)
 
  eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
