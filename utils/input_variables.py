@@ -998,6 +998,33 @@ vl[i].comment  ='Name of the auxiliary basis set to be used for elements specifi
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='time_step'
+vl[i].family   ='rt_tddft'
+vl[i].default  =1.
+vl[i].datatype ='real'
+vl[i].comment  ='Time step for real-time dynamics in atomic units.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='time_sim'
+vl[i].family   ='rt_tddft'
+vl[i].default  =10.
+vl[i].datatype ='real'
+vl[i].comment  ='Duration of a real-time dynamics in atomic units.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='prop_type'
+vl[i].family   ='rt_tddft'
+vl[i].default  ='CN'
+vl[i].datatype ='characters'
+vl[i].comment  ='Sets the type of propagation algorithm in the real-time dynamics. \
+                 \'CN stands for Crank-Nickolson\''
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='ci_greens_function'
 vl[i].family   ='post'
 vl[i].default  ='holes'
@@ -1008,11 +1035,31 @@ vl[i].comment  ='EXPERIMENTAL. Selects which part of the Green\'s function is to
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='excit_name'
+vl[i].family   ='rt_tddft'
+vl[i].default  ='NO'
+vl[i].datatype ='characters'
+vl[i].comment  ='Sets the type of excitation of a system in the real-time dynamics. \
+                         \'GAU stands for a linearly polarized uniform Gaussian electric field\''
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='ci_type'
 vl[i].family   ='post'
 vl[i].default  ='all'
 vl[i].datatype ='characters'
 vl[i].comment  ='Selects which excitations will be included in the CI expansion. Valid choices are \'all\', \'CISD\', \'CISDT\', \'CISDTQ\'.'
+
+# For excitation field parameters follow notations from article Lopata et al. Modeling Fast Electron ... J. Chem Theory Comput, 2011
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='excit_kappa'
+vl[i].family   ='rt_tddft'
+vl[i].default  =2.e-5
+vl[i].datatype ='real'
+vl[i].comment  ='Maximum Gaussian excitation field strength in atomic units.'
 
 #================================
 vl.append(variable())
@@ -1027,6 +1074,15 @@ vl[i].comment  ='Selects how many CI states should be calculated in the diagonal
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='excit_omega'
+vl[i].family   ='rt_tddft'
+vl[i].default  =0.2
+vl[i].datatype ='real'
+vl[i].comment  ='The excitation pulse width in atomic units for the real-time dynamics.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='ci_nstate_self'
 vl[i].family   ='post'
 vl[i].default  = 1
@@ -1037,17 +1093,191 @@ vl[i].comment  ='Selects how many CI states in the N+1 or N-1 electron calculati
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='excit_time0'
+vl[i].family   ='rt_tddft'
+vl[i].default  =3.
+vl[i].datatype ='real'
+vl[i].comment  ='Center of the excitation pulse in atomic units for the real-time dynamics.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='ci_spin_multiplicity'
 vl[i].family   ='post'
 vl[i].default  = 1
 vl[i].datatype ='integer'
 vl[i].comment  ='Spin multiplicity in CI calculations.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='excit_dir'
+vl[i].family   ='rt_tddft'
+vl[i].default  =( 1.0 , 0.0, 0.0 )
+vl[i].datatype ='vector_1d_3'
+vl[i].comment  ='Excitation direction for the real-time dynamics.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_tddft_matrices'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints some matrices of the real-time dynamics into the file check_matrix.dat.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_cube_rho_tddft'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints electronic density in a 3D volumetric file with cube format for each simulation step in the real-time dynamics'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_line_rho_tddft'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints electronic density along a line, which parameters must be provided in manual_plot_rho_tddft file.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='write_step'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='1'
+vl[i].datatype ='real'
+vl[i].comment  ='Determines the time step for data recording in the real-time dynamics'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='pred_corr'
+vl[i].family   ='rt_tddft'
+vl[i].default  ='PC1'
+vl[i].datatype ='characters'
+vl[i].comment  ='Sets the predictor-corrector scheme in the real-time dynamics.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='n_hist'
+vl[i].family   ='rt_tddft'
+vl[i].default  =2
+vl[i].datatype ='integer'
+vl[i].comment  ='Number of memorised previous hamiltonian values for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='n_iter'
+vl[i].family   ='rt_tddft'
+vl[i].default  ='2'
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of iterations for the PC7 in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='calc_spectrum'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Calculates absorption spectrum in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='read_tddft_restart'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Ignore the RESTART_TDDFT file.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_tddft_restart'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='yes'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints a RESTART_TDDFT file which contains wavefunction coefficients for the last time moment of a simulation.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='vel_projectile'
+vl[i].family   ='rt_tddft'
+vl[i].default  =( 0.0 , 0.0, 1.0 )
+vl[i].datatype ='vector_1d_3'
+vl[i].comment  ='Projectile initial velocity.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='n_restart_tddft'
+vl[i].family   ='rt_tddft'
+vl[i].default  = 50
+vl[i].datatype ='integer'
+vl[i].comment  ='RESTART_TDDFT file will be written during simulation each n_retart_tddft iteration (provided that print_tddft_restart is yes)'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_cube_diff_tddft'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the difference of electronic density with respect to initial density in a 3D volumetric file with cube format for each simulation step in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_dens_traj_tddft'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the electronic density along the projectile trajectory for several impact parameters in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='calc_q_matrix'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Calculate and print q_matrix which is the projection of a propagated state psi(t) onto the initial state psi(0) in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_dens_traj'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the electronic density along the projectile trajectory for several impact parameters using real wave function'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='calc_dens_disc'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Calculate electronic density in the discs during the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='r_disc'
+vl[i].family   ='rt_tddft'
+vl[i].default  = 200.0
+vl[i].datatype ='real'
+vl[i].comment  ='Radius of the disc for denisty calculations (option calc_dens_disc) for the real-time dynamics.'
 
 #============================================================================
 #            Fortran output: input variable namelist and their default value
@@ -1077,6 +1307,9 @@ for i in range(len(vl)):
     ffor.write(' '+vl[i].keyword+'='+str(vl[i].default)+'\n')
   if vl[i].datatype =='real':
     ffor.write(' '+vl[i].keyword+'='+str(vl[i].default)+'_dp \n')
+  if vl[i].datatype =='vector_1d_3':
+     x,y,z=str(vl[i].default).strip("()").split(',')
+     ffor.write(' '+vl[i].keyword+'='+'(/ '+x+'_dp ,'+y+'_dp ,'+z+'_dp'+' /)'+'\n')
   elif vl[i].datatype =='yes/no' or vl[i].datatype =='characters':
     ffor.write(' '+vl[i].keyword+'=\''+str(vl[i].default)+'\'\n')
 
@@ -1108,6 +1341,8 @@ for i in range(len(vl)):
     fortran_format = '\'(1x,a24,6x,a)\''
   elif 'yes' in vl[i].datatype:
     fortran_format = '\'(1x,a24,6x,a)\''
+  elif 'vector_1d_3' in vl[i].datatype:
+    fortran_format = '\'(1x,a24,2x,"(",3(es16.8,2x),")")\''
   else:
     fortran_format = 'ERROR'
   ffor.write(' write(stdout,'+fortran_format+') \''+vl[i].keyword+'\','+vl[i].keyword+' \n')
@@ -1176,6 +1411,17 @@ for i in range(len(vl)):
   if vl[i].family =='hardware':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
+# Real-time TDDFT
+fhtml.write('<h3>Real time TDDFT</h3>\n<p>\n')
+for i in range(len(vl)):
+  if vl[i].family =='rt_tddft':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+
+# IO Real-time TDDFT
+fhtml.write('<h3>IO Real time TDDFT</h3>\n<p>\n')
+for i in range(len(vl)):
+  if vl[i].family =='io_rt_tddft':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 
 

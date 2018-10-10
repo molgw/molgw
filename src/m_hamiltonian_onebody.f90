@@ -9,6 +9,7 @@
 !=========================================================================
 module m_hamiltonian_onebody
  use m_definitions
+ use m_tddft_variables
  use m_timing
  use m_mpi
  use m_scalapack
@@ -525,12 +526,16 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
  real(dp) :: nucleus
 !=====
 
- call start_clock(timing_hamiltonian_nuc)
+ if( in_tddft_loop ) then 
+   call start_clock(timing_tddft_hamiltonian_nuc)
+ else
+   call start_clock(timing_hamiltonian_nuc)
+ end if
 
 #if defined(HAVE_LIBINT_ONEBODY)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
- write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
+   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
 #endif
 
  if( PRESENT(atom_list) ) then
@@ -614,7 +619,11 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
 
  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution ===',basis%nbf,1,hamiltonian_nucleus)
 
- call stop_clock(timing_hamiltonian_nuc)
+ if( in_tddft_loop ) then 
+   call stop_clock(timing_tddft_hamiltonian_nuc)
+ else
+   call stop_clock(timing_hamiltonian_nuc)
+ endif
 
 end subroutine setup_nucleus
 

@@ -752,7 +752,8 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
  integer              :: desc_eigvec(NDEL)
  integer              :: mlocal,nlocal
  integer              :: lwork,lrwork,info
- complex(dp),allocatable :: work(:),rwork(:)
+ complex(dp),allocatable :: work(:)
+ real(dp),allocatable    :: rwork(:)
  complex(dp),allocatable :: eigvec(:,:)
 !=====
 
@@ -766,6 +767,7 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
 
  !
  ! First call to get the dimension of the array work
+ ! It seems that there is a bug in SCALAPACK workspace query for rwork
  lwork  = -1
  lrwork = -1
  allocate(work(1))
@@ -777,12 +779,20 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
  ! Second call to actually perform the diago
  lwork  = NINT(REAL(work(1),dp))
  lrwork = NINT(REAL(rwork(1),dp))
-
  deallocate(work)
+ deallocate(rwork)
+
+ ! Prefer to override the workspace size manually to fix the SCALAPACK bug
+ lrwork = 4 * nglobal - 2
+
  allocate(work(lwork))
+ allocate(rwork(lrwork))
+
  call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
 
+
  deallocate(work)
+ deallocate(rwork)
 
 
  matrix(:,:) = eigvec(:,:)
@@ -1121,8 +1131,9 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-   write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
 
+   write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
+ 
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
      rank_master = rank_world
@@ -1331,6 +1342,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
 
    !
@@ -1603,6 +1615,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
 
 
@@ -1916,6 +1929,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
 
    !

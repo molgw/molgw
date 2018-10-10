@@ -43,6 +43,10 @@ def clean_run(inp,out,restart):
     except FileNotFoundError:
       pass
     try:
+      os.remove('RESTART_TDDFT')
+    except FileNotFoundError:
+      pass
+    try:
       os.remove('EIGVEC_CI_0')
     except FileNotFoundError:
       pass

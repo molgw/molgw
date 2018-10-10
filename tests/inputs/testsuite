@@ -517,6 +517,51 @@ MP3 Energy                ,  -0.0069228191     , 0 , 1.0e-7
 MP3 Total Energy          , -76.2354493975     , 0 , 1.0e-7
 SE+MP3  Total En          , -76.2354493975     , 0 , 1.0e-7
 
+h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B"
+SCF Total Energy          , -76.0278711935     , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -76.0278711836     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-7
+
+h2o_rt_tddft_hf_PC2B_scalapack.in, Scalapack test RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B"
+SCF Total Energy          , -76.0571529836     , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -76.0571529689     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0001368162     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   2.0246334571     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,  -0.0003241743     , 2 , 1.0e-7
+
+h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B"
+SCF Total Energy          , -75.8540895545     , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -75.8540895309     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,  -0.0001846589     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   1.9474309646     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0000376516     , 2 , 1.0e-7
+
+h2o_rt_tddft_lda_PC2B_restart.in  , test of RESTART_TDDFT does not work without preliminary run of previous input, RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B"
+RT-TDDFT Total Energy     ,  -75.8540895314     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,    0.0001669089     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,    1.9475062577     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,    0.0002922780     , 2 , 1.0e-7
+
+h2o_rt_tddft_h_projectile.in  , test of projectile without basis function PC="PC2B"
+SCF Total Energy          ,  -75.8551200924     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.0285116443     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_pbe0.in , proj without basis pbe0
+SCF Total Energy          ,  -76.3418386927     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.5745023928     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_pbe0_restart.in , proj without basis pbe0 restart, RESTART_TDDFT
+RT-TDDFT Total Energy     ,  -75.5098148640     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_pbe0_scalapack.in , proj without basis pbe0
+SCF Total Energy          ,  -76.3757991664     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.3811268142     , 0 , 1.0e-7
+
+h2o_rt_tddft_min_overlap.in , proj wihtout basis nstate ne nbf
+RT-TDDFT Total Energy     ,  -75.6361896847     , 0 , 1.0e-7
+
 be2_qsgw_bse.in           , BSE calculation after QSGW for Be2
 gKS HOMO energy           ,  -8.818516          , 0 , 1.0e-4
 gKS LUMO energy           ,   0.836309          , 0 , 1.0e-4

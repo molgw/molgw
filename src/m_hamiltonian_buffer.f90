@@ -11,6 +11,7 @@ module m_hamiltonian_buffer
  use m_definitions
  use m_mpi
  use m_timing
+ use m_tddft_variables
  use m_warning
  use m_memory
  use m_scalapack
@@ -217,7 +218,6 @@ subroutine setup_hartree_ri_buffer_sca(p_matrix,hartree_ij,ehartree)
 !=====
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK buffer'
- call start_clock(timing_hartree)
 
 
  !
@@ -267,8 +267,6 @@ subroutine setup_hartree_ri_buffer_sca(p_matrix,hartree_ij,ehartree)
  endif
  call xsum_world(ehartree)
 
-
- call stop_clock(timing_hartree)
 
 
 end subroutine setup_hartree_ri_buffer_sca
@@ -529,7 +527,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_dft)
+ call start_clock(timing_xc)
 
 
 #ifdef HAVE_LIBXC
@@ -789,7 +787,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_xc)
 
 end subroutine dft_exc_vxc_buffer_sca
 
@@ -824,7 +822,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  vhxc_ij(:,:) = 0.0_dp
 
  buffer(:,:) = 0.0_dp
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
 
    ngau = 4

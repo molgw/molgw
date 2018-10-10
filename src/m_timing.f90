@@ -10,7 +10,7 @@ module m_timing
  use m_definitions
  use m_warning,only: die
 
- integer,parameter :: NTIMING=100
+ integer,parameter :: NTIMING=140
 
  integer,parameter :: timing_total               =  1
 
@@ -18,7 +18,7 @@ module m_timing
  integer,parameter :: timing_scf                 = 82
  integer,parameter :: timing_postscf             = 83
 
- integer,parameter :: timing_dft                 =  2
+ integer,parameter :: timing_xc                  =  2
  integer,parameter :: timing_pola                =  3
  integer,parameter :: timing_gw_self             =  4
  integer,parameter :: timing_overlap             =  5
@@ -65,7 +65,7 @@ module m_timing
  integer,parameter :: timing_ci_write            = 46
  integer,parameter :: timing_ci_config           = 47
  integer,parameter :: timing_zeroes_ci           = 48
- integer,parameter :: timing_aomo_self           = 49
+ integer,parameter :: timing_density_matrix_cmplx= 49
  integer,parameter :: timing_aomo_pola           = 50
  integer,parameter :: timing_aomo_ci             = 51
  integer,parameter :: timing_mbpt_dm             = 52
@@ -85,6 +85,23 @@ module m_timing
  integer,parameter :: timing_tmp7                = 97
  integer,parameter :: timing_tmp8                = 98
  integer,parameter :: timing_tmp9                = 99
+
+ integer,parameter :: timing_tddft_loop             = 110
+ integer,parameter :: timing_tddft_fourier          = 111
+ integer,parameter :: timing_tddft_one_iter         = 112
+ integer,parameter :: timing_tddft_propagation      = 113
+ integer,parameter :: timing_tddft_hamiltonian      = 114
+ integer,parameter :: timing_tddft_xc               = 115
+ integer,parameter :: timing_tddft_exchange         = 116
+ integer,parameter :: timing_tddft_hartree          = 117
+ integer,parameter :: timing_tddft_hamiltonian_nuc  = 118
+ integer,parameter :: timing_tddft_ham_orthobasis   = 119
+ integer,parameter :: timing_print_cube_rho_tddft   = 125
+ integer,parameter :: timing_restart_tddft_file     = 126
+ integer,parameter :: timing_propagate_diago        = 127
+ integer,parameter :: timing_propagate_matmul       = 128
+ integer,parameter :: timing_print_line_rho_tddft   = 129
+ integer,parameter :: timing_calc_dens_disc         = 130
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -188,7 +205,7 @@ subroutine output_timing()
  call output_timing_line('Density matrix',timing_density_matrix,1)
  call output_timing_line('Hartree potential',timing_hartree,1)
  call output_timing_line('Exchange operator',timing_exchange,1)
- call output_timing_line('DFT xc potential',timing_dft,1)
+ call output_timing_line('DFT xc potential',timing_xc,1)
  call output_timing_line('Densities on a grid',timing_dft_densities,2)
  call output_timing_line('LIBXC calls',timing_dft_libxc,2)
  call output_timing_line('Setting up Vxc ',timing_dft_vxc,2)
@@ -199,9 +216,11 @@ subroutine output_timing()
  call output_timing_line('Virtual FNO generation',timing_fno,1)
  call output_timing_line('Forces',timing_force,1)
 
+
  write(stdout,'(/,a,/)') '                 -------------------------------------'
  write(stdout,'(a,/)')   '                            Post SCF'
 
+ ! Linear response polarization RPA or TDDFT or BSE
  call output_timing_line('Response function chi',timing_pola,1)
  call output_timing_line('3-center AO to MO transform',timing_eri_3center_eigen,2)
  call output_timing_line('4-center AO to MO transform',timing_eri_4center_eigen,2)
@@ -215,6 +234,7 @@ subroutine output_timing()
  call output_timing_line('Build W',timing_vchiv,2)
  call output_timing_line('Optical spectrum',timing_spectrum,2)
 
+ ! Self-energies
  call output_timing_line('MBPT density matrix',timing_mbpt_dm,1)
 
  call output_timing_line('GW self-energy',timing_gw_self,1)
@@ -222,7 +242,7 @@ subroutine output_timing()
  call output_timing_line('GWGamma self-energy',timing_gwgamma_self,1)
  call output_timing_line('MP2 energy',timing_mp2_energy,1)
 
-
+ ! CI
  call output_timing_line('Full CI for few electrons',timing_full_ci,1)
  call output_timing_line('Setup CI configurations',timing_ci_config,2)
  call output_timing_line('Screen CI Hamiltonian zeroes',timing_zeroes_ci,2)
@@ -230,6 +250,25 @@ subroutine output_timing()
  call output_timing_line('CI diagonalization',timing_ci_diago,2)
  call output_timing_line('CI eigenvector file writing',timing_ci_write,2)
  call output_timing_line('CI self-energy',timing_ci_selfenergy,2)
+
+ ! RT-TDDFT
+ call output_timing_line('TDDFT loop',timing_tddft_loop,1)
+ call output_timing_line('TDDFT Propagator',timing_tddft_propagation,2)
+ call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
+ call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
+
+ call output_timing_line('Hamiltonian calculation',timing_tddft_hamiltonian,2)
+ call output_timing_line('Complex density matrix',timing_density_matrix_cmplx,3)
+ call output_timing_line('Electron-Nucleus potential',timing_tddft_hamiltonian_nuc,3)
+ call output_timing_line('Hartree potential',timing_tddft_hartree,3)
+ call output_timing_line('Exchange operator',timing_tddft_exchange,3)
+ call output_timing_line('XC potential',timing_tddft_xc,3)
+ call output_timing_line('Orthogonal basis',timing_tddft_ham_orthobasis,3)
+
+ call output_timing_line('RESTART_TDDFT file writing',timing_restart_tddft_file,2)
+ call output_timing_line('Cube density file writing',timing_print_cube_rho_tddft,2)
+ call output_timing_line('Line density file writing',timing_print_line_rho_tddft,2)
+ call output_timing_line('Electronic density in discs',timing_calc_dens_disc,2)
 
  write(stdout,'(/,a,/)') '                 -------------------------------------'
 

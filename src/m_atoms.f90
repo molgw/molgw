@@ -18,12 +18,13 @@ module m_atoms
  integer,public                 :: nghost
  integer,protected              :: natom_type
  integer,protected              :: nbond
+ integer,public                 :: nprojectile
 
  real(dp),allocatable,public    :: zvalence(:)
  real(dp),allocatable,protected :: zatom(:)
  integer,allocatable,protected  :: zbasis(:)
 
- real(dp),allocatable,protected :: xatom(:,:)
+ real(dp),allocatable           :: xatom(:,:)
  real(dp),allocatable,protected :: xbasis(:,:)
  real(dp),allocatable,protected :: vel(:,:)
  real(dp),allocatable,public    :: force(:,:)
@@ -49,16 +50,20 @@ contains
 
 
 !=========================================================================
-subroutine init_atoms(zatom_read,x_read,calculate_forces)
+subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_name)
  use m_tools,only: cross_product
  implicit none
  real(dp),intent(in) :: zatom_read(natom+nghost),x_read(3,natom+nghost)
+ real(dp),intent(in) :: vel_projectile(3)
  logical,intent(in)  :: calculate_forces
+ character(len=12),intent(in)   :: excit_name
 !=====
  integer  :: iatom,jatom
  real(dp) :: x21(3),x31(3)
  real(dp) :: bond_length
 !=====
+
+ ! here x_read contains all coordinates: first (natom-nprojectile) real atoms, then (nghost) ghost atoms and the last but not least (nprojectile) projectile (which is 0 or 1) 
 
  ! xatom and zatom designate the physical nuclei
  allocate(xatom(3,natom))
@@ -68,7 +73,13 @@ subroutine init_atoms(zatom_read,x_read,calculate_forces)
  allocate(zbasis(natom_basis))
  allocate(xbasis(3,natom_basis))
 
- ! For relaxation or dynamics only
+ allocate(vel(3,natom))
+ vel(:,:)=0.0_dp
+
+ if(excit_name=="NUCLEUS" .OR. excit_name=="ANTINUCLEUS") then
+   vel(:,natom)=vel_projectile(:)
+ end if
+ ! For relaxation or dynamics only 
  if( calculate_forces ) then
    allocate(force(3,natom))
    allocate(force_nuc_nuc(3,natom))
@@ -81,14 +92,30 @@ subroutine init_atoms(zatom_read,x_read,calculate_forces)
    allocate(force_hl(3,natom))
  endif
 
- zatom(1:natom) = zatom_read(1:natom)
+ if(nghost==0) then
+   zatom(1:natom)=zatom_read(1:natom)
+ else
+   zatom(1:natom_basis - nghost)=zatom_read(1:natom_basis-nghost)
+   zatom(natom) = zatom_read(natom + nghost)
+ end if
+
+ if(excit_name=="ANTINUCLEUS") then
+   zatom(natom)=-zatom(natom)
+ end if
+
  ! Ghost atoms do not have a positive nucleus
  !zatom(natom+1:natom+nghost) = 0.0_dp
  ! But ghost atoms have basis functions centered on them.
- zbasis(:)=NINT(zatom_read(:))
+ zbasis(1:natom_basis)=NINT(zatom_read(1:natom_basis))
 
- xatom(:,:)  = x_read(:,:natom)
- xbasis(:,:) = x_read(:,:)
+ if(nghost==0) then
+   xatom(:,1:natom)=x_read(:,1:natom)
+ else
+   xatom(:,1:natom_basis - nghost)=x_read(:,1:natom_basis-nghost)
+   xatom(:,natom) = x_read(:,natom + nghost)
+ end if
+
+ xbasis(:,1:natom_basis) = x_read(:,1:natom_basis)
 
  !
  ! Check for atoms too close
@@ -122,7 +149,7 @@ subroutine init_atoms(zatom_read,x_read,calculate_forces)
  ! Is the molecule linear, planar?
  if( natom > 2 ) then
    x21(:) = xatom(:,2) - xatom(:,1)
-   do iatom=3,natom
+   do iatom=3,natom-nprojectile
      x31(:) = xatom(:,iatom) - xatom(:,1)
      call cross_product(x21,x31,xnormal)
      if( NORM2(xnormal(:)) > tol_geom ) then
@@ -132,7 +159,7 @@ subroutine init_atoms(zatom_read,x_read,calculate_forces)
      endif
    enddo
    if( .NOT. linear) then
-     do iatom=1,natom
+     do iatom=1,natom-nprojectile
        if( ABS(DOT_PRODUCT( xatom(:,iatom) , xnormal(:) )) > tol_geom ) planar=.FALSE.
      enddo
    else
@@ -234,7 +261,7 @@ subroutine relax_atoms(lbfgs_plan,etotal)
  info = lbfgs_execute(lbfgs_plan,xnew,etotal,-force)
 
  ! Do not move the atoms by more than 0.20 bohr
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    do idir=1,3
      if( ABS( xnew(idir,iatom) - xatom(idir,iatom) ) > 0.20_dp ) then
        xnew(idir,iatom) = xatom(idir,iatom) + SIGN( 0.20_dp , xnew(idir,iatom) - xatom(idir,iatom) )
@@ -259,22 +286,52 @@ subroutine output_positions()
  write(stdout,'(/,1x,a)') '================================'
  write(stdout,*) '      Atom list'
  write(stdout,*) '                       bohr                                        angstrom'
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
-                                                           element_name(REAL(zbasis(iatom),dp)),': ',  &
+                                                           element_name(REAL(zatom(iatom),dp)),': ',  &
                                                            xatom(:,iatom),xatom(:,iatom)*bohr_A
  enddo
  if( nghost>0) write(stdout,'(a)') ' == ghost list'
  do ighost=1,nghost
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
-                                           element_name(REAL(zbasis(natom+ighost),dp)),': ',  &
-                                           xbasis(:,natom+ighost),xbasis(:,natom+ighost)*bohr_A
+                                           element_name(REAL(zbasis(natom-nprojectile+ighost),dp)),': ',  &
+                                           xbasis(:,natom-nprojectile+ighost),xbasis(:,natom-nprojectile+ighost)*bohr_A
  enddo
- write(stdout,'(1x,a,/)') '================================'
+ if(  nprojectile>0) then
+   write(stdout,'(a)') ' == projectile'
+   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
+                                                           element_name(REAL(zatom(natom+nghost),dp)),': ',  &
+                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+ end if
 
+ write(stdout,'(1x,a,/)') '================================'
 
 end subroutine output_positions
 
+!=========================================================================
+subroutine output_projectile_position()
+ implicit none
+!=====
+
+ write(stdout,*)
+ if(  nprojectile>0) then
+   write(stdout,'(a)') ' === projectile position: ----------bohr---------------    |||   ------------- angstrom----------===' 
+
+   if(zatom(natom+nghost)>=0) then
+     write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
+                                                           element_name(REAL(zatom(natom+nghost),dp)),': ',  &
+                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+   end if
+
+   if(zatom(natom+nghost)<0) then
+     write(stdout,'(1x,a,i3,2x,a4,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
+                                                           'anti',element_name(REAL(zatom(natom+nghost),dp)),': ',  &
+                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+   end if
+
+ end if
+
+end subroutine output_projectile_position
 
 !=========================================================================
 subroutine nucleus_nucleus_energy(energy)
@@ -324,14 +381,14 @@ subroutine find_inversion()
 !=====
 
  xcenter(:) = 0.0_dp
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    xcenter(:) = xcenter(:) + xatom(:,iatom) / REAL(natom,dp)
  enddo
 
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    xtmp(:) = 2.0_dp * xcenter(:) - xatom(:,iatom)
    found = .FALSE.
-   do jatom=1,natom
+   do jatom=1,natom-nprojectile
      if( NORM2( xtmp(:) - xatom(:,jatom) ) < tol_geom ) then
        if( ABS(zatom(iatom)-zatom(jatom)) < tol_geom ) found = .TRUE.
        exit
