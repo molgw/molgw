@@ -783,13 +783,13 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
  else ! only one proc selected
 #endif
 
-   allocate(h_small(nbf,nstate))
    allocate(h_small2(nstate,nstate))
 
    do ispin=1,nspin_local
      write(stdout,'(1x,a,i3)') 'Generalized diagonalization for spin: ',ispin
      call start_clock(timing_diago_hamiltonian)
 
+     allocate(h_small(nbf,nstate))
      ! h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
      !                          MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
 
@@ -801,6 +801,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
      call DGEMM('T','N',nstate,nstate,nbf,1.0d0,s_matrix_sqrt_inv,nbf,  &
                                                 h_small,nbf,            &
                                           0.0d0,h_small2,nstate)
+     deallocate(h_small)
 
      ! H * C' = C' * E
      call diagonalize(h_small2,energy(:,ispin))
@@ -815,8 +816,6 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
      call stop_clock(timing_diago_hamiltonian)
    enddo
 
-
-   deallocate(h_small)
    deallocate(h_small2)
 
 #if HAVE_SCALAPACK

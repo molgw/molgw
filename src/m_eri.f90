@@ -864,6 +864,7 @@ subroutine reshuffle_distribution_3center()
  real(dp),allocatable :: eri_3center_tmp(:,:)
 !=====
 
+#ifdef HAVE_SCALAPACK
  write(stdout,'(/,a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_auxil,' x ',npcol_auxil
 
  if( nprow_auxil == nprow_3center .AND. npcol_auxil == npcol_3center .AND. MBLOCK_AUXIL == block_row ) then
@@ -881,14 +882,19 @@ subroutine reshuffle_distribution_3center()
  call xmax_ortho(mlocal)
  call xmax_ortho(nlocal)
 
- call move_alloc(eri_3center,eri_3center_tmp)
+ if( cntxt_3center > 0 ) then
+   call move_alloc(eri_3center,eri_3center_tmp)
 
- call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+   call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
- call clean_allocate('TMP 3-center integrals',eri_3center,mlocal,nlocal)
+   call clean_allocate('TMP 3-center integrals',eri_3center,mlocal,nlocal)
 
- call PDGEMR2D(nauxil_2center,npair,eri_3center_tmp,1,1,desc_eri3,eri_3center,1,1,desc3final,cntxt_3center)
- call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
+   call PDGEMR2D(nauxil_2center,npair,eri_3center_tmp,1,1,desc_eri3,eri_3center,1,1,desc3final,cntxt_3center)
+   call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
+ else
+   call clean_deallocate('3-center integrals',eri_3center)
+   call clean_allocate('3-center integrals',eri_3center,mlocal,nlocal)
+ endif
 
  !
  ! Propagate to the ortho MPI direction
@@ -896,7 +902,7 @@ subroutine reshuffle_distribution_3center()
    eri_3center(:,:) = 0.0_dp
  endif
  call xsum_ortho(eri_3center)
-
+#endif
 
 
 end subroutine reshuffle_distribution_3center
