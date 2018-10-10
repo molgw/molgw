@@ -488,9 +488,11 @@ program molgw
 
  ! Performs a distribution strategy change here for the 3-center integrals
  ! ( nprow_3center x npcol_3center ) => ( nprow_auxil x 1 )
- if( calc_type%selfenergy_approx > 0 .OR. calc_type%is_ci .OR. calc_type%is_td &
-     .OR. calc_type%is_mp2 .OR. calc_type%is_mp3 .OR. calc_type%is_bse ) then
-   call reshuffle_distribution_3center()
+ if( has_auxil_basis ) then
+   if( calc_type%selfenergy_approx > 0 .OR. calc_type%is_ci .OR. calc_type%is_td &
+       .OR. calc_type%is_mp2 .OR. calc_type%is_mp3 .OR. calc_type%is_bse ) then
+     call reshuffle_distribution_3center()
+   endif
  endif
 
  !
