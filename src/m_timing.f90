@@ -71,6 +71,9 @@ module m_timing
  integer,parameter :: timing_mbpt_dm             = 52
  integer,parameter :: timing_eri_3center_ints    = 53
  integer,parameter :: timing_eri_3center_matmul  = 54
+ integer,parameter :: timing_dft_densities       = 55
+ integer,parameter :: timing_dft_libxc           = 56
+ integer,parameter :: timing_dft_vxc             = 57
 
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -186,6 +189,9 @@ subroutine output_timing()
  call output_timing_line('Hartree potential',timing_hartree,1)
  call output_timing_line('Exchange operator',timing_exchange,1)
  call output_timing_line('DFT xc potential',timing_dft,1)
+ call output_timing_line('Densities on a grid',timing_dft_densities,2)
+ call output_timing_line('LIBXC calls',timing_dft_libxc,2)
+ call output_timing_line('Setting up Vxc ',timing_dft_vxc,2)
  call output_timing_line('Hamiltonian diagonalization',timing_diago_hamiltonian,1)
  call output_timing_line('Pulay DIIS mixing',timing_diis,1)
  call output_timing_line('RESTART file writing',timing_restart_file,1)

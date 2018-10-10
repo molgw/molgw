@@ -1330,6 +1330,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    igrid_end = MIN(ngrid,igrid_start+batch_size-1)
    nr = igrid_end - igrid_start + 1
 
+   call start_clock(timing_dft_densities)
+
    allocate(weight_batch(nr))
    allocate(rhor_batch(nspin,nr))
    allocate(basis_function_r_batch(basis%nbf,nr))
@@ -1374,9 +1376,13 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
 
+   call stop_clock(timing_dft_densities)
+
+
    !
    ! LIBXC calls
    !
+   call start_clock(timing_dft_libxc)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -1439,32 +1445,46 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    enddo ! loop on the XC functional
 
+   call stop_clock(timing_dft_libxc)
+
 
 
    !
    ! Eventually set up the vxc term
    !
+   call start_clock(timing_dft_vxc)
 
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
      !
      ! LDA and GGA
-     do ir=1,nr
-       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
-     enddo
      !
      ! GGA-only
      if( dft_xc_needs_gradient ) then
+       !$OMP PARALLEL
+       !$OMP DO
        do ir=1,nr
+         tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
          tmp_batch(:,ir) = tmp_batch(:,ir) &
                           +  MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
        enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+     else
+       !$OMP PARALLEL
+       !$OMP DO
+       do ir=1,nr
+         tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
      endif
 
      call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
    enddo
    deallocate(tmp_batch)
 
+   call stop_clock(timing_dft_vxc)
 
 
    deallocate(weight_batch)
