@@ -142,8 +142,8 @@ program molgw
    call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
 
    !
-   ! SCALAPACK distribution of the hamiltonian
-   call init_scalapack_other(basis%nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
+   ! SCALAPACK distribution that depends on the system specific size, parameters etc.
+   call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    if( m_ham /= basis%nbf .OR. n_ham /= basis%nbf ) then
      call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
    endif
@@ -393,11 +393,11 @@ program molgw
      ! Part 2 / 3 : SCF cycles
      !
      !
-
+  
      !
      ! Big SCF loop is in there
      ! Only do it if the calculation is NOT a big restart
-     if( .NOT. is_big_restart) then
+     if( .NOT. is_big_restart .AND. nscf > 0 ) then
        call scf_loop(is_restart,                                     &
                      basis,                                          &
                      nstate,m_ham,n_ham,m_c,n_c,                     &
@@ -409,14 +409,15 @@ program molgw
      else
        if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
      endif
-
+  
+  
      !
      ! If requested, evaluate the forces
      if( move_nuclei == 'relax' ) then
        call calculate_force(basis,nstate,occupation,energy,c_matrix)
        call relax_atoms(lbfgs_plan,en%tot)
        call output_positions()
-
+  
        if( MAXVAL(force(:,:)) < tolforce ) then
          write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are     converged: ',MAXVAL(force(:,:)) , '   < ',tolforce
          exit
@@ -440,13 +441,16 @@ program molgw
          endif
        endif
      endif
-   endif ! if .NOT. read_tddft_restart
+  
+   endif ! TDDFT RESTART
  enddo ! istep
 
 
  if( move_nuclei == 'relax' ) then
    call lbfgs_destroy(lbfgs_plan)
  endif
+
+
 
 
  !
@@ -486,6 +490,33 @@ program molgw
 
 
  !
+ !
+ ! Post-processing start here
+ !
+ !
+
+ !
+ ! RT-TDDFT Simulation
+ if(calc_type%is_real_time) then
+   call calculate_propagation(basis,occupation,c_matrix)
+ end if
+
+ !
+ ! If RSH calculations were performed, then deallocate the LR integrals which
+ ! are not needed anymore
+ !
+
+ if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
+ if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+
+ ! Performs a distribution strategy change here for the 3-center integrals
+ ! ( nprow_3center x npcol_3center ) => ( nprow_auxil x 1 )
+ if( calc_type%selfenergy_approx > 0 .OR. calc_type%is_ci .OR. calc_type%is_td &
+     .OR. calc_type%is_mp2 .OR. calc_type%is_mp3 .OR. calc_type%is_bse ) then
+   call reshuffle_distribution_3center()
+ endif
+
+ !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW or PT corrections
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
@@ -511,27 +542,6 @@ program molgw
 
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
-
-
-
- !
- !
- ! Post-processing start here
- !
- !
-
- !
- ! RT-TDDFT Simulation
- if(calc_type%is_real_time) then
-   call calculate_propagation(basis,occupation,c_matrix)
- end if
-
- !
- ! If RSH calculations were performed, then deallocate the LR integrals which
- ! are not needed anymore
- !
- if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
- if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
 
  !

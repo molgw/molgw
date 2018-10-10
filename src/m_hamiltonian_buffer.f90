@@ -399,6 +399,8 @@ subroutine setup_exchange_longrange_ri_buffer_sca(occupation,c_matrix,p_matrix,e
 
  write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK buffer'
 
+ if( npcol_3center > 1 ) call die('setup_exchange_longrange_ri_buffer_sca: npcol_3center > 1 not allowed')
+
  nbf    = desc_c(M_)
  m_c    = SIZE(c_matrix,DIM=1)
  nstate = SIZE(occupation,DIM=1)

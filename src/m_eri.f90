@@ -11,6 +11,7 @@ module m_eri
  use m_mpi
  use m_memory
  use m_warning
+ use m_scalapack
  use m_basis_set
  use m_timing
  use m_cart_to_pure
@@ -26,10 +27,10 @@ module m_eri
  real(dp),private           :: TOL_INT
 
 
- real(dp),public,allocatable :: eri_4center(:)
- real(dp),public,allocatable :: eri_4center_lr(:)
- real(dp),public,allocatable :: eri_3center(:,:)
- real(dp),public,allocatable :: eri_3center_lr(:,:)
+ real(dp),allocatable,public :: eri_4center(:)
+ real(dp),allocatable,public :: eri_4center_lr(:)
+ real(dp),allocatable,public :: eri_3center(:,:)
+ real(dp),allocatable,public :: eri_3center_lr(:,:)
 
 
  logical,protected,allocatable      :: negligible_shellpair(:,:)
@@ -45,6 +46,9 @@ module m_eri
  integer,protected :: nsize           ! size of the eri_4center array
  integer,protected :: npair           ! number of independent pairs (i,j) with i<=j
 
+ integer,public    :: nauxil_2center     ! size of the 2-center matrix
+ integer,public    :: nauxil_2center_lr  ! size of the 2-center LR matrix
+
  integer,protected :: nauxil_3center     ! size of the 3-center matrix
                                          ! may differ from the total number of 3-center integrals due to
                                          ! data distribution
@@ -52,7 +56,8 @@ module m_eri
                                          ! may differ from the total number of 3-center integrals due to
                                          ! data distribution
 
- real(dp),allocatable,public  :: eri_3center_sca(:,:)
+ integer,public    :: desc_eri3(NDEL)
+ integer,public    :: desc_eri3_lr(NDEL)
 
 ! Parallelization information for the auxiliary basis
  integer,allocatable,protected :: iproc_ibf_auxil(:)
@@ -247,54 +252,6 @@ function eri_lr(ibf,jbf,kbf,lbf)
  endif
 
 end function eri_lr
-
-
-!=========================================================================
-function eri_ri(ibf,jbf,kbf,lbf)
- implicit none
- integer,intent(in) :: ibf,jbf,kbf,lbf
- real(dp)           :: eri_ri
-!=====
- integer            :: index_ij,index_kl
-!=====
-
- if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
-   eri_ri = 0.0_dp
- else
-   index_ij = index_pair(ibf,jbf)
-   index_kl = index_pair(kbf,lbf)
-
-   eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
-
-   call xsum_auxil(eri_ri)
-
- endif
-
-end function eri_ri
-
-
-!=========================================================================
-function eri_ri_lr(ibf,jbf,kbf,lbf)
- implicit none
- integer,intent(in) :: ibf,jbf,kbf,lbf
- real(dp)           :: eri_ri_lr
-!=====
- integer            :: index_ij,index_kl
-!=====
-
- if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
-   eri_ri_lr = 0.0_dp
- else
-   index_ij = index_pair(ibf,jbf)
-   index_kl = index_pair(kbf,lbf)
-
-   eri_ri_lr = DOT_PRODUCT( eri_3center_lr(:,index_ij) , eri_3center_lr(:,index_kl) )
-
-   call xsum_auxil(eri_ri_lr)
-
- endif
-
-end function eri_ri_lr
 
 
 !=========================================================================
@@ -586,12 +543,6 @@ subroutine destroy_eri_3center()
    call clean_deallocate('3-center integrals',eri_3center)
  endif
 
-#ifdef SCASCA
- if(ALLOCATED(eri_3center_sca)) then
-   call clean_deallocate('3-center integrals SCALAPACK',eri_3center_sca)
- endif
-#endif
-
 end subroutine destroy_eri_3center
 
 
@@ -610,7 +561,7 @@ subroutine destroy_eri_3center_lr()
    deallocate(ibf_auxil_l_lr)
  endif
  if(ALLOCATED(eri_3center_lr)) then
-   call clean_deallocate('3-center LR integrals',eri_3center_lr)
+   call clean_deallocate('LR 3-center integrals',eri_3center_lr)
  endif
 
 end subroutine destroy_eri_3center_lr
@@ -900,6 +851,61 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 
 
 end subroutine distribute_auxil_basis_lr
+
+
+!=========================================================================
+subroutine reshuffle_distribution_3center()
+ implicit none
+
+!=====
+ integer :: info
+ integer :: mlocal,nlocal
+ integer :: desc3final(NDEL)
+ real(dp),allocatable :: eri_3center_tmp(:,:)
+!=====
+
+#ifdef HAVE_SCALAPACK
+ write(stdout,'(/,a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_auxil,' x ',npcol_auxil
+
+ if( nprow_auxil == nprow_3center .AND. npcol_auxil == npcol_3center .AND. MBLOCK_AUXIL == block_row ) then
+   write(stdout,*) 'Reshuffling not needed'
+   return
+ endif
+
+ if( cntxt_auxil > 0 ) then
+   mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   nlocal = NUMROC(npair         ,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+ else
+   mlocal = -1
+   nlocal = -1
+ endif
+ call xmax_ortho(mlocal)
+ call xmax_ortho(nlocal)
+
+ if( cntxt_3center > 0 ) then
+   call move_alloc(eri_3center,eri_3center_tmp)
+
+   call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+
+   call clean_allocate('TMP 3-center integrals',eri_3center,mlocal,nlocal)
+
+   call PDGEMR2D(nauxil_2center,npair,eri_3center_tmp,1,1,desc_eri3,eri_3center,1,1,desc3final,cntxt_3center)
+   call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
+ else
+   call clean_deallocate('3-center integrals',eri_3center)
+   call clean_allocate('3-center integrals',eri_3center,mlocal,nlocal)
+ endif
+
+ !
+ ! Propagate to the ortho MPI direction
+ if( cntxt_auxil <= 0 ) then
+   eri_3center(:,:) = 0.0_dp
+ endif
+ call xsum_ortho(eri_3center)
+#endif
+
+
+end subroutine reshuffle_distribution_3center
 
 
 !=========================================================================

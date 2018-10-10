@@ -450,9 +450,9 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
        ipair_global = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
        ibf = index_basis(1,ipair_global)
        jbf = index_basis(2,ipair_global)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center_sca(:,ipair_local)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center(:,ipair_local)
        if( ibf /= jbf )  &
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_sca(:,ipair_local)
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center(:,ipair_local)
      enddo
      call stop_clock(timing_tmp1)
 
@@ -534,6 +534,8 @@ subroutine setup_exchange_longrange_ri_sca(occupation,c_matrix,p_matrix,exchange
  call start_clock(timing_exchange)
 
  write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK'
+
+ if( npcol_3center > 1 ) call die('setup_exchange_longrange_ri_buffer_sca: npcol_3center > 1 not allowed')
 
  nbf    = desc_ham(M_)
 
@@ -780,13 +782,13 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
  else ! only one proc selected
 #endif
 
-   allocate(h_small(nbf,nstate))
    allocate(h_small2(nstate,nstate))
 
    do ispin=1,nspin_local
      write(stdout,'(1x,a,i3)') 'Generalized diagonalization for spin: ',ispin
      call start_clock(timing_diago_hamiltonian)
 
+     allocate(h_small(nbf,nstate))
      ! h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
      !                          MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
 
@@ -798,6 +800,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
      call DGEMM('T','N',nstate,nstate,nbf,1.0d0,s_matrix_sqrt_inv,nbf,  &
                                                 h_small,nbf,            &
                                           0.0d0,h_small2,nstate)
+     deallocate(h_small)
 
      ! H * C' = C' * E
      call diagonalize(h_small2,energy(:,ispin))
@@ -812,8 +815,6 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
      call stop_clock(timing_diago_hamiltonian)
    enddo
 
-
-   deallocate(h_small)
    deallocate(h_small2)
 
 #if HAVE_SCALAPACK

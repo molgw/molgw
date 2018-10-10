@@ -138,11 +138,14 @@ subroutine calc_density_r_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_fu
  ! Calculate the density rho at points in batch
  do ispin=1,nspin
 
-   phir(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
+   !phir(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
+   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_r,nbf,0.d0,phir,nocc)
 
-   forall(ir=1:nr)
+   !$OMP PARALLEL DO
+   do ir=1,nr
      rhor(ispin,ir) = SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
-   endforall
+   enddo
+   !$OMP END PARALLEL DO
 
  enddo
 
@@ -289,17 +292,25 @@ subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basi
 
  do ispin=1,nspin
 
-   phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
-   phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
-   phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
-   phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
+   !phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
+   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_r,nbf,0.d0,phir,nocc)
 
-   forall(ir=1:nr)
+   !phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
+   !phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
+   !phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
+   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,1),nbf,0.d0,phir_gradx,nocc)
+   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,2),nbf,0.d0,phir_grady,nocc)
+   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,3),nbf,0.d0,phir_gradz,nocc)
+
+
+   !$OMP PARALLEL DO
+   do ir=1,nr
      rhor(ispin,ir)        = SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
      grad_rhor(ispin,ir,1) = 2.0_dp * SUM(  phir(:,ir) * phir_gradx(:,ir) * occupation(:nocc,ispin) )
      grad_rhor(ispin,ir,2) = 2.0_dp * SUM(  phir(:,ir) * phir_grady(:,ir) * occupation(:nocc,ispin) )
      grad_rhor(ispin,ir,3) = 2.0_dp * SUM(  phir(:,ir) * phir_gradz(:,ir) * occupation(:nocc,ispin) )
-   endforall
+   enddo
+   !$OMP END PARALLEL DO
 
  enddo
 

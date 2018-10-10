@@ -168,6 +168,8 @@ module m_inputparam
  integer,protected                :: dft_core
  integer,protected                :: npulay_hist
  integer,protected                :: scalapack_block_min
+ integer,protected                :: eri3_nprow
+ integer,protected                :: eri3_npcol
  integer,protected                :: scalapack_nprow
  integer,protected                :: scalapack_npcol
  integer,protected                :: mpi_nproc_ortho

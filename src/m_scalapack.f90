@@ -53,7 +53,7 @@ module m_scalapack
  integer,protected :: cntxt_auxil
  integer,protected :: nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil
 
- ! SCALAPACK grid: square distribution
+ ! SCALAPACK grid for 3 center integrals
  integer,protected :: cntxt_3center
  integer,protected :: nprow_3center
  integer,protected :: npcol_3center
@@ -2512,13 +2512,6 @@ subroutine init_scalapack()
  call BLACS_GRIDINIT( cntxt_sd, 'R', nprow_sd, npcol_sd )
  call BLACS_GRIDINFO( cntxt_sd, nprow_sd, npcol_sd, iprow_sd, ipcol_sd )
 
- ! 3center integrals distribution
- nprow_3center = nprow_sd
- npcol_3center = npcol_sd
- call BLACS_GET( -1, 0, cntxt_3center )
- call BLACS_GRIDINIT( cntxt_3center, 'R', nprow_3center, npcol_3center )
- call BLACS_GRIDINFO( cntxt_3center, nprow_3center, npcol_3center, iprow_3center, ipcol_3center )
-
  ! Row-only division of tasks
  nprow_rd = nproc_sca
  npcol_rd = 1
@@ -2550,10 +2543,11 @@ end subroutine init_scalapack
 
 
 !=========================================================================
-subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
+subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  implicit none
 
  integer,intent(in)  :: nbf
+ integer,intent(in)  :: eri3_nprow,eri3_npcol
  integer,intent(in)  :: scalapack_nprow,scalapack_npcol
  integer,intent(out) :: m_ham,n_ham
 !=====
@@ -2568,6 +2562,8 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 !=====
 
 #ifdef HAVE_SCALAPACK
+
+
  parallel_ham = scalapack_nprow * scalapack_npcol > 1
 
  if( parallel_ham ) then
@@ -2646,9 +2642,62 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
  endif
 
+ !
+ ! Create the SCALAPACK context cntxt_auxil
+ ! that precisely matches the MPI_COMMUNICATOR comm_auxil
+ !
+ call BLACS_GET( -1, 0, cntxt_auxil )
+
+ if( rank_world /= iproc_sca ) then
+   call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
+ endif
+
+ allocate(usermap(nproc_auxil,1))
+ do iproc_auxil=0,nproc_auxil-1
+   usermap(iproc_auxil+1,1) = iproc_auxil * nproc_ortho
+ enddo
+ call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
+ deallocate(usermap)
+
+ call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
+
+ call xmax_ortho(nprow_auxil)
+ call xmax_ortho(npcol_auxil)
+ call xmax_ortho(iprow_auxil)
+ call xmax_ortho(ipcol_auxil)
+
+ ! 3center integrals distribution
+ if( eri3_nprow * eri3_npcol == nproc_sca ) then
+   nprow_3center = eri3_nprow
+   npcol_3center = eri3_npcol
+   call BLACS_GET( -1, 0, cntxt_3center )
+   call BLACS_GRIDINIT( cntxt_3center, 'R', nprow_3center, npcol_3center )
+   call BLACS_GRIDINFO( cntxt_3center, nprow_3center, npcol_3center, iprow_3center, ipcol_3center )
+ else
+   ! Else just copy the auxil distribution
+   if( eri3_nprow * eri3_npcol /= 1 ) &
+      call issue_warning('eri3 distribution was not consistent with the number of MPI threads. MOLGW will override user selection')
+   cntxt_3center = cntxt_auxil  
+   nprow_3center = nprow_auxil
+   npcol_3center = npcol_auxil
+   iprow_3center = iprow_auxil
+   ipcol_3center = ipcol_auxil
+ endif
+
 #else
 
- ! Fake values
+ ! If SCALAPACK is not present, fill the variable with fake values
+ cntxt_3center = 1
+ nprow_3center = 1
+ npcol_3center = 1
+ ipcol_3center = 0
+ iprow_3center = 0
+
+ nprow_auxil = 1
+ npcol_auxil = 1
+ iprow_auxil = 0
+ ipcol_auxil = 0
+
  if( rank_world == 0 ) then
    cntxt_ham = 1
  else
@@ -2669,51 +2718,7 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
 #endif
 
-#ifdef HAVE_SCALAPACK
- !
- ! Create the SCALAPACK context cntxt_auxil
- ! that precisely matches the MPI_COMMUNICATOR comm_auxil
- !
- call BLACS_GET( -1, 0, cntxt_auxil )
 
- if( rank_world /= iproc_sca ) then
-   call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
- endif
-
- allocate(usermap(nproc_auxil,1))
- do iproc_auxil=0,nproc_auxil-1
-   usermap(iproc_auxil+1,1) = iproc_auxil * nproc_ortho
- enddo
- call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
- deallocate(usermap)
-#endif
-
- call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
- call xmax_ortho(nprow_auxil)
- call xmax_ortho(npcol_auxil)
- call xmax_ortho(iprow_auxil)
- call xmax_ortho(ipcol_auxil)
-
-
-#ifdef DEBUG
- write(ctmp,'(i3.3)') rank_world
- open(newunit=fileunit,file='DEBUG_mpiinfo_rank'//TRIM(ctmp))
- write(fileunit,*) 'nproc_world:',nproc_world
- write(fileunit,*) 'rank_world:',rank_world
- write(fileunit,*)
- write(fileunit,*) 'nproc_local:',nproc_local
- write(fileunit,*) 'rank_local:',rank_local
- write(fileunit,*)
- write(fileunit,*) 'nproc_trans:',nproc_trans
- write(fileunit,*) 'rank_trans:',rank_trans
- write(fileunit,*)
- write(fileunit,*) 'nproc_auxil:',nproc_auxil
- write(fileunit,*) 'rank_auxil:',rank_auxil
- write(fileunit,*)
- write(fileunit,*) 'nproc_grid:',nproc_grid
- write(fileunit,*) 'rank_grid:',rank_grid
- close(fileunit)
-#endif
 
 
 end subroutine init_scalapack_other
