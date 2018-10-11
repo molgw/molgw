@@ -328,7 +328,7 @@ Sum over oscillator strengths ,  4.642395       , 0 , 1.0e-4
 polarizability trace      ,     17.627303       , 0 , 1.0e-4
 Mean excitation energy    ,     14.812805       , 0 , 1.0e-4
 
-ch2o_gw_wori.in           , GW@LDA wo RI on formaldehyde to prepare BSE
+ch2o_gw_wori.in           , GW@LDA wo RI on formaldehyde to prepare BSE, noparallel
 SCF Total Energy          ,   -113.5803830624   , 0 , 1.0e-7
 RPA Total energy          ,   -114.3099788424   , 0 , 1.0e-4
 GW HOMO energy            ,     -9.641505       , 0 , 1.0e-4
@@ -438,7 +438,7 @@ RPA correlation energy    ,    -0.0854827210    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.426968        , 0 , 1.0e-4
 GWGamma HOMO energy       ,    -8.003938        , 0 , 1.0e-4
 
-lih_gwgamma_nori.in       , LiH: GWGamma@PBE0 without RI
+lih_gwgamma_nori.in       , LiH: GWGamma@PBE0 without RI, noparallel
 SCF Total Energy          ,    -8.0461044345    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0363952366    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.038813        , 0 , 1.0e-4

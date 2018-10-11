@@ -400,9 +400,9 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
  write(stdout,*) 'Size of the non-SCALAPACK 3-center integrals:',nauxil_3center,npair
 
  ! nauxil x npair
- mwork = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
- nwork = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desc3work,nauxil_2center,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
+ mwork = NUMROC(nauxil_2center,MB_3center,iprow_3center,first_row,nprow_3center)
+ nwork = NUMROC(npair         ,NB_3center,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desc3work,nauxil_2center,npair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
 
 ! call start_clock(timing_tmp8)
 ! call PDGEMR2D(nauxil_2center,npair,eri_3center,1,1,desc3final,eri_3work,1,1,desc3work,cntxt)
@@ -413,13 +413,13 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
  allocate(tmp(mwork,nbf))
 
  ! nauxil x nbf
- nbf_local = NUMROC(nbf,block_col,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desctmp,nauxil_2center,nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
+ nbf_local = NUMROC(nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desctmp,nauxil_2center,nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
  allocate(tmp_local(mwork,nbf_local))
 
  ! nbf x nbf
- mbf_local = NUMROC(nbf,block_row,iprow_3center,first_row,nprow_3center)
- call DESCINIT(descx,nbf,nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mbf_local),info)
+ mbf_local = NUMROC(nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+ call DESCINIT(descx,nbf,nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mbf_local),info)
  allocate(sigx(mbf_local,nbf_local))
 
  do ispin=1,nspin
@@ -448,7 +448,7 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
      call start_clock(timing_tmp1)
      tmp(:,:) = 0.0_dp
      do ipair_local=1,nwork
-       ipair_global = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+       ipair_global = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
        ibf = index_basis(1,ipair_global)
        jbf = index_basis(2,ipair_global)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center(:,ipair_local)
@@ -463,7 +463,7 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
 
 
      do jbf_local=1,nbf_local
-       jbf_global = INDXL2G(jbf_local,block_col,ipcol_3center,first_col,npcol_3center)
+       jbf_global = INDXL2G(jbf_local,NB_3center,ipcol_3center,first_col,npcol_3center)
        tmp_local(:,jbf_local) = tmp(:,jbf_global)
      enddo
      call stop_clock(timing_tmp2)

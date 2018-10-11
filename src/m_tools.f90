@@ -259,19 +259,59 @@ subroutine diagonalize_dp(matrix,eigval,eigvec)
  real(dp),intent(out) :: eigval(:)
  real(dp),intent(out) :: eigvec(:,:)
 !=====
- integer :: nmat
+ integer :: nmat,lwork
  real(dp),allocatable :: work(:)
  integer :: info
+#if defined(LAPACK_DIAGO_FLAVOR_D)
+ integer             :: liwork
+ integer,allocatable :: iwork(:)
+#endif
+#if defined(LAPACK_DIAGO_FLAVOR_R)
+ integer             :: liwork
+ integer,allocatable :: iwork(:)
+ integer             :: isuppz(2*SIZE(matrix,DIM=1))
+#endif
 !=====
 
  nmat = SIZE(matrix,DIM=1)
- allocate(work(3*nmat-1))
 
  eigvec(:,:) = matrix(:,:)
 
- call DSYEV('V','U',nmat,eigvec,nmat,eigval,work,3*nmat-1,info)
-
+ lwork = -1
+ allocate(work(1))
+#if defined(LAPACK_DIAGO_FLAVOR_D)
+ allocate(iwork(1))
+ call DSYEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
+ liwork = iwork(1)
+ deallocate(iwork)
+#elif defined(LAPACK_DIAGO_FLAVOR_R)
+ allocate(iwork(1))
+ call DSYEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,0.d0,nmat,work,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+ liwork = iwork(1)
+ deallocate(iwork)
+#else
+ call DSYEV('V','U',nmat,eigvec,nmat,eigval,work,lwork,info)
+#endif
+ lwork = NINT(work(1))
  deallocate(work)
+
+ if( info /= 0 ) call die('diago failure 1')
+
+ allocate(work(lwork))
+#if defined(LAPACK_DIAGO_FLAVOR_D)
+ allocate(iwork(liwork))
+ call DSYEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
+ deallocate(iwork)
+#elif defined(LAPACK_DIAGO_FLAVOR_R)
+ allocate(iwork(liwork))
+ call DSYEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,0.d0,nmat,work,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+ deallocate(iwork)
+#else
+ call DSYEV('V','U',nmat,eigvec,nmat,eigval,work,lwork,info)
+#endif
+ deallocate(work)
+
+ if( info /= 0 ) call die('diago failure 2')
 
 end subroutine diagonalize_dp
 

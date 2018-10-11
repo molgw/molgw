@@ -274,7 +274,7 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
    !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
    !$OMP DO REDUCTION(+:partial_sum)
    do ipair_local=1,npair_local
-     ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+     ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
      kbf = index_basis(1,ipair)
      lbf = index_basis(2,ipair)
      ! Factor 2 comes from the symmetry of p_matrix
@@ -291,7 +291,7 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
    !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
    !$OMP DO
    do ipair_local=1,npair_local
-     ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+     ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
 
      rtmp = DOT_PRODUCT( eri_3center(:,ipair_local) , partial_sum(:) )
 
@@ -421,7 +421,7 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
        !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
        !$OMP DO REDUCTION(+:tmp)
        do ipair_local=1,npair_local
-         ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+         ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
          ibf = index_basis(1,ipair)
          jbf = index_basis(2,ipair)
          tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair_local)
@@ -517,7 +517,7 @@ subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,ex
 
  call start_clock(timing_exchange)
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: versatile version'
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: versatile version'
 
  exchange_ij(:,:,:) = 0.0_dp
 
@@ -550,7 +550,7 @@ subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,ex
        !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
        !$OMP DO REDUCTION(+:tmp)
        do ipair_local=1,npair_local
-         ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+         ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
          ibf = index_basis(1,ipair)
          jbf = index_basis(2,ipair)
          tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair_local)
