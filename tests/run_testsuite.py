@@ -169,7 +169,7 @@ if len(sys.argv) > 1:
   if '--help' in sys.argv:
     print('Run the complete test suite of MOLGW')
     print('  --keep             Keep the temporary folder')
-    print('  --np     n         Set the number of cores to n')
+    print('  --np     n         Set the number of MPI threads to n')
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input files      Only run these input files')
     print('  --exclude files    Run all input files but these ones')
@@ -221,7 +221,7 @@ print('Starting MOLGW test suite\n')
 
 if len(mpirun) < 1:
   if( nprocs > 1 ):
-    print('No MPI launcher has been provided. Set the number of cores back to 1')
+    print('No MPI launcher has been provided. Set the number of MPI threads back to 1')
   nprocs = 1
 
 if not os.path.isfile('../molgw') :
@@ -236,6 +236,7 @@ print('Running with ',nprocs,'cores')
 ninput = 0
 input_files = []
 restarting  = []
+parallel    = []
 test_names  = []
 testinfo    = []
 
@@ -252,13 +253,21 @@ for line in ftestsuite:
     test_names.append(parsing[1].strip())
     testinfo.append([])
     restarting.append(False)
+    parallel.append(True)
 
   if len(parsing) == 3:
     ninput+=1
     input_files.append(parsing[0].strip())
     test_names.append(parsing[1].strip())
     testinfo.append([])
-    restarting.append(True)
+    if 'restart' in parsing[2].lower():
+      restarting.append(True)
+    else:
+      restarting.append(False)
+    if 'noparallel' in parsing[2].lower():
+      parallel.append(False)
+    else:
+      parallel.append(True)
 
   elif len(parsing) == 4:
     testinfo[ninput-1].append(parsing)
@@ -329,6 +338,9 @@ for iinput in range(ninput):
   if len(selected_input_files) != 0 and not input_files[iinput] in selected_input_files:
     continue
   if len(excluded_input_files) != 0 and input_files[iinput] in excluded_input_files:
+    continue
+  if not parallel[iinput] and nprocs > 1:
+    test_skipped = test_skipped + 1
     continue
 
   inp     = input_files[iinput]
