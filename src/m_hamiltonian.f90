@@ -1544,7 +1544,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
 !=====
- integer,parameter    :: BATCH_SIZE=64
+ integer,parameter    :: BATCH_SIZE = 128
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: basis_function_r_batch(:,:)
  real(dp),allocatable :: exc_batch(:)

@@ -14,7 +14,7 @@ module m_scf_loop
  use m_inputparam
  use m_hamiltonian_wrapper
 
- integer,parameter,private :: BATCH_SIZE = 64
+ integer,parameter,private :: BATCH_SIZE = 128
 
 contains
 
