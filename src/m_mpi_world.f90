@@ -105,6 +105,8 @@ subroutine xbcast_world_ra1d(iproc,array)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -126,6 +128,8 @@ subroutine xbcast_world_ra2d(iproc,array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -149,6 +153,8 @@ subroutine xbcast_world_ra3d(iproc,array)
  integer :: n1,n2,n3
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -174,6 +180,8 @@ subroutine xbcast_world_ca2d(iproc,array)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
 
@@ -196,6 +204,8 @@ subroutine xand_world_l(logical_variable)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = 1
 
 #ifdef HAVE_MPI
@@ -217,6 +227,8 @@ subroutine xand_world_la1d(logical_array)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = SIZE(logical_array,DIM=1)
 
 #ifdef HAVE_MPI
@@ -237,6 +249,8 @@ subroutine xand_world_la2d(logical_array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = SIZE(logical_array,DIM=1)
  n2 = SIZE(logical_array,DIM=2)
@@ -260,6 +274,8 @@ subroutine xmin_world_r(real_number)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = 1
 
 #ifdef HAVE_MPI
@@ -280,6 +296,8 @@ subroutine xmax_world_i(integer_number)
  integer :: n1
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = 1
 
@@ -302,6 +320,8 @@ subroutine xmax_world_r(real_number)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = 1
 
 #ifdef HAVE_MPI
@@ -322,6 +342,8 @@ subroutine xmax_world_ia2d(array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -345,6 +367,8 @@ subroutine xmax_world_ra1d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -365,6 +389,8 @@ subroutine xsum_world_r(real_number)
  integer :: n1
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = 1
 
@@ -387,6 +413,8 @@ subroutine xsum_world_ra1d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -407,6 +435,8 @@ subroutine xsum_world_ra2d(array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -430,6 +460,8 @@ subroutine xsum_world_ra3d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
  n3 = SIZE( array, DIM=3 )
@@ -452,6 +484,8 @@ subroutine xsum_world_ra4d(array)
  integer :: n1,n2,n3,n4
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -477,6 +511,8 @@ subroutine xsum_world_ca1d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -497,6 +533,8 @@ subroutine xsum_world_ca2d(array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -520,6 +558,8 @@ subroutine xsum_world_ca3d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_world == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
  n3 = SIZE( array, DIM=3 )
@@ -542,6 +582,8 @@ subroutine xsum_world_ca4d(array)
  integer :: n1,n2,n3,n4
  integer :: ier=0
 !=====
+
+ if( nproc_world == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
