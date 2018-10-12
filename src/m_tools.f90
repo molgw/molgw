@@ -227,32 +227,6 @@ end subroutine diagonalize_wo_vectors_dp
 
 
 !=========================================================================
-subroutine diagonalize_cdp(matrix,eigval,eigvec)
- implicit none
- complex(dp),intent(in)  :: matrix(:,:)
- real(dp),intent(out)    :: eigval(:)
- complex(dp),intent(out) :: eigvec(:,:)
-!=====
- integer :: nmat
- complex(dp),allocatable :: work(:)
- real(dp),allocatable    :: rwork(:)
- integer :: info
-!=====
-
- nmat = SIZE(matrix,DIM=1)
- allocate(work(2*nmat-1))
- allocate(rwork(3*nmat-2))
-
- eigvec(:,:) = matrix(:,:)
-
- call ZHEEV('V','U',nmat,eigvec,nmat,eigval,work,2*nmat-1,rwork,info)
-
- deallocate(work,rwork)
-
-end subroutine diagonalize_cdp
-
-
-!=========================================================================
 subroutine diagonalize_dp(matrix,eigval,eigvec)
  implicit none
  real(dp),intent(in)  :: matrix(:,:)
@@ -429,6 +403,55 @@ subroutine diagonalize_inplace_sp(matrix,eigval)
  deallocate(work)
 
 end subroutine diagonalize_inplace_sp
+
+
+!=========================================================================
+subroutine diagonalize_cdp(matrix,eigval,eigvec)
+ implicit none
+ complex(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out)    :: eigval(:)
+ complex(dp),intent(out) :: eigvec(:,:)
+!=====
+ integer :: nmat
+ complex(dp),allocatable :: work(:)
+ real(dp),allocatable    :: rwork(:)
+ integer                 :: lwork,lrwork,info
+#if defined(LAPACK_DIAGO_FLAVOR_D)
+ integer                 :: liwork
+ integer,allocatable     :: iwork(:)
+#endif
+!=====
+
+ nmat = SIZE(matrix,DIM=1)
+ eigvec(:,:) = matrix(:,:)
+
+#if defined(LAPACK_DIAGO_FLAVOR_D)
+
+ allocate(work(1))
+ allocate(rwork(1))
+ allocate(iwork(1))
+ call ZHEEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
+ lwork  = NINT(REAL(work(1),dp))
+ lrwork = NINT(rwork(1))
+ liwork = iwork(1)
+ deallocate(lwork,lrwork,iwork)
+
+ allocate(work(lwork))
+ allocate(rwork(lrwork))
+ allocate(iwork(liwork))
+ call ZHEEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
+ deallocate(lwork,lrwork,liwork)
+
+#else
+
+ allocate(work(2*nmat-1))
+ allocate(rwork(3*nmat-2))
+ call ZHEEV('V','U',nmat,eigvec,nmat,eigval,work,2*nmat-1,rwork,info)
+ deallocate(work,rwork)
+
+#endif
+
+end subroutine diagonalize_cdp
 
 
 !=========================================================================
