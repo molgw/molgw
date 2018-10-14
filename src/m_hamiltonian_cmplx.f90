@@ -16,7 +16,8 @@ module m_hamiltonian_cmplx
  use m_memory
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
-
+ use m_basis_set
+ use m_eri_calculate
 
 contains
 
@@ -77,7 +78,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
    ! Need to make exchange_ij Hermitian (not just symmetric)
    do ibf=1,nbf
      do jbf=ibf+1,nbf
-       exchange_ij_cmplx(ibf,jbf,ispin) = conjg( exchange_ij_cmplx(jbf,ibf,ispin) )
+       exchange_ij_cmplx(ibf,jbf,ispin) = CONJG( exchange_ij_cmplx(jbf,ibf,ispin) )
      enddo
    enddo
 
@@ -91,6 +92,140 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
 
 end subroutine setup_exchange_ri_cmplx
 
+!=========================================================================
+subroutine setup_exchange_versatile_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,exchange_ij_cmplx,eexchange)
+ implicit none
+ real(dp),intent(in)     :: occupation(:,:)
+ complex(dp),intent(in)  :: c_matrix_cmplx(:,:,:)
+ complex(dp),intent(in)  :: p_matrix_cmplx(:,:,:)
+ complex(dp),intent(out) :: exchange_ij_cmplx(:,:,:)
+ real(dp),intent(out) :: eexchange
+!=====
+ integer                 :: nauxil_local,npair_local
+ integer                 :: nbf,nstate
+ integer                 :: ibf,jbf,ispin,istate
+ integer                 :: nocc
+ complex(dp),allocatable :: tmp_cmplx(:,:)
+ integer                 :: ipair,ipair_local
+ integer                 :: ibf_auxil_first,nbf_auxil_core
+!=====
+
+ call start_clock(timing_tddft_exchange)
+
+ write(stdout,*) 'Calculate Complex Exchange term with Resolution-of-Identity: versatile version'
+
+ exchange_ij_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
+
+ nbf         = SIZE(exchange_ij_cmplx,DIM=1)
+ nstate      = SIZE(occupation(:,:),DIM=1)
+
+ ! Find highest occupied state
+ nocc = 0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
+     nocc = MAX(nocc,istate)
+   enddo
+ enddo
+
+ nauxil_local = SIZE(eri_3center,DIM=1)
+ npair_local  = SIZE(eri_3center,DIM=2)
+
+ if( npcol_3center > 1 ) then
+   ! Prepare a sub-division of tasks after the reduction DGSUM2D
+   nbf_auxil_core  = CEILING( REAL(nauxil_local,dp) / REAL(npcol_3center,dp) )
+   ibf_auxil_first = ipcol_3center * nbf_auxil_core + 1
+   ! Be careful when a core has fewer data or no data at all
+   if( ibf_auxil_first + nbf_auxil_core - 1 > nauxil_local ) nbf_auxil_core = nauxil_local - ibf_auxil_first + 1
+   if( ibf_auxil_first > nauxil_local ) nbf_auxil_core = 0
+
+   allocate(tmp_cmplx(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp_cmplx(:,:) = ( 0.0_dp , 0.0_dp )
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp_cmplx)
+       do ipair_local=1,npair_local
+         ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_matrix_cmplx(jbf,istate,ispin) * eri_3center(:,ipair_local)
+         if( ibf /= jbf) &
+           tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_matrix_cmplx(ibf,istate,ispin) * eri_3center(:,ipair_local)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+       call ZGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp_cmplx,nauxil_local,-1,-1)
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       if( nbf_auxil_core > 0 ) &
+         call ZHERK('L','C',nbf,nbf_auxil_core,-occupation(istate,ispin)/spin_fact,tmp_cmplx(ibf_auxil_first,1),nauxil_local,1.0_dp,exchange_ij_cmplx(:,:,ispin),nbf)
+
+     enddo
+
+   enddo
+   deallocate(tmp_cmplx)
+
+ else
+   ! npcol_row is equal to 1 => no parallelization over basis pairs
+
+   allocate(tmp_cmplx(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+       if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp_cmplx(:,:) = ( 0.0_dp, 0.0_dp )
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp_cmplx)
+       do ipair=1,npair
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_matrix_cmplx(jbf,istate,ispin) * eri_3center(:,ipair)
+         if( ibf /= jbf) &
+           tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_matrix_cmplx(ibf,istate,ispin) * eri_3center(:,ipair)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       call ZHERK('L','C',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_local,1.0_dp,exchange_ij_cmplx(:,:,ispin),nbf)
+
+     enddo
+   enddo
+   deallocate(tmp_cmplx)
+
+ endif
+
+ !
+ ! Need to make exchange_ij Hermitian
+ do ispin=1,nspin
+   do ibf=1,nbf
+     do jbf=ibf+1,nbf
+       exchange_ij_cmplx(ibf,jbf,ispin) = CONJG(exchange_ij_cmplx(jbf,ibf,ispin))
+     enddo
+   enddo
+   exchange_ij_cmplx(:,:,ispin)=CONJG(exchange_ij_cmplx(:,:,ispin))
+ enddo
+ call xsum_world(exchange_ij_cmplx)
+
+ eexchange = REAL( 0.5_dp * SUM( exchange_ij_cmplx(:,:,:) * CONJG(p_matrix_cmplx(:,:,:)) ) ,dp)
+
+ call stop_clock(timing_tddft_exchange)
+
+end subroutine setup_exchange_versatile_ri_cmplx
 
 !=========================================================================
 subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)

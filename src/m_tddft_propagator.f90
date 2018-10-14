@@ -30,11 +30,6 @@ module m_tddft_propagator
   module procedure propagate_orth_ham_2
  end interface propagate_orth
 
- interface print_2d_matrix
-  module procedure print_2d_matrix_real
-  module procedure print_2d_matrix_cmplx
- end interface print_2d_matrix
-
  integer,private                    :: nocc
  real(dp),private                   :: dipole(3)
  real(dp),private                   :: time_read
@@ -1576,50 +1571,6 @@ subroutine calculate_excit_field(time_cur,excit_field)
  end select
 
 end subroutine calculate_excit_field
-
-
-!=======================================
-subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,write_unit,prec)
- implicit none
- integer, intent(in)      :: prec ! precision
- integer, intent(in)      :: size_n,size_m, write_unit
- complex(dp),intent(in)  :: matrix_cmplx(size_n,size_m)
- character(*),intent(in)  :: desc
-!=====
- character(100)  :: write_format1, write_format2
- integer            :: ivar,beg
-!=====
-
-! beg=4
- beg=3
- write(write_format1,*) '(',size_m," ('( ',F", prec+beg, ".", prec,"' ,',F", prec+beg, ".",prec,",' )  ') " ,')' ! (  1.01 ,  -0.03)  (  0.04 ,  0.10)
- write(write_format2,*) '(',size_m," (F", prec+beg, ".", prec,"' +  i',F", prec+beg, ".",prec,",'  ') " ,')'   ! 1.01 +  i  -0.03    0.03 +  i  0.10
- write(write_unit,*) desc
- do ivar=1,size_n
-   write(write_unit,write_format1) matrix_cmplx(ivar,:)
- end do
-
-end subroutine print_2d_matrix_cmplx
-
-
-!=======================================
-subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,write_unit,prec)
- implicit none
- integer, intent(in)      :: prec ! precision
- integer, intent(in)      :: size_n,size_m, write_unit
- real(dp),intent(in)      :: matrix_real(size_m,size_m)
- character(*),intent(in)  :: desc
-!=====
- character(100)  :: write_format1
- integer            :: ivar
-
- write(write_format1,*) '(',size_m," (F", prec+4, ".", prec,') ' ,')'
- write(write_unit,*) desc
- do ivar=1,size_n
-   write(write_unit,write_format1) matrix_real(ivar,:)
- end do
-end subroutine print_2d_matrix_real
-
 
 !=========================================================================
 end module m_tddft_propagator

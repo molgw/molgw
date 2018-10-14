@@ -773,7 +773,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  
  ! Initialize real arrays
  
- p_matrix=real(p_matrix_cmplx,dp)
+ p_matrix=REAL(p_matrix_cmplx,dp)
  
  hamiltonian_hxc_cmplx = ( 0.0_dp , 0.0_dp ) 
  
@@ -781,7 +781,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ! Exchange contribution to the Hamiltonian
  !
  if( calc_type%need_exchange ) then
-   call setup_exchange_ri_cmplx(basis%nbf,nstate,nocc,occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en%exx)
+   call setup_exchange_versatile_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en%exx)
    
    ! Rescale with alpha_hybrid for hybrid functionals
    en%exx_hyb = alpha_hybrid * en%exx
@@ -795,7 +795,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    !
    !call calculate_hartree(basis,p_matrix,hamiltonian_tmp(:,:,1),eh=en%hart)
    call start_clock(timing_tddft_hartree)
-   call setup_hartree_ri(p_matrix,hamiltonian_tmp(:,:,1),en%hart)
+   call setup_hartree_versatile_ri(p_matrix,hamiltonian_tmp(:,:,1),en%hart)
    call stop_clock(timing_tddft_hartree)
 
  do ispin=1,nspin

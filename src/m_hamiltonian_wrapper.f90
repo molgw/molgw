@@ -37,7 +37,6 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
  real(dp) :: ehartree
 !=====
 
- call start_clock(timing_hartree)
 
  !
  if( .NOT. has_auxil_basis ) then
@@ -59,8 +58,6 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
  endif
 
  if( PRESENT(eh) ) eh = ehartree
-
- call stop_clock(timing_hartree)
 
 end subroutine calculate_hartree
 

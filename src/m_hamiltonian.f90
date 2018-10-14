@@ -231,7 +231,6 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
 
 end subroutine setup_hartree_oneshell
 
-
 !=========================================================================
 subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  implicit none
@@ -313,6 +312,7 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
    ehartree = ehartree + 0.5_dp * SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
+ call stop_clock(timing_hartree)
 
 end subroutine setup_hartree_versatile_ri
 
