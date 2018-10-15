@@ -810,7 +810,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ! DFT XC potential is added here
  ! 
  if( calc_type%is_dft ) then
-   call dft_exc_vxc_batch_cmplx(BATCH_SIZE,basis,nstate,nocc,occupation,c_matrix_cmplx,hamiltonian_tmp,en%xc)
+   call dft_exc_vxc_batch_cmplx(BATCH_SIZE,basis,occupation,c_matrix_cmplx,hamiltonian_tmp,en%xc)
    
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:) 
  endif

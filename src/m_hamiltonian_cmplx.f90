@@ -278,9 +278,8 @@ end subroutine setup_density_matrix_cmplx
 
 
 !=========================================================================
-subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_matrix_cmplx,vxc_ij,exc_xc)
+subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,occupation,c_matrix_cmplx,vxc_ij,exc_xc)
  use m_inputparam
- use m_basis_set
  use m_dft_grid
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
@@ -291,16 +290,15 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
  integer,intent(in)         :: batch_size
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nstate
- integer,intent(in)         :: nocc
- real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc,nspin)
- real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(out)       :: vxc_ij(:,:,:)
  real(dp),intent(out)       :: exc_xc
 !=====
  real(dp),parameter   :: TOL_RHO=1.0e-9_dp
- integer              :: idft_xc
+ integer              :: nstate
  integer              :: ibf,jbf,ispin
+ integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
  real(dp)             :: normalization(nspin)
  real(dp),allocatable :: weight_batch(:)
@@ -323,12 +321,12 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
  call start_clock(timing_tddft_xc)
 
-
+ nstate = SIZE(occupation,DIM=1)
 #ifdef HAVE_LIBXC
 
  write(stdout,*) 'Calculate DFT XC potential'
  if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
- 
+
 
  normalization(:) = 0.0_dp
 
@@ -339,14 +337,16 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
    igrid_end = MIN(ngrid,igrid_start+batch_size-1)
    nr = igrid_end - igrid_start + 1
 
+   call start_clock(timing_tddft_dft_densities)
+
    allocate(weight_batch(nr))
+   allocate(rhor_batch(nspin,nr))
    allocate(basis_function_r_batch(basis%nbf,nr))
    allocate(exc_batch(nr))
-   allocate(rhor_batch(nspin,nr))
    allocate(vrho_batch(nspin,nr))
    allocate(dedd_r_batch(nspin,nr))
 
-   if( dft_xc_needs_gradient ) then 
+   if( dft_xc_needs_gradient ) then
      allocate(basis_function_gradr_batch(basis%nbf,nr,3))
      allocate(grad_rhor_batch(nspin,nr,3))
      allocate(dedgd_r_batch(3,nr,nspin))
@@ -364,12 +364,13 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-   if( .NOT. dft_xc_needs_gradient ) then 
-     call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nocc,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
+   if( .NOT. dft_xc_needs_gradient ) then
+     call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
 
    else
-     call calc_density_gradr_batch_cmplx(nspin,basis%nbf,nstate,nocc,nr,occupation,c_matrix_cmplx, &
+     call calc_density_gradr_batch_cmplx(nspin,basis%nbf,nstate,nr,occupation,c_matrix_cmplx, &
                                    basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+     !$OMP PARALLEL DO
      do ir=1,nr
        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
        if( nspin == 2 ) then
@@ -377,14 +378,20 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
          sigma_batch(3,ir) = DOT_PRODUCT( grad_rhor_batch(2,ir,:) , grad_rhor_batch(2,ir,:) )
        endif
      enddo
+     !$OMP END PARALLEL DO
+
    endif
 
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
 
+   call stop_clock(timing_tddft_dft_densities)
+
+
    !
    ! LIBXC calls
    !
+   call start_clock(timing_tddft_dft_libxc)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -398,7 +405,7 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
        call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
-       
+
        ! Remove too small densities to stabilize the computation
        ! especially useful for Becke88
        do ir=1,nr
@@ -422,56 +429,70 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
      ! Set up divergence term if needed (GGA case)
      !
      if( dft_xc_needs_gradient ) then
-       do ir=1,nr
-         if(nspin==1) then
+       if(nspin==1) then
 
+         do ir=1,nr
            dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1)  &
                       + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_coef(idft_xc)
+         enddo
 
-         else
+       else
 
+         do ir=1,nr
            dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1) &
                      + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
-                                 + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc) 
+                                 + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc)
 
            dedgd_r_batch(:,ir,2) = dedgd_r_batch(:,ir,2) &
                      + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
                                  + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc_coef(idft_xc)
-         endif
+         enddo
 
-       enddo
+       endif
+
      endif
 
    enddo ! loop on the XC functional
+
+   call stop_clock(timing_tddft_dft_libxc)
 
 
 
    !
    ! Eventually set up the vxc term
    !
+   call start_clock(timing_tddft_dft_vxc)
 
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     !
-     ! LDA and GGA
-     do ir=1,nr
-       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
-     enddo
-     !
-     ! GGA-only
      if( dft_xc_needs_gradient ) then
+       !
+       ! GGA
+       !
+       !$OMP PARALLEL DO
        do ir=1,nr
+         tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
          tmp_batch(:,ir) = tmp_batch(:,ir) &
                           +  MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
        enddo
+       !$OMP END PARALLEL DO
+     else
+       !
+       ! LDA
+       !
+       !$OMP PARALLEL DO
+       do ir=1,nr
+         tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
+       enddo
+       !$OMP END PARALLEL DO
      endif
-
      call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+
    enddo
    deallocate(tmp_batch)
 
+   call stop_clock(timing_tddft_dft_vxc)
 
-    
 
    deallocate(weight_batch)
    deallocate(basis_function_r_batch)
@@ -479,7 +500,7 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
    deallocate(rhor_batch)
    deallocate(vrho_batch)
    deallocate(dedd_r_batch)
-   if( dft_xc_needs_gradient ) then 
+   if( dft_xc_needs_gradient ) then
      deallocate(basis_function_gradr_batch)
      deallocate(grad_rhor_batch)
      deallocate(sigma_batch)
@@ -495,7 +516,7 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
  ! Symmetrize now
  do ispin=1,nspin
    do jbf=1,basis%nbf
-     do ibf=jbf+1,basis%nbf 
+     do ibf=jbf+1,basis%nbf
        vxc_ij(jbf,ibf,ispin) = vxc_ij(ibf,jbf,ispin)
      enddo
    enddo
@@ -507,11 +528,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
  call xsum_grid(vxc_ij)
  call xsum_grid(exc_xc)
 
-! !
-! ! Destroy operations
-! do idft_xc=1,ndft_xc
-!   call xc_f90_func_end(calc_type%xc_func(idft_xc))
-! enddo
 
 #else
  write(stdout,*) 'XC energy and potential set to zero'
