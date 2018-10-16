@@ -108,8 +108,6 @@ subroutine scf_loop(is_restart,&
    !
    ! Setup the grids for the quadrature of DFT potential/energy
    call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,BATCH_SIZE)
-   ! The following is coded but not used... yet!
-!   call setup_bf_radius(basis)
  endif
 
  !
@@ -333,7 +331,7 @@ subroutine scf_loop(is_restart,&
 
    ! If fractional occupancies are allowed, then recalculate the occupations
    if( temperature > 1.0e-8_dp ) then
-     call set_occupation(nstate,temperature,electrons,magnetization,energy,occupation)
+     call set_occupation(temperature,electrons,magnetization,energy,occupation)
    endif
 
    !

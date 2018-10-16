@@ -18,6 +18,7 @@ module m_hamiltonian
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
  use m_eri_calculate
+ use m_density_tools
 
 
 contains
@@ -799,13 +800,13 @@ end subroutine test_density_matrix
 
 
 !=========================================================================
-subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occupation)
+subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
  implicit none
- integer,intent(in)   :: nstate
  real(dp),intent(in)  :: electrons,magnetization,temperature
- real(dp),intent(in)  :: energy(nstate,nspin)
- real(dp),intent(out) :: occupation(nstate,nspin)
+ real(dp),intent(in)  :: energy(:,:)
+ real(dp),intent(out) :: occupation(:,:)
 !=====
+ integer              :: nstate
  real(dp)             :: remaining_electrons(nspin)
  real(dp)             :: electrons_mu,mu,delta_mu,grad_electrons
  real(dp)             :: mu_change
@@ -814,6 +815,8 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
  integer              :: occfile
  integer              :: iter
 !=====
+
+ nstate = SIZE(occupation,DIM=1)
 
  if( temperature < 1.0e-8_dp ) then
 
@@ -911,33 +914,6 @@ function fermi_dirac(energy,mu)
 end function fermi_dirac
 
 end subroutine set_occupation
-
-
-!=========================================================================
-pure function get_number_occupied_states(occupation) result(nocc)
- implicit none
-
- real(dp),intent(in) :: occupation(:,:)
- integer             :: nocc
-!=====
- integer :: nstate,istate,ispin,nspin_local
-!=====
-
- nstate      = SIZE(occupation(:,:),DIM=1)
- nspin_local = SIZE(occupation(:,:),DIM=2)
-
- ! Find highest occupied state
- ! Take care of negative occupations, this can happen if C comes from P^{1/2}
- nocc = 0
- do ispin=1,nspin_local
-   do istate=1,nstate
-     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
-     nocc = MAX(nocc,istate)
-   enddo
- enddo
-
-
-end function get_number_occupied_states
 
 
 !=========================================================================
@@ -1349,20 +1325,19 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
    !
    ! Get the gradient at points r
-   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
+   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
    if( .NOT. dft_xc_needs_gradient ) then
-     call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
+     call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
 
    else
-     call calc_density_gradr_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix, &
-                                   basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
      !$OMP PARALLEL DO
      do ir=1,nr
        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
@@ -1603,7 +1578,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
    !
    ! Get all the functions and gradients at point rr
-   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
 
    !
    ! Calculate the density at points r

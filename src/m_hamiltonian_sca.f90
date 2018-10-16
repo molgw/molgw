@@ -19,6 +19,7 @@ module m_hamiltonian_sca
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_hamiltonian
+ use m_density_tools
 
 
 contains
@@ -1104,9 +1105,9 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp)             :: rr(3)
  real(dp)             :: normalization
  real(dp)             :: weight
- real(dp)             :: basis_function_r(basis%nbf)
- real(dp)             :: rhor
- real(dp)             :: vxc,exc,excr
+ real(dp)             :: basis_function_r(basis%nbf,1)
+ real(dp)             :: rhor(1)
+ real(dp)             :: vxc(1),exc,excr(1)
  real(dp)             :: vsigma(2*nspin-1)
  real(dp)             :: vhgau(m_ham,n_ham)
  integer              :: iatom,ngau
@@ -1152,21 +1153,21 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
 
    !
    ! Get all the functions and gradients at point rr
-   call get_basis_functions_r(basis,igrid,basis_function_r)
+   call get_basis_functions_r_batch(basis,igrid,basis_function_r)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call setup_atomic_density(rr,rhor)
+   call setup_atomic_density(rr,rhor(1))
 
    !
    ! Normalization
-   normalization = normalization + rhor * weight
+   normalization = normalization + rhor(1) * weight
 
-   call teter_lda_vxc_exc(1,rhor,vxc,excr)
+   call teter_lda_vxc_exc(1,rhor(1:1),vxc(1:1),excr(1:1))
 
    !
    ! XC energy
-   exc = exc + excr * weight * rhor
+   exc = exc + excr(1) * weight * rhor(1)
 
    !
    ! HXC
@@ -1176,8 +1177,8 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
        iglobal = rowindex_local_to_global('H',ilocal)
 
        vhxc_ij(ilocal,jlocal) =  vhxc_ij(ilocal,jlocal) &
-            + weight * vxc * basis_function_r(iglobal)  &
-                           * basis_function_r(jglobal)
+            + weight * vxc(1) * basis_function_r(iglobal,1)  &
+                           * basis_function_r(jglobal,1)
 
      enddo
    enddo

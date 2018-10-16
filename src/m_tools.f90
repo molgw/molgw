@@ -457,8 +457,8 @@ end subroutine diagonalize_cdp
 !=========================================================================
 subroutine diagonalize_inplace_cdp(matrix,eigval)
  implicit none
- complex(dp),intent(in) :: matrix(:,:)
- real(dp),intent(out)   :: eigval(:)
+ complex(dp),intent(inout) :: matrix(:,:)
+ real(dp),intent(out)      :: eigval(:)
 !=====
  integer                 :: nmat
  complex(dp),allocatable :: work(:)
