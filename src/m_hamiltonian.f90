@@ -18,6 +18,7 @@ module m_hamiltonian
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
  use m_eri_calculate
+ use m_density_tools
 
 
 contains
@@ -35,6 +36,7 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  character(len=100)   :: title
 !=====
 
+ call start_clock(timing_hartree)
 
  write(stdout,*) 'Calculate Hartree term'
 
@@ -70,6 +72,8 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
+ call stop_clock(timing_hartree)
+
 end subroutine setup_hartree
 
 
@@ -97,6 +101,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
 !=====
 
 
+ call start_clock(timing_hartree)
 
  write(stdout,*) 'Calculate Hartree term with out-of-core integrals'
 
@@ -228,8 +233,10 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
+ call stop_clock(timing_hartree)
 
 end subroutine setup_hartree_oneshell
+
 
 !=========================================================================
 subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
@@ -268,7 +275,7 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
    !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
    !$OMP DO REDUCTION(+:partial_sum)
    do ipair_local=1,npair_local
-     ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+     ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
      kbf = index_basis(1,ipair)
      lbf = index_basis(2,ipair)
      ! Factor 2 comes from the symmetry of p_matrix
@@ -285,7 +292,7 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
    !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
    !$OMP DO
    do ipair_local=1,npair_local
-     ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+     ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
 
      rtmp = DOT_PRODUCT( eri_3center(:,ipair_local) , partial_sum(:) )
 
@@ -415,7 +422,7 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
        !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
        !$OMP DO REDUCTION(+:tmp)
        do ipair_local=1,npair_local
-         ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+         ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
          ibf = index_basis(1,ipair)
          jbf = index_basis(2,ipair)
          tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair_local)
@@ -490,6 +497,7 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
 
 end subroutine setup_exchange_versatile_ri
 
+
 !=========================================================================
 subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  implicit none
@@ -510,7 +518,7 @@ subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,ex
 
  call start_clock(timing_exchange)
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: versatile version'
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: versatile version'
 
  exchange_ij(:,:,:) = 0.0_dp
 
@@ -543,7 +551,7 @@ subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,ex
        !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
        !$OMP DO REDUCTION(+:tmp)
        do ipair_local=1,npair_local
-         ipair = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+         ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
          ibf = index_basis(1,ipair)
          jbf = index_basis(2,ipair)
          tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair_local)
@@ -711,6 +719,7 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
 
 end subroutine setup_density_matrix
 
+
 !=========================================================================
 subroutine setup_energy_density_matrix(c_matrix,occupation,energy,q_matrix)
  implicit none
@@ -791,13 +800,13 @@ end subroutine test_density_matrix
 
 
 !=========================================================================
-subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occupation)
+subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
  implicit none
- integer,intent(in)   :: nstate
  real(dp),intent(in)  :: electrons,magnetization,temperature
- real(dp),intent(in)  :: energy(nstate,nspin)
- real(dp),intent(out) :: occupation(nstate,nspin)
+ real(dp),intent(in)  :: energy(:,:)
+ real(dp),intent(out) :: occupation(:,:)
 !=====
+ integer              :: nstate
  real(dp)             :: remaining_electrons(nspin)
  real(dp)             :: electrons_mu,mu,delta_mu,grad_electrons
  real(dp)             :: mu_change
@@ -806,6 +815,8 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
  integer              :: occfile
  integer              :: iter
 !=====
+
+ nstate = SIZE(occupation,DIM=1)
 
  if( temperature < 1.0e-8_dp ) then
 
@@ -903,33 +914,6 @@ function fermi_dirac(energy,mu)
 end function fermi_dirac
 
 end subroutine set_occupation
-
-
-!=========================================================================
-pure function get_number_occupied_states(occupation) result(nocc)
- implicit none
-
- real(dp),intent(in) :: occupation(:,:)
- integer             :: nocc
-!=====
- integer :: nstate,istate,ispin,nspin_local
-!=====
-
- nstate      = SIZE(occupation(:,:),DIM=1)
- nspin_local = SIZE(occupation(:,:),DIM=2)
-
- ! Find highest occupied state
- ! Take care of negative occupations, this can happen if C comes from P^{1/2}
- nocc = 0
- do ispin=1,nspin_local
-   do istate=1,nstate
-     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
-     nocc = MAX(nocc,istate)
-   enddo
- enddo
-
-
-end function get_number_occupied_states
 
 
 !=========================================================================
@@ -1262,112 +1246,6 @@ end subroutine get_c_matrix_from_p_matrix
 
 
 !=========================================================================
-subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
- use m_inputparam
- use m_dft_grid
- implicit none
-
- integer,intent(in)         :: batch_size
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
-!=====
- real(dp),parameter   :: TOL_RHO=1.0e-9_dp
- integer              :: nstate
- integer              :: ibf,jbf,ispin
- integer              :: idft_xc
- integer              :: igrid_start,igrid_end,ir,nr
- real(dp)             :: charge_cyl(nspin),charge_tri(nspin)
- real(dp)             :: r_cyl,dr_cyl,r_cylmax
- integer              :: nr_cyl,ir_cyl,file_out,igrid
- !vectors in the plane
- real(dp)             :: vec_rp(2),vec_r(2),vec_a(2),vec_c(2),vec_b(2) 
- real(dp),allocatable :: weight_batch(:)
- real(dp),allocatable :: tmp_batch(:,:)
- real(dp),allocatable :: basis_function_r_batch(:,:)
- real(dp),allocatable :: basis_function_gradr_batch(:,:,:)
- real(dp),allocatable :: rhor_batch(:,:)
-!=====
-
- if( is_iomaster ) then
-   open(newunit=file_out,file="charge_cylinder.dat")
- end if
-
- vec_a=(/ 0.8725_dp,  0.8725_dp /)
- vec_b=(/ 0.0_dp     ,  1.745_dp  /)
- vec_c=vec_b-vec_a
-
- call start_clock(timing_xc)
-
- nstate = SIZE(occupation,DIM=1)
-
- write(stdout,*) 'Calculate the electronic denstiy in the triangle and in the cylinder'
-
- !
- ! Loop over batches of grid points
- !
-
- r_cyl=0.d0
- nr_cyl=2
- r_cylmax=30.d0
- dr_cyl=r_cylmax/REAL(nr_cyl-1,dp)
- do ir_cyl=1,nr_cyl
-   charge_cyl(:) = 0.0_dp
-   charge_tri(:) = 0.0_dp
-   do igrid_start=1,ngrid,batch_size
-     igrid_end = MIN(ngrid,igrid_start+batch_size-1)
-     nr = igrid_end - igrid_start + 1
-  
-     allocate(weight_batch(nr))
-     allocate(basis_function_r_batch(basis%nbf,nr))
-     allocate(basis_function_gradr_batch(basis%nbf,nr,3))
-     allocate(rhor_batch(nspin,nr))
-  
-     weight_batch(:) = w_grid(igrid_start:igrid_end)
-  
-     call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
-  
-     call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
-  
-     do ir=1,nr
-       igrid = igrid_start + ir - 1
-       vec_r=rr_grid(1:2,igrid)
-       vec_rp=vec_r-vec_a
-       charge_cyl(:) = charge_cyl(:) + rhor_batch(:,ir) * weight_batch(ir)
-       !if point is in the triangle (prism)
-       if( ir_cyl==1 .AND. DOT_PRODUCT(vec_a,vec_rp)<=0.0_dp &
-         & .AND. DOT_PRODUCT(vec_r,vec_c)>=0.0_dp .AND. ALL(vec_r(:)>=0.0_dp) ) then
-         charge_tri(:) = charge_tri(:) + rhor_batch(:,ir) * weight_batch(ir)
-       endif
-       !if point is in the cylinder
-       if( NORM2(vec_r) <= r_cyl ) then
-         charge_cyl(:) = charge_cyl(:) + rhor_batch(:,ir) * weight_batch(ir)
-       endif
-     enddo
-  
-     deallocate(weight_batch)
-     deallocate(basis_function_r_batch)
-     deallocate(basis_function_gradr_batch)
-     deallocate(rhor_batch)
-  
-   enddo ! loop on the batches
-   call xsum_grid(charge_cyl)
-   call xsum_grid(charge_tri)
-   if( is_iomaster ) then
-     write(file_out,'(3F9.4)') r_cyl, charge_cyl,charge_tri
-   end if
-   r_cyl=r_cyl+dr_cyl
- enddo
- !
- ! Sum up the contributions from all procs only if needed
-
-! write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
-
- call stop_clock(timing_xc)
-
-end subroutine calc_normalization_r
-
-!=========================================================================
 subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
@@ -1409,9 +1287,10 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_xc)
+ call start_clock(timing_dft)
 
  nstate = SIZE(occupation,DIM=1)
+
 #ifdef HAVE_LIBXC
 
  write(stdout,*) 'Calculate DFT XC potential'
@@ -1446,20 +1325,19 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
    !
    ! Get the gradient at points r
-   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
+   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
    if( .NOT. dft_xc_needs_gradient ) then
-     call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
+     call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
 
    else
-     call calc_density_gradr_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix, &
-                                   basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
      !$OMP PARALLEL DO
      do ir=1,nr
        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
@@ -1627,7 +1505,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_xc)
+ call stop_clock(timing_dft)
 
 end subroutine dft_exc_vxc_batch
 
@@ -1641,7 +1519,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
 !=====
- integer,parameter    :: BATCH_SIZE=64
+ integer,parameter    :: BATCH_SIZE = 128
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: basis_function_r_batch(:,:)
  real(dp),allocatable :: exc_batch(:)
@@ -1663,7 +1541,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
- do iatom=1,natom-nprojectile
+ do iatom=1,natom
    if( rank_grid /= MODULO(iatom,nproc_grid) ) cycle
 
    ngau = 4
@@ -1700,7 +1578,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
    !
    ! Get all the functions and gradients at point rr
-   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
 
    !
    ! Calculate the density at points r
@@ -1762,5 +1640,3 @@ end subroutine dft_approximate_vhxc
 
 end module m_hamiltonian
 !=========================================================================
-
-

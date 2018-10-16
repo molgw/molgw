@@ -425,9 +425,9 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  !
  ! SCALAPACK preparation for W
  !  wpol%residue_left
- mlocal = NUMROC(nauxil_2center ,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
- nlocal = NUMROC(wpol%npole_reso,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
- call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_2center ,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+ nlocal = NUMROC(wpol%npole_reso,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
+ call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
  !
  ! Change data distribution
  ! from cntxt_auxil to cntxt_sd
@@ -450,14 +450,14 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      !
      ! SCALAPACK preparation for the 3-center integrals
      !
-     mlocal = NUMROC(nauxil_2center      ,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
-     nlocal = NUMROC(nvirtual_G-ncore_G-1,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
-     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+     mlocal = NUMROC(nauxil_2center      ,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+     nlocal = NUMROC(nvirtual_G-ncore_G-1,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
+     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
      if( cntxt_auxil > 0 ) then
        call clean_allocate('TMP 3center eigen',eri_3tmp_auxil,mlocal,nlocal)
        do jlocal=1,nlocal
-         jglobal = INDXL2G(jlocal,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil) + ncore_G
+         jglobal = INDXL2G(jlocal,NB_auxil,ipcol_auxil,first_col,npcol_auxil) + ncore_G
          do ilocal=1,mlocal
            eri_3tmp_auxil(ilocal,jlocal) = eri_3center_eigen(ilocal,jglobal,pstate,pspin)
          enddo

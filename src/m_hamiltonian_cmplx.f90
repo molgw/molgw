@@ -281,6 +281,7 @@ end subroutine setup_density_matrix_cmplx
 subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,occupation,c_matrix_cmplx,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
+ use m_density_tools
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -356,10 +357,10 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,occupation,c_matrix_cmplx,vx
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
    !
    ! Get the gradient at points r
-   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
+   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
 
    !
    ! Calculate the density at points r for spin up and spin down
@@ -573,6 +574,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
  use m_inputparam
  use m_dft_grid
  use m_atoms
+ use m_density_tools
  implicit none
 
  integer,intent(in)         :: batch_size
@@ -657,9 +659,9 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
 
-   call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nocc,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
+   call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
 
    do ir=1,nr
      igrid = igrid_start + ir - 1

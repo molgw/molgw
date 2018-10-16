@@ -1097,8 +1097,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
 
  !
  ! Descriptors
- mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
- call DESCINIT(desc_auxil,nauxil_2center,nmat,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+ call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)

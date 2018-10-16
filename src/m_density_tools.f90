@@ -2,15 +2,51 @@
 ! This file is part of MOLGW.
 ! Author: Fabien Bruneval
 !
-! This file contains the calculation of electronic density derived quantities:
+! This module contains the calculation of electronic density derived quantities:
 ! rho(r), grad rho(r), vxc in specific case, etc..
 !
 !=========================================================================
-subroutine setup_atomic_density(rr,rhor)
+module m_density_tools
  use m_definitions
+ use m_mpi
  use m_atoms
  use m_gaussian
  use m_inputparam
+ use m_basis_set
+
+
+contains
+
+
+!=========================================================================
+pure function get_number_occupied_states(occupation) result(nocc)
+ implicit none
+
+ real(dp),intent(in) :: occupation(:,:)
+ integer             :: nocc
+!=====
+ integer :: nstate,istate,ispin,nspin_local
+!=====
+
+ nstate      = SIZE(occupation(:,:),DIM=1)
+ nspin_local = SIZE(occupation(:,:),DIM=2)
+
+ ! Find highest occupied state
+ ! Take care of negative occupations, this can happen if C comes from P^{1/2}
+ nocc = 0
+ do ispin=1,nspin_local
+   do istate=1,nstate
+     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
+     nocc = MAX(nocc,istate)
+   enddo
+ enddo
+
+
+end function get_number_occupied_states
+
+
+!=========================================================================
+subroutine setup_atomic_density(rr,rhor)
  implicit none
 
  real(dp),intent(in)  :: rr(3)
@@ -43,95 +79,28 @@ end subroutine setup_atomic_density
 
 
 !=========================================================================
-subroutine calc_density_pmatrix(nspin,basis,p_matrix,basis_function_r,rhor)
- use m_definitions
- use m_mpi
- use m_basis_set
+subroutine calc_density_r_batch(occupation,c_matrix,basis_function_r,rhor)
  implicit none
 
- integer,intent(in)         :: nspin
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)  :: p_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)  :: basis_function_r(basis%nbf)
- real(dp),intent(out) :: rhor(nspin)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: basis_function_r(:,:)
+ real(dp),intent(out)       :: rhor(:,:)
 !=====
- integer :: ispin,ibf,jbf
-!=====
-
- !
- ! Calculate the density rho at point r
- rhor(:)=0.0_dp
- do ispin=1,nspin
-   do jbf=1,basis%nbf
-!     if( SUM( (basis%bff(jbf)%x0(:) - rr(:))**2 ) > bf_rad2(jbf) ) cycle
-     do ibf=1,basis%nbf
-       rhor(ispin)=rhor(ispin)+p_matrix(ibf,jbf,ispin)&
-                         * basis_function_r(ibf) &
-                         * basis_function_r(jbf)
-     enddo
-   enddo
- enddo
-
-
-end subroutine calc_density_pmatrix
-
-
-!=========================================================================
-subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,rhor)
- use m_definitions
- use m_mpi
- use m_basis_set
- use m_hamiltonian,only: get_number_occupied_states
- implicit none
-
- integer,intent(in)         :: nspin,nbf,nstate
- real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: basis_function_r(nbf)
- real(dp),intent(out)       :: rhor(nspin)
-!=====
- integer              :: ispin
- real(dp),allocatable :: phir(:)
- integer              :: nocc
-!=====
-
- nocc = get_number_occupied_states(occupation)
- allocate(phir(nocc))
-
- !
- ! Calculate the density rho at point r
- do ispin=1,nspin
-
-   phir(:) = MATMUL( basis_function_r(:) , c_matrix(:,:nocc,ispin) )
-
-   rhor(ispin) = SUM( phir(:)**2 * occupation(:nocc,ispin) )
-
- enddo
-
- deallocate(phir)
-
-end subroutine calc_density_r
-
-!=========================================================================
-subroutine calc_density_r_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_function_r,rhor)
- use m_definitions
- use m_mpi
- use m_basis_set
- use m_hamiltonian,only: get_number_occupied_states
- implicit none
-
- integer,intent(in)         :: nspin,nbf,nstate,nr
- real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: basis_function_r(nbf,nr)
- real(dp),intent(out)       :: rhor(nspin,nr)
-!=====
+ integer              :: nspin,nbf,nstate,nr
  integer              :: ispin,ir
  real(dp),allocatable :: phir(:,:)
  integer              :: nocc
 !=====
 
- nocc = get_number_occupied_states(occupation)
+ nbf    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(c_matrix,DIM=2)
+ nspin  = SIZE(c_matrix,DIM=3)
+ nr     = SIZE(rhor,DIM=2)
+ nocc   = get_number_occupied_states(occupation)
+
+ if( nocc > nstate ) call die('calc_density_r_batch: c_matrix does not contain all the occupied states')
+
  allocate(phir(nocc,nr))
 
  !
@@ -158,14 +127,13 @@ subroutine calc_density_r_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matrix_cm
  use m_definitions
  use m_mpi
  use m_basis_set
- use m_hamiltonian,only: get_number_occupied_states
  implicit none
 
  integer,intent(in)         :: nspin,nbf,nstate,nr
- complex(dp),intent(in)     :: c_matrix_cmplx(nbf,nocc,nspin)
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: basis_function_r(nbf,nr)
- real(dp),intent(out)       :: rhor(nspin,nr)
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: basis_function_r(:,:)
+ real(dp),intent(out)       :: rhor(:,:)
 !=====
  integer                 :: ispin,istate,ir
  complex(dp),allocatable :: phir_cmplx(:,:)
@@ -202,89 +170,18 @@ subroutine calc_density_r_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matrix_cm
 
 end subroutine calc_density_r_batch_cmplx
 
-
 !=========================================================================
-subroutine calc_density_gradr_pmatrix(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
- use m_definitions
- use m_mpi
- implicit none
- integer,intent(in)   :: nspin,nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(in)  :: basis_function_r(nbf)
- real(dp),intent(in)  :: basis_function_gradr(3,nbf)
- real(dp),intent(out) :: grad_rhor(3,nspin)
-!=====
- integer :: ispin,ibf,jbf
-!=====
-
- grad_rhor(:,:)=0.0_dp
- do ispin=1,nspin
-   do jbf=1,nbf
-     do ibf=1,nbf
-       grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
-            *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
-             + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
-     enddo
-   enddo
- enddo
-
-end subroutine calc_density_gradr_pmatrix
-
-
-!=========================================================================
-subroutine calc_density_gradr(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,basis_function_gradr,grad_rhor)
- use m_definitions
- use m_mpi
- use m_basis_set
- use m_hamiltonian,only: get_number_occupied_states
- implicit none
- integer,intent(in)         :: nspin,nbf,nstate
- real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: basis_function_r(nbf)
- real(dp),intent(in)        :: basis_function_gradr(3,nbf)
- real(dp),intent(out)       :: grad_rhor(3,nspin)
-!=====
- integer              :: ispin,istate
- real(dp)             :: phi_ir
- real(dp)             :: grad_phi_ir(3)
-!=====
-
- !
- ! Calculate the density gradient \nabla rho at point r
- grad_rhor(:,:) = 0.0_dp
-
- do ispin=1,nspin
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-
-     phi_ir         = DOT_PRODUCT( basis_function_r(:) , c_matrix(:,istate,ispin) )
-     grad_phi_ir(:) = MATMUL( basis_function_gradr(:,:) , c_matrix(:,istate,ispin) )
-
-     grad_rhor(:,ispin) = grad_rhor(:,ispin) + phi_ir * grad_phi_ir(:) * 2.0_dp * occupation(istate,ispin)
-
-   enddo
- enddo
-
-
-end subroutine calc_density_gradr
-
-!========================================================================
-subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_function_r,basis_function_gradr,rhor,grad_rhor)
- use m_definitions
- use m_mpi
- use m_basis_set
- use m_hamiltonian,only: get_number_occupied_states
+subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_function_gradr,rhor,grad_rhor)
  implicit none
 
- integer,intent(in)         :: nspin,nbf,nstate,nr
- real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: basis_function_r(nbf,nr)
- real(dp),intent(in)        :: basis_function_gradr(nbf,nr,3)
- real(dp),intent(out)       :: rhor(nspin,nr)
- real(dp),intent(out)       :: grad_rhor(nspin,nr,3)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: basis_function_r(:,:)
+ real(dp),intent(in)        :: basis_function_gradr(:,:,:)
+ real(dp),intent(out)       :: rhor(:,:)
+ real(dp),intent(out)       :: grad_rhor(:,:,:)
 !=====
+ integer              :: nspin,nbf,nstate,nr
  integer              :: ispin,ir
  real(dp),allocatable :: phir(:,:)
  real(dp),allocatable :: phir_gradx(:,:)
@@ -293,7 +190,14 @@ subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basi
  integer              :: nocc
 !=====
 
- nocc = get_number_occupied_states(occupation)
+ nbf    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(c_matrix,DIM=2)
+ nspin  = SIZE(c_matrix,DIM=3)
+ nr     = SIZE(rhor,DIM=2)
+ nocc   = get_number_occupied_states(occupation)
+
+ if( nocc > nstate ) call die('calc_density_gradr_batch: c_matrix does not contain all the occupied states')
+
  allocate(phir(nocc,nr))
  allocate(phir_gradx(nocc,nr))
  allocate(phir_grady(nocc,nr))
@@ -337,16 +241,15 @@ subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matri
  use m_definitions
  use m_mpi
  use m_basis_set
- use m_hamiltonian,only: get_number_occupied_states
  implicit none
 
  integer,intent(in)         :: nspin,nbf,nstate,nr
- complex(dp),intent(in)     :: c_matrix_cmplx(nbf,nocc,nspin)
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: basis_function_r(nbf,nr)
- real(dp),intent(in)        :: basis_function_gradr(nbf,nr,3)
- real(dp),intent(out)       :: rhor(nspin,nr)
- real(dp),intent(out)       :: grad_rhor(nspin,nr,3)
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: basis_function_r(:,:)
+ real(dp),intent(in)        :: basis_function_gradr(:,:,:)
+ real(dp),intent(out)       :: rhor(:,:)
+ real(dp),intent(out)       :: grad_rhor(:,:,:)
 !=====
  integer              :: ispin,istate,ir
  complex(dp),allocatable :: phir_cmplx(:,:)
@@ -413,11 +316,11 @@ subroutine calc_density_current_rr_cmplx(nspin,nbf,nstate,nocc,nr,occupation,c_m
  implicit none
 
  integer,intent(in)         :: nspin,nbf,nstate,nr,nocc
- complex(dp),intent(in)     :: c_matrix_cmplx(nbf,nocc,nspin)
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: basis_function_r(nbf,nr)
- real(dp),intent(in)        :: basis_function_gradr(nbf,nr,3)
- real(dp),intent(out)       :: jcurdens(nspin,nr,3)
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: basis_function_r(:,:)
+ real(dp),intent(in)        :: basis_function_gradr(:,:,:)
+ real(dp),intent(out)       :: jcurdens(:,:,:)
 !=====
  integer                 :: ispin,istate,ir
  complex(dp),allocatable :: phir_cmplx(:,:)
@@ -458,8 +361,6 @@ end subroutine calc_density_current_rr_cmplx
 !=========================================================================
 subroutine calc_density_gradr_laplr(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr, &
  grad_rhor,tau,lapl_rhor)
- use m_definitions
- use m_mpi
  implicit none
  integer,intent(in)   :: nspin,nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
@@ -502,7 +403,6 @@ end subroutine calc_density_gradr_laplr
 
 !=========================================================================
 subroutine teter_lda_vxc_exc(nr,rhor,vxc,exc)
- use m_definitions
  implicit none
 
  integer,intent(in)   :: nr
@@ -549,44 +449,26 @@ end subroutine teter_lda_vxc_exc
 
 !=========================================================================
 subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
- use m_definitions
  implicit none
 
-!Arguments ------------------------------------
-!scalars
  integer,intent(in)  :: nspin,ixc
  real(dp),intent(in) :: rhor(nspin)
-!arrays
  real(dp),intent(out) :: exc,vxc(nspin)
-
- real(dp) :: a0p
- real(dp) :: a1p
- real(dp) :: a2p
- real(dp) :: a3p
- real(dp) :: b1p
- real(dp) :: b2p
- real(dp) :: b3p
- real(dp) :: b4p
- real(dp) :: da0
- real(dp) :: da1
- real(dp) :: da2
- real(dp) :: da3
- real(dp) :: db1
- real(dp) :: db2
- real(dp) :: db3
- real(dp) :: db4
-
+!=====
  real(dp),parameter :: alpha_zeta=1.0_dp - 1.0e-6_dp
  real(dp),parameter :: ft=4._dp/3._dp,rsfac=0.6203504908994000_dp
  real(dp),parameter :: rsfacm3=rsfac**(-3)
+ real(dp) :: a0p,a1p,a2p,a3p
+ real(dp) :: b1p,b2p,b3p,b4p
+ real(dp) :: da0,da1,da2,da3
+ real(dp) :: db1,db2,db3,db4
  real(dp) :: a0,a1,a2,a3,b1,b2,b3,b4,d1,d1m1
- real(dp) :: dd1df
- real(dp) :: dd1drs,dexcdf,dexcdrs,dexcdz,dfxcdz,dn1df,dn1drs
+ real(dp) :: dd1df,dd1drs,dexcdf,dexcdrs,dexcdz,dfxcdz,dn1df,dn1drs
  real(dp) :: fact,fxc,n1
  real(dp) :: rs,vxcp,zet,zetm,zetm_third
  real(dp) :: zetp,zetp_third
+!=====
 
-! *************************************************************************
 
  select case(ixc)
  case(1200)
@@ -789,7 +671,6 @@ end subroutine my_lda_exc_vxc
 
 !=========================================================================
 subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
- use m_definitions
  implicit none
 
  real(dp),intent(in) :: mu
@@ -836,7 +717,6 @@ end subroutine my_lda_exc_vxc_mu
 
 !=========================================================================
 subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
- use m_definitions
  implicit none
 
 ! HSE evaluates the Heyd et al. Screened Coulomb
@@ -1117,4 +997,7 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 
 end subroutine HSE08Fx
 
+
+!=========================================================================
+end module m_density_tools
 !=========================================================================

@@ -18,6 +18,7 @@ module m_hamiltonian_buffer
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact
  use m_basis_set
+ use m_density_tools
  use m_hamiltonian_onebody
 
 
@@ -527,7 +528,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_xc)
+ call start_clock(timing_dft)
 
 
 #ifdef HAVE_LIBXC
@@ -566,18 +567,18 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 
      !
      ! Get all the functions at point r
-     call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+     call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
 
-     if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
+     if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
 
      !
      ! Calculate the density at points r for spin up and spin down
      ! Calculate grad rho at points r for spin up and spin down
      if( .NOT. dft_xc_needs_gradient ) then
-       call calc_density_r_batch(1,basis%nbf,nstate,nr,occupation(:,ispin),buffer(:,1:nstate),basis_function_r_batch,rhor_batch)
+       call calc_density_r_batch(occupation(:,ispin:ispin),RESHAPE(buffer(:,1:nstate),(/basis%nbf,nstate,1/)),basis_function_r_batch,rhor_batch)
      else
-       call calc_density_gradr_batch(1,basis%nbf,nstate,nr,occupation(:,ispin),buffer(:,1:nstate), &
-                                     basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+       call calc_density_gradr_batch(occupation(:,ispin:ispin),RESHAPE(buffer(:,1:nstate),(/basis%nbf,nstate,1/)), &
+                       basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
      endif
 
      ! Save the whole rhor and gradr
@@ -719,9 +720,9 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 
      !
      ! Get all the functions at point r
-     call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+     call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
 
-     if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
+     if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
 
      !
      ! LDA and GGA
@@ -787,7 +788,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_xc)
+ call stop_clock(timing_dft)
 
 end subroutine dft_exc_vxc_buffer_sca
 
@@ -807,9 +808,9 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp)             :: rr(3)
  real(dp)             :: normalization
  real(dp)             :: weight
- real(dp)             :: basis_function_r(basis%nbf)
- real(dp)             :: rhor
- real(dp)             :: vxc,exc,excr
+ real(dp)             :: basis_function_r(basis%nbf,1)
+ real(dp)             :: rhor(1)
+ real(dp)             :: vxc(1),exc,excr(1)
  integer              :: iatom,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
  integer              :: ilocal,jlocal,iglobal,jglobal
@@ -856,21 +857,21 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
 
    !
    ! Get all the functions and gradients at point rr
-   call get_basis_functions_r(basis,igrid,basis_function_r)
+   call get_basis_functions_r_batch(basis,igrid,basis_function_r)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call setup_atomic_density(rr,rhor)
+   call setup_atomic_density(rr,rhor(1))
 
    !
    ! Normalization
-   normalization = normalization + rhor * weight
+   normalization = normalization + rhor(1) * weight
 
-   call teter_lda_vxc_exc(1,rhor,vxc,excr)
+   call teter_lda_vxc_exc(1,rhor(1:1),vxc(1:1),excr(1:1))
 
    !
    ! XC energy
-   exc = exc + excr * weight * rhor
+   exc = exc + excr(1) * weight * rhor(1)
 
 
    !
@@ -879,8 +880,8 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
      do iglobal=1,basis%nbf
 
        buffer(iglobal,jglobal) =  buffer(iglobal,jglobal) &
-            + weight * vxc * basis_function_r(iglobal)  &
-                           * basis_function_r(jglobal)
+            + weight * vxc(1) * basis_function_r(iglobal,1)  &
+                           * basis_function_r(jglobal,1)
 
      enddo
    enddo

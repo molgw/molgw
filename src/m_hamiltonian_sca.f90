@@ -20,6 +20,7 @@ module m_hamiltonian_sca
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_hamiltonian
+ use m_density_tools
 
 
 contains
@@ -399,9 +400,9 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
  write(stdout,*) 'Size of the non-SCALAPACK 3-center integrals:',nauxil_3center,npair
 
  ! nauxil x npair
- mwork = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
- nwork = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desc3work,nauxil_2center,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
+ mwork = NUMROC(nauxil_2center,MB_3center,iprow_3center,first_row,nprow_3center)
+ nwork = NUMROC(npair         ,NB_3center,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desc3work,nauxil_2center,npair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
 
 ! call start_clock(timing_tmp8)
 ! call PDGEMR2D(nauxil_2center,npair,eri_3center,1,1,desc3final,eri_3work,1,1,desc3work,cntxt)
@@ -412,13 +413,13 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
  allocate(tmp(mwork,nbf))
 
  ! nauxil x nbf
- nbf_local = NUMROC(nbf,block_col,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desctmp,nauxil_2center,nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
+ nbf_local = NUMROC(nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desctmp,nauxil_2center,nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
  allocate(tmp_local(mwork,nbf_local))
 
  ! nbf x nbf
- mbf_local = NUMROC(nbf,block_row,iprow_3center,first_row,nprow_3center)
- call DESCINIT(descx,nbf,nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mbf_local),info)
+ mbf_local = NUMROC(nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+ call DESCINIT(descx,nbf,nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mbf_local),info)
  allocate(sigx(mbf_local,nbf_local))
 
  do ispin=1,nspin
@@ -447,7 +448,7 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
      call start_clock(timing_tmp1)
      tmp(:,:) = 0.0_dp
      do ipair_local=1,nwork
-       ipair_global = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+       ipair_global = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
        ibf = index_basis(1,ipair_global)
        jbf = index_basis(2,ipair_global)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center(:,ipair_local)
@@ -462,7 +463,7 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
 
 
      do jbf_local=1,nbf_local
-       jbf_global = INDXL2G(jbf_local,block_col,ipcol_3center,first_col,npcol_3center)
+       jbf_global = INDXL2G(jbf_local,NB_3center,ipcol_3center,first_col,npcol_3center)
        tmp_local(:,jbf_local) = tmp(:,jbf_global)
      enddo
      call stop_clock(timing_tmp2)
@@ -1205,9 +1206,9 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp)             :: rr(3)
  real(dp)             :: normalization
  real(dp)             :: weight
- real(dp)             :: basis_function_r(basis%nbf)
- real(dp)             :: rhor
- real(dp)             :: vxc,exc,excr
+ real(dp)             :: basis_function_r(basis%nbf,1)
+ real(dp)             :: rhor(1)
+ real(dp)             :: vxc(1),exc,excr(1)
  real(dp)             :: vsigma(2*nspin-1)
  real(dp)             :: vhgau(m_ham,n_ham)
  integer              :: iatom,ngau
@@ -1253,21 +1254,21 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
 
    !
    ! Get all the functions and gradients at point rr
-   call get_basis_functions_r(basis,igrid,basis_function_r)
+   call get_basis_functions_r_batch(basis,igrid,basis_function_r)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call setup_atomic_density(rr,rhor)
+   call setup_atomic_density(rr,rhor(1))
 
    !
    ! Normalization
-   normalization = normalization + rhor * weight
+   normalization = normalization + rhor(1) * weight
 
-   call teter_lda_vxc_exc(1,rhor,vxc,excr)
+   call teter_lda_vxc_exc(1,rhor(1:1),vxc(1:1),excr(1:1))
 
    !
    ! XC energy
-   exc = exc + excr * weight * rhor
+   exc = exc + excr(1) * weight * rhor(1)
 
    !
    ! HXC
@@ -1277,8 +1278,8 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
        iglobal = rowindex_local_to_global('H',ilocal)
 
        vhxc_ij(ilocal,jlocal) =  vhxc_ij(ilocal,jlocal) &
-            + weight * vxc * basis_function_r(iglobal)  &
-                           * basis_function_r(jglobal)
+            + weight * vxc(1) * basis_function_r(iglobal,1)  &
+                           * basis_function_r(jglobal,1)
 
      enddo
    enddo

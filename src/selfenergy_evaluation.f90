@@ -48,7 +48,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  integer                 :: iomega
  integer                 :: istep_gw
 #ifdef COHSEX_DEVEL
- integer,parameter       :: BATCH_SIZE = 64
+ integer,parameter       :: BATCH_SIZE = 128
  type(calculation_type)  :: calc_type_tmp
  real(dp),allocatable    :: p_matrix(:,:,:)
  integer                 :: istate

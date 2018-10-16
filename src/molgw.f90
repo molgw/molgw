@@ -254,7 +254,7 @@ program molgw
    !
    ! Build the first occupation array
    ! as the energy are not known yet, set temperature to zero
-   call set_occupation(nstate,0.0_dp,electrons,magnetization,energy,occupation)
+   call set_occupation(0.0_dp,electrons,magnetization,energy,occupation)
 
    !
    ! Try to read a RESTART file if it exists
@@ -428,7 +428,7 @@ program molgw
        ! If it is not the last step, then deallocate everything and start over
        if( istep /= nstep ) then
          call deallocate_eri()
-         if(has_auxil_basis) call destroy_eri_3center()
+         if( has_auxil_basis ) call destroy_eri_3center()
          if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
          call clean_deallocate('Overlap matrix S',s_matrix)
          call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
@@ -508,6 +508,21 @@ program molgw
 
  if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+
+ ! Performs a distribution strategy change here for the 3-center integrals
+ ! ( nprow_3center x npcol_3center ) => ( nprow_auxil x 1 )
+ if( has_auxil_basis ) then
+   if( calc_type%selfenergy_approx > 0 .OR. calc_type%is_ci .OR. calc_type%is_td &
+       .OR. calc_type%is_mp2 .OR. calc_type%is_mp3 .OR. calc_type%is_bse ) then
+     call reshuffle_distribution_3center()
+   endif
+ endif
+
+ !
+ !
+ ! Post-processing start here
+ !
+ !
 
  ! Performs a distribution strategy change here for the 3-center integrals
  ! ( nprow_3center x npcol_3center ) => ( nprow_auxil x 1 )

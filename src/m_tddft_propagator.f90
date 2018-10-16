@@ -1055,7 +1055,6 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
    return
  endif
 
-
  open(newunit=restartfile,file='RESTART_TDDFT',form='unformatted',status='old',action='read')
 
  ! current time

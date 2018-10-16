@@ -42,8 +42,6 @@ module m_scalapack
  integer,parameter :: first_col = 0
 
  ! Specific values for the MPI / SCALAPACK transposition
- integer,protected :: MBLOCK_AUXIL = 1
- integer,parameter :: NBLOCK_AUXIL = 1
 
  integer,protected :: nproc_sca = 1
  integer,protected :: iproc_sca = 0
@@ -52,13 +50,14 @@ module m_scalapack
  ! SCALAPACK grid: auxil distribution (so to mimic MPI distribution on auxiliary functions)
  integer,protected :: cntxt_auxil
  integer,protected :: nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil
+ integer,protected :: MB_auxil = 1
+ integer,protected :: NB_auxil = 1
 
  ! SCALAPACK grid for 3 center integrals
  integer,protected :: cntxt_3center
- integer,protected :: nprow_3center
- integer,protected :: npcol_3center
- integer,protected :: iprow_3center
- integer,protected :: ipcol_3center
+ integer,protected :: nprow_3center,npcol_3center,iprow_3center,ipcol_3center
+ integer,protected :: MB_3center = block_row
+ integer,protected :: NB_3center = block_col
 
  ! SCALAPACK grid: square distribution
  integer,protected :: cntxt_sd
@@ -752,8 +751,7 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
  integer              :: desc_eigvec(NDEL)
  integer              :: mlocal,nlocal
  integer              :: lwork,lrwork,info
- complex(dp),allocatable :: work(:)
- real(dp),allocatable    :: rwork(:)
+ complex(dp),allocatable :: work(:),rwork(:)
  complex(dp),allocatable :: eigvec(:,:)
 !=====
 
@@ -767,7 +765,6 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
 
  !
  ! First call to get the dimension of the array work
- ! It seems that there is a bug in SCALAPACK workspace query for rwork
  lwork  = -1
  lrwork = -1
  allocate(work(1))
@@ -779,20 +776,12 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
  ! Second call to actually perform the diago
  lwork  = NINT(REAL(work(1),dp))
  lrwork = NINT(REAL(rwork(1),dp))
+
  deallocate(work)
- deallocate(rwork)
-
- ! Prefer to override the workspace size manually to fix the SCALAPACK bug
- lrwork = 4 * nglobal - 2
-
  allocate(work(lwork))
- allocate(rwork(lrwork))
-
  call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
 
-
  deallocate(work)
- deallocate(rwork)
 
 
  matrix(:,:) = eigvec(:,:)
@@ -827,32 +816,37 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
  integer              :: neigval,neigvec
  integer,allocatable  :: iwork(:)
  integer              :: liwork
+ integer              :: nprow,npcol,iprow,ipcol
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
+ call BLACS_GRIDINFO( desc(CTXT_), nprow, npcol, iprow, ipcol )
 
- !
- ! First call to get the dimension of the array work
- lwork = -1
- allocate(work(1))
- call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+ if( nprow * npcol > 1 ) then
+   !
+   ! First call to get the dimension of the array work
+   lwork = -1
+   allocate(work(1))
+   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
 
+   if( info /= 0) call die('diagonalize_outofplace_sca_dp: failed 1')
 
- !
- ! Second call to actually perform the diago
- lwork = NINT(work(1))
+   !
+   ! Second call to actually perform the diago
+   lwork = NINT(work(1))
 
- deallocate(work)
- allocate(work(lwork))
- call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+   deallocate(work)
+   allocate(work(lwork))
+   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
 
- deallocate(work)
+   if( info /= 0) call die('diagonalize_outofplace_sca_dp: failed 2')
 
-
-#else
-
- call diagonalize(matrix,eigval,eigvec)
-
+   deallocate(work)
+ else
+#endif
+   call diagonalize(matrix,eigval,eigvec)
+#if defined(HAVE_SCALAPACK)
+ endif
 #endif
 
 
@@ -1131,9 +1125,8 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-
    write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
- 
+
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
      rank_master = rank_world
@@ -1342,7 +1335,6 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
 
    !
@@ -1615,7 +1607,6 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
 
 
@@ -1929,7 +1920,6 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
 
    !
@@ -2677,7 +2667,7 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalap
    ! Else just copy the auxil distribution
    if( eri3_nprow * eri3_npcol /= 1 ) &
       call issue_warning('eri3 distribution was not consistent with the number of MPI threads. MOLGW will override user selection')
-   cntxt_3center = cntxt_auxil  
+   cntxt_3center = cntxt_auxil
    nprow_3center = nprow_auxil
    npcol_3center = npcol_auxil
    iprow_3center = iprow_auxil
@@ -3128,15 +3118,22 @@ subroutine set_auxil_block_size(block_size_max)
 !=====
 
  if( block_size_max < 1 ) then
-   MBLOCK_AUXIL = 1
+   MB_auxil = 1
 
  else
-   MBLOCK_AUXIL = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
-   MBLOCK_AUXIL = MIN(MBLOCK_AUXIL,block_row)
+   MB_auxil = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
+   MB_auxil = MIN(MB_auxil,block_row)
 
  endif
 
- write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',MBLOCK_AUXIL
+ write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',MB_auxil
+ NB_auxil = MB_auxil
+
+ ! If not parallelization on columns (pair index), then enforce the same block size
+ if( npcol_3center == npcol_auxil ) then
+   MB_3center = MB_auxil
+   NB_3center = NB_auxil
+ endif
 
 end subroutine set_auxil_block_size
 

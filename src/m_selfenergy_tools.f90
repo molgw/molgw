@@ -508,7 +508,7 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
  real(dp),intent(out)          :: exchange_m_vxc_diag(:,:)
  real(dp),intent(out),optional :: exchange_m_vxc(:,:,:)
 !=====
- integer,parameter    :: BATCH_SIZE = 64
+ integer,parameter    :: BATCH_SIZE = 128
  integer              :: nstate
  integer              :: ispin,istate
  real(dp)             :: exc

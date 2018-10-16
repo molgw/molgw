@@ -540,7 +540,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  call start_clock(timing_eri_2center)
 
 
-
  is_longrange = (rcut > 1.0e-12_dp)
  rcut_libint = rcut
  agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
@@ -559,14 +558,16 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 #endif
  endif
 
+ call set_auxil_block_size(auxil_basis%nbf/(nprow_auxil*2))
+
  if( cntxt_3center > 0 ) then
 
 
    ! Set mlocal => auxil_basis%nbf
    ! Set nlocal => auxil_basis%nbf
-   mlocal = NUMROC(auxil_basis%nbf,block_row,iprow_3center,first_row,nprow_3center)
-   nlocal = NUMROC(auxil_basis%nbf,block_col,ipcol_3center,first_col,npcol_3center)
-   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(auxil_basis%nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
    call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
 
@@ -583,7 +584,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
      skip_shell = .TRUE.
      do kbf=1,nk
        kglobal = auxil_basis%shell(kshell)%istart + kbf - 1
-       skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(kglobal,block_col,0,first_col,npcol_3center) )
+       skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(kglobal,NB_3center,0,first_col,npcol_3center) )
      enddo
 
      if( skip_shell ) cycle
@@ -607,7 +608,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
        skip_shell = .TRUE.
        do ibf=1,ni
          iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
-         skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(iglobal,block_row,0,first_row,nprow_3center) )
+         skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(iglobal,MB_3center,0,first_row,nprow_3center) )
        enddo
 
        if( skip_shell ) cycle
@@ -647,8 +648,8 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
        do kbf=1,nk
          kglobal = auxil_basis%shell(kshell)%istart + kbf - 1
 
-         if( ipcol_3center == INDXG2P(kglobal,block_col,0,first_col,npcol_3center) ) then
-           klocal = INDXG2L(kglobal,block_col,0,first_col,npcol_3center)
+         if( ipcol_3center == INDXG2P(kglobal,NB_3center,0,first_col,npcol_3center) ) then
+           klocal = INDXG2L(kglobal,NB_3center,0,first_col,npcol_3center)
          else
            cycle
          endif
@@ -656,8 +657,8 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
          do ibf=1,ni
            iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
 
-           if( iprow_3center == INDXG2P(iglobal,block_row,0,first_row,nprow_3center) ) then
-             ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_3center)
+           if( iprow_3center == INDXG2P(iglobal,MB_3center,0,first_row,nprow_3center) ) then
+             ilocal = INDXG2L(iglobal,MB_3center,0,first_row,nprow_3center)
            else
              cycle
            endif
@@ -726,9 +727,9 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  ! Now resize the 2-center matrix accordingly
  ! Set mlocal => nauxil_3center
  ! Set nlocal => nauxil_kept < auxil_basis%nbf
- mlocal = NUMROC(auxil_basis%nbf,block_row,iprow_3center,first_row,nprow_3center)
- nlocal = NUMROC(nauxil_kept    ,block_col,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_kept,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+ mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+ nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
 
  if( .NOT. is_longrange ) then
@@ -743,9 +744,9 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  ! Create a rectangular matrix with only 1 / SQRT( eigval) on a diagonal
  eri_2center_tmp(:,:) = 0.0_dp
  do jlocal=1,nlocal
-   jglobal = INDXL2G(jlocal,block_col,ipcol_3center,first_col,npcol_3center)
+   jglobal = INDXL2G(jlocal,NB_3center,ipcol_3center,first_col,npcol_3center)
    do ilocal=1,mlocal
-     iglobal = INDXL2G(ilocal,block_row,iprow_3center,first_row,nprow_3center)
+     iglobal = INDXL2G(ilocal,MB_3center,iprow_3center,first_row,nprow_3center)
 
      if( iglobal == jglobal + nauxil_neglect ) eri_2center_tmp(ilocal,jlocal) = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
 
@@ -870,9 +871,9 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
    ! Set mlocal => auxil_basis%nbf
    ! Set nlocal => npair
-   mlocal = NUMROC(auxil_basis%nbf,block_row,iprow_3center,first_row,nprow_3center)
-   nlocal = NUMROC(npair          ,block_col,ipcol_3center,first_col,npcol_3center)
-   call DESCINIT(desc3center,auxil_basis%nbf,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(npair          ,NB_3center,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc3center,auxil_basis%nbf,npair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
    !  Allocate the 3-center integral array
    !
@@ -897,7 +898,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
        do kbf=1,nk
          klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
 
-         skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(klpair_global,block_col,0,first_col,npcol_3center) )
+         skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(klpair_global,NB_3center,0,first_col,npcol_3center) )
        enddo
      enddo
 
@@ -930,7 +931,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
        skip_shell = .TRUE.
        do ibf=1,ni
          iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
-         skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(iglobal,block_row,0,first_row,nprow_3center) )
+         skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(iglobal,MB_3center,0,first_row,nprow_3center) )
        enddo
 
        if( skip_shell ) cycle
@@ -959,13 +960,13 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
        do lbf=1,nl
          do kbf=1,nk
            klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
-           if( ipcol_3center /= INDXG2P(klpair_global,block_col,0,first_col,npcol_3center) ) cycle
-           jlocal = INDXG2L(klpair_global,block_col,0,first_col,npcol_3center)
+           if( ipcol_3center /= INDXG2P(klpair_global,NB_3center,0,first_col,npcol_3center) ) cycle
+           jlocal = INDXG2L(klpair_global,NB_3center,0,first_col,npcol_3center)
 
            do ibf=1,ni
              iglobal = auxil_basis%shell(ishell)%istart+ibf-1
-             if( iprow_3center /= INDXG2P(iglobal,block_row,0,first_row,nprow_3center) ) cycle
-             ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_3center)
+             if( iprow_3center /= INDXG2P(iglobal,MB_3center,0,first_row,nprow_3center) ) cycle
+             ilocal = INDXG2L(iglobal,MB_3center,0,first_row,nprow_3center)
 
              eri_3center_tmp(ilocal,jlocal) = integrals(ibf,kbf,lbf)
 
@@ -1002,8 +1003,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
    ! Set nlocal => npair
    if( cntxt_3center > 0 ) then
-     mlocal = NUMROC(nauxil_kept,block_row,iprow_3center,first_row,nprow_3center)
-     nlocal = NUMROC(npair      ,block_col,ipcol_3center,first_col,npcol_3center)
+     mlocal = NUMROC(nauxil_kept,MB_3center,iprow_3center,first_row,nprow_3center)
+     nlocal = NUMROC(npair      ,NB_3center,ipcol_3center,first_col,npcol_3center)
    else
      mlocal = 0
      nlocal = 0
@@ -1013,7 +1014,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call clean_allocate('3-center integrals SCALAPACK',eri_3center,mlocal,nlocal)
 
    if( cntxt_3center > 0 ) then
-     call DESCINIT(desc_eri3,nauxil_kept,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+     call DESCINIT(desc_eri3,nauxil_kept,npair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
      call PDGEMM('T','N',nauxil_kept,npair,auxil_basis%nbf, &
                  1.0_dp,eri_2center    ,1,1,desc_2center,  &
@@ -1035,8 +1036,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
    ! Set nlocal => npair
    if( cntxt_3center > 0 ) then
-     mlocal = NUMROC(nauxil_kept,block_row,iprow_3center,first_row,nprow_3center)
-     nlocal = NUMROC(npair      ,block_col,ipcol_3center,first_col,npcol_3center)
+     mlocal = NUMROC(nauxil_kept,MB_3center,iprow_3center,first_row,nprow_3center)
+     nlocal = NUMROC(npair      ,NB_3center,ipcol_3center,first_col,npcol_3center)
    else
      mlocal = 0
      nlocal = 0
@@ -1046,7 +1047,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call clean_allocate('LR 3-center integrals SCALAPACK',eri_3center_lr,mlocal,nlocal)
 
    if( cntxt_3center > 0 ) then
-     call DESCINIT(desc_eri3_lr,nauxil_kept,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+     call DESCINIT(desc_eri3_lr,nauxil_kept,npair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
      call PDGEMM('T','N',nauxil_kept,npair,auxil_basis%nbf, &
                  1.0_dp,eri_2center_lr ,1,1,desc_2center,  &

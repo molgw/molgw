@@ -478,35 +478,17 @@ end subroutine prepare_basis_functions_gradr
 
 
 !=========================================================================
-subroutine get_basis_functions_r(basis,igrid,basis_function_r)
+subroutine get_basis_functions_r_batch(basis,igrid,basis_function_r)
  implicit none
 
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: igrid
- real(dp),intent(out)       :: basis_function_r(basis%nbf)
+ real(dp),intent(out)       :: basis_function_r(:,:)
 !=====
- real(dp)                   :: rr(3)
+ integer                    :: nr
 !=====
 
- if( igrid <= ngrid_stored ) then
-   basis_function_r(:) = bfr(:,igrid)
- else
-   rr(:) = rr_grid(:,igrid)
-   call calculate_basis_functions_r(basis,rr,basis_function_r)
- endif
-
-end subroutine get_basis_functions_r
-
-
-!=========================================================================
-subroutine get_basis_functions_r_batch(basis,igrid,nr,basis_function_r)
- implicit none
-
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: igrid,nr
- real(dp),intent(out)       :: basis_function_r(basis%nbf,nr)
-!=====
-!=====
+ nr = SIZE(basis_function_r,DIM=2)
 
  ! Check if the batch had been fully precalculated
  ! else calculate it now.
@@ -520,35 +502,17 @@ end subroutine get_basis_functions_r_batch
 
 
 !=========================================================================
-subroutine get_basis_functions_gradr(basis,igrid,basis_function_gradr)
+subroutine get_basis_functions_gradr_batch(basis,igrid,basis_function_gradr)
  implicit none
 
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: igrid
- real(dp),intent(out)       :: basis_function_gradr(3,basis%nbf)
+ real(dp),intent(out)       :: basis_function_gradr(:,:,:)
 !=====
- real(dp)                   :: rr(3)
+ integer                    :: nr
 !=====
 
- if( igrid <= ngrid_stored ) then
-   basis_function_gradr(:,:) = TRANSPOSE(bfgr(:,igrid,:))
- else
-   rr(:) = rr_grid(:,igrid)
-   call calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
- endif
-
-end subroutine get_basis_functions_gradr
-
-
-!=========================================================================
-subroutine get_basis_functions_gradr_batch(basis,igrid,nr,basis_function_gradr)
- implicit none
-
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: igrid,nr
- real(dp),intent(out)       :: basis_function_gradr(basis%nbf,nr,3)
-!=====
-!=====
+ nr = SIZE(basis_function_gradr,DIM=2)
 
  ! Check if the batch had been fully precalculated
  ! else calculate it now.
@@ -774,32 +738,6 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
 
 
 end subroutine calculate_basis_functions_laplr
-
-
-!=========================================================================
-subroutine setup_bf_radius(basis)
- implicit none
-
- type(basis_set),intent(in) :: basis
-!=====
- integer  :: igrid,ibf
- real(dp) :: basis_function_r(basis%nbf)
-!=====
-
- allocate(bf_rad2(basis%nbf))
- bf_rad2(:) = 0.0_dp
- do igrid=1,ngrid
-   call get_basis_functions_r(basis,igrid,basis_function_r)
-   do ibf=1,basis%nbf
-     if( ABS(basis_function_r(ibf)) > TOL_BF ) then
-       bf_rad2(ibf) = MAX( bf_rad2(ibf) , SUM( (rr_grid(:,igrid) - basis%bff(ibf)%x0(:))**2 ) )
-     endif
-   enddo
- enddo
-
- call xmax_grid(bf_rad2)
-
-end subroutine setup_bf_radius
 
 
 !=========================================================================

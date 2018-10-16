@@ -732,23 +732,21 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
  if( parallel_buffer ) then
 
-   call set_auxil_block_size(nbf_auxil_basis/(nprow_auxil*4))
-
    do iproc=0,nprow_auxil-1
-     nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iproc,first_row,nprow_auxil)
+     nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,MB_auxil,iproc,first_row,nprow_auxil)
    enddo
 
    nauxil_3center = nbf_local_iproc(iprow_auxil)
 
    allocate(ibf_auxil_g(nauxil_3center))
    do ilocal=1,nauxil_3center
-     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
    enddo
    allocate(ibf_auxil_l(nbf_auxil_basis))
    allocate(iproc_ibf_auxil(nbf_auxil_basis))
    do iglobal=1,nbf_auxil_basis
-     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
-     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
+     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
    enddo
 
  else
@@ -756,18 +754,17 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
    ! Use SCALAPACK routines to distribute the auxiliary basis
    ! Assume a processor grid: nproc_auxil x 1
 
-   call set_auxil_block_size(nbf_auxil_basis/nprow_auxil/2)
 
-   nauxil_3center = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   nauxil_3center = NUMROC(nbf_auxil_basis,MB_auxil,iprow_auxil,first_row,nprow_auxil)
    allocate(ibf_auxil_g(nauxil_3center))
    do ilocal=1,nauxil_3center
-     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
    enddo
    allocate(ibf_auxil_l(nbf_auxil_basis))
    allocate(iproc_ibf_auxil(nbf_auxil_basis))
    do iglobal=1,nbf_auxil_basis
-     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
-     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
+     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
    enddo
 
  endif
@@ -797,20 +794,20 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 #ifdef HAVE_SCALAPACK
 
  do iproc=0,nprow_auxil-1
-   nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iproc,first_row,nprow_auxil)
+   nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis,MB_auxil,iproc,first_row,nprow_auxil)
  enddo
 
  nauxil_3center_lr = nbf_local_iproc_lr(iprow_auxil)
 
  allocate(ibf_auxil_g_lr(nauxil_3center_lr))
  do ilocal=1,nauxil_3center_lr
-   ibf_auxil_g_lr(ilocal) = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   ibf_auxil_g_lr(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
  enddo
  allocate(ibf_auxil_l_lr(nbf_auxil_basis))
  allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
  do iglobal=1,nbf_auxil_basis
-   ibf_auxil_l_lr(iglobal)     = INDXG2L(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
-   iproc_ibf_auxil_lr(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+   ibf_auxil_l_lr(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
+   iproc_ibf_auxil_lr(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
  enddo
 
 #else
@@ -867,14 +864,14 @@ subroutine reshuffle_distribution_3center()
 #ifdef HAVE_SCALAPACK
  write(stdout,'(/,a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_auxil,' x ',npcol_auxil
 
- if( nprow_auxil == nprow_3center .AND. npcol_auxil == npcol_3center .AND. MBLOCK_AUXIL == block_row ) then
+ if( nprow_auxil == nprow_3center .AND. npcol_auxil == npcol_3center .AND. MB_auxil == MB_3center ) then
    write(stdout,*) 'Reshuffling not needed'
    return
  endif
 
  if( cntxt_auxil > 0 ) then
-   mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
-   nlocal = NUMROC(npair         ,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+   mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+   nlocal = NUMROC(npair         ,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
  else
    mlocal = -1
    nlocal = -1
@@ -885,7 +882,7 @@ subroutine reshuffle_distribution_3center()
  if( cntxt_3center > 0 ) then
    call move_alloc(eri_3center,eri_3center_tmp)
 
-   call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+   call DESCINIT(desc3final,nauxil_2center,npair,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
    call clean_allocate('TMP 3-center integrals',eri_3center,mlocal,nlocal)
 

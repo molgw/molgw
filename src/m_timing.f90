@@ -18,7 +18,7 @@ module m_timing
  integer,parameter :: timing_scf                 = 82
  integer,parameter :: timing_postscf             = 83
 
- integer,parameter :: timing_xc                  =  2
+ integer,parameter :: timing_dft                 =  2
  integer,parameter :: timing_pola                =  3
  integer,parameter :: timing_gw_self             =  4
  integer,parameter :: timing_overlap             =  5
@@ -208,7 +208,7 @@ subroutine output_timing()
  call output_timing_line('Density matrix',timing_density_matrix,1)
  call output_timing_line('Hartree potential',timing_hartree,1)
  call output_timing_line('Exchange operator',timing_exchange,1)
- call output_timing_line('DFT xc potential',timing_xc,1)
+ call output_timing_line('DFT xc potential',timing_dft,1)
  call output_timing_line('Densities on a grid',timing_dft_densities,2)
  call output_timing_line('LIBXC calls',timing_dft_libxc,2)
  call output_timing_line('Setting up Vxc ',timing_dft_vxc,2)
