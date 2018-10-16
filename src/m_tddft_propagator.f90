@@ -1020,6 +1020,7 @@ end subroutine write_restart_tddft
 !==========================================
 subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
  use m_definitions
+ use m_density_tools
  implicit none
  logical,intent(out)        :: restart_is_correct
  integer,intent(in)         :: nstate
@@ -1040,13 +1041,7 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
  restart_is_correct=.TRUE.
 
  ! Find highest occupied state
- nocc_check=0
- do ispin=1,nspin
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     if( istate > nocc_check ) nocc_check = istate
-   enddo
- end do
+ nocc_check = get_number_occupied_states(occupation)
 
  inquire(file='RESTART_TDDFT',exist=file_exists)
  if(.NOT. file_exists) then

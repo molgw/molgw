@@ -18,6 +18,7 @@ module m_hamiltonian_cmplx
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
  use m_eri_calculate
+ use m_density_tools
 
 contains
 
@@ -120,13 +121,7 @@ subroutine setup_exchange_versatile_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_
  nstate      = SIZE(occupation(:,:),DIM=1)
 
  ! Find highest occupied state
- nocc = 0
- do ispin=1,nspin
-   do istate=1,nstate
-     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
-     nocc = MAX(nocc,istate)
-   enddo
- enddo
+ nocc = get_number_occupied_states(occupation)
 
  nauxil_local = SIZE(eri_3center,DIM=1)
  npair_local  = SIZE(eri_3center,DIM=2)
@@ -366,10 +361,10 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,occupation,c_matrix_cmplx,vx
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
    if( .NOT. dft_xc_needs_gradient ) then
-     call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
+     call calc_density_r_batch(occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
 
    else
-     call calc_density_gradr_batch_cmplx(nspin,basis%nbf,nstate,nr,occupation,c_matrix_cmplx, &
+     call calc_density_gradr_batch(occupation,c_matrix_cmplx, &
                                    basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
      !$OMP PARALLEL DO
      do ir=1,nr
@@ -661,7 +656,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
 
    call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
 
-   call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
+   call calc_density_r_batch(occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
 
    do ir=1,nr
      igrid = igrid_start + ir - 1

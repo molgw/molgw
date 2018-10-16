@@ -14,6 +14,15 @@ module m_density_tools
  use m_inputparam
  use m_basis_set
 
+ interface calc_density_r_batch
+   module procedure calc_density_r_batch_real
+   module procedure calc_density_r_batch_cmplx
+ end interface calc_density_r_batch
+
+ interface calc_density_gradr_batch
+   module procedure calc_density_gradr_batch_real
+   module procedure calc_density_gradr_batch_cmplx
+ end interface calc_density_gradr_batch
 
 contains
 
@@ -79,7 +88,7 @@ end subroutine setup_atomic_density
 
 
 !=========================================================================
-subroutine calc_density_r_batch(occupation,c_matrix,basis_function_r,rhor)
+subroutine calc_density_r_batch_real(occupation,c_matrix,basis_function_r,rhor)
  implicit none
 
  real(dp),intent(in)        :: c_matrix(:,:,:)
@@ -120,35 +129,41 @@ subroutine calc_density_r_batch(occupation,c_matrix,basis_function_r,rhor)
 
  deallocate(phir)
 
-end subroutine calc_density_r_batch
+end subroutine calc_density_r_batch_real
 
 !=========================================================================
-subroutine calc_density_r_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r,rhor)
+subroutine calc_density_r_batch_cmplx(occupation,c_matrix_cmplx,basis_function_r,rhor)
  use m_definitions
  use m_mpi
  use m_basis_set
  implicit none
 
- integer,intent(in)         :: nspin,nbf,nstate,nr
  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
  real(dp),intent(in)        :: occupation(:,:)
  real(dp),intent(in)        :: basis_function_r(:,:)
  real(dp),intent(out)       :: rhor(:,:)
 !=====
+ integer                 :: nspin,nbf,nstate,nr
  integer                 :: ispin,istate,ir
  complex(dp),allocatable :: phir_cmplx(:,:)
  integer                 :: nocc
- complex(dp)             :: basis_function_r_cmplx(nbf,nr)
+ complex(dp),allocatable :: basis_function_r_cmplx(:,:)
  complex(dp),parameter   :: ONE  = (1.0_dp,0.0_dp)
  complex(dp),parameter   :: ZERO = (0.0_dp,0.0_dp)
 !=====
 
+ nbf    = SIZE(c_matrix_cmplx,DIM=1)
+ nstate = SIZE(c_matrix_cmplx,DIM=2)
+ nspin  = SIZE(c_matrix_cmplx,DIM=3)
+ nr     = SIZE(rhor,DIM=2)
  nocc = get_number_occupied_states(occupation)
 
  !
  ! Calculate the density rho at points in batch
  rhor(:,:)=0.0_dp
  allocate(phir_cmplx(nocc,nr))
+
+ allocate(basis_function_r_cmplx(nbf,nr))
 
  basis_function_r_cmplx = ZERO
  basis_function_r_cmplx = basis_function_r
@@ -171,7 +186,7 @@ subroutine calc_density_r_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matrix_cm
 end subroutine calc_density_r_batch_cmplx
 
 !=========================================================================
-subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_function_gradr,rhor,grad_rhor)
+subroutine calc_density_gradr_batch_real(occupation,c_matrix,basis_function_r,basis_function_gradr,rhor,grad_rhor)
  implicit none
 
  real(dp),intent(in)        :: c_matrix(:,:,:)
@@ -234,16 +249,15 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
  deallocate(phir_gradx,phir_grady,phir_gradz)
 
 
-end subroutine calc_density_gradr_batch
+end subroutine calc_density_gradr_batch_real
 
 !========================================================================
-subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,rhor,grad_rhor)
+subroutine calc_density_gradr_batch_cmplx(occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,rhor,grad_rhor)
  use m_definitions
  use m_mpi
  use m_basis_set
  implicit none
 
- integer,intent(in)         :: nspin,nbf,nstate,nr
  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
  real(dp),intent(in)        :: occupation(:,:)
  real(dp),intent(in)        :: basis_function_r(:,:)
@@ -251,18 +265,23 @@ subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matri
  real(dp),intent(out)       :: rhor(:,:)
  real(dp),intent(out)       :: grad_rhor(:,:,:)
 !=====
- integer              :: ispin,istate,ir
+ integer                 :: nspin,nbf,nstate,nr
+ integer                 :: ispin,istate,ir
  complex(dp),allocatable :: phir_cmplx(:,:)
  complex(dp),allocatable :: phir_gradx_cmplx(:,:)
  complex(dp),allocatable :: phir_grady_cmplx(:,:)
  complex(dp),allocatable :: phir_gradz_cmplx(:,:)
  integer                 :: nocc
- complex(dp)             :: basis_function_r_cmplx(nbf,nr)
- complex(dp)             :: basis_function_gradr_cmplx(nbf,nr,3)
+ complex(dp),allocatable :: basis_function_r_cmplx(:,:)
+ complex(dp),allocatable :: basis_function_gradr_cmplx(:,:,:)
  complex(dp),parameter   :: ONE  = (1.0_dp,0.0_dp)
  complex(dp),parameter   :: ZERO = (0.0_dp,0.0_dp)
 !=====
 
+ nbf    = SIZE(c_matrix_cmplx,DIM=1)
+ nstate = SIZE(c_matrix_cmplx,DIM=2)
+ nspin  = SIZE(c_matrix_cmplx,DIM=3)
+ nr     = SIZE(rhor,DIM=2)
  nocc = get_number_occupied_states(occupation)
  !
  ! Calculate rho and grad rho at points in batch
@@ -273,6 +292,9 @@ subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matri
  allocate(phir_gradx_cmplx(nocc,nr))
  allocate(phir_grady_cmplx(nocc,nr))
  allocate(phir_gradz_cmplx(nocc,nr))
+
+ allocate(basis_function_r_cmplx(nbf,nr))
+ allocate(basis_function_gradr_cmplx(nbf,nr,3))
 
  basis_function_r_cmplx = ZERO
  basis_function_r_cmplx = basis_function_r
@@ -309,25 +331,31 @@ subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matri
 end subroutine calc_density_gradr_batch_cmplx
 
 !========================================================================
-subroutine calc_density_current_rr_cmplx(nspin,nbf,nstate,nocc,nr,occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,jcurdens)
+subroutine calc_density_current_rr_cmplx(occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,jcurdens)
  use m_definitions
  use m_mpi
  use m_basis_set
  implicit none
 
- integer,intent(in)         :: nspin,nbf,nstate,nr,nocc
  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
  real(dp),intent(in)        :: occupation(:,:)
  real(dp),intent(in)        :: basis_function_r(:,:)
  real(dp),intent(in)        :: basis_function_gradr(:,:,:)
  real(dp),intent(out)       :: jcurdens(:,:,:)
 !=====
+ integer                 :: nspin,nbf,nstate,nr,nocc
  integer                 :: ispin,istate,ir
  complex(dp),allocatable :: phir_cmplx(:,:)
  complex(dp),allocatable :: phir_gradx_cmplx(:,:)
  complex(dp),allocatable :: phir_grady_cmplx(:,:)
  complex(dp),allocatable :: phir_gradz_cmplx(:,:)
 !=====
+
+ nbf    = SIZE(c_matrix_cmplx,DIM=1)
+ nstate = SIZE(c_matrix_cmplx,DIM=2)
+ nspin  = SIZE(c_matrix_cmplx,DIM=3)
+ nr     = SIZE(jcurdens,DIM=2)
+ nocc = get_number_occupied_states(occupation)
 
  !
  ! Calculate current density in points given in basis_function_r
