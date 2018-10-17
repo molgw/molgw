@@ -15,6 +15,7 @@ import sys, os, time, shutil, subprocess
 today=time.strftime("%Y")+'_'+time.strftime("%m")+'_'+time.strftime("%d")
 start_time = time.time()
 keeptmp = False
+run_tddft = False
 
 selected_input_files= []
 excluded_input_files= []
@@ -167,12 +168,13 @@ def check_output(out,testinfo):
 ###################################
 # Parse the command line
 
-option_list = ['--keep','--np','--mpirun','--input','--exclude','--debug']
+option_list = ['--keep','--np','--mpirun','--input','--exclude','--debug','--tddft']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
     print('Run the complete test suite of MOLGW')
     print('  --keep             Keep the temporary folder')
+    print('  --tddft            Run tddft tests')
     print('  --np     n         Set the number of MPI threads to n')
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input files      Only run these input files')
@@ -181,12 +183,15 @@ if len(sys.argv) > 1:
     sys.exit(0)
 
   for argument in sys.argv:
-    if '--' in argument and  argument not in ['--keep','--np','--mpirun','--input','--exclude','--debug']:
+    if '--' in argument and  argument not in option_list: 
       print('Unknown option: ' + argument)
       sys.exit(1)
 
   if '--keep' in sys.argv or '-keep' in sys.argv:
     keeptmp = True
+
+  if '--tddft' in sys.argv or '-tddft' in sys.argv:
+    run_tddft = True
 
   if '--np' in sys.argv:
     i = sys.argv.index('--np') + 1
@@ -241,6 +246,7 @@ ninput = 0
 input_files = []
 restarting  = []
 parallel    = []
+tddft       = []
 test_names  = []
 testinfo    = []
 
@@ -258,6 +264,7 @@ for line in ftestsuite:
     testinfo.append([])
     restarting.append(False)
     parallel.append(True)
+    tddft.append(False)
 
   if len(parsing) == 3:
     ninput+=1
@@ -272,6 +279,10 @@ for line in ftestsuite:
       parallel.append(False)
     else:
       parallel.append(True)
+    if 'tddft' in parsing[2].lower():
+      tddft.append(True)
+    else:
+      tddft.append(False)
 
   elif len(parsing) == 4:
     testinfo[ninput-1].append(parsing)
@@ -346,6 +357,10 @@ for iinput in range(ninput):
   if not parallel[iinput] and nprocs > 1:
     test_skipped = test_skipped + 1
     continue
+  if not (run_tddft and tddft[iinput]):
+    test_skipped = test_skipped + 1
+    continue
+    
 
   inp     = input_files[iinput]
   out     = input_files[iinput].split('.in')[0]+'.out'

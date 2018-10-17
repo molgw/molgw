@@ -199,7 +199,7 @@ program spectrum
  close(file_transforms)
  close(file_dipolar_spectra)
 #else
- call issue_warning("tddft: calculate_propagation; fftw is not present")
+ call die("tddft: calculate_propagation; fftw is not present")
 #endif
 
 contains
