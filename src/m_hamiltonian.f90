@@ -286,7 +286,9 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
    !$OMP END PARALLEL
 
    !FIXME ortho parallelization is not taken into account here!
+#if defined(HAVE_SCALAPACK)
    call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,1,partial_sum,nauxil_local,-1,-1)
+#endif
 
 
    !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
@@ -431,7 +433,9 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
+#if defined(HAVE_SCALAPACK)
        call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
+#endif
 
        ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
        !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
@@ -560,7 +564,9 @@ subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,ex
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
+#if defined(HAVE_SCALAPACK)
        call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
+#endif
 
        ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
        !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
@@ -1246,6 +1252,9 @@ end subroutine get_c_matrix_from_p_matrix
 
 
 !=========================================================================
+! Calculate the exchange-correlation potential and energy
+! * subroutine works for both real and complex wavefunctions c_matrix
+!   using "class" syntax of Fortran2003
 subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
@@ -1259,7 +1268,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  integer,intent(in)         :: batch_size
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
+ class(*),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(out)       :: vxc_ij(:,:,:)
  real(dp),intent(out)       :: exc_xc
 !=====
@@ -1335,9 +1344,9 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    ! Calculate grad rho at points r for spin up and spin down
    if( .NOT. dft_xc_needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
-
    else
      call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+
      !$OMP PARALLEL DO
      do ir=1,nr
        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )

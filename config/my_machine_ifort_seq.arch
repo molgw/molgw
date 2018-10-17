@@ -7,7 +7,7 @@ FC=ifort -fpp -DHAVE_LIBXC
 
 CPPFLAGS= -DHAVE_LIBXC # -DHAVE_LIBINT_ONEBODY
 
-CXX=icpc
+CXX=icpc -std=c++0x
 FCOPTS= -O3 -xhost -parallel -qopt-matmul
 CXXOPTS= -O3 -xhost  
 

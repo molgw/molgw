@@ -14,6 +14,8 @@ module m_density_tools
  use m_inputparam
  use m_basis_set
 
+ complex(8),parameter :: COMPLEX_ONE  = (1.0_8,0.0_8)
+ complex(8),parameter :: COMPLEX_ZERO = (0.0_8,0.0_8)
 
 contains
 
@@ -79,18 +81,22 @@ end subroutine setup_atomic_density
 
 
 !=========================================================================
+! Calculate the density on a batch for both real and complex wavefunctions
+!
 subroutine calc_density_r_batch(occupation,c_matrix,basis_function_r,rhor)
  implicit none
 
- real(dp),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(in)        :: occupation(:,:)
+ class(*),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(in)        :: basis_function_r(:,:)
  real(dp),intent(out)       :: rhor(:,:)
 !=====
- integer              :: nspin,nbf,nstate,nr
- integer              :: ispin,ir
- real(dp),allocatable :: phir(:,:)
- integer              :: nocc
+ integer                 :: nspin,nbf,nstate,nr
+ integer                 :: ispin,ir
+ integer                 :: nocc
+ real(dp),allocatable    :: phir(:,:)
+ complex(dp),allocatable :: phir_cmplx(:,:)
+ complex(dp),allocatable :: basis_function_r_cmplx(:,:)
 !=====
 
  nbf    = SIZE(c_matrix,DIM=1)
@@ -101,46 +107,80 @@ subroutine calc_density_r_batch(occupation,c_matrix,basis_function_r,rhor)
 
  if( nocc > nstate ) call die('calc_density_r_batch: c_matrix does not contain all the occupied states')
 
- allocate(phir(nocc,nr))
 
  !
  ! Calculate the density rho at points in batch
  do ispin=1,nspin
 
    !phir(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
-   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_r,nbf,0.d0,phir,nocc)
 
-   !$OMP PARALLEL DO
-   do ir=1,nr
-     rhor(ispin,ir) = SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
-   enddo
-   !$OMP END PARALLEL DO
+   select type(c_matrix)
+   type is (real(dp))
+
+     allocate(phir(nocc,nr))
+
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_r,nbf,0.d0,phir,nocc)
+
+     !$OMP PARALLEL DO
+     do ir=1,nr
+       rhor(ispin,ir) = SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
+     enddo
+     !$OMP END PARALLEL DO
+
+     deallocate(phir)
+
+   type is (complex(dp))
+
+     allocate(phir_cmplx(nocc,nr))
+     allocate(basis_function_r_cmplx(nbf,nr))
+     basis_function_r_cmplx(:,:) = basis_function_r(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,basis_function_r_cmplx,nbf,COMPLEX_ZERO,phir_cmplx,nocc)
+     deallocate(basis_function_r_cmplx)
+
+     !$OMP PARALLEL DO
+     do ir=1,nr
+       rhor(ispin,ir) = SUM( ABS(phir_cmplx(:,ir))**2 * occupation(:nocc,ispin) )
+     enddo
+     !$OMP END PARALLEL DO
+
+     deallocate(phir_cmplx)
+
+   class default
+     call die('calc_density_r_batch: not real, not complex')
+   end select
+
 
  enddo
 
- deallocate(phir)
 
 end subroutine calc_density_r_batch
 
 
 !=========================================================================
+! Calculate the density and its gradient on a batch for both real and complex wavefunctions
+!
 subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_function_gradr,rhor,grad_rhor)
  implicit none
 
- real(dp),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(in)        :: occupation(:,:)
+ class(*),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(in)        :: basis_function_r(:,:)
  real(dp),intent(in)        :: basis_function_gradr(:,:,:)
  real(dp),intent(out)       :: rhor(:,:)
  real(dp),intent(out)       :: grad_rhor(:,:,:)
 !=====
- integer              :: nspin,nbf,nstate,nr
- integer              :: ispin,ir
- real(dp),allocatable :: phir(:,:)
- real(dp),allocatable :: phir_gradx(:,:)
- real(dp),allocatable :: phir_grady(:,:)
- real(dp),allocatable :: phir_gradz(:,:)
- integer              :: nocc
+ integer                 :: nspin,nbf,nstate,nr
+ integer                 :: nocc
+ integer                 :: ispin,ir
+ real(dp),allocatable    :: phir(:,:)
+ real(dp),allocatable    :: phir_gradx(:,:)
+ real(dp),allocatable    :: phir_grady(:,:)
+ real(dp),allocatable    :: phir_gradz(:,:)
+ complex(dp),allocatable :: tmp_cmplx(:,:)
+ complex(dp),allocatable :: phir_cmplx(:,:)
+ complex(dp),allocatable :: phir_gradx_cmplx(:,:)
+ complex(dp),allocatable :: phir_grady_cmplx(:,:)
+ complex(dp),allocatable :: phir_gradz_cmplx(:,:)
 !=====
 
  nbf    = SIZE(c_matrix,DIM=1)
@@ -151,40 +191,75 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
 
  if( nocc > nstate ) call die('calc_density_gradr_batch: c_matrix does not contain all the occupied states')
 
- allocate(phir(nocc,nr))
- allocate(phir_gradx(nocc,nr))
- allocate(phir_grady(nocc,nr))
- allocate(phir_gradz(nocc,nr))
-
  !
  ! Calculate rho and grad rho at points in batch
 
  do ispin=1,nspin
 
-   !phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
-   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_r,nbf,0.d0,phir,nocc)
+   select type(c_matrix)
+   type is (real(dp))
 
-   !phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
-   !phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
-   !phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
-   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,1),nbf,0.d0,phir_gradx,nocc)
-   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,2),nbf,0.d0,phir_grady,nocc)
-   call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,3),nbf,0.d0,phir_gradz,nocc)
+     allocate(phir(nocc,nr))
+     allocate(phir_gradx(nocc,nr))
+     allocate(phir_grady(nocc,nr))
+     allocate(phir_gradz(nocc,nr))
+     !phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_r,nbf,0.d0,phir,nocc)
+     !phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
+     !phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
+     !phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,1),nbf,0.d0,phir_gradx,nocc)
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,2),nbf,0.d0,phir_grady,nocc)
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,3),nbf,0.d0,phir_gradz,nocc)
+
+     !$OMP PARALLEL DO
+     do ir=1,nr
+       rhor(ispin,ir)        = SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
+       grad_rhor(ispin,ir,1) = 2.0_dp * SUM(  phir(:,ir) * phir_gradx(:,ir) * occupation(:nocc,ispin) )
+       grad_rhor(ispin,ir,2) = 2.0_dp * SUM(  phir(:,ir) * phir_grady(:,ir) * occupation(:nocc,ispin) )
+       grad_rhor(ispin,ir,3) = 2.0_dp * SUM(  phir(:,ir) * phir_gradz(:,ir) * occupation(:nocc,ispin) )
+     enddo
+     !$OMP END PARALLEL DO
+     deallocate(phir)
+     deallocate(phir_gradx,phir_grady,phir_gradz)
+
+   type is (complex(dp))
+     allocate(phir_cmplx(nocc,nr))
+     allocate(phir_gradx_cmplx(nocc,nr))
+     allocate(phir_grady_cmplx(nocc,nr))
+     allocate(phir_gradz_cmplx(nocc,nr))
+     allocate(tmp_cmplx(nbf,nr))
+
+     tmp_cmplx(:,:) = basis_function_r(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_cmplx,nocc)
+     tmp_cmplx(:,:) = basis_function_gradr(:,:,1)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradx_cmplx,nocc)
+     tmp_cmplx(:,:) = basis_function_gradr(:,:,2)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_grady_cmplx,nocc)
+     tmp_cmplx(:,:) = basis_function_gradr(:,:,3)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradz_cmplx,nocc)
+
+     !$OMP PARALLEL DO
+     do ir=1,nr
+       rhor(ispin,ir) = SUM( ABS(phir_cmplx(:,ir))**2 * occupation(:nocc,ispin) )
+       grad_rhor(ispin,ir,1) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_gradx_cmplx(:,ir)) * occupation(:nocc,ispin ) ), dp )
+       grad_rhor(ispin,ir,2) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_grady_cmplx(:,ir)) * occupation(:nocc,ispin ) ), dp )
+       grad_rhor(ispin,ir,3) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_gradz_cmplx(:,ir)) * occupation(:nocc,ispin ) ), dp )
+     enddo
+     !$OMP END PARALLEL DO
+
+     deallocate(tmp_cmplx)
+     deallocate(phir)
+     deallocate(phir_gradx,phir_grady,phir_gradz)
+
+   class default
+     call die('calc_density_gradr_batch: not real, not complex')
+   end select
 
 
-   !$OMP PARALLEL DO
-   do ir=1,nr
-     rhor(ispin,ir)        = SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
-     grad_rhor(ispin,ir,1) = 2.0_dp * SUM(  phir(:,ir) * phir_gradx(:,ir) * occupation(:nocc,ispin) )
-     grad_rhor(ispin,ir,2) = 2.0_dp * SUM(  phir(:,ir) * phir_grady(:,ir) * occupation(:nocc,ispin) )
-     grad_rhor(ispin,ir,3) = 2.0_dp * SUM(  phir(:,ir) * phir_gradz(:,ir) * occupation(:nocc,ispin) )
-   enddo
-   !$OMP END PARALLEL DO
 
  enddo
 
- deallocate(phir)
- deallocate(phir_gradx,phir_grady,phir_gradz)
 
 
 end subroutine calc_density_gradr_batch
