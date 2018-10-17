@@ -357,7 +357,8 @@ for iinput in range(ninput):
   if not parallel[iinput] and nprocs > 1:
     test_skipped = test_skipped + 1
     continue
-  if not (run_tddft and tddft[iinput]):
+  print("salut",run_tddft,tddft[iinput],str(not (run_tddft and tddft[iinput])))
+  if (not run_tddft) and tddft[iinput]:
     test_skipped = test_skipped + 1
     continue
     
