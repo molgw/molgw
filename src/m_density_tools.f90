@@ -248,8 +248,8 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
      !$OMP END PARALLEL DO
 
      deallocate(tmp_cmplx)
-     deallocate(phir)
-     deallocate(phir_gradx,phir_grady,phir_gradz)
+     deallocate(phir_cmplx)
+     deallocate(phir_gradx_cmplx,phir_grady_cmplx,phir_gradz_cmplx)
 
    class default
      call die('calc_density_gradr_batch: not real, not complex')
