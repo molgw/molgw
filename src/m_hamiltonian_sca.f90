@@ -14,6 +14,7 @@ module m_hamiltonian_sca
  use m_mpi
  use m_scalapack
  use m_timing
+ use m_tddft_variables
  use m_warning
  use m_memory
  use m_cart_to_pure
@@ -290,7 +291,6 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
 #ifdef HAVE_SCALAPACK
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK'
- call start_clock(timing_hartree)
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
@@ -342,7 +342,6 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
  call xsum_local(ehartree)
 
 
- call stop_clock(timing_hartree)
 
 
 #endif
@@ -875,11 +874,13 @@ subroutine diagonalize_hamiltonian_sca(desc_h,hamiltonian,desc_sqrt,s_matrix_sqr
 
      !
      ! H_small = S^{-1/2}**T H S^{-1/2}
+     ! H*S**{-1/2} --> c_matrix
      call PDGEMM('N','N',nbf,nstate,nbf,                         &
                   1.0_dp,hamiltonian(1,1,ispin),1,1,desc_h,      &
                               s_matrix_sqrt_inv,1,1,desc_sqrt,   &
                   0.0_dp,   c_matrix(1,1,ispin),1,1,desc_sqrt)
 
+     ! S**{-1/2}**T*c_matrix --> h_small
      call PDGEMM('T','N',nstate,nstate,nbf,                      &
                   1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,        &
                        c_matrix(1,1,ispin),1,1,desc_sqrt,        &
@@ -921,6 +922,106 @@ subroutine diagonalize_hamiltonian_sca(desc_h,hamiltonian,desc_sqrt,s_matrix_sqr
 #endif
 
 end subroutine diagonalize_hamiltonian_sca
+
+
+!=========================================================================
+!subroutine  diagonalize_hamiltonian_sca_cmplx(ispin_min,ispin_max,desc_h, &
+!               hamiltonian_cmplx,desc_sqrt,s_matrix_sqrt_inv,energy,c_matrix_cmplx)
+! implicit none
+!
+! integer,intent(in)      :: ispin_min,ispin_max
+! integer,intent(in)      :: desc_h(NDEL),desc_sqrt(NDEL)
+! complex(dp),intent(in)  :: hamiltonian_cmplx(:,:,:)
+! real(dp),intent(in)     :: s_matrix_sqrt_inv(:,:)
+! complex(dp),intent(out)    :: c_matrix(:,:,:)
+! real(dp),intent(out)    :: energy(:,:)
+!!=====
+! integer  :: cntxt
+! integer  :: iprow,ipcol,nprow,npcol
+! integer  :: nstate,nbf
+! integer  :: m_ham,n_ham
+! integer  :: m_c,n_c
+! integer  :: ispin
+! integer  :: ilocal,jlocal,jglobal
+! integer  :: m_small,n_small
+! integer  :: info
+! complex(dp),allocatable :: h_small_cmplx(:,:)
+!!=====
+!
+!#ifdef HAVE_SCALAPACK
+!
+! cntxt  = desc_h(CTXT_A)
+! nbf    = desc_h(M_A)
+! nstate = desc_sqrt(N_A)
+! m_ham  = SIZE(hamiltonian_cmplx, DIM=1 )
+! n_ham  = SIZE(hamiltonian_cmplx, DIM=2 )
+! m_c    = SIZE(c_matrix_cmplx, DIM=1 )
+! n_c    = SIZE(c_matrix_cmplx, DIM=2 )
+!
+! call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+!
+! if(cntxt_ham > 0 ) then
+!   m_small = NUMROC(nstate,desc_h(MB_A),iprow,desc_h(RSRC_A),nprow)
+!   n_small = NUMROC(nstate,desc_h(NB_A),ipcol,desc_h(CSRC_A),npcol)
+!   call DESCINIT(desc_small,nstate,nstate,desc_h(MB_A),desc_h(NB_A),desc_h(RSRC_A),desc_h(CSRC_A),cntxt,m_small,info)
+!   allocate(h_small_cmplx(m_small,n_small))
+!
+!   do ispin=ispin_min,ispin_max
+!     write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
+!     call start_clock(timing_diago_hamiltonian)
+!
+!     !
+!     ! H_small = S^{-1/2}**T H S^{-1/2}
+!     ! H*S**{-1/2} --> c_matrix
+!     call PZGEMM('N','N',nbf,nstate,nbf,                         &
+!                  1.0_dp,hamiltonian(1,1,ispin),1,1,desc_h,      &
+!                              s_matrix_sqrt_inv,1,1,desc_sqrt,   &
+!                  0.0_dp,   c_matrix(1,1,ispin),1,1,desc_sqrt)
+!
+!     ! S**{-1/2}**T*c_matrix --> h_small
+!     call PZGEMM('T','N',nstate,nstate,nbf,                      &
+!                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,        &
+!                       c_matrix(1,1,ispin),1,1,desc_sqrt,        &
+!                  0.0_dp,          h_small,1,1,desc_small)
+!
+!
+!
+!     call diagonalize_sca(nstate,desc_small,h_small,energy(:,ispin))
+!
+!
+!     !
+!     ! C = S^{-1/2} C_small 
+!     call PDGEMM('N','N',nbf,nstate,nstate,                   &
+!                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,     &
+!                                 h_small,1,1,desc_small,      &
+!                  0.0_dp,c_matrix(1,1,ispin),1,1,desc_sqrt) 
+!
+!
+!     call stop_clock(timing_diago_hamiltonian)
+!   enddo
+!
+!   deallocate(h_small)
+!
+! else
+!   c_matrix(:,:,:) = 0.0_dp
+! endif
+!
+! ! Ensure that all procs know the energies
+! if( rank_world /= 0 ) then
+!   energy(:,ispin_min:ispin_max) = 0.0_dp
+! endif
+! call xsum_world(energy(:,ispin_min:ispin_max))
+!
+! ! Poor man distribution
+! call xsum_local(c_matrix)
+!
+!
+!
+!#endif
+!
+!end subroutine diagonalize_hamiltonian_sca
+!
+
 
 
 !=========================================================================
@@ -1123,7 +1224,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities: SCALAPACK'
 
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    if( rank_local /= MODULO(iatom,nproc_local) ) cycle
 
    ngau = 4

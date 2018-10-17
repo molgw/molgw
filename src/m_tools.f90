@@ -16,6 +16,7 @@ module m_tools
    module procedure invert_dp
    module procedure invert_inplace_dp
    module procedure invert_cdp
+   module procedure invert_inplace_cdp
  end interface
 
  interface diagonalize_wo_vectors
@@ -58,6 +59,26 @@ function matrix_trace(matrix)
  enddo
 
 end function matrix_trace
+
+!=========================================================================
+function matrix_trace_cmplx(matrix)
+ implicit none
+ complex(dp),intent(in) :: matrix(:,:)
+ complex(dp)            :: matrix_trace_cmplx
+!=====
+ integer :: n1,i1
+!=====
+
+ n1 = SIZE( matrix , DIM=1 )
+ if( n1 /= SIZE( matrix , DIM=2 ) ) call die('matrix_trace: non square matrix')
+
+ matrix_trace_cmplx = ( 0.0_dp, 0.0_dp )
+ do i1=1,n1
+   matrix_trace_cmplx = matrix_trace_cmplx + matrix(i1,i1)
+ enddo
+
+end function matrix_trace_cmplx
+
 
 !=========================================================================
 subroutine init_seed(iseed)
@@ -196,6 +217,33 @@ subroutine invert_cdp(matrix,matrix_inv)
  deallocate(work,ipiv)
 
 end subroutine invert_cdp
+
+
+!=========================================================================
+subroutine invert_inplace_cdp(matrix)
+ implicit none
+ complex(dp),intent(in) :: matrix(:,:)
+!=====
+ integer                 :: nmat
+ complex(dp),allocatable :: work(:)
+ integer,allocatable     :: ipiv(:)
+ integer                 :: info
+!=====
+
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(nmat))
+ allocate(ipiv(nmat))
+
+ call ZGETRF(nmat,nmat,matrix,nmat,ipiv,info)
+ if(info/=0) call die('FAILURE in ZGETRF')
+
+ call ZGETRI(nmat,matrix,nmat,ipiv,work,nmat,info)
+ if(info/=0) call die('FAILURE in ZGETRI')
+
+
+ deallocate(work,ipiv)
+
+end subroutine invert_inplace_cdp
 
 
 !=========================================================================

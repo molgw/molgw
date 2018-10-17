@@ -377,7 +377,10 @@ subroutine xsum_auxil_ra2d(array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
+! write(stdout,*) "test 1 here"
+! write(stdout,*) MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_auxil, ier
  call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_auxil, ier)
+! write(stdout,*) "test 2 here"
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'

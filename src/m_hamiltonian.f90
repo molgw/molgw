@@ -1277,6 +1277,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  integer              :: ibf,jbf,ispin
  integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
+ integer              :: timing_xxdft_xc,timing_xxdft_densities,timing_xxdft_libxc,timing_xxdft_vxc
  real(dp)             :: normalization(nspin)
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: tmp_batch(:,:)
@@ -1296,7 +1297,22 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_dft)
+ select type(c_matrix)
+ type is (real(dp))
+   timing_xxdft_xc        = timing_dft_xc
+   timing_xxdft_densities = timing_dft_densities
+   timing_xxdft_libxc     = timing_dft_libxc
+   timing_xxdft_vxc       = timing_dft_vxc
+ type is (complex(dp))
+   timing_xxdft_xc        = timing_tddft_xc
+   timing_xxdft_densities = timing_tddft_densities
+   timing_xxdft_libxc     = timing_tddft_libxc
+   timing_xxdft_vxc       = timing_tddft_vxc
+ class default
+   call die("dft_exc_vxc_batch: c_matrix is neither real nor complex")
+ end select
+
+ call start_clock(timing_xxdft_xc)
 
  nstate = SIZE(occupation,DIM=1)
 
@@ -1315,7 +1331,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    igrid_end = MIN(ngrid,igrid_start+batch_size-1)
    nr = igrid_end - igrid_start + 1
 
-   call start_clock(timing_dft_densities)
+   call start_clock(timing_xxdft_densities)
 
    allocate(weight_batch(nr))
    allocate(rhor_batch(nspin,nr))
@@ -1362,13 +1378,13 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
 
-   call stop_clock(timing_dft_densities)
+   call stop_clock(timing_xxdft_densities)
 
 
    !
    ! LIBXC calls
    !
-   call start_clock(timing_dft_libxc)
+   call start_clock(timing_xxdft_libxc)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -1431,14 +1447,14 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    enddo ! loop on the XC functional
 
-   call stop_clock(timing_dft_libxc)
+   call stop_clock(timing_xxdft_libxc)
 
 
 
    !
    ! Eventually set up the vxc term
    !
-   call start_clock(timing_dft_vxc)
+   call start_clock(timing_xxdft_vxc)
 
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
@@ -1468,7 +1484,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    enddo
    deallocate(tmp_batch)
 
-   call stop_clock(timing_dft_vxc)
+   call stop_clock(timing_xxdft_vxc)
 
 
    deallocate(weight_batch)
@@ -1514,7 +1530,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_xxdft_xc)
 
 end subroutine dft_exc_vxc_batch
 

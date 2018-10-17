@@ -49,6 +49,8 @@ program molgw
  use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_scf_loop
+ use m_tddft_propagator
+ use m_tddft_variables
  use m_virtual_orbital_space
  use m_ci
  implicit none
@@ -301,6 +303,13 @@ program molgw
      endif
    endif
 
+   !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
+   if( read_tddft_restart_ ) then
+     call check_restart_tddft(nstate,occupation,restart_tddft_is_correct)
+   end if
+
+
+   if( restart_tddft_is_correct .AND. read_tddft_restart_ ) exit
 
    if( is_basis_restart ) then
      !
@@ -315,7 +324,7 @@ program molgw
    ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
    ! ignore the restart file if it is not a big one
    if( calc_type%selfenergy_technique == QS ) then
-     if( is_restart .AND. restart_type /= EMPTY_STATES_RESTART .AND. restart_type /= BIG_RESTART ) then
+     if( restart_type /= EMPTY_STATES_RESTART .AND. restart_type /= BIG_RESTART ) then
        call issue_warning('RESTART file has been ignored, since it does not contain the required empty states')
        is_restart = .FALSE.
      endif
@@ -351,7 +360,6 @@ program molgw
 
 
      write(stdout,'(/,a)') ' Approximate hamiltonian'
-
      if( parallel_ham ) then
        call diagonalize_hamiltonian_sca(desc_ham,hamiltonian_tmp(:,:,1:1),desc_c,s_matrix_sqrt_inv,energy(:,1:1),c_matrix(:,:,1:1))
      else
@@ -435,13 +443,14 @@ program molgw
      endif
    endif
 
-
  enddo ! istep
 
 
  if( move_nuclei == 'relax' ) then
    call lbfgs_destroy(lbfgs_plan)
  endif
+
+
 
 
  !
@@ -452,6 +461,11 @@ program molgw
  call start_clock(timing_postscf)
 
 
+ ! temporary section for the charge calculation
+!  call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,64)
+!  call calc_normalization_r(64,basis,occupation,c_matrix)
+!  call destroy_dft_grid()
+
  if( print_multipole_ ) then
    !
    ! Evaluate the static dipole
@@ -460,25 +474,49 @@ program molgw
    ! Evaluate the static quadrupole
    call static_quadrupole(nstate,basis,occupation,c_matrix)
  endif
+
  if( print_wfn_ )  call plot_wfn(nstate,basis,c_matrix)
  if( print_wfn_ )  call plot_rho(nstate,basis,occupation,c_matrix)
  if( print_cube_ ) call plot_cube_wfn('GKS',nstate,basis,occupation,c_matrix)
  if( print_pdos_ ) call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  if( .FALSE.     ) call plot_rho_list(nstate,basis,occupation,c_matrix)
+ if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
  if( .FALSE. ) call read_cube_wfn(nstate,basis,occupation,c_matrix)
-
- !
- ! Deallocate all what you can at this stage
- !
- ! If RSH calculations were performed, then deallocate the LR integrals which
- ! are not needed anymore
- if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
- if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
  call clean_deallocate('Overlap matrix S',s_matrix)
  call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
  call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
+
+
+ !
+ !
+ ! Post-processing start here
+ !
+ !
+
+ !
+ ! RT-TDDFT Simulation
+ if(calc_type%is_real_time) then
+   call calculate_propagation(basis,occupation,c_matrix)
+ end if
+
+ !
+ ! If RSH calculations were performed, then deallocate the LR integrals which
+ ! are not needed anymore
+ !
+
+ if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
+ if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+
+ ! Performs a distribution strategy change here for the 3-center integrals
+ ! ( nprow_3center x npcol_3center ) => ( nprow_auxil x 1 )
+ if( has_auxil_basis ) then
+   if( calc_type%selfenergy_approx > 0 .OR. calc_type%is_ci .OR. calc_type%is_td &
+       .OR. calc_type%is_mp2 .OR. calc_type%is_mp3 .OR. calc_type%is_bse ) then
+     call reshuffle_distribution_3center()
+   endif
+ endif
 
  !
  !
@@ -521,7 +559,6 @@ program molgw
 
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
-
 
 
  !

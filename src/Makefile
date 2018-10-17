@@ -2,7 +2,7 @@
 # Author: Fabien Bruneval
 
 PYTHON=python
-FC=gfortran
+FC=gfortran -ffree-line-length-none
 CXX=g++
 CC=gcc
 FCOPTS=
@@ -13,6 +13,7 @@ CPPFLAGS=
 LIBTOOL=
 LAPACK=
 SCALAPACK=
+FFTW_ROOT=
 ELPA=
 ELPA_INCS=
 #LIBXC_ROOT=
@@ -31,7 +32,9 @@ LIBXC_INCS=-I$(LIBXC_ROOT)/include
 LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxcf90 -lxc -Bdynamic
 LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
-
+FFTW=
+FFTW=-L$(FFTW_ROOT)/lib/ #-lfftw3
+FFTW_INCS=-I$(FFTW_ROOT)/include/ 
 
 .PHONY: all clean archive tarball docs input prepare_sourcecode
 
@@ -54,8 +57,10 @@ all:
 	+make  level036
 	+make  level037
 	+make  level038
+	+make  level039
 	+make  level040
 	+make  ../molgw
+	+make  ../spectrum
 
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o
@@ -64,7 +69,7 @@ level005: m_warning.o m_gos.o real_spherical_harmonics.o
 
 level008: m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o
 
-level010: m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o m_lbfgs.o m_cart_to_pure.o
+level010: m_tddft_variables.o m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o m_lbfgs.o m_cart_to_pure.o
 
 level015: m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o
 
@@ -76,7 +81,7 @@ level025: m_eri.o m_scf.o m_dft_grid.o
 
 level030: m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o
 
-level034: m_spectral_function.o m_hamiltonian.o m_hamiltonian_onebody.o
+level034: m_spectral_function.o m_hamiltonian.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o
 
 level035: m_hamiltonian_buffer.o m_hamiltonian_sca.o
 
@@ -85,6 +90,8 @@ level036: m_hamiltonian_wrapper.o
 level037: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 
 level038: m_scf_loop.o m_ci.o m_adc.o
+
+level039: m_tddft_propagator.o
 
 level040: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o \
           gwgamma_selfenergy.o cohsex_selfenergy.o bse.o multipole_tools.o \
@@ -95,27 +102,29 @@ level040: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
 ####################################################
 
 
+../spectrum: m_definitions.o m_warning.o m_tools.o spectrum.o
+	$(LINKER) m_definitions.o m_warning.o m_tools.o spectrum.o -o ../spectrum $(FFTW) $(FFTW_INCS) $(LINKS) $(LAPACK)
 
 ../molgw: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
         m_warning.o m_gos.o real_spherical_harmonics.o m_lbfgs.o \
         m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o  \
-        m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o m_cart_to_pure.o \
+        m_elements.o m_tddft_variables.o m_timing.o m_memory.o m_tools.o m_mpi.o m_cart_to_pure.o \
         m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
         m_inputparam.o \
         m_eri.o m_scf.o m_dft_grid.o m_libint_tools.o m_selfenergy_tools.o \
         m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o \
-        m_spectral_function.o m_hamiltonian.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_ci.o m_adc.o \
+        m_spectral_function.o m_hamiltonian.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_ci.o m_adc.o \
         m_hamiltonian_wrapper.o \
         m_virtual_orbital_space.o pt_selfenergy.o pt_density_matrix.o \
         linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o \
-        cohsex_selfenergy.o bse.o multipole_tools.o io.o restart.o mp2.o m_scf_loop.o selfenergy_evaluation.o force.o \
+        cohsex_selfenergy.o bse.o multipole_tools.o io.o restart.o mp2.o m_scf_loop.o selfenergy_evaluation.o force.o m_tddft_propagator.o\
         molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
                         m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o \
-                        m_scalapack.o m_timing.o m_memory.o m_inputparam.o \
+                        m_scalapack.o m_tddft_variables.o m_timing.o m_memory.o m_inputparam.o \
                         m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
                         m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o \
@@ -124,21 +133,22 @@ level040: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o pt_density_matrix.o \
                         mp2.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o \
                         linear_response.o static_polarizability.o multipole_tools.o io.o restart.o \
-                        m_hamiltonian.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_scf_loop.o \
+                        m_hamiltonian.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_scf_loop.o \
                         m_hamiltonian_wrapper.o \
-                        pdbssolver1.o selfenergy_evaluation.o real_spherical_harmonics.o force.o \
+                        pdbssolver1.o selfenergy_evaluation.o real_spherical_harmonics.o force.o m_tddft_propagator.o \
                         molgw.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
                         $(LIBXC) $(LIBXC _INCS)  \
+			$(FFTW) $(FFTW_INCS) \
                         $(LIBINT) $(LIBINT_INCS) \
                         $(ELPA) $(ELPA_INCS) \
                         $(LINKS)
 
-molgw.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_lbfgs.f90 \
+molgw.o: m_definitions.f90 m_warning.f90 m_tddft_variables.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_lbfgs.f90 \
          m_atoms.f90 m_scf.f90 m_scalapack.f90  m_ecp.f90 \
          m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_ci.f90 m_eri_calculate.f90 m_eri_ao_mo.f90 \
-         m_hamiltonian.f90 m_hamiltonian_onebody.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_selfenergy_tools.f90 m_scf_loop.f90 \
+         m_hamiltonian.f90 m_hamiltonian_cmplx.f90 m_hamiltonian_onebody.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_selfenergy_tools.f90 m_scf_loop.f90 m_tddft_propagator.f90 \
          m_virtual_orbital_space.f90 \
          molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
@@ -154,7 +164,7 @@ selfenergy_evaluation.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputpar
 
 m_scf_loop.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_atoms.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 m_scalapack.f90 m_mpi.f90 \
               m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_ao_mo.f90 \
-              m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_hamiltonian_wrapper.f90 m_selfenergy_tools.f90 m_scf_loop.f90
+              m_hamiltonian.f90 m_hamiltonian_cmplx.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_hamiltonian_wrapper.f90 m_selfenergy_tools.f90 m_scf_loop.f90
 	$(FC_W_OPTS) -c m_scf_loop.f90 $(LIBXC_INCS)
 
 cohsex_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
@@ -208,6 +218,11 @@ m_hamiltonian_onebody.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f
 m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_tools.f90 m_cart_to_pure.f90 \
 	         m_inputparam.f90 m_eri.f90 m_eri_calculate.f90 m_basis_set.f90 m_dft_grid.f90 m_density_tools.f90 m_hamiltonian.f90
 	$(FC_W_OPTS) -c m_hamiltonian.f90 $(LIBXC_INCS)
+
+
+m_hamiltonian_cmplx.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_atoms.f90 m_tools.f90 m_ecp.f90 m_cart_to_pure.f90 \
+                 m_inputparam.f90 m_eri.f90 m_eri_calculate.f90 m_basis_set.f90 m_dft_grid.f90 m_hamiltonian_cmplx.f90
+	$(FC_W_OPTS) -c m_hamiltonian_cmplx.f90 $(LIBXC_INCS)
 
 m_hamiltonian_wrapper.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90  \
 	         m_inputparam.f90 m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_hamiltonian_wrapper.f90
@@ -330,7 +345,7 @@ m_atoms.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_tools.f90 m_lbfgs.f9
 m_ecp.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_tools.f90 m_ecp.f90
 	$(FC_W_OPTS) -c m_ecp.f90 $(LIBXC_INCS)
 
-m_scalapack.o: m_definitions.f90 m_warning.f90 m_tools.f90 m_mpi.f90  m_scalapack.f90
+m_scalapack.o: m_definitions.f90 m_warning.f90 m_tools.f90 m_mpi.f90 m_scalapack.f90
 	$(FC_W_OPTS) -c m_scalapack.f90 $(LIBXC_INCS)
 
 m_mpi_world.o: m_definitions.f90 m_warning.f90 m_mpi_world.f90
@@ -361,6 +376,9 @@ m_tools.o: m_definitions.f90 m_warning.f90 m_tools.f90
 m_memory.o: m_definitions.f90 m_warning.f90 m_memory.f90
 	$(FC_W_OPTS) -c m_memory.f90 $(LIBXC_INCS)
 
+m_tddft_variables.o: m_tddft_variables.f90
+	$(FC_W_OPTS) -c m_tddft_variables.f90 $(LIBXC_INCS)
+
 m_timing.o: m_definitions.f90 m_warning.f90 m_timing.f90
 	$(FC_W_OPTS) -c m_timing.f90 $(LIBXC_INCS)
 
@@ -382,7 +400,13 @@ m_lbfgs.o: m_definitions.f90 m_lbfgs.f90
 m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
-tarball:
+m_tddft_propagator.o: m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90 m_tddft_variables.f90 m_tddft_propagator.f90 
+	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS) $(FFTW_INCS)  
+
+spectrum.o: m_definitions.f90 m_warning.f90 m_tools.f90 spectrum.f90
+	$(FC_W_OPTS) -c spectrum.f90  $(FFTW_INCS) 
+
+tarball: 
 	+make archive
 
 archive:
@@ -412,4 +436,5 @@ docs:
 	mv notes.pdf ../docs/notes.pdf
 
 clean:
-	rm -f *.o *.mod ../molgw.tgz ../molgw
+	rm -f *.o *.mod ../molgw.tgz ../molgw ../spectrum
+

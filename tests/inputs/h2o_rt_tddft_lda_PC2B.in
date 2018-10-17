@@ -1,0 +1,28 @@
+&molgw
+ scf='lda'
+ nspin=1
+ magnetization=0.0
+ read_restart='no'
+ read_tddft_restart='no'
+ print_tddft_restart='yes'
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ charge=0
+ natom=3
+ postscf='real_time'
+ time_step=0.5
+ time_sim=20.0
+ pred_corr="PC2B"
+ n_hist=3
+ prop_type='MAG2'
+ excit_name='GAU'
+ excit_kappa=2e-4
+ excit_omega=0.2
+ excit_time0=3.0
+ excit_dir= 1.0  1.0  1.0
+ write_step=20.0
+/
+8    0.000  0.000   0.000
+1    0.757  0.586   0.000
+1   -0.757  0.586   0.000
+

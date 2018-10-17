@@ -50,12 +50,19 @@ module m_inputparam
  integer,parameter :: GWSOX        = 225
  integer,parameter :: GWPT3        = 226
 
+ !
+ ! TDDFT variables
+ integer,parameter :: EXCIT_NO         = 501
+ integer,parameter :: EXCIT_LIGHT      = 502
+ integer,parameter :: EXCIT_PROJECTILE = 503
+
  type calculation_type
    character(len=100) :: calc_name
    character(len=100) :: scf_name
    character(len=100) :: postscf_name
    logical            :: is_core
    logical            :: is_dft
+   logical            :: is_real_time
    logical            :: need_exchange
    logical            :: need_exchange_lr
    logical            :: need_rpa
@@ -75,6 +82,14 @@ module m_inputparam
 #endif
  end type calculation_type
 
+ type excitation_type
+ character(len=100)   :: name
+ integer              :: form
+ real(dp)             :: kappa, omega, time0
+ real(dp)             :: dir(3)
+ end type
+
+ type(excitation_type),protected  :: excit_type
  ! There are the input variables of MOLGW
  ! They should not be modified anywhere else in the code.
  ! Declare them as protected and work on copies if absolutely necessary.
@@ -119,6 +134,9 @@ module m_inputparam
  character(len=12),protected      :: mixing_scheme
  character(len=12),protected      :: partition_scheme
  character(len=12),protected      :: init_hamiltonian
+ character(len=12),protected      :: prop_type
+ character(len=12),protected      :: pred_corr
+ character(len=12),protected      :: excit_name
  character(len=12),protected      :: ci_greens_function
  character(len=12),protected      :: ci_type
  character(len=12),protected      :: pt3_a_diagrams
@@ -186,7 +204,24 @@ module m_inputparam
  real(dp),protected,allocatable   :: dft_xc_coef(:)
  logical,protected                :: dft_xc_needs_gradient
 
-
+ real(dp),protected               :: time_step, time_sim
+ real(dp),protected               :: excit_kappa, excit_omega, excit_time0
+ real(dp),protected               :: excit_dir(3)
+ real(dp),protected               :: write_step
+ real(dp),protected               :: r_disc
+ integer,protected                :: n_hist, n_iter
+ integer,protected                :: n_restart_tddft
+ logical,protected                :: print_tddft_matrices_
+ logical,protected                :: print_cube_rho_tddft_
+ logical,protected                :: print_cube_diff_tddft_
+ logical,protected                :: print_line_rho_tddft_
+ logical,protected                :: print_dens_traj_tddft_
+ logical,protected                :: print_dens_traj_
+ logical,protected                :: calc_q_matrix_
+ logical,protected                :: calc_dens_disc_
+ logical,protected                :: calc_spectrum_
+ logical,protected                :: read_tddft_restart_
+ logical,protected                :: print_tddft_restart_
 contains
 
 
@@ -213,6 +248,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_ci                = .FALSE.
  calc_type%is_bse               = .FALSE.
  calc_type%is_td                = .FALSE.
+ calc_type%is_real_time         = .FALSE.
  calc_type%selfenergy_technique = one_shot
  calc_type%selfenergy_approx    = 0
  calc_type%selfenergy_static    = .FALSE.
@@ -332,6 +368,8 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_bse =.TRUE.
    case('TD')
      calc_type%is_td =.TRUE.
+   case('REAL_TIME')
+     calc_type%is_real_time =.TRUE.
    case default
      call die('Error reading keyword: postscf')
    end select
@@ -386,6 +424,33 @@ subroutine init_calculation_type(calc_type,input_key)
 
 end subroutine init_calculation_type
 
+!=========================================================================
+subroutine init_excitation_type(excit_type)
+ implicit none
+ type(excitation_type),intent(inout)  ::  excit_type
+!=====
+
+ excit_type%name  = excit_name
+ excit_type%kappa = excit_kappa 
+ excit_type%omega = excit_omega 
+ excit_type%time0 = excit_time0
+ excit_type%dir   = excit_dir 
+
+ if( LEN(TRIM(excit_name)) /= 0 ) then
+   select case (excit_type%name)
+   case("NUCLEUS","ANTINUCLEUS") 
+     excit_type%form=EXCIT_PROJECTILE
+   case("NO")
+     excit_type%form=EXCIT_NO
+   case("GAU","HSW","STEP","DEL")
+     excit_type%form=EXCIT_LIGHT
+   case default
+     write(stdout,*) 'error reading excitation name (excit_name variable)'
+     write(stdout,*) TRIM(excit_name)
+     call die('excit_name is unknown')
+   end select
+ end if
+end subroutine init_excitation_type
 
 !=========================================================================
 subroutine init_dft_type(key,calc_type)
@@ -753,11 +818,23 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
  character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix
+ character(len=3)     :: print_tddft_matrices
+ character(len=3)     :: print_cube_rho_tddft
+ character(len=3)     :: print_cube_diff_tddft
+ character(len=3)     :: print_line_rho_tddft
+ character(len=3)     :: print_dens_traj_tddft
+ character(len=3)     :: print_dens_traj
+ character(len=3)     :: calc_q_matrix
+ character(len=3)     :: calc_dens_disc
+ character(len=3)     :: calc_spectrum
+ character(len=3)     :: read_tddft_restart
+ character(len=3)     :: print_tddft_restart
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
+ real(dp)             :: vel_projectile(3)
  real(dp)             :: beta_hybrid
  character(len=12)    :: tddft_grid_quality
  character(len=12)    :: grid_quality
@@ -830,6 +907,9 @@ subroutine read_inputfile_namelist()
  mixing_scheme      = capitalize(mixing_scheme)
  length_unit        = capitalize(length_unit)
  init_hamiltonian   = capitalize(init_hamiltonian)
+ prop_type          = capitalize(prop_type)
+ excit_name         = capitalize(excit_name)
+ pred_corr          = capitalize(pred_corr)
  ci_greens_function = capitalize(ci_greens_function)
  ci_type            = capitalize(ci_type)
  read_fchk          = capitalize(read_fchk)
@@ -858,6 +938,16 @@ subroutine read_inputfile_namelist()
  print_density_matrix_    = yesno(print_density_matrix)
  gwgamma_tddft_           = yesno(gwgamma_tddft)
  use_correlated_density_matrix_ = yesno(use_correlated_density_matrix)
+ print_tddft_matrices_  = yesno(print_tddft_matrices)
+ print_cube_diff_tddft_ = yesno(print_cube_diff_tddft)
+ print_line_rho_tddft_  = yesno(print_line_rho_tddft)
+ print_dens_traj_tddft_ = yesno(print_dens_traj_tddft)
+ print_dens_traj_       = yesno(print_dens_traj)
+ calc_q_matrix_         = yesno(calc_q_matrix)
+ calc_dens_disc_        = yesno(calc_dens_disc)
+ calc_spectrum_         = yesno(calc_spectrum)
+ read_tddft_restart_    = yesno(read_tddft_restart)
+ print_tddft_restart_   = yesno(print_tddft_restart)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
@@ -919,6 +1009,11 @@ subroutine read_inputfile_namelist()
    call issue_warning('mpi_nproc_ortho value is invalid. Override it and set mpi_nproc_ortho=1')
  endif
 
+ call init_excitation_type(excit_type)
+ nprojectile=0
+ if( excit_type%form==EXCIT_PROJECTILE ) then
+   nprojectile=1
+ end if
 
  !
  ! Read the atom positions if no xyz file is specified
@@ -927,14 +1022,17 @@ subroutine read_inputfile_namelist()
    ! In this case, natom must be set to a positive value
    if(natom<1) call die('natom<1')
 
+   natom_basis = natom + nghost
+   natom = natom + nprojectile
+
    !
    ! Need to know the number of atoms to allocate the basis arrays
-   allocate(auxil_basis_name(natom+nghost))
-   allocate(small_basis_name(natom+nghost))
-   allocate(basis_name(natom+nghost))
-   allocate(ecp_basis_name(natom+nghost))
-   allocate(ecp_auxil_basis_name(natom+nghost))
-   allocate(ecp_small_basis_name(natom+nghost))
+   allocate(auxil_basis_name(natom_basis))
+   allocate(small_basis_name(natom_basis))
+   allocate(basis_name(natom_basis))
+   allocate(ecp_basis_name(natom_basis))
+   allocate(ecp_auxil_basis_name(natom_basis))
+   allocate(ecp_small_basis_name(natom_basis))
    basis_name(:)           = standardize_basis_name(basis)
    auxil_basis_name(:)     = standardize_basis_name(auxil_basis)
    small_basis_name(:)     = standardize_basis_name(small_basis)
@@ -974,7 +1072,6 @@ subroutine read_inputfile_namelist()
      endif
      zatom_read(iatom) = atom_number
    enddo
-
  else
    !
    ! Try to open the xyz file
@@ -986,21 +1083,23 @@ subroutine read_inputfile_namelist()
    endif
    open(newunit=xyzfile,file=TRIM(xyz_file),status='old')
    read(xyzfile,*) natom_read
-   if( natom /= 0 .AND. natom+nghost /= natom_read ) then
+   if( natom /= 0 .AND. natom+nghost+nprojectile /= natom_read ) then
      call die('the number of atoms in the input file does not correspond to the number of atoms in the xyz file')
    endif
    read(xyzfile,*)
 
+!Natom read from xyz file but not from input file
    natom = natom_read-nghost
+   natom_basis = natom_read - nprojectile
 
    !
    ! Need to know the number of atoms to allocate the basis arrays
-   allocate(auxil_basis_name(natom+nghost))
-   allocate(small_basis_name(natom+nghost))
-   allocate(basis_name(natom+nghost))
-   allocate(ecp_basis_name(natom+nghost))
-   allocate(ecp_auxil_basis_name(natom+nghost))
-   allocate(ecp_small_basis_name(natom+nghost))
+   allocate(auxil_basis_name(natom_basis))
+   allocate(small_basis_name(natom_basis))
+   allocate(basis_name(natom_basis))
+   allocate(ecp_basis_name(natom_basis))
+   allocate(ecp_auxil_basis_name(natom_basis))
+   allocate(ecp_small_basis_name(natom_basis))
    basis_name(:)           = standardize_basis_name(basis)
    auxil_basis_name(:)     = standardize_basis_name(auxil_basis)
    small_basis_name(:)     = standardize_basis_name(small_basis)
@@ -1051,10 +1150,11 @@ subroutine read_inputfile_namelist()
 !   call issue_warning('Please run with one CPU only or provide MOLGW with an auxiliary basis')
 ! endif
 
- natom_basis = natom + nghost
-
  x_read(:,:) = x_read(:,:) * length_factor
- call init_atoms(zatom_read,x_read,(move_nuclei/='no'))
+ ! vel_projectile(:) = vel_projectile(:) * length_factor
+ ! For the moment, velocity in input file must be in bohrs per a.u.[time] for any length_factor
+
+ call init_atoms(zatom_read,x_read,vel_projectile,(move_nuclei/='no'),excit_type%name)
  deallocate(x_read,zatom_read)
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)
@@ -1090,7 +1190,6 @@ subroutine read_inputfile_namelist()
 
  spin_fact = REAL(-nspin+3,dp)
  electrons = SUM(zvalence(:)) - charge
-
 
  ! Echo the interpreted input variables
  call summary_input(grid_quality,integral_quality)

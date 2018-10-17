@@ -37,6 +37,7 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
  real(dp) :: ehartree
 !=====
 
+
  !
  if( .NOT. has_auxil_basis ) then
    if( incore_ ) then

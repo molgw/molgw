@@ -14,8 +14,8 @@ module m_density_tools
  use m_inputparam
  use m_basis_set
 
- complex(8),parameter :: COMPLEX_ONE  = (1.0_8,0.0_8)
- complex(8),parameter :: COMPLEX_ZERO = (0.0_8,0.0_8)
+ complex(dp),parameter :: COMPLEX_ONE  = (1.0_dp,0.0_dp)
+ complex(dp),parameter :: COMPLEX_ZERO = (0.0_dp,0.0_dp)
 
 contains
 
@@ -61,7 +61,7 @@ subroutine setup_atomic_density(rr,rhor)
 !=====
 
  rhor = 0.0_dp
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
@@ -154,7 +154,6 @@ subroutine calc_density_r_batch(occupation,c_matrix,basis_function_r,rhor)
 
 
 end subroutine calc_density_r_batch
-
 
 !=========================================================================
 ! Calculate the density and its gradient on a batch for both real and complex wavefunctions
@@ -249,8 +248,8 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
      !$OMP END PARALLEL DO
 
      deallocate(tmp_cmplx)
-     deallocate(phir)
-     deallocate(phir_gradx,phir_grady,phir_gradz)
+     deallocate(phir_cmplx)
+     deallocate(phir_gradx_cmplx,phir_grady_cmplx,phir_gradz_cmplx)
 
    class default
      call die('calc_density_gradr_batch: not real, not complex')
@@ -264,6 +263,61 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
 
 end subroutine calc_density_gradr_batch
 
+!========================================================================
+subroutine calc_density_current_rr_cmplx(occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,jcurdens)
+ use m_definitions
+ use m_mpi
+ use m_basis_set
+ implicit none
+
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: basis_function_r(:,:)
+ real(dp),intent(in)        :: basis_function_gradr(:,:,:)
+ real(dp),intent(out)       :: jcurdens(:,:,:)
+!=====
+ integer                 :: nspin,nbf,nstate,nr,nocc
+ integer                 :: ispin,istate,ir
+ complex(dp),allocatable :: phir_cmplx(:,:)
+ complex(dp),allocatable :: phir_gradx_cmplx(:,:)
+ complex(dp),allocatable :: phir_grady_cmplx(:,:)
+ complex(dp),allocatable :: phir_gradz_cmplx(:,:)
+!=====
+
+ nbf    = SIZE(c_matrix_cmplx,DIM=1)
+ nstate = SIZE(c_matrix_cmplx,DIM=2)
+ nspin  = SIZE(c_matrix_cmplx,DIM=3)
+ nr     = SIZE(jcurdens,DIM=2)
+ nocc = get_number_occupied_states(occupation)
+
+ !
+ ! Calculate current density in points given in basis_function_r
+ jcurdens(:,:,:) = 0.0_dp
+
+ do ispin=1,nspin
+
+   allocate(phir_cmplx(nocc,nr))
+   allocate(phir_gradx_cmplx(nocc,nr))
+   allocate(phir_grady_cmplx(nocc,nr))
+   allocate(phir_gradz_cmplx(nocc,nr))
+   phir_cmplx(:,:)       = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_r(:,:) )
+   phir_gradx_cmplx(:,:) = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
+   phir_grady_cmplx(:,:) = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
+   phir_gradz_cmplx(:,:) = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
+
+   forall(ir=1:nr)
+     jcurdens(ispin,ir,1) = REAL( SUM(  -im * CONJG(phir_cmplx(:,ir)) * phir_gradx_cmplx(:,ir) * occupation(:nocc,ispin ) ) )
+     jcurdens(ispin,ir,2) = REAL( SUM(  -im * CONJG(phir_cmplx(:,ir)) * phir_grady_cmplx(:,ir) * occupation(:nocc,ispin ) ) )
+     jcurdens(ispin,ir,3) = REAL( SUM(  -im * CONJG(phir_cmplx(:,ir)) * phir_gradz_cmplx(:,ir) * occupation(:nocc,ispin ) ) )
+   endforall
+
+   deallocate(phir_cmplx)
+   deallocate(phir_gradx_cmplx,phir_grady_cmplx,phir_gradz_cmplx)
+
+ enddo
+
+
+end subroutine calc_density_current_rr_cmplx
 
 !=========================================================================
 subroutine calc_density_gradr_laplr(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr, &

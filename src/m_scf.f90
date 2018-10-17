@@ -54,6 +54,7 @@ module m_scf
    real(dp) :: rpa     = 0.0_dp
    real(dp) :: gw      = 0.0_dp
    real(dp) :: tot     = 0.0_dp
+   real(dp) :: excit   = 0.0_dp      ! TDDFT excitation energy
  end type
  type(energy_contributions) :: en
 
