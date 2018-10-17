@@ -2683,6 +2683,7 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalap
  ipcol_3center = 0
  iprow_3center = 0
 
+ cntxt_auxil = 1
  nprow_auxil = 1
  npcol_auxil = 1
  iprow_auxil = 0

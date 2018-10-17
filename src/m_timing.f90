@@ -18,7 +18,7 @@ module m_timing
  integer,parameter :: timing_scf                 = 82
  integer,parameter :: timing_postscf             = 83
 
- integer,parameter :: timing_dft                 =  2
+ integer,parameter :: timing_dft_xc              =  2
  integer,parameter :: timing_pola                =  3
  integer,parameter :: timing_gw_self             =  4
  integer,parameter :: timing_overlap             =  5
@@ -102,9 +102,9 @@ module m_timing
  integer,parameter :: timing_propagate_matmul       = 128
  integer,parameter :: timing_print_line_rho_tddft   = 129
  integer,parameter :: timing_calc_dens_disc         = 130
- integer,parameter :: timing_tddft_dft_densities    = 131
- integer,parameter :: timing_tddft_dft_libxc        = 132
- integer,parameter :: timing_tddft_dft_vxc          = 133
+ integer,parameter :: timing_tddft_densities        = 131
+ integer,parameter :: timing_tddft_libxc            = 132
+ integer,parameter :: timing_tddft_vxc              = 133
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -208,7 +208,7 @@ subroutine output_timing()
  call output_timing_line('Density matrix',timing_density_matrix,1)
  call output_timing_line('Hartree potential',timing_hartree,1)
  call output_timing_line('Exchange operator',timing_exchange,1)
- call output_timing_line('DFT xc potential',timing_dft,1)
+ call output_timing_line('DFT xc potential',timing_dft_xc,1)
  call output_timing_line('Densities on a grid',timing_dft_densities,2)
  call output_timing_line('LIBXC calls',timing_dft_libxc,2)
  call output_timing_line('Setting up Vxc ',timing_dft_vxc,2)
@@ -266,9 +266,9 @@ subroutine output_timing()
  call output_timing_line('Hartree potential',timing_tddft_hartree,3)
  call output_timing_line('Exchange operator',timing_tddft_exchange,3)
  call output_timing_line('XC potential',timing_tddft_xc,3)
- call output_timing_line('Densities on a grid',timing_tddft_dft_densities,4)
- call output_timing_line('LIBXC calls',timing_tddft_dft_libxc,4)
- call output_timing_line('Setting up Vxc ',timing_tddft_dft_vxc,4)
+ call output_timing_line('Densities on a grid',timing_tddft_densities,4)
+ call output_timing_line('LIBXC calls',timing_tddft_libxc,4)
+ call output_timing_line('Setting up Vxc ',timing_tddft_vxc,4)
  call output_timing_line('Orthogonal basis',timing_tddft_ham_orthobasis,3)
 
  call output_timing_line('RESTART_TDDFT file writing',timing_restart_tddft_file,2)

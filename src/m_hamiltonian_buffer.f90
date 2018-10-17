@@ -528,7 +528,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_dft)
+ call start_clock(timing_dft_xc)
 
 
 #ifdef HAVE_LIBXC
@@ -788,7 +788,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_dft_xc)
 
 end subroutine dft_exc_vxc_buffer_sca
 

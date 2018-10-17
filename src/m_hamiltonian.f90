@@ -286,7 +286,9 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
    !$OMP END PARALLEL
 
    !FIXME ortho parallelization is not taken into account here!
+#if defined(HAVE_SCALAPACK)
    call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,1,partial_sum,nauxil_local,-1,-1)
+#endif
 
 
    !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
@@ -431,7 +433,9 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
+#if defined(HAVE_SCALAPACK)
        call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
+#endif
 
        ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
        !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
@@ -560,7 +564,9 @@ subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,ex
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
+#if defined(HAVE_SCALAPACK)
        call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
+#endif
 
        ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
        !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
@@ -1246,6 +1252,9 @@ end subroutine get_c_matrix_from_p_matrix
 
 
 !=========================================================================
+! Calculate the exchange-correlation potential and energy
+! * subroutine works for both real and complex wavefunctions c_matrix
+!   using "class" syntax of Fortran2003
 subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
@@ -1259,7 +1268,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  integer,intent(in)         :: batch_size
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
+ class(*),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(out)       :: vxc_ij(:,:,:)
  real(dp),intent(out)       :: exc_xc
 !=====
@@ -1268,6 +1277,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  integer              :: ibf,jbf,ispin
  integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
+ integer              :: timing_xxdft_xc,timing_xxdft_densities,timing_xxdft_libxc,timing_xxdft_vxc
  real(dp)             :: normalization(nspin)
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: tmp_batch(:,:)
@@ -1287,7 +1297,22 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_dft)
+ select type(c_matrix)
+ type is (real(dp))
+   timing_xxdft_xc        = timing_dft_xc
+   timing_xxdft_densities = timing_dft_densities
+   timing_xxdft_libxc     = timing_dft_libxc
+   timing_xxdft_vxc       = timing_dft_vxc
+ type is (complex(dp))
+   timing_xxdft_xc        = timing_tddft_xc
+   timing_xxdft_densities = timing_tddft_densities
+   timing_xxdft_libxc     = timing_tddft_libxc
+   timing_xxdft_vxc       = timing_tddft_vxc
+ class default
+   call die("dft_exc_vxc_batch: c_matrix is neither real nor complex")
+ end select
+
+ call start_clock(timing_xxdft_xc)
 
  nstate = SIZE(occupation,DIM=1)
 
@@ -1306,7 +1331,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    igrid_end = MIN(ngrid,igrid_start+batch_size-1)
    nr = igrid_end - igrid_start + 1
 
-   call start_clock(timing_dft_densities)
+   call start_clock(timing_xxdft_densities)
 
    allocate(weight_batch(nr))
    allocate(rhor_batch(nspin,nr))
@@ -1335,9 +1360,9 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    ! Calculate grad rho at points r for spin up and spin down
    if( .NOT. dft_xc_needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
-
    else
      call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+
      !$OMP PARALLEL DO
      do ir=1,nr
        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
@@ -1353,13 +1378,13 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
 
-   call stop_clock(timing_dft_densities)
+   call stop_clock(timing_xxdft_densities)
 
 
    !
    ! LIBXC calls
    !
-   call start_clock(timing_dft_libxc)
+   call start_clock(timing_xxdft_libxc)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -1422,14 +1447,14 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    enddo ! loop on the XC functional
 
-   call stop_clock(timing_dft_libxc)
+   call stop_clock(timing_xxdft_libxc)
 
 
 
    !
    ! Eventually set up the vxc term
    !
-   call start_clock(timing_dft_vxc)
+   call start_clock(timing_xxdft_vxc)
 
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
@@ -1459,7 +1484,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    enddo
    deallocate(tmp_batch)
 
-   call stop_clock(timing_dft_vxc)
+   call stop_clock(timing_xxdft_vxc)
 
 
    deallocate(weight_batch)
@@ -1505,7 +1530,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_xxdft_xc)
 
 end subroutine dft_exc_vxc_batch
 
