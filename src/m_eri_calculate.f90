@@ -1069,7 +1069,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
  if( .NOT. is_longrange ) then
 
-   call clean_allocate('3-center integrals',eri_3center,mlocal,nlocal)
+   call clean_allocate('3-center integrals',eri_3center,nauxil_kept,npair)
 
    call DGEMM('T','N',nauxil_kept,npair,auxil_basis%nbf, &
                1.0_dp,eri_2center,auxil_basis%nbf,eri_3center_tmp,auxil_basis%nbf,0.0_dp,eri_3center,nauxil_kept)
@@ -1080,7 +1080,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
  else
 
-   call clean_allocate('LR 3-center integrals',eri_3center_lr,mlocal,nlocal)
+   call clean_allocate('LR 3-center integrals',eri_3center_lr,nauxil_kept,npair)
 
    call DGEMM('T','N',nauxil_kept,npair,auxil_basis%nbf, &
                1.0_dp,eri_2center_lr,auxil_basis%nbf,eri_3center_tmp,auxil_basis%nbf,0.0_dp,eri_3center_lr,nauxil_kept)
