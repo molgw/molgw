@@ -19,3 +19,4 @@ LIBXC_ROOT=${HOME}/libxc-3.0.0_install/
 
 LIBINT_ROOT=${HOME}/libint-2.2.0_am6/
 
+FFTW_ROOT=

@@ -19,3 +19,4 @@ LIBXC_ROOT=${HOME}/src/libxc-3.0.0_ifort/
 
 LIBINT_ROOT=${HOME}/src/libint-2.2.0_ifort/
 
+FFTW_ROOT=
