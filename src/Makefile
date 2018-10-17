@@ -40,8 +40,8 @@ FFTW_INCS=-I$(FFTW_ROOT)/include/
 
 
 ####################################################
-# Parallel make execution requires a bit of ordering
-all:
+# Parallel make execution (make -j) requires a bit of ordering
+molgw:
 	+make  prepare_sourcecode
 	+make  level000
 	+make  level005
@@ -60,7 +60,16 @@ all:
 	+make  level039
 	+make  level040
 	+make  ../molgw
+
+spectrum:
+	+make  prepare_sourcecode
+	+make  level000
+	+make  level005
+	+make  level008
+	+make  level010
 	+make  ../spectrum
+
+all: molgw spectrum
 
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o
