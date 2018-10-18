@@ -32,16 +32,20 @@ LIBXC_INCS=-I$(LIBXC_ROOT)/include
 LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxcf90 -lxc -Bdynamic
 LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
-FFTW=
-FFTW=-L$(FFTW_ROOT)/lib/ #-lfftw3
-FFTW_INCS=-I$(FFTW_ROOT)/include/ 
+ifeq ($(FFTW_ROOT),)
+  FFTW=
+  FFTW_INCS=
+else
+  FFTW=-L$(FFTW_ROOT)/lib/ -lfftw3
+  FFTW_INCS=-I$(FFTW_ROOT)/include/ 
+endif
 
 .PHONY: all clean archive tarball docs input prepare_sourcecode
 
 
 ####################################################
-# Parallel make execution requires a bit of ordering
-all:
+# Parallel make execution (make -j) requires a bit of ordering
+molgw:
 	+make  prepare_sourcecode
 	+make  level000
 	+make  level005
@@ -60,7 +64,16 @@ all:
 	+make  level039
 	+make  level040
 	+make  ../molgw
+
+spectrum:
+	+make  prepare_sourcecode
+	+make  level000
+	+make  level005
+	+make  level008
+	+make  level010
 	+make  ../spectrum
+
+all: molgw spectrum
 
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o
@@ -140,7 +153,6 @@ level040: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
                         $(LIBXC) $(LIBXC _INCS)  \
-			$(FFTW) $(FFTW_INCS) \
                         $(LIBINT) $(LIBINT_INCS) \
                         $(ELPA) $(ELPA_INCS) \
                         $(LINKS)
@@ -401,7 +413,7 @@ m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
 m_tddft_propagator.o: m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90 m_tddft_variables.f90 m_tddft_propagator.f90 
-	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS) $(FFTW_INCS)  
+	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS)
 
 spectrum.o: m_definitions.f90 m_warning.f90 m_tools.f90 spectrum.f90
 	$(FC_W_OPTS) -c spectrum.f90  $(FFTW_INCS) 

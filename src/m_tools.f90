@@ -482,13 +482,13 @@ subroutine diagonalize_cdp(matrix,eigval,eigvec)
  lwork  = NINT(REAL(work(1),dp))
  lrwork = NINT(rwork(1))
  liwork = iwork(1)
- deallocate(lwork,lrwork,iwork)
+ deallocate(work,rwork,iwork)
 
  allocate(work(lwork))
  allocate(rwork(lrwork))
  allocate(iwork(liwork))
  call ZHEEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
- deallocate(lwork,lrwork,liwork)
+ deallocate(work,rwork,iwork)
 
 #else
 

@@ -108,6 +108,15 @@ subroutine header()
 #if !defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
  call die('Code compiled with MPI, but without SCALAPACK. This is not permitted')
 #endif
+#if defined(LAPACK_DIAGO_FLAVOR_D)
+ write(stdout,*) 'Perform diagonalizations with LAPACK routines DSYEVD, ZHEEVD'
+#endif
+#if defined(LAPACK_DIAGO_FLAVOR_R)
+ write(stdout,*) 'Perform diagonalizations with LAPACK routines DSYEVR, ZHEEVR'
+#endif
+#if !defined(LAPACK_DIAGO_FLAVOR_D) && !defined(LAPACK_DIAGO_FLAVOR_R)
+ write(stdout,*) 'Perform diagonalizations with LAPACK routines DSYEV, ZHEEV (standard)'
+#endif
 
 
  ! LIBINT details
