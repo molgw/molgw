@@ -311,7 +311,6 @@ subroutine setup_basispair(basis)
          index_pair_1d(ijbf)  = ipair
          index_basis(1,ipair) = basis%shell(ishell)%istart + ibf - 1
          index_basis(2,ipair) = basis%shell(jshell)%istart + jbf - 1
-         write(100,'(6(1x,i6),a)') ipair,ijbf,ishell,jshell,index_basis(1,ipair),index_basis(2,ipair),' diff'
        enddo
      enddo
    else
@@ -326,7 +325,6 @@ subroutine setup_basispair(basis)
          index_pair_1d(ijbf)  = ipair
          index_basis(1,ipair) = basis%shell(ishell)%istart + ibf - 1
          index_basis(2,ipair) = basis%shell(jshell)%istart + jbf - 1
-         write(100,'(6(1x,i6),a)') ipair,ijbf,ishell,jshell,index_basis(1,ipair),index_basis(2,ipair),' same'
        enddo
      enddo
    endif
