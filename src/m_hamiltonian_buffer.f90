@@ -327,15 +327,12 @@ subroutine setup_exchange_ri_buffer_sca(occupation,c_matrix,p_matrix,exchange_ij
 
 
      tmp(:,:) = 0.0_dp
-     do ipair=1,nbf
-       ibf = index_basis(1,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(ibf) * eri_3center(:,ipair)
-     enddo
-     do ipair=nbf+1,npair
+     do ipair=1,npair
        ibf = index_basis(1,ipair)
        jbf = index_basis(2,ipair)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center(:,ipair)
-       tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center(:,ipair)
+       if( ibf /= jbf ) &
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center(:,ipair)
      enddo
 
 
@@ -432,15 +429,12 @@ subroutine setup_exchange_longrange_ri_buffer_sca(occupation,c_matrix,p_matrix,e
 
 
      tmp(:,:) = 0.0_dp
-     do ipair=1,nbf
-       ibf = index_basis(1,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(ibf) * eri_3center_lr(:,ipair)
-     enddo
-     do ipair=nbf+1,npair
+     do ipair=1,npair
        ibf = index_basis(1,ipair)
        jbf = index_basis(2,ipair)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center_lr(:,ipair)
-       tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_lr(:,ipair)
+       if( ibf /= jbf ) & 
+          tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_lr(:,ipair)
      enddo
 
 
