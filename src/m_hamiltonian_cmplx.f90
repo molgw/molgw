@@ -155,7 +155,9 @@ subroutine setup_exchange_versatile_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
+#if defined(HAVE_SCALAPACK)
        call ZGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp_cmplx,nauxil_local,-1,-1)
+#endif
 
        ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
        !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact

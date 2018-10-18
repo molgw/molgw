@@ -801,7 +801,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='scalapack_block_min'
 vl[i].family   ='hardware'
-vl[i].default  = 400
+vl[i].default  = 1000
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the minimum block size to distribute a non-distributed matrix with SCALAPACK. \
 If scalapack_block_min=400, then a 900x900 matrix will be distributed on a 2x2 processor grid. \

@@ -831,6 +831,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  integer                      :: desc3center(NDEL)
  integer                      :: nauxil_kept
  logical                      :: skip_shell
+ real(dp)                     :: libint_calls
 !=====
 ! variables used to call C
  real(C_DOUBLE)               :: rcut_libint
@@ -881,6 +882,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    !
    call clean_allocate('TMP 3-center integrals',eri_3center_tmp,mlocal,nlocal)
 
+   libint_calls = 0.0_dp
 
    do klshellpair=1,nshellpair
      kshell = index_shellpair(1,klshellpair)
@@ -921,7 +923,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
      !$OMP PARALLEL PRIVATE(ami,ni,skip_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
      !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
-     !$OMP DO
+     !$OMP DO REDUCTION(+:libint_calls)
      do ishell=1,auxil_basis%nshell
 
        ami = auxil_basis%shell(ishell)%am
@@ -936,6 +938,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
        if( skip_shell ) cycle
 
+       libint_calls = libint_calls + 1.00_dp
 
        am1 = ami
        n1c = number_basis_function_am( 'CART' , ami )
@@ -989,6 +992,11 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    enddo ! klshellpair
 
  endif
+
+ call xsum_world(libint_calls)
+ write(stdout,'(1x,a,i20)')   'Total number of calls to libint: ',INT(libint_calls,KIND=8)
+ write(stdout,'(1x,a,f8.2)')  'Redundant calls due to parallelization (%): ', &
+                               ( libint_calls / ( REAL(nshellpair,dp)*REAL(auxil_basis%nshell,dp) ) - 1.0_dp ) * 100.0_dp
 
  call stop_clock(timing_eri_3center_ints)
 
