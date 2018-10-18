@@ -187,8 +187,9 @@ function INDXL2G(indxloc, nb, iproc, isrcproc, nprocs )
  integer             :: INDXL2G
 !=====
 
-  INDXL2G = nprocs * nb *( ( indxloc - 1 ) / nb ) + MOD( indxloc - 1 , nb ) &
-             + MOD( nprocs + iproc - isrcproc , nprocs ) * nb + 1
+  !INDXL2G = nprocs * nb *( ( indxloc - 1 ) / nb ) + MOD( indxloc - 1 , nb ) &
+  !           + MOD( nprocs + iproc - isrcproc , nprocs ) * nb + 1
+  INDXL2G = indxloc
 
 end function INDXL2G
 
@@ -202,8 +203,15 @@ subroutine DESCINIT(desc,mmat,nmat,idum3,idum4,idum5,idum6,cntxtdum,idum7,info)
  integer,intent(out)   :: info
 !=====
 
- desc(M_) = mmat
- desc(N_) = nmat
+ desc(DTYPE_) = 1
+ desc(CTXT_)  = cntxtdum
+ desc(M_)     = mmat
+ desc(N_)     = nmat
+ desc(MB_)    = 1
+ desc(NB_)    = 1
+ desc(RSRC_)  = 0
+ desc(CSRC_)  = 0
+ desc(LLD_)   = idum7
 
  info = 0
 
