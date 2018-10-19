@@ -9,6 +9,9 @@
  basis='6-31G'
  auxil_basis='aug-cc-pVTZ-RI'
 
+ eri3_nbatch=2
+ eri3_npcol =2
+
  natom=12
 /
 C      0.000000    1.392033    0.000000
