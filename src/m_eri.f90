@@ -106,7 +106,7 @@ subroutine prepare_eri(basis)
    allocate(negligible_shellpair(basis%nshell,basis%nshell))
    call identify_negligible_shellpair(basis)
    call setup_shellpair(basis)
-   call setup_basispair()
+   call setup_basispair(basis)
  endif
 
 
@@ -207,17 +207,11 @@ pure function index_pair(ibf,jbf)
  integer            :: ijmin,ijmax
 !=====
 
- if( ibf == jbf ) then
-   index_pair = ibf
- else
-   ijmax=MAX(ibf,jbf)
-   ijmin=MIN(ibf,jbf)
+ ijmax=MAX(ibf,jbf)
+ ijmin=MIN(ibf,jbf)
 
-   index_pair = (ijmin-1) * (nbf_eri-1) - (ijmin-1) * (ijmin-2)/2     + ijmax - ijmin + nbf_eri
-
-   index_pair = index_pair_1d(index_pair)
- endif
-
+ index_pair = (ijmin-1) * nbf_eri - ( (ijmin-2) * (ijmin-1) ) / 2  + ijmax - ijmin + 1
+ index_pair = index_pair_1d(index_pair)
 
 end function index_pair
 
@@ -269,10 +263,15 @@ end subroutine setup_shell_index
 
 
 !=========================================================================
-subroutine setup_basispair()
+subroutine setup_basispair(basis)
  implicit none
+
+ type(basis_set),intent(in) :: basis
 !=====
- integer :: ibf,jbf,ijbf
+ integer :: ipair
+ integer :: ibf,jbf,ijbf,ijmax,ijmin
+ integer :: ishell,jshell,ijshellpair
+ integer :: ami,amj,ni,nj
 !=====
 
  npair = 0
@@ -288,33 +287,48 @@ subroutine setup_basispair()
  call clean_allocate('index basis',index_basis,2,npair)
 
  !
- ! Specific ordering where the first nbf pairs contain the diagonal terms ibf==jbf
+ ! Specific ordering where the basis functions in a shell pair have contiguous indexes
  !
- npair = 0
  index_pair_1d(:) = 0
- do jbf=1,nbf_eri
-   if( negligible_basispair(jbf,jbf) ) then
-     call die('setup_negligible_basispair: this should not happen')
+ ipair = 0
+ do ijshellpair=1,nshellpair
+   ishell = index_shellpair(1,ijshellpair)
+   jshell = index_shellpair(2,ijshellpair)
+   ami = basis%shell(ishell)%am
+   amj = basis%shell(jshell)%am
+   ni = number_basis_function_am( basis%gaussian_type , ami )
+   nj = number_basis_function_am( basis%gaussian_type , amj )
+
+   if( ishell /= jshell ) then
+     do jbf=1,nj
+       do ibf=1,ni
+         ipair = ipair + 1
+
+         ijmax=MAX(basis%shell(ishell)%istart + ibf - 1,basis%shell(jshell)%istart + jbf - 1)
+         ijmin=MIN(basis%shell(ishell)%istart + ibf - 1,basis%shell(jshell)%istart + jbf - 1)
+         ijbf = (ijmin-1) * nbf_eri - ( (ijmin-2) * (ijmin-1) ) / 2  + ijmax - ijmin + 1
+
+         index_pair_1d(ijbf)  = ipair
+         index_basis(1,ipair) = basis%shell(ishell)%istart + ibf - 1
+         index_basis(2,ipair) = basis%shell(jshell)%istart + jbf - 1
+       enddo
+     enddo
+   else
+     do jbf=1,nj
+       do ibf=1,jbf
+         ipair = ipair + 1
+
+         ijmax=MAX(basis%shell(ishell)%istart + ibf - 1,basis%shell(jshell)%istart + jbf - 1)
+         ijmin=MIN(basis%shell(ishell)%istart + ibf - 1,basis%shell(jshell)%istart + jbf - 1)
+         ijbf = (ijmin-1) * nbf_eri - ( (ijmin-2) * (ijmin-1) ) / 2  + ijmax - ijmin + 1
+
+         index_pair_1d(ijbf)  = ipair
+         index_basis(1,ipair) = basis%shell(ishell)%istart + ibf - 1
+         index_basis(2,ipair) = basis%shell(jshell)%istart + jbf - 1
+       enddo
+     enddo
    endif
-   npair = npair + 1
-   index_pair_1d(jbf) = npair
-   index_pair_1d(jbf) = npair
-   index_basis(1,npair) = jbf
-   index_basis(2,npair) = jbf
- enddo
 
- ijbf = nbf_eri
-
- do ibf=1,nbf_eri
-   do jbf=ibf+1,nbf_eri  ! Skip the diagonal terms since it is already included
-     ijbf = ijbf + 1
-     if( .NOT. negligible_basispair(ibf,jbf) ) then
-       npair = npair + 1
-       index_pair_1d(ijbf) = npair
-       index_basis(1,npair) = ibf
-       index_basis(2,npair) = jbf
-     endif
-   enddo
  enddo
 
 

@@ -801,7 +801,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='scalapack_block_min'
 vl[i].family   ='hardware'
-vl[i].default  = 400
+vl[i].default  = 1000
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the minimum block size to distribute a non-distributed matrix with SCALAPACK. \
 If scalapack_block_min=400, then a 900x900 matrix will be distributed on a 2x2 processor grid. \
@@ -827,6 +827,15 @@ vl[i].datatype ='integer'
 vl[i].comment  ='Sets number of column processors for the distribution of the 3-center integrals.  \
 eri3_nprow X eri3_npcol must be equal to the number of MPI threads else MOLGW decides on its own.'
 
+#===============================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='eri3_nbatch'
+vl[i].family   ='hardware'
+vl[i].default  = 1
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of batches when calculating the 3-center integrals. \
+Having a large eri3_nbatch reduces the memory foot print, however it may lower the performance.'
 
 #================================
 vl.append(variable())
