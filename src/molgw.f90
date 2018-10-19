@@ -64,6 +64,7 @@ program molgw
  integer                 :: nstate
  integer                 :: istep
  logical                 :: is_restart,is_big_restart,is_basis_restart
+ logical                 :: restart_tddft_is_correct = .TRUE.
  real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)

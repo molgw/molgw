@@ -3,13 +3,12 @@
 ! Author: Ivan Maliyov
 !
 ! This file contains
-! some variables used for the Real Time Time-Dependent DFT
+! a variable used for the Real Time Time-Dependent DFT
 !
 !=========================================================================
 module m_tddft_variables
  
- logical     ::  in_tddft_loop=.false.
- logical     ::  restart_tddft_is_correct=.true.
+ logical :: in_tddft_loop = .FALSE.
 
 !=========================================================================
 end module m_tddft_variables

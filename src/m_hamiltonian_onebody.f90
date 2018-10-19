@@ -526,7 +526,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
  real(dp) :: nucleus
 !=====
 
- if( in_tddft_loop ) then 
+ if( in_tddft_loop ) then
    call start_clock(timing_tddft_hamiltonian_nuc)
  else
    call start_clock(timing_hamiltonian_nuc)
@@ -555,6 +555,9 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
 
    call set_libint_shell(basis%shell(jshell),amB,contrdepthB,B,alphaB,cB)
 
+   !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,amA,contrdepthA,A,alphaA,cA,array_cart,array_cart_C,C,matrix, &
+   !$OMP&                 ij,ibf_cart,jbf_cart,nucleus)
+   !$OMP DO
    do ishell=jshell,basis%nshell
      li      = basis%shell(ishell)%am
      ni_cart = number_basis_function_am('CART',li)
@@ -610,6 +613,8 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
      deallocate(array_cart,array_cart_C,matrix)
 
    enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
    deallocate(alphaB,cB)
  enddo
 
@@ -619,7 +624,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
 
  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution ===',basis%nbf,1,hamiltonian_nucleus)
 
- if( in_tddft_loop ) then 
+ if( in_tddft_loop ) then
    call stop_clock(timing_tddft_hamiltonian_nuc)
  else
    call stop_clock(timing_hamiltonian_nuc)
