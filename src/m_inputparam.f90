@@ -170,6 +170,7 @@ module m_inputparam
  integer,protected                :: scalapack_block_min
  integer,protected                :: eri3_nprow
  integer,protected                :: eri3_npcol
+ integer,protected                :: eri3_nbatch
  integer,protected                :: scalapack_nprow
  integer,protected                :: scalapack_npcol
  integer,protected                :: mpi_nproc_ortho
