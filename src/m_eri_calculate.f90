@@ -873,7 +873,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 #if defined(HAVE_SCALAPACK)
  !
- ! Full Range or Long-Range
+ ! Allocate the final 3-center integral array
+ ! * Full Range or Long-Range
  !
  if( .NOT. is_longrange ) then
    ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
@@ -906,9 +907,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 
 #else
- !
- ! Full Range or Long-Range
- !
  if( .NOT. is_longrange ) then
    call clean_allocate('3-center integrals',eri_3center,nauxil_2center,npair)
  else
@@ -943,16 +941,15 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    ! Skip section for procs that do not participate to the distribution (ortho paral)
    if( cntxt_3center > 0 ) then
 
+     !
+     !  Allocate the temporary 3-center integral array
+     !
      ! Set mlocal => auxil_basis%nbf
      ! Set nlocal => npair
      mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
      nlocal = NUMROC(mpair          ,NB_3center,ipcol_3center,first_col,npcol_3center)
      call DESCINIT(desc_3tmp,auxil_basis%nbf,mpair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
-     !  Allocate the 3-center integral array
-     !
-     ! 3-CENTER INTEGRALS
-     !
      call clean_allocate('TMP 3-center integrals',eri_3center_tmp,mlocal,nlocal)
 
 
@@ -975,6 +972,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
            ! Check if not present in the batch then skip it
            if( klpair_global < ipair_first .OR. klpair_global > ipair_last ) cycle
 
+           ! Shift origin due to batches
+           klpair_global = klpair_global - ipair_first + 1
            skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(klpair_global,NB_3center,0,first_col,npcol_3center) )
          enddo
        enddo
