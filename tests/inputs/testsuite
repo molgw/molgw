@@ -100,7 +100,7 @@ XC Energy                 ,   -7.0110900711    , 0 , 1.0e-7
 Total Energy              ,  -76.3812141506    , 0 , 1.0e-7
 Dipole (a.u.)             ,   -0.738914        , 2 , 1.0e-4
 
-benzene_filtered.in       , HF benzene with RI having a filtered 2-center ERI
+benzene_filtered.in       , HF benzene with RI having a filtered 2-center ERI with 3-center parallelization and batches
 Hartree Energy            ,    312.6277067326   , 0 , 1.0e-7
 SCF Total Energy          ,   -230.6242081120   , 0 , 1.0e-7
 
