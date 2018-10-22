@@ -67,7 +67,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  real(dp),allocatable :: w1(:),w2(:)
  real(dp),allocatable :: xa(:,:),wxa(:,:)
  real(dp)             :: p_becke(natom_basis),s_becke(natom_basis,natom_basis),fact_becke
- real(dp)             :: mu,alpha,xtmp,mu_aa
+ real(dp)             :: mu,alpha,xtmp,mu_aa,rtmp
  integer              :: jatom,katom
  real(dp),allocatable :: rr_grid_tmp(:,:)
  real(dp),allocatable :: w_grid_tmp(:)
@@ -268,51 +268,64 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
          !
          s_becke(:,:) = 0.0_dp
+         !$OMP PARALLEL PRIVATE(mu)
+         !$OMP DO
          do katom=1,natom_basis
            do jatom=1,natom_basis
              if(katom==jatom) cycle
              mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
                        / NORM2(xbasis(:,katom)-xbasis(:,jatom))
-             s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+             s_becke(jatom,katom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
            enddo
          enddo
+         !$OMP END DO
+         !$OMP END PARALLEL
 
        case('ssf')
          !
          ! Partitionning scheme of Stratmann, Scuseria, Frisch, Chem. Phys. Lett. 257, 213 (1996)
          !
          s_becke(:,:) = 0.0_dp
+         !$OMP PARALLEL PRIVATE(mu,mu_aa,rtmp)
+         !$OMP DO
          do katom=1,natom_basis
-           do jatom=1,natom_basis
-             if(katom==jatom) cycle
+           do jatom=katom+1,natom_basis
+
              mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
                        / NORM2(xbasis(:,katom)-xbasis(:,jatom))
 
              if( mu < -aa ) then
-               s_becke(katom,jatom) = 1.0_dp
-             else if( mu > aa ) then
+               s_becke(jatom,katom) = 1.0_dp
                s_becke(katom,jatom) = 0.0_dp
+             else if( mu > aa ) then
+               s_becke(jatom,katom) = 0.0_dp
+               s_becke(katom,jatom) = 1.0_dp
              else
                mu_aa = mu / aa
-               s_becke(katom,jatom) = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
+               rtmp = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
 
-               s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - s_becke(katom,jatom) )
+               s_becke(jatom,katom) = 0.5_dp * ( 1.0_dp - rtmp )
+               s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp + rtmp )
              endif
 
            enddo
          enddo
+         !$OMP END DO
+         !$OMP END PARALLEL
 
        case default
          call die('Invalid choice for the partition scheme. Change partion_scheme value in the input file')
        end select
 
        p_becke(:) = 1.0_dp
+       !$OMP PARALLEL DO
        do katom=1,natom_basis
          do jatom=1,natom_basis
            if(katom==jatom) cycle
-           p_becke(katom) = p_becke(katom) * s_becke(katom,jatom)
+           p_becke(katom) = p_becke(katom) * s_becke(jatom,katom) 
          enddo
        enddo
+       !$OMP END PARALLEL DO
        fact_becke = p_becke(iatom) / SUM( p_becke(:) )
 
        w_grid_tmp(ir) = weight * fact_becke
