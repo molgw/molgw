@@ -1,0 +1,23 @@
+OPENMP= -qopenmp -parallel
+PYTHON=python
+
+# Parallel MPI SCALAPACK compilation
+FC=mpif90 -fpp
+
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_LIBINT_ONEBODY  # -DLAPACK_DIAGO_FLAVOR_D
+
+CXX=icpc  -std=c++0x
+FCOPTS= -O3 -xKNL -qopt-matmul
+CXXOPTS= -O3 -xKNL
+
+LAPACK= -mkl=parallel
+
+SCALAPACK= -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 -lpthread -lm
+
+LIBXC_ROOT=${HOME}/src/libxc-3.0.1-intel/
+
+# Better to use a LIBINT compilation, specifically compiled for KNL (x 2-3 speed-up in the integral evaluation)
+LIBINT_ROOT=${HOME}/src/libint-2.4.2-knl/
+
+FFTW_ROOT=
+
