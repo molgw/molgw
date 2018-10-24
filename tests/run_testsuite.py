@@ -336,7 +336,7 @@ else:
 
 
 
-print('Input files to be run:',ninput2)
+print('Input files found in the test suite: {}'.format(ninput2))
 
 
 ###################################

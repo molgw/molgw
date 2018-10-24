@@ -247,7 +247,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
        ir = ir + 1
 
        ! Parallelization of the weights generation
-       if( MODULO(ir,nproc_world) /= rank_world ) cycle
+       if( MODULO(ir-1,nproc_world) /= rank_world ) cycle
 
        if( xa(iradial,iatom) < pruning_limit * radius ) then
          rr_grid_tmp(1,ir) = xa(iradial,iatom) * x2(iangular) + xbasis(1,iatom)
