@@ -483,7 +483,11 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
    if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
 
    ! A1
-   bra_occ(:,ncore_G+1:nhomo_G) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,pqspin) )
+   !bra_occ(:,ncore_G+1:nhomo_G) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,pqspin) )
+   call DGEMM('T','N',wpol%npole_reso,nstate_occ,nauxil_3center, &
+                         1.0d0,wpol%residue_left,nauxil_3center, &
+                               eri_3center_eigen(1,ncore_G+1,astate,pqspin),nauxil_3center, &
+                         0.0_dp,bra_occ(1,ncore_G+1),wpol%npole_reso)
    call xsum_auxil(bra_occ)
 
    ipole_local = 0
@@ -501,7 +505,11 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
    ! A3    P_cj  sum over i,a,b
    ! A4    P_jc  sum over i,a,b
-   bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,astate,pqspin) )
+   !bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,astate,pqspin) )
+   call DGEMM('T','N',wpol%npole_reso,nstate_virt,nauxil_3center, &
+                         1.0d0,wpol%residue_left,nauxil_3center,  &
+                               eri_3center_eigen(1,nhomo_G+1,astate,pqspin),nauxil_3center, &
+                         0.0_dp,bra_virt(1,nhomo_G+1),wpol%npole_reso)
    call xsum_auxil(bra_virt)
 
    ipole_local = 0
@@ -522,7 +530,11 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
    if( MODULO( istate - (ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
 
    ! A2
-   bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,pqspin) )
+   !bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,pqspin) )
+   call DGEMM('T','N',wpol%npole_reso,nstate_virt,nauxil_3center, &
+                         1.0d0,wpol%residue_left,nauxil_3center,  &
+                               eri_3center_eigen(1,nhomo_G+1,istate,pqspin),nauxil_3center, &
+                         0.0_dp,bra_virt(1,nhomo_G+1),wpol%npole_reso)
    call xsum_auxil(bra_virt)
 
    ipole_local = 0
@@ -539,7 +551,11 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
    ! A5   P_bk  sum over i,j,a
    ! A6   P_kb  sum over i,j,a
-   bra_occ(:,ncore_G+1:nhomo_G)       = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,istate,pqspin) )
+   !bra_occ(:,ncore_G+1:nhomo_G)       = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,istate,pqspin) )
+   call DGEMM('T','N',wpol%npole_reso,nstate_occ,nauxil_3center, &
+                         1.0d0,wpol%residue_left,nauxil_3center, &
+                               eri_3center_eigen(1,ncore_G+1,istate,pqspin),nauxil_3center, &
+                         0.0_dp,bra_occ(1,ncore_G+1),wpol%npole_reso)
    call xsum_auxil(bra_occ)
 
    ipole_local = 0
