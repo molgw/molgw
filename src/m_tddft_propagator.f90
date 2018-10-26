@@ -48,12 +48,13 @@ contains
 
 
 !=========================================================================
-subroutine calculate_propagation(basis,occupation,c_matrix)
+subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_correct)
  implicit none
 
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(in)        :: occupation(:,:)
+ logical,intent(in)         :: restart_tddft_is_correct
 !=====
  integer,parameter          :: BATCH_SIZE = 64
  integer                    :: fixed_atom_list(natom-nprojectile)
