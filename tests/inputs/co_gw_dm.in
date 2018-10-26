@@ -10,6 +10,7 @@
  print_density_matrix='yes'
  pt_density_matrix='GW'
  use_correlated_density_matrix='yes'
+ mpi_nproc_ortho=2
 
  postscf='GW'
  selfenergy_state_range=1

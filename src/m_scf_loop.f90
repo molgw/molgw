@@ -57,7 +57,8 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable,intent(inout) :: hamiltonian_fock(:,:,:)
  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
 !=====
- type(spectral_function) :: wpol
+ type(spectral_function)    :: wpol
+ type(energy_contributions) :: en_dm_corr
  character(len=64)       :: restart_filename
  logical                 :: is_converged,stopfile_found,density_matrix_found
  integer                 :: file_density_matrix
@@ -467,6 +468,7 @@ subroutine scf_loop(is_restart,&
      call destroy_spectral_function(wpol)
    end select
 
+
    ! Option 3:
    ! If no p_matrix_corr is present yet, then try to read it from a DENSITY_MATRIX file
    if( ALL( ABS(p_matrix_corr(:,:,:)) < 0.01_dp ) ) then
@@ -485,11 +487,22 @@ subroutine scf_loop(is_restart,&
    endif
 
    if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
-     call calculate_hartree(basis,p_matrix_corr,hamiltonian_hartree_corr,eh=energy_tmp)
-     write(stdout,'(a50,1x,f19.10)') 'Hartree energy from correlated dm [Ha]:',energy_tmp
 
-     call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=energy_tmp)
-     write(stdout,'(a50,1x,f19.10)') 'Exchange energy from correlated dm [Ha]:',energy_tmp
+     en_dm_corr%nuc_nuc = en%nuc_nuc
+     en_dm_corr%kin = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
+     en_dm_corr%nuc = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
+
+     call calculate_hartree(basis,p_matrix_corr,hamiltonian_hartree_corr,eh=en_dm_corr%hart)
+
+     call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=en_dm_corr%exx)
+
+     en_dm_corr%tot = en_dm_corr%nuc_nuc + en_dm_corr%kin + en_dm_corr%nuc +  en_dm_corr%hart + en_dm_corr%exx
+     write(stdout,'(/,1x,a)') 'Energies from correlation density matrix'
+     write(stdout,'(a25,1x,f19.10)')   'Kinetic energy (Ha):',en_dm_corr%kin
+     write(stdout,'(a25,1x,f19.10)')   'Nucleus energy (Ha):',en_dm_corr%nuc
+     write(stdout,'(a25,1x,f19.10)')   'Hartree energy (Ha):',en_dm_corr%hart
+     write(stdout,'(a25,1x,f19.10)')  'Exchange energy (Ha):',en_dm_corr%exx
+     write(stdout,'(a25,1x,f19.10)') 'Total EXX energy (Ha):',en_dm_corr%tot
 
      do ispin=1,nspin
        do istate=1,nstate

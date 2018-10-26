@@ -462,6 +462,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
            eri_3tmp_auxil(ilocal,jlocal) = eri_3center_eigen(ilocal,jglobal,pstate,pspin)
          enddo
        enddo
+     else
+       call clean_allocate('TMP 3center eigen',eri_3tmp_auxil,1,1)
      endif
      !
      ! Change data distribution

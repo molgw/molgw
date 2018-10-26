@@ -292,6 +292,10 @@ subroutine diagonalize_dp(matrix,eigval,eigvec)
  integer             :: liwork
  integer,allocatable :: iwork(:)
  integer             :: isuppz(2*SIZE(matrix,DIM=1))
+ real(dp),allocatable:: matrix_tmp(:,:)
+ real(dp)            :: ABSTOL
+ real(dp),external   :: DLAMCH
+ integer             :: neig
 #endif
 !=====
 
@@ -308,7 +312,10 @@ subroutine diagonalize_dp(matrix,eigval,eigvec)
  deallocate(iwork)
 #elif defined(LAPACK_DIAGO_FLAVOR_R)
  allocate(iwork(1))
- call DSYEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,0.d0,nmat,work,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+ allocate(matrix_tmp(nmat,nmat))
+ ABSTOL=DLAMCH('S')
+ matrix_tmp=matrix
+ call DSYEVR('V','A','U',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
  liwork = iwork(1)
  deallocate(iwork)
 #else
@@ -317,7 +324,7 @@ subroutine diagonalize_dp(matrix,eigval,eigvec)
  lwork = NINT(work(1))
  deallocate(work)
 
- if( info /= 0 ) call die('diago failure 1')
+ if( info /= 0 ) call die('diagonalize_dp: diago failure 1')
 
  allocate(work(lwork))
 #if defined(LAPACK_DIAGO_FLAVOR_D)
@@ -326,14 +333,15 @@ subroutine diagonalize_dp(matrix,eigval,eigvec)
  deallocate(iwork)
 #elif defined(LAPACK_DIAGO_FLAVOR_R)
  allocate(iwork(liwork))
- call DSYEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,0.d0,nmat,work,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+ call DSYEVR('V','A','U',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
  deallocate(iwork)
+ deallocate(matrix_tmp)
 #else
  call DSYEV('V','U',nmat,eigvec,nmat,eigval,work,lwork,info)
 #endif
  deallocate(work)
 
- if( info /= 0 ) call die('diago failure 2')
+ if( info /= 0 ) call die('diagonalize_dp: diago failure 2')
 
 end subroutine diagonalize_dp
 
@@ -359,6 +367,8 @@ subroutine diagonalize_sp(matrix,eigval,eigvec)
 
  deallocate(work)
 
+ if( info /= 0 ) call die('diagonalize_sp: diago failure 1')
+
 end subroutine diagonalize_sp
 
 
@@ -376,10 +386,13 @@ subroutine diagonalize_inplace_dp(matrix,eigval)
  integer,allocatable :: iwork(:)
 #endif
 #if defined(LAPACK_DIAGO_FLAVOR_R)
- integer             :: liwork
- integer,allocatable :: iwork(:)
- integer             :: isuppz(2*SIZE(matrix,DIM=1))
- real(dp),allocatable :: eigvec(:,:)
+ integer                 :: liwork
+ integer,allocatable     :: iwork(:)
+ integer                 :: isuppz(2*SIZE(matrix,DIM=1))
+ real(dp),allocatable    :: eigvec(:,:)
+ real(dp)                :: ABSTOL
+ real(dp),external       :: DLAMCH
+ integer                 :: neig
 #endif
 !=====
 
@@ -395,7 +408,8 @@ subroutine diagonalize_inplace_dp(matrix,eigval)
 #elif defined(LAPACK_DIAGO_FLAVOR_R)
  allocate(iwork(1))
  allocate(eigvec(nmat,nmat))
- call DSYEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,0.d0,nmat,work,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+ ABSTOL=DLAMCH('S')
+ call DSYEVR('V','A','U',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
  liwork = iwork(1)
  deallocate(iwork)
 #else
@@ -404,7 +418,7 @@ subroutine diagonalize_inplace_dp(matrix,eigval)
  lwork = NINT(work(1))
  deallocate(work)
 
- if( info /= 0 ) call die('diago failure 1')
+ if( info /= 0 ) call die('diagonalize_inplace_dp: diago failure 1')
 
  allocate(work(lwork))
 #if defined(LAPACK_DIAGO_FLAVOR_D)
@@ -413,7 +427,7 @@ subroutine diagonalize_inplace_dp(matrix,eigval)
  deallocate(iwork)
 #elif defined(LAPACK_DIAGO_FLAVOR_R)
  allocate(iwork(liwork))
- call DSYEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,0.d0,nmat,work,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+ call DSYEVR('V','A','U',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
  matrix(:,:) = eigvec(:,:)
  deallocate(eigvec)
  deallocate(iwork)
@@ -422,7 +436,7 @@ subroutine diagonalize_inplace_dp(matrix,eigval)
 #endif
  deallocate(work)
 
- if( info /= 0 ) call die('diago failure 2')
+ if( info /= 0 ) call die('diagonalize_inplace_dp: diago failure 2')
 
 end subroutine diagonalize_inplace_dp
 
@@ -446,9 +460,13 @@ subroutine diagonalize_inplace_sp(matrix,eigval)
  lwork = NINT(work(1))
  deallocate(work)
 
+ if( info /= 0 ) call die('diagonalize_inplace_sp: diago failure 1')
+
  allocate(work(lwork))
  call SSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
  deallocate(work)
+
+ if( info /= 0 ) call die('diagonalize_inplace_sp: diago failure 2')
 
 end subroutine diagonalize_inplace_sp
 
@@ -468,36 +486,67 @@ subroutine diagonalize_cdp(matrix,eigval,eigvec)
  integer                 :: liwork
  integer,allocatable     :: iwork(:)
 #endif
+#if defined(LAPACK_DIAGO_FLAVOR_R)
+ integer                 :: liwork
+ integer,allocatable     :: iwork(:)
+ integer                 :: isuppz(2*SIZE(matrix,DIM=1))
+ complex(dp),allocatable :: matrix_tmp(:,:)
+ real(dp)                :: ABSTOL
+ real(dp),external       :: DLAMCH
+ integer                 :: neig
+#endif
 !=====
 
  nmat = SIZE(matrix,DIM=1)
  eigvec(:,:) = matrix(:,:)
-
-#if defined(LAPACK_DIAGO_FLAVOR_D)
+ lwork = -1
 
  allocate(work(1))
  allocate(rwork(1))
+#if defined(LAPACK_DIAGO_FLAVOR_D)
  allocate(iwork(1))
  call ZHEEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
- lwork  = NINT(REAL(work(1),dp))
- lrwork = NINT(rwork(1))
  liwork = iwork(1)
- deallocate(work,rwork,iwork)
+ deallocate(iwork)
+ lrwork = NINT(rwork(1))
+#elif defined(LAPACK_DIAGO_FLAVOR_R)
+ allocate(iwork(1))
+ allocate(matrix_tmp(nmat,nmat))
+ matrix_tmp=matrix
+ ABSTOL=DLAMCH('S')
+ call ZHEEVR('V','A','U',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
+ liwork = iwork(1)
+ deallocate(iwork)
+ lrwork = NINT(rwork(1))
+#else 
+ call ZHEEV('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,info)
+ lrwork = 3 * nmat - 2
+#endif
+ lwork = NINT(REAL(work(1),dp))
+ deallocate(rwork)
+ deallocate(work)
+
+ if( info /= 0 ) call die('diagonalize_cdp: diago failure 1')
 
  allocate(work(lwork))
  allocate(rwork(lrwork))
+#if defined(LAPACK_DIAGO_FLAVOR_D)
  allocate(iwork(liwork))
  call ZHEEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
- deallocate(work,rwork,iwork)
-
+ deallocate(iwork)
+#elif defined(LAPACK_DIAGO_FLAVOR_R)
+ allocate(iwork(1))
+ call ZHEEVR('V','A','U',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
+ deallocate(iwork)
+ deallocate(matrix_tmp)
 #else
-
- allocate(work(2*nmat-1))
- allocate(rwork(3*nmat-2))
- call ZHEEV('V','U',nmat,eigvec,nmat,eigval,work,2*nmat-1,rwork,info)
- deallocate(work,rwork)
-
+ call ZHEEV('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,info)
 #endif
+
+ deallocate(work)
+ deallocate(rwork)
+
+ if( info /= 0 ) call die('diagonalize_cdp: diago failure 2')
 
 end subroutine diagonalize_cdp
 
@@ -517,10 +566,13 @@ subroutine diagonalize_inplace_cdp(matrix,eigval)
  integer,allocatable     :: iwork(:)
 #endif
 #if defined(LAPACK_DIAGO_FLAVOR_R)
- integer             :: liwork
- integer,allocatable :: iwork(:)
- integer             :: isuppz(2*SIZE(matrix,DIM=1))
- real(dp),allocatable :: eigvec(:,:)
+ integer                 :: liwork
+ integer,allocatable     :: iwork(:)
+ integer                 :: isuppz(2*SIZE(matrix,DIM=1))
+ complex(dp),allocatable :: eigvec(:,:)
+ real(dp)                :: ABSTOL
+ real(dp),external       :: DLAMCH
+ integer                 :: neig
 #endif
 !=====
 
@@ -538,7 +590,8 @@ subroutine diagonalize_inplace_cdp(matrix,eigval)
 #elif defined(LAPACK_DIAGO_FLAVOR_R)
  allocate(iwork(1))
  allocate(eigvec(nmat,nmat))
- call ZHEEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,0.d0,nmat,work,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
+ ABSTOL=DLAMCH('S')
+ call ZHEEVR('V','A','U',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
  liwork = iwork(1)
  deallocate(iwork)
  lrwork = NINT(rwork(1))
@@ -550,6 +603,8 @@ subroutine diagonalize_inplace_cdp(matrix,eigval)
  deallocate(rwork)
  deallocate(work)
 
+ if( info /= 0 ) call die('diagonalize_inplace_cdp: diago failure 1')
+
  allocate(work(lwork))
  allocate(rwork(lrwork))
 #if defined(LAPACK_DIAGO_FLAVOR_D)
@@ -558,7 +613,7 @@ subroutine diagonalize_inplace_cdp(matrix,eigval)
  deallocate(iwork)
 #elif defined(LAPACK_DIAGO_FLAVOR_R)
  allocate(iwork(1))
- call ZHEEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,0.d0,nmat,work,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
+ call ZHEEVR('V','A','U',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
  matrix(:,:) = eigvec(:,:)
  deallocate(eigvec)
  deallocate(iwork)
@@ -568,6 +623,8 @@ subroutine diagonalize_inplace_cdp(matrix,eigval)
 
  deallocate(work)
  deallocate(rwork)
+
+ if( info /= 0 ) call die('diagonalize_inplace_cdp: diago failure 2')
 
 end subroutine diagonalize_inplace_cdp
 

@@ -93,10 +93,8 @@ subroutine header()
 
 
  ! Parallelization details
-#ifdef _OPENMP
- write(msg,'(i6)') OMP_get_max_threads()
- msg='OPENMP option is activated with threads number'//msg
- call issue_warning(msg)
+#if defined(_OPENMP)
+ write(stdout,'(1x,a,i4)') 'OPENMP parallelization activated with max threads count: ',OMP_get_max_threads()
 #endif
 #if defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
  write(stdout,*) 'Running with MPI'
@@ -110,11 +108,9 @@ subroutine header()
 #endif
 #if defined(LAPACK_DIAGO_FLAVOR_D)
  write(stdout,*) 'Perform diagonalizations with LAPACK routines DSYEVD, ZHEEVD'
-#endif
-#if defined(LAPACK_DIAGO_FLAVOR_R)
+#elif defined(LAPACK_DIAGO_FLAVOR_R)
  write(stdout,*) 'Perform diagonalizations with LAPACK routines DSYEVR, ZHEEVR'
-#endif
-#if !defined(LAPACK_DIAGO_FLAVOR_D) && !defined(LAPACK_DIAGO_FLAVOR_R)
+#else
  write(stdout,*) 'Perform diagonalizations with LAPACK routines DSYEV, ZHEEV (standard)'
 #endif
 

@@ -237,7 +237,15 @@ if not os.path.isfile('../molgw') :
   print('molgw executable not found!\nMay be you should compile it first? May be you moved it around?')
   sys.exit(1)
 
-print('Running with ',nprocs,'cores')
+try:
+  ncores = int(os.environ['OMP_NUM_THREADS'])
+except:
+  ncores = 1
+  pass
+print('Running with \033[91m\033[1m{:3d}\033[0m MPI    threads'.format(nprocs))
+print('Running with \033[91m\033[1m{:3d}\033[0m OPENMP threads'.format(ncores))
+print()
+
 
 ###################################
 # Parse the file testsuite
@@ -328,7 +336,7 @@ else:
 
 
 
-print('Input files to be run:',ninput2)
+print('Input files found in the test suite: {}'.format(ninput2))
 
 
 ###################################
