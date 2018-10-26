@@ -923,10 +923,11 @@ end subroutine set_occupation
 
 
 !=========================================================================
-subroutine matrix_basis_to_eigen(c_matrix,matrix_inout)
+subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
  implicit none
- real(dp),intent(in)     :: c_matrix(:,:,:)
- real(dp),intent(inout)  :: matrix_inout(:,:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: matrix_in(:,:,:)
+ real(dp),intent(out) :: matrix_out(:,:,:)
 !=====
  integer                 :: nbf,nstate
  integer                 :: ispin
@@ -942,18 +943,53 @@ subroutine matrix_basis_to_eigen(c_matrix,matrix_inout)
  do ispin=1,nspin
    !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
    ! H * C
-   call DGEMM('N','N',nbf,nstate,nbf,1.0d0,matrix_inout(:,:,ispin),nbf, &
-                                           c_matrix(:,:,ispin),nbf,     &
+   call DGEMM('N','N',nbf,nstate,nbf,1.0d0,matrix_in(:,:,ispin),nbf, &
+                                           c_matrix(:,:,ispin),nbf,  &
                                      0.0d0,matrix_tmp,nbf)
    ! C**T * (H * C)
-   call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(:,:,ispin),nbf,  &
-                                              matrix_tmp,nbf,           &
-                                        0.0d0,matrix_inout,nbf)
+   call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(:,:,ispin),nbf, &
+                                              matrix_tmp,nbf,          &
+                                        0.0d0,matrix_out,nstate)
 
  enddo
  deallocate(matrix_tmp)
 
-end subroutine matrix_basis_to_eigen
+end subroutine matrix_ao_to_mo
+
+
+!=========================================================================
+subroutine matrix_mo_to_ao(c_matrix,matrix_in,matrix_out)
+ implicit none
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: matrix_in(:,:,:)
+ real(dp),intent(out) :: matrix_out(:,:,:)
+!=====
+ integer              :: nbf,nstate
+ integer              :: ispin
+ real(dp),allocatable :: matrix_tmp(:,:)
+!=====
+
+ nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate = SIZE(c_matrix(:,:,:),DIM=2)
+
+
+ allocate(matrix_tmp(nstate,nbf))
+
+ do ispin=1,nspin
+   !matrix_out(1:nbf,1:nbf,ispin) = MATMUL( c_matrix(:,:,ispin) , MATMUL( matrix_in(:,:,ispin) , TRANSPOSE( c_matrix(:,:,ispin) ) ) )
+   ! H * C**T
+   call DGEMM('N','T',nstate,nbf,nstate,1.0d0,matrix_in(:,:,ispin),nstate, &
+                                              c_matrix(:,:,ispin),nbf,     &
+                                        0.0d0,matrix_tmp,nstate)
+   ! C * (H * C**T)
+   call DGEMM('N','N',nbf,nbf,nstate,1.0d0,c_matrix(:,:,ispin),nbf,  &
+                                           matrix_tmp,nstate,        &
+                                     0.0d0,matrix_out,nbf)
+
+ enddo
+ deallocate(matrix_tmp)
+
+end subroutine matrix_mo_to_ao
 
 
 !=========================================================================

@@ -251,6 +251,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
 !=====
  integer              :: nbf,nstate
  integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
+ integer              :: mstate_count_,nstate_count_
  integer              :: kbf,lbf
  integer              :: lstate
  integer              :: klspin
@@ -289,6 +290,9 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
    nstate_max_ = nstate
  endif
 
+ mstate_count_ = mstate_max_ - mstate_min_ + 1
+ nstate_count_ = nstate_max_ - nstate_min_ + 1
+
  !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
  call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center,mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
  eri_3center_eigen(:,:,:,:) = 0.0_dp
@@ -303,6 +307,8 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
      eri_3center_tmp_l(:,:) = 0.0_dp
 
      ! Transformation of the first index
+     !$OMP PARALLEL PRIVATE(kbf,lbf)
+     !$OMP DO REDUCTION(+:eri_3center_tmp_l)
      do ipair=1,npair
        kbf = index_basis(1,ipair)
        lbf = index_basis(2,ipair)
@@ -312,10 +318,16 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
        eri_3center_tmp_l(:,lbf) = eri_3center_tmp_l(:,lbf) &
                                        + c_matrix(kbf,lstate,klspin) * eri_3center(:,ipair)
      enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
 
 
      ! Transformation of the second index
-     eri_3center_eigen(:,mstate_min_:mstate_max_,lstate,klspin) = MATMUL( eri_3center_tmp_l(:,:) , c_matrix(:,mstate_min_:mstate_max_,klspin) )
+     !eri_3center_eigen(:,mstate_min_:mstate_max_,lstate,klspin) = MATMUL( eri_3center_tmp_l(:,:) , c_matrix(:,mstate_min_:mstate_max_,klspin) )
+
+     call DGEMM('N','N',nauxil_3center,mstate_count_,nbf,1.0d0,eri_3center_tmp_l,nauxil_3center,   &
+                                                               c_matrix(1,mstate_min_,klspin),nbf, &
+                                                         0.0d0,eri_3center_eigen(1,mstate_min_,lstate,klspin),nauxil_3center)
 
    enddo
 
