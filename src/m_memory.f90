@@ -16,12 +16,22 @@ module m_memory
 
  interface clean_allocate
   module procedure clean_allocate_i1d
+#ifdef ENABLE_YMBYUN
+  module procedure clean_allocate_i1d_i8_4   ! ymbyun 2018/05/04
+#endif
   module procedure clean_allocate_i2d
+#ifdef ENABLE_YMBYUN
+  module procedure clean_allocate_i2d_i4_48  ! ymbyun 2018/05/03
+  module procedure clean_allocate_i2d_i4_84  ! ymbyun 2018/05/04
+#endif
   module procedure clean_allocate_s1d
   module procedure clean_allocate_s2d
   module procedure clean_allocate_s3d
   module procedure clean_allocate_s4d
   module procedure clean_allocate_1d
+#ifdef ENABLE_YMBYUN
+  module procedure clean_allocate_1d_8       ! ymbyun 2018/05/03
+#endif
   module procedure clean_allocate_2d
   module procedure clean_allocate_2d_range
   module procedure clean_allocate_3d
@@ -32,6 +42,9 @@ module m_memory
 
  interface clean_deallocate
   module procedure clean_deallocate_i1d
+#ifdef ENABLE_YMBYUN
+  module procedure clean_deallocate_i1d_i8   ! ymbyun 2018/05/05
+#endif
   module procedure clean_deallocate_i2d
   module procedure clean_deallocate_s1d
   module procedure clean_deallocate_s2d
@@ -109,6 +122,46 @@ subroutine clean_allocate_i1d(array_name,array,n1)
 
 end subroutine clean_allocate_i1d
 
+#ifdef ENABLE_YMBYUN
+! ymbyun 2018/05/04
+!=========================================================================
+subroutine clean_allocate_i1d_i8_4(array_name,array,n1)
+ implicit none
+
+ character(len=*),intent(in)               :: array_name
+! integer,allocatable,intent(inout)        :: array(:)
+ integer(kind=8),allocatable,intent(inout) :: array(:)
+ integer,intent(in)                        :: n1
+!=====
+ integer             :: info
+ real(dp)            :: mem_mb
+!=====
+
+ if( ALLOCATED(array) ) then
+   call die('clean_allocate: Cannot allocate. This array is already allocated ->'//TRIM(array_name))
+ endif
+
+! ymbyun 2018/05/04
+! integer(kind=8) is used instead of integer(kind=4)
+! mem_mb = REAL(4,dp) * REAL(n1,dp) / 1024._dp**2
+ mem_mb = REAL(8,dp) * REAL(n1,dp) / 1024._dp**2
+
+ ! The allocation itself
+ allocate(array(n1),stat=info)
+
+ if(info/=0) then
+   write(stdout,'(a,a)')    ' Failure when allocating ',array_name
+   write(stdout,'(a,f9.3)') ' with size (Mb) ',mem_mb
+   call die('clean_allocate: Not enough memory. Buy a bigger computer')
+ endif
+
+ total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
+
+ call write_memory_allocate(array_name,mem_mb)
+
+end subroutine clean_allocate_i1d_i8_4
+#endif
 
 !=========================================================================
 subroutine clean_allocate_i2d(array_name,array,n1,n2)
@@ -145,6 +198,82 @@ subroutine clean_allocate_i2d(array_name,array,n1,n2)
 
 end subroutine clean_allocate_i2d
 
+#ifdef ENABLE_YMBYUN
+! ymbyun 2018/05/03
+!=========================================================================
+subroutine clean_allocate_i2d_i4_48(array_name,array,n1,n2)
+ implicit none
+
+ character(len=*),intent(in)       :: array_name
+ integer,allocatable,intent(inout) :: array(:,:)
+! integer,intent(in)               :: n1,n2
+ integer,intent(in)                :: n1
+ integer(kind=8),intent(in)        :: n2
+!=====
+ integer             :: info
+ real(dp)            :: mem_mb
+!=====
+
+ if( ALLOCATED(array) ) then
+   call die('clean_allocate: Cannot allocate. This array is already allocated ->'//TRIM(array_name))
+ endif
+
+ mem_mb = REAL(4,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
+
+ ! The allocation itself
+ allocate(array(n1,n2),stat=info)
+
+ if(info/=0) then
+   write(stdout,'(a,a)')    ' Failure when allocating ',array_name
+   write(stdout,'(a,f9.3)') ' with size (Mb) ',mem_mb
+   call die('clean_allocate: Not enough memory. Buy a bigger computer')
+ endif
+
+ total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
+
+ call write_memory_allocate(array_name,mem_mb)
+
+end subroutine clean_allocate_i2d_i4_48
+
+! ymbyun 2018/05/04
+!=========================================================================
+subroutine clean_allocate_i2d_i4_84(array_name,array,n1,n2)
+ implicit none
+
+ character(len=*),intent(in)       :: array_name
+ integer,allocatable,intent(inout) :: array(:,:)
+! integer,intent(in)               :: n1,n2
+ integer(kind=8),intent(in)        :: n1
+ integer,intent(in)                :: n2
+!=====
+ integer             :: info
+ real(dp)            :: mem_mb
+!=====
+
+ if( ALLOCATED(array) ) then
+   call die('clean_allocate: Cannot allocate. This array is already allocated ->
+'//TRIM(array_name))
+ endif
+
+ mem_mb = REAL(4,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
+
+ ! The allocation itself
+ allocate(array(n1,n2),stat=info)
+
+ if(info/=0) then
+   write(stdout,'(a,a)')    ' Failure when allocating ',array_name
+   write(stdout,'(a,f9.3)') ' with size (Mb) ',mem_mb
+   call die('clean_allocate: Not enough memory. Buy a bigger computer')
+ endif
+
+ total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
+
+ call write_memory_allocate(array_name,mem_mb)
+
+end subroutine clean_allocate_i2d_i4_84
+#endif
 
 !=========================================================================
 subroutine clean_allocate_1d(array_name,array,n1)
@@ -180,6 +309,43 @@ subroutine clean_allocate_1d(array_name,array,n1)
 
 end subroutine clean_allocate_1d
 
+#ifdef ENABLE_YMBYUN
+! ymbyun 2018/05/03
+!=========================================================================
+subroutine clean_allocate_1d_8(array_name,array,n1)
+ implicit none
+
+ character(len=*),intent(in)        :: array_name
+ real(dp),allocatable,intent(inout) :: array(:)
+! integer,intent(in)                :: n1
+ integer(kind=8),intent(in)         :: n1
+!=====
+ integer             :: info
+ real(dp)            :: mem_mb
+!=====
+
+ if( ALLOCATED(array) ) then
+   call die('clean_allocate: Cannot allocate. This array is already allocated ->
+'//TRIM(array_name))
+ endif
+
+ mem_mb = REAL(dp,dp) * REAL(n1,dp) / 1024._dp**2
+
+ ! The allocation itself
+ allocate(array(n1),stat=info)
+
+ if(info/=0) then
+   write(stdout,*) 'failure'
+   call die('clean_allocate: Not enough memory. Buy a bigger computer')
+ endif
+
+ total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
+
+ call write_memory_allocate(array_name,mem_mb)
+
+end subroutine clean_allocate_1d_8
+#endif
 
 !=========================================================================
 subroutine clean_allocate_2d(array_name,array,n1,n2)
@@ -417,6 +583,39 @@ subroutine clean_deallocate_i1d(array_name,array)
 
 end subroutine clean_deallocate_i1d
 
+#ifdef ENABLE_YMBYUN
+! ymbyun 2018/05/05
+!=========================================================================
+subroutine clean_deallocate_i1d_i8(array_name,array)
+ implicit none
+
+ character(len=*),intent(in)               :: array_name
+! integer,allocatable,intent(inout)        :: array(:)
+ integer(kind=8),allocatable,intent(inout) :: array(:)
+!=====
+ integer             :: info
+ real(dp)            :: mem_mb
+ integer             :: n1
+!=====
+
+ if( .NOT. ALLOCATED(array) ) return
+
+ n1 = SIZE(array(:),DIM=1)
+
+! ymbyun 2018/05/05
+! integer(kind=8) is used instead of integer(kind=4).
+! mem_mb = REAL(4,dp) * REAL(n1,dp) / 1024._dp**2
+ mem_mb = REAL(8,dp) * REAL(n1,dp) / 1024._dp**2
+
+ ! The allocation itself
+ deallocate(array)
+
+ total_memory = total_memory - mem_mb
+
+ call write_memory_deallocate(array_name,mem_mb)
+
+end subroutine clean_deallocate_i1d_i8
+#endif
 
 !=========================================================================
 subroutine clean_deallocate_i2d(array_name,array)
@@ -426,11 +625,18 @@ subroutine clean_deallocate_i2d(array_name,array)
  integer,allocatable,intent(inout) :: array(:,:)
 !=====
  real(dp)            :: mem_mb
+! ymbyun 2018/05/05
+#ifdef ENABLE_YMBYUN
+ integer(kind=8)     :: n1,n2
+#else
  integer             :: n1,n2
+#endif
 !=====
 
  if( .NOT. ALLOCATED(array) ) return
 
+! ymbyun 2018/05/05
+! I'm not sure if SIZE() can return an 8-byte integer.
  n1 = SIZE(array(:,:),DIM=1)
  n2 = SIZE(array(:,:),DIM=2)
 
@@ -454,11 +660,18 @@ subroutine clean_deallocate_1d(array_name,array)
  real(dp),allocatable,intent(inout) :: array(:)
 !=====
  real(dp)            :: mem_mb
+! ymbyun 2018/05/03
+#ifdef ENABLE_YMBYUN
+ integer(kind=8)     :: n1
+#else
  integer             :: n1
+#endif
 !=====
 
  if( .NOT. ALLOCATED(array) ) return
 
+! ymbyun 2018/05/05
+! I'm not sure if SIZE() can return an 8-byte integer.
  n1 = SIZE(array(:))
 
  mem_mb = REAL(dp,dp) * REAL(n1,dp) / 1024._dp**2
