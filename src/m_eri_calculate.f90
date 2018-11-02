@@ -42,7 +42,13 @@ subroutine calculate_eri(print_eri_,basis,rcut)
  call start_clock(timing_eri_4center)
 
  if( incore_ ) then
+   ! ymbyun 2018/05/03
+   ! From now on, the array index for 4-center Coulomb integrals can be greater than 2^32.
+#ifdef ENABLE_YMBYUN
+   write(stdout,'(/,a,i16)') ' Number of integrals to be stored: ',nsize
+#else
    write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
+#endif
 
    if( rcut < 1.0e-12_dp ) then
      call clean_allocate('4-center integrals',eri_4center,nsize)
@@ -874,8 +880,15 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  ! Set mlocal => auxil_basis%nbf
  ! Set nlocal => npair
  mlocal = NUMROC(auxil_basis%nbf,block_row,iprow_3center,first_row,nprow_3center)
+! ymbyun 2018/05/21
+! From now on, npair is an 8-byte integer.
+#ifdef ENABLE_YMBYUN
+ nlocal = NUMROC(INT(npair)     ,block_col,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desc3center,auxil_basis%nbf,INT(npair),block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+#else
  nlocal = NUMROC(npair          ,block_col,ipcol_3center,first_col,npcol_3center)
  call DESCINIT(desc3center,auxil_basis%nbf,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+#endif
 
  !  Allocate the 3-center integral array
  !
@@ -986,9 +999,15 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
  ! Set nlocal => npair
  mlocal = NUMROC(nauxil_kept,block_row,iprow_3center,first_row,nprow_3center)
+! ymbyun 2018/05/21
+! From now on, npair is an 8-byte integer.
+#ifdef ENABLE_YMBYUN
+ nlocal = NUMROC(INT(npair) ,block_col,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desc3tmp,nauxil_kept,INT(npair),block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+#else
  nlocal = NUMROC(npair      ,block_col,ipcol_3center,first_col,npcol_3center)
  call DESCINIT(desc3tmp,nauxil_kept,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
-
+#endif
 
 
 
