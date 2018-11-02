@@ -1,5 +1,6 @@
 molgw
 molgw.tgz
+molgw_*
 *.mod
 *.o
 *.swp
