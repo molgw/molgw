@@ -33,7 +33,12 @@ module m_eri
 
 
  logical,protected,allocatable      :: negligible_shellpair(:,:)
- integer,private  ,allocatable      :: index_pair_1d(:)
+! ymbyun 2018/05/03
+#ifdef ENABLE_YMBYUN
+ integer(kind=8),private  ,allocatable      :: index_pair_1d(:)
+#else
+ integer,private  ,allocatable     :: index_pair_1d(:)
+#endif
  integer,protected,allocatable      :: index_basis(:,:)
  integer,protected,allocatable      :: index_shellpair(:,:)
  integer,protected                  :: nshellpair
@@ -42,8 +47,16 @@ module m_eri
 
 
  integer,private   :: nbf_eri         ! local copy of nbf
- integer,protected :: nsize           ! size of the eri_4center array
- integer,protected :: npair           ! number of independent pairs (i,j) with i<=j
+! ymbyun 2018/05/03
+! i4 is too small to store 4-center Coulomb integrals using no-RI/AE/5Z for 3d transition metals.
+! Maybe, MOLGW will need to use i8 by default in the future like NWChem.
+#ifdef ENABLE_YMBYUN
+ integer(kind=8),protected :: nsize      ! size of the eri_4center array
+ integer(kind=8),protected :: npair      ! number of independent pairs (i,j) with i<=j
+#else
+ integer,protected :: nsize             ! size of the eri_4center array
+ integer,protected :: npair             ! number of independent pairs (i,j) with i<=j
+#endif
 
  integer,protected :: nauxil_3center     ! size of the 3-center matrix
                                          ! may differ from the total number of 3-center integrals due to
@@ -174,10 +187,18 @@ pure function index_eri(ibf,jbf,kbf,lbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf,kbf,lbf
+! ymbyun 2018/05/04
+#ifdef ENABLE_YMBYUN
+ integer(kind=8)    :: index_eri
+!=====
+ integer(kind=8)    :: klmin,ijmax
+ integer(kind=8)    :: index_ij,index_kl
+#else
  integer            :: index_eri
 !=====
  integer            :: klmin,ijmax
  integer            :: index_ij,index_kl
+#endif
 !=====
 
  index_ij = index_pair(ibf,jbf)
@@ -197,7 +218,12 @@ pure function index_pair(ibf,jbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf
+! ymbyun 2018/05/05
+#ifdef ENABLE_YMBYUN
+ integer(kind=8)    :: index_pair
+#else
  integer            :: index_pair
+#endif
 !=====
  integer            :: ijmin,ijmax
 !=====
@@ -255,7 +281,12 @@ function eri_ri(ibf,jbf,kbf,lbf)
  integer,intent(in) :: ibf,jbf,kbf,lbf
  real(dp)           :: eri_ri
 !=====
+! ymbyun 2018/05/05
+#ifdef ENABLE_YMBYUN
+ integer(kind=8)    :: index_ij,index_kl
+#else
  integer            :: index_ij,index_kl
+#endif
 !=====
 
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
@@ -279,7 +310,12 @@ function eri_ri_lr(ibf,jbf,kbf,lbf)
  integer,intent(in) :: ibf,jbf,kbf,lbf
  real(dp)           :: eri_ri_lr
 !=====
+! ymbyun 2018/05/04
+#ifdef ENABLE_YMBYUN
+ integer(kind=8)    :: index_ij,index_kl
+#else
  integer            :: index_ij,index_kl
+#endif
 !=====
 
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
@@ -622,7 +658,12 @@ subroutine negligible_eri(tol)
  real(dp),intent(in) :: tol
 !=====
  integer             :: icount,ibf,jbf,kbf,lbf,jcount
+! ymbyun 2018/05/04
+#ifdef ENABLE_YMBYUN
+ integer(kind=8)     :: ibuffer
+#else
  integer             :: ibuffer
+#endif
  real(dp)            :: integral_ij(nbf_eri,nbf_eri)
 !=====
 
@@ -668,7 +709,12 @@ subroutine dump_out_eri(rcut)
  real(dp),intent(in) :: rcut
 !=====
  character(len=50) :: filename
+! ymbyun 2018/05/04
+#ifdef ENABLE_YMBYUN
+ integer(kind=8)   :: nline,iline,icurrent
+#else
  integer           :: nline,iline,icurrent
+#endif
  integer           :: erifile
 !=====
 
@@ -706,8 +752,14 @@ logical function read_eri(rcut)
  real(dp),intent(in) :: rcut
 !=====
  character(len=50) :: filename
+! ymbyun 2018/05/04
+#ifdef ENABLE_YMBYUN
+ integer(kind=8)   :: nline,iline,icurrent
+ integer(kind=8)   :: integer_read
+#else
  integer           :: nline,iline,icurrent
  integer           :: integer_read
+#endif
  real(dp)          :: real_read
  integer           :: erifile
 !=====
