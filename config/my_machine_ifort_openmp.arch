@@ -1,0 +1,35 @@
+#OPENMP=
+OPENMP= -qopenmp
+PYTHON=python
+#LIBTOOL=libtool --mode=link --tag=FC
+LIBTOOL=
+
+# Parallel MPI SCALAPACK compilation
+#FC=ftn -fpp
+#FC=mpif90 -fpp
+FC=ifort -fpp 
+
+#CPPFLAGS= -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY -DENABLE_YMBYUN -DENABLE_LIBXC_ALPHA -DHAVE_MPI -DHAVE_SCALAPACK
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY -DENABLE_YMBYUN -DENABLE_LIBXC_ALPHA -DENABLE_OPENMP_AFFINITY
+
+CXX=icpc
+#FCOPTS= -O3 -xhost -qopt-matmul
+FCOPTS= -O2 -xHost -qopt-matmul #-I${MKLROOT}/include
+#CXXOPTS= -O3 -xhost
+CXXOPTS= -O2 -xHost
+
+#LAPACK= -mkl=sequential
+#LAPACK= ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -limf -ldl #-lm -ldl
+LAPACK= -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lpthread -limf -ldl #-lm -ldl
+
+#SCALAPACK= -L${MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
+
+LIBXC_ROOT=/opt/libxc-3.0.0-HF.alpha.o-intel
+#LIBXC_ROOT=${HOME}/programs/libxc-3.0.0-HF.alpha.o-intel
+#LIBXC_ROOT=${HOME}/programs/libxc-3.0.0-HF.alpha.o-edison
+#LIBXC_ROOT=${HOME}/programs/libxc-3.0.0-HF.alpha.o-cori.haswell
+
+LIBINT_ROOT=/opt/libint-2.2.0-intel-N17.O1
+#LIBINT_ROOT=/storage/htc/ullrichlab/ybyun/programs/libint-2.2.0-intel-N17.O1-login
+#LIBINT_ROOT=${HOME}/programs/libint-2.2.0-edison
+#LIBINT_ROOT=${HOME}/programs/libint-2.2.0-cori.haswell
