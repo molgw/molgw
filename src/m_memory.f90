@@ -252,8 +252,7 @@ subroutine clean_allocate_i2d_i4_84(array_name,array,n1,n2)
 !=====
 
  if( ALLOCATED(array) ) then
-   call die('clean_allocate: Cannot allocate. This array is already allocated ->
-'//TRIM(array_name))
+   call die('clean_allocate: Cannot allocate. This array is already allocated ->'//TRIM(array_name))
  endif
 
  mem_mb = REAL(4,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
@@ -325,8 +324,7 @@ subroutine clean_allocate_1d_8(array_name,array,n1)
 !=====
 
  if( ALLOCATED(array) ) then
-   call die('clean_allocate: Cannot allocate. This array is already allocated ->
-'//TRIM(array_name))
+   call die('clean_allocate: Cannot allocate. This array is already allocated ->'//TRIM(array_name))
  endif
 
  mem_mb = REAL(dp,dp) * REAL(n1,dp) / 1024._dp**2
