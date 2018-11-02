@@ -1,6 +1,6 @@
 #OPENMP=
 OPENMP= -qopenmp
-PYTHON=python
+PYTHON=python3
 #LIBTOOL=libtool --mode=link --tag=FC
 LIBTOOL=
 
