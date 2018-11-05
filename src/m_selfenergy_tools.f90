@@ -89,13 +89,31 @@ end subroutine selfenergy_set_state_range
 
 
 !=========================================================================
-subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy0,se)
+! ymbyun 2018/07/11
+! The QP energy Eqp is obtained from the spectral function A(w) while A(w) is being written to a file.
+! ymbyun 2018/11/04
+! Out: nstate
+! In:  occupation
+#ifdef ENABLE_YMBYUN
+! subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,energy0,se, energy_qp_A)
+ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy0,se, energy_qp_A,nstate_in)
+#else
+! subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,energy0,se)
+ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy0,se)
+#endif
  implicit none
 
  character(len=*)    :: filename_root
  real(dp),intent(in) :: exchange_m_vxc(:,:)
  real(dp),intent(in) :: occupation(:,:),energy0(:,:)
  type(selfenergy_grid),intent(in) :: se
+
+! ymbyun 2018/07/11
+#ifdef ENABLE_YMBYUN
+ integer,intent(in)  :: nstate_in  ! ymbyun 2018/11/04
+! real(dp),intent(out),optional    :: energy_qp_A(nstate,nspin)
+ real(dp),intent(out),optional    :: energy_qp_A(:,:)
+#endif
 !=====
  integer            :: nstate
  character(len=3)   :: ctmp
@@ -104,19 +122,61 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
  integer            :: pstate,pspin
  integer            :: iomega
  real(dp)           :: spectral_function_w(nspin),sign_occ(nspin)
+
+! ymbyun 2018/07/11
+#ifdef ENABLE_YMBYUN
+ integer  :: ii
+ integer  :: pspin
+ real(dp) :: Z_spe(nspin), Z_der(nspin)
+ real(dp) :: Eqp(nspin), Eqp_left(nspin), Eqp_right(nspin)
+ real(dp) :: A_max(nspin), A_left(nspin), A_right(nspin)
+! real(dp) :: dSdw_all(nstate,nspin), dSdw(nspin)
+ real(dp) :: dSdw_all(nstate_in,nspin), dSdw(nspin)
+#endif
 !=====
 
  ! Just the master writes
  if( .NOT. is_iomaster ) return
 
+ ! ymbyun 2018/11/04
+ ! This is not in 1.F.
  nstate = SIZE(exchange_m_vxc,DIM=1)
 
  write(stdout,'(/,1x,a)') 'Write Sigma(omega) on file'
+
+! ymbyun 2018/07/11
+#ifdef ENABLE_YMBYUN
+ if( se%nomega > 0 .AND. PRESENT(energy_qp_A) ) then
+
+! Too much effort for too little return
+! First touch to reduce NUMA effects using memory affinity
+! Both (positive) affinity and (negative) overhead occur at the same time.
+! A performance test is needed to find which one has a stronger effect on the speedup.
+#ifdef ENABLE_OPENMP_AFFINITY
+!$OMP PARALLEL
+!$OMP DO PRIVATE(pstate)
+   do pstate=nsemin,nsemax
+     energy_qp_A(pstate,:) = energy0(pstate,:)
+     dSdw_all(pstate,:) = 0.0_dp
+   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+#else
+   energy_qp_A(:,:) = energy0(:,:)
+   dSdw_all(:,:) = 0.0_dp
+#endif
+
+ endif
+#endif
 
  !
  ! omega is defined with respect to energy0_a
  ! Absolute omega is omega + energy0_a
  !
+! ymbyun 2018/07/11
+! NOTE: I'm not sure if it's safe for multiple threads to write multiple files at the same time.
+!$OMP PARALLEL
+!$OMP DO PRIVATE(ctmp,filename,selfenergyfile,pstate,iomega,spectral_function_w, pspin,Z_spe,Z_der,Eqp,Eqp_left,Eqp_right,A_max,A_left,A_right,dSdw)
  do pstate=nsemin,nsemax
    write(ctmp,'(i3.3)') pstate
    filename = TRIM(filename_root) // '_state' // TRIM(ctmp) // '.dat'
@@ -125,6 +185,14 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
 
    write(selfenergyfile,'(a)') '#       omega (eV)          Re SigmaC (eV)     Im SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)'
 
+#ifdef ENABLE_YMBYUN
+   if( se%nomega > 0 .AND. PRESENT(energy_qp_A) ) then
+     A_max(:) = 0.0_dp
+   endif
+#endif
+
+   ! ymbyun 2018/11/04
+   ! This is not in 1.F.
    do pspin=1,nspin
      sign_occ(:) = SIGN( 1.0_dp , occupation(pstate,pspin) - spin_fact * 0.50_dp )
    enddo
@@ -140,6 +208,49 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
                                             AIMAG(se%sigma(iomega,pstate,:)) * Ha_eV,                      &
                                             ( REAL(se%omega(iomega),dp) + se%energy0(pstate,:) - energy0(pstate,:) - exchange_m_vxc(pstate,:) ) * Ha_eV, &
                                             spectral_function_w(:) / Ha_eV
+#ifdef ENABLE_YMBYUN
+     if( se%nomega > 0 .AND. PRESENT(energy_qp_A) ) then
+       if( iomega /= -se%nomega .AND. iomega /= se%nomega ) then
+         ! NOTE: Z_spe and Z_der here are obtained by using the discrete w grid. A fine w grid makes them more accurate.
+         Eqp(:)   = REAL(se%omega(iomega),dp) + se%energy0(pstate,:)
+         Z_spe(:) = (Eqp(:)+energy0(pstate,:)*(-1.0_dp)) / (exchange_m_vxc(pstate,:)+REAL(se%sigma(0,pstate,:),dp))
+
+         dSdw(:) =   ( REAL(se%sigma(iomega+1,pstate,:),dp) - REAL(se%sigma(iomega-1,pstate,:),dp) ) / ( se%omega(iomega+1) - se%omega(iomega-1) )
+         Z_der(:) = 1.0_dp / ( 1.0_dp - dSdw(:) )
+
+         do pspin=1,nspin
+           if( spectral_function_w(pspin) > A_max(pspin) ) then
+             ! NOTE: I'm not sure which one to use between Z_spe and Z_der. They yield identical results for energy levels near HOMO/LUMO.
+             if( Z_spe(pspin) > 0.0_dp .AND. Z_spe(pspin) < 1.0_dp ) then
+!             if( Z_der(pspin) > 0.0_dp .AND. Z_der(pspin) < 1.0_dp ) then
+               ! First, spectral function A(w)
+               A_max(pspin) = spectral_function_w(pspin)
+
+               ! Second, quasi-particle energy Eqp
+               A_left(pspin)  = 1.0_dp / pi * ABS(   &
+                                       AIMAG( 1.0_dp   &
+                                         / ( se%energy0(pstate,pspin)+se%omega(iomega-1) - energy0(pstate,pspin) + ieta * sign_occ(pspin) &  ! ymbyun 2018/11/04 ieta added.
+                                               - exchange_m_vxc(pstate,pspin) - se%sigma(iomega-1,pstate,pspin) ) ) )
+               A_right(pspin) = 1.0_dp / pi * ABS(   &
+                                       AIMAG( 1.0_dp   &
+                                         / ( se%energy0(pstate,pspin)+se%omega(iomega+1) - energy0(pstate,pspin) + ieta * sign_occ(pspin) &  ! ymbyun 2018/11/04 ieta added.
+                                               - exchange_m_vxc(pstate,pspin) - se%sigma(iomega+1,pstate,pspin) ) ) )
+               Eqp_left(pspin)  = REAL(se%omega(iomega-1),dp) + se%energy0(pstate,pspin)
+               Eqp_right(pspin) = REAL(se%omega(iomega+1),dp) + se%energy0(pstate,pspin)
+!               energy_qp_A(pstate,pspin) = Eqp(pspin)
+               energy_qp_A(pstate,pspin) = 1.0_dp / ( A_left(pspin) + A_max(pspin) + A_right(pspin) ) &
+                                                  * ( A_left(pspin)*Eqp_left(pspin) + A_max(pspin)*Eqp(pspin) + A_right(pspin)*Eqp_right(pspin) )
+
+               ! Thrid, derivative of Sigma(omega)
+               dSdw_all(pstate,pspin) = dSdw(pspin)
+!               dSdw_all(pstate,pspin) =   ( REAL(se%sigma(iomega+1,pstate,pspin),dp) - REAL(se%sigma(iomega-1,pstate,pspin),dp) ) &
+!                                        / ( se%omega(iomega+1) - se%omega(iomega-1) )
+             endif
+           endif
+         enddo
+       endif
+     endif
+#endif
    enddo
    if( se%nomegai > 0 ) then
      do iomega=-se%nomegai,se%nomegai
@@ -152,8 +263,50 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
    write(selfenergyfile,*)
    close(selfenergyfile)
 
- enddo
+! ymbyun 2018/07/11
+! This happens for energy levels near HOMO/LUMO + large step_sigma.
+#ifdef ENABLE_YMBYUN
+   if( se%nomega > 0 .AND. PRESENT(energy_qp_A) ) then
+     do pspin=1,nspin
+       if( A_max(pspin) == 0.0_dp ) then
+         write(stdout,'(a,i4,2x,i4)') ' (ymbyun) The spectral function A(w) cannot yield the QP energy Eqp for state,spin: ',pstate,pspin
+         call issue_warning('(ymbyun) The QP energy Eqp cannot be obtained from the spectral function A(w).')
+       endif
+     enddo
+   endif
+#endif
 
+ enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+! ymbyun 2018/07/11
+! For (i) the derivative of Sigma(omega) at Eqp and (ii) the high precision
+#ifdef ENABLE_YMBYUN
+ if( se%nomega > 0 .AND. PRESENT(energy_qp_A) ) then
+   write(stdout,*)
+   write(stdout,'(a)') ' (ymbyun) QP energies Eqp (eV) obtained from spectral function A(w)'
+
+   if( nspin == 1 ) then
+     write(stdout,'(3x,a, 7x,a, 7x,a, 5x,a, 6x,a, 6x,a, 6x,a, 5x,a)') '#','E0','Eqp^spe','Eqp-E0','Z^spe','Z^der','dS/dw','ReSigC'
+   else
+     write(stdout,'(3x,a,13x,a,17x,a,18x,a,16x,a,16x,a,16x,a,16x,a)') '#','E0','Eqp^spe','Eqp-E0','Z^spe','Z^der','dS/dw','ReSigC'
+     write(stdout,'(9x,16(a6,5x))') ('  up  ',' down ',ii=1,7)
+   endif
+
+   do pstate=nsemin,nsemax
+     write(stdout,'(i4,a,20(1x,f10.4))')  pstate,                                                    &
+                                          'y',                                                       & ! y means Young-Moo.
+                                          energy0(pstate,:)*Ha_eV,                                   &
+                                          energy_qp_A(pstate,:)*Ha_eV,                               &
+                                          (energy_qp_A(pstate,:)+energy0(pstate,:)*(-1.0_dp))*Ha_eV, &
+                                          (energy_qp_A(pstate,:)+energy0(pstate,:)*(-1.0_dp))/(exchange_m_vxc(pstate,:)+(REAL(se%sigma(0,pstate,:),dp))), &
+                                          1.0_dp / ( 1.0_dp - dSdw_all(pstate,:) ),                  &
+                                          dSdw_all(pstate,:),                                        &
+                                          REAL(se%sigma(0,pstate,:)) * Ha_eV                           ! ymbyun 2018/10/22 Re{SigC} at Eks for the linearization method
+   enddo
+ endif
+#endif
 
 end subroutine write_selfenergy_omega
 
@@ -319,7 +472,20 @@ end function find_fixed_point
 
 
 !=========================================================================
-subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy1,energy2,zz)
+! ymbyun 2018/07/11
+! The QP energy Eqp is obtained by three different methods:
+!   1. Linearization
+!   2. Graph
+!   3. Spectral function A(w)
+! ymbyun 2018/11/04
+! Out: nstate
+#ifdef ENABLE_YMBYUN
+! subroutine output_qp_energy(calcname,nstate,energy0,exchange_m_vxc,ncomponent,se,energy1,energy2,zz, energy3)
+ subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy1,energy2,zz, energy3)
+#else
+! subroutine output_qp_energy(calcname,nstate,energy0,exchange_m_vxc,ncomponent,se,energy1,energy2,zz)
+ subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy1,energy2,zz)
+#endif
  implicit none
 
  character(len=*)             :: calcname
@@ -328,6 +494,12 @@ subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy
  type(selfenergy_grid),intent(in) :: se
  real(dp),intent(in)          :: energy1(:,:)
  real(dp),intent(in),optional :: energy2(:,:),zz(:,:)
+
+! ymbyun 2018/07/11
+#ifdef ENABLE_YMBYUN
+! real(dp),intent(in),optional :: energy3(nstate,nspin)
+ real(dp),intent(in),optional :: energy3(:,:)
+#endif
 !=====
  integer           :: pstate,ii
  character(len=36) :: sigc_label
@@ -349,6 +521,51 @@ subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy
 
  write(stdout,'(/,1x,a,1x,a)') TRIM(calcname),'eigenvalues (eV)'
 
+! ymbyun 2018/03/13
+#ifdef ENABLE_YMBYUN
+ if( PRESENT(zz) .AND. PRESENT(energy2) .AND. PRESENT(energy3) ) then
+   if(nspin==1) then
+     write(stdout,'(3x,a,5x,a,4x,a,5x,a,4x,a,4x,a,4x,a,2x,a,2x,a,2x,a,3x,a)') &
+                  '#','E0','SigX-Vxc',TRIM(sigc_label),'Z^lin','Z^gra','Z^spe','Eqp^lin','Eqp^gra','Eqp^spe','Eqp-E0'
+   else
+     write(stdout,'(3x,a,9x,a,15x,a,12x,a,14x,a,13x,a,13x,a,11x,a,11x,a,11x,a,11x,a)') &
+                  '#','E0','SigX-Vxc',TRIM(sigc_label),'Z^lin','Z^gra','Z^spe','Eqp^lin','Eqp^gra','Eqp^spe','Eqp-E0'
+     write(stdout,'(9x,20(a4,5x))') (' up ','down',ii=1,9+ncomponent)
+   endif
+
+   do pstate=nsemin,nsemax
+     write(stdout,'(i4,a,24(1x,f8.2))')   pstate,                               &
+                                          'f',                                  & ! f means Fabien.
+                                          energy0(pstate,:)*Ha_eV,              &
+                                          exchange_m_vxc(pstate,:)*Ha_eV,       &
+                                          REAL(se%sigma(0,pstate,:)*Ha_eV,dp),  &
+                                          zz(pstate,:),                         &
+                                          (energy2(pstate,:)+energy0(pstate,:)*(-1.0_dp))/(exchange_m_vxc(pstate,:)+(REAL(se%sigma(0,pstate,:),dp))),  &
+                                          (energy3(pstate,:)+energy0(pstate,:)*(-1.0_dp))/(exchange_m_vxc(pstate,:)+(REAL(se%sigma(0,pstate,:),dp))),  &
+                                          energy1(pstate,:)*Ha_eV,              &
+                                          energy2(pstate,:)*Ha_eV,              &
+                                          energy3(pstate,:)*Ha_eV,              &
+                                          (energy3(pstate,:)+energy0(pstate,:)*(-1.0_dp))*Ha_eV
+   enddo
+ else
+   if(nspin==1) then
+     write(stdout,'(3x,a, 7x,a, 6x,a, 7x,a, 4x,a, 5x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'Eqp^Z=1','Eqp-E0'
+   else
+     write(stdout,'(3x,a,12x,a,17x,a,16x,a,17x,a,16x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'Eqp^Z=1','Eqp-E0'
+     write(stdout,'(9x,16(a4,7x))') (' up ','down',ii=1,4+ncomponent)
+   endif
+
+   do pstate=nsemin,nsemax
+     write(stdout,'(i4,a,20(1x,f10.4))')  pstate,                               &
+                                          'f',                                  & ! f means Fabien.
+                                          energy0(pstate,:)*Ha_eV,              &
+                                          exchange_m_vxc(pstate,:)*Ha_eV,       &
+                                          REAL(se%sigma(0,pstate,:)*Ha_eV,dp),  &
+                                          energy1(pstate,:)*Ha_eV,              &
+                                          (energy1(pstate,:)+energy0(pstate,:)*(-1.0_dp))*Ha_eV
+   enddo
+ endif
+#else
  if( PRESENT(zz) .AND. PRESENT(energy2) ) then
 
    if(nspin==1) then
@@ -388,6 +605,7 @@ subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy
 
 
  endif
+#endif
 
 end subroutine output_qp_energy
 
