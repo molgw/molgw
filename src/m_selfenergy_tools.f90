@@ -96,7 +96,7 @@ end subroutine selfenergy_set_state_range
 ! In:  occupation
 #ifdef ENABLE_YMBYUN
 ! subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,energy0,se, energy_qp_A)
- subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy0,se, energy_qp_A,nstate_in)
+ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy0,se, nstate_in,energy_qp_A)
 #else
 ! subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,energy0,se)
  subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy0,se)
@@ -110,7 +110,7 @@ end subroutine selfenergy_set_state_range
 
 ! ymbyun 2018/07/11
 #ifdef ENABLE_YMBYUN
- integer,intent(in)  :: nstate_in  ! ymbyun 2018/11/04
+ integer,intent(in)               :: nstate_in  ! ymbyun 2018/11/04
 ! real(dp),intent(out),optional    :: energy_qp_A(nstate,nspin)
  real(dp),intent(out),optional    :: energy_qp_A(:,:)
 #endif
