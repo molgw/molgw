@@ -41,8 +41,25 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
 
  nbf = SIZE(hartree_ij(:,:),DIM=1)
 
+! ymbyun 2018/05/30
+! First touch to reduce NUMA effects using memory affinity
+#ifdef ENABLE_OPENMP_AFFINITY
+!$OMP PARALLEL
+!$OMP DO PRIVATE(ibf,jbf) COLLAPSE(2)
+ do jbf=1,nbf
+   do ibf=1,nbf
+     hartree_ij(ibf,jbf)=0.0_dp
+   enddo
+ enddo
+!$OMP END DO
+#else
  hartree_ij(:,:)=0.0_dp
+!$OMP PARALLEL
+#endif
 
+! ymbyun 2018/05/21
+! COLLAPSE is added because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+!$OMP DO PRIVATE(ibf,jbf,kbf,lbf) COLLAPSE(2)
  do jbf=1,nbf
    do ibf=1,nbf
      if( negligible_basispair(ibf,jbf) ) cycle
@@ -61,15 +78,24 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
      enddo
    enddo
  enddo
-
+!$OMP END DO
+!$OMP END PARALLEL
 
  title='=== Hartree contribution ==='
  call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
+! ymbyun 2018/05/30
+! NOTE: A performance test is needed.
+!$OMP PARALLEL
+!$OMP WORKSHARE
  ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
+!$OMP END WORKSHARE
  if( nspin == 2 ) then
+!$OMP WORKSHARE
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
+!$OMP END WORKSHARE
  endif
+!$OMP END PARALLEL
 
  call stop_clock(timing_hartree)
 
@@ -317,8 +343,28 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
 
  nbf = SIZE(exchange_ij,DIM=1)
 
+! ymbyun 2018/05/30
+! First touch to reduce NUMA effects using memory affinity
+#ifdef ENABLE_OPENMP_AFFINITY
+!$OMP PARALLEL
+!$OMP DO PRIVATE(ibf,jbf,ispin) COLLAPSE(3)
+ do ispin=1,nspin
+   do jbf=1,nbf
+     do ibf=1,nbf
+       exchange_ij(ibf,jbf,ispin)=0.0_dp
+     enddo
+   enddo
+ enddo
+!$OMP END DO
+#else
  exchange_ij(:,:,:)=0.0_dp
+!$OMP PARALLEL
+#endif
 
+! ymbyun 2018/05/25
+! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
+! COLLAPSE(2) is replaced by COLLASPE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+!$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do lbf=1,nbf
@@ -336,9 +382,14 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
      enddo
    enddo
  enddo
+!$OMP END DO
 
-
+! ymbyun 2018/05/30
+! NOTE: A performance test is needed.
+!$OMP WORKSHARE
  eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
+!$OMP END WORKSHARE
+!$OMP END PARALLEL
 
  call stop_clock(timing_exchange)
 
@@ -382,6 +433,8 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
 
      if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
+     ! ymbyun 2018/11/05
+     ! This is different from 1.F.
      tmp(:,:) = 0.0_dp
      do ipair=1,nbf
        ibf = index_basis(1,ipair)
@@ -504,8 +557,28 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
 
  nbf = SIZE(exchange_ij,DIM=1)
 
+! ymbyun 2018/06/30
+! First touch to reduce NUMA effects using memory affinity
+#ifdef ENABLE_OPENMP_AFFINITY
+!$OMP PARALLEL
+!$OMP DO PRIVATE(ibf,jbf,ispin) COLLAPSE(3)
+ do ispin=1,nspin
+   do jbf=1,nbf
+     do ibf=1,nbf
+       exchange_ij(ibf,jbf,ispin)=0.0_dp
+     enddo
+   enddo
+ enddo
+!$OMP END DO
+#else
  exchange_ij(:,:,:)=0.0_dp
+!$OMP PARALLEL
+#endif
 
+! ymbyun 2018/06/30
+! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
+! COLLAPSE(2) is replaced by COLLAPSE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+!$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do ibf=1,nbf
@@ -520,9 +593,14 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
      enddo
    enddo
  enddo
+!$OMP END DO
 
-
+! ymbyun 2018/06/30
+! NOTE: A performance test is needed.
+!$OMP WORKSHARE
  eexchange = 0.5_dp * SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
+!$OMP END WORKSHARE
+!$OMP END PARALLEL
 
  call stop_clock(timing_exchange)
 
@@ -1241,6 +1319,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
        ! Remove too small densities to stabilize the computation
        ! especially useful for Becke88
+       ! ymbyun 2018/02/11
+       ! I'm not sure about this yet.
        do ir=1,nr
          if( ALL( rhor_batch(:,ir) < TOL_RHO ) ) then
            exc_batch(ir)      = 0.0_dp
