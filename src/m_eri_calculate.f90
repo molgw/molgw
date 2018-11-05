@@ -44,12 +44,14 @@ subroutine calculate_eri(print_eri_,basis,rcut)
  if( incore_ ) then
    write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
 
+   ! ymbyun 2018/05/30
+   ! This array is initialized (i.e. first touched) in calculate_eri_4center().
    if( rcut < 1.0e-12_dp ) then
      call clean_allocate('4-center integrals',eri_4center,nsize)
-     eri_4center(:) = 0.0_dp
+!     eri_4center(:) = 0.0_dp
    else
      call clean_allocate('4-center LR integrals',eri_4center_lr,nsize)
-     eri_4center_lr(:) = 0.0_dp
+!     eri_4center_lr(:) = 0.0_dp
    endif
 
    if( .NOT. read_eri(rcut) ) then
@@ -101,8 +103,75 @@ subroutine calculate_eri_4center(basis,rcut)
    write(stdout,'(/,a)') ' Calculate and store the 4-center Long-Range-only Coulomb integrals'
  endif
 
+! ymbyun 2018/05/30
+! First touch to reduce NUMA effects using memory affinity
+#ifdef ENABLE_OPENMP_AFFINITY
+!$OMP PARALLEL
+!$OMP DO PRIVATE(klshellpair,ijshellpair, kshell,lshell,ishell,jshell, amk,aml,ami,amj, ni,nj,nk,nl, lbf,kbf,jbf,ibf)
+ do klshellpair=1,nshellpair
+   kshell = index_shellpair(1,klshellpair)
+   lshell = index_shellpair(2,klshellpair)
 
+   amk = basis%shell(kshell)%am
+   aml = basis%shell(lshell)%am
 
+   do ijshellpair=1,nshellpair
+     ishell = index_shellpair(1,ijshellpair)
+     jshell = index_shellpair(2,ijshellpair)
+
+     ami = basis%shell(ishell)%am
+     amj = basis%shell(jshell)%am
+     if( amk+aml < ami+amj ) cycle
+
+     ni = number_basis_function_am( basis%gaussian_type , ami )
+     nj = number_basis_function_am( basis%gaussian_type , amj )
+     nk = number_basis_function_am( basis%gaussian_type , amk )
+     nl = number_basis_function_am( basis%gaussian_type , aml )
+
+     if( .NOT. is_longrange ) then
+       do lbf=1,nl
+         do kbf=1,nk
+           do jbf=1,nj
+             do ibf=1,ni
+               eri_4center( index_eri(basis%shell(ishell)%istart+ibf-1, &
+                                      basis%shell(jshell)%istart+jbf-1, &
+                                      basis%shell(kshell)%istart+kbf-1, &
+                                      basis%shell(lshell)%istart+lbf-1) ) = 0.0_dp
+             enddo
+           enddo
+         enddo
+       enddo
+     else
+       do lbf=1,nl
+         do kbf=1,nk
+           do jbf=1,nj
+             do ibf=1,ni
+               eri_4center_lr( index_eri(basis%shell(ishell)%istart+ibf-1, &
+                                         basis%shell(jshell)%istart+jbf-1, &
+                                         basis%shell(kshell)%istart+kbf-1, &
+                                         basis%shell(lshell)%istart+lbf-1) ) = 0.0_dp
+             enddo
+           enddo
+         enddo
+       enddo
+     endif
+
+   enddo
+
+ enddo
+!$OMP END DO
+#else
+ if( .NOT. is_longrange ) then
+   eri_4center(:) = 0.0_dp
+ else
+   eri_4center_lr(:) = 0.0_dp
+ endif
+!$OMP PARALLEL
+#endif
+
+! ymbyun 2018/05/21
+! NOTE: Worker threads use a very large private variable (i.e. integrals), so OMP_STACKSIZE should be set appropriately at run time.
+!$OMP DO PRIVATE(ishell,jshell,kshell,lshell, ijshellpair,klshellpair, n1c,n2c,n3c,n4c, ni,nj,nk,nl, ami,amj,amk,aml, ibf,jbf,kbf,lbf, integrals, ng1,ng2,ng3,ng4, am1,am2,am3,am4, x01,x02,x03,x04, coeff1,coeff2,coeff3,coeff4, alpha1,alpha2,alpha3,alpha4, int_shell)
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
@@ -210,7 +279,8 @@ subroutine calculate_eri_4center(basis,rcut)
 
    enddo
  enddo
-
+!$OMP END DO
+!$OMP END PARALLEL
 
  write(stdout,'(a,/)') ' All ERI have been calculated'
 
