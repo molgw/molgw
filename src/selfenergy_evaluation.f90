@@ -45,6 +45,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp)                :: energy_w(nstate,nspin)
  real(dp),allocatable    :: zz(:,:)
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
+! ymbyun 2018/07/11
+#ifdef ENABLE_YMBYUN
+ real(dp),allocatable    :: energy_qp_gra(:,:),energy_qp_A(:,:)
+#endif
  integer                 :: iomega
  integer                 :: istep_gw
 #ifdef COHSEX_DEVEL
@@ -282,9 +286,17 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call onering_selfenergy(nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
 
        if( print_sigma_ ) then
+! ymbyun 2018/11/04
+! To resolve the difference between 1.F and 1.H
+#ifdef ENABLE_YMBYUN
+         call write_selfenergy_omega('selfenergy_GW_small'   ,exchange_m_vxc_diag,occupation,energy_g,se , nstate)
+         call write_selfenergy_omega('selfenergy_1ring_big'  ,exchange_m_vxc_diag,occupation,energy_g,se3, nstate)
+         call write_selfenergy_omega('selfenergy_1ring_small',exchange_m_vxc_diag,occupation,energy_g,se2, nstate)
+#else
          call write_selfenergy_omega('selfenergy_GW_small'   ,exchange_m_vxc_diag,occupation,energy_g,se)
          call write_selfenergy_omega('selfenergy_1ring_big'  ,exchange_m_vxc_diag,occupation,energy_g,se3)
          call write_selfenergy_omega('selfenergy_1ring_small',exchange_m_vxc_diag,occupation,energy_g,se2)
+#endif
        endif
 
        !
@@ -518,7 +530,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 ! In:  occupation
 #ifdef ENABLE_YMBYUN
 !     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,energy_g,se, energy_qp_new)
-     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),exchange_m_vxc_diag,occupation,energy_g,se, energy_qp_new,nstate)
+     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),exchange_m_vxc_diag,occupation,energy_g,se, nstate,energy_qp_new)
 #else
 !     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,energy_g,se)
      call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),exchange_m_vxc_diag,occupation,energy_g,se)
