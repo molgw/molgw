@@ -103,10 +103,42 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
 
  call start_clock(timing_eri_4center_eigen)
 
- eri_eigenstate_i(:,:,:,:)=0.0_dp
- eri_tmp2(:,:,:)=0.0_dp
- eri_tmp3(:,:,:)=0.0_dp
+! ymbyun 2018/05/30
+! First touch to reduce NUMA effects using memory affinity
+#ifdef ENABLE_OPENMP_AFFINITY
+!$OMP PARALLEL
+!$OMP DO PRIVATE(jbf,kbf,lbf) COLLAPSE(2)
+ do lbf=1,nbf
+   do kbf=1,nbf
+     do jbf=1,nbf
+         eri_tmp3(jbf,kbf,lbf) = 0.0_dp
+         eri_tmp2(jbf,kbf,lbf) = 0.0_dp
+     enddo
+   enddo
+ enddo
+!$OMP END DO
 
+ do klspin=1,nspin
+!$OMP DO PRIVATE(lstate,kstate,jstate) COLLAPSE(2)
+   do lstate=1,nstate
+     do kstate=1,nstate
+       do jstate=1,nstate
+         eri_eigenstate_i(jstate,kstate,lstate,klspin) = 0.0_dp
+       enddo
+     enddo
+   enddo
+!$OMP END DO
+ enddo
+#else
+ eri_tmp3(:,:,:) = 0.0_dp
+ eri_tmp2(:,:,:) = 0.0_dp
+ eri_eigenstate_i(:,:,:,:) = 0.0_dp
+!$OMP PARALLEL
+#endif
+
+! ymbyun 2018/05/21
+! COLLAPSE is added because nbf and nstate can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+!$OMP DO PRIVATE(ibf,jbf,kbf,lbf) COLLAPSE(2)
  do lbf=1,nbf
    do kbf=1,nbf
      do jbf=1,nbf
@@ -119,7 +151,9 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
      enddo
    enddo
  enddo
+!$OMP END DO
 
+!$OMP DO PRIVATE(lbf,kstate,jstate) COLLAPSE(2)
  do lbf=1,nbf
    do kbf=1,nbf
 
@@ -129,11 +163,10 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
 
    enddo
  enddo
-
-
+!$OMP END DO
 
  do klspin=1,nspin
-
+!$OMP DO PRIVATE(lbf,kstate,jstate) COLLAPSE(2)
    do lbf=1,nbf
      do kstate=1,nstate
        do jstate=1,nstate
@@ -141,7 +174,9 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
        enddo
      enddo
    enddo
+!$OMP END DO
 
+!$OMP DO PRIVATE(lstate,kstate,jstate) COLLAPSE(2)
    do lstate=1,nstate
      do kstate=1,nstate
        do jstate=1,nstate
@@ -151,9 +186,9 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
        enddo
      enddo
    enddo
-
+!$OMP END DO
  enddo !klspin
-
+!$OMP END PARALLEL
 
  call stop_clock(timing_eri_4center_eigen)
 
