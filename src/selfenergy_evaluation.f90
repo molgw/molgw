@@ -506,12 +506,28 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    !
    ! Output the quasiparticle energies, the self-energy etc.
    !
+! ymbyun 2018/07/11
+! Moved up (1/2)
+   allocate(energy_qp_new(nstate,nspin))
+
    if( print_sigma_ ) then
+! ymbyun 2018/07/11
+! The QP energy Eqp is obtained from the spectral function A(w) while A(w) is being written to a file.
+! ymbyun 2018/11/04
+! Out: nstate
+! In:  occupation
+#ifdef ENABLE_YMBYUN
+!     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,energy_g,se, energy_qp_new)
+     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),exchange_m_vxc_diag,occupation,energy_g,se, energy_qp_new,nstate)
+#else
+!     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,energy_g,se)
      call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),exchange_m_vxc_diag,occupation,energy_g,se)
+#endif
    endif
 
-
-   allocate(energy_qp_new(nstate,nspin))
+! ymbyun 2018/07/11
+! Moved up (2/2)
+!   allocate(energy_qp_new(nstate,nspin))
 
    if( calc_type%selfenergy_technique == EVSC ) then
      call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
@@ -519,6 +535,33 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    else
      select case(calc_type%selfenergy_approx)
      case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA,GWSOX,GWPT3)
+! ymbyun 2018/07/11
+! The QP energy Eqp is obtained by three different methods:
+!   1. Linearization of the non-linear QP equation
+!   2. Graph
+!   3. Spectral function A(w)
+#ifdef ENABLE_YMBYUN
+       allocate(energy_qp_gra(nstate,nspin))
+       allocate(energy_qp_z(nstate,nspin))
+!       allocate(zz(nsemin:nsemax,nspin))
+       allocate(zz(nstate,nspin))
+    
+!       call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+!       call find_qp_energy_graphical(se,nstate,exchange_m_vxc_diag,energy,energy_qp_gra)
+       call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+       call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new)
+    
+       if( .NOT. print_sigma_ ) then
+         energy_qp_new(:,:) = energy_qp_gra(:,:)
+       endif
+    
+!       call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_gra,zz, energy_qp_new)
+       call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz, energy_qp_new)
+ 
+       deallocate(energy_qp_gra)
+       deallocate(energy_qp_z)
+       deallocate(zz)
+#else
        allocate(energy_qp_z(nstate,nspin))
        allocate(zz(nstate,nspin))
        call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
@@ -527,7 +570,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
        deallocate(zz)
        deallocate(energy_qp_z)
-
+#endif
      case(GnWn,GnW0,GV,COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
        call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
        call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
