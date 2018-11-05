@@ -126,7 +126,7 @@ end subroutine selfenergy_set_state_range
 ! ymbyun 2018/07/11
 #ifdef ENABLE_YMBYUN
  integer  :: ii
- integer  :: pspin
+! integer  :: pspin  ! ymbyun 2018/11/04
  real(dp) :: Z_spe(nspin), Z_der(nspin)
  real(dp) :: Eqp(nspin), Eqp_left(nspin), Eqp_right(nspin)
  real(dp) :: A_max(nspin), A_left(nspin), A_right(nspin)
