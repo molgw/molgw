@@ -93,6 +93,8 @@ subroutine header()
 
 
  ! Parallelization details
+! ymbyun 2018/05/20
+! From now on, users don't need to worry about the OpenMP warning.
 #ifdef _OPENMP
  write(msg,'(i6)') OMP_get_max_threads()
  msg='OPENMP option is activated with threads number'//msg
