@@ -53,7 +53,9 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
    allocate(eri_eigenstate_jbmin(nstate,nstate,nstate,nspin))
    ! Set this to zero and then enforce the calculation of the first series of
    ! Coulomb integrals
-   eri_eigenstate_jbmin(:,:,:,:) = 0.0_dp
+   ! ymbyun 2018/05/30
+   ! This array is initialized (i.e. first touched) in calculate_eri_4center_eigen().
+!   eri_eigenstate_jbmin(:,:,:,:) = 0.0_dp
  endif
 
  if( nprow_sd * npcol_sd > 1 ) &
@@ -172,6 +174,10 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  !
  ! Set up the diagonal of A-B in the RPA approximation
  !
+! ymbyun 2018/06/28
+! The speedup by OpenMP parallelization here is small, but it's better than none.
+!$OMP PARALLEL
+!$OMP DO PRIVATE(t_ia_global,istate,astate,iaspin)
  do t_ia_global=1,nmat
    istate = wpol%transition_table_apb(1,t_ia_global)
    astate = wpol%transition_table_apb(2,t_ia_global)
@@ -180,7 +186,8 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
    amb_diag_rpa(t_ia_global) = energy(astate,iaspin) - energy(istate,iaspin)
 
  enddo
-
+!$OMP END DO
+!$OMP END PARALLEL
 
  if(ALLOCATED(eri_eigenstate_jbmin)) deallocate(eri_eigenstate_jbmin)
 
@@ -600,6 +607,9 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
      !
      ! Set up fxc contributions to matrices (A+B)
      !
+     ! ymbyun 2018/09/16
+     ! NOTE: Sadly, this loop can't be OpenMP parallelized because eval_fxc_* functions
+     !       shouldn't be called by multiple threads at the same time.
      do t_jb=1,n_apb_block
        t_jb_global = colindex_local_to_global(ipcol,npcol_sd,t_jb)
        jstate = wpol%transition_table_apb(1,t_jb_global)
@@ -639,7 +649,13 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
      call xsum_grid(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
+! ymbyun 2018/09/16
+! NOTE: A performance test is needed.
+!$OMP PARALLEL
+!$OMP WORKSHARE
        apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
+!$OMP END WORKSHARE
+!$OMP END PARALLEL
      endif
      deallocate(apb_block)
 
