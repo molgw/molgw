@@ -44,7 +44,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  call start_clock(timing_diago_h2p)
 
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  write(stdout,'(/,a)') ' Performing the block diago with Cholesky'
 
@@ -55,11 +55,11 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  call PDBSSOLVER1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
                   bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
                   work,lwork,iwork,liwork,info)
- if(info/=0) call die('SCALAPACK failed')
+ if( info /= 0 ) call die('diago_4blocks_chol: SCALAPACK failed')
 
  lwork  = NINT(work(1))
  deallocate(work)
- call clean_allocate('Buffer array for SCALAPACK diago',work,lwork)
+ call clean_allocate('Work array for SCALAPACK diago',work,lwork)
 
  liwork = iwork(1)
  deallocate(iwork)
@@ -68,9 +68,9 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  call PDBSSOLVER1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
                   bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
                   work,lwork,iwork,liwork,info)
- if(info/=0) call die('SCALAPACK failed')
+ if( info /= 0 ) call die('diago_4blocks_chol: SCALAPACK failed')
 
- call clean_deallocate('Buffer array for SCALAPACK diago',work)
+ call clean_deallocate('Work array for SCALAPACK diago',work)
  deallocate(iwork)
 
  !
@@ -187,7 +187,7 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_),n_apb, &
                                  comm_row,comm_col,comm_world,method='2stage')
 #else
- call diagonalize_sca_pdsyevr(nmat,desc_apb,apb_matrix,bigomega,desc_x,xpy_matrix)
+ call diagonalize_sca(nmat,desc_apb,apb_matrix,bigomega,desc_x,xpy_matrix)
 #endif
 
  bigomega(:) = SQRT( bigomega(:) )
