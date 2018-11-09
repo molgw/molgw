@@ -17,13 +17,13 @@ subroutine header()
  use m_libint_tools,only: libint_init
  implicit none
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
  integer,external  :: OMP_get_max_threads
  character(len=64) :: msg
 #endif
  character(len=40)   :: git_sha
  integer             :: values(8)
-#ifdef FORTRAN2008
+#if defined(FORTRAN2008)
  integer             :: nchar,kchar,lchar
  character(len=1024) :: chartmp
 #endif
@@ -45,7 +45,7 @@ subroutine header()
  write(stdout,'(/,/,1x,70("="))')
 
  write(stdout,'(/,a,a,/)') ' MOLGW commit git SHA: ',git_sha
-#ifdef FORTRAN2008
+#if defined(FORTRAN2008)
  write(stdout,'(1x,a,a)')    'compiled with ',compiler_version()
  write(stdout,'(1x,a)')      'with options: '
  chartmp = compiler_options()
