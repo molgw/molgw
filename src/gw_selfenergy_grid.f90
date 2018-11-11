@@ -41,6 +41,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  real(dp),allocatable :: one_m_chi0(:,:)
  real(dp),allocatable :: one_m_chi0m1(:,:)
  real(dp)             :: eigval(nauxil_2center)
+ real(dp)             :: eint
  integer              :: desc_eri3_t(NDEL)
  integer              :: desc_eri3_final(NDEL)
  integer              :: meri3,neri3
@@ -93,10 +94,11 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  call clean_allocate('1-Chi0',one_m_chi0,wpol%mchi,wpol%nchi)
  call clean_allocate('(1-Chi0)**-1',one_m_chi0m1,wpol%mchi,wpol%nchi)
 
- call DESCINIT(desc_eri3_t,nauxil_2center,wpol%npole_reso_apb,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
+ call DESCINIT(desc_eri3_t,nauxil_2center,wpol%npole_reso_apb,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
 
 
  erpa = 0.0_dp
+ eint = 0.0_dp
  do iomega=1,wpol%nomega_quad
 
    write(stdout,'(1x,a,i4,a,i4)') 'Loop on frequencies: ',iomega,' / ',wpol%nomega_quad
@@ -152,6 +154,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
    ! might be a bit time-consuming but we only calculate the eigenvalues
    call diagonalize_eigval_sca(nauxil_2center,wpol%desc_chi,one_m_chi0m1,eigval)
    erpa = erpa + SUM( LOG(eigval(:)) + 1.0_dp - eigval(:) ) / (2.0_dp * pi) * wpol%weight_quad(iomega)
+   eint = eint + SUM( -( 1.0_dp - eigval(:) ) / eigval(:) + 1.0_dp - eigval(:) ) / (2.0_dp * pi) * wpol%weight_quad(iomega)
 
    call invert_sca(wpol%desc_chi,one_m_chi0,one_m_chi0m1)
 
@@ -182,6 +185,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  call destroy_eri_3center_eigen()
 
  write(stdout,'(/,1x,a,f16.10)') 'RPA correlation energy (Ha): ',erpa
+ write(stdout,'(1x,a,f16.10)')   'GW  correlation energy (Ha): ',eint
 
  call stop_clock(timing_rpa_dynamic)
 
@@ -257,7 +261,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
  call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca,meri3,neri3)
 
- call DESCINIT(desc_eri3_t,nauxil_2center,prange,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
+ call DESCINIT(desc_eri3_t,nauxil_2center,prange,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
 
 
  se%sigmai(:,:,:) = 0.0_dp

@@ -132,7 +132,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  !
  allocate(energy_small(nstate_small,nspin))
  call clean_allocate('Coefficients small basis',c_small,basis_small%nbf,nstate_small,nspin)
- call diagonalize_hamiltonian_scalapack(nspin,basis_small%nbf,nstate_small,h_small,s_small_sqrt_inv,energy_small,c_small)
+ call diagonalize_hamiltonian_scalapack(h_small,s_small_sqrt_inv,energy_small,c_small)
  call dump_out_energy('=== Energies in the initial small basis ===',&
               nstate_small,nspin,occupation(1:nstate_small,:),energy_small)
 
@@ -195,7 +195,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  allocate(energy_bar(nstate_bar,nspin))
  call clean_allocate('Selected states coeffs C',c_bar,nstate_small,nstate_bar,nspin)
- call diagonalize_hamiltonian_scalapack(nspin,nstate_small,nstate_bar,h_bar,s_bar_sqrt_inv,energy_bar,c_bar)
+ call diagonalize_hamiltonian_scalapack(h_bar,s_bar_sqrt_inv,energy_bar,c_bar)
 
 
  do ispin=1,nspin
@@ -425,7 +425,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    !
    allocate(energy_small(nstate_small,nspin))
    call clean_allocate('Coefficients small basis',c_small,md,nd,nspin)
-   call diagonalize_hamiltonian_sca(1,nspin,desc_bs_bs,h_small,desc_bs_ss,s_small_sqrt_inv,energy_small,c_small)
+   call diagonalize_hamiltonian_sca(desc_bs_bs,h_small,desc_bs_ss,s_small_sqrt_inv,energy_small,c_small)
 
    call dump_out_energy('=== Energies in the initial small basis ===',&
                         nstate_small,nspin,occupation(1:nstate_small,:),energy_small)
@@ -511,7 +511,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
 
    allocate(energy_bar(nstate_small,nspin))
    call clean_allocate('Selected states coeffs C',c_bar,mg,ng,nspin)
-   call diagonalize_hamiltonian_sca(1,nspin,desc_ss_ss,h_bar,desc_ss_ss,s_bar_sqrt_inv,energy_bar,c_bar)
+   call diagonalize_hamiltonian_sca(desc_ss_ss,h_bar,desc_ss_ss,s_bar_sqrt_inv,energy_bar,c_bar)
 
 
    call clean_allocate('Tmp matrix',matrix_tmp1,me,ne)

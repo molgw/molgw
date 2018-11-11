@@ -15,6 +15,7 @@ import sys, os, time, shutil, subprocess
 today=time.strftime("%Y")+'_'+time.strftime("%m")+'_'+time.strftime("%d")
 start_time = time.time()
 keeptmp = False
+run_tddft = False
 
 selected_input_files= []
 excluded_input_files= []
@@ -43,6 +44,10 @@ def clean_run(inp,out,restart):
     except FileNotFoundError:
       pass
     try:
+      os.remove('RESTART_TDDFT')
+    except FileNotFoundError:
+      pass
+    try:
       os.remove('EIGVEC_CI_0')
     except FileNotFoundError:
       pass
@@ -58,7 +63,7 @@ def clean_run(inp,out,restart):
   if len(mpirun) < 1:
     subprocess.call(['../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
   else:
-    subprocess.call([mpirun,'-n',str(nprocs),'../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
+    subprocess.call([mpirun,'-n',str(nprocs),'-oversubscribe','../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
   fout.close()
   os.chdir('..')
 
@@ -163,13 +168,14 @@ def check_output(out,testinfo):
 ###################################
 # Parse the command line
 
-option_list = ['--keep','--np','--mpirun','--input','--exclude','--debug']
+option_list = ['--keep','--np','--mpirun','--input','--exclude','--debug','--tddft']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
     print('Run the complete test suite of MOLGW')
     print('  --keep             Keep the temporary folder')
-    print('  --np     n         Set the number of cores to n')
+    print('  --tddft            Run tddft tests')
+    print('  --np     n         Set the number of MPI threads to n')
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input files      Only run these input files')
     print('  --exclude files    Run all input files but these ones')
@@ -177,12 +183,15 @@ if len(sys.argv) > 1:
     sys.exit(0)
 
   for argument in sys.argv:
-    if '--' in argument and  argument not in ['--keep','--np','--mpirun','--input','--exclude','--debug']:
+    if '--' in argument and  argument not in option_list: 
       print('Unknown option: ' + argument)
       sys.exit(1)
 
   if '--keep' in sys.argv or '-keep' in sys.argv:
     keeptmp = True
+
+  if '--tddft' in sys.argv or '-tddft' in sys.argv:
+    run_tddft = True
 
   if '--np' in sys.argv:
     i = sys.argv.index('--np') + 1
@@ -221,14 +230,22 @@ print('Starting MOLGW test suite\n')
 
 if len(mpirun) < 1:
   if( nprocs > 1 ):
-    print('No MPI launcher has been provided. Set the number of cores back to 1')
+    print('No MPI launcher has been provided. Set the number of MPI threads back to 1')
   nprocs = 1
 
 if not os.path.isfile('../molgw') :
   print('molgw executable not found!\nMay be you should compile it first? May be you moved it around?')
   sys.exit(1)
 
-print('Running with ',nprocs,'cores')
+try:
+  ncores = int(os.environ['OMP_NUM_THREADS'])
+except:
+  ncores = 1
+  pass
+print('Running with \033[91m\033[1m{:3d}\033[0m MPI    threads'.format(nprocs))
+print('Running with \033[91m\033[1m{:3d}\033[0m OPENMP threads'.format(ncores))
+print()
+
 
 ###################################
 # Parse the file testsuite
@@ -236,6 +253,8 @@ print('Running with ',nprocs,'cores')
 ninput = 0
 input_files = []
 restarting  = []
+parallel    = []
+tddft       = []
 test_names  = []
 testinfo    = []
 
@@ -252,13 +271,26 @@ for line in ftestsuite:
     test_names.append(parsing[1].strip())
     testinfo.append([])
     restarting.append(False)
+    parallel.append(True)
+    tddft.append(False)
 
   if len(parsing) == 3:
     ninput+=1
     input_files.append(parsing[0].strip())
     test_names.append(parsing[1].strip())
     testinfo.append([])
-    restarting.append(True)
+    if 'restart' in parsing[2].lower():
+      restarting.append(True)
+    else:
+      restarting.append(False)
+    if 'noparallel' in parsing[2].lower():
+      parallel.append(False)
+    else:
+      parallel.append(True)
+    if 'tddft' in parsing[2].lower():
+      tddft.append(True)
+    else:
+      tddft.append(False)
 
   elif len(parsing) == 4:
     testinfo[ninput-1].append(parsing)
@@ -304,7 +336,7 @@ else:
 
 
 
-print('Input files to be run:',ninput2)
+print('Input files found in the test suite: {}'.format(ninput2))
 
 
 ###################################
@@ -330,6 +362,13 @@ for iinput in range(ninput):
     continue
   if len(excluded_input_files) != 0 and input_files[iinput] in excluded_input_files:
     continue
+  if not parallel[iinput] and nprocs > 1:
+    test_skipped = test_skipped + 1
+    continue
+  if (not run_tddft) and tddft[iinput]:
+    test_skipped = test_skipped + 1
+    continue
+    
 
   inp     = input_files[iinput]
   out     = input_files[iinput].split('.in')[0]+'.out'

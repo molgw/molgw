@@ -19,3 +19,4 @@ LIBXC_ROOT=${HOME}/src/libxc-3.0.0_gfortran/
 
 LIBINT_ROOT=${HOME}/src/libint-2.2.0_g++/
 
+FFTW_ROOT=

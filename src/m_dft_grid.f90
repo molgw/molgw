@@ -67,7 +67,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  real(dp),allocatable :: w1(:),w2(:)
  real(dp),allocatable :: xa(:,:),wxa(:,:)
  real(dp)             :: p_becke(natom_basis),s_becke(natom_basis,natom_basis),fact_becke
- real(dp)             :: mu,alpha,xtmp,mu_aa
+ real(dp)             :: mu,alpha,xtmp,mu_aa,rtmp
  integer              :: jatom,katom
  real(dp),allocatable :: rr_grid_tmp(:,:)
  real(dp),allocatable :: w_grid_tmp(:)
@@ -247,7 +247,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
        ir = ir + 1
 
        ! Parallelization of the weights generation
-       if( MODULO(ir,nproc_world) /= rank_world ) cycle
+       if( MODULO(ir-1,nproc_world) /= rank_world ) cycle
 
        if( xa(iradial,iatom) < pruning_limit * radius ) then
          rr_grid_tmp(1,ir) = xa(iradial,iatom) * x2(iangular) + xbasis(1,iatom)
@@ -268,51 +268,64 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
          !
          s_becke(:,:) = 0.0_dp
+         !$OMP PARALLEL PRIVATE(mu)
+         !$OMP DO
          do katom=1,natom_basis
            do jatom=1,natom_basis
              if(katom==jatom) cycle
              mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
                        / NORM2(xbasis(:,katom)-xbasis(:,jatom))
-             s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+             s_becke(jatom,katom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
            enddo
          enddo
+         !$OMP END DO
+         !$OMP END PARALLEL
 
        case('ssf')
          !
          ! Partitionning scheme of Stratmann, Scuseria, Frisch, Chem. Phys. Lett. 257, 213 (1996)
          !
          s_becke(:,:) = 0.0_dp
+         !$OMP PARALLEL PRIVATE(mu,mu_aa,rtmp)
+         !$OMP DO
          do katom=1,natom_basis
-           do jatom=1,natom_basis
-             if(katom==jatom) cycle
+           do jatom=katom+1,natom_basis
+
              mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
                        / NORM2(xbasis(:,katom)-xbasis(:,jatom))
 
              if( mu < -aa ) then
-               s_becke(katom,jatom) = 1.0_dp
-             else if( mu > aa ) then
+               s_becke(jatom,katom) = 1.0_dp
                s_becke(katom,jatom) = 0.0_dp
+             else if( mu > aa ) then
+               s_becke(jatom,katom) = 0.0_dp
+               s_becke(katom,jatom) = 1.0_dp
              else
                mu_aa = mu / aa
-               s_becke(katom,jatom) = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
+               rtmp = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
 
-               s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - s_becke(katom,jatom) )
+               s_becke(jatom,katom) = 0.5_dp * ( 1.0_dp - rtmp )
+               s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp + rtmp )
              endif
 
            enddo
          enddo
+         !$OMP END DO
+         !$OMP END PARALLEL
 
        case default
          call die('Invalid choice for the partition scheme. Change partion_scheme value in the input file')
        end select
 
        p_becke(:) = 1.0_dp
+       !$OMP PARALLEL DO
        do katom=1,natom_basis
          do jatom=1,natom_basis
            if(katom==jatom) cycle
-           p_becke(katom) = p_becke(katom) * s_becke(katom,jatom)
+           p_becke(katom) = p_becke(katom) * s_becke(jatom,katom) 
          enddo
        enddo
+       !$OMP END PARALLEL DO
        fact_becke = p_becke(iatom) / SUM( p_becke(:) )
 
        w_grid_tmp(ir) = weight * fact_becke
@@ -340,6 +353,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
  allocate(rr_grid(3,ngrid),w_grid(ngrid))
 
+! open(777,file="grid.xyz")
+
  igrid = 0
  ir = 0
  do ir1=1,ngridmax
@@ -349,10 +364,13 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
        ir = ir + 1
        w_grid(ir) = w_grid_tmp(ir1)
        rr_grid(:,ir) = rr_grid_tmp(:,ir1)
+ !      write(777,'(i3,4f15.5)') 1,rr_grid_tmp(:,ir1),w_grid(ir)
      endif
 
    endif
  enddo
+
+! close(777)
 
  deallocate(rr_grid_tmp,w_grid_tmp)
 
@@ -473,35 +491,17 @@ end subroutine prepare_basis_functions_gradr
 
 
 !=========================================================================
-subroutine get_basis_functions_r(basis,igrid,basis_function_r)
+subroutine get_basis_functions_r_batch(basis,igrid,basis_function_r)
  implicit none
 
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: igrid
- real(dp),intent(out)       :: basis_function_r(basis%nbf)
+ real(dp),intent(out)       :: basis_function_r(:,:)
 !=====
- real(dp)                   :: rr(3)
+ integer                    :: nr
 !=====
 
- if( igrid <= ngrid_stored ) then
-   basis_function_r(:) = bfr(:,igrid)
- else
-   rr(:) = rr_grid(:,igrid)
-   call calculate_basis_functions_r(basis,rr,basis_function_r)
- endif
-
-end subroutine get_basis_functions_r
-
-
-!=========================================================================
-subroutine get_basis_functions_r_batch(basis,igrid,nr,basis_function_r)
- implicit none
-
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: igrid,nr
- real(dp),intent(out)       :: basis_function_r(basis%nbf,nr)
-!=====
-!=====
+ nr = SIZE(basis_function_r,DIM=2)
 
  ! Check if the batch had been fully precalculated
  ! else calculate it now.
@@ -515,35 +515,17 @@ end subroutine get_basis_functions_r_batch
 
 
 !=========================================================================
-subroutine get_basis_functions_gradr(basis,igrid,basis_function_gradr)
+subroutine get_basis_functions_gradr_batch(basis,igrid,basis_function_gradr)
  implicit none
 
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: igrid
- real(dp),intent(out)       :: basis_function_gradr(3,basis%nbf)
+ real(dp),intent(out)       :: basis_function_gradr(:,:,:)
 !=====
- real(dp)                   :: rr(3)
+ integer                    :: nr
 !=====
 
- if( igrid <= ngrid_stored ) then
-   basis_function_gradr(:,:) = TRANSPOSE(bfgr(:,igrid,:))
- else
-   rr(:) = rr_grid(:,igrid)
-   call calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
- endif
-
-end subroutine get_basis_functions_gradr
-
-
-!=========================================================================
-subroutine get_basis_functions_gradr_batch(basis,igrid,nr,basis_function_gradr)
- implicit none
-
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: igrid,nr
- real(dp),intent(out)       :: basis_function_gradr(basis%nbf,nr,3)
-!=====
-!=====
+ nr = SIZE(basis_function_gradr,DIM=2)
 
  ! Check if the batch had been fully precalculated
  ! else calculate it now.
@@ -769,32 +751,6 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
 
 
 end subroutine calculate_basis_functions_laplr
-
-
-!=========================================================================
-subroutine setup_bf_radius(basis)
- implicit none
-
- type(basis_set),intent(in) :: basis
-!=====
- integer  :: igrid,ibf
- real(dp) :: basis_function_r(basis%nbf)
-!=====
-
- allocate(bf_rad2(basis%nbf))
- bf_rad2(:) = 0.0_dp
- do igrid=1,ngrid
-   call get_basis_functions_r(basis,igrid,basis_function_r)
-   do ibf=1,basis%nbf
-     if( ABS(basis_function_r(ibf)) > TOL_BF ) then
-       bf_rad2(ibf) = MAX( bf_rad2(ibf) , SUM( (rr_grid(:,igrid) - basis%bff(ibf)%x0(:))**2 ) )
-     endif
-   enddo
- enddo
-
- call xmax_grid(bf_rad2)
-
-end subroutine setup_bf_radius
 
 
 !=========================================================================

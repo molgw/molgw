@@ -18,6 +18,7 @@ module m_hamiltonian
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
  use m_eri_calculate
+ use m_density_tools
 
 
 contains
@@ -264,15 +265,16 @@ end subroutine setup_hartree_oneshell
 
 
 !=========================================================================
-subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
+ integer              :: nauxil_local,npair_local
  integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf
- integer              :: ipair
+ integer              :: ipair,ipair_local
  real(dp),allocatable :: partial_sum(:)
  real(dp)             :: rtmp
  character(len=100)   :: title
@@ -280,50 +282,74 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
 
  call start_clock(timing_hartree)
 
- write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: versatile version'
 
  nbf = SIZE(hartree_ij(:,:),DIM=1)
 
- allocate(partial_sum(nauxil_3center))
- partial_sum(:) = 0.0_dp
- do ipair=1,npair
-   kbf = index_basis(1,ipair)
-   lbf = index_basis(2,ipair)
-   ! Factor 2 comes from the symmetry of p_matrix
-   partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-   ! Then diagonal terms have been counted twice and should be removed once.
-   if( kbf == lbf ) &
-     partial_sum(:) = partial_sum(:) - eri_3center(:,ipair) * SUM( p_matrix(kbf,kbf,:) )
- enddo
+ nauxil_local = SIZE(eri_3center,DIM=1)
+ npair_local  = SIZE(eri_3center,DIM=2)
 
- ! Hartree potential is not sensitive to spin
  hartree_ij(:,:) = 0.0_dp
- do ipair=1,npair
-   ibf = index_basis(1,ipair)
-   jbf = index_basis(2,ipair)
-   rtmp = DOT_PRODUCT( eri_3center(:,ipair) , partial_sum(:) )
-   hartree_ij(ibf,jbf) = rtmp
-   hartree_ij(jbf,ibf) = rtmp
- enddo
 
- deallocate(partial_sum)
+ ! Ortho parallelization is not used in Hartree
+ ! This is a concious waste (however very small)
+ if( cntxt_3center > 0 ) then
 
+   allocate(partial_sum(nauxil_local))
+
+   partial_sum(:) = 0.0_dp
+   !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
+   !$OMP DO REDUCTION(+:partial_sum)
+   do ipair_local=1,npair_local
+     ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+     kbf = index_basis(1,ipair)
+     lbf = index_basis(2,ipair)
+     ! Factor 2 comes from the symmetry of p_matrix
+     partial_sum(:) = partial_sum(:) + eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
+     if( kbf == lbf ) partial_sum(:) = partial_sum(:) - eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) )
+   enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
+
+   !FIXME ortho parallelization is not taken into account here!
+#if defined(HAVE_SCALAPACK)
+   call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,1,partial_sum,nauxil_local,-1,-1)
+#endif
+
+
+   !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
+   !$OMP DO
+   do ipair_local=1,npair_local
+     ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+
+     rtmp = DOT_PRODUCT( eri_3center(:,ipair_local) , partial_sum(:) )
+
+     ibf = index_basis(1,ipair)
+     jbf = index_basis(2,ipair)
+     hartree_ij(ibf,jbf) = rtmp
+     hartree_ij(jbf,ibf) = rtmp
+   enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
+
+   deallocate(partial_sum)
+ endif
  !
- ! Sum up the different contribution from different procs only if needed
- call xsum_auxil(hartree_ij)
+ ! Sum up the different contribution from different procs
+ call xsum_world(hartree_ij)
 
 
  title='=== Hartree contribution ==='
  call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
- ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
+ ehartree = 0.5_dp * SUM(hartree_ij(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
-   ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
+   ehartree = ehartree + 0.5_dp * SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
  call stop_clock(timing_hartree)
 
-end subroutine setup_hartree_ri
+end subroutine setup_hartree_versatile_ri
 
 
 !=========================================================================
@@ -397,7 +423,7 @@ end subroutine setup_exchange
 
 
 !=========================================================================
-subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  implicit none
  real(dp),intent(in)  :: occupation(:,:)
  real(dp),intent(in)  :: c_matrix(:,:,:)
@@ -405,76 +431,130 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nauxil_local,npair_local
  integer              :: nbf,nstate
  integer              :: ibf,jbf,ispin,istate
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:)
- integer              :: ipair
+ integer              :: ipair,ipair_local
+ integer              :: ibf_auxil_first,nbf_auxil_core
 !=====
 
  call start_clock(timing_exchange)
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
-
- nbf    = SIZE(exchange_ij,DIM=1)
- nstate = SIZE(occupation(:,:),DIM=1)
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: versatile version'
 
  exchange_ij(:,:,:) = 0.0_dp
-
- allocate(tmp(nauxil_3center,nbf))
 
  ! Find highest occupied state
  nocc = get_number_occupied_states(occupation)
 
- do ispin=1,nspin
+ nbf    = SIZE(exchange_ij,DIM=1)
+ nstate = SIZE(occupation(:,:),DIM=1)
 
-   do istate=1,nocc
-     if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
+ nauxil_local = SIZE(eri_3center,DIM=1)
+ npair_local  = SIZE(eri_3center,DIM=2)
 
-     if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+ if( npcol_3center > 1 ) then
+   ! Prepare a sub-division of tasks after the reduction DGSUM2D
+   nbf_auxil_core  = CEILING( REAL(nauxil_local,dp) / REAL(npcol_3center,dp) )
+   ibf_auxil_first = ipcol_3center * nbf_auxil_core + 1
+   ! Be careful when a core has fewer data or no data at all
+   if( ibf_auxil_first + nbf_auxil_core - 1 > nauxil_local ) nbf_auxil_core = nauxil_local - ibf_auxil_first + 1
+   if( ibf_auxil_first > nauxil_local ) nbf_auxil_core = 0
 
-     ! ymbyun 2018/11/05
-     ! This is different from 1.F.
-     tmp(:,:) = 0.0_dp
-     do ipair=1,nbf
-       ibf = index_basis(1,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
+   allocate(tmp(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp(:,:) = 0.0_dp
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp)
+       do ipair_local=1,npair_local
+         ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair_local)
+         if( ibf /= jbf) &
+           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair_local)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+#if defined(HAVE_SCALAPACK)
+       call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
+#endif
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       if( nbf_auxil_core > 0 ) &
+         call DSYRK('L','T',nbf,nbf_auxil_core,-occupation(istate,ispin)/spin_fact,tmp(ibf_auxil_first,1),nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+         
      enddo
-     do ipair=nbf+1,npair
-       ibf=index_basis(1,ipair)
-       jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
-       tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
-     enddo
 
-     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-     !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-     ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center,1.0_dp,exchange_ij(:,:,ispin),nbf)
    enddo
+   deallocate(tmp)
 
-   !
-   ! Need to symmetrize exchange_ij
+ else
+   ! npcol_row is equal to 1 => no parallelization over basis pairs
+
+   allocate(tmp(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+       if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp(:,:) = 0.0_dp
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp)
+       do ipair=1,npair
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
+         if( ibf /= jbf) &
+           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       call DSYRK('L','T',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp,nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+
+     enddo
+   enddo
+   deallocate(tmp)
+
+ endif
+
+ !
+ ! Need to symmetrize exchange_ij
+ do ispin=1,nspin
    do ibf=1,nbf
      do jbf=ibf+1,nbf
        exchange_ij(ibf,jbf,ispin) = exchange_ij(jbf,ibf,ispin)
      enddo
    enddo
-
  enddo
- deallocate(tmp)
-
  call xsum_world(exchange_ij)
 
  eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
 
  call stop_clock(timing_exchange)
 
-end subroutine setup_exchange_ri
+end subroutine setup_exchange_versatile_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  implicit none
  real(dp),intent(in)  :: occupation(:,:)
  real(dp),intent(in)  :: c_matrix(:,:,:)
@@ -482,62 +562,126 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,
  real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nauxil_local,npair_local
  integer              :: nbf,nstate
  integer              :: ibf,jbf,ispin,istate
+ integer              :: nocc
  real(dp),allocatable :: tmp(:,:)
- integer              :: ipair
+ integer              :: ipair,ipair_local
+ integer              :: ibf_auxil_first,nbf_auxil_core
 !=====
 
  call start_clock(timing_exchange)
 
- write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
-
- nbf    = SIZE(exchange_ij,DIM=1)
- nstate = SIZE(occupation,DIM=1)
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: versatile version'
 
  exchange_ij(:,:,:) = 0.0_dp
 
- allocate(tmp(nauxil_3center_lr,nbf))
+ ! Find highest occupied state
+ nocc = get_number_occupied_states(occupation)
 
- do ispin=1,nspin
+ nbf    = SIZE(exchange_ij,DIM=1)
+ nstate = SIZE(occupation(:,:),DIM=1)
 
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty)  cycle
-     if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+ nauxil_local = SIZE(eri_3center_lr,DIM=1)
+ npair_local  = SIZE(eri_3center_lr,DIM=2)
 
-     tmp(:,:) = 0.0_dp
-     do ipair=1,npair
-       ibf = index_basis(1,ipair)
-       jbf = index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair)
-       if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair)
+ if( npcol_3center > 1 ) then
+   ! Prepare a sub-division of tasks after the reduction DGSUM2D
+   nbf_auxil_core  = CEILING( REAL(nauxil_local,dp) / REAL(npcol_3center,dp) )
+   ibf_auxil_first = ipcol_3center * nbf_auxil_core + 1
+   ! Be careful when a core has fewer data or no data at all
+   if( ibf_auxil_first + nbf_auxil_core - 1 > nauxil_local ) nbf_auxil_core = nauxil_local - ibf_auxil_first + 1
+   if( ibf_auxil_first > nauxil_local ) nbf_auxil_core = 0
+
+   allocate(tmp(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp(:,:) = 0.0_dp
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp)
+       do ipair_local=1,npair_local
+         ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair_local)
+         if( ibf /= jbf) &
+           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair_local)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+#if defined(HAVE_SCALAPACK)
+       call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
+#endif
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       if( nbf_auxil_core > 0 ) &
+         call DSYRK('L','T',nbf,nbf_auxil_core,-occupation(istate,ispin)/spin_fact,tmp(ibf_auxil_first,1),nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+
      enddo
 
-     !exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-     !                   - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-     ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nauxil_3center_lr,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center_lr,1.0_dp,exchange_ij(:,:,ispin),nbf)
    enddo
+   deallocate(tmp)
 
-   !
-   ! Need to symmetrize exchange_ij
+ else
+   ! npcol_row is equal to 1 => no parallelization over basis pairs
+
+   allocate(tmp(nauxil_local,nbf))
+
+   do ispin=1,nspin
+
+     do istate=1,nocc
+       if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+
+       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
+
+       tmp(:,:) = 0.0_dp
+       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP DO REDUCTION(+:tmp)
+       do ipair=1,npair
+         ibf = index_basis(1,ipair)
+         jbf = index_basis(2,ipair)
+         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair)
+         if( ibf /= jbf) &
+           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+
+       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+       ! C = A^T * A + C
+       call DSYRK('L','T',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp,nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+
+     enddo
+   enddo
+   deallocate(tmp)
+
+ endif
+
+ !
+ ! Need to symmetrize exchange_ij
+ do ispin=1,nspin
    do ibf=1,nbf
      do jbf=ibf+1,nbf
        exchange_ij(ibf,jbf,ispin) = exchange_ij(jbf,ibf,ispin)
      enddo
    enddo
-
  enddo
- deallocate(tmp)
-
  call xsum_world(exchange_ij)
 
  eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
 
  call stop_clock(timing_exchange)
 
-end subroutine setup_exchange_longrange_ri
+end subroutine setup_exchange_versatile_longrange_ri
 
 
 !=========================================================================
@@ -627,7 +771,7 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
- if( ANY( occupation(:,:) < 0.0_dp ) ) call die('setup_density_matrix: negative occupation number should not happen here.')
+ if( ANY( occupation(:,:) < -1.0e-6_dp ) ) call die('setup_density_matrix: negative occupation number should not happen here.')
  ! Find the number of occupatied states
  nocc = get_number_occupied_states(occupation)
 
@@ -738,13 +882,13 @@ end subroutine test_density_matrix
 
 
 !=========================================================================
-subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occupation)
+subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
  implicit none
- integer,intent(in)   :: nstate
  real(dp),intent(in)  :: electrons,magnetization,temperature
- real(dp),intent(in)  :: energy(nstate,nspin)
- real(dp),intent(out) :: occupation(nstate,nspin)
+ real(dp),intent(in)  :: energy(:,:)
+ real(dp),intent(out) :: occupation(:,:)
 !=====
+ integer              :: nstate
  real(dp)             :: remaining_electrons(nspin)
  real(dp)             :: electrons_mu,mu,delta_mu,grad_electrons
  real(dp)             :: mu_change
@@ -753,6 +897,8 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
  integer              :: occfile
  integer              :: iter
 !=====
+
+ nstate = SIZE(occupation,DIM=1)
 
  if( temperature < 1.0e-8_dp ) then
 
@@ -853,51 +999,73 @@ end subroutine set_occupation
 
 
 !=========================================================================
-pure function get_number_occupied_states(occupation) result(nocc)
+subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
  implicit none
-
- real(dp),intent(in) :: occupation(:,:)
- integer             :: nocc
-!=====
- integer :: nstate,istate,ispin,nspin_local
-!=====
-
- nstate      = SIZE(occupation(:,:),DIM=1)
- nspin_local = SIZE(occupation(:,:),DIM=2)
-
- ! Find highest occupied state
- ! Take care of negative occupations, this can happen if C comes from P^{1/2}
- nocc = 0
- do ispin=1,nspin_local
-   do istate=1,nstate
-     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
-     nocc = MAX(nocc,istate)
-   enddo
- enddo
-
-
-end function get_number_occupied_states
-
-
-!=========================================================================
-subroutine matrix_basis_to_eigen(c_matrix,matrix_inout)
- implicit none
- real(dp),intent(in)     :: c_matrix(:,:,:)
- real(dp),intent(inout)  :: matrix_inout(:,:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: matrix_in(:,:,:)
+ real(dp),intent(out) :: matrix_out(:,:,:)
 !=====
  integer                 :: nbf,nstate
  integer                 :: ispin
+ real(dp),allocatable    :: matrix_tmp(:,:)
 !=====
 
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
+
+ allocate(matrix_tmp(nbf,nstate))
+
  do ispin=1,nspin
-   matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
+   !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
+   ! H * C
+   call DGEMM('N','N',nbf,nstate,nbf,1.0d0,matrix_in(:,:,ispin),nbf, &
+                                           c_matrix(:,:,ispin),nbf,  &
+                                     0.0d0,matrix_tmp,nbf)
+   ! C**T * (H * C)
+   call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(:,:,ispin),nbf, &
+                                              matrix_tmp,nbf,          &
+                                        0.0d0,matrix_out,nstate)
+
  enddo
+ deallocate(matrix_tmp)
+
+end subroutine matrix_ao_to_mo
 
 
-end subroutine matrix_basis_to_eigen
+!=========================================================================
+subroutine matrix_mo_to_ao(c_matrix,matrix_in,matrix_out)
+ implicit none
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: matrix_in(:,:,:)
+ real(dp),intent(out) :: matrix_out(:,:,:)
+!=====
+ integer              :: nbf,nstate
+ integer              :: ispin
+ real(dp),allocatable :: matrix_tmp(:,:)
+!=====
+
+ nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate = SIZE(c_matrix(:,:,:),DIM=2)
+
+
+ allocate(matrix_tmp(nstate,nbf))
+
+ do ispin=1,nspin
+   !matrix_out(1:nbf,1:nbf,ispin) = MATMUL( c_matrix(:,:,ispin) , MATMUL( matrix_in(:,:,ispin) , TRANSPOSE( c_matrix(:,:,ispin) ) ) )
+   ! H * C**T
+   call DGEMM('N','T',nstate,nbf,nstate,1.0d0,matrix_in(:,:,ispin),nstate, &
+                                              c_matrix(:,:,ispin),nbf,     &
+                                        0.0d0,matrix_tmp,nstate)
+   ! C * (H * C**T)
+   call DGEMM('N','N',nbf,nbf,nstate,1.0d0,c_matrix(:,:,ispin),nbf,  &
+                                           matrix_tmp,nstate,        &
+                                     0.0d0,matrix_out,nbf)
+
+ enddo
+ deallocate(matrix_tmp)
+
+end subroutine matrix_mo_to_ao
 
 
 !=========================================================================
@@ -1078,7 +1246,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
  integer  :: nbf
- integer  :: ibf,jbf
+ integer  :: istate,jbf
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
@@ -1103,11 +1271,11 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
 
- ibf=0
+ istate = 0
  do jbf=1,nbf
    if( s_eigval(jbf) > TOL_OVERLAP ) then
-     ibf = ibf + 1
-     s_matrix_sqrt_inv(:,ibf) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
+     istate = istate + 1
+     s_matrix_sqrt_inv(:,istate) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
    endif
  enddo
 
@@ -1196,6 +1364,9 @@ end subroutine get_c_matrix_from_p_matrix
 
 
 !=========================================================================
+! Calculate the exchange-correlation potential and energy
+! * subroutine works for both real and complex wavefunctions c_matrix
+!   using "class" syntax of Fortran2003
 subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
@@ -1209,7 +1380,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  integer,intent(in)         :: batch_size
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
+ class(*),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(out)       :: vxc_ij(:,:,:)
  real(dp),intent(out)       :: exc_xc
 !=====
@@ -1218,6 +1389,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  integer              :: ibf,jbf,ispin
  integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
+ integer              :: timing_xxdft_xc,timing_xxdft_densities,timing_xxdft_libxc,timing_xxdft_vxc
  real(dp)             :: normalization(nspin)
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: tmp_batch(:,:)
@@ -1237,7 +1409,22 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_dft)
+ select type(c_matrix)
+ type is (real(dp))
+   timing_xxdft_xc        = timing_dft_xc
+   timing_xxdft_densities = timing_dft_densities
+   timing_xxdft_libxc     = timing_dft_libxc
+   timing_xxdft_vxc       = timing_dft_vxc
+ type is (complex(dp))
+   timing_xxdft_xc        = timing_tddft_xc
+   timing_xxdft_densities = timing_tddft_densities
+   timing_xxdft_libxc     = timing_tddft_libxc
+   timing_xxdft_vxc       = timing_tddft_vxc
+ class default
+   call die("dft_exc_vxc_batch: c_matrix is neither real nor complex")
+ end select
+
+ call start_clock(timing_xxdft_xc)
 
  nstate = SIZE(occupation,DIM=1)
 
@@ -1256,6 +1443,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    igrid_end = MIN(ngrid,igrid_start+batch_size-1)
    nr = igrid_end - igrid_start + 1
 
+   call start_clock(timing_xxdft_densities)
+
    allocate(weight_batch(nr))
    allocate(rhor_batch(nspin,nr))
    allocate(basis_function_r_batch(basis%nbf,nr))
@@ -1273,20 +1462,20 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
    !
    ! Get the gradient at points r
-   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
+   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
    if( .NOT. dft_xc_needs_gradient ) then
-     call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
-
+     call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
    else
-     call calc_density_gradr_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix, &
-                                   basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+
+     !$OMP PARALLEL DO
      do ir=1,nr
        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
        if( nspin == 2 ) then
@@ -1294,15 +1483,20 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
          sigma_batch(3,ir) = DOT_PRODUCT( grad_rhor_batch(2,ir,:) , grad_rhor_batch(2,ir,:) )
        endif
      enddo
+     !$OMP END PARALLEL DO
 
    endif
 
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
 
+   call stop_clock(timing_xxdft_densities)
+
+
    !
    ! LIBXC calls
    !
+   call start_clock(timing_xxdft_libxc)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -1367,32 +1561,44 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    enddo ! loop on the XC functional
 
+   call stop_clock(timing_xxdft_libxc)
+
 
 
    !
    ! Eventually set up the vxc term
    !
+   call start_clock(timing_xxdft_vxc)
 
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     !
-     ! LDA and GGA
-     do ir=1,nr
-       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
-     enddo
-     !
-     ! GGA-only
      if( dft_xc_needs_gradient ) then
+       !
+       ! GGA
+       !
+       !$OMP PARALLEL DO
        do ir=1,nr
+         tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
          tmp_batch(:,ir) = tmp_batch(:,ir) &
                           +  MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
        enddo
+       !$OMP END PARALLEL DO
+     else
+       !
+       ! LDA
+       !
+       !$OMP PARALLEL DO
+       do ir=1,nr
+         tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
+       enddo
+       !$OMP END PARALLEL DO
      endif
-
      call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+
    enddo
    deallocate(tmp_batch)
 
+   call stop_clock(timing_xxdft_vxc)
 
 
    deallocate(weight_batch)
@@ -1438,7 +1644,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_xxdft_xc)
 
 end subroutine dft_exc_vxc_batch
 
@@ -1452,7 +1658,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
 !=====
- integer,parameter    :: BATCH_SIZE=64
+ integer,parameter    :: BATCH_SIZE = 128
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: basis_function_r_batch(:,:)
  real(dp),allocatable :: exc_batch(:)
@@ -1511,7 +1717,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
    !
    ! Get all the functions and gradients at point rr
-   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
 
    !
    ! Calculate the density at points r

@@ -48,7 +48,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  integer                 :: iomega
  integer                 :: istep_gw
 #ifdef COHSEX_DEVEL
- integer,parameter       :: BATCH_SIZE = 64
+ integer,parameter       :: BATCH_SIZE = 128
  type(calculation_type)  :: calc_type_tmp
  real(dp),allocatable    :: p_matrix(:,:,:)
  integer                 :: istate
@@ -478,7 +478,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 #endif
 
      call cohsex_selfenergy(nstate,basis,occupation, &
-                            c_matrix,wpol,matrix_tmp,sigc,en%gw)
+                            c_matrix,wpol,se)
 
 
      !
@@ -491,7 +491,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call calculate_eri_3center_scalapack(basis,auxil_basis,rcut_mbpt)
 
        call cohsex_selfenergy_lr(nstate,basis,occupation, &
-                                 c_matrix,wpol,matrix_tmp,sigc,en%gw)
+                                 c_matrix,wpol,se)
      endif
 
      deallocate(matrix_tmp)

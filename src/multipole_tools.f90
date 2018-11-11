@@ -19,7 +19,6 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                    :: gt
  integer                    :: iatom,idir
  real(dp)                   :: dipole(3)
  real(dp),allocatable       :: dipole_basis(:,:,:)
@@ -30,7 +29,6 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
 ! call start_clock(timing_spectrum)
 
  write(stdout,'(/,a)') ' Calculate the static dipole'
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
 
  !
@@ -71,7 +69,6 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                    :: gt
  integer                    :: iatom,idir,jdir
  real(dp)                   :: trace
  real(dp)                   :: quad(3,3)
@@ -83,7 +80,6 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
 ! call start_clock(timing_spectrum)
 
  write(stdout,'(/,a)') ' Calculate the static quadrupole'
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
 
  !

@@ -165,7 +165,7 @@ end function element_covalent_radius
 !=========================================================================
 function element_number(element_name)
  implicit none
- character(len=2),intent(in) :: element_name
+ character(len=*),intent(in) :: element_name
  integer                     :: element_number
 !=====
  integer :: ielement
@@ -203,7 +203,7 @@ function element_name(zatom)
    call die('element symbol not understood')
  endif
 
- element_name = element_list(NINT(zatom))
+ element_name = element_list(NINT(ABS(zatom)))
 
 
 end function element_name

@@ -64,18 +64,6 @@ module m_mpi_auxil
    module procedure xmax_auxil_ra1d
  end interface
 
-! interface xsum
-!   module procedure xsum_r
-!   module procedure xsum_ra1d
-!   module procedure xsum_ra2d
-!   module procedure xsum_ra3d
-!   module procedure xsum_ra4d
-!   module procedure xsum_ca1d
-!   module procedure xsum_ca2d
-!   module procedure xsum_ca4d
-!   module procedure xsum_procindex_ra2d
-! end interface
-
  interface xsum_auxil
    module procedure xsum_auxil_r
    module procedure xsum_auxil_ra1d
@@ -103,6 +91,8 @@ subroutine xbcast_auxil_ra1d(iproc,array)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -124,6 +114,8 @@ subroutine xbcast_auxil_ra2d(iproc,array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -147,6 +139,8 @@ subroutine xand_auxil_l(logical_variable)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = 1
 
 #ifdef HAVE_MPI
@@ -168,6 +162,8 @@ subroutine xand_auxil_la1d(logical_array)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = SIZE(logical_array,DIM=1)
 
 #ifdef HAVE_MPI
@@ -188,6 +184,8 @@ subroutine xand_auxil_la2d(logical_array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = SIZE(logical_array,DIM=1)
  n2 = SIZE(logical_array,DIM=2)
@@ -211,6 +209,8 @@ subroutine xmin_auxil_i(integer_number)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = 1
 
 #ifdef HAVE_MPI
@@ -231,6 +231,8 @@ subroutine xmax_auxil_i(integer_number)
  integer :: n1
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = 1
 
@@ -253,6 +255,8 @@ subroutine xmax_auxil_r(real_number)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = 1
 
 #ifdef HAVE_MPI
@@ -273,6 +277,8 @@ subroutine xmax_auxil_ia2d(array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -296,6 +302,8 @@ subroutine xmax_auxil_ra1d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -316,6 +324,8 @@ subroutine xsum_auxil_r(real_number)
  integer :: n1
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = 1
 
@@ -338,6 +348,8 @@ subroutine xsum_auxil_ra1d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -359,11 +371,16 @@ subroutine xsum_auxil_ra2d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
+! write(stdout,*) "test 1 here"
+! write(stdout,*) MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_auxil, ier
  call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_auxil, ier)
+! write(stdout,*) "test 2 here"
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -380,6 +397,8 @@ subroutine xsum_auxil_ra3d(array)
  integer :: n1,n2,n3
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -403,6 +422,8 @@ subroutine xsum_auxil_ra4d(array)
  integer :: n1,n2,n3,n4
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -428,6 +449,8 @@ subroutine xsum_auxil_ca1d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -448,6 +471,8 @@ subroutine xsum_auxil_ca2d(array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -470,6 +495,8 @@ subroutine xsum_auxil_ca4d(array)
  integer :: n1,n2,n3,n4
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -496,6 +523,8 @@ subroutine xsum_auxil_procindex_ra1d(iproc,array)
  integer :: ier=0
 !=====
 
+ if( nproc_auxil == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -521,6 +550,8 @@ subroutine xsum_auxil_procindex_ra2d(iproc,array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_auxil == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )

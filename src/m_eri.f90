@@ -11,6 +11,7 @@ module m_eri
  use m_mpi
  use m_memory
  use m_warning
+ use m_scalapack
  use m_basis_set
  use m_timing
  use m_cart_to_pure
@@ -26,10 +27,10 @@ module m_eri
  real(dp),private           :: TOL_INT
 
 
- real(dp),public,allocatable :: eri_4center(:)
- real(dp),public,allocatable :: eri_4center_lr(:)
- real(dp),public,allocatable :: eri_3center(:,:)
- real(dp),public,allocatable :: eri_3center_lr(:,:)
+ real(dp),allocatable,public :: eri_4center(:)
+ real(dp),allocatable,public :: eri_4center_lr(:)
+ real(dp),allocatable,public :: eri_3center(:,:)
+ real(dp),allocatable,public :: eri_3center_lr(:,:)
 
 
  logical,protected,allocatable      :: negligible_shellpair(:,:)
@@ -45,6 +46,9 @@ module m_eri
  integer,protected :: nsize           ! size of the eri_4center array
  integer,protected :: npair           ! number of independent pairs (i,j) with i<=j
 
+ integer,public    :: nauxil_2center     ! size of the 2-center matrix
+ integer,public    :: nauxil_2center_lr  ! size of the 2-center LR matrix
+
  integer,protected :: nauxil_3center     ! size of the 3-center matrix
                                          ! may differ from the total number of 3-center integrals due to
                                          ! data distribution
@@ -52,7 +56,8 @@ module m_eri
                                          ! may differ from the total number of 3-center integrals due to
                                          ! data distribution
 
- real(dp),allocatable,public  :: eri_3center_sca(:,:)
+ integer,public    :: desc_eri3(NDEL)
+ integer,public    :: desc_eri3_lr(NDEL)
 
 ! Parallelization information for the auxiliary basis
  integer,allocatable,protected :: iproc_ibf_auxil(:)
@@ -101,7 +106,7 @@ subroutine prepare_eri(basis)
    allocate(negligible_shellpair(basis%nshell,basis%nshell))
    call identify_negligible_shellpair(basis)
    call setup_shellpair(basis)
-   call setup_basispair()
+   call setup_basispair(basis)
  endif
 
 
@@ -202,17 +207,11 @@ pure function index_pair(ibf,jbf)
  integer            :: ijmin,ijmax
 !=====
 
- if( ibf == jbf ) then
-   index_pair = ibf
- else
-   ijmax=MAX(ibf,jbf)
-   ijmin=MIN(ibf,jbf)
+ ijmax=MAX(ibf,jbf)
+ ijmin=MIN(ibf,jbf)
 
-   index_pair = (ijmin-1) * (nbf_eri-1) - (ijmin-1) * (ijmin-2)/2     + ijmax - ijmin + nbf_eri
-
-   index_pair = index_pair_1d(index_pair)
- endif
-
+ index_pair = (ijmin-1) * nbf_eri - ( (ijmin-2) * (ijmin-1) ) / 2  + ijmax - ijmin + 1
+ index_pair = index_pair_1d(index_pair)
 
 end function index_pair
 
@@ -250,54 +249,6 @@ end function eri_lr
 
 
 !=========================================================================
-function eri_ri(ibf,jbf,kbf,lbf)
- implicit none
- integer,intent(in) :: ibf,jbf,kbf,lbf
- real(dp)           :: eri_ri
-!=====
- integer            :: index_ij,index_kl
-!=====
-
- if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
-   eri_ri = 0.0_dp
- else
-   index_ij = index_pair(ibf,jbf)
-   index_kl = index_pair(kbf,lbf)
-
-   eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
-
-   call xsum_auxil(eri_ri)
-
- endif
-
-end function eri_ri
-
-
-!=========================================================================
-function eri_ri_lr(ibf,jbf,kbf,lbf)
- implicit none
- integer,intent(in) :: ibf,jbf,kbf,lbf
- real(dp)           :: eri_ri_lr
-!=====
- integer            :: index_ij,index_kl
-!=====
-
- if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
-   eri_ri_lr = 0.0_dp
- else
-   index_ij = index_pair(ibf,jbf)
-   index_kl = index_pair(kbf,lbf)
-
-   eri_ri_lr = DOT_PRODUCT( eri_3center_lr(:,index_ij) , eri_3center_lr(:,index_kl) )
-
-   call xsum_auxil(eri_ri_lr)
-
- endif
-
-end function eri_ri_lr
-
-
-!=========================================================================
 subroutine setup_shell_index(basis)
  implicit none
 
@@ -312,10 +263,15 @@ end subroutine setup_shell_index
 
 
 !=========================================================================
-subroutine setup_basispair()
+subroutine setup_basispair(basis)
  implicit none
+
+ type(basis_set),intent(in) :: basis
 !=====
- integer :: ibf,jbf,ijbf
+ integer :: ipair
+ integer :: ibf,jbf,ijbf,ijmax,ijmin
+ integer :: ishell,jshell,ijshellpair
+ integer :: ami,amj,ni,nj
 !=====
 
  npair = 0
@@ -331,33 +287,48 @@ subroutine setup_basispair()
  call clean_allocate('index basis',index_basis,2,npair)
 
  !
- ! Specific ordering where the first nbf pairs contain the diagonal terms ibf==jbf
+ ! Specific ordering where the basis functions in a shell pair have contiguous indexes
  !
- npair = 0
  index_pair_1d(:) = 0
- do jbf=1,nbf_eri
-   if( negligible_basispair(jbf,jbf) ) then
-     call die('setup_negligible_basispair: this should not happen')
+ ipair = 0
+ do ijshellpair=1,nshellpair
+   ishell = index_shellpair(1,ijshellpair)
+   jshell = index_shellpair(2,ijshellpair)
+   ami = basis%shell(ishell)%am
+   amj = basis%shell(jshell)%am
+   ni = number_basis_function_am( basis%gaussian_type , ami )
+   nj = number_basis_function_am( basis%gaussian_type , amj )
+
+   if( ishell /= jshell ) then
+     do jbf=1,nj
+       do ibf=1,ni
+         ipair = ipair + 1
+
+         ijmax=MAX(basis%shell(ishell)%istart + ibf - 1,basis%shell(jshell)%istart + jbf - 1)
+         ijmin=MIN(basis%shell(ishell)%istart + ibf - 1,basis%shell(jshell)%istart + jbf - 1)
+         ijbf = (ijmin-1) * nbf_eri - ( (ijmin-2) * (ijmin-1) ) / 2  + ijmax - ijmin + 1
+
+         index_pair_1d(ijbf)  = ipair
+         index_basis(1,ipair) = basis%shell(ishell)%istart + ibf - 1
+         index_basis(2,ipair) = basis%shell(jshell)%istart + jbf - 1
+       enddo
+     enddo
+   else
+     do jbf=1,nj
+       do ibf=1,jbf
+         ipair = ipair + 1
+
+         ijmax=MAX(basis%shell(ishell)%istart + ibf - 1,basis%shell(jshell)%istart + jbf - 1)
+         ijmin=MIN(basis%shell(ishell)%istart + ibf - 1,basis%shell(jshell)%istart + jbf - 1)
+         ijbf = (ijmin-1) * nbf_eri - ( (ijmin-2) * (ijmin-1) ) / 2  + ijmax - ijmin + 1
+
+         index_pair_1d(ijbf)  = ipair
+         index_basis(1,ipair) = basis%shell(ishell)%istart + ibf - 1
+         index_basis(2,ipair) = basis%shell(jshell)%istart + jbf - 1
+       enddo
+     enddo
    endif
-   npair = npair + 1
-   index_pair_1d(jbf) = npair
-   index_pair_1d(jbf) = npair
-   index_basis(1,npair) = jbf
-   index_basis(2,npair) = jbf
- enddo
 
- ijbf = nbf_eri
-
- do ibf=1,nbf_eri
-   do jbf=ibf+1,nbf_eri  ! Skip the diagonal terms since it is already included
-     ijbf = ijbf + 1
-     if( .NOT. negligible_basispair(ibf,jbf) ) then
-       npair = npair + 1
-       index_pair_1d(ijbf) = npair
-       index_basis(1,npair) = ibf
-       index_basis(2,npair) = jbf
-     endif
-   enddo
  enddo
 
 
@@ -586,12 +557,6 @@ subroutine destroy_eri_3center()
    call clean_deallocate('3-center integrals',eri_3center)
  endif
 
-#ifdef SCASCA
- if(ALLOCATED(eri_3center_sca)) then
-   call clean_deallocate('3-center integrals SCALAPACK',eri_3center_sca)
- endif
-#endif
-
 end subroutine destroy_eri_3center
 
 
@@ -610,7 +575,7 @@ subroutine destroy_eri_3center_lr()
    deallocate(ibf_auxil_l_lr)
  endif
  if(ALLOCATED(eri_3center_lr)) then
-   call clean_deallocate('3-center LR integrals',eri_3center_lr)
+   call clean_deallocate('LR 3-center integrals',eri_3center_lr)
  endif
 
 end subroutine destroy_eri_3center_lr
@@ -781,23 +746,21 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
  if( parallel_buffer ) then
 
-   call set_auxil_block_size(nbf_auxil_basis/(nprow_auxil*4))
-
    do iproc=0,nprow_auxil-1
-     nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iproc,first_row,nprow_auxil)
+     nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,MB_auxil,iproc,first_row,nprow_auxil)
    enddo
 
    nauxil_3center = nbf_local_iproc(iprow_auxil)
 
    allocate(ibf_auxil_g(nauxil_3center))
    do ilocal=1,nauxil_3center
-     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
    enddo
    allocate(ibf_auxil_l(nbf_auxil_basis))
    allocate(iproc_ibf_auxil(nbf_auxil_basis))
    do iglobal=1,nbf_auxil_basis
-     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
-     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
+     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
    enddo
 
  else
@@ -805,18 +768,17 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
    ! Use SCALAPACK routines to distribute the auxiliary basis
    ! Assume a processor grid: nproc_auxil x 1
 
-   call set_auxil_block_size(nbf_auxil_basis/nprow_auxil/2)
 
-   nauxil_3center = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   nauxil_3center = NUMROC(nbf_auxil_basis,MB_auxil,iprow_auxil,first_row,nprow_auxil)
    allocate(ibf_auxil_g(nauxil_3center))
    do ilocal=1,nauxil_3center
-     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
    enddo
    allocate(ibf_auxil_l(nbf_auxil_basis))
    allocate(iproc_ibf_auxil(nbf_auxil_basis))
    do iglobal=1,nbf_auxil_basis
-     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
-     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
+     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
    enddo
 
  endif
@@ -846,20 +808,20 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 #ifdef HAVE_SCALAPACK
 
  do iproc=0,nprow_auxil-1
-   nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iproc,first_row,nprow_auxil)
+   nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis,MB_auxil,iproc,first_row,nprow_auxil)
  enddo
 
  nauxil_3center_lr = nbf_local_iproc_lr(iprow_auxil)
 
  allocate(ibf_auxil_g_lr(nauxil_3center_lr))
  do ilocal=1,nauxil_3center_lr
-   ibf_auxil_g_lr(ilocal) = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   ibf_auxil_g_lr(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
  enddo
  allocate(ibf_auxil_l_lr(nbf_auxil_basis))
  allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
  do iglobal=1,nbf_auxil_basis
-   ibf_auxil_l_lr(iglobal)     = INDXG2L(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
-   iproc_ibf_auxil_lr(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+   ibf_auxil_l_lr(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
+   iproc_ibf_auxil_lr(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
  enddo
 
 #else
@@ -900,6 +862,61 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 
 
 end subroutine distribute_auxil_basis_lr
+
+
+!=========================================================================
+subroutine reshuffle_distribution_3center()
+ implicit none
+
+!=====
+ integer :: info
+ integer :: mlocal,nlocal
+ integer :: desc3final(NDEL)
+ real(dp),allocatable :: eri_3center_tmp(:,:)
+!=====
+
+#ifdef HAVE_SCALAPACK
+ write(stdout,'(/,a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_auxil,' x ',npcol_auxil
+
+ if( nprow_auxil == nprow_3center .AND. npcol_auxil == npcol_3center .AND. MB_auxil == MB_3center ) then
+   write(stdout,*) 'Reshuffling not needed'
+   return
+ endif
+
+ if( cntxt_auxil > 0 ) then
+   mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+   nlocal = NUMROC(npair         ,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
+ else
+   mlocal = -1
+   nlocal = -1
+ endif
+ call xmax_ortho(mlocal)
+ call xmax_ortho(nlocal)
+
+ if( cntxt_3center > 0 ) then
+   call move_alloc(eri_3center,eri_3center_tmp)
+
+   call DESCINIT(desc3final,nauxil_2center,npair,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+
+   call clean_allocate('TMP 3-center integrals',eri_3center,mlocal,nlocal)
+
+   call PDGEMR2D(nauxil_2center,npair,eri_3center_tmp,1,1,desc_eri3,eri_3center,1,1,desc3final,cntxt_3center)
+   call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
+ else
+   call clean_deallocate('3-center integrals',eri_3center)
+   call clean_allocate('3-center integrals',eri_3center,mlocal,nlocal)
+ endif
+
+ !
+ ! Propagate to the ortho MPI direction
+ if( cntxt_auxil <= 0 ) then
+   eri_3center(:,:) = 0.0_dp
+ endif
+ call xsum_ortho(eri_3center)
+#endif
+
+
+end subroutine reshuffle_distribution_3center
 
 
 !=========================================================================

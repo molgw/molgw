@@ -7,7 +7,7 @@ FC=ifort -fpp -DHAVE_LIBXC
 
 CPPFLAGS= -DHAVE_LIBXC # -DHAVE_LIBINT_ONEBODY
 
-CXX=icpc
+CXX=icpc -std=c++0x
 FCOPTS= -O3 -xhost -parallel -qopt-matmul
 CXXOPTS= -O3 -xhost  
 
@@ -19,3 +19,4 @@ LIBXC_ROOT=${HOME}/src/libxc-3.0.0_ifort/
 
 LIBINT_ROOT=${HOME}/src/libint-2.2.0_ifort/
 
+FFTW_ROOT=

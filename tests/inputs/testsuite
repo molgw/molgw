@@ -17,7 +17,7 @@
 #
 #####################################################
 
-he.in                     , HF helium atom cc-pVTZ without RI
+he.in                     , HF helium atom cc-pVTZ without RI, noparallel 
 SCF Total Energy          , -2.8611533447      , 0 , 1.0e-7
 gKS HOMO energy           , -24.969849         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.323932         , 0 , 1.0e-4
@@ -32,12 +32,12 @@ SCF Total Energy          , -128.5470596583    , 0 , 1.0e-7
 gKS HOMO energy           ,  -23.140408        , 0 , 1.0e-4
 gKS LUMO energy           ,   10.036631        , 0 , 1.0e-4
 
-na2_lda.in               , LDA Na2 molecule without RI
+na2_lda.in               , LDA Na2 molecule without RI, noparallel
 SCF Total Energy          , -322.8615203603    , 0 , 1.0e-7
 gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4
 gKS LUMO energy           ,   -1.930441        , 0 , 1.0e-4
 
-na2_lda_outofcore.in      , LDA Na2 molecule without RI with out-of-core Coulomb integrals
+na2_lda_outofcore.in      , LDA Na2 molecule without RI with out-of-core Coulomb integrals, noparallel
 SCF Total Energy          , -322.8615203603    , 0 , 1.0e-7
 gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4
 gKS LUMO energy           ,   -1.930441        , 0 , 1.0e-4
@@ -45,7 +45,7 @@ gKS LUMO energy           ,   -1.930441        , 0 , 1.0e-4
 na08_damping.in           , LDA Na8 cluster with density damping stopped after 2 SCF cycles
 SCF Total Energy          , -1232.7456930389   , 0 , 1.0e-7
 
-h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set
+h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set, noparallel
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
 gKS HOMO energy           , -10.061109         , 0 , 1.0e-4
 gKS LUMO energy           ,   7.282713         , 0 , 1.0e-4
@@ -55,7 +55,7 @@ SCF Total Energy          ,  -1.1351648702     , 0 , 1.0e-7
 gKS HOMO energy           , -10.247609         , 0 , 1.0e-4
 gKS LUMO energy           ,   1.328924         , 0 , 1.0e-4
 
-o2_rsh.in                 , Range-separated hybrid mimicing HSE08 for triplet O2 wo RI
+o2_rsh.in                 , Range-separated hybrid mimicing HSE08 for triplet O2 wo RI, noparallel
 SCF Total Energy          , -150.1671750256    , 0 , 1.0e-7
 XC Energy                 ,  -13.0323509136    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.324037        , 0 , 1.0e-4
@@ -100,7 +100,7 @@ XC Energy                 ,   -7.0110900711    , 0 , 1.0e-7
 Total Energy              ,  -76.3812141506    , 0 , 1.0e-7
 Dipole (a.u.)             ,   -0.738914        , 2 , 1.0e-4
 
-benzene_filtered.in       , HF benzene with RI having a filtered 2-center ERI
+benzene_filtered.in       , HF benzene with RI having a filtered 2-center ERI with 3-center parallelization and batches
 Hartree Energy            ,    312.6277067326   , 0 , 1.0e-7
 SCF Total Energy          ,   -230.6242081120   , 0 , 1.0e-7
 
@@ -134,7 +134,7 @@ Exchange Energy           ,   -2.9606225006    , 0 , 1.0e-7
 XC Energy                 ,  -12.5371878224    , 0 , 1.0e-7
 Total Energy              , -115.7433993446    , 0 , 1.0e-7
 
-he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI
+he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
 Exc. 0001                 ,   32.27823228      , 0 , 1.0e-4
 Exc. 0001                 ,    0.00000000      , 1 , 1.0e-4
@@ -172,7 +172,7 @@ MP2 Energy                ,   -0.4080027465    , 0 , 1.0e-7
 MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
 SE+MP2  Total En          , -109.3823851303    , 0 , 1.0e-7
 
-boron_gw_spinpolarized.in , GW@HF boron atom without RI with spin
+boron_gw_spinpolarized.in , GW@HF boron atom without RI with spin, noparallel
 Hartree Energy            ,   11.6084909105   , 0 , 1.0e-7
 Total Energy              ,  -24.5299616244   , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.582101       , 0 , 1.0e-4
@@ -187,7 +187,7 @@ GW HOMO energy            ,  -12.668274       , 1 , 1.0e-4
 GW LUMO energy            ,    0.872077       , 0 , 1.0e-4
 GW LUMO energy            ,    1.238943       , 1 , 1.0e-4
 
-co2.in                    , GW@LDA CO2 without RI with 6-31G
+co2.in                    , GW@LDA CO2 without RI with 6-31G, noparallel
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
 Nucleus Energy            ,   -548.2550188543  , 0 , 1.0e-7
 Hartree Energy            ,    142.7897017889  , 0 , 1.0e-7
@@ -218,7 +218,7 @@ RPA Total energy          ,   -526.9633301175  , 0 , 1.0e-7
  GW HOMO energy           ,    -15.012653      , 0 , 1.0e-4
  GW LUMO energy           ,      3.143477      , 0 , 1.0e-4
 
-h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0 wo RI
+h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0 wo RI, noparallel
 SCF Total Energy          ,     -1.0727602939  , 0 , 1.0e-7
 gKS HOMO energy           ,     -8.191536      , 0 , 1.0e-4
 gKS LUMO energy           ,     -2.674684      , 0 , 1.0e-4
@@ -248,7 +248,7 @@ CI 2nd excited-state energy,    -0.7076536165  , 0 , 1.0e-7
 CI 3rd excited-state energy,    -0.6991862094  , 0 , 1.0e-7
 CI 4th excited-state energy,    -0.6832271665  , 0 , 1.0e-7
 
-be_qsgw.in                , QSGW Be atom cc-pVDZ without RI
+be_qsgw.in                , QSGW Be atom cc-pVDZ without RI, noparallel
 RPA Total energy          ,    -14.6144623635  , 0 , 1.0e-7
 gKS HOMO energy           ,     -8.944298      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.283104      , 0 , 1.0e-4
@@ -328,13 +328,13 @@ Sum over oscillator strengths ,  4.642395       , 0 , 1.0e-4
 polarizability trace      ,     17.627303       , 0 , 1.0e-4
 Mean excitation energy    ,     14.812805       , 0 , 1.0e-4
 
-ch2o_gw_wori.in           , GW@LDA wo RI on formaldehyde to prepare BSE
+ch2o_gw_wori.in           , GW@LDA wo RI on formaldehyde to prepare BSE, noparallel
 SCF Total Energy          ,   -113.5803830624   , 0 , 1.0e-7
 RPA Total energy          ,   -114.3099788424   , 0 , 1.0e-4
 GW HOMO energy            ,     -9.641505       , 0 , 1.0e-4
 GW LUMO energy            ,      2.436318       , 0 , 1.0e-4
 
-ch2o_bse_wori.in          , GW@LDA wo RI on formaldehyde using previous run, Restart
+ch2o_bse_wori.in          , GW@LDA wo RI on formaldehyde using previous run, Restart noparallel
 Lowest neutral excitation ,      3.061668       , 0 , 1.0e-4
 0002 :                    ,      8.10899840     , 0 , 1.0e-4
 0002 :                    ,      0.00208595     , 1 , 1.0e-4
@@ -438,7 +438,7 @@ RPA correlation energy    ,    -0.0854827210    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.426968        , 0 , 1.0e-4
 GWGamma HOMO energy       ,    -8.003938        , 0 , 1.0e-4
 
-lih_gwgamma_nori.in       , LiH: GWGamma@PBE0 without RI
+lih_gwgamma_nori.in       , LiH: GWGamma@PBE0 without RI, noparallel
 SCF Total Energy          ,    -8.0461044345    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0363952366    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.038813        , 0 , 1.0e-4
@@ -517,6 +517,51 @@ MP3 Energy                ,  -0.0069228191     , 0 , 1.0e-7
 MP3 Total Energy          , -76.2354493975     , 0 , 1.0e-7
 SE+MP3  Total En          , -76.2354493975     , 0 , 1.0e-7
 
+h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B",tddft
+SCF Total Energy          , -76.0278711935     , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -76.0278711836     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-7
+
+h2o_rt_tddft_hf_PC2B_scalapack.in, Scalapack test RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B",tddft
+SCF Total Energy          , -76.0571529836     , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -76.0571529689     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0001368162     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   2.0246334571     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,  -0.0003241743     , 2 , 1.0e-7
+
+h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B", tddft
+SCF Total Energy          , -75.8540895545     , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -75.8540895309     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,  -0.0001846589     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   1.9474309646     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0000376516     , 2 , 1.0e-7
+
+h2o_rt_tddft_lda_PC2B_restart.in  , test of RESTART_TDDFT does not work without preliminary run of previous input, Restart tddft
+RT-TDDFT Total Energy     ,  -75.8540895314     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,    0.0001669089     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,    1.9475062577     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,    0.0002922780     , 2 , 1.0e-7
+
+h2o_rt_tddft_h_projectile.in  , test of projectile without basis function PC="PC2B",tddft
+SCF Total Energy          ,  -75.8551200924     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.0285116443     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_pbe0.in , proj without basis pbe0,tddft
+SCF Total Energy          ,  -76.3418386927     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.5745023928     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_pbe0_restart.in , proj without basis pbe0 restart, Restart tddft
+RT-TDDFT Total Energy     ,  -75.5098148640     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_pbe0_scalapack.in , proj without basis pbe0,tddft
+SCF Total Energy          ,  -76.3757991664     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.3811268142     , 0 , 1.0e-7
+
+h2o_rt_tddft_min_overlap.in , proj wihtout basis nstate ne nbf,tddft
+RT-TDDFT Total Energy     ,  -75.6361896847     , 0 , 1.0e-7
+
 be2_qsgw_bse.in           , BSE calculation after QSGW for Be2
 gKS HOMO energy           ,  -8.818516          , 0 , 1.0e-4
 gKS LUMO energy           ,   0.836309          , 0 , 1.0e-4
@@ -591,8 +636,8 @@ ne_rings.in               , Perturbation theory with only 1- and 2-ring diagrams
 SCF Total Energy          ,   -128.4900916481   , 0 , 1.0e-7
 gKS HOMO energy           ,    -22.639065       , 0 , 1.0e-4
 gKS LUMO energy           ,     46.110304       , 0 , 1.0e-4
-TWO_RINGS HOMO energy     ,    -20.964659       , 0 , 1.0e-4
-TWO_RINGS LUMO energy     ,     45.419598       , 0 , 1.0e-4
+TWO_RINGS HOMO energy     ,    -22.788691       , 0 , 1.0e-4
+TWO_RINGS LUMO energy     ,     46.034447       , 0 , 1.0e-4
 
 h2o_temperature.in        , for a restart test with non-zero temperature
 SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
@@ -613,3 +658,18 @@ gKS LUMO energy           ,      3.880683       , 0 , 1.0e-4
 sih4_g0w0@sc-cohsex.in    , G0W0 for SiH4 based on the previous sc-COHSEX run, Restart
 GW HOMO energy            ,    -12.855076       , 0 , 1.0e-4
 GW LUMO energy            ,      4.073908       , 0 , 1.0e-4
+
+co_gw_dm.in               , G0W0 based on G0W0 density matrix
+SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
+GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
+
+co_gw_dm_restart.in       , G0W0 based on G0W0 density matrix, Restart
+GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
+GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
+
+co_gw_pt2_dm.in           , G0W0 based on PT2 density matrix
+SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+GW HOMO energy            ,    -13.500329       , 0 , 1.0e-4
+GW LUMO energy            ,      3.390125       , 0 , 1.0e-4
+

@@ -14,11 +14,13 @@ module m_hamiltonian_sca
  use m_mpi
  use m_scalapack
  use m_timing
+ use m_tddft_variables
  use m_warning
  use m_memory
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_hamiltonian
+ use m_density_tools
 
 
 contains
@@ -289,7 +291,6 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
 #ifdef HAVE_SCALAPACK
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK'
- call start_clock(timing_hartree)
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
@@ -341,7 +342,6 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
  call xsum_local(ehartree)
 
 
- call stop_clock(timing_hartree)
 
 
 #endif
@@ -400,9 +400,9 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
  write(stdout,*) 'Size of the non-SCALAPACK 3-center integrals:',nauxil_3center,npair
 
  ! nauxil x npair
- mwork = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
- nwork = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desc3work,nauxil_2center,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
+ mwork = NUMROC(nauxil_2center,MB_3center,iprow_3center,first_row,nprow_3center)
+ nwork = NUMROC(npair         ,NB_3center,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desc3work,nauxil_2center,npair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
 
 ! call start_clock(timing_tmp8)
 ! call PDGEMR2D(nauxil_2center,npair,eri_3center,1,1,desc3final,eri_3work,1,1,desc3work,cntxt)
@@ -413,13 +413,13 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
  allocate(tmp(mwork,nbf))
 
  ! nauxil x nbf
- nbf_local = NUMROC(nbf,block_col,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desctmp,nauxil_2center,nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
+ nbf_local = NUMROC(nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desctmp,nauxil_2center,nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
  allocate(tmp_local(mwork,nbf_local))
 
  ! nbf x nbf
- mbf_local = NUMROC(nbf,block_row,iprow_3center,first_row,nprow_3center)
- call DESCINIT(descx,nbf,nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mbf_local),info)
+ mbf_local = NUMROC(nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+ call DESCINIT(descx,nbf,nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mbf_local),info)
  allocate(sigx(mbf_local,nbf_local))
 
  do ispin=1,nspin
@@ -448,12 +448,12 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
      call start_clock(timing_tmp1)
      tmp(:,:) = 0.0_dp
      do ipair_local=1,nwork
-       ipair_global = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
+       ipair_global = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
        ibf = index_basis(1,ipair_global)
        jbf = index_basis(2,ipair_global)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center_sca(:,ipair_local)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center(:,ipair_local)
        if( ibf /= jbf )  &
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_sca(:,ipair_local)
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center(:,ipair_local)
      enddo
      call stop_clock(timing_tmp1)
 
@@ -463,7 +463,7 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
 
 
      do jbf_local=1,nbf_local
-       jbf_global = INDXL2G(jbf_local,block_col,ipcol_3center,first_col,npcol_3center)
+       jbf_global = INDXL2G(jbf_local,NB_3center,ipcol_3center,first_col,npcol_3center)
        tmp_local(:,jbf_local) = tmp(:,jbf_global)
      enddo
      call stop_clock(timing_tmp2)
@@ -535,6 +535,8 @@ subroutine setup_exchange_longrange_ri_sca(occupation,c_matrix,p_matrix,exchange
  call start_clock(timing_exchange)
 
  write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK'
+
+ if( npcol_3center > 1 ) call die('setup_exchange_longrange_ri_buffer_sca: npcol_3center > 1 not allowed')
 
  nbf    = desc_ham(M_)
 
@@ -623,197 +625,217 @@ end subroutine setup_density_matrix_sca
 
 
 !=========================================================================
-subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
-                                             hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
  implicit none
 
- integer,intent(in)   :: nspin_local,nbf,nstate
- real(dp),intent(in)  :: hamiltonian(nbf,nbf,nspin_local)
- real(dp),intent(in)  :: s_matrix_sqrt_inv(nbf,nstate)
- real(dp),intent(out) :: c_matrix(nbf,nstate,nspin_local)
- real(dp),intent(out) :: energy(nstate,nspin_local)
+ real(dp),intent(in)  :: hamiltonian(:,:,:)
+ real(dp),intent(in)  :: s_matrix_sqrt_inv(:,:)
+ real(dp),intent(out) :: c_matrix(:,:,:)
+ real(dp),intent(out) :: energy(:,:)
 !=====
+ integer :: nspin_local,nbf,nstate
  integer :: mh,nh,mc,nc,ms,ns
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer :: desch(NDEL),descc(NDEL),descs(NDEL)
- real(dp),allocatable :: matrix_local(:,:)
 #ifdef HAVE_SCALAPACK
  integer :: cntxt
  integer :: rank_sca,nprocs_sca
+ integer :: desch(NDEL),descc(NDEL),descs(NDEL)
 #endif
  integer  :: ispin
  integer  :: ilocal,jlocal,iglobal,jglobal
  integer  :: m_small,n_small
- real(dp),allocatable :: h_small(:,:),ham_local(:,:),c_matrix_local(:,:),s_matrix_local(:,:)
+ real(dp),allocatable :: h_small(:,:),h_small2(:,:)
+ real(dp),allocatable :: ham_local(:,:),c_matrix_local(:,:),s_matrix_local(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
+ nbf         = SIZE(c_matrix,DIM=1)
+ nstate      = SIZE(c_matrix,DIM=2)
+ nspin_local = SIZE(c_matrix,DIM=3)
+
+#if defined(HAVE_SCALAPACK)
 
  nprow = MIN(nprow_sd,nbf/scalapack_block_min)
  npcol = MIN(npcol_sd,nbf/scalapack_block_min)
  nprow = MAX(nprow,1)
  npcol = MAX(npcol,1)
 
- call BLACS_PINFO( rank_sca, nprocs_sca )
+ if( nprow * npcol > 1 ) then
+   write(stdout,'(1x,a,i4,a,i4)') 'Generalized diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
+   call BLACS_PINFO( rank_sca, nprocs_sca )
 
- call BLACS_GET( -1, 0, cntxt )
- call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
- call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
- write(stdout,'(a,i4,a,i4)') ' Generalized diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
+   call BLACS_GET( -1, 0, cntxt )
+   call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
+   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
- c_matrix(:,:,:) = 0.0_dp
-
- !
- ! Participate to the diagonalization only if the CPU has been selected
- ! in the grid
- if(cntxt > 0 ) then
-
-   mh = NUMROC(nbf   ,block_row,iprow,first_row,nprow)
-   nh = NUMROC(nbf   ,block_col,ipcol,first_col,npcol)
-   mc = NUMROC(nbf   ,block_row,iprow,first_row,nprow)
-   nc = NUMROC(nstate,block_col,ipcol,first_col,npcol)
-   ms = NUMROC(nstate,block_row,iprow,first_row,nprow)
-   ns = NUMROC(nstate,block_col,ipcol,first_col,npcol)
-
-
-   call DESCINIT(desch,nbf   ,nbf   ,block_row,block_col,first_row,first_col,cntxt,MAX(1,mh),info)
-   call DESCINIT(descc,nbf   ,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
-   call DESCINIT(descs,nstate,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,ms),info)
-
-
-   allocate(ham_local(mh,nh))
-   allocate(c_matrix_local(mc,nc))
-   allocate(s_matrix_local(mc,nc))
-   allocate(h_small(ms,ns))
+   c_matrix(:,:,:) = 0.0_dp
 
    !
-   ! Set up the local copy of s_matrix_sqrt_inv
-   do jlocal=1,nc
-     jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
-     do ilocal=1,mc
-       iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
-       s_matrix_local(ilocal,jlocal) = s_matrix_sqrt_inv(iglobal,jglobal)
-     enddo
-   enddo
+   ! Participate to the diagonalization only if the CPU has been selected
+   ! in the grid
+   if(cntxt > 0 ) then
+
+     mh = NUMROC(nbf   ,block_row,iprow,first_row,nprow)
+     nh = NUMROC(nbf   ,block_col,ipcol,first_col,npcol)
+     mc = NUMROC(nbf   ,block_row,iprow,first_row,nprow)
+     nc = NUMROC(nstate,block_col,ipcol,first_col,npcol)
+     ms = NUMROC(nstate,block_row,iprow,first_row,nprow)
+     ns = NUMROC(nstate,block_col,ipcol,first_col,npcol)
 
 
+     call DESCINIT(desch,nbf   ,nbf   ,block_row,block_col,first_row,first_col,cntxt,MAX(1,mh),info)
+     call DESCINIT(descc,nbf   ,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+     call DESCINIT(descs,nstate,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,ms),info)
 
-   do ispin=1,nspin_local
-     write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
-     call start_clock(timing_diago_hamiltonian)
 
-     !
-     ! Set up the local copy of hamiltonian
-     do jlocal=1,nh
-       jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
-       do ilocal=1,mh
-         iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
-         ham_local(ilocal,jlocal) = hamiltonian(iglobal,jglobal,ispin)
-       enddo
-     enddo
-
-!     h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-!                              MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+     allocate(ham_local(mh,nh))
+     allocate(c_matrix_local(mc,nc))
+     allocate(s_matrix_local(mc,nc))
+     allocate(h_small(ms,ns))
 
      !
-     ! H_small = ^tS^{-1/2} H S^{-1/2}
-     call PDGEMM('N','N',nbf,nstate,nbf,                &
-                  1.0_dp,ham_local,1,1,desch,           &
-                  s_matrix_local,1,1,descc,             &
-                  0.0_dp,c_matrix_local,1,1,descc)
-
-     call PDGEMM('T','N',nstate,nstate,nbf,             &
-                  1.0_dp,s_matrix_local,1,1,descc,      &
-                  c_matrix_local,1,1,descc,             &
-                  0.0_dp,h_small,1,1,descs)
-
-
-
-     call diagonalize_sca(nstate,descs,h_small,energy(:,ispin))
-
-
-!     c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
-
-     !
-     ! C = S^{-1/2} C_small
-     call PDGEMM('N','N',nbf,nstate,nstate,             &
-                  1.0_dp,s_matrix_local,1,1,descc,      &
-                  h_small,1,1,descs,                    &
-                  0.0_dp,c_matrix_local,1,1,descc)
-
-
+     ! Set up the local copy of s_matrix_sqrt_inv
      do jlocal=1,nc
        jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
        do ilocal=1,mc
          iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
-         c_matrix(iglobal,jglobal,ispin) = c_matrix_local(ilocal,jlocal)
+         s_matrix_local(ilocal,jlocal) = s_matrix_sqrt_inv(iglobal,jglobal)
        enddo
      enddo
 
 
-    ! Nullify the eigval array for all CPUs but one, so that the all_reduce
-    ! operation in the end yields the correct value
-    ! Of course, using a broadcast instead would be a better solution, but I'm so lazy
-     if( rank_sca /= 0 ) energy(:,ispin) = 0.0_dp
+
+     do ispin=1,nspin_local
+       write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
+       call start_clock(timing_diago_hamiltonian)
+
+       !
+       ! Set up the local copy of hamiltonian
+       do jlocal=1,nh
+         jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+         do ilocal=1,mh
+           iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+           ham_local(ilocal,jlocal) = hamiltonian(iglobal,jglobal,ispin)
+         enddo
+       enddo
+
+!       h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
+!                                MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+
+       !
+       ! H_small = ^tS^{-1/2} H S^{-1/2}
+       call PDGEMM('N','N',nbf,nstate,nbf,                &
+                    1.0_dp,ham_local,1,1,desch,           &
+                    s_matrix_local,1,1,descc,             &
+                    0.0_dp,c_matrix_local,1,1,descc)
+
+       call PDGEMM('T','N',nstate,nstate,nbf,             &
+                    1.0_dp,s_matrix_local,1,1,descc,      &
+                    c_matrix_local,1,1,descc,             &
+                    0.0_dp,h_small,1,1,descs)
+
+
+
+       call diagonalize_sca(nstate,descs,h_small,energy(:,ispin))
+
+
+!       c_matrix(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
+
+       !
+       ! C = S^{-1/2} C_small
+       call PDGEMM('N','N',nbf,nstate,nstate,             &
+                    1.0_dp,s_matrix_local,1,1,descc,      &
+                    h_small,1,1,descs,                    &
+                    0.0_dp,c_matrix_local,1,1,descc)
+
+
+       do jlocal=1,nc
+         jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+         do ilocal=1,mc
+           iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+           c_matrix(iglobal,jglobal,ispin) = c_matrix_local(ilocal,jlocal)
+         enddo
+       enddo
+
+
+      ! Nullify the eigval array for all CPUs but one, so that the all_reduce
+      ! operation in the end yields the correct value
+      ! Of course, using a broadcast instead would be a better solution, but I'm so lazy
+       if( rank_sca /= 0 ) energy(:,ispin) = 0.0_dp
+
+
+       call stop_clock(timing_diago_hamiltonian)
+     enddo
+
+     deallocate(ham_local,c_matrix_local,s_matrix_local,h_small)
+
+     call BLACS_GRIDEXIT( cntxt )
+
+   else
+     energy(:,:) = 0.0_dp
+   endif
+
+
+   ! Poor man distribution TODO replace by a broadcast
+   call xsum_world(energy)
+   call xsum_world(c_matrix)
+
+ else ! only one proc selected
+#endif
+
+   allocate(h_small2(nstate,nstate))
+
+   do ispin=1,nspin_local
+     write(stdout,'(1x,a,i3)') 'Generalized diagonalization for spin: ',ispin
+     call start_clock(timing_diago_hamiltonian)
+
+     allocate(h_small(nbf,nstate))
+     ! h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
+     !                          MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+
+     ! H * U
+     call DGEMM('N','N',nbf,nstate,nbf,1.0d0,hamiltonian(:,:,ispin),nbf, &
+                                             s_matrix_sqrt_inv,nbf,      &
+                                       0.0d0,h_small,nbf)
+     ! U**T * (H * U)
+     call DGEMM('T','N',nstate,nstate,nbf,1.0d0,s_matrix_sqrt_inv,nbf,  &
+                                                h_small,nbf,            &
+                                          0.0d0,h_small2,nstate)
+     deallocate(h_small)
+
+     ! H * C' = C' * E
+     call diagonalize(h_small2,energy(:,ispin))
+
+     !c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small2(:,:) )
+     ! C = U * C'
+     call DGEMM('N','N',nbf,nstate,nstate,1.0d0,s_matrix_sqrt_inv,nbf, &
+                                                h_small2,nstate,       &
+                                          0.0d0,c_matrix(:,:,ispin),nbf)
 
 
      call stop_clock(timing_diago_hamiltonian)
    enddo
 
-   deallocate(ham_local,c_matrix_local,s_matrix_local,h_small)
+   deallocate(h_small2)
 
-   call BLACS_GRIDEXIT( cntxt )
-
- else
-   energy(:,:) = 0.0_dp
+#if defined(HAVE_SCALAPACK)
  endif
-
-
- ! Poor man distribution TODO replace by a broadcast
- call xsum_world(energy)
- call xsum_world(c_matrix)
-
-
-#else
-
- allocate(h_small(nstate,nstate))
-
- do ispin=1,nspin_local
-   write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
-   call start_clock(timing_diago_hamiltonian)
-
-
-   h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-                            MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
-
-   call diagonalize(h_small,energy(1:nstate,ispin))
-
-   c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
-
-
-   call stop_clock(timing_diago_hamiltonian)
- enddo
-
-
- deallocate(h_small)
-
 #endif
 
 end subroutine diagonalize_hamiltonian_scalapack
 
 
 !=========================================================================
-subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,desc_sqrt,s_matrix_sqrt_inv,energy,c_matrix)
+subroutine diagonalize_hamiltonian_sca(desc_h,hamiltonian,desc_sqrt,s_matrix_sqrt_inv,energy,c_matrix)
  implicit none
 
- integer,intent(in)   :: ispin_min,ispin_max
  integer,intent(in)   :: desc_h(NDEL),desc_sqrt(NDEL)
  real(dp),intent(in)  :: hamiltonian(:,:,:)
  real(dp),intent(in)  :: s_matrix_sqrt_inv(:,:)
  real(dp),intent(out) :: c_matrix(:,:,:)
  real(dp),intent(out) :: energy(:,:)
 !=====
+ integer  :: ispin_min,ispin_max
  integer  :: cntxt
  integer  :: iprow,ipcol,nprow,npcol
  integer  :: nstate,nbf
@@ -826,13 +848,15 @@ subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,de
  real(dp),allocatable :: h_small(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  cntxt  = desc_h(CTXT_)
  nbf    = desc_h(M_)
  nstate = desc_sqrt(N_)
  m_ham  = SIZE(hamiltonian, DIM=1 )
  n_ham  = SIZE(hamiltonian, DIM=2 )
+ ispin_min = LBOUND(hamiltonian,DIM=3)
+ ispin_max = UBOUND(hamiltonian,DIM=3)
  m_c    = SIZE(c_matrix, DIM=1 )
  n_c    = SIZE(c_matrix, DIM=2 )
 
@@ -850,11 +874,13 @@ subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,de
 
      !
      ! H_small = S^{-1/2}**T H S^{-1/2}
+     ! H*S**{-1/2} --> c_matrix
      call PDGEMM('N','N',nbf,nstate,nbf,                         &
                   1.0_dp,hamiltonian(1,1,ispin),1,1,desc_h,      &
                               s_matrix_sqrt_inv,1,1,desc_sqrt,   &
                   0.0_dp,   c_matrix(1,1,ispin),1,1,desc_sqrt)
 
+     ! S**{-1/2}**T*c_matrix --> h_small
      call PDGEMM('T','N',nstate,nstate,nbf,                      &
                   1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,        &
                        c_matrix(1,1,ispin),1,1,desc_sqrt,        &
@@ -896,6 +922,106 @@ subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,de
 #endif
 
 end subroutine diagonalize_hamiltonian_sca
+
+
+!=========================================================================
+!subroutine  diagonalize_hamiltonian_sca_cmplx(ispin_min,ispin_max,desc_h, &
+!               hamiltonian_cmplx,desc_sqrt,s_matrix_sqrt_inv,energy,c_matrix_cmplx)
+! implicit none
+!
+! integer,intent(in)      :: ispin_min,ispin_max
+! integer,intent(in)      :: desc_h(NDEL),desc_sqrt(NDEL)
+! complex(dp),intent(in)  :: hamiltonian_cmplx(:,:,:)
+! real(dp),intent(in)     :: s_matrix_sqrt_inv(:,:)
+! complex(dp),intent(out)    :: c_matrix(:,:,:)
+! real(dp),intent(out)    :: energy(:,:)
+!!=====
+! integer  :: cntxt
+! integer  :: iprow,ipcol,nprow,npcol
+! integer  :: nstate,nbf
+! integer  :: m_ham,n_ham
+! integer  :: m_c,n_c
+! integer  :: ispin
+! integer  :: ilocal,jlocal,jglobal
+! integer  :: m_small,n_small
+! integer  :: info
+! complex(dp),allocatable :: h_small_cmplx(:,:)
+!!=====
+!
+!#ifdef HAVE_SCALAPACK
+!
+! cntxt  = desc_h(CTXT_A)
+! nbf    = desc_h(M_A)
+! nstate = desc_sqrt(N_A)
+! m_ham  = SIZE(hamiltonian_cmplx, DIM=1 )
+! n_ham  = SIZE(hamiltonian_cmplx, DIM=2 )
+! m_c    = SIZE(c_matrix_cmplx, DIM=1 )
+! n_c    = SIZE(c_matrix_cmplx, DIM=2 )
+!
+! call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+!
+! if(cntxt_ham > 0 ) then
+!   m_small = NUMROC(nstate,desc_h(MB_A),iprow,desc_h(RSRC_A),nprow)
+!   n_small = NUMROC(nstate,desc_h(NB_A),ipcol,desc_h(CSRC_A),npcol)
+!   call DESCINIT(desc_small,nstate,nstate,desc_h(MB_A),desc_h(NB_A),desc_h(RSRC_A),desc_h(CSRC_A),cntxt,m_small,info)
+!   allocate(h_small_cmplx(m_small,n_small))
+!
+!   do ispin=ispin_min,ispin_max
+!     write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
+!     call start_clock(timing_diago_hamiltonian)
+!
+!     !
+!     ! H_small = S^{-1/2}**T H S^{-1/2}
+!     ! H*S**{-1/2} --> c_matrix
+!     call PZGEMM('N','N',nbf,nstate,nbf,                         &
+!                  1.0_dp,hamiltonian(1,1,ispin),1,1,desc_h,      &
+!                              s_matrix_sqrt_inv,1,1,desc_sqrt,   &
+!                  0.0_dp,   c_matrix(1,1,ispin),1,1,desc_sqrt)
+!
+!     ! S**{-1/2}**T*c_matrix --> h_small
+!     call PZGEMM('T','N',nstate,nstate,nbf,                      &
+!                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,        &
+!                       c_matrix(1,1,ispin),1,1,desc_sqrt,        &
+!                  0.0_dp,          h_small,1,1,desc_small)
+!
+!
+!
+!     call diagonalize_sca(nstate,desc_small,h_small,energy(:,ispin))
+!
+!
+!     !
+!     ! C = S^{-1/2} C_small 
+!     call PDGEMM('N','N',nbf,nstate,nstate,                   &
+!                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,     &
+!                                 h_small,1,1,desc_small,      &
+!                  0.0_dp,c_matrix(1,1,ispin),1,1,desc_sqrt) 
+!
+!
+!     call stop_clock(timing_diago_hamiltonian)
+!   enddo
+!
+!   deallocate(h_small)
+!
+! else
+!   c_matrix(:,:,:) = 0.0_dp
+! endif
+!
+! ! Ensure that all procs know the energies
+! if( rank_world /= 0 ) then
+!   energy(:,ispin_min:ispin_max) = 0.0_dp
+! endif
+! call xsum_world(energy(:,ispin_min:ispin_max))
+!
+! ! Poor man distribution
+! call xsum_local(c_matrix)
+!
+!
+!
+!#endif
+!
+!end subroutine diagonalize_hamiltonian_sca
+!
+
 
 
 !=========================================================================
@@ -1080,9 +1206,9 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp)             :: rr(3)
  real(dp)             :: normalization
  real(dp)             :: weight
- real(dp)             :: basis_function_r(basis%nbf)
- real(dp)             :: rhor
- real(dp)             :: vxc,exc,excr
+ real(dp)             :: basis_function_r(basis%nbf,1)
+ real(dp)             :: rhor(1)
+ real(dp)             :: vxc(1),exc,excr(1)
  real(dp)             :: vsigma(2*nspin-1)
  real(dp)             :: vhgau(m_ham,n_ham)
  integer              :: iatom,ngau
@@ -1098,7 +1224,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities: SCALAPACK'
 
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    if( rank_local /= MODULO(iatom,nproc_local) ) cycle
 
    ngau = 4
@@ -1128,21 +1254,21 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
 
    !
    ! Get all the functions and gradients at point rr
-   call get_basis_functions_r(basis,igrid,basis_function_r)
+   call get_basis_functions_r_batch(basis,igrid,basis_function_r)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call setup_atomic_density(rr,rhor)
+   call setup_atomic_density(rr,rhor(1))
 
    !
    ! Normalization
-   normalization = normalization + rhor * weight
+   normalization = normalization + rhor(1) * weight
 
-   call teter_lda_vxc_exc(1,rhor,vxc,excr)
+   call teter_lda_vxc_exc(1,rhor(1:1),vxc(1:1),excr(1:1))
 
    !
    ! XC energy
-   exc = exc + excr * weight * rhor
+   exc = exc + excr(1) * weight * rhor(1)
 
    !
    ! HXC
@@ -1152,8 +1278,8 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
        iglobal = rowindex_local_to_global('H',ilocal)
 
        vhxc_ij(ilocal,jlocal) =  vhxc_ij(ilocal,jlocal) &
-            + weight * vxc * basis_function_r(iglobal)  &
-                           * basis_function_r(jglobal)
+            + weight * vxc(1) * basis_function_r(iglobal,1)  &
+                           * basis_function_r(jglobal,1)
 
      enddo
    enddo

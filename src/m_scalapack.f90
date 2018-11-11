@@ -21,7 +21,20 @@ module m_scalapack
  use mpi
 #endif
 
+ !
+ ! SCALAPACK variables
+ !
+ ! Choose a rather large value of block size to avoid the scattering of the basis function shells across different processors
+ integer,parameter :: SCALAPACK_BLOCKSIZE_MAX = 64
+
+ integer,parameter :: block_row = SCALAPACK_BLOCKSIZE_MAX
+ integer,parameter :: block_col = SCALAPACK_BLOCKSIZE_MAX
+ integer,parameter :: first_row = 0
+ integer,parameter :: first_col = 0
+
+
  ! Indexes in the BLACS descriptor
+ integer,parameter :: NDEL   = 9
  integer,parameter :: DTYPE_ = 1     ! Dense or Sparse (always dense here)
  integer,parameter :: CTXT_  = 2     ! Context
  integer,parameter :: M_     = 3     ! Number of rows
@@ -32,18 +45,7 @@ module m_scalapack
  integer,parameter :: CSRC_  = 8     ! First col
  integer,parameter :: LLD_   = 9     ! Number of rows in the local sub-matrix
 
- !
- ! SCALAPACK variables
- !
- integer,parameter :: NDEL=9
- integer,parameter :: block_row = 32
- integer,parameter :: block_col = 32
- integer,parameter :: first_row = 0
- integer,parameter :: first_col = 0
-
  ! Specific values for the MPI / SCALAPACK transposition
- integer,protected :: MBLOCK_AUXIL = 1
- integer,parameter :: NBLOCK_AUXIL = 1
 
  integer,protected :: nproc_sca = 1
  integer,protected :: iproc_sca = 0
@@ -52,13 +54,14 @@ module m_scalapack
  ! SCALAPACK grid: auxil distribution (so to mimic MPI distribution on auxiliary functions)
  integer,protected :: cntxt_auxil
  integer,protected :: nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil
+ integer,protected :: MB_auxil = 1
+ integer,protected :: NB_auxil = 1
 
- ! SCALAPACK grid: square distribution
+ ! SCALAPACK grid for 3 center integrals
  integer,protected :: cntxt_3center
- integer,protected :: nprow_3center
- integer,protected :: npcol_3center
- integer,protected :: iprow_3center
- integer,protected :: ipcol_3center
+ integer,protected :: nprow_3center,npcol_3center,iprow_3center,ipcol_3center
+ integer,protected :: MB_3center = block_row
+ integer,protected :: NB_3center = block_col
 
  ! SCALAPACK grid: square distribution
  integer,protected :: cntxt_sd
@@ -188,8 +191,9 @@ function INDXL2G(indxloc, nb, iproc, isrcproc, nprocs )
  integer             :: INDXL2G
 !=====
 
-  INDXL2G = nprocs * nb *( ( indxloc - 1 ) / nb ) + MOD( indxloc - 1 , nb ) &
-             + MOD( nprocs + iproc - isrcproc , nprocs ) * nb + 1
+  !INDXL2G = nprocs * nb *( ( indxloc - 1 ) / nb ) + MOD( indxloc - 1 , nb ) &
+  !           + MOD( nprocs + iproc - isrcproc , nprocs ) * nb + 1
+  INDXL2G = indxloc
 
 end function INDXL2G
 
@@ -203,8 +207,15 @@ subroutine DESCINIT(desc,mmat,nmat,idum3,idum4,idum5,idum6,cntxtdum,idum7,info)
  integer,intent(out)   :: info
 !=====
 
- desc(M_) = mmat
- desc(N_) = nmat
+ desc(DTYPE_) = 1
+ desc(CTXT_)  = cntxtdum
+ desc(M_)     = mmat
+ desc(N_)     = nmat
+ desc(MB_)    = 1
+ desc(NB_)    = 1
+ desc(RSRC_)  = 0
+ desc(CSRC_)  = 0
+ desc(LLD_)   = idum7
 
  info = 0
 
@@ -812,200 +823,85 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
  real(dp),intent(out)   :: eigval(nglobal)
  real(dp),intent(out)   :: eigvec(:,:)
 !=====
+ integer              :: nprow,npcol,iprow,ipcol
  integer              :: lwork,info
  real(dp),allocatable :: work(:)
- integer              :: neigval,neigvec
+#if defined(LAPACK_DIAGO_FLAVOR_R) || defined(LAPACK_DIAGO_FLAVOR_X)
  integer,allocatable  :: iwork(:)
  integer              :: liwork
+ integer              :: neigval,neigvec
+#endif
+#if defined(LAPACK_DIAGO_FLAVOR_X)
+ real(dp)             :: ABSTOL
+ integer              :: iclustr(2*nprow_sd*npcol_sd)
+ real(dp)             :: gap(nprow_sd*npcol_sd)
+ integer              :: ifail(nglobal)
+#endif
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
+ call BLACS_GRIDINFO( desc(CTXT_), nprow, npcol, iprow, ipcol )
 
- !
- ! First call to get the dimension of the array work
- lwork = -1
- allocate(work(1))
- call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+ ! Only call SCALAPACK when using more than 1 proc
+ if( nprow * npcol > 1 ) then
 
-
- !
- ! Second call to actually perform the diago
- lwork = NINT(work(1))
-
- deallocate(work)
- allocate(work(lwork))
- call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
-
- deallocate(work)
-
-
+   !
+   ! First call to get the dimensions of the work arrays
+   lwork = -1
+   allocate(work(3))
+#if defined(LAPACK_DIAGO_FLAVOR_R)
+   liwork = -1
+   allocate(iwork(1))
+   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+#elif defined(LAPACK_DIAGO_FLAVOR_X)
+   liwork = -1
+   allocate(iwork(1))
+   ABSTOL = PDLAMCH(desc(CTXT_), 'U')
+   call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+                ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+                eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+                ifail,iclustr,gap,info)
 #else
-
- call diagonalize(matrix,eigval,eigvec)
-
+   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
 #endif
 
+
+   !
+   ! Second call to actually perform the diago
+   lwork = NINT(work(1))
+   deallocate(work)
+   allocate(work(lwork))
+  
+#if defined(LAPACK_DIAGO_FLAVOR_R)
+   liwork = iwork(1)
+   deallocate(iwork)
+   allocate(iwork(liwork))
+   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+   deallocate(iwork)
+#elif defined(LAPACK_DIAGO_FLAVOR_X)
+   liwork = iwork(1)
+   deallocate(iwork)
+   allocate(iwork(liwork))
+   call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+                ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+                eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+                ifail,iclustr,gap,info)
+   deallocate(iwork)
+#else
+   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+#endif
+   deallocate(work)
+
+ else
+#endif
+
+   call diagonalize(matrix,eigval,eigvec)
+
+#if defined(HAVE_SCALAPACK)
+ endif
+#endif
 
 end subroutine diagonalize_outofplace_sca_dp
-
-
-!=========================================================================
-! Diagonalize a distributed matrix with PDSYEVR
-!
-!=========================================================================
-subroutine diagonalize_sca_pdsyevr(nglobal,desc,matrix,eigval,desc_eigvec,eigvec)
- implicit none
- integer,intent(in)     :: nglobal
- integer,intent(in)     :: desc(NDEL)
- integer,intent(in)     :: desc_eigvec(NDEL)
- real(dp),intent(inout) :: matrix(:,:)
- real(dp),intent(out)   :: eigval(nglobal)
- real(dp),intent(out)   :: eigvec(:,:)
-!=====
- integer              :: lwork,info
- real(dp),allocatable :: work(:)
- integer              :: neigval,neigvec
- integer,allocatable  :: iwork(:)
- integer              :: liwork
-#ifdef SELECT_PDSYEVX
- real(dp)             :: ABSTOL
- integer              :: iclustr(2*nprow_sd*npcol_sd)
- real(dp)             :: gap(nprow_sd*npcol_sd)
- integer              :: ifail(nglobal)
-#endif
-!=====
-
-#ifdef HAVE_SCALAPACK
-
- !
- ! First call to get the dimension of the array work
- lwork = -1
- allocate(work(3))
- liwork = -1
- allocate(iwork(1))
-#ifdef SELECT_PDSYEVX
- ABSTOL = PDLAMCH(desc(CTXT_), 'U')
- call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-              ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
-              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-              ifail,iclustr,gap,info)
-#else
- call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-#endif
-
-
- !
- ! Second call to actually perform the diago
- lwork = NINT(work(1))
-
- deallocate(work)
- allocate(work(lwork))
- liwork = iwork(1)
- deallocate(iwork)
- allocate(iwork(liwork))
-#ifdef SELECT_PDSYEVX
- call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-              ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
-              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-              ifail,iclustr,gap,info)
-#else
- call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-#endif
-
- deallocate(work)
- deallocate(iwork)
-
-
-#else
-
- call diagonalize(matrix,eigval,eigvec)
-
-#endif
-
-
-end subroutine diagonalize_sca_pdsyevr
-
-
-!=========================================================================
-! Partially diagonalize a distributed matrix with PDSYEVR
-!=========================================================================
-subroutine diagonalize_sca_pdsyevr_partial(nglobal,neig,desc,matrix,eigval,desc_eigvec,eigvec)
- implicit none
- integer,intent(in)     :: nglobal,neig
- integer,intent(in)     :: desc(NDEL)
- integer,intent(in)     :: desc_eigvec(NDEL)
- real(dp),intent(inout) :: matrix(:,:)
- real(dp),intent(out)   :: eigval(nglobal)
- real(dp),intent(out)   :: eigvec(:,:)
-!=====
- integer              :: lwork,info
- real(dp),allocatable :: work(:)
- integer              :: neigval,neigvec
- integer,allocatable  :: iwork(:)
- integer              :: liwork
- integer              :: ifail(nglobal)
- real(dp)             :: ABSTOL
-#ifdef HAVE_SCALAPACK
- integer              :: iclustr(2*nprow_sd*npcol_sd)
- real(dp)             :: gap(nprow_sd*npcol_sd)
-#endif
- real(dp),external    :: DLAMCH
-!=====
-
-#ifdef HAVE_SCALAPACK
-
- !
- ! First call to get the dimension of the array work
- lwork = -1
- allocate(work(3))
- liwork = -1
- allocate(iwork(1))
-! call PDSYEVR('V','I','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,1,neig,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
- ABSTOL = PDLAMCH(desc(CTXT_), 'U')
- call PDSYEVX('V','I','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,1,neig, &
-              ABSTOL,neigval,neigvec,eigval,0.0_dp,                     &
-              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,           &
-              ifail,iclustr,gap,info)
-
-
- !
- ! Second call to actually perform the diago
- lwork = NINT(work(1))
-
- deallocate(work)
- allocate(work(lwork))
- liwork = iwork(1)
- deallocate(iwork)
- allocate(iwork(liwork))
-! call PDSYEVR('V','I','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,1,neig,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
- call PDSYEVX('V','I','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,1,neig, &
-              ABSTOL,neigval,neigvec,eigval,0.0_dp,                     &
-              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,           &
-              ifail,iclustr,gap,info)
-
- deallocate(work)
- deallocate(iwork)
-
-#else
-
- ABSTOL = 2.0_dp * DLAMCH('S')
- allocate(iwork(5*nglobal))
- lwork=-1
- allocate(work(1))
- call DSYEVX('V','I','L',nglobal,matrix,nglobal,0.d0,0.d0,1,neig,ABSTOL,neigval,eigval,eigvec,nglobal,work,lwork,iwork,ifail,info)
-
- lwork = NINT(work(1))
- deallocate(work)
- allocate(work(lwork))
- call DSYEVX('V','I','L',nglobal,matrix,nglobal,0.d0,0.d0,1,neig,ABSTOL,neigval,eigval,eigvec,nglobal,work,lwork,iwork,ifail,info)
- deallocate(work)
- deallocate(iwork)
-
-
-#endif
-
-
-end subroutine diagonalize_sca_pdsyevr_partial
 
 
 !=========================================================================
@@ -2498,13 +2394,6 @@ subroutine init_scalapack()
  call BLACS_GRIDINIT( cntxt_sd, 'R', nprow_sd, npcol_sd )
  call BLACS_GRIDINFO( cntxt_sd, nprow_sd, npcol_sd, iprow_sd, ipcol_sd )
 
- ! 3center integrals distribution
- nprow_3center = nprow_sd
- npcol_3center = npcol_sd
- call BLACS_GET( -1, 0, cntxt_3center )
- call BLACS_GRIDINIT( cntxt_3center, 'R', nprow_3center, npcol_3center )
- call BLACS_GRIDINFO( cntxt_3center, nprow_3center, npcol_3center, iprow_3center, ipcol_3center )
-
  ! Row-only division of tasks
  nprow_rd = nproc_sca
  npcol_rd = 1
@@ -2536,10 +2425,11 @@ end subroutine init_scalapack
 
 
 !=========================================================================
-subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
+subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  implicit none
 
  integer,intent(in)  :: nbf
+ integer,intent(in)  :: eri3_nprow,eri3_npcol
  integer,intent(in)  :: scalapack_nprow,scalapack_npcol
  integer,intent(out) :: m_ham,n_ham
 !=====
@@ -2547,13 +2437,11 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  integer :: color
  integer             :: iproc_auxil
  integer,allocatable :: usermap(:,:)
-#ifdef DEBUG
- integer          :: fileunit
- character(len=3) :: ctmp
-#endif
 !=====
 
 #ifdef HAVE_SCALAPACK
+
+
  parallel_ham = scalapack_nprow * scalapack_npcol > 1
 
  if( parallel_ham ) then
@@ -2632,9 +2520,63 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
  endif
 
+ !
+ ! Create the SCALAPACK context cntxt_auxil
+ ! that precisely matches the MPI_COMMUNICATOR comm_auxil
+ !
+ call BLACS_GET( -1, 0, cntxt_auxil )
+
+ if( rank_world /= iproc_sca ) then
+   call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
+ endif
+
+ allocate(usermap(nproc_auxil,1))
+ do iproc_auxil=0,nproc_auxil-1
+   usermap(iproc_auxil+1,1) = iproc_auxil * nproc_ortho
+ enddo
+ call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
+ deallocate(usermap)
+
+ call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
+
+ call xmax_ortho(nprow_auxil)
+ call xmax_ortho(npcol_auxil)
+ call xmax_ortho(iprow_auxil)
+ call xmax_ortho(ipcol_auxil)
+
+ ! 3center integrals distribution
+ if( eri3_nprow * eri3_npcol == nproc_sca ) then
+   nprow_3center = eri3_nprow
+   npcol_3center = eri3_npcol
+   call BLACS_GET( -1, 0, cntxt_3center )
+   call BLACS_GRIDINIT( cntxt_3center, 'R', nprow_3center, npcol_3center )
+   call BLACS_GRIDINFO( cntxt_3center, nprow_3center, npcol_3center, iprow_3center, ipcol_3center )
+ else
+   ! Else just copy the auxil distribution
+   if( eri3_nprow * eri3_npcol /= 1 ) &
+      call issue_warning('eri3 distribution was not consistent with the number of MPI threads. MOLGW will override user selection')
+   cntxt_3center = cntxt_auxil
+   nprow_3center = nprow_auxil
+   npcol_3center = npcol_auxil
+   iprow_3center = iprow_auxil
+   ipcol_3center = ipcol_auxil
+ endif
+
 #else
 
- ! Fake values
+ ! If SCALAPACK is not present, fill the variable with fake values
+ cntxt_3center = 1
+ nprow_3center = 1
+ npcol_3center = 1
+ ipcol_3center = 0
+ iprow_3center = 0
+
+ cntxt_auxil = 1
+ nprow_auxil = 1
+ npcol_auxil = 1
+ iprow_auxil = 0
+ ipcol_auxil = 0
+
  if( rank_world == 0 ) then
    cntxt_ham = 1
  else
@@ -2655,51 +2597,7 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
 #endif
 
-#ifdef HAVE_SCALAPACK
- !
- ! Create the SCALAPACK context cntxt_auxil
- ! that precisely matches the MPI_COMMUNICATOR comm_auxil
- !
- call BLACS_GET( -1, 0, cntxt_auxil )
 
- if( rank_world /= iproc_sca ) then
-   call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
- endif
-
- allocate(usermap(nproc_auxil,1))
- do iproc_auxil=0,nproc_auxil-1
-   usermap(iproc_auxil+1,1) = iproc_auxil * nproc_ortho
- enddo
- call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
- deallocate(usermap)
-#endif
-
- call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
- call xmax_ortho(nprow_auxil)
- call xmax_ortho(npcol_auxil)
- call xmax_ortho(iprow_auxil)
- call xmax_ortho(ipcol_auxil)
-
-
-#ifdef DEBUG
- write(ctmp,'(i3.3)') rank_world
- open(newunit=fileunit,file='DEBUG_mpiinfo_rank'//TRIM(ctmp))
- write(fileunit,*) 'nproc_world:',nproc_world
- write(fileunit,*) 'rank_world:',rank_world
- write(fileunit,*)
- write(fileunit,*) 'nproc_local:',nproc_local
- write(fileunit,*) 'rank_local:',rank_local
- write(fileunit,*)
- write(fileunit,*) 'nproc_trans:',nproc_trans
- write(fileunit,*) 'rank_trans:',rank_trans
- write(fileunit,*)
- write(fileunit,*) 'nproc_auxil:',nproc_auxil
- write(fileunit,*) 'rank_auxil:',rank_auxil
- write(fileunit,*)
- write(fileunit,*) 'nproc_grid:',nproc_grid
- write(fileunit,*) 'rank_grid:',rank_grid
- close(fileunit)
-#endif
 
 
 end subroutine init_scalapack_other
@@ -3109,15 +3007,22 @@ subroutine set_auxil_block_size(block_size_max)
 !=====
 
  if( block_size_max < 1 ) then
-   MBLOCK_AUXIL = 1
+   MB_auxil = 1
 
  else
-   MBLOCK_AUXIL = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
-   MBLOCK_AUXIL = MIN(MBLOCK_AUXIL,block_row)
+   MB_auxil = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
+   MB_auxil = MIN(MB_auxil,block_row)
 
  endif
 
- write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',MBLOCK_AUXIL
+ write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',MB_auxil
+ NB_auxil = MB_auxil
+
+ ! If not parallelization on columns (pair index), then enforce the same block size
+ if( npcol_3center == npcol_auxil ) then
+   MB_3center = MB_auxil
+   NB_3center = NB_auxil
+ endif
 
 end subroutine set_auxil_block_size
 

@@ -554,10 +554,9 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,
    return
  endif
 
- fock_matrix_eigen(:,:,:) = fock_matrix(:,:,:)
  !
  ! Rotate the Fock matrix to the eigenstate basis
- call matrix_basis_to_eigen(c_matrix,fock_matrix_eigen)
+ call matrix_ao_to_mo(c_matrix,fock_matrix,fock_matrix_eigen)
 
 
  do ispin=1,nspin

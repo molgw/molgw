@@ -16,6 +16,7 @@ module m_tddft_fxc
  use m_inputparam
  use m_dft_grid
  use m_basis_set
+ use m_density_tools
  use m_hamiltonian
 
  integer,private   :: nspin_tddft
@@ -67,11 +68,10 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  character(len=256)   :: string
  integer              :: idft_xc,igrid
  integer              :: ispin
- real(dp)             :: basis_function_r(basis%nbf)
- real(dp)             :: basis_function_gradr(3,basis%nbf)
- real(dp)             :: rhor_r(nspin)
- real(dp)             :: grad_rhor(3,nspin)
- real(dp)             :: p_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp)             :: basis_function_r(basis%nbf,1)
+ real(dp)             :: basis_function_gradr(basis%nbf,1,3)
+ real(dp)             :: rhor_r(nspin,1)
+ real(dp)             :: grad_rhor(nspin,1,3)
  real(dp)             :: max_v2sigma2
  real(dp),allocatable :: rho_c(:)
  real(dp),allocatable :: v2rho2_c(:)
@@ -120,9 +120,6 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  !
  ! calculate rho, grad rho and the kernel
  !
- ! Setup the density matrix P from C
- call setup_density_matrix(c_matrix,occupation,p_matrix)
-
 
  allocate(v2rho2(ngrid,2*nspin_tddft-1),wf_r(ngrid,basis%nbf,nspin))
  v2rho2(:,:) = 0.0_dp
@@ -145,47 +142,47 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  do igrid=1,ngrid
    !
    ! Get all the functions and gradients at point rr
-   call get_basis_functions_r(basis,igrid,basis_function_r)
+   call get_basis_functions_r_batch(basis,igrid,basis_function_r)
    !
    ! store the wavefunction in r
    do ispin=1,nspin
-     wf_r(igrid,:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
+     wf_r(igrid,:,ispin) = MATMUL( basis_function_r(:,1) , c_matrix(:,:,ispin) )
    enddo
 
    if( dft_xc_needs_gradient ) then
-     call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
+     call get_basis_functions_gradr_batch(basis,igrid,basis_function_gradr)
      !
      ! store the wavefunction in r
      do ispin=1,nspin
-       wf_gradr(:,igrid,:,ispin) = MATMUL( basis_function_gradr(:,:) , c_matrix(:,:,ispin) )
+       wf_gradr(:,igrid,:,ispin) = MATMUL( TRANSPOSE(basis_function_gradr(:,1,:)) , c_matrix(:,:,ispin) )
      enddo
    endif
 
 
-   call calc_density_pmatrix(nspin,basis,p_matrix,basis_function_r,rhor_r)
    if( dft_xc_needs_gradient ) then
-     call calc_density_gradr_pmatrix(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
+     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_function_gradr,rhor_r,grad_rhor)
+     rho_gradr(:,igrid,:) = TRANSPOSE(grad_rhor(:,1,:))
 
-     rho_gradr(:,igrid,:) = grad_rhor(:,:)
-
-     if( nspin_tddft==1 ) then
-       sigma_c(1) = SUM( grad_rhor(:,1)**2 )
+     if( nspin_tddft == 1 ) then
+       sigma_c(1) = SUM( grad_rhor(1,1,:)**2 )
      else if( nspin==2 ) then
-       sigma_c(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
-       sigma_c(3) = SUM( grad_rhor(:,2)**2 )
+       sigma_c(2) = SUM( grad_rhor(1,1,:) * grad_rhor(2,1,:) )
+       sigma_c(3) = SUM( grad_rhor(2,1,:)**2 )
      else ! triplet excitations from singlet ground-state
-       sigma_c(:) = SUM( grad_rhor(:,1)**2 ) * 0.25_dp
+       sigma_c(:) = SUM( grad_rhor(1,1,:)**2 ) * 0.25_dp
      endif
 
+   else
+     call calc_density_r_batch(occupation,c_matrix,basis_function_r,rhor_r)
    endif
 
 
    if( nspin_tddft==1 ) then
-     rho_c(1) = rhor_r(1)
+     rho_c(1) = rhor_r(1,1)
    else if( nspin==2 ) then
-     rho_c(:) = rhor_r(:)
+     rho_c(:) = rhor_r(:,1)
    else ! triplet excitations from singlet ground-state
-     rho_c(:) = rhor_r(1) * 0.5_dp
+     rho_c(:) = rhor_r(1,1) * 0.5_dp
    endif
 
    !

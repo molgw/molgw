@@ -83,6 +83,8 @@ subroutine xbcast_ortho_ra1d(iproc,array)
  integer :: ier=0
 !=====
 
+ if( nproc_ortho == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -104,6 +106,8 @@ subroutine xbcast_ortho_ra2d(iproc,array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_ortho == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -127,6 +131,8 @@ subroutine xand_ortho_l(logical_variable)
  integer :: ier=0
 !=====
 
+ if( nproc_ortho == 1 ) return
+
  n1 = 1
 
 #ifdef HAVE_MPI
@@ -148,6 +154,8 @@ subroutine xand_ortho_la1d(logical_array)
  integer :: ier=0
 !=====
 
+ if( nproc_ortho == 1 ) return
+
  n1 = SIZE(logical_array,DIM=1)
 
 #ifdef HAVE_MPI
@@ -168,6 +176,8 @@ subroutine xand_ortho_la2d(logical_array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_ortho == 1 ) return
 
  n1 = SIZE(logical_array,DIM=1)
  n2 = SIZE(logical_array,DIM=2)
@@ -191,6 +201,8 @@ subroutine xmax_ortho_i(integer_number)
  integer :: ier=0
 !=====
 
+ if( nproc_ortho == 1 ) return
+
  n1 = 1
 
 #ifdef HAVE_MPI
@@ -211,6 +223,8 @@ subroutine xsum_ortho_r(real_number)
  integer :: n1
  integer :: ier=0
 !=====
+
+ if( nproc_ortho == 1 ) return
 
  n1 = 1
 
@@ -233,6 +247,8 @@ subroutine xsum_ortho_ra1d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_ortho == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -253,6 +269,8 @@ subroutine xsum_ortho_ra2d(array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_ortho == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -276,6 +294,8 @@ subroutine xsum_ortho_ra3d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_ortho == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
  n3 = SIZE( array, DIM=3 )
@@ -298,6 +318,8 @@ subroutine xsum_ortho_ra4d(array)
  integer :: n1,n2,n3,n4
  integer :: ier=0
 !=====
+
+ if( nproc_ortho == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -323,6 +345,8 @@ subroutine xsum_ortho_ca1d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_ortho == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
@@ -343,6 +367,8 @@ subroutine xsum_ortho_ca2d(array)
  integer :: n1,n2
  integer :: ier=0
 !=====
+
+ if( nproc_ortho == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
@@ -366,6 +392,8 @@ subroutine xsum_ortho_ca3d(array)
  integer :: ier=0
 !=====
 
+ if( nproc_ortho == 1 ) return
+
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
  n3 = SIZE( array, DIM=3 )
@@ -388,6 +416,8 @@ subroutine xsum_ortho_ca4d(array)
  integer :: n1,n2,n3,n4
  integer :: ier=0
 !=====
+
+ if( nproc_ortho == 1 ) return
 
  n1 = SIZE( array, DIM=1 )
  n2 = SIZE( array, DIM=2 )
