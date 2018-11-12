@@ -175,23 +175,11 @@ subroutine find_qp_energy_linearization(se,exchange_m_vxc,energy0,energy_qp_z,zz
  nstate = SIZE(exchange_m_vxc,DIM=1)
 
  ! First, a dummy initialization
-! ymbyun 2018/07/12
-! First touch to reduce NUMA effects using memory affinity
-#ifdef ENABLE_OPENMP_AFFINITY
-!$OMP PARALLEL
-!$OMP DO PRIVATE(pstate)
- do pstate=nsemin,nsemax
-   energy_qp_z(pstate,:) = energy0(pstate,:)
- enddo
-!$OMP END DO
-#else
  energy_qp_z(:,:) = energy0(:,:)
-!$OMP PARALLEL
-#endif
 
  ! Then overwrite the interesting energy with the calculated GW one
-! ymbyun 2018/07/12
-!$OMP DO PRIVATE(pstate,pspin,zz_p)
+ !$OMP PARALLEL
+ !$OMP DO PRIVATE(pspin,zz_p)
  do pstate=nsemin,nsemax
 
    if( se%nomega > 0 .AND. PRESENT(zz) ) then
@@ -200,11 +188,9 @@ subroutine find_qp_energy_linearization(se,exchange_m_vxc,energy0,energy_qp_z,zz
      ! Constrain Z to be in [0:1] to avoid crazy values
      ! Z falls out of [0:1] when a weak self-energy pole is very close to Eks.
      ! Z out of [0:1] is an indicator for whether it happened or not.
-#ifndef ENABLE_YMBYUN
      do pspin=1,nspin
        zz_p(pspin) = MIN( MAX(zz_p(pspin),0.0_dp) , 1.0_dp )
      enddo
-#endif
 
      zz(pstate,:)          = zz_p(:)
      energy_qp_z(pstate,:) = se%energy0(pstate,:)  &
@@ -218,8 +204,8 @@ subroutine find_qp_energy_linearization(se,exchange_m_vxc,energy0,energy_qp_z,zz
    endif
 
  enddo
-!$OMP END DO
-!$OMP END PARALLEL
+ !$OMP END DO
+ !$OMP END PARALLEL
 
 end subroutine find_qp_energy_linearization
 
@@ -241,23 +227,11 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
  nstate = SIZE(exchange_m_vxc,DIM=1)
 
  ! First, a dummy initialization
-! ymbyun 2018/07/12
-! First touch to reduce NUMA effects using memory affinity
-#ifdef ENABLE_OPENMP_AFFINITY
-!$OMP PARALLEL
-!$OMP DO PRIVATE(pstate)
- do pstate=nsemin,nsemax
-   energy_qp_g(pstate,:) = 0.0_dp
- enddo
-!$OMP END DO
-#else
  energy_qp_g(:,:) = 0.0_dp
-!$OMP PARALLEL
-#endif
 
  ! Then overwrite the interesting energy with the calculated GW one
-! ymbyun 2018/07/12
-!$OMP DO PRIVATE(pstate,pspin,info,sigma_xc_m_vxc)
+ !$OMP PARALLEL
+ !$OMP DO PRIVATE(pspin,info,sigma_xc_m_vxc)
  do pstate=nsemin,nsemax
 
    if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
@@ -276,8 +250,8 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
    enddo
 
  enddo
-!$OMP END DO
-!$OMP END PARALLEL
+ !$OMP END DO
+ !$OMP END PARALLEL
 
  call xsum_world(energy_qp_g)
 
@@ -592,19 +566,12 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
 
    deallocate(occupation_tmp,p_matrix_tmp)
 
-   ! ymbyun 2018/07/12
-   ! This part is not parallelized because of two reasons:
-   !   1. The speedup by parallelization is very small.
-   !   2. My OpenMP and OpenMP-MATMUL may conflict with each other.
    !
    ! Calculate the matrix Sigma_x - Vxc or its diagonal
    ! for the forthcoming GW corrections
    !
    if( PRESENT(exchange_m_vxc) ) then
-     do ispin=1,nspin
-        exchange_m_vxc(:,:,ispin) =  MATMUL(  TRANSPOSE(c_matrix(:,:,ispin)) , &
-                                             MATMUL( hxmxc(:,:,ispin) , c_matrix(:,:,ispin) ) )
-     enddo
+     call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
    endif
    do ispin=1,nspin
      do istate=1,nstate
@@ -618,8 +585,6 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
 
  else
 
-   ! ymbyun 2018/07/12
-   ! Same as above
    !
    ! Calculate the matrix Sigma_x - Vxc or its diagonal
    ! for the forthcoming GW corrections
@@ -627,8 +592,10 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
 
    if( PRESENT(exchange_m_vxc) ) then
      do ispin=1,nspin
-        exchange_m_vxc(:,:,ispin) =  MATMUL( TRANSPOSE(c_matrix(:,:,ispin)) , &
-                                             MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,:,ispin) ) )
+        !exchange_m_vxc(:,:,ispin) =  MATMUL( TRANSPOSE(c_matrix(:,:,ispin)) , &
+        !                                     MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,:,ispin) ) )
+        call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
+
        do istate=1,nstate
          exchange_m_vxc(istate,istate,ispin) = exchange_m_vxc(istate,istate,ispin) - energy(istate,ispin)
        enddo

@@ -128,25 +128,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
    selfenergy_omegac(:,:,:,:) = 0.0_dp
  end select
 
-! ymbyun 2018/07/12
-! First touch to reduce NUMA effects using memory affinity
-! Both (positive) affinity and (negative) overhead occur at the same time.
-! A performance test is needed to find which one has a stronger effect on the speedup.
-#ifdef ENABLE_OPENMP_AFFINITY
- do ispin=1,nspin
-!$OMP PARALLEL
-!$OMP DO PRIVATE(pstate,iomega) COLLAPSE(2)
-   do pstate=nsemin,nsemax
-     do iomega=-se%nomega,se%nomega
-       se%sigma(iomega,pstate,ispin) = 0.0_dp
-     enddo
-   enddo
-!$OMP END DO
-!$OMP END PARALLEL
- enddo
-#else
  se%sigma(:,:,:) = 0.0_dp
-#endif
 
  do ispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
@@ -156,16 +138,15 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
      !
      ! Prepare the bra and ket with the knowledge of index istate and pstate
      if( .NOT. has_auxil_basis) then
-! ymbyun 2018/07/11
-!$OMP PARALLEL
-!$OMP DO PRIVATE(pstate,ipstate)
+       !$OMP PARALLEL
+       !$OMP DO PRIVATE(ipstate)
        ! Here just grab the precalculated value
        do pstate=nsemin,nsemax
          ipstate = index_prodstate(istate,pstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
          bra(:,pstate) = wpol%residue_left(ipstate,:)
        enddo
-!$OMP END DO
-!$OMP END PARALLEL
+       !$OMP END DO
+       !$OMP END PARALLEL
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
@@ -228,12 +209,12 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
 
        case(GW,GnW0,GnWn,ONE_RING)
-! ymbyun 2018/07/11
-! For now, only G0W0/GnW0/GnWn are parallelized.
-! COLLAPSE(2) is bad for bra(:,:) in terms of memory affinity.
-! However, it is good for G0W0 with # of threads > |nsemax - nsemin| (e.g. when only HOMO and LUMO energies are needed).
-!$OMP PARALLEL
-!$OMP DO PRIVATE(pstate,iomega) COLLAPSE(2)
+         ! ymbyun 2018/07/11
+         ! For now, only G0W0/GnW0/GnWn are parallelized.
+         ! COLLAPSE(2) is bad for bra(:,:) in terms of memory affinity.
+         ! However, it is good for G0W0 with # of threads > |nsemax - nsemin| (e.g. when only HOMO and LUMO energies are needed).
+         !$OMP PARALLEL
+         !$OMP DO COLLAPSE(2)
          !
          ! calculate only the diagonal !
          do pstate=nsemin,nsemax
@@ -244,8 +225,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
                           + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
          enddo
-!$OMP END DO
-!$OMP END PARALLEL
+         !$OMP END DO
+         !$OMP END PARALLEL
        case(COHSEX)
 
          do pstate=nsemin,nsemax

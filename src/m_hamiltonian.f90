@@ -45,22 +45,22 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
 ! ymbyun 2018/05/30
 ! First touch to reduce NUMA effects using memory affinity
 #ifdef ENABLE_OPENMP_AFFINITY
-!$OMP PARALLEL
-!$OMP DO PRIVATE(ibf,jbf) COLLAPSE(2)
+ !$OMP PARALLEL
+ !$OMP DO PRIVATE(ibf,jbf) COLLAPSE(2)
  do jbf=1,nbf
    do ibf=1,nbf
      hartree_ij(ibf,jbf)=0.0_dp
    enddo
  enddo
-!$OMP END DO
+ !$OMP END DO
 #else
  hartree_ij(:,:)=0.0_dp
-!$OMP PARALLEL
+ !$OMP PARALLEL
 #endif
 
-! ymbyun 2018/05/21
-! COLLAPSE is added because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
-!$OMP DO PRIVATE(ibf,jbf,kbf,lbf) COLLAPSE(2)
+ ! ymbyun 2018/05/21
+ ! COLLAPSE is added because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+ !$OMP DO PRIVATE(ibf,jbf,kbf,lbf) COLLAPSE(2)
  do jbf=1,nbf
    do ibf=1,nbf
      if( negligible_basispair(ibf,jbf) ) cycle
@@ -85,18 +85,16 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  title='=== Hartree contribution ==='
  call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
-! ymbyun 2018/05/30
-! NOTE: A performance test is needed.
-!$OMP PARALLEL
-!$OMP WORKSHARE
+ !$OMP PARALLEL
+ !$OMP WORKSHARE
  ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
-!$OMP END WORKSHARE
+ !$OMP END WORKSHARE
  if( nspin == 2 ) then
-!$OMP WORKSHARE
+ !$OMP WORKSHARE
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
-!$OMP END WORKSHARE
+ !$OMP END WORKSHARE
  endif
-!$OMP END PARALLEL
+ !$OMP END PARALLEL
 
  call stop_clock(timing_hartree)
 
@@ -372,8 +370,8 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
 ! ymbyun 2018/05/30
 ! First touch to reduce NUMA effects using memory affinity
 #ifdef ENABLE_OPENMP_AFFINITY
-!$OMP PARALLEL
-!$OMP DO PRIVATE(ibf,jbf,ispin) COLLAPSE(3)
+ !$OMP PARALLEL
+ !$OMP DO PRIVATE(ibf,jbf,ispin) COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do ibf=1,nbf
@@ -381,16 +379,16 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
      enddo
    enddo
  enddo
-!$OMP END DO
+ !$OMP END DO
 #else
  exchange_ij(:,:,:)=0.0_dp
-!$OMP PARALLEL
+ !$OMP PARALLEL
 #endif
 
-! ymbyun 2018/05/25
-! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
-! COLLAPSE(2) is replaced by COLLASPE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
-!$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(3)
+ ! ymbyun 2018/05/25
+ ! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
+ ! COLLAPSE(2) is replaced by COLLASPE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+ !$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do lbf=1,nbf
@@ -408,14 +406,12 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
      enddo
    enddo
  enddo
-!$OMP END DO
+ !$OMP END DO
 
-! ymbyun 2018/05/30
-! NOTE: A performance test is needed.
-!$OMP WORKSHARE
+ !$OMP WORKSHARE
  eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
-!$OMP END WORKSHARE
-!$OMP END PARALLEL
+ !$OMP END WORKSHARE
+ !$OMP END PARALLEL
 
  call stop_clock(timing_exchange)
 
@@ -705,8 +701,8 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
 ! ymbyun 2018/06/30
 ! First touch to reduce NUMA effects using memory affinity
 #ifdef ENABLE_OPENMP_AFFINITY
-!$OMP PARALLEL
-!$OMP DO PRIVATE(ibf,jbf,ispin) COLLAPSE(3)
+ !$OMP PARALLEL
+ !$OMP DO PRIVATE(ibf,jbf,ispin) COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do ibf=1,nbf
@@ -714,16 +710,16 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
      enddo
    enddo
  enddo
-!$OMP END DO
+ !$OMP END DO
 #else
  exchange_ij(:,:,:)=0.0_dp
-!$OMP PARALLEL
+ !$OMP PARALLEL
 #endif
 
-! ymbyun 2018/06/30
-! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
-! COLLAPSE(2) is replaced by COLLAPSE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
-!$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(3)
+ ! ymbyun 2018/06/30
+ ! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
+ ! COLLAPSE(2) is replaced by COLLAPSE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+ !$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do ibf=1,nbf
@@ -740,12 +736,12 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
  enddo
 !$OMP END DO
 
-! ymbyun 2018/06/30
-! NOTE: A performance test is needed.
-!$OMP WORKSHARE
+ ! ymbyun 2018/06/30
+ ! NOTE: A performance test is needed.
+ !$OMP WORKSHARE
  eexchange = 0.5_dp * SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
-!$OMP END WORKSHARE
-!$OMP END PARALLEL
+ !$OMP END WORKSHARE
+ !$OMP END PARALLEL
 
  call stop_clock(timing_exchange)
 
@@ -1514,8 +1510,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
        ! Remove too small densities to stabilize the computation
        ! especially useful for Becke88
-       ! ymbyun 2018/02/11
-       ! I'm not sure about this yet.
        do ir=1,nr
          if( ALL( rhor_batch(:,ir) < TOL_RHO ) ) then
            exc_batch(ir)      = 0.0_dp

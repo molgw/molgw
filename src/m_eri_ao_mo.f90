@@ -111,9 +111,8 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  eri_tmp3(:,:,:) = 0.0_dp
  eri_eigenstate_i(:,:,:,:) = 0.0_dp
 
-! ymbyun 2018/05/21
-! COLLAPSE is added because nbf and nstate can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
-!$OMP PARALLEL DO COLLAPSE(2)
+ ! COLLAPSE is added because nbf and nstate can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+ !$OMP PARALLEL DO COLLAPSE(2)
  do lbf=1,nbf
    do kbf=1,nbf
      do jbf=1,nbf
@@ -123,7 +122,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
      enddo
    enddo
  enddo
-!$OMP END PARALLEL DO
+ !$OMP END PARALLEL DO
 
  do lbf=1,nbf
    call DGEMM('T','N',nstate,nbf,nbf,1.0d0,c_matrix(1,1,ijspin),nbf, &

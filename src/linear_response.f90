@@ -964,10 +964,6 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  integer                               :: nmat,nprodbasis
  real(dp)                              :: eri_eigen_klij
  real(dp),allocatable                  :: eri_eigenstate_klmin(:,:,:,:)
-! ymbyun 2018/05/23
-#ifdef _OPENMP
- integer                               :: spstst2in(nspin,nstate,nstate),temp_in
-#endif
 !=====
 
  call start_clock(timing_vchiv)
@@ -979,9 +975,8 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
  allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
  ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
- ! ymbyun 2018/05/30
- ! This array is initialized (i.e. first touched) in calculate_eri_4center_eigen().
-! eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
+ ! If removed, calculate_eri_4center_eigen might not calculate the first term!
+ eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
 
  nprodbasis = index_prodstate(nvirtual_W-1,nvirtual_W-1) * nspin
  call allocate_spectral_function(nprodbasis,wpol)
@@ -992,19 +987,6 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
  wpol%residue_left(:,:) = 0.0_dp
 
-! ymbyun 2018/05/23
-#ifdef _OPENMP
- temp_in = 0
-
- do mpspin=1,nspin
-   do pstate=1,nstate
-     do mstate=1,pstate
-       temp_in = temp_in + 1
-       spstst2in(mpspin,pstate,mstate) = temp_in
-     enddo
-   enddo
- enddo
-#endif
 
  do t_jb=1,nmat
    jstate = wpol%transition_table_apb(1,t_jb)
@@ -1014,27 +996,20 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
    kbstate_min = MIN(jstate,bstate)
    kbstate_max = MAX(jstate,bstate)
    ! ymbyun 2018/05/22
+   ! FB: Could you explain this to me?
    ! NOTE: calculate_eri_4center_eigen() is OpenMP parallelized without being orphaned.
    call calculate_eri_4center_eigen(nbf,nstate,c_matrix,kbstate_min,jbspin,eri_eigenstate_klmin)
 
-   mpstate_spin = 0
 
-! ymbyun 2018/05/22
-! NOTE: COLLAPSE is used because nspin is much smaller than # of threads.
-! NOTE: mpstate_spin should be used carefully.
-! NOTE: COLLAPSE(2) can't be replaced by COLLAPSE(3) because mstate depends on pstate.
-! TODO: PARALLEL should be moved from the inner loop to the outer one to reduce the overhead.
-!$OMP PARALLEL
-!$OMP DO PRIVATE(mpspin,mstate,pstate,eri_eigen_klij,mpstate_spin) COLLAPSE(2)
+   ! COLLAPSE is used because nspin is much smaller than # of threads.
+   !$OMP PARALLEL
+   !$OMP DO PRIVATE(eri_eigen_klij,mpstate_spin) COLLAPSE(2)
    do mpspin=1,nspin
      do pstate=1,nstate
        do mstate = 1,pstate
-! ymbyun 2018/05/23
-#ifdef _OPENMP
-         mpstate_spin = spstst2in(mpspin,pstate,mstate)
-#else
-         mpstate_spin = mpstate_spin + 1
-#endif
+
+         ! Unique ordering for mpstate_spin so to please OPENMP
+         mpstate_spin = ( mpspin - 1 ) * ( nstate * ( nstate + 1 ) ) / 2 + ( ( pstate - 1 ) * pstate ) / 2 + mstate
 
          eri_eigen_klij = eri_eigenstate_klmin(kbstate_max,mstate,pstate,mpspin)
 
@@ -1047,18 +1022,14 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
        enddo
      enddo
    enddo
-!$OMP END DO
-!$OMP END PARALLEL
+   !$OMP END DO
+   !$OMP END PARALLEL
 
  enddo
 
-! ymbyun 2018/08/03
-! NOTE: A performance test is needed.
-!$OMP PARALLEL
-!$OMP WORKSHARE
+ !$OMP PARALLEL WORKSHARE
  wpol%residue_left(:,:) = wpol%residue_left(:,:) * SQRT(spin_fact)
-!$OMP END WORKSHARE
-!$OMP END PARALLEL
+ !$OMP END PARALLEL WORKSHARE
 
 
  if(ALLOCATED(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
