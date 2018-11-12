@@ -19,7 +19,6 @@ subroutine header()
 
 #if defined(_OPENMP)
  integer,external  :: OMP_get_max_threads
- character(len=64) :: msg
 #endif
  character(len=40)   :: git_sha
  integer             :: values(8)
