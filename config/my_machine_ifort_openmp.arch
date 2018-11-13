@@ -1,0 +1,19 @@
+OPENMP= -qopenmp -parallel
+PYTHON=python3
+LIBTOOL=
+
+FC=ifort -fpp 
+
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY -DENABLE_OPENMP_AFFINITY
+
+CXX=icpc
+FCOPTS= -O3 -xhost -qopt-matmul
+CXXOPTS= -O3 -xhost
+
+LAPACK= -mkl=parallel
+
+SCALAPACK=
+
+LIBXC_ROOT=/opt/libxc-3.0.0-intel/
+
+LIBINT_ROOT=/opt/libint-2.2.0-intel/

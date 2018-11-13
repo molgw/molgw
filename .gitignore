@@ -1,6 +1,7 @@
 molgw
 spectrum
 molgw.tgz
+molgw_*
 *.mod
 *.o
 *.swp

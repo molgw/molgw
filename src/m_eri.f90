@@ -22,7 +22,7 @@ module m_eri
 
  !
  ! max length of a record in the ERI file
- integer,parameter,private :: line_length=1000
+ integer,parameter,private :: line_length = 1000
 
  real(dp),private           :: TOL_INT
 
@@ -33,18 +33,20 @@ module m_eri
  real(dp),allocatable,public :: eri_3center_lr(:,:)
 
 
- logical,protected,allocatable      :: negligible_shellpair(:,:)
- integer,private  ,allocatable      :: index_pair_1d(:)
- integer,protected,allocatable      :: index_basis(:,:)
- integer,protected,allocatable      :: index_shellpair(:,:)
- integer,protected                  :: nshellpair
+ logical,protected,allocatable :: negligible_shellpair(:,:)
+ integer,allocatable,private   :: index_pair_1d(:)
+ integer,protected,allocatable :: index_basis(:,:)
+ integer,protected,allocatable :: index_shellpair(:,:)
+ integer,protected             :: nshellpair
 
- integer,private,allocatable        :: shell_bf(:)
+ integer,private,allocatable   :: shell_bf(:)
 
 
- integer,private   :: nbf_eri         ! local copy of nbf
- integer,protected :: nsize           ! size of the eri_4center array
- integer,protected :: npair           ! number of independent pairs (i,j) with i<=j
+ integer,private   :: nbf_eri               ! local copy of nbf
+ ! 4-byte integers are too small to index the 4-center Coulomb integrals using no-RI/AE/5Z for 3d transition metals.
+ ! Use 8-byte integers instead
+ integer(kind=int8),protected :: nsize      ! size of the eri_4center array
+ integer,protected            :: npair      ! number of independent pairs (i,j) with i<=j
 
  integer,public    :: nauxil_2center     ! size of the 2-center matrix
  integer,public    :: nauxil_2center_lr  ! size of the 2-center LR matrix
@@ -110,7 +112,8 @@ subroutine prepare_eri(basis)
  endif
 
 
- nsize = (npair*(npair+1))/2
+ ! Carefully perform this calculation with 8-byte integers since the result can be very very large
+ nsize = ( INT(npair,KIND=int8) * ( INT(npair,KIND=int8) + 1_int8 ) ) / 2_int8
 
 
 end subroutine prepare_eri
@@ -179,19 +182,19 @@ pure function index_eri(ibf,jbf,kbf,lbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf,kbf,lbf
- integer            :: index_eri
+ integer(kind=int8) :: index_eri
 !=====
- integer            :: klmin,ijmax
- integer            :: index_ij,index_kl
+ integer(kind=int8) :: klmin,ijmax
+ integer(kind=int8) :: index_ij,index_kl
 !=====
 
  index_ij = index_pair(ibf,jbf)
  index_kl = index_pair(kbf,lbf)
 
- ijmax=MAX(index_ij,index_kl)
- klmin=MIN(index_ij,index_kl)
+ ijmax = MAX(index_ij,index_kl)
+ klmin = MIN(index_ij,index_kl)
 
- index_eri = (klmin-1)*npair - (klmin-1)*(klmin-2)/2 + ijmax-klmin+1
+ index_eri = (klmin-1) * npair - ( (klmin-1) * (klmin-2) ) / 2 + ijmax - klmin + 1
 
 
 end function index_eri
@@ -207,8 +210,8 @@ pure function index_pair(ibf,jbf)
  integer            :: ijmin,ijmax
 !=====
 
- ijmax=MAX(ibf,jbf)
- ijmin=MIN(ibf,jbf)
+ ijmax = MAX(ibf,jbf)
+ ijmin = MIN(ibf,jbf)
 
  index_pair = (ijmin-1) * nbf_eri - ( (ijmin-2) * (ijmin-1) ) / 2  + ijmax - ijmin + 1
  index_pair = index_pair_1d(index_pair)
@@ -586,14 +589,14 @@ subroutine negligible_eri(tol)
  implicit none
  real(dp),intent(in) :: tol
 !=====
- integer             :: icount,ibf,jbf,kbf,lbf,jcount
- integer             :: ibuffer
- real(dp)            :: integral_ij(nbf_eri,nbf_eri)
+ integer            :: ibf,jbf,kbf,lbf
+ integer(kind=int8) :: ibuffer,icount,jcount
+ real(dp)           :: integral_ij(nbf_eri,nbf_eri)
 !=====
 
- icount=0
+ icount = 0
  do ibuffer=1,nsize
-   if( ABS( eri_4center(ibuffer) ) < tol ) icount=icount+1
+   if( ABS( eri_4center(ibuffer) ) < tol ) icount = icount + 1
  enddo
 
  write(stdout,*) ' number of negligible integrals <',tol
@@ -620,8 +623,8 @@ subroutine negligible_eri(tol)
    enddo
  enddo
  write(stdout,*) ' number of negligible integrals <',tol
- write(stdout,*) icount, ' / ',nbf_eri**4,REAL(icount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
- write(stdout,*) jcount, ' / ',nbf_eri**4,REAL(jcount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
+ write(stdout,*) icount, ' / ',REAL(nbf_eri,dp)**4,REAL(icount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
+ write(stdout,*) jcount, ' / ',REAL(nbf_eri,dp)**4,REAL(jcount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
 
 
 end subroutine negligible_eri
@@ -632,9 +635,9 @@ subroutine dump_out_eri(rcut)
  implicit none
  real(dp),intent(in) :: rcut
 !=====
- character(len=50) :: filename
- integer           :: nline,iline,icurrent
- integer           :: erifile
+ character(len=50)  :: filename
+ integer(kind=int8) :: nline,iline,icurrent
+ integer            :: erifile
 !=====
 
  if(rcut < 1.0e-6_dp) then
@@ -643,7 +646,7 @@ subroutine dump_out_eri(rcut)
    filename='molgw_eri_lr.data'
  endif
  write(stdout,*) 'Dump out the ERI into file'
- write(stdout,*) 'Size of file [bytes]',REAL(nsize,dp)*dp
+ write(stdout,*) 'Size of file (Gbytes)',REAL(nsize,dp) * dp / 1024.0_dp**3
 
  if( is_iomaster ) then
    open(newunit=erifile,file=TRIM(filename),form='unformatted')
@@ -670,17 +673,17 @@ logical function read_eri(rcut)
  implicit none
  real(dp),intent(in) :: rcut
 !=====
- character(len=50) :: filename
- integer           :: nline,iline,icurrent
- integer           :: integer_read
- real(dp)          :: real_read
- integer           :: erifile
+ character(len=50)  :: filename
+ integer(kind=int8) :: nline,iline,icurrent
+ integer(kind=int8) :: integer_read
+ real(dp)           :: real_read
+ integer            :: erifile
 !=====
 
  if(rcut < 1.0e-6_dp) then
-   filename='molgw_eri.data'
+   filename = 'molgw_eri.data'
  else
-   filename='molgw_eri_lr.data'
+   filename = 'molgw_eri_lr.data'
  endif
 
  inquire(file=TRIM(filename),exist=read_eri)
