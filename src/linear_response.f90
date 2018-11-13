@@ -975,6 +975,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
  allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
  ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
+ ! If removed, calculate_eri_4center_eigen might not calculate the first term!
  eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
 
  nprodbasis = index_prodstate(nvirtual_W-1,nvirtual_W-1) * nspin
@@ -985,6 +986,8 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  nmat = wpol%npole_reso_apb
 
  wpol%residue_left(:,:) = 0.0_dp
+
+
  do t_jb=1,nmat
    jstate = wpol%transition_table_apb(1,t_jb)
    bstate = wpol%transition_table_apb(2,t_jb)
@@ -992,13 +995,21 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
    kbstate_min = MIN(jstate,bstate)
    kbstate_max = MAX(jstate,bstate)
+   ! ymbyun 2018/05/22
+   ! FB: Could you explain this to me?
+   ! NOTE: calculate_eri_4center_eigen() is OpenMP parallelized without being orphaned.
    call calculate_eri_4center_eigen(nbf,nstate,c_matrix,kbstate_min,jbspin,eri_eigenstate_klmin)
 
-   mpstate_spin = 0
+
+   ! COLLAPSE is used because nspin is much smaller than # of threads.
+   !$OMP PARALLEL
+   !$OMP DO PRIVATE(eri_eigen_klij,mpstate_spin) COLLAPSE(2)
    do mpspin=1,nspin
      do pstate=1,nstate
        do mstate = 1,pstate
-         mpstate_spin = mpstate_spin + 1
+
+         ! Unique ordering for mpstate_spin so to please OPENMP
+         mpstate_spin = ( mpspin - 1 ) * ( nstate * ( nstate + 1 ) ) / 2 + ( ( pstate - 1 ) * pstate ) / 2 + mstate
 
          eri_eigen_klij = eri_eigenstate_klmin(kbstate_max,mstate,pstate,mpspin)
 
@@ -1011,11 +1022,14 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
        enddo
      enddo
    enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
 
  enddo
 
+ !$OMP PARALLEL WORKSHARE
  wpol%residue_left(:,:) = wpol%residue_left(:,:) * SQRT(spin_fact)
-
+ !$OMP END PARALLEL WORKSHARE
 
 
  if(ALLOCATED(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)

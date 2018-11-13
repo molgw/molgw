@@ -178,12 +178,16 @@ subroutine find_qp_energy_linearization(se,exchange_m_vxc,energy0,energy_qp_z,zz
  energy_qp_z(:,:) = energy0(:,:)
 
  ! Then overwrite the interesting energy with the calculated GW one
+ !$OMP PARALLEL
+ !$OMP DO PRIVATE(pspin,zz_p)
  do pstate=nsemin,nsemax
 
    if( se%nomega > 0 .AND. PRESENT(zz) ) then
      zz_p(:) = REAL( se%sigma(1,pstate,:) - se%sigma(-1,pstate,:) ,dp) / REAL( se%omega(1) - se%omega(-1) ,dp)
      zz_p(:) = 1.0_dp / ( 1.0_dp - zz_p(:) )
-     ! Contrain Z to be in [0:1] to avoid crazy values
+     ! Constrain Z to be in [0:1] to avoid crazy values
+     ! Z falls out of [0:1] when a weak self-energy pole is very close to Eks.
+     ! Z out of [0:1] is an indicator for whether it happened or not.
      do pspin=1,nspin
        zz_p(pspin) = MIN( MAX(zz_p(pspin),0.0_dp) , 1.0_dp )
      enddo
@@ -200,7 +204,8 @@ subroutine find_qp_energy_linearization(se,exchange_m_vxc,energy0,energy_qp_z,zz
    endif
 
  enddo
-
+ !$OMP END DO
+ !$OMP END PARALLEL
 
 end subroutine find_qp_energy_linearization
 
@@ -225,6 +230,8 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
  energy_qp_g(:,:) = 0.0_dp
 
  ! Then overwrite the interesting energy with the calculated GW one
+ !$OMP PARALLEL
+ !$OMP DO PRIVATE(pspin,info,sigma_xc_m_vxc)
  do pstate=nsemin,nsemax
 
    if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
@@ -243,6 +250,8 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
    enddo
 
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
  call xsum_world(energy_qp_g)
 
@@ -562,10 +571,7 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
    ! for the forthcoming GW corrections
    !
    if( PRESENT(exchange_m_vxc) ) then
-     do ispin=1,nspin
-        exchange_m_vxc(:,:,ispin) =  MATMUL(  TRANSPOSE(c_matrix(:,:,ispin)) , &
-                                             MATMUL( hxmxc(:,:,ispin) , c_matrix(:,:,ispin) ) )
-     enddo
+     call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
    endif
    do ispin=1,nspin
      do istate=1,nstate
@@ -586,8 +592,10 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
 
    if( PRESENT(exchange_m_vxc) ) then
      do ispin=1,nspin
-        exchange_m_vxc(:,:,ispin) =  MATMUL( TRANSPOSE(c_matrix(:,:,ispin)) , &
-                                             MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,:,ispin) ) )
+        !exchange_m_vxc(:,:,ispin) =  MATMUL( TRANSPOSE(c_matrix(:,:,ispin)) , &
+        !                                     MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,:,ispin) ) )
+        call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
+
        do istate=1,nstate
          exchange_m_vxc(istate,istate,ispin) = exchange_m_vxc(istate,istate,ispin) - energy(istate,ispin)
        enddo

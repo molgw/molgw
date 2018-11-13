@@ -90,7 +90,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  integer              :: klspin
  integer              :: ibf,jbf,kbf,lbf
  integer              :: jstate,kstate,lstate
- real(dp)             :: eri_tmp3(nbf,nbf,nbf),eri_tmp2(nbf,nbf,nbf)
+ real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
 !=====
 
  ! Check if the calculation can be skipped
@@ -104,57 +104,52 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
 
  call start_clock(timing_eri_4center_eigen)
 
- eri_eigenstate_i(:,:,:,:)=0.0_dp
- eri_tmp2(:,:,:)=0.0_dp
- eri_tmp3(:,:,:)=0.0_dp
+ allocate(eri_tmp1(nbf,nstate))
+ call clean_allocate('TMP array',eri_tmp2,nbf,nbf,nbf)
+ call clean_allocate('TMP array',eri_tmp3,nbf,nbf,nbf)
 
+ eri_tmp3(:,:,:) = 0.0_dp
+ eri_eigenstate_i(:,:,:,:) = 0.0_dp
+
+ ! COLLAPSE is added because nbf and nstate can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+ !$OMP PARALLEL DO COLLAPSE(2)
  do lbf=1,nbf
    do kbf=1,nbf
      do jbf=1,nbf
-
        do ibf=1,nbf
          eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin)
        enddo
-
-
      enddo
    enddo
  enddo
+ !$OMP END PARALLEL DO
 
  do lbf=1,nbf
-   do kbf=1,nbf
-
-     do jstate=1,nstate
-       eri_tmp2(jstate,kbf,lbf) = DOT_PRODUCT( eri_tmp3(:,kbf,lbf) , c_matrix(:,jstate,ijspin) )
-     enddo
-
-   enddo
+   call DGEMM('T','N',nstate,nbf,nbf,1.0d0,c_matrix(1,1,ijspin),nbf, &
+                                           eri_tmp3(1,1,lbf),nbf,    &
+                                     0.0d0,eri_tmp2(1,1,lbf),nbf)
  enddo
 
-
-
  do klspin=1,nspin
-
    do lbf=1,nbf
-     do kstate=1,nstate
-       do jstate=1,nstate
-         eri_tmp3(jstate,kstate,lbf) = DOT_PRODUCT( eri_tmp2(jstate,:,lbf) , c_matrix(:,kstate,klspin) )
-       enddo
-     enddo
+     call DGEMM('N','N',nstate,nstate,nbf,1.0d0,eri_tmp2(1,1,lbf),nbf,    &
+                                                c_matrix(1,1,klspin),nbf, &
+                                          0.0d0,eri_tmp3(1,1,lbf),nbf)
    enddo
 
    do lstate=1,nstate
-     do kstate=1,nstate
-       do jstate=1,nstate
+     eri_tmp1(:,:) = TRANSPOSE( eri_tmp3(1:nstate,lstate,1:nbf) )
 
-         eri_eigenstate_i(jstate,kstate,lstate,klspin) = DOT_PRODUCT( eri_tmp3(jstate,kstate,:) , c_matrix(:,lstate,klspin) )
+     call DGEMM('T','N',nstate,nstate,nbf,1.0d0,eri_tmp1,nbf,              &
+                                                c_matrix(1,1,klspin),nbf,  &
+                                          0.0d0,eri_eigenstate_i(1,1,lstate,klspin),nstate)
 
-       enddo
-     enddo
    enddo
-
  enddo !klspin
 
+ deallocate(eri_tmp1)
+ call clean_deallocate('TMP array',eri_tmp2)
+ call clean_deallocate('TMP array',eri_tmp3)
 
  call stop_clock(timing_eri_4center_eigen)
 

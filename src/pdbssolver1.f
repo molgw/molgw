@@ -358,8 +358,8 @@
          DEALLOCATE(ICLUSTR,GAP)
 #else
          CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
-     $        JX, DESCX, WORK, -1, ITMP )
-         IWORK( 1 ) = 0
+     $        JX, DESCX, DDUM, -1, ITMP )
+         IWORK( 1 ) = 1
 #endif
          LWKOPT = INT( DDUM( 1 ) )
          LIWKOPT = IWORK( 1 )
