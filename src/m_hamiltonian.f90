@@ -46,7 +46,7 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
 ! First touch to reduce NUMA effects using memory affinity
 #ifdef ENABLE_OPENMP_AFFINITY
  !$OMP PARALLEL
- !$OMP DO PRIVATE(ibf,jbf) COLLAPSE(2)
+ !$OMP DO COLLAPSE(2)
  do jbf=1,nbf
    do ibf=1,nbf
      hartree_ij(ibf,jbf)=0.0_dp
@@ -60,7 +60,7 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
 
  ! ymbyun 2018/05/21
  ! COLLAPSE is added because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
- !$OMP DO PRIVATE(ibf,jbf,kbf,lbf) COLLAPSE(2)
+ !$OMP DO COLLAPSE(2)
  do jbf=1,nbf
    do ibf=1,nbf
      if( negligible_basispair(ibf,jbf) ) cycle
@@ -371,7 +371,7 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
 ! First touch to reduce NUMA effects using memory affinity
 #ifdef ENABLE_OPENMP_AFFINITY
  !$OMP PARALLEL
- !$OMP DO PRIVATE(ibf,jbf,ispin) COLLAPSE(3)
+ !$OMP DO COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do ibf=1,nbf
@@ -388,7 +388,7 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
  ! ymbyun 2018/05/25
  ! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
  ! COLLAPSE(2) is replaced by COLLASPE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
- !$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(3)
+ !$OMP DO COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do lbf=1,nbf
@@ -702,7 +702,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
 ! First touch to reduce NUMA effects using memory affinity
 #ifdef ENABLE_OPENMP_AFFINITY
  !$OMP PARALLEL
- !$OMP DO PRIVATE(ibf,jbf,ispin) COLLAPSE(3)
+ !$OMP DO COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do ibf=1,nbf
@@ -719,7 +719,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
  ! ymbyun 2018/06/30
  ! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
  ! COLLAPSE(2) is replaced by COLLAPSE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
- !$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(3)
+ !$OMP DO COLLAPSE(3)
  do ispin=1,nspin
    do jbf=1,nbf
      do ibf=1,nbf
@@ -734,10 +734,8 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
      enddo
    enddo
  enddo
-!$OMP END DO
+ !$OMP END DO
 
- ! ymbyun 2018/06/30
- ! NOTE: A performance test is needed.
  !$OMP WORKSHARE
  eexchange = 0.5_dp * SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
  !$OMP END WORKSHARE
