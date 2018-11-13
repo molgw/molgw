@@ -13,6 +13,8 @@ module m_definitions
  integer,parameter  :: dp = KIND(0.d0)
  integer,parameter  :: sp = KIND(0.0)
 
+ integer,parameter  :: int8 = 8
+
  integer,protected  :: stdout = OUTPUT_UNIT
  integer,parameter  :: stderr = ERROR_UNIT
 

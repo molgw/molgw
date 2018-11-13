@@ -39,7 +39,8 @@ subroutine calculate_eri(print_eri_,basis,rcut)
  call start_clock(timing_eri_4center)
 
  if( incore_ ) then
-   write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
+   ! From now on, the array index for 4-center Coulomb integrals can be greater than 2^32.
+   write(stdout,'(/,a,i16)') ' Number of integrals to be stored: ',nsize
 
    ! ymbyun 2018/05/30
    ! This array is initialized (i.e. first touched) in calculate_eri_4center().
@@ -984,7 +985,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call clean_allocate('LR 3-center integrals',eri_3center_lr,nauxil_2center_lr,npair)
  endif
 #endif
-
 
  !
  ! Loop over batches starts here
