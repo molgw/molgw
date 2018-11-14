@@ -4,30 +4,36 @@
 
 ## What's new in version 2.A
 ### Overview
-
+- GW approximation to the density matrix (only for spin-restricted calculations)
+- PT3 self-energy (only for spin-restricted calculations)
+- OPENMP parallelization
+- better graphical solution to the QP equation
+- complex wavefunctions and Hamiltonian can be calculated (for real time TDDFT)
+- bug fixes
 
 ### Contributors
-Ivan Maliyov (CEA SRMP, France)
-Young-Moo Byun (U. Illinois@Chicago, USA)
-Fabien Bruneval (CEA SRMP, France)
+- Ivan Maliyov (CEA SRMP, France)
+- Young-Moo Byun (U. Illinois@Chicago, USA)
+- Fabien Bruneval (CEA SRMP, France)
 
 ### Changes affecting the results
 - The graphical solution of the QP equation now selects the fixed point energy that maximises the spectral weight of the peak.
 This may change some QP energies away from the HOMO-LUMO gap. As the consequence, the BSE excitation energies are slightly affected.
 
 ### Changes affecting the usage
-- OPENMP parallelization is nwo available for the no-RI part with a special care about the reduction of the NUMA effect
-- Hybrid parallelization is now available for most the RI part
-Please export the corresponding environnement variables.
-For instance
+- OPENMP parallelization is now available for the no-RI part with a special care about the reduction of the NUMA effect.
+- Hybrid parallelization (OPENMP/MPI) is now available for most the RI code.
+The coding heavily relies on the availability of threaded BLAS routines.
+
+When using Intel MKL, please export the corresponding environnement variables:
 ```
-> export OMP_NUM_THREADS=4
-> export MKL_NUM_THREADS=4
+$ export OMP_NUM_THREADS=4
+$ export MKL_NUM_THREADS=4
 ```
 MOLGW has been shown to run efficiently on Intel KNL architecture
 
 ### Changes affecting the compilation
-- Possibility to change the diagonalization subroutine with -DLAPACK_DIAGO_FLAVOR_D or -DLAPACK_DIAGO_FLAVOR_R.
+- Possibility to change the diagonalization subroutine with ```-DLAPACK_DIAGO_FLAVOR_D``` or ```-DLAPACK_DIAGO_FLAVOR_R```.
 In our experience, LAPACK_DIAGO_FLAVOR_R is robust and quick.
 
 
