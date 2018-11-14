@@ -6,7 +6,9 @@
 # 1. Input line comprises 2 or 3 commas:
 #    a. Input file name
 #    b. Comment to be written in the output
-#    c. (Optional) Restart from a previous calculation
+#    c. (Optional) specific keywords: restart         need the previous run and therefore conserve tmp files
+#                                     noparallel      skip in parallel
+#                                     need_scalapack  only working when SCALAPACK is available
 #
 # 2. Test line comprises 4 commas:
 #    a. Text key to search in the out file
@@ -237,7 +239,7 @@ gKS LUMO energy           ,      0.507931      , 0 , 1.0e-4
 GW HOMO energy            ,    -15.804859      , 0 , 1.0e-4
 GW LUMO energy            ,      1.785876      , 0 , 1.0e-4
 
-h2_rsh_overlap_ci.in      , RSH recipe for HSE08 H2 molecule no RI and CI with a filtered overlap
+h2_rsh_overlap_ci.in      , RSH recipe for HSE08 H2 molecule no RI and CI with a filtered overlap, need_scalapack
 Exchange Energy           ,     -0.1340776991  , 0 , 1.0e-7
 XC Energy                 ,     -0.5585487906  , 0 , 1.0e-7
 gKS HOMO energy           ,    -11.534702      , 0 , 1.0e-4
@@ -309,7 +311,7 @@ Sum over oscillator strengths ,  7.866846       , 0 , 1.0e-4
 polarizability trace      ,     30.035246       , 0 , 1.0e-4
 Mean excitation energy    ,     15.838736       , 0 , 1.0e-4
 
-sih4_hf_tda.in            , TDHF SiH4 aug-cc-pVDZ with TDA restarting from previous run, Restart
+sih4_hf_tda.in            , TDHF SiH4 aug-cc-pVDZ with TDA restarting from previous run, restart
 Exc. 0001                 ,      9.82654263     , 0 , 1.0e-4
 Exc. 0001                 ,      0.22685574     , 1 , 1.0e-4
 Exc. 0010                 ,     11.2463169      , 0 , 1.0e-4
@@ -334,7 +336,7 @@ RPA Total energy          ,   -114.3099788424   , 0 , 1.0e-4
 GW HOMO energy            ,     -9.641505       , 0 , 1.0e-4
 GW LUMO energy            ,      2.436318       , 0 , 1.0e-4
 
-ch2o_bse_wori.in          , GW@LDA wo RI on formaldehyde using previous run, Restart noparallel
+ch2o_bse_wori.in          , GW@LDA wo RI on formaldehyde using previous run, restart noparallel
 Lowest neutral excitation ,      3.063375       , 0 , 1.0e-4
 0002 :                    ,      8.14022514     , 0 , 1.0e-4
 0002 :                    ,      0.00223728     , 1 , 1.0e-4
@@ -351,7 +353,7 @@ RPA Total energy          ,   -114.3237167485   , 0 , 1.0e-4
 GW HOMO energy            ,     -9.921426       , 0 , 1.0e-4
 GW LUMO energy            ,      2.494864       , 0 , 1.0e-4
 
-ch2o_bse.in               , BSE on formaldehyde , Restart
+ch2o_bse.in               , BSE on formaldehyde , restart
 Lowest neutral excitation ,      3.389151       , 0 , 1.0e-4
 0002 :                    ,      7.92628881     , 0 , 1.0e-4
 0002 :                    ,      0.11520374     , 1 , 1.0e-4
@@ -391,13 +393,13 @@ Galitskii-Migdal formula  ,     -0.5031685208   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.100134       , 0 , 1.0e-4
 G0W0 LUMO energy          ,      5.328126       , 0 , 1.0e-4
 
-oh_m_2.in                 , GnWn (eigenvalue self-consistent) on OH- 2nd iteration , Restart
+oh_m_2.in                 , GnWn (eigenvalue self-consistent) on OH- 2nd iteration , restart
 Galitskii-Migdal formula  ,     -0.4816111091   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2780353842   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.208873       , 0 , 1.0e-4
 G0W0 LUMO energy          ,      5.337010       , 0 , 1.0e-4
 
-oh_m_3.in                 , GnWn (eigenvalue self-consistent) on OH- 3rd iteration , Restart
+oh_m_3.in                 , GnWn (eigenvalue self-consistent) on OH- 3rd iteration , restart
 Galitskii-Migdal formula  ,     -0.4785659835   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2760358773   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.207707       , 0 , 1.0e-4
@@ -417,7 +419,7 @@ G0W0 HOMO energy          ,    -12.467650       , 1 , 1.0e-4
 G0W0 LUMO energy          ,      0.964613       , 0 , 1.0e-4
 G0W0 LUMO energy          ,     -0.293379       , 1 , 1.0e-4
 
-oh_0_2.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 2nd iteration , Restart
+oh_0_2.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 2nd iteration , restart
 G0W0 HOMO energy          ,    -13.340412       , 0 , 1.0e-4
 G0W0 HOMO energy          ,    -12.400933       , 1 , 1.0e-4
 G0W0 LUMO energy          ,      0.964805       , 0 , 1.0e-4
@@ -538,7 +540,7 @@ RT-TDDFT Dipole Moment    ,  -0.0001846589     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   1.9474309646     , 1 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   0.0000376516     , 2 , 1.0e-7
 
-h2o_rt_tddft_lda_PC2B_restart.in  , test of RESTART_TDDFT does not work without preliminary run of previous input, Restart tddft
+h2o_rt_tddft_lda_PC2B_restart.in  , test of RESTART_TDDFT does not work without preliminary run of previous input, restart tddft
 RT-TDDFT Total Energy     ,  -75.8540895314     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,    0.0001669089     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,    1.9475062577     , 1 , 1.0e-7
@@ -552,7 +554,7 @@ h2o_rt_tddft_h_proj_pbe0.in , proj without basis pbe0,tddft
 SCF Total Energy          ,  -76.3418386927     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.5745023928     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_pbe0_restart.in , proj without basis pbe0 restart, Restart tddft
+h2o_rt_tddft_h_proj_pbe0_restart.in , proj without basis pbe0 restart, restart tddft
 RT-TDDFT Total Energy     ,  -75.5098148640     , 0 , 1.0e-7
 
 h2o_rt_tddft_h_proj_pbe0_scalapack.in , proj without basis pbe0,tddft
@@ -584,7 +586,7 @@ CI 2nd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
 CI 3rd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
 CI 4th excited-state energy,   -14.3718323663   , 0 , 1.0e-7
 
-be_ci_davidson.in         , CI calculation for boron atom (Davidson diago)
+be_ci_davidson.in         , CI calculation for boron atom (Davidson diago), need_scalapack
 SCF Total Energy          ,    -14.5667640335   , 0 , 1.0e-7
 Uncorrelated energy       ,    -14.5667640335   , 0 , 1.0e-7
 Correlation energy        ,     -0.0467812361   , 0 , 1.0e-7
@@ -615,7 +617,7 @@ CI 2nd excited-state energy,   -14.3185202318   , 0 , 1.0e-7
 -IP (eV) and Weight       ,      0.892328       , 1 , 1.0e-3
 -EA                       ,      6.464563       , 0 , 1.0e-4
 
-li2_ci_self.in            , CI Green's function for Li2 limited to single and double excitations
+li2_ci_self.in            , CI Green's function for Li2 limited to single and double excitations, need_scalapack
 SCF Total Energy          ,    -14.8656863400   , 0 , 1.0e-7
 Uncorrelated energy       ,    -14.6876451256   , 0 , 1.0e-7
 Correlation energy        ,     -0.0080314929   , 0 , 1.0e-7
@@ -642,7 +644,7 @@ TWO_RINGS LUMO energy     ,     46.034447       , 0 , 1.0e-4
 h2o_temperature.in        , for a restart test with non-zero temperature
 SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 
-h2o_restart_temperature.in , restart with non-zero temperature, Restart
+h2o_restart_temperature.in , restart with non-zero temperature, restart
 SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 
 co_pt1pt2.in              , PT1+PT2 perturbation theory for a non-Hartree-Fock starting point
@@ -655,7 +657,7 @@ SCF Total Energy          ,   -291.2399059845   , 0 , 1.0e-7
 gKS HOMO energy           ,    -13.781513       , 0 , 1.0e-4
 gKS LUMO energy           ,      3.880683       , 0 , 1.0e-4
 
-sih4_g0w0@sc-cohsex.in    , G0W0 for SiH4 based on the previous sc-COHSEX run, Restart
+sih4_g0w0@sc-cohsex.in    , G0W0 for SiH4 based on the previous sc-COHSEX run, restart
 GW HOMO energy            ,    -12.855076       , 0 , 1.0e-4
 GW LUMO energy            ,      4.073908       , 0 , 1.0e-4
 
@@ -664,7 +666,7 @@ SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
 GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
 
-co_gw_dm_restart.in       , G0W0 based on G0W0 density matrix, Restart
+co_gw_dm_restart.in       , G0W0 based on G0W0 density matrix, restart
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
 GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
 
