@@ -335,13 +335,13 @@ GW HOMO energy            ,     -9.641505       , 0 , 1.0e-4
 GW LUMO energy            ,      2.436318       , 0 , 1.0e-4
 
 ch2o_bse_wori.in          , GW@LDA wo RI on formaldehyde using previous run, Restart noparallel
-Lowest neutral excitation ,      3.061668       , 0 , 1.0e-4
-0002 :                    ,      8.10899840     , 0 , 1.0e-4
-0002 :                    ,      0.00208595     , 1 , 1.0e-4
-0003 :                    ,      8.49965447     , 0 , 1.0e-4
-0003 :                    ,      0.13696417     , 1 , 1.0e-4
-Sum over oscillator strengths , 11.153281       , 0 , 1.0e-4
-polarizability trace      ,     13.470219       , 0 , 1.0e-4
+Lowest neutral excitation ,      3.063375       , 0 , 1.0e-4
+0002 :                    ,      8.14022514     , 0 , 1.0e-4
+0002 :                    ,      0.00223728     , 1 , 1.0e-4
+0003 :                    ,      8.50475677     , 0 , 1.0e-4
+0003 :                    ,      0.13726421     , 1 , 1.0e-4
+Sum over oscillator strengths , 11.598793       , 0 , 1.0e-4
+polarizability trace      ,     13.362175       , 0 , 1.0e-4
 
 ch2o_gw.in                , GW@B3LYP on formaldehyde to prepare BSE
 SCF Total Energy          ,   -114.5110479343   , 0 , 1.0e-7
@@ -352,11 +352,11 @@ GW HOMO energy            ,     -9.921426       , 0 , 1.0e-4
 GW LUMO energy            ,      2.494864       , 0 , 1.0e-4
 
 ch2o_bse.in               , BSE on formaldehyde , Restart
-Lowest neutral excitation ,      3.388914       , 0 , 1.0e-4
-0002 :                    ,      7.92591508     , 0 , 1.0e-4
-0002 :                    ,      0.11513601     , 1 , 1.0e-4
-Sum over oscillator strengths , 11.957363       , 0 , 1.0e-4
-polarizability trace      ,     13.358524       , 0 , 1.0e-4
+Lowest neutral excitation ,      3.389151       , 0 , 1.0e-4
+0002 :                    ,      7.92628881     , 0 , 1.0e-4
+0002 :                    ,      0.11520374     , 1 , 1.0e-4
+Sum over oscillator strengths , 12.019322       , 0 , 1.0e-4
+polarizability trace      ,     13.347761       , 0 , 1.0e-4
 
 oh_m_gnwn.in              , GnWn (eigenvalue self-consistent) on OH- 1st iteration
 SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
