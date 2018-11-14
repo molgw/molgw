@@ -9,6 +9,7 @@
 #    c. (Optional) specific keywords: restart         need the previous run and therefore conserve tmp files
 #                                     noparallel      skip in parallel
 #                                     need_scalapack  only working when SCALAPACK is available
+#                                     need_gradients  only working when LIBINT gradients are available
 #
 # 2. Test line comprises 4 commas:
 #    a. Text key to search in the out file
@@ -493,7 +494,7 @@ GW small basis LUMO energy,   0.949613         , 0 , 1.0e-4
 GW HOMO energy            , -12.165369         , 0 , 1.0e-4
 GW LUMO energy            ,   0.871728         , 0 , 1.0e-4
 
-h2_relax.in               , H2 forces without RI
+h2_relax.in               , H2 forces without RI, need_gradients
 SCF Total Energy          ,      -1.1313335905 , 0 , 1.0e-5
 H-F force atom      1     ,      0.5090922298  , 0 , 1.0e-3
 H-F force atom      2     ,     -0.5090922298  , 0 , 1.0e-3

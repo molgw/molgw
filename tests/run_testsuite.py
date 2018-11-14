@@ -76,14 +76,6 @@ def check_output(out,testinfo):
   # First check if the test was aborted because of some limitation at compilation
   #
   for line in open(tmpfolder+'/'+out,'r').readlines():
-    if 'one CPU only' in line:
-      print('Test not functional in parallel => skip test')
-      test_files_skipped += 1
-      return
-    if 'Need to compile MOLGW with HAVE_LIBINT_ONEBODY' in line:
-      print('Test not functional without gradients => skip test')
-      test_files_skipped += 1
-      return
     if  'Angular momentum is too high' in line:
       print('LIBINT installation does not have the needed high angular momenta => skip test')
       test_files_skipped += 1
@@ -297,6 +289,7 @@ input_files    = []
 restarting     = []
 parallel       = []
 need_scalapack = []
+need_gradients = []
 tddft          = []
 test_names     = []
 testinfo       = []
@@ -316,6 +309,7 @@ for line in ftestsuite:
     restarting.append(False)
     parallel.append(True)
     need_scalapack.append(False)
+    need_gradients.append(False)
     tddft.append(False)
 
   if len(parsing) == 3:
@@ -332,6 +326,7 @@ for line in ftestsuite:
     else:
       parallel.append(True)
     need_scalapack.append( 'need_scalapack' in parsing[2].lower() )
+    need_gradients.append( 'need_gradients' in parsing[2].lower() )
     if 'tddft' in parsing[2].lower():
       tddft.append(True)
     else:
@@ -408,6 +403,11 @@ for iinput in range(ninput):
     test_files_skipped += 1
     print('\nSkipping test file: '+inp)
     print('  because this compilation of MOLGW does not have SCALAPACK')
+    continue
+  if need_gradients[iinput] and not have_libint_gradients:
+    test_files_skipped += 1
+    print('\nSkipping test file: '+inp)
+    print('  because this compilation of MOLGW does not have the gradients from LIBINT')
     continue
   if not parallel[iinput] and nprocs > 1:
     print('\nSkipping test file: '+inp)
