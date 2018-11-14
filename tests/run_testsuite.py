@@ -399,7 +399,12 @@ for iinput in range(ninput):
     continue
   if len(excluded_input_files) != 0 and input_files[iinput] in excluded_input_files:
     continue
-  if need_scalapack[iinput]:
+
+  inp     = input_files[iinput]
+  out     = input_files[iinput].split('.in')[0]+'.out'
+  restart = restarting[iinput]
+
+  if need_scalapack[iinput] and not have_scalapack:
     test_files_skipped += 1
     print('\nSkipping test file: '+inp)
     print('  because this compilation of MOLGW does not have SCALAPACK')
@@ -415,10 +420,6 @@ for iinput in range(ninput):
     test_files_skipped += 1
     continue
 
-
-  inp     = input_files[iinput]
-  out     = input_files[iinput].split('.in')[0]+'.out'
-  restart = restarting[iinput]
 
   print('\nRunning test file: '+inp)
   print(test_names[iinput])
