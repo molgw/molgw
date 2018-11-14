@@ -220,41 +220,63 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
 !=====
  integer  :: nstate
  integer  :: pstate,pspin
- integer  :: info
- real(dp) :: sigma_xc_m_vxc(-se%nomega:se%nomega)
+ real(dp) :: z_weight(SIZE(exchange_m_vxc,DIM=1),nspin)
+ real(dp) :: equation_lhs(-se%nomega:se%nomega),equation_rhs(-se%nomega:se%nomega)
 !=====
 
  nstate = SIZE(exchange_m_vxc,DIM=1)
+ write(stdout,'(/,1x,a)') 'Graphical solution to the QP equation'
+ write(stdout,'(1x,a,sp,f8.3,a,f8.3)') 'Scanning range around the input energy (eV): ', &
+                              REAL(se%omega(-se%nomega),dp)*Ha_eV,'  --',REAL(se%omega(se%nomega),dp)*Ha_eV
+ write(stdout,'(1x,a,i6)')             'Number of discretization points:             ',SIZE(se%omega(:))
 
  ! First, a dummy initialization
  energy_qp_g(:,:) = 0.0_dp
+ z_weight(:,:)    = 0.0_dp
 
  ! Then overwrite the interesting energy with the calculated GW one
- !$OMP PARALLEL
- !$OMP DO PRIVATE(pspin,info,sigma_xc_m_vxc)
+ !$OMP PARALLEL DO PRIVATE(equation_lhs,equation_rhs)
  do pstate=nsemin,nsemax
 
    if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
 
    do pspin=1,nspin
-     sigma_xc_m_vxc(:) = REAL(se%sigma(:,pstate,pspin),dp) + exchange_m_vxc(pstate,pspin)
      !
      ! QP equation:
      ! E_GW = E0 + \omega =  E_gKS + \Sigma_c(E0+\omega) + \Sigma_x - v_xc
      !
-     energy_qp_g(pstate,pspin) = find_fixed_point(se%nomega,REAL(se%omega,dp)+se%energy0(pstate,pspin),sigma_xc_m_vxc(:)+energy0(pstate,pspin),info)
-     if( info /= 0 ) then
-       write(stdout,'(1x,a,i4,2x,i4)') 'Unreliable graphical solution of the QP equation for state,spin: ',pstate,pspin
-       call issue_warning('No fixed point found for the QP equation. Try to increase nomega_sigma or step_sigma.')
-     endif
+     equation_lhs(:) = REAL(se%omega(:),dp)+se%energy0(pstate,pspin)
+     equation_rhs(:) = REAL(se%sigma(:,pstate,pspin),dp) + exchange_m_vxc(pstate,pspin) + energy0(pstate,pspin)
+     call find_fixed_point(se%nomega,equation_lhs,equation_rhs,energy_qp_g(pstate,pspin),z_weight(pstate,pspin))
+     ! No QP energy found, then set E_qp to E_gKS for safety
+     if( z_weight(pstate,pspin) < 0.0_dp ) energy_qp_g(pstate,pspin) = energy0(pstate,pspin)
+
    enddo
 
  enddo
- !$OMP END DO
- !$OMP END PARALLEL
+ !$OMP END PARALLEL DO
 
  call xsum_world(energy_qp_g)
+ call xsum_world(z_weight)
 
+ ! Master IO node outputs the solution details
+ write(stdout,'(/,1x,a)') 'state spin    QP energy (eV)  QP spectral weight'
+ do pstate=nsemin,nsemax
+   do pspin=1,nspin
+     if( z_weight(pstate,pspin) > 0.0_dp ) then
+       write(stdout,'(1x,i5,2x,i3,3x,f12.6,3x,f12.6)') pstate,pspin,energy_qp_g(pstate,pspin)*Ha_eV,z_weight(pstate,pspin)
+     else
+       write(stdout,'(1x,i5,2x,i3,a)') pstate,pspin,'      has no graphical solution in the calculated range'
+     endif
+   enddo
+ enddo
+
+ if( ANY(z_weight(:,:) < 0.0_dp) ) then
+   call issue_warning('At least one state had no graphical solution in the calculated range.'  &
+                   // ' Increase nomega_sigma or step_sigma.')
+ endif
+
+ ! Unchanged energies for the states that were not calculated (outside range [nsemin:nsemax])
  energy_qp_g(:nsemin-1,:) = energy0(:nsemin-1,:)
  energy_qp_g(nsemax+1:,:) = energy0(nsemax+1:,:)
 
@@ -264,67 +286,47 @@ end subroutine find_qp_energy_graphical
 
 
 !=========================================================================
-function find_fixed_point(nx,xx,fx,info) result(fixed_point)
+subroutine find_fixed_point(nx,xx,fx,fixed_point,z_weight)
  implicit none
  integer,intent(in)  :: nx
  real(dp),intent(in) :: xx(-nx:nx)
  real(dp),intent(in) :: fx(-nx:nx)
- integer,intent(out) :: info
- real(dp)            :: fixed_point
+ real(dp),intent(out) :: fixed_point,z_weight
 !=====
  integer  :: ix,imin1,imin2
  real(dp) :: gx(-nx:nx)
- real(dp) :: gpx
+ real(dp) :: gpxi
+ real(dp) :: z_zero
 !=====
 
+ ! Negative value to indicate something bad happened
+ z_weight = -1.0_dp
+ fixed_point = 0.0_dp
 
  !
  ! g(x) contains f(x) - x
  gx(:) = fx(:) - xx(:)
 
- ! Find the sign change in g(x) which is the closest to ix=0
- ! Search positive x
- imin1 = 1000000
- do ix=0,nx-1
+ do ix=-nx,nx-1
+   ! Check for sign changes
    if( gx(ix) * gx(ix+1) < 0.0_dp ) then
-     imin1 = ix
-     exit
+     ! Evaluate the weight Z of the pole
+     !  Z = ( 1 - d\Sigma / d\omega )^-1
+     !  Z should be in [0,1]
+     z_zero = 1.0_dp / ( 1.0_dp - ( fx(ix+1) - fx(ix) ) / ( xx(ix+1) - xx(ix) ) )
+
+     ! Z not valid
+     if( z_zero < 0.00001_dp ) cycle
+     ! Compare the new Z with the largest Z found at this stage
+     if( z_zero > z_weight ) then
+       z_weight = z_zero
+       gpxi = ( gx(ix+1) - gx(ix) ) / ( xx(ix+1) - xx(ix) )
+       fixed_point = xx(ix) - gx(ix) / gpxi
+     endif
    endif
  enddo
- ! Search negative x
- imin2 = 1000000
- do ix=0,-nx+1,-1
-   if( gx(ix) * gx(ix-1) < 0.0_dp ) then
-     imin2 = ix
-     exit
-   endif
- enddo
 
- if( imin1 == 1000000 .AND. imin2 == 1000000 ) then
-
-   if( gx(0) > 0.0_dp ) then
-     info =  1
-     fixed_point = xx(nx)
-   else
-     info = -1
-     fixed_point = xx(-nx)
-   endif
-
- else
-   info = 0
-   !
-   ! If sign change found, interpolate the abscissa between 2 grid points
-   if( ABS(imin1) <= ABS(imin2) )  then
-     gpx = ( gx(imin1+1) - gx(imin1) ) / ( xx(imin1+1) - xx(imin1) )
-     fixed_point = xx(imin1) - gx(imin1) / gpx
-   else
-     gpx = ( gx(imin2) - gx(imin2-1) ) / ( xx(imin2) - xx(imin2-1) )
-     fixed_point = xx(imin2-1) - gx(imin2-1) / gpx
-   endif
- endif
-
-
-end function find_fixed_point
+end subroutine find_fixed_point
 
 
 !=========================================================================
