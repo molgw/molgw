@@ -2,6 +2,36 @@
 #    MOLGW: Release Notes
 -----------------------------------------
 
+## What's new in version 2.A
+### Overview
+
+
+### Contributors
+Ivan Maliyov (CEA SRMP, France)
+Young-Moo Byun (U. Illinois@Chicago, USA)
+Fabien Bruneval (CEA SRMP, France)
+
+### Changes affecting the results
+- The graphical solution of the QP equation now selects the fixed point energy that maximises the spectral weight of the peak.
+This may change some QP energies away from the HOMO-LUMO gap. As the consequence, the BSE excitation energies are slightly affected.
+
+### Changes affecting the usage
+- OPENMP parallelization is nwo available for the no-RI part with a special care about the reduction of the NUMA effect
+- Hybrid parallelization is now available for most the RI part
+Please export the corresponding environnement variables.
+For instance
+```
+> export OMP_NUM_THREADS=4
+> export MKL_NUM_THREADS=4
+```
+MOLGW has been shown to run efficiently on Intel KNL architecture
+
+### Changes affecting the compilation
+- Possibility to change the diagonalization subroutine with -DLAPACK_DIAGO_FLAVOR_D or -DLAPACK_DIAGO_FLAVOR_R.
+In our experience, LAPACK_DIAGO_FLAVOR_R is robust and quick.
+
+
+-----------------------------------------
 ## What's new in version 1.H
 ### Overview
 Bug fixes
