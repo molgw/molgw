@@ -13,8 +13,8 @@
      $                        LAMBDA, X1, IX, JX, DESCX, X2, WORK,
      $                        LWORK, IWORK, LIWORK, INFO )
 *
-#ifdef HAVE_ELPA
-#ifdef HAVE_MPI
+#if defined(HAVE_ELPA)
+#if defined(HAVE_MPI)
       USE MPI,only: MPI_COMM_WORLD
 #endif
       USE ELPA1
@@ -275,7 +275,7 @@
       INTEGER,ALLOCATABLE ::         ICLUSTR(:)
       DOUBLE PRECISION,ALLOCATABLE :: GAP(:)
 #endif
-#ifdef HAVE_ELPA
+#if defined(HAVE_ELPA)
       LOGICAL         :: SUCCESS
       INTEGER         :: COMM_ROW,COMM_COL
 #endif
@@ -343,10 +343,10 @@
 *
 *        Estimate the workspace required by external subroutines.
 *
-#if defined(LAPACK_DIAGO_FLAVOR_R)
-         CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
-     $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, DDUM, -1,
-     $        IWORK, -1, ITMP )
+#if defined(LAPACK_DIAGO_FLAVOR_)
+         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
+     $        JX, DESCX, DDUM, -1, ITMP )
+         IWORK( 1 ) = 1
 #elif defined(LAPACK_DIAGO_FLAVOR_X)
          ALLOCATE(ICLUSTR(2*NPROCS))
          ALLOCATE(GAP(NPROCS))
@@ -357,9 +357,9 @@
      $        IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
          DEALLOCATE(ICLUSTR,GAP)
 #else
-         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
-     $        JX, DESCX, DDUM, -1, ITMP )
-         IWORK( 1 ) = 1
+         CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
+     $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, DDUM, -1,
+     $        IWORK, -1, ITMP )
 #endif
          LWKOPT = INT( DDUM( 1 ) )
          LIWKOPT = IWORK( 1 )
@@ -420,11 +420,10 @@
 *     Diagonalization: V**T * (L**T * K * L) * V = diag(lambda).
 *
       T_DIAG = MPI_WTIME()
-#ifndef HAVE_ELPA
-#if defined(LAPACK_DIAGO_FLAVOR_R)
-      CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
-     $     1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
-     $     WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
+#if !defined(HAVE_ELPA)
+#if defined(LAPACK_DIAGO_FLAVOR_)
+      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
+     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, ITMP )
 #elif defined(LAPACK_DIAGO_FLAVOR_X)
       ALLOCATE(ICLUSTR(2*NPROCS))
       ALLOCATE(GAP(NPROCS))
@@ -435,8 +434,9 @@
      $      IWORK, LIWORK, IFAIL, ICLUSTR, GAP, ITMP )
       DEALLOCATE(ICLUSTR,GAP)
 #else
-      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
-     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, ITMP )
+      CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
+     $     1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
+     $     WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
 #endif
 
 #else

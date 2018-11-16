@@ -21,6 +21,7 @@ selected_input_files= []
 excluded_input_files= []
 mpirun=''
 nprocs=1
+ncores=1
 debug=False
 
 in_timing_section=True
@@ -160,7 +161,7 @@ def check_output(out,testinfo):
 ###################################
 # Parse the command line
 
-option_list = ['--keep','--np','--mpirun','--input','--exclude','--debug','--tddft']
+option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--debug','--tddft']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
@@ -168,6 +169,7 @@ if len(sys.argv) > 1:
     print('  --keep             Keep the temporary folder')
     print('  --tddft            Run tddft tests also')
     print('  --np     n         Set the number of MPI threads to n')
+    print('  --nc     n         Set the number of OPENMP threads to n')
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input files      Only run these input files')
     print('  --exclude files    Run all input files but these ones')
@@ -193,6 +195,10 @@ if len(sys.argv) > 1:
   if '--mpirun' in sys.argv:
     i = sys.argv.index('--mpirun') + 1
     mpirun = sys.argv[i]
+
+  if '--nc' in sys.argv:
+    i = sys.argv.index('--nc') + 1
+    ncores = int( sys.argv[i] )
 
   if '--input' in sys.argv:
     i = sys.argv.index('--input') + 1
@@ -228,6 +234,10 @@ if len(mpirun) < 1:
 if not os.path.isfile('../molgw') :
   print('molgw executable not found!\nMay be you should compile it first? May be you moved it around?')
   sys.exit(1)
+
+if ncores > 1:
+  os.environ["OMP_NUM_THREADS"] = str(ncores)
+  os.environ["MKL_NUM_THREADS"] = str(ncores)
 
 try:
   ncores = int(os.environ['OMP_NUM_THREADS'])

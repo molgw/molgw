@@ -703,47 +703,94 @@ subroutine diagonalize_inplace_sca_dp(nglobal,desc,matrix,eigval)
  integer              :: desc_eigvec(NDEL)
  integer              :: mlocal,nlocal
  integer              :: lwork,info
+ integer              :: nprow,npcol,iprow,ipcol
  real(dp),allocatable :: work(:)
  real(dp),allocatable :: eigvec(:,:)
- integer              :: neigval,neigvec
+#if !defined(LAPACK_DIAGO_FLAVOR_)
  integer,allocatable  :: iwork(:)
  integer              :: liwork
+ integer              :: neigval,neigvec
+#endif
+#if defined(LAPACK_DIAGO_FLAVOR_X)
+ real(dp)             :: ABSTOL
+ integer              :: iclustr(2*nprow_sd*npcol_sd)
+ real(dp)             :: gap(nprow_sd*npcol_sd)
+ integer              :: ifail(nglobal)
+#endif
 !=====
 
-#ifdef HAVE_SCALAPACK
- desc_eigvec = desc
+#if defined(HAVE_SCALAPACK)
 
- mlocal = SIZE( matrix , DIM=1 )
- nlocal = SIZE( matrix , DIM=2 )
+ call BLACS_GRIDINFO( desc(CTXT_), nprow, npcol, iprow, ipcol )
 
- allocate(eigvec(mlocal,nlocal))
+ ! Only call SCALAPACK when using more than 1 proc
+ if( nprow * npcol > 1 ) then
 
- !
- ! First call to get the dimension of the array work
- lwork = -1
- allocate(work(1))
- call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+   desc_eigvec = desc
 
+   mlocal = SIZE( matrix , DIM=1 )
+   nlocal = SIZE( matrix , DIM=2 )
 
- !
- ! Second call to actually perform the diago
- lwork = NINT(work(1))
+   allocate(eigvec(mlocal,nlocal))
 
- deallocate(work)
- allocate(work(lwork))
- call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+   !
+   ! First call to get the dimensions of the work arrays
+   lwork = -1
+   allocate(work(3))
 
- deallocate(work)
-
-
- matrix(:,:) = eigvec(:,:)
-
- deallocate(eigvec)
-
+#if defined(LAPACK_DIAGO_FLAVOR_)
+   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+#elif defined(LAPACK_DIAGO_FLAVOR_X)
+   liwork = -1
+   allocate(iwork(1))
+   ABSTOL = PDLAMCH(desc(CTXT_), 'U')
+   call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+                ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+                eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+                ifail,iclustr,gap,info)
 #else
+   liwork = -1
+   allocate(iwork(1))
+   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+#endif
 
- call diagonalize(matrix,eigval)
 
+   !
+   ! Second call to actually perform the diago
+   lwork = NINT(work(1))
+   deallocate(work)
+   allocate(work(lwork))
+
+#if defined(LAPACK_DIAGO_FLAVOR_)
+   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+#elif defined(LAPACK_DIAGO_FLAVOR_X)
+   liwork = iwork(1)
+   deallocate(iwork)
+   allocate(iwork(liwork))
+   call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+                ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+                eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+                ifail,iclustr,gap,info)
+   deallocate(iwork)
+#else
+   liwork = iwork(1)
+   deallocate(iwork)
+   allocate(iwork(liwork))
+   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+   deallocate(iwork)
+#endif
+   deallocate(work)
+
+   matrix(:,:) = eigvec(:,:)
+
+   deallocate(eigvec)
+ else
+#endif
+
+   call diagonalize(matrix,eigval)
+
+#if defined(HAVE_SCALAPACK)
+ endif
 #endif
 
 
@@ -826,7 +873,7 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
  integer              :: nprow,npcol,iprow,ipcol
  integer              :: lwork,info
  real(dp),allocatable :: work(:)
-#if defined(LAPACK_DIAGO_FLAVOR_R) || defined(LAPACK_DIAGO_FLAVOR_X)
+#if !defined(LAPACK_DIAGO_FLAVOR_)
  integer,allocatable  :: iwork(:)
  integer              :: liwork
  integer              :: neigval,neigvec
@@ -849,10 +896,8 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
    ! First call to get the dimensions of the work arrays
    lwork = -1
    allocate(work(3))
-#if defined(LAPACK_DIAGO_FLAVOR_R)
-   liwork = -1
-   allocate(iwork(1))
-   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+#if defined(LAPACK_DIAGO_FLAVOR_)
+   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
 #elif defined(LAPACK_DIAGO_FLAVOR_X)
    liwork = -1
    allocate(iwork(1))
@@ -862,7 +907,9 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
                 eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
                 ifail,iclustr,gap,info)
 #else
-   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+   liwork = -1
+   allocate(iwork(1))
+   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
 #endif
 
 
@@ -871,13 +918,9 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
    lwork = NINT(work(1))
    deallocate(work)
    allocate(work(lwork))
-  
-#if defined(LAPACK_DIAGO_FLAVOR_R)
-   liwork = iwork(1)
-   deallocate(iwork)
-   allocate(iwork(liwork))
-   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-   deallocate(iwork)
+
+#if defined(LAPACK_DIAGO_FLAVOR_)
+   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
 #elif defined(LAPACK_DIAGO_FLAVOR_X)
    liwork = iwork(1)
    deallocate(iwork)
@@ -888,7 +931,11 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
                 ifail,iclustr,gap,info)
    deallocate(iwork)
 #else
-   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+   liwork = iwork(1)
+   deallocate(iwork)
+   allocate(iwork(liwork))
+   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+   deallocate(iwork)
 #endif
    deallocate(work)
 
@@ -928,7 +975,7 @@ subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigva
 #ifdef HAVE_SCALAPACK
  call select_nprow_npcol(scalapack_block_min,nmat,nmat,nprow,npcol)
 
- if( nprow /= 1 .OR. npcol /= 1 ) then
+ if( nprow * npcol > 1 ) then
 
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
@@ -1012,7 +1059,7 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
 #ifdef HAVE_SCALAPACK
  call select_nprow_npcol(scalapack_block_min,nmat,nmat,nprow,npcol)
 
- if( nprow /= 1 .OR. npcol /= 1 ) then
+ if( nprow * npcol > 1 ) then
 
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )

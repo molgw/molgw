@@ -40,7 +40,7 @@ subroutine header()
 
  write(stdout,'(1x,70("="))')
  write(stdout,'(/,/,12x,a,/)') 'Welcome to the fascinating world of MOLGW'
- write(stdout,'(24x,a)')       'version 1.H'
+ write(stdout,'(24x,a)')       'version 2.A'
  write(stdout,'(/,/,1x,70("="))')
 
  write(stdout,'(/,a,a,/)') ' MOLGW commit git SHA: ',git_sha
@@ -105,14 +105,14 @@ subroutine header()
 #if !defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
  call die('Code compiled with MPI, but without SCALAPACK. This is not permitted')
 #endif
-#if defined(LAPACK_DIAGO_FLAVOR_D)
+#if defined(LAPACK_DIAGO_FLAVOR_)
+ write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEV, ZHEEV'
+#elif defined(LAPACK_DIAGO_FLAVOR_D)
  write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEVD, ZHEEVD'
-#elif defined(LAPACK_DIAGO_FLAVOR_R)
- write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEVR, ZHEEVR'
 #elif defined(LAPACK_DIAGO_FLAVOR_X)
  write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEVX, ZHEEVX'
 #else
- write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEV, ZHEEV'
+ write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEVR, ZHEEVR'
 #endif
 
 
