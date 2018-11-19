@@ -218,9 +218,10 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
  real(dp),intent(in)  :: exchange_m_vxc(:,:),energy0(:,:)
  real(dp),intent(out) :: energy_qp_g(:,:)
 !=====
- integer  :: nstate
- integer  :: pstate,pspin
- real(dp) :: z_weight(SIZE(exchange_m_vxc,DIM=1),nspin)
+ integer,parameter :: NFIXED_POINTS_MAX = 4
+ integer  :: nfixed,ifixed
+ integer  :: nstate,pstate,pspin
+ real(dp) :: energy_fixed_point(NFIXED_POINTS_MAX,nsemin:nsemax,nspin),z_weight(NFIXED_POINTS_MAX,nsemin:nsemax,nspin)
  real(dp) :: equation_lhs(-se%nomega:se%nomega),equation_rhs(-se%nomega:se%nomega)
 !=====
 
@@ -232,7 +233,7 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
 
  ! First, a dummy initialization
  energy_qp_g(:,:) = 0.0_dp
- z_weight(:,:)    = 0.0_dp
+ z_weight(:,:,:)  = 0.0_dp
 
  ! Then overwrite the interesting energy with the calculated GW one
  !$OMP PARALLEL DO PRIVATE(equation_lhs,equation_rhs)
@@ -247,9 +248,14 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
      !
      equation_lhs(:) = REAL(se%omega(:),dp)+se%energy0(pstate,pspin)
      equation_rhs(:) = REAL(se%sigma(:,pstate,pspin),dp) + exchange_m_vxc(pstate,pspin) + energy0(pstate,pspin)
-     call find_fixed_point(se%nomega,equation_lhs,equation_rhs,energy_qp_g(pstate,pspin),z_weight(pstate,pspin))
-     ! No QP energy found, then set E_qp to E_gKS for safety
-     if( z_weight(pstate,pspin) < 0.0_dp ) energy_qp_g(pstate,pspin) = energy0(pstate,pspin)
+     call find_fixed_point(equation_lhs,equation_rhs,energy_fixed_point(:,pstate,pspin),z_weight(:,pstate,pspin))
+
+     ! If no reasonable QP energy found, then set E_qp to E_gKS for safety
+     if( z_weight(1,pstate,pspin) < 0.0_dp ) then
+       energy_qp_g(pstate,pspin) = energy0(pstate,pspin)
+     else
+       energy_qp_g(pstate,pspin) = energy_fixed_point(1,pstate,pspin)
+     endif
 
    enddo
 
@@ -263,15 +269,17 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
  write(stdout,'(/,1x,a)') 'state spin    QP energy (eV)  QP spectral weight'
  do pstate=nsemin,nsemax
    do pspin=1,nspin
-     if( z_weight(pstate,pspin) > 0.0_dp ) then
-       write(stdout,'(1x,i5,2x,i3,3x,f12.6,3x,f12.6)') pstate,pspin,energy_qp_g(pstate,pspin)*Ha_eV,z_weight(pstate,pspin)
+     nfixed = COUNT( z_weight(:,pstate,pspin) > 0.0_dp )
+     if( nfixed > 0 ) then
+       write(stdout,'(1x,i5,2x,i3,*(3x,f12.6,3x,f12.6))') pstate,pspin, &
+                 ( energy_fixed_point(ifixed,pstate,pspin)*Ha_eV,z_weight(ifixed,pstate,pspin), ifixed = 1,nfixed)
      else
        write(stdout,'(1x,i5,2x,i3,a)') pstate,pspin,'      has no graphical solution in the calculated range'
      endif
    enddo
  enddo
 
- if( ANY(z_weight(:,:) < 0.0_dp) ) then
+ if( ANY(z_weight(1,:,:) < 0.0_dp) ) then
    call issue_warning('At least one state had no graphical solution in the calculated range.'  &
                    // ' Increase nomega_sigma or step_sigma.')
  endif
@@ -286,29 +294,37 @@ end subroutine find_qp_energy_graphical
 
 
 !=========================================================================
-subroutine find_fixed_point(nx,xx,fx,fixed_point,z_weight)
+subroutine find_fixed_point(xx,fx,energy_fixed_point,z_weight)
  implicit none
- integer,intent(in)  :: nx
- real(dp),intent(in) :: xx(-nx:nx)
- real(dp),intent(in) :: fx(-nx:nx)
- real(dp),intent(out) :: fixed_point,z_weight
+ real(dp),intent(in) :: xx(:)
+ real(dp),intent(in) :: fx(:)
+ real(dp),intent(out) :: energy_fixed_point(:),z_weight(:)
 !=====
- integer  :: ix,imin1,imin2
- real(dp) :: gx(-nx:nx)
+ integer  :: nx,ix
+ integer  :: nfpmx,ifixed,jfixed
+ real(dp) :: gx(SIZE(xx))
  real(dp) :: gpxi
  real(dp) :: z_zero
+ integer  :: enumerate(SIZE(energy_fixed_point))
 !=====
 
+ nx = SIZE(xx)
+ nfpmx = SIZE(energy_fixed_point)
+ do ifixed=1,nfpmx
+   enumerate(ifixed) = ifixed
+ enddo
+
  ! Negative value to indicate something bad happened
- z_weight = -1.0_dp
- fixed_point = 0.0_dp
+ z_weight(:)           = -1.0_dp
+ energy_fixed_point(:) =  0.0_dp
 
  !
  ! g(x) contains f(x) - x
  gx(:) = fx(:) - xx(:)
+ ifixed = 0
 
- do ix=-nx,nx-1
-   ! Check for sign changes
+ do ix=1,nx-1
+   ! Check for sign changes => fixed point
    if( gx(ix) * gx(ix+1) < 0.0_dp ) then
      ! Evaluate the weight Z of the pole
      !  Z = ( 1 - d\Sigma / d\omega )^-1
@@ -317,12 +333,18 @@ subroutine find_fixed_point(nx,xx,fx,fixed_point,z_weight)
 
      ! Z not valid
      if( z_zero < 0.00001_dp ) cycle
-     ! Compare the new Z with the largest Z found at this stage
-     if( z_zero > z_weight ) then
-       z_weight = z_zero
+     ! Compare the new Z with the largest Z's found at this stage
+     if( z_zero > z_weight(nfpmx) ) then
+
+       jfixed = MINVAL( enumerate(:), z_zero > z_weight(:) )
+       z_weight(jfixed+1:nfpmx)           = z_weight(jfixed:nfpmx-1)
+       energy_fixed_point(jfixed+1:nfpmx) = energy_fixed_point(jfixed:nfpmx-1)
+       z_weight(jfixed) = z_zero
        gpxi = ( gx(ix+1) - gx(ix) ) / ( xx(ix+1) - xx(ix) )
-       fixed_point = xx(ix) - gx(ix) / gpxi
+       energy_fixed_point(jfixed) = xx(ix) - gx(ix) / gpxi
+
      endif
+
    endif
  enddo
 
