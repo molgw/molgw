@@ -85,12 +85,18 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
  real(dp),intent(inout) :: eri_eigenstate_i(nstate,nstate,nstate,nspin)
 !=====
+ logical,save         :: disclaimer = .TRUE.
  integer,save         :: istate_previous=0
  integer,save         :: ijspin_previous=0
  integer              :: klspin
  integer              :: ibf,jbf,kbf,lbf
  integer              :: jstate,kstate,lstate
  real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
+ integer(kind=int8)   :: iint
+ integer              :: index_ij,index_kl,stride
+#if defined(_OPENMP)
+ integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
+#endif
 !=====
 
  ! Check if the calculation can be skipped
@@ -111,6 +117,11 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  eri_tmp3(:,:,:) = 0.0_dp
  eri_eigenstate_i(:,:,:,:) = 0.0_dp
 
+#if 0
+ !
+ ! Old implementation
+ !
+
  ! COLLAPSE is added because nbf and nstate can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
  !$OMP PARALLEL DO COLLAPSE(2)
  do lbf=1,nbf
@@ -123,6 +134,67 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
    enddo
  enddo
  !$OMP END PARALLEL DO
+#else
+
+ ! New implementation looping over the unique integrals
+ ! write this disclaimer only for the first call
+ if( disclaimer ) then
+   write(stdout,'(1x,a)')        'AO to MO transform using the 8 permutation symmetries'
+   write(stdout,'(1x,a,f9.3,a)') 'Make sure OMP_STACKSIZE is larger than ',REAL(nbf,dp)**3 * 8.0_dp / 1024.0_dp**2,' (Mb)'
+   disclaimer = .FALSE.
+ endif
+ !$OMP PARALLEL PRIVATE(index_ij,index_kl,ibf,jbf,kbf,lbf,stride)
+#if defined(_OPENMP)
+ stride = OMP_GET_NUM_THREADS()
+ index_ij = OMP_GET_THREAD_NUM() - stride + 1
+#else
+ stride = 1
+ index_ij = 0
+#endif
+ index_kl = 1
+
+ ! Static,1 should not be modified, else a race competition will occur when performing index_ij = index_ij + stride
+ !$OMP DO REDUCTION(+:eri_tmp3) SCHEDULE(static,1)
+ do iint=1,nsize
+   index_ij = index_ij + stride
+   do while( index_ij > npair )
+     index_kl = index_kl + 1
+     index_ij = index_kl + index_ij - npair - 1
+   enddo
+   !write(stdout,*)  OMP_GET_THREAD_NUM() , iint, index_ij, index_kl
+
+   ibf = index_basis(1,index_ij)
+   jbf = index_basis(2,index_ij)
+   kbf = index_basis(1,index_kl)
+   lbf = index_basis(2,index_kl)
+
+   eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri_4center(iint) * c_matrix(ibf,istate,ijspin)
+   if( ibf /= jbf ) then
+     eri_tmp3(ibf,kbf,lbf) = eri_tmp3(ibf,kbf,lbf) + eri_4center(iint) * c_matrix(jbf,istate,ijspin)
+     if( kbf /= lbf ) then
+       eri_tmp3(ibf,lbf,kbf) = eri_tmp3(ibf,lbf,kbf) + eri_4center(iint) * c_matrix(jbf,istate,ijspin)
+     endif
+   endif
+   if( kbf /= lbf ) then
+     eri_tmp3(jbf,lbf,kbf) = eri_tmp3(jbf,lbf,kbf) + eri_4center(iint) * c_matrix(ibf,istate,ijspin)
+   endif
+   if( index_kl /= index_ij ) then
+     eri_tmp3(lbf,ibf,jbf) = eri_tmp3(lbf,ibf,jbf) + eri_4center(iint) * c_matrix(kbf,istate,ijspin)
+     if( ibf /= jbf ) then
+       eri_tmp3(lbf,jbf,ibf) = eri_tmp3(lbf,jbf,ibf) + eri_4center(iint) * c_matrix(kbf,istate,ijspin)
+       if( kbf /= lbf ) then
+         eri_tmp3(kbf,jbf,ibf) = eri_tmp3(kbf,jbf,ibf) + eri_4center(iint) * c_matrix(lbf,istate,ijspin)
+       endif
+     endif
+     if( kbf /= lbf ) then
+       eri_tmp3(kbf,ibf,jbf) = eri_tmp3(kbf,ibf,jbf) + eri_4center(iint) * c_matrix(lbf,istate,ijspin)
+     endif
+   endif
+ enddo
+ !$OMP END do
+ !$OMP END PARALLEL
+#endif
+
 
  do lbf=1,nbf
    call DGEMM('T','N',nstate,nbf,nbf,1.0d0,c_matrix(1,1,ijspin),nbf, &

@@ -7,7 +7,7 @@
 !
 !=========================================================================
 subroutine header()
-#ifdef FORTRAN2008
+#if defined(FORTRAN2008)
  use,intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 #endif
  use m_definitions
@@ -80,7 +80,7 @@ subroutine header()
 
 
  write(stdout,'(/,1x,a)') 'Preprocessing and runtime options:'
-#ifdef HAVE_LIBXC
+#if defined(HAVE_LIBXC)
 ! call xc_f90_version(values(1),values(2))
 ! write(chartmp,'(i2,a,i2)') values(1),'.',values(2)
 !

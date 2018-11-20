@@ -116,7 +116,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    ! then recalculate it from scratch
    if( reading_status /= 0 ) then
      if( .NOT. has_auxil_basis ) then
-       call die('polarizability: BSE calculation without having a precalculated SCREENED_COULOMB file is impossible' &
+       call die('polarizability: BSE calculation without having a precalculated SCREENED_COULOMB file is impossible ' &
                 // 'unless when using an auxiliary basis')
      endif
      wpol_static%nprodbasis = nauxil_3center
