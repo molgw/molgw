@@ -141,7 +141,7 @@ subroutine calculate_eri_4center_eigen(c_matrix,istate,ijspin,eri_eigenstate_i)
  ! SCHEDULE(static,1) should not be modified
  ! else a race competition will occur when performing index_ij = index_ij + stride
  !$OMP DO REDUCTION(+:eri_tmp3) SCHEDULE(static,1)
- do iint=1,nsize
+ do iint=1,nint_4center
    index_ij = index_ij + stride
    do while( index_ij > npair )
      index_kl = index_kl + 1
@@ -270,7 +270,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
    ! SCHEDULE(static,1) should not be modified
    ! else a race competition will occur when performing index_ij = index_ij + stride
    !$OMP DO REDUCTION(+:eri_tmp3) SCHEDULE(static,1)
-   do iint=1,nsize
+   do iint=1,nint_4center
      index_ij = index_ij + stride
      do while( index_ij > npair )
        index_kl = index_kl + 1

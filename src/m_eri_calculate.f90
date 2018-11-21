@@ -42,23 +42,23 @@ subroutine calculate_eri(print_eri_,basis,rcut)
 
  if( incore_ ) then
    ! From now on, the array index for 4-center Coulomb integrals can be greater than 2^32.
-   write(stdout,'(/,a,i16)') ' Number of integrals to be stored: ',nsize
+   write(stdout,'(/,a,i16)') ' Number of integrals to be stored: ',nint_4center
 
    if( rcut < 1.0e-12_dp ) then
-     call clean_allocate('4-center integrals',eri_4center,nsize)
+     call clean_allocate('4-center integrals',eri_4center,nint_4center)
      ! First touch to reduce NUMA effects using memory affinity
      ! since the integrals will be used with SCHEDULE(static,1) latter on
      !$OMP PARALLEL DO SCHEDULE(static,1)
-     do iint=1,nsize
+     do iint=1,nint_4center
        eri_4center(iint) = 0.0_dp
      enddo
      !$OMP END PARALLEL DO
    else
-     call clean_allocate('4-center LR integrals',eri_4center_lr,nsize)
+     call clean_allocate('4-center LR integrals',eri_4center_lr,nint_4center)
      ! First touch to reduce NUMA effects using memory affinity
      ! since the integrals will be used with SCHEDULE(static,1) latter on
      !$OMP PARALLEL DO SCHEDULE(static,1)
-     do iint=1,nsize
+     do iint=1,nint_4center
        eri_4center_lr(iint) = 0.0_dp
      enddo
      !$OMP END PARALLEL DO

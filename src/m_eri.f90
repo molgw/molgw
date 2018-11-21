@@ -45,8 +45,8 @@ module m_eri
  integer,private   :: nbf_eri               ! local copy of nbf
  ! 4-byte integers are too small to index the 4-center Coulomb integrals using no-RI/AE/5Z for 3d transition metals.
  ! Use 8-byte integers instead
- integer(kind=int8),protected :: nsize      ! size of the eri_4center array
- integer,protected            :: npair      ! number of independent pairs (i,j) with i<=j
+ integer(kind=int8),protected :: nint_4center    ! size of the eri_4center array
+ integer,protected            :: npair           ! number of independent pairs (i,j) with i<=j
 
  integer,public    :: nauxil_2center     ! size of the 2-center matrix
  integer,public    :: nauxil_2center_lr  ! size of the 2-center LR matrix
@@ -113,7 +113,7 @@ subroutine prepare_eri(basis)
 
 
  ! Carefully perform this calculation with 8-byte integers since the result can be very very large
- nsize = ( INT(npair,KIND=int8) * ( INT(npair,KIND=int8) + 1_int8 ) ) / 2_int8
+ nint_4center = ( INT(npair,KIND=int8) * ( INT(npair,KIND=int8) + 1_int8 ) ) / 2_int8
 
 
 end subroutine prepare_eri
@@ -589,17 +589,17 @@ subroutine dump_out_eri(rcut)
    filename='molgw_eri_lr.data'
  endif
  write(stdout,*) 'Dump out the ERI into file'
- write(stdout,*) 'Size of file (Gbytes)',REAL(nsize,dp) * dp / 1024.0_dp**3
+ write(stdout,*) 'Size of file (Gbytes)',REAL(nint_4center,dp) * dp / 1024.0_dp**3
 
  if( is_iomaster ) then
    open(newunit=erifile,file=TRIM(filename),form='unformatted')
-   write(erifile) nsize
+   write(erifile) nint_4center
    write(erifile) rcut
 
-   nline = nsize / line_length + 1
+   nline = nint_4center / line_length + 1
    icurrent=0
    do iline=1,nline
-     write(erifile) eri_4center(icurrent+1:MIN(nsize,icurrent+line_length+1))
+     write(erifile) eri_4center(icurrent+1:MIN(nint_4center,icurrent+line_length+1))
      icurrent = icurrent + line_length + 1
    enddo
 
@@ -636,16 +636,16 @@ logical function read_eri(rcut)
    write(stdout,*) 'Try to read ERI file'
    open(newunit=erifile,file=TRIM(filename),form='unformatted',status='old')
    read(erifile) integer_read
-   if(integer_read /= nsize) read_eri=.FALSE.
+   if(integer_read /= nint_4center) read_eri=.FALSE.
    read(erifile) real_read
    if(ABS(real_read-rcut) > 1.0e-6_dp) read_eri=.FALSE.
 
    if(read_eri) then
 
-     nline = nsize / line_length + 1
+     nline = nint_4center / line_length + 1
      icurrent=0
      do iline=1,nline
-       read(erifile) eri_4center(icurrent+1:MIN(nsize,icurrent+line_length+1))
+       read(erifile) eri_4center(icurrent+1:MIN(nint_4center,icurrent+line_length+1))
        icurrent = icurrent + line_length + 1
      enddo
      write(stdout,'(a,/)') ' ERI file read'

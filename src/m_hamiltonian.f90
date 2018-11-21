@@ -61,7 +61,7 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  ! SCHEDULE(static,1) should not be modified
  ! else a race competition will occur when performing index_ij = index_ij + stride
  !$OMP DO REDUCTION(+:hartree_ij) SCHEDULE(static,1)
- do iint=1,nsize
+ do iint=1,nint_4center
    index_ij = index_ij + stride
    do while( index_ij > npair )
      index_kl = index_kl + 1
@@ -395,7 +395,7 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
  ! SCHEDULE(static,1) should not be modified
  ! else a race competition will occur when performing index_ik = index_ik + stride
  !$OMP DO REDUCTION(+:exchange_ij) SCHEDULE(static,1)
- do iint=1,nsize
+ do iint=1,nint_4center
    index_ik = index_ik + stride
    do while( index_ik > npair )
      index_lj = index_lj + 1
@@ -486,7 +486,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
  ! SCHEDULE(static,1) should not be modified
  ! else a race competition will occur when performing index_ik = index_ik + stride
  !$OMP DO REDUCTION(+:exchange_ij) SCHEDULE(static,1)
- do iint=1,nsize
+ do iint=1,nint_4center
    index_ik = index_ik + stride
    do while( index_ik > npair )
      index_lj = index_lj + 1
