@@ -92,13 +92,13 @@ level022: m_libint_tools.o
 
 level025: m_eri.o m_scf.o m_dft_grid.o
 
-level030: m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o
+level030: m_eri_calculate.o m_density_tools.o
 
 level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o
 
 level040: m_hamiltonian_buffer.o m_hamiltonian_sca.o
 
-level050: m_hamiltonian_wrapper.o
+level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 

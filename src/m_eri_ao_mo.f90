@@ -117,27 +117,9 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  eri_tmp3(:,:,:) = 0.0_dp
  eri_eigenstate_i(:,:,:,:) = 0.0_dp
 
-#if 0
- !
- ! Old implementation
- !
-
- ! COLLAPSE is added because nbf and nstate can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
- !$OMP PARALLEL DO COLLAPSE(2)
- do lbf=1,nbf
-   do kbf=1,nbf
-     do jbf=1,nbf
-       do ibf=1,nbf
-         eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin)
-       enddo
-     enddo
-   enddo
- enddo
- !$OMP END PARALLEL DO
-#else
 
  ! New implementation looping over the unique integrals
- ! write this disclaimer only for the first call
+ ! write this disclaimer only at the first call
  if( disclaimer ) then
    write(stdout,'(1x,a)')        'AO to MO transform using the 8 permutation symmetries'
    write(stdout,'(1x,a,f9.3,a)') 'Make sure OMP_STACKSIZE is larger than ',REAL(nbf,dp)**3 * 8.0_dp / 1024.0_dp**2,' (Mb)'
@@ -153,7 +135,8 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
 #endif
  index_kl = 1
 
- ! Static,1 should not be modified, else a race competition will occur when performing index_ij = index_ij + stride
+ ! SCHEDULE(static,1) should not be modified
+ ! else a race competition will occur when performing index_ij = index_ij + stride
  !$OMP DO REDUCTION(+:eri_tmp3) SCHEDULE(static,1)
  do iint=1,nsize
    index_ij = index_ij + stride
@@ -161,7 +144,6 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
      index_kl = index_kl + 1
      index_ij = index_kl + index_ij - npair - 1
    enddo
-   !write(stdout,*)  OMP_GET_THREAD_NUM() , iint, index_ij, index_kl
 
    ibf = index_basis(1,index_ij)
    jbf = index_basis(2,index_ij)
@@ -191,9 +173,8 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
      endif
    endif
  enddo
- !$OMP END do
+ !$OMP END DO
  !$OMP END PARALLEL
-#endif
 
 
  do lbf=1,nbf

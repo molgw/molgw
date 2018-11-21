@@ -34,67 +34,78 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf
  character(len=100)   :: title
+ integer(kind=int8)   :: iint
+ integer              :: index_ij,index_kl,stride
+ real(dp)             :: fact_ij,fact_kl
+#if defined(_OPENMP)
+ integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
+#endif
 !=====
 
  call start_clock(timing_hartree)
+ nbf = SIZE(hartree_ij,DIM=1)
 
- write(stdout,*) 'Calculate Hartree term'
+ write(stdout,*) 'Calculate Hartree term using the 8 permutation symmetries'
+ !$OMP PARALLEL PRIVATE(index_ij,index_kl,ibf,jbf,kbf,lbf,stride,fact_ij,fact_kl)
+ hartree_ij(:,:) = 0.0_dp
 
- nbf = SIZE(hartree_ij(:,:),DIM=1)
-
-! ymbyun 2018/05/30
-! First touch to reduce NUMA effects using memory affinity
-#ifdef ENABLE_OPENMP_AFFINITY
- !$OMP PARALLEL
- !$OMP DO COLLAPSE(2)
- do jbf=1,nbf
-   do ibf=1,nbf
-     hartree_ij(ibf,jbf)=0.0_dp
-   enddo
- enddo
- !$OMP END DO
+#if defined(_OPENMP)
+ stride = OMP_GET_NUM_THREADS()
+ index_ij = OMP_GET_THREAD_NUM() - stride + 1
 #else
- hartree_ij(:,:)=0.0_dp
- !$OMP PARALLEL
+ stride = 1
+ index_ij = 0
 #endif
+ index_kl = 1
 
- ! ymbyun 2018/05/21
- ! COLLAPSE is added because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
- !$OMP DO COLLAPSE(2)
- do jbf=1,nbf
-   do ibf=1,nbf
-     if( negligible_basispair(ibf,jbf) ) cycle
-     do lbf=1,nbf
-       !
-       ! symmetry k <-> l
-       do kbf=1,lbf-1 ! nbf
-         if( negligible_basispair(kbf,lbf) ) cycle
-         !
-         ! symmetry (ij|kl) = (kl|ij) has been used to loop in the fast order
-         hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf) &
-                    + eri(kbf,lbf,ibf,jbf) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-       enddo
-       hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf) &
-                  + eri(lbf,lbf,ibf,jbf) * SUM( p_matrix(lbf,lbf,:) )
-     enddo
+ ! SCHEDULE(static,1) should not be modified
+ ! else a race competition will occur when performing index_ij = index_ij + stride
+ !$OMP DO REDUCTION(+:hartree_ij) SCHEDULE(static,1)
+ do iint=1,nsize
+   index_ij = index_ij + stride
+   do while( index_ij > npair )
+     index_kl = index_kl + 1
+     index_ij = index_kl + index_ij - npair - 1
    enddo
+
+   ibf = index_basis(1,index_ij)
+   jbf = index_basis(2,index_ij)
+   kbf = index_basis(1,index_kl)
+   lbf = index_basis(2,index_kl)
+
+   if( kbf /= lbf ) then
+     fact_kl = 2.0_dp
+   else
+     fact_kl = 1.0_dp
+   endif
+   if( ibf /= jbf ) then
+     fact_ij = 2.0_dp
+   else
+     fact_ij = 1.0_dp
+   endif
+
+   hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf) &
+                + eri_4center(iint) * SUM( p_matrix(kbf,lbf,:) ) * fact_kl
+   if( ibf /= jbf ) then
+     hartree_ij(jbf,ibf) = hartree_ij(jbf,ibf) &
+                  + eri_4center(iint) * SUM( p_matrix(kbf,lbf,:) ) * fact_kl
+   endif
+   if( index_ij /= index_kl ) then
+     hartree_ij(kbf,lbf) = hartree_ij(kbf,lbf) &
+                 + eri_4center(iint) * SUM( p_matrix(ibf,jbf,:) ) * fact_ij
+     if( kbf /= lbf ) then
+       hartree_ij(lbf,kbf) = hartree_ij(lbf,kbf) &
+                    + eri_4center(iint) * SUM( p_matrix(ibf,jbf,:) ) * fact_ij
+     endif
+   endif
+
  enddo
-!$OMP END DO
-!$OMP END PARALLEL
 
- title='=== Hartree contribution ==='
- call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
-
- !$OMP PARALLEL
  !$OMP WORKSHARE
- ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
+ ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM( p_matrix(:,:,:),DIM=3) )
  !$OMP END WORKSHARE
- if( nspin == 2 ) then
- !$OMP WORKSHARE
-   ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
- !$OMP END WORKSHARE
- endif
  !$OMP END PARALLEL
+
 
  call stop_clock(timing_hartree)
 
@@ -359,57 +370,80 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
 !=====
  integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf,ispin
+ integer(kind=int8)   :: iint
+ integer              :: index_ik,index_lj,stride
+#if defined(_OPENMP)
+ integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
+#endif
 !=====
 
  call start_clock(timing_exchange)
 
- write(stdout,*) 'Calculate Exchange term'
+ write(stdout,*) 'Calculate Exchange term using the 8 permutation symmetries'
+ !$OMP PARALLEL PRIVATE(index_ik,index_lj,ibf,jbf,kbf,lbf,stride)
+ exchange_ij(:,:,:) = 0.0_dp
 
- nbf = SIZE(exchange_ij,DIM=1)
-
-! ymbyun 2018/05/30
-! First touch to reduce NUMA effects using memory affinity
-#ifdef ENABLE_OPENMP_AFFINITY
- !$OMP PARALLEL
- !$OMP DO COLLAPSE(3)
- do ispin=1,nspin
-   do jbf=1,nbf
-     do ibf=1,nbf
-       exchange_ij(ibf,jbf,ispin)=0.0_dp
-     enddo
-   enddo
- enddo
- !$OMP END DO
+#if defined(_OPENMP)
+ stride = OMP_GET_NUM_THREADS()
+ index_ik = OMP_GET_THREAD_NUM() - stride + 1
 #else
- exchange_ij(:,:,:)=0.0_dp
- !$OMP PARALLEL
+ stride = 1
+ index_ik = 0
 #endif
+ index_lj = 1
 
- ! ymbyun 2018/05/25
- ! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
- ! COLLAPSE(2) is replaced by COLLASPE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
- !$OMP DO COLLAPSE(3)
- do ispin=1,nspin
-   do jbf=1,nbf
-     do lbf=1,nbf
-       if( negligible_basispair(lbf,jbf) ) cycle
-       do kbf=1,nbf
-!         if( ABS(p_matrix(kbf,lbf,ispin)) <  1.0e-12_dp ) cycle
-         do ibf=1,nbf
-           if( negligible_basispair(ibf,kbf) ) cycle
-           !
-           ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
-           exchange_ij(ibf,jbf,ispin) = exchange_ij(ibf,jbf,ispin) &
-                      - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
-         enddo
-       enddo
-     enddo
+ ! SCHEDULE(static,1) should not be modified
+ ! else a race competition will occur when performing index_ik = index_ik + stride
+ !$OMP DO REDUCTION(+:exchange_ij) SCHEDULE(static,1)
+ do iint=1,nsize
+   index_ik = index_ik + stride
+   do while( index_ik > npair )
+     index_lj = index_lj + 1
+     index_ik = index_lj + index_ik - npair - 1
    enddo
+
+   ibf = index_basis(1,index_ik)
+   kbf = index_basis(2,index_ik)
+   lbf = index_basis(1,index_lj)
+   jbf = index_basis(2,index_lj)
+
+
+   exchange_ij(ibf,jbf,:) = exchange_ij(ibf,jbf,:) &
+                  - eri_4center(iint) * p_matrix(kbf,lbf,:) / spin_fact
+   if( ibf /= kbf ) then
+     exchange_ij(kbf,jbf,:) = exchange_ij(kbf,jbf,:) &
+                    - eri_4center(iint) * p_matrix(ibf,lbf,:) / spin_fact
+     if( lbf /= jbf ) then
+       exchange_ij(kbf,lbf,:) = exchange_ij(kbf,lbf,:) &
+                      - eri_4center(iint) * p_matrix(ibf,jbf,:) / spin_fact
+     endif
+   endif
+   if( lbf /= jbf ) then
+     exchange_ij(ibf,lbf,:) = exchange_ij(ibf,lbf,:) &
+                    - eri_4center(iint) * p_matrix(kbf,jbf,:) / spin_fact
+   endif
+
+   if( index_ik /= index_lj ) then
+     exchange_ij(lbf,kbf,:) = exchange_ij(lbf,kbf,:) &
+                    - eri_4center(iint) * p_matrix(jbf,ibf,:) / spin_fact
+     if( ibf /= kbf ) then
+       exchange_ij(lbf,ibf,:) = exchange_ij(lbf,ibf,:) &
+                      - eri_4center(iint) * p_matrix(jbf,kbf,:) / spin_fact
+       if( lbf /= jbf ) then
+         exchange_ij(jbf,ibf,:) = exchange_ij(jbf,ibf,:) &
+                        - eri_4center(iint) * p_matrix(lbf,kbf,:) / spin_fact
+       endif
+     endif
+     if( lbf /= jbf ) then
+       exchange_ij(jbf,kbf,:) = exchange_ij(jbf,kbf,:) &
+                      - eri_4center(iint) * p_matrix(lbf,ibf,:) / spin_fact
+     endif
+   endif
+
  enddo
- !$OMP END DO
 
  !$OMP WORKSHARE
- eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
  !$OMP END WORKSHARE
  !$OMP END PARALLEL
 

@@ -8,10 +8,11 @@
 - Third-order perturbation theory (PT3) self-energy (only for spin-restricted calculations)
 - OPENMP parallelization
 - better graphical solution to the QP equation
-- complex wavefunctions and Hamiltonian can be calculated (for real time TDDFT)
+- complex wavefunctions and Hamiltonian can be calculated (for real-time TDDFT)
 - possibility to use different diagonalization routines
 - reduced memory foot print in the 3-center integral set up
 - possibility to read formatted checkpoint files from Gaussian (.fchk) and use the read density matrix
+- speed-up
 - bug fixes
 
 ### Contributors
@@ -55,6 +56,7 @@ Bug fixes
 Use the preprocessor flags -DHAVE_LIBINT_ONEBODY and/or -DHAVE_LIBINT_GRADIENTS
 
 
+-----------------------------------------
 ## What's new in version 1.G
 ### Overview
 Bug fixes, cleaning, and speed-up.
@@ -67,24 +69,27 @@ Bug fixes, cleaning, and speed-up.
 - Speed-up in the semi-local DFT Vxc calculations thanks to the use of batches
 
 
+-----------------------------------------
 ## What's new in version 1.F
 ### Overview
 A few bugs specific to the recent versions of the Intel compilers have been fixed.
 
 
+-----------------------------------------
 ## What's new in version 1.E
 ### Overview
 Bug fix with respect to previous version for high angular momenta (L>5)
 Considerable speed-up in the diagonalization of the RPA matrix thanks to the use of PDSYEVR instead of PDSYEV
 
 
+-----------------------------------------
 ## What's new in version 1.D
 ### Overview
 Simple bug fix with respect to previous version
 
 
+-----------------------------------------
 ## What's new in version 1.C
-
 ### Overview
 This release makes better use of the latest version of LIBINT ( >= v2.2.0).
 Together with some internal refactoring of the code and small bug fixes.
