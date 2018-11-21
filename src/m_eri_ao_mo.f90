@@ -77,17 +77,17 @@ end function eri_eigen_ri_paral
 
 
 !=================================================================
-subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eigenstate_i)
+subroutine calculate_eri_4center_eigen(c_matrix,istate,ijspin,eri_eigenstate_i)
  implicit none
 
- integer,intent(in)     :: nbf,nstate
  integer,intent(in)     :: istate,ijspin
- real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(inout) :: eri_eigenstate_i(nstate,nstate,nstate,nspin)
+ real(dp),intent(in)    :: c_matrix(:,:,:)
+ real(dp),intent(inout) :: eri_eigenstate_i(:,:,:,:)
 !=====
  logical,save         :: disclaimer = .TRUE.
  integer,save         :: istate_previous=0
  integer,save         :: ijspin_previous=0
+ integer              :: nbf,nstate
  integer              :: klspin
  integer              :: ibf,jbf,kbf,lbf
  integer              :: jstate,kstate,lstate
@@ -98,6 +98,9 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
 #endif
 !=====
+
+ nbf    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(c_matrix,DIM=2)
 
  ! Check if the calculation can be skipped
  if( istate_previous == istate .AND. ijspin_previous == ijspin .AND. ANY(ABS(eri_eigenstate_i(:,:,:,:))>1.0e-6_dp) ) then
@@ -111,7 +114,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  call start_clock(timing_eri_4center_eigen)
 
  allocate(eri_tmp1(nbf,nstate))
- call clean_allocate('TMP array',eri_tmp2,nbf,nbf,nbf)
+ call clean_allocate('TMP array',eri_tmp2,nstate,nbf,nbf)
  call clean_allocate('TMP array',eri_tmp3,nbf,nbf,nbf)
 
  eri_tmp3(:,:,:) = 0.0_dp
@@ -122,7 +125,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  ! write this disclaimer only at the first call
  if( disclaimer ) then
    write(stdout,'(1x,a)')        'AO to MO transform using the 8 permutation symmetries'
-   write(stdout,'(1x,a,f9.3,a)') 'Make sure OMP_STACKSIZE is larger than ',REAL(nbf,dp)**3 * 8.0_dp / 1024.0_dp**2,' (Mb)'
+   write(stdout,'(1x,a,f9.3,a)') 'Make sure OMP_STACKSIZE is larger than ',REAL(nbf,dp)**3 * REAL(dp,dp) / 1024.0_dp**2,' (Mb)'
    disclaimer = .FALSE.
  endif
  !$OMP PARALLEL PRIVATE(index_ij,index_kl,ibf,jbf,kbf,lbf,stride)
@@ -177,15 +180,13 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  !$OMP END PARALLEL
 
 
- do lbf=1,nbf
-   call DGEMM('T','N',nstate,nbf,nbf,1.0d0,c_matrix(1,1,ijspin),nbf, &
-                                           eri_tmp3(1,1,lbf),nbf,    &
-                                     0.0d0,eri_tmp2(1,1,lbf),nbf)
- enddo
+ call DGEMM('T','N',nstate,nbf*nbf,nbf,1.0d0,c_matrix(1,1,ijspin),nbf, &
+                                             eri_tmp3(1,1,1),nbf,    &
+                                       0.0d0,eri_tmp2(1,1,1),nstate)
 
  do klspin=1,nspin
    do lbf=1,nbf
-     call DGEMM('N','N',nstate,nstate,nbf,1.0d0,eri_tmp2(1,1,lbf),nbf,    &
+     call DGEMM('N','N',nstate,nstate,nbf,1.0d0,eri_tmp2(1,1,lbf),nstate,    &
                                                 c_matrix(1,1,klspin),nbf, &
                                           0.0d0,eri_tmp3(1,1,lbf),nbf)
    enddo
@@ -216,64 +217,123 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
  real(dp),intent(in)    :: c_matrix(:,:,:)
  integer,intent(in)     :: nstate_min,nstate_max
 !=====
- integer              :: nbf,nstate
+ integer              :: nbf,nstate,nstate_maxmin
+ integer              :: ijspin,klspin
  integer              :: ibf,jbf,kbf,lbf
- integer              :: istate,jstate
- real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
- integer,allocatable  :: id(:)
+ integer              :: istate,jstate,kstate,lstate
+ real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:),eri_tmp1b(:,:)
+ integer(kind=int8)   :: iint
+ integer              :: index_ij,index_kl,stride
+#if defined(_OPENMP)
+ integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
+#endif
 !=====
-
- write(stdout,'(/,1x,a)') 'Calculate all the 4-center MO integrals at once'
-
- if( nspin /= 1 ) call die('calculate_eri_4center_eigen_uks: requires spin-restricted calculation')
 
  nbf    = SIZE(c_matrix,DIM=1)
  nstate = SIZE(c_matrix,DIM=2)
+
+ write(stdout,'(/,1x,a)') 'Calculate all the 4-center MO integrals at once (using the 8 permutation symmetries)'
+ write(stdout,'(1x,a,f9.3,a)') 'Make sure OMP_STACKSIZE is larger than ',REAL(nbf,dp)**3 * 8.0_dp / 1024.0_dp**2,' (Mb)'
+
+ if( nspin /= 1 ) call die('calculate_eri_4center_eigen_uks: requires spin-restricted calculation')
+ ! spin-unrestricted will be coded later
+ ijspin = 1
 
  call start_clock(timing_eri_4center_eigen)
 
  call clean_allocate('4-center MO integrals',eri_4center_eigen_uks, &
                      nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max)
  eri_4center_eigen_uks(:,:,:,:) = 0.0_dp
+ nstate_maxmin = nstate_max - nstate_min + 1
 
- allocate(eri_tmp3(nbf,nbf,nbf),eri_tmp2(nstate_min:nstate_max,nbf,nbf),eri_tmp1(nstate_min:nstate_max,nbf))
-
- allocate(id(nbf))
- forall(ibf=1:nbf)
-   id(ibf) = ibf
- end forall
+ allocate(eri_tmp1(nstate_maxmin,nbf))
+ allocate(eri_tmp1b(nbf,nbf))
+ call clean_allocate('TMP array',eri_tmp2,nstate_maxmin,nbf,nbf)
+ call clean_allocate('TMP array',eri_tmp3,nbf,nbf,nbf)
 
 
  do istate=nstate_min,nstate_max
    if( MODULO( istate - nstate_min , nproc_ortho ) /= rank_ortho ) cycle
 
-   do lbf=1,nbf
-     do kbf=1,nbf
-       do jbf=1,nbf
-         eri_tmp3(jbf,kbf,lbf) = DOT_PRODUCT( c_matrix(1:nbf,istate,1) ,  eri(id(1:nbf),jbf,kbf,lbf) )
-       enddo
+   eri_tmp3(:,:,:) = 0.0_dp
+
+   !$OMP PARALLEL PRIVATE(index_ij,index_kl,ibf,jbf,kbf,lbf,stride)
+#if defined(_OPENMP)
+   stride = OMP_GET_NUM_THREADS()
+   index_ij = OMP_GET_THREAD_NUM() - stride + 1
+#else
+   stride = 1
+   index_ij = 0
+#endif
+   index_kl = 1
+
+   ! SCHEDULE(static,1) should not be modified
+   ! else a race competition will occur when performing index_ij = index_ij + stride
+   !$OMP DO REDUCTION(+:eri_tmp3) SCHEDULE(static,1)
+   do iint=1,nsize
+     index_ij = index_ij + stride
+     do while( index_ij > npair )
+       index_kl = index_kl + 1
+       index_ij = index_kl + index_ij - npair - 1
      enddo
+
+     ibf = index_basis(1,index_ij)
+     jbf = index_basis(2,index_ij)
+     kbf = index_basis(1,index_kl)
+     lbf = index_basis(2,index_kl)
+
+     eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri_4center(iint) * c_matrix(ibf,istate,ijspin)
+     if( ibf /= jbf ) then
+       eri_tmp3(ibf,kbf,lbf) = eri_tmp3(ibf,kbf,lbf) + eri_4center(iint) * c_matrix(jbf,istate,ijspin)
+       if( kbf /= lbf ) then
+         eri_tmp3(ibf,lbf,kbf) = eri_tmp3(ibf,lbf,kbf) + eri_4center(iint) * c_matrix(jbf,istate,ijspin)
+       endif
+     endif
+     if( kbf /= lbf ) then
+       eri_tmp3(jbf,lbf,kbf) = eri_tmp3(jbf,lbf,kbf) + eri_4center(iint) * c_matrix(ibf,istate,ijspin)
+     endif
+     if( index_kl /= index_ij ) then
+       eri_tmp3(lbf,ibf,jbf) = eri_tmp3(lbf,ibf,jbf) + eri_4center(iint) * c_matrix(kbf,istate,ijspin)
+       if( ibf /= jbf ) then
+         eri_tmp3(lbf,jbf,ibf) = eri_tmp3(lbf,jbf,ibf) + eri_4center(iint) * c_matrix(kbf,istate,ijspin)
+         if( kbf /= lbf ) then
+           eri_tmp3(kbf,jbf,ibf) = eri_tmp3(kbf,jbf,ibf) + eri_4center(iint) * c_matrix(lbf,istate,ijspin)
+         endif
+       endif
+       if( kbf /= lbf ) then
+         eri_tmp3(kbf,ibf,jbf) = eri_tmp3(kbf,ibf,jbf) + eri_4center(iint) * c_matrix(lbf,istate,ijspin)
+       endif
+     endif
    enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
 
+   call DGEMM('T','N',nstate_maxmin,nbf*nbf,nbf,1.0d0,c_matrix(1,nstate_min,ijspin),nbf, &
+                                                  eri_tmp3(1,1,1),nbf,             &
+                                            0.0d0,eri_tmp2(1,1,1),nstate_maxmin)
 
-   do lbf=1,nbf
-     eri_tmp2(nstate_min:nstate_max,1:nbf,lbf) = MATMUL( TRANSPOSE(c_matrix(:,nstate_min:nstate_max,1)) , eri_tmp3(:,1:nbf,lbf) )
-   enddo
+   do klspin=1,nspin
+     do jstate=nstate_min,nstate_max
+       eri_tmp1b(:,:) = eri_tmp2(jstate-nstate_min+1,:,1:nbf)
+       call DGEMM('T','N',nstate_maxmin,nbf,nbf,1.0d0,c_matrix(1,nstate_min,klspin),nbf,   &
+                                                                eri_tmp1b(1,1),nbf,                  &
+                                                          0.0d0,eri_tmp1(nstate_min,1),nstate_maxmin)
 
-   do jstate=nstate_min,nstate_max
-     eri_tmp1(nstate_min:nstate_max,1:nbf) = MATMUL( TRANSPOSE(c_matrix(:,nstate_min:nstate_max,1)) ,  eri_tmp2(jstate,:,1:nbf) )
+       call DGEMM('N','N',nstate_maxmin,nstate_maxmin,nbf, &
+                                             1.0d0,eri_tmp1(1,1),nstate_maxmin,              &
+                                                   c_matrix(1,nstate_min,klspin),nbf,  &
+                                             0.0d0,eri_4center_eigen_uks(nstate_min,nstate_min,jstate,istate),nstate_maxmin)
+     enddo
+   enddo !klspin
 
-     eri_4center_eigen_uks(istate,jstate,nstate_min:nstate_max,nstate_min:nstate_max) =   &
-                       MATMUL( eri_tmp1(:,:) , c_matrix(:,nstate_min:nstate_max,1) )
-   enddo
+ enddo !istate
 
- enddo
+ deallocate(eri_tmp1)
+ deallocate(eri_tmp1b)
+ call clean_deallocate('TMP array',eri_tmp2)
+ call clean_deallocate('TMP array',eri_tmp3)
 
  call xsum_ortho(eri_4center_eigen_uks)
-
-
- deallocate(eri_tmp1,eri_tmp2,eri_tmp3)
- deallocate(id)
 
  call stop_clock(timing_eri_4center_eigen)
 

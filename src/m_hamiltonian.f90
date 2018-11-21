@@ -453,6 +453,97 @@ end subroutine setup_exchange
 
 
 !=========================================================================
+subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
+ implicit none
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
+ real(dp),intent(out) :: eexchange
+!=====
+ integer              :: nbf
+ integer              :: ibf,jbf,kbf,lbf,ispin
+ integer(kind=int8)   :: iint
+ integer              :: index_ik,index_lj,stride
+#if defined(_OPENMP)
+ integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
+#endif
+!=====
+
+ call start_clock(timing_exchange)
+
+ write(stdout,*) 'Calculate LR-Exchange term using the 8 permutation symmetries'
+ !$OMP PARALLEL PRIVATE(index_ik,index_lj,ibf,jbf,kbf,lbf,stride)
+ exchange_ij(:,:,:) = 0.0_dp
+
+#if defined(_OPENMP)
+ stride = OMP_GET_NUM_THREADS()
+ index_ik = OMP_GET_THREAD_NUM() - stride + 1
+#else
+ stride = 1
+ index_ik = 0
+#endif
+ index_lj = 1
+
+ ! SCHEDULE(static,1) should not be modified
+ ! else a race competition will occur when performing index_ik = index_ik + stride
+ !$OMP DO REDUCTION(+:exchange_ij) SCHEDULE(static,1)
+ do iint=1,nsize
+   index_ik = index_ik + stride
+   do while( index_ik > npair )
+     index_lj = index_lj + 1
+     index_ik = index_lj + index_ik - npair - 1
+   enddo
+
+   ibf = index_basis(1,index_ik)
+   kbf = index_basis(2,index_ik)
+   lbf = index_basis(1,index_lj)
+   jbf = index_basis(2,index_lj)
+
+
+   exchange_ij(ibf,jbf,:) = exchange_ij(ibf,jbf,:) &
+                  - eri_4center_lr(iint) * p_matrix(kbf,lbf,:) / spin_fact
+   if( ibf /= kbf ) then
+     exchange_ij(kbf,jbf,:) = exchange_ij(kbf,jbf,:) &
+                    - eri_4center_lr(iint) * p_matrix(ibf,lbf,:) / spin_fact
+     if( lbf /= jbf ) then
+       exchange_ij(kbf,lbf,:) = exchange_ij(kbf,lbf,:) &
+                      - eri_4center_lr(iint) * p_matrix(ibf,jbf,:) / spin_fact
+     endif
+   endif
+   if( lbf /= jbf ) then
+     exchange_ij(ibf,lbf,:) = exchange_ij(ibf,lbf,:) &
+                    - eri_4center_lr(iint) * p_matrix(kbf,jbf,:) / spin_fact
+   endif
+
+   if( index_ik /= index_lj ) then
+     exchange_ij(lbf,kbf,:) = exchange_ij(lbf,kbf,:) &
+                    - eri_4center_lr(iint) * p_matrix(jbf,ibf,:) / spin_fact
+     if( ibf /= kbf ) then
+       exchange_ij(lbf,ibf,:) = exchange_ij(lbf,ibf,:) &
+                      - eri_4center_lr(iint) * p_matrix(jbf,kbf,:) / spin_fact
+       if( lbf /= jbf ) then
+         exchange_ij(jbf,ibf,:) = exchange_ij(jbf,ibf,:) &
+                        - eri_4center_lr(iint) * p_matrix(lbf,kbf,:) / spin_fact
+       endif
+     endif
+     if( lbf /= jbf ) then
+       exchange_ij(jbf,kbf,:) = exchange_ij(jbf,kbf,:) &
+                      - eri_4center_lr(iint) * p_matrix(lbf,ibf,:) / spin_fact
+     endif
+   endif
+
+ enddo
+
+ !$OMP WORKSHARE
+ eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
+ !$OMP END WORKSHARE
+ !$OMP END PARALLEL
+
+ call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_longrange
+
+
+!=========================================================================
 subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  implicit none
  real(dp),intent(in)  :: occupation(:,:)
@@ -713,71 +804,6 @@ subroutine setup_exchange_versatile_longrange_ri(occupation,c_matrix,p_matrix,ex
  call stop_clock(timing_exchange)
 
 end subroutine setup_exchange_versatile_longrange_ri
-
-
-!=========================================================================
-subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
- implicit none
- real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: exchange_ij(:,:,:)
- real(dp),intent(out) :: eexchange
-!=====
- integer              :: nbf
- integer              :: ibf,jbf,kbf,lbf,ispin
-!=====
-
- call start_clock(timing_exchange)
-
- write(stdout,*) 'Calculate Long-Range Exchange term'
-
- nbf = SIZE(exchange_ij,DIM=1)
-
-! ymbyun 2018/06/30
-! First touch to reduce NUMA effects using memory affinity
-#ifdef ENABLE_OPENMP_AFFINITY
- !$OMP PARALLEL
- !$OMP DO COLLAPSE(3)
- do ispin=1,nspin
-   do jbf=1,nbf
-     do ibf=1,nbf
-       exchange_ij(ibf,jbf,ispin)=0.0_dp
-     enddo
-   enddo
- enddo
- !$OMP END DO
-#else
- exchange_ij(:,:,:)=0.0_dp
- !$OMP PARALLEL
-#endif
-
- ! ymbyun 2018/06/30
- ! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
- ! COLLAPSE(2) is replaced by COLLAPSE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
- !$OMP DO COLLAPSE(3)
- do ispin=1,nspin
-   do jbf=1,nbf
-     do ibf=1,nbf
-       do lbf=1,nbf
-         do kbf=1,nbf
-           !
-           ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
-           exchange_ij(ibf,jbf,ispin) = exchange_ij(ibf,jbf,ispin) &
-                      - eri_lr(kbf,ibf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
-         enddo
-       enddo
-     enddo
-   enddo
- enddo
- !$OMP END DO
-
- !$OMP WORKSHARE
- eexchange = 0.5_dp * SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
- !$OMP END WORKSHARE
- !$OMP END PARALLEL
-
- call stop_clock(timing_exchange)
-
-end subroutine setup_exchange_longrange
 
 
 !=========================================================================

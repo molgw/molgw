@@ -995,10 +995,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
    kbstate_min = MIN(jstate,bstate)
    kbstate_max = MAX(jstate,bstate)
-   ! ymbyun 2018/05/22
-   ! FB: Could you explain this to me?
-   ! NOTE: calculate_eri_4center_eigen() is OpenMP parallelized without being orphaned.
-   call calculate_eri_4center_eigen(nbf,nstate,c_matrix,kbstate_min,jbspin,eri_eigenstate_klmin)
+   call calculate_eri_4center_eigen(c_matrix,kbstate_min,jbspin,eri_eigenstate_klmin)
 
 
    ! COLLAPSE is used because nspin is much smaller than # of threads.

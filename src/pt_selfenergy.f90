@@ -72,7 +72,7 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
      if( MODULO( istate - (ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
 
      if( .NOT. has_auxil_basis ) then
-       call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate,pqispin,eri_eigenstate_i)
+       call calculate_eri_4center_eigen(c_matrix,istate,pqispin,eri_eigenstate_i)
      endif
 
      fi = occupation(istate,pqispin)
@@ -312,7 +312,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
      if( MODULO( istate - (ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
 
      if( .NOT. has_auxil_basis ) then
-       call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate,pqispin,eri_eigenstate_i)
+       call calculate_eri_4center_eigen(c_matrix,istate,pqispin,eri_eigenstate_i)
      endif
 
      fi = occupation(istate,pqispin)

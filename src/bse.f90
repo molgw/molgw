@@ -85,7 +85,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
        if( .NOT. has_auxil_basis ) then
          jbmin = MIN(jstate,bstate)
          j_is_jbmin = (jbmin == jstate)
-         call calculate_eri_4center_eigen(nbf,nstate,c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
+         call calculate_eri_4center_eigen(c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
        endif
 
        do t_ia=1,m_apb_block
@@ -518,7 +518,7 @@ subroutine build_a_diag_common(nbf,nstate,c_matrix,energy,wpol,a_diag)
    if( .NOT. has_auxil_basis ) then
      jbmin = MIN(jstate,bstate)
      j_is_jbmin = (jbmin == jstate)
-     call calculate_eri_4center_eigen(nbf,nstate,c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
+     call calculate_eri_4center_eigen(c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
    endif
 
    if(has_auxil_basis) then
