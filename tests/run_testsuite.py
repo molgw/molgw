@@ -442,9 +442,12 @@ for iinput in range(ninput):
 fdiff.close()
 
 print('\n\n===============================')
-print('      Test Summary \n')
+print('      Test Suite Summary \n')
 print('      Test files tested:   {:4d} / {:4d}\n'.format(ninput2-test_files_skipped,ninput2))
-print('        Succesful tests:   {:4d} / {:4d}\n'.format(success,tested))
+if success == tested:
+  print('        Succesful tests:   \033[92m\033[1m{:4d}\033[0m / {:4d}\n'.format(success,tested))
+else:
+  print('        Succesful tests:   \033[91m\033[1m{:4d}\033[0m / {:4d}\n'.format(success,tested))
 print('       Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')
 
