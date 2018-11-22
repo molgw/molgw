@@ -608,15 +608,15 @@ CI 3rd excited-state energy,   -14.5113958769   , 0 , 1.0e-7
 CI 4th excited-state energy,   -14.3852527351   , 0 , 1.0e-7
 
 be_ci_self.in             , CI Green's function for boron atom
-SCF Total Energy          ,    -14.5033611239   , 0 , 1.0e-7
-Uncorrelated energy       ,    -14.2836640504   , 0 , 1.0e-7
-Correlation energy        ,     -0.0348561814   , 0 , 1.0e-7
-CI ground-state energy    ,    -14.3185202318   , 0 , 1.0e-7
-CI 1st excited-state energy,   -14.3185202318   , 0 , 1.0e-7
-CI 2nd excited-state energy,   -14.3185202318   , 0 , 1.0e-7
--IP                       ,     -8.285061       , 0 , 1.0e-4
--IP (eV) and Weight       ,      0.892328       , 1 , 1.0e-3
--EA                       ,      6.464563       , 0 , 1.0e-4
+SCF Total Energy          ,    -14.4868202422   , 0 , 1.0e-7
+Uncorrelated energy       ,    -14.4154135368   , 0 , 1.0e-7
+Correlation energy        ,     -0.0232144105   , 0 , 1.0e-7
+CI ground-state energy    ,    -14.4386279473   , 0 , 1.0e-7
+CI 1st excited-state energy,   -14.4386279473   , 0 , 1.0e-7
+CI 2nd excited-state energy,   -14.4386279473   , 0 , 1.0e-7
+-IP (eV) and Weight       ,     -9.117419       , 0 , 1.0e-4
+-IP (eV) and Weight       ,      0.928433       , 1 , 1.0e-3
+-EA                       ,      2.112603       , 0 , 1.0e-4
 
 li2_ci_self.in            , CI Green's function for Li2 limited to single and double excitations, need_scalapack
 SCF Total Energy          ,    -14.8656863400   , 0 , 1.0e-7

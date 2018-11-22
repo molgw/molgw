@@ -1,13 +1,14 @@
 &molgw
  scf='hf'
 
- basis='STO-6G'
+ basis='3-21G'
 
  postscf='ci_selfenergy'
  ci_greens_function='both'
  ci_nstate=1000
  ci_nstate_self=1000
  
+ nvirtualg=6
 
  natom=1
 /

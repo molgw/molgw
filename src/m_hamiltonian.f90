@@ -100,6 +100,7 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
    endif
 
  enddo
+ !$OMP END DO
 
  !$OMP WORKSHARE
  ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM( p_matrix(:,:,:),DIM=3) )
@@ -441,6 +442,7 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
    endif
 
  enddo
+ !$OMP END DO
 
  !$OMP WORKSHARE
  eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
@@ -532,6 +534,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
    endif
 
  enddo
+ !$OMP END DO
 
  !$OMP WORKSHARE
  eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
