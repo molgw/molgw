@@ -386,7 +386,7 @@ else:
 
 
 
-print('Input files found in the test suite: {}'.format(ninput2))
+print('Input files to be executed: {}'.format(ninput2))
 
 
 ###################################
@@ -443,9 +443,8 @@ fdiff.close()
 
 print('\n\n===============================')
 print('      Test Summary \n')
-print('        Succesful tests:   {0:} / {1:}\n'.format(success,tested))
-if test_files_skipped > 0 :
-  print('  Test files not tested:    {:}\n'.format(test_files_skipped))
+print('      Test files tested:   {:4d} / {:4d}\n'.format(ninput2-test_files_skipped,ninput2))
+print('        Succesful tests:   {:4d} / {:4d}\n'.format(success,tested))
 print('       Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')
 
