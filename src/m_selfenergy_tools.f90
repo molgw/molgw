@@ -234,9 +234,9 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
  ! First, a dummy initialization
  energy_qp_g(:,:) = 0.0_dp
  z_weight(:,:,:)  = 0.0_dp
+ energy_fixed_point(:,:,:) = 0.0_dp
 
  ! Then overwrite the interesting energy with the calculated GW one
- !$OMP PARALLEL DO PRIVATE(equation_lhs,equation_rhs)
  do pstate=nsemin,nsemax
 
    if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
@@ -251,7 +251,7 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
      call find_fixed_point(equation_lhs,equation_rhs,energy_fixed_point(:,pstate,pspin),z_weight(:,pstate,pspin))
 
      ! If no reasonable QP energy found, then set E_qp to E_gKS for safety
-     if( z_weight(1,pstate,pspin) < 0.0_dp ) then
+     if( z_weight(1,pstate,pspin) < 1.0e-6_dp ) then
        energy_qp_g(pstate,pspin) = energy0(pstate,pspin)
      else
        energy_qp_g(pstate,pspin) = energy_fixed_point(1,pstate,pspin)
@@ -260,10 +260,10 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
    enddo
 
  enddo
- !$OMP END PARALLEL DO
 
  call xsum_world(energy_qp_g)
  call xsum_world(z_weight)
+ call xsum_world(energy_fixed_point)
 
  ! Master IO node outputs the solution details
  write(stdout,'(/,1x,a)') 'state spin    QP energy (eV)  QP spectral weight'
