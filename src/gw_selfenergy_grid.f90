@@ -316,8 +316,8 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  enddo
  call xsum_world(sigmaigw)
 
+ se%sigmai(0:,:,:) = sigmaigw(0:,:,:)
  forall(iomegas=1:se%nomegai)
-   se%sigmai( iomegas,:,:) =        sigmaigw(iomegas,:,:)
    se%sigmai(-iomegas,:,:) = CONJG( sigmaigw(iomegas,:,:) )
  end forall
 
