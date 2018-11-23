@@ -122,7 +122,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
 #ifdef HAVE_SCALAPACK
    call PDGEMR2D(nauxil_2center,wpol%npole_reso_apb,eri3_t,1,1,desc_eri3_t, &
-                                                  eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
+                                                    eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
 #endif
 
 #ifdef HAVE_SCALAPACK

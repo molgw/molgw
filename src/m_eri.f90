@@ -405,7 +405,14 @@ subroutine identify_negligible_shellpair(basis)
    n2c = number_basis_function_am( 'CART' , amj )
    am2 = basis%shell(jshell)%am
    ng2 = basis%shell(jshell)%ng
+   allocate(alpha2(ng2),coeff2(ng2))
+   alpha2(:) = basis%shell(jshell)%alpha(:)
+   coeff2(:) = basis%shell(jshell)%coeff(:)
+   x02(:) = basis%shell(jshell)%x0(:)
 
+   !$OMP PARALLEL PRIVATE(ami,ni,am1,n1c,ng1,alpha1,coeff1,x01, &
+   !$OMP                  int_shell,integrals)
+   !$OMP DO
    do ishell=1,basis%nshell
      ami = basis%shell(ishell)%am
      if( ami < amj ) cycle
@@ -415,17 +422,12 @@ subroutine identify_negligible_shellpair(basis)
      am1 = basis%shell(ishell)%am
      ng1 = basis%shell(ishell)%ng
 
-     allocate(alpha1(ng1),alpha2(ng2))
-     allocate(coeff1(ng1),coeff2(ng2))
+     allocate(alpha1(ng1),coeff1(ng1))
      alpha1(:) = basis%shell(ishell)%alpha(:)
-     alpha2(:) = basis%shell(jshell)%alpha(:)
      x01(:) = basis%shell(ishell)%x0(:)
-     x02(:) = basis%shell(jshell)%x0(:)
      coeff1(:) = basis%shell(ishell)%coeff(:)
-     coeff2(:) = basis%shell(jshell)%coeff(:)
 
      allocate( int_shell( n1c*n2c*n1c*n2c ) )
-
 
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
@@ -434,7 +436,6 @@ subroutine identify_negligible_shellpair(basis)
                          0.0_C_DOUBLE,int_shell)
 
      call transform_libint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
-
 
      do ibf=1,ni
        do jbf=1,nj
@@ -448,10 +449,12 @@ subroutine identify_negligible_shellpair(basis)
 
      deallocate(integrals)
      deallocate(int_shell)
-     deallocate(alpha1,alpha2)
-     deallocate(coeff1,coeff2)
+     deallocate(alpha1,coeff1)
 
    enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
+   deallocate(alpha2,coeff2)
  enddo
 
  call xand_world(negligible_shellpair)
