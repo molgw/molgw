@@ -30,7 +30,6 @@ This may change some QP energies away from the HOMO-LUMO gap. As the consequence
 - Keyword `read_fchk` allows the user to read a Gaussian formatted file (.fchk)
 and resuse the density matrix `read_fchk='SCF'`, `read_fchk='MP2'`, and `read_fchk='CC'`. Only works for Cartesian Gaussian and make sure to use the exact same basis set in the two codes. Gaussian uses modification of the Dunning basis set for instance. A few are available in MOLGW with `basis='cc-pVQZ_gaussian'`.
 - OPENMP parallelization is now available for the no-RI part with a special care about the reduction of the NUMA effect.
-Compile with `-DENABLE_OPENMP_AFFINITY` and export at runtime `export KMP_AFFINITY=verbose,scatter` for Intel compiler.
 - Hybrid parallelization (OPENMP/MPI) is now available for most the RI code. The coding heavily relies on the availability of threaded BLAS routines.
 When using Intel MKL, please export the corresponding environment variables:
 `export OMP_NUM_THREADS=4` and `export MKL_NUM_THREADS=4`.
@@ -39,7 +38,7 @@ MOLGW has been shown to run efficiently on Intel KNL architecture
 Use keyword `eri3_nbatch`. Setting `eri3_nbatch` to a value larger than 1 will decrease the memory consumption in the 3-center integrals calculation and hopefully will not hit too much on the performance.
 
 ### Changes affecting the compilation
-- Possibility to change the diagonalization subroutines with `-DLAPACK_DIAGO_FLAVOR_`, `-DLAPACK_DIAGO_FLAVOR_X` or `-DLAPACK_DIAGO_FLAVOR_R`.
+- Possibility to change the diagonalization subroutines with `-DLAPACK_DIAGO_FLAVOR_`, `-DLAPACK_DIAGO_FLAVOR_X` or `-DLAPACK_DIAGO_FLAVOR_D`.
 Based on our experience, we advise to use the default routines (with no compilation flag), which are now `(P)DSYEVR` and `(P)ZHEEVR`.
 We find them robust and quick.
 - Fortran compiler needs to be capable of using the polymorphic `class(*)` declarations (Fortran2003).
