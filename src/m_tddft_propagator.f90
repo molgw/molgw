@@ -55,7 +55,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
  real(dp),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(in)        :: occupation(:,:)
 !=====
- integer,parameter          :: BATCH_SIZE = 64
+ integer,parameter          :: BATCH_SIZE = 128
  integer                    :: fixed_atom_list(natom-nprojectile)
  integer                    :: ispin 
  integer                    :: istate,nstate_tmp

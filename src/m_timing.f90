@@ -224,11 +224,11 @@ subroutine output_timing()
  write(stdout,'(a,/)')   '                            Post SCF'
 
  ! Linear response polarization RPA or TDDFT or BSE
+ call output_timing_line('Response function chi on grid',timing_rpa_dynamic,1)
  call output_timing_line('Response function chi',timing_pola,1)
  call output_timing_line('3-center AO to MO transform',timing_eri_3center_eigen,2)
  call output_timing_line('4-center AO to MO transform',timing_eri_4center_eigen,2)
  call output_timing_line('Static polarization for BSE',timing_rpa_static,2)
- call output_timing_line('Dynamic polarization',timing_rpa_dynamic,2)
  call output_timing_line('Build 2-particle Hamiltonian',timing_build_h2p,2)
  call output_timing_line('RPA part',timing_build_common,3)
  call output_timing_line('TDDFT part',timing_build_tddft,3)
