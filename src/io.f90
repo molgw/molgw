@@ -106,13 +106,13 @@ subroutine header()
  call die('Code compiled with MPI, but without SCALAPACK. This is not permitted')
 #endif
 #if defined(LAPACK_DIAGO_FLAVOR_)
- write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEV, ZHEEV'
+ write(stdout,*) 'Perform diagonalizations with (Sca)LAPACK routines: (P)DSYEV, (P)ZHEEV'
 #elif defined(LAPACK_DIAGO_FLAVOR_D)
- write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEVD, ZHEEVD'
+ write(stdout,*) 'Perform diagonalizations with (Sca)LAPACK routines: (P)DSYEVD, (P)ZHEEVD'
 #elif defined(LAPACK_DIAGO_FLAVOR_X)
- write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEVX, ZHEEVX'
+ write(stdout,*) 'Perform diagonalizations with (Sca)LAPACK routines: (P)DSYEVX, (P)ZHEEVX'
 #else
- write(stdout,*) 'Perform diagonalizations with LAPACK routines: DSYEVR, ZHEEVR'
+ write(stdout,*) 'Perform diagonalizations with (Sca)LAPACK routines: (P)DSYEVR, (P)ZHEEVR'
 #endif
 
 

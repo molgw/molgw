@@ -310,7 +310,6 @@ subroutine diagonalize_dp(matrix,eigval,eigvec)
  call DSYEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
  liwork = iwork(1)
  deallocate(iwork)
- allocate(iwork(1))
 #else
  allocate(iwork(1))
  allocate(matrix_tmp(nmat,nmat))

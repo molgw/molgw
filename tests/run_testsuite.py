@@ -275,7 +275,7 @@ have_libint_onebody   = 'Running with external LIBINT calculation of the one-bod
 have_libint_gradients = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
 with open(tmpfolder+'/fake.out','r') as ffake:
   for line in ffake:
-    if 'Perform diagonalizations with LAPACK routines' in line:
+    if 'Perform diagonalizations with (Sca)LAPACK routines' in line:
       lapack_diago_flavor = line.split(':')[1].strip()
 print('MOLGW compilation details:')
 print('                   OPENMP: {}'.format(have_openmp) )
@@ -284,7 +284,7 @@ print('                SCALAPACK: {}'.format(have_scalapack) )
 print('                    LIBXC: {}'.format(have_libxc) )
 print('            1-body LIBINT: {}'.format(have_libint_onebody) )
 print('         gradients LIBINT: {}'.format(have_libint_gradients) )
-print('        (SCA)LAPACK diago: {}'.format(lapack_diago_flavor) )
+print('        (Sca)LAPACK diago: {}'.format(lapack_diago_flavor) )
 print()
 
 os.remove(tmpfolder+'/fake.out')
@@ -445,9 +445,9 @@ print('\n\n===============================')
 print('      Test Suite Summary \n')
 print('      Test files tested:   {:4d} / {:4d}\n'.format(ninput2-test_files_skipped,ninput2))
 if success == tested:
-  print('        Succesful tests:   \033[92m\033[1m{:4d}\033[0m / {:4d}\n'.format(success,tested))
+  print('        Succesful tests:   \033[92m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
 else:
-  print('        Succesful tests:   \033[91m\033[1m{:4d}\033[0m / {:4d}\n'.format(success,tested))
+  print('        Succesful tests:   \033[91m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
 print('       Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')
 

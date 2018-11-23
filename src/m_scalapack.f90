@@ -906,6 +906,10 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
                 ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
                 eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
                 ifail,iclustr,gap,info)
+#elif defined(LAPACK_DIAGO_FLAVOR_D)
+   liwork = -1
+   allocate(iwork(1))
+   call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
 #else
    liwork = -1
    allocate(iwork(1))
@@ -930,6 +934,11 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
                 eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
                 ifail,iclustr,gap,info)
    deallocate(iwork)
+#elif defined(LAPACK_DIAGO_FLAVOR_D)
+   liwork = iwork(1)
+   deallocate(iwork)
+   allocate(iwork(liwork))
+   call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
 #else
    liwork = iwork(1)
    deallocate(iwork)

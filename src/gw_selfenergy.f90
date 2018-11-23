@@ -391,19 +391,20 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  type(spectral_function),intent(in)  :: wpol
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer               :: pstate,pspin
- integer               :: iomega
- integer               :: istate,ipole
- real(dp)              :: fact_full_i,fact_empty_i
- integer               :: desc_wauxil(NDEL),desc_wsd(NDEL)
- integer               :: desc_3auxil(NDEL),desc_3sd(NDEL)
- integer               :: desc_bra(NDEL)
- integer               :: mlocal,nlocal
- integer               :: ilocal,jlocal,jglobal
- integer               :: info
- real(dp),allocatable  :: eri_3tmp_auxil(:,:),eri_3tmp_sd(:,:)
- real(dp),allocatable  :: wresidue_sd(:,:)
- real(dp),allocatable  :: bra(:,:)
+ integer                 :: pstate,pspin
+ integer                 :: iomega
+ integer                 :: istate,ipole
+ real(dp)                :: fact_full_i,fact_empty_i
+ integer                 :: desc_wauxil(NDEL),desc_wsd(NDEL)
+ integer                 :: desc_3auxil(NDEL),desc_3sd(NDEL)
+ integer                 :: desc_bra(NDEL)
+ integer                 :: mlocal,nlocal
+ integer                 :: ilocal,jlocal,jglobal
+ integer                 :: info
+ real(dp),allocatable    :: eri_3tmp_auxil(:,:),eri_3tmp_sd(:,:)
+ real(dp),allocatable    :: wresidue_sd(:,:)
+ real(dp),allocatable    :: bra(:,:)
+ complex(dp),allocatable :: sigmagw(:,:,:)
 !=====
 
  if(.NOT. has_auxil_basis) return
@@ -449,8 +450,9 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
  ! TODO maybe I should deallocate here wpol%residue_left
 
-
- se%sigma(:,:,:)  = 0.0_dp
+ ! Temporary array sigmagw is created because OPENMP does not want to work directly with se%sigma
+ allocate(sigmagw,SOURCE=se%sigma)
+ sigmagw(:,:,:)  = 0.0_dp
 
  do pspin=1,nspin
    do pstate=nsemin,nsemax
@@ -502,6 +504,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
 
 
+     !$OMP PARALLEL PRIVATE(istate,ipole,fact_full_i,fact_empty_i)
+     !$OMP DO REDUCTION(+:sigmagw)
      do jlocal=1,nlocal
        istate = INDXL2G(jlocal,block_col,ipcol_sd,first_col,npcol_sd) + ncore_G
        do ilocal=1,mlocal
@@ -515,14 +519,14 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
          fact_full_i   = occupation(istate,pspin) / spin_fact
          fact_empty_i = (spin_fact - occupation(istate,pspin)) / spin_fact
 
-         do iomega=-se%nomega,se%nomega
-           se%sigma(iomega,pstate,pspin) = se%sigma(iomega,pstate,pspin) &
-                    + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    &
-                      * ( fact_full_i  / ( se%energy0(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
-                        + fact_empty_i / ( se%energy0(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
-         enddo !iomega
+         sigmagw(:,pstate,pspin) = sigmagw(:,pstate,pspin) &
+                  + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    &
+                    * ( fact_full_i  / ( se%energy0(pstate,pspin) + se%omega(:) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
+                      + fact_empty_i / ( se%energy0(pstate,pspin) + se%omega(:) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
        enddo  !ilocal -> ipole
      enddo !jlocal -> istate
+     !$OMP END DO
+     !$OMP END PARALLEL
 
      call clean_deallocate('Temporary array',bra)
 
@@ -530,8 +534,10 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  enddo !pspin
 
  ! Sum up the contribution from different poles (= different procs)
- call xsum_world(se%sigma)
+ call xsum_world(sigmagw)
 
+ se%sigma(:,:,:) = sigmagw(:,:,:)
+ deallocate(sigmagw)
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 

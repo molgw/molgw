@@ -356,6 +356,9 @@
      $        DESCX, DDUM, -1,
      $        IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
          DEALLOCATE(ICLUSTR,GAP)
+#elif defined(LAPACK_DIAGO_FLAVOR_D)
+         CALL PDSYEVD( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
+     $        JX, DESCX, DDUM, -1, IWORK, -1, ITMP )
 #else
          CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
      $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, DDUM, -1,
@@ -433,6 +436,9 @@
      $      DESCX, WORK( INDWORK ), LLWORK,
      $      IWORK, LIWORK, IFAIL, ICLUSTR, GAP, ITMP )
       DEALLOCATE(ICLUSTR,GAP)
+#elif defined(LAPACK_DIAGO_FLAVOR_D)
+      CALL PDSYEVD( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
+     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
 #else
       CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
      $     1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
