@@ -25,7 +25,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin)
- real(dp),intent(in)                   :: c_matrix(nstate,basis%nbf,nspin)
+ real(dp),intent(in)                   :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(out)                  :: erpa
  type(spectral_function),intent(inout) :: wpol
 !=====
@@ -212,7 +212,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  type(basis_set),intent(in)          :: basis
  integer,intent(in)                  :: nstate
  real(dp),intent(in)                 :: energy(nstate,nspin)
- real(dp),intent(in)                 :: c_matrix(nstate,basis%nbf,nspin)
+ real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in)  :: wpol
  type(selfenergy_grid),intent(inout) :: se
 !=====

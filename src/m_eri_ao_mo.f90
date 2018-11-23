@@ -410,7 +410,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
  do klspin=1,nspin
 
    do lstate=nstate_min_,nstate_max_
-     if( MODULO( lstate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( lstate - nstate_min_ , nproc_ortho ) /= rank_ortho ) cycle
 
      eri_3center_tmp_l(:,:) = 0.0_dp
 

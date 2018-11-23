@@ -506,11 +506,11 @@ atom    1   H             ,      -0.692180     , 0 , 1.0e-3
 atom    2   H             ,       0.692180     , 0 , 1.0e-3
 
 h2o_pade.in               , GW calculation with Pade analytic continuation
-SCF Total Energy          , -76.3799206260     , 0 , 1.0e-7
-RPA correlation energy    ,  -0.3844178479     , 0 , 1.0e-7
-RPA Total energy          , -76.4398964441     , 0 , 1.0e-7
-GW HOMO energy            , -12.131072         , 0 , 1.0e-4
-GW LUMO energy            ,   0.859763         , 0 , 1.0e-4
+SCF Total Energy          , -76.3797751143     , 0 , 1.0e-7
+RPA correlation energy    ,  -0.3839751863     , 0 , 1.0e-7
+RPA Total energy          , -76.4392995158     , 0 , 1.0e-7
+GW HOMO energy            , -12.131040         , 0 , 1.0e-4
+GW LUMO energy            ,   0.883074         , 0 , 1.0e-4
 
 h2o_mp3.in                , MP3 total energy with RI
 SCF Total Energy          , -76.0262395455     , 0 , 1.0e-7

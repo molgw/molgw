@@ -4,6 +4,7 @@
  basis='aug-cc-pVTZ'
  auxil_basis='aug-cc-pVTZ-RI'
  eta=1.0e-2
+ min_overlap = 5.0e-4
 
  postscf='g0w0_iomega'
  frozencore='yes'
