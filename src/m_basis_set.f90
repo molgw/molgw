@@ -81,7 +81,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  character(len=100),intent(in) :: ecp_basis_name(natom_basis)
  type(basis_set),intent(out)   :: basis
 !=====
- character(len=100)            :: basis_filename
+ character(len=200)            :: basis_filename
  integer                       :: ibf,jbf,ng,ig
  integer                       :: ishell,ishell_file
  integer                       :: jbf_cart
