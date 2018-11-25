@@ -7,7 +7,7 @@
  basis_path='../../basis/'
 
  natom=2
- alpha_mixing=0.7
+ alpha_mixing=0.5
  mixing_scheme='simple'
 
  postscf='gw'

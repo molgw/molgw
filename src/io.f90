@@ -7,7 +7,7 @@
 !
 !=========================================================================
 subroutine header()
-#ifdef FORTRAN2008
+#if defined(FORTRAN2008)
  use,intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 #endif
  use m_definitions
@@ -17,13 +17,12 @@ subroutine header()
  use m_libint_tools,only: libint_init
  implicit none
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
  integer,external  :: OMP_get_max_threads
- character(len=64) :: msg
 #endif
  character(len=40)   :: git_sha
  integer             :: values(8)
-#ifdef FORTRAN2008
+#if defined(FORTRAN2008)
  integer             :: nchar,kchar,lchar
  character(len=1024) :: chartmp
 #endif
@@ -41,11 +40,11 @@ subroutine header()
 
  write(stdout,'(1x,70("="))')
  write(stdout,'(/,/,12x,a,/)') 'Welcome to the fascinating world of MOLGW'
- write(stdout,'(24x,a)')       'version 1.H'
+ write(stdout,'(24x,a)')       'version 2.A'
  write(stdout,'(/,/,1x,70("="))')
 
  write(stdout,'(/,a,a,/)') ' MOLGW commit git SHA: ',git_sha
-#ifdef FORTRAN2008
+#if defined(FORTRAN2008)
  write(stdout,'(1x,a,a)')    'compiled with ',compiler_version()
  write(stdout,'(1x,a)')      'with options: '
  chartmp = compiler_options()
@@ -80,8 +79,8 @@ subroutine header()
  end select
 
 
- write(stdout,'(/,1x,a)') 'Linking options:'
-#ifdef HAVE_LIBXC
+ write(stdout,'(/,1x,a)') 'Preprocessing and runtime options:'
+#if defined(HAVE_LIBXC)
 ! call xc_f90_version(values(1),values(2))
 ! write(chartmp,'(i2,a,i2)') values(1),'.',values(2)
 !
@@ -94,7 +93,7 @@ subroutine header()
 
  ! Parallelization details
 #if defined(_OPENMP)
- write(stdout,'(1x,a,i4)') 'OPENMP parallelization activated with max threads count: ',OMP_get_max_threads()
+ write(stdout,'(1x,a,i4)') 'Running with OPENMP parallelization activated with max threads count: ',OMP_get_max_threads()
 #endif
 #if defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
  write(stdout,*) 'Running with MPI'
@@ -106,12 +105,14 @@ subroutine header()
 #if !defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
  call die('Code compiled with MPI, but without SCALAPACK. This is not permitted')
 #endif
-#if defined(LAPACK_DIAGO_FLAVOR_D)
- write(stdout,*) 'Perform diagonalizations with LAPACK routines DSYEVD, ZHEEVD'
-#elif defined(LAPACK_DIAGO_FLAVOR_R)
- write(stdout,*) 'Perform diagonalizations with LAPACK routines DSYEVR, ZHEEVR'
+#if defined(LAPACK_DIAGO_FLAVOR_)
+ write(stdout,*) 'Perform diagonalizations with (Sca)LAPACK routines: (P)DSYEV, (P)ZHEEV'
+#elif defined(LAPACK_DIAGO_FLAVOR_D)
+ write(stdout,*) 'Perform diagonalizations with (Sca)LAPACK routines: (P)DSYEVD, (P)ZHEEVD'
+#elif defined(LAPACK_DIAGO_FLAVOR_X)
+ write(stdout,*) 'Perform diagonalizations with (Sca)LAPACK routines: (P)DSYEVX, (P)ZHEEVX'
 #else
- write(stdout,*) 'Perform diagonalizations with LAPACK routines DSYEV, ZHEEV (standard)'
+ write(stdout,*) 'Perform diagonalizations with (Sca)LAPACK routines: (P)DSYEVR, (P)ZHEEVR'
 #endif
 
 
@@ -129,15 +130,15 @@ subroutine header()
 #if defined(HAVE_LIBINT_ONEBODY)
  if( .NOT. has_onebody ) &
    call die('MOLGW compiled with LIBINT one-body terms, however the LIBINT compilation does not calculate the one-body terms')
- write(stdout,'(1x,a)')  'Code compiled with external LIBINT calculation of the one-body operators (faster)'
+ write(stdout,'(1x,a)')  'Running with external LIBINT calculation of the one-body operators (faster)'
 #else
- write(stdout,'(1x,a)')  'Code compiled with internal calculation of the one-body operators (slower)'
+ write(stdout,'(1x,a)')  'Running with internal calculation of the one-body operators (slower)'
 #endif
 
 #if defined(HAVE_LIBINT_GRADIENTS)
  if( .NOT. has_gradient ) &
    call die('LIBINT compilation does not have the first derivative')
- write(stdout,'(1x,a)') 'Code compiled with external LIBINT calculation of the gradients of the integrals'
+ write(stdout,'(1x,a)') 'Running with external LIBINT calculation of the gradients of the integrals'
 #endif
  write(stdout,*)
  write(stdout,*)
@@ -676,7 +677,7 @@ subroutine plot_cube_wfn(rootname,nstate,basis,occupation,c_matrix)
  endif
  istate1 = MAX(istate1,1)
  istate2 = MIN(istate2,nstate)
- 
+
  allocate(phi(istate1:istate2,nspin))
  write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
@@ -826,7 +827,7 @@ subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,tim
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  call start_clock(timing_print_line_rho_tddft)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -842,10 +843,10 @@ subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,tim
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc(ispin) = istate
      if( istate > nocc_max ) nocc_max = istate
-   enddo 
+   enddo
    if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
      call die('Not all occupied states selected in the plot_rho_traj_bunch subroutine')
-   endif 
+   endif
  enddo
 
  inquire(file='manual_dens_traj',exist=file_exists)
@@ -856,7 +857,7 @@ subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,tim
    read(linefile,*) point_c(:)
    read(linefile,*) nr
    read(linefile,*) nh
-  
+
    close(linefile)
  else
    point_a = (/ 0.0_dp,  0.0_dp, -10.0_dp  /)
@@ -864,7 +865,7 @@ subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,tim
    point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
    call issue_warning('plot_rho_traj_bunch: manual_dens_traj_tddft file was not found')
  endif
-! point_b(:) = point_b(:) / bohr_A 
+! point_b(:) = point_b(:) / bohr_A
 ! point_a(:) = point_a(:) / bohr_A
 ! In analogy with cube file, this file is also in Bohr
  u(:) = point_b(:) - point_a(:)
@@ -873,7 +874,7 @@ subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,tim
 
  do ispin=1,nspin
    write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_integral_density.dat'
-   open(newunit=line_rho(ispin),file=file_name)                
+   open(newunit=line_rho(ispin),file=file_name)
    write(line_rho(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
    write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
  enddo
@@ -884,7 +885,7 @@ subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,tim
 
      a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*ih/nh
      b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*ih/nh
- 
+
      integral=0.d0
 !     write(stdout,*) ih
      do ir=0,nr
@@ -955,7 +956,7 @@ end subroutine plot_rho_traj_bunch
 ! real(dp)                   :: integral, deltar
 !!=====
 !
-! 
+!
 ! call start_clock(timing_print_line_rho_tddft)
 !
 ! gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -971,10 +972,10 @@ end subroutine plot_rho_traj_bunch
 !     if( occupation(istate,ispin) < completely_empty)  cycle
 !     nocc(ispin) = istate
 !     if( istate > nocc_max ) nocc_max = istate
-!   enddo 
+!   enddo
 !   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
 !     call die('Not all occupied states selected in the plot_rho_traj_bunch subroutine')
-!   endif 
+!   endif
 ! enddo
 !
 ! inquire(file='manual_dens_traj',exist=file_exists)
@@ -985,7 +986,7 @@ end subroutine plot_rho_traj_bunch
 !   read(linefile,*) point_c(:)
 !   read(linefile,*) nr
 !   read(linefile,*) nh
-!  
+!
 !   close(linefile)
 ! else
 !   point_a = (/ 0.0_dp,  0.0_dp, -10.0_dp  /)
@@ -993,7 +994,7 @@ end subroutine plot_rho_traj_bunch
 !   point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
 !   call issue_warning('plot_rho_traj_bunch: manual_dens_traj_tddft file was not found')
 ! endif
-!! point_b(:) = point_b(:) / bohr_A 
+!! point_b(:) = point_b(:) / bohr_A
 !! point_a(:) = point_a(:) / bohr_A
 !! In analogy with cube file, this file is also in Bohr
 ! u(:) = point_b(:) - point_a(:)
@@ -1011,7 +1012,7 @@ end subroutine plot_rho_traj_bunch
 !
 !     a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*ih/nh
 !     b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*ih/nh
-! 
+!
 !!     write(stdout,*) ih
 !     do ir=0,nr
 !       rr(:) = a_cur(:) + ( b_cur(:) - a_cur(:) ) * ir / nr
@@ -1027,7 +1028,7 @@ end subroutine plot_rho_traj_bunch
 ! if( .NOT. is_iomaster ) return
 ! do ispin=1,nspin
 !   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_integral_density.dat'
-!   open(newunit=line_rho(ispin),file=file_name)                
+!   open(newunit=line_rho(ispin),file=file_name)
 !   write(line_rho(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
 !   write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
 ! enddo
@@ -1119,7 +1120,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
    read(linefile,*) point_c(:)
    read(linefile,*) nr
    read(linefile,*) nh
-  
+
    close(linefile)
  else
    point_a = (/ 0.0_dp,  0.0_dp, -10.0_dp  /)
@@ -1140,7 +1141,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
    call issue_warning('plot_rho_traj_bunch_contrib: manual_dens_traj_states file was not found')
  endif
 
-! point_b(:) = point_b(:) / bohr_A 
+! point_b(:) = point_b(:) / bohr_A
 ! point_a(:) = point_a(:) / bohr_A
 ! In analogy with cube file, this file is also in Bohr
  u(:) = point_b(:) - point_a(:)
@@ -1155,14 +1156,14 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  enddo
 
  deltar=NORM2( point_b(:) - point_a(:) )/nr
- path_length=NORM2(point_b(:)-point_a(:)) 
+ path_length=NORM2(point_b(:)-point_a(:))
  do ispin=1,nspin
 
    do ih=0,nh
 
      a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*REAL(ih,dp)/REAL(nh,dp)
      b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*REAL(ih,dp)/REAL(nh,dp)
- 
+
      integral=0.0_dp
 
      do ir=0,nr
@@ -1243,7 +1244,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  call start_clock(timing_print_cube_rho_tddft)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -1259,10 +1260,10 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc(ispin) = istate
      if( istate > nocc_max ) nocc_max = istate
-   enddo 
+   enddo
    if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
      call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-   endif 
+   endif
  enddo
 
  istate1= 1
@@ -1287,7 +1288,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  else
    i_max_atom=natom
  endif
- 
+
  xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
  xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
  ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,:) )) - length
@@ -1300,9 +1301,9 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
  do ispin=1,nspin
    write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'.cube'
-   open(newunit=ocuberho(ispin),file=file_name)                
+   open(newunit=ocuberho(ispin),file=file_name)
    write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
-   write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin   
+   write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
@@ -1313,11 +1314,11 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  enddo
 
  do ix=1,nx
-   rr(1) = ( xmin + (ix-1)*dx ) 
+   rr(1) = ( xmin + (ix-1)*dx )
    do iy=1,ny
-     rr(2) = ( ymin + (iy-1)*dy ) 
+     rr(2) = ( ymin + (iy-1)*dy )
      do iz=1,nz
-       rr(3) = ( zmin + (iz-1)*dz ) 
+       rr(3) = ( zmin + (iz-1)*dz )
 
        call calculate_basis_functions_r(basis,rr,basis_function_r)
 
@@ -1402,10 +1403,10 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc(ispin) = istate
      if( istate > nocc_max ) nocc_max = istate
-   enddo 
+   enddo
    if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
      call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-   endif 
+   endif
  enddo
 
  istate1= 1
@@ -1431,7 +1432,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
  else
    i_max_atom=natom
  endif
- 
+
  xmin =MINVAL( xatom(1,1:i_max_atom) ) - length
  xmax =MAXVAL( xatom(1,1:i_max_atom) ) + length
  ymin =MINVAL( xatom(2,1:i_max_atom) ) - length
@@ -1458,16 +1459,16 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
    charge_layer(:)=0.0_dp
    do iz=1,nz
      if(MODULO(iz-1,nproc_world)/=rank_world) cycle
-     rr(3) = ( zmin + (iz-1)*dz ) 
+     rr(3) = ( zmin + (iz-1)*dz )
      do ix=1,nx
-       rr(1) = ( xmin + (ix-1)*dx ) 
+       rr(1) = ( xmin + (ix-1)*dx )
        do iy=1,ny
-         rr(2) = ( ymin + (iy-1)*dy ) 
-   
+         rr(2) = ( ymin + (iy-1)*dy )
+
          if( (rr(1)**2+rr(2)**2)**0.5_dp <= r_disc ) then
            call calculate_basis_functions_r(basis,rr,basis_function_r)
            phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
-           charge_layer(iz)=charge_layer(iz)+SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact 
+           charge_layer(iz)=charge_layer(iz)+SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact
          end if
 
        enddo
@@ -1538,7 +1539,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  call start_clock(timing_print_cube_rho_tddft)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -1554,10 +1555,10 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc(ispin) = istate
      if( istate > nocc_max ) nocc_max = istate
-   enddo 
+   enddo
    if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
      call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-   endif 
+   endif
  enddo
 
  istate1= 1
@@ -1573,7 +1574,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
  else
    i_max_atom=natom
  endif
- 
+
  xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
  xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
  ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,:) )) - length
@@ -1585,11 +1586,11 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
  dz = (zmax-zmin)/REAL(nz,dp)
 
  do ix=1,nx
-   rr(1) = ( xmin + (ix-1)*dx ) 
+   rr(1) = ( xmin + (ix-1)*dx )
    do iy=1,ny
-     rr(2) = ( ymin + (iy-1)*dy ) 
+     rr(2) = ( ymin + (iy-1)*dy )
      do iz=1,nz
-       rr(3) = ( zmin + (iz-1)*dz ) 
+       rr(3) = ( zmin + (iz-1)*dz )
 
        call calculate_basis_functions_r(basis,rr,basis_function_r)
 
@@ -1676,7 +1677,7 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  call start_clock(timing_print_cube_rho_tddft)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -1692,10 +1693,10 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc(ispin) = istate
      if( istate > nocc_max ) nocc_max = istate
-   enddo 
+   enddo
    if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
      call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-   endif 
+   endif
  enddo
 
  istate1= 1
@@ -1711,7 +1712,7 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
  else
    i_max_atom=natom
  endif
- 
+
  xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
  xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
  ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,:) )) - length
@@ -1724,9 +1725,9 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
 
  do ispin=1,nspin
    write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'dens_diff.cube'
-   open(newunit=ocuberho(ispin),file=file_name)                
+   open(newunit=ocuberho(ispin),file=file_name)
    write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
-   write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin   
+   write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
@@ -1737,11 +1738,11 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
  enddo
 
  do ix=1,nx
-   rr(1) = ( xmin + (ix-1)*dx ) 
+   rr(1) = ( xmin + (ix-1)*dx )
    do iy=1,ny
-     rr(2) = ( ymin + (iy-1)*dy ) 
+     rr(2) = ( ymin + (iy-1)*dy )
      do iz=1,nz
-       rr(3) = ( zmin + (iz-1)*dz ) 
+       rr(3) = ( zmin + (iz-1)*dz )
 
        call calculate_basis_functions_r(basis,rr,basis_function_r)
 
@@ -1811,7 +1812,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  call start_clock(timing_print_line_rho_tddft)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -1827,10 +1828,10 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc(ispin) = istate
      if( istate > nocc_max ) nocc_max = istate
-   enddo 
+   enddo
    if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
      call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-   endif 
+   endif
  enddo
 
  inquire(file='manual_plot_rho_tddft',exist=file_exists)
@@ -1844,7 +1845,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
    point_b = (/ 5.0_dp, 5.0_dp, 5.0_dp  /)
    call issue_warning('plot_line_wfn_cmplx: manual_plot_rho_tddft file was not found')
  endif
-! point_b(:) = point_b(:) / bohr_A 
+! point_b(:) = point_b(:) / bohr_A
 ! point_a(:) = point_a(:) / bohr_A
 ! In analogy with cube file, this file is also in Bohr
  u(:) = point_b(:) - point_a(:)
@@ -1853,7 +1854,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 
  do ispin=1,nspin
    write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_line_density.dat'
-   open(newunit=line_rho(ispin),file=file_name)                
+   open(newunit=line_rho(ispin),file=file_name)
    write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
    write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
  enddo
@@ -1865,7 +1866,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 
    do ispin=1,nspin
      phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
-     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:,ispin) ) 
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:,ispin) )
    enddo
  enddo
 
@@ -1877,7 +1878,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 
  call stop_clock(timing_print_line_rho_tddft)
 
-end subroutine plot_rho_cmplx 
+end subroutine plot_rho_cmplx
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
@@ -1927,7 +1928,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  call start_clock(timing_print_line_rho_tddft)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -1943,10 +1944,10 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc(ispin) = istate
      if( istate > nocc_max ) nocc_max = istate
-   enddo 
+   enddo
    if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
      call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-   endif 
+   endif
  enddo
 
  inquire(file='manual_dens_traj_tddft',exist=file_exists)
@@ -1957,7 +1958,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
    read(linefile,*) point_c(:)
    read(linefile,*) nr
    read(linefile,*) nh
-  
+
    close(linefile)
  else
    point_a = (/ 0.0_dp,  0.0_dp, -10.0_dp  /)
@@ -1965,7 +1966,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
    point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
    call issue_warning('plot_line_wfn_cmplx: manual_dens_traj_tddft file was not found')
  endif
-! point_b(:) = point_b(:) / bohr_A 
+! point_b(:) = point_b(:) / bohr_A
 ! point_a(:) = point_a(:) / bohr_A
 ! In analogy with cube file, this file is also in Bohr
  u(:) = point_b(:) - point_a(:)
@@ -1974,7 +1975,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
 
  do ispin=1,nspin
    write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_integral_density.dat'
-   open(newunit=line_rho(ispin),file=file_name)                
+   open(newunit=line_rho(ispin),file=file_name)
    write(line_rho(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
    write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
  enddo
@@ -1985,7 +1986,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
 
      a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*ih/nh
      b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*ih/nh
- 
+
      integral=0.d0
 !     write(stdout,*) ih
      do ir=0,nr

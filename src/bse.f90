@@ -85,7 +85,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
        if( .NOT. has_auxil_basis ) then
          jbmin = MIN(jstate,bstate)
          j_is_jbmin = (jbmin == jstate)
-         call calculate_eri_4center_eigen(nbf,nstate,c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
+         call calculate_eri_4center_eigen(c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
        endif
 
        do t_ia=1,m_apb_block
@@ -172,6 +172,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  !
  ! Set up the diagonal of A-B in the RPA approximation
  !
+ !$OMP PARALLEL DO PRIVATE(istate,astate,iaspin)
  do t_ia_global=1,nmat
    istate = wpol%transition_table_apb(1,t_ia_global)
    astate = wpol%transition_table_apb(2,t_ia_global)
@@ -180,7 +181,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
    amb_diag_rpa(t_ia_global) = energy(astate,iaspin) - energy(istate,iaspin)
 
  enddo
-
+ !$OMP END PARALLEL DO
 
  if(ALLOCATED(eri_eigenstate_jbmin)) deallocate(eri_eigenstate_jbmin)
 
@@ -517,7 +518,7 @@ subroutine build_a_diag_common(nbf,nstate,c_matrix,energy,wpol,a_diag)
    if( .NOT. has_auxil_basis ) then
      jbmin = MIN(jstate,bstate)
      j_is_jbmin = (jbmin == jstate)
-     call calculate_eri_4center_eigen(nbf,nstate,c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
+     call calculate_eri_4center_eigen(c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
    endif
 
    if(has_auxil_basis) then
@@ -639,7 +640,9 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
      call xsum_grid(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
+       !$OMP PARALLEL WORKSHARE
        apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
+       !$OMP END PARALLEL WORKSHARE
      endif
      deallocate(apb_block)
 

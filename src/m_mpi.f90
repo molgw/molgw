@@ -87,18 +87,11 @@ subroutine init_mpi_world()
 #endif
 
 
-#ifndef DEBUG
  if( rank_world /= iomaster ) then
    is_iomaster = .FALSE.
    close(stdout)
    open(unit=stdout,file='/dev/null')
  endif
-#else
- if( rank_world /= iomaster ) then
-   is_iomaster = .FALSE.
-   call set_standard_output(2000+rank_world)
- endif
-#endif
 
 
 end subroutine init_mpi_world

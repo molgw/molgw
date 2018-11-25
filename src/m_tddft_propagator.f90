@@ -56,7 +56,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  real(dp),intent(in)        :: occupation(:,:)
  logical,intent(in)         :: restart_tddft_is_correct
 !=====
- integer,parameter          :: BATCH_SIZE = 64
+ integer,parameter          :: BATCH_SIZE = 128
  integer                    :: fixed_atom_list(natom-nprojectile)
  integer                    :: ispin 
  integer                    :: istate,nstate_tmp

@@ -653,7 +653,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
  nstate      = SIZE(c_matrix,DIM=2)
  nspin_local = SIZE(c_matrix,DIM=3)
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  nprow = MIN(nprow_sd,nbf/scalapack_block_min)
  npcol = MIN(npcol_sd,nbf/scalapack_block_min)
@@ -818,7 +818,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
 
    deallocate(h_small2)
 
-#if HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  endif
 #endif
 
@@ -848,7 +848,7 @@ subroutine diagonalize_hamiltonian_sca(desc_h,hamiltonian,desc_sqrt,s_matrix_sqr
  real(dp),allocatable :: h_small(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  cntxt  = desc_h(CTXT_)
  nbf    = desc_h(M_)

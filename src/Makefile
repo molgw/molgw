@@ -92,17 +92,17 @@ level022: m_libint_tools.o
 
 level025: m_eri.o m_scf.o m_dft_grid.o
 
-level030: m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o
+level030: m_eri_calculate.o m_density_tools.o
 
 level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o
 
 level040: m_hamiltonian_buffer.o m_hamiltonian_sca.o
 
-level050: m_hamiltonian_wrapper.o
+level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 
-level070: m_scf_loop.o m_ci.o m_adc.o
+level070: m_scf_loop.o m_ci.o
 
 level080: m_tddft_propagator.o
 
@@ -128,7 +128,7 @@ level090: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
         m_inputparam.o \
         m_eri.o m_scf.o m_dft_grid.o m_libint_tools.o m_selfenergy_tools.o \
         m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o \
-        m_spectral_function.o m_hamiltonian.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_ci.o m_adc.o \
+        m_spectral_function.o m_hamiltonian.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_ci.o  \
         m_hamiltonian_wrapper.o \
         m_virtual_orbital_space.o pt_selfenergy.o pt_density_matrix.o \
         linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o \
@@ -141,7 +141,7 @@ level090: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
                         m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
                         m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o \
-                        m_spectral_function.o m_ci.o m_adc.o \
+                        m_spectral_function.o m_ci.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o pt_density_matrix.o \
                         mp2.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o \
@@ -306,10 +306,6 @@ m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_warning.f90 m_ca
 m_ci.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_tools.f90 m_basis_set.f90 m_eri_ao_mo.f90 m_inputparam.f90 m_scalapack.f90 m_selfenergy_tools.f90 \
         m_hamiltonian_onebody.f90 m_ci.f90
 	$(FC_W_OPTS) -c m_ci.f90 $(LIBXC_INCS)
-
-m_adc.o: m_definitions.f90 m_tools.f90 m_basis_set.f90 m_eri_ao_mo.f90 m_inputparam.f90 m_selfenergy_tools.f90 \
-                       m_adc.f90
-	$(FC_W_OPTS) -c m_adc.f90 $(LIBXC_INCS)
 
 m_spectral_function.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_tools.f90 m_scalapack.f90 m_eri.f90 m_eri_calculate.f90 m_inputparam.f90 \
                        m_spectral_function.f90

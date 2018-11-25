@@ -8,13 +8,13 @@
 !  (-B -A )
 !
 !=========================================================================
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
       SUBROUTINE PDBSSOLVER1( N, M, IM, JM, DESCM, K, IK, JK, DESCK,
      $                        LAMBDA, X1, IX, JX, DESCX, X2, WORK,
      $                        LWORK, IWORK, LIWORK, INFO )
 *
-#ifdef HAVE_ELPA
-#ifdef HAVE_MPI
+#if defined(HAVE_ELPA)
+#if defined(HAVE_MPI)
       USE MPI,only: MPI_COMM_WORLD
 #endif
       USE ELPA1
@@ -267,7 +267,7 @@
       DOUBLE PRECISION   DTMP
       DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_VEC1, T_VEC2, T_PREP
       DOUBLE PRECISION   DDUM( 3 )
-#ifdef SELECT_PDSYEVX
+#if defined(LAPACK_DIAGO_FLAVOR_X)
       DOUBLE PRECISION   ABSTOL
       INTEGER            IFAIL(N)
       EXTERNAL           PDLAMCH
@@ -275,7 +275,7 @@
       INTEGER,ALLOCATABLE ::         ICLUSTR(:)
       DOUBLE PRECISION,ALLOCATABLE :: GAP(:)
 #endif
-#ifdef HAVE_ELPA
+#if defined(HAVE_ELPA)
       LOGICAL         :: SUCCESS
       INTEGER         :: COMM_ROW,COMM_COL
 #endif
@@ -290,7 +290,8 @@
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           PDAXPY, PDCOPY, PDSCAL, PDGEADD, PDPOTRF,
-     $                   PDSYEVR, PDSYGST, PXERBLA, BLACS_GRIDINFO,
+     $                   PDSYEV, PDSYEVR, PDSYEVX, PDSYGST, PXERBLA,
+     $                   BLACS_GRIDINFO,
      $                   CHK1MAT, PCHK2MAT, PDTRMM, PDTRSM
 *     ..
 *     .. Executable Statements ..
@@ -342,9 +343,11 @@
 *
 *        Estimate the workspace required by external subroutines.
 *
-!         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
-!     $        JX, DESCX, WORK, -1, ITMP )
-#ifdef SELECT_PDSYEVX
+#if defined(LAPACK_DIAGO_FLAVOR_)
+         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
+     $        JX, DESCX, DDUM, -1, ITMP )
+         IWORK( 1 ) = 1
+#elif defined(LAPACK_DIAGO_FLAVOR_X)
          ALLOCATE(ICLUSTR(2*NPROCS))
          ALLOCATE(GAP(NPROCS))
          ABSTOL = PDLAMCH(DESCK(2), 'U')
@@ -353,6 +356,9 @@
      $        DESCX, DDUM, -1,
      $        IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
          DEALLOCATE(ICLUSTR,GAP)
+#elif defined(LAPACK_DIAGO_FLAVOR_D)
+         CALL PDSYEVD( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
+     $        JX, DESCX, DDUM, -1, IWORK, -1, ITMP )
 #else
          CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
      $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, DDUM, -1,
@@ -417,18 +423,22 @@
 *     Diagonalization: V**T * (L**T * K * L) * V = diag(lambda).
 *
       T_DIAG = MPI_WTIME()
-!      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
-!     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, ITMP )
-#ifndef HAVE_ELPA
-#ifdef SELECT_PDSYEVX
-         ALLOCATE(ICLUSTR(2*NPROCS))
-         ALLOCATE(GAP(NPROCS))
-         ABSTOL = PDLAMCH(DESCK(2), 'U')
-         CALL PDSYEVX( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO,
-     $        ZERO, 1, N, ABSTOL, DIMV, NZ, LAMBDA, ZERO, X1, IX, JX,
-     $        DESCX, WORK( INDWORK ), LLWORK,
-     $        IWORK, LIWORK, IFAIL, ICLUSTR, GAP, ITMP )
-         DEALLOCATE(ICLUSTR,GAP)
+#if !defined(HAVE_ELPA)
+#if defined(LAPACK_DIAGO_FLAVOR_)
+      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
+     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, ITMP )
+#elif defined(LAPACK_DIAGO_FLAVOR_X)
+      ALLOCATE(ICLUSTR(2*NPROCS))
+      ALLOCATE(GAP(NPROCS))
+      ABSTOL = PDLAMCH(DESCK(2), 'U')
+      CALL PDSYEVX( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO,
+     $      ZERO, 1, N, ABSTOL, DIMV, NZ, LAMBDA, ZERO, X1, IX, JX,
+     $      DESCX, WORK( INDWORK ), LLWORK,
+     $      IWORK, LIWORK, IFAIL, ICLUSTR, GAP, ITMP )
+      DEALLOCATE(ICLUSTR,GAP)
+#elif defined(LAPACK_DIAGO_FLAVOR_D)
+      CALL PDSYEVD( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
+     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
 #else
       CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
      $     1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
@@ -450,7 +460,7 @@
 *     $   WRITE( *, * ) 't_diag = ', T_DIAG, ';'
       IF ( ITMP .NE. 0 ) THEN
          INFO = ITMP
-         WRITE( *, * ) '% PDSYEVR fails with INFO =', INFO
+         WRITE( *, * ) '% PDSYEV? fails with INFO =', INFO
          RETURN
       END IF
       DO I = 1, N

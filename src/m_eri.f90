@@ -22,7 +22,7 @@ module m_eri
 
  !
  ! max length of a record in the ERI file
- integer,parameter,private :: line_length=1000
+ integer,parameter,private :: line_length = 1000
 
  real(dp),private           :: TOL_INT
 
@@ -33,18 +33,20 @@ module m_eri
  real(dp),allocatable,public :: eri_3center_lr(:,:)
 
 
- logical,protected,allocatable      :: negligible_shellpair(:,:)
- integer,private  ,allocatable      :: index_pair_1d(:)
- integer,protected,allocatable      :: index_basis(:,:)
- integer,protected,allocatable      :: index_shellpair(:,:)
- integer,protected                  :: nshellpair
+ logical,protected,allocatable :: negligible_shellpair(:,:)
+ integer,allocatable,private   :: index_pair_1d(:)
+ integer,protected,allocatable :: index_basis(:,:)
+ integer,protected,allocatable :: index_shellpair(:,:)
+ integer,protected             :: nshellpair
 
- integer,private,allocatable        :: shell_bf(:)
+ integer,private,allocatable   :: shell_bf(:)
 
 
- integer,private   :: nbf_eri         ! local copy of nbf
- integer,protected :: nsize           ! size of the eri_4center array
- integer,protected :: npair           ! number of independent pairs (i,j) with i<=j
+ integer,private   :: nbf_eri               ! local copy of nbf
+ ! 4-byte integers are too small to index the 4-center Coulomb integrals using no-RI/AE/5Z for 3d transition metals.
+ ! Use 8-byte integers instead
+ integer(kind=int8),protected :: nint_4center    ! size of the eri_4center array
+ integer,protected            :: npair           ! number of independent pairs (i,j) with i<=j
 
  integer,public    :: nauxil_2center     ! size of the 2-center matrix
  integer,public    :: nauxil_2center_lr  ! size of the 2-center LR matrix
@@ -110,7 +112,8 @@ subroutine prepare_eri(basis)
  endif
 
 
- nsize = (npair*(npair+1))/2
+ ! Carefully perform this calculation with 8-byte integers since the result can be very very large
+ nint_4center = ( INT(npair,KIND=int8) * ( INT(npair,KIND=int8) + 1_int8 ) ) / 2_int8
 
 
 end subroutine prepare_eri
@@ -164,34 +167,23 @@ end subroutine deallocate_eri
 
 
 !=========================================================================
-subroutine deallocate_index_pair()
- implicit none
-
-!=====
-
- if(ALLOCATED(index_pair_1d)) call clean_deallocate('index pair',index_pair_1d)
-
-end subroutine deallocate_index_pair
-
-
-!=========================================================================
 pure function index_eri(ibf,jbf,kbf,lbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf,kbf,lbf
- integer            :: index_eri
+ integer(kind=int8) :: index_eri
 !=====
- integer            :: klmin,ijmax
- integer            :: index_ij,index_kl
+ integer(kind=int8) :: klmin,ijmax
+ integer(kind=int8) :: index_ij,index_kl
 !=====
 
  index_ij = index_pair(ibf,jbf)
  index_kl = index_pair(kbf,lbf)
 
- ijmax=MAX(index_ij,index_kl)
- klmin=MIN(index_ij,index_kl)
+ ijmax = MAX(index_ij,index_kl)
+ klmin = MIN(index_ij,index_kl)
 
- index_eri = (klmin-1)*npair - (klmin-1)*(klmin-2)/2 + ijmax-klmin+1
+ index_eri = (klmin-1) * npair - ( (klmin-1) * (klmin-2) ) / 2 + ijmax - klmin + 1
 
 
 end function index_eri
@@ -207,8 +199,8 @@ pure function index_pair(ibf,jbf)
  integer            :: ijmin,ijmax
 !=====
 
- ijmax=MAX(ibf,jbf)
- ijmin=MIN(ibf,jbf)
+ ijmax = MAX(ibf,jbf)
+ ijmin = MIN(ibf,jbf)
 
  index_pair = (ijmin-1) * nbf_eri - ( (ijmin-2) * (ijmin-1) ) / 2  + ijmax - ijmin + 1
  index_pair = index_pair_1d(index_pair)
@@ -413,7 +405,14 @@ subroutine identify_negligible_shellpair(basis)
    n2c = number_basis_function_am( 'CART' , amj )
    am2 = basis%shell(jshell)%am
    ng2 = basis%shell(jshell)%ng
+   allocate(alpha2(ng2),coeff2(ng2))
+   alpha2(:) = basis%shell(jshell)%alpha(:)
+   coeff2(:) = basis%shell(jshell)%coeff(:)
+   x02(:) = basis%shell(jshell)%x0(:)
 
+   !$OMP PARALLEL PRIVATE(ami,ni,am1,n1c,ng1,alpha1,coeff1,x01, &
+   !$OMP                  int_shell,integrals)
+   !$OMP DO
    do ishell=1,basis%nshell
      ami = basis%shell(ishell)%am
      if( ami < amj ) cycle
@@ -423,17 +422,12 @@ subroutine identify_negligible_shellpair(basis)
      am1 = basis%shell(ishell)%am
      ng1 = basis%shell(ishell)%ng
 
-     allocate(alpha1(ng1),alpha2(ng2))
-     allocate(coeff1(ng1),coeff2(ng2))
+     allocate(alpha1(ng1),coeff1(ng1))
      alpha1(:) = basis%shell(ishell)%alpha(:)
-     alpha2(:) = basis%shell(jshell)%alpha(:)
      x01(:) = basis%shell(ishell)%x0(:)
-     x02(:) = basis%shell(jshell)%x0(:)
      coeff1(:) = basis%shell(ishell)%coeff(:)
-     coeff2(:) = basis%shell(jshell)%coeff(:)
 
      allocate( int_shell( n1c*n2c*n1c*n2c ) )
-
 
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
@@ -442,7 +436,6 @@ subroutine identify_negligible_shellpair(basis)
                          0.0_C_DOUBLE,int_shell)
 
      call transform_libint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
-
 
      do ibf=1,ni
        do jbf=1,nj
@@ -456,10 +449,12 @@ subroutine identify_negligible_shellpair(basis)
 
      deallocate(integrals)
      deallocate(int_shell)
-     deallocate(alpha1,alpha2)
-     deallocate(coeff1,coeff2)
+     deallocate(alpha1,coeff1)
 
    enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
+   deallocate(alpha2,coeff2)
  enddo
 
  call xand_world(negligible_shellpair)
@@ -582,59 +577,13 @@ end subroutine destroy_eri_3center_lr
 
 
 !=========================================================================
-subroutine negligible_eri(tol)
- implicit none
- real(dp),intent(in) :: tol
-!=====
- integer             :: icount,ibf,jbf,kbf,lbf,jcount
- integer             :: ibuffer
- real(dp)            :: integral_ij(nbf_eri,nbf_eri)
-!=====
-
- icount=0
- do ibuffer=1,nsize
-   if( ABS( eri_4center(ibuffer) ) < tol ) icount=icount+1
- enddo
-
- write(stdout,*) ' number of negligible integrals <',tol
- write(stdout,*) icount, ' / ',nsize,REAL(icount,dp)/REAL(nsize,dp)*100.0_dp,' [%]'
-
-
- do ibf=1,nbf_eri
-   do jbf=1,nbf_eri
-     integral_ij(ibf,jbf) = eri(ibf,jbf,ibf,jbf)
-   enddo
- enddo
-
- write(stdout,*) 'testing Cauchy-Schwarz condition'
- icount=0
- jcount=0
- do ibf=1,nbf_eri
-   do jbf=1,nbf_eri
-     do kbf=1,nbf_eri
-       do lbf=1,nbf_eri
-         if( SQRT( integral_ij(ibf,jbf) * integral_ij(kbf,lbf) ) < tol ) icount = icount + 1
-         if( ABS( eri(ibf,jbf,kbf,lbf) ) < tol ) jcount = jcount + 1
-       enddo
-     enddo
-   enddo
- enddo
- write(stdout,*) ' number of negligible integrals <',tol
- write(stdout,*) icount, ' / ',nbf_eri**4,REAL(icount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
- write(stdout,*) jcount, ' / ',nbf_eri**4,REAL(jcount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
-
-
-end subroutine negligible_eri
-
-
-!=========================================================================
 subroutine dump_out_eri(rcut)
  implicit none
  real(dp),intent(in) :: rcut
 !=====
- character(len=50) :: filename
- integer           :: nline,iline,icurrent
- integer           :: erifile
+ character(len=50)  :: filename
+ integer(kind=int8) :: nline,iline,icurrent
+ integer            :: erifile
 !=====
 
  if(rcut < 1.0e-6_dp) then
@@ -643,17 +592,17 @@ subroutine dump_out_eri(rcut)
    filename='molgw_eri_lr.data'
  endif
  write(stdout,*) 'Dump out the ERI into file'
- write(stdout,*) 'Size of file [bytes]',REAL(nsize,dp)*dp
+ write(stdout,*) 'Size of file (Gbytes)',REAL(nint_4center,dp) * dp / 1024.0_dp**3
 
  if( is_iomaster ) then
    open(newunit=erifile,file=TRIM(filename),form='unformatted')
-   write(erifile) nsize
+   write(erifile) nint_4center
    write(erifile) rcut
 
-   nline = nsize / line_length + 1
+   nline = nint_4center / line_length + 1
    icurrent=0
    do iline=1,nline
-     write(erifile) eri_4center(icurrent+1:MIN(nsize,icurrent+line_length+1))
+     write(erifile) eri_4center(icurrent+1:MIN(nint_4center,icurrent+line_length+1))
      icurrent = icurrent + line_length + 1
    enddo
 
@@ -670,17 +619,17 @@ logical function read_eri(rcut)
  implicit none
  real(dp),intent(in) :: rcut
 !=====
- character(len=50) :: filename
- integer           :: nline,iline,icurrent
- integer           :: integer_read
- real(dp)          :: real_read
- integer           :: erifile
+ character(len=50)  :: filename
+ integer(kind=int8) :: nline,iline,icurrent
+ integer(kind=int8) :: integer_read
+ real(dp)           :: real_read
+ integer            :: erifile
 !=====
 
  if(rcut < 1.0e-6_dp) then
-   filename='molgw_eri.data'
+   filename = 'molgw_eri.data'
  else
-   filename='molgw_eri_lr.data'
+   filename = 'molgw_eri_lr.data'
  endif
 
  inquire(file=TRIM(filename),exist=read_eri)
@@ -690,16 +639,16 @@ logical function read_eri(rcut)
    write(stdout,*) 'Try to read ERI file'
    open(newunit=erifile,file=TRIM(filename),form='unformatted',status='old')
    read(erifile) integer_read
-   if(integer_read /= nsize) read_eri=.FALSE.
+   if(integer_read /= nint_4center) read_eri=.FALSE.
    read(erifile) real_read
    if(ABS(real_read-rcut) > 1.0e-6_dp) read_eri=.FALSE.
 
    if(read_eri) then
 
-     nline = nsize / line_length + 1
+     nline = nint_4center / line_length + 1
      icurrent=0
      do iline=1,nline
-       read(erifile) eri_4center(icurrent+1:MIN(nsize,icurrent+line_length+1))
+       read(erifile) eri_4center(icurrent+1:MIN(nint_4center,icurrent+line_length+1))
        icurrent = icurrent + line_length + 1
      enddo
      write(stdout,'(a,/)') ' ERI file read'

@@ -35,18 +35,33 @@ subroutine calculate_eri(print_eri_,basis,rcut)
  type(basis_set),intent(in)   :: basis
  real(dp),intent(in)          :: rcut
 !=====
+ integer(int8)                :: iint
+!=====
 
  call start_clock(timing_eri_4center)
 
  if( incore_ ) then
-   write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
+   ! From now on, the array index for 4-center Coulomb integrals can be greater than 2^32.
+   write(stdout,'(/,a,i16)') ' Number of integrals to be stored: ',nint_4center
 
    if( rcut < 1.0e-12_dp ) then
-     call clean_allocate('4-center integrals',eri_4center,nsize)
-     eri_4center(:) = 0.0_dp
+     call clean_allocate('4-center integrals',eri_4center,nint_4center)
+     ! First touch to reduce NUMA effects using memory affinity
+     ! since the integrals will be used with SCHEDULE(static,1) latter on
+     !$OMP PARALLEL DO SCHEDULE(static,1)
+     do iint=1,nint_4center
+       eri_4center(iint) = 0.0_dp
+     enddo
+     !$OMP END PARALLEL DO
    else
-     call clean_allocate('4-center LR integrals',eri_4center_lr,nsize)
-     eri_4center_lr(:) = 0.0_dp
+     call clean_allocate('4-center LR integrals',eri_4center_lr,nint_4center)
+     ! First touch to reduce NUMA effects using memory affinity
+     ! since the integrals will be used with SCHEDULE(static,1) latter on
+     !$OMP PARALLEL DO SCHEDULE(static,1)
+     do iint=1,nint_4center
+       eri_4center_lr(iint) = 0.0_dp
+     enddo
+     !$OMP END PARALLEL DO
    endif
 
    if( .NOT. read_eri(rcut) ) then
@@ -79,6 +94,7 @@ subroutine calculate_eri_4center(basis,rcut)
  integer                      :: ami,amj,amk,aml
  integer                      :: ibf,jbf,kbf,lbf
  real(dp),allocatable         :: integrals(:,:,:,:)
+ integer(int8)                :: iint
 !=====
 ! variables used to call C
  real(C_DOUBLE)               :: rcut_libint
@@ -95,11 +111,15 @@ subroutine calculate_eri_4center(basis,rcut)
  if( .NOT. is_longrange ) then
    write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals'
  else
-   write(stdout,'(/,a)') ' Calculate and store the 4-center Long-Range-only Coulomb integrals'
+   write(stdout,'(/,a)') ' Calculate and store the 4-center LR Coulomb integrals'
  endif
 
 
-
+ ! ymbyun 2018/05/21
+ ! NOTE: Worker threads use a very large private variable (i.e. integrals), so OMP_STACKSIZE should be set appropriately at run time.
+ !$OMP PARALLEL
+ !$OMP DO PRIVATE(ishell,jshell,kshell,lshell, ijshellpair,klshellpair, n1c,n2c,n3c,n4c, ni,nj,nk,nl, ami,amj,amk,aml, &
+ !$OMP & ibf,jbf,kbf,lbf, integrals, ng1,ng2,ng3,ng4, am1,am2,am3,am4, x01,x02,x03,x04, coeff1,coeff2,coeff3,coeff4, alpha1,alpha2,alpha3,alpha4, int_shell)
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
@@ -207,7 +227,8 @@ subroutine calculate_eri_4center(basis,rcut)
 
    enddo
  enddo
-
+ !$OMP END DO
+ !$OMP END PARALLEL
 
  write(stdout,'(a,/)') ' All ERI have been calculated'
 
@@ -913,7 +934,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call clean_allocate('LR 3-center integrals',eri_3center_lr,nauxil_2center_lr,npair)
  endif
 #endif
-
 
  !
  ! Loop over batches starts here

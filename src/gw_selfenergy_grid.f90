@@ -25,7 +25,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin)
- real(dp),intent(in)                   :: c_matrix(nstate,basis%nbf,nspin)
+ real(dp),intent(in)                   :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(out)                  :: erpa
  type(spectral_function),intent(inout) :: wpol
 !=====
@@ -122,7 +122,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
 #ifdef HAVE_SCALAPACK
    call PDGEMR2D(nauxil_2center,wpol%npole_reso_apb,eri3_t,1,1,desc_eri3_t, &
-                                                  eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
+                                                    eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
 #endif
 
 #ifdef HAVE_SCALAPACK
@@ -212,7 +212,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  type(basis_set),intent(in)          :: basis
  integer,intent(in)                  :: nstate
  real(dp),intent(in)                 :: energy(nstate,nspin)
- real(dp),intent(in)                 :: c_matrix(nstate,basis%nbf,nspin)
+ real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in)  :: wpol
  type(selfenergy_grid),intent(inout) :: se
 !=====
@@ -228,6 +228,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  integer              :: meri3,neri3
  integer              :: mstate,pstate,mpspin
  integer              :: prange,plocal
+ complex(dp),allocatable :: sigmaigw(:,:,:)
 !=====
 
 
@@ -264,7 +265,9 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  call DESCINIT(desc_eri3_t,nauxil_2center,prange,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
 
 
- se%sigmai(:,:,:) = 0.0_dp
+ ! OPENMP does not want to reduce se%sigmai then work with a temporary array sigmaigw
+ allocate(sigmaigw(0:se%nomegai,nsemin:nsemax,nspin))
+ sigmaigw(:,:,:) = 0.0_dp
 
  do mpspin=1,nspin
    do mstate=nsemin,nsemax
@@ -290,29 +293,32 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
                   0.0_dp,chi_eri3_sca        ,nauxil_2center)
 #endif
 
+       !$OMP PARALLEL PRIVATE(pstate, v_chi_v_p)
+       !$OMP DO REDUCTION(+:sigmaigw)
        do plocal=1,neri3
          pstate = INDXL2G(plocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
 
          v_chi_v_p = DOT_PRODUCT( eri3_sca(:,plocal) , chi_eri3_sca(:,plocal) )
 
-         do iomegas=0,se%nomegai
-           se%sigmai(iomegas,mstate,mpspin) = se%sigmai(iomegas,mstate,mpspin) &
-                         - wpol%weight_quad(iomega) * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(iomegas) - energy(pstate,mpspin) ) &
-                                                                  + im * wpol%omega_quad(iomega) )   &
-                                                       + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(iomegas) - energy(pstate,mpspin) )  &
-                                                                  - im * wpol%omega_quad(iomega) )  ) &
-                            * v_chi_v_p /  (2.0_dp * pi)
-         enddo
+         sigmaigw(:,mstate,mpspin) = sigmaigw(:,mstate,mpspin) &
+                       - wpol%weight_quad(iomega) * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) ) &
+                                                                + im * wpol%omega_quad(iomega) )   &
+                                                     + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) )  &
+                                                                - im * wpol%omega_quad(iomega) )  ) &
+                          * v_chi_v_p /  (2.0_dp * pi)
        enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
 
      enddo
 
    enddo
  enddo
- call xsum_world(se%sigmai)
+ call xsum_world(sigmaigw)
 
+ se%sigmai(0:,:,:) = sigmaigw(0:,:,:)
  forall(iomegas=1:se%nomegai)
-   se%sigmai(-iomegas,:,:) = CONJG( se%sigmai(iomegas,:,:) )
+   se%sigmai(-iomegas,:,:) = CONJG( sigmaigw(iomegas,:,:) )
  end forall
 
  call clean_deallocate('TMP 3-center MO integrals',eri3_sca)

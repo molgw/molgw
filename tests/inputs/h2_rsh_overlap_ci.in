@@ -14,10 +14,9 @@
 
  basis='aug-cc-pVDZ'
 
- alpha_mixing=0.7
- nscf=15
- tolscf=1.0e-12
- mixing_scheme='simple'
+ alpha_mixing=0.5
+ nscf=20
+ tolscf=1.0e-10
 
  postscf='ci'
  ci_nstate=10

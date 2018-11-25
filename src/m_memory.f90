@@ -9,46 +9,47 @@ module m_memory
  use m_definitions
  use m_warning,only: die
 
- real(dp),private :: total_memory=0.0_dp     ! Total memory occupied
-                                             ! by the big arrays in Mb
- real(dp),private :: peak_memory=0.0_dp      ! Max memory occupied
-                                             ! by the big arrays in Mb
+ real(dp),private :: total_memory = 0.0_dp    ! Total memory occupied
+                                              ! by the big arrays in Mb
+ real(dp),private :: peak_memory  = 0.0_dp    ! Max memory occupied
+                                              ! by the big arrays in Mb
 
  interface clean_allocate
-  module procedure clean_allocate_i1d
-  module procedure clean_allocate_i2d
-  module procedure clean_allocate_s1d
-  module procedure clean_allocate_s2d
-  module procedure clean_allocate_s3d
-  module procedure clean_allocate_s4d
-  module procedure clean_allocate_1d
-  module procedure clean_allocate_2d
-  module procedure clean_allocate_2d_range
-  module procedure clean_allocate_3d
-  module procedure clean_allocate_3d_range
-  module procedure clean_allocate_4d
-  module procedure clean_allocate_4d_range
-  module procedure clean_allocate_c1d
-  module procedure clean_allocate_c2d
-  module procedure clean_allocate_c3d
-  module procedure clean_allocate_c4d
+   module procedure clean_allocate_i1d
+   module procedure clean_allocate_i2d
+   module procedure clean_allocate_s1d
+   module procedure clean_allocate_s2d
+   module procedure clean_allocate_s3d
+   module procedure clean_allocate_s4d
+   module procedure clean_allocate_1d
+   module procedure clean_allocate_1d_int8
+   module procedure clean_allocate_2d
+   module procedure clean_allocate_2d_range
+   module procedure clean_allocate_3d
+   module procedure clean_allocate_3d_range
+   module procedure clean_allocate_4d
+   module procedure clean_allocate_4d_range
+   module procedure clean_allocate_c1d
+   module procedure clean_allocate_c2d
+   module procedure clean_allocate_c3d
+   module procedure clean_allocate_c4d
  end interface
 
  interface clean_deallocate
-  module procedure clean_deallocate_i1d
-  module procedure clean_deallocate_i2d
-  module procedure clean_deallocate_s1d
-  module procedure clean_deallocate_s2d
-  module procedure clean_deallocate_s3d
-  module procedure clean_deallocate_s4d
-  module procedure clean_deallocate_1d
-  module procedure clean_deallocate_2d
-  module procedure clean_deallocate_3d
-  module procedure clean_deallocate_4d
-  module procedure clean_deallocate_c1d
-  module procedure clean_deallocate_c2d
-  module procedure clean_deallocate_c3d
-  module procedure clean_deallocate_c4d 
+   module procedure clean_deallocate_i1d
+   module procedure clean_deallocate_i2d
+   module procedure clean_deallocate_s1d
+   module procedure clean_deallocate_s2d
+   module procedure clean_deallocate_s3d
+   module procedure clean_deallocate_s4d
+   module procedure clean_deallocate_1d
+   module procedure clean_deallocate_2d
+   module procedure clean_deallocate_3d
+   module procedure clean_deallocate_4d
+   module procedure clean_deallocate_c1d
+   module procedure clean_deallocate_c2d
+   module procedure clean_deallocate_c3d
+   module procedure clean_deallocate_c4d 
  end interface
 
 
@@ -64,18 +65,10 @@ subroutine total_memory_statement()
  write(stdout,'(a)')     '                 --- Memory usage summary ---'
 
  write(stdout,'(/,a)') ' Memory that was not deallocated properly'
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',total_memory / 1024._dp
- endif
+ write(stdout,'(a30,f9.3)') ' Memory (Gb): ',total_memory / 1024._dp
 
  write(stdout,'(/,a)') ' Maximum memory used during the run'
- if( peak_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Peak memory (Mb): ',peak_memory
- else
-   write(stdout,'(a30,f9.3)') ' Peak memory (Gb): ',peak_memory / 1024._dp
- endif
+ write(stdout,'(a30,f9.3)') ' Peak memory (Gb): ',peak_memory / 1024._dp
 
  write(stdout,*)
 
@@ -105,7 +98,7 @@ subroutine clean_allocate_i1d(array_name,array,n1)
 
  if(info/=0) then
    write(stdout,'(a,a)')    ' Failure when allocating ',array_name
-   write(stdout,'(a,f9.3)') ' with size (Mb) ',mem_mb
+   write(stdout,'(a,f9.3)') ' with size (Gb) ',mem_mb / 1024.0_dp
    call die('clean_allocate: Not enough memory. Buy a bigger computer')
  endif
 
@@ -141,7 +134,7 @@ subroutine clean_allocate_i2d(array_name,array,n1,n2)
 
  if(info/=0) then
    write(stdout,'(a,a)')    ' Failure when allocating ',array_name
-   write(stdout,'(a,f9.3)') ' with size (Mb) ',mem_mb
+   write(stdout,'(a,f9.3)') ' with size (Gb) ',mem_mb / 1024.0_dp
    call die('clean_allocate: Not enough memory. Buy a bigger computer')
  endif
 
@@ -187,6 +180,40 @@ subroutine clean_allocate_1d(array_name,array,n1)
  call write_memory_allocate(array_name,mem_mb)
 
 end subroutine clean_allocate_1d
+
+
+!=========================================================================
+subroutine clean_allocate_1d_int8(array_name,array,n1)
+ implicit none
+
+ character(len=*),intent(in)        :: array_name
+ real(dp),allocatable,intent(inout) :: array(:)
+ integer(kind=int8),intent(in)      :: n1
+!=====
+ integer             :: info
+ real(dp)            :: mem_mb
+!=====
+
+ if( ALLOCATED(array) ) then
+   call die('clean_allocate: Cannot allocate. This array is already allocated ->'//TRIM(array_name))
+ endif
+
+ mem_mb = REAL(dp,dp) * REAL(n1,dp) / 1024._dp**2
+
+ ! The allocation itself
+ allocate(array(n1),stat=info)
+
+ if(info/=0) then
+   write(stdout,*) 'failure'
+   call die('clean_allocate: Not enough memory. Buy a bigger computer')
+ endif
+
+ total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
+
+ call write_memory_allocate(array_name,mem_mb)
+
+end subroutine clean_allocate_1d_int8
 
 
 !=========================================================================
@@ -574,13 +601,13 @@ subroutine clean_deallocate_i2d(array_name,array)
  integer,allocatable,intent(inout) :: array(:,:)
 !=====
  real(dp)            :: mem_mb
- integer             :: n1,n2
+ integer(kind=int8)  :: n1,n2
 !=====
 
  if( .NOT. ALLOCATED(array) ) return
 
- n1 = SIZE(array(:,:),DIM=1)
- n2 = SIZE(array(:,:),DIM=2)
+ n1 = SIZE(array(:,:),DIM=1,KIND=int8)
+ n2 = SIZE(array(:,:),DIM=2,KIND=int8)
 
  mem_mb = REAL(4,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
 
@@ -602,12 +629,12 @@ subroutine clean_deallocate_1d(array_name,array)
  real(dp),allocatable,intent(inout) :: array(:)
 !=====
  real(dp)            :: mem_mb
- integer             :: n1
+ integer(kind=int8)  :: n1
 !=====
 
  if( .NOT. ALLOCATED(array) ) return
 
- n1 = SIZE(array(:))
+ n1 = SIZE(array(:),KIND=int8)
 
  mem_mb = REAL(dp,dp) * REAL(n1,dp) / 1024._dp**2
 
@@ -1084,22 +1111,10 @@ subroutine write_memory_allocate(array_name,mem_mb)
  real(dp),intent(in)               :: mem_mb
 !=====
 
-! if( mem_mb < 500.0_dp .AND. total_memory < 500.0_dp ) then
-!
-!   write(stdout,'(1x,a,a35,a,sp,f8.3,s,a,a,f8.3,a)')   &
-!         '  Allocate: ',TRIM(array_name),        &
-!             ',  Mem: ', mem_mb      ,' (Mb)',   &
-!       ',  Total Mem: ', total_memory,' (Mb)'
-!
-! else
-
-   write(stdout,'(1x,a,a35,a,sp,f8.3,s,a,a,f8.3,a)')   &
-         '  Allocate: ',TRIM(array_name),        &
-             ',  Mem: ', mem_mb/1024.0_dp      ,' (Gb)',   &
-       ',  Total Mem: ', total_memory/1024.0_dp,' (Gb)'
-
-! endif
-
+ write(stdout,'(1x,a,a35,a,sp,f8.3,s,a,a,f8.3,a)')   &
+       '  Allocate: ',TRIM(array_name),        &
+           ',  Mem: ', mem_mb/1024.0_dp      ,' (Gb)',   &
+     ',  Total Mem: ', total_memory/1024.0_dp,' (Gb)'
 
 end subroutine write_memory_allocate
 
@@ -1112,22 +1127,10 @@ subroutine write_memory_deallocate(array_name,mem_mb)
  real(dp),intent(in)               :: mem_mb
 !=====
 
- if( mem_mb < 500.0_dp .AND. total_memory < 500.0_dp ) then
-
-   write(stdout,'(1x,a,a35,a,sp,f8.3,s,a,a,f8.3,a)')   &
-         'Deallocate: ',TRIM(array_name),        &
-             ',  Mem: ',-mem_mb      ,' (Mb)',   &
-       ',  Total Mem: ', total_memory,' (Mb)'
-
- else
-
-   write(stdout,'(1x,a,a35,a,sp,f8.3,s,a,a,f8.3,a)')   &
-         'Deallocate: ',TRIM(array_name),        &
-             ',  Mem: ',-mem_mb/1024.0_dp      ,' (Gb)',   &
-       ',  Total Mem: ', total_memory/1024.0_dp,' (Gb)'
-
- endif
-
+ write(stdout,'(1x,a,a35,a,sp,f8.3,s,a,a,f8.3,a)')   &
+       'Deallocate: ',TRIM(array_name),        &
+           ',  Mem: ',-mem_mb/1024.0_dp      ,' (Gb)',   &
+     ',  Total Mem: ', total_memory/1024.0_dp,' (Gb)'
 
 end subroutine write_memory_deallocate
 

@@ -21,6 +21,7 @@ selected_input_files= []
 excluded_input_files= []
 mpirun=''
 nprocs=1
+ncores=1
 debug=False
 
 in_timing_section=True
@@ -70,23 +71,15 @@ def clean_run(inp,out,restart):
 
 ###################################
 def check_output(out,testinfo):
-  global success,tested,test_skipped
+  global success,tested,test_files_skipped
 
   #
   # First check if the test was aborted because of some limitation at compilation
   #
   for line in open(tmpfolder+'/'+out,'r').readlines():
-    if 'one CPU only' in line:
-      print('Test not functional in parallel => skip test')
-      test_skipped += 1
-      return
-    if 'Need to compile MOLGW with HAVE_LIBINT_ONEBODY' in line:
-      print('Test not functional without gradients => skip test')
-      test_skipped += 1
-      return
     if  'Angular momentum is too high' in line:
       print('LIBINT installation does not have the needed high angular momenta => skip test')
-      test_skipped += 1
+      test_files_skipped += 1
       return
   #
   # Second check if there is a memory leak
@@ -118,7 +111,7 @@ def check_output(out,testinfo):
 
   #
   # Then, parse the output and perform the checks
-  # 
+  #
   for itest in range(len(testinfo)):
     tested += 1
     key = testinfo[itest][0].strip()
@@ -164,18 +157,19 @@ def check_output(out,testinfo):
           break
     if not key_found:
       print(key.rjust(30)+'[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
-     
+
 ###################################
 # Parse the command line
 
-option_list = ['--keep','--np','--mpirun','--input','--exclude','--debug','--tddft']
+option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--debug','--tddft']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
     print('Run the complete test suite of MOLGW')
     print('  --keep             Keep the temporary folder')
-    print('  --tddft            Run tddft tests')
+    print('  --tddft            Run tddft tests also')
     print('  --np     n         Set the number of MPI threads to n')
+    print('  --nc     n         Set the number of OPENMP threads to n')
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input files      Only run these input files')
     print('  --exclude files    Run all input files but these ones')
@@ -183,7 +177,7 @@ if len(sys.argv) > 1:
     sys.exit(0)
 
   for argument in sys.argv:
-    if '--' in argument and  argument not in option_list: 
+    if '--' in argument and  argument not in option_list:
       print('Unknown option: ' + argument)
       sys.exit(1)
 
@@ -201,6 +195,10 @@ if len(sys.argv) > 1:
   if '--mpirun' in sys.argv:
     i = sys.argv.index('--mpirun') + 1
     mpirun = sys.argv[i]
+
+  if '--nc' in sys.argv:
+    i = sys.argv.index('--nc') + 1
+    ncores = int( sys.argv[i] )
 
   if '--input' in sys.argv:
     i = sys.argv.index('--input') + 1
@@ -237,6 +235,10 @@ if not os.path.isfile('../molgw') :
   print('molgw executable not found!\nMay be you should compile it first? May be you moved it around?')
   sys.exit(1)
 
+if ncores > 1:
+  os.environ["OMP_NUM_THREADS"] = str(ncores)
+  os.environ["MKL_NUM_THREADS"] = str(ncores)
+
 try:
   ncores = int(os.environ['OMP_NUM_THREADS'])
 except:
@@ -248,15 +250,59 @@ print()
 
 
 ###################################
+# Create the temporary folder
+###################################
+tmpfolder='tmp_'+today
+
+try:
+  os.mkdir(tmpfolder)
+except OSError:
+  pass
+
+
+###################################
+# Run the fake.in input to get MOLGW compilation options
+###################################
+clean_run('fake.in','fake.out',False)
+#ffake = open(tmpfolder+'/fake.out','r')
+#for line in ffake:
+#ffake.close()
+have_openmp           = 'Running with OPENMP' in open(tmpfolder+'/fake.out').read()
+have_libxc            = 'Running with LIBXC' in open(tmpfolder+'/fake.out').read()
+have_mpi              = 'Running with MPI' in open(tmpfolder+'/fake.out').read()
+have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder+'/fake.out').read()
+have_libint_onebody   = 'Running with external LIBINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
+have_libint_gradients = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
+with open(tmpfolder+'/fake.out','r') as ffake:
+  for line in ffake:
+    if 'Perform diagonalizations with (Sca)LAPACK routines' in line:
+      lapack_diago_flavor = line.split(':')[1].strip()
+print('MOLGW compilation details:')
+print('                   OPENMP: {}'.format(have_openmp) )
+print('                      MPI: {}'.format(have_mpi) )
+print('                SCALAPACK: {}'.format(have_scalapack) )
+print('                    LIBXC: {}'.format(have_libxc) )
+print('            1-body LIBINT: {}'.format(have_libint_onebody) )
+print('         gradients LIBINT: {}'.format(have_libint_gradients) )
+print('        (Sca)LAPACK diago: {}'.format(lapack_diago_flavor) )
+print()
+
+os.remove(tmpfolder+'/fake.out')
+
+
+
+###################################
 # Parse the file testsuite
 ###################################
 ninput = 0
-input_files = []
-restarting  = []
-parallel    = []
-tddft       = []
-test_names  = []
-testinfo    = []
+input_files    = []
+restarting     = []
+parallel       = []
+need_scalapack = []
+need_gradients = []
+tddft          = []
+test_names     = []
+testinfo       = []
 
 ftestsuite = open('inputs/testsuite','r')
 for line in ftestsuite:
@@ -272,6 +318,8 @@ for line in ftestsuite:
     testinfo.append([])
     restarting.append(False)
     parallel.append(True)
+    need_scalapack.append(False)
+    need_gradients.append(False)
     tddft.append(False)
 
   if len(parsing) == 3:
@@ -287,6 +335,8 @@ for line in ftestsuite:
       parallel.append(False)
     else:
       parallel.append(True)
+    need_scalapack.append( 'need_scalapack' in parsing[2].lower() )
+    need_gradients.append( 'need_gradients' in parsing[2].lower() )
     if 'tddft' in parsing[2].lower():
       tddft.append(True)
     else:
@@ -307,7 +357,7 @@ if len(selected_input_files) == 0 and len(excluded_input_files) == 0:
 elif len(selected_input_files) > 0:
   ninput2 = len(selected_input_files)
 
-  for i in range(len(selected_input_files)): 
+  for i in range(len(selected_input_files)):
     if not '.in' in selected_input_files[i]:
       selected_input_files[i] = selected_input_files[i] + '.in'
 
@@ -336,22 +386,14 @@ else:
 
 
 
-print('Input files found in the test suite: {}'.format(ninput2))
+print('Input files to be executed: {}'.format(ninput2))
 
 
 ###################################
-tmpfolder='tmp_'+today
 
-try:
-  os.mkdir(tmpfolder)
-except OSError:
-  pass
-#  print('Temporary folder already exists: '+tmpfolder)
-###################################
-
-success      = 0
-tested       = 0
-test_skipped = 0
+success            = 0
+tested             = 0
+test_files_skipped = 0
 
 fdiff = open(tmpfolder+'/diff', 'w')
 fdiff.write('#  test index          calculated                   reference                   difference        test status \n')
@@ -362,21 +404,36 @@ for iinput in range(ninput):
     continue
   if len(excluded_input_files) != 0 and input_files[iinput] in excluded_input_files:
     continue
-  if not parallel[iinput] and nprocs > 1:
-    test_skipped = test_skipped + 1
-    continue
-  if (not run_tddft) and tddft[iinput]:
-    test_skipped = test_skipped + 1
-    continue
-    
 
   inp     = input_files[iinput]
   out     = input_files[iinput].split('.in')[0]+'.out'
   restart = restarting[iinput]
 
+  if need_scalapack[iinput] and not have_scalapack:
+    test_files_skipped += 1
+    print('\nSkipping test file: '+inp)
+    print('  because this compilation of MOLGW does not have SCALAPACK')
+    continue
+  if need_gradients[iinput] and not have_libint_gradients:
+    test_files_skipped += 1
+    print('\nSkipping test file: '+inp)
+    print('  because this compilation of MOLGW does not have the gradients from LIBINT')
+    continue
+  if not parallel[iinput] and nprocs > 1:
+    print('\nSkipping test file: '+inp)
+    print('  because this test is only serial')
+    test_files_skipped += 1
+    continue
+  if not run_tddft and tddft[iinput]:
+    print('\nSkipping test file: '+inp)
+    print('  because the RT-TDDFT needs to be specifically activated with --tddft')
+    test_files_skipped += 1
+    continue
+
+
   print('\nRunning test file: '+inp)
   print(test_names[iinput])
-  
+
   clean_run(inp,out,restart)
 
   check_output(out,testinfo[iinput])
@@ -385,10 +442,12 @@ for iinput in range(ninput):
 fdiff.close()
 
 print('\n\n===============================')
-print('      Test Summary \n')
-print('        Succesful tests:   {0:} / {1:}\n'.format(success,tested))
-if test_skipped > 0 :
-  print('  Test files not tested:    {:}\n'.format(test_skipped))
+print('      Test Suite Summary \n')
+print('      Test files tested:   {:4d} / {:4d}\n'.format(ninput2-test_files_skipped,ninput2))
+if success == tested:
+  print('        Succesful tests:   \033[92m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
+else:
+  print('        Succesful tests:   \033[91m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
 print('       Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')
 

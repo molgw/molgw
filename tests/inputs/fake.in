@@ -1,0 +1,10 @@
+&molgw
+ scf='lda'
+ basis='STO-3G'
+ grid_quality='low'
+ print_restart='no'
+ print_bigrestart='no'
+ nscf=1
+ natom=1
+/
+He 0.0 0.0 0.0
