@@ -346,11 +346,11 @@
          SELECT CASE(FLAVOR)
          CASE('r','R')
             CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
-     $           ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, DDUM, -1,
-     $           IWORK, -1, ITMP )
+     $           ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX,
+     $           DDUM, -1, IWORK, -1, ITMP )
          CASE('d','D')
-            CALL PDSYEVD( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
-     $           JX, DESCX, DDUM, -1, IWORK, -1, ITMP )
+            CALL PDSYEVD( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP,
+     $           IX, JX, DESCX, DDUM, -1, IWORK, -1, ITMP )
          CASE('x','X')
             ALLOCATE(ICLUSTR(2*NPROCS))
             ALLOCATE(GAP(NPROCS))
@@ -361,8 +361,8 @@
      $           IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
             DEALLOCATE(ICLUSTR,GAP)
          CASE DEFAULT
-            CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
-     $           JX, DESCX, DDUM, -1, ITMP )
+            CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP,
+     $           IX, JX, DESCX, DDUM, -1, ITMP )
             IWORK( 1 ) = 1
          END SELECT
 
@@ -433,7 +433,8 @@
      $        WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
       CASE('d','D')
          CALL PDSYEVD( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
-     $        IX, JX, DESCX, WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
+     $        IX, JX, DESCX, WORK( INDWORK ), LLWORK,
+     $        IWORK, LIWORK, ITMP )
       CASE('x','X')
          ALLOCATE(ICLUSTR(2*NPROCS))
          ALLOCATE(GAP(NPROCS))

@@ -709,7 +709,7 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
 #endif
 
    allocate(occupation_mp2(nvirtual))
-   call diagonalize(postscf_diago_flavor,p_matrix_mp2,occupation_mp2)
+   call diagonalize(scf_diago_flavor,p_matrix_mp2,occupation_mp2)
 
 !   write(stdout,*)
 !   do astate=1,nvirtual
@@ -743,7 +743,7 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
 
    deallocate(ham_virtual)
 
-   call diagonalize(postscf_diago_flavor,ham_virtual_kept,energy_virtual_kept)
+   call diagonalize(scf_diago_flavor,ham_virtual_kept,energy_virtual_kept)
 
 !   write(stdout,'(/,1x,a)') ' virtual state    FNO energy (eV)   reference energy (eV)'
 !   do astate=1,nvirtual_kept

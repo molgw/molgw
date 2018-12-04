@@ -3239,7 +3239,7 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
    call PDGEMM('T','N',mm,mm,mmat,1.0_dp,bb,1,1,desc_bb,ab,1,1,desc_bb,0.0_dp,atilde,1,1,desc_at)
 
 
-   call diagonalize_sca(mm,desc_at,atilde,lambda,desc_at,alphavec)
+   call diagonalize_sca(' ',atilde,desc_at,lambda,alphavec,desc_at)
 
    deallocate(atilde)
 

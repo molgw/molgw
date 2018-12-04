@@ -238,6 +238,9 @@ if not os.path.isfile('../molgw') :
 if ncores > 1:
   os.environ["OMP_NUM_THREADS"] = str(ncores)
   os.environ["MKL_NUM_THREADS"] = str(ncores)
+else:
+  os.environ["OMP_NUM_THREADS"] = '1'
+  os.environ["MKL_NUM_THREADS"] = '1'
 
 try:
   ncores = int(os.environ['OMP_NUM_THREADS'])

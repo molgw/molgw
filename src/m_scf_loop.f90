@@ -275,6 +275,13 @@ subroutine scf_loop(is_restart,&
    ! Sum up to get the total energy
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx_hyb + en%xc
 
+   ! Make sure all the MPI threads have the exact same Hamiltonian
+   ! It helps stabilizing the SCF cycles in parallel
+   if( .NOT. parallel_ham ) then
+     call xsum_world(hamiltonian)
+     hamiltonian(:,:,:) = hamiltonian(:,:,:) / REAL(nproc_world,dp)
+   endif
+
    !
    ! If requested, the level shifting procedure is triggered:
    ! All the unoccupied states are penalized with an energy =  level_shifting_energy
@@ -282,7 +289,6 @@ subroutine scf_loop(is_restart,&
      if( parallel_ham ) call die('level_shifting: not implemented with parallel_ham')
      call level_shifting_up(s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
    endif
-
 
    ! DIIS or simple mixing on the hamiltonian
    call hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,hamiltonian)
@@ -739,17 +745,17 @@ end subroutine calculate_hamiltonian_hxc
 
 
 !=========================================================================
-subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &        
-                                              nstate,                 &        
+subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
+                                              nstate,                 &
                                               nocc,                   &
-                                              m_ham,                  &       
-                                              n_ham,                  &       
-                                              m_c,                    &     
-                                              n_c,                    &     
-                                              occupation,             &             
+                                              m_ham,                  &
+                                              n_ham,                  &
+                                              m_c,                    &
+                                              n_c,                    &
+                                              occupation,             &
                                               c_matrix_cmplx,         &
-                                              p_matrix_cmplx,         &             
-                                              hamiltonian_hxc_cmplx)         
+                                              p_matrix_cmplx,         &
+                                              hamiltonian_hxc_cmplx)
  use m_scalapack
  use m_basis_set
  use m_hamiltonian
@@ -781,19 +787,19 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  en%exx_hyb = 0.0_dp
 
 ! if ( parallel_ham ) call die('parallel_ham not yet implemented for tddft propagator')
- 
+
  ! Initialize real arrays
- 
+
  p_matrix=REAL(p_matrix_cmplx,dp)
- 
- hamiltonian_hxc_cmplx = ( 0.0_dp , 0.0_dp ) 
- 
+
+ hamiltonian_hxc_cmplx = ( 0.0_dp , 0.0_dp )
+
  !
  ! Exchange contribution to the Hamiltonian
  !
  if( calc_type%need_exchange ) then
    call setup_exchange_versatile_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en%exx)
-   
+
    ! Rescale with alpha_hybrid for hybrid functionals
    en%exx_hyb = alpha_hybrid * en%exx
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
@@ -819,11 +825,11 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
 
  !
  ! DFT XC potential is added here
- ! 
+ !
  if( calc_type%is_dft ) then
    call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix_cmplx,hamiltonian_tmp,en%xc)
-   
-   hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:) 
+
+   hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:)
  endif
 
 ! write(file_time_data,"(6(x,e16.10,2x),'    ')",advance='no') enuc,ekin,ehart, eexx_hyb,exc, enuc+ekin+ehart+eexx_hyb+exc
@@ -834,7 +840,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  !   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
  !
  !     call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
- !   
+ !
  !   ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
  !   eexx_hyb = alpha_hybrid_lr * eexx
  !   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr

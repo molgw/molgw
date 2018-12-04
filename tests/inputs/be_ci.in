@@ -5,6 +5,7 @@
 
  postscf='ci'
  ci_nstate=10000
+ postscf_diago_flavor=' '
 
  natom=1
 /
