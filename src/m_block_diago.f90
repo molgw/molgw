@@ -23,100 +23,109 @@ contains
 
 
 !=========================================================================
-subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
-                              bigomega,desc_x,m_x,n_x,xpy_matrix,xmy_matrix)
+subroutine diago_4blocks_chol(amb_matrix,apb_matrix,desc_apb,bigomega,xpy_matrix,xmy_matrix,desc_x)
  implicit none
 
- integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
  integer,intent(in)     :: desc_apb(NDEL),desc_x(NDEL)
- real(dp),intent(inout) :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
- real(dp),intent(out)   :: bigomega(nmat)
- real(dp),intent(out)   :: xpy_matrix(m_x,n_x)
- real(dp),intent(out)   :: xmy_matrix(m_x,n_x)
+ real(dp),intent(inout) :: amb_matrix(:,:),apb_matrix(:,:)
+ real(dp),intent(out)   :: bigomega(:)
+ real(dp),intent(out)   :: xpy_matrix(:,:)
+ real(dp),intent(out)   :: xmy_matrix(:,:)
 !=====
+ integer              :: nmat,m_apb,n_apb,m_x,n_x
  integer              :: info
  integer              :: lwork,liwork
  real(dp),allocatable :: work(:)
  integer,allocatable  :: iwork(:)
-!=====
- integer :: imat
+ integer              :: imat
+ integer              :: nprow,npcol,iprow,ipcol
 !=====
 
  call start_clock(timing_diago_h2p)
 
  write(stdout,'(/,a)') ' Performing the block diago with Cholesky'
 
+ nmat  = SIZE(bigomega)
+ m_apb = SIZE(apb_matrix,DIM=1)
+ n_apb = SIZE(apb_matrix,DIM=2)
+ m_x   = SIZE(xpy_matrix,DIM=1)
+ n_x   = SIZE(xpy_matrix,DIM=2)
+
+ call BLACS_GRIDINFO(desc_apb(CTXT_),nprow,npcol,iprow,ipcol)
+
+
 #if defined(HAVE_SCALAPACK)
+ if( nprow * npcol > 1 ) then
 
- allocate(work(1))
- allocate(iwork(1))
- lwork=-1
- liwork=-1
- call PDBSSOLVER1(postscf_diago_flavor,nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
-                  bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
-                  work,lwork,iwork,liwork,info)
- if( info /= 0 ) call die('diago_4blocks_chol: SCALAPACK failed')
+   allocate(work(1))
+   allocate(iwork(1))
+   lwork=-1
+   liwork=-1
+   call PDBSSOLVER1(postscf_diago_flavor,nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
+                    bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
+                    work,lwork,iwork,liwork,info)
+   if( info /= 0 ) call die('diago_4blocks_chol: SCALAPACK failed')
 
- lwork  = NINT(work(1))
- deallocate(work)
- call clean_allocate('Work array for SCALAPACK diago',work,lwork)
+   lwork  = NINT(work(1))
+   deallocate(work)
+   call clean_allocate('Work array for SCALAPACK diago',work,lwork)
 
- liwork = iwork(1)
- deallocate(iwork)
- allocate(iwork(liwork))
+   liwork = iwork(1)
+   deallocate(iwork)
+   allocate(iwork(liwork))
 
- call PDBSSOLVER1(postscf_diago_flavor,nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
-                  bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
-                  work,lwork,iwork,liwork,info)
- if( info /= 0 ) call die('diago_4blocks_chol: SCALAPACK failed')
+   call PDBSSOLVER1(postscf_diago_flavor,nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
+                    bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
+                    work,lwork,iwork,liwork,info)
+   if( info /= 0 ) call die('diago_4blocks_chol: SCALAPACK failed')
 
- call clean_deallocate('Work array for SCALAPACK diago',work)
- deallocate(iwork)
+   call clean_deallocate('Work array for SCALAPACK diago',work)
+   deallocate(iwork)
 
- !
- ! the subroutine returns X and Y, but we want (X+Y) and (X-Y)
- !
- ! Save X in (A+B)
- call PDLACPY('A',nmat,nmat,xpy_matrix,1,1,desc_x,apb_matrix,1,1,desc_apb)
- ! Save Y in (A-B)
- call PDLACPY('A',nmat,nmat,xmy_matrix,1,1,desc_x,amb_matrix,1,1,desc_apb)
+   !
+   ! the subroutine returns X and Y, but we want (X+Y) and (X-Y)
+   !
+   ! Save X in (A+B)
+   call PDLACPY('A',nmat,nmat,xpy_matrix,1,1,desc_x,apb_matrix,1,1,desc_apb)
+   ! Save Y in (A-B)
+   call PDLACPY('A',nmat,nmat,xmy_matrix,1,1,desc_x,amb_matrix,1,1,desc_apb)
 
- call PDGEADD('N',nmat,nmat,1.0_dp,amb_matrix,1,1,desc_apb, 1.0_dp,xpy_matrix,1,1,desc_x)
- call PDGEADD('N',nmat,nmat,1.0_dp,apb_matrix,1,1,desc_apb,-1.0_dp,xmy_matrix,1,1,desc_x)
+   call PDGEADD('N',nmat,nmat,1.0_dp,amb_matrix,1,1,desc_apb, 1.0_dp,xpy_matrix,1,1,desc_x)
+   call PDGEADD('N',nmat,nmat,1.0_dp,apb_matrix,1,1,desc_apb,-1.0_dp,xmy_matrix,1,1,desc_x)
 
+ else
+#endif
 
+   ! Cholevski decomposition of (A+B) = L * L^T
+   call DPOTRF('L',nmat,apb_matrix,nmat,info)
 
-#else
+   ! Calculate L^T * (A-B) * L
+   call DSYGST(3,'L',nmat,amb_matrix,nmat,apb_matrix,nmat,info)
 
- ! Cholevski decomposition of (A+B) = L * L^T
- call DPOTRF('L',nmat,apb_matrix,nmat,info)
+   ! Diagonalize L^T * (A-B) * L
+   call diagonalize(postscf_diago_flavor,amb_matrix,bigomega)
 
- ! Calculate L^T * (A-B) * L
- call DSYGST(3,'L',nmat,amb_matrix,nmat,apb_matrix,nmat,info)
+   bigomega(:) = SQRT( bigomega(:) )
 
- ! Diagonalize L^T * (A-B) * L
- call diagonalize(postscf_diago_flavor,amb_matrix,bigomega)
+   xpy_matrix(:,:) = amb_matrix(:,:)
+   xmy_matrix(:,:) = amb_matrix(:,:)
 
- bigomega(:) = SQRT( bigomega(:) )
+   ! Calculate L * Z
+   call DTRMM('L','L','N','N',nmat,nmat,1.0_dp,apb_matrix,nmat,xmy_matrix,nmat)
 
- xpy_matrix(:,:) = amb_matrix(:,:)
- xmy_matrix(:,:) = amb_matrix(:,:)
+   ! Calculate L^{-T} * Z
+   call DTRSM('L','L','T','N',nmat,nmat,1.0_dp,apb_matrix,nmat,xpy_matrix,nmat)
 
- ! Calculate L * Z
- call DTRMM('L','L','N','N',nmat,nmat,1.0_dp,apb_matrix,nmat,xmy_matrix,nmat)
+   !
+   ! X-Y = L * Z / Omega^{1/2}
+   ! X+Y = L^{-T} * Z * Omega^{1/2}
+   forall(imat=1:nmat)
+     xpy_matrix(:,imat) = xpy_matrix(:,imat) * SQRT( bigomega(imat) )
+     xmy_matrix(:,imat) = xmy_matrix(:,imat) / SQRT( bigomega(imat) )
+   end forall
 
- ! Calculate L^{-T} * Z
- call DTRSM('L','L','T','N',nmat,nmat,1.0_dp,apb_matrix,nmat,xpy_matrix,nmat)
-
- !
- ! X-Y = L * Z / Omega^{1/2}
- ! X+Y = L^{-T} * Z * Omega^{1/2}
- forall(imat=1:nmat)
-   xpy_matrix(:,imat) = xpy_matrix(:,imat) * SQRT( bigomega(imat) )
-   xmy_matrix(:,imat) = xmy_matrix(:,imat) / SQRT( bigomega(imat) )
- end forall
-
-
+#if defined(HAVE_SCALAPACK)
+ endif
 #endif
 
  call stop_clock(timing_diago_h2p)
@@ -125,35 +134,39 @@ end subroutine diago_4blocks_chol
 
 
 !=========================================================================
-subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matrix,&
-                                 bigomega,desc_x,m_x,n_x,xpy_matrix)
-#ifdef HAVE_ELPA
+subroutine diago_4blocks_rpa_sca(amb_diag_rpa,apb_matrix,desc_apb,bigomega,xpy_matrix,desc_x)
+#if defined(HAVE_ELPA)
  use elpa1
  use elpa2
  use elpa
 #endif
  implicit none
 
- integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
  integer,intent(in)     :: desc_apb(NDEL),desc_x(NDEL)
- real(dp),intent(in)    :: amb_diag_rpa(nmat)
- real(dp),intent(inout) :: apb_matrix(m_apb,n_apb)
- real(dp),intent(out)   :: bigomega(nmat)
- real(dp),intent(out)   :: xpy_matrix(m_x,n_x)
+ real(dp),intent(in)    :: amb_diag_rpa(:)
+ real(dp),intent(inout) :: apb_matrix(:,:)
+ real(dp),intent(out)   :: bigomega(:)
+ real(dp),intent(out)   :: xpy_matrix(:,:)
 !=====
- real(dp)             :: amb_diag_sqrt(nmat)
-#ifdef HAVE_ELPA
+ integer         :: nmat,m_apb,n_apb,m_x,n_x
+ integer         :: info
+ real(dp)        :: amb_diag_sqrt(SIZE(bigomega))
+#if defined(HAVE_ELPA)
  logical         :: success
  integer         :: comm_row,comm_col
 #endif
 !=====
- integer :: info
-!=====
 
  call start_clock(timing_diago_h2p)
 
-
  write(stdout,'(/,a)') ' Performing the SCALAPACK block diago when A-B is diagonal'
+
+ nmat  = SIZE(bigomega)
+ m_apb = SIZE(apb_matrix,DIM=1)
+ n_apb = SIZE(apb_matrix,DIM=2)
+ m_x   = SIZE(xpy_matrix,DIM=1)
+ n_x   = SIZE(xpy_matrix,DIM=2)
+
 
  ! First symmetrize (A+B) (lower triangular matrix)
  ! Use X+Y as a work buffer
@@ -174,7 +187,7 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
 
 
  ! Diagonalization
-#ifdef HAVE_ELPA
+#if defined(HAVE_ELPA)
  info = get_elpa_communicators(comm_world,iprow_sd,ipcol_sd,comm_row,comm_col)
  success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_),n_apb, &
                                  comm_row,comm_col,comm_world,method='2stage')
@@ -203,23 +216,23 @@ end subroutine diago_4blocks_rpa_sca
 
 
 !=========================================================================
-subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
-                                  desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, &
-                                  bigomega,desc_x,m_x,n_x,xpy_matrix,xmy_matrix)
+subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,amb_diag_rpa, &
+                                  amb_matrix,apb_matrix,desc_apb, &
+                                  bigomega,xpy_matrix,xmy_matrix,desc_x)
  implicit none
 
  real(dp),intent(in)    :: toldav
  integer,intent(in)     :: nstep
  integer,intent(in)     :: nexcitation
- integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
  integer,intent(in)     :: desc_apb(NDEL),desc_x(NDEL)
- real(dp),intent(in)    :: amb_diag_rpa(nmat)
- real(dp),intent(inout) :: amb_matrix(m_apb,n_apb)
- real(dp),intent(inout) :: apb_matrix(m_apb,n_apb)
- real(dp),intent(out)   :: bigomega(nmat)
- real(dp),intent(out)   :: xpy_matrix(m_x,n_x)
- real(dp),intent(out)   :: xmy_matrix(m_x,n_x)
+ real(dp),intent(in)    :: amb_diag_rpa(:)
+ real(dp),intent(inout) :: amb_matrix(:,:)
+ real(dp),intent(inout) :: apb_matrix(:,:)
+ real(dp),intent(out)   :: bigomega(:)
+ real(dp),intent(out)   :: xpy_matrix(:,:)
+ real(dp),intent(out)   :: xmy_matrix(:,:)
 !=====
+ integer              :: nmat,m_apb,n_apb,m_x,n_x
  integer              :: descb(NDEL),desce(NDEL)
  integer,parameter    :: SMALL_BLOCK=4
  integer              :: nbb,nbbc,nbba
@@ -249,6 +262,12 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
  call start_clock(timing_diago_h2p)
 
  write(stdout,'(/,a,i4)') ' Performing the Davidson block diago'
+
+ nmat  = SIZE(bigomega)
+ m_apb = SIZE(apb_matrix,DIM=1)
+ n_apb = SIZE(apb_matrix,DIM=2)
+ m_x   = SIZE(xpy_matrix,DIM=1)
+ n_x   = SIZE(xpy_matrix,DIM=2)
 
  !
  ! No need to symmetrize (A+B) and (A-B), since we call the specialized DSYMM or PDSYMM
@@ -298,7 +317,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
  !
  ! The time-consumming operation:
  ! Calculate (A-B) b  and  (A+B) b
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
 ! amb_bb(:,1:nbbc) = MATMUL( amb_matrix(:,:) , bb(:,1:nbbc) )
 ! apb_bb(:,1:nbbc) = MATMUL( apb_matrix(:,:) , bb(:,1:nbbc) )
  call DSYMM('L','L',nmat,nbbc,1.0_dp,amb_matrix,nmat,bb(:,1:nbbc),nmat,0.0_dp,amb_bb(:,1:nbbc),nmat)
@@ -480,7 +499,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
 
    !  Dimensions to be added
    nbba = 2 * nexcitation
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
 !   amb_bb(:,nbbc+1:nbbc+nbba) = MATMUL( amb_matrix(:,:) , bb(:,nbbc+1:nbbc+2*nexcitation) )
 !   apb_bb(:,nbbc+1:nbbc+nbba) = MATMUL( apb_matrix(:,:) , bb(:,nbbc+1:nbbc+2*nexcitation) )
    call DSYMM('L','L',nmat,nbba,1.0_dp,amb_matrix,nmat,bb(:,nbbc+1:nbbc+nbba),nmat,0.0_dp,amb_bb(:,nbbc+1:nbbc+nbba),nmat)
@@ -570,7 +589,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
  ! R = | X + Y >
  bigomega(1:nexcitation) = bigomega_tmp(1:nexcitation)
 
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
 
  xpy_matrix(:,1:nexcitation) = MATMUL( bb(:,1:nbbc) , eigvec_right(:,1:nexcitation) )
  xmy_matrix(:,1:nexcitation) = MATMUL( bb(:,1:nbbc) , eigvec_left (:,1:nexcitation) )
