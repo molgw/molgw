@@ -9,7 +9,8 @@
 !
 !=========================================================================
 #if defined(HAVE_SCALAPACK)
-      SUBROUTINE PDBSSOLVER1( N, M, IM, JM, DESCM, K, IK, JK, DESCK,
+      SUBROUTINE PDBSSOLVER1( FLAVOR, 
+     $                        N, M, IM, JM, DESCM, K, IK, JK, DESCK,
      $                        LAMBDA, X1, IX, JX, DESCX, X2, WORK,
      $                        LWORK, IWORK, LIWORK, INFO )
 *
@@ -23,6 +24,7 @@
       IMPLICIT NONE
 *
 *     .. Scalar Arguments ..
+      CHARACTER(LEN=1)   FLAVOR
       INTEGER            N, IM, JM, IK, JK, IX, JX, LWORK, LIWORK, INFO
 *     ..
 *     .. Array Arguments ..
@@ -267,14 +269,12 @@
       DOUBLE PRECISION   DTMP
       DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_VEC1, T_VEC2, T_PREP
       DOUBLE PRECISION   DDUM( 3 )
-#if defined(LAPACK_DIAGO_FLAVOR_X)
       DOUBLE PRECISION   ABSTOL
       INTEGER            IFAIL(N)
       EXTERNAL           PDLAMCH
       DOUBLE PRECISION   PDLAMCH
       INTEGER,ALLOCATABLE ::         ICLUSTR(:)
       DOUBLE PRECISION,ALLOCATABLE :: GAP(:)
-#endif
 #if defined(HAVE_ELPA)
       LOGICAL         :: SUCCESS
       INTEGER         :: COMM_ROW,COMM_COL
@@ -343,27 +343,29 @@
 *
 *        Estimate the workspace required by external subroutines.
 *
-#if defined(LAPACK_DIAGO_FLAVOR_)
-         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
-     $        JX, DESCX, DDUM, -1, ITMP )
-         IWORK( 1 ) = 1
-#elif defined(LAPACK_DIAGO_FLAVOR_X)
-         ALLOCATE(ICLUSTR(2*NPROCS))
-         ALLOCATE(GAP(NPROCS))
-         ABSTOL = PDLAMCH(DESCK(2), 'U')
-         CALL PDSYEVX( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
-     $        ZERO, 1, N, ABSTOL, DIMV, NZ, DTMP, ZERO, DTMP, IX, JX,
-     $        DESCX, DDUM, -1,
-     $        IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
-         DEALLOCATE(ICLUSTR,GAP)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
-         CALL PDSYEVD( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
-     $        JX, DESCX, DDUM, -1, IWORK, -1, ITMP )
-#else
-         CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
-     $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, DDUM, -1,
-     $        IWORK, -1, ITMP )
-#endif
+         SELECT CASE(FLAVOR)
+         CASE('r','R')
+            CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
+     $           ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, DDUM, -1,
+     $           IWORK, -1, ITMP )
+         CASE('d','D')
+            CALL PDSYEVD( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
+     $           JX, DESCX, DDUM, -1, IWORK, -1, ITMP )
+         CASE('x','X')
+            ALLOCATE(ICLUSTR(2*NPROCS))
+            ALLOCATE(GAP(NPROCS))
+            ABSTOL = PDLAMCH(DESCK(2), 'U')
+            CALL PDSYEVX( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
+     $           ZERO, 1, N, ABSTOL, DIMV, NZ, DTMP, ZERO, DTMP, IX, JX,
+     $           DESCX, DDUM, -1,
+     $           IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
+            DEALLOCATE(ICLUSTR,GAP)
+         CASE DEFAULT
+            CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
+     $           JX, DESCX, DDUM, -1, ITMP )
+            IWORK( 1 ) = 1
+         END SELECT
+
          LWKOPT = INT( DDUM( 1 ) )
          LIWKOPT = IWORK( 1 )
 *
@@ -424,26 +426,27 @@
 *
       T_DIAG = MPI_WTIME()
 #if !defined(HAVE_ELPA)
-#if defined(LAPACK_DIAGO_FLAVOR_)
-      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
-     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, ITMP )
-#elif defined(LAPACK_DIAGO_FLAVOR_X)
-      ALLOCATE(ICLUSTR(2*NPROCS))
-      ALLOCATE(GAP(NPROCS))
-      ABSTOL = PDLAMCH(DESCK(2), 'U')
-      CALL PDSYEVX( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO,
-     $      ZERO, 1, N, ABSTOL, DIMV, NZ, LAMBDA, ZERO, X1, IX, JX,
-     $      DESCX, WORK( INDWORK ), LLWORK,
-     $      IWORK, LIWORK, IFAIL, ICLUSTR, GAP, ITMP )
-      DEALLOCATE(ICLUSTR,GAP)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
-      CALL PDSYEVD( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
-     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
-#else
-      CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
-     $     1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
-     $     WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
-#endif
+      SELECT CASE(FLAVOR)
+      CASE('r','R')
+         CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
+     $        1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
+     $        WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
+      CASE('d','D')
+         CALL PDSYEVD( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
+     $        IX, JX, DESCX, WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
+      CASE('x','X')
+         ALLOCATE(ICLUSTR(2*NPROCS))
+         ALLOCATE(GAP(NPROCS))
+         ABSTOL = PDLAMCH(DESCK(2), 'U')
+         CALL PDSYEVX( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO,
+     $         ZERO, 1, N, ABSTOL, DIMV, NZ, LAMBDA, ZERO, X1, IX, JX,
+     $         DESCX, WORK( INDWORK ), LLWORK,
+     $         IWORK, LIWORK, IFAIL, ICLUSTR, GAP, ITMP )
+         DEALLOCATE(ICLUSTR,GAP)
+      CASE DEFAULT
+         CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
+     $        IX, JX, DESCX, WORK( INDWORK ), LLWORK, ITMP )
+      END SELECT
 
 #else
       ITMP = GET_ELPA_COMMUNICATORS(MPI_COMM_WORLD,MYROW,MYCOL,

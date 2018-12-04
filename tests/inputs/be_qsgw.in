@@ -2,7 +2,9 @@
  scf='gw'
 
  basis='cc-pVDZ'
+ !auxil_basis='cc-pV5Z-RI'
 
+ postscf_diago_flavor=' '
  natom=1
  alpha_mixing=0.5
  mixing_scheme='simple'

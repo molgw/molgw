@@ -16,6 +16,7 @@ module m_block_diago
  use m_mpi
  use m_scalapack
  use m_tools
+ use m_inputparam
 
 
 contains
@@ -33,26 +34,25 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  real(dp),intent(out)   :: xpy_matrix(m_x,n_x)
  real(dp),intent(out)   :: xmy_matrix(m_x,n_x)
 !=====
- integer  :: info
- integer  :: lwork,liwork
+ integer              :: info
+ integer              :: lwork,liwork
  real(dp),allocatable :: work(:)
- integer,allocatable :: iwork(:)
+ integer,allocatable  :: iwork(:)
 !=====
  integer :: imat
 !=====
 
  call start_clock(timing_diago_h2p)
 
+ write(stdout,'(/,a)') ' Performing the block diago with Cholesky'
 
 #if defined(HAVE_SCALAPACK)
-
- write(stdout,'(/,a)') ' Performing the block diago with Cholesky'
 
  allocate(work(1))
  allocate(iwork(1))
  lwork=-1
  liwork=-1
- call PDBSSOLVER1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
+ call PDBSSOLVER1(postscf_diago_flavor,nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
                   bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
                   work,lwork,iwork,liwork,info)
  if( info /= 0 ) call die('diago_4blocks_chol: SCALAPACK failed')
@@ -65,7 +65,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  deallocate(iwork)
  allocate(iwork(liwork))
 
- call PDBSSOLVER1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
+ call PDBSSOLVER1(postscf_diago_flavor,nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
                   bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
                   work,lwork,iwork,liwork,info)
  if( info /= 0 ) call die('diago_4blocks_chol: SCALAPACK failed')
@@ -95,15 +95,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  call DSYGST(3,'L',nmat,amb_matrix,nmat,apb_matrix,nmat,info)
 
  ! Diagonalize L^T * (A-B) * L
- lwork = -1
- allocate(work(1))
- call DSYEV('V','L',nmat,amb_matrix,nmat,bigomega,work,lwork,info)
- lwork = NINT(work(1))
- deallocate(work)
-
- allocate(work(lwork))
- call DSYEV('V','L',nmat,amb_matrix,nmat,bigomega,work,lwork,info)
- deallocate(work)
+ call diagonalize(postscf_diago_flavor,amb_matrix,bigomega)
 
  bigomega(:) = SQRT( bigomega(:) )
 
@@ -187,7 +179,7 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_),n_apb, &
                                  comm_row,comm_col,comm_world,method='2stage')
 #else
- call diagonalize_sca(nmat,desc_apb,apb_matrix,bigomega,desc_x,xpy_matrix)
+ call diagonalize_sca(postscf_diago_flavor,apb_matrix,desc_apb,bigomega,xpy_matrix,desc_x)
 #endif
 
  bigomega(:) = SQRT( bigomega(:) )

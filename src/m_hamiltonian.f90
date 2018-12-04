@@ -1318,7 +1318,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
 
  matrix_tmp(:,:) = s_matrix(:,:)
  ! Diagonalization with or without SCALAPACK
- call diagonalize_scalapack(scalapack_block_min,nbf,matrix_tmp,s_eigval)
+ call diagonalize_scalapack(' ',scalapack_block_min,matrix_tmp,s_eigval)
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
@@ -1363,7 +1363,7 @@ subroutine setup_sqrt_density_matrix(p_matrix,p_matrix_sqrt,p_matrix_occ)
  do ispin=1,nspin
    p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
    ! Diagonalization with or without SCALAPACK
-   call diagonalize_scalapack(scalapack_block_min,nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+   call diagonalize_scalapack(' ',scalapack_block_min,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
    do ibf=1,nbf
      ! this is to avoid instabilities
      if( p_matrix_occ(ibf,ispin) < 1.0e-8_dp ) then
@@ -1407,7 +1407,7 @@ subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
    p_matrix_sqrt(:,:) = -p_matrix(:,:,ispin)
 
    ! Diagonalization with or without SCALAPACK
-   call diagonalize_scalapack(scalapack_block_min,nbf,p_matrix_sqrt,occupation(:,ispin))
+   call diagonalize_scalapack(' ',scalapack_block_min,p_matrix_sqrt,occupation(:,ispin))
 
    c_matrix(:,:,ispin) = p_matrix_sqrt(:,1:nstate)
    occupation(:,ispin) = -occupation(:,ispin)

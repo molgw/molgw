@@ -1278,7 +1278,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  if( conf%nstate == conf%nconf ) then
    call start_clock(timing_ci_diago)
    write(stdout,'(1x,a,i8,a,i8)') 'Full diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
-   call diagonalize_sca(conf%nconf,desc_ham,h_ci,energy,desc_ham,eigvec)
+   call diagonalize_sca(postscf_diago_flavor,h_ci,desc_ham,energy,eigvec,desc_ham)
    call stop_clock(timing_ci_diago)
  else
    write(stdout,'(1x,a,i8,a,i8)') 'Partial diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
@@ -1516,7 +1516,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    !atilde(1:mm,1:mm) = MATMUL( TRANSPOSE(bb(:,1:mm)) , ab(:,1:mm) )
    call PDGEMM('T','N',mm,mm,conf%nconf,1.0_dp,bb,1,1,desc_bb,ab,1,1,desc_bb,0.0_dp,atilde,1,1,desc_at)
 
-   call diagonalize_sca(mm,desc_at,atilde,lambda,desc_at,alphavec)
+   call diagonalize_sca(postscf_diago_flavor,atilde,desc_at,lambda,alphavec,desc_at)
 
    deallocate(atilde)
 

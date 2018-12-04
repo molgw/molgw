@@ -247,54 +247,46 @@ end subroutine invert_inplace_cdp
 
 
 !=========================================================================
-subroutine diagonalize_wo_vectors_dp(matrix,eigval)
+subroutine diagonalize_wo_vectors_dp(flavor,matrix,eigval)
  implicit none
- real(dp),intent(inout) :: matrix(:,:)
- real(dp),intent(out) :: eigval(:)
+ character(len=1),intent(in) :: flavor
+ real(dp),intent(inout)      :: matrix(:,:)
+ real(dp),intent(out)        :: eigval(:)
 !=====
  integer :: nmat
  integer :: info
  real(dp),allocatable :: work(:)
-! integer  :: iwork(5*n),ifail(n)
-! real(dp) :: z(1,n)
-! real(dp) :: work(8*n)
 !=====
 
  nmat = SIZE(matrix,DIM=1)
  allocate(work(3*nmat-1))
 
- call DSYEV('N','U',nmat,matrix,nmat,eigval,work,3*nmat-1,info)
+ call DSYEV('N','L',nmat,matrix,nmat,eigval,work,3*nmat-1,info)
 
  deallocate(work)
 
-! call DSYEVX('N','A','U',nmat,matrix,nmat,0.0_dp,0.0_dp,0,0,&
-!                         1.0e-20_dp,nmat,eigval,z,1,work,8*nmat,iwork,&
-!                         ifail,info)
 
 end subroutine diagonalize_wo_vectors_dp
 
 
 !=========================================================================
-subroutine diagonalize_dp(matrix,eigval,eigvec)
+subroutine diagonalize_dp(flavor,matrix,eigval,eigvec)
  implicit none
- real(dp),intent(in)  :: matrix(:,:)
- real(dp),intent(out) :: eigval(:)
- real(dp),intent(out) :: eigvec(:,:)
+ character(len=1),intent(in) :: flavor
+ real(dp),intent(in)         :: matrix(:,:)
+ real(dp),intent(out)        :: eigval(:)
+ real(dp),intent(out)        :: eigvec(:,:)
 !=====
- integer :: nmat,lwork
+ integer              :: nmat,lwork
  real(dp),allocatable :: work(:)
- integer :: info
-#if !defined(LAPACK_DIAGO_FLAVOR_)
- integer             :: liwork
- integer,allocatable :: iwork(:)
-#endif
-#if !defined(LAPACK_DIAGO_FLAVOR_) && !defined(LAPACK_DIAGO_FLAVOR_D)
- integer             :: isuppz(2*SIZE(matrix,DIM=1))
- real(dp),allocatable:: matrix_tmp(:,:)
- real(dp)            :: ABSTOL
- real(dp),external   :: DLAMCH
- integer             :: neig
-#endif
+ integer              :: info
+ integer              :: liwork
+ integer,allocatable  :: iwork(:)
+ integer,allocatable  :: isuppz(:)
+ real(dp),allocatable :: matrix_tmp(:,:)
+ real(dp)             :: ABSTOL
+ real(dp),external    :: DLAMCH
+ integer              :: neig
 !=====
 
  nmat = SIZE(matrix,DIM=1)
@@ -303,40 +295,47 @@ subroutine diagonalize_dp(matrix,eigval,eigvec)
 
  lwork = -1
  allocate(work(1))
-#if defined(LAPACK_DIAGO_FLAVOR_)
- call DSYEV('V','U',nmat,eigvec,nmat,eigval,work,lwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
- allocate(iwork(1))
- call DSYEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
- liwork = iwork(1)
- deallocate(iwork)
-#else
- allocate(iwork(1))
- allocate(matrix_tmp(nmat,nmat))
- ABSTOL = DLAMCH('S')
- matrix_tmp(:,:) = matrix(:,:)
- call DSYEVR('V','A','U',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
- liwork = iwork(1)
- deallocate(iwork)
-#endif
+
+ select case(flavor)
+ case('r','R')
+   allocate(iwork(1))
+   allocate(matrix_tmp(nmat,nmat))
+   allocate(isuppz(2*nmat))
+   ABSTOL = DLAMCH('S')
+   matrix_tmp(:,:) = matrix(:,:)
+   call DSYEVR('V','A','L',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+   liwork = iwork(1)
+   deallocate(iwork)
+ case('d','D')
+   allocate(iwork(1))
+   call DSYEVD('V','L',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
+   liwork = iwork(1)
+   deallocate(iwork)
+ case default
+   call DSYEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,info)
+ end select
+
  lwork = NINT(work(1))
  deallocate(work)
 
  if( info /= 0 ) call die('diagonalize_dp: diago failure 1')
 
  allocate(work(lwork))
-#if defined(LAPACK_DIAGO_FLAVOR_)
- call DSYEV('V','U',nmat,eigvec,nmat,eigval,work,lwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
- allocate(iwork(liwork))
- call DSYEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
- deallocate(iwork)
-#else
- allocate(iwork(liwork))
- call DSYEVR('V','A','U',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
- deallocate(iwork)
- deallocate(matrix_tmp)
-#endif
+
+ select case(flavor)
+ case('r','R')
+   allocate(iwork(liwork))
+   call DSYEVR('V','A','L',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+   deallocate(iwork,isuppz)
+   deallocate(matrix_tmp)
+ case('d','D')
+   allocate(iwork(liwork))
+   call DSYEVD('V','L',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
+   deallocate(iwork)
+ case default
+   call DSYEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,info)
+ end select
+
  deallocate(work)
 
  if( info /= 0 ) call die('diagonalize_dp: diago failure 2')
@@ -345,11 +344,12 @@ end subroutine diagonalize_dp
 
 
 !=========================================================================
-subroutine diagonalize_sp(matrix,eigval,eigvec)
+subroutine diagonalize_sp(flavor,matrix,eigval,eigvec)
  implicit none
- real(sp),intent(in)  :: matrix(:,:)
- real(sp),intent(out) :: eigval(:)
- real(sp),intent(out) :: eigvec(:,:)
+ character(len=1),intent(in) :: flavor
+ real(sp),intent(in)         :: matrix(:,:)
+ real(sp),intent(out)        :: eigval(:)
+ real(sp),intent(out)        :: eigvec(:,:)
 !=====
  integer  :: nmat
  real(sp),allocatable :: work(:)
@@ -361,7 +361,7 @@ subroutine diagonalize_sp(matrix,eigval,eigvec)
 
  eigvec(:,:) = matrix(:,:)
 
- call SSYEV('V','U',nmat,eigvec,nmat,eigval,work,3*nmat-1,info)
+ call SSYEV('V','L',nmat,eigvec,nmat,eigval,work,3*nmat-1,info)
 
  deallocate(work)
 
@@ -371,65 +371,68 @@ end subroutine diagonalize_sp
 
 
 !=========================================================================
-subroutine diagonalize_inplace_dp(matrix,eigval)
+subroutine diagonalize_inplace_dp(flavor,matrix,eigval)
  implicit none
- real(dp),intent(inout) :: matrix(:,:)
- real(dp),intent(out)   :: eigval(:)
+ character(len=1),intent(in) :: flavor
+ real(dp),intent(inout)      :: matrix(:,:)
+ real(dp),intent(out)        :: eigval(:)
 !=====
  integer              :: nmat
  real(dp),allocatable :: work(:)
  integer              :: lwork,info
-#if !defined(LAPACK_DIAGO_FLAVOR_)
  integer             :: liwork
  integer,allocatable :: iwork(:)
-#endif
-#if !defined(LAPACK_DIAGO_FLAVOR_) && !defined(LAPACK_DIAGO_FLAVOR_D)
- integer                 :: isuppz(2*SIZE(matrix,DIM=1))
+ integer,allocatable :: isuppz(:)
  real(dp),allocatable    :: eigvec(:,:)
  real(dp)                :: ABSTOL
  real(dp),external       :: DLAMCH
  integer                 :: neig
-#endif
 !=====
 
  nmat = SIZE(matrix,DIM=1)
 
  lwork = -1
  allocate(work(1))
-#if defined(LAPACK_DIAGO_FLAVOR_)
- call DSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
- allocate(iwork(1))
- call DSYEVD('V','U',nmat,matrix,nmat,eigval,work,lwork,iwork,liwork,info)
- liwork = iwork(1)
- deallocate(iwork)
-#else
- allocate(iwork(1))
- allocate(eigvec(nmat,nmat))
- ABSTOL=DLAMCH('S')
- call DSYEVR('V','A','U',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
- liwork = iwork(1)
- deallocate(iwork)
-#endif
+
+ select case(flavor)
+ case('r','R')
+   allocate(iwork(1))
+   allocate(eigvec(nmat,nmat))
+   ABSTOL=DLAMCH('S')
+   allocate(isuppz(2*nmat))
+   call DSYEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+   liwork = iwork(1)
+   deallocate(iwork)
+ case('d','D')
+   allocate(iwork(1))
+   call DSYEVD('V','L',nmat,matrix,nmat,eigval,work,lwork,iwork,liwork,info)
+   liwork = iwork(1)
+   deallocate(iwork)
+ case default
+   call DSYEV('V','L',nmat,matrix,nmat,eigval,work,lwork,info)
+ end select
+
  lwork = NINT(work(1))
  deallocate(work)
 
  if( info /= 0 ) call die('diagonalize_inplace_dp: diago failure 1')
 
  allocate(work(lwork))
-#if defined(LAPACK_DIAGO_FLAVOR_)
- call DSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
- allocate(iwork(liwork))
- call DSYEVD('V','U',nmat,matrix,nmat,eigval,work,lwork,iwork,liwork,info)
- deallocate(iwork)
-#else
- allocate(iwork(liwork))
- call DSYEVR('V','A','U',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
- matrix(:,:) = eigvec(:,:)
- deallocate(eigvec)
- deallocate(iwork)
-#endif
+
+ select case(flavor)
+ case('r','R')
+   allocate(iwork(liwork))
+   call DSYEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
+   matrix(:,:) = eigvec(:,:)
+   deallocate(eigvec)
+   deallocate(iwork,isuppz)
+ case('d','D')
+   allocate(iwork(liwork))
+   call DSYEVD('V','L',nmat,matrix,nmat,eigval,work,lwork,iwork,liwork,info)
+   deallocate(iwork)
+ case default
+   call DSYEV('V','L',nmat,matrix,nmat,eigval,work,lwork,info)
+ end select
  deallocate(work)
 
  if( info /= 0 ) call die('diagonalize_inplace_dp: diago failure 2')
@@ -438,8 +441,9 @@ end subroutine diagonalize_inplace_dp
 
 
 !=========================================================================
-subroutine diagonalize_inplace_sp(matrix,eigval)
+subroutine diagonalize_inplace_sp(flavor,matrix,eigval)
  implicit none
+ character(len=1),intent(in) :: flavor
  real(sp),intent(inout) :: matrix(:,:)
  real(sp),intent(out)   :: eigval(:)
 !=====
@@ -452,14 +456,14 @@ subroutine diagonalize_inplace_sp(matrix,eigval)
 
  lwork = -1
  allocate(work(1))
- call SSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
+ call SSYEV('V','L',nmat,matrix,nmat,eigval,work,lwork,info)
  lwork = NINT(work(1))
  deallocate(work)
 
  if( info /= 0 ) call die('diagonalize_inplace_sp: diago failure 1')
 
  allocate(work(lwork))
- call SSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
+ call SSYEV('V','L',nmat,matrix,nmat,eigval,work,lwork,info)
  deallocate(work)
 
  if( info /= 0 ) call die('diagonalize_inplace_sp: diago failure 2')
@@ -468,27 +472,24 @@ end subroutine diagonalize_inplace_sp
 
 
 !=========================================================================
-subroutine diagonalize_cdp(matrix,eigval,eigvec)
+subroutine diagonalize_cdp(flavor,matrix,eigval,eigvec)
  implicit none
- complex(dp),intent(in)  :: matrix(:,:)
- real(dp),intent(out)    :: eigval(:)
- complex(dp),intent(out) :: eigvec(:,:)
+ character(len=1),intent(in) :: flavor
+ complex(dp),intent(in)      :: matrix(:,:)
+ real(dp),intent(out)        :: eigval(:)
+ complex(dp),intent(out)     :: eigvec(:,:)
 !=====
- integer :: nmat
+ integer                 :: nmat
  complex(dp),allocatable :: work(:)
  real(dp),allocatable    :: rwork(:)
  integer                 :: lwork,lrwork,info
-#if !defined(LAPACK_DIAGO_FLAVOR_)
  integer                 :: liwork
  integer,allocatable     :: iwork(:)
-#endif
-#if !defined(LAPACK_DIAGO_FLAVOR_) && !defined(LAPACK_DIAGO_FLAVOR_D)
- integer                 :: isuppz(2*SIZE(matrix,DIM=1))
+ integer,allocatable     :: isuppz(:)
  complex(dp),allocatable :: matrix_tmp(:,:)
  real(dp)                :: ABSTOL
  real(dp),external       :: DLAMCH
  integer                 :: neig
-#endif
 !=====
 
  nmat = SIZE(matrix,DIM=1)
@@ -497,26 +498,30 @@ subroutine diagonalize_cdp(matrix,eigval,eigvec)
 
  allocate(work(1))
  allocate(rwork(1))
-#if defined(LAPACK_DIAGO_FLAVOR_)
- call ZHEEV('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,info)
- lrwork = 3 * nmat - 2
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
- allocate(iwork(1))
- call ZHEEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
- liwork = iwork(1)
- deallocate(iwork)
- lrwork = NINT(rwork(1))
-#else
- allocate(iwork(1))
- allocate(matrix_tmp(nmat,nmat))
- matrix_tmp(:,:) = matrix(:,:)
- ABSTOL = DLAMCH('S')
- call ZHEEVR('V','A','U',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig, &
-             eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
- liwork = iwork(1)
- deallocate(iwork)
- lrwork = NINT(rwork(1))
-#endif
+
+ select case(flavor)
+ case('r','R')
+   allocate(iwork(1))
+   allocate(matrix_tmp(nmat,nmat))
+   matrix_tmp(:,:) = matrix(:,:)
+   ABSTOL = DLAMCH('S')
+   allocate(isuppz(2*nmat))
+   call ZHEEVR('V','A','L',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig, &
+               eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
+   liwork = iwork(1)
+   deallocate(iwork)
+   lrwork = NINT(rwork(1))
+ case('d','D')
+   allocate(iwork(1))
+   call ZHEEVD('V','L',nmat,eigvec,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
+   liwork = iwork(1)
+   deallocate(iwork)
+   lrwork = NINT(rwork(1))
+ case default
+   call ZHEEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,rwork,info)
+   lrwork = 3 * nmat - 2
+ end select
+
  lwork = NINT(REAL(work(1),dp))
  deallocate(rwork)
  deallocate(work)
@@ -525,18 +530,20 @@ subroutine diagonalize_cdp(matrix,eigval,eigvec)
 
  allocate(work(lwork))
  allocate(rwork(lrwork))
-#if defined(LAPACK_DIAGO_FLAVOR_)
- call ZHEEV('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
- allocate(iwork(liwork))
- call ZHEEVD('V','U',nmat,eigvec,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
- deallocate(iwork)
-#else
- allocate(iwork(1))
- call ZHEEVR('V','A','U',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
- deallocate(iwork)
- deallocate(matrix_tmp)
-#endif
+
+ select case(flavor)
+ case('r','R')
+   allocate(iwork(1))
+   call ZHEEVR('V','A','L',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
+   deallocate(iwork,isuppz)
+   deallocate(matrix_tmp)
+ case('d','D')
+   allocate(iwork(liwork))
+   call ZHEEVD('V','L',nmat,eigvec,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
+   deallocate(iwork)
+ case default
+   call ZHEEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,rwork,info)
+ end select
 
  deallocate(work)
  deallocate(rwork)
@@ -547,8 +554,9 @@ end subroutine diagonalize_cdp
 
 
 !=========================================================================
-subroutine diagonalize_inplace_cdp(matrix,eigval)
+subroutine diagonalize_inplace_cdp(flavor,matrix,eigval)
  implicit none
+ character(len=1),intent(in) :: flavor
  complex(dp),intent(inout) :: matrix(:,:)
  real(dp),intent(out)      :: eigval(:)
 !=====
@@ -556,17 +564,13 @@ subroutine diagonalize_inplace_cdp(matrix,eigval)
  complex(dp),allocatable :: work(:)
  real(dp),allocatable    :: rwork(:)
  integer                 :: lwork,lrwork,info
-#if !defined(LAPACK_DIAGO_FLAVOR_)
  integer                 :: liwork
  integer,allocatable     :: iwork(:)
-#endif
-#if !defined(LAPACK_DIAGO_FLAVOR_) && !defined(LAPACK_DIAGO_FLAVOR_D)
- integer                 :: isuppz(2*SIZE(matrix,DIM=1))
+ integer,allocatable     :: isuppz(:)
  complex(dp),allocatable :: eigvec(:,:)
  real(dp)                :: ABSTOL
  real(dp),external       :: DLAMCH
  integer                 :: neig
-#endif
 !=====
 
  nmat = SIZE(matrix,DIM=1)
@@ -574,24 +578,28 @@ subroutine diagonalize_inplace_cdp(matrix,eigval)
  lwork = -1
  allocate(work(1))
  allocate(rwork(1))
-#if defined(LAPACK_DIAGO_FLAVOR_)
- call ZHEEV('V','U',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
- lrwork = 3 * nmat - 2
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
- allocate(iwork(1))
- call ZHEEVD('V','U',nmat,matrix,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
- liwork = iwork(1)
- deallocate(iwork)
- lrwork = NINT(rwork(1))
-#else
- allocate(iwork(1))
- allocate(eigvec(nmat,nmat))
- ABSTOL=DLAMCH('S')
- call ZHEEVR('V','A','U',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
- liwork = iwork(1)
- deallocate(iwork)
- lrwork = NINT(rwork(1))
-#endif
+
+ select case(flavor)
+ case('r','R')
+   allocate(iwork(1))
+   allocate(eigvec(nmat,nmat))
+   allocate(isuppz(2*nmat))
+   ABSTOL=DLAMCH('S')
+   call ZHEEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
+   liwork = iwork(1)
+   deallocate(iwork)
+   lrwork = NINT(rwork(1))
+ case('d','D')
+   allocate(iwork(1))
+   call ZHEEVD('V','L',nmat,matrix,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
+   liwork = iwork(1)
+   deallocate(iwork)
+   lrwork = NINT(rwork(1))
+ case default
+   call ZHEEV('V','L',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
+   lrwork = 3 * nmat - 2
+ end select
+
  lwork = NINT(REAL(work(1),dp))
  deallocate(rwork)
  deallocate(work)
@@ -600,19 +608,21 @@ subroutine diagonalize_inplace_cdp(matrix,eigval)
 
  allocate(work(lwork))
  allocate(rwork(lrwork))
-#if defined(LAPACK_DIAGO_FLAVOR_)
- call ZHEEV('V','U',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
- allocate(iwork(liwork))
- call ZHEEVD('V','U',nmat,matrix,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
- deallocate(iwork)
-#else
- allocate(iwork(1))
- call ZHEEVR('V','A','U',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
- matrix(:,:) = eigvec(:,:)
- deallocate(eigvec)
- deallocate(iwork)
-#endif
+
+ select case(flavor)
+ case('r','R')
+   allocate(iwork(1))
+   call ZHEEVR('V','A','L',nmat,matrix,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,rwork,lrwork,iwork,liwork,info)
+   matrix(:,:) = eigvec(:,:)
+   deallocate(eigvec)
+   deallocate(iwork,isuppz)
+ case('d','D')
+   allocate(iwork(liwork))
+   call ZHEEVD('V','L',nmat,matrix,nmat,eigval,work,lwork,rwork,lrwork,iwork,liwork,info)
+   deallocate(iwork)
+ case default
+   call ZHEEV('V','L',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
+ end select
 
  deallocate(work)
  deallocate(rwork)
@@ -627,28 +637,27 @@ end subroutine diagonalize_inplace_cdp
 ! Generalized eigenvalue problem
 !
 !=========================================================================
-subroutine diagonalize_generalized_sym(n,matrix,overlap,eigval,eigvec)
+subroutine diagonalize_generalized_sym(matrix,overlap,eigval,eigvec)
  implicit none
- integer,intent(in) :: n
- real(dp),intent(in) :: matrix(n,n),overlap(n,n)
- real(dp),intent(out) :: eigval(n)
- real(dp),intent(out) :: eigvec(n,n)
+ real(dp),intent(in)  :: matrix(:,:),overlap(:,:)
+ real(dp),intent(out) :: eigval(:)
+ real(dp),intent(out) :: eigvec(:,:)
 !=====
- real(dp) :: work(3*n-1),tmp(n,n)
+ integer :: nmat
  integer :: info
+ real(dp),allocatable :: work(:),tmp(:,:)
 !=====
 
- ! write(stdout,*) 'diagonalize_generalized_sym: Enter'
+ nmat = SIZE(eigval)
+ allocate(work(3*nmat-1),tmp(nmat,nmat))
  eigvec(:,:) = matrix(:,:)
  tmp(:,:) = overlap(:,:)
 
  ! A*x = lambda * B * x
- call DSYGV(1,'V','U',n,eigvec,n,tmp,n,eigval,work,3*n-1,info)
- if(info/=0) call die('ERROR in the symmetric generalized eigenvalue problem')
-! write(stdout,*) 'optimal lwork',REAL(work(1))
+ call DSYGV(1,'V','L',nmat,eigvec,nmat,tmp,nmat,eigval,work,3*nmat-1,info)
+ if( info /= 0 ) call die('ERROR in the symmetric generalized eigenvalue problem')
 
 
- ! write(stdout,*) 'diagonalize_generalized_sym: Exit'
 end subroutine diagonalize_generalized_sym
 
 
@@ -712,7 +721,7 @@ subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
 
 
    allocate(lambda(mm),alphavec(mm,mm))
-   call diagonalize(atilde(1:mm,1:mm),lambda,alphavec)
+   call diagonalize(' ',atilde(1:mm,1:mm),lambda,alphavec)
 
    write(stdout,*) 'icycle',icycle,lambda(1:mm)
 

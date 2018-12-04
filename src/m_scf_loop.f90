@@ -601,8 +601,7 @@ subroutine scf_loop(is_restart,&
 
    do ispin=1,nspin
      write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
-     call diagonalize_generalized_sym(basis%nbf,&
-                                      hamiltonian_fock(:,:,ispin),s_matrix(:,:),&
+     call diagonalize_generalized_sym(hamiltonian_fock(:,:,ispin),s_matrix(:,:),&
                                       energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
    enddo
    write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx

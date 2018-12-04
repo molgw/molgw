@@ -390,6 +390,24 @@ vl[i].comment  ='Sets the history record length for Pulay DIIS.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='scf_diago_flavor'
+vl[i].family   ='scf'
+vl[i].default  =' '
+vl[i].datatype ='characters'
+vl[i].comment  ='Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles. Available choices are \' \', \'R\', \'D\', and \'X\'.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='postscf_diago_flavor'
+vl[i].family   ='postscf'
+vl[i].default  ='R'
+vl[i].datatype ='characters'
+vl[i].comment  ='Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations. Available choices are \' \', \'R\', \'D\', and \'X\'.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='nstep_gw'
 vl[i].family   ='post'
 vl[i].default  ='1'

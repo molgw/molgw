@@ -285,7 +285,7 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
  call clean_allocate('c_matrix_orth_start for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
  allocate(energies_inst(nstate))
  do ispin=1, nspin
-   call diagonalize(h_small_cmplx(:,:,ispin),energies_inst,c_matrix_orth_start_complete_cmplx(:,:,ispin))
+   call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energies_inst,c_matrix_orth_start_complete_cmplx(:,:,ispin))
  end do
  deallocate(energies_inst)
  istate_cut(4)=nstate
@@ -737,7 +737,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      ! First part, diagonalize
      call start_clock(timing_propagate_diago)
      a_matrix_orth_cmplx(:,:) = h_small_cmplx(:,:,ispin)
-     call diagonalize_scalapack(scalapack_block_min,nstate,a_matrix_orth_cmplx,energies_inst)
+     call diagonalize_scalapack(postscf_diago_flavor,scalapack_block_min,a_matrix_orth_cmplx,energies_inst)
      call stop_clock(timing_propagate_diago)
 
      !
@@ -799,7 +799,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    select case (prop_type)
    case('ETRS')
      do iham=1,2
-       call diagonalize(h_small_hist2_cmplx(:,:,ispin,iham),energies_inst,a_matrix_orth_cmplx(:,:,iham))
+       call diagonalize(postscf_diago_flavor,h_small_hist2_cmplx(:,:,ispin,iham),energies_inst,a_matrix_orth_cmplx(:,:,iham))
        propagator_eigen(:,:,iham) = ( 0.0_dp , 0.0_dp )
        do ibf=1,nstate
          propagator_eigen(ibf,ibf,iham) = EXP(-im*time_step_cur/2.d0*energies_inst(ibf))
