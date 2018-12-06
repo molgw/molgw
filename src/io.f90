@@ -1850,7 +1850,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 ! In analogy with cube file, this file is also in Bohr
  u(:) = point_b(:) - point_a(:)
  u(:) = u(:) / NORM2(u)
- allocate(phi_cmplx(nstate,nspin))
+ allocate(phi_cmplx(nocc_dim,nspin))
 
  do ispin=1,nspin
    write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_line_density.dat'
@@ -1866,7 +1866,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 
    do ispin=1,nspin
      phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
-     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) )
    enddo
  enddo
 
