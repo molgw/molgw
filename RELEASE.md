@@ -36,12 +36,12 @@ When using Intel MKL, please export the corresponding environment variables:
 MOLGW has been shown to run efficiently on Intel KNL architecture
 - Memory foot print can be reduced when the memory peak was in the calculation of the 3-center integrals.
 Use keyword `eri3_nbatch`. Setting `eri3_nbatch` to a value larger than 1 will decrease the memory consumption in the 3-center integrals calculation and hopefully will not hit too much on the performance.
+- Possibility to change the diagonalization subroutines with input variables `scf_diago_flavor` and `postscf_diago_flavor`.
+Based on our experience, flavor 'R' pointing to (P)DSYEVR is faster but can induce SCF cycle issues. Flavor ' ' pointing to (P)DYSEV is the safest possibility.
 
 ### Changes affecting the compilation
-- Possibility to change the diagonalization subroutines with `-DLAPACK_DIAGO_FLAVOR_`, `-DLAPACK_DIAGO_FLAVOR_X` or `-DLAPACK_DIAGO_FLAVOR_D`.
-Based on our experience, we advise to use the default routines (with no compilation flag), which are now `(P)DSYEVR` and `(P)ZHEEVR`.
-We find them robust and quick.
 - Fortran compiler needs to be capable of using the polymorphic `class(*)` declarations (Fortran2003).
+- `-DDEBUG` produces an outfile for each MPI thread.
 
 
 -----------------------------------------
