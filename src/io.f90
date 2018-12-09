@@ -1853,10 +1853,10 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
  allocate(phi_cmplx(nocc_dim,nspin))
 
  do ispin=1,nspin
-   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_line_density.dat'
+   write(file_name,'(i4.4,a,i1,a)') num,'_',ispin,'_line_density.dat'
    open(newunit=line_rho(ispin),file=file_name)
-   write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
-   write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
+!   write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
  enddo
 
  do ir=0,nr
