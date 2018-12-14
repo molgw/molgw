@@ -707,7 +707,7 @@ subroutine plot_cube_wfn(rootname,nstate,basis,occupation,c_matrix)
 
  !
  ! check whether istate1:istate2 spans all the occupied states
- if( ALL( occupation(istate2+1,:) < completely_empty ) ) then
+ if( ALL( occupation(istate2+1:nstate,:) < completely_empty ) ) then
    do ispin=1,nspin
      write(file_name,'(a,i1,a)') 'rho_'//TRIM(rootname)//'_',ispin,'.cube'
      open(newunit=ocuberho(ispin),file=file_name)

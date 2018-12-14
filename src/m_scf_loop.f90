@@ -480,12 +480,12 @@ subroutine scf_loop(is_restart,&
    if( ALL( ABS(p_matrix_corr(:,:,:)) < 0.01_dp ) ) then
      inquire(file='DENSITY_MATRIX',exist=density_matrix_found)
      if( density_matrix_found) then
-      write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX'
-      open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='read')
-      do ispin=1,nspin
-        read(file_density_matrix) p_matrix_corr(:,:,ispin)
-      enddo
-      close(file_density_matrix)
+       write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX'
+       open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='read')
+       do ispin=1,nspin
+         read(file_density_matrix) p_matrix_corr(:,:,ispin)
+       enddo
+       close(file_density_matrix)
      else
        call die('m_scf_loop: no correlated density matrix read or calculated though input file suggests you really want one')
      endif
@@ -503,7 +503,7 @@ subroutine scf_loop(is_restart,&
      call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=en_dm_corr%exx)
 
      en_dm_corr%tot = en_dm_corr%nuc_nuc + en_dm_corr%kin + en_dm_corr%nuc +  en_dm_corr%hart + en_dm_corr%exx
-     write(stdout,'(/,1x,a)') 'Energies from correlation density matrix'
+     write(stdout,'(/,1x,a)') 'Energies from correlated density matrix'
      write(stdout,'(a25,1x,f19.10)')   'Kinetic energy (Ha):',en_dm_corr%kin
      write(stdout,'(a25,1x,f19.10)')   'Nucleus energy (Ha):',en_dm_corr%nuc
      write(stdout,'(a25,1x,f19.10)')   'Hartree energy (Ha):',en_dm_corr%hart
@@ -562,6 +562,14 @@ subroutine scf_loop(is_restart,&
  call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
  call get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
 
+ if( print_density_matrix_ .AND. is_iomaster ) then
+   write(stdout,'(1x,a)') 'Write DENSITY_MATRIX_GKS file'
+   open(newunit=file_density_matrix,file='DENSITY_MATRIX_GKS',form='unformatted',action='write')
+   do ispin=1,nspin
+     write(file_density_matrix) p_matrix(:,:,ispin)
+   enddo
+   close(file_density_matrix)
+ endif
 
  !
  ! Cleanly deallocate the arrays
@@ -681,10 +689,6 @@ subroutine calculate_hamiltonian_hxc(basis,nstate,occupation,c_matrix,p_matrix,h
  enddo
 
 
-write(stdout,*) "This is calculate_hamiltonian_hxc_ri and logical values are:"
-write(stdout,*) "calc_type%is_dft ", calc_type%is_dft, "calc_type%need_exchange_lr ", &
-calc_type%need_exchange_lr,"calc_type%need_exchange ",calc_type%need_exchange
-write(stdout,*) "------------------"
  !
  !  XC part of the Hamiltonian
  !
