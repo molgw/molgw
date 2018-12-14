@@ -1863,29 +1863,33 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
  dy = (ymax-ymin)/REAL(ny,dp)
  dz = (zmax-zmin)/REAL(nz,dp)
 
- do ispin=1,nspin
-   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'dens_diff.cube'
-   open(newunit=ocuberho(ispin),file=file_name)
-   write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
-   write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
-   do iatom=1,natom
-     write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+ if( is_iomaster ) then
+   do ispin=1,nspin
+     write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'dens_diff.cube'
+     open(newunit=ocuberho(ispin),file=file_name)
+     write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
+     write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
+     do iatom=1,natom
+       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+     enddo
    enddo
- enddo
+ end if
 
  call clean_allocate("dens_diff for the cube density",dens_diff,nx,ny,nz)
 
  do ispin=1,nspin
+   istate2=nocc(ispin)
    dens_diff=0.d0
    call start_clock(timing_tmp0)
+   !$OMP PARALLEL PRIVATE(basis_function_r,rr,ix,iy,iz,phi_cmplx)
+   !$OMP DO
    do ix=1,nx
-     if(MODULO(ix-1,nproc_world)/=rank_world) cycle
+!     if(MODULO(ix-1,nproc_world)/=rank_world) cycle
      rr(1) = ( xmin + (ix-1)*dx )
-     !$OMP PARALLEL DO
      do iy=1,ny
        rr(2) = ( ymin + (iy-1)*dy )
        do iz=1,nz
@@ -1893,20 +1897,20 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
 
          call calculate_basis_functions_r(basis,rr,basis_function_r)
 
-         istate2=nocc(ispin)
          phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
          dens_diff(ix,iy,iz) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact - cube_density_start(ix,iy,iz,ispin)
        
        enddo
 
      enddo
-     !$OMP END PARALLEL DO
    enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
    call stop_clock(timing_tmp0)
 
-   call start_clock(timing_tmp1)
-   call xsum_world(dens_diff)
-   call stop_clock(timing_tmp1)
+!   call start_clock(timing_tmp1)
+!   call xsum_world(dens_diff)
+!   call stop_clock(timing_tmp1)
 
    if( is_iomaster ) then
      call start_clock(timing_tmp2)
