@@ -2156,17 +2156,18 @@ end subroutine read_cube_wfn
 
 
 !=========================================================================
-subroutine read_gaussian_fchk(basis,p_matrix_out)
+subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
  use m_definitions
  use m_mpi
  use m_basis_set
  use m_inputparam
  implicit none
 
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: p_matrix_out(basis%nbf,basis%nbf,nspin)
+ character(len=*),intent(in) :: read_fchk_in
+ character(len=*),intent(in) :: file_name
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(out)        :: p_matrix_out(basis%nbf,basis%nbf,nspin)
 !=====
- character(len=64),parameter :: file_name='gaussian.fchk'
  integer,parameter :: stride=5
  logical :: file_exists,found
  integer :: fu
@@ -2197,7 +2198,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
 
  if( is_iomaster ) then
 
-   select case(TRIM(read_fchk))
+   select case(TRIM(read_fchk_in))
    case('CC')
      keyword = 'Total CC Density'
    case('MP2')
@@ -2205,6 +2206,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
    case('SCF')
      keyword = 'Total SCF Density'
    case default
+     write(stdout,*) read_fchk_in
      call die('read_gaussian_fchk: invalid choice for input variable read_fchk')
    end select
 
@@ -2218,7 +2220,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
      return
    endif
 
-   write(stdout,'(1x,a,a)') 'Density matrix read: ',TRIM(read_fchk)
+   write(stdout,'(1x,a,a)') 'Density matrix read: ',TRIM(read_fchk_in)
 
    nel = (basis%nbf*(basis%nbf+1))/2
    allocate(p_matrix_read(nel))

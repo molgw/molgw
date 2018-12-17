@@ -84,36 +84,40 @@ subroutine dm_diff(basis)
  nstate = basis%nbf
 
  ! First density matrix is tagged with suffix _ga
- if( read_fchk /= 'NO') then
+ call clean_allocate('Density matrix',p_matrix_ga,basis%nbf,basis%nbf,nspin)
+#if 1
+ call read_gaussian_fchk('CC','gaussian_REF.fchk',basis,p_matrix_ga)
+#else
+ inquire(file='DENSITY_MATRIX_REF',exist=density_matrix_found)
+ if( density_matrix_found) then
    call clean_allocate('Density matrix',p_matrix_ga,basis%nbf,basis%nbf,nspin)
-   call read_gaussian_fchk(basis,p_matrix_ga)
+   write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX_REF'
+   open(newunit=file_density_matrix,file='DENSITY_MATRIX_REF',form='unformatted',action='read')
+   do ispin=1,nspin
+     read(file_density_matrix) p_matrix_ga(:,:,ispin)
+   enddo
+   close(file_density_matrix)
  else
-   inquire(file='DENSITY_MATRIX_1',exist=density_matrix_found)
+   call die('dm_diff: no correlated density matrix read or calculated though input file suggests you really want one')
+ endif
+#endif
+
+ ! Second density matrix is tagged with suffix _pt
+ call clean_allocate('Density matrix',p_matrix_pt,basis%nbf,basis%nbf,nspin)
+ if( read_fchk /= 'NO') then
+   call read_gaussian_fchk(read_fchk,'gaussian.fchk',basis,p_matrix_pt)
+ else
+   inquire(file='DENSITY_MATRIX',exist=density_matrix_found)
    if( density_matrix_found) then
-     call clean_allocate('Density matrix',p_matrix_ga,basis%nbf,basis%nbf,nspin)
-     write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX_1'
-     open(newunit=file_density_matrix,file='DENSITY_MATRIX_1',form='unformatted',action='read')
+     write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX'
+     open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='read')
      do ispin=1,nspin
-       read(file_density_matrix) p_matrix_ga(:,:,ispin)
+       read(file_density_matrix) p_matrix_pt(:,:,ispin)
      enddo
      close(file_density_matrix)
    else
      call die('dm_diff: no correlated density matrix read or calculated though input file suggests you really want one')
    endif
- endif
-
- ! Second density matrix is tagged with suffix _pt
- inquire(file='DENSITY_MATRIX',exist=density_matrix_found)
- if( density_matrix_found) then
-   call clean_allocate('Density matrix',p_matrix_pt,basis%nbf,basis%nbf,nspin)
-   write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX'
-   open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='read')
-   do ispin=1,nspin
-     read(file_density_matrix) p_matrix_pt(:,:,ispin)
-   enddo
-   close(file_density_matrix)
- else
-   call die('dm_diff: no correlated density matrix read or calculated though input file suggests you really want one')
  endif
 
 

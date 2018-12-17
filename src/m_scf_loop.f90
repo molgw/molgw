@@ -452,7 +452,7 @@ subroutine scf_loop(is_restart,&
 
    ! Option 1:
    ! Is there a Gaussian formatted checkpoint file to be read?
-   if( read_fchk /= 'NO') call read_gaussian_fchk(basis,p_matrix_corr)
+   if( read_fchk /= 'NO') call read_gaussian_fchk(read_fchk,'gaussian.fchk',basis,p_matrix_corr)
 
    ! Option 2:
    ! Calculate a MBPT density matrix if requested
