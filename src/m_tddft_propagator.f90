@@ -1338,9 +1338,10 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
        m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * EXP(-im*time_step_cur*energies_inst(jstate) )
      end forall
 
-     allocate(m_tmp_3(nstate,nocc))
-     call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))),c_matrix_orth_cmplx(:,:,ispin),m_tmp_3  )
-     c_matrix_orth_cmplx(:,:,ispin) = m_tmp_3
+     write(*,*) "suka", ncore_tddft,nocc-ncore_tddft
+     allocate(m_tmp_3(nstate,nocc-ncore_tddft))
+     call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))),c_matrix_orth_cmplx(:,ncore_tddft+1:,ispin),m_tmp_3  )
+     c_matrix_orth_cmplx(:,ncore_tddft+1:,ispin) = m_tmp_3
 
      deallocate(m_tmp_3)
      deallocate(m_tmp_1)
