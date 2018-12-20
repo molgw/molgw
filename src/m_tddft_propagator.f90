@@ -88,7 +88,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  integer                    :: nx,ny,nz,unit_cube_diff
  logical                    :: file_exists
 !==qmatrix==
- integer,allocatable        :: istate_cut(:)
+ integer,allocatable        :: istate_cut(:,:)
  integer                    :: file_q_matrix(2)
  integer                    :: iocc
  complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
@@ -857,19 +857,20 @@ end subroutine initialize_files
 subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_small_cmplx,istate_cut,file_q_matrix)
  implicit none
  integer,intent(in)                    :: nstate, nocc, nspin
- integer,allocatable,intent(out)       :: istate_cut(:)
+ integer,allocatable,intent(out)       :: istate_cut(:,:)
  complex(dp),allocatable,intent(out)   :: c_matrix_orth_start_complete_cmplx(:,:,:)
  complex(dp),allocatable,intent(in)    :: h_small_cmplx(:,:,:)
  integer,intent(out)                   :: file_q_matrix(2)
 !=====
- character(len=50)           :: name_file_q_matrix
+ character(len=50)          :: name_file_q_matrix
+ character(len=500)         :: cur_string
  integer                    :: ispin
  real(dp),allocatable       :: energies_inst(:)
  logical                    :: file_exists
- integer                    :: file_q_matrix_param
+ integer                    :: file_q_matrix_param,nline,iline
+ integer                    :: num_fields
 !=====
 
- allocate(istate_cut(10))
  call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
  call clean_allocate('c_matrix_orth_start for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
  allocate(energies_inst(nstate))
@@ -877,16 +878,32 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
    call diagonalize(h_small_cmplx(:,:,ispin),energies_inst,c_matrix_orth_start_complete_cmplx(:,:,ispin))
  end do
  deallocate(energies_inst)
- istate_cut(4)=nstate
+
  inquire(file='manual_q_matrix_param',exist=file_exists)
+
  if(file_exists) then
+   nline=get_number_of_lines('manual_q_matrix_param')
+   allocate(istate_cut(nline,2))
    open(newunit=file_q_matrix_param,file='manual_q_matrix_param',status='old')
-   read(file_q_matrix_param,*) istate_cut(1), istate_cut(2), istate_cut(3)
+   do iline=1,nline
+     read(file_q_matrix_param,'(A)') cur_string
+!     cur_string = ADJUSTL(cur_string)
+     num_fields = get_number_of_elements(cur_string)
+     if( num_fields == 2 ) then
+       read(cur_string,*) istate_cut(iline,1), istate_cut(iline,2)
+     else if( num_fields == 1) then
+       read(cur_string,*) istate_cut(iline,1)
+       istate_cut(iline,2) = nstate
+     else
+       call die("manual_q_matrix_param must contain 1 or two fields.")
+     end if
+
+   end do
    close(file_q_matrix_param)
  else
-   istate_cut(1)=1
-   istate_cut(2)=natom-1
-   istate_cut(3)=natom+INT((natom-1)/2)
+   allocate(istate_cut(2,2))
+   istate_cut(1,1)=1; istate_cut(1,2)=1;
+   istate_cut(2,1)=2; istate_cut(2,2)=nstate
    call issue_warning('plot_rho_traj_bunch_contrib: manual_q_matrix_param file was not found')
  endif
  
@@ -905,38 +922,32 @@ subroutine calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_
  real(dp),intent(in)      :: occupation(:,:)
  complex(dp),intent(in)   :: c_matrix_orth_start_complete_cmplx(:,:,:)
  complex(dp),intent(in)   :: c_matrix_orth_cmplx(:,:,:)
- integer,intent(in)       :: istate_cut(:)
+ integer,intent(in)       :: istate_cut(:,:)
  integer,intent(in)       :: file_q_matrix(:)
  real(dp),intent(in)      :: time_cur
 !=====
- integer                  :: istate,iocc,ispin
- real(dp)                 :: q_occ(10)
+ integer                  :: istate,iocc,ispin,icut,ncut
+ real(dp),allocatable     :: q_occ(:)
 !=====
+
+ ncut = SIZE(istate_cut,DIM=1)
+
+ allocate(q_occ(ncut))
 
  q_occ=0.0_dp
 
  do ispin=1,nspin
    q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_complete_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
 
-   do istate=istate_cut(1),istate_cut(2)
-     do iocc=1,nocc
-       q_occ(1)=q_occ(1)+ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
+   do icut=1,ncut
+     do istate=istate_cut(icut,1),istate_cut(icut,2)
+       q_occ(icut) = q_occ(icut) + SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2*occupation(:nocc,ispin))
      end do
-   end do
+   end do 
 
-   do istate=istate_cut(2)+1,istate_cut(3)
-     do iocc=1,nocc
-       q_occ(2)=q_occ(2)+ABS(q_matrix_cmplx(istate,iocc,ispin)**2)*occupation(iocc,ispin)
-     end do
-   end do
-
-   do istate=istate_cut(3)+1,istate_cut(4)
-     do iocc=1,nocc
-       q_occ(3)=q_occ(3)+ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
-     end do
-   end do
-
-   write(file_q_matrix(ispin),"(F9.4,10(2x,es16.8E3))") time_cur, q_occ(:)
+   if( is_iomaster) then
+     write(file_q_matrix(ispin),"(F9.4,10(2x,es16.8E3))") time_cur, q_occ(:)
+   end if
  end do
 
 end subroutine calc_q_matrix
