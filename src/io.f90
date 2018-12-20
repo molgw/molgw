@@ -2720,7 +2720,7 @@ subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,prec)
 !=====
 
 ! beg=4
- beg=3
+ beg=5
  write(write_format1,*) '(',size_m," ('( ',F", prec+beg, ".", prec,"' ,',F", prec+beg, ".",prec,",' )  ') " ,')' ! (  1.01 ,  -0.03)  (  0.04 ,  0.10)
  write(write_format2,*) '(',size_m," (F", prec+beg, ".", prec,"' +  i',F", prec+beg, ".",prec,",'  ') " ,')'   ! 1.01 +  i  -0.03    0.03 +  i  0.10
  write(stdout,*) desc

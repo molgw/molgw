@@ -1288,6 +1288,24 @@ vl[i].default  = 200.0
 vl[i].datatype ='real'
 vl[i].comment  ='Radius of the disc for denisty calculations (option calc_dens_disc) for the real-time dynamics.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='tddft_frozencore'
+vl[i].family   ='rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Do not "propagate" states mentioned in the manual_tddft_frozencore file in the real-time dynamics.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ncore_tddft'
+vl[i].family   ='rt_tddft'
+vl[i].default  = 0
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of frozen core states in the real-time dynamics.'
+
 #============================================================================
 #            Fortran output: input variable namelist and their default value
 #============================================================================
