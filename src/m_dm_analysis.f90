@@ -68,33 +68,32 @@ subroutine dm_diff(basis)
  integer                 :: ispin
  integer                 :: igrid,igrid_start,igrid_end,nr
  logical                 :: density_matrix_found
- real(dp),allocatable    :: p_matrix_pt(:,:,:)
- real(dp),allocatable    :: c_matrix_pt(:,:,:)
- real(dp),allocatable    :: occupation_pt(:,:)
- real(dp),allocatable    :: p_matrix_ga(:,:,:)
- real(dp),allocatable    :: c_matrix_ga(:,:,:)
- real(dp),allocatable    :: occupation_ga(:,:)
- real(dp)                :: normalization_pt(nspin),normalization_ga(nspin)
+ real(dp),allocatable    :: p_matrix_test(:,:,:)
+ real(dp),allocatable    :: c_matrix_test(:,:,:)
+ real(dp),allocatable    :: occupation_test(:,:)
+ real(dp),allocatable    :: p_matrix_ref(:,:,:)
+ real(dp),allocatable    :: c_matrix_ref(:,:,:)
+ real(dp),allocatable    :: occupation_ref(:,:)
+ real(dp)                :: normalization_test(nspin),normalization_ref(nspin)
  real(dp)                :: chi1(nspin),chi2(nspin)
- real(dp),allocatable    :: rhor_batch_pt(:,:),rhor_batch_ga(:,:)
+ real(dp),allocatable    :: rhor_batch_test(:,:),rhor_batch_ref(:,:)
  real(dp),allocatable    :: weight_batch(:)
  real(dp),allocatable    :: basis_function_r_batch(:,:)
 !=====
 
  nstate = basis%nbf
 
- ! First density matrix is tagged with suffix _ga
- call clean_allocate('Density matrix',p_matrix_ga,basis%nbf,basis%nbf,nspin)
+ ! First density matrix is tagged with suffix _ref
+ call clean_allocate('Density matrix',p_matrix_ref,basis%nbf,basis%nbf,nspin)
 #if 1
- call read_gaussian_fchk('CC','gaussian_REF.fchk',basis,p_matrix_ga)
+ call read_gaussian_fchk('CC','gaussian_REF.fchk',basis,p_matrix_ref)
 #else
  inquire(file='DENSITY_MATRIX_REF',exist=density_matrix_found)
  if( density_matrix_found) then
-   call clean_allocate('Density matrix',p_matrix_ga,basis%nbf,basis%nbf,nspin)
    write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX_REF'
    open(newunit=file_density_matrix,file='DENSITY_MATRIX_REF',form='unformatted',action='read')
    do ispin=1,nspin
-     read(file_density_matrix) p_matrix_ga(:,:,ispin)
+     read(file_density_matrix) p_matrix_ref(:,:,ispin)
    enddo
    close(file_density_matrix)
  else
@@ -102,17 +101,17 @@ subroutine dm_diff(basis)
  endif
 #endif
 
- ! Second density matrix is tagged with suffix _pt
- call clean_allocate('Density matrix',p_matrix_pt,basis%nbf,basis%nbf,nspin)
+ ! Second density matrix is tagged with suffix _test
+ call clean_allocate('Density matrix',p_matrix_test,basis%nbf,basis%nbf,nspin)
  if( read_fchk /= 'NO') then
-   call read_gaussian_fchk(read_fchk,'gaussian.fchk',basis,p_matrix_pt)
+   call read_gaussian_fchk(read_fchk,'gaussian.fchk',basis,p_matrix_test)
  else
    inquire(file='DENSITY_MATRIX',exist=density_matrix_found)
    if( density_matrix_found) then
      write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX'
      open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='read')
      do ispin=1,nspin
-       read(file_density_matrix) p_matrix_pt(:,:,ispin)
+       read(file_density_matrix) p_matrix_test(:,:,ispin)
      enddo
      close(file_density_matrix)
    else
@@ -121,18 +120,20 @@ subroutine dm_diff(basis)
  endif
 
 
- call clean_allocate('C matrix',c_matrix_pt,basis%nbf,nstate,nspin)
- call clean_allocate('C matrix',c_matrix_ga,basis%nbf,nstate,nspin)
- allocate(occupation_pt(nstate,nspin),occupation_ga(nstate,nspin))
+ call clean_allocate('C matrix',c_matrix_ref ,basis%nbf,nstate,nspin)
+ call clean_allocate('C matrix',c_matrix_test,basis%nbf,nstate,nspin)
+ allocate(occupation_test(nstate,nspin),occupation_ref(nstate,nspin))
 
- call get_c_matrix_from_p_matrix(p_matrix_pt,c_matrix_pt,occupation_pt)
- call get_c_matrix_from_p_matrix(p_matrix_ga,c_matrix_ga,occupation_ga)
+ call get_c_matrix_from_p_matrix(p_matrix_ref,c_matrix_ref,occupation_ref)
+ call get_c_matrix_from_p_matrix(p_matrix_test,c_matrix_test,occupation_test)
 
+ write(*,*) 'Sum(occupation) Ref:  ',SUM(occupation_ref(:,:))
+ write(*,*) 'Sum(occupation) Test: ',SUM(occupation_test(:,:))
 
  call init_dft_grid(basis,grid_level,.FALSE.,.TRUE.,BATCH_SIZE)
 
- normalization_ga(:) = 0.0_dp
- normalization_pt(:) = 0.0_dp
+ normalization_ref(:) = 0.0_dp
+ normalization_test(:) = 0.0_dp
  chi1(:) = 0.0_dp
  chi2(:) = 0.0_dp
 
@@ -146,67 +147,67 @@ subroutine dm_diff(basis)
 
    allocate(weight_batch(nr))
    allocate(basis_function_r_batch(basis%nbf,nr))
-   allocate(rhor_batch_pt(nspin,nr))
-   allocate(rhor_batch_ga(nspin,nr))
+   allocate(rhor_batch_test(nspin,nr))
+   allocate(rhor_batch_ref(nspin,nr))
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
    call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
-   call calc_density_r_batch(occupation_pt,c_matrix_pt,basis_function_r_batch,rhor_batch_pt)
-   call calc_density_r_batch(occupation_ga,c_matrix_ga,basis_function_r_batch,rhor_batch_ga)
+   call calc_density_r_batch(occupation_test,c_matrix_test,basis_function_r_batch,rhor_batch_test)
+   call calc_density_r_batch(occupation_ref ,c_matrix_ref ,basis_function_r_batch,rhor_batch_ref )
 
    ! Normalization
-   normalization_pt(:) = normalization_pt(:) + MATMUL( rhor_batch_pt(:,:) , weight_batch(:) )
-   normalization_ga(:) = normalization_ga(:) + MATMUL( rhor_batch_ga(:,:) , weight_batch(:) )
+   normalization_test(:) = normalization_test(:) + MATMUL( rhor_batch_test(:,:) , weight_batch(:) )
+   normalization_ref(:)  = normalization_ref(:)  + MATMUL( rhor_batch_ref(:,:)  , weight_batch(:) )
 
-   chi1(:) = chi1(:) + MATMUL( ABS( rhor_batch_pt(:,:) - rhor_batch_ga(:,:) ) , weight_batch(:) )
-   chi2(:) = chi2(:) + MATMUL( ABS( rhor_batch_pt(:,:) - rhor_batch_ga(:,:) )**2 , weight_batch(:) )
-
-
+   chi1(:) = chi1(:) + MATMUL( ABS( rhor_batch_test(:,:) - rhor_batch_ref(:,:) ) , weight_batch(:) )
+   chi2(:) = chi2(:) + MATMUL( ABS( rhor_batch_test(:,:) - rhor_batch_ref(:,:) )**2 , weight_batch(:) )
 
 
-   deallocate(weight_batch,rhor_batch_pt,rhor_batch_ga,basis_function_r_batch)
+
+
+   deallocate(weight_batch,rhor_batch_test,rhor_batch_ref,basis_function_r_batch)
 
  enddo
 
- call xsum_grid(normalization_ga)
- call xsum_grid(normalization_pt)
+ call xsum_grid(normalization_ref)
+ call xsum_grid(normalization_test)
  call xsum_grid(chi1)
  call xsum_grid(chi2)
 
- write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization_pt(:)
- write(stdout,'(a,2(2x,f12.6))')   ' Number of electrons:',normalization_ga(:)
+ write(stdout,'(a,2(2x,f12.6))')   ' Number of electrons Ref: ',normalization_ref(:)
+ write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons Test:',normalization_test(:)
 
- write(stdout,'(/,a,2(2x,f12.6))') ' Chi1:',chi1(:)
- write(stdout,'(a,2(2x,f12.6))')   ' Chi2:',SQRT( chi2(:) )
+ write(stdout,'(/,a,2(2x,f12.6))') ' Chi1: ',chi1(:)
+ write(stdout,'(a,2(2x,f12.6))')   ' Chi2: ',SQRT( chi2(:) )
 
 
 
  if( print_multipole_ ) then
    !
    ! Evaluate the static dipole
-   call static_dipole(nstate,basis,occupation_ga,c_matrix_ga)
+   call static_dipole(nstate,basis,occupation_ref,c_matrix_ref)
    !
    ! Evaluate the static quadrupole
-   call static_quadrupole(nstate,basis,occupation_ga,c_matrix_ga)
+   call static_quadrupole(nstate,basis,occupation_ref,c_matrix_ref)
 
    !
    ! Evaluate the static dipole
-   call static_dipole(nstate,basis,occupation_pt,c_matrix_pt)
+   call static_dipole(nstate,basis,occupation_test,c_matrix_test)
    !
    ! Evaluate the static quadrupole
-   call static_quadrupole(nstate,basis,occupation_pt,c_matrix_pt)
+   call static_quadrupole(nstate,basis,occupation_test,c_matrix_test)
  endif
 
- if( print_cube_ ) call plot_cube_wfn('MBPT',nstate,basis,occupation_pt,c_matrix_pt)
+ if( print_cube_ ) call plot_cube_wfn('MBPT',nstate,basis,occupation_test,c_matrix_test)
 
 
  !
- call clean_deallocate('Density matrix',p_matrix_pt)
- call clean_deallocate('Density matrix',p_matrix_ga)
- call clean_deallocate('C matrix',c_matrix_pt)
- call clean_deallocate('C matrix',c_matrix_ga)
- deallocate(occupation_pt,occupation_ga)
+ call clean_deallocate('Density matrix',p_matrix_test)
+ call clean_deallocate('Density matrix',p_matrix_ref)
+ call clean_deallocate('C matrix',c_matrix_test)
+ call clean_deallocate('C matrix',c_matrix_ref)
+ deallocate(occupation_test,occupation_ref)
 
  write(stdout,'(/,1x,a,/)') 'This is the end'
 
@@ -214,6 +215,140 @@ subroutine dm_diff(basis)
 
 
 end subroutine dm_diff
+
+
+!=========================================================================
+subroutine dm_dump(basis)
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+!=====
+ integer                 :: nstate
+ integer                 :: file_density_matrix,file_rho_grid
+ integer                 :: ispin
+ integer                 :: igrid,igrid_start,igrid_end,nr,ir
+ logical                 :: density_matrix_found
+ real(dp),allocatable    :: p_matrix_test(:,:,:)
+ real(dp),allocatable    :: c_matrix_test(:,:,:)
+ real(dp),allocatable    :: occupation_test(:,:)
+ real(dp)                :: normalization_test(nspin)
+ real(dp)                :: chi1(nspin),chi2(nspin)
+ real(dp),allocatable    :: rhor_batch_test(:,:)
+ real(dp),allocatable    :: weight_batch(:)
+ real(dp),allocatable    :: basis_function_r_batch(:,:)
+!=====
+
+ write(stdout,'(/,1x,a)') 'Dump the electronic density into a file'
+
+ if( nproc_grid > 1 ) call die('dm_dump: not coded in parallel. Run with 1 core only')
+
+ nstate = basis%nbf
+
+
+ ! density matrix is tagged with suffix _test
+ call clean_allocate('Density matrix',p_matrix_test,basis%nbf,basis%nbf,nspin)
+ if( read_fchk /= 'NO') then
+   call read_gaussian_fchk(read_fchk,'gaussian.fchk',basis,p_matrix_test)
+ else
+   inquire(file='DENSITY_MATRIX',exist=density_matrix_found)
+   if( density_matrix_found) then
+     write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX'
+     open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='read')
+     do ispin=1,nspin
+       read(file_density_matrix) p_matrix_test(:,:,ispin)
+     enddo
+     close(file_density_matrix)
+   else
+     call die('dm_dump: no correlated density matrix read or calculated though input file suggests you really want one')
+   endif
+ endif
+
+
+ call clean_allocate('C matrix',c_matrix_test,basis%nbf,nstate,nspin)
+ allocate(occupation_test(nstate,nspin))
+
+ call get_c_matrix_from_p_matrix(p_matrix_test,c_matrix_test,occupation_test)
+
+ write(*,*) 'Sum(occupation): ',SUM(occupation_test(:,:))
+
+ call init_dft_grid(basis,grid_level,.FALSE.,.TRUE.,BATCH_SIZE)
+
+ normalization_test(:) = 0.0_dp
+
+ !
+ ! Loop over batches of grid points
+ !
+ open(newunit=file_rho_grid,file='rho_grid.dat',form='formatted',action='write')
+ do igrid_start=1,ngrid,BATCH_SIZE
+   igrid_end = MIN(ngrid,igrid_start+BATCH_SIZE-1)
+   nr = igrid_end - igrid_start + 1
+
+
+   allocate(weight_batch(nr))
+   allocate(basis_function_r_batch(basis%nbf,nr))
+   allocate(rhor_batch_test(nspin,nr))
+
+   weight_batch(:) = w_grid(igrid_start:igrid_end)
+
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
+   call calc_density_r_batch(occupation_test,c_matrix_test,basis_function_r_batch,rhor_batch_test)
+
+   ! Normalization
+   normalization_test(:) = normalization_test(:) + MATMUL( rhor_batch_test(:,:) , weight_batch(:) )
+
+
+   if( nspin == 1 ) then
+     write(file_rho_grid,'(2(1x,es16.6))') (rhor_batch_test(:,ir),weight_batch(ir),ir=1,nr)
+   else
+     write(file_rho_grid,'(3(1x,es16.6))') (rhor_batch_test(:,ir),weight_batch(ir),ir=1,nr)
+   endif
+
+   deallocate(weight_batch,rhor_batch_test,basis_function_r_batch)
+
+ enddo
+ close(file_rho_grid)
+
+ ! not coded in parallel
+ !call xsum_grid(normalization_test)
+
+ write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization_test(:)
+
+
+ if( print_multipole_ ) then
+   !
+   ! Evaluate the static dipole
+   call static_dipole(nstate,basis,occupation_test,c_matrix_test)
+   !
+   ! Evaluate the static quadrupole
+   call static_quadrupole(nstate,basis,occupation_test,c_matrix_test)
+ endif
+
+ if( print_cube_ ) call plot_cube_wfn('MBPT',nstate,basis,occupation_test,c_matrix_test)
+
+
+ !
+ call clean_deallocate('Density matrix',p_matrix_test)
+ call clean_deallocate('C matrix',c_matrix_test)
+ deallocate(occupation_test)
+
+
+ ! Cleanly exit the code
+ call stop_clock(timing_prescf)
+ call stop_clock(timing_total)
+
+ call total_memory_statement()
+
+ call output_timing()
+
+ call output_all_warnings()
+
+ write(stdout,'(/,1x,a,/)') 'This is the end'
+
+ call finish_mpi()
+
+ stop
+
+end subroutine dm_dump
 
 
 end module m_dm_analysis

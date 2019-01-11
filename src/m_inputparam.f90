@@ -195,6 +195,7 @@ module m_inputparam
  logical,protected                :: print_multipole_
  logical,protected                :: print_hartree_
  logical,protected                :: print_density_matrix_
+ logical,protected                :: print_rho_grid_
  logical,protected                :: density_matrix_diff_
  real(dp),protected               :: rcut_mbpt
 
@@ -940,6 +941,7 @@ subroutine read_inputfile_namelist()
  print_cube_              = yesno(print_cube)
  print_hartree_           = yesno(print_hartree)
  print_density_matrix_    = yesno(print_density_matrix)
+ print_rho_grid_          = yesno(print_rho_grid)
  gwgamma_tddft_           = yesno(gwgamma_tddft)
  use_correlated_density_matrix_ = yesno(use_correlated_density_matrix)
  density_matrix_diff_   = yesno(density_matrix_diff)

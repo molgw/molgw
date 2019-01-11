@@ -151,6 +151,7 @@ program molgw
    endif
 
    if( density_matrix_diff_ ) call dm_diff(basis)
+   if( print_rho_grid_ )      call dm_dump(basis)
 
    !
    !
