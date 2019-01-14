@@ -821,6 +821,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
+ character(len=3)     :: print_rho_grid
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
  character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix,density_matrix_diff
  character(len=3)     :: print_tddft_matrices

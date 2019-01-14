@@ -506,7 +506,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
 
    ! A3    P_cj  sum over i,a,b
-   ! A4    P_jc  sum over i,a,b
+   ! A4    P_jc  sum over i,a,b     ! not actually calculated, but included through the symmetrization step
    !bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,astate,pqspin) )
    call DGEMM('T','N',wpol%npole_reso,nstate_virt,nauxil_3center, &
                          1.0d0,wpol%residue_left,nauxil_3center,  &
@@ -552,7 +552,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
    call DSYRK('U','T',nstate_virt,npole_local,2.0d0,bra_virt_local,npole_local,1.0d0,p_matrix_gw(nhomo_G+1,nhomo_G+1,pqspin),nstate)
 
    ! A5   P_bk  sum over i,j,a
-   ! A6   P_kb  sum over i,j,a
+   ! A6   P_kb  sum over i,j,a   ! not actually calculated, but included through the symmetrization step
    !bra_occ(:,ncore_G+1:nhomo_G)       = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,istate,pqspin) )
    call DGEMM('T','N',wpol%npole_reso,nstate_occ,nauxil_3center, &
                          1.0d0,wpol%residue_left,nauxil_3center, &

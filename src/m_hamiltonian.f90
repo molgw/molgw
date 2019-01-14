@@ -829,7 +829,10 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
- if( ANY( occupation(:,:) < -1.0e-6_dp ) ) call die('setup_density_matrix: negative occupation number should not happen here.')
+ if( ANY( occupation(:,:) < -1.0e-5_dp ) ) then
+   write(stdout,*) 'Min occupation:',MINVAL(occupation)
+   call die('setup_density_matrix: negative occupation number should not happen here.')
+ endif
  ! Find the number of occupatied states
  nocc = get_number_occupied_states(occupation)
 
