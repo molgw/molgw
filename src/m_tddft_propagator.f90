@@ -902,9 +902,9 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
    close(file_q_matrix_param)
  else
    allocate(istate_cut(2,2))
-   istate_cut(1,1)=1; istate_cut(1,2)=1;
-   istate_cut(2,1)=2; istate_cut(2,2)=nstate
-   call issue_warning('plot_rho_traj_bunch_contrib: manual_q_matrix_param file was not found')
+   istate_cut(1,1) = 1; istate_cut(1,2) = 1;
+   istate_cut(2,1) = 2; istate_cut(2,2) = nstate;
+   call issue_warning('initialize_q: manual_q_matrix_param file was not found')
  endif
  
  if( is_iomaster ) then
@@ -926,27 +926,44 @@ subroutine calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_
  integer,intent(in)       :: file_q_matrix(:)
  real(dp),intent(in)      :: time_cur
 !=====
- integer                  :: istate,iocc,ispin,icut,ncut
- real(dp),allocatable     :: q_occ(:)
+ integer                  :: istate,jstate,iocc,ispin,icut,ncut,nstate
+! real(dp),allocatable     :: q_occ(:)
+ complex(dp),allocatable  :: q_occ(:)
 !=====
 
  ncut = SIZE(istate_cut,DIM=1)
 
  allocate(q_occ(ncut))
 
- q_occ=0.0_dp
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ q_occ = ( 0.0_dp, 0.0_dp )
 
  do ispin=1,nspin
    q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_complete_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
+!   call print_2d_matrix_cmplx("q_matrix",q_matrix_cmplx,SIZE(q_matrix_cmplx,DIM=1),SIZE(q_matrix_cmplx,DIM=2),8,3)
+!   call print_2d_matrix_cmplx("c_matrix_orth_cmplx",c_matrix_orth_cmplx,SIZE(c_matrix_orth_cmplx,DIM=1),SIZE(c_matrix_orth_cmplx,DIM=2),8,3)
+!   call print_2d_matrix_cmplx("c_matrix_orth_start_complete_cmplx",c_matrix_orth_start_complete_cmplx,SIZE(c_matrix_orth_start_complete_cmplx,DIM=1),SIZE(c_matrix_orth_start_complete_cmplx,DIM=2),8,3)
 
    do icut=1,ncut
      do istate=istate_cut(icut,1),istate_cut(icut,2)
-       q_occ(icut) = q_occ(icut) + SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2*occupation(:nocc,ispin))
+       do iocc=1,nocc
+         q_occ(icut) = q_occ(icut) + ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
+!         q_occ(icut) = q_occ(icut) + q_matrix_cmplx(istate,iocc,ispin)*occupation(iocc,ispin)
+       end do
      end do
    end do 
 
+!   do icut=1,ncut
+!     do istate=istate_cut(icut,1),istate_cut(icut,2)
+!       do jstate=1,nstate
+!         q_occ(icut) = q_occ(icut) + ABS(q_matrix_cmplx(jstate,istate,ispin))**2*occupation(istate,ispin)
+!       end do
+!     end do
+!   end do 
+
    if( is_iomaster) then
-     write(file_q_matrix(ispin),"(F9.4,10(2x,es16.8E3))") time_cur, q_occ(:)
+     write(file_q_matrix(ispin),"(F9.4,10(2x,es16.8E3))") time_cur, ABS(q_occ(:))
    end if
  end do
 
@@ -1348,7 +1365,6 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
        m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * EXP(-im*time_step_cur*energies_inst(jstate) )
      end forall
 
-     write(*,*) "suka", ncore_tddft,nocc-ncore_tddft
      allocate(m_tmp_3(nstate,nocc-ncore_tddft))
      call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))),c_matrix_orth_cmplx(:,ncore_tddft+1:,ispin),m_tmp_3  )
      c_matrix_orth_cmplx(:,ncore_tddft+1:,ispin) = m_tmp_3
