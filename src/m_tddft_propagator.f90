@@ -53,7 +53,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(inout)     :: occupation(:,:)
  logical,intent(in)         :: restart_tddft_is_correct
 !=====
  integer,parameter          :: BATCH_SIZE = 128
@@ -99,15 +99,14 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  write(stdout,'(/,/,1x,a)') '=================================================='
  write(stdout,'(x,a,/)')    'RT-TDDFT simulation'
 
+ ! Here this occupation comes from the set_occupation subroutine with zero temperature
  nstate = SIZE(occupation(:,:),DIM=1)
 
- nocc=0
- do ispin=1,nspin
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     if( istate > nocc ) nocc = istate
-   enddo
- end do
+ if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
+   nocc = get_nocc_from_restart()
+ else
+   nocc = get_number_occupied_states(occupation)
+ end if
 
  call echo_tddft_variables()
 
@@ -161,7 +160,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
    ! assign xatom_start, c_matrix_orth_cmplx, time_min with values given in RESTART File
-   call read_restart_tddft(nstate,time_read,c_matrix_orth_cmplx)
+   call read_restart_tddft(nstate,time_read,occupation,c_matrix_orth_cmplx)
    time_min = time_read
    do ispin=1,nspin
      c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
@@ -338,7 +337,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
    ! ---print tdddft restart each n_restart_tddft steps---
    if( print_tddft_restart_ .AND. mod(itau,n_restart_tddft)==0 ) then
-     call write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
+     call write_restart_tddft(nstate,time_cur,occupation,c_matrix_orth_cmplx)
    end if
 
   time_cur = time_min + itau*time_step
@@ -350,7 +349,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  if(print_tddft_restart_) then
    !time_cur-time_step to be consistent with the actual last moment of the simulation
-   call write_restart_tddft(nstate,time_cur-time_step,c_matrix_orth_cmplx)
+   call write_restart_tddft(nstate,time_cur-time_step,occupation,c_matrix_orth_cmplx)
  end if
 
  if( is_iomaster) then
@@ -1001,12 +1000,13 @@ end subroutine check_identity_cmplx
 
 
 !==========================================
-subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
+subroutine write_restart_tddft(nstate,time_cur,occupation,c_matrix_orth_cmplx)
  use m_definitions
  implicit none
  integer,intent(in)         :: nstate
- complex(dp),intent(in)     :: c_matrix_orth_cmplx(nstate,nocc,nspin)
  real(dp),intent(in)        :: time_cur
+ real(dp),intent(in)        :: occupation(:,:)
+ complex(dp),intent(in)     :: c_matrix_orth_cmplx(nstate,nocc,nspin)
 !===
  integer                    :: restartfile
  integer                    :: istate,ispin
@@ -1019,18 +1019,18 @@ subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
  write(stdout,'(/,a,f19.10)') ' Writing a RESTART_TDDFT file, time_cur= ', time_cur
 
  open(newunit=restartfile,file='RESTART_TDDFT',form='unformatted',action='write')
- ! current time
+ ! nspin
+ write(restartfile) nspin
+ ! Nstate
+ write(restartfile) nstate
+ ! Occupations
+ write(restartfile) occupation(:,:)
+ ! Current Time
  write(restartfile) time_cur
  ! Atomic structure
  write(restartfile) natom
  write(restartfile) zatom(1:natom)
  write(restartfile) xatom(:,1:natom)
- ! nocc
- write(restartfile) nocc
- ! Nstate
- write(restartfile) nstate
- ! nspin
- write(restartfile) nspin
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
    do istate=1,nocc
@@ -1055,32 +1055,55 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
  real(dp),intent(in)        :: occupation(nstate,nspin)
 !===
  logical                    :: file_exists
- integer                    :: nocc_check
  integer                    :: restartfile
  integer                    :: istate,ispin
  integer                    :: natom_read
  real(dp)                   :: time_cur_read
+ real(dp),allocatable       :: occupation_read(:,:)
  real(dp),allocatable       :: zatom_read(:),x_read(:,:)
- integer                    :: nstate_read, nspin_read,nocc_read
+ integer                    :: nstate_read, nspin_read
 !=====
 
  write(stdout,'(/,a)') ' Checking RESTART_TDDFT file'
 
  restart_is_correct=.TRUE.
 
- ! Find highest occupied state
- nocc_check = get_number_occupied_states(occupation)
-
  inquire(file='RESTART_TDDFT',exist=file_exists)
  if(.NOT. file_exists) then
-   write(stdout,'(/,a)') ' No RESTART file found'
+   write(stdout,'(/,a)') ' No RESTART_TDDFT file found'
    restart_is_correct=.FALSE.
    return
  endif
 
  open(newunit=restartfile,file='RESTART_TDDFT',form='unformatted',status='old',action='read')
 
- ! current time
+ ! Nspin
+ read(restartfile) nspin_read
+ if(nspin /= nspin_read) then
+   call issue_warning('RESTART_TDDFT file: nspin is not the same, restart file will not be used')
+   restart_is_correct=.FALSE.
+   close(restartfile)
+   return
+ end if
+
+ ! Nstate
+ read(restartfile) nstate_read
+ if(nstate /= nstate_read) then
+   call issue_warning('RESTART_TDDFT file: nstate is not the same, restart file will not be used')
+   restart_is_correct=.FALSE.
+   close(restartfile)
+   return
+ end if
+
+ ! Occupations
+ allocate(occupation_read(nstate,nspin))
+ read(restartfile) occupation_read(:,:)
+ if( (ANY( ABS( occupation_read(:,:) - occupation(:,:) )  > 1.0e-5_dp )) .AND. temperature > 1.0e-8_dp ) then
+   call issue_warning('RESTART file: Occupations have changed')
+ endif
+ deallocate(occupation_read)
+
+ ! Current time
  read(restartfile) time_cur_read
 
  !Different number of atoms in restart and input files is not provided for tddft restart
@@ -1103,32 +1126,9 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
  endif
  deallocate(zatom_read,x_read)
 
- ! nocc
- read(restartfile) nocc_read
- if(nocc_check /= nocc_read) then
-   call issue_warning('RESTART_TDDFT file: nocc is not the same, restart file will not be used')
-   restart_is_correct=.FALSE.
-   close(restartfile)
-   return
- end if
+ ! Here we do not reead c_matrix_orth_cmplx from the RESTART_TDDFT file
 
- ! nstate
- read(restartfile) nstate_read
- if(nstate /= nstate_read) then
-   call issue_warning('RESTART_TDDFT file: nstate is not the same, restart file will not be used')
-   restart_is_correct=.FALSE.
-   close(restartfile)
-   return
- end if
-
- ! nspin
- read(restartfile) nspin_read
- if(nspin /= nspin_read) then
-   call issue_warning('RESTART_TDDFT file: nspin is not the same, restart file will not be used')
-   restart_is_correct=.FALSE.
-   close(restartfile)
-   return
- end if
+ write(stdout,*) " RESTART_TDDFT file is correct and will be used for the calculation. SCF loop will be omitted."
 
  close(restartfile)
 
@@ -1136,61 +1136,58 @@ end subroutine check_restart_tddft
 
 
 !==========================================
-subroutine get_time_min_restart(time_min)
- use m_definitions
- implicit none
- real(dp),intent(inout)     :: time_min
-!===
- logical                    :: file_exists
- integer                    :: restartfile
-!=====
-
- write(stdout,'(/,a)') ' Getting time_min from RESTART_TDDFT file'
-
- inquire(file='RESTART_TDDFT',exist=file_exists)
- if(.NOT. file_exists) then
-   write(stdout,'(/,a)') ' No RESTART file found'
-   call die("No RESTART_TDDFT file found for the second read")
- endif
-
- open(newunit=restartfile,file='RESTART_TDDFT',form='unformatted',status='old',action='read')
-
- ! current time
- read(restartfile) time_min
- write(stdout,"(1x,a,f7.3)") "time_min= ", time_min
-
- close(restartfile)
-
-end subroutine get_time_min_restart
-
-
-!==========================================
-subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx)
+subroutine read_restart_tddft(nstate,time_min,occupation,c_matrix_orth_cmplx)
  use m_definitions
  implicit none
  complex(dp),intent(inout)  :: c_matrix_orth_cmplx(nstate,nocc,nspin)
  real(dp),intent(inout)     :: time_min
+ real(dp),intent(inout)     :: occupation(nstate,nspin)
  integer,intent(in)         :: nstate
 !===
  logical                    :: file_exists
  integer                    :: restartfile
  integer                    :: istate,ispin
  integer                    :: natom_read
+ real(dp),allocatable       :: occupation_read(:,:)
  real(dp),allocatable       :: zatom_read(:),x_read(:,:)
- integer                    :: nstate_read, nspin_read,nocc_read
+ integer                    :: nstate_read, nspin_read
 !=====
 
  write(stdout,'(/,a)') ' Reading a RESTART_TDDFT file'
 
  inquire(file='RESTART_TDDFT',exist=file_exists)
  if(.NOT. file_exists) then
-   write(stdout,'(/,a)') ' No RESTART file found'
+   write(stdout,'(/,a)') ' No RESTART_TDDFT file found'
    return
  endif
 
  open(newunit=restartfile,file='RESTART_TDDFT',form='unformatted',status='old',action='read')
 
- ! current time
+ ! After the subroutine check_restart_tddft, which was called in the molgw.f90, here we are sure that:
+ ! nspin==nspin_read
+ ! nstate==nstate_read
+
+ ! Nspin
+ read(restartfile) nspin_read
+
+ ! Nstate
+ read(restartfile) nstate_read
+
+ ! Occupations
+ allocate(occupation_read(nstate_read,nspin_read))
+ read(restartfile) occupation_read(:,:)
+ if( ANY( ABS( occupation_read(:,:) - occupation(:,:) )  > 1.0e-5_dp ) ) then
+   if( temperature > 1.0e-8_dp) then
+     occupation(:,:)=occupation_read(:,:)
+     write(stdout,'(1xa)') "Reading occupations from a RESTART file"
+     call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
+   else
+     call issue_warning('RESTART file: Occupations have changed')
+   endif
+ endif
+ deallocate(occupation_read)
+
+ ! Current Time
  read(restartfile) time_min
  write(stdout,"(1x,a,f7.3)") "time_min= ", time_min
 
@@ -1200,15 +1197,6 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx)
  read(restartfile) zatom_read(1:natom_read)
  read(restartfile) xatom_start(:,1:natom_read)
  deallocate(zatom_read)
-
- ! nocc
- read(restartfile) nocc_read
-
- ! Nstate
- read(restartfile) nstate_read
-
- ! nspin
- read(restartfile) nspin_read
 
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
@@ -1220,6 +1208,48 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx)
  close(restartfile)
 
 end subroutine read_restart_tddft
+
+
+!==========================================
+function get_nocc_from_restart() result(nocc_read)
+ use m_definitions
+ implicit none
+!=====
+ integer                    :: nocc_read
+!=====
+ logical                    :: file_exists
+ integer                    :: restartfile
+ integer                    :: nstate_read, nspin_read
+ real(dp),allocatable       :: occupation_read(:,:)
+!=====
+
+ write(stdout,'(/,a)') ' Reading a RESTART_TDDFT file to get the nocc value'
+
+ inquire(file='RESTART_TDDFT',exist=file_exists)
+ if(.NOT. file_exists) then
+   write(stdout,'(/,a)') ' No RESTART_TDDFT file found'
+   return
+ endif
+
+ open(newunit=restartfile,file='RESTART_TDDFT',form='unformatted',status='old',action='read')
+
+ ! Nspin
+ read(restartfile) nspin_read
+
+ ! Nstate
+ read(restartfile) nstate_read
+
+ ! Occupations
+ allocate(occupation_read(nstate_read,nspin_read))
+ read(restartfile) occupation_read(:,:)
+
+ nocc_read = get_number_occupied_states(occupation_read)
+
+ deallocate(occupation_read)
+
+ close(restartfile)
+
+end function get_nocc_from_restart
 
 
 !==========================================
