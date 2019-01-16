@@ -104,7 +104,7 @@ frev.write('!===================================================================
 if len(sha) > 0:
   frev.write(' git_sha = \'' + sha + '\'\n\n')
 else:
-  frev.write(' git_sha = ' + ' -1 ' + '\n\n')
+  frev.write(' git_sha = \'' + ' -1 ' + '\'\n\n')
 
 frev.close()
 
