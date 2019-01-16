@@ -142,6 +142,8 @@ module m_inputparam
  character(len=12),protected      :: ci_greens_function
  character(len=12),protected      :: ci_type
  character(len=12),protected      :: pt3_a_diagrams
+ character(len=1),protected       :: scf_diago_flavor
+ character(len=1),protected       :: postscf_diago_flavor
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav

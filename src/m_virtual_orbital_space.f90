@@ -27,7 +27,7 @@ contains
 !=========================================================================
 subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
  use m_inputparam
- use m_tools,only: diagonalize,invert
+ use m_tools,only: invert
  use m_basis_set
  use m_hamiltonian_onebody
  use m_hamiltonian_sca
@@ -709,7 +709,7 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
 #endif
 
    allocate(occupation_mp2(nvirtual))
-   call diagonalize(p_matrix_mp2,occupation_mp2)
+   call diagonalize(scf_diago_flavor,p_matrix_mp2,occupation_mp2)
 
 !   write(stdout,*)
 !   do astate=1,nvirtual
@@ -743,7 +743,7 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
 
    deallocate(ham_virtual)
 
-   call diagonalize(ham_virtual_kept,energy_virtual_kept)
+   call diagonalize(scf_diago_flavor,ham_virtual_kept,energy_virtual_kept)
 
 !   write(stdout,'(/,1x,a)') ' virtual state    FNO energy (eV)   reference energy (eV)'
 !   do astate=1,nvirtual_kept
@@ -793,7 +793,6 @@ end subroutine virtual_fno
 !=========================================================================
 subroutine destroy_fno(basis,nstate,energy,c_matrix)
  use m_inputparam
- use m_tools,only: diagonalize
  use m_basis_set
  use m_eri_ao_mo
  use m_scalapack

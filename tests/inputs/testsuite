@@ -20,7 +20,7 @@
 #
 #####################################################
 
-he.in                     , HF helium atom cc-pVTZ without RI, noparallel 
+he.in                     , HF helium atom cc-pVTZ without RI
 SCF Total Energy          , -2.8611533447      , 0 , 1.0e-7
 gKS HOMO energy           , -24.969849         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.323932         , 0 , 1.0e-4
@@ -604,7 +604,7 @@ CI 2nd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
 CI 3rd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
 CI 4th excited-state energy,   -14.3718323663   , 0 , 1.0e-7
 
-be_ci_nocore.in           , CI calculation for boron atom without exciting coe electrons (2e-)
+be_ci_nocore.in           , CI calculation for boron atom without exciting core electrons (2e-)
 SCF Total Energy          ,    -14.5723376310   , 0 , 1.0e-7
 Uncorrelated energy       ,    -14.5723376310   , 0 , 1.0e-7
 Correlation energy        ,     -0.0440450204   , 0 , 1.0e-7

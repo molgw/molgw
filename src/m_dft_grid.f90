@@ -353,7 +353,6 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
  allocate(rr_grid(3,ngrid),w_grid(ngrid))
 
-! open(777,file="grid.xyz")
 
  igrid = 0
  ir = 0
@@ -364,13 +363,11 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
        ir = ir + 1
        w_grid(ir) = w_grid_tmp(ir1)
        rr_grid(:,ir) = rr_grid_tmp(:,ir1)
- !      write(777,'(i3,4f15.5)') 1,rr_grid_tmp(:,ir1),w_grid(ir)
      endif
 
    endif
  enddo
 
-! close(777)
 
  deallocate(rr_grid_tmp,w_grid_tmp)
 

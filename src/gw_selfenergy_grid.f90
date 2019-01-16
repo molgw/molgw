@@ -152,7 +152,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
    ! Diagonalize (1-chi0) in order to have RPA total energy.
    ! might be a bit time-consuming but we only calculate the eigenvalues
-   call diagonalize_eigval_sca(nauxil_2center,wpol%desc_chi,one_m_chi0m1,eigval)
+   call diagonalize_eigval_sca(postscf_diago_flavor,one_m_chi0m1,wpol%desc_chi,eigval)
    erpa = erpa + SUM( LOG(eigval(:)) + 1.0_dp - eigval(:) ) / (2.0_dp * pi) * wpol%weight_quad(iomega)
    eint = eint + SUM( -( 1.0_dp - eigval(:) ) / eigval(:) + 1.0_dp - eigval(:) ) / (2.0_dp * pi) * wpol%weight_quad(iomega)
 

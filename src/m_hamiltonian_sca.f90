@@ -45,7 +45,7 @@ subroutine matrix_cart_to_local(gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart, &
  real(dp) :: matrix_final(ibf:ibf+ni-1,jbf:jbf+nj-1)
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  gt = get_gaussian_type_tag(gaussian_type)
 
@@ -85,7 +85,7 @@ subroutine setup_overlap_sca(basis,s_matrix)
  real(dp),allocatable :: matrix_cart(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  call start_clock(timing_overlap)
  write(stdout,'(/,a)') ' Setup overlap matrix S: SCALAPACK'
@@ -144,7 +144,7 @@ subroutine setup_kinetic_sca(basis,hamiltonian_kinetic)
  real(dp),allocatable :: matrix_cart(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  call start_clock(timing_hamiltonian_kin)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian: SCALAPACK'
@@ -205,7 +205,7 @@ subroutine setup_nucleus_sca(basis,hamiltonian_nucleus)
  real(dp)             :: vnucleus_ij
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK'
@@ -288,7 +288,7 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
  m_ham = SIZE(p_matrix,DIM=1)
  n_ham = SIZE(p_matrix,DIM=2)
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK'
 
@@ -393,7 +393,7 @@ subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexcha
 
  exchange_ij(:,:,:) = 0.0_dp
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  write(stdout,*) 'SCALAPACK local grid',nprow_3center,npcol_3center
  write(stdout,*) 'This is process:',iprow_3center,ipcol_3center
@@ -530,7 +530,7 @@ subroutine setup_exchange_longrange_ri_sca(occupation,c_matrix,p_matrix,exchange
  integer              :: ipair
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  call start_clock(timing_exchange)
 
@@ -591,7 +591,7 @@ subroutine setup_density_matrix_sca(c_matrix,occupation,p_matrix)
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call start_clock(timing_density_matrix)
  write(stdout,'(1x,a)') 'Build density matrix: SCALAPACK'
 
@@ -637,7 +637,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
  integer :: mh,nh,mc,nc,ms,ns
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  integer :: cntxt
  integer :: rank_sca,nprocs_sca
  integer :: desch(NDEL),descc(NDEL),descs(NDEL)
@@ -736,7 +736,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
 
 
 
-       call diagonalize_sca(nstate,descs,h_small,energy(:,ispin))
+       call diagonalize_sca(scf_diago_flavor,h_small,descs,energy(:,ispin))
 
 
 !       c_matrix(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
@@ -804,7 +804,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
      deallocate(h_small)
 
      ! H * C' = C' * E
-     call diagonalize(h_small2,energy(:,ispin))
+     call diagonalize(scf_diago_flavor,h_small2,energy(:,ispin))
 
      !c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small2(:,:) )
      ! C = U * C'
@@ -888,7 +888,7 @@ subroutine diagonalize_hamiltonian_sca(desc_h,hamiltonian,desc_sqrt,s_matrix_sqr
 
 
 
-     call diagonalize_sca(nstate,desc_small,h_small,energy(:,ispin))
+     call diagonalize_sca(scf_diago_flavor,h_small,desc_small,energy(:,ispin))
 
 
      !
@@ -948,7 +948,7 @@ end subroutine diagonalize_hamiltonian_sca
 ! complex(dp),allocatable :: h_small_cmplx(:,:)
 !!=====
 !
-!#ifdef HAVE_SCALAPACK
+!#if defined(HAVE_SCALAPACK)
 !
 ! cntxt  = desc_h(CTXT_A)
 ! nbf    = desc_h(M_A)
@@ -990,11 +990,11 @@ end subroutine diagonalize_hamiltonian_sca
 !
 !
 !     !
-!     ! C = S^{-1/2} C_small 
+!     ! C = S^{-1/2} C_small
 !     call PDGEMM('N','N',nbf,nstate,nstate,                   &
 !                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,     &
 !                                 h_small,1,1,desc_small,      &
-!                  0.0_dp,c_matrix(1,1,ispin),1,1,desc_sqrt) 
+!                  0.0_dp,c_matrix(1,1,ispin),1,1,desc_sqrt)
 !
 !
 !     call stop_clock(timing_diago_hamiltonian)
@@ -1050,7 +1050,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
  real(dp),allocatable :: diag(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}: SCALAPACK'
 
@@ -1068,7 +1068,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
    allocate(matrix_tmp(ms,ns))
    matrix_tmp(:,:) = s_matrix(:,:)
 
-   call diagonalize_sca(nbf,desc_s,matrix_tmp,s_eigval)
+   call diagonalize_sca(' ',matrix_tmp,desc_s,s_eigval)
 
    nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
@@ -1155,7 +1155,7 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
  integer              :: ispin,ibf
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  write(stdout,*) 'Calculate the square root of the density matrix: SCALAPACK'
  call start_clock(timing_sqrt_density_matrix)
@@ -1163,7 +1163,7 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
  if( cntxt_ham > 0 ) then
    do ispin=1,nspin
      p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
-     call diagonalize_sca(nbf,desc_ham,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+     call diagonalize_sca(' ',p_matrix_sqrt(:,:,ispin),desc_ham,p_matrix_occ(:,ispin))
 
      ! Cheat on the negative eigenvalues
      ! to avoid the pathological case of non-positive definite P

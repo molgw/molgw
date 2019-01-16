@@ -566,14 +566,15 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
 
  if( .NOT. is_longrange ) then
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
    write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBINT): ',nprow_3center,' x ',npcol_3center
 #else
    write(stdout,'(a)') ' 2-center integrals (LIBINT)'
 #endif
  else
-#ifdef HAVE_SCALAPACK
-   write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals distributed using a SCALAPACK grid (LIBINT): ',nprow_3center,' x ',npcol_3center
+#if defined(HAVE_SCALAPACK)
+   write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals distributed using a SCALAPACK grid (LIBINT): ', &
+                               nprow_3center,' x ',npcol_3center
 #else
    write(stdout,'(a)') ' 2-center LR integrals (LIBINT)'
 #endif
@@ -698,7 +699,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  !
  ! Symmetrize and then diagonalize the 2-center integral matrix
  !
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
    call clean_allocate('2-center integrals sqrt',eri_2center_sqrt,mlocal,nlocal)
 
@@ -707,7 +708,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
    ! A = A + B**T
    call PDGEADD('T',auxil_basis%nbf,auxil_basis%nbf,1.0d0,eri_2center_sqrt,1,1,desc2center,1.0d0,eri_2center_tmp,1,1,desc2center)
    ! Diagonalize
-   call diagonalize_sca(auxil_basis%nbf,desc2center,eri_2center_tmp,eigval,desc2center,eri_2center_sqrt)
+   call diagonalize_sca(' ',eri_2center_tmp,desc2center,eigval,eri_2center_sqrt,desc2center)
    call clean_deallocate('tmp 2-center integrals',eri_2center_tmp)
 
 #else
@@ -715,7 +716,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
    eri_2center_tmp(:,:) = eri_2center_tmp(:,:) + TRANSPOSE( eri_2center_tmp(:,:) )
    ! Symmetrize
    ! Diagonalize
-   call diagonalize_scalapack(scalapack_block_min,auxil_basis%nbf,eri_2center_tmp,eigval)
+   call diagonalize_scalapack(' ',scalapack_block_min,eri_2center_tmp,eigval)
    call move_alloc(eri_2center_tmp,eri_2center_sqrt)
 
 #endif
@@ -759,7 +760,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
    call clean_allocate('Distributed LR 2-center integrals',eri_2center_lr,mlocal,nlocal)
  endif
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
  !
  ! Create a rectangular matrix with only 1 / SQRT( eigval) on a diagonal
@@ -882,7 +883,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  else
    write(stdout,'(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBINT 3center)'
  endif
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  write(stdout,'(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
 #endif
 

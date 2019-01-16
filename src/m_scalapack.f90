@@ -636,12 +636,14 @@ end subroutine matmul_diag_sca
 ! Diagonalize a REAL SYMMETRIC distributed matrix to get eigenvalues only
 !
 !=========================================================================
-subroutine diagonalize_eigval_sca(nglobal,desc,matrix,eigval)
+subroutine diagonalize_eigval_sca(flavor,matrix,desc,eigval)
  implicit none
- integer,intent(in)     :: desc(NDEL),nglobal
+ character(len=1),intent(in) :: flavor
+ integer,intent(in)     :: desc(NDEL)
  real(dp),intent(inout) :: matrix(:,:)
- real(dp),intent(out)   :: eigval(nglobal)
+ real(dp),intent(out)   :: eigval(:)
 !=====
+ integer              :: nglobal
  integer              :: desc_eigvec(NDEL)
  integer              :: mlocal,nlocal
  integer              :: lwork,info
@@ -652,7 +654,9 @@ subroutine diagonalize_eigval_sca(nglobal,desc,matrix,eigval)
  integer              :: liwork
 !=====
 
-#ifdef HAVE_SCALAPACK
+ nglobal = SIZE(eigval)
+
+#if defined(HAVE_SCALAPACK)
  desc_eigvec = desc
 
  mlocal = SIZE( matrix , DIM=1 )
@@ -682,7 +686,7 @@ subroutine diagonalize_eigval_sca(nglobal,desc,matrix,eigval)
 
 #else
 
- call diagonalize_wo_vectors(matrix,eigval)
+ call diagonalize_wo_vectors(flavor,matrix,eigval)
 
 #endif
 
@@ -694,30 +698,29 @@ end subroutine diagonalize_eigval_sca
 ! Diagonalize a REAL SYMMETRIC distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_inplace_sca_dp(nglobal,desc,matrix,eigval)
+subroutine diagonalize_inplace_sca_dp(flavor,matrix,desc,eigval)
  implicit none
- integer,intent(in)     :: desc(NDEL),nglobal
- real(dp),intent(inout) :: matrix(:,:)
- real(dp),intent(out)   :: eigval(nglobal)
+ character(len=1),intent(in) :: flavor
+ integer,intent(in)          :: desc(NDEL)
+ real(dp),intent(inout)      :: matrix(:,:)
+ real(dp),intent(out)        :: eigval(:)
 !=====
  integer              :: desc_eigvec(NDEL)
- integer              :: mlocal,nlocal
+ integer              :: mlocal,nlocal,nglobal
  integer              :: lwork,info
  integer              :: nprow,npcol,iprow,ipcol
  real(dp),allocatable :: work(:)
  real(dp),allocatable :: eigvec(:,:)
-#if !defined(LAPACK_DIAGO_FLAVOR_)
  integer,allocatable  :: iwork(:)
  integer              :: liwork
  integer              :: neigval,neigvec
-#endif
-#if defined(LAPACK_DIAGO_FLAVOR_X)
  real(dp)             :: ABSTOL
- integer              :: iclustr(2*nprow_sd*npcol_sd)
  real(dp)             :: gap(nprow_sd*npcol_sd)
- integer              :: ifail(nglobal)
-#endif
+ integer              :: iclustr(2*nprow_sd*npcol_sd)
+ integer,allocatable  :: ifail(:)
 !=====
+
+ nglobal = SIZE(eigval(:))
 
 #if defined(HAVE_SCALAPACK)
 
@@ -738,22 +741,23 @@ subroutine diagonalize_inplace_sca_dp(nglobal,desc,matrix,eigval)
    lwork = -1
    allocate(work(3))
 
-#if defined(LAPACK_DIAGO_FLAVOR_)
-   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_X)
-   liwork = -1
-   allocate(iwork(1))
-   ABSTOL = PDLAMCH(desc(CTXT_), 'U')
-   call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-                ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
-                eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-                ifail,iclustr,gap,info)
-#else
-   liwork = -1
-   allocate(iwork(1))
-   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-#endif
-
+   select case(flavor)
+   case('r','R')
+     liwork = -1
+     allocate(iwork(1))
+     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+   case('x','X')
+     liwork = -1
+     allocate(iwork(1))
+     allocate(ifail(nglobal))
+     ABSTOL = PDLAMCH(desc(CTXT_), 'U')
+     call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+                  ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+                  eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+                  ifail,iclustr,gap,info)
+   case default
+     call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+   end select
 
    !
    ! Second call to actually perform the diago
@@ -761,33 +765,36 @@ subroutine diagonalize_inplace_sca_dp(nglobal,desc,matrix,eigval)
    deallocate(work)
    allocate(work(lwork))
 
-#if defined(LAPACK_DIAGO_FLAVOR_)
-   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_X)
-   liwork = iwork(1)
-   deallocate(iwork)
-   allocate(iwork(liwork))
-   call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-                ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
-                eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-                ifail,iclustr,gap,info)
-   deallocate(iwork)
-#else
-   liwork = iwork(1)
-   deallocate(iwork)
-   allocate(iwork(liwork))
-   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-   deallocate(iwork)
-#endif
-   deallocate(work)
+   select case(flavor)
+   case('r','R')
+     liwork = iwork(1)
+     deallocate(iwork)
+     allocate(iwork(liwork))
+     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+     deallocate(iwork)
+   case('x','X')
+     liwork = iwork(1)
+     deallocate(iwork)
+     allocate(iwork(liwork))
+     call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+                  ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+                  eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+                  ifail,iclustr,gap,info)
+     deallocate(iwork,ifail)
+   case default
+     call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+   end select
+
 
    matrix(:,:) = eigvec(:,:)
 
+   deallocate(work)
    deallocate(eigvec)
+
  else
 #endif
 
-   call diagonalize(matrix,eigval)
+   call diagonalize(flavor,matrix,eigval)
 
 #if defined(HAVE_SCALAPACK)
  endif
@@ -801,56 +808,74 @@ end subroutine diagonalize_inplace_sca_dp
 ! Diagonalize a COMPLEX HERMITIAN distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
+subroutine diagonalize_inplace_sca_cdp(flavor,matrix,desc,eigval)
  implicit none
- integer,intent(in)        :: desc(NDEL),nglobal
- complex(dp),intent(inout) :: matrix(:,:)
- real(dp),intent(out)      :: eigval(nglobal)
+ character(len=1),intent(in) :: flavor
+ integer,intent(in)          :: desc(NDEL)
+ complex(dp),intent(inout)   :: matrix(:,:)
+ real(dp),intent(out)        :: eigval(:)
 !=====
+ integer              :: nglobal
  integer              :: desc_eigvec(NDEL)
  integer              :: mlocal,nlocal
  integer              :: lwork,lrwork,info
+ integer              :: nprow,npcol,iprow,ipcol
  complex(dp),allocatable :: work(:),rwork(:)
  complex(dp),allocatable :: eigvec(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
- desc_eigvec = desc
+ nglobal = SIZE(eigval)
 
- mlocal = SIZE( matrix , DIM=1 )
- nlocal = SIZE( matrix , DIM=2 )
+#if defined(HAVE_SCALAPACK)
+ call BLACS_GRIDINFO( desc(CTXT_), nprow, npcol, iprow, ipcol )
 
- allocate(eigvec(mlocal,nlocal))
+ ! Only call SCALAPACK when using more than 1 proc
+ if( nprow * npcol > 1 ) then
+   desc_eigvec = desc
+  
+   mlocal = SIZE( matrix , DIM=1 )
+   nlocal = SIZE( matrix , DIM=2 )
+  
+   allocate(eigvec(mlocal,nlocal))
+  
+   !
+   ! First call to get the dimension of the array work
+   lwork  = -1
+   lrwork = -1
+   allocate(work(1))
+   allocate(rwork(1))
+   select case(flavor)
+   case default
+     call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
+   end select
+  
+  
+   !
+   ! Second call to actually perform the diago
+   lwork  = NINT(REAL(work(1),dp))
+   lrwork = NINT(REAL(rwork(1),dp))
+  
+   deallocate(work)
+   allocate(work(lwork))
+   select case(flavor)
+   case default
+     call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
+   end select
+  
+   deallocate(work)
+  
+  
+   matrix(:,:) = eigvec(:,:)
+  
+   deallocate(eigvec)
 
- !
- ! First call to get the dimension of the array work
- lwork  = -1
- lrwork = -1
- allocate(work(1))
- allocate(rwork(1))
- call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
+ else
+#endif
 
+   call diagonalize(flavor,matrix,eigval)
 
- !
- ! Second call to actually perform the diago
- lwork  = NINT(REAL(work(1),dp))
- lrwork = NINT(REAL(rwork(1),dp))
-
- deallocate(work)
- allocate(work(lwork))
- call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
-
- deallocate(work)
-
-
- matrix(:,:) = eigvec(:,:)
-
- deallocate(eigvec)
-
-#else
-
- call diagonalize(matrix,eigval)
-
+#if defined(HAVE_SCALAPACK)
+ endif
 #endif
 
 
@@ -861,30 +886,29 @@ end subroutine diagonalize_inplace_sca_cdp
 ! Diagonalize a REAL SYMMETRIC distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,eigvec)
+subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_eigvec)
  implicit none
- integer,intent(in)     :: nglobal
- integer,intent(in)     :: desc(NDEL)
- integer,intent(in)     :: desc_eigvec(NDEL)
- real(dp),intent(inout) :: matrix(:,:)
- real(dp),intent(out)   :: eigval(nglobal)
- real(dp),intent(out)   :: eigvec(:,:)
+ character(len=1),intent(in) :: flavor
+ integer,intent(in)          :: desc(NDEL)
+ integer,intent(in)          :: desc_eigvec(NDEL)
+ real(dp),intent(inout)      :: matrix(:,:)
+ real(dp),intent(out)        :: eigval(:)
+ real(dp),intent(out)        :: eigvec(:,:)
 !=====
+ integer              :: nglobal
  integer              :: nprow,npcol,iprow,ipcol
  integer              :: lwork,info
  real(dp),allocatable :: work(:)
-#if !defined(LAPACK_DIAGO_FLAVOR_)
  integer,allocatable  :: iwork(:)
  integer              :: liwork
  integer              :: neigval,neigvec
-#endif
-#if defined(LAPACK_DIAGO_FLAVOR_X)
  real(dp)             :: ABSTOL
  integer              :: iclustr(2*nprow_sd*npcol_sd)
  real(dp)             :: gap(nprow_sd*npcol_sd)
- integer              :: ifail(nglobal)
-#endif
+ integer,allocatable  :: ifail(:)
 !=====
+
+ nglobal = SIZE(eigval)
 
 #if defined(HAVE_SCALAPACK)
  call BLACS_GRIDINFO( desc(CTXT_), nprow, npcol, iprow, ipcol )
@@ -896,25 +920,27 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
    ! First call to get the dimensions of the work arrays
    lwork = -1
    allocate(work(3))
-#if defined(LAPACK_DIAGO_FLAVOR_)
-   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_X)
-   liwork = -1
-   allocate(iwork(1))
-   ABSTOL = PDLAMCH(desc(CTXT_), 'U')
-   call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-                ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
-                eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-                ifail,iclustr,gap,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
-   liwork = -1
-   allocate(iwork(1))
-   call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-#else
-   liwork = -1
-   allocate(iwork(1))
-   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-#endif
+
+   select case(flavor)
+   case('r','R')
+     liwork = -1
+     allocate(iwork(1))
+     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+   case('d','D')
+     liwork = -1
+     allocate(iwork(1))
+     call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+   case('x','X')
+     liwork = -1
+     allocate(iwork(1),ifail(nglobal))
+     ABSTOL = PDLAMCH(desc(CTXT_), 'U')
+     call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+                  ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+                  eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+                  ifail,iclustr,gap,info)
+   case default
+     call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+   end select
 
 
    !
@@ -923,35 +949,37 @@ subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,
    deallocate(work)
    allocate(work(lwork))
 
-#if defined(LAPACK_DIAGO_FLAVOR_)
-   call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
-#elif defined(LAPACK_DIAGO_FLAVOR_X)
-   liwork = iwork(1)
-   deallocate(iwork)
-   allocate(iwork(liwork))
-   call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-                ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
-                eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-                ifail,iclustr,gap,info)
-   deallocate(iwork)
-#elif defined(LAPACK_DIAGO_FLAVOR_D)
-   liwork = iwork(1)
-   deallocate(iwork)
-   allocate(iwork(liwork))
-   call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-#else
-   liwork = iwork(1)
-   deallocate(iwork)
-   allocate(iwork(liwork))
-   call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-   deallocate(iwork)
-#endif
+   select case(flavor)
+   case('r','R')
+     liwork = iwork(1)
+     deallocate(iwork)
+     allocate(iwork(liwork))
+     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+     deallocate(iwork)
+   case('d','D')
+     liwork = iwork(1)
+     deallocate(iwork)
+     allocate(iwork(liwork))
+     call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+   case('x','X')
+     liwork = iwork(1)
+     deallocate(iwork)
+     allocate(iwork(liwork))
+     call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+                  ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+                  eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+                  ifail,iclustr,gap,info)
+     deallocate(iwork,ifail)
+   case default
+     call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+   end select
+
    deallocate(work)
 
  else
 #endif
 
-   call diagonalize(matrix,eigval,eigvec)
+   call diagonalize(flavor,matrix,eigval,eigvec)
 
 #if defined(HAVE_SCALAPACK)
  endif
@@ -964,13 +992,14 @@ end subroutine diagonalize_outofplace_sca_dp
 ! Diagonalize a non-distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigval)
+subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eigval)
  implicit none
- integer,intent(in)     :: scalapack_block_min
- integer,intent(in)     :: nmat
- real(dp),intent(inout) :: matrix_global(nmat,nmat)
- real(dp),intent(out)   :: eigval(nmat)
+ character(len=1),intent(in) :: flavor
+ integer,intent(in)          :: scalapack_block_min
+ real(dp),intent(inout)      :: matrix_global(:,:)
+ real(dp),intent(out)        :: eigval(:)
 !=====
+ integer :: nmat
  integer :: cntxt
  integer :: mlocal,nlocal
  integer :: nprow,npcol,iprow,ipcol
@@ -981,7 +1010,9 @@ subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigva
  integer :: rank_master
 !=====
 
-#ifdef HAVE_SCALAPACK
+ nmat = SIZE(eigval)
+
+#if defined(HAVE_SCALAPACK)
  call select_nprow_npcol(scalapack_block_min,nmat,nmat,nprow,npcol)
 
  if( nprow * npcol > 1 ) then
@@ -1013,7 +1044,7 @@ subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigva
      ! Set up the local copy of the matrix_global
      call create_distributed_copy(matrix_global,descm,matrix)
 
-     call diagonalize_sca(nmat,descm,matrix,eigval)
+     call diagonalize_sca(flavor,matrix,descm,eigval)
 
    endif
 
@@ -1029,15 +1060,12 @@ subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigva
 
 
  else ! Only one SCALAPACK proc
+#endif
 
-   call diagonalize(matrix_global,eigval)
+   call diagonalize(flavor,matrix_global,eigval)
 
+#if defined(HAVE_SCALAPACK)
  endif
-
-#else
-
- call diagonalize(matrix_global,eigval)
-
 #endif
 
 
@@ -1048,13 +1076,14 @@ end subroutine diagonalize_scalapack_dp
 ! Diagonalize a non-distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigval)
+subroutine diagonalize_scalapack_cdp(flavor,scalapack_block_min,matrix_global,eigval)
  implicit none
- integer,intent(in)     :: scalapack_block_min
- integer,intent(in)     :: nmat
- complex(dp),intent(inout) :: matrix_global(nmat,nmat)
- real(dp),intent(out)   :: eigval(nmat)
+ character(len=1),intent(in) :: flavor
+ integer,intent(in)          :: scalapack_block_min
+ complex(dp),intent(inout)   :: matrix_global(:,:)
+ real(dp),intent(out)        :: eigval(:)
 !=====
+ integer :: nmat
  integer :: cntxt
  integer :: mlocal,nlocal
  integer :: nprow,npcol,iprow,ipcol
@@ -1065,7 +1094,9 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
  integer :: rank_master
 !=====
 
-#ifdef HAVE_SCALAPACK
+ nmat = SIZE(eigval)
+
+#if defined(HAVE_SCALAPACK)
  call select_nprow_npcol(scalapack_block_min,nmat,nmat,nprow,npcol)
 
  if( nprow * npcol > 1 ) then
@@ -1097,7 +1128,7 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
      ! Set up the local copy of the matrix_global
      call create_distributed_copy(matrix_global,descm,matrix)
 
-     call diagonalize_sca(nmat,descm,matrix,eigval)
+     call diagonalize_sca(flavor,matrix,descm,eigval)
 
    endif
 
@@ -1113,15 +1144,12 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
 
 
  else ! Only one SCALAPACK proc
+#endif
 
-   call diagonalize(matrix_global,eigval)
+   call diagonalize(flavor,matrix_global,eigval)
 
+#if defined(HAVE_SCALAPACK)
  endif
-
-#else
-
- call diagonalize(matrix_global,eigval)
-
 #endif
 
 
@@ -3211,7 +3239,7 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
    call PDGEMM('T','N',mm,mm,mmat,1.0_dp,bb,1,1,desc_bb,ab,1,1,desc_bb,0.0_dp,atilde,1,1,desc_at)
 
 
-   call diagonalize_sca(mm,desc_at,atilde,lambda,desc_at,alphavec)
+   call diagonalize_sca(' ',atilde,desc_at,lambda,alphavec,desc_at)
 
    deallocate(atilde)
 
