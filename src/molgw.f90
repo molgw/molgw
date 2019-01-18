@@ -150,7 +150,6 @@ program molgw
      call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
    endif
 
-   if( density_matrix_diff_ ) call dm_diff(basis)
    if( print_rho_grid_ )      call dm_dump(basis)
 
    !

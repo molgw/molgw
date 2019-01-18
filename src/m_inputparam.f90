@@ -196,7 +196,6 @@ module m_inputparam
  logical,protected                :: print_hartree_
  logical,protected                :: print_density_matrix_
  logical,protected                :: print_rho_grid_
- logical,protected                :: density_matrix_diff_
  real(dp),protected               :: rcut_mbpt
 
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
@@ -823,7 +822,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
  character(len=3)     :: print_rho_grid
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
- character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix,density_matrix_diff
+ character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix
  character(len=3)     :: print_tddft_matrices
  character(len=3)     :: print_cube_rho_tddft
  character(len=3)     :: print_cube_diff_tddft
@@ -945,7 +944,6 @@ subroutine read_inputfile_namelist()
  print_rho_grid_          = yesno(print_rho_grid)
  gwgamma_tddft_           = yesno(gwgamma_tddft)
  use_correlated_density_matrix_ = yesno(use_correlated_density_matrix)
- density_matrix_diff_   = yesno(density_matrix_diff)
  print_tddft_matrices_  = yesno(print_tddft_matrices)
  print_cube_diff_tddft_ = yesno(print_cube_diff_tddft)
  print_line_rho_tddft_  = yesno(print_line_rho_tddft)

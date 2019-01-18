@@ -758,15 +758,6 @@ vl[i].comment  ='Prints the electric multipole expansion for the electronic dens
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='density_matrix_diff'
-vl[i].family   ='io'
-vl[i].default  ='no'
-vl[i].datatype ='yes/no'
-vl[i].comment  ='Compares two density matrix.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
 vl[i].keyword  ='length_unit'
 vl[i].family   ='system'
 vl[i].default  ='angstrom'
