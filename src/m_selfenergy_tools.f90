@@ -449,7 +449,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
 
  case(imaginary_axis)
    !
-   ! Set the final sampling points for Sigma
+   ! Set the final sampling points for Sigma on the real axis
    se%nomega = nomega_sigma/2
    allocate(se%omega(-se%nomega:se%nomega))
    do iomega=-se%nomega,se%nomega
@@ -457,7 +457,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    enddo
 
    !
-   ! Set the calculated sampling points for Sigma
+   ! Set the calculated sampling points for Sigma on the imaginary axis
    se%nomegai = nomega_sigma / 2
    allocate(se%omegai(-se%nomegai:se%nomegai))
    do iomega=-se%nomegai,se%nomegai

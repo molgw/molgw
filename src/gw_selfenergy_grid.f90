@@ -333,6 +333,7 @@ end subroutine gw_selfenergy_imag_scalapack
 
 !=========================================================================
 subroutine gw_selfenergy_imag_scalapack_full(basis,nstate,energy,c_matrix,wpol,se)
+!gw_density_matrix_imag
  use m_definitions
  use m_timing
  use m_warning
@@ -359,24 +360,28 @@ subroutine gw_selfenergy_imag_scalapack_full(basis,nstate,energy,c_matrix,wpol,s
  integer              :: info
  real(dp),allocatable :: eri3_sca_p(:,:),eri3_sca_q(:,:)
  real(dp),allocatable :: chi_eri3_sca_q(:,:)
+ real(dp),allocatable :: omega_sigma(:),weight_sigma(:)
  real(dp)             :: v_chi_v_pq
  integer              :: desc_eri3_t(NDEL)
  integer              :: iprow,ipcol,nprow,npcol
  integer              :: desc_eri3_final(NDEL)
  integer              :: meri3,neri3
  integer              :: mstate,pstate,qstate,mpspin
- integer              :: prange,mlocal
+ integer              :: mrange,mlocal
  complex(dp),allocatable :: sigmaigw(:,:,:,:)
+ real(dp),allocatable :: p_matrix_gw(:,:,:)
+ real(dp),parameter   :: alpha=1.0_dp
+ real(dp),parameter   :: beta=1.0_dp
 !=====
 
 
  if( .NOT. has_auxil_basis ) then
-   call die('gw_selfenergy_imag_sca requires an auxiliary basis')
+   call die('gw_density_matrix_imag: requires an auxiliary basis')
  endif
 
  call start_clock(timing_gw_self)
 
- write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies'
+ write(stdout,'(/,1x,a)') 'GW density matrix from a grid of imaginary frequencies'
 
  nprow = 1
  npcol = 1
@@ -390,56 +395,66 @@ subroutine gw_selfenergy_imag_scalapack_full(basis,nstate,energy,c_matrix,wpol,s
  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
 
 
- prange = nvirtual_G - ncore_G - 1
+ mrange = nvirtual_G - ncore_G - 1
 
  meri3 = NUMROC(nauxil_2center,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
- neri3 = NUMROC(prange        ,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol)
- call DESCINIT(desc_eri3_final,nauxil_2center,prange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+ neri3 = NUMROC(mrange        ,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol)
+ call DESCINIT(desc_eri3_final,nauxil_2center,mrange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
                wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
 
  call clean_allocate('TMP 3-center MO integrals',eri3_sca_p,meri3,neri3)
  call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
  call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
 
- call DESCINIT(desc_eri3_t,nauxil_2center,prange,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
+ call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
 
 
- ! OPENMP does not want to reduce se%sigmai then work with a temporary array sigmaigw
- allocate(sigmaigw(-se%nomegai:se%nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
+ !
+ ! Set up the imaginary frequency grid
+ !
+ allocate(omega_sigma(se%nomegai),weight_sigma(se%nomegai))
+ call coeffs_gausslegint(0.0_dp,1.0_dp,omega_sigma,weight_sigma,se%nomegai)
+
+ write(stdout,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
+ ! Variable change [0,1] -> [0,+\inf[
+ write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
+ do iomegas=1,se%nomegai
+   weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  omega_sigma(iomegas))**(-alpha-1.0_dp) * beta
+   omega_sigma(iomegas)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha - 1.0_dp ) * beta
+   write(stdout,'(i5,2(2x,f14.6))') iomegas,omega_sigma(iomegas)*Ha_eV,weight_sigma(iomegas)
+ enddo
+
+
+
+ allocate(sigmaigw(se%nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
  sigmaigw(:,:,:,:) = 0.0_dp
 
  do mpspin=1,nspin
    do qstate=nsemin,nsemax
 
-     eri3_sca_q(:,1:prange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,qstate,mpspin)
+     eri3_sca_q(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,qstate,mpspin)
 
 
      do iomega=1,wpol%nomega_quad
 
-       call DGEMM('N','N',nauxil_2center,prange,nauxil_2center,  &
+       call DGEMM('N','N',nauxil_2center,mrange,nauxil_2center,  &
                   1.0_dp,wpol%chi(:,:,iomega),nauxil_2center,    &
                          eri3_sca_q          ,nauxil_2center,    &
                   0.0_dp,chi_eri3_sca_q      ,nauxil_2center)
 
    do pstate=nsemin,nsemax
-     eri3_sca_p(:,1:prange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,pstate,mpspin)
+     eri3_sca_p(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,pstate,mpspin)
 
-       !$OMP PARALLEL PRIVATE(mstate, v_chi_v_pq)
-       !$OMP DO REDUCTION(+:sigmaigw)
        do mlocal=1,neri3
          mstate = INDXL2G(mlocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
 
          v_chi_v_pq = DOT_PRODUCT( eri3_sca_p(:,mlocal) , chi_eri3_sca_q(:,mlocal) )
 
          sigmaigw(:,pstate,qstate,mpspin) = sigmaigw(:,pstate,qstate,mpspin) &
-                       - wpol%weight_quad(iomega) * (  1.0_dp / ( ( se%omegai(:) - energy(mstate,mpspin) ) &
-                                                                + im * wpol%omega_quad(iomega) )   &
-                                                     + 1.0_dp / ( ( se%omegai(:) - energy(mstate,mpspin) )  &
-                                                                - im * wpol%omega_quad(iomega) )  ) &
-                          * v_chi_v_pq /  (2.0_dp * pi)
+                  - wpol%weight_quad(iomega) * (  1.0_dp / ( im * omega_sigma(:) - energy(mstate,mpspin) + im * wpol%omega_quad(iomega) )    &
+                                                + 1.0_dp / ( im * omega_sigma(:) - energy(mstate,mpspin) - im * wpol%omega_quad(iomega) )  ) &
+                     * v_chi_v_pq /  (2.0_dp * pi)
        enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
 
    enddo
 
@@ -449,33 +464,31 @@ subroutine gw_selfenergy_imag_scalapack_full(basis,nstate,energy,c_matrix,wpol,s
  enddo
  call xsum_world(sigmaigw)
 
-! do iomegas=1,se%nomegai
-!   sigmaigw(-iomegas,:,:,:) = CONJG( sigmaigw(iomegas,:,:,:) )
-! enddo
-
 
  write(stdout,*) 'Calculate GW density matrix'
 
- do iomegas=-2,2
-   write(stdout,*) iomegas,AIMAG(se%omegai(iomegas))
-   write(stdout,*) sigmaigw(iomegas,4:7,4:7,1)
-   write(stdout,*)
+ allocate(p_matrix_gw(nsemin:nsemax,nsemin:nsemax,nspin))
+ mpspin=1
+ p_matrix_gw(:,:,:) = 0.0_dp
+ do iomegas=-se%nomegai,se%nomegai
+   do qstate=nsemin,nsemax
+     do pstate=nsemin,nsemax
+       p_matrix_gw(pstate,qstate,mpspin) = p_matrix_gw(pstate,qstate,mpspin) &
+                    + 2.0_dp / pi * REAL( sigmaigw(iomegas,pstate,qstate,mpspin) &
+                                           / ( im * omega_sigma(iomegas) - energy(pstate,mpspin) ) &
+                                           / ( im * omega_sigma(iomegas) - energy(qstate,mpspin) ) , dp ) * weight_sigma(iomegas)
+     enddo
+   enddo
  enddo
 
- pstate=7
- qstate=7
- do iomegas=-se%nomegai,se%nomegai
-   write(stdout,*) iomegas,AIMAG(se%omegai(iomegas)),sigmaigw(iomegas,pstate,qstate,1) / (2.0_dp * pi)  &
-                       / ( se%omegai(iomegas) - energy(pstate,1) ) / ( se%omegai(iomegas) - energy(qstate,1) )
- enddo
  do pstate=4,7
 ! do qstate=4,7
  qstate = pstate
- write(stdout,*) pstate,qstate,SUM( sigmaigw(:,pstate,qstate,1) / pi  &
-                       / ( se%omegai(:) - energy(pstate,1) ) / ( se%omegai(:) - energy(qstate,1) ) ) * ABS(se%omegai(1) - se%omegai(0)) 
+ write(stdout,*) pstate,qstate,p_matrix_gw(pstate,qstate,1)
 ! enddo
  enddo
 
+ deallocate(omega_sigma,weight_sigma,sigmaigw)
  stop 'ENOUGH'
  
  call clean_deallocate('TMP 3-center MO integrals',eri3_sca_p)
