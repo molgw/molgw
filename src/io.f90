@@ -1438,7 +1438,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
    do ispin=1,nspin
      write(file_name,'(a,i4.4,a,i1,a,i3.3,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",INT(r_disc),r_disc-INT(r_disc),".dat"
      open(newunit=file_out(ispin),file=file_name)
-     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
+     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
    enddo
  end if
 
@@ -2016,7 +2016,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
    write(file_name,'(i4.4,a,i1,a)') num,'_',ispin,'_line_density.dat'
    open(newunit=line_rho(ispin),file=file_name)
 !   write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
-   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
  enddo
 
  do ir=0,nr

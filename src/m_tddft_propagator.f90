@@ -35,13 +35,18 @@ module m_tddft_propagator
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
  complex(dp),private                :: excit_field_norm
- ! hamiltonian extrapolation variables
+!==hamiltonian extrapolation variables==
  real(dp),allocatable,private       :: extrap_coefs(:)
  complex(dp),allocatable,private    :: h_small_hist_cmplx(:,:,:,:)
  complex(dp),allocatable,private    :: c_matrix_orth_hist_cmplx(:,:,:,:)
- !-----------------------------------
+!==q_matrix==
  complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
+!====
  integer,private            :: ntau
+!==frozen core==
+ real(dp),allocatable       :: energies_start(:,:)
+ complex(dp),allocatable    :: a_matrix_orth_start_cmplx(:,:,:)
+!====
 
 
 contains
@@ -92,7 +97,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  integer                    :: file_q_matrix(2)
  integer                    :: iocc
  complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
-!=====
+!====
 
  call start_clock(timing_tddft_loop)
 
@@ -220,6 +225,16 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    call initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_small_cmplx,istate_cut,file_q_matrix)
  end if
 
+ !==frozen core: energie initialization==
+ if (ncore_tddft > 0) then
+   call clean_allocate('Inial energies for the frozen core',energies_start,nstate,nspin)
+   call clean_allocate('a_matrix_orth_start_cmplx for the frozen core',a_matrix_orth_start_cmplx,nstate,nstate,nspin)
+   do ispin=1, nspin
+     call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energies_start(:,ispin),a_matrix_orth_start_cmplx(:,:,ispin))
+   end do
+ end if
+ !====
+
 !===cube_diff matrix allocation and parameters initialization
  if(print_cube_diff_tddft_) then
    call initialize_cube_diff_cmplx(nx,ny,nz,unit_cube_diff)
@@ -297,10 +312,10 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
    !
    ! debug
-   !call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
-   !if(.NOT. is_identity_) then
-   !  write(stdout,*) "C**H*S*C is not identity at itau= ", itau
-   !end if
+   call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
+   if(.NOT. is_identity_) then
+     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
+   end if
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat. 
@@ -366,6 +381,11 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  if(calc_q_matrix_) then
    call clean_deallocate('q_matrix for TDDFT',q_matrix_cmplx)
+ end if
+
+ if(ncore_tddft > 0) then
+   call clean_deallocate('a_matrix_orth_start_cmplx for the frozen core',a_matrix_orth_start_cmplx)
+   call clean_deallocate('Inial energies for frozen core',energies_start)
  end if
 
  if(ALLOCATED(extrap_coefs)) deallocate(extrap_coefs)
@@ -940,9 +960,6 @@ subroutine calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_
 
  do ispin=1,nspin
    q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_complete_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
-!   call print_2d_matrix_cmplx("q_matrix",q_matrix_cmplx,SIZE(q_matrix_cmplx,DIM=1),SIZE(q_matrix_cmplx,DIM=2),8,3)
-!   call print_2d_matrix_cmplx("c_matrix_orth_cmplx",c_matrix_orth_cmplx,SIZE(c_matrix_orth_cmplx,DIM=1),SIZE(c_matrix_orth_cmplx,DIM=2),8,3)
-!   call print_2d_matrix_cmplx("c_matrix_orth_start_complete_cmplx",c_matrix_orth_start_complete_cmplx,SIZE(c_matrix_orth_start_complete_cmplx,DIM=1),SIZE(c_matrix_orth_start_complete_cmplx,DIM=2),8,3)
 
    do icut=1,ncut
      do istate=istate_cut(icut,1),istate_cut(icut,2)
@@ -1334,7 +1351,9 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  real(dp),intent(in)         :: time_step_cur
  complex(dp),intent(inout)   :: c_matrix_orth_cmplx(nstate,nocc,nspin)
  complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nocc,nspin)
- complex(dp),intent(in)      :: h_small_cmplx(nstate,nstate,nspin)
+ ! complex(dp),intent(in)      :: h_small_cmplx(nstate,nstate,nspin)
+ ! for ncore>0 we need to modify the h_small
+ complex(dp),intent(inout)      :: h_small_cmplx(nstate,nstate,nspin)
  real(dp),intent(in)         :: s_matrix_sqrt_inv(basis%nbf,nstate)
  character(len=4),intent(in) :: prop_type
 !=====
@@ -1350,6 +1369,9 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
 !=====
  complex(dp)                :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
+!==frozen core==
+ complex(dp),allocatable    :: h_initial_basis_orth_cmplx(:,:) 
+ complex(dp),allocatable    :: tmp_conjg_transpose(:,:) 
 !=====
 
  call start_clock(timing_tddft_propagation)
@@ -1380,6 +1402,39 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      allocate(energies_inst(nstate))
 
      !
+     ! Frozen core
+     if(ncore_tddft > 0) then
+  
+       call start_clock(timing_tddft_frozen_core)
+
+       call clean_allocate('h_initial_basis_orth_cmplx for the frozen core',h_initial_basis_orth_cmplx,nstate,nstate)
+       call clean_allocate('tmp_conjg_transpose for the frozen core',tmp_conjg_transpose,nstate,nstate)
+
+       ! Express the h_small in the a_matrix_orth_start_cmplx basis
+       !h_small_cmplx(:,:,ispin) = MATMUL( CONJG( TRANSPOSE(a_matrix_orth_start_cmplx(:,:,ispin))), MATMUL( h_small_cmplx(:,:,ispin), a_matrix_orth_start_cmplx(:,:,ispin) )  ) 
+       tmp_conjg_transpose = CONJG( TRANSPOSE(a_matrix_orth_start_cmplx(:,:,ispin)))
+       call matmul_abc_scalapack(scalapack_block_min,tmp_conjg_transpose,h_small_cmplx(:,:,ispin),a_matrix_orth_start_cmplx(:,:,ispin),h_initial_basis_orth_cmplx  )
+
+       ! Modify the h_small in the a_matrix_orth_start_cmplx basis
+       do istate=1,nstate
+         do jstate=1,nstate
+           if( istate > ncore_tddft .AND. jstate > ncore_tddft ) cycle
+           h_initial_basis_orth_cmplx(istate,jstate) = 0.d0
+         end do       
+       end do
+  
+       ! Return in the _orth_ basis
+       !h_small_cmplx(:,:,ispin) = MATMUL( a_matrix_orth_start_cmplx(:,:,ispin), MATMUL( h_small_cmplx(:,:,ispin),CONJG( TRANSPOSE(a_matrix_orth_start_cmplx(:,:,ispin))) )  )
+       call matmul_abc_scalapack(scalapack_block_min,a_matrix_orth_start_cmplx(:,:,ispin),h_initial_basis_orth_cmplx(:,:),tmp_conjg_transpose,h_small_cmplx(:,:,ispin)  )
+
+       call clean_deallocate('h_initial_basis_orth_cmplx for the frozen core',h_initial_basis_orth_cmplx)
+       call clean_deallocate('tmp_conjg_transpose for the frozen core',tmp_conjg_transpose)
+
+       call stop_clock(timing_tddft_frozen_core)
+
+     end if
+
+     !
      ! First part, diagonalize
      call start_clock(timing_propagate_diago)
      a_matrix_orth_cmplx(:,:) = h_small_cmplx(:,:,ispin)
@@ -1395,10 +1450,13 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
        m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * EXP(-im*time_step_cur*energies_inst(jstate) )
      end forall
 
-     allocate(m_tmp_3(nstate,nocc-ncore_tddft))
-     call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))),c_matrix_orth_cmplx(:,ncore_tddft+1:,ispin),m_tmp_3  )
-     c_matrix_orth_cmplx(:,ncore_tddft+1:,ispin) = m_tmp_3
+     call clean_allocate('tmp_conjg_transpose for the propagation',tmp_conjg_transpose,nstate,nstate)
+     tmp_conjg_transpose = CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:)))
+     allocate(m_tmp_3(nstate,nocc))
+     call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,tmp_conjg_transpose,c_matrix_orth_cmplx(:,:,ispin),m_tmp_3  )
+     c_matrix_orth_cmplx(:,:,ispin) = m_tmp_3
 
+     call clean_deallocate('tmp_conjg_transpose for the propagation',tmp_conjg_transpose)
      deallocate(m_tmp_3)
      deallocate(m_tmp_1)
      deallocate(energies_inst)

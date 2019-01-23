@@ -105,6 +105,7 @@ module m_timing
  integer,parameter :: timing_tddft_densities        = 131
  integer,parameter :: timing_tddft_libxc            = 132
  integer,parameter :: timing_tddft_vxc              = 133
+ integer,parameter :: timing_tddft_frozen_core      = 134
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -259,6 +260,9 @@ subroutine output_timing()
  call output_timing_line('TDDFT Propagator',timing_tddft_propagation,2)
  call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
  call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
+ if( calls(timing_tddft_frozen_core) > 0 ) then
+   call output_timing_line('TDDFT frozen core',timing_tddft_frozen_core,3)
+ end if
 
  call output_timing_line('Hamiltonian calculation',timing_tddft_hamiltonian,2)
  call output_timing_line('Complex density matrix',timing_density_matrix_cmplx,3)

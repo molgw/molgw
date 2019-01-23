@@ -291,6 +291,7 @@ subroutine output_positions()
                                                            element_name(REAL(zatom(iatom),dp)),': ',  &
                                                            xatom(:,iatom),xatom(:,iatom)*bohr_A
  enddo
+
  if( nghost>0) write(stdout,'(a)') ' == ghost list'
  do ighost=1,nghost
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
@@ -300,8 +301,8 @@ subroutine output_positions()
  if(  nprojectile>0) then
    write(stdout,'(a)') ' == projectile'
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
-                                                           element_name(REAL(zatom(natom+nghost),dp)),': ',  &
-                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+                                                           element_name(REAL(zatom(natom),dp)),': ',  &
+                                                           xatom(:,natom),xatom(:,natom)*bohr_A
  end if
 
  write(stdout,'(1x,a,/)') '================================'
@@ -317,16 +318,16 @@ subroutine output_projectile_position()
  if(  nprojectile>0) then
    write(stdout,'(a)') ' === projectile position: ----------bohr---------------    |||   ------------- angstrom----------===' 
 
-   if(zatom(natom+nghost)>=0) then
+   if(zatom(natom)>=0) then
      write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
-                                                           element_name(REAL(zatom(natom+nghost),dp)),': ',  &
-                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+                                                           element_name(REAL(zatom(natom),dp)),': ',  &
+                                                           xatom(:,natom),xatom(:,natom)*bohr_A
    end if
 
-   if(zatom(natom+nghost)<0) then
+   if(zatom(natom)<0) then
      write(stdout,'(1x,a,i3,2x,a4,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
-                                                           'anti',element_name(REAL(zatom(natom+nghost),dp)),': ',  &
-                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+                                                           'anti',element_name(REAL(zatom(natom),dp)),': ',  &
+                                                           xatom(:,natom),xatom(:,natom)*bohr_A
    end if
 
  end if
