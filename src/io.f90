@@ -1601,10 +1601,11 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
 end subroutine calc_cube_initial_cmplx
 
 !=========================================================================
-subroutine initialize_cube_diff_cmplx(nx,ny,nz,unit_cube_diff)
+subroutine initialize_cube_diff_cmplx(nx,ny,nz)
  implicit none
- integer,intent(inout)      :: nx,ny,nz,unit_cube_diff
+ integer,intent(inout)      :: nx,ny,nz
 !=====
+ integer                    :: unit_cube_diff
  logical                    :: file_exists
 
  inquire(file='manual_cube_diff_tddft',exist=file_exists)
@@ -1943,10 +1944,10 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
  complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
- integer                    :: num
+ integer,intent(in)         :: num
  real(dp),intent(in)        :: time_cur
 !=====
- integer,parameter          :: nr=5000
+ integer                    :: nr
  integer                    :: gt
  integer                    :: nocc(2),nocc_max
  real(dp),parameter         :: length=6.0_dp
@@ -1997,12 +1998,14 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
  inquire(file='manual_plot_rho_tddft',exist=file_exists)
  if(file_exists) then
    open(newunit=linefile,file='manual_plot_rho_tddft',status='old')
+   read(linefile,*) nr
    read(linefile,*) point_a(:)
    read(linefile,*) point_b(:)
    close(linefile)
  else
+   nr = 5000
    point_a = (/ 0.0_dp, 0.0_dp, 0.0_dp  /)
-   point_b = (/ 5.0_dp, 5.0_dp, 5.0_dp  /)
+   point_b = (/ 0.0_dp, 0.0_dp, 10.0_dp  /)
    call issue_warning('plot_line_wfn_cmplx: manual_plot_rho_tddft file was not found')
  endif
 ! point_b(:) = point_b(:) / bohr_A
@@ -2039,6 +2042,181 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
  call stop_clock(timing_print_line_rho_tddft)
 
 end subroutine plot_rho_cmplx
+
+!=========================================================================
+subroutine plot_rho_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur,nr_line_rho,point_a,point_b,rho_start)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
+
+ implicit none
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc_dim
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
+ integer,intent(in)         :: num
+ real(dp),intent(in)        :: time_cur
+ real(dp),intent(in)        :: point_a(3),point_b(3)
+ integer,intent(in)         :: nr_line_rho
+ real(dp),intent(out)       :: rho_start(nr_line_rho,nspin)
+!=====
+ integer                    :: ir,ispin,gt
+ real(dp)                   :: rr(3)
+ complex(dp),allocatable    :: phi_cmplx(:,:)
+ real(dp)                   :: u(3)
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: line_rho(nspin)
+ character(len=200)         :: file_name
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ call start_clock(timing_print_line_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ write(stdout,'(/,1x,a)') 'Plotting the electronic density along one line'
+
+ u(:) = point_b(:) - point_a(:)
+ u(:) = u(:) / NORM2(u)
+ allocate(phi_cmplx(nocc_dim,nspin))
+
+ do ispin=1,nspin
+   write(file_name,'(a,i4.4,a,i1,a)') 'diff_',num,'_',ispin,'_line_density.dat'
+   open(newunit=line_rho(ispin),file=file_name)
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
+ enddo
+
+ do ir=1,nr_line_rho
+   rr(:) = (ir - 1.d0) / (nr_line_rho - 1) * ( point_b(:) - point_a(:) ) + point_a(:)
+
+   call calculate_basis_functions_r(basis,rr,basis_function_r)
+
+   do ispin=1,nspin
+     phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) ) - rho_start(ir,ispin) 
+   enddo
+ enddo
+
+ do ispin=1,nspin
+   close(line_rho(ispin))
+ end do
+
+ deallocate(phi_cmplx)
+
+ call stop_clock(timing_print_line_rho_tddft)
+
+end subroutine plot_rho_diff_cmplx
+
+!=========================================================================
+subroutine calc_rho_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur,nr_line_rho,point_a,point_b,rho_start)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
+
+ implicit none
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc_dim
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
+ integer,intent(in)         :: num
+ real(dp),intent(in)        :: time_cur
+ real(dp),intent(in)        :: point_a(3),point_b(3)
+ integer,intent(in)         :: nr_line_rho
+ real(dp),intent(out)       :: rho_start(nr_line_rho,nspin)
+!=====
+ integer                    :: gt,ispin,ir
+ real(dp)                   :: rr(3)
+ complex(dp),allocatable    :: phi_cmplx(:,:)
+ real(dp)                   :: u(3)
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: line_rho(nspin)
+ character(len=200)         :: file_name
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ call start_clock(timing_print_line_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ write(stdout,'(/,1x,a)') 'Calculating initial electronic denstiy along one line'
+
+ u(:) = point_b(:) - point_a(:)
+ u(:) = u(:) / NORM2(u)
+ allocate(phi_cmplx(nocc_dim,nspin))
+
+ do ispin=1,nspin
+   write(file_name,'(a)') 'total_initial_line_density.dat'
+   open(newunit=line_rho(ispin),file=file_name)
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
+ enddo
+
+ do ir=1,nr_line_rho
+   rr(:) = (ir - 1.d0) / (nr_line_rho - 1) * ( point_b(:) - point_a(:) ) + point_a(:)
+
+   call calculate_basis_functions_r(basis,rr,basis_function_r)
+
+   do ispin=1,nspin
+     phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
+     rho_start(ir,ispin) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),rho_start(ir,ispin)
+   enddo
+ enddo
+
+ do ispin=1,nspin
+   close(line_rho(ispin))
+ end do
+
+ deallocate(phi_cmplx)
+
+ call stop_clock(timing_print_line_rho_tddft)
+
+end subroutine calc_rho_initial_cmplx
+
+!=========================================================================
+subroutine initialize_rho_diff_cmplx(nr_line_rho,point_a,point_b)
+ use m_definitions
+ use m_mpi
+ use m_warning,only: issue_warning
+
+ implicit none
+ real(dp),intent(out)       :: point_a(3),point_b(3)
+ integer,intent(out)        :: nr_line_rho
+!=====
+ logical                    :: file_exists
+ integer                    :: linefile
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ inquire(file='manual_plot_rho_tddft',exist=file_exists)
+ if(file_exists) then
+   open(newunit=linefile,file='manual_plot_rho_tddft',status='old')
+   read(linefile,*) nr_line_rho
+   read(linefile,*) point_a(:)
+   read(linefile,*) point_b(:)
+   close(linefile)
+ else
+   nr_line_rho=5000
+   point_a = (/ 0.0_dp, 0.0_dp, 0.0_dp  /)
+   point_b = (/ 0.0_dp, 0.0_dp, 10.0_dp  /)
+   call issue_warning('initialize_rho_diff_cmplx: manual_plot_rho_tddft file was not found')
+ endif
+
+end subroutine initialize_rho_diff_cmplx
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)

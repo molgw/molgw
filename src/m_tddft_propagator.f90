@@ -88,10 +88,14 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  real(dp)                   :: time_cur,time_one_iter
  complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
  logical                    :: is_identity_ ! keep this varibale
-!==cube_diff varibales===
+!==cube_diff varibales====================================
  real(dp),allocatable       :: cube_density_start(:,:,:,:)
- integer                    :: nx,ny,nz,unit_cube_diff
+ integer                    :: nx,ny,nz
  logical                    :: file_exists
+!==line density diff variables=============================
+ real(dp),allocatable       :: rho_start(:,:) 
+ real(dp)                   :: point_a(3),point_b(3)
+ integer                    :: nr_line_rho
 !==qmatrix==
  integer,allocatable        :: istate_cut(:,:)
  integer                    :: file_q_matrix(2)
@@ -237,8 +241,13 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
 !===cube_diff matrix allocation and parameters initialization
  if(print_cube_diff_tddft_) then
-   call initialize_cube_diff_cmplx(nx,ny,nz,unit_cube_diff)
+   call initialize_cube_diff_cmplx(nx,ny,nz)
    allocate(cube_density_start(nx,ny,nz,nspin))
+ end if
+
+ if(print_line_rho_diff_tddft_) then
+   call initialize_rho_diff_cmplx(nr_line_rho,point_a,point_b)
+   allocate(rho_start(nr_line_rho,nspin))
  end if
 
  time_min=time_read
@@ -261,6 +270,11 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  if( print_cube_diff_tddft_ ) then
    call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
    call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,cube_density_start,nx,ny,nz)
+ end if
+
+ if(print_line_rho_diff_tddft_) then
+   call calc_rho_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min,nr_line_rho,point_a,point_b,rho_start)
+   call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min,nr_line_rho,point_a,point_b,rho_start)
  end if
 
  if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,0,time_min) 
@@ -331,10 +345,11 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
      call print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field,itau)
 
-     if( print_line_rho_tddft_  ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
-     if( print_cube_rho_tddft_  ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
-     if( print_cube_diff_tddft_ ) call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
-     if( calc_dens_disc_ )        call calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur) 
+     if( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
+     if( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur,nr_line_rho,point_a,point_b,rho_start)
+     if( print_cube_rho_tddft_  )     call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
+     if( print_cube_diff_tddft_ )     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
+     if( calc_dens_disc_ )            call calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur) 
 !     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
   
      if(calc_q_matrix_) call calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur) 

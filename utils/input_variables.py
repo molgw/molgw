@@ -1174,6 +1174,15 @@ vl[i].comment  ='Prints electronic density along a line, which parameters must b
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_line_rho_diff_tddft'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints electronic density difference along a line, which parameters must be provided in manual_plot_rho_tddft file.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='write_step'
 vl[i].family   ='io_rt_tddft'
 vl[i].default  ='1'

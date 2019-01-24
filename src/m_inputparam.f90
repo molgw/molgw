@@ -220,6 +220,7 @@ module m_inputparam
  logical,protected                :: print_cube_rho_tddft_
  logical,protected                :: print_cube_diff_tddft_
  logical,protected                :: print_line_rho_tddft_
+ logical,protected                :: print_line_rho_diff_tddft_
  logical,protected                :: print_dens_traj_tddft_
  logical,protected                :: print_dens_traj_
  logical,protected                :: calc_q_matrix_
@@ -828,6 +829,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_cube_rho_tddft
  character(len=3)     :: print_cube_diff_tddft
  character(len=3)     :: print_line_rho_tddft
+ character(len=3)     :: print_line_rho_diff_tddft
  character(len=3)     :: print_dens_traj_tddft
  character(len=3)     :: print_dens_traj
  character(len=3)     :: calc_q_matrix
@@ -948,6 +950,7 @@ subroutine read_inputfile_namelist()
  print_tddft_matrices_  = yesno(print_tddft_matrices)
  print_cube_diff_tddft_ = yesno(print_cube_diff_tddft)
  print_line_rho_tddft_  = yesno(print_line_rho_tddft)
+ print_line_rho_diff_tddft_ = yesno(print_line_rho_diff_tddft)
  print_dens_traj_tddft_ = yesno(print_dens_traj_tddft)
  print_dens_traj_       = yesno(print_dens_traj)
  calc_q_matrix_         = yesno(calc_q_matrix)
