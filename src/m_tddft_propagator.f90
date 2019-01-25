@@ -326,10 +326,10 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
    !
    ! debug
-   call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
-   if(.NOT. is_identity_) then
-     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
-   end if
+   !call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
+   !if(.NOT. is_identity_) then
+   !  write(stdout,*) "C**H*S*C is not identity at itau= ", itau
+   !end if
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat. 
