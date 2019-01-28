@@ -515,11 +515,11 @@ subroutine scf_loop(is_restart,&
 
      en_dm_corr%tot = en_dm_corr%nuc_nuc + en_dm_corr%kin + en_dm_corr%nuc +  en_dm_corr%hart + en_dm_corr%exx
      write(stdout,'(/,1x,a)') 'Energies from correlated density matrix'
-     write(stdout,'(a25,1x,f19.10)')   'Kinetic energy (Ha):',en_dm_corr%kin
-     write(stdout,'(a25,1x,f19.10)')   'Nucleus energy (Ha):',en_dm_corr%nuc
-     write(stdout,'(a25,1x,f19.10)')   'Hartree energy (Ha):',en_dm_corr%hart
-     write(stdout,'(a25,1x,f19.10)')  'Exchange energy (Ha):',en_dm_corr%exx
-     write(stdout,'(a25,1x,f19.10)') 'Total EXX energy (Ha):',en_dm_corr%tot
+     write(stdout,'(a25,1x,f19.10)')   'Kinetic Energy (Ha):',en_dm_corr%kin
+     write(stdout,'(a25,1x,f19.10)')   'Nucleus Energy (Ha):',en_dm_corr%nuc
+     write(stdout,'(a25,1x,f19.10)')   'Hartree Energy (Ha):',en_dm_corr%hart
+     write(stdout,'(a25,1x,f19.10)')  'Exchange Energy (Ha):',en_dm_corr%exx
+     write(stdout,'(a25,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%tot
 
      do ispin=1,nspin
        do istate=1,nstate
