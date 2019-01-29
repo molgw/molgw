@@ -235,7 +235,7 @@ program molgw
 
    else
      call setup_sqrt_overlap(min_overlap,s_matrix,nstate,s_matrix_sqrt_inv)
-
+     if(print_excluded_states_) call print_excluded_states(nstate,basis)
      m_c = basis%nbf
      n_c = nstate
 

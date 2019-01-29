@@ -2588,6 +2588,32 @@ function wfn_reflection(nstate,basis,c_matrix,istate,ispin)
 end function wfn_reflection
 
 !=======================================
+subroutine print_excluded_states(nstate,basis)
+ use m_basis_set
+ use m_definitions
+ implicit none
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+!=====
+ integer     :: file_xyz,iexc
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ open(newunit=file_xyz,file="excluded_states.xyz")
+
+ write(file_xyz,*) basis%nbf-nstate
+ write(file_xyz,*)
+
+ do iexc=1,basis%nbf-nstate
+   write(file_xyz,*) basis%bfc(iexc)%am + 10, basis%bfc(iexc)%x0(:) * bohr_A
+ end do
+
+ close(file_xyz)
+ 
+end subroutine print_excluded_states 
+
+!=======================================
 subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,prec)
  use m_definitions
  implicit none

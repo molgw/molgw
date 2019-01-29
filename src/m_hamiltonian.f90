@@ -1307,7 +1307,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
  integer  :: nbf
- integer  :: istate,jbf
+ integer  :: istate,jbf,iexc
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
@@ -1326,6 +1326,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
  call clean_allocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv,nbf,nstate)
+ if(print_excluded_states_) allocate(excluded_states(nbf-nstate))
 
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
@@ -1333,10 +1334,14 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
 
  istate = 0
+ iexc = 1
  do jbf=1,nbf
    if( s_eigval(jbf) > TOL_OVERLAP ) then
      istate = istate + 1
      s_matrix_sqrt_inv(:,istate) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
+   else if(print_excluded_states_) then
+     excluded_states(iexc) = jbf
+     iexc = iexc + 1
    endif
  enddo
 

@@ -68,6 +68,7 @@ module m_basis_set
 
  end type basis_set
 
+ integer,allocatable     :: excluded_states(:)         ! Contains the list of excluded states
 
 contains
 
