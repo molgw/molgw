@@ -197,6 +197,7 @@ module m_inputparam
  logical,protected                :: print_multipole_
  logical,protected                :: print_hartree_
  logical,protected                :: print_density_matrix_
+ logical,protected                :: print_rho_grid_
  real(dp),protected               :: rcut_mbpt
 
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
@@ -822,6 +823,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
+ character(len=3)     :: print_rho_grid
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
  character(len=3)     :: tddft_frozencore
  character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix
@@ -945,6 +947,7 @@ subroutine read_inputfile_namelist()
  print_cube_              = yesno(print_cube)
  print_hartree_           = yesno(print_hartree)
  print_density_matrix_    = yesno(print_density_matrix)
+ print_rho_grid_          = yesno(print_rho_grid)
  gwgamma_tddft_           = yesno(gwgamma_tddft)
  use_correlated_density_matrix_ = yesno(use_correlated_density_matrix)
  print_tddft_matrices_  = yesno(print_tddft_matrices)
@@ -1235,9 +1238,9 @@ function yesno(char3)
 !=====
 
  select case(TRIM(capitalize(char3)))
- case('YES','Y')
+ case('YES','Y','.TR','T','TR','TRU')
    yesno=.TRUE.
- case('NO','N')
+ case('NO','N','.FA','F','FA','FAL')
    yesno=.FALSE.
  case default
   call die('Yes or No, I cannot interpret this input')

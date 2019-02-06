@@ -68,7 +68,6 @@ module m_basis_set
 
  end type basis_set
 
-
 contains
 
 

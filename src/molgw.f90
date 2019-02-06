@@ -53,6 +53,7 @@ program molgw
  use m_tddft_variables
  use m_virtual_orbital_space
  use m_ci
+ use m_dm_analysis
  implicit none
 
 !=====
@@ -149,6 +150,7 @@ program molgw
      call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
    endif
 
+   if( print_rho_grid_ )      call dm_dump(basis)
 
    !
    !
@@ -233,7 +235,6 @@ program molgw
 
    else
      call setup_sqrt_overlap(min_overlap,s_matrix,nstate,s_matrix_sqrt_inv)
-
      m_c = basis%nbf
      n_c = nstate
 
@@ -242,7 +243,6 @@ program molgw
    if( m_c /= basis%nbf .OR. n_c /= nstate ) then
      call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
    endif
-
 
    ! Allocate the nstate arrays: c_matrix, occupation, energy
    ! 2D arrays
@@ -375,7 +375,7 @@ program molgw
    endif
 
    call stop_clock(timing_prescf)
-   
+
 
    !
    !

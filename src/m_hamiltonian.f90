@@ -829,7 +829,10 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
- if( ANY( occupation(:,:) < -1.0e-6_dp ) ) call die('setup_density_matrix: negative occupation number should not happen here.')
+ if( ANY( occupation(:,:) < -1.0e-5_dp ) ) then
+   write(stdout,*) 'Min occupation:',MINVAL(occupation)
+   call die('setup_density_matrix: negative occupation number should not happen here.')
+ endif
  ! Find the number of occupatied states
  nocc = get_number_occupied_states(occupation)
 
@@ -1304,7 +1307,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
  integer  :: nbf
- integer  :: istate,jbf
+ integer  :: istate,jbf,iexc
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
@@ -1330,6 +1333,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
 
  istate = 0
+ iexc = 1
  do jbf=1,nbf
    if( s_eigval(jbf) > TOL_OVERLAP ) then
      istate = istate + 1

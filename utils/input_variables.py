@@ -649,6 +649,15 @@ vl[i].comment  ='Prints the density matrix in the DENSITY_MATRIX file'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_rho_grid'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the electronic density discretized on the DFT grid into a file \'rho_grid.dat\'. The density is calculated from the DENSITY_MATRIX file or from a Gaussian file using \'read_fchk\'.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='print_eri'
 vl[i].family   ='io'
 vl[i].default  ='no'
