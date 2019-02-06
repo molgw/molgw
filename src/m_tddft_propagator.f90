@@ -857,6 +857,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  complex(dp)          :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
  integer              :: projectile_list(1)
  real(dp),allocatable :: hamiltonian_projectile(:,:)
+ real(dp)             :: displacement(3)
 !=====
 
  call start_clock(timing_tddft_hamiltonian)
@@ -910,8 +911,9 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  !
  ! Projectile excitation
  case(EXCIT_PROJECTILE)
-   ! Move the projectile nucleus to the correct place:
-   xatom(:,natom) = xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read )
+   ! Move the projectile 
+   displacement(:) = xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ) - xatom(:,natom)
+   call move_one_atom(natom,displacement)
    call nucleus_nucleus_energy(en%nuc_nuc)
 
    !
