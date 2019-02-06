@@ -24,7 +24,7 @@ module m_atoms
  real(dp),allocatable,protected :: zatom(:)
  integer,allocatable,protected  :: zbasis(:)
 
- real(dp),allocatable           :: xatom(:,:)
+ real(dp),allocatable,protected :: xatom(:,:)
  real(dp),allocatable,protected :: xbasis(:,:)
  real(dp),allocatable,protected :: vel(:,:)
  real(dp),allocatable,public    :: force(:,:)
@@ -219,6 +219,18 @@ subroutine get_bondcenter(ibond,xbond)
 
 
 end subroutine get_bondcenter
+
+
+!=========================================================================
+subroutine move_one_atom(iatom,displacement)
+ implicit none
+ integer,intent(in)   :: iatom
+ real(dp),intent(in) :: displacement(3)
+!=====
+
+ xatom(:,iatom) = xatom(:,iatom) + displacement(:)
+
+end subroutine move_one_atom
 
 
 !=========================================================================
