@@ -222,15 +222,15 @@ end subroutine get_bondcenter
 
 
 !=========================================================================
-subroutine move_one_atom(iatom,displacement)
+subroutine change_position_one_atom(iatom,xposition)
  implicit none
  integer,intent(in)   :: iatom
- real(dp),intent(in) :: displacement(3)
+ real(dp),intent(in)  :: xposition(3)
 !=====
 
- xatom(:,iatom) = xatom(:,iatom) + displacement(:)
+ xatom(:,iatom) = xposition(:)
 
-end subroutine move_one_atom
+end subroutine change_position_one_atom
 
 
 !=========================================================================
