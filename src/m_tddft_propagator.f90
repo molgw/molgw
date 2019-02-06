@@ -67,6 +67,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  integer                    :: istate,nstate_tmp
  integer                    :: nwrite_step 
  real(dp)                   :: time_min
+ real(dp)                   :: xprojectile(3)
  real(dp),allocatable       :: dipole_basis(:,:,:)
  real(dp),allocatable       :: s_matrix(:,:)
  real(dp),allocatable       :: s_matrix_sqrt_inv(:,:)
@@ -174,7 +175,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    do ispin=1,nspin
      c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
    end do
-   xatom=xatom_start
+   xprojectile = xatom(:,natom)
+   call change_position_one_atom(natom,xprojectile)
  else
    c_matrix_cmplx(:,:,:) = c_matrix(:,1:nocc,:)
    xatom_start=xatom
