@@ -24,7 +24,7 @@ module m_atoms
  real(dp),allocatable,protected :: zatom(:)
  integer,allocatable,protected  :: zbasis(:)
 
- real(dp),allocatable,public    :: xatom(:,:)
+ real(dp),allocatable,protected :: xatom(:,:)
  real(dp),allocatable,protected :: xbasis(:,:)
  real(dp),allocatable,protected :: vel(:,:)
  real(dp),allocatable,public    :: force(:,:)
@@ -226,6 +226,18 @@ end subroutine get_bondcenter
 
 
 !=========================================================================
+subroutine change_position_one_atom(iatom,xposition)
+ implicit none
+ integer,intent(in)   :: iatom
+ real(dp),intent(in)  :: xposition(3)
+!=====
+
+ xatom(:,iatom) = xposition(:)
+
+end subroutine change_position_one_atom
+
+
+!=========================================================================
 subroutine destroy_atoms()
  implicit none
 !=====
@@ -295,18 +307,20 @@ subroutine output_positions()
                                                            element_name(REAL(zatom(iatom),dp)),': ',  &
                                                            xatom(:,iatom),xatom(:,iatom)*bohr_A
  enddo
- if( nghost>0) write(stdout,'(a)') ' == ghost list'
+
+ if( nghost > 0 ) write(stdout,'(a)') ' == ghost list'
  do ighost=1,nghost
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
                                            element_name(REAL(zbasis(natom-nprojectile+ighost),dp)),': ',  &
                                            xbasis(:,natom-nprojectile+ighost),xbasis(:,natom-nprojectile+ighost)*bohr_A
  enddo
- if(  nprojectile>0) then
+ if( nprojectile > 0 ) then
    write(stdout,'(a)') ' == projectile'
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
-                                                           element_name(REAL(zatom(natom+nghost),dp)),': ',  &
-                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+                                                           element_name(REAL(zatom(natom),dp)),': ',  &
+                                                           xatom(:,natom),xatom(:,natom)*bohr_A
  endif
+
 
  write(stdout,'(1x,a,/)') '================================'
 
@@ -321,16 +335,17 @@ subroutine output_projectile_position()
  if(  nprojectile>0) then
    write(stdout,'(a)') ' === projectile position: ----------bohr---------------    |||   ------------- angstrom----------===' 
 
-   if(zatom(natom+nghost)>=0) then
+   if(zatom(natom)>=0) then
      write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
-                                                           element_name(REAL(zatom(natom+nghost),dp)),': ',  &
-                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+                                                           element_name(REAL(zatom(natom),dp)),': ',  &
+                                                           xatom(:,natom),xatom(:,natom)*bohr_A
+                                                   xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
    endif
 
-   if(zatom(natom+nghost)<0) then
+   if(zatom(natom)<0) then
      write(stdout,'(1x,a,i3,2x,a4,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
-                                                           'anti',element_name(REAL(zatom(natom+nghost),dp)),': ',  &
-                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+                                                           'anti',element_name(REAL(zatom(natom),dp)),': ',  &
+                                                           xatom(:,natom),xatom(:,natom)*bohr_A
    endif
 
  endif

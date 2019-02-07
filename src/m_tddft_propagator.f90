@@ -910,8 +910,11 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  !
  ! Projectile excitation
  case(EXCIT_PROJECTILE)
-   ! Move the projectile nucleus to the correct place:
-   xatom(:,natom) = xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read )
+
+   !
+   ! Move the projectile 
+   call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
+
    call nucleus_nucleus_energy(en%nuc_nuc)
 
    !
