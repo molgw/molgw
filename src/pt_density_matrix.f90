@@ -51,16 +51,7 @@ subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m
    enddo
  enddo
 
-! ! Add the SCF density matrix to get to the total density matrix
-! call issue_warning('pt1_density_matrix: this is not correct when starting from something else than HF')
-! do pstate=ncore_G+1,nvirtual_G-1
-!   p_matrix_pt1(pstate,pstate) = p_matrix_pt1(pstate,pstate) + occupation(pstate,iaspin)
-! enddo
-
- ! Transform from MO to AO
- p_matrix(:,:,iaspin) = MATMUL( c_matrix(:,:,iaspin)  , &
-                          MATMUL( p_matrix_pt1(:,:), &
-                             TRANSPOSE(c_matrix(:,:,iaspin)) ) )
+ call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_pt1,p_matrix)
 
  call stop_clock(timing_mbpt_dm)
 
@@ -208,19 +199,9 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  enddo
  enddo
 
- if( ALL( ABS(p_matrix) < 1.0e-6_dp ) ) then
-   if( TRIM(calc_type%scf_name) /= 'HF' ) &
-               call issue_warning('pt2_density_matrix: this is not correct when starting from something else than HF')
-   ! Add the SCF density matrix to get to the total density matrix
-   do pstate=1,nstate
-     p_matrix_pt2(pstate,pstate,pqspin) = p_matrix_pt2(pstate,pstate,pqspin) + occupation(pstate,pqspin)
-   enddo
- endif
 
- ! Transform from MO to AO
- !p_matrix(:,:,pqspin) = p_matrix(:,:,pqspin) + MATMUL( c_matrix(:,:,pqspin)  , &
- !                                                      MATMUL( p_matrix_pt2(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
- call matrix_mo_to_ao(c_matrix,p_matrix_pt2,p_matrix)
+ call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_pt2,p_matrix)
+
 
  if( print_density_matrix_ .AND. is_iomaster ) then
    write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
@@ -262,7 +243,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)       :: p_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(inout)     :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  integer                 :: file_density_matrix
  integer                 :: pstate,qstate
@@ -382,20 +363,8 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  enddo
 
 
+ call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_pt2,p_matrix)
 
- if( ALL( ABS(p_matrix) < 1.0e-6_dp ) ) then
-   if( TRIM(calc_type%scf_name) /= 'HF' ) &
-               call issue_warning('onering_density_matrix: this is not correct when starting from something else than HF')
-   ! Add the SCF density matrix to get to the total density matrix
-   do pstate=1,nstate
-     p_matrix_pt2(pstate,pstate,pqspin) = p_matrix_pt2(pstate,pstate,pqspin) + occupation(pstate,pqspin)
-   enddo
- endif
-
- ! Transform from MO to AO
- !p_matrix(:,:,pqspin) = p_matrix(:,:,pqspin) + MATMUL( c_matrix(:,:,pqspin)  , &
- !                                                      MATMUL( p_matrix_pt2(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
- call matrix_mo_to_ao(c_matrix,p_matrix_pt2,p_matrix)
 
  if( print_density_matrix_ .AND. is_iomaster ) then
    write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
@@ -439,7 +408,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
- real(dp),intent(out)               :: p_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(inout)             :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  integer  :: pstate,qstate
  integer  :: istate,jstate
@@ -596,21 +565,8 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
    enddo
  enddo
 
+ call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_gw,p_matrix)
 
- if( ALL( ABS(p_matrix) < 1.0e-6_dp ) ) then
-   if( TRIM(calc_type%scf_name) /= 'HF' ) &
-               call issue_warning('gw_density_matrix: this is not correct when starting from something else than HF')
-   ! Add the SCF density matrix to get to the total density matrix
-   do pstate=1,nstate
-     p_matrix_gw(pstate,pstate,pqspin) = p_matrix_gw(pstate,pstate,pqspin) + occupation(pstate,pqspin)
-   enddo
- endif
-
- !
- ! Transform from MO to AO
- !p_matrix(:,:,pqspin) = p_matrix(:,:,pqspin) + MATMUL( c_matrix(:,:,pqspin)  , &
- !                                                      MATMUL( p_matrix_gw(:,:), TRANSPOSE(c_matrix(:,:,pqspin)) ) )
- call matrix_mo_to_ao(c_matrix,p_matrix_gw,p_matrix)
 
  if( print_density_matrix_ .AND. is_iomaster ) then
    write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
@@ -630,6 +586,286 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  call stop_clock(timing_mbpt_dm)
 
 end subroutine gw_density_matrix
+
+
+!=========================================================================
+subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix)
+ use m_definitions
+ use m_timing
+ use m_warning
+ use m_memory
+ use m_scalapack
+ use m_inputparam
+ use m_mpi
+ use m_tools
+ use m_basis_set
+ use m_spectral_function
+ use m_hamiltonian
+ use m_eri_ao_mo
+ use m_selfenergy_tools
+ implicit none
+
+ type(basis_set),intent(in)         :: basis
+ integer,intent(in)                 :: nstate
+ real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+ type(spectral_function),intent(in) :: wpol
+ real(dp),intent(inout)             :: p_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ real(dp),parameter   :: alpha=1.0_dp
+ real(dp),parameter   :: beta=1.0_dp
+ integer              :: iomegas,iomega
+ integer              :: info
+ real(dp),allocatable :: eri3_sca_p(:,:),eri3_sca_q(:,:)
+ real(dp),allocatable :: chi_eri3_sca_q(:,:)
+ real(dp),allocatable :: omega_sigma(:),weight_sigma(:)
+ real(dp),allocatable :: p_matrix_gw(:,:,:)
+ real(dp)             :: v_chi_v_pq
+ integer              :: desc_eri3_t(NDEL)
+ integer              :: iprow,ipcol,nprow,npcol
+ integer              :: desc_eri3_final(NDEL)
+ integer              :: meri3,neri3
+ integer              :: mstate,pstate,qstate,pqspin
+ integer              :: mrange,mlocal
+ integer              :: file_density_matrix
+!=====
+
+
+ if( .NOT. has_auxil_basis ) then
+   call die('gw_density_matrix_imag: requires an auxiliary basis')
+ endif
+
+ call start_clock(timing_mbpt_dm)
+
+ write(stdout,'(/,1x,a)') 'GW density matrix from a grid of imaginary frequencies'
+
+ nprow = 1
+ npcol = 1
+#ifdef HAVE_SCALAPACK
+ ! Get the processor grid included in the input wpol%desc_chi
+ call BLACS_GRIDINFO(wpol%desc_chi(CTXT_),nprow,npcol,iprow,ipcol)
+ write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow,' x ',npcol
+#endif
+
+
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
+
+
+ mrange = nvirtual_G - ncore_G - 1
+
+ meri3 = NUMROC(nauxil_2center,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
+ neri3 = NUMROC(mrange        ,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol)
+ call DESCINIT(desc_eri3_final,nauxil_2center,mrange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+               wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
+
+ call clean_allocate('TMP 3-center MO integrals',eri3_sca_p,meri3,neri3)
+ call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
+ call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
+
+ call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
+
+
+ !
+ ! Set up the imaginary frequency grid
+ !
+ allocate(omega_sigma(nomega_sigma),weight_sigma(nomega_sigma))
+ call coeffs_gausslegint(0.0_dp,1.0_dp,omega_sigma,weight_sigma,nomega_sigma)
+
+ write(stdout,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
+ ! Variable change [0,1] -> [0,+\inf[
+ write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
+ do iomegas=1,nomega_sigma
+   weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  omega_sigma(iomegas))**(-alpha-1.0_dp) * beta
+   omega_sigma(iomegas)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha - 1.0_dp ) * beta
+   write(stdout,'(i5,2(2x,f14.6))') iomegas,omega_sigma(iomegas)*Ha_eV,weight_sigma(iomegas)
+ enddo
+
+
+ allocate(p_matrix_gw(nstate,nstate,nspin))
+ p_matrix_gw(:,:,:) = 0.0_dp
+
+ do pqspin=1,nspin
+   do qstate=nsemin,nsemax
+
+     eri3_sca_q(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,qstate,pqspin)
+
+
+     do iomega=1,wpol%nomega_quad
+
+       call DGEMM('N','N',nauxil_2center,mrange,nauxil_2center,  &
+                  1.0_dp,wpol%chi(:,:,iomega),nauxil_2center,    &
+                         eri3_sca_q          ,nauxil_2center,    &
+                  0.0_dp,chi_eri3_sca_q      ,nauxil_2center)
+
+   do pstate=qstate,nsemax
+     eri3_sca_p(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,pstate,pqspin)
+
+       do mlocal=1,neri3
+         mstate = INDXL2G(mlocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
+
+         v_chi_v_pq = DOT_PRODUCT( eri3_sca_p(:,mlocal) , chi_eri3_sca_q(:,mlocal) )
+
+         p_matrix_gw(pstate,qstate,pqspin) = p_matrix_gw(pstate,qstate,pqspin) &
+              - SUM( wpol%weight_quad(iomega) * weight_sigma(:) * v_chi_v_pq /  pi**2   &
+                     * REAL( (  1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) + im * wpol%omega_quad(iomega) )    &
+                              + 1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) - im * wpol%omega_quad(iomega) )  ) &
+                            / ( im * omega_sigma(:) - energy(pstate,pqspin) )   &
+                            / ( im * omega_sigma(:) - energy(qstate,pqspin) ) , dp ) )
+       enddo
+
+   enddo
+
+     enddo
+
+   enddo
+ enddo
+ call xsum_world(p_matrix_gw)
+
+ deallocate(omega_sigma,weight_sigma)
+
+
+ ! Symmetrization of the p_matrix here
+ ! Only the upper triangle was set up before
+ do pqspin=1,nspin
+   do qstate=1,nstate
+     do pstate=qstate+1,nstate
+       p_matrix_gw(qstate,pstate,pqspin) = p_matrix_gw(pstate,qstate,pqspin)
+     enddo
+   enddo
+ enddo
+
+ call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_gw,p_matrix)
+
+
+ if( print_density_matrix_ .AND. is_iomaster ) then
+   write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
+   open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='write')
+   do pqspin=1,nspin
+     write(file_density_matrix) p_matrix(:,:,pqspin)
+   enddo
+   close(file_density_matrix)
+ endif
+
+
+ call clean_deallocate('TMP 3-center MO integrals',eri3_sca_p)
+ call clean_deallocate('TMP 3-center MO integrals',eri3_sca_q)
+ call clean_deallocate('TMP 3-center MO integrals',chi_eri3_sca_q)
+
+ call destroy_eri_3center_eigen()
+
+ call stop_clock(timing_mbpt_dm)
+
+end subroutine gw_density_matrix_imag
+
+
+!=========================================================================
+subroutine fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hexx,hxc,p_matrix)
+ use m_definitions
+ use m_mpi
+ use m_mpi_ortho
+ use m_warning
+ use m_timing
+ use m_basis_set
+ use m_eri_ao_mo
+ use m_inputparam
+ use m_hamiltonian
+ use m_hamiltonian_onebody
+ use m_selfenergy_tools
+ implicit none
+
+ integer,intent(in)                 :: nstate
+ type(basis_set),intent(in)         :: basis
+ real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(out)               :: hexx(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)               :: hxc(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)               :: p_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ integer  :: pstate,qstate
+ integer  :: istate,jstate
+ integer  :: astate,bstate
+ integer  :: pqspin
+ real(dp) :: p_matrix_state(nstate,nstate,nspin)
+ real(dp) :: hexx_state(nstate,nstate,nspin)
+ real(dp) :: hxc_state(nstate,nstate,nspin)
+!=====
+
+ call start_clock(timing_mbpt_dm)
+ write(stdout,'(/,1x,a)') 'Calculate the perturbative Fock density matrix'
+
+ call matrix_ao_to_mo(c_matrix,hexx,hexx_state)
+ call matrix_ao_to_mo(c_matrix,hxc,hxc_state)
+
+ p_matrix_state(:,:,:) = 0.0_dp
+ do pqspin=1,nspin
+   do pstate=1,nstate
+     p_matrix_state(pstate,pstate,pqspin) = occupation(pstate,pqspin)
+   enddo
+   do istate=1,nhomo_G
+     do astate=nhomo_G+1,nstate
+       p_matrix_state(istate,astate,pqspin) = ( hexx_state(istate,astate,pqspin) - hxc_state(istate,astate,pqspin) ) &
+                                                    / ( energy(istate,pqspin) - energy(astate,pqspin) ) * spin_fact
+       p_matrix_state(astate,istate,pqspin) = p_matrix_state(istate,astate,pqspin)
+     enddo
+   enddo
+ enddo
+
+ call matrix_mo_to_ao(c_matrix,p_matrix_state,p_matrix)
+
+ call stop_clock(timing_mbpt_dm)
+
+end subroutine fock_density_matrix
+
+
+!=========================================================================
+subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_state,p_matrix)
+ use m_definitions
+ use m_inputparam
+ use m_hamiltonian
+ implicit none
+
+ integer,intent(in)     :: nbf,nstate
+ real(dp),intent(in)    :: occupation(nstate,nspin)
+ real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)    :: p_matrix_state(nstate,nstate,nspin)
+ real(dp),intent(inout) :: p_matrix(nbf,nbf,nspin)
+!=====
+ integer              :: pstate,pqspin
+ real(dp),allocatable :: p_matrix_tmp(:,:,:)
+!=====
+
+ ! Input density matrix (p_matrix_state) is the change in the density matrix on the state basis
+ ! Input density matrix (p_matrix) is the Fock density matrix on the basis functions
+ ! Output density matrix (p_matrix) is the full density matrix on the basis functions
+
+ !
+ ! If input Fock density (p_matrix) is zero, then assume an Hartree-Fock SCF calculation
+ if( ALL( ABS(p_matrix(:,:,:)) < 1.0e-6_dp ) ) then
+   if( TRIM(calc_type%scf_name) /= 'HF' ) &
+               call issue_warning('gw_density_matrix: this is not correct when starting from something else than HF')
+
+   ! Add the SCF density matrix to get to the total density matrix
+   allocate(p_matrix_tmp(nbf,nbf,nspin))
+   do pstate=1,nstate
+     p_matrix_tmp(pstate,pstate,:) = p_matrix_state(pstate,pstate,:) + occupation(pstate,:)
+   enddo
+   ! Transform from MO to AO
+   call matrix_mo_to_ao(c_matrix,p_matrix_tmp,p_matrix)
+   deallocate(p_matrix_tmp)
+
+ else
+
+   write(stdout,*) 'An input Fock density matrix was provided. Use it now!'
+   allocate(p_matrix_tmp(nbf,nbf,nspin))
+   ! Transform from MO to AO
+   call matrix_mo_to_ao(c_matrix,p_matrix_state,p_matrix_tmp)
+   p_matrix(:,:,:) = p_matrix(:,:,:) + p_matrix_tmp(:,:,:)
+   deallocate(p_matrix_tmp)
+
+ endif
+
+
+end subroutine update_density_matrix
 
 
 !=========================================================================
