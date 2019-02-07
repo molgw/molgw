@@ -332,17 +332,14 @@ subroutine output_projectile_position()
 !=====
 
  write(stdout,*)
- if(  nprojectile>0) then
+ if( nprojectile > 0 ) then
    write(stdout,'(a)') ' === projectile position: ----------bohr---------------    |||   ------------- angstrom----------===' 
 
-   if(zatom(natom)>=0) then
+   if( zatom(natom) > 0 ) then
      write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
                                                            element_name(REAL(zatom(natom),dp)),': ',  &
                                                            xatom(:,natom),xatom(:,natom)*bohr_A
-                                                   xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
-   endif
-
-   if(zatom(natom)<0) then
+   else
      write(stdout,'(1x,a,i3,2x,a4,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
                                                            'anti',element_name(REAL(zatom(natom),dp)),': ',  &
                                                            xatom(:,natom),xatom(:,natom)*bohr_A
