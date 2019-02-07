@@ -1,0 +1,14 @@
+&molgw
+ scf='HF'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ natom=2
+ nghost=2
+/
+Li 0.0  0.0  0.00
+H  0.0  0.0  1.00
+Li 0.0  0.0 -0.05
+H  0.0  0.0  1.05
+

@@ -66,6 +66,13 @@ gKS HOMO energy           ,  -12.316390        , 1 , 1.0e-4
 gKS LUMO energy           ,    5.557588        , 0 , 1.0e-4
 gKS LUMO energy           ,   -3.007564        , 1 , 1.0e-4
 
+lih_ghost.in              , LiH molecule with addition basis functions on ghost atoms
+Kinetic Energy            ,    8.3706447990    , 0 , 1.0e-7
+Nucleus Energy            ,  -21.8154517287    , 0 , 1.0e-7
+Hartree Energy            ,    6.1980439217    , 0 , 1.0e-7
+Exchange Energy           ,   -2.2262796016    , 0 , 1.0e-7
+SCF Total Energy          ,   -7.8855109768    , 0 , 1.0e-7
+
 be_ghost_bsse.in          , Be atom with addition basis functions on a ghost atom
 Kinetic Energy            ,   14.5578650555    , 0 , 1.0e-7
 Nucleus Energy            ,  -33.6357518059    , 0 , 1.0e-7
