@@ -460,18 +460,29 @@ subroutine scf_loop(is_restart,&
    case('ONE-RING')
      ! This keyword calculates the 1-ring density matrix as it is derived in PT2 theory
      call selfenergy_set_state_range(nstate,occupation)
+     call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
      call onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_corr)
    case('PT2')
      ! This keyword calculates the PT2 density matrix as it is derived in PT2 theory (differs from MP2 density matrix)
      call selfenergy_set_state_range(nstate,occupation)
+     call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
      call pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_corr)
    case('GW')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
      call selfenergy_set_state_range(nstate,occupation)
+     call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
      call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
+   case('GW_IOMEGA')
+     ! This keyword calculates the GW density matrix as it is derived in the new GW theory
+     !calc_type%selfenergy_technique = imaginary_axis
+     call init_spectral_function(nstate,occupation,nomega_imag,wpol)
+     call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call selfenergy_set_state_range(nstate,occupation)
+     call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
+     call gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
    end select
 
 
@@ -504,11 +515,11 @@ subroutine scf_loop(is_restart,&
 
      en_dm_corr%tot = en_dm_corr%nuc_nuc + en_dm_corr%kin + en_dm_corr%nuc +  en_dm_corr%hart + en_dm_corr%exx
      write(stdout,'(/,1x,a)') 'Energies from correlated density matrix'
-     write(stdout,'(a25,1x,f19.10)')   'Kinetic energy (Ha):',en_dm_corr%kin
-     write(stdout,'(a25,1x,f19.10)')   'Nucleus energy (Ha):',en_dm_corr%nuc
-     write(stdout,'(a25,1x,f19.10)')   'Hartree energy (Ha):',en_dm_corr%hart
-     write(stdout,'(a25,1x,f19.10)')  'Exchange energy (Ha):',en_dm_corr%exx
-     write(stdout,'(a25,1x,f19.10)') 'Total EXX energy (Ha):',en_dm_corr%tot
+     write(stdout,'(a25,1x,f19.10)')   'Kinetic Energy (Ha):',en_dm_corr%kin
+     write(stdout,'(a25,1x,f19.10)')   'Nucleus Energy (Ha):',en_dm_corr%nuc
+     write(stdout,'(a25,1x,f19.10)')   'Hartree Energy (Ha):',en_dm_corr%hart
+     write(stdout,'(a25,1x,f19.10)')  'Exchange Energy (Ha):',en_dm_corr%exx
+     write(stdout,'(a25,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%tot
 
      do ispin=1,nspin
        do istate=1,nstate
