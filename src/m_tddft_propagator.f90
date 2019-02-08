@@ -139,7 +139,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  !
  ! hamiltonian_nucleus contains the contribution from all the fixed atoms (i.e. excluding the projectile)
- ! Rememeber: the projectile is always the last atom
+ ! Remember: the projectile is always the last atom
  do iatom=1,natom-nprojectile
    fixed_atom_list(iatom) = iatom
  enddo
@@ -837,8 +837,8 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
 
  select case(excit_type%form)
  case(EXCIT_PROJECTILE)
-   write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
-      time_cur, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc
+   write(file_time_data,"(F9.4,9(2x,es16.8E3))") &
+      time_cur, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit
    call output_projectile_position()
 
  case(EXCIT_LIGHT)
@@ -877,7 +877,7 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field)
  select case(excit_type%form) 
  case(EXCIT_PROJECTILE)
    write(file_time_data,"(A)") "  # time(au)     e_total        z_projectile        enuc_nuc            enuc             ekin              ehart&
-                             &           eexx_hyb            exc"
+                             &           eexx_hyb                    exc eexcit(nuc_nuc for proj.)"
 
  case(EXCIT_LIGHT) 
    write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
