@@ -237,7 +237,7 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
 #ifdef HAVE_SCALAPACK
  call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)
 #else
- call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se,emp2)
+ call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)
 #endif
 
  call destroy_spectral_function(vchi0v)

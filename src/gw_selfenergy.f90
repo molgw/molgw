@@ -6,7 +6,7 @@
 ! within different flavors: G0W0, GnW0, GnWn, COHSEX, QSGW
 !
 !=========================================================================
-subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se,energy_gw)
+subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
  use m_mpi_ortho
@@ -26,7 +26,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in)  :: wpol
  type(selfenergy_grid),intent(inout) :: se
- real(dp),intent(out)                :: energy_gw
 !=====
  integer               :: iomega
  integer               :: ipstate
@@ -63,9 +62,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
 
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
-
-
- energy_gw = 0.0_dp
 
 
  se%sigma(:,:,:) = 0.0_dp

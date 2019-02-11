@@ -223,11 +223,11 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
          call self_energy_pade(se)
        endif
      else
-       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
      endif
 #else
      if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
-       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
      else
        call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
        call self_energy_pade(se)
@@ -303,7 +303,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
 
-     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 
      !
      ! Output the G0W0 results first
@@ -336,7 +336,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      if( reading_status /= 0 ) then
        call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
-     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 
      !
      ! Second perform a standard SOX calculation
@@ -395,7 +395,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      if( reading_status /= 0 ) then
        call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
-     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 
      !
      ! Second perform a PT3 calculation minus the ring diagrams

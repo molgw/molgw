@@ -625,11 +625,11 @@ end subroutine setup_density_matrix_sca
 
 
 !=========================================================================
-subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+subroutine diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matrix)
  implicit none
 
  real(dp),intent(in)  :: hamiltonian(:,:,:)
- real(dp),intent(in)  :: s_matrix_sqrt_inv(:,:)
+ real(dp),intent(in)  :: x_matrix(:,:)
  real(dp),intent(out) :: c_matrix(:,:,:)
  real(dp),intent(out) :: energy(:,:)
 !=====
@@ -694,12 +694,12 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
      allocate(h_small(ms,ns))
 
      !
-     ! Set up the local copy of s_matrix_sqrt_inv
+     ! Set up the local copy of x_matrix
      do jlocal=1,nc
        jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
        do ilocal=1,mc
          iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
-         s_matrix_local(ilocal,jlocal) = s_matrix_sqrt_inv(iglobal,jglobal)
+         s_matrix_local(ilocal,jlocal) = x_matrix(iglobal,jglobal)
        enddo
      enddo
 
@@ -719,8 +719,8 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
          enddo
        enddo
 
-!       h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-!                                MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+!       h_small(:,:) = MATMUL( TRANSPOSE(x_matrix(:,:)) , &
+!                                MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
 
        !
        ! H_small = ^tS^{-1/2} H S^{-1/2}
@@ -739,7 +739,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
        call diagonalize_sca(scf_diago_flavor,h_small,descs,energy(:,ispin))
 
 
-!       c_matrix(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
+!       c_matrix(:,:,ispin) = MATMUL( x_matrix(:,:) , h_small(:,:) )
 
        !
        ! C = S^{-1/2} C_small
@@ -790,15 +790,15 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
      call start_clock(timing_diago_hamiltonian)
 
      allocate(h_small(nbf,nstate))
-     ! h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-     !                          MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+     ! h_small(:,:) = MATMUL( TRANSPOSE(x_matrix(:,:)) , &
+     !                          MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
 
      ! H * U
      call DGEMM('N','N',nbf,nstate,nbf,1.0d0,hamiltonian(:,:,ispin),nbf, &
-                                             s_matrix_sqrt_inv,nbf,      &
+                                             x_matrix,nbf,      &
                                        0.0d0,h_small,nbf)
      ! U**T * (H * U)
-     call DGEMM('T','N',nstate,nstate,nbf,1.0d0,s_matrix_sqrt_inv,nbf,  &
+     call DGEMM('T','N',nstate,nstate,nbf,1.0d0,x_matrix,nbf,  &
                                                 h_small,nbf,            &
                                           0.0d0,h_small2,nstate)
      deallocate(h_small)
@@ -806,9 +806,9 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energ
      ! H * C' = C' * E
      call diagonalize(scf_diago_flavor,h_small2,energy(:,ispin))
 
-     !c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small2(:,:) )
+     !c_matrix(:,1:nstate,ispin) = MATMUL( x_matrix(:,:) , h_small2(:,:) )
      ! C = U * C'
-     call DGEMM('N','N',nbf,nstate,nstate,1.0d0,s_matrix_sqrt_inv,nbf, &
+     call DGEMM('N','N',nbf,nstate,nstate,1.0d0,x_matrix,nbf, &
                                                 h_small2,nstate,       &
                                           0.0d0,c_matrix(:,:,ispin),nbf)
 
@@ -826,12 +826,12 @@ end subroutine diagonalize_hamiltonian_scalapack
 
 
 !=========================================================================
-subroutine diagonalize_hamiltonian_sca(desc_h,hamiltonian,desc_sqrt,s_matrix_sqrt_inv,energy,c_matrix)
+subroutine diagonalize_hamiltonian_sca(desc_h,hamiltonian,desc_sqrt,x_matrix,energy,c_matrix)
  implicit none
 
  integer,intent(in)   :: desc_h(NDEL),desc_sqrt(NDEL)
  real(dp),intent(in)  :: hamiltonian(:,:,:)
- real(dp),intent(in)  :: s_matrix_sqrt_inv(:,:)
+ real(dp),intent(in)  :: x_matrix(:,:)
  real(dp),intent(out) :: c_matrix(:,:,:)
  real(dp),intent(out) :: energy(:,:)
 !=====
@@ -877,12 +877,12 @@ subroutine diagonalize_hamiltonian_sca(desc_h,hamiltonian,desc_sqrt,s_matrix_sqr
      ! H*S**{-1/2} --> c_matrix
      call PDGEMM('N','N',nbf,nstate,nbf,                         &
                   1.0_dp,hamiltonian(1,1,ispin),1,1,desc_h,      &
-                              s_matrix_sqrt_inv,1,1,desc_sqrt,   &
+                              x_matrix,1,1,desc_sqrt,   &
                   0.0_dp,   c_matrix(1,1,ispin),1,1,desc_sqrt)
 
      ! S**{-1/2}**T*c_matrix --> h_small
      call PDGEMM('T','N',nstate,nstate,nbf,                      &
-                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,        &
+                  1.0_dp,x_matrix,1,1,desc_sqrt,        &
                        c_matrix(1,1,ispin),1,1,desc_sqrt,        &
                   0.0_dp,          h_small,1,1,desc_small)
 
@@ -894,7 +894,7 @@ subroutine diagonalize_hamiltonian_sca(desc_h,hamiltonian,desc_sqrt,s_matrix_sqr
      !
      ! C = S^{-1/2} C_small
      call PDGEMM('N','N',nbf,nstate,nstate,                   &
-                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,     &
+                  1.0_dp,x_matrix,1,1,desc_sqrt,     &
                                  h_small,1,1,desc_small,      &
                   0.0_dp,c_matrix(1,1,ispin),1,1,desc_sqrt)
 
@@ -926,13 +926,13 @@ end subroutine diagonalize_hamiltonian_sca
 
 !=========================================================================
 !subroutine  diagonalize_hamiltonian_sca_cmplx(ispin_min,ispin_max,desc_h, &
-!               hamiltonian_cmplx,desc_sqrt,s_matrix_sqrt_inv,energy,c_matrix_cmplx)
+!               hamiltonian_cmplx,desc_sqrt,x_matrix,energy,c_matrix_cmplx)
 ! implicit none
 !
 ! integer,intent(in)      :: ispin_min,ispin_max
 ! integer,intent(in)      :: desc_h(NDEL),desc_sqrt(NDEL)
 ! complex(dp),intent(in)  :: hamiltonian_cmplx(:,:,:)
-! real(dp),intent(in)     :: s_matrix_sqrt_inv(:,:)
+! real(dp),intent(in)     :: x_matrix(:,:)
 ! complex(dp),intent(out)    :: c_matrix(:,:,:)
 ! real(dp),intent(out)    :: energy(:,:)
 !!=====
@@ -975,12 +975,12 @@ end subroutine diagonalize_hamiltonian_sca
 !     ! H*S**{-1/2} --> c_matrix
 !     call PZGEMM('N','N',nbf,nstate,nbf,                         &
 !                  1.0_dp,hamiltonian(1,1,ispin),1,1,desc_h,      &
-!                              s_matrix_sqrt_inv,1,1,desc_sqrt,   &
+!                              x_matrix,1,1,desc_sqrt,   &
 !                  0.0_dp,   c_matrix(1,1,ispin),1,1,desc_sqrt)
 !
 !     ! S**{-1/2}**T*c_matrix --> h_small
 !     call PZGEMM('T','N',nstate,nstate,nbf,                      &
-!                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,        &
+!                  1.0_dp,x_matrix,1,1,desc_sqrt,        &
 !                       c_matrix(1,1,ispin),1,1,desc_sqrt,        &
 !                  0.0_dp,          h_small,1,1,desc_small)
 !
@@ -992,7 +992,7 @@ end subroutine diagonalize_hamiltonian_sca
 !     !
 !     ! C = S^{-1/2} C_small
 !     call PDGEMM('N','N',nbf,nstate,nstate,                   &
-!                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,     &
+!                  1.0_dp,x_matrix,1,1,desc_sqrt,     &
 !                                 h_small,1,1,desc_small,      &
 !                  0.0_dp,c_matrix(1,1,ispin),1,1,desc_sqrt)
 !
@@ -1026,7 +1026,7 @@ end subroutine diagonalize_hamiltonian_sca
 
 !=========================================================================
 subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
-                                  desc_sqrt,nstate,s_matrix_sqrt_inv)
+                                  desc_sqrt,nstate,x_matrix)
  use m_tools
  implicit none
 
@@ -1035,7 +1035,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
  real(dp),intent(in)                :: s_matrix(:,:)
  integer,intent(out)                :: desc_sqrt(NDEL)
  integer,intent(out)                :: nstate
- real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
+ real(dp),allocatable,intent(inout) :: x_matrix(:,:)
 !=====
  integer              :: cntxt
  integer              :: ms,ns,msqrt,nsqrt
@@ -1089,7 +1089,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
  call xmax_local(nsqrt)
 
 
- call clean_allocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv,msqrt,nsqrt)
+ call clean_allocate('Overlap X * X**H = S**-1',x_matrix,msqrt,nsqrt)
 
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
@@ -1124,16 +1124,16 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
    call PDGEMM('N','N',nbf,nstate,nbf,                   &
                 1.0_dp,       matrix_tmp,1,1,desc_s,     &
                                     diag,1,1,desc_sqrt,  &
-                0.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt)
+                0.0_dp,x_matrix,1,1,desc_sqrt)
 
    deallocate(diag)
    deallocate(matrix_tmp)
 
  else
-   s_matrix_sqrt_inv(:,:) = 0.0_dp
+   x_matrix(:,:) = 0.0_dp
  endif
 
- call xsum_local(s_matrix_sqrt_inv)
+ call xsum_local(x_matrix)
 
  deallocate(s_eigval)
 

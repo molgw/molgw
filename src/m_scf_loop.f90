@@ -23,7 +23,7 @@ contains
 subroutine scf_loop(is_restart,&
                     basis,&
                     nstate,m_ham,n_ham,m_c,n_c,&
-                    s_matrix_sqrt_inv,s_matrix,&
+                    x_matrix,s_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
                     occupation, &
                     energy, &
@@ -48,7 +48,7 @@ subroutine scf_loop(is_restart,&
  logical,intent(in)                 :: is_restart
  type(basis_set),intent(in)         :: basis
  integer,intent(in)                 :: nstate,m_ham,n_ham,m_c,n_c
- real(dp),intent(in)                :: s_matrix_sqrt_inv(m_c,n_c)
+ real(dp),intent(in)                :: x_matrix(m_c,n_c)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
  real(dp),intent(in)                :: hamiltonian_kinetic(m_ham,n_ham)
  real(dp),intent(in)                :: hamiltonian_nucleus(m_ham,n_ham)
@@ -291,7 +291,7 @@ subroutine scf_loop(is_restart,&
    endif
 
    ! DIIS or simple mixing on the hamiltonian
-   call hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,hamiltonian)
+   call hamiltonian_prediction(s_matrix,x_matrix,p_matrix,hamiltonian)
 
 
    !
@@ -300,10 +300,10 @@ subroutine scf_loop(is_restart,&
    ! H \varphi = E S \varphi
    ! save the old eigenvalues
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(desc_ham,hamiltonian,desc_c,s_matrix_sqrt_inv,energy,c_matrix)
+     call diagonalize_hamiltonian_sca(desc_ham,hamiltonian,desc_c,x_matrix,energy,c_matrix)
    else
      ! This subroutine works with or without scalapack
-     call diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+     call diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matrix)
    endif
 
    !
