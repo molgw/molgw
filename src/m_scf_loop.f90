@@ -478,7 +478,6 @@ subroutine scf_loop(is_restart,&
    case('GW_IOMEGA')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      ! using an imaginary axis integral
-     !calc_type%selfenergy_technique = imaginary_axis
      call init_spectral_function(nstate,occupation,nomega_imag,wpol)
      call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
      call selfenergy_set_state_range(nstate,occupation)
@@ -617,35 +616,6 @@ subroutine scf_loop(is_restart,&
  !
  ! Evaluate spin contamination
  if( .NOT. parallel_ham ) call evaluate_s2_operator(occupation,c_matrix,s_matrix)
-
-
- ! A dirty section for the Luttinger-Ward functional
- if(calc_type%selfenergy_approx==LW .OR. calc_type%selfenergy_approx==LW2 .OR. calc_type%selfenergy_approx==GSIGMA) then
-   allocate(energy_exx(nstate,nspin))
-   allocate(c_matrix_exx(basis%nbf,nstate,nspin))
-   call issue_warning('m_scf_loop: ugly coding here write temp file fort.1000 and fort.1001')
-   call assert_experimental()
-
-   do ispin=1,nspin
-     write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
-     call diagonalize_generalized_sym(hamiltonian_fock(:,:,ispin),s_matrix(:,:),&
-                                      energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
-   enddo
-   write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
-   write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
-   open(1000,form='unformatted')
-   do ispin=1,nspin
-     do istate=1,nstate
-       write(1000) c_matrix_exx(:,istate,ispin)
-     enddo
-   enddo
-   close(1000)
-   open(1001,form='unformatted')
-   write(1001) energy_exx(:,:)
-   close(1001)
-   deallocate(energy_exx,c_matrix_exx)
- endif
-
 
 
  !

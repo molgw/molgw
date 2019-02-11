@@ -20,11 +20,12 @@ module m_inputparam
 
  !
  ! Self-energy evaluation technique
- integer,parameter :: one_shot          = 101
- integer,parameter :: QS                = 102
- integer,parameter :: EVSC              = 103
- integer,parameter :: imaginary_axis    = 104
- integer,parameter :: static_selfenergy = 105
+ integer,parameter :: one_shot                = 101
+ integer,parameter :: QS                      = 102
+ integer,parameter :: EVSC                    = 103
+ integer,parameter :: imaginary_axis_pade     = 104
+ integer,parameter :: static_selfenergy       = 105
+ integer,parameter :: imaginary_axis_integral = 106
 
  !
  ! Self-energy approximation
@@ -34,9 +35,6 @@ module m_inputparam
  integer,parameter :: GnWn         = 206
  integer,parameter :: GW           = 207
  integer,parameter :: GV           = 208   ! perturbative HF
- integer,parameter :: GSIGMA       = 209   ! Total energy calc
- integer,parameter :: LW           = 210   ! Luttinger-Ward log term
- integer,parameter :: LW2          = 213   ! Luttinger-Ward log term
  integer,parameter :: COHSEX_DEVEL = 214
  integer,parameter :: TUNED_COHSEX = 215
  integer,parameter :: G0W0_IOMEGA  = 216
@@ -274,15 +272,6 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%postscf_name =  TRIM(key2)
 
    select case(TRIM(key2))
-   case('LW')
-     calc_type%is_gw             = .TRUE.
-     calc_type%selfenergy_approx = LW
-   case('LW2')
-     calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = LW2
-   case('GSIGMA')
-     calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = GSIGMA
    case('GV')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GV
@@ -310,7 +299,7 @@ subroutine init_calculation_type(calc_type,input_key)
    case('G0W0_IOMEGA')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx    = G0W0_IOMEGA
-     calc_type%selfenergy_technique = imaginary_axis
+     calc_type%selfenergy_technique = imaginary_axis_pade
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0SOX0
@@ -435,14 +424,14 @@ subroutine init_excitation_type(excit_type)
 !=====
 
  excit_type%name  = excit_name
- excit_type%kappa = excit_kappa 
- excit_type%omega = excit_omega 
+ excit_type%kappa = excit_kappa
+ excit_type%omega = excit_omega
  excit_type%time0 = excit_time0
- excit_type%dir   = excit_dir 
+ excit_type%dir   = excit_dir
 
  if( LEN(TRIM(excit_name)) /= 0 ) then
    select case (excit_type%name)
-   case("NUCLEUS","ANTINUCLEUS") 
+   case("NUCLEUS","ANTINUCLEUS")
      excit_type%form=EXCIT_PROJECTILE
    case("NO")
      excit_type%form=EXCIT_NO

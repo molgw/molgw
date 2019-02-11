@@ -176,11 +176,12 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    !
    ! selfenergy = GW or COHSEX
    !
-   if(     calc_type%selfenergy_approx == GV .OR. calc_type%selfenergy_approx == GSIGMA .OR.  calc_type%selfenergy_approx == LW &
-      .OR. calc_type%selfenergy_approx == LW2 &
+   if(     calc_type%selfenergy_approx == GV          &
       .OR. calc_type%selfenergy_approx == G0W0_IOMEGA &
-      .OR. calc_type%selfenergy_approx == GW   .OR. calc_type%selfenergy_approx == COHSEX   &
-      .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn   ) then
+      .OR. calc_type%selfenergy_approx == GW          &
+      .OR. calc_type%selfenergy_approx == COHSEX      &
+      .OR. calc_type%selfenergy_approx == GnW0        &
+      .OR. calc_type%selfenergy_approx == GnWn   ) then
 
      !
      ! First calculate W except if performing GnW0 for the second and following times
@@ -201,7 +202,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        endif
        ! If reading has failed, then do the calculation
        if( reading_status /= 0 ) then
-         if( calc_type%selfenergy_technique /= imaginary_axis ) then
+         if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
            ! in case of BSE calculation, enforce RPA here
            enforce_rpa = calc_type%is_bse
            call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
@@ -224,7 +225,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      if( has_auxil_basis &
        .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
          .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == G0W0_IOMEGA) ) then
-       if( calc_type%selfenergy_technique /= imaginary_axis ) then
+       if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
          call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
        else
          call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
@@ -234,7 +235,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
      endif
 #else
-     if( calc_type%selfenergy_technique /= imaginary_axis ) then
+     if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
        call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
      else
        call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
