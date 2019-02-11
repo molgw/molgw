@@ -35,8 +35,6 @@ module m_inputparam
  integer,parameter :: GnWn         = 206
  integer,parameter :: GW           = 207
  integer,parameter :: GV           = 208   ! perturbative HF
- integer,parameter :: COHSEX_DEVEL = 214
- integer,parameter :: TUNED_COHSEX = 215
  integer,parameter :: G0W0_IOMEGA  = 216
  integer,parameter :: G0W0GAMMA0   = 217
  integer,parameter :: G0W0SOX0     = 219
@@ -174,7 +172,6 @@ module m_inputparam
  integer,protected                :: scalapack_nprow
  integer,protected                :: scalapack_npcol
  integer,protected                :: mpi_nproc_ortho
- real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
  real(dp),protected               :: grid_memory
 
  logical,protected                :: use_correlated_density_matrix_
@@ -293,9 +290,6 @@ subroutine init_calculation_type(calc_type,input_key)
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = COHSEX
-   case('COHSEX_DEVEL')
-     calc_type%is_gw    =.TRUE.                             ! ABCD
-     calc_type%selfenergy_approx = COHSEX_DEVEL
    case('G0W0_IOMEGA')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx    = G0W0_IOMEGA
@@ -320,10 +314,6 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0GAMMA0
      calc_type%selfenergy_technique = EVSC
-   case('TUNED_COHSEX')
-     calc_type%is_gw    =.TRUE.                                 ! ABCD
-     calc_type%selfenergy_approx = TUNED_COHSEX
-     calc_type%is_lr_mbpt = .TRUE.
    case('LRGW')
      calc_type%is_gw      =.TRUE.
      calc_type%selfenergy_approx   = GW

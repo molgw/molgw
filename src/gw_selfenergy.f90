@@ -20,23 +20,21 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  use m_selfenergy_tools
  implicit none
 
- integer,intent(in)                 :: nstate,selfenergy_approx
- type(basis_set)                    :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
- type(spectral_function),intent(in) :: wpol
+ integer,intent(in)                  :: nstate,selfenergy_approx
+ type(basis_set)                     :: basis
+ real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
+ type(spectral_function),intent(in)  :: wpol
  type(selfenergy_grid),intent(inout) :: se
- real(dp),intent(out)               :: energy_gw
+ real(dp),intent(out)                :: energy_gw
 !=====
  integer               :: iomega
  integer               :: ipstate
  integer               :: pstate,bstate
  integer               :: istate,ispin,ipole
  real(dp),allocatable  :: bra(:,:)
- real(dp),allocatable  :: bra_exx(:,:)
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
- real(dp)              :: energy_lw(nstate,nspin)
 !=====
 
  call start_clock(timing_gw_self)
@@ -51,9 +49,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
    write(stdout,*) 'Perform a one-shot one-ring calculation'
  case(COHSEX)
    write(stdout,*) 'Perform a COHSEX calculation'
-   if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
-     write(stdout,'(a,2(2x,f12.6))') ' Tuned COHSEX with parameters alpha, beta: ',alpha_cohsex,beta_cohsex
-   endif
  case(GnW0)
    write(stdout,*) 'Perform an eigenvalue self-consistent GnW0 calculation'
  case(GnWn)
@@ -144,16 +139,14 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
            !
            se%sigma(0,pstate,ispin) = se%sigma(0,pstate,ispin) &
                       + bra(ipole,pstate) * bra(ipole,pstate) &
-                            * fact_full_i / wpol%pole(ipole) * 2.0_dp  &
-                            * beta_cohsex
+                            * fact_full_i / wpol%pole(ipole) * 2.0_dp
 
            !
            ! COH
            !
            se%sigma(0,pstate,ispin) = se%sigma(0,pstate,ispin) &
                       - bra(ipole,pstate) * bra(ipole,pstate) &
-                            / wpol%pole(ipole)                &
-                            * alpha_cohsex
+                            / wpol%pole(ipole)
 
          enddo
 
@@ -412,9 +405,6 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
    write(stdout,*) 'Perform a QP self-consistent GW calculation (QSGW)'
  case(COHSEX)
    write(stdout,*) 'Perform a self-consistent COHSEX calculation'
-   if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
-     write(stdout,'(a,2(2x,f12.6))') ' Tuned COHSEX with parameters alpha, beta: ',alpha_cohsex,beta_cohsex
-   endif
  case default
    call die('gw_selfenergy_qs: calculation type unknown')
  end select
@@ -483,16 +473,14 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
              !
              selfenergy(pstate,qstate,ispin) = selfenergy(pstate,qstate,ispin) &
                         + bra(ipole,pstate) * bra(ipole,qstate)                                &
-                              * fact_full_i / wpol%pole(ipole) * 2.0_dp                        &
-                              * beta_cohsex
+                              * fact_full_i / wpol%pole(ipole) * 2.0_dp
 
              !
              ! COH
              !
              selfenergy(pstate,qstate,ispin) = selfenergy(pstate,qstate,ispin) &
                         - bra(ipole,pstate) * bra(ipole,qstate) &
-                              / wpol%pole(ipole)                &
-                              * alpha_cohsex
+                              / wpol%pole(ipole)
            enddo
          enddo
 

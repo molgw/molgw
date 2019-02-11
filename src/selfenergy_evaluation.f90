@@ -47,14 +47,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
  integer                 :: iomega
  integer                 :: istep_gw
-#ifdef COHSEX_DEVEL
- integer,parameter       :: BATCH_SIZE = 128
- type(calculation_type)  :: calc_type_tmp
- real(dp),allocatable    :: p_matrix(:,:,:)
- integer                 :: istate
- real(dp)                :: exc
- integer                 :: ispin
-#endif
 !=====
 
  write(stdout,'(/,/,1x,a)') '=================================================='
@@ -103,7 +95,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      selfenergy_tag='GWPT3'
    case(G0W0Gamma0)
      selfenergy_tag='GWGamma'
-   case(COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
+   case(COHSEX)
      selfenergy_tag='COHSEX'
    case default
      write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
@@ -421,88 +413,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 
    endif
 
-   !
-   ! EXPERIMENTAL COHSEX implementation
-   ! final evaluation for perturbative COHSEX
-   !
-   if( calc_type%selfenergy_approx == COHSEX_DEVEL .OR. calc_type%selfenergy_approx == TUNED_COHSEX ) then
-
-     if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
-     call init_spectral_function(nstate,occupation,1,wpol)
-     call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
-     !
-     ! Calculate v^{1/2} \chi v^{1/2}
-     call static_polarizability(nstate,occupation,energy_w,wpol)
-
-     call destroy_eri_3center_eigen()
-
-     !
-     allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-     allocate(sigc(nstate,nspin))
-
-#ifdef COHSEX_DEVEL
-     ! Calculate the DFT potential part
-     if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
-
-       allocate(p_matrix(basis%nbf,basis%nbf,nspin))
-       call init_dft_grid(basis,grid_level,.TRUE.,.FALSE.,BATCH_SIZE)
-       call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
-
-       ! Override the DFT XC correlation settings
-       calc_type_tmp = calc_type
-       call init_dft_type('HJSx',calc_type_tmp)
-#ifdef HAVE_LIBXC
-       call xc_f90_gga_x_hjs_set_par(calc_type_tmp%xc_func(1),1.0_dp/rcut_mbpt)
-#endif
-       call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,matrix_tmp,exc)
-
-       write(stdout,*) '===== SigX SR ======'
-       do ispin=1,nspin
-         do istate=1,nstate
-           sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                     MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
-           write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
-         enddo
-         sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex
-       enddo
-       write(stdout,*) '===================='
-
-       deallocate(p_matrix)
-       call destroy_dft_grid()
-
-     else
-
-       sigc(:,:) = 0.0_dp
-
-     endif
-
-#endif
-
-     call cohsex_selfenergy(nstate,basis,occupation, &
-                            c_matrix,wpol,se)
-
-
-     !
-     ! A section under development for the range-separated RPA
-     if( calc_type%is_lr_mbpt ) then
-
-       ! 2-center integrals
-       call calculate_eri_2center_scalapack(auxil_basis,rcut_mbpt)
-       ! 3-center integrals
-       call calculate_eri_3center_scalapack(basis,auxil_basis,rcut_mbpt)
-
-       call cohsex_selfenergy_lr(nstate,basis,occupation, &
-                                 c_matrix,wpol,se)
-     endif
-
-     deallocate(matrix_tmp)
-     deallocate(sigc)
-
-   endif ! COHSEX
-   !
-   ! end of EXPERIMENTAL COHSEX implementation
-   !
-
 
    !
    ! Output the quasiparticle energies, the self-energy etc.
@@ -529,7 +439,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        deallocate(zz)
        deallocate(energy_qp_z)
 
-     case(GnWn,GnW0,GV,COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
+     case(GnWn,GnW0,GV,COHSEX)
        call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
        call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
      end select
