@@ -34,8 +34,7 @@ module m_inputparam
  integer,parameter :: GnW0         = 205
  integer,parameter :: GnWn         = 206
  integer,parameter :: GW           = 207
- integer,parameter :: GV           = 208   ! perturbative HF
- integer,parameter :: G0W0_IOMEGA  = 216
+ integer,parameter :: GW_IMAG      = 216
  integer,parameter :: G0W0GAMMA0   = 217
  integer,parameter :: G0W0SOX0     = 219
  integer,parameter :: PT2          = 220
@@ -269,9 +268,6 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%postscf_name =  TRIM(key2)
 
    select case(TRIM(key2))
-   case('GV')
-     calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = GV
    case('GNW0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GnW0
@@ -290,9 +286,9 @@ subroutine init_calculation_type(calc_type,input_key)
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = COHSEX
-   case('G0W0_IOMEGA')
+   case('G0W0_IMAGINARY','GW_IMAGINARY')
      calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx    = G0W0_IOMEGA
+     calc_type%selfenergy_approx    = GW_IMAG
      calc_type%selfenergy_technique = imaginary_axis_pade
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.

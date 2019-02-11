@@ -65,7 +65,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    !
    ! Set the character string for the calculation we are currently doing
    select case(calc_type%selfenergy_approx)
-   case(GW,G0W0_IOMEGA)
+   case(GW,GW_IMAG)
      selfenergy_tag='GW'
    case(GnW0)
      write(selfenergy_tag,'(i3)') istep_gw-1
@@ -168,8 +168,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    !
    ! selfenergy = GW or COHSEX
    !
-   if(     calc_type%selfenergy_approx == GV          &
-      .OR. calc_type%selfenergy_approx == G0W0_IOMEGA &
+   if(     calc_type%selfenergy_approx == GW_IMAG     &
       .OR. calc_type%selfenergy_approx == GW          &
       .OR. calc_type%selfenergy_approx == COHSEX      &
       .OR. calc_type%selfenergy_approx == GnW0        &
@@ -216,7 +215,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      ! TODO: extend it to COHSEX
      if( has_auxil_basis &
        .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
-         .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == G0W0_IOMEGA) ) then
+         .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == GW_IMAG) ) then
        if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
          call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
        else
@@ -429,7 +428,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
    else
      select case(calc_type%selfenergy_approx)
-     case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA,GWSOX,GWPT3)
+     case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,GW_IMAG,GWSOX,GWPT3)
        allocate(energy_qp_z(nstate,nspin))
        allocate(zz(nstate,nspin))
        call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
@@ -439,7 +438,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        deallocate(zz)
        deallocate(energy_qp_z)
 
-     case(GnWn,GnW0,GV,COHSEX)
+     case(GnWn,GnW0,COHSEX)
        call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
        call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
      end select

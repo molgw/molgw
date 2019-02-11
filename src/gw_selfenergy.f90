@@ -41,8 +41,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
  write(stdout,*)
  select case(selfenergy_approx)
- case(GV)
-   write(stdout,*) 'Perform a perturbative HF calculation'
  case(GW)
    write(stdout,*) 'Perform a one-shot G0W0 calculation'
  case(ONE_RING)
@@ -150,10 +148,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
          enddo
 
-       case(GV)
-         !
-         ! Do nothing: no correlation in this case
-         !
        case default
          call die('BUG')
        end select

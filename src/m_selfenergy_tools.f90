@@ -541,7 +541,8 @@ subroutine destroy_selfenergy_grid(se)
  if( ALLOCATED(se%omegai) ) deallocate(se%omegai)
  deallocate(se%energy0)
  deallocate(se%sigma)
- if( ALLOCATED(se%sigmai) ) deallocate(se%sigmai)
+ if( ALLOCATED(se%sigmai) )  deallocate(se%sigmai)
+ if( ALLOCATED(se%weighti) ) deallocate(se%weighti)
 
 end subroutine destroy_selfenergy_grid
 

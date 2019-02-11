@@ -467,7 +467,7 @@ subroutine scf_loop(is_restart,&
      call selfenergy_set_state_range(nstate,occupation)
      call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
      call pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_corr)
-   case('GW')
+   case('GW','G0W0')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
@@ -475,7 +475,7 @@ subroutine scf_loop(is_restart,&
      call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
      call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
-   case('GW_IOMEGA')
+   case('GW_IMAGINARY','G0W0_IMAGINARY')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      ! using an imaginary axis integral
      call init_spectral_function(nstate,occupation,nomega_imag,wpol)
