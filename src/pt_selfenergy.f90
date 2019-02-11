@@ -971,6 +971,7 @@ subroutine pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc
 
  !
  ! Get the first-order correction to the density matrix
+ p_matrix_pt1(:,:,:) = 0.0_dp
  call pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix_pt1)
 
  ! First, Hartree

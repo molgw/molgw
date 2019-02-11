@@ -697,23 +697,23 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
                          eri3_sca_q          ,nauxil_2center,    &
                   0.0_dp,chi_eri3_sca_q      ,nauxil_2center)
 
-   do pstate=qstate,nsemax
-     eri3_sca_p(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,pstate,pqspin)
+       do pstate=qstate,nsemax
+         eri3_sca_p(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,pstate,pqspin)
 
-       do mlocal=1,neri3
-         mstate = INDXL2G(mlocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
+         do mlocal=1,neri3
+           mstate = INDXL2G(mlocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
 
-         v_chi_v_pq = DOT_PRODUCT( eri3_sca_p(:,mlocal) , chi_eri3_sca_q(:,mlocal) )
+           v_chi_v_pq = DOT_PRODUCT( eri3_sca_p(:,mlocal) , chi_eri3_sca_q(:,mlocal) )
 
-         p_matrix_gw(pstate,qstate,pqspin) = p_matrix_gw(pstate,qstate,pqspin) &
-              - SUM( wpol%weight_quad(iomega) * weight_sigma(:) * v_chi_v_pq /  pi**2   &
-                     * REAL( (  1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) + im * wpol%omega_quad(iomega) )    &
-                              + 1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) - im * wpol%omega_quad(iomega) )  ) &
-                            / ( im * omega_sigma(:) - energy(pstate,pqspin) )   &
-                            / ( im * omega_sigma(:) - energy(qstate,pqspin) ) , dp ) )
+           p_matrix_gw(pstate,qstate,pqspin) = p_matrix_gw(pstate,qstate,pqspin) &
+                - SUM( wpol%weight_quad(iomega) * weight_sigma(:) * v_chi_v_pq /  pi**2   &
+                       * REAL( (  1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) + im * wpol%omega_quad(iomega) )    &
+                                + 1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) - im * wpol%omega_quad(iomega) )  ) &
+                              / ( im * omega_sigma(:) - energy(pstate,pqspin) )   &
+                              / ( im * omega_sigma(:) - energy(qstate,pqspin) ) , dp ) )
+         enddo
+
        enddo
-
-   enddo
 
      enddo
 
