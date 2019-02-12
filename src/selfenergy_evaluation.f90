@@ -47,14 +47,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
  integer                 :: iomega
  integer                 :: istep_gw
-#ifdef COHSEX_DEVEL
- integer,parameter       :: BATCH_SIZE = 128
- type(calculation_type)  :: calc_type_tmp
- real(dp),allocatable    :: p_matrix(:,:,:)
- integer                 :: istate
- real(dp)                :: exc
- integer                 :: ispin
-#endif
 !=====
 
  write(stdout,'(/,/,1x,a)') '=================================================='
@@ -73,7 +65,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    !
    ! Set the character string for the calculation we are currently doing
    select case(calc_type%selfenergy_approx)
-   case(GW,G0W0_IOMEGA)
+   case(GW,GW_IMAG)
      selfenergy_tag='GW'
    case(GnW0)
      write(selfenergy_tag,'(i3)') istep_gw-1
@@ -103,7 +95,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      selfenergy_tag='GWPT3'
    case(G0W0Gamma0)
      selfenergy_tag='GWGamma'
-   case(COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
+   case(COHSEX)
      selfenergy_tag='COHSEX'
    case default
      write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
@@ -176,11 +168,11 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    !
    ! selfenergy = GW or COHSEX
    !
-   if(     calc_type%selfenergy_approx == GV .OR. calc_type%selfenergy_approx == GSIGMA .OR.  calc_type%selfenergy_approx == LW &
-      .OR. calc_type%selfenergy_approx == LW2 &
-      .OR. calc_type%selfenergy_approx == G0W0_IOMEGA &
-      .OR. calc_type%selfenergy_approx == GW   .OR. calc_type%selfenergy_approx == COHSEX   &
-      .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn   ) then
+   if(     calc_type%selfenergy_approx == GW_IMAG     &
+      .OR. calc_type%selfenergy_approx == GW          &
+      .OR. calc_type%selfenergy_approx == COHSEX      &
+      .OR. calc_type%selfenergy_approx == GnW0        &
+      .OR. calc_type%selfenergy_approx == GnWn   ) then
 
      !
      ! First calculate W except if performing GnW0 for the second and following times
@@ -201,7 +193,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        endif
        ! If reading has failed, then do the calculation
        if( reading_status /= 0 ) then
-         if( calc_type%selfenergy_technique /= imaginary_axis ) then
+         if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
            ! in case of BSE calculation, enforce RPA here
            enforce_rpa = calc_type%is_bse
            call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
@@ -223,19 +215,19 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      ! TODO: extend it to COHSEX
      if( has_auxil_basis &
        .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
-         .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == G0W0_IOMEGA) ) then
-       if( calc_type%selfenergy_technique /= imaginary_axis ) then
+         .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == GW_IMAG) ) then
+       if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
          call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
        else
          call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
          call self_energy_pade(se)
        endif
      else
-       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
      endif
 #else
-     if( calc_type%selfenergy_technique /= imaginary_axis ) then
-       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+     if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
+       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
      else
        call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
        call self_energy_pade(se)
@@ -311,7 +303,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
 
-     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 
      !
      ! Output the G0W0 results first
@@ -344,7 +336,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      if( reading_status /= 0 ) then
        call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
-     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 
      !
      ! Second perform a standard SOX calculation
@@ -403,7 +395,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      if( reading_status /= 0 ) then
        call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
-     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 
      !
      ! Second perform a PT3 calculation minus the ring diagrams
@@ -419,88 +411,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call destroy_selfenergy_grid(se_gwpt3)
 
    endif
-
-   !
-   ! EXPERIMENTAL COHSEX implementation
-   ! final evaluation for perturbative COHSEX
-   !
-   if( calc_type%selfenergy_approx == COHSEX_DEVEL .OR. calc_type%selfenergy_approx == TUNED_COHSEX ) then
-
-     if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
-     call init_spectral_function(nstate,occupation,1,wpol)
-     call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
-     !
-     ! Calculate v^{1/2} \chi v^{1/2}
-     call static_polarizability(nstate,occupation,energy_w,wpol)
-
-     call destroy_eri_3center_eigen()
-
-     !
-     allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-     allocate(sigc(nstate,nspin))
-
-#ifdef COHSEX_DEVEL
-     ! Calculate the DFT potential part
-     if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
-
-       allocate(p_matrix(basis%nbf,basis%nbf,nspin))
-       call init_dft_grid(basis,grid_level,.TRUE.,.FALSE.,BATCH_SIZE)
-       call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
-
-       ! Override the DFT XC correlation settings
-       calc_type_tmp = calc_type
-       call init_dft_type('HJSx',calc_type_tmp)
-#ifdef HAVE_LIBXC
-       call xc_f90_gga_x_hjs_set_par(calc_type_tmp%xc_func(1),1.0_dp/rcut_mbpt)
-#endif
-       call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,matrix_tmp,exc)
-
-       write(stdout,*) '===== SigX SR ======'
-       do ispin=1,nspin
-         do istate=1,nstate
-           sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                     MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
-           write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
-         enddo
-         sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex
-       enddo
-       write(stdout,*) '===================='
-
-       deallocate(p_matrix)
-       call destroy_dft_grid()
-
-     else
-
-       sigc(:,:) = 0.0_dp
-
-     endif
-
-#endif
-
-     call cohsex_selfenergy(nstate,basis,occupation, &
-                            c_matrix,wpol,se)
-
-
-     !
-     ! A section under development for the range-separated RPA
-     if( calc_type%is_lr_mbpt ) then
-
-       ! 2-center integrals
-       call calculate_eri_2center_scalapack(auxil_basis,rcut_mbpt)
-       ! 3-center integrals
-       call calculate_eri_3center_scalapack(basis,auxil_basis,rcut_mbpt)
-
-       call cohsex_selfenergy_lr(nstate,basis,occupation, &
-                                 c_matrix,wpol,se)
-     endif
-
-     deallocate(matrix_tmp)
-     deallocate(sigc)
-
-   endif ! COHSEX
-   !
-   ! end of EXPERIMENTAL COHSEX implementation
-   !
 
 
    !
@@ -518,7 +428,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
    else
      select case(calc_type%selfenergy_approx)
-     case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA,GWSOX,GWPT3)
+     case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,GW_IMAG,GWSOX,GWPT3)
        allocate(energy_qp_z(nstate,nspin))
        allocate(zz(nstate,nspin))
        call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
@@ -528,7 +438,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        deallocate(zz)
        deallocate(energy_qp_z)
 
-     case(GnWn,GnW0,GV,COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
+     case(GnWn,GnW0,COHSEX)
        call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
        call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
      end select

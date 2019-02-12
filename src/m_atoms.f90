@@ -78,7 +78,7 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
 
  if(excit_name=="NUCLEUS" .OR. excit_name=="ANTINUCLEUS") then
    vel(:,natom)=vel_projectile(:)
- end if
+ endif
  ! For relaxation or dynamics only 
  if( calculate_forces ) then
    allocate(force(3,natom))
@@ -92,29 +92,33 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
    allocate(force_hl(3,natom))
  endif
 
- if(nghost==0) then
-   zatom(1:natom)=zatom_read(1:natom)
+ ! List of atoms is organized as follows:
+ ! 1. physical atoms   :    nucleus | basis 
+ ! 2. ghost atoms      :      no    | basis
+ ! 3. projectile       :    nucleus |   no
+ !
+ ! natom       contains the number of sites having a nucleus: number of physical atoms + number of ionic projectiles (0 or 1)
+ ! natom_basis contains the number of sites having basis functions:  number of physical atoms + number of ghost atoms
+ !
+ if( nprojectile == 0 ) then
+   xatom(:,1:natom) = x_read(:,1:natom)
+   zatom(1:natom)   = zatom_read(1:natom)
  else
-   zatom(1:natom_basis - nghost)=zatom_read(1:natom_basis-nghost)
-   zatom(natom) = zatom_read(natom + nghost)
- end if
+   xatom(:,1:natom_basis-nghost) = x_read(:,1:natom_basis-nghost)
+   zatom(1:natom_basis-nghost)   = zatom_read(1:natom_basis-nghost)
+   xatom(:,natom)                = x_read(:,natom_basis+nprojectile)
+   zatom(natom)                  = zatom_read(natom_basis+nprojectile)
+ endif
 
- if(excit_name=="ANTINUCLEUS") then
+
+ if( excit_name == "ANTINUCLEUS" ) then
    zatom(natom)=-zatom(natom)
- end if
+ endif
 
  ! Ghost atoms do not have a positive nucleus
  !zatom(natom+1:natom+nghost) = 0.0_dp
  ! But ghost atoms have basis functions centered on them.
- zbasis(1:natom_basis)=NINT(zatom_read(1:natom_basis))
-
- if(nghost==0) then
-   xatom(:,1:natom)=x_read(:,1:natom)
- else
-   xatom(:,1:natom_basis - nghost)=x_read(:,1:natom_basis-nghost)
-   xatom(:,natom) = x_read(:,natom + nghost)
- end if
-
+ zbasis(1:natom_basis)   = NINT(zatom_read(1:natom_basis))
  xbasis(:,1:natom_basis) = x_read(:,1:natom_basis)
 
  !
@@ -304,18 +308,19 @@ subroutine output_positions()
                                                            xatom(:,iatom),xatom(:,iatom)*bohr_A
  enddo
 
- if( nghost>0) write(stdout,'(a)') ' == ghost list'
+ if( nghost > 0 ) write(stdout,'(a)') ' == ghost list'
  do ighost=1,nghost
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
                                            element_name(REAL(zbasis(natom-nprojectile+ighost),dp)),': ',  &
                                            xbasis(:,natom-nprojectile+ighost),xbasis(:,natom-nprojectile+ighost)*bohr_A
  enddo
- if(  nprojectile>0) then
+ if( nprojectile > 0 ) then
    write(stdout,'(a)') ' == projectile'
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
                                                            element_name(REAL(zatom(natom),dp)),': ',  &
                                                            xatom(:,natom),xatom(:,natom)*bohr_A
- end if
+ endif
+
 
  write(stdout,'(1x,a,/)') '================================'
 
@@ -327,22 +332,20 @@ subroutine output_projectile_position()
 !=====
 
  write(stdout,*)
- if(  nprojectile>0) then
+ if( nprojectile > 0 ) then
    write(stdout,'(a)') ' === projectile position: ----------bohr---------------    |||   ------------- angstrom----------===' 
 
-   if(zatom(natom)>=0) then
+   if( zatom(natom) > 0 ) then
      write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
                                                            element_name(REAL(zatom(natom),dp)),': ',  &
                                                            xatom(:,natom),xatom(:,natom)*bohr_A
-   end if
-
-   if(zatom(natom)<0) then
+   else
      write(stdout,'(1x,a,i3,2x,a4,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
                                                            'anti',element_name(REAL(zatom(natom),dp)),': ',  &
                                                            xatom(:,natom),xatom(:,natom)*bohr_A
-   end if
+   endif
 
- end if
+ endif
 
 end subroutine output_projectile_position
 

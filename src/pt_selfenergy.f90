@@ -237,7 +237,7 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
 #ifdef HAVE_SCALAPACK
  call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)
 #else
- call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se,emp2)
+ call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)
 #endif
 
  call destroy_spectral_function(vchi0v)
@@ -971,6 +971,7 @@ subroutine pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc
 
  !
  ! Get the first-order correction to the density matrix
+ p_matrix_pt1(:,:,:) = 0.0_dp
  call pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix_pt1)
 
  ! First, Hartree

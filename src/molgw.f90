@@ -71,7 +71,7 @@ program molgw
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)
  real(dp),allocatable    :: hamiltonian_fock(:,:,:)
  real(dp),allocatable    :: s_matrix(:,:)
- real(dp),allocatable    :: s_matrix_sqrt_inv(:,:)
+ real(dp),allocatable    :: x_matrix(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:),c_matrix_tmp(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
@@ -229,12 +229,13 @@ program molgw
    !                                      m_c and n_c
    !
    if( parallel_ham ) then
-     call setup_sqrt_overlap_sca(min_overlap,desc_ham,s_matrix,desc_c,nstate,s_matrix_sqrt_inv)
-     m_c    = SIZE( s_matrix_sqrt_inv , DIM=1 )
-     n_c    = SIZE( s_matrix_sqrt_inv , DIM=2 )
+     call setup_sqrt_overlap_sca(min_overlap,desc_ham,s_matrix,desc_c,nstate,x_matrix)
+     m_c    = SIZE( x_matrix , DIM=1 )
+     n_c    = SIZE( x_matrix , DIM=2 )
 
    else
-     call setup_sqrt_overlap(min_overlap,s_matrix,nstate,s_matrix_sqrt_inv)
+     call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix)
+
      m_c = basis%nbf
      n_c = nstate
 
@@ -317,7 +318,7 @@ program molgw
      ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
      if( parallel_ham ) call die('basis_restart not implemented with distributed hamiltonian')
      call issue_warning('basis restart is not fully implemented: use with care')
-     call diagonalize_hamiltonian_scalapack(hamiltonian_fock,s_matrix_sqrt_inv,energy,c_matrix)
+     call diagonalize_hamiltonian_scalapack(hamiltonian_fock,x_matrix,energy,c_matrix)
    endif
 
 
@@ -362,9 +363,9 @@ program molgw
 
      write(stdout,'(/,a)') ' Approximate hamiltonian'
      if( parallel_ham ) then
-       call diagonalize_hamiltonian_sca(desc_ham,hamiltonian_tmp(:,:,1:1),desc_c,s_matrix_sqrt_inv,energy(:,1:1),c_matrix(:,:,1:1))
+       call diagonalize_hamiltonian_sca(desc_ham,hamiltonian_tmp(:,:,1:1),desc_c,x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
      else
-       call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),s_matrix_sqrt_inv,energy(:,1:1),c_matrix(:,:,1:1))
+       call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
      endif
 
      deallocate(hamiltonian_tmp)
@@ -390,7 +391,7 @@ program molgw
      call scf_loop(is_restart,                                     &
                    basis,                                          &
                    nstate,m_ham,n_ham,m_c,n_c,                     &
-                   s_matrix_sqrt_inv,s_matrix,                     &
+                   x_matrix,s_matrix,                              &
                    hamiltonian_kinetic,hamiltonian_nucleus,        &
                    occupation,energy,                              &
                    hamiltonian_fock,                               &
@@ -419,7 +420,7 @@ program molgw
          if( has_auxil_basis ) call destroy_eri_3center()
          if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
          call clean_deallocate('Overlap matrix S',s_matrix)
-         call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
+         call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
          call clean_deallocate('Fock operator F',hamiltonian_fock)
          call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
          call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
@@ -474,7 +475,7 @@ program molgw
  call clean_deallocate('Overlap matrix S',s_matrix)
  call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
  call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
- call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
+ call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
 
 
  !

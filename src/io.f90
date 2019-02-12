@@ -707,7 +707,7 @@ subroutine plot_cube_wfn(rootname,nstate,basis,occupation,c_matrix)
 
  !
  ! check whether istate1:istate2 spans all the occupied states
- if( ALL( occupation(istate2+1:nstate,:) < completely_empty ) ) then
+ if( ALL( occupation(istate2+1:nstate,:) < 1.0e-2_dp ) ) then
    do ispin=1,nspin
      write(file_name,'(a,i1,a)') 'rho_'//TRIM(rootname)//'_',ispin,'.cube'
      open(newunit=ocuberho(ispin),file=file_name)
@@ -721,48 +721,44 @@ subroutine plot_cube_wfn(rootname,nstate,basis,occupation,c_matrix)
        write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
      enddo
    enddo
- endif
 
- do ix=1,nx
-   rr(1) = xmin + (ix-1)*dx
-   do iy=1,ny
-     rr(2) = ymin + (iy-1)*dy
-     do iz=1,nz
-       rr(3) = zmin + (iz-1)*dz
+   do ix=1,nx
+     rr(1) = xmin + (ix-1)*dx
+     do iy=1,ny
+       rr(2) = ymin + (iy-1)*dy
+       do iz=1,nz
+         rr(3) = zmin + (iz-1)*dz
 
 
-       call calculate_basis_functions_r(basis,rr,basis_function_r)
+         call calculate_basis_functions_r(basis,rr,basis_function_r)
 
-       do ispin=1,nspin
-         phi(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,istate1:istate2,ispin) )
-       enddo
+         do ispin=1,nspin
+           phi(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,istate1:istate2,ispin) )
+         enddo
 
-       !
-       ! check whether istate1:istate2 spans all the occupied states
-       if( ALL( occupation(istate2+1,:) < completely_empty ) ) then
          do ispin=1,nspin
            write(ocuberho(ispin),'(50(e16.8,2x))') SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) )
          enddo
-       endif
 
 
-       do istate=istate1,istate2
-         do ispin=1,nspin
-           write(ocubefile(istate,ispin),'(50(e16.8,2x))') phi(istate,ispin)
+         do istate=istate1,istate2
+           do ispin=1,nspin
+             write(ocubefile(istate,ispin),'(50(e16.8,2x))') phi(istate,ispin)
+           enddo
          enddo
-       enddo
 
+       enddo
      enddo
    enddo
- enddo
 
 
- do ispin=1,nspin
-   do istate=istate1,istate2
-     close(ocubefile(istate,ispin))
+   do ispin=1,nspin
+     do istate=istate1,istate2
+       close(ocubefile(istate,ispin))
+     enddo
+     close(ocuberho(ispin))
    enddo
-   close(ocuberho(ispin))
- enddo
+ endif
 
  deallocate(phi)
  deallocate(ocubefile)
@@ -2486,15 +2482,6 @@ subroutine read_cube_wfn(nstate,basis,occupation,c_matrix)
 
      enddo
    enddo
- enddo
-
- do ispin=1,nspin
-   do istate=istate1,istate2
-     write(stdout,*) 'FBFB',ispin,istate,pot_i(istate,ispin) * Ha_eV
-     close(ocubefile(istate,ispin))
-   enddo
-   write(stdout,*) 'FBFB chi2',SQRT(chi2) * dv
-   close(ocuberho(ispin))
  enddo
 
  deallocate(phi,pot,pot_i)

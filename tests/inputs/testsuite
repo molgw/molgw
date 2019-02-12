@@ -66,6 +66,13 @@ gKS HOMO energy           ,  -12.316390        , 1 , 1.0e-4
 gKS LUMO energy           ,    5.557588        , 0 , 1.0e-4
 gKS LUMO energy           ,   -3.007564        , 1 , 1.0e-4
 
+lih_ghost.in              , LiH molecule with addition basis functions on ghost atoms
+Kinetic Energy            ,    8.3706447990    , 0 , 1.0e-7
+Nucleus Energy            ,  -21.8154517287    , 0 , 1.0e-7
+Hartree Energy            ,    6.1980439217    , 0 , 1.0e-7
+Exchange Energy           ,   -2.2262796016    , 0 , 1.0e-7
+SCF Total Energy          ,   -7.8855109768    , 0 , 1.0e-7
+
 be_ghost_bsse.in          , Be atom with addition basis functions on a ghost atom
 Kinetic Energy            ,   14.5578650555    , 0 , 1.0e-7
 Nucleus Energy            ,  -33.6357518059    , 0 , 1.0e-7
@@ -671,6 +678,10 @@ GW LUMO energy            ,      4.073908       , 0 , 1.0e-4
 
 co_gw_dm.in               , G0W0 based on G0W0 density matrix
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+Kinetic Energy            ,    112.6578090099   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.8366546783   , 0 , 1.0e-7
+Hartree Energy            ,     75.7940290895   , 0 , 1.0e-7
+Exchange Energy           ,    -13.2091549910   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
 GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
 
@@ -682,4 +693,14 @@ co_gw_pt2_dm.in           , G0W0 based on PT2 density matrix
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.500329       , 0 , 1.0e-4
 GW LUMO energy            ,      3.390125       , 0 , 1.0e-4
+
+co_gw_dm_imag.in          , G0W0 based on G0W0 density matrix using an imaginary axis integration, noparallel
+SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+Kinetic Energy            ,    112.6561304107   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.8313153540   , 0 , 1.0e-7
+Hartree Energy            ,     75.7898390921   , 0 , 1.0e-7
+Exchange Energy           ,    -13.2088773886   , 0 , 1.0e-7
+
+
+
 

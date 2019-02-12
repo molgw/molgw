@@ -11,6 +11,7 @@ module m_selfenergy_tools
  use m_warning
  use m_mpi
  use m_inputparam
+ use m_tools,only: coeffs_gausslegint
 
  !
  ! frozen core approximation parameters
@@ -33,6 +34,7 @@ module m_selfenergy_tools
    integer                 :: nomegai
    complex(dp),allocatable :: omega(:)
    complex(dp),allocatable :: omegai(:)
+   real(dp),allocatable    :: weighti(:)
    real(dp),allocatable    :: energy0(:,:)
    complex(dp),allocatable :: sigma(:,:,:)
    complex(dp),allocatable :: sigmai(:,:,:)
@@ -434,7 +436,10 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  real(dp),intent(in)                 :: energy0(:,:)
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer :: iomega,pstate
+ real(dp),parameter   :: alpha=1.0_dp
+ real(dp),parameter   :: beta=1.0_dp
+ integer              :: iomega,pstate
+ real(dp),allocatable :: omega_gaussleg(:)
 !=====
 
  se%nomegai = 0
@@ -447,9 +452,9 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    allocate(se%omega(-se%nomega:se%nomega))
    se%omega(0) = 0.0_dp
 
- case(imaginary_axis)
+ case(imaginary_axis_pade)
    !
-   ! Set the final sampling points for Sigma
+   ! Set the final sampling points for Sigma on the real axis
    se%nomega = nomega_sigma/2
    allocate(se%omega(-se%nomega:se%nomega))
    do iomega=-se%nomega,se%nomega
@@ -457,27 +462,44 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    enddo
 
    !
-   ! Set the calculated sampling points for Sigma
+   ! Set the calculated sampling points for Sigma on the imaginary axis
    se%nomegai = nomega_sigma / 2
    allocate(se%omegai(-se%nomegai:se%nomegai))
    do iomega=-se%nomegai,se%nomegai
      se%omegai(iomega) = step_sigma * iomega * im * 3.0_dp
    enddo
 
+ case(imaginary_axis_integral)
+   !
+   ! No final sampling points for Sigma on the real axis
+   se%nomega = 0
+   allocate(se%omega(-se%nomega:se%nomega))
+   !
+   ! Set the calculated sampling points for Sigma on the imaginary axis
+   ! so to have a Gauss-Legendre type quadrature
+   se%nomegai = nomega_sigma
+   allocate(se%omegai(se%nomegai))
+   allocate(se%weighti(se%nomegai))
+   allocate(omega_gaussleg(se%nomegai))
+   call coeffs_gausslegint(0.0_dp,1.0_dp,omega_gaussleg,se%weighti,se%nomegai)
+
+   ! Variable change [0,1] -> [0,+\inf[
+   do iomega=1,se%nomegai
+     se%weighti(iomega) = se%weighti(iomega) / ( 2.0_dp**alpha - 1.0_dp ) &
+                                 * alpha * (1.0_dp -  omega_gaussleg(iomega))**(-alpha-1.0_dp) * beta
+     se%omegai(iomega)  = im / ( 2.0_dp**alpha - 1.0_dp ) &
+                               * ( 1.0_dp / (1.0_dp - omega_gaussleg(iomega))**alpha - 1.0_dp ) * beta
+   enddo
+   deallocate(omega_gaussleg)
 
  case(one_shot)
-   select case(calc_type%selfenergy_approx)
-   case(GSIGMA)
-     se%nomega = 1
-
-   case default
-     se%nomega = nomega_sigma/2
-     allocate(se%omega(-se%nomega:se%nomega))
-     do iomega=-se%nomega,se%nomega
-       se%omega(iomega) = step_sigma * iomega
-     enddo
-
-   end select
+   !
+   ! Most standard case:
+   se%nomega = nomega_sigma/2
+   allocate(se%omega(-se%nomega:se%nomega))
+   do iomega=-se%nomega,se%nomega
+     se%omega(iomega) = step_sigma * iomega
+   enddo
 
  end select
 
@@ -487,7 +509,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  allocate(se%energy0(nsemin:nsemax,nspin))
 
  select case(selfenergy_technique)
- case(imaginary_axis)
+ case(imaginary_axis_pade)
    ! Find the center of the HOMO-LUMO gap
    forall(pstate=nsemin:nsemax)
      se%energy0(pstate,:) = 0.5_dp * ( energy0(nhomo_G,:) + energy0(nhomo_G+1,:) )
@@ -500,10 +522,9 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  ! Set the central point of the grid
  allocate(se%sigma(-se%nomega:se%nomega,nsemin:nsemax,nspin))
  select case(selfenergy_technique)
- case(imaginary_axis)
+ case(imaginary_axis_pade,imaginary_axis_integral)
    allocate(se%sigmai(-se%nomegai:se%nomegai,nsemin:nsemax,nspin))
  end select
-
 
 end subroutine init_selfenergy_grid
 
@@ -520,7 +541,8 @@ subroutine destroy_selfenergy_grid(se)
  if( ALLOCATED(se%omegai) ) deallocate(se%omegai)
  deallocate(se%energy0)
  deallocate(se%sigma)
- if( ALLOCATED(se%sigmai) ) deallocate(se%sigmai)
+ if( ALLOCATED(se%sigmai) )  deallocate(se%sigmai)
+ if( ALLOCATED(se%weighti) ) deallocate(se%weighti)
 
 end subroutine destroy_selfenergy_grid
 
