@@ -34,6 +34,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  real(dp),allocatable  :: bra(:,:)
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
+ real(dp)              :: energy_gw
 !=====
 
  call start_clock(timing_gw_self)
@@ -64,6 +65,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
 
 
+ energy_gw = 0.0_dp
  se%sigma(:,:,:) = 0.0_dp
 
  do ispin=1,nspin
@@ -122,6 +124,10 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
                         * ( fact_full_i  / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
                           + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
+           if( (spin_fact - occupation(pstate,ispin))/ spin_fact < completely_empty) then
+             energy_gw = energy_gw + fact_empty_i * occupation(pstate,ispin) &
+                               * bra(ipole,pstate)**2 / ( energy(pstate,ispin) - energy(istate,ispin) - wpol%pole(ipole) )
+           endif
          enddo
          !$OMP END DO
          !$OMP END PARALLEL
@@ -155,10 +161,13 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
  ! Sum up the contribution from different poles (= different procs)
  call xsum_world(se%sigma)
+ call xsum_world(energy_gw)
 
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 
+ if( nsemax >= nhomo_G .AND. nsemin <= ncore_G+1 ) &
+      write(stdout,'(1x,a,1x,f19.10)') 'Correlation energy 1/2 Tr[ Sig_c * G ] (Ha):',energy_gw
 
 
  call clean_deallocate('Temporary array',bra)
