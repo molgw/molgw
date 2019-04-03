@@ -26,6 +26,76 @@ contains
 
 !=========================================================================
 subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
+
+#if defined(DISABLE_PERM_SYMM) || defined(DISABLE_PERM_SYMM_HARTREE)
+! use m_eri
+ implicit none
+! logical,intent(in)   :: print_matrix_
+! integer,intent(in)   :: nbf
+! real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+! real(dp),intent(out) :: hartree_ij(nbf,nbf)
+! real(dp),intent(out) :: ehartree
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: hartree_ij(:,:)
+ real(dp),intent(out) :: ehartree
+!=====
+ integer              :: nbf
+ integer              :: ibf,jbf,kbf,lbf,ispin
+ character(len=100)   :: title
+!=====
+
+ write(stdout,*) 'Calculate Hartree term'
+ call start_clock(timing_hartree)
+
+! ymbyun 2019/04/01
+! NOTE: This is a change in MOLGW 2.
+ nbf = SIZE(hartree_ij,DIM=1)
+
+ hartree_ij(:,:)=0.0_dp
+
+! ymbyun 2018/05/21
+! COLLAPSE is added because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+!$OMP PARALLEL
+!$OMP DO PRIVATE(ibf,jbf,kbf,lbf) COLLAPSE(2)
+ do jbf=1,nbf
+   do ibf=1,nbf
+     if( negligible_basispair(ibf,jbf) ) cycle
+     do lbf=1,nbf
+       !
+       ! symmetry k <-> l
+       do kbf=1,lbf-1 ! nbf
+         if( negligible_basispair(kbf,lbf) ) cycle
+         !
+         ! symmetry (ij|kl) = (kl|ij) has been used to loop in the fast order
+         hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf) &
+                    + eri(kbf,lbf,ibf,jbf) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
+       enddo
+       hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf) &
+                  + eri(lbf,lbf,ibf,jbf) * SUM( p_matrix(lbf,lbf,:) )
+     enddo
+   enddo
+ enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+! title='=== Hartree contribution ==='
+! call dump_out_matrix(print_matrix_,title,nbf,1,hartree_ij)
+
+! ymbyun 2018/05/30
+! NOTE: A performance test is needed.
+!$OMP PARALLEL
+!$OMP WORKSHARE
+ ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
+!$OMP END WORKSHARE
+ if( nspin == 2 ) then
+!$OMP WORKSHARE
+   ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
+!$OMP END WORKSHARE
+ endif
+!$OMP END PARALLEL
+
+ call stop_clock(timing_hartree)
+#else
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: hartree_ij(:,:)
@@ -109,6 +179,7 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
 
 
  call stop_clock(timing_hartree)
+#endif
 
 end subroutine setup_hartree
 
@@ -364,6 +435,71 @@ end subroutine setup_hartree_versatile_ri
 
 !=========================================================================
 subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
+
+#if defined(DISABLE_PERM_SYMM) || defined(DISABLE_PERM_SYMM_EXCHANGE)
+! use m_eri
+ implicit none
+! logical,intent(in)   :: print_matrix_
+! integer,intent(in)   :: nbf
+! real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+! real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+! real(dp),intent(out) :: eexchange
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
+ real(dp),intent(out) :: eexchange
+!=====
+ integer              :: nbf
+ integer              :: ibf,jbf,kbf,lbf,ispin
+ character(len=100)   :: title
+!=====
+
+ write(stdout,*) 'Calculate Exchange term'
+ call start_clock(timing_exchange)
+
+ ! ymbyun 2019/04/01
+ ! NOTE: This is a change in MOLGW 2.
+ nbf = SIZE(exchange_ij,DIM=1)
+
+ exchange_ij(:,:,:)=0.0_dp
+
+! ymbyun 2018/05/25
+! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
+! COLLAPSE(2) is replaced by COLLASPE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+!
+! ymbyun 2019/03/21
+! BUGFIX: COLLAPSE(3) is replaced by COLLASPE(2) because COLLAPSE(3) causes an error when # of threads is greater than ~10.
+!         I don't understand yet why it happens.
+!         Maybe it is safe not to use COLLAPSE at all.
+!
+!$OMP PARALLEL
+!$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(2)
+ do ispin=1,nspin
+   do jbf=1,nbf
+     do lbf=1,nbf
+       if( negligible_basispair(lbf,jbf) ) cycle
+       do kbf=1,nbf
+!         if( ABS(p_matrix(kbf,lbf,ispin)) <  1.0e-12_dp ) cycle
+         do ibf=1,nbf
+           if( negligible_basispair(ibf,kbf) ) cycle
+           !
+           ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
+           exchange_ij(ibf,jbf,ispin) = exchange_ij(ibf,jbf,ispin) - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
+         enddo
+       enddo
+     enddo
+   enddo
+ enddo
+!$OMP END DO
+
+! ymbyun 2018/05/30
+! NOTE: A performance test is needed.
+!$OMP WORKSHARE
+ eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
+!$OMP END WORKSHARE
+!$OMP END PARALLEL
+
+ call stop_clock(timing_exchange)
+#else
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: exchange_ij(:,:,:)
@@ -450,12 +586,69 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
  !$OMP END PARALLEL
 
  call stop_clock(timing_exchange)
+#endif
 
 end subroutine setup_exchange
 
 
 !=========================================================================
 subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
+
+#if defined(DISABLE_PERM_SYMM) || defined(DISABLE_PERM_SYMM_EXCHANGE_LR)
+! use m_eri
+ implicit none
+! logical,intent(in)   :: print_matrix_
+! integer,intent(in)   :: nbf
+! real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+! real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+! real(dp),intent(out) :: eexchange
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
+ real(dp),intent(out) :: eexchange
+!=====
+ integer              :: nbf
+ integer              :: ibf,jbf,kbf,lbf,ispin
+!=====
+
+ write(stdout,*) 'Calculate Long-Range Exchange term'
+ call start_clock(timing_exchange)
+
+ ! ymbyun 2019/04/01
+ ! NOTE: This is a change in MOLGW 2.
+ nbf = SIZE(exchange_ij,DIM=1)
+
+ exchange_ij(:,:,:)=0.0_dp
+
+! ymbyun 2018/06/30
+! Unlike setup_hartree(), COLLAPSE is used here because of ispin.
+! COLLAPSE(2) is replaced by COLLAPSE(3) because nbf can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+!$OMP PARALLEL
+!$OMP DO PRIVATE(ibf,jbf,kbf,lbf,ispin) COLLAPSE(3)
+ do ispin=1,nspin
+   do jbf=1,nbf
+     do ibf=1,nbf
+       do lbf=1,nbf
+         do kbf=1,nbf
+           !
+           ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
+           exchange_ij(ibf,jbf,ispin) = exchange_ij(ibf,jbf,ispin) &
+                      - eri_lr(kbf,ibf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
+         enddo
+       enddo
+     enddo
+   enddo
+ enddo
+!$OMP END DO
+
+! ymbyun 2018/06/30
+! NOTE: A performance test is needed.
+!$OMP WORKSHARE
+ eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
+!$OMP END WORKSHARE
+!$OMP END PARALLEL
+
+ call stop_clock(timing_exchange)
+#else
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: exchange_ij(:,:,:)
@@ -542,6 +735,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
  !$OMP END PARALLEL
 
  call stop_clock(timing_exchange)
+#endif
 
 end subroutine setup_exchange_longrange
 
