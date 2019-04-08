@@ -642,8 +642,7 @@ program molgw
 
 
  !
- ! Time Dependent calculations
- ! works for DFT, HF, and hybrid
+ ! Linear-response time dependent calculations work for BSE and TDDFT
  !
  if(calc_type%is_td .OR. calc_type%is_bse) then
    call init_spectral_function(nstate,occupation,0,wpol)

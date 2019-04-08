@@ -226,12 +226,16 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
      endif
 #else
-     if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
-       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-     else
+     select case(calc_type%selfenergy_technique)
+     case(imaginary_axis_pade)
        call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
        call self_energy_pade(se)
-     endif
+     case(exact_dyson)
+       call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+       stop 'ENOUGH'
+     case default
+       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+     end select
 #endif
 
 

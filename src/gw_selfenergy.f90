@@ -184,6 +184,168 @@ end subroutine gw_selfenergy
 
 
 !=========================================================================
+subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
+ use m_definitions
+ use m_mpi
+ use m_mpi_ortho
+ use m_timing
+ use m_inputparam
+ use m_warning,only: issue_warning
+ use m_basis_set
+ use m_spectral_function
+ use m_eri_ao_mo
+ use m_tools,only: coeffs_gausslegint,diagonalize
+ use m_selfenergy_tools
+ implicit none
+
+ integer,intent(in)                  :: nstate,selfenergy_approx
+ type(basis_set)                     :: basis
+ real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
+ type(spectral_function),intent(in)  :: wpol
+ type(selfenergy_grid),intent(inout) :: se
+!=====
+ integer               :: iomega
+ integer               :: ipstate
+ integer               :: pstate,bstate
+ integer               :: istate,ispin,ipole
+ real(dp),allocatable  :: bra(:,:)
+ real(dp)              :: fact_full_i,fact_empty_i
+ real(dp)              :: fact_full_a,fact_empty_a
+ real(dp)              :: energy_gw
+ real(dp),allocatable  :: matrix(:,:),eigval(:)
+ integer               :: nmat,mstate,jstate
+ integer               :: index_is,index_as
+!=====
+
+ call start_clock(timing_gw_self)
+
+ write(stdout,*)
+ select case(selfenergy_approx)
+ case(GW)
+   write(stdout,*) 'Perform a one-shot G0W0 calculation with full solution of the Dyson equation'
+ case default
+   write(stdout,*) 'type:',selfenergy_approx
+   call die('gw_selfenergy: calculation type unknown')
+ end select
+
+
+ if(has_auxil_basis) then
+   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
+ endif
+
+
+ call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
+
+ mstate = nvirtual_G - ncore_G - 1
+ nmat   = mstate * ( 1 + wpol%npole_reso)
+ call clean_allocate('Huge matrix',matrix,nmat,nmat)
+
+ matrix(:,:) = 0.0_dp
+
+ write(stdout,'(/,1x,a,i8,a,i8)') 'Diagonalization problem of size: ',nmat,' x ',nmat
+
+ do ispin=1,nspin
+   do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
+
+     if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+
+     jstate = istate - ncore_G
+     ! Small upper-left square
+     matrix(jstate,jstate) = energy(istate,ispin)
+
+     !
+     ! Prepare the bra and ket with the knowledge of index istate and pstate
+     if( .NOT. has_auxil_basis) then
+       !$OMP PARALLEL
+       !$OMP DO PRIVATE(ipstate)
+       ! Here just grab the precalculated value
+       do pstate=nsemin,nsemax
+         ipstate = index_prodstate(istate,pstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
+         bra(:,pstate) = wpol%residue_left(ipstate,:)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+     else
+       ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+       bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
+       call xsum_auxil(bra)
+     endif
+
+
+
+     ! The application of residue theorem only retains the pole in given
+     ! quadrants.
+     ! The positive poles of W go with the poles of occupied states in G
+     ! The negative poles of W go with the poles of empty states in G
+     fact_full_i  = occupation(istate,ispin) / spin_fact
+     fact_empty_i = (spin_fact - occupation(istate,ispin)) / spin_fact
+
+
+     do ipole=1,wpol%npole_reso
+
+       if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
+
+       if( fact_full_i > completely_empty ) then
+         index_is = mstate + ipole + (jstate-1) * wpol%npole_reso
+         ! diagonal term
+         matrix(index_is,index_is) = energy(istate,ispin) - wpol%pole(ipole)
+         ! upper block
+         matrix(1:mstate,index_is) = bra(ipole,ncore_G+1:nvirtual_G-1)
+         ! left block
+         matrix(index_is,1:mstate) = matrix(1:mstate,index_is)
+
+       else ! i is an empty state
+         index_as = mstate + ipole + (jstate-1) * wpol%npole_reso
+         ! diagonal term
+         matrix(index_as,index_as) = energy(istate,ispin) + wpol%pole(ipole)
+         ! upper block
+         matrix(1:mstate,index_as) = bra(ipole,ncore_G+1:nvirtual_G-1)
+         ! left block
+         matrix(index_as,1:mstate) = matrix(1:mstate,index_as)
+
+       endif
+
+     enddo !ipole
+
+   enddo !istate
+ enddo !ispin
+
+ ! Sum up the contribution from different poles (= different procs)
+ call clean_deallocate('Temporary array',bra)
+
+ write(stdout,'(a)') ' Matrix is setup'
+
+ allocate(eigval(nmat))
+ !write(stdout,*) '=============='
+ !do pstate=1,nmat
+ !  write(stdout,'(*(1x,f7.3))') matrix(pstate,:)*Ha_eV
+ !enddo
+ !write(stdout,*) '=============='
+
+ call diagonalize(' ',matrix,eigval)
+
+ write(stdout,*) '============== Poles in eV , weight ==============='
+ do pstate=1,nmat
+   write(stdout,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
+ enddo
+ write(stdout,*) '==================================================='
+
+ call clean_deallocate('Huge matrix',matrix)
+ deallocate(eigval)
+
+ if(has_auxil_basis) then
+   call destroy_eri_3center_eigen()
+ endif
+
+
+ call stop_clock(timing_gw_self)
+
+
+end subroutine gw_selfenergy_analytic
+
+
+!=========================================================================
 subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
  use m_timing

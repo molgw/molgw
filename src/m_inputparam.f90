@@ -26,6 +26,7 @@ module m_inputparam
  integer,parameter :: imaginary_axis_pade     = 104
  integer,parameter :: static_selfenergy       = 105
  integer,parameter :: imaginary_axis_integral = 106
+ integer,parameter :: exact_dyson             = 107
 
  !
  ! Self-energy approximation
@@ -279,6 +280,10 @@ subroutine init_calculation_type(calc_type,input_key)
    case('GW','G0W0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GW
+   case('G0W0_DYSON')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx = GW
+     calc_type%selfenergy_technique = exact_dyson
    case('GWTDDFT','G0WTDDFT')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GW
