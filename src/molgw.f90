@@ -526,16 +526,8 @@ program molgw
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW or PT corrections
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
-
      call clean_allocate('Sigx - Vxc',exchange_m_vxc,nstate,nstate,nspin)
-
      call setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
-
-     if( calc_type%selfenergy_static ) then
-       call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
-       call pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc)
-     endif
-
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
 

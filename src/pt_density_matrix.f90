@@ -1034,7 +1034,7 @@ subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_state,p
  ! If input Fock density (p_matrix) is zero, then assume an Hartree-Fock SCF calculation
  if( ALL( ABS(p_matrix(:,:,:)) < 1.0e-6_dp ) ) then
    if( TRIM(calc_type%scf_name) /= 'HF' ) &
-               call issue_warning('gw_density_matrix: this is not correct when starting from something else than HF')
+               call issue_warning('update_density_matrix: this is not correct when starting from something else than HF')
 
    ! Add the SCF density matrix to get to the total density matrix
    allocate(p_matrix_tmp(nbf,nbf,nspin))

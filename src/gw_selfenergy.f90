@@ -33,7 +33,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  integer               :: istate,ispin,ipole
  real(dp),allocatable  :: bra(:,:)
  real(dp)              :: fact_full_i,fact_empty_i
- real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: energy_gw
 !=====
 
@@ -184,7 +183,7 @@ end subroutine gw_selfenergy
 
 
 !=========================================================================
-subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
+subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,exchange_m_vxc)
  use m_definitions
  use m_mpi
  use m_mpi_ortho
@@ -201,9 +200,8 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer,intent(in)                  :: nstate,selfenergy_approx
  type(basis_set)                     :: basis
  real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin),exchange_m_vxc(nstate,nstate,nspin)
  type(spectral_function),intent(in)  :: wpol
- type(selfenergy_grid),intent(inout) :: se
 !=====
  integer               :: iomega
  integer               :: ipstate
@@ -211,7 +209,6 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer               :: istate,ispin,ipole
  real(dp),allocatable  :: bra(:,:)
  real(dp)              :: fact_full_i,fact_empty_i
- real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: energy_gw
  real(dp),allocatable  :: matrix(:,:),eigval(:)
  integer               :: nmat,mstate,jstate
@@ -242,6 +239,8 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  call clean_allocate('Huge matrix',matrix,nmat,nmat)
 
  matrix(:,:) = 0.0_dp
+ matrix(1:mstate,1:mstate) = exchange_m_vxc(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1,1)  ! spin index set to 1
+ if( nspin > 1 ) call die('gw_selfenergy_analytic: not functional for nspin>1')
 
  write(stdout,'(/,1x,a,i8,a,i8)') 'Diagonalization problem of size: ',nmat,' x ',nmat
 
@@ -252,7 +251,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
      jstate = istate - ncore_G
      ! Small upper-left square
-     matrix(jstate,jstate) = energy(istate,ispin)
+     matrix(jstate,jstate) = matrix(jstate,jstate) + energy(istate,ispin)
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and pstate
@@ -341,7 +340,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  call stop_clock(timing_gw_self)
 
-
+ stop 'FBFB devel ENOUGH'
 end subroutine gw_selfenergy_analytic
 
 

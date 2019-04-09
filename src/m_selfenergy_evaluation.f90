@@ -29,8 +29,7 @@ contains
 
 
 !=========================================================================
-subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix, &
-                                 exchange_m_vxc)
+subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc)
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -179,6 +178,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix, &
 
    call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se)
 
+   if( calc_type%selfenergy_static ) then
+     call pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,exchange_m_vxc_diag)
+   endif
 
 
    !
@@ -226,7 +228,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix, &
 
      endif
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
      ! The SCALAPACK implementation only works for plain vanilla GW
      ! TODO: extend it to COHSEX
      if( has_auxil_basis &
@@ -247,8 +249,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix, &
        call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
        call self_energy_pade(se)
      case(exact_dyson)
-       call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-       stop 'ENOUGH'
+       call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
      case default
        call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
      end select
