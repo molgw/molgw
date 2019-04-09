@@ -610,7 +610,7 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
    deallocate(occupation_tmp,p_matrix_tmp)
 
    !
-   ! Calculate the matrix Sigma_x - Vxc or its diagonal
+   ! Calculate the matrix Sigma_x - Vxc
    ! for the forthcoming GW corrections
    !
    call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
@@ -624,6 +624,7 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
    ! this is equal to < p | F - H | q > and < p | H | q > = e_p \delta_{pq}
 
    call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
+
    do ispin=1,nspin
      do pstate=1,nstate
        exchange_m_vxc(pstate,pstate,ispin) = exchange_m_vxc(pstate,pstate,ispin) - energy(pstate,ispin)

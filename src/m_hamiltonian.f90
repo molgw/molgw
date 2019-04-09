@@ -1086,7 +1086,7 @@ subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
    ! C**T * (H * C)
    call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(:,:,ispin),nbf, &
                                               matrix_tmp,nbf,          &
-                                        0.0d0,matrix_out,nstate)
+                                        0.0d0,matrix_out(:,:,ispin),nstate)
 
  enddo
  deallocate(matrix_tmp)
