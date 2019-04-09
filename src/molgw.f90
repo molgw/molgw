@@ -48,6 +48,7 @@ program molgw
  use m_hamiltonian_onebody
  use m_hamiltonian_buffer
  use m_selfenergy_tools
+ use m_selfenergy_evaluation
  use m_scf_loop
  use m_tddft_propagator
  use m_tddft_variables
@@ -75,7 +76,6 @@ program molgw
  real(dp),allocatable    :: c_matrix(:,:,:),c_matrix_tmp(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
- real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: exchange_m_vxc(:,:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix
@@ -527,24 +527,14 @@ program molgw
  ! for the forthcoming GW or PT corrections
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
 
-   allocate(exchange_m_vxc_diag(nstate,nspin))
+     call clean_allocate('Sigx - Vxc',exchange_m_vxc,nstate,nstate,nspin)
 
-   if( calc_type%selfenergy_static ) then
-     !
-     ! Calculate the static part of the self-energy at the first order and store it in exchange_m_vxc_diag
-     !
-     allocate(exchange_m_vxc(nstate,nstate,nspin))
+     call setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
 
-     call setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
-
-     call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
-     call pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,exchange_m_vxc_diag)
-
-     deallocate(exchange_m_vxc)
-
-   else
-     call setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
-   endif
+     if( calc_type%selfenergy_static ) then
+       call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
+       call pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc)
+     endif
 
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
@@ -654,8 +644,8 @@ program molgw
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
  !
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
-   call selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_matrix,exchange_m_vxc_diag)
-   deallocate(exchange_m_vxc_diag)
+   call selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc)
+   call clean_deallocate('Sigx - Vxc',exchange_m_vxc)
  endif
 
 

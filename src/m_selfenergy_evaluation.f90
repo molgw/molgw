@@ -7,8 +7,7 @@
 ! PT2, PT3, GW, evGW, COHSEX, GWGamma, etc.
 !
 !=========================================================================
-subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_matrix, &
-                                 exchange_m_vxc_diag)
+module m_selfenergy_evaluation
  use m_definitions
  use m_timing
  use m_warning
@@ -23,16 +22,25 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  use m_spectral_function
  use m_selfenergy_tools
  use m_virtual_orbital_space
+
+
+
+contains
+
+
+!=========================================================================
+subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix, &
+                                 exchange_m_vxc)
  implicit none
 
  type(basis_set),intent(in) :: basis
  type(basis_set),intent(in) :: auxil_basis
- integer,intent(in)         :: nstate
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(inout)     :: energy(nstate,nspin)
- real(dp),intent(inout)     :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(inout)     :: energy(:,:)
+ real(dp),intent(inout)     :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: exchange_m_vxc(:,:,:)
 !=====
+ integer                 :: nstate
  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3
  logical                 :: enforce_rpa
  character(len=36)       :: selfenergy_tag
@@ -41,17 +49,25 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  type(spectral_function) :: wpol
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: sigc(:,:)
- real(dp)                :: energy_g(nstate,nspin)
- real(dp)                :: energy_w(nstate,nspin)
  real(dp),allocatable    :: zz(:,:)
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
  integer                 :: iomega
- integer                 :: istep_gw
+ integer                 :: istep_gw,pstate
+ real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+ real(dp),allocatable    :: energy_g(:,:)
+ real(dp),allocatable    :: energy_w(:,:)
 !=====
 
  write(stdout,'(/,/,1x,a)') '=================================================='
  write(stdout,'(1x,a)')     'Self-energy evaluation starts here'
  write(stdout,'(1x,a,/)')   '=================================================='
+
+ nstate = SIZE(occupation(:,:),DIM=1)
+ allocate(energy_g(nstate,nspin),energy_w(nstate,nspin))
+ allocate(exchange_m_vxc_diag(nstate,nspin))
+ do pstate=1,nstate
+   exchange_m_vxc_diag(pstate,:) = exchange_m_vxc(pstate,pstate,:)
+ enddo
 
  !
  ! Small imaginary part of the poles in the Green's function
@@ -473,8 +489,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    call barrier_world()
  enddo ! nstep_gw
 
+ deallocate(exchange_m_vxc_diag)
 
 end subroutine selfenergy_evaluation
 
 
+end module m_selfenergy_evaluation
 !=========================================================================
