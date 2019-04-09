@@ -16,7 +16,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: coeffs_gausslegint,diagonalize
  use m_selfenergy_tools
  implicit none
 
@@ -193,7 +192,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: coeffs_gausslegint,diagonalize
+ use m_tools,only: diagonalize
  use m_selfenergy_tools
  implicit none
 
@@ -211,8 +210,10 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: energy_gw
  real(dp),allocatable  :: matrix(:,:),eigval(:)
- integer               :: nmat,mstate,jstate
+ integer               :: nmat,imat,jmat
+ integer               :: mstate,jstate
  integer               :: index_is,index_as
+ integer               :: fu
 !=====
 
  call start_clock(timing_gw_self)
@@ -315,19 +316,28 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  write(stdout,'(a)') ' Matrix is setup'
 
- allocate(eigval(nmat))
- !write(stdout,*) '=============='
- !do pstate=1,nmat
- !  write(stdout,'(*(1x,f7.3))') matrix(pstate,:)*Ha_eV
- !enddo
- !write(stdout,*) '=============='
+ write(stdout,*) 'Dump the big sparse matrix on disk'
+ open(newunit=fu,file='MATRIX',action='write')
+ do imat=1,nmat
+   do jmat=imat,nmat
+     if( ABS(matrix(imat,jmat)) > 1.0e-8_dp ) then
+       write(fu,'(i8,1x,i8,1x,e18.8)') imat,jmat,matrix(imat,jmat)*Ha_eV
+     endif
+   enddo
+ enddo
+ close(fu)
 
+ allocate(eigval(nmat))
+ write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense'
  call diagonalize(' ',matrix,eigval)
 
  write(stdout,*) '============== Poles in eV , weight ==============='
  do pstate=1,nmat
-   write(stdout,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
+   if( SUM(matrix(1:mstate,pstate)**2) > 1.0e-4_dp ) then
+     write(stdout,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
+   endif
  enddo
+ write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=eigval(:)<0.0_dp)
  write(stdout,*) '==================================================='
 
  call clean_deallocate('Huge matrix',matrix)
@@ -355,7 +365,6 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: coeffs_gausslegint
  use m_selfenergy_tools
  implicit none
 
@@ -537,7 +546,6 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: coeffs_gausslegint
  use m_selfenergy_tools
  implicit none
 
