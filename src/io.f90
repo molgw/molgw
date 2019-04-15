@@ -2136,15 +2136,6 @@ subroutine read_cube_wfn(nstate,basis,occupation,c_matrix)
    enddo
  enddo
 
- do ispin=1,nspin
-   do istate=istate1,istate2
-     write(stdout,*) 'FBFB',ispin,istate,pot_i(istate,ispin) * Ha_eV
-     close(ocubefile(istate,ispin))
-   enddo
-   write(stdout,*) 'FBFB chi2',SQRT(chi2) * dv
-   close(ocuberho(ispin))
- enddo
-
  deallocate(phi,pot,pot_i)
  deallocate(ocubefile)
 

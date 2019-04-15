@@ -1,0 +1,20 @@
+&molgw
+ scf='HF'
+
+ basis='cc-pVDZ_gaussian'
+ auxil_basis='cc-pVDZ-RI'
+ gaussian_type='CART'
+
+ frozencore='yes'
+
+ pt_density_matrix='GW_IMAGINARY'
+ use_correlated_density_matrix='yes'
+ nomega_imag = 128
+ nomega_sigma = 16
+
+
+
+ natom = 2
+/
+8           .000000     .000000     .493003
+6           .000000     .000000    -.657337

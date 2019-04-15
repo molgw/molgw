@@ -46,7 +46,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  type(basis_set)                       :: basis_small
  real(dp),allocatable                  :: s_bigsmall(:,:)
  real(dp),allocatable                  :: s_small(:,:)
- real(dp),allocatable                  :: s_small_sqrt_inv(:,:)
+ real(dp),allocatable                  :: x_small(:,:)
  real(dp),allocatable                  :: h_small(:,:,:)
  real(dp),allocatable                  :: energy_small(:,:)
  real(dp),allocatable                  :: c_small(:,:,:)
@@ -94,7 +94,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  s_small(:,:) = MATMUL( TRANSPOSE(s_bigsmall) , MATMUL( s_matrix_inv , s_bigsmall ) )
 
  ! Calculate ( tilde S )^{-1/2}
- call setup_sqrt_overlap(min_overlap,s_small,nstate_small,s_small_sqrt_inv)
+ call setup_sqrt_overlap(min_overlap,s_small,nstate_small,x_small)
  call clean_deallocate('Overlap matrix Ssmall',s_small)
 
 
@@ -132,12 +132,12 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  !
  allocate(energy_small(nstate_small,nspin))
  call clean_allocate('Coefficients small basis',c_small,basis_small%nbf,nstate_small,nspin)
- call diagonalize_hamiltonian_scalapack(h_small,s_small_sqrt_inv,energy_small,c_small)
+ call diagonalize_hamiltonian_scalapack(h_small,x_small,energy_small,c_small)
  call dump_out_energy('=== Energies in the initial small basis ===',&
               nstate_small,nspin,occupation(1:nstate_small,:),energy_small)
 
  call clean_deallocate('Hamiltonian small basis',h_small)
- call clean_deallocate('Overlap sqrt S^{-1/2}',s_small_sqrt_inv)
+ call clean_deallocate('Overlap X * X**H = S**-1',x_small)
  deallocate(energy_small)
 
 
@@ -278,7 +278,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  real(dp),allocatable       :: s_bigsmall_global(:,:)   !TODO: remove this in the future
  real(dp),allocatable       :: s_bigsmall(:,:)
  real(dp),allocatable       :: s_small(:,:)
- real(dp),allocatable       :: s_small_sqrt_inv(:,:)
+ real(dp),allocatable       :: x_small(:,:)
  real(dp),allocatable       :: h_small(:,:,:)
  real(dp),allocatable       :: energy_small(:,:)
  real(dp),allocatable       :: c_small(:,:,:)
@@ -380,7 +380,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    ! Calculate ( tilde S )^{-1/2}
    !
    ! Descriptor desc_bs_ss  md,nd   is set up inside setup_sqrt_overlap_sca
-   call setup_sqrt_overlap_sca(min_overlap,desc_bs_bs,s_small,desc_bs_ss,nstate_small,s_small_sqrt_inv)
+   call setup_sqrt_overlap_sca(min_overlap,desc_bs_bs,s_small,desc_bs_ss,nstate_small,x_small)
    md = NUMROC(basis_small%nbf,block_row,iprow,first_row,nprow)
    nd = NUMROC(nstate_small   ,block_col,ipcol,first_col,npcol)
 
@@ -425,13 +425,13 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    !
    allocate(energy_small(nstate_small,nspin))
    call clean_allocate('Coefficients small basis',c_small,md,nd,nspin)
-   call diagonalize_hamiltonian_sca(desc_bs_bs,h_small,desc_bs_ss,s_small_sqrt_inv,energy_small,c_small)
+   call diagonalize_hamiltonian_sca(desc_bs_bs,h_small,desc_bs_ss,x_small,energy_small,c_small)
 
    call dump_out_energy('=== Energies in the initial small basis ===',&
                         nstate_small,nspin,occupation(1:nstate_small,:),energy_small)
 
    call clean_deallocate('Hamiltonian small basis',h_small)
-   call clean_deallocate('Overlap sqrt S^{-1/2}',s_small_sqrt_inv)
+   call clean_deallocate('Overlap X * X**H = S**-1',x_small)
    deallocate(energy_small)
 
    !

@@ -63,7 +63,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
  real(dp)                   :: time_min
  real(dp),allocatable       :: dipole_basis(:,:,:)
  real(dp),allocatable       :: s_matrix(:,:)
- real(dp),allocatable       :: s_matrix_sqrt_inv(:,:)
+ real(dp),allocatable       :: x_matrix(:,:)
  real(dp),allocatable       :: hamiltonian_kinetic(:,:)
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !=====initial values
@@ -681,7 +681,7 @@ end subroutine get_extrap_coefs_aspc
 
 
 !==========================================
-subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type)
+subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
  implicit none
  integer,intent(in)          :: nstate
  type(basis_set),intent(in)  :: basis
@@ -689,7 +689,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  complex(dp),intent(inout)   :: c_matrix_orth_cmplx(nstate,nocc,nspin)
  complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(in)      :: h_small_cmplx(nstate,nstate,nspin)
- real(dp),intent(in)         :: s_matrix_sqrt_inv(basis%nbf,nstate)
+ real(dp),intent(in)         :: x_matrix(basis%nbf,nstate)
  character(len=4),intent(in) :: prop_type
 !=====
  integer                    :: ispin
@@ -703,12 +703,12 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al,
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
 !=====
- complex(dp)                :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
+ complex(dp)                :: x_matrix_cmplx(basis%nbf,nstate)
 !=====
 
  call start_clock(timing_tddft_propagation)
 
- s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
+ x_matrix_cmplx = x_matrix
 
  do ispin=1, nspin
    select case(prop_type)
@@ -763,7 +763,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
        call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
    end select
 
-   call matmul_ab_scalapack(scalapack_block_min,s_matrix_sqrt_inv_cmplx,c_matrix_orth_cmplx(:,:,ispin),c_matrix_cmplx(:,:,ispin))
+   call matmul_ab_scalapack(scalapack_block_min,x_matrix_cmplx,c_matrix_orth_cmplx(:,:,ispin),c_matrix_cmplx(:,:,ispin))
 
  end do
 
@@ -774,7 +774,7 @@ end subroutine propagate_orth_ham_1
 
 
 !==========================================
-subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_hist2_cmplx,s_matrix_sqrt_inv,prop_type)
+subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_hist2_cmplx,x_matrix,prop_type)
  implicit none
  integer,intent(in)          :: nstate
  type(basis_set),intent(in)  :: basis
@@ -782,7 +782,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  complex(dp),intent(inout)   :: c_matrix_orth_cmplx(nstate,nocc,nspin)
  complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(in)      :: h_small_hist2_cmplx(nstate,nstate,nspin,2)
- real(dp),intent(in)         :: s_matrix_sqrt_inv(basis%nbf,nstate)
+ real(dp),intent(in)         :: x_matrix(basis%nbf,nstate)
  character(len=4),intent(in) :: prop_type
 !=====
  integer             :: ispin,iham
@@ -793,7 +793,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 !=====
 
  call start_clock(timing_tddft_propagation)
-! a_matrix_cmplx(:,1:nstate) = MATMUL( s_matrix_sqrt_inv(:,:) , a_matrix_cmplx(:,:) )
+! a_matrix_cmplx(:,1:nstate) = MATMUL( x_matrix(:,:) , a_matrix_cmplx(:,:) )
 
  do ispin =1, nspin
    select case (prop_type)
@@ -811,7 +811,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    case default
      call die('Invalid choice of the propagation algorithm for the given PC scheme. Change prop_type value in the input file')
    end select
-    c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
+    c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
  end do
 
 call stop_clock(timing_tddft_propagation)
@@ -830,7 +830,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
                                          hamiltonian_kinetic,     &
                                          hamiltonian_nucleus,     &
                                          h_small_cmplx,           &
-                                         s_matrix_sqrt_inv,       &
+                                         x_matrix,                &
                                          dipole_basis,            &
                                          hamiltonian_fock_cmplx)
                                          
@@ -845,7 +845,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  real(dp),intent(in)             :: hamiltonian_kinetic(basis%nbf,basis%nbf)
  real(dp),intent(in)             :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),allocatable,intent(in) :: dipole_basis(:,:,:)
- real(dp),intent(in)             :: s_matrix_sqrt_inv(basis%nbf,nstate)
+ real(dp),intent(in)             :: x_matrix(basis%nbf,nstate)
  complex(dp),intent(in)          :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(out)         :: hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp),intent(out)         :: h_small_cmplx(nstate,nstate,nspin)
@@ -854,14 +854,14 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  integer              :: ispin, idir
  real(dp)             :: excit_field(3)
  complex(dp)          :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
- complex(dp)          :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
+ complex(dp)          :: x_matrix_cmplx(basis%nbf,nstate)
  integer              :: projectile_list(1)
  real(dp),allocatable :: hamiltonian_projectile(:,:)
 !=====
 
  call start_clock(timing_tddft_hamiltonian)
 
- s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
+ x_matrix_cmplx = x_matrix
 
  call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
 
@@ -937,11 +937,11 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
 
 
 
- !   h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
- !                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+ !   h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix_cmplx(:,:)) , &
+ !                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , x_matrix_cmplx(:,:) ) )
  call start_clock(timing_tddft_ham_orthobasis)
  do ispin=1,nspin
-   call matmul_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv_cmplx,hamiltonian_fock_cmplx(:,:,ispin),h_small_cmplx(:,:,ispin))
+   call matmul_transaba_scalapack(scalapack_block_min,x_matrix_cmplx,hamiltonian_fock_cmplx(:,:,ispin),h_small_cmplx(:,:,ispin))
  end do ! spin loop
  call stop_clock(timing_tddft_ham_orthobasis)
 

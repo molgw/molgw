@@ -675,6 +675,10 @@ GW LUMO energy            ,      4.073908       , 0 , 1.0e-4
 
 co_gw_dm.in               , G0W0 based on G0W0 density matrix
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+Kinetic Energy            ,    112.6578090099   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.8366546783   , 0 , 1.0e-7
+Hartree Energy            ,     75.7940290895   , 0 , 1.0e-7
+Exchange Energy           ,    -13.2091549910   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
 GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
 
@@ -686,4 +690,14 @@ co_gw_pt2_dm.in           , G0W0 based on PT2 density matrix
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.500329       , 0 , 1.0e-4
 GW LUMO energy            ,      3.390125       , 0 , 1.0e-4
+
+co_gw_dm_imag.in          , G0W0 based on G0W0 density matrix using an imaginary axis integration, noparallel
+SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+Kinetic Energy            ,    112.6561304107   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.8313153540   , 0 , 1.0e-7
+Hartree Energy            ,     75.7898390921   , 0 , 1.0e-7
+Exchange Energy           ,    -13.2088773886   , 0 , 1.0e-7
+
+
+
 

@@ -20,11 +20,13 @@ module m_inputparam
 
  !
  ! Self-energy evaluation technique
- integer,parameter :: one_shot          = 101
- integer,parameter :: QS                = 102
- integer,parameter :: EVSC              = 103
- integer,parameter :: imaginary_axis    = 104
- integer,parameter :: static_selfenergy = 105
+ integer,parameter :: one_shot                = 101
+ integer,parameter :: QS                      = 102
+ integer,parameter :: EVSC                    = 103
+ integer,parameter :: imaginary_axis_pade     = 104
+ integer,parameter :: static_selfenergy       = 105
+ integer,parameter :: imaginary_axis_integral = 106
+ integer,parameter :: exact_dyson             = 107
 
  !
  ! Self-energy approximation
@@ -33,13 +35,7 @@ module m_inputparam
  integer,parameter :: GnW0         = 205
  integer,parameter :: GnWn         = 206
  integer,parameter :: GW           = 207
- integer,parameter :: GV           = 208   ! perturbative HF
- integer,parameter :: GSIGMA       = 209   ! Total energy calc
- integer,parameter :: LW           = 210   ! Luttinger-Ward log term
- integer,parameter :: LW2          = 213   ! Luttinger-Ward log term
- integer,parameter :: COHSEX_DEVEL = 214
- integer,parameter :: TUNED_COHSEX = 215
- integer,parameter :: G0W0_IOMEGA  = 216
+ integer,parameter :: GW_IMAG      = 216
  integer,parameter :: G0W0GAMMA0   = 217
  integer,parameter :: G0W0SOX0     = 219
  integer,parameter :: PT2          = 220
@@ -176,7 +172,6 @@ module m_inputparam
  integer,protected                :: scalapack_nprow
  integer,protected                :: scalapack_npcol
  integer,protected                :: mpi_nproc_ortho
- real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
  real(dp),protected               :: grid_memory
 
  logical,protected                :: use_correlated_density_matrix_
@@ -274,18 +269,6 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%postscf_name =  TRIM(key2)
 
    select case(TRIM(key2))
-   case('LW')
-     calc_type%is_gw             = .TRUE.
-     calc_type%selfenergy_approx = LW
-   case('LW2')
-     calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = LW2
-   case('GSIGMA')
-     calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = GSIGMA
-   case('GV')
-     calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = GV
    case('GNW0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GnW0
@@ -297,6 +280,10 @@ subroutine init_calculation_type(calc_type,input_key)
    case('GW','G0W0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GW
+   case('G0W0_DYSON')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx = GW
+     calc_type%selfenergy_technique = exact_dyson
    case('GWTDDFT','G0WTDDFT')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GW
@@ -304,13 +291,10 @@ subroutine init_calculation_type(calc_type,input_key)
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = COHSEX
-   case('COHSEX_DEVEL')
-     calc_type%is_gw    =.TRUE.                             ! ABCD
-     calc_type%selfenergy_approx = COHSEX_DEVEL
-   case('G0W0_IOMEGA')
+   case('G0W0_IMAGINARY','GW_IMAGINARY')
      calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx    = G0W0_IOMEGA
-     calc_type%selfenergy_technique = imaginary_axis
+     calc_type%selfenergy_approx    = GW_IMAG
+     calc_type%selfenergy_technique = imaginary_axis_pade
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0SOX0
@@ -331,10 +315,6 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0GAMMA0
      calc_type%selfenergy_technique = EVSC
-   case('TUNED_COHSEX')
-     calc_type%is_gw    =.TRUE.                                 ! ABCD
-     calc_type%selfenergy_approx = TUNED_COHSEX
-     calc_type%is_lr_mbpt = .TRUE.
    case('LRGW')
      calc_type%is_gw      =.TRUE.
      calc_type%selfenergy_approx   = GW
@@ -435,14 +415,14 @@ subroutine init_excitation_type(excit_type)
 !=====
 
  excit_type%name  = excit_name
- excit_type%kappa = excit_kappa 
- excit_type%omega = excit_omega 
+ excit_type%kappa = excit_kappa
+ excit_type%omega = excit_omega
  excit_type%time0 = excit_time0
- excit_type%dir   = excit_dir 
+ excit_type%dir   = excit_dir
 
  if( LEN(TRIM(excit_name)) /= 0 ) then
    select case (excit_type%name)
-   case("NUCLEUS","ANTINUCLEUS") 
+   case("NUCLEUS","ANTINUCLEUS")
      excit_type%form=EXCIT_PROJECTILE
    case("NO")
      excit_type%form=EXCIT_NO

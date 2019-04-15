@@ -6,7 +6,7 @@
 ! within different flavors: G0W0, GnW0, GnWn, COHSEX, QSGW
 !
 !=========================================================================
-subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se,energy_gw)
+subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
  use m_mpi_ortho
@@ -16,54 +16,35 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: coeffs_gausslegint,diagonalize
  use m_selfenergy_tools
  implicit none
 
- integer,intent(in)                 :: nstate,selfenergy_approx
- type(basis_set)                    :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
- type(spectral_function),intent(in) :: wpol
+ integer,intent(in)                  :: nstate,selfenergy_approx
+ type(basis_set)                     :: basis
+ real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
+ type(spectral_function),intent(in)  :: wpol
  type(selfenergy_grid),intent(inout) :: se
- real(dp),intent(out)               :: energy_gw
 !=====
  integer               :: iomega
  integer               :: ipstate
  integer               :: pstate,bstate
  integer               :: istate,ispin,ipole
  real(dp),allocatable  :: bra(:,:)
- real(dp),allocatable  :: bra_exx(:,:)
  real(dp)              :: fact_full_i,fact_empty_i
- real(dp)              :: fact_full_a,fact_empty_a
- real(dp)              :: energy_lw(nstate,nspin)
-! LW devel
- complex(dp),allocatable :: omegac(:)
- complex(dp),allocatable :: selfenergy_omegac(:,:,:,:)
- complex(dp),allocatable :: matrix(:,:),eigvec(:,:)
- real(dp),allocatable    :: eigval(:),x1(:),weights(:)
- real(dp)                :: tr_log_gsigma,tr_gsigma,rdiag,mu
+ real(dp)              :: energy_gw
 !=====
 
  call start_clock(timing_gw_self)
 
  write(stdout,*)
  select case(selfenergy_approx)
- case(LW,LW2)
-   write(stdout,*) 'Perform the calculation of Tr[ ln ( 1 - GSigma ) ]'
- case(GSIGMA)
-   write(stdout,*) 'Perform the calculation of Tr[ SigmaG ]'
- case(GV)
-   write(stdout,*) 'Perform a perturbative HF calculation'
  case(GW)
    write(stdout,*) 'Perform a one-shot G0W0 calculation'
  case(ONE_RING)
    write(stdout,*) 'Perform a one-shot one-ring calculation'
  case(COHSEX)
    write(stdout,*) 'Perform a COHSEX calculation'
-   if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
-     write(stdout,'(a,2(2x,f12.6))') ' Tuned COHSEX with parameters alpha, beta: ',alpha_cohsex,beta_cohsex
-   endif
  case(GnW0)
    write(stdout,*) 'Perform an eigenvalue self-consistent GnW0 calculation'
  case(GnWn)
@@ -76,58 +57,13 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
-   if( calc_type%selfenergy_approx == LW .OR. calc_type%selfenergy_approx == LW2 .OR. calc_type%selfenergy_approx == GSIGMA ) &
-       call calculate_eri_3center_eigen_mixed(c_matrix)
  endif
 
 
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
 
- if(selfenergy_approx==LW .OR. selfenergy_approx==LW2 .OR. selfenergy_approx==GSIGMA) then
-   call clean_allocate('Temporary array for LW',bra_exx,1,wpol%npole_reso,nsemin,nsemax)
- endif
-
 
  energy_gw = 0.0_dp
-
-
- !
- ! The ones with imaginary frequencies
- select case(selfenergy_approx)
- case(LW,LW2)
-   allocate(omegac(1:se%nomega))
-
-   allocate(x1(se%nomega),weights(se%nomega))
-   call coeffs_gausslegint(0.0_dp,1.0_dp,x1,weights,se%nomega)
-
-   mu =-0.10_dp
-   write(stdout,*) 'mu is set manually here to',mu
-   do iomega=1,se%nomega
-     omegac(iomega) = x1(iomega) / ( 1.0_dp - x1(iomega) ) * im + mu
-     weights(iomega) = weights(iomega) / (1.0_dp - x1(iomega))**2
-     write(stdout,'(i4,3(2x,f12.4))') iomega,REAL(omegac(iomega)),AIMAG(omegac(iomega)),weights(iomega)
-   enddo
-   deallocate(x1)
- end select
-
-
- if( selfenergy_approx == LW .OR. selfenergy_approx == LW2 .OR. selfenergy_approx == GSIGMA ) then
-   call issue_warning('reading G\tilde')
-   open(1001,form='unformatted')
-   read(1001) energy_lw(:,:)
-   close(1001,status='delete')
- endif
-
-
- !
- ! Which calculation type needs a complex sigma?
- !
- select case(selfenergy_approx)
- case(LW,LW2)                     ! matrix complex
-   allocate(selfenergy_omegac(1:se%nomega,nsemin:nsemax,nsemin:nsemax,nspin))
-   selfenergy_omegac(:,:,:,:) = 0.0_dp
- end select
-
  se%sigma(:,:,:) = 0.0_dp
 
  do ispin=1,nspin
@@ -151,10 +87,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
        call xsum_auxil(bra)
-       if( selfenergy_approx==LW .OR. selfenergy_approx==LW2 .OR. selfenergy_approx==GSIGMA) then
-         bra_exx(:,nsemin:nsemax) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen_mixed(:,istate,nsemin:nsemax,ispin) )
-         call xsum_auxil(bra_exx)
-       endif
      endif
 
 
@@ -174,40 +106,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
        select case(selfenergy_approx)
 
-       case(LW,LW2)
-
-         do bstate=nsemin,nsemax
-           do pstate=nsemin,nsemax
-
-             do iomega=1,se%nomega
-               selfenergy_omegac(iomega,pstate,bstate,ispin) = selfenergy_omegac(iomega,pstate,bstate,ispin) &
-                        + bra_exx(ipole,pstate) * bra_exx(ipole,bstate) &
-                          * (  fact_full_i  / ( omegac(iomega) - energy(istate,ispin) + wpol%pole(ipole)  )    &
-                             + fact_empty_i / ( omegac(iomega) - energy(istate,ispin) - wpol%pole(ipole) ) )   &
-                          / ( omegac(iomega) - energy_lw(pstate,ispin) )
-             enddo
-
-           enddo
-         enddo
-
-       case(GSIGMA)
-
-         !
-         ! calculate only the diagonal !
-         do pstate=nsemin,nsemax
-           fact_full_a   = occupation(pstate,ispin) / spin_fact
-           fact_empty_a  = (spin_fact - occupation(pstate,ispin)) / spin_fact
-           se%sigma(0,pstate,ispin) = se%sigma(0,pstate,ispin) &
-                    - bra(ipole,pstate) * bra(ipole,pstate) &
-                      * ( fact_full_i  * fact_empty_a / ( energy(pstate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )   &
-                        - fact_empty_i * fact_full_a  / ( energy(pstate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )   )
-           se%sigma(1,pstate,ispin) = se%sigma(1,pstate,ispin) &
-                    - bra_exx(ipole,pstate) * bra_exx(ipole,pstate) &
-                      * ( fact_full_i  * fact_empty_a / ( energy_lw(pstate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )   &
-                        - fact_empty_i * fact_full_a  / ( energy_lw(pstate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  )
-         enddo
-
-
        case(GW,GnW0,GnWn,ONE_RING)
          ! ymbyun 2018/07/11
          ! For now, only G0W0/GnW0/GnWn are parallelized.
@@ -224,6 +122,10 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
                         * ( fact_full_i  / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
                           + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
+           if( (spin_fact - occupation(pstate,ispin))/ spin_fact < completely_empty) then
+             energy_gw = energy_gw + fact_empty_i * occupation(pstate,ispin) &
+                               * bra(ipole,pstate)**2 / ( energy(pstate,ispin) - energy(istate,ispin) - wpol%pole(ipole) )
+           endif
          enddo
          !$OMP END DO
          !$OMP END PARALLEL
@@ -235,23 +137,17 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
            !
            se%sigma(0,pstate,ispin) = se%sigma(0,pstate,ispin) &
                       + bra(ipole,pstate) * bra(ipole,pstate) &
-                            * fact_full_i / wpol%pole(ipole) * 2.0_dp  &
-                            * beta_cohsex
+                            * fact_full_i / wpol%pole(ipole) * 2.0_dp
 
            !
            ! COH
            !
            se%sigma(0,pstate,ispin) = se%sigma(0,pstate,ispin) &
                       - bra(ipole,pstate) * bra(ipole,pstate) &
-                            / wpol%pole(ipole)                &
-                            * alpha_cohsex
+                            / wpol%pole(ipole)
 
          enddo
 
-       case(GV)
-         !
-         ! Do nothing: no correlation in this case
-         !
        case default
          call die('BUG')
        end select
@@ -263,110 +159,199 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
  ! Sum up the contribution from different poles (= different procs)
  call xsum_world(se%sigma)
-
- if( ALLOCATED(selfenergy_omegac) ) then
-   call xsum_world(selfenergy_omegac)
- endif
+ call xsum_world(energy_gw)
 
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 
-
- !
- ! Only the EXPERIMENTAL features need to do some post-processing here!
- select case(selfenergy_approx)
- case(GSIGMA) !==========================================================
-
-   energy_gw = 0.5_dp * SUM(REAL(se%sigma(1,:,:),dp)) * spin_fact
-   write(stdout,*) 'Tr[Sigma tilde G]:',2.0_dp*energy_gw
-
-   energy_gw = 0.5_dp * SUM(REAL(se%sigma(0,:,:))) * spin_fact
-   write(stdout,*) '       Tr[SigmaG]:',2.0_dp*energy_gw
-
- case(LW)
-
-   allocate(matrix(nsemin:nsemax,nsemin:nsemax))
-   allocate(eigvec(nsemin:nsemax,nsemin:nsemax))
-   allocate(eigval(nsemax-nsemin+1))
-
-   tr_log_gsigma = 0.0_dp
-   tr_gsigma     = 0.0_dp
-
-   do ispin=1,nspin
-     do iomega=1,se%nomega
-
-       rdiag = 0.d0
-       do istate=nsemin,nsemax
-         rdiag = rdiag + REAL(selfenergy_omegac(iomega,istate,istate,ispin),dp) * 2.0_dp
-       enddo
-
-       matrix(:,:) = selfenergy_omegac(iomega,:,:,ispin) + CONJG(TRANSPOSE( selfenergy_omegac(iomega,:,:,ispin) )) &
-                    - MATMUL( selfenergy_omegac(iomega,:,:,ispin) , CONJG(TRANSPOSE( selfenergy_omegac(iomega,:,:,ispin) )) )
-
-       call diagonalize(postscf_diago_flavor,matrix,eigval,eigvec)
-
-       tr_gsigma     = tr_gsigma     + rdiag                         * spin_fact / (2.0 * pi) * weights(iomega)
-       tr_log_gsigma = tr_log_gsigma + SUM(LOG( 1.0_dp - eigval(:))) * spin_fact / (2.0 * pi) * weights(iomega)
-
-     enddo
-   enddo
-
-
-   write(stdout,*) 'Tr[Log(1-GSigma)] ',tr_log_gsigma
-   write(stdout,*) 'Tr[GSigma]        ',tr_gsigma
-   write(stdout,*) 'Sum               ',(tr_log_gsigma+tr_gsigma)
-   deallocate(matrix,eigvec,eigval)
-
- case(LW2)
-
-   allocate(matrix(basis%nbf,basis%nbf))
-   allocate(eigvec(basis%nbf,basis%nbf))
-   allocate(eigval(basis%nbf))
-
-   tr_log_gsigma = 0.0_dp
-   tr_gsigma     = 0.0_dp
-
-   do iomega=1,se%nomega
-
-     matrix(:,:) = MATMUL( selfenergy_omegac(iomega,:,:,1) , selfenergy_omegac(iomega,:,:,1) )   &
-                + MATMUL( TRANSPOSE(CONJG(selfenergy_omegac(iomega,:,:,1))) , TRANSPOSE(CONJG(selfenergy_omegac(iomega,:,:,1))) )
-
-     rdiag=0.d0
-     do istate=1,basis%nbf
-       rdiag = rdiag - REAL(matrix(istate,istate),dp) * spin_fact / (2.0 * pi)   * 0.5_dp  ! -1/2 comes from the log expansion
-     enddo
-
-
-     tr_gsigma = tr_gsigma + rdiag * weights(iomega)
-
-   enddo
-
-
-   write(stdout,*) 'Tr[tGSigma*tGSigma]        ',tr_gsigma
-   deallocate(matrix,eigvec,eigval)
-
- end select
-
+ if( nsemax >= nhomo_G .AND. nsemin <= ncore_G+1 ) &
+      write(stdout,'(1x,a,1x,f19.10)') 'Correlation energy 1/2 Tr[ Sig_c * G ] (Ha):',energy_gw
 
 
  call clean_deallocate('Temporary array',bra)
- if(ALLOCATED(bra_exx)) call clean_deallocate('Temporary array for LW',bra_exx)
 
  if(has_auxil_basis) then
    call destroy_eri_3center_eigen()
-   if( calc_type%selfenergy_approx == LW .OR. calc_type%selfenergy_approx == LW2 .OR. calc_type%selfenergy_approx == GSIGMA ) &
-       call calculate_eri_3center_eigen_mixed(c_matrix)
  endif
-
- if(ALLOCATED(omegac)) deallocate(omegac)
- if(ALLOCATED(weights)) deallocate(weights)
- if(ALLOCATED(selfenergy_omegac)) deallocate(selfenergy_omegac)
 
 
  call stop_clock(timing_gw_self)
 
 
 end subroutine gw_selfenergy
+
+
+!=========================================================================
+subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,exchange_m_vxc)
+ use m_definitions
+ use m_mpi
+ use m_mpi_ortho
+ use m_timing
+ use m_inputparam
+ use m_warning,only: issue_warning
+ use m_basis_set
+ use m_spectral_function
+ use m_eri_ao_mo
+ use m_tools,only: diagonalize
+ use m_selfenergy_tools
+ implicit none
+
+ integer,intent(in)                  :: nstate,selfenergy_approx
+ type(basis_set)                     :: basis
+ real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin),exchange_m_vxc(nstate,nstate,nspin)
+ type(spectral_function),intent(in)  :: wpol
+!=====
+ integer               :: iomega
+ integer               :: ipstate
+ integer               :: pstate,bstate
+ integer               :: istate,ispin,ipole
+ real(dp),allocatable  :: bra(:,:)
+ real(dp)              :: fact_full_i,fact_empty_i
+ real(dp)              :: energy_gw
+ real(dp),allocatable  :: matrix(:,:),eigval(:)
+ integer               :: nmat,imat,jmat
+ integer               :: mstate,jstate
+ integer               :: index_is,index_as
+ integer               :: fu
+!=====
+
+ call start_clock(timing_gw_self)
+
+ write(stdout,*)
+ select case(selfenergy_approx)
+ case(GW)
+   write(stdout,*) 'Perform a one-shot G0W0 calculation with full solution of the Dyson equation'
+ case default
+   write(stdout,*) 'type:',selfenergy_approx
+   call die('gw_selfenergy: calculation type unknown')
+ end select
+
+
+ if(has_auxil_basis) then
+   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
+ endif
+
+
+ call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
+
+ mstate = nvirtual_G - ncore_G - 1
+ nmat   = mstate * ( 1 + wpol%npole_reso)
+ call clean_allocate('Huge matrix',matrix,nmat,nmat)
+
+ matrix(:,:) = 0.0_dp
+ matrix(1:mstate,1:mstate) = exchange_m_vxc(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1,1)  ! spin index set to 1
+ if( nspin > 1 ) call die('gw_selfenergy_analytic: not functional for nspin>1')
+
+ write(stdout,'(/,1x,a,i8,a,i8)') 'Diagonalization problem of size: ',nmat,' x ',nmat
+
+ do ispin=1,nspin
+   do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
+
+     if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+
+     jstate = istate - ncore_G
+     ! Small upper-left square
+     matrix(jstate,jstate) = matrix(jstate,jstate) + energy(istate,ispin)
+
+     !
+     ! Prepare the bra and ket with the knowledge of index istate and pstate
+     if( .NOT. has_auxil_basis) then
+       !$OMP PARALLEL
+       !$OMP DO PRIVATE(ipstate)
+       ! Here just grab the precalculated value
+       do pstate=nsemin,nsemax
+         ipstate = index_prodstate(istate,pstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
+         bra(:,pstate) = wpol%residue_left(ipstate,:)
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+     else
+       ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+       bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
+       call xsum_auxil(bra)
+     endif
+
+
+
+     ! The application of residue theorem only retains the pole in given
+     ! quadrants.
+     ! The positive poles of W go with the poles of occupied states in G
+     ! The negative poles of W go with the poles of empty states in G
+     fact_full_i  = occupation(istate,ispin) / spin_fact
+     fact_empty_i = (spin_fact - occupation(istate,ispin)) / spin_fact
+
+
+     do ipole=1,wpol%npole_reso
+
+       if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
+
+       if( fact_full_i > completely_empty ) then
+         index_is = mstate + ipole + (jstate-1) * wpol%npole_reso
+         ! diagonal term
+         matrix(index_is,index_is) = energy(istate,ispin) - wpol%pole(ipole)
+         ! upper block
+         matrix(1:mstate,index_is) = bra(ipole,ncore_G+1:nvirtual_G-1)
+         ! left block
+         matrix(index_is,1:mstate) = matrix(1:mstate,index_is)
+
+       else ! i is an empty state
+         index_as = mstate + ipole + (jstate-1) * wpol%npole_reso
+         ! diagonal term
+         matrix(index_as,index_as) = energy(istate,ispin) + wpol%pole(ipole)
+         ! upper block
+         matrix(1:mstate,index_as) = bra(ipole,ncore_G+1:nvirtual_G-1)
+         ! left block
+         matrix(index_as,1:mstate) = matrix(1:mstate,index_as)
+
+       endif
+
+     enddo !ipole
+
+   enddo !istate
+ enddo !ispin
+
+ ! Sum up the contribution from different poles (= different procs)
+ call clean_deallocate('Temporary array',bra)
+
+ write(stdout,'(a)') ' Matrix is setup'
+
+ write(stdout,*) 'Dump the big sparse matrix on disk'
+ open(newunit=fu,file='MATRIX',action='write')
+ do imat=1,nmat
+   do jmat=imat,nmat
+     if( ABS(matrix(imat,jmat)) > 1.0e-8_dp ) then
+       write(fu,'(i8,1x,i8,1x,e18.8)') imat,jmat,matrix(imat,jmat)*Ha_eV
+     endif
+   enddo
+ enddo
+ close(fu)
+
+ allocate(eigval(nmat))
+ write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense'
+ call diagonalize(' ',matrix,eigval)
+
+ write(stdout,*) '============== Poles in eV , weight ==============='
+ do pstate=1,nmat
+   if( SUM(matrix(1:mstate,pstate)**2) > 1.0e-4_dp ) then
+     write(stdout,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
+   endif
+ enddo
+ write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=eigval(:)<0.0_dp)
+ write(stdout,*) '==================================================='
+
+ call clean_deallocate('Huge matrix',matrix)
+ deallocate(eigval)
+
+ if(has_auxil_basis) then
+   call destroy_eri_3center_eigen()
+ endif
+
+
+ call stop_clock(timing_gw_self)
+
+ stop 'FBFB devel ENOUGH'
+end subroutine gw_selfenergy_analytic
 
 
 !=========================================================================
@@ -380,7 +365,6 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: coeffs_gausslegint
  use m_selfenergy_tools
  implicit none
 
@@ -562,7 +546,6 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: coeffs_gausslegint
  use m_selfenergy_tools
  implicit none
 
@@ -590,9 +573,6 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
    write(stdout,*) 'Perform a QP self-consistent GW calculation (QSGW)'
  case(COHSEX)
    write(stdout,*) 'Perform a self-consistent COHSEX calculation'
-   if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
-     write(stdout,'(a,2(2x,f12.6))') ' Tuned COHSEX with parameters alpha, beta: ',alpha_cohsex,beta_cohsex
-   endif
  case default
    call die('gw_selfenergy_qs: calculation type unknown')
  end select
@@ -661,16 +641,14 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
              !
              selfenergy(pstate,qstate,ispin) = selfenergy(pstate,qstate,ispin) &
                         + bra(ipole,pstate) * bra(ipole,qstate)                                &
-                              * fact_full_i / wpol%pole(ipole) * 2.0_dp                        &
-                              * beta_cohsex
+                              * fact_full_i / wpol%pole(ipole) * 2.0_dp
 
              !
              ! COH
              !
              selfenergy(pstate,qstate,ispin) = selfenergy(pstate,qstate,ispin) &
                         - bra(ipole,pstate) * bra(ipole,qstate) &
-                              / wpol%pole(ipole)                &
-                              * alpha_cohsex
+                              / wpol%pole(ipole)
            enddo
          enddo
 
