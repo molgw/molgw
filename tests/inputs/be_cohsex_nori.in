@@ -3,8 +3,6 @@
  tolscf=1.0e-9
 
  basis='cc-pVDZ'
-! auxil_basis='cc-pVDZ-RI'
- basis_path='../../basis'
 
  natom=1
  alpha_mixing=0.5
