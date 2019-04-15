@@ -207,12 +207,12 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer               :: pstate,bstate
  integer               :: istate,ispin,ipole
  real(dp),allocatable  :: bra(:,:)
- real(dp)              :: fact_full_i,fact_empty_i
+ real(dp)              :: sign_i
  real(dp)              :: energy_gw
  real(dp),allocatable  :: matrix(:,:),eigval(:)
  integer               :: nmat,imat,jmat
  integer               :: mstate,jstate
- integer               :: index_is,index_as
+ integer               :: index_is,index_as,index_s
  integer               :: fu
 !=====
 
@@ -278,33 +278,17 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      ! quadrants.
      ! The positive poles of W go with the poles of occupied states in G
      ! The negative poles of W go with the poles of empty states in G
-     fact_full_i  = occupation(istate,ispin) / spin_fact
-     fact_empty_i = (spin_fact - occupation(istate,ispin)) / spin_fact
 
+     sign_i = merge(-1.0_dp,1.0_dp,occupation(istate,ispin) / spin_fact > completely_empty )
 
      do ipole=1,wpol%npole_reso
 
        if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
 
-       if( fact_full_i > completely_empty ) then
-         index_is = mstate + ipole + (jstate-1) * wpol%npole_reso
-         ! diagonal term
-         matrix(index_is,index_is) = energy(istate,ispin) - wpol%pole(ipole)
-         ! upper block
-         matrix(1:mstate,index_is) = bra(ipole,ncore_G+1:nvirtual_G-1)
-         ! left block
-         matrix(index_is,1:mstate) = matrix(1:mstate,index_is)
-
-       else ! i is an empty state
-         index_as = mstate + ipole + (jstate-1) * wpol%npole_reso
-         ! diagonal term
-         matrix(index_as,index_as) = energy(istate,ispin) + wpol%pole(ipole)
-         ! upper block
-         matrix(1:mstate,index_as) = bra(ipole,ncore_G+1:nvirtual_G-1)
-         ! left block
-         matrix(index_as,1:mstate) = matrix(1:mstate,index_as)
-
-       endif
+       index_s = mstate + ipole + (jstate-1) * wpol%npole_reso
+       matrix(index_s,index_s) = energy(istate,ispin) + sign_i * wpol%pole(ipole)
+       matrix(1:mstate,index_s) = bra(ipole,ncore_G+1:nvirtual_G-1)
+       matrix(index_s,1:mstate) = matrix(1:mstate,index_s)
 
      enddo !ipole
 
@@ -332,11 +316,14 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  call diagonalize(' ',matrix,eigval)
 
  write(stdout,*) '============== Poles in eV , weight ==============='
+ open(newunit=fu,file='GREENS_FUNCTION',action='write')
  do pstate=1,nmat
-   if( SUM(matrix(1:mstate,pstate)**2) > 1.0e-4_dp ) then
+   if( SUM(matrix(1:mstate,pstate)**2) > 1.0e-3_dp ) then
      write(stdout,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
    endif
+   write(fu,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
  enddo
+ close(fu)
  write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=eigval(:)<0.0_dp)
  write(stdout,*) '==================================================='
 
