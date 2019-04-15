@@ -3,7 +3,7 @@
  tolscf=1.0e-9
 
  basis='cc-pVDZ'
-! auxil_basis='cc-pVDZ-RI'
+ auxil_basis='cc-pVDZ-RI'
  basis_path='../../basis'
 
  natom=1
