@@ -6,7 +6,6 @@
  gaussian_type='cart'
  basis='6-31+G*'
  auxil_basis='cc-pVTZ-RI'
- basis_path='../../basis/'
 
  natom=1
  alpha_mixing=0.5
