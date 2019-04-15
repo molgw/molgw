@@ -111,8 +111,12 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
          ! For now, only G0W0/GnW0/GnWn are parallelized.
          ! COLLAPSE(2) is bad for bra(:,:) in terms of memory affinity.
          ! However, it is good for G0W0 with # of threads > |nsemax - nsemin| (e.g. when only HOMO and LUMO energies are needed).
+         
+         ! ymbyun 2019/04/15
+         ! COLLAPSE(2) is removed because a new conditional statement (i.e. if) came in between two loops.
+
          !$OMP PARALLEL
-         !$OMP DO COLLAPSE(2)
+         !$OMP DO
          !
          ! calculate only the diagonal !
          do pstate=nsemin,nsemax
