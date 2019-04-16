@@ -202,6 +202,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin),exchange_m_vxc(nstate,nstate,nspin)
  type(spectral_function),intent(in)  :: wpol
 !=====
+ logical,parameter     :: FORMATTED=.FALSE.
  integer               :: iomega
  integer               :: ipstate
  integer               :: pstate,bstate
@@ -209,6 +210,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  real(dp),allocatable  :: bra(:,:)
  real(dp)              :: sign_i
  real(dp)              :: energy_gw
+ real(dp),allocatable  :: matrix_wing(:,:),matrix_head(:,:),matrix_diag(:)
  real(dp),allocatable  :: matrix(:,:),eigval(:)
  integer               :: nmat,imat,jmat
  integer               :: mstate,jstate
@@ -237,10 +239,15 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  mstate = nvirtual_G - ncore_G - 1
  nmat   = mstate * ( 1 + wpol%npole_reso)
- call clean_allocate('Huge matrix',matrix,nmat,nmat)
 
- matrix(:,:) = 0.0_dp
- matrix(1:mstate,1:mstate) = exchange_m_vxc(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1,1)  ! spin index set to 1
+ call clean_allocate('Matrix head',matrix_head,mstate,mstate)
+ call clean_allocate('Matrix wing',matrix_wing,mstate,nmat-mstate)
+ allocate(matrix_diag(nmat-mstate))
+ matrix_head(:,:) = 0.0_dp
+ matrix_wing(:,:) = 0.0_dp
+ matrix_diag(:) = 0.0_dp
+
+ matrix_head(:,:) = exchange_m_vxc(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1,1)  ! spin index set to 1
  if( nspin > 1 ) call die('gw_selfenergy_analytic: not functional for nspin>1')
 
  write(stdout,'(/,1x,a,i8,a,i8)') 'Diagonalization problem of size: ',nmat,' x ',nmat
@@ -252,7 +259,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
      jstate = istate - ncore_G
      ! Small upper-left square
-     matrix(jstate,jstate) = matrix(jstate,jstate) + energy(istate,ispin)
+     matrix_head(jstate,jstate) = matrix_head(jstate,jstate) + energy(istate,ispin)
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and pstate
@@ -274,69 +281,104 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
 
 
-     ! The application of residue theorem only retains the pole in given
-     ! quadrants.
-     ! The positive poles of W go with the poles of occupied states in G
-     ! The negative poles of W go with the poles of empty states in G
-
      sign_i = merge(-1.0_dp,1.0_dp,occupation(istate,ispin) / spin_fact > completely_empty )
 
      do ipole=1,wpol%npole_reso
 
-       if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
 
-       index_s = mstate + ipole + (jstate-1) * wpol%npole_reso
-       matrix(index_s,index_s) = energy(istate,ispin) + sign_i * wpol%pole(ipole)
-       matrix(1:mstate,index_s) = bra(ipole,ncore_G+1:nvirtual_G-1)
-       matrix(index_s,1:mstate) = matrix(1:mstate,index_s)
+       index_s = ipole + (jstate-1) * wpol%npole_reso
+       matrix_diag(index_s) = energy(istate,ispin) + sign_i * wpol%pole(ipole)
+       ! The parallelization is not efficient as of today, so skip it
+       !if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
+       matrix_wing(:,index_s) = bra(ipole,ncore_G+1:nvirtual_G-1)
 
      enddo !ipole
 
    enddo !istate
  enddo !ispin
 
+ !call xsum_auxil(matrix_wing)
  ! Sum up the contribution from different poles (= different procs)
  call clean_deallocate('Temporary array',bra)
 
  write(stdout,'(a)') ' Matrix is setup'
 
  write(stdout,*) 'Dump the big sparse matrix on disk'
- open(newunit=fu,file='MATRIX',action='write')
- do imat=1,nmat
-   do jmat=imat,nmat
-     if( ABS(matrix(imat,jmat)) > 1.0e-8_dp ) then
-       write(fu,'(i8,1x,i8,1x,e18.8)') imat,jmat,matrix(imat,jmat)*Ha_eV
-     endif
-   enddo
- enddo
- close(fu)
-
- allocate(eigval(nmat))
- write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense'
- call diagonalize(' ',matrix,eigval)
-
- write(stdout,*) '============== Poles in eV , weight ==============='
- open(newunit=fu,file='GREENS_FUNCTION',action='write')
- do pstate=1,nmat
-   if( SUM(matrix(1:mstate,pstate)**2) > 1.0e-3_dp ) then
-     write(stdout,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
+ if( is_iomaster) then
+   if( FORMATTED ) then
+     open(newunit=fu,file='MATRIX',form='formatted',action='write')
+     do imat=1,mstate
+       do jmat=imat,mstate
+         write(fu,'(i8,1x,i8,1x,e18.8)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
+       enddo
+       do jmat=1,nmat
+         write(fu,'(i8,1x,i8,1x,e18.8)') imat,mstate+jmat,matrix_wing(imat,jmat)*Ha_eV
+       enddo
+     enddo
+     do imat=1,nmat-mstate
+       write(fu,'(i8,1x,i8,1x,e18.8)') imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
+     enddo
+   else
+     open(newunit=fu,file='MATRIX',form='unformatted',action='write')
+     do imat=1,mstate
+       do jmat=imat,mstate
+         write(fu) imat,jmat,matrix_head(imat,jmat)*Ha_eV
+       enddo
+       do jmat=1,nmat
+         write(fu) imat,mstate+jmat,matrix_wing(imat,jmat)*Ha_eV
+       enddo
+     enddo
+     do imat=1,nmat-mstate
+       write(fu) imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
+     enddo
    endif
-   write(fu,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
- enddo
- close(fu)
- write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=eigval(:)<0.0_dp)
- write(stdout,*) '==================================================='
+   close(fu)
+ endif
 
- call clean_deallocate('Huge matrix',matrix)
- deallocate(eigval)
+ !
+ ! If the matrix is small enough, then diagonalize it!
+ if( nmat < 10000 ) then
 
+   allocate(eigval(nmat))
+   call clean_allocate('Huge matrix',matrix,nmat,nmat)
+   matrix(:,:)                    = 0.0_dp
+   matrix(1:mstate,1:mstate)      = matrix_head(:,:)
+   matrix(1:mstate,mstate+1:nmat) = matrix_wing(:,:)
+   matrix(mstate+1:nmat,1:mstate) = TRANSPOSE(matrix_wing(:,:))
+   do imat=mstate+1,nmat
+     matrix(imat,imat) = matrix_diag(imat-mstate)
+   enddo
+
+   write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense'
+   call diagonalize_scalapack(' ',scalapack_block_min,matrix,eigval)
+
+   write(stdout,*) '============== Poles in eV , weight ==============='
+   open(newunit=fu,file='GREENS_FUNCTION',action='write')
+   do pstate=1,nmat
+     if( SUM(matrix(1:mstate,pstate)**2) > 1.0e-3_dp ) then
+       write(stdout,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
+     endif
+     write(fu,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
+   enddo
+   close(fu)
+   write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=eigval(:)<0.0_dp)
+   write(stdout,*) '==================================================='
+
+   call clean_deallocate('Huge matrix',matrix)
+   deallocate(eigval)
+
+ endif
+
+ call clean_deallocate('Matrix wing',matrix_wing)
+ call clean_deallocate('Matrix head',matrix_head)
+ deallocate(matrix_diag)
  if(has_auxil_basis) then
    call destroy_eri_3center_eigen()
  endif
 
-
  call stop_clock(timing_gw_self)
 
+ call barrier_world()
  stop 'FBFB devel ENOUGH'
 end subroutine gw_selfenergy_analytic
 

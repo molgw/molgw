@@ -228,22 +228,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
      endif
 
-#if defined(HAVE_SCALAPACK)
-     ! The SCALAPACK implementation only works for plain vanilla GW
-     ! TODO: extend it to COHSEX
-     if( has_auxil_basis &
-       .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
-         .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == GW_IMAG) ) then
-       if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
-         call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-       else
-         call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
-         call self_energy_pade(se)
-       endif
-     else
-       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-     endif
-#else
      select case(calc_type%selfenergy_technique)
      case(imaginary_axis_pade)
        call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
@@ -251,9 +235,19 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      case(exact_dyson)
        call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
      case default
-       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-     end select
+       ! The SCALAPACK implementation only works for plain vanilla GW
+#if defined(HAVE_SCALAPACK)
+       if( has_auxil_basis &
+         .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
+           .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == GW_IMAG) ) then
+         call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+       else
 #endif
+         call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+#if defined(HAVE_SCALAPACK)
+       endif
+#endif
+     end select
 
 
 
