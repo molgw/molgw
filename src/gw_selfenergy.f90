@@ -114,25 +114,27 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
          
          ! ymbyun 2019/04/15
          ! COLLAPSE(2) is removed because a new conditional statement (i.e. if) came in between two loops.
+         ! OMP PARALLEL DO is moved to an inner loop for safety (i.e. energy_gw may need reduction).
 
-         !$OMP PARALLEL
-         !$OMP DO
          !
          ! calculate only the diagonal !
          do pstate=nsemin,nsemax
+           !$OMP PARALLEL
+           !$OMP DO
            do iomega=-se%nomega,se%nomega
              se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
                       + bra(ipole,pstate) * bra(ipole,pstate)                                          &
                         * ( fact_full_i  / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
                           + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
+           !$OMP END DO
+           !$OMP END PARALLEL
+
            if( (spin_fact - occupation(pstate,ispin))/ spin_fact < completely_empty) then
              energy_gw = energy_gw + fact_empty_i * occupation(pstate,ispin) &
                                * bra(ipole,pstate)**2 / ( energy(pstate,ispin) - energy(istate,ispin) - wpol%pole(ipole) )
            endif
          enddo
-         !$OMP END DO
-         !$OMP END PARALLEL
        case(COHSEX)
 
          do pstate=nsemin,nsemax
