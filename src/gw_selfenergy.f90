@@ -207,15 +207,15 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer               :: ipstate
  integer               :: pstate,bstate
  integer               :: istate,ispin,ipole
- real(dp),allocatable  :: bra(:,:)
  real(dp)              :: sign_i
  real(dp)              :: energy_gw
  real(dp),allocatable  :: matrix_wing(:,:),matrix_head(:,:),matrix_diag(:)
  real(dp),allocatable  :: matrix(:,:),eigval(:)
  integer               :: nmat,imat,jmat
  integer               :: mstate,jstate
- integer               :: index_is,index_as,index_s
+ integer               :: irecord
  integer               :: fu
+ integer               :: mlocal,nlocal
 !=====
 
  call start_clock(timing_gw_self)
@@ -229,26 +229,36 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    call die('gw_selfenergy: calculation type unknown')
  end select
 
+ if( nspin > 1 ) call die('gw_selfenergy_analytic: not functional for nspin>1')
+
+ if( nsemin > ncore_G+1 .OR. nsemax < nvirtual_G-1 ) then
+   write(stdout,'(1x,a,i5,1x,i5)') 'nsemin <= ncore_G+1    ',nsemin,ncore_G+1
+   write(stdout,'(1x,a,i5,1x,i5)') 'nsemax >= nvirtual_G-1 ',nsemax,nvirtual_G-1
+   call die('gw_selfenergy_analytic: selfenergy state range should contain all the active states')
+ endif
 
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
  endif
 
+! !
+! ! Auxil descriptors
+! mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+! nlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+! call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
- call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
 
  mstate = nvirtual_G - ncore_G - 1
  nmat   = mstate * ( 1 + wpol%npole_reso)
 
  call clean_allocate('Matrix head',matrix_head,mstate,mstate)
- call clean_allocate('Matrix wing',matrix_wing,mstate,nmat-mstate)
+ call clean_allocate('Matrix wing',matrix_wing,nmat-mstate,mstate)
  allocate(matrix_diag(nmat-mstate))
  matrix_head(:,:) = 0.0_dp
  matrix_wing(:,:) = 0.0_dp
  matrix_diag(:) = 0.0_dp
 
  matrix_head(:,:) = exchange_m_vxc(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1,1)  ! spin index set to 1
- if( nspin > 1 ) call die('gw_selfenergy_analytic: not functional for nspin>1')
 
  write(stdout,'(/,1x,a,i8,a,i8)') 'Diagonalization problem of size: ',nmat,' x ',nmat
 
@@ -256,50 +266,44 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
      if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
-
+     !
+     ! indeces
      jstate = istate - ncore_G
-     ! Small upper-left square
+     sign_i = merge(-1.0_dp,1.0_dp,occupation(istate,ispin) / spin_fact > completely_empty )
+     irecord = (jstate-1)*wpol%npole_reso
+
+     !
+     ! Head
      matrix_head(jstate,jstate) = matrix_head(jstate,jstate) + energy(istate,ispin)
 
      !
-     ! Prepare the bra and ket with the knowledge of index istate and pstate
+     ! Diagonal
+     matrix_diag(irecord+1:irecord+wpol%npole_reso)   = energy(istate,ispin) + sign_i * wpol%pole(:)
+
+     !
+     ! Wing
      if( .NOT. has_auxil_basis) then
-       !$OMP PARALLEL
-       !$OMP DO PRIVATE(ipstate)
-       ! Here just grab the precalculated value
        do pstate=nsemin,nsemax
          ipstate = index_prodstate(istate,pstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
-         bra(:,pstate) = wpol%residue_left(ipstate,:)
+         matrix_wing(irecord+1:irecord+wpol%npole_reso,pstate-ncore_G) = wpol%residue_left(ipstate,:)
        enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-       bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
-       call xsum_auxil(bra)
+!#if defined(SCALAPACK)
+!       call PDGEMM('T','N',mstate,wpol%npole_reso,nauxil_2center, &
+!                   1.0_dp,eri_3center_eigen,1,1,desc_eri3,        &
+!                          wpol%residue_left,1,1,desc_wpol,        &
+!                   0.0_dp,bra,1,1,desc_bra)
+!#else
+       matrix_wing(irecord+1:irecord+wpol%npole_reso,nsemin:nsemax) = &
+             MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
+       call xsum_auxil(matrix_wing(irecord+1:irecord+wpol%npole_reso,:))
+!#endif
      endif
 
 
-
-     sign_i = merge(-1.0_dp,1.0_dp,occupation(istate,ispin) / spin_fact > completely_empty )
-
-     do ipole=1,wpol%npole_reso
-
-
-       index_s = ipole + (jstate-1) * wpol%npole_reso
-       matrix_diag(index_s) = energy(istate,ispin) + sign_i * wpol%pole(ipole)
-       ! The parallelization is not efficient as of today, so skip it
-       !if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
-       matrix_wing(:,index_s) = bra(ipole,ncore_G+1:nvirtual_G-1)
-
-     enddo !ipole
-
    enddo !istate
  enddo !ispin
-
- !call xsum_auxil(matrix_wing)
- ! Sum up the contribution from different poles (= different procs)
- call clean_deallocate('Temporary array',bra)
 
  write(stdout,'(a)') ' Matrix is setup'
 
@@ -307,12 +311,12 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  if( is_iomaster) then
    if( FORMATTED ) then
      open(newunit=fu,file='MATRIX',form='formatted',action='write')
-     do imat=1,mstate
-       do jmat=imat,mstate
+     do jmat=1,mstate
+       do imat=jmat,mstate
          write(fu,'(i8,1x,i8,1x,e18.8)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
        enddo
-       do jmat=1,nmat
-         write(fu,'(i8,1x,i8,1x,e18.8)') imat,mstate+jmat,matrix_wing(imat,jmat)*Ha_eV
+       do imat=1,nmat-mstate
+         write(fu,'(i8,1x,i8,1x,e18.8)') mstate+imat,jmat,matrix_wing(imat,jmat)*Ha_eV
        enddo
      enddo
      do imat=1,nmat-mstate
@@ -320,12 +324,12 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      enddo
    else
      open(newunit=fu,file='MATRIX',form='unformatted',action='write')
-     do imat=1,mstate
-       do jmat=imat,mstate
+     do jmat=1,mstate
+       do imat=jmat,mstate
          write(fu) imat,jmat,matrix_head(imat,jmat)*Ha_eV
        enddo
-       do jmat=1,nmat
-         write(fu) imat,mstate+jmat,matrix_wing(imat,jmat)*Ha_eV
+       do imat=1,nmat-mstate
+         write(fu) mstate+imat,jmat,matrix_wing(imat,jmat)*Ha_eV
        enddo
      enddo
      do imat=1,nmat-mstate
@@ -343,8 +347,8 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    call clean_allocate('Huge matrix',matrix,nmat,nmat)
    matrix(:,:)                    = 0.0_dp
    matrix(1:mstate,1:mstate)      = matrix_head(:,:)
-   matrix(1:mstate,mstate+1:nmat) = matrix_wing(:,:)
-   matrix(mstate+1:nmat,1:mstate) = TRANSPOSE(matrix_wing(:,:))
+   matrix(1:mstate,mstate+1:nmat) = TRANSPOSE(matrix_wing(:,:))
+   matrix(mstate+1:nmat,1:mstate) = matrix_wing(:,:)
    do imat=mstate+1,nmat
      matrix(imat,imat) = matrix_diag(imat-mstate)
    enddo
