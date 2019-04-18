@@ -6,7 +6,7 @@
 ! propagation of the wavefunction in time
 !
 !=========================================================================
-module m_tddft_propagator
+module m_tddft_propagator 
  use m_atoms
  use m_definitions
  use m_basis_set
@@ -519,7 +519,7 @@ subroutine predictor_corrector(basis,                  &
 
 
  ! ///////////////////////////////////
- ! Following Van Voorhis, Phys Rev B 74 (2006)
+ ! Following Cheng and Van Voorhis, Phys Rev B 74 (2006)
  case('PC1') 
    !--1--PREDICTOR----| H(2/4),H(6/4)-->H(9/4)
        h_small_cmplx= -3.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,1)+7.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,2)
@@ -1614,9 +1614,9 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    excit_field=0.0_dp
    calc_excit_ = .FALSE.
    calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'GAU' )
-   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'HSW'  .AND. abs(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
-   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'STEP' .AND. abs(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
-   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  .AND. abs(time_cur - excit_type%time0)<=time_step_cur )
+   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'HSW'  .AND. ABS(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
+   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'STEP' .AND. ABS(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
+   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  .AND. ABS(time_cur - excit_type%time0)<time_step_cur/2.0_dp )
    if(itau==0) calc_excit_=.FALSE.
    if ( calc_excit_ ) then
      call calculate_excit_field(time_cur,excit_field)
@@ -1627,6 +1627,8 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
          en%excit = en%excit + REAL(SUM(dipole_basis(:,:,idir) * excit_field(idir) * p_matrix_cmplx(:,:,ispin)),dp)
        enddo
      end do
+   else
+     excit_field_norm = 0.0_dp
    end if
 
  !
