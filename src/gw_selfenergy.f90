@@ -202,20 +202,22 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin),exchange_m_vxc(nstate,nstate,nspin)
  type(spectral_function),intent(in)  :: wpol
 !=====
- logical,parameter     :: FORMATTED=.FALSE.
- integer               :: iomega
- integer               :: ipstate
- integer               :: pstate,bstate
- integer               :: istate,ispin,ipole
- real(dp)              :: sign_i
- real(dp)              :: energy_gw
- real(dp),allocatable  :: matrix_wing(:,:),matrix_head(:,:),matrix_diag(:)
- real(dp),allocatable  :: matrix(:,:),eigval(:)
- integer               :: nmat,imat,jmat
- integer               :: mstate,jstate
- integer               :: irecord
- integer               :: fu
- integer               :: mlocal,nlocal
+ character(len=4)     :: ctmp
+ integer              :: iomega
+ integer              :: ipstate
+ integer              :: pstate,bstate
+ integer              :: istate,ispin,ipole
+ real(dp)             :: sign_i
+ real(dp)             :: energy_gw
+ real(dp),allocatable :: matrix_wing(:,:),matrix_head(:,:),matrix_diag(:)
+ real(dp),allocatable :: matrix(:,:),eigval(:)
+ integer              :: nmat,mwing,imat,jmat
+ integer              :: mstate,jstate
+ integer              :: irecord
+ integer              :: fu,info
+ integer              :: mlocal,ilocal
+ integer              :: desc_wing(NDEL),desc_eri(NDEL),desc_wpol(NDEL)
+ integer              :: desc_matrix(NDEL)
 !=====
 
  call start_clock(timing_gw_self)
@@ -231,9 +233,9 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  if( nspin > 1 ) call die('gw_selfenergy_analytic: not functional for nspin>1')
 
- if( nsemin > ncore_G+1 .OR. nsemax < nvirtual_G-1 ) then
-   write(stdout,'(1x,a,i5,1x,i5)') 'nsemin <= ncore_G+1    ',nsemin,ncore_G+1
-   write(stdout,'(1x,a,i5,1x,i5)') 'nsemax >= nvirtual_G-1 ',nsemax,nvirtual_G-1
+ if( nsemin /= ncore_G+1 .OR. nsemax /= nvirtual_G-1 ) then
+   write(stdout,'(1x,a,i5,1x,i5)') 'nsemin ?= ncore_G+1    ',nsemin,ncore_G+1
+   write(stdout,'(1x,a,i5,1x,i5)') 'nsemax ?= nvirtual_G-1 ',nsemax,nvirtual_G-1
    call die('gw_selfenergy_analytic: selfenergy state range should contain all the active states')
  endif
 
@@ -241,19 +243,28 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
  endif
 
-! !
-! ! Auxil descriptors
-! mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-! nlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-! call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
-
-
  mstate = nvirtual_G - ncore_G - 1
  nmat   = mstate * ( 1 + wpol%npole_reso)
+ mwing  = mstate * wpol%npole_reso
+
+ !
+ ! Temporary descriptors
+ ! desc_wpol for wpol%residue_left
+ mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+ call DESCINIT(desc_wpol,nauxil_2center,wpol%npole_reso,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ ! desc_eri for wpol%residue_left
+ call DESCINIT(desc_eri,nauxil_2center,mstate,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+
+ ! desc_wing for matrix_wing
+ mlocal = NUMROC(mwing,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+ call DESCINIT(desc_wing,mwing,mstate,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+
 
  call clean_allocate('Matrix head',matrix_head,mstate,mstate)
- call clean_allocate('Matrix wing',matrix_wing,nmat-mstate,mstate)
- allocate(matrix_diag(nmat-mstate))
+ call clean_allocate('Matrix wing',matrix_wing,mlocal,mstate)
+
+
+ allocate(matrix_diag(mwing))
  matrix_head(:,:) = 0.0_dp
  matrix_wing(:,:) = 0.0_dp
  matrix_diag(:) = 0.0_dp
@@ -270,7 +281,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      ! indeces
      jstate = istate - ncore_G
      sign_i = merge(-1.0_dp,1.0_dp,occupation(istate,ispin) / spin_fact > completely_empty )
-     irecord = (jstate-1)*wpol%npole_reso
+     irecord = ( jstate - 1 ) * wpol%npole_reso
 
      !
      ! Head
@@ -289,16 +300,16 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
        enddo
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-!#if defined(SCALAPACK)
-!       call PDGEMM('T','N',mstate,wpol%npole_reso,nauxil_2center, &
-!                   1.0_dp,eri_3center_eigen,1,1,desc_eri3,        &
-!                          wpol%residue_left,1,1,desc_wpol,        &
-!                   0.0_dp,bra,1,1,desc_bra)
-!#else
-       matrix_wing(irecord+1:irecord+wpol%npole_reso,nsemin:nsemax) = &
+#if defined(HAVE_SCALAPACK)
+       call PDGEMM('T','N',wpol%npole_reso,mstate,nauxil_2center, &
+                   1.0_dp,wpol%residue_left,1,1,desc_wpol,        &
+                          eri_3center_eigen(1,nsemin,istate,ispin),1,1,desc_eri,        &
+                   0.0_dp,matrix_wing,irecord+1,1,desc_wing)
+#else
+       matrix_wing(irecord+1:irecord+wpol%npole_reso,:) = &
              MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
        call xsum_auxil(matrix_wing(irecord+1:irecord+wpol%npole_reso,:))
-!#endif
+#endif
      endif
 
 
@@ -307,43 +318,49 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  write(stdout,'(a)') ' Matrix is setup'
 
+ !
+ ! Dump the matrix on files (1 file per SCALAPACK thread)
  write(stdout,*) 'Dump the big sparse matrix on disk'
+ write(ctmp,'(i4.4)') rank_world
+ open(newunit=fu,file='MATRIX_'//ctmp,form='formatted',action='write')
+
+ ! only master writes the head and the long diagonal
  if( is_iomaster) then
-   if( FORMATTED ) then
-     open(newunit=fu,file='MATRIX',form='formatted',action='write')
-     do jmat=1,mstate
-       do imat=jmat,mstate
-         write(fu,'(i8,1x,i8,1x,e18.8)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
-       enddo
-       do imat=1,nmat-mstate
-         write(fu,'(i8,1x,i8,1x,e18.8)') mstate+imat,jmat,matrix_wing(imat,jmat)*Ha_eV
-       enddo
+   do jmat=1,mstate
+     do imat=1,jmat
+       write(fu,'(1x,i6,1x,i6,1x,e14.6)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
      enddo
-     do imat=1,nmat-mstate
-       write(fu,'(i8,1x,i8,1x,e18.8)') imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
-     enddo
-   else
-     open(newunit=fu,file='MATRIX',form='unformatted',action='write')
-     do jmat=1,mstate
-       do imat=jmat,mstate
-         write(fu) imat,jmat,matrix_head(imat,jmat)*Ha_eV
-       enddo
-       do imat=1,nmat-mstate
-         write(fu) mstate+imat,jmat,matrix_wing(imat,jmat)*Ha_eV
-       enddo
-     enddo
-     do imat=1,nmat-mstate
-       write(fu) imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
-     enddo
-   endif
-   close(fu)
+   enddo
+   do imat=1,mwing
+     write(fu,'(1x,i6,1x,i6,1x,e14.6)') imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
+   enddo
  endif
+
+ do jmat=1,mstate
+   do ilocal=1,mlocal
+     imat = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+     write(fu,'(1x,i5,1x,i5,1x,e14.6)') mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
+     if( mstate+imat == 319 .AND. jmat == 11 ) write(12,*) 'aaa',ilocal,imat,mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
+   enddo
+ enddo
+ close(fu)
+
 
  !
  ! If the matrix is small enough, then diagonalize it!
- if( nmat < 10000 ) then
+ if( nmat < 100 ) then
 
    allocate(eigval(nmat))
+
+!#if defined(HAVE_SCALAPACK)
+!   write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense with SCALAPACK'
+!   mlocal = NUMROC(nmat,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+!   nlocal = NUMROC(nmat,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
+!   call DESCINIT(desc_matrix,nmat,nmat,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+!   call clean_allocate('Huge matrix',matrix,mlocal,nlocal)
+!   call diagonalize_sca('R',matrix,desc_matrix,eigval)
+!#else
+   write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense'
    call clean_allocate('Huge matrix',matrix,nmat,nmat)
    matrix(:,:)                    = 0.0_dp
    matrix(1:mstate,1:mstate)      = matrix_head(:,:)
@@ -352,10 +369,10 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    do imat=mstate+1,nmat
      matrix(imat,imat) = matrix_diag(imat-mstate)
    enddo
+   call diagonalize('R',matrix,eigval)
+!#endif
 
-   write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense'
-   call diagonalize_scalapack(' ',scalapack_block_min,matrix,eigval)
-
+   write(stdout,'(1x,a,i8)') 'Number of poles: ',COUNT( SUM(matrix(1:mstate,:)**2,DIM=1) > 1.0e-3_dp )
    write(stdout,*) '============== Poles in eV , weight ==============='
    open(newunit=fu,file='GREENS_FUNCTION',action='write')
    do pstate=1,nmat
@@ -382,6 +399,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  call stop_clock(timing_gw_self)
 
+ call barrier_world()
  call barrier_world()
  stop 'FBFB devel ENOUGH'
 end subroutine gw_selfenergy_analytic
