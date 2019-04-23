@@ -78,6 +78,91 @@ end function eri_eigen_ri_paral
 
 !=================================================================
 subroutine calculate_eri_4center_eigen(c_matrix,istate,ijspin,eri_eigenstate_i)
+#if defined(DISABLE_PERM_SYMM) || defined(DISABLE_PERM_SYMM_4CENTER)
+ implicit none
+
+! integer,intent(in)     :: nbf,nstate
+! integer,intent(in)     :: istate,ijspin
+! real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
+! real(dp),intent(inout) :: eri_eigenstate_i(nstate,nstate,nstate,nspin)
+ integer,intent(in)     :: istate,ijspin
+ real(dp),intent(in)    :: c_matrix(:,:,:)
+ real(dp),intent(inout) :: eri_eigenstate_i(:,:,:,:)
+!=====
+ integer              :: nbf,nstate
+ integer,save         :: istate_previous=0
+ integer,save         :: ijspin_previous=0
+ integer              :: klspin
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: jstate,kstate,lstate
+ real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
+!=====
+
+ ! ymbyun 2019/04/15
+ ! NOTE: This is a change in MOLGW 2.
+ nbf    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(c_matrix,DIM=2)
+
+ ! Check if the calculation can be skipped
+ if( istate_previous == istate .AND. ijspin_previous == ijspin .AND. ANY(ABS(eri_eigenstate_i(:,:,:,:))>1.0e-6_dp) ) then
+   return
+ else
+   istate_previous = istate
+   ijspin_previous = ijspin
+ endif
+
+
+ call start_clock(timing_eri_4center_eigen)
+
+ allocate(eri_tmp1(nbf,nstate))
+ call clean_allocate('TMP array',eri_tmp2,nbf,nbf,nbf)
+ call clean_allocate('TMP array',eri_tmp3,nbf,nbf,nbf)
+
+ eri_tmp3(:,:,:) = 0.0_dp
+ eri_eigenstate_i(:,:,:,:) = 0.0_dp
+
+ ! COLLAPSE is added because nbf and nstate can be smaller than # of threads (e.g. 272 threads on NERSC Cori-KNL).
+ !$OMP PARALLEL DO COLLAPSE(2)
+ do lbf=1,nbf
+   do kbf=1,nbf
+     do jbf=1,nbf
+       do ibf=1,nbf
+         eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin)
+       enddo
+     enddo
+   enddo
+ enddo
+ !$OMP END PARALLEL DO
+
+ do lbf=1,nbf
+   call DGEMM('T','N',nstate,nbf,nbf,1.0d0,c_matrix(1,1,ijspin),nbf, &
+                                           eri_tmp3(1,1,lbf),nbf,    &
+                                     0.0d0,eri_tmp2(1,1,lbf),nbf)
+ enddo
+
+ do klspin=1,nspin
+   do lbf=1,nbf
+     call DGEMM('N','N',nstate,nstate,nbf,1.0d0,eri_tmp2(1,1,lbf),nbf,    &
+                                                c_matrix(1,1,klspin),nbf, &
+                                          0.0d0,eri_tmp3(1,1,lbf),nbf)
+   enddo
+
+   do lstate=1,nstate
+     eri_tmp1(:,:) = TRANSPOSE( eri_tmp3(1:nstate,lstate,1:nbf) )
+
+     call DGEMM('T','N',nstate,nstate,nbf,1.0d0,eri_tmp1,nbf,              &
+                                                c_matrix(1,1,klspin),nbf,  &
+                                          0.0d0,eri_eigenstate_i(1,1,lstate,klspin),nstate)
+
+   enddo
+ enddo !klspin
+
+ deallocate(eri_tmp1)
+ call clean_deallocate('TMP array',eri_tmp2)
+ call clean_deallocate('TMP array',eri_tmp3)
+
+ call stop_clock(timing_eri_4center_eigen)
+#else
  implicit none
 
  integer,intent(in)     :: istate,ijspin
@@ -206,12 +291,88 @@ subroutine calculate_eri_4center_eigen(c_matrix,istate,ijspin,eri_eigenstate_i)
  call clean_deallocate('TMP array',eri_tmp3)
 
  call stop_clock(timing_eri_4center_eigen)
+#endif
 
 end subroutine calculate_eri_4center_eigen
 
 
 !=================================================================
 subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
+#if defined(DISABLE_PERM_SYMM) || defined(DISABLE_PERM_SYMM_4CENTER_UKS)
+ implicit none
+
+ real(dp),intent(in)    :: c_matrix(:,:,:)
+ integer,intent(in)     :: nstate_min,nstate_max
+!=====
+ integer              :: nbf,nstate
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: istate,jstate
+ real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
+ integer,allocatable  :: id(:)
+!=====
+
+ write(stdout,'(/,1x,a)') 'Calculate all the 4-center MO integrals at once'
+
+ if( nspin /= 1 ) call die('calculate_eri_4center_eigen_uks: requires spin-restricted calculation')
+
+ nbf    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(c_matrix,DIM=2)
+
+ call start_clock(timing_eri_4center_eigen)
+
+ call clean_allocate('4-center MO integrals',eri_4center_eigen_uks, &
+                     nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max)
+ eri_4center_eigen_uks(:,:,:,:) = 0.0_dp
+
+ allocate(eri_tmp3(nbf,nbf,nbf),eri_tmp2(nstate_min:nstate_max,nbf,nbf),eri_tmp1(nstate_min:nstate_max,nbf))
+
+ allocate(id(nbf))
+ forall(ibf=1:nbf)
+   id(ibf) = ibf
+ end forall
+
+ do istate=nstate_min,nstate_max
+   if( MODULO( istate - nstate_min , nproc_ortho ) /= rank_ortho ) cycle
+
+! ymbyun 2019/04/15
+! NOTE: Intel OpenMP parallelizes MATMUL, but does not DOT_PRODUCT.
+! NOTE: This is a new subroutine in MOLGW 2.
+!       I blindly copied and pasted this subroutine without understanding what it does.
+!       This subroutine can be BLAS-ificated later.
+
+!$OMP PARALLEL
+!$OMP DO PRIVATE(lbf,kbf,jbf) COLLAPSE(2)
+   do lbf=1,nbf
+     do kbf=1,nbf
+       do jbf=1,nbf
+         eri_tmp3(jbf,kbf,lbf) = DOT_PRODUCT( c_matrix(1:nbf,istate,1) ,  eri(id(1:nbf),jbf,kbf,lbf) )
+       enddo
+     enddo
+   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+   do lbf=1,nbf
+     eri_tmp2(nstate_min:nstate_max,1:nbf,lbf) = MATMUL( TRANSPOSE(c_matrix(:,nstate_min:nstate_max,1)) , eri_tmp3(:,1:nbf,lbf) )
+   enddo
+
+   do jstate=nstate_min,nstate_max
+     eri_tmp1(nstate_min:nstate_max,1:nbf) = MATMUL( TRANSPOSE(c_matrix(:,nstate_min:nstate_max,1)) ,  eri_tmp2(jstate,:,1:nbf) )
+
+     eri_4center_eigen_uks(istate,jstate,nstate_min:nstate_max,nstate_min:nstate_max) =   &
+                       MATMUL( eri_tmp1(:,:) , c_matrix(:,nstate_min:nstate_max,1) )
+   enddo
+
+ enddo
+
+ call xsum_ortho(eri_4center_eigen_uks)
+
+
+ deallocate(eri_tmp1,eri_tmp2,eri_tmp3)
+ deallocate(id)
+
+ call stop_clock(timing_eri_4center_eigen)
+#else
  implicit none
 
  real(dp),intent(in)    :: c_matrix(:,:,:)
@@ -336,6 +497,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
  call xsum_ortho(eri_4center_eigen_uks)
 
  call stop_clock(timing_eri_4center_eigen)
+#endif
 
 end subroutine calculate_eri_4center_eigen_uks
 
