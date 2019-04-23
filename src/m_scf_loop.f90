@@ -23,7 +23,7 @@ contains
 subroutine scf_loop(is_restart,&
                     basis,&
                     nstate,m_ham,n_ham,m_c,n_c,&
-                    s_matrix_sqrt_inv,s_matrix,&
+                    x_matrix,s_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
                     occupation, &
                     energy, &
@@ -42,13 +42,14 @@ subroutine scf_loop(is_restart,&
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
  use m_selfenergy_tools
+ use m_dm_mbpt
  implicit none
 
 !=====
  logical,intent(in)                 :: is_restart
  type(basis_set),intent(in)         :: basis
  integer,intent(in)                 :: nstate,m_ham,n_ham,m_c,n_c
- real(dp),intent(in)                :: s_matrix_sqrt_inv(m_c,n_c)
+ real(dp),intent(in)                :: x_matrix(m_c,n_c)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
  real(dp),intent(in)                :: hamiltonian_kinetic(m_ham,n_ham)
  real(dp),intent(in)                :: hamiltonian_nucleus(m_ham,n_ham)
@@ -58,9 +59,8 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
 !=====
  type(spectral_function)    :: wpol
- type(energy_contributions) :: en_dm_corr
  character(len=64)       :: restart_filename
- logical                 :: is_converged,stopfile_found,density_matrix_found
+ logical                 :: is_converged,stopfile_found
  integer                 :: file_density_matrix
  integer                 :: ispin,iscf,istate
  integer                 :: restart_type
@@ -71,18 +71,10 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
- real(dp),allocatable    :: p_matrix_corr(:,:,:)
- real(dp),allocatable    :: hamiltonian_hartree_corr(:,:)
- real(dp),allocatable    :: hamiltonian_exx_corr(:,:,:)
  real(dp),allocatable    :: hfock_restart(:,:,:)
  real(dp),allocatable    :: c_matrix_restart(:,:,:)
- real(dp),allocatable    :: c_matrix_tmp(:,:,:)
- real(dp),allocatable    :: occupation_tmp(:,:)
  real(dp)                :: hartree_ii(nstate,nspin),exchange_ii(nstate,nspin)
  real(dp)                :: energy_restart(nstate,nspin)
-!=====
- real(dp),allocatable    :: energy_exx(:,:)
- real(dp),allocatable    :: c_matrix_exx(:,:,:)
 !=====
 
 
@@ -291,7 +283,7 @@ subroutine scf_loop(is_restart,&
    endif
 
    ! DIIS or simple mixing on the hamiltonian
-   call hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,hamiltonian)
+   call hamiltonian_prediction(s_matrix,x_matrix,p_matrix,hamiltonian)
 
 
    !
@@ -300,10 +292,10 @@ subroutine scf_loop(is_restart,&
    ! H \varphi = E S \varphi
    ! save the old eigenvalues
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(desc_ham,hamiltonian,desc_c,s_matrix_sqrt_inv,energy,c_matrix)
+     call diagonalize_hamiltonian_sca(desc_ham,hamiltonian,desc_c,x_matrix,energy,c_matrix)
    else
      ! This subroutine works with or without scalapack
-     call diagonalize_hamiltonian_scalapack(hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+     call diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matrix)
    endif
 
    !
@@ -439,133 +431,8 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Is there a correlated density matrix to be read or to be calculated
- if( read_fchk /= 'NO' .OR. TRIM(pt_density_matrix) /= 'NO' .OR. use_correlated_density_matrix_ ) then
-
-   call clean_allocate('Correlated density matrix',p_matrix_corr,basis%nbf,basis%nbf,nspin)
-   call clean_allocate('Correlated Hartree potential',hamiltonian_hartree_corr,basis%nbf,basis%nbf)
-   call clean_allocate('Correlated exchange operator',hamiltonian_exx_corr,basis%nbf,basis%nbf,nspin)
-   p_matrix_corr(:,:,:) = 0.0_dp
-
-   !
-   ! Three possibilities: read_fchk , pt_density_matrix, DENSITY_MATRIX
-   !
-
-   ! Option 1:
-   ! Is there a Gaussian formatted checkpoint file to be read?
-   if( read_fchk /= 'NO') call read_gaussian_fchk(read_fchk,'gaussian.fchk',basis,p_matrix_corr)
-
-   ! Option 2:
-   ! Calculate a MBPT density matrix if requested
-   select case(TRIM(pt_density_matrix))
-   case('ONE-RING')
-     ! This keyword calculates the 1-ring density matrix as it is derived in PT2 theory
-     call selfenergy_set_state_range(nstate,occupation)
-     call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
-     call onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_corr)
-   case('PT2')
-     ! This keyword calculates the PT2 density matrix as it is derived in PT2 theory (differs from MP2 density matrix)
-     call selfenergy_set_state_range(nstate,occupation)
-     call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
-     call pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_corr)
-   case('GW')
-     ! This keyword calculates the GW density matrix as it is derived in the new GW theory
-     call init_spectral_function(nstate,occupation,0,wpol)
-     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
-     call selfenergy_set_state_range(nstate,occupation)
-     call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
-     call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
-     call destroy_spectral_function(wpol)
-   case('GW_IOMEGA')
-     ! This keyword calculates the GW density matrix as it is derived in the new GW theory
-     !calc_type%selfenergy_technique = imaginary_axis
-     call init_spectral_function(nstate,occupation,nomega_imag,wpol)
-     call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
-     call selfenergy_set_state_range(nstate,occupation)
-     call fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hamiltonian_exx,hamiltonian_xc,p_matrix_corr)
-     call gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
-   end select
-
-
-   ! Option 3:
-   ! If no p_matrix_corr is present yet, then try to read it from a DENSITY_MATRIX file
-   if( ALL( ABS(p_matrix_corr(:,:,:)) < 0.01_dp ) ) then
-     inquire(file='DENSITY_MATRIX',exist=density_matrix_found)
-     if( density_matrix_found) then
-       write(stdout,'(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX'
-       open(newunit=file_density_matrix,file='DENSITY_MATRIX',form='unformatted',action='read')
-       do ispin=1,nspin
-         read(file_density_matrix) p_matrix_corr(:,:,ispin)
-       enddo
-       close(file_density_matrix)
-     else
-       call die('m_scf_loop: no correlated density matrix read or calculated though input file suggests you really want one')
-     endif
-
-   endif
-
-   if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
-
-     en_dm_corr%nuc_nuc = en%nuc_nuc
-     en_dm_corr%kin = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
-     en_dm_corr%nuc = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
-
-     call calculate_hartree(basis,p_matrix_corr,hamiltonian_hartree_corr,eh=en_dm_corr%hart)
-
-     call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=en_dm_corr%exx)
-
-     en_dm_corr%tot = en_dm_corr%nuc_nuc + en_dm_corr%kin + en_dm_corr%nuc +  en_dm_corr%hart + en_dm_corr%exx
-     write(stdout,'(/,1x,a)') 'Energies from correlated density matrix'
-     write(stdout,'(a25,1x,f19.10)')   'Kinetic Energy (Ha):',en_dm_corr%kin
-     write(stdout,'(a25,1x,f19.10)')   'Nucleus Energy (Ha):',en_dm_corr%nuc
-     write(stdout,'(a25,1x,f19.10)')   'Hartree Energy (Ha):',en_dm_corr%hart
-     write(stdout,'(a25,1x,f19.10)')  'Exchange Energy (Ha):',en_dm_corr%exx
-     write(stdout,'(a25,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%tot
-
-     do ispin=1,nspin
-       do istate=1,nstate
-          hartree_ii(istate,ispin)  =  DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                                    MATMUL( hamiltonian_hartree_corr(:,:) , c_matrix(:,istate,ispin) ) )
-          exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                                    MATMUL( hamiltonian_exx_corr(:,:,ispin) , c_matrix(:,istate,ispin) ) )
-       enddo
-     enddo
-     call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',nstate,nspin,occupation,hartree_ii)
-     call dump_out_energy('=== Exchange expectation value from correlated density matrix ===',nstate,nspin,occupation,exchange_ii)
-   endif
-
-   if( print_multipole_ .OR. print_cube_ ) then
-     allocate(c_matrix_tmp,MOLD=p_matrix)
-     allocate(occupation_tmp(basis%nbf,nspin))
-     call get_c_matrix_from_p_matrix(p_matrix_corr,c_matrix_tmp,occupation_tmp)
-     if( print_multipole_ ) then
-       call static_dipole(basis%nbf,basis,occupation_tmp,c_matrix_tmp)
-       call static_quadrupole(basis%nbf,basis,occupation_tmp,c_matrix_tmp)
-     endif
-     if( print_cube_ ) then
-       call plot_cube_wfn('MBPT',basis%nbf,basis,occupation_tmp,c_matrix_tmp)
-     endif
-     deallocate(c_matrix_tmp)
-     deallocate(occupation_tmp)
-   endif
-
-   if( use_correlated_density_matrix_ ) then
-     !
-     ! Since the density matrix p_matrix is updated,
-     ! one needs to recalculate the hartree and the exchange potentials
-     ! let us include the old hartree in hamiltonian_xc and the new one in hamiltonian_exchange
-     do ispin=1,nspin
-       hamiltonian_xc(:,:,ispin)  = hamiltonian_xc(:,:,ispin) + hamiltonian_hartree(:,:)
-       hamiltonian_exx(:,:,ispin) = hamiltonian_exx_corr(:,:,ispin) + hamiltonian_hartree_corr(:,:)
-     enddo
-
-   endif
-
-   write(stdout,*)
-   call clean_deallocate('Correlated density matrix',p_matrix_corr)
-   call clean_deallocate('Correlated Hartree potential',hamiltonian_hartree_corr)
-   call clean_deallocate('Correlated exchange operator',hamiltonian_exx_corr)
-
- endif
+ if( read_fchk /= 'NO' .OR. TRIM(pt_density_matrix) /= 'NO' .OR. use_correlated_density_matrix_ ) &
+   call get_dm_mbpt(basis,occupation,energy,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
 
  !
  ! Form the Fock matrix and store it
@@ -615,35 +482,6 @@ subroutine scf_loop(is_restart,&
  !
  ! Evaluate spin contamination
  if( .NOT. parallel_ham ) call evaluate_s2_operator(occupation,c_matrix,s_matrix)
-
-
- ! A dirty section for the Luttinger-Ward functional
- if(calc_type%selfenergy_approx==LW .OR. calc_type%selfenergy_approx==LW2 .OR. calc_type%selfenergy_approx==GSIGMA) then
-   allocate(energy_exx(nstate,nspin))
-   allocate(c_matrix_exx(basis%nbf,nstate,nspin))
-   call issue_warning('m_scf_loop: ugly coding here write temp file fort.1000 and fort.1001')
-   call assert_experimental()
-
-   do ispin=1,nspin
-     write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
-     call diagonalize_generalized_sym(hamiltonian_fock(:,:,ispin),s_matrix(:,:),&
-                                      energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
-   enddo
-   write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
-   write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
-   open(1000,form='unformatted')
-   do ispin=1,nspin
-     do istate=1,nstate
-       write(1000) c_matrix_exx(:,istate,ispin)
-     enddo
-   enddo
-   close(1000)
-   open(1001,form='unformatted')
-   write(1001) energy_exx(:,:)
-   close(1001)
-   deallocate(energy_exx,c_matrix_exx)
- endif
-
 
 
  !
@@ -926,7 +764,6 @@ subroutine form_c_matrix_global(nbf,nstate,c_matrix)
  write(stdout,'(1x,a)') 'C matrix on all procs formed'
 
 end subroutine form_c_matrix_global
-
 
 
 !=========================================================================

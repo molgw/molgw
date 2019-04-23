@@ -11,6 +11,7 @@ module m_selfenergy_tools
  use m_warning
  use m_mpi
  use m_inputparam
+ use m_tools,only: coeffs_gausslegint
 
  !
  ! frozen core approximation parameters
@@ -33,6 +34,7 @@ module m_selfenergy_tools
    integer                 :: nomegai
    complex(dp),allocatable :: omega(:)
    complex(dp),allocatable :: omegai(:)
+   real(dp),allocatable    :: weighti(:)
    real(dp),allocatable    :: energy0(:,:)
    complex(dp),allocatable :: sigma(:,:,:)
    complex(dp),allocatable :: sigmai(:,:,:)
@@ -48,7 +50,7 @@ subroutine selfenergy_set_state_range(nstate_in,occupation)
  integer             :: nstate_in
  real(dp),intent(in) :: occupation(:,:)
 !=====
- integer :: istate
+ integer :: pstate
 !=====
 
  if( nstate_in > SIZE( occupation(:,:) , DIM=1 ) ) then
@@ -74,9 +76,9 @@ subroutine selfenergy_set_state_range(nstate_in,occupation)
 
  ! Find the HOMO index
  nhomo_G = 1
- do istate=1,nstate_in
-   if( .NOT. ANY( occupation(istate,:) < completely_empty ) ) then
-     nhomo_G = MAX(nhomo_G,istate)
+ do pstate=1,nstate_in
+   if( .NOT. ANY( occupation(pstate,:) < completely_empty ) ) then
+     nhomo_G = MAX(nhomo_G,pstate)
    endif
  enddo
 
@@ -434,7 +436,10 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  real(dp),intent(in)                 :: energy0(:,:)
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer :: iomega,pstate
+ real(dp),parameter   :: alpha=1.0_dp
+ real(dp),parameter   :: beta=1.0_dp
+ integer              :: iomega,pstate
+ real(dp),allocatable :: omega_gaussleg(:)
 !=====
 
  se%nomegai = 0
@@ -447,7 +452,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    allocate(se%omega(-se%nomega:se%nomega))
    se%omega(0) = 0.0_dp
 
- case(imaginary_axis)
+ case(imaginary_axis_pade)
    !
    ! Set the final sampling points for Sigma on the real axis
    se%nomega = nomega_sigma/2
@@ -464,20 +469,37 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
      se%omegai(iomega) = step_sigma * iomega * im * 3.0_dp
    enddo
 
+ case(imaginary_axis_integral)
+   !
+   ! No final sampling points for Sigma on the real axis
+   se%nomega = 0
+   allocate(se%omega(-se%nomega:se%nomega))
+   !
+   ! Set the calculated sampling points for Sigma on the imaginary axis
+   ! so to have a Gauss-Legendre type quadrature
+   se%nomegai = nomega_sigma
+   allocate(se%omegai(se%nomegai))
+   allocate(se%weighti(se%nomegai))
+   allocate(omega_gaussleg(se%nomegai))
+   call coeffs_gausslegint(0.0_dp,1.0_dp,omega_gaussleg,se%weighti,se%nomegai)
+
+   ! Variable change [0,1] -> [0,+\inf[
+   do iomega=1,se%nomegai
+     se%weighti(iomega) = se%weighti(iomega) / ( 2.0_dp**alpha - 1.0_dp ) &
+                                 * alpha * (1.0_dp -  omega_gaussleg(iomega))**(-alpha-1.0_dp) * beta
+     se%omegai(iomega)  = im / ( 2.0_dp**alpha - 1.0_dp ) &
+                               * ( 1.0_dp / (1.0_dp - omega_gaussleg(iomega))**alpha - 1.0_dp ) * beta
+   enddo
+   deallocate(omega_gaussleg)
 
  case(one_shot)
-   select case(calc_type%selfenergy_approx)
-   case(GSIGMA)
-     se%nomega = 1
-
-   case default
-     se%nomega = nomega_sigma/2
-     allocate(se%omega(-se%nomega:se%nomega))
-     do iomega=-se%nomega,se%nomega
-       se%omega(iomega) = step_sigma * iomega
-     enddo
-
-   end select
+   !
+   ! Most standard case:
+   se%nomega = nomega_sigma/2
+   allocate(se%omega(-se%nomega:se%nomega))
+   do iomega=-se%nomega,se%nomega
+     se%omega(iomega) = step_sigma * iomega
+   enddo
 
  end select
 
@@ -487,7 +509,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  allocate(se%energy0(nsemin:nsemax,nspin))
 
  select case(selfenergy_technique)
- case(imaginary_axis)
+ case(imaginary_axis_pade)
    ! Find the center of the HOMO-LUMO gap
    forall(pstate=nsemin:nsemax)
      se%energy0(pstate,:) = 0.5_dp * ( energy0(nhomo_G,:) + energy0(nhomo_G+1,:) )
@@ -500,10 +522,9 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  ! Set the central point of the grid
  allocate(se%sigma(-se%nomega:se%nomega,nsemin:nsemax,nspin))
  select case(selfenergy_technique)
- case(imaginary_axis)
+ case(imaginary_axis_pade,imaginary_axis_integral)
    allocate(se%sigmai(-se%nomegai:se%nomegai,nsemin:nsemax,nspin))
  end select
-
 
 end subroutine init_selfenergy_grid
 
@@ -520,39 +541,37 @@ subroutine destroy_selfenergy_grid(se)
  if( ALLOCATED(se%omegai) ) deallocate(se%omegai)
  deallocate(se%energy0)
  deallocate(se%sigma)
- if( ALLOCATED(se%sigmai) ) deallocate(se%sigmai)
+ if( ALLOCATED(se%sigmai) )  deallocate(se%sigmai)
+ if( ALLOCATED(se%weighti) ) deallocate(se%weighti)
 
 end subroutine destroy_selfenergy_grid
 
 
 !=========================================================================
-subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
+subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
  use m_hamiltonian_wrapper
  implicit none
 
- type(basis_set),intent(in)    :: basis
- real(dp),intent(in)           :: occupation(:,:)
- real(dp),intent(in)           :: energy(:,:)
- real(dp),intent(in)           :: c_matrix(:,:,:)
- real(dp),intent(in)           :: hamiltonian_fock(:,:,:)
- real(dp),intent(out)          :: exchange_m_vxc_diag(:,:)
- real(dp),intent(out),optional :: exchange_m_vxc(:,:,:)
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: energy(:,:)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: hamiltonian_fock(:,:,:)
+ real(dp),intent(out)       :: exchange_m_vxc(:,:,:)
 !=====
  integer,parameter    :: BATCH_SIZE = 128
  integer              :: nstate
- integer              :: ispin,istate
+ integer              :: ispin,pstate
  real(dp)             :: exc
  real(dp),allocatable :: occupation_tmp(:,:)
  real(dp),allocatable :: p_matrix_tmp(:,:,:)
  real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
 !=====
 
- if( PRESENT(exchange_m_vxc) ) then
-   write(stdout,*) 'Calculate the full \Sigma_x - Vxc matrix'
- endif
+ write(stdout,*) 'Calculate the (Sigma_x - Vxc) matrix'
 
  nstate = SIZE(occupation,DIM=1)
 
@@ -591,45 +610,24 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
    deallocate(occupation_tmp,p_matrix_tmp)
 
    !
-   ! Calculate the matrix Sigma_x - Vxc or its diagonal
+   ! Calculate the matrix Sigma_x - Vxc
    ! for the forthcoming GW corrections
    !
-   if( PRESENT(exchange_m_vxc) ) then
-     call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
-   endif
-   do ispin=1,nspin
-     do istate=1,nstate
-        exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
-                                                MATMUL( hxmxc(:,:,ispin) , c_matrix(:,istate,ispin) ) )
-     enddo
-   enddo
-
+   call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
 
    deallocate(hxc_val,hexx_val,hxmxc)
 
  else
 
    !
-   ! Calculate the matrix Sigma_x - Vxc or its diagonal
-   ! for the forthcoming GW corrections
-   !
+   ! Calculate the matrix < p | Sigma_x - Vxc | q >
+   ! this is equal to < p | F - H | q > and < p | H | q > = e_p \delta_{pq}
 
-   if( PRESENT(exchange_m_vxc) ) then
-     do ispin=1,nspin
-        !exchange_m_vxc(:,:,ispin) =  MATMUL( TRANSPOSE(c_matrix(:,:,ispin)) , &
-        !                                     MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,:,ispin) ) )
-        call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
+   call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
 
-       do istate=1,nstate
-         exchange_m_vxc(istate,istate,ispin) = exchange_m_vxc(istate,istate,ispin) - energy(istate,ispin)
-       enddo
-     enddo
-   endif
    do ispin=1,nspin
-     do istate=1,nstate
-        exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
-                                                MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,istate,ispin) ) ) &
-                                              - energy(istate,ispin)
+     do pstate=1,nstate
+       exchange_m_vxc(pstate,pstate,ispin) = exchange_m_vxc(pstate,pstate,ispin) - energy(pstate,ispin)
      enddo
    enddo
 

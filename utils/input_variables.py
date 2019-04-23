@@ -897,59 +897,11 @@ vl[i].comment  ='Sets the number of processors left to parallelize on other dire
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='alpha_cohsex'
-vl[i].family   ='post'
-vl[i].default  =1.0
-vl[i].datatype ='real'
-vl[i].comment  ='Sets the amount of static Screened EXchange in the self-energy. Only works with scf=\'COHSEX\' or with postscf=\'COHSEX\'.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='beta_cohsex'
-vl[i].family   ='post'
-vl[i].default  =1.0
-vl[i].datatype ='real'
-vl[i].comment  ='Sets the amount of static COulomb Hole in the self-energy. Only works with scf=\'COHSEX\' or with postscf=\'COHSEX\'.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
 vl[i].keyword  ='dft_core'
 vl[i].family   ='post'
 vl[i].default  =0
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the number of states considered as core in &lt;&Sigma;<sub>x</sub>-<i>v</i><sub>xc</sub>&gt. This options is meant to mimic the pseudopotential approximation.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='gamma_cohsex'
-vl[i].family   ='post'
-vl[i].default  =0.0
-vl[i].datatype ='real'
-vl[i].experimental  ='yes'
-vl[i].comment  ='EXPERIMENTAL'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='delta_cohsex'
-vl[i].family   ='post'
-vl[i].default  =0.0
-vl[i].datatype ='real'
-vl[i].experimental  ='yes'
-vl[i].comment  ='EXPERIMENTAL'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='epsilon_cohsex'
-vl[i].family   ='post'
-vl[i].default  =0.0
-vl[i].datatype ='real'
-vl[i].experimental  ='yes'
-vl[i].comment  ='EXPERIMENTAL'
 
 #================================
 vl.append(variable())

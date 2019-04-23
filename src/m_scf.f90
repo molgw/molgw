@@ -138,10 +138,10 @@ end subroutine destroy_scf
 
 
 !=========================================================================
-subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+subroutine hamiltonian_prediction(s_matrix,x_matrix,p_matrix,ham)
  implicit none
  real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
- real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
+ real(dp),intent(in)    :: x_matrix(m_c_scf,n_c_scf)
  real(dp),intent(inout) :: p_matrix(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
@@ -188,7 +188,7 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  ! Standard Pulay DIIS prediction here !
  if( mixing_scheme /= 'SIMPLE' ) then
-   call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+   call diis_prediction(s_matrix,x_matrix,p_matrix,ham)
  else
    call simple_prediction(p_matrix,ham)
  endif
@@ -228,10 +228,10 @@ end subroutine simple_prediction
 
 
 !=========================================================================
-subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
  implicit none
  real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
- real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
+ real(dp),intent(in)    :: x_matrix(m_c_scf,n_c_scf)
  real(dp),intent(inout) :: p_matrix(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
@@ -261,7 +261,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! Calculate the new residual as proposed in
  ! P. Pulay, J. Comput. Chem. 3, 554 (1982).
  !
- !  R =  U^T * [ H * P * S - S * P * H ] * U
+ !  R =  X^T * [ H * P * S - S * P * H ] * X
 
  if( parallel_ham ) then
 
@@ -293,12 +293,12 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
        deallocate(matrix_tmp1)
        allocate(matrix_tmp1(m_c_scf,n_c_scf))
 
-       ! M1 = M2 * U
+       ! M1 = M2 * X
        call PDGEMM('N','N',nbf_scf,nstate_scf,nbf_scf,1.0_dp,matrix_tmp2,1,1,desc_ham,      &
-                   s_matrix_sqrt_inv,1,1,desc_c,0.0_dp,matrix_tmp1,1,1,desc_c)
+                   x_matrix,1,1,desc_c,0.0_dp,matrix_tmp1,1,1,desc_c)
 
-       ! R = U^T * M1
-       call PDGEMM('T','N',nstate_scf,nstate_scf,nbf_scf,1.0_dp,s_matrix_sqrt_inv,1,1,desc_c,      &
+       ! R = X^T * M1
+       call PDGEMM('T','N',nstate_scf,nstate_scf,nbf_scf,1.0_dp,x_matrix,1,1,desc_c,      &
                    matrix_tmp1,1,1,desc_c,0.0_dp,res_hist(:,:,ispin,1),1,1,desc_r)
 
 
@@ -326,9 +326,9 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      matrix_tmp1(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
 
      !
-     ! R = U^T * M1 * U
-     ! Remeber that S = U * U^T
-     call matmul_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv,matrix_tmp1,res_hist(:,:,ispin,1))
+     ! R = X^T * M1 * X
+     ! Remeber that S**-1 = X * X^T
+     call matmul_transaba_scalapack(scalapack_block_min,x_matrix,matrix_tmp1,res_hist(:,:,ispin,1))
 
    enddo
 

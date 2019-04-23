@@ -273,7 +273,11 @@ MP2 Total Energy          ,    -14.5997371900  , 0 , 1.0e-7
 gKS HOMO energy           ,     -8.817876      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.203606      , 0 , 1.0e-4
 
-be_cohsex.in              , self-consistent COHSEX Be atom cc-pVDZ with RI
+be_cohsex_nori.in         , self-consistent COHSEX Be atom cc-pVDZ without RI
+gKS HOMO energy           ,     -9.681301      , 0 , 1.0e-4
+gKS LUMO energy           ,      1.134290      , 0 , 1.0e-4
+
+be_cohsex_ri.in           , self-consistent COHSEX Be atom cc-pVDZ with RI
 gKS HOMO energy           ,     -9.681476      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.133775      , 0 , 1.0e-4
 
@@ -671,6 +675,10 @@ GW LUMO energy            ,      4.073908       , 0 , 1.0e-4
 
 co_gw_dm.in               , G0W0 based on G0W0 density matrix
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+Kinetic Energy            ,    112.6578090099   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.8366546783   , 0 , 1.0e-7
+Hartree Energy            ,     75.7940290895   , 0 , 1.0e-7
+Exchange Energy           ,    -13.2091549910   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
 GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
 
@@ -682,4 +690,14 @@ co_gw_pt2_dm.in           , G0W0 based on PT2 density matrix
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.500329       , 0 , 1.0e-4
 GW LUMO energy            ,      3.390125       , 0 , 1.0e-4
+
+co_gw_dm_imag.in          , G0W0 based on G0W0 density matrix using an imaginary axis integration, noparallel
+SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
+Kinetic Energy            ,    112.6561304107   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.8313153540   , 0 , 1.0e-7
+Hartree Energy            ,     75.7898390921   , 0 , 1.0e-7
+Exchange Energy           ,    -13.2088773886   , 0 , 1.0e-7
+
+
+
 
