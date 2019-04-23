@@ -215,7 +215,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer              :: mstate,jstate
  integer              :: irecord
  integer              :: fu,info
- integer              :: mlocal,ilocal
+ integer              :: mlocal,nlocal,ilocal,jlocal,iglobal,jglobal
  integer              :: desc_wing(NDEL),desc_eri(NDEL),desc_wpol(NDEL)
  integer              :: desc_matrix(NDEL)
 !=====
@@ -267,7 +267,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  allocate(matrix_diag(mwing))
  matrix_head(:,:) = 0.0_dp
  matrix_wing(:,:) = 0.0_dp
- matrix_diag(:) = 0.0_dp
+ matrix_diag(:)   = 0.0_dp
 
  matrix_head(:,:) = exchange_m_vxc(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1,1)  ! spin index set to 1
 
@@ -339,8 +339,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  do jmat=1,mstate
    do ilocal=1,mlocal
      imat = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-     write(fu,'(1x,i5,1x,i5,1x,e14.6)') mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
-     if( mstate+imat == 319 .AND. jmat == 11 ) write(12,*) 'aaa',ilocal,imat,mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
+     write(fu,'(1x,i6,1x,i6,1x,e14.6)') mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
    enddo
  enddo
  close(fu)
@@ -348,18 +347,54 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  !
  ! If the matrix is small enough, then diagonalize it!
- if( nmat < 100 ) then
+ if( nmat < 5000 ) then
 
    allocate(eigval(nmat))
 
-!#if defined(HAVE_SCALAPACK)
-!   write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense with SCALAPACK'
-!   mlocal = NUMROC(nmat,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-!   nlocal = NUMROC(nmat,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
-!   call DESCINIT(desc_matrix,nmat,nmat,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
-!   call clean_allocate('Huge matrix',matrix,mlocal,nlocal)
-!   call diagonalize_sca('R',matrix,desc_matrix,eigval)
-!#else
+#if defined(HAVE_SCALAPACK)
+   write(stdout,'(1x,a,i4,a,i4)') 'Diagonalize the big sparse matrix as if it were dense with SCALAPACK with distribution: ', &
+                                  nprow_sd,' x ',npcol_sd
+   mlocal = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+   nlocal = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
+   call DESCINIT(desc_matrix,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+   call clean_allocate('Huge matrix',matrix,mlocal,nlocal)
+   matrix(:,:) = 0.0_dp
+
+   write(stdout,*) 'Start copy wing block'
+   call PDGEMR2D(mwing,mstate,matrix_wing,1,1,desc_wing,matrix,mstate+1,1,desc_matrix,cntxt_sd)
+   write(stdout,*) 'copy done'
+
+   write(stdout,*) 'Set head block'
+   do jglobal=1,mstate
+     if( INDXG2P(jglobal,block_col,ipcol_sd,first_col,npcol_sd) /= ipcol_sd ) cycle
+     jlocal = INDXG2L(jglobal,block_col,ipcol_sd,first_col,npcol_sd)
+     do iglobal=1,mstate
+       if( INDXG2P(iglobal,block_row,iprow_sd,first_row,nprow_sd) /= iprow_sd ) cycle
+       ilocal = INDXG2L(iglobal,block_row,iprow_sd,first_row,nprow_sd)
+       matrix(ilocal,jlocal) = matrix_head(iglobal,jglobal)
+     enddo
+   enddo
+
+   write(stdout,*) 'Set big diagonal'
+   do iglobal=mstate+1,nmat
+     jglobal=iglobal
+     if( INDXG2P(iglobal,block_row,iprow_sd,first_row,nprow_sd) /= iprow_sd ) cycle
+     if( INDXG2P(jglobal,block_col,ipcol_sd,first_col,npcol_sd) /= ipcol_sd ) cycle
+     jlocal = INDXG2L(jglobal,block_col,ipcol_sd,first_col,npcol_sd)
+     ilocal = INDXG2L(iglobal,block_row,iprow_sd,first_row,nprow_sd)
+     matrix(ilocal,jlocal) = matrix_diag(iglobal-mstate)
+   enddo
+
+   write(stdout,*) 'Start diago'
+   call diagonalize_sca('R',matrix,desc_matrix,eigval)
+   write(stdout,*) 'Diago done'
+
+   write(stdout,*) '============== Poles in eV , weight ==============='
+   do imat=1,nmat
+     write(stdout,'(1x,f16.6,4x,f12.6)') eigval(imat)*Ha_eV
+   enddo
+
+#else
    write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense'
    call clean_allocate('Huge matrix',matrix,nmat,nmat)
    matrix(:,:)                    = 0.0_dp
@@ -370,7 +405,6 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      matrix(imat,imat) = matrix_diag(imat-mstate)
    enddo
    call diagonalize('R',matrix,eigval)
-!#endif
 
    write(stdout,'(1x,a,i8)') 'Number of poles: ',COUNT( SUM(matrix(1:mstate,:)**2,DIM=1) > 1.0e-3_dp )
    write(stdout,*) '============== Poles in eV , weight ==============='
@@ -385,6 +419,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=eigval(:)<0.0_dp)
    write(stdout,*) '==================================================='
 
+#endif
    call clean_deallocate('Huge matrix',matrix)
    deallocate(eigval)
 
