@@ -208,7 +208,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer              :: pstate,bstate
  integer              :: istate,ispin,ipole
  real(dp)             :: sign_i
- real(dp)             :: energy_gw
+ real(dp)             :: energy_gw,work(1),weight
  real(dp),allocatable :: matrix_wing(:,:),matrix_head(:,:),matrix_diag(:)
  real(dp),allocatable :: matrix(:,:),eigval(:)
  integer              :: nmat,mwing,imat,jmat
@@ -218,6 +218,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer              :: mlocal,nlocal,ilocal,jlocal,iglobal,jglobal
  integer              :: desc_wing(NDEL),desc_eri(NDEL),desc_wpol(NDEL)
  integer              :: desc_matrix(NDEL)
+ real(dp),external    :: PDLANGE
 !=====
 
  call start_clock(timing_gw_self)
@@ -328,18 +329,18 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  if( is_iomaster) then
    do jmat=1,mstate
      do imat=1,jmat
-       write(fu,'(1x,i6,1x,i6,1x,e14.6)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
+       write(fu,'(1x,i7,1x,i7,1x,e14.6)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
      enddo
    enddo
    do imat=1,mwing
-     write(fu,'(1x,i6,1x,i6,1x,e14.6)') imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
+     write(fu,'(1x,i7,1x,i7,1x,e14.6)') imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
    enddo
  endif
 
  do jmat=1,mstate
    do ilocal=1,mlocal
      imat = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-     write(fu,'(1x,i6,1x,i6,1x,e14.6)') mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
+     write(fu,'(1x,i7,1x,i7,1x,e14.6)') mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
    enddo
  enddo
  close(fu)
@@ -347,7 +348,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  !
  ! If the matrix is small enough, then diagonalize it!
- if( nmat < 5000 ) then
+ if( nmat < 9999 ) then
 
    allocate(eigval(nmat))
 
@@ -390,9 +391,16 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    write(stdout,*) 'Diago done'
 
    write(stdout,*) '============== Poles in eV , weight ==============='
-   do imat=1,nmat
-     write(stdout,'(1x,f16.6,4x,f12.6)') eigval(imat)*Ha_eV
+   open(newunit=fu,file='GREENS_FUNCTION',action='write')
+   do jmat=1,nmat
+     weight = PDLANGE('F',mstate,1,matrix,1,jmat,desc_matrix,work)**2
+     if( weight > 1.0e-3_dp ) then
+       write(stdout,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,weight
+     endif
+     write(fu,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,weight
    enddo
+   close(fu)
+   write(stdout,*) '==================================================='
 
 #else
    write(stdout,*) 'Diagonalize the big sparse matrix as if it were dense'
@@ -409,11 +417,11 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    write(stdout,'(1x,a,i8)') 'Number of poles: ',COUNT( SUM(matrix(1:mstate,:)**2,DIM=1) > 1.0e-3_dp )
    write(stdout,*) '============== Poles in eV , weight ==============='
    open(newunit=fu,file='GREENS_FUNCTION',action='write')
-   do pstate=1,nmat
-     if( SUM(matrix(1:mstate,pstate)**2) > 1.0e-3_dp ) then
-       write(stdout,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
+   do jmat=1,nmat
+     if( SUM(matrix(1:mstate,jmat)**2) > 1.0e-3_dp ) then
+       write(stdout,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,SUM(matrix(1:mstate,jmat)**2)
      endif
-     write(fu,'(1x,f16.6,4x,f12.6)') eigval(pstate)*Ha_eV,SUM(matrix(1:mstate,pstate)**2)
+     write(fu,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,SUM(matrix(1:mstate,jmat)**2)
    enddo
    close(fu)
    write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=eigval(:)<0.0_dp)
