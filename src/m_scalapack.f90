@@ -160,7 +160,7 @@ module m_scalapack
  end interface
 
 #ifdef HAVE_SCALAPACK
- integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P,PDLATRA,PDLAMCH,PDLANGE
+ integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P,PDLATRA,PDLAMCH
 #endif
 
 

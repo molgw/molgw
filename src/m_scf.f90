@@ -58,6 +58,9 @@ module m_scf
  end type
  type(energy_contributions) :: en
 
+#if defined(HAVE_SCALAPACK)
+ real(dp),external :: PDLANGE
+#endif
 
 contains
 
