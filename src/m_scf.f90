@@ -243,9 +243,6 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
  real(dp),allocatable   :: a_matrix_inv(:,:)
  real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
  real(dp)               :: residual,work(1)
-#ifdef HAVE_SCALAPACK
- real(dp),external      :: PDLANGE
-#endif
 !=====
 
  call start_clock(timing_diis)

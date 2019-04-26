@@ -218,7 +218,6 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer              :: mlocal,nlocal,ilocal,jlocal,iglobal,jglobal
  integer              :: desc_wing(NDEL),desc_eri(NDEL),desc_wpol(NDEL)
  integer              :: desc_matrix(NDEL)
- real(dp),external    :: PDLANGE
 !=====
 
  call start_clock(timing_gw_self)
