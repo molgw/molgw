@@ -698,6 +698,15 @@ Nucleus Energy            ,   -309.8313153540   , 0 , 1.0e-7
 Hartree Energy            ,     75.7898390921   , 0 , 1.0e-7
 Exchange Energy           ,    -13.2088773886   , 0 , 1.0e-7
 
+h2_dyson.in               , G0W0 with a analytic solution of the Dyson equation
+SCF Total Energy          ,     -1.1669981156   , 0 , 1.0e-7
+gKS HOMO energy           ,    -13.542791       , 0 , 1.0e-4
+gKS LUMO energy           ,      3.333788       , 0 , 1.0e-4
+Projection on state 00001 ,    -16.082106       , 0 , 1.0e-4
+Projection on state 00001 ,      0.941619       , 1 , 1.0e-4
+Projection on state 00002 ,      5.171425       , 0 , 1.0e-4
+Projection on state 00002 ,      0.987882       , 1 , 1.0e-4
+
 
 
 

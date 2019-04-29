@@ -428,36 +428,35 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    endif
 
 
+
    !
-   ! Output the quasiparticle energies, the self-energy etc.
+   ! Final output the quasiparticle energies, the self-energy etc.
    !
+
    if( print_sigma_ ) then
      call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),exchange_m_vxc_diag,occupation,energy_g,se)
    endif
 
-
    allocate(energy_qp_new(nstate,nspin))
 
-   if( calc_type%selfenergy_technique == EVSC ) then
+   select case(calc_type%selfenergy_technique)
+   case(EVSC)
      call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
      call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
-   else
-     select case(calc_type%selfenergy_approx)
-     case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,GW_IMAG,GWSOX,GWPT3)
-       allocate(energy_qp_z(nstate,nspin))
-       allocate(zz(nstate,nspin))
-       call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-       call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new)
+   case(exact_dyson)
+     ! Fake new QP energies in this case
+     ! because it is not obvious to find which are the QP which are not.
+     energy_qp_new(:,:) = energy(:,:)
+   case default
+     allocate(energy_qp_z(nstate,nspin))
+     allocate(zz(nstate,nspin))
+     call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+     call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new)
 
-       call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
-       deallocate(zz)
-       deallocate(energy_qp_z)
-
-     case(GnWn,GnW0,COHSEX)
-       call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
-       call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
-     end select
-   endif
+     call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+     deallocate(zz)
+     deallocate(energy_qp_z)
+   end select
 
    !
    ! Write the QP energies on disk: ENERGY_QP file

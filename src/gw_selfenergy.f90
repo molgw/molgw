@@ -208,7 +208,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer              :: pstate,bstate
  integer              :: istate,ispin,ipole
  real(dp)             :: sign_i
- real(dp)             :: energy_gw,work(1),weight
+ real(dp)             :: energy_gw,work(1),weight,nelect,rtmp
  real(dp),allocatable :: matrix_wing(:,:),matrix_head(:,:),matrix_diag(:)
  real(dp),allocatable :: matrix(:,:),eigval(:)
  integer              :: nmat,mwing,imat,jmat
@@ -218,7 +218,9 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer              :: mlocal,nlocal,ilocal,jlocal,iglobal,jglobal
  integer              :: desc_wing(NDEL),desc_eri(NDEL),desc_wpol(NDEL)
  integer              :: desc_matrix(NDEL)
+#if defined(HAVE_SCALAPACK)
  real(dp),external    :: PDLANGE
+#endif
 !=====
 
  call start_clock(timing_gw_self)
@@ -348,7 +350,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  !
  ! If the matrix is small enough, then diagonalize it!
- if( nmat < 9999 ) then
+ if( nmat < 13001 ) then
 
    allocate(eigval(nmat))
 
@@ -392,14 +394,19 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
    write(stdout,*) '============== Poles in eV , weight ==============='
    open(newunit=fu,file='GREENS_FUNCTION',action='write')
+   nelect = 0.0_dp
    do jmat=1,nmat
      weight = PDLANGE('F',mstate,1,matrix,1,jmat,desc_matrix,work)**2
-     if( weight > 1.0e-3_dp ) then
-       write(stdout,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,weight
+     if( eigval(jmat) < 0.0_dp ) nelect = nelect + spin_fact * weight
+     if( weight > 5.0e-2_dp ) then
+       call PDAMAX(mstate,rtmp,jstate,matrix,1,jmat,desc_matrix,1)
+       call xmax_world(jstate)
+       write(stdout,'(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ',jstate,': ',eigval(jmat)*Ha_eV,weight
      endif
      write(fu,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,weight
    enddo
    close(fu)
+   write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',nelect
    write(stdout,*) '==================================================='
 
 #else
@@ -417,9 +424,11 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    write(stdout,'(1x,a,i8)') 'Number of poles: ',COUNT( SUM(matrix(1:mstate,:)**2,DIM=1) > 1.0e-3_dp )
    write(stdout,*) '============== Poles in eV , weight ==============='
    open(newunit=fu,file='GREENS_FUNCTION',action='write')
+   weight = SUM(matrix(1:mstate,jmat)**2)
    do jmat=1,nmat
-     if( SUM(matrix(1:mstate,jmat)**2) > 1.0e-3_dp ) then
-       write(stdout,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,SUM(matrix(1:mstate,jmat)**2)
+     if( weight > 5.0e-2_dp ) then
+       jstate = MAXLOC(ABS(matrix(1:mstate,jmat)),DIM=1)
+       write(stdout,'(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ',jstate,': ',eigval(jmat)*Ha_eV,weight
      endif
      write(fu,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,SUM(matrix(1:mstate,jmat)**2)
    enddo
@@ -442,9 +451,6 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
  call stop_clock(timing_gw_self)
 
- call barrier_world()
- call barrier_world()
- stop 'FBFB devel ENOUGH'
 end subroutine gw_selfenergy_analytic
 
 
@@ -487,7 +493,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
  if(.NOT. has_auxil_basis) return
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call start_clock(timing_gw_self)
 
  write(stdout,*)
