@@ -71,15 +71,16 @@ def clean_run(inp,out,restart):
 
 ###################################
 def check_output(out,testinfo):
-  global success,tested,test_files_skipped
+  global success,tested,test_files_skipped,skipping_reason
 
   #
   # First check if the test was aborted because of some limitation at compilation
   #
   for line in open(tmpfolder+'/'+out,'r').readlines():
     if  'Angular momentum is too high' in line:
-      print('LIBINT installation does not have the needed high angular momenta => skip test')
       test_files_skipped += 1
+      print('LIBINT installation does not have the high enough angular momenta => skip test')
+      skipping_reason.append('LIBINT installation does not have high enough angular momenta')
       return
   #
   # Second check if there is a memory leak
@@ -400,6 +401,7 @@ print('Input files to be executed: {}'.format(ninput2))
 success            = 0
 tested             = 0
 test_files_skipped = 0
+skipping_reason    = []
 
 fdiff = open(tmpfolder+'/diff', 'w')
 fdiff.write('#  test index          calculated                   reference                   difference        test status \n')
@@ -419,21 +421,25 @@ for iinput in range(ninput):
     test_files_skipped += 1
     print('\nSkipping test file: '+inp)
     print('  because this compilation of MOLGW does not have SCALAPACK')
+    skipping_reason.append('this compilation of MOLGW does not have SCALAPACK')
     continue
   if need_gradients[iinput] and not have_libint_gradients:
     test_files_skipped += 1
     print('\nSkipping test file: '+inp)
     print('  because this compilation of MOLGW does not have the gradients from LIBINT')
+    skipping_reason.append('this compilation of MOLGW does not have the gradients from LIBINT')
     continue
   if not parallel[iinput] and nprocs > 1:
+    test_files_skipped += 1
     print('\nSkipping test file: '+inp)
     print('  because this test is only serial')
-    test_files_skipped += 1
+    skipping_reason.append('this test is only serial')
     continue
   if not run_tddft and tddft[iinput]:
-    print('\nSkipping test file: '+inp)
-    print('  because the RT-TDDFT needs to be specifically activated with --tddft')
     test_files_skipped += 1
+    print('\nSkipping test file: '+inp)
+    print('  because RT-TDDFT tests need to be specifically activated with --tddft')
+    skipping_reason.append('RT-TDDFT tests need to be specifically activated with --tddft')
     continue
 
 
@@ -456,6 +462,12 @@ else:
   print('        Succesful tests:   \033[91m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
 print('       Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')
+if test_files_skipped > 0 :
+  print(' Tests have been skipped for the following reasons:')
+  for reason in list(set(skipping_reason)):
+    ireason = skipping_reason.count(reason)
+    print('   * {:<80}  ({:=4d} tests)'.format(reason,ireason))
+  print('===============================\n')
 
 
 ###################################
