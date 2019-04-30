@@ -275,9 +275,9 @@ end subroutine setup_hartree_oneshell
 
 
 !=========================================================================
-subroutine setup_hartree_versatile_ri(p_matrix_in,hartree_ij,ehartree)
+subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  implicit none
- class(*),intent(in)  :: p_matrix_in(:,:,:)
+ class(*),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
@@ -286,22 +286,18 @@ subroutine setup_hartree_versatile_ri(p_matrix_in,hartree_ij,ehartree)
  integer              :: ibf,jbf,kbf,lbf
  integer              :: ipair,ipair_local
  real(dp),allocatable :: partial_sum(:)
- real(dp),allocatable :: p_matrix_nospin(:,:)
- real(dp)             :: rtmp
+ real(dp)             :: rtmp,factor
  character(len=100)   :: title
  integer              :: timing_xxdft_hartree
 !=====
 
  nbf = SIZE(hartree_ij(:,:),DIM=1)
- allocate(p_matrix_nospin(nbf,nbf))
 
- select type(p_matrix_in)
- type is (real(dp))
+ select type(p_matrix)
+ type is(real(dp))
    timing_xxdft_hartree   = timing_hartree
-   p_matrix_nospin(:,:) = SUM(p_matrix_in(:,:,:),DIM=3)
- type is (complex(dp))
+ type is(complex(dp))
    timing_xxdft_hartree   = timing_tddft_hartree
-   p_matrix_nospin(:,:) = SUM(REAL(p_matrix_in(:,:,:),dp),DIM=3)
  class default
    call die("setup_hartree_versatile_ri: c_matrix is neither real nor complex")
  end select
@@ -323,18 +319,34 @@ subroutine setup_hartree_versatile_ri(p_matrix_in,hartree_ij,ehartree)
    allocate(partial_sum(nauxil_local))
 
    partial_sum(:) = 0.0_dp
-   !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
-   !$OMP DO REDUCTION(+:partial_sum)
-   do ipair_local=1,npair_local
-     ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
-     kbf = index_basis(1,ipair)
-     lbf = index_basis(2,ipair)
-     ! Factor 2 comes from the symmetry of p_matrix
-     partial_sum(:) = partial_sum(:) + eri_3center(:,ipair_local) * p_matrix_nospin(kbf,lbf) * 2.0_dp
-     if( kbf == lbf ) partial_sum(:) = partial_sum(:) - eri_3center(:,ipair_local) * p_matrix_nospin(kbf,lbf)
-   enddo
-   !$OMP END DO
-   !$OMP END PARALLEL
+   select type(p_matrix)
+   type is(real(dp))
+     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
+     !$OMP DO REDUCTION(+:partial_sum)
+     do ipair_local=1,npair_local
+       ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       factor = merge(2.0_dp,1.0_dp,kbf/=lbf)
+       partial_sum(:) = partial_sum(:) &
+                    + eri_3center(:,ipair_local) * SUM(p_matrix(kbf,lbf,:)) * factor
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+   type is(complex(dp))
+     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
+     !$OMP DO REDUCTION(+:partial_sum)
+     do ipair_local=1,npair_local
+       ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       factor = merge(2.0_dp,1.0_dp,kbf/=lbf)
+       partial_sum(:) = partial_sum(:) &
+                    + eri_3center(:,ipair_local) * SUM(REAL(p_matrix(kbf,lbf,:),dp)) * factor
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+   end select
 
    !FIXME ortho parallelization is not taken into account here!
 #if defined(HAVE_SCALAPACK)
@@ -367,9 +379,13 @@ subroutine setup_hartree_versatile_ri(p_matrix_in,hartree_ij,ehartree)
  title='=== Hartree contribution ==='
  call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
- ehartree = 0.5_dp * SUM( hartree_ij(:,:) * p_matrix_nospin(:,:) )
+ select type(p_matrix)
+ type is(real(dp))
+   ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+ type is(complex(dp))
+   ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM(REAL(p_matrix(:,:,:),dp),DIM=3) )
+ end select
 
- deallocate(p_matrix_nospin)
 
  call stop_clock(timing_xxdft_hartree)
 
@@ -1488,12 +1504,12 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  if( ndft_xc == 0 ) return
 
  select type(c_matrix)
- type is (real(dp))
+ type is(real(dp))
    timing_xxdft_xc        = timing_dft_xc
    timing_xxdft_densities = timing_dft_densities
    timing_xxdft_libxc     = timing_dft_libxc
    timing_xxdft_vxc       = timing_dft_vxc
- type is (complex(dp))
+ type is(complex(dp))
    timing_xxdft_xc        = timing_tddft_xc
    timing_xxdft_densities = timing_tddft_densities
    timing_xxdft_libxc     = timing_tddft_libxc
