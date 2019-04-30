@@ -630,7 +630,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  complex(dp),intent(out)   :: hamiltonian_hxc_cmplx(m_ham,n_ham,nspin)
 !=====
  integer         :: ispin
- real(dp)        :: p_matrix(m_ham,n_ham,nspin)
  real(dp)        :: hamiltonian_tmp(m_ham,n_ham,nspin)
 !=====
 
@@ -643,7 +642,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
 
  ! Initialize real arrays
 
- p_matrix=REAL(p_matrix_cmplx,dp)
 
  hamiltonian_hxc_cmplx = ( 0.0_dp , 0.0_dp )
 
@@ -661,12 +659,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
 
    !
    ! Hartree contribution to the Hamiltonian
-   ! Hartree contribution is real and depends only on real(p_matrix)
+   ! Hartree contribution is real and depends only on real(p_matrix) but we pass the full p_matrix_cmplx any way
    !
-   !call calculate_hartree(basis,p_matrix,hamiltonian_tmp(:,:,1),eh=en%hart)
-   call start_clock(timing_tddft_hartree)
-   call setup_hartree_versatile_ri(p_matrix,hamiltonian_tmp(:,:,1),en%hart)
-   call stop_clock(timing_tddft_hartree)
+   call setup_hartree_versatile_ri(p_matrix_cmplx,hamiltonian_tmp(:,:,1),en%hart)
 
  do ispin=1,nspin
    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)

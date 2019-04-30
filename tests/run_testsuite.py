@@ -71,7 +71,7 @@ def clean_run(inp,out,restart):
 
 ###################################
 def check_output(out,testinfo):
-  global success,tested,test_files_skipped,skipping_reason
+  global success,tested,test_files_skipped,test_files_success,skipping_reason
 
   #
   # First check if the test was aborted because of some limitation at compilation
@@ -90,6 +90,7 @@ def check_output(out,testinfo):
   tol = 0.001
   key_found = False
   tested += 1
+  success_in_this_file = 0
   for line in reversed(open(tmpfolder+'/'+out,'r').readlines()):
     if key in line:
       key_found = True
@@ -98,6 +99,7 @@ def check_output(out,testinfo):
       if abs( float(parsing2[0]) - ref ) < tol:
         print('No memory leak'.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
         success += 1
+        success_in_this_file += 1
         fdiff.write(str(tested).rjust(6) + parsing2[0].rjust(30) \
               + str(ref).rjust(30)+str(float(parsing2[0]) - ref).rjust(30)+'  OK  \n')
         break
@@ -148,6 +150,7 @@ def check_output(out,testinfo):
         if abs( float(parsing2[pos]) - ref ) < tol:
           print(key.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
           success += 1
+          success_in_this_file += 1
           fdiff.write(str(tested).rjust(6) + parsing2[pos].rjust(30) \
                 + str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+'  OK  \n')
           break
@@ -158,6 +161,10 @@ def check_output(out,testinfo):
           break
     if not key_found:
       print(key.rjust(30)+'[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
+
+  if success_in_this_file == len(testinfo) + 1:
+     test_files_success += 1
+
 
 ###################################
 # Parse the command line
@@ -401,6 +408,7 @@ print('Input files to be executed: {}'.format(ninput2))
 success            = 0
 tested             = 0
 test_files_skipped = 0
+test_files_success = 0
 skipping_reason    = []
 
 fdiff = open(tmpfolder+'/diff', 'w')
@@ -457,8 +465,10 @@ print('\n\n===============================')
 print('      Test Suite Summary \n')
 print('      Test files tested:   {:4d} / {:4d}\n'.format(ninput2-test_files_skipped,ninput2))
 if success == tested:
+  print('     Test files success:   \033[92m\033[1m{:4d} / {:4d}\033[0m  '.format(test_files_success,ninput2-test_files_skipped))
   print('        Succesful tests:   \033[92m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
 else:
+  print('     Test files success:   \033[91m\033[1m{:4d} / {:4d}\033[0m  '.format(test_files_success,ninput2-test_files_skipped))
   print('        Succesful tests:   \033[91m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
 print('       Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')

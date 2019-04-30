@@ -275,9 +275,9 @@ end subroutine setup_hartree_oneshell
 
 
 !=========================================================================
-subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_versatile_ri(p_matrix_in,hartree_ij,ehartree)
  implicit none
- real(dp),intent(in)  :: p_matrix(:,:,:)
+ class(*),intent(in)  :: p_matrix_in(:,:,:)
  real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
@@ -286,15 +286,30 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  integer              :: ibf,jbf,kbf,lbf
  integer              :: ipair,ipair_local
  real(dp),allocatable :: partial_sum(:)
+ real(dp),allocatable :: p_matrix_nospin(:,:)
  real(dp)             :: rtmp
  character(len=100)   :: title
+ integer              :: timing_xxdft_hartree
 !=====
 
- call start_clock(timing_hartree)
+ nbf = SIZE(hartree_ij(:,:),DIM=1)
+ allocate(p_matrix_nospin(nbf,nbf))
+
+ select type(p_matrix_in)
+ type is (real(dp))
+   timing_xxdft_hartree   = timing_hartree
+   p_matrix_nospin(:,:) = SUM(p_matrix_in(:,:,:),DIM=3)
+ type is (complex(dp))
+   timing_xxdft_hartree   = timing_tddft_hartree
+   p_matrix_nospin(:,:) = SUM(REAL(p_matrix_in(:,:,:),dp),DIM=3)
+ class default
+   call die("setup_hartree_versatile_ri: c_matrix is neither real nor complex")
+ end select
+
+ call start_clock(timing_xxdft_hartree)
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: versatile version'
 
- nbf = SIZE(hartree_ij(:,:),DIM=1)
 
  nauxil_local = SIZE(eri_3center,DIM=1)
  npair_local  = SIZE(eri_3center,DIM=2)
@@ -315,8 +330,8 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
      kbf = index_basis(1,ipair)
      lbf = index_basis(2,ipair)
      ! Factor 2 comes from the symmetry of p_matrix
-     partial_sum(:) = partial_sum(:) + eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-     if( kbf == lbf ) partial_sum(:) = partial_sum(:) - eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) )
+     partial_sum(:) = partial_sum(:) + eri_3center(:,ipair_local) * p_matrix_nospin(kbf,lbf) * 2.0_dp
+     if( kbf == lbf ) partial_sum(:) = partial_sum(:) - eri_3center(:,ipair_local) * p_matrix_nospin(kbf,lbf)
    enddo
    !$OMP END DO
    !$OMP END PARALLEL
@@ -352,12 +367,11 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  title='=== Hartree contribution ==='
  call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
- ehartree = 0.5_dp * SUM(hartree_ij(:,:)*p_matrix(:,:,1))
- if( nspin == 2 ) then
-   ehartree = ehartree + 0.5_dp * SUM(hartree_ij(:,:)*p_matrix(:,:,2))
- endif
+ ehartree = 0.5_dp * SUM( hartree_ij(:,:) * p_matrix_nospin(:,:) )
 
- call stop_clock(timing_hartree)
+ deallocate(p_matrix_nospin)
+
+ call stop_clock(timing_xxdft_hartree)
 
 end subroutine setup_hartree_versatile_ri
 
