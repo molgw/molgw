@@ -969,8 +969,8 @@ subroutine fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hexx,hxc,
  type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)               :: hexx(basis%nbf,basis%nbf,nspin)
- real(dp),intent(out)               :: hxc(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)                :: hexx(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)                :: hxc(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)               :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  integer  :: pstate,qstate
