@@ -1040,6 +1040,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  use m_atoms
  use m_basis_set
  use m_timing
+ use m_tools
  use m_dft_grid,only: calculate_basis_functions_r
 
  implicit none
@@ -1069,15 +1070,19 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
  integer                    :: line_rho(nspin)
+ integer                    :: line_phi_square(nspin)
  character(len=200)         :: file_name
  integer                    :: linefile
  integer                    :: statesfile
  integer                    :: i_max_atom
  integer                    :: nocc
- integer                    :: istate_cut(3)
+ integer,allocatable        :: istate_cut(:,:)
  real(dp)                   :: vec_length
  real(dp)                   :: deltar,path_length
- real(dp)                   :: integral(3)
+ real(dp),allocatable       :: integral(:)
+ real(dp),allocatable       :: integral_phi_square(:)
+ integer                    :: iline,ncut,num_fields,icut
+ character(len=500)         :: cur_string
 !=====
 
  if( .NOT. is_iomaster ) return
@@ -1115,18 +1120,35 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
    call issue_warning('plot_rho_traj_bunch: manual_dens_traj file was not found')
  endif
 
- istate_cut(3)=nstate
  inquire(file='manual_dens_traj_states',exist=file_exists)
  if(file_exists) then
+   ncut=get_number_of_lines('manual_dens_traj_states')
+   allocate(istate_cut(ncut,2))
    open(newunit=statesfile,file='manual_dens_traj_states',status='old')
-   read(statesfile,*) istate_cut(1), istate_cut(2)
+   do iline=1,ncut
+     read(statesfile,'(A)') cur_string
+     num_fields = get_number_of_elements(cur_string)
+     if( num_fields == 2 ) then
+       read(cur_string,*) istate_cut(iline,1), istate_cut(iline,2)
+     else if( num_fields == 1) then
+       read(cur_string,*) istate_cut(iline,1)
+       istate_cut(iline,2) = nstate
+     else
+       call die("manual_q_matrix_param must contain 1 or two fields.")
+     end if
+
+   end do
    close(statesfile)
  else
-   istate_cut(1)=1
-   istate_cut(2)=natom-1
+   ncut=2
+   allocate(istate_cut(2,2))
+   istate_cut(1,1) = 1; istate_cut(1,2) = 1;
+   istate_cut(2,1) = 2; istate_cut(2,2) = nstate;
    call issue_warning('plot_rho_traj_bunch_contrib: manual_dens_traj_states file was not found')
  endif
 
+ allocate(integral(ncut))
+ allocate(integral_phi_square(ncut))
 ! point_b(:) = point_b(:) / bohr_A
 ! point_a(:) = point_a(:) / bohr_A
 ! In analogy with cube file, this file is also in Bohr
@@ -1136,9 +1158,15 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
 
  do ispin=1,nspin
    write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_contribution_integral_density.dat'
+
    open(newunit=line_rho(ispin),file=file_name)
    write(line_rho(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
    write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
+
+   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_contribution_phi_square.dat'
+   open(newunit=line_phi_square(ispin),file=file_name)
+   write(line_phi_square(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
+   write(line_phi_square(ispin),'(a,f9.5)') '# time_cur = ', time_cur
  enddo
 
  deltar=NORM2( point_b(:) - point_a(:) )/nr
@@ -1151,32 +1179,33 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
      b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*REAL(ih,dp)/REAL(nh,dp)
 
      integral=0.0_dp
+     integral_phi_square=0.0_dp
 
      do ir=0,nr
        rr(:) = a_cur(:) + ( b_cur(:) - a_cur(:) ) * REAL(ir,dp) / REAL(nr,dp)
        call calculate_basis_functions_r(basis,rr,basis_function_r)
        phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
 
-       do istate=istate_cut(1),istate_cut(2)
-         integral(1)=integral(1)+(phi(istate,ispin))**2 * occupation(istate,ispin)
+       do icut=1,ncut
+         do istate=istate_cut(icut,1),istate_cut(icut,2)
+           write(*,*) "suka", icut,istate,occupation(istate,ispin)
+           integral(icut)=integral(icut)+(phi(istate,ispin))**2 * occupation(istate,ispin)
+           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2 
+         end do
        end do
 
-       do istate=istate_cut(2)+1,nocc
-         integral(2)=integral(2)+(phi(istate,ispin))**2 * occupation(istate,ispin)
-       end do
-
-       do istate=istate_cut(1),nocc
-         integral(3)=integral(3)+(phi(istate,ispin))**2 * occupation(istate,ispin)
-       end do
      end do
      integral(:)=integral(:)/REAL(nr+1,dp)
-     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral(:)
+     integral_phi_square(:)=integral_phi_square(:)/REAL(nr+1,dp)
+     write(line_phi_square(ispin),'(50(f14.8,2x))') NORM2(a_cur(:)-point_a(:)),integral_phi_square(:)
+     write(line_rho(ispin),'(50(f14.8,2x))') NORM2(a_cur(:)-point_a(:)),integral(:)
    enddo
 
  enddo
 
  do ispin=1,nspin
    close(line_rho(ispin))
+   close(line_phi_square(ispin))
  end do
 
  deallocate(phi)
