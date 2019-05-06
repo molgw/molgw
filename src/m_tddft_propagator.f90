@@ -996,7 +996,7 @@ subroutine calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_
 !   end do 
 
    if( is_iomaster) then
-     write(file_q_matrix(ispin),"(F9.4,10(2x,es16.8E3))") time_cur, ABS(q_occ(:))
+     write(file_q_matrix(ispin),"(F9.4,20(2x,es16.8E3))") time_cur, ABS(q_occ(:))
    end if
  end do
 
