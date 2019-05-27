@@ -4,7 +4,7 @@
 
  scf='hf'
  nscf=30
- tolscf=1.0e-9
+ tolscf=1.0e-12
 
  postscf='two-rings'
  selfenergy_state_min=5
