@@ -424,8 +424,8 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    write(stdout,'(1x,a,i8)') 'Number of poles: ',COUNT( SUM(matrix(1:mstate,:)**2,DIM=1) > 1.0e-3_dp )
    write(stdout,*) '============== Poles in eV , weight ==============='
    open(newunit=fu,file='GREENS_FUNCTION',action='write')
-   weight = SUM(matrix(1:mstate,jmat)**2)
    do jmat=1,nmat
+     weight = SUM(matrix(1:mstate,jmat)**2)
      if( weight > 5.0e-2_dp ) then
        jstate = MAXLOC(ABS(matrix(1:mstate,jmat)),DIM=1)
        write(stdout,'(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ',jstate,': ',eigval(jmat)*Ha_eV,weight
