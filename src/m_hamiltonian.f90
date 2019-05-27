@@ -1104,6 +1104,8 @@ subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
+ ! TODO: use DSYMM instead of the first DGEMM
+ !       use DGEMMT of MKL instead of the second DGEMM
 
  allocate(matrix_tmp(nbf,nstate))
 
@@ -1139,6 +1141,8 @@ subroutine matrix_mo_to_ao(c_matrix,matrix_in,matrix_out)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
+ ! TODO: use DSYMM instead of the first DGEMM
+ !       use DGEMMT of MKL instead of the second DGEMM
 
  allocate(matrix_tmp(nstate,nbf))
 

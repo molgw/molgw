@@ -324,14 +324,14 @@ subroutine init_calculation_type(calc_type,input_key)
    case('MP3')
      calc_type%is_mp2   =.TRUE.
      calc_type%is_mp3   =.TRUE.
-   case('MP2_SELFENERGY','PT2')
+   case('MP2_SELFENERGY','PT2','GF2')
      calc_type%selfenergy_approx = PT2
-   case('PT1PT2','PT1-PT2','PT12')
-     calc_type%selfenergy_approx = PT2
-     calc_type%selfenergy_static = .TRUE.
-   case('MP3_SELFENERGY','PT3')
+   case('MP3_SELFENERGY','PT3','GF3')
      calc_type%selfenergy_approx = PT3
-   case('EVMP3_SELFENERGY','EVPT3')
+   case('EVMP2_SELFENERGY','EVPT2','EVGF2')
+     calc_type%selfenergy_approx = PT2
+     calc_type%selfenergy_technique = EVSC
+   case('EVMP3_SELFENERGY','EVPT3','EVGF3')
      calc_type%selfenergy_approx = PT3
      calc_type%selfenergy_technique = EVSC
    case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
@@ -340,9 +340,6 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%selfenergy_approx = ONE_RING
    case('SOX')
      calc_type%selfenergy_approx = SOX
-   case('EVMP2','EVPT2')
-     calc_type%selfenergy_approx = PT2
-     calc_type%selfenergy_technique = EVSC
    case('CI')
      calc_type%is_ci =.TRUE.
    case('CI_SELFENERGY')

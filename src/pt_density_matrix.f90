@@ -6,59 +6,6 @@
 ! the many-body perturbation theory to obtain the (perturbative) density matrix
 !
 !=========================================================================
-subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix)
- use m_definitions
- use m_mpi
- use m_mpi_ortho
- use m_warning
- use m_timing
- use m_basis_set
- use m_eri_ao_mo
- use m_inputparam
- use m_hamiltonian
- use m_hamiltonian_onebody
- use m_selfenergy_tools
- implicit none
-
- integer,intent(in)         :: nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: exchange_m_vxc(nstate,nstate,nspin)
- real(dp),intent(inout)     :: p_matrix(basis%nbf,basis%nbf,nspin)
-!=====
- integer                 :: pstate,istate,astate
- integer                 :: iaspin
- real(dp)                :: denom
- real(dp)                :: p_matrix_pt1(nstate,nstate)
-!=====
-
- call start_clock(timing_mbpt_dm)
-
- write(stdout,'(/,a)') ' Calculate the PT1 density matrix'
-
- if( nspin /= 1 ) call die('pt1_density_matrix: only implemented for spin restricted calculations')
-
- iaspin = 1
- p_matrix_pt1(:,:) = 0.0_dp
- do istate=ncore_G+1,nhomo_G
-   do astate=nhomo_G+1,nvirtual_G-1
-
-     denom = energy(istate,iaspin) - energy(astate,iaspin)
-     p_matrix_pt1(istate,astate) = p_matrix_pt1(istate,astate) + exchange_m_vxc(istate,astate,iaspin) / denom
-     p_matrix_pt1(astate,istate) = p_matrix_pt1(astate,istate) + exchange_m_vxc(istate,astate,iaspin) / denom
-
-   enddo
- enddo
-
- call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_pt1,p_matrix)
-
- call stop_clock(timing_mbpt_dm)
-
-end subroutine pt1_density_matrix
-
-
-!=========================================================================
 subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  use m_definitions
  use m_mpi
@@ -1033,9 +980,6 @@ subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_state,p
  !
  ! If input Fock density (p_matrix) is zero, then assume an Hartree-Fock SCF calculation
  if( ALL( ABS(p_matrix(:,:,:)) < 1.0e-6_dp ) ) then
-   if( TRIM(calc_type%scf_name) /= 'HF' ) &
-               call issue_warning('update_density_matrix: this is not correct when starting from something else than HF')
-
    ! Add the SCF density matrix to get to the total density matrix
    allocate(p_matrix_tmp(nbf,nbf,nspin))
    do pstate=1,nstate

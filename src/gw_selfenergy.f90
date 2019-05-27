@@ -532,8 +532,6 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  call PDGEMR2D(nauxil_2center,wpol%npole_reso,wpol%residue_left,1,1,desc_wauxil, &
                                                     wresidue_sd,1,1,desc_wsd,cntxt_sd)
 
- ! TODO maybe I should deallocate here wpol%residue_left
-
  ! Temporary array sigmagw is created because OPENMP does not want to work directly with se%sigma
  allocate(sigmagw,SOURCE=se%sigma)
  sigmagw(:,:,:)  = 0.0_dp

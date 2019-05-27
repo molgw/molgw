@@ -89,11 +89,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      write(selfenergy_tag,'(i3)') istep_gw-1
      selfenergy_tag='G'//TRIM(ADJUSTL(selfenergy_tag))//'W'//TRIM(ADJUSTL(selfenergy_tag))
    case(PT2)
-     if( calc_type%selfenergy_static ) then
-       selfenergy_tag='PT1PT2'
-     else
-       selfenergy_tag='PT2'
-     endif
+     selfenergy_tag='PT2'
    case(TWO_RINGS)
      selfenergy_tag='TWO_RINGS'
    case(PT3)
@@ -177,10 +173,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
 
    call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se)
-
-   if( calc_type%selfenergy_static ) then
-     call pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,exchange_m_vxc_diag)
-   endif
 
 
    !
