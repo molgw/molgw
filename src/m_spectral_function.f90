@@ -447,19 +447,19 @@ subroutine write_spectral_function(sf)
  disp  = 0
  if(is_iomaster) &
    call MPI_FILE_WRITE_AT(wfile,disp,calc_type%postscf_name,LEN(calc_type%postscf_name),MPI_CHARACTER,MPI_STATUS_IGNORE,ierr)
- disp = disp + SIZEOF(calc_type%postscf_name)
+ disp = disp + STORAGE_SIZE(calc_type%postscf_name)
 
  if(is_iomaster) &
    call MPI_FILE_WRITE_AT(wfile,disp,sf%nprodbasis_total,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
- disp = disp + SIZEOF(sf%nprodbasis_total)
+ disp = disp + STORAGE_SIZE(sf%nprodbasis_total)
 
  if(is_iomaster) &
    call MPI_FILE_WRITE_AT(wfile,disp,sf%npole_reso,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
- disp = disp + SIZEOF(sf%npole_reso)
+ disp = disp + STORAGE_SIZE(sf%npole_reso)
 
  if(is_iomaster) &
    call MPI_FILE_WRITE_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
- disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
+ disp = disp + sf%npole_reso * STORAGE_SIZE(sf%pole(1))
 
 
  if( has_auxil_basis ) then
@@ -474,14 +474,14 @@ subroutine write_spectral_function(sf)
        call MPI_FILE_WRITE_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
 
      endif
-     disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
+     disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1,1))
    enddo
    deallocate(buffer)
  else
    if(is_iomaster) then
      do iprodbasis=1,sf%nprodbasis_total
        call MPI_FILE_WRITE_AT(wfile,disp,sf%residue_left(iprodbasis,:),sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
-       disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
+       disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1,1))
      enddo
    endif
  endif
@@ -554,15 +554,15 @@ subroutine read_spectral_function(sf,reading_status)
 
  disp = 0
  call MPI_FILE_READ_AT(wfile,disp,postscf_name_read,LEN(postscf_name_read),MPI_CHARACTER,MPI_STATUS_IGNORE,ierr)
- disp = disp + SIZEOF(postscf_name_read)
+ disp = disp + STORAGE_SIZE(postscf_name_read)
 
  call MPI_FILE_READ_AT(wfile,disp,nprodbasis_read,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
- disp = disp + SIZEOF(nprodbasis_read)
+ disp = disp + STORAGE_SIZE(nprodbasis_read)
 
  sf%nprodbasis_total = nprodbasis_read
 
  call MPI_FILE_READ_AT(wfile,disp,npole_read,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
- disp = disp + SIZEOF(npole_read)
+ disp = disp + STORAGE_SIZE(npole_read)
 
  sf%npole_reso = npole_read
 
@@ -573,7 +573,7 @@ subroutine read_spectral_function(sf,reading_status)
  endif
 
  call MPI_FILE_READ_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
- disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
+ disp = disp + sf%npole_reso * STORAGE_SIZE(sf%pole(1))
 
 
  if( has_auxil_basis ) then
@@ -586,13 +586,13 @@ subroutine read_spectral_function(sf,reading_status)
        call MPI_FILE_READ_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
        sf%residue_left(ibf_auxil_l(ibf_auxil),:) = buffer(:)
      endif
-     disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
+     disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1,1))
    enddo
    deallocate(buffer)
  else
    do iprodbasis=1,sf%nprodbasis
      call MPI_FILE_READ_AT(wfile,disp,sf%residue_left(iprodbasis,:),sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
-     disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
+     disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1,1))
    enddo
  endif
 
