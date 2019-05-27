@@ -222,7 +222,7 @@ GW LUMO energy            ,      4.000047      , 0 , 1.0e-4
 ar_camb3lyp_gw.in         , Range-separated hybrid argon atom with 6-31*G+ and G0W0
 SCF Total Energy          ,   -527.5394815512  , 0 , 1.0e-7
 gKS HOMO-LUMO gap         ,     15.378169      , 0 , 1.0e-4
-Galitskii-Migdal formula  ,     -0.3335895161  , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.3335895161  , 0 , 1.0e-7
 Lowest neutral excitation ,     15.692205      , 0 , 1.0e-4
 RPA Total energy          ,   -526.9633301175  , 0 , 1.0e-7
  GW HOMO energy           ,    -15.012653      , 0 , 1.0e-4
@@ -360,7 +360,7 @@ polarizability trace      ,     13.362175       , 0 , 1.0e-4
 ch2o_gw.in                , GW@B3LYP on formaldehyde to prepare BSE
 SCF Total Energy          ,   -114.5110479343   , 0 , 1.0e-7
 Est. HF Energy            ,   -113.8786939682   , 0 , 1.0e-7
-Galitskii-Migdal formula  ,     -0.7854236777   , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.7854236777   , 0 , 1.0e-7
 RPA Total energy          ,   -114.3237167485   , 0 , 1.0e-4
 GW HOMO energy            ,     -9.921426       , 0 , 1.0e-4
 GW LUMO energy            ,      2.494864       , 0 , 1.0e-4
@@ -401,18 +401,18 @@ G1W0 LUMO energy          ,     -0.331161       , 1 , 1.0e-4
 oh_m_1.in                 , GnWn (eigenvalue self-consistent) on OH- 1st iteration
 SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2924060323   , 0 , 1.0e-7
-Galitskii-Migdal formula  ,     -0.5031685208   , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.5031685208   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.100134       , 0 , 1.0e-4
 G0W0 LUMO energy          ,      5.328126       , 0 , 1.0e-4
 
 oh_m_2.in                 , GnWn (eigenvalue self-consistent) on OH- 2nd iteration , restart
-Galitskii-Migdal formula  ,     -0.4816111091   , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.4816111091   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2780353842   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.208873       , 0 , 1.0e-4
 G0W0 LUMO energy          ,      5.337010       , 0 , 1.0e-4
 
 oh_m_3.in                 , GnWn (eigenvalue self-consistent) on OH- 3rd iteration , restart
-Galitskii-Migdal formula  ,     -0.4785659835   , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.4785659835   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2760358773   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.207707       , 0 , 1.0e-4
 G0W0 LUMO energy          ,      5.336834       , 0 , 1.0e-4
