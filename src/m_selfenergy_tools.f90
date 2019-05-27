@@ -571,6 +571,7 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
  real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
 !=====
 
+ call start_clock(timing_x_m_vxc)
  write(stdout,*) 'Calculate the (Sigma_x - Vxc) matrix'
 
  nstate = SIZE(occupation,DIM=1)
@@ -633,6 +634,7 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
 
  endif
 
+ call stop_clock(timing_x_m_vxc)
 
 end subroutine setup_exchange_m_vxc
 

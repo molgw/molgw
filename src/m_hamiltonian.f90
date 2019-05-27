@@ -19,6 +19,7 @@ module m_hamiltonian
  use m_basis_set
  use m_eri_calculate
  use m_density_tools
+ use m_tools
 
 
 contains
@@ -1104,21 +1105,28 @@ subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
- ! TODO: use DSYMM instead of the first DGEMM
- !       use DGEMMT of MKL instead of the second DGEMM
 
  allocate(matrix_tmp(nbf,nstate))
 
  do ispin=1,nspin
    !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
+
    ! H * C
-   call DGEMM('N','N',nbf,nstate,nbf,1.0d0,matrix_in(:,:,ispin),nbf, &
-                                           c_matrix(:,:,ispin),nbf,  &
-                                     0.0d0,matrix_tmp,nbf)
+   call DSYMM('L','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nbf, &
+                                       c_matrix(1,1,ispin),nbf,  &
+                                 0.0d0,matrix_tmp,nbf)
+
    ! C**T * (H * C)
-   call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(:,:,ispin),nbf, &
+#if defined(HAVE_MKL)
+   call DGEMMT('L','T','N',nstate,nbf,1.0d0,c_matrix(1,1,ispin),nbf, &
+                                            matrix_tmp,nbf,          &
+                                      0.0d0,matrix_out(1,1,ispin),nstate)
+   call matrix_lower_to_full(matrix_out(:,:,1))
+#else
+   call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(1,1,ispin),nbf, &
                                               matrix_tmp,nbf,          &
-                                        0.0d0,matrix_out(:,:,ispin),nstate)
+                                        0.0d0,matrix_out(1,1,ispin),nstate)
+#endif
 
  enddo
  deallocate(matrix_tmp)
@@ -1141,21 +1149,28 @@ subroutine matrix_mo_to_ao(c_matrix,matrix_in,matrix_out)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
- ! TODO: use DSYMM instead of the first DGEMM
- !       use DGEMMT of MKL instead of the second DGEMM
 
- allocate(matrix_tmp(nstate,nbf))
+ allocate(matrix_tmp(nbf,nstate))
 
  do ispin=1,nspin
    !matrix_out(1:nbf,1:nbf,ispin) = MATMUL( c_matrix(:,:,ispin) , MATMUL( matrix_in(:,:,ispin) , TRANSPOSE( c_matrix(:,:,ispin) ) ) )
-   ! H * C**T
-   call DGEMM('N','T',nstate,nbf,nstate,1.0d0,matrix_in(:,:,ispin),nstate, &
-                                              c_matrix(:,:,ispin),nbf,     &
-                                        0.0d0,matrix_tmp,nstate)
-   ! C * (H * C**T)
-   call DGEMM('N','N',nbf,nbf,nstate,1.0d0,c_matrix(:,:,ispin),nbf,  &
-                                           matrix_tmp,nstate,        &
-                                     0.0d0,matrix_out,nbf)
+
+   !  C * H
+   call DSYMM('R','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nbf, &
+                                       c_matrix(1,1,ispin),nbf,  &
+                                 0.0d0,matrix_tmp,nbf)
+
+   ! (C * H) * C**T
+#if defined(HAVE_MKL)
+   call DGEMMT('L','N','T',nbf,nstate,1.0d0,matrix_tmp,nbf,          &
+                                            c_matrix(1,1,ispin),nbf, &
+                                      0.0d0,matrix_out(1,1,ispin),nbf)
+   call matrix_lower_to_full(matrix_out(:,:,1))
+#else
+   call DGEMM('N','T',nbf,nbf,nstate,1.0d0,matrix_tmp,nbf,        &
+                                           c_matrix(1,1,ispin),nbf,  &
+                                     0.0d0,matrix_out(1,1,ispin),nbf)
+#endif
 
  enddo
  deallocate(matrix_tmp)
@@ -1332,7 +1347,6 @@ end subroutine level_shifting_down
 
 !=========================================================================
 subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix)
- use m_tools
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
@@ -1384,7 +1398,6 @@ end subroutine setup_sqrt_overlap
 
 !=========================================================================
 subroutine setup_sqrt_density_matrix(p_matrix,p_matrix_sqrt,p_matrix_occ)
- use m_tools
  implicit none
 
  real(dp),intent(in)  :: p_matrix(:,:,:)
@@ -1422,7 +1435,6 @@ end subroutine setup_sqrt_density_matrix
 
 !=========================================================================
 subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
- use m_tools
  implicit none
 
  real(dp),intent(in)  :: p_matrix(:,:,:)

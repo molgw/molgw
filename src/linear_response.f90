@@ -309,7 +309,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if( is_rpa ) then
-       write(stdout,'(1x,a)')          'Correlation energy in the Galitskii-Migdal formula'
+       write(stdout,'(/,1x,a)')        'Correlation energy in the Galitskii-Migdal formula'
        write(stdout,'(1x,a,f19.10,/)') '                        1/2 Tr[ Sig_c * G ] (Ha): ',energy_gm
      endif
 

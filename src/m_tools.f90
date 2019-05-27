@@ -42,6 +42,26 @@ contains
 
 
 !=========================================================================
+! Override the upper part of a matrix with its lower part
+! Final matrix is symmetric
+subroutine matrix_lower_to_full(matrix)
+ implicit none
+ real(dp),intent(inout)  :: matrix(:,:)
+!=====
+ integer :: imat,jmat,nmat
+!=====
+ nmat = SIZE(matrix,DIM=1)
+ do jmat=1,nmat
+   do imat=jmat+1,nmat
+     matrix(jmat,imat) = matrix(imat,jmat)
+   enddo
+ enddo
+
+end subroutine matrix_lower_to_full
+
+
+!=========================================================================
+! Calculate the trace of a real matrix
 function matrix_trace(matrix)
  implicit none
  real(dp),intent(in) :: matrix(:,:)
@@ -61,6 +81,7 @@ function matrix_trace(matrix)
 end function matrix_trace
 
 !=========================================================================
+! Calculate the trace of a complex matrix
 function matrix_trace_cmplx(matrix)
  implicit none
  complex(dp),intent(in) :: matrix(:,:)
