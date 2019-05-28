@@ -1355,7 +1355,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  real(dp),allocatable,intent(inout) :: x_matrix(:,:)
 !=====
  integer  :: nbf
- integer  :: istate,jbf
+ integer  :: istate,jbf,iexc
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
@@ -1384,6 +1384,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
 
  istate = 0
+ iexc = 1
  do jbf=1,nbf
    if( s_eigval(jbf) > TOL_OVERLAP ) then
      istate = istate + 1

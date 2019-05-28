@@ -1434,7 +1434,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
    do ispin=1,nspin
      write(file_name,'(a,i4.4,a,i1,a,i3.3,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",INT(r_disc),r_disc-INT(r_disc),".dat"
      open(newunit=file_out(ispin),file=file_name)
-     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
+     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
    enddo
  end if
 
@@ -1597,10 +1597,11 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
 end subroutine calc_cube_initial_cmplx
 
 !=========================================================================
-subroutine initialize_cube_diff_cmplx(nx,ny,nz,unit_cube_diff)
+subroutine initialize_cube_diff_cmplx(nx,ny,nz)
  implicit none
- integer,intent(inout)      :: nx,ny,nz,unit_cube_diff
+ integer,intent(inout)      :: nx,ny,nz
 !=====
+ integer                    :: unit_cube_diff
  logical                    :: file_exists
 
  inquire(file='manual_cube_diff_tddft',exist=file_exists)
@@ -1730,12 +1731,16 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
      do iz=1,nz
        rr(3) = ( zmin + (iz-1)*dz )
 
+!       call start_clock(timing_tmp0)
        call calculate_basis_functions_r(basis,rr,basis_function_r)
+!       call stop_clock(timing_tmp0)
 
        do ispin=1,nspin
          istate2=nocc(ispin)
          phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
+!       call start_clock(timing_tmp1)
          write(ocuberho(ispin),'(50(e16.8,2x))') SUM( abs(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact - cube_density_start(ix,iy,iz,ispin)
+!       call stop_clock(timing_tmp1)
        enddo
 
      enddo
@@ -1751,6 +1756,172 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
  call stop_clock(timing_print_cube_rho_tddft)
 
 end subroutine plot_cube_diff_cmplx
+
+!=========================================================================
+subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,cube_density_start,nx,ny,nz)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
+ use m_memory
+
+ implicit none
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc_dim
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
+ real(dp),intent(in)        :: cube_density_start(nx,ny,nz,nspin)
+ integer,intent(in)         :: num
+ integer,intent(in)         :: nx
+ integer,intent(in)         :: ny
+ integer,intent(in)         :: nz
+!=====
+ integer                    :: gt
+ integer                    :: nocc(2),nocc_max
+ real(dp),parameter         :: length=4.0_dp
+ integer                    :: ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ complex(dp),allocatable    :: phi_cmplx(:,:)
+ real(dp)                   :: u(3),a(3)
+ logical                    :: file_exists
+ real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: dx,dy,dz
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ix,iy,iz,iatom
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ integer,allocatable        :: ocubefile(:,:)
+ integer                    :: ocuberho(nspin)
+ character(len=200)         :: file_name
+ integer                    :: icubefile
+ integer                    :: i_max_atom
+ integer                    :: ndim1,ndim2,ndim3
+ real(dp),allocatable       :: dens_diff(:,:,:)
+!=====
+
+ call start_clock(timing_print_cube_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
+ end if
+ ! Find highest occupied state
+ nocc = 0
+ nocc_max = 0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty)  cycle
+     nocc(ispin) = istate
+     if( istate > nocc_max ) nocc_max = istate
+   enddo
+   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
+     call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
+   endif
+ enddo
+
+ istate1= 1
+ istate2= nocc_max
+
+ allocate(phi_cmplx(istate1:istate2,nspin))
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
+ end if
+
+ if( excit_type%form==EXCIT_PROJECTILE ) then
+   i_max_atom=natom-nprojectile
+ else
+   i_max_atom=natom
+ endif
+
+ xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
+ xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
+ ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,:) )) - length
+ ymax =MAX(MAXVAL( xatom(2,1:i_max_atom) ),MAXVAL( xbasis(2,:) )) + length
+ zmin =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
+ zmax =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
+ dx = (xmax-xmin)/REAL(nx,dp)
+ dy = (ymax-ymin)/REAL(ny,dp)
+ dz = (zmax-zmin)/REAL(nz,dp)
+
+ if( is_iomaster ) then
+   do ispin=1,nspin
+     write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'dens_diff.cube'
+     open(newunit=ocuberho(ispin),file=file_name)
+     write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
+     write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
+     do iatom=1,natom
+       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+     enddo
+   enddo
+ end if
+
+ call clean_allocate("dens_diff for the cube density",dens_diff,nx,ny,nz)
+
+ do ispin=1,nspin
+   istate2=nocc(ispin)
+   dens_diff=0.d0
+   call start_clock(timing_tmp0)
+   !$OMP PARALLEL PRIVATE(basis_function_r,rr,ix,iy,iz,phi_cmplx)
+   !$OMP DO
+   do ix=1,nx
+!     if(MODULO(ix-1,nproc_world)/=rank_world) cycle
+     rr(1) = ( xmin + (ix-1)*dx )
+     do iy=1,ny
+       rr(2) = ( ymin + (iy-1)*dy )
+       do iz=1,nz
+         rr(3) = ( zmin + (iz-1)*dz )
+
+         call calculate_basis_functions_r(basis,rr,basis_function_r)
+
+         phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
+         dens_diff(ix,iy,iz) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact - cube_density_start(ix,iy,iz,ispin)
+       
+       enddo
+
+     enddo
+   enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
+   call stop_clock(timing_tmp0)
+
+!   call start_clock(timing_tmp1)
+!   call xsum_world(dens_diff)
+!   call stop_clock(timing_tmp1)
+
+   if( is_iomaster ) then
+     call start_clock(timing_tmp2)
+     do ix=1,nx
+       do iy=1,ny
+         do iz=1,nz
+           write(ocuberho(ispin),'(50(e16.8,2x))') dens_diff(ix,iy,iz) 
+         end do
+       end do
+     end do
+     call stop_clock(timing_tmp2)
+   end if
+
+ enddo !do ispin
+
+ do ispin=1,nspin
+   close(ocuberho(ispin))
+ end do
+
+ deallocate(phi_cmplx)
+
+ call stop_clock(timing_print_cube_rho_tddft)
+
+end subroutine plot_cube_diff_parallel_cmplx
 
 !=========================================================================
 subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
@@ -1769,10 +1940,10 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
  complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
- integer                    :: num
+ integer,intent(in)         :: num
  real(dp),intent(in)        :: time_cur
 !=====
- integer,parameter          :: nr=5000
+ integer                    :: nr
  integer                    :: gt
  integer                    :: nocc(2),nocc_max
  real(dp),parameter         :: length=6.0_dp
@@ -1823,12 +1994,14 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
  inquire(file='manual_plot_rho_tddft',exist=file_exists)
  if(file_exists) then
    open(newunit=linefile,file='manual_plot_rho_tddft',status='old')
+   read(linefile,*) nr
    read(linefile,*) point_a(:)
    read(linefile,*) point_b(:)
    close(linefile)
  else
+   nr = 5000
    point_a = (/ 0.0_dp, 0.0_dp, 0.0_dp  /)
-   point_b = (/ 5.0_dp, 5.0_dp, 5.0_dp  /)
+   point_b = (/ 0.0_dp, 0.0_dp, 10.0_dp  /)
    call issue_warning('plot_line_wfn_cmplx: manual_plot_rho_tddft file was not found')
  endif
 ! point_b(:) = point_b(:) / bohr_A
@@ -1836,13 +2009,13 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 ! In analogy with cube file, this file is also in Bohr
  u(:) = point_b(:) - point_a(:)
  u(:) = u(:) / NORM2(u)
- allocate(phi_cmplx(nstate,nspin))
+ allocate(phi_cmplx(nocc_dim,nspin))
 
  do ispin=1,nspin
-   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_line_density.dat'
+   write(file_name,'(i4.4,a,i1,a)') num,'_',ispin,'_line_density.dat'
    open(newunit=line_rho(ispin),file=file_name)
-   write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
-   write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
+!   write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
  enddo
 
  do ir=0,nr
@@ -1852,7 +2025,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 
    do ispin=1,nspin
      phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
-     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) )
    enddo
  enddo
 
@@ -1865,6 +2038,181 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
  call stop_clock(timing_print_line_rho_tddft)
 
 end subroutine plot_rho_cmplx
+
+!=========================================================================
+subroutine plot_rho_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur,nr_line_rho,point_a,point_b,rho_start)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
+
+ implicit none
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc_dim
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
+ integer,intent(in)         :: num
+ real(dp),intent(in)        :: time_cur
+ real(dp),intent(in)        :: point_a(3),point_b(3)
+ integer,intent(in)         :: nr_line_rho
+ real(dp),intent(out)       :: rho_start(nr_line_rho,nspin)
+!=====
+ integer                    :: ir,ispin,gt
+ real(dp)                   :: rr(3)
+ complex(dp),allocatable    :: phi_cmplx(:,:)
+ real(dp)                   :: u(3)
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: line_rho(nspin)
+ character(len=200)         :: file_name
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ call start_clock(timing_print_line_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ write(stdout,'(/,1x,a)') 'Plotting the electronic density along one line'
+
+ u(:) = point_b(:) - point_a(:)
+ u(:) = u(:) / NORM2(u)
+ allocate(phi_cmplx(nocc_dim,nspin))
+
+ do ispin=1,nspin
+   write(file_name,'(a,i4.4,a,i1,a)') 'diff_',num,'_',ispin,'_line_density.dat'
+   open(newunit=line_rho(ispin),file=file_name)
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
+ enddo
+
+ do ir=1,nr_line_rho
+   rr(:) = (ir - 1.d0) / (nr_line_rho - 1) * ( point_b(:) - point_a(:) ) + point_a(:)
+
+   call calculate_basis_functions_r(basis,rr,basis_function_r)
+
+   do ispin=1,nspin
+     phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) ) - rho_start(ir,ispin) 
+   enddo
+ enddo
+
+ do ispin=1,nspin
+   close(line_rho(ispin))
+ end do
+
+ deallocate(phi_cmplx)
+
+ call stop_clock(timing_print_line_rho_tddft)
+
+end subroutine plot_rho_diff_cmplx
+
+!=========================================================================
+subroutine calc_rho_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur,nr_line_rho,point_a,point_b,rho_start)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
+
+ implicit none
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc_dim
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
+ integer,intent(in)         :: num
+ real(dp),intent(in)        :: time_cur
+ real(dp),intent(in)        :: point_a(3),point_b(3)
+ integer,intent(in)         :: nr_line_rho
+ real(dp),intent(out)       :: rho_start(nr_line_rho,nspin)
+!=====
+ integer                    :: gt,ispin,ir
+ real(dp)                   :: rr(3)
+ complex(dp),allocatable    :: phi_cmplx(:,:)
+ real(dp)                   :: u(3)
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: line_rho(nspin)
+ character(len=200)         :: file_name
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ call start_clock(timing_print_line_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ write(stdout,'(/,1x,a)') 'Calculating initial electronic denstiy along one line'
+
+ u(:) = point_b(:) - point_a(:)
+ u(:) = u(:) / NORM2(u)
+ allocate(phi_cmplx(nocc_dim,nspin))
+
+ do ispin=1,nspin
+   write(file_name,'(a)') 'total_initial_line_density.dat'
+   open(newunit=line_rho(ispin),file=file_name)
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
+ enddo
+
+ do ir=1,nr_line_rho
+   rr(:) = (ir - 1.d0) / (nr_line_rho - 1) * ( point_b(:) - point_a(:) ) + point_a(:)
+
+   call calculate_basis_functions_r(basis,rr,basis_function_r)
+
+   do ispin=1,nspin
+     phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
+     rho_start(ir,ispin) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),rho_start(ir,ispin)
+   enddo
+ enddo
+
+ do ispin=1,nspin
+   close(line_rho(ispin))
+ end do
+
+ deallocate(phi_cmplx)
+
+ call stop_clock(timing_print_line_rho_tddft)
+
+end subroutine calc_rho_initial_cmplx
+
+!=========================================================================
+subroutine initialize_rho_diff_cmplx(nr_line_rho,point_a,point_b)
+ use m_definitions
+ use m_mpi
+ use m_warning,only: issue_warning
+
+ implicit none
+ real(dp),intent(out)       :: point_a(3),point_b(3)
+ integer,intent(out)        :: nr_line_rho
+!=====
+ logical                    :: file_exists
+ integer                    :: linefile
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ inquire(file='manual_plot_rho_tddft',exist=file_exists)
+ if(file_exists) then
+   open(newunit=linefile,file='manual_plot_rho_tddft',status='old')
+   read(linefile,*) nr_line_rho
+   read(linefile,*) point_a(:)
+   read(linefile,*) point_b(:)
+   close(linefile)
+ else
+   nr_line_rho=5000
+   point_a = (/ 0.0_dp, 0.0_dp, 0.0_dp  /)
+   point_b = (/ 0.0_dp, 0.0_dp, 10.0_dp  /)
+   call issue_warning('initialize_rho_diff_cmplx: manual_plot_rho_tddft file was not found')
+ endif
+
+end subroutine initialize_rho_diff_cmplx
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
@@ -2575,20 +2923,19 @@ function wfn_reflection(nstate,basis,c_matrix,istate,ispin)
 end function wfn_reflection
 
 !=======================================
-subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,prec)
+subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,prec,beg)
  use m_definitions
  implicit none
  integer, intent(in)      :: prec ! precision
+ integer, intent(in)      :: beg  ! number of characters in the beginning
  integer, intent(in)      :: size_n,size_m
- complex(dp),intent(in)  :: matrix_cmplx(size_n,size_m)
+ complex(dp),intent(in)   :: matrix_cmplx(size_n,size_m)
  character(*),intent(in)  :: desc
 !=====
  character(100)  :: write_format1, write_format2
- integer            :: ivar,beg
+ integer            :: ivar
 !=====
 
-! beg=4
- beg=3
  write(write_format1,*) '(',size_m," ('( ',F", prec+beg, ".", prec,"' ,',F", prec+beg, ".",prec,",' )  ') " ,')' ! (  1.01 ,  -0.03)  (  0.04 ,  0.10)
  write(write_format2,*) '(',size_m," (F", prec+beg, ".", prec,"' +  i',F", prec+beg, ".",prec,",'  ') " ,')'   ! 1.01 +  i  -0.03    0.03 +  i  0.10
  write(stdout,*) desc
@@ -2600,10 +2947,11 @@ end subroutine print_2d_matrix_cmplx
 
 
 !=======================================
-subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,prec)
+subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,prec,beg)
  use m_definitions
  implicit none
  integer, intent(in)      :: prec ! precision
+ integer, intent(in)      :: beg  ! number of characters in the beginning
  integer, intent(in)      :: size_n,size_m
  real(dp),intent(in)      :: matrix_real(size_m,size_m)
  character(*),intent(in)  :: desc
@@ -2611,7 +2959,7 @@ subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,prec)
  character(100)  :: write_format1
  integer            :: ivar
 
- write(write_format1,*) '(',size_m," (F", prec+4, ".", prec,') ' ,')'
+ write(write_format1,*) '(',size_m," (F", prec+beg, ".", prec,') ' ,')'
  write(stdout,*) desc
  do ivar=1,size_n
    write(stdout,write_format1) matrix_real(ivar,:)

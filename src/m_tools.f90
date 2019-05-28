@@ -1359,6 +1359,26 @@ subroutine calculate_pade_a(aa,z_in,f_in)
 
 end subroutine calculate_pade_a
 
+!=========================================================================
+function get_number_of_lines(filename) result(nlines)
+ implicit none
+ character(len=*),intent(in)  :: filename
+ character(len=100)           :: cur_string
+ integer                      :: nlines
+!=====
+ integer   :: file_unit,io
+!=====
+
+ nlines=0
+ open(newunit=file_unit, file = filename)
+ do
+   read(file_unit,'(A)',iostat=io)cur_string
+   if ( io /= 0 ) exit
+   nlines=nlines+1
+ end do
+ close(file_unit)
+
+end function get_number_of_lines
 
 !=========================================================================
 pure function get_number_of_elements(string) result(num)

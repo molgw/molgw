@@ -99,6 +99,8 @@ module m_inputparam
  integer,protected                :: nvirtualw
  integer,protected                :: nvirtualspa
  logical,protected                :: is_frozencore
+ logical,protected                :: is_tddft_frozencore
+ integer,protected                :: ncore_tddft
  logical,protected                :: is_tda,is_triplet
  logical,protected                :: is_virtual_fno
  integer,protected                :: nexcitation
@@ -214,6 +216,7 @@ module m_inputparam
  logical,protected                :: print_cube_rho_tddft_
  logical,protected                :: print_cube_diff_tddft_
  logical,protected                :: print_line_rho_tddft_
+ logical,protected                :: print_line_rho_diff_tddft_
  logical,protected                :: print_dens_traj_tddft_
  logical,protected                :: print_dens_traj_
  logical,protected                :: calc_q_matrix_
@@ -799,11 +802,13 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
  character(len=3)     :: print_rho_grid
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
+ character(len=3)     :: tddft_frozencore
  character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix
  character(len=3)     :: print_tddft_matrices
  character(len=3)     :: print_cube_rho_tddft
  character(len=3)     :: print_cube_diff_tddft
  character(len=3)     :: print_line_rho_tddft
+ character(len=3)     :: print_line_rho_diff_tddft
  character(len=3)     :: print_dens_traj_tddft
  character(len=3)     :: print_dens_traj
  character(len=3)     :: calc_q_matrix
@@ -904,6 +909,7 @@ subroutine read_inputfile_namelist()
  is_tda                   = yesno(tda)
  is_triplet               = yesno(triplet)
  is_frozencore            = yesno(frozencore)
+ is_tddft_frozencore      = yesno(tddft_frozencore)
  is_virtual_fno           = yesno(virtual_fno)
  incore_                  = yesno(incore)
 
@@ -922,8 +928,10 @@ subroutine read_inputfile_namelist()
  gwgamma_tddft_           = yesno(gwgamma_tddft)
  use_correlated_density_matrix_ = yesno(use_correlated_density_matrix)
  print_tddft_matrices_  = yesno(print_tddft_matrices)
+ print_cube_rho_tddft_  = yesno(print_cube_rho_tddft)
  print_cube_diff_tddft_ = yesno(print_cube_diff_tddft)
  print_line_rho_tddft_  = yesno(print_line_rho_tddft)
+ print_line_rho_diff_tddft_ = yesno(print_line_rho_diff_tddft)
  print_dens_traj_tddft_ = yesno(print_dens_traj_tddft)
  print_dens_traj_       = yesno(print_dens_traj)
  calc_q_matrix_         = yesno(calc_q_matrix)
@@ -965,6 +973,7 @@ subroutine read_inputfile_namelist()
  if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) call die('alpha_mixing should be inside [0,1]')
  if(ncoreg<0) call die('negative ncoreg is meaningless')
  if(ncorew<0) call die('negative ncorew is meaningless')
+ if(ncore_tddft<0) call die('negative ncore_tddft is meaningless')
  if(nvirtualg<0) call die('negative nvirtualg is meaningless')
  if(nvirtualw<0) call die('negative nvirtualw is meaningless')
  if(nvirtualspa<0) call die('negative nvirtualspa is meaningless')

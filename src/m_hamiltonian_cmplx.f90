@@ -336,7 +336,11 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
  integer              :: idisc,i_max_atom,nocc
  logical              :: file_exists
  integer              :: imanual
+ real(dp)             :: xproj,yproj
 !=====
+
+ xproj=xatom(1,natom+nghost)
+ yproj=xatom(2,natom+nghost)
 
  call start_clock(timing_calc_dens_disc)
 
@@ -399,7 +403,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
      vec_r=rr_grid(1:3,igrid)
      do ispin=1,nspin
        idisc = INT((vec_r(3)-z_min)/dz_disc) + 1
-       if( idisc > 0 .AND. idisc <= ndisc .AND. (vec_r(1)**2+vec_r(2)**2)**0.5_dp <= r_disc ) then
+       if( idisc > 0 .AND. idisc <= ndisc .AND. ( (vec_r(1) - xproj)**2 + (vec_r(2) - yproj)**2)**0.5_dp <= r_disc ) then
          charge_disc(idisc,ispin)=charge_disc(idisc,ispin)+rhor_batch(ispin,ir) * weight_batch(ir)
          count_z_section(idisc,ispin)=count_z_section(idisc,ispin)+1
        end if
