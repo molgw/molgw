@@ -756,8 +756,7 @@ subroutine predictor_corrector(basis,                  &
 end subroutine predictor_corrector
 
 
-!==========================================
->>>>>>> 7ce01d7f287f3bd2005e0057f7a08865a41f2fa5
+!=========================================================================
 subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx)
  implicit none
  complex(dp),intent(in)    :: c_matrix_orth_cmplx(:,:,:)
