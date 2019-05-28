@@ -75,7 +75,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !=====initial values
  integer                    :: nstate
- real(dp),allocatable       :: energies_inst(:)
+ real(dp),allocatable       :: energy_tddft(:)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),allocatable    :: h_cmplx(:,:,:)
@@ -202,14 +202,14 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
    call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
-   allocate(energies_inst(nstate))
+   allocate(energy_tddft(nstate))
    do ispin=1, nspin
-     call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energies_inst,c_matrix_orth_start_complete_cmplx(:,:,ispin))
+     call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft,c_matrix_orth_start_complete_cmplx(:,:,ispin))
    end do
    ! in order to save the memory, we dont keep inoccupied states (nocc+1:nstate)
    c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
-   deallocate(energies_inst)
+   deallocate(energy_tddft)
  end if
 
  ! Number of iterations
@@ -901,7 +901,7 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
  character(len=50)          :: name_file_q_matrix
  character(len=500)         :: cur_string
  integer                    :: ispin
- real(dp),allocatable       :: energies_inst(:)
+ real(dp),allocatable       :: energy_tddft(:)
  logical                    :: file_exists
  integer                    :: file_q_matrix_param,nline,iline
  integer                    :: num_fields
@@ -909,11 +909,11 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
 
  call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
  call clean_allocate('c_matrix_orth_start for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
- allocate(energies_inst(nstate))
+ allocate(energy_tddft(nstate))
  do ispin=1, nspin
-   call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energies_inst,c_matrix_orth_start_complete_cmplx(:,:,ispin))
+   call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft,c_matrix_orth_start_complete_cmplx(:,:,ispin))
  end do
- deallocate(energies_inst)
+ deallocate(energy_tddft)
 
  inquire(file='manual_q_matrix_param',exist=file_exists)
 
@@ -1378,7 +1378,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  real(dp),allocatable       :: m_tmpr1(:,:),m_tmpr2(:,:)
 !==variables for the MAG2 propagator
  complex(dp),allocatable    :: a_matrix_orth_cmplx(:,:)
- real(dp)                   :: energies_inst(nstate)
+ real(dp)                   :: energy_tddft(nstate)
 !==variables for the CN propagator
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al,
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
@@ -1447,10 +1447,8 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 
      !
      ! First part, diagonalize
-     call start_clock(timing_propagate_diago)
-     a_matrix_orth_cmplx(:,:) = h_small_cmplx(:,:,ispin)
-     call diagonalize_scalapack(postscf_diago_flavor,scalapack_block_min,a_matrix_orth_cmplx,energies_inst)
-     call stop_clock(timing_propagate_diago)
+     ! subroutine is able to take advantage of a real hamiltonian
+     call diagonalize_hamiltonian_ortho(h_small_cmplx(:,:,ispin),a_matrix_orth_cmplx,energy_tddft)
 
      !
      ! Second part, multiply matrices
@@ -1460,7 +1458,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      allocate(m_tmp_2(nstate,nstate))
      ! M1 = A * e^{-idt*e}
      do jstate=1,nstate
-       m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * EXP( -im * time_step_cur * energies_inst(jstate) )
+       m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * EXP( -im * time_step_cur * energy_tddft(jstate) )
      enddo
 
      ! M2 = M1 * A**H = (A * e^{-idt*e} ) * A**H
@@ -1530,7 +1528,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  integer             :: ispin,iham
  integer             :: ibf
  complex(dp)         :: a_matrix_orth_cmplx(nstate,nstate,2)
- real(dp)            :: energies_inst(nstate)
+ real(dp)            :: energy_tddft(nstate)
  complex(dp)         :: propagator_eigen(nstate,nstate,2)
 !=====
 
@@ -1541,10 +1539,10 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    select case (prop_type)
    case('ETRS')
      do iham=1,2
-       call diagonalize(postscf_diago_flavor,h_small_hist2_cmplx(:,:,ispin,iham),energies_inst,a_matrix_orth_cmplx(:,:,iham))
+       call diagonalize(postscf_diago_flavor,h_small_hist2_cmplx(:,:,ispin,iham),energy_tddft,a_matrix_orth_cmplx(:,:,iham))
        propagator_eigen(:,:,iham) = ( 0.0_dp , 0.0_dp )
        do ibf=1,nstate
-         propagator_eigen(ibf,ibf,iham) = EXP(-im*time_step_cur/2.d0*energies_inst(ibf))
+         propagator_eigen(ibf,ibf,iham) = EXP(-im*time_step_cur/2.d0*energy_tddft(ibf))
        end do
      end do
      c_matrix_orth_cmplx(:,:,ispin) = &
@@ -1690,6 +1688,49 @@ end subroutine setup_hamiltonian_fock_cmplx
 
 
 !=========================================================================
+subroutine diagonalize_hamiltonian_ortho(h_small_cmplx,a_matrix_orth_cmplx,energy_tddft)
+ implicit none
+
+ complex(dp),intent(in)  :: h_small_cmplx(:,:)
+ complex(dp),intent(out) :: a_matrix_orth_cmplx(:,:)
+ real(dp),intent(out)    :: energy_tddft(:)
+!=====
+ logical                 :: algo_cmplx
+ integer                 :: nstate
+ real(dp),allocatable    :: m_tmpr(:,:)
+!=====
+
+ call start_clock(timing_propagate_diago)
+ algo_cmplx = ANY( ABS(h_small_cmplx(:,:)%im ) > 1.0e-6_dp )
+ nstate = SIZE(h_small_cmplx(:,:),DIM=1)
+
+ if(algo_cmplx) then
+   !
+   ! COMPLEX case
+   !
+   write(stdout,'(1x,a)') 'Perform a complex matrix diagonalization'
+   a_matrix_orth_cmplx(:,:) = h_small_cmplx(:,:)
+   call diagonalize_scalapack(postscf_diago_flavor,scalapack_block_min,a_matrix_orth_cmplx,energy_tddft)
+ else
+   !
+   ! REAL case
+   !
+   write(stdout,'(1x,a)') 'Perform a real matrix diagonalization'
+   allocate(m_tmpr(nstate,nstate))
+
+   m_tmpr(:,:) = h_small_cmplx(:,:)%re
+   call diagonalize(postscf_diago_flavor,m_tmpr,energy_tddft)
+   a_matrix_orth_cmplx(:,:) = m_tmpr(:,:)
+
+   deallocate(m_tmpr)
+ endif
+
+ call stop_clock(timing_propagate_diago)
+
+end subroutine diagonalize_hamiltonian_ortho
+
+
+!=========================================================================
 subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
  implicit none
 
@@ -1697,7 +1738,7 @@ subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
  complex(dp),intent(in)  :: h_cmplx(:,:,:)
  complex(dp),intent(out) :: h_small_cmplx(:,:,:)
 !=====
- logical                 :: algo_complex
+ logical                 :: algo_cmplx
  integer                 :: nbf,nstate,ispin
  real(dp),allocatable    :: m_tmpr1(:,:),m_tmpr2(:,:)
  complex(dp),allocatable :: m_tmp(:,:),x_matrix_cmplx(:,:)
@@ -1706,16 +1747,16 @@ subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
  call start_clock(timing_tddft_ham_orthobasis)
 
  ! If any coefficient of H has an imaginary part, use the former (and slower) algo
- algo_complex = ANY( ABS(h_cmplx(:,:,:)%im ) > 1.0e-6_dp )
+ algo_cmplx = ANY( ABS(h_cmplx(:,:,:)%im ) > 1.0e-6_dp )
 
 #if defined(HAVE_MKL)
- if(algo_complex) then
+ if(algo_cmplx) then
    write(stdout,'(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: MKL extension, complex '
  else
    write(stdout,'(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: MKL extension, real'
  endif
 #else
- if(algo_complex) then
+ if(algo_cmplx) then
    write(stdout,'(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: complex '
  else
    write(stdout,'(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: real'
@@ -1732,9 +1773,11 @@ subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
    !call matmul_transaba_scalapack(scalapack_block_min,x_matrix_cmplx,h_cmplx(:,:,ispin),h_small_cmplx(:,:,ispin))
 
    ! Select between two cases for speed: COMPLEX or REAL
-   if( algo_complex ) then
+   if( algo_cmplx ) then
+     !
+     ! COMPLEX CASE
+     !
 
-     !call matmul_transaba_scalapack(scalapack_block_min,x_matrix_cmplx,h_cmplx(:,:,ispin),h_small_cmplx(:,:,ispin))
      allocate(x_matrix_cmplx(nbf,nstate))
      allocate(m_tmp(nbf,nstate))
      x_matrix_cmplx(:,:) = x_matrix(:,:)
@@ -1756,6 +1799,9 @@ subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
      deallocate(x_matrix_cmplx)
 
    else
+     !
+     ! REAL CASE
+     !
 
      allocate(m_tmpr1(nbf,nbf))
      allocate(m_tmpr2(nbf,nstate))
