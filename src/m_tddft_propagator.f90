@@ -1499,17 +1499,17 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    ! x_matrix is real, let's use this to save time
    allocate(m_tmpr1(nstate,nocc),m_tmpr2(nstate,nocc))
    ! 1. Real part
-   m_tmpr1(:,:) = c_matrix_orth_cmplx%re(:,:,ispin)
+   m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%re
    call DGEMM('N','C',basis%nbf,nocc,nstate,1.0_8,x_matrix,nstate, &
                                                   m_tmpr1,nstate,   &
                                             0.0_8,m_tmpr2,nstate)
-   c_matrix_cmplx%re(:,:,ispin) = m_tmpr2(:,:)
+   c_matrix_cmplx(:,:,ispin)%re = m_tmpr2(:,:)
    ! 2. Imaginary part
-   m_tmpr1(:,:) = c_matrix_orth_cmplx%im(:,:,ispin)
+   m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%im
    call DGEMM('N','C',basis%nbf,nocc,nstate,1.0_8,x_matrix,nstate, &
                                                   m_tmpr1,nstate,   &
                                             0.0_8,m_tmpr2,nstate)
-   c_matrix_cmplx%im(:,:,ispin) = m_tmpr2(:,:)
+   c_matrix_cmplx(:,:,ispin)%im = m_tmpr2(:,:)
 
    deallocate(m_tmpr1,m_tmpr2)
 
