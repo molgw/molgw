@@ -1469,8 +1469,6 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
        m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * EXP( -im * time_step_cur * energies_inst(jstate) )
      enddo
 
-     !call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))),c_matrix_orth_cmplx(:,:,ispin),m_tmp_3  )
-
      ! M2 = M1 * A**H = (A * e^{-idt*e} ) * A**H
      call ZGEMM('N','C',nstate,nstate,nstate,(1.0_8,0.0_8),m_tmp_1,nstate,             &
                                                            a_matrix_orth_cmplx,nstate, &
@@ -1481,7 +1479,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      m_tmp_3(:,:) = c_matrix_orth_cmplx(:,:,ispin)
 
      ! C'^new =  M2 * C'^old = (A * e^{-idt*e} ) * A**H * C'^old
-     call ZGEMM('N','C',nstate,nocc,nstate,(1.0_8,0.0_8),m_tmp_2,nstate, &
+     call ZGEMM('N','N',nstate,nocc,nstate,(1.0_8,0.0_8),m_tmp_2,nstate, &
                                                          m_tmp_3,nstate, &
                                            (0.0_8,0.0_8),c_matrix_orth_cmplx(1,1,ispin),nstate)
 
@@ -1493,20 +1491,18 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
        call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
    end select
 
-   !call matmul_ab_scalapack(scalapack_block_min,x_matrix_cmplx,c_matrix_orth_cmplx(:,:,ispin),c_matrix_cmplx(:,:,ispin))
-
    !
    ! x_matrix is real, let's use this to save time
    allocate(m_tmpr1(nstate,nocc),m_tmpr2(nstate,nocc))
    ! 1. Real part
    m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%re
-   call DGEMM('N','C',basis%nbf,nocc,nstate,1.0_8,x_matrix,nstate, &
+   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0_8,x_matrix,nstate, &
                                                   m_tmpr1,nstate,   &
                                             0.0_8,m_tmpr2,nstate)
    c_matrix_cmplx(:,:,ispin)%re = m_tmpr2(:,:)
    ! 2. Imaginary part
    m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%im
-   call DGEMM('N','C',basis%nbf,nocc,nstate,1.0_8,x_matrix,nstate, &
+   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0_8,x_matrix,nstate, &
                                                   m_tmpr1,nstate,   &
                                             0.0_8,m_tmpr2,nstate)
    c_matrix_cmplx(:,:,ispin)%im = m_tmpr2(:,:)
