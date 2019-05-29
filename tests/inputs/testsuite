@@ -222,7 +222,7 @@ GW LUMO energy            ,      4.000047      , 0 , 1.0e-4
 ar_camb3lyp_gw.in         , Range-separated hybrid argon atom with 6-31*G+ and G0W0
 SCF Total Energy          ,   -527.5394815512  , 0 , 1.0e-7
 gKS HOMO-LUMO gap         ,     15.378169      , 0 , 1.0e-4
-Galitskii-Migdal formula  ,     -0.3335895161  , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.3335895161  , 0 , 1.0e-7
 Lowest neutral excitation ,     15.692205      , 0 , 1.0e-4
 RPA Total energy          ,   -526.9633301175  , 0 , 1.0e-7
  GW HOMO energy           ,    -15.012653      , 0 , 1.0e-4
@@ -273,7 +273,11 @@ MP2 Total Energy          ,    -14.5997371900  , 0 , 1.0e-7
 gKS HOMO energy           ,     -8.817876      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.203606      , 0 , 1.0e-4
 
-be_cohsex.in              , self-consistent COHSEX Be atom cc-pVDZ with RI
+be_cohsex_nori.in         , self-consistent COHSEX Be atom cc-pVDZ without RI, noparallel
+gKS HOMO energy           ,     -9.681301      , 0 , 1.0e-4
+gKS LUMO energy           ,      1.134290      , 0 , 1.0e-4
+
+be_cohsex_ri.in           , self-consistent COHSEX Be atom cc-pVDZ with RI
 gKS HOMO energy           ,     -9.681476      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.133775      , 0 , 1.0e-4
 
@@ -356,7 +360,7 @@ polarizability trace      ,     13.362175       , 0 , 1.0e-4
 ch2o_gw.in                , GW@B3LYP on formaldehyde to prepare BSE
 SCF Total Energy          ,   -114.5110479343   , 0 , 1.0e-7
 Est. HF Energy            ,   -113.8786939682   , 0 , 1.0e-7
-Galitskii-Migdal formula  ,     -0.7854236777   , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.7854236777   , 0 , 1.0e-7
 RPA Total energy          ,   -114.3237167485   , 0 , 1.0e-4
 GW HOMO energy            ,     -9.921426       , 0 , 1.0e-4
 GW LUMO energy            ,      2.494864       , 0 , 1.0e-4
@@ -397,18 +401,18 @@ G1W0 LUMO energy          ,     -0.331161       , 1 , 1.0e-4
 oh_m_1.in                 , GnWn (eigenvalue self-consistent) on OH- 1st iteration
 SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2924060323   , 0 , 1.0e-7
-Galitskii-Migdal formula  ,     -0.5031685208   , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.5031685208   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.100134       , 0 , 1.0e-4
 G0W0 LUMO energy          ,      5.328126       , 0 , 1.0e-4
 
 oh_m_2.in                 , GnWn (eigenvalue self-consistent) on OH- 2nd iteration , restart
-Galitskii-Migdal formula  ,     -0.4816111091   , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.4816111091   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2780353842   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.208873       , 0 , 1.0e-4
 G0W0 LUMO energy          ,      5.337010       , 0 , 1.0e-4
 
 oh_m_3.in                 , GnWn (eigenvalue self-consistent) on OH- 3rd iteration , restart
-Galitskii-Migdal formula  ,     -0.4785659835   , 0 , 1.0e-7
+1/2 Tr[ Sig_c * G ]       ,     -0.4785659835   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2760358773   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.207707       , 0 , 1.0e-4
 G0W0 LUMO energy          ,      5.336834       , 0 , 1.0e-4
@@ -530,16 +534,16 @@ SE+MP3  Total En          , -76.2354493975     , 0 , 1.0e-7
 h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B",tddft
 SCF Total Energy          , -76.0278711935     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -76.0278711836     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-7
-RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-5
+RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-5
+RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-5
 
 h2o_rt_tddft_hf_PC2B_scalapack.in, Scalapack test RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B",tddft
 SCF Total Energy          , -76.0571529836     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -76.0571529689     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   0.0001368162     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   2.0246334571     , 1 , 1.0e-7
-RT-TDDFT Dipole Moment    ,  -0.0003241743     , 2 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0001368162     , 0 , 1.0e-5
+RT-TDDFT Dipole Moment    ,   2.0246334571     , 1 , 1.0e-5
+RT-TDDFT Dipole Moment    ,  -0.0003241743     , 2 , 1.0e-5
 
 h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B", tddft
 SCF Total Energy          , -75.8540895545     , 0 , 1.0e-7
@@ -662,11 +666,6 @@ SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 h2o_restart_temperature.in , restart with non-zero temperature, restart
 SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 
-co_pt1pt2.in              , PT1+PT2 perturbation theory for a non-Hartree-Fock starting point
-SCF Total Energy          ,   -113.1959990723   , 0 , 1.0e-7
-PT1PT2 HOMO energy        ,    -13.100347       , 0 , 1.0e-4
-PT1PT2 LUMO energy        ,      3.058181       , 0 , 1.0e-4
-
 sih4_sc-cohsex.in         , sc-COHSEX for SiH4 to prepare a subsequent G0W0 calculation
 SCF Total Energy          ,   -291.2399059845   , 0 , 1.0e-7
 gKS HOMO energy           ,    -13.781513       , 0 , 1.0e-4
@@ -700,6 +699,15 @@ Kinetic Energy            ,    112.6561304107   , 0 , 1.0e-7
 Nucleus Energy            ,   -309.8313153540   , 0 , 1.0e-7
 Hartree Energy            ,     75.7898390921   , 0 , 1.0e-7
 Exchange Energy           ,    -13.2088773886   , 0 , 1.0e-7
+
+h2_dyson.in               , G0W0 with a analytic solution of the Dyson equation
+SCF Total Energy          ,     -1.1669981156   , 0 , 1.0e-7
+gKS HOMO energy           ,    -13.542791       , 0 , 1.0e-4
+gKS LUMO energy           ,      3.333788       , 0 , 1.0e-4
+Projection on state 00001 ,    -16.082106       , 0 , 1.0e-4
+Projection on state 00001 ,      0.941619       , 1 , 1.0e-4
+Projection on state 00002 ,      5.171425       , 0 , 1.0e-4
+Projection on state 00002 ,      0.987882       , 1 , 1.0e-4
 
 
 

@@ -7,8 +7,7 @@
 ! PT2, PT3, GW, evGW, COHSEX, GWGamma, etc.
 !
 !=========================================================================
-subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_matrix, &
-                                 exchange_m_vxc_diag)
+module m_selfenergy_evaluation
  use m_definitions
  use m_timing
  use m_warning
@@ -23,16 +22,24 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  use m_spectral_function
  use m_selfenergy_tools
  use m_virtual_orbital_space
+
+
+
+contains
+
+
+!=========================================================================
+subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc)
  implicit none
 
  type(basis_set),intent(in) :: basis
  type(basis_set),intent(in) :: auxil_basis
- integer,intent(in)         :: nstate
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(inout)     :: energy(nstate,nspin)
- real(dp),intent(inout)     :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(inout)     :: energy(:,:)
+ real(dp),intent(inout)     :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: exchange_m_vxc(:,:,:)
 !=====
+ integer                 :: nstate
  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3
  logical                 :: enforce_rpa
  character(len=36)       :: selfenergy_tag
@@ -41,17 +48,25 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  type(spectral_function) :: wpol
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: sigc(:,:)
- real(dp)                :: energy_g(nstate,nspin)
- real(dp)                :: energy_w(nstate,nspin)
  real(dp),allocatable    :: zz(:,:)
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
  integer                 :: iomega
- integer                 :: istep_gw
+ integer                 :: istep_gw,pstate
+ real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+ real(dp),allocatable    :: energy_g(:,:)
+ real(dp),allocatable    :: energy_w(:,:)
 !=====
 
  write(stdout,'(/,/,1x,a)') '=================================================='
  write(stdout,'(1x,a)')     'Self-energy evaluation starts here'
  write(stdout,'(1x,a,/)')   '=================================================='
+
+ nstate = SIZE(occupation(:,:),DIM=1)
+ allocate(energy_g(nstate,nspin),energy_w(nstate,nspin))
+ allocate(exchange_m_vxc_diag(nstate,nspin))
+ do pstate=1,nstate
+   exchange_m_vxc_diag(pstate,:) = exchange_m_vxc(pstate,pstate,:)
+ enddo
 
  !
  ! Small imaginary part of the poles in the Green's function
@@ -74,11 +89,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      write(selfenergy_tag,'(i3)') istep_gw-1
      selfenergy_tag='G'//TRIM(ADJUSTL(selfenergy_tag))//'W'//TRIM(ADJUSTL(selfenergy_tag))
    case(PT2)
-     if( calc_type%selfenergy_static ) then
-       selfenergy_tag='PT1PT2'
-     else
-       selfenergy_tag='PT2'
-     endif
+     selfenergy_tag='PT2'
    case(TWO_RINGS)
      selfenergy_tag='TWO_RINGS'
    case(PT3)
@@ -164,7 +175,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se)
 
 
-
    !
    ! selfenergy = GW or COHSEX
    !
@@ -210,29 +220,26 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 
      endif
 
-#ifdef HAVE_SCALAPACK
-     ! The SCALAPACK implementation only works for plain vanilla GW
-     ! TODO: extend it to COHSEX
-     if( has_auxil_basis &
-       .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
-         .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == GW_IMAG) ) then
-       if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
-         call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-       else
-         call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
-         call self_energy_pade(se)
-       endif
-     else
-       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-     endif
-#else
-     if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
-       call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-     else
+     select case(calc_type%selfenergy_technique)
+     case(imaginary_axis_pade)
        call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
        call self_energy_pade(se)
-     endif
+     case(exact_dyson)
+       call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
+     case default
+       ! The SCALAPACK implementation only works for plain vanilla GW
+#if defined(HAVE_SCALAPACK)
+       if( has_auxil_basis &
+         .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
+           .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == GW_IMAG) ) then
+         call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+       else
 #endif
+         call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+#if defined(HAVE_SCALAPACK)
+       endif
+#endif
+     end select
 
 
 
@@ -413,36 +420,35 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    endif
 
 
+
    !
-   ! Output the quasiparticle energies, the self-energy etc.
+   ! Final output the quasiparticle energies, the self-energy etc.
    !
+
    if( print_sigma_ ) then
      call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),exchange_m_vxc_diag,occupation,energy_g,se)
    endif
 
-
    allocate(energy_qp_new(nstate,nspin))
 
-   if( calc_type%selfenergy_technique == EVSC ) then
+   select case(calc_type%selfenergy_technique)
+   case(EVSC)
      call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
      call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
-   else
-     select case(calc_type%selfenergy_approx)
-     case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,GW_IMAG,GWSOX,GWPT3)
-       allocate(energy_qp_z(nstate,nspin))
-       allocate(zz(nstate,nspin))
-       call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-       call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new)
+   case(exact_dyson)
+     ! Fake new QP energies in this case
+     ! because it is not obvious to find which are the QP which are not.
+     energy_qp_new(:,:) = energy(:,:)
+   case default
+     allocate(energy_qp_z(nstate,nspin))
+     allocate(zz(nstate,nspin))
+     call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+     call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new)
 
-       call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
-       deallocate(zz)
-       deallocate(energy_qp_z)
-
-     case(GnWn,GnW0,COHSEX)
-       call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_new)
-       call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
-     end select
-   endif
+     call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+     deallocate(zz)
+     deallocate(energy_qp_z)
+   end select
 
    !
    ! Write the QP energies on disk: ENERGY_QP file
@@ -469,8 +475,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    call barrier_world()
  enddo ! nstep_gw
 
+ deallocate(exchange_m_vxc_diag)
 
 end subroutine selfenergy_evaluation
 
 
+end module m_selfenergy_evaluation
 !=========================================================================

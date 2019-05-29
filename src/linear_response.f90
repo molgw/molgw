@@ -308,7 +308,10 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
      call chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
-     if( is_rpa ) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
+     if( is_rpa ) then
+       write(stdout,'(/,1x,a)')        'Correlation energy in the Galitskii-Migdal formula'
+       write(stdout,'(1x,a,f19.10,/)') '                        1/2 Tr[ Sig_c * G ] (Ha): ',energy_gm
+     endif
 
      ! Add the single pole approximation for the poles that have been neglected
      ! in the diagonalization

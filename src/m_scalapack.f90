@@ -832,12 +832,12 @@ subroutine diagonalize_inplace_sca_cdp(flavor,matrix,desc,eigval)
  ! Only call SCALAPACK when using more than 1 proc
  if( nprow * npcol > 1 ) then
    desc_eigvec = desc
-  
+
    mlocal = SIZE( matrix , DIM=1 )
    nlocal = SIZE( matrix , DIM=2 )
-  
+
    allocate(eigvec(mlocal,nlocal))
-  
+
    !
    ! First call to get the dimension of the array work
    lwork  = -1
@@ -848,25 +848,25 @@ subroutine diagonalize_inplace_sca_cdp(flavor,matrix,desc,eigval)
    case default
      call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
    end select
-  
-  
+
+
    !
    ! Second call to actually perform the diago
    lwork  = NINT(REAL(work(1),dp))
    lrwork = NINT(REAL(rwork(1),dp))
-  
+
    deallocate(work)
    allocate(work(lwork))
    select case(flavor)
    case default
      call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
    end select
-  
+
    deallocate(work)
-  
-  
+
+
    matrix(:,:) = eigvec(:,:)
-  
+
    deallocate(eigvec)
 
  else

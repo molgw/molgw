@@ -74,6 +74,7 @@ module m_timing
  integer,parameter :: timing_dft_densities       = 55
  integer,parameter :: timing_dft_libxc           = 56
  integer,parameter :: timing_dft_vxc             = 57
+ integer,parameter :: timing_x_m_vxc             = 58
 
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -223,6 +224,9 @@ subroutine output_timing()
 
  write(stdout,'(/,a,/)') '                 -------------------------------------'
  write(stdout,'(a,/)')   '                            Post SCF'
+
+ ! Prepare post scf
+ call output_timing_line('Sigma_x - Vxc',timing_x_m_vxc,1)
 
  ! Linear response polarization RPA or TDDFT or BSE
  call output_timing_line('Response function chi on grid',timing_rpa_dynamic,1)

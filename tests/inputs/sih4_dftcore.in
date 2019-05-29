@@ -1,5 +1,4 @@
 &molgw
- basis_path='../../basis/'
  scf='pbe0'
  tolscf=1.0e-10
 

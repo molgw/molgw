@@ -50,7 +50,7 @@ subroutine selfenergy_set_state_range(nstate_in,occupation)
  integer             :: nstate_in
  real(dp),intent(in) :: occupation(:,:)
 !=====
- integer :: istate
+ integer :: pstate
 !=====
 
  if( nstate_in > SIZE( occupation(:,:) , DIM=1 ) ) then
@@ -76,9 +76,9 @@ subroutine selfenergy_set_state_range(nstate_in,occupation)
 
  ! Find the HOMO index
  nhomo_G = 1
- do istate=1,nstate_in
-   if( .NOT. ANY( occupation(istate,:) < completely_empty ) ) then
-     nhomo_G = MAX(nhomo_G,istate)
+ do pstate=1,nstate_in
+   if( .NOT. ANY( occupation(pstate,:) < completely_empty ) ) then
+     nhomo_G = MAX(nhomo_G,pstate)
    endif
  enddo
 
@@ -548,33 +548,31 @@ end subroutine destroy_selfenergy_grid
 
 
 !=========================================================================
-subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
+subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
  use m_hamiltonian_wrapper
  implicit none
 
- type(basis_set),intent(in)    :: basis
- real(dp),intent(in)           :: occupation(:,:)
- real(dp),intent(in)           :: energy(:,:)
- real(dp),intent(in)           :: c_matrix(:,:,:)
- real(dp),intent(in)           :: hamiltonian_fock(:,:,:)
- real(dp),intent(out)          :: exchange_m_vxc_diag(:,:)
- real(dp),intent(out),optional :: exchange_m_vxc(:,:,:)
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: energy(:,:)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: hamiltonian_fock(:,:,:)
+ real(dp),intent(out)       :: exchange_m_vxc(:,:,:)
 !=====
  integer,parameter    :: BATCH_SIZE = 128
  integer              :: nstate
- integer              :: ispin,istate
+ integer              :: ispin,pstate
  real(dp)             :: exc
  real(dp),allocatable :: occupation_tmp(:,:)
  real(dp),allocatable :: p_matrix_tmp(:,:,:)
  real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
 !=====
 
- if( PRESENT(exchange_m_vxc) ) then
-   write(stdout,*) 'Calculate the full \Sigma_x - Vxc matrix'
- endif
+ call start_clock(timing_x_m_vxc)
+ write(stdout,*) 'Calculate the (Sigma_x - Vxc) matrix'
 
  nstate = SIZE(occupation,DIM=1)
 
@@ -613,50 +611,30 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
    deallocate(occupation_tmp,p_matrix_tmp)
 
    !
-   ! Calculate the matrix Sigma_x - Vxc or its diagonal
+   ! Calculate the matrix Sigma_x - Vxc
    ! for the forthcoming GW corrections
    !
-   if( PRESENT(exchange_m_vxc) ) then
-     call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
-   endif
-   do ispin=1,nspin
-     do istate=1,nstate
-        exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
-                                                MATMUL( hxmxc(:,:,ispin) , c_matrix(:,istate,ispin) ) )
-     enddo
-   enddo
-
+   call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
 
    deallocate(hxc_val,hexx_val,hxmxc)
 
  else
 
    !
-   ! Calculate the matrix Sigma_x - Vxc or its diagonal
-   ! for the forthcoming GW corrections
-   !
+   ! Calculate the matrix < p | Sigma_x - Vxc | q >
+   ! this is equal to < p | F - H | q > and < p | H | q > = e_p \delta_{pq}
 
-   if( PRESENT(exchange_m_vxc) ) then
-     do ispin=1,nspin
-        !exchange_m_vxc(:,:,ispin) =  MATMUL( TRANSPOSE(c_matrix(:,:,ispin)) , &
-        !                                     MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,:,ispin) ) )
-        call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
+   call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
 
-       do istate=1,nstate
-         exchange_m_vxc(istate,istate,ispin) = exchange_m_vxc(istate,istate,ispin) - energy(istate,ispin)
-       enddo
-     enddo
-   endif
    do ispin=1,nspin
-     do istate=1,nstate
-        exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
-                                                MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,istate,ispin) ) ) &
-                                              - energy(istate,ispin)
+     do pstate=1,nstate
+       exchange_m_vxc(pstate,pstate,ispin) = exchange_m_vxc(pstate,pstate,ispin) - energy(pstate,ispin)
      enddo
    enddo
 
  endif
 
+ call stop_clock(timing_x_m_vxc)
 
 end subroutine setup_exchange_m_vxc
 
