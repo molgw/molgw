@@ -35,7 +35,6 @@ module m_basis_set
  end type
 
  type shell_type
-   integer              :: ishell
    integer              :: am
    integer              :: ng
    real(dp),allocatable :: alpha(:)
@@ -75,6 +74,7 @@ contains
 !=========================================================================
 subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
  implicit none
+
  character(len=4),intent(in)   :: gaussian_type
  character(len=100),intent(in) :: basis_path
  character(len=100),intent(in) :: basis_name(natom_basis)
@@ -101,7 +101,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  basis%nshell        = 0
  basis%gaussian_type = gaussian_type
 
- if(TRIM(basis_name(1))=='none') return
+ if( TRIM(basis_name(1)) == 'none' ) return
 
  !
  ! LOOP OVER ATOMS
@@ -144,14 +144,6 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
  enddo
 
-
- write(stdout,*)
- write(stdout,'(a50,i8)') 'Total number of basis functions:',basis%nbf
- if(basis%gaussian_type=='PURE') then
-   write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
- endif
- write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
-
  allocate(basis%bfc(basis%nbf_cart))
  allocate(basis%bff(basis%nbf))
  allocate(basis%shell(basis%nshell))
@@ -188,7 +180,6 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      !
      ishell = ishell + 1
 
-     basis%shell(ishell)%ishell = ishell
      basis%shell(ishell)%am     = am_read
      basis%shell(ishell)%iatom  = iatom
      basis%shell(ishell)%x0(:)  = x0(:)
@@ -260,22 +251,41 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  ! END OF THE LOOP OVER ATOMS
  enddo
 
-
-
  ! Find the maximum angular momentum employed in the basis set
  basis%ammax = MAXVAL(basis%bfc(:)%am)
+
+ call echo_basis_summary(basis)
+
+
+end subroutine init_basis_set
+
+
+!=========================================================================
+subroutine echo_basis_summary(basis)
+ implicit none
+
+ type(basis_set),intent(in)    :: basis
+!=====
+ integer :: ibf
+!=====
+
+ write(stdout,'(/,a50,i8)') 'Total number of basis functions:',basis%nbf
+ if( basis%gaussian_type == 'PURE' ) then
+   write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
+ endif
+ write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
 
  write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
  write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
 
- if(basis%ammax > MOLGW_LMAX ) then
+ if( basis%ammax > MOLGW_LMAX ) then
    write(stdout,*) 'Maximum angular momentum: ',basis%ammax
    write(stdout,*) 'while this compilation of LIBINT only supports: ',MOLGW_LMAX
-   call die('init_basis_set: Angular momentum is too high')
+   call die('echo_basis_summary: Angular momentum is too high')
  endif
 
  !
- ! finally output the basis set for debugging
+ ! Output all the basis functions for debugging
  if( .FALSE. ) then
    do ibf=1,basis%nbf_cart
      write(stdout,*) ' Cartesian function number',ibf
@@ -285,7 +295,219 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
  write(stdout,'(a,/)') ' Basis set is fit and ready'
 
-end subroutine init_basis_set
+end subroutine echo_basis_summary
+
+
+!=========================================================================
+!Build a system specific auxiliary basis based the 'Auto' recipe in Gaussian
+subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
+ implicit none
+
+ character(len=4),intent(in)   :: gaussian_type
+ type(basis_set),intent(in)    :: basis
+ type(basis_set),intent(out)   :: auxil_basis
+!=====
+ real(dp),parameter :: FSAM    = 1.5_dp
+ integer,parameter  :: LMAXINC = 1
+
+ integer :: lmax_center
+ integer :: jbf,jbf_cart
+ integer :: icenter,ncenter,ishell_example
+ integer :: ishell,icandidate,ncandidate,index_exp,nprim
+ integer  :: index_current,ntrial,am_current,am_selected
+ real(dp) :: exponent_current,exponent_selected
+ real(dp),allocatable :: exponent_candidate(:),exponent_trial(:)
+ integer,allocatable  :: am_candidate(:),am_trial(:)
+ logical,allocatable  :: remaining_candidate(:)
+ type(shell_type),allocatable :: shell_tmp(:)
+ integer :: index_in_shell,nx,ny,nz,mm
+ logical,parameter             :: normalized=.TRUE.
+!=====
+
+ write(stdout,'(/,1x,a)')    'Auxiliary basis is constructed automatically'
+ write(stdout,'(1x,a)')      'recipe in Yang, Rendell, Frisch, J.Chem.Phys. 127, 074102 (2007)'
+ write(stdout,'(1x,a,f8.3)') 'Parameter f_sam: ',FSAM
+ write(stdout,'(1x,a,i3)')   'Parameter l_MAXINC: ',LMAXINC
+
+
+ ! Allocate a temporary storage for the shells
+ allocate(shell_tmp(SUM(basis%shell(:)%ng)))
+ auxil_basis%nshell = 0
+
+ ncenter = MAXVAL( basis%shell(:)%iatom )
+ do icenter=1,ncenter
+   write(stdout,*) '========================================'
+   write(stdout,*) 'Center:',icenter,'/',ncenter
+   am_current = 0
+   ncandidate = SUM( basis%shell(:)%ng , MASK=(basis%shell(:)%iatom == icenter) )
+   write(stdout,*) 'ncandidate',ncandidate
+   ishell_example =  FINDLOC( basis%shell(:)%iatom , icenter , DIM=1)
+
+   allocate(remaining_candidate(ncandidate))
+   allocate(exponent_candidate(ncandidate),exponent_trial(ncandidate))
+   allocate(am_candidate(ncandidate),am_trial(ncandidate))
+
+   !
+   !  Build the candidate set
+   remaining_candidate(:) = .TRUE.
+   index_exp = 0
+   do ishell=1,basis%nshell
+     if( basis%shell(ishell)%iatom == icenter ) then
+       nprim = basis%shell(ishell)%ng
+       ! All the exponents are doubled
+       exponent_candidate(index_exp+1:index_exp+nprim) = 2.0_dp * basis%shell(ishell)%alpha(:)
+       am_candidate(index_exp+1:index_exp+nprim)       = basis%shell(ishell)%am
+       index_exp = index_exp + nprim
+     endif
+   enddo
+
+   ! TODO: implement the 2 lval from the paper
+   lmax_center = MAXVAL(am_candidate(:)) + LMAXINC
+
+   write(stdout,*) lmax_center
+   write(stdout,*) exponent_candidate(:)
+   write(stdout,*) am_candidate(:)
+
+   do while( ANY(remaining_candidate) )
+     write(stdout,*) '*** A pass here'
+     ntrial = 1
+     index_current    = MAXLOC( exponent_candidate(:) , MASK=remaining_candidate(:) , DIM=1 )
+     exponent_current = exponent_candidate(index_current)
+     exponent_trial(1) = exponent_candidate(index_current)
+     am_trial(1) = am_candidate(index_current)
+     remaining_candidate(index_current) = .FALSE.
+
+     ! Find the trial set
+     do icandidate=1,ncandidate
+       if( remaining_candidate(icandidate) .AND. exponent_current / exponent_candidate(icandidate) < FSAM ) then
+         ntrial = ntrial + 1
+         exponent_trial(ntrial) = exponent_candidate(icandidate)
+         am_trial(ntrial)       = am_candidate(icandidate)
+         remaining_candidate(icandidate) = .FALSE.
+       endif
+     enddo
+
+     write(stdout,*) 'Trial',ntrial,exponent_trial(1:ntrial)
+     exponent_selected = PRODUCT( exponent_trial(1:ntrial) )**(1.0_dp/REAL(ntrial,dp))
+     am_selected = MAX( MAXVAL(am_trial(1:ntrial)) , am_current )
+     am_current  = MAX( am_current , am_selected )
+     write(stdout,*) 'selected auxil',exponent_selected,am_selected
+
+     ! Save selected shell information
+     auxil_basis%nshell = auxil_basis%nshell + 1
+     shell_tmp(auxil_basis%nshell)%am    = am_current
+     shell_tmp(auxil_basis%nshell)%ng    = 1
+     allocate(shell_tmp(auxil_basis%nshell)%alpha(1))
+     allocate(shell_tmp(auxil_basis%nshell)%coeff(1))
+     shell_tmp(auxil_basis%nshell)%alpha(1) = exponent_selected
+     shell_tmp(auxil_basis%nshell)%coeff(1) = 1.0_dp
+     shell_tmp(auxil_basis%nshell)%iatom = icenter
+     shell_tmp(auxil_basis%nshell)%x0(:) = basis%shell(ishell_example)%x0(:)
+
+   enddo
+
+
+   deallocate(am_candidate,am_trial)
+   deallocate(remaining_candidate)
+   deallocate(exponent_candidate,exponent_trial)
+ enddo
+
+ !
+ ! Fill up the auxil_basis object
+ !
+  ! integer                          :: nbf             ! Number of basis functions in the basis set
+  ! integer                          :: nbf_cart        ! Number of underlying Cartesian functions in the basis set
+  ! type(basis_function),allocatable :: bfc(:)          ! Cartesian basis function
+  ! type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
+
+ auxil_basis%gaussian_type = gaussian_type
+ auxil_basis%ammax         = MAXVAL(shell_tmp(:)%am)
+ allocate(auxil_basis%shell(auxil_basis%nshell))
+ auxil_basis%nbf           = 0
+ auxil_basis%nbf_cart      = 0
+ do ishell=1,auxil_basis%nshell
+   am_current = shell_tmp(ishell)%am
+   auxil_basis%nbf      = auxil_basis%nbf      + number_basis_function_am(gaussian_type,am_current)
+   auxil_basis%nbf_cart = auxil_basis%nbf_cart + number_basis_function_am('CART'       ,am_current)
+ enddo
+ allocate(auxil_basis%bfc(auxil_basis%nbf_cart))
+ allocate(auxil_basis%bff(auxil_basis%nbf))
+
+ jbf = 0
+ jbf_cart = 0
+ do ishell=1,auxil_basis%nshell
+   am_current = shell_tmp(ishell)%am
+
+   auxil_basis%shell(ishell)%am     = shell_tmp(ishell)%am
+   auxil_basis%shell(ishell)%iatom  = shell_tmp(ishell)%iatom
+   auxil_basis%shell(ishell)%x0(:)  = shell_tmp(ishell)%x0(:)
+   auxil_basis%shell(ishell)%ng     = shell_tmp(ishell)%ng
+   allocate(auxil_basis%shell(ishell)%alpha(1))
+   allocate(auxil_basis%shell(ishell)%coeff(1))
+   auxil_basis%shell(ishell)%alpha(:)    = shell_tmp(ishell)%alpha(:)
+   auxil_basis%shell(ishell)%istart      = jbf + 1
+   auxil_basis%shell(ishell)%iend        = jbf + number_basis_function_am(gaussian_type,am_current)
+   auxil_basis%shell(ishell)%istart_cart = jbf_cart + 1
+   auxil_basis%shell(ishell)%iend_cart   = jbf_cart + number_basis_function_am('CART',am_current)
+
+   !
+   ! Basis function setup
+   !
+
+   !
+   ! Ordering of Libint as explained in Kenny et al. J. Comput Chem. 29, 562 (2008).
+   !
+   nx = am_current
+   ny = 0
+   nz = 0
+   index_in_shell = 0
+   do
+     ! Add the new basis function
+     jbf_cart = jbf_cart + 1
+     index_in_shell = index_in_shell + 1
+     call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
+                              shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bfc(jbf_cart))
+     if(auxil_basis%gaussian_type == 'CART') then
+       jbf = jbf + 1
+       call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
+                                shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
+     endif
+
+     ! Break the loop when nz is equal to l
+     if( nz == am_current ) exit
+
+     if( nz < am_current - nx ) then
+       ny = ny - 1
+       nz = nz + 1
+     else
+       nx = nx - 1
+       ny = am_current - nx
+       nz = 0
+     endif
+
+   enddo
+
+   index_in_shell = 0
+   if(auxil_basis%gaussian_type == 'PURE') then
+     do mm=-am_current,am_current
+       jbf = jbf + 1
+       index_in_shell = index_in_shell + 1
+       call init_basis_function_pure(normalized,1,am_current,mm,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0, &
+                                shell_tmp(ishell)%alpha,shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
+     enddo
+   endif
+
+   auxil_basis%shell(ishell)%coeff(1) = ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_current &
+                                                   * shell_tmp(ishell)%alpha(1)**( 0.25_dp * ( 2.0_dp*am_current + 3.0_dp ) )
+
+ enddo
+
+
+ call echo_basis_summary(auxil_basis)
+
+ deallocate(shell_tmp)
+
+end subroutine init_auxil_basis_set_auto
 
 
 !=========================================================================
@@ -492,7 +714,6 @@ subroutine write_basis_shell(unitfile,shell)
 !=====
 !=====
 
- write(unitfile) shell%ishell
  write(unitfile) shell%am
  write(unitfile) shell%ng
  write(unitfile) shell%alpha(:)
@@ -514,7 +735,6 @@ subroutine read_basis_shell(unitfile,shell)
 !=====
 !=====
 
- read(unitfile) shell%ishell
  read(unitfile) shell%am
  read(unitfile) shell%ng
  allocate(shell%alpha(shell%ng))
@@ -1094,8 +1314,6 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
  quad(3,2) = quad(2,3)
 
 
-
-
  !
  !  term x * x
  !
@@ -1182,8 +1400,6 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
  call overlap_basis_function(bf1,bftmp,quad_tmp)
  quad(3,3) = quad(3,3) + quad_tmp * bf2%x0(3)**2
 
-
-
 end subroutine basis_function_quadrupole
 
 
@@ -1206,9 +1422,9 @@ subroutine gos_basis_function(bf1,bf2,qvec,gos_bf1bf2)
    enddo
  enddo
 
-
 end subroutine gos_basis_function
 
 
 !=========================================================================
 end module m_basis_set
+!=========================================================================

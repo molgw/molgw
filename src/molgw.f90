@@ -176,7 +176,11 @@ program molgw
      ! If an auxiliary basis is given,
      ! then set it up now and calculate the required ERI: 2- and 3-center integrals
      write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-     call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
+     if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' ) then
+       call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
+     else
+       call init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
+     endif
 
      ! 2-center integrals
      call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
