@@ -19,6 +19,7 @@ module m_hamiltonian
  use m_basis_set
  use m_eri_calculate
  use m_density_tools
+ use m_tools
 
 
 contains
@@ -277,7 +278,7 @@ end subroutine setup_hartree_oneshell
 !=========================================================================
 subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  implicit none
- real(dp),intent(in)  :: p_matrix(:,:,:)
+ class(*),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
@@ -286,15 +287,26 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  integer              :: ibf,jbf,kbf,lbf
  integer              :: ipair,ipair_local
  real(dp),allocatable :: partial_sum(:)
- real(dp)             :: rtmp
+ real(dp)             :: rtmp,factor
  character(len=100)   :: title
+ integer              :: timing_xxdft_hartree
 !=====
 
- call start_clock(timing_hartree)
+ nbf = SIZE(hartree_ij(:,:),DIM=1)
+
+ select type(p_matrix)
+ type is(real(dp))
+   timing_xxdft_hartree   = timing_hartree
+ type is(complex(dp))
+   timing_xxdft_hartree   = timing_tddft_hartree
+ class default
+   call die("setup_hartree_versatile_ri: c_matrix is neither real nor complex")
+ end select
+
+ call start_clock(timing_xxdft_hartree)
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: versatile version'
 
- nbf = SIZE(hartree_ij(:,:),DIM=1)
 
  nauxil_local = SIZE(eri_3center,DIM=1)
  npair_local  = SIZE(eri_3center,DIM=2)
@@ -308,18 +320,34 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
    allocate(partial_sum(nauxil_local))
 
    partial_sum(:) = 0.0_dp
-   !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
-   !$OMP DO REDUCTION(+:partial_sum)
-   do ipair_local=1,npair_local
-     ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
-     kbf = index_basis(1,ipair)
-     lbf = index_basis(2,ipair)
-     ! Factor 2 comes from the symmetry of p_matrix
-     partial_sum(:) = partial_sum(:) + eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-     if( kbf == lbf ) partial_sum(:) = partial_sum(:) - eri_3center(:,ipair_local) * SUM( p_matrix(kbf,lbf,:) )
-   enddo
-   !$OMP END DO
-   !$OMP END PARALLEL
+   select type(p_matrix)
+   type is(real(dp))
+     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
+     !$OMP DO REDUCTION(+:partial_sum)
+     do ipair_local=1,npair_local
+       ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       factor = merge(2.0_dp,1.0_dp,kbf/=lbf)
+       partial_sum(:) = partial_sum(:) &
+                    + eri_3center(:,ipair_local) * SUM(p_matrix(kbf,lbf,:)) * factor
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+   type is(complex(dp))
+     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
+     !$OMP DO REDUCTION(+:partial_sum)
+     do ipair_local=1,npair_local
+       ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       factor = merge(2.0_dp,1.0_dp,kbf/=lbf)
+       partial_sum(:) = partial_sum(:) &
+                    + eri_3center(:,ipair_local) * SUM(REAL(p_matrix(kbf,lbf,:),dp)) * factor
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+   end select
 
    !FIXME ortho parallelization is not taken into account here!
 #if defined(HAVE_SCALAPACK)
@@ -352,12 +380,15 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  title='=== Hartree contribution ==='
  call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
- ehartree = 0.5_dp * SUM(hartree_ij(:,:)*p_matrix(:,:,1))
- if( nspin == 2 ) then
-   ehartree = ehartree + 0.5_dp * SUM(hartree_ij(:,:)*p_matrix(:,:,2))
- endif
+ select type(p_matrix)
+ type is(real(dp))
+   ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+ type is(complex(dp))
+   ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM(REAL(p_matrix(:,:,:),dp),DIM=3) )
+ end select
 
- call stop_clock(timing_hartree)
+
+ call stop_clock(timing_xxdft_hartree)
 
 end subroutine setup_hartree_versatile_ri
 
@@ -1079,14 +1110,23 @@ subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
 
  do ispin=1,nspin
    !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
+
    ! H * C
-   call DGEMM('N','N',nbf,nstate,nbf,1.0d0,matrix_in(:,:,ispin),nbf, &
-                                           c_matrix(:,:,ispin),nbf,  &
-                                     0.0d0,matrix_tmp,nbf)
+   call DSYMM('L','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nbf, &
+                                       c_matrix(1,1,ispin),nbf,  &
+                                 0.0d0,matrix_tmp,nbf)
+
    ! C**T * (H * C)
-   call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(:,:,ispin),nbf, &
+#if defined(HAVE_MKL)
+   call DGEMMT('L','T','N',nstate,nbf,1.0d0,c_matrix(1,1,ispin),nbf, &
+                                            matrix_tmp,nbf,          &
+                                      0.0d0,matrix_out(1,1,ispin),nstate)
+   call matrix_lower_to_full(matrix_out(:,:,1))
+#else
+   call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(1,1,ispin),nbf, &
                                               matrix_tmp,nbf,          &
-                                        0.0d0,matrix_out,nstate)
+                                        0.0d0,matrix_out(1,1,ispin),nstate)
+#endif
 
  enddo
  deallocate(matrix_tmp)
@@ -1110,18 +1150,27 @@ subroutine matrix_mo_to_ao(c_matrix,matrix_in,matrix_out)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
 
- allocate(matrix_tmp(nstate,nbf))
+ allocate(matrix_tmp(nbf,nstate))
 
  do ispin=1,nspin
    !matrix_out(1:nbf,1:nbf,ispin) = MATMUL( c_matrix(:,:,ispin) , MATMUL( matrix_in(:,:,ispin) , TRANSPOSE( c_matrix(:,:,ispin) ) ) )
-   ! H * C**T
-   call DGEMM('N','T',nstate,nbf,nstate,1.0d0,matrix_in(:,:,ispin),nstate, &
-                                              c_matrix(:,:,ispin),nbf,     &
-                                        0.0d0,matrix_tmp,nstate)
-   ! C * (H * C**T)
-   call DGEMM('N','N',nbf,nbf,nstate,1.0d0,c_matrix(:,:,ispin),nbf,  &
-                                           matrix_tmp,nstate,        &
-                                     0.0d0,matrix_out,nbf)
+
+   !  C * H
+   call DSYMM('R','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nbf, &
+                                       c_matrix(1,1,ispin),nbf,  &
+                                 0.0d0,matrix_tmp,nbf)
+
+   ! (C * H) * C**T
+#if defined(HAVE_MKL)
+   call DGEMMT('L','N','T',nbf,nstate,1.0d0,matrix_tmp,nbf,          &
+                                            c_matrix(1,1,ispin),nbf, &
+                                      0.0d0,matrix_out(1,1,ispin),nbf)
+   call matrix_lower_to_full(matrix_out(:,:,1))
+#else
+   call DGEMM('N','T',nbf,nbf,nstate,1.0d0,matrix_tmp,nbf,        &
+                                           c_matrix(1,1,ispin),nbf,  &
+                                     0.0d0,matrix_out(1,1,ispin),nbf)
+#endif
 
  enddo
  deallocate(matrix_tmp)
@@ -1298,7 +1347,6 @@ end subroutine level_shifting_down
 
 !=========================================================================
 subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix)
- use m_tools
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
@@ -1351,7 +1399,6 @@ end subroutine setup_sqrt_overlap
 
 !=========================================================================
 subroutine setup_sqrt_density_matrix(p_matrix,p_matrix_sqrt,p_matrix_occ)
- use m_tools
  implicit none
 
  real(dp),intent(in)  :: p_matrix(:,:,:)
@@ -1389,7 +1436,6 @@ end subroutine setup_sqrt_density_matrix
 
 !=========================================================================
 subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
- use m_tools
  implicit none
 
  real(dp),intent(in)  :: p_matrix(:,:,:)
@@ -1475,12 +1521,12 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  if( ndft_xc == 0 ) return
 
  select type(c_matrix)
- type is (real(dp))
+ type is(real(dp))
    timing_xxdft_xc        = timing_dft_xc
    timing_xxdft_densities = timing_dft_densities
    timing_xxdft_libxc     = timing_dft_libxc
    timing_xxdft_vxc       = timing_dft_vxc
- type is (complex(dp))
+ type is(complex(dp))
    timing_xxdft_xc        = timing_tddft_xc
    timing_xxdft_densities = timing_tddft_densities
    timing_xxdft_libxc     = timing_tddft_libxc

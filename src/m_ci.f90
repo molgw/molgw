@@ -86,9 +86,9 @@ pure function gamma_sign_keyud(keyud,istate,ispin)
 !=====
 
  if( ispin == 1 ) then
-   gamma_sign_keyud = POPPAR( IAND(keyud(1),MASKR(istate-nfrozen_ci)) ) * 2 - 1
+   gamma_sign_keyud = POPPAR( IAND(keyud(1),MASKR(istate-nfrozen_ci,KIND=key_int)) ) * 2 - 1
  else
-   gamma_sign_keyud = ( MODULO( POPPAR(keyud(1)) + POPPAR( IAND(keyud(2),MASKR(istate-nfrozen_ci)) ) , 2) ) * 2 - 1
+   gamma_sign_keyud = ( MODULO( POPPAR(keyud(1)) + POPPAR( IAND(keyud(2),MASKR(istate-nfrozen_ci,KIND=key_int)) ) , 2) ) * 2 - 1
  endif
 
 end function gamma_sign_keyud

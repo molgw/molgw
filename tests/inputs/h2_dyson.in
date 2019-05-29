@@ -1,0 +1,18 @@
+&molgw
+ scf='rsh'
+ alpha_hybrid=0.50
+ nscf= 100
+ tolscf=1.0e-12
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ postscf='g0w0_dyson'
+
+ length_unit='bohr'
+ natom=2
+/
+1    0.000000    0.0   0.705
+1    0.000000    0.0  -0.705
+
+

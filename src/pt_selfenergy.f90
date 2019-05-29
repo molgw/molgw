@@ -635,7 +635,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          enddo
        enddo
      enddo
-  
+
      ! B2 i    a,b
      do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
@@ -653,7 +653,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          enddo
        enddo
      enddo
-  
+
      !
      ! C diagrams family
      !
@@ -664,7 +664,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          do istate=ncore_G+1,nhomo_G
            eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
            eri_pbia = eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
-  
+
            do cstate=nhomo_G+1,nvirtual_G-1
              do dstate=nhomo_G+1,nvirtual_G-1
                num2 = eri_eigen(astate,cstate,pqspin,bstate,dstate,pqspin)
@@ -681,7 +681,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          enddo
        enddo
      enddo
-  
+
      ! C2+C3   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
@@ -689,7 +689,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          do istate=ncore_G+1,nhomo_G
            eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
            eri_pbia = eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
-  
+
            do jstate=ncore_G+1,nhomo_G
              do kstate=ncore_G+1,nhomo_G
                num2 = eri_eigen(astate,jstate,pqspin,bstate,kstate,pqspin)
@@ -706,7 +706,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          enddo
        enddo
      enddo
-  
+
      ! C4+C5   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
@@ -730,7 +730,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          enddo
        enddo
      enddo
-  
+
      ! C6   i,j,k,l   a
      do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
@@ -755,7 +755,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          enddo
        enddo
      enddo
-  
+
      !
      ! D diagrams family
      !
@@ -792,8 +792,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          enddo
        enddo
      enddo
-  
-  
+
+
      ! D2+D3   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
@@ -827,8 +827,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          enddo
        enddo
      enddo
-  
-  
+
+
      ! D4+D5   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
@@ -862,7 +862,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
          enddo
        enddo
      enddo
-  
+
      ! D6   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
@@ -871,7 +871,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
            do jstate=ncore_G+1,nhomo_G
              num2a = eri_eigen(istate,astate,pqspin,bstate,jstate,pqspin)
              num2b = eri_eigen(istate,jstate,pqspin,bstate,astate,pqspin)
-  
+
              do kstate=ncore_G+1,nhomo_G
                num1a = eri_eigen(pstate,kstate,pqspin,astate,istate,pqspin)
                num1b = eri_eigen(pstate,istate,pqspin,astate,kstate,pqspin)
@@ -940,57 +940,6 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
  call stop_clock(timing_pt_self)
 
 end subroutine pt3_selfenergy
-
-
-!=========================================================================
-subroutine pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,exchange_m_vxc_diag)
- use m_definitions
- use m_mpi
- use m_mpi_ortho
- use m_warning
- use m_timing
- use m_basis_set
- use m_eri_ao_mo
- use m_inputparam
- use m_selfenergy_tools
- use m_hamiltonian_wrapper
- implicit none
-
- integer,intent(in)         :: nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: exchange_m_vxc(nstate,nstate,nspin)
- real(dp),intent(inout)     :: exchange_m_vxc_diag(nstate,nspin)
-!=====
- integer  :: ispin,istate
- real(dp) :: p_matrix_pt1(basis%nbf,basis%nbf,nspin)
- real(dp) :: hh(basis%nbf,basis%nbf)
- real(dp) :: hx(basis%nbf,basis%nbf,nspin)
-!=====
-
- !
- ! Get the first-order correction to the density matrix
- p_matrix_pt1(:,:,:) = 0.0_dp
- call pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix_pt1)
-
- ! First, Hartree
- call calculate_hartree(basis,p_matrix_pt1,hh)
-
- ! Then, Exchange
- call calculate_exchange(basis,p_matrix_pt1,hx)
-
- do ispin=1,nspin
-   do istate=1,nstate
-      exchange_m_vxc_diag(istate,ispin) =  exchange_m_vxc_diag(istate,ispin) + DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hh(:,:) , c_matrix(:,istate,ispin) ) )
-      exchange_m_vxc_diag(istate,ispin) =  exchange_m_vxc_diag(istate,ispin) + DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
-   enddo
- enddo
-
-
-
-
-end subroutine pt1_selfenergy
 
 
 !=========================================================================
