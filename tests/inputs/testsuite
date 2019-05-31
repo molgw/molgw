@@ -35,6 +35,11 @@ SCF Total Energy          , -128.5470596583    , 0 , 1.0e-7
 gKS HOMO energy           ,  -23.140408        , 0 , 1.0e-4
 gKS LUMO energy           ,   10.036631        , 0 , 1.0e-4
 
+ne_pbe_autori.in          ,  PBE neon atom cc-pVTZ with auto RI
+SCF Total Energy          , -128.8459979064    , 0 , 1.0e-7
+gKS HOMO energy           ,  -12.875360        , 0 , 1.0e-4
+gKS LUMO energy           ,   22.337191        , 0 , 1.0e-4
+
 na2_lda.in               , LDA Na2 molecule without RI, noparallel
 SCF Total Energy          , -322.8615203603    , 0 , 1.0e-7
 gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4

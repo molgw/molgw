@@ -180,10 +180,10 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      !
      ishell = ishell + 1
 
-     basis%shell(ishell)%am     = am_read
-     basis%shell(ishell)%iatom  = iatom
-     basis%shell(ishell)%x0(:)  = x0(:)
-     basis%shell(ishell)%ng     = ng
+     basis%shell(ishell)%am      = am_read
+     basis%shell(ishell)%iatom   = iatom
+     basis%shell(ishell)%x0(:)   = x0(:)
+     basis%shell(ishell)%ng      = ng
      allocate(basis%shell(ishell)%alpha(ng))
      allocate(basis%shell(ishell)%coeff(ng))
      basis%shell(ishell)%alpha(:)    = alpha(:)
@@ -309,38 +309,50 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
 !=====
  real(dp),parameter :: FSAM    = 1.5_dp
  integer,parameter  :: LMAXINC = 1
+ integer,parameter  :: lmax=10
 
- integer :: lmax_center
+ logical :: new_primitive
+ integer :: lmax_obs,lmax_abs,am,lval
  integer :: jbf,jbf_cart
  integer :: icenter,ncenter,ishell_example
  integer :: ishell,icandidate,ncandidate,index_exp,nprim
- integer  :: index_current,ntrial,am_current,am_selected
+ integer :: index_current,am_current,am_selected
+ integer :: itrial,jtrial,ntrial
  real(dp) :: exponent_current,exponent_selected
  real(dp),allocatable :: exponent_candidate(:),exponent_trial(:)
  integer,allocatable  :: am_candidate(:),am_trial(:)
  logical,allocatable  :: remaining_candidate(:)
  type(shell_type),allocatable :: shell_tmp(:)
  integer :: index_in_shell,nx,ny,nz,mm
- logical,parameter             :: normalized=.TRUE.
+ logical,parameter :: normalized=.TRUE.
 !=====
 
- write(stdout,'(/,1x,a)')    'Auxiliary basis is constructed automatically'
- write(stdout,'(1x,a)')      'recipe in Yang, Rendell, Frisch, J.Chem.Phys. 127, 074102 (2007)'
- write(stdout,'(1x,a,f8.3)') 'Parameter f_sam: ',FSAM
- write(stdout,'(1x,a,i3)')   'Parameter l_MAXINC: ',LMAXINC
+ write(stdout,'(/,1x,a)')      'Auxiliary basis is constructed automatically'
+ write(stdout,'(1x,a)')        '  recipe in Yang, Rendell, Frisch, J. Chem. Phys. 127, 074102 (2007)'
+ write(stdout,'(1x,a25,f8.3)') 'Parameter    f_sam: ',FSAM
+ write(stdout,'(1x,a25,i3)')   'Parameter l_MAXINC: ',LMAXINC
 
 
  ! Allocate a temporary storage for the shells
- allocate(shell_tmp(SUM(basis%shell(:)%ng)))
+ allocate( shell_tmp(SUM(basis%shell(:)%ng) * lmax) )
  auxil_basis%nshell = 0
 
+ write(stdout,'(/,1x,a)')       '========================================'
  ncenter = MAXVAL( basis%shell(:)%iatom )
  do icenter=1,ncenter
-   write(stdout,*) '========================================'
-   write(stdout,*) 'Center:',icenter,'/',ncenter
+   write(stdout,'(1x,a,i5,a,i5)') 'Center:',icenter,' / ',ncenter
+   if( zbasis(icenter) <= 2 ) then
+     lval = 0
+   else if( zbasis(icenter) <= 18) then
+     lval = 1
+   else if( zbasis(icenter) <= 54) then
+     lval = 2
+   else
+     lval = 3
+   endif
+
    am_current = 0
    ncandidate = SUM( basis%shell(:)%ng , MASK=(basis%shell(:)%iatom == icenter) )
-   write(stdout,*) 'ncandidate',ncandidate
    ishell_example =  FINDLOC( basis%shell(:)%iatom , icenter , DIM=1)
 
    allocate(remaining_candidate(ncandidate))
@@ -361,15 +373,10 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
      endif
    enddo
 
-   ! TODO: implement the 2 lval from the paper
-   lmax_center = MAXVAL(am_candidate(:)) + LMAXINC
-
-   write(stdout,*) lmax_center
-   write(stdout,*) exponent_candidate(:)
-   write(stdout,*) am_candidate(:)
+   lmax_obs = MAXVAL(am_candidate(:))
+   lmax_abs = MAX( lmax_obs + LMAXINC , 2 * lval )
 
    do while( ANY(remaining_candidate) )
-     write(stdout,*) '*** A pass here'
      ntrial = 1
      index_current    = MAXLOC( exponent_candidate(:) , MASK=remaining_candidate(:) , DIM=1 )
      exponent_current = exponent_candidate(index_current)
@@ -377,7 +384,9 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
      am_trial(1) = am_candidate(index_current)
      remaining_candidate(index_current) = .FALSE.
 
+     !
      ! Find the trial set
+     ! Duplicate primitives will be removed later
      do icandidate=1,ncandidate
        if( remaining_candidate(icandidate) .AND. exponent_current / exponent_candidate(icandidate) < FSAM ) then
          ntrial = ntrial + 1
@@ -387,22 +396,49 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
        endif
      enddo
 
-     write(stdout,*) 'Trial',ntrial,exponent_trial(1:ntrial)
-     exponent_selected = PRODUCT( exponent_trial(1:ntrial) )**(1.0_dp/REAL(ntrial,dp))
-     am_selected = MAX( MAXVAL(am_trial(1:ntrial)) , am_current )
-     am_current  = MAX( am_current , am_selected )
-     write(stdout,*) 'selected auxil',exponent_selected,am_selected
+     !
+     ! Find the unique primitives in the trial set
+     !exponent_selected = PRODUCT( exponent_trial(1:ntrial) )**(1.0_dp/REAL(ntrial,dp))
+     exponent_selected = 1.0_dp
+     nprim = 0
+     do itrial=1,ntrial
+       new_primitive = .TRUE.
+       ! Check if any of the previous trial primitive has the same angular momentum and exponent
+       do jtrial=1,itrial-1
+         if( am_trial(itrial) == am_trial(jtrial) &
+            .AND. ABS( exponent_trial(itrial) - exponent_trial(jtrial) ) < 1.0e-6_dp ) new_primitive = .FALSE.
+       enddo
+       if( new_primitive ) then
+         nprim = nprim + 1
+         exponent_selected = exponent_selected * exponent_trial(itrial)
+       endif
+     enddo
+     exponent_selected = (exponent_selected)**(1.0_dp/REAL(nprim,dp))
+
+     ! Not quite sure about the recipe to calculate the selected angular momentum
+     ! This one reproduces Gaussian for He and Ne cc-pVDZ
+     if( MAXVAL(am_trial(1:ntrial)) == 0 ) then
+       am_selected = 0
+     else
+       am_selected = MAXVAL(am_trial(1:ntrial)) + 1
+     endif
+     am_selected = MAX( am_selected , am_current )
+     am_selected = MIN( am_selected , lmax_abs )    ! Make sure the selected am is not larger than the allowed max
+     am_current  = am_selected
 
      ! Save selected shell information
-     auxil_basis%nshell = auxil_basis%nshell + 1
-     shell_tmp(auxil_basis%nshell)%am    = am_current
-     shell_tmp(auxil_basis%nshell)%ng    = 1
-     allocate(shell_tmp(auxil_basis%nshell)%alpha(1))
-     allocate(shell_tmp(auxil_basis%nshell)%coeff(1))
-     shell_tmp(auxil_basis%nshell)%alpha(1) = exponent_selected
-     shell_tmp(auxil_basis%nshell)%coeff(1) = 1.0_dp
-     shell_tmp(auxil_basis%nshell)%iatom = icenter
-     shell_tmp(auxil_basis%nshell)%x0(:) = basis%shell(ishell_example)%x0(:)
+     do am=0,am_selected
+       write(stdout,'(5x,a,es16.6,1x,i2)') '* auxiliary function (exponent, angular momentum):',exponent_selected,am
+       auxil_basis%nshell = auxil_basis%nshell + 1
+       shell_tmp(auxil_basis%nshell)%am    = am
+       shell_tmp(auxil_basis%nshell)%ng    = 1
+       allocate(shell_tmp(auxil_basis%nshell)%alpha(1))
+       allocate(shell_tmp(auxil_basis%nshell)%coeff(1))
+       shell_tmp(auxil_basis%nshell)%alpha(1) = exponent_selected
+       shell_tmp(auxil_basis%nshell)%coeff(1) = 1.0_dp
+       shell_tmp(auxil_basis%nshell)%iatom = icenter
+       shell_tmp(auxil_basis%nshell)%x0(:) = basis%shell(ishell_example)%x0(:)
+     enddo
 
    enddo
 
@@ -412,16 +448,14 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
    deallocate(exponent_candidate,exponent_trial)
  enddo
 
+ write(stdout,'(1x,a,/)')       '========================================'
+
  !
  ! Fill up the auxil_basis object
  !
-  ! integer                          :: nbf             ! Number of basis functions in the basis set
-  ! integer                          :: nbf_cart        ! Number of underlying Cartesian functions in the basis set
-  ! type(basis_function),allocatable :: bfc(:)          ! Cartesian basis function
-  ! type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
 
  auxil_basis%gaussian_type = gaussian_type
- auxil_basis%ammax         = MAXVAL(shell_tmp(:)%am)
+ auxil_basis%ammax         = MAXVAL(shell_tmp(1:auxil_basis%nshell)%am)
  allocate(auxil_basis%shell(auxil_basis%nshell))
  auxil_basis%nbf           = 0
  auxil_basis%nbf_cart      = 0
