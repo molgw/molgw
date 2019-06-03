@@ -317,7 +317,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
  integer :: jbf,jbf_cart
  integer :: icenter,ncenter
  integer :: iprim,jprim
- integer :: ishell,jshell,ishell_example,nshell_max
+ integer :: ishell,jshell,nshell_max
  integer :: icandidate,ncandidate,index_exp,nprim
  integer :: index_current,am_current,am_selected
  integer :: itrial,jtrial,ntrial
@@ -377,7 +377,6 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
 
 
    am_current = 0
-   ishell_example =  FINDLOC( basis%shell(:)%iatom , icenter , DIM=1)
    zcenter = zbasis(icenter)
 
    ncandidate = SUM( basis%shell(:)%ng , MASK=(basis%shell(:)%iatom == icenter) )
@@ -483,7 +482,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
        shell_tmp(auxil_basis%nshell)%alpha(1) = exponent_selected
        shell_tmp(auxil_basis%nshell)%coeff(1) = 1.0_dp
        shell_tmp(auxil_basis%nshell)%iatom = icenter
-       shell_tmp(auxil_basis%nshell)%x0(:) = basis%shell(ishell_example)%x0(:)
+       shell_tmp(auxil_basis%nshell)%x0(:) = xbasis(:,icenter)
      enddo
 
    enddo
