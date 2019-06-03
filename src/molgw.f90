@@ -176,10 +176,10 @@ program molgw
      ! If an auxiliary basis is given,
      ! then set it up now and calculate the required ERI: 2- and 3-center integrals
      write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-     if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' ) then
+     if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
        call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
      else
-       call init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
+       call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_basis)
      endif
 
      ! 2-center integrals

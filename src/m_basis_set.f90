@@ -300,9 +300,10 @@ end subroutine echo_basis_summary
 
 !=========================================================================
 !Build a system specific auxiliary basis based the 'Auto' recipe in Gaussian
-subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
+subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_basis)
  implicit none
 
+ character(len=100),intent(in) :: auxil_basis_name(natom_basis)
  character(len=4),intent(in)   :: gaussian_type
  type(basis_set),intent(in)    :: basis
  type(basis_set),intent(out)   :: auxil_basis
@@ -311,7 +312,7 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
  integer,parameter  :: LMAXINC = 1
  integer,parameter  :: lmax=10
 
- logical :: new_primitive
+ logical :: new_primitive,pauto
  integer :: lmax_obs,lmax_abs,am,lval
  integer :: jbf,jbf_cart
  integer :: icenter,ncenter,ishell_example
@@ -327,10 +328,20 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
  logical,parameter :: normalized=.TRUE.
 !=====
 
+ pauto = TRIM( capitalize(auxil_basis_name(1)) ) == 'PAUTO'
+ if( pauto ) call die('init_auxil_basis_set_auto: PAuto not yet implemented')
+
  write(stdout,'(/,1x,a)')      'Auxiliary basis is constructed automatically'
+ if( pauto ) then
+   write(stdout,'(1x,a)')      '  Method: PAuto'
+ else
+   write(stdout,'(1x,a)')      '  Method: Auto'
+ endif
  write(stdout,'(1x,a)')        '  recipe in Yang, Rendell, Frisch, J. Chem. Phys. 127, 074102 (2007)'
  write(stdout,'(1x,a25,f8.3)') 'Parameter    f_sam: ',FSAM
  write(stdout,'(1x,a25,i3)')   'Parameter l_MAXINC: ',LMAXINC
+
+
 
 
  ! Allocate a temporary storage for the shells
@@ -361,13 +372,13 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
 
    !
    !  Build the candidate set
+   !
    remaining_candidate(:) = .TRUE.
    index_exp = 0
    do ishell=1,basis%nshell
      if( basis%shell(ishell)%iatom == icenter ) then
        nprim = basis%shell(ishell)%ng
-       ! All the exponents are doubled
-       exponent_candidate(index_exp+1:index_exp+nprim) = 2.0_dp * basis%shell(ishell)%alpha(:)
+       exponent_candidate(index_exp+1:index_exp+nprim) = basis%shell(ishell)%alpha(:)
        am_candidate(index_exp+1:index_exp+nprim)       = basis%shell(ishell)%am
        index_exp = index_exp + nprim
      endif
@@ -375,6 +386,15 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
 
    lmax_obs = MAXVAL(am_candidate(:))
    lmax_abs = MAX( lmax_obs + LMAXINC , 2 * lval )
+
+   write(stdout,'(1x,a,i4)') 'Maximum angular momentum for this center: ',lmax_abs
+
+   ! Auto recipe:
+   ! All the exponents are doubled
+   ! All the angular momenta are doubled
+   exponent_candidate(:) = exponent_candidate(:) * 2.0_dp
+   am_candidate(:)       = am_candidate(:) * 2
+
 
    do while( ANY(remaining_candidate) )
      ntrial = 1
@@ -415,14 +435,8 @@ subroutine init_auxil_basis_set_auto(basis,gaussian_type,auxil_basis)
      enddo
      exponent_selected = (exponent_selected)**(1.0_dp/REAL(nprim,dp))
 
-     ! Not quite sure about the recipe to calculate the selected angular momentum
-     ! This one reproduces Gaussian for He and Ne cc-pVDZ
-     if( MAXVAL(am_trial(1:ntrial)) == 0 ) then
-       am_selected = 0
-     else
-       am_selected = MAXVAL(am_trial(1:ntrial)) + 1
-     endif
-     am_selected = MAX( am_selected , am_current )
+     am_selected = MAX( MAXVAL(am_trial(1:ntrial)) , am_current )
+
      am_selected = MIN( am_selected , lmax_abs )    ! Make sure the selected am is not larger than the allowed max
      am_current  = am_selected
 
