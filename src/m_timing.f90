@@ -75,6 +75,7 @@ module m_timing
  integer,parameter :: timing_dft_libxc           = 56
  integer,parameter :: timing_dft_vxc             = 57
  integer,parameter :: timing_x_m_vxc             = 58
+ integer,parameter :: timing_auto_auxil          = 59
 
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -190,6 +191,7 @@ subroutine output_timing()
  write(stdout,'(/,a,/)') '                 -------------------------------------'
  write(stdout,'(a,/)')   '                             Pre SCF'
 
+ call output_timing_line('Automatic auxiliary basis',timing_auto_auxil,1)
  call output_timing_line('Integral pre-screening',timing_eri_screening,1)
  call output_timing_line('4-center integrals',timing_eri_4center,1)
  call output_timing_line('2-center integrals',timing_eri_2center,1)

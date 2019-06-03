@@ -1,0 +1,11 @@
+&molgw
+ scf='pbe'
+ npulay_hist=3
+ nspin=1
+
+ basis='cc-pVTZ'
+ auxil_basis='auto'
+
+ natom=1
+/
+Ne 0. 0. 0.

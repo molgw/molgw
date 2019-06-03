@@ -10,6 +10,7 @@
 module m_basis_set
  use m_definitions
  use m_warning
+ use m_timing
  use m_mpi
  use m_elements
  use m_tools, only: orbital_momentum_name
@@ -35,7 +36,6 @@ module m_basis_set
  end type
 
  type shell_type
-   integer              :: ishell
    integer              :: am
    integer              :: ng
    real(dp),allocatable :: alpha(:)
@@ -75,6 +75,7 @@ contains
 !=========================================================================
 subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
  implicit none
+
  character(len=4),intent(in)   :: gaussian_type
  character(len=100),intent(in) :: basis_path
  character(len=100),intent(in) :: basis_name(natom_basis)
@@ -101,7 +102,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  basis%nshell        = 0
  basis%gaussian_type = gaussian_type
 
- if(TRIM(basis_name(1))=='none') return
+ if( TRIM(basis_name(1)) == 'none' ) return
 
  !
  ! LOOP OVER ATOMS
@@ -144,14 +145,6 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
  enddo
 
-
- write(stdout,*)
- write(stdout,'(a50,i8)') 'Total number of basis functions:',basis%nbf
- if(basis%gaussian_type=='PURE') then
-   write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
- endif
- write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
-
  allocate(basis%bfc(basis%nbf_cart))
  allocate(basis%bff(basis%nbf))
  allocate(basis%shell(basis%nshell))
@@ -188,11 +181,10 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      !
      ishell = ishell + 1
 
-     basis%shell(ishell)%ishell = ishell
-     basis%shell(ishell)%am     = am_read
-     basis%shell(ishell)%iatom  = iatom
-     basis%shell(ishell)%x0(:)  = x0(:)
-     basis%shell(ishell)%ng     = ng
+     basis%shell(ishell)%am      = am_read
+     basis%shell(ishell)%iatom   = iatom
+     basis%shell(ishell)%x0(:)   = x0(:)
+     basis%shell(ishell)%ng      = ng
      allocate(basis%shell(ishell)%alpha(ng))
      allocate(basis%shell(ishell)%coeff(ng))
      basis%shell(ishell)%alpha(:)    = alpha(:)
@@ -260,22 +252,41 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  ! END OF THE LOOP OVER ATOMS
  enddo
 
-
-
  ! Find the maximum angular momentum employed in the basis set
  basis%ammax = MAXVAL(basis%bfc(:)%am)
+
+ call echo_basis_summary(basis)
+
+
+end subroutine init_basis_set
+
+
+!=========================================================================
+subroutine echo_basis_summary(basis)
+ implicit none
+
+ type(basis_set),intent(in)    :: basis
+!=====
+ integer :: ibf
+!=====
+
+ write(stdout,'(/,a50,i8)') 'Total number of basis functions:',basis%nbf
+ if( basis%gaussian_type == 'PURE' ) then
+   write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
+ endif
+ write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
 
  write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
  write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
 
- if(basis%ammax > MOLGW_LMAX ) then
+ if( basis%ammax > MOLGW_LMAX ) then
    write(stdout,*) 'Maximum angular momentum: ',basis%ammax
    write(stdout,*) 'while this compilation of LIBINT only supports: ',MOLGW_LMAX
-   call die('init_basis_set: Angular momentum is too high')
+   call die('echo_basis_summary: Angular momentum is too high')
  endif
 
  !
- ! finally output the basis set for debugging
+ ! Output all the basis functions for debugging
  if( .FALSE. ) then
    do ibf=1,basis%nbf_cart
      write(stdout,*) ' Cartesian function number',ibf
@@ -285,7 +296,322 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
  write(stdout,'(a,/)') ' Basis set is fit and ready'
 
-end subroutine init_basis_set
+end subroutine echo_basis_summary
+
+
+!=========================================================================
+!Build a system specific auxiliary basis based the 'Auto' recipe in Gaussian
+subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_basis)
+ implicit none
+
+ character(len=100),intent(in) :: auxil_basis_name(natom_basis)
+ character(len=4),intent(in)   :: gaussian_type
+ type(basis_set),intent(in)    :: basis
+ type(basis_set),intent(out)   :: auxil_basis
+!=====
+ real(dp),parameter :: FSAM    = 1.5_dp
+ integer,parameter  :: LMAXINC = 1
+
+ logical :: new_primitive,pauto
+ integer :: lmax_obs,lmax_abs,am,lval
+ integer :: jbf,jbf_cart
+ integer :: icenter,ncenter
+ integer :: iprim,jprim
+ integer :: ishell,jshell,ishell_example,nshell_max
+ integer :: icandidate,ncandidate,index_exp,nprim
+ integer :: index_current,am_current,am_selected
+ integer :: itrial,jtrial,ntrial
+ integer :: zcenter
+ real(dp) :: exponent_current,exponent_selected
+ real(dp),allocatable :: exponent_candidate(:),exponent_trial(:)
+ integer,allocatable  :: am_candidate(:),am_trial(:)
+ logical,allocatable  :: remaining_candidate(:)
+ type(shell_type),allocatable :: shell_tmp(:)
+ integer :: index_in_shell,nx,ny,nz,mm
+ logical,parameter :: normalized=.TRUE.
+!=====
+
+ call start_clock(timing_auto_auxil)
+
+ pauto = TRIM( capitalize(auxil_basis_name(1)) ) == 'PAUTO'
+
+ write(stdout,'(/,1x,a)')      'Auxiliary basis is constructed automatically'
+ if( pauto ) then
+   write(stdout,'(1x,a)')      '  Method: PAuto'
+ else
+   write(stdout,'(1x,a)')      '  Method: Auto'
+ endif
+ write(stdout,'(1x,a)')        '  recipe in Yang, Rendell, Frisch, J. Chem. Phys. 127, 074102 (2007)'
+ write(stdout,'(1x,a25,f8.3)') 'Parameter    f_sam: ',FSAM
+ write(stdout,'(1x,a25,i3)')   'Parameter l_MAXINC: ',LMAXINC
+
+
+ ncenter = MAXVAL( basis%shell(:)%iatom )
+ !
+ ! Evaluate the maximum number of shells possible
+ nshell_max = 0
+ do icenter=1,ncenter
+   nprim = 0
+   lmax_obs = 0
+   do ishell=1,basis%nshell
+     if( basis%shell(ishell)%iatom == icenter ) then
+       nprim = nprim + basis%shell(ishell)%ng
+       lmax_obs = MAX( lmax_obs , basis%shell(ishell)%am )
+     endif
+   enddo
+   if( pauto ) then
+     nshell_max = nshell_max + nprim**2 * get_lmax_abs(lmax_obs,zbasis(icenter))
+   else
+     nshell_max = nshell_max + nprim * get_lmax_abs(lmax_obs,zbasis(icenter))
+   endif
+ enddo
+
+
+ ! Allocate a temporary storage for the shells
+ allocate(shell_tmp(nshell_max))
+ auxil_basis%nshell = 0
+
+ write(stdout,'(/,1x,a)')       '========================================'
+ do icenter=1,ncenter
+   write(stdout,'(1x,a,i5,a,i5)') 'Center:',icenter,' / ',ncenter
+
+
+   am_current = 0
+   ishell_example =  FINDLOC( basis%shell(:)%iatom , icenter , DIM=1)
+   zcenter = zbasis(icenter)
+
+   ncandidate = SUM( basis%shell(:)%ng , MASK=(basis%shell(:)%iatom == icenter) )
+   if( pauto ) ncandidate = ncandidate**2
+   allocate(remaining_candidate(ncandidate))
+   allocate(exponent_candidate(ncandidate),exponent_trial(ncandidate))
+   allocate(am_candidate(ncandidate),am_trial(ncandidate))
+
+   !
+   !  Build the candidate set
+   !
+   remaining_candidate(:) = .TRUE.
+   index_exp = 0
+   lmax_obs = 0
+   do ishell=1,basis%nshell
+     if( basis%shell(ishell)%iatom /= icenter ) cycle
+     lmax_obs = MAX( lmax_obs , basis%shell(ishell)%am )
+
+     if( pauto ) then
+       ! PAuto recipe:
+       ! All the exponents sums are considered
+       ! All the angular momenta sums are considered
+       do jshell=1,basis%nshell
+         if( basis%shell(jshell)%iatom /= icenter ) cycle
+         nprim = basis%shell(ishell)%ng * basis%shell(jshell)%ng
+         do iprim=1,basis%shell(ishell)%ng
+           do jprim=1,basis%shell(jshell)%ng
+             index_exp = index_exp + 1
+             exponent_candidate(index_exp) = basis%shell(ishell)%alpha(iprim) + basis%shell(jshell)%alpha(jprim)
+             am_candidate(index_exp)       = basis%shell(ishell)%am + basis%shell(jshell)%am
+           enddo
+         enddo
+       enddo
+     else
+       ! Auto recipe:
+       ! All the exponents are doubled
+       ! All the angular momenta are doubled
+       nprim = basis%shell(ishell)%ng
+       exponent_candidate(index_exp+1:index_exp+nprim) = basis%shell(ishell)%alpha(:) * 2.0_dp
+       am_candidate(index_exp+1:index_exp+nprim)       = basis%shell(ishell)%am * 2
+       index_exp = index_exp + nprim
+     endif
+
+   enddo
+
+   lmax_abs = get_lmax_abs(lmax_obs,zcenter)
+
+   write(stdout,'(1x,a,i4)') 'Maximum angular momentum for this center: ',lmax_abs
+
+
+   do while( ANY(remaining_candidate) )
+     ntrial = 1
+     index_current    = MAXLOC( exponent_candidate(:) , MASK=remaining_candidate(:) , DIM=1 )
+     exponent_current = exponent_candidate(index_current)
+     exponent_trial(1) = exponent_candidate(index_current)
+     am_trial(1) = am_candidate(index_current)
+     remaining_candidate(index_current) = .FALSE.
+
+     !
+     ! Find the trial set
+     ! Duplicate primitives will be removed later
+     do icandidate=1,ncandidate
+       if( remaining_candidate(icandidate) .AND. exponent_current / exponent_candidate(icandidate) < FSAM ) then
+         ntrial = ntrial + 1
+         exponent_trial(ntrial) = exponent_candidate(icandidate)
+         am_trial(ntrial)       = am_candidate(icandidate)
+         remaining_candidate(icandidate) = .FALSE.
+       endif
+     enddo
+
+     !
+     ! Find the unique primitives in the trial set
+     !exponent_selected = PRODUCT( exponent_trial(1:ntrial) )**(1.0_dp/REAL(ntrial,dp))
+     exponent_selected = 1.0_dp
+     nprim = 0
+     do itrial=1,ntrial
+       new_primitive = .TRUE.
+       ! Check if any of the previous trial primitive has the same angular momentum and exponent
+       do jtrial=1,itrial-1
+         if( am_trial(itrial) == am_trial(jtrial) &
+            .AND. ABS( exponent_trial(itrial) - exponent_trial(jtrial) ) < 1.0e-6_dp ) new_primitive = .FALSE.
+       enddo
+       if( new_primitive ) then
+         nprim = nprim + 1
+         exponent_selected = exponent_selected * exponent_trial(itrial)
+       endif
+     enddo
+     exponent_selected = (exponent_selected)**(1.0_dp/REAL(nprim,dp))
+
+     am_selected = MAX( MAXVAL(am_trial(1:ntrial)) , am_current )
+
+     am_selected = MIN( am_selected , lmax_abs )    ! Make sure the selected am is not larger than the allowed max
+     am_current  = am_selected
+
+     ! Save selected shell information
+     do am=0,am_selected
+       write(stdout,'(5x,a,es16.6,1x,i2)') '* auxiliary function (exponent, angular momentum):',exponent_selected,am
+       auxil_basis%nshell = auxil_basis%nshell + 1
+       shell_tmp(auxil_basis%nshell)%am    = am
+       shell_tmp(auxil_basis%nshell)%ng    = 1
+       allocate(shell_tmp(auxil_basis%nshell)%alpha(1))
+       allocate(shell_tmp(auxil_basis%nshell)%coeff(1))
+       shell_tmp(auxil_basis%nshell)%alpha(1) = exponent_selected
+       shell_tmp(auxil_basis%nshell)%coeff(1) = 1.0_dp
+       shell_tmp(auxil_basis%nshell)%iatom = icenter
+       shell_tmp(auxil_basis%nshell)%x0(:) = basis%shell(ishell_example)%x0(:)
+     enddo
+
+   enddo
+
+
+   deallocate(am_candidate,am_trial)
+   deallocate(remaining_candidate)
+   deallocate(exponent_candidate,exponent_trial)
+ enddo
+
+ write(stdout,'(1x,a,/)')       '========================================'
+
+ !
+ ! Fill up the auxil_basis object
+ !
+
+ auxil_basis%gaussian_type = gaussian_type
+ auxil_basis%ammax         = MAXVAL(shell_tmp(1:auxil_basis%nshell)%am)
+ allocate(auxil_basis%shell(auxil_basis%nshell))
+ auxil_basis%nbf           = 0
+ auxil_basis%nbf_cart      = 0
+ do ishell=1,auxil_basis%nshell
+   am_current = shell_tmp(ishell)%am
+   auxil_basis%nbf      = auxil_basis%nbf      + number_basis_function_am(gaussian_type,am_current)
+   auxil_basis%nbf_cart = auxil_basis%nbf_cart + number_basis_function_am('CART'       ,am_current)
+ enddo
+ allocate(auxil_basis%bfc(auxil_basis%nbf_cart))
+ allocate(auxil_basis%bff(auxil_basis%nbf))
+
+ jbf = 0
+ jbf_cart = 0
+ do ishell=1,auxil_basis%nshell
+   am_current = shell_tmp(ishell)%am
+
+   auxil_basis%shell(ishell)%am     = shell_tmp(ishell)%am
+   auxil_basis%shell(ishell)%iatom  = shell_tmp(ishell)%iatom
+   auxil_basis%shell(ishell)%x0(:)  = shell_tmp(ishell)%x0(:)
+   auxil_basis%shell(ishell)%ng     = shell_tmp(ishell)%ng
+   allocate(auxil_basis%shell(ishell)%alpha(1))
+   allocate(auxil_basis%shell(ishell)%coeff(1))
+   auxil_basis%shell(ishell)%alpha(:)    = shell_tmp(ishell)%alpha(:)
+   auxil_basis%shell(ishell)%istart      = jbf + 1
+   auxil_basis%shell(ishell)%iend        = jbf + number_basis_function_am(gaussian_type,am_current)
+   auxil_basis%shell(ishell)%istart_cart = jbf_cart + 1
+   auxil_basis%shell(ishell)%iend_cart   = jbf_cart + number_basis_function_am('CART',am_current)
+
+   !
+   ! Basis function setup
+   !
+
+   !
+   ! Ordering of Libint as explained in Kenny et al. J. Comput Chem. 29, 562 (2008).
+   !
+   nx = am_current
+   ny = 0
+   nz = 0
+   index_in_shell = 0
+   do
+     ! Add the new basis function
+     jbf_cart = jbf_cart + 1
+     index_in_shell = index_in_shell + 1
+     call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
+                              shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bfc(jbf_cart))
+     if(auxil_basis%gaussian_type == 'CART') then
+       jbf = jbf + 1
+       call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
+                                shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
+     endif
+
+     ! Break the loop when nz is equal to l
+     if( nz == am_current ) exit
+
+     if( nz < am_current - nx ) then
+       ny = ny - 1
+       nz = nz + 1
+     else
+       nx = nx - 1
+       ny = am_current - nx
+       nz = 0
+     endif
+
+   enddo
+
+   index_in_shell = 0
+   if(auxil_basis%gaussian_type == 'PURE') then
+     do mm=-am_current,am_current
+       jbf = jbf + 1
+       index_in_shell = index_in_shell + 1
+       call init_basis_function_pure(normalized,1,am_current,mm,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0, &
+                                shell_tmp(ishell)%alpha,shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
+     enddo
+   endif
+
+   auxil_basis%shell(ishell)%coeff(1) = ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_current &
+                                                   * shell_tmp(ishell)%alpha(1)**( 0.25_dp * ( 2.0_dp*am_current + 3.0_dp ) )
+
+ enddo
+
+
+ call echo_basis_summary(auxil_basis)
+
+ deallocate(shell_tmp)
+
+ call stop_clock(timing_auto_auxil)
+
+
+contains
+
+function get_lmax_abs(lmax_obs,zcenter) result(lmax_abs)
+ integer,intent(in) :: zcenter,lmax_obs
+ integer            :: lmax_abs
+!======
+ integer :: lval
+!======
+ if( zcenter <= 2 ) then
+   lval = 0
+ else if( zcenter <= 18) then
+   lval = 1
+ else if( zcenter <= 54) then
+   lval = 2
+ else
+   lval = 3
+ endif
+ lmax_abs = MAX( lmax_obs + LMAXINC , 2 * lval )
+
+end function get_lmax_abs
+
+end subroutine init_auxil_basis_set_auto
 
 
 !=========================================================================
@@ -492,7 +818,6 @@ subroutine write_basis_shell(unitfile,shell)
 !=====
 !=====
 
- write(unitfile) shell%ishell
  write(unitfile) shell%am
  write(unitfile) shell%ng
  write(unitfile) shell%alpha(:)
@@ -514,7 +839,6 @@ subroutine read_basis_shell(unitfile,shell)
 !=====
 !=====
 
- read(unitfile) shell%ishell
  read(unitfile) shell%am
  read(unitfile) shell%ng
  allocate(shell%alpha(shell%ng))
@@ -1094,8 +1418,6 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
  quad(3,2) = quad(2,3)
 
 
-
-
  !
  !  term x * x
  !
@@ -1182,8 +1504,6 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
  call overlap_basis_function(bf1,bftmp,quad_tmp)
  quad(3,3) = quad(3,3) + quad_tmp * bf2%x0(3)**2
 
-
-
 end subroutine basis_function_quadrupole
 
 
@@ -1206,9 +1526,9 @@ subroutine gos_basis_function(bf1,bf2,qvec,gos_bf1bf2)
    enddo
  enddo
 
-
 end subroutine gos_basis_function
 
 
 !=========================================================================
 end module m_basis_set
+!=========================================================================
