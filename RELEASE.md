@@ -2,6 +2,23 @@
 #    MOLGW: Release Notes
 -----------------------------------------
 
+
+-----------------------------------------
+## What's new in version 2.B
+### Overview
+- speed-up in RT-TDDFT
+- bug fixes
+
+### Contributors
+- Fabien Bruneval (CEA SRMP, France)
+- Young-Moo Byun (U. Illinois@Chicago, USA)
+- Ivan Maliyov (CEA SRMP, France)
+
+### Changes affecting the usage
+- Keyword `auxil_basis='auto'` or `auxil_basis='pauto'` triggers automatic generation of an auxiliary basis
+
+
+-----------------------------------------
 ## What's new in version 2.A
 ### Overview
 - GW approximation to the density matrix (only for spin-restricted calculations)

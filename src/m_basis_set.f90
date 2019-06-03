@@ -10,6 +10,7 @@
 module m_basis_set
  use m_definitions
  use m_warning
+ use m_timing
  use m_mpi
  use m_elements
  use m_tools, only: orbital_momentum_name
@@ -310,15 +311,17 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
 !=====
  real(dp),parameter :: FSAM    = 1.5_dp
  integer,parameter  :: LMAXINC = 1
- integer,parameter  :: lmax=10
 
  logical :: new_primitive,pauto
  integer :: lmax_obs,lmax_abs,am,lval
  integer :: jbf,jbf_cart
- integer :: icenter,ncenter,ishell_example
- integer :: ishell,icandidate,ncandidate,index_exp,nprim
+ integer :: icenter,ncenter
+ integer :: iprim,jprim
+ integer :: ishell,jshell,ishell_example,nshell_max
+ integer :: icandidate,ncandidate,index_exp,nprim
  integer :: index_current,am_current,am_selected
  integer :: itrial,jtrial,ntrial
+ integer :: zcenter
  real(dp) :: exponent_current,exponent_selected
  real(dp),allocatable :: exponent_candidate(:),exponent_trial(:)
  integer,allocatable  :: am_candidate(:),am_trial(:)
@@ -328,8 +331,9 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
  logical,parameter :: normalized=.TRUE.
 !=====
 
+ call start_clock(timing_auto_auxil)
+
  pauto = TRIM( capitalize(auxil_basis_name(1)) ) == 'PAUTO'
- if( pauto ) call die('init_auxil_basis_set_auto: PAuto not yet implemented')
 
  write(stdout,'(/,1x,a)')      'Auxiliary basis is constructed automatically'
  if( pauto ) then
@@ -342,30 +346,42 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
  write(stdout,'(1x,a25,i3)')   'Parameter l_MAXINC: ',LMAXINC
 
 
+ ncenter = MAXVAL( basis%shell(:)%iatom )
+ !
+ ! Evaluate the maximum number of shells possible
+ nshell_max = 0
+ do icenter=1,ncenter
+   nprim = 0
+   lmax_obs = 0
+   do ishell=1,basis%nshell
+     if( basis%shell(ishell)%iatom == icenter ) then
+       nprim = nprim + basis%shell(ishell)%ng
+       lmax_obs = MAX( lmax_obs , basis%shell(ishell)%am )
+     endif
+   enddo
+   if( pauto ) then
+     nshell_max = nshell_max + nprim**2 * get_lmax_abs(lmax_obs,zbasis(icenter))
+   else
+     nshell_max = nshell_max + nprim * get_lmax_abs(lmax_obs,zbasis(icenter))
+   endif
+ enddo
 
 
  ! Allocate a temporary storage for the shells
- allocate( shell_tmp(SUM(basis%shell(:)%ng) * lmax) )
+ allocate(shell_tmp(nshell_max))
  auxil_basis%nshell = 0
 
  write(stdout,'(/,1x,a)')       '========================================'
- ncenter = MAXVAL( basis%shell(:)%iatom )
  do icenter=1,ncenter
    write(stdout,'(1x,a,i5,a,i5)') 'Center:',icenter,' / ',ncenter
-   if( zbasis(icenter) <= 2 ) then
-     lval = 0
-   else if( zbasis(icenter) <= 18) then
-     lval = 1
-   else if( zbasis(icenter) <= 54) then
-     lval = 2
-   else
-     lval = 3
-   endif
+
 
    am_current = 0
-   ncandidate = SUM( basis%shell(:)%ng , MASK=(basis%shell(:)%iatom == icenter) )
    ishell_example =  FINDLOC( basis%shell(:)%iatom , icenter , DIM=1)
+   zcenter = zbasis(icenter)
 
+   ncandidate = SUM( basis%shell(:)%ng , MASK=(basis%shell(:)%iatom == icenter) )
+   if( pauto ) ncandidate = ncandidate**2
    allocate(remaining_candidate(ncandidate))
    allocate(exponent_candidate(ncandidate),exponent_trial(ncandidate))
    allocate(am_candidate(ncandidate),am_trial(ncandidate))
@@ -375,25 +391,41 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
    !
    remaining_candidate(:) = .TRUE.
    index_exp = 0
+   lmax_obs = 0
    do ishell=1,basis%nshell
-     if( basis%shell(ishell)%iatom == icenter ) then
+     if( basis%shell(ishell)%iatom /= icenter ) cycle
+     lmax_obs = MAX( lmax_obs , basis%shell(ishell)%am )
+
+     if( pauto ) then
+       ! PAuto recipe:
+       ! All the exponents sums are considered
+       ! All the angular momenta sums are considered
+       do jshell=1,basis%nshell
+         if( basis%shell(jshell)%iatom /= icenter ) cycle
+         nprim = basis%shell(ishell)%ng * basis%shell(jshell)%ng
+         do iprim=1,basis%shell(ishell)%ng
+           do jprim=1,basis%shell(jshell)%ng
+             index_exp = index_exp + 1
+             exponent_candidate(index_exp) = basis%shell(ishell)%alpha(iprim) + basis%shell(jshell)%alpha(jprim)
+             am_candidate(index_exp)       = basis%shell(ishell)%am + basis%shell(jshell)%am
+           enddo
+         enddo
+       enddo
+     else
+       ! Auto recipe:
+       ! All the exponents are doubled
+       ! All the angular momenta are doubled
        nprim = basis%shell(ishell)%ng
-       exponent_candidate(index_exp+1:index_exp+nprim) = basis%shell(ishell)%alpha(:)
-       am_candidate(index_exp+1:index_exp+nprim)       = basis%shell(ishell)%am
+       exponent_candidate(index_exp+1:index_exp+nprim) = basis%shell(ishell)%alpha(:) * 2.0_dp
+       am_candidate(index_exp+1:index_exp+nprim)       = basis%shell(ishell)%am * 2
        index_exp = index_exp + nprim
      endif
+
    enddo
 
-   lmax_obs = MAXVAL(am_candidate(:))
-   lmax_abs = MAX( lmax_obs + LMAXINC , 2 * lval )
+   lmax_abs = get_lmax_abs(lmax_obs,zcenter)
 
    write(stdout,'(1x,a,i4)') 'Maximum angular momentum for this center: ',lmax_abs
-
-   ! Auto recipe:
-   ! All the exponents are doubled
-   ! All the angular momenta are doubled
-   exponent_candidate(:) = exponent_candidate(:) * 2.0_dp
-   am_candidate(:)       = am_candidate(:) * 2
 
 
    do while( ANY(remaining_candidate) )
@@ -554,6 +586,30 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
  call echo_basis_summary(auxil_basis)
 
  deallocate(shell_tmp)
+
+ call stop_clock(timing_auto_auxil)
+
+
+contains
+
+function get_lmax_abs(lmax_obs,zcenter) result(lmax_abs)
+ integer,intent(in) :: zcenter,lmax_obs
+ integer            :: lmax_abs
+!======
+ integer :: lval
+!======
+ if( zcenter <= 2 ) then
+   lval = 0
+ else if( zcenter <= 18) then
+   lval = 1
+ else if( zcenter <= 54) then
+   lval = 2
+ else
+   lval = 3
+ endif
+ lmax_abs = MAX( lmax_obs + LMAXINC , 2 * lval )
+
+end function get_lmax_abs
 
 end subroutine init_auxil_basis_set_auto
 
