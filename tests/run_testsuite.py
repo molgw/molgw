@@ -466,10 +466,10 @@ print('      Test Suite Summary \n')
 print('      Test files tested:   {:4d} / {:4d}\n'.format(ninput2-test_files_skipped,ninput2))
 if success == tested:
   print('     Test files success:   \033[92m\033[1m{:4d} / {:4d}\033[0m  '.format(test_files_success,ninput2-test_files_skipped))
-  print('        Succesful tests:   \033[92m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
+  print('       Successful tests:   \033[92m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
 else:
   print('     Test files success:   \033[91m\033[1m{:4d} / {:4d}\033[0m  '.format(test_files_success,ninput2-test_files_skipped))
-  print('        Succesful tests:   \033[91m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
+  print('       Successful tests:   \033[91m\033[1m{:4d} / {:4d}\033[0m\n'.format(success,tested))
 print('       Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')
 if test_files_skipped > 0 :
