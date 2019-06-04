@@ -6,6 +6,9 @@
 -----------------------------------------
 ## What's new in version 2.B
 ### Overview
+- automatic generation of an auxiliary basis following the "Auto" and "PAuto" recipes of Gaussian
+- output the Galitskii-Migdal correlation energy = 1/2 Tr[ Sigmac * G ]
+- non HF starting points for perturbation theory density matrices
 - speed-up in RT-TDDFT
 - bug fixes
 
