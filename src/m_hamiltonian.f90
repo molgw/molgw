@@ -322,26 +322,26 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
    partial_sum(:) = 0.0_dp
    select type(p_matrix)
    type is(real(dp))
-     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
+     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair,factor)
      !$OMP DO REDUCTION(+:partial_sum)
      do ipair_local=1,npair_local
        ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
        kbf = index_basis(1,ipair)
        lbf = index_basis(2,ipair)
-       factor = merge(2.0_dp,1.0_dp,kbf/=lbf)
+       factor = MERGE(2.0_dp,1.0_dp,kbf/=lbf)
        partial_sum(:) = partial_sum(:) &
                     + eri_3center(:,ipair_local) * SUM(p_matrix(kbf,lbf,:)) * factor
      enddo
      !$OMP END DO
      !$OMP END PARALLEL
    type is(complex(dp))
-     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair)
+     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair,factor)
      !$OMP DO REDUCTION(+:partial_sum)
      do ipair_local=1,npair_local
        ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
        kbf = index_basis(1,ipair)
        lbf = index_basis(2,ipair)
-       factor = merge(2.0_dp,1.0_dp,kbf/=lbf)
+       factor = MERGE(2.0_dp,1.0_dp,kbf/=lbf)
        partial_sum(:) = partial_sum(:) &
                     + eri_3center(:,ipair_local) * SUM(REAL(p_matrix(kbf,lbf,:),dp)) * factor
      enddo
