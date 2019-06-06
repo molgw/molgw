@@ -13,7 +13,7 @@ module m_virtual_orbital_space
  use m_warning
  use m_memory
  use m_scalapack
- use m_hamiltonian
+ use m_hamiltonian_tools
 
  real(dp),allocatable,private :: energy_ref(:,:)
  real(dp),allocatable,private :: c_matrix_ref(:,:,:)

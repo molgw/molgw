@@ -13,38 +13,12 @@ module m_density_tools
  use m_gaussian
  use m_inputparam
  use m_basis_set
+ use m_hamiltonian_tools,only: get_number_occupied_states
 
  complex(dp),parameter :: COMPLEX_ONE  = (1.0_dp,0.0_dp)
  complex(dp),parameter :: COMPLEX_ZERO = (0.0_dp,0.0_dp)
 
 contains
-
-
-!=========================================================================
-pure function get_number_occupied_states(occupation) result(nocc)
- implicit none
-
- real(dp),intent(in) :: occupation(:,:)
- integer             :: nocc
-!=====
- integer :: nstate,istate,ispin,nspin_local
-!=====
-
- nstate      = SIZE(occupation(:,:),DIM=1)
- nspin_local = SIZE(occupation(:,:),DIM=2)
-
- ! Find highest occupied state
- ! Take care of negative occupations, this can happen if C comes from P^{1/2}
- nocc = 0
- do ispin=1,nspin_local
-   do istate=1,nstate
-     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
-     nocc = MAX(nocc,istate)
-   enddo
- enddo
-
-
-end function get_number_occupied_states
 
 
 !=========================================================================

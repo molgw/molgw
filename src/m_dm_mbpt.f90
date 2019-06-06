@@ -15,7 +15,6 @@ module m_dm_mbpt
  use m_spectral_function
  use m_selfenergy_tools
  use m_scf
- use m_hamiltonian
  use m_hamiltonian_wrapper
 
 

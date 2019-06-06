@@ -11,8 +11,22 @@ module m_scf_loop
  use m_timing
  use m_warning
  use m_memory
+ use m_tools
+ use m_atoms
+ use m_mpi
+ use m_scalapack
+ use m_basis_set
  use m_inputparam
+ use m_scf
+ use m_eri_ao_mo
+ use m_dft_grid
+ use m_spectral_function
+ use m_hamiltonian_twobodies
+ use m_hamiltonian_sca
+ use m_hamiltonian_buffer
  use m_hamiltonian_wrapper
+ use m_selfenergy_tools
+ use m_dm_mbpt
 
  integer,parameter,private :: BATCH_SIZE = 128
 
@@ -29,20 +43,6 @@ subroutine scf_loop(is_restart,&
                     energy, &
                     hamiltonian_fock,&
                     c_matrix)
- use m_tools
- use m_atoms
- use m_basis_set
- use m_scf
- use m_eri
- use m_eri_calculate
- use m_eri_ao_mo
- use m_dft_grid
- use m_spectral_function
- use m_hamiltonian
- use m_hamiltonian_sca
- use m_hamiltonian_buffer
- use m_selfenergy_tools
- use m_dm_mbpt
  implicit none
 
 !=====
@@ -503,11 +503,6 @@ end subroutine scf_loop
 
 !=========================================================================
 subroutine calculate_hamiltonian_hxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_hxc,ehxc)
- use m_scalapack
- use m_basis_set
- use m_hamiltonian
- use m_hamiltonian_sca
- use m_hamiltonian_buffer
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -609,14 +604,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
                                               c_matrix_cmplx,         &
                                               p_matrix_cmplx,         &
                                               hamiltonian_hxc_cmplx)
- use m_scalapack
- use m_basis_set
- use m_hamiltonian
  use m_hamiltonian_cmplx
- use m_hamiltonian_sca
- use m_hamiltonian_buffer
- use m_tools,only: matrix_trace_cmplx
- use m_scf
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -700,8 +688,6 @@ end subroutine  calculate_hamiltonian_hxc_ri_cmplx
 
 !=========================================================================
 subroutine get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
- use m_mpi
- use m_scalapack
  implicit none
 
  real(dp),intent(in)    :: hamiltonian(:,:,:)
@@ -729,8 +715,6 @@ end subroutine get_fock_operator
 
 !=========================================================================
 subroutine form_c_matrix_global(nbf,nstate,c_matrix)
- use m_mpi
- use m_scalapack
  implicit none
 
  integer,intent(in)                 :: nbf,nstate

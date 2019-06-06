@@ -15,7 +15,6 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam
- use m_hamiltonian
  use m_hamiltonian_onebody
  use m_selfenergy_tools
  implicit none
@@ -181,7 +180,6 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam
- use m_hamiltonian
  use m_hamiltonian_onebody
  use m_selfenergy_tools
  implicit none
@@ -344,7 +342,6 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam
- use m_hamiltonian
  use m_hamiltonian_onebody
  use m_selfenergy_tools
  use m_spectral_function
@@ -547,7 +544,6 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
  use m_tools
  use m_basis_set
  use m_spectral_function
- use m_hamiltonian
  use m_eri_ao_mo
  use m_selfenergy_tools
  implicit none
@@ -717,7 +713,6 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
  use m_tools
  use m_basis_set
  use m_spectral_function
- use m_hamiltonian
  use m_eri_ao_mo
  use m_selfenergy_tools
  implicit none
@@ -907,8 +902,7 @@ subroutine fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hexx,hxc,
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam
- use m_hamiltonian
- use m_hamiltonian_onebody
+ use m_hamiltonian_tools
  use m_selfenergy_tools
  implicit none
 
@@ -960,7 +954,7 @@ end subroutine fock_density_matrix
 subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_state,p_matrix)
  use m_definitions
  use m_inputparam
- use m_hamiltonian
+ use m_hamiltonian_tools
  implicit none
 
  integer,intent(in)     :: nbf,nstate

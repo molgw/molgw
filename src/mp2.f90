@@ -516,7 +516,7 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,
  use m_definitions
  use m_timing
  use m_inputparam,only: nspin,spin_fact
- use m_hamiltonian
+ use m_hamiltonian_tools
  implicit none
 
  integer,intent(in)         :: nstate,nbf

@@ -17,7 +17,6 @@ module m_tddft_fxc
  use m_dft_grid
  use m_basis_set
  use m_density_tools
- use m_hamiltonian
 
  integer,private   :: nspin_tddft
 

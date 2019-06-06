@@ -10,7 +10,7 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  use m_definitions
  use m_basis_set
  use m_inputparam,only: nspin
- use m_hamiltonian,only: setup_density_matrix
+ use m_hamiltonian_tools,only: setup_density_matrix
  use m_hamiltonian_onebody,only: calculate_dipole_basis
  use m_atoms
  implicit none
@@ -61,7 +61,7 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
  use m_definitions
  use m_basis_set
  use m_inputparam,only: nspin
- use m_hamiltonian,only: setup_density_matrix
+ use m_hamiltonian_tools,only: setup_density_matrix
  use m_hamiltonian_onebody,only: calculate_quadrupole_basis
  implicit none
 

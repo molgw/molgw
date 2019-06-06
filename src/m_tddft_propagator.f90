@@ -12,7 +12,6 @@ module m_tddft_propagator
  use m_basis_set
  use m_scf_loop
  use m_memory
- use m_hamiltonian
  use m_hamiltonian_sca
  use m_hamiltonian_onebody
  use m_hamiltonian_buffer

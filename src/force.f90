@@ -15,7 +15,6 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  use m_basis_set
  use m_eri
  use m_eri_calculate
- use m_hamiltonian
  use m_hamiltonian_onebody
  implicit none
 

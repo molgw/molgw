@@ -18,7 +18,6 @@ module m_selfenergy_evaluation
  use m_eri_ao_mo
  use m_dft_grid
  use m_scf,only: en
- use m_hamiltonian
  use m_spectral_function
  use m_selfenergy_tools
  use m_virtual_orbital_space

@@ -13,9 +13,9 @@ module m_hamiltonian_wrapper
  use m_mpi
  use m_scalapack
  use m_warning
- use m_inputparam,only: has_auxil_basis
+ use m_inputparam,only: has_auxil_basis,incore_
  use m_basis_set
- use m_hamiltonian
+ use m_hamiltonian_twobodies
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
 

@@ -93,6 +93,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
 
 end subroutine setup_exchange_ri_cmplx
 
+
 !=========================================================================
 subroutine setup_exchange_versatile_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,exchange_ij_cmplx,eexchange)
  implicit none
@@ -224,6 +225,7 @@ subroutine setup_exchange_versatile_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_
 
 end subroutine setup_exchange_versatile_ri_cmplx
 
+
 !=========================================================================
 subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  implicit none
@@ -299,6 +301,7 @@ subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
  enddo
 
 end subroutine static_dipole_fast_cmplx
+
 
 !=========================================================================
 subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,num,time_cur)
@@ -444,6 +447,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
  call stop_clock(timing_calc_dens_disc)
 
 end subroutine calc_density_in_disc_cmplx_dft_grid
+
 
 end module m_hamiltonian_cmplx
 !=========================================================================
