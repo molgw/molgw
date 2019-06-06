@@ -286,10 +286,12 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf
  integer              :: ipair,ipair_local
- real(dp),allocatable :: partial_sum(:)
+ real(dp),allocatable :: x_vector(:)
  real(dp)             :: rtmp,factor
  character(len=100)   :: title
  integer              :: timing_xxdft_hartree
+ integer              :: desc_partial(NDEL),desc_pmat(NDEL),info
+ real(dp),allocatable :: pmat(:)
 !=====
 
  nbf = SIZE(hartree_ij(:,:),DIM=1)
@@ -308,69 +310,72 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: versatile version'
 
 
- nauxil_local = SIZE(eri_3center,DIM=1)
- npair_local  = SIZE(eri_3center,DIM=2)
-
  hartree_ij(:,:) = 0.0_dp
 
- ! Ortho parallelization is not used in Hartree
- ! This is a concious waste (however very small)
  if( cntxt_3center > 0 ) then
 
-   allocate(partial_sum(nauxil_local))
+   nauxil_local = NUMROC(nauxil_2center,MB_3center,iprow_3center,first_row,nprow_3center)
+   npair_local  = NUMROC(npair         ,MB_3center,iprow_3center,first_row,nprow_3center)
+   call DESCINIT(desc_pmat,npair,1,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(npair_local,1),info)
+   call DESCINIT(desc_partial,nauxil_2center,1,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(nauxil_local,1),info)
 
-   partial_sum(:) = 0.0_dp
-   select type(p_matrix)
-   type is(real(dp))
-     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair,factor)
-     !$OMP DO REDUCTION(+:partial_sum)
+   ! All processors allocate the vectors even though they may be not used in case of eri3_npcol > 1
+   allocate(x_vector(nauxil_local))
+   allocate(pmat(npair_local))
+
+   ! Check if the vector pmat is to be dealt with by this processor
+   if(  INDXG2P(1,NB_3center,ipcol_3center,first_col,npcol_3center) == ipcol_3center ) then
+     select type(p_matrix)
+     type is(real(dp))
+       !$OMP PARALLEL PRIVATE(kbf,lbf,ipair,factor)
+       !$OMP DO
+       do ipair_local=1,npair_local
+         ipair = INDXL2G(ipair_local,MB_3center,iprow_3center,first_row,nprow_3center)
+         kbf = index_basis(1,ipair)
+         lbf = index_basis(2,ipair)
+         factor = MERGE(2.0_dp,1.0_dp,kbf/=lbf)
+         pmat(ipair_local) = SUM(p_matrix(kbf,lbf,:)) * factor
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+     type is(complex(dp))
+       !$OMP PARALLEL PRIVATE(kbf,lbf,ipair,factor)
+       !$OMP DO
+       do ipair_local=1,npair_local
+         ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+         kbf = index_basis(1,ipair)
+         lbf = index_basis(2,ipair)
+         factor = MERGE(2.0_dp,1.0_dp,kbf/=lbf)
+         pmat(ipair_local) = SUM(p_matrix(kbf,lbf,:)%re) * factor
+       enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
+     end select
+   endif
+
+   ! X_P = \sum_{\alpha \beta} ( P | \alpha \beta ) * P_{\alpha \beta}
+   call PDGEMV('N',nauxil_2center,npair,1.0d0,eri_3center,1,1,desc_eri3,pmat,1,1,desc_pmat,1, &
+               0.0d0,x_vector,1,1,desc_partial,1)
+   ! v_H_{alpha beta} = \sum_P ( P | alpha beta ) * X_P
+   call PDGEMV('T',nauxil_2center,npair,1.0d0,eri_3center,1,1,desc_eri3,x_vector,1,1,desc_partial,1, &
+               0.0d0,pmat,1,1,desc_pmat,1)
+
+   ! Check if the vector pmat is to be dealt with by this processor
+   if(  INDXG2P(1,NB_3center,ipcol_3center,first_col,npcol_3center) == ipcol_3center ) then
+     !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+     !$OMP DO
      do ipair_local=1,npair_local
-       ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
-       kbf = index_basis(1,ipair)
-       lbf = index_basis(2,ipair)
-       factor = MERGE(2.0_dp,1.0_dp,kbf/=lbf)
-       partial_sum(:) = partial_sum(:) &
-                    + eri_3center(:,ipair_local) * SUM(p_matrix(kbf,lbf,:)) * factor
+       ipair = INDXL2G(ipair_local,MB_3center,iprow_3center,first_row,nprow_3center)
+       ibf = index_basis(1,ipair)
+       jbf = index_basis(2,ipair)
+       hartree_ij(ibf,jbf) = pmat(ipair_local)
+       hartree_ij(jbf,ibf) = pmat(ipair_local)
      enddo
      !$OMP END DO
      !$OMP END PARALLEL
-   type is(complex(dp))
-     !$OMP PARALLEL PRIVATE(kbf,lbf,ipair,factor)
-     !$OMP DO REDUCTION(+:partial_sum)
-     do ipair_local=1,npair_local
-       ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
-       kbf = index_basis(1,ipair)
-       lbf = index_basis(2,ipair)
-       factor = MERGE(2.0_dp,1.0_dp,kbf/=lbf)
-       partial_sum(:) = partial_sum(:) &
-                    + eri_3center(:,ipair_local) * SUM(REAL(p_matrix(kbf,lbf,:),dp)) * factor
-     enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
-   end select
+   endif
 
-   !FIXME ortho parallelization is not taken into account here!
-#if defined(HAVE_SCALAPACK)
-   call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,1,partial_sum,nauxil_local,-1,-1)
-#endif
-
-
-   !$OMP PARALLEL PRIVATE(ibf,jbf,ipair,rtmp)
-   !$OMP DO
-   do ipair_local=1,npair_local
-     ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
-
-     rtmp = DOT_PRODUCT( eri_3center(:,ipair_local) , partial_sum(:) )
-
-     ibf = index_basis(1,ipair)
-     jbf = index_basis(2,ipair)
-     hartree_ij(ibf,jbf) = rtmp
-     hartree_ij(jbf,ibf) = rtmp
-   enddo
-   !$OMP END DO
-   !$OMP END PARALLEL
-
-   deallocate(partial_sum)
+   deallocate(x_vector,pmat)
  endif
  !
  ! Sum up the different contribution from different procs
