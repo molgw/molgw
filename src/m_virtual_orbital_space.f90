@@ -13,7 +13,13 @@ module m_virtual_orbital_space
  use m_warning
  use m_memory
  use m_scalapack
+ use m_inputparam
  use m_hamiltonian_tools
+ use m_basis_set
+ use m_hamiltonian_onebody
+ use m_hamiltonian_sca
+ use m_linear_algebra
+ use m_eri_ao_mo
 
  real(dp),allocatable,private :: energy_ref(:,:)
  real(dp),allocatable,private :: c_matrix_ref(:,:,:)
@@ -26,11 +32,6 @@ contains
 
 !=========================================================================
 subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
- use m_inputparam
- use m_tools,only: invert
- use m_basis_set
- use m_hamiltonian_onebody
- use m_hamiltonian_sca
  implicit none
 
  type(basis_set),intent(in)            :: basis
@@ -560,10 +561,6 @@ end subroutine setup_virtual_smallbasis_sca
 
 !=========================================================================
 subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
- use m_inputparam
- use m_tools,only: diagonalize
- use m_basis_set
- use m_eri_ao_mo
  implicit none
 
  type(basis_set),intent(in)            :: basis
@@ -792,10 +789,6 @@ end subroutine virtual_fno
 
 !=========================================================================
 subroutine destroy_fno(basis,nstate,energy,c_matrix)
- use m_inputparam
- use m_basis_set
- use m_eri_ao_mo
- use m_scalapack
  implicit none
 
  type(basis_set),intent(in)           :: basis

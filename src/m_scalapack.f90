@@ -15,8 +15,8 @@
 module m_scalapack
  use m_definitions
  use m_warning
- use m_tools
  use m_mpi
+ use m_linear_algebra
 #ifdef HAVE_MPI
  use mpi
 #endif
@@ -1991,7 +1991,6 @@ end subroutine matmul_transaba_scalapack_cdp
 !
 !=========================================================================
 subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trace)
- use m_tools,only: matrix_trace
  implicit none
  integer,intent(in)     :: scalapack_block_min
  real(dp),intent(in)    :: a_matrix(:,:)

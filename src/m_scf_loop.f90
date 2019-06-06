@@ -11,7 +11,7 @@ module m_scf_loop
  use m_timing
  use m_warning
  use m_memory
- use m_tools
+ use m_linear_algebra
  use m_atoms
  use m_mpi
  use m_scalapack

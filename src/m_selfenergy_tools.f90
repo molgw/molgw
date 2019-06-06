@@ -11,7 +11,7 @@ module m_selfenergy_tools
  use m_warning
  use m_mpi
  use m_inputparam
- use m_tools,only: coeffs_gausslegint
+ use m_numerical_tools
 
  !
  ! frozen core approximation parameters
@@ -808,7 +808,6 @@ end subroutine self_energy_fit
 
 !=========================================================================
 subroutine self_energy_pade(se)
- use m_tools,only: pade
  implicit none
 
  type(selfenergy_grid),intent(inout) :: se

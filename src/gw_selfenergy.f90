@@ -198,7 +198,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: diagonalize
+ use m_linear_algebra,only: diagonalize
  use m_selfenergy_tools
  implicit none
 

@@ -31,7 +31,6 @@ module m_dm_analysis
  use m_memory
  use m_scalapack
  use m_inputparam
- use m_tools
  use m_scf
  use m_atoms
  use m_ecp

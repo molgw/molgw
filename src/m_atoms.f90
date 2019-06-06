@@ -10,6 +10,7 @@ module m_atoms
  use m_definitions
  use m_warning,only: die,issue_warning
  use m_elements
+ use m_linear_algebra,only: cross_product
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp
 
@@ -51,7 +52,6 @@ contains
 
 !=========================================================================
 subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_name)
- use m_tools,only: cross_product
  implicit none
  real(dp),intent(in) :: zatom_read(natom+nghost),x_read(3,natom+nghost)
  real(dp),intent(in) :: vel_projectile(3)

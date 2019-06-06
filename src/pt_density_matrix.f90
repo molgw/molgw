@@ -541,7 +541,6 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
  use m_scalapack
  use m_inputparam
  use m_mpi
- use m_tools
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
@@ -710,7 +709,6 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
  use m_scalapack
  use m_inputparam
  use m_mpi
- use m_tools
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo

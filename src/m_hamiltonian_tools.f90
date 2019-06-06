@@ -15,7 +15,7 @@ module m_hamiltonian_tools
  use m_memory
  use m_cart_to_pure
  use m_basis_set
- use m_tools
+ use m_linear_algebra
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min,scf_diago_flavor
 
 

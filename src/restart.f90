@@ -114,7 +114,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  use m_atoms
  use m_basis_set
  use m_hamiltonian_onebody
- use m_tools,only: invert
+ use m_linear_algebra,only: invert
  implicit none
 
  integer,intent(out)         :: restart_type

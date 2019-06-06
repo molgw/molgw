@@ -20,6 +20,10 @@ module m_hamiltonian_buffer
  use m_basis_set
  use m_density_tools
  use m_hamiltonian_onebody
+ use m_dft_grid
+ use m_eri_calculate
+ use m_linear_algebra,only: matrix_trace
+
 
 
  real(dp),private,allocatable :: buffer(:,:)
@@ -789,9 +793,6 @@ end subroutine dft_exc_vxc_buffer_sca
 
 !=========================================================================
 subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
- use m_dft_grid
- use m_eri_calculate
- use m_tools,only: matrix_trace
  implicit none
 
  type(basis_set),intent(in) :: basis

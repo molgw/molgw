@@ -21,6 +21,7 @@ module m_hamiltonian_sca
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_hamiltonian_tools
  use m_density_tools
+ use m_linear_algebra,only: diagonalize
 
 
 contains
@@ -1027,7 +1028,6 @@ end subroutine diagonalize_hamiltonian_sca
 !=========================================================================
 subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
                                   desc_sqrt,nstate,x_matrix)
- use m_tools
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
@@ -1144,7 +1144,6 @@ end subroutine setup_sqrt_overlap_sca
 
 !=========================================================================
 subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,p_matrix_occ)
- use m_tools
  implicit none
 
  integer,intent(in)   :: nbf,m_ham,n_ham

@@ -14,7 +14,7 @@ module m_scf
  use m_mpi
  use m_inputparam
  use m_scalapack
- use m_tools,only: invert
+ use m_linear_algebra,only: invert
 
 
  integer,private              :: nhistmax
@@ -380,7 +380,8 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
  a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
  a_matrix(nhist_current+1,nhist_current+1) =  0.0_dp
 
- call invert(a_matrix,a_matrix_inv)
+ a_matrix_inv(:,:) = a_matrix(:,:)
+ call invert(a_matrix_inv)
 
  alpha_diis(1:nhist_current) = -a_matrix_inv(1:nhist_current,nhist_current+1)
 
@@ -740,39 +741,11 @@ subroutine density_matrix_preconditioning(hkin,s_matrix,p_matrix_new)
    allocate(hkin_inv,MOLD=hkin)
    allocate(delta_p_matrix,MOLD=hkin)
 
-#if 0
-   nbf = desc_ham(M_)
-   diag(:) = kerker_k0**2
-
-   if( cntxt_ham > 0 ) then
-     do jlocal=1,nlocal
-       do ilocal=1,mlocal
-         iglobal = rowindex_local_to_global(desc_ham,ilocal)
-         jglobal = rowindex_local_to_global(desc_ham,ilocal)
-         if( iglobal == jglobal ) hkin_tmp(ilocal,jlocal) = hkin_tmp(ilocal,jlocal) + 0.5_dp * kerker_k0**2
-       enddo
-     enddo
-   endif
-
-   call invert_sca(desc_ham,hkin_tmp,hkin_inv)
-
-   call matmul_diag_sca('L',diag,desc_ham,hkin_inv)
-
-   do ispin=1,nspin
-     hkin_tmp(:,:) = p_matrix_new(:,:,ispin) - p_matrix_hist(:,:,ispin,1)
-
-     call PDGEMM('N','N',nbf,nbf,nbf,1.0_dp,hkin_inv,1,1,desc_ham,    &
-                      hkin_tmp,1,1,desc_ham,0.0_dp,delta_p_matrix,1,1,desc_ham)
-
-     p_matrix_new(:,:,1) = p_matrix_hist(:,:,:,1) + p_matrix_new(:,:,:) - p_matrix_hist(:,:,:,1)
-
-   enddo
-#endif
-
    do iglobal=1,nbf
      hkin_tmp(iglobal,iglobal) = hkin_tmp(iglobal,iglobal) + 0.5_dp * kerker_k0**2
    enddo
-   call invert(hkin_tmp,hkin_inv)
+   hkin_inv(:,:) = hkin_tmp(:,:)
+   call invert(hkin_inv)
    hkin_inv(:,:) = -hkin_inv(:,:) * 0.5_dp * kerker_k0**2
    do iglobal=1,nbf
      hkin_inv(iglobal,iglobal) = hkin_inv(iglobal,iglobal) + 1.0_dp

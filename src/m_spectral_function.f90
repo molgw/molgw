@@ -16,6 +16,7 @@ module m_spectral_function
  use m_inputparam
  use m_eri,only: iproc_ibf_auxil,ibf_auxil_l
  use m_eri_calculate,only: nauxil_2center,nauxil_3center
+ use m_numerical_tools,only: coeffs_gausslegint
 
  !
  ! General form of any spectral function
@@ -116,7 +117,6 @@ end function index_prodstate
 
 !=========================================================================
 subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
- use m_tools,only: coeffs_gausslegint
  implicit none
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(:,:)

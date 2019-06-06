@@ -11,7 +11,9 @@ module m_inputparam
  use m_mpi
  use m_warning
  use m_atoms
+ use m_elements
  use m_ecp
+ use m_string_tools,only: capitalize
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -772,8 +774,6 @@ end subroutine summary_input
 
 !=========================================================================
 subroutine read_inputfile_namelist()
- use m_elements
- use m_tools,only: capitalize
  implicit none
 
 !=====

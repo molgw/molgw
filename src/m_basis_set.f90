@@ -13,7 +13,7 @@ module m_basis_set
  use m_timing
  use m_mpi
  use m_elements
- use m_tools, only: orbital_momentum_name
+ use m_string_tools, only: orbital_momentum_name
  use m_atoms
  use m_ecp
  use m_gaussian

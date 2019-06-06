@@ -14,7 +14,6 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
@@ -199,7 +198,6 @@ subroutine build_amb_apb_diag_auxil(nmat,nstate,energy,wpol,m_apb,n_apb,amb_matr
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
@@ -247,7 +245,6 @@ subroutine get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correl
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
@@ -469,7 +466,6 @@ subroutine build_a_diag_common(nbf,nstate,c_matrix,energy,wpol,a_diag)
  use m_mpi
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools
  implicit none
 
  integer,intent(in)                 :: nbf,nstate
@@ -669,7 +665,6 @@ subroutine build_amb_apb_bse(wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
- use m_tools
  implicit none
 
  type(spectral_function),intent(in) :: wpol,wpol_static
@@ -764,7 +759,6 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
- use m_tools
  implicit none
 
  real(dp),intent(in)                :: alpha_local

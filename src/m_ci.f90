@@ -11,7 +11,7 @@ module m_ci
  use m_definitions
  use m_mpi
  use m_warning
- use m_tools
+ use m_linear_algebra
  use m_memory
  use m_timing
  use m_scalapack

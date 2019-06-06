@@ -15,7 +15,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  use m_scalapack
  use m_inputparam
  use m_mpi
- use m_tools
+ use m_linear_algebra
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
@@ -202,7 +202,6 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  use m_scalapack
  use m_inputparam
  use m_mpi
- use m_tools
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo

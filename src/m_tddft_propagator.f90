@@ -18,7 +18,7 @@ module m_tddft_propagator
  use m_hamiltonian_cmplx
  use m_inputparam
  use m_dft_grid
- use m_tools
+ use m_linear_algebra
  use m_scf
  use m_warning
  use m_tddft_variables

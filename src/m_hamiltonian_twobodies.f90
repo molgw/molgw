@@ -18,7 +18,6 @@ module m_hamiltonian_twobodies
  use m_basis_set
  use m_eri_calculate
  use m_density_tools
- use m_tools
 
 
 contains

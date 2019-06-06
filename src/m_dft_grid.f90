@@ -16,6 +16,9 @@ module m_dft_grid
  use m_cart_to_pure
  use m_inputparam,only: partition_scheme,grid_memory
  use m_basis_set
+ use m_elements
+ use m_atoms
+ use m_numerical_tools,only: coeffs_gausslegint
 
  !
  ! Grid definition
@@ -47,9 +50,6 @@ contains
 
 !=========================================================================
 subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,batch_size)
- use m_elements
- use m_atoms
- use m_tools,only: coeffs_gausslegint
  implicit none
 
  type(basis_set),intent(in) :: basis

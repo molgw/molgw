@@ -13,7 +13,7 @@ subroutine header()
  use m_definitions
  use m_mpi
  use m_warning,only: issue_warning
- use m_tools,only: orbital_momentum_name
+ use m_string_tools,only: orbital_momentum_name
  use m_libint_tools,only: libint_init
  implicit none
 
@@ -2000,7 +2000,7 @@ end subroutine plot_rho_traj_bunch_cmplx
 !=========================================================================
 subroutine read_cube_wfn(nstate,basis,occupation,c_matrix)
  use m_definitions
- use m_tools,only: determinant_3x3_matrix
+ use m_linear_algebra,only: determinant_3x3_matrix
  use m_mpi
  use m_inputparam, only: nspin
  use m_cart_to_pure
