@@ -60,6 +60,11 @@ SCF Total Energy          , -322.8615203603    , 0 , 1.0e-7
 gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4
 gKS LUMO energy           ,   -1.930441        , 0 , 1.0e-4
 
+butadiene_diago.in        , HF butadiene with diagonalizations made with (P)DSYEVD
+SCF Total Energy          , -154.9342671231    , 0 , 1.0e-7
+gKS HOMO energy           ,   -8.693777        , 0 , 1.0e-4
+gKS LUMO energy           ,    3.220523        , 0 , 1.0e-4
+
 na08_damping.in           , LDA Na8 cluster with density damping stopped after 2 SCF cycles
 SCF Total Energy          , -1232.7456930389   , 0 , 1.0e-7
 

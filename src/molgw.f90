@@ -99,7 +99,7 @@ program molgw
  call start_clock(timing_total)
 
  !
- ! Output some welcome message and compilation options
+ ! Output some welcome messages and compilation options
  call header()
 
  !
@@ -149,7 +149,7 @@ program molgw
      call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
    endif
 
-   if( print_rho_grid_ )      call dm_dump(basis)
+   if( print_rho_grid_ ) call dm_dump(basis)
 
    !
    !
