@@ -7,8 +7,8 @@
 !
 !=========================================================================
 module m_definitions
- use,intrinsic :: iso_fortran_env, only: OUTPUT_UNIT,ERROR_UNIT
- use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE,C_BOOL
+ use,intrinsic :: ISO_FORTRAN_ENV, only: OUTPUT_UNIT,ERROR_UNIT
+ use,intrinsic :: ISO_C_BINDING, only: C_INT,C_DOUBLE,C_BOOL,C_PTR
 
  integer,parameter  :: dp = KIND(0.d0)
  integer,parameter  :: sp = KIND(0.0)

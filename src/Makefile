@@ -69,9 +69,6 @@ molgw:
 spectrum:
 	+make  prepare_sourcecode
 	+make  level000
-	+make  level005
-	+make  level008
-	+make  level010
 	+make  ../spectrum
 
 all: molgw spectrum
