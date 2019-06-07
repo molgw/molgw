@@ -310,19 +310,21 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
 
  else
 
-   allocate(matrix_tmp1(m_ham_scf,n_ham_scf))
-   allocate(matrix_tmp2(m_ham_scf,n_ham_scf))
+   allocate(matrix_tmp1(nbf_scf,nbf_scf))
+   allocate(matrix_tmp2(nbf_scf,nbf_scf))
 
    do ispin=1,nspin
 
-     !
-     ! M1 = H * P * S
-     call matmul_abc_scalapack(scalapack_block_min,ham(:,:,ispin),p_matrix(:,:,ispin),s_matrix,matrix_tmp1)
-     !
-     ! M2 = S * P * H
-     call matmul_abc_scalapack(scalapack_block_min,s_matrix,p_matrix(:,:,ispin),ham(:,:,ispin),matrix_tmp2)
+     ! M2 = P * S
+     call DSYMM('L','L',nbf_scf,nbf_scf,1.0d0,p_matrix(1,1,ispin),nbf_scf,s_matrix,nbf_scf,0.0d0,matrix_tmp2,nbf_scf)
 
-     ! M1 = M1 + M2
+     ! M1 = H * M2 = H * P * S
+     call DSYMM('L','L',nbf_scf,nbf_scf,1.0d0,ham(1,1,ispin),nbf_scf,matrix_tmp2,nbf_scf,0.0d0,matrix_tmp1,nbf_scf)
+
+     ! M2 = S * P * H = ( H * P * S )**T = M1**T
+     matrix_tmp2(:,:) = TRANSPOSE( matrix_tmp1(:,:) )
+
+     ! M1 = H * P * S - S * P * H = M1 - M2
      matrix_tmp1(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
 
      !
@@ -332,7 +334,8 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
 
    enddo
 
-   deallocate(matrix_tmp1,matrix_tmp2)
+   deallocate(matrix_tmp1)
+   deallocate(matrix_tmp2)
 
  endif
 
@@ -402,10 +405,10 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
  !
  ! Calculate the predicted hamiltonian
  !
- residual_pred(:,:,:) = 0.0_dp
- ham(:,:,:) = 0.0_dp
- p_matrix(:,:,:) = 0.0_dp
  if( parallel_ham ) then
+   residual_pred(:,:,:) = 0.0_dp
+   ham(:,:,:)           = 0.0_dp
+   p_matrix(:,:,:)      = 0.0_dp
 
 #ifdef HAVE_SCALAPACK
    if( cntxt_ham > 0 ) then
@@ -431,11 +434,22 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
 
  else
 
-   do ihist=1,nhist_current
-     residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
-     ham(:,:,:)           = ham(:,:,:)           + alpha_diis(ihist) * ham_hist(:,:,:,ihist)
-     p_matrix(:,:,:)      = p_matrix(:,:,:)      + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
-   enddo
+   !residual_pred(:,:,:) = 0.0_dp
+   !ham(:,:,:)           = 0.0_dp
+   !p_matrix(:,:,:)      = 0.0_dp
+   !do ihist=1,nhist_current
+   !  residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
+   !  ham(:,:,:)           = ham(:,:,:)           + alpha_diis(ihist) * ham_hist(:,:,:,ihist)
+   !  p_matrix(:,:,:)      = p_matrix(:,:,:)      + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
+   !enddo
+
+   call DGEMV('N',nstate_scf*nstate_scf*nspin,nhist_current,1.0d0,res_hist     ,nstate_scf*nstate_scf*nspin, &
+              alpha_diis,1,0.0d0,residual_pred,1)
+   call DGEMV('N',nbf_scf*nbf_scf*nspin      ,nhist_current,1.0d0,ham_hist     ,nbf_scf*nbf_scf*nspin      , &
+              alpha_diis,1,0.0d0,ham,1)
+   call DGEMV('N',nbf_scf*nbf_scf*nspin      ,nhist_current,1.0d0,p_matrix_hist,nbf_scf*nbf_scf*nspin      , &
+              alpha_diis,1,0.0d0,p_matrix,1)
+
    write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',NORM2( residual_pred(:,:,:) ) * SQRT(REAL(nspin,dp))
 
  endif
