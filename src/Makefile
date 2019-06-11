@@ -76,11 +76,13 @@ all: molgw spectrum
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o
 
-level005: m_warning.o m_gos.o real_spherical_harmonics.o
+level005: m_warning.o m_gos.o real_spherical_harmonics.o m_libxc_tools.o
 
 level008: m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o
 
-level010: m_tddft_variables.o m_elements.o m_timing.o m_memory.o m_string_tools.o m_numerical_tools.o m_linear_algebra.o  m_mpi.o m_lbfgs.o m_cart_to_pure.o
+level010: m_tddft_variables.o m_elements.o m_timing.o m_memory.o \
+	        m_string_tools.o m_numerical_tools.o m_linear_algebra.o  \
+				  m_mpi.o m_lbfgs.o m_cart_to_pure.o
 
 level015: m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o
 
@@ -223,7 +225,7 @@ linear_response.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memo
                    linear_response.f90
 	$(FC_W_OPTS) -c linear_response.f90 $(LIBXC_INCS)
 
-m_hamiltonian_buffer.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_tddft_variables.f90 m_cart_to_pure.f90 m_atoms.f90 m_linear_algebra.f90 \
+m_hamiltonian_buffer.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_tddft_variables.f90 m_cart_to_pure.f90 m_atoms.f90 m_linear_algebra.f90 m_libxc_tools.f90 \
                         m_inputparam.f90 m_eri.f90 m_eri_calculate.f90 m_basis_set.f90 m_dft_grid.f90 m_scalapack.f90 m_density_tools.f90 m_hamiltonian_onebody.f90 \
 	                m_hamiltonian_buffer.f90
 	$(FC_W_OPTS) -c m_hamiltonian_buffer.f90 $(LIBXC_INCS)
@@ -242,7 +244,7 @@ m_hamiltonian_tools.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90
 	               m_linear_algebra.f90 m_inputparam.f90 m_basis_set.f90 m_hamiltonian_tools.f90
 	$(FC_W_OPTS) -c m_hamiltonian_tools.f90 $(LIBXC_INCS)
 
-m_hamiltonian_twobodies.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_cart_to_pure.f90 \
+m_hamiltonian_twobodies.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_cart_to_pure.f90 m_libxc_tools.f90 \
 	         m_inputparam.f90 m_eri_calculate.f90 m_basis_set.f90 m_dft_grid.f90 m_density_tools.f90 m_hamiltonian_twobodies.f90
 	$(FC_W_OPTS) -c m_hamiltonian_twobodies.f90 $(LIBXC_INCS)
 
@@ -330,7 +332,7 @@ m_eri_ao_mo.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warnin
                m_scalapack.f90 m_eri.f90 m_eri_ao_mo.f90
 	$(FC_W_OPTS) -c m_eri_ao_mo.f90 $(LIBXC_INCS)
 
-m_tddft_fxc.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_dft_grid.f90 m_density_tools.f90 \
+m_tddft_fxc.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_dft_grid.f90 m_density_tools.f90 m_libxc_tools.f90 \
                 m_tddft_fxc.f90
 	$(FC_W_OPTS) -c m_tddft_fxc.f90 $(LIBXC_INCS)
 
@@ -357,7 +359,7 @@ m_selfenergy_tools.o: m_definitions.f90 m_warning.f90 m_inputparam.f90 m_mpi.f90
 	$(FC_W_OPTS) -c m_selfenergy_tools.f90 $(LIBXC_INCS)
 
 m_inputparam.o: m_definitions.f90 m_mpi.f90  m_elements.f90 m_warning.f90 m_atoms.f90 m_ecp.f90 \
-	        input_variables.f90 basis_path.f90 echo_input_variables.f90 m_string_tools.f90 \
+	        input_variables.f90 basis_path.f90 echo_input_variables.f90 m_string_tools.f90 m_libxc_tools.f90 \
                 m_inputparam.f90
 	$(FC_W_OPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
@@ -424,6 +426,9 @@ m_gos.o: m_definitions.f90 m_gos.f90
 
 m_warning.o: m_definitions.f90 m_warning.f90
 	$(FC_W_OPTS) -c m_warning.f90 $(LIBXC_INCS)
+
+m_libxc_tools.o: m_definitions.f90 m_libxc_tools.f90
+	$(FC_W_OPTS) -c m_libxc_tools.f90 $(LIBXC_INCS)
 
 m_lbfgs.o: m_definitions.f90 m_lbfgs.f90
 	$(FC_W_OPTS) -c m_lbfgs.f90 $(LIBXC_INCS)

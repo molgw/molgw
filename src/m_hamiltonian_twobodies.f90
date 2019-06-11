@@ -14,10 +14,12 @@ module m_hamiltonian_twobodies
  use m_warning
  use m_memory
  use m_cart_to_pure
- use m_inputparam,only: nspin,spin_fact
+ use m_inputparam
  use m_basis_set
  use m_eri_calculate
  use m_density_tools
+ use m_dft_grid
+ use m_libxc_tools
 
 
 contains
@@ -848,13 +850,6 @@ end subroutine setup_exchange_versatile_longrange_ri
 ! * subroutine works for both real and complex wavefunctions c_matrix
 !   using "class" syntax of Fortran2003
 subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
- use m_inputparam
- use m_dft_grid
-#ifdef HAVE_LIBXC
- use libxc_funcs_m
- use xc_f90_lib_m
- use xc_f90_types_m
-#endif
  implicit none
 
  integer,intent(in)         :: batch_size
@@ -867,7 +862,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  real(dp),parameter   :: TOL_RHO=1.0e-9_dp
  integer              :: nstate
  integer              :: ibf,jbf,ispin
- integer              :: idft_xc
+ integer              :: ixc
  integer              :: igrid_start,igrid_end,ir,nr
  integer              :: timing_xxdft_xc,timing_xxdft_densities,timing_xxdft_libxc,timing_xxdft_vxc
  real(dp)             :: normalization(nspin)
@@ -887,8 +882,11 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
  exc_xc = 0.0_dp
  vxc_ij(:,:,:) = 0.0_dp
- if( ndft_xc == 0 ) return
 
+ if( dft_xc%nxc == 0 ) return
+
+ !
+ ! Switch the timers: complex wavefunctions imply RT-TDDFT run
  select type(c_matrix)
  type is(real(dp))
    timing_xxdft_xc        = timing_dft_xc
@@ -932,7 +930,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    allocate(vrho_batch(nspin,nr))
    allocate(dedd_r_batch(nspin,nr))
 
-   if( dft_xc_needs_gradient ) then
+   if( dft_xc%needs_gradient ) then
      allocate(basis_function_gradr_batch(basis%nbf,nr,3))
      allocate(grad_rhor_batch(nspin,nr,3))
      allocate(dedgd_r_batch(3,nr,nspin))
@@ -945,12 +943,12 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
    !
    ! Get the gradient at points r
-   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
+   if( dft_xc%needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-   if( .NOT. dft_xc_needs_gradient ) then
+   if( .NOT. dft_xc%needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
    else
      call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
@@ -979,17 +977,17 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    call start_clock(timing_xxdft_libxc)
 
    dedd_r_batch(:,:) = 0.0_dp
-   if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
+   if( dft_xc%needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
 
-   do idft_xc=1,ndft_xc
-     if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
+   do ixc=1,dft_xc%nxc
+     if( ABS(dft_xc%coeff(ixc)) < 1.0e-6_dp ) cycle
 
-     select case(xc_f90_info_family(calc_type%xc_info(idft_xc)))
+     select case(dft_xc%family(ixc))
      case(XC_FAMILY_LDA)
-       call xc_f90_lda_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
+       call xc_lda_exc_vxc(dft_xc%func(ixc),nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
-       call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
+       call xc_gga_exc_vxc(dft_xc%func(ixc),nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
 
        ! Remove too small densities to stabilize the computation
        ! especially useful for Becke88
@@ -1006,19 +1004,19 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
      end select
 
      ! XC energy
-     exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * SUM(rhor_batch(:,:),DIM=1) ) * dft_xc_coef(idft_xc)
+     exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * SUM(rhor_batch(:,:),DIM=1) ) * dft_xc%coeff(ixc)
 
-     dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc_coef(idft_xc)
+     dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc%coeff(ixc)
 
      !
      ! Set up divergence term if needed (GGA case)
      !
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
        if(nspin==1) then
 
          do ir=1,nr
            dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1)  &
-                      + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_coef(idft_xc)
+                      + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc%coeff(ixc)
          enddo
 
        else
@@ -1026,11 +1024,11 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
          do ir=1,nr
            dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1) &
                      + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
-                                 + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc)
+                                 + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc%coeff(ixc)
 
            dedgd_r_batch(:,ir,2) = dedgd_r_batch(:,ir,2) &
                      + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
-                                 + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc_coef(idft_xc)
+                                 + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc%coeff(ixc)
          enddo
 
        endif
@@ -1050,7 +1048,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
        !
        ! GGA
        !
@@ -1085,7 +1083,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    deallocate(rhor_batch)
    deallocate(vrho_batch)
    deallocate(dedd_r_batch)
-   if( dft_xc_needs_gradient ) then
+   if( dft_xc%needs_gradient ) then
      deallocate(basis_function_gradr_batch)
      deallocate(grad_rhor_batch)
      deallocate(sigma_batch)

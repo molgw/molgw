@@ -16,13 +16,15 @@ module m_hamiltonian_buffer
  use m_memory
  use m_scalapack
  use m_cart_to_pure
- use m_inputparam,only: nspin,spin_fact
+ use m_inputparam
  use m_basis_set
  use m_density_tools
  use m_hamiltonian_onebody
  use m_dft_grid
  use m_eri_calculate
  use m_linear_algebra,only: matrix_trace
+ use m_dft_grid
+ use m_libxc_tools
 
 
 
@@ -437,7 +439,7 @@ subroutine setup_exchange_longrange_ri_buffer_sca(occupation,c_matrix,p_matrix,e
        ibf = index_basis(1,ipair)
        jbf = index_basis(2,ipair)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center_lr(:,ipair)
-       if( ibf /= jbf ) & 
+       if( ibf /= jbf ) &
           tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_lr(:,ipair)
      enddo
 
@@ -481,13 +483,6 @@ end subroutine setup_exchange_longrange_ri_buffer_sca
 
 !=========================================================================
 subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
- use m_inputparam
- use m_dft_grid
-#ifdef HAVE_LIBXC
- use libxc_funcs_m
- use xc_f90_lib_m
- use xc_f90_types_m
-#endif
  implicit none
 
  integer,intent(in)         :: batch_size
@@ -499,7 +494,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 !=====
  real(dp),parameter   :: TOL_RHO=1.0e-9_dp
  integer              :: nstate
- integer              :: idft_xc
+ integer              :: ixc
  integer              :: igrid_start,igrid_end,ir,nr
  integer              :: ibf,jbf,ispin
  real(dp)             :: normalization(nspin)
@@ -524,7 +519,8 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
  nstate = SIZE(occupation,DIM=1)
  exc_xc = 0.0_dp
  vxc_ij(:,:,:) = 0.0_dp
- if( ndft_xc == 0 ) return
+
+ if( dft_xc%nxc == 0 ) return
 
  call start_clock(timing_dft_xc)
 
@@ -555,7 +551,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      allocate(basis_function_r_batch(basis%nbf,nr))
      allocate(rhor_batch(1,nr))
 
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
        allocate(basis_function_gradr_batch(basis%nbf,nr,3))
        allocate(grad_rhor_batch(1,nr,3))
      endif
@@ -567,12 +563,12 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      ! Get all the functions at point r
      call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
 
-     if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
+     if( dft_xc%needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
 
      !
      ! Calculate the density at points r for spin up and spin down
      ! Calculate grad rho at points r for spin up and spin down
-     if( .NOT. dft_xc_needs_gradient ) then
+     if( .NOT. dft_xc%needs_gradient ) then
        call calc_density_r_batch(occupation(:,ispin:ispin),RESHAPE(buffer(:,1:nstate),(/basis%nbf,nstate,1/)),basis_function_r_batch,rhor_batch)
      else
        call calc_density_gradr_batch(occupation(:,ispin:ispin),RESHAPE(buffer(:,1:nstate),(/basis%nbf,nstate,1/)), &
@@ -581,7 +577,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 
      ! Save the whole rhor and gradr
      rhor(ispin,igrid_start:igrid_end) = rhor_batch(1,1:nr)
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
        grad_rhor(ispin,igrid_start:igrid_end,:) = grad_rhor_batch(1,1:nr,:)
      endif
 
@@ -593,7 +589,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      deallocate(basis_function_r_batch)
      deallocate(rhor_batch)
 
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
        deallocate(basis_function_gradr_batch)
        deallocate(grad_rhor_batch)
      endif
@@ -627,7 +623,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      allocate(exc_batch(nr))
      allocate(rhor_batch(nspin,nr))
 
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
        allocate(grad_rhor_batch(nspin,nr,3))
        allocate(sigma_batch(2*nspin-1,nr))
        allocate(vsigma_batch(2*nspin-1,nr))
@@ -640,11 +636,11 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      !
      ! Get the batch density and gradient from the saved rhor and gradr
      rhor_batch(:,1:nr) = rhor(:,igrid_start:igrid_end)
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
         grad_rhor_batch(:,1:nr,:) = grad_rhor(:,igrid_start:igrid_end,:)
      endif
 
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
        do ir=1,nr
          sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
          if( nspin == 2 ) then
@@ -658,17 +654,17 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      ! LIBXC calls
      !
      dedd_r_batch(:,:) = 0.0_dp
-     if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
+     if( dft_xc%needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
 
-     do idft_xc=1,ndft_xc
-       if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
+     do ixc=1,dft_xc%nxc
+       if( ABS(dft_xc%coeff(ixc)) < 1.0e-6_dp ) cycle
 
-       select case(xc_f90_info_family(calc_type%xc_info(idft_xc)))
+       select case(dft_xc%family(ixc))
        case(XC_FAMILY_LDA)
-         call xc_f90_lda_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
+         call xc_lda_exc_vxc(dft_xc%func(ixc),nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
 
        case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
-         call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
+         call xc_gga_exc_vxc(dft_xc%func(ixc),nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
 
          ! Remove too small densities to stabilize the computation
          ! especially useful for Becke88
@@ -685,30 +681,30 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
        end select
 
 
-       exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * rhor_batch(ispin,:) ) * dft_xc_coef(idft_xc)
+       exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * rhor_batch(ispin,:) ) * dft_xc%coeff(ixc)
 
 
-       dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc_coef(idft_xc)
+       dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc%coeff(ixc)
 
        !
        ! Set up divergence term if needed (GGA case)
        !
-       if( dft_xc_needs_gradient ) then
+       if( dft_xc%needs_gradient ) then
          do ir=1,nr
            if( nspin == 1 ) then
 
              dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1)  &
-                        + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_coef(idft_xc)
+                        + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc%coeff(ixc)
 
            else
 
              dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1) &
                        + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
-                                   + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc)
+                                   + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc%coeff(ixc)
 
              dedgd_r_batch(:,ir,2) = dedgd_r_batch(:,ir,2) &
                        + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
-                                   + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc_coef(idft_xc)
+                                   + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc%coeff(ixc)
            endif
 
          enddo
@@ -720,7 +716,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      ! Get all the functions at point r
      call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
 
-     if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
+     if( dft_xc%needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
 
      !
      ! LDA and GGA
@@ -733,7 +729,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 
      !
      ! GGA-only
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
        do ir=1,nr
          tmp_batch(:,ir) = MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
        enddo
@@ -750,7 +746,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      deallocate(exc_batch)
      deallocate(rhor_batch)
 
-     if( dft_xc_needs_gradient ) then
+     if( dft_xc%needs_gradient ) then
        deallocate(sigma_batch)
        deallocate(vsigma_batch)
        deallocate(dedgd_r_batch)

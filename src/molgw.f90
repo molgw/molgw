@@ -452,11 +452,6 @@ program molgw
  call start_clock(timing_postscf)
 
 
- ! temporary section for the charge calculation
-!  call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,64)
-!  call calc_normalization_r(64,basis,occupation,c_matrix)
-!  call destroy_dft_grid()
-
  if( print_multipole_ ) then
    !
    ! Evaluate the static dipole

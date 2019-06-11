@@ -597,7 +597,7 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
    occupation_tmp(1:dft_core,:) = 0.0_dp
 
    if( calc_type%is_dft ) then
-     call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.FALSE.,BATCH_SIZE)
+     call init_dft_grid(basis,grid_level,dft_xc%needs_gradient,.FALSE.,BATCH_SIZE)
      call setup_density_matrix(c_matrix,occupation_tmp,p_matrix_tmp)
      call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation_tmp,c_matrix,hxc_val,exc)
      call destroy_dft_grid()
