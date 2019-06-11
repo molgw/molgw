@@ -31,15 +31,25 @@ module m_libxc_tools
 
  interface
 
+   function xc_func_type_malloc() BIND(C)
+     import :: C_PTR
+     type(C_PTR) :: xc_func_type_malloc
+   end function xc_func_type_malloc
+
+   subroutine xc_version(major,minor,micro) BIND(C)
+     import :: C_INT
+     integer(C_INT),intent(out) :: major,minor,micro
+   end subroutine xc_version
+
    function xc_func_init(p,functional,nspin) BIND(C)
-     import :: C_PTR,C_INT,C_DOUBLE
+     import :: C_PTR,C_INT
      type(C_PTR),intent(inout) :: p
      integer(C_INT),value      :: functional,nspin
      integer(C_INT)            :: xc_func_init
    end function xc_func_init
 
    subroutine xc_func_end(p) BIND(C)
-     import :: C_PTR,C_INT,C_DOUBLE
+     import :: C_PTR
      type(C_PTR),intent(inout) :: p
    end subroutine xc_func_end
 
@@ -66,6 +76,12 @@ module m_libxc_tools
      type(C_PTR),intent(in)    :: info
      integer(C_INT)            :: xc_func_info_get_flags
    end function xc_func_info_get_flags
+
+   subroutine xc_func_set_ext_params(p,ext_params) BIND(C)
+     import :: C_PTR,C_DOUBLE
+     type(C_PTR),intent(in)    :: p
+     real(C_DOUBLE),intent(in) :: ext_params(*)
+   end subroutine xc_func_set_ext_params
 
    subroutine xc_lda_exc_vxc(p,np,rho,exc,vrho) BIND(C)
      import :: C_PTR,C_INT,C_DOUBLE

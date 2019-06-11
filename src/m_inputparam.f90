@@ -437,6 +437,7 @@ subroutine init_dft_type(key)
 !=====
  integer              :: ixc
  character(len=256)   :: string
+ real(C_DOUBLE)       :: gamma_c(1)
 !=====
 
 
@@ -668,27 +669,23 @@ subroutine init_dft_type(key)
 
  do ixc=1,dft_xc%nxc
 
+   dft_xc%func(ixc) = xc_func_type_malloc()
+
    if( xc_func_init(dft_xc%func(ixc),dft_xc%id(ixc),INT(nspin,C_INT)) /= 0 ) then
      write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc%id(ixc)
      call die('init_dft_type: error in LIBXC xc_func_init')
    endif
 
+
    write(stdout,'(a,i4,a,a)') '   XC functional ',ixc,' :  ',xc_func_info_get_name(xc_func_get_info(dft_xc%func(ixc)))
 
    !
    ! Tune the range for range separated hybrids
-#if defined(LIBXC4)
    if( dft_xc%id(ixc) == XC_GGA_X_HJS_PBE .OR. dft_xc%id(ixc) == XC_GGA_X_WPBEH ) then
-     call xc_f90_func_set_ext_params(dft_xc%func(ixc), gamma_hybrid )
+     gamma_c(1) = REAL(gamma_hybrid,C_DOUBLE)
+     call xc_func_set_ext_params(dft_xc%func(ixc),gamma_c)
    endif
-#else
-   if( dft_xc%id(ixc) == XC_GGA_X_HJS_PBE ) then
-     call xc_f90_gga_x_hjs_set_par(dft_xc%func(ixc), gamma_hybrid )
-   endif
-   if( dft_xc%id(ixc) == XC_GGA_X_WPBEH ) then
-     call xc_f90_gga_x_wpbeh_set_par(dft_xc%func(ixc),gamma_hybrid )
-   endif
-#endif
+
  enddo
 
  do ixc=1,dft_xc%nxc

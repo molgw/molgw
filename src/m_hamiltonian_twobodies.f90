@@ -353,12 +353,19 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
      end select
    endif
 
+#if defined(HAVE_SCALAPACK)
    ! X_P = \sum_{\alpha \beta} ( P | \alpha \beta ) * P_{\alpha \beta}
    call PDGEMV('N',nauxil_2center,npair,1.0d0,eri_3center,1,1,desc_eri3,pmat,1,1,desc_pmat,1, &
                0.0d0,x_vector,1,1,desc_partial,1)
    ! v_H_{alpha beta} = \sum_P ( P | alpha beta ) * X_P
    call PDGEMV('T',nauxil_2center,npair,1.0d0,eri_3center,1,1,desc_eri3,x_vector,1,1,desc_partial,1, &
                0.0d0,pmat,1,1,desc_pmat,1)
+#else
+   ! X_P = \sum_{\alpha \beta} ( P | \alpha \beta ) * P_{\alpha \beta}
+   call DGEMV('N',nauxil_2center,npair,1.0d0,eri_3center,nauxil_2center,pmat,1,0.0d0,x_vector,1)
+   ! v_H_{alpha beta} = \sum_P ( P | alpha beta ) * X_P
+   call DGEMV('T',nauxil_2center,npair,1.0d0,eri_3center,nauxil_2center,x_vector,1,0.0d0,pmat,1)
+#endif
 
    ! Check if the vector pmat is to be dealt with by this processor
    if(  INDXG2P(1,NB_3center,ipcol_3center,first_col,npcol_3center) == ipcol_3center ) then
