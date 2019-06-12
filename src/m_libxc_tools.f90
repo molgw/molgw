@@ -31,39 +31,11 @@ module m_libxc_tools
 
  interface
 
-   function xc_func_type_malloc() BIND(C)
-     import :: C_PTR
-     implicit none
-     type(C_PTR) :: xc_func_type_malloc
-   end function xc_func_type_malloc
-
    function xc_func_alloc() BIND(C)
      import :: C_PTR
      implicit none
      type(C_PTR) :: xc_func_alloc
    end function xc_func_alloc
-
-   function get_family_id(func) BIND(C)
-     import :: C_PTR,C_INT
-     implicit none
-     type(C_PTR)    :: func
-     integer(C_INT) :: get_family_id
-   end function get_family_id  !TODO FBFB remove
-
-   function get_nspin(func) bind(c)
-     import :: c_ptr,c_int
-     implicit none
-     type(c_ptr)            :: func
-     integer(c_int)         :: get_nspin
-   end function get_nspin  !todo fbfb remove
-
-   function set_nspin(func,nspin) bind(c)
-     import :: c_ptr,c_int
-     implicit none
-     type(c_ptr)               :: func
-     integer(C_INT),value      :: nspin
-     integer(c_int)            :: set_nspin
-   end function set_nspin  !todo fbfb remove
 
    subroutine xc_version(major,minor,micro) BIND(C)
      import :: C_INT
@@ -123,9 +95,23 @@ module m_libxc_tools
    subroutine xc_func_set_ext_params(func,ext_params) BIND(C)
      import :: C_PTR,C_DOUBLE
      implicit none
-     type(C_PTR)               :: func
+     type(C_PTR),intent(inout) :: func
      real(C_DOUBLE)            :: ext_params(*)
    end subroutine xc_func_set_ext_params
+
+   subroutine xc_gga_x_hjs_set_params(func,omega) BIND(C)
+     import :: C_PTR,C_DOUBLE
+     implicit none
+     type(C_PTR),intent(inout) :: func
+     real(C_DOUBLE),value      :: omega
+   end subroutine xc_gga_x_hjs_set_params
+
+   subroutine xc_gga_x_wpbeh_set_params(func,omega) BIND(C)
+     import :: C_PTR,C_DOUBLE
+     implicit none
+     type(C_PTR),intent(inout) :: func
+     real(C_DOUBLE),value      :: omega
+   end subroutine xc_gga_x_wpbeh_set_params
 
    subroutine xc_lda_exc(func,np,rho,exc) BIND(C)
      import :: C_PTR,C_INT,C_DOUBLE

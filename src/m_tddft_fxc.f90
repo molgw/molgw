@@ -72,9 +72,10 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  real(dp),allocatable :: vsigma_c(:)
  real(dp),allocatable :: v2rhosigma_c(:)
  real(dp),allocatable :: v2sigma2_c(:)
+ type(C_PTR)          :: cptr_tmp
 !=====
 
-#ifdef HAVE_LIBXC
+#if defined(HAVE_LIBXC)
  if( is_triplet ) then
    nspin_tddft = 2
  else
@@ -97,7 +98,9 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
    if( ABS(dft_xc(ixc)%coeff) < 1.0e-6_dp ) cycle
 
    allocate(tddft_xc(dft_xc(1)%nxc))
-   ! TODO allocate malloc FBFB
+   cptr_tmp = xc_func_alloc()
+   call c_f_pointer(cptr_tmp,tddft_xc(ixc)%func)
+
    if( xc_func_init(tddft_xc(ixc)%func,dft_xc(ixc)%id,INT(nspin_tddft,C_INT)) /= 0 ) then
      call die('prepare_tddft: error in initialization of the xc functional')
    endif
@@ -231,6 +234,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  deallocate( vsigma_c )
  deallocate( v2rhosigma_c )
  deallocate( v2sigma2_c )
+ deallocate(tddft_xc)
 #endif
 
 end subroutine prepare_tddft
@@ -361,6 +365,7 @@ subroutine destroy_tddft()
  implicit none
 
  call destroy_dft_grid()
+
 
  if( ALLOCATED(v2rho2))     deallocate(v2rho2)
  if( ALLOCATED(vsigma))     deallocate(vsigma)

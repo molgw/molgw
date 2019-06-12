@@ -73,7 +73,7 @@ spectrum:
 
 all: molgw spectrum
 
-level000: m_definitions.o libxc_molgw.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
+level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o
 
 level005: m_warning.o m_gos.o real_spherical_harmonics.o m_libxc_tools.o
@@ -120,7 +120,7 @@ level090: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
 ../spectrum: m_definitions.o m_warning.o spectrum.o
 	$(LINKER) m_definitions.o m_warning.o spectrum.o -o ../spectrum $(FFTW) $(FFTW_INCS) $(LINKS) $(LAPACK)
 
-../molgw: m_definitions.o libxc_molgw.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
+../molgw: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
         m_warning.o m_gos.o real_spherical_harmonics.o m_lbfgs.o \
         m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o  \
@@ -144,7 +144,7 @@ level090: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
                         m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o \
                         m_spectral_function.o m_ci.o \
-                        libxc_molgw.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
+                        libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o pt_density_matrix.o \
                         mp2.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o bse.o \
                         linear_response.o static_polarizability.o multipole_tools.o io.o restart.o \
@@ -300,9 +300,6 @@ real_spherical_harmonics.o: m_definitions.f90 real_spherical_harmonics.f90
 
 lebedev_quadrature.o: lebedev_quadrature.f
 	$(FC_W_OPTS) -c lebedev_quadrature.f $(LIBXC_INCS)
-
-libxc_molgw.o: libxc_molgw.cc
-	$(CXX_W_OPTS) -c libxc_molgw.cc $(LIBXC_INCS)
 
 libint_onebody.o: libint_molgw.h libint_onebody.cc
 	$(CXX_W_OPTS) -c libint_onebody.cc $(LIBINT_INCS)

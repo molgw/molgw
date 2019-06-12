@@ -436,8 +436,7 @@ subroutine init_dft_type(key)
 !=====
  integer              :: ixc,nxc
  character(len=256)   :: string
- real(C_DOUBLE)       :: gamma_c(1)
- integer(C_INT)       :: nspin_c,id_c
+ integer(C_INT)       :: nspin_c
  type(C_PTR)          :: cptr_tmp
 !=====
 
@@ -671,32 +670,23 @@ subroutine init_dft_type(key)
 
  do ixc=1,nxc
 
-   !dft_xc%func(ixc) = xc_func_alloc()
    cptr_tmp = xc_func_alloc()
    call c_f_pointer(cptr_tmp,dft_xc(ixc)%func)
 
-
    nspin_c = INT(nspin,C_INT)
-   id_c    = dft_xc(ixc)%id
-   write(*,*) 'FBFB DEBUG',SIZE(dft_xc(:))
 
-!   write(stdout,*) xc_func_init(dft_xc%func(ixc),id_c,nspin_c)
-   write(stdout,*) xc_func_init(dft_xc(ixc)%func,id_c,nspin_c)
-
-!   if( xc_func_init(cptr_tmp,id_c,nspin_c) /= 0 ) then
-!     write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc(ixc)%id
-!     call die('init_dft_type: error in LIBXC xc_func_init')
-!   endif
-
-    !write(*,*) 'FBFB ixc',ixc
-    write(*,*) 'FBFB get family',get_family_id(dft_xc(ixc)%func)
-    !write(*,*) 'FBFB get family',get_family_id(dft_xc%func(ixc))
+   if( xc_func_init(dft_xc(ixc)%func,dft_xc(ixc)%id,nspin_c) /= 0 ) then
+     write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc(ixc)%id
+     call die('init_dft_type: error in LIBXC xc_func_init')
+   endif
 
    !
    ! Tune the range for range separated hybrids
-   if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE .OR. dft_xc(ixc)%id == XC_GGA_X_WPBEH ) then
-     gamma_c(1) = REAL(gamma_hybrid,C_DOUBLE)
-     call xc_func_set_ext_params(dft_xc(ixc)%func,gamma_c)
+   if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE ) then
+     call xc_gga_x_hjs_set_params(dft_xc(ixc)%func,REAL(gamma_hybrid,C_DOUBLE))
+   endif
+   if( dft_xc(ixc)%id == XC_GGA_X_WPBEH ) then
+     call xc_gga_x_wpbeh_set_params(dft_xc(ixc)%func,REAL(gamma_hybrid,C_DOUBLE))
    endif
 
  enddo
