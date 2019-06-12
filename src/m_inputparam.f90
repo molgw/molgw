@@ -79,13 +79,11 @@ module m_inputparam
  type dft_xc_info
    logical                    :: needs_gradient
    integer                    :: nxc = 0
-   integer(C_INT),allocatable :: id(:)
-   real(dp),allocatable       :: coeff(:)
-   integer,allocatable        :: family(:)
-   type(C_PTR),allocatable    :: func(:)
+   integer(C_INT),allocatable :: id
+   real(dp),allocatable       :: coeff
+   integer,allocatable        :: family
+   type(C_PTR),pointer        :: func => NULL()
  end type
-
- type(C_PTR),pointer :: libxc_func => null()
 
  type excitation_type
  character(len=100)   :: name
@@ -98,7 +96,7 @@ module m_inputparam
  ! They should not be modified anywhere else in the code.
  ! Declare them as protected and work on copies if absolutely necessary.
  type(calculation_type),protected :: calc_type
- type(dft_xc_info),protected      :: dft_xc
+ type(dft_xc_info),allocatable,protected :: dft_xc(:)
  type(excitation_type),protected  :: excit_type
  integer,protected                :: selfenergy_state_min
  integer,protected                :: selfenergy_state_max
@@ -436,7 +434,7 @@ subroutine init_dft_type(key)
 !=====
  character(len=*),intent(in)          :: key
 !=====
- integer              :: ixc
+ integer              :: ixc,nxc
  character(len=256)   :: string
  real(C_DOUBLE)       :: gamma_c(1)
  integer(C_INT)       :: nspin_c,id_c
@@ -448,207 +446,217 @@ subroutine init_dft_type(key)
  case('LDAX','HFPBE','PBEX','PBEHX','BX','PW91X','RPPX',&
       'BHANDH','BHANDHLYP','BHLYP','B3LYP','B3LYP5', &
       'PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX')
-   dft_xc%nxc = 1
+   nxc = 1
  case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHNOCOR')
-   dft_xc%nxc = 2
+   nxc = 2
  case('RSH')
-   dft_xc%nxc = 3
+   nxc = 3
  case('TESTPBE0','TESTLDA0')
-   dft_xc%nxc = 2
+   nxc = 2
  case('TESTHSE')
-   dft_xc%nxc = 3
+   nxc = 3
  case default
    write(stdout,*) 'error reading calculation type'
    write(stdout,*) TRIM(key)
    call die('DFT xc is unknown')
  end select
 
- if( ALLOCATED(dft_xc%id) )    deallocate(dft_xc%id)
- if( ALLOCATED(dft_xc%coeff) ) deallocate(dft_xc%coeff)
+ if( ALLOCATED(dft_xc) ) then
+   do ixc=1,dft_xc(1)%nxc
+#if defined(HAVE_LIBXC)
+     call xc_func_end(dft_xc(ixc)%func)
+#endif
+   enddo
+   deallocate(dft_xc)
+ endif
 
- allocate(dft_xc%id(dft_xc%nxc))
- allocate(dft_xc%coeff(dft_xc%nxc))
+
+ allocate(dft_xc(nxc))
+ dft_xc(:)%nxc = nxc
+
  !
  ! default is one, otherwise it is modified later
- dft_xc%coeff(:) = 1.0_dp
+ do ixc=1,nxc
+   dft_xc(ixc)%coeff = 1.0_dp
+ enddo
 
  select case(TRIM(key))
 #if defined(HAVE_LIBXC)
  !
  ! LDA functionals
  case('LDAX')
-   dft_xc%id(1) = XC_LDA_X
+   dft_xc(1)%id = XC_LDA_X
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('SPL')
-   dft_xc%id(1) = XC_LDA_X
-   dft_xc%id(2) = XC_LDA_C_PZ
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_PZ
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('LDA')
-   dft_xc%id(1) = XC_LDA_X
-   dft_xc%id(2) = XC_LDA_C_PW
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_PW
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('VWN')
-   dft_xc%id(1) = XC_LDA_X
-   dft_xc%id(2) = XC_LDA_C_VWN
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_VWN
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('VWN_RPA')
-   dft_xc%id(1) = XC_LDA_X
-   dft_xc%id(2) = XC_LDA_C_VWN_RPA
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_VWN_RPA
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  !
  ! GGA functionals
  case('PBEX')
-   dft_xc%id(1) = XC_GGA_X_PBE
+   dft_xc(1)%id = XC_GGA_X_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('PBE')
-   dft_xc%id(1) = XC_GGA_X_PBE
-   dft_xc%id(2) = XC_GGA_C_PBE
+   dft_xc(1)%id = XC_GGA_X_PBE
+   dft_xc(2)%id = XC_GGA_C_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('PBEHX')
-   dft_xc%id(1) = XC_GGA_X_WPBEH
+   dft_xc(1)%id = XC_GGA_X_WPBEH
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('PBEH')
-   dft_xc%id(1) = XC_GGA_X_WPBEH
-   dft_xc%id(2) = XC_GGA_C_PBE
+   dft_xc(1)%id = XC_GGA_X_WPBEH
+   dft_xc(2)%id = XC_GGA_C_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('BX')
-   dft_xc%id(1) = XC_GGA_X_B88
+   dft_xc(1)%id = XC_GGA_X_B88
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('BLYP')
-   dft_xc%id(1) = XC_GGA_X_B88
-   dft_xc%id(2) = XC_GGA_C_LYP
+   dft_xc(1)%id = XC_GGA_X_B88
+   dft_xc(2)%id = XC_GGA_C_LYP
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('PW91X')
-   dft_xc%id(1) = XC_GGA_X_PW91
+   dft_xc(1)%id = XC_GGA_X_PW91
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('PW91')
-   dft_xc%id(1) = XC_GGA_X_PW91
-   dft_xc%id(2) = XC_GGA_C_PW91
+   dft_xc(1)%id = XC_GGA_X_PW91
+   dft_xc(2)%id = XC_GGA_C_PW91
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('HCTH')
-   dft_xc%id(1) = XC_GGA_XC_HCTH_407
+   dft_xc(1)%id = XC_GGA_XC_HCTH_407
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('TH')
-   dft_xc%id(1) = XC_GGA_XC_TH1
+   dft_xc(1)%id = XC_GGA_XC_TH1
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('HJSX')
-   dft_xc%id(1) = XC_GGA_X_HJS_PBE
+   dft_xc(1)%id = XC_GGA_X_HJS_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  !
  ! Meta-GGA functionals
  case('RPPX')
-   dft_xc%id(1) = XC_MGGA_X_RPP09
+   dft_xc(1)%id = XC_MGGA_X_RPP09
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  !
  ! Hybrid functionals
  case('HFPBE')
-   dft_xc%id(1) = XC_GGA_C_PBE
+   dft_xc(1)%id = XC_GGA_C_PBE
    alpha_hybrid   = 1.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('BHANDH')
-   dft_xc%id(1) = XC_HYB_GGA_XC_BHANDH
+   dft_xc(1)%id = XC_HYB_GGA_XC_BHANDH
    alpha_hybrid   = 0.50_dp
    alpha_hybrid_lr= 0.00_dp
  case('BHANDHLYP','BHLYP')
-   dft_xc%id(1) = XC_HYB_GGA_XC_BHANDHLYP
+   dft_xc(1)%id = XC_HYB_GGA_XC_BHANDHLYP
    alpha_hybrid   = 0.50_dp
    alpha_hybrid_lr= 0.00_dp
  case('B3LYP')
-   dft_xc%id(1) = XC_HYB_GGA_XC_B3LYP
+   dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP
    alpha_hybrid   = 0.20_dp
    alpha_hybrid_lr= 0.00_dp
  case('B3LYP5')
-   dft_xc%id(1) = XC_HYB_GGA_XC_B3LYP5
+   dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP5
    alpha_hybrid   = 0.20_dp
    alpha_hybrid_lr= 0.00_dp
  case('PBE0')
-   dft_xc%id(1) = XC_HYB_GGA_XC_PBEH
+   dft_xc(1)%id = XC_HYB_GGA_XC_PBEH
    alpha_hybrid   = 0.25_dp
    alpha_hybrid_lr= 0.00_dp
  case('HSE03')
-   dft_xc%id(1)  = XC_HYB_GGA_XC_HSE03
+   dft_xc(1)%id  = XC_HYB_GGA_XC_HSE03
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
    rcut            = 1.0_dp / ( 0.15_dp / SQRT(2.0_dp) )
  case('HSE06')
-   dft_xc%id(1)  = XC_HYB_GGA_XC_HSE06
+   dft_xc(1)%id  = XC_HYB_GGA_XC_HSE06
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
    gamma_hybrid    = 0.11_dp
    rcut            = 1.0_dp / 0.11_dp
  case('HSE08')
-   dft_xc%id(1)  = XC_HYB_GGA_XC_HJS_PBE
+   dft_xc(1)%id  = XC_HYB_GGA_XC_HJS_PBE
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
    gamma_hybrid    = 0.11_dp
    rcut            = 1.0_dp / 0.11_dp
  case('CAM-B3LYP')
-   dft_xc%id(1)  = XC_HYB_GGA_XC_CAM_B3LYP
+   dft_xc(1)%id  = XC_HYB_GGA_XC_CAM_B3LYP
    alpha_hybrid    =  0.19_dp
    alpha_hybrid_lr =  0.46_dp
    rcut            =  1.0_dp / 0.33_dp
  case('TUNED-CAM-B3LYP')
-   dft_xc%id(1)  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
+   dft_xc(1)%id  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
    alpha_hybrid    =  0.0799_dp
    alpha_hybrid_lr =  0.9201_dp
    rcut            =  1.0_dp / 0.150_dp
  case('RSH')
-   dft_xc%id(1) = XC_GGA_X_PBE
-   dft_xc%id(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
-   dft_xc%id(3) = XC_GGA_C_PBE
-   dft_xc%coeff(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
-   dft_xc%coeff(2) = alpha_hybrid_lr
-   dft_xc%coeff(3) = 1.00_dp
+   dft_xc(1)%id = XC_GGA_X_PBE
+   dft_xc(2)%id = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
+   dft_xc(3)%id = XC_GGA_C_PBE
+   dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
+   dft_xc(2)%coeff = alpha_hybrid_lr
+   dft_xc(3)%coeff = 1.00_dp
    rcut           = 1.0_dp / gamma_hybrid
  case('RSHNOCOR')
-   dft_xc%id(1) = XC_GGA_X_PBE
-   dft_xc%id(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
-   dft_xc%coeff(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
-   dft_xc%coeff(2) = alpha_hybrid_lr
+   dft_xc(1)%id = XC_GGA_X_PBE
+   dft_xc(2)%id = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
+   dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
+   dft_xc(2)%coeff = alpha_hybrid_lr
    rcut           = 1.0_dp / gamma_hybrid
  ! Testing
  case('TESTHSE')
-   dft_xc%id(1) = XC_GGA_X_PBE
-   dft_xc%id(2) = XC_GGA_X_HJS_PBE ! XC_GGA_X_WPBEH ! 2001
-   dft_xc%id(3) = XC_GGA_C_PBE
+   dft_xc(1)%id = XC_GGA_X_PBE
+   dft_xc(2)%id = XC_GGA_X_HJS_PBE ! XC_GGA_X_WPBEH ! 2001
+   dft_xc(3)%id = XC_GGA_C_PBE
    alpha_hybrid   =  0.25_dp
-   dft_xc%coeff(1) =  1.00_dp
-   dft_xc%coeff(2) = -0.25_dp
-   dft_xc%coeff(3) =  1.00_dp
+   dft_xc(1)%coeff =  1.00_dp
+   dft_xc(2)%coeff = -0.25_dp
+   dft_xc(3)%coeff =  1.00_dp
    alpha_hybrid_lr = -alpha_hybrid
    gamma_hybrid    = 0.11_dp
    rcut           = 1.0_dp / gamma_hybrid
  case('TESTLDA0')
    alpha_hybrid   = 0.25_dp
    alpha_hybrid_lr= 0.00_dp
-   dft_xc%id(1) = XC_LDA_X
-   dft_xc%id(2) = XC_LDA_C_PW
-   dft_xc%coeff(1) =  1.00_dp - alpha_hybrid
-   dft_xc%coeff(2) =  1.00_dp
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_PW
+   dft_xc(1)%coeff =  1.00_dp - alpha_hybrid
+   dft_xc(2)%coeff =  1.00_dp
  case('TESTPBE0')
    alpha_hybrid   = 0.25_dp
    alpha_hybrid_lr= 0.00_dp
-   dft_xc%id(1) = XC_GGA_X_PBE
-   dft_xc%id(2) = XC_GGA_C_PBE
-   dft_xc%coeff(1) =  1.00_dp - alpha_hybrid
-   dft_xc%coeff(2) =  1.00_dp
+   dft_xc(1)%id = XC_GGA_X_PBE
+   dft_xc(2)%id = XC_GGA_C_PBE
+   dft_xc(1)%coeff =  1.00_dp - alpha_hybrid
+   dft_xc(2)%coeff =  1.00_dp
 #endif
  case default
    call die('Error reading keyword scf')
@@ -660,59 +668,50 @@ subroutine init_dft_type(key)
  !
  ! Initialize the DFT objects for LIBXC
  !
- if( ALLOCATED(dft_xc%func) ) then
-   do ixc=1,dft_xc%nxc
-     call xc_func_end(dft_xc%func(ixc))
-   enddo
-   deallocate(dft_xc%func)
-   deallocate(dft_xc%family)
- endif
 
- allocate(dft_xc%func(dft_xc%nxc))
- allocate(dft_xc%family(dft_xc%nxc))
-
-
- do ixc=1,dft_xc%nxc
+ do ixc=1,nxc
 
    !dft_xc%func(ixc) = xc_func_alloc()
    cptr_tmp = xc_func_alloc()
-   call c_f_pointer(cptr_tmp,libxc_func)
+   call c_f_pointer(cptr_tmp,dft_xc(ixc)%func)
 
 
    nspin_c = INT(nspin,C_INT)
-   id_c    = dft_xc%id(ixc)
-   write(*,*) 'FBFB DEBUG',SIZE(dft_xc%id),ALLOCATED(dft_xc%id)
+   id_c    = dft_xc(ixc)%id
+   write(*,*) 'FBFB DEBUG',SIZE(dft_xc(:))
 
 !   write(stdout,*) xc_func_init(dft_xc%func(ixc),id_c,nspin_c)
-   write(stdout,*) xc_func_init(libxc_func,id_c,nspin_c)
+   write(stdout,*) xc_func_init(dft_xc(ixc)%func,id_c,nspin_c)
 
 !   if( xc_func_init(cptr_tmp,id_c,nspin_c) /= 0 ) then
-!     write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc%id(ixc)
+!     write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc(ixc)%id
 !     call die('init_dft_type: error in LIBXC xc_func_init')
 !   endif
 
     !write(*,*) 'FBFB ixc',ixc
-    write(*,*) 'FBFB get family',xc_family_from_id(dft_xc%id(ixc),C_NULL_PTR,C_NULL_PTR)
-    write(*,*) 'FBFB get family',get_family_id(libxc_func)
+    write(*,*) 'FBFB get family',get_family_id(dft_xc(ixc)%func)
     !write(*,*) 'FBFB get family',get_family_id(dft_xc%func(ixc))
 
    !
    ! Tune the range for range separated hybrids
-   if( dft_xc%id(ixc) == XC_GGA_X_HJS_PBE .OR. dft_xc%id(ixc) == XC_GGA_X_WPBEH ) then
+   if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE .OR. dft_xc(ixc)%id == XC_GGA_X_WPBEH ) then
      gamma_c(1) = REAL(gamma_hybrid,C_DOUBLE)
-     call xc_func_set_ext_params(dft_xc%func(ixc),gamma_c)
+     call xc_func_set_ext_params(dft_xc(ixc)%func,gamma_c)
    endif
 
  enddo
 
 
- do ixc=1,dft_xc%nxc
-   dft_xc%family(ixc) = xc_family_from_id(dft_xc%id(ixc),C_NULL_PTR,C_NULL_PTR)
+ dft_xc(:)%needs_gradient = .FALSE.
+ do ixc=1,nxc
+   dft_xc(ixc)%family = xc_family_from_id(dft_xc(ixc)%id,C_NULL_PTR,C_NULL_PTR)
+   dft_xc(:)%needs_gradient = dft_xc(:)%needs_gradient .OR. dft_xc(ixc)%family == XC_FAMILY_GGA &
+                                                       .OR. dft_xc(ixc)%family == XC_FAMILY_HYB_GGA
  enddo
 
 
- dft_xc%needs_gradient = ANY( ( dft_xc%family(:) == XC_FAMILY_GGA     ) .AND. ( ABS(dft_xc%coeff(:)) > 1.0e-6_dp ) ) &
-                    .OR. ANY( ( dft_xc%family(:) == XC_FAMILY_HYB_GGA ) .AND. ( ABS(dft_xc%coeff(:)) > 1.0e-6_dp ) )
+! dft_xc(:)%needs_gradient = ANY( ( dft_xc(:)%family == XC_FAMILY_GGA     ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) ) &
+!                    .OR. ANY( ( dft_xc(:)%family == XC_FAMILY_HYB_GGA ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) )
 
 #endif
 

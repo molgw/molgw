@@ -100,7 +100,7 @@ subroutine scf_loop(is_restart,&
  if( calc_type%is_dft ) then
    !
    ! Setup the grids for the quadrature of DFT potential/energy
-   call init_dft_grid(basis,grid_level,dft_xc%needs_gradient,.TRUE.,BATCH_SIZE)
+   call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
  endif
 
  !
