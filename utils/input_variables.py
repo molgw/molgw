@@ -1261,6 +1261,15 @@ vl[i].comment  ='Prints the electronic density along the projectile trajectory f
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_dens_traj_points_set'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the electronic density between pairs of points given in manual_dens_points_set file.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='calc_dens_disc'
 vl[i].family   ='io_rt_tddft'
 vl[i].default  ='no'

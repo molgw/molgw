@@ -1188,7 +1188,6 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
 
        do icut=1,ncut
          do istate=istate_cut(icut,1),istate_cut(icut,2)
-           write(*,*) "suka", icut,istate,occupation(istate,ispin)
            integral(icut)=integral(icut)+(phi(istate,ispin))**2 * occupation(istate,ispin)
            integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2 
          end do
@@ -1197,6 +1196,9 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
      end do
      integral(:)=integral(:)/REAL(nr+1,dp)
      integral_phi_square(:)=integral_phi_square(:)/REAL(nr+1,dp)
+
+     write(*,*) "suka1", a_cur(:), b_cur(:)
+
      write(line_phi_square(ispin),'(50(f14.8,2x))') NORM2(a_cur(:)-point_a(:)),integral_phi_square(:)
      write(line_rho(ispin),'(50(f14.8,2x))') NORM2(a_cur(:)-point_a(:)),integral(:)
    enddo
@@ -1213,6 +1215,192 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  call stop_clock(timing_print_line_rho_tddft)
 
 end subroutine plot_rho_traj_bunch_contrib
+
+!=========================================================================
+subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num,time_cur)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_tools
+ use m_dft_grid,only: calculate_basis_functions_r
+
+ implicit none
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ integer                    :: num
+ real(dp),intent(in)        :: time_cur
+!=====
+ integer                    :: nr=1000,nh=100
+ integer                    :: gt
+ real(dp),parameter         :: length=6.0_dp
+ integer                    :: ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ real(dp),allocatable       :: phi(:,:)
+ real(dp)                   :: point_a(3),point_b(3),point_c(3)
+ real(dp)                   :: a_cur(3), b_cur(3)
+ logical                    :: file_exists
+ real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: xxmin,xxmax
+ real(dp)                   :: dx,dy,dz
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ir,ih,iatom
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ integer,allocatable        :: ocubefile(:,:)
+ integer                    :: line_rho(nspin)
+ integer                    :: line_phi_square(nspin)
+ character(len=200)         :: file_name
+ integer                    :: points_file
+ integer                    :: statesfile
+ integer                    :: i_max_atom
+ integer                    :: nocc
+ integer,allocatable        :: istate_cut(:,:)
+ real(dp)                   :: vec_length
+ real(dp)                   :: deltar,path_length
+ real(dp),allocatable       :: integral(:)
+ real(dp),allocatable       :: integral_phi_square(:)
+ integer                    :: iline,ncut,num_fields,icut
+ character(len=500)         :: cur_string
+ integer                    :: npoints,ipoint
+ real(dp),allocatable       :: rpoints_start(:,:),rpoints_end(:,:)
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ nocc=0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     if( istate > nocc ) nocc = istate
+   enddo
+ end do
+
+ call start_clock(timing_print_line_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
+ end if
+
+ inquire(file='manual_dens_points_set',exist=file_exists)
+ if(file_exists) then
+   npoints = get_number_of_lines('manual_dens_points_set')
+   allocate(rpoints_start(npoints,3))
+   allocate(rpoints_end(npoints,3))
+   open(newunit=points_file,file='manual_dens_points_set',status='old')
+   do iline=1,npoints
+     read(points_file,*) rpoints_start(iline,:), rpoints_end(iline,:)
+     ! manual_dens_points_set file MUST BE IN ANGSTROMS in contrast to similar files
+     rpoints_start(iline,:) = rpoints_start(iline,:) / bohr_A 
+     rpoints_end(iline,:)   = rpoints_end(iline,:) / bohr_A 
+   end do
+   close(points_file)
+ else
+   allocate(rpoints_start(1,3))
+   allocate(rpoints_end(1,3))
+   rpoints_start(1,:) = (/ 0.0_dp,  0.0_dp, 0.0_dp  /)
+   rpoints_end(1,:)   = (/ 0.0_dp,  0.0_dp, 5.0_dp  /)
+   call issue_warning('plot_rho_traj_bunch: manual_dens_points_set file was not found')
+ endif
+
+ inquire(file='manual_dens_traj_states',exist=file_exists)
+ if(file_exists) then
+   ncut = get_number_of_lines('manual_dens_traj_states')
+   allocate(istate_cut(ncut,2))
+   open(newunit=statesfile,file='manual_dens_traj_states',status='old')
+   do iline=1,ncut
+     read(statesfile,'(A)') cur_string
+     num_fields = get_number_of_elements(cur_string)
+     if( num_fields == 2 ) then
+       read(cur_string,*) istate_cut(iline,1), istate_cut(iline,2)
+     else if( num_fields == 1) then
+       read(cur_string,*) istate_cut(iline,1)
+       istate_cut(iline,2) = nstate
+     else
+       call die("manual_q_matrix_param must contain 1 or two fields.")
+     end if
+
+   end do
+   close(statesfile)
+ else
+   ncut=2
+   allocate(istate_cut(2,2))
+   istate_cut(1,1) = 1; istate_cut(1,2) = 1;
+   istate_cut(2,1) = 2; istate_cut(2,2) = nstate;
+   call issue_warning('plot_rho_traj_bunch_contrib: manual_dens_traj_states file was not found')
+ endif
+
+ allocate(integral(ncut))
+
+ allocate(integral_phi_square(ncut))
+ allocate(phi(nstate,nspin))
+
+ do ispin=1,nspin
+   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_points_set_contrib_integral_dens.dat'
+
+   open(newunit=line_rho(ispin),file=file_name)
+   write(line_rho(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
+   write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
+
+   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_points_set_contrib_phi_square.dat'
+   open(newunit=line_phi_square(ispin),file=file_name)
+   write(line_phi_square(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
+   write(line_phi_square(ispin),'(a,f9.5)') '# time_cur = ', time_cur
+ enddo
+
+ do ispin=1,nspin
+
+   do ipoint=1,npoints
+
+     deltar=NORM2( rpoints_end(ipoint,:) - rpoints_start(ipoint,:) )/nr
+
+     integral=0.0_dp
+     integral_phi_square=0.0_dp
+
+     do ir=0,nr
+       rr(:) = rpoints_start(ipoint,:) + (rpoints_end(ipoint,:) - rpoints_start(ipoint,:)) * REAL(ir,dp) / REAL(nr,dp)
+       call calculate_basis_functions_r(basis,rr,basis_function_r)
+       phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
+
+       do icut=1,ncut
+         do istate=istate_cut(icut,1),istate_cut(icut,2)
+           integral(icut)=integral(icut)+(phi(istate,ispin))**2 * occupation(istate,ispin)
+           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2 
+         end do
+       end do
+
+     end do
+     integral(:)=integral(:)/REAL(nr+1,dp)
+     integral_phi_square(:)=integral_phi_square(:)/REAL(nr+1,dp)
+
+     write(*,*) "suka2", rr(:),integral(:)
+
+     ! fixme output ONLY x and y coordinate of rpoints_start
+     ! output in ANGSTROMS
+     write(line_phi_square(ispin),'(50(f14.8,2x))') rpoints_start(ipoint,1:2)*bohr_A,integral_phi_square(:)
+     write(line_rho(ispin),'(50(f14.8,2x))') rpoints_start(ipoint,1:2)*bohr_A,integral(:)
+   enddo
+
+ enddo
+
+ do ispin=1,nspin
+   close(line_rho(ispin))
+   close(line_phi_square(ispin))
+ end do
+
+ deallocate(phi)
+
+ call stop_clock(timing_print_line_rho_tddft)
+
+end subroutine plot_rho_traj_points_set_contrib
 
 !=========================================================================
 subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num)

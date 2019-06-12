@@ -219,6 +219,7 @@ module m_inputparam
  logical,protected                :: print_line_rho_diff_tddft_
  logical,protected                :: print_dens_traj_tddft_
  logical,protected                :: print_dens_traj_
+ logical,protected                :: print_dens_traj_points_set_
  logical,protected                :: calc_q_matrix_
  logical,protected                :: calc_dens_disc_
  logical,protected                :: calc_spectrum_
@@ -811,6 +812,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_line_rho_diff_tddft
  character(len=3)     :: print_dens_traj_tddft
  character(len=3)     :: print_dens_traj
+ character(len=3)     :: print_dens_traj_points_set
  character(len=3)     :: calc_q_matrix
  character(len=3)     :: calc_dens_disc
  character(len=3)     :: calc_spectrum
@@ -934,6 +936,7 @@ subroutine read_inputfile_namelist()
  print_line_rho_diff_tddft_ = yesno(print_line_rho_diff_tddft)
  print_dens_traj_tddft_ = yesno(print_dens_traj_tddft)
  print_dens_traj_       = yesno(print_dens_traj)
+ print_dens_traj_points_set_ = yesno(print_dens_traj_points_set)
  calc_q_matrix_         = yesno(calc_q_matrix)
  calc_dens_disc_        = yesno(calc_dens_disc)
  calc_spectrum_         = yesno(calc_spectrum)
