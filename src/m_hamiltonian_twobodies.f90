@@ -870,21 +870,22 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  integer              :: nstate
  integer              :: ibf,jbf,ispin
  integer              :: ixc
- integer              :: igrid_start,igrid_end,ir,nr
+ integer              :: igrid_start,igrid_end,ir
  integer              :: timing_xxdft_xc,timing_xxdft_densities,timing_xxdft_libxc,timing_xxdft_vxc
  real(dp)             :: normalization(nspin)
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: tmp_batch(:,:)
  real(dp),allocatable :: basis_function_r_batch(:,:)
  real(dp),allocatable :: basis_function_gradr_batch(:,:,:)
- real(dp),allocatable :: exc_batch(:)
- real(dp),allocatable :: rhor_batch(:,:)
- real(dp),allocatable :: vrho_batch(:,:)
  real(dp),allocatable :: dedd_r_batch(:,:)
  real(dp),allocatable :: grad_rhor_batch(:,:,:)
- real(dp),allocatable :: sigma_batch(:,:)
  real(dp),allocatable :: dedgd_r_batch(:,:,:)
- real(dp),allocatable :: vsigma_batch(:,:)
+ integer(C_INT)             :: nr
+ real(C_DOUBLE),allocatable :: rhor_batch(:,:)
+ real(C_DOUBLE),allocatable :: sigma_batch(:,:)
+ real(C_DOUBLE),allocatable :: vrho_batch(:,:)
+ real(C_DOUBLE),allocatable :: exc_batch(:)
+ real(C_DOUBLE),allocatable :: vsigma_batch(:,:)
 !=====
 
  exc_xc = 0.0_dp
@@ -1007,7 +1008,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
        enddo
 
      case default
-       call die('functional is not LDA nor GGA nor hybrid')
+       write(stdout,*) 'Family id:',ixc,dft_xc%family(ixc)
+       call die('dft_exc_vxc_batch: functional is not LDA nor GGA nor hybrid')
      end select
 
      ! XC energy

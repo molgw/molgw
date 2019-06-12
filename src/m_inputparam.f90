@@ -15,6 +15,7 @@ module m_inputparam
  use m_ecp
  use m_string_tools,only: capitalize
  use m_libxc_tools
+ use iso_c_binding,only: C_NULL_PTR,C_F_POINTER
 
 #if defined(HAVE_LIBXC)
 #include <xc_funcs.h>
@@ -76,14 +77,12 @@ module m_inputparam
  end type calculation_type
 
  type dft_xc_info
-   logical                :: needs_gradient
-   integer                :: nxc = 0
-   integer,allocatable    :: id(:)
-   real(dp),allocatable   :: coeff(:)
-   integer,allocatable    :: family(:)
-#if defined(HAVE_LIBXC)
-   type(C_PTR),allocatable :: func(:)
-#endif
+   logical                    :: needs_gradient
+   integer                    :: nxc = 0
+   integer(C_INT),allocatable :: id(:)
+   real(dp),allocatable       :: coeff(:)
+   integer,allocatable        :: family(:)
+   type(C_PTR),allocatable    :: func(:)
  end type
 
  type excitation_type
@@ -438,6 +437,8 @@ subroutine init_dft_type(key)
  integer              :: ixc
  character(len=256)   :: string
  real(C_DOUBLE)       :: gamma_c(1)
+ integer(C_INT)       :: nspin_c,id_c
+ type(C_PTR)          :: cptr_tmp
 !=====
 
 
@@ -653,6 +654,7 @@ subroutine init_dft_type(key)
 
 
 #if defined(HAVE_LIBXC)
+
  !
  ! Initialize the DFT objects for LIBXC
  !
@@ -667,17 +669,30 @@ subroutine init_dft_type(key)
  allocate(dft_xc%func(dft_xc%nxc))
  allocate(dft_xc%family(dft_xc%nxc))
 
+
  do ixc=1,dft_xc%nxc
 
-   dft_xc%func(ixc) = xc_func_type_malloc()
-
-   if( xc_func_init(dft_xc%func(ixc),dft_xc%id(ixc),INT(nspin,C_INT)) /= 0 ) then
-     write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc%id(ixc)
-     call die('init_dft_type: error in LIBXC xc_func_init')
-   endif
+   !dft_xc%func(ixc) = xc_func_alloc()
+   cptr_tmp = xc_func_alloc()
+   call c_f_pointer(cptr_tmp,dft_xc%func)
 
 
-   write(stdout,'(a,i4,a,a)') '   XC functional ',ixc,' :  ',xc_func_info_get_name(xc_func_get_info(dft_xc%func(ixc)))
+   nspin_c = INT(nspin,C_INT)
+   id_c    = dft_xc%id(ixc)
+   write(*,*) 'FBFB DEBUG',SIZE(dft_xc%id),ALLOCATED(dft_xc%id)
+
+!   write(stdout,*) xc_func_init(dft_xc%func(ixc),id_c,nspin_c)
+   write(stdout,*) xc_func_init(cptr_tmp,id_c,nspin_c)
+
+!   if( xc_func_init(cptr_tmp,id_c,nspin_c) /= 0 ) then
+!     write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc%id(ixc)
+!     call die('init_dft_type: error in LIBXC xc_func_init')
+!   endif
+
+    !write(*,*) 'FBFB ixc',ixc
+    write(*,*) 'FBFB get family',xc_family_from_id(dft_xc%id(ixc),C_NULL_PTR,C_NULL_PTR)
+    write(*,*) 'FBFB get family',get_family_id(cptr_tmp)
+    write(*,*) 'FBFB get family',get_family_id(dft_xc%func(ixc))
 
    !
    ! Tune the range for range separated hybrids
@@ -688,14 +703,17 @@ subroutine init_dft_type(key)
 
  enddo
 
+
  do ixc=1,dft_xc%nxc
-   dft_xc%family(ixc) = xc_func_info_get_family(xc_func_get_info(dft_xc%func(ixc)))
+   dft_xc%family(ixc) = xc_family_from_id(dft_xc%id(ixc),C_NULL_PTR,C_NULL_PTR)
  enddo
+
 
  dft_xc%needs_gradient = ANY( ( dft_xc%family(:) == XC_FAMILY_GGA     ) .AND. ( ABS(dft_xc%coeff(:)) > 1.0e-6_dp ) ) &
                     .OR. ANY( ( dft_xc%family(:) == XC_FAMILY_HYB_GGA ) .AND. ( ABS(dft_xc%coeff(:)) > 1.0e-6_dp ) )
 
 #endif
+
 
 end subroutine init_dft_type
 
