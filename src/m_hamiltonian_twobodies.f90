@@ -992,7 +992,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
      select case(dft_xc%family(ixc))
      case(XC_FAMILY_LDA)
-       call xc_lda_exc_vxc(dft_xc%func(ixc),nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
+       !call xc_lda_exc_vxc(dft_xc%func(ixc),nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
+       call xc_lda_exc_vxc(libxc_func,nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
        call xc_gga_exc_vxc(dft_xc%func(ixc),nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))

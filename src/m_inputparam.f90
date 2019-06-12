@@ -85,6 +85,8 @@ module m_inputparam
    type(C_PTR),allocatable    :: func(:)
  end type
 
+ type(C_PTR),pointer :: libxc_func => null()
+
  type excitation_type
  character(len=100)   :: name
  integer              :: form
@@ -674,7 +676,7 @@ subroutine init_dft_type(key)
 
    !dft_xc%func(ixc) = xc_func_alloc()
    cptr_tmp = xc_func_alloc()
-   call c_f_pointer(cptr_tmp,dft_xc%func)
+   call c_f_pointer(cptr_tmp,libxc_func)
 
 
    nspin_c = INT(nspin,C_INT)
@@ -682,7 +684,7 @@ subroutine init_dft_type(key)
    write(*,*) 'FBFB DEBUG',SIZE(dft_xc%id),ALLOCATED(dft_xc%id)
 
 !   write(stdout,*) xc_func_init(dft_xc%func(ixc),id_c,nspin_c)
-   write(stdout,*) xc_func_init(cptr_tmp,id_c,nspin_c)
+   write(stdout,*) xc_func_init(libxc_func,id_c,nspin_c)
 
 !   if( xc_func_init(cptr_tmp,id_c,nspin_c) /= 0 ) then
 !     write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc%id(ixc)
@@ -691,8 +693,8 @@ subroutine init_dft_type(key)
 
     !write(*,*) 'FBFB ixc',ixc
     write(*,*) 'FBFB get family',xc_family_from_id(dft_xc%id(ixc),C_NULL_PTR,C_NULL_PTR)
-    write(*,*) 'FBFB get family',get_family_id(cptr_tmp)
-    write(*,*) 'FBFB get family',get_family_id(dft_xc%func(ixc))
+    write(*,*) 'FBFB get family',get_family_id(libxc_func)
+    !write(*,*) 'FBFB get family',get_family_id(dft_xc%func(ixc))
 
    !
    ! Tune the range for range separated hybrids
