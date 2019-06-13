@@ -15,7 +15,6 @@ module m_inputparam
  use m_ecp
  use m_string_tools,only: capitalize
  use m_libxc_tools
- use iso_c_binding,only: C_NULL_PTR,C_F_POINTER
 
 #if defined(HAVE_LIBXC)
 #include <xc_funcs.h>
@@ -76,15 +75,6 @@ module m_inputparam
    logical            :: selfenergy_static
  end type calculation_type
 
- type dft_xc_info
-   logical                    :: needs_gradient
-   integer                    :: nxc = 0
-   integer(C_INT),allocatable :: id
-   real(dp),allocatable       :: coeff
-   integer,allocatable        :: family
-   type(C_PTR),pointer        :: func => NULL()
- end type
-
  type excitation_type
  character(len=100)   :: name
  integer              :: form
@@ -96,7 +86,7 @@ module m_inputparam
  ! They should not be modified anywhere else in the code.
  ! Declare them as protected and work on copies if absolutely necessary.
  type(calculation_type),protected :: calc_type
- type(dft_xc_info),allocatable,protected :: dft_xc(:)
+ type(dft_xc_info),allocatable    :: dft_xc(:)
  type(excitation_type),protected  :: excit_type
  integer,protected                :: selfenergy_state_min
  integer,protected                :: selfenergy_state_max
@@ -435,9 +425,6 @@ subroutine init_dft_type(key)
  character(len=*),intent(in)          :: key
 !=====
  integer              :: ixc,nxc
- character(len=256)   :: string
- integer(C_INT)       :: nspin_c
- type(C_PTR)          :: cptr_tmp
 !=====
 
 
@@ -446,13 +433,9 @@ subroutine init_dft_type(key)
       'BHANDH','BHANDHLYP','BHLYP','B3LYP','B3LYP5', &
       'PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX')
    nxc = 1
- case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHNOCOR')
+ case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHX','LDA0')
    nxc = 2
  case('RSH')
-   nxc = 3
- case('TESTPBE0','TESTLDA0')
-   nxc = 2
- case('TESTHSE')
    nxc = 3
  case default
    write(stdout,*) 'error reading calculation type'
@@ -461,21 +444,16 @@ subroutine init_dft_type(key)
  end select
 
  if( ALLOCATED(dft_xc) ) then
-   do ixc=1,dft_xc(1)%nxc
-#if defined(HAVE_LIBXC)
-     call xc_func_end(dft_xc(ixc)%func)
-#endif
-   enddo
-   deallocate(dft_xc)
+   call destroy_libxc_info(dft_xc)
  endif
 
 
- allocate(dft_xc(nxc))
- dft_xc(:)%nxc = nxc
-
  !
- ! default is one, otherwise it is modified later
+ ! Prepare the object dft_xc
+ allocate(dft_xc(nxc))
  do ixc=1,nxc
+   dft_xc(ixc)%nspin = nspin
+   ! default is one, otherwise it is modified later
    dft_xc(ixc)%coeff = 1.0_dp
  enddo
 
@@ -510,23 +488,25 @@ subroutine init_dft_type(key)
  !
  ! GGA functionals
  case('PBEX')
-   dft_xc(1)%id = XC_GGA_X_PBE
-   alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%id    = XC_GGA_X_PBE
+   alpha_hybrid    = 0.00_dp
+   alpha_hybrid_lr = 0.00_dp
  case('PBE')
-   dft_xc(1)%id = XC_GGA_X_PBE
-   dft_xc(2)%id = XC_GGA_C_PBE
-   alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%id    = XC_GGA_X_PBE
+   dft_xc(2)%id    = XC_GGA_C_PBE
+   alpha_hybrid    = 0.00_dp
+   alpha_hybrid_lr = 0.00_dp
  case('PBEHX')
-   dft_xc(1)%id = XC_GGA_X_WPBEH
-   alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%id    = XC_GGA_X_WPBEH
+   alpha_hybrid    = 0.00_dp
+   alpha_hybrid_lr = 0.00_dp
+   dft_xc(1)%gamma = gamma_hybrid
  case('PBEH')
-   dft_xc(1)%id = XC_GGA_X_WPBEH
-   dft_xc(2)%id = XC_GGA_C_PBE
-   alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%id    = XC_GGA_X_WPBEH
+   dft_xc(2)%id    = XC_GGA_C_PBE
+   alpha_hybrid    = 0.00_dp
+   alpha_hybrid_lr = 0.00_dp
+   dft_xc(1)%gamma = gamma_hybrid
  case('BX')
    dft_xc(1)%id = XC_GGA_X_B88
    alpha_hybrid   = 0.00_dp
@@ -557,6 +537,7 @@ subroutine init_dft_type(key)
    dft_xc(1)%id = XC_GGA_X_HJS_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%gamma = gamma_hybrid
  !
  ! Meta-GGA functionals
  case('RPPX')
@@ -618,42 +599,25 @@ subroutine init_dft_type(key)
    rcut            =  1.0_dp / 0.150_dp
  case('RSH')
    dft_xc(1)%id = XC_GGA_X_PBE
-   dft_xc(2)%id = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
+   dft_xc(2)%id = XC_GGA_X_HJS_PBE
    dft_xc(3)%id = XC_GGA_C_PBE
    dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
    dft_xc(2)%coeff = alpha_hybrid_lr
    dft_xc(3)%coeff = 1.00_dp
-   rcut           = 1.0_dp / gamma_hybrid
- case('RSHNOCOR')
+   rcut            = 1.0_dp / gamma_hybrid
+   dft_xc(2)%gamma = gamma_hybrid
+ case('RSHX')
    dft_xc(1)%id = XC_GGA_X_PBE
-   dft_xc(2)%id = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
+   dft_xc(2)%id = XC_GGA_X_HJS_PBE
    dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
    dft_xc(2)%coeff = alpha_hybrid_lr
    rcut           = 1.0_dp / gamma_hybrid
- ! Testing
- case('TESTHSE')
-   dft_xc(1)%id = XC_GGA_X_PBE
-   dft_xc(2)%id = XC_GGA_X_HJS_PBE ! XC_GGA_X_WPBEH ! 2001
-   dft_xc(3)%id = XC_GGA_C_PBE
-   alpha_hybrid   =  0.25_dp
-   dft_xc(1)%coeff =  1.00_dp
-   dft_xc(2)%coeff = -0.25_dp
-   dft_xc(3)%coeff =  1.00_dp
-   alpha_hybrid_lr = -alpha_hybrid
-   gamma_hybrid    = 0.11_dp
-   rcut           = 1.0_dp / gamma_hybrid
- case('TESTLDA0')
+   dft_xc(2)%gamma = gamma_hybrid
+ case('LDA0')
    alpha_hybrid   = 0.25_dp
    alpha_hybrid_lr= 0.00_dp
    dft_xc(1)%id = XC_LDA_X
    dft_xc(2)%id = XC_LDA_C_PW
-   dft_xc(1)%coeff =  1.00_dp - alpha_hybrid
-   dft_xc(2)%coeff =  1.00_dp
- case('TESTPBE0')
-   alpha_hybrid   = 0.25_dp
-   alpha_hybrid_lr= 0.00_dp
-   dft_xc(1)%id = XC_GGA_X_PBE
-   dft_xc(2)%id = XC_GGA_C_PBE
    dft_xc(1)%coeff =  1.00_dp - alpha_hybrid
    dft_xc(2)%coeff =  1.00_dp
 #endif
@@ -661,49 +625,7 @@ subroutine init_dft_type(key)
    call die('Error reading keyword scf')
  end select
 
-
-#if defined(HAVE_LIBXC)
-
- !
- ! Initialize the DFT objects for LIBXC
- !
-
- do ixc=1,nxc
-
-   cptr_tmp = xc_func_alloc()
-   call c_f_pointer(cptr_tmp,dft_xc(ixc)%func)
-
-   nspin_c = INT(nspin,C_INT)
-
-   if( xc_func_init(dft_xc(ixc)%func,dft_xc(ixc)%id,nspin_c) /= 0 ) then
-     write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc(ixc)%id
-     call die('init_dft_type: error in LIBXC xc_func_init')
-   endif
-
-   !
-   ! Tune the range for range separated hybrids
-   if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE ) then
-     call xc_gga_x_hjs_set_params(dft_xc(ixc)%func,REAL(gamma_hybrid,C_DOUBLE))
-   endif
-   if( dft_xc(ixc)%id == XC_GGA_X_WPBEH ) then
-     call xc_gga_x_wpbeh_set_params(dft_xc(ixc)%func,REAL(gamma_hybrid,C_DOUBLE))
-   endif
-
- enddo
-
-
- dft_xc(:)%needs_gradient = .FALSE.
- do ixc=1,nxc
-   dft_xc(ixc)%family = xc_family_from_id(dft_xc(ixc)%id,C_NULL_PTR,C_NULL_PTR)
-   dft_xc(:)%needs_gradient = dft_xc(:)%needs_gradient .OR. dft_xc(ixc)%family == XC_FAMILY_GGA &
-                                                       .OR. dft_xc(ixc)%family == XC_FAMILY_HYB_GGA
- enddo
-
-
-! dft_xc(:)%needs_gradient = ANY( ( dft_xc(:)%family == XC_FAMILY_GGA     ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) ) &
-!                    .OR. ANY( ( dft_xc(:)%family == XC_FAMILY_HYB_GGA ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) )
-
-#endif
+ call init_libxc_info(dft_xc)
 
 
 end subroutine init_dft_type

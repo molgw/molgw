@@ -76,11 +76,16 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
 !=====
 
 #if defined(HAVE_LIBXC)
- if( is_triplet ) then
-   nspin_tddft = 2
- else
-   nspin_tddft = nspin
- endif
+
+ !
+ ! Prepare DFT kernel calculation with Libxc
+ !
+ nspin_tddft = MERGE(2,nspin,is_triplet)
+ call copy_libxc_info(dft_xc,tddft_xc)
+ do ixc=1,tddft_xc(1)%nxc
+   tddft_xc(ixc)%nspin = nspin_tddft
+ enddo
+ call init_libxc_info(tddft_xc)
 
  call init_dft_grid(basis,tddft_grid_level,dft_xc(1)%needs_gradient,.FALSE.,1)
 
@@ -91,25 +96,6 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  allocate( vsigma_c(2*nspin_tddft-1)     )
  allocate( v2rhosigma_c(5*nspin_tddft-4) )
  allocate( v2sigma2_c(5*nspin_tddft-4)   )
- !
- ! Prepare DFT kernel calculation with Libxc
- !
- do ixc=1,dft_xc(1)%nxc
-   if( ABS(dft_xc(ixc)%coeff) < 1.0e-6_dp ) cycle
-
-   allocate(tddft_xc(dft_xc(1)%nxc))
-   cptr_tmp = xc_func_alloc()
-   call c_f_pointer(cptr_tmp,tddft_xc(ixc)%func)
-
-   if( xc_func_init(tddft_xc(ixc)%func,dft_xc(ixc)%id,INT(nspin_tddft,C_INT)) /= 0 ) then
-     call die('prepare_tddft: error in initialization of the xc functional')
-   endif
-   !write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',ixc,' :  ',dft_xc(ixc)%id,&
-   !                                 xc_func_info_get_name(xc_func_get_info(tddft_xc(ixc)%func))
-   !if( MODULO(xc_func_info_get_flags( xc_func_get_info(tddft_xc(ixc)%func)) , XC_FLAGS_HAVE_FXC*2) < XC_FLAGS_HAVE_FXC ) then
-   !  call die('prepare_tddft: this functional does not have the kernel implemented in Libxc')
-   !endif
- enddo
 
  !
  ! calculate rho, grad rho and the kernel

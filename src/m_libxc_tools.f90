@@ -9,10 +9,12 @@
 !=========================================================================
 module m_libxc_tools
  use m_definitions
+ use m_warning
+
 
 #if defined(HAVE_LIBXC)
-
 #include <xc_funcs.h>
+#endif
 
  integer(C_INT),parameter :: XC_FAMILY_UNKNOWN  = -1
  integer(C_INT),parameter :: XC_FAMILY_LDA      =  1
@@ -25,6 +27,18 @@ module m_libxc_tools
 
  integer(C_INT),parameter :: XC_FLAGS_HAVE_FXC  =  4
 
+ ! Object that contains the information of a LIBXC functional
+ type dft_xc_info
+   logical                    :: needs_gradient         ! TRUE if any of the components is not LDA
+   integer                    :: nxc = 0                ! number of components of the Vxc
+   integer(C_INT)             :: id                     ! ID number in the LIBXC list
+   real(dp)                   :: coeff                  ! coefficient that scales this Vxc component
+   real(C_DOUBLE)             :: gamma                  ! range-separation parameter (if needed)
+   integer(C_INT)             :: nspin                  ! number of spin channels (can be different from the global nspin)
+   integer                    :: family                 ! LDA, GGA, HYB_GGA
+   type(C_PTR),pointer        :: func => NULL()         ! pointer to the LIBXC functional C structure
+ end type
+
 !=========================================================================
 ! interfaces to libxc in C with iso_c_binding
 !=========================================================================
@@ -36,6 +50,12 @@ module m_libxc_tools
      implicit none
      type(C_PTR) :: xc_func_alloc
    end function xc_func_alloc
+
+   subroutine xc_func_free(func) BIND(C)
+     import :: C_PTR
+     implicit none
+     type(C_PTR) :: func
+   end subroutine xc_func_free
 
    subroutine xc_version(major,minor,micro) BIND(C)
      import :: C_INT
@@ -188,8 +208,119 @@ module m_libxc_tools
 
 end interface
 
+
+contains
+
+
+!=========================================================================
+subroutine init_libxc_info(dft_xc)
+ implicit none
+
+ type(dft_xc_info),allocatable,intent(inout) :: dft_xc(:)
+!=====
+ integer :: nxc,ixc
+ type(C_PTR)          :: cptr_tmp
+!=====
+
+ if( .NOT. ALLOCATED(dft_xc) ) then
+   call die('init_libxc_info: dft_xc_info type should have been allocated already at this stage')
+ endif
+
+ nxc = SIZE(dft_xc)
+ dft_xc(:)%nxc = nxc
+
+#if defined(HAVE_LIBXC)
+
+ !
+ ! Initialize the DFT objects for LIBXC
+ !
+
+ do ixc=1,nxc
+
+   cptr_tmp = xc_func_alloc()
+   call c_f_pointer(cptr_tmp,dft_xc(ixc)%func)
+
+   if( xc_func_init(dft_xc(ixc)%func,dft_xc(ixc)%id,dft_xc(ixc)%nspin) /= 0 ) then
+     write(stdout,'(1x,a,i6)') 'Libxc failure when initializing functional: ',dft_xc(ixc)%id
+     call die('init_libxc_info: error in LIBXC xc_func_init')
+   endif
+
+   !
+   ! Tune the range for range separated hybrids
+   if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE ) then
+     call xc_gga_x_hjs_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
+   endif
+   if( dft_xc(ixc)%id == XC_GGA_X_WPBEH ) then
+     call xc_gga_x_wpbeh_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
+   endif
+
+ enddo
+
+
+ dft_xc(:)%needs_gradient = .FALSE.
+ do ixc=1,nxc
+   dft_xc(ixc)%family = xc_family_from_id(dft_xc(ixc)%id,C_NULL_PTR,C_NULL_PTR)
+   dft_xc(:)%needs_gradient = dft_xc(:)%needs_gradient .OR. dft_xc(ixc)%family == XC_FAMILY_GGA &
+                                                       .OR. dft_xc(ixc)%family == XC_FAMILY_HYB_GGA
+ enddo
+
+
+! dft_xc(:)%needs_gradient = ANY( ( dft_xc(:)%family == XC_FAMILY_GGA     ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) ) &
+!                    .OR. ANY( ( dft_xc(:)%family == XC_FAMILY_HYB_GGA ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) )
+
 #endif
 
+
+end subroutine init_libxc_info
+
+
+!=========================================================================
+subroutine copy_libxc_info(dft_xc_in,dft_xc_out)
+ implicit none
+
+ type(dft_xc_info),allocatable,intent(in)    :: dft_xc_in(:)
+ type(dft_xc_info),allocatable,intent(inout) :: dft_xc_out(:)
+!=====
+ integer :: nxc,ixc
+!=====
+
+ nxc = SIZE(dft_xc_in)
+ allocate(dft_xc_out(nxc))
+
+ do ixc=1,nxc
+   dft_xc_out(ixc)%needs_gradient = dft_xc_in(ixc)%needs_gradient
+   dft_xc_out(ixc)%nxc            = dft_xc_in(ixc)%nxc
+   dft_xc_out(ixc)%id             = dft_xc_in(ixc)%id
+   dft_xc_out(ixc)%coeff          = dft_xc_in(ixc)%coeff
+   dft_xc_out(ixc)%gamma          = dft_xc_in(ixc)%gamma
+   dft_xc_out(ixc)%nspin          = dft_xc_in(ixc)%nspin
+   dft_xc_out(ixc)%family         = dft_xc_in(ixc)%family
+ enddo
+
+end subroutine copy_libxc_info
+
+
+!=========================================================================
+subroutine destroy_libxc_info(dft_xc)
+ implicit none
+
+ type(dft_xc_info),allocatable,intent(inout) :: dft_xc(:)
+!=====
+ integer :: ixc
+!=====
+
+ do ixc=1,dft_xc(1)%nxc
+#if defined(HAVE_LIBXC)
+   call xc_func_end(dft_xc(ixc)%func)
+   call xc_func_free(dft_xc(ixc)%func)
+#endif
+ enddo
+ deallocate(dft_xc)
+
+end subroutine destroy_libxc_info
+
+
+!=========================================================================
 end module m_libxc_tools
 
 
