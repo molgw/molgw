@@ -1197,8 +1197,6 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
      integral(:)=integral(:)/REAL(nr+1,dp)
      integral_phi_square(:)=integral_phi_square(:)/REAL(nr+1,dp)
 
-     write(*,*) "suka1", a_cur(:), b_cur(:)
-
      write(line_phi_square(ispin),'(50(f14.8,2x))') NORM2(a_cur(:)-point_a(:)),integral_phi_square(:)
      write(line_rho(ispin),'(50(f14.8,2x))') NORM2(a_cur(:)-point_a(:)),integral(:)
    enddo
@@ -1380,8 +1378,6 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
      end do
      integral(:)=integral(:)/REAL(nr+1,dp)
      integral_phi_square(:)=integral_phi_square(:)/REAL(nr+1,dp)
-
-     write(*,*) "suka2", rr(:),integral(:)
 
      ! fixme output ONLY x and y coordinate of rpoints_start
      ! output in ANGSTROMS
