@@ -17,6 +17,7 @@ module m_eri
  use m_cart_to_pure
  use m_libint_tools
 
+ logical,parameter :: eri_pair_major = .TRUE.
 
  real(dp),parameter,public :: TOO_LOW_EIGENVAL=1.0e-6_dp
 
@@ -31,6 +32,8 @@ module m_eri
  real(dp),allocatable,public :: eri_4center_lr(:)
  real(dp),allocatable,public :: eri_3center(:,:)
  real(dp),allocatable,public :: eri_3center_lr(:,:)
+ real(dp),allocatable,public :: eri_P(:,:)             ! npair x nauxil_2center
+ real(dp),allocatable,public :: eri_P_lr(:,:)          ! npair x nauxil_2center_lr
 
 
  logical,protected,allocatable :: negligible_shellpair(:,:)
@@ -551,6 +554,9 @@ subroutine destroy_eri_3center()
  if(ALLOCATED(eri_3center)) then
    call clean_deallocate('3-center integrals',eri_3center)
  endif
+ if(ALLOCATED(eri_P)) then
+   call clean_deallocate('3-center integrals pair-major order',eri_P)
+ endif
 
 end subroutine destroy_eri_3center
 
@@ -571,6 +577,9 @@ subroutine destroy_eri_3center_lr()
  endif
  if(ALLOCATED(eri_3center_lr)) then
    call clean_deallocate('LR 3-center integrals',eri_3center_lr)
+ endif
+ if(ALLOCATED(eri_P_lr)) then
+   call clean_deallocate('LR 3-center integrals pair-major order',eri_P_lr)
  endif
 
 end subroutine destroy_eri_3center_lr

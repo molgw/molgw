@@ -602,8 +602,8 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
  integer              :: nbf,nstate
  integer              :: ibf,jbf,ispin,istate
  integer              :: nocc
- real(dp),allocatable :: tmp(:,:)
- integer              :: ipair,ipair_local
+ real(dp),allocatable :: tmp(:,:),c_t(:,:)
+ integer              :: ipair,ipair_local,iauxil
  integer              :: ibf_auxil_first,nbf_auxil_core
 !=====
 
@@ -622,53 +622,46 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
  nauxil_local = SIZE(eri_3center,DIM=1)
  npair_local  = SIZE(eri_3center,DIM=2)
 
- if( npcol_3center > 1 ) then
-   ! Prepare a sub-division of tasks after the reduction DGSUM2D
-   nbf_auxil_core  = CEILING( REAL(nauxil_local,dp) / REAL(npcol_3center,dp) )
-   ibf_auxil_first = ipcol_3center * nbf_auxil_core + 1
-   ! Be careful when a core has fewer data or no data at all
-   if( ibf_auxil_first + nbf_auxil_core - 1 > nauxil_local ) nbf_auxil_core = nauxil_local - ibf_auxil_first + 1
-   if( ibf_auxil_first > nauxil_local ) nbf_auxil_core = 0
+ if( eri_pair_major ) then
 
-   allocate(tmp(nauxil_local,nbf))
-
+   allocate(tmp(nocc,nbf))
+   allocate(c_t(nocc,nbf))
    do ispin=1,nspin
 
-     do istate=1,nocc
+     call start_clock(timing_tmp1)
+     do ibf=1,nbf
+       c_t(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
+     enddo
+     call stop_clock(timing_tmp1)
 
-       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
+     do iauxil=1,nauxil_local
+       call start_clock(timing_tmp2)
        tmp(:,:) = 0.0_dp
        !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
        !$OMP DO REDUCTION(+:tmp)
-       do ipair_local=1,npair_local
-         ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
+       do ipair=1,npair
          ibf = index_basis(1,ipair)
          jbf = index_basis(2,ipair)
-         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair_local)
-         if( ibf /= jbf) &
-           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair_local)
+         tmp(:,ibf) = tmp(:,ibf) + c_t(:,jbf) * eri_P(ipair,iauxil)
+         tmp(:,jbf) = tmp(:,jbf) + c_t(:,ibf) * eri_P(ipair,iauxil)
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
-#if defined(HAVE_SCALAPACK)
-       call DGSUM2D(cntxt_3center,'R',' ',nauxil_local,nbf,tmp,nauxil_local,-1,-1)
-#endif
-
+       call stop_clock(timing_tmp2)
+       call start_clock(timing_tmp3)
        ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
        !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
        ! C = A^T * A + C
-       if( nbf_auxil_core > 0 ) &
-         call DSYRK('L','T',nbf,nbf_auxil_core,-occupation(istate,ispin)/spin_fact,tmp(ibf_auxil_first,1),nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
+       call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
+       call stop_clock(timing_tmp3)
 
      enddo
-
    enddo
-   deallocate(tmp)
+
+   deallocate(c_t)
 
  else
-   ! npcol_row is equal to 1 => no parallelization over basis pairs
-   ! => old coding
 
    allocate(tmp(nauxil_local,nbf))
 
@@ -699,9 +692,9 @@ subroutine setup_exchange_versatile_ri(occupation,c_matrix,p_matrix,exchange_ij,
 
      enddo
    enddo
-   deallocate(tmp)
 
  endif
+ deallocate(tmp)
 
  !
  ! Need to symmetrize exchange_ij
