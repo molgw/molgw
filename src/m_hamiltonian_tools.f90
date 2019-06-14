@@ -19,6 +19,11 @@ module m_hamiltonian_tools
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min,scf_diago_flavor
 
 
+ interface setup_density_matrix
+   module procedure setup_density_matrix_real
+   module procedure setup_density_matrix_cmplx
+ end interface setup_density_matrix
+
 contains
 
 
@@ -50,7 +55,7 @@ end function get_number_occupied_states
 
 
 !=========================================================================
-subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
+subroutine setup_density_matrix_real(c_matrix,occupation,p_matrix)
  implicit none
  real(dp),intent(in)  :: c_matrix(:,:,:)
  real(dp),intent(in)  :: occupation(:,:)
@@ -100,7 +105,57 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  call stop_clock(timing_density_matrix)
 
 
-end subroutine setup_density_matrix
+end subroutine setup_density_matrix_real
+
+
+!=========================================================================
+subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+ implicit none
+
+ complex(dp),intent(in)  :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)     :: occupation(:,:)
+ complex(dp),intent(out) :: p_matrix_cmplx(:,:,:)
+!=====
+ integer :: nbf,nstate,nocc
+ integer :: ispin,ibf,jbf
+ integer :: istate
+ complex(dp),allocatable :: c_matrix_sqrtocc(:,:)
+!=====
+
+ call start_clock(timing_density_matrix_cmplx)
+
+ nbf    = SIZE(c_matrix_cmplx(:,:,:),DIM=1)
+ nocc   = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ if( ANY( occupation(:,:) < 0.0_dp ) ) call die('setup_density_matrix_cmplx: negative occupation number should not happen here.')
+
+ allocate(c_matrix_sqrtocc(nbf,nocc))
+
+ p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
+ do ispin=1,nspin
+
+   do istate=1,nocc
+     c_matrix_sqrtocc(:,istate) = c_matrix_cmplx(:,istate,ispin) * SQRT(occupation(istate,ispin))
+   enddo
+   call ZHERK('L','N',nbf,nocc,1.0d0,c_matrix_sqrtocc,nbf,0.0d0,p_matrix_cmplx(1,1,ispin),nbf)
+
+
+   ! Hermitianize
+   do jbf=1,nbf
+     do ibf=jbf+1,nbf
+       p_matrix_cmplx(jbf,ibf,ispin) = CONJG( p_matrix_cmplx(ibf,jbf,ispin) )
+     enddo
+   enddo
+
+ enddo
+
+ deallocate(c_matrix_sqrtocc)
+
+ call stop_clock(timing_density_matrix_cmplx)
+
+
+end subroutine setup_density_matrix_cmplx
 
 
 !=========================================================================

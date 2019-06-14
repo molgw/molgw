@@ -249,7 +249,7 @@ m_hamiltonian_twobodies.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning
 	$(FC_W_OPTS) -c m_hamiltonian_twobodies.f90 $(LIBXC_INCS)
 
 m_hamiltonian_cmplx.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_atoms.f90 m_cart_to_pure.f90 \
-                       m_inputparam.f90 m_eri.f90 m_eri_calculate.f90 m_basis_set.f90 m_dft_grid.f90 m_density_tools.f90 \
+                       m_inputparam.f90 m_eri_calculate.f90 m_basis_set.f90 m_dft_grid.f90 m_density_tools.f90 \
                        m_hamiltonian_cmplx.f90
 	$(FC_W_OPTS) -c m_hamiltonian_cmplx.f90 $(LIBXC_INCS)
 
@@ -355,7 +355,7 @@ m_scf.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_i
 	$(FC_W_OPTS) -c m_scf.f90 $(LIBXC_INCS)
 
 m_selfenergy_tools.o: m_definitions.f90 m_warning.f90 m_inputparam.f90 m_mpi.f90 m_atoms.f90 m_lbfgs.f90 m_basis_set.f90 m_dft_grid.f90 m_numerical_tools.f90 \
-	              m_hamiltonian_wrapper.f90 m_selfenergy_tools.f90
+	              m_hamiltonian_tools.f90 m_hamiltonian_wrapper.f90 m_selfenergy_tools.f90
 	$(FC_W_OPTS) -c m_selfenergy_tools.f90 $(LIBXC_INCS)
 
 m_inputparam.o: m_definitions.f90 m_mpi.f90  m_elements.f90 m_warning.f90 m_atoms.f90 m_ecp.f90 \

@@ -637,7 +637,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ! Exchange contribution to the Hamiltonian
  !
  if( calc_type%need_exchange ) then
-   call setup_exchange_versatile_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en%exx)
+   call setup_exchange_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en%exx)
 
    ! Rescale with alpha_hybrid for hybrid functionals
    en%exx_hyb = alpha_hybrid * en%exx

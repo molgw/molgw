@@ -12,6 +12,7 @@ module m_selfenergy_tools
  use m_mpi
  use m_inputparam
  use m_numerical_tools
+ use m_hamiltonian_tools
 
  !
  ! frozen core approximation parameters

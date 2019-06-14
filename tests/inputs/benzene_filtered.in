@@ -10,7 +10,6 @@
  auxil_basis='aug-cc-pVTZ-RI'
 
  eri3_nbatch=2
- eri3_npcol =2
 
  natom=12
 /
