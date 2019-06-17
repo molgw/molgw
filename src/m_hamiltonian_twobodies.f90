@@ -688,7 +688,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
      do iauxil=1,nauxil_local
        if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
        tmp(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP PARALLEL PRIVATE(ibf,jbf)
        !$OMP DO REDUCTION(+:tmp)
        do ipair=1,npair
          ibf = index_basis(1,ipair)
@@ -720,7 +720,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
        if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
        tmp(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP PARALLEL PRIVATE(ibf,jbf)
        !$OMP DO REDUCTION(+:tmp)
        do ipair=1,npair
          ibf = index_basis(1,ipair)
@@ -809,7 +809,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,
 
      do iauxil=1,nauxil_local
        tmp(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP PARALLEL PRIVATE(ibf,jbf)
        !$OMP DO REDUCTION(+:tmp)
        do ipair=1,npair
          ibf = index_basis(1,ipair)
@@ -841,7 +841,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,
        if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
        tmp(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+       !$OMP PARALLEL PRIVATE(ibf,jbf)
        !$OMP DO REDUCTION(+:tmp)
        do ipair=1,npair
          ibf = index_basis(1,ipair)
