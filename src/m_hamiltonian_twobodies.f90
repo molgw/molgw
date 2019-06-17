@@ -276,18 +276,18 @@ end subroutine setup_hartree_oneshell
 
 
 !=========================================================================
-subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  implicit none
  class(*),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
- integer              :: nauxil_local,npair_local
+ integer              :: nauxil_local,npair_local,iauxil
  integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf
  integer              :: ipair,ipair_local
  real(dp),allocatable :: x_vector(:)
- real(dp)             :: rtmp,factor
+ real(dp)             :: rtmp,factor,xtmp_P
  character(len=100)   :: title
  integer              :: timing_xxdft_hartree
  integer              :: desc_partial(NDEL),desc_pmat(NDEL),info
@@ -302,17 +302,66 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  type is(complex(dp))
    timing_xxdft_hartree   = timing_tddft_hartree
  class default
-   call die("setup_hartree_versatile_ri: c_matrix is neither real nor complex")
+   call die("setup_hartree_ri: c_matrix is neither real nor complex")
  end select
 
  call start_clock(timing_xxdft_hartree)
 
- write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: versatile version'
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
 
 
  hartree_ij(:,:) = 0.0_dp
 
- if( cntxt_3center > 0 ) then
+ if( eri_pair_major ) then
+
+   allocate(pmat(npair))
+   allocate(x_vector(nauxil_3center))
+
+   select type(p_matrix)
+   type is(real(dp))
+     !$OMP PARALLEL PRIVATE(kbf,lbf)
+     !$OMP DO
+     do ipair=1,npair
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       pmat(ipair) = SUM(p_matrix(kbf,lbf,:)) * 2.0_dp
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+   type is(complex(dp))
+     !$OMP PARALLEL PRIVATE(kbf,lbf)
+     !$OMP DO
+     do ipair=1,npair
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       pmat(ipair) = SUM(p_matrix(kbf,lbf,:)%re) * 2.0_dp
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+   end select
+
+   ! X_P = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | P )
+   call DGEMV('T',npair,nauxil_3center,1.0d0,eri_P,npair,pmat,1,0.0d0,x_vector,1)
+   ! v_H_{alpha beta} = \sum_P ( alpha beta | P ) * X_P
+   call DGEMV('N',npair,nauxil_3center,1.0d0,eri_P,npair,x_vector,1,0.0d0,pmat,1)
+   !$OMP PARALLEL PRIVATE(kbf,lbf)
+   !$OMP DO
+   do ipair=1,npair
+     kbf = index_basis(1,ipair)
+     lbf = index_basis(2,ipair)
+     hartree_ij(kbf,lbf) = pmat(ipair)
+     hartree_ij(lbf,kbf) = pmat(ipair)
+   enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
+
+   ! Do not forget that the eri_P(ibf,ibf | P ) included a factor 0.50
+   do ibf=1,nbf
+     hartree_ij(ibf,ibf) = hartree_ij(ibf,ibf) * 2.0_dp
+   enddo
+   deallocate(x_vector,pmat)
+
+ else
 
    nauxil_local = NUMROC(nauxil_2center,MB_3center,iprow_3center,first_row,nprow_3center)
    npair_local  = NUMROC(npair         ,MB_3center,iprow_3center,first_row,nprow_3center)
@@ -388,6 +437,7 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
  ! Sum up the different contribution from different procs
  call xsum_world(hartree_ij)
 
+ hartree_ij(:,:) = hartree_ij(:,:) / REAL(nproc_ortho,dp)
 
  title='=== Hartree contribution ==='
  call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
@@ -402,7 +452,7 @@ subroutine setup_hartree_versatile_ri(p_matrix,hartree_ij,ehartree)
 
  call stop_clock(timing_xxdft_hartree)
 
-end subroutine setup_hartree_versatile_ri
+end subroutine setup_hartree_ri
 
 
 !=========================================================================
@@ -628,18 +678,15 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
 
    do ispin=1,nspin
 
-     call start_clock(timing_tmp1)
      !$OMP PARALLEL DO
      do ibf=1,nbf
        c_t(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
      enddo
      !$OMP END PARALLEL DO
-     call stop_clock(timing_tmp1)
 
 
      do iauxil=1,nauxil_local
        if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
-       call start_clock(timing_tmp2)
        tmp(:,:) = 0.0_dp
        !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
        !$OMP DO REDUCTION(+:tmp)
@@ -651,13 +698,10 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
-       call stop_clock(timing_tmp2)
-       call start_clock(timing_tmp3)
        ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
        !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
        ! C = A^T * A + C
        call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
-       call stop_clock(timing_tmp3)
 
      enddo
    enddo
@@ -756,17 +800,14 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,
 
    do ispin=1,nspin
 
-     call start_clock(timing_tmp1)
      !$OMP PARALLEL DO
      do ibf=1,nbf
        c_t(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
      enddo
      !$OMP END PARALLEL DO
-     call stop_clock(timing_tmp1)
 
 
      do iauxil=1,nauxil_local
-       call start_clock(timing_tmp2)
        tmp(:,:) = 0.0_dp
        !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
        !$OMP DO REDUCTION(+:tmp)
@@ -778,13 +819,10 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
-       call stop_clock(timing_tmp2)
-       call start_clock(timing_tmp3)
        ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
        !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
        ! C = A^T * A + C
        call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
-       call stop_clock(timing_tmp3)
 
      enddo
    enddo

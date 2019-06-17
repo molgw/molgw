@@ -49,11 +49,9 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
    if( parallel_ham ) then
      if( parallel_buffer ) then
        call setup_hartree_ri_buffer_sca(p_matrix,hhartree,ehartree)
-     else
-       call setup_hartree_ri_sca(p_matrix,hhartree,ehartree)
      endif
    else
-     call setup_hartree_versatile_ri(p_matrix,hhartree,ehartree)
+     call setup_hartree_ri(p_matrix,hhartree,ehartree)
    endif
  endif
 

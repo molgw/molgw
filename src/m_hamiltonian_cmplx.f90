@@ -72,7 +72,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ij,eexc
        if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
        tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
        !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
-       !$OMP DO REDUCTION(+:tmp)
+       !$OMP DO REDUCTION(+:tmp_cmplx)
        do ipair=1,npair
          ibf = index_basis(1,ipair)
          jbf = index_basis(2,ipair)
@@ -104,7 +104,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ij,eexc
 
        tmp_cmplx(:,:) = 0.0_dp
        !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
-       !$OMP DO REDUCTION(+:tmp)
+       !$OMP DO REDUCTION(+:tmp_cmplx)
        do ipair=1,npair
          ibf = index_basis(1,ipair)
          jbf = index_basis(2,ipair)

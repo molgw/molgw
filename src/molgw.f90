@@ -377,6 +377,13 @@ program molgw
 
    endif
 
+   !
+   ! Transpose the 3-center eri here (if needed)
+   !
+   if( has_auxil_basis ) then
+     call setup_eri3_pair_major()
+   endif
+
    call stop_clock(timing_prescf)
 
 

@@ -119,7 +119,7 @@ subroutine output_timing_one_iter()
  real(dp)           :: time_one_iter
 !=====
 
-  time_one_iter=timing(timing_tddft_one_iter)
+  time_one_iter = get_timing(timing_tddft_one_iter)
   write(stdout,'(/,1x,a)') '**********************************'
   write(stdout,"(1x,a30,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
   write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &

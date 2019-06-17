@@ -351,6 +351,43 @@ end function negligible_basispair
 
 
 !=========================================================================
+subroutine setup_eri3_pair_major()
+ implicit none
+
+!=====
+ integer :: ipair,ibf,jbf
+!=====
+
+ if( .NOT. eri_pair_major ) return
+
+ call start_clock(timing_transpose_eri3)
+
+ call clean_allocate('3-center integrals pair-major order',eri_P,SIZE(eri_3center,DIM=2),SIZE(eri_3center,DIM=1))
+ eri_P(:,:) = TRANSPOSE(eri_3center(:,:))
+ do ipair=1,SIZE(eri_3center,DIM=2)
+   ibf = index_basis(1,ipair)
+   jbf = index_basis(2,ipair)
+   if( ibf == jbf ) eri_P(ipair,:) = eri_P(ipair,:) * 0.5_dp
+ enddo
+
+ ! If LR integrals are not needed, then skip the end of the subroutine
+ if( .NOT. ALLOCATED(eri_3center_lr) ) return
+
+ call clean_allocate('LR 3-center integrals pair-major order',eri_P_lr,SIZE(eri_3center_lr,DIM=2),SIZE(eri_3center_lr,DIM=1))
+ eri_P_lr(:,:) = TRANSPOSE(eri_3center_lr(:,:))
+ do ipair=1,SIZE(eri_3center_lr,DIM=2)
+   ibf = index_basis(1,ipair)
+   jbf = index_basis(2,ipair)
+   if( ibf == jbf ) eri_P_lr(ipair,:) = eri_P_lr(ipair,:) * 0.5_dp
+ enddo
+
+ call stop_clock(timing_transpose_eri3)
+
+
+end subroutine setup_eri3_pair_major
+
+
+!=========================================================================
 !
 ! Find negligible shell pairs with
 ! Cauchy-Schwarz inequality: (ij|1/r|kl)**2 <= (ij|1/r|ij) (kl|1/r|(kl)

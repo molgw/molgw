@@ -1164,26 +1164,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 
 
- if( eri_pair_major ) then
-   if( .NOT. is_longrange ) then
-     call clean_allocate('3-center integrals pair-major order',eri_P,SIZE(eri_3center,DIM=2),SIZE(eri_3center,DIM=1))
-     eri_P(:,:) = TRANSPOSE(eri_3center(:,:))
-     do ipair=1,SIZE(eri_3center,DIM=2)
-       ibf = index_basis(1,ipair)
-       jbf = index_basis(2,ipair)
-       if( ibf == jbf ) eri_P(ipair,:) = eri_P(ipair,:) * 0.5_dp
-     enddo
-   else
-     call clean_allocate('LR 3-center integrals pair-major order',eri_P_lr,SIZE(eri_3center_lr,DIM=2),SIZE(eri_3center_lr,DIM=1))
-     eri_P_lr(:,:) = TRANSPOSE(eri_3center_lr(:,:))
-     do ipair=1,SIZE(eri_3center_lr,DIM=2)
-       ibf = index_basis(1,ipair)
-       jbf = index_basis(2,ipair)
-       if( ibf == jbf ) eri_P_lr(ipair,:) = eri_P_lr(ipair,:) * 0.5_dp
-     enddo
-   endif
- endif
-
  call stop_clock(timing_eri_3center)
 
 
