@@ -84,7 +84,6 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
  sigma_sox(:,:,:)  = 0.0_dp
 
 
-#if 1
  write(stdout,*) 'Calculate SOX'
 
  do ispin=1,nspin
@@ -175,79 +174,6 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
  enddo
 
  call xsum_ortho(sigma_sox)
-
-#else
-
- call static_polarizability(nstate,occupation,energy,wpol)
-
- write(stdout,*) 'Calculate static SOSEX'
-
- do ispin=1,nspin
-
-   !==========================
-   do kstate=ncore_G+1,nvirtual_G-1
-     if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
-     do istate=ncore_G+1,nvirtual_G-1
-       if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
-       do bstate=ncore_G+1,nvirtual_G-1
-         if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
-
-         do mstate=nsemin,nsemax
-
-           vcoul1 = eri_eigen(mstate,istate,ispin,bstate,kstate,ispin)   &
-                   +DOT_PRODUCT( eri_3center_eigen(:,mstate,istate,ispin) , &
-                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,bstate,kstate,ispin) ) )
-!FBFB           vcoul2 = eri_eigen(istate,bstate,ispin,kstate,mstate,ispin)
-           vcoul2 = eri_eigen(istate,bstate,ispin,kstate,mstate,ispin)   &
-                   +DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,ispin) , &
-                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,kstate,mstate,ispin) ) )
-           !
-           ! calculate only the diagonal !
-           do iomega=-se%nomega,se%nomega
-             sigma_sox(iomega,mstate,ispin) = sigma_sox(iomega,mstate,ispin) &
-                 - vcoul1 * vcoul2            &
-                   / ( energy(mstate,ispin) + se%omega(iomega) - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
-           enddo
-         enddo
-
-       enddo
-     enddo
-   enddo
-
-
-   !==========================
-   do cstate=ncore_G+1,nvirtual_G-1
-     if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty) cycle
-     do jstate=ncore_G+1,nvirtual_G-1
-       if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
-       do astate=ncore_G+1,nvirtual_G-1
-         if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty) cycle
-
-         do mstate=nsemin,nsemax
-
-           vcoul1 = eri_eigen(mstate,astate,ispin,jstate,cstate,ispin)   &
-                   +DOT_PRODUCT( eri_3center_eigen(:,mstate,astate,ispin) , &
-                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,jstate,cstate,ispin) ) )
-!FBFB           vcoul2 = eri_eigen(astate,jstate,ispin,cstate,mstate,ispin)
-           vcoul2 = eri_eigen(astate,jstate,ispin,cstate,mstate,ispin)   &
-                   +DOT_PRODUCT( eri_3center_eigen(:,jstate,astate,ispin) , &
-                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,mstate,cstate,ispin) ) )
-           !
-           ! calculate only the diagonal !
-           do iomega=-se%nomega,se%nomega
-             sigma_sox(iomega,mstate,ispin) = sigma_sox(iomega,mstate,ispin) &
-                 - vcoul1 * vcoul2            &
-                   / ( energy(mstate,ispin) + se%omega(iomega) - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
-           enddo
-         enddo
-
-       enddo
-     enddo
-   enddo
-
-
- enddo
-#endif
 
 
  if( calc_type%selfenergy_approx == G0W0GAMMA0 ) then
