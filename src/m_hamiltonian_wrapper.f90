@@ -226,7 +226,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
                                               c_matrix_cmplx,         &
                                               p_matrix_cmplx,         &
                                               hamiltonian_hxc_cmplx,  &
-                                              etddft)
+                                              en_tddft)
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -234,17 +234,17 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
  complex(dp),intent(in)     :: p_matrix_cmplx(:,:,:)
  complex(dp),intent(out)    :: hamiltonian_hxc_cmplx(:,:,:)
- type(energy_contributions),intent(inout) :: etddft
+ type(energy_contributions),intent(inout) :: en_tddft
 !=====
  integer                    :: nstate
  integer                    :: ispin
  real(dp),allocatable       :: hamiltonian_tmp(:,:,:)
 !=====
 
- etddft%hart    = 0.0_dp
- etddft%xc      = 0.0_dp
- etddft%exx     = 0.0_dp
- etddft%exx_hyb = 0.0_dp
+ en_tddft%hart    = 0.0_dp
+ en_tddft%xc      = 0.0_dp
+ en_tddft%exx     = 0.0_dp
+ en_tddft%exx_hyb = 0.0_dp
 
  nstate = SIZE(occupation,DIM=1)
 
@@ -257,10 +257,10 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ! Exchange contribution to the Hamiltonian
  !
  if( calc_type%need_exchange ) then
-   call setup_exchange_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,etddft%exx)
+   call setup_exchange_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en_tddft%exx)
 
    ! Rescale with alpha_hybrid for hybrid functionals
-   etddft%exx_hyb = alpha_hybrid * etddft%exx
+   en_tddft%exx_hyb = alpha_hybrid * en_tddft%exx
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
  endif
 
@@ -269,7 +269,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    ! Hartree contribution to the Hamiltonian
    ! Hartree contribution is real and depends only on real(p_matrix) but we pass the full p_matrix_cmplx any way
    !
-   call setup_hartree_ri(p_matrix_cmplx,hamiltonian_tmp(:,:,1),etddft%hart)
+   call setup_hartree_ri(p_matrix_cmplx,hamiltonian_tmp(:,:,1),en_tddft%hart)
 
  do ispin=1,nspin
    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)
@@ -283,7 +283,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ! DFT XC potential is added here
  !
  if( calc_type%is_dft ) then
-   call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix_cmplx,hamiltonian_tmp,etddft%xc)
+   call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix_cmplx,hamiltonian_tmp,en_tddft%xc)
 
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:)
  endif
