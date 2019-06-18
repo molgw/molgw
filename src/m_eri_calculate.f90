@@ -1183,10 +1183,8 @@ subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vh
  integer                      :: n3c,n4c
  integer                      :: nk,nl
  integer                      :: amk,aml
- integer                      :: kbf,lbf
+ integer                      :: ibf,jbf,kbf,lbf
  real(dp),allocatable         :: integrals(:,:,:)
- integer                      :: ilocal,jlocal,iglobal,jglobal
- integer                      :: ng_rho
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am3,am4
@@ -1197,10 +1195,7 @@ subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vh
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
- ng_rho = SIZE(coeff_rho)
 
- ! Nullify vhrho just for safety.
- ! I guess this is useless.
  vhrho(:,:) = 0.0_dp
 
  do klshellpair=1,nshellpair
@@ -1218,7 +1213,7 @@ subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vh
    am4 = aml
    n3c = number_basis_function_am( 'CART' , amk )
    n4c = number_basis_function_am( 'CART' , aml )
-   ng1 = ng_rho
+   ng1 = SIZE(coeff_rho)
    ng3 = basis%shell(kshell)%ng
    ng4 = basis%shell(lshell)%ng
    allocate(alpha1(ng1),alpha3(ng3),alpha4(ng4))
@@ -1245,14 +1240,14 @@ subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vh
 
    do lbf=1,nl
      do kbf=1,nk
-       iglobal = basis%shell(kshell)%istart+kbf-1
-       jglobal = basis%shell(lshell)%istart+lbf-1
-       ilocal = iglobal
-       jlocal = jglobal
+       ibf = basis%shell(kshell)%istart+kbf-1
+       jbf = basis%shell(lshell)%istart+lbf-1
        if( kshell == lshell ) then ! To avoid double-counting
-         vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)  * 0.5_dp
+         vhrho(ibf,jbf) = integrals(1,kbf,lbf)
+         vhrho(jbf,ibf) = integrals(1,kbf,lbf)
        else
-         vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)
+         vhrho(ibf,jbf) = integrals(1,kbf,lbf)
+         vhrho(jbf,ibf) = integrals(1,kbf,lbf)
        endif
      enddo
    enddo

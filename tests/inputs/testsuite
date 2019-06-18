@@ -124,7 +124,7 @@ gKS LUMO energy           ,  -1.700107         , 0 , 1.0e-4
 h2o_scalapack.in          , H2O molecule within PBE0 with possibly SCALAPACK
 gKS HOMO energy           ,   -9.039335        , 0 , 1.0e-4
 gKS LUMO energy           ,   -0.359596        , 0 , 1.0e-4
-Hartree Energy            ,   46.6386768738    , 0 , 1.0e-7
+Hartree Energy            ,   46.6386768738    , 0 , 5.0e-7   # Loosened criterium
 Exchange Energy           ,   -2.2284166998    , 0 , 1.0e-7
 XC Energy                 ,   -7.0110900711    , 0 , 1.0e-7
 Total Energy              ,  -76.3812141506    , 0 , 1.0e-7

@@ -1,6 +1,7 @@
 &molgw
  scf='pbe0'
  nspin=1
+ tolscf=1.0e-12
 
  basis='cc-pVTZ'
  auxil_basis='cc-pVTZ-RI'
