@@ -46,13 +46,7 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
      call setup_hartree_oneshell(basis,p_matrix,hhartree,ehartree)
    endif
  else
-   if( parallel_ham ) then
-     if( parallel_buffer ) then
-       call setup_hartree_ri_buffer_sca(p_matrix,hhartree,ehartree)
-     endif
-   else
-     call setup_hartree_ri(p_matrix,hhartree,ehartree)
-   endif
+   call setup_hartree_ri(p_matrix,hhartree,ehartree)
  endif
 
  if( PRESENT(eh) ) eh = ehartree
@@ -85,27 +79,18 @@ subroutine calculate_exchange_real(basis,p_matrix,hexx,ex,occupation,c_matrix)
      eexx = 0.0_dp
    endif
  else
-   if( parallel_ham ) then
-     if( parallel_buffer ) then
-       call setup_exchange_ri_buffer_sca(occupation,c_matrix,p_matrix,hexx,eexx)
-     else
-       call die('Exchange with fully distributed hamiltonian: case not implemented yet')
-     endif
+   if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
+     call setup_exchange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
    else
+     !
+     ! c_matrix is not provided, then calculate it from the square-root of P
+     allocate(c_matrix_tmp,MOLD=p_matrix)
+     allocate(occupation_tmp(SIZE(p_matrix,DIM=1),nspin))
+     call get_c_matrix_from_p_matrix(p_matrix,c_matrix_tmp,occupation_tmp)
+     call setup_exchange_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
+     deallocate(c_matrix_tmp)
+     deallocate(occupation_tmp)
 
-     if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
-       call setup_exchange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
-     else
-       !
-       ! c_matrix is not provided, then calculate it from the square-root of P
-       allocate(c_matrix_tmp,MOLD=p_matrix)
-       allocate(occupation_tmp(SIZE(p_matrix,DIM=1),nspin))
-       call get_c_matrix_from_p_matrix(p_matrix,c_matrix_tmp,occupation_tmp)
-       call setup_exchange_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
-       deallocate(c_matrix_tmp)
-       deallocate(occupation_tmp)
-
-     endif
    endif
  endif
 
@@ -133,27 +118,18 @@ subroutine calculate_exchange_lr(basis,p_matrix,hexx,ex,occupation,c_matrix)
  if( .NOT. has_auxil_basis ) then
    call setup_exchange_longrange(p_matrix,hexx,eexx)
  else
-   if( parallel_ham ) then
-     if( parallel_buffer ) then
-       call setup_exchange_longrange_ri_buffer_sca(occupation,c_matrix,p_matrix,hexx,eexx)
-     else
-       call die('Exchange with fully distributed hamiltonian: case not implemented yet')
-     endif
+   if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
+     call setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
    else
+     !
+     ! c_matrix is not provided, then calculate it from the square-root of P
+     allocate(c_matrix_tmp,MOLD=p_matrix)
+     allocate(occupation_tmp(SIZE(p_matrix,DIM=1),nspin))
+     call get_c_matrix_from_p_matrix(p_matrix,c_matrix_tmp,occupation_tmp)
+     call setup_exchange_longrange_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
+     deallocate(c_matrix_tmp)
+     deallocate(occupation_tmp)
 
-     if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
-       call setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
-     else
-       !
-       ! c_matrix is not provided, then calculate it from the square-root of P
-       allocate(c_matrix_tmp,MOLD=p_matrix)
-       allocate(occupation_tmp(SIZE(p_matrix,DIM=1),nspin))
-       call get_c_matrix_from_p_matrix(p_matrix,c_matrix_tmp,occupation_tmp)
-       call setup_exchange_longrange_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
-       deallocate(c_matrix_tmp)
-       deallocate(occupation_tmp)
-
-     endif
    endif
  endif
 

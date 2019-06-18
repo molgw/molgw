@@ -25,6 +25,7 @@ module m_scf_loop
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
  use m_hamiltonian_wrapper
+ use m_hamiltonian_cmplx
  use m_selfenergy_tools
  use m_dm_mbpt
 
@@ -36,7 +37,6 @@ contains
 !=========================================================================
 subroutine scf_loop(is_restart,&
                     basis,&
-                    nstate,m_ham,n_ham,m_c,n_c,&
                     x_matrix,s_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
                     occupation, &
@@ -48,17 +48,17 @@ subroutine scf_loop(is_restart,&
 !=====
  logical,intent(in)                 :: is_restart
  type(basis_set),intent(in)         :: basis
- integer,intent(in)                 :: nstate,m_ham,n_ham,m_c,n_c
- real(dp),intent(in)                :: x_matrix(m_c,n_c)
- real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
- real(dp),intent(in)                :: hamiltonian_kinetic(m_ham,n_ham)
- real(dp),intent(in)                :: hamiltonian_nucleus(m_ham,n_ham)
- real(dp),intent(inout)             :: occupation(nstate,nspin)
- real(dp),intent(out)               :: energy(nstate,nspin)
+ real(dp),intent(in)                :: x_matrix(:,:)
+ real(dp),intent(in)                :: s_matrix(:,:)
+ real(dp),intent(in)                :: hamiltonian_kinetic(:,:)
+ real(dp),intent(in)                :: hamiltonian_nucleus(:,:)
+ real(dp),intent(inout)             :: occupation(:,:)
+ real(dp),intent(out)               :: energy(:,:)
  real(dp),allocatable,intent(inout) :: hamiltonian_fock(:,:,:)
  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
 !=====
- type(spectral_function)    :: wpol
+ integer                 :: nstate
+ type(spectral_function) :: wpol
  character(len=64)       :: restart_filename
  logical                 :: is_converged,stopfile_found
  integer                 :: file_density_matrix
@@ -73,12 +73,14 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: hfock_restart(:,:,:)
  real(dp),allocatable    :: c_matrix_restart(:,:,:)
- real(dp)                :: hartree_ii(nstate,nspin),exchange_ii(nstate,nspin)
- real(dp)                :: energy_restart(nstate,nspin)
+ real(dp),allocatable    :: hartree_ii(:,:),exchange_ii(:,:)
+ real(dp),allocatable    :: energy_restart(:,:)
 !=====
 
 
  call start_clock(timing_scf)
+
+ nstate = SIZE(x_matrix,DIM=2)
 
  ! Old Fock operator will be updated
  ! Get rid of it!
@@ -86,15 +88,15 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(m_ham,n_ham,m_c,n_c,basis%nbf,nstate)
+ call init_scf(basis%nbf,nstate)
 
  !
  ! Allocate the main arrays
- call clean_allocate('Total Hamiltonian H',hamiltonian,m_ham,n_ham,nspin)
- call clean_allocate('Hartree potential Vh',hamiltonian_hartree,m_ham,n_ham)
- call clean_allocate('Exchange operator Sigx',hamiltonian_exx,m_ham,n_ham,nspin)
- call clean_allocate('XC operator Vxc',hamiltonian_xc,m_ham,n_ham,nspin)
- call clean_allocate('Density matrix P',p_matrix,m_ham,n_ham,nspin)
+ call clean_allocate('Total Hamiltonian H',hamiltonian,basis%nbf,basis%nbf,nspin)
+ call clean_allocate('Hartree potential Vh',hamiltonian_hartree,basis%nbf,basis%nbf)
+ call clean_allocate('Exchange operator Sigx',hamiltonian_exx,basis%nbf,basis%nbf,nspin)
+ call clean_allocate('XC operator Vxc',hamiltonian_xc,basis%nbf,basis%nbf,nspin)
+ call clean_allocate('Density matrix P',p_matrix,basis%nbf,basis%nbf,nspin)
 
 
  if( calc_type%is_dft ) then
@@ -105,11 +107,7 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Setup the density matrix: p_matrix
- if( parallel_ham ) then
-   call setup_density_matrix_sca(c_matrix,occupation,p_matrix)
- else
-   call setup_density_matrix(c_matrix,occupation,p_matrix)
- endif
+ call setup_density_matrix(c_matrix,occupation,p_matrix)
 
 
  !
@@ -162,19 +160,7 @@ subroutine scf_loop(is_restart,&
    ! DFT XC potential is added here
    ! hamiltonian_xc is used as a temporary matrix
    if( calc_type%is_dft ) then
-
-     if( parallel_ham ) then
-       if( parallel_buffer ) then
-         call dft_exc_vxc_buffer_sca(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_xc,en%xc)
-       else
-         call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
-         hamiltonian_xc(:,:,:) = 0.0_dp
-         en%xc = 0.0_dp
-       endif
-     else
-       call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_xc,en%xc)
-     endif
-
+     call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_xc,en%xc)
    endif
 
    !
@@ -207,7 +193,6 @@ subroutine scf_loop(is_restart,&
         .AND. calc_type%selfenergy_technique == QS  &
         .AND. ( iscf > 5 .OR. is_restart ) ) then
 
-     if( parallel_ham ) call die('QSGW not implemented with parallel_ham')
 
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
@@ -221,7 +206,7 @@ subroutine scf_loop(is_restart,&
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
 
-     allocate(matrix_tmp(m_ham,n_ham,nspin))
+     allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
      call gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)
 
      call dump_out_matrix(.FALSE.,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
@@ -236,13 +221,12 @@ subroutine scf_loop(is_restart,&
    ! QSPT2
    if( calc_type%selfenergy_approx == PT2 .AND. calc_type%selfenergy_technique == QS .AND. ( iscf > 5 .OR. is_restart ) ) then
 
-     if( parallel_ham ) call die('QSPT2 not implemented with parallel_ham')
 
      !
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
 
-     allocate(matrix_tmp(m_ham,n_ham,nspin))
+     allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
      call pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,matrix_tmp,en%mp2)
 
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
@@ -269,16 +253,13 @@ subroutine scf_loop(is_restart,&
 
    ! Make sure all the MPI threads have the exact same Hamiltonian
    ! It helps stabilizing the SCF cycles in parallel
-   if( .NOT. parallel_ham ) then
-     call xsum_world(hamiltonian)
-     hamiltonian(:,:,:) = hamiltonian(:,:,:) / REAL(nproc_world,dp)
-   endif
+   call xsum_world(hamiltonian)
+   hamiltonian(:,:,:) = hamiltonian(:,:,:) / REAL(nproc_world,dp)
 
    !
    ! If requested, the level shifting procedure is triggered:
    ! All the unoccupied states are penalized with an energy =  level_shifting_energy
    if( level_shifting_energy > 1.0e-6_dp ) then
-     if( parallel_ham ) call die('level_shifting: not implemented with parallel_ham')
      call level_shifting_up(s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
    endif
 
@@ -291,19 +272,14 @@ subroutine scf_loop(is_restart,&
    ! Generalized eigenvalue problem with overlap matrix S
    ! H \varphi = E S \varphi
    ! save the old eigenvalues
-   if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(desc_ham,hamiltonian,desc_c,x_matrix,energy,c_matrix)
-   else
-     ! This subroutine works with or without scalapack
-     call diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matrix)
-   endif
+   ! This subroutine works with or without scalapack
+   call diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matrix)
 
    !
    ! When level_shifting is used, the unoccupied state energies have to be brought
    ! back to their original value,
    ! So that the "physical" energies are written down
    if( level_shifting_energy > 1.0e-6_dp ) then
-     if( parallel_ham ) call die('level_shifting: not implemented with parallel_ham')
      call level_shifting_down(s_matrix,c_matrix,occupation,level_shifting_energy,energy,hamiltonian)
    endif
 
@@ -336,11 +312,7 @@ subroutine scf_loop(is_restart,&
    !
    ! Setup the new density matrix: p_matrix
    ! Save the old one for the convergence criterium
-   if( parallel_ham ) then
-     call setup_density_matrix_sca(c_matrix,occupation,p_matrix)
-   else
-     call setup_density_matrix(c_matrix,occupation,p_matrix)
-   endif
+   call setup_density_matrix(c_matrix,occupation,p_matrix)
 
 
    !
@@ -357,8 +329,7 @@ subroutine scf_loop(is_restart,&
 
    !
    ! Write down a "small" RESTART file at each step
-   ! Skip writing when parallel_ham since all the information is not available on the master proc.
-   if( print_restart_ .AND. .NOT. parallel_ham ) then
+   if( print_restart_ ) then
      call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
      call get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
      call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
@@ -463,14 +434,6 @@ subroutine scf_loop(is_restart,&
  write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
 
 
- !
- ! Deallocate the buffer here
- if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
- !
- ! At this point, all procs get the complete c_matrix
- !
- call form_c_matrix_global(basis%nbf,nstate,c_matrix)
-
 
  !
  ! Single excitation term
@@ -481,7 +444,7 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Evaluate spin contamination
- if( .NOT. parallel_ham ) call evaluate_s2_operator(occupation,c_matrix,s_matrix)
+ call evaluate_s2_operator(occupation,c_matrix,s_matrix)
 
 
  !
@@ -543,17 +506,7 @@ subroutine calculate_hamiltonian_hxc(basis,nstate,occupation,c_matrix,p_matrix,h
  if( calc_type%is_dft ) then
    hamiltonian_spin_tmp(:,:,:) = 0.0_dp
 
-   if( parallel_ham ) then
-     if( parallel_buffer ) then
-       call dft_exc_vxc_buffer_sca(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
-     else
-       call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
-       hamiltonian_spin_tmp(:,:,:) = 0.0_dp
-       exc = 0.0_dp
-     endif
-   else
-     call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
-   endif
+   call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
 
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:)
  endif
@@ -594,31 +547,21 @@ end subroutine calculate_hamiltonian_hxc
 
 !=========================================================================
 subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
-                                              nstate,                 &
-                                              nocc,                   &
-                                              m_ham,                  &
-                                              n_ham,                  &
-                                              m_c,                    &
-                                              n_c,                    &
                                               occupation,             &
                                               c_matrix_cmplx,         &
                                               p_matrix_cmplx,         &
                                               hamiltonian_hxc_cmplx)
- use m_hamiltonian_cmplx
  implicit none
 
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: m_ham,n_ham
- integer,intent(in)         :: nstate
- integer,intent(in)         :: nocc
- integer,intent(in)         :: m_c,n_c
- real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dp),intent(in)    :: c_matrix_cmplx(m_c,n_c,nspin)
- complex(dp),intent(in)    :: p_matrix_cmplx(m_ham,n_ham,nspin)
- complex(dp),intent(out)   :: hamiltonian_hxc_cmplx(m_ham,n_ham,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+ complex(dp),intent(in)     :: p_matrix_cmplx(:,:,:)
+ complex(dp),intent(out)    :: hamiltonian_hxc_cmplx(:,:,:)
 !=====
- integer         :: ispin
- real(dp)        :: hamiltonian_tmp(m_ham,n_ham,nspin)
+ integer                    :: nstate
+ integer                    :: ispin
+ real(dp),allocatable       :: hamiltonian_tmp(:,:,:)
 !=====
 
  en%hart    = 0.0_dp
@@ -626,7 +569,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  en%exx     = 0.0_dp
  en%exx_hyb = 0.0_dp
 
-! if ( parallel_ham ) call die('parallel_ham not yet implemented for tddft propagator')
+ nstate = SIZE(occupation,DIM=1)
 
  ! Initialize real arrays
 
@@ -698,51 +641,9 @@ subroutine get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamilton
  real(dp),allocatable   :: hfock_local(:,:,:)
 !=====
 
- if( parallel_ham ) then
-
-   call clean_allocate('Local Fock operator F',hfock_local,SIZE(hamiltonian,DIM=1),SIZE(hamiltonian,DIM=2),nspin)
-   hfock_local(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
-   call gather_distributed_copy(desc_ham,hfock_local,hamiltonian_fock)
-   call clean_deallocate('Local Fock operator F',hfock_local)
-
- else
-   hamiltonian_fock(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
-
- endif
+ hamiltonian_fock(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
 
 end subroutine get_fock_operator
-
-
-!=========================================================================
-subroutine form_c_matrix_global(nbf,nstate,c_matrix)
- implicit none
-
- integer,intent(in)                 :: nbf,nstate
- real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
-!=====
- real(dp),allocatable :: c_matrix_local(:,:,:)
-!=====
-
- if( .NOT. parallel_ham ) return    ! Nothing to do
-
- write(stdout,'(/,1x,a)') 'Form the C matrix on all procs'
-
-
- call clean_allocate('Local wfn coeff C',c_matrix_local,SIZE(c_matrix,DIM=1),SIZE(c_matrix,DIM=2),nspin)
-! if( cntxt_ham > 0 ) then
- c_matrix_local(:,:,:) = c_matrix(:,:,:)
-! endif
- call clean_deallocate('Wavefunctions C',c_matrix)
- call clean_allocate('Wavefunctions C',c_matrix,nbf,nstate,nspin)
-
- call gather_distributed_copy(desc_c,c_matrix_local,c_matrix)
-
- call clean_deallocate('Local wfn coeff C',c_matrix_local)
-
-
- write(stdout,'(1x,a)') 'C matrix on all procs formed'
-
-end subroutine form_c_matrix_global
 
 
 !=========================================================================

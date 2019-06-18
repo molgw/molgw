@@ -900,12 +900,6 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
 
  !--Hamiltonian - Hartree Exchange Correlation---
  call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
-                                         nstate,                   &
-                                         nocc,                     &
-                                         basis%nbf,                &
-                                         basis%nbf,                &
-                                         basis%nbf,                &
-                                         nocc,                     &
                                          occupation,               &
                                          c_matrix_cmplx,           &
                                          p_matrix_cmplx,           &

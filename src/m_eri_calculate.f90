@@ -1171,14 +1171,12 @@ end subroutine calculate_eri_3center_scalapack
 
 
 !=========================================================================
-subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho,alpha_rho,vhrho)
+subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vhrho)
  implicit none
  type(basis_set),intent(in)   :: basis
- integer,intent(in)           :: mv,nv
  real(dp),intent(in)          :: x0_rho(3)
- integer,intent(in)           :: ng_rho
- real(dp),intent(in)          :: coeff_rho(ng_rho),alpha_rho(ng_rho)
- real(dp),intent(inout)       :: vhrho(mv,nv)
+ real(dp),intent(in)          :: coeff_rho(:),alpha_rho(:)
+ real(dp),intent(inout)       :: vhrho(:,:)
 !=====
  integer                      :: kshell,lshell
  integer                      :: klshellpair
@@ -1188,6 +1186,7 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
  integer                      :: kbf,lbf
  real(dp),allocatable         :: integrals(:,:,:)
  integer                      :: ilocal,jlocal,iglobal,jglobal
+ integer                      :: ng_rho
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am3,am4
@@ -1198,15 +1197,11 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
- if( parallel_ham .AND. parallel_buffer ) then
-   if( mv /= basis%nbf .OR. nv /= basis%nbf ) call die('calculate_eri_approximate_hartree: wrong dimension for the buffer')
- endif
+ ng_rho = SIZE(coeff_rho)
 
  ! Nullify vhrho just for safety.
  ! I guess this is useless.
- if( .NOT. ( parallel_ham .AND. parallel_buffer )  ) then
-   vhrho(:,:) = 0.0_dp
- endif
+ vhrho(:,:) = 0.0_dp
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -1248,44 +1243,20 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
    call transform_libint_to_molgw(basis%gaussian_type,0,basis%gaussian_type,amk,aml,int_shell,integrals)
 
 
-
-   if( parallel_ham .AND. parallel_buffer ) then
-     do lbf=1,nl
-       do kbf=1,nk
-         iglobal = basis%shell(kshell)%istart+kbf-1
-         jglobal = basis%shell(lshell)%istart+lbf-1
-         ilocal = iglobal
-         jlocal = jglobal
-         if( kshell == lshell ) then ! To avoid double-counting
-           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)  * 0.5_dp
-         else
-           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)
-         endif
-       enddo
+   do lbf=1,nl
+     do kbf=1,nk
+       iglobal = basis%shell(kshell)%istart+kbf-1
+       jglobal = basis%shell(lshell)%istart+lbf-1
+       ilocal = iglobal
+       jlocal = jglobal
+       if( kshell == lshell ) then ! To avoid double-counting
+         vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)  * 0.5_dp
+       else
+         vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)
+       endif
      enddo
+   enddo
 
-   else
-
-     do lbf=1,nl
-       do kbf=1,nk
-         iglobal = basis%shell(kshell)%istart+kbf-1
-         jglobal = basis%shell(lshell)%istart+lbf-1
-         ilocal = rowindex_global_to_local('H',iglobal)
-         jlocal = colindex_global_to_local('H',jglobal)
-         if( ilocal*jlocal /= 0 ) then
-           vhrho(ilocal,jlocal) = integrals(1,kbf,lbf)
-         endif
-         ! And the symmetric too
-         iglobal = basis%shell(lshell)%istart+lbf-1
-         jglobal = basis%shell(kshell)%istart+kbf-1
-         ilocal = rowindex_global_to_local('H',iglobal)
-         jlocal = colindex_global_to_local('H',jglobal)
-         if( ilocal*jlocal /= 0 ) then
-           vhrho(ilocal,jlocal) = integrals(1,kbf,lbf)
-         endif
-       enddo
-     enddo
-   endif
 
 
    deallocate(integrals)

@@ -71,12 +71,10 @@ program molgw
  real(dp),allocatable    :: hamiltonian_fock(:,:,:)
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: x_matrix(:,:)
- real(dp),allocatable    :: c_matrix(:,:,:),c_matrix_tmp(:,:,:)
+ real(dp),allocatable    :: c_matrix(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc(:,:,:)
- integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
- integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix
 !=====
 
  !
@@ -143,10 +141,10 @@ program molgw
 
    !
    ! SCALAPACK distribution that depends on the system specific size, parameters etc.
+   block 
+   integer :: m_ham,n_ham
    call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
-   if( m_ham /= basis%nbf .OR. n_ham /= basis%nbf ) then
-     call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
-   endif
+   end block
 
    if( print_rho_grid_ ) call dm_dump(basis)
 
@@ -204,48 +202,25 @@ program molgw
    !
    ! Allocate the main arrays
    ! 2D arrays
-   call clean_allocate('Overlap matrix S',s_matrix,m_ham,n_ham)
-   call clean_allocate('Kinetic operator T',hamiltonian_kinetic,m_ham,n_ham)
-   call clean_allocate('Nucleus operator V',hamiltonian_nucleus,m_ham,n_ham)
+   call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
+   call clean_allocate('Kinetic operator T',hamiltonian_kinetic,basis%nbf,basis%nbf)
+   call clean_allocate('Nucleus operator V',hamiltonian_nucleus,basis%nbf,basis%nbf)
    call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin) ! Never distributed
 
-
-   ! Allocate the only complete array buffer basis%nbf x basis%nbf in case of SCALAPACK
-   if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
 
    !
    ! Build up the overlap matrix S
    ! S only depends onto the basis set
-   if( parallel_ham ) then
-     call setup_overlap_buffer_sca(basis,s_matrix)
-   else
-     call setup_overlap(basis,s_matrix)
-   endif
+   call setup_overlap(basis,s_matrix)
 
    !
    ! Calculate the square root inverse of the overlap matrix S
    ! Eliminate those eigenvalues that are too small in order to stabilize the
    ! calculation
    !
-   ! Crucial parameters are defined here: nstate
-   !                                      m_c and n_c
-   !
-   if( parallel_ham ) then
-     call setup_sqrt_overlap_sca(min_overlap,desc_ham,s_matrix,desc_c,nstate,x_matrix)
-     m_c    = SIZE( x_matrix , DIM=1 )
-     n_c    = SIZE( x_matrix , DIM=2 )
+   ! A crucial parameter is defined here: nstate
+   call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix)
 
-   else
-     call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix)
-
-     m_c = basis%nbf
-     n_c = nstate
-
-   endif
-
-   if( m_c /= basis%nbf .OR. n_c /= nstate ) then
-     call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
-   endif
 
    ! Allocate the nstate arrays: c_matrix, occupation, energy
    ! 2D arrays
@@ -274,37 +249,20 @@ program molgw
    if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
    if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
 
-   if( parallel_ham .AND. .NOT. is_big_restart ) then
-     call clean_allocate('Wavefunctions C',c_matrix_tmp,m_c,n_c,nspin)
-     call create_distributed_copy(c_matrix,desc_c,c_matrix_tmp)
-     call clean_deallocate('Wavefunctions C',c_matrix)
-     call move_alloc(c_matrix_tmp,c_matrix)
-   endif
 
    !
    ! Calculate the parts of the hamiltonian that does not change along
    ! with the SCF cycles
    !
    ! Kinetic energy contribution
-   if( parallel_ham ) then
-     call setup_kinetic_buffer_sca(basis,hamiltonian_kinetic)
-   else
-     call setup_kinetic(basis,hamiltonian_kinetic)
-   endif
+   call setup_kinetic(basis,hamiltonian_kinetic)
 
    !
    ! Nucleus-electron interaction
-   if( parallel_ham ) then
-     call setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
-     if( nelement_ecp > 0 ) then
-       call die('ECP not implemented with SCALAPACK yet. Set scalapack_nprow = scalapack_npcol to 1.')
-     endif
-   else
-     call setup_nucleus(basis,hamiltonian_nucleus)
+   call setup_nucleus(basis,hamiltonian_nucleus)
 
-     if( nelement_ecp > 0 ) then
-       call setup_nucleus_ecp(basis,hamiltonian_nucleus)
-     endif
+   if( nelement_ecp > 0 ) then
+     call setup_nucleus_ecp(basis,hamiltonian_nucleus)
    endif
 
    !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
@@ -318,7 +276,6 @@ program molgw
    if( is_basis_restart ) then
      !
      ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-     if( parallel_ham ) call die('basis_restart not implemented with distributed hamiltonian')
      call issue_warning('basis restart is not fully implemented: use with care')
      call diagonalize_hamiltonian_scalapack(hamiltonian_fock,x_matrix,energy,c_matrix)
    endif
@@ -337,38 +294,26 @@ program molgw
 
    if( .NOT. is_restart) then
 
-     allocate(hamiltonian_tmp(m_ham,n_ham,1))
+     allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
 
      select case(TRIM(init_hamiltonian))
      case('GUESS')
        !
        ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
        !
-       ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
-       if( parallel_ham ) then
-         if( parallel_buffer ) then
-           call dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
-         else
-           call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
-         endif
-       else
-         call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
-       endif
+       ! Calculate a very approximate vhxc based on simple gaussians density placed on atoms
+       call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
 
        hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
      case('CORE')
        hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+
      case default
        call die('molgw: init_hamiltonian option is not valid')
      end select
 
-
      write(stdout,'(/,a)') ' Approximate hamiltonian'
-     if( parallel_ham ) then
-       call diagonalize_hamiltonian_sca(desc_ham,hamiltonian_tmp(:,:,1:1),desc_c,x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-     else
-       call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-     endif
+     call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
 
      deallocate(hamiltonian_tmp)
 
@@ -399,14 +344,11 @@ program molgw
    if( .NOT. is_big_restart .AND. nscf > 0 ) then
      call scf_loop(is_restart,                                     &
                    basis,                                          &
-                   nstate,m_ham,n_ham,m_c,n_c,                     &
                    x_matrix,s_matrix,                              &
                    hamiltonian_kinetic,hamiltonian_nucleus,        &
                    occupation,energy,                              &
                    hamiltonian_fock,                               &
                    c_matrix)
-   else
-     if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
    endif
 
 
