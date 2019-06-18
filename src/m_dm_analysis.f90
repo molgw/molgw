@@ -44,9 +44,9 @@ module m_dm_analysis
  use m_spectral_function
  use m_hamiltonian_tools
  use m_hamiltonian_onebody
- use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_virtual_orbital_space
+ use m_density_tools
 
 
  integer,parameter,private :: BATCH_SIZE = 128

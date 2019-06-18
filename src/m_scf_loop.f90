@@ -23,7 +23,6 @@ module m_scf_loop
  use m_spectral_function
  use m_hamiltonian_tools
  use m_hamiltonian_twobodies
- use m_hamiltonian_buffer
  use m_hamiltonian_wrapper
  use m_hamiltonian_cmplx
  use m_selfenergy_tools

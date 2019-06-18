@@ -43,7 +43,6 @@ program molgw
  use m_dft_grid
  use m_spectral_function
  use m_hamiltonian_onebody
- use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_selfenergy_evaluation
  use m_scf_loop

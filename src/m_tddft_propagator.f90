@@ -14,7 +14,6 @@ module m_tddft_propagator
  use m_memory
  use m_hamiltonian_tools
  use m_hamiltonian_onebody
- use m_hamiltonian_buffer
  use m_hamiltonian_cmplx
  use m_inputparam
  use m_dft_grid
