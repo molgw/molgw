@@ -1,7 +1,7 @@
 &molgw
  nspin=2
  scf='b3lyp'
- tolscf=1.0e-10
+ tolscf=1.0e-14
  min_overlap=1.0e-3
 
  scalapack_nprow=1

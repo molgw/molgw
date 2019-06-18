@@ -1,6 +1,6 @@
 &molgw
  scf='bhandhlyp'
- tolscf=1.0e-10
+ tolscf=1.0e-14
  nscf=50
 
  basis='aug-cc-pVDZ'

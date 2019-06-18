@@ -1,5 +1,6 @@
 &molgw
  scf='HF'
+ tolscf=1.0e-12
 
  basis='cc-pVDZ_gaussian'
  auxil_basis='cc-pVDZ-RI'

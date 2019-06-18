@@ -1,5 +1,6 @@
 &molgw
  scf='hf'
+ tolscf=1.0e-12
 
  basis='6-31G'
 
