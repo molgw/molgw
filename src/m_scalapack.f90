@@ -17,7 +17,7 @@ module m_scalapack
  use m_warning
  use m_mpi
  use m_linear_algebra
-#ifdef HAVE_MPI
+#if defined(HAVE_MPI)
  use mpi
 #endif
 
@@ -2528,10 +2528,6 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  iprow_ham = 0
  ipcol_ham = 0
 
- comm_local  = comm_world
- nproc_local = nproc_world
- rank_local  = rank_world
-
 
 
  !
@@ -2601,8 +2597,6 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  iprow_ham = 0
  ipcol_ham = 0
 
- nproc_local = 1
- rank_local  = 0
 
 
 #endif
