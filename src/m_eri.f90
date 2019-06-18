@@ -16,6 +16,8 @@ module m_eri
  use m_timing
  use m_cart_to_pure
  use m_libint_tools
+ use m_scalapack
+ use m_inputparam,only: integral_level
 
  logical,parameter :: eri_pair_major = .TRUE.
 
@@ -80,7 +82,6 @@ contains
 
 !=========================================================================
 subroutine prepare_eri(basis)
- use m_inputparam,only: integral_level
  implicit none
 !=====
  type(basis_set),intent(in) :: basis
@@ -729,7 +730,6 @@ end function cost_function_eri
 
 !=========================================================================
 subroutine distribute_auxil_basis(nbf_auxil_basis)
- use m_scalapack
  implicit none
 
  integer,intent(in)  :: nbf_auxil_basis
@@ -739,44 +739,21 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
  integer :: nbf_local_iproc(0:nproc_auxil-1)
 !=====
 
- if( parallel_buffer ) then
+ ! Use SCALAPACK routines to distribute the auxiliary basis
+ ! Assume a processor grid: nproc_auxil x 1
 
-   do iproc=0,nprow_auxil-1
-     nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,MB_auxil,iproc,first_row,nprow_auxil)
-   enddo
+ nauxil_3center = NUMROC(nbf_auxil_basis,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+ allocate(ibf_auxil_g(nauxil_3center))
+ do ilocal=1,nauxil_3center
+   ibf_auxil_g(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+ enddo
+ allocate(ibf_auxil_l(nbf_auxil_basis))
+ allocate(iproc_ibf_auxil(nbf_auxil_basis))
+ do iglobal=1,nbf_auxil_basis
+   ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
+   iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
+ enddo
 
-   nauxil_3center = nbf_local_iproc(iprow_auxil)
-
-   allocate(ibf_auxil_g(nauxil_3center))
-   do ilocal=1,nauxil_3center
-     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-   enddo
-   allocate(ibf_auxil_l(nbf_auxil_basis))
-   allocate(iproc_ibf_auxil(nbf_auxil_basis))
-   do iglobal=1,nbf_auxil_basis
-     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
-     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
-   enddo
-
- else
-
-   ! Use SCALAPACK routines to distribute the auxiliary basis
-   ! Assume a processor grid: nproc_auxil x 1
-
-
-   nauxil_3center = NUMROC(nbf_auxil_basis,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-   allocate(ibf_auxil_g(nauxil_3center))
-   do ilocal=1,nauxil_3center
-     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-   enddo
-   allocate(ibf_auxil_l(nbf_auxil_basis))
-   allocate(iproc_ibf_auxil(nbf_auxil_basis))
-   do iglobal=1,nbf_auxil_basis
-     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
-     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
-   enddo
-
- endif
 
  write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
  write(stdout,'(1x,a,i4,a,i6,a)') 'Max auxiliary basis functions ',MAXVAL(nbf_local_iproc(:)),' for processor ',MAXLOC(nbf_local_iproc,DIM=1)
@@ -788,7 +765,6 @@ end subroutine distribute_auxil_basis
 
 !=========================================================================
 subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
- use m_scalapack
  implicit none
 
  integer,intent(in)  :: nbf_auxil_basis

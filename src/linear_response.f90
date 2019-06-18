@@ -48,6 +48,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  integer                   :: m_apb,n_apb,m_x,n_x
 ! SCALAPACK variables
  integer                   :: desc_apb(NDEL),desc_x(NDEL)
+ integer                   :: info
 !=====
 
  call start_clock(timing_pola)
@@ -132,7 +133,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
  ! The distribution of the two matrices have to be the same for A-B and A+B
  ! This is valid also when SCALAPACK is not used!
- call init_desc('S',nmat,nmat,desc_apb,m_apb,n_apb)
+ m_apb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+ n_apb = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_apb,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_apb),info)
  call clean_allocate('A+B',apb_matrix,m_apb,n_apb)
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
  allocate(amb_diag_rpa(nmat))
@@ -230,13 +233,15 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
  ! Prepare the second dimension of xpy_matrix and xmy_matrix
  nexc = nexcitation
- if( nexc == 0 ) nexc = wpol_out%npole_reso_apb
+ if( nexc == 0 ) nexc = nmat
 
  allocate(eigenvalue(nmat))
 
  ! Allocate (X+Y)
  ! Allocate (X-Y) only if actually needed
- call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
+ m_x = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+ n_x = NUMROC(nexc,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_x),info)
 
  call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
  if( .NOT. is_rpa .OR. is_tda ) &

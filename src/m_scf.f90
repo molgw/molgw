@@ -166,10 +166,8 @@ subroutine hamiltonian_prediction(s_matrix,x_matrix,p_matrix,ham)
  ! Set the newest values in history
  ! if already available here
  en_hist(1) = en%tot
- if( cntxt_ham > 0 ) then
-   ham_hist(:,:,:,1)      = ham(:,:,:)
-   p_matrix_hist(:,:,:,1) = p_matrix(:,:,:)
- endif
+ ham_hist(:,:,:,1)      = ham(:,:,:)
+ p_matrix_hist(:,:,:,1) = p_matrix(:,:,:)
 
 
  ! Standard Pulay DIIS prediction here !
@@ -375,7 +373,7 @@ subroutine xdiis_prediction(p_matrix,ham)
  integer,parameter :: nbfgs = 20
  real(dp) :: f_xdiis,f_xdiis_min
  real(dp),parameter :: alpha_max=0.60_dp
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  real(dp),external      :: PDLANGE
 #endif
 !=====
@@ -615,7 +613,6 @@ subroutine density_matrix_preconditioning(hkin,s_matrix,p_matrix_new)
  real(dp),allocatable     :: hkin_tmp(:,:)
  real(dp),allocatable     :: hkin_inv(:,:)
  real(dp),allocatable     :: delta_p_matrix(:,:)
- real(dp)                 :: diag(desc_ham(M_))
  integer :: mlocal,nlocal
  integer :: ilocal,jlocal
  integer :: iglobal,jglobal
@@ -632,8 +629,6 @@ subroutine density_matrix_preconditioning(hkin,s_matrix,p_matrix_new)
    call assert_experimental()
 
    nbf = SIZE(hkin,DIM=1)
-
-   if( nprow_ham * npcol_ham > 1 ) call die('not implemented yet')
 
    write(stdout,'(1x,a,f8.3)') 'Preconditioning a la Kerker for the density matrix with k0: ',kerker_k0
 

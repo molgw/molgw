@@ -21,8 +21,6 @@ module m_mpi
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_auxil     = .TRUE.
 
- logical,protected :: parallel_buffer    = .TRUE.
-
 #ifdef HAVE_SCALAPACK
  logical,parameter :: parallel_scalapack = .TRUE.
 #else
@@ -179,7 +177,6 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
   write(stdout,'(a50,6x,l1)') 'Parallelize auxiliary basis:',parallel_auxil
   write(stdout,'(a50,6x,l1)')  'Parallelize XC grid points:',parallel_grid
   write(stdout,'(a50,6x,l1)')               'Use SCALAPACK:',parallel_scalapack
-  write(stdout,'(a50,6x,l1)')    'Parallel using a buffer :',parallel_buffer
   write(stdout,'(/)')
 #endif
 

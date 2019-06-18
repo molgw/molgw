@@ -70,16 +70,6 @@ module m_scalapack
  integer,protected :: iprow_sd
  integer,protected :: ipcol_sd
 
- ! SCALAPACK grid: hamiltonian
- integer,protected :: cntxt_ham
- integer,protected :: nprow_ham
- integer,protected :: npcol_ham
- integer,protected :: iprow_ham
- integer,protected :: ipcol_ham
- integer,protected :: desc_ham(NDEL)
- integer,public    :: desc_c(NDEL)
- integer,public    :: desc_small(NDEL)
-
  ! SCALAPACK grid: row distribution
  integer,protected :: cntxt_rd
  integer,protected :: nprow_rd
@@ -93,8 +83,6 @@ module m_scalapack
  integer,protected :: npcol_cd
  integer,protected :: iprow_cd
  integer,protected :: ipcol_cd
-
- logical,protected :: parallel_ham       = .FALSE.
 
  ! Correspondence between SCALAPACK ham and MPI
  integer,allocatable,protected :: rank_sca_to_mpi(:,:)
@@ -2451,7 +2439,7 @@ subroutine init_scalapack()
 !=====
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  ! Get iproc_sca and nproc_sca
  call BLACS_PINFO( iproc_sca, nproc_sca )
@@ -2520,15 +2508,7 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  integer,allocatable :: usermap(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
-
- cntxt_ham = 1
- nprow_ham = 1
- npcol_ham = 1
- iprow_ham = 0
- ipcol_ham = 0
-
-
+#if defined(HAVE_SCALAPACK)
 
  !
  ! Create the SCALAPACK context cntxt_auxil
@@ -2587,18 +2567,6 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  iprow_auxil = 0
  ipcol_auxil = 0
 
- if( rank_world == 0 ) then
-   cntxt_ham = 1
- else
-   cntxt_ham = -1
- endif
- nprow_ham = 1
- npcol_ham = 1
- iprow_ham = 0
- ipcol_ham = 0
-
-
-
 #endif
 
 
@@ -2642,84 +2610,6 @@ end function col_block_size
 
 
 !=========================================================================
-subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
- implicit none
- character(len=1),intent(in) :: distribution
- integer,intent(in)          :: mglobal,nglobal
- integer,intent(out)         :: desc(NDEL),mlocal,nlocal
-!=====
- integer :: info
-!=====
-
-#ifdef HAVE_SCALAPACK
- select case(distribution)
- case('S')
-   mlocal = NUMROC(mglobal,block_row,iprow_sd,first_row,nprow_sd)
-   nlocal = NUMROC(nglobal,block_col,ipcol_sd,first_col,npcol_sd)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
- case('H')
-   mlocal = NUMROC(mglobal,block_row,iprow_ham,first_row,nprow_ham)
-   nlocal = NUMROC(nglobal,block_col,ipcol_ham,first_col,npcol_ham)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_ham,MAX(1,mlocal),info)
- case('R')
-   mlocal = NUMROC(mglobal,block_row,iprow_rd,first_row,nprow_rd)
-   nlocal = NUMROC(nglobal,block_col,ipcol_rd,first_col,npcol_rd)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_rd,MAX(1,mlocal),info)
- case('C')
-   mlocal = NUMROC(mglobal,block_row,iprow_cd,first_row,nprow_cd)
-   nlocal = NUMROC(nglobal,block_col,ipcol_cd,first_col,npcol_cd)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_cd,MAX(1,mlocal),info)
- case default
-   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
-   call die('BUG')
- end select
-
- write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
-
-#else
- desc(:)     = 0
- desc(M_)   = mglobal
- desc(N_)   = nglobal
- desc(LLD_) = mglobal
- mlocal = mglobal
- nlocal = nglobal
-#endif
-
-end subroutine init_desc
-
-
-
-!=========================================================================
-subroutine sum_sca_sd(real_number)
- implicit none
- real(dp),intent(inout) :: real_number
-!=====
-
-#ifdef HAVE_SCALAPACK
- call dgsum2d(cntxt_sd,'All',' ',1,1,real_number,1,-1,-1)
-#endif
-
-end subroutine sum_sca_sd
-
-
-!=========================================================================
-subroutine max_matrix_sca_sd(mmat,nmat,real_matrix)
- implicit none
- integer, intent(in)    :: mmat,nmat
- real(dp),intent(inout) :: real_matrix(mmat,nmat)
-!=====
- integer :: idum1(1),idum2(1)
-!=====
-
-#ifdef HAVE_SCALAPACK
- call dgamx2d(cntxt_sd,'All',' ',mmat,nmat,real_matrix,mmat,-1,idum1,idum2,-1,-1)
-#endif
-
-
-end subroutine max_matrix_sca_sd
-
-
-!=========================================================================
 function rowindex_global_to_local_distrib(distribution,iglobal) result(ilocal)
  implicit none
  character(len=1),intent(in) :: distribution
@@ -2736,12 +2626,6 @@ function rowindex_global_to_local_distrib(distribution,iglobal) result(ilocal)
  case('S')
    if( iprow_sd == INDXG2P(iglobal,block_row,0,first_row,nprow_sd) ) then
      ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_sd)
-   else
-     ilocal = 0
-   endif
- case('H')
-   if( iprow_ham == INDXG2P(iglobal,block_row,0,first_row,nprow_ham) ) then
-     ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_ham)
    else
      ilocal = 0
    endif
@@ -2788,12 +2672,6 @@ function colindex_global_to_local_distrib(distribution,jglobal) result(jlocal)
    else
      jlocal = 0
    endif
- case('H')
-   if( ipcol_ham == INDXG2P(jglobal,block_col,0,first_col,npcol_ham) ) then
-     jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol_ham)
-   else
-     jlocal = 0
-   endif
  case('R')
    if( ipcol_rd == INDXG2P(jglobal,block_col,0,first_col,npcol_rd) ) then
      jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol_rd)
@@ -2830,8 +2708,6 @@ function rowindex_local_to_global_distrib(distribution,ilocal) result(iglobal)
  select case(distribution)
  case('S')
    iglobal = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
- case('H')
-   iglobal = INDXL2G(ilocal,block_row,iprow_ham,first_row,nprow_ham)
  case('R')
    iglobal = INDXL2G(ilocal,block_row,iprow_rd,first_row,nprow_rd)
  case('C')
@@ -2923,8 +2799,6 @@ function colindex_local_to_global_distrib(distribution,jlocal) result(jglobal)
  select case(distribution)
  case('S')
    jglobal = INDXL2G(jlocal,block_col,ipcol_sd,first_col,npcol_sd)
- case('H')
-   jglobal = INDXL2G(jlocal,block_col,ipcol_ham,first_col,npcol_ham)
  case('R')
    jglobal = INDXL2G(jlocal,block_col,ipcol_rd,first_col,npcol_rd)
  case('C')
@@ -3041,9 +2915,6 @@ subroutine finish_scalapack()
  call BLACS_GRIDEXIT( cntxt_cd )
  call BLACS_GRIDEXIT( cntxt_rd )
  call BLACS_GRIDEXIT( cntxt_3center )
- if( parallel_ham ) then
-   if( cntxt_ham > 0 ) call BLACS_GRIDEXIT( cntxt_ham )
- endif
  if( cntxt_auxil > 0 ) call BLACS_GRIDEXIT( cntxt_auxil )
  call BLACS_EXIT( 0 )
 #endif
@@ -3052,12 +2923,12 @@ end subroutine finish_scalapack
 
 
 !=========================================================================
-subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,eigvec)
+subroutine diagonalize_davidson_sca(tolerance,desch,ham,neig,eigval,desc_vec,eigvec)
  implicit none
 
  real(dp),intent(in)  :: tolerance
  real(dp),intent(in)  :: ham(:,:)
- integer,intent(in)   :: desc_ham(NDEL),desc_vec(NDEL)
+ integer,intent(in)   :: desch(NDEL),desc_vec(NDEL)
  integer,intent(in)   :: neig
  real(dp),intent(out) :: eigval(:)
  real(dp),intent(out) :: eigvec(:,:)
@@ -3085,16 +2956,16 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
 
  eigval(:) = 0.0_dp
 
- mmat = desc_ham(M_)
+ mmat = desch(M_)
  allocate(ham_diag(mmat))
 
  !
  ! Broadcast the diagonal of H to all procs
  ham_diag(:) = 0.0_dp
  do jlocal=1,SIZE(ham,DIM=2)
-   jglobal = colindex_local_to_global(desc_ham,jlocal)
+   jglobal = colindex_local_to_global(desch,jlocal)
    do ilocal=1,SIZE(ham,DIM=1)
-     iglobal = rowindex_local_to_global(desc_ham,ilocal)
+     iglobal = rowindex_local_to_global(desch,ilocal)
 
      if( iglobal == jglobal ) ham_diag(iglobal) = ham(ilocal,jlocal)
    enddo
@@ -3142,7 +3013,7 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
 
 
 ! ab(:,1:neig) = MATMUL( ham(:,:) , bb(:,1:neig) )
- call PDGEMM('N','N',mmat,neig,mmat,1.0_dp,ham,1,1,desc_ham,bb,1,1,desc_bb,0.0_dp,ab,1,1,desc_bb)
+ call PDGEMM('N','N',mmat,neig,mmat,1.0_dp,ham,1,1,desch,bb,1,1,desc_bb,0.0_dp,ab,1,1,desc_bb)
 
 
  do icycle=1,ncycle
@@ -3228,7 +3099,7 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
    call orthogonalize_sca(desc_bb,mm+1,mm+neig,bb)
 
    !ab(:,mm+1:mm+neig) = MATMUL( ham(:,:) , bb(:,mm+1:mm+neig) )
-   call PDGEMM('N','N',mmat,neig,mmat,1.0_dp,ham,1,1,desc_ham,bb,1,mm+1,desc_bb,0.0_dp,ab,1,mm+1,desc_bb)
+   call PDGEMM('N','N',mmat,neig,mmat,1.0_dp,ham,1,1,desch,bb,1,mm+1,desc_bb,0.0_dp,ab,1,mm+1,desc_bb)
 
 
 
