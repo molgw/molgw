@@ -117,15 +117,8 @@ subroutine scf_loop(is_restart,&
    write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
 
-   if( cntxt_ham > 0 ) then
-     en%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
-     en%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
-   else
-     en%kin  = 0.0_dp
-     en%nuc  = 0.0_dp
-   endif
-   call xsum_trans(en%kin)
-   call xsum_trans(en%nuc)
+   en%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   en%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
 
    !
    ! Setup kinetic and nucleus contributions (that are independent of the

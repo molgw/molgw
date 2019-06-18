@@ -867,26 +867,6 @@ Having a large eri3_nbatch reduces the memory foot print, however it may lower t
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='scalapack_nprow'
-vl[i].family   ='hardware'
-vl[i].default  =1
-vl[i].datatype ='integer'
-vl[i].comment  ='Sets number of row processors for SCALAPACK distribution of the SCF matrices.  \
-nprow X npcol should be lower or equal to the number of processors.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='scalapack_npcol'
-vl[i].family   ='hardware'
-vl[i].default  =1
-vl[i].datatype ='integer'
-vl[i].comment  ='Sets number of column processors for SCALAPACK distribution of the SCF matrices.  \
-nprow X npcol should be lower or equal to the number of processors.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
 vl[i].keyword  ='mpi_nproc_ortho'
 vl[i].family   ='hardware'
 vl[i].default  =1

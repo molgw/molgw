@@ -167,8 +167,6 @@ module m_inputparam
  integer,protected                :: eri3_nprow
  integer,protected                :: eri3_npcol
  integer,protected                :: eri3_nbatch
- integer,protected                :: scalapack_nprow
- integer,protected                :: scalapack_npcol
  integer,protected                :: mpi_nproc_ortho
  real(dp),protected               :: grid_memory
 
@@ -889,15 +887,6 @@ subroutine read_inputfile_namelist()
  if(nomega_sigma<0)    call die('nomega_sigma < 0')
  if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
 
- if( scalapack_nprow * scalapack_npcol > nproc_world ) then
-   write(stdout,'(1x,a,i4,a,i4)') 'The requested number of processors in the SCALAPACK grid: ',scalapack_nprow,' x ',scalapack_npcol
-   write(stdout,'(1x,a,i5)') 'is larger than the number of total processors: ',nproc_world
-   scalapack_nprow = FLOOR( SQRT( REAL(nproc_world,dp) ) )
-   scalapack_npcol = nproc_world / scalapack_nprow
-   write(stdout,'(1x,a,i4,a,i4)') 'Continue with a reduced SCALAPACK grid: ',scalapack_nprow,' x ',scalapack_npcol
-   write(ctmp,'(a,i4,a,i4)') 'scalapack_nprow or scalapack_npcol was decreased automatically to ',scalapack_nprow,' x ',scalapack_npcol
-   call issue_warning(ctmp)
- endif
  if( MODULO( nproc_world , mpi_nproc_ortho) /= 0 ) then
    write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',nproc_world
    mpi_nproc_ortho = 1

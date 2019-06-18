@@ -139,10 +139,7 @@ program molgw
 
    !
    ! SCALAPACK distribution that depends on the system specific size, parameters etc.
-   block 
-   integer :: m_ham,n_ham
-   call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
-   end block
+   call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol)   !FBFB TODO REMOVE
 
    if( print_rho_grid_ ) call dm_dump(basis)
 

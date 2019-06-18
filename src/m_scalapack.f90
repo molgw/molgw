@@ -2508,13 +2508,11 @@ end subroutine init_scalapack
 
 
 !=========================================================================
-subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
+subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  implicit none
 
  integer,intent(in)  :: nbf
  integer,intent(in)  :: eri3_nprow,eri3_npcol
- integer,intent(in)  :: scalapack_nprow,scalapack_npcol
- integer,intent(out) :: m_ham,n_ham
 !=====
  integer :: ier=0
  integer :: color
@@ -2524,84 +2522,17 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalap
 
 #ifdef HAVE_SCALAPACK
 
+ cntxt_ham = 1
+ nprow_ham = 1
+ npcol_ham = 1
+ iprow_ham = 0
+ ipcol_ham = 0
 
- parallel_ham = scalapack_nprow * scalapack_npcol > 1
-
- if( parallel_ham ) then
-
-   nprow_ham = scalapack_nprow
-   npcol_ham = scalapack_npcol
-   if( nprow_ham * npcol_ham > nproc_world ) call die('SCALAPACK manual distribution asks for too many processors')
-
-   call BLACS_GET( -1, 0, cntxt_ham )
-   call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
-   call BLACS_GRIDINFO( cntxt_ham, nprow_ham, npcol_ham, iprow_ham, ipcol_ham )
-
-   ! Propagate the scalapack grid to all processors
-   call xmax_world(nprow_ham)
-   call xmax_world(npcol_ham)
+ comm_local  = comm_world
+ nproc_local = nproc_world
+ rank_local  = rank_world
 
 
-   if( cntxt_ham > 0 ) then
-     call init_desc('H',nbf,nbf,desc_ham,m_ham,n_ham)
-   else
-     m_ham = 0
-     n_ham = 0
-   endif
-
-   write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
-   write(stdout,'(a50,1x,i8)')      'Number of dedicated processors:',nprow_ham * npcol_ham
-   write(stdout,'(a50,1x,i8,1x,i8)')   'Grid of dedicated processors:',nprow_ham,npcol_ham
-
-   ! Distribute the remaing procs for auxiliary basis and grid points
-   color = MODULO( rank_world , nprow_ham * npcol_ham )
-   call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_local,ier);
-   call MPI_COMM_SIZE(comm_local,nproc_local,ier)
-   call MPI_COMM_RANK(comm_local,rank_local,ier)
-
-   write(stdout,'(a50,1x,i8)')      'Number of local processors:',nproc_local
-
-   call xmax_local(m_ham)
-   call xmax_local(n_ham)
-   call xmax_local(iprow_ham)
-   call xmax_local(ipcol_ham)
-
-
-   ! Define the transversal communicator
-   color = rank_world / ( nprow_ham * npcol_ham )
-
-   call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_trans,ier);
-   call MPI_COMM_SIZE(comm_trans,nproc_trans,ier)
-   call MPI_COMM_RANK(comm_trans,rank_trans,ier)
-
-   allocate(rank_sca_to_mpi(0:nprow_ham-1,0:npcol_ham-1))
-   rank_sca_to_mpi(:,:) = -1
-   rank_sca_to_mpi(iprow_ham,ipcol_ham) = rank_trans
-   call xmax_trans(rank_sca_to_mpi)
-
-
- else
-
-   !
-   ! Hamiltonian and C matrix are NOT distributed with SCALAPACK
-   !
-   cntxt_ham = 1
-   nprow_ham = 1
-   npcol_ham = 1
-   iprow_ham = 0
-   ipcol_ham = 0
-   m_ham = nbf
-   n_ham = nbf
-
-   comm_local  = comm_world
-   nproc_local = nproc_world
-   rank_local  = rank_world
-
-   comm_trans  = MPI_COMM_SELF
-   nproc_trans = 1
-   rank_trans  = 0
-
- endif
 
  !
  ! Create the SCALAPACK context cntxt_auxil
@@ -2669,14 +2600,10 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalap
  npcol_ham = 1
  iprow_ham = 0
  ipcol_ham = 0
- m_ham = nbf
- n_ham = nbf
 
  nproc_local = 1
  rank_local  = 0
 
- nproc_trans = 1
- rank_trans  = 0
 
 #endif
 

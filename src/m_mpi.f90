@@ -14,7 +14,6 @@ module m_mpi
  use m_mpi_grid
  use m_mpi_ortho
  use m_mpi_local
- use m_mpi_trans
 #ifdef HAVE_MPI
  use mpi
 #endif
