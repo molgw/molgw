@@ -1,6 +1,6 @@
 &molgw
  scf='hf'
- tolscf=1.0e-10
+ tolscf=1.0e-14
  min_overlap=8.0e-4
 
  scalapack_nprow=2

@@ -1,6 +1,6 @@
 &molgw
  scf='pbe0'
- tolscf=1.0e-6
+ tolscf=1.0e-8
  nspin=2
  magnetization=1.0
  charge=-1.0

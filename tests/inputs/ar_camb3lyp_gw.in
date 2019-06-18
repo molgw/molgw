@@ -1,6 +1,6 @@
 &molgw
  scf='cam-b3lyp'
- tolscf=1.0e-10
+ tolscf=1.0e-12
  nspin=1
 
  gaussian_type='cart'
