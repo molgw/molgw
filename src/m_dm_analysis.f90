@@ -43,7 +43,6 @@ module m_dm_analysis
  use m_dft_grid
  use m_spectral_function
  use m_hamiltonian_tools
- use m_hamiltonian_sca
  use m_hamiltonian_onebody
  use m_hamiltonian_buffer
  use m_selfenergy_tools

@@ -21,8 +21,8 @@ module m_scf_loop
  use m_eri_ao_mo
  use m_dft_grid
  use m_spectral_function
+ use m_hamiltonian_tools
  use m_hamiltonian_twobodies
- use m_hamiltonian_sca
  use m_hamiltonian_buffer
  use m_hamiltonian_wrapper
  use m_hamiltonian_cmplx

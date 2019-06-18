@@ -131,11 +131,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    !
    ! Or alternatively use the small basis technique
    if( has_small_basis ) then
-     if( scalapack_nprow == 1 .AND. scalapack_npcol == 1 ) then
-       call setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
-     else
-       call setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
-     endif
+     call setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
      !
      ! Set the range again after the change of the virtual space
      ! to nstate
