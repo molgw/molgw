@@ -20,8 +20,7 @@ module m_scf
  integer,private              :: nhistmax
  integer,private              :: nhist_current
 
- integer,private              :: nstate,nbf             ! Physical dimensions
-                                                                ! Storage  dimensions
+ integer,private              :: nstate,nbf    ! Internal copu of the array dimensions
 
  real(dp),allocatable,private :: p_matrix_in(:,:,:)
  real(dp),allocatable,private :: ham_hist(:,:,:,:)
@@ -52,7 +51,6 @@ module m_scf
    real(dp) :: tot     = 0.0_dp
    real(dp) :: excit   = 0.0_dp      ! TDDFT excitation energy
  end type
- type(energy_contributions) :: en
 
 #if defined(HAVE_SCALAPACK)
  real(dp),external :: PDLANGE
@@ -124,12 +122,13 @@ end subroutine destroy_scf
 
 
 !=========================================================================
-subroutine hamiltonian_prediction(s_matrix,x_matrix,p_matrix,ham)
+subroutine hamiltonian_prediction(s_matrix,x_matrix,p_matrix,ham,etot)
  implicit none
  real(dp),intent(in)    :: s_matrix(:,:)
  real(dp),intent(in)    :: x_matrix(:,:)
  real(dp),intent(inout) :: p_matrix(:,:,:)
  real(dp),intent(inout) :: ham(:,:,:)
+ real(dp),intent(in)    :: etot
 !=====
 !=====
 
@@ -165,7 +164,7 @@ subroutine hamiltonian_prediction(s_matrix,x_matrix,p_matrix,ham)
  !
  ! Set the newest values in history
  ! if already available here
- en_hist(1) = en%tot
+ en_hist(1) = etot
  ham_hist(:,:,:,1)      = ham(:,:,:)
  p_matrix_hist(:,:,:,1) = p_matrix(:,:,:)
 

@@ -240,7 +240,7 @@ m_hamiltonian_cmplx.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90
 	$(FC_W_OPTS) -c m_hamiltonian_cmplx.f90 $(LIBXC_INCS)
 
 m_hamiltonian_wrapper.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_basis_set.f90 \
-	         m_inputparam.f90 m_hamiltonian_twobodies.f90 m_hamiltonian_tools.f90  m_hamiltonian_wrapper.f90
+	         m_inputparam.f90 m_hamiltonian_twobodies.f90 m_hamiltonian_tools.f90 m_hamiltonian_cmplx.f90 m_hamiltonian_wrapper.f90
 	$(FC_W_OPTS) -c m_hamiltonian_wrapper.f90 $(LIBXC_INCS)
 
 m_density_tools.o: m_definitions.f90 m_atoms.f90 m_mpi.f90 m_gaussian.f90 m_inputparam.f90 m_basis_set.f90 m_hamiltonian_tools.f90 \

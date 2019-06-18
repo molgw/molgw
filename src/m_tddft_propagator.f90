@@ -10,11 +10,11 @@ module m_tddft_propagator
  use m_atoms
  use m_definitions
  use m_basis_set
- use m_scf_loop
  use m_memory
  use m_hamiltonian_tools
  use m_hamiltonian_onebody
  use m_hamiltonian_cmplx
+ use m_hamiltonian_wrapper
  use m_inputparam
  use m_dft_grid
  use m_linear_algebra
@@ -41,6 +41,7 @@ module m_tddft_propagator
  complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
  integer,private            :: ntau
 
+ type(energy_contributions),private :: en_tddft
 
 contains
 
@@ -53,7 +54,6 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
  real(dp),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(in)        :: occupation(:,:)
 !=====
- integer,parameter          :: BATCH_SIZE = 128
  integer                    :: fixed_atom_list(natom-nprojectile)
  integer                    :: ispin
  integer                    :: istate,nstate_tmp
@@ -207,17 +207,17 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
  write(stdout,'(/,1x,a)')    '==================================================================================================='
  write(stdout,'(1x,a,i8,a)') '===================== RT-TDDFT values for the iteration  ',itau,' ================================='
  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
- write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en%tot
+ write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en_tddft%tot
 
  select case(excit_type%form)
  case(EXCIT_PROJECTILE)
    write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
-      time_cur, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc
+      time_cur, en_tddft%tot, xatom(3,natom), en_tddft%nuc_nuc, en_tddft%nuc, en_tddft%kin, en_tddft%hart, en_tddft%exx_hyb, en_tddft%xc
    call output_projectile_position()
 
  case(EXCIT_LIGHT)
    write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
-    time_cur, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit
+    time_cur, en_tddft%tot, en_tddft%nuc_nuc, en_tddft%nuc, en_tddft%kin, en_tddft%hart, en_tddft%exx_hyb, en_tddft%xc, en_tddft%excit
    write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
    write(file_excit_field,'(2f19.10)') time_cur, REAL(excit_field_norm)
    write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
@@ -864,7 +864,8 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
                                          h_small_cmplx,           &
                                          x_matrix,                &
                                          dipole_basis,            &
-                                         hamiltonian_fock_cmplx)
+                                         hamiltonian_fock_cmplx,  &
+                                         en)
 
  implicit none
 !=====
@@ -881,6 +882,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  complex(dp),intent(in)          :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(out)         :: hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp),intent(out)         :: h_small_cmplx(nstate,nstate,nspin)
+ type(energy_contributions),intent(inout) :: en
 !=====
  logical              :: calc_excit_
  integer              :: ispin, idir
@@ -902,14 +904,14 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
                                          occupation,               &
                                          c_matrix_cmplx,           &
                                          p_matrix_cmplx,           &
-                                         hamiltonian_fock_cmplx)
+                                         hamiltonian_fock_cmplx,en)
 
 
 
  !
  ! Excitation part of the Hamiltonian
  !
- en%excit = 0.0_dp
+ en_tddft%excit = 0.0_dp
 
  select case(excit_type%form)
  !
@@ -928,7 +930,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
      do idir=1,3
        do ispin=1, nspin
          hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - dipole_basis(:,:,idir) * excit_field(idir)
-         en%excit = en%excit + REAL(SUM(dipole_basis(:,:,idir) * excit_field(idir) * p_matrix_cmplx(:,:,ispin)),dp)
+         en_tddft%excit = en_tddft%excit + REAL(SUM(dipole_basis(:,:,idir) * excit_field(idir) * p_matrix_cmplx(:,:,ispin)),dp)
        enddo
      end do
    end if
@@ -941,7 +943,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    ! Move the projectile
    call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
 
-   call nucleus_nucleus_energy(en%nuc_nuc)
+   call nucleus_nucleus_energy(en_tddft%nuc_nuc)
 
    !
    ! Nucleus-electron interaction due to the projectile only
@@ -952,7 +954,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    do ispin=1,nspin
      hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_projectile(:,:)
    enddo
-   en%excit = REAL( SUM( hamiltonian_projectile(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+   en_tddft%excit = REAL( SUM( hamiltonian_projectile(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    deallocate(hamiltonian_projectile)
 
  end select
@@ -972,8 +974,8 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  call stop_clock(timing_tddft_ham_orthobasis)
 
  ! kinetic and nuclei-electrons energy contributions
- en%kin = REAL( SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
- en%nuc = REAL( SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+ en_tddft%kin = REAL( SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+ en_tddft%nuc = REAL( SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
 
  call stop_clock(timing_tddft_hamiltonian)
 

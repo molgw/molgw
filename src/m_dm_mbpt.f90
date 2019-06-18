@@ -23,7 +23,7 @@ contains
 
 !=========================================================================
 subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
-                             hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+                       hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,en_gks)
  implicit none
 
  type(basis_set),intent(in)      :: basis
@@ -35,6 +35,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
  real(dp),intent(in)             :: hamiltonian_hartree(:,:)
  real(dp),intent(inout)          :: hamiltonian_exx(:,:,:)
  real(dp),intent(inout)          :: hamiltonian_xc(:,:,:)
+ type(energy_contributions),intent(in) :: en_gks
 !=====
  integer                    :: nstate
  logical                    :: density_matrix_found
@@ -127,7 +128,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
 
  if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
 
-   en_dm_corr%nuc_nuc = en%nuc_nuc
+   en_dm_corr%nuc_nuc = en_gks%nuc_nuc
    en_dm_corr%kin = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
    en_dm_corr%nuc = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
 

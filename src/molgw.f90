@@ -54,15 +54,17 @@ program molgw
  implicit none
 
 !=====
- type(basis_set)         :: basis
- type(basis_set)         :: auxil_basis
- type(spectral_function) :: wpol
- type(lbfgs_state)       :: lbfgs_plan
+ type(basis_set)            :: basis
+ type(basis_set)            :: auxil_basis
+ type(spectral_function)    :: wpol
+ type(lbfgs_state)          :: lbfgs_plan
+ type(energy_contributions) :: en_gks,en_mbpt
  integer                 :: restart_type
  integer                 :: nstate
  integer                 :: istep
  logical                 :: is_restart,is_big_restart,is_basis_restart
  logical                 :: restart_tddft_is_correct = .TRUE.
+ real(dp)                :: erpa_tmp
  real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)
@@ -129,7 +131,7 @@ program molgw
 
    !
    ! Nucleus-nucleus repulsion contribution to the energy
-   call nucleus_nucleus_energy(en%nuc_nuc)
+   call nucleus_nucleus_energy(en_gks%nuc_nuc)
 
    !
    ! Build up the basis set
@@ -343,7 +345,7 @@ program molgw
                    hamiltonian_kinetic,hamiltonian_nucleus,        &
                    occupation,energy,                              &
                    hamiltonian_fock,                               &
-                   c_matrix)
+                   c_matrix,en_gks)
    endif
 
 
@@ -351,7 +353,7 @@ program molgw
    ! If requested, evaluate the forces
    if( move_nuclei == 'relax' ) then
      call calculate_force(basis,nstate,occupation,energy,c_matrix)
-     call relax_atoms(lbfgs_plan,en%tot)
+     call relax_atoms(lbfgs_plan,en_gks%tot)
      call output_positions()
 
      if( MAXVAL(force(:,:)) < tolforce ) then
@@ -480,14 +482,14 @@ program molgw
 
    call prepare_ci(basis,MIN(nstate,nvirtualg-1),ncoreg,c_matrix)
 
-   call full_ci_nelectrons(0,NINT(electrons),ci_spin_multiplicity-1,en%nuc_nuc)
+   call full_ci_nelectrons(0,NINT(electrons),ci_spin_multiplicity-1,en_gks%nuc_nuc)
 
    if(calc_type%is_selfenergy) then
      if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'HOLES' ) then
-       call full_ci_nelectrons( 1,NINT(electrons)-1,1,en%nuc_nuc)
+       call full_ci_nelectrons( 1,NINT(electrons)-1,1,en_gks%nuc_nuc)
      endif
      if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'ELECTRONS' ) then
-       call full_ci_nelectrons(-1,NINT(electrons)+1,1,en%nuc_nuc)
+       call full_ci_nelectrons(-1,NINT(electrons)+1,1,en_gks%nuc_nuc)
      endif
      call full_ci_nelectrons_selfenergy()
    endif
@@ -513,17 +515,17 @@ program molgw
  if( calc_type%is_mp2 ) then
 
    if(has_auxil_basis) then
-     call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp2)
+     call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en_gks%mp2)
    else
-     call mp2_energy(nstate,basis,occupation,c_matrix,energy,en%mp2)
+     call mp2_energy(nstate,basis,occupation,c_matrix,energy,en_gks%mp2)
    endif
 
-   write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
+   write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
    write(stdout,*)
-   en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
+   en_gks%tot = en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx + en_gks%mp2
 
-   write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
-   write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
+   write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%tot
+   write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en_gks%tot+en_gks%se
    write(stdout,*)
 
  endif
@@ -534,17 +536,17 @@ program molgw
  !
  if( calc_type%is_mp3 ) then
    if(has_auxil_basis) then
-     call mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp3)
+     call mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,en_gks%mp3)
    else
      call die('MP3 energy without RI not implemented')
    endif
-   write(stdout,'(a,2x,f19.10)') ' MP3 Energy       (Ha):',en%mp3
+   write(stdout,'(a,2x,f19.10)') ' MP3 Energy       (Ha):',en_gks%mp3
    write(stdout,*)
 
-   en%tot = en%tot + en%mp3
+   en_gks%tot = en_gks%tot + en_gks%mp3
 
-   write(stdout,'(a,2x,f19.10)') ' MP3 Total Energy (Ha):',en%tot
-   write(stdout,'(a,2x,f19.10)') ' SE+MP3  Total En (Ha):',en%tot+en%se
+   write(stdout,'(a,2x,f19.10)') ' MP3 Total Energy (Ha):',en_gks%tot
+   write(stdout,'(a,2x,f19.10)') ' SE+MP3  Total En (Ha):',en_gks%tot+en_gks%se
    write(stdout,*)
 
  endif
@@ -555,7 +557,7 @@ program molgw
  !
  if(calc_type%is_td .OR. calc_type%is_bse) then
    call init_spectral_function(nstate,occupation,0,wpol)
-   call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+   call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,erpa_tmp,wpol)
    call destroy_spectral_function(wpol)
  endif
 
@@ -563,7 +565,8 @@ program molgw
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
  !
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
-   call selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc)
+   en_mbpt = en_gks
+   call selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
    call clean_deallocate('Sigx - Vxc',exchange_m_vxc)
  endif
 

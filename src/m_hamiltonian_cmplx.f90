@@ -172,14 +172,13 @@ end subroutine static_dipole_fast_cmplx
 
 
 !=========================================================================
-subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,num,time_cur)
+subroutine calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx,num,time_cur)
  use m_inputparam
  use m_dft_grid
  use m_atoms
  use m_density_tools
  implicit none
 
- integer,intent(in)         :: batch_size
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(:,:)
  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
@@ -251,8 +250,8 @@ subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_mat
 
  dz_disc=(z_max-z_min)/ndisc
 
- do igrid_start=1,ngrid,batch_size
-   igrid_end = MIN(ngrid,igrid_start+batch_size-1)
+ do igrid_start=1,ngrid,BATCH_SIZE
+   igrid_end = MIN(ngrid,igrid_start+BATCH_SIZE-1)
    nr = igrid_end - igrid_start + 1
 
    allocate(weight_batch(nr))

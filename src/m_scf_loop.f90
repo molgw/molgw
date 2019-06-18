@@ -28,7 +28,7 @@ module m_scf_loop
  use m_selfenergy_tools
  use m_dm_mbpt
 
- integer,parameter,private :: BATCH_SIZE = 128
+
 
 contains
 
@@ -41,7 +41,7 @@ subroutine scf_loop(is_restart,&
                     occupation, &
                     energy, &
                     hamiltonian_fock,&
-                    c_matrix)
+                    c_matrix,en_gks)
  implicit none
 
 !=====
@@ -55,9 +55,10 @@ subroutine scf_loop(is_restart,&
  real(dp),intent(out)               :: energy(:,:)
  real(dp),allocatable,intent(inout) :: hamiltonian_fock(:,:,:)
  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
+ type(energy_contributions),intent(inout) :: en_gks
 !=====
- integer                 :: nstate
  type(spectral_function) :: wpol
+ integer                 :: nstate
  character(len=64)       :: restart_filename
  logical                 :: is_converged,stopfile_found
  integer                 :: file_density_matrix
@@ -117,8 +118,8 @@ subroutine scf_loop(is_restart,&
    write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
 
-   en%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
-   en%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   en_gks%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   en_gks%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
 
    !
    ! Setup kinetic and nucleus contributions (that are independent of the
@@ -130,12 +131,12 @@ subroutine scf_loop(is_restart,&
    !
    ! Hartree contribution to the Hamiltonian
    !
-   call calculate_hartree(basis,p_matrix,hamiltonian_hartree,eh=en%hart)
+   call calculate_hartree(basis,p_matrix,hamiltonian_hartree,eh=en_gks%hart)
 
    ! calc_type%is_core is an inefficient way to get the Kinetic+Nucleus Hamiltonian
    if( calc_type%is_core ) then
      hamiltonian_hartree(:,:) = 0.0_dp
-     en%hart = 0.0_dp
+     en_gks%hart = 0.0_dp
    endif
    do ispin=1,nspin
      hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
@@ -146,13 +147,13 @@ subroutine scf_loop(is_restart,&
    !  XC part of the Hamiltonian
    !
    hamiltonian_xc(:,:,:) = 0.0_dp
-   en%exx_hyb = 0.0_dp
+   en_gks%exx_hyb = 0.0_dp
 
    !
    ! DFT XC potential is added here
    ! hamiltonian_xc is used as a temporary matrix
    if( calc_type%is_dft ) then
-     call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_xc,en%xc)
+     call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_xc,en_gks%xc)
    endif
 
    !
@@ -162,7 +163,7 @@ subroutine scf_loop(is_restart,&
 
      call calculate_exchange_lr(basis,p_matrix,hamiltonian_exx,ex=energy_tmp,occupation=occupation,c_matrix=c_matrix)
      ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-     en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
+     en_gks%exx_hyb = en_gks%exx_hyb + alpha_hybrid_lr * energy_tmp
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * alpha_hybrid_lr
 
    endif
@@ -171,10 +172,10 @@ subroutine scf_loop(is_restart,&
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
-     call calculate_exchange(basis,p_matrix,hamiltonian_exx,ex=en%exx,occupation=occupation,c_matrix=c_matrix)
+     call calculate_exchange(basis,p_matrix,hamiltonian_exx,ex=en_gks%exx,occupation=occupation,c_matrix=c_matrix)
 
      ! Rescale with alpha_hybrid for hybrid functionals
-     en%exx_hyb = en%exx_hyb + alpha_hybrid * en%exx
+     en_gks%exx_hyb = en_gks%exx_hyb + alpha_hybrid * en_gks%exx
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * alpha_hybrid
    endif
 
@@ -187,11 +188,11 @@ subroutine scf_loop(is_restart,&
 
 
      call init_spectral_function(nstate,occupation,0,wpol)
-     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_gks%rpa,wpol)
 
-     if( ABS(en%rpa) > 1.e-6_dp) then
-       en%tot = en%tot + en%rpa
-       write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
+     if( ABS(en_gks%rpa) > 1.e-6_dp) then
+       en_gks%tot = en_gks%tot + en_gks%rpa
+       write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_gks%tot
      endif
 
      !
@@ -219,12 +220,12 @@ subroutine scf_loop(is_restart,&
      call selfenergy_set_state_range(nstate,occupation)
 
      allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-     call pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,matrix_tmp,en%mp2)
+     call pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,matrix_tmp,en_gks%mp2)
 
-     write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
+     write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
      write(stdout,*)
-     en%tot = en%tot + en%mp2
-     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
+     en_gks%tot = en_gks%tot + en_gks%mp2
+     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%tot
 
      call dump_out_matrix(.FALSE.,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
 
@@ -241,7 +242,7 @@ subroutine scf_loop(is_restart,&
 
    ! All the components of the energy have been calculated at this stage
    ! Sum up to get the total energy
-   en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx_hyb + en%xc
+   en_gks%tot = en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx_hyb + en_gks%xc
 
    ! Make sure all the MPI threads have the exact same Hamiltonian
    ! It helps stabilizing the SCF cycles in parallel
@@ -256,7 +257,7 @@ subroutine scf_loop(is_restart,&
    endif
 
    ! DIIS or simple mixing on the hamiltonian
-   call hamiltonian_prediction(s_matrix,x_matrix,p_matrix,hamiltonian)
+   call hamiltonian_prediction(s_matrix,x_matrix,p_matrix,hamiltonian,en_gks%tot)
 
 
    !
@@ -283,17 +284,17 @@ subroutine scf_loop(is_restart,&
    !
    ! Output the total energy and its components
    write(stdout,*)
-   write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en%nuc_nuc
-   write(stdout,'(a25,1x,f19.10)') 'Kinetic Energy  (Ha):',en%kin
-   write(stdout,'(a25,1x,f19.10)') 'Nucleus Energy  (Ha):',en%nuc
-   write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en%hart
+   write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en_gks%nuc_nuc
+   write(stdout,'(a25,1x,f19.10)') 'Kinetic Energy  (Ha):',en_gks%kin
+   write(stdout,'(a25,1x,f19.10)') 'Nucleus Energy  (Ha):',en_gks%nuc
+   write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hart
    if(calc_type%need_exchange) then
-     write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en%exx_hyb
+     write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en_gks%exx_hyb
    endif
    if( calc_type%is_dft ) then
-     write(stdout,'(a25,1x,f19.10)') 'XC Energy       (Ha):',en%xc
+     write(stdout,'(a25,1x,f19.10)') 'XC Energy       (Ha):',en_gks%xc
    endif
-   write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en%tot
+   write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en_gks%tot
 
 
    ! If fractional occupancies are allowed, then recalculate the occupations
@@ -349,8 +350,8 @@ subroutine scf_loop(is_restart,&
  !
  ! Get the exchange operator if not already calculated
  !
- if( ABS(en%exx) < 1.0e-6_dp ) then
-   call calculate_exchange(basis,p_matrix,hamiltonian_exx,ex=en%exx,occupation=occupation,c_matrix=c_matrix)
+ if( ABS(en_gks%exx) < 1.0e-6_dp ) then
+   call calculate_exchange(basis,p_matrix,hamiltonian_exx,ex=en_gks%exx,occupation=occupation,c_matrix=c_matrix)
  endif
 
 
@@ -395,7 +396,8 @@ subroutine scf_loop(is_restart,&
  !
  ! Is there a correlated density matrix to be read or to be calculated
  if( read_fchk /= 'NO' .OR. TRIM(pt_density_matrix) /= 'NO' .OR. use_correlated_density_matrix_ ) &
-   call get_dm_mbpt(basis,occupation,energy,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+   call get_dm_mbpt(basis,occupation,energy,c_matrix, &
+                    hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,en_gks)
 
  !
  ! Form the Fock matrix and store it
@@ -421,18 +423,19 @@ subroutine scf_loop(is_restart,&
  call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
  call clean_deallocate('XC operator Vxc',hamiltonian_xc)
 
- write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
- write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en%exx
- write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+ write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%tot
+ write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en_gks%exx
+ write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx
 
 
 
  !
  ! Single excitation term
  !
- call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,hamiltonian_fock,en%se)
- if( ABS(en%se) > 1.0e-6_dp )  write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
- write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
+ call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,hamiltonian_fock,en_gks%se)
+ if( ABS(en_gks%se) > 1.0e-6_dp )  write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en_gks%se
+ write(stdout,'(a25,1x,f19.10,/)')  'Est. HF Energy (Ha):', &
+                                     en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx + en_gks%se
 
  !
  ! Evaluate spin contamination
@@ -456,169 +459,6 @@ subroutine scf_loop(is_restart,&
 end subroutine scf_loop
 
 
-!=========================================================================
-subroutine calculate_hamiltonian_hxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_hxc,ehxc)
- implicit none
-
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nstate
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(in)        :: p_matrix(:,:,:)
- real(dp),intent(out)       :: hamiltonian_hxc(:,:,:)
- real(dp),intent(out)       :: ehxc
-!=====
- integer              :: ispin
- real(dp),allocatable :: hamiltonian_tmp(:,:)
- real(dp),allocatable :: hamiltonian_spin_tmp(:,:,:)
- real(dp)             :: ehart,exc,eexx,eexx_hyb
-!=====
-
-
- allocate(hamiltonian_tmp,MOLD=hamiltonian_hxc(:,:,1))
- allocate(hamiltonian_spin_tmp,MOLD=hamiltonian_hxc(:,:,:))
-
- !
- ! Hartree contribution to the Hamiltonian
- !
- call calculate_hartree(basis,p_matrix,hamiltonian_tmp,eh=ehart)
-
- do ispin=1,nspin
-   hamiltonian_hxc(:,:,ispin) = hamiltonian_tmp(:,:)
- enddo
-
-
- !
- !  XC part of the Hamiltonian
- !
-
- !
- ! DFT XC potential is added here
- !
- if( calc_type%is_dft ) then
-   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
-
-   call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
-
-   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:)
- endif
-
-
- !
- ! LR Exchange contribution to the Hamiltonian
- !
- if(calc_type%need_exchange_lr) then
-   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
-
-   call calculate_exchange_lr(basis,p_matrix,hamiltonian_spin_tmp,ex=eexx,occupation=occupation,c_matrix=c_matrix)
-   ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-   eexx_hyb = alpha_hybrid_lr * eexx
-   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
-
- endif
-
-
- !
- ! Exchange contribution to the Hamiltonian
- !
- if( calc_type%need_exchange ) then
-   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
-
-   call calculate_exchange(basis,p_matrix,hamiltonian_spin_tmp,ex=eexx,occupation=occupation,c_matrix=c_matrix)
-   ! Rescale with alpha_hybrid for hybrid functionals
-   eexx_hyb = eexx_hyb + alpha_hybrid * eexx
-   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid
-
- endif
-
- ehxc = ehart + eexx_hyb + exc
-
-
-end subroutine calculate_hamiltonian_hxc
-
-
-!=========================================================================
-subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
-                                              occupation,             &
-                                              c_matrix_cmplx,         &
-                                              p_matrix_cmplx,         &
-                                              hamiltonian_hxc_cmplx)
- implicit none
-
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(:,:)
- complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
- complex(dp),intent(in)     :: p_matrix_cmplx(:,:,:)
- complex(dp),intent(out)    :: hamiltonian_hxc_cmplx(:,:,:)
-!=====
- integer                    :: nstate
- integer                    :: ispin
- real(dp),allocatable       :: hamiltonian_tmp(:,:,:)
-!=====
-
- en%hart    = 0.0_dp
- en%xc      = 0.0_dp
- en%exx     = 0.0_dp
- en%exx_hyb = 0.0_dp
-
- nstate = SIZE(occupation,DIM=1)
-
- ! Initialize real arrays
-
-
- hamiltonian_hxc_cmplx = ( 0.0_dp , 0.0_dp )
-
- !
- ! Exchange contribution to the Hamiltonian
- !
- if( calc_type%need_exchange ) then
-   call setup_exchange_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en%exx)
-
-   ! Rescale with alpha_hybrid for hybrid functionals
-   en%exx_hyb = alpha_hybrid * en%exx
-   hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
- endif
-
-
-   !
-   ! Hartree contribution to the Hamiltonian
-   ! Hartree contribution is real and depends only on real(p_matrix) but we pass the full p_matrix_cmplx any way
-   !
-   call setup_hartree_ri(p_matrix_cmplx,hamiltonian_tmp(:,:,1),en%hart)
-
- do ispin=1,nspin
-   hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)
- enddo
-
- !
- !  XC part of the Hamiltonian
- !
-
- !
- ! DFT XC potential is added here
- !
- if( calc_type%is_dft ) then
-   call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix_cmplx,hamiltonian_tmp,en%xc)
-
-   hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:)
- endif
-
-! write(file_time_data,"(6(x,e16.10,2x),'    ')",advance='no') enuc,ekin,ehart, eexx_hyb,exc, enuc+ekin+ehart+eexx_hyb+exc
- !
- ! LR Exchange contribution to the Hamiltonian
- !
- ! if(calc_type%need_exchange_lr) then
- !   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
- !
- !     call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
- !
- !   ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
- !   eexx_hyb = alpha_hybrid_lr * eexx
- !   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
- ! endif
-
-
-end subroutine  calculate_hamiltonian_hxc_ri_cmplx
 
 
 !=========================================================================

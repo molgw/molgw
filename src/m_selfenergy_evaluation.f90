@@ -17,7 +17,7 @@ module m_selfenergy_evaluation
  use m_eri_calculate
  use m_eri_ao_mo
  use m_dft_grid
- use m_scf,only: en
+ use m_scf,only: energy_contributions
  use m_spectral_function
  use m_selfenergy_tools
  use m_virtual_orbital_space
@@ -28,7 +28,7 @@ contains
 
 
 !=========================================================================
-subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc)
+subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -37,6 +37,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
  real(dp),intent(inout)     :: energy(:,:)
  real(dp),intent(inout)     :: c_matrix(:,:,:)
  real(dp),intent(in)        :: exchange_m_vxc(:,:,:)
+ type(energy_contributions),intent(inout) :: en_mbpt
 !=====
  integer                 :: nstate
  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3
@@ -201,16 +202,16 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
          if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
            ! in case of BSE calculation, enforce RPA here
            enforce_rpa = calc_type%is_bse
-           call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+           call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,wpol)
          else
-           call polarizability_grid_scalapack(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+           call polarizability_grid_scalapack(basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,wpol)
          endif
        endif
 
-       en%tot = en%tot + en%rpa
-       if( calc_type%is_dft ) en%tot = en%tot - en%xc - en%exx_hyb + en%exx
-       if( ABS(en%rpa) > 1.e-6_dp) then
-         write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
+       en_mbpt%tot = en_mbpt%tot + en_mbpt%rpa
+       if( calc_type%is_dft ) en_mbpt%tot = en_mbpt%tot - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx
+       if( ABS(en_mbpt%rpa) > 1.e-6_dp) then
+         write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_mbpt%tot
        endif
 
      endif
@@ -238,8 +239,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
 
 
-     if( ABS(en%gw) > 1.0e-5_dp ) then
-       write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw
+     if( ABS(en_mbpt%gw) > 1.0e-5_dp ) then
+       write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en_mbpt%tot - en_mbpt%rpa + en_mbpt%gw
      endif
 
      if( .NOT. ( calc_type%selfenergy_approx == GnW0 .AND. istep_gw < nstep_gw ) ) then
@@ -265,7 +266,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
        ! Sigma^2 = Sigma^{1-ring}_small
        call onering_selfenergy(nstate_small,basis,occupation(1:nstate_small,:), &
-                               energy_g(1:nstate_small,:),c_matrix(:,1:nstate_small,:),se2,en%mp2)
+                               energy_g(1:nstate_small,:),c_matrix(:,1:nstate_small,:),se2,en_mbpt%mp2)
 
        ! Reset wavefunctions, eigenvalues and number of virtual orbitals in G
        call destroy_fno(basis,nstate,energy,c_matrix)
@@ -273,7 +274,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
        call selfenergy_set_state_range(nstate,occupation)
 
        ! Sigma^3 = Sigma^{1-ring}_big
-       call onering_selfenergy(nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
+       call onering_selfenergy(nstate,basis,occupation,energy_g,c_matrix,se3,en_mbpt%mp2)
 
        if( print_sigma_ ) then
          call write_selfenergy_omega('selfenergy_GW_small'   ,exchange_m_vxc_diag,occupation,energy_g,se)
@@ -302,7 +303,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation
      if( reading_status /= 0 ) then
-       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,wpol)
      endif
 
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
@@ -336,7 +337,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation
      if( reading_status /= 0 ) then
-       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,wpol)
      endif
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 
@@ -344,7 +345,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      ! Second perform a standard SOX calculation
      !
      call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_sox)
-     call pt2_selfenergy(SOX,nstate,basis,occupation,energy_g,c_matrix,se_sox,en%mp2)
+     call pt2_selfenergy(SOX,nstate,basis,occupation,energy_g,c_matrix,se_sox,en_mbpt%mp2)
 
 
      !
@@ -363,15 +364,15 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
     .OR. calc_type%selfenergy_approx == ONE_RING  &
     .OR. calc_type%selfenergy_approx == SOX ) then
 
-     call pt2_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,se,en%mp2)
+     call pt2_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
 
-     if( ABS( en%mp2 ) > 1.0e-8 ) then
-       write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
+     if( ABS( en_mbpt%mp2 ) > 1.0e-8 ) then
+       write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_mbpt%mp2
        write(stdout,*)
-       en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
+       en_mbpt%tot = en_mbpt%nuc_nuc + en_mbpt%kin + en_mbpt%nuc + en_mbpt%hart + en_mbpt%exx + en_mbpt%mp2
 
-       write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
-       write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
+       write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_mbpt%tot
+       write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en_mbpt%tot+en_mbpt%se
        write(stdout,*)
      endif
 
@@ -381,7 +382,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    ! Selfenergy = PT3 or 2-rings
    !
    if( calc_type%selfenergy_approx == PT3 .OR. calc_type%selfenergy_approx == TWO_RINGS ) then
-     call pt3_selfenergy(calc_type%selfenergy_approx,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se,en%mp2)
+     call pt3_selfenergy(calc_type%selfenergy_approx,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
    endif
 
    !
@@ -395,7 +396,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation
      if( reading_status /= 0 ) then
-       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,wpol)
      endif
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 
@@ -403,7 +404,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      ! Second perform a PT3 calculation minus the ring diagrams
      !
      call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_gwpt3)
-     call pt3_selfenergy(GWPT3,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se_gwpt3,en%mp2)
+     call pt3_selfenergy(GWPT3,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se_gwpt3,en_mbpt%mp2)
 
      !
      ! Finally add up the contributions and then destroy the se_sox object

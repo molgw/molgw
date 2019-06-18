@@ -20,6 +20,7 @@ module m_dft_grid
  use m_atoms
  use m_numerical_tools,only: coeffs_gausslegint
 
+ integer,parameter :: BATCH_SIZE = 128
  !
  ! Grid definition
  integer,protected    :: ngrid

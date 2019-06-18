@@ -49,8 +49,6 @@ module m_dm_analysis
  use m_density_tools
 
 
- integer,parameter,private :: BATCH_SIZE = 128
-
 
 contains
 
