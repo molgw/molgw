@@ -6,9 +6,6 @@
  nscf=2
  init_hamiltonian='core'
 
- scalapack_nprow = 2
- scalapack_npcol = 2
-
  density_matrix_damping=0.4
  npulay_hist=4
 

@@ -3,9 +3,6 @@
  tolscf=1.0e-10
  min_overlap = 5.0e-4
 
- scalapack_nprow=2
- scalapack_npcol=2
-
  basis='aug-cc-pVQZ'
  auxil_basis='aug-cc-pVQZ-RI'
 
