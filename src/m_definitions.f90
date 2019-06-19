@@ -50,15 +50,7 @@ module m_definitions
  integer,parameter :: very_high = 40
  integer,parameter :: insane    = 50
 
- !
- ! Restart file types
- integer,parameter ::           NO_RESTART = 0
- integer,parameter ::        SMALL_RESTART = 1
- integer,parameter ::          BIG_RESTART = 2
- integer,parameter ::        BASIS_RESTART = 3
- integer,parameter :: EMPTY_STATES_RESTART = 4
-
-#ifdef NEED_NORM2
+#if defined(NEED_NORM2)
  interface norm2
    module procedure norm2_ra1
    module procedure norm2_ra2
@@ -100,7 +92,7 @@ subroutine set_standard_output(unit_stdout)
 end subroutine set_standard_output
 
 
-#ifdef NEED_NORM2
+#if defined(NEED_NORM2)
 !=========================================================================
 function norm2_ra1(array) RESULT(norm2)
  implicit none

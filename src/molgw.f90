@@ -51,6 +51,7 @@ program molgw
  use m_virtual_orbital_space
  use m_ci
  use m_dm_analysis
+ use m_restart
  implicit none
 
 !=====
