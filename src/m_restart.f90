@@ -2,28 +2,42 @@
 ! This file is part of MOLGW.
 ! Author: Fabien Bruneval
 !
-! This file contains
-! the reading / writing of the RESTART files
+! This module contains
+! the reading / writing methods for the RESTART files
 !
 !=========================================================================
-
-
-!=========================================================================
-subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
+module m_restart
  use m_definitions
  use m_timing
  use m_mpi
  use m_inputparam
  use m_atoms
  use m_basis_set
+
+
+ !
+ ! Restart file types
+ integer,parameter ::           NO_RESTART = 0
+ integer,parameter ::        SMALL_RESTART = 1
+ integer,parameter ::          BIG_RESTART = 2
+ integer,parameter ::        BASIS_RESTART = 3
+ integer,parameter :: EMPTY_STATES_RESTART = 4
+
+
+
+contains
+
+
+!=========================================================================
+subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
  implicit none
 
- integer,intent(in)         :: restart_type
- integer,intent(in)         :: nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)        :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
+ integer,intent(in)           :: restart_type
+ integer,intent(in)           :: nstate
+ type(basis_set),intent(in)   :: basis
+ real(dp),intent(in)          :: occupation(nstate,nspin)
+ real(dp),intent(in)          :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
+ real(dp),optional,intent(in) :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
 !=====
  integer,parameter          :: restart_version=201609
  integer                    :: restartfile
@@ -41,7 +55,14 @@ subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ha
    write(stdout,'(/,a)') ' Writing a small RESTART file'
  case(BIG_RESTART)
    write(stdout,'(/,a)') ' Writing a big RESTART file'
+ case default
+   call die('write_restart: bug')
  end select
+
+ if( restart_type == BIG_RESTART .AND. .NOT. PRESENT(hamiltonian_fock) ) then
+   call die('write_restart: an input hamiltonian_fock is needed for a BIG restart')
+ endif
+
 
  open(newunit=restartfile,file='RESTART',form='unformatted',action='write')
 
@@ -391,4 +412,6 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
 end subroutine read_restart
 
 
+!=========================================================================
+end module m_restart
 !=========================================================================

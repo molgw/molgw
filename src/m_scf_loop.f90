@@ -27,6 +27,7 @@ module m_scf_loop
  use m_hamiltonian_cmplx
  use m_selfenergy_tools
  use m_dm_mbpt
+ use m_restart
 
 
 
@@ -323,10 +324,7 @@ subroutine scf_loop(is_restart,&
    !
    ! Write down a "small" RESTART file at each step
    if( print_restart_ ) then
-     call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
-     call get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
-     call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
-     call clean_deallocate('Fock operator F',hamiltonian_fock)
+     call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy)
    endif
 
 
@@ -400,7 +398,7 @@ subroutine scf_loop(is_restart,&
                     hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,en_gks)
 
  !
- ! Form the Fock matrix and store it
+ ! Form the final Fock matrix and store it
  !
  call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
  call get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
@@ -457,8 +455,6 @@ subroutine scf_loop(is_restart,&
  call stop_clock(timing_scf)
 
 end subroutine scf_loop
-
-
 
 
 !=========================================================================
