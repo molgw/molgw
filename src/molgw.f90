@@ -66,6 +66,7 @@ program molgw
  integer                 :: istep
  logical                 :: is_restart,is_big_restart,is_basis_restart
  logical                 :: restart_tddft_is_correct = .TRUE.
+ logical                 :: is_converged
  real(dp)                :: erpa_tmp
  real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
@@ -237,7 +238,7 @@ program molgw
    !
    ! Try to read a RESTART file if it exists
    if( read_restart_ ) then
-     call read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock,'RESTART')
+     call read_restart(restart_type,'RESTART',basis,occupation,c_matrix,energy,hamiltonian_fock)
    else
      restart_type = NO_RESTART
    endif
@@ -347,9 +348,19 @@ program molgw
                    hamiltonian_kinetic,hamiltonian_nucleus,        &
                    occupation,energy,                              &
                    hamiltonian_fock,                               &
-                   c_matrix,en_gks)
+                   c_matrix,en_gks,is_converged)
    endif
 
+   !
+   ! Big RESTART file written if converged
+   !
+   if( is_converged .AND. print_bigrestart_ ) then
+     call write_restart(BIG_RESTART,basis,occupation,c_matrix,energy,hamiltonian_fock)
+   else
+     if( print_restart_ ) then
+       call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy)
+     endif
+   endif
 
    !
    ! If requested, evaluate the forces
@@ -391,13 +402,16 @@ program molgw
 
 
 
-
  !
  !
  ! Part 3 / 3 : Post-processings
  !
  !
  call start_clock(timing_postscf)
+
+ !
+ ! Evaluate spin contamination
+ call evaluate_s2_operator(occupation,c_matrix,s_matrix)
 
 
  if( print_multipole_ ) then
@@ -420,9 +434,9 @@ program molgw
 
 
  !
- ! RT-TDDFT Simulation
+ ! RT-TDDFT Simulation (only if SCF cycles were converged)
  !
- if(calc_type%is_real_time) then
+ if( calc_type%is_real_time .AND. is_converged ) then
    call calculate_propagation(basis,occupation,c_matrix)
  end if
 
@@ -472,10 +486,10 @@ program molgw
 
 
  !
- ! CI calculation
+ ! CI calculation (only if SCF cycles were converged)
  !
- if(calc_type%is_ci) then
-   if(nspin/=1) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')
+ if( calc_type%is_ci .AND. is_converged ) then
+   if( nspin /= 1 ) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')
 
    !
    ! Set the range of states on which to evaluate the self-energy
@@ -535,7 +549,6 @@ program molgw
    en_gks%tot = en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx + en_gks%mp2
 
    write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%tot
-   write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en_gks%tot+en_gks%se
    write(stdout,*)
 
  endif
@@ -556,7 +569,6 @@ program molgw
    en_gks%tot = en_gks%tot + en_gks%mp3
 
    write(stdout,'(a,2x,f19.10)') ' MP3 Total Energy (Ha):',en_gks%tot
-   write(stdout,'(a,2x,f19.10)') ' SE+MP3  Total En (Ha):',en_gks%tot+en_gks%se
    write(stdout,*)
 
  endif
@@ -564,8 +576,8 @@ program molgw
 
  !
  ! Linear-response time dependent calculations work for BSE and TDDFT
- !
- if(calc_type%is_td .OR. calc_type%is_bse) then
+ ! (only if the SCF cycles were converged)
+ if( ( calc_type%is_td .OR. calc_type%is_bse ) .AND. is_converged ) then
    call init_spectral_function(nstate,occupation,0,wpol)
    call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,erpa_tmp,wpol)
    call destroy_spectral_function(wpol)
@@ -573,8 +585,8 @@ program molgw
 
  !
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
- !
- if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
+ ! (only if the SCF cycles were converged)
+ if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS .AND. is_converged ) then
    en_mbpt = en_gks
    call selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
    call clean_deallocate('Sigx - Vxc',exchange_m_vxc)

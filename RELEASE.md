@@ -2,6 +2,20 @@
 #    MOLGW: Release Notes
 -----------------------------------------
 
+-----------------------------------------
+## What's new in version 2.C.beta
+### Overview
+- speed-up in the Hartree, Exchange and AO to MO transform
+- bug fixes
+
+### Contributors
+- Fabien Bruneval (CEA SRMP, France)
+- Ivan Maliyov (CEA SRMP, France)
+
+### Changes affecting the usage
+- Post-processing are not performed if the SCF cycles are not converged within `tolscf` (save user CPU time when a job went wrong)
+- Keywords `scalapack_nprow` and `scalapack_npcol` have been eliminated
+
 
 -----------------------------------------
 ## What's new in version 2.B

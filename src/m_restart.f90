@@ -31,16 +31,16 @@ contains
 
 
 !=========================================================================
-subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
+subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonian_fock)
  implicit none
 
  integer,intent(in)           :: restart_type
- integer,intent(in)           :: nstate
  type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: occupation(nstate,nspin)
- real(dp),intent(in)          :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
- real(dp),optional,intent(in) :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)          :: occupation(:,:),energy(:,:)
+ real(dp),intent(in)          :: c_matrix(:,:,:)
+ real(dp),optional,intent(in) :: hamiltonian_fock(:,:,:)
 !=====
+ integer                    :: nstate
  integer,parameter          :: restart_version=201609
  integer                    :: restartfile
  integer                    :: ispin,istate,ibf,nstate_local
@@ -51,6 +51,8 @@ subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ha
  if( .NOT. is_iomaster) return
 
  call start_clock(timing_restart_file)
+
+ nstate = SIZE(occupation,DIM=1)
 
  select case(restart_type)
  case(SMALL_RESTART)
@@ -130,21 +132,20 @@ end subroutine write_restart
 
 
 !=========================================================================
-subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock,restart_filename)
+subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,energy,hamiltonian_fock)
  implicit none
 
- integer,intent(out)         :: restart_type
- integer,intent(in)          :: nstate
- type(basis_set),intent(in)  :: basis
- real(dp),intent(inout)      :: occupation(nstate,nspin)
- real(dp),intent(out)        :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
- real(dp),intent(out)        :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
- character(len=*),intent(in) :: restart_filename
+ integer,intent(out)           :: restart_type
+ character(len=*),intent(in)   :: restart_filename
+ type(basis_set),intent(in)    :: basis
+ real(dp),intent(inout)        :: occupation(:,:)
+ real(dp),intent(out)          :: c_matrix(:,:,:),energy(:,:)
+ real(dp),optional,intent(out) :: hamiltonian_fock(:,:,:)
 !=====
  integer                    :: restartfile
  integer                    :: ispin,istate,ibf,nstate_local
  logical                    :: file_exists,same_scf,same_basis,same_geometry
-
+ integer                    :: nstate
  integer                    :: restart_version_read
  integer                    :: restart_type_read
  character(len=100)         :: scf_name_read
@@ -169,6 +170,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
    return
  endif
 
+ nstate = SIZE(occupation,DIM=1)
 
  open(newunit=restartfile,file=restart_filename,form='unformatted',status='old',action='read')
 
@@ -311,7 +313,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  endif
 
 
- if(restart_type == SMALL_RESTART) then
+ if(restart_type == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) ) then
 
    close(restartfile)
    return

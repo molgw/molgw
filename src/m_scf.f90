@@ -43,7 +43,6 @@ module m_scf
    real(dp) :: exx_hyb = 0.0_dp
    real(dp) :: exx     = 0.0_dp
    real(dp) :: xc      = 0.0_dp
-   real(dp) :: se      = 0.0_dp      ! single-excitation contribution
    real(dp) :: mp2     = 0.0_dp
    real(dp) :: mp3     = 0.0_dp
    real(dp) :: rpa     = 0.0_dp

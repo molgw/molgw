@@ -31,7 +31,7 @@ module m_timing
  integer,parameter :: timing_mp2_energy          = 12
  integer,parameter :: timing_pt_self             = 13
  integer,parameter :: timing_eri_4center_eigen   = 14
- integer,parameter :: timing_single_excitation   = 15
+                                              ! 15 is available
  integer,parameter :: timing_eri_2center         = 16
  integer,parameter :: timing_eri_3center         = 17
  integer,parameter :: timing_eri_3center_eigen   = 18
@@ -239,7 +239,6 @@ subroutine output_timing()
  call output_timing_line('Hamiltonian diagonalization',timing_diago_hamiltonian,1)
  call output_timing_line('Pulay DIIS mixing',timing_diis,1)
  call output_timing_line('RESTART file writing',timing_restart_file,1)
- call output_timing_line('Singles correction',timing_single_excitation,1)
  call output_timing_line('Virtual FNO generation',timing_fno,1)
  call output_timing_line('Forces',timing_force,1)
 

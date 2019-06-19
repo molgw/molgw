@@ -372,7 +372,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
        en_mbpt%tot = en_mbpt%nuc_nuc + en_mbpt%kin + en_mbpt%nuc + en_mbpt%hart + en_mbpt%exx + en_mbpt%mp2
 
        write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_mbpt%tot
-       write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en_mbpt%tot+en_mbpt%se
        write(stdout,*)
      endif
 

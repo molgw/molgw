@@ -41,7 +41,7 @@ subroutine scf_loop(is_restart,&
                     occupation, &
                     energy, &
                     hamiltonian_fock,&
-                    c_matrix,en_gks)
+                    c_matrix,en_gks,is_converged)
  implicit none
 
 !=====
@@ -56,35 +56,25 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable,intent(inout) :: hamiltonian_fock(:,:,:)
  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
  type(energy_contributions),intent(inout) :: en_gks
+ logical,intent(out)                :: is_converged
 !=====
  type(spectral_function) :: wpol
  integer                 :: nstate
- character(len=64)       :: restart_filename
- logical                 :: is_converged,stopfile_found
+ logical                 :: stopfile_found
  integer                 :: file_density_matrix
- integer                 :: ispin,iscf,istate
- integer                 :: restart_type
- real(dp)                :: energy_tmp
+ integer                 :: ispin,iscf
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_hartree(:,:)
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
- real(dp),allocatable    :: hfock_restart(:,:,:)
- real(dp),allocatable    :: c_matrix_restart(:,:,:)
- real(dp),allocatable    :: hartree_ii(:,:),exchange_ii(:,:)
- real(dp),allocatable    :: energy_restart(:,:)
 !=====
 
 
  call start_clock(timing_scf)
 
  nstate = SIZE(x_matrix,DIM=2)
-
- ! Old Fock operator will be updated
- ! Get rid of it!
- call clean_deallocate('Fock operator F',hamiltonian_fock) ! Never distributed
 
  !
  ! Initialize the SCF mixing procedure
@@ -97,6 +87,7 @@ subroutine scf_loop(is_restart,&
  call clean_allocate('Exchange operator Sigx',hamiltonian_exx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('XC operator Vxc',hamiltonian_xc,basis%nbf,basis%nbf,nspin)
  call clean_allocate('Density matrix P',p_matrix,basis%nbf,basis%nbf,nspin)
+ hamiltonian_exx(:,:,:) = 0.0_dp
 
 
  !
@@ -162,9 +153,9 @@ subroutine scf_loop(is_restart,&
    ! Use hamiltonian_exx as a temporary matrix (no need to save it for later use)
    if(calc_type%need_exchange_lr) then
 
-     call calculate_exchange_lr(basis,p_matrix,hamiltonian_exx,ex=energy_tmp,occupation=occupation,c_matrix=c_matrix)
+     call calculate_exchange_lr(basis,p_matrix,hamiltonian_exx,ex=en_gks%exx_hyb,occupation=occupation,c_matrix=c_matrix)
      ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-     en_gks%exx_hyb = en_gks%exx_hyb + alpha_hybrid_lr * energy_tmp
+     en_gks%exx_hyb = en_gks%exx_hyb * alpha_hybrid_lr
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * alpha_hybrid_lr
 
    endif
@@ -325,7 +316,7 @@ subroutine scf_loop(is_restart,&
    !
    ! Write down a "small" RESTART file at each step
    if( print_restart_ ) then
-     call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy)
+     call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy)
    endif
 
 
@@ -346,57 +337,9 @@ subroutine scf_loop(is_restart,&
  if( calc_type%is_dft ) call destroy_dft_grid()
 
 
- !
- ! Get the exchange operator if not already calculated
- !
- if( ABS(en_gks%exx) < 1.0e-6_dp ) then
-   call calculate_exchange(basis,p_matrix,hamiltonian_exx,ex=en_gks%exx,occupation=occupation,c_matrix=c_matrix)
- endif
-
-
- !
- ! Print out some expectation values if requested
- !
  if( print_hartree_ ) then
-
-   call clean_allocate('RESTART: C',c_matrix_restart,basis%nbf,nstate,nspin)
-   call clean_allocate('RESTART: H',hfock_restart,basis%nbf,basis%nbf,nspin)
-
-   restart_filename='RESTART_TEST'
-   call read_restart(restart_type,basis,nstate,occupation,c_matrix_restart,energy_restart,hfock_restart,restart_filename)
-
-   if( restart_type /= NO_RESTART ) then
-     write(stdout,'(1x,a,a)') 'RESTART file read: ',restart_filename
-     do ispin=1,nspin
-       do istate=1,nstate
-          hartree_ii(istate,ispin)  = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix_restart(:,istate,ispin) ) )
-          exchange_ii(istate,ispin) = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix_restart(:,istate,ispin) ) )
-       enddo
-     enddo
-
-   else
-     write(stdout,'(1x,a)') 'no RESTART file read'
-     do ispin=1,nspin
-       do istate=1,nstate
-          hartree_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix(:,istate,ispin) ) )
-          exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
-       enddo
-     enddo
-
-   endif
-   call dump_out_energy('=== Hartree expectation value ===',nstate,nspin,occupation,hartree_ii)
-   call dump_out_energy('=== Exchange expectation value ===',nstate,nspin,occupation,exchange_ii)
-
-   call clean_deallocate('RESTART: C',c_matrix_restart)
-   call clean_deallocate('RESTART: H',hfock_restart)
-
+   call print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltonian_hartree,hamiltonian_exx)
  endif
-
- !
- ! Form the final Fock matrix and store it
- !
- call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
- call get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
 
  if( print_density_matrix_ .AND. is_iomaster ) then
    write(stdout,'(1x,a)') 'Write DENSITY_MATRIX_GKS file'
@@ -405,6 +348,18 @@ subroutine scf_loop(is_restart,&
      write(file_density_matrix) p_matrix(:,:,ispin)
    enddo
    close(file_density_matrix)
+ endif
+
+
+ !
+ ! Form the final Fock matrix and store it if needed
+ !
+ if( is_converged  &
+   .AND. ( print_bigrestart_  &
+          .OR. TRIM(pt_density_matrix) /= 'NO'   &
+          .OR. calc_type%selfenergy_approx > 0  )  ) then
+   call get_fock_operator(basis,p_matrix,c_matrix,occupation,en_gks, &
+                             hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
  endif
 
  !
@@ -416,34 +371,12 @@ subroutine scf_loop(is_restart,&
  call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
  call clean_deallocate('XC operator Vxc',hamiltonian_xc)
 
+
  write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%tot
- write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en_gks%exx
- write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx
 
-
-
- !
- ! Single excitation term
- !
- call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,hamiltonian_fock,en_gks%se)
- if( ABS(en_gks%se) > 1.0e-6_dp )  write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en_gks%se
- write(stdout,'(a25,1x,f19.10,/)')  'Est. HF Energy (Ha):', &
-                                     en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx + en_gks%se
-
- !
- ! Evaluate spin contamination
- call evaluate_s2_operator(occupation,c_matrix,s_matrix)
-
-
- !
- ! Big RESTART file written if converged
- !
- if( is_converged .AND. print_bigrestart_ ) then
-   call write_restart(BIG_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
- else
-   if( print_restart_ ) then
-     call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
-   endif
+ if( ABS(en_gks%exx) > 1.0e-6) then
+   write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en_gks%exx
+   write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx
  endif
 
 
@@ -453,20 +386,86 @@ end subroutine scf_loop
 
 
 !=========================================================================
-subroutine get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
+subroutine get_fock_operator(basis,p_matrix,c_matrix,occupation,en, &
+                             hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
  implicit none
 
- real(dp),intent(in)    :: hamiltonian(:,:,:)
- real(dp),intent(in)    :: hamiltonian_xc(:,:,:)
- real(dp),intent(in)    :: hamiltonian_exx(:,:,:)
- real(dp),intent(out)   :: hamiltonian_fock(:,:,:)
+ type(basis_set),intent(in)               :: basis
+ type(energy_contributions),intent(inout) :: en
+ real(dp),intent(in)        :: p_matrix(:,:,:),c_matrix(:,:,:)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: hamiltonian(:,:,:)
+ real(dp),intent(in)        :: hamiltonian_xc(:,:,:)
+ real(dp),intent(inout)     :: hamiltonian_exx(:,:,:)
+ real(dp),intent(out)       :: hamiltonian_fock(:,:,:)
 !=====
- real(dp),allocatable   :: hfock_local(:,:,:)
 !=====
+
+ !
+ ! Get the exchange operator if not already calculated
+ !
+ if( ALL( ABS(hamiltonian_exx(:,:,:)) < 1.0e-6_dp ) ) then
+   call calculate_exchange(basis,p_matrix,hamiltonian_exx,ex=en%exx,occupation=occupation,c_matrix=c_matrix)
+ endif
 
  hamiltonian_fock(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
 
 end subroutine get_fock_operator
+
+
+!=========================================================================
+! Print out the Hartree and exchange diagonal expectation values if requested
+subroutine print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltonian_hartree,hamiltonian_exx)
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: p_matrix(:,:,:),c_matrix(:,:,:)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: hamiltonian_hartree(:,:)
+ real(dp),intent(inout)     :: hamiltonian_exx(:,:,:)
+!=====
+ integer                 :: restart_type
+ integer                 :: nstate,istate,ispin
+ real(dp),allocatable    :: c_matrix_restart(:,:,:)
+ real(dp),allocatable    :: hartree_ii(:,:),exchange_ii(:,:)
+ real(dp),allocatable    :: energy_restart(:,:),occupation_restart(:,:)
+!=====
+
+ nstate = SIZE(c_matrix,DIM=2)
+
+ !
+ ! Get the exchange operator if not already calculated
+ !
+ if( ALL( ABS(hamiltonian_exx(:,:,:)) < 1.0e-6_dp ) ) then
+   call calculate_exchange(basis,p_matrix,hamiltonian_exx,occupation=occupation,c_matrix=c_matrix)
+ endif
+
+ call clean_allocate('RESTART: C',c_matrix_restart,basis%nbf,nstate,nspin)
+ allocate(energy_restart(nstate,nspin))
+ allocate(occupation_restart(nstate,nspin))
+
+ call read_restart(restart_type,'RESTART_TEST',basis,occupation_restart,c_matrix_restart,energy_restart)
+
+ if( restart_type == NO_RESTART ) then
+   c_matrix_restart(:,:,:) = c_matrix(:,:,:)
+ else
+   write(stdout,'(1x,a,a)') 'RESTART file read: ','RESTART_TEST'
+ endif
+
+ do ispin=1,nspin
+   do istate=1,nstate
+      hartree_ii(istate,ispin)  = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix_restart(:,istate,ispin) ) )
+      exchange_ii(istate,ispin) = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix_restart(:,istate,ispin) ) )
+   enddo
+ enddo
+
+ call dump_out_energy('=== Hartree expectation value ===',nstate,nspin,occupation,hartree_ii)
+ call dump_out_energy('=== Exchange expectation value ===',nstate,nspin,occupation,exchange_ii)
+
+ deallocate(energy_restart,occupation_restart)
+ call clean_deallocate('RESTART: C',c_matrix_restart)
+
+end subroutine print_hartee_expectation
 
 
 !=========================================================================
