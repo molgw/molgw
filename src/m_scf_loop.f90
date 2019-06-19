@@ -26,7 +26,6 @@ module m_scf_loop
  use m_hamiltonian_wrapper
  use m_hamiltonian_cmplx
  use m_selfenergy_tools
- use m_dm_mbpt
  use m_restart
 
 
@@ -100,9 +99,9 @@ subroutine scf_loop(is_restart,&
  call clean_allocate('Density matrix P',p_matrix,basis%nbf,basis%nbf,nspin)
 
 
+ !
+ ! Setup the grids for the quadrature of DFT potential/energy
  if( calc_type%is_dft ) then
-   !
-   ! Setup the grids for the quadrature of DFT potential/energy
    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
  endif
 
@@ -126,8 +125,9 @@ subroutine scf_loop(is_restart,&
    ! Setup kinetic and nucleus contributions (that are independent of the
    ! density matrix and therefore of spin channel)
    !
-   hamiltonian(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-   if(nspin==2) hamiltonian(:,:,nspin) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   do ispin=1,nspin
+     hamiltonian(:,:,ispin) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   enddo
 
    !
    ! Hartree contribution to the Hamiltonian
@@ -183,6 +183,7 @@ subroutine scf_loop(is_restart,&
 
    !
    ! QSGW or COHSEX self energy
+   !
    if( ( calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == COHSEX ) &
         .AND. calc_type%selfenergy_technique == QS  &
         .AND. ( iscf > 5 .OR. is_restart ) ) then
@@ -213,8 +214,8 @@ subroutine scf_loop(is_restart,&
 
    !
    ! QSPT2
+   !
    if( calc_type%selfenergy_approx == PT2 .AND. calc_type%selfenergy_technique == QS .AND. ( iscf > 5 .OR. is_restart ) ) then
-
 
      !
      ! Set the range of states on which to evaluate the self-energy

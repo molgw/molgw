@@ -3,14 +3,17 @@
 ! Author: Ivan Maliyov
 !
 ! This module contains
-! propagation of the wavefunction in time
+! the time propagation of the KS wavefunctions for TDDFT
 !
 !=========================================================================
 module m_tddft_propagator
  use m_atoms
  use m_definitions
- use m_basis_set
  use m_memory
+ use m_warning
+ use m_timing
+ use m_tddft_variables
+ use m_basis_set
  use m_hamiltonian_tools
  use m_hamiltonian_onebody
  use m_hamiltonian_cmplx
@@ -18,10 +21,8 @@ module m_tddft_propagator
  use m_inputparam
  use m_dft_grid
  use m_linear_algebra
+ use m_density_tools
  use m_scf
- use m_warning
- use m_tddft_variables
- use m_timing
 
  interface propagate_orth
   module procedure propagate_orth_ham_1
@@ -386,7 +387,6 @@ end subroutine check_identity_cmplx
 
 !=========================================================================
 subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
- use m_definitions
  implicit none
  integer,intent(in)         :: nstate
  complex(dp),intent(in)     :: c_matrix_orth_cmplx(nstate,nocc,nspin)
@@ -432,8 +432,6 @@ end subroutine write_restart_tddft
 
 !=========================================================================
 subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
- use m_definitions
- use m_density_tools
  implicit none
  logical,intent(out)        :: restart_is_correct
  integer,intent(in)         :: nstate
@@ -522,7 +520,6 @@ end subroutine check_restart_tddft
 
 !=========================================================================
 subroutine get_time_min_restart(time_min)
- use m_definitions
  implicit none
  real(dp),intent(inout)     :: time_min
 !===
@@ -551,7 +548,6 @@ end subroutine get_time_min_restart
 
 !=========================================================================
 subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx)
- use m_definitions
  implicit none
  complex(dp),intent(inout)  :: c_matrix_orth_cmplx(nstate,nocc,nspin)
  real(dp),intent(inout)     :: time_min
@@ -609,7 +605,6 @@ end subroutine read_restart_tddft
 
 !=========================================================================
 subroutine get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist_cur)
- use m_definitions
  implicit none
  integer, intent(in)          :: n_hist_cur
  real(dp),intent(in)          :: m_nodes(n_hist_cur)
@@ -631,7 +626,6 @@ end subroutine get_extrap_coefs_lagr
 
 !=========================================================================
 subroutine get_extrap_coefs_aspc(extrap_coefs,n_hist_cur)
- use m_definitions
  implicit none
  integer, intent(in)          :: n_hist_cur!
  real(dp),intent(inout)       :: extrap_coefs(n_hist_cur)

@@ -59,10 +59,8 @@ molgw:
 	+make  level040
 	+make  level050
 	+make  level060
-	+make  level065
 	+make  level070
-	+make  level080
-	+make  level090
+	+make  level100
 	+make  ../molgw
 
 spectrum:
@@ -99,13 +97,9 @@ level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o m_restart.o
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 
-level065: m_dm_mbpt.o
+level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_dm_mbpt.o m_tddft_propagator.o
 
-level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o
-
-level080: m_tddft_propagator.o
-
-level090: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o \
+level100: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o \
           gwgamma_selfenergy.o bse.o multipole_tools.o \
           io.o mp2.o force.o molgw.o
 
@@ -160,7 +154,7 @@ molgw.o: m_definitions.f90 m_warning.f90 m_tddft_variables.f90 m_timing.f90 m_me
          m_atoms.f90 m_scf.f90 m_scalapack.f90  m_ecp.f90 \
          m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_ci.f90 m_eri_calculate.f90 m_eri_ao_mo.f90 \
          m_hamiltonian_onebody.f90 m_selfenergy_tools.f90 m_scf_loop.f90 \
-         m_dm_analysis.f90 m_tddft_propagator.f90 \
+         m_dm_analysis.f90 m_tddft_propagator.f90 m_restart.f90 m_dm_mbpt.f90 \
          m_virtual_orbital_space.f90 m_selfenergy_evaluation.f90 \
          molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
@@ -177,12 +171,12 @@ m_selfenergy_evaluation.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputp
 m_scf_loop.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_atoms.f90 m_inputparam.f90 m_scf.f90 m_scalapack.f90 m_mpi.f90 \
               m_basis_set.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
               m_hamiltonian_cmplx.f90 m_hamiltonian_tools.f90 m_hamiltonian_wrapper.f90 m_hamiltonian_twobodies.f90 \
-              m_selfenergy_tools.f90 m_dm_mbpt.f90 m_linear_algebra.f90 m_restart.f90 \
+              m_selfenergy_tools.f90 m_linear_algebra.f90 m_restart.f90 \
               m_scf_loop.f90
 	$(FC_W_OPTS) -c m_scf_loop.f90 $(LIBXC_INCS)
 
 m_dm_mbpt.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_scf.f90 \
-             m_spectral_function.f90 \
+             m_spectral_function.f90 m_atoms.f90 m_basis_set.f90 \
              m_hamiltonian_wrapper.f90 m_selfenergy_tools.f90 m_dm_mbpt.f90
 	$(FC_W_OPTS) -c m_dm_mbpt.f90 $(LIBXC_INCS)
 
@@ -239,7 +233,7 @@ m_hamiltonian_cmplx.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90
                        m_hamiltonian_cmplx.f90
 	$(FC_W_OPTS) -c m_hamiltonian_cmplx.f90 $(LIBXC_INCS)
 
-m_hamiltonian_wrapper.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_basis_set.f90 \
+m_hamiltonian_wrapper.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_basis_set.f90 m_scf.f90 \
 	         m_inputparam.f90 m_hamiltonian_twobodies.f90 m_hamiltonian_tools.f90 m_hamiltonian_cmplx.f90 m_hamiltonian_wrapper.f90
 	$(FC_W_OPTS) -c m_hamiltonian_wrapper.f90 $(LIBXC_INCS)
 
@@ -416,7 +410,7 @@ m_lbfgs.o: m_definitions.f90 m_lbfgs.f90
 m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
-m_tddft_propagator.o: m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90 m_tddft_variables.f90 m_linear_algebra.f90 \
+m_tddft_propagator.o: m_definitions.f90 m_basis_set.f90 m_hamiltonian_wrapper.f90 m_memory.f90 m_tddft_variables.f90 m_linear_algebra.f90 \
                       m_atoms.f90 m_hamiltonian_tools.f90 m_hamiltonian_onebody.f90 m_hamiltonian_cmplx.f90 \
                       m_inputparam.f90 m_dft_grid.f90 m_scf.f90 m_warning.f90 m_timing.f90 m_density_tools.f90 m_tddft_propagator.f90
 	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS)

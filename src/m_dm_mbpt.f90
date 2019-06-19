@@ -12,13 +12,12 @@ module m_dm_mbpt
  use m_warning
  use m_memory
  use m_atoms
+ use m_basis_set
  use m_inputparam
  use m_spectral_function
  use m_selfenergy_tools
- use m_scf
  use m_hamiltonian_wrapper
- use m_atoms
-
+ use m_scf
 
 contains
 
@@ -195,16 +194,6 @@ end subroutine get_dm_mbpt
 
 !=========================================================================
 subroutine fock_density_matrix(basis,occupation,energy,c_matrix,hfock,p_matrix)
- use m_definitions
- use m_mpi
- use m_mpi_ortho
- use m_warning
- use m_timing
- use m_basis_set
- use m_eri_ao_mo
- use m_inputparam
- use m_hamiltonian_tools
- use m_selfenergy_tools
  implicit none
 
  type(basis_set),intent(in)         :: basis
