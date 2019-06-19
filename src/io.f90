@@ -2116,7 +2116,7 @@ subroutine read_cube_wfn(nstate,basis,occupation,c_matrix)
 
        do istate=istate1,istate2
          do ispin=1,nspin
-           write(ocubefile(istate,ispin),'(50(en16.8,2x))') phi(istate,ispin)
+           write(ocubefile(istate,ispin),'(50(e16.8,2x))') phi(istate,ispin)
            pot_i(istate,ispin) = pot_i(istate,ispin) - pot(ix,iy,iz) * phi(istate,ispin)**2 * dv
          enddo
        enddo
@@ -2125,7 +2125,7 @@ subroutine read_cube_wfn(nstate,basis,occupation,c_matrix)
        ! check whether istate1:istate2 spans all the occupied states
        if( ALL( occupation(istate2+1,:) < completely_empty ) ) then
          do ispin=1,nspin
-           write(ocuberho(ispin),'(50(en16.8,2x))') SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) )
+           write(ocuberho(ispin),'(50(e16.8,2x))') SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) )
            chi2 = chi2 + ( pot(ix,iy,iz) - SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) ) )**2
          enddo
        endif
