@@ -392,12 +392,6 @@ subroutine scf_loop(is_restart,&
  endif
 
  !
- ! Is there a correlated density matrix to be read or to be calculated
- if( read_fchk /= 'NO' .OR. TRIM(pt_density_matrix) /= 'NO' .OR. use_correlated_density_matrix_ ) &
-   call get_dm_mbpt(basis,occupation,energy,c_matrix, &
-                    hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,en_gks)
-
- !
  ! Form the final Fock matrix and store it
  !
  call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)

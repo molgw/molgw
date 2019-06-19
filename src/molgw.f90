@@ -416,20 +416,11 @@ program molgw
  if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
  if( .FALSE. ) call read_cube_wfn(nstate,basis,occupation,c_matrix)
 
- call clean_deallocate('Overlap matrix S',s_matrix)
- call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
- call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
- call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
 
-
- !
- !
- ! Post-processing start here
- !
- !
 
  !
  ! RT-TDDFT Simulation
+ !
  if(calc_type%is_real_time) then
    call calculate_propagation(basis,occupation,c_matrix)
  end if
@@ -441,6 +432,23 @@ program molgw
 
  if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+
+
+ !
+ ! Calculate or read a correlated density matrix
+ !
+ if( read_fchk /= 'NO' &
+    .OR. TRIM(pt_density_matrix) /= 'NO' &
+    .OR. use_correlated_density_matrix_ ) then
+   call get_dm_mbpt(basis,occupation,energy,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
+ endif
+
+
+ call clean_deallocate('Overlap matrix S',s_matrix)
+ call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
+ call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
+ call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
+
 
  ! Performs a distribution strategy change here for the 3-center integrals
  ! ( nprow_3center x npcol_3center ) => ( nprow_auxil x 1 )

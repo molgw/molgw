@@ -87,7 +87,7 @@ level015: m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o
 
 level020: m_basis_set.o m_inputparam.o
 
-level022: m_libint_tools.o m_block_diago.o m_hamiltonian_tools.o m_restart.o
+level022: m_libint_tools.o m_block_diago.o m_hamiltonian_tools.o
 
 level025: m_eri.o m_scf.o m_dft_grid.o
 
@@ -95,7 +95,7 @@ level030: m_eri_calculate.o m_density_tools.o
 
 level040: m_spectral_function.o m_hamiltonian_twobodies.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o
 
-level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o
+level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o m_restart.o
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 

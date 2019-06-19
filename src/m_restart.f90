@@ -13,6 +13,8 @@ module m_restart
  use m_inputparam
  use m_atoms
  use m_basis_set
+ use m_hamiltonian_onebody,only: setup_overlap_mixedbasis
+ use m_linear_algebra,only: invert
 
 
  !
@@ -129,13 +131,6 @@ end subroutine write_restart
 
 !=========================================================================
 subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock,restart_filename)
- use m_definitions
- use m_mpi
- use m_inputparam
- use m_atoms
- use m_basis_set
- use m_hamiltonian_onebody
- use m_linear_algebra,only: invert
  implicit none
 
  integer,intent(out)         :: restart_type
