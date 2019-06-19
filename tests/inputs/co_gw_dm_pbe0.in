@@ -1,0 +1,18 @@
+&molgw
+ scf='PBE0'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ frozencore='yes'
+
+ pt_density_matrix='GW'
+ use_correlated_density_matrix='yes'
+
+ postscf='GW'
+ selfenergy_state_range=1
+
+ natom = 2
+/
+8           .000000     .000000     .493003
+6           .000000     .000000    -.657337
