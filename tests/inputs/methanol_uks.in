@@ -1,7 +1,7 @@
 &molgw
  nspin=2
  scf='b3lyp'
- tolscf=1.0e-14
+ tolscf=1.0e-10
  min_overlap=1.0e-3
 
  basis='aug-cc-pVDZ'

@@ -16,7 +16,7 @@
  gaussian_type='CART'
 
  nscf=30
- tolscf=1.0e-12
+ tolscf=1.0e-10
 
  natom=2
 /

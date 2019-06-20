@@ -718,7 +718,7 @@ function check_converged(p_matrix_new)
  real(dp)              :: rms
 !=====
 
- rms = NORM2( p_matrix_new(:,:,:) - p_matrix_hist(:,:,:,1) )**2 * SQRT( REAL(nspin,dp) )
+ rms = NORM2( p_matrix_new(:,:,:) - p_matrix_hist(:,:,:,1) ) * SQRT( REAL(nspin,dp) )
 
 
  write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms

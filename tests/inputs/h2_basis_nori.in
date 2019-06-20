@@ -1,6 +1,6 @@
 &molgw
  scf='lda'
- tolscf=1.0e-12
+ tolscf=1.0e-10
 
  basis=''
 

@@ -248,6 +248,8 @@ program molgw
    if( is_restart .AND. (.NOT.is_big_restart) .AND. (.NOT.is_basis_restart) ) write(stdout,*) 'Restarting from a RESTART file'
    if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
    if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
+   ! When a BIG RESTART file is provided, assume it contains converged SCF information
+   is_converged     = is_big_restart 
 
 
    !

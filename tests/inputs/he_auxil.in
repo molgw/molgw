@@ -1,6 +1,6 @@
 &molgw
  scf='hf'
- tolscf=1.0e-12
+ tolscf=1.0e-10
  nspin=1
 
  basis='cc-pVTZ'

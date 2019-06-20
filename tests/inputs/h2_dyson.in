@@ -2,7 +2,7 @@
  scf='rsh'
  alpha_hybrid=0.50
  nscf= 100
- tolscf=1.0e-12
+ tolscf=1.0e-10
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
