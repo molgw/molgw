@@ -2520,11 +2520,11 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
    call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
  endif
 
- allocate(usermap(nproc_auxil,1))
+ allocate(usermap(1,nproc_auxil))
  do iproc_auxil=0,nproc_auxil-1
-   usermap(iproc_auxil+1,1) = iproc_auxil * nproc_ortho
+   usermap(1,iproc_auxil+1) = iproc_auxil * nproc_ortho
  enddo
- call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
+ call BLACS_GRIDMAP(cntxt_auxil,usermap,1,1,nproc_auxil)
  deallocate(usermap)
 
  call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
@@ -2885,19 +2885,19 @@ subroutine set_auxil_block_size(block_size_max)
 !=====
 
  if( block_size_max < 1 ) then
-   MB_auxil = 1
+   NB_auxil = 1
 
  else
-   MB_auxil = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
-   MB_auxil = MIN(MB_auxil,block_row)
+   NB_auxil = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
+   NB_auxil = MIN(NB_auxil,block_row)
 
  endif
 
- write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',MB_auxil
- NB_auxil = MB_auxil
+ write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',NB_auxil
+ MB_auxil = NB_auxil
 
- ! If not parallelization on columns (pair index), then enforce the same block size
- if( npcol_3center == npcol_auxil ) then
+ ! If not parallelization on rows (pair index), then enforce the same block size
+ if( nprow_3center == nprow_auxil ) then
    MB_3center = MB_auxil
    NB_3center = NB_auxil
  endif

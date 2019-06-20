@@ -193,6 +193,8 @@ program molgw
        call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      endif
 
+     call reshuffle_distribution_3center()
+
    endif
    ! ERI integrals have been computed and stored
    !
@@ -249,7 +251,7 @@ program molgw
    if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
    if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
    ! When a BIG RESTART file is provided, assume it contains converged SCF information
-   is_converged     = is_big_restart 
+   is_converged     = is_big_restart
 
 
    !
@@ -328,7 +330,9 @@ program molgw
    ! Transpose the 3-center eri here (if needed)
    !
    if( has_auxil_basis ) then
-     call setup_eri3_pair_major()
+     call issue_warning('FBFB fake it')
+     !call setup_eri3_pair_major()
+     call setup_eri3_pair_major_fake()
    endif
 
    call stop_clock(timing_prescf)
@@ -466,15 +470,6 @@ program molgw
  call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
  call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
 
-
- ! Performs a distribution strategy change here for the 3-center integrals
- ! ( nprow_3center x npcol_3center ) => ( nprow_auxil x 1 )
- if( has_auxil_basis ) then
-   if( calc_type%selfenergy_approx > 0 .OR. calc_type%is_ci .OR. calc_type%is_td &
-       .OR. calc_type%is_mp2 .OR. calc_type%is_mp3 .OR. calc_type%is_bse ) then
-     call reshuffle_distribution_3center()
-   endif
- endif
 
 
  !

@@ -580,7 +580,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 #endif
  endif
 
- call set_auxil_block_size(auxil_basis%nbf/(nprow_auxil*2))
+ call set_auxil_block_size(auxil_basis%nbf/(npcol_auxil*2))
 
  if( cntxt_3center > 0 ) then
 
@@ -853,7 +853,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  integer                      :: desc_3tmp(NDEL)
  integer                      :: nauxil_kept
  logical                      :: skip_shell
- real(dp)                     :: libint_calls
+ integer(kind=int8)           :: libint_calls
  integer                      :: ibatch,ipair_first,ipair_last,mpair
  integer                      :: ipair
 !=====
@@ -894,18 +894,17 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    write(stdout,'(1x,a,i4,/)') 'Use several batches to reduce the memory peak: ',eri3_nbatch
  endif
 
+
 #if defined(HAVE_SCALAPACK)
  !
  ! Allocate the final 3-center integral array
  ! * Full Range or Long-Range
  !
  if( .NOT. is_longrange ) then
-   ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
-   ! Set nlocal => npair
    if( cntxt_3center > 0 ) then
-     mlocal = NUMROC(nauxil_2center,MB_3center,iprow_3center,first_row,nprow_3center)
-     nlocal = NUMROC(npair      ,NB_3center,ipcol_3center,first_col,npcol_3center)
-     call DESCINIT(desc_eri3,nauxil_2center,npair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+     mlocal = NUMROC(npair         ,MB_3center,iprow_3center,first_row,nprow_3center)
+     nlocal = NUMROC(nauxil_2center,NB_3center,ipcol_3center,first_col,npcol_3center)
+     call DESCINIT(desc_eri3,npair,nauxil_2center,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
    else
      mlocal = 0
      nlocal = 0
@@ -914,12 +913,10 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call xmax_ortho(nlocal)
    call clean_allocate('3-center integrals SCALAPACK',eri_3center,mlocal,nlocal)
  else
-   ! Set mlocal => nauxil_kept = nauxil_2center OR nauxil_2center_lr
-   ! Set nlocal => npair
    if( cntxt_3center > 0 ) then
-     mlocal = NUMROC(nauxil_2center_lr,MB_3center,iprow_3center,first_row,nprow_3center)
-     nlocal = NUMROC(npair      ,NB_3center,ipcol_3center,first_col,npcol_3center)
-     call DESCINIT(desc_eri3_lr,nauxil_2center_lr,npair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+     mlocal = NUMROC(npair            ,MB_3center,iprow_3center,first_row,nprow_3center)
+     nlocal = NUMROC(nauxil_2center_lr,NB_3center,ipcol_3center,first_col,npcol_3center)
+     call DESCINIT(desc_eri3_lr,npair,nauxil_2center_lr,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
    else
      mlocal = 0
      nlocal = 0
@@ -937,10 +934,11 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 #endif
 
+
  !
  ! Loop over batches starts here
  !
- libint_calls = 0.0_dp
+ libint_calls = 0
  ipair_first = 0
  ipair_last  = 0
  do ibatch=1,eri3_nbatch
@@ -966,11 +964,11 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      !
      !  Allocate the temporary 3-center integral array
      !
-     ! Set mlocal => auxil_basis%nbf
-     ! Set nlocal => npair
-     mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
-     nlocal = NUMROC(mpair          ,NB_3center,ipcol_3center,first_col,npcol_3center)
-     call DESCINIT(desc_3tmp,auxil_basis%nbf,mpair,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+     ! Set mlocal => mpair
+     ! Set nlocal => auxil_basis%nbf
+     mlocal = NUMROC(mpair          ,MB_3center,iprow_3center,first_row,nprow_3center)
+     nlocal = NUMROC(auxil_basis%nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
+     call DESCINIT(desc_3tmp,mpair,auxil_basis%nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
      call clean_allocate('TMP 3-center integrals',eri_3center_tmp,mlocal,nlocal)
 
@@ -996,7 +994,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
            ! Shift origin due to batches
            klpair_global = klpair_global - ipair_first + 1
-           skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(klpair_global,NB_3center,0,first_col,npcol_3center) )
+           skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) )
          enddo
        enddo
 
@@ -1034,7 +1032,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
          if( skip_shell ) cycle
 
-         libint_calls = libint_calls + 1.00_dp
+         libint_calls = libint_calls + 1
 
          am1 = ami
          n1c = number_basis_function_am( 'CART' , ami )
@@ -1064,13 +1062,13 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
              ! Shift origin due to batches
              klpair_global = klpair_global - ipair_first + 1
-             if( ipcol_3center /= INDXG2P(klpair_global,NB_3center,0,first_col,npcol_3center) ) cycle
-             jlocal = INDXG2L(klpair_global,NB_3center,0,first_col,npcol_3center)
+             if( iprow_3center /= INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) ) cycle
+             ilocal = INDXG2L(klpair_global,MB_3center,0,first_row,nprow_3center)
 
              do ibf=1,ni
                iglobal = auxil_basis%shell(ishell)%istart+ibf-1
-               if( iprow_3center /= INDXG2P(iglobal,MB_3center,0,first_row,nprow_3center) ) cycle
-               ilocal = INDXG2L(iglobal,MB_3center,0,first_row,nprow_3center)
+               if( ipcol_3center /= INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) ) cycle
+               jlocal = INDXG2L(iglobal,NB_3center,0,first_col,npcol_3center)
 
                eri_3center_tmp(ilocal,jlocal) = integrals(ibf,kbf,lbf)
 
@@ -1099,34 +1097,34 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 
    !
-   ! Second part: perform  (P|Q)^{-1/2} x (Q|\alpha\beta)
+   ! Second part: perform  \sum_Q (\alpha\beta|Q) (Q|P)^{-1/2}
    !
    call start_clock(timing_eri_3center_matmul)
 
    if( cntxt_3center > 0 ) then
      if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
-       call PDGEMM('T','N',nauxil_kept,mpair,auxil_basis%nbf, &
-                   1.0_dp,eri_2center    ,1,1,desc_2center,   &
-                          eri_3center_tmp,1,1,desc_3tmp,      &
-                   0.0_dp,eri_3center    ,1,ipair_first,desc_eri3)
+       call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
+                   1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
+                          eri_2center    ,1,1,desc_2center,   &
+                   0.0_dp,eri_3center    ,ipair_first,1,desc_eri3)
 #else
-     call DGEMM('T','N',nauxil_kept,mpair,auxil_basis%nbf, &
-                 1.0_dp,eri_2center,auxil_basis%nbf,       &
-                        eri_3center_tmp,auxil_basis%nbf,   &
-                 0.0_dp,eri_3center(1,ipair_first),nauxil_kept)
+       call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
+                  1.0_dp,eri_3center_tmp,mpair,   &
+                         eri_2center,auxil_basis%nbf,       &
+                  0.0_dp,eri_3center(ipair_first,1),mpair)
 #endif
      else
 #if defined(HAVE_SCALAPACK)
-       call PDGEMM('T','N',nauxil_kept,mpair,auxil_basis%nbf, &
-                   1.0_dp,eri_2center_lr ,1,1,desc_2center,   &
-                          eri_3center_tmp,1,1,desc_3tmp,      &
-                   0.0_dp,eri_3center_lr ,1,ipair_first,desc_eri3_lr)
+       call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
+                   1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
+                          eri_2center_lr ,1,1,desc_2center,   &
+                   0.0_dp,eri_3center_lr ,ipair_first,1,desc_eri3_lr)
 #else
-     call DGEMM('T','N',nauxil_kept,mpair,auxil_basis%nbf, &
-                 1.0_dp,eri_2center_lr,auxil_basis%nbf,    &
-                        eri_3center_tmp,auxil_basis%nbf,   &
-                 0.0_dp,eri_3center_lr(1,ipair_first),nauxil_kept)
+       call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf,  &
+                  1.0_dp,eri_3center_tmp,mpair,              &
+                         eri_2center_lr,auxil_basis%nbf,     &
+                  0.0_dp,eri_3center_lr(ipair_first,1),mpair)
 #endif
      endif
    endif
@@ -1141,11 +1139,12 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  enddo
 
 
- write(stdout,'(1x,a,i20)')      'Number of calls to libint of this proc: ',INT(libint_calls,KIND=8)
+ write(stdout,'(1x,a,i20)')      'Number of calls to libint of this proc: ',libint_calls
  call xsum_world(libint_calls)
- write(stdout,'(1x,a,7x,i20)')   'Total number of calls to libint: ',INT(libint_calls,KIND=8)
+ write(stdout,'(1x,a,7x,i20)')   'Total number of calls to libint: ',libint_calls
  write(stdout,'(1x,a,f8.2)')  'Redundant calls due to parallelization and batches (%): ', &
-                                 ( libint_calls / ( REAL(nshellpair,dp)*REAL(auxil_basis%nshell,dp) ) - 1.0_dp ) * 100.0_dp
+                                 ( REAL(libint_calls,dp) / ( REAL(nshellpair,dp)*REAL(auxil_basis%nshell,dp) ) - 1.0_dp ) * 100.0_dp
+
 
  if( .NOT. is_longrange ) then
    call clean_deallocate('Distributed 2-center integrals',eri_2center)
@@ -1166,6 +1165,10 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
  call stop_clock(timing_eri_3center)
 
+ write(stdout,*) 'FBFB ==============='
+ write(stdout,*) eri_3center(:,:)
+ write(stdout,*) 'FBFB ==============='
+ stop 'ENOUGH'
 
 end subroutine calculate_eri_3center_scalapack
 

@@ -389,6 +389,32 @@ end subroutine setup_eri3_pair_major
 
 
 !=========================================================================
+subroutine setup_eri3_pair_major_fake()
+ implicit none
+
+!=====
+ integer :: ipair,ibf,jbf
+!=====
+
+ if( .NOT. eri_pair_major ) return
+
+ write(stdout,*) 'FBFB fake'
+ call start_clock(timing_transpose_eri3)
+
+ allocate(eri_P,SOURCE=eri_3center)
+
+ ! If LR integrals are not needed, then skip the end of the subroutine
+ if( .NOT. ALLOCATED(eri_3center_lr) ) return
+
+ allocate(eri_P_lr,SOURCE=eri_3center_lr)
+
+ call stop_clock(timing_transpose_eri3)
+
+
+end subroutine setup_eri3_pair_major_fake
+
+
+!=========================================================================
 !
 ! Find negligible shell pairs with
 ! Cauchy-Schwarz inequality: (ij|1/r|kl)**2 <= (ij|1/r|ij) (kl|1/r|(kl)
