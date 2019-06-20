@@ -2544,7 +2544,7 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  else
    ! Else just copy the auxil distribution
    if( eri3_nprow * eri3_npcol /= 1 ) &
-      call issue_warning('eri3 distribution was not consistent with the number of MPI threads. MOLGW will override user selection')
+      call issue_warning('eri3 distribution was not consistent with the number of MPI tasks. MOLGW will override user selection')
    cntxt_3center = cntxt_auxil
    nprow_3center = nprow_auxil
    npcol_3center = npcol_auxil

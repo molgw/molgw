@@ -237,7 +237,7 @@ subroutine scf_loop(is_restart,&
    ! Sum up to get the total energy
    en_gks%tot = en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx_hyb + en_gks%xc
 
-   ! Make sure all the MPI threads have the exact same Hamiltonian
+   ! Make sure all the MPI tasks have the exact same Hamiltonian
    ! It helps stabilizing the SCF cycles in parallel
    call xsum_world(hamiltonian)
    hamiltonian(:,:,:) = hamiltonian(:,:,:) / REAL(nproc_world,dp)
