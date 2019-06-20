@@ -42,13 +42,12 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
  type(spectral_function)    :: wpol
  type(energy_contributions) :: en_dm_corr
  real(dp)                   :: en_rpa
- real(dp),allocatable       :: hartree_ii(:,:),exchange_ii(:,:)
+ real(dp),allocatable       :: h_ii(:,:),exchange_ii(:,:)
  real(dp),allocatable       :: p_matrix_corr(:,:,:)
  real(dp),allocatable       :: hamiltonian_hartree_corr(:,:)
  real(dp),allocatable       :: hamiltonian_exx_corr(:,:,:)
  real(dp),allocatable       :: c_matrix_tmp(:,:,:)
  real(dp),allocatable       :: occupation_tmp(:,:)
- real(dp),allocatable       :: hamiltonian_exx(:,:,:)
 !=====
 
  nstate = SIZE(c_matrix,DIM=2)
@@ -143,20 +142,17 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
    write(stdout,'(a25,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%tot
 
    nocc = get_number_occupied_states(occupation)
-   allocate(hartree_ii(nstate,nspin),exchange_ii(nstate,nspin))
-   do ispin=1,nspin
-     do istate=1,nstate
-        hartree_ii(istate,ispin)  =  DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                                  MATMUL( hamiltonian_hartree_corr(:,:) , c_matrix(:,istate,ispin) ) )
-        exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                                  MATMUL( hamiltonian_exx_corr(:,:,ispin) , c_matrix(:,istate,ispin) ) )
-     enddo
-   enddo
-   call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',nstate,nspin,occupation,hartree_ii)
-   write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',hartree_ii(nocc,:) * Ha_eV
-   call dump_out_energy('=== Exchange expectation value from correlated density matrix ===',nstate,nspin,occupation,exchange_ii)
-   write(stdout,'(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):',exchange_ii(nocc,:) * Ha_eV
-   deallocate(hartree_ii,exchange_ii)
+   allocate(h_ii(nstate,nspin))
+
+   call matrix_ao_to_mo_diag(c_matrix,RESHAPE(hamiltonian_hartree_corr,(/basis%nbf,basis%nbf,1/)),h_ii)
+   call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',nstate,nspin,occupation,h_ii)
+   write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
+
+   call matrix_ao_to_mo_diag(c_matrix,hamiltonian_exx_corr,h_ii)
+   call dump_out_energy('=== Exchange expectation value from correlated density matrix ===',nstate,nspin,occupation,h_ii)
+   write(stdout,'(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
+   deallocate(h_ii)
+
  endif
 
  if( print_multipole_ .OR. print_cube_ ) then
