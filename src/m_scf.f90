@@ -853,7 +853,7 @@ function check_converged(p_matrix_new)
 
  rms = SQRT( rms * nspin )
 
- write(stdout,'(1x,a,2x,es12.5)') 'Convergence criterium on the density matrix',rms
+ write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms
 
  if( ( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) .AND. adiis_regime ) then
    if( rms < diis_switch ) then
