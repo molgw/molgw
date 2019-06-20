@@ -271,7 +271,7 @@ subroutine scf_loop(is_restart,&
 
    call dump_out_energy('=== Energies ===',nstate,nspin,occupation,energy)
 
-   call output_new_homolumo('gKS',nstate,occupation,energy,1,nstate)
+   call output_homolumo('gKS',nstate,occupation,energy,1,nstate)
 
 
    !
@@ -352,7 +352,7 @@ subroutine scf_loop(is_restart,&
 
 
  !
- ! Form the final Fock matrix and store it if needed
+ ! Form the final Fock matrix and store it only if needed
  !
  if( is_converged  &
    .AND. ( print_bigrestart_  &
@@ -425,13 +425,14 @@ subroutine print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltoni
  real(dp),intent(inout)     :: hamiltonian_exx(:,:,:)
 !=====
  integer                 :: restart_type
- integer                 :: nstate,istate,ispin
+ integer                 :: nstate,nocc,istate,ispin
  real(dp),allocatable    :: c_matrix_restart(:,:,:)
- real(dp),allocatable    :: hartree_ii(:,:),exchange_ii(:,:)
+ real(dp),allocatable    :: h_ii(:,:)
  real(dp),allocatable    :: energy_restart(:,:),occupation_restart(:,:)
 !=====
 
  nstate = SIZE(c_matrix,DIM=2)
+ nocc   = get_number_occupied_states(occupation)
 
  !
  ! Get the exchange operator if not already calculated
@@ -443,6 +444,7 @@ subroutine print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltoni
  call clean_allocate('RESTART: C',c_matrix_restart,basis%nbf,nstate,nspin)
  allocate(energy_restart(nstate,nspin))
  allocate(occupation_restart(nstate,nspin))
+ allocate(h_ii(nstate,nspin))
 
  call read_restart(restart_type,'RESTART_TEST',basis,occupation_restart,c_matrix_restart,energy_restart)
 
@@ -452,16 +454,16 @@ subroutine print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltoni
    write(stdout,'(1x,a,a)') 'RESTART file read: ','RESTART_TEST'
  endif
 
- do ispin=1,nspin
-   do istate=1,nstate
-      hartree_ii(istate,ispin)  = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix_restart(:,istate,ispin) ) )
-      exchange_ii(istate,ispin) = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix_restart(:,istate,ispin) ) )
-   enddo
- enddo
+ call matrix_ao_to_mo_diag(c_matrix_restart,RESHAPE(hamiltonian_hartree,(/basis%nbf,basis%nbf,1/)),h_ii)
+ call dump_out_energy('=== Hartree expectation value ===',nstate,nspin,occupation,h_ii)
+ write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
 
- call dump_out_energy('=== Hartree expectation value ===',nstate,nspin,occupation,hartree_ii)
- call dump_out_energy('=== Exchange expectation value ===',nstate,nspin,occupation,exchange_ii)
 
+ call matrix_ao_to_mo_diag(c_matrix_restart,hamiltonian_exx,h_ii)
+ call dump_out_energy('=== Exchange expectation value ===',nstate,nspin,occupation,h_ii)
+ write(stdout,'(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
+
+ deallocate(h_ii)
  deallocate(energy_restart,occupation_restart)
  call clean_deallocate('RESTART: C',c_matrix_restart)
 

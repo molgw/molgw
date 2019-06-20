@@ -258,7 +258,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
        call output_qp_energy('GW small basis',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
        deallocate(zz)
        deallocate(energy_qp_z)
-       call output_new_homolumo('GW small basis',nstate,occupation,energy_qp_new,nsemin,nsemax)
+       call output_homolumo('GW small basis',nstate,occupation,energy_qp_new,nsemin,nsemax)
        deallocate(energy_qp_new)
 
        call init_selfenergy_grid(static_selfenergy,energy,se2)
@@ -318,7 +318,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      call output_qp_energy('GW',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
      deallocate(zz)
      deallocate(energy_qp_z)
-     call output_new_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax)
+     call output_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax)
      deallocate(energy_qp_new)
 
 
@@ -453,7 +453,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    !
    ! Output the new HOMO and LUMO energies
    !
-   call output_new_homolumo(TRIM(selfenergy_tag),nstate,occupation,energy_qp_new,nsemin,nsemax)
+   call output_homolumo(TRIM(selfenergy_tag),nstate,occupation,energy_qp_new,nsemin,nsemax)
 
 
 

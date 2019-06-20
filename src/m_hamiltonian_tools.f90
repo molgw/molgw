@@ -355,6 +355,47 @@ end subroutine set_occupation
 
 
 !=========================================================================
+subroutine matrix_ao_to_mo_diag(c_matrix,matrix_in,diag_out)
+ implicit none
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: matrix_in(:,:,:)
+ real(dp),intent(out) :: diag_out(:,:)
+!=====
+ integer              :: nbf,nstate,nspin_ham
+ integer              :: ispin,istate,ispin_ham
+ real(dp),allocatable :: vector_tmp(:)
+!=====
+
+ nbf       = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate    = SIZE(c_matrix(:,:,:),DIM=2)
+ nspin_ham = SIZE(matrix_in,DIM=3)
+
+
+ allocate(vector_tmp(nbf))
+
+ do ispin=1,nspin
+   
+   ispin_ham = MIN(ispin,nspin_ham)
+
+   !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
+   !diag_i =  DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix_restart(:,istate,ispin) ) )
+   do istate=1,nstate
+
+     ! H * C_i
+     call DSYMV('L',nbf,1.0d0,matrix_in(1,1,ispin_ham),nbf, &
+                              c_matrix(1,istate,ispin),1,  &
+                        0.0d0,vector_tmp,1)
+     ! C_i**T * (H * C_i)
+     diag_out(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , vector_tmp(:) )
+
+   enddo
+ enddo
+ deallocate(vector_tmp)
+
+end subroutine matrix_ao_to_mo_diag
+
+
+!=========================================================================
 subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
  implicit none
  real(dp),intent(in)  :: c_matrix(:,:,:)
@@ -731,6 +772,10 @@ subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
  enddo
 
  deallocate(p_matrix_sqrt)
+
+ if( ANY( occupation(:,:) < 0.0_dp ) ) then
+   call issue_warning('get_c_matrix_from_p_matrix: negative occupation numbers')
+ endif
 
  call stop_clock(timing_sqrt_density_matrix)
 

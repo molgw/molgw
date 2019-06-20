@@ -247,7 +247,7 @@ end subroutine dump_out_matrix
 
 
 !=========================================================================
-subroutine output_new_homolumo(calculation_name,nstate,occupation,energy,istate_min,istate_max)
+subroutine output_homolumo(calculation_name,nstate,occupation,energy,istate_min,istate_max)
  use m_definitions
  use m_mpi
  use m_inputparam,only: nspin,spin_fact
@@ -297,7 +297,7 @@ subroutine output_new_homolumo(calculation_name,nstate,occupation,energy,istate_
  write(stdout,*)
 
 
-end subroutine output_new_homolumo
+end subroutine output_homolumo
 
 
 !=========================================================================

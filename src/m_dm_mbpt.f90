@@ -35,7 +35,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
  real(dp),intent(in)             :: hamiltonian_nucleus(:,:)
  real(dp),intent(inout)          :: hamiltonian_fock(:,:,:)
 !=====
- integer                    :: nstate
+ integer                    :: nstate,nocc
  logical                    :: density_matrix_found
  integer                    :: file_density_matrix
  integer                    :: ispin,istate
@@ -142,6 +142,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
    write(stdout,'(a25,1x,f19.10)')  'Exchange Energy (Ha):',en_dm_corr%exx
    write(stdout,'(a25,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%tot
 
+   nocc = get_number_occupied_states(occupation)
    allocate(hartree_ii(nstate,nspin),exchange_ii(nstate,nspin))
    do ispin=1,nspin
      do istate=1,nstate
@@ -152,7 +153,9 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
      enddo
    enddo
    call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',nstate,nspin,occupation,hartree_ii)
+   write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',hartree_ii(nocc,:) * Ha_eV
    call dump_out_energy('=== Exchange expectation value from correlated density matrix ===',nstate,nspin,occupation,exchange_ii)
+   write(stdout,'(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):',exchange_ii(nocc,:) * Ha_eV
    deallocate(hartree_ii,exchange_ii)
  endif
 

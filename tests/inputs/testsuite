@@ -164,6 +164,11 @@ Hartree Energy            ,   96.2670765071    , 0 , 1.0e-7
 Exchange Energy           ,   -2.9606225006    , 0 , 1.0e-7
 XC Energy                 ,  -12.5371878224    , 0 , 1.0e-7
 Total Energy              , -115.7433993446    , 0 , 1.0e-7
+Hartree  HOMO expectation ,  250.895321        , 0 , 1.0e-4
+Hartree  HOMO expectation ,  250.895321        , 1 , 1.0e-4
+Exchange HOMO expectation ,  -24.840082        , 0 , 1.0e-4
+Exchange HOMO expectation ,  -24.840082        , 1 , 1.0e-4
+
 
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
@@ -691,6 +696,9 @@ Hartree Energy            ,     75.7940290895   , 0 , 1.0e-7
 Exchange Energy           ,    -13.2091549910   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
 GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
+Hartree  HOMO expectation ,    188.102908       , 0 , 1.0e-4
+Exchange HOMO expectation ,    -20.682616       , 0 , 1.0e-4
+
 
 co_gw_dm_restart.in       , G0W0 based on G0W0 density matrix, restart
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
