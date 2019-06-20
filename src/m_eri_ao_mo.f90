@@ -404,94 +404,48 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
  eri_3center_eigen(:,:,:,:) = 0.0_dp
 
 
- if( eri_pair_major ) then
+ call clean_allocate('TMP 3-center ints',tmp1,mstate_min_,mstate_max_,1,nbf)
+ call clean_allocate('TMP 3-center ints',c_t ,mstate_min_,mstate_max_,1,nbf)
+ call clean_allocate('TMP 3-center ints',tmp2,mstate_min_,mstate_max_,nstate_min_,nstate_max_)
 
-   call clean_allocate('TMP 3-center ints',tmp1,mstate_min_,mstate_max_,1,nbf)
-   call clean_allocate('TMP 3-center ints',c_t ,mstate_min_,mstate_max_,1,nbf)
-   call clean_allocate('TMP 3-center ints',tmp2,mstate_min_,mstate_max_,nstate_min_,nstate_max_)
+ do klspin=1,nspin
 
-   do klspin=1,nspin
+   !$OMP PARALLEL DO
+   do kbf=1,nbf
+     c_t(:,kbf)  = c_matrix(kbf,mstate_min_:mstate_max_,klspin)
+   enddo
+   !$OMP END PARALLEL DO
 
-     !$OMP PARALLEL DO
-     do kbf=1,nbf
-       c_t(:,kbf)  = c_matrix(kbf,mstate_min_:mstate_max_,klspin)
+   do iauxil=1,nauxil_3center
+     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
+
+     tmp1(:,:) = 0.0_dp
+     !$OMP PARALLEL PRIVATE(kbf,lbf)
+     !$OMP DO REDUCTION(+:tmp1)
+     do ipair=1,npair
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       tmp1(:,kbf) = tmp1(:,kbf) +  c_t(:,lbf) * eri_3center(ipair,iauxil)
+       tmp1(:,lbf) = tmp1(:,lbf) +  c_t(:,kbf) * eri_3center(ipair,iauxil)
      enddo
-     !$OMP END PARALLEL DO
+     !$OMP END DO
+     !$OMP END PARALLEL
 
-     do iauxil=1,nauxil_3center
-       if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
+     ! Transformation of the second index
+     call DGEMM('N','N',mstate_count_,nstate_count_,nbf, &
+                1.0d0,tmp1,mstate_count_,   &
+                      c_matrix(1,nstate_min_,klspin),nbf, &
+                0.0d0,tmp2(mstate_min_,nstate_min_),mstate_count_)
 
-       tmp1(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(kbf,lbf)
-       !$OMP DO REDUCTION(+:tmp1)
-       do ipair=1,npair
-         kbf = index_basis(1,ipair)
-         lbf = index_basis(2,ipair)
-         tmp1(:,kbf) = tmp1(:,kbf) +  c_t(:,lbf) * eri_P(ipair,iauxil)
-         tmp1(:,lbf) = tmp1(:,lbf) +  c_t(:,kbf) * eri_P(ipair,iauxil)
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
+     ! Transposition happens here!
+     eri_3center_eigen(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
+                                 = tmp2(mstate_min_:mstate_max_,nstate_min_:nstate_max_)
 
-       ! Transformation of the second index
-       call DGEMM('N','N',mstate_count_,nstate_count_,nbf, &
-                  1.0d0,tmp1,mstate_count_,   &
-                        c_matrix(1,nstate_min_,klspin),nbf, &
-                  0.0d0,tmp2(mstate_min_,nstate_min_),mstate_count_)
+   enddo !iauxil
+ enddo !klspin
 
-       ! Transposition happens here!
-       eri_3center_eigen(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
-                                   = tmp2(mstate_min_:mstate_max_,nstate_min_:nstate_max_)
-
-     enddo !iauxil
-   enddo !klspin
-
-   call clean_deallocate('TMP 3-center ints',c_t)
-   call clean_deallocate('TMP 3-center ints',tmp2)
-
-
- else
-
-
-   call clean_allocate('TMP 3-center ints',tmp1,nauxil_3center,nbf)
-
-
-   do klspin=1,nspin
-
-     do lstate=nstate_min_,nstate_max_
-       if( MODULO( lstate - nstate_min_ , nproc_ortho ) /= rank_ortho ) cycle
-
-       tmp1(:,:) = 0.0_dp
-
-       ! Transformation of the first index
-       !$OMP PARALLEL PRIVATE(kbf,lbf)
-       !$OMP DO REDUCTION(+:tmp1)
-       do ipair=1,npair
-         kbf = index_basis(1,ipair)
-         lbf = index_basis(2,ipair)
-         tmp1(:,kbf) = tmp1(:,kbf) + c_matrix(lbf,lstate,klspin) * eri_3center(:,ipair)
-         if( kbf /= lbf ) &
-         tmp1(:,lbf) = tmp1(:,lbf) + c_matrix(kbf,lstate,klspin) * eri_3center(:,ipair)
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
-
-
-       ! Transformation of the second index
-       !eri_3center_eigen(:,mstate_min_:mstate_max_,lstate,klspin) = MATMUL( tmp1(:,:) , c_matrix(:,mstate_min_:mstate_max_,klspin) )
-
-       call DGEMM('N','N',nauxil_3center,mstate_count_,nbf,1.0d0,tmp1,nauxil_3center,   &
-                                                                 c_matrix(1,mstate_min_,klspin),nbf, &
-                                                           0.0d0,eri_3center_eigen(1,mstate_min_,lstate,klspin),nauxil_3center)
-
-     enddo
-
-   enddo ! klspin
-
-
-
- endif
-
+ call clean_deallocate('TMP 3-center ints',tmp2)
+ call clean_deallocate('TMP 3-center ints',c_t)
  call clean_deallocate('TMP 3-center ints',tmp1)
  call xsum_ortho(eri_3center_eigen)
 

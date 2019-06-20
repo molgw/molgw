@@ -53,78 +53,43 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ij,eexc
  nbf    = SIZE(exchange_ij,DIM=1)
  nstate = SIZE(occupation(:,:),DIM=1)
 
- nauxil_local = SIZE(eri_3center,DIM=1)
+ nauxil_local = nauxil_3center
 
- if( eri_pair_major ) then
+ allocate(tmp_cmplx(nocc,nbf))
+ allocate(c_t_cmplx(nocc,nbf))
 
-   allocate(tmp_cmplx(nocc,nbf))
-   allocate(c_t_cmplx(nocc,nbf))
+ do ispin=1,nspin
 
-   do ispin=1,nspin
-
-     !$OMP PARALLEL DO
-     do ibf=1,nbf
-       c_t_cmplx(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
-     enddo
-     !$OMP END PARALLEL DO
-
-     do iauxil=1,nauxil_local
-       if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
-       tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
-       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
-       !$OMP DO REDUCTION(+:tmp_cmplx)
-       do ipair=1,npair
-         ibf = index_basis(1,ipair)
-         jbf = index_basis(2,ipair)
-         tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_t_cmplx(:,jbf) * eri_P(ipair,iauxil)
-         tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_t_cmplx(:,ibf) * eri_P(ipair,iauxil)
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
-       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-       !                    - MATMUL( CONJG(TRANSPOSE(tmp(:,:))) , tmp(:,:) ) / spin_fact
-       ! C = A^H * A + C
-       call ZHERK('L','C',nbf,nocc,-1.0_dp,tmp_cmplx,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
-
-     enddo
+   !$OMP PARALLEL DO
+   do ibf=1,nbf
+     c_t_cmplx(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
    enddo
+   !$OMP END PARALLEL DO
 
-   deallocate(c_t_cmplx)
-
- else
-
-   allocate(tmp_cmplx(nauxil_local,nbf))
-
-   do ispin=1,nspin
-
-     do istate=1,nocc
-       if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
-
-       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
-
-       tmp_cmplx(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
-       !$OMP DO REDUCTION(+:tmp_cmplx)
-       do ipair=1,npair
-         ibf = index_basis(1,ipair)
-         jbf = index_basis(2,ipair)
-         tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
-         if( ibf /= jbf) &
-           tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
-
-       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-       !                    - MATMUL( CONJG(TRANSPOSE(tmp(:,:))) , tmp(:,:) ) / spin_fact
-       ! C = A^H * A + C
-       call ZHERK('L','C',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_local,1.0_dp,exchange_ij(1,1,ispin),nbf)
-
+   do iauxil=1,nauxil_local
+     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
+     tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
+     !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+     !$OMP DO REDUCTION(+:tmp_cmplx)
+     do ipair=1,npair
+       ibf = index_basis(1,ipair)
+       jbf = index_basis(2,ipair)
+       tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_t_cmplx(:,jbf) * eri_3center(ipair,iauxil)
+       tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_t_cmplx(:,ibf) * eri_3center(ipair,iauxil)
      enddo
-   enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+     !                    - MATMUL( CONJG(TRANSPOSE(tmp(:,:))) , tmp(:,:) ) / spin_fact
+     ! C = A^H * A + C
+     call ZHERK('L','C',nbf,nocc,-1.0_dp,tmp_cmplx,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
 
- endif
+   enddo
+ enddo
+
+ deallocate(c_t_cmplx)
  deallocate(tmp_cmplx)
+
 
  !
  ! Need to symmetrize exchange_ij

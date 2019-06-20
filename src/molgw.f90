@@ -144,7 +144,7 @@ program molgw
 
    !
    ! SCALAPACK distribution that depends on the system specific size, parameters etc.
-   call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol)   !FBFB TODO REMOVE
+   call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol)
 
    if( print_rho_grid_ ) call dm_dump(basis)
 
@@ -289,7 +289,7 @@ program molgw
    ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
    ! ignore the restart file if it is not a big one
    if( calc_type%selfenergy_technique == QS ) then
-     if( restart_type /= EMPTY_STATES_RESTART .AND. restart_type /= BIG_RESTART ) then
+     if( restart_type /= BIG_RESTART ) then
        call issue_warning('RESTART file has been ignored, since it does not contain the required empty states')
        is_restart = .FALSE.
      endif
@@ -324,15 +324,6 @@ program molgw
      ! The hamiltonian is still spin-independent:
      c_matrix(:,:,nspin) = c_matrix(:,:,1)
 
-   endif
-
-   !
-   ! Transpose the 3-center eri here (if needed)
-   !
-   if( has_auxil_basis ) then
-     call issue_warning('FBFB fake it')
-     !call setup_eri3_pair_major()
-     call setup_eri3_pair_major_fake()
    endif
 
    call stop_clock(timing_prescf)

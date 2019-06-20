@@ -1153,6 +1153,13 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    endif
    call xsum_ortho(eri_3center)
    write(stdout,'(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
+
+   ! Include a factor 1/2 for pair containing twice the same basis function
+   do ipair=1,npair
+     ibf = index_basis(1,ipair)
+     jbf = index_basis(2,ipair)
+     if( ibf == jbf ) eri_3center(ipair,:) = eri_3center(ipair,:) * 0.5_dp
+   enddo
  else
    call clean_deallocate('Distributed LR 2-center integrals',eri_2center_lr)
    if( cntxt_3center < 0 ) then
@@ -1160,7 +1167,15 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    endif
    call xsum_ortho(eri_3center_lr)
    write(stdout,'(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
+
+   ! Include a factor 1/2 for pair containing twice the same basis function
+   do ipair=1,npair
+     ibf = index_basis(1,ipair)
+     jbf = index_basis(2,ipair)
+     if( ibf == jbf ) eri_3center_lr(ipair,:) = eri_3center_lr(ipair,:) * 0.5_dp
+   enddo
  endif
+
 
 
  call stop_clock(timing_eri_3center)

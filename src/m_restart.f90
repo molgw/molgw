@@ -23,7 +23,6 @@ module m_restart
  integer,parameter ::        SMALL_RESTART = 1
  integer,parameter ::          BIG_RESTART = 2
  integer,parameter ::        BASIS_RESTART = 3
- integer,parameter :: EMPTY_STATES_RESTART = 4
 
 
 
@@ -313,7 +312,7 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
  endif
 
 
- if(restart_type == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) ) then
+ if( restart_type == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) ) then
 
    close(restartfile)
    return
@@ -328,10 +327,8 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
        enddo
      enddo
 
-     if( same_scf .AND. same_geometry ) then
+     if( same_geometry ) then
        restart_type = BIG_RESTART
-     else
-       restart_type = EMPTY_STATES_RESTART
      endif
      close(restartfile)
      return

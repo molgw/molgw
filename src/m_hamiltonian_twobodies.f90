@@ -288,7 +288,6 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  integer              :: ipair,ipair_local
  real(dp),allocatable :: x_vector(:)
  real(dp)             :: rtmp,factor,xtmp_P
- character(len=100)   :: title
  integer              :: timing_xxdft_hartree
  integer              :: desc_partial(NDEL),desc_pmat(NDEL),info
  real(dp),allocatable :: pmat(:)
@@ -312,135 +311,59 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
 
  hartree_ij(:,:) = 0.0_dp
 
- if( eri_pair_major ) then
+ allocate(pmat(npair))
+ allocate(x_vector(nauxil_3center))
 
-   allocate(pmat(npair))
-   allocate(x_vector(nauxil_3center))
-
-   select type(p_matrix)
-   type is(real(dp))
-     !$OMP PARALLEL PRIVATE(kbf,lbf)
-     !$OMP DO
-     do ipair=1,npair
-       kbf = index_basis(1,ipair)
-       lbf = index_basis(2,ipair)
-       pmat(ipair) = SUM(p_matrix(kbf,lbf,:)) * 2.0_dp
-     enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
-   type is(complex(dp))
-     !$OMP PARALLEL PRIVATE(kbf,lbf)
-     !$OMP DO
-     do ipair=1,npair
-       kbf = index_basis(1,ipair)
-       lbf = index_basis(2,ipair)
-       pmat(ipair) = SUM(p_matrix(kbf,lbf,:)%re) * 2.0_dp
-     enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
-   end select
-
-   ! X_P = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | P )
-   call DGEMV('T',npair,nauxil_3center,1.0d0,eri_P,npair,pmat,1,0.0d0,x_vector,1)
-   ! v_H_{alpha beta} = \sum_P ( alpha beta | P ) * X_P
-   call DGEMV('N',npair,nauxil_3center,1.0d0,eri_P,npair,x_vector,1,0.0d0,pmat,1)
+ select type(p_matrix)
+ type is(real(dp))
    !$OMP PARALLEL PRIVATE(kbf,lbf)
    !$OMP DO
    do ipair=1,npair
      kbf = index_basis(1,ipair)
      lbf = index_basis(2,ipair)
-     hartree_ij(kbf,lbf) = pmat(ipair)
-     hartree_ij(lbf,kbf) = pmat(ipair)
+     pmat(ipair) = SUM(p_matrix(kbf,lbf,:)) * 2.0_dp
    enddo
    !$OMP END DO
    !$OMP END PARALLEL
-
-   ! Do not forget that the eri_P(ibf,ibf | P ) included a factor 0.50
-   do ibf=1,nbf
-     hartree_ij(ibf,ibf) = hartree_ij(ibf,ibf) * 2.0_dp
+ type is(complex(dp))
+   !$OMP PARALLEL PRIVATE(kbf,lbf)
+   !$OMP DO
+   do ipair=1,npair
+     kbf = index_basis(1,ipair)
+     lbf = index_basis(2,ipair)
+     pmat(ipair) = SUM(p_matrix(kbf,lbf,:)%re) * 2.0_dp
    enddo
-   deallocate(x_vector,pmat)
+   !$OMP END DO
+   !$OMP END PARALLEL
+ end select
 
- else
+ ! X_P = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | P )
+ call DGEMV('T',npair,nauxil_3center,1.0d0,eri_3center,npair,pmat,1,0.0d0,x_vector,1)
+ ! v_H_{alpha beta} = \sum_P ( alpha beta | P ) * X_P
+ call DGEMV('N',npair,nauxil_3center,1.0d0,eri_3center,npair,x_vector,1,0.0d0,pmat,1)
+ !$OMP PARALLEL PRIVATE(kbf,lbf)
+ !$OMP DO
+ do ipair=1,npair
+   kbf = index_basis(1,ipair)
+   lbf = index_basis(2,ipair)
+   hartree_ij(kbf,lbf) = pmat(ipair)
+   hartree_ij(lbf,kbf) = pmat(ipair)
+ enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
-   nauxil_local = NUMROC(nauxil_2center,MB_3center,iprow_3center,first_row,nprow_3center)
-   npair_local  = NUMROC(npair         ,MB_3center,iprow_3center,first_row,nprow_3center)
-   call DESCINIT(desc_pmat,npair,1,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(npair_local,1),info)
-   call DESCINIT(desc_partial,nauxil_2center,1,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(nauxil_local,1),info)
+ ! Do not forget that the eri_3center(ibf,ibf | P ) included a factor 0.50
+ do ibf=1,nbf
+   hartree_ij(ibf,ibf) = hartree_ij(ibf,ibf) * 2.0_dp
+ enddo
+ deallocate(x_vector,pmat)
 
-   ! All processors allocate the vectors even though they may be not used in case of eri3_npcol > 1
-   allocate(x_vector(nauxil_local))
-   allocate(pmat(npair_local))
-
-   ! Check if the vector pmat is to be dealt with by this processor
-   if(  INDXG2P(1,NB_3center,ipcol_3center,first_col,npcol_3center) == ipcol_3center ) then
-     select type(p_matrix)
-     type is(real(dp))
-       !$OMP PARALLEL PRIVATE(kbf,lbf,ipair,factor)
-       !$OMP DO
-       do ipair_local=1,npair_local
-         ipair = INDXL2G(ipair_local,MB_3center,iprow_3center,first_row,nprow_3center)
-         kbf = index_basis(1,ipair)
-         lbf = index_basis(2,ipair)
-         factor = MERGE(2.0_dp,1.0_dp,kbf/=lbf)
-         pmat(ipair_local) = SUM(p_matrix(kbf,lbf,:)) * factor
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
-     type is(complex(dp))
-       !$OMP PARALLEL PRIVATE(kbf,lbf,ipair,factor)
-       !$OMP DO
-       do ipair_local=1,npair_local
-         ipair = INDXL2G(ipair_local,NB_3center,ipcol_3center,first_col,npcol_3center)
-         kbf = index_basis(1,ipair)
-         lbf = index_basis(2,ipair)
-         factor = MERGE(2.0_dp,1.0_dp,kbf/=lbf)
-         pmat(ipair_local) = SUM(p_matrix(kbf,lbf,:)%re) * factor
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
-     end select
-   endif
-
-#if defined(HAVE_SCALAPACK)
-   ! X_P = \sum_{\alpha \beta} ( P | \alpha \beta ) * P_{\alpha \beta}
-   call PDGEMV('N',nauxil_2center,npair,1.0d0,eri_3center,1,1,desc_eri3,pmat,1,1,desc_pmat,1, &
-               0.0d0,x_vector,1,1,desc_partial,1)
-   ! v_H_{alpha beta} = \sum_P ( P | alpha beta ) * X_P
-   call PDGEMV('T',nauxil_2center,npair,1.0d0,eri_3center,1,1,desc_eri3,x_vector,1,1,desc_partial,1, &
-               0.0d0,pmat,1,1,desc_pmat,1)
-#else
-   ! X_P = \sum_{\alpha \beta} ( P | \alpha \beta ) * P_{\alpha \beta}
-   call DGEMV('N',nauxil_2center,npair,1.0d0,eri_3center,nauxil_2center,pmat,1,0.0d0,x_vector,1)
-   ! v_H_{alpha beta} = \sum_P ( P | alpha beta ) * X_P
-   call DGEMV('T',nauxil_2center,npair,1.0d0,eri_3center,nauxil_2center,x_vector,1,0.0d0,pmat,1)
-#endif
-
-   ! Check if the vector pmat is to be dealt with by this processor
-   if(  INDXG2P(1,NB_3center,ipcol_3center,first_col,npcol_3center) == ipcol_3center ) then
-     !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
-     !$OMP DO
-     do ipair_local=1,npair_local
-       ipair = INDXL2G(ipair_local,MB_3center,iprow_3center,first_row,nprow_3center)
-       ibf = index_basis(1,ipair)
-       jbf = index_basis(2,ipair)
-       hartree_ij(ibf,jbf) = pmat(ipair_local)
-       hartree_ij(jbf,ibf) = pmat(ipair_local)
-     enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
-   endif
-
-   deallocate(x_vector,pmat)
- endif
  !
  ! Sum up the different contribution from different procs
  call xsum_world(hartree_ij)
-
  hartree_ij(:,:) = hartree_ij(:,:) / REAL(nproc_ortho,dp)
 
- title='=== Hartree contribution ==='
- call dump_out_matrix(.TRUE.,title,nbf,1,hartree_ij)
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',nbf,1,hartree_ij)
 
  select type(p_matrix)
  type is(real(dp))
@@ -669,79 +592,43 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  nbf    = SIZE(exchange_ij,DIM=1)
  nstate = SIZE(occupation(:,:),DIM=1)
 
- nauxil_local = SIZE(eri_3center,DIM=1)
+ nauxil_local = nauxil_3center
 
- if( eri_pair_major ) then
+ allocate(tmp(nocc,nbf))
+ allocate(c_t(nocc,nbf))
 
-   allocate(tmp(nocc,nbf))
-   allocate(c_t(nocc,nbf))
+ do ispin=1,nspin
 
-   do ispin=1,nspin
-
-     !$OMP PARALLEL DO
-     do ibf=1,nbf
-       c_t(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
-     enddo
-     !$OMP END PARALLEL DO
-
-
-     do iauxil=1,nauxil_local
-       if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
-       tmp(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(ibf,jbf)
-       !$OMP DO REDUCTION(+:tmp)
-       do ipair=1,npair
-         ibf = index_basis(1,ipair)
-         jbf = index_basis(2,ipair)
-         tmp(:,ibf) = tmp(:,ibf) + c_t(:,jbf) * eri_P(ipair,iauxil)
-         tmp(:,jbf) = tmp(:,jbf) + c_t(:,ibf) * eri_P(ipair,iauxil)
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
-       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-       ! C = A^T * A + C
-       call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
-
-     enddo
+   !$OMP PARALLEL DO
+   do ibf=1,nbf
+     c_t(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
    enddo
+   !$OMP END PARALLEL DO
 
-   deallocate(c_t)
-
- else
-
-   allocate(tmp(nauxil_local,nbf))
-
-   do ispin=1,nspin
-
-     do istate=1,nocc
-       if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
-
-       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
-
-       tmp(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(ibf,jbf)
-       !$OMP DO REDUCTION(+:tmp)
-       do ipair=1,npair
-         ibf = index_basis(1,ipair)
-         jbf = index_basis(2,ipair)
-         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
-         if( ibf /= jbf) &
-           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
-
-       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-       ! C = A^T * A + C
-       call DSYRK('L','T',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp,nauxil_local,1.0_dp,exchange_ij(:,:,ispin),nbf)
-
+   do iauxil=1,nauxil_local
+     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
+     tmp(:,:) = 0.0_dp
+     !$OMP PARALLEL PRIVATE(ibf,jbf)
+     !$OMP DO REDUCTION(+:tmp)
+     do ipair=1,npair
+       ibf = index_basis(1,ipair)
+       jbf = index_basis(2,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_t(:,jbf) * eri_3center(ipair,iauxil)
+       tmp(:,jbf) = tmp(:,jbf) + c_t(:,ibf) * eri_3center(ipair,iauxil)
      enddo
-   enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+     !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     ! C = A^T * A + C
+     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
 
- endif
+   enddo
+ enddo
+
+ deallocate(c_t)
  deallocate(tmp)
+
 
  !
  ! Need to symmetrize exchange_ij
@@ -791,78 +678,44 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,
  nbf    = SIZE(exchange_ij,DIM=1)
  nstate = SIZE(occupation(:,:),DIM=1)
 
- nauxil_local = SIZE(eri_3center_lr,DIM=1)
-
- if( eri_pair_major ) then
-
-   allocate(tmp(nocc,nbf))
-   allocate(c_t(nocc,nbf))
-
-   do ispin=1,nspin
-
-     !$OMP PARALLEL DO
-     do ibf=1,nbf
-       c_t(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
-     enddo
-     !$OMP END PARALLEL DO
+ nauxil_local = nauxil_3center_lr
 
 
-     do iauxil=1,nauxil_local
-       tmp(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(ibf,jbf)
-       !$OMP DO REDUCTION(+:tmp)
-       do ipair=1,npair
-         ibf = index_basis(1,ipair)
-         jbf = index_basis(2,ipair)
-         tmp(:,ibf) = tmp(:,ibf) + c_t(:,jbf) * eri_P_lr(ipair,iauxil)
-         tmp(:,jbf) = tmp(:,jbf) + c_t(:,ibf) * eri_P_lr(ipair,iauxil)
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
-       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-       ! C = A^T * A + C
-       call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
+ allocate(tmp(nocc,nbf))
+ allocate(c_t(nocc,nbf))
 
-     enddo
+ do ispin=1,nspin
+
+   !$OMP PARALLEL DO
+   do ibf=1,nbf
+     c_t(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
    enddo
+   !$OMP END PARALLEL DO
 
-   deallocate(c_t)
 
- else
-
-   allocate(tmp(nauxil_local,nbf))
-
-   do ispin=1,nspin
-
-     do istate=1,nocc
-       if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
-
-       if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
-
-       tmp(:,:) = 0.0_dp
-       !$OMP PARALLEL PRIVATE(ibf,jbf)
-       !$OMP DO REDUCTION(+:tmp)
-       do ipair=1,npair
-         ibf = index_basis(1,ipair)
-         jbf = index_basis(2,ipair)
-         tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair)
-         if( ibf /= jbf) &
-           tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair)
-       enddo
-       !$OMP END DO
-       !$OMP END PARALLEL
-
-       ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-       ! C = A^T * A + C
-       call DSYRK('L','T',nbf,nauxil_local,-occupation(istate,ispin)/spin_fact,tmp,nauxil_local,1.0_dp,exchange_ij(1,1,ispin),nbf)
-
+   do iauxil=1,nauxil_local
+     tmp(:,:) = 0.0_dp
+     !$OMP PARALLEL PRIVATE(ibf,jbf)
+     !$OMP DO REDUCTION(+:tmp)
+     do ipair=1,npair
+       ibf = index_basis(1,ipair)
+       jbf = index_basis(2,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_t(:,jbf) * eri_3center_lr(ipair,iauxil)
+       tmp(:,jbf) = tmp(:,jbf) + c_t(:,ibf) * eri_3center_lr(ipair,iauxil)
      enddo
-   enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+     !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     ! C = A^T * A + C
+     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
 
- endif
+   enddo
+ enddo
+
+ deallocate(c_t)
  deallocate(tmp)
+
 
  !
  ! Need to symmetrize exchange_ij
