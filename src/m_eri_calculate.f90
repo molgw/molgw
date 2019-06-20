@@ -1165,10 +1165,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
  call stop_clock(timing_eri_3center)
 
- write(stdout,*) 'FBFB ==============='
- write(stdout,*) eri_3center(:,:)
- write(stdout,*) 'FBFB ==============='
- stop 'ENOUGH'
 
 end subroutine calculate_eri_3center_scalapack
 

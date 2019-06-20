@@ -440,7 +440,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  hartree_ij(:,:) = hartree_ij(:,:) / REAL(nproc_ortho,dp)
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
+ call dump_out_matrix(.TRUE.,title,nbf,1,hartree_ij)
 
  select type(p_matrix)
  type is(real(dp))

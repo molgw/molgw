@@ -398,15 +398,25 @@ subroutine setup_eri3_pair_major_fake()
 
  if( .NOT. eri_pair_major ) return
 
- write(stdout,*) 'FBFB fake'
+ write(stdout,*) 'FBFB fake',SIZE(eri_3center,DIM=1),SIZE(eri_3center,DIM=2)
  call start_clock(timing_transpose_eri3)
 
  allocate(eri_P,SOURCE=eri_3center)
+ do ipair=1,SIZE(eri_3center,DIM=1)
+   ibf = index_basis(1,ipair)
+   jbf = index_basis(2,ipair)
+   if( ibf == jbf ) eri_P(ipair,:) = eri_P(ipair,:) * 0.5_dp
+ enddo
 
  ! If LR integrals are not needed, then skip the end of the subroutine
  if( .NOT. ALLOCATED(eri_3center_lr) ) return
 
  allocate(eri_P_lr,SOURCE=eri_3center_lr)
+ do ipair=1,SIZE(eri_3center,DIM=1)
+   ibf = index_basis(1,ipair)
+   jbf = index_basis(2,ipair)
+   if( ibf == jbf ) eri_P_lr(ipair,:) = eri_P_lr(ipair,:) * 0.5_dp
+ enddo
 
  call stop_clock(timing_transpose_eri3)
 
