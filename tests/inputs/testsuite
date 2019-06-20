@@ -67,6 +67,7 @@ gKS LUMO energy           ,    3.220523        , 0 , 1.0e-4
 
 na08_damping.in           , LDA Na8 cluster with density damping stopped after 2 SCF cycles
 SCF Total Energy          , -1232.7456930389   , 0 , 1.0e-7
+Convergence criterium     ,     6.45101E+02    , 0 , 1.0e-1
 
 h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set, noparallel
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
