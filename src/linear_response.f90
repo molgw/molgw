@@ -1094,9 +1094,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  !                                        | Y  X |
  ! => only needs (X+Y)
  !wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
- call DGEMM('N','N',nauxil_3center,nmat,nmat,SQRT(spin_fact),eri_3tmp,nauxil_3center, &
-                                                             xpy_matrix,nmat, &
-                                                       0.0d0,wpol%residue_left,nauxil_3center)
+ call DGEMM('N','N',nauxil_3center,nmat,nmat,DSQRT(spin_fact),eri_3tmp,nauxil_3center, &
+                                                              xpy_matrix,nmat, &
+                                                        0.0d0,wpol%residue_left,nauxil_3center)
 
  energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
  !
@@ -1117,12 +1117,13 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
 
  !
  ! Descriptors
- mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
- call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_2center,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+ call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
  call DESCINIT(desc_sd,nauxil_2center,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+
  call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
 
  call PDGEMR2D(nauxil_2center,nmat,eri_3tmp,1,1,desc_auxil, &

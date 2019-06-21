@@ -604,7 +604,7 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
  call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
  call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
 
- call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
+ call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
 
 
  !
@@ -773,7 +773,7 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
  call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
  call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
 
- call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
+ call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
 
 
  !

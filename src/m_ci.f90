@@ -1265,12 +1265,12 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
 
  else
    !
-   ! cntxt_auxil is a row-only distribution: ( Ncore x 1 )
+   ! cntxt_eri3_mo is a row-only distribution: ( Ncore x 1 )
    ! use a calculated block_size = mb
-   mb = MIN( mb_max , 2**FLOOR( LOG(REAL(conf%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
-   mvec = NUMROC(conf%nconf,mb,iprow_auxil,first_row,nprow_auxil)
-   nvec = NUMROC(conf%nstate,mb,ipcol_auxil,first_col,npcol_auxil)
-   call DESCINIT(desc_vec,conf%nconf,conf%nstate,mb,mb,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
+   mb = MIN( mb_max , 2**FLOOR( LOG(REAL(conf%nconf/nprow_eri3_mo,dp)) / LOG(2.0_dp) ) )
+   mvec = NUMROC(conf%nconf,mb,iprow_eri3_mo,first_row,nprow_eri3_mo)
+   nvec = NUMROC(conf%nstate,mb,ipcol_eri3_mo,first_col,npcol_eri3_mo)
+   call DESCINIT(desc_vec,conf%nconf,conf%nstate,mb,mb,first_row,first_col,cntxt_eri3_mo,MAX(1,mvec),info)
    call clean_allocate('CI eigenvectors',eigvec,mvec,nvec)
    eigvec(:,:) = 0.0_dp
  endif
@@ -1307,11 +1307,11 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
      if( read_status /= 0 ) then
        call setup_configurations_ci(nelectron,spinstate,'CISD',conf_sd)
        conf_sd%nstate = conf%nstate
-       mb_sd = MIN( mb_max , 2**FLOOR( LOG(REAL(conf_sd%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
+       mb_sd = MIN( mb_max , 2**FLOOR( LOG(REAL(conf_sd%nconf/nprow_eri3_mo,dp)) / LOG(2.0_dp) ) )
 
-       mvec_sd = NUMROC(conf_sd%nconf,mb_sd,iprow_auxil,first_row,nprow_auxil)
-       nvec_sd = NUMROC(conf_sd%nstate,mb_sd,ipcol_auxil,first_col,npcol_auxil)
-       call DESCINIT(desc_vec_sd,conf_sd%nconf,conf_sd%nstate,mb_sd,mb_sd,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
+       mvec_sd = NUMROC(conf_sd%nconf,mb_sd,iprow_eri3_mo,first_row,nprow_eri3_mo)
+       nvec_sd = NUMROC(conf_sd%nstate,mb_sd,ipcol_eri3_mo,first_col,npcol_eri3_mo)
+       call DESCINIT(desc_vec_sd,conf_sd%nconf,conf_sd%nstate,mb_sd,mb_sd,first_row,first_col,cntxt_eri3_mo,MAX(1,mvec),info)
        call clean_allocate('CISD eigenvectors',eigvec_sd,mvec_sd,nvec_sd)
        eigvec_sd(:,:) = 0.0_dp
        call start_clock(timing_ci_diago)

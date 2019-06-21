@@ -51,11 +51,23 @@ module m_scalapack
  integer,protected :: iproc_sca = 0
 
 
- ! SCALAPACK grid: auxil distribution (so to mimic MPI distribution on auxiliary functions)
- integer,protected :: cntxt_auxil
- integer,protected :: nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil
- integer,protected :: MB_auxil = 1
- integer,protected :: NB_auxil = 1
+ ! SCALAPACK grid: auxiliary basis distribution in AO basis ( alpha beta | P ): 1 x nproc_auxil
+ integer,protected :: cntxt_eri3_ao
+ integer,protected :: nprow_eri3_ao
+ integer,protected :: npcol_eri3_ao
+ integer,protected :: iprow_eri3_ao
+ integer,protected :: ipcol_eri3_ao
+ integer,protected :: MB_eri3_ao = 1
+ integer,protected :: NB_eri3_ao = 1
+
+ ! SCALAPACK grid: auxiliary basis distribution in MO basis ( P | i j): nproc_auxil x 1
+ integer,protected :: cntxt_eri3_mo
+ integer,protected :: nprow_eri3_mo
+ integer,protected :: npcol_eri3_mo
+ integer,protected :: iprow_eri3_mo
+ integer,protected :: ipcol_eri3_mo
+ integer,protected :: MB_eri3_mo = 1
+ integer,protected :: NB_eri3_mo = 1
 
  ! SCALAPACK grid for 3 center integrals
  integer,protected :: cntxt_3center
@@ -2505,34 +2517,41 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  integer :: ier=0
  integer :: color
  integer             :: iproc_auxil
- integer,allocatable :: usermap(:,:)
+ integer,allocatable :: usermap(:)
 !=====
 
 #if defined(HAVE_SCALAPACK)
 
  !
- ! Create the SCALAPACK context cntxt_auxil
+ ! Create the SCALAPACK context cntxt_eri3_ao and cntxt_eri3_mo
  ! that precisely matches the MPI_COMMUNICATOR comm_auxil
  !
- call BLACS_GET( -1, 0, cntxt_auxil )
+ call BLACS_GET( -1, 0, cntxt_eri3_ao )
+ call BLACS_GET( -1, 0, cntxt_eri3_mo )
 
  if( rank_world /= iproc_sca ) then
    call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
  endif
 
- allocate(usermap(1,nproc_auxil))
+ allocate(usermap(nproc_auxil))
  do iproc_auxil=0,nproc_auxil-1
-   usermap(1,iproc_auxil+1) = iproc_auxil * nproc_ortho
+   usermap(iproc_auxil+1) = iproc_auxil * nproc_ortho
  enddo
- call BLACS_GRIDMAP(cntxt_auxil,usermap,1,1,nproc_auxil)
+ call BLACS_GRIDMAP(cntxt_eri3_ao,usermap,1          ,1,nproc_auxil)
+ call BLACS_GRIDMAP(cntxt_eri3_mo,usermap,nproc_auxil,nproc_auxil,1)
  deallocate(usermap)
 
- call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
+ call BLACS_GRIDINFO(cntxt_eri3_ao,nprow_eri3_ao,npcol_eri3_ao,iprow_eri3_ao,ipcol_eri3_ao)
+ call xmax_ortho(nprow_eri3_ao)
+ call xmax_ortho(npcol_eri3_ao)
+ call xmax_ortho(iprow_eri3_ao)
+ call xmax_ortho(ipcol_eri3_ao)
 
- call xmax_ortho(nprow_auxil)
- call xmax_ortho(npcol_auxil)
- call xmax_ortho(iprow_auxil)
- call xmax_ortho(ipcol_auxil)
+ call BLACS_GRIDINFO(cntxt_eri3_mo,nprow_eri3_mo,npcol_eri3_mo,iprow_eri3_mo,ipcol_eri3_mo)
+ call xmax_ortho(nprow_eri3_mo)
+ call xmax_ortho(npcol_eri3_mo)
+ call xmax_ortho(iprow_eri3_mo)
+ call xmax_ortho(ipcol_eri3_mo)
 
  ! 3center integrals distribution
  if( eri3_nprow * eri3_npcol == nproc_sca ) then
@@ -2545,11 +2564,11 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
    ! Else just copy the auxil distribution
    if( eri3_nprow * eri3_npcol /= 1 ) &
       call issue_warning('eri3 distribution was not consistent with the number of MPI tasks. MOLGW will override user selection')
-   cntxt_3center = cntxt_auxil
-   nprow_3center = nprow_auxil
-   npcol_3center = npcol_auxil
-   iprow_3center = iprow_auxil
-   ipcol_3center = ipcol_auxil
+   cntxt_3center = cntxt_eri3_ao
+   nprow_3center = nprow_eri3_ao
+   npcol_3center = npcol_eri3_ao
+   iprow_3center = iprow_eri3_ao
+   ipcol_3center = ipcol_eri3_ao
  endif
 
 #else
@@ -2561,11 +2580,17 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  ipcol_3center = 0
  iprow_3center = 0
 
- cntxt_auxil = 1
- nprow_auxil = 1
- npcol_auxil = 1
- iprow_auxil = 0
- ipcol_auxil = 0
+ cntxt_eri3_ao = 1
+ nprow_eri3_ao = 1
+ npcol_eri3_ao = 1
+ iprow_eri3_ao = 0
+ ipcol_eri3_ao = 0
+
+ cntxt_eri3_mo = 1
+ nprow_eri3_mo = 1
+ npcol_eri3_mo = 1
+ iprow_eri3_mo = 0
+ ipcol_eri3_mo = 0
 
 #endif
 
@@ -2885,21 +2910,23 @@ subroutine set_auxil_block_size(block_size_max)
 !=====
 
  if( block_size_max < 1 ) then
-   NB_auxil = 1
+   NB_eri3_ao = 1
 
  else
-   NB_auxil = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
-   NB_auxil = MIN(NB_auxil,block_row)
+   NB_eri3_ao = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
+   NB_eri3_ao = MIN(NB_eri3_ao,block_row)
 
  endif
 
- write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',NB_auxil
- MB_auxil = NB_auxil
+ write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',NB_eri3_ao
+ MB_eri3_ao = NB_eri3_ao
+ MB_eri3_mo = NB_eri3_ao
+ NB_eri3_mo = NB_eri3_ao
 
  ! If not parallelization on rows (pair index), then enforce the same block size
- if( nprow_3center == nprow_auxil ) then
-   MB_3center = MB_auxil
-   NB_3center = NB_auxil
+ if( nprow_3center == nprow_eri3_ao ) then
+   MB_3center = MB_eri3_ao
+   NB_3center = NB_eri3_ao
  endif
 
 end subroutine set_auxil_block_size
@@ -2915,7 +2942,8 @@ subroutine finish_scalapack()
  call BLACS_GRIDEXIT( cntxt_cd )
  call BLACS_GRIDEXIT( cntxt_rd )
  call BLACS_GRIDEXIT( cntxt_3center )
- if( cntxt_auxil > 0 ) call BLACS_GRIDEXIT( cntxt_auxil )
+ if( cntxt_eri3_ao > 0 ) call BLACS_GRIDEXIT( cntxt_eri3_ao )
+ if( cntxt_eri3_mo > 0 ) call BLACS_GRIDEXIT( cntxt_eri3_mo )
  call BLACS_EXIT( 0 )
 #endif
 

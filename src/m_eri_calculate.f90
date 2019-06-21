@@ -580,7 +580,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 #endif
  endif
 
- call set_auxil_block_size(auxil_basis%nbf/(npcol_auxil*2))
+ call set_auxil_block_size(auxil_basis%nbf/(npcol_eri3_ao*2))
 
  if( cntxt_3center > 0 ) then
 
