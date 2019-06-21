@@ -695,18 +695,23 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 !=====
 
  ! Use SCALAPACK routines to distribute the auxiliary basis
- ! Assume a processor grid: nproc_auxil x 1
+ ! Assume a processor grid: 1 x nproc_auxil
 
- nauxil_3center = NUMROC(nbf_auxil_basis,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+ do iproc=0,npcol_auxil-1
+   nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,NB_auxil,iproc,first_col,npcol_auxil)
+ enddo
+
+ nauxil_3center = nbf_local_iproc(ipcol_auxil)
+
  allocate(ibf_auxil_g(nauxil_3center))
  do ilocal=1,nauxil_3center
-   ibf_auxil_g(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+   ibf_auxil_g(ilocal) = INDXL2G(ilocal,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
  enddo
  allocate(ibf_auxil_l(nbf_auxil_basis))
  allocate(iproc_ibf_auxil(nbf_auxil_basis))
  do iglobal=1,nbf_auxil_basis
-   ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
-   iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
+   ibf_auxil_l(iglobal)     = INDXG2L(iglobal,NB_auxil,0,first_col,npcol_auxil)
+   iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,NB_auxil,0,first_col,npcol_auxil)
  enddo
 
 
@@ -731,56 +736,26 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
  integer :: ibf,ibf_local
 !=====
 
-#ifdef HAVE_SCALAPACK
 
- do iproc=0,nprow_auxil-1
-   nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis,MB_auxil,iproc,first_row,nprow_auxil)
+ ! Use SCALAPACK routines to distribute the auxiliary basis
+ ! Assume a processor grid: 1 x nproc_auxil
+
+ do iproc=0,npcol_auxil-1
+   nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis,NB_auxil,iproc,first_col,npcol_auxil)
  enddo
 
- nauxil_3center_lr = nbf_local_iproc_lr(iprow_auxil)
+ nauxil_3center_lr = nbf_local_iproc_lr(ipcol_auxil)
 
  allocate(ibf_auxil_g_lr(nauxil_3center_lr))
  do ilocal=1,nauxil_3center_lr
-   ibf_auxil_g_lr(ilocal) = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
+   ibf_auxil_g_lr(ilocal) = INDXL2G(ilocal,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
  enddo
  allocate(ibf_auxil_l_lr(nbf_auxil_basis))
  allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
  do iglobal=1,nbf_auxil_basis
-   ibf_auxil_l_lr(iglobal)     = INDXG2L(iglobal,MB_auxil,0,first_row,nprow_auxil)
-   iproc_ibf_auxil_lr(iglobal) = INDXG2P(iglobal,MB_auxil,0,first_row,nprow_auxil)
+   ibf_auxil_l_lr(iglobal)     = INDXG2L(iglobal,NB_auxil,0,first_col,npcol_auxil)
+   iproc_ibf_auxil_lr(iglobal) = INDXG2P(iglobal,NB_auxil,0,first_col,npcol_auxil)
  enddo
-
-#else
-
- allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
-
- iproc = nproc_auxil - 1
- nbf_local_iproc_lr(:) = 0
- do ibf=1,nbf_auxil_basis
-
-   iproc = MODULO(iproc+1,nproc_auxil)
-
-   iproc_ibf_auxil_lr(ibf) = iproc
-
-   nbf_local_iproc_lr(iproc) = nbf_local_iproc_lr(iproc) + 1
-
- enddo
-
- nauxil_3center_lr = nbf_local_iproc_lr(rank_auxil)
-
- allocate(ibf_auxil_g_lr(nauxil_3center_lr))
- allocate(ibf_auxil_l_lr(nbf_auxil_basis))
- ibf_auxil_l_lr(:) = 0
- ibf_local = 0
- do ibf=1,nbf_auxil_basis
-   if( rank_auxil == iproc_ibf_auxil_lr(ibf) ) then
-     ibf_local = ibf_local + 1
-     ibf_auxil_g_lr(ibf_local) = ibf
-     ibf_auxil_l_lr(ibf)       = ibf_local
-   endif
- enddo
-
-#endif
 
  write(stdout,'(/,a)') ' Distribute LR auxiliary basis functions among processors'
  write(stdout,'(1x,a,i4,a,i6,a)')   'Max auxiliary basis functions ',MAXVAL(nbf_local_iproc_lr(:)),' for processor ',MAXLOC(nbf_local_iproc_lr,DIM=1)
