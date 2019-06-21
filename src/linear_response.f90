@@ -1093,7 +1093,10 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
  ! => only needs (X+Y)
- wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
+ !wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
+ call DGEMM('N','N',nauxil_3center,nmat,nmat,SQRT(spin_fact),eri_3tmp,nauxil_3center, &
+                                                             xpy_matrix,nmat, &
+                                                       0.0d0,wpol%residue_left,nauxil_3center)
 
  energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
  !
