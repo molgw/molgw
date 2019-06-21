@@ -16,7 +16,6 @@ module m_hamiltonian_wrapper
  use m_inputparam,only: has_auxil_basis,incore_
  use m_basis_set
  use m_hamiltonian_twobodies
- use m_hamiltonian_cmplx
  use m_hamiltonian_tools
  use m_scf
 

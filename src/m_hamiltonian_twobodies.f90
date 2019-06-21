@@ -26,10 +26,10 @@ contains
 
 
 !=========================================================================
-subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree(p_matrix,hartree_ao,ehartree)
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: hartree_ij(:,:)
+ real(dp),intent(out) :: hartree_ao(:,:)
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: nbf
@@ -44,11 +44,11 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
 !=====
 
  call start_clock(timing_hartree)
- nbf = SIZE(hartree_ij,DIM=1)
+ nbf = SIZE(hartree_ao,DIM=1)
 
  write(stdout,*) 'Calculate Hartree term using the 8 permutation symmetries'
  !$OMP PARALLEL PRIVATE(index_ij,index_kl,ibf,jbf,kbf,lbf,stride,fact_ij,fact_kl)
- hartree_ij(:,:) = 0.0_dp
+ hartree_ao(:,:) = 0.0_dp
 
 #if defined(_OPENMP)
  stride = OMP_GET_NUM_THREADS()
@@ -61,7 +61,7 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
 
  ! SCHEDULE(static,1) should not be modified
  ! else a race competition will occur when performing index_ij = index_ij + stride
- !$OMP DO REDUCTION(+:hartree_ij) SCHEDULE(static,1)
+ !$OMP DO REDUCTION(+:hartree_ao) SCHEDULE(static,1)
  do iint=1,nint_4center
    index_ij = index_ij + stride
    do while( index_ij > npair )
@@ -85,17 +85,17 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
      fact_ij = 1.0_dp
    endif
 
-   hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf) &
+   hartree_ao(ibf,jbf) = hartree_ao(ibf,jbf) &
                 + eri_4center(iint) * SUM( p_matrix(kbf,lbf,:) ) * fact_kl
    if( ibf /= jbf ) then
-     hartree_ij(jbf,ibf) = hartree_ij(jbf,ibf) &
+     hartree_ao(jbf,ibf) = hartree_ao(jbf,ibf) &
                   + eri_4center(iint) * SUM( p_matrix(kbf,lbf,:) ) * fact_kl
    endif
    if( index_ij /= index_kl ) then
-     hartree_ij(kbf,lbf) = hartree_ij(kbf,lbf) &
+     hartree_ao(kbf,lbf) = hartree_ao(kbf,lbf) &
                  + eri_4center(iint) * SUM( p_matrix(ibf,jbf,:) ) * fact_ij
      if( kbf /= lbf ) then
-       hartree_ij(lbf,kbf) = hartree_ij(lbf,kbf) &
+       hartree_ao(lbf,kbf) = hartree_ao(lbf,kbf) &
                     + eri_4center(iint) * SUM( p_matrix(ibf,jbf,:) ) * fact_ij
      endif
    endif
@@ -104,7 +104,7 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  !$OMP END DO
 
  !$OMP WORKSHARE
- ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM( p_matrix(:,:,:),DIM=3) )
+ ehartree = 0.5_dp * SUM( hartree_ao(:,:) * SUM( p_matrix(:,:,:),DIM=3) )
  !$OMP END WORKSHARE
  !$OMP END PARALLEL
 
@@ -115,11 +115,11 @@ end subroutine setup_hartree
 
 
 !=========================================================================
-subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
  implicit none
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: p_matrix(:,:,:)
- real(dp),intent(out)       :: hartree_ij(:,:)
+ real(dp),intent(out)       :: hartree_ao(:,:)
  real(dp),intent(out)       :: ehartree
 !=====
  real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-7_dp
@@ -186,7 +186,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
  write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:) ),' / ',nshellpair
 
 
- hartree_ij(:,:) = 0.0_dp
+ hartree_ao(:,:) = 0.0_dp
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
@@ -221,7 +221,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
          do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
            do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
 
-             hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf)  &
+             hartree_ao(ibf,jbf) = hartree_ao(ibf,jbf)  &
                                    + SUM(p_matrix(kbf,lbf,:)) * fact                       &
                                       * shell_ijkl(ibf-basis%shell(ishell)%istart+1,       &
                                                    jbf-basis%shell(jshell)%istart+1,       &
@@ -238,7 +238,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
            do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
              do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
 
-               hartree_ij(kbf,lbf) = hartree_ij(kbf,lbf)  &
+               hartree_ao(kbf,lbf) = hartree_ao(kbf,lbf)  &
                                      + SUM(p_matrix(ibf,jbf,:)) * fact                       &
                                         * shell_ijkl(ibf-basis%shell(ishell)%istart+1,       &
                                                      jbf-basis%shell(jshell)%istart+1,       &
@@ -259,15 +259,15 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
  deallocate(skip_shellpair)
 
 
- hartree_ij(:,:) = hartree_ij(:,:) + TRANSPOSE( hartree_ij(:,:) )
+ hartree_ao(:,:) = hartree_ao(:,:) + TRANSPOSE( hartree_ao(:,:) )
 
- call xsum_world(hartree_ij)
+ call xsum_world(hartree_ao)
 
- call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',basis%nbf,1,hartree_ij)
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',basis%nbf,1,hartree_ao)
 
- ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
+ ehartree = 0.5_dp*SUM(hartree_ao(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
-   ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
+   ehartree = ehartree + 0.5_dp*SUM(hartree_ao(:,:)*p_matrix(:,:,2))
  endif
 
  call stop_clock(timing_hartree)
@@ -276,10 +276,10 @@ end subroutine setup_hartree_oneshell
 
 
 !=========================================================================
-subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
  implicit none
  class(*),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: hartree_ij(:,:)
+ real(dp),intent(out) :: hartree_ao(:,:)
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: nauxil_local,npair_local,iauxil
@@ -293,7 +293,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  real(dp),allocatable :: pmat(:)
 !=====
 
- nbf = SIZE(hartree_ij(:,:),DIM=1)
+ nbf = SIZE(hartree_ao(:,:),DIM=1)
 
  select type(p_matrix)
  type is(real(dp))
@@ -309,7 +309,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
 
 
- hartree_ij(:,:) = 0.0_dp
+ hartree_ao(:,:) = 0.0_dp
 
  allocate(pmat(npair))
  allocate(x_vector(nauxil_3center))
@@ -346,30 +346,30 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  do ipair=1,npair
    kbf = index_basis(1,ipair)
    lbf = index_basis(2,ipair)
-   hartree_ij(kbf,lbf) = pmat(ipair)
-   hartree_ij(lbf,kbf) = pmat(ipair)
+   hartree_ao(kbf,lbf) = pmat(ipair)
+   hartree_ao(lbf,kbf) = pmat(ipair)
  enddo
  !$OMP END DO
  !$OMP END PARALLEL
 
  ! Do not forget that the eri_3center(ibf,ibf | P ) included a factor 0.50
  do ibf=1,nbf
-   hartree_ij(ibf,ibf) = hartree_ij(ibf,ibf) * 2.0_dp
+   hartree_ao(ibf,ibf) = hartree_ao(ibf,ibf) * 2.0_dp
  enddo
  deallocate(x_vector,pmat)
 
  !
  ! Sum up the different contribution from different procs
- call xsum_world(hartree_ij)
- hartree_ij(:,:) = hartree_ij(:,:) / REAL(nproc_ortho,dp)
+ call xsum_world(hartree_ao)
+ hartree_ao(:,:) = hartree_ao(:,:) / REAL(nproc_ortho,dp)
 
- call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',nbf,1,hartree_ij)
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',nbf,1,hartree_ao)
 
  select type(p_matrix)
  type is(real(dp))
-   ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   ehartree = 0.5_dp * SUM( hartree_ao(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
  type is(complex(dp))
-   ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM(REAL(p_matrix(:,:,:),dp),DIM=3) )
+   ehartree = 0.5_dp * SUM( hartree_ao(:,:) * SUM(REAL(p_matrix(:,:,:),dp),DIM=3) )
  end select
 
 
@@ -379,10 +379,10 @@ end subroutine setup_hartree_ri
 
 
 !=========================================================================
-subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange(p_matrix,exchange_ao,eexchange)
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: exchange_ij(:,:,:)
+ real(dp),intent(out) :: exchange_ao(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: nbf
@@ -398,7 +398,7 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
 
  write(stdout,*) 'Calculate Exchange term using the 8 permutation symmetries'
  !$OMP PARALLEL PRIVATE(index_ik,index_lj,ibf,jbf,kbf,lbf,stride)
- exchange_ij(:,:,:) = 0.0_dp
+ exchange_ao(:,:,:) = 0.0_dp
 
 #if defined(_OPENMP)
  stride = OMP_GET_NUM_THREADS()
@@ -411,7 +411,7 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
 
  ! SCHEDULE(static,1) should not be modified
  ! else a race competition will occur when performing index_ik = index_ik + stride
- !$OMP DO REDUCTION(+:exchange_ij) SCHEDULE(static,1)
+ !$OMP DO REDUCTION(+:exchange_ao) SCHEDULE(static,1)
  do iint=1,nint_4center
    index_ik = index_ik + stride
    do while( index_ik > npair )
@@ -425,34 +425,34 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
    jbf = index_basis(2,index_lj)
 
 
-   exchange_ij(ibf,jbf,:) = exchange_ij(ibf,jbf,:) &
+   exchange_ao(ibf,jbf,:) = exchange_ao(ibf,jbf,:) &
                   - eri_4center(iint) * p_matrix(kbf,lbf,:) / spin_fact
    if( ibf /= kbf ) then
-     exchange_ij(kbf,jbf,:) = exchange_ij(kbf,jbf,:) &
+     exchange_ao(kbf,jbf,:) = exchange_ao(kbf,jbf,:) &
                     - eri_4center(iint) * p_matrix(ibf,lbf,:) / spin_fact
      if( lbf /= jbf ) then
-       exchange_ij(kbf,lbf,:) = exchange_ij(kbf,lbf,:) &
+       exchange_ao(kbf,lbf,:) = exchange_ao(kbf,lbf,:) &
                       - eri_4center(iint) * p_matrix(ibf,jbf,:) / spin_fact
      endif
    endif
    if( lbf /= jbf ) then
-     exchange_ij(ibf,lbf,:) = exchange_ij(ibf,lbf,:) &
+     exchange_ao(ibf,lbf,:) = exchange_ao(ibf,lbf,:) &
                     - eri_4center(iint) * p_matrix(kbf,jbf,:) / spin_fact
    endif
 
    if( index_ik /= index_lj ) then
-     exchange_ij(lbf,kbf,:) = exchange_ij(lbf,kbf,:) &
+     exchange_ao(lbf,kbf,:) = exchange_ao(lbf,kbf,:) &
                     - eri_4center(iint) * p_matrix(jbf,ibf,:) / spin_fact
      if( ibf /= kbf ) then
-       exchange_ij(lbf,ibf,:) = exchange_ij(lbf,ibf,:) &
+       exchange_ao(lbf,ibf,:) = exchange_ao(lbf,ibf,:) &
                       - eri_4center(iint) * p_matrix(jbf,kbf,:) / spin_fact
        if( lbf /= jbf ) then
-         exchange_ij(jbf,ibf,:) = exchange_ij(jbf,ibf,:) &
+         exchange_ao(jbf,ibf,:) = exchange_ao(jbf,ibf,:) &
                         - eri_4center(iint) * p_matrix(lbf,kbf,:) / spin_fact
        endif
      endif
      if( lbf /= jbf ) then
-       exchange_ij(jbf,kbf,:) = exchange_ij(jbf,kbf,:) &
+       exchange_ao(jbf,kbf,:) = exchange_ao(jbf,kbf,:) &
                       - eri_4center(iint) * p_matrix(lbf,ibf,:) / spin_fact
      endif
    endif
@@ -461,7 +461,7 @@ subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
  !$OMP END DO
 
  !$OMP WORKSHARE
- eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
+ eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
  !$OMP END WORKSHARE
  !$OMP END PARALLEL
 
@@ -471,10 +471,10 @@ end subroutine setup_exchange
 
 
 !=========================================================================
-subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_longrange(p_matrix,exchange_ao,eexchange)
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: exchange_ij(:,:,:)
+ real(dp),intent(out) :: exchange_ao(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: nbf
@@ -490,7 +490,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
 
  write(stdout,*) 'Calculate LR-Exchange term using the 8 permutation symmetries'
  !$OMP PARALLEL PRIVATE(index_ik,index_lj,ibf,jbf,kbf,lbf,stride)
- exchange_ij(:,:,:) = 0.0_dp
+ exchange_ao(:,:,:) = 0.0_dp
 
 #if defined(_OPENMP)
  stride = OMP_GET_NUM_THREADS()
@@ -503,7 +503,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
 
  ! SCHEDULE(static,1) should not be modified
  ! else a race competition will occur when performing index_ik = index_ik + stride
- !$OMP DO REDUCTION(+:exchange_ij) SCHEDULE(static,1)
+ !$OMP DO REDUCTION(+:exchange_ao) SCHEDULE(static,1)
  do iint=1,nint_4center
    index_ik = index_ik + stride
    do while( index_ik > npair )
@@ -517,34 +517,34 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
    jbf = index_basis(2,index_lj)
 
 
-   exchange_ij(ibf,jbf,:) = exchange_ij(ibf,jbf,:) &
+   exchange_ao(ibf,jbf,:) = exchange_ao(ibf,jbf,:) &
                   - eri_4center_lr(iint) * p_matrix(kbf,lbf,:) / spin_fact
    if( ibf /= kbf ) then
-     exchange_ij(kbf,jbf,:) = exchange_ij(kbf,jbf,:) &
+     exchange_ao(kbf,jbf,:) = exchange_ao(kbf,jbf,:) &
                     - eri_4center_lr(iint) * p_matrix(ibf,lbf,:) / spin_fact
      if( lbf /= jbf ) then
-       exchange_ij(kbf,lbf,:) = exchange_ij(kbf,lbf,:) &
+       exchange_ao(kbf,lbf,:) = exchange_ao(kbf,lbf,:) &
                       - eri_4center_lr(iint) * p_matrix(ibf,jbf,:) / spin_fact
      endif
    endif
    if( lbf /= jbf ) then
-     exchange_ij(ibf,lbf,:) = exchange_ij(ibf,lbf,:) &
+     exchange_ao(ibf,lbf,:) = exchange_ao(ibf,lbf,:) &
                     - eri_4center_lr(iint) * p_matrix(kbf,jbf,:) / spin_fact
    endif
 
    if( index_ik /= index_lj ) then
-     exchange_ij(lbf,kbf,:) = exchange_ij(lbf,kbf,:) &
+     exchange_ao(lbf,kbf,:) = exchange_ao(lbf,kbf,:) &
                     - eri_4center_lr(iint) * p_matrix(jbf,ibf,:) / spin_fact
      if( ibf /= kbf ) then
-       exchange_ij(lbf,ibf,:) = exchange_ij(lbf,ibf,:) &
+       exchange_ao(lbf,ibf,:) = exchange_ao(lbf,ibf,:) &
                       - eri_4center_lr(iint) * p_matrix(jbf,kbf,:) / spin_fact
        if( lbf /= jbf ) then
-         exchange_ij(jbf,ibf,:) = exchange_ij(jbf,ibf,:) &
+         exchange_ao(jbf,ibf,:) = exchange_ao(jbf,ibf,:) &
                         - eri_4center_lr(iint) * p_matrix(lbf,kbf,:) / spin_fact
        endif
      endif
      if( lbf /= jbf ) then
-       exchange_ij(jbf,kbf,:) = exchange_ij(jbf,kbf,:) &
+       exchange_ao(jbf,kbf,:) = exchange_ao(jbf,kbf,:) &
                       - eri_4center_lr(iint) * p_matrix(lbf,ibf,:) / spin_fact
      endif
    endif
@@ -553,7 +553,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
  !$OMP END DO
 
  !$OMP WORKSHARE
- eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
+ eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
  !$OMP END WORKSHARE
  !$OMP END PARALLEL
 
@@ -563,12 +563,12 @@ end subroutine setup_exchange_longrange
 
 
 !=========================================================================
-subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
  implicit none
  real(dp),intent(in)  :: occupation(:,:)
  real(dp),intent(in)  :: c_matrix(:,:,:)
  real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: exchange_ij(:,:,:)
+ real(dp),intent(out) :: exchange_ao(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: nauxil_local
@@ -584,12 +584,12 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
 
- exchange_ij(:,:,:) = 0.0_dp
+ exchange_ao(:,:,:) = 0.0_dp
 
  ! Find highest occupied state
  nocc = get_number_occupied_states(occupation)
 
- nbf    = SIZE(exchange_ij,DIM=1)
+ nbf    = SIZE(exchange_ao,DIM=1)
  nstate = SIZE(occupation(:,:),DIM=1)
 
  nauxil_local = nauxil_3center
@@ -618,10 +618,10 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
      enddo
      !$OMP END DO
      !$OMP END PARALLEL
-     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+     ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
+     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
 
    enddo
  enddo
@@ -631,17 +631,17 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
 
 
  !
- ! Need to symmetrize exchange_ij
+ ! Need to symmetrize exchange_ao
  do ispin=1,nspin
    do ibf=1,nbf
      do jbf=ibf+1,nbf
-       exchange_ij(ibf,jbf,ispin) = exchange_ij(jbf,ibf,ispin)
+       exchange_ao(ibf,jbf,ispin) = exchange_ao(jbf,ibf,ispin)
      enddo
    enddo
  enddo
- call xsum_world(exchange_ij)
+ call xsum_world(exchange_ao)
 
- eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
+ eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
 
  call stop_clock(timing_exchange)
 
@@ -649,12 +649,12 @@ end subroutine setup_exchange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
  implicit none
  real(dp),intent(in)  :: occupation(:,:)
  real(dp),intent(in)  :: c_matrix(:,:,:)
  real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: exchange_ij(:,:,:)
+ real(dp),intent(out) :: exchange_ao(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: nauxil_local
@@ -670,12 +670,12 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,
 
  write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
 
- exchange_ij(:,:,:) = 0.0_dp
+ exchange_ao(:,:,:) = 0.0_dp
 
  ! Find highest occupied state
  nocc = get_number_occupied_states(occupation)
 
- nbf    = SIZE(exchange_ij,DIM=1)
+ nbf    = SIZE(exchange_ao,DIM=1)
  nstate = SIZE(occupation(:,:),DIM=1)
 
  nauxil_local = nauxil_3center_lr
@@ -705,10 +705,10 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,
      enddo
      !$OMP END DO
      !$OMP END PARALLEL
-     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+     ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ij(1,1,ispin),nbf)
+     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
 
    enddo
  enddo
@@ -718,17 +718,17 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,
 
 
  !
- ! Need to symmetrize exchange_ij
+ ! Need to symmetrize exchange_ao
  do ispin=1,nspin
    do ibf=1,nbf
      do jbf=ibf+1,nbf
-       exchange_ij(ibf,jbf,ispin) = exchange_ij(jbf,ibf,ispin)
+       exchange_ao(ibf,jbf,ispin) = exchange_ao(jbf,ibf,ispin)
      enddo
    enddo
  enddo
- call xsum_world(exchange_ij)
+ call xsum_world(exchange_ao)
 
- eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
+ eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
 
  call stop_clock(timing_exchange)
 
@@ -736,17 +736,103 @@ end subroutine setup_exchange_longrange_ri
 
 
 !=========================================================================
+subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
+ implicit none
+ real(dp),intent(in)     :: occupation(:,:)
+ complex(dp),intent(in)  :: c_matrix(:,:,:)
+ complex(dp),intent(in)  :: p_matrix(:,:,:)
+ complex(dp),intent(out) :: exchange_ao(:,:,:)
+ real(dp),intent(out) :: eexchange
+!=====
+ integer                 :: nauxil_local
+ integer                 :: nbf,nstate
+ integer                 :: nocc
+ integer                 :: ibf,jbf,ispin,istate
+ complex(dp),allocatable :: tmp_cmplx(:,:),c_t_cmplx(:,:)
+ integer                 :: ipair,ipair_local,iauxil
+ integer                 :: ibf_auxil_first,nbf_auxil_core
+!=====
+
+ call start_clock(timing_exchange)
+
+ write(stdout,*) 'Calculate Complex Exchange term with Resolution-of-Identity'
+
+ exchange_ao(:,:,:) = (0.0_dp, 0.0_dp)
+
+ ! Find highest occupied state
+ nocc = get_number_occupied_states(occupation)
+
+ nbf    = SIZE(exchange_ao,DIM=1)
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ nauxil_local = nauxil_3center
+
+ allocate(tmp_cmplx(nocc,nbf))
+ allocate(c_t_cmplx(nocc,nbf))
+
+ do ispin=1,nspin
+
+   !$OMP PARALLEL DO
+   do ibf=1,nbf
+     c_t_cmplx(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
+   enddo
+   !$OMP END PARALLEL DO
+
+   do iauxil=1,nauxil_local
+     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
+     tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
+     !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+     !$OMP DO REDUCTION(+:tmp_cmplx)
+     do ipair=1,npair
+       ibf = index_basis(1,ipair)
+       jbf = index_basis(2,ipair)
+       tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_t_cmplx(:,jbf) * eri_3center(ipair,iauxil)
+       tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_t_cmplx(:,ibf) * eri_3center(ipair,iauxil)
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
+     !                    - MATMUL( CONJG(TRANSPOSE(tmp(:,:))) , tmp(:,:) ) / spin_fact
+     ! C = A^H * A + C
+     call ZHERK('L','C',nbf,nocc,-1.0_dp,tmp_cmplx,nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
+
+   enddo
+ enddo
+
+ deallocate(c_t_cmplx)
+ deallocate(tmp_cmplx)
+
+
+ !
+ ! Need to symmetrize exchange_ao
+ do ispin=1,nspin
+   do ibf=1,nbf
+     do jbf=ibf+1,nbf
+       exchange_ao(ibf,jbf,ispin) = exchange_ao(jbf,ibf,ispin)
+     enddo
+   enddo
+ enddo
+ call xsum_world(exchange_ao)
+
+ eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) ) , dp)
+
+ call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_ri_cmplx
+
+
+!=========================================================================
 ! Calculate the exchange-correlation potential and energy
 ! * subroutine works for both real and complex wavefunctions c_matrix
 !   using "class" syntax of Fortran2003
-subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  implicit none
 
  integer,intent(in)         :: batch_size
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(:,:)
  class(*),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(out)       :: vxc_ij(:,:,:)
+ real(dp),intent(out)       :: vxc_ao(:,:,:)
  real(dp),intent(out)       :: exc_xc
 !=====
  real(dp),parameter   :: TOL_RHO=1.0e-9_dp
@@ -772,7 +858,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 !=====
 
  exc_xc = 0.0_dp
- vxc_ij(:,:,:) = 0.0_dp
+ vxc_ao(:,:,:) = 0.0_dp
 
  if( dft_xc(1)%nxc == 0 ) return
 
@@ -961,7 +1047,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
        enddo
        !$OMP END PARALLEL DO
      endif
-     call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+     call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ao(:,:,ispin),basis%nbf)
 
    enddo
    deallocate(tmp_batch)
@@ -992,7 +1078,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  do ispin=1,nspin
    do jbf=1,basis%nbf
      do ibf=jbf+1,basis%nbf
-       vxc_ij(jbf,ibf,ispin) = vxc_ij(ibf,jbf,ispin)
+       vxc_ao(jbf,ibf,ispin) = vxc_ao(ibf,jbf,ispin)
      enddo
    enddo
  enddo
@@ -1000,7 +1086,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  !
  ! Sum up the contributions from all procs only if needed
  call xsum_grid(normalization)
- call xsum_grid(vxc_ij)
+ call xsum_grid(vxc_ao)
  call xsum_grid(exc_xc)
 
 
@@ -1018,13 +1104,13 @@ end subroutine dft_exc_vxc_batch
 
 
 !=========================================================================
-subroutine dft_approximate_vhxc(basis,vhxc_ij)
+subroutine dft_approximate_vhxc(basis,vhxc_ao)
  use m_dft_grid
  use m_eri_calculate
  implicit none
 
  type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
+ real(dp),intent(out)       :: vhxc_ao(basis%nbf,basis%nbf)
 !=====
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: basis_function_r_batch(:,:)
@@ -1043,7 +1129,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
  call start_clock(timing_approx_ham)
 
- vhxc_ij(:,:) = 0.0_dp
+ vhxc_ao(:,:) = 0.0_dp
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
@@ -1056,7 +1142,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
 
    call calculate_eri_approximate_hartree(basis,xatom(:,iatom),coeff,alpha,vhgau)
-   vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:)
+   vhxc_ao(:,:) = vhxc_ao(:,:) + vhgau(:,:)
 
    deallocate(alpha,coeff)
  enddo
@@ -1109,7 +1195,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    do ir=1,nr
      basis_function_r_batch(:,ir) = SQRT( -weight_batch(ir) * vrho_batch(ir) ) * basis_function_r_batch(:,ir)
    enddo
-   call DSYRK('L','N',basis%nbf,nr,-1.0d0,basis_function_r_batch,basis%nbf,1.0d0,vhxc_ij,basis%nbf)
+   call DSYRK('L','N',basis%nbf,nr,-1.0d0,basis_function_r_batch,basis%nbf,1.0d0,vhxc_ao,basis%nbf)
 
 
    deallocate(weight_batch)
@@ -1123,12 +1209,12 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  ! Sum up the contributions from all procs only if needed
  call xsum_grid(normalization)
  call xsum_grid(exc)
- call xsum_grid(vhxc_ij)
+ call xsum_grid(vhxc_ao)
 
  ! Symmetrize vhxc
  do ibf=1,basis%nbf
    do jbf=ibf+1,basis%nbf
-     vhxc_ij(ibf,jbf) = vhxc_ij(jbf,ibf)
+     vhxc_ao(ibf,jbf) = vhxc_ao(jbf,ibf)
    enddo
  enddo
 

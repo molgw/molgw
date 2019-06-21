@@ -18,6 +18,7 @@ module m_dm_mbpt
  use m_selfenergy_tools
  use m_hamiltonian_wrapper
  use m_scf
+ use m_multipole
 
 contains
 
@@ -160,8 +161,8 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
    allocate(occupation_tmp(basis%nbf,nspin))
    call get_c_matrix_from_p_matrix(p_matrix_corr,c_matrix_tmp,occupation_tmp)
    if( print_multipole_ ) then
-     call static_dipole(basis%nbf,basis,occupation_tmp,c_matrix_tmp)
-     call static_quadrupole(basis%nbf,basis,occupation_tmp,c_matrix_tmp)
+     call static_dipole(basis,occupation_tmp,c_matrix_tmp)
+     call static_quadrupole(basis,occupation_tmp,c_matrix_tmp)
    endif
    if( print_cube_ ) then
      call plot_cube_wfn('MBPT',basis%nbf,basis,occupation_tmp,c_matrix_tmp)

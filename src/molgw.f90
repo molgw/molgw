@@ -53,6 +53,7 @@ program molgw
  use m_dm_analysis
  use m_dm_mbpt
  use m_restart
+ use m_multipole
  implicit none
 
 !=====
@@ -414,10 +415,10 @@ program molgw
  if( print_multipole_ ) then
    !
    ! Evaluate the static dipole
-   call static_dipole(nstate,basis,occupation,c_matrix)
+   call static_dipole(basis,occupation,c_matrix)
    !
    ! Evaluate the static quadrupole
-   call static_quadrupole(nstate,basis,occupation,c_matrix)
+   call static_quadrupole(basis,occupation,c_matrix)
  endif
 
  if( print_wfn_ )  call plot_wfn(nstate,basis,c_matrix)
