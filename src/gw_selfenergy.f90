@@ -337,18 +337,18 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  if( is_iomaster) then
    do jmat=1,mstate
      do imat=1,jmat
-       write(fu,'(1x,i7,1x,i7,1x,e14.6)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
+       write(fu,'(1x,i7,1x,i7,1x,e16.8)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
      enddo
    enddo
    do imat=1,mwing
-     write(fu,'(1x,i7,1x,i7,1x,e14.6)') imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
+     write(fu,'(1x,i7,1x,i7,1x,e16.8)') imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
    enddo
  endif
 
  do jmat=1,mstate
    do ilocal=1,mlocal
      imat = INDXL2G(ilocal,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
-     write(fu,'(1x,i7,1x,i7,1x,e14.6)') mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
+     write(fu,'(1x,i7,1x,i7,1x,e16.8)') mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
    enddo
  enddo
  close(fu)
