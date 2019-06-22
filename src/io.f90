@@ -169,18 +169,18 @@ end subroutine dump_out_occupation
 !=========================================================================
 subroutine dump_out_energy(title,nstate,nspin,occupation,energy)
  use m_definitions
- use m_mpi
  use m_inputparam,only: spin_fact
+ use m_hamiltonian_tools,only: get_number_occupied_states
  implicit none
  character(len=*),intent(in) :: title
  integer,intent(in)          :: nstate,nspin
  real(dp),intent(in)         :: occupation(nstate,nspin),energy(nstate,nspin)
 !=====
  integer,parameter :: MAXSIZE=300
-!=====
- integer  :: istate
+ integer  :: istate,nocc
 !=====
 
+ nocc = get_number_occupied_states(occupation)
 
  write(stdout,'(/,1x,a)') TRIM(title)
 
@@ -190,12 +190,14 @@ subroutine dump_out_energy(title,nstate,nspin,occupation,energy)
    write(stdout,'(a)') '   #              (Ha)                      (eV)      '
    write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
  endif
- do istate=1,MIN(nstate,MAXSIZE)
+ do istate=MAX(1,nocc-MAXSIZE/2),MIN(nstate,nocc+MAXSIZE/2)
    select case(nspin)
    case(1)
-     write(stdout,'(1x,i3,2(1x,f12.5),4x,f8.4)') istate,energy(istate,:),energy(istate,:)*Ha_eV,occupation(istate,:)
+     write(stdout,'(1x,i3,2(1x,f12.5),4x,f8.4)') istate,energy(istate,1),energy(istate,1)*Ha_eV,occupation(istate,1)
    case(2)
-     write(stdout,'(1x,i3,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,:),energy(istate,:)*Ha_eV,occupation(istate,:)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,1),energy(istate,2), &
+                                                          energy(istate,1)*Ha_eV,energy(istate,2)*Ha_eV, &
+                                                          occupation(istate,1),occupation(istate,2)
    end select
    if(istate < nstate) then
      if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0_dp ) ) then
