@@ -2406,9 +2406,16 @@ subroutine write_energy_qp(nstate,energy_qp)
 
  write(energy_qpfile,*) nspin
  write(energy_qpfile,*) nstate
- do istate=1,nstate
-   write(energy_qpfile,*) istate,energy_qp(istate,:)
- enddo
+ select case(nspin)
+ case(1)
+   do istate=1,nstate
+     write(energy_qpfile,*) istate,energy_qp(istate,1)
+   enddo
+ case(2)
+   do istate=1,nstate
+     write(energy_qpfile,*) istate,energy_qp(istate,1),energy_qp(istate,2)
+   enddo
+ end select
 
  close(energy_qpfile)
 
