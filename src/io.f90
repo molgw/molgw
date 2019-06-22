@@ -158,9 +158,16 @@ subroutine dump_out_occupation(title,nstate,nspin,occupation)
    if( ANY(occupation(istate,:) > 0.001_dp) ) ihomo = istate
  enddo
 
- do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
-   write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,:)
- enddo
+ select case(nspin)
+ case(1)
+   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1)
+   enddo
+ case(2)
+   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1),occupation(istate,2)
+   enddo
+ end select
  write(stdout,*)
 
 end subroutine dump_out_occupation
