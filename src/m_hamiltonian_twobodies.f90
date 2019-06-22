@@ -845,7 +845,9 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: tmp_batch(:,:)
  real(dp),allocatable :: basis_function_r_batch(:,:)
- real(dp),allocatable :: basis_function_gradr_batch(:,:,:)
+ real(dp),allocatable :: bf_gradx_batch(:,:)
+ real(dp),allocatable :: bf_grady_batch(:,:)
+ real(dp),allocatable :: bf_gradz_batch(:,:)
  real(dp),allocatable :: dedd_r_batch(:,:)
  real(dp),allocatable :: grad_rhor_batch(:,:,:)
  real(dp),allocatable :: dedgd_r_batch(:,:,:)
@@ -908,7 +910,9 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    allocate(dedd_r_batch(nspin,nr))
 
    if( dft_xc(1)%needs_gradient ) then
-     allocate(basis_function_gradr_batch(basis%nbf,nr,3))
+     allocate(bf_gradx_batch(basis%nbf,nr))
+     allocate(bf_grady_batch(basis%nbf,nr))
+     allocate(bf_gradz_batch(basis%nbf,nr))
      allocate(grad_rhor_batch(nspin,nr,3))
      allocate(dedgd_r_batch(3,nr,nspin))
      allocate(sigma_batch(2*nspin-1,nr))
@@ -920,7 +924,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
    !
    ! Get the gradient at points r
-   if( dft_xc(1)%needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,basis_function_gradr_batch)
+   if( dft_xc(1)%needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,bf_gradx_batch,bf_grady_batch,bf_gradz_batch)
 
    !
    ! Calculate the density at points r for spin up and spin down
@@ -928,7 +932,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    if( .NOT. dft_xc(1)%needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
    else
-     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
 
      !$OMP PARALLEL DO
      do ir=1,nr
@@ -1034,7 +1038,9 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
        do ir=1,nr
          tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
          tmp_batch(:,ir) = tmp_batch(:,ir) &
-                          +  MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
+                          +  bf_gradx_batch(:,ir) * dedgd_r_batch(1,ir,ispin) * weight_batch(ir) &
+                          +  bf_grady_batch(:,ir) * dedgd_r_batch(2,ir,ispin) * weight_batch(ir) &
+                          +  bf_gradz_batch(:,ir) * dedgd_r_batch(3,ir,ispin) * weight_batch(ir) 
        enddo
        !$OMP END PARALLEL DO
      else
@@ -1062,7 +1068,9 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    deallocate(vrho_batch)
    deallocate(dedd_r_batch)
    if( dft_xc(1)%needs_gradient ) then
-     deallocate(basis_function_gradr_batch)
+     deallocate(bf_gradx_batch)
+     deallocate(bf_grady_batch)
+     deallocate(bf_gradz_batch)
      deallocate(grad_rhor_batch)
      deallocate(sigma_batch)
      deallocate(dedgd_r_batch)

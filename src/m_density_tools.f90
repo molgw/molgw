@@ -134,13 +134,15 @@ end subroutine calc_density_r_batch
 !=========================================================================
 ! Calculate the density and its gradient on a batch for both real and complex wavefunctions
 !
-subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_function_gradr,rhor,grad_rhor)
+subroutine calc_density_gradr_batch(occupation,c_matrix,bfr,bf_gradx,bf_grady,bf_gradz,rhor,grad_rhor)
  implicit none
 
  real(dp),intent(in)        :: occupation(:,:)
  class(*),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(in)        :: basis_function_r(:,:)
- real(dp),intent(in)        :: basis_function_gradr(:,:,:)
+ real(dp),intent(in)        :: bfr(:,:)
+ real(dp),intent(in)        :: bf_gradx(:,:)
+ real(dp),intent(in)        :: bf_grady(:,:)
+ real(dp),intent(in)        :: bf_gradz(:,:)
  real(dp),intent(out)       :: rhor(:,:)
  real(dp),intent(out)       :: grad_rhor(:,:,:)
 !=====
@@ -178,14 +180,14 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
      allocate(phir_gradx(nocc,nr))
      allocate(phir_grady(nocc,nr))
      allocate(phir_gradz(nocc,nr))
-     !phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
-     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_r,nbf,0.d0,phir,nocc)
-     !phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
-     !phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
-     !phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
-     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,1),nbf,0.d0,phir_gradx,nocc)
-     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,2),nbf,0.d0,phir_grady,nocc)
-     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,3),nbf,0.d0,phir_gradz,nocc)
+     !phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bfr(:,:) )
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,bfr,nbf,0.d0,phir,nocc)
+     !phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_gradx(:,:) )
+     !phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_grady(:,:) )
+     !phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_gradz(:,:) )
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bf_gradx,nbf,0.d0,phir_gradx,nocc)
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bf_grady,nbf,0.d0,phir_grady,nocc)
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bf_gradz,nbf,0.d0,phir_gradz,nocc)
 
      !$OMP PARALLEL DO
      do ir=1,nr
@@ -205,14 +207,14 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
      allocate(phir_gradz_cmplx(nocc,nr))
      allocate(tmp_cmplx(nbf,nr))
 
-     tmp_cmplx(:,:) = basis_function_r(:,:)
-     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_cmplx,nocc)
-     tmp_cmplx(:,:) = basis_function_gradr(:,:,1)
-     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradx_cmplx,nocc)
-     tmp_cmplx(:,:) = basis_function_gradr(:,:,2)
-     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_grady_cmplx,nocc)
-     tmp_cmplx(:,:) = basis_function_gradr(:,:,3)
-     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradz_cmplx,nocc)
+     tmp_cmplx(:,:) = bfr(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_cmplx,nocc)
+     tmp_cmplx(:,:) = bf_gradx(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradx_cmplx,nocc)
+     tmp_cmplx(:,:) = bf_grady(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_grady_cmplx,nocc)
+     tmp_cmplx(:,:) = bf_gradz(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradz_cmplx,nocc)
 
      !$OMP PARALLEL DO
      do ir=1,nr

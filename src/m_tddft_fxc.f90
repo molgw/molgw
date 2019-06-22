@@ -61,7 +61,9 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  integer              :: ixc,igrid
  integer              :: ispin
  real(dp)             :: basis_function_r(basis%nbf,1)
- real(dp)             :: basis_function_gradr(basis%nbf,1,3)
+ real(dp)             :: bf_gradx(basis%nbf,1)
+ real(dp)             :: bf_grady(basis%nbf,1)
+ real(dp)             :: bf_gradz(basis%nbf,1)
  real(dp)             :: rhor_r(nspin,1)
  real(dp)             :: grad_rhor(nspin,1,3)
  real(dp)             :: max_v2sigma2
@@ -130,17 +132,19 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
    enddo
 
    if( dft_xc(1)%needs_gradient ) then
-     call get_basis_functions_gradr_batch(basis,igrid,basis_function_gradr)
+     call get_basis_functions_gradr_batch(basis,igrid,bf_gradx,bf_grady,bf_gradz)
      !
      ! store the wavefunction in r
      do ispin=1,nspin
-       wf_gradr(:,igrid,:,ispin) = MATMUL( TRANSPOSE(basis_function_gradr(:,1,:)) , c_matrix(:,:,ispin) )
+       wf_gradr(1,igrid,:,ispin) = MATMUL( bf_gradx(:,1) , c_matrix(:,:,ispin) )
+       wf_gradr(2,igrid,:,ispin) = MATMUL( bf_grady(:,1) , c_matrix(:,:,ispin) )
+       wf_gradr(3,igrid,:,ispin) = MATMUL( bf_gradz(:,1) , c_matrix(:,:,ispin) )
      enddo
    endif
 
 
    if( dft_xc(1)%needs_gradient ) then
-     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_function_gradr,rhor_r,grad_rhor)
+     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r,bf_gradx,bf_grady,bf_gradz,rhor_r,grad_rhor)
      rho_gradr(:,igrid,:) = TRANSPOSE(grad_rhor(:,1,:))
 
      if( nspin_tddft == 1 ) then
