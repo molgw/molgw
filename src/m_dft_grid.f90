@@ -546,9 +546,7 @@ subroutine get_basis_functions_gradr_batch(basis,igrid,bf_gradx,bf_grady,bf_grad
    bf_gradz(:,:) = bfgz(:,igrid:igrid+nr-1)
  else
    call calculate_basis_functions_gradr_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1), &
-                                             bf_gradx(:,igrid:igrid+nr-1), &
-                                             bf_grady(:,igrid:igrid+nr-1), &
-                                             bf_gradz(:,igrid:igrid+nr-1) )
+                                              bf_gradx,bf_grady,bf_gradz)
  endif
 
 end subroutine get_basis_functions_gradr_batch
