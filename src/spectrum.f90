@@ -87,7 +87,7 @@ program spectrum
  itau = 1
  open(newunit=file_dipole_time, file = name_dipole_time)
  do irow=1,nrow
-   read(file_dipole_time,'(A)'a )cur_string
+   read(file_dipole_time,'(A)')cur_string
    cur_string = ADJUSTL(cur_string)
    if( cur_string(1:1) /= "#" ) then
      read(cur_string,*)m_times(itau),real_dipole(:)
