@@ -1048,7 +1048,6 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  use m_atoms
  use m_basis_set
  use m_timing
- use m_tools
  use m_dft_grid,only: calculate_basis_functions_r
 
  implicit none
@@ -1231,7 +1230,6 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
  use m_atoms
  use m_basis_set
  use m_timing
- use m_tools
  use m_dft_grid,only: calculate_basis_functions_r
 
  implicit none

@@ -12,6 +12,8 @@ module m_tddft_propagator
  use m_warning
  use m_timing
  use m_tddft_variables
+ use m_string_tools
+ use m_multipole
  use m_basis_set
  use m_hamiltonian_tools
  use m_hamiltonian_onebody
@@ -262,7 +264,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  if(excit_type%form==EXCIT_LIGHT) then
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-   call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
+   call static_dipole(basis,p_matrix_in=p_matrix_cmplx,dipole_basis_in=dipole_basis,dipole_out=dipole)
  endif
 
  if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
@@ -338,7 +340,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
      if(excit_type%form==EXCIT_LIGHT) then
       call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-      call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
+      call static_dipole(basis,p_matrix_in=p_matrix_cmplx,dipole_basis_in=dipole_basis,dipole_out=dipole)
      end if
 
      en_tddft%tot = en_tddft%nuc + en_tddft%kin + en_tddft%nuc_nuc + en_tddft%hart + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
@@ -1666,7 +1668,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    call setup_nucleus(basis,hamiltonian_projectile,projectile_list)
 
    do ispin=1,nspin
-     h_cmplx(:,:,ispin) = h_cmplx(:,:,ispin) + hamiltonian_projectile(:,:)
+     hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_projectile(:,:)
    enddo
    en_tddft%excit = REAL( SUM( hamiltonian_projectile(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    deallocate(hamiltonian_projectile)
@@ -1674,11 +1676,11 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  end select
 
  do ispin=1,nspin
-   h_cmplx(:,:,ispin) = h_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
  enddo
 
  ! Perform the canonical transform from the original basis to the orthogonal one
- call transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
+ call transform_hamiltonian_ortho(x_matrix,hamiltonian_fock_cmplx,h_small_cmplx)
 
 
  ! kinetic and nuclei-electrons energy contributions
