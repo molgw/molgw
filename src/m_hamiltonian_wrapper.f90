@@ -250,7 +250,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ! Initialize real arrays
 
 
- hamiltonian_hxc_cmplx = ( 0.0_dp , 0.0_dp )
+ hamiltonian_hxc_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
 
  !
  ! Exchange contribution to the Hamiltonian
@@ -263,7 +263,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
  endif
 
-
+ allocate(hamiltonian_tmp(basis%nbf,basis%nbf,nspin))
    !
    ! Hartree contribution to the Hamiltonian
    ! Hartree contribution is real and depends only on real(p_matrix) but we pass the full p_matrix_cmplx any way
@@ -287,7 +287,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:)
  endif
 
-! write(file_time_data,"(6(x,e16.10,2x),'    ')",advance='no') enuc,ekin,ehart, eexx_hyb,exc, enuc+ekin+ehart+eexx_hyb+exc
  !
  ! LR Exchange contribution to the Hamiltonian
  !
@@ -300,6 +299,8 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  !   eexx_hyb = alpha_hybrid_lr * eexx
  !   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
  ! endif
+
+ deallocate(hamiltonian_tmp)
 
 
 end subroutine  calculate_hamiltonian_hxc_ri_cmplx

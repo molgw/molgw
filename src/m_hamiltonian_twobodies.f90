@@ -1040,7 +1040,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
          tmp_batch(:,ir) = tmp_batch(:,ir) &
                           +  bf_gradx_batch(:,ir) * dedgd_r_batch(1,ir,ispin) * weight_batch(ir) &
                           +  bf_grady_batch(:,ir) * dedgd_r_batch(2,ir,ispin) * weight_batch(ir) &
-                          +  bf_gradz_batch(:,ir) * dedgd_r_batch(3,ir,ispin) * weight_batch(ir) 
+                          +  bf_gradz_batch(:,ir) * dedgd_r_batch(3,ir,ispin) * weight_batch(ir)
        enddo
        !$OMP END PARALLEL DO
      else

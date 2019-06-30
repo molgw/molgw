@@ -34,7 +34,7 @@ module m_tddft_propagator
  real(dp),private                   :: dipole(3)
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
- complex(dp),private                :: excit_field_norm
+ real(dp),private                   :: excit_field_norm
 !==hamiltonian extrapolation variables==
  real(dp),allocatable,private       :: extrap_coefs(:)
  complex(dp),allocatable,private    :: h_small_hist_cmplx(:,:,:,:)
@@ -166,7 +166,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  allocate(xatom_start(3,natom))
 
- write(stdout,'(/,a)') "===INITIAL CONDITIONS==="
+ write(stdout,'(/,1x,a)') "===INITIAL CONDITIONS==="
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
    ! assign xatom_start, c_matrix_orth_cmplx, time_min with values given in RESTART File
@@ -292,7 +292,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  ! Extrapolation coefficients and history c_ and h_ matrices (h_small_hist_cmplx)
  call initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx)
 
- write(stdout,'(/,a)') "===END OF INITIAL CONDITIONS==="
+ write(stdout,'(1x,a,/)') "===END OF INITIAL CONDITIONS==="
 
 
  !
@@ -305,7 +305,6 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if(itau==3) call start_clock(timing_tddft_one_iter)
 
-   write(stdout,'(/,a)') "PREDICTOR-CORRECTOR BLOCK"
 
    !
    ! Use c_matrix_orth_cmplx and h_small_cmplx at (time_cur-time_step) as start values,
@@ -324,7 +323,6 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
                             hamiltonian_nucleus,    &
                             dipole_basis)
 
-   write(stdout,'(/,a)') "END OF PREDICTOR-CORRECTOR BLOCK"
 
    !
    ! debug
@@ -497,6 +495,8 @@ subroutine predictor_corrector(basis,                  &
 !=====
 
  nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
+
+ write(stdout,'(/,1x,a)') 'PREDICTOR-CORRECTOR BLOCK'
 
  select case (pred_corr)
  ! ///////////////////////////////////
@@ -753,6 +753,8 @@ subroutine predictor_corrector(basis,                  &
 
  end select
 
+ write(stdout,'(/,1x,a)') 'END OF PREDICTOR-CORRECTOR BLOCK'
+
 end subroutine predictor_corrector
 
 
@@ -846,7 +848,7 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
    write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
     time_cur, en_tddft%tot, en_tddft%nuc_nuc, en_tddft%nuc, en_tddft%kin, en_tddft%hart, en_tddft%exx_hyb, en_tddft%xc, en_tddft%excit
    write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
-   write(file_excit_field,'(2f19.10)') time_cur, REAL(excit_field_norm)
+   write(file_excit_field,'(2f19.10)') time_cur, excit_field_norm
    write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
  end select
 
@@ -1640,7 +1642,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    if(itau==0) calc_excit_=.FALSE.
    if ( calc_excit_ ) then
      call calculate_excit_field(time_cur,excit_field)
-     excit_field_norm=NORM2(excit_field(:))
+     excit_field_norm = NORM2(excit_field(:))
      do idir=1,3
        do ispin=1, nspin
          hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - dipole_basis(:,:,idir) * excit_field(idir)
