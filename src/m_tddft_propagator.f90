@@ -129,9 +129,11 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
  call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
- if(nstate/=nstate_tmp) then
+ if( nstate /= nstate_tmp ) then
    call die('Error with nstate in the TDDFT propagator')
  end if
+
+ call nucleus_nucleus_energy(en_tddft%nuc_nuc)
 
  !
  ! Setup the fixed part of the Hamiltonian: the kinetic energy and the fixed nuclei potential
@@ -164,6 +166,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  call clean_allocate('Hamiltonian for TDDFT',h_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
+
 
  allocate(xatom_start(3,natom))
 
@@ -214,8 +217,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  end if
 
  ! Number of iterations
- ntau=NINT((time_sim-time_min)/time_step)
- nwrite_step=NINT((time_sim - time_min)/write_step)
+ ntau = NINT( (time_sim-time_min) / time_step )
+ nwrite_step = NINT( (time_sim - time_min) / write_step )
 
 
  if(excit_type%form==EXCIT_LIGHT) then
@@ -232,8 +235,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    call initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_small_cmplx,istate_cut,file_q_matrix)
  end if
 
- !==frozen core: energie initialization==
- if (ncore_tddft > 0) then
+ !==frozen core: energy initialization==
+ if( ncore_tddft > 0 ) then
    call clean_allocate('Inial energies for the frozen core',energies_start,nstate,nspin)
    call clean_allocate('a_matrix_orth_start_cmplx for the frozen core',a_matrix_orth_start_cmplx,nstate,nstate,nspin)
    do ispin=1, nspin
@@ -253,7 +256,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    allocate(rho_start(nr_line_rho,nspin))
  end if
 
- time_min=time_read
+ time_min = time_read
 
  !
  ! Opening files and writing headers in files
@@ -263,10 +266,11 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  ! Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
  en_tddft%tot = en_tddft%nuc + en_tddft%kin + en_tddft%nuc_nuc + en_tddft%hart + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
 
- if(excit_type%form==EXCIT_LIGHT) then
+ if( excit_type%form == EXCIT_LIGHT ) then
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
    call static_dipole(basis,p_matrix_in=p_matrix_cmplx,dipole_ao_in=dipole_ao,dipole_out=dipole)
  endif
+
 
  if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
 
@@ -287,7 +291,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field,0)
 
- time_min=time_min+time_step
+ time_min = time_min + time_step
+
 
  !
  ! Extrapolation coefficients and history c_ and h_ matrices (h_small_hist_cmplx)
@@ -776,40 +781,40 @@ subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx)
 
  select case (pred_corr)
  case('PC1')
-   ham_hist_dim=2
+   ham_hist_dim = 2
 
  case('PC2B')
-   ham_hist_dim=n_hist
+   ham_hist_dim = n_hist
    do iextr=1,n_hist
-     m_nodes(iextr)=(iextr-1.0_dp)*0.5_dp
+     m_nodes(iextr) = (iextr - 1.0_dp) * 0.5_dp
    end do
-   x_pred=(n_hist-1.0_dp)*0.5_dp+0.25_dp
+   x_pred = (n_hist - 1.0_dp) * 0.5_dp + 0.25_dp
    call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
 
  case('PC3','PC4')
-   ham_hist_dim=n_hist+2
+   ham_hist_dim = n_hist + 2
    do iextr=1,n_hist
-     m_nodes(iextr)=iextr-1.0_dp
+     m_nodes(iextr) = iextr - 1.0_dp
    end do
-   x_pred=n_hist
+   x_pred = n_hist
    if(pred_corr=='PC3') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
    if(pred_corr=='PC4') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
 
  case('PC5','PC6')
-   ham_hist_dim=n_hist+1
+   ham_hist_dim = n_hist + 1
    do iextr=1,n_hist
-     m_nodes(iextr)=iextr-1.0_dp
+     m_nodes(iextr) = iextr - 1.0_dp
    end do
-   x_pred=n_hist
+   x_pred = n_hist
    if(pred_corr=='PC5') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
    if(pred_corr=='PC6') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
 
  case('PC7' )
-   ham_hist_dim=2
+   ham_hist_dim = 2
 
  end select
 
- if(pred_corr /= 'PC0' ) then
+ if( pred_corr /= 'PC0' ) then
    call clean_allocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx,nstate,nstate,nspin,ham_hist_dim)
    call clean_allocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx,nstate,nocc,nspin,1)
    do iextr=1,ham_hist_dim
@@ -1634,13 +1639,13 @@ subroutine setup_hamiltonian_fock_cmplx(basis,                   &
  !
  ! Light excitation
  case(EXCIT_LIGHT)
-   excit_field=0.0_dp
+   excit_field = 0.0_dp
    calc_excit_ = .FALSE.
    calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'GAU' )
    calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'HSW'  .AND. ABS(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
    calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'STEP' .AND. ABS(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
    calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  .AND. ABS(time_cur - excit_type%time0)<time_step_cur/2.0_dp )
-   if(itau==0) calc_excit_=.FALSE.
+   if( itau == 0 ) calc_excit_=.FALSE.
    if ( calc_excit_ ) then
      call calculate_excit_field(time_cur,excit_field)
      excit_field_norm = NORM2(excit_field(:))
@@ -1709,10 +1714,10 @@ subroutine diagonalize_hamiltonian_ortho(h_small_cmplx,a_matrix_orth_cmplx,energ
 !=====
 
  call start_clock(timing_propagate_diago)
- algo_cmplx = ANY( ABS(h_small_cmplx(:,:)%im ) > 1.0e-6_dp )
+ algo_cmplx = ANY( ABS(h_small_cmplx(:,:)%im) > 1.0e-12_dp )
  nstate = SIZE(h_small_cmplx(:,:),DIM=1)
 
- if(algo_cmplx) then
+ if( algo_cmplx ) then
    !
    ! COMPLEX case
    !
@@ -1755,16 +1760,16 @@ subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
  call start_clock(timing_tddft_ham_orthobasis)
 
  ! If any coefficient of H has an imaginary part, use the former (and slower) algo
- algo_cmplx = ANY( ABS(h_cmplx(:,:,:)%im ) > 1.0e-6_dp )
+ algo_cmplx = ANY( ABS(h_cmplx(:,:,:)%im ) > 1.0e-12_dp )
 
 #if defined(HAVE_MKL)
- if(algo_cmplx) then
+ if( algo_cmplx ) then
    write(stdout,'(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: MKL extension, complex '
  else
    write(stdout,'(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: MKL extension, real'
  endif
 #else
- if(algo_cmplx) then
+ if( algo_cmplx ) then
    write(stdout,'(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: complex '
  else
    write(stdout,'(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: real'
