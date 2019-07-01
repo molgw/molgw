@@ -551,21 +551,21 @@ MP2 Total Energy          , -76.2285265785     , 0 , 1.0e-7
 MP3 Energy                ,  -0.0069228191     , 0 , 1.0e-7
 MP3 Total Energy          , -76.2354493975     , 0 , 1.0e-7
 
-h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B",tddft
+h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT T=200.0 dt=0.5 PC="PC2B",tddft
 SCF Total Energy          , -76.0278711935     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -76.0278711836     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-5
 RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-5
 RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-5
 
-h2o_rt_tddft_hf_PC2B_scalapack.in, Scalapack test RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B",tddft
+h2o_rt_tddft_hf_PC2B_TZ.in, RT-TDDFT within cc-pVTZ T=200.0 dt=0.5 PC="PC2B",tddft
 SCF Total Energy          , -76.0571529836     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -76.0571529689     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   0.0001368162     , 0 , 1.0e-5
 RT-TDDFT Dipole Moment    ,   2.0246334571     , 1 , 1.0e-5
 RT-TDDFT Dipole Moment    ,  -0.0003241743     , 2 , 1.0e-5
 
-h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B", tddft
+h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT T=20.0 dt=0.5 PC="PC2B", tddft
 SCF Total Energy          , -75.8540895545     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -75.8540895309     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,  -0.0001846589     , 0 , 1.0e-7
@@ -596,7 +596,7 @@ RT-TDDFT Total Energy     ,  -75.5420266865     , 0 , 1.0e-7
 h2o_rt_tddft_h_proj_temp_pbe0_restart.in , pbe0 with temperature restart, restart tddft
 RT-TDDFT Total Energy     ,  -75.4884909894     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_pbe0_scalapack.in , proj without basis pbe0,tddft
+h2o_rt_tddft_h_proj_pbe0_TZ.in , RT-TDDFT with projectile without basis within PBE0,tddft
 SCF Total Energy          ,  -76.3757991664     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.3811268142     , 0 , 1.0e-7
 

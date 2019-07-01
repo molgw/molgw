@@ -10,7 +10,6 @@
  charge=0
  natom=3
  
- scalapack_block_min=4
 
  postscf='real_time'
  time_step=0.5
