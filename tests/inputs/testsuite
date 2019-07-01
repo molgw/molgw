@@ -572,28 +572,28 @@ RT-TDDFT Dipole Moment    ,  -0.0001846589     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   1.9474309646     , 1 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   0.0000376516     , 2 , 1.0e-7
 
-h2o_rt_tddft_lda_PC2B_restart.in  , test of RESTART_TDDFT does not work without preliminary run of previous input, restart tddft
+h2o_rt_tddft_lda_PC2B_restart.in  , RT-TDDFT from RESTART_TDDFT (need previous run), restart tddft
 RT-TDDFT Total Energy     ,  -75.8540895314     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,    0.0001669089     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,    1.9475062577     , 1 , 1.0e-7
 RT-TDDFT Dipole Moment    ,    0.0002922780     , 2 , 1.0e-7
 
-h2o_rt_tddft_h_projectile.in  , test of projectile without basis function PC="PC2B",tddft
+h2o_rt_tddft_h_projectile.in, RT-TDDFT projectile without basis function PC="PC2B",tddft
 SCF Total Energy          ,  -75.8551200924     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.0285116443     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_pbe0.in , proj without basis pbe0,tddft
+h2o_rt_tddft_h_proj_pbe0.in, RT-TDDFT proj without basis pbe0,tddft
 SCF Total Energy          ,  -76.3418386927     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.5745023928     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_pbe0_restart.in , proj without basis pbe0 restart, restart tddft
+h2o_rt_tddft_h_proj_pbe0_restart.in, RT-TDDFT proj without basis pbe0 restart, restart tddft
 RT-TDDFT Total Energy     ,  -75.5098148640     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_temp_pbe0.in , pbe0 with temperature,tddft
+h2o_rt_tddft_h_proj_temp_pbe0.in , RT-TDDFT PBE0 with temperature,tddft
 SCF Total Energy          ,  -76.3191476781     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.5420266865     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_temp_pbe0_restart.in , pbe0 with temperature restart, restart tddft
+h2o_rt_tddft_h_proj_temp_pbe0_restart.in , RT-TDDFT PBE0 with temperature restart, restart tddft
 RT-TDDFT Total Energy     ,  -75.4884909894     , 0 , 1.0e-7
 
 h2o_rt_tddft_h_proj_pbe0_TZ.in , RT-TDDFT with projectile without basis within PBE0,tddft

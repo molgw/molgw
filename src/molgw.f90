@@ -274,6 +274,8 @@ program molgw
    !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
    if( read_tddft_restart_ ) then
      call check_restart_tddft(nstate,occupation,restart_tddft_is_correct)
+     ! When restart_tddft_is_correct  is TRUE, then override is_converged
+     if( restart_tddft_is_correct ) is_converged = .TRUE.
    end if
 
 
