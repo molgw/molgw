@@ -268,9 +268,9 @@ subroutine scf_loop(is_restart,&
      call level_shifting_down(s_matrix,c_matrix,occupation,level_shifting_energy,energy,hamiltonian)
    endif
 
-   call dump_out_energy('=== Energies ===',nstate,nspin,occupation,energy)
+   call dump_out_energy('=== Energies ===',occupation,energy)
 
-   call output_homolumo('gKS',nstate,occupation,energy,1,nstate)
+   call output_homolumo('gKS',occupation,energy,1,nstate)
 
 
    !
@@ -454,12 +454,12 @@ subroutine print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltoni
  endif
 
  call matrix_ao_to_mo_diag(c_matrix_restart,RESHAPE(hamiltonian_hartree,(/basis%nbf,basis%nbf,1/)),h_ii)
- call dump_out_energy('=== Hartree expectation value ===',nstate,nspin,occupation,h_ii)
+ call dump_out_energy('=== Hartree expectation value ===',occupation,h_ii)
  write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
 
 
  call matrix_ao_to_mo_diag(c_matrix_restart,hamiltonian_exx,h_ii)
- call dump_out_energy('=== Exchange expectation value ===',nstate,nspin,occupation,h_ii)
+ call dump_out_energy('=== Exchange expectation value ===',occupation,h_ii)
  write(stdout,'(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
 
  deallocate(h_ii)

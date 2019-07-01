@@ -436,8 +436,6 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  integer                            :: dynpolfile
  integer                            :: photocrossfile
  integer                            :: parityi,parityj,reflectioni,reflectionj
- integer,external                   :: wfn_parity
- integer,external                   :: wfn_reflection
  character(len=32)                  :: symsymbol
 !=====
 
@@ -896,6 +894,7 @@ subroutine get_energy_qp(nstate,energy,occupation,energy_qp)
  use m_memory
  use m_inputparam
  use m_mpi
+ use m_io
  implicit none
 
  integer,intent(in)                  :: nstate

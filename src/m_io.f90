@@ -6,16 +6,35 @@
 ! the procedures for input and outputs
 !
 !=========================================================================
-subroutine header()
+module m_io
 #if defined(FORTRAN2008)
  use,intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 #endif
  use m_definitions
  use m_mpi
+ use m_timing
+ use m_memory
  use m_warning,only: issue_warning
  use m_string_tools,only: orbital_momentum_name
  use m_libint_tools,only: libint_init
  use m_libxc_tools,only: xc_version
+ use m_linear_algebra,only: determinant_3x3_matrix
+ use m_inputparam,only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE,r_disc
+ use m_hamiltonian_tools,only: get_number_occupied_states
+ use m_atoms
+ use m_basis_set
+ use m_dft_grid,only: calculate_basis_functions_r
+ use m_cart_to_pure
+ use m_tddft_variables
+
+
+
+
+contains
+
+
+
+subroutine header()
  implicit none
 
 #if defined(_OPENMP)
@@ -137,95 +156,7 @@ end subroutine header
 
 
 !=========================================================================
-subroutine dump_out_occupation(title,nstate,nspin,occupation)
- use m_definitions
- use m_mpi
- implicit none
- character(len=*),intent(in) :: title
- integer,intent(in)          :: nstate,nspin
- real(dp),intent(in)         :: occupation(nstate,nspin)
-!=====
- integer :: ihomo
- integer :: istate
-!=====
-
- write(stdout,'(/,1x,a)') TRIM(title)
-
- if( nspin == 2 ) then
-   write(stdout,'(a)') '           spin 1       spin 2 '
- endif
- do istate=1,nstate
-   if( ANY(occupation(istate,:) > 0.001_dp) ) ihomo = istate
- enddo
-
- select case(nspin)
- case(1)
-   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
-     write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1)
-   enddo
- case(2)
-   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
-     write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1),occupation(istate,2)
-   enddo
- end select
- write(stdout,*)
-
-end subroutine dump_out_occupation
-
-
-!=========================================================================
-subroutine dump_out_energy(title,nstate,nspin,occupation,energy)
- use m_definitions
- use m_inputparam,only: spin_fact
- use m_hamiltonian_tools,only: get_number_occupied_states
- implicit none
- character(len=*),intent(in) :: title
- integer,intent(in)          :: nstate,nspin
- real(dp),intent(in)         :: occupation(nstate,nspin),energy(nstate,nspin)
-!=====
- integer,parameter :: MAXSIZE=300
- integer  :: istate,nocc
-!=====
-
- nocc = get_number_occupied_states(occupation)
-
- write(stdout,'(/,1x,a)') TRIM(title)
-
- if(nspin==1) then
-   write(stdout,'(a)') '   #       (Ha)         (eV)      '
- else
-   write(stdout,'(a)') '   #              (Ha)                      (eV)      '
-   write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
- endif
- do istate=MAX(1,nocc-MAXSIZE/2),MIN(nstate,nocc+MAXSIZE/2)
-   select case(nspin)
-   case(1)
-     write(stdout,'(1x,i3,2(1x,f12.5),4x,f8.4)') istate,energy(istate,1),energy(istate,1)*Ha_eV,occupation(istate,1)
-   case(2)
-     write(stdout,'(1x,i3,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,1),energy(istate,2), &
-                                                          energy(istate,1)*Ha_eV,energy(istate,2)*Ha_eV, &
-                                                          occupation(istate,1),occupation(istate,2)
-   end select
-   if(istate < nstate) then
-     if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0_dp ) ) then
-        if(nspin==1) then
-          write(stdout,'(a)') '  -----------------------------'
-        else
-          write(stdout,'(a)') '  -------------------------------------------------------'
-        endif
-     endif
-   endif
- enddo
-
- write(stdout,*)
-
-end subroutine dump_out_energy
-
-
-!=========================================================================
 subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
- use m_definitions
- use m_mpi
  implicit none
  logical,intent(in)          :: print_matrix
  character(len=*),intent(in) :: title
@@ -256,66 +187,7 @@ end subroutine dump_out_matrix
 
 
 !=========================================================================
-subroutine output_homolumo(calculation_name,nstate,occupation,energy,istate_min,istate_max)
- use m_definitions
- use m_mpi
- use m_inputparam,only: nspin,spin_fact
- implicit none
-
- character(len=*),intent(in) :: calculation_name
- integer,intent(in)          :: nstate,istate_min,istate_max
- real(dp),intent(in)         :: occupation(nstate,nspin),energy(nstate,nspin)
-!=====
- real(dp) :: ehomo_tmp,elumo_tmp
- real(dp) :: ehomo(nspin),elumo(nspin)
- integer  :: ispin,istate
-!=====
-
- do ispin=1,nspin
-   ehomo_tmp=-HUGE(1.0_dp)
-   elumo_tmp= HUGE(1.0_dp)
-
-   do istate=istate_min,istate_max
-
-     if( occupation(istate,ispin)/spin_fact > completely_empty ) then
-       ehomo_tmp = MAX( ehomo_tmp , energy(istate,ispin) )
-     endif
-
-     if( occupation(istate,ispin)/spin_fact < 1.0_dp - completely_empty ) then
-       elumo_tmp = MIN( elumo_tmp , energy(istate,ispin) )
-     endif
-
-   enddo
-
-   ehomo(ispin) = ehomo_tmp
-   elumo(ispin) = elumo_tmp
-
- enddo
-
-
- write(stdout,*)
- if( ALL( ehomo(:) > -1.0e6 ) ) then
-   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO energy    (eV):',ehomo(:) * Ha_eV
- endif
- if( ALL( elumo(:) <  1.0e6 ) ) then
-   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'LUMO energy    (eV):',elumo(:) * Ha_eV
- endif
- if( ALL( ehomo(:) > -1.0e6 ) .AND. ALL( elumo(:) <  1.0e6 ) ) then
-   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO-LUMO gap  (eV):',( elumo(:)-ehomo(:) ) * Ha_eV
- endif
- write(stdout,*)
-
-
-end subroutine output_homolumo
-
-
-!=========================================================================
 subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
- use m_definitions
- use m_mpi
- use m_inputparam, only: nspin
- use m_atoms
- use m_basis_set
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -386,13 +258,6 @@ end subroutine mulliken_pdos
 
 !=========================================================================
 subroutine plot_wfn(nstate,basis,c_matrix)
- use m_definitions
- use m_mpi
- use m_inputparam, only: nspin
- use m_atoms
- use m_cart_to_pure
- use m_basis_set
- use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -472,13 +337,6 @@ end subroutine plot_wfn
 
 !=========================================================================
 subroutine plot_rho(nstate,basis,occupation,c_matrix)
- use m_definitions
- use m_mpi
- use m_atoms
- use m_cart_to_pure
- use m_inputparam, only: nspin
- use m_basis_set
- use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -547,13 +405,6 @@ end subroutine plot_rho
 
 !=========================================================================
 subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
- use m_definitions
- use m_mpi
- use m_atoms
- use m_cart_to_pure
- use m_inputparam, only: nspin
- use m_basis_set
- use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -624,13 +475,6 @@ end subroutine plot_rho_list
 
 !=========================================================================
 subroutine plot_cube_wfn(rootname,nstate,basis,occupation,c_matrix)
- use m_definitions
- use m_mpi
- use m_inputparam, only: nspin
- use m_cart_to_pure
- use m_atoms
- use m_basis_set
- use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  character(len=*)           :: rootname
  integer,intent(in)         :: nstate
@@ -775,16 +619,8 @@ end subroutine plot_cube_wfn
 
 !=========================================================================
 subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,time_cur)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
  type(basis_set),intent(in) :: basis
@@ -905,15 +741,6 @@ end subroutine plot_rho_traj_bunch
 
 !=========================================================================
 !subroutine plot_rho_traj_bunch_parallel(nstate,nocc_dim,basis,occupation,c_matrix,num,time_cur)
-! use m_definitions
-! use m_mpi
-! use m_tddft_variables
-! use m_inputparam, only: nspin,spin_fact,excit_type
-! use m_atoms
-! use m_basis_set
-! use m_timing
-! use m_dft_grid,only: calculate_basis_functions_r
-!
 ! implicit none
 ! integer,intent(in)         :: nstate
 ! integer,intent(in)         :: nocc_dim
@@ -1041,16 +868,8 @@ end subroutine plot_rho_traj_bunch
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time_cur)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
@@ -1223,16 +1042,8 @@ end subroutine plot_rho_traj_bunch_contrib
 
 !=========================================================================
 subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num,time_cur)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
@@ -1406,14 +1217,6 @@ end subroutine plot_rho_traj_points_set_contrib
 
 !=========================================================================
 subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
 
  implicit none
  integer,intent(in)         :: nstate
@@ -1549,16 +1352,8 @@ end subroutine plot_cube_wfn_cmplx
 
 !=========================================================================
 subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE,r_disc
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
  type(basis_set),intent(in) :: basis
@@ -1702,16 +1497,8 @@ end subroutine calc_density_in_disc_cmplx_regular
 
 !=========================================================================
 subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
  type(basis_set),intent(in) :: basis
@@ -1838,16 +1625,8 @@ end subroutine initialize_cube_diff_cmplx
 
 !=========================================================================
 subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,cube_density_start,nx,ny,nz)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
  type(basis_set),intent(in) :: basis
@@ -1978,15 +1757,6 @@ end subroutine plot_cube_diff_cmplx
 
 !=========================================================================
 subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,cube_density_start,nx,ny,nz)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
- use m_memory
 
  implicit none
  integer,intent(in)         :: nstate
@@ -2144,16 +1914,8 @@ end subroutine plot_cube_diff_parallel_cmplx
 
 !=========================================================================
 subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
  type(basis_set),intent(in) :: basis
@@ -2260,16 +2022,8 @@ end subroutine plot_rho_cmplx
 
 !=========================================================================
 subroutine plot_rho_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur,nr_line_rho,point_a,point_b,rho_start)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
  type(basis_set),intent(in) :: basis
@@ -2331,16 +2085,8 @@ end subroutine plot_rho_diff_cmplx
 
 !=========================================================================
 subroutine calc_rho_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur,nr_line_rho,point_a,point_b,rho_start)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
  type(basis_set),intent(in) :: basis
@@ -2403,11 +2149,8 @@ end subroutine calc_rho_initial_cmplx
 
 !=========================================================================
 subroutine initialize_rho_diff_cmplx(nr_line_rho,point_a,point_b)
- use m_definitions
- use m_mpi
- use m_warning,only: issue_warning
-
  implicit none
+
  real(dp),intent(out)       :: point_a(3),point_b(3)
  integer,intent(out)        :: nr_line_rho
 !=====
@@ -2435,16 +2178,8 @@ end subroutine initialize_rho_diff_cmplx
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
- use m_definitions
- use m_mpi
- use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
- use m_atoms
- use m_basis_set
- use m_timing
- use m_dft_grid,only: calculate_basis_functions_r
-
  implicit none
+
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
  type(basis_set),intent(in) :: basis
@@ -2566,14 +2301,6 @@ end subroutine plot_rho_traj_bunch_cmplx
 
 !=========================================================================
 subroutine read_cube_wfn(nstate,basis,occupation,c_matrix)
- use m_definitions
- use m_linear_algebra,only: determinant_3x3_matrix
- use m_mpi
- use m_inputparam, only: nspin
- use m_cart_to_pure
- use m_atoms
- use m_basis_set
- use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -2711,10 +2438,6 @@ end subroutine read_cube_wfn
 
 !=========================================================================
 subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
- use m_definitions
- use m_mpi
- use m_basis_set
- use m_inputparam
  implicit none
 
  character(len=*),intent(in) :: read_fchk_in
@@ -2949,9 +2672,6 @@ end subroutine read_gaussian_fchk
 
 !=========================================================================
 subroutine write_energy_qp(nstate,energy_qp)
- use m_definitions
- use m_mpi
- use m_inputparam,only: nspin
  implicit none
 
  integer,intent(in)  :: nstate
@@ -2991,10 +2711,6 @@ end subroutine write_energy_qp
 
 !=========================================================================
 subroutine read_energy_qp(nstate,energy_qp,reading_status)
- use m_definitions
- use m_mpi
- use m_warning,only: issue_warning
- use m_inputparam,only: nspin
  implicit none
 
  integer,intent(in)   :: nstate
@@ -3048,9 +2764,6 @@ end subroutine read_energy_qp
 
 !=========================================================================
 subroutine evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate1,istate2,ispin,rr,wfn_i)
- use m_definitions
- use m_basis_set
- use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
@@ -3075,11 +2788,6 @@ end subroutine evaluate_wfn_r
 
 !=========================================================================
 function wfn_parity(nstate,basis,c_matrix,istate,ispin)
- use m_definitions
- use m_mpi
- use m_atoms
- use m_basis_set
- use m_inputparam
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -3111,11 +2819,6 @@ end function wfn_parity
 
 !=========================================================================
 function wfn_reflection(nstate,basis,c_matrix,istate,ispin)
- use m_definitions
- use m_mpi
- use m_atoms
- use m_basis_set
- use m_inputparam
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -3150,7 +2853,6 @@ end function wfn_reflection
 
 !=======================================
 subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,prec,beg)
- use m_definitions
  implicit none
  integer, intent(in)      :: prec ! precision
  integer, intent(in)      :: beg  ! number of characters in the beginning
@@ -3174,7 +2876,6 @@ end subroutine print_2d_matrix_cmplx
 
 !=======================================
 subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,prec,beg)
- use m_definitions
  implicit none
  integer, intent(in)      :: prec ! precision
  integer, intent(in)      :: beg  ! number of characters in the beginning
@@ -3192,4 +2893,7 @@ subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,prec,beg)
  end do
 end subroutine print_2d_matrix_real
 
+
+!=========================================================================
+end module m_io
 !=========================================================================

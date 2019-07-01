@@ -54,6 +54,7 @@ program molgw
  use m_dm_mbpt
  use m_restart
  use m_multipole
+ use m_io
  implicit none
 
 !=====

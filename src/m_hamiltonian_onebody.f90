@@ -19,6 +19,7 @@ module m_hamiltonian_onebody
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
  use m_libint_tools
+ use m_io
 
 
 

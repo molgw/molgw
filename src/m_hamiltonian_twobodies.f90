@@ -20,6 +20,7 @@ module m_hamiltonian_twobodies
  use m_density_tools
  use m_dft_grid
  use m_libxc_tools
+ use m_io
 
 
 contains

@@ -226,9 +226,9 @@ subroutine test_density_matrix(p_matrix,s_matrix)
 
 
    title='=== PSP ==='
-   call dump_out_matrix(1,title,nbf,1,matrix)
+   !call dump_out_matrix(1,title,nbf,1,matrix)
    title='===  P  ==='
-   call dump_out_matrix(1,title,nbf,1,p_matrix(:,:,ispin))
+   !call dump_out_matrix(1,title,nbf,1,p_matrix(:,:,ispin))
 
  enddo
 
@@ -336,7 +336,7 @@ subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
    call die('FAILURE in set_occupation')
  endif
 
- call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
+ call dump_out_occupation('=== Occupations ===',occupation)
 
 contains
 
@@ -352,6 +352,141 @@ function fermi_dirac(energy,mu)
 end function fermi_dirac
 
 end subroutine set_occupation
+
+
+!=========================================================================
+subroutine dump_out_occupation(title,occupation)
+ implicit none
+ character(len=*),intent(in) :: title
+ real(dp),intent(in)         :: occupation(:,:)
+!=====
+ integer :: ihomo
+ integer :: istate,nstate
+!=====
+
+ nstate = SIZE(occupation,DIM=1)
+
+ write(stdout,'(/,1x,a)') TRIM(title)
+
+ if( nspin == 2 ) then
+   write(stdout,'(a)') '           spin 1       spin 2 '
+ endif
+ do istate=1,nstate
+   if( ANY(occupation(istate,:) > 0.001_dp) ) ihomo = istate
+ enddo
+
+ select case(nspin)
+ case(1)
+   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1)
+   enddo
+ case(2)
+   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1),occupation(istate,2)
+   enddo
+ end select
+ write(stdout,*)
+
+end subroutine dump_out_occupation
+
+
+!=========================================================================
+subroutine dump_out_energy(title,occupation,energy)
+ implicit none
+ character(len=*),intent(in) :: title
+ real(dp),intent(in)         :: occupation(:,:),energy(:,:)
+!=====
+ integer,parameter :: MAXSIZE=300
+ integer  :: istate,nocc,nstate
+!=====
+
+ nocc   = get_number_occupied_states(occupation)
+ nstate = SIZE(occupation,DIM=1)
+
+ write(stdout,'(/,1x,a)') TRIM(title)
+
+ if(nspin==1) then
+   write(stdout,'(a)') '   #       (Ha)         (eV)      '
+ else
+   write(stdout,'(a)') '   #              (Ha)                      (eV)      '
+   write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
+ endif
+ do istate=MAX(1,nocc-MAXSIZE/2),MIN(nstate,nocc+MAXSIZE/2)
+   select case(nspin)
+   case(1)
+     write(stdout,'(1x,i3,2(1x,f12.5),4x,f8.4)') istate,energy(istate,1),energy(istate,1)*Ha_eV,occupation(istate,1)
+   case(2)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,1),energy(istate,2), &
+                                                          energy(istate,1)*Ha_eV,energy(istate,2)*Ha_eV, &
+                                                          occupation(istate,1),occupation(istate,2)
+   end select
+   if(istate < nstate) then
+     if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0_dp ) ) then
+        if(nspin==1) then
+          write(stdout,'(a)') '  -----------------------------'
+        else
+          write(stdout,'(a)') '  -------------------------------------------------------'
+        endif
+     endif
+   endif
+ enddo
+
+ write(stdout,*)
+
+end subroutine dump_out_energy
+
+
+!=========================================================================
+subroutine output_homolumo(calculation_name,occupation,energy,istate_min,istate_max)
+ implicit none
+
+ character(len=*),intent(in) :: calculation_name
+ integer,intent(in)          :: istate_min,istate_max
+ real(dp),intent(in)         :: occupation(:,:),energy(:,:)
+!=====
+ real(dp) :: ehomo_tmp,elumo_tmp
+ real(dp) :: ehomo(nspin),elumo(nspin)
+ integer  :: ispin,istate,nstate
+!=====
+
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ do ispin=1,nspin
+   ehomo_tmp=-HUGE(1.0_dp)
+   elumo_tmp= HUGE(1.0_dp)
+
+   do istate=istate_min,istate_max
+
+     if( occupation(istate,ispin)/spin_fact > completely_empty ) then
+       ehomo_tmp = MAX( ehomo_tmp , energy(istate,ispin) )
+     endif
+
+     if( occupation(istate,ispin)/spin_fact < 1.0_dp - completely_empty ) then
+       elumo_tmp = MIN( elumo_tmp , energy(istate,ispin) )
+     endif
+
+   enddo
+
+   ehomo(ispin) = ehomo_tmp
+   elumo(ispin) = elumo_tmp
+
+ enddo
+
+
+ write(stdout,*)
+ if( ALL( ehomo(:) > -1.0e6_dp ) ) then
+   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO energy    (eV):',ehomo(:) * Ha_eV
+ endif
+ if( ALL( elumo(:) <  1.0e6_dp ) ) then
+   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'LUMO energy    (eV):',elumo(:) * Ha_eV
+ endif
+ if( ALL( ehomo(:) > -1.0e6_dp ) .AND. ALL( elumo(:) <  1.0e6_dp ) ) then
+   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO-LUMO gap  (eV):',( elumo(:)-ehomo(:) ) * Ha_eV
+ endif
+ write(stdout,*)
+
+
+end subroutine output_homolumo
 
 
 !=========================================================================

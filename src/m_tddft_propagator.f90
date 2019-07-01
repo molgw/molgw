@@ -24,6 +24,7 @@ module m_tddft_propagator
  use m_density_tools
  use m_dft_grid
  use m_scf
+ use m_io
 
  interface propagate_orth
   module procedure propagate_orth_ham_1
@@ -1213,9 +1214,9 @@ subroutine read_restart_tddft(nstate,time_min,occupation,c_matrix_orth_cmplx)
  read(restartfile) occupation_read(:,:)
  if( ANY( ABS( occupation_read(:,:) - occupation(:,:) )  > 1.0e-5_dp ) ) then
    if( temperature > 1.0e-8_dp) then
-     occupation(:,:)=occupation_read(:,:)
+     occupation(:,:) = occupation_read(:,:)
      write(stdout,'(1xa)') "Reading occupations from a RESTART file"
-     call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
+     call dump_out_occupation('=== Occupations ===',occupation)
    else
      call issue_warning('RESTART file: Occupations have changed')
    endif

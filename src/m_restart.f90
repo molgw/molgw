@@ -13,6 +13,7 @@ module m_restart
  use m_inputparam
  use m_atoms
  use m_basis_set
+ use m_hamiltonian_tools,only: dump_out_occupation
  use m_hamiltonian_onebody,only: setup_overlap_mixedbasis
  use m_linear_algebra,only: invert
 
@@ -268,7 +269,7 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
    if( temperature > 1.0e-8_dp) then
      occupation(1:MIN(nstate_read,nstate),:)=occupation_read(1:MIN(nstate_read,nstate),:)
      write(stdout,'(1xa)') "Reading occupations from a RESTART file"
-     call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
+     call dump_out_occupation('=== Occupations ===',occupation)
    else
      call issue_warning('RESTART file: Occupations have changed')
    endif

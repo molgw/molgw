@@ -16,9 +16,11 @@ module m_dm_mbpt
  use m_inputparam
  use m_spectral_function
  use m_selfenergy_tools
+ use m_hamiltonian_tools
  use m_hamiltonian_wrapper
  use m_scf
  use m_multipole
+
 
 contains
 
@@ -146,11 +148,11 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
    allocate(h_ii(nstate,nspin))
 
    call matrix_ao_to_mo_diag(c_matrix,RESHAPE(hamiltonian_hartree_corr,(/basis%nbf,basis%nbf,1/)),h_ii)
-   call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',nstate,nspin,occupation,h_ii)
+   call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',occupation,h_ii)
    write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
 
    call matrix_ao_to_mo_diag(c_matrix,hamiltonian_exx_corr,h_ii)
-   call dump_out_energy('=== Exchange expectation value from correlated density matrix ===',nstate,nspin,occupation,h_ii)
+   call dump_out_energy('=== Exchange expectation value from correlated density matrix ===',occupation,h_ii)
    write(stdout,'(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
    deallocate(h_ii)
 

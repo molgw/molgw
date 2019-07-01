@@ -19,6 +19,7 @@ module m_virtual_orbital_space
  use m_hamiltonian_onebody
  use m_linear_algebra
  use m_eri_ao_mo
+ use m_io
 
  real(dp),allocatable,private :: energy_ref(:,:)
  real(dp),allocatable,private :: c_matrix_ref(:,:,:)
@@ -133,8 +134,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  allocate(energy_small(nstate_small,nspin))
  call clean_allocate('Coefficients small basis',c_small,basis_small%nbf,nstate_small,nspin)
  call diagonalize_hamiltonian_scalapack(h_small,x_small,energy_small,c_small)
- call dump_out_energy('=== Energies in the initial small basis ===',&
-              nstate_small,nspin,occupation(1:nstate_small,:),energy_small)
+ call dump_out_energy('=== Energies in the initial small basis ===',occupation(1:nstate_small,:),energy_small)
 
  call clean_deallocate('Hamiltonian small basis',h_small)
  call clean_deallocate('Overlap X * X**H = S**-1',x_small)
@@ -202,8 +202,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
    c_big(:,1:nstate_bar,ispin) = MATMUL( c_big(:,:,ispin) , c_bar(:,:,ispin) )
  enddo
 
- call dump_out_energy('=== Energies in the final small basis ===',&
-              nstate_bar,nspin,occupation(1:nstate_bar,:),energy_bar)
+ call dump_out_energy('=== Energies in the final small basis ===',occupation(1:nstate_bar,:),energy_bar)
 
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_bar_sqrt_inv)
  call clean_deallocate('Hamiltonian selected states',h_bar)
