@@ -431,7 +431,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
- real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
+ real(dp),allocatable               :: dipole_ao(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: residue(:,:)
  integer                            :: dynpolfile
  integer                            :: photocrossfile
@@ -455,7 +455,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  !
  ! First precalculate all the needed dipole in the basis set
  !
- call calculate_dipole_basis(basis,dipole_basis)
+ call calculate_dipole_ao(basis,dipole_ao)
 
  !
  ! Get the dipole oscillator strength on states
@@ -464,11 +464,11 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  do idir=1,3
    do mpspin=1,nspin
      dipole_state(:,:,mpspin,idir) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) , &
-                                             MATMUL( dipole_basis(:,:,idir) , c_matrix(:,:,mpspin) ) )
+                                             MATMUL( dipole_ao(:,:,idir) , c_matrix(:,:,mpspin) ) )
    enddo
  enddo
 
- deallocate(dipole_basis)
+ deallocate(dipole_ao)
 
 
  allocate(residue(3,nexc))

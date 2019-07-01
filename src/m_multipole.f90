@@ -11,7 +11,7 @@ module m_multipole
  use m_basis_set
  use m_inputparam,only: nspin
  use m_hamiltonian_tools,only: setup_density_matrix
- use m_hamiltonian_onebody,only: calculate_dipole_basis,calculate_quadrupole_basis
+ use m_hamiltonian_onebody,only: calculate_dipole_ao,calculate_quadrupole_basis
  use m_atoms
 
 
@@ -22,19 +22,19 @@ contains
 
 !=========================================================================
 ! Many optional arguments however not all combinations are possible (be careful!)
-subroutine static_dipole(basis,occupation,c_matrix_in,p_matrix_in,dipole_basis_in,dipole_out)
+subroutine static_dipole(basis,occupation,c_matrix_in,p_matrix_in,dipole_ao_in,dipole_out)
   implicit none
  
   type(basis_set),intent(in)       :: basis
   real(dp),optional,intent(in)     :: occupation(:,:)
   real(dp),optional,intent(in)     :: c_matrix_in(:,:,:)
   complex(dp),optional,intent(in)  :: p_matrix_in(:,:,:)
-  real(dp),optional,intent(in)     :: dipole_basis_in(:,:,:)
+  real(dp),optional,intent(in)     :: dipole_ao_in(:,:,:)
   real(dp),optional,intent(out)    :: dipole_out(3)
   !=====
   integer                    :: iatom,idir
   real(dp)                   :: dipole(3)
-  real(dp),allocatable       :: dipole_basis(:,:,:)
+  real(dp),allocatable       :: dipole_ao(:,:,:)
   real(dp),allocatable       :: p_matrix(:,:,:)
   !=====
  
@@ -44,14 +44,14 @@ subroutine static_dipole(basis,occupation,c_matrix_in,p_matrix_in,dipole_basis_i
   if( .NOT. PRESENT(c_matrix_in) .AND. .NOT. PRESENT(p_matrix_in) ) call die('static_dipole: should provide either C or P matrix')
   if( .NOT. PRESENT(occupation)  .AND. .NOT. PRESENT(p_matrix_in) ) call die('static_dipole: need occupation when P is not here')
  
-  allocate(dipole_basis(basis%nbf,basis%nbf,3))
-  if( .NOT. PRESENT(dipole_basis_in) ) then
+  allocate(dipole_ao(basis%nbf,basis%nbf,3))
+  if( .NOT. PRESENT(dipole_ao_in) ) then
     !
     ! First precalculate all the needed dipole in the basis set
     !
-    call calculate_dipole_basis(basis,dipole_basis)
+    call calculate_dipole_ao(basis,dipole_ao)
   else
-    dipole_basis(:,:,:) = dipole_basis_in(:,:,:)
+    dipole_ao(:,:,:) = dipole_ao_in(:,:,:)
   endif
  
   allocate(p_matrix(basis%nbf,basis%nbf,nspin))
@@ -64,10 +64,10 @@ subroutine static_dipole(basis,occupation,c_matrix_in,p_matrix_in,dipole_basis_i
 
   ! Calculate electronic part with a minus sign (for electrons)
   do idir=1,3
-    dipole(idir) = -SUM( dipole_basis(:,:,idir) * SUM( p_matrix(:,:,:) , DIM=3 ) )
+    dipole(idir) = -SUM( dipole_ao(:,:,idir) * SUM( p_matrix(:,:,:) , DIM=3 ) )
   enddo
  
-  deallocate(dipole_basis,p_matrix)
+  deallocate(dipole_ao,p_matrix)
  
   ! Add the nuclear part
   do iatom=1,natom
