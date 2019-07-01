@@ -1470,18 +1470,18 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      enddo
 
      ! M2 = M1 * A**H = (A * e^{-idt*e} ) * A**H
-     call ZGEMM('N','C',nstate,nstate,nstate,(1.0_8,0.0_8),m_tmp_1,nstate,             &
+     call ZGEMM('N','C',nstate,nstate,nstate,(1.0d0,0.0d0),m_tmp_1,nstate,             &
                                                            a_matrix_orth_cmplx,nstate, &
-                                             (0.0_8,0.0_8),m_tmp_2,nstate)
+                                             (0.0d0,0.0d0),m_tmp_2,nstate)
      deallocate(m_tmp_1)
 
      allocate(m_tmp_3(nstate,nocc))
      m_tmp_3(:,:) = c_matrix_orth_cmplx(:,:,ispin)
 
      ! C'^new =  M2 * C'^old = (A * e^{-idt*e} ) * A**H * C'^old
-     call ZGEMM('N','N',nstate,nocc,nstate,(1.0_8,0.0_8),m_tmp_2,nstate, &
+     call ZGEMM('N','N',nstate,nocc,nstate,(1.0d0,0.0d0),m_tmp_2,nstate, &
                                                          m_tmp_3,nstate, &
-                                           (0.0_8,0.0_8),c_matrix_orth_cmplx(1,1,ispin),nstate)
+                                           (0.0d0,0.0d0),c_matrix_orth_cmplx(1,1,ispin),nstate)
 
      deallocate(m_tmp_3)
      deallocate(m_tmp_2)
@@ -1497,9 +1497,9 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    allocate(m_tmpr1(nstate,nocc),m_tmpr2(basis%nbf,nocc))
    ! 1. Real part
    m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%re
-   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0_8,x_matrix,basis%nbf, &
+   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix,basis%nbf, &
                                                   m_tmpr1,nstate,   &
-                                            0.0_8,m_tmpr2,basis%nbf)
+                                            0.0d0,m_tmpr2,basis%nbf)
    ! This workaround is needed for ifort 17, which is not comfortable with Fortan2008
 #if defined(FORTRAN2008)
    c_matrix_cmplx(:,:,ispin)%re = m_tmpr2(:,:)
@@ -1508,9 +1508,9 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 #endif
    ! 2. Imaginary part
    m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%im
-   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0_8,x_matrix,basis%nbf, &
+   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix,basis%nbf, &
                                                   m_tmpr1,nstate,   &
-                                            0.0_8,m_tmpr2,basis%nbf)
+                                            0.0d0,m_tmpr2,basis%nbf)
 #if defined(FORTRAN2008)
    c_matrix_cmplx(:,:,ispin)%im = m_tmpr2(:,:)
 #else

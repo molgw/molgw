@@ -695,6 +695,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
 
 
    do iauxil=1,nauxil_local
+     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
      tmp(:,:) = 0.0_dp
      !$OMP PARALLEL PRIVATE(ibf,jbf)
      !$OMP DO REDUCTION(+:tmp)
@@ -743,9 +744,8 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
  complex(dp),intent(in)  :: c_matrix(:,:,:)
  complex(dp),intent(in)  :: p_matrix(:,:,:)
  complex(dp),intent(out) :: exchange_ao(:,:,:)
- real(dp),intent(out) :: eexchange
+ real(dp),intent(out)    :: eexchange
 !=====
- integer                 :: nauxil_local
  integer                 :: nbf,nstate
  integer                 :: nocc
  integer                 :: ibf,jbf,ispin,istate
@@ -766,8 +766,6 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
  nbf    = SIZE(exchange_ao,DIM=1)
  nstate = SIZE(occupation(:,:),DIM=1)
 
- nauxil_local = nauxil_3center
-
  allocate(tmp_cmplx(nocc,nbf))
  allocate(c_t_cmplx(nocc,nbf))
 
@@ -779,10 +777,10 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
    enddo
    !$OMP END PARALLEL DO
 
-   do iauxil=1,nauxil_local
+   do iauxil=1,nauxil_3center
      if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
      tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
-     !$OMP PARALLEL PRIVATE(ibf,jbf,ipair)
+     !$OMP PARALLEL PRIVATE(ibf,jbf)
      !$OMP DO REDUCTION(+:tmp_cmplx)
      do ipair=1,npair
        ibf = index_basis(1,ipair)
@@ -809,13 +807,14 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
  do ispin=1,nspin
    do ibf=1,nbf
      do jbf=ibf+1,nbf
-       exchange_ao(ibf,jbf,ispin) = exchange_ao(jbf,ibf,ispin)
+       exchange_ao(ibf,jbf,ispin) = CONJG( exchange_ao(jbf,ibf,ispin) )
      enddo
    enddo
+   exchange_ao(:,:,ispin) = CONJG( exchange_ao(:,:,ispin) )
  enddo
  call xsum_world(exchange_ao)
 
- eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) ) , dp)
+ eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * CONJG( p_matrix(:,:,:) ) ) , dp)
 
  call stop_clock(timing_exchange)
 
