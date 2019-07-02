@@ -604,7 +604,7 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
  call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
  call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
 
- call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
+ call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
 
 
  !
@@ -773,7 +773,7 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
  call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
  call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
 
- call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
+ call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
 
 
  !
@@ -888,64 +888,6 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
  call stop_clock(timing_mbpt_dm)
 
 end subroutine gw_density_matrix_dyson_imag
-
-
-!=========================================================================
-subroutine fock_density_matrix(nstate,basis,occupation,energy,c_matrix,hexx,hxc,p_matrix)
- use m_definitions
- use m_mpi
- use m_mpi_ortho
- use m_warning
- use m_timing
- use m_basis_set
- use m_eri_ao_mo
- use m_inputparam
- use m_hamiltonian_tools
- use m_selfenergy_tools
- implicit none
-
- integer,intent(in)                 :: nstate
- type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)                :: hexx(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)                :: hxc(basis%nbf,basis%nbf,nspin)
- real(dp),intent(out)               :: p_matrix(basis%nbf,basis%nbf,nspin)
-!=====
- integer  :: pstate,qstate
- integer  :: istate,jstate
- integer  :: astate,bstate
- integer  :: pqspin
- real(dp) :: p_matrix_state(nstate,nstate,nspin)
- real(dp) :: hexx_state(nstate,nstate,nspin)
- real(dp) :: hxc_state(nstate,nstate,nspin)
-!=====
-
- call start_clock(timing_mbpt_dm)
- write(stdout,'(/,1x,a)') 'Calculate the perturbative Fock density matrix'
-
- call matrix_ao_to_mo(c_matrix,hexx,hexx_state)
- call matrix_ao_to_mo(c_matrix,hxc,hxc_state)
-
- p_matrix_state(:,:,:) = 0.0_dp
- do pqspin=1,nspin
-   do pstate=1,nstate
-     p_matrix_state(pstate,pstate,pqspin) = occupation(pstate,pqspin)
-   enddo
-   do istate=1,nhomo_G
-     do astate=nhomo_G+1,nstate
-       p_matrix_state(istate,astate,pqspin) = ( hexx_state(istate,astate,pqspin) - hxc_state(istate,astate,pqspin) ) &
-                                                    / ( energy(istate,pqspin) - energy(astate,pqspin) ) * spin_fact
-       p_matrix_state(astate,istate,pqspin) = p_matrix_state(istate,astate,pqspin)
-     enddo
-   enddo
- enddo
-
- call matrix_mo_to_ao(c_matrix,p_matrix_state,p_matrix)
-
- call stop_clock(timing_mbpt_dm)
-
-end subroutine fock_density_matrix
 
 
 !=========================================================================

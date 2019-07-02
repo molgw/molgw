@@ -12,6 +12,7 @@ module m_selfenergy_tools
  use m_mpi
  use m_inputparam
  use m_numerical_tools
+ use m_hamiltonian_tools
 
  !
  ! frozen core approximation parameters
@@ -562,7 +563,6 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
  real(dp),intent(in)        :: hamiltonian_fock(:,:,:)
  real(dp),intent(out)       :: exchange_m_vxc(:,:,:)
 !=====
- integer,parameter    :: BATCH_SIZE = 128
  integer              :: nstate
  integer              :: ispin,pstate
  real(dp)             :: exc

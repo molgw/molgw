@@ -43,14 +43,12 @@ module m_dm_analysis
  use m_dft_grid
  use m_spectral_function
  use m_hamiltonian_tools
- use m_hamiltonian_sca
  use m_hamiltonian_onebody
- use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_virtual_orbital_space
-
-
- integer,parameter,private :: BATCH_SIZE = 128
+ use m_density_tools
+ use m_multipole
+ use m_io
 
 
 contains
@@ -156,10 +154,10 @@ subroutine dm_dump(basis)
  if( print_multipole_ ) then
    !
    ! Evaluate the static dipole
-   call static_dipole(nstate,basis,occupation_test,c_matrix_test)
+   call static_dipole(basis,occupation_test,c_matrix_test)
    !
    ! Evaluate the static quadrupole
-   call static_quadrupole(nstate,basis,occupation_test,c_matrix_test)
+   call static_quadrupole(basis,occupation_test,c_matrix_test)
  endif
 
  if( print_cube_ ) call plot_cube_wfn('MBPT',nstate,basis,occupation_test,c_matrix_test)

@@ -21,11 +21,11 @@
 <p>
 <a href=#basis_path>basis_path</a> <a href=#read_restart>read_restart</a> <a href=#ignore_bigrestart>ignore_bigrestart</a> <a href=#force_energy_qp>force_energy_qp</a> <a href=#print_hartree>print_hartree</a> <a href=#print_density_matrix>print_density_matrix</a> <a href=#print_rho_grid>print_rho_grid</a> <a href=#print_eri>print_eri</a> <a href=#print_wfn>print_wfn</a> <a href=#print_cube>print_cube</a> <a href=#read_fchk>read_fchk</a> <a href=#print_w>print_w</a> <a href=#print_restart>print_restart</a> <a href=#print_bigrestart>print_bigrestart</a> <a href=#print_sigma>print_sigma</a> <a href=#print_pdos>print_pdos</a> <a href=#print_multipole>print_multipole</a> <h3>Hardware input variables</h3>
 <p>
-<a href=#grid_memory>grid_memory</a> <a href=#scalapack_block_min>scalapack_block_min</a> <a href=#eri3_nprow>eri3_nprow</a> <a href=#eri3_npcol>eri3_npcol</a> <a href=#eri3_nbatch>eri3_nbatch</a> <a href=#scalapack_nprow>scalapack_nprow</a> <a href=#scalapack_npcol>scalapack_npcol</a> <a href=#mpi_nproc_ortho>mpi_nproc_ortho</a> <h3>Real time TDDFT</h3>
+<a href=#grid_memory>grid_memory</a> <a href=#scalapack_block_min>scalapack_block_min</a> <a href=#eri3_nprow>eri3_nprow</a> <a href=#eri3_npcol>eri3_npcol</a> <a href=#eri3_nbatch>eri3_nbatch</a> <a href=#mpi_nproc_ortho>mpi_nproc_ortho</a> <h3>Real time TDDFT</h3>
 <p>
-<a href=#time_step>time_step</a> <a href=#time_sim>time_sim</a> <a href=#prop_type>prop_type</a> <a href=#excit_name>excit_name</a> <a href=#excit_kappa>excit_kappa</a> <a href=#excit_omega>excit_omega</a> <a href=#excit_time0>excit_time0</a> <a href=#excit_dir>excit_dir</a> <a href=#pred_corr>pred_corr</a> <a href=#n_hist>n_hist</a> <a href=#n_iter>n_iter</a> <a href=#vel_projectile>vel_projectile</a> <a href=#n_restart_tddft>n_restart_tddft</a> <a href=#r_disc>r_disc</a> <h3>IO Real time TDDFT</h3>
+<a href=#time_step>time_step</a> <a href=#time_sim>time_sim</a> <a href=#prop_type>prop_type</a> <a href=#excit_name>excit_name</a> <a href=#excit_kappa>excit_kappa</a> <a href=#excit_omega>excit_omega</a> <a href=#excit_time0>excit_time0</a> <a href=#excit_dir>excit_dir</a> <a href=#pred_corr>pred_corr</a> <a href=#n_hist>n_hist</a> <a href=#n_iter>n_iter</a> <a href=#vel_projectile>vel_projectile</a> <a href=#n_restart_tddft>n_restart_tddft</a> <a href=#r_disc>r_disc</a> <a href=#tddft_frozencore>tddft_frozencore</a> <a href=#ncore_tddft>ncore_tddft</a> <h3>IO Real time TDDFT</h3>
 <p>
-<a href=#print_tddft_matrices>print_tddft_matrices</a> <a href=#print_cube_rho_tddft>print_cube_rho_tddft</a> <a href=#print_line_rho_tddft>print_line_rho_tddft</a> <a href=#write_step>write_step</a> <a href=#calc_spectrum>calc_spectrum</a> <a href=#read_tddft_restart>read_tddft_restart</a> <a href=#print_tddft_restart>print_tddft_restart</a> <a href=#print_cube_diff_tddft>print_cube_diff_tddft</a> <a href=#print_dens_traj_tddft>print_dens_traj_tddft</a> <a href=#calc_q_matrix>calc_q_matrix</a> <a href=#print_dens_traj>print_dens_traj</a> <a href=#calc_dens_disc>calc_dens_disc</a> <br><br><br><hr>
+<a href=#print_tddft_matrices>print_tddft_matrices</a> <a href=#print_cube_rho_tddft>print_cube_rho_tddft</a> <a href=#print_line_rho_tddft>print_line_rho_tddft</a> <a href=#print_line_rho_diff_tddft>print_line_rho_diff_tddft</a> <a href=#write_step>write_step</a> <a href=#calc_spectrum>calc_spectrum</a> <a href=#read_tddft_restart>read_tddft_restart</a> <a href=#print_tddft_restart>print_tddft_restart</a> <a href=#print_cube_diff_tddft>print_cube_diff_tddft</a> <a href=#print_dens_traj_tddft>print_dens_traj_tddft</a> <a href=#calc_q_matrix>calc_q_matrix</a> <a href=#print_dens_traj>print_dens_traj</a> <a href=#print_dens_traj_points_set>print_dens_traj_points_set</a> <a href=#calc_dens_disc>calc_dens_disc</a> <br><br><br><hr>
 <br><br><br>
 <h2>Complete list of input variables</h2>
 <br><br>
@@ -546,18 +546,6 @@ Sets number of column processors for the distribution of the 3-center integrals.
 Default: 1<br><br>
 Sets the number of batches when calculating the 3-center integrals. Having a large eri3_nbatch reduces the memory foot print, however it may lower the performance.</li><br>
 <hr>
-<a name=scalapack_nprow><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scalapack_nprow</b>  </span>  
-<br><br>
-<i>Optional</i><br>
-Default: 1<br><br>
-Sets number of row processors for SCALAPACK distribution of the SCF matrices.  nprow X npcol should be lower or equal to the number of processors.</li><br>
-<hr>
-<a name=scalapack_npcol><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scalapack_npcol</b>  </span>  
-<br><br>
-<i>Optional</i><br>
-Default: 1<br><br>
-Sets number of column processors for SCALAPACK distribution of the SCF matrices.  nprow X npcol should be lower or equal to the number of processors.</li><br>
-<hr>
 <a name=mpi_nproc_ortho><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>mpi_nproc_ortho</b>  </span>  
 <br><br>
 <i>Optional</i><br>
@@ -717,6 +705,12 @@ Prints electronic density in a 3D volumetric file with cube format for each simu
 Default: no<br><br>
 Prints electronic density along a line, which parameters must be provided in manual_plot_rho_tddft file.</li><br>
 <hr>
+<a name=print_line_rho_diff_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_line_rho_diff_tddft</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Prints electronic density difference along a line, which parameters must be provided in manual_plot_rho_tddft file.</li><br>
+<hr>
 <a name=write_step><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>write_step</b>  </span>  
 <br><br>
 <i>Optional</i><br>
@@ -795,6 +789,12 @@ Calculate and print q_matrix which is the projection of a propagated state psi(t
 Default: no<br><br>
 Prints the electronic density along the projectile trajectory for several impact parameters using real wave function</li><br>
 <hr>
+<a name=print_dens_traj_points_set><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_dens_traj_points_set</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Prints the electronic density between pairs of points given in manual_dens_points_set file.</li><br>
+<hr>
 <a name=calc_dens_disc><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_dens_disc</b>  </span>  
 <br><br>
 <i>Optional</i><br>
@@ -806,7 +806,19 @@ Calculate electronic density in the discs during the real-time dynamics</li><br>
 <i>Optional</i><br>
 Default: 200.0<br><br>
 Radius of the disc for denisty calculations (option calc_dens_disc) for the real-time dynamics.</li><br>
+<hr>
+<a name=tddft_frozencore><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_frozencore</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Do not "propagate" states mentioned in the manual_tddft_frozencore file in the real-time dynamics.</li><br>
+<hr>
+<a name=ncore_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncore_tddft</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 0<br><br>
+Sets the number of frozen core states in the real-time dynamics.</li><br>
 </ul>
 <br><br><br><br><br><br><br><br>
-<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_parameter.py on 11 February 2019</i><br><br></body>
+<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_parameter.py on 28 June 2019</i><br><br></body>
 </html>

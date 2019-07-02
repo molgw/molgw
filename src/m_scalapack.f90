@@ -17,7 +17,7 @@ module m_scalapack
  use m_warning
  use m_mpi
  use m_linear_algebra
-#ifdef HAVE_MPI
+#if defined(HAVE_MPI)
  use mpi
 #endif
 
@@ -51,11 +51,23 @@ module m_scalapack
  integer,protected :: iproc_sca = 0
 
 
- ! SCALAPACK grid: auxil distribution (so to mimic MPI distribution on auxiliary functions)
- integer,protected :: cntxt_auxil
- integer,protected :: nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil
- integer,protected :: MB_auxil = 1
- integer,protected :: NB_auxil = 1
+ ! SCALAPACK grid: auxiliary basis distribution in AO basis ( alpha beta | P ): 1 x nproc_auxil
+ integer,protected :: cntxt_eri3_ao
+ integer,protected :: nprow_eri3_ao
+ integer,protected :: npcol_eri3_ao
+ integer,protected :: iprow_eri3_ao
+ integer,protected :: ipcol_eri3_ao
+ integer,protected :: MB_eri3_ao = 1
+ integer,protected :: NB_eri3_ao = 1
+
+ ! SCALAPACK grid: auxiliary basis distribution in MO basis ( P | i j): nproc_auxil x 1
+ integer,protected :: cntxt_eri3_mo
+ integer,protected :: nprow_eri3_mo
+ integer,protected :: npcol_eri3_mo
+ integer,protected :: iprow_eri3_mo
+ integer,protected :: ipcol_eri3_mo
+ integer,protected :: MB_eri3_mo = 1
+ integer,protected :: NB_eri3_mo = 1
 
  ! SCALAPACK grid for 3 center integrals
  integer,protected :: cntxt_3center
@@ -70,16 +82,6 @@ module m_scalapack
  integer,protected :: iprow_sd
  integer,protected :: ipcol_sd
 
- ! SCALAPACK grid: hamiltonian
- integer,protected :: cntxt_ham
- integer,protected :: nprow_ham
- integer,protected :: npcol_ham
- integer,protected :: iprow_ham
- integer,protected :: ipcol_ham
- integer,protected :: desc_ham(NDEL)
- integer,public    :: desc_c(NDEL)
- integer,public    :: desc_small(NDEL)
-
  ! SCALAPACK grid: row distribution
  integer,protected :: cntxt_rd
  integer,protected :: nprow_rd
@@ -93,8 +95,6 @@ module m_scalapack
  integer,protected :: npcol_cd
  integer,protected :: iprow_cd
  integer,protected :: ipcol_cd
-
- logical,protected :: parallel_ham       = .FALSE.
 
  ! Correspondence between SCALAPACK ham and MPI
  integer,allocatable,protected :: rank_sca_to_mpi(:,:)
@@ -2451,7 +2451,7 @@ subroutine init_scalapack()
 !=====
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  ! Get iproc_sca and nproc_sca
  call BLACS_PINFO( iproc_sca, nproc_sca )
@@ -2508,124 +2508,50 @@ end subroutine init_scalapack
 
 
 !=========================================================================
-subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
+subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  implicit none
 
  integer,intent(in)  :: nbf
  integer,intent(in)  :: eri3_nprow,eri3_npcol
- integer,intent(in)  :: scalapack_nprow,scalapack_npcol
- integer,intent(out) :: m_ham,n_ham
 !=====
  integer :: ier=0
  integer :: color
  integer             :: iproc_auxil
- integer,allocatable :: usermap(:,:)
+ integer,allocatable :: usermap(:)
 !=====
 
-#ifdef HAVE_SCALAPACK
-
-
- parallel_ham = scalapack_nprow * scalapack_npcol > 1
-
- if( parallel_ham ) then
-
-   nprow_ham = scalapack_nprow
-   npcol_ham = scalapack_npcol
-   if( nprow_ham * npcol_ham > nproc_world ) call die('SCALAPACK manual distribution asks for too many processors')
-
-   call BLACS_GET( -1, 0, cntxt_ham )
-   call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
-   call BLACS_GRIDINFO( cntxt_ham, nprow_ham, npcol_ham, iprow_ham, ipcol_ham )
-
-   ! Propagate the scalapack grid to all processors
-   call xmax_world(nprow_ham)
-   call xmax_world(npcol_ham)
-
-
-   if( cntxt_ham > 0 ) then
-     call init_desc('H',nbf,nbf,desc_ham,m_ham,n_ham)
-   else
-     m_ham = 0
-     n_ham = 0
-   endif
-
-   write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
-   write(stdout,'(a50,1x,i8)')      'Number of dedicated processors:',nprow_ham * npcol_ham
-   write(stdout,'(a50,1x,i8,1x,i8)')   'Grid of dedicated processors:',nprow_ham,npcol_ham
-
-   ! Distribute the remaing procs for auxiliary basis and grid points
-   color = MODULO( rank_world , nprow_ham * npcol_ham )
-   call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_local,ier);
-   call MPI_COMM_SIZE(comm_local,nproc_local,ier)
-   call MPI_COMM_RANK(comm_local,rank_local,ier)
-
-   write(stdout,'(a50,1x,i8)')      'Number of local processors:',nproc_local
-
-   call xmax_local(m_ham)
-   call xmax_local(n_ham)
-   call xmax_local(iprow_ham)
-   call xmax_local(ipcol_ham)
-
-
-   ! Define the transversal communicator
-   color = rank_world / ( nprow_ham * npcol_ham )
-
-   call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_trans,ier);
-   call MPI_COMM_SIZE(comm_trans,nproc_trans,ier)
-   call MPI_COMM_RANK(comm_trans,rank_trans,ier)
-
-   allocate(rank_sca_to_mpi(0:nprow_ham-1,0:npcol_ham-1))
-   rank_sca_to_mpi(:,:) = -1
-   rank_sca_to_mpi(iprow_ham,ipcol_ham) = rank_trans
-   call xmax_trans(rank_sca_to_mpi)
-
-
- else
-
-   !
-   ! Hamiltonian and C matrix are NOT distributed with SCALAPACK
-   !
-   cntxt_ham = 1
-   nprow_ham = 1
-   npcol_ham = 1
-   iprow_ham = 0
-   ipcol_ham = 0
-   m_ham = nbf
-   n_ham = nbf
-
-   comm_local  = comm_world
-   nproc_local = nproc_world
-   rank_local  = rank_world
-
-   comm_trans  = MPI_COMM_SELF
-   nproc_trans = 1
-   rank_trans  = 0
-
- endif
+#if defined(HAVE_SCALAPACK)
 
  !
- ! Create the SCALAPACK context cntxt_auxil
+ ! Create the SCALAPACK context cntxt_eri3_ao and cntxt_eri3_mo
  ! that precisely matches the MPI_COMMUNICATOR comm_auxil
  !
- call BLACS_GET( -1, 0, cntxt_auxil )
+ call BLACS_GET( -1, 0, cntxt_eri3_ao )
+ call BLACS_GET( -1, 0, cntxt_eri3_mo )
 
  if( rank_world /= iproc_sca ) then
    call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
  endif
 
- allocate(usermap(nproc_auxil,1))
+ allocate(usermap(nproc_auxil))
  do iproc_auxil=0,nproc_auxil-1
-   usermap(iproc_auxil+1,1) = iproc_auxil * nproc_ortho
+   usermap(iproc_auxil+1) = iproc_auxil * nproc_ortho
  enddo
- call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
+ call BLACS_GRIDMAP(cntxt_eri3_ao,usermap,1          ,1,nproc_auxil)
+ call BLACS_GRIDMAP(cntxt_eri3_mo,usermap,nproc_auxil,nproc_auxil,1)
  deallocate(usermap)
 
- call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
+ call BLACS_GRIDINFO(cntxt_eri3_ao,nprow_eri3_ao,npcol_eri3_ao,iprow_eri3_ao,ipcol_eri3_ao)
+ call xmax_ortho(nprow_eri3_ao)
+ call xmax_ortho(npcol_eri3_ao)
+ call xmax_ortho(iprow_eri3_ao)
+ call xmax_ortho(ipcol_eri3_ao)
 
- call xmax_ortho(nprow_auxil)
- call xmax_ortho(npcol_auxil)
- call xmax_ortho(iprow_auxil)
- call xmax_ortho(ipcol_auxil)
+ call BLACS_GRIDINFO(cntxt_eri3_mo,nprow_eri3_mo,npcol_eri3_mo,iprow_eri3_mo,ipcol_eri3_mo)
+ call xmax_ortho(nprow_eri3_mo)
+ call xmax_ortho(npcol_eri3_mo)
+ call xmax_ortho(iprow_eri3_mo)
+ call xmax_ortho(ipcol_eri3_mo)
 
  ! 3center integrals distribution
  if( eri3_nprow * eri3_npcol == nproc_sca ) then
@@ -2637,12 +2563,12 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalap
  else
    ! Else just copy the auxil distribution
    if( eri3_nprow * eri3_npcol /= 1 ) &
-      call issue_warning('eri3 distribution was not consistent with the number of MPI threads. MOLGW will override user selection')
-   cntxt_3center = cntxt_auxil
-   nprow_3center = nprow_auxil
-   npcol_3center = npcol_auxil
-   iprow_3center = iprow_auxil
-   ipcol_3center = ipcol_auxil
+      call issue_warning('eri3 distribution was not consistent with the number of MPI tasks. MOLGW will override user selection')
+   cntxt_3center = cntxt_eri3_ao
+   nprow_3center = nprow_eri3_ao
+   npcol_3center = npcol_eri3_ao
+   iprow_3center = iprow_eri3_ao
+   ipcol_3center = ipcol_eri3_ao
  endif
 
 #else
@@ -2654,29 +2580,17 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol,scalapack_nprow,scalap
  ipcol_3center = 0
  iprow_3center = 0
 
- cntxt_auxil = 1
- nprow_auxil = 1
- npcol_auxil = 1
- iprow_auxil = 0
- ipcol_auxil = 0
+ cntxt_eri3_ao = 1
+ nprow_eri3_ao = 1
+ npcol_eri3_ao = 1
+ iprow_eri3_ao = 0
+ ipcol_eri3_ao = 0
 
- if( rank_world == 0 ) then
-   cntxt_ham = 1
- else
-   cntxt_ham = -1
- endif
- nprow_ham = 1
- npcol_ham = 1
- iprow_ham = 0
- ipcol_ham = 0
- m_ham = nbf
- n_ham = nbf
-
- nproc_local = 1
- rank_local  = 0
-
- nproc_trans = 1
- rank_trans  = 0
+ cntxt_eri3_mo = 1
+ nprow_eri3_mo = 1
+ npcol_eri3_mo = 1
+ iprow_eri3_mo = 0
+ ipcol_eri3_mo = 0
 
 #endif
 
@@ -2721,84 +2635,6 @@ end function col_block_size
 
 
 !=========================================================================
-subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
- implicit none
- character(len=1),intent(in) :: distribution
- integer,intent(in)          :: mglobal,nglobal
- integer,intent(out)         :: desc(NDEL),mlocal,nlocal
-!=====
- integer :: info
-!=====
-
-#ifdef HAVE_SCALAPACK
- select case(distribution)
- case('S')
-   mlocal = NUMROC(mglobal,block_row,iprow_sd,first_row,nprow_sd)
-   nlocal = NUMROC(nglobal,block_col,ipcol_sd,first_col,npcol_sd)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
- case('H')
-   mlocal = NUMROC(mglobal,block_row,iprow_ham,first_row,nprow_ham)
-   nlocal = NUMROC(nglobal,block_col,ipcol_ham,first_col,npcol_ham)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_ham,MAX(1,mlocal),info)
- case('R')
-   mlocal = NUMROC(mglobal,block_row,iprow_rd,first_row,nprow_rd)
-   nlocal = NUMROC(nglobal,block_col,ipcol_rd,first_col,npcol_rd)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_rd,MAX(1,mlocal),info)
- case('C')
-   mlocal = NUMROC(mglobal,block_row,iprow_cd,first_row,nprow_cd)
-   nlocal = NUMROC(nglobal,block_col,ipcol_cd,first_col,npcol_cd)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_cd,MAX(1,mlocal),info)
- case default
-   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
-   call die('BUG')
- end select
-
- write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
-
-#else
- desc(:)     = 0
- desc(M_)   = mglobal
- desc(N_)   = nglobal
- desc(LLD_) = mglobal
- mlocal = mglobal
- nlocal = nglobal
-#endif
-
-end subroutine init_desc
-
-
-
-!=========================================================================
-subroutine sum_sca_sd(real_number)
- implicit none
- real(dp),intent(inout) :: real_number
-!=====
-
-#ifdef HAVE_SCALAPACK
- call dgsum2d(cntxt_sd,'All',' ',1,1,real_number,1,-1,-1)
-#endif
-
-end subroutine sum_sca_sd
-
-
-!=========================================================================
-subroutine max_matrix_sca_sd(mmat,nmat,real_matrix)
- implicit none
- integer, intent(in)    :: mmat,nmat
- real(dp),intent(inout) :: real_matrix(mmat,nmat)
-!=====
- integer :: idum1(1),idum2(1)
-!=====
-
-#ifdef HAVE_SCALAPACK
- call dgamx2d(cntxt_sd,'All',' ',mmat,nmat,real_matrix,mmat,-1,idum1,idum2,-1,-1)
-#endif
-
-
-end subroutine max_matrix_sca_sd
-
-
-!=========================================================================
 function rowindex_global_to_local_distrib(distribution,iglobal) result(ilocal)
  implicit none
  character(len=1),intent(in) :: distribution
@@ -2815,12 +2651,6 @@ function rowindex_global_to_local_distrib(distribution,iglobal) result(ilocal)
  case('S')
    if( iprow_sd == INDXG2P(iglobal,block_row,0,first_row,nprow_sd) ) then
      ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_sd)
-   else
-     ilocal = 0
-   endif
- case('H')
-   if( iprow_ham == INDXG2P(iglobal,block_row,0,first_row,nprow_ham) ) then
-     ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_ham)
    else
      ilocal = 0
    endif
@@ -2867,12 +2697,6 @@ function colindex_global_to_local_distrib(distribution,jglobal) result(jlocal)
    else
      jlocal = 0
    endif
- case('H')
-   if( ipcol_ham == INDXG2P(jglobal,block_col,0,first_col,npcol_ham) ) then
-     jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol_ham)
-   else
-     jlocal = 0
-   endif
  case('R')
    if( ipcol_rd == INDXG2P(jglobal,block_col,0,first_col,npcol_rd) ) then
      jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol_rd)
@@ -2909,8 +2733,6 @@ function rowindex_local_to_global_distrib(distribution,ilocal) result(iglobal)
  select case(distribution)
  case('S')
    iglobal = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
- case('H')
-   iglobal = INDXL2G(ilocal,block_row,iprow_ham,first_row,nprow_ham)
  case('R')
    iglobal = INDXL2G(ilocal,block_row,iprow_rd,first_row,nprow_rd)
  case('C')
@@ -3002,8 +2824,6 @@ function colindex_local_to_global_distrib(distribution,jlocal) result(jglobal)
  select case(distribution)
  case('S')
    jglobal = INDXL2G(jlocal,block_col,ipcol_sd,first_col,npcol_sd)
- case('H')
-   jglobal = INDXL2G(jlocal,block_col,ipcol_ham,first_col,npcol_ham)
  case('R')
    jglobal = INDXL2G(jlocal,block_col,ipcol_rd,first_col,npcol_rd)
  case('C')
@@ -3090,21 +2910,23 @@ subroutine set_auxil_block_size(block_size_max)
 !=====
 
  if( block_size_max < 1 ) then
-   MB_auxil = 1
+   NB_eri3_ao = 1
 
  else
-   MB_auxil = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
-   MB_auxil = MIN(MB_auxil,block_row)
+   NB_eri3_ao = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
+   NB_eri3_ao = MIN(NB_eri3_ao,block_row)
 
  endif
 
- write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',MB_auxil
- NB_auxil = MB_auxil
+ write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',NB_eri3_ao
+ MB_eri3_ao = NB_eri3_ao
+ MB_eri3_mo = NB_eri3_ao
+ NB_eri3_mo = NB_eri3_ao
 
- ! If not parallelization on columns (pair index), then enforce the same block size
- if( npcol_3center == npcol_auxil ) then
-   MB_3center = MB_auxil
-   NB_3center = NB_auxil
+ ! If not parallelization on rows (pair index), then enforce the same block size
+ if( nprow_3center == nprow_eri3_ao ) then
+   MB_3center = MB_eri3_ao
+   NB_3center = NB_eri3_ao
  endif
 
 end subroutine set_auxil_block_size
@@ -3120,10 +2942,8 @@ subroutine finish_scalapack()
  call BLACS_GRIDEXIT( cntxt_cd )
  call BLACS_GRIDEXIT( cntxt_rd )
  call BLACS_GRIDEXIT( cntxt_3center )
- if( parallel_ham ) then
-   if( cntxt_ham > 0 ) call BLACS_GRIDEXIT( cntxt_ham )
- endif
- if( cntxt_auxil > 0 ) call BLACS_GRIDEXIT( cntxt_auxil )
+ if( cntxt_eri3_ao > 0 ) call BLACS_GRIDEXIT( cntxt_eri3_ao )
+ if( cntxt_eri3_mo > 0 ) call BLACS_GRIDEXIT( cntxt_eri3_mo )
  call BLACS_EXIT( 0 )
 #endif
 
@@ -3131,12 +2951,12 @@ end subroutine finish_scalapack
 
 
 !=========================================================================
-subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,eigvec)
+subroutine diagonalize_davidson_sca(tolerance,desch,ham,neig,eigval,desc_vec,eigvec)
  implicit none
 
  real(dp),intent(in)  :: tolerance
  real(dp),intent(in)  :: ham(:,:)
- integer,intent(in)   :: desc_ham(NDEL),desc_vec(NDEL)
+ integer,intent(in)   :: desch(NDEL),desc_vec(NDEL)
  integer,intent(in)   :: neig
  real(dp),intent(out) :: eigval(:)
  real(dp),intent(out) :: eigvec(:,:)
@@ -3164,16 +2984,16 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
 
  eigval(:) = 0.0_dp
 
- mmat = desc_ham(M_)
+ mmat = desch(M_)
  allocate(ham_diag(mmat))
 
  !
  ! Broadcast the diagonal of H to all procs
  ham_diag(:) = 0.0_dp
  do jlocal=1,SIZE(ham,DIM=2)
-   jglobal = colindex_local_to_global(desc_ham,jlocal)
+   jglobal = colindex_local_to_global(desch,jlocal)
    do ilocal=1,SIZE(ham,DIM=1)
-     iglobal = rowindex_local_to_global(desc_ham,ilocal)
+     iglobal = rowindex_local_to_global(desch,ilocal)
 
      if( iglobal == jglobal ) ham_diag(iglobal) = ham(ilocal,jlocal)
    enddo
@@ -3221,7 +3041,7 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
 
 
 ! ab(:,1:neig) = MATMUL( ham(:,:) , bb(:,1:neig) )
- call PDGEMM('N','N',mmat,neig,mmat,1.0_dp,ham,1,1,desc_ham,bb,1,1,desc_bb,0.0_dp,ab,1,1,desc_bb)
+ call PDGEMM('N','N',mmat,neig,mmat,1.0_dp,ham,1,1,desch,bb,1,1,desc_bb,0.0_dp,ab,1,1,desc_bb)
 
 
  do icycle=1,ncycle
@@ -3307,7 +3127,7 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
    call orthogonalize_sca(desc_bb,mm+1,mm+neig,bb)
 
    !ab(:,mm+1:mm+neig) = MATMUL( ham(:,:) , bb(:,mm+1:mm+neig) )
-   call PDGEMM('N','N',mmat,neig,mmat,1.0_dp,ham,1,1,desc_ham,bb,1,mm+1,desc_bb,0.0_dp,ab,1,mm+1,desc_bb)
+   call PDGEMM('N','N',mmat,neig,mmat,1.0_dp,ham,1,1,desch,bb,1,mm+1,desc_bb,0.0_dp,ab,1,mm+1,desc_bb)
 
 
 

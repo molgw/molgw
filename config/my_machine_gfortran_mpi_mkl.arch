@@ -1,11 +1,11 @@
 OPENMP=
 PYTHON=python3
-LIBTOOL=  libtool --mode=link --tag=FC
+LIBTOOL=
 
 # Parallel MPI/SCALAPACK compilation with MKL
 FC=mpif90 -cpp -ffree-line-length-none  -m64 -I${MKLROOT}/include
 
-CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK # -DHAVE_LIBINT_ONEBODY
+CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
 FCOPTS=  -O3 -fexternal-blas -march=native -mtune=native 
@@ -18,8 +18,8 @@ LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_sequent
 
 SCALAPACK=-L${HOME}/src/scalapack-2.0.2/ -lscalapack
 
-LIBXC_ROOT=${HOME}/src/libxc-3.0.0_gfortran/
+LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
-LIBINT_ROOT=${HOME}/src/libint-2.2.0_g++/
+LIBINT_ROOT=${HOME}/src/libint-2.4.2/
 
 FFTW_ROOT=

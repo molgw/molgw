@@ -31,7 +31,7 @@ module m_timing
  integer,parameter :: timing_mp2_energy          = 12
  integer,parameter :: timing_pt_self             = 13
  integer,parameter :: timing_eri_4center_eigen   = 14
- integer,parameter :: timing_single_excitation   = 15
+                                              ! 15 is available
  integer,parameter :: timing_eri_2center         = 16
  integer,parameter :: timing_eri_3center         = 17
  integer,parameter :: timing_eri_3center_eigen   = 18
@@ -107,12 +107,15 @@ module m_timing
  integer,parameter :: timing_tddft_densities        = 131
  integer,parameter :: timing_tddft_libxc            = 132
  integer,parameter :: timing_tddft_vxc              = 133
+ integer,parameter :: timing_tddft_frozen_core      = 134
 
- integer           :: count_rate,count_max
- logical           :: time_running(NTIMING)
- real(dp)          :: time_start(NTIMING)
- real(dp)          :: timing(NTIMING)
- integer(dp)       :: calls(NTIMING)
+
+ integer,private     :: count_rate,count_max
+ logical,private     :: time_running(NTIMING)
+ real(dp),private    :: time_start(NTIMING)
+ real(dp),private    :: timing(NTIMING)
+ integer(dp),private :: calls(NTIMING)
+
 
 contains
 
@@ -129,6 +132,8 @@ subroutine init_timing()
 
 end subroutine
 
+
+!=========================================================================
 subroutine start_clock(itiming)
  implicit none
  integer,intent(in) :: itiming
@@ -153,6 +158,7 @@ end subroutine start_clock
 !=========================================================================
 subroutine stop_clock(itiming)
  implicit none
+
  integer,intent(in) :: itiming
 !=====
  integer            :: count_tmp
@@ -170,6 +176,20 @@ subroutine stop_clock(itiming)
  timing(itiming) = timing(itiming) + MODULO( count_tmp - NINT(time_start(itiming)) , count_max) / REAL(count_rate,dp)
 
 end subroutine stop_clock
+
+
+!=========================================================================
+function get_timing(itiming)
+ implicit none
+
+ integer,intent(in) :: itiming
+ real(dp)           :: get_timing
+!=====
+!=====
+
+ get_timing = timing(itiming)
+
+end function get_timing
 
 
 !=========================================================================
@@ -218,7 +238,6 @@ subroutine output_timing()
  call output_timing_line('Hamiltonian diagonalization',timing_diago_hamiltonian,1)
  call output_timing_line('Pulay DIIS mixing',timing_diis,1)
  call output_timing_line('RESTART file writing',timing_restart_file,1)
- call output_timing_line('Singles correction',timing_single_excitation,1)
  call output_timing_line('Virtual FNO generation',timing_fno,1)
  call output_timing_line('Forces',timing_force,1)
 
@@ -265,6 +284,9 @@ subroutine output_timing()
  call output_timing_line('TDDFT Propagator',timing_tddft_propagation,2)
  call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
  call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
+ if( calls(timing_tddft_frozen_core) > 0 ) then
+   call output_timing_line('TDDFT frozen core',timing_tddft_frozen_core,3)
+ end if
 
  call output_timing_line('Hamiltonian calculation',timing_tddft_hamiltonian,2)
  call output_timing_line('Complex density matrix',timing_density_matrix_cmplx,3)

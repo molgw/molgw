@@ -2,7 +2,7 @@
 
  scf='hse06'
  nscf=30
- tolscf=1.0e-9
+ tolscf=1.0e-10
 
  basis='6-31G'
  gaussian_type='cart'

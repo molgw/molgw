@@ -125,7 +125,7 @@ gKS LUMO energy           ,  -1.700107         , 0 , 1.0e-4
 h2o_scalapack.in          , H2O molecule within PBE0 with possibly SCALAPACK
 gKS HOMO energy           ,   -9.039335        , 0 , 1.0e-4
 gKS LUMO energy           ,   -0.359596        , 0 , 1.0e-4
-Hartree Energy            ,   46.6386768738    , 0 , 1.0e-7
+Hartree Energy            ,   46.6386768738    , 0 , 5.0e-7   # Loosened criterium
 Exchange Energy           ,   -2.2284166998    , 0 , 1.0e-7
 XC Energy                 ,   -7.0110900711    , 0 , 1.0e-7
 Total Energy              ,  -76.3812141506    , 0 , 1.0e-7
@@ -143,7 +143,7 @@ gKS HOMO energy           ,   -9.249028        , 0 , 1.0e-4
 gKS LUMO energy           ,   -1.009892        , 0 , 1.0e-4
 Dipole (a.u.)             ,   -0.085879        , 0 , 1.0e-4
 
-methanol_sca_buffer_hf.in , methanol within HF with SCALAPACK distribution of hamiltonian
+methanol_hf.in            , methanol within HF
 gKS HOMO energy           ,  -12.220058        , 0 , 1.0e-4
 gKS LUMO energy           ,    0.952608        , 0 , 1.0e-4
 Nucleus-Nucleus           ,   40.2672693143    , 0 , 1.0e-7
@@ -153,7 +153,7 @@ Hartree Energy            ,   96.1858385911    , 0 , 1.0e-7
 Exchange Energy           ,  -14.8334416451    , 0 , 1.0e-7
 Total Energy              , -115.0614049423    , 0 , 1.0e-7
 
-methanol_sca_buffer_uks.in, methanol with UKS with SCALAPACK distribution of hamiltonian
+methanol_uks.in           , methanol with UKS
 gKS HOMO energy           ,  -7.661792         , 0 , 1.0e-4
 gKS HOMO energy           ,  -7.661792         , 1 , 1.0e-4
 gKS LUMO energy           ,  -0.414295         , 0 , 1.0e-4
@@ -164,6 +164,11 @@ Hartree Energy            ,   96.2670765071    , 0 , 1.0e-7
 Exchange Energy           ,   -2.9606225006    , 0 , 1.0e-7
 XC Energy                 ,  -12.5371878224    , 0 , 1.0e-7
 Total Energy              , -115.7433993446    , 0 , 1.0e-7
+Hartree  HOMO expectation ,  250.895321        , 0 , 1.0e-4
+Hartree  HOMO expectation ,  250.895321        , 1 , 1.0e-4
+Exchange HOMO expectation ,  -24.840082        , 0 , 1.0e-4
+Exchange HOMO expectation ,  -24.840082        , 1 , 1.0e-4
+
 
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
@@ -192,7 +197,6 @@ PT2 LUMO energy           ,    3.639478        , 0 , 1.0e-4
 PT2 HOMO-LUMO gap         ,   15.993987        , 0 , 1.0e-4
 MP2 Energy                ,   -0.4798462582    , 0 , 1.0e-7
 MP2 Total Energy          , -109.4192739002    , 0 , 1.0e-7
-SE+MP2  Total En          , -109.4275340075    , 0 , 1.0e-7
 
 n2_mp2_ri.in              , 2nd order self-energy of N2 with RI using ortho parallelization
 SCF Total Energy          , -108.9743823838    , 0 , 1.0e-7
@@ -201,7 +205,6 @@ PT2 LUMO energy           ,    2.755544        , 0 , 1.0e-4
 PT2 HOMO-LUMO gap         ,   17.743440        , 0 , 1.0e-4
 MP2 Energy                ,   -0.4080027465    , 0 , 1.0e-7
 MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
-SE+MP2  Total En          , -109.3823851303    , 0 , 1.0e-7
 
 boron_gw_spinpolarized.in , GW@HF boron atom without RI with spin, noparallel
 Hartree Energy            ,   11.6084909105   , 0 , 1.0e-7
@@ -231,7 +234,7 @@ cdo_ecp_gw.in             , CdO- (ECP) within GW@PBE0 with level shifting
 SCF Total Energy          ,    -242.8403302221 , 0 , 5.0e-4     # Loosened criterium
 RPA correlation energy    ,      -0.9666472866 , 0 , 1.0e-5     # Loosened criterium
 GW HOMO energy            ,      -1.787172     , 0 , 1.0e-4
-GW HOMO energy            ,      -1.350967     , 1 , 1.0e-4
+GW HOMO energy            ,      -1.350967     , 1 , 5.0e-4     # Loosened criterium
 GW LUMO energy            ,       3.687306     , 0 , 1.0e-4
 GW LUMO energy            ,       3.689422     , 1 , 1.0e-4
 
@@ -255,7 +258,6 @@ gKS HOMO energy           ,     -8.191536      , 0 , 1.0e-4
 gKS LUMO energy           ,     -2.674684      , 0 , 1.0e-4
 RPA correlation energy    ,     -0.0838669374  , 0 , 1.0e-7
 Lowest neutral excitation ,      9.996355      , 0 , 1.0e-4
-Singles correction        ,     -0.0029125289  , 0 , 1.0e-7
 Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-7
 GW HOMO energy            ,    -12.857222      , 0 , 1.0e-4
 GW LUMO energy            ,      1.474561      , 0 , 1.0e-4
@@ -335,7 +337,6 @@ CI 4th excited-state energy,    -0.6832892656  , 0 , 1.0e-7
 
 sih4_hf.in                , TDHF SiH4 aug-cc-pVDZ
 SCF Total Energy          ,   -291.2427972343   , 0 , 1.0e-7
-Est. HF Energy            ,   -291.2427972343   , 0 , 1.0e-7
 Exc. 0001                 ,      9.81657258     , 0 , 1.0e-4
 Exc. 0001                 ,      0.21703439     , 1 , 1.0e-4
 Exc. 0010                 ,     11.17712689     , 0 , 1.0e-4
@@ -380,7 +381,6 @@ polarizability trace      ,     13.362175       , 0 , 1.0e-4
 
 ch2o_gw.in                , GW@B3LYP on formaldehyde to prepare BSE
 SCF Total Energy          ,   -114.5110479343   , 0 , 1.0e-7
-Est. HF Energy            ,   -113.8786939682   , 0 , 1.0e-7
 1/2 Tr[ Sig_c * G ]       ,     -0.7854236777   , 0 , 1.0e-7
 RPA Total energy          ,   -114.3237167485   , 0 , 1.0e-4
 GW HOMO energy            ,     -9.921426       , 0 , 1.0e-4
@@ -518,7 +518,7 @@ GW small basis LUMO energy,   3.579917         , 0 , 1.0e-4
 GW HOMO energy            , -11.927726         , 0 , 1.0e-4
 GW LUMO energy            ,   3.286831         , 0 , 1.0e-4
 
-h2o_gw_smallbasis_sca.in  , H2O: GW@PBE0 using a small basis set for virtual orbitals and SCALAPACK
+h2o_gw_smallbasis_aug.in  , H2O: GW@PBE0 using a small basis set for virtual orbitals with diffuse functions
 SCF Total Energy          , -76.3830840045     , 0 , 1.0e-7
 Lowest neutral excitation ,   8.913835         , 0 , 1.0e-4
 GW small basis HOMO energy, -12.150542         , 0 , 1.0e-4
@@ -550,47 +550,53 @@ MP2 Energy                ,  -0.2022870330     , 0 , 1.0e-7
 MP2 Total Energy          , -76.2285265785     , 0 , 1.0e-7
 MP3 Energy                ,  -0.0069228191     , 0 , 1.0e-7
 MP3 Total Energy          , -76.2354493975     , 0 , 1.0e-7
-SE+MP3  Total En          , -76.2354493975     , 0 , 1.0e-7
 
-h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B",tddft
+h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT T=200.0 dt=0.5 PC="PC2B",tddft
 SCF Total Energy          , -76.0278711935     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -76.0278711836     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-7
-RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-5
+RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-5
+RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-5
 
-h2o_rt_tddft_hf_PC2B_scalapack.in, Scalapack test RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B",tddft
+h2o_rt_tddft_hf_PC2B_TZ.in, RT-TDDFT within cc-pVTZ T=200.0 dt=0.5 PC="PC2B",tddft
 SCF Total Energy          , -76.0571529836     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -76.0571529689     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   0.0001368162     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   2.0246334571     , 1 , 1.0e-7
-RT-TDDFT Dipole Moment    ,  -0.0003241743     , 2 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0001368162     , 0 , 1.0e-5
+RT-TDDFT Dipole Moment    ,   2.0246334571     , 1 , 1.0e-5
+RT-TDDFT Dipole Moment    ,  -0.0003241743     , 2 , 1.0e-5
 
-h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B", tddft
+h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT T=20.0 dt=0.5 PC="PC2B", tddft
 SCF Total Energy          , -75.8540895545     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -75.8540895309     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,  -0.0001846589     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   1.9474309646     , 1 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   0.0000376516     , 2 , 1.0e-7
 
-h2o_rt_tddft_lda_PC2B_restart.in  , test of RESTART_TDDFT does not work without preliminary run of previous input, restart tddft
+h2o_rt_tddft_lda_PC2B_restart.in  , RT-TDDFT from RESTART_TDDFT (need previous run), restart tddft
 RT-TDDFT Total Energy     ,  -75.8540895314     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,    0.0001669089     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,    1.9475062577     , 1 , 1.0e-7
 RT-TDDFT Dipole Moment    ,    0.0002922780     , 2 , 1.0e-7
 
-h2o_rt_tddft_h_projectile.in  , test of projectile without basis function PC="PC2B",tddft
+h2o_rt_tddft_h_projectile.in, RT-TDDFT projectile without basis function PC="PC2B",tddft
 SCF Total Energy          ,  -75.8551200924     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.0285116443     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_pbe0.in , proj without basis pbe0,tddft
+h2o_rt_tddft_h_proj_pbe0.in, RT-TDDFT proj without basis pbe0,tddft
 SCF Total Energy          ,  -76.3418386927     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.5745023928     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_pbe0_restart.in , proj without basis pbe0 restart, restart tddft
+h2o_rt_tddft_h_proj_pbe0_restart.in, RT-TDDFT proj without basis pbe0 restart, restart tddft
 RT-TDDFT Total Energy     ,  -75.5098148640     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_pbe0_scalapack.in , proj without basis pbe0,tddft
+h2o_rt_tddft_h_proj_temp_pbe0.in , RT-TDDFT PBE0 with temperature,tddft
+SCF Total Energy          ,  -76.3191476781     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.5420266865     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_temp_pbe0_restart.in , RT-TDDFT PBE0 with temperature restart, restart tddft
+RT-TDDFT Total Energy     ,  -75.4884909894     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_pbe0_TZ.in , RT-TDDFT with projectile without basis within PBE0,tddft
 SCF Total Energy          ,  -76.3757991664     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.3811268142     , 0 , 1.0e-7
 
@@ -697,6 +703,9 @@ Hartree Energy            ,     75.7940290895   , 0 , 1.0e-7
 Exchange Energy           ,    -13.2091549910   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
 GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
+Hartree  HOMO expectation ,    188.102908       , 0 , 1.0e-4
+Exchange HOMO expectation ,    -20.682616       , 0 , 1.0e-4
+
 
 co_gw_dm_restart.in       , G0W0 based on G0W0 density matrix, restart
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4

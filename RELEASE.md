@@ -2,6 +2,24 @@
 #    MOLGW: Release Notes
 -----------------------------------------
 
+-----------------------------------------
+## What's new in version 2.C.beta
+### Overview
+- Real-time TDDFT is made available
+- speed-up in the Hartree, Exchange and AO to MO transform
+- use of LIBXC through the C interface
+- bug fixes
+
+### Contributors
+- Fabien Bruneval (CEA SRMP, France)
+- Ivan Maliyov (CEA SRMP, France)
+
+### Changes affecting the usage
+- Post-processing are not performed if the SCF cycles are not converged within `tolscf` (save user CPU time when a job went wrong)
+- Keywords `scalapack_nprow` and `scalapack_npcol` have been eliminated
+
+### Changes affecting the compilation
+- LIBXC is now linked through the C interface. Therefore, LIBXC compilation does not need to be consistent with MOLGW compilation.
 
 -----------------------------------------
 ## What's new in version 2.B

@@ -867,26 +867,6 @@ Having a large eri3_nbatch reduces the memory foot print, however it may lower t
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='scalapack_nprow'
-vl[i].family   ='hardware'
-vl[i].default  =1
-vl[i].datatype ='integer'
-vl[i].comment  ='Sets number of row processors for SCALAPACK distribution of the SCF matrices.  \
-nprow X npcol should be lower or equal to the number of processors.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='scalapack_npcol'
-vl[i].family   ='hardware'
-vl[i].default  =1
-vl[i].datatype ='integer'
-vl[i].comment  ='Sets number of column processors for SCALAPACK distribution of the SCF matrices.  \
-nprow X npcol should be lower or equal to the number of processors.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
 vl[i].keyword  ='mpi_nproc_ortho'
 vl[i].family   ='hardware'
 vl[i].default  =1
@@ -1135,6 +1115,15 @@ vl[i].comment  ='Prints electronic density along a line, which parameters must b
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_line_rho_diff_tddft'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints electronic density difference along a line, which parameters must be provided in manual_plot_rho_tddft file.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='write_step'
 vl[i].family   ='io_rt_tddft'
 vl[i].default  ='1'
@@ -1252,6 +1241,15 @@ vl[i].comment  ='Prints the electronic density along the projectile trajectory f
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_dens_traj_points_set'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the electronic density between pairs of points given in manual_dens_points_set file.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='calc_dens_disc'
 vl[i].family   ='io_rt_tddft'
 vl[i].default  ='no'
@@ -1266,6 +1264,24 @@ vl[i].family   ='rt_tddft'
 vl[i].default  = 200.0
 vl[i].datatype ='real'
 vl[i].comment  ='Radius of the disc for denisty calculations (option calc_dens_disc) for the real-time dynamics.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='tddft_frozencore'
+vl[i].family   ='rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Do not "propagate" states mentioned in the manual_tddft_frozencore file in the real-time dynamics.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ncore_tddft'
+vl[i].family   ='rt_tddft'
+vl[i].default  = 0
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of frozen core states in the real-time dynamics.'
 
 #============================================================================
 #            Fortran output: input variable namelist and their default value

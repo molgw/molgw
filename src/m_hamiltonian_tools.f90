@@ -19,6 +19,11 @@ module m_hamiltonian_tools
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min,scf_diago_flavor
 
 
+ interface setup_density_matrix
+   module procedure setup_density_matrix_real
+   module procedure setup_density_matrix_cmplx
+ end interface setup_density_matrix
+
 contains
 
 
@@ -50,7 +55,7 @@ end function get_number_occupied_states
 
 
 !=========================================================================
-subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
+subroutine setup_density_matrix_real(c_matrix,occupation,p_matrix)
  implicit none
  real(dp),intent(in)  :: c_matrix(:,:,:)
  real(dp),intent(in)  :: occupation(:,:)
@@ -100,7 +105,57 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  call stop_clock(timing_density_matrix)
 
 
-end subroutine setup_density_matrix
+end subroutine setup_density_matrix_real
+
+
+!=========================================================================
+subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+ implicit none
+
+ complex(dp),intent(in)  :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)     :: occupation(:,:)
+ complex(dp),intent(out) :: p_matrix_cmplx(:,:,:)
+!=====
+ integer :: nbf,nstate,nocc
+ integer :: ispin,ibf,jbf
+ integer :: istate
+ complex(dp),allocatable :: c_matrix_sqrtocc(:,:)
+!=====
+
+ call start_clock(timing_density_matrix_cmplx)
+
+ nbf    = SIZE(c_matrix_cmplx(:,:,:),DIM=1)
+ nocc   = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ if( ANY( occupation(:,:) < 0.0_dp ) ) call die('setup_density_matrix_cmplx: negative occupation number should not happen here.')
+
+ allocate(c_matrix_sqrtocc(nbf,nocc))
+
+ p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
+ do ispin=1,nspin
+
+   do istate=1,nocc
+     c_matrix_sqrtocc(:,istate) = c_matrix_cmplx(:,istate,ispin) * SQRT(occupation(istate,ispin))
+   enddo
+   call ZHERK('L','N',nbf,nocc,1.0d0,c_matrix_sqrtocc,nbf,0.0d0,p_matrix_cmplx(1,1,ispin),nbf)
+
+
+   ! Hermitianize
+   do jbf=1,nbf
+     do ibf=jbf+1,nbf
+       p_matrix_cmplx(jbf,ibf,ispin) = CONJG( p_matrix_cmplx(ibf,jbf,ispin) )
+     enddo
+   enddo
+
+ enddo
+
+ deallocate(c_matrix_sqrtocc)
+
+ call stop_clock(timing_density_matrix_cmplx)
+
+
+end subroutine setup_density_matrix_cmplx
 
 
 !=========================================================================
@@ -171,9 +226,9 @@ subroutine test_density_matrix(p_matrix,s_matrix)
 
 
    title='=== PSP ==='
-   call dump_out_matrix(1,title,nbf,1,matrix)
+   !call dump_out_matrix(1,title,nbf,1,matrix)
    title='===  P  ==='
-   call dump_out_matrix(1,title,nbf,1,p_matrix(:,:,ispin))
+   !call dump_out_matrix(1,title,nbf,1,p_matrix(:,:,ispin))
 
  enddo
 
@@ -281,7 +336,7 @@ subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
    call die('FAILURE in set_occupation')
  endif
 
- call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
+ call dump_out_occupation('=== Occupations ===',occupation)
 
 contains
 
@@ -297,6 +352,182 @@ function fermi_dirac(energy,mu)
 end function fermi_dirac
 
 end subroutine set_occupation
+
+
+!=========================================================================
+subroutine dump_out_occupation(title,occupation)
+ implicit none
+ character(len=*),intent(in) :: title
+ real(dp),intent(in)         :: occupation(:,:)
+!=====
+ integer :: ihomo
+ integer :: istate,nstate
+!=====
+
+ nstate = SIZE(occupation,DIM=1)
+
+ write(stdout,'(/,1x,a)') TRIM(title)
+
+ if( nspin == 2 ) then
+   write(stdout,'(a)') '           spin 1       spin 2 '
+ endif
+ do istate=1,nstate
+   if( ANY(occupation(istate,:) > 0.001_dp) ) ihomo = istate
+ enddo
+
+ select case(nspin)
+ case(1)
+   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1)
+   enddo
+ case(2)
+   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1),occupation(istate,2)
+   enddo
+ end select
+ write(stdout,*)
+
+end subroutine dump_out_occupation
+
+
+!=========================================================================
+subroutine dump_out_energy(title,occupation,energy)
+ implicit none
+ character(len=*),intent(in) :: title
+ real(dp),intent(in)         :: occupation(:,:),energy(:,:)
+!=====
+ integer,parameter :: MAXSIZE=300
+ integer  :: istate,nocc,nstate
+!=====
+
+ nocc   = get_number_occupied_states(occupation)
+ nstate = SIZE(occupation,DIM=1)
+
+ write(stdout,'(/,1x,a)') TRIM(title)
+
+ if(nspin==1) then
+   write(stdout,'(a)') '   #       (Ha)         (eV)      '
+ else
+   write(stdout,'(a)') '   #              (Ha)                      (eV)      '
+   write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
+ endif
+ do istate=MAX(1,nocc-MAXSIZE/2),MIN(nstate,nocc+MAXSIZE/2)
+   select case(nspin)
+   case(1)
+     write(stdout,'(1x,i3,2(1x,f12.5),4x,f8.4)') istate,energy(istate,1),energy(istate,1)*Ha_eV,occupation(istate,1)
+   case(2)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,1),energy(istate,2), &
+                                                          energy(istate,1)*Ha_eV,energy(istate,2)*Ha_eV, &
+                                                          occupation(istate,1),occupation(istate,2)
+   end select
+   if(istate < nstate) then
+     if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0_dp ) ) then
+        if(nspin==1) then
+          write(stdout,'(a)') '  -----------------------------'
+        else
+          write(stdout,'(a)') '  -------------------------------------------------------'
+        endif
+     endif
+   endif
+ enddo
+
+ write(stdout,*)
+
+end subroutine dump_out_energy
+
+
+!=========================================================================
+subroutine output_homolumo(calculation_name,occupation,energy,istate_min,istate_max)
+ implicit none
+
+ character(len=*),intent(in) :: calculation_name
+ integer,intent(in)          :: istate_min,istate_max
+ real(dp),intent(in)         :: occupation(:,:),energy(:,:)
+!=====
+ real(dp) :: ehomo_tmp,elumo_tmp
+ real(dp) :: ehomo(nspin),elumo(nspin)
+ integer  :: ispin,istate,nstate
+!=====
+
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ do ispin=1,nspin
+   ehomo_tmp=-HUGE(1.0_dp)
+   elumo_tmp= HUGE(1.0_dp)
+
+   do istate=istate_min,istate_max
+
+     if( occupation(istate,ispin)/spin_fact > completely_empty ) then
+       ehomo_tmp = MAX( ehomo_tmp , energy(istate,ispin) )
+     endif
+
+     if( occupation(istate,ispin)/spin_fact < 1.0_dp - completely_empty ) then
+       elumo_tmp = MIN( elumo_tmp , energy(istate,ispin) )
+     endif
+
+   enddo
+
+   ehomo(ispin) = ehomo_tmp
+   elumo(ispin) = elumo_tmp
+
+ enddo
+
+
+ write(stdout,*)
+ if( ALL( ehomo(:) > -1.0e6_dp ) ) then
+   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO energy    (eV):',ehomo(:) * Ha_eV
+ endif
+ if( ALL( elumo(:) <  1.0e6_dp ) ) then
+   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'LUMO energy    (eV):',elumo(:) * Ha_eV
+ endif
+ if( ALL( ehomo(:) > -1.0e6_dp ) .AND. ALL( elumo(:) <  1.0e6_dp ) ) then
+   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO-LUMO gap  (eV):',( elumo(:)-ehomo(:) ) * Ha_eV
+ endif
+ write(stdout,*)
+
+
+end subroutine output_homolumo
+
+
+!=========================================================================
+subroutine matrix_ao_to_mo_diag(c_matrix,matrix_in,diag_out)
+ implicit none
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: matrix_in(:,:,:)
+ real(dp),intent(out) :: diag_out(:,:)
+!=====
+ integer              :: nbf,nstate,nspin_ham
+ integer              :: ispin,istate,ispin_ham
+ real(dp),allocatable :: vector_tmp(:)
+!=====
+
+ nbf       = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate    = SIZE(c_matrix(:,:,:),DIM=2)
+ nspin_ham = SIZE(matrix_in,DIM=3)
+
+
+ allocate(vector_tmp(nbf))
+
+ do ispin=1,nspin
+   
+   ispin_ham = MIN(ispin,nspin_ham)
+
+   !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
+   !diag_i =  DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix_restart(:,istate,ispin) ) )
+   do istate=1,nstate
+
+     ! H * C_i
+     call DSYMV('L',nbf,1.0d0,matrix_in(1,1,ispin_ham),nbf, &
+                              c_matrix(1,istate,ispin),1,  &
+                        0.0d0,vector_tmp,1)
+     ! C_i**T * (H * C_i)
+     diag_out(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , vector_tmp(:) )
+
+   enddo
+ enddo
+ deallocate(vector_tmp)
+
+end subroutine matrix_ao_to_mo_diag
 
 
 !=========================================================================
@@ -677,10 +908,216 @@ subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
 
  deallocate(p_matrix_sqrt)
 
+ if( ANY( occupation(:,:) < 0.0_dp ) ) then
+   call issue_warning('get_c_matrix_from_p_matrix: negative occupation numbers')
+ endif
+
  call stop_clock(timing_sqrt_density_matrix)
 
 end subroutine get_c_matrix_from_p_matrix
 
 
+!=========================================================================
+subroutine diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matrix)
+ implicit none
+
+ real(dp),intent(in)  :: hamiltonian(:,:,:)
+ real(dp),intent(in)  :: x_matrix(:,:)
+ real(dp),intent(out) :: c_matrix(:,:,:)
+ real(dp),intent(out) :: energy(:,:)
+!=====
+ integer :: nspin_local,nbf,nstate
+ integer :: mh,nh,mc,nc,ms,ns
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+#if defined(HAVE_SCALAPACK)
+ integer :: cntxt
+ integer :: rank_sca,nprocs_sca
+ integer :: desch(NDEL),descc(NDEL),descs(NDEL)
+#endif
+ integer  :: ispin
+ integer  :: ilocal,jlocal,iglobal,jglobal
+ integer  :: m_small,n_small
+ real(dp),allocatable :: h_small(:,:),h_small2(:,:)
+ real(dp),allocatable :: ham_local(:,:),c_matrix_local(:,:),s_matrix_local(:,:)
+!=====
+
+ nbf         = SIZE(c_matrix,DIM=1)
+ nstate      = SIZE(c_matrix,DIM=2)
+ nspin_local = SIZE(c_matrix,DIM=3)
+
+#if defined(HAVE_SCALAPACK)
+
+ nprow = MIN(nprow_sd,nbf/scalapack_block_min)
+ npcol = MIN(npcol_sd,nbf/scalapack_block_min)
+ nprow = MAX(nprow,1)
+ npcol = MAX(npcol,1)
+
+ if( nprow * npcol > 1 ) then
+   write(stdout,'(1x,a,i4,a,i4)') 'Generalized diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
+   call BLACS_PINFO( rank_sca, nprocs_sca )
+
+   call BLACS_GET( -1, 0, cntxt )
+   call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
+   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+
+   c_matrix(:,:,:) = 0.0_dp
+
+   !
+   ! Participate to the diagonalization only if the CPU has been selected
+   ! in the grid
+   if(cntxt > 0 ) then
+
+     mh = NUMROC(nbf   ,block_row,iprow,first_row,nprow)
+     nh = NUMROC(nbf   ,block_col,ipcol,first_col,npcol)
+     mc = NUMROC(nbf   ,block_row,iprow,first_row,nprow)
+     nc = NUMROC(nstate,block_col,ipcol,first_col,npcol)
+     ms = NUMROC(nstate,block_row,iprow,first_row,nprow)
+     ns = NUMROC(nstate,block_col,ipcol,first_col,npcol)
+
+
+     call DESCINIT(desch,nbf   ,nbf   ,block_row,block_col,first_row,first_col,cntxt,MAX(1,mh),info)
+     call DESCINIT(descc,nbf   ,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+     call DESCINIT(descs,nstate,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,ms),info)
+
+
+     allocate(ham_local(mh,nh))
+     allocate(c_matrix_local(mc,nc))
+     allocate(s_matrix_local(mc,nc))
+     allocate(h_small(ms,ns))
+
+     !
+     ! Set up the local copy of x_matrix
+     do jlocal=1,nc
+       jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+       do ilocal=1,mc
+         iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+         s_matrix_local(ilocal,jlocal) = x_matrix(iglobal,jglobal)
+       enddo
+     enddo
+
+
+
+     do ispin=1,nspin_local
+       write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
+       call start_clock(timing_diago_hamiltonian)
+
+       !
+       ! Set up the local copy of hamiltonian
+       do jlocal=1,nh
+         jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+         do ilocal=1,mh
+           iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+           ham_local(ilocal,jlocal) = hamiltonian(iglobal,jglobal,ispin)
+         enddo
+       enddo
+
+!       h_small(:,:) = MATMUL( TRANSPOSE(x_matrix(:,:)) , &
+!                                MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
+
+       !
+       ! H_small = ^tS^{-1/2} H S^{-1/2}
+       call PDGEMM('N','N',nbf,nstate,nbf,                &
+                    1.0_dp,ham_local,1,1,desch,           &
+                    s_matrix_local,1,1,descc,             &
+                    0.0_dp,c_matrix_local,1,1,descc)
+
+       call PDGEMM('T','N',nstate,nstate,nbf,             &
+                    1.0_dp,s_matrix_local,1,1,descc,      &
+                    c_matrix_local,1,1,descc,             &
+                    0.0_dp,h_small,1,1,descs)
+
+
+
+       call diagonalize_sca(scf_diago_flavor,h_small,descs,energy(:,ispin))
+
+
+!       c_matrix(:,:,ispin) = MATMUL( x_matrix(:,:) , h_small(:,:) )
+
+       !
+       ! C = S^{-1/2} C_small
+       call PDGEMM('N','N',nbf,nstate,nstate,             &
+                    1.0_dp,s_matrix_local,1,1,descc,      &
+                    h_small,1,1,descs,                    &
+                    0.0_dp,c_matrix_local,1,1,descc)
+
+
+       do jlocal=1,nc
+         jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+         do ilocal=1,mc
+           iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+           c_matrix(iglobal,jglobal,ispin) = c_matrix_local(ilocal,jlocal)
+         enddo
+       enddo
+
+
+      ! Nullify the eigval array for all CPUs but one, so that the all_reduce
+      ! operation in the end yields the correct value
+      ! Of course, using a broadcast instead would be a better solution, but I'm so lazy
+       if( rank_sca /= 0 ) energy(:,ispin) = 0.0_dp
+
+
+       call stop_clock(timing_diago_hamiltonian)
+     enddo
+
+     deallocate(ham_local,c_matrix_local,s_matrix_local,h_small)
+
+     call BLACS_GRIDEXIT( cntxt )
+
+   else
+     energy(:,:) = 0.0_dp
+   endif
+
+
+   ! Poor man distribution TODO replace by a broadcast
+   call xsum_world(energy)
+   call xsum_world(c_matrix)
+
+ else ! only one proc selected
+#endif
+
+   allocate(h_small2(nstate,nstate))
+
+   do ispin=1,nspin_local
+     write(stdout,'(1x,a,i3)') 'Generalized diagonalization for spin: ',ispin
+     call start_clock(timing_diago_hamiltonian)
+
+     allocate(h_small(nbf,nstate))
+     ! h_small(:,:) = MATMUL( TRANSPOSE(x_matrix(:,:)) , &
+     !                          MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
+
+     ! H * U
+     call DGEMM('N','N',nbf,nstate,nbf,1.0d0,hamiltonian(:,:,ispin),nbf, &
+                                             x_matrix,nbf,      &
+                                       0.0d0,h_small,nbf)
+     ! U**T * (H * U)
+     call DGEMM('T','N',nstate,nstate,nbf,1.0d0,x_matrix,nbf,  &
+                                                h_small,nbf,            &
+                                          0.0d0,h_small2,nstate)
+     deallocate(h_small)
+
+     ! H * C' = C' * E
+     call diagonalize(scf_diago_flavor,h_small2,energy(:,ispin))
+
+     !c_matrix(:,1:nstate,ispin) = MATMUL( x_matrix(:,:) , h_small2(:,:) )
+     ! C = U * C'
+     call DGEMM('N','N',nbf,nstate,nstate,1.0d0,x_matrix,nbf, &
+                                                h_small2,nstate,       &
+                                          0.0d0,c_matrix(:,:,ispin),nbf)
+
+
+     call stop_clock(timing_diago_hamiltonian)
+   enddo
+
+   deallocate(h_small2)
+
+#if defined(HAVE_SCALAPACK)
+ endif
+#endif
+
+end subroutine diagonalize_hamiltonian_scalapack
+
+
+!=========================================================================
 end module m_hamiltonian_tools
 !=========================================================================

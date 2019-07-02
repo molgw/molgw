@@ -1,6 +1,6 @@
 OPENMP= 
-PYTHON=python
-LIBTOOL=libtool --mode=link --tag=FC
+PYTHON=python3
+LIBTOOL=
 
 # Sequential compilation
 FC=gfortran -cpp -ffree-line-length-none
@@ -11,12 +11,12 @@ CXX=g++
 FCOPTS= -O2 # -O0 -g -check all -traceback 
 CXXOPTS= -O2 # -O0 -g -fbounds-check
 
-LAPACK=-L${HOME}/src/lapack-3.5.0/ -llapack -lblas
+LAPACK=-L${HOME}/src/lapack-3.8.0/ -llapack -lblas
 
 SCALAPACK=
 
-LIBXC_ROOT=${HOME}/src/libxc-3.0.0_gfortran/
+LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
-LIBINT_ROOT=${HOME}/src/libint-2.2.0_g++/
+LIBINT_ROOT=${HOME}/src/libint-2.4.2/
 
 FFTW_ROOT=

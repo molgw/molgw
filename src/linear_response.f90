@@ -48,6 +48,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  integer                   :: m_apb,n_apb,m_x,n_x
 ! SCALAPACK variables
  integer                   :: desc_apb(NDEL),desc_x(NDEL)
+ integer                   :: info
 !=====
 
  call start_clock(timing_pola)
@@ -132,7 +133,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
  ! The distribution of the two matrices have to be the same for A-B and A+B
  ! This is valid also when SCALAPACK is not used!
- call init_desc('S',nmat,nmat,desc_apb,m_apb,n_apb)
+ m_apb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+ n_apb = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_apb,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_apb),info)
  call clean_allocate('A+B',apb_matrix,m_apb,n_apb)
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
  allocate(amb_diag_rpa(nmat))
@@ -230,13 +233,15 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
  ! Prepare the second dimension of xpy_matrix and xmy_matrix
  nexc = nexcitation
- if( nexc == 0 ) nexc = wpol_out%npole_reso_apb
+ if( nexc == 0 ) nexc = nmat
 
  allocate(eigenvalue(nmat))
 
  ! Allocate (X+Y)
  ! Allocate (X-Y) only if actually needed
- call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
+ m_x = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+ n_x = NUMROC(nexc,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_x),info)
 
  call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
  if( .NOT. is_rpa .OR. is_tda ) &
@@ -426,13 +431,11 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
- real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
+ real(dp),allocatable               :: dipole_ao(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: residue(:,:)
  integer                            :: dynpolfile
  integer                            :: photocrossfile
  integer                            :: parityi,parityj,reflectioni,reflectionj
- integer,external                   :: wfn_parity
- integer,external                   :: wfn_reflection
  character(len=32)                  :: symsymbol
 !=====
 
@@ -452,7 +455,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  !
  ! First precalculate all the needed dipole in the basis set
  !
- call calculate_dipole_basis(basis,dipole_basis)
+ call calculate_dipole_ao(basis,dipole_ao)
 
  !
  ! Get the dipole oscillator strength on states
@@ -461,11 +464,11 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  do idir=1,3
    do mpspin=1,nspin
      dipole_state(:,:,mpspin,idir) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) , &
-                                             MATMUL( dipole_basis(:,:,idir) , c_matrix(:,:,mpspin) ) )
+                                             MATMUL( dipole_ao(:,:,idir) , c_matrix(:,:,mpspin) ) )
    enddo
  enddo
 
- deallocate(dipole_basis)
+ deallocate(dipole_ao)
 
 
  allocate(residue(3,nexc))
@@ -891,6 +894,7 @@ subroutine get_energy_qp(nstate,energy,occupation,energy_qp)
  use m_memory
  use m_inputparam
  use m_mpi
+ use m_io
  implicit none
 
  integer,intent(in)                  :: nstate
@@ -1088,7 +1092,10 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
  ! => only needs (X+Y)
- wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
+ !wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
+ call DGEMM('N','N',nauxil_3center,nmat,nmat,DSQRT(spin_fact),eri_3tmp,nauxil_3center, &
+                                                              xpy_matrix,nmat, &
+                                                        0.0d0,wpol%residue_left,nauxil_3center)
 
  energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
  !
@@ -1109,12 +1116,13 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
 
  !
  ! Descriptors
- mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
- call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_2center,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+ call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
  call DESCINIT(desc_sd,nauxil_2center,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+
  call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
 
  call PDGEMR2D(nauxil_2center,nmat,eri_3tmp,1,1,desc_auxil, &

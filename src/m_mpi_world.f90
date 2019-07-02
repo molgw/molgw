@@ -54,6 +54,7 @@ module m_mpi_world
  end interface
 
  interface xsum_world
+   module procedure xsum_world_i8
    module procedure xsum_world_r
    module procedure xsum_world_ra1d
    module procedure xsum_world_ra2d
@@ -379,6 +380,29 @@ subroutine xmax_world_ra1d(array)
  endif
 
 end subroutine xmax_world_ra1d
+
+
+!=========================================================================
+subroutine xsum_world_i8(integer_number)
+ implicit none
+ integer(kind=int8),intent(inout) :: integer_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ if( nproc_world == 1 ) return
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER8, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_i8
 
 
 !=========================================================================
