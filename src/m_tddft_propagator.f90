@@ -36,18 +36,18 @@ module m_tddft_propagator
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
  real(dp),private                   :: excit_field_norm
-!==hamiltonian extrapolation variables==
+ !==hamiltonian extrapolation variables==
  real(dp),allocatable,private       :: extrap_coefs(:)
  complex(dp),allocatable,private    :: h_small_hist_cmplx(:,:,:,:)
  complex(dp),allocatable,private    :: c_matrix_orth_hist_cmplx(:,:,:,:)
-!==q_matrix==
+ !==q_matrix==
  complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
-!====
+ !====
  integer,private            :: ntau
-!==frozen core==
+ !==frozen core==
  real(dp),allocatable       :: energies_start(:,:)
  complex(dp),allocatable    :: a_matrix_orth_start_cmplx(:,:,:)
-!====
+ !====
 
  type(energy_contributions),private :: en_tddft
 
@@ -189,19 +189,19 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  ! Getting starting value of the Hamiltonian
  ! itau=0 to avoid excitation calculation
- call setup_hamiltonian_fock_cmplx( basis,                   &
-                                    nstate,                  &
-                                    0,                       &    ! itau
-                                    time_min,                &
-                                    0.0_dp,                  &    ! time_cur
-                                    occupation,              &
-                                    c_matrix_cmplx,          &
-                                    hamiltonian_kinetic,     &
-                                    hamiltonian_nucleus,     &
-                                    h_small_cmplx,           &
-                                    x_matrix,                &
-                                    dipole_ao,               &
-                                    h_cmplx,en_tddft)
+ call setup_hamiltonian_cmplx(basis,                   &
+                              nstate,                  &
+                              0,                       &    ! itau
+                              time_min,                &
+                              0.0_dp,                  &    ! time_cur
+                              occupation,              &
+                              c_matrix_cmplx,          &
+                              hamiltonian_kinetic,     &
+                              hamiltonian_nucleus,     &
+                              h_small_cmplx,           &
+                              x_matrix,                &
+                              dipole_ao,               &
+                              h_cmplx,en_tddft)
 
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
@@ -508,19 +508,19 @@ subroutine predictor_corrector(basis,                  &
  ! ///////////////////////////////////
  case('PC0')
    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
-   call setup_hamiltonian_fock_cmplx( basis,                   &
-                                      nstate,                  &
-                                      itau,                    &
-                                      time_cur,                &
-                                      time_step,               &
-                                      occupation,              &
-                                      c_matrix_cmplx,          &
-                                      hamiltonian_kinetic,     &
-                                      hamiltonian_nucleus,     &
-                                      h_small_cmplx,           &
-                                      x_matrix,                &
-                                      dipole_ao,               &
-                                      h_cmplx,en_tddft)
+   call setup_hamiltonian_cmplx(basis,                   &
+                                nstate,                  &
+                                itau,                    &
+                                time_cur,                &
+                                time_step,               &
+                                occupation,              &
+                                c_matrix_cmplx,          &
+                                hamiltonian_kinetic,     &
+                                hamiltonian_nucleus,     &
+                                h_small_cmplx,           &
+                                x_matrix,                &
+                                dipole_ao,               &
+                                h_cmplx,en_tddft)
 
 
  ! ///////////////////////////////////
@@ -532,19 +532,19 @@ subroutine predictor_corrector(basis,                  &
    call propagate_orth(nstate,basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
 
    !--3--CORRECTOR----| C(10/4)-->H(10/4)
-   call setup_hamiltonian_fock_cmplx( basis,                   &
-                                      nstate,                  &
-                                      itau,                    &
-                                      time_cur-time_step/2.0_dp, &
-                                      time_step,               &
-                                      occupation,              &
-                                      c_matrix_cmplx,          &
-                                      hamiltonian_kinetic,     &
-                                      hamiltonian_nucleus,     &
-                                      h_small_cmplx,           &
-                                      x_matrix,                &
-                                      dipole_ao,               &
-                                      h_cmplx,en_tddft)
+   call setup_hamiltonian_cmplx(basis,                   &
+                                nstate,                  &
+                                itau,                    &
+                                time_cur-time_step/2.0_dp, &
+                                time_step,               &
+                                occupation,              &
+                                c_matrix_cmplx,          &
+                                hamiltonian_kinetic,     &
+                                hamiltonian_nucleus,     &
+                                h_small_cmplx,           &
+                                x_matrix,                &
+                                dipole_ao,               &
+                                h_cmplx,en_tddft)
 
    !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
@@ -572,37 +572,37 @@ subroutine predictor_corrector(basis,                  &
    !--1--PROPAGATE----| C(t)--U[H(1/4dt)]-->C(t+dt/2)
    call propagate_orth(nstate,basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
    !--2--CALCULATE- H(t+dt/4)
-   call setup_hamiltonian_fock_cmplx( basis,                   &
-                                      nstate,                  &
-                                      itau,                    &
-                                      time_cur-time_step/2.0_dp, &
-                                      time_step,               &
-                                      occupation,              &
-                                      c_matrix_cmplx,          &
-                                      hamiltonian_kinetic,     &
-                                      hamiltonian_nucleus,     &
-                                      h_small_cmplx,           &
-                                      x_matrix,                &
-                                      dipole_ao,               &
+   call setup_hamiltonian_cmplx(basis,                   &
+                                nstate,                  &
+                                itau,                    &
+                                time_cur-time_step/2.0_dp, &
+                                time_step,               &
+                                occupation,              &
+                                c_matrix_cmplx,          &
+                                hamiltonian_kinetic,     &
+                                hamiltonian_nucleus,     &
+                                h_small_cmplx,           &
+                                x_matrix,                &
+                                dipole_ao,               &
                                       h_cmplx,en_tddft)
 
    if (n_hist > 1) h_small_hist_cmplx(:,:,:,n_hist-1)=h_small_cmplx
    !--3--PROPAGATION----|
    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
 
-   call setup_hamiltonian_fock_cmplx( basis,                   &
-                                      nstate,                  &
-                                      itau,                    &
-                                      time_cur,                &
-                                      time_step,               &
-                                      occupation,              &
-                                      c_matrix_cmplx,          &
-                                      hamiltonian_kinetic,     &
-                                      hamiltonian_nucleus,     &
-                                      h_small_cmplx,           &
-                                      x_matrix,                &
-                                      dipole_ao,               &
-                                      h_cmplx,en_tddft)
+   call setup_hamiltonian_cmplx(basis,                   &
+                                nstate,                  &
+                                itau,                    &
+                                time_cur,                &
+                                time_step,               &
+                                occupation,              &
+                                c_matrix_cmplx,          &
+                                hamiltonian_kinetic,     &
+                                hamiltonian_nucleus,     &
+                                h_small_cmplx,           &
+                                x_matrix,                &
+                                dipole_ao,               &
+                                h_cmplx,en_tddft)
 
    !--5--UPDATE----|
    c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
@@ -634,19 +634,19 @@ subroutine predictor_corrector(basis,                  &
      call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
 
      !--4--CORRECTOR----| C(1)-->H(1)
-     call setup_hamiltonian_fock_cmplx( basis,                   &
-                                        nstate,                  &
-                                        itau,                    &
-                                        time_cur,                &
-                                        time_step,               &
-                                        occupation,              &
-                                        c_matrix_cmplx,          &
-                                        hamiltonian_kinetic,     &
-                                        hamiltonian_nucleus,     &
-                                        h_small_hist_cmplx(:,:,:,n_hist+2),           &
-                                        x_matrix,                &
-                                        dipole_ao,               &
-                                        h_cmplx,en_tddft)
+     call setup_hamiltonian_cmplx(basis,                   &
+                                  nstate,                  &
+                                  itau,                    &
+                                  time_cur,                &
+                                  time_step,               &
+                                  occupation,              &
+                                  c_matrix_cmplx,          &
+                                  hamiltonian_kinetic,     &
+                                  hamiltonian_nucleus,     &
+                                  h_small_hist_cmplx(:,:,:,n_hist+2),           &
+                                  x_matrix,                &
+                                  dipole_ao,               &
+                                  h_cmplx,en_tddft)
 
      c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
      !--2B--LOCAL LINEAR INTERPOLATION----| h_cmplx in the 1/2 of the current time interval
@@ -692,19 +692,19 @@ subroutine predictor_corrector(basis,                  &
      !--3--PREDICTOR (propagation of C(0)-->C(1))
      call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist:n_hist+1),x_matrix,"ETRS")
      !--4--CORRECTOR----| C(1)-->H(1)
-     call setup_hamiltonian_fock_cmplx( basis,                   &
-                                        nstate,                  &
-                                        itau,                    &
-                                        time_cur,                &
-                                        time_step,               &
-                                        occupation,              &
-                                        c_matrix_cmplx,          &
-                                        hamiltonian_kinetic,     &
-                                        hamiltonian_nucleus,     &
-                                        h_small_hist_cmplx(:,:,:,n_hist+1) ,    &
-                                        x_matrix,                &
-                                        dipole_ao,               &
-                                        h_cmplx,en_tddft)
+     call setup_hamiltonian_cmplx(basis,                   &
+                                  nstate,                  &
+                                  itau,                    &
+                                  time_cur,                &
+                                  time_step,               &
+                                  occupation,              &
+                                  c_matrix_cmplx,          &
+                                  hamiltonian_kinetic,     &
+                                  hamiltonian_nucleus,     &
+                                  h_small_hist_cmplx(:,:,:,n_hist+1) ,    &
+                                  x_matrix,                &
+                                  dipole_ao,               &
+                                  h_cmplx,en_tddft)
 
       c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
 
@@ -733,19 +733,19 @@ subroutine predictor_corrector(basis,                  &
    call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,1),x_matrix,"MAG2")
 
    do i_iter=1,n_iter
-     call setup_hamiltonian_fock_cmplx( basis,                   &
-                                        nstate,                  &
-                                        itau,                    &
-                                        time_cur,                &
-                                        time_step,               &
-                                        occupation,              &
-                                        c_matrix_cmplx,          &
-                                        hamiltonian_kinetic,     &
-                                        hamiltonian_nucleus,     &
-                                        h_small_hist_cmplx(:,:,:,2),   &
-                                        x_matrix,                &
-                                        dipole_ao,               &
-                                        h_cmplx,en_tddft)
+     call setup_hamiltonian_cmplx(basis,                   &
+                                  nstate,                  &
+                                  itau,                    &
+                                  time_cur,                &
+                                  time_step,               &
+                                  occupation,              &
+                                  c_matrix_cmplx,          &
+                                  hamiltonian_kinetic,     &
+                                  hamiltonian_nucleus,     &
+                                  h_small_hist_cmplx(:,:,:,2),   &
+                                  x_matrix,                &
+                                  dipole_ao,               &
+                                  h_cmplx,en_tddft)
 
      if(i_iter/=n_iter) then
        c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
@@ -1577,20 +1577,20 @@ end subroutine propagate_orth_ham_2
 
 
 !=========================================================================
-subroutine setup_hamiltonian_fock_cmplx(basis,                   &
-                                        nstate,                  &
-                                        itau,                    &
-                                        time_cur,                &
-                                        time_step_cur,           &
-                                        occupation,              &
-                                        c_matrix_cmplx,          &
-                                        hamiltonian_kinetic,     &
-                                        hamiltonian_nucleus,     &
-                                        h_small_cmplx,           &
-                                        x_matrix,                &
-                                        dipole_ao,               &
-                                        hamiltonian_fock_cmplx,  &
-                                        en)
+subroutine setup_hamiltonian_cmplx(basis,                   &
+                                   nstate,                  &
+                                   itau,                    &
+                                   time_cur,                &
+                                   time_step_cur,           &
+                                   occupation,              &
+                                   c_matrix_cmplx,          &
+                                   hamiltonian_kinetic,     &
+                                   hamiltonian_nucleus,     &
+                                   h_small_cmplx,           &
+                                   x_matrix,                &
+                                   dipole_ao,               &
+                                   hamiltonian_cmplx,       &
+                                   en)
 
  implicit none
 !=====
@@ -1605,7 +1605,7 @@ subroutine setup_hamiltonian_fock_cmplx(basis,                   &
  real(dp),allocatable,intent(in) :: dipole_ao(:,:,:)
  real(dp),intent(in)             :: x_matrix(basis%nbf,nstate)
  complex(dp),intent(in)          :: c_matrix_cmplx(basis%nbf,nocc,nspin)
- complex(dp),intent(out)         :: hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin)
+ complex(dp),intent(out)         :: hamiltonian_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp),intent(out)         :: h_small_cmplx(nstate,nstate,nspin)
  type(energy_contributions),intent(inout) :: en
 !=====
@@ -1626,7 +1626,7 @@ subroutine setup_hamiltonian_fock_cmplx(basis,                   &
                                          occupation,               &
                                          c_matrix_cmplx,           &
                                          p_matrix_cmplx,           &
-                                         hamiltonian_fock_cmplx,en)
+                                         hamiltonian_cmplx,en)
 
 
 
@@ -1651,7 +1651,7 @@ subroutine setup_hamiltonian_fock_cmplx(basis,                   &
      excit_field_norm = NORM2(excit_field(:))
      do idir=1,3
        do ispin=1, nspin
-         hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - dipole_ao(:,:,idir) * excit_field(idir)
+         hamiltonian_cmplx(:,:,ispin) = hamiltonian_cmplx(:,:,ispin) - dipole_ao(:,:,idir) * excit_field(idir)
          en_tddft%excit = en_tddft%excit + REAL(SUM(dipole_ao(:,:,idir) * excit_field(idir) * p_matrix_cmplx(:,:,ispin)),dp)
        enddo
      end do
@@ -1676,7 +1676,7 @@ subroutine setup_hamiltonian_fock_cmplx(basis,                   &
    call setup_nucleus(basis,hamiltonian_projectile,projectile_list)
 
    do ispin=1,nspin
-     hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_projectile(:,:)
+     hamiltonian_cmplx(:,:,ispin) = hamiltonian_cmplx(:,:,ispin) + hamiltonian_projectile(:,:)
    enddo
    en_tddft%excit = REAL( SUM( hamiltonian_projectile(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    deallocate(hamiltonian_projectile)
@@ -1684,11 +1684,11 @@ subroutine setup_hamiltonian_fock_cmplx(basis,                   &
  end select
 
  do ispin=1,nspin
-   hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   hamiltonian_cmplx(:,:,ispin) = hamiltonian_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
  enddo
 
  ! Perform the canonical transform from the original basis to the orthogonal one
- call transform_hamiltonian_ortho(x_matrix,hamiltonian_fock_cmplx,h_small_cmplx)
+ call transform_hamiltonian_ortho(x_matrix,hamiltonian_cmplx,h_small_cmplx)
 
 
  ! kinetic and nuclei-electrons energy contributions
@@ -1697,7 +1697,7 @@ subroutine setup_hamiltonian_fock_cmplx(basis,                   &
 
  call stop_clock(timing_tddft_hamiltonian)
 
-end subroutine setup_hamiltonian_fock_cmplx
+end subroutine setup_hamiltonian_cmplx
 
 
 !=========================================================================

@@ -358,7 +358,7 @@ subroutine scf_loop(is_restart,&
           .OR. TRIM(pt_density_matrix) /= 'NO'   &
           .OR. calc_type%selfenergy_approx > 0  )  ) then
    call get_fock_operator(basis,p_matrix,c_matrix,occupation,en_gks, &
-                             hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
+                          hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
  endif
 
  !
