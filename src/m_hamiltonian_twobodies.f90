@@ -773,7 +773,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
 
    !$OMP PARALLEL DO
    do ibf=1,nbf
-     c_t_cmplx(:,ibf) = c_matrix(ibf,1:nocc,ispin) * SQRT( occupation(1:nocc,ispin) / spin_fact )
+     c_t_cmplx(:,ibf) = CONJG( c_matrix(ibf,1:nocc,ispin) ) * SQRT( occupation(1:nocc,ispin) / spin_fact )
    enddo
    !$OMP END PARALLEL DO
 
@@ -803,14 +803,13 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
 
 
  !
- ! Need to symmetrize exchange_ao
+ ! Need to hermitianize exchange_ao
  do ispin=1,nspin
    do ibf=1,nbf
      do jbf=ibf+1,nbf
        exchange_ao(ibf,jbf,ispin) = CONJG( exchange_ao(jbf,ibf,ispin) )
      enddo
    enddo
-   exchange_ao(:,:,ispin) = CONJG( exchange_ao(:,:,ispin) )
  enddo
  call xsum_world(exchange_ao)
 
