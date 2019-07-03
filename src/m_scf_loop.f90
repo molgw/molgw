@@ -180,7 +180,7 @@ subroutine scf_loop(is_restart,&
 
 
      call init_spectral_function(nstate,occupation,0,wpol)
-     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_gks%rpa,wpol)
+     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_gks%rpa,en_gks%gw,wpol)
 
      if( ABS(en_gks%rpa) > 1.e-6_dp) then
        en_gks%tot = en_gks%tot + en_gks%rpa

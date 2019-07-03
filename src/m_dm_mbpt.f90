@@ -44,7 +44,6 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
  integer                    :: ispin,istate
  type(spectral_function)    :: wpol
  type(energy_contributions) :: en_dm_corr
- real(dp)                   :: en_rpa
  real(dp),allocatable       :: h_ii(:,:),exchange_ii(:,:)
  real(dp),allocatable       :: p_matrix_corr(:,:,:)
  real(dp),allocatable       :: hamiltonian_hartree_corr(:,:)
@@ -86,21 +85,21 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
    case('GW','G0W0')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      call init_spectral_function(nstate,occupation,0,wpol)
-     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_rpa,wpol)
+     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
      call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
    case('GW_IMAGINARY','G0W0_IMAGINARY')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      ! using an imaginary axis integral
      call init_spectral_function(nstate,occupation,nomega_imag,wpol)
-     call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en_rpa,wpol)
+     call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,wpol)
      call gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
    case('GW_DYSON','G0W0_DYSON')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      ! using an imaginary axis integral
      call init_spectral_function(nstate,occupation,nomega_imag,wpol)
-     call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en_rpa,wpol)
+     call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,wpol)
      call gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
    end select
@@ -138,11 +137,17 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
 
    en_dm_corr%tot = en_dm_corr%nuc_nuc + en_dm_corr%kin + en_dm_corr%nuc +  en_dm_corr%hart + en_dm_corr%exx
    write(stdout,'(/,1x,a)') 'Energies from correlated density matrix'
-   write(stdout,'(a25,1x,f19.10)')   'Kinetic Energy (Ha):',en_dm_corr%kin
-   write(stdout,'(a25,1x,f19.10)')   'Nucleus Energy (Ha):',en_dm_corr%nuc
-   write(stdout,'(a25,1x,f19.10)')   'Hartree Energy (Ha):',en_dm_corr%hart
-   write(stdout,'(a25,1x,f19.10)')  'Exchange Energy (Ha):',en_dm_corr%exx
-   write(stdout,'(a25,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%tot
+   write(stdout,'(a35,1x,f19.10)')   'Kinetic Energy (Ha):',en_dm_corr%kin
+   write(stdout,'(a35,1x,f19.10)')   'Nucleus Energy (Ha):',en_dm_corr%nuc
+   write(stdout,'(a35,1x,f19.10)')   'Hartree Energy (Ha):',en_dm_corr%hart
+   write(stdout,'(a35,1x,f19.10)')  'Exchange Energy (Ha):',en_dm_corr%exx
+   write(stdout,'(a35,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%tot
+
+   if( ABS(en_dm_corr%gw) > 1.0e-8_dp ) then
+     write(stdout,'(a35,1x,f19.10)')  'GW correlation Energy (Ha):',en_dm_corr%gw
+     en_dm_corr%tot = en_dm_corr%tot + en_dm_corr%gw
+     write(stdout,'(a35,1x,f19.10)')  'Total GM Energy (Ha):',en_dm_corr%tot
+   endif
 
    nocc = get_number_occupied_states(occupation)
    allocate(h_ii(nstate,nspin))

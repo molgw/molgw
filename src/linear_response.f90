@@ -7,7 +7,7 @@
 ! and the corresponding optical spectra
 !
 !=========================================================================
-subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy,c_matrix,en_rpa,en_gw,wpol_out)
  use m_definitions
  use m_timing
  use m_warning
@@ -27,13 +27,12 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)                  :: rpa_correlation
+ real(dp),intent(out)                  :: en_rpa,en_gw
  type(spectral_function),intent(inout) :: wpol_out
 !=====
  type(spectral_function)   :: wpol_static
  logical                   :: is_bse
  integer                   :: nmat,nexc
- real(dp)                  :: energy_gm
  real(dp)                  :: alpha_local
  real(dp),allocatable      :: amb_diag_rpa(:)
  real(dp),allocatable      :: amb_matrix(:,:),apb_matrix(:,:)
@@ -52,6 +51,8 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
 !=====
 
  call start_clock(timing_pola)
+ en_rpa = 0.0_dp
+ en_gw  = 0.0_dp
 
  write(stdout,'(/,a)') ' Calculating the polarizability'
  if(is_triplet) then
@@ -171,7 +172,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    call build_apb_hartree_auxil(desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
 #endif
 
-   call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+   call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,en_rpa)
 
 
 
@@ -195,7 +196,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    !
    ! Step 1
    call build_amb_apb_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
-                             m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
+                             m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,en_rpa)
 
    !
    ! Step 2
@@ -279,11 +280,11 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
 
  !
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
- rpa_correlation = rpa_correlation + 0.50_dp * SUM( ABS(eigenvalue(:)) )
+ en_rpa = en_rpa + 0.50_dp * SUM( ABS(eigenvalue(:)) )
  if( is_rpa ) then
    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
    write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-   write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',rpa_correlation
+   write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',en_rpa
  endif
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
@@ -310,12 +311,12 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
  if( print_w_ .OR. calculate_w ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
+     call chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,en_gw)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if( is_rpa ) then
        write(stdout,'(/,1x,a)')        'Correlation energy in the Galitskii-Migdal formula'
-       write(stdout,'(1x,a,f19.10,/)') '                        1/2 Tr[ Sig_c * G ] (Ha): ',energy_gm
+       write(stdout,'(1x,a,f19.10,/)') '                        1/2 Tr[ Sig_c * G ] (Ha): ',en_gw
      endif
 
      ! Add the single pole approximation for the poles that have been neglected

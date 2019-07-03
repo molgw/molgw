@@ -69,7 +69,7 @@ program molgw
  logical                 :: is_restart,is_big_restart,is_basis_restart
  logical                 :: restart_tddft_is_correct = .TRUE.
  logical                 :: is_converged
- real(dp)                :: erpa_tmp
+ real(dp)                :: erpa_tmp,egw_tmp
  real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)
@@ -572,7 +572,7 @@ program molgw
  ! (only if the SCF cycles were converged)
  if( ( calc_type%is_td .OR. calc_type%is_bse ) .AND. is_converged ) then
    call init_spectral_function(nstate,occupation,0,wpol)
-   call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,erpa_tmp,wpol)
+   call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
    call destroy_spectral_function(wpol)
  endif
 
