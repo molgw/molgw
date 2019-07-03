@@ -149,6 +149,27 @@ If present, the auxiliary basis will be used for both the scf cycles and the pos
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='auto_auxil_fsam'
+vl[i].family   ='general'
+vl[i].default  = 1.5
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the F_SAM parameter in the automatic generation of the auxiliary basis set. \
+The closer to 1.0 the more auxiliary basis functions it will generate. \
+See Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='auto_auxil_lmaxinc'
+vl[i].family   ='general'
+vl[i].default  = 1
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the l_MAXINC parameter in the automatic generation of the auxiliary basis set. The larger the more auxiliary basis functions it will generate. \
+See Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='incore'
 vl[i].family   ='general'
 vl[i].datatype ='yes/no'

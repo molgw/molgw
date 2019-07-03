@@ -216,6 +216,8 @@ module m_inputparam
  logical,protected                :: calc_spectrum_
  logical,protected                :: read_tddft_restart_
  logical,protected                :: print_tddft_restart_
+ integer,protected                :: auto_auxil_lmaxinc
+ real(dp),protected               :: auto_auxil_fsam
 
 
 contains
@@ -898,6 +900,7 @@ subroutine read_inputfile_namelist()
  if(magnetization>1.e-5 .AND. nspin==1) call die('magnetization is non-zero and nspin is 1')
  if(nomega_sigma<0)    call die('nomega_sigma < 0')
  if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
+ if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
 
  if( MODULO( nproc_world , mpi_nproc_ortho) /= 0 ) then
    write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',nproc_world

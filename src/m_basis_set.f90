@@ -18,6 +18,7 @@ module m_basis_set
  use m_ecp
  use m_gaussian
  use m_cart_to_pure
+ use m_inputparam,only: auto_auxil_fsam, auto_auxil_lmaxinc
 
 
  type basis_function
@@ -307,9 +308,6 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
  type(basis_set),intent(in)    :: basis
  type(basis_set),intent(out)   :: auxil_basis
 !=====
- real(dp),parameter :: FSAM    = 1.5_dp
- integer,parameter  :: LMAXINC = 1
-
  logical :: new_primitive,pauto
  integer :: lmax_obs,lmax_abs,am,lval
  integer :: jbf,jbf_cart
@@ -340,8 +338,8 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
    write(stdout,'(1x,a)')      '  Method: Auto'
  endif
  write(stdout,'(1x,a)')        '  recipe in Yang, Rendell, Frisch, J. Chem. Phys. 127, 074102 (2007)'
- write(stdout,'(1x,a25,f8.3)') 'Parameter    f_sam: ',FSAM
- write(stdout,'(1x,a25,i3)')   'Parameter l_MAXINC: ',LMAXINC
+ write(stdout,'(1x,a25,f8.3)') 'Parameter    f_sam: ',auto_auxil_fsam
+ write(stdout,'(1x,a25,i3)')   'Parameter l_MAXINC: ',auto_auxil_lmaxinc
 
 
  ncenter = MAXVAL( basis%shell(:)%iatom )
@@ -437,7 +435,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_
      ! Find the trial set
      ! Duplicate primitives will be removed later
      do icandidate=1,ncandidate
-       if( remaining_candidate(icandidate) .AND. exponent_current / exponent_candidate(icandidate) < FSAM ) then
+       if( remaining_candidate(icandidate) .AND. exponent_current / exponent_candidate(icandidate) < auto_auxil_fsam ) then
          ntrial = ntrial + 1
          exponent_trial(ntrial) = exponent_candidate(icandidate)
          am_trial(ntrial)       = am_candidate(icandidate)
@@ -604,7 +602,7 @@ function get_lmax_abs(lmax_obs,zcenter) result(lmax_abs)
  else
    lval = 3
  endif
- lmax_abs = MAX( lmax_obs + LMAXINC , 2 * lval )
+ lmax_abs = MAX( lmax_obs + auto_auxil_lmaxinc , 2 * lval )
 
 end function get_lmax_abs
 
