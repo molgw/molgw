@@ -1027,7 +1027,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
          skip_shell = .TRUE.
          do ibf=1,ni
            iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
-           skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(iglobal,MB_3center,0,first_row,nprow_3center) )
+           skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) )
          enddo
 
          if( skip_shell ) cycle
