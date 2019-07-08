@@ -18,7 +18,6 @@ module m_basis_set
  use m_ecp
  use m_gaussian
  use m_cart_to_pure
- use m_inputparam,only: auto_auxil_fsam, auto_auxil_lmaxinc
 
 
  type basis_function
@@ -300,12 +299,14 @@ end subroutine echo_basis_summary
 
 !=========================================================================
 !Build a system specific auxiliary basis based the 'Auto' recipe in Gaussian
-subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_basis)
+subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
  implicit none
 
  character(len=100),intent(in) :: auxil_basis_name(natom_basis)
  character(len=4),intent(in)   :: gaussian_type
  type(basis_set),intent(in)    :: basis
+ real(dp),intent(in)           :: auto_auxil_fsam
+ integer,intent(in)            :: auto_auxil_lmaxinc
  type(basis_set),intent(out)   :: auxil_basis
 !=====
  logical :: new_primitive,pauto

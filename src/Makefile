@@ -83,9 +83,9 @@ level010: m_tddft_variables.o m_elements.o m_timing.o m_memory.o \
 
 level015: m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o
 
-level020: m_inputparam.o
+level020: m_inputparam.o m_basis_set.o
 
-level022: m_libint_tools.o m_block_diago.o m_hamiltonian_tools.o m_basis_set.o
+level022: m_libint_tools.o m_block_diago.o m_hamiltonian_tools.o
 
 level025: m_eri.o m_scf.o m_dft_grid.o
 

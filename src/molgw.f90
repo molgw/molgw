@@ -177,7 +177,7 @@ program molgw
      if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
        call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
      else
-       call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auxil_basis)
+       call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
      endif
 
      ! 2-center integrals
