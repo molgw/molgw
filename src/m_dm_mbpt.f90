@@ -128,25 +128,25 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
    !
    ! Nucleus-nucleus repulsion contribution to the energy
    call nucleus_nucleus_energy(en_dm_corr%nuc_nuc)
-   en_dm_corr%kin = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
-   en_dm_corr%nuc = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
+   en_dm_corr%kinetic = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
+   en_dm_corr%nucleus = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_corr(:,:,:),DIM=3) )
 
-   call calculate_hartree(basis,p_matrix_corr,hamiltonian_hartree_corr,eh=en_dm_corr%hart)
+   call calculate_hartree(basis,p_matrix_corr,hamiltonian_hartree_corr,eh=en_dm_corr%hartree)
 
    call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=en_dm_corr%exx)
 
-   en_dm_corr%tot = en_dm_corr%nuc_nuc + en_dm_corr%kin + en_dm_corr%nuc +  en_dm_corr%hart + en_dm_corr%exx
+   en_dm_corr%total = en_dm_corr%nuc_nuc + en_dm_corr%kinetic + en_dm_corr%nucleus +  en_dm_corr%hartree + en_dm_corr%exx
    write(stdout,'(/,1x,a)') 'Energies from correlated density matrix'
-   write(stdout,'(a35,1x,f19.10)')   'Kinetic Energy (Ha):',en_dm_corr%kin
-   write(stdout,'(a35,1x,f19.10)')   'Nucleus Energy (Ha):',en_dm_corr%nuc
-   write(stdout,'(a35,1x,f19.10)')   'Hartree Energy (Ha):',en_dm_corr%hart
+   write(stdout,'(a35,1x,f19.10)')   'Kinetic Energy (Ha):',en_dm_corr%kinetic
+   write(stdout,'(a35,1x,f19.10)')   'Nucleus Energy (Ha):',en_dm_corr%nucleus
+   write(stdout,'(a35,1x,f19.10)')   'Hartree Energy (Ha):',en_dm_corr%hartree
    write(stdout,'(a35,1x,f19.10)')  'Exchange Energy (Ha):',en_dm_corr%exx
-   write(stdout,'(a35,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%tot
+   write(stdout,'(a35,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%total
 
    if( ABS(en_dm_corr%gw) > 1.0e-8_dp ) then
      write(stdout,'(a35,1x,f19.10)')  'GW correlation Energy (Ha):',en_dm_corr%gw
-     en_dm_corr%tot = en_dm_corr%tot + en_dm_corr%gw
-     write(stdout,'(a35,1x,f19.10)')  'Total GM Energy (Ha):',en_dm_corr%tot
+     en_dm_corr%total = en_dm_corr%total + en_dm_corr%gw
+     write(stdout,'(a35,1x,f19.10)')  'Total GM Energy (Ha):',en_dm_corr%total
    endif
 
    nocc = get_number_occupied_states(occupation)

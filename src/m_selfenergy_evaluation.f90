@@ -209,10 +209,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
          endif
        endif
 
-       en_mbpt%tot = en_mbpt%tot + en_mbpt%rpa
-       if( calc_type%is_dft ) en_mbpt%tot = en_mbpt%tot - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx
+       en_mbpt%total = en_mbpt%total + en_mbpt%rpa
+       if( calc_type%is_dft ) en_mbpt%total = en_mbpt%total - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx
        if( ABS(en_mbpt%rpa) > 1.e-6_dp) then
-         write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_mbpt%tot
+         write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_mbpt%total
        endif
 
      endif
@@ -241,7 +241,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
 
      if( ABS(en_mbpt%gw) > 1.0e-5_dp ) then
-       write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en_mbpt%tot - en_mbpt%rpa + en_mbpt%gw
+       write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en_mbpt%total - en_mbpt%rpa + en_mbpt%gw
      endif
 
      if( .NOT. ( calc_type%selfenergy_approx == GnW0 .AND. istep_gw < nstep_gw ) ) then
@@ -370,9 +370,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      if( ABS( en_mbpt%mp2 ) > 1.0e-8 ) then
        write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_mbpt%mp2
        write(stdout,*)
-       en_mbpt%tot = en_mbpt%nuc_nuc + en_mbpt%kin + en_mbpt%nuc + en_mbpt%hart + en_mbpt%exx + en_mbpt%mp2
+       en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus + en_mbpt%hartree + en_mbpt%exx + en_mbpt%mp2
 
-       write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_mbpt%tot
+       write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_mbpt%total
        write(stdout,*)
      endif
 

@@ -240,7 +240,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  real(dp),allocatable       :: hamiltonian_tmp(:,:,:)
 !=====
 
- en_tddft%hart    = 0.0_dp
+ en_tddft%hartree = 0.0_dp
  en_tddft%xc      = 0.0_dp
  en_tddft%exx     = 0.0_dp
  en_tddft%exx_hyb = 0.0_dp
@@ -268,7 +268,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    ! Hartree contribution to the Hamiltonian
    ! Hartree contribution is real and depends only on real(p_matrix) but we pass the full p_matrix_cmplx any way
    !
-   call setup_hartree_ri(p_matrix_cmplx,hamiltonian_tmp(:,:,1),en_tddft%hart)
+   call setup_hartree_ri(p_matrix_cmplx,hamiltonian_tmp(:,:,1),en_tddft%hartree)
 
  do ispin=1,nspin
    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)

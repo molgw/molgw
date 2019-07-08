@@ -37,9 +37,9 @@ module m_scf
 
  type energy_contributions
    real(dp) :: nuc_nuc = 0.0_dp
-   real(dp) :: kin     = 0.0_dp
-   real(dp) :: nuc     = 0.0_dp
-   real(dp) :: hart    = 0.0_dp
+   real(dp) :: kinetic = 0.0_dp
+   real(dp) :: nucleus = 0.0_dp
+   real(dp) :: hartree = 0.0_dp
    real(dp) :: exx_hyb = 0.0_dp
    real(dp) :: exx     = 0.0_dp
    real(dp) :: xc      = 0.0_dp
@@ -47,7 +47,7 @@ module m_scf
    real(dp) :: mp3     = 0.0_dp
    real(dp) :: rpa     = 0.0_dp
    real(dp) :: gw      = 0.0_dp
-   real(dp) :: tot     = 0.0_dp
+   real(dp) :: total   = 0.0_dp
    real(dp) :: excit   = 0.0_dp      ! TDDFT excitation energy
  end type
 

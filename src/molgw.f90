@@ -367,7 +367,7 @@ program molgw
    ! If requested, evaluate the forces
    if( move_nuclei == 'relax' ) then
      call calculate_force(basis,nstate,occupation,energy,c_matrix)
-     call relax_atoms(lbfgs_plan,en_gks%tot)
+     call relax_atoms(lbfgs_plan,en_gks%total)
      call output_positions()
 
      if( MAXVAL(force(:,:)) < tolforce ) then
@@ -539,9 +539,9 @@ program molgw
 
    write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
    write(stdout,*)
-   en_gks%tot = en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx + en_gks%mp2
+   en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx + en_gks%mp2
 
-   write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%tot
+   write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%total
    write(stdout,*)
 
  endif
@@ -559,9 +559,9 @@ program molgw
    write(stdout,'(a,2x,f19.10)') ' MP3 Energy       (Ha):',en_gks%mp3
    write(stdout,*)
 
-   en_gks%tot = en_gks%tot + en_gks%mp3
+   en_gks%total = en_gks%total + en_gks%mp3
 
-   write(stdout,'(a,2x,f19.10)') ' MP3 Total Energy (Ha):',en_gks%tot
+   write(stdout,'(a,2x,f19.10)') ' MP3 Total Energy (Ha):',en_gks%total
    write(stdout,*)
 
  endif

@@ -264,7 +264,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  !
  ! Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
- en_tddft%tot = en_tddft%nuc + en_tddft%kin + en_tddft%nuc_nuc + en_tddft%hart + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
+ en_tddft%total = en_tddft%nucleus + en_tddft%kinetic + en_tddft%nuc_nuc + en_tddft%hartree + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
 
  if( excit_type%form == EXCIT_LIGHT ) then
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
@@ -347,7 +347,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
       call static_dipole(basis,p_matrix_in=p_matrix_cmplx,dipole_ao_in=dipole_ao,dipole_out=dipole)
      end if
 
-     en_tddft%tot = en_tddft%nuc + en_tddft%kin + en_tddft%nuc_nuc + en_tddft%hart + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
+     en_tddft%total = en_tddft%nucleus + en_tddft%kinetic + en_tddft%nuc_nuc + en_tddft%hartree + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
 
      call print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field,itau)
 
@@ -841,18 +841,18 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
  write(stdout,'(/,1x,a)')    '==================================================================================================='
  write(stdout,'(1x,a,i8,a)') '===================== RT-TDDFT values for the iteration  ',itau,' ================================='
  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
- write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en_tddft%tot
+ write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en_tddft%total
 
  select case(excit_type%form)
  case(EXCIT_PROJECTILE)
    write(file_time_data,"(F9.4,9(2x,es16.8E3))") &
-      time_cur, en_tddft%tot, xatom(3,natom), en_tddft%nuc_nuc, en_tddft%nuc, en_tddft%kin, en_tddft%hart, en_tddft%exx_hyb, en_tddft%xc, &
+      time_cur, en_tddft%total, xatom(3,natom), en_tddft%nuc_nuc, en_tddft%nucleus, en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
       en_tddft%excit
    call output_projectile_position()
 
  case(EXCIT_LIGHT)
    write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
-    time_cur, en_tddft%tot, en_tddft%nuc_nuc, en_tddft%nuc, en_tddft%kin, en_tddft%hart, en_tddft%exx_hyb, en_tddft%xc, en_tddft%excit
+    time_cur, en_tddft%total, en_tddft%nuc_nuc, en_tddft%nucleus, en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, en_tddft%excit
    write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
    write(file_excit_field,'(2f19.10)') time_cur, excit_field_norm
    write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
@@ -1692,8 +1692,8 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
 
  ! kinetic and nuclei-electrons energy contributions
- en_tddft%kin = REAL( SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
- en_tddft%nuc = REAL( SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+ en_tddft%kinetic = REAL( SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+ en_tddft%nucleus = REAL( SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
 
  call stop_clock(timing_tddft_hamiltonian)
 

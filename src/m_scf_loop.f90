@@ -108,8 +108,8 @@ subroutine scf_loop(is_restart,&
    write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
 
-   en_gks%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
-   en_gks%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   en_gks%kinetic  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   en_gks%nucleus  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
 
    !
    ! Setup kinetic and nucleus contributions (that are independent of the
@@ -122,12 +122,12 @@ subroutine scf_loop(is_restart,&
    !
    ! Hartree contribution to the Hamiltonian
    !
-   call calculate_hartree(basis,p_matrix,hamiltonian_hartree,eh=en_gks%hart)
+   call calculate_hartree(basis,p_matrix,hamiltonian_hartree,eh=en_gks%hartree)
 
    ! calc_type%is_core is an inefficient way to get the Kinetic+Nucleus Hamiltonian
    if( calc_type%is_core ) then
      hamiltonian_hartree(:,:) = 0.0_dp
-     en_gks%hart = 0.0_dp
+     en_gks%hartree = 0.0_dp
    endif
    do ispin=1,nspin
      hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
@@ -183,8 +183,8 @@ subroutine scf_loop(is_restart,&
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_gks%rpa,en_gks%gw,wpol)
 
      if( ABS(en_gks%rpa) > 1.e-6_dp) then
-       en_gks%tot = en_gks%tot + en_gks%rpa
-       write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_gks%tot
+       en_gks%total = en_gks%total + en_gks%rpa
+       write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_gks%total
      endif
 
      !
@@ -216,8 +216,8 @@ subroutine scf_loop(is_restart,&
 
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
      write(stdout,*)
-     en_gks%tot = en_gks%tot + en_gks%mp2
-     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%tot
+     en_gks%total = en_gks%total + en_gks%mp2
+     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%total
 
      call dump_out_matrix(.FALSE.,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
 
@@ -234,7 +234,7 @@ subroutine scf_loop(is_restart,&
 
    ! All the components of the energy have been calculated at this stage
    ! Sum up to get the total energy
-   en_gks%tot = en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx_hyb + en_gks%xc
+   en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
 
    ! Make sure all the MPI tasks have the exact same Hamiltonian
    ! It helps stabilizing the SCF cycles in parallel
@@ -249,7 +249,7 @@ subroutine scf_loop(is_restart,&
    endif
 
    ! DIIS or simple mixing on the hamiltonian
-   call hamiltonian_prediction(s_matrix,x_matrix,p_matrix,hamiltonian,en_gks%tot)
+   call hamiltonian_prediction(s_matrix,x_matrix,p_matrix,hamiltonian,en_gks%total)
 
 
    !
@@ -277,16 +277,16 @@ subroutine scf_loop(is_restart,&
    ! Output the total energy and its components
    write(stdout,*)
    write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en_gks%nuc_nuc
-   write(stdout,'(a25,1x,f19.10)') 'Kinetic Energy  (Ha):',en_gks%kin
-   write(stdout,'(a25,1x,f19.10)') 'Nucleus Energy  (Ha):',en_gks%nuc
-   write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hart
+   write(stdout,'(a25,1x,f19.10)') 'Kinetic Energy  (Ha):',en_gks%kinetic
+   write(stdout,'(a25,1x,f19.10)') 'Nucleus Energy  (Ha):',en_gks%nucleus
+   write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hartree
    if(calc_type%need_exchange) then
      write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en_gks%exx_hyb
    endif
    if( calc_type%is_dft ) then
      write(stdout,'(a25,1x,f19.10)') 'XC Energy       (Ha):',en_gks%xc
    endif
-   write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en_gks%tot
+   write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en_gks%total
 
 
    ! If fractional occupancies are allowed, then recalculate the occupations
@@ -371,11 +371,11 @@ subroutine scf_loop(is_restart,&
  call clean_deallocate('XC operator Vxc',hamiltonian_xc)
 
 
- write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%tot
+ write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
 
  if( ABS(en_gks%exx) > 1.0e-6) then
    write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en_gks%exx
-   write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kin + en_gks%nuc + en_gks%hart + en_gks%exx
+   write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx
  endif
 
 
