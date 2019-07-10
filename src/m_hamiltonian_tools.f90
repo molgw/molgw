@@ -45,7 +45,7 @@ pure function get_number_occupied_states(occupation) result(nocc)
  nocc = 0
  do ispin=1,nspin_local
    do istate=1,nstate
-     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
+     if( occupation(istate,ispin) < completely_empty )  cycle
      nocc = MAX(nocc,istate)
    enddo
  enddo
@@ -509,7 +509,7 @@ subroutine matrix_ao_to_mo_diag(c_matrix,matrix_in,diag_out)
  allocate(vector_tmp(nbf))
 
  do ispin=1,nspin
-   
+
    ispin_ham = MIN(ispin,nspin_ham)
 
    !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
@@ -877,40 +877,53 @@ end subroutine setup_sqrt_density_matrix
 subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
  implicit none
 
- real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: c_matrix(:,:,:)
- real(dp),intent(out) :: occupation(:,:)
+ real(dp),intent(in)              :: p_matrix(:,:,:)
+ real(dp),allocatable,intent(out) :: c_matrix(:,:,:)
+ real(dp),allocatable,intent(out) :: occupation(:,:)
 !=====
- real(dp),allocatable :: p_matrix_sqrt(:,:)
+ real(dp),allocatable :: p_matrix_sqrt(:,:,:),occupation_tmp(:,:)
  integer              :: nbf,nstate
  integer              :: ispin
 !=====
 
  nbf    = SIZE( p_matrix(:,:,:), DIM=1 )
- nstate = SIZE( c_matrix(:,:,:), DIM=2 )
- allocate(p_matrix_sqrt(nbf,nbf))
+ allocate(p_matrix_sqrt(nbf,nbf,nspin))
+ allocate(occupation_tmp(nbf,nspin))
 
  write(stdout,*) 'Calculate the square root of the density matrix to obtain the C matrix'
  call start_clock(timing_sqrt_density_matrix)
 
+ ! Minus the p_matrix so that the eigenvalues are ordered from the largest to the lowest
+ p_matrix_sqrt(:,:,:) = -p_matrix(:,:,:)
+
  do ispin=1,nspin
 
-   ! Minus the p_matrix so that the eigenvalues are ordered from the largest to the lowest
-   p_matrix_sqrt(:,:) = -p_matrix(:,:,ispin)
-
    ! Diagonalization with or without SCALAPACK
-   call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,p_matrix_sqrt,occupation(:,ispin))
-
-   c_matrix(:,:,ispin) = p_matrix_sqrt(:,1:nstate)
-   occupation(:,ispin) = -occupation(:,ispin)
+   call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,p_matrix_sqrt(:,:,ispin),occupation_tmp(:,ispin))
 
  enddo
 
- deallocate(p_matrix_sqrt)
+ occupation_tmp(:,:) = -occupation_tmp(:,:)
 
- if( ANY( occupation(:,:) < 0.0_dp ) ) then
+ nstate = COUNT( ALL( occupation_tmp(:,:) > -0.0001_dp , DIM=2 ) )
+
+ if( nstate /= nbf ) then
    call issue_warning('get_c_matrix_from_p_matrix: negative occupation numbers')
+   write(stdout,'(1x,a,i4)')     'Number of negative eigenvalues: ',nbf - nstate
+   write(stdout,'(1x,a,*(1x,es18.8))') 'Most negative eigenvalue: ',occupation_tmp(nbf,:)
  endif
+
+
+ if( ALLOCATED(c_matrix) ) deallocate(c_matrix)
+ if( ALLOCATED(occupation) ) deallocate(occupation)
+ allocate(c_matrix(nbf,nstate,nspin))
+ allocate(occupation(nstate,nspin))
+ c_matrix(:,:,:) = p_matrix_sqrt(:,1:nstate,:)
+ occupation(:,:) = occupation_tmp(:,:)
+
+
+ deallocate(p_matrix_sqrt,occupation_tmp)
+
 
  call stop_clock(timing_sqrt_density_matrix)
 

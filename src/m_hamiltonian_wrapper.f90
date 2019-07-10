@@ -84,8 +84,6 @@ subroutine calculate_exchange_real(basis,p_matrix,hexx,ex,occupation,c_matrix)
    else
      !
      ! c_matrix is not provided, then calculate it from the square-root of P
-     allocate(c_matrix_tmp,MOLD=p_matrix)
-     allocate(occupation_tmp(SIZE(p_matrix,DIM=1),nspin))
      call get_c_matrix_from_p_matrix(p_matrix,c_matrix_tmp,occupation_tmp)
      call setup_exchange_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
      deallocate(c_matrix_tmp)
@@ -123,8 +121,6 @@ subroutine calculate_exchange_lr(basis,p_matrix,hexx,ex,occupation,c_matrix)
    else
      !
      ! c_matrix is not provided, then calculate it from the square-root of P
-     allocate(c_matrix_tmp,MOLD=p_matrix)
-     allocate(occupation_tmp(SIZE(p_matrix,DIM=1),nspin))
      call get_c_matrix_from_p_matrix(p_matrix,c_matrix_tmp,occupation_tmp)
      call setup_exchange_longrange_ri(occupation_tmp,c_matrix_tmp,p_matrix,hexx,eexx)
      deallocate(c_matrix_tmp)

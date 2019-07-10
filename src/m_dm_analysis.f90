@@ -101,12 +101,8 @@ subroutine dm_dump(basis)
  endif
 
 
- call clean_allocate('C matrix',c_matrix_test,basis%nbf,nstate,nspin)
- allocate(occupation_test(nstate,nspin))
-
  call get_c_matrix_from_p_matrix(p_matrix_test,c_matrix_test,occupation_test)
 
- write(*,*) 'Sum(occupation): ',SUM(occupation_test(:,:))
 
  call init_dft_grid(basis,grid_level,.FALSE.,.TRUE.,BATCH_SIZE)
 
@@ -165,7 +161,6 @@ subroutine dm_dump(basis)
 
  !
  call clean_deallocate('Density matrix',p_matrix_test)
- call clean_deallocate('C matrix',c_matrix_test)
  deallocate(occupation_test)
 
 
