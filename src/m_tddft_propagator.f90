@@ -837,12 +837,12 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
 
  select case(excit_type%form)
  case(EXCIT_PROJECTILE)
-   write(file_time_data,"(F9.4,9(2x,es16.8E3))") &
+   write(file_time_data,"(F10.4,9(2x,es16.8E3))") &
       time_cur, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit
    call output_projectile_position()
 
  case(EXCIT_LIGHT)
-   write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
+   write(file_time_data,"(F10.4,8(2x,es16.8E3))") &
     time_cur, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit
    write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
    write(file_excit_field,'(2f19.10)') time_cur, REAL(excit_field_norm)

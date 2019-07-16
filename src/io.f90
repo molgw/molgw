@@ -1331,8 +1331,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
  else
    ncut=2
    allocate(istate_cut(2,2))
-   istate_cut(1,1) = 1; istate_cut(1,2) = 1;
-   istate_cut(2,1) = 2; istate_cut(2,2) = nstate;
+   istate_cut(1,1) = 1; istate_cut(1,2) = nstate;
    call issue_warning('plot_rho_traj_bunch_contrib: manual_dens_traj_states file was not found')
  endif
 
