@@ -2,29 +2,45 @@
 ! This file is part of MOLGW.
 ! Author: Fabien Bruneval
 !
-! This file contains
-! the reading / writing of the RESTART files
+! This module contains
+! the reading / writing methods for the RESTART files
 !
 !=========================================================================
-
-
-!=========================================================================
-subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
+module m_restart
  use m_definitions
  use m_timing
  use m_mpi
  use m_inputparam
  use m_atoms
  use m_basis_set
+ use m_hamiltonian_tools,only: dump_out_occupation
+ use m_hamiltonian_onebody,only: setup_overlap_mixedbasis
+ use m_linear_algebra,only: invert
+
+
+ !
+ ! Restart file types
+ integer,parameter ::           NO_RESTART = 0
+ integer,parameter ::        SMALL_RESTART = 1
+ integer,parameter ::          BIG_RESTART = 2
+ integer,parameter ::        BASIS_RESTART = 3
+
+
+
+contains
+
+
+!=========================================================================
+subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonian_fock)
  implicit none
 
- integer,intent(in)         :: restart_type
- integer,intent(in)         :: nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)        :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
+ integer,intent(in)           :: restart_type
+ type(basis_set),intent(in)   :: basis
+ real(dp),intent(in)          :: occupation(:,:),energy(:,:)
+ real(dp),intent(in)          :: c_matrix(:,:,:)
+ real(dp),optional,intent(in) :: hamiltonian_fock(:,:,:)
 !=====
+ integer                    :: nstate
  integer,parameter          :: restart_version=201609
  integer                    :: restartfile
  integer                    :: ispin,istate,ibf,nstate_local
@@ -36,12 +52,21 @@ subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ha
 
  call start_clock(timing_restart_file)
 
+ nstate = SIZE(occupation,DIM=1)
+
  select case(restart_type)
  case(SMALL_RESTART)
    write(stdout,'(/,a)') ' Writing a small RESTART file'
  case(BIG_RESTART)
    write(stdout,'(/,a)') ' Writing a big RESTART file'
+ case default
+   call die('write_restart: bug')
  end select
+
+ if( restart_type == BIG_RESTART .AND. .NOT. PRESENT(hamiltonian_fock) ) then
+   call die('write_restart: an input hamiltonian_fock is needed for a BIG restart')
+ endif
+
 
  open(newunit=restartfile,file='RESTART',form='unformatted',action='write')
 
@@ -107,28 +132,20 @@ end subroutine write_restart
 
 
 !=========================================================================
-subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock,restart_filename)
- use m_definitions
- use m_mpi
- use m_inputparam
- use m_atoms
- use m_basis_set
- use m_hamiltonian_onebody
- use m_tools,only: invert
+subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,energy,hamiltonian_fock)
  implicit none
 
- integer,intent(out)         :: restart_type
- integer,intent(in)          :: nstate
- type(basis_set),intent(in)  :: basis
- real(dp),intent(inout)      :: occupation(nstate,nspin)
- real(dp),intent(out)        :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
- real(dp),intent(out)        :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
- character(len=*),intent(in) :: restart_filename
+ integer,intent(out)           :: restart_type
+ character(len=*),intent(in)   :: restart_filename
+ type(basis_set),intent(in)    :: basis
+ real(dp),intent(inout)        :: occupation(:,:)
+ real(dp),intent(out)          :: c_matrix(:,:,:),energy(:,:)
+ real(dp),optional,intent(out) :: hamiltonian_fock(:,:,:)
 !=====
  integer                    :: restartfile
  integer                    :: ispin,istate,ibf,nstate_local
  logical                    :: file_exists,same_scf,same_basis,same_geometry
-
+ integer                    :: nstate
  integer                    :: restart_version_read
  integer                    :: restart_type_read
  character(len=100)         :: scf_name_read
@@ -153,6 +170,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
    return
  endif
 
+ nstate = SIZE(occupation,DIM=1)
 
  open(newunit=restartfile,file=restart_filename,form='unformatted',status='old',action='read')
 
@@ -251,7 +269,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
    if( temperature > 1.0e-8_dp) then
      occupation(1:MIN(nstate_read,nstate),:)=occupation_read(1:MIN(nstate_read,nstate),:)
      write(stdout,'(1xa)') "Reading occupations from a RESTART file"
-     call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
+     call dump_out_occupation('=== Occupations ===',occupation)
    else
      call issue_warning('RESTART file: Occupations have changed')
    endif
@@ -295,7 +313,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  endif
 
 
- if(restart_type == SMALL_RESTART) then
+ if( restart_type == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) ) then
 
    close(restartfile)
    return
@@ -310,10 +328,8 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
        enddo
      enddo
 
-     if( same_scf .AND. same_geometry ) then
+     if( same_geometry ) then
        restart_type = BIG_RESTART
-     else
-       restart_type = EMPTY_STATES_RESTART
      endif
      close(restartfile)
      return
@@ -391,4 +407,6 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
 end subroutine read_restart
 
 
+!=========================================================================
+end module m_restart
 !=========================================================================

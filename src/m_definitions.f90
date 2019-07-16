@@ -7,8 +7,8 @@
 !
 !=========================================================================
 module m_definitions
- use,intrinsic :: iso_fortran_env, only: OUTPUT_UNIT,ERROR_UNIT
- use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE,C_BOOL
+ use,intrinsic :: ISO_FORTRAN_ENV, only: OUTPUT_UNIT,ERROR_UNIT
+ use,intrinsic :: ISO_C_BINDING, only: C_INT,C_DOUBLE,C_BOOL,C_PTR,C_CHAR,C_NULL_PTR,C_F_POINTER
 
  integer,parameter  :: dp = KIND(0.d0)
  integer,parameter  :: sp = KIND(0.0)
@@ -50,15 +50,7 @@ module m_definitions
  integer,parameter :: very_high = 40
  integer,parameter :: insane    = 50
 
- !
- ! Restart file types
- integer,parameter ::           NO_RESTART = 0
- integer,parameter ::        SMALL_RESTART = 1
- integer,parameter ::          BIG_RESTART = 2
- integer,parameter ::        BASIS_RESTART = 3
- integer,parameter :: EMPTY_STATES_RESTART = 4
-
-#ifdef NEED_NORM2
+#if defined(NEED_NORM2)
  interface norm2
    module procedure norm2_ra1
    module procedure norm2_ra2
@@ -67,7 +59,7 @@ module m_definitions
    module procedure norm2_ra4
  end interface
 #endif
- 
+
 contains
 
 
@@ -100,7 +92,7 @@ subroutine set_standard_output(unit_stdout)
 end subroutine set_standard_output
 
 
-#ifdef NEED_NORM2
+#if defined(NEED_NORM2)
 !=========================================================================
 function norm2_ra1(array) RESULT(norm2)
  implicit none

@@ -1,5 +1,6 @@
 &molgw
  scf='pbe0'
+ tolscf=1.0e-10
  read_restart='no'
 
  basis='cc-pVDZ'

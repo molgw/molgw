@@ -16,7 +16,11 @@ module m_dft_grid
  use m_cart_to_pure
  use m_inputparam,only: partition_scheme,grid_memory
  use m_basis_set
+ use m_elements
+ use m_atoms
+ use m_numerical_tools,only: coeffs_gausslegint
 
+ integer,parameter :: BATCH_SIZE = 128
  !
  ! Grid definition
  integer,protected    :: ngrid
@@ -39,7 +43,9 @@ module m_dft_grid
  ! Function evaluation storage
  integer,private              :: ngrid_stored
  real(dp),allocatable,private :: bfr(:,:)
- real(dp),allocatable,private :: bfgr(:,:,:)
+ real(dp),allocatable,private :: bfgx(:,:)
+ real(dp),allocatable,private :: bfgy(:,:)
+ real(dp),allocatable,private :: bfgz(:,:)
 
 
 contains
@@ -47,9 +53,6 @@ contains
 
 !=========================================================================
 subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,batch_size)
- use m_elements
- use m_atoms
- use m_tools,only: coeffs_gausslegint
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -421,8 +424,14 @@ subroutine destroy_dft_grid()
  if( ALLOCATED(bfr) ) then
    call clean_deallocate('basis ftns on grid',bfr)
  endif
- if( ALLOCATED(bfgr) ) then
-   call clean_deallocate('basis grad ftns on grid',bfgr)
+ if( ALLOCATED(bfgx) ) then
+   call clean_deallocate('basis grad ftns on grid',bfgx)
+ endif
+ if( ALLOCATED(bfgy) ) then
+   call clean_deallocate('basis grad ftns on grid',bfgy)
+ endif
+ if( ALLOCATED(bfgz) ) then
+   call clean_deallocate('basis grad ftns on grid',bfgz)
  endif
  call destroy_dft_grid_distribution()
 
@@ -477,11 +486,16 @@ subroutine prepare_basis_functions_gradr(basis,batch_size)
  if( batch_size /= 1 ) then
    write(stdout,'(3x,a,i5,a,i4)') 'which corresponds to ',ngrid_stored/batch_size,' batches of size ',batch_size
  endif
- call clean_allocate('basis grad ftns on grid',bfgr,basis%nbf,ngrid_stored,3)
+ call clean_allocate('basis grad ftns on grid',bfgx,basis%nbf,ngrid_stored)
+ call clean_allocate('basis grad ftns on grid',bfgy,basis%nbf,ngrid_stored)
+ call clean_allocate('basis grad ftns on grid',bfgz,basis%nbf,ngrid_stored)
 
 
  do igrid=1,ngrid_stored,batch_size
-   call calculate_basis_functions_gradr_batch(basis,batch_size,rr_grid(:,igrid:igrid+batch_size-1),bfgr(:,igrid:igrid+batch_size-1,:))
+   call calculate_basis_functions_gradr_batch(basis,batch_size,rr_grid(:,igrid:igrid+batch_size-1), &
+                                              bfgx(:,igrid:igrid+batch_size-1), &
+                                              bfgy(:,igrid:igrid+batch_size-1), &
+                                              bfgz(:,igrid:igrid+batch_size-1))
  enddo
 
 end subroutine prepare_basis_functions_gradr
@@ -512,24 +526,27 @@ end subroutine get_basis_functions_r_batch
 
 
 !=========================================================================
-subroutine get_basis_functions_gradr_batch(basis,igrid,basis_function_gradr)
+subroutine get_basis_functions_gradr_batch(basis,igrid,bf_gradx,bf_grady,bf_gradz)
  implicit none
 
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: igrid
- real(dp),intent(out)       :: basis_function_gradr(:,:,:)
+ real(dp),intent(out)       :: bf_gradx(:,:),bf_grady(:,:),bf_gradz(:,:)
 !=====
  integer                    :: nr
 !=====
 
- nr = SIZE(basis_function_gradr,DIM=2)
+ nr = SIZE(bf_gradx,DIM=2)
 
  ! Check if the batch had been fully precalculated
  ! else calculate it now.
  if( igrid <= ngrid_stored .AND. igrid+nr-1 <= ngrid_stored ) then
-   basis_function_gradr(:,:,:) = bfgr(:,igrid:igrid+nr-1,:)
+   bf_gradx(:,:) = bfgx(:,igrid:igrid+nr-1)
+   bf_grady(:,:) = bfgy(:,igrid:igrid+nr-1)
+   bf_gradz(:,:) = bfgz(:,igrid:igrid+nr-1)
  else
-   call calculate_basis_functions_gradr_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1),basis_function_gradr)
+   call calculate_basis_functions_gradr_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1), &
+                                              bf_gradx,bf_grady,bf_gradz)
  endif
 
 end subroutine get_basis_functions_gradr_batch
@@ -660,13 +677,15 @@ end subroutine calculate_basis_functions_gradr
 
 
 !=========================================================================
-subroutine calculate_basis_functions_gradr_batch(basis,nr,rr,basis_function_gradr)
+subroutine calculate_basis_functions_gradr_batch(basis,nr,rr,bf_gradx,bf_grady,bf_gradz)
  implicit none
 
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: nr
  real(dp),intent(in)        :: rr(3,nr)
- real(dp),intent(out)       :: basis_function_gradr(basis%nbf,nr,3)
+ real(dp),intent(out)       :: bf_gradx(basis%nbf,nr)
+ real(dp),intent(out)       :: bf_grady(basis%nbf,nr)
+ real(dp),intent(out)       :: bf_gradz(basis%nbf,nr)
 !=====
  integer              :: gt
  integer              :: ir
@@ -693,9 +712,9 @@ subroutine calculate_basis_functions_gradr_batch(basis,nr,rr,basis_function_grad
      enddo
    enddo
 
-   basis_function_gradr(ibf1:ibf2,:,1) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_gradr_cart(:,:,1) )
-   basis_function_gradr(ibf1:ibf2,:,2) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_gradr_cart(:,:,2) )
-   basis_function_gradr(ibf1:ibf2,:,3) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_gradr_cart(:,:,3) )
+   bf_gradx(ibf1:ibf2,:) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_gradr_cart(:,:,1) )
+   bf_grady(ibf1:ibf2,:) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_gradr_cart(:,:,2) )
+   bf_gradz(ibf1:ibf2,:) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_gradr_cart(:,:,3) )
 
    deallocate(basis_function_gradr_cart)
 

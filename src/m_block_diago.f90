@@ -15,7 +15,7 @@ module m_block_diago
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
+ use m_linear_algebra
  use m_inputparam
 
 

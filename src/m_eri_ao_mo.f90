@@ -20,8 +20,6 @@ module m_eri_ao_mo
 
 
  real(dp),protected,allocatable :: eri_3center_eigen(:,:,:,:)
- real(dp),protected,allocatable :: eri_3center_eigen_lr(:,:,:,:)
- real(dp),protected,allocatable :: eri_3center_eigen_mixed(:,:,:,:)
 
  real(dp),protected,allocatable :: eri_4center_eigen_uks(:,:,:,:)
 
@@ -360,10 +358,10 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
  integer              :: nbf,nstate
  integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
  integer              :: mstate_count_,nstate_count_
- integer              :: kbf,lbf
+ integer              :: kbf,lbf,iauxil
  integer              :: lstate
  integer              :: klspin
- real(dp),allocatable :: eri_3center_tmp_l(:,:)
+ real(dp),allocatable :: tmp1(:,:),tmp2(:,:),c_t(:,:)
  integer              :: ipair
 !=====
 
@@ -405,181 +403,55 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
  call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center,mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
  eri_3center_eigen(:,:,:,:) = 0.0_dp
 
- call clean_allocate('TMP 3-center ints',eri_3center_tmp_l,nauxil_3center,nbf)
+
+ call clean_allocate('TMP 3-center ints',tmp1,mstate_min_,mstate_max_,1,nbf)
+ call clean_allocate('TMP 3-center ints',c_t ,mstate_min_,mstate_max_,1,nbf)
+ call clean_allocate('TMP 3-center ints',tmp2,mstate_min_,mstate_max_,nstate_min_,nstate_max_)
 
  do klspin=1,nspin
 
-   do lstate=nstate_min_,nstate_max_
-     if( MODULO( lstate - nstate_min_ , nproc_ortho ) /= rank_ortho ) cycle
+   !$OMP PARALLEL DO
+   do kbf=1,nbf
+     c_t(:,kbf)  = c_matrix(kbf,mstate_min_:mstate_max_,klspin)
+   enddo
+   !$OMP END PARALLEL DO
 
-     eri_3center_tmp_l(:,:) = 0.0_dp
+   do iauxil=1,nauxil_3center
+     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
 
-     ! Transformation of the first index
+     tmp1(:,:) = 0.0_dp
      !$OMP PARALLEL PRIVATE(kbf,lbf)
-     !$OMP DO REDUCTION(+:eri_3center_tmp_l)
+     !$OMP DO REDUCTION(+:tmp1)
      do ipair=1,npair
        kbf = index_basis(1,ipair)
        lbf = index_basis(2,ipair)
-       eri_3center_tmp_l(:,kbf) = eri_3center_tmp_l(:,kbf) &
-                                       + c_matrix(lbf,lstate,klspin) * eri_3center(:,ipair)
-       if( kbf /= lbf ) &
-       eri_3center_tmp_l(:,lbf) = eri_3center_tmp_l(:,lbf) &
-                                       + c_matrix(kbf,lstate,klspin) * eri_3center(:,ipair)
+       tmp1(:,kbf) = tmp1(:,kbf) +  c_t(:,lbf) * eri_3center(ipair,iauxil)
+       tmp1(:,lbf) = tmp1(:,lbf) +  c_t(:,kbf) * eri_3center(ipair,iauxil)
      enddo
      !$OMP END DO
      !$OMP END PARALLEL
 
-
      ! Transformation of the second index
-     !eri_3center_eigen(:,mstate_min_:mstate_max_,lstate,klspin) = MATMUL( eri_3center_tmp_l(:,:) , c_matrix(:,mstate_min_:mstate_max_,klspin) )
+     call DGEMM('N','N',mstate_count_,nstate_count_,nbf, &
+                1.0d0,tmp1,mstate_count_,   &
+                      c_matrix(1,nstate_min_,klspin),nbf, &
+                0.0d0,tmp2(mstate_min_,nstate_min_),mstate_count_)
 
-     call DGEMM('N','N',nauxil_3center,mstate_count_,nbf,1.0d0,eri_3center_tmp_l,nauxil_3center,   &
-                                                               c_matrix(1,mstate_min_,klspin),nbf, &
-                                                         0.0d0,eri_3center_eigen(1,mstate_min_,lstate,klspin),nauxil_3center)
+     ! Transposition happens here!
+     eri_3center_eigen(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
+                                 = tmp2(mstate_min_:mstate_max_,nstate_min_:nstate_max_)
 
-   enddo
+   enddo !iauxil
+ enddo !klspin
 
- enddo ! klspin
-
- call clean_deallocate('TMP 3-center ints',eri_3center_tmp_l)
-
+ call clean_deallocate('TMP 3-center ints',tmp2)
+ call clean_deallocate('TMP 3-center ints',c_t)
+ call clean_deallocate('TMP 3-center ints',tmp1)
  call xsum_ortho(eri_3center_eigen)
 
  call stop_clock(timing_eri_3center_eigen)
 
 end subroutine calculate_eri_3center_eigen
-
-
-!=================================================================
-subroutine calculate_eri_3center_eigen_lr(c_matrix)
- implicit none
- real(dp),intent(in)  :: c_matrix(:,:,:)
-!=====
- integer              :: nbf,nstate
- integer              :: kbf,lbf
- integer              :: lstate
- integer              :: klspin
- real(dp),allocatable :: eri_3center_tmp_l(:,:)
- integer              :: ipair
-!=====
-
- call start_clock(timing_eri_3center_eigen)
-
- write(stdout,'(/,a)') ' Calculate LR 3-center integrals on eigenstates'
-
- if( npcol_3center > 1 ) call die('calculate_eri_3center_eigen_lr: incompatible with npcol_3center > 1')
-
- nbf    = SIZE(c_matrix,DIM=1)
- nstate = SIZE(c_matrix,DIM=2)
-
- !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
- call clean_allocate('LR 3-center MO integrals',eri_3center_eigen_lr,nauxil_3center_lr,nstate,nstate,nspin)
- eri_3center_eigen_lr(:,:,:,:) = 0.0_dp
-
- allocate(eri_3center_tmp_l(nauxil_3center_lr,nbf))
-
- do klspin=1,nspin
-
-   do lstate=1,nstate
-     if( MODULO( lstate - 1 , nproc_ortho ) /= rank_ortho ) cycle
-
-     eri_3center_tmp_l(:,:) = 0.0_dp
-
-     ! Transformation of the first index
-     do ipair=1,npair
-       kbf = index_basis(1,ipair)
-       lbf = index_basis(2,ipair)
-       eri_3center_tmp_l(:,kbf) = eri_3center_tmp_l(:,kbf) &
-                                       + c_matrix(lbf,lstate,klspin) * eri_3center_lr(:,ipair)
-       if( kbf /= lbf )  &
-         eri_3center_tmp_l(:,lbf) = eri_3center_tmp_l(:,lbf) &
-                                         + c_matrix(kbf,lstate,klspin) * eri_3center_lr(:,ipair)
-
-     enddo
-
-   ! Transformation of the second index
-     eri_3center_eigen_lr(:,:,lstate,klspin) = MATMUL( eri_3center_tmp_l(:,:) , c_matrix(:,:,klspin) )
-
-   enddo
-
- enddo ! klspin
- deallocate(eri_3center_tmp_l)
-
- call xsum_ortho(eri_3center_eigen)
-
- call stop_clock(timing_eri_3center_eigen)
-
-end subroutine calculate_eri_3center_eigen_lr
-
-
-!=================================================================
-subroutine calculate_eri_3center_eigen_mixed(c_matrix)
- implicit none
-
- real(dp),intent(in)  :: c_matrix(:,:,:)
-!=====
- integer              :: nbf,nstate
- integer              :: kbf,lbf
- integer              :: lstate
- integer              :: klspin
- real(dp),allocatable :: eri_3center_tmp(:,:,:)
- real(dp),allocatable :: c_matrix_exx(:,:,:)
- logical              :: file_exists
-!=====
-
- call start_clock(timing_eri_3center_eigen)
-
- nbf    = SIZE(c_matrix,DIM=1)
- nstate = SIZE(c_matrix,DIM=2)
-
- inquire(file='fort.1000',exist=file_exists)
- if( .NOT. file_exists ) call die('fort.1000 not found')
-
- allocate(c_matrix_exx(nbf,nstate,nspin))
- open(1000,form='unformatted')
- do klspin=1,nspin
-   do lstate=1,nstate
-     read(1000) c_matrix_exx(:,lstate,klspin)
-   enddo
- enddo
- close(1000,status='delete')
-
-
- write(stdout,'(/,a)') ' Calculate 3-center integrals on MIXED eigenstates'
-
-
- !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
- call clean_allocate('3-center mixed MO integrals',eri_3center_eigen_mixed,nauxil_3center,nstate,nstate,nspin)
- eri_3center_eigen_mixed(:,:,:,:) = 0.0_dp
-
- allocate(eri_3center_tmp(nauxil_3center,nbf,nstate))
-
- !TODO fix all this mess here to make it more similar to the previous subroutine
- do klspin=1,nspin
-   ! Transformation of the first index
-   eri_3center_tmp(:,:,:) = 0.0_dp
-   do kbf=1,nbf
-     do lbf=1,nbf
-       if( negligible_basispair(kbf,lbf) ) cycle
-
-         do lstate=1,nstate
-           eri_3center_tmp(:,kbf,lstate) = eri_3center_tmp(:,kbf,lstate) &
-                                      + c_matrix_exx(lbf,lstate,klspin) * eri_3center(:,index_pair(kbf,lbf))
-         enddo
-
-     enddo
-   enddo
-   ! Transformation of the second index
-   do lstate=1,nstate
-     eri_3center_eigen_mixed(:,:,lstate,klspin) = MATMUL( eri_3center_tmp(:,:,lstate) , c_matrix(:,:,klspin) )
-   enddo
-
- enddo ! klspin
- deallocate(eri_3center_tmp)
-
- call stop_clock(timing_eri_3center_eigen)
-
-end subroutine calculate_eri_3center_eigen_mixed
 
 
 !=================================================================
@@ -591,28 +463,6 @@ subroutine destroy_eri_3center_eigen()
  call clean_deallocate('3-center MO integrals',eri_3center_eigen)
 
 end subroutine destroy_eri_3center_eigen
-
-
-!=================================================================
-subroutine destroy_eri_3center_eigen_lr()
- implicit none
-!=====
-
- write(stdout,'(/,a)') ' Destroy LR 3-center integrals on eigenstates'
- call clean_deallocate('LR 3-center MO integrals',eri_3center_eigen_lr)
-
-end subroutine destroy_eri_3center_eigen_lr
-
-
-!=================================================================
-subroutine destroy_eri_3center_eigen_mixed()
- implicit none
-!=====
-
- write(stdout,'(/,a)') ' Destroy 3-center mixed integrals on eigenstates'
- call clean_deallocate('3-center mixed MO integrals',eri_3center_eigen_mixed)
-
-end subroutine destroy_eri_3center_eigen_mixed
 
 
 !=========================================================================

@@ -9,8 +9,6 @@
 program spectrum
  use m_definitions
  use m_warning
- use m_tools
- use ISO_C_BINDING
  implicit none
 
  integer                    :: ntau,ntau_read,itau,idir,iomega,nomega

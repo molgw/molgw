@@ -1,5 +1,5 @@
 OPENMP=
-PYTHON=python
+PYTHON=python3
 LIBTOOL=
 
 # Parallel MPI SCALAPACK compilation
@@ -15,8 +15,8 @@ LAPACK= -mkl=cluster
 
 SCALAPACK=
 
-LIBXC_ROOT=${HOME}/libxc-3.0.0_install/
+LIBXC_ROOT=${HOME}/libxc-4.3.4/
 
-LIBINT_ROOT=${HOME}/libint-2.2.0_am6/
+LIBINT_ROOT=${HOME}/libint-2.4.2/
 
 FFTW_ROOT=

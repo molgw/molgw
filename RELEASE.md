@@ -2,6 +2,44 @@
 #    MOLGW: Release Notes
 -----------------------------------------
 
+-----------------------------------------
+## What's new in version 2.C.beta
+### Overview
+- Real-time TDDFT is made available
+- speed-up in the Hartree, Exchange and AO to MO transform
+- use of LIBXC through the C interface
+- bug fixes
+
+### Contributors
+- Fabien Bruneval (CEA SRMP, France)
+- Ivan Maliyov (CEA SRMP, France)
+
+### Changes affecting the usage
+- Post-processing are not performed if the SCF cycles are not converged within `tolscf` (save user CPU time when a job went wrong)
+- Keywords `scalapack_nprow` and `scalapack_npcol` have been eliminated
+
+### Changes affecting the compilation
+- LIBXC is now linked through the C interface. Therefore, LIBXC compilation does not need to be consistent with MOLGW compilation.
+
+-----------------------------------------
+## What's new in version 2.B
+### Overview
+- automatic generation of an auxiliary basis following the "Auto" and "PAuto" recipes of Gaussian
+- output the Galitskii-Migdal correlation energy = 1/2 Tr[ Sigmac * G ]
+- non HF starting points for perturbation theory density matrices
+- speed-up in RT-TDDFT
+- bug fixes
+
+### Contributors
+- Fabien Bruneval (CEA SRMP, France)
+- Young-Moo Byun (U. Illinois@Chicago, USA)
+- Ivan Maliyov (CEA SRMP, France)
+
+### Changes affecting the usage
+- Keyword `auxil_basis='auto'` or `auxil_basis='pauto'` triggers automatic generation of an auxiliary basis
+
+
+-----------------------------------------
 ## What's new in version 2.A
 ### Overview
 - GW approximation to the density matrix (only for spin-restricted calculations)

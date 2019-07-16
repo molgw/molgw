@@ -14,7 +14,6 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
@@ -165,9 +164,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
    enddo
  enddo
 
-#ifdef HAVE_SCALAPACK
  call xsum_world(rpa_correlation)
-#endif
 
  !
  ! Set up the diagonal of A-B in the RPA approximation
@@ -199,7 +196,6 @@ subroutine build_amb_apb_diag_auxil(nmat,nstate,energy,wpol,m_apb,n_apb,amb_matr
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
@@ -247,7 +243,6 @@ subroutine get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correl
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
@@ -411,7 +406,7 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
 
  if( is_triplet) return
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  call start_clock(timing_build_common)
 
@@ -433,8 +428,8 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
 
  !
  ! Descriptors
- mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
- call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_2center,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+ call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
  call DESCINIT(desc_sd,nauxil_2center,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
@@ -469,7 +464,6 @@ subroutine build_a_diag_common(nbf,nstate,c_matrix,energy,wpol,a_diag)
  use m_mpi
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools
  implicit none
 
  integer,intent(in)                 :: nbf,nstate
@@ -669,7 +663,6 @@ subroutine build_amb_apb_bse(wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
- use m_tools
  implicit none
 
  type(spectral_function),intent(in) :: wpol,wpol_static
@@ -764,7 +757,6 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
- use m_tools
  implicit none
 
  real(dp),intent(in)                :: alpha_local
@@ -786,7 +778,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  integer              :: m_apb_block,n_apb_block
  real(dp),allocatable :: amb_block(:,:)
  real(dp),allocatable :: apb_block(:,:)
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  real(dp),allocatable :: vsqrt_chi_vsqrt_i(:),residue_i(:),wp0_i(:,:)
 #else
  real(dp),allocatable :: vsqrt_chi_vsqrt(:,:)

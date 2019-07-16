@@ -11,11 +11,13 @@ module m_inputparam
  use m_mpi
  use m_warning
  use m_atoms
+ use m_elements
  use m_ecp
-#ifdef HAVE_LIBXC
- use libxc_funcs_m
- use xc_f90_lib_m
- use xc_f90_types_m
+ use m_string_tools,only: capitalize
+ use m_libxc_tools
+
+#if defined(HAVE_LIBXC)
+#include <xc_funcs.h>
 #endif
 
  !
@@ -53,7 +55,6 @@ module m_inputparam
  integer,parameter :: EXCIT_PROJECTILE = 503
 
  type calculation_type
-   character(len=100) :: calc_name
    character(len=100) :: scf_name
    character(len=100) :: postscf_name
    logical            :: is_core
@@ -72,10 +73,6 @@ module m_inputparam
    integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
    integer            :: selfenergy_approx         ! GW, COHSEX, PT2
    logical            :: selfenergy_static
-#ifdef HAVE_LIBXC
-   type(xc_f90_pointer_t),allocatable :: xc_func(:)
-   type(xc_f90_pointer_t),allocatable :: xc_info(:)
-#endif
  end type calculation_type
 
  type excitation_type
@@ -85,11 +82,12 @@ module m_inputparam
  real(dp)             :: dir(3)
  end type
 
- type(excitation_type),protected  :: excit_type
  ! There are the input variables of MOLGW
  ! They should not be modified anywhere else in the code.
  ! Declare them as protected and work on copies if absolutely necessary.
  type(calculation_type),protected :: calc_type
+ type(dft_xc_info),allocatable    :: dft_xc(:)
+ type(excitation_type),protected  :: excit_type
  integer,protected                :: selfenergy_state_min
  integer,protected                :: selfenergy_state_max
  integer,protected                :: selfenergy_state_range
@@ -171,8 +169,6 @@ module m_inputparam
  integer,protected                :: eri3_nprow
  integer,protected                :: eri3_npcol
  integer,protected                :: eri3_nbatch
- integer,protected                :: scalapack_nprow
- integer,protected                :: scalapack_npcol
  integer,protected                :: mpi_nproc_ortho
  real(dp),protected               :: grid_memory
 
@@ -200,11 +196,6 @@ module m_inputparam
  real(dp),protected               :: rcut            = 0.0_dp
  real(dp),protected               :: gamma_hybrid
 
- integer,protected                :: ndft_xc = 0
- integer,protected,allocatable    :: dft_xc_type(:)
- real(dp),protected,allocatable   :: dft_xc_coef(:)
- logical,protected                :: dft_xc_needs_gradient
-
  real(dp),protected               :: time_step, time_sim
  real(dp),protected               :: excit_kappa, excit_omega, excit_time0
  real(dp),protected               :: excit_dir(3)
@@ -225,23 +216,23 @@ module m_inputparam
  logical,protected                :: calc_spectrum_
  logical,protected                :: read_tddft_restart_
  logical,protected                :: print_tddft_restart_
+ integer,protected                :: auto_auxil_lmaxinc
+ real(dp),protected               :: auto_auxil_fsam
+
+
 contains
 
 
 !=========================================================================
-subroutine init_calculation_type(calc_type,input_key)
+subroutine init_calculation_type(scf,postscf)
  implicit none
 !=====
- type(calculation_type),intent(out)   :: calc_type
- character(len=100),intent(in)        :: input_key
+ character(len=*),intent(in) :: scf,postscf
 !=====
- integer                              :: ipos
- character(len=100)                   :: key1,key2
 !=====
 
  !
  ! default values
- calc_type%calc_name            =  TRIM(input_key)
  calc_type%is_dft               = .FALSE.
  calc_type%need_rpa             = .FALSE.
  calc_type%is_lr_mbpt           = .FALSE.
@@ -259,20 +250,13 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_selfenergy        = .FALSE.
  calc_type%is_core              = .FALSE.
 
- ipos=index(input_key,'+',.TRUE.)
-
- key1=''
- key2=''
-
  !
  ! If it exists, first read the last part of the calculation specifier
- if(ipos/=0) then
-   key1(:ipos-1) = input_key(:ipos-1)
-   key2(1:) = input_key(ipos+1:)
+ if( LEN(TRIM(postscf)) > 0 ) then
 
-   calc_type%postscf_name =  TRIM(key2)
+   calc_type%postscf_name =  TRIM(postscf)
 
-   select case(TRIM(key2))
+   select case(TRIM(postscf))
    case('GNW0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GnW0
@@ -358,15 +342,13 @@ subroutine init_calculation_type(calc_type,input_key)
    case default
      call die('Error reading keyword: postscf')
    end select
- else
-   key1 = input_key
  endif
 
- calc_type%scf_name =  TRIM(key1)
+ calc_type%scf_name =  TRIM(scf)
 
  !
  ! Then read the first part of the calculation specifier
- select case(TRIM(key1))
+ select case(TRIM(scf))
  case('CI')
    calc_type%is_ci         = .TRUE.
    alpha_hybrid            = 1.00_dp
@@ -395,7 +377,7 @@ subroutine init_calculation_type(calc_type,input_key)
    !
    ! If the calculation type is none of the above, let's assume it is DFT-type
    calc_type%is_dft=.TRUE.
-   call init_dft_type(key1,calc_type)
+   call init_dft_type(scf)
  end select
 
  !
@@ -408,6 +390,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_selfenergy = ( calc_type%selfenergy_approx /= 0 )
 
 end subroutine init_calculation_type
+
 
 !=========================================================================
 subroutine init_excitation_type(excit_type)
@@ -435,17 +418,17 @@ subroutine init_excitation_type(excit_type)
      call die('excit_name is unknown')
    end select
  end if
+
 end subroutine init_excitation_type
 
+
 !=========================================================================
-subroutine init_dft_type(key,calc_type)
+subroutine init_dft_type(key)
  implicit none
 !=====
  character(len=*),intent(in)          :: key
- type(calculation_type),intent(inout) :: calc_type
 !=====
- integer              :: idft_xc
- character(len=256)   :: string
+ integer              :: ixc,nxc
 !=====
 
 
@@ -453,268 +436,201 @@ subroutine init_dft_type(key,calc_type)
  case('LDAX','HFPBE','PBEX','PBEHX','BX','PW91X','RPPX',&
       'BHANDH','BHANDHLYP','BHLYP','B3LYP','B3LYP5', &
       'PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX')
-   ndft_xc=1
- case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHNOCOR')
-   ndft_xc=2
+   nxc = 1
+ case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHX','LDA0')
+   nxc = 2
  case('RSH')
-   ndft_xc=3
- case('TESTPBE0','TESTLDA0')
-   ndft_xc=2
- case('TESTHSE')
-   ndft_xc=3
+   nxc = 3
  case default
    write(stdout,*) 'error reading calculation type'
    write(stdout,*) TRIM(key)
    call die('DFT xc is unknown')
  end select
 
- if( ALLOCATED(dft_xc_type) ) deallocate(dft_xc_type)
- if( ALLOCATED(dft_xc_coef) ) deallocate(dft_xc_coef)
+ if( ALLOCATED(dft_xc) ) then
+   call destroy_libxc_info(dft_xc)
+ endif
 
- allocate(dft_xc_type(ndft_xc))
- allocate(dft_xc_coef(ndft_xc))
+
  !
- ! default is one, otherwise it is modified later
- dft_xc_coef(:) = 1.0_dp
+ ! Prepare the object dft_xc
+ allocate(dft_xc(nxc))
+ do ixc=1,nxc
+   dft_xc(ixc)%nspin = nspin
+   ! default is one, otherwise it is modified later
+   dft_xc(ixc)%coeff = 1.0_dp
+ enddo
 
  select case(TRIM(key))
-#ifdef HAVE_LIBXC
+#if defined(HAVE_LIBXC)
  !
  ! LDA functionals
  case('LDAX')
-   dft_xc_type(1) = XC_LDA_X
+   dft_xc(1)%id = XC_LDA_X
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('SPL')
-   dft_xc_type(1) = XC_LDA_X
-   dft_xc_type(2) = XC_LDA_C_PZ
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_PZ
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('LDA')
-   dft_xc_type(1) = XC_LDA_X
-   dft_xc_type(2) = XC_LDA_C_PW
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_PW
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('VWN')
-   dft_xc_type(1) = XC_LDA_X
-   dft_xc_type(2) = XC_LDA_C_VWN
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_VWN
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('VWN_RPA')
-   dft_xc_type(1) = XC_LDA_X
-   dft_xc_type(2) = XC_LDA_C_VWN_RPA
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_VWN_RPA
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  !
  ! GGA functionals
  case('PBEX')
-   dft_xc_type(1) = XC_GGA_X_PBE
-   alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%id    = XC_GGA_X_PBE
+   alpha_hybrid    = 0.00_dp
+   alpha_hybrid_lr = 0.00_dp
  case('PBE')
-   dft_xc_type(1) = XC_GGA_X_PBE
-   dft_xc_type(2) = XC_GGA_C_PBE
-   alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%id    = XC_GGA_X_PBE
+   dft_xc(2)%id    = XC_GGA_C_PBE
+   alpha_hybrid    = 0.00_dp
+   alpha_hybrid_lr = 0.00_dp
  case('PBEHX')
-   dft_xc_type(1) = XC_GGA_X_WPBEH
-   alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%id    = XC_GGA_X_WPBEH
+   alpha_hybrid    = 0.00_dp
+   alpha_hybrid_lr = 0.00_dp
+   dft_xc(1)%gamma = gamma_hybrid
  case('PBEH')
-   dft_xc_type(1) = XC_GGA_X_WPBEH
-   dft_xc_type(2) = XC_GGA_C_PBE
-   alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%id    = XC_GGA_X_WPBEH
+   dft_xc(2)%id    = XC_GGA_C_PBE
+   alpha_hybrid    = 0.00_dp
+   alpha_hybrid_lr = 0.00_dp
+   dft_xc(1)%gamma = gamma_hybrid
  case('BX')
-   dft_xc_type(1) = XC_GGA_X_B88
+   dft_xc(1)%id = XC_GGA_X_B88
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('BLYP')
-   dft_xc_type(1) = XC_GGA_X_B88
-   dft_xc_type(2) = XC_GGA_C_LYP
+   dft_xc(1)%id = XC_GGA_X_B88
+   dft_xc(2)%id = XC_GGA_C_LYP
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('PW91X')
-   dft_xc_type(1) = XC_GGA_X_PW91
+   dft_xc(1)%id = XC_GGA_X_PW91
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('PW91')
-   dft_xc_type(1) = XC_GGA_X_PW91
-   dft_xc_type(2) = XC_GGA_C_PW91
+   dft_xc(1)%id = XC_GGA_X_PW91
+   dft_xc(2)%id = XC_GGA_C_PW91
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('HCTH')
-   dft_xc_type(1) = XC_GGA_XC_HCTH_407
+   dft_xc(1)%id = XC_GGA_XC_HCTH_407
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('TH')
-   dft_xc_type(1) = XC_GGA_XC_TH1
+   dft_xc(1)%id = XC_GGA_XC_TH1
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('HJSX')
-   dft_xc_type(1) = XC_GGA_X_HJS_PBE
+   dft_xc(1)%id = XC_GGA_X_HJS_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
+   dft_xc(1)%gamma = gamma_hybrid
  !
  ! Meta-GGA functionals
  case('RPPX')
-   dft_xc_type(1) = XC_MGGA_X_RPP09
+   dft_xc(1)%id = XC_MGGA_X_RPP09
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  !
  ! Hybrid functionals
  case('HFPBE')
-   dft_xc_type(1) = XC_GGA_C_PBE
+   dft_xc(1)%id = XC_GGA_C_PBE
    alpha_hybrid   = 1.00_dp
    alpha_hybrid_lr= 0.00_dp
  case('BHANDH')
-   dft_xc_type(1) = XC_HYB_GGA_XC_BHANDH
+   dft_xc(1)%id = XC_HYB_GGA_XC_BHANDH
    alpha_hybrid   = 0.50_dp
    alpha_hybrid_lr= 0.00_dp
  case('BHANDHLYP','BHLYP')
-   dft_xc_type(1) = XC_HYB_GGA_XC_BHANDHLYP
+   dft_xc(1)%id = XC_HYB_GGA_XC_BHANDHLYP
    alpha_hybrid   = 0.50_dp
    alpha_hybrid_lr= 0.00_dp
  case('B3LYP')
-   dft_xc_type(1) = XC_HYB_GGA_XC_B3LYP
+   dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP
    alpha_hybrid   = 0.20_dp
    alpha_hybrid_lr= 0.00_dp
  case('B3LYP5')
-   dft_xc_type(1) = XC_HYB_GGA_XC_B3LYP5
+   dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP5
    alpha_hybrid   = 0.20_dp
    alpha_hybrid_lr= 0.00_dp
  case('PBE0')
-   dft_xc_type(1) = XC_HYB_GGA_XC_PBEH
+   dft_xc(1)%id = XC_HYB_GGA_XC_PBEH
    alpha_hybrid   = 0.25_dp
    alpha_hybrid_lr= 0.00_dp
  case('HSE03')
-   dft_xc_type(1)  = XC_HYB_GGA_XC_HSE03
+   dft_xc(1)%id  = XC_HYB_GGA_XC_HSE03
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
    rcut            = 1.0_dp / ( 0.15_dp / SQRT(2.0_dp) )
  case('HSE06')
-   dft_xc_type(1)  = XC_HYB_GGA_XC_HSE06
+   dft_xc(1)%id  = XC_HYB_GGA_XC_HSE06
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
    gamma_hybrid    = 0.11_dp
    rcut            = 1.0_dp / 0.11_dp
  case('HSE08')
-   dft_xc_type(1)  = XC_HYB_GGA_XC_HJS_PBE
+   dft_xc(1)%id  = XC_HYB_GGA_XC_HJS_PBE
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
    gamma_hybrid    = 0.11_dp
    rcut            = 1.0_dp / 0.11_dp
  case('CAM-B3LYP')
-   dft_xc_type(1)  = XC_HYB_GGA_XC_CAM_B3LYP
+   dft_xc(1)%id  = XC_HYB_GGA_XC_CAM_B3LYP
    alpha_hybrid    =  0.19_dp
    alpha_hybrid_lr =  0.46_dp
    rcut            =  1.0_dp / 0.33_dp
  case('TUNED-CAM-B3LYP')
-   dft_xc_type(1)  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
+   dft_xc(1)%id  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
    alpha_hybrid    =  0.0799_dp
    alpha_hybrid_lr =  0.9201_dp
    rcut            =  1.0_dp / 0.150_dp
  case('RSH')
-   dft_xc_type(1) = XC_GGA_X_PBE
-   dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
-   dft_xc_type(3) = XC_GGA_C_PBE
-   dft_xc_coef(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
-   dft_xc_coef(2) = alpha_hybrid_lr
-   dft_xc_coef(3) = 1.00_dp
+   dft_xc(1)%id = XC_GGA_X_PBE
+   dft_xc(2)%id = XC_GGA_X_HJS_PBE
+   dft_xc(3)%id = XC_GGA_C_PBE
+   dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
+   dft_xc(2)%coeff = alpha_hybrid_lr
+   dft_xc(3)%coeff = 1.00_dp
+   rcut            = 1.0_dp / gamma_hybrid
+   dft_xc(2)%gamma = gamma_hybrid
+ case('RSHX')
+   dft_xc(1)%id = XC_GGA_X_PBE
+   dft_xc(2)%id = XC_GGA_X_HJS_PBE
+   dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
+   dft_xc(2)%coeff = alpha_hybrid_lr
    rcut           = 1.0_dp / gamma_hybrid
- case('RSHNOCOR')
-   dft_xc_type(1) = XC_GGA_X_PBE
-   dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
-   dft_xc_coef(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
-   dft_xc_coef(2) = alpha_hybrid_lr
-   rcut           = 1.0_dp / gamma_hybrid
- ! Testing
- case('TESTHSE')
-   dft_xc_type(1) = XC_GGA_X_PBE
-   dft_xc_type(2) = XC_GGA_X_HJS_PBE ! XC_GGA_X_WPBEH ! 2001
-   dft_xc_type(3) = XC_GGA_C_PBE
-   alpha_hybrid   =  0.25_dp
-   dft_xc_coef(1) =  1.00_dp
-   dft_xc_coef(2) = -0.25_dp
-   dft_xc_coef(3) =  1.00_dp
-   alpha_hybrid_lr = -alpha_hybrid
-   gamma_hybrid    = 0.11_dp
-   rcut           = 1.0_dp / gamma_hybrid
- case('TESTLDA0')
+   dft_xc(2)%gamma = gamma_hybrid
+ case('LDA0')
    alpha_hybrid   = 0.25_dp
    alpha_hybrid_lr= 0.00_dp
-   dft_xc_type(1) = XC_LDA_X
-   dft_xc_type(2) = XC_LDA_C_PW
-   dft_xc_coef(1) =  1.00_dp - alpha_hybrid
-   dft_xc_coef(2) =  1.00_dp
- case('TESTPBE0')
-   alpha_hybrid   = 0.25_dp
-   alpha_hybrid_lr= 0.00_dp
-   dft_xc_type(1) = XC_GGA_X_PBE
-   dft_xc_type(2) = XC_GGA_C_PBE
-   dft_xc_coef(1) =  1.00_dp - alpha_hybrid
-   dft_xc_coef(2) =  1.00_dp
+   dft_xc(1)%id = XC_LDA_X
+   dft_xc(2)%id = XC_LDA_C_PW
+   dft_xc(1)%coeff =  1.00_dp - alpha_hybrid
+   dft_xc(2)%coeff =  1.00_dp
 #endif
  case default
    call die('Error reading keyword scf')
  end select
 
+ call init_libxc_info(dft_xc)
 
-#ifdef HAVE_LIBXC
- !
- ! Initialize the DFT objects for LIBXC
- !
- if( ALLOCATED(calc_type%xc_func) ) then
-   do idft_xc=1,SIZE(calc_type%xc_func(:))
-     call xc_f90_func_end(calc_type%xc_func(idft_xc))
-   enddo
-   deallocate(calc_type%xc_func)
-   deallocate(calc_type%xc_info)
- endif
-
- allocate(calc_type%xc_func(ndft_xc))
- allocate(calc_type%xc_info(ndft_xc))
-
- do idft_xc=1,ndft_xc
-
-   if( nspin == 1 ) then
-     call xc_f90_func_init(calc_type%xc_func(idft_xc),calc_type%xc_info(idft_xc),dft_xc_type(idft_xc),XC_UNPOLARIZED)
-   else
-     call xc_f90_func_init(calc_type%xc_func(idft_xc),calc_type%xc_info(idft_xc),dft_xc_type(idft_xc),XC_POLARIZED)
-   endif
-
-
-   if( dft_xc_type(idft_xc) < 1000 ) then
-     call xc_f90_info_name(calc_type%xc_info(idft_xc),string)
-     write(stdout,'(a,i4,a,a)') '   XC functional ',idft_xc,' :  ',TRIM(string)
-   else
-     write(stdout,'(a,i4,a,a)') '   XC functional ',idft_xc,' :  ','INTERNAL EXCHANGE-CORRELATION'
-   endif
-
-   !
-   ! Tune the range for range separated hybrids
-#ifdef LIBXC4
-   if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE .OR. dft_xc_type(idft_xc) == XC_GGA_X_WPBEH ) then
-     call xc_f90_func_set_ext_params(calc_type%xc_func(idft_xc), gamma_hybrid )
-   endif
-#else
-   if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE ) then
-     call xc_f90_gga_x_hjs_set_par(calc_type%xc_func(idft_xc), gamma_hybrid )
-   endif
-   if( dft_xc_type(idft_xc) == XC_GGA_X_WPBEH ) then
-     call xc_f90_gga_x_wpbeh_set_par(calc_type%xc_func(idft_xc),gamma_hybrid )
-   endif
-#endif
- enddo
-
- dft_xc_needs_gradient =.FALSE.
- do idft_xc=1,ndft_xc
-   if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA     ) dft_xc_needs_gradient  =.TRUE.
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) dft_xc_needs_gradient  =.TRUE.
- enddo
-
-#endif
 
 end subroutine init_dft_type
 
@@ -731,7 +647,6 @@ subroutine summary_input(grid_quality,integral_quality)
  !
  ! Summarize input parameters
  write(stdout,'(/,a,/)')    ' Summary of the input parameters '
- write(stdout,'(a25,2x,a)') ' Calculation type: ',calc_type%calc_name
  write(stdout,'(a25,2x,a)') '         SCF type: ',calc_type%scf_name
  write(stdout,'(a25,2x,a)') '    Post SCF type: ',calc_type%postscf_name
  write(stdout,'(a25,i3)')   ' Natom: ',natom
@@ -776,8 +691,6 @@ end subroutine summary_input
 
 !=========================================================================
 subroutine read_inputfile_namelist()
- use m_elements
- use m_tools,only: capitalize
  implicit none
 
 !=====
@@ -786,7 +699,6 @@ subroutine read_inputfile_namelist()
  integer              :: inputfile,xyzfile
  logical              :: file_exists
 
- character(len=100)   :: input_key
  character(len=24)    :: scf
  character(len=24)    :: postscf
  character(len=100)   :: basis
@@ -988,16 +900,8 @@ subroutine read_inputfile_namelist()
  if(magnetization>1.e-5 .AND. nspin==1) call die('magnetization is non-zero and nspin is 1')
  if(nomega_sigma<0)    call die('nomega_sigma < 0')
  if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
+ if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
 
- if( scalapack_nprow * scalapack_npcol > nproc_world ) then
-   write(stdout,'(1x,a,i4,a,i4)') 'The requested number of processors in the SCALAPACK grid: ',scalapack_nprow,' x ',scalapack_npcol
-   write(stdout,'(1x,a,i5)') 'is larger than the number of total processors: ',nproc_world
-   scalapack_nprow = FLOOR( SQRT( REAL(nproc_world,dp) ) )
-   scalapack_npcol = nproc_world / scalapack_nprow
-   write(stdout,'(1x,a,i4,a,i4)') 'Continue with a reduced SCALAPACK grid: ',scalapack_nprow,' x ',scalapack_npcol
-   write(ctmp,'(a,i4,a,i4)') 'scalapack_nprow or scalapack_npcol was decreased automatically to ',scalapack_nprow,' x ',scalapack_npcol
-   call issue_warning(ctmp)
- endif
  if( MODULO( nproc_world , mpi_nproc_ortho) /= 0 ) then
    write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',nproc_world
    mpi_nproc_ortho = 1
@@ -1162,12 +1066,7 @@ subroutine read_inputfile_namelist()
 
  !
  ! Interpret the scf and postscf input parameters
- if( TRIM(postscf) =='' ) then
-   input_key=TRIM(scf)
- else
-   input_key=TRIM(scf)//'+'//TRIM(postscf)
- endif
- call init_calculation_type(calc_type,input_key)
+ call init_calculation_type(scf,postscf)
 
  !
  ! Some additional checks

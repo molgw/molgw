@@ -4,7 +4,7 @@
  nspin=2
 
  scf='hf'
- tolscf=1.0e-5
+ tolscf=1.0e-10
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'

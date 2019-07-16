@@ -31,7 +31,6 @@ module m_dm_analysis
  use m_memory
  use m_scalapack
  use m_inputparam
- use m_tools
  use m_scf
  use m_atoms
  use m_ecp
@@ -43,15 +42,13 @@ module m_dm_analysis
  use m_eri_ao_mo
  use m_dft_grid
  use m_spectral_function
- use m_hamiltonian
- use m_hamiltonian_sca
+ use m_hamiltonian_tools
  use m_hamiltonian_onebody
- use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_virtual_orbital_space
-
-
- integer,parameter,private :: BATCH_SIZE = 128
+ use m_density_tools
+ use m_multipole
+ use m_io
 
 
 contains
@@ -104,12 +101,8 @@ subroutine dm_dump(basis)
  endif
 
 
- call clean_allocate('C matrix',c_matrix_test,basis%nbf,nstate,nspin)
- allocate(occupation_test(nstate,nspin))
-
  call get_c_matrix_from_p_matrix(p_matrix_test,c_matrix_test,occupation_test)
 
- write(*,*) 'Sum(occupation): ',SUM(occupation_test(:,:))
 
  call init_dft_grid(basis,grid_level,.FALSE.,.TRUE.,BATCH_SIZE)
 
@@ -157,10 +150,10 @@ subroutine dm_dump(basis)
  if( print_multipole_ ) then
    !
    ! Evaluate the static dipole
-   call static_dipole(nstate,basis,occupation_test,c_matrix_test)
+   call static_dipole(basis,occupation_test,c_matrix_test)
    !
    ! Evaluate the static quadrupole
-   call static_quadrupole(nstate,basis,occupation_test,c_matrix_test)
+   call static_quadrupole(basis,occupation_test,c_matrix_test)
  endif
 
  if( print_cube_ ) call plot_cube_wfn('MBPT',nstate,basis,occupation_test,c_matrix_test)
@@ -168,7 +161,6 @@ subroutine dm_dump(basis)
 
  !
  call clean_deallocate('Density matrix',p_matrix_test)
- call clean_deallocate('C matrix',c_matrix_test)
  deallocate(occupation_test)
 
 

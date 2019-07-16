@@ -111,24 +111,30 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
          ! For now, only G0W0/GnW0/GnWn are parallelized.
          ! COLLAPSE(2) is bad for bra(:,:) in terms of memory affinity.
          ! However, it is good for G0W0 with # of threads > |nsemax - nsemin| (e.g. when only HOMO and LUMO energies are needed).
-         !$OMP PARALLEL
-         !$OMP DO COLLAPSE(2)
+         
+         ! ymbyun 2019/04/15
+         ! COLLAPSE(2) is removed because a new conditional statement (i.e. if) came in between two loops.
+         ! OMP PARALLEL DO is moved to an inner loop for safety (i.e. energy_gw may need reduction).
+
          !
          ! calculate only the diagonal !
          do pstate=nsemin,nsemax
+           !$OMP PARALLEL
+           !$OMP DO
            do iomega=-se%nomega,se%nomega
              se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
                       + bra(ipole,pstate) * bra(ipole,pstate)                                          &
                         * ( fact_full_i  / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
                           + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
+           !$OMP END DO
+           !$OMP END PARALLEL
+
            if( (spin_fact - occupation(pstate,ispin))/ spin_fact < completely_empty) then
              energy_gw = energy_gw + fact_empty_i * occupation(pstate,ispin) &
                                * bra(ipole,pstate)**2 / ( energy(pstate,ispin) - energy(istate,ispin) - wpol%pole(ipole) )
            endif
          enddo
-         !$OMP END DO
-         !$OMP END PARALLEL
        case(COHSEX)
 
          do pstate=nsemin,nsemax
@@ -192,7 +198,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: diagonalize
+ use m_linear_algebra,only: diagonalize
  use m_selfenergy_tools
  implicit none
 
@@ -253,14 +259,14 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  !
  ! Temporary descriptors
  ! desc_wpol for wpol%residue_left
- mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
- call DESCINIT(desc_wpol,nauxil_2center,wpol%npole_reso,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_2center,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+ call DESCINIT(desc_wpol,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
  ! desc_eri for wpol%residue_left
- call DESCINIT(desc_eri,nauxil_2center,mstate,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ call DESCINIT(desc_eri,nauxil_2center,mstate,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
  ! desc_wing for matrix_wing
- mlocal = NUMROC(mwing,MB_auxil,iprow_auxil,first_row,nprow_auxil)
- call DESCINIT(desc_wing,mwing,mstate,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(mwing,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+ call DESCINIT(desc_wing,mwing,mstate,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
 
  call clean_allocate('Matrix head',matrix_head,mstate,mstate)
@@ -331,18 +337,18 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  if( is_iomaster) then
    do jmat=1,mstate
      do imat=1,jmat
-       write(fu,'(1x,i7,1x,i7,1x,e14.6)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
+       write(fu,'(1x,i7,1x,i7,1x,e16.8)') imat,jmat,matrix_head(imat,jmat)*Ha_eV
      enddo
    enddo
    do imat=1,mwing
-     write(fu,'(1x,i7,1x,i7,1x,e14.6)') imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
+     write(fu,'(1x,i7,1x,i7,1x,e16.8)') imat+mstate,imat+mstate,matrix_diag(imat)*Ha_eV
    enddo
  endif
 
  do jmat=1,mstate
    do ilocal=1,mlocal
-     imat = INDXL2G(ilocal,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-     write(fu,'(1x,i7,1x,i7,1x,e14.6)') mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
+     imat = INDXL2G(ilocal,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+     write(fu,'(1x,i7,1x,i7,1x,e16.8)') mstate+imat,jmat,matrix_wing(ilocal,jmat)*Ha_eV
    enddo
  enddo
  close(fu)
@@ -519,12 +525,12 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  !
  ! SCALAPACK preparation for W
  !  wpol%residue_left
- mlocal = NUMROC(nauxil_2center ,MB_auxil,iprow_auxil,first_row,nprow_auxil)
- nlocal = NUMROC(wpol%npole_reso,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
- call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_2center ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+ nlocal = NUMROC(wpol%npole_reso,NB_eri3_mo,ipcol_eri3_mo,first_col,npcol_eri3_mo)
+ call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
  !
  ! Change data distribution
- ! from cntxt_auxil to cntxt_sd
+ ! from cntxt_eri3_mo to cntxt_sd
  mlocal = NUMROC(nauxil_2center ,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(wpol%npole_reso,block_col,ipcol_sd,first_col,npcol_sd)
  call DESCINIT(desc_wsd,nauxil_2center,wpol%npole_reso,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
@@ -543,14 +549,14 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      !
      ! SCALAPACK preparation for the 3-center integrals
      !
-     mlocal = NUMROC(nauxil_2center      ,MB_auxil,iprow_auxil,first_row,nprow_auxil)
-     nlocal = NUMROC(nvirtual_G-ncore_G-1,NB_auxil,ipcol_auxil,first_col,npcol_auxil)
-     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+     mlocal = NUMROC(nauxil_2center      ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+     nlocal = NUMROC(nvirtual_G-ncore_G-1,NB_eri3_mo,ipcol_eri3_mo,first_col,npcol_eri3_mo)
+     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
-     if( cntxt_auxil > 0 ) then
+     if( cntxt_eri3_mo > 0 ) then
        call clean_allocate('TMP 3center eigen',eri_3tmp_auxil,mlocal,nlocal)
        do jlocal=1,nlocal
-         jglobal = INDXL2G(jlocal,NB_auxil,ipcol_auxil,first_col,npcol_auxil) + ncore_G
+         jglobal = INDXL2G(jlocal,NB_eri3_mo,ipcol_eri3_mo,first_col,npcol_eri3_mo) + ncore_G
          do ilocal=1,mlocal
            eri_3tmp_auxil(ilocal,jlocal) = eri_3center_eigen(ilocal,jglobal,pstate,pspin)
          enddo
@@ -560,7 +566,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      endif
      !
      ! Change data distribution
-     ! from cntxt_auxil to cntxt_sd
+     ! from cntxt_eri3_mo to cntxt_sd
      mlocal = NUMROC(nauxil_2center      ,block_row,iprow_sd,first_row,nprow_sd)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,block_col,ipcol_sd,first_col,npcol_sd)
      call DESCINIT(desc_3sd,nauxil_2center,nvirtual_G-ncore_G-1,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)

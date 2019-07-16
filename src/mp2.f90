@@ -5,7 +5,6 @@
 ! This file contains
 ! - MP2 total energy with or without Resolution-of-Identity
 ! - Single excitation contribution to total energy
-! - Full CI for 2 electrons
 !=========================================================================
 subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  use m_definitions
@@ -509,73 +508,6 @@ subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
  call stop_clock(timing_mp2_energy)
 
 end subroutine mp2_energy
-
-
-!==================================================================
-subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,energy_se)
- use m_definitions
- use m_timing
- use m_inputparam,only: nspin,spin_fact
- use m_hamiltonian
- implicit none
-
- integer,intent(in)         :: nstate,nbf
- real(dp),intent(in)        :: energy(nstate,nspin),occupation(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)        :: fock_matrix(nbf,nbf,nspin)
- real(dp),intent(out)       :: energy_se
-!=====
- integer                    :: ier
- integer                    :: ispin
- integer                    :: istate,astate
- real(dp),allocatable       :: fock_matrix_eigen(:,:,:)
-!=====
-
- call start_clock(timing_single_excitation)
-
- energy_se = 0.0_dp
-
- ! Do not calculate this for fractional occupations
- do ispin=1,nspin
-   do istate=1,nstate
-     if( occupation(istate,ispin) > completely_empty .AND. occupation(istate,ispin) < spin_fact - completely_empty ) then
-       write(stdout,'(1x,a)') 'Fractional occupations detected: do not calculate the singles correction'
-       return
-     endif
-   enddo
- enddo
-
-
- allocate(fock_matrix_eigen(nbf,nbf,nspin),stat=ier)
- ier = ABS(ier)
- call xmax_world(ier)
- if( ier /= 0 ) then
-   write(stdout,*) 'Skip this step that is too memory demanding'
-   return
- endif
-
- !
- ! Rotate the Fock matrix to the eigenstate basis
- call matrix_ao_to_mo(c_matrix,fock_matrix,fock_matrix_eigen)
-
-
- do ispin=1,nspin
-   ! loop on occupied states
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     ! loop on virtual states
-     do astate=1,nstate
-       if( occupation(astate,ispin) > spin_fact - completely_empty ) cycle
-       energy_se = energy_se + fock_matrix_eigen(istate,astate,ispin)**2 / ( energy(istate,ispin) - energy(astate,ispin) ) * spin_fact
-     enddo
-   enddo
- enddo
-
- deallocate(fock_matrix_eigen)
-
- call stop_clock(timing_single_excitation)
-
-end subroutine single_excitations
 
 
 !==================================================================

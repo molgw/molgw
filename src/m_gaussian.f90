@@ -11,6 +11,7 @@ module m_gaussian
  use m_mpi
  use m_gos
  use m_cart_to_pure
+ use m_string_tools
 
  ! type containing all the information for one unnormalized cartesian gaussian
  ! x**nx * y**ny * z**nz * exp( - alpha * ( x**2 + y**2 + z**2 ) )
@@ -39,7 +40,6 @@ contains
 
 !=========================================================================
 subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
- use m_tools
  implicit none
  integer,intent(in) :: nx,ny,nz
  real(dp),intent(in) :: alpha,x0(3)

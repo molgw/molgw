@@ -77,7 +77,11 @@ subroutine die(msg)
  write(stdout,'(a,a)') 'STOP: ',msg
  write(stdout,'(a,/)') '=============================='
  write(stderr,'(a,a)') 'STOP: ',msg
+#if defined(FORTRAN2008)
+ error stop
+#else
  stop
+#endif
 
 end subroutine die
 

@@ -1,5 +1,6 @@
 &molgw
  scf='pbe0'
+ tolscf=1.0e-11
 
  basis='aug-cc-pVTZ'
  auxil_basis='aug-cc-pVTZ-RI'
@@ -14,7 +15,6 @@
  step_sigma=0.025
  nomega_sigma=101
 
- tolscf=1.0e-9
 
  natom=3
 /

@@ -9,7 +9,7 @@
 
  print_multipole='yes'
 
- tolscf=1.0e-9
+ tolscf=1.0e-10
 
  natom=3
 /

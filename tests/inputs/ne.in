@@ -1,12 +1,12 @@
 &molgw
  scf='hf'
  nspin=1
+ tolscf=1.0e-10
+ npulay_hist=2
 
  basis='cc-pV6Z'
  auxil_basis='cc-pV6Z-RI'
 
  natom=1
- alpha_mixing=0.5
- mixing_scheme='simple'
 /
 Ne 0. 0. 0.

@@ -13,38 +13,13 @@ module m_density_tools
  use m_gaussian
  use m_inputparam
  use m_basis_set
+ use m_hamiltonian_tools,only: get_number_occupied_states
+ use m_dft_grid
 
  complex(dp),parameter :: COMPLEX_ONE  = (1.0_dp,0.0_dp)
  complex(dp),parameter :: COMPLEX_ZERO = (0.0_dp,0.0_dp)
 
 contains
-
-
-!=========================================================================
-pure function get_number_occupied_states(occupation) result(nocc)
- implicit none
-
- real(dp),intent(in) :: occupation(:,:)
- integer             :: nocc
-!=====
- integer :: nstate,istate,ispin,nspin_local
-!=====
-
- nstate      = SIZE(occupation(:,:),DIM=1)
- nspin_local = SIZE(occupation(:,:),DIM=2)
-
- ! Find highest occupied state
- ! Take care of negative occupations, this can happen if C comes from P^{1/2}
- nocc = 0
- do ispin=1,nspin_local
-   do istate=1,nstate
-     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
-     nocc = MAX(nocc,istate)
-   enddo
- enddo
-
-
-end function get_number_occupied_states
 
 
 !=========================================================================
@@ -155,16 +130,19 @@ subroutine calc_density_r_batch(occupation,c_matrix,basis_function_r,rhor)
 
 end subroutine calc_density_r_batch
 
+
 !=========================================================================
 ! Calculate the density and its gradient on a batch for both real and complex wavefunctions
 !
-subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_function_gradr,rhor,grad_rhor)
+subroutine calc_density_gradr_batch(occupation,c_matrix,bfr,bf_gradx,bf_grady,bf_gradz,rhor,grad_rhor)
  implicit none
 
  real(dp),intent(in)        :: occupation(:,:)
  class(*),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(in)        :: basis_function_r(:,:)
- real(dp),intent(in)        :: basis_function_gradr(:,:,:)
+ real(dp),intent(in)        :: bfr(:,:)
+ real(dp),intent(in)        :: bf_gradx(:,:)
+ real(dp),intent(in)        :: bf_grady(:,:)
+ real(dp),intent(in)        :: bf_gradz(:,:)
  real(dp),intent(out)       :: rhor(:,:)
  real(dp),intent(out)       :: grad_rhor(:,:,:)
 !=====
@@ -202,14 +180,14 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
      allocate(phir_gradx(nocc,nr))
      allocate(phir_grady(nocc,nr))
      allocate(phir_gradz(nocc,nr))
-     !phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
-     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_r,nbf,0.d0,phir,nocc)
-     !phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
-     !phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
-     !phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
-     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,1),nbf,0.d0,phir_gradx,nocc)
-     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,2),nbf,0.d0,phir_grady,nocc)
-     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,basis_function_gradr(:,:,3),nbf,0.d0,phir_gradz,nocc)
+     !phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bfr(:,:) )
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(:,:,ispin),nbf,bfr,nbf,0.d0,phir,nocc)
+     !phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_gradx(:,:) )
+     !phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_grady(:,:) )
+     !phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_gradz(:,:) )
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bf_gradx,nbf,0.d0,phir_gradx,nocc)
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bf_grady,nbf,0.d0,phir_grady,nocc)
+     call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bf_gradz,nbf,0.d0,phir_gradz,nocc)
 
      !$OMP PARALLEL DO
      do ir=1,nr
@@ -229,14 +207,14 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
      allocate(phir_gradz_cmplx(nocc,nr))
      allocate(tmp_cmplx(nbf,nr))
 
-     tmp_cmplx(:,:) = basis_function_r(:,:)
-     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_cmplx,nocc)
-     tmp_cmplx(:,:) = basis_function_gradr(:,:,1)
-     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradx_cmplx,nocc)
-     tmp_cmplx(:,:) = basis_function_gradr(:,:,2)
-     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_grady_cmplx,nocc)
-     tmp_cmplx(:,:) = basis_function_gradr(:,:,3)
-     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(:,:,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradz_cmplx,nocc)
+     tmp_cmplx(:,:) = bfr(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_cmplx,nocc)
+     tmp_cmplx(:,:) = bf_gradx(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradx_cmplx,nocc)
+     tmp_cmplx(:,:) = bf_grady(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_grady_cmplx,nocc)
+     tmp_cmplx(:,:) = bf_gradz(:,:)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx,nbf,COMPLEX_ZERO,phir_gradz_cmplx,nocc)
 
      !$OMP PARALLEL DO
      do ir=1,nr
@@ -263,11 +241,9 @@ subroutine calc_density_gradr_batch(occupation,c_matrix,basis_function_r,basis_f
 
 end subroutine calc_density_gradr_batch
 
+
 !========================================================================
 subroutine calc_density_current_rr_cmplx(occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,jcurdens)
- use m_definitions
- use m_mpi
- use m_basis_set
  implicit none
 
  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
@@ -318,6 +294,148 @@ subroutine calc_density_current_rr_cmplx(occupation,c_matrix_cmplx,basis_functio
 
 
 end subroutine calc_density_current_rr_cmplx
+
+
+!=========================================================================
+subroutine calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx,num,time_cur)
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(:,:)
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+ integer,intent(in)         :: num
+ real(dp),intent(in)        :: time_cur
+!=====
+ real(dp)             :: length
+ integer              :: nstate,ndisc
+ integer              :: ibf,jbf,ispin
+ integer              :: idft_xc
+ integer              :: igrid_start,igrid_end,ir,nr
+ character(len=200)   :: file_name(2)
+ real(dp)             :: z_min,z_max
+ integer              :: file_out(2),igrid
+ !vectors in the plane
+ real(dp)             :: vec_r(3)
+ real(dp),allocatable :: weight_batch(:)
+ real(dp),allocatable :: tmp_batch(:,:)
+ real(dp),allocatable :: basis_function_r_batch(:,:)
+ real(dp),allocatable :: rhor_batch(:,:)
+ real(dp)             :: dz_disc
+ real(dp),allocatable :: charge_disc(:,:)
+ real(dp),allocatable :: charge_out(:,:)
+ integer(dp),allocatable :: count_z_section(:,:)
+ integer              :: idisc,i_max_atom,nocc
+ logical              :: file_exists
+ integer              :: imanual
+!=====
+
+ call start_clock(timing_calc_dens_disc)
+
+ nocc = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
+
+ if( excit_type%form==EXCIT_PROJECTILE ) then
+   i_max_atom=natom-nprojectile
+ else
+   i_max_atom=natom
+ endif
+
+ inquire(file='manual_disc_dft_grid',exist=file_exists)
+ if(file_exists) then
+   open(newunit=imanual,file='manual_disc_dft_grid',status='old')
+   read(imanual,*) ndisc
+   read(imanual,*) length
+   close(imanual)
+ else
+   ndisc=100
+   length=10.0_dp
+   call issue_warning('calc_density_in_disc_cmplx_dft_grid: manual file was not found')
+ endif
+
+ z_min =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
+ z_max =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
+
+ nstate = SIZE(occupation,DIM=1)
+
+ write(stdout,*) 'Calculate electronic density in discs'
+
+ !
+ ! Loop over batches of grid points
+ !
+
+ allocate(charge_disc(ndisc,nspin))
+ allocate(charge_out(2,nspin))
+ allocate(count_z_section(ndisc,nspin))
+ charge_disc(:,:) = 0.0_dp
+ charge_out(:,:) = 0.0_dp
+ count_z_section(:,:) = 0
+
+ dz_disc=(z_max-z_min)/ndisc
+
+ do igrid_start=1,ngrid,BATCH_SIZE
+   igrid_end = MIN(ngrid,igrid_start+BATCH_SIZE-1)
+   nr = igrid_end - igrid_start + 1
+
+   allocate(weight_batch(nr))
+   allocate(basis_function_r_batch(basis%nbf,nr))
+   allocate(rhor_batch(nspin,nr))
+
+   weight_batch(:) = w_grid(igrid_start:igrid_end)
+
+   call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
+
+   call calc_density_r_batch(occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
+
+   do ir=1,nr
+     igrid = igrid_start + ir - 1
+     vec_r=rr_grid(1:3,igrid)
+     do ispin=1,nspin
+       idisc = INT((vec_r(3)-z_min)/dz_disc) + 1
+       if( idisc > 0 .AND. idisc <= ndisc .AND. (vec_r(1)**2+vec_r(2)**2)**0.5_dp <= r_disc ) then
+         charge_disc(idisc,ispin)=charge_disc(idisc,ispin)+rhor_batch(ispin,ir) * weight_batch(ir)
+         count_z_section(idisc,ispin)=count_z_section(idisc,ispin)+1
+       end if
+       if( idisc <= 0 ) then
+         charge_out(1,ispin)=charge_out(1,ispin)+rhor_batch(ispin,ir) * weight_batch(ir)
+       end if
+       if( idisc > ndisc ) then
+         charge_out(2,ispin)=charge_out(2,ispin)+rhor_batch(ispin,ir) * weight_batch(ir)
+       end if
+     enddo ! loop on the ispin
+   enddo ! loop on ir
+
+   deallocate(weight_batch)
+   deallocate(basis_function_r_batch)
+   deallocate(rhor_batch)
+
+ enddo ! loop on the batches
+ call xsum_grid(charge_disc(:,:))
+
+ if( is_iomaster ) then
+
+   do ispin=1,nspin
+     write(file_name(ispin),'(a,i4.4,a,i1,a,i3.3,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",INT(r_disc),r_disc-INT(r_disc),".dat"
+     open(newunit=file_out(ispin),file=file_name(ispin))
+   enddo
+
+   do ispin=1,nspin
+     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
+     do idisc=1,ndisc
+       write(file_out(ispin),'(F16.4,F19.10,i6)') (z_min+idisc*dz_disc)*bohr_A,charge_disc(idisc,ispin),count_z_section(idisc,ispin)
+     end do
+     close(file_out(ispin))
+   end do
+   write(stdout,'(A,2F12.6)') "Charge out of region, left and right:",charge_out(:,1)
+
+ end if
+ !
+ ! Sum up the contributions from all procs only if needed
+
+ deallocate(charge_disc)
+
+ call stop_clock(timing_calc_dens_disc)
+
+end subroutine calc_density_in_disc_cmplx_dft_grid
+
 
 !=========================================================================
 subroutine calc_density_gradr_laplr(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr, &

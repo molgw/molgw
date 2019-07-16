@@ -7,8 +7,7 @@
  auxil_basis='aug-cc-pVDZ-RI'
 
  alpha_mixing=0.7
- nscf=15
- tolscf=1.0e-12
+ tolscf=1.0e-10
  mixing_scheme='simple'
 
  postscf='gw'

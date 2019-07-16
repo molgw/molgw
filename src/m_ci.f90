@@ -11,7 +11,7 @@ module m_ci
  use m_definitions
  use m_mpi
  use m_warning
- use m_tools
+ use m_linear_algebra
  use m_memory
  use m_timing
  use m_scalapack
@@ -817,11 +817,11 @@ end function hamiltonian_ci
 
 
 !==================================================================
-subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
+subroutine build_ci_hamiltonian(conf,desc_hci,h_ci)
  implicit none
 
  type(configurations),intent(in) :: conf
- integer,intent(in)              :: desc_ham(NDEL)
+ integer,intent(in)              :: desc_hci(NDEL)
  real(dp),intent(out)            :: h_ci(:,:)
 !=====
  integer :: mconf,nconf
@@ -837,10 +837,10 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
  nconf = SIZE(h_ci,DIM=2)
 
  do jconf=1,nconf
-   jconf_global = colindex_local_to_global(desc_ham,jconf)
+   jconf_global = colindex_local_to_global(desc_hci,jconf)
 
    do iconf=1,mconf   !TODO use symmetry of H to reduce the calculation by 2
-     iconf_global = rowindex_local_to_global(desc_ham,iconf)
+     iconf_global = rowindex_local_to_global(desc_hci,iconf)
 
      h_ci(iconf,jconf) = hamiltonian_ci(conf%keyud(:,iconf_global),conf%keyud(:,jconf_global))
 
@@ -1193,7 +1193,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  character(len=12)            :: filename_eigvec
  integer,parameter            :: mb_max=64
  integer                      :: mb_sd,mb
- integer                      :: desc_ham(NDEL)
+ integer                      :: desc_hci(NDEL)
  integer                      :: mham,nham
  integer                      :: desc_vec(NDEL)
  integer                      :: mvec,nvec
@@ -1245,7 +1245,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  if( conf%nstate == conf%nconf ) then
    mham = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
    nham = NUMROC(conf%nconf,block_col,ipcol_sd,first_col,npcol_sd)
-   call DESCINIT(desc_ham,conf%nconf,conf%nconf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mham),info)
+   call DESCINIT(desc_hci,conf%nconf,conf%nconf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mham),info)
 
    if( nprow_sd * npcol_sd > 1 ) then
      write(stdout,'(1x,a,i5,a,i5)') 'Use SCALAPACK proc grid: ',nprow_sd,' x ',npcol_sd
@@ -1255,7 +1255,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
    call clean_allocate('CI hamiltonian',h_ci,mham,nham)
 
 
-   call build_ci_hamiltonian(conf,desc_ham,h_ci)
+   call build_ci_hamiltonian(conf,desc_hci,h_ci)
 
 
    mvec = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
@@ -1265,12 +1265,12 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
 
  else
    !
-   ! cntxt_auxil is a row-only distribution: ( Ncore x 1 )
+   ! cntxt_eri3_mo is a row-only distribution: ( Ncore x 1 )
    ! use a calculated block_size = mb
-   mb = MIN( mb_max , 2**FLOOR( LOG(REAL(conf%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
-   mvec = NUMROC(conf%nconf,mb,iprow_auxil,first_row,nprow_auxil)
-   nvec = NUMROC(conf%nstate,mb,ipcol_auxil,first_col,npcol_auxil)
-   call DESCINIT(desc_vec,conf%nconf,conf%nstate,mb,mb,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
+   mb = MIN( mb_max , 2**FLOOR( LOG(REAL(conf%nconf/nprow_eri3_mo,dp)) / LOG(2.0_dp) ) )
+   mvec = NUMROC(conf%nconf,mb,iprow_eri3_mo,first_row,nprow_eri3_mo)
+   nvec = NUMROC(conf%nstate,mb,ipcol_eri3_mo,first_col,npcol_eri3_mo)
+   call DESCINIT(desc_vec,conf%nconf,conf%nstate,mb,mb,first_row,first_col,cntxt_eri3_mo,MAX(1,mvec),info)
    call clean_allocate('CI eigenvectors',eigvec,mvec,nvec)
    eigvec(:,:) = 0.0_dp
  endif
@@ -1278,7 +1278,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  if( conf%nstate == conf%nconf ) then
    call start_clock(timing_ci_diago)
    write(stdout,'(1x,a,i8,a,i8)') 'Full diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
-   call diagonalize_sca(postscf_diago_flavor,h_ci,desc_ham,energy,eigvec,desc_ham)
+   call diagonalize_sca(postscf_diago_flavor,h_ci,desc_hci,energy,eigvec,desc_hci)
    call stop_clock(timing_ci_diago)
  else
    write(stdout,'(1x,a,i8,a,i8)') 'Partial diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
@@ -1307,11 +1307,11 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
      if( read_status /= 0 ) then
        call setup_configurations_ci(nelectron,spinstate,'CISD',conf_sd)
        conf_sd%nstate = conf%nstate
-       mb_sd = MIN( mb_max , 2**FLOOR( LOG(REAL(conf_sd%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
+       mb_sd = MIN( mb_max , 2**FLOOR( LOG(REAL(conf_sd%nconf/nprow_eri3_mo,dp)) / LOG(2.0_dp) ) )
 
-       mvec_sd = NUMROC(conf_sd%nconf,mb_sd,iprow_auxil,first_row,nprow_auxil)
-       nvec_sd = NUMROC(conf_sd%nstate,mb_sd,ipcol_auxil,first_col,npcol_auxil)
-       call DESCINIT(desc_vec_sd,conf_sd%nconf,conf_sd%nstate,mb_sd,mb_sd,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
+       mvec_sd = NUMROC(conf_sd%nconf,mb_sd,iprow_eri3_mo,first_row,nprow_eri3_mo)
+       nvec_sd = NUMROC(conf_sd%nstate,mb_sd,ipcol_eri3_mo,first_col,npcol_eri3_mo)
+       call DESCINIT(desc_vec_sd,conf_sd%nconf,conf_sd%nstate,mb_sd,mb_sd,first_row,first_col,cntxt_eri3_mo,MAX(1,mvec),info)
        call clean_allocate('CISD eigenvectors',eigvec_sd,mvec_sd,nvec_sd)
        eigvec_sd(:,:) = 0.0_dp
        call start_clock(timing_ci_diago)

@@ -11,7 +11,8 @@ module m_selfenergy_tools
  use m_warning
  use m_mpi
  use m_inputparam
- use m_tools,only: coeffs_gausslegint
+ use m_numerical_tools
+ use m_hamiltonian_tools
 
  !
  ! frozen core approximation parameters
@@ -562,7 +563,6 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
  real(dp),intent(in)        :: hamiltonian_fock(:,:,:)
  real(dp),intent(out)       :: exchange_m_vxc(:,:,:)
 !=====
- integer,parameter    :: BATCH_SIZE = 128
  integer              :: nstate
  integer              :: ispin,pstate
  real(dp)             :: exc
@@ -597,7 +597,7 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
    occupation_tmp(1:dft_core,:) = 0.0_dp
 
    if( calc_type%is_dft ) then
-     call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.FALSE.,BATCH_SIZE)
+     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.FALSE.,BATCH_SIZE)
      call setup_density_matrix(c_matrix,occupation_tmp,p_matrix_tmp)
      call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation_tmp,c_matrix,hxc_val,exc)
      call destroy_dft_grid()
@@ -808,7 +808,6 @@ end subroutine self_energy_fit
 
 !=========================================================================
 subroutine self_energy_pade(se)
- use m_tools,only: pade
  implicit none
 
  type(selfenergy_grid),intent(inout) :: se

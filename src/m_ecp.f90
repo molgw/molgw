@@ -8,7 +8,7 @@
 !=========================================================================
 module m_ecp
  use m_definitions
- use m_tools,only: capitalize,append_to_list,orbital_momentum_name,orbital_momentum_number
+ use m_string_tools,only: capitalize,append_to_list,orbital_momentum_name,orbital_momentum_number
  use m_warning,only: die,issue_warning
  use m_elements
 

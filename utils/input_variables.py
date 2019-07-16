@@ -149,6 +149,27 @@ If present, the auxiliary basis will be used for both the scf cycles and the pos
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='auto_auxil_fsam'
+vl[i].family   ='general'
+vl[i].default  = 1.5
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the F_SAM parameter in the automatic generation of the auxiliary basis set. \
+The closer to 1.0 the more auxiliary basis functions it will generate. \
+See Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='auto_auxil_lmaxinc'
+vl[i].family   ='general'
+vl[i].default  = 1
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the l_MAXINC parameter in the automatic generation of the auxiliary basis set. The larger the more auxiliary basis functions it will generate. \
+See Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='incore'
 vl[i].family   ='general'
 vl[i].datatype ='yes/no'
@@ -863,26 +884,6 @@ vl[i].default  = 1
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the number of batches when calculating the 3-center integrals. \
 Having a large eri3_nbatch reduces the memory foot print, however it may lower the performance.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='scalapack_nprow'
-vl[i].family   ='hardware'
-vl[i].default  =1
-vl[i].datatype ='integer'
-vl[i].comment  ='Sets number of row processors for SCALAPACK distribution of the SCF matrices.  \
-nprow X npcol should be lower or equal to the number of processors.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='scalapack_npcol'
-vl[i].family   ='hardware'
-vl[i].default  =1
-vl[i].datatype ='integer'
-vl[i].comment  ='Sets number of column processors for SCALAPACK distribution of the SCF matrices.  \
-nprow X npcol should be lower or equal to the number of processors.'
 
 #================================
 vl.append(variable())

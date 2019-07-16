@@ -7,7 +7,7 @@
 ! and the corresponding optical spectra
 !
 !=========================================================================
-subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy,c_matrix,en_rpa,en_gw,wpol_out)
  use m_definitions
  use m_timing
  use m_warning
@@ -27,13 +27,12 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)                  :: rpa_correlation
+ real(dp),intent(out)                  :: en_rpa,en_gw
  type(spectral_function),intent(inout) :: wpol_out
 !=====
  type(spectral_function)   :: wpol_static
  logical                   :: is_bse
  integer                   :: nmat,nexc
- real(dp)                  :: energy_gm
  real(dp)                  :: alpha_local
  real(dp),allocatable      :: amb_diag_rpa(:)
  real(dp),allocatable      :: amb_matrix(:,:),apb_matrix(:,:)
@@ -48,9 +47,12 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  integer                   :: m_apb,n_apb,m_x,n_x
 ! SCALAPACK variables
  integer                   :: desc_apb(NDEL),desc_x(NDEL)
+ integer                   :: info
 !=====
 
  call start_clock(timing_pola)
+ en_rpa = 0.0_dp
+ en_gw  = 0.0_dp
 
  write(stdout,'(/,a)') ' Calculating the polarizability'
  if(is_triplet) then
@@ -132,7 +134,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
  ! The distribution of the two matrices have to be the same for A-B and A+B
  ! This is valid also when SCALAPACK is not used!
- call init_desc('S',nmat,nmat,desc_apb,m_apb,n_apb)
+ m_apb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+ n_apb = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_apb,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_apb),info)
  call clean_allocate('A+B',apb_matrix,m_apb,n_apb)
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
  allocate(amb_diag_rpa(nmat))
@@ -168,7 +172,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    call build_apb_hartree_auxil(desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
 #endif
 
-   call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+   call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,en_rpa)
 
 
 
@@ -192,7 +196,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    !
    ! Step 1
    call build_amb_apb_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
-                             m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
+                             m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,en_rpa)
 
    !
    ! Step 2
@@ -230,13 +234,15 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
  ! Prepare the second dimension of xpy_matrix and xmy_matrix
  nexc = nexcitation
- if( nexc == 0 ) nexc = wpol_out%npole_reso_apb
+ if( nexc == 0 ) nexc = nmat
 
  allocate(eigenvalue(nmat))
 
  ! Allocate (X+Y)
  ! Allocate (X-Y) only if actually needed
- call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
+ m_x = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+ n_x = NUMROC(nexc,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_x),info)
 
  call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
  if( .NOT. is_rpa .OR. is_tda ) &
@@ -274,11 +280,11 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
 
  !
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
- rpa_correlation = rpa_correlation + 0.50_dp * SUM( ABS(eigenvalue(:)) )
+ en_rpa = en_rpa + 0.50_dp * SUM( ABS(eigenvalue(:)) )
  if( is_rpa ) then
    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
    write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-   write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',rpa_correlation
+   write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',en_rpa
  endif
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
@@ -305,12 +311,12 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
  if( print_w_ .OR. calculate_w ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
+     call chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,en_gw)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if( is_rpa ) then
        write(stdout,'(/,1x,a)')        'Correlation energy in the Galitskii-Migdal formula'
-       write(stdout,'(1x,a,f19.10,/)') '                        1/2 Tr[ Sig_c * G ] (Ha): ',energy_gm
+       write(stdout,'(1x,a,f19.10,/)') '                        1/2 Tr[ Sig_c * G ] (Ha): ',en_gw
      endif
 
      ! Add the single pole approximation for the poles that have been neglected
@@ -426,13 +432,11 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
- real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
+ real(dp),allocatable               :: dipole_ao(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: residue(:,:)
  integer                            :: dynpolfile
  integer                            :: photocrossfile
  integer                            :: parityi,parityj,reflectioni,reflectionj
- integer,external                   :: wfn_parity
- integer,external                   :: wfn_reflection
  character(len=32)                  :: symsymbol
 !=====
 
@@ -452,7 +456,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  !
  ! First precalculate all the needed dipole in the basis set
  !
- call calculate_dipole_basis(basis,dipole_basis)
+ call calculate_dipole_ao(basis,dipole_ao)
 
  !
  ! Get the dipole oscillator strength on states
@@ -461,11 +465,11 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  do idir=1,3
    do mpspin=1,nspin
      dipole_state(:,:,mpspin,idir) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) , &
-                                             MATMUL( dipole_basis(:,:,idir) , c_matrix(:,:,mpspin) ) )
+                                             MATMUL( dipole_ao(:,:,idir) , c_matrix(:,:,mpspin) ) )
    enddo
  enddo
 
- deallocate(dipole_basis)
+ deallocate(dipole_ao)
 
 
  allocate(residue(3,nexc))
@@ -891,6 +895,7 @@ subroutine get_energy_qp(nstate,energy,occupation,energy_qp)
  use m_memory
  use m_inputparam
  use m_mpi
+ use m_io
  implicit none
 
  integer,intent(in)                  :: nstate
@@ -1088,7 +1093,10 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
  ! => only needs (X+Y)
- wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
+ !wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
+ call DGEMM('N','N',nauxil_3center,nmat,nmat,DSQRT(spin_fact),eri_3tmp,nauxil_3center, &
+                                                              xpy_matrix,nmat, &
+                                                        0.0d0,wpol%residue_left,nauxil_3center)
 
  energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
  !
@@ -1109,12 +1117,13 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
 
  !
  ! Descriptors
- mlocal = NUMROC(nauxil_2center,MB_auxil,iprow_auxil,first_row,nprow_auxil)
- call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_auxil,NB_auxil,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_2center,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+ call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
  call DESCINIT(desc_sd,nauxil_2center,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+
  call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
 
  call PDGEMR2D(nauxil_2center,nmat,eri_3tmp,1,1,desc_auxil, &

@@ -13,7 +13,6 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  use m_memory
  use m_inputparam
  use m_mpi
- use m_tools
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo

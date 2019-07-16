@@ -117,10 +117,10 @@ for imake in range(len(cppflags_list)):
 
 
     for line in reversed(open(tmpfolder+'/tests.log','r').readlines()) :
-      if 'Succesful tests' in line:
+      if 'Successful tests' in line:
         tests_ok    = int( line.split(':')[1].split('/')[0] )
         tests_total = int( line.split(':')[1].split('/')[1] )
-        print( '  Succesful tests: {0:} / {1:}'.format(tests_ok,tests_total) )
+        print( '  Successful tests: {0:} / {1:}'.format(tests_ok,tests_total) )
         if tests_ok == tests_total :
           print('  Test Suite:   [ \033[92m\033[1mOK\033[0m ] \n')
         else :
@@ -153,7 +153,7 @@ os.chdir('../tests')
 
 print('\n\n===============================')
 print('      Test Summary \n')
-print('  Succesful tests:   ',success,' / ',tested,'\n')
+print(' Successful tests:   ',success,' / ',tested,'\n')
 print(' Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')
 

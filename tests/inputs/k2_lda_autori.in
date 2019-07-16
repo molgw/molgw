@@ -1,0 +1,11 @@
+&molgw
+  scf='LDA'
+
+  basis='Def2-TZVP'
+  auxil_basis='Auto'
+
+  natom=2
+/
+K 0.0000 0.0000 0.0000
+K 0.0000 0.0000 3.9051
+

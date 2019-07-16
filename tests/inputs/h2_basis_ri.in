@@ -1,5 +1,6 @@
 &molgw
  scf='lda'
+ tolscf=1.0e-10
 
 
  natom=2

@@ -19,6 +19,7 @@ module m_hamiltonian_onebody
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
  use m_libint_tools
+ use m_io
 
 
 
@@ -781,10 +782,10 @@ end subroutine setup_nucleus_grad
 
 
 !=========================================================================
-subroutine calculate_dipole_basis(basis,dipole_basis)
+subroutine calculate_dipole_ao(basis,dipole_ao)
  implicit none
  type(basis_set),intent(in)         :: basis
- real(dp),allocatable,intent(out)   :: dipole_basis(:,:,:)
+ real(dp),allocatable,intent(out)   :: dipole_ao(:,:,:)
 !=====
  integer              :: gt
  integer              :: ishell,jshell
@@ -796,7 +797,7 @@ subroutine calculate_dipole_basis(basis,dipole_basis)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- allocate(dipole_basis(basis%nbf,basis%nbf,3))
+ allocate(dipole_ao(basis%nbf,basis%nbf,3))
 
 
  do jshell=1,basis%nshell
@@ -814,17 +815,17 @@ subroutine calculate_dipole_basis(basis,dipole_basis)
      ibf2      = basis%shell(ishell)%iend
 
 
-     allocate(dipole_cart(ni_cart,nj_cart,3))
+     allocate(dipole_cart(3,ni_cart,nj_cart))
 
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call basis_function_dipole(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),dipole_cart(i_cart,j_cart,:))
+         call basis_function_dipole(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
        enddo
      enddo
 
      do idir=1,3
-       dipole_basis(ibf1:ibf2,jbf1:jbf2,idir) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(:,:,idir) , cart_to_pure(lj,gt)%matrix(:,:) ) )
+       dipole_ao(ibf1:ibf2,jbf1:jbf2,idir) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
      enddo
 
      deallocate(dipole_cart)
@@ -833,7 +834,7 @@ subroutine calculate_dipole_basis(basis,dipole_basis)
  enddo
 
 
-end subroutine calculate_dipole_basis
+end subroutine calculate_dipole_ao
 
 
 !=========================================================================
