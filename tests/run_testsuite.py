@@ -64,8 +64,7 @@ def clean_run(inp,out,restart):
   if len(mpirun) < 1:
     subprocess.call(['../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
   else:
-    subprocess.call(['/opt/openmpi-3.0.1-gnu/bin/mpirun','-n',str(nprocs),'-oversubscribe','../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
-    #subprocess.call([mpirun,'-n',str(nprocs),'-oversubscribe','../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
+    subprocess.call([mpirun,'-n',str(nprocs),'-oversubscribe','../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
   fout.close()
   os.chdir('..')
 
