@@ -15,10 +15,10 @@ import sys, os, time, shutil, subprocess
 today=time.strftime("%Y")+'_'+time.strftime("%m")+'_'+time.strftime("%d")
 start_time = time.time()
 keeptmp = False
-run_tddft = False
 
 selected_input_files= []
 excluded_input_files= []
+input_param_selection= []
 mpirun=''
 nprocs=1
 ncores=1
@@ -169,13 +169,12 @@ def check_output(out,testinfo):
 ###################################
 # Parse the command line
 
-option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--debug','--tddft']
+option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--debug']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
     print('Run the complete test suite of MOLGW')
     print('  --keep             Keep the temporary folder')
-    print('  --tddft            Run tddft tests also')
     print('  --np     n         Set the number of MPI threads to n')
     print('  --nc     n         Set the number of OPENMP threads to n')
     print('  --mpirun launcher  Set the MPI launcher name')
@@ -191,9 +190,6 @@ if len(sys.argv) > 1:
 
   if '--keep' in sys.argv or '-keep' in sys.argv:
     keeptmp = True
-
-  if '--tddft' in sys.argv or '-tddft' in sys.argv:
-    run_tddft = True
 
   if '--np' in sys.argv:
     i = sys.argv.index('--np') + 1
@@ -214,6 +210,13 @@ if len(sys.argv) > 1:
       if '--' in sys.argv[j]:
         break
       selected_input_files.append(sys.argv[j])
+
+  if '--input-parameter' in sys.argv:
+    i = sys.argv.index('--input-parameter') + 1
+    for j in range(i,len(sys.argv)):
+      if '--' in sys.argv[j]:
+        break
+      input_param_selection.append(sys.argv[j])
 
   if '--exclude' in sys.argv:
     i = sys.argv.index('--exclude') + 1
@@ -314,7 +317,6 @@ restarting     = []
 parallel       = []
 need_scalapack = []
 need_gradients = []
-tddft          = []
 test_names     = []
 testinfo       = []
 
@@ -334,7 +336,6 @@ for line in ftestsuite:
     parallel.append(True)
     need_scalapack.append(False)
     need_gradients.append(False)
-    tddft.append(False)
 
   if len(parsing) == 3:
     ninput+=1
@@ -351,10 +352,6 @@ for line in ftestsuite:
       parallel.append(True)
     need_scalapack.append( 'need_scalapack' in parsing[2].lower() )
     need_gradients.append( 'need_gradients' in parsing[2].lower() )
-    if 'tddft' in parsing[2].lower():
-      tddft.append(True)
-    else:
-      tddft.append(False)
 
   elif len(parsing) == 4:
     testinfo[ninput-1].append(parsing)
@@ -442,12 +439,6 @@ for iinput in range(ninput):
     print('\nSkipping test file: '+inp)
     print('  because this test is only serial')
     skipping_reason.append('this test is only serial')
-    continue
-  if not run_tddft and tddft[iinput]:
-    test_files_skipped += 1
-    print('\nSkipping test file: '+inp)
-    print('  because RT-TDDFT tests need to be specifically activated with --tddft')
-    skipping_reason.append('RT-TDDFT tests need to be specifically activated with --tddft')
     continue
 
 
