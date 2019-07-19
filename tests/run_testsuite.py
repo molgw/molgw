@@ -169,7 +169,7 @@ def check_output(out,testinfo):
 ###################################
 # Parse the command line
 
-option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--debug']
+option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--input-parameter','--debug']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
@@ -180,6 +180,8 @@ if len(sys.argv) > 1:
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input files      Only run these input files')
     print('  --exclude files    Run all input files but these ones')
+    print('  --input-parameter  Only run input files that contain this input parameter. Example:')
+    print('                     --input-parameter scf = \'LDA\' ')
     print('  --debug            Output debug information for this script')
     sys.exit(0)
 
@@ -360,6 +362,33 @@ ftestsuite.close()
 
 
 ###################################
+# Check the selection by input variable value
+###################################
+if len(input_param_selection) > 0:
+  print('\nUser asked for a specific subset of input files containing:')
+  key1 = input_param_selection[0].split('=')[0]
+  key2 = input_param_selection[-1].split('=')[-1]
+  print('    ' + key1 + ' = ' + key2 + '\n')
+
+  for iinput in range(ninput):
+    inp = input_files[iinput]
+  
+    present = False
+
+    fin = open('inputs/'+inp,'r')
+    for line in fin:
+      if key1.lower() in line.lower() and key2.lower() in line.lower():
+        present = True
+    fin.close()
+
+    if present:
+      selected_input_files.append(inp)
+  if len(selected_input_files) == 0:
+    print('User selected an input parameter or a value that is not present in any input file')
+    sys.exit(1)
+
+
+###################################
 # Check the selection and the exclusion lists
 ###################################
 if len(selected_input_files) == 0 and len(excluded_input_files) == 0:
@@ -395,6 +424,8 @@ else:
       print('Input file name:',excluded_input_files[i],'not present in the test suite')
       sys.exit(1)
 
+
+  
 
 
 print('Input files to be executed: {}'.format(ninput2))
