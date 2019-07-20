@@ -15,10 +15,10 @@ import sys, os, time, shutil, subprocess
 today=time.strftime("%Y")+'_'+time.strftime("%m")+'_'+time.strftime("%d")
 start_time = time.time()
 keeptmp = False
-run_tddft = False
 
 selected_input_files= []
 excluded_input_files= []
+input_param_selection= []
 mpirun=''
 nprocs=1
 ncores=1
@@ -169,18 +169,19 @@ def check_output(out,testinfo):
 ###################################
 # Parse the command line
 
-option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--debug','--tddft']
+option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--input-parameter','--debug']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
     print('Run the complete test suite of MOLGW')
     print('  --keep             Keep the temporary folder')
-    print('  --tddft            Run tddft tests also')
     print('  --np     n         Set the number of MPI threads to n')
     print('  --nc     n         Set the number of OPENMP threads to n')
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input files      Only run these input files')
     print('  --exclude files    Run all input files but these ones')
+    print('  --input-parameter  Only run input files that contain this input parameter. Example:')
+    print('                     --input-parameter scf = \'LDA\' ')
     print('  --debug            Output debug information for this script')
     sys.exit(0)
 
@@ -191,9 +192,6 @@ if len(sys.argv) > 1:
 
   if '--keep' in sys.argv or '-keep' in sys.argv:
     keeptmp = True
-
-  if '--tddft' in sys.argv or '-tddft' in sys.argv:
-    run_tddft = True
 
   if '--np' in sys.argv:
     i = sys.argv.index('--np') + 1
@@ -214,6 +212,13 @@ if len(sys.argv) > 1:
       if '--' in sys.argv[j]:
         break
       selected_input_files.append(sys.argv[j])
+
+  if '--input-parameter' in sys.argv:
+    i = sys.argv.index('--input-parameter') + 1
+    for j in range(i,len(sys.argv)):
+      if '--' in sys.argv[j]:
+        break
+      input_param_selection.append(sys.argv[j])
 
   if '--exclude' in sys.argv:
     i = sys.argv.index('--exclude') + 1
@@ -314,7 +319,6 @@ restarting     = []
 parallel       = []
 need_scalapack = []
 need_gradients = []
-tddft          = []
 test_names     = []
 testinfo       = []
 
@@ -334,7 +338,6 @@ for line in ftestsuite:
     parallel.append(True)
     need_scalapack.append(False)
     need_gradients.append(False)
-    tddft.append(False)
 
   if len(parsing) == 3:
     ninput+=1
@@ -351,15 +354,38 @@ for line in ftestsuite:
       parallel.append(True)
     need_scalapack.append( 'need_scalapack' in parsing[2].lower() )
     need_gradients.append( 'need_gradients' in parsing[2].lower() )
-    if 'tddft' in parsing[2].lower():
-      tddft.append(True)
-    else:
-      tddft.append(False)
 
   elif len(parsing) == 4:
     testinfo[ninput-1].append(parsing)
 
 ftestsuite.close()
+
+
+###################################
+# Check the selection by input variable value
+###################################
+if len(input_param_selection) > 0:
+  print('\nUser asked for a specific subset of input files containing:')
+  key1 = input_param_selection[0].split('=')[0]
+  key2 = input_param_selection[-1].split('=')[-1]
+  print('    ' + key1 + ' = ' + key2 + '\n')
+
+  for iinput in range(ninput):
+    inp = input_files[iinput]
+  
+    present = False
+
+    fin = open('inputs/'+inp,'r')
+    for line in fin:
+      if key1.lower() in line.lower() and key2.lower() in line.lower():
+        present = True
+    fin.close()
+
+    if present:
+      selected_input_files.append(inp)
+  if len(selected_input_files) == 0:
+    print('User selected an input parameter or a value that is not present in any input file')
+    sys.exit(1)
 
 
 ###################################
@@ -398,6 +424,8 @@ else:
       print('Input file name:',excluded_input_files[i],'not present in the test suite')
       sys.exit(1)
 
+
+  
 
 
 print('Input files to be executed: {}'.format(ninput2))
@@ -442,12 +470,6 @@ for iinput in range(ninput):
     print('\nSkipping test file: '+inp)
     print('  because this test is only serial')
     skipping_reason.append('this test is only serial')
-    continue
-  if not run_tddft and tddft[iinput]:
-    test_files_skipped += 1
-    print('\nSkipping test file: '+inp)
-    print('  because RT-TDDFT tests need to be specifically activated with --tddft')
-    skipping_reason.append('RT-TDDFT tests need to be specifically activated with --tddft')
     continue
 
 
