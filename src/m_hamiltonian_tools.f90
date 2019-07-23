@@ -918,8 +918,8 @@ subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
  if( ALLOCATED(occupation) ) deallocate(occupation)
  allocate(c_matrix(nbf,nstate,nspin))
  allocate(occupation(nstate,nspin))
- c_matrix(:,:,:) = p_matrix_sqrt(:,1:nstate,:)
- occupation(:,:) = occupation_tmp(:,:)
+ c_matrix(:,:,:) = p_matrix_sqrt(:,:nstate,:)
+ occupation(:,:) = occupation_tmp(:nstate,:)
 
 
  deallocate(p_matrix_sqrt,occupation_tmp)
