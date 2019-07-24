@@ -174,6 +174,7 @@ module m_inputparam
 
  logical,protected                :: use_correlated_density_matrix_
  logical,protected                :: gwgamma_tddft_
+ logical,protected                :: memory_evaluation_
  logical,protected                :: read_restart_
  logical,protected                :: ignore_bigrestart_
  logical,protected                :: force_energy_qp_
@@ -201,7 +202,7 @@ module m_inputparam
  real(dp),protected               :: excit_dir(3)
  real(dp),protected               :: write_step
  real(dp),protected               :: r_disc
- integer,protected                :: n_hist, n_iter
+ integer,protected                :: n_hist,n_iter
  integer,protected                :: n_restart_tddft
  logical,protected                :: print_tddft_matrices_
  logical,protected                :: print_cube_rho_tddft_
@@ -709,6 +710,7 @@ subroutine read_inputfile_namelist()
  character(len=100)   :: ecp_small_basis
  character(len=100)   :: default_basis_path
  character(len=12)    :: length_unit
+ character(len=3)     :: memory_evaluation
  character(len=3)     :: read_restart,ignore_bigrestart,force_energy_qp
  character(len=3)     :: print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
@@ -817,6 +819,7 @@ subroutine read_inputfile_namelist()
  pt_density_matrix  = capitalize(pt_density_matrix)
  pt3_a_diagrams     = capitalize(pt3_a_diagrams)
 
+ memory_evaluation_       = yesno(memory_evaluation)
  read_restart_            = yesno(read_restart)
  ignore_bigrestart_       = yesno(ignore_bigrestart)
  force_energy_qp_         = yesno(force_energy_qp)
