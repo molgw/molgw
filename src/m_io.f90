@@ -33,7 +33,30 @@ module m_io
 contains
 
 
+!=========================================================================
+! Cleanly exit from the code, with all the memory statements, warnings, and timings 
+subroutine this_is_the_end()
+ implicit none
+!=====
+!=====
 
+ call total_memory_statement()
+
+ call output_timing()
+
+ call output_all_warnings()
+
+ write(stdout,'(/,1x,a,/)') 'This is the end'
+
+ call finish_mpi()
+
+ stop
+
+
+end subroutine this_is_the_end
+
+
+!=========================================================================
 subroutine header()
  implicit none
 
@@ -1015,7 +1038,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
        do icut=1,ncut
          do istate=istate_cut(icut,1),istate_cut(icut,2)
            integral(icut)=integral(icut)+(phi(istate,ispin))**2 * occupation(istate,ispin)
-           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2 
+           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2
          end do
        end do
 
@@ -1114,8 +1137,8 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
    do iline=1,npoints
      read(points_file,*) rpoints_start(iline,:), rpoints_end(iline,:)
      ! manual_dens_points_set file MUST BE IN ANGSTROMS in contrast to similar files
-     rpoints_start(iline,:) = rpoints_start(iline,:) / bohr_A 
-     rpoints_end(iline,:)   = rpoints_end(iline,:) / bohr_A 
+     rpoints_start(iline,:) = rpoints_start(iline,:) / bohr_A
+     rpoints_end(iline,:)   = rpoints_end(iline,:) / bohr_A
    end do
    close(points_file)
  else
@@ -1187,7 +1210,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
        do icut=1,ncut
          do istate=istate_cut(icut,1),istate_cut(icut,2)
            integral(icut)=integral(icut)+(phi(istate,ispin))**2 * occupation(istate,ispin)
-           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2 
+           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2
          end do
        end do
 
@@ -1874,7 +1897,7 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
 
          phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
          dens_diff(ix,iy,iz) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact - cube_density_start(ix,iy,iz,ispin)
-       
+
        enddo
 
      enddo
@@ -1892,7 +1915,7 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
      do ix=1,nx
        do iy=1,ny
          do iz=1,nz
-           write(ocuberho(ispin),'(50(e16.8,2x))') dens_diff(ix,iy,iz) 
+           write(ocuberho(ispin),'(50(e16.8,2x))') dens_diff(ix,iy,iz)
          end do
        end do
      end do
@@ -2068,7 +2091,7 @@ subroutine plot_rho_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
    do ispin=1,nspin
      phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
-     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) ) - rho_start(ir,ispin) 
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) ) - rho_start(ir,ispin)
    enddo
  enddo
 

@@ -1,29 +1,4 @@
 !=========================================================================
-! This file is part of MOLGW.
-!
-! Copyright (C) 2010-2016  Fabien Bruneval
-! MOLGW is free software: you can redistribute it and/or modify
-! it under the terms of the GNU General Public License as published by
-! the Free Software Foundation, either version 3 of the License, or
-! (at your option) any later version.
-!
-! MOLGW is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-!
-! You should have received a copy of the GNU General Public License
-! along with MOLGW.  If not, see <http://www.gnu.org/licenses/>.
-!=========================================================================
-!
-! This is the main of MOLGW
-!
-! It consists of 3 parts:
-!   1. Initialization
-!   2. SCF cycles
-!   3. Post-processings: GW, MP2, CI, TDDFT etc.
-!
-!=========================================================================
 module m_dm_analysis
  use m_definitions
  use m_timing
@@ -168,17 +143,7 @@ subroutine dm_dump(basis)
  call stop_clock(timing_prescf)
  call stop_clock(timing_total)
 
- call total_memory_statement()
-
- call output_timing()
-
- call output_all_warnings()
-
- write(stdout,'(/,1x,a,/)') 'This is the end'
-
- call finish_mpi()
-
- stop
+ call this_is_the_end()
 
 end subroutine dm_dump
 

@@ -1,7 +1,7 @@
 !=========================================================================
 ! This file is part of MOLGW.
 !
-! Copyright (C) 2010-2016  Fabien Bruneval
+! Copyright (C) 2010-2019  Fabien Bruneval
 ! MOLGW is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
 ! the Free Software Foundation, either version 3 of the License, or
@@ -601,17 +601,11 @@ program molgw
 
  call destroy_cart_to_pure_transforms()
 
- call total_memory_statement()
 
  call stop_clock(timing_postscf)
  call stop_clock(timing_total)
- call output_timing()
 
- call output_all_warnings()
-
- write(stdout,'(/,1x,a,/)') 'This is the end'
-
- call finish_mpi()
+ call this_is_the_end()
 
 
 end program molgw
