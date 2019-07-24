@@ -70,7 +70,7 @@ module m_spectral_function
  integer,protected :: nhomo_W
 
  !
- ! Highest occupied state
+ ! Lowest unoccupied state
  integer,protected :: nlumo_W
 
  !

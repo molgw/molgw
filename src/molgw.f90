@@ -151,12 +151,53 @@ program molgw
    if( print_rho_grid_ ) call dm_dump(basis)
 
    !
+   ! Calculate overlap matrix S so to obtain "nstate" as soon as possible
+   !
+   call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
+   !
+   ! Build up the overlap matrix S
+   ! S only depends onto the basis set
+   call setup_overlap(basis,s_matrix)
+
+   !
+   ! Calculate the square root inverse of the overlap matrix S
+   ! Eliminate those eigenvalues that are too small in order to stabilize the
+   ! calculation
+   !
+   ! A crucial parameter is defined here: nstate
+   call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix)
+
+   allocate(occupation(nstate,nspin))
+   allocate(    energy(nstate,nspin))
+   !
+   ! Build the first occupation array
+   ! as the energy are not known yet, set temperature to zero
+   call set_occupation(0.0_dp,electrons,magnetization,energy,occupation)
+
+   !
    !
    ! Precalculate the Coulomb integrals here
    !
    !
-   ! ERI are stored "privately" in the module m_eri
+   ! ERI are to be stored in the module m_eri
    call prepare_eri(basis)
+
+   !
+   ! If an auxiliary basis is given, then set it up now
+   if( has_auxil_basis ) then
+     write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
+     if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
+       call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
+     else
+       call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
+     endif
+   endif
+
+   !
+   ! Attempt to evaluate the peak memory
+   !
+   if( memory_evaluation_) call evaluate_memory(basis%nbf,auxil_basis%nbf,nstate,occupation)
+
 
    if( .NOT. has_auxil_basis ) then
      !
@@ -170,15 +211,6 @@ program molgw
      endif
 
    else
-     !
-     ! If an auxiliary basis is given,
-     ! then set it up now and calculate the required ERI: 2- and 3-center integrals
-     write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-     if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
-       call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
-     else
-       call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
-     endif
 
      ! 2-center integrals
      call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
@@ -202,42 +234,13 @@ program molgw
    !
 
 
-
    !
    ! Allocate the main arrays
    ! 2D arrays
-   call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
    call clean_allocate('Kinetic operator T',hamiltonian_kinetic,basis%nbf,basis%nbf)
    call clean_allocate('Nucleus operator V',hamiltonian_nucleus,basis%nbf,basis%nbf)
-   call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin) ! Never distributed
-
-
-   !
-   ! Build up the overlap matrix S
-   ! S only depends onto the basis set
-   call setup_overlap(basis,s_matrix)
-
-   !
-   ! Calculate the square root inverse of the overlap matrix S
-   ! Eliminate those eigenvalues that are too small in order to stabilize the
-   ! calculation
-   !
-   ! A crucial parameter is defined here: nstate
-   call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix)
-
-
-   ! Allocate the nstate arrays: c_matrix, occupation, energy
-   ! 2D arrays
+   call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
    call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)  ! not distributed right now
-   ! 1D arrays
-   allocate(occupation(nstate,nspin))
-   allocate(    energy(nstate,nspin))
-
-
-   !
-   ! Build the first occupation array
-   ! as the energy are not known yet, set temperature to zero
-   call set_occupation(0.0_dp,electrons,magnetization,energy,occupation)
 
    !
    ! Try to read a RESTART file if it exists
