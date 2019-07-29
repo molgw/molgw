@@ -12,7 +12,7 @@ program spectrum
  implicit none
 
  integer                    :: ntau,ntau_read,itau,idir,iomega,nomega
- integer                    :: file_transforms, file_dipolar_spectra 
+ integer                    :: file_transforms, file_dipolar_spectra
  integer                    :: file_dipole_time, file_excitation, io
  integer                    :: file_dipole_damped
  integer                    :: irow,nrow,num_fields
@@ -60,7 +60,7 @@ program spectrum
  endif
 
  ! Get number of lines nrow and lines without "#" ntau in dipole_time file
- ntau = 0 
+ ntau = 0
  nrow = 0
  open(newunit=file_dipole_time, file = name_dipole_time)
  do
@@ -82,7 +82,7 @@ program spectrum
  allocate(m_excit_field_dir(ntau))
  allocate(trans_m_excit_field_dir(ntau))
  allocate(trans_dipole_time(ntau,3))
-  
+
  ! Fill the dipole_time array
  itau = 1
  open(newunit=file_dipole_time, file = name_dipole_time)
@@ -99,9 +99,9 @@ program spectrum
 
  do idir=1,3
    dipole_time_ref(:,idir) = dipole_time_ref(:,idir) - calc_average(dipole_time_ref(:,idir))
- enddo 
+ enddo
 
- time_sim=m_times(ntau) 
+ time_sim=m_times(ntau)
 
  ! Get number of lines nrow and lines without "#" ntau_read in dipole_time file
  ntau_read = 0
@@ -173,10 +173,10 @@ program spectrum
  ! Write absorption spectra in the dipolar_spectra file
  if(output_transforms_) then
    open(newunit=file_transforms,file=name_transforms)
-   write(file_transforms,*) "# omega(eV), |E_excit_dir(omega)|, real(E_excit_dir(omega)), aimag(E_excit_dir(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))" 
+   write(file_transforms,*) "# omega(eV), |E_excit_dir(omega)|, real(E_excit_dir(omega)), aimag(E_excit_dir(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))"
  endif
  open(newunit=file_dipolar_spectra,file=name_dipolar_spectra)
- write(file_dipolar_spectra,*) "# omega(eV), transform(dipole_x)/|transform(E_dir)|, transform(dipole_y)/|transform(E_dir)|, transform(dipole_z)/|transform(E_dir)|" 
+ write(file_dipolar_spectra,*) "# omega(eV), transform(dipole_x)/|transform(E_dir)|, transform(dipole_y)/|transform(E_dir)|, transform(dipole_z)/|transform(E_dir)|"
 
  nomega = ntau
  do iomega=1,nomega/2 ! here iomega correspons to frequency
@@ -201,8 +201,8 @@ program spectrum
    endif
  enddo
 
- 
- 
+
+
  close(file_transforms)
  close(file_dipolar_spectra)
 #else
@@ -219,14 +219,14 @@ function calc_average(matrix) result(aver)
 !=====
  integer :: mdim,imat
 !=====
-  
+
  mdim = SIZE( matrix, DIM=1)
 
  aver = (0.0_dp,0.0_dp)
  do imat=1,mdim
    aver = aver + matrix(imat)
  enddo
- aver = aver / mdim 
+ aver = aver / mdim
 
 end function calc_average
 
@@ -240,13 +240,13 @@ subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,
  implicit none
  real(dp),          intent(inout)        :: damp_factor
  character(len=100),intent(inout)        :: name_dipole_time, name_excitation
- character(len=100),intent(inout)        :: name_dipolar_spectra 
+ character(len=100),intent(inout)        :: name_dipolar_spectra
  logical,           intent(inout)        :: output_damped_
  logical,           intent(inout)        :: output_transforms_
 !=====
  integer             :: iarg
  character(len=20)   :: arg_cur
- character(len=20)   :: ch_damp_factor 
+ character(len=20)   :: ch_damp_factor
 !=====
 
  damp_factor=            500.0_dp
@@ -287,18 +287,18 @@ subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,
      write(stdout,'(1x,a)') "                                (if different from dipolar_spectra.dat)"
      write(stdout,'(1x,a)') "-d , --damping                   damping coefficient in au of time for the Fourier transform of dipolar moment"
      write(stdout,'(1x,a)') "                               (value by default if 500 au)"
-     write(stdout,'(1x,a)') "-od, --output-damped            write damped dipole time dependence in to the dipole_damped.dat file" 
-     write(stdout,'(1x,a)') "-ot, --output-transfoms         write some Fourier transforms in file transforms.dat" 
+     write(stdout,'(1x,a)') "-od, --output-damped            write damped dipole time dependence in to the dipole_damped.dat file"
+     write(stdout,'(1x,a)') "-ot, --output-transfoms         write some Fourier transforms in file transforms.dat"
      stop
    case default
      write(stdout,*) "No instructions for: ", arg_cur
      call die("Unknown command line option")
-   end select  
+   end select
    iarg = iarg + 1
  enddo
 
  write(stdout,'(1x,70("="))')
- write(stdout,'(12x,a)') 'This is the part of MOLGW posprocessing'
+ write(stdout,'(12x,a)') 'MOLGW post processing'
  write(stdout,'(1x,70("="))')
  write(stdout,'(/,10x,a,/)') ' === Input parameters  ==='
  write(stdout,'(1x,a,2x,es16.8)')   'Dipole damping factor       :',damp_factor

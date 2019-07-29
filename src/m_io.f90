@@ -19,13 +19,14 @@ module m_io
  use m_libint_tools,only: libint_init
  use m_libxc_tools,only: xc_version
  use m_linear_algebra,only: determinant_3x3_matrix
- use m_inputparam,only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE,r_disc
+ use m_inputparam
  use m_hamiltonian_tools,only: get_number_occupied_states
  use m_atoms
  use m_basis_set
  use m_dft_grid,only: calculate_basis_functions_r
  use m_cart_to_pure
  use m_tddft_variables
+ use m_eri,only: npair
 
 
 
@@ -33,7 +34,33 @@ module m_io
 contains
 
 
+!=========================================================================
+!
+! Cleanly exit from the code, with all the memory statements, warnings, and timings
+!
+!=========================================================================
+subroutine this_is_the_end()
+ implicit none
+!=====
+!=====
 
+ call total_memory_statement()
+
+ call output_timing()
+
+ call output_all_warnings()
+
+ write(stdout,'(/,1x,a,/)') 'This is the end'
+
+ call finish_mpi()
+
+ stop
+
+
+end subroutine this_is_the_end
+
+
+!=========================================================================
 subroutine header()
  implicit none
 
@@ -1015,7 +1042,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
        do icut=1,ncut
          do istate=istate_cut(icut,1),istate_cut(icut,2)
            integral(icut)=integral(icut)+(phi(istate,ispin))**2 * occupation(istate,ispin)
-           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2 
+           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2
          end do
        end do
 
@@ -1114,8 +1141,8 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
    do iline=1,npoints
      read(points_file,*) rpoints_start(iline,:), rpoints_end(iline,:)
      ! manual_dens_points_set file MUST BE IN ANGSTROMS in contrast to similar files
-     rpoints_start(iline,:) = rpoints_start(iline,:) / bohr_A 
-     rpoints_end(iline,:)   = rpoints_end(iline,:) / bohr_A 
+     rpoints_start(iline,:) = rpoints_start(iline,:) / bohr_A
+     rpoints_end(iline,:)   = rpoints_end(iline,:) / bohr_A
    end do
    close(points_file)
  else
@@ -1187,7 +1214,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
        do icut=1,ncut
          do istate=istate_cut(icut,1),istate_cut(icut,2)
            integral(icut)=integral(icut)+(phi(istate,ispin))**2 * occupation(istate,ispin)
-           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2 
+           integral_phi_square(icut)=integral_phi_square(icut)+(phi(istate,ispin))**2
          end do
        end do
 
@@ -1874,7 +1901,7 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
 
          phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
          dens_diff(ix,iy,iz) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact - cube_density_start(ix,iy,iz,ispin)
-       
+
        enddo
 
      enddo
@@ -1892,7 +1919,7 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
      do ix=1,nx
        do iy=1,ny
          do iz=1,nz
-           write(ocuberho(ispin),'(50(e16.8,2x))') dens_diff(ix,iy,iz) 
+           write(ocuberho(ispin),'(50(e16.8,2x))') dens_diff(ix,iy,iz)
          end do
        end do
      end do
@@ -2068,7 +2095,7 @@ subroutine plot_rho_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
    do ispin=1,nspin
      phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
-     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) ) - rho_start(ir,ispin) 
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) ) - rho_start(ir,ispin)
    enddo
  enddo
 
@@ -2891,6 +2918,100 @@ subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,prec,beg)
    write(stdout,write_format1) matrix_real(ivar,:)
  end do
 end subroutine print_2d_matrix_real
+
+
+!=========================================================================
+subroutine evaluate_memory(nbf,auxil_nbf,nstate,occupation)
+ implicit none
+ integer,intent(in)  :: nbf,auxil_nbf,nstate
+ real(dp),intent(in) :: occupation(:,:)
+!=====
+ integer :: ncore_W,nvirtual_W,nhomo
+ real(dp) :: mem
+!=====
+
+ write(stdout,'(/,1x,70("="))')
+
+ write(stdout,'(/,1x,a)') 'Memory consumption predictor'
+ write(stdout,'(1x,a,/)') 'The above numbers are just for information purpose. Handle with care.'
+
+ write(stdout,'(/,1x,a)') '==== Electron Repulsion Integrals (MPI distributed)'
+ write(stdout,'(5x,a30,1x,i10)') 'npair =',npair
+ if( has_auxil_basis ) then
+   write(stdout,'(5x,a30,1x,i10)') 'auxil_basis%nbf =',auxil_nbf
+   write(stdout,'(5x,a30,1x,i10)') 'eri3_nbatch =',eri3_nbatch
+   !                                        eri_3center +       eri_3center_tmp
+   mem = REAL(npair,dp) * REAL(auxil_nbf,dp) * ( 1.0_dp + 1.0_dp / REAL(eri3_nbatch,dp) )
+ else
+   !          eri_4center    / symmetry
+   mem = REAL(npair,dp)**2   / 2.0_dp
+ endif
+ mem = mem * 8.0_dp / 1024_dp**3
+ write(stdout,'(5x,a30,1x,f14.3,1x,a)') 'Memory =',mem,'(Gb)'
+
+
+ write(stdout,'(/,1x,a)')  '==== Pulay DIIS (never distributed)'
+ write(stdout,'(5x,a30,1x,i10)') 'basis%nbf =',nbf
+ write(stdout,'(5x,a30,1x,i10)') 'nstate =',nstate
+ write(stdout,'(5x,a30,1x,i10)') 'nspin =',nspin
+ write(stdout,'(5x,a30,1x,i10)') 'npulay_hist =',npulay_hist
+ !                                        ham_hist & p_matrix_hist      res_hist
+ mem = REAL(npulay_hist * nspin,dp) * (  2.0_dp * REAL(nbf,dp)**2    +  REAL(nstate,dp)**2 )
+ mem = mem * 8.0_dp / 1024_dp**3
+ write(stdout,'(5x,a30,1x,f14.3,1x,a)') 'Memory =',mem,'(Gb)'
+
+
+ write(stdout,'(/,1x,a)')  '==== RPA response calculation (MPI distributed)'
+ ncore_W      = ncorew
+ nvirtual_W   = MIN(nvirtualw,nstate+1)
+ if(is_frozencore) then
+   if( ncore_W == 0) ncore_W = atoms_core_states()
+ endif
+ nhomo = get_number_occupied_states(occupation)
+
+ write(stdout,'(5x,a)')  '== RPA response'
+ write(stdout,'(5x,a30,1x,i10)') 'Active occupied states =',nhomo-ncore_W
+ write(stdout,'(5x,a30,1x,i10)') 'Active virtual states =',nvirtual_W-nhomo-1
+ write(stdout,'(5x,a30,1x,i10)') 'nspin =',nspin
+ !                                                                            A+B , Z
+ mem = ( REAL(nhomo-ncore_W,dp) * REAL(nvirtual_W-nhomo-1,dp) * nspin )**2 * 2.0_dp
+ mem = mem * 8.0_dp / 1024_dp**3
+ write(stdout,'(5x,a30,1x,f14.3,1x,a)') 'Memory =',mem,'(Gb)'
+
+ write(stdout,'(5x,a)')  '== MO Electron Repulsion Integrals'
+ write(stdout,'(5x,a30,1x,i10)') 'Active occupied states =',nhomo-ncore_W
+ write(stdout,'(5x,a30,1x,i10)') 'Active virtual states =',nvirtual_W-nhomo-1
+ if( has_auxil_basis ) then
+   write(stdout,'(5x,a30,1x,i10)') 'auxil_basis%nbf =',auxil_nbf
+   !                                                              eri_3center_ao
+   mem = REAL(nhomo-ncore_W,dp) * REAL(nvirtual_W-nhomo-1,dp) * nspin * auxil_nbf
+ else
+   !          eri_eigenstate_klmin(
+   mem = REAL(nbf,dp)**3 * nspin
+ endif
+ mem = mem * 8.0_dp / 1024_dp**3
+ write(stdout,'(5x,a30,1x,f14.3,1x,a)') 'Memory =',mem,'(Gb)'
+
+
+ write(stdout,'(/,1x,a)')  '==== RT-TDDFT (never distributed)'
+ write(stdout,'(5x,a30,1x,i10)') 'nstate =',nstate
+ write(stdout,'(5x,a30,1x,i10)') 'nspin =',nspin
+ write(stdout,'(5x,a30,1x,i10)') 'n_hist =',n_hist
+ !               h_small_hist_cmplx(:,:,:,:)  h_small_cmplx          h_cmplx
+ mem = REAL(nstate,dp)**2 * nspin * ( n_hist  +    1            ) + REAL(nbf,dp)**2 * nspin
+ mem = mem * 16.0_dp / 1024_dp**3
+ write(stdout,'(5x,a30,1x,f14.3,1x,a)') 'Memory =',mem,'(Gb)'
+
+
+
+ write(stdout,'(/,1x,70("="))')
+
+
+ call stop_clock(timing_prescf)
+ call stop_clock(timing_total)
+ call this_is_the_end()
+
+end subroutine evaluate_memory
 
 
 !=========================================================================
