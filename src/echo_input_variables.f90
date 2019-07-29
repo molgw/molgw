@@ -100,6 +100,7 @@
  write(stdout,'(1x,a24,6x,a)') 'print_restart',print_restart 
  write(stdout,'(1x,a24,6x,a)') 'print_rho_grid',print_rho_grid 
  write(stdout,'(1x,a24,6x,a)') 'print_sigma',print_sigma 
+ write(stdout,'(1x,a24,6x,a)') 'print_spatial_extension',print_spatial_extension 
  write(stdout,'(1x,a24,6x,a)') 'print_tddft_matrices',print_tddft_matrices 
  write(stdout,'(1x,a24,6x,a)') 'print_tddft_restart',print_tddft_restart 
  write(stdout,'(1x,a24,6x,a)') 'print_w',print_w 

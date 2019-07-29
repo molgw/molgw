@@ -695,6 +695,14 @@ vl[-1].comment  ='Prints the Mulliken weight of each eigenvector on a given atom
 
 #================================
 vl.append(variable())
+vl[-1].keyword  ='print_spatial_extension'
+vl[-1].family   ='io'
+vl[-1].default  ='no'
+vl[-1].datatype ='yes/no'
+vl[-1].comment  ='Prints the wavefunction extension calculated as &lt;r<sup>2</sup>&gt; - &lt;r&gt;<sup>2</sup>'
+
+#================================
+vl.append(variable())
 vl[-1].keyword  ='print_multipole'
 vl[-1].family   ='io'
 vl[-1].default  ='no'

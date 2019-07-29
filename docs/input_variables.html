@@ -19,7 +19,7 @@
 <p>
 <a href=#ci_greens_function>ci_greens_function</a> <a href=#ci_nstate>ci_nstate</a> <a href=#ci_nstate_self>ci_nstate_self</a> <a href=#ci_spin_multiplicity>ci_spin_multiplicity</a> <a href=#ci_type>ci_type</a> <a href=#dft_core>dft_core</a> <a href=#eta>eta</a> <a href=#frozencore>frozencore</a> <a href=#gwgamma_tddft>gwgamma_tddft</a> <a href=#ncoreg>ncoreg</a> <a href=#ncorew>ncorew</a> <a href=#nexcitation>nexcitation</a> <a href=#nomega_imag>nomega_imag</a> <a href=#nomega_sigma>nomega_sigma</a> <a href=#nstep_dav>nstep_dav</a> <a href=#nstep_gw>nstep_gw</a> <a href=#nvirtualg>nvirtualg</a> <a href=#nvirtualw>nvirtualw</a> <a href=#postscf>postscf</a> <a href=#pt3_a_diagrams>pt3_a_diagrams</a> <a href=#pt_density_matrix>pt_density_matrix</a> <a href=#rcut_mbpt>rcut_mbpt</a> <a href=#scissor>scissor</a> <a href=#selfenergy_state_max>selfenergy_state_max</a> <a href=#selfenergy_state_min>selfenergy_state_min</a> <a href=#selfenergy_state_range>selfenergy_state_range</a> <a href=#step_sigma>step_sigma</a> <a href=#tda>tda</a> <a href=#tddft_grid_quality>tddft_grid_quality</a> <a href=#toldav>toldav</a> <a href=#triplet>triplet</a> <a href=#use_correlated_density_matrix>use_correlated_density_matrix</a> <a href=#virtual_fno>virtual_fno</a> <h3>IO input variables</h3>
 <p>
-<a href=#basis_path>basis_path</a> <a href=#force_energy_qp>force_energy_qp</a> <a href=#ignore_bigrestart>ignore_bigrestart</a> <a href=#print_bigrestart>print_bigrestart</a> <a href=#print_cube>print_cube</a> <a href=#print_density_matrix>print_density_matrix</a> <a href=#print_eri>print_eri</a> <a href=#print_hartree>print_hartree</a> <a href=#print_multipole>print_multipole</a> <a href=#print_pdos>print_pdos</a> <a href=#print_restart>print_restart</a> <a href=#print_rho_grid>print_rho_grid</a> <a href=#print_sigma>print_sigma</a> <a href=#print_w>print_w</a> <a href=#print_wfn>print_wfn</a> <a href=#read_fchk>read_fchk</a> <a href=#read_restart>read_restart</a> <h3>Hardware input variables</h3>
+<a href=#basis_path>basis_path</a> <a href=#force_energy_qp>force_energy_qp</a> <a href=#ignore_bigrestart>ignore_bigrestart</a> <a href=#print_bigrestart>print_bigrestart</a> <a href=#print_cube>print_cube</a> <a href=#print_density_matrix>print_density_matrix</a> <a href=#print_eri>print_eri</a> <a href=#print_hartree>print_hartree</a> <a href=#print_multipole>print_multipole</a> <a href=#print_pdos>print_pdos</a> <a href=#print_restart>print_restart</a> <a href=#print_rho_grid>print_rho_grid</a> <a href=#print_sigma>print_sigma</a> <a href=#print_spatial_extension>print_spatial_extension</a> <a href=#print_w>print_w</a> <a href=#print_wfn>print_wfn</a> <a href=#read_fchk>read_fchk</a> <a href=#read_restart>read_restart</a> <h3>Hardware input variables</h3>
 <p>
 <a href=#eri3_nbatch>eri3_nbatch</a> <a href=#eri3_npcol>eri3_npcol</a> <a href=#eri3_nprow>eri3_nprow</a> <a href=#grid_memory>grid_memory</a> <a href=#mpi_nproc_ortho>mpi_nproc_ortho</a> <a href=#scalapack_block_min>scalapack_block_min</a> <h3>Real time TDDFT input variables</h3>
 <p>
@@ -611,6 +611,12 @@ Prints the electronic density discretized on the DFT grid into a file 'rho_grid.
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the value of the GW self-energy on the sampling frequencies in files.</li><br>
+<hr>
+<a name=print_spatial_extension><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_spatial_extension</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Prints the wavefunction extension calculated as &lt;r<sup>2</sup>&gt; - &lt;r&gt;<sup>2</sup></li><br>
 <hr>
 <a name=print_tddft_matrices><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_tddft_matrices</b>  </span>  
 <br><br>

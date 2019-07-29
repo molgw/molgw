@@ -101,6 +101,7 @@
     print_restart,       &
     print_rho_grid,       &
     print_sigma,       &
+    print_spatial_extension,       &
     print_tddft_matrices,       &
     print_tddft_restart,       &
     print_w,       &
@@ -235,6 +236,7 @@
  print_restart='yes'
  print_rho_grid='no'
  print_sigma='no'
+ print_spatial_extension='no'
  print_tddft_matrices='no'
  print_tddft_restart='yes'
  print_w='no'

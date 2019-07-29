@@ -184,6 +184,7 @@ module m_inputparam
  logical,protected                :: print_restart_
  logical,protected                :: print_bigrestart_
  logical,protected                :: print_pdos_
+ logical,protected                :: print_spatial_extension_
  logical,protected                :: print_cube_
  logical,protected                :: print_multipole_
  logical,protected                :: print_hartree_
@@ -714,7 +715,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
- character(len=3)     :: print_rho_grid
+ character(len=3)     :: print_rho_grid,print_spatial_extension
  character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
  character(len=3)     :: tddft_frozencore
  character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix
@@ -836,6 +837,7 @@ subroutine read_inputfile_namelist()
  print_restart_           = yesno(print_restart)
  print_bigrestart_        = yesno(print_bigrestart)
  print_pdos_              = yesno(print_pdos)
+ print_spatial_extension_  = yesno(print_spatial_extension)
  print_multipole_         = yesno(print_multipole)
  print_cube_              = yesno(print_cube)
  print_hartree_           = yesno(print_hartree)
