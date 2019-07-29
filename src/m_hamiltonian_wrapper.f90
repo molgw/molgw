@@ -189,9 +189,9 @@ subroutine calculate_hamiltonian_hxc(basis,nstate,occupation,c_matrix,p_matrix,h
    hamiltonian_spin_tmp(:,:,:) = 0.0_dp
 
    call calculate_exchange_lr(basis,p_matrix,hamiltonian_spin_tmp,ex=eexx,occupation=occupation,c_matrix=c_matrix)
-   ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-   eexx_hyb = alpha_hybrid_lr * eexx
-   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
+   ! Rescale with beta_hybrid for range-separated hybrid functionals
+   eexx_hyb = beta_hybrid * eexx
+   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * beta_hybrid
 
  endif
 
@@ -291,9 +291,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  !
  !     call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
  !
- !   ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
- !   eexx_hyb = alpha_hybrid_lr * eexx
- !   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
+ !   ! Rescale with beta_hybrid for range-separated hybrid functionalsbeta_hybrid
+ !   eexx_hyb = beta_hybrid * eexx
+ !   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * beta_hybrid
  ! endif
 
  deallocate(hamiltonian_tmp)

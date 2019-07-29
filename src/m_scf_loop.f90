@@ -153,9 +153,9 @@ subroutine scf_loop(is_restart,&
    if(calc_type%need_exchange_lr) then
 
      call calculate_exchange_lr(basis,p_matrix,hamiltonian_exx,ex=en_gks%exx_hyb,occupation=occupation,c_matrix=c_matrix)
-     ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-     en_gks%exx_hyb = en_gks%exx_hyb * alpha_hybrid_lr
-     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * alpha_hybrid_lr
+     ! Rescale with beta_hybrid for range-separated hybrid functionals
+     en_gks%exx_hyb = en_gks%exx_hyb * beta_hybrid
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * beta_hybrid
 
    endif
 

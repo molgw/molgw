@@ -358,7 +358,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
      if( calc_dens_disc_ )            call calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
 !     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
 
-     if(calc_q_matrix_) call calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur)
+     if(calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur)
 
      iwrite_step = iwrite_step + 1
 
@@ -963,7 +963,7 @@ end subroutine initialize_q
 
 
 !=========================================================================
-subroutine calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur)
+subroutine calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur)
  implicit none
  real(dp),intent(in)      :: occupation(:,:)
  complex(dp),intent(in)   :: c_matrix_orth_start_complete_cmplx(:,:,:)
@@ -1010,7 +1010,7 @@ subroutine calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_
    end if
  end do
 
-end subroutine calc_q_matrix
+end subroutine calculate_q_matrix
 
 
 !=========================================================================

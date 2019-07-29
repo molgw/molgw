@@ -493,7 +493,7 @@ program molgw
    call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
 
    if( is_virtual_fno ) then
-     call virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
+     call calculate_virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
    endif
    if(has_auxil_basis) then
      call calculate_eri_3center_eigen(c_matrix)
