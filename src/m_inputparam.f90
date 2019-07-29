@@ -95,7 +95,6 @@ module m_inputparam
  integer,protected                :: ncorew
  integer,protected                :: nvirtualg
  integer,protected                :: nvirtualw
- integer,protected                :: nvirtualspa
  logical,protected                :: is_frozencore
  logical,protected                :: is_tddft_frozencore
  integer,protected                :: ncore_tddft
@@ -891,10 +890,8 @@ subroutine read_inputfile_namelist()
  if(ncore_tddft<0) call die('negative ncore_tddft is meaningless')
  if(nvirtualg<0) call die('negative nvirtualg is meaningless')
  if(nvirtualw<0) call die('negative nvirtualw is meaningless')
- if(nvirtualspa<0) call die('negative nvirtualspa is meaningless')
  if(nvirtualg<ncoreg) call die('too small nvirtualg is meaningless')
  if(nvirtualw<ncorew) call die('too small nvirtualw is meaningless')
- if(nvirtualspa<ncorew) call die('too small nvirtualspa is meaningless')
  if(nspin/=1 .AND. nspin/=2) call die('nspin in incorrect')
  if(magnetization<-1.e-5)    call die('magnetization is negative')
  if(magnetization>1.e-5 .AND. nspin==1) call die('magnetization is non-zero and nspin is 1')

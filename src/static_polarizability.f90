@@ -49,10 +49,10 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  !
  ! Loop over resonant transitions
  vsqchi0vsq(:,:) = 0.0_dp
- do t_ia=1,wpol_out%npole_reso_apb
-   istate = wpol_out%transition_table_apb(1,t_ia)
-   astate = wpol_out%transition_table_apb(2,t_ia)
-   iaspin = wpol_out%transition_table_apb(3,t_ia)
+ do t_ia=1,wpol_out%npole_reso
+   istate = wpol_out%transition_table(1,t_ia)
+   astate = wpol_out%transition_table(2,t_ia)
+   iaspin = wpol_out%transition_table(3,t_ia)
 
    docc = occupation(astate,iaspin) - occupation(istate,iaspin)
    ! Factor 2.0 comes from resonant+antiresonant

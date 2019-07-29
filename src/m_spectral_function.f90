@@ -31,25 +31,11 @@ module m_spectral_function
    integer              :: nprodbasis             ! for this proc
 
    !
-   ! Information about all the poles (the calculated ones + the approximated ones)
+   ! Information about all the poles
    !
    integer              :: npole_reso
    integer,allocatable  :: transition_table(:,:)  ! correspondance table from
                                                   ! transition index to state pair indexes
-
-   !
-   ! Information for poles actually calculated
-   !
-   integer              :: npole_reso_apb
-   integer,allocatable  :: transition_table_apb(:,:)  ! correspondance table from
-                                                      ! transition index to state pair indexes
-
-   !
-   ! Information for poles that are not actually calculated
-   !
-   integer              :: npole_reso_spa
-   integer,allocatable  :: transition_table_spa(:,:)  ! correspondance table from
-                                                      ! transition index to state pair indexes
 
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residue_left(:,:)       ! first index runs on n, second index on i
@@ -80,10 +66,6 @@ module m_spectral_function
  !
  ! frozen virtual approximation parameter
  integer,protected :: nvirtual_W
-
- !
- ! Single Pole Approximation parameter
- integer,protected :: nvirtual_SPA
 
 
 contains
@@ -123,7 +105,7 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
  integer,intent(in)                    :: nomega_in
  type(spectral_function),intent(out)   :: sf
 !=====
- integer                               :: ijspin,istate,jstate,itrans,jtrans
+ integer                               :: ijspin,istate,jstate,itrans
  integer                               :: iomega
  integer                               :: nlumo_W_spin(nspin)
  integer                               :: nhomo_W_spin(nspin)
@@ -137,7 +119,6 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
 
  ncore_W      = ncorew
  nvirtual_W   = MIN(nvirtualw,nstate+1)
- nvirtual_SPA = MIN(nvirtualspa,nstate+1)
 
  if(is_frozencore) then
    if( ncore_W == 0) ncore_W = atoms_core_states()
@@ -219,61 +200,6 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
    enddo
  enddo
 
- !
- ! The same but only for the poles that will be actually calculated by
- ! diagonalization
- !
-
- !
- ! First, count the number of resonant transitions
- itrans=0
- do ijspin=1,nspin
-   do istate=1,nstate
-     do jstate=1,nstate
-       if( skip_transition(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
-       if( skip_transition_apb(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
-       if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
-       itrans = itrans + 1
-     enddo
-   enddo
- enddo
-
- sf%npole_reso_apb = itrans
- sf%npole_reso_spa = sf%npole_reso - sf%npole_reso_apb
- allocate(sf%transition_table_apb(3,sf%npole_reso_apb))
- allocate(sf%transition_table_spa(3,sf%npole_reso_spa))
- ! Set the transition_table
- itrans=0
- jtrans=0
- do ijspin=1,nspin
-   do istate=1,nstate
-     do jstate=1,nstate
-       if( skip_transition(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
-       if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
-
-       if( .NOT. skip_transition_apb(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) then
-         itrans = itrans + 1
-         ! Set the resonant transition table
-         sf%transition_table_apb(1,itrans) = istate
-         sf%transition_table_apb(2,itrans) = jstate
-         sf%transition_table_apb(3,itrans) = ijspin
-       else
-         jtrans = jtrans + 1
-         ! Set the resonant transition table
-         sf%transition_table_spa(1,jtrans) = istate
-         sf%transition_table_spa(2,jtrans) = jstate
-         sf%transition_table_spa(3,jtrans) = ijspin
-       endif
-
-     enddo
-   enddo
- enddo
-
- if( sf%npole_reso_apb /= sf%npole_reso ) then
-   write(msg,'(a,i6,2x,i6)') 'using single pole approximation with # poles instead of # ',sf%npole_reso_apb,sf%npole_reso
-   call issue_warning(msg)
- endif
-
  if( has_auxil_basis ) then
    sf%nprodbasis_total = nauxil_2center
  else
@@ -352,30 +278,6 @@ pure function skip_transition(ib1,ib2,occ1,occ2)
 
 
 end function skip_transition
-
-
-!=========================================================================
-pure function skip_transition_apb(ib1,ib2,occ1,occ2)
- implicit none
- logical             :: skip_transition_apb
- integer,intent(in)  :: ib1,ib2
- real(dp),intent(in) :: occ1,occ2
-!=====
-
- skip_transition_apb = .FALSE.
-
- !
- ! skip the core states if asked for a frozen-core calculation
- if( ib1 <= ncore_W .OR. ib2 <= ncore_W ) skip_transition_apb = .TRUE.
- !
- ! skip the virtual states if asked for a frozen-virtual calculation
- if( ib1 >= nvirtual_SPA .OR. ib2 >= nvirtual_SPA ) skip_transition_apb = .TRUE.
-
- if( occ1 < completely_empty             .AND. occ2 < completely_empty )             skip_transition_apb = .TRUE.
- if( occ1 > spin_fact - completely_empty .AND. occ2 > spin_fact - completely_empty ) skip_transition_apb = .TRUE.
-
-
-end function skip_transition_apb
 
 
 !=========================================================================

@@ -531,15 +531,6 @@ vl[i].comment  ='Sets the starting state beyond which states are excluded from t
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='nvirtualspa'
-vl[i].family   ='post'
-vl[i].default  =100000
-vl[i].datatype ='integer'
-vl[i].comment  ='Sets the starting state beyond which states are accounted for with a Single Pole Approximation for the screened Coulomb interaction W for GW.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
 vl[i].keyword  ='nomega_imag'
 vl[i].family   ='post'
 vl[i].default  = 0

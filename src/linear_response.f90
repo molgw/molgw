@@ -36,7 +36,6 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  real(dp)                  :: alpha_local
  real(dp),allocatable      :: amb_diag_rpa(:)
  real(dp),allocatable      :: amb_matrix(:,:),apb_matrix(:,:)
- real(dp),allocatable      :: a_diag(:)
  real(dp),allocatable      :: xpy_matrix(:,:),xmy_matrix(:,:)
  real(dp),allocatable      :: eigenvalue(:)
  real(dp)                  :: energy_qp(nstate,nspin)
@@ -130,7 +129,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  !
  ! Prepare the big matrices (A+B) and (A-B)
  !
- nmat = wpol_out%npole_reso_apb
+ nmat = wpol_out%npole_reso
  !
  ! The distribution of the two matrices have to be the same for A-B and A+B
  ! This is valid also when SCALAPACK is not used!
@@ -141,9 +140,6 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
  allocate(amb_diag_rpa(nmat))
 
- ! A diagonal is owned by all procs (= no distribution)
- ! wpol_out%npole_reso_spa are the pole not explictely counted in wpol_out%npole_reso_apb
- allocate(a_diag(wpol_out%npole_reso_spa))
 
  !
  ! Build the (A+B) and (A-B) matrices in 3 steps
@@ -151,10 +147,6 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  ! Only the lower triangle is calculated
  ! the upper part will be filled later by symmetry
  !
-
- ! Calculate the diagonal separately: it is needed for the single pole approximation
- if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) &
-     call build_a_diag_common(basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
 
  apb_matrix(:,:) = 0.0_dp
  amb_matrix(:,:) = 0.0_dp
@@ -319,11 +311,6 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
        write(stdout,'(1x,a,f19.10,/)') '                        1/2 Tr[ Sig_c * G ] (Ha): ',en_gw
      endif
 
-     ! Add the single pole approximation for the poles that have been neglected
-     ! in the diagonalization
-     if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) &
-        call chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol_out)
-
    else
      call chi_to_vchiv(basis%nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol_out)
    endif
@@ -343,7 +330,6 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  if(has_auxil_basis) call destroy_eri_3center_eigen()
 
  if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
- if(ALLOCATED(a_diag))     deallocate(a_diag)
 
  call stop_clock(timing_pola)
 
@@ -382,9 +368,9 @@ subroutine polarizability_onering(basis,nstate,energy,c_matrix,vchi0v)
 
 
  do t_jb=1,vchi0v%npole_reso
-   jstate = vchi0v%transition_table_apb(1,t_jb)
-   bstate = vchi0v%transition_table_apb(2,t_jb)
-   jbspin = vchi0v%transition_table_apb(3,t_jb)
+   jstate = vchi0v%transition_table(1,t_jb)
+   bstate = vchi0v%transition_table(2,t_jb)
+   jbspin = vchi0v%transition_table(3,t_jb)
 
    vchi0v%residue_left(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
    vchi0v%pole(t_jb)           = energy(bstate,jbspin) - energy(jstate,jbspin)
@@ -417,7 +403,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  type(spectral_function),intent(in) :: chi
  real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
  real(dp),intent(in)                :: xmy_matrix(m_x,n_x)
- real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
+ real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
 !=====
  integer                            :: gt
  integer                            :: nexc
@@ -428,7 +414,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  integer                            :: iomega,idir,jdir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
- real(dp)                           :: coeff(2*chi%npole_reso_apb),trace
+ real(dp)                           :: coeff(2*chi%npole_reso),trace
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
@@ -451,7 +437,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
  nexc = nexcitation
- if( nexc == 0 ) nexc = chi%npole_reso_apb
+ if( nexc == 0 ) nexc = chi%npole_reso
 
  !
  ! First precalculate all the needed dipole in the basis set
@@ -477,9 +463,9 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  residue(:,:) = 0.0_dp
  do t_ia=1,m_x
    t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
-   istate = chi%transition_table_apb(1,t_ia_global)
-   astate = chi%transition_table_apb(2,t_ia_global)
-   iaspin = chi%transition_table_apb(3,t_ia_global)
+   istate = chi%transition_table(1,t_ia_global)
+   astate = chi%transition_table(2,t_ia_global)
+   iaspin = chi%transition_table(3,t_ia_global)
 
    ! Let use (i <-> j) symmetry to halve the loop
    do t_jb=1,n_x
@@ -536,9 +522,9 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
      call xmax_world(t_ia_global)
      if( t_ia_global == 0 ) cycle
 
-     istate = chi%transition_table_apb(1,t_ia_global)
-     astate = chi%transition_table_apb(2,t_ia_global)
-     iaspin = chi%transition_table_apb(3,t_ia_global)
+     istate = chi%transition_table(1,t_ia_global)
+     astate = chi%transition_table(2,t_ia_global)
+     iaspin = chi%transition_table(3,t_ia_global)
      if(planar) then
        reflectioni = wfn_reflection(nstate,basis,c_matrix,istate,iaspin)
        reflectionj = wfn_reflection(nstate,basis,c_matrix,astate,iaspin)
@@ -568,27 +554,27 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
      coeff(:) = 0.0_dp
      do t_ia=1,m_x
        t_ia_global = rowindex_local_to_global('S',t_ia)
-       istate = chi%transition_table_apb(1,t_ia_global)
-       astate = chi%transition_table_apb(2,t_ia_global)
+       istate = chi%transition_table(1,t_ia_global)
+       astate = chi%transition_table(2,t_ia_global)
        if( t_jb /= 0 ) then
          ! Resonant
-         coeff(                     t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) + xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
+         coeff(                 t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) + xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
          ! Anti-Resonant
-         coeff(chi%npole_reso_apb + t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) - xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
+         coeff(chi%npole_reso + t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) - xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
        endif
      enddo
      call xsum_world(coeff)
 
 
-     do t_ia_global=1,chi%npole_reso_apb
-       istate = chi%transition_table_apb(1,t_ia_global)
-       astate = chi%transition_table_apb(2,t_ia_global)
+     do t_ia_global=1,chi%npole_reso
+       istate = chi%transition_table(1,t_ia_global)
+       astate = chi%transition_table(2,t_ia_global)
        ! Resonant
        if( ABS(coeff(                   t_ia_global)) > 0.1_dp )  &
          write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' -> ',astate,coeff(t_ia_global)
        ! Anti-Resonant
-       if( ABS(coeff(chi%npole_reso_apb+t_ia_global)) > 0.1_dp )  &
-         write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' <- ',astate,coeff(chi%npole_reso_apb+t_ia_global)
+       if( ABS(coeff(chi%npole_reso+t_ia_global)) > 0.1_dp )  &
+         write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' <- ',astate,coeff(chi%npole_reso+t_ia_global)
      enddo
 
      write(stdout,*)
@@ -599,7 +585,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  !
  ! For some calculation conditions, the rest of the subroutine is irrelevant
  ! So skip it! Skip it!
- if( is_triplet .OR. nexc /= chi%npole_reso_apb ) then
+ if( is_triplet .OR. nexc /= chi%npole_reso ) then
    deallocate(residue)
    return
  endif
@@ -699,7 +685,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
  real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
- real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
+ real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
 !=====
  integer                            :: gt
  integer                            :: t_ia,t_jb
@@ -720,7 +706,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  real(dp)                           :: qvec(3)
  integer,parameter                  :: nq=1 ! 1000
  integer                            :: iq
- real(dp)                           :: fnq(chi%npole_reso_apb)
+ real(dp)                           :: fnq(chi%npole_reso)
  integer,parameter                  :: nv=20
  integer                            :: iv
  real(dp)                           :: stopping(nv)
@@ -816,15 +802,15 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
    deallocate(gos_basis)
 
 
-   nmat=chi%npole_reso_apb
-   allocate(residue(chi%npole_reso_apb))
+   nmat=chi%npole_reso
+   allocate(residue(chi%npole_reso))
 
    residue(:) = 0.0_dp
    do t_ia=1,m_x
      t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
-     istate = chi%transition_table_apb(1,t_ia_global)
-     astate = chi%transition_table_apb(2,t_ia_global)
-     iaspin = chi%transition_table_apb(3,t_ia_global)
+     istate = chi%transition_table(1,t_ia_global)
+     astate = chi%transition_table(2,t_ia_global)
+     iaspin = chi%transition_table(3,t_ia_global)
 
      ! Let use (i <-> j) symmetry to halve the loop
      do t_jb=1,n_x
@@ -960,8 +946,8 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  integer,intent(in)                    :: nbf,nstate
  real(dp),intent(in)                   :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: xpy_matrix(wpol%npole_reso_apb,wpol%npole_reso_apb)
- real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
+ real(dp),intent(in)                   :: xpy_matrix(wpol%npole_reso,wpol%npole_reso)
+ real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
 !=====
  integer                               :: t_jb,jbspin,mpspin
  integer                               :: mstate,pstate,jstate,bstate,mpstate_spin
@@ -987,17 +973,17 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  nprodbasis = index_prodstate(nvirtual_W-1,nvirtual_W-1) * nspin
  call allocate_spectral_function(nprodbasis,wpol)
 
- wpol%pole(1:wpol%npole_reso_apb) = eigenvalue(:)
+ wpol%pole(1:wpol%npole_reso) = eigenvalue(:)
 
- nmat = wpol%npole_reso_apb
+ nmat = wpol%npole_reso
 
  wpol%residue_left(:,:) = 0.0_dp
 
 
  do t_jb=1,nmat
-   jstate = wpol%transition_table_apb(1,t_jb)
-   bstate = wpol%transition_table_apb(2,t_jb)
-   jbspin = wpol%transition_table_apb(3,t_jb)
+   jstate = wpol%transition_table(1,t_jb)
+   bstate = wpol%transition_table(2,t_jb)
+   jbspin = wpol%transition_table(3,t_jb)
 
    kbstate_min = MIN(jstate,bstate)
    kbstate_max = MAX(jstate,bstate)
@@ -1056,7 +1042,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  integer,intent(in)                    :: desc_x(NDEL)
  real(dp),intent(inout)                :: xpy_matrix(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
+ real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
  real(dp),intent(out)                  :: energy_gm
 !=====
  integer                               :: t_jb,t_jb_global,jbspin
@@ -1075,17 +1061,17 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
 
  call allocate_spectral_function(nauxil_3center,wpol)
- wpol%pole(1:wpol%npole_reso_apb) = eigenvalue(:)
+ wpol%pole(1:wpol%npole_reso) = eigenvalue(:)
 
- nmat = wpol%npole_reso_apb
+ nmat = wpol%npole_reso
 
 #ifndef HAVE_SCALAPACK
 
  allocate(eri_3tmp(nauxil_3center,nmat))
  do t_jb=1,nmat
-   jstate = wpol%transition_table_apb(1,t_jb)
-   bstate = wpol%transition_table_apb(2,t_jb)
-   jbspin = wpol%transition_table_apb(3,t_jb)
+   jstate = wpol%transition_table(1,t_jb)
+   bstate = wpol%transition_table(2,t_jb)
+   jbspin = wpol%transition_table(3,t_jb)
    eri_3tmp(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin)
  enddo
 
@@ -1109,9 +1095,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
 
  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_3center,nmat)
  do t_jb=1,nmat
-   jstate = wpol%transition_table_apb(1,t_jb)
-   bstate = wpol%transition_table_apb(2,t_jb)
-   jbspin = wpol%transition_table_apb(3,t_jb)
+   jstate = wpol%transition_table(1,t_jb)
+   bstate = wpol%transition_table(2,t_jb)
+   jbspin = wpol%transition_table(3,t_jb)
    eri_3tmp(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin)
  enddo
 
@@ -1155,9 +1141,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
 
  energy_gm = 0.0_dp
  do t_jb_global=1,nmat
-   jstate = wpol%transition_table_apb(1,t_jb_global)
-   bstate = wpol%transition_table_apb(2,t_jb_global)
-   jbspin = wpol%transition_table_apb(3,t_jb_global)
+   jstate = wpol%transition_table(1,t_jb_global)
+   bstate = wpol%transition_table(2,t_jb_global)
+   jbspin = wpol%transition_table(3,t_jb_global)
    energy_gm = energy_gm - SUM( eri_3center_eigen(:,jstate,bstate,jbspin)**2 ) * spin_fact * 0.5_dp
  enddo
 
@@ -1172,44 +1158,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  call stop_clock(timing_vchiv)
 
 end subroutine chi_to_sqrtvchisqrtv_auxil
-
-
-!=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol)
- use m_definitions
- use m_warning
- use m_basis_set
- use m_eri_ao_mo
- use m_spectral_function
- implicit none
-
- type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: a_diag(wpol%npole_reso_spa)
-!=====
- integer                               :: t_jb,jbspin
- integer                               :: jstate,bstate
-!=====
-
- call start_clock(timing_vchiv)
-
- write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2} part from single pole approximation'
-
- wpol%pole(wpol%npole_reso_apb+1:wpol%npole_reso) = a_diag(:)
-
- do t_jb=1,wpol%npole_reso_spa
-   jstate = wpol%transition_table_spa(1,t_jb)
-   bstate = wpol%transition_table_spa(2,t_jb)
-   jbspin = wpol%transition_table_spa(3,t_jb)
-
-
-   wpol%residue_left(:,wpol%npole_reso_apb+t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
-
- enddo
-
-
- call stop_clock(timing_vchiv)
-
-end subroutine chi_to_sqrtvchisqrtv_auxil_spa
 
 
 !=========================================================================

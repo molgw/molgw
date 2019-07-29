@@ -77,9 +77,9 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
      ! Then loop inside each of the SCALAPACK blocks
      do t_jb=1,n_apb_block
        t_jb_global = colindex_local_to_global(ipcol,npcol_sd,t_jb)
-       jstate = wpol%transition_table_apb(1,t_jb_global)
-       bstate = wpol%transition_table_apb(2,t_jb_global)
-       jbspin = wpol%transition_table_apb(3,t_jb_global)
+       jstate = wpol%transition_table(1,t_jb_global)
+       bstate = wpol%transition_table(2,t_jb_global)
+       jbspin = wpol%transition_table(3,t_jb_global)
 
        if( .NOT. has_auxil_basis ) then
          jbmin = MIN(jstate,bstate)
@@ -89,9 +89,9 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
 
        do t_ia=1,m_apb_block
          t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
-         istate = wpol%transition_table_apb(1,t_ia_global)
-         astate = wpol%transition_table_apb(2,t_ia_global)
-         iaspin = wpol%transition_table_apb(3,t_ia_global)
+         istate = wpol%transition_table(1,t_ia_global)
+         astate = wpol%transition_table(2,t_ia_global)
+         iaspin = wpol%transition_table(3,t_ia_global)
 
          !
          ! Only calculate the lower triangle
@@ -171,9 +171,9 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  !
  !$OMP PARALLEL DO PRIVATE(istate,astate,iaspin)
  do t_ia_global=1,nmat
-   istate = wpol%transition_table_apb(1,t_ia_global)
-   astate = wpol%transition_table_apb(2,t_ia_global)
-   iaspin = wpol%transition_table_apb(3,t_ia_global)
+   istate = wpol%transition_table(1,t_ia_global)
+   astate = wpol%transition_table(2,t_ia_global)
+   iaspin = wpol%transition_table(3,t_ia_global)
 
    amb_diag_rpa(t_ia_global) = energy(astate,iaspin) - energy(istate,iaspin)
 
@@ -219,9 +219,9 @@ subroutine build_amb_apb_diag_auxil(nmat,nstate,energy,wpol,m_apb,n_apb,amb_matr
    t_ia = rowindex_global_to_local('S',t_jb_global)
    t_jb = colindex_global_to_local('S',t_jb_global)
 
-   jstate = wpol%transition_table_apb(1,t_jb_global)
-   bstate = wpol%transition_table_apb(2,t_jb_global)
-   jbspin = wpol%transition_table_apb(3,t_jb_global)
+   jstate = wpol%transition_table(1,t_jb_global)
+   bstate = wpol%transition_table(2,t_jb_global)
+   jbspin = wpol%transition_table(3,t_jb_global)
    amb_diag_rpa(t_jb_global) = energy(bstate,jbspin) - energy(jstate,jbspin)
 
    ! If the diagonal element belongs to this proc, then add it.
@@ -338,9 +338,9 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
 
        do t_jb=1,n_apb_block
          t_jb_global = colindex_local_to_global(ipcol,npcol_sd,t_jb)
-         jstate = wpol%transition_table_apb(1,t_jb_global)
-         bstate = wpol%transition_table_apb(2,t_jb_global)
-         jbspin = wpol%transition_table_apb(3,t_jb_global)
+         jstate = wpol%transition_table(1,t_jb_global)
+         bstate = wpol%transition_table(2,t_jb_global)
+         jbspin = wpol%transition_table(3,t_jb_global)
 
          eri_3center_right(t_jb) = eri_3center_eigen(ibf_auxil,jstate,bstate,jbspin)
 
@@ -348,9 +348,9 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
 
        do t_ia=1,m_apb_block
          t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
-         istate = wpol%transition_table_apb(1,t_ia_global)
-         astate = wpol%transition_table_apb(2,t_ia_global)
-         iaspin = wpol%transition_table_apb(3,t_ia_global)
+         istate = wpol%transition_table(1,t_ia_global)
+         astate = wpol%transition_table(2,t_ia_global)
+         iaspin = wpol%transition_table(3,t_ia_global)
 
          eri_3center_left(t_ia) = eri_3center_eigen(ibf_auxil,istate,astate,iaspin)
 
@@ -420,9 +420,9 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
 
  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_3center,nmat)
  do t_jb_global=1,nmat
-   jstate = wpol%transition_table_apb(1,t_jb_global)
-   bstate = wpol%transition_table_apb(2,t_jb_global)
-   jbspin = wpol%transition_table_apb(3,t_jb_global)
+   jstate = wpol%transition_table(1,t_jb_global)
+   bstate = wpol%transition_table(2,t_jb_global)
+   jbspin = wpol%transition_table(3,t_jb_global)
    eri_3tmp(:,t_jb_global) = eri_3center_eigen(:,jstate,bstate,jbspin)
  enddo
 
@@ -452,90 +452,6 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
  call stop_clock(timing_build_common)
 
 end subroutine build_apb_hartree_auxil_scalapack
-
-
-!=========================================================================
-subroutine build_a_diag_common(nbf,nstate,c_matrix,energy,wpol,a_diag)
- use m_definitions
- use m_timing
- use m_warning
- use m_memory
- use m_inputparam
- use m_mpi
- use m_spectral_function
- use m_eri_ao_mo
- implicit none
-
- integer,intent(in)                 :: nbf,nstate
- real(dp),intent(in)                :: energy(nstate,nspin)
- real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
- type(spectral_function),intent(in) :: wpol
- real(dp),intent(out)               :: a_diag(wpol%npole_reso_spa)
-!=====
- integer              :: t_jb
- integer              :: jstate,bstate
- integer              :: jbspin
- integer              :: jbmin
- real(dp),allocatable :: eri_eigenstate_jbmin(:,:,:,:)
- real(dp)             :: eri_eigen_jbjb
- logical              :: j_is_jbmin
- real(dp),parameter   :: empirical_fact=1.50_dp
- character(len=100)   :: ctmp
-!=====
-
- call start_clock(timing_build_common)
-
- write(stdout,'(a)') ' Build diagonal of the RPA part: Energies + Hartree'
- if( ABS( empirical_fact - 1.0_dp ) > 1.0e-6_dp ) then
-   write(ctmp,'(a,1x,f6.2)') 'Empirical parameter',empirical_fact
-   call issue_warning(ctmp)
- endif
-
- if( .NOT. has_auxil_basis) then
-   allocate(eri_eigenstate_jbmin(nstate,nstate,nstate,nspin))
-   ! Set this to zero and then enforce the calculation of the first series of
-   ! Coulomb integrals
-   eri_eigenstate_jbmin(:,:,:,:) = 0.0_dp
- endif
-
- !
- ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B)
- !
-
-
- ! Then loop inside each of the SCALAPACK blocks
- do t_jb=1,wpol%npole_reso_spa
-   jstate = wpol%transition_table_spa(1,t_jb)
-   bstate = wpol%transition_table_spa(2,t_jb)
-   jbspin = wpol%transition_table_spa(3,t_jb)
-
-   if( .NOT. has_auxil_basis ) then
-     jbmin = MIN(jstate,bstate)
-     j_is_jbmin = (jbmin == jstate)
-     call calculate_eri_4center_eigen(c_matrix,jbmin,jbspin,eri_eigenstate_jbmin)
-   endif
-
-   if(has_auxil_basis) then
-     eri_eigen_jbjb = eri_eigen_ri(jstate,bstate,jbspin,jstate,bstate,jbspin)
-   else
-     if(j_is_jbmin) then ! treating (j,b)
-       eri_eigen_jbjb = eri_eigenstate_jbmin(bstate,jstate,bstate,jbspin)
-     else                ! treating (b,j)
-       eri_eigen_jbjb = eri_eigenstate_jbmin(jstate,jstate,bstate,jbspin)
-     endif
-   endif
-
-   a_diag(t_jb) = eri_eigen_jbjb * spin_fact + energy(bstate,jbspin) - energy(jstate,jbspin)
-   a_diag(t_jb) = a_diag(t_jb) * empirical_fact
-
- enddo
-
- if(ALLOCATED(eri_eigenstate_jbmin)) deallocate(eri_eigenstate_jbmin)
-
-
- call stop_clock(timing_build_common)
-
-end subroutine build_a_diag_common
 
 
 !=========================================================================
@@ -597,15 +513,15 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
      !
      do t_jb=1,n_apb_block
        t_jb_global = colindex_local_to_global(ipcol,npcol_sd,t_jb)
-       jstate = wpol%transition_table_apb(1,t_jb_global)
-       bstate = wpol%transition_table_apb(2,t_jb_global)
-       jbspin = wpol%transition_table_apb(3,t_jb_global)
+       jstate = wpol%transition_table(1,t_jb_global)
+       bstate = wpol%transition_table(2,t_jb_global)
+       jbspin = wpol%transition_table(3,t_jb_global)
 
        do t_ia=1,m_apb_block
          t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
-         istate = wpol%transition_table_apb(1,t_ia_global)
-         astate = wpol%transition_table_apb(2,t_ia_global)
-         iaspin = wpol%transition_table_apb(3,t_ia_global)
+         istate = wpol%transition_table(1,t_ia_global)
+         astate = wpol%transition_table(2,t_ia_global)
+         iaspin = wpol%transition_table(3,t_ia_global)
 
          !
          ! Only calculate the lower triangle
@@ -696,15 +612,15 @@ subroutine build_amb_apb_bse(wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  !
  do t_jb=1,n_apb
    t_jb_global = colindex_local_to_global('C',t_jb)
-   jstate = wpol%transition_table_apb(1,t_jb_global)
-   bstate = wpol%transition_table_apb(2,t_jb_global)
-   jbspin = wpol%transition_table_apb(3,t_jb_global)
+   jstate = wpol%transition_table(1,t_jb_global)
+   bstate = wpol%transition_table(2,t_jb_global)
+   jbspin = wpol%transition_table(3,t_jb_global)
 
    do t_ia=1,m_apb
      t_ia_global = rowindex_local_to_global('C',t_ia)
-     istate = wpol%transition_table_apb(1,t_ia_global)
-     astate = wpol%transition_table_apb(2,t_ia_global)
-     iaspin = wpol%transition_table_apb(3,t_ia_global)
+     istate = wpol%transition_table(1,t_ia_global)
+     astate = wpol%transition_table(2,t_ia_global)
+     iaspin = wpol%transition_table(3,t_ia_global)
 
      !
      ! Only calculate the lower triangle
@@ -800,10 +716,10 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  ! Distribution over the "ortho" parallelization direction
  !
  jstate_min = ncore_W+1
- jstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol%npole_reso_apb) )
+ jstate_max = MAXVAL( wpol%transition_table(1,1:wpol%npole_reso) )
  do irank=0,rank_ortho
    if( irank > 0 ) jstate_min = jstate_max + 1
-   jstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol%npole_reso_apb) )
+   jstate_max = MAXVAL( wpol%transition_table(1,1:wpol%npole_reso) )
    jstate_max = MIN( jstate_min + (jstate_max-jstate_min+1) / (nproc_ortho-irank) - 1 , jstate_max )
  enddo
 
@@ -955,17 +871,17 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
      !
      do t_jb=1,n_apb_block
        t_jb_global = colindex_local_to_global(ipcol,npcol_sd,t_jb)
-       jstate = wpol%transition_table_apb(1,t_jb_global)
-       bstate = wpol%transition_table_apb(2,t_jb_global)
-       jbspin = wpol%transition_table_apb(3,t_jb_global)
+       jstate = wpol%transition_table(1,t_jb_global)
+       bstate = wpol%transition_table(2,t_jb_global)
+       jbspin = wpol%transition_table(3,t_jb_global)
 
        if( jstate < jstate_min .OR. jstate > jstate_max ) cycle
 
        do t_ia=1,m_apb_block
          t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
-         istate = wpol%transition_table_apb(1,t_ia_global)
-         astate = wpol%transition_table_apb(2,t_ia_global)
-         iaspin = wpol%transition_table_apb(3,t_ia_global)
+         istate = wpol%transition_table(1,t_ia_global)
+         astate = wpol%transition_table(2,t_ia_global)
+         iaspin = wpol%transition_table(3,t_ia_global)
 
          !
          ! Only calculate the lower triangle

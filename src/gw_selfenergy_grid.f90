@@ -81,20 +81,20 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
  !
  ! Get the processor grid included in the input wpol%desc_chi
- meri3 = NUMROC(nauxil_2center     ,wpol%desc_chi(MB_),iprow_sd,wpol%desc_chi(RSRC_),nprow_sd)
- neri3 = NUMROC(wpol%npole_reso_apb,wpol%desc_chi(NB_),ipcol_sd,wpol%desc_chi(CSRC_),npcol_sd)
- call DESCINIT(desc_eri3_final,nauxil_2center,wpol%npole_reso_apb,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+ meri3 = NUMROC(nauxil_2center ,wpol%desc_chi(MB_),iprow_sd,wpol%desc_chi(RSRC_),nprow_sd)
+ neri3 = NUMROC(wpol%npole_reso,wpol%desc_chi(NB_),ipcol_sd,wpol%desc_chi(CSRC_),npcol_sd)
+ call DESCINIT(desc_eri3_final,nauxil_2center,wpol%npole_reso,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
                wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
 
 #ifdef HAVE_SCALAPACK
  call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
 #endif
- call clean_allocate('TMP 3-center MO integrals',eri3_t,nauxil_3center,wpol%npole_reso_apb)
+ call clean_allocate('TMP 3-center MO integrals',eri3_t,nauxil_3center,wpol%npole_reso)
  call clean_allocate('Chi0',chi0,wpol%mchi,wpol%nchi)
  call clean_allocate('1-Chi0',one_m_chi0,wpol%mchi,wpol%nchi)
  call clean_allocate('(1-Chi0)**-1',one_m_chi0m1,wpol%mchi,wpol%nchi)
 
- call DESCINIT(desc_eri3_t,nauxil_2center,wpol%npole_reso_apb,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
+ call DESCINIT(desc_eri3_t,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
 
 
  erpa = 0.0_dp
@@ -107,10 +107,10 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
    ! First evaluate v^{1/2} \chi_0 v^{1/2}
    !
    ! Loop over resonant transitions
-   do t_ia=1,wpol%npole_reso_apb
-     istate = wpol%transition_table_apb(1,t_ia)
-     astate = wpol%transition_table_apb(2,t_ia)
-     iaspin = wpol%transition_table_apb(3,t_ia)
+   do t_ia=1,wpol%npole_reso
+     istate = wpol%transition_table(1,t_ia)
+     astate = wpol%transition_table(2,t_ia)
+     iaspin = wpol%transition_table(3,t_ia)
 
      docc = occupation(istate,iaspin) - occupation(astate,iaspin)
      de   = energy(astate,iaspin)     - energy(istate,iaspin)
@@ -121,14 +121,14 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
    enddo
 
 #ifdef HAVE_SCALAPACK
-   call PDGEMR2D(nauxil_2center,wpol%npole_reso_apb,eri3_t,1,1,desc_eri3_t, &
-                                                    eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
+   call PDGEMR2D(nauxil_2center,wpol%npole_reso,eri3_t,1,1,desc_eri3_t, &
+                                                eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
 #endif
 
 #ifdef HAVE_SCALAPACK
-   call PDSYRK('L','N',nauxil_2center,wpol%npole_reso_apb,1.0_dp,eri3_sca,1,1,desc_eri3_final,0.0_dp,chi0,1,1,wpol%desc_chi)
+   call PDSYRK('L','N',nauxil_2center,wpol%npole_reso,1.0_dp,eri3_sca,1,1,desc_eri3_final,0.0_dp,chi0,1,1,wpol%desc_chi)
 #else
-   call DSYRK('L','N',nauxil_2center,wpol%npole_reso_apb,1.0_dp,eri3_t,nauxil_2center,0.0_dp,chi0,nauxil_2center)
+   call DSYRK('L','N',nauxil_2center,wpol%npole_reso,1.0_dp,eri3_t,nauxil_2center,0.0_dp,chi0,nauxil_2center)
 #endif
    chi0(:,:) = -chi0(:,:)
 
