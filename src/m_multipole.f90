@@ -9,7 +9,7 @@
 module m_multipole
  use m_definitions
  use m_basis_set
- use m_inputparam,only: nspin
+ use m_inputparam
  use m_hamiltonian_tools,only: setup_density_matrix
  use m_hamiltonian_onebody,only: calculate_dipole_ao,calculate_quadrupole_ao
  use m_atoms
@@ -164,7 +164,8 @@ subroutine spatial_extension(basis,c_matrix)
   real(dp),allocatable       :: quad_ao(:,:,:,:)
   real(dp),allocatable       :: trace_dipole_ao(:,:)
   real(dp),allocatable       :: trace_quad_ao(:,:)
-  real(dp)                   :: variance(nspin),mean(nspin)
+  real(dp)                   :: variance(SIZE(c_matrix,DIM=2),nspin),mean(SIZE(c_matrix,DIM=2),nspin)
+  character(len=6)           :: char6
   !=====
 
   nbf = SIZE(c_matrix,DIM=1)
@@ -188,19 +189,31 @@ subroutine spatial_extension(basis,c_matrix)
   do istate=1,SIZE(c_matrix,DIM=2)
     do ispin=1,nspin
 
-      variance(ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( trace_quad_ao(:,:)   , c_matrix(:,istate,ispin) ) )
-      mean(ispin)     = DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( trace_dipole_ao(:,:) , c_matrix(:,istate,ispin) ) )
+      variance(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( trace_quad_ao(:,:)   , c_matrix(:,istate,ispin) ) )
+      mean(istate,ispin)     = DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( trace_dipole_ao(:,:) , c_matrix(:,istate,ispin) ) )
 
     enddo
 
-    write(stdout,'(1x,i6,2x,*(2x,f12.3))') istate,SQRT( variance(:) - mean(:)**2 )
-
+    write(stdout,'(1x,i6,2x,*(2x,f12.3))') istate,SQRT( variance(istate,:) - mean(istate,:)**2 )
   enddo
   write(stdout,'(1x,70("="),/)')
 
-
   deallocate(trace_dipole_ao)
   deallocate(trace_quad_ao)
+
+
+  if( print_yaml_ .AND. is_iomaster ) then
+    write(unit_yaml,'(/,a,a)') 'spatial extension',':'
+    write(unit_yaml,'(4x,a)') 'unit: bohr'
+    do ispin=1,nspin
+      write(unit_yaml,'(4x,a,i2,a)') 'spin channel',ispin,':'
+      do istate=1,SIZE(c_matrix,DIM=2)
+        write(char6,'(i6)') istate
+        write(unit_yaml,'(8x,a6,a,1x,es18.8)') ADJUSTL(char6),':',SQRT( variance(istate,ispin) - mean(istate,ispin)**2 )
+      enddo
+    enddo
+  endif
+
 
 
 end subroutine spatial_extension
