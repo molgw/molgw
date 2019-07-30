@@ -50,6 +50,11 @@ subroutine this_is_the_end()
 
  call output_all_warnings()
 
+ if( print_yaml_ .AND. is_iomaster ) then
+   write(unit_yaml,'(a)') '...'
+   close(unit_yaml)
+ endif
+
  write(stdout,'(/,1x,a,/)') 'This is the end'
 
  call finish_mpi()
@@ -2876,6 +2881,7 @@ function wfn_reflection(nstate,basis,c_matrix,istate,ispin)
 
 
 end function wfn_reflection
+
 
 !=======================================
 subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,prec,beg)

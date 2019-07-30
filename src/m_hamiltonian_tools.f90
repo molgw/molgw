@@ -16,7 +16,7 @@ module m_hamiltonian_tools
  use m_cart_to_pure
  use m_basis_set
  use m_linear_algebra
- use m_inputparam,only: nspin,spin_fact,scalapack_block_min,scf_diago_flavor
+ use m_inputparam
 
 
  interface setup_density_matrix
@@ -434,6 +434,39 @@ subroutine dump_out_energy(title,occupation,energy)
  write(stdout,*)
 
 end subroutine dump_out_energy
+
+
+!=========================================================================
+subroutine dump_out_energy_yaml(title,energy,lb,ub)
+ implicit none
+ character(len=*),intent(in) :: title
+ real(dp),intent(in)         :: energy(:,:)
+ integer,intent(in),optional :: lb,ub
+!=====
+ integer          :: istate,ispin,istart,iend
+ character(len=6) :: char6
+!=====
+
+ if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
+
+ istart = LBOUND(energy,DIM=1)
+ iend   = UBOUND(energy,DIM=1)
+
+ if( PRESENT(lb) ) istart = MAX(lb,istart)
+ if( PRESENT(ub) ) iend   = MIN(ub,iend)
+
+ write(unit_yaml,'(/,a,a)') TRIM(title),':'
+ write(unit_yaml,'(4x,a)') 'unit: eV'
+ do ispin=1,nspin
+   write(unit_yaml,'(4x,a,i2,a)') 'spin channel',ispin,':'
+   do istate=istart,iend
+     write(char6,'(i6)') istate
+     write(unit_yaml,'(8x,a6,a,1x,es18.8)') ADJUSTL(char6),':',energy(istate,ispin) * Ha_eV
+   enddo
+ enddo
+
+
+end subroutine dump_out_energy_yaml
 
 
 !=========================================================================

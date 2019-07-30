@@ -55,6 +55,7 @@ module m_scf
  real(dp),external :: PDLANGE
 #endif
 
+
 contains
 
 
@@ -752,6 +753,46 @@ function check_converged(p_matrix_new)
 
 
 end function check_converged
+
+
+!=========================================================================
+subroutine print_energy_yaml(name,en)
+ implicit none
+ character(len=*),intent(in)           :: name
+ type(energy_contributions),intent(in) :: en
+!=====
+!=====
+
+ if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
+
+ write(unit_yaml,'(/,a,a)') TRIM(name),':'
+ write(unit_yaml,'(4x,a,a)')           'unit:                ','    Ha'
+ write(unit_yaml,'(4x,a,1x,es18.8)')   'total:               ',en%total
+ write(unit_yaml,'(4x,a,1x,es18.8)')   'nucleus-nucleus:     ',en%nuc_nuc
+ write(unit_yaml,'(4x,a,1x,es18.8)')   'kinetic:             ',en%kinetic
+ write(unit_yaml,'(4x,a,1x,es18.8)')   'electron-nucleus:    ',en%nucleus
+ write(unit_yaml,'(4x,a,1x,es18.8)')   'hartree:             ',en%hartree
+ if( ABS(en%exx) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'exchange:            ',en%exx
+ if( ABS(en%exx_hyb) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'hybrid exchange:     ',en%exx_hyb
+ if( ABS(en%xc) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'exchange-correlation:',en%xc
+ if( ABS(en%rpa) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'rpa correlation:     ',en%rpa
+ if( ABS(en%gw) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'gw correlation:      ',en%gw
+ if( ABS(en%mp2) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'mp2 correlation:     ',en%mp2
+ if( ABS(en%mp3) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'mp3 correlation:     ',en%mp3
+ if( ABS(en%excit) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'excitation:          ',en%excit
+
+
+end subroutine print_energy_yaml
+
+!=========================================================================
 
 
 !=========================================================================

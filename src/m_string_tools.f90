@@ -283,6 +283,43 @@ end function get_number_of_lines
 
 
 !=========================================================================
+function yesno_to_logical(char_in) RESULT(logical_out)
+ implicit none
+ character(len=*),intent(in) :: char_in
+ logical                     :: logical_out
+!=====
+
+ select case(TRIM(capitalize(char_in)))
+ case('YES','Y','.TR','T','TR','TRU')
+   logical_out = .TRUE.
+ case('NO','N','.FA','F','FA','FAL')
+   logical_out = .FALSE.
+ case default
+  call die('Yes or No, I cannot interpret this input')
+ end select
+
+end function yesno_to_logical
+
+
+!=========================================================================
+function logical_to_yesno(logical_in) RESULT(yesno)
+ implicit none
+ logical,intent(in)          :: logical_in
+ character(len=3)            :: yesno
+!=====
+
+ if( logical_in ) then
+   yesno = 'yes'
+ else
+   yesno = 'no'
+ endif
+
+end function logical_to_yesno
+
+
+
+
+!=========================================================================
 end module m_string_tools
 
 

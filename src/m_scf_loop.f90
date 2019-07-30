@@ -378,6 +378,11 @@ subroutine scf_loop(is_restart,&
    write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx
  endif
 
+ if( print_yaml_ .AND. is_iomaster ) then
+   write(unit_yaml,'(/,a,1x,a)') 'scf_is_converged:',logical_to_yesno(is_converged)
+   call print_energy_yaml('scf energy',en_gks)
+   call dump_out_energy_yaml('gks energy',energy)
+ endif
 
  call stop_clock(timing_scf)
 

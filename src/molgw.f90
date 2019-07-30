@@ -586,6 +586,7 @@ program molgw
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS .AND. is_converged ) then
    en_mbpt = en_gks
    call selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
+   call print_energy_yaml('mbpt energy',en_mbpt)
    call clean_deallocate('Sigx - Vxc',exchange_m_vxc)
  endif
 
