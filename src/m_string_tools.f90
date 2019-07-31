@@ -20,6 +20,26 @@ contains
 
 
 !=========================================================================
+pure function lower(str)
+ implicit none
+ character(*), intent(in) :: str
+ character(LEN(str))      :: lower
+!=====
+ character(26), parameter :: cap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+ character(26), parameter :: low = 'abcdefghijklmnopqrstuvwxyz'
+ integer :: ic, ii
+!=====
+
+ lower = str
+ do ii=1,LEN_TRIM(str)
+   ic = INDEX(cap,str(ii:ii))
+   if (ic > 0) lower(ii:ii) = low(ic:ic)
+ enddo
+
+end function lower
+
+
+!=========================================================================
 pure function capitalize(str)
  implicit none
  character(*), intent(in) :: str

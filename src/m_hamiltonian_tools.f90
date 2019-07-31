@@ -455,7 +455,7 @@ subroutine dump_out_energy_yaml(title,energy,lb,ub)
  if( PRESENT(lb) ) istart = MAX(lb,istart)
  if( PRESENT(ub) ) iend   = MIN(ub,iend)
 
- write(unit_yaml,'(/,a,a)') TRIM(title),':'
+ write(unit_yaml,'(/,a,a)') lower(TRIM(title)),':'
  write(unit_yaml,'(4x,a)') 'unit: eV'
  do ispin=1,nspin
    write(unit_yaml,'(4x,a,i2,a)') 'spin channel',ispin,':'

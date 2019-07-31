@@ -450,7 +450,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    ! Write the QP energies on disk: ENERGY_QP file
    !
    call write_energy_qp(nstate,energy_qp_new)
-   call dump_out_energy_yaml(TRIM(selfenergy_tag),energy_qp_new,nsemin,nsemax)
+   call dump_out_energy_yaml(TRIM(selfenergy_tag)//' energy',energy_qp_new,nsemin,nsemax)
 
    !
    ! Output the new HOMO and LUMO energies
