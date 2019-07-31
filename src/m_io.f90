@@ -41,7 +41,11 @@ contains
 !=========================================================================
 subroutine this_is_the_end()
  implicit none
+
 !=====
+#if defined(_OPENMP)
+ integer,external  :: OMP_get_max_threads
+#endif
 !=====
 
  call total_memory_statement()
@@ -51,15 +55,24 @@ subroutine this_is_the_end()
  call output_all_warnings()
 
  if( print_yaml_ .AND. is_iomaster ) then
-   write(unit_yaml,'(/,a)')  'timing:'
-   write(unit_yaml,'(4x,a)') 'unit: s'
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'total:  ',get_timing(timing_total)
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'prescf: ',get_timing(timing_prescf)
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'scf:    ',get_timing(timing_scf)
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'postscf:',get_timing(timing_postscf)
-   write(unit_yaml,'(/,a)')  'memory:'
-   write(unit_yaml,'(4x,a)') 'unit: Gb'
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'peak:   ',get_peak_memory()
+   write(unit_yaml,'(/,a)')  'run:'
+   write(unit_yaml,'(4x,a,1x,i6)')  'mpi tasks:  ',nproc_world
+#if defined(_OPENMP)
+   write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',OMP_get_max_threads()
+#else
+   write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',1
+#endif
+
+   write(unit_yaml,'(4x,a)') 'timing:'
+   write(unit_yaml,'(8x,a)')           'unit: s'
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'total:  ',get_timing(timing_total)
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'prescf: ',get_timing(timing_prescf)
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'scf:    ',get_timing(timing_scf)
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'postscf:',get_timing(timing_postscf)
+   write(unit_yaml,'(4x,a)') 'memory:'
+   write(unit_yaml,'(8x,a)')           'unit: Gb'
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'peak:   ',get_peak_memory()
+
    write(unit_yaml,'(a)') '...'
    close(unit_yaml)
  endif
@@ -78,6 +91,7 @@ end subroutine this_is_the_end
 subroutine header()
  implicit none
 
+!=====
 #if defined(_OPENMP)
  integer,external  :: OMP_get_max_threads
 #endif
