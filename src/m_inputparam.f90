@@ -610,23 +610,23 @@ subroutine read_inputfile_namelist()
 
 !=====
  integer              :: ninput_argument
- character(len=128)   :: input_file_name
+ character(len=140)   :: input_file_name
  integer              :: inputfile,xyzfile
  logical              :: file_exists
 
- character(len=128)   :: read_restart
- character(len=128)   :: basis
- character(len=128)   :: auxil_basis
- character(len=128)   :: small_basis
- character(len=128)   :: ecp_basis
- character(len=128)   :: ecp_auxil_basis
- character(len=128)   :: ecp_small_basis
- character(len=128)   :: default_basis_path
+ character(len=140)   :: read_restart
+ character(len=140)   :: basis
+ character(len=140)   :: auxil_basis
+ character(len=140)   :: small_basis
+ character(len=140)   :: ecp_basis
+ character(len=140)   :: ecp_auxil_basis
+ character(len=140)   :: ecp_small_basis
+ character(len=140)   :: default_basis_path
  integer              :: natom_read
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
- character(len=128)   :: ctmp,ctmp1,ctmp2
+ character(len=140)   :: ctmp,ctmp1,ctmp2
  character(len=256)   :: line_char
  integer              :: ielement_ecp
  integer              :: info1,info2

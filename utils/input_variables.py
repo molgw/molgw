@@ -39,6 +39,13 @@ class variable:
 
 vl = []
 
+#================================
+vl.append(variable())
+vl[-1].keyword  ='comment'
+vl[-1].family   ='general'
+vl[-1].datatype ='characters'
+vl[-1].default  =''
+vl[-1].comment  ='This is a free expression place. Use it as you wish for commenting, naming, labeling etc. (140 character max just as twitter)'
 
 #================================
 vl.append(variable())
@@ -1228,7 +1235,7 @@ for v in vl:
   elif v.datatype =='yes/no':
     ffor.write(' character(len=3),protected :: ' + v.keyword +'\n')
   elif v.datatype =='characters':
-    ffor.write(' character(len=128),protected :: ' + v.keyword +'\n')
+    ffor.write(' character(len=140),protected :: ' + v.keyword +'\n')
 
 
 ffor.write('\n\n!======================================================================\n')
