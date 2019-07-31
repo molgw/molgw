@@ -51,6 +51,15 @@ subroutine this_is_the_end()
  call output_all_warnings()
 
  if( print_yaml_ .AND. is_iomaster ) then
+   write(unit_yaml,'(/,a)')  'timing:'
+   write(unit_yaml,'(4x,a)') 'unit: s'
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'total:  ',get_timing(timing_total)
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'prescf: ',get_timing(timing_prescf)
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'scf:    ',get_timing(timing_scf)
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'postscf:',get_timing(timing_postscf)
+   write(unit_yaml,'(/,a)')  'memory:'
+   write(unit_yaml,'(4x,a)') 'unit: Gb'
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'peak:   ',get_peak_memory()
    write(unit_yaml,'(a)') '...'
    close(unit_yaml)
  endif

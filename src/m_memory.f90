@@ -60,6 +60,7 @@ contains
 subroutine total_memory_statement()
  implicit none
 !=====
+!=====
 
  write(stdout,'(/,a,/)') '                 ----------------------------'
  write(stdout,'(a)')     '                 --- Memory usage summary ---'
@@ -73,6 +74,20 @@ subroutine total_memory_statement()
  write(stdout,*)
 
 end subroutine total_memory_statement
+
+
+!=========================================================================
+function get_peak_memory() RESULT(peak)
+ implicit none
+
+ real(dp) :: peak
+!=====
+!=====
+
+ peak = peak_memory / 1024.0_dp
+
+
+end function get_peak_memory
 
 
 !=========================================================================
