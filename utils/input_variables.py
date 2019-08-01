@@ -720,7 +720,7 @@ vl[-1].comment  ='Prints the electric multipole expansion for the electronic den
 vl.append(variable())
 vl[-1].keyword  ='print_yaml'
 vl[-1].family   ='io'
-vl[-1].default  ='no'
+vl[-1].default  ='yes'
 vl[-1].datatype ='yes/no'
 vl[-1].comment  ='Creates an output file in YAML format. Easier to read for python post-processing.'
 
