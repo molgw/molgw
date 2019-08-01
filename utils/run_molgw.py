@@ -36,7 +36,7 @@ def longname(basis):
         return 'aug-cc-pV5Z'
 
 class input_parameters:
-    def __init__(self, scf='bhlyp', postscf='gw', selfenergy_state_range='20', frozencore='yes', basis='ADZ'):
+    def __init__(self, scf='bhlyp', postscf='gw', selfenergy_state_range=20, frozencore='yes', basis='ADZ'):
         self.scf = scf
         self.postscf = postscf
         self.selfenergy_state_range = selfenergy_state_range
@@ -46,7 +46,10 @@ class input_parameters:
     def print_input_file(self,f):
         for attr, value in self.__dict__.items():
             if not attr == 'basis':
-                f.write('  {:30} = \'{}\'\n'.format(attr,value) )
+                if type(value) in [type(int()),type(float())] :
+                    f.write('  {:30} = {}\n'.format(attr,value) )
+                else:
+                    f.write('  {:30} = \'{}\'\n'.format(attr,value) )
             else:
                 f.write('  {:30} = \'{}\'\n'.format(attr,longname(value)) )
                 f.write('  {:30} = \'{}-RI\'\n'.format('auxil_basis',longname(value)) )
@@ -126,6 +129,7 @@ for molecule in molecule_list:
             calc.print_input_file(fin)
             fin.write('  print_yaml              = \'yes\'\n')
             fin.write('  print_spatial_extension = \'yes\'\n')
+            fin.write('  print_sigma             = \'yes\'\n')
             fin.write('  xyz_file                = \'../../structures/' + molecule + '.xyz\'\n')
             fin.write('/\n')
   
