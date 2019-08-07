@@ -13,7 +13,7 @@ module m_inputparam
  use m_atoms
  use m_elements
  use m_ecp
- use m_string_tools,only: capitalize
+ use m_string_tools,only: capitalize,yesno_to_logical
  use m_libxc_tools
 
 #if defined(HAVE_LIBXC)
@@ -54,6 +54,10 @@ module m_inputparam
  integer,parameter :: EXCIT_LIGHT      = 502
  integer,parameter :: EXCIT_PROJECTILE = 503
 
+ integer,protected           :: unit_yaml
+ character(len=10),parameter :: filename_yaml = 'molgw.yaml'
+
+
  type calculation_type
    character(len=100) :: scf_name
    character(len=100) :: postscf_name
@@ -82,70 +86,27 @@ module m_inputparam
  real(dp)             :: dir(3)
  end type
 
+
  ! There are the input variables of MOLGW
  ! They should not be modified anywhere else in the code.
  ! Declare them as protected and work on copies if absolutely necessary.
  type(calculation_type),protected :: calc_type
  type(dft_xc_info),allocatable    :: dft_xc(:)
  type(excitation_type),protected  :: excit_type
- integer,protected                :: selfenergy_state_min
- integer,protected                :: selfenergy_state_max
- integer,protected                :: selfenergy_state_range
- integer,protected                :: ncoreg
- integer,protected                :: ncorew
- integer,protected                :: nvirtualg
- integer,protected                :: nvirtualw
- integer,protected                :: nvirtualspa
  logical,protected                :: is_frozencore
  logical,protected                :: is_tddft_frozencore
- integer,protected                :: ncore_tddft
  logical,protected                :: is_tda,is_triplet
  logical,protected                :: is_virtual_fno
- integer,protected                :: nexcitation
- integer,protected                :: nspin
- integer,protected                :: nstep
- integer,protected                :: nstep_gw
- integer,protected                :: ci_nstate
- integer,protected                :: ci_nstate_self
- integer,protected                :: ci_spin_multiplicity
- integer,protected                :: nscf
- real(dp),protected               :: tolforce
- real(dp),protected               :: kerker_k0
- real(dp),protected               :: density_matrix_damping
  real(dp),protected               :: spin_fact
- real(dp),protected               :: alpha_mixing
- character(len=100),protected     :: move_nuclei
- character(len=100),protected     :: xyz_file
- character(len=100),protected     :: basis_path
- character(len=100),protected     :: read_fchk
- character(len=100),protected     :: pt_density_matrix
+ real(dp),protected               :: electrons
+
  character(len=100),allocatable,protected :: basis_name(:)
  character(len=100),allocatable,protected :: auxil_basis_name(:)
  character(len=100),allocatable,protected :: small_basis_name(:)
  character(len=100),allocatable,protected :: ecp_basis_name(:)
  character(len=100),allocatable,protected :: ecp_auxil_basis_name(:)
  character(len=100),allocatable,protected :: ecp_small_basis_name(:)
- character(len=100),protected     :: ecp_type
- character(len=4),protected       :: gaussian_type
- character(len=12),protected      :: mixing_scheme
- character(len=12),protected      :: partition_scheme
- character(len=12),protected      :: init_hamiltonian
- character(len=12),protected      :: prop_type
- character(len=12),protected      :: pred_corr
- character(len=12),protected      :: excit_name
- character(len=12),protected      :: ci_greens_function
- character(len=12),protected      :: ci_type
- character(len=12),protected      :: pt3_a_diagrams
- character(len=1),protected       :: scf_diago_flavor
- character(len=1),protected       :: postscf_diago_flavor
- real(dp),protected               :: diis_switch
- real(dp),protected               :: tolscf
- real(dp),protected               :: toldav
- integer,protected                :: nstep_dav
- real(dp),protected               :: min_overlap
- real(dp),protected               :: electrons,charge
- real(dp),protected               :: temperature
- real(dp),protected               :: magnetization
+
  integer,protected                :: tddft_grid_level
  integer,protected                :: grid_level
  integer,protected                :: ecp_level
@@ -157,20 +118,6 @@ module m_inputparam
  ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
  ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
  complex(dp),protected            :: ieta
-
- integer,protected                :: nomega_imag
- integer,protected                :: nomega_sigma
- real(dp),protected               :: step_sigma
- real(dp),protected               :: level_shifting_energy
- real(dp),protected               :: scissor
- integer,protected                :: dft_core
- integer,protected                :: npulay_hist
- integer,protected                :: scalapack_block_min
- integer,protected                :: eri3_nprow
- integer,protected                :: eri3_npcol
- integer,protected                :: eri3_nbatch
- integer,protected                :: mpi_nproc_ortho
- real(dp),protected               :: grid_memory
 
  logical,protected                :: use_correlated_density_matrix_
  logical,protected                :: gwgamma_tddft_
@@ -185,25 +132,12 @@ module m_inputparam
  logical,protected                :: print_restart_
  logical,protected                :: print_bigrestart_
  logical,protected                :: print_pdos_
+ logical,protected                :: print_spatial_extension_
  logical,protected                :: print_cube_
  logical,protected                :: print_multipole_
  logical,protected                :: print_hartree_
  logical,protected                :: print_density_matrix_
  logical,protected                :: print_rho_grid_
- real(dp),protected               :: rcut_mbpt
-
- real(dp),protected               :: alpha_hybrid    = 0.0_dp
- real(dp),protected               :: alpha_hybrid_lr = 0.0_dp
- real(dp),protected               :: rcut            = 0.0_dp
- real(dp),protected               :: gamma_hybrid
-
- real(dp),protected               :: time_step, time_sim
- real(dp),protected               :: excit_kappa, excit_omega, excit_time0
- real(dp),protected               :: excit_dir(3)
- real(dp),protected               :: write_step
- real(dp),protected               :: r_disc
- integer,protected                :: n_hist,n_iter
- integer,protected                :: n_restart_tddft
  logical,protected                :: print_tddft_matrices_
  logical,protected                :: print_cube_rho_tddft_
  logical,protected                :: print_cube_diff_tddft_
@@ -217,9 +151,13 @@ module m_inputparam
  logical,protected                :: calc_spectrum_
  logical,protected                :: read_tddft_restart_
  logical,protected                :: print_tddft_restart_
- integer,protected                :: auto_auxil_lmaxinc
- real(dp),protected               :: auto_auxil_fsam
+ logical,protected                :: print_yaml_
 
+ real(dp),protected               :: rcut = 0.0_dp
+
+! Here we call the fortran code that was generated by the python script
+! Any new variable should be added through the python script
+#include "input_variable_declaration.f90"
 
 contains
 
@@ -386,7 +324,7 @@ subroutine init_calculation_type(scf,postscf)
  ! Do we need LR Coulomb integrals?
  !
  calc_type%need_exchange    = ( alpha_hybrid > 1.0e-6 )
- calc_type%need_exchange_lr = ( rcut > 1.0e-6 ) .AND. ( ABS(alpha_hybrid_lr) > 1.0e-6 )
+ calc_type%need_exchange_lr = ( rcut > 1.0e-6 ) .AND. ( ABS(beta_hybrid) > 1.0e-6 )
 
  calc_type%is_selfenergy = ( calc_type%selfenergy_approx /= 0 )
 
@@ -469,158 +407,134 @@ subroutine init_dft_type(key)
  case('LDAX')
    dft_xc(1)%id = XC_LDA_X
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('SPL')
    dft_xc(1)%id = XC_LDA_X
    dft_xc(2)%id = XC_LDA_C_PZ
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('LDA')
    dft_xc(1)%id = XC_LDA_X
    dft_xc(2)%id = XC_LDA_C_PW
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('VWN')
    dft_xc(1)%id = XC_LDA_X
    dft_xc(2)%id = XC_LDA_C_VWN
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('VWN_RPA')
    dft_xc(1)%id = XC_LDA_X
    dft_xc(2)%id = XC_LDA_C_VWN_RPA
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  !
  ! GGA functionals
  case('PBEX')
    dft_xc(1)%id    = XC_GGA_X_PBE
    alpha_hybrid    = 0.00_dp
-   alpha_hybrid_lr = 0.00_dp
  case('PBE')
    dft_xc(1)%id    = XC_GGA_X_PBE
    dft_xc(2)%id    = XC_GGA_C_PBE
    alpha_hybrid    = 0.00_dp
-   alpha_hybrid_lr = 0.00_dp
  case('PBEHX')
    dft_xc(1)%id    = XC_GGA_X_WPBEH
    alpha_hybrid    = 0.00_dp
-   alpha_hybrid_lr = 0.00_dp
    dft_xc(1)%gamma = gamma_hybrid
  case('PBEH')
    dft_xc(1)%id    = XC_GGA_X_WPBEH
    dft_xc(2)%id    = XC_GGA_C_PBE
    alpha_hybrid    = 0.00_dp
-   alpha_hybrid_lr = 0.00_dp
    dft_xc(1)%gamma = gamma_hybrid
  case('BX')
    dft_xc(1)%id = XC_GGA_X_B88
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('BLYP')
    dft_xc(1)%id = XC_GGA_X_B88
    dft_xc(2)%id = XC_GGA_C_LYP
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('PW91X')
    dft_xc(1)%id = XC_GGA_X_PW91
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('PW91')
    dft_xc(1)%id = XC_GGA_X_PW91
    dft_xc(2)%id = XC_GGA_C_PW91
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('HCTH')
    dft_xc(1)%id = XC_GGA_XC_HCTH_407
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('TH')
    dft_xc(1)%id = XC_GGA_XC_TH1
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('HJSX')
    dft_xc(1)%id = XC_GGA_X_HJS_PBE
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
    dft_xc(1)%gamma = gamma_hybrid
  !
  ! Meta-GGA functionals
  case('RPPX')
    dft_xc(1)%id = XC_MGGA_X_RPP09
    alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  !
  ! Hybrid functionals
  case('HFPBE')
    dft_xc(1)%id = XC_GGA_C_PBE
    alpha_hybrid   = 1.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('BHANDH')
    dft_xc(1)%id = XC_HYB_GGA_XC_BHANDH
    alpha_hybrid   = 0.50_dp
-   alpha_hybrid_lr= 0.00_dp
  case('BHANDHLYP','BHLYP')
    dft_xc(1)%id = XC_HYB_GGA_XC_BHANDHLYP
    alpha_hybrid   = 0.50_dp
-   alpha_hybrid_lr= 0.00_dp
  case('B3LYP')
    dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP
    alpha_hybrid   = 0.20_dp
-   alpha_hybrid_lr= 0.00_dp
  case('B3LYP5')
    dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP5
    alpha_hybrid   = 0.20_dp
-   alpha_hybrid_lr= 0.00_dp
  case('PBE0')
    dft_xc(1)%id = XC_HYB_GGA_XC_PBEH
    alpha_hybrid   = 0.25_dp
-   alpha_hybrid_lr= 0.00_dp
  case('HSE03')
    dft_xc(1)%id  = XC_HYB_GGA_XC_HSE03
-   alpha_hybrid    = 0.25_dp
-   alpha_hybrid_lr = -alpha_hybrid
+   alpha_hybrid  = 0.25_dp
+   beta_hybrid   = -alpha_hybrid
    rcut            = 1.0_dp / ( 0.15_dp / SQRT(2.0_dp) )
  case('HSE06')
    dft_xc(1)%id  = XC_HYB_GGA_XC_HSE06
-   alpha_hybrid    = 0.25_dp
-   alpha_hybrid_lr = -alpha_hybrid
-   gamma_hybrid    = 0.11_dp
-   rcut            = 1.0_dp / 0.11_dp
+   alpha_hybrid  = 0.25_dp
+   beta_hybrid   = -alpha_hybrid
+   gamma_hybrid  = 0.11_dp
+   rcut          = 1.0_dp / gamma_hybrid
  case('HSE08')
    dft_xc(1)%id  = XC_HYB_GGA_XC_HJS_PBE
-   alpha_hybrid    = 0.25_dp
-   alpha_hybrid_lr = -alpha_hybrid
+   alpha_hybrid  = 0.25_dp
+   beta_hybrid   = -alpha_hybrid
    gamma_hybrid    = 0.11_dp
    rcut            = 1.0_dp / 0.11_dp
  case('CAM-B3LYP')
    dft_xc(1)%id  = XC_HYB_GGA_XC_CAM_B3LYP
-   alpha_hybrid    =  0.19_dp
-   alpha_hybrid_lr =  0.46_dp
+   alpha_hybrid  =  0.19_dp
+   beta_hybrid   =  0.46_dp
    rcut            =  1.0_dp / 0.33_dp
  case('TUNED-CAM-B3LYP')
    dft_xc(1)%id  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
-   alpha_hybrid    =  0.0799_dp
-   alpha_hybrid_lr =  0.9201_dp
-   rcut            =  1.0_dp / 0.150_dp
+   alpha_hybrid  =  0.0799_dp
+   beta_hybrid   =  0.9201_dp
+   rcut          =  1.0_dp / 0.150_dp
  case('RSH')
    dft_xc(1)%id = XC_GGA_X_PBE
    dft_xc(2)%id = XC_GGA_X_HJS_PBE
    dft_xc(3)%id = XC_GGA_C_PBE
-   dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
-   dft_xc(2)%coeff = alpha_hybrid_lr
+   dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
+   dft_xc(2)%coeff = beta_hybrid
    dft_xc(3)%coeff = 1.00_dp
    rcut            = 1.0_dp / gamma_hybrid
    dft_xc(2)%gamma = gamma_hybrid
  case('RSHX')
    dft_xc(1)%id = XC_GGA_X_PBE
    dft_xc(2)%id = XC_GGA_X_HJS_PBE
-   dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
-   dft_xc(2)%coeff = alpha_hybrid_lr
+   dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
+   dft_xc(2)%coeff = beta_hybrid
    rcut           = 1.0_dp / gamma_hybrid
    dft_xc(2)%gamma = gamma_hybrid
  case('LDA0')
    alpha_hybrid   = 0.25_dp
-   alpha_hybrid_lr= 0.00_dp
    dft_xc(1)%id = XC_LDA_X
    dft_xc(2)%id = XC_LDA_C_PW
    dft_xc(1)%coeff =  1.00_dp - alpha_hybrid
@@ -696,58 +610,27 @@ subroutine read_inputfile_namelist()
 
 !=====
  integer              :: ninput_argument
- character(len=100)   :: input_file_name
+ character(len=140)   :: input_file_name
  integer              :: inputfile,xyzfile
  logical              :: file_exists
 
- character(len=24)    :: scf
- character(len=24)    :: postscf
- character(len=100)   :: basis
- character(len=100)   :: auxil_basis
- character(len=100)   :: small_basis
- character(len=100)   :: ecp_basis
- character(len=100)   :: ecp_auxil_basis
- character(len=100)   :: ecp_small_basis
- character(len=100)   :: default_basis_path
- character(len=12)    :: length_unit
- character(len=3)     :: memory_evaluation
- character(len=3)     :: read_restart,ignore_bigrestart,force_energy_qp
- character(len=3)     :: print_eri,print_wfn,print_w,print_sigma
- character(len=3)     :: print_restart,print_bigrestart
- character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_density_matrix
- character(len=3)     :: print_rho_grid
- character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
- character(len=3)     :: tddft_frozencore
- character(len=3)     :: gwgamma_tddft,use_correlated_density_matrix
- character(len=3)     :: print_tddft_matrices
- character(len=3)     :: print_cube_rho_tddft
- character(len=3)     :: print_cube_diff_tddft
- character(len=3)     :: print_line_rho_tddft
- character(len=3)     :: print_line_rho_diff_tddft
- character(len=3)     :: print_dens_traj_tddft
- character(len=3)     :: print_dens_traj
- character(len=3)     :: print_dens_traj_points_set
- character(len=3)     :: calc_q_matrix
- character(len=3)     :: calc_dens_disc
- character(len=3)     :: calc_spectrum
- character(len=3)     :: read_tddft_restart
- character(len=3)     :: print_tddft_restart
- real(dp)             :: length_factor,eta
+ character(len=140)   :: read_restart
+ character(len=140)   :: basis
+ character(len=140)   :: auxil_basis
+ character(len=140)   :: small_basis
+ character(len=140)   :: ecp_basis
+ character(len=140)   :: ecp_auxil_basis
+ character(len=140)   :: ecp_small_basis
+ character(len=140)   :: default_basis_path
  integer              :: natom_read
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
- real(dp)             :: vel_projectile(3)
- real(dp)             :: beta_hybrid
- character(len=12)    :: tddft_grid_quality
- character(len=12)    :: grid_quality
- character(len=12)    :: ecp_quality
- character(len=12)    :: integral_quality
- character(len=100)   :: ctmp,ctmp1,ctmp2
+ character(len=140)   :: ctmp,ctmp1,ctmp2
  character(len=256)   :: line_char
- character(len=100)   :: ecp_elements
  integer              :: ielement_ecp
  integer              :: info1,info2
+ real(dp)             :: length_factor
 !=====
 
 ! Here we call the fortran code that was generated by the python script
@@ -786,19 +669,19 @@ subroutine read_inputfile_namelist()
    call die('input file name not understood')
  end select
 
-
+ !
  ! Read all the input file in one statement!
+ !
  read(inputfile,molgw)
 
-! Here we call the fortran code that was generated by the python script
+
+ ! Here we call the fortran code that was generated by the python script
  write(stdout,'(/,1x,a,/)') ' === Echo the entire list of input variables  ==='
 #include "echo_input_variables.f90"
  write(stdout,'(/,1x,a,/)') ' ================================================'
 
 
  ieta = (0.0_dp,1.0_dp) * eta
- alpha_hybrid_lr = beta_hybrid
-
 
  scf                = capitalize(scf)
  postscf            = capitalize(postscf)
@@ -819,49 +702,52 @@ subroutine read_inputfile_namelist()
  pt_density_matrix  = capitalize(pt_density_matrix)
  pt3_a_diagrams     = capitalize(pt3_a_diagrams)
 
- memory_evaluation_       = yesno(memory_evaluation)
- read_restart_            = yesno(read_restart)
- ignore_bigrestart_       = yesno(ignore_bigrestart)
- force_energy_qp_         = yesno(force_energy_qp)
- is_tda                   = yesno(tda)
- is_triplet               = yesno(triplet)
- is_frozencore            = yesno(frozencore)
- is_tddft_frozencore      = yesno(tddft_frozencore)
- is_virtual_fno           = yesno(virtual_fno)
- incore_                  = yesno(incore)
+ memory_evaluation_        = yesno_to_logical(memory_evaluation)
+ read_restart_             = yesno_to_logical(read_restart)
+ ignore_bigrestart_        = yesno_to_logical(ignore_bigrestart)
+ force_energy_qp_          = yesno_to_logical(force_energy_qp)
+ is_tda                    = yesno_to_logical(tda)
+ is_triplet                = yesno_to_logical(triplet)
+ is_frozencore             = yesno_to_logical(frozencore)
+ is_tddft_frozencore       = yesno_to_logical(tddft_frozencore)
+ is_virtual_fno            = yesno_to_logical(virtual_fno)
+ incore_                   = yesno_to_logical(incore)
 
- print_eri_               = yesno(print_eri)
- print_wfn_               = yesno(print_wfn)
- print_w_                 = yesno(print_w)
- print_sigma_             = yesno(print_sigma)
- print_restart_           = yesno(print_restart)
- print_bigrestart_        = yesno(print_bigrestart)
- print_pdos_              = yesno(print_pdos)
- print_multipole_         = yesno(print_multipole)
- print_cube_              = yesno(print_cube)
- print_hartree_           = yesno(print_hartree)
- print_density_matrix_    = yesno(print_density_matrix)
- print_rho_grid_          = yesno(print_rho_grid)
- gwgamma_tddft_           = yesno(gwgamma_tddft)
- use_correlated_density_matrix_ = yesno(use_correlated_density_matrix)
- print_tddft_matrices_  = yesno(print_tddft_matrices)
- print_cube_rho_tddft_  = yesno(print_cube_rho_tddft)
- print_cube_diff_tddft_ = yesno(print_cube_diff_tddft)
- print_line_rho_tddft_  = yesno(print_line_rho_tddft)
- print_line_rho_diff_tddft_ = yesno(print_line_rho_diff_tddft)
- print_dens_traj_tddft_ = yesno(print_dens_traj_tddft)
- print_dens_traj_       = yesno(print_dens_traj)
- print_dens_traj_points_set_ = yesno(print_dens_traj_points_set)
- calc_q_matrix_         = yesno(calc_q_matrix)
- calc_dens_disc_        = yesno(calc_dens_disc)
- calc_spectrum_         = yesno(calc_spectrum)
- read_tddft_restart_    = yesno(read_tddft_restart)
- print_tddft_restart_   = yesno(print_tddft_restart)
+ print_eri_                = yesno_to_logical(print_eri)
+ print_wfn_                = yesno_to_logical(print_wfn)
+ print_w_                  = yesno_to_logical(print_w)
+ print_sigma_              = yesno_to_logical(print_sigma)
+ print_restart_            = yesno_to_logical(print_restart)
+ print_bigrestart_         = yesno_to_logical(print_bigrestart)
+ print_pdos_               = yesno_to_logical(print_pdos)
+ print_spatial_extension_  = yesno_to_logical(print_spatial_extension)
+ print_multipole_          = yesno_to_logical(print_multipole)
+ print_cube_               = yesno_to_logical(print_cube)
+ print_hartree_            = yesno_to_logical(print_hartree)
+ print_density_matrix_     = yesno_to_logical(print_density_matrix)
+ print_rho_grid_           = yesno_to_logical(print_rho_grid)
+ gwgamma_tddft_            = yesno_to_logical(gwgamma_tddft)
+ use_correlated_density_matrix_ = yesno_to_logical(use_correlated_density_matrix)
+ print_tddft_matrices_       = yesno_to_logical(print_tddft_matrices)
+ print_cube_rho_tddft_       = yesno_to_logical(print_cube_rho_tddft)
+ print_cube_diff_tddft_      = yesno_to_logical(print_cube_diff_tddft)
+ print_line_rho_tddft_       = yesno_to_logical(print_line_rho_tddft)
+ print_line_rho_diff_tddft_  = yesno_to_logical(print_line_rho_diff_tddft)
+ print_dens_traj_tddft_      = yesno_to_logical(print_dens_traj_tddft)
+ print_dens_traj_            = yesno_to_logical(print_dens_traj)
+ print_dens_traj_points_set_ = yesno_to_logical(print_dens_traj_points_set)
+ calc_q_matrix_              = yesno_to_logical(calc_q_matrix)
+ calc_dens_disc_             = yesno_to_logical(calc_dens_disc)
+ calc_spectrum_              = yesno_to_logical(calc_spectrum)
+ read_tddft_restart_         = yesno_to_logical(read_tddft_restart)
+ print_tddft_restart_        = yesno_to_logical(print_tddft_restart)
+ print_yaml_                 = yesno_to_logical(print_yaml)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
  ecp_level          = interpret_quality(ecp_quality)
  integral_level     = interpret_quality(integral_quality)
+
 
  select case(TRIM(mixing_scheme))
  case('SIMPLE','PULAY','DIIS','ADIIS','EDIIS')
@@ -872,9 +758,9 @@ subroutine read_inputfile_namelist()
 
  select case(TRIM(length_unit))
  case('A','ANGSTROM')
-   length_factor=1.0_dp/bohr_A
+   length_factor = 1.0_dp/bohr_A
  case('BOHR','AU','A.U','A.U.')
-   length_factor=1.0_dp
+   length_factor = 1.0_dp
  case default
    call die('units for lengths in input file not understood')
  end select
@@ -894,10 +780,8 @@ subroutine read_inputfile_namelist()
  if(ncore_tddft<0) call die('negative ncore_tddft is meaningless')
  if(nvirtualg<0) call die('negative nvirtualg is meaningless')
  if(nvirtualw<0) call die('negative nvirtualw is meaningless')
- if(nvirtualspa<0) call die('negative nvirtualspa is meaningless')
  if(nvirtualg<ncoreg) call die('too small nvirtualg is meaningless')
  if(nvirtualw<ncorew) call die('too small nvirtualw is meaningless')
- if(nvirtualspa<ncorew) call die('too small nvirtualspa is meaningless')
  if(nspin/=1 .AND. nspin/=2) call die('nspin in incorrect')
  if(magnetization<-1.e-5)    call die('magnetization is negative')
  if(magnetization>1.e-5 .AND. nspin==1) call die('magnetization is non-zero and nspin is 1')
@@ -1087,14 +971,35 @@ subroutine read_inputfile_namelist()
  ! Echo the interpreted input variables
  call summary_input(grid_quality,integral_quality)
 
+ !
+ ! Here we open a YAML file and keep it open until "this_is_the_end"
+ ! Here we call the fortran code that was generated by the python script
+ !
+ if( print_yaml_ .AND. is_iomaster ) then
+   open(newunit=unit_yaml,file=filename_yaml,action='write')
+   write(unit_yaml,'(a)') '---'
+   write(unit_yaml,'(a)') 'input parameters:'
+#include "echo_input_variables_yaml.f90"
+
+   write(unit_yaml,'(/,a)') 'physical system:'
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'electrons:',electrons
+   write(unit_yaml,'(4x,a)') 'length unit: bohr'
+   write(unit_yaml,'(4x,a)') 'atom list:'
+   do iatom=1,natom
+     write(unit_yaml,'(8x,a,"[ ",a2,", ",es18.8,", ",es18.8,", ",es18.8,"]")') '- ', &
+                 element_name(REAL(zatom(iatom),dp)),xatom(:,iatom)
+   enddo
+ endif
+
+
 
 contains
 
 
 function interpret_quality(quality) result(quality_level)
  implicit none
- character(len=12),intent(in) :: quality
- integer                      :: quality_level
+ character(len=*),intent(in) :: quality
+ integer                     :: quality_level
 !=====
 
  select case(TRIM(quality))
@@ -1112,24 +1017,6 @@ function interpret_quality(quality) result(quality_level)
 
 
 end function interpret_quality
-
-
-function yesno(char3)
- implicit none
- character(len=3),intent(in) :: char3
- logical                     :: yesno
-!=====
-
- select case(TRIM(capitalize(char3)))
- case('YES','Y','.TR','T','TR','TRU')
-   yesno=.TRUE.
- case('NO','N','.FA','F','FA','FAL')
-   yesno=.FALSE.
- case default
-  call die('Yes or No, I cannot interpret this input')
- end select
-
-end function yesno
 
 
 function standardize_basis_name(basis_name_in) result(basis_name_out)
@@ -1158,6 +1045,7 @@ end function standardize_basis_name
 
 
 end subroutine read_inputfile_namelist
+
 
 
 !=========================================================================

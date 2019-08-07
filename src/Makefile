@@ -337,7 +337,7 @@ m_selfenergy_tools.o: m_definitions.f90 m_warning.f90 m_inputparam.f90 m_mpi.f90
 	$(FC_W_OPTS) -c m_selfenergy_tools.f90 $(LIBXC_INCS)
 
 m_inputparam.o: m_definitions.f90 m_mpi.f90  m_elements.f90 m_warning.f90 m_atoms.f90 m_ecp.f90 \
-	        input_variables.f90 basis_path.f90 echo_input_variables.f90 m_string_tools.f90 m_libxc_tools.f90 \
+	        input_variables.f90 input_variable_declaration.f90 basis_path.f90 echo_input_variables.f90 echo_input_variables_yaml.f90  m_string_tools.f90 m_libxc_tools.f90 \
                 m_inputparam.f90
 	$(FC_W_OPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 

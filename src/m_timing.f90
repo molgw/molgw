@@ -123,6 +123,8 @@ contains
 !=========================================================================
 subroutine init_timing()
  implicit none
+ !=====
+ !=====
 
  time_running(:) = .FALSE.
  timing(:)       = 0.0_dp
@@ -130,7 +132,21 @@ subroutine init_timing()
 
  call system_clock(COUNT_RATE=count_rate,COUNT_MAX=count_max)
 
-end subroutine
+end subroutine init_timing
+
+
+!=========================================================================
+function get_timing(itiming) RESULT(time)
+ implicit none
+
+ integer,intent(in) :: itiming
+ real(dp)           :: time
+ !=====
+ !=====
+
+ time = timing(itiming)
+
+end function get_timing
 
 
 !=========================================================================
@@ -176,20 +192,6 @@ subroutine stop_clock(itiming)
  timing(itiming) = timing(itiming) + MODULO( count_tmp - NINT(time_start(itiming)) , count_max) / REAL(count_rate,dp)
 
 end subroutine stop_clock
-
-
-!=========================================================================
-function get_timing(itiming)
- implicit none
-
- integer,intent(in) :: itiming
- real(dp)           :: get_timing
-!=====
-!=====
-
- get_timing = timing(itiming)
-
-end function get_timing
 
 
 !=========================================================================

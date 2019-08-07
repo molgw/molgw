@@ -838,10 +838,10 @@ end subroutine calculate_dipole_ao
 
 
 !=========================================================================
-subroutine calculate_quadrupole_basis(basis,quadrupole_basis)
+subroutine calculate_quadrupole_ao(basis,quadrupole_ao)
  implicit none
  type(basis_set),intent(in)         :: basis
- real(dp),allocatable,intent(out)   :: quadrupole_basis(:,:,:,:)
+ real(dp),allocatable,intent(out)   :: quadrupole_ao(:,:,:,:)
 
 !=====
  integer              :: gt
@@ -854,7 +854,7 @@ subroutine calculate_quadrupole_basis(basis,quadrupole_basis)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- allocate(quadrupole_basis(basis%nbf,basis%nbf,3,3))
+ allocate(quadrupole_ao(basis%nbf,basis%nbf,3,3))
 
 
  do jshell=1,basis%nshell
@@ -882,7 +882,7 @@ subroutine calculate_quadrupole_basis(basis,quadrupole_basis)
 
      do jdir=1,3
        do idir=1,3
-         quadrupole_basis(ibf1:ibf2,jbf1:jbf2,idir,jdir) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+         quadrupole_ao(ibf1:ibf2,jbf1:jbf2,idir,jdir) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
                MATMUL(  quadrupole_cart(:,:,idir,jdir) , cart_to_pure(lj,gt)%matrix(:,:) ) )
        enddo
      enddo
@@ -893,7 +893,7 @@ subroutine calculate_quadrupole_basis(basis,quadrupole_basis)
  enddo
 
 
-end subroutine calculate_quadrupole_basis
+end subroutine calculate_quadrupole_ao
 
 
 !=========================================================================

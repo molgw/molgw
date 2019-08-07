@@ -11,8 +11,8 @@ module m_elements
  use m_warning,only: die
 
 
- integer,parameter,private :: nelement_max = 103
- character(len=2),parameter,private :: element_list(nelement_max) =                            &
+ integer,parameter          :: nelement_max = 103
+ character(len=2),parameter :: element_list(nelement_max) =                            &
   (/' H',                                                                                'He', &  !   2
     'Li','Be',                                                  ' B',' C',' N',' O',' F','Ne', &  !  10
     'Na','Mg',                                                  'Al','Si',' P',' S','Cl','Ar', &  !  18

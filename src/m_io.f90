@@ -41,7 +41,11 @@ contains
 !=========================================================================
 subroutine this_is_the_end()
  implicit none
+
 !=====
+#if defined(_OPENMP)
+ integer,external  :: OMP_get_max_threads
+#endif
 !=====
 
  call total_memory_statement()
@@ -49,6 +53,29 @@ subroutine this_is_the_end()
  call output_timing()
 
  call output_all_warnings()
+
+ if( print_yaml_ .AND. is_iomaster ) then
+   write(unit_yaml,'(/,a)')  'run:'
+   write(unit_yaml,'(4x,a,1x,i6)')  'mpi tasks:  ',nproc_world
+#if defined(_OPENMP)
+   write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',OMP_get_max_threads()
+#else
+   write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',1
+#endif
+
+   write(unit_yaml,'(4x,a)') 'timing:'
+   write(unit_yaml,'(8x,a)')           'unit: s'
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'total:  ',get_timing(timing_total)
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'prescf: ',get_timing(timing_prescf)
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'scf:    ',get_timing(timing_scf)
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'postscf:',get_timing(timing_postscf)
+   write(unit_yaml,'(4x,a)') 'memory:'
+   write(unit_yaml,'(8x,a)')           'unit: Gb'
+   write(unit_yaml,'(8x,a,1x,es18.8)') 'peak:   ',get_peak_memory()
+
+   write(unit_yaml,'(a)') '...'
+   close(unit_yaml)
+ endif
 
  write(stdout,'(/,1x,a,/)') 'This is the end'
 
@@ -64,6 +91,7 @@ end subroutine this_is_the_end
 subroutine header()
  implicit none
 
+!=====
 #if defined(_OPENMP)
  integer,external  :: OMP_get_max_threads
 #endif
@@ -230,7 +258,17 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
+ real(dp)                   :: proj_atom(natom_basis)
+ integer                    :: ielement,iemax,iatom_basis
+ integer                    :: atom2element(natom_basis)
+ character(len=6)           :: char6
+ real(dp),allocatable       :: proj_element(:)
+ integer,allocatable        :: element_list(:)
+ real(dp)                   :: weight
 !=====
+
+ if( .NOT. is_iomaster ) return
+
 
  write(stdout,*)
  write(stdout,*) 'Projecting wavefunctions on selected atoms'
@@ -246,6 +284,8 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  endif
  write(stdout,'(1x,a,i5,2x,i5)') 'Range of atoms considered: ',natom1,natom2
 
+ if( print_yaml_ ) write(unit_yaml,'(/,a)') 'mulliken projections:'
+
  do ishell=1,basis%nshell
    ibf1    = basis%shell(ishell)%istart
    ibf2    = basis%shell(ishell)%iend
@@ -254,23 +294,57 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
    li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
  enddo
 
+ ! Find the unique elements in the system
+ iemax = 0
+ do ielement=1,nelement_max
+   if( ANY(zbasis(:) == ielement) ) then
+     iemax = iemax + 1
+   endif
+   do iatom_basis=1,natom_basis
+     if( zbasis(iatom_basis) == ielement ) atom2element(iatom_basis) = iemax
+   enddo
+ enddo
+ allocate(proj_element(iemax),element_list(iemax))
+ iemax = 0
+ do ielement=1,nelement_max
+   if( ANY(zbasis(:) == ielement) ) then
+     iemax = iemax + 1
+     element_list(iemax) = ielement
+   endif
+ enddo
+ write(stdout,*) 'FBFB',iemax,element_list(:)
 
  write(stdout,'(1x,a)') '==========================================='
  write(stdout,'(1x,a)') 'spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '
+
  proj_charge = 0.0_dp
+
  do ispin=1,nspin
+
+   if( print_yaml_ ) write(unit_yaml,'(4x,a,i2,a)') 'spin channel',ispin,':'
+
    do istate=1,nstate
      proj_state_i(:) = 0.0_dp
+     proj_element(:) = 0.0_dp
+     write(char6,'(i6)') istate 
 
-     cs_vector_i(:) = MATMUL( c_matrix(:,istate,ispin) , s_matrix(:,:) )
+     cs_vector_i(:) = MATMUL(  s_matrix(:,:) , c_matrix(:,istate,ispin) )
 
      do ibf=1,basis%nbf
        if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
        endif
+       weight = c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
+       proj_element(atom2element(iatom_ibf(ibf))) = proj_element(atom2element(iatom_ibf(ibf))) + weight
      enddo
      proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
+     if( print_yaml_) then
+       write(unit_yaml,'(8x,a6,a)') ADJUSTL(char6),':'
+       do ielement=1,iemax
+         write(unit_yaml,'(12x,a2,a,1x,es18.8)') ADJUSTL(element_name(REAL(element_list(ielement),dp))),':',proj_element(ielement)
+       enddo
+     endif
 
      write(stdout,'(i3,1x,i5,1x,20(f16.6,4x))') ispin,istate,energy(istate,ispin) * Ha_eV,&
           SUM(proj_state_i(:)),proj_state_i(:)
@@ -2876,6 +2950,7 @@ function wfn_reflection(nstate,basis,c_matrix,istate,ispin)
 
 
 end function wfn_reflection
+
 
 !=======================================
 subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,prec,beg)

@@ -580,8 +580,8 @@ subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_foc
  ! Testing the core/valence splitting
  !
  if(dft_core > 0) then
-   if( alpha_hybrid_lr > 0.001 ) then
-     call die('RSH not implemented yet')
+   if( beta_hybrid > 0.001 ) then
+     call die('setup_exchange_m_vxc: RSH not implemented for DFT core-valence splitting')
    endif
    write(msg,'(a,i4,2x,i4)') 'DFT core-valence interaction switched on up to state = ',dft_core
    call issue_warning(msg)

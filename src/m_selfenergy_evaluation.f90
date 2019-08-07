@@ -128,7 +128,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point
      ! and until they are restored in destroy_fno
      !
-     call virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
+     call calculate_virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
    endif
    !
    ! Or alternatively use the small basis technique
@@ -450,6 +450,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    ! Write the QP energies on disk: ENERGY_QP file
    !
    call write_energy_qp(nstate,energy_qp_new)
+   call dump_out_energy_yaml(TRIM(selfenergy_tag)//' energy',energy_qp_new,nsemin,nsemax)
 
    !
    ! Output the new HOMO and LUMO energies

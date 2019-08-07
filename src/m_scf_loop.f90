@@ -153,9 +153,9 @@ subroutine scf_loop(is_restart,&
    if(calc_type%need_exchange_lr) then
 
      call calculate_exchange_lr(basis,p_matrix,hamiltonian_exx,ex=en_gks%exx_hyb,occupation=occupation,c_matrix=c_matrix)
-     ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-     en_gks%exx_hyb = en_gks%exx_hyb * alpha_hybrid_lr
-     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * alpha_hybrid_lr
+     ! Rescale with beta_hybrid for range-separated hybrid functionals
+     en_gks%exx_hyb = en_gks%exx_hyb * beta_hybrid
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * beta_hybrid
 
    endif
 
@@ -378,6 +378,11 @@ subroutine scf_loop(is_restart,&
    write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx
  endif
 
+ if( print_yaml_ .AND. is_iomaster ) then
+   write(unit_yaml,'(/,a,1x,a)') 'scf_is_converged:',logical_to_yesno(is_converged)
+   call print_energy_yaml('scf energy',en_gks)
+   call dump_out_energy_yaml('gks energy',energy)
+ endif
 
  call stop_clock(timing_scf)
 

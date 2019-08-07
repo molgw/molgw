@@ -239,7 +239,7 @@ end subroutine setup_virtual_smallbasis
 
 
 !=========================================================================
-subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
+subroutine calculate_virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
  implicit none
 
  type(basis_set),intent(in)            :: basis
@@ -268,12 +268,12 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
  nvirtualmin = MIN(nvirtualw,nvirtualg)
 
  if( nvirtualmin > nstate ) then
-   call issue_warning('virtual_fno is on, however nvirtualw and nvirtualg are not set. Skipping the Frozen Natural Orbitals generation.')
+   call issue_warning('calculate_virtual_fno is on, however nvirtualw and nvirtualg are not set. Skipping the Frozen Natural Orbitals generation.')
    return
  endif
 
  if( nspin > 1 ) then
-   call issue_warning('virtual_fno not implemented yet for spin polarized calculations')
+   call issue_warning('calculate_virtual_fno not implemented yet for spin polarized calculations')
    return
  endif
 
@@ -463,7 +463,7 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
 
  call stop_clock(timing_fno)
 
-end subroutine virtual_fno
+end subroutine calculate_virtual_fno
 
 
 !=========================================================================

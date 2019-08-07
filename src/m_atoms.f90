@@ -63,7 +63,7 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  real(dp) :: bond_length
 !=====
 
- ! here x_read contains all coordinates: first (natom-nprojectile) real atoms, then (nghost) ghost atoms and the last but not least (nprojectile) projectile (which is 0 or 1) 
+ ! here x_read contains all coordinates: first (natom-nprojectile) real atoms, then (nghost) ghost atoms and the last but not least (nprojectile) projectile (which is 0 or 1)
 
  ! xatom and zatom designate the physical nuclei
  allocate(xatom(3,natom))
@@ -79,7 +79,7 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  if(excit_name=="NUCLEUS" .OR. excit_name=="ANTINUCLEUS") then
    vel(:,natom)=vel_projectile(:)
  endif
- ! For relaxation or dynamics only 
+ ! For relaxation or dynamics only
  if( calculate_forces ) then
    allocate(force(3,natom))
    allocate(force_nuc_nuc(3,natom))
@@ -93,7 +93,7 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  endif
 
  ! List of atoms is organized as follows:
- ! 1. physical atoms   :    nucleus | basis 
+ ! 1. physical atoms   :    nucleus | basis
  ! 2. ghost atoms      :      no    | basis
  ! 3. projectile       :    nucleus |   no
  !
@@ -326,6 +326,7 @@ subroutine output_positions()
 
 end subroutine output_positions
 
+
 !=========================================================================
 subroutine output_projectile_position()
  implicit none
@@ -333,7 +334,7 @@ subroutine output_projectile_position()
 
  write(stdout,*)
  if( nprojectile > 0 ) then
-   write(stdout,'(a)') ' === projectile position: ----------bohr---------------    |||   ------------- angstrom----------===' 
+   write(stdout,'(a)') ' === projectile position: ----------bohr---------------    |||   ------------- angstrom----------==='
 
    if( zatom(natom) > 0 ) then
      write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
@@ -348,6 +349,7 @@ subroutine output_projectile_position()
  endif
 
 end subroutine output_projectile_position
+
 
 !=========================================================================
 subroutine nucleus_nucleus_energy(energy)
