@@ -40,9 +40,6 @@ module m_tddft_propagator
  real(dp),allocatable,private       :: extrap_coefs(:)
  complex(dp),allocatable,private    :: h_small_hist_cmplx(:,:,:,:)
  complex(dp),allocatable,private    :: c_matrix_orth_hist_cmplx(:,:,:,:)
- !==q_matrix==
- complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
- !====
  integer,private            :: ntau
  !==frozen core==
  real(dp),allocatable       :: energies_start(:,:)
@@ -399,10 +396,6 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  call clean_deallocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx)
  call clean_deallocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx)
  call clean_deallocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx)
-
- if(calc_q_matrix_) then
-   call clean_deallocate('q_matrix for TDDFT',q_matrix_cmplx)
- end if
 
  if(ncore_tddft > 0) then
    call clean_deallocate('a_matrix_orth_start_cmplx for the frozen core',a_matrix_orth_start_cmplx)
@@ -845,13 +838,13 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
 
  select case(excit_type%form)
  case(EXCIT_PROJECTILE)
-   write(file_time_data,"(F10.4,9(2x,es16.8E3))") &
-      time_cur, en_tddft%total, xatom(3,natom), en_tddft%nuc_nuc, en_tddft%nucleus, en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
+   write(file_time_data,"(F10.4,11(2x,es16.8E3))") &
+      time_cur, en_tddft%total, xatom(:,natom), en_tddft%nuc_nuc, en_tddft%nucleus, en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
       en_tddft%excit
    call output_projectile_position()
 
  case(EXCIT_LIGHT)
-   write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
+   write(file_time_data,"(F10.4,8(2x,es16.8E3))") &
     time_cur, en_tddft%total, en_tddft%nuc_nuc, en_tddft%nucleus, en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, en_tddft%excit
    write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
    write(file_excit_field,'(2f19.10)') time_cur, excit_field_norm
@@ -885,9 +878,9 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field)
 !---------------------------------
  select case(excit_type%form)
  case(EXCIT_PROJECTILE)
-   write(file_time_data,"(A)") "  # time(au)     e_total        z_projectile        enuc_nuc            enuc             ekin              ehart&
-                             &           eexx_hyb                    exc eexcit(nuc_nuc for proj.)"
-
+   write(file_time_data,"(A10,11(A18))") "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc_wo_proj","enuc","ekin","ehart",&
+                             &"eexx_hyb","exc","enuc_nuc_proj"
+                                               
  case(EXCIT_LIGHT)
    write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
                              &eexx_hyb            exc             eexcit"
@@ -908,15 +901,15 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
  integer,intent(out)                   :: file_q_matrix(2)
 !=====
  character(len=50)          :: name_file_q_matrix
- character(len=500)         :: cur_string
+ character(len=500)         :: cur_string, header_format
+ character(len=500)         :: header
  integer                    :: ispin
  real(dp),allocatable       :: energy_tddft(:)
  logical                    :: file_exists
- integer                    :: file_q_matrix_param,nline,iline
+ integer                    :: file_q_matrix_param,ncut,icut
  integer                    :: num_fields
 !=====
 
- call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
  call clean_allocate('c_matrix_orth_start for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
  allocate(energy_tddft(nstate))
  do ispin=1, nspin
@@ -927,20 +920,20 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
  inquire(file='manual_q_matrix_param',exist=file_exists)
 
  if(file_exists) then
-   nline=get_number_of_lines('manual_q_matrix_param')
-   allocate(istate_cut(nline,2))
+   ncut=get_number_of_lines('manual_q_matrix_param')
+   allocate(istate_cut(ncut,2))
    open(newunit=file_q_matrix_param,file='manual_q_matrix_param',status='old')
-   do iline=1,nline
+   do icut=1,ncut
      read(file_q_matrix_param,'(A)') cur_string
 !     cur_string = ADJUSTL(cur_string)
      num_fields = get_number_of_elements(cur_string)
      if( num_fields == 2 ) then
-       read(cur_string,*) istate_cut(iline,1), istate_cut(iline,2)
+       read(cur_string,*) istate_cut(icut,1), istate_cut(icut,2)
      else if( num_fields == 1) then
-       read(cur_string,*) istate_cut(iline,1)
-       istate_cut(iline,2) = nstate
+       read(cur_string,*) istate_cut(icut,1)
+       istate_cut(icut,2) = nstate
      else
-       call die("manual_q_matrix_param must contain 1 or two fields.")
+       call die("manual_q_matrix_param must contain one or two fields.")
      end if
 
    end do
@@ -952,10 +945,20 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
    call issue_warning('initialize_q: manual_q_matrix_param file was not found')
  endif
 
+! Header for the q_matrix file
+ write(header,"(A10,3(A18))") "# time(au)","x_proj","y_proj","z_proj"
+
+ do icut=1,ncut
+   write(header,'(a,11x,i3.3,a1,i3.3)') TRIM(header),istate_cut(icut,1),'-',istate_cut(icut,2)
+ end do
+
  if( is_iomaster ) then
    do ispin=1,nspin
      write(name_file_q_matrix,"(a,i1,a)") "q_matrix_", ispin, ".dat"
      open(newunit=file_q_matrix(ispin),file=name_file_q_matrix)
+
+     write(file_q_matrix(ispin),'(a)') TRIM(header)
+
    end do
  end if
 
@@ -973,42 +976,47 @@ subroutine calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_ma
  real(dp),intent(in)      :: time_cur
 !=====
  integer                  :: istate,jstate,iocc,ispin,icut,ncut,nstate
-! real(dp),allocatable     :: q_occ(:)
- complex(dp),allocatable  :: q_occ(:)
+ complex(dp),allocatable  :: q_matrix_cmplx(:,:)
+ real(dp),allocatable     :: q_occ(:)
 !=====
 
+ call start_clock(timing_tddft_q_matrix)
+
+ nstate = SIZE(occupation(:,:),DIM=1)
  ncut = SIZE(istate_cut,DIM=1)
 
  allocate(q_occ(ncut))
+ call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc)
 
- nstate = SIZE(occupation(:,:),DIM=1)
-
- q_occ = ( 0.0_dp, 0.0_dp )
+ q_occ = 0.0_dp
 
  do ispin=1,nspin
-   q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_complete_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
+
+   !q_matrix_cmplx(:,:)= &
+   !MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_complete_cmplx(:,:,ispin)), &
+   !                          c_matrix_orth_cmplx(:,:,ispin))
+
+   call ZGEMM('C','N',nstate,nocc,nstate,(1.0d0,0.0d0),c_matrix_orth_start_complete_cmplx(:,:,ispin),nstate, &
+                                            c_matrix_orth_cmplx(:,:,ispin),nstate, &
+                                         (0.0d0,0.0d0),q_matrix_cmplx,nstate)
+
 
    do icut=1,ncut
      do istate=istate_cut(icut,1),istate_cut(icut,2)
        do iocc=1,nocc
-         q_occ(icut) = q_occ(icut) + ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
-!         q_occ(icut) = q_occ(icut) + q_matrix_cmplx(istate,iocc,ispin)*occupation(iocc,ispin)
+         q_occ(icut) = q_occ(icut) + ABS(q_matrix_cmplx(istate,iocc))**2*occupation(iocc,ispin)
        end do
      end do
    end do
 
-!   do icut=1,ncut
-!     do istate=istate_cut(icut,1),istate_cut(icut,2)
-!       do jstate=1,nstate
-!         q_occ(icut) = q_occ(icut) + ABS(q_matrix_cmplx(jstate,istate,ispin))**2*occupation(istate,ispin)
-!       end do
-!     end do
-!   end do
-
    if( is_iomaster) then
-     write(file_q_matrix(ispin),"(F9.4,20(2x,es16.8E3))") time_cur, ABS(q_occ(:))
+     write(file_q_matrix(ispin),"(F10.4,30(2x,es16.8E3))") time_cur, xatom(:,natom), q_occ(:)
    end if
  end do
+
+ call clean_deallocate('q_matrix for TDDFT',q_matrix_cmplx)
+
+ call stop_clock(timing_tddft_q_matrix)
 
 end subroutine calculate_q_matrix
 
