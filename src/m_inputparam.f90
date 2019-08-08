@@ -989,6 +989,13 @@ subroutine read_inputfile_namelist()
      write(unit_yaml,'(8x,a,"[ ",a2,", ",es18.8,", ",es18.8,", ",es18.8,"]")') '- ', &
                  element_name(REAL(zatom(iatom),dp)),xatom(:,iatom)
    enddo
+
+   write(unit_yaml,'(4x,a)') 'basis list:'
+   do iatom=1,natom-nprojectile
+     write(unit_yaml,'(8x,a,"[ ",a2,", ",a,", ",a,"]")') '- ', &
+             element_name(REAL(zatom(iatom),dp)),TRIM(basis_name(iatom)),TRIM(auxil_basis_name(iatom))
+   end do
+
  endif
 
 
