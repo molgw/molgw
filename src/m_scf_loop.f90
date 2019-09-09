@@ -379,7 +379,11 @@ subroutine scf_loop(is_restart,&
  endif
 
  if( print_yaml_ .AND. is_iomaster ) then
-   write(unit_yaml,'(/,a,1x,a)') 'scf_is_converged:',logical_to_yesno(is_converged)
+   if( is_converged ) then
+     write(unit_yaml,'(/,a)') 'scf is converged: True'
+   else
+     write(unit_yaml,'(/,a)') 'scf is converged: False'
+   endif
    call print_energy_yaml('scf energy',en_gks)
    call dump_out_energy_yaml('gks energy',energy)
  endif

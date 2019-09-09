@@ -193,6 +193,8 @@ program molgw
      endif
    endif
 
+   call calculation_parameters_yaml(basis%nbf,auxil_basis%nbf,nstate)
+
    !
    ! Attempt to evaluate the peak memory
    !
