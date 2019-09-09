@@ -1,0 +1,1296 @@
+# This file is a part of MOLGW
+# This is a yaml file that contains all the input variables of MOLGW.
+# The variables are sorted by their families and, within families, by alphabetic order.
+#
+#============================================================================
+# To read this file by your python script do following:
+#
+# from yaml   import load,dump
+# with open(input_variables.yaml, 'r') as stream:
+#        input_variables = load(stream)
+#
+# Then, input_variables is a python dictionary that contains the input variables.
+#
+#============================================================================
+# To add a new variable, select a correponding family of variables and follow the yaml syntax (used for any other variable in this file).
+#
+# The families of variables are:
+#
+# [general]      General input variables    
+# [hardware]     Hardware input variables (Parallelization)
+# [io]           IO input variables 
+# [io_rt_tddft]  IO Real time TDDFT 
+# [post]         Correlation and excited states post-treatment input variables
+# [rt_tddft]     Real time TDDFT input variables
+# [scf]          Self-consistency input variables 
+# [system]       Physical system setup input variables
+#
+
+#============================================================================
+#                       General input variables                
+#============================================================================
+
+auto_auxil_fsam:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.5
+  comment: Sets the F_SAM parameter in the automatic generation of the auxiliary basis
+    set. The closer to 1.0 the more auxiliary basis functions it will generate. See
+    Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.
+
+auto_auxil_lmaxinc:
+  family: general
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Sets the l_MAXINC parameter in the automatic generation of the auxiliary
+    basis set. The larger the more auxiliary basis functions it will generate. See
+    Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.
+
+auxil_basis:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: Sets the auxiliary basis set. For instance, cc-pVDZ-RI for a Weigend basis
+    set. If present, the auxiliary basis will be used for both the scf cycles and
+    the postscf calculations (TD-DFT, BSE, or GW).
+
+basis:
+  family: general
+  datatype: characters
+  mandatory: 'yes'
+  experimental: 'no'
+  default: ''
+  comment: Sets the basis set For Pople sets, use 6-31G for instance or 6-31pGs, where
+    p stands for + and s for *. For Dunning sets, use aug-cc-pVTZ for instance. Note
+    that Pople sets are to be used with gaussian_type='cart' One may use ones own
+    basis sets provided that the files are labeled X_mybasisset where X is the element.
+
+comment:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: This is a free expression place. Use it as you wish for commenting, naming,
+    labeling etc. (140 character max just as twitter)
+
+ecp_auxil_basis:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: Name of the auxiliary basis set to be used for elements specified in list
+    ecp_elements.
+
+ecp_basis:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: Name of the basis set to be used for elements specified in list ecp_elements.
+
+ecp_elements:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: Contains the list of elements (separated by spaces) that should be treated
+    with an Effective Core Potential.
+
+ecp_quality:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: high
+  comment: Sets the number of grid points use to evaluate the Effective Core Potential
+    integrals in real space. Possible values are 'low', 'medium', 'high', 'very high',
+    'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually
+    fine. 'insane' is only meant for debugging since it is overdoing a lot.
+
+ecp_type:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: Name of the Effective Core Potential. For instance, Gold using the cc-pVDZ-PP
+    basis set should have ecp_type='PP', so that MOLGW looks for the file Au_PP in
+    the basis_path folder.
+
+gaussian_type:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: pure
+  comment: Asks for pure or spherical Gaussian type orbitals with 'pure' or for Cartesian
+    Gaussian orbital with 'cart'.
+
+incore:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Specify if the 4-center integrals are all calculated at once and stored
+    or if they are calculated on-the-fly.
+
+memory_evaluation:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Requests a memory evaluation. MOLGW will start normaly, evaluate the size
+    of the arrays, and exit without performing an actual calculation.
+
+move_nuclei:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Tells the code to move or not the position of the nuclei. Available options
+    are 'no' or 'relax'.
+
+nstep:
+  family: general
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 50
+  comment: Sets the number of steps when moving the nuclei.
+
+scf:
+  family: general
+  datatype: characters
+  mandatory: 'yes'
+  experimental: 'no'
+  default: ''
+  comment: "Contains the self-consistent scheme name. \nTry LDA, PBE, HSE06, or HF\
+    \ for instance"
+
+tolforce:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0e-05
+  comment: Sets the target threshold for the maximum force component after nuclei
+    relaxation.
+
+
+#============================================================================
+#              Hardware input variables (Parallelization)    
+#============================================================================
+
+eri3_nbatch:
+  family: hardware
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Sets the number of batches when calculating the 3-center integrals. Having
+    a large eri3_nbatch reduces the memory foot print, however it may lower the performance.
+
+eri3_npcol:
+  family: hardware
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Sets number of column processors for the distribution of the 3-center integrals.  eri3_nprow
+    X eri3_npcol must be equal to the number of MPI threads else MOLGW decides on
+    its own.
+
+eri3_nprow:
+  family: hardware
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Sets number of row processors for the distribution of the 3-center integrals.  eri3_nprow
+    X eri3_npcol must be equal to the number of MPI threads else MOLGW decides on
+    its own.
+
+grid_memory:
+  family: hardware
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 400.0
+  comment: Sets the maximum memory usage in Mb allowed to store the wavefunctions
+    on the quadrature points for XC integrals.
+
+mpi_nproc_ortho:
+  family: hardware
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Sets the number of processors left to parallelize on other directions.
+    The main direction (auxiliary basis or DFT grid points) is obtained by <b>mpi_nproc</b>
+    / <b>mpi_nproc_ortho</b>, which must be an integer.
+
+scalapack_block_min:
+  family: hardware
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1000
+  comment: Sets the minimum block size to distribute a non-distributed matrix with
+    SCALAPACK. If scalapack_block_min=400, then a 900x900 matrix will be distributed
+    on a 2x2 processor grid. If scalapack_block_min=500, then a 900x900 matrix will
+    no be distributed.
+
+
+#============================================================================
+#                       IO input variables      
+#============================================================================
+
+basis_path:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: Sets the path pointing to the basis functions files.                  If
+    not specified, then the basis set files will be searched in folder ~molgw/basis/.
+
+force_energy_qp:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Force the reading of the ENERGY_QP file whatever the postscf choice.
+
+ignore_bigrestart:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Considers a big RESTART as if it was a small RESTART.
+
+print_bigrestart:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: 'Prints the big RESTART file at the end of the SCF loop. There are two
+    kinds of RESTART files: the small RESTART and the big RESTART. The latter is written
+    only when self-consistency has been reached. It contains all the states and the
+    Hamiltonian and allows one to completely skip the scf loop or to start over with
+    another basis set.'
+
+print_cube:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints some wavefunctions in a 3D volumetric file with cube format
+
+print_density_matrix:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the density matrix in the DENSITY_MATRIX file
+
+print_eri:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Dumps the Electron Repulsion Integral on a file.
+
+print_hartree:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the Hartree potential and exchange expectation value on eigenstates.
+
+print_multipole:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the electric multipole expansion for the electronic density and
+    the nuclei.
+
+print_pdos:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the Mulliken weight of each eigenvector on a given atom or a given
+    series of atoms.
+
+print_restart:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: 'Prints a small RESTART file at each SCF cycle. There are two kinds of
+    RESTART files: the small RESTART and the big RESTART. The former contains only
+    the information about the occupied wavefunctions. This is a very small file and
+    the writing should not hit too much on performance.'
+
+print_rho_grid:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the electronic density discretized on the DFT grid into a file 'rho_grid.dat'.
+    The density is calculated from the DENSITY_MATRIX file or from a Gaussian file
+    using 'read_fchk'.
+
+print_sigma:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the value of the GW self-energy on the sampling frequencies in files.
+
+print_spatial_extension:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the wavefunction extension calculated as &lt;r<sup>2</sup>&gt; -
+    &lt;r&gt;<sup>2</sup>
+
+print_w:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Dumps the spectral function of the screened Coulomb W. This is necessary
+    for a subsequent BSE run.
+
+print_wfn:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints some wavefunctions along some selected lines.
+
+print_yaml:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Creates an output file in YAML format. Easier to read for python post-processing.
+
+read_fchk:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Triggers the reading of an external Gaussian formatted checkpoint file
+    (named gaussian.fchk) that contains density matrices. Basis sets have to be precisely
+    the same in MOLGW and in Gaussian, which requires a manual input of the basis
+    set in both codes. Options are 'no' (no reading), 'SCF' (for self-consistent field),
+    'CC' (for coupled-cluster), or 'MP2' (for MP2). Today, only works for Cartesian
+    Gaussian and for spin restricted calculations.
+
+read_restart:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Read the RESTART file and restart from it.
+
+
+#============================================================================
+#                  Real time TDDFT input variables          
+#============================================================================
+
+calc_dens_disc:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Calculate electronic density in the discs during the real-time dynamics
+
+calc_q_matrix:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Calculate and print q_matrix which is the projection of a propagated state
+    psi(t) onto the initial state psi(0) in the real-time dynamics
+
+calc_spectrum:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Calculates absorption spectrum in the real-time dynamics
+
+print_cube_diff_tddft:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the difference of electronic density with respect to initial density
+    in a 3D volumetric file with cube format for each simulation step in the real-time
+    dynamics
+
+print_cube_rho_tddft:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints electronic density in a 3D volumetric file with cube format for
+    each simulation step in the real-time dynamics
+
+print_dens_traj:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the electronic density along the projectile trajectory for several
+    impact parameters using real wave function
+
+print_dens_traj_points_set:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the electronic density between pairs of points given in manual_dens_points_set
+    file.
+
+print_dens_traj_tddft:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the electronic density along the projectile trajectory for several
+    impact parameters in the real-time dynamics
+
+print_line_rho_diff_tddft:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints electronic density difference along a line, which parameters must
+    be provided in manual_plot_rho_tddft file.
+
+print_line_rho_tddft:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints electronic density along a line, which parameters must be provided
+    in manual_plot_rho_tddft file.
+
+print_tddft_matrices:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints some matrices of the real-time dynamics into the file check_matrix.dat.
+
+print_tddft_restart:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Prints a RESTART_TDDFT file which contains wavefunction coefficients for
+    the last time moment of a simulation.
+
+read_tddft_restart:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Ignore the RESTART_TDDFT file.
+
+write_step:
+  family: io_rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: '1'
+  comment: Determines the time step for data recording in the real-time dynamics
+
+
+#============================================================================
+#       Correlation and excited states post-treatment input variables         
+#============================================================================
+
+ci_greens_function:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'yes'
+  default: holes
+  comment: 'EXPERIMENTAL. Selects which part of the Green''s function is to be calculated:
+    holes, electrons, or both.'
+
+ci_nstate:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Selects how many CI states should be calculated in the diagonalization.
+    If ci_nstate is lower than the number of configuration,  a Davidson partial diagonalization
+    is performed, else a full (SCA)LAPACK diagonalization is triggered.
+
+ci_nstate_self:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Selects how many CI states in the N+1 or N-1 electron calculations. If
+    ci_nstate_self is lower than the number of configuration,  a Davidson partial
+    diagonalization is performed, else a full (SCA)LAPACK diagonalization is triggered.
+
+ci_spin_multiplicity:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Spin multiplicity in CI calculations.
+
+ci_type:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: all
+  comment: Selects which excitations will be included in the CI expansion. Valid choices
+    are 'all', 'CISD', 'CISDT', 'CISDTQ'.
+
+dft_core:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the number of states considered as core in &lt;&Sigma;<sub>x</sub>-<i>v</i><sub>xc</sub>&gt.
+    This options is meant to mimic the pseudopotential approximation.
+
+eta:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.001
+  comment: Is a the tiny imaginary part used in the denominator of the Green's function
+    to shift the pole off the axis, so to avoid divergences.This is an energy in Hartree.
+    It should be set to the lowest value possible in theory. However, in practice,
+    a too low value of eta would induce huge and unstable GW corrections. The default
+    value is usually very accurate and there is no need to use a lower value. But
+    for states apart from the band gap, a large value of eta may be beneficial for
+    stability. eta=0.01 is already much more stable. Note that for QSGW increasing
+    eta is most often unavoidable.
+
+frozencore:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Triggers the neglect of core states in GW. H, He, Li, Be have no core states.
+    B-Na have the 1s. Al-Ca have the 1s2s2p. Manual tuning could be achieved with
+    ncoreg, ncorew.
+
+gwgamma_tddft:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the
+    ground-state calculation.
+
+ncoreg:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the number of frozen core states in the Green's function G.
+
+ncorew:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the number of frozen core states in the screened Coulomb interaction
+    W, in TD-DFT, and in BSE.
+
+nexcitation:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the number of neutral excitations to be calculated in TD-DFT or BSE.                  0
+    stands for all the states and triggers the full diagonalization.
+
+nomega_imag:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the number of frequencies used to perform the integral on the imaginary
+    axis
+
+nomega_sigma:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 51
+  comment: Sets the number of frequencies used to solve the quasiparticle equation
+    in the GW self-energy.
+
+nstep_dav:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 15
+  comment: Sets the maximum number of Davidson partial diagonalization steps. Used
+    for TD-DFT, BSE, and full CI.
+
+nstep_gw:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: '1'
+  comment: Sets the number of GW iterations for eigenvalue self-consistent GW calculations
+    (GnWn or GnW0).
+
+nvirtualg:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 100000
+  comment: Sets the starting state beyond which states are excluded from the sum in
+    the Green's function G.
+
+nvirtualw:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 100000
+  comment: Sets the starting state beyond which states are excluded from the sum in
+    the screened Coulomb interaction W, in TD-DFT, and in BSE.
+
+postscf:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: "Contains the post-processing scheme name. \nTD stands for TD-DFT or TD-HF.\n\
+    BSE stands for Bethe-Salpeter.\nGW stands for perturbative G0W0.\nGnW0 stands\
+    \ for GW with eigenvalue self-consistentcy on G.\nGnWn stands for GW with eigenvalue\
+    \ self-consistentcy on both G and W.\nMP2 stands for guess what.\nGWGAMMA (EXPERIMENTAL)\
+    \ stands for vertex corrections."
+
+pt3_a_diagrams:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: 'Switch whether to calculate the A diagrams family in PT3. A diagrams are
+    the self-consistent diagrams (PT2 inclusions in the Green''s function).                 Valid
+    choices include: ''yes'', ''no'', or ''only''.'
+
+pt_density_matrix:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: 'Triggers the calculation of a correlated density matrix within MBPT.                 Valid
+    choices include: ''no'', ''PT2'', ''ONE-RING'', or ''GW''.'
+
+rcut_mbpt:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: '1.0'
+  comment: EXPERIMENTAL
+
+scissor:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets a rigid energy shift of the unoccupied states, so to mimick a GW calculation
+    without actually doing it.
+
+selfenergy_state_max:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 100000
+  comment: Sets the final states for the range of the self-energy evaluation
+
+selfenergy_state_min:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Sets the starting states for the range of the self-energy evaluation
+
+selfenergy_state_range:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 100000
+  comment: Sets the range of states around the HOMO level for the self-energy evaluation.
+    For instance, selfenergy_state_range=0 will trigger the calculation of the HOMO
+    only.             selfenergy_state_range=1 will trigger the evaluation of the
+    HOMO-1, HOMO, HOMO+1. etc.
+
+step_sigma:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.01
+  comment: Sets the spacing between frequencies in the GW self-energy evaluation.
+
+tda:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Triggers the use of Tamm-Dancoff approximation in TD-DFT or BSE.
+
+tddft_grid_quality:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: high
+  comment: Sets the number of grid points use to evaluate the exchange-correlation
+    integrals in real space for the TDDFT kernel. Possible values are 'low', 'medium',
+    'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh',
+    'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is
+    overdoing a lot.
+
+toldav:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0001
+  comment: Sets the tolerance criterium for the maximum norm of the residual in the
+    Davidson diagonalization of TD-DFT, BSE, and full CI.
+
+triplet:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Triggers the calculation of the triplet final state in TD-DFT or BSE.
+
+use_correlated_density_matrix:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Chooses to use another density matrix for the Fock hamiltonian to be employed
+    in self-energy calculations.                  Used in conjonction with 'pt_density_matrix'
+    or with 'read_fchk' or read an existing DENSITY_MATRIX file.
+
+virtual_fno:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Activates the Frozen Natural Orbitals technique to span the virtual orbitals
+    subspace with fewer orbitals. The dimension of the space is set up with the input
+    keyword nvirtualg or nvirtualw. Actually the virtual orbital space is determined
+    by the minimum MIN(nvirtualg,nvirtualw).
+
+ecp_small_basis:
+  family: postscf
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'yes'
+  default: ''
+  comment: Calls for a smaller basis set used to represent the virtual orbital space
+    with fewer functions. This is the small basis set used for elements with an effective
+    core potential. Only meaningful for GW.
+
+postscf_diago_flavor:
+  family: postscf
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: R
+  comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations.
+    Available choices are ' ', 'R', 'D', and 'X'.
+
+small_basis:
+  family: postscf
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'yes'
+  default: ''
+  comment: Calls for a smaller basis set used to represent the virtual orbital space
+    with fewer functions. Only meaningful for GW.
+
+
+#============================================================================
+#                     Real time TDDFT input variables
+#============================================================================
+
+excit_dir:
+  family: rt_tddft
+  datatype: vector_1d_3
+  mandatory: 'no'
+  experimental: 'no'
+  default: !!python/tuple
+  - 1.0
+  - 0.0
+  - 0.0
+  comment: Excitation direction for the real-time dynamics.
+
+excit_kappa:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 2.0e-05
+  comment: Maximum Gaussian excitation field strength in atomic units.
+
+excit_name:
+  family: rt_tddft
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'NO'
+  comment: Sets the type of excitation of a system in the real-time dynamics.                          'GAU
+    stands for a linearly polarized uniform Gaussian electric field'
+
+excit_omega:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.2
+  comment: The excitation pulse width in atomic units for the real-time dynamics.
+
+excit_time0:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 3.0
+  comment: Center of the excitation pulse in atomic units for the real-time dynamics.
+
+n_hist:
+  family: rt_tddft
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 2
+  comment: 'Number of memorised previous hamiltonian values for its extrapolation
+    in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1);
+    etc.'
+
+n_iter:
+  family: rt_tddft
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: '2'
+  comment: Sets the number of iterations for the PC7 in the real-time dynamics
+
+n_restart_tddft:
+  family: rt_tddft
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 50
+  comment: RESTART_TDDFT file will be written during simulation each n_retart_tddft
+    iteration (provided that print_tddft_restart is yes)
+
+ncore_tddft:
+  family: rt_tddft
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the number of frozen core states in the real-time dynamics.
+
+pred_corr:
+  family: rt_tddft
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: PC1
+  comment: Sets the predictor-corrector scheme in the real-time dynamics.
+
+prop_type:
+  family: rt_tddft
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: MAG2
+  comment: Sets the type of propagation algorithm in the real-time dynamics.                  'CN'
+    stands for Crank-Nickolson                  'MAG2' stands for Magnus 2nd order.
+
+r_disc:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 200.0
+  comment: Radius of the disc for denisty calculations (option calc_dens_disc) for
+    the real-time dynamics.
+
+tddft_frozencore:
+  family: rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Do not "propagate" states mentioned in the manual_tddft_frozencore file
+    in the real-time dynamics.
+
+time_sim:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 10.0
+  comment: Duration of a real-time dynamics in atomic units.
+
+time_step:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0
+  comment: Time step for real-time dynamics in atomic units.
+
+vel_projectile:
+  family: rt_tddft
+  datatype: vector_1d_3
+  mandatory: 'no'
+  experimental: 'no'
+  default: !!python/tuple
+  - 0.0
+  - 0.0
+  - 1.0
+  comment: Projectile initial velocity.
+
+
+#============================================================================
+#                   Self-consistency input variables         
+#============================================================================
+
+alpha_hybrid:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount
+    of range-independent exact-exchange
+
+alpha_mixing:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.7
+  comment: Sets the amount of output density-matrix for the next iteration. When the
+    SCF cycles have difficulties to converge, one may try to lower this value.
+
+beta_hybrid:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount
+    of long-range exact-exchange
+
+density_matrix_damping:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Adds an additional linear mixing on the density matrix in combination with
+    the Hamiltonian mixing in order to damp out the charge oscillations. Especially
+    useful for metallic systems.
+
+diis_switch:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.05
+  comment: When running ADIIS, sets the residue value below which the DIIS method
+    is used to finalize the convergence.
+
+gamma_hybrid:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1000000.0
+  comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the separation
+    between long-range and short-range. It is input in bohr^-1.
+
+grid_quality:
+  family: scf
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: high
+  comment: Sets the number of grid points use to evaluate the exchange-correlation
+    integrals in real space for the DFT potential and energy. Possible values are
+    'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l',
+    'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging
+    since it is overdoing a lot.
+
+init_hamiltonian:
+  family: scf
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: guess
+  comment: 'Selects how to initiate the first hamiltonian for SCF cycles. Today, two
+    options are available: ''guess'' for an educated guess based on approximate atomic
+    densities or ''core'' for the core hamiltonian.'
+
+integral_quality:
+  family: scf
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: high
+  comment: Sets the tolerance value for the screening of the negligible integrals.
+    Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be
+    abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only
+    meant for debugging since it is overdoing a lot.
+
+kerker_k0:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0.0
+  comment: Analog to k0 in Kerker preconditioning for metallic systems. Helps to damp
+    charge oscillations to ensure better SCF convergence.
+
+level_shifting_energy:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the energy shift up of the unoccupied states. Should help the convergence
+    in the case of small HOMO-LUMO gaps.
+
+min_overlap:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0e-05
+  comment: Sets the minimal eigenvalue of the overlap matrix S. Small eigenvalues
+    imply overcompleteness of the basis set.
+
+mixing_scheme:
+  family: scf
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: pulay
+  comment: Sets the density-matrix update method for SCF cycles. Possible choices
+    are 'pulay' for Pulay DIIS method, 'adiis' for Hu-Yang method, or 'simple' for
+    a simple linear mixing between input and output density-matrices.
+
+npulay_hist:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 6
+  comment: Sets the history record length for Pulay DIIS.
+
+nscf:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 50
+  comment: Sets the maximum number of SCF cycles
+
+partition_scheme:
+  family: scf
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ssf
+  comment: Sets the partition scheme for the xc quadrature. Possible choices are 'becke'
+    or 'ssf' (Stratmann-Scuseria-Frisch).
+
+scf_diago_flavor:
+  family: scf
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ' '
+  comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles.
+    Available choices are ' ', 'R', 'D', and 'X'.
+
+tolscf:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0e-07
+  comment: Sets the residual norm target for the density matrix for the SCF cycles.
+
+
+#============================================================================
+#                 Physical system setup input variables          
+#============================================================================
+
+charge:
+  family: system
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the total charge of the system. 0 is a neutral system. -2 is a doubly
+    charged anion etc.
+
+length_unit:
+  family: system
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: angstrom
+  comment: Chooses the units of the atomic coordinates. Can be 'angstrom' or 'bohr'.
+    Could be abbreviated in 'A' or 'au'.
+
+magnetization:
+  family: system
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: '0.0'
+  comment: Sets the number of unpaired electrons. In other words, this is the difference
+    between the spin up and spin down occupation. For instance, a spin-doublet calculation
+    is obtained with magnetization=1.0. Only meaningful when nspin=2.
+
+natom:
+  family: system
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the number of atoms in the molecule. This is the number of lines to
+    be read in the following section of the input file if no xyz file is provided.
+
+nghost:
+  family: system
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the number of ghost atoms in the molecule. Used to place basis function
+    where there is no atom. Useful for Basis Set Superposition Error
+
+nspin:
+  family: system
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Sets the number of spin channels. 1 enforces spin-restricted calculations.
+    2 means spin-unrestricted.
+
+temperature:
+  family: system
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: '0.0'
+  comment: Sets the electronic temperature in the Fermi-Dirac functions. Helps the
+    convergence for some systems. The value is input in Hartree atomic units.
+
+xyz_file:
+  family: system
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: Specifies the location of the xyz file that contains the atomic positions.
+    It can be used as an alternate route to set atomic coordinate.
