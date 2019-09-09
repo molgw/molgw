@@ -326,7 +326,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
    do istate=1,nstate
      proj_state_i(:) = 0.0_dp
      proj_element(:) = 0.0_dp
-     write(char6,'(i6)') istate 
+     write(char6,'(i6)') istate
 
      cs_vector_i(:) = MATMUL(  s_matrix(:,:) , c_matrix(:,istate,ispin) )
 
@@ -2994,6 +2994,21 @@ subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,prec,beg)
  end do
 end subroutine print_2d_matrix_real
 
+
+!=========================================================================
+subroutine calculation_parameters_yaml(nbf,auxil_nbf,nstate)
+ implicit none
+ integer,intent(in)  :: nbf,auxil_nbf,nstate
+!=====
+
+ if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
+
+ write(unit_yaml,'(/,a)')  'calculation parameters:'
+ write(unit_yaml,'(4x,a,1x,i6)')  'basis functions:             ',nbf
+ write(unit_yaml,'(4x,a,1x,i6)')  'independent basis functions: ',nstate
+ write(unit_yaml,'(4x,a,1x,i6)')  'auxiliary basis functions:   ',auxil_nbf
+
+end subroutine calculation_parameters_yaml
 
 !=========================================================================
 subroutine evaluate_memory(nbf,auxil_nbf,nstate,occupation)
