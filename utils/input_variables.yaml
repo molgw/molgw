@@ -6,8 +6,14 @@
 # To read this file by your python script do following:
 #
 # from yaml   import load,dump
+# try:
+#   from yaml import CLoader as Loader, CDumper as Dumper
+# except ImportError:
+#   from yaml import Loader, Dumper
+#
 # with open(input_variables.yaml, 'r') as stream:
-#        input_variables = load(stream)
+#        input_variables = load(stream,Loader=Loader)
+#
 #
 # Then, input_variables is a python dictionary that contains the input variables.
 #
