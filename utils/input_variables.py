@@ -3,6 +3,8 @@
 # Author: Fabien Bruneval
 
 import time,os
+from yaml        import load,dump
+from yaml        import CLoader as Loader, CDumper as Dumper
 
 today=time.strftime("%d")+' '+time.strftime("%B")+' '+time.strftime("%Y")
 
@@ -931,10 +933,11 @@ vl[-1].comment  ='Duration of a real-time dynamics in atomic units.'
 vl.append(variable())
 vl[-1].keyword  ='prop_type'
 vl[-1].family   ='rt_tddft'
-vl[-1].default  ='CN'
+vl[-1].default  ='MAG2'
 vl[-1].datatype ='characters'
 vl[-1].comment  ='Sets the type of propagation algorithm in the real-time dynamics. \
-                 \'CN stands for Crank-Nickolson\''
+                 \'CN\' stands for Crank-Nickolson \
+                 \'MAG2\' stands for Magnus 2nd order.'
 #================================
 vl.append(variable())
 vl[-1].keyword  ='ci_greens_function'
@@ -1205,6 +1208,21 @@ vl[-1].comment  ='Sets the number of frozen core states in the real-time dynamic
 vl.sort(key=lambda x: x.keyword)
 
 
+#============================================================================
+#            Fortran output: input variable declaration
+#============================================================================
+
+object_dict = dict()
+
+for v in vl:
+    object_dict[v.keyword]=dict()
+    object_dict[v.keyword]['family']   = v.family
+    object_dict[v.keyword]['default']  = v.default
+    object_dict[v.keyword]['datatype'] = v.datatype
+    object_dict[v.keyword]['comment']  = v.comment
+
+with open('input_variables.yaml', 'w') as outfile:
+    dump(object_dict, outfile, Dumper=Dumper)
 
 #============================================================================
 #            Fortran output: input variable declaration

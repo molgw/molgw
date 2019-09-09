@@ -949,7 +949,7 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
  write(header,"(A10,3(A18))") "# time(au)","x_proj","y_proj","z_proj"
 
  do icut=1,ncut
-   write(header,'(a,11x,i3.3,a1,i3.3)') TRIM(header),istate_cut(icut,1),'-',istate_cut(icut,2)
+   write(header,'(a,9x,i4.4,a1,i4.4)') TRIM(header),istate_cut(icut,1),'-',istate_cut(icut,2)
  end do
 
  if( is_iomaster ) then
