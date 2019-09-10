@@ -12,47 +12,16 @@
   
 
 import os, sys, shutil, stat, subprocess
+import collections
 
 ##################################################
-#
-# Definitions
-#
-def longname(basis):
-    if basis == 'DZ':
-        return 'cc-pVDZ'
-    elif basis == 'TZ':
-        return 'cc-pVTZ'
-    elif basis == 'QZ':
-        return 'cc-pVQZ'
-    elif basis == '5Z':
-        return 'cc-pV5Z'
-    elif basis == 'ADZ':
-        return 'aug-cc-pVDZ'
-    elif basis == 'ATZ':
-        return 'aug-cc-pVTZ'
-    elif basis == 'AQZ':
-        return 'aug-cc-pVQZ'
-    elif basis == 'A5Z':
-        return 'aug-cc-pV5Z'
 
-class input_parameters:
-    def __init__(self, scf='bhlyp', postscf='gw', selfenergy_state_range=20, frozencore='yes', basis='ADZ'):
-        self.scf = scf
-        self.postscf = postscf
-        self.selfenergy_state_range = selfenergy_state_range
-        self.frozencore = frozencore
-        self.basis = basis
-
-    def print_input_file(self,f):
-        for attr, value in self.__dict__.items():
-            if not attr == 'basis':
-                if type(value) in [type(int()),type(float())] :
-                    f.write('  {:30} = {}\n'.format(attr,value) )
-                else:
-                    f.write('  {:30} = \'{}\'\n'.format(attr,value) )
-            else:
-                f.write('  {:30} = \'{}\'\n'.format(attr,longname(value)) )
-                f.write('  {:30} = \'{}-RI\'\n'.format('auxil_basis',longname(value)) )
+def print_input_file(f,calc):
+    for key, value in calc.items():
+        if type(value) in [type(int()),type(float())] :
+            f.write('  {:30} = {}\n'.format(key,value) )
+        else:
+            f.write('  {:30} = \'{}\'\n'.format(key,value) )
 
 
 
@@ -62,14 +31,21 @@ class input_parameters:
 #
 directory       = 'run_001'
 executable      = '/home/bruneval/devel/molgw-devel/molgw'
-run_it          = False   # run it from python script or wait 
-atom_number_max = 14      # limit the size of the calculated molecules
+run_it          = False   # run it on the fly from python script or wait 
+atom_number_max = 999     # limit the size of the calculated molecules
 
 
 # Create the calculation list here
 ip = []
-for basis in ['ADZ','ATZ','AQZ','A5Z']:
-    ip.append(input_parameters(basis=basis))
+for basis in ['aug-cc-pVDZ','aug-cc-pVTZ']:
+    ipp = collections.OrderedDict()
+    ipp['basis']                   = basis
+    ipp['scf']                     = 'BHLYP'
+    ipp['postscf']                 = 'GW'
+    ipp['selfenergy_state_range']  = 3
+    ipp['frozencore']              = 'yes'
+    ipp['auxil_basis']             = basis + '-RI'
+    ip.append(ipp)
 
 
 #########################################
@@ -101,7 +77,9 @@ script = open('run.sh','w')
 for molecule in molecule_list:
     for calc in ip:
 
-        folder_name = molecule + '_' + calc.basis + '_' + calc.scf
+        folder_name = molecule 
+        for value in calc.values():
+            folder_name = folder_name + '_' + str(value).lower()
         folder = directory + '/' + folder_name
         os.makedirs(folder,exist_ok=True)
   
@@ -112,12 +90,12 @@ for molecule in molecule_list:
             with open(folder + '/molgw.yaml', 'r') as f:
                 last_line = f.readlines()[-1]
                 if '...' in last_line:
-                    print('{:24} {:5} is already calculated. Skip it'.format(molecule,calc.basis))
+                    print('{:24} {:5} is already calculated. Skip it'.format(molecule,calc['basis']))
                     continue
         except:
             pass
             
-        print('{:24} {:5} is being calculated'.format(molecule,calc.basis))
+        print('{:24} {:5} to be calculated'.format(molecule,calc['basis']))
   
         os.chdir(folder)
   
@@ -126,10 +104,7 @@ for molecule in molecule_list:
         with open('molgw.in','w') as fin:
             fin.write('&molgw\n')
             fin.write('  comment                 = \'' + molecule + '\'\n\n')
-            calc.print_input_file(fin)
-            fin.write('  print_yaml              = \'yes\'\n')
-            fin.write('  print_spatial_extension = \'yes\'\n')
-            fin.write('  print_sigma             = \'yes\'\n')
+            print_input_file(fin,calc)
             fin.write('  xyz_file                = \'../../structures/' + molecule + '.xyz\'\n')
             fin.write('/\n')
   
