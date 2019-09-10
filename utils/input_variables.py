@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # This file is part of MOLGW
-# Author: Fabien Bruneval
+# Authors: Fabien Bruneval, Ivan Maliyov
 #
 # This script creates several files (in FORTRAN and html formats) that contain the input variables of MOLGW. 
 #
@@ -41,7 +41,7 @@ def printhtml(output,key,value):
 
 
 
-with open('input_variables.yaml', 'r') as stream:
+with open('../src/input_variables.yaml', 'r') as stream:
     input_var_dict = load(stream,Loader=Loader)
 
 #============================================================================

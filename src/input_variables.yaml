@@ -1,25 +1,33 @@
+---
 # This file is a part of MOLGW
 # This is a yaml file that contains all the input variables of MOLGW.
 # The variables are sorted by their families and, within families, by alphabetic order.
 #
 #============================================================================
-# To read this file by your python script do following:
+# 
+# If you want to add a *new variable*, this is THE only file you have to modify.
+# 
+# Then you will have to run the python script ~molgw/utils/input_variables.py just once.
+# It will generate all the necessary fortran, html files automatically.
+# 
+# To add a new variable, select a correponding family of variables and follow the yaml syntax (used for any other variable in this file).
+#
+#============================================================================
+# To read this file by your python script, do the following:
 #
 # from yaml   import load,dump
 # try:
-#   from yaml import CLoader as Loader, CDumper as Dumper
+#     from yaml import CLoader as Loader, CDumper as Dumper
 # except ImportError:
-#   from yaml import Loader, Dumper
+#     from yaml import Loader, Dumper
 #
 # with open(input_variables.yaml, 'r') as stream:
-#        input_variables = load(stream,Loader=Loader)
+#     input_variables = load(stream,Loader=Loader)
 #
+# Then, input_variables is a python dictionary that contains all the input variables.
 #
-# Then, input_variables is a python dictionary that contains the input variables.
 #
 #============================================================================
-# To add a new variable, select a correponding family of variables and follow the yaml syntax (used for any other variable in this file).
-#
 # The families of variables are:
 #
 # [general]      General input variables    
@@ -622,6 +630,16 @@ dft_core:
   comment: Sets the number of states considered as core in &lt;&Sigma;<sub>x</sub>-<i>v</i><sub>xc</sub>&gt.
     This options is meant to mimic the pseudopotential approximation.
 
+ecp_small_basis:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'yes'
+  default: ''
+  comment: Calls for a smaller basis set used to represent the virtual orbital space
+    with fewer functions. This is the small basis set used for elements with an effective
+    core potential. Only meaningful for GW.
+
 eta:
   family: post
   datatype: real
@@ -748,6 +766,15 @@ postscf:
     \ self-consistentcy on both G and W.\nMP2 stands for guess what.\nGWGAMMA (EXPERIMENTAL)\
     \ stands for vertex corrections."
 
+postscf_diago_flavor:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: R
+  comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations.
+    Available choices are ' ', 'R', 'D', and 'X'.
+
 pt3_a_diagrams:
   family: post
   datatype: characters
@@ -755,8 +782,7 @@ pt3_a_diagrams:
   experimental: 'no'
   default: 'yes'
   comment: 'Switch whether to calculate the A diagrams family in PT3. A diagrams are
-    the self-consistent diagrams (PT2 inclusions in the Green''s function).                 Valid
-    choices include: ''yes'', ''no'', or ''only''.'
+    the self-consistent diagrams (PT2 inclusions in the Green''s function). Valid choices include: ''yes'', ''no'', or ''only''.'
 
 pt_density_matrix:
   family: post
@@ -764,8 +790,7 @@ pt_density_matrix:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Triggers the calculation of a correlated density matrix within MBPT.                 Valid
-    choices include: ''no'', ''PT2'', ''ONE-RING'', or ''GW''.'
+  comment: 'Triggers the calculation of a correlated density matrix within MBPT. Valid choices include: ''no'', ''PT2'', ''ONE-RING'', or ''GW''.'
 
 rcut_mbpt:
   family: post
@@ -808,8 +833,16 @@ selfenergy_state_range:
   default: 100000
   comment: Sets the range of states around the HOMO level for the self-energy evaluation.
     For instance, selfenergy_state_range=0 will trigger the calculation of the HOMO
-    only.             selfenergy_state_range=1 will trigger the evaluation of the
-    HOMO-1, HOMO, HOMO+1. etc.
+    only. selfenergy_state_range=1 will trigger the evaluation of the HOMO-1, HOMO, HOMO+1. etc.
+
+small_basis:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'yes'
+  default: ''
+  comment: Calls for a smaller basis set used to represent the virtual orbital space
+    with fewer functions. Only meaningful for GW.
 
 step_sigma:
   family: post
@@ -876,34 +909,6 @@ virtual_fno:
     subspace with fewer orbitals. The dimension of the space is set up with the input
     keyword nvirtualg or nvirtualw. Actually the virtual orbital space is determined
     by the minimum MIN(nvirtualg,nvirtualw).
-
-ecp_small_basis:
-  family: postscf
-  datatype: characters
-  mandatory: 'no'
-  experimental: 'yes'
-  default: ''
-  comment: Calls for a smaller basis set used to represent the virtual orbital space
-    with fewer functions. This is the small basis set used for elements with an effective
-    core potential. Only meaningful for GW.
-
-postscf_diago_flavor:
-  family: postscf
-  datatype: characters
-  mandatory: 'no'
-  experimental: 'no'
-  default: R
-  comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations.
-    Available choices are ' ', 'R', 'D', and 'X'.
-
-small_basis:
-  family: postscf
-  datatype: characters
-  mandatory: 'no'
-  experimental: 'yes'
-  default: ''
-  comment: Calls for a smaller basis set used to represent the virtual orbital space
-    with fewer functions. Only meaningful for GW.
 
 
 #============================================================================
@@ -1003,8 +1008,8 @@ prop_type:
   mandatory: 'no'
   experimental: 'no'
   default: MAG2
-  comment: Sets the type of propagation algorithm in the real-time dynamics.                  'CN'
-    stands for Crank-Nickolson                  'MAG2' stands for Magnus 2nd order.
+  comment: Sets the type of propagation algorithm in the real-time dynamics.
+          'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.
 
 r_disc:
   family: rt_tddft
@@ -1012,8 +1017,7 @@ r_disc:
   mandatory: 'no'
   experimental: 'no'
   default: 200.0
-  comment: Radius of the disc for denisty calculations (option calc_dens_disc) for
-    the real-time dynamics.
+  comment: Radius of the disc for denisty calculations (option calc_dens_disc) for the real-time dynamics.
 
 tddft_frozencore:
   family: rt_tddft
@@ -1021,8 +1025,7 @@ tddft_frozencore:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Do not "propagate" states mentioned in the manual_tddft_frozencore file
-    in the real-time dynamics.
+  comment: Do not "propagate" states mentioned in the manual_tddft_frozencore file in the real-time dynamics.
 
 time_sim:
   family: rt_tddft
@@ -1300,3 +1303,4 @@ xyz_file:
   default: ''
   comment: Specifies the location of the xyz file that contains the atomic positions.
     It can be used as an alternate route to set atomic coordinate.
+...
