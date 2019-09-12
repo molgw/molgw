@@ -2,7 +2,7 @@
 # This file is part of MOLGW
 # Authors: Fabien Bruneval, Ivan Maliyov
 #
-# This script creates several files (in FORTRAN and html formats) that contain the input variables of MOLGW. 
+# This script generates several files (in FORTRAN and html formats) that contain the input variables of MOLGW. 
 #
 # The names of variables, their default values, etc. are read from the input_variables.yaml file.
 # If you want to add a new variable, open the input_variables.yaml file and add a variable according to the yaml data format.
@@ -10,7 +10,7 @@
 
 import time,os,sys
 
-from yaml        import load,dump
+from yaml        import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:

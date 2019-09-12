@@ -232,6 +232,7 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
  same_scf = ( TRIM(scf_name_read) == TRIM(calc_type%scf_name) )
  if( .NOT. same_scf) then
    call issue_warning('RESTART file: SCF type has changed')
+   restart_type = SMALL_RESTART
  endif
 
 
