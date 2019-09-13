@@ -288,8 +288,8 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. is_bse ) then
+   call stopping_power(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
    call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,xmy_matrix,eigenvalue)
-!   call stopping_power(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
  endif
 
  !
@@ -418,7 +418,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
- real(dp),allocatable               :: dipole_ao(:,:,:),dipole_state(:,:,:,:)
+ real(dp),allocatable               :: dipole_ao(:,:,:),dipole_mo(:,:,:,:)
  real(dp),allocatable               :: residue(:,:)
  integer                            :: dynpolfile
  integer                            :: photocrossfile
@@ -446,11 +446,11 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
  !
  ! Get the dipole oscillator strength on states
- allocate(dipole_state(nstate,nstate,nspin,3))
+ allocate(dipole_mo(nstate,nstate,nspin,3))
 
  do idir=1,3
    do mpspin=1,nspin
-     dipole_state(:,:,mpspin,idir) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) , &
+     dipole_mo(:,:,mpspin,idir) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) , &
                                              MATMUL( dipole_ao(:,:,idir) , c_matrix(:,:,mpspin) ) )
    enddo
  enddo
@@ -473,14 +473,14 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
      if( t_jb_global <= nexc) then
        residue(:,t_jb_global) = residue(:,t_jb_global) &
-                    + dipole_state(istate,astate,iaspin,:) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
+                    + dipole_mo(istate,astate,iaspin,:) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
      endif
    enddo
 
  enddo
  call xsum_world(residue)
 
- deallocate(dipole_state)
+ deallocate(dipole_mo)
 
 
 
@@ -678,6 +678,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  use m_basis_set
  use m_dft_grid
  use m_spectral_function
+ use m_hamiltonian_onebody
  implicit none
 
  integer,intent(in)                 :: nstate,m_x,n_x
@@ -700,11 +701,10 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
  real(dp)                           :: dynamical_pol(nomega),structure_factor(nomega)
- complex(dp),allocatable            :: gos_basis(:,:),gos_state(:,:,:)
- complex(dp),allocatable            :: gos_cart(:,:)
+ complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:)
  complex(dp),allocatable            :: residue(:)
  real(dp)                           :: qvec(3)
- integer,parameter                  :: nq=1 ! 1000
+ integer,parameter                  :: nq=10 ! 1000
  integer                            :: iq
  real(dp)                           :: fnq(chi%npole_reso)
  integer,parameter                  :: nv=20
@@ -728,10 +728,6 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
    return
  endif
 
- !
- ! Prepare the precalculated table of coefficients
- call setup_gos_llp()
-
 
  !
  ! Calculate the dynamical dipole polarizability
@@ -753,53 +749,14 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
    qvec(2) = 0.0_dp
    qvec(3) = iq*0.01_dp
 
-   !
-   ! First precalculate all the needed GOS in the basis set
-   !
-   allocate(gos_basis(basis%nbf,basis%nbf))
-
-   do jshell=1,basis%nshell
-     lj      = basis%shell(jshell)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
-     jbf1    = basis%shell(jshell)%istart
-     jbf1_cart = basis%shell(jshell)%istart_cart
-     jbf2    = basis%shell(jshell)%iend
-
-     do ishell=1,basis%nshell
-       li      = basis%shell(ishell)%am
-       ni_cart = number_basis_function_am('CART',li)
-       ni      = number_basis_function_am(basis%gaussian_type,li)
-       ibf1    = basis%shell(ishell)%istart
-       ibf1_cart = basis%shell(ishell)%istart_cart
-       ibf2    = basis%shell(ishell)%iend
-
-
-
-       allocate(gos_cart(ni_cart,nj_cart))
-
-       do i_cart=1,ni_cart
-         do j_cart=1,nj_cart
-           call gos_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),qvec,gos_cart(i_cart,j_cart))
-         enddo
-       enddo
-
-       gos_basis(ibf1:ibf2,jbf1:jbf2) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
-                                                MATMUL(  gos_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
-
-       deallocate(gos_cart)
-
-     enddo
-   enddo
-
-   !
    ! Get the gos oscillator strength on states
-   allocate(gos_state(basis%nbf,basis%nbf,nspin))
+   call calculate_gos_ao(basis,qvec,gos_ao)
 
+   allocate(gos_mo(nstate,nstate,nspin))
    do mpspin=1,nspin
-     gos_state(:,:,mpspin) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) ,  MATMUL( gos_basis(:,:) , c_matrix(:,:,mpspin) ) )
+     gos_mo(:,:,mpspin) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) ,  MATMUL( gos_ao(:,:) , c_matrix(:,:,mpspin) ) )
    enddo
-   deallocate(gos_basis)
+   deallocate(gos_ao)
 
 
    nmat=chi%npole_reso
@@ -817,13 +774,13 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
        t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
 
        residue(t_jb_global) = residue(t_jb_global) &
-                    + gos_state(istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
+                    + gos_mo(istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
      enddo
 
    enddo
    call xsum_world(residue)
 
-   deallocate(gos_state)
+   deallocate(gos_mo)
 
    fnq(:) = 2.0_dp * ABS( residue(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
 
