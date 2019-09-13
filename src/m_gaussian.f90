@@ -736,9 +736,9 @@ function g(ii,p,q)
    ! Remember Gamma(n+1) = n!
    g = (0.0_dp,0.0_dp)
    do ik=0,ii/2
-     g = g + ( p / ( 4.0_dp * q**2) )**ik  / ( Gamma(REAL(ii+1-2*ik,dp)) * Gamma(REAL(ik+1,dp)) )
+     g = g + ( 0.25_dp * p )**ik * q**( ii -2 * ik )  / ( Gamma(REAL(ii+1-2*ik,dp)) * Gamma(REAL(ik+1,dp)) )
    enddo
-   g = g * Gamma(REAL(ii+1,dp)) * ( q / p )**ii
+   g = g * Gamma(REAL(ii+1,dp)) / p**ii
  end select
 
 end function g

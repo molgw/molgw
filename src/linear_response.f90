@@ -704,7 +704,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:)
  complex(dp),allocatable            :: residue(:)
  real(dp)                           :: qvec(3)
- integer,parameter                  :: nq=10 ! 1000
+ integer,parameter                  :: nq = 100
  integer                            :: iq
  real(dp)                           :: fnq(chi%npole_reso)
  integer,parameter                  :: nv=20
@@ -747,7 +747,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  do iq=1,nq
    qvec(1) = 0.0_dp
    qvec(2) = 0.0_dp
-   qvec(3) = iq*0.01_dp
+   qvec(3) = iq * 0.10_dp
 
    ! Get the gos oscillator strength on states
    call calculate_gos_ao(basis,qvec,gos_ao)
@@ -825,6 +825,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 !   write(997,*) vv,stopping(iv)
 ! enddo
 
+ call stop_clock(timing_spectrum)
 
 
 end subroutine stopping_power
