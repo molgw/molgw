@@ -744,6 +744,12 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
 
 
+ write(stdout,*) 'Bethe sum rule'
+ if( print_yaml_ .AND. is_iomaster ) then
+   write(unit_yaml,'(a)') 'bethe sum rule:'
+   write(unit_yaml,'(4x,a)') 'unit: a.u.'
+   write(unit_yaml,'(4x,a)') 'data:'
+ endif
  do iq=1,nq
    qvec(1) = 0.0_dp
    qvec(2) = 0.0_dp
@@ -784,7 +790,9 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
    fnq(:) = 2.0_dp * ABS( residue(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
 
-   write(stdout,*) 'bethe_sumrule',NORM2(qvec(:)),SUM(fnq(:))
+   write(stdout,*) NORM2(qvec(:)),SUM(fnq(:))
+   if( print_yaml_ .AND. is_iomaster )  &
+         write(unit_yaml,'(8x,a,es16.6,a,es16.6,a)') '- [',NORM2(qvec(:)),' , ',SUM(fnq(:)),']'
 
 
 
@@ -819,6 +827,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
 
  enddo
+ if( print_yaml_ .AND. is_iomaster ) write(unit_yaml,*)
 
 ! do iv=1,nv
 !   vv = iv * 0.1_dp

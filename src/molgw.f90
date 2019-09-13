@@ -415,53 +415,6 @@ program molgw
  !
  call start_clock(timing_postscf)
 
-!FBFB Bethe sum rule
-   block
-   real(dp) :: qvec(3),bethe,q2,trk
-   complex(dp) :: ctmp
-   real(dp),allocatable :: dipole_ao(:,:,:)
-   complex(dp) :: gos_ao(basis%nbf,basis%nbf)
-   complex(dp) :: gos_mo(nstate,nstate),dipole_mo(nstate,nstate,3)
-   integer :: jbf,ibf,istate,astate,iq
-
-   call calculate_dipole_ao(basis,dipole_ao)
-
-   write(1234,'(a,1x,i6)') '# q , Bethe',basis%nbf
-   do iq=1,100
-     qvec(:) = 0.0_dp
-     qvec(1) = 0.10_dp * iq
-     do ibf=1,basis%nbf
-       do jbf=1,basis%nbf
-         call basis_function_gos(basis%bfc(ibf),basis%bfc(jbf),qvec,ctmp)
-         !write(stdout,*) ibf,jbf,ctmp,s_matrix(ibf,jbf),s_matrix(ibf,jbf) + im * DOT_PRODUCT( qvec(:) , dipole_ao(ibf,jbf,:) )
-         gos_ao(ibf,jbf) = ctmp
-       enddo
-     enddo
-
-     !call matrix_ao_to_mo(c_matrix,gos_ao%re,gos_mo%re)
-     !call matrix_ao_to_mo(c_matrix,gos_ao%im,gos_mo%im)
-     gos_mo(1:nstate,1:nstate) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( gos_ao(:,:) , c_matrix(:,:,1) ) )
-     dipole_mo(1:nstate,1:nstate,1) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( dipole_ao(:,:,1) , c_matrix(:,:,1) ) )
-     dipole_mo(1:nstate,1:nstate,2) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( dipole_ao(:,:,2) , c_matrix(:,:,1) ) )
-     dipole_mo(1:nstate,1:nstate,3) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( dipole_ao(:,:,3) , c_matrix(:,:,1) ) )
-
-     q2 = SUM(qvec(:)**2)
-     bethe = 0.0_dp
-     trk = 0.0_dp
-     do istate=1,nstate
-       if( occupation(istate,1) < completely_empty ) cycle
-       do astate=1,nstate
-         if( ABS(spin_fact - occupation(astate,1)) < completely_empty ) cycle
-         bethe = bethe + 2.0_dp / SUM(qvec(:)**2) * (energy(astate,1)-energy(istate,1)) * ABS(gos_mo(istate,astate))**2
-         trk = trk + 2.0_dp / 3.0_dp  * (energy(astate,1)-energy(istate,1))  &
-                   * DOT_PRODUCT( dipole_mo(istate,astate,:) ,  dipole_mo(istate,astate,:) )
-       enddo
-     enddo
-     write(1234,'(f16.6,2x,es16.6,2x,es16.6)') SQRT(q2),bethe,trk
-   enddo
-
-   end block
-
  !
  ! Evaluate spin contamination
  call evaluate_s2_operator(occupation,c_matrix,s_matrix)
