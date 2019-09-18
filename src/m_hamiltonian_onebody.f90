@@ -914,7 +914,8 @@ subroutine calculate_gos_ao(basis,qvec,gos_ao)
 
  allocate(gos_ao(basis%nbf,basis%nbf))
 
-
+ !$OMP PARALLEL PRIVATE(li,lj,ni_cart,nj_cart,ibf1,ibf1_cart,ibf2,jbf1,jbf1_cart,jbf2,gos_cart)
+ !$OMP DO
  do jshell=1,basis%nshell
    lj        = basis%shell(jshell)%am
    nj_cart   = number_basis_function_am('CART',lj)
@@ -945,6 +946,8 @@ subroutine calculate_gos_ao(basis,qvec,gos_ao)
 
    enddo
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
 
 end subroutine calculate_gos_ao

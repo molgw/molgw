@@ -704,10 +704,11 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:)
  complex(dp),allocatable            :: residue(:)
  real(dp)                           :: qvec(3)
- integer,parameter                  :: nq = 100
+ integer,parameter                  :: nq = 2000  ! 100
+ real(dp),parameter                 :: dq = 0.005_dp
  integer                            :: iq
  real(dp)                           :: fnq(chi%npole_reso)
- integer,parameter                  :: nv=20
+ integer,parameter                  :: nv=50
  integer                            :: iv
  real(dp)                           :: stopping(nv)
  real(dp)                           :: vv
@@ -753,21 +754,26 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  do iq=1,nq
    qvec(1) = 0.0_dp
    qvec(2) = 0.0_dp
-   qvec(3) = iq * 0.10_dp
+   qvec(3) = iq * dq
 
    ! Get the gos oscillator strength on states
+   call start_clock(timing_tmp1)
    call calculate_gos_ao(basis,qvec,gos_ao)
+   call stop_clock(timing_tmp1)
 
+   call start_clock(timing_tmp2)
    allocate(gos_mo(nstate,nstate,nspin))
    do mpspin=1,nspin
      gos_mo(:,:,mpspin) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) ,  MATMUL( gos_ao(:,:) , c_matrix(:,:,mpspin) ) )
    enddo
    deallocate(gos_ao)
+   call stop_clock(timing_tmp2)
 
 
    nmat=chi%npole_reso
    allocate(residue(chi%npole_reso))
 
+   call start_clock(timing_tmp3)
    residue(:) = 0.0_dp
    do t_ia=1,m_x
      t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
@@ -785,6 +791,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
    enddo
    call xsum_world(residue)
+   call stop_clock(timing_tmp3)
 
    deallocate(gos_mo)
 
@@ -796,12 +803,12 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
 
 
-   dynamical_pol(:) = 0.0_dp
-   do t_ia=1,nmat
-     dynamical_pol(:) = dynamical_pol(:) &
-                       + ABS(residue(t_ia))**2 &
-                        * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
-   enddo
+!   dynamical_pol(:) = 0.0_dp
+!   do t_ia=1,nmat
+!     dynamical_pol(:) = dynamical_pol(:) &
+!                       + ABS(residue(t_ia))**2 &
+!                        * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
+!   enddo
 !   !
 !   ! Get the structure factor
 !   write(999,*) '# qvec',qvec(:)
@@ -816,23 +823,23 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
 !   write(998,*) SUM( qvec(:)**2 ), fnq(6)
 
-!   do iv=1,nv
-!     vv = iv * 0.1_dp
-!     do t_ia=1,nmat
-!       if( NORM2(qvec) < eigenvalue(t_ia) / vv )   &
-!          stopping(iv) = stopping(iv) + 1.0_dp / ( pi * vv**2 )  * fnq(t_ia)  * NORM2(qvec)**2
-!     enddo
-!
-!   enddo
+   do iv=1,nv
+     vv = iv * 0.1_dp
+     do t_ia=1,nmat
+       if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
+          stopping(iv) = stopping(iv) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
+     enddo
+
+   enddo
 
 
  enddo
  if( print_yaml_ .AND. is_iomaster ) write(unit_yaml,*)
 
-! do iv=1,nv
-!   vv = iv * 0.1_dp
-!   write(997,*) vv,stopping(iv)
-! enddo
+ do iv=1,nv
+   vv = iv * 0.1_dp
+   write(1234,*) vv,stopping(iv)
+ enddo
 
  call stop_clock(timing_spectrum)
 
