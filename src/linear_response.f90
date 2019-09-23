@@ -698,20 +698,21 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  integer                            :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
  integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart
  integer                            :: iomega,idir
- integer,parameter                  :: nomega=600
- complex(dp)                        :: omega(nomega)
- real(dp)                           :: dynamical_pol(nomega),structure_factor(nomega)
- complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:)
- complex(dp),allocatable            :: residue(:)
- real(dp)                           :: qvec(3)
- integer,parameter                  :: nq = 2000  ! 100
- real(dp),parameter                 :: dq = 0.005_dp
- integer                            :: iq
+ complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:,:)
+ complex(dp),allocatable            :: gos_tddft(:)
+ integer,parameter                  :: nq = 400  ! 100
+ real(dp),parameter                 :: dq = 0.05_dp
+ integer                            :: iqs,iq,iiq
  real(dp)                           :: fnq(chi%npole_reso)
+ real(dp)                           :: qvec_list(3,nq)
+ real(dp)                           :: qvec(3)
+ real(dp)                           :: bethe_sumrule(nq)
  integer,parameter                  :: nv=50
  integer                            :: iv
  real(dp)                           :: stopping(nv)
  real(dp)                           :: vv
+ integer                            :: stride
+ integer                            :: nq_batch
 !=====
 
 
@@ -730,116 +731,123 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  endif
 
 
- !
- ! Calculate the dynamical dipole polarizability
- ! and the static dipole polarizability
- !
- ! Set the frequency mesh
- omega(1)     =0.1_dp ! MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-3.00/Ha_eV)
- omega(nomega)=4.0_dp ! MIN(20.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+3.00/Ha_eV)
- do iomega=2,nomega-1
-   omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1)
- enddo
- ! Add the broadening
- omega(:) = omega(:) + im * 0.10/Ha_eV
-
-
-
  write(stdout,*) 'Bethe sum rule'
  if( print_yaml_ .AND. is_iomaster ) then
-   write(unit_yaml,'(a)') 'bethe sum rule:'
+   write(unit_yaml,'(/,a)') 'stopping power:'
    write(unit_yaml,'(4x,a)') 'unit: a.u.'
-   write(unit_yaml,'(4x,a)') 'data:'
+   write(unit_yaml,'(4x,a)') 'q vectors:'
  endif
+
+ ! setup the q-vector list
  do iq=1,nq
-   qvec(1) = 0.0_dp
-   qvec(2) = 0.0_dp
-   qvec(3) = iq * dq
+   qvec_list(1,iq) = 0.0_dp
+   qvec_list(2,iq) = 0.0_dp
+   qvec_list(3,iq) = iq * dq
+   if( print_yaml_ .AND. is_iomaster ) then
+     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a,es16.6,a)') '- [',qvec_list(1,iq),' , ',qvec_list(2,iq),' , ',qvec_list(3,iq),']'
+   endif
+ enddo
 
-   ! Get the gos oscillator strength on states
-   call start_clock(timing_tmp1)
-   call calculate_gos_ao(basis,qvec,gos_ao)
-   call stop_clock(timing_tmp1)
+ nmat=chi%npole_reso
+ allocate(gos_tddft(chi%npole_reso))
 
-   call start_clock(timing_tmp2)
-   allocate(gos_mo(nstate,nstate,nspin))
-   do mpspin=1,nspin
-     gos_mo(:,:,mpspin) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) ,  MATMUL( gos_ao(:,:) , c_matrix(:,:,mpspin) ) )
-   enddo
-   deallocate(gos_ao)
-   call stop_clock(timing_tmp2)
+ stride = nprow_sd * npcol_sd
+ write(stdout,*) 'Parallelize GOS calculation over ',stride
 
+ bethe_sumrule(:) = 0.0_dp
+ do iqs=1,nq,stride
 
-   nmat=chi%npole_reso
-   allocate(residue(chi%npole_reso))
+   nq_batch = MIN(nq,iqs+stride-1) - iqs + 1
+   write(stdout,*) nq_batch
+   allocate(gos_mo(nstate,nstate,nspin,nq_batch))
+   gos_mo(:,:,:,:) = 0.0_dp
 
-   call start_clock(timing_tmp3)
-   residue(:) = 0.0_dp
-   do t_ia=1,m_x
-     t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
-     istate = chi%transition_table(1,t_ia_global)
-     astate = chi%transition_table(2,t_ia_global)
-     iaspin = chi%transition_table(3,t_ia_global)
+   do iiq=1,nq_batch
+     if( iiq /= iprow_sd + 1 + nprow_sd * ipcol_sd ) cycle
+     iq = iqs + iiq - 1
+     qvec(:) = qvec_list(:,iq)
+     ! Get the gos oscillator strength on states
+     call start_clock(timing_tmp1)
+     call calculate_gos_ao(basis,qvec,gos_ao)
+     call stop_clock(timing_tmp1)
 
-     ! Let use (i <-> j) symmetry to halve the loop
-     do t_jb=1,n_x
-       t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
-
-       residue(t_jb_global) = residue(t_jb_global) &
-                    + gos_mo(istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
+     call start_clock(timing_tmp2)
+     do mpspin=1,nspin
+       gos_mo(:,:,mpspin,iiq) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) ,  MATMUL( gos_ao(:,:) , c_matrix(:,:,mpspin) ) )
      enddo
-
+     deallocate(gos_ao)
+     call stop_clock(timing_tmp2)
    enddo
-   call xsum_world(residue)
-   call stop_clock(timing_tmp3)
 
-   deallocate(gos_mo)
-
-   fnq(:) = 2.0_dp * ABS( residue(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
-
-   write(stdout,*) NORM2(qvec(:)),SUM(fnq(:))
-   if( print_yaml_ .AND. is_iomaster )  &
-         write(unit_yaml,'(8x,a,es16.6,a,es16.6,a)') '- [',NORM2(qvec(:)),' , ',SUM(fnq(:)),']'
+   call xsum_world(gos_mo)
 
 
+   do iiq=1,nq_batch
+     iq = iqs + iiq - 1
+     call start_clock(timing_tmp3)
+     gos_tddft(:) = (0.0_dp,0.0_dp)
+     do t_ia=1,m_x
+       t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
+       istate = chi%transition_table(1,t_ia_global)
+       astate = chi%transition_table(2,t_ia_global)
+       iaspin = chi%transition_table(3,t_ia_global)
 
-!   dynamical_pol(:) = 0.0_dp
-!   do t_ia=1,nmat
-!     dynamical_pol(:) = dynamical_pol(:) &
-!                       + ABS(residue(t_ia))**2 &
-!                        * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
-!   enddo
-!   !
-!   ! Get the structure factor
-!   write(999,*) '# qvec',qvec(:)
-!   do iomega=1,nomega
-!     structure_factor(iomega) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega) * SUM( qvec(:)**2 )
-!     write(999,*) REAL(omega(iomega),dp)*Ha_eV,structure_factor(iomega)
-!   enddo
-!   write(999,*)
+       ! Use (i <-> j) symmetry to halve the loop
+       do t_jb=1,n_x
+         t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
 
+         gos_tddft(t_jb_global) = gos_tddft(t_jb_global) &
+                      + gos_mo(istate,astate,iaspin,iiq) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
+       enddo
 
-   deallocate(residue)
+     enddo
+     call xsum_world(gos_tddft)
+     call stop_clock(timing_tmp3)
 
-!   write(998,*) SUM( qvec(:)**2 ), fnq(6)
+     deallocate(gos_mo)
+
+     fnq(:) = 2.0_dp * ABS( gos_tddft(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
+     bethe_sumrule(iq) = SUM(fnq(:))
+
+     write(stdout,*) NORM2(qvec(:)),bethe_sumrule(iq)
+   enddo
+
 
    do iv=1,nv
      vv = iv * 0.1_dp
      do t_ia=1,nmat
        if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
-          stopping(iv) = stopping(iv) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
+            stopping(iv) = stopping(iv) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
      enddo
 
    enddo
 
-
  enddo
- if( print_yaml_ .AND. is_iomaster ) write(unit_yaml,*)
 
+ deallocate(gos_tddft)
+
+ if( print_yaml_ .AND. is_iomaster )  then
+   write(unit_yaml,'(4x,a)') 'bethe sum rule:'
+   do iq=1,nq
+     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a)') '- [',NORM2(qvec_list(:,iq)),' , ',bethe_sumrule(iq),']'
+   enddo
+   write(unit_yaml,*)
+ endif
+
+ write(stdout,*) 'Electronic stopping cross section: v, S0 (a.u.)'
  do iv=1,nv
    vv = iv * 0.1_dp
-   write(1234,*) vv,stopping(iv)
+   write(stdout,'(2(2x,f12.6))') vv,stopping(iv)
  enddo
+ write(stdout,*)
+
+ if( print_yaml_ .AND. is_iomaster )  then
+   write(unit_yaml,'(4x,a)') 'stopping cross section:'
+   do iv=1,nv
+     vv = iv * 0.1_dp
+     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a)') '- [',vv,' , ',stopping(iv),']'
+   enddo
+ endif
 
  call stop_clock(timing_spectrum)
 
