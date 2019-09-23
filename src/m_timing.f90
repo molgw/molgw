@@ -76,6 +76,7 @@ module m_timing
  integer,parameter :: timing_dft_vxc             = 57
  integer,parameter :: timing_x_m_vxc             = 58
  integer,parameter :: timing_auto_auxil          = 59
+ integer,parameter :: timing_stopping            = 60
 
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -264,6 +265,7 @@ subroutine output_timing()
  call output_timing_line('Diago 2 particle H',timing_diago_h2p,2)
  call output_timing_line('Build W',timing_vchiv,2)
  call output_timing_line('Optical spectrum',timing_spectrum,2)
+ call output_timing_line('Stopping power',timing_stopping,2)
 
  ! Self-energies
  call output_timing_line('MBPT density matrix',timing_mbpt_dm,1)

@@ -700,7 +700,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  integer                            :: iomega,idir
  complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:,:)
  complex(dp),allocatable            :: gos_tddft(:)
- integer,parameter                  :: nq = 400  ! 100
+ integer,parameter                  :: nq = 200  ! 100
  real(dp),parameter                 :: dq = 0.05_dp
  integer                            :: iqs,iq,iiq
  real(dp)                           :: fnq(chi%npole_reso)
@@ -716,10 +716,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 !=====
 
 
- call start_clock(timing_spectrum)
- !
- ! Calculate the spectrum now
- !
+ call start_clock(timing_stopping)
 
  write(stdout,'(/,a)') ' Calculate the stopping power'
  gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -758,7 +755,6 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  do iqs=1,nq,stride
 
    nq_batch = MIN(nq,iqs+stride-1) - iqs + 1
-   write(stdout,*) nq_batch
    allocate(gos_mo(nstate,nstate,nspin,nq_batch))
    gos_mo(:,:,:,:) = 0.0_dp
 
@@ -784,6 +780,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
    do iiq=1,nq_batch
      iq = iqs + iiq - 1
+     qvec(:) = qvec_list(:,iq)
      call start_clock(timing_tmp3)
      gos_tddft(:) = (0.0_dp,0.0_dp)
      do t_ia=1,m_x
@@ -804,23 +801,23 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
      call xsum_world(gos_tddft)
      call stop_clock(timing_tmp3)
 
-     deallocate(gos_mo)
 
      fnq(:) = 2.0_dp * ABS( gos_tddft(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
      bethe_sumrule(iq) = SUM(fnq(:))
 
      write(stdout,*) NORM2(qvec(:)),bethe_sumrule(iq)
-   enddo
 
+     do iv=1,nv
+       vv = iv * 0.1_dp
+       do t_ia=1,nmat
+         if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
+              stopping(iv) = stopping(iv) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
+       enddo
 
-   do iv=1,nv
-     vv = iv * 0.1_dp
-     do t_ia=1,nmat
-       if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
-            stopping(iv) = stopping(iv) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
      enddo
-
    enddo
+
+   deallocate(gos_mo)
 
  enddo
 
@@ -831,7 +828,6 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
    do iq=1,nq
      write(unit_yaml,'(8x,a,es16.6,a,es16.6,a)') '- [',NORM2(qvec_list(:,iq)),' , ',bethe_sumrule(iq),']'
    enddo
-   write(unit_yaml,*)
  endif
 
  write(stdout,*) 'Electronic stopping cross section: v, S0 (a.u.)'
@@ -849,7 +845,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
    enddo
  endif
 
- call stop_clock(timing_spectrum)
+ call stop_clock(timing_stopping)
 
 
 end subroutine stopping_power
