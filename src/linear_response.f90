@@ -406,7 +406,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
 !=====
  integer                            :: gt
- integer                            :: nexc
+ integer                            :: nexc,iexc
  integer                            :: t_ia,t_jb
  integer                            :: t_ia_global,t_jb_global
  integer                            :: istate,astate,iaspin
@@ -424,6 +424,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  integer                            :: photocrossfile
  integer                            :: parityi,parityj,reflectioni,reflectionj
  character(len=32)                  :: symsymbol
+ character(len=6)                   :: char6
 !=====
 
 
@@ -483,8 +484,25 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  deallocate(dipole_mo)
 
 
+ if( is_iomaster .AND. print_yaml_ ) then
+   write(unit_yaml,'(/,a)')  'optical spectrum:'
+   write(unit_yaml,'(4x,a)') 'excitations:'
+   if( is_triplet ) then
+     write(unit_yaml,'(8x,a)') 'spin multiplicity: triplet'
+   else
+     write(unit_yaml,'(8x,a)') 'spin multiplicity: singlet'
+   endif 
+   write(unit_yaml,'(8x,a)') 'energies:'
+   write(unit_yaml,'(12x,a)') 'units: eV'
+   do iexc=1,nexc
+     write(char6,'(i6)') iexc
+     write(unit_yaml,'(12x,a6,a,1x,es18.8)') ADJUSTL(char6),':',eigenvalue(iexc) * Ha_eV
+   enddo
+   write(unit_yaml,'(8x,a)') 'oscillator strengths:'
+ endif
 
  write(stdout,'(/,5x,a)') 'Excitation energies (eV)     Oscil. strengths   [Symmetry] '
+
  trk_sumrule=0.0_dp
  mean_excitation=0.0_dp
  do t_jb_global=1,nexc
@@ -497,6 +515,11 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
    endif
    trk_sumrule = trk_sumrule + oscillator_strength
    mean_excitation = mean_excitation + oscillator_strength * LOG( eigenvalue(t_jb_global) )
+
+   if( is_iomaster .AND. print_yaml_ ) then
+     write(char6,'(i6)') ,t_jb_global
+     write(unit_yaml,'(12x,a6,a,1x,es18.8)') ADJUSTL(char6),':',oscillator_strength
+   endif
 
    if(t_jb_global<=30) then
 
@@ -634,6 +657,17 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
    trace = trace + static_polarizability(idir,idir) / 3.0_dp
  enddo
  write(stdout,'(a,f12.6)') ' Static dipole polarizability trace: ',trace
+
+ if( is_iomaster .AND. print_yaml_ ) then
+   write(unit_yaml,'(8x,a,es18.8)') 'trk sum rule: ',trk_sumrule
+   write(unit_yaml,'(8x,a,es18.8)') 'mean excitation energy: ',EXP( mean_excitation / trk_sumrule ) * Ha_eV
+   write(unit_yaml,'(8x,a)')        'static polarizability:'
+   do idir=1,3
+     do jdir=1,3
+       write(unit_yaml,'(12x,a,es18.8)') '- ',static_polarizability(idir,jdir)
+     enddo
+   enddo
+ endif
 
  if( is_iomaster ) then
 
