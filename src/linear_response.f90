@@ -288,7 +288,8 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. is_bse ) then
-   call stopping_power(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
+   if( stopping_ ) &
+     call stopping_power(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
    call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,xmy_matrix,eigenvalue)
  endif
 
@@ -491,7 +492,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
      write(unit_yaml,'(8x,a)') 'spin multiplicity: triplet'
    else
      write(unit_yaml,'(8x,a)') 'spin multiplicity: singlet'
-   endif 
+   endif
    write(unit_yaml,'(8x,a)') 'energies:'
    write(unit_yaml,'(12x,a)') 'units: eV'
    do iexc=1,nexc
@@ -743,7 +744,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  real(dp)                           :: bethe_sumrule(nq)
  integer,parameter                  :: nv=50
  integer                            :: iv
- real(dp)                           :: stopping(nv)
+ real(dp)                           :: stopping_cross_section(nv)
  real(dp)                           :: vv
  integer                            :: stride
  integer                            :: nq_batch
@@ -786,6 +787,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  write(stdout,*) 'Parallelize GOS calculation over ',stride
 
  bethe_sumrule(:) = 0.0_dp
+ stopping_cross_section(:) = 0.0_dp
  do iqs=1,nq,stride
 
    nq_batch = MIN(nq,iqs+stride-1) - iqs + 1
@@ -845,7 +847,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
        vv = iv * 0.1_dp
        do t_ia=1,nmat
          if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
-              stopping(iv) = stopping(iv) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
+              stopping_cross_section(iv) = stopping_cross_section(iv) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
        enddo
 
      enddo
@@ -867,7 +869,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  write(stdout,*) 'Electronic stopping cross section: v, S0 (a.u.)'
  do iv=1,nv
    vv = iv * 0.1_dp
-   write(stdout,'(2(2x,f12.6))') vv,stopping(iv)
+   write(stdout,'(2(2x,f12.6))') vv,stopping_cross_section(iv)
  enddo
  write(stdout,*)
 
@@ -875,7 +877,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
    write(unit_yaml,'(4x,a)') 'stopping cross section:'
    do iv=1,nv
      vv = iv * 0.1_dp
-     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a)') '- [',vv,' , ',stopping(iv),']'
+     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a)') '- [',vv,' , ',stopping_cross_section(iv),']'
    enddo
  endif
 
