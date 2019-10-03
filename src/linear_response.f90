@@ -518,7 +518,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
    mean_excitation = mean_excitation + oscillator_strength * LOG( eigenvalue(t_jb_global) )
 
    if( is_iomaster .AND. print_yaml_ ) then
-     write(char6,'(i6)') ,t_jb_global
+     write(char6,'(i6)') t_jb_global
      write(unit_yaml,'(12x,a6,a,1x,es18.8)') ADJUSTL(char6),':',oscillator_strength
    endif
 
