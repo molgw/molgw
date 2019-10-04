@@ -6,6 +6,7 @@
  * Author: F. Bruneval
  */
 #include<libint2.h>
+#include<libint2/util/memory.h>
 #include<stdlib.h>
 #include<stdio.h>
 #include<iostream>
