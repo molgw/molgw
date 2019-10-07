@@ -406,7 +406,8 @@ program molgw
    call lbfgs_destroy(lbfgs_plan)
  endif
 
-
+ ! This overrides the value of is_converged
+ if( assume_scf_converged_ ) is_converged = .TRUE.
 
  !
  !

@@ -7,7 +7,10 @@
 ### Overview
 - Real-time TDDFT is made available
 - speed-up in the Hartree, Exchange and AO to MO transform
+- calculation of the generalized oscillator strengths (q-dependent) and linear-response stopping power
 - use of LIBXC through the C interface
+- compibility with the latest LIBINT versions restored
+- creation of a YAML output file gathers many information that can be easily processed via python
 - bug fixes
 
 ### Contributors
@@ -15,11 +18,17 @@
 - Ivan Maliyov (CEA SRMP, France)
 
 ### Changes affecting the usage
-- Post-processing are not performed if the SCF cycles are not converged within `tolscf` (save user CPU time when a job went wrong)
+- Post-processing is not performed if the SCF cycles are not converged within `tolscf` (save user CPU time when a job went wrong)
 - Keywords `scalapack_nprow` and `scalapack_npcol` have been eliminated
+- Keyword `stopping` triggers the linear-response stopping power calculation
+- Value `real_time` for `postscf` triggers real-time TDDFT (RT-TDDFT)
 
 ### Changes affecting the compilation
 - LIBXC is now linked through the C interface. Therefore, LIBXC compilation does not need to be consistent with MOLGW compilation.
+
+### Changes affecting the developers
+- The list of all the input variables is now stored in a YAML file that is processed with the python script ~molgw/utils/input_variables.py
+
 
 -----------------------------------------
 ## What's new in version 2.B

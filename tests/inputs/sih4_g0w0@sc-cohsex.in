@@ -1,6 +1,7 @@
 &molgw
  scf='lda'  ! Fake SCF cycles
  nscf=0
+ assume_scf_converged='yes'
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'

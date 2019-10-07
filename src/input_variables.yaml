@@ -575,6 +575,14 @@ write_step:
 #       Correlation and excited states post-treatment input variables         
 #============================================================================
 
+assume_scf_converged:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Allows for a post-scf calculation whatever the outcome of the SCF loop. Especially useful when restarting from another SCF calculations with nscf=0
+
 ci_greens_function:
   family: post
   datatype: characters

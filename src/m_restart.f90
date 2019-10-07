@@ -314,7 +314,7 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
  endif
 
 
- if( restart_type == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) ) then
+ if( restart_type_read == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) ) then
 
    close(restartfile)
    return
