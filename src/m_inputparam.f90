@@ -80,10 +80,10 @@ module m_inputparam
  end type calculation_type
 
  type excitation_type
- character(len=100)   :: name
- integer              :: form
- real(dp)             :: kappa, omega, time0
- real(dp)             :: dir(3)
+   character(len=100)   :: name
+   integer              :: form
+   real(dp)             :: kappa, omega, time0
+   real(dp)             :: dir(3)
  end type
 
 
@@ -153,6 +153,7 @@ module m_inputparam
  logical,protected                :: print_tddft_restart_
  logical,protected                :: print_yaml_
  logical,protected                :: stopping_
+ logical,protected                :: assume_scf_converged_
 
  real(dp),protected               :: rcut = 0.0_dp
 
@@ -744,6 +745,7 @@ subroutine read_inputfile_namelist()
  print_tddft_restart_        = yesno_to_logical(print_tddft_restart)
  print_yaml_                 = yesno_to_logical(print_yaml)
  stopping_                   = yesno_to_logical(stopping)
+ assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
