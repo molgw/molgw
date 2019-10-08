@@ -336,7 +336,23 @@ function logical_to_yesno(logical_in) RESULT(yesno)
 
 end function logical_to_yesno
 
+!=========================================================================
+function yesno_to_TrueFalse(char_in) RESULT(TrueFalse)
+ implicit none
+ character(len=*),intent(in) :: char_in
+ character(len=5)            :: TrueFalse
+!=====
 
+ select case(TRIM(capitalize(char_in)))
+ case('YES','Y','.TR','T','TR','TRU')
+   TrueFalse = 'True'
+ case('NO','N','.FA','F','FA','FAL')
+   TrueFalse = 'False'
+ case default
+  call die('Yes or No, I cannot interpret this input')
+ end select
+
+end function yesno_to_TrueFalse
 
 
 !=========================================================================
