@@ -735,19 +735,22 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  integer                            :: iomega,idir
  complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:,:)
  complex(dp),allocatable            :: gos_tddft(:)
- integer,parameter                  :: nq = 200  ! 100
- real(dp),parameter                 :: dq = 0.05_dp
+ integer,parameter                  :: nq = 500
+ real(dp),parameter                 :: dq = 0.02_dp
  integer                            :: iqs,iq,iiq
  real(dp)                           :: fnq(chi%npole_reso)
  real(dp)                           :: qvec_list(3,nq)
  real(dp)                           :: qvec(3)
  real(dp)                           :: bethe_sumrule(nq)
- integer,parameter                  :: nv=50
+ integer,parameter                  :: nv=200
+ real(dp),parameter                 :: dv=0.10_dp
  integer                            :: iv
  real(dp)                           :: stopping_cross_section(nv)
+ !real(dp)                           :: stopping_exc(nv,chi%npole_reso)
  real(dp)                           :: vv
  integer                            :: stride
  integer                            :: nq_batch
+ integer                            :: fstopping
 !=====
 
 
@@ -788,6 +791,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
  bethe_sumrule(:) = 0.0_dp
  stopping_cross_section(:) = 0.0_dp
+ !stopping_exc(:,:) = 0.0_dp
  do iqs=1,nq,stride
 
    nq_batch = MIN(nq,iqs+stride-1) - iqs + 1
@@ -812,7 +816,6 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
    enddo
 
    call xsum_world(gos_mo)
-
 
    do iiq=1,nq_batch
      iq = iqs + iiq - 1
@@ -840,14 +843,19 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
      fnq(:) = 2.0_dp * ABS( gos_tddft(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
      bethe_sumrule(iq) = SUM(fnq(:))
+     !do t_ia=1,nmat
+     !  write(1234,*) NORM2(qvec),eigenvalue(t_ia),fnq(t_ia)
+     !enddo
 
      write(stdout,*) NORM2(qvec(:)),bethe_sumrule(iq)
 
      do iv=1,nv
-       vv = iv * 0.1_dp
+       vv = iv * dv
        do t_ia=1,nmat
          if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
               stopping_cross_section(iv) = stopping_cross_section(iv) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
+        ! if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
+        !      stopping_exc(iv,t_ia) = stopping_exc(iv,t_ia) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
        enddo
 
      enddo
@@ -867,16 +875,31 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  endif
 
  write(stdout,*) 'Electronic stopping cross section: v, S0 (a.u.)'
+ open(newunit=fstopping,file='stopping.dat')
  do iv=1,nv
-   vv = iv * 0.1_dp
+   vv = iv * dv
    write(stdout,'(2(2x,f12.6))') vv,stopping_cross_section(iv)
+   write(fstopping,'(2(2x,es18.8))') vv,stopping_cross_section(iv)
  enddo
  write(stdout,*)
+ close(fstopping)
+
+ !do t_ia=1,nmat
+ !  write(2000+t_ia,*) '#', &
+ !      chi%transition_table(1,MAXLOC(ABS(xpy_matrix(:,t_ia)),DIM=1)),&
+ !      chi%transition_table(2,MAXLOC(ABS(xpy_matrix(:,t_ia)),DIM=1))
+ !enddo
+ !do iv=1,nv
+ !  vv = iv * dv
+ !  do t_ia=1,nmat
+ !    write(2000+t_ia,'(2(2x,f12.6))') vv,stopping_exc(iv,t_ia)
+ !  enddo
+ !enddo
 
  if( print_yaml_ .AND. is_iomaster )  then
    write(unit_yaml,'(4x,a)') 'stopping cross section:'
    do iv=1,nv
-     vv = iv * 0.1_dp
+     vv = iv * dv
      write(unit_yaml,'(8x,a,es16.6,a,es16.6,a)') '- [',vv,' , ',stopping_cross_section(iv),']'
    enddo
  endif
