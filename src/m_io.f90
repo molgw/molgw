@@ -312,7 +312,6 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
      element_list(iemax) = ielement
    endif
  enddo
- write(stdout,*) 'FBFB',iemax,element_list(:)
 
  write(stdout,'(1x,a)') '==========================================='
  write(stdout,'(1x,a)') 'spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '

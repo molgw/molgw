@@ -429,6 +429,58 @@ end subroutine output_qp_energy
 
 
 !=========================================================================
+subroutine output_qp_energy_yaml(calcname,energy0,exchange_m_vxc,se,energy1,energy2,zz)
+ implicit none
+
+ character(len=*)             :: calcname
+ real(dp),intent(in)          :: energy0(:,:),exchange_m_vxc(:,:)
+ type(selfenergy_grid),intent(in) :: se
+ real(dp),intent(in)          :: energy1(:,:)
+ real(dp),intent(in),optional :: energy2(:,:),zz(:,:)
+!=====
+ integer          :: pstate,ii,pspin
+ character(len=6) :: char6
+!=====
+
+ if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
+
+ write(unit_yaml,'(/,a,a)') calcname, ' selfenergy:'
+ write(unit_yaml,'(4x,a)') 'correlation:'
+ write(unit_yaml,'(8x,a)') 'unit: eV'
+ do pspin=1,nspin
+   write(unit_yaml,'(8x,a,i2,a)') 'spin channel',pspin,':'
+   do pstate=nsemin,nsemax
+     write(char6,'(i6)') pstate
+     write(unit_yaml,'(12x,a6,a,1x,es18.8)') ADJUSTL(char6),':',REAL(se%sigma(0,pstate,pspin),dp) * Ha_eV
+   enddo
+ enddo
+
+ write(unit_yaml,'(4x,a)') 'exchange minus vxc:'
+ write(unit_yaml,'(8x,a)') 'unit: eV'
+ do pspin=1,nspin
+   write(unit_yaml,'(8x,a,i2,a)') 'spin channel',pspin,':'
+   do pstate=nsemin,nsemax
+     write(char6,'(i6)') pstate
+     write(unit_yaml,'(12x,a6,a,1x,es18.8)') ADJUSTL(char6),':',REAL(exchange_m_vxc(pstate,pspin),dp) * Ha_eV
+   enddo
+ enddo
+
+ if( PRESENT(zz) ) then
+   write(unit_yaml,'(4x,a)') 'renormalization factor:'
+   do pspin=1,nspin
+     write(unit_yaml,'(8x,a,i2,a)') 'spin channel',pspin,':'
+     do pstate=nsemin,nsemax
+       write(char6,'(i6)') pstate
+       write(unit_yaml,'(12x,a6,a,1x,es18.8)') ADJUSTL(char6),':',zz(pstate,pspin)
+     enddo
+   enddo
+ endif
+
+
+end subroutine output_qp_energy_yaml
+
+
+!=========================================================================
 subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  use m_atoms
  implicit none
