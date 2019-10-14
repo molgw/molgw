@@ -4,12 +4,12 @@
 # The variables are sorted by their families and, within families, by alphabetic order.
 #
 #============================================================================
-# 
+#
 # If you want to add a *new variable*, this is THE only file you have to modify.
-# 
+#
 # Then you will have to run the python script ~molgw/utils/input_variables.py just once.
 # It will generate all the necessary fortran, html files automatically.
-# 
+#
 # To add a new variable, select a correponding family of variables and follow the yaml syntax (used for any other variable in this file).
 #
 #============================================================================
@@ -30,18 +30,18 @@
 #============================================================================
 # The families of variables are:
 #
-# [general]      General input variables    
+# [general]      General input variables
 # [hardware]     Hardware input variables (Parallelization)
-# [io]           IO input variables 
-# [io_rt_tddft]  IO Real time TDDFT 
+# [io]           IO input variables
+# [io_rt_tddft]  IO Real time TDDFT
 # [post]         Correlation and excited states post-treatment input variables
 # [rt_tddft]     Real time TDDFT input variables
-# [scf]          Self-consistency input variables 
+# [scf]          Self-consistency input variables
 # [system]       Physical system setup input variables
 #
 
 #============================================================================
-#                       General input variables                
+#                       General input variables
 #============================================================================
 
 auto_auxil_fsam:
@@ -205,7 +205,7 @@ tolforce:
 
 
 #============================================================================
-#              Hardware input variables (Parallelization)    
+#              Hardware input variables (Parallelization)
 #============================================================================
 
 eri3_nbatch:
@@ -269,7 +269,7 @@ scalapack_block_min:
 
 
 #============================================================================
-#                       IO input variables      
+#                       IO input variables
 #============================================================================
 
 basis_path:
@@ -445,7 +445,7 @@ read_restart:
 
 
 #============================================================================
-#                  Real time TDDFT input variables          
+#                  Real time TDDFT input variables
 #============================================================================
 
 calc_dens_disc:
@@ -572,7 +572,7 @@ write_step:
 
 
 #============================================================================
-#       Correlation and excited states post-treatment input variables         
+#       Correlation and excited states post-treatment input variables
 #============================================================================
 
 assume_scf_converged:
@@ -860,6 +860,14 @@ step_sigma:
   default: 0.01
   comment: Sets the spacing between frequencies in the GW self-energy evaluation.
 
+stopping:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Triggers the calculation of the stopping power within linear-response theory. Only effective when postscf='td' or 'bse'.
+
 tda:
   family: post
   datatype: yes/no
@@ -1064,7 +1072,7 @@ vel_projectile:
 
 
 #============================================================================
-#                   Self-consistency input variables         
+#                   Self-consistency input variables
 #============================================================================
 
 alpha_hybrid:
@@ -1236,7 +1244,7 @@ tolscf:
 
 
 #============================================================================
-#                 Physical system setup input variables          
+#                 Physical system setup input variables
 #============================================================================
 
 charge:

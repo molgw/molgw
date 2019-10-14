@@ -93,6 +93,7 @@
     selfenergy_state_range,       &
     small_basis,       &
     step_sigma,       &
+    stopping,       &
     tda,       &
     tddft_grid_quality,       &
     toldav,       &
@@ -231,6 +232,7 @@
  selfenergy_state_range=100000
  small_basis=''
  step_sigma=0.01_dp 
+ stopping='no'
  tda='no'
  tddft_grid_quality='high'
  toldav=0.0001_dp 

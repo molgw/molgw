@@ -1,0 +1,19 @@
+&molgw
+ scf='lda'
+ postscf='td'
+
+ tddft_grid_quality='low'
+
+ tolscf=1.0e-10
+
+ gaussian_type='CART'
+ basis='aug-cc-pVQZ'
+ auxil_basis='aug-cc-pVQZ-RI'
+
+ stopping='yes'
+
+ length_unit='bohr'
+ natom=1
+/
+He   0.00   0.00   0.00
+

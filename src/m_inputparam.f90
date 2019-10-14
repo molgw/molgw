@@ -152,6 +152,7 @@ module m_inputparam
  logical,protected                :: read_tddft_restart_
  logical,protected                :: print_tddft_restart_
  logical,protected                :: print_yaml_
+ logical,protected                :: stopping_
  logical,protected                :: assume_scf_converged_
 
  real(dp),protected               :: rcut = 0.0_dp
@@ -743,6 +744,7 @@ subroutine read_inputfile_namelist()
  read_tddft_restart_         = yesno_to_logical(read_tddft_restart)
  print_tddft_restart_        = yesno_to_logical(print_tddft_restart)
  print_yaml_                 = yesno_to_logical(print_yaml)
+ stopping_                   = yesno_to_logical(stopping)
  assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)

@@ -741,6 +741,14 @@ Projection on state 00001 ,      0.941619       , 1 , 1.0e-4
 Projection on state 00002 ,      5.171425       , 0 , 1.0e-4
 Projection on state 00002 ,      0.987882       , 1 , 1.0e-4
 
+he_stopping.in             , Linear-response stopping cross section for He
+SCF Total Energy           ,     -2.8343129408   , 0 , 1.0e-7
+Exc. 0001                  ,     17.24297222     , 0 , 1.0e-4
+Sum over oscillator strengths,    2.000962       , 0 , 1.0e-4
+Bethe sumrule for q   0.020,      2.000975       , 0 , 1.0e-4
+Bethe sumrule for q   0.500,      2.007298       , 0 , 1.0e-4
+Bethe sumrule for q   5.000,      1.196301       , 0 , 1.0e-4
+Bethe sumrule for q  10.000,      0.082536       , 0 , 1.0e-4
 
 
 

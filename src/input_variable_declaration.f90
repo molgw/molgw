@@ -89,6 +89,7 @@
  integer,protected :: selfenergy_state_range
  character(len=140),protected :: small_basis
  real(dp),protected :: step_sigma
+ character(len=3),protected :: stopping
  character(len=3),protected :: tda
  character(len=140),protected :: tddft_grid_quality
  real(dp),protected :: toldav

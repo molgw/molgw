@@ -1515,7 +1515,7 @@ end subroutine basis_function_quadrupole
 
 
 !=========================================================================
-subroutine gos_basis_function(bf1,bf2,qvec,gos_bf1bf2)
+subroutine basis_function_gos(bf1,bf2,qvec,gos_bf1bf2)
  implicit none
  type(basis_function),intent(in)  :: bf1,bf2
  real(dp),intent(in)              :: qvec(3)
@@ -1533,7 +1533,7 @@ subroutine gos_basis_function(bf1,bf2,qvec,gos_bf1bf2)
    enddo
  enddo
 
-end subroutine gos_basis_function
+end subroutine basis_function_gos
 
 
 !=========================================================================

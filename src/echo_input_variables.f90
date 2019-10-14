@@ -92,6 +92,7 @@
  write(stdout,'(1x,a24,2x,i8)') 'selfenergy_state_range',selfenergy_state_range 
  write(stdout,'(1x,a24,6x,a)') 'small_basis',small_basis 
  write(stdout,'(1x,a24,2x,es16.8)') 'step_sigma',step_sigma 
+ write(stdout,'(1x,a24,6x,a)') 'stopping',stopping 
  write(stdout,'(1x,a24,6x,a)') 'tda',tda 
  write(stdout,'(1x,a24,6x,a)') 'tddft_grid_quality',tddft_grid_quality 
  write(stdout,'(1x,a24,2x,es16.8)') 'toldav',toldav 

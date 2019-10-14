@@ -21,10 +21,12 @@
 - Post-processing is not performed if the SCF cycles are not converged within `tolscf` (save user CPU time when a job went wrong)
 - Keywords `scalapack_nprow` and `scalapack_npcol` have been eliminated
 - Keyword `stopping` triggers the linear-response stopping power calculation
-- Value `real_time` for `postscf` triggers real-time TDDFT (RT-TDDFT)
+- Value `postscf='real_time'` triggers real-time TDDFT (RT-TDDFT)
 
 ### Changes affecting the compilation
 - LIBXC is now linked through the C interface. Therefore, LIBXC compilation does not need to be consistent with MOLGW compilation.
+The latest version of LIBXC can be used.
+- Preprocessing option `-DHAVE_MKL` allows for the use of MKL extensions and in particular of `DGEMMT`.
 
 ### Changes affecting the developers
 - The list of all the input variables is now stored in a YAML file that is processed with the python script ~molgw/utils/input_variables.py

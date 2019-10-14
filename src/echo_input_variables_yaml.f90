@@ -92,6 +92,7 @@
  write(unit_yaml,'(4x,a,8x,i8)') 'selfenergy_state_range:',selfenergy_state_range 
  write(unit_yaml,'(4x,a,19x,a)') 'small_basis:',TRIM(small_basis) 
  write(unit_yaml,'(4x,a,20x,es16.8)') 'step_sigma:',step_sigma 
+ write(unit_yaml,'(4x,a,22x,a)') 'stopping:',yesno_to_TrueFalse(stopping)
  write(unit_yaml,'(4x,a,27x,a)') 'tda:',yesno_to_TrueFalse(tda) 
  write(unit_yaml,'(4x,a,12x,a)') 'tddft_grid_quality:',TRIM(tddft_grid_quality) 
  write(unit_yaml,'(4x,a,24x,es16.8)') 'toldav:',toldav 
