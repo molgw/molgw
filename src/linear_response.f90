@@ -765,30 +765,30 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
    return
  endif
 
+ stride = nprow_sd * npcol_sd
+ write(stdout,*) 'Parallelize GOS calculation over ',stride
 
- write(stdout,*) 'Bethe sum rule'
- if( print_yaml_ .AND. is_iomaster ) then
-   write(unit_yaml,'(/,a)') 'stopping power:'
-   write(unit_yaml,'(4x,a)') 'unit: a.u.'
-   write(unit_yaml,'(4x,a)') 'q vectors:'
- endif
-
- ! setup the q-vector list
+ ! Setup the entire q-vector list
  do iq=1,nq
    qvec_list(1,iq) = 0.0_dp
    qvec_list(2,iq) = 0.0_dp
    qvec_list(3,iq) = iq * dq
-   if( print_yaml_ .AND. is_iomaster ) then
-     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a,es16.6,a)') '- [',qvec_list(1,iq),' , ',qvec_list(2,iq),' , ',qvec_list(3,iq),']'
-   endif
  enddo
+
+ if( print_yaml_ .AND. is_iomaster ) then
+   write(unit_yaml,'(/,a)') 'stopping power:'
+   write(unit_yaml,'(4x,a)') 'unit: a.u.'
+   write(unit_yaml,'(4x,a)') 'q vectors:'
+   do iq=1,nq
+     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a,es16.6,a)') '- [',qvec_list(1,iq),' , ',qvec_list(2,iq),' , ',qvec_list(3,iq),']'
+   enddo
+ endif
 
  nmat=chi%npole_reso
  allocate(gos_tddft(chi%npole_reso))
 
- stride = nprow_sd * npcol_sd
- write(stdout,*) 'Parallelize GOS calculation over ',stride
-
+ write(stdout,'(/,1x,a,f8.3,a,f8.3)') 'Loop over q-vectors from ',NORM2(qvec_list(:,iq)),' to ',NORM2(qvec_list(:,nq))
+ write(stdout,'(5x,a,f8.3)') 'with increment:',dq
  bethe_sumrule(:) = 0.0_dp
  stopping_cross_section(:) = 0.0_dp
  !stopping_exc(:,:) = 0.0_dp
@@ -847,7 +847,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
      !  write(1234,*) NORM2(qvec),eigenvalue(t_ia),fnq(t_ia)
      !enddo
 
-     write(stdout,*) NORM2(qvec(:)),bethe_sumrule(iq)
+     write(stdout,'(1x,a,f8.3,a,f12.6)') 'Bethe sumrule for q',NORM2(qvec(:)),':',bethe_sumrule(iq)
 
      do iv=1,nv
        vv = iv * dv
