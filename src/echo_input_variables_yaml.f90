@@ -16,8 +16,8 @@
  write(unit_yaml,'(4x,a,19x,a)') 'ecp_quality:',TRIM(ecp_quality) 
  write(unit_yaml,'(4x,a,22x,a)') 'ecp_type:',TRIM(ecp_type) 
  write(unit_yaml,'(4x,a,17x,a)') 'gaussian_type:',TRIM(gaussian_type) 
- write(unit_yaml,'(4x,a,24x,a)') 'incore:','False' 
- write(unit_yaml,'(4x,a,13x,a)') 'memory_evaluation:','True' 
+ write(unit_yaml,'(4x,a,24x,a)') 'incore:',yesno_to_TrueFalse(incore) 
+ write(unit_yaml,'(4x,a,13x,a)') 'memory_evaluation:',yesno_to_TrueFalse(memory_evaluation) 
  write(unit_yaml,'(4x,a,19x,a)') 'move_nuclei:',TRIM(move_nuclei) 
  write(unit_yaml,'(4x,a,25x,i8)') 'nstep:',nstep 
  write(unit_yaml,'(4x,a,27x,a)') 'scf:',TRIM(scf) 
@@ -29,39 +29,39 @@
  write(unit_yaml,'(4x,a,15x,i8)') 'mpi_nproc_ortho:',mpi_nproc_ortho 
  write(unit_yaml,'(4x,a,11x,i8)') 'scalapack_block_min:',scalapack_block_min 
  write(unit_yaml,'(4x,a,20x,a)') 'basis_path:',TRIM(basis_path) 
- write(unit_yaml,'(4x,a,15x,a)') 'force_energy_qp:','True' 
- write(unit_yaml,'(4x,a,13x,a)') 'ignore_bigrestart:','False' 
- write(unit_yaml,'(4x,a,14x,a)') 'print_bigrestart:','False' 
- write(unit_yaml,'(4x,a,20x,a)') 'print_cube:','False' 
- write(unit_yaml,'(4x,a,10x,a)') 'print_density_matrix:','True' 
- write(unit_yaml,'(4x,a,21x,a)') 'print_eri:','False' 
- write(unit_yaml,'(4x,a,17x,a)') 'print_hartree:','False' 
- write(unit_yaml,'(4x,a,15x,a)') 'print_multipole:','False' 
- write(unit_yaml,'(4x,a,20x,a)') 'print_pdos:','False' 
- write(unit_yaml,'(4x,a,17x,a)') 'print_restart:','False' 
- write(unit_yaml,'(4x,a,16x,a)') 'print_rho_grid:','False' 
- write(unit_yaml,'(4x,a,19x,a)') 'print_sigma:','False' 
- write(unit_yaml,'(4x,a,7x,a)') 'print_spatial_extension:','False' 
- write(unit_yaml,'(4x,a,23x,a)') 'print_w:','False' 
- write(unit_yaml,'(4x,a,21x,a)') 'print_wfn:','False' 
- write(unit_yaml,'(4x,a,20x,a)') 'print_yaml:','True' 
+ write(unit_yaml,'(4x,a,15x,a)') 'force_energy_qp:',yesno_to_TrueFalse(force_energy_qp) 
+ write(unit_yaml,'(4x,a,13x,a)') 'ignore_bigrestart:',yesno_to_TrueFalse(ignore_bigrestart) 
+ write(unit_yaml,'(4x,a,14x,a)') 'print_bigrestart:',yesno_to_TrueFalse(print_bigrestart) 
+ write(unit_yaml,'(4x,a,20x,a)') 'print_cube:',yesno_to_TrueFalse(print_cube) 
+ write(unit_yaml,'(4x,a,10x,a)') 'print_density_matrix:',yesno_to_TrueFalse(print_density_matrix) 
+ write(unit_yaml,'(4x,a,21x,a)') 'print_eri:',yesno_to_TrueFalse(print_eri) 
+ write(unit_yaml,'(4x,a,17x,a)') 'print_hartree:',yesno_to_TrueFalse(print_hartree) 
+ write(unit_yaml,'(4x,a,15x,a)') 'print_multipole:',yesno_to_TrueFalse(print_multipole) 
+ write(unit_yaml,'(4x,a,20x,a)') 'print_pdos:',yesno_to_TrueFalse(print_pdos) 
+ write(unit_yaml,'(4x,a,17x,a)') 'print_restart:',yesno_to_TrueFalse(print_restart) 
+ write(unit_yaml,'(4x,a,16x,a)') 'print_rho_grid:',yesno_to_TrueFalse(print_rho_grid) 
+ write(unit_yaml,'(4x,a,19x,a)') 'print_sigma:',yesno_to_TrueFalse(print_sigma) 
+ write(unit_yaml,'(4x,a,7x,a)') 'print_spatial_extension:',yesno_to_TrueFalse(print_spatial_extension) 
+ write(unit_yaml,'(4x,a,23x,a)') 'print_w:',yesno_to_TrueFalse(print_w) 
+ write(unit_yaml,'(4x,a,21x,a)') 'print_wfn:',yesno_to_TrueFalse(print_wfn) 
+ write(unit_yaml,'(4x,a,20x,a)') 'print_yaml:',yesno_to_TrueFalse(print_yaml) 
  write(unit_yaml,'(4x,a,21x,a)') 'read_fchk:',TRIM(read_fchk) 
- write(unit_yaml,'(4x,a,18x,a)') 'read_restart:','False' 
- write(unit_yaml,'(4x,a,16x,a)') 'calc_dens_disc:','False' 
- write(unit_yaml,'(4x,a,17x,a)') 'calc_q_matrix:','False' 
- write(unit_yaml,'(4x,a,17x,a)') 'calc_spectrum:','False' 
- write(unit_yaml,'(4x,a,9x,a)') 'print_cube_diff_tddft:','False' 
- write(unit_yaml,'(4x,a,10x,a)') 'print_cube_rho_tddft:','False' 
- write(unit_yaml,'(4x,a,15x,a)') 'print_dens_traj:','False' 
- write(unit_yaml,'(4x,a,4x,a)') 'print_dens_traj_points_set:','False' 
- write(unit_yaml,'(4x,a,9x,a)') 'print_dens_traj_tddft:','False' 
- write(unit_yaml,'(4x,a,5x,a)') 'print_line_rho_diff_tddft:','False' 
- write(unit_yaml,'(4x,a,10x,a)') 'print_line_rho_tddft:','False' 
- write(unit_yaml,'(4x,a,10x,a)') 'print_tddft_matrices:','False' 
- write(unit_yaml,'(4x,a,11x,a)') 'print_tddft_restart:','False' 
- write(unit_yaml,'(4x,a,12x,a)') 'read_tddft_restart:','False' 
+ write(unit_yaml,'(4x,a,18x,a)') 'read_restart:',yesno_to_TrueFalse(read_restart) 
+ write(unit_yaml,'(4x,a,16x,a)') 'calc_dens_disc:',yesno_to_TrueFalse(calc_dens_disc) 
+ write(unit_yaml,'(4x,a,17x,a)') 'calc_q_matrix:',yesno_to_TrueFalse(calc_q_matrix) 
+ write(unit_yaml,'(4x,a,17x,a)') 'calc_spectrum:',yesno_to_TrueFalse(calc_spectrum) 
+ write(unit_yaml,'(4x,a,9x,a)') 'print_cube_diff_tddft:',yesno_to_TrueFalse(print_cube_diff_tddft) 
+ write(unit_yaml,'(4x,a,10x,a)') 'print_cube_rho_tddft:',yesno_to_TrueFalse(print_cube_rho_tddft) 
+ write(unit_yaml,'(4x,a,15x,a)') 'print_dens_traj:',yesno_to_TrueFalse(print_dens_traj) 
+ write(unit_yaml,'(4x,a,4x,a)') 'print_dens_traj_points_set:',yesno_to_TrueFalse(print_dens_traj_points_set) 
+ write(unit_yaml,'(4x,a,9x,a)') 'print_dens_traj_tddft:',yesno_to_TrueFalse(print_dens_traj_tddft) 
+ write(unit_yaml,'(4x,a,5x,a)') 'print_line_rho_diff_tddft:',yesno_to_TrueFalse(print_line_rho_diff_tddft) 
+ write(unit_yaml,'(4x,a,10x,a)') 'print_line_rho_tddft:',yesno_to_TrueFalse(print_line_rho_tddft) 
+ write(unit_yaml,'(4x,a,10x,a)') 'print_tddft_matrices:',yesno_to_TrueFalse(print_tddft_matrices) 
+ write(unit_yaml,'(4x,a,11x,a)') 'print_tddft_restart:',yesno_to_TrueFalse(print_tddft_restart) 
+ write(unit_yaml,'(4x,a,12x,a)') 'read_tddft_restart:',yesno_to_TrueFalse(read_tddft_restart) 
  write(unit_yaml,'(4x,a,20x,es16.8)') 'write_step:',write_step 
- write(unit_yaml,'(4x,a,10x,a)') 'assume_scf_converged:','False' 
+ write(unit_yaml,'(4x,a,10x,a)') 'assume_scf_converged:',yesno_to_TrueFalse(assume_scf_converged) 
  write(unit_yaml,'(4x,a,12x,a)') 'ci_greens_function:',TRIM(ci_greens_function) 
  write(unit_yaml,'(4x,a,21x,i8)') 'ci_nstate:',ci_nstate 
  write(unit_yaml,'(4x,a,16x,i8)') 'ci_nstate_self:',ci_nstate_self 
@@ -70,8 +70,8 @@
  write(unit_yaml,'(4x,a,22x,i8)') 'dft_core:',dft_core 
  write(unit_yaml,'(4x,a,15x,a)') 'ecp_small_basis:',TRIM(ecp_small_basis) 
  write(unit_yaml,'(4x,a,27x,es16.8)') 'eta:',eta 
- write(unit_yaml,'(4x,a,20x,a)') 'frozencore:','False' 
- write(unit_yaml,'(4x,a,17x,a)') 'gwgamma_tddft:','False' 
+ write(unit_yaml,'(4x,a,20x,a)') 'frozencore:',yesno_to_TrueFalse(frozencore) 
+ write(unit_yaml,'(4x,a,17x,a)') 'gwgamma_tddft:',yesno_to_TrueFalse(gwgamma_tddft) 
  write(unit_yaml,'(4x,a,24x,i8)') 'ncoreg:',ncoreg 
  write(unit_yaml,'(4x,a,24x,i8)') 'ncorew:',ncorew 
  write(unit_yaml,'(4x,a,19x,i8)') 'nexcitation:',nexcitation 
@@ -92,13 +92,13 @@
  write(unit_yaml,'(4x,a,8x,i8)') 'selfenergy_state_range:',selfenergy_state_range 
  write(unit_yaml,'(4x,a,19x,a)') 'small_basis:',TRIM(small_basis) 
  write(unit_yaml,'(4x,a,20x,es16.8)') 'step_sigma:',step_sigma 
- write(unit_yaml,'(4x,a,22x,a)') 'stopping:','False' 
- write(unit_yaml,'(4x,a,27x,a)') 'tda:','False' 
+ write(unit_yaml,'(4x,a,22x,a)') 'stopping:',yesno_to_TrueFalse(stopping)
+ write(unit_yaml,'(4x,a,27x,a)') 'tda:',yesno_to_TrueFalse(tda) 
  write(unit_yaml,'(4x,a,12x,a)') 'tddft_grid_quality:',TRIM(tddft_grid_quality) 
  write(unit_yaml,'(4x,a,24x,es16.8)') 'toldav:',toldav 
- write(unit_yaml,'(4x,a,23x,a)') 'triplet:','False' 
- write(unit_yaml,'(4x,a,1x,a)') 'use_correlated_density_matrix:','True' 
- write(unit_yaml,'(4x,a,19x,a)') 'virtual_fno:','False' 
+ write(unit_yaml,'(4x,a,23x,a)') 'triplet:',yesno_to_TrueFalse(triplet) 
+ write(unit_yaml,'(4x,a,1x,a)') 'use_correlated_density_matrix:',yesno_to_TrueFalse(use_correlated_density_matrix) 
+ write(unit_yaml,'(4x,a,19x,a)') 'virtual_fno:',yesno_to_TrueFalse(virtual_fno) 
  write(unit_yaml,'(4x,a,21x,"[",es16.8,", ",es16.8,", ",es16.8,"]")') 'excit_dir:',excit_dir 
  write(unit_yaml,'(4x,a,19x,es16.8)') 'excit_kappa:',excit_kappa 
  write(unit_yaml,'(4x,a,20x,a)') 'excit_name:',TRIM(excit_name) 
@@ -111,7 +111,7 @@
  write(unit_yaml,'(4x,a,21x,a)') 'pred_corr:',TRIM(pred_corr) 
  write(unit_yaml,'(4x,a,21x,a)') 'prop_type:',TRIM(prop_type) 
  write(unit_yaml,'(4x,a,24x,es16.8)') 'r_disc:',r_disc 
- write(unit_yaml,'(4x,a,14x,a)') 'tddft_frozencore:','False' 
+ write(unit_yaml,'(4x,a,14x,a)') 'tddft_frozencore:',yesno_to_TrueFalse(tddft_frozencore) 
  write(unit_yaml,'(4x,a,22x,es16.8)') 'time_sim:',time_sim 
  write(unit_yaml,'(4x,a,21x,es16.8)') 'time_step:',time_step 
  write(unit_yaml,'(4x,a,16x,"[",es16.8,", ",es16.8,", ",es16.8,"]")') 'vel_projectile:',vel_projectile 

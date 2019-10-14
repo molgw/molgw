@@ -168,10 +168,7 @@ for key,value in input_var_dict.items():
     fortran_format = '\'(4x,a,' + right_spaces + 'x,a)\''
 
   elif 'yes' in value['datatype']:
-    if 'y' in key.lower():
-        key_modif = "'"+str(True)+"'"
-    else:
-        key_modif = "'"+str(False)+"'"
+    key_modif = 'yesno_to_TrueFalse(' + key_modif + ')'  
     fortran_format = '\'(4x,a,' + right_spaces + 'x,a)\''
 
   elif 'vector_1d_3' in value['datatype']:

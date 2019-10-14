@@ -878,8 +878,8 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field)
 !---------------------------------
  select case(excit_type%form)
  case(EXCIT_PROJECTILE)
-   write(file_time_data,"(A10,11(A18))") "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc_wo_proj","enuc","ekin","ehart",&
-                             &"eexx_hyb","exc","enuc_nuc_proj"
+   write(file_time_data,"(A10,11(A18))") "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc","enuc_wo_proj","ekin","ehart",&
+                             &"eexx_hyb","exc","enuc_proj"
                                                
  case(EXCIT_LIGHT)
    write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
