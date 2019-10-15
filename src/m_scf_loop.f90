@@ -338,6 +338,7 @@ subroutine scf_loop(is_restart,&
 
  if( print_hartree_ ) then
    call print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltonian_hartree,hamiltonian_exx)
+   call print_expectations(basis,c_matrix,hamiltonian_kinetic)
  endif
 
  if( print_density_matrix_ .AND. is_iomaster ) then
@@ -464,11 +465,13 @@ subroutine print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltoni
 
  call matrix_ao_to_mo_diag(c_matrix_restart,RESHAPE(hamiltonian_hartree,(/basis%nbf,basis%nbf,1/)),h_ii)
  call dump_out_energy('=== Hartree expectation value ===',occupation,h_ii)
+ call dump_out_energy_yaml('hartree expectation value',h_ii,1,nstate)
  write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
 
 
  call matrix_ao_to_mo_diag(c_matrix_restart,hamiltonian_exx,h_ii)
  call dump_out_energy('=== Exchange expectation value ===',occupation,h_ii)
+ call dump_out_energy_yaml('exchange expectation value',h_ii,1,nstate)
  write(stdout,'(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
 
  deallocate(h_ii)
@@ -476,6 +479,78 @@ subroutine print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltoni
  call clean_deallocate('RESTART: C',c_matrix_restart)
 
 end subroutine print_hartee_expectation
+
+
+!=========================================================================
+subroutine print_expectations(basis,c_matrix,hkin)
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: hkin(:,:)
+!=====
+ real(dp),allocatable       :: p_matrix(:,:,:)
+ real(dp),allocatable       :: hh(:,:),ekin(:,:)
+ real(dp)                   :: ehartree_i
+ integer                    :: ibf,jbf,nbf,nstate,istate,ispin
+ character(len=6)           :: char6
+!=====
+
+ write(stdout,*) 'Print expectations'
+ nbf    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(c_matrix,DIM=2)
+
+ allocate(hh(nbf,nbf))
+ allocate(p_matrix(nbf,nbf,nspin))
+ allocate(ekin(nstate,nspin))
+
+ call matrix_ao_to_mo_diag(c_matrix,RESHAPE(hkin,(/nbf,nbf,1/)),ekin)
+
+
+ if( print_yaml_ .AND. is_iomaster ) then
+   write(unit_yaml,'(/,a)') 'kinetic expectation value:'
+   write(unit_yaml,'(4x,a)') 'unit: Ha'
+   do ispin=1,nspin
+     write(unit_yaml,'(4x,a,i2,a)') 'spin channel',ispin,':'
+     do istate=1,nstate
+       write(char6,'(i6)') istate
+       write(unit_yaml,'(8x,a6,a,1x,es18.8)') ADJUSTL(char6),':',ekin(istate,ispin)
+     enddo
+   enddo
+
+
+   write(unit_yaml,'(/,a)') 'hartree self-interaction:'
+   write(unit_yaml,'(4x,a)') 'unit: Ha'
+ endif
+
+ do ispin=1,nspin
+   if( print_yaml_ .AND. is_iomaster ) write(unit_yaml,'(4x,a,i2,a)') 'spin channel',ispin,':'
+   do istate=1,nstate
+
+     p_matrix(:,:,:) = 0.0_dp
+     call DSYRK('L','N',nbf,1,1.0d0,c_matrix(1,istate,ispin),nbf,0.0d0,p_matrix(1,1,ispin),nbf)
+     ! Symmetrize
+     do jbf=1,nbf
+       do ibf=jbf+1,nbf
+         p_matrix(jbf,ibf,ispin) = p_matrix(ibf,jbf,ispin)
+       enddo
+     enddo
+
+     call calculate_hartree(basis,p_matrix,hh,eh=ehartree_i)
+
+     write(stdout,'(1x,a,i5,es16.6,1x,es16.6)') 'Eh i , T_i (Ha): ',ispin,ehartree_i,ekin(istate,ispin)
+     if( print_yaml_ .AND. is_iomaster ) then
+       write(char6,'(i6)') istate
+       write(unit_yaml,'(8x,a6,a,1x,es18.8)') ADJUSTL(char6),':',ehartree_i
+     endif
+
+   enddo
+ enddo
+
+ deallocate(hh,p_matrix,ekin)
+
+
+end subroutine print_expectations
 
 
 !=========================================================================
