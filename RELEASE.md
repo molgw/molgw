@@ -25,7 +25,7 @@
 
 ### Changes affecting the compilation
 - LIBXC is now linked through the C interface. Therefore, LIBXC compilation does not need to be consistent with MOLGW compilation.
-The latest version of LIBXC can be used.
+The latest version of LIBXC can be used. Preprocessing flag `-DLIBXC4` is no longer needed.
 - Preprocessing option `-DHAVE_MKL` allows for the use of MKL extensions and in particular of `DGEMMT`.
 
 ### Changes affecting the developers

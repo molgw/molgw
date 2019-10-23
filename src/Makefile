@@ -419,7 +419,7 @@ tarball:
 archive:
 	+make prepare_sourcecode
 	mkdir -p ../tmp/molgw/src
-	cp -rp  ../README.md ../COPYING   \
+	cp -rp  ../README.md ../COPYING ../RELEASE.md  \
             ../basis/ ../utils/ ../tests/            \
             ../docs/ ../config/   \
             ../tmp/molgw
