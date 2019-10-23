@@ -261,10 +261,12 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  real(dp)                   :: proj_atom(natom_basis)
  integer                    :: ielement,iemax,iatom_basis
  integer                    :: atom2element(natom_basis)
- character(len=6)           :: char6
- real(dp),allocatable       :: proj_element(:)
+ character(len=4)           :: char4
+ character(len=2)           :: char2
+ real(dp),allocatable       :: proj_element(:,:)
  integer,allocatable        :: element_list(:)
  real(dp)                   :: weight
+ integer,parameter          :: lmax = 2
 !=====
 
  if( .NOT. is_iomaster ) return
@@ -304,7 +306,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
      if( zbasis(iatom_basis) == ielement ) atom2element(iatom_basis) = iemax
    enddo
  enddo
- allocate(proj_element(iemax),element_list(iemax))
+ allocate(proj_element(0:lmax+1,iemax),element_list(iemax))
  iemax = 0
  do ielement=1,nelement_max
    if( ANY(zbasis(:) == ielement) ) then
@@ -324,8 +326,8 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
 
    do istate=1,nstate
      proj_state_i(:) = 0.0_dp
-     proj_element(:) = 0.0_dp
-     write(char6,'(i6)') istate
+     proj_element(:,:) = 0.0_dp
+     write(char4,'(i4)') istate
 
      cs_vector_i(:) = MATMUL(  s_matrix(:,:) , c_matrix(:,istate,ispin) )
 
@@ -335,13 +337,18 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
          proj_state_i(li) = proj_state_i(li) + c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
        endif
        weight = c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
-       proj_element(atom2element(iatom_ibf(ibf))) = proj_element(atom2element(iatom_ibf(ibf))) + weight
+       proj_element(MIN(li_ibf(ibf),lmax+1),atom2element(iatom_ibf(ibf))) = proj_element(MIN(li_ibf(ibf),lmax+1),atom2element(iatom_ibf(ibf))) + weight
      enddo
      proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
      if( print_yaml_) then
-       write(unit_yaml,'(8x,a6,a)') ADJUSTL(char6),':'
+       write(unit_yaml,'(8x,a4,a)') ADJUSTL(char4),':'
        do ielement=1,iemax
-         write(unit_yaml,'(12x,a2,a,1x,es18.8)') ADJUSTL(element_name(REAL(element_list(ielement),dp))),':',proj_element(ielement)
+         write(unit_yaml,'(12x,a2,a)') ADJUSTL(element_name(REAL(element_list(ielement),dp))),':'
+         do li=0,lmax
+           write(char2,'(i2)') li
+           write(unit_yaml,'(16x,a2,3x,a,1x,es18.8)') ADJUSTL(char2),':',proj_element(li,ielement)
+         enddo
+         write(unit_yaml,'(16x,a,1x,es18.8)') 'total:',SUM(proj_element(:,ielement))
        enddo
      endif
 
