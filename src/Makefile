@@ -73,7 +73,7 @@ all: molgw spectrum
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o
 
-level005: m_warning.o m_gos.o real_spherical_harmonics.o
+level005: m_warning.o real_spherical_harmonics.o
 
 level008: m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o
 
@@ -113,7 +113,7 @@ level100: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
 
 ../molgw: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
-        m_warning.o m_gos.o real_spherical_harmonics.o m_lbfgs.o \
+        m_warning.o real_spherical_harmonics.o m_lbfgs.o \
         m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_libxc_tools.o \
         m_elements.o m_tddft_variables.o m_timing.o m_memory.o m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_mpi.o m_cart_to_pure.o \
         m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o m_block_diago.o \
@@ -132,7 +132,7 @@ level100: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
                         m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o \
                         m_libxc_tools.o m_scalapack.o m_tddft_variables.o m_timing.o m_memory.o m_inputparam.o \
                         m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
-                        m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
+                        m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
                         m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o \
                         m_spectral_function.o m_ci.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
@@ -325,7 +325,7 @@ m_basis_set.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_elements.f90 m_gau
                m_basis_set.f90
 	$(FC_W_OPTS) -c m_basis_set.f90 $(LIBXC_INCS)
 
-m_gaussian.o: m_definitions.f90 m_gos.f90 m_mpi.f90 m_cart_to_pure.f90 m_string_tools.f90 m_gaussian.f90
+m_gaussian.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 m_string_tools.f90 m_gaussian.f90
 	$(FC_W_OPTS) -c m_gaussian.f90 $(LIBXC_INCS)
 
 m_scf.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_scalapack.f90 m_lbfgs.f90 m_linear_algebra.f90 \
@@ -393,9 +393,6 @@ m_elements.o: m_definitions.f90 m_warning.f90 m_elements.f90
 m_cart_to_pure.o: m_definitions.f90 m_warning.f90 m_cart_to_pure.f90
 	$(FC_W_OPTS) -c m_cart_to_pure.f90 $(LIBXC_INCS)
 
-m_gos.o: m_definitions.f90 m_gos.f90
-	$(FC_W_OPTS) -c m_gos.f90 $(LIBXC_INCS)
-
 m_warning.o: m_definitions.f90 m_warning.f90
 	$(FC_W_OPTS) -c m_warning.f90 $(LIBXC_INCS)
 
@@ -422,7 +419,7 @@ tarball:
 archive:
 	+make prepare_sourcecode
 	mkdir -p ../tmp/molgw/src
-	cp -rp  ../README.md ../COPYING   \
+	cp -rp  ../README.md ../COPYING ../RELEASE.md  \
             ../basis/ ../utils/ ../tests/            \
             ../docs/ ../config/   \
             ../tmp/molgw

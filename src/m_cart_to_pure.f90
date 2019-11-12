@@ -118,10 +118,16 @@ pure function double_factorial(intin)
    double_factorial = 81749606400.0_dp
  case(23)
    double_factorial = 316234143225.0_dp
+ case(24)
+   double_factorial = 1961990553600.0_dp
  case(25)
    double_factorial = 7905853580625.0_dp
+ case(26)
+   double_factorial = 51011754393600.0_dp
  case(27)
    double_factorial = 213458046676875.0_dp
+ case(28)
+   double_factorial = 1428329123020800.0_dp
  case(29)
    double_factorial = 6190283353629375.0_dp
  case(31)

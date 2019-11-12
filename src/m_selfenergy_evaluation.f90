@@ -442,6 +442,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new)
 
      call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+     call output_qp_energy_yaml(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,se,energy_qp_z,energy_qp_new,zz)
      deallocate(zz)
      deallocate(energy_qp_z)
    end select

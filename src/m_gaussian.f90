@@ -9,7 +9,6 @@
 module m_gaussian
  use m_definitions
  use m_mpi
- use m_gos
  use m_cart_to_pure
  use m_string_tools
 
@@ -675,67 +674,89 @@ subroutine evaluate_gos(ga,gb,qvec,gos_ab)
  real(dp),intent(in)       :: qvec(3)
  complex(dp),intent(out)   :: gos_ab
 !=====
- complex(dp) :: sumx,sumy,sumz
- complex(dp) :: fx,gx
- complex(dp) :: fy,gy
- complex(dp) :: fz,gz
- complex(dp) :: factor
- real(dp)    :: aa,bb,ab
- integer     :: ip
+ complex(dp) :: intx,inty,intz,qq(3),factor
+ real(dp) :: pp,a2,b2
+ integer :: ii,jj,kk
 !=====
 
- aa = ga%alpha
- bb = gb%alpha
- ab = aa * bb / ( aa + bb )
- fx = (2.0_dp * aa * bb * ( gb%x0(1) - ga%x0(1) ) + im * aa * qvec(1) ) / (aa + bb)
- gx = (2.0_dp * aa * bb * ( ga%x0(1) - gb%x0(1) ) + im * bb * qvec(1) ) / (aa + bb)
- fy = (2.0_dp * aa * bb * ( gb%x0(2) - ga%x0(2) ) + im * aa * qvec(2) ) / (aa + bb)
- gy = (2.0_dp * aa * bb * ( ga%x0(2) - gb%x0(2) ) + im * bb * qvec(2) ) / (aa + bb)
- fz = (2.0_dp * aa * bb * ( gb%x0(3) - ga%x0(3) ) + im * aa * qvec(3) ) / (aa + bb)
- gz = (2.0_dp * aa * bb * ( ga%x0(3) - gb%x0(3) ) + im * bb * qvec(3) ) / (aa + bb)
+ pp = ga%alpha + gb%alpha
+ a2 = SUM( ga%x0(:)**2 )
+ b2 = SUM( gb%x0(:)**2 )
 
- !
- ! x summation
- sumx = 0.0_dp
- do ip = 1, gos(ga%nx,gb%nx)%np
-   sumx = sumx + gos(ga%nx,gb%nx)%mu(ip)                      &
-                  * fx**gos(ga%nx,gb%nx)%alpha(ip)            &
-                  * gx**gos(ga%nx,gb%nx)%beta(ip)             &
-                  / (2.0_dp * aa)**gos(ga%nx,gb%nx)%gamma(ip) &
-                  / (2.0_dp * bb)**gos(ga%nx,gb%nx)%delta(ip) &
-                  * (2.0_dp * ab)**gos(ga%nx,gb%nx)%epsilon(ip)
+ qq(:) = ga%alpha * ga%x0(:) + gb%alpha * gb%x0(:) + 0.5_dp * im * qvec(:)
+
+
+ factor = ( pi / pp )**1.5_dp * EXP( SUM(qq(:)**2) / pp - ga%alpha * a2 - gb%alpha * b2 )
+
+
+ intx = 0.0_dp
+ do ii=0,ga%nx+gb%nx
+   intx = intx + g(ii,pp,qq(1)) * f(ii,ga%nx,gb%nx,-ga%x0(1),-gb%x0(1))
+ enddo
+ inty = 0.0_dp
+ do ii=0,ga%ny+gb%ny
+   inty = inty + g(ii,pp,qq(2)) * f(ii,ga%ny,gb%ny,-ga%x0(2),-gb%x0(2))
+ enddo
+ intz = 0.0_dp
+ do ii=0,ga%nz+gb%nz
+   intz = intz + g(ii,pp,qq(3)) * f(ii,ga%nz,gb%nz,-ga%x0(3),-gb%x0(3))
  enddo
 
- !
- ! y summation
- sumy = 0.0_dp
- do ip = 1, gos(ga%ny,gb%ny)%np
-   sumy = sumy + gos(ga%ny,gb%ny)%mu(ip)                      &
-                  * fy**gos(ga%ny,gb%ny)%alpha(ip)            &
-                  * gy**gos(ga%ny,gb%ny)%beta(ip)             &
-                  / (2.0_dp * aa)**gos(ga%ny,gb%ny)%gamma(ip) &
-                  / (2.0_dp * bb)**gos(ga%ny,gb%ny)%delta(ip) &
-                  * (2.0_dp * ab)**gos(ga%ny,gb%ny)%epsilon(ip)
+ gos_ab = factor * intx * inty * intz * ga%norm_factor * gb%norm_factor
+
+contains
+
+function g(ii,p,q)
+ integer,intent(in) :: ii
+ real(dp),intent(in) :: p
+ complex(dp),intent(in) :: q
+ complex(dp) :: g
+!=====
+ integer :: ik
+!=====
+
+ select case(ii)
+ case(0)
+   g = 1.0_dp
+ case(1)
+   g = q / p
+ case(2)
+   g =   1.0_dp / ( 2.0_dp * p ) + ( q / p )**2
+ case(3)
+   g = ( 3.0_dp * q ) / (2.0_dp * p**2 ) + ( q / p )**3
+ case(4)
+   g = ( 3.0_dp     ) / (4.0_dp * p**2 ) + ( 3.0_dp * q**2 ) / ( p**3 ) + ( q / p )**4
+ case(5)
+   g = ( 15.0_dp * q) / (4.0_dp * p**3 ) + ( 5.0_dp * q**3 ) / ( p**4 ) + ( q / p )**5
+ case(6)
+   g = ( 15.0_dp    ) / (8.0_dp * p**3 ) + ( 45.0_dp * q**2 ) / ( 4.0_dp * p**4 ) &
+             + ( 15.0_dp * q**4 ) / ( 2.0_dp * p**5 ) + ( q / p )**6
+ case default
+   ! If not precalculated, then do it for real
+   ! Remember Gamma(n+1) = n!
+   g = (0.0_dp,0.0_dp)
+   do ik=0,ii/2
+     g = g + ( 0.25_dp * p )**ik * q**( ii -2 * ik )  / ( Gamma(REAL(ii+1-2*ik,dp)) * Gamma(REAL(ik+1,dp)) )
+   enddo
+   g = g * Gamma(REAL(ii+1,dp)) / p**ii
+ end select
+
+end function g
+
+function f(j,l,m,a,b)
+ integer,intent(in) :: j,l,m
+ real(dp),intent(in) :: a,b
+ real(dp) :: f
+!=====
+ integer :: i
+!=====
+
+ f = 0.0_dp
+ do i=MAX(0,j-m),MIN(j,l)
+   f = f + cnk(l,i) * cnk(m,j-i) * a**(l-i) * b**(m+i-j)
  enddo
 
- !
- ! z summation
- sumz = 0.0_dp
- do ip = 1, gos(ga%nz,gb%nz)%np
-   sumz = sumz + gos(ga%nz,gb%nz)%mu(ip)                      &
-                  * fz**gos(ga%nz,gb%nz)%alpha(ip)            &
-                  * gz**gos(ga%nz,gb%nz)%beta(ip)             &
-                  / (2.0_dp * aa)**gos(ga%nz,gb%nz)%gamma(ip) &
-                  / (2.0_dp * bb)**gos(ga%nz,gb%nz)%delta(ip) &
-                  * (2.0_dp * ab)**gos(ga%nz,gb%nz)%epsilon(ip)
- enddo
-
- factor = ( pi / ( aa + bb ) )**1.5_dp * EXP( -ab * SUM( (ga%x0(:) - gb%x0(:))**2 ) )  &
-           * EXP( ( im * DOT_PRODUCT( qvec(:) , aa * ga%x0(:) + bb * gb%x0(:) )        &
-                     - 0.25_dp * SUM(qvec(:)**2) ) / ( aa + bb ) )
-
- gos_ab = factor * sumx * sumy * sumz * ga%norm_factor * gb%norm_factor
-
+end function f
 
 end subroutine evaluate_gos
 
