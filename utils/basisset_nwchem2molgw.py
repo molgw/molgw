@@ -4,7 +4,7 @@
 
 import os, sys, numpy
 
-list_am       = 'S P D F G H I K L   SP'
+list_am       = 'S P D F G H I K L M   SP'
 list_elements = [ 'H',                                                                                                 'He', \
                  'Li', 'Be',                                                              'B',  'C',  'N',  'O',  'F', 'Ne', \
                  'Na', 'Mg',                                                             'Al', 'Si',  'P',  'S', 'Cl', 'Ar', \
@@ -160,7 +160,7 @@ for index_basis in range(len(angmom)):
 newfiles = 0 
 for index_basis,basis in enumerate(basis_set):
 
-  outfilename = '../basis/' + basis + '_' + filename.partition('.')[0].partition('/')[2]
+  outfilename = '../basis/' + basis + '_' + filename.split('.')[0]
   # If file already exists, then skip writing
   if os.path.exists(outfilename):
     print("{:36s}".format(outfilename) + ' skipped since it already exits')
