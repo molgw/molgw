@@ -408,8 +408,10 @@ program molgw
 
  ! This overrides the value of is_converged
  if( assume_scf_converged_ ) is_converged = .TRUE.
+ if( .NOT. is_converged ) then
  call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. &
                      Use keyword assume_scf_converged to override this security check')
+ endif
 
  !
  !
