@@ -242,9 +242,9 @@ end subroutine dump_out_matrix
 
 
 !=========================================================================
-subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
+subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy,cal_dft,cal_tddft,file_mulliken,itau,time_cur)
  implicit none
- integer,intent(in)         :: nstate
+ integer,intent(in)         :: nstate,itau
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
@@ -253,7 +253,9 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  integer                    :: ibf,li,ibf1,ibf2,ishell
  integer                    :: natom1,natom2,istate,ispin
  logical                    :: file_exists
+ logical                    :: cal_tddft,cal_dft
  integer                    :: pdosfile
+ integer,intent(in)         :: file_mulliken
  real(dp)                   :: proj_state_i(0:basis%ammax),proj_charge
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
@@ -265,18 +267,20 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  character(len=2)           :: char2
  real(dp),allocatable       :: proj_element(:,:)
  integer,allocatable        :: element_list(:)
- real(dp)                   :: weight
+ real(dp)                   :: weight,time_cur
  integer,parameter          :: lmax = 2
 !=====
 
  if( .NOT. is_iomaster ) return
+ 
+ if( cal_dft ) then
+   write(stdout,*)
+   write(stdout,*) 'Projecting wavefunctions on selected atoms'
+ end if
 
-
- write(stdout,*)
- write(stdout,*) 'Projecting wavefunctions on selected atoms'
  inquire(file='manual_pdos',exist=file_exists)
  if(file_exists) then
-   write(stdout,*) 'Opening file:','manual_pdos'
+   if( cal_dft ) write(stdout,*) 'Opening file:','manual_pdos'
    open(newunit=pdosfile,file='manual_pdos',status='old')
    read(pdosfile,*) natom1,natom2
    close(pdosfile)
@@ -315,8 +319,10 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
    endif
  enddo
 
- write(stdout,'(1x,a)') '==========================================='
- write(stdout,'(1x,a)') 'spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '
+ if( cal_dft ) then
+   write(stdout,'(1x,a)') '==========================================='
+   write(stdout,'(1x,a)') 'spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '
+ end if
 
  proj_charge = 0.0_dp
 
@@ -352,12 +358,24 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
        enddo
      endif
 
-     write(stdout,'(i3,1x,i5,1x,20(f16.6,4x))') ispin,istate,energy(istate,ispin) * Ha_eV,&
+     if( cal_dft ) write(stdout,'(i3,1x,i5,1x,20(f16.6,4x))') ispin,istate,energy(istate,ispin) * Ha_eV,&
           SUM(proj_state_i(:)),proj_state_i(:)
    enddo
  enddo
- write(stdout,'(1x,a)') '==========================================='
- write(stdout,'(1x,a,f12.6)') 'Total Mulliken charge: ',proj_charge
+
+ if( cal_dft ) then
+   write(stdout,'(1x,a)') '==========================================='
+   write(stdout,'(1x,a,f12.6)') 'Total Mulliken charge: ',proj_charge
+ end if
+
+ if( cal_tddft ) then
+   write(file_mulliken,*)
+   write(file_mulliken,'(/,1x,a)')    '==================================================================================================='
+   write(file_mulliken,'(1x,a,i8,a)') '===================== RT-TDDFT values for the iteration  ',itau,' ================================='
+   write(file_mulliken,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
+   write(file_mulliken,'(1x,a)') '==========================================='
+   write(file_mulliken,'(1x,a,f12.6)') 'Total Mulliken charge: ',proj_charge
+ endif
 
 
 end subroutine mulliken_pdos

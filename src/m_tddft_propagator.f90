@@ -84,6 +84,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  integer                    :: iwrite_step
  integer                    :: file_time_data,file_excit_field
  integer                    :: file_dipole_time
+ integer                    :: file_mulliken, checkfile
  real(dp)                   :: time_cur,time_one_iter
  complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
  logical                    :: is_identity_ ! keep this varibale
@@ -217,7 +218,6 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  ntau = NINT( (time_sim-time_min) / time_step )
  nwrite_step = NINT( (time_sim - time_min) / write_step )
 
-
  if(excit_type%form==EXCIT_LIGHT) then
    call clean_allocate('Dipole_basis for TDDFT',dipole_ao,basis%nbf,basis%nbf,3)
    call calculate_dipole_ao(basis,dipole_ao)
@@ -257,7 +257,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  !
  ! Opening files and writing headers in files
- call initialize_files(file_time_data,file_dipole_time,file_excit_field)
+ call initialize_files(file_time_data,file_dipole_time,file_excit_field,file_mulliken)
 
  !
  ! Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
@@ -285,6 +285,9 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 ! if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
+
+ if( print_mulliken_tddft_ ) call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energies_start,print_pdos_,&
+                                                print_mulliken_tddft_,file_mulliken,0,time_min)
 
  call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field,0)
 
@@ -335,8 +338,10 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    !end if
 
    !
-   ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat.
-   ! 3) and 4) in case of light excitation
+   ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
+   ! 5) Mulliken_Charge file.
+   ! 3) and 4) in case of light excitation. 5) in case of Mulliken analysis. 
+
    if( ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7 ) then
 
      if(excit_type%form==EXCIT_LIGHT) then
@@ -347,7 +352,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
      en_tddft%total = en_tddft%nucleus + en_tddft%kinetic + en_tddft%nuc_nuc + en_tddft%hartree + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
 
      call print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field,itau)
-
+     
      if( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
      if( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur,nr_line_rho,point_a,point_b,rho_start)
      if( print_cube_rho_tddft_  )     call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
@@ -359,6 +364,12 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
      iwrite_step = iwrite_step + 1
 
+   end if
+   
+   if( ABS(time_cur / (mulliken_step)- NINT(time_cur / (mulliken_step))) < 1.0e-7 ) then
+     if( print_mulliken_tddft_ ) then
+       call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energies_start,print_pdos_,print_mulliken_tddft_,file_mulliken,iwrite_step-1,time_cur)
+     end if
    end if
 
    !
@@ -391,6 +402,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
      close(file_dipole_time)
      close(file_excit_field)
    end if
+   if( print_mulliken_tddft_ ) close(file_mulliken)
  end if
 
  call clean_deallocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx)
@@ -857,9 +869,9 @@ end subroutine print_tddft_values
 
 
 !=========================================================================
-subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field)
+subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,file_mulliken)
  implicit none
- integer,intent(inout)    :: file_time_data,file_excit_field,file_dipole_time
+ integer,intent(inout)    :: file_time_data,file_excit_field,file_dipole_time,file_mulliken
 !=====
 
  if( .NOT. is_iomaster ) return
@@ -873,6 +885,11 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field)
 
    write(file_excit_field,"(A)") "# time(au)                      E_field_excit_dir(au)"
 
+ end if
+
+ if( print_mulliken_tddft_ ) then
+   open(newunit=file_mulliken, file="mulliken_charge.dat")
+   write(file_mulliken,*) "This is the Mulliken charge file"
  end if
 
 !---------------------------------

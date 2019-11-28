@@ -545,6 +545,14 @@ print_tddft_matrices:
   default: 'no'
   comment: Prints some matrices of the real-time dynamics into the file check_matrix.dat.
 
+print_mulliken_tddft:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints a Mulliken_Charge file that contains real-time mulliken projections.
+
 print_tddft_restart:
   family: io_rt_tddft
   datatype: yes/no
@@ -570,6 +578,13 @@ write_step:
   default: '1'
   comment: Determines the time step for data recording in the real-time dynamics
 
+mulliken_step:
+  family: io_rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: '1'
+  comment: Determines the time step for Mulliken analysis and writing to file
 
 #============================================================================
 #       Correlation and excited states post-treatment input variables
