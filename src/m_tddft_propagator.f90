@@ -286,8 +286,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
- if( print_mulliken_tddft_ ) call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energies_start,print_pdos_,&
-                                                print_mulliken_tddft_,file_mulliken,0,time_min)
+ if( print_mulliken_tddft_ ) call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,0,time_min)
 
  call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field,0)
 
@@ -368,7 +367,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    
    if( ABS(time_cur / (mulliken_step)- NINT(time_cur / (mulliken_step))) < 1.0e-7 ) then
      if( print_mulliken_tddft_ ) then
-       call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energies_start,print_pdos_,print_mulliken_tddft_,file_mulliken,iwrite_step-1,time_cur)
+       call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
      end if
    end if
 

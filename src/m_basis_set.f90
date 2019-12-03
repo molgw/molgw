@@ -61,6 +61,8 @@ module m_basis_set
                                                        ! the same exponents,
                                                        ! the same mixing coefficients
                                                        ! and the same angular momentum
+   integer                          :: nbf_target      ! Number of target basis functions
+   integer                          :: nshell_target   ! Number of target shells
    character(len=4)                 :: gaussian_type   ! CART or PURE
    type(basis_function),allocatable :: bfc(:)          ! Cartesian basis function
    type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
@@ -135,6 +137,12 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_read)
      basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_read)
      basis%nshell   = basis%nshell   + 1
+
+     if( iatom <= natom_basis-nghost ) then
+        basis%nbf_target     = basis%nbf
+        basis%nshell_target  = basis%nshell
+     endif
+
      do ig=1,ng
        read(basisfile,*)
      enddo
@@ -190,6 +198,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      basis%shell(ishell)%iend        = jbf + number_basis_function_am(gaussian_type,am_read)
      basis%shell(ishell)%istart_cart = jbf_cart + 1
      basis%shell(ishell)%iend_cart   = jbf_cart + number_basis_function_am('CART',am_read)
+     
      ! shell%coeff(:) is setup just after the basis functions
 
 
@@ -273,6 +282,8 @@ subroutine echo_basis_summary(basis)
    write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
  endif
  write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
+ write(stdout,'(/,a50,i8)') 'Total number of target basis functions:',basis%nbf_target
+ write(stdout,'(a50,i8)') 'Number of target shells:',basis%nshell_target
 
  write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
  write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
@@ -652,6 +663,8 @@ function compare_basis_set(basis1,basis2) result(same_basis_set)
  if( basis1%nbf           /= basis2%nbf           )  same_basis_set = .FALSE.
  if( basis1%nbf_cart      /= basis2%nbf_cart      )  same_basis_set = .FALSE.
  if( basis1%nshell        /= basis2%nshell        )  same_basis_set = .FALSE.
+ if( basis1%nbf_target    /= basis2%nbf_target     )  same_basis_set = .FALSE.
+ if( basis1%nshell_target /= basis2%nshell_target  )  same_basis_set = .FALSE.
  if( basis1%gaussian_type /= basis2%gaussian_type )  same_basis_set = .FALSE.
 
  ! If the basis sets already differs, then exit immediately
@@ -714,6 +727,8 @@ subroutine write_basis_set(unitfile,basis)
  write(unitfile)  basis%nbf
  write(unitfile)  basis%nbf_cart
  write(unitfile)  basis%nshell
+ write(unitfile)  basis%nbf_target
+ write(unitfile)  basis%nshell_target
  write(unitfile)  basis%gaussian_type
  do ibf=1,basis%nbf_cart
    call write_basis_function(unitfile,basis%bfc(ibf))
@@ -740,6 +755,8 @@ subroutine read_basis_set(unitfile,basis)
  read(unitfile)  basis%nbf
  read(unitfile)  basis%nbf_cart
  read(unitfile)  basis%nshell
+ read(unitfile)  basis%nbf_target
+ read(unitfile)  basis%nshell_target
  read(unitfile)  basis%gaussian_type
  allocate(basis%bfc(basis%nbf_cart))
  do ibf=1,basis%nbf_cart

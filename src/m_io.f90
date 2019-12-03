@@ -240,11 +240,10 @@ subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
 
 end subroutine dump_out_matrix
 
-
 !=========================================================================
-subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy,cal_dft,cal_tddft,file_mulliken,itau,time_cur)
+subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  implicit none
- integer,intent(in)         :: nstate,itau
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
@@ -253,34 +252,30 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy,cal_df
  integer                    :: ibf,li,ibf1,ibf2,ishell
  integer                    :: natom1,natom2,istate,ispin
  logical                    :: file_exists
- logical                    :: cal_tddft,cal_dft
  integer                    :: pdosfile
- integer,intent(in)         :: file_mulliken
  real(dp)                   :: proj_state_i(0:basis%ammax),proj_charge
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
  real(dp)                   :: proj_atom(natom_basis)
  integer                    :: ielement,iemax,iatom_basis
- integer                    :: atom2element(natom_basis)
+ integer                    :: atom2element(natom_basis-nghost)
  character(len=4)           :: char4
  character(len=2)           :: char2
  real(dp),allocatable       :: proj_element(:,:)
  integer,allocatable        :: element_list(:)
- real(dp)                   :: weight,time_cur
+ real(dp)                   :: weight
  integer,parameter          :: lmax = 2
 !=====
 
  if( .NOT. is_iomaster ) return
  
- if( cal_dft ) then
-   write(stdout,*)
-   write(stdout,*) 'Projecting wavefunctions on selected atoms'
- end if
-
+ write(stdout,*)
+ write(stdout,*) 'Projecting wavefunctions on selected atoms'
+ 
  inquire(file='manual_pdos',exist=file_exists)
  if(file_exists) then
-   if( cal_dft ) write(stdout,*) 'Opening file:','manual_pdos'
+   write(stdout,*) 'Opening file:','manual_pdos'
    open(newunit=pdosfile,file='manual_pdos',status='old')
    read(pdosfile,*) natom1,natom2
    close(pdosfile)
@@ -303,26 +298,24 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy,cal_df
  ! Find the unique elements in the system
  iemax = 0
  do ielement=1,nelement_max
-   if( ANY(zbasis(:) == ielement) ) then
+   if( ANY(zbasis(1:natom_basis-nghost) == ielement) ) then
      iemax = iemax + 1
    endif
-   do iatom_basis=1,natom_basis
+   do iatom_basis=1,natom_basis-nghost
      if( zbasis(iatom_basis) == ielement ) atom2element(iatom_basis) = iemax
    enddo
  enddo
  allocate(proj_element(0:lmax+1,iemax),element_list(iemax))
  iemax = 0
  do ielement=1,nelement_max
-   if( ANY(zbasis(:) == ielement) ) then
+   if( ANY(zbasis(1:natom_basis-nghost) == ielement) ) then
      iemax = iemax + 1
      element_list(iemax) = ielement
    endif
  enddo
 
- if( cal_dft ) then
-   write(stdout,'(1x,a)') '==========================================='
-   write(stdout,'(1x,a)') 'spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '
- end if
+ write(stdout,'(1x,a)') '==========================================='
+ write(stdout,'(1x,a)') 'spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '
 
  proj_charge = 0.0_dp
 
@@ -335,9 +328,9 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy,cal_df
      proj_element(:,:) = 0.0_dp
      write(char4,'(i4)') istate
 
-     cs_vector_i(:) = MATMUL(  s_matrix(:,:) , c_matrix(:,istate,ispin) )
+     cs_vector_i(:) = MATMUL( s_matrix(:,:) , c_matrix(:,istate,ispin) )
 
-     do ibf=1,basis%nbf
+     do ibf=1,basis%nbf_target
        if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
@@ -346,6 +339,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy,cal_df
        proj_element(MIN(li_ibf(ibf),lmax+1),atom2element(iatom_ibf(ibf))) = proj_element(MIN(li_ibf(ibf),lmax+1),atom2element(iatom_ibf(ibf))) + weight
      enddo
      proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
+
      if( print_yaml_) then
        write(unit_yaml,'(8x,a4,a)') ADJUSTL(char4),':'
        do ielement=1,iemax
@@ -358,27 +352,100 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy,cal_df
        enddo
      endif
 
-     if( cal_dft ) write(stdout,'(i3,1x,i5,1x,20(f16.6,4x))') ispin,istate,energy(istate,ispin) * Ha_eV,&
+     write(stdout,'(i3,1x,i5,1x,20(f16.6,4x))') ispin,istate,energy(istate,ispin) * Ha_eV,&
           SUM(proj_state_i(:)),proj_state_i(:)
+
    enddo
  enddo
 
- if( cal_dft ) then
-   write(stdout,'(1x,a)') '==========================================='
-   write(stdout,'(1x,a,f12.6)') 'Total Mulliken charge: ',proj_charge
- end if
-
- if( cal_tddft ) then
-   write(file_mulliken,*)
-   write(file_mulliken,'(/,1x,a)')    '==================================================================================================='
-   write(file_mulliken,'(1x,a,i8,a)') '===================== RT-TDDFT values for the iteration  ',itau,' ================================='
-   write(file_mulliken,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
-   write(file_mulliken,'(1x,a)') '==========================================='
-   write(file_mulliken,'(1x,a,f12.6)') 'Total Mulliken charge: ',proj_charge
- endif
+ write(stdout,'(1x,a)') '==========================================='
+ write(stdout,'(1x,a,f12.6)') 'Total Mulliken charge: ',proj_charge
 
 
 end subroutine mulliken_pdos
+
+
+!=========================================================================
+subroutine mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,itau,time_cur)
+ implicit none
+ integer,intent(in)         :: nstate,itau
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+!=====
+ integer                    :: ibf,li,ibf1,ibf2,ishell
+ integer                    :: natom1,natom2,istate,ispin
+ logical                    :: file_exists
+ integer                    :: pdosfile
+ integer,intent(in)         :: file_mulliken
+ complex(dp)                :: proj_state_i(0:basis%ammax),proj_charge
+ complex(dp)                :: cs_vector_i(basis%nbf)
+ integer                    :: iatom_ibf(basis%nbf)
+ integer                    :: li_ibf(basis%nbf)
+ real(dp)                   :: proj_atom(natom_basis)
+ integer                    :: iatom_basis, nocc
+ character(len=4)           :: char4
+ character(len=2)           :: char2
+ real(dp)                   :: time_cur
+ integer,parameter          :: lmax = 2
+!=====
+
+ if( .NOT. is_iomaster ) return
+ 
+ inquire(file='manual_pdos',exist=file_exists)
+ if(file_exists) then
+   open(newunit=pdosfile,file='manual_pdos',status='old')
+   read(pdosfile,*) natom1,natom2
+   close(pdosfile)
+ else
+   natom1=1
+   natom2=1
+ endif
+
+ do ishell=1,basis%nshell
+   ibf1    = basis%shell(ishell)%istart
+   ibf2    = basis%shell(ishell)%iend
+
+   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%iatom
+   li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
+ enddo
+
+ nocc        = get_number_occupied_states(occupation)
+ proj_charge = dcmplx( 0.0, 0.0 )
+
+ do ispin=1,nspin
+
+!! Only loop over occupied states 
+   do istate=1,nocc  
+     proj_state_i(:) = dcmplx( 0.0, 0.0 )
+     write(char4,'(i4)') istate
+
+     cs_vector_i(:) = MATMUL( s_matrix(:,:) , DCONJG(c_matrix_cmplx(:,istate,ispin)) )
+
+    write(file_mulliken,*) '============== ', istate, ' ==============='
+    do ibf=1,basis%nbf_target
+       if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
+         li = li_ibf(ibf)
+         proj_state_i(li) = proj_state_i(li) + c_matrix_cmplx(ibf,istate,ispin) * cs_vector_i(ibf)
+!! Check if values are meaningful
+!         write(file_mulliken,*) c_matrix_cmplx(ibf,istate,ispin), cs_vector_i(ibf)
+       endif
+     enddo
+     proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
+
+   enddo
+ enddo
+
+ write(file_mulliken,*)
+ write(file_mulliken,'(/,1x,a)')    '==================================================================================================='
+ write(file_mulliken,'(1x,a,i8,a)') '===================== RT-TDDFT values for the iteration  ',itau,' ================================='
+ write(file_mulliken,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
+ write(file_mulliken,'(1x,a)') '==========================================='
+ write(file_mulliken,'(1x,a,f12.6)') 'Total Mulliken charge: ', REAL( proj_charge )
+
+
+end subroutine mulliken_pdos_cmplx
 
 
 !=========================================================================
