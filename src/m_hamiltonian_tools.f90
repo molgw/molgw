@@ -18,7 +18,6 @@ module m_hamiltonian_tools
  use m_linear_algebra
  use m_inputparam
 
-
  interface setup_density_matrix
    module procedure setup_density_matrix_real
    module procedure setup_density_matrix_cmplx
@@ -819,37 +818,42 @@ end subroutine level_shifting_down
 
 
 !=========================================================================
-subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix)
+subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt)
  implicit none
 
- real(dp),intent(in)                :: TOL_OVERLAP
- real(dp),intent(in)                :: s_matrix(:,:)
- integer,intent(out)                :: nstate
- real(dp),allocatable,intent(inout) :: x_matrix(:,:)
+ real(dp),intent(in)                          :: TOL_OVERLAP
+ real(dp),intent(in)                          :: s_matrix(:,:)
+ integer,intent(out)                          :: nstate
+ real(dp),allocatable,intent(inout)           :: x_matrix(:,:)
+ real(dp),allocatable,intent(inout),optional  :: s_matrix_sqrt(:,:)
 !=====
- integer  :: nbf
+ integer  :: nbf, checkfile
  integer  :: istate,jbf
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
+ real(dp),allocatable :: y_matrix(:,:)
 !=====
 
- write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}'
+ write(stdout,'(/,a)') ' Calculate the transformation matrix X '
 
  nbf = SIZE(s_matrix,DIM=1)
 
  allocate(matrix_tmp(nbf,nbf))
  allocate(s_eigval(nbf))
+ allocate(y_matrix(nbf,nbf))
+ y_matrix(:,:) = 0.0_dp 
 
  matrix_tmp(:,:) = s_matrix(:,:)
  ! Diagonalization with or without SCALAPACK
  call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
-
+ 
  !
  ! S**{-1} = X * X**T
  !
  call clean_allocate('Overlap X * X**H = S**-1',x_matrix,nbf,nstate)
+ call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,nbf,nbf)
 
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
@@ -860,11 +864,35 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  do jbf=1,nbf
    if( s_eigval(jbf) > TOL_OVERLAP ) then
      istate = istate + 1
-     x_matrix(:,istate) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
+     x_matrix(:,istate) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )     
+!     if( present(s_matrix_sqrt) ) y_matrix(:,istate) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
    endif
+
+    if( present(s_matrix_sqrt) ) y_matrix(:,jbf) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
+!   if( s_eigval(jbf) >= 0 ) y_matrix(:,jbf) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
+      
  enddo
 
- deallocate(matrix_tmp,s_eigval)
+ !! Calculate S^{1/2} matrix
+ if( present(s_matrix_sqrt) ) then
+
+ s_matrix_sqrt(:,:) = MATMUL( matrix_tmp(:,:), TRANSPOSE( y_matrix(:,:) ) )
+ y_matrix(:,:) = MATMUL( s_matrix_sqrt, s_matrix_sqrt )
+
+! open(newunit=checkfile, file="check_S_sqrt.dat")
+! write(checkfile,'(A)') "=========== S{1/2}^2 ============" 
+! do jbf=1,nbf
+!     write(checkfile,'(1x,i3,100(1x,f12.5))') jbf,y_matrix(jbf,1:nbf) 
+! enddo
+! write(checkfile,'(A)') "============== S ==============="
+! do jbf=1,nbf
+!     write(checkfile,'(1x,i3,100(1x,f12.5))') jbf,s_matrix(jbf,1:nbf) 
+! enddo
+! close(checkfile)
+
+ end if
+
+ deallocate(matrix_tmp,s_eigval,y_matrix)
 
 end subroutine setup_sqrt_overlap
 

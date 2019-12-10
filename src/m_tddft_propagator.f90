@@ -69,6 +69,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  real(dp),allocatable       :: dipole_ao(:,:,:)
  real(dp),allocatable       :: s_matrix(:,:)
  real(dp),allocatable       :: x_matrix(:,:)
+ real(dp),allocatable       :: s_matrix_sqrt(:,:)
  real(dp),allocatable       :: hamiltonian_kinetic(:,:)
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !=====initial values
@@ -84,7 +85,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  integer                    :: iwrite_step
  integer                    :: file_time_data,file_excit_field
  integer                    :: file_dipole_time
- integer                    :: file_mulliken, checkfile
+ integer                    :: file_mulliken, file_lowdin, checkfile
  real(dp)                   :: time_cur,time_one_iter
  complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
  logical                    :: is_identity_ ! keep this varibale
@@ -126,7 +127,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  call setup_overlap(basis,s_matrix)
 
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
- call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
+ call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
  if( nstate /= nstate_tmp ) then
    call die('Error with nstate in the TDDFT propagator')
  end if
@@ -257,7 +258,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  !
  ! Opening files and writing headers in files
- call initialize_files(file_time_data,file_dipole_time,file_excit_field,file_mulliken)
+ call initialize_files(file_time_data,file_dipole_time,file_excit_field,file_mulliken,file_lowdin)
 
  !
  ! Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
@@ -286,7 +287,10 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
- if( print_mulliken_tddft_ ) call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,0,time_min)
+ if( print_mulliken_tddft_ ) then
+   call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,0,time_min)
+   call lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,0,time_min)
+ end if
 
  call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field,0)
 
@@ -368,6 +372,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    if( ABS(time_cur / (mulliken_step)- NINT(time_cur / (mulliken_step))) < 1.0e-7 ) then
      if( print_mulliken_tddft_ ) then
        call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
+       call lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,iwrite_step-1,time_cur)
      end if
    end if
 
@@ -401,7 +406,10 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
      close(file_dipole_time)
      close(file_excit_field)
    end if
-   if( print_mulliken_tddft_ ) close(file_mulliken)
+   if( print_mulliken_tddft_ ) then
+     close(file_mulliken)
+     close(file_lowdin)
+   end if
  end if
 
  call clean_deallocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx)
@@ -419,7 +427,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  if( calc_type%is_dft ) call destroy_dft_grid()
 
  call clean_deallocate('Overlap matrix S for TDDFT',s_matrix)
- call clean_deallocate('Overlap sqrt S^{-1/2}',x_matrix)
+ call clean_deallocate('Transformation matrix X',x_matrix)
+ call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
  call clean_deallocate('Kinetic operator T for TDDFT',hamiltonian_kinetic)
  call clean_deallocate('Nucleus operator V for TDDFT',hamiltonian_nucleus)
 
@@ -868,9 +877,9 @@ end subroutine print_tddft_values
 
 
 !=========================================================================
-subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,file_mulliken)
+subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,file_mulliken,file_lowdin)
  implicit none
- integer,intent(inout)    :: file_time_data,file_excit_field,file_dipole_time,file_mulliken
+ integer,intent(inout)    :: file_time_data,file_excit_field,file_dipole_time,file_mulliken,file_lowdin
 !=====
 
  if( .NOT. is_iomaster ) return
@@ -888,7 +897,12 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
 
  if( print_mulliken_tddft_ ) then
    open(newunit=file_mulliken, file="mulliken_charge.dat")
-   write(file_mulliken,*) "This is the Mulliken charge file"
+   write(file_mulliken,"(A)") "##### This is the Mulliken charge file #####"
+   write(file_mulliken,"(A)") "# Time (a.u.)        Re{q_A}         Im{q_A}"
+
+   open(newunit=file_lowdin, file="lowdin_charge.dat")
+   write(file_lowdin,"(A)") "##### This is the Lodwin charge file #####"
+   write(file_lowdin,"(A)") "# Time (a.u.)        q_A           z_proj"
  end if
 
 !---------------------------------

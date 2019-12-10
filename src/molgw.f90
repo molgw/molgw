@@ -76,6 +76,7 @@ program molgw
  real(dp),allocatable    :: hamiltonian_fock(:,:,:)
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: x_matrix(:,:)
+ real(dp),allocatable    :: s_matrix_sqrt(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
@@ -165,7 +166,7 @@ program molgw
    ! calculation
    !
    ! A crucial parameter is defined here: nstate
-   call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix)
+   call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix,s_matrix_sqrt)
 
    allocate(occupation(nstate,nspin))
    allocate(    energy(nstate,nspin))
@@ -388,6 +389,7 @@ program molgw
          if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
          call clean_deallocate('Overlap matrix S',s_matrix)
          call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
+         call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
          call clean_deallocate('Fock operator F',hamiltonian_fock)
          call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
          call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
@@ -437,7 +439,10 @@ program molgw
  if( print_wfn_ )  call plot_wfn(nstate,basis,c_matrix)
  if( print_wfn_ )  call plot_rho(nstate,basis,occupation,c_matrix)
  if( print_cube_ ) call plot_cube_wfn('GKS',nstate,basis,occupation,c_matrix)
- if( print_pdos_ ) call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
+ if( print_pdos_ ) then 
+   call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
+   call lowdin_pdos(nstate,basis,s_matrix_sqrt,c_matrix,occupation,energy)
+ endif
  if( print_spatial_extension_ ) call spatial_extension(basis,c_matrix)
  if( .FALSE.     ) call plot_rho_list(nstate,basis,occupation,c_matrix)
  if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
@@ -476,6 +481,7 @@ program molgw
  call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
  call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
  call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
+ call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
 
 
 

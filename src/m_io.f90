@@ -330,7 +330,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
 
      cs_vector_i(:) = MATMUL( s_matrix(:,:) , c_matrix(:,istate,ispin) )
 
-     do ibf=1,basis%nbf_target
+     do ibf=1,basis%nbf
        if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
@@ -371,8 +371,9 @@ subroutine mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,f
  integer,intent(in)         :: nstate,itau
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: time_cur
  real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
 !=====
  integer                    :: ibf,li,ibf1,ibf2,ishell
  integer                    :: natom1,natom2,istate,ispin
@@ -387,7 +388,6 @@ subroutine mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,f
  integer                    :: iatom_basis, nocc
  character(len=4)           :: char4
  character(len=2)           :: char2
- real(dp)                   :: time_cur
  integer,parameter          :: lmax = 2
 !=====
 
@@ -407,29 +407,28 @@ subroutine mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,f
    ibf1    = basis%shell(ishell)%istart
    ibf2    = basis%shell(ishell)%iend
 
+   !! Label basis functions with atom index
    iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%iatom
+   !! Label basis functions with angular momentum index
    li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
  enddo
 
  nocc        = get_number_occupied_states(occupation)
- proj_charge = dcmplx( 0.0, 0.0 )
+ proj_charge = ( 0.0_dp, 0.0_dp )
 
  do ispin=1,nspin
 
-!! Only loop over occupied states 
+   !! Only loop over occupied states 
    do istate=1,nocc  
-     proj_state_i(:) = dcmplx( 0.0, 0.0 )
+     proj_state_i(:) = ( 0.0_dp, 0.0_dp )
      write(char4,'(i4)') istate
 
-     cs_vector_i(:) = MATMUL( s_matrix(:,:) , DCONJG(c_matrix_cmplx(:,istate,ispin)) )
+     cs_vector_i(:) = MATMUL( s_matrix(:,:) , CONJG(c_matrix_cmplx(:,istate,ispin)) )
 
-    write(file_mulliken,*) '============== ', istate, ' ==============='
-    do ibf=1,basis%nbf_target
+     do ibf=1,basis%nbf
        if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + c_matrix_cmplx(ibf,istate,ispin) * cs_vector_i(ibf)
-!! Check if values are meaningful
-!         write(file_mulliken,*) c_matrix_cmplx(ibf,istate,ispin), cs_vector_i(ibf)
        endif
      enddo
      proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
@@ -437,15 +436,172 @@ subroutine mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,f
    enddo
  enddo
 
- write(file_mulliken,*)
- write(file_mulliken,'(/,1x,a)')    '==================================================================================================='
- write(file_mulliken,'(1x,a,i8,a)') '===================== RT-TDDFT values for the iteration  ',itau,' ================================='
- write(file_mulliken,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
- write(file_mulliken,'(1x,a)') '==========================================='
- write(file_mulliken,'(1x,a,f12.6)') 'Total Mulliken charge: ', REAL( proj_charge )
+ write(file_mulliken,'(1x,3(2x,es18.8))') time_cur, REAL( proj_charge ), AIMAG(proj_charge)
 
 
 end subroutine mulliken_pdos_cmplx
+
+
+!=========================================================================
+subroutine lowdin_pdos(nstate,basis,s_matrix_sqrt,c_matrix,occupation,energy)
+ implicit none
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: s_matrix_sqrt(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
+!=====
+ integer                    :: ibf,li,ibf1,ibf2,ishell
+ integer                    :: natom1,natom2,istate,ispin
+ logical                    :: file_exists
+ integer                    :: pdosfile
+ real(dp)                   :: proj_state_i(0:basis%ammax),proj_charge
+ real(dp)                   :: cs_vector_i(basis%nbf)
+ integer                    :: iatom_ibf(basis%nbf)
+ integer                    :: li_ibf(basis%nbf)
+ real(dp)                   :: proj_atom(natom_basis)
+ integer                    :: iatom_basis
+ character(len=4)           :: char4
+ character(len=2)           :: char2
+ integer,parameter          :: lmax = 2
+!=====
+
+ if( .NOT. is_iomaster ) return
+ 
+ write(stdout,*)
+ write(stdout,*) 'Projecting wavefunctions on selected atoms'
+ 
+ inquire(file='manual_pdos',exist=file_exists)
+ if(file_exists) then
+   write(stdout,*) 'Opening file:','manual_pdos'
+   open(newunit=pdosfile,file='manual_pdos',status='old')
+   read(pdosfile,*) natom1,natom2
+   close(pdosfile)
+ else
+   natom1=1
+   natom2=1
+ endif
+ write(stdout,'(1x,a,i5,2x,i5)') 'Range of atoms considered: ',natom1,natom2
+
+ do ishell=1,basis%nshell
+   ibf1    = basis%shell(ishell)%istart
+   ibf2    = basis%shell(ishell)%iend
+
+   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%iatom
+   li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
+ enddo
+
+ write(stdout,'(1x,a)') '==========================================='
+ write(stdout,'(1x,a)') 'spin state  energy(eV)  Lowdin proj. total        proj s         proj p      proj d ... '
+
+ proj_charge = 0.0_dp
+
+ do ispin=1,nspin
+
+   do istate=1,nstate
+     proj_state_i(:) = 0.0_dp
+     write(char4,'(i4)') istate
+
+     cs_vector_i(:) = MATMUL( s_matrix_sqrt(:,:) , c_matrix(:,istate,ispin) )
+
+     do ibf=1,basis%nbf
+       if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
+         li = li_ibf(ibf)
+         proj_state_i(li) = proj_state_i(li) + cs_vector_i(ibf)**2
+       endif
+     enddo
+     proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
+
+     write(stdout,'(i3,1x,i5,1x,20(f16.6,4x))') ispin,istate,energy(istate,ispin) * Ha_eV,&
+          SUM(proj_state_i(:)),proj_state_i(:)
+
+   enddo
+ enddo
+
+ write(stdout,'(1x,a)') '==========================================='
+ write(stdout,'(1x,a,f12.6)') 'Total Lowdin charge: ',proj_charge
+
+
+end subroutine lowdin_pdos
+
+
+
+!=========================================================================
+subroutine lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,itau,time_cur)
+ implicit none
+ integer,intent(in)         :: nstate,itau
+ integer,intent(in)         :: file_lowdin
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: s_matrix_sqrt(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: time_cur
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+!=====
+ integer                    :: ibf,li,ibf1,ibf2,ishell,ibf_ibf
+ integer                    :: natom1,natom2,istate,ispin
+ logical                    :: file_exists
+ integer                    :: pdosfile
+ complex(dp)                :: proj_state_i(0:basis%ammax)
+ complex(dp)                :: cs_vector_i(basis%nbf)
+ integer                    :: iatom_ibf(basis%nbf)
+ integer                    :: li_ibf(basis%nbf)
+ real(dp)                   :: proj_charge
+ real(dp)                   :: proj_atom(natom_basis)
+ integer                    :: iatom_basis, nocc
+ character(len=4)           :: char4
+ character(len=2)           :: char2
+ integer,parameter          :: lmax = 2
+!=====
+
+ if( .NOT. is_iomaster ) return
+ 
+ inquire(file='manual_pdos',exist=file_exists)
+ if(file_exists) then
+   open(newunit=pdosfile,file='manual_pdos',status='old')
+   read(pdosfile,*) natom1,natom2
+   close(pdosfile)
+ else
+   natom1=1
+   natom2=1
+ endif
+
+ do ishell=1,basis%nshell
+   ibf1    = basis%shell(ishell)%istart
+   ibf2    = basis%shell(ishell)%iend
+
+   !! Label basis functions with atom index
+   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%iatom
+   !! Label basis functions with angular momentum index
+   li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
+ enddo
+ 
+ nocc        = get_number_occupied_states(occupation)
+ proj_charge = 0.0_dp
+
+ do ispin=1,nspin
+
+   !! Only loop over occupied states 
+   do istate=1,nocc  
+     proj_state_i(:) = ( 0.0_dp, 0.0_dp )
+     write(char4,'(i4)') istate
+
+     cs_vector_i(:) = MATMUL( s_matrix_sqrt(:,:) , CONJG(c_matrix_cmplx(:,istate,ispin)) )
+
+     do ibf=1,basis%nbf
+       if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
+         li = li_ibf(ibf)
+         proj_state_i(li) = proj_state_i(li) + ABS( cs_vector_i(ibf) )**2
+       endif
+     enddo
+     proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
+
+   enddo
+ enddo
+
+ write(file_lowdin,'(1x,3(2x,es18.8))') time_cur, proj_charge, xatom(3,natom)
+
+
+end subroutine lowdin_pdos_cmplx
 
 
 !=========================================================================
