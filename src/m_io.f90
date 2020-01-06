@@ -259,7 +259,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  integer                    :: li_ibf(basis%nbf)
  real(dp)                   :: proj_atom(natom_basis)
  integer                    :: ielement,iemax,iatom_basis
- integer                    :: atom2element(natom_basis-nghost)
+ integer                    :: atom2element(natom_basis)
  character(len=4)           :: char4
  character(len=2)           :: char2
  real(dp),allocatable       :: proj_element(:,:)
@@ -298,17 +298,17 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  ! Find the unique elements in the system
  iemax = 0
  do ielement=1,nelement_max
-   if( ANY(zbasis(1:natom_basis-nghost) == ielement) ) then
+   if( ANY(zbasis(1:natom_basis) == ielement) ) then
      iemax = iemax + 1
    endif
-   do iatom_basis=1,natom_basis-nghost
+   do iatom_basis=1,natom_basis
      if( zbasis(iatom_basis) == ielement ) atom2element(iatom_basis) = iemax
    enddo
  enddo
  allocate(proj_element(0:lmax+1,iemax),element_list(iemax))
  iemax = 0
  do ielement=1,nelement_max
-   if( ANY(zbasis(1:natom_basis-nghost) == ielement) ) then
+   if( ANY(zbasis(1:natom_basis) == ielement) ) then
      iemax = iemax + 1
      element_list(iemax) = ielement
    endif
@@ -537,19 +537,20 @@ subroutine lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupatio
  real(dp),intent(in)        :: occupation(nstate,nspin)
  complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
 !=====
- integer                    :: ibf,li,ibf1,ibf2,ishell,ibf_ibf
- integer                    :: natom1,natom2,istate,ispin
+ integer                    :: ibf,li,ibf1,ibf2,ishell,ibf_ibf,n_column
+ integer                    :: natom1,natom2,istate,ispin,atom_sampled
  logical                    :: file_exists
  integer                    :: pdosfile
  complex(dp)                :: proj_state_i(0:basis%ammax)
  complex(dp)                :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
- real(dp)                   :: proj_charge
+ real(dp)                   :: proj_charge(natom_basis)
  real(dp)                   :: proj_atom(natom_basis)
  integer                    :: iatom_basis, nocc
  character(len=4)           :: char4
  character(len=2)           :: char2
+ character(len=20)          :: myfmt
  integer,parameter          :: lmax = 2
 !=====
 
@@ -576,8 +577,9 @@ subroutine lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupatio
  enddo
  
  nocc        = get_number_occupied_states(occupation)
- proj_charge = 0.0_dp
+ proj_charge(:) = 0.0_dp
 
+ do atom_sampled = natom1,natom2
  do ispin=1,nspin
 
    !! Only loop over occupied states 
@@ -588,18 +590,22 @@ subroutine lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupatio
      cs_vector_i(:) = MATMUL( s_matrix_sqrt(:,:) , CONJG(c_matrix_cmplx(:,istate,ispin)) )
 
      do ibf=1,basis%nbf
-       if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
+       !if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
+       if ( iatom_ibf(ibf) == atom_sampled ) then
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + ABS( cs_vector_i(ibf) )**2
        endif
      enddo
-     proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
-
+     proj_charge(atom_sampled) = proj_charge(atom_sampled) + occupation(istate,ispin) * SUM(proj_state_i(:))
    enddo
+
+ enddo
  enddo
 
- write(file_lowdin,'(1x,3(2x,es18.8))') time_cur, proj_charge, xatom(3,natom)
-
+ n_column = 2 + natom_basis
+ write(myfmt, '("(1x,",I0,"(2x,es18.8))")') n_column
+ !write(file_lowdin,'(1x,3(2x,es18.8))') time_cur, proj_charge, xatom(3,natom)
+ write(file_lowdin,fmt=myfmt) time_cur, xatom(3,natom), proj_charge
 
 end subroutine lowdin_pdos_cmplx
 

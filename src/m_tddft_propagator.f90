@@ -902,7 +902,7 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
 
    open(newunit=file_lowdin, file="lowdin_charge.dat")
    write(file_lowdin,"(A)") "##### This is the Lodwin charge file #####"
-   write(file_lowdin,"(A)") "# Time (a.u.)        q_A           z_proj"
+   write(file_lowdin,"(A)") "# Time (a.u.)        z_proj        q_A"
  end if
 
 !---------------------------------
