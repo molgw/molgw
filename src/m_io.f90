@@ -359,6 +359,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  write(stdout,'(1x,a)') '==========================================='
  write(stdout,'(1x,a,f12.6)') 'Total Mulliken charge: ',proj_charge
 
+ deallocate(proj_element)
 
 end subroutine mulliken_pdos
 
