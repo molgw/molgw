@@ -2,7 +2,7 @@ OPENMP=-fopenmp
 PYTHON=python3
 LIBTOOL=
 
-# Parallel MPI/SCALAPACK compilation with MKL
+# Compilation with MKL include
 FC=gfortran -cpp -ffree-line-length-none  -m64 -I${MKLROOT}/include
 
 CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
