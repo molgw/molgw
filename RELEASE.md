@@ -22,6 +22,8 @@
 - Keywords `scalapack_nprow` and `scalapack_npcol` have been eliminated
 - Keyword `stopping` triggers the linear-response stopping power calculation
 - Value `postscf='real_time'` triggers real-time TDDFT (RT-TDDFT)
+- New default value for `postscf_diago_flavor='D'`
+- Bug fix of the output of the COHSEX energies
 
 ### Changes affecting the compilation
 - LIBXC is now linked through the C interface. Therefore, LIBXC compilation does not need to be consistent with MOLGW compilation.
