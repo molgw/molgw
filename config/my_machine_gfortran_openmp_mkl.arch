@@ -1,0 +1,25 @@
+OPENMP=-fopenmp
+PYTHON=python3
+LIBTOOL=
+
+# Parallel MPI/SCALAPACK compilation with MKL
+FC=gfortran -cpp -ffree-line-length-none  -m64 -I${MKLROOT}/include
+
+CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
+
+CXX=g++
+FCOPTS=  -O3 -march=native -mtune=native 
+CXXOPTS= -O3 -march=native -mtune=native
+
+# MKL without threads
+#LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+# MKL with threads
+LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
+
+SCALAPACK=
+
+LIBXC_ROOT=/opt/libxc-4.3.4/
+
+LIBINT_ROOT=/opt/libint-2.4.2/
+
+FFTW_ROOT=
