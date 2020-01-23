@@ -296,11 +296,17 @@ MP2 Total Energy          ,    -14.5997371900  , 0 , 1.0e-7
 gKS HOMO energy           ,     -8.817876      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.203606      , 0 , 1.0e-4
 
-be_cohsex_nori.in         , self-consistent COHSEX Be atom cc-pVDZ without RI, noparallel
+be_cohsex_ri.in           , perturbative COHSEX Be atom cc-pVDZ with RI
+gKS HOMO energy           ,     -6.512318      , 0 , 1.0e-4
+gKS LUMO energy           ,     -1.162004      , 0 , 1.0e-4
+COHSEX HOMO energy        ,    -10.349276      , 0 , 1.0e-4
+COHSEX LUMO energy        ,      0.829051      , 0 , 1.0e-4
+
+be_sc-cohsex_nori.in         , self-consistent COHSEX Be atom cc-pVDZ without RI, noparallel
 gKS HOMO energy           ,     -9.681301      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.134290      , 0 , 1.0e-4
 
-be_cohsex_ri.in           , self-consistent COHSEX Be atom cc-pVDZ with RI
+be_sc-cohsex_ri.in           , self-consistent COHSEX Be atom cc-pVDZ with RI
 gKS HOMO energy           ,     -9.681476      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.133775      , 0 , 1.0e-4
 

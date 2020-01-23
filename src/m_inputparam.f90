@@ -76,7 +76,6 @@ module m_inputparam
    logical            :: is_bse,is_td
    integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
    integer            :: selfenergy_approx         ! GW, COHSEX, PT2
-   logical            :: selfenergy_static
  end type calculation_type
 
  type excitation_type
@@ -186,7 +185,6 @@ subroutine init_calculation_type(scf,postscf)
  calc_type%is_real_time         = .FALSE.
  calc_type%selfenergy_technique = one_shot
  calc_type%selfenergy_approx    = 0
- calc_type%selfenergy_static    = .FALSE.
  calc_type%postscf_name         = 'None'
  calc_type%is_selfenergy        = .FALSE.
  calc_type%is_core              = .FALSE.
@@ -220,6 +218,7 @@ subroutine init_calculation_type(scf,postscf)
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = COHSEX
+     calc_type%selfenergy_technique = static_selfenergy
    case('G0W0_IMAGINARY','GW_IMAGINARY')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx    = GW_IMAG

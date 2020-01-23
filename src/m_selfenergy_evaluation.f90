@@ -433,7 +433,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      call output_qp_energy(TRIM(selfenergy_tag),energy,exchange_m_vxc_diag,1,se,energy_qp_new)
    case(exact_dyson)
      ! Fake new QP energies in this case
-     ! because it is not obvious to find which are the QP which are not.
+     ! because it is not obvious to find which are the QP and which are not.
      energy_qp_new(:,:) = energy(:,:)
    case default
      allocate(energy_qp_z(nstate,nspin))
