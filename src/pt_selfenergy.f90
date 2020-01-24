@@ -81,11 +81,9 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
      do pstate=nsemin,nsemax ! external loop ( bra )
        qstate=pstate         ! external loop ( ket )
 
-! ymbyun 2019/09/23
-! NOTE: OpenMP 2.0 (2000) supports array reductions for Fortran, while OpenMP 4.5 (2015) supports array reductions for C/C++.
-! NOTE: If pstate is moved into the kstate loop, performance increases slightly but readability decreases significantly.
 !$OMP PARALLEL
-!$OMP DO PRIVATE(jkspin, jstate,fj,ej, kstate,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq, iomega,omega,fact_real,fact_energy) REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox) COLLAPSE(2)
+!$OMP DO PRIVATE(fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,omega,fact_comp,fact_energy) &
+!$OMP REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox) COLLAPSE(2)
        do jkspin=1,nspin
          do jstate=ncore_G+1,nvirtual_G-1  !LOOP of the second Green's function
            fj = occupation(jstate,jkspin)
@@ -180,8 +178,6 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
    emp2 = 0.0_dp
  endif
 
-! ymbyun 2019/09/25
-! NOTE: A performance test is needed.
 !$OMP PARALLEL
 !$OMP WORKSHARE
  se%sigma(:,:,:) = selfenergy_ring(:,:,:) + selfenergy_sox(:,:,:)
@@ -330,10 +326,9 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
      fi = occupation(istate,pqispin)
      ei = energy(istate,pqispin)
 
-! ymbyun 2019/09/23
-! NOTE: OpenMP 2.0 (2000) supports array reductions for Fortran, while OpenMP 4.5 (2015) supports array reductions for C/C++.
 !$OMP PARALLEL
-!$OMP DO PRIVATE(pstate, qstate, jkspin, jstate,fj,ej, kstate,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,ep,eq,fact_real,fact_energy) REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox) COLLAPSE(4)
+!$OMP DO PRIVATE(fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,ep,eq,fact_comp,fact_energy) &
+!$OMP REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox) COLLAPSE(4)
      do pstate=nsemin,nsemax ! external loop ( bra )
        do qstate=nsemin,nsemax   ! external loop ( ket )
 
@@ -353,9 +348,6 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
                if( fact_occ1 < completely_empty .AND. fact_occ2 < completely_empty ) cycle
 
                if( has_auxil_basis ) then
-                 ! ymbyun 2019/10/01
-                 ! NOTE: This part is a bottleneck.
-                 ! NOTE: We should minimize the number of calls to MPI_Allreduce at this part using mpi_nproc_ortho.
                  coul_ipkj = eri_eigen_ri(istate,pstate,pqispin,kstate,jstate,jkspin)
                  coul_iqjk = eri_eigen_ri(istate,qstate,pqispin,jstate,kstate,jkspin)
                  if( pqispin == jkspin ) then
@@ -408,15 +400,6 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
    enddo
  enddo ! pqispin
 
- ! ymbyun 2019/10/06
- ! NOTE: This part is a bottleneck.
- ! NOTE: Currently, no-RI (OpenMP) is faster than RI (MPI).
- ! NOTE: For intra-node MPI communication, Ethernet (MPICH) is faster than InfiniBand (MVAPICH2) and Aries (Cray MPICH).
- ! TODO: Tests for communication time and computation time
- ! TODO: Tests for inter-node MPI communication
- ! TODO: Tests for MV2_SHMEM_ALLREDUCE_MSG and MV2_ALLREDUCE_2LEVEL_MSG in MVAPICH2
- ! TODO: Tests for MPI-3 shared memory
- ! TODO: Tests for OpenMPI
  call xsum_ortho(selfenergy_ring)
  call xsum_ortho(selfenergy_sox)
  call xsum_ortho(emp2_ring)
@@ -434,8 +417,6 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
    emp2 = 0.0_dp
  endif
 
-! ymbyun 2019/09/25
-! NOTE: A performance test is needed.
 !$OMP PARALLEL
 !$OMP WORKSHARE
  selfenergy(:,:,:) = REAL( selfenergy_ring(:,:,:) + selfenergy_sox(:,:,:) ,dp)
