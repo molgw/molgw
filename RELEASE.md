@@ -9,8 +9,8 @@
 - speed-up in the Hartree, Exchange and AO to MO transform
 - calculation of the generalized oscillator strengths (q-dependent) and linear-response stopping power
 - use of LIBXC through the C interface
-- compibility with the latest LIBINT versions restored
-- creation of a YAML output file gathers many information that can be easily processed via python
+- compatibility with the latest LIBINT versions restored
+- creation of a YAML output file that gathers many information that can be easily post-processed via python
 - bug fixes
 
 ### Contributors
