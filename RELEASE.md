@@ -3,7 +3,7 @@
 -----------------------------------------
 
 -----------------------------------------
-## What's new in version 2.C.beta
+## What's new in version 2.C
 ### Overview
 - Real-time TDDFT is made available
 - speed-up in the Hartree, Exchange and AO to MO transform
@@ -34,7 +34,7 @@ The latest version of LIBXC can be used. Preprocessing flag `-DLIBXC4` is no lon
 - Use of modern Fortran2008 syntax, such as c%re to obtain the real part of a complex number. Code imcompatible with older compilers (gfortran > 9.0 necessary)
 
 ### Changes affecting the developers
-- The list of all the input variables is now stored in a YAML file that is processed with the python script ~molgw/utils/input_variables.py
+- The list of all the input variables is now stored in a YAML file ~molgw/src/input_variables.yaml that is processed with the python script ~molgw/utils/input_variables.py
 
 
 -----------------------------------------
