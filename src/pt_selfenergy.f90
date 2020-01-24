@@ -327,11 +327,10 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
      ei = energy(istate,pqispin)
 
 !$OMP PARALLEL
-!$OMP DO PRIVATE(fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,ep,eq,fact_comp,fact_energy) &
-!$OMP REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox) COLLAPSE(4)
+!$OMP DO PRIVATE(fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,ep,eq,fact_comp,fact_energy)   &
+!$OMP REDUCTION(+:emp2_ring,emp2_sox) COLLAPSE(2)
      do pstate=nsemin,nsemax ! external loop ( bra )
        do qstate=nsemin,nsemax   ! external loop ( ket )
-
 
          do jkspin=1,nspin
            do jstate=ncore_G+1,nvirtual_G-1  !LOOP of the second Green's function
@@ -371,7 +370,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
                selfenergy_ring(pstate,qstate,pqispin) = selfenergy_ring(pstate,qstate,pqispin) &
                         + fact_comp * coul_ipkj * coul_iqjk * spin_fact
 
-               if(pstate==qstate .AND. occupation(pstate,pqispin)>completely_empty) then
+               if( pstate == qstate .AND. occupation(pstate,pqispin) > completely_empty ) then
                  emp2_ring = emp2_ring + occupation(pstate,pqispin) &
                                        * fact_energy * coul_ipkj * coul_iqjk * spin_fact
                endif
@@ -381,7 +380,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
                  selfenergy_sox(pstate,qstate,pqispin) = selfenergy_sox(pstate,qstate,pqispin) &
                           - fact_comp * coul_ipkj * coul_ijkq
 
-                 if(pstate==qstate .AND. occupation(pstate,pqispin)>completely_empty) then
+                 if( pstate == qstate .AND. occupation(pstate,pqispin) > completely_empty ) then
                    emp2_sox = emp2_sox - occupation(pstate,pqispin) &
                              * fact_energy * coul_ipkj * coul_ijkq
                  endif
