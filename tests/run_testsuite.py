@@ -249,8 +249,9 @@ if not os.path.isfile('../molgw') :
   sys.exit(1)
 
 if ncores > 1:
-  os.environ["OMP_NUM_THREADS"] = str(ncores)
-  os.environ["MKL_NUM_THREADS"] = str(ncores)
+  os.environ["OMP_NUM_THREADS"]      = str(ncores)
+  os.environ["MKL_NUM_THREADS"]      = str(ncores)
+  os.environ["OPENBLAS_NUM_THREADS"] = str(ncores)
   os.environ["OMP_STACKSIZE"]   = "128M"
 else:
   os.environ["OMP_NUM_THREADS"] = '1'

@@ -78,12 +78,12 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
      fi = occupation(istate,pqispin)
      ei = energy(istate,pqispin)
 
+!$OMP PARALLEL
+!$OMP DO PRIVATE(qstate,fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,omega,fact_comp,fact_energy) &
+!$OMP REDUCTION(+:emp2_ring,emp2_sox)
      do pstate=nsemin,nsemax ! external loop ( bra )
        qstate=pstate         ! external loop ( ket )
 
-!$OMP PARALLEL
-!$OMP DO PRIVATE(fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,omega,fact_comp,fact_energy) &
-!$OMP REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox) COLLAPSE(2)
        do jkspin=1,nspin
          do jstate=ncore_G+1,nvirtual_G-1  !LOOP of the second Green's function
            fj = occupation(jstate,jkspin)
@@ -145,9 +145,9 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
            enddo
          enddo
        enddo
+     enddo
 !$OMP END DO
 !$OMP END PARALLEL
-     enddo
    enddo
  enddo ! pqispin
 
