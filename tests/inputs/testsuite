@@ -404,6 +404,11 @@ Lowest neutral excitation ,      3.389151       , 0 , 1.0e-4
 Sum over oscillator strengths , 12.019322       , 0 , 1.0e-4
 polarizability trace      ,     13.347761       , 0 , 1.0e-4
 
+ch2o_bse_nokernel.in      , BSE wo kernel on formaldehyde , restart
+0001 :                    ,     13.08500930     , 0 , 1.0e-4
+0002 :                    ,     15.00951006     , 0 , 1.0e-4
+0002 :                    ,     0.166246754     , 1 , 1.0e-4
+
 oh_m_gnwn.in              , GnWn (eigenvalue self-consistent) on OH- 1st iteration
 SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
 G0W0 HOMO energy          ,     -1.100134       , 0 , 1.0e-4

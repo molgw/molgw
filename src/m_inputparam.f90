@@ -73,7 +73,7 @@ module m_inputparam
    logical            :: is_mp3
    logical            :: is_selfenergy
    logical            :: is_ci
-   logical            :: is_bse,is_td
+   logical            :: is_bse,no_bse_kernel,is_td
    integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
    integer            :: selfenergy_approx         ! GW, COHSEX, PT2
  end type calculation_type
@@ -181,6 +181,7 @@ subroutine init_calculation_type(scf,postscf)
  calc_type%is_mp3               = .FALSE.
  calc_type%is_ci                = .FALSE.
  calc_type%is_bse               = .FALSE.
+ calc_type%no_bse_kernel        = .FALSE.
  calc_type%is_td                = .FALSE.
  calc_type%is_real_time         = .FALSE.
  calc_type%selfenergy_technique = one_shot
@@ -269,16 +270,19 @@ subroutine init_calculation_type(scf,postscf)
    case('SOX')
      calc_type%selfenergy_approx = SOX
    case('CI')
-     calc_type%is_ci =.TRUE.
+     calc_type%is_ci = .TRUE.
    case('CI_SELFENERGY')
-     calc_type%is_ci =.TRUE.
+     calc_type%is_ci = .TRUE.
      calc_type%selfenergy_approx = CI
    case('BSE')
-     calc_type%is_bse =.TRUE.
+     calc_type%is_bse = .TRUE.
+   case('BSE_RPA','BSE-RPA')
+     calc_type%is_bse        = .TRUE.
+     calc_type%no_bse_kernel = .TRUE.
    case('TD')
-     calc_type%is_td =.TRUE.
+     calc_type%is_td = .TRUE.
    case('REAL_TIME')
-     calc_type%is_real_time =.TRUE.
+     calc_type%is_real_time = .TRUE.
    case default
      call die('Error reading keyword: postscf')
    end select

@@ -9,7 +9,7 @@
 
  frozencore='yes'
 
- postscf='bse'
+ postscf='bse-rpa'
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
