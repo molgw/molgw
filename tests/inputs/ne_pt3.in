@@ -2,8 +2,8 @@
  basis='cc-pVDZ'
 
  scf='hf'
- nscf=30
- tolscf=1.0e-6
+ nscf=60
+ tolscf=1.0e-12
 
  postscf='pt3'
  selfenergy_state_min=5

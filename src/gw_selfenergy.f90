@@ -107,15 +107,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        select case(selfenergy_approx)
 
        case(GW,GnW0,GnWn,ONE_RING)
-         ! ymbyun 2018/07/11
-         ! For now, only G0W0/GnW0/GnWn are parallelized.
-         ! COLLAPSE(2) is bad for bra(:,:) in terms of memory affinity.
-         ! However, it is good for G0W0 with # of threads > |nsemax - nsemin| (e.g. when only HOMO and LUMO energies are needed).
-         
-         ! ymbyun 2019/04/15
-         ! COLLAPSE(2) is removed because a new conditional statement (i.e. if) came in between two loops.
-         ! OMP PARALLEL DO is moved to an inner loop for safety (i.e. energy_gw may need reduction).
-
          !
          ! calculate only the diagonal !
          do pstate=nsemin,nsemax
@@ -136,7 +127,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
            endif
          enddo
        case(COHSEX)
-
+!$OMP PARALLEL
+!$OMP DO PRIVATE(pstate)
          do pstate=nsemin,nsemax
            !
            ! SEX
@@ -153,7 +145,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
                             / wpol%pole(ipole)
 
          enddo
-
+!$OMP END DO
+!$OMP END PARALLEL
        case default
          call die('BUG')
        end select
@@ -698,11 +691,15 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
      !
      ! Prepare the bra and ket with the knowledge of index istate and pstate
      if( .NOT. has_auxil_basis) then
+!$OMP PARALLEL
+!$OMP DO PRIVATE(ipstate)
        ! Here just grab the precalculated value
        do pstate=nsemin,nsemax
          ipstate = index_prodstate(istate,pstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
          bra(:,pstate) = wpol%residue_left(ipstate,:)
        enddo
+!$OMP END DO
+!$OMP END PARALLEL
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
@@ -725,7 +722,8 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
        select case(calc_type%selfenergy_approx)
 
        case(GW)
-
+!$OMP PARALLEL
+!$OMP DO COLLAPSE(2)
          do qstate=nsemin,nsemax
            do pstate=nsemin,nsemax
 
@@ -736,8 +734,11 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
            enddo
          enddo
-
+!$OMP END DO
+!$OMP END PARALLEL
        case(COHSEX)
+!$OMP PARALLEL
+!$OMP DO COLLAPSE(2)
          do qstate=nsemin,nsemax
            do pstate=nsemin,nsemax
              !
@@ -755,7 +756,8 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
                               / wpol%pole(ipole)
            enddo
          enddo
-
+!$OMP END DO
+!$OMP END PARALLEL
        case default
          call die('BUG')
        end select

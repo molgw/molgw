@@ -125,7 +125,7 @@ ecp_quality:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: high
+  default: 'high'
   comment: Sets the number of grid points use to evaluate the Effective Core Potential
     integrals in real space. Possible values are 'low', 'medium', 'high', 'very high',
     'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually
@@ -146,7 +146,7 @@ gaussian_type:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: pure
+  default: 'pure'
   comment: Asks for pure or spherical Gaussian type orbitals with 'pure' or for Cartesian
     Gaussian orbital with 'cart'.
 
@@ -394,8 +394,7 @@ print_spatial_extension:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Prints the wavefunction extension calculated as &lt;r<sup>2</sup>&gt; -
-    &lt;r&gt;<sup>2</sup>
+  comment: 'Prints the wavefunction extension calculated as &lt;r<sup>2</sup>&gt; - &lt;r&gt;<sup>2</sup>'
 
 print_w:
   family: io
@@ -403,8 +402,7 @@ print_w:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Dumps the spectral function of the screened Coulomb W. This is necessary
-    for a subsequent BSE run.
+  comment: 'Dumps the spectral function of the screened Coulomb W. This is necessary for a subsequent BSE run.'
 
 print_wfn:
   family: io
@@ -794,7 +792,7 @@ postscf_diago_flavor:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: R
+  default: 'D'
   comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations.
     Available choices are ' ', 'R', 'D', and 'X'.
 
@@ -820,7 +818,7 @@ rcut_mbpt:
   datatype: real
   mandatory: 'no'
   experimental: 'yes'
-  default: '1.0'
+  default: 1.0
   comment: EXPERIMENTAL
 
 scissor:
@@ -896,7 +894,7 @@ tddft_grid_quality:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: high
+  default: 'high'
   comment: Sets the number of grid points use to evaluate the exchange-correlation
     integrals in real space for the TDDFT kernel. Possible values are 'low', 'medium',
     'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh',
@@ -971,8 +969,7 @@ excit_name:
   mandatory: 'no'
   experimental: 'no'
   default: 'NO'
-  comment: Sets the type of excitation of a system in the real-time dynamics.                          'GAU
-    stands for a linearly polarized uniform Gaussian electric field'
+  comment: "Sets the type of excitation of a system in the real-time dynamics.  'GAU' stands for a linearly polarized uniform Gaussian electric field"
 
 excit_omega:
   family: rt_tddft
@@ -1038,7 +1035,7 @@ prop_type:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: MAG2
+  default: 'MAG2'
   comment: Sets the type of propagation algorithm in the real-time dynamics.
           'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.
 
@@ -1150,7 +1147,7 @@ grid_quality:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: high
+  default: 'high'
   comment: Sets the number of grid points use to evaluate the exchange-correlation
     integrals in real space for the DFT potential and energy. Possible values are
     'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l',
@@ -1236,7 +1233,7 @@ partition_scheme:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: ssf
+  default: 'ssf'
   comment: Sets the partition scheme for the xc quadrature. Possible choices are 'becke'
     or 'ssf' (Stratmann-Scuseria-Frisch).
 
@@ -1276,7 +1273,7 @@ length_unit:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: angstrom
+  default: 'angstrom'
   comment: Chooses the units of the atomic coordinates. Can be 'angstrom' or 'bohr'.
     Could be abbreviated in 'A' or 'au'.
 
@@ -1285,7 +1282,7 @@ magnetization:
   datatype: real
   mandatory: 'no'
   experimental: 'no'
-  default: '0.0'
+  default: 0.0
   comment: Sets the number of unpaired electrons. In other words, this is the difference
     between the spin up and spin down occupation. For instance, a spin-doublet calculation
     is obtained with magnetization=1.0. Only meaningful when nspin=2.
@@ -1322,7 +1319,7 @@ temperature:
   datatype: real
   mandatory: 'no'
   experimental: 'no'
-  default: '0.0'
+  default: 0.0
   comment: Sets the electronic temperature in the Fermi-Dirac functions. Helps the
     convergence for some systems. The value is input in Hartree atomic units.
 

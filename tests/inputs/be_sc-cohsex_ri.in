@@ -1,5 +1,5 @@
 &molgw
- scf='pbe0'
+ scf='cohsex'
  tolscf=1.0e-10
 
  basis='cc-pVDZ'
@@ -9,9 +9,5 @@
  alpha_mixing=0.5
  mixing_scheme='simple'
  nscf=100
-
- postscf='cohsex'
- selfenergy_state_range=1
-
 /
 Be 0. 0. 0.

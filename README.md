@@ -40,7 +40,7 @@ MOLGW implements the following schemes:
 
 MOLGW needs Fortran 2003 and C++ compilers.
 The machine dependent variables should be set in file `~molgw/src/my_machine.arch`
-Examples for this file are given in the folder `~molgw/config/`.
+Examples for this file can be found in the folder `~molgw/config/`.
 Then
 `cd ~molgw/src`
 `make`

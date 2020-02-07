@@ -3,33 +3,38 @@
 -----------------------------------------
 
 -----------------------------------------
-## What's new in version 2.C.beta
+## What's new in version 2.C
 ### Overview
 - Real-time TDDFT is made available
 - speed-up in the Hartree, Exchange and AO to MO transform
 - calculation of the generalized oscillator strengths (q-dependent) and linear-response stopping power
 - use of LIBXC through the C interface
-- compibility with the latest LIBINT versions restored
-- creation of a YAML output file gathers many information that can be easily processed via python
+- compatibility with the latest LIBINT versions restored
+- creation of a YAML output file that gathers many information that can be easily post-processed via python
 - bug fixes
 
 ### Contributors
 - Fabien Bruneval (CEA SRMP, France)
 - Ivan Maliyov (CEA SRMP, France)
+- Young-Moo Byun (U. Illinois@Chicago, USA)
 
 ### Changes affecting the usage
 - Post-processing is not performed if the SCF cycles are not converged within `tolscf` (save user CPU time when a job went wrong)
 - Keywords `scalapack_nprow` and `scalapack_npcol` have been eliminated
 - Keyword `stopping` triggers the linear-response stopping power calculation
 - Value `postscf='real_time'` triggers real-time TDDFT (RT-TDDFT)
+- New default value for `postscf_diago_flavor='D'`
+- OPENMP parallelisation effort is pursued
+- Bug fix of the output of the COHSEX energies (bug discovered by Arjan Berger)
 
 ### Changes affecting the compilation
 - LIBXC is now linked through the C interface. Therefore, LIBXC compilation does not need to be consistent with MOLGW compilation.
 The latest version of LIBXC can be used. Preprocessing flag `-DLIBXC4` is no longer needed.
 - Preprocessing option `-DHAVE_MKL` allows for the use of MKL extensions and in particular of `DGEMMT`.
+- Use of modern Fortran2008 syntax, such as c%re to obtain the real part of a complex number. Code imcompatible with older compilers (gfortran > 9.0 necessary)
 
 ### Changes affecting the developers
-- The list of all the input variables is now stored in a YAML file that is processed with the python script ~molgw/utils/input_variables.py
+- The list of all the input variables is now stored in a YAML file ~molgw/src/input_variables.yaml that is processed with the python script ~molgw/utils/input_variables.py
 
 
 -----------------------------------------

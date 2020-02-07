@@ -56,7 +56,7 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  real(dp),intent(in) :: zatom_read(natom+nghost),x_read(3,natom+nghost)
  real(dp),intent(in) :: vel_projectile(3)
  logical,intent(in)  :: calculate_forces
- character(len=12),intent(in)   :: excit_name
+ character(len=12),intent(in) :: excit_name
 !=====
  integer  :: iatom,jatom
  real(dp) :: x21(3),x31(3)
@@ -74,10 +74,10 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  allocate(xbasis(3,natom_basis))
 
  allocate(vel(3,natom))
- vel(:,:)=0.0_dp
+ vel(:,:) = 0.0_dp
 
- if(excit_name=="NUCLEUS" .OR. excit_name=="ANTINUCLEUS") then
-   vel(:,natom)=vel_projectile(:)
+ if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" .OR. excit_name == 'ION' ) then
+   vel(:,natom) = vel_projectile(:)
  endif
  ! For relaxation or dynamics only
  if( calculate_forces ) then
@@ -95,7 +95,7 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  ! List of atoms is organized as follows:
  ! 1. physical atoms   :    nucleus | basis
  ! 2. ghost atoms      :      no    | basis
- ! 3. projectile       :    nucleus |   no
+ ! 3. projectile       :    nucleus |   yes if 'ION' / no if 'NUCLEUS' or 'ANTINUCLEUS'
  !
  ! natom       contains the number of sites having a nucleus: number of physical atoms + number of ionic projectiles (0 or 1)
  ! natom_basis contains the number of sites having basis functions:  number of physical atoms + number of ghost atoms
@@ -104,15 +104,22 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
    xatom(:,1:natom) = x_read(:,1:natom)
    zatom(1:natom)   = zatom_read(1:natom)
  else
-   xatom(:,1:natom_basis-nghost) = x_read(:,1:natom_basis-nghost)
-   zatom(1:natom_basis-nghost)   = zatom_read(1:natom_basis-nghost)
-   xatom(:,natom)                = x_read(:,natom_basis+nprojectile)
-   zatom(natom)                  = zatom_read(natom_basis+nprojectile)
+   if( excit_name == 'ION' ) then
+     xatom(:,1:natom-nprojectile) = x_read(:,1:natom-nprojectile)
+     zatom(1:natom-nprojectile)   = zatom_read(1:natom-nprojectile)
+     xatom(:,natom)                = x_read(:,natom_basis)
+     zatom(natom)                  = zatom_read(natom_basis)
+   else
+     xatom(:,1:natom_basis-nghost) = x_read(:,1:natom_basis-nghost)
+     zatom(1:natom_basis-nghost)   = zatom_read(1:natom_basis-nghost)
+     xatom(:,natom)                = x_read(:,natom_basis+nprojectile)
+     zatom(natom)                  = zatom_read(natom_basis+nprojectile)
+   endif
  endif
 
 
- if( excit_name == "ANTINUCLEUS" ) then
-   zatom(natom)=-zatom(natom)
+ if( excit_name == "ANTINUCLEUS" .OR. excit_name == "ANTIION" ) then
+   zatom(natom) = -zatom(natom)
  endif
 
  ! Ghost atoms do not have a positive nucleus

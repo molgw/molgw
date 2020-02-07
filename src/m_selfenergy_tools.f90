@@ -229,62 +229,74 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
 !=====
 
  nstate = SIZE(exchange_m_vxc,DIM=1)
- write(stdout,'(/,1x,a)') 'Graphical solution to the QP equation'
- write(stdout,'(1x,a,sp,f8.3,a,f8.3)') 'Scanning range around the input energy (eV): ', &
-                              REAL(se%omega(-se%nomega),dp)*Ha_eV,'  --',REAL(se%omega(se%nomega),dp)*Ha_eV
- write(stdout,'(1x,a,i6)')             'Number of discretization points:             ',SIZE(se%omega(:))
 
- ! First, a dummy initialization
- energy_qp_g(:,:) = 0.0_dp
- z_weight(:,:,:)  = 0.0_dp
- energy_fixed_point(:,:,:) = 0.0_dp
 
- ! Then overwrite the interesting energy with the calculated GW one
- do pstate=nsemin,nsemax
+ if( se%nomega > 0 ) then
 
-   if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
+   write(stdout,'(/,1x,a)') 'Graphical solution to the QP equation'
+   write(stdout,'(1x,a,sp,f8.3,a,f8.3)') 'Scanning range around the input energy (eV): ', &
+                                REAL(se%omega(-se%nomega),dp)*Ha_eV,'  --',REAL(se%omega(se%nomega),dp)*Ha_eV
+   write(stdout,'(1x,a,i6)')             'Number of discretization points:             ',SIZE(se%omega(:))
 
-   do pspin=1,nspin
-     !
-     ! QP equation:
-     ! E_GW = E0 + \omega =  E_gKS + \Sigma_c(E0+\omega) + \Sigma_x - v_xc
-     !
-     equation_lhs(:) = REAL(se%omega(:),dp)+se%energy0(pstate,pspin)
-     equation_rhs(:) = REAL(se%sigma(:,pstate,pspin),dp) + exchange_m_vxc(pstate,pspin) + energy0(pstate,pspin)
-     call find_fixed_point(equation_lhs,equation_rhs,energy_fixed_point(:,pstate,pspin),z_weight(:,pstate,pspin))
+   ! First, a dummy initialization
+   energy_qp_g(:,:) = 0.0_dp
+   z_weight(:,:,:)  = 0.0_dp
+   energy_fixed_point(:,:,:) = 0.0_dp
 
-     ! If no reasonable QP energy found, then set E_qp to E_gKS for safety
-     if( z_weight(1,pstate,pspin) < 1.0e-6_dp ) then
-       energy_qp_g(pstate,pspin) = energy0(pstate,pspin)
-     else
-       energy_qp_g(pstate,pspin) = energy_fixed_point(1,pstate,pspin)
-     endif
+   ! Then overwrite the interesting energy with the calculated GW one
+   do pstate=nsemin,nsemax
+
+     if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
+
+     do pspin=1,nspin
+       !
+       ! QP equation:
+       ! E_GW = E0 + \omega =  E_gKS + \Sigma_c(E0+\omega) + \Sigma_x - v_xc
+       !
+       equation_lhs(:) = REAL(se%omega(:),dp)+se%energy0(pstate,pspin)
+       equation_rhs(:) = REAL(se%sigma(:,pstate,pspin),dp) + exchange_m_vxc(pstate,pspin) + energy0(pstate,pspin)
+       call find_fixed_point(equation_lhs,equation_rhs,energy_fixed_point(:,pstate,pspin),z_weight(:,pstate,pspin))
+
+       ! If no reasonable QP energy found, then set E_qp to E_gKS for safety
+       if( z_weight(1,pstate,pspin) < 1.0e-6_dp ) then
+         energy_qp_g(pstate,pspin) = energy0(pstate,pspin)
+       else
+         energy_qp_g(pstate,pspin) = energy_fixed_point(1,pstate,pspin)
+       endif
+
+     enddo
 
    enddo
 
- enddo
+   call xsum_world(energy_qp_g)
+   call xsum_world(z_weight)
+   call xsum_world(energy_fixed_point)
 
- call xsum_world(energy_qp_g)
- call xsum_world(z_weight)
- call xsum_world(energy_fixed_point)
-
- ! Master IO node outputs the solution details
- write(stdout,'(/,1x,a)') 'state spin    QP energy (eV)  QP spectral weight'
- do pstate=nsemin,nsemax
-   do pspin=1,nspin
-     nfixed = COUNT( z_weight(:,pstate,pspin) > 0.0_dp )
-     if( nfixed > 0 ) then
-       write(stdout,'(1x,i5,2x,i3,*(3x,f12.6,3x,f12.6))') pstate,pspin, &
-                 ( energy_fixed_point(ifixed,pstate,pspin)*Ha_eV,z_weight(ifixed,pstate,pspin), ifixed = 1,nfixed)
-     else
-       write(stdout,'(1x,i5,2x,i3,a)') pstate,pspin,'      has no graphical solution in the calculated range'
-     endif
+   ! Master IO node outputs the solution details
+   write(stdout,'(/,1x,a)') 'state spin    QP energy (eV)  QP spectral weight'
+   do pstate=nsemin,nsemax
+     do pspin=1,nspin
+       nfixed = COUNT( z_weight(:,pstate,pspin) > 0.0_dp )
+       if( nfixed > 0 ) then
+         write(stdout,'(1x,i5,2x,i3,*(3x,f12.6,3x,f12.6))') pstate,pspin, &
+                   ( energy_fixed_point(ifixed,pstate,pspin)*Ha_eV,z_weight(ifixed,pstate,pspin), ifixed = 1,nfixed)
+       else
+         write(stdout,'(1x,i5,2x,i3,a)') pstate,pspin,'      has no graphical solution in the calculated range'
+       endif
+     enddo
    enddo
- enddo
 
- if( ANY(z_weight(1,:,:) < 0.0_dp) ) then
-   call issue_warning('At least one state had no graphical solution in the calculated range.'  &
-                   // ' Increase nomega_sigma or step_sigma.')
+   if( ANY(z_weight(1,:,:) < 0.0_dp) ) then
+     call issue_warning('At least one state had no graphical solution in the calculated range.'  &
+                     // ' Increase nomega_sigma or step_sigma.')
+   endif
+
+ else
+
+   do pstate=nsemin,nsemax
+     energy_qp_g(pstate,:) = energy0(pstate,:) + REAL(se%sigma(0,pstate,:),dp) + exchange_m_vxc(pstate,:)
+   enddo
+
  endif
 
  ! Unchanged energies for the states that were not calculated (outside range [nsemin:nsemax])

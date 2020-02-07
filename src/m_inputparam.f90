@@ -50,9 +50,10 @@ module m_inputparam
 
  !
  ! TDDFT variables
- integer,parameter :: EXCIT_NO         = 501
- integer,parameter :: EXCIT_LIGHT      = 502
- integer,parameter :: EXCIT_PROJECTILE = 503
+ integer,parameter :: EXCIT_NO                 = 501
+ integer,parameter :: EXCIT_LIGHT              = 502
+ integer,parameter :: EXCIT_PROJECTILE         = 503
+ integer,parameter :: EXCIT_PROJECTILE_W_BASIS = 504
 
  integer,protected           :: unit_yaml
  character(len=10),parameter :: filename_yaml = 'molgw.yaml'
@@ -73,10 +74,9 @@ module m_inputparam
    logical            :: is_mp3
    logical            :: is_selfenergy
    logical            :: is_ci
-   logical            :: is_bse,is_td
+   logical            :: is_bse,no_bse_kernel,is_td
    integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
    integer            :: selfenergy_approx         ! GW, COHSEX, PT2
-   logical            :: selfenergy_static
  end type calculation_type
 
  type excitation_type
@@ -183,11 +183,11 @@ subroutine init_calculation_type(scf,postscf)
  calc_type%is_mp3               = .FALSE.
  calc_type%is_ci                = .FALSE.
  calc_type%is_bse               = .FALSE.
+ calc_type%no_bse_kernel        = .FALSE.
  calc_type%is_td                = .FALSE.
  calc_type%is_real_time         = .FALSE.
  calc_type%selfenergy_technique = one_shot
  calc_type%selfenergy_approx    = 0
- calc_type%selfenergy_static    = .FALSE.
  calc_type%postscf_name         = 'None'
  calc_type%is_selfenergy        = .FALSE.
  calc_type%is_core              = .FALSE.
@@ -221,6 +221,7 @@ subroutine init_calculation_type(scf,postscf)
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = COHSEX
+     calc_type%selfenergy_technique = static_selfenergy
    case('G0W0_IMAGINARY','GW_IMAGINARY')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx    = GW_IMAG
@@ -271,16 +272,19 @@ subroutine init_calculation_type(scf,postscf)
    case('SOX')
      calc_type%selfenergy_approx = SOX
    case('CI')
-     calc_type%is_ci =.TRUE.
+     calc_type%is_ci = .TRUE.
    case('CI_SELFENERGY')
-     calc_type%is_ci =.TRUE.
+     calc_type%is_ci = .TRUE.
      calc_type%selfenergy_approx = CI
    case('BSE')
-     calc_type%is_bse =.TRUE.
+     calc_type%is_bse = .TRUE.
+   case('BSE_RPA','BSE-RPA')
+     calc_type%is_bse        = .TRUE.
+     calc_type%no_bse_kernel = .TRUE.
    case('TD')
-     calc_type%is_td =.TRUE.
+     calc_type%is_td = .TRUE.
    case('REAL_TIME')
-     calc_type%is_real_time =.TRUE.
+     calc_type%is_real_time = .TRUE.
    case default
      call die('Error reading keyword: postscf')
    end select
@@ -348,12 +352,14 @@ subroutine init_excitation_type(excit_type)
 
  if( LEN(TRIM(excit_name)) /= 0 ) then
    select case (excit_type%name)
+   case("ION","ANTIION")
+     excit_type%form = EXCIT_PROJECTILE_W_BASIS
    case("NUCLEUS","ANTINUCLEUS")
-     excit_type%form=EXCIT_PROJECTILE
+     excit_type%form = EXCIT_PROJECTILE
    case("NO")
-     excit_type%form=EXCIT_NO
+     excit_type%form = EXCIT_NO
    case("GAU","HSW","STEP","DEL")
-     excit_type%form=EXCIT_LIGHT
+     excit_type%form = EXCIT_LIGHT
    case default
      write(stdout,*) 'error reading excitation name (excit_name variable)'
      write(stdout,*) TRIM(excit_name)
@@ -802,9 +808,9 @@ subroutine read_inputfile_namelist()
  endif
 
  call init_excitation_type(excit_type)
- nprojectile=0
- if( excit_type%form==EXCIT_PROJECTILE ) then
-   nprojectile=1
+ nprojectile = 0
+ if( excit_type%form == EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   nprojectile = 1
  end if
 
  !
@@ -814,7 +820,11 @@ subroutine read_inputfile_namelist()
    ! In this case, natom must be set to a positive value
    if(natom<1) call die('natom<1')
 
-   natom_basis = natom + nghost
+   if(excit_type%form == EXCIT_PROJECTILE_W_BASIS) then
+     natom_basis = natom + nghost + nprojectile
+   else
+     natom_basis = natom + nghost
+   endif
    natom = natom + nprojectile
 
    !
@@ -880,8 +890,8 @@ subroutine read_inputfile_namelist()
    endif
    read(xyzfile,*)
 
-!Natom read from xyz file but not from input file
-   natom = natom_read-nghost
+   !natom read from xyz file but not from input file
+   natom = natom_read - nghost
    natom_basis = natom_read - nprojectile
 
    !

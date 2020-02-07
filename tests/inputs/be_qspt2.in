@@ -1,17 +1,12 @@
 &molgw
- scf='pbe0'
- tolscf=1.0e-10
+ scf='pt2'
 
  basis='cc-pVDZ'
- auxil_basis='cc-pVDZ-RI'
+! auxil_basis='cc-pVDZ-RI'
 
  natom=1
  alpha_mixing=0.5
  mixing_scheme='simple'
  nscf=100
-
- postscf='cohsex'
- selfenergy_state_range=1
-
 /
 Be 0. 0. 0.

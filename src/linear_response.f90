@@ -83,9 +83,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  else
    if(calc_type%is_td) then        ! TDDFT or TDHF
      alpha_local = alpha_hybrid
-   else if(is_bse) then  ! BSE
+   else if(is_bse .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
      alpha_local = 1.0_dp
-   else                  ! RPA
+   else                  ! RPA or no_bse_kernel
      alpha_local = 0.0_dp
    endif
  endif
