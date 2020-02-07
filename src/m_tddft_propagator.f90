@@ -316,12 +316,13 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
    !
    ! For the moving basis
-   !
 
-   !if() then
-   !     call
-   !     call
-   !     call
+   !if(has_proj_basis) then
+   !     new_basis = ?
+   !     call setup_overlap(basis,s_matrix)
+   !     call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
+   !     call setup_kinetic(basis,hamiltonian_kinetic)
+   !     call calculate_eri_3center_scalapack(basis,auxil_basis,rcut) 
    !endif
 
    !
