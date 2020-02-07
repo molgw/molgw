@@ -314,6 +314,15 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if(itau==3) call start_clock(timing_tddft_one_iter)
 
+   !
+   ! For the moving basis
+   !
+
+   !if() then
+   !     call
+   !     call
+   !     call
+   !endif
 
    !
    ! Use c_matrix_orth_cmplx and h_small_cmplx at (time_cur-time_step) as start values,
@@ -584,7 +593,7 @@ subroutine predictor_corrector(basis,                  &
 
    !--1--PROPAGATE----| C(t)--U[H(1/4dt)]-->C(t+dt/2)
    call propagate_orth(nstate,basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
-   !--2--CALCULATE- H(t+dt/4)
+   !--2--CALCULATE- H(t+dt/2)
    call setup_hamiltonian_cmplx(basis,                   &
                                 nstate,                  &
                                 itau,                    &
