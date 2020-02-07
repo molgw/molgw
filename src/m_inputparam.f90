@@ -50,9 +50,10 @@ module m_inputparam
 
  !
  ! TDDFT variables
- integer,parameter :: EXCIT_NO         = 501
- integer,parameter :: EXCIT_LIGHT      = 502
- integer,parameter :: EXCIT_PROJECTILE = 503
+ integer,parameter :: EXCIT_NO                 = 501
+ integer,parameter :: EXCIT_LIGHT              = 502
+ integer,parameter :: EXCIT_PROJECTILE         = 503
+ integer,parameter :: EXCIT_PROJECTILE_W_BASIS = 504
 
  integer,protected           :: unit_yaml
  character(len=10),parameter :: filename_yaml = 'molgw.yaml'
@@ -350,12 +351,14 @@ subroutine init_excitation_type(excit_type)
 
  if( LEN(TRIM(excit_name)) /= 0 ) then
    select case (excit_type%name)
+   case("ION","ANTIION")
+     excit_type%form = EXCIT_PROJECTILE_W_BASIS
    case("NUCLEUS","ANTINUCLEUS")
-     excit_type%form=EXCIT_PROJECTILE
+     excit_type%form = EXCIT_PROJECTILE
    case("NO")
-     excit_type%form=EXCIT_NO
+     excit_type%form = EXCIT_NO
    case("GAU","HSW","STEP","DEL")
-     excit_type%form=EXCIT_LIGHT
+     excit_type%form = EXCIT_LIGHT
    case default
      write(stdout,*) 'error reading excitation name (excit_name variable)'
      write(stdout,*) TRIM(excit_name)
@@ -803,9 +806,9 @@ subroutine read_inputfile_namelist()
  endif
 
  call init_excitation_type(excit_type)
- nprojectile=0
- if( excit_type%form==EXCIT_PROJECTILE ) then
-   nprojectile=1
+ nprojectile = 0
+ if( excit_type%form == EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   nprojectile = 1
  end if
 
  !
@@ -815,7 +818,11 @@ subroutine read_inputfile_namelist()
    ! In this case, natom must be set to a positive value
    if(natom<1) call die('natom<1')
 
-   natom_basis = natom + nghost
+   if(excit_type%form == EXCIT_PROJECTILE_W_BASIS) then
+     natom_basis = natom + nghost + nprojectile
+   else
+     natom_basis = natom + nghost
+   endif
    natom = natom + nprojectile
 
    !
@@ -881,8 +888,8 @@ subroutine read_inputfile_namelist()
    endif
    read(xyzfile,*)
 
-!Natom read from xyz file but not from input file
-   natom = natom_read-nghost
+   !natom read from xyz file but not from input file
+   natom = natom_read - nghost
    natom_basis = natom_read - nprojectile
 
    !
