@@ -862,6 +862,7 @@ subroutine read_inputfile_namelist()
          ecp_basis_name(iatom) = standardize_basis_name(TRIM(ctmp1))
        else
          read(line_char,*) atom_symbol,x_read(:,iatom)
+         if(iatom == natom+nghost .AND. excit_type%form == EXCIT_PROJECTILE_W_BASIS) call die('projectile basis not found')
        endif
      endif
 
@@ -1011,6 +1012,10 @@ subroutine read_inputfile_namelist()
      write(unit_yaml,'(8x,a,"[ ",a2,", ",a,", ",a,"]")') '- ', &
              element_name(REAL(zatom(iatom),dp)),TRIM(basis_name(iatom)),TRIM(auxil_basis_name(iatom))
    end do
+   if(excit_type%form == EXCIT_PROJECTILE_W_BASIS) then
+     write(unit_yaml,'(8x,a,"[ ",a2,", ",a,", ",a,"]")') '- ', &
+            element_name(REAL(zatom(natom),dp)),TRIM(basis_name(natom)),TRIM(auxil_basis_name(natom))
+   endif
 
  endif
 

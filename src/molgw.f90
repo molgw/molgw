@@ -411,13 +411,8 @@ program molgw
  ! This overrides the value of is_converged
  if( assume_scf_converged_ ) is_converged = .TRUE.
  if( .NOT. is_converged ) then
-<<<<<<< HEAD
- call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. &
-                     Use keyword assume_scf_converged to override this security check')
-=======
    call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. &
-                       Use keyword assume_scf_converged to override this security check')
->>>>>>> da6d67a31947c4d77e80e772f42b92040f81eec6
+                Use keyword assume_scf_converged to override this security check')
  endif
 
  !
@@ -444,7 +439,7 @@ program molgw
  if( print_wfn_ )  call plot_wfn(nstate,basis,c_matrix)
  if( print_wfn_ )  call plot_rho(nstate,basis,occupation,c_matrix)
  if( print_cube_ ) call plot_cube_wfn('GKS',nstate,basis,occupation,c_matrix)
- if( print_pdos_ ) then 
+ if( print_pdos_ ) then
    call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
    call lowdin_pdos(nstate,basis,s_matrix_sqrt,c_matrix,occupation,energy)
  endif

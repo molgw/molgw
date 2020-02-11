@@ -61,14 +61,13 @@ module m_basis_set
                                                        ! the same exponents,
                                                        ! the same mixing coefficients
                                                        ! and the same angular momentum
-!   integer                          :: nbf_target      ! Number of target basis functions
-!   integer                          :: nshell_target   ! Number of target shells
    character(len=4)                 :: gaussian_type   ! CART or PURE
    type(basis_function),allocatable :: bfc(:)          ! Cartesian basis function
    type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
    type(shell_type),allocatable     :: shell(:)
 
  end type basis_set
+
 
 contains
 
@@ -138,11 +137,6 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_read)
      basis%nshell   = basis%nshell   + 1
 
-!     if( iatom <= natom_basis-nghost ) then
-!        basis%nbf_target     = basis%nbf
-!        basis%nshell_target  = basis%nshell
-!     endif
-
      do ig=1,ng
        read(basisfile,*)
      enddo
@@ -198,7 +192,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      basis%shell(ishell)%iend        = jbf + number_basis_function_am(gaussian_type,am_read)
      basis%shell(ishell)%istart_cart = jbf_cart + 1
      basis%shell(ishell)%iend_cart   = jbf_cart + number_basis_function_am('CART',am_read)
-     
+
      ! shell%coeff(:) is setup just after the basis functions
 
 
@@ -267,6 +261,157 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
 end subroutine init_basis_set
 
+!=========================================================================
+subroutine moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,xprojectile,new_basis)
+ implicit none
+
+ real(dp),intent(in)                 :: xprojectile(3)
+ character(len=4),intent(in)         :: gaussian_type
+ character(len=100),intent(in)       :: basis_path
+ character(len=100),intent(in)       :: basis_name(natom_basis)
+ character(len=100),intent(in)       :: ecp_basis_name(natom_basis)
+ type(basis_set),intent(inout)       :: new_basis
+!=====
+ character(len=200)            :: basis_filename
+ integer                       :: ibf,jbf,ng,ig
+ integer                       :: ishell,ishell_file
+ integer                       :: jbf_cart
+ real(dp),allocatable          :: alpha(:),coeff(:)
+ logical                       :: file_exists
+ integer                       :: basisfile
+ integer                       :: am_read,nshell_file
+ logical,parameter             :: normalized=.TRUE.
+ integer                       :: proj_iatom,proj_nbf,proj_nbf_cart,proj_nshell
+ integer                       :: index_in_shell
+ integer                       :: nx,ny,nz,mm
+ real(dp)                      :: x0(3)
+!=====
+
+ proj_nbf           = 0
+ proj_nbf_cart      = 0
+ proj_nshell        = 0
+
+ ! COUNT QUANTITY OF PROJECTILE BASIS
+ !
+ proj_iatom = natom_basis
+
+ ! skip the fixed target atoms
+ ! if( vel(:, iatom) <= .e-10 ) cycle
+
+ if( nelement_ecp > 0 ) then
+   if( ANY( element_ecp(:) == zbasis(proj_iatom) ) ) then
+     basis_filename = ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(proj_iatom),dp))))//'_'//TRIM(ecp_basis_name(proj_iatom)))
+   else
+     basis_filename = ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(proj_iatom),dp))))//'_'//TRIM(basis_name(proj_iatom)))
+   endif
+ else
+   basis_filename = ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(proj_iatom),dp))))//'_'//TRIM(basis_name(proj_iatom)))
+ endif
+
+ !
+ ! read first to get all the dimensions
+ open( newunit=basisfile, file=TRIM(basis_filename), status='old' )
+ read( basisfile,* ) nshell_file
+ if( nshell_file < 1 ) call die('ERROR in basis set file')
+ do ishell_file = 1, nshell_file
+
+   read( basisfile,* ) ng, am_read
+   if( ng < 1 ) call die('ERROR in basis set file')
+   if( am_read == 10 ) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
+   proj_nbf_cart = proj_nbf_cart + number_basis_function_am('CART'             ,am_read)
+   proj_nbf      = proj_nbf      + number_basis_function_am(new_basis%gaussian_type,am_read)
+   proj_nshell   = proj_nshell   + 1
+
+   do ig = 1, ng
+     read( basisfile,* )
+   enddo
+
+ enddo
+
+ ! Start indexing from projectile
+ jbf         = new_basis%nbf - proj_nbf
+ jbf_cart    = new_basis%nbf_cart - proj_nbf_cart
+ ishell      = new_basis%nshell - proj_nshell
+ x0(:)       = xprojectile(:)
+
+ open( newunit=basisfile, file=TRIM(basis_filename), status='old' )
+ read( basisfile,* ) nshell_file
+ do ishell_file = 1, nshell_file
+
+   read( basisfile,* ) ng, am_read
+   allocate( alpha(ng), coeff(ng) )
+   do ig = 1, ng
+     read( basisfile,* ) alpha(ig), coeff(ig)
+   enddo
+
+   ! Shell setup
+   !
+   ishell = ishell + 1
+
+   !new_basis%shell(ishell)%am      = am_read
+   !new_basis%shell(ishell)%iatom   = proj_iatom
+   new_basis%shell(ishell)%x0(:)   = x0(:)
+   !new_basis%shell(ishell)%ng      = ng
+
+   !new_basis%shell(ishell)%alpha(:)    = alpha(:)
+   !new_basis%shell(ishell)%istart      = jbf + 1
+   !new_basis%shell(ishell)%iend        = jbf + number_basis_function_am(gaussian_type,am_read)
+   !new_basis%shell(ishell)%istart_cart = jbf_cart + 1
+   !new_basis%shell(ishell)%iend_cart   = jbf_cart + number_basis_function_am('CART',am_read)
+
+   ! Basis function setup
+   !
+   nx = am_read
+   ny = 0
+   nz = 0
+   index_in_shell = 0
+   do
+     ! Add the new basis function
+     jbf_cart = jbf_cart + 1
+     index_in_shell = index_in_shell + 1
+     call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,x0,alpha,coeff,ishell,index_in_shell,new_basis%bfc(jbf_cart) )
+     if( new_basis%gaussian_type == 'CART' ) then
+       jbf = jbf + 1
+       call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,x0,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+     endif
+
+     ! Break the loop when nz is equal to l
+     if( nz == am_read ) exit
+
+     if( nz < am_read - nx ) then
+       ny = ny - 1
+       nz = nz + 1
+     else
+       nx = nx - 1
+       ny = am_read - nx
+       nz = 0
+     endif
+
+   enddo
+
+   index_in_shell = 0
+   if( new_basis%gaussian_type == 'PURE' ) then
+     do mm = -am_read, am_read
+       jbf = jbf + 1
+       index_in_shell = index_in_shell + 1
+       call init_basis_function_pure( normalized,ng,am_read,mm,proj_iatom,x0,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+     enddo
+   endif
+
+   !
+   ! Include here the normalization part that does not depend on (nx,ny,nz)
+   new_basis%shell(ishell)%coeff(:) = new_basis%bfc(jbf_cart-number_basis_function_am(gaussian_type,am_read)+1)%coeff(:) &
+             * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_read * alpha(:)**( 0.25_dp * ( 2.0_dp*am_read + 3.0_dp ) )
+
+   deallocate( alpha, coeff )
+
+ enddo
+ close( basisfile )
+
+ print*, new_basis%shell(ishell)%iatom, new_basis%shell(ishell)%x0(:)
+
+end subroutine moving_basis_set
+
 
 !=========================================================================
 subroutine echo_basis_summary(basis)
@@ -282,8 +427,6 @@ subroutine echo_basis_summary(basis)
    write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
  endif
  write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
-! write(stdout,'(/,a50,i8)') 'Total number of target basis functions:',basis%nbf_target
-! write(stdout,'(a50,i8)') 'Number of target shells:',basis%nshell_target
 
  write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
  write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
@@ -663,8 +806,6 @@ function compare_basis_set(basis1,basis2) result(same_basis_set)
  if( basis1%nbf           /= basis2%nbf           )  same_basis_set = .FALSE.
  if( basis1%nbf_cart      /= basis2%nbf_cart      )  same_basis_set = .FALSE.
  if( basis1%nshell        /= basis2%nshell        )  same_basis_set = .FALSE.
-! if( basis1%nbf_target    /= basis2%nbf_target     )  same_basis_set = .FALSE.
-! if( basis1%nshell_target /= basis2%nshell_target  )  same_basis_set = .FALSE.
  if( basis1%gaussian_type /= basis2%gaussian_type )  same_basis_set = .FALSE.
 
  ! If the basis sets already differs, then exit immediately
@@ -727,8 +868,6 @@ subroutine write_basis_set(unitfile,basis)
  write(unitfile)  basis%nbf
  write(unitfile)  basis%nbf_cart
  write(unitfile)  basis%nshell
-! write(unitfile)  basis%nbf_target
-! write(unitfile)  basis%nshell_target
  write(unitfile)  basis%gaussian_type
  do ibf=1,basis%nbf_cart
    call write_basis_function(unitfile,basis%bfc(ibf))
@@ -755,8 +894,6 @@ subroutine read_basis_set(unitfile,basis)
  read(unitfile)  basis%nbf
  read(unitfile)  basis%nbf_cart
  read(unitfile)  basis%nshell
-! read(unitfile)  basis%nbf_target
-! read(unitfile)  basis%nshell_target
  read(unitfile)  basis%gaussian_type
  allocate(basis%bfc(basis%nbf_cart))
  do ibf=1,basis%nbf_cart

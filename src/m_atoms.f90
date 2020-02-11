@@ -104,7 +104,7 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
    xatom(:,1:natom) = x_read(:,1:natom)
    zatom(1:natom)   = zatom_read(1:natom)
  else
-   if( excit_name == 'ION' ) then
+   if( excit_name == 'ION' .OR. excit_name == "ANTIION" ) then
      xatom(:,1:natom-nprojectile) = x_read(:,1:natom-nprojectile)
      zatom(1:natom-nprojectile)   = zatom_read(1:natom-nprojectile)
      xatom(:,natom)                = x_read(:,natom_basis)

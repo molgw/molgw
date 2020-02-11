@@ -79,6 +79,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
+ type(basis_set)            :: new_basis
+ type(basis_set)            :: auxil_basis
 !=====TDDFT loop variables=============================
  integer                    :: iatom
  integer                    :: itau
@@ -311,25 +313,33 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  iwrite_step = 1
  itau = 1
  in_tddft_loop = .TRUE.
+ ! Initiate new basis set
+ new_basis = basis
+
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if(itau==3) call start_clock(timing_tddft_one_iter)
 
    !
    ! For the moving basis
 
-   !if(has_proj_basis) then
-   !     new_basis = ?
-   !     call setup_overlap(basis,s_matrix)
-   !     call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
-   !     call setup_kinetic(basis,hamiltonian_kinetic)
-   !     call calculate_eri_3center_scalapack(basis,auxil_basis,rcut) 
-   !endif
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+      xprojectile = xatom(:,natom)
+      call clean_deallocate('Transformation matrix X',x_matrix)
+
+      call moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,xprojectile,new_basis)
+      !call init_auxil_basis_set_auto(auxil_basis_name,new_basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
+      !call setup_overlap(new_basis,s_matrix)
+      !call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
+      !call setup_kinetic(new_basis,hamiltonian_kinetic)
+      !call calculate_eri_3center_scalapack(new_basis,auxil_basis,rcut)
+
+   endif
 
    !
    ! Use c_matrix_orth_cmplx and h_small_cmplx at (time_cur-time_step) as start values,
    ! than use chosen predictor-corrector sheme to calculate c_matrix_cmplx, c_matrix_orth_cmplx,
    ! h_cmplx and h_small_cmplx and time_cur.
-   call predictor_corrector(basis,                  &
+   call predictor_corrector(new_basis,                  &
                             c_matrix_cmplx,         &
                             c_matrix_orth_cmplx,    &
                             h_cmplx,                &
@@ -353,36 +363,36 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
    ! 5) Mulliken_Charge file.
-   ! 3) and 4) in case of light excitation. 5) in case of Mulliken analysis. 
+   ! 3) and 4) in case of light excitation. 5) in case of Mulliken analysis.
 
    if( ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7 ) then
 
      if(excit_type%form==EXCIT_LIGHT) then
       call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-      call static_dipole(basis,p_matrix_in=p_matrix_cmplx,dipole_ao_in=dipole_ao,dipole_out=dipole)
+      call static_dipole(new_basis,p_matrix_in=p_matrix_cmplx,dipole_ao_in=dipole_ao,dipole_out=dipole)
      end if
 
      en_tddft%total = en_tddft%nucleus + en_tddft%kinetic + en_tddft%nuc_nuc + en_tddft%hartree + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
 
      call print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field,itau)
-     
-     if( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
-     if( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur,nr_line_rho,point_a,point_b,rho_start)
-     if( print_cube_rho_tddft_  )     call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
-     if( print_cube_diff_tddft_ )     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
-     if( calc_dens_disc_ )            call calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
-!     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
+
+     if( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
+     if( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step,time_cur,nr_line_rho,point_a,point_b,rho_start)
+     if( print_cube_rho_tddft_  )     call plot_cube_wfn_cmplx(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step)
+     if( print_cube_diff_tddft_ )     call plot_cube_diff_parallel_cmplx(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
+     if( calc_dens_disc_ )            call calc_density_in_disc_cmplx_dft_grid(new_basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
+!     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
 
      if(calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur)
 
      iwrite_step = iwrite_step + 1
 
    end if
-   
+
    if( ABS(time_cur / (mulliken_step)- NINT(time_cur / (mulliken_step))) < 1.0e-7 ) then
      if( print_mulliken_tddft_ ) then
-       call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
-       call lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,iwrite_step-1,time_cur)
+       call mulliken_pdos_cmplx(nstate,new_basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
+       call lowdin_pdos_cmplx(nstate,new_basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,iwrite_step-1,time_cur)
      end if
    end if
 
@@ -400,6 +410,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
   time_cur = time_min + itau*time_step
   itau = itau + 1
+
 !---
  end do
  in_tddft_loop=.FALSE.
@@ -920,7 +931,7 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
  case(EXCIT_PROJECTILE)
    write(file_time_data,"(A10,11(A18))") "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc","enuc_wo_proj","ekin","ehart",&
                              &"eexx_hyb","exc","enuc_proj"
-                                               
+
  case(EXCIT_LIGHT)
    write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
                              &eexx_hyb            exc             eexcit"
