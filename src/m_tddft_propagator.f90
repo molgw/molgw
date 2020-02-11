@@ -323,15 +323,17 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    ! For the moving basis
 
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-      xprojectile = xatom(:,natom)
-      call clean_deallocate('Transformation matrix X',x_matrix)
 
+      xprojectile = xatom(:,natom)
+      !deallocate(x_matrix)
+      call start_clock(timing_tddft_recalc_H)
       call moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,xprojectile,new_basis)
       !call init_auxil_basis_set_auto(auxil_basis_name,new_basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
       !call setup_overlap(new_basis,s_matrix)
       !call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
       !call setup_kinetic(new_basis,hamiltonian_kinetic)
       !call calculate_eri_3center_scalapack(new_basis,auxil_basis,rcut)
+      call stop_clock(timing_tddft_recalc_H)
 
    endif
 
@@ -488,13 +490,15 @@ end subroutine echo_tddft_variables
 !=========================================================================
 subroutine output_timing_one_iter()
  implicit none
- real(dp)           :: time_one_iter
+ real(dp)           :: time_one_iter, time_one_iter_H
 !=====
 
   time_one_iter = get_timing(timing_tddft_one_iter)
+  time_one_iter_H = get_timing(timing_tddft_recalc_H)
   write(stdout,'(/,1x,a)') '**********************************'
-  write(stdout,"(1x,a30,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
-  write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &
+  write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
+  write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Hamiltonian recalculation costs", time_one_iter_H,"s"
+  write(stdout,"(1x,a32,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &
                                             time_one_iter*ntau/60.0_dp, &
                                             "min  = ", time_one_iter*ntau/3600.0_dp, "hrs"
   write(stdout,'(1x,a)') '**********************************'
@@ -1720,7 +1724,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
  !
  ! Projectile excitation
- case(EXCIT_PROJECTILE)
+case(EXCIT_PROJECTILE,EXCIT_PROJECTILE_W_BASIS)
 
    !
    ! Move the projectile
