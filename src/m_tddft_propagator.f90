@@ -326,15 +326,19 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
 
       xprojectile = xatom(:,natom)
-      !deallocate(x_matrix)
+      call clean_deallocate('Transformation matrix X',x_matrix)
+      call destroy_eri_3center()
+
       call start_clock(timing_tddft_recalc_H)
       call moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,xprojectile,new_basis)
-      !call init_auxil_basis_set_auto(auxil_basis_name,new_basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
+      call init_auxil_basis_set_auto(auxil_basis_name,new_basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
       call setup_overlap(new_basis,s_matrix)
       !write( checkfile,* ) s_matrix
-      !call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
+      call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
       call setup_kinetic(new_basis,hamiltonian_kinetic)
-      !call calculate_eri_3center_scalapack(new_basis,auxil_basis,rcut)
+      !call prepare_eri(new_basis)
+      call calculate_eri_2center_scalapack(auxil_basis,rcut)
+      call calculate_eri_3center_scalapack(new_basis,auxil_basis,rcut)
       call stop_clock(timing_tddft_recalc_H)
 
    endif
