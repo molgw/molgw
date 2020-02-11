@@ -408,7 +408,6 @@ subroutine moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,x
  enddo
  close( basisfile )
 
- print*, new_basis%shell(ishell)%iatom, new_basis%shell(ishell)%x0(:)
 
 end subroutine moving_basis_set
 
