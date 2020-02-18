@@ -326,6 +326,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
                             h_cmplx,                &
                             h_small_cmplx,          &
                             x_matrix,               &
+                            s_matrix,               &
                             itau,                   &
                             time_cur,               &
                             occupation,             &
@@ -336,10 +337,10 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
    !
    ! debug
-   !call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
-   !if(.NOT. is_identity_) then
-   !  write(stdout,*) "C**H*S*C is not identity at itau= ", itau
-   !end if
+   call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
+   if(.NOT. is_identity_) then
+     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
+   end if
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
@@ -488,26 +489,27 @@ end subroutine output_timing_one_iter
 
 
 !=========================================================================
-subroutine update_x_matrix(basis,time_advanced,x_matrix)
+subroutine update_x_matrix(basis,time_advanced,s_matrix,x_matrix)
 
  implicit none
  type(basis_set),intent(inout)      :: basis
  real(dp),intent(in)                :: time_advanced
+ real(dp),intent(inout)             :: s_matrix(:,:)
  real(dp),allocatable,intent(out)   :: x_matrix(:,:)
 !=====
  integer               :: nstate_tmp
  real(dp)              :: xprojectile(3)
- real(dp)              :: new_s_matrix(basis%nbf,basis%nbf)
+ !real(dp)              :: new_s_matrix(basis%nbf,basis%nbf)
 !=====
 
- new_s_matrix(:,:) = 0.0_dp
+ s_matrix(:,:) = 0.0_dp
  xprojectile = xatom(:,natom) + vel(:,natom) * time_advanced
  print*, '===>', xprojectile
 
  call moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,xprojectile,basis)
 
- call setup_overlap(basis,new_s_matrix)
- call setup_sqrt_overlap(min_overlap,new_s_matrix,nstate_tmp,x_matrix)
+ call setup_overlap(basis,s_matrix)
+ call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
 
 end subroutine update_x_matrix
 
@@ -569,6 +571,7 @@ subroutine predictor_corrector(basis,                  &
                                h_cmplx,                &
                                h_small_cmplx,          &
                                x_matrix,               &
+                               s_matrix,               &
                                itau,                   &
                                time_cur,               &
                                occupation,             &
@@ -583,6 +586,7 @@ subroutine predictor_corrector(basis,                  &
  complex(dp),intent(out)         :: h_cmplx(:,:,:)
  complex(dp),intent(inout)       :: h_small_cmplx(:,:,:)
  real(dp),allocatable,intent(inout) :: x_matrix(:,:)
+ real(dp),intent(inout)          :: s_matrix(:,:)
  integer,intent(in)              :: itau
  real(dp),intent(in)             :: time_cur
  real(dp),intent(in)             :: occupation(:,:)
@@ -627,7 +631,7 @@ subroutine predictor_corrector(basis,                  &
    !--2--PREDICTOR----| C(8/4)---U[H(9/4)]--->C(10/4)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call clean_deallocate('Transformation matrix X',x_matrix)
-     call update_x_matrix(new_basis,time_step/2.0_dp,x_matrix)
+     call update_x_matrix(new_basis,time_step/2.0_dp,s_matrix,x_matrix)
      call update_hamiltonian(new_basis,hamiltonian_kinetic,hamiltonian_nucleus)
    endif
 
@@ -651,7 +655,7 @@ subroutine predictor_corrector(basis,                  &
    !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call clean_deallocate('Transformation matrix X',x_matrix)
-     call update_x_matrix(new_basis,0.0_dp,x_matrix)
+     call update_x_matrix(new_basis,0.0_dp,s_matrix,x_matrix)
    endif
 
    call propagate_orth(nstate,new_basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
