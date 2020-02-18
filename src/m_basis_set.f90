@@ -327,6 +327,7 @@ subroutine moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,x
    enddo
 
  enddo
+ close( basisfile )
 
  ! Start indexing from projectile
  jbf         = new_basis%nbf - proj_nbf
