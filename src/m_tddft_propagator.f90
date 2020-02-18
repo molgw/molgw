@@ -337,10 +337,10 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
    !
    ! debug
-   call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
-   if(.NOT. is_identity_) then
-     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
-   end if
+   !call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
+   !if(.NOT. is_identity_) then
+    ! write(stdout,*) "C**H*S*C is not identity at itau= ", itau
+   !end if
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
@@ -655,7 +655,7 @@ subroutine predictor_corrector(basis,                  &
    !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call clean_deallocate('Transformation matrix X',x_matrix)
-     call update_x_matrix(new_basis,0.0_dp,s_matrix,x_matrix)
+     call update_x_matrix(new_basis,time_step/2.0_dp,s_matrix,x_matrix)
    endif
 
    call propagate_orth(nstate,new_basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
