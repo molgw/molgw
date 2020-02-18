@@ -79,8 +79,6 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
- type(basis_set)            :: new_basis
- type(basis_set)            :: auxil_basis
 !=====TDDFT loop variables=============================
  integer                    :: iatom
  integer                    :: itau
@@ -313,41 +311,16 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  iwrite_step = 1
  itau = 1
  in_tddft_loop = .TRUE.
- ! Initiate new basis set
- new_basis = basis
- !open( newunit=checkfile, file='overlap.dat' )
+ !open( newunit=checkfile, file='S_matrix.dat' )
 
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if(itau==3) call start_clock(timing_tddft_one_iter)
 
    !
-   ! For the moving basis
-
-   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-
-      xprojectile = xatom(:,natom)
-      call clean_deallocate('Transformation matrix X',x_matrix)
-      call destroy_eri_3center()
-
-      call start_clock(timing_tddft_recalc_H)
-      call moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,xprojectile,new_basis)
-      call init_auxil_basis_set_auto(auxil_basis_name,new_basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
-      call setup_overlap(new_basis,s_matrix)
-      !write( checkfile,* ) s_matrix
-      call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
-      call setup_kinetic(new_basis,hamiltonian_kinetic)
-      !call prepare_eri(new_basis)
-      call calculate_eri_2center_scalapack(auxil_basis,rcut)
-      call calculate_eri_3center_scalapack(new_basis,auxil_basis,rcut)
-      call stop_clock(timing_tddft_recalc_H)
-
-   endif
-
-   !
    ! Use c_matrix_orth_cmplx and h_small_cmplx at (time_cur-time_step) as start values,
    ! than use chosen predictor-corrector sheme to calculate c_matrix_cmplx, c_matrix_orth_cmplx,
    ! h_cmplx and h_small_cmplx and time_cur.
-   call predictor_corrector(new_basis,                  &
+   call predictor_corrector(basis,                  &
                             c_matrix_cmplx,         &
                             c_matrix_orth_cmplx,    &
                             h_cmplx,                &
@@ -377,19 +350,19 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
      if(excit_type%form==EXCIT_LIGHT) then
       call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-      call static_dipole(new_basis,p_matrix_in=p_matrix_cmplx,dipole_ao_in=dipole_ao,dipole_out=dipole)
+      call static_dipole(basis,p_matrix_in=p_matrix_cmplx,dipole_ao_in=dipole_ao,dipole_out=dipole)
      end if
 
      en_tddft%total = en_tddft%nucleus + en_tddft%kinetic + en_tddft%nuc_nuc + en_tddft%hartree + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
 
      call print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field,itau)
 
-     if( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
-     if( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step,time_cur,nr_line_rho,point_a,point_b,rho_start)
-     if( print_cube_rho_tddft_  )     call plot_cube_wfn_cmplx(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step)
-     if( print_cube_diff_tddft_ )     call plot_cube_diff_parallel_cmplx(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
-     if( calc_dens_disc_ )            call calc_density_in_disc_cmplx_dft_grid(new_basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
-!     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,new_basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
+     if( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
+     if( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur,nr_line_rho,point_a,point_b,rho_start)
+     if( print_cube_rho_tddft_  )     call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
+     if( print_cube_diff_tddft_ )     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
+     if( calc_dens_disc_ )            call calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
+!     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
 
      if(calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur)
 
@@ -399,8 +372,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
    if( ABS(time_cur / (mulliken_step)- NINT(time_cur / (mulliken_step))) < 1.0e-7 ) then
      if( print_mulliken_tddft_ ) then
-       call mulliken_pdos_cmplx(nstate,new_basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
-       call lowdin_pdos_cmplx(nstate,new_basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,iwrite_step-1,time_cur)
+       call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
+       call lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,iwrite_step-1,time_cur)
      end if
    end if
 
@@ -515,6 +488,81 @@ end subroutine output_timing_one_iter
 
 
 !=========================================================================
+subroutine update_x_matrix(basis,time_advanced,x_matrix)
+
+ implicit none
+ type(basis_set),intent(inout)      :: basis
+ real(dp),intent(in)                :: time_advanced
+ real(dp),allocatable,intent(out)   :: x_matrix(:,:)
+!=====
+ integer               :: nstate_tmp
+ real(dp)              :: xprojectile(3)
+ real(dp)              :: new_s_matrix(basis%nbf,basis%nbf)
+!=====
+
+ new_s_matrix(:,:) = 0.0_dp
+ xprojectile = xatom(:,natom) + vel(:,natom) * time_advanced
+ print*, '===>', xprojectile
+
+ call moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,xprojectile,basis)
+
+ call setup_overlap(basis,new_s_matrix)
+ call setup_sqrt_overlap(min_overlap,new_s_matrix,nstate_tmp,x_matrix)
+
+end subroutine update_x_matrix
+
+
+!=========================================================================
+subroutine update_hamiltonian(basis,hamiltonian_kinetic,hamiltonian_nucleus)
+
+ implicit none
+ type(basis_set),intent(in)      :: basis
+ real(dp),intent(inout)          :: hamiltonian_kinetic(:,:)
+ real(dp),intent(inout)          :: hamiltonian_nucleus(:,:)
+!=====
+ integer               :: iatom
+ integer               :: fixed_atom_list(natom-nprojectile)
+ type(basis_set)       :: new_auxil_basis
+!=====
+
+ hamiltonian_kinetic(:,:) = 0.0_dp
+ hamiltonian_nucleus(:,:) = 0.0_dp
+
+ do iatom=1,natom-nprojectile
+   fixed_atom_list(iatom) = iatom
+ enddo
+
+ !call deallocate_eri()
+ call start_clock(timing_tddft_recalc_H)
+
+ if( has_auxil_basis ) then
+   call destroy_eri_3center()
+   write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
+   if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
+     call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,new_auxil_basis)
+   else
+     call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,new_auxil_basis)
+   endif
+ endif
+
+ call setup_kinetic(basis,hamiltonian_kinetic)
+ call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
+
+ !call prepare_eri(basis)
+ if(has_auxil_basis) then
+   call calculate_eri_2center_scalapack(new_auxil_basis,0.0_dp)
+   call calculate_eri_3center_scalapack(basis,new_auxil_basis,0.0_dp)
+   call destroy_basis_set(new_auxil_basis)
+ else
+   call calculate_eri(print_eri_,basis,0.0_dp)
+ endif
+
+ call stop_clock(timing_tddft_recalc_H)
+
+end subroutine update_hamiltonian
+
+
+!=========================================================================
 subroutine predictor_corrector(basis,                  &
                                c_matrix_cmplx,         &
                                c_matrix_orth_cmplx,    &
@@ -534,18 +582,21 @@ subroutine predictor_corrector(basis,                  &
  complex(dp),intent(inout)       :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),intent(out)         :: h_cmplx(:,:,:)
  complex(dp),intent(inout)       :: h_small_cmplx(:,:,:)
- real(dp),intent(in)             :: x_matrix(:,:)
+ real(dp),allocatable,intent(inout) :: x_matrix(:,:)
  integer,intent(in)              :: itau
  real(dp),intent(in)             :: time_cur
  real(dp),intent(in)             :: occupation(:,:)
- real(dp),intent(in)             :: hamiltonian_kinetic(:,:)
+ real(dp),intent(inout)          :: hamiltonian_kinetic(:,:)
  real(dp),intent(inout)          :: hamiltonian_nucleus(:,:)
  real(dp),allocatable,intent(in) :: dipole_ao(:,:,:)
 !=====
- integer      :: nstate,iextr,i_iter,file_iter_norm
+ integer             :: nstate,iextr,i_iter,file_iter_norm
+ type(basis_set)     :: new_basis
 !=====
 
  nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
+ ! Initialize new basis set
+ new_basis = basis
 
  write(stdout,'(/,1x,a)') 'PREDICTOR-CORRECTOR BLOCK'
 
@@ -572,12 +623,18 @@ subroutine predictor_corrector(basis,                  &
  ! Following Cheng and Van Voorhis, Phys Rev B 74 (2006)
  case('PC1')
    !--1--PREDICTOR----| H(2/4),H(6/4)-->H(9/4)
-       h_small_cmplx= -3.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,1)+7.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,2)
+   h_small_cmplx= -3.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,1)+7.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,2)
    !--2--PREDICTOR----| C(8/4)---U[H(9/4)]--->C(10/4)
-   call propagate_orth(nstate,basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     call clean_deallocate('Transformation matrix X',x_matrix)
+     call update_x_matrix(new_basis,time_step/2.0_dp,x_matrix)
+     call update_hamiltonian(new_basis,hamiltonian_kinetic,hamiltonian_nucleus)
+   endif
+
+   call propagate_orth(nstate,new_basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
 
    !--3--CORRECTOR----| C(10/4)-->H(10/4)
-   call setup_hamiltonian_cmplx(basis,                   &
+   call setup_hamiltonian_cmplx(new_basis,                   &
                                 nstate,                  &
                                 itau,                    &
                                 time_cur-time_step/2.0_dp, &
@@ -592,7 +649,12 @@ subroutine predictor_corrector(basis,                  &
                                 h_cmplx,en_tddft)
 
    !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
-   call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     call clean_deallocate('Transformation matrix X',x_matrix)
+     call update_x_matrix(new_basis,0.0_dp,x_matrix)
+   endif
+
+   call propagate_orth(nstate,new_basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
 
    !--5--UPDATE----| C(12/4)-->C(8/4); H(6/4)-->H(2/4); H(10/4)-->H(6/4)
    c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
@@ -629,7 +691,7 @@ subroutine predictor_corrector(basis,                  &
                                 h_small_cmplx,           &
                                 x_matrix,                &
                                 dipole_ao,               &
-                                      h_cmplx,en_tddft)
+                                h_cmplx,en_tddft)
 
    if (n_hist > 1) h_small_hist_cmplx(:,:,:,n_hist-1)=h_small_cmplx
    !--3--PROPAGATION----|
