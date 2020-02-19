@@ -262,10 +262,10 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 end subroutine init_basis_set
 
 !=========================================================================
-subroutine moving_basis_set(xprojectile,new_basis)
+subroutine moving_basis_set(xproj_basis,new_basis)
  implicit none
 
- real(dp),intent(in)                 :: xprojectile(3)
+ real(dp),intent(in)                 :: xproj_basis(3)
  type(basis_set),intent(inout)       :: new_basis
 !=====
  integer                       :: jbf,ng,ig
@@ -285,7 +285,7 @@ subroutine moving_basis_set(xprojectile,new_basis)
    if( new_basis%shell(ishell)%iatom == proj_iatom ) then
 
       ! Update projectile position
-      new_basis%shell(ishell)%x0(:)   = xprojectile(:)
+      new_basis%shell(ishell)%x0(:)   = xproj_basis(:)
 
       ! Basis function setup
       !
@@ -308,16 +308,16 @@ subroutine moving_basis_set(xprojectile,new_basis)
         index_in_shell  = index_in_shell + 1
         coeff(:)        = new_basis%bfc(jbf_cart)%coeff(:)
         do ig = 1, ng
-          new_basis%bfc(jbf_cart)%g(ig)%x0(:) = xprojectile(:)
+          new_basis%bfc(jbf_cart)%g(ig)%x0(:) = xproj_basis(:)
         enddo
-        call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xprojectile,alpha,coeff,ishell,index_in_shell,new_basis%bfc(jbf_cart) )
+        call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,alpha,coeff,ishell,index_in_shell,new_basis%bfc(jbf_cart) )
         if( new_basis%gaussian_type == 'CART' ) then
           jbf           = jbf + 1
           coeff(:)      = new_basis%bff(jbf)%coeff(:)
           do ig = 1, ng
-            new_basis%bff(jbf)%g(ig)%x0(:) = xprojectile(:)
+            new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
           enddo
-          call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xprojectile,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+          call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
         endif
 
         ! Break the loop when nz is equal to l
@@ -340,9 +340,9 @@ subroutine moving_basis_set(xprojectile,new_basis)
           jbf = jbf + 1
           index_in_shell = index_in_shell + 1
           do ig = 1, ng
-            new_basis%bff(jbf)%g(ig)%x0(:) = xprojectile(:)
+            new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
           enddo
-          call init_basis_function_pure( normalized,ng,am,mm,proj_iatom,xprojectile,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+          call init_basis_function_pure( normalized,ng,am,mm,proj_iatom,xproj_basis,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
         enddo
       endif
       deallocate(alpha,coeff)

@@ -494,25 +494,21 @@ end subroutine output_timing_one_iter
 subroutine update_basis(time_advanced,basis,auxil_basis)
 
  implicit none
+ real(dp),intent(in)                :: time_advanced
  type(basis_set),intent(inout)      :: basis
  type(basis_set),intent(inout)      :: auxil_basis
- real(dp),intent(in)                :: time_advanced
 !=====
- real(dp)                           :: xprojectile(3)
+ real(dp)                           :: xproj_basis(3)
 !=====
 
- xprojectile = xatom(:,natom) + vel(:,natom) * time_advanced
+ xproj_basis = xbasis(:,natom_basis) + vel(:,natom) * ( time_advanced - time_read )
 
- call moving_basis_set(xprojectile,basis)
+ call moving_basis_set(xproj_basis,basis)
 
  if( has_auxil_basis ) then
    call destroy_eri_3center()
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-   if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
-     call moving_basis_set(xprojectile,auxil_basis)
-   else
-     call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
-   endif
+   call moving_basis_set(xproj_basis,auxil_basis)
  endif
 
 end subroutine update_basis
@@ -622,8 +618,15 @@ subroutine predictor_corrector(basis,                  &
  select case (pred_corr)
  ! ///////////////////////////////////
  case('PC0')
-   call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
-   call setup_hamiltonian_cmplx(basis,                   &
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     call clean_deallocate('Transformation matrix X',x_matrix)
+     !=== time_cur = t + dt
+     call update_basis(time_cur,new_basis,new_auxil_basis)
+     call update_S_X(new_basis,nstate,x_matrix,s_matrix)
+     call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
+   endif
+   call propagate_orth(nstate,new_basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+   call setup_hamiltonian_cmplx(new_basis,                   &
                                 nstate,                  &
                                 itau,                    &
                                 time_cur,                &
@@ -646,7 +649,7 @@ subroutine predictor_corrector(basis,                  &
    !--2--PREDICTOR----| C(8/4)---U[H(9/4)]--->C(10/4)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call clean_deallocate('Transformation matrix X',x_matrix)
-     call update_basis(time_step/2.0_dp,new_basis,new_auxil_basis)
+     call update_basis(time_cur-time_step/2.0_dp,new_basis,new_auxil_basis)
      call update_S_X(new_basis,nstate,x_matrix,s_matrix)
      call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
    endif
@@ -671,7 +674,7 @@ subroutine predictor_corrector(basis,                  &
    !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call clean_deallocate('Transformation matrix X',x_matrix)
-     call update_basis(time_step/2.0_dp,new_basis,new_auxil_basis)
+     call update_basis(time_cur,new_basis,new_auxil_basis)
      call update_S_X(new_basis,nstate,x_matrix,s_matrix)
    endif
 
