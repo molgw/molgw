@@ -262,152 +262,93 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 end subroutine init_basis_set
 
 !=========================================================================
-subroutine moving_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,xprojectile,new_basis)
+subroutine moving_basis_set(xprojectile,new_basis)
  implicit none
 
  real(dp),intent(in)                 :: xprojectile(3)
- character(len=4),intent(in)         :: gaussian_type
- character(len=100),intent(in)       :: basis_path
- character(len=100),intent(in)       :: basis_name(natom_basis)
- character(len=100),intent(in)       :: ecp_basis_name(natom_basis)
  type(basis_set),intent(inout)       :: new_basis
 !=====
- character(len=200)            :: basis_filename
- integer                       :: ibf,jbf,ng,ig
- integer                       :: ishell,ishell_file
+ integer                       :: jbf,ng,ig
+ integer                       :: ishell
  integer                       :: jbf_cart
  real(dp),allocatable          :: alpha(:),coeff(:)
- logical                       :: file_exists
- integer                       :: basisfile
- integer                       :: am_read,nshell_file
+ integer                       :: am
  logical,parameter             :: normalized=.TRUE.
- integer                       :: proj_iatom,proj_nbf,proj_nbf_cart,proj_nshell
  integer                       :: index_in_shell
  integer                       :: nx,ny,nz,mm
- real(dp)                      :: x0(3)
+ integer                       :: proj_iatom
 !=====
+! Projectile is always the last of atom/atom_basis list
+ proj_iatom   = natom_basis
 
- proj_nbf           = 0
- proj_nbf_cart      = 0
- proj_nshell        = 0
+ do ishell = 1, new_basis%nshell
+   if( new_basis%shell(ishell)%iatom == proj_iatom ) then
 
- ! COUNT QUANTITY OF PROJECTILE BASIS
- !
- proj_iatom = natom_basis
+      ! Update projectile position
+      new_basis%shell(ishell)%x0(:)   = xprojectile(:)
 
- ! skip the fixed target atoms
- ! if( vel(:, iatom) <= .e-10 ) cycle
+      ! Basis function setup
+      !
+      am             = new_basis%shell(ishell)%am
+      ng             = new_basis%shell(ishell)%ng
+      jbf            = new_basis%shell(ishell)%istart - 1
+      jbf_cart       = new_basis%shell(ishell)%istart_cart - 1
 
- if( nelement_ecp > 0 ) then
-   if( ANY( element_ecp(:) == zbasis(proj_iatom) ) ) then
-     basis_filename = ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(proj_iatom),dp))))//'_'//TRIM(ecp_basis_name(proj_iatom)))
-   else
-     basis_filename = ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(proj_iatom),dp))))//'_'//TRIM(basis_name(proj_iatom)))
+      allocate(alpha(ng),coeff(ng))
+      alpha(:)       = new_basis%shell(ishell)%alpha(:)
+
+      nx             = am
+      ny             = 0
+      nz             = 0
+      index_in_shell = 0
+
+      do
+        ! Update projectile basis functions
+        jbf_cart        = jbf_cart + 1
+        index_in_shell  = index_in_shell + 1
+        coeff(:)        = new_basis%bfc(jbf_cart)%coeff(:)
+        do ig = 1, ng
+          new_basis%bfc(jbf_cart)%g(ig)%x0(:) = xprojectile(:)
+        enddo
+        call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xprojectile,alpha,coeff,ishell,index_in_shell,new_basis%bfc(jbf_cart) )
+        if( new_basis%gaussian_type == 'CART' ) then
+          jbf           = jbf + 1
+          coeff(:)      = new_basis%bff(jbf)%coeff(:)
+          do ig = 1, ng
+            new_basis%bff(jbf)%g(ig)%x0(:) = xprojectile(:)
+          enddo
+          call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xprojectile,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+        endif
+
+        ! Break the loop when nz is equal to l
+        if( nz == am ) exit
+
+        if( nz < am - nx ) then
+          ny = ny - 1
+          nz = nz + 1
+        else
+          nx = nx - 1
+          ny = am - nx
+          nz = 0
+        endif
+
+      enddo
+
+      index_in_shell = 0
+      if( new_basis%gaussian_type == 'PURE' ) then
+        do mm = -am, am
+          jbf = jbf + 1
+          index_in_shell = index_in_shell + 1
+          do ig = 1, ng
+            new_basis%bff(jbf)%g(ig)%x0(:) = xprojectile(:)
+          enddo
+          call init_basis_function_pure( normalized,ng,am,mm,proj_iatom,xprojectile,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+        enddo
+      endif
+      deallocate(alpha,coeff)
+
    endif
- else
-   basis_filename = ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(proj_iatom),dp))))//'_'//TRIM(basis_name(proj_iatom)))
- endif
-
- !
- ! read first to get all the dimensions
- open( newunit=basisfile, file=TRIM(basis_filename), status='old' )
- read( basisfile,* ) nshell_file
- if( nshell_file < 1 ) call die('ERROR in basis set file')
- do ishell_file = 1, nshell_file
-
-   read( basisfile,* ) ng, am_read
-   if( ng < 1 ) call die('ERROR in basis set file')
-   if( am_read == 10 ) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
-   proj_nbf_cart = proj_nbf_cart + number_basis_function_am('CART'             ,am_read)
-   proj_nbf      = proj_nbf      + number_basis_function_am(new_basis%gaussian_type,am_read)
-   proj_nshell   = proj_nshell   + 1
-
-   do ig = 1, ng
-     read( basisfile,* )
-   enddo
-
  enddo
- close( basisfile )
-
- ! Start indexing from projectile
- jbf         = new_basis%nbf - proj_nbf
- jbf_cart    = new_basis%nbf_cart - proj_nbf_cart
- ishell      = new_basis%nshell - proj_nshell
- x0(:)       = xprojectile(:)
-
- open( newunit=basisfile, file=TRIM(basis_filename), status='old' )
- read( basisfile,* ) nshell_file
- do ishell_file = 1, nshell_file
-
-   read( basisfile,* ) ng, am_read
-   allocate( alpha(ng), coeff(ng) )
-   do ig = 1, ng
-     read( basisfile,* ) alpha(ig), coeff(ig)
-   enddo
-
-   ! Shell setup
-   !
-   ishell = ishell + 1
-
-   !new_basis%shell(ishell)%am      = am_read
-   !new_basis%shell(ishell)%iatom   = proj_iatom
-   new_basis%shell(ishell)%x0(:)   = x0(:)
-   !new_basis%shell(ishell)%ng      = ng
-
-   !new_basis%shell(ishell)%alpha(:)    = alpha(:)
-   !new_basis%shell(ishell)%istart      = jbf + 1
-   !new_basis%shell(ishell)%iend        = jbf + number_basis_function_am(gaussian_type,am_read)
-   !new_basis%shell(ishell)%istart_cart = jbf_cart + 1
-   !new_basis%shell(ishell)%iend_cart   = jbf_cart + number_basis_function_am('CART',am_read)
-
-   ! Basis function setup
-   !
-   nx = am_read
-   ny = 0
-   nz = 0
-   index_in_shell = 0
-   do
-     ! Add the new basis function
-     jbf_cart = jbf_cart + 1
-     index_in_shell = index_in_shell + 1
-     call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,x0,alpha,coeff,ishell,index_in_shell,new_basis%bfc(jbf_cart) )
-     if( new_basis%gaussian_type == 'CART' ) then
-       jbf = jbf + 1
-       call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,x0,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
-     endif
-
-     ! Break the loop when nz is equal to l
-     if( nz == am_read ) exit
-
-     if( nz < am_read - nx ) then
-       ny = ny - 1
-       nz = nz + 1
-     else
-       nx = nx - 1
-       ny = am_read - nx
-       nz = 0
-     endif
-
-   enddo
-
-   index_in_shell = 0
-   if( new_basis%gaussian_type == 'PURE' ) then
-     do mm = -am_read, am_read
-       jbf = jbf + 1
-       index_in_shell = index_in_shell + 1
-       call init_basis_function_pure( normalized,ng,am_read,mm,proj_iatom,x0,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
-     enddo
-   endif
-
-   !
-   ! Include here the normalization part that does not depend on (nx,ny,nz)
-   new_basis%shell(ishell)%coeff(:) = new_basis%bfc(jbf_cart-number_basis_function_am(gaussian_type,am_read)+1)%coeff(:) &
-             * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_read * alpha(:)**( 0.25_dp * ( 2.0_dp*am_read + 3.0_dp ) )
-
-   deallocate( alpha, coeff )
-
- enddo
- close( basisfile )
 
 
 end subroutine moving_basis_set

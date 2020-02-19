@@ -455,7 +455,7 @@ program molgw
  ! RT-TDDFT Simulation (only if SCF cycles were converged)
  !
  if( calc_type%is_real_time .AND. is_converged ) then
-   call calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_correct)
+   call calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
  end if
 
  !
