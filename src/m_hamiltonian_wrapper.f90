@@ -249,6 +249,11 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  hamiltonian_hxc_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
 
  !
+ ! For a core only calculation, no need to go any further
+ ! no hartree, no exchange-correlation
+ if( calc_type%is_core ) return
+
+ !
  ! Exchange contribution to the Hamiltonian
  !
  if( calc_type%need_exchange ) then
