@@ -992,12 +992,13 @@ end subroutine diagonalize_outofplace_sca_dp
 ! Diagonalize a non-distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eigval)
+subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eigval,diag_S)
  implicit none
  character(len=1),intent(in) :: flavor
  integer,intent(in)          :: scalapack_block_min
  real(dp),intent(inout)      :: matrix_global(:,:)
  real(dp),intent(out)        :: eigval(:)
+ logical,intent(in),optional :: diag_S
 !=====
  integer :: nmat
  integer :: cntxt
@@ -1007,6 +1008,7 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: descm(NDEL),descz(NDEL)
  real(dp),allocatable :: matrix(:,:)
+ real(dp),allocatable :: eigvec(:,:)
  integer :: rank_master
 !=====
 
@@ -1062,7 +1064,14 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
  else ! Only one SCALAPACK proc
 #endif
 
-   call diagonalize(flavor,matrix_global,eigval)
+   !if( present(diag_S) ) then
+     !print*, 'matrix_A = ', matrix_global
+     !call Jacobi_diagonalize(matrix_global,eigval,nmat)
+     !print*, 'eigval =', eigval
+     !print*, 'eigvec =', matrix_global
+   !else
+     call diagonalize(flavor,matrix_global,eigval)
+   !endif
 
 #if defined(HAVE_SCALAPACK)
  endif
@@ -1071,17 +1080,110 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
 
 end subroutine diagonalize_scalapack_dp
 
+!=========================================================================
+! Jacobian diagonalization - for test only
+!=========================================================================
+
+subroutine Jacobi_diagonalize(a_matrix,eigval,nmat)
+!===========================================================
+! Evaluate eigenvalues and eigenvectors
+! of a real symmetric matrix a(n,n): a*x = lambda*x
+! method: Jacoby method for symmetric matrices
+! Alex G. (December 2009)
+!-----------------------------------------------------------
+! input ...
+! a_matrix(n,n) - matrix A to be diagonalized
+! n             - number of eigen equations
+! abstol        - abs tolerance [sum of (off-diagonal elements)^2]
+! output ...
+! a_matrix(i,i) - eigenvectors
+! eigval(i)     - eigenvalues
+!===========================================================
+implicit none
+integer                 :: i, j, k, nmat
+real(dp),intent(inout)  :: a_matrix(:,:)
+real(dp),intent(out)    :: eigval(:)
+!==============
+real(dp)              :: b2, bar
+real(dp)              :: beta, coeff, c, s, cs, sc
+real(dp)              :: abstol=1.0e-09
+real(dp),allocatable  :: x(:,:)
+!==============
+
+allocate( x(nmat,nmat) )
+! initialize x(i,j)=0, x(i,i)=1
+! *** the array operation x=0.0 is specific for Fortran 90/95
+x(:,:) = 0.0_dp
+do i=1,nmat
+  x(i,i) = 1.0_dp
+end do
+
+! find the sum of all off-diagonal elements (squared)
+b2 = 0.0_dp
+do i=1,nmat
+  do j=1,nmat
+    if( i .NE. j ) b2 = b2 + a_matrix(i,j)**2.0_dp
+  end do
+end do
+
+if( b2 <= abstol ) return
+
+! average for off-diagonal elements /2
+bar = 0.5_dp * b2 / float( nmat*nmat )
+
+do while ( b2 .GT. abstol )
+  do i=1,nmat-1
+    do j=i+1,nmat
+      if ( a_matrix(j,i)**2 <= bar ) cycle  ! do not touch small elements
+      b2 = b2 - 2.0_dp*a_matrix(j,i)**2
+      bar = 0.5_dp * b2 / float( nmat*nmat )
+! calculate coefficient c and s for Givens matrix
+      beta = ( a_matrix(j,j)-a_matrix(i,i) )/( 2.0_dp*a_matrix(j,i) )
+      coeff = 0.5_dp * beta / sqrt( 1.0_dp + beta**2 )
+      s = sqrt( max(0.5_dp+coeff , 0.0_dp) )
+      c = sqrt( max(0.5_dp-coeff , 0.0_dp) )
+! recalculate rows i and j
+      do k=1,nmat
+        cs =  c*a_matrix(i,k) + s*a_matrix(j,k)
+        sc = -s*a_matrix(i,k) + c*a_matrix(j,k)
+        a_matrix(i,k) = cs
+        a_matrix(j,k) = sc
+      end do
+! new matrix a_{k+1} from a_{k}, and eigenvectors
+      do k=1,nmat
+        cs =  c*a_matrix(k,i) + s*a_matrix(k,j)
+        sc = -s*a_matrix(k,i) + c*a_matrix(k,j)
+        a_matrix(k,i) = cs
+        a_matrix(k,j) = sc
+        cs =  c*x(k,i) + s*x(k,j)
+        sc = -s*x(k,i) + c*x(k,j)
+        x(k,i) = cs
+        x(k,j) = sc
+      end do
+    end do
+  end do
+end do
+!return
+do i=1,nmat
+  eigval(i) = a_matrix(i,i)
+end do
+a_matrix = x
+deallocate(x)
+
+end subroutine Jacobi_diagonalize
+
 
 !=========================================================================
 ! Diagonalize a non-distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_scalapack_cdp(flavor,scalapack_block_min,matrix_global,eigval)
+subroutine diagonalize_scalapack_cdp(flavor,scalapack_block_min,matrix_global,eigval,diag_S)
  implicit none
  character(len=1),intent(in) :: flavor
  integer,intent(in)          :: scalapack_block_min
  complex(dp),intent(inout)   :: matrix_global(:,:)
  real(dp),intent(out)        :: eigval(:)
+ logical,intent(in),optional :: diag_S
 !=====
  integer :: nmat
  integer :: cntxt

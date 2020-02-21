@@ -832,6 +832,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
  real(dp),allocatable :: y_matrix(:,:)
+ logical  :: diag_S=.TRUE.
 !=====
 
  write(stdout,'(/,a)') ' Calculate the transformation matrix X '
@@ -845,7 +846,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
 
  matrix_tmp(:,:) = s_matrix(:,:)
  ! Diagonalization with or without SCALAPACK
- call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
+ call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval,diag_S)
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
@@ -864,14 +865,14 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
 
  istate = 0
  do jbf=1,nbf
-   
+
    if( s_eigval(jbf) > TOL_OVERLAP ) then
      istate = istate + 1
      x_matrix(:,istate) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
 !     if( present(s_matrix_sqrt) ) y_matrix(:,istate) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
    endif
 
-    if( present(s_matrix_sqrt) ) y_matrix(:,jbf) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
+   if( present(s_matrix_sqrt) ) y_matrix(:,jbf) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
 !   if( s_eigval(jbf) >= 0 ) y_matrix(:,jbf) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
 
  enddo
