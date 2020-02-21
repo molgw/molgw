@@ -468,7 +468,7 @@ program molgw
  if( read_fchk /= 'NO' &
     .OR. TRIM(pt_density_matrix) /= 'NO' &
     .OR. use_correlated_density_matrix_ ) then
-   call get_dm_mbpt(basis,occupation,energy,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
+   call get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
  endif
 
 

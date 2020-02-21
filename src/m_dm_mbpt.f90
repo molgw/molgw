@@ -26,7 +26,7 @@ contains
 
 
 !=========================================================================
-subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
+subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
                        hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
  implicit none
 
@@ -34,6 +34,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
  real(dp),intent(in)             :: occupation(:,:)
  real(dp),intent(in)             :: energy(:,:)
  real(dp),intent(in)             :: c_matrix(:,:,:)
+ real(dp),intent(in)             :: s_matrix(:,:)
  real(dp),intent(in)             :: hamiltonian_kinetic(:,:)
  real(dp),intent(in)             :: hamiltonian_nucleus(:,:)
  real(dp),intent(inout)          :: hamiltonian_fock(:,:,:)
@@ -48,8 +49,8 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
  real(dp),allocatable       :: p_matrix_corr(:,:,:)
  real(dp),allocatable       :: hamiltonian_hartree_corr(:,:)
  real(dp),allocatable       :: hamiltonian_exx_corr(:,:,:)
- real(dp),allocatable       :: c_matrix_tmp(:,:,:)
- real(dp),allocatable       :: occupation_tmp(:,:)
+ real(dp),allocatable       :: c_matrix_tmp(:,:,:),p_matrix_mo(:,:,:)
+ real(dp),allocatable       :: occupation_tmp(:,:),natural_occupation(:,:)
 !=====
 
  nstate = SIZE(c_matrix,DIM=2)
@@ -102,6 +103,9 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
      call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,wpol)
      call gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
+   case('HF')
+   case default
+     call die('get_dm_mbpt: pt_density_matrix choice does not exist')
    end select
  endif
 
@@ -122,6 +126,36 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix, &
    endif
 
  endif
+
+
+ !
+ ! Get the natural occupation number by diagonalizing C**T * S * P * S *C
+ !
+ allocate(natural_occupation(nstate,nspin))
+
+ call clean_allocate('Matrix S * C',c_matrix_tmp,basis%nbf,nstate,nspin)
+ call clean_allocate('Density matrix P_MO',p_matrix_mo,nstate,nstate,nspin)
+
+ do ispin=1,nspin
+   !c_matrix_tmp(:,:,ispin) = MATMUL( s_matrix, c_matrix(:,:,ispin) )
+   call DSYMM('L','L',basis%nbf,nstate,1.0d0,s_matrix(1,1),basis%nbf, &
+                                             c_matrix(1,1,ispin),basis%nbf,  &
+                                       0.0d0,c_matrix_tmp(1,1,ispin),basis%nbf)
+ enddo
+ call matrix_ao_to_mo(c_matrix_tmp,p_matrix_corr,p_matrix_mo)
+
+ do ispin=1,nspin
+   call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,p_matrix_mo(:,:,ispin),natural_occupation(:,ispin))
+   write(stdout,'(/,1x,a,i3)')  'Natural occupations for spin: ',ispin
+   write(stdout,'(10(2x,f14.6))') natural_occupation(:,ispin)
+   write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(natural_occupation(:,ispin))
+   write(stdout,*)
+ enddo
+
+ deallocate(natural_occupation)
+ call clean_deallocate('Matrix S * C',c_matrix_tmp)
+ call clean_deallocate('Density matrix P_MO',p_matrix_mo)
+
 
  if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
 
@@ -212,8 +246,8 @@ subroutine fock_density_matrix(basis,occupation,energy,c_matrix,hfock,p_matrix)
  integer  :: istate,jstate
  integer  :: astate,bstate
  integer  :: pqspin
- real(dp),allocatable :: p_matrix_state(:,:,:)
- real(dp),allocatable :: hfock_state(:,:,:)
+ real(dp),allocatable :: p_matrix_mo(:,:,:)
+ real(dp),allocatable :: hfock_mo(:,:,:)
 !=====
 
  call start_clock(timing_mbpt_dm)
@@ -221,34 +255,33 @@ subroutine fock_density_matrix(basis,occupation,energy,c_matrix,hfock,p_matrix)
 
  nstate = SIZE(occupation,DIM=1)
 
- call clean_allocate('Density matrix in state basis',p_matrix_state,nstate,nstate,nspin)
- call clean_allocate('Fock matrix in state basis',hfock_state,nstate,nstate,nspin)
+ call clean_allocate('Density matrix P_MO',p_matrix_mo,nstate,nstate,nspin)
+ call clean_allocate('Fock matrix F_MO',hfock_mo,nstate,nstate,nspin)
 
- call matrix_ao_to_mo(c_matrix,hfock,hfock_state)
+ call matrix_ao_to_mo(c_matrix,hfock,hfock_mo)
 
- p_matrix_state(:,:,:) = 0.0_dp
+ p_matrix_mo(:,:,:) = 0.0_dp
  do pqspin=1,nspin
    do pstate=1,nstate
-     p_matrix_state(pstate,pstate,pqspin) = occupation(pstate,pqspin)
+     p_matrix_mo(pstate,pstate,pqspin) = occupation(pstate,pqspin)
    enddo
    do istate=1,nhomo_G
      do astate=nhomo_G+1,nstate
-       p_matrix_state(istate,astate,pqspin) = hfock_state(istate,astate,pqspin)  &
+       p_matrix_mo(istate,astate,pqspin) = hfock_mo(istate,astate,pqspin)  &
                                               / ( energy(istate,pqspin) - energy(astate,pqspin) ) * spin_fact
-       p_matrix_state(astate,istate,pqspin) = p_matrix_state(istate,astate,pqspin)
+       p_matrix_mo(astate,istate,pqspin) = p_matrix_mo(istate,astate,pqspin)
      enddo
    enddo
  enddo
 
- call matrix_mo_to_ao(c_matrix,p_matrix_state,p_matrix)
+ call matrix_mo_to_ao(c_matrix,p_matrix_mo,p_matrix)
 
- call clean_deallocate('Density matrix in state basis',p_matrix_state)
- call clean_deallocate('Fock matrix in state basis',hfock_state)
+ call clean_deallocate('Density matrix P_MO',p_matrix_mo)
+ call clean_deallocate('Fock matrix F_MO',hfock_mo)
 
  call stop_clock(timing_mbpt_dm)
 
 end subroutine fock_density_matrix
-
 
 
 !=========================================================================
