@@ -282,7 +282,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      !
      ! indeces
      jstate = istate - ncore_G
-     sign_i = merge(-1.0_dp,1.0_dp,occupation(istate,ispin) / spin_fact > completely_empty )
+     sign_i = MERGE(-1.0_dp,1.0_dp,occupation(istate,ispin) / spin_fact > completely_empty )
      irecord = ( jstate - 1 ) * wpol%npole_reso
 
      !

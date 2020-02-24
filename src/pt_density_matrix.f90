@@ -891,7 +891,7 @@ end subroutine gw_density_matrix_dyson_imag
 
 
 !=========================================================================
-subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_state,p_matrix)
+subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_mo,p_matrix)
  use m_definitions
  use m_inputparam
  use m_hamiltonian_tools
@@ -900,24 +900,24 @@ subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_state,p
  integer,intent(in)     :: nbf,nstate
  real(dp),intent(in)    :: occupation(nstate,nspin)
  real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)    :: p_matrix_state(nstate,nstate,nspin)
+ real(dp),intent(in)    :: p_matrix_mo(nstate,nstate,nspin)
  real(dp),intent(inout) :: p_matrix(nbf,nbf,nspin)
 !=====
  integer              :: pstate,pqspin
  real(dp),allocatable :: p_matrix_tmp(:,:,:)
 !=====
 
- ! Input density matrix (p_matrix_state) is the change in the density matrix on the state basis
- ! Input density matrix (p_matrix) is the Fock density matrix on the basis functions
- ! Output density matrix (p_matrix) is the full density matrix on the basis functions
+ ! Input density matrix (p_matrix_mo) is the change in the density matrix on the MO
+ ! Input density matrix (p_matrix) is the Fock density matrix on the AO
+ ! Output density matrix (p_matrix) is the full density matrix on the AO
 
  !
  ! If input Fock density (p_matrix) is zero, then assume an Hartree-Fock SCF calculation
  if( ALL( ABS(p_matrix(:,:,:)) < 1.0e-6_dp ) ) then
    ! Add the SCF density matrix to get to the total density matrix
-   allocate(p_matrix_tmp(nbf,nbf,nspin))
+   allocate(p_matrix_tmp(nstate,nstate,nspin))
    do pstate=1,nstate
-     p_matrix_tmp(pstate,pstate,:) = p_matrix_state(pstate,pstate,:) + occupation(pstate,:)
+     p_matrix_tmp(pstate,pstate,:) = p_matrix_mo(pstate,pstate,:) + occupation(pstate,:)
    enddo
    ! Transform from MO to AO
    call matrix_mo_to_ao(c_matrix,p_matrix_tmp,p_matrix)
@@ -928,7 +928,7 @@ subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_state,p
    write(stdout,*) 'An input Fock density matrix was provided. Use it now!'
    allocate(p_matrix_tmp(nbf,nbf,nspin))
    ! Transform from MO to AO
-   call matrix_mo_to_ao(c_matrix,p_matrix_state,p_matrix_tmp)
+   call matrix_mo_to_ao(c_matrix,p_matrix_mo,p_matrix_tmp)
    p_matrix(:,:,:) = p_matrix(:,:,:) + p_matrix_tmp(:,:,:)
    deallocate(p_matrix_tmp)
 
