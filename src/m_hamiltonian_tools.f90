@@ -828,11 +828,10 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
  real(dp),allocatable,intent(inout),optional  :: s_matrix_sqrt(:,:)
 !=====
  integer  :: nbf, checkfile
- integer  :: istate,jbf
+ integer  :: istate,jbf,i_sign
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
  real(dp),allocatable :: y_matrix(:,:)
- logical  :: diag_S=.TRUE.
 !=====
 
  write(stdout,'(/,a)') ' Calculate the transformation matrix X '
@@ -846,7 +845,13 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
 
  matrix_tmp(:,:) = s_matrix(:,:)
  ! Diagonalization with or without SCALAPACK
- call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval,diag_S)
+ call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
+ do i_sign = 1,nbf
+   if( matrix_tmp(1,i_sign)/abs(matrix_tmp(1,i_sign)) < 0.0_dp ) then
+     matrix_tmp(:,i_sign) = -matrix_tmp(:,i_sign)
+   end if
+ enddo
+ print*, 'eigvec =', matrix_tmp
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
@@ -879,9 +884,9 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
 
  !! Calculate S^{1/2} matrix
  if( present(s_matrix_sqrt) ) then
-
- s_matrix_sqrt(:,:) = MATMUL( matrix_tmp(:,:), TRANSPOSE( y_matrix(:,:) ) )
- y_matrix(:,:) = MATMUL( s_matrix_sqrt, s_matrix_sqrt )
+   s_matrix_sqrt(:,:) = MATMUL( matrix_tmp(:,:), TRANSPOSE( y_matrix(:,:) ) )
+   y_matrix(:,:) = MATMUL( s_matrix_sqrt, s_matrix_sqrt )
+ end if
 
 ! open(newunit=checkfile, file="check_S_sqrt.dat")
 ! write(checkfile,'(A)') "=========== S{1/2}^2 ============"
@@ -893,8 +898,6 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
 !     write(checkfile,'(1x,i3,100(1x,f12.5))') jbf,s_matrix(jbf,1:nbf)
 ! enddo
 ! close(checkfile)
-
- end if
 
  deallocate(matrix_tmp,s_eigval,y_matrix)
 

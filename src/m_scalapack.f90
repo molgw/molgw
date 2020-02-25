@@ -992,13 +992,12 @@ end subroutine diagonalize_outofplace_sca_dp
 ! Diagonalize a non-distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eigval,diag_S)
+subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eigval)
  implicit none
  character(len=1),intent(in) :: flavor
  integer,intent(in)          :: scalapack_block_min
  real(dp),intent(inout)      :: matrix_global(:,:)
  real(dp),intent(out)        :: eigval(:)
- logical,intent(in),optional :: diag_S
 !=====
  integer :: nmat
  integer :: cntxt
@@ -1064,14 +1063,8 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
  else ! Only one SCALAPACK proc
 #endif
 
-   !if( present(diag_S) ) then
-     !print*, 'matrix_A = ', matrix_global
-     !call Jacobi_diagonalize(matrix_global,eigval,nmat)
-     !print*, 'eigval =', eigval
-     !print*, 'eigvec =', matrix_global
-   !else
-     call diagonalize(flavor,matrix_global,eigval)
-   !endif
+   !call Jacobi_diagonalize(matrix_global,eigval,nmat)
+   call diagonalize(flavor,matrix_global,eigval)
 
 #if defined(HAVE_SCALAPACK)
  endif
@@ -1112,7 +1105,6 @@ real(dp),allocatable  :: x(:,:)
 
 allocate( x(nmat,nmat) )
 ! initialize x(i,j)=0, x(i,i)=1
-! *** the array operation x=0.0 is specific for Fortran 90/95
 x(:,:) = 0.0_dp
 do i=1,nmat
   x(i,i) = 1.0_dp
@@ -1122,7 +1114,7 @@ end do
 b2 = 0.0_dp
 do i=1,nmat
   do j=1,nmat
-    if( i .NE. j ) b2 = b2 + a_matrix(i,j)**2.0_dp
+    if( i .NE. j ) b2 = b2 + a_matrix(i,j)**2
   end do
 end do
 
@@ -1177,13 +1169,12 @@ end subroutine Jacobi_diagonalize
 ! Diagonalize a non-distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_scalapack_cdp(flavor,scalapack_block_min,matrix_global,eigval,diag_S)
+subroutine diagonalize_scalapack_cdp(flavor,scalapack_block_min,matrix_global,eigval)
  implicit none
  character(len=1),intent(in) :: flavor
  integer,intent(in)          :: scalapack_block_min
  complex(dp),intent(inout)   :: matrix_global(:,:)
  real(dp),intent(out)        :: eigval(:)
- logical,intent(in),optional :: diag_S
 !=====
  integer :: nmat
  integer :: cntxt
