@@ -49,6 +49,10 @@ module m_spectral_function
    real(dp),allocatable :: omega_quad(:)         ! quadrature points for numerical integration
    real(dp),allocatable :: weight_quad(:)        ! quadrature weight for numerical integration
 
+   contains
+
+     procedure :: evaluate => sf_evaluate
+
  end type spectral_function
 
  !
@@ -510,6 +514,39 @@ subroutine read_spectral_function(sf,reading_status)
 
 
 end subroutine read_spectral_function
+
+
+!=========================================================================
+subroutine sf_evaluate(sf,omega_cmplx,chi)
+ implicit none
+
+ class(spectral_function),intent(in) :: sf
+ complex(dp),intent(in) :: omega_cmplx(:)
+ complex(dp),allocatable,intent(out) :: chi(:,:,:)
+ !=====
+ integer :: nomega,iomega,ipole
+ integer :: jprodbasis
+ !=====
+
+ if( nauxil_2center /= nauxil_3center ) call die('sf_evaluate: not implemented with MPI')
+
+ nomega = SIZE(omega_cmplx)
+ allocate(chi(sf%nprodbasis,sf%nprodbasis,nomega))
+
+ chi(:,:,:) = 0.0_dp
+ do iomega=1,nomega
+   do ipole=1,sf%npole_reso
+     do jprodbasis=1,sf%nprodbasis
+       chi(:,jprodbasis,iomega) = chi(:,jprodbasis,iomega) &
+               + sf%residue_left(:,ipole) * sf%residue_left(jprodbasis,ipole) &
+                     * ( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
+                        -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
+     enddo
+   enddo
+ enddo
+
+
+end subroutine sf_evaluate
 
 
 end module m_spectral_function
