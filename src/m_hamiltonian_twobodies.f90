@@ -264,7 +264,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
 
  call xsum_world(hartree_ao)
 
- call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',basis%nbf,1,hartree_ao)
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
  ehartree = 0.5_dp*SUM(hartree_ao(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
@@ -364,7 +364,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
  call xsum_world(hartree_ao)
  hartree_ao(:,:) = hartree_ao(:,:) / REAL(nproc_ortho,dp)
 
- call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',nbf,1,hartree_ao)
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
  select type(p_matrix)
  type is(real(dp))

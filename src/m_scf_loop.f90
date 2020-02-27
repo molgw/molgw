@@ -194,7 +194,7 @@ subroutine scf_loop(is_restart,&
      allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
      call gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)
 
-     call dump_out_matrix(.FALSE.,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(.FALSE.,'=== Self-energy ===',matrix_tmp)
      call destroy_spectral_function(wpol)
 
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:)
@@ -219,7 +219,7 @@ subroutine scf_loop(is_restart,&
      en_gks%total = en_gks%total + en_gks%mp2
      write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%total
 
-     call dump_out_matrix(.FALSE.,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(.FALSE.,'=== Self-energy ===',matrix_tmp)
 
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:)
      deallocate(matrix_tmp)

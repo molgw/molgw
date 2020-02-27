@@ -113,7 +113,7 @@ subroutine setup_overlap(basis,s_matrix)
  enddo
 
  title='=== Overlap matrix S ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix)
+ call dump_out_matrix(.FALSE.,title,s_matrix)
 
 
  call stop_clock(timing_overlap)
@@ -297,11 +297,11 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
  enddo
 
  title='=== Overlap matrix S (LIBINT) X ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix_grad(:,:,1))
+ call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,1))
  title='=== Overlap matrix S (LIBINT) Y ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix_grad(:,:,2))
+ call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,2))
  title='=== Overlap matrix S (LIBINT) Z ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix_grad(:,:,3))
+ call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,3))
 
  call stop_clock(timing_overlap)
 
@@ -397,7 +397,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
  enddo
 
  title='===  Kinetic energy contribution ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic)
+ call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic)
 
  call stop_clock(timing_hamiltonian_kin)
 
@@ -487,11 +487,11 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
  enddo
 
  title='===  Kinetic energy contribution (LIBINT) X ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,1))
+ call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic_grad(:,:,1))
  title='===  Kinetic energy contribution (LIBINT) Y ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,2))
+ call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic_grad(:,:,2))
  title='===  Kinetic energy contribution (LIBINT) Z ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,3))
+ call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic_grad(:,:,3))
 
  call stop_clock(timing_hamiltonian_kin)
 
@@ -623,7 +623,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
  ! Reduce operation
  call xsum_world(hamiltonian_nucleus)
 
- call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution ===',basis%nbf,1,hamiltonian_nucleus)
+ call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution ===',hamiltonian_nucleus)
 
  if( in_tddft_loop ) then
    call stop_clock(timing_tddft_hamiltonian_nuc)
@@ -770,11 +770,11 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
  call xsum_world(hamiltonian_nucleus_grad)
 
  title='===  Nucleus potential contribution (LIBINT) C1X==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus_grad(:,:,1,1))
+ call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,1,1))
  title='===  Nucleus potential contribution (LIBINT) C1Y==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus_grad(:,:,1,2))
+ call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,1,2))
  title='===  Nucleus potential contribution (LIBINT) C1Z==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus_grad(:,:,1,3))
+ call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,1,3))
 
  call stop_clock(timing_hamiltonian_nuc)
 
@@ -1121,7 +1121,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  call xsum_world(hamiltonian_nucleus)
 
  title='=== ECP Nucleus potential contribution ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus)
+ call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus)
 
  call stop_clock(timing_ecp)
 

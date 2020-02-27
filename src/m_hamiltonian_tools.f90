@@ -225,10 +225,10 @@ subroutine test_density_matrix(p_matrix,s_matrix)
    matrix(:,:) = MATMUL( p_matrix(:,:,ispin), MATMUL( s_matrix(:,:) , p_matrix(:,:,ispin) ) )
 
 
-   title='=== PSP ==='
-   !call dump_out_matrix(1,title,nbf,1,matrix)
-   title='===  P  ==='
-   !call dump_out_matrix(1,title,nbf,1,p_matrix(:,:,ispin))
+   !title='=== PSP ==='
+   !call dump_out_matrix(1,title,matrix)
+   !title='===  P  ==='
+   !call dump_out_matrix(1,title,p_matrix(:,:,ispin))
 
  enddo
 
