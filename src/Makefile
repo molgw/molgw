@@ -264,7 +264,7 @@ pt_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warn
 	$(FC_W_OPTS) -c pt_selfenergy.f90 $(LIBXC_INCS)
 
 pt_density_matrix.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_memory.f90 m_timing.f90 m_warning.f90 m_scalapack.f90 m_basis_set.f90 \
-                  m_spectral_function.f90 m_inputparam.f90 m_selfenergy_tools.f90 m_eri_ao_mo.f90 m_hamiltonian_tools.f90 m_hamiltonian_onebody.f90 pt_density_matrix.f90
+                  m_spectral_function.f90 m_inputparam.f90 m_selfenergy_tools.f90 m_eri_ao_mo.f90 m_hamiltonian_tools.f90 m_hamiltonian_onebody.f90 m_io.f90 pt_density_matrix.f90
 	$(FC_W_OPTS) -c pt_density_matrix.f90 $(LIBXC_INCS)
 
 pdbssolver1.o: pdbssolver1.f

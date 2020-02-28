@@ -545,6 +545,7 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
  use m_spectral_function
  use m_eri_ao_mo
  use m_selfenergy_tools
+ use m_io
  implicit none
 
  type(basis_set),intent(in)         :: basis
@@ -562,7 +563,7 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
  real(dp),allocatable :: chi_eri3_sca_q(:,:)
  real(dp),allocatable :: omega_sigma(:),weight_sigma(:)
  real(dp),allocatable :: p_matrix_gw(:,:,:)
- real(dp)             :: v_chi_v_pq
+ real(dp)             :: v_chi_v_pq,mu
  integer              :: desc_eri3_t(NDEL)
  integer              :: iprow,ipcol,nprow,npcol
  integer              :: desc_eri3_final(NDEL)
@@ -622,6 +623,10 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
    write(stdout,'(i5,2(2x,f14.6))') iomegas,omega_sigma(iomegas)*Ha_eV,weight_sigma(iomegas)
  enddo
 
+ !
+ ! Find the HOMO-LUMO gap
+ mu = ( MINVAL(energy(nhomo_G+1,:)) + MAXVAL(energy(nhomo_G,:)) ) / 2.0_dp
+ write(stdout,'(1x,a,f12.6)') 'Center of the HOMO-LUMO gap (eV): ',mu*Ha_eV
 
  allocate(p_matrix_gw(nstate,nstate,nspin))
  p_matrix_gw(:,:,:) = 0.0_dp
@@ -649,10 +654,10 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
 
            p_matrix_gw(pstate,qstate,pqspin) = p_matrix_gw(pstate,qstate,pqspin) &
                 - SUM( wpol%weight_quad(iomega) * weight_sigma(:) * v_chi_v_pq /  pi**2   &
-                       * REAL( (  1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) + im * wpol%omega_quad(iomega) )    &
-                                + 1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) - im * wpol%omega_quad(iomega) )  ) &
-                              / ( im * omega_sigma(:) - energy(pstate,pqspin) )   &
-                              / ( im * omega_sigma(:) - energy(qstate,pqspin) ) , dp ) )
+                   * REAL( (  1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) + im * wpol%omega_quad(iomega) )    &
+                            + 1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) - im * wpol%omega_quad(iomega) )  ) &
+                           / ( im * omega_sigma(:) - (energy(pstate,pqspin)-mu) )   &
+                           / ( im * omega_sigma(:) - (energy(qstate,pqspin)-mu) ) , dp ) )
          enddo
 
        enddo
@@ -663,6 +668,8 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
  enddo
  call xsum_world(p_matrix_gw)
 
+ !debug
+ call dump_out_matrix(.FALSE.,'P matrix',p_matrix_gw)
  deallocate(omega_sigma,weight_sigma)
 
 
@@ -731,7 +738,7 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
  real(dp),allocatable :: omega_sigma(:),weight_sigma(:)
  real(dp),allocatable :: p_matrix_gw(:,:,:)
  complex(dp),allocatable :: m_matrix(:,:,:,:)
- real(dp)             :: v_chi_v_pq
+ real(dp)             :: v_chi_v_pq,mu
  integer              :: desc_eri3_t(NDEL)
  integer              :: iprow,ipcol,nprow,npcol
  integer              :: desc_eri3_final(NDEL)
@@ -791,6 +798,10 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
    write(stdout,'(i5,2(2x,f14.6))') iomegas,omega_sigma(iomegas)*Ha_eV,weight_sigma(iomegas)
  enddo
 
+ !
+ ! Find the HOMO-LUMO gap
+ mu = ( MINVAL(energy(nhomo_G+1,:)) + MAXVAL(energy(nhomo_G,:)) ) / 2.0_dp
+ write(stdout,'(1x,a,f12.6)') 'Center of the HOMO-LUMO gap (eV): ',mu*Ha_eV
 
  allocate(p_matrix_gw(nstate,nstate,nspin))
  allocate(m_matrix(nsemin:nsemax,nsemin:nsemax,nomega_sigma,nspin))
@@ -819,9 +830,9 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
 
            m_matrix(pstate,qstate,:,pqspin) = m_matrix(pstate,qstate,:,pqspin) &
                 + wpol%weight_quad(iomega) * v_chi_v_pq /  pi   &
-                       * (  1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) + im * wpol%omega_quad(iomega) )    &
-                          + 1.0_dp / ( im * omega_sigma(:) - energy(mstate,pqspin) - im * wpol%omega_quad(iomega) )  ) &
-                              / ( im * omega_sigma(:) - energy(pstate,pqspin) )
+                   * (  1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) + im * wpol%omega_quad(iomega) )    &
+                      + 1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) - im * wpol%omega_quad(iomega) )  ) &
+                   / ( im * omega_sigma(:) - (energy(pstate,pqspin)-mu) )
          enddo
 
        enddo
@@ -834,7 +845,6 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
 
  do pqspin=1,nspin
    do iomegas=1,nomega_sigma
-     write(stdout,*) 'iomegas',iomegas
      call invert(m_matrix(:,:,iomegas,pqspin))
    enddo
    do qstate=nsemin,nsemax
@@ -847,7 +857,8 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
    do qstate=nsemin,nsemax
      do pstate=nsemin,nsemax
        p_matrix_gw(pstate,qstate,pqspin) = &
-          REAL( SUM( m_matrix(pstate,qstate,:,pqspin) / ( im * omega_sigma(:) - energy(qstate,pqspin) ) * weight_sigma(:) / pi ) , dp)
+          REAL( SUM( m_matrix(pstate,qstate,:,pqspin) &
+                / ( im * omega_sigma(:) - (energy(qstate,pqspin)-mu) ) * weight_sigma(:) / pi ) , dp)
      enddo
    enddo
  enddo
