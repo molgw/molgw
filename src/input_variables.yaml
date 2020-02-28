@@ -1024,13 +1024,21 @@ prop_type:
   comment: Sets the type of propagation algorithm in the real-time dynamics.
           'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.
 
+projectile_charge_scaling:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0
+  comment: Rescaling of the projectile charge
+
 r_disc:
   family: rt_tddft
   datatype: real
   mandatory: 'no'
   experimental: 'no'
   default: 200.0
-  comment: Radius of the disc for denisty calculations (option calc_dens_disc) for the real-time dynamics.
+  comment: Radius of the disc for density calculations (option calc_dens_disc) for the real-time dynamics.
 
 tddft_frozencore:
   family: rt_tddft

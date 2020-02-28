@@ -838,13 +838,13 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
 
  select case(excit_type%form)
  case(EXCIT_PROJECTILE)
-   write(file_time_data,"(F10.4,11(2x,es16.8E3))") &
+   write(file_time_data,"(f10.4,11(2x,es16.8e3))") &
       time_cur, en_tddft%total, xatom(:,natom), en_tddft%nuc_nuc, en_tddft%nucleus, en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
       en_tddft%excit
    call output_projectile_position()
 
  case(EXCIT_LIGHT)
-   write(file_time_data,"(F10.4,8(2x,es16.8E3))") &
+   write(file_time_data,"(f10.4,8(2x,es16.8e3))") &
     time_cur, en_tddft%total, en_tddft%nuc_nuc, en_tddft%nucleus, en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, en_tddft%excit
    write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
    write(file_excit_field,'(2f19.10)') time_cur, excit_field_norm
@@ -880,7 +880,7 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field)
  case(EXCIT_PROJECTILE)
    write(file_time_data,"(A10,11(A18))") "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc","enuc_wo_proj","ekin","ehart",&
                              &"eexx_hyb","exc","enuc_proj"
-                                               
+
  case(EXCIT_LIGHT)
    write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
                              &eexx_hyb            exc             eexcit"

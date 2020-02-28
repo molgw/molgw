@@ -943,7 +943,7 @@ subroutine read_inputfile_namelist()
  ! vel_projectile(:) = vel_projectile(:) * length_factor
  ! For the moment, velocity in input file must be in bohrs per a.u.[time] for any length_factor
 
- call init_atoms(zatom_read,x_read,vel_projectile,(move_nuclei/='no'),excit_type%name)
+ call init_atoms(zatom_read,x_read,vel_projectile,(move_nuclei/='no'),excit_type%name,projectile_charge_scaling)
  deallocate(x_read,zatom_read)
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)
