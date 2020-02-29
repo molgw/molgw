@@ -801,76 +801,82 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
     omega_sigma(iomegas)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha - 1.0_dp ) * beta
     write(stdout,'(i5,2(2x,f14.6))') iomegas,omega_sigma(iomegas)*Ha_eV,weight_sigma(iomegas)
   enddo
- 
+
   !
   ! Find the HOMO-LUMO gap
   mu = ( MINVAL(energy(nhomo_G+1,:)) + MAXVAL(energy(nhomo_G,:)) ) / 2.0_dp
   write(stdout,'(1x,a,f12.6)') 'Center of the HOMO-LUMO gap (eV): ',mu*Ha_eV
- 
+
   allocate(p_matrix_gw(nstate,nstate,nspin))
   allocate(m_matrix(nsemin:nsemax,nsemin:nsemax,nomega_sigma,nspin))
   m_matrix(:,:,:,:) = (0.0_dp,0.0_dp)
- 
+
   do pqspin=1,nspin
     do qstate=nsemin,nsemax
- 
+
       eri3_sca_q(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,qstate,pqspin)
- 
- 
+
+
       do iomega=1,wpol%nomega_quad
- 
+
         call DGEMM('N','N',nauxil_2center,mrange,nauxil_2center,  &
                    1.0_dp,wpol%chi(:,:,iomega),nauxil_2center,    &
                           eri3_sca_q          ,nauxil_2center,    &
                    0.0_dp,chi_eri3_sca_q      ,nauxil_2center)
- 
+
         do pstate=nsemin,nsemax
           eri3_sca_p(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,pstate,pqspin)
- 
+
           do mlocal=1,neri3
             mstate = INDXL2G(mlocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
- 
+
             v_chi_v_pq = DOT_PRODUCT( eri3_sca_p(:,mlocal) , chi_eri3_sca_q(:,mlocal) )
- 
+
+            ! M contains (1 - G_0 * Sigma)
             m_matrix(pstate,qstate,:,pqspin) = m_matrix(pstate,qstate,:,pqspin) &
-                 + wpol%weight_quad(iomega) * v_chi_v_pq /  pi   &
+                 - wpol%weight_quad(iomega) * v_chi_v_pq /  ( 2 * pi )   &
                     * (  1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) + im * wpol%omega_quad(iomega) )    &
                        + 1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) - im * wpol%omega_quad(iomega) )  ) &
                     / ( im * omega_sigma(:) - (energy(pstate,pqspin)-mu) )
+
           enddo
- 
+
         enddo
- 
+
       enddo
- 
+
       m_matrix(qstate,qstate,:,pqspin) = m_matrix(qstate,qstate,:,pqspin) + (1.0_dp,0.0_dp)
     enddo
   enddo
- 
+
   do pqspin=1,nspin
     do iomegas=1,nomega_sigma
       call invert(m_matrix(:,:,iomegas,pqspin))
     enddo
+    !
+    ! Remove G_0 since p_matrix_gw is to contain the *correction* to p_matrix
     do qstate=nsemin,nsemax
       m_matrix(qstate,qstate,:,pqspin) = m_matrix(qstate,qstate,:,pqspin) - (1.0_dp,0.0_dp)
     enddo
   enddo
- 
+
   p_matrix_gw(:,:,:) = 0.0_dp
   do pqspin=1,nspin
     do qstate=nsemin,nsemax
       do pstate=nsemin,nsemax
+        ! The factor 0.50 is the only way to obtain the same results as Caruso's PhD thesis.
         p_matrix_gw(pstate,qstate,pqspin) = &
-           REAL( SUM( m_matrix(pstate,qstate,:,pqspin) &
-                 / ( im * omega_sigma(:) - (energy(qstate,pqspin)-mu) ) * weight_sigma(:) / pi ) , dp)
+          2.0_dp * spin_fact / ( 2.0_dp * pi ) * 0.50_dp &
+            * REAL( SUM( m_matrix(pstate,qstate,:,pqspin) &
+                    / ( im * omega_sigma(:) - (energy(qstate,pqspin)-mu) ) * weight_sigma(:) ) , dp)
       enddo
     enddo
   enddo
- 
- 
+
+
   deallocate(omega_sigma,weight_sigma)
- 
- 
+
+
   ! Symmetrization of the p_matrix here
   ! Only the upper triangle was set up before
   do pqspin=1,nspin
