@@ -594,7 +594,7 @@ subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
    call DGEMMT('L','T','N',nstate,nbf,1.0d0,c_matrix(1,1,ispin),nbf, &
                                             matrix_tmp,nbf,          &
                                       0.0d0,matrix_out(1,1,ispin),nstate)
-   call matrix_lower_to_full(matrix_out(:,:,1))
+   call matrix_lower_to_full(matrix_out(:,:,ispin))
 #else
    call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(1,1,ispin),nbf, &
                                               matrix_tmp,nbf,          &
@@ -638,7 +638,7 @@ subroutine matrix_mo_to_ao(c_matrix,matrix_in,matrix_out)
    call DGEMMT('L','N','T',nbf,nstate,1.0d0,matrix_tmp,nbf,          &
                                             c_matrix(1,1,ispin),nbf, &
                                       0.0d0,matrix_out(1,1,ispin),nbf)
-   call matrix_lower_to_full(matrix_out(:,:,1))
+   call matrix_lower_to_full(matrix_out(:,:,ispin))
 #else
    call DGEMM('N','T',nbf,nbf,nstate,1.0d0,matrix_tmp,nbf,        &
                                            c_matrix(1,1,ispin),nbf,  &
