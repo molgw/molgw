@@ -519,15 +519,18 @@ subroutine update_S_X(basis,nstate,x_matrix,s_matrix)
 
  implicit none
  type(basis_set),intent(in)         :: basis
- integer ,intent(in)                :: nstate
+ integer,intent(in)                 :: nstate
  real(dp),allocatable,intent(inout) :: x_matrix(:,:)
  real(dp),intent(inout)             :: s_matrix(:,:)
 !=====
  integer                            :: nstate_tmp
 !=====
 
+ call clean_deallocate('Transformation matrix X',x_matrix)
+
  call setup_overlap(basis,s_matrix)
  call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
+
  if( nstate /= nstate_tmp ) then
    call die('Error with nstate in the TDDFT propagator')
  end if
@@ -619,7 +622,6 @@ subroutine predictor_corrector(basis,                  &
  ! ///////////////////////////////////
  case('PC0')
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     call clean_deallocate('Transformation matrix X',x_matrix)
      !=== time_cur = t + dt
      call update_basis(time_cur,new_basis,new_auxil_basis)
      call update_S_X(new_basis,nstate,x_matrix,s_matrix)
@@ -647,12 +649,11 @@ subroutine predictor_corrector(basis,                  &
    !--1--PREDICTOR----| H(2/4),H(6/4)-->H(9/4)
    h_small_cmplx= -3.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,1)+7.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,2)
    !--2--PREDICTOR----| C(8/4)---U[H(9/4)]--->C(10/4)
-   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     call clean_deallocate('Transformation matrix X',x_matrix)
-     call update_basis(time_cur-time_step/2.0_dp,new_basis,new_auxil_basis)
-     call update_S_X(new_basis,nstate,x_matrix,s_matrix)
-     call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
-   endif
+   !if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+    ! call update_basis(time_cur-time_step/2.0_dp,new_basis,new_auxil_basis)
+    ! call update_S_X(new_basis,nstate,x_matrix,s_matrix)
+    ! call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
+   !endif
 
    call propagate_orth(nstate,new_basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
 
@@ -672,11 +673,10 @@ subroutine predictor_corrector(basis,                  &
                                 h_cmplx,en_tddft)
 
    !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
-   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     call clean_deallocate('Transformation matrix X',x_matrix)
-     call update_basis(time_cur,new_basis,new_auxil_basis)
-     call update_S_X(new_basis,nstate,x_matrix,s_matrix)
-   endif
+   !if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+    ! call update_basis(time_cur,new_basis,new_auxil_basis)
+    ! call update_S_X(new_basis,nstate,x_matrix,s_matrix)
+   !endif
 
    call propagate_orth(nstate,new_basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
 

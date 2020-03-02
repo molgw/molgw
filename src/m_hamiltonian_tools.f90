@@ -826,12 +826,19 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
  integer,intent(out)                          :: nstate
  real(dp),allocatable,intent(inout)           :: x_matrix(:,:)
  real(dp),allocatable,intent(inout),optional  :: s_matrix_sqrt(:,:)
+ !real(dp),intent(inout),optional              :: u_matrix(:,:)
+ !logical,intent(in),optional                  :: SORT_EIGVEC
 !=====
  integer  :: nbf, checkfile
  integer  :: istate,jbf,i_sign
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
  real(dp),allocatable :: y_matrix(:,:)
+!=====
+ !integer                            :: i_match
+ !integer,allocatable                :: list_i_match(:),dummy_list(:)
+ !real(dp),allocatable               :: list_cosine(:)
+ !real(dp),allocatable               :: old_u_matrix(:,:)
 !=====
 
  write(stdout,'(/,a)') ' Calculate the transformation matrix X '
@@ -843,19 +850,60 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
  allocate(y_matrix(nbf,nbf))
  y_matrix(:,:) = 0.0_dp
 
+ !if( present(SORT_EIGVEC) ) then
+  ! allocate( list_i_match(nbf),list_cosine(nbf),dummy_list(nbf) )
+  ! allocate( old_u_matrix(nbf,nbf) )
+  ! old_u_matrix(:,:) = u_matrix(:,:)
+ !endif
+
  matrix_tmp(:,:) = s_matrix(:,:)
  ! Diagonalization with or without SCALAPACK
  call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
+
+ ! Fix the sign of eigenvectors in matrix_tmp to be positive on the 1st element
  do i_sign = 1,nbf
    if( matrix_tmp(1,i_sign)/abs(matrix_tmp(1,i_sign)) < 0.0_dp ) then
      matrix_tmp(:,i_sign) = -matrix_tmp(:,i_sign)
    end if
  enddo
- print*, 'eigvec =', matrix_tmp
+
+!!! THIS PART DIDN'T WORK
+!==== Output U matrix
+ !if( present(u_matrix) ) then
+  ! u_matrix(:,:) = matrix_tmp(:,:)
+ !endif
+!==== Find the coherent order of eigenvectors in U(t) compared with U(t-dt)
+ !if( present(SORT_EIGVEC) ) then
+
+ !do i_sign = 1,nbf
+
+   !! Compare cosine similarity
+   !list_cosine(:) = 0
+   !do i_match = 1,nbf
+      !list_cosine(i_match) = abs(DOT_PRODUCT( u_matrix(:,i_sign),old_u_matrix(:,i_match) )) &
+      !                  / ( NORM2(u_matrix(:,i_sign))*NORM2(old_u_matrix(:,i_match)) )
+   !enddo
+
+   !! Take index of previous vector that has the best overlap
+   !dummy_list = maxloc(list_cosine)
+   !list_i_match(i_sign) = dummy_list(1)
+
+ !enddo
+
+ !! Reorder u_matrix
+ !old_u_matrix(:,:) = u_matrix(:,:)
+ !do i_sign = 1,nbf
+  ! u_matrix(:,list_i_match(i_sign)) = old_u_matrix(:,i_sign)
+ !enddo
+ !matrix_tmp(:,:) = u_matrix(:,:)
+
+ !deallocate( old_u_matrix,list_i_match,list_cosine,dummy_list )
+
+ !endif
+!====
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
- !
  ! S**{-1} = X * X**T
  !
  call clean_allocate('Overlap X * X**H = S**-1',x_matrix,nbf,nstate)
@@ -892,10 +940,6 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix,s_matrix_sqrt
 ! write(checkfile,'(A)') "=========== S{1/2}^2 ============"
 ! do jbf=1,nbf
 !     write(checkfile,'(1x,i3,100(1x,f12.5))') jbf,y_matrix(jbf,1:nbf)
-! enddo
-! write(checkfile,'(A)') "============== S ==============="
-! do jbf=1,nbf
-!     write(checkfile,'(1x,i3,100(1x,f12.5))') jbf,s_matrix(jbf,1:nbf)
 ! enddo
 ! close(checkfile)
 
