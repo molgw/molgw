@@ -110,7 +110,6 @@ module m_timing
  integer,parameter :: timing_tddft_vxc              = 133
  integer,parameter :: timing_tddft_frozen_core      = 134
  integer,parameter :: timing_tddft_q_matrix         = 135
- integer,parameter :: timing_tddft_recalc_H         = 136
 
 
  integer,private     :: count_rate,count_max
