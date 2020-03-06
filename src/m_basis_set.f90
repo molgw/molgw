@@ -1168,14 +1168,14 @@ subroutine time_derivative_integral(bf1,bf2,dt,dt_integral)
  real(dp),intent(out)            :: dt_integral
 !=====
  integer                         :: ig,jg
- !real(dp)                        :: overlap_one_gaussian
+ real(dp)                        :: overlap_one_gaussian
 !=====
 
  dt_integral=0.0_dp
  do ig=1,bf1%ngaussian
    do jg=1,bf2%ngaussian
-     !call overlap_recurrence(bf1%g(ig),bf2%g(jg),overlap_one_gaussian)
-     dt_integral = dt_integral !+ overlap_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
+     call overlap_recurrence(bf1%g(ig),bf2%g(jg),overlap_one_gaussian)
+     dt_integral = dt_integral + overlap_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
    enddo
  enddo
 

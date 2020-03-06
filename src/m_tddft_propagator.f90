@@ -124,12 +124,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call echo_tddft_variables()
 
  call clean_allocate('Overlap matrix S for TDDFT',s_matrix,basis%nbf,basis%nbf)
- call clean_allocate('Basis evolution matrix D for TDDFT',d_matrix,basis%nbf,basis%nbf)
+ call clean_allocate('Time derivative matrix D for TDDFT',d_matrix,basis%nbf,basis%nbf)
  call clean_allocate('Kinetic operator T for TDDFT',hamiltonian_kinetic,basis%nbf,basis%nbf)
  call clean_allocate('Nucleus operator V for TDDFT',hamiltonian_nucleus,basis%nbf,basis%nbf)
 
  call setup_overlap(basis,s_matrix)
- call setup_D_matrix(basis,basis,time_step,d_matrix)
+ call setup_D_matrix(new_basis=basis,time_step=time_step,s_matrix=s_matrix,d_matrix=d_matrix)
 
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
  call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
@@ -439,7 +439,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  if( calc_type%is_dft ) call destroy_dft_grid()
 
  call clean_deallocate('Overlap matrix S for TDDFT',s_matrix)
- call clean_deallocate('Basis evolution matrix D for TDDFT',d_matrix)
+ call clean_deallocate('Time derivative matrix D for TDDFT',d_matrix)
  call clean_deallocate('Transformation matrix X',x_matrix)
  call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
  call clean_deallocate('Kinetic operator T for TDDFT',hamiltonian_kinetic)
@@ -579,6 +579,35 @@ end subroutine update_T_Vext_eri
 
 
 !=========================================================================
+subroutine setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
+
+ implicit none
+ type(basis_set),intent(in)          :: new_basis
+ type(basis_set),intent(in),optional :: old_basis
+ real(dp),intent(in)                 :: time_step
+ real(dp),intent(in)                 :: s_matrix(:,:)
+ real(dp),intent(out)                :: d_matrix(:,:)
+!=====
+ real(dp),allocatable                :: mixed_matrix(:,:)
+!=====
+
+ write(stdout,'(/,a)') ' Setup time derivative matrix D '
+
+ if( PRESENT(old_basis) ) then
+   allocate( mixed_matrix(new_basis%nbf,new_basis%nbf) )
+   call setup_overlap_mixedbasis(new_basis,old_basis,mixed_matrix)
+   d_matrix = ( s_matrix - mixed_matrix ) / time_step
+   deallocate( mixed_matrix )
+ else
+   d_matrix(:,:) = 0.0_dp
+ endif
+
+ print*, 'D matrix =', d_matrix
+
+end subroutine setup_D_matrix
+
+
+!=========================================================================
 subroutine predictor_corrector(basis,                  &
                                new_basis,              &
                                auxil_basis,            &
@@ -640,7 +669,7 @@ case('MB_PC0')
    ! Update all basis and operators ( S, D, H ) to time_cur = t + dt
    call update_basis(time_cur,new_basis,new_auxil_basis)
    call setup_overlap(new_basis,s_matrix)
-   call setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
+   call setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
    call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
    call setup_hamiltonian_cmplx(new_basis,                  &
                                 nstate,                     &
@@ -1562,6 +1591,8 @@ subroutine propagate_nonortho(nstate,basis,time_step_cur,s_matrix,d_matrix,c_mat
 !==variables for the CN propagator
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al,
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
+ complex(dp),allocatable    :: m_matrix_cmplx(:,:,:) ! M = S**-1 * ( H - i*D )
+ real(dp),allocatable       :: s_matrix_inverse(:,:)
 !=====
 
  call start_clock(timing_tddft_propagation)
@@ -1573,8 +1604,15 @@ subroutine propagate_nonortho(nstate,basis,time_step_cur,s_matrix,d_matrix,c_mat
    case('CN')
      allocate(l_matrix_cmplx(nstate,nstate))
      allocate(b_matrix_cmplx(nstate,nstate))
-     l_matrix_cmplx(:,:) =  im * time_step_cur / 2.0_dp * h_cmplx(:,:,ispin)
+     allocate(m_matrix_cmplx(nstate,nstate,nspin))
+     allocate(s_matrix_inverse(nstate,nstate))
+
+     s_matrix_inverse = s_matrix
+     call invert(s_matrix_inverse)
+     m_matrix_cmplx(:,:,ispin) = s_matrix_inverse * ( h_cmplx(:,:,ispin) - im*d_matrix )
+     l_matrix_cmplx(:,:) =  im * time_step_cur / 2.0_dp * m_matrix_cmplx(:,:,ispin)
      b_matrix_cmplx(:,:) = -l_matrix_cmplx(:,:)
+
      do istate=1,nstate
        b_matrix_cmplx(istate,istate) = b_matrix_cmplx(istate,istate) + 1.0_dp
        l_matrix_cmplx(istate,istate) = l_matrix_cmplx(istate,istate) + 1.0_dp
@@ -1587,9 +1625,8 @@ subroutine propagate_nonortho(nstate,basis,time_step_cur,s_matrix,d_matrix,c_mat
 
      deallocate(l_matrix_cmplx)
      deallocate(b_matrix_cmplx)
-
-     case default
-       call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
+     deallocate(m_matrix_cmplx)
+     deallocate(s_matrix_inverse)
 
    end select
 

@@ -123,68 +123,6 @@ end subroutine setup_overlap
 
 
 !=========================================================================
-subroutine setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
-
- implicit none
- type(basis_set),intent(in) :: new_basis,old_basis
- real(dp),intent(in)        :: time_step
- real(dp),intent(out)       :: d_matrix(new_basis%nbf,new_basis%nbf)
-!=====
- integer              :: ishell,jshell
- integer              :: ibf1,ibf2,jbf1,jbf2
- integer              :: ni,nj,ni_cart,nj_cart,li,lj
- character(len=100)   :: title
- real(dp),allocatable :: matrix(:,:)
-
- real(C_DOUBLE),allocatable :: array_cart(:)
-!=====
- integer :: i_cart,j_cart,ij
- integer :: ibf_cart,jbf_cart
-!=====
-
- write(stdout,'(/,a)') ' Setup basis evolution matrix D '
-
- do jshell=1,old_basis%nshell
-
-   lj      = old_basis%shell(jshell)%am
-   nj_cart = number_basis_function_am('CART',lj)
-   nj      = number_basis_function_am(old_basis%gaussian_type,lj)
-   jbf1    = old_basis%shell(jshell)%istart
-   jbf2    = old_basis%shell(jshell)%iend
-
-   do ishell=1,new_basis%nshell
-
-     li      = new_basis%shell(ishell)%am
-     ni_cart = number_basis_function_am('CART',li)
-     ni      = number_basis_function_am(new_basis%gaussian_type,li)
-     ibf1    = new_basis%shell(ishell)%istart
-     ibf2    = new_basis%shell(ishell)%iend
-
-     allocate(array_cart(ni_cart*nj_cart))
-
-     ij = 0
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         ij = ij + 1
-         ibf_cart = new_basis%shell(ishell)%istart_cart + i_cart - 1
-         jbf_cart = old_basis%shell(jshell)%istart_cart + j_cart - 1
-         call time_derivative_integral(new_basis%bfc(ibf_cart),old_basis%bfc(jbf_cart),time_step,array_cart(ij))
-       enddo
-     enddo
-     call transform_molgw_to_molgw(new_basis%gaussian_type,li,lj,array_cart,matrix)
-
-     d_matrix(ibf1:ibf2,jbf1:jbf2) = matrix(:,:)
-
-     deallocate(array_cart,matrix)
-
-   enddo
- enddo
-
-
-end subroutine setup_D_matrix
-
-
-!=========================================================================
 subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
  implicit none
  type(basis_set),intent(in) :: basis1,basis2
