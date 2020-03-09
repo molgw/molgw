@@ -512,7 +512,6 @@ subroutine update_basis(time_advanced,basis,auxil_basis)
  call moving_basis_set(xproj_basis,basis)
 
  if( has_auxil_basis ) then
-   call destroy_eri_3center()
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
    call moving_basis_set(xproj_basis,auxil_basis)
  endif
@@ -568,6 +567,7 @@ subroutine update_T_Vext_eri(basis,auxil_basis,hamiltonian_kinetic,hamiltonian_n
 
  !call prepare_eri(basis)
  if(has_auxil_basis) then
+   call destroy_eri_3center()
    call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
    call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
  else
@@ -602,7 +602,7 @@ subroutine setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
    d_matrix(:,:) = 0.0_dp
  endif
 
- print*, 'D matrix =', d_matrix
+ !print*, 'D matrix =', d_matrix
 
 end subroutine setup_D_matrix
 
@@ -665,12 +665,16 @@ subroutine predictor_corrector(basis,                  &
  ! ///////////////////////////////////
 case('MB_PC0')
    ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
-   call propagate_nonortho(nstate,new_basis,time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
-   ! Update all basis and operators ( S, D, H ) to time_cur = t + dt
-   call update_basis(time_cur,new_basis,new_auxil_basis)
-   call setup_overlap(new_basis,s_matrix)
-   call setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
-   call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
+   call propagate_nonortho(new_basis,time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     ! Update all basis and operators ( S, D, H ) to time_cur = t + dt
+     call update_basis(time_cur,new_basis,new_auxil_basis)
+     call setup_overlap(new_basis,s_matrix)
+     call setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
+     call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
+   endif
+
    call setup_hamiltonian_cmplx(new_basis,                  &
                                 nstate,                     &
                                 itau,                       &
@@ -1000,7 +1004,7 @@ subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx)
 
  end select
 
- if( pred_corr /= 'PC0' ) then
+ if( pred_corr /= 'PC0' .OR. pred_corr /= 'MB_PC0' ) then
    call clean_allocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx,nstate,nstate,nspin,ham_hist_dim)
    call clean_allocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx,nstate,nocc,nspin,1)
    do iextr=1,ham_hist_dim
@@ -1575,9 +1579,8 @@ subroutine get_extrap_coefs_aspc(extrap_coefs,n_hist_cur)
 end subroutine get_extrap_coefs_aspc
 
 !=========================================================================
-subroutine propagate_nonortho(nstate,basis,time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+subroutine propagate_nonortho(basis,time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
  implicit none
- integer,intent(in)          :: nstate
  type(basis_set),intent(in)  :: basis
  real(dp),intent(in)         :: time_step_cur
  complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nocc,nspin)
@@ -1587,7 +1590,7 @@ subroutine propagate_nonortho(nstate,basis,time_step_cur,s_matrix,d_matrix,c_mat
  character(len=4),intent(in) :: prop_type
 !=====
  integer                    :: ispin
- integer                    :: istate,jstate
+ integer                    :: ibf
 !==variables for the CN propagator
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al,
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
@@ -1602,20 +1605,19 @@ subroutine propagate_nonortho(nstate,basis,time_step_cur,s_matrix,d_matrix,c_mat
    select case(prop_type)
 
    case('CN')
-     allocate(l_matrix_cmplx(nstate,nstate))
-     allocate(b_matrix_cmplx(nstate,nstate))
-     allocate(m_matrix_cmplx(nstate,nstate,nspin))
-     allocate(s_matrix_inverse(nstate,nstate))
+     allocate(l_matrix_cmplx(basis%nbf,basis%nbf))
+     allocate(b_matrix_cmplx(basis%nbf,basis%nbf))
+     allocate(m_matrix_cmplx(basis%nbf,basis%nbf,nspin))
+     allocate(s_matrix_inverse(basis%nbf,basis%nbf))
 
-     s_matrix_inverse = s_matrix
-     call invert(s_matrix_inverse)
-     m_matrix_cmplx(:,:,ispin) = s_matrix_inverse * ( h_cmplx(:,:,ispin) - im*d_matrix )
+     call invert(s_matrix,s_matrix_inverse)
+     m_matrix_cmplx(:,:,ispin) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
      l_matrix_cmplx(:,:) =  im * time_step_cur / 2.0_dp * m_matrix_cmplx(:,:,ispin)
      b_matrix_cmplx(:,:) = -l_matrix_cmplx(:,:)
 
-     do istate=1,nstate
-       b_matrix_cmplx(istate,istate) = b_matrix_cmplx(istate,istate) + 1.0_dp
-       l_matrix_cmplx(istate,istate) = l_matrix_cmplx(istate,istate) + 1.0_dp
+     do ibf=1,basis%nbf
+       b_matrix_cmplx(ibf,ibf) = b_matrix_cmplx(ibf,ibf) + 1.0_dp
+       l_matrix_cmplx(ibf,ibf) = l_matrix_cmplx(ibf,ibf) + 1.0_dp
      end do
      call invert(l_matrix_cmplx)
 
