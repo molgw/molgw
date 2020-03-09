@@ -206,7 +206,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer              :: ipstate
  integer              :: pstate,bstate
  integer              :: istate,ispin,ipole
- real(dp)             :: sign_i
+ real(dp)             :: sign_i,mu
  real(dp)             :: energy_gw,work(1),weight,nelect,rtmp
  real(dp),allocatable :: matrix_wing(:,:),matrix_head(:,:),matrix_diag(:)
  real(dp),allocatable :: matrix(:,:),eigval(:)
@@ -351,6 +351,8 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  ! If the matrix is small enough, then diagonalize it!
  if( nmat < 13001 ) then
 
+   mu = ( MINVAL(energy(nhomo_G+1,:)) + MAXVAL(energy(nhomo_G,:)) ) / 2.0_dp
+   write(stdout,'(1x,a,f12.6)') 'Center of the HOMO-LUMO gap (eV): ',mu*Ha_eV
    allocate(eigval(nmat))
 
 #if defined(HAVE_SCALAPACK)
@@ -396,7 +398,9 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    nelect = 0.0_dp
    do jmat=1,nmat
      weight = PDLANGE('F',mstate,1,matrix,1,jmat,desc_matrix,work)**2
-     if( eigval(jmat) < 0.0_dp ) nelect = nelect + spin_fact * weight
+     ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
+     ! then consider the excitation is occupied
+     if( eigval(jmat) < mu ) nelect = nelect + spin_fact * weight
      if( weight > 5.0e-2_dp ) then
        call PDAMAX(mstate,rtmp,jstate,matrix,1,jmat,desc_matrix,1)
        call xmax_world(jstate)
@@ -432,7 +436,9 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      write(fu,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,SUM(matrix(1:mstate,jmat)**2)
    enddo
    close(fu)
-   write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=eigval(:)<0.0_dp)
+   ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
+   ! then consider the excitation is occupied
+   write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=(eigval(:) < mu) )
    write(stdout,*) '==================================================='
 
 #endif
