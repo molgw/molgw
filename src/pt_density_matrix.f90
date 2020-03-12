@@ -832,13 +832,14 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
 
             v_chi_v_pq = DOT_PRODUCT( eri3_sca_p(:,mlocal) , chi_eri3_sca_q(:,mlocal) )
 
-            ! M contains (1 - G_0 * Sigma)
+            ! M will contain (1 - G_0 * Sigma)
+            ! Sigma has a -1/(2*pi) prefactor
+            ! then -G_0 * Sigma should be multiplied by 1/(2*pi)
             m_matrix(pstate,qstate,:,pqspin) = m_matrix(pstate,qstate,:,pqspin) &
-                 - wpol%weight_quad(iomega) * v_chi_v_pq /  ( 2 * pi )   &
+                 + wpol%weight_quad(iomega) * v_chi_v_pq /  ( 2 * pi )  &
                     * (  1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) + im * wpol%omega_quad(iomega) )    &
                        + 1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) - im * wpol%omega_quad(iomega) )  ) &
                     / ( im * omega_sigma(:) - (energy(pstate,pqspin)-mu) )
-
           enddo
 
         enddo
@@ -860,13 +861,16 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
     enddo
   enddo
 
+  !
+  ! Perform the final omega integral:
+  ! delta P_MO = spin_fact /(2 pi i) int_{-inf}^{+inf} d(i omega)  (1-G_0*Sigma)^{-1} * G_0(\mu + i omega)
+  !            = spin_fact /(2 pi i) int_{  0 }^{+inf} d(i omega) 2 * Re{ (1-G_0*Sigma)^{-1} * G_0(\mu + i omega) }
   p_matrix_gw(:,:,:) = 0.0_dp
   do pqspin=1,nspin
     do qstate=nsemin,nsemax
       do pstate=nsemin,nsemax
-        ! The factor 0.50 is the only way to obtain the same results as Caruso's PhD thesis.
         p_matrix_gw(pstate,qstate,pqspin) = &
-          2.0_dp * spin_fact / ( 2.0_dp * pi ) * 0.50_dp &
+           2.0_dp * spin_fact / ( 2.0_dp * pi )  &
             * REAL( SUM( m_matrix(pstate,qstate,:,pqspin) &
                     / ( im * omega_sigma(:) - (energy(qstate,pqspin)-mu) ) * weight_sigma(:) ) , dp)
       enddo
