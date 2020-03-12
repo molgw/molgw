@@ -497,7 +497,7 @@ else:
 print('       Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')
 if test_files_skipped > 0 :
-  print(' Tests have been skipped for the following reasons:')
+  print(' Some tests have been skipped for the following reasons:')
   for reason in list(set(skipping_reason)):
     ireason = skipping_reason.count(reason)
     print('   * {:<80}  ({:=4d} tests)'.format(reason,ireason))
