@@ -245,6 +245,18 @@ end subroutine change_position_one_atom
 
 
 !=========================================================================
+subroutine change_basis_center_one_atom(iatom,xposition)
+ implicit none
+ integer,intent(in)   :: iatom
+ real(dp),intent(in)  :: xposition(3)
+!=====
+
+ xbasis(:,iatom) = xposition(:)
+
+end subroutine change_basis_center_one_atom
+
+
+!=========================================================================
 subroutine destroy_atoms()
  implicit none
 !=====

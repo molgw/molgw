@@ -35,6 +35,7 @@ module m_tddft_propagator
  real(dp),private                   :: dipole(3)
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
+ real(dp),allocatable,private       :: xbasis_start(:,:)
  real(dp),private                   :: excit_field_norm
  !==hamiltonian extrapolation variables==
  real(dp),allocatable,private       :: extrap_coefs(:)
@@ -173,6 +174,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
 
  allocate(xatom_start(3,natom))
+ allocate(xbasis_start(3,natom))
 
  write(stdout,'(/,1x,a)') "===INITIAL CONDITIONS==="
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
@@ -188,6 +190,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  else
    c_matrix_cmplx(:,:,:) = c_matrix(:,1:nocc,:)
    xatom_start=xatom
+   xbasis_start=xbasis
    time_min=0.0_dp
  end if
 
@@ -446,6 +449,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_deallocate('Nucleus operator V for TDDFT',hamiltonian_nucleus)
 
  deallocate(xatom_start)
+ deallocate(xbasis_start)
 
  call clean_deallocate('Dipole_basis for TDDFT',dipole_ao)
 
@@ -497,23 +501,20 @@ end subroutine output_timing_one_iter
 
 
 !=========================================================================
-subroutine update_basis(time_advanced,basis,auxil_basis)
+subroutine update_basis(time_cur,basis,auxil_basis)
 
  implicit none
- real(dp),intent(in)                :: time_advanced
+ real(dp),intent(in)                :: time_cur
  type(basis_set),intent(inout)      :: basis
  type(basis_set),intent(inout)      :: auxil_basis
 !=====
- real(dp)                           :: xproj_basis(3)
-!=====
 
- xproj_basis = xbasis(:,natom_basis) + vel(:,natom) * ( time_advanced - time_read )
-
- call moving_basis_set(xproj_basis,basis)
+ call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * ( time_cur - time_read ))
+ call moving_basis_set(xbasis(:,natom_basis),basis)
 
  if( has_auxil_basis ) then
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-   call moving_basis_set(xproj_basis,auxil_basis)
+   call moving_basis_set(xbasis(:,natom_basis),auxil_basis)
  endif
 
 end subroutine update_basis
@@ -658,21 +659,24 @@ subroutine predictor_corrector(basis,                  &
  ! Initialize new basis set to t=0 state
  new_basis = basis
  new_auxil_basis = auxil_basis
-
  write(stdout,'(/,1x,a)') 'PREDICTOR-CORRECTOR BLOCK'
 
  select case (pred_corr)
  ! ///////////////////////////////////
 case('MB_PC0')
    ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
-   call propagate_nonortho(new_basis,time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+   call propagate_nonortho(basis,time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Update all basis and operators ( S, D, H ) to time_cur = t + dt
+     ! Update all basis, dft grid and operators ( S, D, H ) to time_cur = t + dt
      call update_basis(time_cur,new_basis,new_auxil_basis)
      call setup_overlap(new_basis,s_matrix)
      call setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
      call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
+     if( calc_type%is_dft ) then
+       call destroy_dft_grid()
+       call init_dft_grid(new_basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+     endif
    endif
 
    call setup_hamiltonian_cmplx(new_basis,                  &
@@ -686,7 +690,7 @@ case('MB_PC0')
                                 hamiltonian_nucleus,        &
                                 dipole_ao=dipole_ao,        &
                                 hamiltonian_cmplx=h_cmplx,  &
-                                en=en_tddft)
+                                en=en_tddft,s_matrix=s_matrix)
 
 
  ! ///////////////////////////////////
@@ -1868,7 +1872,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
                                    x_matrix,                &
                                    dipole_ao,               &
                                    hamiltonian_cmplx,       &
-                                   en)
+                                   en,s_matrix)
 
  implicit none
 !=====
@@ -1882,6 +1886,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  real(dp),intent(in)             :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),allocatable,intent(in) :: dipole_ao(:,:,:)
  real(dp),intent(in),optional             :: x_matrix(basis%nbf,nstate)
+ real(dp),intent(in),optional             :: s_matrix(basis%nbf,nstate)
  complex(dp),intent(in)                   :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(out)                  :: hamiltonian_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp),intent(out),optional         :: h_small_cmplx(nstate,nstate,nspin)
@@ -1891,6 +1896,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  integer              :: ispin, idir
  real(dp)             :: excit_field(3)
  complex(dp)          :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
+ complex(dp)          :: Nelec
  integer              :: projectile_list(1)
  real(dp),allocatable :: hamiltonian_projectile(:,:)
 !=====
@@ -1898,6 +1904,11 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  call start_clock(timing_tddft_hamiltonian)
 
  call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+ if(PRESENT(s_matrix)) then
+   Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
+   print*, 'N e- = ', Nelec
+ endif
 
  !--Hamiltonian - Hartree Exchange Correlation---
  call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
