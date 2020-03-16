@@ -187,6 +187,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end do
    xprojectile = xatom(:,natom)
    call change_position_one_atom(natom,xprojectile)
+   call change_basis_center_one_atom(natom_basis,xprojectile)
  else
    c_matrix_cmplx(:,:,:) = c_matrix(:,1:nocc,:)
    xatom_start=xatom
@@ -501,23 +502,30 @@ end subroutine output_timing_one_iter
 
 
 !=========================================================================
-subroutine update_basis(time_cur,basis,auxil_basis)
+subroutine update_basis_eri(basis,auxil_basis)
 
  implicit none
- real(dp),intent(in)                :: time_cur
  type(basis_set),intent(inout)      :: basis
  type(basis_set),intent(inout)      :: auxil_basis
 !=====
 
- call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * ( time_cur - time_read ))
  call moving_basis_set(xbasis(:,natom_basis),basis)
+
+ !call deallocate_eri()
+ !call prepare_eri(basis)
 
  if( has_auxil_basis ) then
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
    call moving_basis_set(xbasis(:,natom_basis),auxil_basis)
+   ! Setup new eri 2center / 3center
+   call destroy_eri_3center()
+   call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
+   call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
+ else
+   call calculate_eri(print_eri_,basis,0.0_dp)
  endif
 
-end subroutine update_basis
+end subroutine update_basis_eri
 
 
 !=========================================================================
@@ -545,41 +553,6 @@ end subroutine update_S_X
 
 
 !=========================================================================
-subroutine update_T_Vext_eri(basis,auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
-
- implicit none
- type(basis_set),intent(in)      :: basis
- type(basis_set),intent(in)      :: auxil_basis
- real(dp),intent(inout)          :: hamiltonian_kinetic(:,:)
- real(dp),intent(inout)          :: hamiltonian_nucleus(:,:)
-!=====
- integer               :: iatom
- integer               :: fixed_atom_list(natom-nprojectile)
-!=====
-
- do iatom=1,natom-nprojectile
-   fixed_atom_list(iatom) = iatom
- enddo
-
- !call deallocate_eri()
-
- call setup_kinetic(basis,hamiltonian_kinetic)
- call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
-
- !call prepare_eri(basis)
- if(has_auxil_basis) then
-   call destroy_eri_3center()
-   call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
-   call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
- else
-   call calculate_eri(print_eri_,basis,0.0_dp)
- endif
-
-
-end subroutine update_T_Vext_eri
-
-
-!=========================================================================
 subroutine setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
 
  implicit none
@@ -595,9 +568,10 @@ subroutine setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
  write(stdout,'(/,a)') ' Setup time derivative matrix D '
 
  if( PRESENT(old_basis) ) then
-   allocate( mixed_matrix(new_basis%nbf,new_basis%nbf) )
-   call setup_overlap_mixedbasis(new_basis,old_basis,mixed_matrix)
-   d_matrix = ( s_matrix - mixed_matrix ) / time_step
+   allocate( mixed_matrix(old_basis%nbf,new_basis%nbf) )
+   call setup_overlap_mixedbasis(old_basis,new_basis,mixed_matrix)
+   d_matrix = ( mixed_matrix - s_matrix ) / time_step
+   !d_matrix = ( s_matrix - mixed_matrix ) / time_step
    deallocate( mixed_matrix )
  else
    d_matrix(:,:) = 0.0_dp
@@ -645,6 +619,7 @@ subroutine predictor_corrector(basis,                  &
  real(dp),allocatable,intent(in)    :: dipole_ao(:,:,:)
 !=====
  integer             :: nstate,iextr,i_iter,file_iter_norm
+ !real(dp),allocatable :: old_s_matrix(:,:)
  type(basis_set)     :: old_basis
  type(basis_set)     :: new_auxil_basis
 !=====
@@ -659,26 +634,42 @@ subroutine predictor_corrector(basis,                  &
  ! Initialize new basis set to t=0 state
  new_basis = basis
  new_auxil_basis = auxil_basis
+ !allocate( old_s_matrix, SOURCE=s_matrix )
+
  write(stdout,'(/,1x,a)') 'PREDICTOR-CORRECTOR BLOCK'
 
  select case (pred_corr)
  ! ///////////////////////////////////
-case('MB_PC0')
-   ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
-   call propagate_nonortho(basis,time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+ case('MB_PC0')
 
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Update all basis, dft grid and operators ( S, D, H ) to time_cur = t + dt
-     call update_basis(time_cur,new_basis,new_auxil_basis)
-     call setup_overlap(new_basis,s_matrix)
+     ! Update projectile position and its basis center
+     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * ( time_cur - time_read ))
+     ! Update all basis and eri to time_cur = t + dt
+     call update_basis_eri(new_basis,new_auxil_basis)
+     ! Evaluate D(t) = ( S'(t,t+dt) - S(t) ) / dt
+     !call setup_overlap(new_basis,s_matrix)
      call setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
-     call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
+
+     ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
+     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+
+     ! Update S matrix and dft grids to time_cur
+     call setup_overlap(new_basis,s_matrix)
+     !call setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
      if( calc_type%is_dft ) then
        call destroy_dft_grid()
        call init_dft_grid(new_basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
      endif
-   endif
 
+   else
+     ! Directly propagate C(t) -> C(t+dt) without updating any terms
+     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+   endif
+   !deallocate( old_s_matrix )
+
+   ! Evaluate H(t+dt) using C(t+dt)
    call setup_hamiltonian_cmplx(new_basis,                  &
                                 nstate,                     &
                                 itau,                       &
@@ -690,16 +681,15 @@ case('MB_PC0')
                                 hamiltonian_nucleus,        &
                                 dipole_ao=dipole_ao,        &
                                 hamiltonian_cmplx=h_cmplx,  &
-                                en=en_tddft,s_matrix=s_matrix)
+                                en=en_tddft)
 
 
  ! ///////////////////////////////////
  case('PC0')
    !if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      !=== time_cur = t + dt
-     !call update_basis(time_cur,new_basis,new_auxil_basis)
+     !call update_basis_eri(time_cur,new_basis,new_auxil_basis)
      !call update_S_X(new_basis,nstate,x_matrix,s_matrix)
-     !call update_T_Vext_eri(new_basis,new_auxil_basis,hamiltonian_kinetic,hamiltonian_nucleus)
    !endif
    call propagate_orth(nstate,new_basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
    call setup_hamiltonian_cmplx(new_basis,               &
@@ -1583,14 +1573,13 @@ subroutine get_extrap_coefs_aspc(extrap_coefs,n_hist_cur)
 end subroutine get_extrap_coefs_aspc
 
 !=========================================================================
-subroutine propagate_nonortho(basis,time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
  implicit none
- type(basis_set),intent(in)  :: basis
  real(dp),intent(in)         :: time_step_cur
- complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nocc,nspin)
- complex(dp),intent(inout)   :: h_cmplx(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)         :: s_matrix(basis%nbf,basis%nbf)
- real(dp),intent(in)         :: d_matrix(basis%nbf,basis%nbf)
+ complex(dp), intent(inout)  :: c_matrix_cmplx(:,:,:)
+ complex(dp),intent(in)      :: h_cmplx(:,:,:)
+ real(dp),intent(in)         :: s_matrix(:,:)
+ real(dp),intent(in)         :: d_matrix(:,:)
  character(len=4),intent(in) :: prop_type
 !=====
  integer                    :: ispin
@@ -1598,7 +1587,7 @@ subroutine propagate_nonortho(basis,time_step_cur,s_matrix,d_matrix,c_matrix_cmp
 !==variables for the CN propagator
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al,
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
- complex(dp),allocatable    :: m_matrix_cmplx(:,:,:) ! M = S**-1 * ( H - i*D )
+ complex(dp),allocatable    :: m_matrix_cmplx(:,:) ! M = S**-1 * ( H - i*D )
  real(dp),allocatable       :: s_matrix_inverse(:,:)
 !=====
 
@@ -1609,17 +1598,17 @@ subroutine propagate_nonortho(basis,time_step_cur,s_matrix,d_matrix,c_matrix_cmp
    select case(prop_type)
 
    case('CN')
-     allocate(l_matrix_cmplx(basis%nbf,basis%nbf))
-     allocate(b_matrix_cmplx(basis%nbf,basis%nbf))
-     allocate(m_matrix_cmplx(basis%nbf,basis%nbf,nspin))
-     allocate(s_matrix_inverse(basis%nbf,basis%nbf))
+     allocate(l_matrix_cmplx,MOLD=h_cmplx(:,:,1))
+     allocate(b_matrix_cmplx,MOLD=h_cmplx(:,:,1))
+     allocate(m_matrix_cmplx,MOLD=h_cmplx(:,:,1))
+     allocate(s_matrix_inverse,MOLD=s_matrix)
 
      call invert(s_matrix,s_matrix_inverse)
-     m_matrix_cmplx(:,:,ispin) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
-     l_matrix_cmplx(:,:) =  im * time_step_cur / 2.0_dp * m_matrix_cmplx(:,:,ispin)
+     m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
+     l_matrix_cmplx(:,:) =  im * time_step_cur / 2.0_dp * m_matrix_cmplx(:,:)
      b_matrix_cmplx(:,:) = -l_matrix_cmplx(:,:)
 
-     do ibf=1,basis%nbf
+     do ibf=1,size(d_matrix,dim=1)
        b_matrix_cmplx(ibf,ibf) = b_matrix_cmplx(ibf,ibf) + 1.0_dp
        l_matrix_cmplx(ibf,ibf) = l_matrix_cmplx(ibf,ibf) + 1.0_dp
      end do
@@ -1882,8 +1871,8 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  real(dp),intent(in)             :: time_cur
  real(dp),intent(in)             :: time_step_cur
  real(dp),intent(in)             :: occupation(nstate,nspin)
- real(dp),intent(in)             :: hamiltonian_kinetic(basis%nbf,basis%nbf)
- real(dp),intent(in)             :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+ real(dp),intent(inout)          :: hamiltonian_kinetic(basis%nbf,basis%nbf)
+ real(dp),intent(inout)          :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),allocatable,intent(in) :: dipole_ao(:,:,:)
  real(dp),intent(in),optional             :: x_matrix(basis%nbf,nstate)
  real(dp),intent(in),optional             :: s_matrix(basis%nbf,nstate)
@@ -1893,11 +1882,11 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  type(energy_contributions),intent(inout) :: en
 !=====
  logical              :: calc_excit_
- integer              :: ispin, idir
+ integer              :: ispin, idir, iatom
  real(dp)             :: excit_field(3)
  complex(dp)          :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp)          :: Nelec
- integer              :: projectile_list(1)
+ integer              :: projectile_list(1),fixed_atom_list(natom-nprojectile)
  real(dp),allocatable :: hamiltonian_projectile(:,:)
 !=====
 
@@ -1950,13 +1939,44 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
  !
  ! Projectile excitation
- case(EXCIT_PROJECTILE,EXCIT_PROJECTILE_W_BASIS)
+ case(EXCIT_PROJECTILE)
 
    !
    ! Move the projectile
    call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
 
    call nucleus_nucleus_energy(en_tddft%nuc_nuc)
+
+   !
+   ! Nucleus-electron interaction due to the projectile only
+   projectile_list(1) = natom
+   allocate(hamiltonian_projectile(basis%nbf,basis%nbf))
+   call setup_nucleus(basis,hamiltonian_projectile,projectile_list)
+
+   do ispin=1,nspin
+     hamiltonian_cmplx(:,:,ispin) = hamiltonian_cmplx(:,:,ispin) + hamiltonian_projectile(:,:)
+   enddo
+   en_tddft%excit = REAL( SUM( hamiltonian_projectile(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+   deallocate(hamiltonian_projectile)
+
+ !
+ ! Projectile excitation with moving basis
+ case(EXCIT_PROJECTILE_W_BASIS)
+
+   !call setup_overlap(basis,s_matrix)
+   call setup_kinetic(basis,hamiltonian_kinetic)
+   !
+   ! Move the projectile
+   !call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
+
+   call nucleus_nucleus_energy(en_tddft%nuc_nuc)
+
+   ! Nucleus-electron interaction due to the fixed target
+   do iatom=1,natom-nprojectile
+     fixed_atom_list(iatom) = iatom
+   enddo
+
+   call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
 
    !
    ! Nucleus-electron interaction due to the projectile only
