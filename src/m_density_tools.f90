@@ -30,13 +30,19 @@ subroutine setup_atomic_density(rr,rhor)
  real(dp),intent(out) :: rhor
 !=====
  real(dp),parameter   :: bondcharge=1.000_dp
- integer              :: iatom,igau,ngau
+ integer              :: iatom,igau,ngau,nsite
  real(dp)             :: dr
  real(dp),allocatable :: alpha(:),coeff(:)
 !=====
 
  rhor = 0.0_dp
- do iatom=1,natom-nprojectile
+ if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   nsite = natom
+ else
+   nsite = natom - nprojectile
+ endif
+
+ do iatom=1,nsite
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))

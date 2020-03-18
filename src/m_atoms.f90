@@ -76,7 +76,7 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  allocate(vel(3,natom))
  vel(:,:) = 0.0_dp
 
- if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" .OR. excit_name == 'ION' ) then
+ if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" .OR. excit_name == 'ION' .OR. excit_name == 'ANTIION') then
    vel(:,natom) = vel_projectile(:)
  endif
  ! For relaxation or dynamics only
@@ -104,12 +104,14 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
    xatom(:,1:natom) = x_read(:,1:natom)
    zatom(1:natom)   = zatom_read(1:natom)
  else
+   ! EXCIT_PROJECTILE_W_BASIS : natom_basis = natom + nghost + nprojectile
    if( excit_name == 'ION' .OR. excit_name == "ANTIION" ) then
      xatom(:,1:natom-nprojectile) = x_read(:,1:natom-nprojectile)
      zatom(1:natom-nprojectile)   = zatom_read(1:natom-nprojectile)
      xatom(:,natom)                = x_read(:,natom_basis)
      zatom(natom)                  = zatom_read(natom_basis)
    else
+     ! Other excitations : natom_basis = natom + nghost
      xatom(:,1:natom_basis-nghost) = x_read(:,1:natom_basis-nghost)
      zatom(1:natom_basis-nghost)   = zatom_read(1:natom_basis-nghost)
      xatom(:,natom)                = x_read(:,natom_basis+nprojectile)
@@ -122,16 +124,17 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
    zatom(natom) = -zatom(natom)
  endif
 
+ !! Setup basis identity and centers
  ! Ghost atoms do not have a positive nucleus
- !zatom(natom+1:natom+nghost) = 0.0_dp
+ ! zatom(natom+1:natom+nghost) = 0.0_dp
  ! But ghost atoms have basis functions centered on them.
  zbasis(1:natom_basis)   = NINT(zatom_read(1:natom_basis))
  xbasis(:,1:natom_basis) = x_read(:,1:natom_basis)
 
  !
  ! Check for atoms too close
- do iatom=1,natom
-   do jatom=iatom+1,natom
+ do iatom=1,natom-nprojectile
+   do jatom=iatom+1,natom-nprojectile
      if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) < 0.2 ) then
        write(stdout,*) 'Atoms',iatom,jatom
        write(stdout,*) 'are closer than 0.2 bohr'
@@ -141,10 +144,10 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  enddo
 
  !
- ! Find the covalent bonds based a simple distance criterium
+ ! Find the covalent bonds based on simple distance criterium
  nbond = 0
- do iatom=1,natom
-   do jatom=iatom+1,natom
+ do iatom=1,natom-nprojectile
+   do jatom=iatom+1,natom-nprojectile
      bond_length =  element_covalent_radius(NINT(zatom(iatom))) + element_covalent_radius(NINT(zatom(jatom)))
      if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) <  1.2_dp * bond_length  ) then
        nbond = nbond + 1
@@ -216,8 +219,8 @@ subroutine get_bondcenter(ibond,xbond)
 !=====
 
  jbond = 0
- do iatom=1,natom
-   do jatom=iatom+1,natom
+ do iatom=1,natom-nprojectile
+   do jatom=iatom+1,natom-nprojectile
      if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) < 4.0 ) then
        jbond = jbond + 1
        if(jbond==ibond) then
