@@ -269,10 +269,10 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  write(stdout,*)
  write(stdout,*) 'Projecting wavefunctions on selected atoms'
- 
+
  inquire(file='manual_pdos',exist=file_exists)
  if(file_exists) then
    write(stdout,*) 'Opening file:','manual_pdos'
@@ -393,7 +393,7 @@ subroutine mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,f
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  inquire(file='manual_pdos',exist=file_exists)
  if(file_exists) then
    open(newunit=pdosfile,file='manual_pdos',status='old')
@@ -419,8 +419,8 @@ subroutine mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,f
 
  do ispin=1,nspin
 
-   !! Only loop over occupied states 
-   do istate=1,nocc  
+   !! Only loop over occupied states
+   do istate=1,nocc
      proj_state_i(:) = ( 0.0_dp, 0.0_dp )
      write(char4,'(i4)') istate
 
@@ -468,10 +468,10 @@ subroutine lowdin_pdos(nstate,basis,s_matrix_sqrt,c_matrix,occupation,energy)
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  write(stdout,*)
  write(stdout,*) 'Projecting wavefunctions on selected atoms'
- 
+
  inquire(file='manual_pdos',exist=file_exists)
  if(file_exists) then
    write(stdout,*) 'Opening file:','manual_pdos'
@@ -549,14 +549,12 @@ subroutine lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupatio
  real(dp)                   :: proj_charge(natom_basis)
  real(dp)                   :: proj_atom(natom_basis)
  integer                    :: iatom_basis, nocc
- character(len=4)           :: char4
- character(len=2)           :: char2
  character(len=20)          :: myfmt
  integer,parameter          :: lmax = 2
 !=====
 
  if( .NOT. is_iomaster ) return
- 
+
  inquire(file='manual_pdos',exist=file_exists)
  if(file_exists) then
    open(newunit=pdosfile,file='manual_pdos',status='old')
@@ -576,17 +574,16 @@ subroutine lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupatio
    !! Label basis functions with angular momentum index
    li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
  enddo
- 
+
  nocc        = get_number_occupied_states(occupation)
  proj_charge(:) = 0.0_dp
 
  do atom_sampled = natom1,natom2
  do ispin=1,nspin
 
-   !! Only loop over occupied states 
-   do istate=1,nocc  
+   !! Only loop over occupied states
+   do istate=1,nocc
      proj_state_i(:) = ( 0.0_dp, 0.0_dp )
-     write(char4,'(i4)') istate
 
      cs_vector_i(:) = MATMUL( s_matrix_sqrt(:,:) , CONJG(c_matrix_cmplx(:,istate,ispin)) )
 
