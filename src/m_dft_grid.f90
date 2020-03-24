@@ -128,7 +128,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
 
  !
- ! LOG3 radial grid
+ ! LOG3 radial grid (Mura - Knowles)
  do iatom=1,natom_basis
 
    select case(zbasis(iatom))
@@ -325,7 +325,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
        do katom=1,natom_basis
          do jatom=1,natom_basis
            if(katom==jatom) cycle
-           p_becke(katom) = p_becke(katom) * s_becke(jatom,katom) 
+           p_becke(katom) = p_becke(katom) * s_becke(jatom,katom)
          enddo
        enddo
        !$OMP END PARALLEL DO

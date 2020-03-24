@@ -354,6 +354,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     ! write(stdout,*) "C**H*S*C is not identity at itau= ", itau
    !end if
 
+   print*, 'C**H*S*C =', MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) )
+   call dump_out_matrix(.TRUE.,'===  S  ===',basis%nbf,1,s_matrix)
+   call dump_out_matrix(.TRUE.,'===  D  ===',basis%nbf,1,d_matrix)
+   call dump_out_matrix(.TRUE.,'===  H Real  ===',basis%nbf,1,REAL(h_cmplx))
+   call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',basis%nbf,1,AIMAG(h_cmplx))
+
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
    ! 5) Mulliken_Charge file.
@@ -604,9 +610,9 @@ subroutine predictor_corrector(basis,                  &
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(inout)      :: new_basis
  type(basis_set),intent(in)         :: auxil_basis
- complex(dp),intent(out)            :: c_matrix_cmplx(:,:,:)
+ complex(dp),intent(inout)          :: c_matrix_cmplx(:,:,:)
  complex(dp),intent(inout)          :: c_matrix_orth_cmplx(:,:,:)
- complex(dp),intent(out)            :: h_cmplx(:,:,:)
+ complex(dp),intent(inout)          :: h_cmplx(:,:,:)
  complex(dp),intent(inout)          :: h_small_cmplx(:,:,:)
  real(dp),allocatable,intent(inout) :: x_matrix(:,:)
  real(dp),intent(inout)             :: s_matrix(:,:)
@@ -1875,7 +1881,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  real(dp),intent(inout)          :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),allocatable,intent(in) :: dipole_ao(:,:,:)
  real(dp),intent(in),optional             :: x_matrix(basis%nbf,nstate)
- real(dp),intent(in),optional             :: s_matrix(basis%nbf,nstate)
+ real(dp),intent(in),optional             :: s_matrix(basis%nbf,basis%nbf)
  complex(dp),intent(in)                   :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(out)                  :: hamiltonian_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp),intent(out),optional         :: h_small_cmplx(nstate,nstate,nspin)
