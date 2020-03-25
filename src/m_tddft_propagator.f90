@@ -580,16 +580,16 @@ subroutine setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
  if( PRESENT(old_basis) ) then
    allocate( mixed_matrix(old_basis%nbf,new_basis%nbf) )
    call setup_overlap_mixedbasis(old_basis,new_basis,mixed_matrix)
-   !d_matrix = ( mixed_matrix - s_matrix ) / time_step
+   !!=== One-sided finite difference ===
    !d_matrix = ( s_matrix - mixed_matrix ) / time_step
+   !!=== Symmetrique finite difference ===
+   !! At itau=1, we consider mixed_basis(t0,t0-dt) = mixed_basis(t0,t0) = S(t0)
    d_matrix = ( mixed_matrix - mixed_matrix_hist ) / (2.0_dp*time_step)
    mixed_matrix_hist = TRANSPOSE( mixed_matrix )
    deallocate( mixed_matrix )
  else
    d_matrix(:,:) = 0.0_dp
  endif
-
- !print*, 'D matrix =', d_matrix
 
 end subroutine setup_D_matrix
 
@@ -631,7 +631,6 @@ subroutine predictor_corrector(basis,                  &
  real(dp),allocatable,intent(in)    :: dipole_ao(:,:,:)
 !=====
  integer              :: nstate,iextr,i_iter,file_iter_norm
- real(dp),allocatable :: old_s_matrix(:,:)
  type(basis_set)      :: old_basis
  type(basis_set)      :: new_auxil_basis
 !=====
@@ -646,7 +645,6 @@ subroutine predictor_corrector(basis,                  &
  ! Initialize new basis set to t=0 state
  new_basis = basis
  new_auxil_basis = auxil_basis
- allocate( old_s_matrix, SOURCE=s_matrix )
 
  write(stdout,'(/,1x,a)') 'PREDICTOR-CORRECTOR BLOCK'
 
@@ -660,16 +658,14 @@ subroutine predictor_corrector(basis,                  &
      call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * ( time_cur - time_read ))
      ! Update all basis and eri to time_cur = t + dt
      call update_basis_eri(new_basis,new_auxil_basis)
-     ! Evaluate D(t) = ( S'(t,t+dt) - S(t) ) / dt
-     call setup_overlap(new_basis,s_matrix)
+     ! Evaluate D(t) = ( S'(t,t+dt) - S'(t,t-dt) ) / dt
      call setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
 
      ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
-     call propagate_nonortho(time_step,old_s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
      ! Update S matrix and dft grids to time_cur
-     !call setup_overlap(new_basis,s_matrix)
-     !call setup_D_matrix(new_basis,old_basis,time_step,s_matrix,d_matrix)
+     call setup_overlap(new_basis,s_matrix)
      if( calc_type%is_dft ) then
        call destroy_dft_grid()
        call init_dft_grid(new_basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
@@ -679,7 +675,6 @@ subroutine predictor_corrector(basis,                  &
      ! Directly propagate C(t) -> C(t+dt) without updating any terms
      call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
    endif
-   deallocate( old_s_matrix )
 
    ! Evaluate H(t+dt) using C(t+dt)
    call setup_hamiltonian_cmplx(new_basis,                  &
