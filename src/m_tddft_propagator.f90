@@ -589,7 +589,6 @@ subroutine setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
    d_matrix(:,:) = 0.0_dp
  endif
 
- !print*, 'D matrix =', d_matrix
 
 end subroutine setup_D_matrix
 

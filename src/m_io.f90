@@ -240,6 +240,7 @@ subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
 
 end subroutine dump_out_matrix
 
+
 !=========================================================================
 subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  implicit none
@@ -3203,49 +3204,6 @@ function wfn_reflection(nstate,basis,c_matrix,istate,ispin)
 end function wfn_reflection
 
 
-!=======================================
-subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,prec,beg)
- implicit none
- integer, intent(in)      :: prec ! precision
- integer, intent(in)      :: beg  ! number of characters in the beginning
- integer, intent(in)      :: size_n,size_m
- complex(dp),intent(in)   :: matrix_cmplx(size_n,size_m)
- character(*),intent(in)  :: desc
-!=====
- character(100)  :: write_format1, write_format2
- integer            :: ivar
-!=====
-
- write(write_format1,*) '(',size_m," ('( ',F", prec+beg, ".", prec,"' ,',F", prec+beg, ".",prec,",' )  ') " ,')' ! (  1.01 ,  -0.03)  (  0.04 ,  0.10)
- write(write_format2,*) '(',size_m," (F", prec+beg, ".", prec,"' +  i',F", prec+beg, ".",prec,",'  ') " ,')'   ! 1.01 +  i  -0.03    0.03 +  i  0.10
- write(stdout,*) desc
- do ivar=1,size_n
-   write(stdout,write_format1) matrix_cmplx(ivar,:)
- end do
-
-end subroutine print_2d_matrix_cmplx
-
-
-!=======================================
-subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,prec,beg)
- implicit none
- integer, intent(in)      :: prec ! precision
- integer, intent(in)      :: beg  ! number of characters in the beginning
- integer, intent(in)      :: size_n,size_m
- real(dp),intent(in)      :: matrix_real(size_m,size_m)
- character(*),intent(in)  :: desc
-!=====
- character(100)  :: write_format1
- integer            :: ivar
-
- write(write_format1,*) '(',size_m," (F", prec+beg, ".", prec,') ' ,')'
- write(stdout,*) desc
- do ivar=1,size_n
-   write(stdout,write_format1) matrix_real(ivar,:)
- end do
-end subroutine print_2d_matrix_real
-
-
 !=========================================================================
 subroutine calculation_parameters_yaml(nbf,auxil_nbf,nstate)
  implicit none
@@ -3260,6 +3218,7 @@ subroutine calculation_parameters_yaml(nbf,auxil_nbf,nstate)
  write(unit_yaml,'(4x,a,1x,i6)')  'auxiliary basis functions:   ',auxil_nbf
 
 end subroutine calculation_parameters_yaml
+
 
 !=========================================================================
 subroutine evaluate_memory(nbf,auxil_nbf,nstate,occupation)
