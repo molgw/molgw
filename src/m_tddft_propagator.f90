@@ -352,16 +352,20 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    !
    ! debug
-   call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
-   if(.NOT. is_identity_) then
-     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
-   end if
+   do ispin=1,nspin
+     is_identity_ = check_identity_cmplx(MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,ispin))),s_matrix(:,:)), c_matrix_cmplx(:,:,ispin) ))
+     if( .NOT. is_identity_) then
+       write(stdout,'(1x,a,i4,a,i7)') 'C**H*S*C is not identity for spin ',ispin,' at itau= ', itau
+     end if
+   enddo
 
-   print*, 'C**H*S*C =', MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) )
+   !print*, 'C**H*S*C =', MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) )
    !call dump_out_matrix(.TRUE.,'===  S  ===',basis%nbf,1,s_matrix)
+   !call dump_out_matrix(.TRUE.,'===  H Real  ===',basis%nbf,1,h_cmplx(:,:,:)%re)
+   !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',basis%nbf,1,h_cmplx(:,:,:)%im)
    call dump_out_matrix(.TRUE.,'===  D  ===',basis%nbf,1,d_matrix)
-   !call dump_out_matrix(.TRUE.,'===  H Real  ===',basis%nbf,1,REAL(h_cmplx))
-   !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',basis%nbf,1,AIMAG(h_cmplx))
+   call setup_D_matrix_analytic(new_basis,d_matrix)
+   call dump_out_matrix(.TRUE.,'===  D  ===',basis%nbf,1,d_matrix)
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
@@ -575,7 +579,7 @@ subroutine setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
  real(dp),allocatable                :: mixed_matrix(:,:)
 !=====
 
- write(stdout,'(/,a)') ' Setup time derivative matrix D '
+ write(stdout,'(/,a)') ' Setup overlap time derivative matrix D '
 
  if( PRESENT(old_basis) ) then
    allocate( mixed_matrix(old_basis%nbf,new_basis%nbf) )
@@ -589,9 +593,44 @@ subroutine setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
    d_matrix(:,:) = 0.0_dp
  endif
 
- !print*, 'D matrix =', d_matrix
 
 end subroutine setup_D_matrix
+
+
+!=========================================================================
+subroutine setup_D_matrix_analytic(basis,d_matrix)
+ implicit none
+ type(basis_set),intent(in)          :: basis
+ real(dp),intent(out)                :: d_matrix(:,:)
+!=====
+ integer :: jbf,ibasis_center
+ real(dp),allocatable                :: s_matrix_grad(:,:,:)
+!=====
+
+ write(stdout,'(/,a)') ' Setup overlap time derivative matrix D (analytic)'
+
+ allocate(s_matrix_grad(basis%nbf,basis%nbf,3))
+
+ ! This routine returns s_grad = < grad_R phi_alpha | phi_beta >
+ call setup_overlap_grad(basis,s_matrix_grad)
+
+ ! We want D:
+ !    D = < phi_alpha | d/dt phi_beta >
+ !      = < phi_alpha | grad_R phi_beta > . v
+ !      = s_grad**T . v
+
+ s_matrix_grad(:,:,1) = TRANSPOSE(s_matrix_grad(:,:,1))
+ s_matrix_grad(:,:,2) = TRANSPOSE(s_matrix_grad(:,:,2))
+ s_matrix_grad(:,:,3) = TRANSPOSE(s_matrix_grad(:,:,3))
+
+ do jbf=1,basis%nbf
+   ibasis_center = basis%bff(jbf)%iatom
+   d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel(:,ibasis_center) )
+ enddo
+
+ deallocate(s_matrix_grad)
+
+end subroutine setup_D_matrix_analytic
 
 
 !=========================================================================
@@ -1241,34 +1280,36 @@ end subroutine calculate_q_matrix
 
 
 !=========================================================================
-subroutine check_identity_cmplx(n,m,mat_cmplx,ans)
+function check_identity_cmplx(matrix_cmplx) RESULT(is_identity)
  implicit none
- integer,intent(in)     :: n, m
- complex(dp),intent(in) :: mat_cmplx(n,m)
- logical,intent(inout)  :: ans
+ complex(dp),intent(in) :: matrix_cmplx(:,:)
+ logical                :: is_identity
 !=====
- integer   ::  imat,jmat
  real(dp),parameter :: tol=1.0e-9_dp
+ integer            ::  imat,jmat,mmat,nmat
 !=====
 
- ans=.TRUE.
- do imat=1,n
-   do jmat=1,m
-     if(imat==jmat) then
-       if(ABS(mat_cmplx(imat,jmat)-1.0_dp)>tol) then
-         write(stdout,*) "M(imat,imat)/=1 for: ",imat,jmat,mat_cmplx(imat,jmat)
-         ans=.FALSE.
+ mmat = SIZE(matrix_cmplx,DIM=1)
+ nmat = SIZE(matrix_cmplx,DIM=1)
+
+ is_identity = .TRUE.
+ do jmat=1,nmat
+   do imat=1,mmat
+     if( imat == jmat ) then
+       if( ABS(matrix_cmplx(imat,jmat) - 1.0_dp) > tol ) then
+         write(stdout,*) "M(imat,imat)/=1 for: ",imat,jmat,matrix_cmplx(imat,jmat)
+         is_identity = .FALSE.
        end if
      else
-       if(ABS(mat_cmplx(imat,jmat))>tol) then
-         write(stdout,*) "M(imat,jmat)/=0 for: ",imat,jmat,mat_cmplx(imat,jmat)
-         ans=.FALSE.
+       if( ABS(matrix_cmplx(imat,jmat)) > tol ) then
+         write(stdout,*) "M(imat,jmat)/=0 for: ",imat,jmat,matrix_cmplx(imat,jmat)
+         is_identity = .FALSE.
        end if
      end if
    end do
  end do
 
-end subroutine check_identity_cmplx
+end function check_identity_cmplx
 
 
 !=========================================================================

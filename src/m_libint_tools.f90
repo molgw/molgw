@@ -72,7 +72,7 @@ module m_libint_tools
    end subroutine libint_elecpot
 #endif
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if defined(HAVE_LIBINT_GRADIENTS) || defined(HAVE_LIBINT_ONEBODY_GRADIENTS)
    subroutine libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              overlapABx,overlapABy,overlapABz) bind(C)
@@ -131,7 +131,9 @@ module m_libint_tools
      real(C_DOUBLE),intent(inout) :: elecpotBz(*)
 
    end subroutine libint_elecpot_grad
+#endif
 
+#if defined(HAVE_LIBINT_GRADIENTS)
    subroutine libint_4center_grad(amA,contrdepthA,A,alphaA,cA, &
                                   amB,contrdepthB,B,alphaB,cB, &
                                   amC,contrdepthC,C,alphaC,cC, &
