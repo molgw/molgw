@@ -17,7 +17,8 @@
 
 /* Code */
 
-#if defined(HAVE_LIBINT_ONEBODY) && defined(HAVE_LIBINT_GRADIENTS)
+#if defined(HAVE_LIBINT_ONEBODY) \
+    && ( defined(HAVE_LIBINT_GRADIENTS) || defined(HAVE_LIBINT_ONEBODY_GRADIENTS) )
 
 /* ==========================================================================
  *                           Overlap
@@ -305,7 +306,9 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
      int12->two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA] ;
      int12->two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB] ;
+#if LIBINT2_DEFINED(eri, rho12_over_alpha1)
      int12->rho12_over_alpha1[0] = alphaB[icontrdepthB] / alphaP ;
+#endif
 #if LIBINT2_DEFINED(eri, rho12_over_alpha2)
      int12->rho12_over_alpha2[0] = alphaA[icontrdepthA] / alphaP ;
 #endif

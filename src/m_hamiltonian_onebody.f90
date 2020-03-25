@@ -264,7 +264,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if defined(HAVE_LIBINT_GRADIENTS) || defined(HAVE_LIBINT_ONEBODY_GRADIENTS)
      call libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
@@ -455,7 +455,7 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if defined(HAVE_LIBINT_GRADIENTS) || defined(HAVE_LIBINT_ONEBODY_GRADIENTS)
      call libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
@@ -713,7 +713,7 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 
        C(:) = xatom(:,iatom)
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if defined(HAVE_LIBINT_GRADIENTS) || defined(HAVE_LIBINT_ONEBODY_GRADIENTS)
        call libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
                                 amB,contrdepthB,B,alphaB,cB, &
                                 C,                           &
