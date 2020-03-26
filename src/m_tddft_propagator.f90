@@ -129,11 +129,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_allocate('Time derivative matrix D for TDDFT',d_matrix,basis%nbf,basis%nbf)
  call clean_allocate('Kinetic operator T for TDDFT',hamiltonian_kinetic,basis%nbf,basis%nbf)
  call clean_allocate('Nucleus operator V for TDDFT',hamiltonian_nucleus,basis%nbf,basis%nbf)
- call clean_allocate('mixed_matrix_hist for TDDFT',mixed_matrix_hist,basis%nbf,basis%nbf)
+ !call clean_allocate('mixed_matrix_hist for TDDFT',mixed_matrix_hist,basis%nbf,basis%nbf)
 
  call setup_overlap(basis,s_matrix)
- mixed_matrix_hist = s_matrix
- call setup_D_matrix(new_basis=basis,time_step=time_step,d_matrix=d_matrix)
+ !mixed_matrix_hist = s_matrix
+ !call setup_D_matrix(new_basis=basis,time_step=time_step,d_matrix=d_matrix)
 
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
  call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
@@ -364,8 +364,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    !call dump_out_matrix(.TRUE.,'===  H Real  ===',basis%nbf,1,h_cmplx(:,:,:)%re)
    !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',basis%nbf,1,h_cmplx(:,:,:)%im)
    call dump_out_matrix(.TRUE.,'===  D  ===',basis%nbf,1,d_matrix)
-   call setup_D_matrix_analytic(new_basis,d_matrix)
-   call dump_out_matrix(.TRUE.,'===  D  ===',basis%nbf,1,d_matrix)
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
@@ -444,7 +442,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_deallocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx)
  call clean_deallocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx)
  call clean_deallocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx)
- call clean_deallocate('mixed_matrix_hist for TDDFT',mixed_matrix_hist)
+ !call clean_deallocate('mixed_matrix_hist for TDDFT',mixed_matrix_hist)
 
  if(ncore_tddft > 0) then
    call clean_deallocate('a_matrix_orth_start_cmplx for the frozen core',a_matrix_orth_start_cmplx)
@@ -694,17 +692,18 @@ subroutine predictor_corrector(basis,                  &
  case('MB_PC0')
 
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Update projectile position and its basis center
-     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * ( time_cur - time_read ))
-     ! Update all basis and eri to time_cur = t + dt
-     call update_basis_eri(new_basis,new_auxil_basis)
      ! Evaluate D(t) = ( S'(t,t+dt) - S'(t,t-dt) ) / dt
-     call setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
-
+     !call setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
+     ! Analytic evaluation of D ( well conserves C**H*S*C = I )
+     call setup_D_matrix_analytic(old_basis,d_matrix)
      ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
      call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
+     ! Update projectile position and its basis center to time_cur = t + dt
+     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * ( time_cur - time_read ))
+     ! Update all basis and eri to time_cur
+     call update_basis_eri(new_basis,new_auxil_basis)
      ! Update S matrix and dft grids to time_cur
      call setup_overlap(new_basis,s_matrix)
      if( calc_type%is_dft ) then
