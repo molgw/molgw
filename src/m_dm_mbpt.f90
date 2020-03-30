@@ -206,7 +206,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
      call static_quadrupole(basis,occupation_tmp,c_matrix_tmp)
    endif
    if( print_cube_ ) then
-     call plot_cube_wfn('MBPT',basis%nbf,basis,occupation_tmp,c_matrix_tmp)
+     call plot_cube_wfn('MBPT',basis,occupation_tmp,c_matrix_tmp)
    endif
    deallocate(c_matrix_tmp)
    deallocate(occupation_tmp)

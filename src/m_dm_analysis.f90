@@ -131,7 +131,7 @@ subroutine dm_dump(basis)
    call static_quadrupole(basis,occupation_test,c_matrix_test)
  endif
 
- if( print_cube_ ) call plot_cube_wfn('MBPT',nstate,basis,occupation_test,c_matrix_test)
+ if( print_cube_ ) call plot_cube_wfn('MBPT',basis,occupation_test,c_matrix_test)
 
 
  !
