@@ -650,26 +650,26 @@ end subroutine plot_rho_list
 !=========================================================================
 subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
  implicit none
- character(len=*)           :: rootname
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
+ character(len=*),intent(in) :: rootname
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(in)         :: occupation(:,:)
+ real(dp),intent(in)         :: c_matrix(:,:,:)
 !=====
- integer                    :: nstate
- integer                    :: n1,n2,n3
- real(dp),parameter         :: length=3.499470_dp
- integer                    :: istate1,istate2,istate,ispin
- real(dp)                   :: rr(3)
- real(dp),allocatable       :: phi(:,:)
- logical                    :: file_exists
- real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
- real(dp)                   :: dx,dy,dz
- real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz,iatom
- integer,allocatable        :: ocubefile(:,:)
- integer                    :: ocuberho(nspin)
- character(len=200)         :: file_name
- integer                    :: icubefile
+ integer                     :: nstate
+ integer                     :: n1,n2,n3
+ real(dp),parameter          :: length=3.499470_dp
+ integer                     :: istate1,istate2,istate,ispin
+ real(dp)                    :: rr(3)
+ real(dp),allocatable        :: phi(:,:)
+ logical                     :: file_exists
+ real(dp)                    :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                    :: dx,dy,dz
+ real(dp)                    :: basis_function_r(basis%nbf)
+ integer                     :: ix,iy,iz,iatom
+ integer,allocatable         :: ocubefile(:,:)
+ integer                     :: ocuberho(nspin)
+ character(len=200)          :: file_name
+ integer                     :: icubefile
 !=====
 
  if( .NOT. is_iomaster ) return
@@ -2363,32 +2363,34 @@ end subroutine plot_rho_traj_bunch_cmplx
 
 
 !=========================================================================
-subroutine write_cube_from_header(basis,occupation,c_matrix)
+subroutine write_cube_from_header(rootname,basis,occupation,c_matrix)
  implicit none
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
+ character(len=*),intent(in) :: rootname
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(in)         :: occupation(:,:)
+ real(dp),intent(in)         :: c_matrix(:,:,:)
 !=====
- integer                    :: nstate
- integer                    :: icubefile
- character(len=200)         :: file_name,tmp
- real(dp),allocatable       :: phi(:,:),pot(:,:,:)
- real(dp),allocatable       :: pot_i(:,:)
- real(dp)                   :: rr(3)
- real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
- real(dp)                   :: dr(3,3)
- real(dp)                   :: basis_function_r(basis%nbf)
- real(dp)                   :: chi2
- integer                    :: natom1
- integer                    :: n1,n2,n3
- integer                    :: i1,i2,i3
- integer                    :: istate1,istate2,istate,ispin,iatom
- integer,allocatable        :: ocubefile(:,:)
- integer                    :: ocuberho(nspin)
- real(dp)                   :: dv
- integer                    :: stride=6
- logical,parameter          :: read_volumetric_data= .FALSE.
- logical                    :: file_exists
+ integer                     :: nstate
+ integer                     :: icubefile
+ character(len=200)          :: file_name,tmp
+ real(dp),allocatable        :: phi(:,:),pot(:,:,:)
+ real(dp),allocatable        :: pot_i(:,:)
+ real(dp)                    :: rr(3)
+ real(dp)                    :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                    :: dr(3,3)
+ real(dp)                    :: basis_function_r(basis%nbf)
+ real(dp)                    :: chi2
+ integer                     :: natom1
+ integer                     :: n1,n2,n3
+ integer                     :: i1,i2,i3
+ integer                     :: istate1,istate2,istate,ispin,iatom
+ integer,allocatable         :: ocubefile(:,:)
+ integer                     :: ocuberho(nspin)
+ real(dp)                    :: dv,nelect,rhor
+ integer                     :: stride=6
+ logical                     :: file_exists
+ logical,parameter           :: read_volumetric_data= .FALSE.
+ logical,parameter           :: write_wfn= .FALSE.
 !=====
 
  if( .NOT. is_iomaster ) return
@@ -2448,12 +2450,15 @@ subroutine write_cube_from_header(basis,occupation,c_matrix)
  allocate(ocubefile(istate1:istate2,nspin))
  if( read_volumetric_data ) allocate(pot_i(istate1:istate2,nspin))
 
+ write(stdout,'(1x,a25,i3,1x,i3,1x,i3)')     'Selected grid: ',n1,n2,n3
+ write(stdout,'(1x,a25,i5,1x,i5)')    'Selected state range: ',istate1,istate2
+
  !
  ! check whether istate1:istate2 spans all the occupied states
  !if( ALL( occupation(istate2+1,:) < completely_empty ) ) then
  if( .TRUE. ) then
    do ispin=1,nspin
-     write(file_name,'(a,i1,a)') 'rho_',ispin,'.cube'
+     write(file_name,'(a,i1,a)') 'rho_'//TRIM(rootname)//'_',ispin,'.cube'
      open(newunit=ocuberho(ispin),file=file_name)
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
      write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
@@ -2467,24 +2472,27 @@ subroutine write_cube_from_header(basis,occupation,c_matrix)
    enddo
  endif
 
- do istate=istate1,istate2
-   do ispin=1,nspin
-     write(file_name,'(a,i3.3,a,i1,a)') 'wfn_',istate,'_',ispin,'.cube'
-     open(newunit=ocubefile(istate,ispin),file=file_name)
-     write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
-     write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate1
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n1,dr(:,1)
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n2,dr(:,2)
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n3,dr(:,3)
-     do iatom=1,natom
-       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+ if( write_wfn ) then
+   do istate=istate1,istate2
+     do ispin=1,nspin
+       write(file_name,'(a,i3.3,a,i1,a)') 'wfn_'//TRIM(rootname)//'_',istate,'_',ispin,'.cube'
+       open(newunit=ocubefile(istate,ispin),file=file_name)
+       write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
+       write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate1
+       write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+       write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n1,dr(:,1)
+       write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n2,dr(:,2)
+       write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n3,dr(:,3)
+       do iatom=1,natom
+         write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+       enddo
      enddo
    enddo
- enddo
+ endif
 
  if( read_volumetric_data ) pot_i(:,:) = 0.0_dp
  chi2 = 0.0_dp
+ nelect = 0.0_dp
  do i1=1,n1
    do i2=1,n2
      do i3=1,n3
@@ -2501,7 +2509,8 @@ subroutine write_cube_from_header(basis,occupation,c_matrix)
 
        do istate=istate1,istate2
          do ispin=1,nspin
-           write(ocubefile(istate,ispin),'(50(e16.8,2x))') phi(istate,ispin)
+           if( write_wfn ) &
+             write(ocubefile(istate,ispin),'(50(e16.8,2x))') phi(istate,ispin)
            if( read_volumetric_data ) &
              pot_i(istate,ispin) = pot_i(istate,ispin) - pot(i1,i2,i3) * phi(istate,ispin)**2 * dv
          enddo
@@ -2512,7 +2521,9 @@ subroutine write_cube_from_header(basis,occupation,c_matrix)
        !if( ALL( occupation(istate2+1,:) < completely_empty ) ) then
        if( .TRUE. ) then
          do ispin=1,nspin
-           write(ocuberho(ispin),'(50(e16.8,2x))') SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) )
+           rhor =  SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) )
+           nelect = nelect + rhor * dv
+           write(ocuberho(ispin),'(1x,e16.8,2x)') rhor
            if( read_volumetric_data ) then
              chi2 = chi2 + ( pot(i1,i2,i3) - SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) ) )**2
            endif
@@ -2525,10 +2536,12 @@ subroutine write_cube_from_header(basis,occupation,c_matrix)
  enddo
  do ispin=1,nspin
    do istate=istate1,istate2
-     close(ocubefile(istate,ispin))
+     if( write_wfn ) close(ocubefile(istate,ispin))
    enddo
    close(ocuberho(ispin))
  enddo
+
+ write(stdout,'(1x,a25,f14.9)') 'Number of electrons: ',nelect
 
  deallocate(phi)
  if( ALLOCATED(pot) ) deallocate(pot)
@@ -2773,12 +2786,12 @@ end subroutine read_gaussian_fchk
 
 
 !=========================================================================
-subroutine write_energy_qp(nstate,energy_qp)
+subroutine write_energy_qp(energy_qp)
  implicit none
 
- integer,intent(in)  :: nstate
- real(dp),intent(in) :: energy_qp(nstate,nspin)
+ real(dp),intent(in) :: energy_qp(:,:)
 !=====
+ integer           :: nstate
  integer           :: energy_qpfile
  integer           :: istate
 !=====
@@ -2786,6 +2799,8 @@ subroutine write_energy_qp(nstate,energy_qp)
  !
  ! Only the proc iomaster writes down the ENERGY_QP file
  if( .NOT. is_iomaster) return
+
+ nstate = SIZE(energy_qp,DIM=1)
 
  write(stdout,'(/,a)') ' Writing ENERGY_QP file'
 
