@@ -727,6 +727,7 @@ subroutine predictor_corrector(basis,                  &
 
 ! ///////////////////////////////////
  case('MB_PC1')
+
    !--1--PREDICTOR----| H(t-3dt/2),H(t-dt/2)-->H(t+dt/4)
    h_cmplx = -3.0_dp/4.0_dp*h_hist_cmplx(:,:,:,1) + 7.0_dp/4.0_dp*h_hist_cmplx(:,:,:,2)
 
@@ -737,7 +738,7 @@ subroutine predictor_corrector(basis,                  &
      call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
-     ! Update S matrix and dft grids
+     ! Update S matrix
      call setup_overlap(basis,s_matrix)
      ! Analytic evaluation of D(t+dt/4)
      call setup_D_matrix_analytic(basis,d_matrix)
@@ -753,10 +754,11 @@ subroutine predictor_corrector(basis,                  &
      call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read - time_step/2.0_dp))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
+     ! Update S matrix
+     call setup_overlap(basis,s_matrix)
      ! Analytic evaluation of D(t+dt/2)
      call setup_D_matrix_analytic(basis,d_matrix)
-     ! Update S matrix and dft grids
-     call setup_overlap(basis,s_matrix)
+     ! Update DFT grids for H_xc evaluation
      if( calc_type%is_dft ) then
        call destroy_dft_grid()
        call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
@@ -764,26 +766,133 @@ subroutine predictor_corrector(basis,                  &
    endif
 
    ! Evaluate H(t+dt/2)
-   call setup_hamiltonian_cmplx(basis,                      &
-                                nstate,                     &
-                                itau,                       &
-                                time_cur-time_step/2.0_dp,  &
-                                time_step,                  &
-                                occupation,                 &
-                                c_matrix_hist_cmplx(:,:,:,1),   &
-                                hamiltonian_kinetic,        &
-                                hamiltonian_nucleus,        &
-                                dipole_ao=dipole_ao,        &
-                                hamiltonian_cmplx=h_cmplx,  &
+   call setup_hamiltonian_cmplx(basis,                        &
+                                nstate,                       &
+                                itau,                         &
+                                time_cur-time_step/2.0_dp,    &
+                                time_step,                    &
+                                occupation,                   &
+                                c_matrix_hist_cmplx(:,:,:,1), &
+                                hamiltonian_kinetic,          &
+                                hamiltonian_nucleus,          &
+                                dipole_ao=dipole_ao,          &
+                                hamiltonian_cmplx=h_cmplx,    &
                                 en=en_tddft)
 
    !--4--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
-   !--5--UPDATE----|C(t+dt)-->C(t); H(t-dt/2)-->H(t-3dt/2); H(t+dt/2)-->H(t-dt/2)
-   c_matrix_hist_cmplx(:,:,:,1)=c_matrix_cmplx(:,:,:)
-   h_hist_cmplx(:,:,:,1)=h_hist_cmplx(:,:,:,2)
-   h_hist_cmplx(:,:,:,2)=h_cmplx(:,:,:)
+   !--5--UPDATE----| C(t+dt)-->C(t); H(t-dt/2)-->H(t-3dt/2); H(t+dt/2)-->H(t-dt/2)
+   c_matrix_hist_cmplx(:,:,:,1) = c_matrix_cmplx(:,:,:)
+   h_hist_cmplx(:,:,:,1) = h_hist_cmplx(:,:,:,2)
+   h_hist_cmplx(:,:,:,2) = h_cmplx(:,:,:)
+
+
+! ///////////////////////////////////
+case('MB_PC2B')
+
+   h_cmplx = ( 0.0_dp, 0.0_dp )
+
+   !--0--EXTRAPOLATE----> H(t+dt/4)
+   do iextr = 1, n_hist
+     h_cmplx = h_cmplx + extrap_coefs(iextr) * h_hist_cmplx(:,:,:,iextr)
+   end do
+   ! Shift for next iteration : n_hist-2  <---  n_hist; n_hist-3 <-- n_hist-1
+   if( n_hist > 2 ) then
+     do iextr = 1, n_hist-2
+       h_hist_cmplx(:,:,:,iextr) = h_hist_cmplx(:,:,:,iextr+2)
+     end do
+   end if
+
+   !--1--PROPAGATE----| C(t)--U[M(t+dt/4)]-->C(t+dt/2)
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     ! Update projectile position and its basis center to t+dt/4
+     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
+     ! Update all basis and eri
+     call update_basis_eri(basis,auxil_basis)
+     ! Update S matrix
+     call setup_overlap(basis,s_matrix)
+     ! Analytic evaluation of D(t+dt/4)
+     call setup_D_matrix_analytic(basis,d_matrix)
+   endif
+
+   ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
+   call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,prop_type)
+
+   !--2--EVALUATE----| C(t+dt/2) --> H(t+dt/2)
+    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     ! Update projectile position and its basis center to t+dt/2
+     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read - time_step/2.0_dp))
+     ! Update all basis and eri
+     call update_basis_eri(basis,auxil_basis)
+     ! Update S matrix
+     call setup_overlap(basis,s_matrix)
+     ! Analytic evaluation of D(t+dt/2)
+     call setup_D_matrix_analytic(basis,d_matrix)
+     ! Update DFT grids for H_xc evaluation
+     if( calc_type%is_dft ) then
+       call destroy_dft_grid()
+       call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+     endif
+   endif
+
+   ! Calculate H(t+dt/2)
+   call setup_hamiltonian_cmplx(basis,                        &
+                                nstate,                       &
+                                itau,                         &
+                                time_cur-time_step/2.0_dp,    &
+                                time_step,                    &
+                                occupation,                   &
+                                c_matrix_hist_cmplx(:,:,:,1), &
+                                hamiltonian_kinetic,          &
+                                hamiltonian_nucleus,          &
+                                dipole_ao=dipole_ao,          &
+                                hamiltonian_cmplx=h_cmplx,    &
+                                en=en_tddft)
+
+   ! Save in history : n_hist-1
+   if (n_hist > 1) h_hist_cmplx(:,:,:,n_hist-1) = h_cmplx
+
+   !--3--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
+   call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+
+   !--4--EVALUATE----| C(t+dt) --> H(t+dt)
+    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     ! Update projectile position and its basis center to t+dt
+     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read))
+     ! Update all basis and eri
+     call update_basis_eri(basis,auxil_basis)
+     ! Update S matrix (not really needed since U[M(t+dt)] not needed)
+     !call setup_overlap(basis,s_matrix)
+     ! Analytic evaluation of D(t+dt/2)
+     !call setup_D_matrix_analytic(basis,d_matrix)
+     ! Update DFT grids for H_xc evaluation
+     if( calc_type%is_dft ) then
+       call destroy_dft_grid()
+       call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+     endif
+   endif
+
+   ! Calculate H(t+dt)
+   call setup_hamiltonian_cmplx(basis,                        &
+                                nstate,                       &
+                                itau,                         &
+                                time_cur,                     &
+                                time_step,                    &
+                                occupation,                   &
+                                c_matrix_cmplx,               &
+                                hamiltonian_kinetic,          &
+                                hamiltonian_nucleus,          &
+                                dipole_ao=dipole_ao,          &
+                                hamiltonian_cmplx=h_cmplx,    &
+                                en=en_tddft)
+
+   !--5--UPDATE----| C(t+dt) -> C(t); H(t+dt) -> H(t)
+   c_matrix_hist_cmplx(:,:,:,1) = c_matrix_cmplx(:,:,:)
+   h_hist_cmplx(:,:,:,n_hist) = h_cmplx
 
 
  ! ///////////////////////////////////
@@ -1078,7 +1187,7 @@ subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx,c_matrix_cm
  case('PC1','MB_PC1')
    ham_hist_dim = 2
 
- case('PC2B')
+ case('PC2B','MB_PC2B')
    ham_hist_dim = n_hist
    do iextr=1,n_hist
      m_nodes(iextr) = (iextr - 1.0_dp) * 0.5_dp
