@@ -307,7 +307,7 @@ end subroutine dump_out_matrix_cdp
 
 
 !=========================================================================
-subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
+subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  implicit none
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: s_matrix(:,:)
@@ -510,15 +510,15 @@ end subroutine plot_wfn
 
 
 !=========================================================================
-subroutine plot_rho(nstate,basis,occupation,c_matrix)
+subroutine plot_rho(basis,occupation,c_matrix)
  implicit none
- integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
 !=====
  integer,parameter          :: nr=5000
  real(dp),parameter         :: length=4.0_dp
+ integer                    :: nstate
  integer                    :: ir
  integer                    :: ispin
  real(dp)                   :: rr(3)
@@ -528,12 +528,14 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
  real(dp)                   :: xxmin,xxmax
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: rhorfile
+ integer                    :: unit_rho
 !=====
 
  if( .NOT. is_iomaster ) return
 
  write(stdout,'(/,1x,a)') 'Plotting the density'
 
+ nstate = SIZE(occupation,DIM=1)
 
  inquire(file='manual_plotrho',exist=file_exists)
  if(file_exists) then
@@ -554,6 +556,7 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
  xxmin = MINVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) - length
  xxmax = MAXVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) + length
 
+ open(newunit=unit_rho,file='density_cut.dat',action='write')
  do ir=1,nr
    rr(:) = ( xxmin + (ir-1)*(xxmax-xxmin)/REAL(nr-1,dp) ) * u(:) + a(:)
 
@@ -564,13 +567,10 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
      phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
    enddo
 
-   write(103,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
-
-   write(104,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(:,:)**2 * occupation(:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
-!   write(105,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(1,:)**2 * occupation(1,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
-!   write(106,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(2:,:)**2 * occupation(2:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
+   write(unit_rho,'(2(1x,e12.5))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
 
  enddo
+ close(unit_rho)
 
  deallocate(phi)
 
@@ -2523,7 +2523,7 @@ subroutine write_cube_from_header(rootname,basis,occupation,c_matrix)
          do ispin=1,nspin
            rhor =  SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) )
            nelect = nelect + rhor * dv
-           write(ocuberho(ispin),'(1x,e16.8,2x)') rhor
+           write(ocuberho(ispin),'(1x,es12.4)') rhor
            if( read_volumetric_data ) then
              chi2 = chi2 + ( pot(i1,i2,i3) - SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) ) )**2
            endif

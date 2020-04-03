@@ -435,14 +435,14 @@ program molgw
  endif
 
  if( print_wfn_ )  call plot_wfn(nstate,basis,c_matrix)
- if( print_wfn_ )  call plot_rho(nstate,basis,occupation,c_matrix)
+ if( print_wfn_ )  call plot_rho(basis,occupation,c_matrix)
  if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
- if( print_pdos_ ) call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
+ if( print_pdos_ ) call mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  if( print_spatial_extension_ ) call spatial_extension(basis,c_matrix)
  if( .FALSE.     ) call plot_rho_list(nstate,basis,occupation,c_matrix)
  if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
  if( print_dens_traj_points_set_ ) call plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
- if( .FALSE. ) call write_cube_from_header(basis,occupation,c_matrix)
+ if( .FALSE. ) call write_cube_from_header('GKS',basis,occupation,c_matrix)
 
 
 
