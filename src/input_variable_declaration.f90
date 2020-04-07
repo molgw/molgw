@@ -31,6 +31,7 @@
  character(len=3),protected :: ignore_bigrestart
  character(len=3),protected :: print_bigrestart
  character(len=3),protected :: print_cube
+ character(len=3),protected :: print_wfn_files
  character(len=3),protected :: print_density_matrix
  character(len=3),protected :: print_eri
  character(len=3),protected :: print_hartree

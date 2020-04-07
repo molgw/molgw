@@ -133,6 +133,7 @@ subroutine dm_dump(basis)
 
  if( print_cube_ ) call plot_cube_wfn('MBPT',basis,occupation_test,c_matrix_test)
 
+ if( print_wfn_files_ ) call print_wfn_file('MBPT',basis,occupation_test,c_matrix_test,0.0_dp)
 
  !
  call clean_deallocate('Density matrix',p_matrix_test)

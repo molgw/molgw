@@ -34,6 +34,7 @@
  write(unit_yaml,'(4x,a,14x,a)') 'print_bigrestart:',yesno_to_TrueFalse(print_bigrestart) 
  write(unit_yaml,'(4x,a,20x,a)') 'print_cube:',yesno_to_TrueFalse(print_cube) 
  write(unit_yaml,'(4x,a,10x,a)') 'print_density_matrix:',yesno_to_TrueFalse(print_density_matrix) 
+ write(unit_yaml,'(4x,a,15x,a)') 'print_wfn_files:',yesno_to_TrueFalse(print_wfn_files) 
  write(unit_yaml,'(4x,a,21x,a)') 'print_eri:',yesno_to_TrueFalse(print_eri) 
  write(unit_yaml,'(4x,a,17x,a)') 'print_hartree:',yesno_to_TrueFalse(print_hartree) 
  write(unit_yaml,'(4x,a,15x,a)') 'print_multipole:',yesno_to_TrueFalse(print_multipole) 

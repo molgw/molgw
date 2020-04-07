@@ -34,6 +34,7 @@
     ignore_bigrestart,       &
     print_bigrestart,       &
     print_cube,       &
+    print_wfn_files,       &
     print_density_matrix,       &
     print_eri,       &
     print_hartree,       &
@@ -174,6 +175,7 @@
  ignore_bigrestart='no'
  print_bigrestart='yes'
  print_cube='no'
+ print_wfn_files='no'
  print_density_matrix='no'
  print_eri='no'
  print_hartree='no'

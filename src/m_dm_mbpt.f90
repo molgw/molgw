@@ -151,9 +151,18 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
    write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(natural_occupation(:,ispin))
    write(stdout,*)
  enddo
-
- deallocate(natural_occupation)
+ 
  call clean_deallocate('Matrix S * C',c_matrix_tmp)
+ call clean_allocate('Matrix C_NO',c_matrix_tmp,basis%nbf,basis%nbf,nspin)
+ do ispin=1,nspin
+   c_matrix_tmp(:,:,ispin)=MATMUL(TRANSPOSE(p_matrix_mo(:,:,ispin)),c_matrix(:,:,ispin))
+ enddo
+ if( print_wfn_files_ ) then
+   call print_wfn_file('MBPT',basis,natural_occupation,c_matrix_tmp,en_dm_corr%total,energy)
+ endif
+
+ call clean_deallocate('Matrix C_NO',c_matrix_tmp)
+ deallocate(natural_occupation)
  call clean_deallocate('Density matrix P_MO',p_matrix_mo)
 
 
@@ -199,7 +208,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
 
  endif
 
- if( print_multipole_ .OR. print_cube_ ) then
+ if( print_multipole_ .OR. print_cube_ .OR. print_wfn_files_) then
    call get_c_matrix_from_p_matrix(p_matrix_corr,c_matrix_tmp,occupation_tmp)
    if( .FALSE. ) call plot_rho(basis,occupation_tmp,c_matrix_tmp)
    if( .FALSE. ) call write_cube_from_header('MBPT',basis,occupation_tmp,c_matrix_tmp)
@@ -210,6 +219,9 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
    if( print_cube_ ) then
      call plot_cube_wfn('MBPT',basis,occupation_tmp,c_matrix_tmp)
    endif
+   !if( print_wfn_files_ ) then
+   !  call print_wfn_file('MBPT',basis,occupation_tmp,c_matrix_tmp,en_dm_corr%total,energy)
+   !endif
    deallocate(c_matrix_tmp)
    deallocate(occupation_tmp)
  endif

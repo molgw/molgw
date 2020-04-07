@@ -34,6 +34,7 @@
  write(stdout,'(1x,a24,6x,a)') 'print_bigrestart',print_bigrestart 
  write(stdout,'(1x,a24,6x,a)') 'print_cube',print_cube 
  write(stdout,'(1x,a24,6x,a)') 'print_density_matrix',print_density_matrix 
+ write(stdout,'(1x,a24,6x,a)') 'print_wfn_files',print_wfn_files
  write(stdout,'(1x,a24,6x,a)') 'print_eri',print_eri 
  write(stdout,'(1x,a24,6x,a)') 'print_hartree',print_hartree 
  write(stdout,'(1x,a24,6x,a)') 'print_multipole',print_multipole 
