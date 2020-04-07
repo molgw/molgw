@@ -172,7 +172,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  endif
 
  call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
- call clean_allocate('Wavefunctions hist. C for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
+ call clean_allocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
  call clean_allocate('Hamiltonian for TDDFT',h_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
@@ -225,6 +225,16 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end do
    ! in order to save the memory, we dont keep inoccupied states (nocc+1:nstate)
    c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
+   ! initialize the wavefunctions with a phase correction to assure continuity in projectile movement
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     do ispin=1, nspin
+       do iocc=1, nocc
+         c_matrix_orth_cmplx(:,iocc,ispin) = EXP(-im*time_step*energy_tddft(:)) * c_matrix_orth_cmplx(:,iocc,ispin)
+       end do
+       c_matrix_cmplx(:,:,ispin)%re = MATMUL(x_matrix,REAL(c_matrix_orth_cmplx(:,:,ispin)))
+       c_matrix_cmplx(:,:,ispin)%im = MATMUL(x_matrix,AIMAG(c_matrix_orth_cmplx(:,:,ispin)))
+     end do
+   end if
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
    deallocate(energy_tddft)
  end if
@@ -471,7 +481,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_deallocate('Dipole_basis for TDDFT',dipole_ao)
 
  call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
- call clean_deallocate('Wavefunctions hist. C for TDDFT',c_matrix_orth_cmplx)
+ call clean_deallocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx)
  call clean_deallocate('Hamiltonian for TDDFT',h_cmplx)
  call clean_deallocate('h_small_cmplx for TDDFT',h_small_cmplx)
 
