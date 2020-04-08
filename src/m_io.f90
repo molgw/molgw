@@ -694,9 +694,6 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
  istate1 = MAX(istate1,1)
  istate2 = MIN(istate2,nstate)
 
-
-
-
  allocate(phi(istate1:istate2,nspin))
  write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
@@ -759,13 +756,12 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
        do iz=1,n3
          rr(3) = zmin + (iz-1)*dz
 
-
          call calculate_basis_functions_r(basis,rr,basis_function_r)
 
          do ispin=1,nspin
            phi(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,istate1:istate2,ispin) )
          enddo
-
+         
          do ispin=1,nspin
            write(ocuberho(ispin),'(50(e16.8,2x))') SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) )
          enddo
