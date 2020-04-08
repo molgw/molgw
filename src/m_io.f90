@@ -1088,7 +1088,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,TotalE,energy)
  deallocate(icent,itype,expon,prim_coefs,coefs_prims,mo_coefs)
 
  write(owfn(1),6)
- write(owfn(1),7) 'THE SCF ',TotalE,0.0_dp 
+ write(owfn(1),7) ' THE SCF',TotalE,0.0_dp 
  close(owfn(1))
 
  1 FORMAT('CENTRE ASSIGNMENTS',2x,20i3)
