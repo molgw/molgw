@@ -161,7 +161,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
    call plot_cube_wfn('MBPT',basis,natural_occupation,c_matrix_tmp)
  endif
  if( print_wfn_files_ ) then
-   call print_wfn_file('MBPT',basis,natural_occupation,c_matrix_tmp,en_dm_corr%total,energy)
+   call print_wfn_file('MBPT',basis,natural_occupation,c_matrix_tmp,en_dm_corr%total)
  endif
  !! MRM end printing CUBE and WFN files
  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
