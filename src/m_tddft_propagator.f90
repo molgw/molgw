@@ -340,9 +340,26 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if(itau==3) call start_clock(timing_tddft_one_iter)
 
+   if( pred_corr(1:2) /= 'MB' ) then
+     print*, 'NO MB EXCIT PROJ'
+     stop
+     call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
+     allocate(energy_tddft(nstate))
+     do ispin=1, nspin
+       call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft,c_matrix_orth_start_complete_cmplx(:,:,ispin))
+       c_matrix_orth_start_complete_cmplx(:,1,ispin) = EXP(-im*time_step*energy_tddft(1)) * c_matrix_orth_cmplx(:,1,ispin)
+       !print*, 'EXP = ', EXP(-im*time_step*energy_tddft(1))
+       print*, 'Phased C'' matrix = ', c_matrix_orth_start_complete_cmplx(:,1,ispin)
+     end do
+     call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
+     deallocate(energy_tddft)
+   else if( pred_corr(1:2) == 'MB' ) then
+     print*, 'MB PROJ W BASIS'
+     stop
+   end if
    !
    ! Use c_matrix_orth_cmplx and h_small_cmplx at (time_cur-time_step) as start values,
-   ! than use chosen predictor-corrector sheme to calculate c_matrix_cmplx, c_matrix_orth_cmplx,
+   ! then use chosen predictor-corrector sheme to calculate c_matrix_cmplx, c_matrix_orth_cmplx,
    ! h_cmplx and h_small_cmplx and time_cur.
    call predictor_corrector(basis,                  &
                             auxil_basis,            &
@@ -373,6 +390,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
    print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
+   !call dump_out_matrix(.TRUE.,'===  P Real  ===',basis%nbf,1,p_matrix_cmplx(:,:,:)%re)
+   !call dump_out_matrix(.TRUE.,'===  P Imaginary  ===',basis%nbf,1,p_matrix_cmplx(:,:,:)%im)
+   !if( excit_type%form == EXCIT_PROJECTILE ) then
+   !  print*, 'C'' matrix = ', c_matrix_orth_cmplx
+   !end if
+   print*, 'C matrix = ', c_matrix_cmplx
    !call dump_out_matrix(.TRUE.,'===  S  ===',basis%nbf,1,s_matrix)
    !call dump_out_matrix(.TRUE.,'===  H Real  ===',basis%nbf,1,h_cmplx(:,:,:)%re)
    !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',basis%nbf,1,h_cmplx(:,:,:)%im)
@@ -831,7 +854,7 @@ case('MB_PC2B')
    call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,prop_type)
 
    !--2--EVALUATE----| C(t+dt/2) --> H(t+dt/2)
-    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      ! Update projectile position and its basis center to t+dt/2
      call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
      call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read - time_step/2.0_dp))
@@ -869,14 +892,14 @@ case('MB_PC2B')
    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
    !--4--EVALUATE----| C(t+dt) --> H(t+dt)
-    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      ! Update projectile position and its basis center to t+dt
      call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read))
      call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
      ! Update S matrix (not really needed since U[M(t+dt)] not needed)
-     !call setup_overlap(basis,s_matrix)
+     call setup_overlap(basis,s_matrix)
      ! Analytic evaluation of D(t+dt/2)
      !call setup_D_matrix_analytic(basis,d_matrix)
      ! Update DFT grids for H_xc evaluation
@@ -1168,6 +1191,9 @@ case('MB_PC2B')
    c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
    h_small_hist_cmplx(:,:,:,1)=h_small_hist_cmplx(:,:,:,2)
 
+ case default
+   call die('Invalid choice for the predictor_corrector scheme. Change pred_corr value in the input file')
+
  end select
 
  write(stdout,'(/,1x,a)') 'END OF PREDICTOR-CORRECTOR BLOCK'
@@ -1225,6 +1251,9 @@ subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx,c_matrix_cm
 
  case('PC7' )
    ham_hist_dim = 2
+
+ case default
+   call die('Invalid choice for the predictor_corrector scheme. Change pred_corr value in the input file')
 
  end select
 
@@ -2192,7 +2221,6 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  ! Projectile excitation with moving basis
  case(EXCIT_PROJECTILE_W_BASIS)
 
-   !call setup_overlap(basis,s_matrix)
    call setup_kinetic(basis,hamiltonian_kinetic)
    !
    ! Move the projectile
