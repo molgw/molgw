@@ -792,6 +792,8 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
 end subroutine plot_cube_wfn
 
 !=========================================================================
+! Ask Mauricio Rodriguez M. for any bug, error, etc of print_wfn_file.
+!=========================================================================
 subroutine print_wfn_file(rootname,basis,occupation,c_matrix,TotalE,energy)
  use m_definitions
  use m_mpi
