@@ -946,6 +946,10 @@ subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
    write(stdout,'(1x,a,*(1x,es18.8))') 'Most negative eigenvalue: ',occupation_tmp(nbf,:)
  endif
 
+ !
+ ! Keep all the states, even those with negative occupations
+ ! Sometimes needed to conserve the trace
+ nstate = nbf
 
  if( ALLOCATED(c_matrix) ) deallocate(c_matrix)
  if( ALLOCATED(occupation) ) deallocate(occupation)
