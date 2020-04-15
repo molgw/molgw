@@ -1,6 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
-! Author: Fabien Bruneval
+! Author: Fabien Bruneval, Ivan Maliyov, Mauricio Rodriguez-Mayorga
 !
 ! This file contains
 ! the procedures for input and outputs
@@ -27,6 +27,7 @@ module m_io
  use m_cart_to_pure
  use m_tddft_variables
  use m_eri,only: npair
+ use m_elements
 
 
  interface dump_out_matrix
@@ -791,39 +792,35 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
 
 end subroutine plot_cube_wfn
 
+
 !=========================================================================
-! Ask Mauricio Rodriguez M. for any bug, error, etc of print_wfn_file.
+! This routine prints WFN files:
+! Author: Mauricio Rodriguez-Mayorga
 !=========================================================================
-subroutine print_wfn_file(rootname,basis,occupation,c_matrix,TotalE,energy)
- use m_definitions
- use m_mpi
- use m_inputparam, only: nspin
- use m_cart_to_pure
- use m_atoms
- use m_basis_set
- use m_elements
-! use m_dft_grid,only: calculate_basis_functions_r
+subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  implicit none
  character(len=*)             :: rootname
  type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: TotalE
+ real(dp),intent(in)          :: etotal
  real(dp),intent(in)          :: occupation(:,:)
- real(dp),intent(in),optional :: energy(:,:)
  real(dp),intent(in)          :: c_matrix(:,:,:)
+ real(dp),intent(in),optional :: energy(:,:)
 !=====
- character(len=200)         :: file_name
- integer                    :: nstate,iatom,iprim,nprim,igaus,ishell,nshell,shell_typ,prev_typ
- integer                    :: istyp,iprim_per_shell,ibasis,ibasis2,nbasis,ispin,nxp,nyp,nzp
- integer                    :: owfn(1)
- real(dp)                   :: tolerance,dfact
- integer,dimension(3)       :: p_aos
- integer,dimension(6)       :: d_aos
- integer,dimension(10)      :: f_aos
- integer,dimension(15)      :: g_aos
- integer,dimension(:),allocatable    :: icent,itype,prim_per_shell,ao_map
- real(dp),dimension(:),allocatable   :: expon,prim_coefs,mo_coefs
- real(dp),dimension(:,:),allocatable :: energies,coefs_prims
- integer,parameter          :: el_max = 106
+ integer,parameter      :: el_max    = 106
+ real(dp),parameter     :: TOL_OCC   = 1.0e-8_dp
+ real(dp),parameter     :: TOL_COEFF = 1.0e-8_dp
+ character(len=200)     :: file_name
+ integer                :: nstate,iatom,iprim,nprim,igaus,ishell,nshell,shell_typ,prev_typ
+ integer                :: istyp,iprim_per_shell,ibasis,ibasis2,nbasis,ispin,nxp,nyp,nzp
+ integer                :: owfn
+ real(dp)               :: dfact
+ integer                :: p_aos(3) 
+ integer                :: d_aos(6) 
+ integer                :: f_aos(10)
+ integer                :: g_aos(15)
+ integer,allocatable    :: icent(:),itype(:),prim_per_shell(:),ao_map(:)
+ real(dp),allocatable   :: expon(:),prim_coefs(:),mo_coefs(:)
+ real(dp),allocatable   :: energies(:,:),coefs_prims(:,:)
  character(len=4),parameter :: el_list(el_max) =                                           &
  (/'  H ','  HE','  LI','  BE','  B ','  C ','  N ','  O ','  F ','  NE','  NA','  MG',    &
    '  AL','  SI','  P ','  S ','  CL','  AR','  K ','  CA','  SC','  TI','  V ','  CR',    &
@@ -838,36 +835,39 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,TotalE,energy)
 
  if( .NOT. is_iomaster ) return
 
- if(basis%gaussian_type /= 'CART' ) then ! Pure, not implemented (TODO)
+ if( basis%gaussian_type /= 'CART' ) then ! Pure, not implemented (TODO)
    write(stdout,'(/,1x,a)') "Computation of WFN files requires cartesian gaussian functions"
    write(stdout,'(1x,a,/)') "Include: gaussian_type = 'cart' in the input file and run again the calculation."
+   call issue_warning('print_wfn_file: not coded for PURE Gaussians as of today')
    return
  endif
 
- nstate=SIZE(occupation(:,:),DIM=1)
+ nstate = SIZE(occupation(:,:),DIM=1)
 
  write(stdout,'(/,1x,a,/)') 'Preparing the WFN file'
 
  write(file_name,'(a,i1,a)') "molgw_"//TRIM(rootname)//'_',1,'.wfn'
- open(newunit=owfn(1),file=file_name)
+ open(newunit=owfn,file=file_name)
  
- tolerance=1.0d-8
  nbasis=0
- do ibasis=1,basis%nbf_cart
+ do ibasis=1,basis%nbf
    do ispin=1,nspin
-     if(abs(occupation(ibasis,ispin))>tolerance) nbasis=nbasis+1
+     !FIXME occupation is nstate x nspin and nstate <= basis%nbf
+     if( ABS(occupation(ibasis,ispin) ) > TOL_OCC ) nbasis=nbasis+1
    enddo
  enddo
- nprim=SUM(basis%bfc(:)%ngaussian)
- write(owfn(1),'(a80)') 'MOLGW WFN file generated'
- write(owfn(1),'(a8,10x,i5,a13,1x,i6,a11,4x,i5,a7)') 'GAUSSIAN',nbasis,' MOL ORBITALS',nprim,' PRIMITIVES',natom,' NUCLEI'
+
+ nprim = SUM(basis%bfc(:)%ngaussian)
+ write(owfn,'(a80)') 'MOLGW WFN file generated'
+ write(owfn,'(a8,10x,i5,a13,1x,i6,a11,4x,i5,a7)') 'GAUSSIAN',nbasis,' MOL ORBITALS',nprim,' PRIMITIVES',natom,' NUCLEI'
  do iatom=1,natom
-   write(owfn(1),'(a4,i4,4x,a7,i3,a1,1x,3f12.8,a10,f5.1)') el_list(NINT(zatom(iatom))),iatom, &
+   write(owfn,'(a4,i4,4x,a7,i3,a1,1x,3f12.8,a10,f5.1)') el_list(NINT(zatom(iatom))),iatom, &
    '(CENTRE',iatom,')',xatom(:,iatom),'  CHARGE =',zatom(iatom)
  enddo
 
  allocate(icent(nprim),itype(nprim),expon(nprim),prim_coefs(nprim))
- allocate(coefs_prims(basis%nbf_cart,nprim),ao_map(basis%nbf_cart))
+ !FIXME the size of coefs_prims can be very large. Is there another way without allocating everything at once?
+ allocate(coefs_prims(basis%nbf,nprim),ao_map(basis%nbf))
  icent=0
  itype=0
  expon=0.0_dp
@@ -875,7 +875,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,TotalE,energy)
  prim_coefs=0.0_dp
  nshell=SIZE(basis%shell(:)%iatom)
  
- do ibasis=1,basis%nbf_cart
+ do ibasis=1,basis%nbf
    ao_map(ibasis)=ibasis
  enddo 
 
@@ -1048,47 +1048,49 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,TotalE,energy)
    deallocate(prim_per_shell)
  enddo
 
- write(owfn(1),1) (icent(iprim),iprim=1,nprim)  
- write(owfn(1),2) (itype(iprim),iprim=1,nprim)  
- write(owfn(1),3) (expon(iprim),iprim=1,nprim) 
+ write(owfn,1) (icent(iprim),iprim=1,nprim)  
+ write(owfn,2) (itype(iprim),iprim=1,nprim)  
+ write(owfn,3) (expon(iprim),iprim=1,nprim) 
  allocate(energies(nstate,nspin))
  
- energies=0.0_dp
- if(present(energy)) then
-   energies=energy
+ energies(:,:) = 0.0_dp
+ if(PRESENT(energy)) then
+   energies(:,:) = energy(:,:)
  endif
 
  !write(*,*) ' '
- !do ibasis=1,basis%nbf_cart
+ !do ibasis=1,basis%nbf
  !  write(*,'(*(f7.3))') coefs_prims(ibasis,:)
  !enddo
  !write(*,*) ' '
 
- allocate(mo_coefs(basis%nbf_cart)) 
+ allocate(mo_coefs(basis%nbf)) 
   
- do ibasis=1,basis%nbf_cart
+ do ibasis=1,basis%nbf
    do ispin=1,nspin
-     if(abs(occupation(ibasis,ispin))>tolerance) then
-       do ibasis2=1,basis%nbf_cart
-         mo_coefs(ibasis2)=c_matrix(ao_map(ibasis2),ibasis,ispin)
+     if( ABS(occupation(ibasis,ispin))> TOL_OCC) then
+       do ibasis2=1,basis%nbf
+         mo_coefs(ibasis2) = c_matrix(ao_map(ibasis2),ibasis,ispin)
        enddo
        !write(*,'(*(f7.3))') mo_coefs(:)
        prim_coefs(1:nprim)=MATMUL(mo_coefs(:),coefs_prims(:,1:nprim))
        do iprim=1,nprim
-         if(tolerance>abs(prim_coefs(iprim))) prim_coefs(iprim)=0.0_dp
+         if( ABS(prim_coefs(iprim)) < TOL_COEFF ) prim_coefs(iprim) = 0.0_dp
        enddo
-       write(owfn(1),4) ibasis,occupation(ibasis,ispin),energies(ibasis,ispin)
-       write(owfn(1),5) prim_coefs(:)
+       write(owfn,4) ibasis,occupation(ibasis,ispin),energies(ibasis,ispin)
+       write(owfn,5) prim_coefs(:)
      endif
    enddo
  enddo
  
  deallocate(icent,itype,expon,prim_coefs,coefs_prims,mo_coefs)
 
- write(owfn(1),6)
- write(owfn(1),7) ' THE SCF',TotalE,0.0_dp 
- close(owfn(1))
+ write(owfn,6)
+ write(owfn,7) ' THE SCF',etotal,0.0_dp 
+ close(owfn)
 
+ !FIXME Can you move these formats direclty in the "write" statements? I know it's a matter of taste. But in 2020, this type of
+ !instrutions make me unconfortable.
  1 FORMAT('CENTRE ASSIGNMENTS',2x,20i3)
  2 FORMAT('TYPE ASSIGNMENTS',4X,20i3)
  3 FORMAT('EXPONENTS',1x,1P,5E14.7)
@@ -1098,6 +1100,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,TotalE,energy)
  7 FORMAT(A8,' ENERGY =',F20.12,' THE VIRIAL(-V/T)=',F13.8)
 
 end subroutine print_wfn_file
+
 
 !=========================================================================
 subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,time_cur)
@@ -1948,7 +1951,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
        do ispin=1,nspin
          istate2=nocc(ispin)
          phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
-         cube_density_start(ix,iy,iz,ispin)=SUM( abs(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact
+         cube_density_start(ix,iy,iz,ispin)=SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact
        enddo
 
      enddo
@@ -2098,7 +2101,7 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
          istate2=nocc(ispin)
          phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
 !       call start_clock(timing_tmp1)
-         write(ocuberho(ispin),'(50(e16.8,2x))') SUM( abs(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact - cube_density_start(ix,iy,iz,ispin)
+         write(ocuberho(ispin),'(50(e16.8,2x))') SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact - cube_density_start(ix,iy,iz,ispin)
 !       call stop_clock(timing_tmp1)
        enddo
 
