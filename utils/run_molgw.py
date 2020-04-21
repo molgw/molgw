@@ -103,6 +103,7 @@ for molecule in molecule_list:
                     if 'NaN' in line:
                         print('yaml file contains some NaN')
                         valid_yamlfile = False
+                        break
         else:
             print('no yaml file found')
             valid_yamlfile = False
