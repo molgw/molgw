@@ -811,7 +811,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  real(dp),parameter     :: TOL_COEFF = 1.0e-8_dp
  character(len=200)     :: file_name
  integer                :: nstate,iatom,iprim,nprim,igaus,ishell,nshell,shell_typ,prev_typ
- integer                :: istyp,iprim_per_shell,ibasis,ibasis2,nbasis,ispin,nxp,nyp,nzp
+ integer                :: istyp,iprim_per_shell,iprint,ilast,ibasis,ibasis2,nbasis,ispin,nxp,nyp,nzp
  integer                :: owfn
  real(dp)               :: dfact
  integer                :: p_aos(3) 
@@ -850,9 +850,8 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  open(newunit=owfn,file=file_name)
  
  nbasis=0
- do ibasis=1,basis%nbf
+ do ibasis=1,nstate
    do ispin=1,nspin
-     !FIXME occupation is nstate x nspin and nstate <= basis%nbf
      if( ABS(occupation(ibasis,ispin) ) > TOL_OCC ) nbasis=nbasis+1
    enddo
  enddo
@@ -867,6 +866,10 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
  allocate(icent(nprim),itype(nprim),expon(nprim),prim_coefs(nprim))
  !FIXME the size of coefs_prims can be very large. Is there another way without allocating everything at once?
+ !We have MO = COEF_AO*AO | and | AO = COEF_P*Primitives
+ !We need MO = COEF*Primitives, thus we need  COEF = COEF_AO*COEF_P -> stored finally in prim_coefs variable for each MO. 
+ !Currently we store all COEF_P at once, but to construct COEF on the fly may need to rebuild COEF_P for any MO. Any program that will read the WFN 
+ ! file will also need to store all coefs_prims variable...  
  allocate(coefs_prims(basis%nbf,nprim),ao_map(basis%nbf))
  icent=0
  itype=0
@@ -1047,10 +1050,31 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
    enddo
    deallocate(prim_per_shell)
  enddo
+ 
+ 
+ do iprint=1,nprim/20
+   if(20+(iprint-1)*20 <= nprim) then
+     write(owfn,'(a18,2x,20i3)') 'CENTRE ASSIGNMENTS',icent(1+(iprint-1)*20:20+(iprint-1)*20)  
+     ilast=20+(iprint-1)*20
+   endif
+ enddo
+ if(ilast/=nprim) write(owfn,'(a18,2x,*(i3))') 'CENTRE ASSIGNMENTS',icent(ilast+1:)  
+ 
+ do iprint=1,nprim/20
+   if(20+(iprint-1)*20 <= nprim) then
+     write(owfn,'(a16,4x,20i3)') 'TYPE ASSIGNMENTS',itype(1+(iprint-1)*20:20+(iprint-1)*20)  
+   endif
+ enddo
+ if(ilast/=nprim) write(owfn,'(a16,4x,*(i3))') 'TYPE ASSIGNMENTS',itype(ilast+1:)  
 
- write(owfn,1) (icent(iprim),iprim=1,nprim)  
- write(owfn,2) (itype(iprim),iprim=1,nprim)  
- write(owfn,3) (expon(iprim),iprim=1,nprim) 
+ do iprint=1,nprim/5
+   if(5+(iprint-1)*5 <= nprim) then
+     write(owfn,'(a9,1x,1P,5E14.7)') 'EXPONENTS',expon(1+(iprint-1)*5:5+(iprint-1)*5)  
+   endif
+   ilast=5+(iprint-1)*5
+ enddo
+ if(ilast/=nprim) write(owfn,'(a9,1x,1P,5E14.7)') 'EXPONENTS',expon(ilast+1:)  
+
  allocate(energies(nstate,nspin))
  
  energies(:,:) = 0.0_dp
@@ -1066,7 +1090,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
  allocate(mo_coefs(basis%nbf)) 
   
- do ibasis=1,basis%nbf
+ do ibasis=1,nstate
    do ispin=1,nspin
      if( ABS(occupation(ibasis,ispin))> TOL_OCC) then
        do ibasis2=1,basis%nbf
@@ -1077,27 +1101,18 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
        do iprim=1,nprim
          if( ABS(prim_coefs(iprim)) < TOL_COEFF ) prim_coefs(iprim) = 0.0_dp
        enddo
-       write(owfn,4) ibasis,occupation(ibasis,ispin),energies(ibasis,ispin)
-       write(owfn,5) prim_coefs(:)
+       write(owfn,'(a2,i5,5x,a6,8x,a9,f12.7,a15,f12.6)') 'MO',ibasis,'MO 0.0','OCC NO = ',occupation(ibasis,ispin),& 
+       '  ORB. ENERGY =',energies(ibasis,ispin)
+       write(owfn,'(1P,5E16.8)') prim_coefs(:)
      endif
    enddo
  enddo
  
  deallocate(icent,itype,expon,prim_coefs,coefs_prims,mo_coefs)
 
- write(owfn,6)
- write(owfn,7) ' THE SCF',etotal,0.0_dp 
+ write(owfn,'(a8)') 'END DATA'
+ write(owfn,'(a8,a9,f20.12,a18,f13.8)') ' THE SCF',' ENERGY =',etotal,' THE VIRIAL(-V/T)=',0.0_dp 
  close(owfn)
-
- !FIXME Can you move these formats direclty in the "write" statements? I know it's a matter of taste. But in 2020, this type of
- !instrutions make me unconfortable.
- 1 FORMAT('CENTRE ASSIGNMENTS',2x,20i3)
- 2 FORMAT('TYPE ASSIGNMENTS',4X,20i3)
- 3 FORMAT('EXPONENTS',1x,1P,5E14.7)
- 4 FORMAT('MO',i5,5x,'MO 0.0',8x,'OCC NO = ',f12.7,'  ORB. ENERGY =', f12.6)
- 5 FORMAT(1P,5E16.8)
- 6 FORMAT('END DATA')
- 7 FORMAT(A8,' ENERGY =',F20.12,' THE VIRIAL(-V/T)=',F13.8)
 
 end subroutine print_wfn_file
 
