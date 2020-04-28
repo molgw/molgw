@@ -93,17 +93,25 @@ for molecule in molecule_list:
         valid_yamlfile = True
 
         if os.path.exists(yamlfilename):
-            with open(folder + '/molgw.yaml', 'r') as f:
-                last_line = f.readlines()[-1]
-                if '...' not in last_line:
-                    print('yaml file not terminated')
-                    valid_yamlfile = False
-            with open(folder + '/molgw.yaml', 'r') as f:
-                for line in f:
-                    if 'NaN' in line:
-                        print('yaml file contains some NaN')
+            try:
+                with open(yamlfilename, 'r') as f:
+                    last_line = f.readlines()[-1]
+                    if '...' not in last_line:
+                        print('yaml file not terminated')
                         valid_yamlfile = False
-                        break
+            except:
+                valid_yamlfile = False
+                pass
+            try:
+                with open(yamlfilename, 'r') as f:
+                    for line in f:
+                        if 'NaN' in line:
+                            print('yaml file contains some NaN')
+                            valid_yamlfile = False
+                            break
+            except:
+                valid_yamlfile = False
+                pass
         else:
             print('no yaml file found')
             valid_yamlfile = False
