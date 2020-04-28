@@ -865,11 +865,14 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  enddo
 
  allocate(icent(nprim),itype(nprim),expon(nprim),prim_coefs(nprim))
- !FIXME the size of coefs_prims can be very large. Is there another way without allocating everything at once?
- !We have MO = COEF_AO*AO | and | AO = COEF_P*Primitives
- !We need MO = COEF*Primitives, thus we need  COEF = COEF_AO*COEF_P -> stored finally in prim_coefs variable for each MO. 
- !Currently we store all COEF_P at once, but to construct COEF on the fly may need to rebuild COEF_P for any MO. Any program that will read the WFN 
- ! file will also need to store all coefs_prims variable...  
+ !FIXME the size of coefs_prims can be very large. Is there another way without allocating everything at once? 
+ !
+ !We have: MO = COEF_AO*AO | and | AO = COEF_P*Primitives
+ !We need: MO = COEF*Primitives. Thus, we compute COEF = COEF_AO*COEF_P -> stored finally in prim_coefs variable for each MO before printing. 
+ !Currently we store all COEF_P at once, to construct COEF on the fly we may need to rebuild COEF_P for any MO. 
+ !Comment: Indeed, any program that will read the WFN file should store all 'coefs_prims' matrix at once. 
+ !         So, in that machine such amount of RAM memory is available.
+ !
  allocate(coefs_prims(basis%nbf,nprim),ao_map(basis%nbf))
  icent=0
  itype=0
