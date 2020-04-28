@@ -151,10 +151,24 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
    write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(natural_occupation(:,ispin))
    write(stdout,*)
  enddo
+ 
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ !! MRM print CUBE and WFN files at this stage
+ do ispin=1,nspin
+   c_matrix_tmp(:,:,ispin)=matmul(c_matrix(:,:,ispin),p_matrix_mo(:,:,ispin))
+ enddo
+ if( print_cube_ ) then
+   call plot_cube_wfn('MBPT',basis,natural_occupation,c_matrix_tmp)
+ endif
+ if( print_wfn_files_ ) then
+   call print_wfn_file('MBPT',basis,natural_occupation,c_matrix_tmp,en_dm_corr%total)
+ endif
+ !! MRM end printing CUBE and WFN files
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
- deallocate(natural_occupation)
- call clean_deallocate('Matrix S * C',c_matrix_tmp)
  call clean_deallocate('Density matrix P_MO',p_matrix_mo)
+ call clean_deallocate('Matrix S * C',c_matrix_tmp)
+ deallocate(natural_occupation)
 
 
  if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
@@ -199,16 +213,13 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
 
  endif
 
- if( print_multipole_ .OR. print_cube_ ) then
+ if( print_multipole_ ) then
    call get_c_matrix_from_p_matrix(p_matrix_corr,c_matrix_tmp,occupation_tmp)
    if( .FALSE. ) call plot_rho(basis,occupation_tmp,c_matrix_tmp)
    if( .FALSE. ) call write_cube_from_header('MBPT',basis,occupation_tmp,c_matrix_tmp)
    if( print_multipole_ ) then
      call static_dipole(basis,occupation_tmp,c_matrix_tmp)
      call static_quadrupole(basis,occupation_tmp,c_matrix_tmp)
-   endif
-   if( print_cube_ ) then
-     call plot_cube_wfn('MBPT',basis,occupation_tmp,c_matrix_tmp)
    endif
    deallocate(c_matrix_tmp)
    deallocate(occupation_tmp)
