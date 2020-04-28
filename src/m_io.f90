@@ -811,7 +811,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  real(dp),parameter     :: TOL_COEFF = 1.0e-8_dp
  character(len=200)     :: file_name
  integer                :: nstate,iatom,iprim,nprim,igaus,ishell,nshell,shell_typ,prev_typ
- integer                :: istyp,iprim_per_shell,iprint,ilast,ibasis,ibasis2,nbasis,ispin,nxp,nyp,nzp
+ integer                :: istyp,iprim_per_shell,iprint,ilast,istate,ibf,ibf2,nocc,ispin,nxp,nyp,nzp
  integer                :: owfn
  real(dp)               :: dfact
  integer                :: p_aos(3) 
@@ -820,7 +820,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  integer                :: g_aos(15)
  integer,allocatable    :: icent(:),itype(:),prim_per_shell(:),ao_map(:)
  real(dp),allocatable   :: expon(:),prim_coefs(:),mo_coefs(:)
- real(dp),allocatable   :: energies(:,:),coefs_prims(:,:)
+ real(dp),allocatable   :: energy_local(:,:),coefs_prims(:,:)
  character(len=4),parameter :: el_list(el_max) =                                           &
  (/'  H ','  HE','  LI','  BE','  B ','  C ','  N ','  O ','  F ','  NE','  NA','  MG',    &
    '  AL','  SI','  P ','  S ','  CL','  AR','  K ','  CA','  SC','  TI','  V ','  CR',    &
@@ -849,24 +849,22 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  write(file_name,'(a,i1,a)') "molgw_"//TRIM(rootname)//'_',1,'.wfn'
  open(newunit=owfn,file=file_name)
  
- nbasis=0
- do ibasis=1,nstate
+ nocc = 0
+ do istate=1,nstate
    do ispin=1,nspin
-     if( ABS(occupation(ibasis,ispin) ) > TOL_OCC ) nbasis=nbasis+1
+     if( ABS(occupation(istate,ispin) ) > TOL_OCC ) nocc = nocc + 1
    enddo
  enddo
 
  nprim = SUM(basis%bfc(:)%ngaussian)
  write(owfn,'(a80)') 'MOLGW WFN file generated'
- write(owfn,'(a8,10x,i5,a13,1x,i6,a11,4x,i5,a7)') 'GAUSSIAN',nbasis,' MOL ORBITALS',nprim,' PRIMITIVES',natom,' NUCLEI'
+ write(owfn,'(a8,10x,i5,a13,1x,i6,a11,4x,i5,a7)') 'GAUSSIAN',nocc,' MOL ORBITALS',nprim,' PRIMITIVES',natom,' NUCLEI'
  do iatom=1,natom
    write(owfn,'(a4,i4,4x,a7,i3,a1,1x,3f12.8,a10,f5.1)') el_list(NINT(zatom(iatom))),iatom, &
    '(CENTRE',iatom,')',xatom(:,iatom),'  CHARGE =',zatom(iatom)
  enddo
 
  allocate(icent(nprim),itype(nprim),expon(nprim),prim_coefs(nprim))
- !FIXME the size of coefs_prims can be very large. Is there another way without allocating everything at once? 
- !
  !We have: MO = COEF_AO*AO | and | AO = COEF_P*Primitives
  !We need: MO = COEF*Primitives. Thus, we compute COEF = COEF_AO*COEF_P -> stored finally in prim_coefs variable for each MO before printing. 
  !Currently we store all COEF_P at once, to construct COEF on the fly we may need to rebuild COEF_P for any MO. 
@@ -874,19 +872,19 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  !         So, in that machine such amount of RAM memory is available.
  !
  allocate(coefs_prims(basis%nbf,nprim),ao_map(basis%nbf))
- icent=0
- itype=0
- expon=0.0_dp
- coefs_prims=0.0_dp
- prim_coefs=0.0_dp
+ icent = 0
+ itype = 0
+ expon = 0.0_dp
+ coefs_prims(:,:) = 0.0_dp
+ prim_coefs(:) = 0.0_dp
  nshell=SIZE(basis%shell(:)%iatom)
  
- do ibasis=1,basis%nbf
-   ao_map(ibasis)=ibasis
+ do ibf=1,basis%nbf
+   ao_map(ibf) = ibf
  enddo 
 
- ibasis=1
- ibasis2=1
+ ibf=1
+ ibf2=1
  iprim=1
  do ishell=1,nshell
    shell_typ=basis%shell(ishell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
@@ -895,62 +893,59 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
    prev_typ=0 
    do istyp=0,shell_typ-1
-     prev_typ=prev_typ+number_basis_function_am('CART',istyp)
+     prev_typ = prev_typ + number_basis_function_am('CART',istyp)
    enddo
    allocate(prim_per_shell(iprim_per_shell))
    do istyp=1,iprim_per_shell
-     prim_per_shell(istyp)=istyp+prev_typ
+     prim_per_shell(istyp) = istyp + prev_typ
    enddo
+  
 
    ! Order MO Coefs 
    if(shell_typ==1) then                    ! p-shell
-     p_aos(1:3)=ao_map(ibasis2:ibasis2+2)
-     ao_map(ibasis2  )=p_aos(1)
-     ao_map(ibasis2+1)=p_aos(2)
-     ao_map(ibasis2+2)=p_aos(3)
+     p_aos(1:3)=ao_map(ibf2:ibf2+2)
+     ao_map(ibf2:ibf2+2)=p_aos(:)
    elseif(shell_typ==2) then                ! d-shell 
-     d_aos(1:6)=ao_map(ibasis2:ibasis2+5)
-     ao_map(ibasis2  )=d_aos(1)
-     ao_map(ibasis2+1)=d_aos(4)
-     ao_map(ibasis2+2)=d_aos(6)
-     ao_map(ibasis2+3)=d_aos(2)
-     ao_map(ibasis2+4)=d_aos(3)
-     ao_map(ibasis2+5)=d_aos(5)
+     d_aos(1:6)=ao_map(ibf2:ibf2+5)
+     ao_map(ibf2  )=d_aos(1)
+     ao_map(ibf2+1)=d_aos(4)
+     ao_map(ibf2+2)=d_aos(6)
+     ao_map(ibf2+3)=d_aos(2)
+     ao_map(ibf2+4)=d_aos(3)
+     ao_map(ibf2+5)=d_aos(5)
    elseif(shell_typ==3) then                ! f-shell 
-     f_aos(1:10)=ao_map(ibasis2:ibasis2+9)
-     ao_map(ibasis2  )=f_aos(1)
-     ao_map(ibasis2+1)=f_aos(7)
-     ao_map(ibasis2+2)=f_aos(10)
-     ao_map(ibasis2+3)=f_aos(2)
-     ao_map(ibasis2+4)=f_aos(3)
-     ao_map(ibasis2+5)=f_aos(8)
-     ao_map(ibasis2+6)=f_aos(4)
-     ao_map(ibasis2+7)=f_aos(6)
-     ao_map(ibasis2+8)=f_aos(9)
-     ao_map(ibasis2+9)=f_aos(5)
+     f_aos(1:10)=ao_map(ibf2:ibf2+9)
+     ao_map(ibf2  )=f_aos(1)
+     ao_map(ibf2+1)=f_aos(7)
+     ao_map(ibf2+2)=f_aos(10)
+     ao_map(ibf2+3)=f_aos(2)
+     ao_map(ibf2+4)=f_aos(3)
+     ao_map(ibf2+5)=f_aos(8)
+     ao_map(ibf2+6)=f_aos(4)
+     ao_map(ibf2+7)=f_aos(6)
+     ao_map(ibf2+8)=f_aos(9)
+     ao_map(ibf2+9)=f_aos(5)
    elseif(shell_typ==4) then                ! g-shell 
-     g_aos(1:15)=ao_map(ibasis2:ibasis2+14)
-     ao_map(ibasis2  )=g_aos( 1)
-     ao_map(ibasis2+1)=g_aos(11)
-     ao_map(ibasis2+2)=g_aos(15)
-     ao_map(ibasis2+3)=g_aos( 2)
-     ao_map(ibasis2+4)=g_aos( 3)
-     ao_map(ibasis2+5)=g_aos( 7)
-     ao_map(ibasis2+6)=g_aos(12)
-     ao_map(ibasis2+7)=g_aos(10)
-     ao_map(ibasis2+8)=g_aos(14)
-     ao_map(ibasis2+9)=g_aos( 4)
-     ao_map(ibasis2+10)=g_aos( 6)
-     ao_map(ibasis2+11)=g_aos(13)
-     ao_map(ibasis2+12)=g_aos( 5)
-     ao_map(ibasis2+13)=g_aos( 8)
-     ao_map(ibasis2+14)=g_aos( 9)
-   elseif(shell_typ>4) then                 ! h-, i-,...shell
+     g_aos(1:15)=ao_map(ibf2:ibf2+14)
+     ao_map(ibf2  )=g_aos( 1)
+     ao_map(ibf2+1)=g_aos(11)
+     ao_map(ibf2+2)=g_aos(15)
+     ao_map(ibf2+3)=g_aos( 2)
+     ao_map(ibf2+4)=g_aos( 3)
+     ao_map(ibf2+5)=g_aos( 7)
+     ao_map(ibf2+6)=g_aos(12)
+     ao_map(ibf2+7)=g_aos(10)
+     ao_map(ibf2+8)=g_aos(14)
+     ao_map(ibf2+9)=g_aos( 4)
+     ao_map(ibf2+10)=g_aos( 6)
+     ao_map(ibf2+11)=g_aos(13)
+     ao_map(ibf2+12)=g_aos( 5)
+     ao_map(ibf2+13)=g_aos( 8)
+     ao_map(ibf2+14)=g_aos( 9)
+   else                ! h-, i-,...shell
      write(stdout,'(1x,a,i5,a)') "Shell type",shell_typ,"not reordered." 
-   else
-     !nth
    endif
-   ibasis2=ibasis2+iprim_per_shell
+   ibf2 = ibf2 + iprim_per_shell
 
    do istyp=1,iprim_per_shell
      do igaus=1,basis%shell(ishell)%ng
@@ -1040,16 +1035,16 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
          end select
        endif
        nxp=2*nxp-1;nyp=2*nyp-1;nzp=2*nzp-1
-       dfact=double_factorial(nxp)*double_factorial(nyp)*double_factorial(nzp)
-       prim_coefs(iprim)=basis%shell(ishell)%coeff(igaus)/sqrt(dfact)
-       itype(iprim)=prim_per_shell(istyp)
-       icent(iprim)=basis%shell(ishell)%iatom
-       expon(iprim)=basis%shell(ishell)%alpha(igaus)
-       iprim=iprim+1
+       dfact = double_factorial(nxp) * double_factorial(nyp) * double_factorial(nzp)
+       prim_coefs(iprim) = basis%shell(ishell)%coeff(igaus) / SQRT(dfact)
+       itype(iprim) = prim_per_shell(istyp)
+       icent(iprim) = basis%shell(ishell)%iatom
+       expon(iprim) = basis%shell(ishell)%alpha(igaus)
+       iprim = iprim + 1
      enddo
-     coefs_prims(ibasis,:)=prim_coefs(:)
-     prim_coefs=0.0_dp
-     ibasis=ibasis+1
+     coefs_prims(ibf,:) = prim_coefs(:)
+     prim_coefs(:) = 0.0_dp
+     ibf = ibf + 1
    enddo
    deallocate(prim_per_shell)
  enddo
@@ -1078,34 +1073,32 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  enddo
  if(ilast/=nprim) write(owfn,'(a9,1x,1P,5E14.7)') 'EXPONENTS',expon(ilast+1:)  
 
- allocate(energies(nstate,nspin))
+ allocate(energy_local(nstate,nspin))
  
- energies(:,:) = 0.0_dp
+ energy_local(:,:) = 0.0_dp
  if(PRESENT(energy)) then
-   energies(:,:) = energy(:,:)
+   energy_local(:,:) = energy(:,:)
  endif
 
  !write(*,*) ' '
- !do ibasis=1,basis%nbf
- !  write(*,'(*(f7.3))') coefs_prims(ibasis,:)
+ !do ibf=1,basis%nbf
+ !  write(*,'(*(f7.3))') coefs_prims(ibf,:)
  !enddo
  !write(*,*) ' '
 
  allocate(mo_coefs(basis%nbf)) 
   
- do ibasis=1,nstate
+ do istate=1,nstate
    do ispin=1,nspin
-     if( ABS(occupation(ibasis,ispin))> TOL_OCC) then
-       do ibasis2=1,basis%nbf
-         mo_coefs(ibasis2) = c_matrix(ao_map(ibasis2),ibasis,ispin)
-       enddo
+     if( ABS(occupation(istate,ispin))> TOL_OCC) then
+       mo_coefs(:) = c_matrix(ao_map(:),istate,ispin)
        !write(*,'(*(f7.3))') mo_coefs(:)
-       prim_coefs(1:nprim)=MATMUL(mo_coefs(:),coefs_prims(:,1:nprim))
+       prim_coefs(1:nprim) = MATMUL(mo_coefs(:),coefs_prims(:,1:nprim))
        do iprim=1,nprim
          if( ABS(prim_coefs(iprim)) < TOL_COEFF ) prim_coefs(iprim) = 0.0_dp
        enddo
-       write(owfn,'(a2,i5,5x,a6,8x,a9,f12.7,a15,f12.6)') 'MO',ibasis,'MO 0.0','OCC NO = ',occupation(ibasis,ispin),& 
-       '  ORB. ENERGY =',energies(ibasis,ispin)
+       write(owfn,'(a2,i5,5x,a6,8x,a9,f12.7,a15,f12.6)') 'MO',istate,'MO 0.0','OCC NO = ',occupation(istate,ispin),& 
+       '  ORB. ENERGY =',energy_local(istate,ispin)
        write(owfn,'(1P,5E16.8)') prim_coefs(:)
      endif
    enddo
