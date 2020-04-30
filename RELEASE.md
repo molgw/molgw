@@ -3,6 +3,23 @@
 -----------------------------------------
 
 -----------------------------------------
+## What's new in version 2.D.beta
+### Overview
+- Printing of standard WFN files
+
+### Contributors
+- Fabien Bruneval (CEA SRMP, France)
+- Mauricio Rodriguez-Mayorga (CEA SRMP, France)
+
+### Changes affecting the usage
+- Keyword `print_wfn_file` triggers the output of a standard WFN file that can be read with external visualization softwares
+
+### Changes affecting the compilation
+
+### Changes affecting the developers
+
+
+-----------------------------------------
 ## What's new in version 2.C
 ### Overview
 - Real-time TDDFT is made available
