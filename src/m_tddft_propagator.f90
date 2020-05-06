@@ -36,7 +36,6 @@ module m_tddft_propagator
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
  real(dp),allocatable,private       :: xbasis_start(:,:)
- real(dp),allocatable,private       :: mixed_matrix_hist(:,:)
  real(dp),private                   :: excit_field_norm
  !==hamiltonian extrapolation variables==
  real(dp),allocatable,private       :: extrap_coefs(:)
@@ -79,12 +78,15 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  real(dp),allocatable       :: hamiltonian_kinetic(:,:)
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !=====initial values
- integer                    :: nstate
+ integer                    :: nstate, info, min_index(1)
  real(dp),allocatable       :: energy_tddft(:)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
+ complex(dp),allocatable    :: m_matrix_cmplx(:,:) ! M = S**-1 * ( H - i*D )
+ complex(dp),allocatable    :: m_eigenval(:),m_eigenstates(:,:),work(:)
+ real(dp),allocatable       :: s_matrix_inverse(:,:),rwork(:)
 !=====TDDFT loop variables=============================
  integer                    :: iatom
  integer                    :: itau
@@ -131,11 +133,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_allocate('Time derivative matrix D for TDDFT',d_matrix,basis%nbf,basis%nbf)
  call clean_allocate('Kinetic operator T for TDDFT',hamiltonian_kinetic,basis%nbf,basis%nbf)
  call clean_allocate('Nucleus operator V for TDDFT',hamiltonian_nucleus,basis%nbf,basis%nbf)
- !call clean_allocate('mixed_matrix_hist for TDDFT',mixed_matrix_hist,basis%nbf,basis%nbf)
 
  call setup_overlap(basis,s_matrix)
- d_matrix(:,:) = 0.0_dp
- !mixed_matrix_hist = s_matrix
+ call setup_D_matrix_analytic(basis,d_matrix)
 
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
  call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
@@ -226,17 +226,42 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    ! in order to save the memory, we dont keep inoccupied states (nocc+1:nstate)
    c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
    ! initialize the wavefunctions with a phase correction to assure continuity in projectile movement
-   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     do ispin=1, nspin
-       do iocc=1, nocc
-         c_matrix_orth_cmplx(:,iocc,ispin) = EXP(-im*time_step*energy_tddft(iocc)) * c_matrix_orth_cmplx(:,iocc,ispin)
-       end do
-       c_matrix_cmplx(:,:,ispin)%re = MATMUL(x_matrix,REAL(c_matrix_orth_cmplx(:,:,ispin)))
-       c_matrix_cmplx(:,:,ispin)%im = MATMUL(x_matrix,AIMAG(c_matrix_orth_cmplx(:,:,ispin)))
-     end do
-   end if
+   !if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   !  do ispin=1, nspin
+   !    do iocc=1, nocc
+   !      c_matrix_orth_cmplx(:,iocc,ispin) = EXP(-im*time_step*energy_tddft(iocc)) * c_matrix_orth_cmplx(:,iocc,ispin)
+   !    end do
+   !    c_matrix_cmplx(:,:,ispin)%re = MATMUL(x_matrix,REAL(c_matrix_orth_cmplx(:,:,ispin)))
+   !    c_matrix_cmplx(:,:,ispin)%im = MATMUL(x_matrix,AIMAG(c_matrix_orth_cmplx(:,:,ispin)))
+   !  end do
+   !end if
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
    deallocate(energy_tddft)
+ end if
+
+ ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
+ if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   do ispin=1, nspin
+     allocate(m_matrix_cmplx,MOLD=h_cmplx(:,:,1))
+     allocate(s_matrix_inverse,MOLD=s_matrix)
+     allocate(m_eigenstates,MOLD=h_cmplx(:,:,1))
+     allocate(m_eigenval(basis%nbf), work(2*basis%nbf), rwork(2*basis%nbf))
+
+     call invert(s_matrix,s_matrix_inverse)
+     m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
+     ! c_matrix_tmp(:,:,ispin) = diagonalize( m_matrix_cmplx(:,:) )
+     call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
+                basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
+     print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
+     min_index = MINLOC(m_eigenval(:)%re)
+     print*, 'MINLOC = ', min_index
+     c_matrix_cmplx(:,1,ispin) = m_eigenstates(:,min_index(1))
+
+     deallocate(m_matrix_cmplx)
+     deallocate(s_matrix_inverse)
+     deallocate(m_eigenstates)
+     deallocate(m_eigenval, work, rwork)
+   end do
  end if
 
  ! Number of iterations
@@ -340,38 +365,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if(itau==3) call start_clock(timing_tddft_one_iter)
 
-   !! ===== CHECK PHASE DIFFERENCE BETWEEN C(t) AND C(t+dt) =====
-   !if( pred_corr(1:2) /= 'MB' ) then
-     ! ===== Allocate some temporary variables
-     !call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
-     !allocate(energy_tddft(nstate))
-     ! ===== Calculate phased C'(t+dt) and C(t+dt)
-     !call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,nspin),energy_tddft,c_matrix_orth_start_complete_cmplx(:,:,nspin))
-     !c_matrix_orth_start_complete_cmplx(:,1,nspin) = EXP(-im*time_step*energy_tddft(1)) * c_matrix_orth_cmplx(:,1,nspin)
-     !print*, 'EXP = ', EXP(-im*time_step*energy_tddft(1))
-     !print*, 'Phased C'' matrix = ', c_matrix_orth_start_complete_cmplx(:,1,nspin)
-     !print*, 'Phased C matrix = ', EXP(-im*time_step*energy_tddft(1)) * c_matrix_cmplx(:,1,nspin)
-     ! ===== Deallocate all temporary variables
-     !call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
-     !deallocate(energy_tddft)
-
-   !else if( pred_corr(1:2) == 'MB' ) then
-     ! ===== Get H'(t)
-     !call transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
-     ! ===== Allocate some temporary variables
-     !call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
-     !allocate(energy_tddft(nstate))
-     ! ===== Calculate phased C'(t+dt) and C(t+dt)
-     !call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,nspin),energy_tddft,c_matrix_orth_start_complete_cmplx(:,:,nspin))
-     !c_matrix_orth_start_complete_cmplx(:,1,nspin)%re = MATMUL( MATMUL( TRANSPOSE(x_matrix(:,:)), s_matrix(:,:) ), REAL(c_matrix_cmplx(:,1,nspin)) )
-     !c_matrix_orth_start_complete_cmplx(:,1,nspin)%im = MATMUL( MATMUL( TRANSPOSE(x_matrix(:,:)), s_matrix(:,:) ), AIMAG(c_matrix_cmplx(:,1,nspin)) )
-     !print*, 'Phased C'' matrix = ', EXP(-im*time_step*energy_tddft(1)) * c_matrix_orth_start_complete_cmplx(:,1,nspin)
-     !print*, 'Phased C matrix = ', EXP(-im*time_step*energy_tddft(1)) * c_matrix_cmplx(:,1,nspin)
-     ! ===== Deallocate all temporary variables
-     !call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
-     !deallocate(energy_tddft)
-   !end if
-
    !
    ! Use c_matrix_orth_cmplx and h_small_cmplx at (time_cur-time_step) as start values,
    ! then use chosen predictor-corrector sheme to calculate c_matrix_cmplx, c_matrix_orth_cmplx,
@@ -411,16 +404,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    !call dump_out_matrix(.TRUE.,'===  H Real  ===',basis%nbf,1,h_cmplx(:,:,:)%re)
    !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',basis%nbf,1,h_cmplx(:,:,:)%im)
    !call dump_out_matrix(.TRUE.,'===  D  ===',basis%nbf,1,d_matrix)
-
-   !if( pred_corr(1:2) /= 'MB' ) then
-     !print*, 'C'' matrix = ', c_matrix_orth_cmplx
-     !print*, 'C matrix = ', c_matrix_cmplx
-   !else if( pred_corr(1:2) == 'MB' ) then
-     !c_matrix_orth_cmplx(:,1,nspin)%re = MATMUL( MATMUL( TRANSPOSE(x_matrix(:,:)), s_matrix(:,:) ), REAL(c_matrix_cmplx(:,1,nspin)) )
-     !c_matrix_orth_cmplx(:,1,nspin)%im = MATMUL( MATMUL( TRANSPOSE(x_matrix(:,:)), s_matrix(:,:) ), AIMAG(c_matrix_cmplx(:,1,nspin)) )
-     !print*, 'C'' matrix = ', c_matrix_orth_cmplx
-     !print*, 'C matrix = ', c_matrix_cmplx
-   !end if
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
@@ -623,39 +606,6 @@ end subroutine update_S_X
 
 
 !=========================================================================
-subroutine setup_D_matrix(new_basis,old_basis,time_step,d_matrix)
-
- implicit none
- type(basis_set),intent(in)          :: new_basis
- type(basis_set),intent(in),optional :: old_basis
- real(dp),intent(in)                 :: time_step
- !real(dp),intent(in)                 :: s_matrix(:,:)
- real(dp),intent(out)                :: d_matrix(:,:)
-!=====
- real(dp),allocatable                :: mixed_matrix(:,:)
-!=====
-
- write(stdout,'(/,a)') ' Setup overlap time derivative matrix D '
-
- if( PRESENT(old_basis) ) then
-   allocate( mixed_matrix(old_basis%nbf,new_basis%nbf) )
-   call setup_overlap_mixedbasis(old_basis,new_basis,mixed_matrix)
-   !!=== One-sided finite difference ===
-   !d_matrix = ( s_matrix - mixed_matrix ) / time_step
-   !!=== Symmetrique finite difference ===
-   !! At itau=1, we consider mixed_basis(t0,t0-dt) = mixed_basis(t0,t0) = S(t0)
-   d_matrix = ( mixed_matrix - mixed_matrix_hist ) / (2.0_dp*time_step)
-   mixed_matrix_hist = TRANSPOSE( mixed_matrix )
-   deallocate( mixed_matrix )
- else
-   d_matrix(:,:) = 0.0_dp
- endif
-
-
-end subroutine setup_D_matrix
-
-
-!=========================================================================
 subroutine setup_D_matrix_analytic(basis,d_matrix)
  implicit none
  type(basis_set),intent(in)          :: basis
@@ -726,12 +676,9 @@ subroutine predictor_corrector(basis,                  &
  real(dp),allocatable,intent(in)    :: dipole_ao(:,:,:)
 !=====
  integer              :: nstate,iextr,i_iter,file_iter_norm
- !type(basis_set)      :: old_basis
 !=====
 
  nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
- ! Register basis set from previous time step
- !old_basis = basis
 
  write(stdout,'(/,1x,a)') 'PREDICTOR-CORRECTOR BLOCK'
 
@@ -740,8 +687,6 @@ subroutine predictor_corrector(basis,                  &
  case('MB_PC0')
 
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Evaluate D(t) = ( S'(t,t+dt) - S'(t,t-dt) ) / dt
-     !call setup_D_matrix(basis,old_basis,time_step,d_matrix)
      ! Analytic evaluation of D(t) ( well conserves C**H*S*C = I )
      call setup_D_matrix_analytic(basis,d_matrix)
      ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
@@ -1905,8 +1850,8 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
 
      call start_clock(timing_propagate_matmul)
      b_matrix_cmplx(:,:)        = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
-     !call dump_out_matrix(.TRUE.,'===  B/L REAL  ===',size(h_cmplx,dim=1),1,REAL(b_matrix_cmplx))
-     !call dump_out_matrix(.TRUE.,'===  B/L AIMAG ===',size(h_cmplx,dim=1),1,AIMAG(b_matrix_cmplx))
+     !call dump_out_matrix(.TRUE.,'===  U REAL  ===',size(h_cmplx,dim=1),1,REAL(b_matrix_cmplx))
+     !call dump_out_matrix(.TRUE.,'===  U AIMAG ===',size(h_cmplx,dim=1),1,AIMAG(b_matrix_cmplx))
      !call dump_out_matrix(.TRUE.,'===  U*U**H REAL ===',size(h_cmplx,dim=1),1,REAL(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
      !call dump_out_matrix(.TRUE.,'===  U*U**H AIMAG ===',size(h_cmplx,dim=1),1,AIMAG(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
      c_matrix_cmplx(:,:,ispin)  = MATMUL( b_matrix_cmplx(:,:),c_matrix_cmplx(:,:,ispin))
@@ -1928,6 +1873,8 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
      do ibf=1,size(s_matrix,dim=1)
        b_matrix_cmplx(ibf,ibf) = b_matrix_cmplx(ibf,ibf) + 1.0_dp
      end do
+     !call dump_out_matrix(.TRUE.,'===  U*U**H REAL ===',size(h_cmplx,dim=1),1,REAL(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
+     !call dump_out_matrix(.TRUE.,'===  U*U**H AIMAG ===',size(h_cmplx,dim=1),1,AIMAG(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
 
      call start_clock(timing_propagate_matmul)
      c_matrix_cmplx(:,:,ispin)  = MATMUL( b_matrix_cmplx(:,:), c_matrix_cmplx(:,:,ispin) )
