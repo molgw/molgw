@@ -85,7 +85,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
  complex(dp),allocatable    :: m_matrix_cmplx(:,:) ! M = S**-1 * ( H - i*D )
- complex(dp),allocatable    :: m_eigenval(:),m_eigenstates(:,:),work(:)
+ complex(dp),allocatable    :: m_eigenval(:),m_eigenstates(:,:),work(:),m_eigenval_copy(:)
  real(dp),allocatable       :: s_matrix_inverse(:,:),rwork(:)
 !=====TDDFT loop variables=============================
  integer                    :: iatom
@@ -225,27 +225,22 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end do
    ! in order to save the memory, we dont keep inoccupied states (nocc+1:nstate)
    c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
-   ! initialize the wavefunctions with a phase correction to assure continuity in projectile movement
-   !if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-   !  do ispin=1, nspin
-   !    do iocc=1, nocc
-   !      c_matrix_orth_cmplx(:,iocc,ispin) = EXP(-im*time_step*energy_tddft(iocc)) * c_matrix_orth_cmplx(:,iocc,ispin)
-   !    end do
-   !    c_matrix_cmplx(:,:,ispin)%re = MATMUL(x_matrix,REAL(c_matrix_orth_cmplx(:,:,ispin)))
-   !    c_matrix_cmplx(:,:,ispin)%im = MATMUL(x_matrix,AIMAG(c_matrix_orth_cmplx(:,:,ispin)))
-   !  end do
-   !end if
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
    deallocate(energy_tddft)
  end if
 
+ call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+ Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
+ print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
+
  ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+
    do ispin=1, nspin
-     allocate(m_matrix_cmplx,MOLD=h_cmplx(:,:,1))
-     allocate(s_matrix_inverse,MOLD=s_matrix)
-     allocate(m_eigenstates,MOLD=h_cmplx(:,:,1))
-     allocate(m_eigenval(basis%nbf), work(2*basis%nbf), rwork(2*basis%nbf))
+     allocate(m_matrix_cmplx, MOLD=h_cmplx(:,:,1))
+     allocate(s_matrix_inverse, MOLD=s_matrix)
+     allocate(m_eigenstates, MOLD=h_cmplx(:,:,1))
+     allocate(m_eigenval(basis%nbf),m_eigenval_copy(basis%nbf), work(2*basis%nbf), rwork(2*basis%nbf))
 
      call invert(s_matrix,s_matrix_inverse)
      m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
@@ -253,15 +248,40 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
                 basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
      print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
-     min_index = MINLOC(m_eigenval(:)%re)
-     print*, 'MINLOC = ', min_index
-     c_matrix_cmplx(:,1,ispin) = m_eigenstates(:,min_index(1))
+     m_eigenval_copy = m_eigenval
+     do iocc=1,nocc
+       min_index = MINLOC(m_eigenval_copy(:)%re)
+       print*, 'MINLOC = ', min_index
+       c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
+       m_eigenval_copy(min_index(1)) = maxval(m_eigenval(:)%re)
+     end do
 
      deallocate(m_matrix_cmplx)
      deallocate(s_matrix_inverse)
      deallocate(m_eigenstates)
-     deallocate(m_eigenval, work, rwork)
+     deallocate(m_eigenval, m_eigenval_copy, work, rwork)
+
+     c_matrix_cmplx(:,:,ispin) = c_matrix_cmplx(:,:,ispin) / &
+          SQRT(SUM(MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,ispin))),s_matrix(:,:)),c_matrix_cmplx(:,:,ispin))))
    end do
+
+   call setup_hamiltonian_cmplx(basis,                      &
+                                nstate,                     &
+                                0,                          &
+                                time_min,                   &
+                                0.0_dp,                     &
+                                occupation,                 &
+                                c_matrix_cmplx,             &
+                                hamiltonian_kinetic,        &
+                                hamiltonian_nucleus,        &
+                                dipole_ao=dipole_ao,        &
+                                hamiltonian_cmplx=h_cmplx,  &
+                                en=en_tddft)
+
+   call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+   Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
+   print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
+
  end if
 
  ! Number of iterations
@@ -398,8 +418,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
    print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
-   call dump_out_matrix(.TRUE.,'===  P Real  ===',basis%nbf,1,p_matrix_cmplx(:,:,:)%re)
-   call dump_out_matrix(.TRUE.,'===  P Imaginary  ===',basis%nbf,1,p_matrix_cmplx(:,:,:)%im)
+   !call dump_out_matrix(.TRUE.,'===  P Real  ===',basis%nbf,1,p_matrix_cmplx(:,:,:)%re)
+   !call dump_out_matrix(.TRUE.,'===  P Imaginary  ===',basis%nbf,1,p_matrix_cmplx(:,:,:)%im)
    !call dump_out_matrix(.TRUE.,'===  S  ===',basis%nbf,1,s_matrix)
    !call dump_out_matrix(.TRUE.,'===  H Real  ===',basis%nbf,1,h_cmplx(:,:,:)%re)
    !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',basis%nbf,1,h_cmplx(:,:,:)%im)
