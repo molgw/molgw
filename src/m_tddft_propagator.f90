@@ -78,15 +78,19 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  real(dp),allocatable       :: hamiltonian_kinetic(:,:)
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !=====initial values
- integer                    :: nstate, info, min_index(1)
+ integer                    :: nstate, info, min_index(1), icycle
  real(dp),allocatable       :: energy_tddft(:)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
+ complex(dp),allocatable    :: p_matrix_hist(:,:,:)
  complex(dp),allocatable    :: m_matrix_cmplx(:,:) ! M = S**-1 * ( H - i*D )
- complex(dp),allocatable    :: m_eigenval(:),m_eigenstates(:,:),work(:),m_eigenval_copy(:)
+ complex(dp),allocatable    :: m_eigenval(:),m_eigenval_copy(:)
+ complex(dp),allocatable    :: m_eigenstates(:,:),work(:)
  real(dp),allocatable       :: s_matrix_inverse(:,:),rwork(:)
+ real(dp)                   :: rms
+ logical                    :: is_converged
 !=====TDDFT loop variables=============================
  integer                    :: iatom
  integer                    :: itau
@@ -236,51 +240,77 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
 
-   do ispin=1, nspin
-     allocate(m_matrix_cmplx, MOLD=h_cmplx(:,:,1))
-     allocate(s_matrix_inverse, MOLD=s_matrix)
-     allocate(m_eigenstates, MOLD=h_cmplx(:,:,1))
-     allocate(m_eigenval(basis%nbf),m_eigenval_copy(basis%nbf), work(2*basis%nbf), rwork(2*basis%nbf))
+   allocate(p_matrix_hist, MOLD=p_matrix_cmplx(:,:,:))
 
-     call invert(s_matrix,s_matrix_inverse)
-     m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
-     ! c_matrix_tmp(:,:,ispin) = diagonalize( m_matrix_cmplx(:,:) )
-     call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
-                basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
-     print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
-     m_eigenval_copy = m_eigenval
-     do iocc=1,nocc
-       min_index = MINLOC(m_eigenval_copy(:)%re)
-       print*, 'MINLOC = ', min_index
-       c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
-       m_eigenval_copy(min_index(1)) = maxval(m_eigenval(:)%re)
+   ! self-consistency loop for C(t0) convergence
+   do icycle = 1, 20
+
+     write(stdout,'(/,1x,a)')
+     write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
+     write(stdout,'(/,1x,a)')
+
+     do ispin=1, nspin
+       allocate(m_matrix_cmplx, MOLD=h_cmplx(:,:,1))
+       allocate(s_matrix_inverse, MOLD=s_matrix(:,:))
+       allocate(m_eigenstates, MOLD=h_cmplx(:,:,1))
+       allocate(m_eigenval(basis%nbf), m_eigenval_copy(basis%nbf), work(2*basis%nbf), rwork(2*basis%nbf))
+
+       call invert(s_matrix,s_matrix_inverse)
+       m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
+       ! diagonalize M(t0) to get eigenstates C(t0) for MB propagation
+       call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
+                  basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
+       !print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
+       ! take only the occupied states (lowest in energy) for C(t0)
+       m_eigenval_copy = m_eigenval
+       do iocc=1,nocc
+         min_index = MINLOC(m_eigenval_copy(:)%re)
+         !print*, 'MINLOC = ', min_index
+         c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
+         m_eigenval_copy(min_index(1)) = MAXVAL(m_eigenval(:)%re)
+       end do
+
+       deallocate(m_matrix_cmplx)
+       deallocate(s_matrix_inverse)
+       deallocate(m_eigenstates)
+       deallocate(m_eigenval, m_eigenval_copy, work, rwork)
+
+       ! renormalize C(t0)
+       c_matrix_cmplx(:,:,ispin) = c_matrix_cmplx(:,:,ispin) / &
+            SQRT(SUM(MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,ispin))),s_matrix(:,:)),c_matrix_cmplx(:,:,ispin))))
      end do
 
-     deallocate(m_matrix_cmplx)
-     deallocate(s_matrix_inverse)
-     deallocate(m_eigenstates)
-     deallocate(m_eigenval, m_eigenval_copy, work, rwork)
+     call setup_hamiltonian_cmplx(basis,                      &
+                                  nstate,                     &
+                                  0,                          &
+                                  time_min,                   &
+                                  0.0_dp,                     &
+                                  occupation,                 &
+                                  c_matrix_cmplx,             &
+                                  hamiltonian_kinetic,        &
+                                  hamiltonian_nucleus,        &
+                                  dipole_ao=dipole_ao,        &
+                                  hamiltonian_cmplx=h_cmplx,  &
+                                  en=en_tddft)
 
-     c_matrix_cmplx(:,:,ispin) = c_matrix_cmplx(:,:,ispin) / &
-          SQRT(SUM(MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,ispin))),s_matrix(:,:)),c_matrix_cmplx(:,:,ispin))))
+     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+     !Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
+     !print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
+
+     if( icycle == 1 ) then
+       p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+     else
+       rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
+       !print*, 'rms = ', rms
+       if( rms < tolscf ) then
+         write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
+         exit
+       end if
+       p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+     end if
+
    end do
-
-   call setup_hamiltonian_cmplx(basis,                      &
-                                nstate,                     &
-                                0,                          &
-                                time_min,                   &
-                                0.0_dp,                     &
-                                occupation,                 &
-                                c_matrix_cmplx,             &
-                                hamiltonian_kinetic,        &
-                                hamiltonian_nucleus,        &
-                                dipole_ao=dipole_ao,        &
-                                hamiltonian_cmplx=h_cmplx,  &
-                                en=en_tddft)
-
-   call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-   Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
-   print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
+   deallocate(p_matrix_hist)
 
  end if
 
@@ -370,7 +400,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  ! Extrapolation coefficients and history c_ and h_ matrices (h_small_hist_cmplx)
  call initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx,c_matrix_cmplx,h_cmplx)
 
- write(stdout,'(1x,a,/)') "===END OF INITIAL CONDITIONS==="
+ write(stdout,'(/,1x,a,/)') "===END OF INITIAL CONDITIONS==="
 
 
  !
