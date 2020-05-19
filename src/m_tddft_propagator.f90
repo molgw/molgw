@@ -268,6 +268,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          !print*, 'MINLOC = ', min_index
          c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
          m_eigenval_copy(min_index(1)) = MAXVAL(m_eigenval(:)%re)
+         ! renormalize C(t0)
+         c_matrix_cmplx(:,iocc,ispin) = c_matrix_cmplx(:,iocc,ispin) / &
+            SQRT(SUM( MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)) * c_matrix_cmplx(:,iocc,ispin) ))
        end do
 
        deallocate(m_matrix_cmplx)
@@ -275,9 +278,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        deallocate(m_eigenstates)
        deallocate(m_eigenval, m_eigenval_copy, work, rwork)
 
-       ! renormalize C(t0)
-       c_matrix_cmplx(:,:,ispin) = c_matrix_cmplx(:,:,ispin) / &
-            SQRT(SUM(MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,ispin))),s_matrix(:,:)),c_matrix_cmplx(:,:,ispin))))
      end do
 
      call setup_hamiltonian_cmplx(basis,                      &
