@@ -89,7 +89,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  complex(dp),allocatable    :: m_eigenval(:),m_eigenval_copy(:)
  complex(dp),allocatable    :: m_eigenstates(:,:),work(:)
  real(dp),allocatable       :: s_matrix_inverse(:,:),rwork(:)
- real(dp)                   :: rms
+ real(dp)                   :: rms,en_xc_hist
  logical                    :: is_converged
 !=====TDDFT loop variables=============================
  integer                    :: iatom
@@ -299,14 +299,17 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
      if( icycle == 1 ) then
        p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+       en_xc_hist = en_tddft%xc
      else
        rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
        !print*, 'rms = ', rms
-       if( rms < tolscf ) then
+       !print*, 'diff_xc', abs(en_xc_hist - en_tddft%xc)
+       if( rms < tolscf .AND. abs(en_xc_hist - en_tddft%xc) < 1.e-6 ) then
          write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
          exit
        end if
        p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+       en_xc_hist = en_tddft%xc
      end if
 
    end do
