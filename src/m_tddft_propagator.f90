@@ -37,6 +37,7 @@ module m_tddft_propagator
  real(dp),allocatable,private       :: xatom_start(:,:)
  real(dp),allocatable,private       :: xbasis_start(:,:)
  real(dp),private                   :: excit_field_norm
+ real(dp),private                   :: vel_init_loop(3)
  !==hamiltonian extrapolation variables==
  real(dp),allocatable,private       :: extrap_coefs(:)
  complex(dp),allocatable,private    :: h_small_hist_cmplx(:,:,:,:)
@@ -78,7 +79,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  real(dp),allocatable       :: hamiltonian_kinetic(:,:)
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !=====initial values
- integer                    :: nstate, info, min_index(1), icycle
+ integer                    :: nstate,info,min_index(1),icycle,ind
  real(dp),allocatable       :: energy_tddft(:)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
@@ -89,6 +90,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  complex(dp),allocatable    :: m_eigenval(:),m_eigenval_copy(:)
  complex(dp),allocatable    :: m_eigenstates(:,:),work(:)
  real(dp),allocatable       :: s_matrix_inverse(:,:),rwork(:)
+ real(dp),allocatable       :: interm_v_list(:)
+ real(dp)                   :: small_v_list(3)=[0.01_dp, 0.05_dp, 0.25_dp]
  complex(dp)                :: rms
  logical                    :: is_converged
 !=====TDDFT loop variables=============================
@@ -237,10 +240,44 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
  print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
 
+ ! Create a list of intermediate velocities for C(t0) convergence
+ !! smallest v input should be > 0.05
+ vel_init_loop(:) = vel(:,natom)
+ if( vel_init_loop(3) .LT. 0.5_dp ) then
+   if( vel_init_loop(3) .GT. maxval(small_v_list) ) then
+     allocate(interm_v_list(3+1))
+     interm_v_list(1:3) = small_v_list(:)
+     interm_v_list(4) = vel_init_loop(3)
+   else
+     allocate(interm_v_list(count(small_v_list .LT. vel_init_loop(3))+1))
+     interm_v_list(1:count(small_v_list .LT. vel_init_loop(3))) = small_v_list(1:count(small_v_list .LT. vel_init_loop(3)))
+     interm_v_list(count(small_v_list .LT. vel_init_loop(3))+1) = vel_init_loop(3)
+   end if
+ else
+   if( modulo(vel_init_loop(3), 0.5_dp) == 0.0_dp ) then
+     allocate(interm_v_list(3+int(vel_init_loop(3)/0.5_dp)))
+     interm_v_list(1:3) = small_v_list(:)
+   else
+     allocate(interm_v_list(3+int(vel_init_loop(3)/0.5_dp)+1))
+     interm_v_list(1:3) = small_v_list(:)
+   end if
+   do ind = 1,int(vel_init_loop(3)/0.5_dp)
+     interm_v_list(3+ind) = 0.5_dp * ind
+   end do
+   interm_v_list(size(interm_v_list)) = vel_init_loop(3)
+ end if
+
  ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
 
    allocate(p_matrix_hist, MOLD=p_matrix_cmplx(:,:,:))
+
+   do ind = 1, size(interm_v_list)
+
+     vel_init_loop(3) = interm_v_list(ind)
+     write(stdout,'(/,1x,a)')
+     write(stdout,*) '=============== Intermediate velocity at vz =', vel_init_loop(3), '==============='
+     call setup_D_matrix_analytic(basis,d_matrix,.TRUE.)
 
    ! self-consistency loop for C(t0) convergence
    do icycle = 1, 20
@@ -310,9 +347,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      end if
 
    end do
+   end do
    deallocate(p_matrix_hist)
 
  end if
+ deallocate(interm_v_list)
 
  ! Number of iterations
  ntau = NINT( (time_sim-time_min) / time_step )
@@ -656,10 +695,11 @@ end subroutine update_S_X
 
 
 !=========================================================================
-subroutine setup_D_matrix_analytic(basis,d_matrix)
+subroutine setup_D_matrix_analytic(basis,d_matrix,init_loop)
  implicit none
  type(basis_set),intent(in)          :: basis
  real(dp),intent(out)                :: d_matrix(:,:)
+ logical,intent(in),optional         :: init_loop
 !=====
  integer :: jbf,ibasis_center
  real(dp),allocatable                :: s_matrix_grad(:,:,:)
@@ -684,6 +724,9 @@ subroutine setup_D_matrix_analytic(basis,d_matrix)
  do jbf=1,basis%nbf
    ibasis_center = basis%bff(jbf)%iatom
    d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel(:,ibasis_center) )
+   if( present(init_loop) ) then
+     if( ibasis_center == natom ) d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel_init_loop(:) )
+   end if
  enddo
 
  deallocate(s_matrix_grad)
@@ -744,7 +787,7 @@ subroutine predictor_corrector(basis,                  &
 
      ! Update projectile position and its basis center to time_cur = t + dt
      call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * ( time_cur - time_read ))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * ( time_cur - time_read ))
      ! Update all basis and eri to time_cur
      call update_basis_eri(basis,auxil_basis)
      ! Update S matrix and dft grids to time_cur
@@ -784,7 +827,7 @@ subroutine predictor_corrector(basis,                  &
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      ! Update projectile position and its basis center to t+dt/4
      call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
      ! Update S matrix
@@ -800,7 +843,7 @@ subroutine predictor_corrector(basis,                  &
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      ! Update projectile position and its basis center to t+dt/2
      call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read - time_step/2.0_dp))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
      ! Update S matrix
@@ -857,7 +900,7 @@ case('MB_PC2B')
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      ! Update projectile position and its basis center to t+dt/4
      call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
      ! Update S matrix
@@ -873,7 +916,7 @@ case('MB_PC2B')
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      ! Update projectile position and its basis center to t+dt/2
      call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read - time_step/2.0_dp))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
      ! Update S matrix
@@ -911,7 +954,7 @@ case('MB_PC2B')
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      ! Update projectile position and its basis center to t+dt
      call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * (time_cur - time_read))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
      ! Update S matrix (not really needed since U[M(t+dt)] not needed)
@@ -949,7 +992,7 @@ case('MB_PC2B')
   ! if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
   !   !=== time_cur = t + dt
   !   call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
-  !   call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom_basis) * ( time_cur - time_read ))
+  !   call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * ( time_cur - time_read ))
   !   call update_basis_eri(basis,auxil_basis)
   !   call update_S_X(basis,nstate,x_matrix,s_matrix)
   !   if( calc_type%is_dft ) then
@@ -2272,10 +2315,6 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  case(EXCIT_PROJECTILE_W_BASIS)
 
    call setup_kinetic(basis,hamiltonian_kinetic)
-   !
-   ! Move the projectile
-   !call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
-
    call nucleus_nucleus_energy(en_tddft%nuc_nuc)
 
    ! Nucleus-electron interaction due to the fixed target
