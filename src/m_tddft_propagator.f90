@@ -240,44 +240,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
  print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
 
- ! Create a list of intermediate velocities for C(t0) convergence
- !! smallest v input should be > 0.05
- vel_init_loop(:) = vel(:,natom)
- if( vel_init_loop(3) .LT. 0.5_dp ) then
-   if( vel_init_loop(3) .GT. maxval(small_v_list) ) then
-     allocate(interm_v_list(3+1))
-     interm_v_list(1:3) = small_v_list(:)
-     interm_v_list(4) = vel_init_loop(3)
-   else
-     allocate(interm_v_list(count(small_v_list .LT. vel_init_loop(3))+1))
-     interm_v_list(1:count(small_v_list .LT. vel_init_loop(3))) = small_v_list(1:count(small_v_list .LT. vel_init_loop(3)))
-     interm_v_list(count(small_v_list .LT. vel_init_loop(3))+1) = vel_init_loop(3)
-   end if
- else
-   if( modulo(vel_init_loop(3), 0.5_dp) == 0.0_dp ) then
-     allocate(interm_v_list(3+int(vel_init_loop(3)/0.5_dp)))
-     interm_v_list(1:3) = small_v_list(:)
-   else
-     allocate(interm_v_list(3+int(vel_init_loop(3)/0.5_dp)+1))
-     interm_v_list(1:3) = small_v_list(:)
-   end if
-   do ind = 1,int(vel_init_loop(3)/0.5_dp)
-     interm_v_list(3+ind) = 0.5_dp * ind
-   end do
-   interm_v_list(size(interm_v_list)) = vel_init_loop(3)
- end if
-
  ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
 
    allocate(p_matrix_hist, MOLD=p_matrix_cmplx(:,:,:))
-
-   do ind = 1, size(interm_v_list)
-
-     vel_init_loop(3) = interm_v_list(ind)
-     write(stdout,'(/,1x,a)')
-     write(stdout,*) '=============== Intermediate velocity at vz =', vel_init_loop(3), '==============='
-     call setup_D_matrix_analytic(basis,d_matrix,.TRUE.)
 
    ! self-consistency loop for C(t0) convergence
    do icycle = 1, 20
@@ -339,7 +305,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      else
        rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
        !print*, 'abs(rms) = ', ABS(rms)
-       if( ABS(rms) < 1.e-10 ) then
+       if( ABS(rms) < 1.e-8 ) then
          write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
          exit
        end if
@@ -347,11 +313,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      end if
 
    end do
-   end do
    deallocate(p_matrix_hist)
 
  end if
- deallocate(interm_v_list)
 
  ! Number of iterations
  ntau = NINT( (time_sim-time_min) / time_step )
