@@ -150,21 +150,20 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
    write(stdout,'(10(2x,f14.6))') natural_occupation(:,ispin)
    write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(natural_occupation(:,ispin))
    write(stdout,*)
+
+   !
+   ! Get the natural orbital in the AO basis
+   ! C_NO^AO = C * C_NO^MO
+   c_matrix_tmp(:,:,ispin) = MATMUL( c_matrix(:,:,ispin) , p_matrix_mo(:,:,ispin) )
+
  enddo
- 
- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- !! MRM print CUBE and WFN files at this stage
- do ispin=1,nspin
-   c_matrix_tmp(:,:,ispin)=matmul(c_matrix(:,:,ispin),p_matrix_mo(:,:,ispin))
- enddo
+
  if( print_cube_ ) then
    call plot_cube_wfn('MBPT',basis,natural_occupation,c_matrix_tmp)
  endif
  if( print_wfn_files_ ) then
    call print_wfn_file('MBPT',basis,natural_occupation,c_matrix_tmp,en_dm_corr%total)
  endif
- !! MRM end printing CUBE and WFN files
- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  call clean_deallocate('Density matrix P_MO',p_matrix_mo)
  call clean_deallocate('Matrix S * C',c_matrix_tmp)
