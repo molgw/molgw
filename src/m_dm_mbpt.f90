@@ -41,7 +41,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
 !=====
  integer                    :: nstate,nocc
  logical                    :: density_matrix_found
- integer                    :: file_density_matrix
+ integer                    :: file_density_matrix,reading_status
  integer                    :: ispin,istate
  type(spectral_function)    :: wpol
  type(energy_contributions) :: en_dm_corr
@@ -51,6 +51,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
  real(dp),allocatable       :: hamiltonian_exx_corr(:,:,:)
  real(dp),allocatable       :: c_matrix_tmp(:,:,:),p_matrix_mo(:,:,:)
  real(dp),allocatable       :: occupation_tmp(:,:),natural_occupation(:,:)
+ real(dp),allocatable       :: energy_qp(:,:)
 !=====
 
  nstate = SIZE(c_matrix,DIM=2)
@@ -89,6 +90,19 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
      call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
+   case('EVGW','GNWN')
+     ! This keyword calculates the GW density matrix calculated with GW QP energies
+     allocate(energy_qp,MOLD=energy)
+     call read_energy_qp(nstate,energy_qp,reading_status)
+     if( reading_status /= 0 ) then
+       call issue_warning('File energy_qp not found: assuming 1st iteration')
+       energy_qp(:,:) = energy(:,:)
+     endif
+     call init_spectral_function(nstate,occupation,0,wpol)
+     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy_qp,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
+     call gw_density_matrix(nstate,basis,occupation,energy_qp,c_matrix,wpol,p_matrix_corr)
+     call destroy_spectral_function(wpol)
+     deallocate(energy_qp)
    case('GW_IMAGINARY','G0W0_IMAGINARY')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      ! using an imaginary axis integral
@@ -157,6 +171,10 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
    c_matrix_tmp(:,:,ispin) = MATMUL( c_matrix(:,:,ispin) , p_matrix_mo(:,:,ispin) )
 
  enddo
+ if( ANY(natural_occupation(:,:) < -0.1_dp) ) then
+   write(stdout,'(1x,a,f12.6)') 'Too negative natural occupation: ',MINVAL(natural_occupation)
+   call die('get_dm_mbpt: better stop now')
+ endif
 
  if( print_cube_ ) then
    call plot_cube_wfn('MBPT',basis,natural_occupation,c_matrix_tmp)

@@ -501,7 +501,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
   deallocate(bra_occ_local)
   deallocate(bra_virt_local)
 
-  ! Symmetrization of the p_matrix here
+  ! Symmetrization of the p_matrix_gw here
   ! Only the upper triangle was set up before
   do pstate=1,nstate
     do qstate=pstate+1,nstate

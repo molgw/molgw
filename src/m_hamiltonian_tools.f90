@@ -629,7 +629,7 @@ subroutine matrix_mo_to_ao(c_matrix,matrix_in,matrix_out)
    !matrix_out(1:nbf,1:nbf,ispin) = MATMUL( c_matrix(:,:,ispin) , MATMUL( matrix_in(:,:,ispin) , TRANSPOSE( c_matrix(:,:,ispin) ) ) )
 
    !  C * H
-   call DSYMM('R','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nbf, &
+   call DSYMM('R','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nstate, &
                                        c_matrix(1,1,ispin),nbf,  &
                                  0.0d0,matrix_tmp,nbf)
 

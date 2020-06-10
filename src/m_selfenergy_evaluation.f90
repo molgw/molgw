@@ -150,7 +150,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    !
    if( calc_type%selfenergy_technique == EVSC .OR. force_energy_qp_ ) then
      call read_energy_qp(nstate,energy_g,reading_status)
-     if(reading_status/=0) then
+     if( reading_status /=0 ) then
        call issue_warning('File energy_qp not found: assuming 1st iteration')
        energy_g(:,:) = energy(:,:)
      endif
