@@ -787,7 +787,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  nmat=chi%npole_reso
  allocate(gos_tddft(chi%npole_reso))
 
- write(stdout,'(/,1x,a,f8.3,a,f8.3)') 'Loop over q-vectors from ',NORM2(qvec_list(:,iq)),' to ',NORM2(qvec_list(:,nq))
+ write(stdout,'(/,1x,a,f8.3,a,f8.3)') 'Loop over q-vectors from ',NORM2(qvec_list(:,1)),' to ',NORM2(qvec_list(:,nq))
  write(stdout,'(5x,a,f8.3)') 'with increment:',dq
  bethe_sumrule(:) = 0.0_dp
  stopping_cross_section(:) = 0.0_dp
