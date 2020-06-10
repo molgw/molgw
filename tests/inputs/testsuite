@@ -751,6 +751,14 @@ co_gw_dm_dyson.in         , G0W0 density matrix obtained from the Dyson equation
 SCF Total Energy          ,   -113.2675617628   , 0 , 1.0e-7
 Trace                     ,     14.006299       , 0 , 1.0e-4
 
+cs_gwdm_minoverlap.in     , G0W0 density matrix used for GW calculations when min_overlap is high
+SCF Total Energy          ,   -435.3493884743   , 0 , 1.0e-7
+Trace                     ,     22.000000       , 0 , 1.0e-4
+Hartree Energy            ,    227.3626344754   , 0 , 1.0e-7
+Exchange Energy           ,    -30.0102296815   , 0 , 1.0e-7
+GW HOMO energy            ,    -12.546934       , 0 , 1.0e-4
+GW LUMO energy            ,      0.653967       , 0 , 1.0e-4
+
 h2_dyson.in               , G0W0 with a analytic solution of the Dyson equation
 SCF Total Energy          ,     -1.1669981156   , 0 , 1.0e-7
 gKS HOMO energy           ,    -13.542791       , 0 , 1.0e-4
