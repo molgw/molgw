@@ -457,7 +457,7 @@ subroutine diagonalize_inplace_sp(flavor,matrix,eigval)
  real(sp),intent(out)   :: eigval(:)
 !=====
  integer              :: nmat
- real(dp),allocatable :: work(:)
+ real(sp),allocatable :: work(:)
  integer              :: lwork,info
 !=====
 
