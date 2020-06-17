@@ -429,7 +429,7 @@ subroutine gather_distributed_copy_nospin_dp(desc,matrix,matrix_global)
    enddo
 
    ! Only the master proc (0,0) gets the complete information
-   call DGSUM2D(cntxt,'A',' ',mglobal,nglobal,matrix_global,nglobal,0,0)
+   call DGSUM2D(cntxt,'A',' ',mglobal,nglobal,matrix_global(1,1),nglobal,0,0)
 
  endif
 

@@ -592,7 +592,7 @@ subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
    ! C**T * (H * C)
 #if defined(HAVE_MKL)
    call DGEMMT('L','T','N',nstate,nbf,1.0d0,c_matrix(1,1,ispin),nbf, &
-                                            matrix_tmp,nbf,          &
+                                            matrix_tmp(1,1),nbf,          &
                                       0.0d0,matrix_out(1,1,ispin),nstate)
    call matrix_lower_to_full(matrix_out(:,:,ispin))
 #else
