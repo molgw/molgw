@@ -1505,9 +1505,9 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    allocate(m_tmpr1(nstate,nocc),m_tmpr2(basis%nbf,nocc))
    ! 1. Real part
    m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%re
-   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix,basis%nbf, &
-                                                  m_tmpr1,nstate,   &
-                                            0.0d0,m_tmpr2,basis%nbf)
+   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix(1,1),basis%nbf, &
+                                                  m_tmpr1(1,1),nstate,   &
+                                            0.0d0,m_tmpr2(1,1),basis%nbf)
    ! This workaround is needed for ifort 17, which is not comfortable with Fortan2008
 #if defined(FORTRAN2008)
    c_matrix_cmplx(:,:,ispin)%re = m_tmpr2(:,:)
@@ -1516,9 +1516,9 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 #endif
    ! 2. Imaginary part
    m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%im
-   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix,basis%nbf, &
-                                                  m_tmpr1,nstate,   &
-                                            0.0d0,m_tmpr2,basis%nbf)
+   call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix(1,1),basis%nbf, &
+                                                  m_tmpr1(1,1),nstate,   &
+                                            0.0d0,m_tmpr2(1,1),basis%nbf)
 #if defined(FORTRAN2008)
    c_matrix_cmplx(:,:,ispin)%im = m_tmpr2(:,:)
 #else
@@ -1802,18 +1802,18 @@ subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
      allocate(x_matrix_cmplx(nbf,nstate))
      allocate(m_tmp(nbf,nstate))
      x_matrix_cmplx(:,:) = x_matrix(:,:)
-     call ZHEMM('L','L',nbf,nstate,(1.0d0,0.d0),h_cmplx(1,1,ispin),nbf, &
-                                                x_matrix_cmplx,nbf,     &
-                                  (0.0d0,0.0d0),m_tmp,nbf)
+     call ZHEMM('L','L',nbf,nstate,COMPLEX_ONE,h_cmplx(1,1,ispin),nbf, &
+                                               x_matrix_cmplx(1,1),nbf,     &
+                                  COMPLEX_ZERO,m_tmp(1,1),nbf)
 #if defined(HAVE_MKL)
-     call ZGEMMT('L','C','N',nstate,nbf,(1.0d0,0.0d0),x_matrix_cmplx,nbf, &
-                                                      m_tmp,nbf,          &
-                                        (0.0d0,0.0d0),h_small_cmplx(1,1,ispin),nstate)
+     call ZGEMMT('L','C','N',nstate,nbf,COMPLEX_ONE,x_matrix_cmplx(1,1),nbf, &
+                                                    m_tmp(1,1),nbf,          &
+                                        COMPLEX_ZERO,h_small_cmplx(1,1,ispin),nstate)
      call matrix_lower_to_full(h_small_cmplx(:,:,ispin))
 #else
-     call ZGEMM('C','N',nstate,nstate,nbf,(1.0d0,0.0d0),x_matrix_cmplx,nbf, &
-                                                        m_tmp,nbf,  &
-                                          (0.0d0,0.0d0),h_small_cmplx(1,1,ispin),nstate)
+     call ZGEMM('C','N',nstate,nstate,nbf,COMPLEX_ONE,x_matrix_cmplx(1,1),nbf, &
+                                                      m_tmp(1,1),nbf,  &
+                                          COMPLEX_ZERO,h_small_cmplx(1,1,ispin),nstate)
 #endif
 
      deallocate(m_tmp)

@@ -622,7 +622,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
      ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
+     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp(1,1),nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
 
    enddo
  enddo
@@ -710,7 +710,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
      ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
+     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp(1,1),nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
 
    enddo
  enddo
@@ -1202,7 +1202,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
    do ir=1,nr
      basis_function_r_batch(:,ir) = SQRT( -weight_batch(ir) * vrho_batch(ir) ) * basis_function_r_batch(:,ir)
    enddo
-   call DSYRK('L','N',basis%nbf,nr,-1.0d0,basis_function_r_batch,basis%nbf,1.0d0,vhxc_ao,basis%nbf)
+   call DSYRK('L','N',basis%nbf,nr,-1.0d0,basis_function_r_batch(1,1),basis%nbf,1.0d0,vhxc_ao(1,1),basis%nbf)
 
 
    deallocate(weight_batch)
