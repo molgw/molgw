@@ -12,7 +12,7 @@ ifeq ($(CXXFLAGS),)
   CXXFLAGS=-O2
 endif
 ifeq ($(CPPFLAGS),)
-  CPPFLAGS=-cpp -DHAVE_LIBXC
+  CPPFLAGS=-cpp -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY -DFORTRAN2008
 endif
 ifeq ($(LAPACK),)
   LAPACK=-lblas -llapack
