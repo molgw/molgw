@@ -449,4 +449,11 @@ docs:
 	mv notes.pdf ../docs/notes.pdf
 
 clean:
-	rm -f *.o *.mod ../molgw.tgz ../molgw ../spectrum
+	$(RM) *.o *.mod ../molgw.tgz ../molgw ../spectrum
+
+install:
+	install -d $(DESTDIR)$(bindir)
+	install  ../molgw $(DESTDIR)$(bindir)/molgw
+
+uninstall:
+	$(RM) $(DESTDIR)$(bindir)/molgw
