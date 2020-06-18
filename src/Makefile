@@ -58,7 +58,7 @@ else
   FFTW_INCS=-I$(FFTW_ROOT)/include/
 endif
 
-.PHONY: all clean archive tarball docs input prepare_sourcecode
+.PHONY: all clean archive tarball docs input prepare_sourcecode install uninstall
 
 
 ####################################################
