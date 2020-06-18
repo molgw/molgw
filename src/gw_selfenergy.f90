@@ -528,7 +528,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  !  wpol%residue_left
  mlocal = NUMROC(nauxil_2center ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
  nlocal = NUMROC(wpol%npole_reso,NB_eri3_mo,ipcol_eri3_mo,first_col,npcol_eri3_mo)
- call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+ call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo, &
+               first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
  !
  ! Change data distribution
  ! from cntxt_eri3_mo to cntxt_sd
@@ -552,7 +553,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      !
      mlocal = NUMROC(nauxil_2center      ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,NB_eri3_mo,ipcol_eri3_mo,first_col,npcol_eri3_mo)
-     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MB_eri3_mo,NB_eri3_mo, &
+                   first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
      if( cntxt_eri3_mo > 0 ) then
        call clean_allocate('TMP 3center eigen',eri_3tmp_auxil,mlocal,nlocal)
@@ -570,7 +572,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      ! from cntxt_eri3_mo to cntxt_sd
      mlocal = NUMROC(nauxil_2center      ,block_row,iprow_sd,first_row,nprow_sd)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,block_col,ipcol_sd,first_col,npcol_sd)
-     call DESCINIT(desc_3sd,nauxil_2center,nvirtual_G-ncore_G-1,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+     call DESCINIT(desc_3sd,nauxil_2center,nvirtual_G-ncore_G-1,block_row,block_col, &
+                   first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
      call clean_allocate('TMP 3center eigen',eri_3tmp_sd,mlocal,nlocal)
      call PDGEMR2D(nauxil_2center,nvirtual_G-ncore_G-1,eri_3tmp_auxil,1,1,desc_3auxil, &
                                                           eri_3tmp_sd,1,1,desc_3sd,cntxt_sd)
@@ -581,7 +584,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      ! Prepare a SCALAPACKed bra that is to contain  wresidue**T * v**1/2
      mlocal = NUMROC(wpol%npole_reso     ,block_row,iprow_sd,first_row,nprow_sd)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,block_col,ipcol_sd,first_col,npcol_sd)
-     call DESCINIT(desc_bra,wpol%npole_reso,nvirtual_G-ncore_G-1,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+     call DESCINIT(desc_bra,wpol%npole_reso,nvirtual_G-ncore_G-1,block_row,block_col, &
+                   first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
      call clean_allocate('Temporary array',bra,mlocal,nlocal)
 
      ! And calculate it
@@ -610,8 +614,10 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
          sigmagw(:,pstate,pspin) = sigmagw(:,pstate,pspin) &
                   + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    &
-                    * ( fact_full_i  / ( se%energy0(pstate,pspin) + se%omega(:) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
-                      + fact_empty_i / ( se%energy0(pstate,pspin) + se%omega(:) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
+                    * ( fact_full_i  / ( se%energy0(pstate,pspin) + se%omega(:) &
+                                        - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
+                      + fact_empty_i / ( se%energy0(pstate,pspin) + se%omega(:) &
+                                        - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
        enddo  !ilocal -> ipole
      enddo !jlocal -> istate
      !$OMP END DO
