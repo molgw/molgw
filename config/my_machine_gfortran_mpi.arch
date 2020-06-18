@@ -5,11 +5,11 @@ LIBTOOL=
 # Parallel MPI SCALAPACK compilation
 FC=mpif90 -cpp -ffree-line-length-none
 
-CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK # -DHAVE_LIBINT_ONEBODY
+CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FCOPTS=  -O3 -march=native -mtune=native  # -O0 -g -check all -traceback 
-CXXOPTS= -O3 -march=native -mtune=native  # -O0 -g -fbounds-check
+FFLAGS=  -O3 -march=native -mtune=native  # -O0 -g -check all -traceback 
+CXXFLAGS= -O3 -march=native -mtune=native  # -O0 -g -fbounds-check
 
 LAPACK=-L${HOME}/src/lapack-3.5.0/ -llapack -lblas
 

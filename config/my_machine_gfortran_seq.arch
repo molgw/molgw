@@ -8,8 +8,8 @@ FC=gfortran -cpp -ffree-line-length-none
 CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC # -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FCOPTS= -O2 # -O0 -g -check all -traceback 
-CXXOPTS= -O2 # -O0 -g -fbounds-check
+FFLAGS= -O2 # -O0 -g -check all -traceback 
+CXXFLAGS= -O2 # -O0 -g -fbounds-check
 
 LAPACK=-L${HOME}/src/lapack-3.8.0/ -llapack -lblas
 

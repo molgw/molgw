@@ -2,16 +2,13 @@
 # Author: Fabien Bruneval
 
 PYTHON=python
-FC=gfortran -ffree-line-length-none
-CXX=g++
-CC=gcc
-FCOPTS=
-CXXOPTS=
-CCOPTS=
+FC=gfortran
+FFLAGS=-ffree-line-length-none -O2
+CXXFLAGS=-O2
 OPENMP=
-CPPFLAGS=
+CPPFLAGS=-cpp
 LIBTOOL=
-LAPACK=
+LAPACK=-lblas -llapack
 SCALAPACK=
 FFTW_ROOT=
 ELPA=
@@ -20,18 +17,27 @@ ELPA_INCS=
 #LIBINT_ROOT=
 
 
-include ./my_machine.arch
+-include ./my_machine.arch
 
-FC_W_OPTS= $(FC) $(FCOPTS) $(OPENMP) $(CPPFLAGS)
-CXX_W_OPTS= $(CXX) $(CXXOPTS) $(CPPFLAGS)
-CC_W_OPTS= $(CC) $(CCOPTS) $(CPPFLAGS)
+FC_W_OPTS= $(FC) $(FFLAGS) $(OPENMP) $(CPPFLAGS)
+CXX_W_OPTS= $(CXX) $(CXXFLAGS) $(CPPFLAGS)
 LINKER= $(LIBTOOL) $(FC_W_OPTS)
 
 LINKS= -lstdc++ -lm
-LIBXC_INCS=-I$(LIBXC_ROOT)/include
-LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
-LIBINT=-L$(LIBINT_ROOT)/lib -lint2
-LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
+ifeq ($(LIBXC_ROOT),)
+  LIBXC_INCS=
+  LIBXC=
+else
+  LIBXC_INCS=-I$(LIBXC_ROOT)/include
+  LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
+endif
+ifeq ($(LIBINT_ROOT),)
+  LIBINT=-lint2
+  LIBINT_INCS=
+else
+  LIBINT=-L$(LIBINT_ROOT)/lib -lint2
+  LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
+endif
 ifeq ($(FFTW_ROOT),)
   FFTW=
   FFTW_INCS=
@@ -239,7 +245,7 @@ m_density_tools.o: m_definitions.f90 m_atoms.f90 m_mpi.f90 m_gaussian.f90 m_inpu
 m_multipole.o: m_definitions.f90 m_atoms.f90 m_inputparam.f90 m_basis_set.f90 m_hamiltonian_tools.f90 m_hamiltonian_onebody.f90 m_multipole.f90
 	$(FC_W_OPTS) -c m_multipole.f90 $(LIBXC_INCS)
 
-m_io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_memory.f90 m_cart_to_pure.f90 \
+m_io.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_memory.f90 m_cart_to_pure.f90 \
 	      m_basis_set.f90 m_libint_tools.f90 m_inputparam.f90 m_eri.f90 \
         m_dft_grid.f90 git_sha.f90 m_tddft_variables.f90 m_timing.f90 m_linear_algebra.f90 m_string_tools.f90 \
 			  m_libxc_tools.f90 m_hamiltonian_tools.f90 m_io.f90
