@@ -12,7 +12,7 @@ ifeq ($(CXXFLAGS),)
   CXXFLAGS=-O2
 endif
 ifeq ($(CPPFLAGS),)
-  CPPFLAGS=-cpp
+  CPPFLAGS=-cpp -DHAVE_LIBXC
 endif
 ifeq ($(LAPACK),)
   LAPACK=-lblas -llapack
@@ -34,7 +34,11 @@ LINKER= $(LIBTOOL) $(FC_W_OPTS)
 LINKS= -lstdc++ -lm
 ifeq ($(LIBXC_ROOT),)
   LIBXC_INCS=
-  LIBXC=
+  ifneq (,$(findstring -DHAVE_LIBXC,$(CPPFLAGS)))
+    LIBXC= -lxc
+  else
+    LIBXC=
+  endif
 else
   LIBXC_INCS=-I$(LIBXC_ROOT)/include
   LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
@@ -159,7 +163,7 @@ level100: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
                         molgw.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
-                        $(LIBXC) $(LIBXC _INCS)  \
+                        $(LIBXC) $(LIBXC_INCS)  \
                         $(LIBINT) $(LIBINT_INCS) \
                         $(ELPA) $(ELPA_INCS) \
                         $(LINKS)

@@ -3,12 +3,12 @@ PYTHON=python3
 LIBTOOL=
 
 # Parallel MPI/SCALAPACK compilation with MKL
-FC=mpif90 -cpp -ffree-line-length-none  -m64 -I${MKLROOT}/include
+FC=mpif90 
 
-CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
+CPPFLAGS= -cpp -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FFLAGS=  -O3 -fexternal-blas -march=native -mtune=native 
+FFLAGS= -m64 -I${MKLROOT}/include -O3 -fexternal-blas -march=native -mtune=native 
 CXXFLAGS= -O3 -march=native -mtune=native
 
 # MKL without threads

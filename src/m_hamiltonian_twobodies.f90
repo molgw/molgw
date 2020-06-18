@@ -885,7 +885,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
  nstate = SIZE(occupation,DIM=1)
 
-#ifdef HAVE_LIBXC
+#if defined(HAVE_LIBXC)
 
  write(stdout,*) 'Calculate DFT XC potential'
  if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
@@ -924,7 +924,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
    !
    ! Get the gradient at points r
-   if( dft_xc(1)%needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,bf_gradx_batch,bf_grady_batch,bf_gradz_batch)
+   if( dft_xc(1)%needs_gradient ) &
+      call get_basis_functions_gradr_batch(basis,igrid_start,bf_gradx_batch,bf_grady_batch,bf_gradz_batch)
 
    !
    ! Calculate the density at points r for spin up and spin down
@@ -932,7 +933,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    if( .NOT. dft_xc(1)%needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
    else
-     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
+     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch, &
+                                   bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
 
      !$OMP PARALLEL DO
      do ir=1,nr

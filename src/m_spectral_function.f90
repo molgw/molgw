@@ -330,7 +330,7 @@ subroutine write_spectral_function(sf)
  write(stdout,*) 'Number of poles written down:',sf%npole_reso
 
 
-#ifndef HAVE_MPI
+#if !defined(HAVE_MPI)
  if( is_iomaster ) then
    open(newunit=wfile,file='SCREENED_COULOMB',form='unformatted')
 

@@ -3,12 +3,12 @@ PYTHON=python3
 LIBTOOL=
 
 # gfortran
-FC=gfortran -cpp -ffree-line-length-none
+FC=gfortran
 
-CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY
+CPPFLAGS= -cpp -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FFLAGS=  -O3 -march=native -mtune=native 
+FFLAGS= -O3 -march=native -mtune=native 
 CXXFLAGS= -O3 -march=native -mtune=native
 
 LAPACK=  /opt/openblas-0.3.7/lib/libopenblas.a -lm -ldl -lpthread

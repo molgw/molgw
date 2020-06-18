@@ -27,13 +27,13 @@ void libint_init(int *ammax, bool *has_onebody, bool *has_gradient) {
 
  *ammax = LIBINT2_MAX_AM ;
 
-#ifdef LIBINT2_SUPPORT_ONEBODY
+#if defined(LIBINT2_SUPPORT_ONEBODY)
  *has_onebody  = LIBINT2_SUPPORT_ONEBODY ;
 #else
  *has_onebody  = false ;
 #endif
 
-#ifdef LIBINT2_DERIV_ERI_ORDER
+#if defined(LIBINT2_DERIV_ERI_ORDER)
  *has_gradient = ( LIBINT2_DERIV_ERI_ORDER > 0 );
 #else
  *has_gradient = false ;
@@ -60,7 +60,7 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
  assert(amA <= LIBINT2_MAX_AM_2eri);
  assert(amC <= LIBINT2_MAX_AM_2eri);
 
-#ifndef LIBINT2_CONTRACTED_INTS
+#if !defined(LIBINT2_CONTRACTED_INTS)
  assert( contrdepthA == 1 );
  assert( contrdepthC == 1 );
 #endif
@@ -212,7 +212,7 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
  assert(amC <= LIBINT2_MAX_AM_3eri);
  assert(amD <= LIBINT2_MAX_AM_3eri);
 
-#ifndef LIBINT2_CONTRACTED_INTS
+#if !defined(LIBINT2_CONTRACTED_INTS)
  assert( contrdepthA == 1 );
  assert( contrdepthC == 1 );
  assert( contrdepthD == 1 );
@@ -386,7 +386,7 @@ void libint_4center(int amA, int contrdepthA , double A [] , double alphaA [], d
  assert(amC <= LIBINT2_MAX_AM_eri);
  assert(amD <= LIBINT2_MAX_AM_eri);
 
-#ifndef LIBINT2_CONTRACTED_INTS
+#if !defined(LIBINT2_CONTRACTED_INTS)
  assert( contrdepthA == 1 );
  assert( contrdepthB == 1 );
  assert( contrdepthC == 1 );

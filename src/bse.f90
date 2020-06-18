@@ -728,7 +728,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
 
 
  if( is_bse ) then
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
    do iaspin=1,nspin
 
      allocate(vsqrt_chi_vsqrt(nauxil_2center,nauxil_2center))

@@ -158,7 +158,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    ! Step 1
    call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
    call build_apb_hartree_auxil_scalapack(desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
 #else
    call build_apb_hartree_auxil(desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
@@ -1105,7 +1105,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
 
  nmat = wpol%npole_reso
 
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
 
  allocate(eri_3tmp(nauxil_3center,nmat))
  do t_jb=1,nmat
