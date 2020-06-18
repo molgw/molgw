@@ -382,7 +382,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    ! Selfenergy = PT3 or 2-rings
    !
    if( calc_type%selfenergy_approx == PT3 .OR. calc_type%selfenergy_approx == TWO_RINGS ) then
-     call pt3_selfenergy(calc_type%selfenergy_approx,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
+     call pt3_selfenergy(calc_type%selfenergy_approx,calc_type%selfenergy_technique, &
+                         nstate,basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
    endif
 
    !

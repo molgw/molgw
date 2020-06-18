@@ -404,7 +404,8 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
          proj_state_i(li) = proj_state_i(li) + c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
        endif
        weight = c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
-       proj_element(MIN(li_ibf(ibf),lmax+1),atom2element(iatom_ibf(ibf))) = proj_element(MIN(li_ibf(ibf),lmax+1),atom2element(iatom_ibf(ibf))) + weight
+       proj_element(MIN(li_ibf(ibf),lmax+1),atom2element(iatom_ibf(ibf))) = &
+                proj_element(MIN(li_ibf(ibf),lmax+1),atom2element(iatom_ibf(ibf))) + weight
      enddo
      proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
      if( print_yaml_) then
@@ -762,7 +763,7 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
          do ispin=1,nspin
            phi(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,istate1:istate2,ispin) )
          enddo
-         
+
          do ispin=1,nspin
            write(ocuberho(ispin),'(50(e16.8,2x))') SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) )
          enddo
@@ -814,8 +815,8 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  integer                :: istyp,iprim_per_shell,iprint,ilast,istate,ibf,ibf2,nocc,ispin,nxp,nyp,nzp
  integer                :: owfn
  real(dp)               :: dfact
- integer                :: p_aos(3) 
- integer                :: d_aos(6) 
+ integer                :: p_aos(3)
+ integer                :: d_aos(6)
  integer                :: f_aos(10)
  integer                :: g_aos(15)
  integer,allocatable    :: icent(:),itype(:),prim_per_shell(:),ao_map(:)
@@ -827,11 +828,11 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
    '  MN','  FE','  CO','  NI','  CU','  ZN','  GA','  GE','  AS','  SE','  BR','  KR',    &
    '  RB','  SR','  Y ','  ZR','  NB','  MO','  TC','  RU','  RH','  PD','  AG','  CD',    &
    '  IN','  SN','  SB','  TE','  I ','  XE','  CS','  BA','  LA','  CE','  PR','  ND',    &
-   '  PM','  SM','  EU','  GD','  TB','  DY','  HO','  ER','  TM','  YB','  LU','  HF',    &  
+   '  PM','  SM','  EU','  GD','  TB','  DY','  HO','  ER','  TM','  YB','  LU','  HF',    &
    '  TA','  W ','  RE','  OS','  IR','  PT','  AU','  HG','  TL','  PB','  BI','  PO',    &
    '  AT','  RN','  FR','  RA','  AC','  TH','  PA','  U ','  NP','  PU','  AM','  CM',    &
    '  BK','  CF','  ES','  FM','  MD','  NO','  LR','    ','    ','    '                   &
-  /)                                                           
+  /)
 
  if( .NOT. is_iomaster ) return
 
@@ -848,7 +849,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
  write(file_name,'(a,i1,a)') "molgw_"//TRIM(rootname)//'_',1,'.wfn'
  open(newunit=owfn,file=file_name)
- 
+
  nocc = 0
  do istate=1,nstate
    do ispin=1,nspin
@@ -866,9 +867,9 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
  allocate(icent(nprim),itype(nprim),expon(nprim),prim_coefs(nprim))
  !We have: MO = COEF_AO*AO | and | AO = COEF_P*Primitives
- !We need: MO = COEF*Primitives. Thus, we compute COEF = COEF_AO*COEF_P -> stored finally in prim_coefs variable for each MO before printing. 
- !Currently we store all COEF_P at once, to construct COEF on the fly we may need to rebuild COEF_P for any MO. 
- !Comment: Indeed, any program that will read the WFN file should store all 'coefs_prims' matrix at once. 
+ !We need: MO = COEF*Primitives. Thus, we compute COEF = COEF_AO*COEF_P -> stored finally in prim_coefs variable for each MO before printing.
+ !Currently we store all COEF_P at once, to construct COEF on the fly we may need to rebuild COEF_P for any MO.
+ !Comment: Indeed, any program that will read the WFN file should store all 'coefs_prims' matrix at once.
  !         So, in that machine such amount of RAM memory is available.
  !
  allocate(coefs_prims(basis%nbf,nprim),ao_map(basis%nbf))
@@ -878,10 +879,10 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  coefs_prims(:,:) = 0.0_dp
  prim_coefs(:) = 0.0_dp
  nshell=SIZE(basis%shell(:)%iatom)
- 
+
  do ibf=1,basis%nbf
    ao_map(ibf) = ibf
- enddo 
+ enddo
 
  ibf=1
  ibf2=1
@@ -891,7 +892,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
    iprim_per_shell=number_basis_function_am('CART',shell_typ)
 
-   prev_typ=0 
+   prev_typ=0
    do istyp=0,shell_typ-1
      prev_typ = prev_typ + number_basis_function_am('CART',istyp)
    enddo
@@ -899,13 +900,13 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
    do istyp=1,iprim_per_shell
      prim_per_shell(istyp) = istyp + prev_typ
    enddo
-  
 
-   ! Order MO Coefs 
+
+   ! Order MO Coefs
    if(shell_typ==1) then                    ! p-shell
      p_aos(1:3)=ao_map(ibf2:ibf2+2)
      ao_map(ibf2:ibf2+2)=p_aos(:)
-   elseif(shell_typ==2) then                ! d-shell 
+   elseif(shell_typ==2) then                ! d-shell
      d_aos(1:6)=ao_map(ibf2:ibf2+5)
      ao_map(ibf2  )=d_aos(1)
      ao_map(ibf2+1)=d_aos(4)
@@ -913,7 +914,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
      ao_map(ibf2+3)=d_aos(2)
      ao_map(ibf2+4)=d_aos(3)
      ao_map(ibf2+5)=d_aos(5)
-   elseif(shell_typ==3) then                ! f-shell 
+   elseif(shell_typ==3) then                ! f-shell
      f_aos(1:10)=ao_map(ibf2:ibf2+9)
      ao_map(ibf2  )=f_aos(1)
      ao_map(ibf2+1)=f_aos(7)
@@ -925,7 +926,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
      ao_map(ibf2+7)=f_aos(6)
      ao_map(ibf2+8)=f_aos(9)
      ao_map(ibf2+9)=f_aos(5)
-   elseif(shell_typ==4) then                ! g-shell 
+   elseif(shell_typ==4) then                ! g-shell
      g_aos(1:15)=ao_map(ibf2:ibf2+14)
      ao_map(ibf2  )=g_aos( 1)
      ao_map(ibf2+1)=g_aos(11)
@@ -943,14 +944,14 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
      ao_map(ibf2+13)=g_aos( 8)
      ao_map(ibf2+14)=g_aos( 9)
    else                ! h-, i-,...shell
-     write(stdout,'(1x,a,i5,a)') "Shell type",shell_typ,"not reordered." 
+     write(stdout,'(1x,a,i5,a)') "Shell type",shell_typ,"not reordered."
    endif
    ibf2 = ibf2 + iprim_per_shell
 
    do istyp=1,iprim_per_shell
      do igaus=1,basis%shell(ishell)%ng
        nxp=0;nyp=0;nzp=0
-       if(shell_typ==1) then         ! p-shell 
+       if(shell_typ==1) then         ! p-shell
          select case(istyp)
          case(1)
            nxp=1;nyp=0;nzp=0
@@ -960,7 +961,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
            nxp=0;nyp=0;nzp=1
          end select
        endif
-       if(shell_typ==2) then         ! d-shell 
+       if(shell_typ==2) then         ! d-shell
          select case(istyp)
          case(1)
            nxp=2;nyp=0;nzp=0
@@ -976,7 +977,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
            nxp=0;nyp=1;nzp=1
          end select
        endif
-       if(shell_typ==3) then         ! f-shell 
+       if(shell_typ==3) then         ! f-shell
          select case(istyp)
          case(1)
            nxp=3;nyp=0;nzp=0
@@ -1000,7 +1001,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
            nxp=1;nyp=1;nzp=1
          end select
        endif
-       if(shell_typ==4) then         ! g-shell 
+       if(shell_typ==4) then         ! g-shell
          select case(istyp)
          case(1)
            nxp=4;nyp=0;nzp=0
@@ -1048,33 +1049,33 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
    enddo
    deallocate(prim_per_shell)
  enddo
- 
- 
+
+
  do iprint=1,nprim/20
    if(20+(iprint-1)*20 <= nprim) then
-     write(owfn,'(a18,2x,20i3)') 'CENTRE ASSIGNMENTS',icent(1+(iprint-1)*20:20+(iprint-1)*20)  
+     write(owfn,'(a18,2x,20i3)') 'CENTRE ASSIGNMENTS',icent(1+(iprint-1)*20:20+(iprint-1)*20)
      ilast=20+(iprint-1)*20
    endif
  enddo
- if(ilast/=nprim) write(owfn,'(a18,2x,*(i3))') 'CENTRE ASSIGNMENTS',icent(ilast+1:)  
- 
+ if(ilast/=nprim) write(owfn,'(a18,2x,*(i3))') 'CENTRE ASSIGNMENTS',icent(ilast+1:)
+
  do iprint=1,nprim/20
    if(20+(iprint-1)*20 <= nprim) then
-     write(owfn,'(a16,4x,20i3)') 'TYPE ASSIGNMENTS',itype(1+(iprint-1)*20:20+(iprint-1)*20)  
+     write(owfn,'(a16,4x,20i3)') 'TYPE ASSIGNMENTS',itype(1+(iprint-1)*20:20+(iprint-1)*20)
    endif
  enddo
- if(ilast/=nprim) write(owfn,'(a16,4x,*(i3))') 'TYPE ASSIGNMENTS',itype(ilast+1:)  
+ if(ilast/=nprim) write(owfn,'(a16,4x,*(i3))') 'TYPE ASSIGNMENTS',itype(ilast+1:)
 
  do iprint=1,nprim/5
    if(5+(iprint-1)*5 <= nprim) then
-     write(owfn,'(a9,1x,1P,5E14.7)') 'EXPONENTS',expon(1+(iprint-1)*5:5+(iprint-1)*5)  
+     write(owfn,'(a9,1x,1P,5E14.7)') 'EXPONENTS',expon(1+(iprint-1)*5:5+(iprint-1)*5)
    endif
    ilast=5+(iprint-1)*5
  enddo
- if(ilast/=nprim) write(owfn,'(a9,1x,1P,5E14.7)') 'EXPONENTS',expon(ilast+1:)  
+ if(ilast/=nprim) write(owfn,'(a9,1x,1P,5E14.7)') 'EXPONENTS',expon(ilast+1:)
 
  allocate(energy_local(nstate,nspin))
- 
+
  energy_local(:,:) = 0.0_dp
  if(PRESENT(energy)) then
    energy_local(:,:) = energy(:,:)
@@ -1086,8 +1087,8 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  !enddo
  !write(*,*) ' '
 
- allocate(mo_coefs(basis%nbf)) 
-  
+ allocate(mo_coefs(basis%nbf))
+
  do istate=1,nstate
    do ispin=1,nspin
      if( ABS(occupation(istate,ispin))> TOL_OCC) then
@@ -1097,17 +1098,17 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
        do iprim=1,nprim
          if( ABS(prim_coefs(iprim)) < TOL_COEFF ) prim_coefs(iprim) = 0.0_dp
        enddo
-       write(owfn,'(a2,i5,5x,a6,8x,a9,f12.7,a15,f12.6)') 'MO',istate,'MO 0.0','OCC NO = ',occupation(istate,ispin),& 
+       write(owfn,'(a2,i5,5x,a6,8x,a9,f12.7,a15,f12.6)') 'MO',istate,'MO 0.0','OCC NO = ',occupation(istate,ispin), &
        '  ORB. ENERGY =',energy_local(istate,ispin)
        write(owfn,'(1P,5E16.8)') prim_coefs(:)
      endif
    enddo
  enddo
- 
+
  deallocate(icent,itype,expon,prim_coefs,coefs_prims,mo_coefs)
 
  write(owfn,'(a8)') 'END DATA'
- write(owfn,'(a8,a9,f20.12,a18,f13.8)') ' THE SCF',' ENERGY =',etotal,' THE VIRIAL(-V/T)=',0.0_dp 
+ write(owfn,'(a8,a9,f20.12,a18,f13.8)') ' THE SCF',' ENERGY =',etotal,' THE VIRIAL(-V/T)=',0.0_dp
  close(owfn)
 
 end subroutine print_wfn_file
@@ -2112,7 +2113,9 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
          istate2=nocc(ispin)
          phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
 !       call start_clock(timing_tmp1)
-         write(ocuberho(ispin),'(50(e16.8,2x))') SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact - cube_density_start(ix,iy,iz,ispin)
+         write(ocuberho(ispin),'(50(e16.8,2x))') SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) &
+                                                  * spin_fact &
+                                                    - cube_density_start(ix,iy,iz,ispin)
 !       call stop_clock(timing_tmp1)
        enddo
 
@@ -2250,7 +2253,8 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
          call calculate_basis_functions_r(basis,rr,basis_function_r)
 
          phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
-         dens_diff(ix,iy,iz) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact - cube_density_start(ix,iy,iz,ispin)
+         dens_diff(ix,iy,iz) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact &
+                                                                        - cube_density_start(ix,iy,iz,ispin)
 
        enddo
 
@@ -2383,7 +2387,8 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 
    do ispin=1,nspin
      phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
-     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)), &
+                                             SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) )
    enddo
  enddo
 
@@ -2447,7 +2452,8 @@ subroutine plot_rho_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
    do ispin=1,nspin
      phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
-     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) ) - rho_start(ir,ispin)
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)), &
+                           SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) ) - rho_start(ir,ispin)
    enddo
  enddo
 
@@ -2463,7 +2469,8 @@ end subroutine plot_rho_diff_cmplx
 
 
 !=========================================================================
-subroutine calc_rho_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur,nr_line_rho,point_a,point_b,rho_start)
+subroutine calc_rho_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur, &
+                                  nr_line_rho,point_a,point_b,rho_start)
  implicit none
 
  integer,intent(in)         :: nstate
@@ -2664,7 +2671,8 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
        integral=integral+SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:,ispin) )*deltar
      enddo
 
-     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral,SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral, &
+                                             SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:,ispin) )
    enddo
  enddo
 
@@ -3299,8 +3307,8 @@ subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,prec,beg)
  integer            :: ivar
 !=====
 
- write(write_format1,*) '(',size_m," ('( ',F", prec+beg, ".", prec,"' ,',F", prec+beg, ".",prec,",' )  ') " ,')' ! (  1.01 ,  -0.03)  (  0.04 ,  0.10)
- write(write_format2,*) '(',size_m," (F", prec+beg, ".", prec,"' +  i',F", prec+beg, ".",prec,",'  ') " ,')'   ! 1.01 +  i  -0.03    0.03 +  i  0.10
+ write(write_format1,*) '(',size_m," ('( ',F", prec+beg, ".", prec,"' ,',F", prec+beg, ".",prec,",' )  ') " ,')'
+ write(write_format2,*) '(',size_m," (F", prec+beg, ".", prec,"' +  i',F", prec+beg, ".",prec,",'  ') " ,')'
  write(stdout,*) desc
  do ivar=1,size_n
    write(stdout,write_format1) matrix_cmplx(ivar,:)

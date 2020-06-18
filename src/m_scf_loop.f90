@@ -376,7 +376,8 @@ subroutine scf_loop(is_restart,&
 
  if( ABS(en_gks%exx) > 1.0e-6) then
    write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en_gks%exx
-   write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx
+   write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kinetic &
+                                                                  + en_gks%nucleus + en_gks%hartree + en_gks%exx
  endif
 
  if( print_yaml_ .AND. is_iomaster ) then

@@ -109,7 +109,8 @@ subroutine calc_density_r_batch(occupation,c_matrix,basis_function_r,rhor)
      allocate(phir_cmplx(nocc,nr))
      allocate(basis_function_r_cmplx(nbf,nr))
      basis_function_r_cmplx(:,:) = basis_function_r(:,:)
-     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,basis_function_r_cmplx(1,1),nbf,COMPLEX_ZERO,phir_cmplx(1,1),nocc)
+     call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf, &
+                basis_function_r_cmplx(1,1),nbf,COMPLEX_ZERO,phir_cmplx(1,1),nocc)
      deallocate(basis_function_r_cmplx)
 
      !$OMP PARALLEL DO

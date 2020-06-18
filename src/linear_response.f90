@@ -634,7 +634,8 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
    forall(idir=1:3, jdir=1:3)
      dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
                           + residue(idir,t_ia) * residue(jdir,t_ia) &
-                            * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
+                            * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) &
+                                - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
      static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
                     + 2.0_dp * residue(idir,t_ia) * residue(jdir,t_ia) / eigenvalue(t_ia)
    end forall
@@ -683,8 +684,10 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
                                           (dynamical_pol(iomega,1,1)+dynamical_pol(iomega,2,2)+dynamical_pol(iomega,3,3))/3.0_dp, &
                                           dynamical_pol(iomega,:,:)
      write(photocrossfile,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
-                                              (photoabsorp_cross(iomega,1,1)+photoabsorp_cross(iomega,2,2)+photoabsorp_cross(iomega,3,3))/3.0_dp, &
-                                              photoabsorp_cross(iomega,:,:)
+                                            ( photoabsorp_cross(iomega,1,1) &
+                                             + photoabsorp_cross(iomega,2,2) &
+                                             + photoabsorp_cross(iomega,3,3) ) / 3.0_dp, &
+                                            photoabsorp_cross(iomega,:,:)
    enddo
 
    close(dynpolfile)

@@ -225,8 +225,10 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
      ! Variable change [0,1] -> [0,+\inf[
      write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
      do iomega=1,sf%nomega_quad
-       sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
-       sf%omega_quad(iomega)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
+       sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
+                                * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
+       sf%omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
+                                  * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
        write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega)*Ha_eV,sf%weight_quad(iomega)
      enddo
    else

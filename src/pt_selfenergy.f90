@@ -531,7 +531,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
-             num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+             num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
+                   - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
              denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
 
              do kstate=ncore_G+1,nhomo_G
@@ -541,8 +542,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
                eri_kaib = eri_eigen(astate,kstate,pqspin,bstate,istate,pqspin)
 
-               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) - 2.0_dp * eri_pqjk * num2 * eri_kaib / ( denom1 * denom2 )
-               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) +          eri_pjqk * num2 * eri_kaib / ( denom1 * denom2 )
+               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) &
+                                               - 2.0_dp * eri_pqjk * num2 * eri_kaib / ( denom1 * denom2 )
+               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) &
+                                               + eri_pjqk * num2 * eri_kaib / ( denom1 * denom2 )
 
              enddo
            enddo
@@ -563,11 +566,14 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
                denom2 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin)
 
-               num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+               num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
+                     - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
                eri_icja = eri_eigen(istate,cstate,pqspin,jstate,astate,pqspin)
 
-               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) + 2.0_dp * eri_pqbc * num2 * eri_icja / ( denom1 * denom2 )
-               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) -          eri_pbqc * num2 * eri_icja / ( denom1 * denom2 )
+               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) &
+                                               + 2.0_dp * eri_pqbc * num2 * eri_icja / ( denom1 * denom2 )
+               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) &
+                                               - eri_pbqc * num2 * eri_icja / ( denom1 * denom2 )
 
 
              enddo
@@ -582,7 +588,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
-             num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+             num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
+                   - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
              denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
 
              do cstate=nhomo_G+1,nvirtual_G-1
@@ -592,8 +599,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
                eri_acib = eri_eigen(astate,cstate,pqspin,istate,bstate,pqspin)
 
-               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) + 4.0_dp * eri_pqjc * num2 * eri_acib / ( denom1 * denom2 )
-               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) - 2.0_dp * eri_pjqc * num2 * eri_acib / ( denom1 * denom2 )
+               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) &
+                                               + 4.0_dp * eri_pqjc * num2 * eri_acib / ( denom1 * denom2 )
+               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) &
+                                               - 2.0_dp * eri_pjqc * num2 * eri_acib / ( denom1 * denom2 )
 
              enddo
            enddo
@@ -607,7 +616,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
-             num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+             num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
+                   - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
              denom1 = energy(jstate,pqspin) +  energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
 
              do kstate=ncore_G+1,nhomo_G
@@ -617,8 +627,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
                eri_ikja = eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
 
-               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) - 4.0_dp * eri_pqkb  * num2 * eri_ikja / ( denom1 * denom2 )
-               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) + 2.0_dp * eri_pkqb  * num2 * eri_ikja / ( denom1 * denom2 )
+               selfenergy(:,Ah,pstate,pqspin) = selfenergy(:,Ah,pstate,pqspin) &
+                                               - 4.0_dp * eri_pqkb  * num2 * eri_ikja / ( denom1 * denom2 )
+               selfenergy(:,Ax,pstate,pqspin) = selfenergy(:,Ax,pstate,pqspin) &
+                                               + 2.0_dp * eri_pkqb  * num2 * eri_ikja / ( denom1 * denom2 )
 
              enddo
            enddo
@@ -644,8 +656,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
            do iomega=-se%nomega,se%nomega
              omega = energy(qstate,pqspin) + se%omega(iomega)
              denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
-             selfenergy(iomega,ONERING,pstate,pqspin) = selfenergy(iomega,ONERING,pstate,pqspin) + 2.0_dp * eri_pija * eri_qija / denom1
-             selfenergy(iomega,SOX_,pstate,pqspin)    = selfenergy(iomega,SOX_,pstate,pqspin)    -          eri_pjia * eri_qija / denom1
+             selfenergy(iomega,ONERING,pstate,pqspin) = selfenergy(iomega,ONERING,pstate,pqspin) &
+                                                       + 2.0_dp * eri_pija * eri_qija / denom1
+             selfenergy(iomega,SOX_,pstate,pqspin)    = selfenergy(iomega,SOX_,pstate,pqspin) &
+                                                       - eri_pjia * eri_qija / denom1
            enddo
          enddo
        enddo
@@ -662,8 +676,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
            do iomega=-se%nomega,se%nomega
              omega = energy(qstate,pqspin) + se%omega(iomega)
              denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-             selfenergy(iomega,ONERING,pstate,pqspin) = selfenergy(iomega,ONERING,pstate,pqspin) + 2.0_dp * eri_paib * eri_qaib / denom1
-             selfenergy(iomega,SOX_,pstate,pqspin)    = selfenergy(iomega,SOX_,pstate,pqspin)    -          eri_pbia * eri_qaib / denom1
+             selfenergy(iomega,ONERING,pstate,pqspin) = selfenergy(iomega,ONERING,pstate,pqspin) &
+                                                       + 2.0_dp * eri_paib * eri_qaib / denom1
+             selfenergy(iomega,SOX_,pstate,pqspin)    = selfenergy(iomega,SOX_,pstate,pqspin) &
+                                                       -  eri_pbia * eri_qaib / denom1
            enddo
          enddo
        enddo
@@ -688,8 +704,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                  omega = energy(qstate,pqspin) + se%omega(iomega)
                  denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
                  denom2 = omega + energy(istate,pqspin) - energy(cstate,pqspin) - energy(dstate,pqspin) + ieta
-                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) + 2.0_dp * eri_paib * num2 * num3 / ( denom1 * denom2 )
-                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) -          eri_pbia * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) &
+                                                      + 2.0_dp * eri_paib * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) &
+                                                      - eri_pbia * num2 * num3 / ( denom1 * denom2 )
                enddo
              enddo
            enddo
@@ -713,8 +731,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                do iomega=-se%nomega,se%nomega
                  omega = energy(qstate,pqspin) + se%omega(iomega)
                  denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin) + ieta
-                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) + 4.0_dp * eri_paib * num2 * num3 / ( denom1 * denom2 )
-                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) - 2.0_dp * eri_pbia * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) &
+                                                      + 4.0_dp * eri_paib * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) &
+                                                      - 2.0_dp * eri_pbia * num2 * num3 / ( denom1 * denom2 )
                enddo
              enddo
            enddo
@@ -737,8 +757,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                  omega = energy(qstate,pqspin) + se%omega(iomega)
                  denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
                  denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin)
-                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) + 4.0_dp * eri_pija * num2 * num3 / ( denom1 * denom2 )
-                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) - 2.0_dp * eri_pjia * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) &
+                                                      + 4.0_dp * eri_pija * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) &
+                                                      - 2.0_dp * eri_pjia * num2 * num3 / ( denom1 * denom2 )
                enddo
              enddo
            enddo
@@ -762,8 +784,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                  denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
                  denom2 = omega + energy(astate,pqspin) - energy(kstate,pqspin) - energy(lstate,pqspin) - ieta
                  ! Minus sign from Domcke-Cederbaum book chapter 1977 (forgotten in von niessen review in 1983)
-                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) - 2.0_dp *  eri_pkla * num2 * num3 / ( denom1 * denom2 )
-                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) +           eri_plka * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cd,pstate,pqspin) = selfenergy(iomega,Cd,pstate,pqspin) &
+                                                      - 2.0_dp *  eri_pkla * num2 * num3 / ( denom1 * denom2 )
+                 selfenergy(iomega,Cx,pstate,pqspin) = selfenergy(iomega,Cx,pstate,pqspin) &
+                                                      + eri_plka * num2 * num3 / ( denom1 * denom2 )
                enddo
              enddo
            enddo

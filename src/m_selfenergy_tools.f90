@@ -126,7 +126,8 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
    write(stdout,'(1x,a,a)') 'Writing selfenergy in file: ', TRIM(filename)
    open(newunit=selfenergyfile,file=filename)
 
-   write(selfenergyfile,'(a)') '#       omega (eV)          Re SigmaC (eV)     Im SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)'
+   write(selfenergyfile,'(a)') &
+    '#       omega (eV)          Re SigmaC (eV)     Im SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)'
 
    do pspin=1,nspin
      sign_occ(:) = SIGN( 1.0_dp , occupation(pstate,pspin) - spin_fact * 0.50_dp )
@@ -138,10 +139,11 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
                                          / ( se%energy0(pstate,:) + se%omega(iomega) - energy0(pstate,:) + ieta * sign_occ(:) &
                                                - exchange_m_vxc(pstate,:) - se%sigma(iomega,pstate,:) ) ) )
 
-     write(selfenergyfile,'(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,             &
-                                            REAL(se%sigma(iomega,pstate,:),dp) * Ha_eV,                    &
-                                            AIMAG(se%sigma(iomega,pstate,:)) * Ha_eV,                      &
-                                            ( REAL(se%omega(iomega),dp) + se%energy0(pstate,:) - energy0(pstate,:) - exchange_m_vxc(pstate,:) ) * Ha_eV, &
+     write(selfenergyfile,'(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,           &
+                                            REAL(se%sigma(iomega,pstate,:),dp) * Ha_eV,                  &
+                                            AIMAG(se%sigma(iomega,pstate,:)) * Ha_eV,                    &
+                                            ( REAL(se%omega(iomega),dp) + se%energy0(pstate,:)           &
+                                             - energy0(pstate,:) - exchange_m_vxc(pstate,:) ) * Ha_eV,   &
                                             spectral_function_w(:) / Ha_eV
    enddo
    if( se%nomegai > 0 ) then

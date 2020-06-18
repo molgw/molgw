@@ -110,7 +110,8 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
         do istate=ncore_G+1,nhomo_G
           denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
           denom2 = energy(jstate,pqspin) - energy(cstate,pqspin)
-          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
+                - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
           num2 = 2.0_dp * eri_eigen(astate,cstate,pqspin,bstate,istate,pqspin)
 
           p_matrix_pt2(cstate,jstate,pqspin) = p_matrix_pt2(cstate,jstate,pqspin)  &
@@ -132,7 +133,8 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
         do jstate=ncore_G+1,nhomo_G
           denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
           denom2 = energy(kstate,pqspin) - energy(bstate,pqspin)
-          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
+          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
+                - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
           num2 = 2.0_dp * eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
 
           p_matrix_pt2(bstate,kstate,pqspin) = p_matrix_pt2(bstate,kstate,pqspin)  &
@@ -415,7 +417,8 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
       enddo
     enddo
 
-    call DSYRK('U','T',nstate_occ,npole_local,-2.0d0,bra_occ_local,npole_local,1.0d0,p_matrix_gw(ncore_G+1,ncore_G+1,pqspin),nstate)
+    call DSYRK('U','T',nstate_occ,npole_local,-2.0d0,bra_occ_local,npole_local,&
+               1.0d0,p_matrix_gw(ncore_G+1,ncore_G+1,pqspin),nstate)
 
 
     ! A3    P_cj  sum over i,a,b
@@ -462,7 +465,8 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
       enddo
     enddo
 
-    call DSYRK('U','T',nstate_virt,npole_local,2.0d0,bra_virt_local,npole_local,1.0d0,p_matrix_gw(nhomo_G+1,nhomo_G+1,pqspin),nstate)
+    call DSYRK('U','T',nstate_virt,npole_local,2.0d0,bra_virt_local,npole_local, &
+               1.0d0,p_matrix_gw(nhomo_G+1,nhomo_G+1,pqspin),nstate)
 
     ! A5   P_bk  sum over i,j,a
     ! A6   P_kb  sum over i,j,a   ! not actually calculated, but included through the symmetrization step
@@ -605,7 +609,8 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
   call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
   call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
 
-  call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
+  call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo, &
+                first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
 
 
   !
@@ -618,8 +623,10 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
   ! Variable change [0,1] -> [0,+\inf[
   write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
   do iomegas=1,nomega_sigma
-    weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  omega_sigma(iomegas))**(-alpha-1.0_dp) * beta
-    omega_sigma(iomegas)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha - 1.0_dp ) * beta
+    weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha - 1.0_dp ) &
+                           * alpha * (1.0_dp -  omega_sigma(iomegas))**(-alpha-1.0_dp) * beta
+    omega_sigma(iomegas)  = 1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
+                             * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha - 1.0_dp ) * beta
     write(stdout,'(i5,2(2x,f14.6))') iomegas,omega_sigma(iomegas)*Ha_eV,weight_sigma(iomegas)
   enddo
 
@@ -784,7 +791,8 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
   call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
   call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
 
-  call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
+  call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo, &
+                first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
 
 
   !
@@ -797,8 +805,10 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
   ! Variable change [0,1] -> [0,+\inf[
   write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
   do iomegas=1,nomega_sigma
-    weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  omega_sigma(iomegas))**(-alpha-1.0_dp) * beta
-    omega_sigma(iomegas)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha - 1.0_dp ) * beta
+    weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha - 1.0_dp ) &
+                           * alpha * (1.0_dp -  omega_sigma(iomegas))**(-alpha-1.0_dp) * beta
+    omega_sigma(iomegas)  = 1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
+                           * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha - 1.0_dp ) * beta
     write(stdout,'(i5,2(2x,f14.6))') iomegas,omega_sigma(iomegas)*Ha_eV,weight_sigma(iomegas)
   enddo
 

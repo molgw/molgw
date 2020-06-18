@@ -283,7 +283,8 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
 
          t_ijab_tilde = - 2.0_dp * ( 2.0_dp * eri_eigen_ri(istate,astate,iaspin,jstate,bstate,jbspin)  &
                                      - eri_eigen_ri(istate,bstate,iaspin,jstate,astate,jbspin) ) &
-                                       / ( energy(astate,iaspin) + energy(bstate,jbspin) - energy(istate,iaspin) - energy(jstate,jbspin) )
+                                       / ( energy(astate,iaspin) + energy(bstate,jbspin) &
+                                          - energy(istate,iaspin) - energy(jstate,jbspin) )
 
          !FIXME: Commenting this is inconsistent with Helgaker however yields the correct numerical results
          !if( istate == jstate .AND. astate == bstate ) t_ijab_tilde = t_ijab_tilde * 2.0_dp

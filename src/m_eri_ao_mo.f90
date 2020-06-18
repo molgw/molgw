@@ -400,7 +400,8 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
  nstate_count_ = nstate_max_ - nstate_min_ + 1
 
  !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
- call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center,mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
+ call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center, &
+                     mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
  eri_3center_eigen(:,:,:,:) = 0.0_dp
 
 

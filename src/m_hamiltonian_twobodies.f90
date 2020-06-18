@@ -184,7 +184,8 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
      enddo
    enddo
  enddo
- write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:) ),' / ',nshellpair
+ write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:', &
+                                COUNT( skip_shellpair(:) ),' / ',nshellpair
 
 
  hartree_ao(:,:) = 0.0_dp

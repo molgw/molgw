@@ -5,6 +5,7 @@
 -----------------------------------------
 ## What's new in version 2.D.beta
 ### Overview
+- Compatibility with gcc/gfortran 10
 - Printing of standard WFN files
 
 ### Contributors
@@ -15,6 +16,10 @@
 - Keyword `print_wfn_file` triggers the output of a standard WFN file that can be read with external visualization softwares
 
 ### Changes affecting the compilation
+- GCC 10 is very picky on the routine calls without an interfaces. Many existing calls to BLAS/LAPACK/SCALAPACK were not accepted any more.
+- Makefile, my_machine.arch use more standard `FFLAGS` and `CXXFLAGS` variables instead of `FCOPTS` and `CXXOPTS`
+- Fortran long lines have been chopped into pieces so to comply with the 132 character limit of Fortran.
+Compiler options such as `-ffree-line-length-none` are not needed any more.
 
 ### Changes affecting the developers
 

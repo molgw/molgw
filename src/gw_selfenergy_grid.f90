@@ -45,7 +45,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  integer              :: desc_eri3_t(NDEL)
  integer              :: desc_eri3_final(NDEL)
  integer              :: meri3,neri3
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  real(dp),allocatable :: eri3_sca(:,:)
 #endif
 !=====
@@ -53,7 +53,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  call start_clock(timing_rpa_dynamic)
 
  write(stdout,'(/,1x,a)') 'Calculation of RPA polarizability on imaginary axis grid'
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow_sd,' x ',npcol_sd
 #endif
 
@@ -86,7 +86,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  call DESCINIT(desc_eri3_final,nauxil_2center,wpol%npole_reso,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
                wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
 #endif
  call clean_allocate('TMP 3-center MO integrals',eri3_t,nauxil_3center,wpol%npole_reso)
@@ -94,7 +94,8 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  call clean_allocate('1-Chi0',one_m_chi0,wpol%mchi,wpol%nchi)
  call clean_allocate('(1-Chi0)**-1',one_m_chi0m1,wpol%mchi,wpol%nchi)
 
- call DESCINIT(desc_eri3_t,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
+ call DESCINIT(desc_eri3_t,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo, &
+               first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
 
 
  erpa = 0.0_dp
@@ -120,12 +121,12 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
    enddo
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
    call PDGEMR2D(nauxil_2center,wpol%npole_reso,eri3_t,1,1,desc_eri3_t, &
                                                 eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
 #endif
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
    call PDSYRK('L','N',nauxil_2center,wpol%npole_reso,1.0_dp,eri3_sca,1,1,desc_eri3_final,0.0_dp,chi0,1,1,wpol%desc_chi)
 #else
    call DSYRK('L','N',nauxil_2center,wpol%npole_reso,1.0_dp,eri3_t,nauxil_2center,0.0_dp,chi0,nauxil_2center)
@@ -159,7 +160,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
    call invert_sca(wpol%desc_chi,one_m_chi0,one_m_chi0m1)
 
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
    call PDGEMM('N','N',nauxil_2center,nauxil_2center,nauxil_2center, &
                1.0_dp,one_m_chi0m1        ,1,1,wpol%desc_chi,    &
                       chi0                ,1,1,wpol%desc_chi,    &
@@ -174,7 +175,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
  enddo
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call clean_deallocate('TMP 3-center MO integrals',eri3_sca)
 #endif
  call clean_deallocate('TMP 3-center MO integrals',eri3_t)
@@ -241,7 +242,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
 
  nprow = 1
  npcol = 1
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  ! Get the processor grid included in the input wpol%desc_chi
  call BLACS_GRIDINFO(wpol%desc_chi(CTXT_),nprow,npcol,iprow,ipcol)
  write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow,' x ',npcol
@@ -271,7 +272,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  do mpspin=1,nspin
    do mstate=nsemin,nsemax
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
      call PDGEMR2D(nauxil_2center,prange,eri_3center_eigen(:,:,mstate,mpspin),1,1,desc_eri3_t, &
                                                                      eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
 #else
@@ -280,7 +281,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
 
 
      do iomega=1,wpol%nomega_quad
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
        call PDGEMM('N','N',nauxil_2center,prange,nauxil_2center,     &
                    1.0_dp,wpol%chi(:,:,iomega),1,1,wpol%desc_chi,    &
                           eri3_sca            ,1,1,desc_eri3_final,  &
@@ -300,10 +301,11 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
          v_chi_v_p = DOT_PRODUCT( eri3_sca(:,plocal) , chi_eri3_sca(:,plocal) )
 
          sigmaigw(:,mstate,mpspin) = sigmaigw(:,mstate,mpspin) &
-                       - wpol%weight_quad(iomega) * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) ) &
-                                                                + im * wpol%omega_quad(iomega) )   &
-                                                     + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) )  &
-                                                                - im * wpol%omega_quad(iomega) )  ) &
+                       - wpol%weight_quad(iomega) &
+                           * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) ) &
+                                             + im * wpol%omega_quad(iomega) )   &
+                              + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) )  &
+                                             - im * wpol%omega_quad(iomega) )  ) &
                           * v_chi_v_p /  (2.0_dp * pi)
        enddo
        !$OMP END DO

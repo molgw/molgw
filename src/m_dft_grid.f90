@@ -325,7 +325,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
        do katom=1,natom_basis
          do jatom=1,natom_basis
            if(katom==jatom) cycle
-           p_becke(katom) = p_becke(katom) * s_becke(jatom,katom) 
+           p_becke(katom) = p_becke(katom) * s_becke(jatom,katom)
          enddo
        enddo
        !$OMP END PARALLEL DO
@@ -351,7 +351,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  call init_dft_grid_distribution(ngrid)
 
  write(stdout,'(/,a)')              ' Setup the DFT quadrature'
- write(stdout,'(a,i4,1x,i4,1x,i4)') ' discretization grid per atom [radial , angular max - angular min] ',nradial,nangular_fine,nangular_coarse
+ write(stdout,'(a,i4,1x,i4,1x,i4)') ' discretization grid per atom [radial , angular max - angular min] ', &
+                                    nradial,nangular_fine,nangular_coarse
  write(stdout,'(a,i8)')             ' total number of real-space points for this processor',ngrid
 
  allocate(rr_grid(3,ngrid),w_grid(ngrid))

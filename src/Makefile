@@ -2,17 +2,25 @@
 # Author: Fabien Bruneval
 
 PYTHON=python
-FC=gfortran
-FFLAGS=-ffree-line-length-none -O2
-CXXFLAGS=-O2
-OPENMP=
-CPPFLAGS=-cpp
-LIBTOOL=
-LAPACK=-lblas -llapack
-SCALAPACK=
-FFTW_ROOT=
-ELPA=
-ELPA_INCS=
+ifeq ($(FC),f77)
+  FC=gfortran
+endif
+ifeq ($(FFLAGS),)
+  FFLAGS=-O2
+endif
+ifeq ($(CXXFLAGS),)
+  CXXFLAGS=-O2
+endif
+ifeq ($(CPPFLAGS),)
+  CPPFLAGS=-cpp
+endif
+ifeq ($(LAPACK),)
+  LAPACK=-lblas -llapack
+endif
+#SCALAPACK=
+#FFTW_ROOT=
+#ELPA=
+#ELPA_INCS=
 #LIBXC_ROOT=
 #LIBINT_ROOT=
 

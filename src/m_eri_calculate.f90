@@ -589,7 +589,8 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
    ! Set nlocal => auxil_basis%nbf
    mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
    nlocal = NUMROC(auxil_basis%nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
-   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,MB_3center,NB_3center, &
+                 first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
    call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
 

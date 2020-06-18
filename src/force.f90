@@ -72,7 +72,8 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
      enddo
    enddo
  enddo
- write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:,:) ),' / ',basis%nshell**2
+ write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:', &
+                                COUNT( skip_shellpair(:,:) ),' / ',basis%nshell**2
 
 
  !

@@ -356,7 +356,8 @@ subroutine output_timing_line(title,itiming,level)
 
  lt = LEN_TRIM(title)
 
- if( lt > max_length ) call die('output_timing_line: title string too long. Shorten it or increase the string length. Ask developers')
+ if( lt > max_length ) &
+     call die('output_timing_line: title string too long. Shorten it or increase the string length. Ask developers')
 
  select case(level)
  case(0)
