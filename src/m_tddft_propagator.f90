@@ -1,6 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
-! Author: Ivan Maliyov
+! Author: Ivan Maliyov, Xixi QI
 !
 ! This module contains
 ! the time propagation of the KS wavefunctions for TDDFT
