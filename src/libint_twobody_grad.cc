@@ -33,12 +33,12 @@ void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA 
  Libint_2eri_t* inteval = libint2::malloc<Libint_2eri_t>(contrdepth2);
 
  assert( false && "libint_2center_grad not implemented yet" ) ;
-#ifdef LIBINT2_MAX_AM_2eri1
+#if defined(LIBINT2_MAX_AM_2eri1)
  assert(amA <= LIBINT2_MAX_AM_2eri1);
  assert(amC <= LIBINT2_MAX_AM_2eri1);
 #endif
 
-#ifndef LIBINT2_CONTRACTED_INTS
+#if !defined(LIBINT2_CONTRACTED_INTS)
  assert( contrdepthA == 1 );
  assert( contrdepthC == 1 );
 #endif
@@ -185,13 +185,13 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
  assert( false && "libint_3center_grad not implemented yet" ) ;
 
-#ifdef LIBINT2_MAX_AM_3eri1
+#if defined(LIBINT2_MAX_AM_3eri1)
  assert(amA <= LIBINT2_MAX_AM_3eri1);
  assert(amC <= LIBINT2_MAX_AM_3eri1);
  assert(amD <= LIBINT2_MAX_AM_3eri1);
 #endif
 
-#ifndef LIBINT2_CONTRACTED_INTS
+#if !defined(LIBINT2_CONTRACTED_INTS)
  assert( contrdepthA == 1 );
  assert( contrdepthC == 1 );
  assert( contrdepthD == 1 );
@@ -366,7 +366,7 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
  assert(amC <= LIBINT2_MAX_AM_eri1);
  assert(amD <= LIBINT2_MAX_AM_eri1);
 
-#ifndef LIBINT2_CONTRACTED_INTS
+#if !defined(LIBINT2_CONTRACTED_INTS)
  assert( contrdepthA == 1 );
  assert( contrdepthB == 1 );
  assert( contrdepthC == 1 );

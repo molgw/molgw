@@ -716,8 +716,10 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
 
  write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
- write(stdout,'(1x,a,i4,a,i6,a)') 'Max auxiliary basis functions ',MAXVAL(nbf_local_iproc(:)),' for processor ',MAXLOC(nbf_local_iproc,DIM=1)
- write(stdout,'(1x,a,i4,a,i6,a)') 'Min auxiliary basis functions ',MINVAL(nbf_local_iproc(:)),' for processor ',MINLOC(nbf_local_iproc,DIM=1)
+ write(stdout,'(1x,a,i4,a,i6,a)') 'Max auxiliary basis functions ', &
+                                  MAXVAL(nbf_local_iproc(:)),' for processor ',MAXLOC(nbf_local_iproc,DIM=1)
+ write(stdout,'(1x,a,i4,a,i6,a)') 'Min auxiliary basis functions ', &
+                                  MINVAL(nbf_local_iproc(:)),' for processor ',MINLOC(nbf_local_iproc,DIM=1)
 
 
 end subroutine distribute_auxil_basis
@@ -758,8 +760,10 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
  enddo
 
  write(stdout,'(/,a)') ' Distribute LR auxiliary basis functions among processors'
- write(stdout,'(1x,a,i4,a,i6,a)')   'Max auxiliary basis functions ',MAXVAL(nbf_local_iproc_lr(:)),' for processor ',MAXLOC(nbf_local_iproc_lr,DIM=1)
- write(stdout,'(1x,a,i4,a,i6,a)')   'Min auxiliary basis functions ',MINVAL(nbf_local_iproc_lr(:)),' for processor ',MINLOC(nbf_local_iproc_lr,DIM=1)
+ write(stdout,'(1x,a,i4,a,i6,a)') 'Max auxiliary basis functions ', &
+                                  MAXVAL(nbf_local_iproc_lr(:)),' for processor ',MAXLOC(nbf_local_iproc_lr,DIM=1)
+ write(stdout,'(1x,a,i4,a,i6,a)') 'Min auxiliary basis functions ', &
+                                  MINVAL(nbf_local_iproc_lr(:)),' for processor ',MINLOC(nbf_local_iproc_lr,DIM=1)
 
 
 end subroutine distribute_auxil_basis_lr
@@ -776,7 +780,7 @@ subroutine reshuffle_distribution_3center()
  real(dp),allocatable :: eri_3center_tmp(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  write(stdout,'(/,a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_eri3_ao,' x ',npcol_eri3_ao
 
  if( nprow_eri3_ao == nprow_3center .AND. npcol_eri3_ao == npcol_3center .AND. MB_eri3_ao == MB_3center ) then

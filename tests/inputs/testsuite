@@ -722,7 +722,6 @@ GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
 Hartree  HOMO expectation ,    188.102908       , 0 , 1.0e-4
 Exchange HOMO expectation ,    -20.682616       , 0 , 1.0e-4
 
-
 co_gw_dm_restart.in       , G0W0 based on G0W0 density matrix, restart
 GW HOMO energy            ,    -13.799652       , 0 , 1.0e-4
 GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
@@ -743,10 +742,22 @@ GW LUMO energy            ,      3.390125       , 0 , 1.0e-4
 
 co_gw_dm_imag.in          , G0W0 based on G0W0 density matrix using an imaginary axis integration, noparallel
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
-Kinetic Energy            ,    112.6561304107   , 0 , 1.0e-7
-Nucleus Energy            ,   -309.8313153540   , 0 , 1.0e-7
-Hartree Energy            ,     75.7898390921   , 0 , 1.0e-7
-Exchange Energy           ,    -13.2088773886   , 0 , 1.0e-7
+Kinetic Energy            ,    112.6581338995   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.8372953964   , 0 , 1.0e-7
+Hartree Energy            ,     75.7945279204   , 0 , 1.0e-7
+Exchange Energy           ,    -13.2091598493   , 0 , 1.0e-7
+
+co_gw_dm_dyson.in         , G0W0 density matrix obtained from the Dyson equation solution using a imaginary frequencies, noparallel
+SCF Total Energy          ,   -113.2675617628   , 0 , 1.0e-7
+Trace                     ,     14.006299       , 0 , 1.0e-4
+
+cs_gwdm_minoverlap.in     , G0W0 density matrix used for GW calculations when min_overlap is high
+SCF Total Energy          ,   -435.3493884743   , 0 , 1.0e-7
+Trace                     ,     22.000000       , 0 , 1.0e-4
+Hartree Energy            ,    227.3626344754   , 0 , 1.0e-7
+Exchange Energy           ,    -30.0102296815   , 0 , 1.0e-7
+GW HOMO energy            ,    -12.546934       , 0 , 1.0e-4
+GW LUMO energy            ,      0.653967       , 0 , 1.0e-4
 
 h2_dyson.in               , G0W0 with a analytic solution of the Dyson equation
 SCF Total Energy          ,     -1.1669981156   , 0 , 1.0e-7

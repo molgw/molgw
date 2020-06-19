@@ -51,12 +51,13 @@ contains
 
 
 !=========================================================================
-subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_name)
+subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_name,projectile_charge_scaling)
  implicit none
  real(dp),intent(in) :: zatom_read(natom+nghost),x_read(3,natom+nghost)
  real(dp),intent(in) :: vel_projectile(3)
  logical,intent(in)  :: calculate_forces
- character(len=12),intent(in) :: excit_name
+ character(len=12),intent(in)   :: excit_name
+ real(dp),intent(in) :: projectile_charge_scaling
 !=====
  integer  :: iatom,jatom
  real(dp) :: x21(3),x31(3)
@@ -123,6 +124,13 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  if( excit_name == "ANTINUCLEUS" .OR. excit_name == "ANTIION" ) then
    zatom(natom) = -zatom(natom)
  endif
+ !
+ ! In case of a projectile excitation, offer the possibility to tweak
+ ! the charge of the projectile with an input variable
+ ! Remember that the projectile always comes last in the atom list.
+ if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" ) then
+   zatom(natom) = zatom(natom) * projectile_charge_scaling
+ end if
 
  !! Setup basis identity and centers
  ! Ghost atoms do not have a positive nucleus

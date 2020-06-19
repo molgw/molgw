@@ -134,6 +134,7 @@ module m_inputparam
  logical,protected                :: print_pdos_
  logical,protected                :: print_spatial_extension_
  logical,protected                :: print_cube_
+ logical,protected                :: print_wfn_files_
  logical,protected                :: print_multipole_
  logical,protected                :: print_hartree_
  logical,protected                :: print_density_matrix_
@@ -733,6 +734,7 @@ subroutine read_inputfile_namelist()
  print_spatial_extension_  = yesno_to_logical(print_spatial_extension)
  print_multipole_          = yesno_to_logical(print_multipole)
  print_cube_               = yesno_to_logical(print_cube)
+ print_wfn_files_          = yesno_to_logical(print_wfn_files)
  print_hartree_            = yesno_to_logical(print_hartree)
  print_density_matrix_     = yesno_to_logical(print_density_matrix)
  print_rho_grid_           = yesno_to_logical(print_rho_grid)
@@ -953,7 +955,7 @@ subroutine read_inputfile_namelist()
  ! vel_projectile(:) = vel_projectile(:) * length_factor
  ! For the moment, velocity in input file must be in bohrs per a.u.[time] for any length_factor
 
- call init_atoms(zatom_read,x_read,vel_projectile,(move_nuclei/='no'),excit_type%name)
+ call init_atoms(zatom_read,x_read,vel_projectile,(move_nuclei/='no'),excit_type%name,projectile_charge_scaling)
  deallocate(x_read,zatom_read)
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)

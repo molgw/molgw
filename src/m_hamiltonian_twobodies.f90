@@ -184,7 +184,8 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
      enddo
    enddo
  enddo
- write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:) ),' / ',nshellpair
+ write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:', &
+                                COUNT( skip_shellpair(:) ),' / ',nshellpair
 
 
  hartree_ao(:,:) = 0.0_dp
@@ -264,7 +265,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
 
  call xsum_world(hartree_ao)
 
- call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',basis%nbf,1,hartree_ao)
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
  ehartree = 0.5_dp*SUM(hartree_ao(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
@@ -364,7 +365,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
  call xsum_world(hartree_ao)
  hartree_ao(:,:) = hartree_ao(:,:) / REAL(nproc_ortho,dp)
 
- call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',nbf,1,hartree_ao)
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
  select type(p_matrix)
  type is(real(dp))
@@ -622,7 +623,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
      ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
+     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp(1,1),nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
 
    enddo
  enddo
@@ -710,7 +711,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
      ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp,nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
+     call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp(1,1),nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
 
    enddo
  enddo
@@ -884,7 +885,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
  nstate = SIZE(occupation,DIM=1)
 
-#ifdef HAVE_LIBXC
+#if defined(HAVE_LIBXC)
 
  write(stdout,*) 'Calculate DFT XC potential'
  if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
@@ -923,7 +924,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
    !
    ! Get the gradient at points r
-   if( dft_xc(1)%needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,bf_gradx_batch,bf_grady_batch,bf_gradz_batch)
+   if( dft_xc(1)%needs_gradient ) &
+      call get_basis_functions_gradr_batch(basis,igrid_start,bf_gradx_batch,bf_grady_batch,bf_gradz_batch)
 
    !
    ! Calculate the density at points r for spin up and spin down
@@ -931,7 +933,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    if( .NOT. dft_xc(1)%needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
    else
-     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch,bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
+     call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch, &
+                                   bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
 
      !$OMP PARALLEL DO
      do ir=1,nr
@@ -1202,7 +1205,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
    do ir=1,nr
      basis_function_r_batch(:,ir) = SQRT( -weight_batch(ir) * vrho_batch(ir) ) * basis_function_r_batch(:,ir)
    enddo
-   call DSYRK('L','N',basis%nbf,nr,-1.0d0,basis_function_r_batch,basis%nbf,1.0d0,vhxc_ao,basis%nbf)
+   call DSYRK('L','N',basis%nbf,nr,-1.0d0,basis_function_r_batch(1,1),basis%nbf,1.0d0,vhxc_ao(1,1),basis%nbf)
 
 
    deallocate(weight_batch)

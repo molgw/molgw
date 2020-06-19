@@ -3,13 +3,13 @@ PYTHON=python
 LIBTOOL=
 
 # Sequential compilation
-FC=ifort -fpp -DHAVE_LIBXC 
+FC=ifort -DHAVE_LIBXC 
 
-CPPFLAGS= -DHAVE_LIBXC # -DHAVE_LIBINT_ONEBODY
+CPPFLAGS= -fpp -DHAVE_LIBXC # -DHAVE_LIBINT_ONEBODY
 
 CXX=icpc -std=c++11
-FCOPTS= -O3 -xhost -parallel -qopt-matmul
-CXXOPTS= -O3 -xhost  
+FFLAGS= -O3 -xhost -parallel -qopt-matmul
+CXXFLAGS= -O3 -xhost  
 
 LAPACK= -mkl=parallel
 

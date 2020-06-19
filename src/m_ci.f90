@@ -500,7 +500,8 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  do kstate=1,nfrozen_ci
    h_frozen_frozen = h_frozen_frozen + 2.0_dp * h_1body(kstate,kstate)
    do lstate=1,nfrozen_ci
-     h_frozen_frozen = h_frozen_frozen + 2.0_dp * eri_eigen(kstate,kstate,1,lstate,lstate,1) - eri_eigen(kstate,lstate,1,kstate,lstate,1)
+     h_frozen_frozen = h_frozen_frozen + 2.0_dp * eri_eigen(kstate,kstate,1,lstate,lstate,1) &
+                                       - eri_eigen(kstate,lstate,1,kstate,lstate,1)
    enddo
  enddo
  !
@@ -513,7 +514,8 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    do lstate=nfrozen_ci+1,nstate_ci
      do kstate=1,nfrozen_ci
        h_frozen_active(lstate) = h_frozen_active(lstate) &
-                     + 2.0_dp * eri_eigen(kstate,kstate,1,lstate,lstate,1) - 1.0_dp * eri_eigen(kstate,lstate,1,kstate,lstate,1)
+                     + 2.0_dp * eri_eigen(kstate,kstate,1,lstate,lstate,1) &
+                     - 1.0_dp * eri_eigen(kstate,lstate,1,kstate,lstate,1)
      enddo
    enddo
 
@@ -1335,14 +1337,17 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  write(stdout,'(1x,a,f19.10)')     '         Correlation energy (Ha): ',energy(1) - ehf
  write(stdout,'(1x,a,f19.10,/)')   '     CI ground-state energy (Ha): ',energy(1) + nuc_nuc
  if( conf%nstate > 1 ) &
-   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 1st excited-state energy (Ha), diff (eV): ',energy(2) + nuc_nuc, (energy(2)-energy(1)) * Ha_eV
+   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 1st excited-state energy (Ha), diff (eV): ', &
+                                              energy(2) + nuc_nuc, (energy(2)-energy(1)) * Ha_eV
  if( conf%nstate > 2 ) &
-   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 2nd excited-state energy (Ha), diff (eV): ',energy(3) + nuc_nuc, (energy(3)-energy(1)) * Ha_eV
+   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 2nd excited-state energy (Ha), diff (eV): ', &
+                                              energy(3) + nuc_nuc, (energy(3)-energy(1)) * Ha_eV
  if( conf%nstate > 3 ) &
-   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 3rd excited-state energy (Ha), diff (eV): ',energy(4) + nuc_nuc, (energy(4)-energy(1)) * Ha_eV
+   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 3rd excited-state energy (Ha), diff (eV): ', &
+                                              energy(4) + nuc_nuc, (energy(4)-energy(1)) * Ha_eV
  if( conf%nstate > 4 ) &
-   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 4th excited-state energy (Ha), diff (eV): ',energy(5) + nuc_nuc, (energy(5)-energy(1)) * Ha_eV
-
+   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 4th excited-state energy (Ha), diff (eV): ', &
+                                              energy(5) + nuc_nuc, (energy(5)-energy(1)) * Ha_eV
 
 
  select case(save_coefficients)

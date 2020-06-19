@@ -92,7 +92,7 @@ subroutine assert_experimental()
 !=====
 !=====
 
-#ifdef ACTIVATE_EXPERIMENTAL
+#if defined(ACTIVATE_EXPERIMENTAL)
  call issue_warning('Activating an experimental part of the code. Hopefully you know what you are doing')
 #else
  write(stdout,*) 'This part of the code is experimental. It should not be used unless you know what you are doing'

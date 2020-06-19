@@ -317,6 +317,15 @@ print_cube:
   default: 'no'
   comment: Prints some wavefunctions in a 3D volumetric file with cube format
 
+print_wfn_files:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: 'Prints WFN files which can be used as input for post processing. WFN files contain the information about
+ the electronic density and several packages use them to gather chemical information (see programs like: AIMPAC, AIMALL, among others). Setting this variable to yes will produce WFN files for ground-state calculations as well as for GW-corrected densities. Note: currently, only cartesian basis are supported.' 
+
 print_density_matrix:
   family: io
   datatype: yes/no
@@ -1039,13 +1048,21 @@ prop_type:
   comment: Sets the type of propagation algorithm in the real-time dynamics.
           'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.
 
+projectile_charge_scaling:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0
+  comment: Rescaling of the projectile charge
+
 r_disc:
   family: rt_tddft
   datatype: real
   mandatory: 'no'
   experimental: 'no'
   default: 200.0
-  comment: Radius of the disc for denisty calculations (option calc_dens_disc) for the real-time dynamics.
+  comment: Radius of the disc for density calculations (option calc_dens_disc) for the real-time dynamics.
 
 tddft_frozencore:
   family: rt_tddft

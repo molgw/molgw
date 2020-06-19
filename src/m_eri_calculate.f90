@@ -119,7 +119,8 @@ subroutine calculate_eri_4center(basis,rcut)
  ! NOTE: Worker threads use a very large private variable (i.e. integrals), so OMP_STACKSIZE should be set appropriately at run time.
  !$OMP PARALLEL
  !$OMP DO PRIVATE(ishell,jshell,kshell,lshell, ijshellpair,klshellpair, n1c,n2c,n3c,n4c, ni,nj,nk,nl, ami,amj,amk,aml, &
- !$OMP & ibf,jbf,kbf,lbf, integrals, ng1,ng2,ng3,ng4, am1,am2,am3,am4, x01,x02,x03,x04, coeff1,coeff2,coeff3,coeff4, alpha1,alpha2,alpha3,alpha4, int_shell)
+ !$OMP & ibf,jbf,kbf,lbf, integrals, ng1,ng2,ng3,ng4, am1,am2,am3,am4, x01,x02,x03,x04, coeff1,coeff2,coeff3,coeff4, &
+ !$OMP & alpha1,alpha2,alpha3,alpha4, int_shell)
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
@@ -589,7 +590,8 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
    ! Set nlocal => auxil_basis%nbf
    mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
    nlocal = NUMROC(auxil_basis%nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
-   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,MB_3center,NB_3center, &
+                 first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
    call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
 

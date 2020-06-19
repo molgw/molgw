@@ -150,7 +150,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    !
    if( calc_type%selfenergy_technique == EVSC .OR. force_energy_qp_ ) then
      call read_energy_qp(nstate,energy_g,reading_status)
-     if(reading_status/=0) then
+     if( reading_status /=0 ) then
        call issue_warning('File energy_qp not found: assuming 1st iteration')
        energy_g(:,:) = energy(:,:)
      endif
@@ -382,7 +382,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    ! Selfenergy = PT3 or 2-rings
    !
    if( calc_type%selfenergy_approx == PT3 .OR. calc_type%selfenergy_approx == TWO_RINGS ) then
-     call pt3_selfenergy(calc_type%selfenergy_approx,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
+     call pt3_selfenergy(calc_type%selfenergy_approx,calc_type%selfenergy_technique, &
+                         nstate,basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
    endif
 
    !
@@ -450,7 +451,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    !
    ! Write the QP energies on disk: ENERGY_QP file
    !
-   call write_energy_qp(nstate,energy_qp_new)
+   call write_energy_qp(energy_qp_new)
    call dump_out_energy_yaml(TRIM(selfenergy_tag)//' energy',energy_qp_new,nsemin,nsemax)
 
    !

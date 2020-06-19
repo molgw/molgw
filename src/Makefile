@@ -2,36 +2,54 @@
 # Author: Fabien Bruneval
 
 PYTHON=python
-FC=gfortran -ffree-line-length-none
-CXX=g++
-CC=gcc
-FCOPTS=
-CXXOPTS=
-CCOPTS=
-OPENMP=
-CPPFLAGS=
-LIBTOOL=
-LAPACK=
-SCALAPACK=
-FFTW_ROOT=
-ELPA=
-ELPA_INCS=
+ifeq ($(FC),f77)
+  FC=gfortran
+endif
+ifeq ($(FFLAGS),)
+  FFLAGS=-O2
+endif
+ifeq ($(CXXFLAGS),)
+  CXXFLAGS=-O2
+endif
+ifeq ($(CPPFLAGS),)
+  CPPFLAGS=-cpp -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY -DFORTRAN2008
+endif
+ifeq ($(LAPACK),)
+  LAPACK=-lblas -llapack
+endif
+#SCALAPACK=
+#FFTW_ROOT=
+#ELPA=
+#ELPA_INCS=
 #LIBXC_ROOT=
 #LIBINT_ROOT=
 
 
-include ./my_machine.arch
+-include ./my_machine.arch
 
-FC_W_OPTS= $(FC) $(FCOPTS) $(OPENMP) $(CPPFLAGS)
-CXX_W_OPTS= $(CXX) $(CXXOPTS) $(CPPFLAGS)
-CC_W_OPTS= $(CC) $(CCOPTS) $(CPPFLAGS)
+FC_W_OPTS= $(FC) $(FFLAGS) $(OPENMP) $(CPPFLAGS)
+CXX_W_OPTS= $(CXX) $(CXXFLAGS) $(CPPFLAGS)
 LINKER= $(LIBTOOL) $(FC_W_OPTS)
 
 LINKS= -lstdc++ -lm
-LIBXC_INCS=-I$(LIBXC_ROOT)/include
-LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
-LIBINT=-L$(LIBINT_ROOT)/lib -lint2
-LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
+ifeq ($(LIBXC_ROOT),)
+  LIBXC_INCS=
+  ifneq (,$(findstring -DHAVE_LIBXC,$(CPPFLAGS)))
+    LIBXC= -lxc
+  else
+    LIBXC=
+  endif
+else
+  LIBXC_INCS=-I$(LIBXC_ROOT)/include
+  LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
+endif
+ifeq ($(LIBINT_ROOT),)
+  LIBINT=-lint2
+  LIBINT_INCS=
+else
+  LIBINT=-L$(LIBINT_ROOT)/lib -lint2
+  LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
+endif
 ifeq ($(FFTW_ROOT),)
   FFTW=
   FFTW_INCS=
@@ -40,7 +58,7 @@ else
   FFTW_INCS=-I$(FFTW_ROOT)/include/
 endif
 
-.PHONY: all clean archive tarball docs input prepare_sourcecode
+.PHONY: all clean archive tarball docs input prepare_sourcecode install uninstall
 
 
 ####################################################
@@ -145,7 +163,7 @@ level100: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizab
                         molgw.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
-                        $(LIBXC) $(LIBXC _INCS)  \
+                        $(LIBXC) $(LIBXC_INCS)  \
                         $(LIBINT) $(LIBINT_INCS) \
                         $(ELPA) $(ELPA_INCS) \
                         $(LINKS)
@@ -239,7 +257,7 @@ m_density_tools.o: m_definitions.f90 m_atoms.f90 m_mpi.f90 m_gaussian.f90 m_inpu
 m_multipole.o: m_definitions.f90 m_atoms.f90 m_inputparam.f90 m_basis_set.f90 m_hamiltonian_tools.f90 m_hamiltonian_onebody.f90 m_multipole.f90
 	$(FC_W_OPTS) -c m_multipole.f90 $(LIBXC_INCS)
 
-m_io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_memory.f90 m_cart_to_pure.f90 \
+m_io.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_memory.f90 m_cart_to_pure.f90 \
 	      m_basis_set.f90 m_libint_tools.f90 m_inputparam.f90 m_eri.f90 \
         m_dft_grid.f90 git_sha.f90 m_tddft_variables.f90 m_timing.f90 m_linear_algebra.f90 m_string_tools.f90 \
 			  m_libxc_tools.f90 m_hamiltonian_tools.f90 m_io.f90
@@ -264,7 +282,7 @@ pt_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warn
 	$(FC_W_OPTS) -c pt_selfenergy.f90 $(LIBXC_INCS)
 
 pt_density_matrix.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_memory.f90 m_timing.f90 m_warning.f90 m_scalapack.f90 m_basis_set.f90 \
-                  m_spectral_function.f90 m_inputparam.f90 m_selfenergy_tools.f90 m_eri_ao_mo.f90 m_hamiltonian_tools.f90 m_hamiltonian_onebody.f90 pt_density_matrix.f90
+                  m_spectral_function.f90 m_inputparam.f90 m_selfenergy_tools.f90 m_eri_ao_mo.f90 m_hamiltonian_tools.f90 m_hamiltonian_onebody.f90 m_io.f90 pt_density_matrix.f90
 	$(FC_W_OPTS) -c pt_density_matrix.f90 $(LIBXC_INCS)
 
 pdbssolver1.o: pdbssolver1.f
@@ -443,4 +461,11 @@ docs:
 	mv notes.pdf ../docs/notes.pdf
 
 clean:
-	rm -f *.o *.mod ../molgw.tgz ../molgw ../spectrum
+	$(RM) *.o *.mod ../molgw.tgz ../molgw ../spectrum
+
+install:
+	install -d $(DESTDIR)$(bindir)
+	install  ../molgw $(DESTDIR)$(bindir)/molgw
+
+uninstall:
+	$(RM) $(DESTDIR)$(bindir)/molgw

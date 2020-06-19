@@ -1,0 +1,16 @@
+&molgw
+  comment                 = 'cs'
+
+  min_overlap                    = 2.e-3
+  basis                          = 'cc-pVTZ'
+  scf                            = 'HF'
+  postscf                        = 'GW'
+  selfenergy_state_range         = 1
+  frozencore                     = 'yes'
+  auxil_basis                    = 'Auto'
+  pt_density_matrix              = 'GW'
+  use_correlated_density_matrix  = 'yes'
+  natom                          = 2
+/
+C    0.000000  0.000000 -1.123382
+S    0.000000  0.000000  0.421268

@@ -429,7 +429,7 @@ subroutine gather_distributed_copy_nospin_dp(desc,matrix,matrix_global)
    enddo
 
    ! Only the master proc (0,0) gets the complete information
-   call DGSUM2D(cntxt,'A',' ',mglobal,nglobal,matrix_global,nglobal,0,0)
+   call DGSUM2D(cntxt,'A',' ',mglobal,nglobal,matrix_global(1,1),nglobal,0,0)
 
  endif
 
@@ -745,7 +745,8 @@ subroutine diagonalize_inplace_sca_dp(flavor,matrix,desc,eigval)
    case('r','R')
      liwork = -1
      allocate(iwork(1))
-     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0, &
+                  neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
    case('x','X')
      liwork = -1
      allocate(iwork(1))
@@ -770,7 +771,8 @@ subroutine diagonalize_inplace_sca_dp(flavor,matrix,desc,eigval)
      liwork = iwork(1)
      deallocate(iwork)
      allocate(iwork(liwork))
-     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0, &
+                  neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
      deallocate(iwork)
    case('x','X')
      liwork = iwork(1)
@@ -925,7 +927,8 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
    case('r','R')
      liwork = -1
      allocate(iwork(1))
-     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0, &
+                  neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
    case('d','D')
      liwork = -1
      allocate(iwork(1))
@@ -954,7 +957,8 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
      liwork = iwork(1)
      deallocate(iwork)
      allocate(iwork(liwork))
-     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+     call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0, &
+                  neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
      deallocate(iwork)
    case('d','D')
      liwork = iwork(1)

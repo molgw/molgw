@@ -49,6 +49,10 @@ module m_spectral_function
    real(dp),allocatable :: omega_quad(:)         ! quadrature points for numerical integration
    real(dp),allocatable :: weight_quad(:)        ! quadrature weight for numerical integration
 
+   contains
+
+     procedure :: evaluate => sf_evaluate
+
  end type spectral_function
 
  !
@@ -221,8 +225,10 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
      ! Variable change [0,1] -> [0,+\inf[
      write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
      do iomega=1,sf%nomega_quad
-       sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
-       sf%omega_quad(iomega)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
+       sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
+                                * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
+       sf%omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
+                                  * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
        write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega)*Ha_eV,sf%weight_quad(iomega)
      enddo
    else
@@ -324,7 +330,7 @@ subroutine write_spectral_function(sf)
  write(stdout,*) 'Number of poles written down:',sf%npole_reso
 
 
-#ifndef HAVE_MPI
+#if !defined(HAVE_MPI)
  if( is_iomaster ) then
    open(newunit=wfile,file='SCREENED_COULOMB',form='unformatted')
 
@@ -510,6 +516,39 @@ subroutine read_spectral_function(sf,reading_status)
 
 
 end subroutine read_spectral_function
+
+
+!=========================================================================
+subroutine sf_evaluate(sf,omega_cmplx,chi)
+ implicit none
+
+ class(spectral_function),intent(in) :: sf
+ complex(dp),intent(in) :: omega_cmplx(:)
+ complex(dp),allocatable,intent(out) :: chi(:,:,:)
+ !=====
+ integer :: nomega,iomega,ipole
+ integer :: jprodbasis
+ !=====
+
+ if( nauxil_2center /= nauxil_3center ) call die('sf_evaluate: not implemented with MPI')
+
+ nomega = SIZE(omega_cmplx)
+ allocate(chi(sf%nprodbasis,sf%nprodbasis,nomega))
+
+ chi(:,:,:) = 0.0_dp
+ do iomega=1,nomega
+   do ipole=1,sf%npole_reso
+     do jprodbasis=1,sf%nprodbasis
+       chi(:,jprodbasis,iomega) = chi(:,jprodbasis,iomega) &
+               + sf%residue_left(:,ipole) * sf%residue_left(jprodbasis,ipole) &
+                     * ( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
+                        -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
+     enddo
+   enddo
+ enddo
+
+
+end subroutine sf_evaluate
 
 
 end module m_spectral_function

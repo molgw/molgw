@@ -268,7 +268,8 @@ subroutine calculate_virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
  nvirtualmin = MIN(nvirtualw,nvirtualg)
 
  if( nvirtualmin > nstate ) then
-   call issue_warning('calculate_virtual_fno is on, however nvirtualw and nvirtualg are not set. Skipping the Frozen Natural Orbitals generation.')
+   call issue_warning( &
+     'calculate_virtual_fno: is on, however nvirtualw and nvirtualg are not set. Skipping the Frozen Natural Orbitals generation.')
    return
  endif
 

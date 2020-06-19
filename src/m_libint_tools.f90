@@ -325,7 +325,8 @@ subroutine transform_libint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_ou
  allocate(matrix_tmp(n1,n2c))
 
  ! Transform the 1st index
- matrix_tmp(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
+ matrix_tmp(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , &
+                   cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
 
  ! Transform the 2nd index
  matrix_out(:,:) = MATMUL( matrix_tmp(:,:) , cart_to_pure_norm(am2,gt_tag)%matrix(:,:) )
@@ -365,7 +366,8 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_rig
  allocate(matrix_tmp2(n2,n3c))
 
  ! Transform the 1st index
- matrix_tmp1(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c , n1c /) ) , cart_to_pure_norm(am1,gt_tagl)%matrix(1:n1c,1:n1) ) )
+ matrix_tmp1(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c , n1c /) ) , &
+                     cart_to_pure_norm(am1,gt_tagl)%matrix(1:n1c,1:n1) ) )
 
  do i1=1,n1
    ! Transform the 2nd index
@@ -416,15 +418,11 @@ subroutine transform_libint_to_molgw_4d(gaussian_type,am1,am2,am3,am4,array_in,m
 
 
  ! Transform the 1st index
-#if 0
- matrix_tmp1(1:n1,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c * n4c , n1c /) ) , cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
-#else
  allocate(matrix_tmp0(n2c*n3c*n4c,n1c))
  matrix_tmp0(:,:) = RESHAPE( array_in(:) , (/ n2c * n3c * n4c , n1c /) )
 
  matrix_tmp1(1:n1,:) = TRANSPOSE( MATMUL( matrix_tmp0(:,:) , cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
  deallocate(matrix_tmp0)
-#endif
 
  do i1=1,n1
    ! Transform the 2nd index

@@ -267,6 +267,7 @@
      $                   I, LWKOPT, LLWORK, LOCALMAT, MROWS, MCOLS,
      $                   LLDM, INDWORK, ITMP, DIMV, NZ, LIWKOPT
       DOUBLE PRECISION   DTMP
+      DOUBLE PRECISION   DATMP(1)
       DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_VEC1, T_VEC2, T_PREP
       DOUBLE PRECISION   DDUM( 3 )
       DOUBLE PRECISION   ABSTOL
@@ -345,24 +346,25 @@
 *
          SELECT CASE(FLAVOR)
          CASE('r','R')
-            CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
-     $           ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX,
+            CALL PDSYEVR( 'V', 'A', 'L', N, DATMP, IK, JK, DESCK, ZERO,
+     $           ZERO, 1, N, DIMV, NZ, DATMP, DATMP, IX, JX, DESCX,
      $           DDUM, -1, IWORK, -1, ITMP )
          CASE('d','D')
-            CALL PDSYEVD( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP,
-     $           IX, JX, DESCX, DDUM, -1, IWORK, -1, ITMP )
+            CALL PDSYEVD( 'V', 'L', N, DATMP, IK, JK, DESCK, DATMP, 
+     $           DATMP, IX, JX, DESCX, DDUM, -1, IWORK, -1, ITMP )
          CASE('x','X')
             ALLOCATE(ICLUSTR(2*NPROCS))
             ALLOCATE(GAP(NPROCS))
             ABSTOL = PDLAMCH(DESCK(2), 'U')
-            CALL PDSYEVX( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
-     $           ZERO, 1, N, ABSTOL, DIMV, NZ, DTMP, ZERO, DTMP, IX, JX,
+            CALL PDSYEVX( 'V', 'A', 'L', N, DATMP, IK, JK, DESCK, ZERO,
+     $           ZERO, 1, N, ABSTOL, DIMV, NZ, DATMP, ZERO, 
+     $           DATMP, IX, JX,
      $           DESCX, DDUM, -1,
      $           IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
             DEALLOCATE(ICLUSTR,GAP)
          CASE DEFAULT
-            CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP,
-     $           IX, JX, DESCX, DDUM, -1, ITMP )
+            CALL PDSYEV( 'V', 'L', N, DATMP, IK, JK, DESCK, DATMP, 
+     $           DATMP, IX, JX, DESCX, DDUM, -1, ITMP )
             IWORK( 1 ) = 1
          END SELECT
 

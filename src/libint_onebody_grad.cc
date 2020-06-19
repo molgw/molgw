@@ -36,7 +36,7 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
  assert(amA <= LIBINT2_MAX_AM_overlap1);
  assert(amB <= LIBINT2_MAX_AM_overlap1);
 
-#ifndef LIBINT2_CONTRACTED_INTS
+#if !defined(LIBINT2_CONTRACTED_INTS)
  assert( contrdepthA == 1 );
  assert( contrdepthB == 1 );
 #endif
@@ -136,7 +136,7 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
  assert(amA <= LIBINT2_MAX_AM_kinetic1);
  assert(amB <= LIBINT2_MAX_AM_kinetic1);
 
-#ifndef LIBINT2_CONTRACTED_INTS
+#if !defined(LIBINT2_CONTRACTED_INTS)
  assert( contrdepthA == 1 );
  assert( contrdepthB == 1 );
 #endif
@@ -244,7 +244,7 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
  assert(amA <= LIBINT2_MAX_AM_elecpot1);
  assert(amB <= LIBINT2_MAX_AM_elecpot1);
 
-#ifndef LIBINT2_CONTRACTED_INTS
+#if !defined(LIBINT2_CONTRACTED_INTS)
  assert( contrdepthA == 1 );
  assert( contrdepthB == 1 );
 #endif

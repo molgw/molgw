@@ -728,7 +728,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
 
 
  if( is_bse ) then
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
    do iaspin=1,nspin
 
      allocate(vsqrt_chi_vsqrt(nauxil_2center,nauxil_2center))
@@ -757,7 +757,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
      ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
      ! Be careful not to forget it in the following
      do jstate=jstate_min,jstate_max
-       wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = MATMUL( vsqrt_chi_vsqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
+       wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = MATMUL( vsqrt_chi_vsqrt(:,:), &
+                                                             eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
      enddo
 
      deallocate(vsqrt_chi_vsqrt)
@@ -819,7 +820,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
          ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
          ! Be careful in the following not to forget it
          do jstate=jstate_min,jstate_max
-           wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( vsqrt_chi_vsqrt_i(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
+           wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( vsqrt_chi_vsqrt_i(:), &
+                                                          eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
          enddo
          call xsum_auxil(wp0_i)
 

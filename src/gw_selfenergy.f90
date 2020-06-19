@@ -115,8 +115,10 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
            do iomega=-se%nomega,se%nomega
              se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
                       + bra(ipole,pstate) * bra(ipole,pstate)                                          &
-                        * ( fact_full_i  / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
-                          + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
+                        * ( fact_full_i  / ( se%energy0(pstate,ispin) + se%omega(iomega) &
+                                             - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
+                          + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) &
+                                             - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
            !$OMP END DO
            !$OMP END PARALLEL
@@ -206,7 +208,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  integer              :: ipstate
  integer              :: pstate,bstate
  integer              :: istate,ispin,ipole
- real(dp)             :: sign_i
+ real(dp)             :: sign_i,mu
  real(dp)             :: energy_gw,work(1),weight,nelect,rtmp
  real(dp),allocatable :: matrix_wing(:,:),matrix_head(:,:),matrix_diag(:)
  real(dp),allocatable :: matrix(:,:),eigval(:)
@@ -282,7 +284,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      !
      ! indeces
      jstate = istate - ncore_G
-     sign_i = merge(-1.0_dp,1.0_dp,occupation(istate,ispin) / spin_fact > completely_empty )
+     sign_i = MERGE(-1.0_dp,1.0_dp,occupation(istate,ispin) / spin_fact > completely_empty )
      irecord = ( jstate - 1 ) * wpol%npole_reso
 
      !
@@ -351,6 +353,8 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  ! If the matrix is small enough, then diagonalize it!
  if( nmat < 13001 ) then
 
+   mu = ( MINVAL(energy(nhomo_G+1,:)) + MAXVAL(energy(nhomo_G,:)) ) / 2.0_dp
+   write(stdout,'(1x,a,f12.6)') 'Center of the HOMO-LUMO gap (eV): ',mu*Ha_eV
    allocate(eigval(nmat))
 
 #if defined(HAVE_SCALAPACK)
@@ -396,7 +400,9 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
    nelect = 0.0_dp
    do jmat=1,nmat
      weight = PDLANGE('F',mstate,1,matrix,1,jmat,desc_matrix,work)**2
-     if( eigval(jmat) < 0.0_dp ) nelect = nelect + spin_fact * weight
+     ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
+     ! then consider the excitation is occupied
+     if( eigval(jmat) < mu ) nelect = nelect + spin_fact * weight
      if( weight > 5.0e-2_dp ) then
        call PDAMAX(mstate,rtmp,jstate,matrix,1,jmat,desc_matrix,1)
        call xmax_world(jstate)
@@ -432,7 +438,9 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      write(fu,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,SUM(matrix(1:mstate,jmat)**2)
    enddo
    close(fu)
-   write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=eigval(:)<0.0_dp)
+   ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
+   ! then consider the excitation is occupied
+   write(stdout,'(1x,a,f12.6)') 'Number of electrons: ',spin_fact*SUM( SUM(matrix(1:mstate,:)**2,DIM=1), MASK=(eigval(:) < mu) )
    write(stdout,*) '==================================================='
 
 #endif
@@ -520,7 +528,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  !  wpol%residue_left
  mlocal = NUMROC(nauxil_2center ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
  nlocal = NUMROC(wpol%npole_reso,NB_eri3_mo,ipcol_eri3_mo,first_col,npcol_eri3_mo)
- call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+ call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo, &
+               first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
  !
  ! Change data distribution
  ! from cntxt_eri3_mo to cntxt_sd
@@ -544,7 +553,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      !
      mlocal = NUMROC(nauxil_2center      ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,NB_eri3_mo,ipcol_eri3_mo,first_col,npcol_eri3_mo)
-     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MB_eri3_mo,NB_eri3_mo, &
+                   first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
      if( cntxt_eri3_mo > 0 ) then
        call clean_allocate('TMP 3center eigen',eri_3tmp_auxil,mlocal,nlocal)
@@ -562,7 +572,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      ! from cntxt_eri3_mo to cntxt_sd
      mlocal = NUMROC(nauxil_2center      ,block_row,iprow_sd,first_row,nprow_sd)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,block_col,ipcol_sd,first_col,npcol_sd)
-     call DESCINIT(desc_3sd,nauxil_2center,nvirtual_G-ncore_G-1,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+     call DESCINIT(desc_3sd,nauxil_2center,nvirtual_G-ncore_G-1,block_row,block_col, &
+                   first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
      call clean_allocate('TMP 3center eigen',eri_3tmp_sd,mlocal,nlocal)
      call PDGEMR2D(nauxil_2center,nvirtual_G-ncore_G-1,eri_3tmp_auxil,1,1,desc_3auxil, &
                                                           eri_3tmp_sd,1,1,desc_3sd,cntxt_sd)
@@ -573,7 +584,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      ! Prepare a SCALAPACKed bra that is to contain  wresidue**T * v**1/2
      mlocal = NUMROC(wpol%npole_reso     ,block_row,iprow_sd,first_row,nprow_sd)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,block_col,ipcol_sd,first_col,npcol_sd)
-     call DESCINIT(desc_bra,wpol%npole_reso,nvirtual_G-ncore_G-1,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+     call DESCINIT(desc_bra,wpol%npole_reso,nvirtual_G-ncore_G-1,block_row,block_col, &
+                   first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
      call clean_allocate('Temporary array',bra,mlocal,nlocal)
 
      ! And calculate it
@@ -602,8 +614,10 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
          sigmagw(:,pstate,pspin) = sigmagw(:,pstate,pspin) &
                   + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    &
-                    * ( fact_full_i  / ( se%energy0(pstate,pspin) + se%omega(:) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
-                      + fact_empty_i / ( se%energy0(pstate,pspin) + se%omega(:) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
+                    * ( fact_full_i  / ( se%energy0(pstate,pspin) + se%omega(:) &
+                                        - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
+                      + fact_empty_i / ( se%energy0(pstate,pspin) + se%omega(:) &
+                                        - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
        enddo  !ilocal -> ipole
      enddo !jlocal -> istate
      !$OMP END DO
@@ -729,8 +743,10 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
              selfenergy(pstate,qstate,ispin) = selfenergy(pstate,qstate,ispin) &
                         + bra(ipole,pstate) * bra(ipole,qstate)                            &
-                          * ( REAL(  fact_full_i  / ( energy(qstate,ispin) - ieta  - energy(istate,ispin) + wpol%pole(ipole) ) , dp ) &
-                            + REAL(  fact_empty_i / ( energy(qstate,ispin) + ieta  - energy(istate,ispin) - wpol%pole(ipole) ) , dp ) )
+                          * ( REAL(  fact_full_i  / ( energy(qstate,ispin) - ieta  &
+                                                     - energy(istate,ispin) + wpol%pole(ipole) ) , dp ) &
+                            + REAL(  fact_empty_i / ( energy(qstate,ispin) + ieta  &
+                                                     - energy(istate,ispin) - wpol%pole(ipole) ) , dp ) )
 
            enddo
          enddo

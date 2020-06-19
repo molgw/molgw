@@ -33,9 +33,12 @@ directory       = 'run_001'
 executable      = '/home/bruneval/devel/molgw-devel/molgw'
 run_it          = False   # run it on the fly from python script or wait 
 atom_number_max = 999     # limit the size of the calculated molecules
+folder_naming   = ['basis','scf','postscf','auxil_basis']
 
-
+##################################################
+#
 # Create the calculation list here
+#
 ip = []
 for basis in ['aug-cc-pVDZ','aug-cc-pVTZ']:
     ipp = collections.OrderedDict()
@@ -46,7 +49,6 @@ for basis in ['aug-cc-pVDZ','aug-cc-pVTZ']:
     ipp['frozencore']              = 'yes'
     ipp['auxil_basis']             = basis + '-RI'
     ip.append(ipp)
-
 
 #########################################
 # Implement a size limit
@@ -78,22 +80,45 @@ for molecule in molecule_list:
     for calc in ip:
 
         folder_name = molecule 
-        for value in calc.values():
-            folder_name = folder_name + '_' + str(value).lower()
+        for key, value in calc.items():
+            if key in folder_naming:
+                folder_name = folder_name + '_' + str(value).lower()
         folder = directory + '/' + folder_name
         os.makedirs(folder,exist_ok=True)
   
         #
         # Check if the molgw.yaml is already there and finalized
         #
-        try:
-            with open(folder + '/molgw.yaml', 'r') as f:
-                last_line = f.readlines()[-1]
-                if '...' in last_line:
-                    print('{:24} {:5} is already calculated. Skip it'.format(molecule,calc['basis']))
-                    continue
-        except:
-            pass
+        yamlfilename= folder + '/molgw.yaml'
+        valid_yamlfile = True
+
+        if os.path.exists(yamlfilename):
+            try:
+                with open(yamlfilename, 'r') as f:
+                    last_line = f.readlines()[-1]
+                    if '...' not in last_line:
+                        print('yaml file not terminated')
+                        valid_yamlfile = False
+            except:
+                valid_yamlfile = False
+                pass
+            try:
+                with open(yamlfilename, 'r') as f:
+                    for line in f:
+                        if 'NaN' in line:
+                            print('yaml file contains some NaN')
+                            valid_yamlfile = False
+                            break
+            except:
+                valid_yamlfile = False
+                pass
+        else:
+            print('no yaml file found')
+            valid_yamlfile = False
+
+        if valid_yamlfile:
+            print('{:24} {:5} is already calculated. Skip it'.format(molecule,calc['basis']))
+            continue
             
         print('{:24} {:5} to be calculated'.format(molecule,calc['basis']))
   

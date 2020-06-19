@@ -224,10 +224,10 @@ subroutine test_density_matrix(p_matrix,s_matrix)
    matrix(:,:) = MATMUL( p_matrix(:,:,ispin), MATMUL( s_matrix(:,:) , p_matrix(:,:,ispin) ) )
 
 
-   title='=== PSP ==='
-   !call dump_out_matrix(1,title,nbf,1,matrix)
-   title='===  P  ==='
-   !call dump_out_matrix(1,title,nbf,1,p_matrix(:,:,ispin))
+   !title='=== PSP ==='
+   !call dump_out_matrix(1,title,matrix)
+   !title='===  P  ==='
+   !call dump_out_matrix(1,title,p_matrix(:,:,ispin))
 
  enddo
 
@@ -586,17 +586,17 @@ subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
    ! H * C
    call DSYMM('L','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nbf, &
                                        c_matrix(1,1,ispin),nbf,  &
-                                 0.0d0,matrix_tmp,nbf)
+                                 0.0d0,matrix_tmp(1,1),nbf)
 
    ! C**T * (H * C)
 #if defined(HAVE_MKL)
    call DGEMMT('L','T','N',nstate,nbf,1.0d0,c_matrix(1,1,ispin),nbf, &
-                                            matrix_tmp,nbf,          &
+                                            matrix_tmp(1,1),nbf,          &
                                       0.0d0,matrix_out(1,1,ispin),nstate)
-   call matrix_lower_to_full(matrix_out(:,:,1))
+   call matrix_lower_to_full(matrix_out(:,:,ispin))
 #else
    call DGEMM('T','N',nstate,nstate,nbf,1.0d0,c_matrix(1,1,ispin),nbf, &
-                                              matrix_tmp,nbf,          &
+                                              matrix_tmp(1,1),nbf,          &
                                         0.0d0,matrix_out(1,1,ispin),nstate)
 #endif
 
@@ -628,18 +628,18 @@ subroutine matrix_mo_to_ao(c_matrix,matrix_in,matrix_out)
    !matrix_out(1:nbf,1:nbf,ispin) = MATMUL( c_matrix(:,:,ispin) , MATMUL( matrix_in(:,:,ispin) , TRANSPOSE( c_matrix(:,:,ispin) ) ) )
 
    !  C * H
-   call DSYMM('R','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nbf, &
+   call DSYMM('R','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nstate, &
                                        c_matrix(1,1,ispin),nbf,  &
-                                 0.0d0,matrix_tmp,nbf)
+                                 0.0d0,matrix_tmp(1,1),nbf)
 
    ! (C * H) * C**T
 #if defined(HAVE_MKL)
-   call DGEMMT('L','N','T',nbf,nstate,1.0d0,matrix_tmp,nbf,          &
+   call DGEMMT('L','N','T',nbf,nstate,1.0d0,matrix_tmp(1,1),nbf,          &
                                             c_matrix(1,1,ispin),nbf, &
                                       0.0d0,matrix_out(1,1,ispin),nbf)
-   call matrix_lower_to_full(matrix_out(:,:,1))
+   call matrix_lower_to_full(matrix_out(:,:,ispin))
 #else
-   call DGEMM('N','T',nbf,nbf,nstate,1.0d0,matrix_tmp,nbf,        &
+   call DGEMM('N','T',nbf,nbf,nstate,1.0d0,matrix_tmp(1,1),nbf,        &
                                            c_matrix(1,1,ispin),nbf,  &
                                      0.0d0,matrix_out(1,1,ispin),nbf)
 #endif
@@ -975,6 +975,10 @@ subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
    write(stdout,'(1x,a,*(1x,es18.8))') 'Most negative eigenvalue: ',occupation_tmp(nbf,:)
  endif
 
+ !
+ ! Keep all the states, even those with negative occupations
+ ! Sometimes needed to conserve the trace
+ nstate = nbf
 
  if( ALLOCATED(c_matrix) ) deallocate(c_matrix)
  if( ALLOCATED(occupation) ) deallocate(occupation)
@@ -1162,13 +1166,13 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matri
      !                          MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
 
      ! H * U
-     call DGEMM('N','N',nbf,nstate,nbf,1.0d0,hamiltonian(:,:,ispin),nbf, &
-                                             x_matrix,nbf,      &
-                                       0.0d0,h_small,nbf)
+     call DGEMM('N','N',nbf,nstate,nbf,1.0d0,hamiltonian(1,1,ispin),nbf, &
+                                             x_matrix(1,1),nbf,      &
+                                       0.0d0,h_small(1,1),nbf)
      ! U**T * (H * U)
-     call DGEMM('T','N',nstate,nstate,nbf,1.0d0,x_matrix,nbf,  &
-                                                h_small,nbf,            &
-                                          0.0d0,h_small2,nstate)
+     call DGEMM('T','N',nstate,nstate,nbf,1.0d0,x_matrix(1,1),nbf,  &
+                                                h_small(1,1),nbf,            &
+                                          0.0d0,h_small2(1,1),nstate)
      deallocate(h_small)
 
      ! H * C' = C' * E
@@ -1176,9 +1180,9 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matri
 
      !c_matrix(:,1:nstate,ispin) = MATMUL( x_matrix(:,:) , h_small2(:,:) )
      ! C = U * C'
-     call DGEMM('N','N',nbf,nstate,nstate,1.0d0,x_matrix,nbf, &
-                                                h_small2,nstate,       &
-                                          0.0d0,c_matrix(:,:,ispin),nbf)
+     call DGEMM('N','N',nbf,nstate,nstate,1.0d0,x_matrix(1,1),nbf, &
+                                                h_small2(1,1),nstate,       &
+                                          0.0d0,c_matrix(1,1,ispin),nbf)
 
 
      call stop_clock(timing_diago_hamiltonian)

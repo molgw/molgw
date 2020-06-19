@@ -437,17 +437,18 @@ program molgw
  endif
 
  if( print_wfn_ )  call plot_wfn(nstate,basis,c_matrix)
- if( print_wfn_ )  call plot_rho(nstate,basis,occupation,c_matrix)
- if( print_cube_ ) call plot_cube_wfn('GKS',nstate,basis,occupation,c_matrix)
+ if( print_wfn_ )  call plot_rho(basis,occupation,c_matrix)
+ if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
+ if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy)
  if( print_pdos_ ) then
-   call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
-   call lowdin_pdos(nstate,basis,s_matrix_sqrt,c_matrix,occupation,energy)
+   call mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
+   call lowdin_pdos(basis,s_matrix_sqrt,c_matrix,occupation,energy)
  endif
  if( print_spatial_extension_ ) call spatial_extension(basis,c_matrix)
  if( .FALSE.     ) call plot_rho_list(nstate,basis,occupation,c_matrix)
  if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
  if( print_dens_traj_points_set_ ) call plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
- if( .FALSE. ) call read_cube_wfn(nstate,basis,occupation,c_matrix)
+ if( .FALSE. ) call write_cube_from_header('GKS',basis,occupation,c_matrix)
 
 
 
@@ -473,7 +474,7 @@ program molgw
  if( read_fchk /= 'NO' &
     .OR. TRIM(pt_density_matrix) /= 'NO' &
     .OR. use_correlated_density_matrix_ ) then
-   call get_dm_mbpt(basis,occupation,energy,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
+   call get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
  endif
 
 

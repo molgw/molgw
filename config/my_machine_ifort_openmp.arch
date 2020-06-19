@@ -2,13 +2,13 @@ OPENMP= -qopenmp -parallel
 PYTHON=python3
 LIBTOOL=
 
-FC=ifort -fpp 
+FC=ifort
 
-CPPFLAGS= -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY -DHAVE_MKL
+CPPFLAGS= -fpp -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY -DHAVE_MKL
 
 CXX=icpc -std=c++11
-FCOPTS= -O3 -xhost -qopt-matmul
-CXXOPTS= -O3 -xhost
+FFLAGS= -O3 -xhost -qopt-matmul
+CXXFLAGS= -O3 -xhost
 
 LAPACK= -mkl=parallel
 
