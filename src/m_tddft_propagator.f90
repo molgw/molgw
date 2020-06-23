@@ -235,7 +235,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
    deallocate(energy_tddft)
  end if
- print*, 'C matrix = ', c_matrix_cmplx
 
  call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
@@ -264,20 +263,19 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        ! diagonalize M(t0) to get eigenstates C(t0) for MB propagation
        call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
                   basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
-       print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
-       
+       !print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
+
        ! take only the occupied states (lowest in energy) for C(t0)
-       m_eigenval_copy = m_eigenval
        do iocc=1,nocc
-         min_index = MINLOC(m_eigenval_copy(:)%re)
-         print*, 'MINLOC = ', min_index
+         m_eigenval_copy = MATMUL(MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)), m_eigenstates(:,:))
+         !print*, 'm_eigenval_copy = ', m_eigenval_copy
+         min_index = MINLOC(ABS(ABS(m_eigenval_copy(:))-1.0_dp))
+         !print*, 'MINLOC = ', min_index
          c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
-         m_eigenval_copy(min_index(1)) = MAXVAL(m_eigenval(:)%re)
          ! renormalize C(t0)
          c_matrix_cmplx(:,iocc,ispin) = c_matrix_cmplx(:,iocc,ispin) / &
             SQRT(SUM( MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)) * c_matrix_cmplx(:,iocc,ispin) ))
        end do
-       print*, 'C matrix = ', c_matrix_cmplx
 
        deallocate(m_matrix_cmplx)
        deallocate(s_matrix_inverse)
