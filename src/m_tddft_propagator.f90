@@ -235,6 +235,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
    deallocate(energy_tddft)
  end if
+ print*, 'C matrix = ', c_matrix_cmplx
 
  call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
@@ -263,18 +264,20 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        ! diagonalize M(t0) to get eigenstates C(t0) for MB propagation
        call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
                   basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
-       !print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
+       print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
+       
        ! take only the occupied states (lowest in energy) for C(t0)
        m_eigenval_copy = m_eigenval
        do iocc=1,nocc
          min_index = MINLOC(m_eigenval_copy(:)%re)
-         !print*, 'MINLOC = ', min_index
+         print*, 'MINLOC = ', min_index
          c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
          m_eigenval_copy(min_index(1)) = MAXVAL(m_eigenval(:)%re)
          ! renormalize C(t0)
          c_matrix_cmplx(:,iocc,ispin) = c_matrix_cmplx(:,iocc,ispin) / &
             SQRT(SUM( MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)) * c_matrix_cmplx(:,iocc,ispin) ))
        end do
+       print*, 'C matrix = ', c_matrix_cmplx
 
        deallocate(m_matrix_cmplx)
        deallocate(s_matrix_inverse)
@@ -452,12 +455,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
    print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
-   !call dump_out_matrix(.TRUE.,'===  P Real  ===',basis%nbf,1,p_matrix_cmplx(:,:,:)%re)
-   !call dump_out_matrix(.TRUE.,'===  P Imaginary  ===',basis%nbf,1,p_matrix_cmplx(:,:,:)%im)
-   !call dump_out_matrix(.TRUE.,'===  S  ===',basis%nbf,1,s_matrix)
-   !call dump_out_matrix(.TRUE.,'===  H Real  ===',basis%nbf,1,h_cmplx(:,:,:)%re)
-   !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',basis%nbf,1,h_cmplx(:,:,:)%im)
-   !call dump_out_matrix(.TRUE.,'===  D  ===',basis%nbf,1,d_matrix)
+   !call dump_out_matrix(.TRUE.,'===  P Real  ===',p_matrix_cmplx(:,:,:)%re)
+   !call dump_out_matrix(.TRUE.,'===  P Imaginary  ===',p_matrix_cmplx(:,:,:)%im)
+   !call dump_out_matrix(.TRUE.,'===  S  ===',s_matrix)
+   !call dump_out_matrix(.TRUE.,'===  H Real  ===',h_cmplx(:,:,:)%re)
+   !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',h_cmplx(:,:,:)%im)
+   !call dump_out_matrix(.TRUE.,'===  D  ===',d_matrix)
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
