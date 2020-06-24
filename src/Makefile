@@ -466,6 +466,14 @@ clean:
 install:
 	install -d $(DESTDIR)$(bindir)
 	install  ../molgw $(DESTDIR)$(bindir)/molgw
+	install  ../utils/run_molgw.py $(DESTDIR)$(bindir)/run_molgw.py
+	install  ../utils/scf_status.py $(DESTDIR)$(bindir)/scf_status.py
+	install -d $(DESTDIR)$(bindir)/basis/
+	install  ../basis/* $(DESTDIR)$(bindir)/basis/
 
 uninstall:
 	$(RM) $(DESTDIR)$(bindir)/molgw
+	$(RM) $(DESTDIR)$(bindir)/run_molgw.py
+	$(RM) $(DESTDIR)$(bindir)/scf_status.py
+	$(RM) -r $(DESTDIR)$(bindir)/basis/
+
