@@ -570,18 +570,19 @@ subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
  real(dp),intent(in)  :: matrix_in(:,:,:)
  real(dp),intent(out) :: matrix_out(:,:,:)
 !=====
- integer                 :: nbf,nstate
+ integer                 :: nbf,nstate,nspin_local
  integer                 :: ispin
  real(dp),allocatable    :: matrix_tmp(:,:)
 !=====
 
- nbf    = SIZE(c_matrix(:,:,:),DIM=1)
- nstate = SIZE(c_matrix(:,:,:),DIM=2)
+ nbf         = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate      = SIZE(c_matrix(:,:,:),DIM=2)
+ nspin_local = SIZE(c_matrix(:,:,:),DIM=3)
 
 
  allocate(matrix_tmp(nbf,nstate))
 
- do ispin=1,nspin
+ do ispin=1,nspin_local
    !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
 
    ! H * C
@@ -988,7 +989,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matri
  integer  :: ispin
  integer  :: ilocal,jlocal,iglobal,jglobal
  integer  :: m_small,n_small
- real(dp),allocatable :: h_small(:,:),h_small2(:,:)
+ real(dp),allocatable :: h_small(:,:),h_small2(:,:,:)
  real(dp),allocatable :: ham_local(:,:),c_matrix_local(:,:),s_matrix_local(:,:)
 !=====
 
@@ -1126,33 +1127,35 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matri
  else ! only one proc selected
 #endif
 
-   allocate(h_small2(nstate,nstate))
+   allocate(h_small2(nstate,nstate,1))
 
    do ispin=1,nspin_local
      write(stdout,'(1x,a,i3)') 'Generalized diagonalization for spin: ',ispin
      call start_clock(timing_diago_hamiltonian)
 
-     allocate(h_small(nbf,nstate))
-     ! h_small(:,:) = MATMUL( TRANSPOSE(x_matrix(:,:)) , &
-     !                          MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
+     !! h_small(:,:) = MATMUL( TRANSPOSE(x_matrix(:,:)) , &
+     !!                          MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
+     call matrix_ao_to_mo(RESHAPE(x_matrix,[nbf,nstate,1]), &
+                          hamiltonian(:,:,ispin:ispin),h_small2)
 
-     ! H * U
-     call DGEMM('N','N',nbf,nstate,nbf,1.0d0,hamiltonian(1,1,ispin),nbf, &
-                                             x_matrix(1,1),nbf,      &
-                                       0.0d0,h_small(1,1),nbf)
-     ! U**T * (H * U)
-     call DGEMM('T','N',nstate,nstate,nbf,1.0d0,x_matrix(1,1),nbf,  &
-                                                h_small(1,1),nbf,            &
-                                          0.0d0,h_small2(1,1),nstate)
-     deallocate(h_small)
+     !allocate(h_small(nbf,nstate))
+     !! H * X
+     !call DGEMM('N','N',nbf,nstate,nbf,1.0d0,hamiltonian(1,1,ispin),nbf, &
+     !                                        x_matrix(1,1),nbf,      &
+     !                                  0.0d0,h_small(1,1),nbf)
+     !! X**T * (H * X)
+     !call DGEMM('T','N',nstate,nstate,nbf,1.0d0,x_matrix(1,1),nbf,  &
+     !                                           h_small(1,1),nbf,            &
+     !                                     0.0d0,h_small2(1,1,1),nstate)
+     !deallocate(h_small)
 
      ! H * C' = C' * E
-     call diagonalize(scf_diago_flavor,h_small2,energy(:,ispin))
+     call diagonalize(scf_diago_flavor,h_small2(:,:,1),energy(:,ispin))
 
-     !c_matrix(:,1:nstate,ispin) = MATMUL( x_matrix(:,:) , h_small2(:,:) )
-     ! C = U * C'
-     call DGEMM('N','N',nbf,nstate,nstate,1.0d0,x_matrix(1,1),nbf, &
-                                                h_small2(1,1),nstate,       &
+     !c_matrix(:,1:nstate,ispin) = MATMUL( x_matrix(:,:) , h_small2(:,:,1) )
+     ! C = X * C'
+     call DGEMM('N','N',nbf,nstate,nstate,1.0d0,x_matrix(1,1),nbf,      &
+                                                h_small2(1,1,1),nstate, &
                                           0.0d0,c_matrix(1,1,ispin),nbf)
 
 
