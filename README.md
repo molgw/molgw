@@ -107,7 +107,7 @@ Please check carefully the dependence so to compile and add it to the right "lev
 The code should compile properly in parallel with "make -j".
 
 
-## Author
+## Main author
 
 Fabien Bruneval
 
