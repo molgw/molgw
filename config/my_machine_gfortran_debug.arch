@@ -1,0 +1,18 @@
+# Sequential compilation
+FC=gfortran 
+
+CPPFLAGS=-DFORTRAN2008 -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY
+
+CXX=g++
+FFLAGS=-cpp  -O0 -g -fcheck=all
+CXXFLAGS=-cpp -O2 # -O0 -g -fbounds-check
+
+LAPACK=-L/opt/lapack-3.9.0/ -llapack -lblas
+
+SCALAPACK=
+
+LIBXC_ROOT=/opt/libxc-4.3.4/
+
+LIBINT_ROOT=/opt/libint-2.4.2/
+
+FFTW_ROOT=

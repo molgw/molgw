@@ -1,14 +1,13 @@
 OPENMP= 
 PYTHON=python
-LIBTOOL=
 
 # Sequential compilation
-FC=ifort -DHAVE_LIBXC 
+FC=ifort
 
-CPPFLAGS= -fpp -DHAVE_LIBXC # -DHAVE_LIBINT_ONEBODY
+CPPFLAGS=-DHAVE_LIBXC # -DHAVE_LIBINT_ONEBODY
 
 CXX=icpc -std=c++11
-FFLAGS= -O3 -xhost -parallel -qopt-matmul
+FFLAGS= -fpp -O3 -xhost -parallel -qopt-matmul
 CXXFLAGS= -O3 -xhost  
 
 LAPACK= -mkl=parallel

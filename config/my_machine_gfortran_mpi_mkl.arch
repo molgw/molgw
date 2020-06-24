@@ -1,14 +1,13 @@
 OPENMP=
 PYTHON=python3
-LIBTOOL=
 
 # Parallel MPI/SCALAPACK compilation with MKL
 FC=mpif90 
 
-CPPFLAGS= -cpp -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
+CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FFLAGS= -m64 -I${MKLROOT}/include -O3 -fexternal-blas -march=native -mtune=native 
+FFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -fexternal-blas -march=native -mtune=native 
 CXXFLAGS= -O3 -march=native -mtune=native
 
 # MKL without threads
