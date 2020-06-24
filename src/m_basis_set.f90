@@ -75,8 +75,8 @@ contains
 subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
  implicit none
 
- character(len=4),intent(in)   :: gaussian_type
- character(len=100),intent(in) :: basis_path
+ character(len=4),intent(in) :: gaussian_type
+ character(len=*),intent(in) :: basis_path
  character(len=100),intent(in) :: basis_name(natom_basis)
  character(len=100),intent(in) :: ecp_basis_name(natom_basis)
  type(basis_set),intent(out)   :: basis

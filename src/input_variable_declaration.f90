@@ -7,18 +7,18 @@
 
  real(dp),protected :: auto_auxil_fsam
  integer,protected :: auto_auxil_lmaxinc
- character(len=140),protected :: comment
- character(len=140),protected :: ecp_auxil_basis
- character(len=140),protected :: ecp_basis
- character(len=140),protected :: ecp_elements
- character(len=140),protected :: ecp_quality
- character(len=140),protected :: ecp_type
- character(len=140),protected :: gaussian_type
+ character(len=256),protected :: comment
+ character(len=256),protected :: ecp_auxil_basis
+ character(len=256),protected :: ecp_basis
+ character(len=256),protected :: ecp_elements
+ character(len=256),protected :: ecp_quality
+ character(len=256),protected :: ecp_type
+ character(len=256),protected :: gaussian_type
  character(len=3),protected :: incore
  character(len=3),protected :: memory_evaluation
- character(len=140),protected :: move_nuclei
+ character(len=256),protected :: move_nuclei
  integer,protected :: nstep
- character(len=140),protected :: scf
+ character(len=256),protected :: scf
  real(dp),protected :: tolforce
  integer,protected :: eri3_nbatch
  integer,protected :: eri3_npcol
@@ -26,7 +26,7 @@
  real(dp),protected :: grid_memory
  integer,protected :: mpi_nproc_ortho
  integer,protected :: scalapack_block_min
- character(len=140),protected :: basis_path
+ character(len=256),protected :: basis_path
  character(len=3),protected :: force_energy_qp
  character(len=3),protected :: ignore_bigrestart
  character(len=3),protected :: print_bigrestart
@@ -44,7 +44,7 @@
  character(len=3),protected :: print_w
  character(len=3),protected :: print_wfn
  character(len=3),protected :: print_yaml
- character(len=140),protected :: read_fchk
+ character(len=256),protected :: read_fchk
  character(len=3),protected :: calc_dens_disc
  character(len=3),protected :: calc_q_matrix
  character(len=3),protected :: calc_spectrum
@@ -60,13 +60,13 @@
  character(len=3),protected :: read_tddft_restart
  real(dp),protected :: write_step
  character(len=3),protected :: assume_scf_converged
- character(len=140),protected :: ci_greens_function
+ character(len=256),protected :: ci_greens_function
  integer,protected :: ci_nstate
  integer,protected :: ci_nstate_self
  integer,protected :: ci_spin_multiplicity
- character(len=140),protected :: ci_type
+ character(len=256),protected :: ci_type
  integer,protected :: dft_core
- character(len=140),protected :: ecp_small_basis
+ character(len=256),protected :: ecp_small_basis
  real(dp),protected :: eta
  character(len=3),protected :: frozencore
  character(len=3),protected :: gwgamma_tddft
@@ -79,35 +79,35 @@
  integer,protected :: nstep_gw
  integer,protected :: nvirtualg
  integer,protected :: nvirtualw
- character(len=140),protected :: postscf
- character(len=140),protected :: postscf_diago_flavor
- character(len=140),protected :: pt3_a_diagrams
- character(len=140),protected :: pt_density_matrix
+ character(len=256),protected :: postscf
+ character(len=256),protected :: postscf_diago_flavor
+ character(len=256),protected :: pt3_a_diagrams
+ character(len=256),protected :: pt_density_matrix
  real(dp),protected :: rcut_mbpt
  real(dp),protected :: scissor
  integer,protected :: selfenergy_state_max
  integer,protected :: selfenergy_state_min
  integer,protected :: selfenergy_state_range
- character(len=140),protected :: small_basis
+ character(len=256),protected :: small_basis
  real(dp),protected :: step_sigma
  character(len=3),protected :: stopping
  character(len=3),protected :: tda
- character(len=140),protected :: tddft_grid_quality
+ character(len=256),protected :: tddft_grid_quality
  real(dp),protected :: toldav
  character(len=3),protected :: triplet
  character(len=3),protected :: use_correlated_density_matrix
  character(len=3),protected :: virtual_fno
  real(dp),protected :: excit_dir(3)
  real(dp),protected :: excit_kappa
- character(len=140),protected :: excit_name
+ character(len=256),protected :: excit_name
  real(dp),protected :: excit_omega
  real(dp),protected :: excit_time0
  integer,protected :: n_hist
  integer,protected :: n_iter
  integer,protected :: n_restart_tddft
  integer,protected :: ncore_tddft
- character(len=140),protected :: pred_corr
- character(len=140),protected :: prop_type
+ character(len=256),protected :: pred_corr
+ character(len=256),protected :: prop_type
  real(dp),protected :: projectile_charge_scaling
  real(dp),protected :: r_disc
  character(len=3),protected :: tddft_frozencore
@@ -120,24 +120,24 @@
  real(dp),protected :: density_matrix_damping
  real(dp),protected :: diis_switch
  real(dp),protected :: gamma_hybrid
- character(len=140),protected :: grid_quality
- character(len=140),protected :: init_hamiltonian
- character(len=140),protected :: integral_quality
+ character(len=256),protected :: grid_quality
+ character(len=256),protected :: init_hamiltonian
+ character(len=256),protected :: integral_quality
  real(dp),protected :: kerker_k0
  real(dp),protected :: level_shifting_energy
  real(dp),protected :: min_overlap
- character(len=140),protected :: mixing_scheme
+ character(len=256),protected :: mixing_scheme
  integer,protected :: npulay_hist
  integer,protected :: nscf
- character(len=140),protected :: partition_scheme
- character(len=140),protected :: scf_diago_flavor
+ character(len=256),protected :: partition_scheme
+ character(len=256),protected :: scf_diago_flavor
  real(dp),protected :: tolscf
  real(dp),protected :: charge
- character(len=140),protected :: length_unit
+ character(len=256),protected :: length_unit
  real(dp),protected :: magnetization
  integer,protected :: nspin
  real(dp),protected :: temperature
- character(len=140),protected :: xyz_file
+ character(len=256),protected :: xyz_file
 
 
 !======================================================================

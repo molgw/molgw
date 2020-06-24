@@ -625,7 +625,7 @@ subroutine read_inputfile_namelist()
  character(len=140)   :: ecp_basis
  character(len=140)   :: ecp_auxil_basis
  character(len=140)   :: ecp_small_basis
- character(len=140)   :: default_basis_path
+ character(len=256)   :: default_basis_path
  integer              :: natom_read
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
