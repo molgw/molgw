@@ -566,22 +566,20 @@ subroutine summary_input(grid_quality,integral_quality)
 !=====
 
  !
- ! Summarize input parameters
- write(stdout,'(/,a,/)')    ' Summary of the input parameters '
+ ! Summarize some important input parameters
+ write(stdout,'(/,a,/)')    ' Summary of important input parameters '
  write(stdout,'(a25,2x,a)') '         SCF type: ',calc_type%scf_name
  write(stdout,'(a25,2x,a)') '    Post SCF type: ',calc_type%postscf_name
- write(stdout,'(a25,i3)')   ' Natom: ',natom
- write(stdout,'(a25,i3)')   ' Nghost:',nghost
- write(stdout,'(a25,f8.4)') ' Electrons: ',electrons
- write(stdout,'(a25,f8.4)') ' Charge: ',charge
- write(stdout,'(a25,f8.4)') ' Magnetization: ',magnetization
- write(stdout,'(a25,2x,a)') ' Basis set: ',basis_name(1)
- write(stdout,'(a25,2x,a)') ' Auxiliary basis set: ',auxil_basis_name(1)
- write(stdout,'(a25,2x,a)') ' Gaussian type: ',gaussian_type
- write(stdout,'(a25,2x,a)') ' Basis file path:',basis_path
- write(stdout,'(a25,i3)')   ' Spin polarization: ',nspin
- write(stdout,'(a25,i3)')   ' SCF steps: ',nscf
- write(stdout,'(a25,f8.4)') ' Mixing: ',alpha_mixing
+ write(stdout,'(a25,i3)')   ' natom: ',natom
+ write(stdout,'(a25,i3)')   ' nghost: ',nghost
+ write(stdout,'(a25,f8.4)') ' electrons: ',electrons
+ write(stdout,'(a25,f8.4)') ' charge: ',charge
+ write(stdout,'(a25,i3)')   ' spin polarization: ',nspin
+ write(stdout,'(a25,f8.4)') ' magnetization: ',magnetization
+ write(stdout,'(a25,2x,a)') ' basis file path:',basis_path
+ write(stdout,'(a25,2x,a)') ' basis set: ',basis_name(1)
+ write(stdout,'(a25,2x,a)') ' auxiliary basis set: ',auxil_basis_name(1)
+ write(stdout,'(a25,2x,a)') ' gaussian type: ',gaussian_type
  write(stdout,'(a25,2x,a)') ' Grid quality: ',grid_quality
  write(stdout,'(a25,2x,a)') ' Integral quality: ',integral_quality
  write(stdout,*)
@@ -633,9 +631,9 @@ subroutine read_inputfile_namelist()
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
  character(len=140)   :: ctmp,ctmp1,ctmp2
- character(len=256)   :: line_char
+ character(len=256)   :: line_char,basis_path_env
  integer              :: ielement_ecp
- integer              :: info1,info2
+ integer              :: info1,info2,istatus
  real(dp)             :: length_factor
 !=====
 
@@ -649,9 +647,18 @@ subroutine read_inputfile_namelist()
 !=====
 
  ! If no value is given to basis_path in the input file,
- ! then get the default value in the source
+ ! then try to obtain it from the environment variable MOLGW_BASIS_PATH
+ ! and if not defined, then get the default value in the source
+ ! basis_path is set in this priority order:
+ ! input file > environment variable > default from the sources
  if( LEN(TRIM(basis_path)) == 0 ) then
-   basis_path = default_basis_path
+   call GET_ENVIRONMENT_VARIABLE('MOLGW_BASIS_PATH',basis_path_env,status=istatus)
+   if( istatus == 0 ) then
+     write(stdout,'(1x,a,a)') 'Found environment variable: MOLGW_BASIS_PATH=',TRIM(basis_path_env)
+     basis_path = TRIM(basis_path_env)
+   else
+     basis_path = default_basis_path
+   endif
  endif
 
 
@@ -883,7 +890,7 @@ subroutine read_inputfile_namelist()
    endif
    read(xyzfile,*)
 
-!Natom read from xyz file but not from input file
+   !natom read from xyz file but not from input file
    natom = natom_read-nghost
    natom_basis = natom_read - nprojectile
 
