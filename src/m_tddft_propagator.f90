@@ -496,6 +496,14 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    if( ABS(time_cur / (mulliken_step)- NINT(time_cur / (mulliken_step))) < 1.0e-7 ) then
      if( print_mulliken_tddft_ ) then
+       if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+         call clean_deallocate('Transformation matrix X',x_matrix)
+         call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
+         call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
+         if( nstate /= nstate_tmp ) then
+           call die('Error with nstate in the TDDFT propagator')
+         end if
+       end if
        call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
        call lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,iwrite_step-1,time_cur)
      end if
@@ -930,8 +938,6 @@ case('MB_PC2B')
      call update_basis_eri(basis,auxil_basis)
      ! Update S matrix (not really needed since U[M(t+dt)] not needed)
      call setup_overlap(basis,s_matrix)
-     ! Analytic evaluation of D(t+dt/2)
-     !call setup_D_matrix_analytic(basis,d_matrix)
      ! Update DFT grids for H_xc evaluation
      if( calc_type%is_dft ) then
        call destroy_dft_grid()
