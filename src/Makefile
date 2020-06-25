@@ -5,8 +5,8 @@ PYTHON=python
 ifeq ($(FC),f77)
   FC=gfortran
 endif
-ifeq ($(FFLAGS),)
-  FFLAGS=-O2
+ifeq ($(FCFLAGS),)
+  FCFLAGS=-O2
 endif
 ifeq ($(CXXFLAGS),)
   CXXFLAGS=-O2
@@ -27,7 +27,7 @@ endif
 
 -include ./my_machine.arch
 
-FC_W_OPTS= $(FC) $(FFLAGS) $(OPENMP) $(CPPFLAGS)
+FC_W_OPTS= $(FC) $(FCFLAGS) $(OPENMP) $(CPPFLAGS)
 CXX_W_OPTS= $(CXX) $(CXXFLAGS) $(CPPFLAGS)
 LINKER= $(LIBTOOL) $(FC_W_OPTS)
 

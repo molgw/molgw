@@ -7,7 +7,7 @@ FC=gfortran
 CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 
+FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 
 CXXFLAGS= -cpp -O3 -march=native -mtune=native
 
 # MKL without threads

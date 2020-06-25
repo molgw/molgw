@@ -20,7 +20,7 @@
 
 ### Changes affecting the compilation
 - GCC 10 is very picky on the routine calls without an interfaces. Many existing calls to BLAS/LAPACK/SCALAPACK had to be fixed.
-- Makefile, my_machine.arch use more standard `FFLAGS` and `CXXFLAGS` variables instead of `FCOPTS` and `CXXOPTS`
+- Makefile, my_machine.arch use more standard `FCFLAGS` and `CXXFLAGS` variables instead of `FCOPTS` and `CXXOPTS`
 - Fortran long lines have been chopped into pieces so to comply with the 132 character limit of Fortran.
 Compiler options such as `-ffree-line-length-none` are not needed any more.
 

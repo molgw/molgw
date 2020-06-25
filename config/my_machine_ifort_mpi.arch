@@ -7,7 +7,7 @@ FC=mpif90
 CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
 
 CXX=icpc  -std=c++11
-FFLAGS= -fpp -O3 -xhost -qopt-matmul
+FCFLAGS= -fpp -O3 -xhost -qopt-matmul
 CXXFLAGS= -O3 -xhost  
 
 LAPACK= -mkl=sequential

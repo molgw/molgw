@@ -7,7 +7,7 @@ FC=gfortran
 CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FFLAGS= -cpp -O3 -march=native -mtune=native 
+FCFLAGS= -cpp -O3 -march=native -mtune=native 
 CXXFLAGS= -cpp -O3 -march=native -mtune=native
 
 LAPACK=  /opt/openblas-0.3.7/lib/libopenblas.a -lm -ldl -lpthread

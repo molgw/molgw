@@ -4,7 +4,7 @@ FC=gfortran
 CPPFLAGS=-DFORTRAN2008 -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FFLAGS=-cpp  -O0 -g -fcheck=all
+FCFLAGS=-cpp  -O0 -g -fcheck=all
 CXXFLAGS=-cpp -O2 # -O0 -g -fbounds-check
 
 LAPACK=-L/opt/lapack-3.9.0/ -llapack -lblas

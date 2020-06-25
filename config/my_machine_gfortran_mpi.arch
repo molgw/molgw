@@ -7,7 +7,7 @@ FC=mpif90
 CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FFLAGS= -cpp -O3 -march=native -mtune=native  # -O0 -g -check all -traceback 
+FCFLAGS= -cpp -O3 -march=native -mtune=native  # -O0 -g -check all -traceback 
 CXXFLAGS= -cpp -O3 -march=native -mtune=native  # -O0 -g -fbounds-check
 
 LAPACK=-L${HOME}/src/lapack-3.5.0/ -llapack -lblas
