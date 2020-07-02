@@ -441,7 +441,7 @@ subroutine identify_negligible_shellpair(basis)
 
      do ibf=1,ni
        do jbf=1,nj
-         if( ABS( integrals(ibf,jbf,ibf,jbf) ) > TOL_INT**2 ) negligible_shellpair(ishell,jshell) = .FALSE.
+         if( SQRT(ABS( integrals(ibf,jbf,ibf,jbf) )) > TOL_INT ) negligible_shellpair(ishell,jshell) = .FALSE.
        enddo
      enddo
 
