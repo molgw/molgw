@@ -98,7 +98,7 @@ subroutine prepare_eri(basis)
  case(very_high) ! almost perfect potentials
    TOL_INT = 1.0e-10_dp
  case(insane)    ! No screening of any integral
-   TOL_INT = 0.0_dp
+   TOL_INT = -1.0_dp
  case default
    call die('integration quality not recognized')
  end select
