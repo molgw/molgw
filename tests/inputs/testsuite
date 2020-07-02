@@ -534,7 +534,7 @@ GW small basis LUMO energy,   3.579917         , 0 , 1.0e-4
 GW HOMO energy            , -11.927726         , 0 , 1.0e-4
 GW LUMO energy            ,   3.286831         , 0 , 1.0e-4
 
-h2o_gw_smallbasis_aug.in  , H2O: GW@PBE0 using a small basis set for virtual orbitals with diffuse functions
+h2o_gw_smallbasis_aug.in  , H2O: GW@PBE0 using a small basis set for virtual orbitals with diffuse functions, noparallel
 SCF Total Energy          , -76.3830840045     , 0 , 1.0e-7
 Lowest neutral excitation ,   8.913835         , 0 , 1.0e-4
 GW small basis HOMO energy, -12.150542         , 0 , 1.0e-4

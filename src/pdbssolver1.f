@@ -9,7 +9,7 @@
 !
 !=========================================================================
 #if defined(HAVE_SCALAPACK)
-      SUBROUTINE PDBSSOLVER1( FLAVOR, 
+      SUBROUTINE PDBSSOLVER1( FLAVOR,
      $                        N, M, IM, JM, DESCM, K, IK, JK, DESCK,
      $                        LAMBDA, X1, IX, JX, DESCX, X2, WORK,
      $                        LWORK, IWORK, LIWORK, INFO )
@@ -291,7 +291,7 @@
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           PDAXPY, PDCOPY, PDSCAL, PDGEADD, PDPOTRF,
-     $                   PDSYEV, PDSYEVR, PDSYEVX, PDSYGST, PXERBLA,
+     $                   PDSYEV, PDSYEVD, PDSYEVR, PDSYEVX, PDSYGST, PXERBLA,
      $                   BLACS_GRIDINFO,
      $                   CHK1MAT, PCHK2MAT, PDTRMM, PDTRSM
 *     ..
@@ -350,20 +350,20 @@
      $           ZERO, 1, N, DIMV, NZ, DATMP, DATMP, IX, JX, DESCX,
      $           DDUM, -1, IWORK, -1, ITMP )
          CASE('d','D')
-            CALL PDSYEVD( 'V', 'L', N, DATMP, IK, JK, DESCK, DATMP, 
+            CALL PDSYEVD( 'V', 'L', N, DATMP, IK, JK, DESCK, DATMP,
      $           DATMP, IX, JX, DESCX, DDUM, -1, IWORK, -1, ITMP )
          CASE('x','X')
             ALLOCATE(ICLUSTR(2*NPROCS))
             ALLOCATE(GAP(NPROCS))
             ABSTOL = PDLAMCH(DESCK(2), 'U')
             CALL PDSYEVX( 'V', 'A', 'L', N, DATMP, IK, JK, DESCK, ZERO,
-     $           ZERO, 1, N, ABSTOL, DIMV, NZ, DATMP, ZERO, 
+     $           ZERO, 1, N, ABSTOL, DIMV, NZ, DATMP, ZERO,
      $           DATMP, IX, JX,
      $           DESCX, DDUM, -1,
      $           IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
             DEALLOCATE(ICLUSTR,GAP)
          CASE DEFAULT
-            CALL PDSYEV( 'V', 'L', N, DATMP, IK, JK, DESCK, DATMP, 
+            CALL PDSYEV( 'V', 'L', N, DATMP, IK, JK, DESCK, DATMP,
      $           DATMP, IX, JX, DESCX, DDUM, -1, ITMP )
             IWORK( 1 ) = 1
          END SELECT

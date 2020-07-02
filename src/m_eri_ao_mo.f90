@@ -434,7 +434,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
 
      ! Transformation of the second index
      call DGEMM('N','N',mstate_count_,nstate_count_,nbf, &
-                1.0d0,tmp1(1,1),mstate_count_,   &
+                1.0d0,tmp1(mstate_min_,1),mstate_count_,   &
                       c_matrix(1,nstate_min_,klspin),nbf, &
                 0.0d0,tmp2(mstate_min_,nstate_min_),mstate_count_)
 

@@ -75,7 +75,7 @@ for key,value in input_var_dict.items():
   elif value['datatype'] =='yes/no':
     ffor.write(' character(len=3),protected :: ' + key +'\n')
   elif value['datatype'] =='characters':
-    ffor.write(' character(len=140),protected :: ' + key +'\n')
+    ffor.write(' character(len=256),protected :: ' + key +'\n')
   else:
     sys.exit('Datatype of variable '+str(key)+' ('+str(value['datatype'])+') is not known')
     

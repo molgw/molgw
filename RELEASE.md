@@ -3,9 +3,10 @@
 -----------------------------------------
 
 -----------------------------------------
-## What's new in version 2.D.beta
+## What's new in version 2.D
 ### Overview
 - Compatibility with gcc/gfortran 10
+- Basis files location can be set from an environment variable MOLGW_BASIS_PATH
 - Printing of standard WFN files
 
 ### Contributors
@@ -13,16 +14,18 @@
 - Mauricio Rodriguez-Mayorga (CEA SRMP, France)
 
 ### Changes affecting the usage
-- Keyword `print_wfn_file` triggers the output of a standard WFN file that can be read with external visualization softwares
+- Keyword `print_wfn_file` triggers the output of a standard WFN file that can be read with external visualization softwares.
+- Environment variable `MOLGW_BASIS_PATH` sets the path to the basis files. It is still be overridden by the input keyword `basis_path`.
+- New default value for `postscf_diago_flavor=' '`. Though faster, the former default value was not stable enough for large systems.
 
 ### Changes affecting the compilation
-- GCC 10 is very picky on the routine calls without an interfaces. Many existing calls to BLAS/LAPACK/SCALAPACK were not accepted any more.
-- Makefile, my_machine.arch use more standard `FFLAGS` and `CXXFLAGS` variables instead of `FCOPTS` and `CXXOPTS`
+- GCC 10 is very picky on the routine calls without an interfaces. Many existing calls to BLAS/LAPACK/SCALAPACK had to be fixed.
+- Makefile, my_machine.arch use more standard `FCFLAGS` and `CXXFLAGS` variables instead of `FCOPTS` and `CXXOPTS`
 - Fortran long lines have been chopped into pieces so to comply with the 132 character limit of Fortran.
 Compiler options such as `-ffree-line-length-none` are not needed any more.
 
 ### Changes affecting the developers
-
+- Please respect the 132-character limit of Fortran.
 
 -----------------------------------------
 ## What's new in version 2.C

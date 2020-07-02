@@ -1,15 +1,14 @@
 OPENMP=-fopenmp
 PYTHON=python3
-LIBTOOL=
 
 # Compilation with MKL include
 FC=gfortran 
 
-CPPFLAGS= -cpp -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
+CPPFLAGS= -DFORTRAN2008 -DHAVE_LIBXC -DHAVE_MKL -DHAVE_LIBINT_ONEBODY
 
 CXX=g++
-FFLAGS= -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 
-CXXFLAGS= -O3 -march=native -mtune=native
+FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 
+CXXFLAGS= -cpp -O3 -march=native -mtune=native
 
 # MKL without threads
 #LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl

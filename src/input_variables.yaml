@@ -801,7 +801,7 @@ postscf_diago_flavor:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: 'D'
+  default: ' '
   comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations.
     Available choices are ' ', 'R', 'D', and 'X'.
 

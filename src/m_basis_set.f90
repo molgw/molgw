@@ -76,8 +76,8 @@ contains
 subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
  implicit none
 
- character(len=4),intent(in)   :: gaussian_type
- character(len=100),intent(in) :: basis_path
+ character(len=4),intent(in) :: gaussian_type
+ character(len=*),intent(in) :: basis_path
  character(len=100),intent(in) :: basis_name(natom_basis)
  character(len=100),intent(in) :: ecp_basis_name(natom_basis)
  type(basis_set),intent(out)   :: basis
@@ -123,8 +123,12 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
    inquire(file=TRIM(basis_filename),exist=file_exists)
    if(.NOT.file_exists) then
-     write(stdout,'(a,a)') ' Looking for file ',TRIM(basis_filename)
-     call die('basis set file not found')
+     write(stdout,'(1x,a,a)') 'Looking for file ',TRIM(basis_filename)
+     write(stdout,'(1x,a)')   'Remember the basis directory path is obtained (by priority order) from:'
+     write(stdout,'(1x,a)')   '  1. the input variable basis_path'
+     write(stdout,'(1x,a)')   '  2. the environment variable MOLGW_BASIS_PATH'
+     write(stdout,'(1x,a)')   '  3. the location of the sources'
+     call die('init_basis_set: basis set file not found')
    endif
 
    !

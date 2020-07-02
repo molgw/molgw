@@ -5,8 +5,8 @@ PYTHON=python
 ifeq ($(FC),f77)
   FC=gfortran
 endif
-ifeq ($(FFLAGS),)
-  FFLAGS=-O2
+ifeq ($(FCFLAGS),)
+  FCFLAGS=-O2
 endif
 ifeq ($(CXXFLAGS),)
   CXXFLAGS=-O2
@@ -27,7 +27,7 @@ endif
 
 -include ./my_machine.arch
 
-FC_W_OPTS= $(FC) $(FFLAGS) $(OPENMP) $(CPPFLAGS)
+FC_W_OPTS= $(FC) $(FCFLAGS) $(OPENMP) $(CPPFLAGS)
 CXX_W_OPTS= $(CXX) $(CXXFLAGS) $(CPPFLAGS)
 LINKER= $(LIBTOOL) $(FC_W_OPTS)
 
@@ -339,7 +339,7 @@ m_eri_calculate.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_timing.f90 m_wa
 m_eri.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_memory.f90 m_warning.f90 m_scalapack.f90 m_cart_to_pure.f90 m_basis_set.f90 m_inputparam.f90 m_libint_tools.f90 m_eri.f90
 	$(FC_W_OPTS) -c m_eri.f90 $(LIBXC_INCS)
 
-m_basis_set.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_elements.f90 m_gaussian.f90 m_mpi.f90 m_ecp.f90 m_cart_to_pure.f90 m_atoms.f90 m_string_tools.f90 m_inputparam.f90 \
+m_basis_set.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_elements.f90 m_gaussian.f90 m_mpi.f90 m_ecp.f90 m_cart_to_pure.f90 m_atoms.f90 m_string_tools.f90 \
                m_basis_set.f90
 	$(FC_W_OPTS) -c m_basis_set.f90 $(LIBXC_INCS)
 
@@ -465,7 +465,15 @@ clean:
 
 install:
 	install -d $(DESTDIR)$(bindir)
-	install  ../molgw $(DESTDIR)$(bindir)/molgw
+	install  ../molgw $(DESTDIR)$(bindir)
+	install  ../utils/run_molgw.py $(DESTDIR)$(bindir)
+	install  ../utils/scf_status.py $(DESTDIR)$(bindir)
+	install -d $(DESTDIR)$(bindir)/basis/
+	install  ../basis/* $(DESTDIR)$(bindir)/basis/
 
 uninstall:
 	$(RM) $(DESTDIR)$(bindir)/molgw
+	$(RM) $(DESTDIR)$(bindir)/run_molgw.py
+	$(RM) $(DESTDIR)$(bindir)/scf_status.py
+	$(RM) -r $(DESTDIR)$(bindir)/basis/
+

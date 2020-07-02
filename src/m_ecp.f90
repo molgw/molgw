@@ -112,8 +112,12 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
    ecp_filename = TRIM(ecp_path)//'/'//TRIM(ADJUSTL(element))//'_'//TRIM(ecp_name)
    inquire(file=TRIM(ecp_filename),exist=file_exists)
    if( .NOT. file_exists ) then
-     write(stdout,*) 'Looking for file: ',ecp_filename
-     call die('File not found')
+     write(stdout,'(1x,a,a)') 'Looking for file ',TRIM(ecp_filename)
+     write(stdout,'(1x,a)')   'Remember the basis directory path is obtained (by priority order) from:'
+     write(stdout,'(1x,a)')   '  1. the input variable basis_path'
+     write(stdout,'(1x,a)')   '  2. the environment variable MOLGW_BASIS_PATH'
+     write(stdout,'(1x,a)')   '  3. the location of the sources'
+     call die('init_ecp: ECP file not found')
    endif
    open(newunit=ecpfile,file=TRIM(ecp_filename),status='old',action='read')
 
