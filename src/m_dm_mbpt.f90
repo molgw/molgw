@@ -20,6 +20,7 @@ module m_dm_mbpt
  use m_hamiltonian_wrapper
  use m_scf
  use m_multipole
+ use m_pt_density_matrix
 
 
 contains
@@ -80,15 +81,15 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
    select case(TRIM(pt_density_matrix))
    case('ONE-RING')
      ! This keyword calculates the 1-ring density matrix as it is derived in PT2 theory
-     call onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_corr)
+     call onering_density_matrix(occupation,energy,c_matrix,p_matrix_corr)
    case('PT2')
      ! This keyword calculates the PT2 density matrix as it is derived in PT2 theory (differs from MP2 density matrix)
-     call pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_corr)
+     call pt2_density_matrix(occupation,energy,c_matrix,p_matrix_corr)
    case('GW','G0W0')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
-     call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
+     call gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
    case('EVGW','GNWN')
      ! This keyword calculates the GW density matrix calculated with GW QP energies
@@ -100,7 +101,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
      endif
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy_qp,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
-     call gw_density_matrix(nstate,basis,occupation,energy_qp,c_matrix,wpol,p_matrix_corr)
+     call gw_density_matrix(occupation,energy_qp,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
      deallocate(energy_qp)
    case('GW_IMAGINARY','G0W0_IMAGINARY')
@@ -108,14 +109,14 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
      ! using an imaginary axis integral
      call init_spectral_function(nstate,occupation,nomega_imag,wpol)
      call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,wpol)
-     call gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
+     call gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
    case('GW_DYSON','G0W0_DYSON')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      ! using an imaginary axis integral
      call init_spectral_function(nstate,occupation,nomega_imag,wpol)
      call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,wpol)
-     call gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
+     call gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
    case('HF')
    case default

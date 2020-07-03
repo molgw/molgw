@@ -2,11 +2,11 @@
 ! This file is part of MOLGW.
 ! Author: Fabien Bruneval
 !
-! This file contains
+! This module contains
 ! the many-body perturbation theory to obtain the (perturbative) density matrix
 !
 !=========================================================================
-subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
+module m_pt_density_matrix
   use m_definitions
   use m_mpi
   use m_mpi_ortho
@@ -17,24 +17,36 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
   use m_inputparam
   use m_hamiltonian_onebody
   use m_selfenergy_tools
+  use m_hamiltonian_tools
+  use m_spectral_function
+  use m_io
+
+
+
+
+contains
+
+
+!=========================================================================
+subroutine pt2_density_matrix(occupation,energy,c_matrix,p_matrix)
   implicit none
 
-  integer,intent(in)         :: nstate
-  type(basis_set),intent(in) :: basis
-  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
-  real(dp),intent(inout)     :: p_matrix(basis%nbf,basis%nbf,nspin)
+  real(dp),intent(in)        :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)        :: c_matrix(:,:,:)
+  real(dp),intent(inout)     :: p_matrix(:,:,:)
   !=====
-  integer                 :: file_density_matrix
-  integer                 :: pstate,qstate
-  integer                 :: istate,jstate,kstate
-  integer                 :: astate,bstate,cstate
-  integer                 :: pqspin
-  real(dp)                :: denom1,denom2
-  real(dp)                :: num1,num2
-  real(dp)                :: p_matrix_pt2(nstate,nstate,nspin)
+  integer              :: nstate
+  integer              :: file_density_matrix
+  integer              :: pstate,qstate
+  integer              :: istate,jstate,kstate
+  integer              :: astate,bstate,cstate
+  integer              :: pqspin
+  real(dp)             :: denom1,denom2
+  real(dp)             :: num1,num2
+  real(dp),allocatable :: p_matrix_pt2(:,:,:)
   !=====
 
+  nstate = SIZE(occupation,DIM=1)
 
   call start_clock(timing_mbpt_dm)
 
@@ -50,7 +62,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
 
 
   ! Full calculation of the PT2 density matrix
-
+  allocate(p_matrix_pt2(nstate,nstate,nspin))
   p_matrix_pt2(:,:,:) = 0.0_dp
   ! so far, only spin-restricted calculation are possible
   pqspin = 1
@@ -148,8 +160,9 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
   enddo
 
 
-  call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_pt2,p_matrix)
+  call update_density_matrix(occupation,c_matrix,p_matrix_pt2,p_matrix)
 
+  deallocate(p_matrix_pt2)
 
   if( print_density_matrix_ .AND. is_iomaster ) then
     write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
@@ -173,37 +186,27 @@ end subroutine pt2_density_matrix
 
 
 !=========================================================================
-subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
-  use m_definitions
-  use m_mpi
-  use m_mpi_ortho
-  use m_warning
-  use m_timing
-  use m_basis_set
-  use m_eri_ao_mo
-  use m_inputparam
-  use m_hamiltonian_onebody
-  use m_selfenergy_tools
+subroutine onering_density_matrix(occupation,energy,c_matrix,p_matrix)
   implicit none
 
-  integer,intent(in)         :: nstate
-  type(basis_set),intent(in) :: basis
-  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
-  real(dp),intent(inout)     :: p_matrix(basis%nbf,basis%nbf,nspin)
+  real(dp),intent(in)     :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)     :: c_matrix(:,:,:)
+  real(dp),intent(inout)  :: p_matrix(:,:,:)
   !=====
-  integer                 :: file_density_matrix
-  integer                 :: pstate,qstate
-  integer                 :: istate,jstate,kstate
-  integer                 :: astate,bstate,cstate
-  integer                 :: pqspin
-  real(dp)                :: denom1,denom2
-  real(dp)                :: num1,num2
-  real(dp)                :: p_matrix_pt2(nstate,nstate,nspin)
+  integer              :: nstate
+  integer              :: file_density_matrix
+  integer              :: pstate,qstate
+  integer              :: istate,jstate,kstate
+  integer              :: astate,bstate,cstate
+  integer              :: pqspin
+  real(dp)             :: denom1,denom2
+  real(dp)             :: num1,num2
+  real(dp),allocatable :: p_matrix_pt2(:,:,:)
   !=====
-
 
   call start_clock(timing_mbpt_dm)
+
+  nstate = SIZE(occupation,DIM=1)
 
   write(stdout,'(/,a)') ' Calculate the 1-ring density matrix'
 
@@ -218,6 +221,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
 
   ! Full calculation of the 1-ring density matrix
 
+  allocate(p_matrix_pt2(nstate,nstate,nspin))
   p_matrix_pt2(:,:,:) = 0.0_dp
   pqspin = 1
 
@@ -310,8 +314,9 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
   enddo
 
 
-  call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_pt2,p_matrix)
+  call update_density_matrix(occupation,c_matrix,p_matrix_pt2,p_matrix)
 
+  deallocate(p_matrix_pt2)
 
   if( print_density_matrix_ .AND. is_iomaster ) then
     write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
@@ -335,27 +340,15 @@ end subroutine onering_density_matrix
 
 
 !=========================================================================
-subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix)
-  use m_definitions
-  use m_mpi
-  use m_mpi_ortho
-  use m_warning
-  use m_timing
-  use m_basis_set
-  use m_eri_ao_mo
-  use m_inputparam
-  use m_hamiltonian_onebody
-  use m_selfenergy_tools
-  use m_spectral_function
+subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
   implicit none
 
-  integer,intent(in)                 :: nstate
-  type(basis_set),intent(in)         :: basis
-  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)                :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                :: c_matrix(:,:,:)
   type(spectral_function),intent(in) :: wpol
-  real(dp),intent(inout)             :: p_matrix(basis%nbf,basis%nbf,nspin)
+  real(dp),intent(inout)             :: p_matrix(:,:,:)
   !=====
+  integer  :: nstate
   integer  :: pstate,qstate
   integer  :: istate,jstate
   integer  :: astate,bstate
@@ -364,12 +357,14 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
   integer  :: npole_local,ipole_local
   integer  :: nstate_occ,nstate_virt
   integer  :: file_density_matrix
-  real(dp) :: p_matrix_gw(nstate,nstate,nspin)
+  real(dp),allocatable :: p_matrix_gw(:,:,:)
   real(dp),allocatable :: bra_occ(:,:),bra_virt(:,:)
   real(dp),allocatable :: bra_occ_local(:,:),bra_virt_local(:,:)
   !=====
 
   call start_clock(timing_mbpt_dm)
+
+  nstate = SIZE(occupation,DIM=1)
 
   write(stdout,'(/,a)') ' Calculate the GW density matrix'
 
@@ -384,7 +379,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
 
 
   ! First order calculation of the GW density matrix
-
+  allocate(p_matrix_gw(nstate,nstate,nspin))
   p_matrix_gw(:,:,:) = 0.0_dp
   pqspin = 1
 
@@ -513,8 +508,9 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
     enddo
   enddo
 
-  call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_gw,p_matrix)
+  call update_density_matrix(occupation,c_matrix,p_matrix_gw,p_matrix)
 
+  deallocate(p_matrix_gw)
 
   if( print_density_matrix_ .AND. is_iomaster ) then
     write(stdout,'(1x,a)') 'Write DENSITY_MATRIX file'
@@ -537,30 +533,17 @@ end subroutine gw_density_matrix
 
 
 !=========================================================================
-subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix)
-  use m_definitions
-  use m_timing
-  use m_warning
-  use m_memory
-  use m_scalapack
-  use m_inputparam
-  use m_mpi
-  use m_basis_set
-  use m_spectral_function
-  use m_eri_ao_mo
-  use m_selfenergy_tools
-  use m_io
+subroutine gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix)
   implicit none
 
-  type(basis_set),intent(in)         :: basis
-  integer,intent(in)                 :: nstate
-  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)                :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                :: c_matrix(:,:,:)
   type(spectral_function),intent(in) :: wpol
-  real(dp),intent(inout)             :: p_matrix(basis%nbf,basis%nbf,nspin)
+  real(dp),intent(inout)             :: p_matrix(:,:,:)
   !=====
   real(dp),parameter   :: alpha=1.0_dp
   real(dp),parameter   :: beta=1.0_dp
+  integer              :: nstate
   integer              :: iomegas,iomega
   integer              :: info
   real(dp),allocatable :: eri3_sca_p(:,:),eri3_sca_q(:,:)
@@ -584,11 +567,13 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
 
   call start_clock(timing_mbpt_dm)
 
+  nstate = SIZE(occupation,DIM=1)
+
   write(stdout,'(/,1x,a)') 'GW density matrix from a grid of imaginary frequencies'
 
   nprow = 1
   npcol = 1
-#if defined HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
   ! Get the processor grid included in the input wpol%desc_chi
   call BLACS_GRIDINFO(wpol%desc_chi(CTXT_),nprow,npcol,iprow,ipcol)
   write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow,' x ',npcol
@@ -694,7 +679,7 @@ subroutine gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p
     enddo
   enddo
 
-  call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_gw,p_matrix)
+  call update_density_matrix(occupation,c_matrix,p_matrix_gw,p_matrix)
 
 
   if( print_density_matrix_ .AND. is_iomaster ) then
@@ -719,29 +704,17 @@ end subroutine gw_density_matrix_imag
 
 
 !=========================================================================
-subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix)
-  use m_definitions
-  use m_timing
-  use m_warning
-  use m_memory
-  use m_scalapack
-  use m_inputparam
-  use m_mpi
-  use m_basis_set
-  use m_spectral_function
-  use m_eri_ao_mo
-  use m_selfenergy_tools
+subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix)
   implicit none
 
-  type(basis_set),intent(in)         :: basis
-  integer,intent(in)                 :: nstate
-  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)                :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                :: c_matrix(:,:,:)
   type(spectral_function),intent(in) :: wpol
-  real(dp),intent(inout)             :: p_matrix(basis%nbf,basis%nbf,nspin)
+  real(dp),intent(inout)             :: p_matrix(:,:,:)
   !=====
   real(dp),parameter   :: alpha=1.0_dp
   real(dp),parameter   :: beta=1.0_dp
+  integer              :: nstate
   integer              :: iomegas,iomega
   integer              :: info
   real(dp),allocatable :: eri3_sca_p(:,:),eri3_sca_q(:,:)
@@ -766,11 +739,13 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
 
   call start_clock(timing_mbpt_dm)
 
+  nstate = SIZE(occupation,DIM=1)
+
   write(stdout,'(/,1x,a)') 'GW density matrix from a grid of imaginary frequencies'
 
   nprow = 1
   npcol = 1
-#if defined HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
   ! Get the processor grid included in the input wpol%desc_chi
   call BLACS_GRIDINFO(wpol%desc_chi(CTXT_),nprow,npcol,iprow,ipcol)
   write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow,' x ',npcol
@@ -901,7 +876,9 @@ subroutine gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,
     enddo
   enddo
 
-  call update_density_matrix(basis%nbf,nstate,occupation,c_matrix,p_matrix_gw,p_matrix)
+  call update_density_matrix(occupation,c_matrix,p_matrix_gw,p_matrix)
+
+  deallocate(p_matrix_gw)
 
 
   if( print_density_matrix_ .AND. is_iomaster ) then
@@ -926,21 +903,21 @@ end subroutine gw_density_matrix_dyson_imag
 
 
 !=========================================================================
-subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_mo,p_matrix)
-  use m_definitions
-  use m_inputparam
-  use m_hamiltonian_tools
+subroutine update_density_matrix(occupation,c_matrix,p_matrix_mo,p_matrix)
   implicit none
 
-  integer,intent(in)     :: nbf,nstate
-  real(dp),intent(in)    :: occupation(nstate,nspin)
-  real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
-  real(dp),intent(in)    :: p_matrix_mo(nstate,nstate,nspin)
-  real(dp),intent(inout) :: p_matrix(nbf,nbf,nspin)
+  real(dp),intent(in)    :: occupation(:,:)
+  real(dp),intent(in)    :: c_matrix(:,:,:)
+  real(dp),intent(in)    :: p_matrix_mo(:,:,:)
+  real(dp),intent(inout) :: p_matrix(:,:,:)
   !=====
   integer              :: pstate,pqspin
+  integer              :: nbf,nstate
   real(dp),allocatable :: p_matrix_tmp(:,:,:)
   !=====
+
+  nbf    = SIZE(c_matrix,DIM=1)
+  nstate = SIZE(c_matrix,DIM=2)
 
   ! Input density matrix (p_matrix_mo) is the change in the density matrix on the MO
   ! Input density matrix (p_matrix) is the Fock density matrix on the AO
@@ -973,4 +950,5 @@ subroutine update_density_matrix(nbf,nstate,occupation,c_matrix,p_matrix_mo,p_ma
 end subroutine update_density_matrix
 
 
+end module m_pt_density_matrix
 !=========================================================================
