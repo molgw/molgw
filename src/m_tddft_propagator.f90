@@ -392,8 +392,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
  if( print_mulliken_tddft_ ) then
-   call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,0,time_min)
-   call lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,0,time_min)
+   call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,0,time_min)
+   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,0,time_min)
  end if
 
  call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field,0)
@@ -500,12 +500,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          call clean_deallocate('Transformation matrix X',x_matrix)
          call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
          call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
-         if( nstate /= nstate_tmp ) then
-           call die('Error with nstate in the TDDFT propagator')
-         end if
        end if
-       call mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
-       call lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,iwrite_step-1,time_cur)
+       call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
+       call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,iwrite_step-1,time_cur)
      end if
    end if
 
@@ -647,30 +644,6 @@ subroutine update_basis_eri(basis,auxil_basis)
  endif
 
 end subroutine update_basis_eri
-
-
-!=========================================================================
-subroutine update_S_X(basis,nstate,x_matrix,s_matrix)
-
- implicit none
- type(basis_set),intent(in)         :: basis
- integer,intent(in)                 :: nstate
- real(dp),allocatable,intent(inout) :: x_matrix(:,:)
- real(dp),intent(inout)             :: s_matrix(:,:)
-!=====
- integer                            :: nstate_tmp
-!=====
-
- call clean_deallocate('Transformation matrix X',x_matrix)
-
- call setup_overlap(basis,s_matrix)
- call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
-
- if( nstate /= nstate_tmp ) then
-   call die('Error with nstate in the TDDFT propagator')
- end if
-
-end subroutine update_S_X
 
 
 !=========================================================================
@@ -966,17 +939,6 @@ case('MB_PC2B')
 
  ! ///////////////////////////////////
  case('PC0')
-  ! if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-  !   !=== time_cur = t + dt
-  !   call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
-  !   call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * ( time_cur - time_read ))
-  !   call update_basis_eri(basis,auxil_basis)
-  !   call update_S_X(basis,nstate,x_matrix,s_matrix)
-  !   if( calc_type%is_dft ) then
-  !     call destroy_dft_grid()
-  !     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
-  !   endif
-  ! endif
    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
    call setup_hamiltonian_cmplx(basis,               &
                                 nstate,                  &

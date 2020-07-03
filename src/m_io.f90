@@ -437,14 +437,14 @@ end subroutine mulliken_pdos
 
 
 !=========================================================================
-subroutine mulliken_pdos_cmplx(nstate,basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,itau,time_cur)
+subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,itau,time_cur)
  implicit none
- integer,intent(in)         :: nstate,itau
+ integer,intent(in)         :: itau
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: s_matrix(:,:)
  real(dp),intent(in)        :: time_cur
- real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
 !=====
  integer                    :: ibf,li,ibf1,ibf2,ishell
  integer                    :: natom1,natom2,istate,ispin
@@ -600,15 +600,15 @@ end subroutine lowdin_pdos
 
 
 !=========================================================================
-subroutine lowdin_pdos_cmplx(nstate,basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,itau,time_cur)
+subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,itau,time_cur)
  implicit none
- integer,intent(in)         :: nstate,itau
+ integer,intent(in)         :: itau
  integer,intent(in)         :: file_lowdin
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: s_matrix_sqrt(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: s_matrix_sqrt(:,:)
  real(dp),intent(in)        :: time_cur
- real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
 !=====
  integer                    :: ibf,li,ibf1,ibf2,ishell,ibf_ibf,n_column
  integer                    :: natom1,natom2,istate,ispin,atom_sampled

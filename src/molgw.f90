@@ -166,7 +166,11 @@ program molgw
    ! calculation
    !
    ! A crucial parameter is defined here: nstate
-   call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix,s_matrix_sqrt)
+   if(print_pdos_) then
+     call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix,s_matrix_sqrt)
+   else
+     call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix)
+   end if
 
    allocate(occupation(nstate,nspin))
    allocate(    energy(nstate,nspin))
