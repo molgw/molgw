@@ -13,6 +13,12 @@ module m_selfenergy_tools
  use m_inputparam
  use m_numerical_tools
  use m_hamiltonian_tools
+ use m_atoms
+ use m_inputparam
+ use m_basis_set
+ use m_dft_grid
+ use m_hamiltonian_wrapper
+ use m_lbfgs
 
  !
  ! frozen core approximation parameters
@@ -496,7 +502,6 @@ end subroutine output_qp_energy_yaml
 
 !=========================================================================
 subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
- use m_atoms
  implicit none
 
  integer,intent(in)                  :: selfenergy_technique
@@ -616,10 +621,6 @@ end subroutine destroy_selfenergy_grid
 
 !=========================================================================
 subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
- use m_inputparam
- use m_basis_set
- use m_dft_grid
- use m_hamiltonian_wrapper
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -737,7 +738,6 @@ end subroutine apply_qs_approximation
 
 !=========================================================================
 subroutine self_energy_fit(se)
- use m_lbfgs
  implicit none
 
  type(selfenergy_grid),intent(inout) :: se
