@@ -191,12 +191,16 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  write(stdout,'(/,1x,a)') "===INITIAL CONDITIONS==="
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
-   ! assign xatom_start, c_matrix_orth_cmplx, time_min with values given in RESTART File
-   call read_restart_tddft(nstate,time_read,occupation,c_matrix_orth_cmplx)
-   time_min = time_read
-   do ispin=1,nspin
-     c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
-   end do
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     call read_restart_tddft(nstate,time_read,occupation,c_matrix_cmplx)
+   else
+     ! assign xatom_start, c_matrix_orth_cmplx, time_min with values given in RESTART File
+     call read_restart_tddft(nstate,time_read,occupation,c_matrix_orth_cmplx)
+     time_min = time_read
+     do ispin=1,nspin
+       c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
+     end do
+   end if
    xprojectile = xatom(:,natom)
    call change_position_one_atom(natom,xprojectile)
    call change_basis_center_one_atom(natom_basis,xprojectile)
@@ -515,7 +519,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    ! ---print tdddft restart each n_restart_tddft steps---
    if( print_tddft_restart_ .AND. mod(itau,n_restart_tddft)==0 ) then
-     call write_restart_tddft(nstate,time_cur,occupation,c_matrix_orth_cmplx)
+     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+       call write_restart_tddft(nstate,time_cur,occupation,c_matrix_cmplx)
+     else
+       call write_restart_tddft(nstate,time_cur,occupation,c_matrix_orth_cmplx)
+     end if
    end if
 
   time_cur = time_min + itau*time_step
@@ -528,8 +536,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 !********end time loop*******************
 
  if(print_tddft_restart_) then
-   !time_cur-time_step to be consistent with the actual last moment of the simulation
-   call write_restart_tddft(nstate,time_cur-time_step,occupation,c_matrix_orth_cmplx)
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     !time_cur-time_step to be consistent with the actual last moment of the simulation
+     call write_restart_tddft(nstate,time_cur-time_step,occupation,c_matrix_cmplx)
+   else
+     call write_restart_tddft(nstate,time_cur-time_step,occupation,c_matrix_orth_cmplx)
+   end if
  end if
 
  if( is_iomaster) then
@@ -1534,12 +1546,12 @@ end function check_identity_cmplx
 
 
 !=========================================================================
-subroutine write_restart_tddft(nstate,time_cur,occupation,c_matrix_orth_cmplx)
+subroutine write_restart_tddft(nstate,time_cur,occupation,c_matrix_tddft)
  implicit none
  integer,intent(in)         :: nstate
  real(dp),intent(in)        :: time_cur
  real(dp),intent(in)        :: occupation(:,:)
- complex(dp),intent(in)     :: c_matrix_orth_cmplx(nstate,nocc,nspin)
+ complex(dp),intent(in)     :: c_matrix_tddft(:,:,:)
 !===
  integer                    :: restartfile
  integer                    :: istate,ispin
@@ -1567,7 +1579,7 @@ subroutine write_restart_tddft(nstate,time_cur,occupation,c_matrix_orth_cmplx)
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
    do istate=1,nocc
-     write(restartfile) c_matrix_orth_cmplx(:,istate,ispin)
+     write(restartfile) c_matrix_tddft(:,istate,ispin)
    enddo
  enddo
 
@@ -1668,11 +1680,11 @@ end subroutine check_restart_tddft
 
 
 !=========================================================================
-subroutine read_restart_tddft(nstate,time_min,occupation,c_matrix_orth_cmplx)
+subroutine read_restart_tddft(nstate,time_min,occupation,c_matrix_tddft)
  implicit none
- complex(dp),intent(inout)  :: c_matrix_orth_cmplx(nstate,nocc,nspin)
+ complex(dp),intent(inout)  :: c_matrix_tddft(:,:,:)
  real(dp),intent(inout)     :: time_min
- real(dp),intent(inout)     :: occupation(nstate,nspin)
+ real(dp),intent(inout)     :: occupation(:,:)
  integer,intent(in)         :: nstate
 !===
  logical                    :: file_exists
@@ -1732,7 +1744,7 @@ subroutine read_restart_tddft(nstate,time_min,occupation,c_matrix_orth_cmplx)
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
    do istate=1,nocc
-     read(restartfile) c_matrix_orth_cmplx(:,istate,ispin)
+     read(restartfile) c_matrix_tddft(:,istate,ispin)
    enddo
  enddo
 
