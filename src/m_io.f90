@@ -2889,17 +2889,18 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
  logical :: file_exists,found
  integer :: fu
  integer :: istat
- integer :: ispin,ibf,jbf,ijbf
+ integer :: ispin,ibf,jbf,ijbf,ibf_molgw
  integer :: nel
- integer :: block_d(6,6)
- integer :: block_f(10,10)
- integer :: block_g(15,15)
- integer :: block_h(21,21)
- integer :: block_j(28,28)
  real(dp) :: swap(basis%nbf,basis%nbf)
  real(dp),allocatable :: p_matrix_read(:)
  character(len=256) :: line
  character(len=100) :: keyword
+ integer,parameter :: ammax_g2m = 6
+ integer :: am,nbf_am
+ type g2m
+   real(dp),allocatable    :: block(:,:)
+ end type
+ type(g2m),allocatable :: reordering(:)
 !=====
 
  p_matrix_out(:,:,:) = 0.0_dp
@@ -2910,10 +2911,12 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
    return
  endif
 
- if( basis%gaussian_type /= 'CART' ) then
-   call issue_warning('read_gaussian_fchk: Pure gaussians not coded yet')
-   return
- endif
+ allocate(reordering(0:ammax_g2m))
+ do am=0,ammax_g2m
+   nbf_am = number_basis_function_am(basis%gaussian_type,am)
+   allocate(reordering(am)%block(nbf_am,nbf_am))
+   reordering(am)%block(:,:) = 0
+ enddo
 
  if( is_iomaster ) then
 
@@ -2974,123 +2977,70 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
    enddo
    close(fu)
 
-
+   !
    ! Reorder the basis functions from Gaussian to Libint convention
-   ! s and p orbitals are unchanged
-   ! gaussian d orbital order is xx, yy, zz, xy, yz, xz
-   ! libint   d orbital order is xx, xy, xz, yy, yz, zz
+   !
+   if( basis%gaussian_type == 'CART') then
+     ! s and p orbitals are unchanged
+     ! gaussian d orbital order is xx, yy, zz, xy, yz, xz
+     ! libint   d orbital order is xx, xy, xz, yy, yz, zz
+     reordering(0)%block(:,:) = 1
 
-   block_d(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, &
-                             0, 0, 0, 0, 1, 0, &
-                             0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, &
-                             0, 0, 1, 0, 0, 0 ] , [ 6, 6 ] )
+     reordering(1)%block(:,:) = RESHAPE( [ 1, 0, 0, 0, 1, 0, 0, 0, 1] , [ 3, 3 ] )
 
-   block_f(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
-                             0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
-                             0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
-                             0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
-                             0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
-                             0, 0, 1, 0, 0, 0, 0, 0, 0, 0 ] , [ 10, 10 ] )    !OK
+     reordering(2)%block(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, &
+                                           0, 0, 0, 1, 0, 0, &
+                                           0, 0, 0, 0, 1, 0, &
+                                           0, 1, 0, 0, 0, 0, &
+                                           0, 0, 0, 0, 0, 1, &
+                                           0, 0, 1, 0, 0, 0 ] , [ 6, 6 ] )
 
-   block_g(:,:) = RESHAPE( [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 15, 15 ] )
+     reordering(3)%block(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
+                                           0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
+                                           0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
+                                           0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
+                                           0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
+                                           0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
+                                           0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
+                                           0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
+                                           0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
+                                           0, 0, 1, 0, 0, 0, 0, 0, 0, 0 ] , [ 10, 10 ] )    !OK
 
-   block_h(:,:) = RESHAPE( [ &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 21, 21 ] )
-
-   block_j(:,:) = RESHAPE( [ &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 28, 28 ] )
+     do am=4,ammax_g2m
+       nbf_am = number_basis_function_am(basis%gaussian_type,am)
+       do ibf=1,nbf_am
+         reordering(am)%block(ibf,nbf_am+1-ibf) = 1
+       enddo
+     enddo
+   else
+     ! s
+     reordering(0)%block(1,1) = 1
+     ! p
+     reordering(1)%block(1,3) = 1
+     reordering(1)%block(2,1) = 1
+     reordering(1)%block(3,2) = 1
+     do am=2,ammax_g2m
+       nbf_am = number_basis_function_am(basis%gaussian_type,am)
+       write(stdout,*) 'am = ',am
+       do ibf=1,nbf_am
+         ibf_molgw = ( nbf_am + 1 ) / 2 - ( 2 * MODULO(ibf,2) - 1 ) * ibf / 2
+         reordering(am)%block(ibf,ibf_molgw) = 1
+       enddo
+     enddo
+   endif
 
    swap(:,:) = 0.0_dp
    ibf = 1
    do while( ibf <= basis%nbf )
-     select case(basis%bfc(ibf)%am)
-     case(0)
-       swap(ibf,ibf) = 1.0_dp
-     case(1)
-       swap(ibf  ,ibf  ) = 1.0_dp
-       swap(ibf+1,ibf+1) = 1.0_dp
-       swap(ibf+2,ibf+2) = 1.0_dp
-     case(2)
-       swap(ibf:ibf+5,ibf:ibf+5) = block_d(:,:)
-     case(3)
-       swap(ibf:ibf+9,ibf:ibf+9) = block_f(:,:)
-     case(4)
-       swap(ibf:ibf+14,ibf:ibf+14) = block_g(:,:)
-     case(5)
-       swap(ibf:ibf+20,ibf:ibf+20) = block_h(:,:)
-     case(6)
-       swap(ibf:ibf+27,ibf:ibf+27) = block_j(:,:)
-     case default
+     am = basis%bff(ibf)%am
+     if( am > ammax_g2m ) &
        call die('read_gaussian_fchk: too high angular momentum, not coded yet')
-     end select
-     ibf = ibf + number_basis_function_am('CART',basis%bfc(ibf)%am)
+     nbf_am = number_basis_function_am(basis%gaussian_type,am)
+
+     swap(ibf:ibf+nbf_am-1,ibf:ibf+nbf_am-1) = reordering(am)%block(:,:)
+
+     ibf = ibf + nbf_am
+
    enddo
 
    p_matrix_out(:,:,1) = MATMUL( TRANSPOSE(swap), MATMUL(p_matrix_out(:,:,1),swap) )
