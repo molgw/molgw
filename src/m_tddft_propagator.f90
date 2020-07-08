@@ -141,49 +141,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_allocate('Kinetic operator T for TDDFT',hamiltonian_kinetic,basis%nbf,basis%nbf)
  call clean_allocate('Nucleus operator V for TDDFT',hamiltonian_nucleus,basis%nbf,basis%nbf)
 
- call setup_overlap(basis,s_matrix)
- call setup_D_matrix_analytic(basis,d_matrix)
-
- ! x_matrix is now allocated with dimension (basis%nbf,nstate))
- call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
- if( nstate /= nstate_tmp ) then
-   call die('Error with nstate in the TDDFT propagator')
- end if
-
- call nucleus_nucleus_energy(en_tddft%nuc_nuc)
-
- !
- ! Setup the fixed part of the Hamiltonian: the kinetic energy and the fixed nuclei potential
- !
- call setup_kinetic(basis,hamiltonian_kinetic)
-
- !
- ! hamiltonian_nucleus contains the contribution from all the fixed atoms (i.e. excluding the projectile)
- ! Remember: the projectile is always the last atom
- do iatom=1,natom-nprojectile
-   fixed_atom_list(iatom) = iatom
- enddo
- call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
-
- if( nelement_ecp > 0 ) then
-   call setup_nucleus_ecp(basis,hamiltonian_nucleus)
- endif
-
-
- if(write_step / time_step - NINT( write_step / time_step ) > 0.0E-10_dp .OR. write_step < time_step ) then
-   call die("Tddft error: write_step is not a multiple of time_step or smaller than time_step.")
- end if
-
- if( calc_type%is_dft ) then
-    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
- endif
-
  call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
  call clean_allocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
  call clean_allocate('Hamiltonian for TDDFT',h_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
-
 
  allocate(xatom_start(3,natom))
  allocate(xbasis_start(3,natom_basis))
@@ -196,14 +158,15 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    else
      ! assign xatom_start, c_matrix_orth_cmplx, time_min with values given in RESTART File
      call read_restart_tddft(nstate,time_read,occupation,c_matrix_orth_cmplx)
-     time_min = time_read
      do ispin=1,nspin
        c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
      end do
    end if
-   xprojectile = xatom(:,natom)
+   time_min = time_read
+   xprojectile = xatom_start(:,natom)
    call change_position_one_atom(natom,xprojectile)
    call change_basis_center_one_atom(natom_basis,xprojectile)
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) call update_basis_eri(basis,auxil_basis)
  else
    c_matrix_cmplx(:,:,:) = c_matrix(:,1:nocc,:)
    xatom_start=xatom
@@ -211,13 +174,47 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    time_min=0.0_dp
  end if
 
+ call setup_overlap(basis,s_matrix)
+ call setup_D_matrix_analytic(basis,d_matrix)
+
+ ! x_matrix is now allocated with dimension (basis%nbf,nstate))
+ call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
+ if( nstate /= nstate_tmp ) then
+   call die('Error with nstate in the TDDFT propagator')
+ end if
+
+ call nucleus_nucleus_energy(en_tddft%nuc_nuc)
+
+ ! Setup the fixed part of the Hamiltonian: the kinetic energy and the fixed nuclei potential
+ !
+ call setup_kinetic(basis,hamiltonian_kinetic)
+
+ ! hamiltonian_nucleus contains the contribution from all the fixed atoms (i.e. excluding the projectile)
+ ! Remember: the projectile is always the last atom
+ do iatom=1,natom-nprojectile
+   fixed_atom_list(iatom) = iatom
+ enddo
+ call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
+
+ if( nelement_ecp > 0 ) then
+   call setup_nucleus_ecp(basis,hamiltonian_nucleus)
+ endif
+
+ if(write_step / time_step - NINT( write_step / time_step ) > 0.0E-10_dp .OR. write_step < time_step ) then
+   call die("Tddft error: write_step is not a multiple of time_step or smaller than time_step.")
+ end if
+
+ if( calc_type%is_dft ) then
+    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+ endif
+
  ! Getting starting value of the Hamiltonian
  ! itau=0 to avoid excitation calculation
  call setup_hamiltonian_cmplx(basis,                   &
                               nstate,                  &
                               0,                       &    ! itau
                               time_min,                &
-                              0.0_dp,                  &    ! time_cur
+                              0.0_dp,                  &    ! time_step
                               occupation,              &
                               c_matrix_cmplx,          &
                               hamiltonian_kinetic,     &
@@ -226,6 +223,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                               x_matrix,                &
                               dipole_ao,               &
                               h_cmplx,en_tddft)
+
+ call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+ Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
+ print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
 
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
@@ -238,88 +239,84 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
    deallocate(energy_tddft)
- end if
 
- call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
- Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
- print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
+   ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
 
- ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
- if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     allocate(p_matrix_hist, MOLD=p_matrix_cmplx(:,:,:))
 
-   allocate(p_matrix_hist, MOLD=p_matrix_cmplx(:,:,:))
+     ! self-consistency loop for C(t0) convergence
+     do icycle = 1, 20
 
-   ! self-consistency loop for C(t0) convergence
-   do icycle = 1, 20
+       write(stdout,'(/,1x,a)')
+       write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
+       write(stdout,'(/,1x,a)')
 
-     write(stdout,'(/,1x,a)')
-     write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
-     write(stdout,'(/,1x,a)')
+       do ispin=1, nspin
+         allocate(m_matrix_cmplx, MOLD=h_cmplx(:,:,1))
+         allocate(s_matrix_inverse, MOLD=s_matrix(:,:))
+         allocate(m_eigenstates, MOLD=h_cmplx(:,:,1))
+         allocate(m_eigenval(basis%nbf), m_eigenval_copy(basis%nbf), work(2*basis%nbf), rwork(2*basis%nbf))
 
-     do ispin=1, nspin
-       allocate(m_matrix_cmplx, MOLD=h_cmplx(:,:,1))
-       allocate(s_matrix_inverse, MOLD=s_matrix(:,:))
-       allocate(m_eigenstates, MOLD=h_cmplx(:,:,1))
-       allocate(m_eigenval(basis%nbf), m_eigenval_copy(basis%nbf), work(2*basis%nbf), rwork(2*basis%nbf))
+         call invert(s_matrix,s_matrix_inverse)
+         m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
+         ! diagonalize M(t0) to get eigenstates C(t0) for MB propagation
+         call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
+                    basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
+         !print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
 
-       call invert(s_matrix,s_matrix_inverse)
-       m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
-       ! diagonalize M(t0) to get eigenstates C(t0) for MB propagation
-       call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
-                  basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
-       !print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
+         ! take only the occupied states (lowest in energy) for C(t0)
+         do iocc=1,nocc
+           m_eigenval_copy = MATMUL(MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)), m_eigenstates(:,:))
+           !print*, 'm_eigenval_copy = ', m_eigenval_copy
+           min_index = MINLOC(ABS(ABS(m_eigenval_copy(:))-1.0_dp))
+           !print*, 'MINLOC = ', min_index
+           c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
+           ! renormalize C(t0)
+           c_matrix_cmplx(:,iocc,ispin) = c_matrix_cmplx(:,iocc,ispin) / &
+              SQRT(SUM( MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)) * c_matrix_cmplx(:,iocc,ispin) ))
+         end do
 
-       ! take only the occupied states (lowest in energy) for C(t0)
-       do iocc=1,nocc
-         m_eigenval_copy = MATMUL(MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)), m_eigenstates(:,:))
-         !print*, 'm_eigenval_copy = ', m_eigenval_copy
-         min_index = MINLOC(ABS(ABS(m_eigenval_copy(:))-1.0_dp))
-         !print*, 'MINLOC = ', min_index
-         c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
-         ! renormalize C(t0)
-         c_matrix_cmplx(:,iocc,ispin) = c_matrix_cmplx(:,iocc,ispin) / &
-            SQRT(SUM( MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)) * c_matrix_cmplx(:,iocc,ispin) ))
+         deallocate(m_matrix_cmplx)
+         deallocate(s_matrix_inverse)
+         deallocate(m_eigenstates)
+         deallocate(m_eigenval, m_eigenval_copy, work, rwork)
+
        end do
 
-       deallocate(m_matrix_cmplx)
-       deallocate(s_matrix_inverse)
-       deallocate(m_eigenstates)
-       deallocate(m_eigenval, m_eigenval_copy, work, rwork)
+       call setup_hamiltonian_cmplx(basis,                      &
+                                    nstate,                     &
+                                    0,                          &
+                                    time_min,                   &
+                                    0.0_dp,                     &
+                                    occupation,                 &
+                                    c_matrix_cmplx,             &
+                                    hamiltonian_kinetic,        &
+                                    hamiltonian_nucleus,        &
+                                    dipole_ao=dipole_ao,        &
+                                    hamiltonian_cmplx=h_cmplx,  &
+                                    en=en_tddft)
+
+       call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+       !Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
+       !print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
+
+       if( icycle == 1 ) then
+         p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+       else
+         rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
+         !print*, 'abs(rms) = ', ABS(rms)
+         if( ABS(rms) < 1.e-8 ) then
+           write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
+           exit
+         end if
+         p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+       end if
 
      end do
+     deallocate(p_matrix_hist)
 
-     call setup_hamiltonian_cmplx(basis,                      &
-                                  nstate,                     &
-                                  0,                          &
-                                  time_min,                   &
-                                  0.0_dp,                     &
-                                  occupation,                 &
-                                  c_matrix_cmplx,             &
-                                  hamiltonian_kinetic,        &
-                                  hamiltonian_nucleus,        &
-                                  dipole_ao=dipole_ao,        &
-                                  hamiltonian_cmplx=h_cmplx,  &
-                                  en=en_tddft)
-
-     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-     !Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
-     !print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
-
-     if( icycle == 1 ) then
-       p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
-     else
-       rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
-       !print*, 'abs(rms) = ', ABS(rms)
-       if( ABS(rms) < 1.e-8 ) then
-         write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
-         exit
-       end if
-       p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
-     end if
-
-   end do
-   deallocate(p_matrix_hist)
-
+   end if
  end if
 
  ! Number of iterations
@@ -1574,8 +1571,10 @@ subroutine write_restart_tddft(nstate,time_cur,occupation,c_matrix_tddft)
  write(restartfile) time_cur
  ! Atomic structure
  write(restartfile) natom
+ write(restartfile) natom_basis
  write(restartfile) zatom(1:natom)
  write(restartfile) xatom(:,1:natom)
+ write(restartfile) xbasis(:,1:natom_basis)
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
    do istate=1,nocc
@@ -1600,10 +1599,10 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
  logical                    :: file_exists
  integer                    :: restartfile
  integer                    :: istate,ispin
- integer                    :: natom_read
+ integer                    :: natom_read,nbasis_read
  real(dp)                   :: time_cur_read
  real(dp),allocatable       :: occupation_read(:,:)
- real(dp),allocatable       :: zatom_read(:),x_read(:,:)
+ real(dp),allocatable       :: zatom_read(:),x_read(:,:),xbasis_read(:,:)
  integer                    :: nstate_read, nspin_read
 !=====
 
@@ -1659,18 +1658,32 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
    return
  end if
 
- allocate(zatom_read(natom_read),x_read(3,natom_read))
+ !natom_basis
+ read(restartfile) nbasis_read
+ if( nbasis_read /= natom_basis ) then
+   call issue_warning('RESTART_TDDFT file: natom_basis is not the same.')
+   restart_is_correct=.FALSE.
+   close(restartfile)
+   return
+ end if
+
+ allocate(zatom_read(natom_read),x_read(3,natom_read),xbasis_read(3,nbasis_read))
  read(restartfile) zatom_read(1:natom_read)
  read(restartfile) x_read(:,1:natom_read)
- if( natom_read /= natom  &
-  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,natom)) - zatom(1:MIN(natom_read,natom)) ) > 1.0e-5_dp ) &
-  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,natom-nprojectile)) - xatom(:,1:MIN(natom_read,natom-nprojectile)) ) &
-            > 1.0e-5_dp ) ) then
-   call issue_warning('RESTART_TDDFT file: Geometry has changed')
- endif
- deallocate(zatom_read,x_read)
+ read(restartfile) xbasis_read(:,1:nbasis_read)
 
- ! Here we do not reead c_matrix_orth_cmplx from the RESTART_TDDFT file
+ if( ANY( ABS( zatom_read(1:natom_read) - zatom(1:natom_read) ) > 1.0e-5_dp ) &
+  .OR. ANY( ABS( x_read(:,1:natom_read-nprojectile) &
+                - xatom(:,1:natom_read-nprojectile) ) > 1.0e-5_dp ) ) then
+   call issue_warning('RESTART_TDDFT file: Atom geometry has changed')
+ endif
+ if( ANY( ABS( xbasis_read(:,1:nbasis_read-nprojectile) &
+            - xbasis(:,1:nbasis_read-nprojectile) ) > 1.0e-5_dp ) ) then
+   call issue_warning('RESTART_TDDFT file: Basis geometry has changed')
+ endif
+ deallocate(zatom_read,x_read,xbasis_read)
+
+ ! Here we do not read c_matrix_orth_cmplx from the RESTART_TDDFT file
 
  write(stdout,*) " RESTART_TDDFT file is correct and will be used for the calculation. SCF loop will be omitted."
 
@@ -1690,9 +1703,9 @@ subroutine read_restart_tddft(nstate,time_min,occupation,c_matrix_tddft)
  logical                    :: file_exists
  integer                    :: restartfile
  integer                    :: istate,ispin
- integer                    :: natom_read
+ integer                    :: natom_read, nbasis_read
  real(dp),allocatable       :: occupation_read(:,:)
- real(dp),allocatable       :: zatom_read(:),x_read(:,:)
+ real(dp),allocatable       :: zatom_read(:)
  integer                    :: nstate_read, nspin_read
 !=====
 
@@ -1736,9 +1749,11 @@ subroutine read_restart_tddft(nstate,time_min,occupation,c_matrix_tddft)
 
  ! Atomic structure
  read(restartfile) natom_read
- allocate(zatom_read(natom_read),x_read(3,natom_read))
+ read(restartfile) nbasis_read
+ allocate(zatom_read(natom_read))
  read(restartfile) zatom_read(1:natom_read)
  read(restartfile) xatom_start(:,1:natom_read)
+ read(restartfile) xbasis_start(:,1:nbasis_read)
  deallocate(zatom_read)
 
  ! Complex wavefunction coefficients C
