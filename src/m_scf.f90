@@ -771,7 +771,7 @@ subroutine print_energy_yaml(name,en)
  if( ABS(en%total) > 1.0e-10_dp ) &
    write(unit_yaml,'(4x,a,1x,es18.8)') 'total:               ',en%total
  if( ABS(en%totalexx) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'total EXX:           ',en%totalexx
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'total exx:           ',en%totalexx
  write(unit_yaml,'(4x,a,1x,es18.8)')   'nucleus-nucleus:     ',en%nuc_nuc
  write(unit_yaml,'(4x,a,1x,es18.8)')   'kinetic:             ',en%kinetic
  write(unit_yaml,'(4x,a,1x,es18.8)')   'electron-nucleus:    ',en%nucleus
