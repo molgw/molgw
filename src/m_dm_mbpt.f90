@@ -201,20 +201,22 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
 
    call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=en_dm_corr%exx)
 
-   en_dm_corr%total = en_dm_corr%nuc_nuc + en_dm_corr%kinetic + en_dm_corr%nucleus +  en_dm_corr%hartree + en_dm_corr%exx
+   en_dm_corr%totalexx = en_dm_corr%nuc_nuc + en_dm_corr%kinetic + en_dm_corr%nucleus +  en_dm_corr%hartree + en_dm_corr%exx
    write(stdout,'(/,1x,a)') 'Energies from correlated density matrix'
    write(stdout,'(a35,1x,f19.10)')   'Kinetic Energy (Ha):',en_dm_corr%kinetic
    write(stdout,'(a35,1x,f19.10)')   'Nucleus Energy (Ha):',en_dm_corr%nucleus
    write(stdout,'(a35,1x,f19.10)')   'Hartree Energy (Ha):',en_dm_corr%hartree
    write(stdout,'(a35,1x,f19.10)')  'Exchange Energy (Ha):',en_dm_corr%exx
-   write(stdout,'(a35,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%total
+   write(stdout,'(a35,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%totalexx
 
 
    if( ABS(en_dm_corr%gw) > 1.0e-8_dp ) then
      write(stdout,'(a35,1x,f19.10)')  'GW correlation Energy (Ha):',en_dm_corr%gw
-     en_dm_corr%total = en_dm_corr%total + en_dm_corr%gw
+     en_dm_corr%total = en_dm_corr%totalexx + en_dm_corr%gw
      write(stdout,'(a35,1x,f19.10)')  'Total GM Energy (Ha):',en_dm_corr%total
      if( print_yaml_ ) call print_energy_yaml('linearized gw dm energy',en_dm_corr)
+   else
+     if( print_yaml_ ) call print_energy_yaml('correlated dm energy',en_dm_corr)
    endif
 
    nocc = get_number_occupied_states(occupation)

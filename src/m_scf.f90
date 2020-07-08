@@ -36,19 +36,20 @@ module m_scf
  integer,private              :: iscf
 
  type energy_contributions
-   real(dp) :: nuc_nuc = 0.0_dp
-   real(dp) :: kinetic = 0.0_dp
-   real(dp) :: nucleus = 0.0_dp
-   real(dp) :: hartree = 0.0_dp
-   real(dp) :: exx_hyb = 0.0_dp
-   real(dp) :: exx     = 0.0_dp
-   real(dp) :: xc      = 0.0_dp
-   real(dp) :: mp2     = 0.0_dp
-   real(dp) :: mp3     = 0.0_dp
-   real(dp) :: rpa     = 0.0_dp
-   real(dp) :: gw      = 0.0_dp
-   real(dp) :: total   = 0.0_dp
-   real(dp) :: excit   = 0.0_dp      ! TDDFT excitation energy
+   real(dp) :: nuc_nuc  = 0.0_dp
+   real(dp) :: kinetic  = 0.0_dp
+   real(dp) :: nucleus  = 0.0_dp
+   real(dp) :: hartree  = 0.0_dp
+   real(dp) :: exx_hyb  = 0.0_dp
+   real(dp) :: exx      = 0.0_dp
+   real(dp) :: xc       = 0.0_dp
+   real(dp) :: mp2      = 0.0_dp
+   real(dp) :: mp3      = 0.0_dp
+   real(dp) :: rpa      = 0.0_dp
+   real(dp) :: gw       = 0.0_dp
+   real(dp) :: total    = 0.0_dp
+   real(dp) :: totalexx = 0.0_dp
+   real(dp) :: excit    = 0.0_dp      ! TDDFT excitation energy
  end type
 
 #if defined(HAVE_SCALAPACK)
@@ -767,7 +768,10 @@ subroutine print_energy_yaml(name,en)
 
  write(unit_yaml,'(/,a,a)') TRIM(name),':'
  write(unit_yaml,'(4x,a,a)')           'unit:                ','    Ha'
- write(unit_yaml,'(4x,a,1x,es18.8)')   'total:               ',en%total
+ if( ABS(en%total) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'total:               ',en%total
+ if( ABS(en%totalexx) > 1.0e-10_dp ) &
+   write(unit_yaml,'(4x,a,1x,es18.8)') 'total EXX:           ',en%totalexx
  write(unit_yaml,'(4x,a,1x,es18.8)')   'nucleus-nucleus:     ',en%nuc_nuc
  write(unit_yaml,'(4x,a,1x,es18.8)')   'kinetic:             ',en%kinetic
  write(unit_yaml,'(4x,a,1x,es18.8)')   'electron-nucleus:    ',en%nucleus
