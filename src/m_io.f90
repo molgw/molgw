@@ -2895,7 +2895,6 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
  real(dp),allocatable :: p_matrix_read(:)
  character(len=256) :: line
  character(len=100) :: keyword
- integer,parameter :: ammax_g2m = 6
  integer :: am,nbf_am
  type g2m
    real(dp),allocatable    :: block(:,:)
@@ -2911,8 +2910,8 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
    return
  endif
 
- allocate(reordering(0:ammax_g2m))
- do am=0,ammax_g2m
+ allocate(reordering(0:MOLGW_LMAX))
+ do am=0,MOLGW_LMAX
    nbf_am = number_basis_function_am(basis%gaussian_type,am)
    allocate(reordering(am)%block(nbf_am,nbf_am))
    reordering(am)%block(:,:) = 0
@@ -3006,7 +3005,7 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
                                            0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
                                            0, 0, 1, 0, 0, 0, 0, 0, 0, 0 ] , [ 10, 10 ] )    !OK
 
-     do am=4,ammax_g2m
+     do am=4,MOLGW_LMAX
        nbf_am = number_basis_function_am(basis%gaussian_type,am)
        do ibf=1,nbf_am
          reordering(am)%block(ibf,nbf_am+1-ibf) = 1
@@ -3019,9 +3018,8 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
      reordering(1)%block(1,3) = 1
      reordering(1)%block(2,1) = 1
      reordering(1)%block(3,2) = 1
-     do am=2,ammax_g2m
+     do am=2,MOLGW_LMAX
        nbf_am = number_basis_function_am(basis%gaussian_type,am)
-       write(stdout,*) 'am = ',am
        do ibf=1,nbf_am
          ibf_molgw = ( nbf_am + 1 ) / 2 - ( 2 * MODULO(ibf,2) - 1 ) * ibf / 2
          reordering(am)%block(ibf,ibf_molgw) = 1
@@ -3033,7 +3031,7 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
    ibf = 1
    do while( ibf <= basis%nbf )
      am = basis%bff(ibf)%am
-     if( am > ammax_g2m ) &
+     if( am > MOLGW_LMAX ) &
        call die('read_gaussian_fchk: too high angular momentum, not coded yet')
      nbf_am = number_basis_function_am(basis%gaussian_type,am)
 
@@ -3045,6 +3043,10 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
 
    p_matrix_out(:,:,1) = MATMUL( TRANSPOSE(swap), MATMUL(p_matrix_out(:,:,1),swap) )
 
+   do am=0,MOLGW_LMAX
+     deallocate(reordering(am)%block)
+   enddo
+   deallocate(reordering)
 
    !call dump_out_matrix(.TRUE.,'gaussian density matrix',SIZE(p_matrix_out,DIM=1),SIZE(p_matrix_out,DIM=3),p_matrix_out)
 

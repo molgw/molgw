@@ -277,7 +277,11 @@ subroutine destroy_cart_to_pure_transforms()
  do il=0,MOLGW_LMAX
    deallocate(cart_to_pure_norm(il,CARTG)%matrix)
    deallocate(cart_to_pure_norm(il,PUREG)%matrix)
+   deallocate(cart_to_pure(il,CARTG)%matrix)
+   deallocate(cart_to_pure(il,PUREG)%matrix)
  enddo
+ deallocate(cart_to_pure_norm)
+ deallocate(cart_to_pure)
 
 end subroutine destroy_cart_to_pure_transforms
 
