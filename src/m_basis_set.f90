@@ -272,12 +272,12 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 end subroutine init_basis_set
 
 !=========================================================================
-subroutine moving_basis_set(xproj_basis,new_basis)
+subroutine moving_basis_set(new_basis)
  implicit none
 
- real(dp),intent(in)                 :: xproj_basis(3)
  type(basis_set),intent(inout)       :: new_basis
 !=====
+ real(dp)                      :: xproj_basis(3)
  integer                       :: jbf,ng,ig
  integer                       :: ishell
  integer                       :: jbf_cart
@@ -290,6 +290,7 @@ subroutine moving_basis_set(xproj_basis,new_basis)
 !=====
 ! Projectile is always the last of atom/atom_basis list
  proj_iatom   = natom_basis
+ xproj_basis(:) = xbasis(:,proj_iatom)
 
  do ishell = 1, new_basis%nshell
    if( new_basis%shell(ishell)%iatom == proj_iatom ) then
