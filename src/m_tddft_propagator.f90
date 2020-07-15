@@ -636,19 +636,20 @@ subroutine update_basis_eri(basis,auxil_basis)
  type(basis_set),intent(inout)      :: auxil_basis
 !=====
 
- call moving_basis_set(xbasis(:,natom_basis),basis)
+ call moving_basis_set(basis)
 
  !call deallocate_eri()
  !call prepare_eri(basis)
 
  if( has_auxil_basis ) then
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-   call moving_basis_set(xbasis(:,natom_basis),auxil_basis)
+   call moving_basis_set(auxil_basis)
    ! Setup new eri 2center / 3center
    call destroy_eri_3center()
    call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
    call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
  else
+   call deallocate_eri_4center()
    call calculate_eri(print_eri_,basis,0.0_dp)
  endif
 
@@ -860,10 +861,12 @@ case('MB_PC2B')
    !--1--PROPAGATE----| C(t)--U[M(t+dt/4)]-->C(t+dt/2)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      ! Update projectile position and its basis center to t+dt/4
-     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
-     ! Update all basis and eri
-     call update_basis_eri(basis,auxil_basis)
+     call change_position_one_atom(natom,xatom_start(:,natom) &
+          + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) &
+          + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
+     ! Update basis only since eri not needed here
+     call moving_basis_set(basis)
      ! Update S matrix
      call setup_overlap(basis,s_matrix)
      ! Analytic evaluation of D(t+dt/4)
@@ -876,8 +879,10 @@ case('MB_PC2B')
    !--2--EVALUATE----| C(t+dt/2) --> H(t+dt/2)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      ! Update projectile position and its basis center to t+dt/2
-     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
+     call change_position_one_atom(natom,xatom_start(:,natom) &
+          + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
+     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) &
+          + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
      ! Update S matrix
@@ -918,7 +923,7 @@ case('MB_PC2B')
      call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
-     ! Update S matrix (not really needed since U[M(t+dt)] not needed)
+     ! Update S matrix
      call setup_overlap(basis,s_matrix)
      ! Update DFT grids for H_xc evaluation
      if( calc_type%is_dft ) then
@@ -1924,10 +1929,10 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
 
      call start_clock(timing_propagate_matmul)
      b_matrix_cmplx(:,:)        = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
-     !call dump_out_matrix(.TRUE.,'===  U REAL  ===',size(h_cmplx,dim=1),1,REAL(b_matrix_cmplx))
-     !call dump_out_matrix(.TRUE.,'===  U AIMAG ===',size(h_cmplx,dim=1),1,AIMAG(b_matrix_cmplx))
-     !call dump_out_matrix(.TRUE.,'===  U*U**H REAL ===',size(h_cmplx,dim=1),1,REAL(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
-     !call dump_out_matrix(.TRUE.,'===  U*U**H AIMAG ===',size(h_cmplx,dim=1),1,AIMAG(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
+     !call dump_out_matrix(.TRUE.,'===  U REAL  ===',REAL(b_matrix_cmplx))
+     !call dump_out_matrix(.TRUE.,'===  U AIMAG ===',AIMAG(b_matrix_cmplx))
+     !call dump_out_matrix(.TRUE.,'===  U*U**H REAL ===',REAL(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
+     !call dump_out_matrix(.TRUE.,'===  U*U**H AIMAG ===',AIMAG(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
      c_matrix_cmplx(:,:,ispin)  = MATMUL( b_matrix_cmplx(:,:),c_matrix_cmplx(:,:,ispin))
 
      deallocate(l_matrix_cmplx)
@@ -1947,8 +1952,8 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
      do ibf=1,size(s_matrix,dim=1)
        b_matrix_cmplx(ibf,ibf) = b_matrix_cmplx(ibf,ibf) + 1.0_dp
      end do
-     !call dump_out_matrix(.TRUE.,'===  U*U**H REAL ===',size(h_cmplx,dim=1),1,REAL(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
-     !call dump_out_matrix(.TRUE.,'===  U*U**H AIMAG ===',size(h_cmplx,dim=1),1,AIMAG(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
+     !call dump_out_matrix(.TRUE.,'===  U*U**H REAL ===',REAL(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
+     !call dump_out_matrix(.TRUE.,'===  U*U**H AIMAG ===',AIMAG(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
 
      call start_clock(timing_propagate_matmul)
      c_matrix_cmplx(:,:,ispin)  = MATMUL( b_matrix_cmplx(:,:), c_matrix_cmplx(:,:,ispin) )
@@ -2020,8 +2025,8 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 
      call start_clock(timing_propagate_matmul)
      b_matrix_cmplx(:,:)            = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
-     !call dump_out_matrix(.TRUE.,'===  B/L REAL  ===',nstate,1,REAL(b_matrix_cmplx))
-     !call dump_out_matrix(.TRUE.,'===  B/L AIMAG ===',nstate,1,AIMAG(b_matrix_cmplx))
+     !call dump_out_matrix(.TRUE.,'===  B/L REAL  ===',REAL(b_matrix_cmplx))
+     !call dump_out_matrix(.TRUE.,'===  B/L AIMAG ===',AIMAG(b_matrix_cmplx))
      c_matrix_orth_cmplx(:,:,ispin) = MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin))
 
 !    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) ) )
