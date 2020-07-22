@@ -223,7 +223,7 @@ subroutine dump_out_matrix_dp(print_matrix,title,matrix)
  character(len=*),intent(in) :: title
  real(dp),intent(in)         :: matrix(:,:,:)
 !=====
- integer,parameter :: MAXSIZE=50
+ integer,parameter :: MAXSIZE=200
 !=====
  integer :: imat,ispin,nspin,nmat
 !=====

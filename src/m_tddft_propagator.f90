@@ -37,7 +37,6 @@ module m_tddft_propagator
  real(dp),allocatable,private       :: xatom_start(:,:)
  real(dp),allocatable,private       :: xbasis_start(:,:)
  real(dp),private                   :: excit_field_norm
- real(dp),private                   :: vel_init_loop(3)
  !==hamiltonian extrapolation variables==
  real(dp),allocatable,private       :: extrap_coefs(:)
  complex(dp),allocatable,private    :: h_small_hist_cmplx(:,:,:,:)
@@ -176,6 +175,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  call setup_overlap(basis,s_matrix)
  call setup_D_matrix_analytic(basis,d_matrix)
+ call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+ en_tddft%id = REAL( SUM( im*d_matrix(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
 
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
  call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
@@ -224,9 +225,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                               dipole_ao,               &
                               h_cmplx,en_tddft)
 
- call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
- Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
- print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
 
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
@@ -298,8 +296,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                                     en=en_tddft)
 
        call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-       !Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
-       !print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
 
        if( icycle == 1 ) then
          p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
@@ -318,6 +314,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    end if
  end if
+ en_tddft%id = REAL( SUM( im*d_matrix(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
 
  ! Number of iterations
  ntau = NINT( (time_sim-time_min) / time_step )
@@ -445,13 +442,17 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    !
    ! debug
    do ispin=1,nspin
-     is_identity_ = check_identity_cmplx(MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,ispin))),s_matrix(:,:)), c_matrix_cmplx(:,:,ispin) ))
+     is_identity_ = check_identity_cmplx(MATMUL(MATMUL(TRANSPOSE(CONJG( &
+     c_matrix_cmplx(:,:,ispin))),s_matrix(:,:)), c_matrix_cmplx(:,:,ispin) ))
      if( .NOT. is_identity_) then
-       write(stdout,'(1x,a,i4,a,i7)') 'C**H*S*C is not identity for spin ',ispin,' at itau= ', itau
+       write(stdout,'(1x,a,i4,a,i7)') 'C**H*S*C is not identity for spin ', &
+       ispin,' at itau= ', itau
      end if
    enddo
 
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+   en_tddft%id = REAL( SUM( im*d_matrix(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+
    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
    print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
    !call dump_out_matrix(.TRUE.,'===  P Real  ===',p_matrix_cmplx(:,:,:)%re)
@@ -657,11 +658,10 @@ end subroutine update_basis_eri
 
 
 !=========================================================================
-subroutine setup_D_matrix_analytic(basis,d_matrix,init_loop)
+subroutine setup_D_matrix_analytic(basis,d_matrix)
  implicit none
  type(basis_set),intent(in)          :: basis
  real(dp),intent(out)                :: d_matrix(:,:)
- logical,intent(in),optional         :: init_loop
 !=====
  integer :: jbf,ibasis_center
  real(dp),allocatable                :: s_matrix_grad(:,:,:)
@@ -686,9 +686,6 @@ subroutine setup_D_matrix_analytic(basis,d_matrix,init_loop)
  do jbf=1,basis%nbf
    ibasis_center = basis%bff(jbf)%iatom
    d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel(:,ibasis_center) )
-   if( present(init_loop) ) then
-     if( ibasis_center == natom ) d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel_init_loop(:) )
-   end if
  enddo
 
  deallocate(s_matrix_grad)
@@ -1316,10 +1313,10 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
 
  select case(excit_type%form)
  case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
-   write(file_time_data,"(f10.4,11(2x,es16.8e3))") &
+   write(file_time_data,"(f10.4,12(2x,es16.8e3))") &
       time_cur, en_tddft%total, xatom(:,natom), en_tddft%nuc_nuc, en_tddft%nucleus, &
       en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
-      en_tddft%excit
+      en_tddft%excit, en_tddft%id
    call output_projectile_position()
 
  case(EXCIT_LIGHT)
@@ -1368,9 +1365,9 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
 !---------------------------------
  select case(excit_type%form)
  case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
-   write(file_time_data,"(a10,11(a18))") &
+   write(file_time_data,"(a10,12(a18))") &
            "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc","enuc_wo_proj","ekin","ehart",&
-           "eexx_hyb","exc","enuc_proj"
+           "eexx_hyb","exc","enuc_proj","e_iD"
 
  case(EXCIT_LIGHT)
    write(file_time_data,"(a,a)") &
@@ -2316,7 +2313,6 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
    do iatom=1,natom-nprojectile
      fixed_atom_list(iatom) = iatom
    enddo
-
    call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
 
    !
