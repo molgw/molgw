@@ -176,7 +176,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call setup_overlap(basis,s_matrix)
  call setup_D_matrix_analytic(basis,d_matrix)
  call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
- en_tddft%id = REAL( SUM( im*d_matrix(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+ ! E_iD = - Tr{P*iD}
+ en_tddft%id = -REAL( SUM( im*d_matrix(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
 
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
  call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
@@ -314,7 +315,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    end if
  end if
- en_tddft%id = REAL( SUM( im*d_matrix(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+ en_tddft%id = -REAL( SUM( im*d_matrix(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
 
  ! Number of iterations
  ntau = NINT( (time_sim-time_min) / time_step )
@@ -451,7 +452,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    enddo
 
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-   en_tddft%id = REAL( SUM( im*d_matrix(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+   en_tddft%id = -REAL( SUM( im*d_matrix(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
 
    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
    print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
