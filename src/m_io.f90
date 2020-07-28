@@ -666,7 +666,8 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
          proj_state_i(li) = proj_state_i(li) + ABS( cs_vector_i(ibf) )**2
        endif
      enddo
-     proj_charge(atom_sampled) = proj_charge(atom_sampled) + occupation(istate,ispin) * SUM(proj_state_i(:))
+     proj_charge(atom_sampled) = proj_charge(atom_sampled) &
+                        + occupation(istate,ispin) * REAL(SUM(proj_state_i(:)))
    enddo
 
  enddo
@@ -674,7 +675,6 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
 
  n_column = 2 + natom_basis
  write(myfmt, '("(1x,",I0,"(2x,es18.8))")') n_column
- !write(file_lowdin,'(1x,3(2x,es18.8))') time_cur, proj_charge, xatom(3,natom)
  write(file_lowdin,fmt=myfmt) time_cur, xatom(3,natom), proj_charge
 
 end subroutine lowdin_pdos_cmplx
