@@ -86,8 +86,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
  complex(dp),allocatable    :: p_matrix_hist(:,:,:)
  complex(dp),allocatable    :: m_matrix_cmplx(:,:) ! M = S**-1 * ( H - i*D )
- complex(dp),allocatable    :: m_eigenval(:),m_eigenval_copy(:)
+ complex(dp),allocatable    :: m_eigenval_copy(:)
  complex(dp),allocatable    :: m_eigenstates(:,:),work(:)
+ real(dp),allocatable       :: m_eigenval(:)
  real(dp),allocatable       :: s_matrix_inverse(:,:),rwork(:)
  real(dp),allocatable       :: interm_v_list(:)
  real(dp)                   :: small_v_list(3)=[0.01_dp, 0.05_dp, 0.25_dp]
@@ -252,33 +253,43 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        write(stdout,'(/,1x,a)')
 
        do ispin=1, nspin
-         allocate(m_matrix_cmplx, MOLD=h_cmplx(:,:,1))
-         allocate(s_matrix_inverse, MOLD=s_matrix(:,:))
-         allocate(m_eigenstates, MOLD=h_cmplx(:,:,1))
-         allocate(m_eigenval(basis%nbf), m_eigenval_copy(basis%nbf), work(2*basis%nbf), rwork(2*basis%nbf))
+         !allocate(m_matrix_cmplx, MOLD=h_cmplx(:,:,1))
+         !allocate(s_matrix_inverse, MOLD=s_matrix(:,:))
+         !allocate(m_eigenstates, MOLD=h_cmplx(:,:,1))
+         !allocate(m_eigenval(basis%nbf), m_eigenval_copy(basis%nbf), work(2*basis%nbf), rwork(2*basis%nbf))
+         allocate(m_matrix_cmplx, MOLD=h_small_cmplx(:,:,1))
+         allocate(m_eigenval(nstate), m_eigenval_copy(nstate), work(2*nstate), rwork(2*nstate))
 
-         call invert(s_matrix,s_matrix_inverse)
-         m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
+         !call invert(s_matrix,s_matrix_inverse)
+         !m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
+         m_matrix_cmplx(:,:) = MATMUL(( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ), x_matrix(:,:))
+         m_matrix_cmplx(:,:) = MATMUL(TRANSPOSE(x_matrix(:,:)), m_matrix_cmplx(:,:))
          ! diagonalize M(t0) to get eigenstates C(t0) for MB propagation
-         call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
-                    basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
-         !print*, 'ZGEEV eigenvalues = ', m_eigenval(:)
+         !call ZGEEV( 'N', 'V', basis%nbf, m_matrix_cmplx(:,:), basis%nbf, m_eigenval(:), m_eigenstates(:,:), &
+          !          basis%nbf, m_eigenstates(:,:), basis%nbf, work(:), 2*basis%nbf, rwork(:), info )
+         call ZHEEV('V', 'L', nstate, m_matrix_cmplx(:,:), nstate, m_eigenval(:), work(:), 2*nstate, rwork(:), info)
+         print*, 'ZHEEV eigenvalues = ', m_eigenval(:)
 
          ! take only the occupied states (lowest in energy) for C(t0)
          do iocc=1,nocc
-           m_eigenval_copy = MATMUL(MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)), m_eigenstates(:,:))
+           !m_eigenval_copy = MATMUL(MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)), m_eigenstates(:,:))
+           m_eigenval_copy = MATMUL(CONJG(c_matrix_orth_cmplx(:,iocc,ispin)), m_matrix_cmplx(:,:))
            !print*, 'm_eigenval_copy = ', m_eigenval_copy
            min_index = MINLOC(ABS(ABS(m_eigenval_copy(:))-1.0_dp))
            !print*, 'MINLOC = ', min_index
-           c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
+           !c_matrix_cmplx(:,iocc,ispin) = m_eigenstates(:,min_index(1))
+           c_matrix_orth_cmplx(:,iocc,ispin) = m_matrix_cmplx(:,min_index(1))
            ! renormalize C(t0)
-           c_matrix_cmplx(:,iocc,ispin) = c_matrix_cmplx(:,iocc,ispin) / &
-              SQRT(SUM( MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)) * c_matrix_cmplx(:,iocc,ispin) ))
+           !c_matrix_cmplx(:,iocc,ispin) = c_matrix_cmplx(:,iocc,ispin) / &
+              !SQRT(SUM( MATMUL(CONJG(c_matrix_cmplx(:,iocc,ispin)),s_matrix(:,:)) * c_matrix_cmplx(:,iocc,ispin) ))
+           c_matrix_orth_cmplx(:,iocc,ispin) = c_matrix_orth_cmplx(:,iocc,ispin) / &
+              SQRT(SUM( CONJG(c_matrix_orth_cmplx(:,iocc,ispin)) * c_matrix_orth_cmplx(:,iocc,ispin) ))
          end do
+         c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
 
          deallocate(m_matrix_cmplx)
-         deallocate(s_matrix_inverse)
-         deallocate(m_eigenstates)
+         !deallocate(s_matrix_inverse)
+         !deallocate(m_eigenstates)
          deallocate(m_eigenval, m_eigenval_copy, work, rwork)
 
        end do
