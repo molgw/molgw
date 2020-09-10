@@ -65,10 +65,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  logical,intent(in)         :: restart_tddft_is_correct
 !=====
  integer                    :: fixed_atom_list(natom-nprojectile)
- integer                    :: ispin
+ integer                    :: ispin,file_rhor
  integer                    :: istate,nstate_tmp
  integer                    :: nwrite_step
- real(dp)                   :: time_min
+ real(dp)                   :: time_min,en_tmp
  real(dp)                   :: xprojectile(3)
  real(dp),allocatable       :: dipole_ao(:,:,:)
  real(dp),allocatable       :: s_matrix(:,:)
@@ -77,6 +77,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  real(dp),allocatable       :: s_matrix_sqrt(:,:)
  real(dp),allocatable       :: hamiltonian_kinetic(:,:)
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
+ real(dp),allocatable       :: hamiltonian_tmp(:,:,:)
 !=====initial values
  integer                    :: nstate,info,min_index(1),icycle,ind
  real(dp),allocatable       :: energy_tddft(:)
@@ -227,6 +228,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                               dipole_ao,               &
                               h_cmplx,en_tddft)
 
+ open(newunit=file_rhor,file="rhor_SCF.dat")
+ write(file_rhor,'(A)') "#  weight      rhor"
+ allocate(hamiltonian_tmp(basis%nbf,basis%nbf,nspin))
+ call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix_cmplx,hamiltonian_tmp,en_tmp,file_rhor)
+ deallocate(hamiltonian_tmp)
+ close(file_rhor)
 
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
@@ -314,6 +321,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end if
  end if
  en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+
+ open(newunit=file_rhor,file="rhor_TDDFT.dat")
+ write(file_rhor,'(A)') "#  weight      rhor"
+ allocate(hamiltonian_tmp(basis%nbf,basis%nbf,nspin))
+ call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix_cmplx,hamiltonian_tmp,en_tmp,file_rhor)
+ deallocate(hamiltonian_tmp)
+ close(file_rhor)
 
  ! Number of iterations
  ntau = NINT( (time_sim-time_min) / time_step )
