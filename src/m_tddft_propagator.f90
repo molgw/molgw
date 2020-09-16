@@ -264,11 +264,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          call ZHEEV('V', 'L', nstate, m_matrix_cmplx(:,:), nstate, m_eigenval(:), work(:), 2*nstate, rwork(:), info)
          !print*, 'ZHEEV eigenvalues = ', m_eigenval(:)
 
-         ! take only the occupied states (lowest in energy) for C'(t0)
+         ! take corresponding states (in energy ascending order) for C'(t0)
          do iocc=1,nocc
-           m_eigenval_copy = MATMUL(CONJG(c_matrix_orth_cmplx(:,iocc,ispin)), m_matrix_cmplx(:,:))
-           min_index = MINLOC(ABS(ABS(m_eigenval_copy(:))-1.0_dp))
-           c_matrix_orth_cmplx(:,iocc,ispin) = m_matrix_cmplx(:,min_index(1))
+           c_matrix_orth_cmplx(:,iocc,ispin) = m_matrix_cmplx(:,iocc)
            ! renormalize C'(t0)
            c_matrix_orth_cmplx(:,iocc,ispin) = c_matrix_orth_cmplx(:,iocc,ispin) / &
               SQRT(SUM( CONJG(c_matrix_orth_cmplx(:,iocc,ispin)) * c_matrix_orth_cmplx(:,iocc,ispin) ))
