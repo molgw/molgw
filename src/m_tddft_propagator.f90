@@ -31,7 +31,7 @@ module m_tddft_propagator
   module procedure propagate_orth_ham_2
  end interface propagate_orth
 
- integer,private                    :: nocc
+ integer,private                    :: nocc, ncycle_max = 20
  real(dp),private                   :: dipole(3)
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
@@ -247,7 +247,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
      ! self-consistency loop for C(t0) convergence in ortho basis
      ! M = H-iD is Hermitian at t0
-     do icycle = 1, 20
+     do icycle = 1, ncycle_max
 
        write(stdout,'(/,1x,a)')
        write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
@@ -302,6 +302,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          if( ABS(rms) < 1.e-8 ) then
            write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
            exit
+         else
+           if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
          end if
          p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
        end if
