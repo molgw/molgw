@@ -237,7 +237,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    ! in order to save the memory, we dont keep inoccupied states (nocc+1:nstate)
    c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
-   deallocate(energy_tddft)
+   !deallocate(energy_tddft)
 
    ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
@@ -263,13 +263,14 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
          call diagonalize( postscf_diago_flavor, m_matrix_cmplx, m_eigenval, m_eigenvector )
          !write(stdout, *), 'eigenvalues = ', m_eigenval(:)
-         !write(stdout, *) 'eigenvectors = '
-         !do istate = 1, nstate
-           !write(stdout, "(*('('f6.2xsf6.2x')':x))") c_matrix_orth_cmplx(istate, 1:nocc, 2)
-         !end do
+         !write(stdout, "(*('('f6.2xsf6.2x')':x))") c_matrix_orth_cmplx(1, 1:nocc, 2)
 
          ! take corresponding states (in energy ascending order) for C'(t0)
-         c_matrix_orth_cmplx(:,1:nocc,ispin) = m_eigenvector(:,1:nocc)
+         if( ABS(energy_tddft(1)-m_eigenval(1)) .LT. 1.e-4 ) then
+           c_matrix_orth_cmplx(:,1:nocc,ispin) = m_eigenvector(:,1:nocc)
+         else
+           c_matrix_orth_cmplx(:,1:nocc,ispin) = m_eigenvector(:,2:nocc+1)
+         end if
          ! C = X * C'
          c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
 
@@ -312,6 +313,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      deallocate(p_matrix_hist)
 
    end if
+   deallocate(energy_tddft)
  end if
  en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
