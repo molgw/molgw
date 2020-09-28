@@ -853,8 +853,8 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
   ! Perform the final omega integrals:
   ! delta P_MO = spin_fact /(2 pi i) int_{-inf}^{+inf} d(i omega)  (1-G_0*Sigma)^{-1} * G_0(\mu + i omega)
   !            = spin_fact /(2 pi i) int_{  0 }^{+inf} d(i omega) 2 * Re{ (1-G_0*Sigma)^{-1} * G_0(\mu + i omega) }
-  ! Ec_GM      = spin_fact /(2 pi i) int_{-inf}^{+inf} d(i omega) Sigma*G0(\mu + i omega) 
-  !            = spin_fact /(2 pi i) int_{  0 }^{+inf} d(i omega) 2 * Re{ Sigma*G0 }
+  ! Ec_GM      = spin_fact /(4 pi i) int_{-inf}^{+inf} d(i omega) Sigma(i omega) * G0(i omega) 
+  !            = spin_fact /(4 pi i) int_{  0 }^{+inf} d(i omega) 2 * Re{ Sigma(i omega) * G0(i omega) }
   ec_gm = 0.0_dp
   p_matrix_gw(:,:,:) = 0.0_dp
   
@@ -866,16 +866,15 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
             * REAL( SUM( m_matrix(pstate,qstate,:,pqspin) &
                     / ( im * omega_sigma(:) - (energy(qstate,pqspin)-mu) ) * weight_sigma(:) ) , dp)
       enddo
-      do iomegas=1,nomega_sigma
-        ec_gm = ec_gm + &
-           2.0_dp * spin_fact / ( 2.0_dp * pi )  &
-           * REAL(sigma_c_g0(iomegas,qstate,pqspin) * weight_sigma(iomegas), dp)
-      enddo
+      ec_gm = ec_gm + &
+         2.0_dp * spin_fact / ( 2.0_dp * pi )  &
+         * REAL( SUM( sigma_c_g0(:,qstate,pqspin) * weight_sigma(:) ), dp)
     enddo
   enddo
 
-  write(stdout,'(/a)')       ' Galitskii-Migdal formula on the Imag. axis 1/(2*pi) int [G0(iw) * Sigma_c(iw)] dw:'
-  write(stdout,'(a,f19.10,/)') ' GM correlation energy (Ha): ',0.5_dp*ec_gm
+  ec_gm = 0.5_dp *ec_gm
+  write(stdout,'(/,a)')       ' Galitskii-Migdal formula on the Imag. axis 1/(4*pi) int [G0(iw) * Sigma_c(iw)] dw:'
+  write(stdout,'(a,f19.10,/)') ' GM correlation energy (Ha): ',ec_gm
 
   deallocate(omega_sigma,weight_sigma,sigma_c_g0)
 
