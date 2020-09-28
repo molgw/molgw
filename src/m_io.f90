@@ -944,7 +944,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
      ao_map(ibf2+13)=g_aos( 8)
      ao_map(ibf2+14)=g_aos( 9)
    else                ! h-, i-,...shell
-     write(stdout,'(1x,a,i5,a)') "Shell type",shell_typ,"not reordered."
+     write(stdout,'(1x,a,i5,a)') "Shell type",shell_typ," not reordered."
    endif
    ibf2 = ibf2 + iprim_per_shell
 

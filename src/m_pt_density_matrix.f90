@@ -721,8 +721,8 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
   real(dp),allocatable :: chi_eri3_sca_q(:,:)
   real(dp),allocatable :: omega_sigma(:),weight_sigma(:)
   real(dp),allocatable :: p_matrix_gw(:,:,:)
-  complex(dp),allocatable :: m_matrix(:,:,:,:)
-  real(dp)             :: v_chi_v_pq,mu
+  complex(dp),allocatable :: m_matrix(:,:,:,:), sigma_c_g0(:,:,:)
+  real(dp)             :: v_chi_v_pq,mu,ec_gm
   integer              :: desc_eri3_t(NDEL)
   integer              :: iprow,ipcol,nprow,npcol
   integer              :: desc_eri3_final(NDEL)
@@ -794,7 +794,9 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
 
   allocate(p_matrix_gw(nstate,nstate,nspin))
   allocate(m_matrix(nsemin:nsemax,nsemin:nsemax,nomega_sigma,nspin))
+  allocate(sigma_c_g0(nomega_sigma,nsemin:nsemax,nspin))
   m_matrix(:,:,:,:) = (0.0_dp,0.0_dp)
+  sigma_c_g0(:,:,:) = (0.0_dp, 0.0_dp)
 
   do pqspin=1,nspin
     do qstate=nsemin,nsemax
@@ -830,7 +832,8 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
         enddo
 
       enddo
-
+      
+      sigma_c_g0(:,qstate,pqspin) = -m_matrix(qstate,qstate,:,pqspin)
       m_matrix(qstate,qstate,:,pqspin) = m_matrix(qstate,qstate,:,pqspin) + (1.0_dp,0.0_dp)
     enddo
   enddo
@@ -847,10 +850,14 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
   enddo
 
   !
-  ! Perform the final omega integral:
+  ! Perform the final omega integrals:
   ! delta P_MO = spin_fact /(2 pi i) int_{-inf}^{+inf} d(i omega)  (1-G_0*Sigma)^{-1} * G_0(\mu + i omega)
   !            = spin_fact /(2 pi i) int_{  0 }^{+inf} d(i omega) 2 * Re{ (1-G_0*Sigma)^{-1} * G_0(\mu + i omega) }
+  ! Ec_GM      = spin_fact /(2 pi i) int_{-inf}^{+inf} d(i omega) Sigma*G0(\mu + i omega) 
+  !            = spin_fact /(2 pi i) int_{  0 }^{+inf} d(i omega) 2 * Re{ Sigma*G0 }
+  ec_gm = 0.0_dp
   p_matrix_gw(:,:,:) = 0.0_dp
+  
   do pqspin=1,nspin
     do qstate=nsemin,nsemax
       do pstate=nsemin,nsemax
@@ -859,11 +866,18 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
             * REAL( SUM( m_matrix(pstate,qstate,:,pqspin) &
                     / ( im * omega_sigma(:) - (energy(qstate,pqspin)-mu) ) * weight_sigma(:) ) , dp)
       enddo
+      do iomegas=1,nomega_sigma
+        ec_gm = ec_gm + &
+           2.0_dp * spin_fact / ( 2.0_dp * pi )  &
+           * REAL(sigma_c_g0(iomegas,qstate,pqspin) * weight_sigma(iomegas), dp)
+      enddo
     enddo
   enddo
 
+  write(stdout,'(/a)')       ' Galitskii-Migdal formula on the Imag. axis 1/(2*pi) int [G0(iw) * Sigma_c(iw)] dw:'
+  write(stdout,'(a,f19.10,/)') ' GM correlation energy (Ha): ',0.5_dp*ec_gm
 
-  deallocate(omega_sigma,weight_sigma)
+  deallocate(omega_sigma,weight_sigma,sigma_c_g0)
 
 
   ! Symmetrization of the p_matrix here
