@@ -147,7 +147,7 @@ module m_inputparam
  logical,protected                :: print_dens_traj_tddft_
  logical,protected                :: print_dens_traj_
  logical,protected                :: print_dens_traj_points_set_
- logical,protected                :: print_mulliken_tddft_
+ logical,protected                :: print_charge_tddft_
  logical,protected                :: calc_q_matrix_
  logical,protected                :: calc_dens_disc_
  logical,protected                :: calc_spectrum_
@@ -737,7 +737,7 @@ subroutine read_inputfile_namelist()
  print_restart_            = yesno_to_logical(print_restart)
  print_bigrestart_         = yesno_to_logical(print_bigrestart)
  print_pdos_               = yesno_to_logical(print_pdos)
- print_mulliken_tddft_     = yesno_to_logical(print_mulliken_tddft)
+ print_charge_tddft_       = yesno_to_logical(print_charge_tddft)
  print_spatial_extension_  = yesno_to_logical(print_spatial_extension)
  print_multipole_          = yesno_to_logical(print_multipole)
  print_cube_               = yesno_to_logical(print_cube)

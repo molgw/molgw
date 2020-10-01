@@ -651,6 +651,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  proj_charge(:) = 0.0_dp
 
  do atom_sampled = natom1,natom2
+   write(stdout, *) '====== atom ', atom_sampled, ' ======'
  do ispin=1,nspin
 
    !! Only loop over occupied states
@@ -666,6 +667,8 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
          proj_state_i(li) = proj_state_i(li) + ABS( cs_vector_i(ibf) )**2
        endif
      enddo
+     write(stdout, *) 'state ', istate
+     write(stdout, '(f6.2)') REAL(SUM(proj_state_i(:)))
      proj_charge(atom_sampled) = proj_charge(atom_sampled) &
                         + occupation(istate,ispin) * REAL(SUM(proj_state_i(:)))
    enddo
