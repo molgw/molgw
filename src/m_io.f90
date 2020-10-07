@@ -437,9 +437,8 @@ end subroutine mulliken_pdos
 
 
 !=========================================================================
-subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,itau,time_cur)
+subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,time_cur)
  implicit none
- integer,intent(in)         :: itau
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: s_matrix(:,:)
  real(dp),intent(in)        :: time_cur
@@ -600,9 +599,8 @@ end subroutine lowdin_pdos
 
 
 !=========================================================================
-subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,itau,time_cur)
+subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,time_cur)
  implicit none
- integer,intent(in)         :: itau
  integer,intent(in)         :: file_lowdin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: s_matrix_sqrt(:,:)
@@ -626,6 +624,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
 !=====
 
  if( .NOT. is_iomaster ) return
+ if( ALLOCATED(atom_state_occ) ) atom_state_occ(:,:) = 0
 
  inquire(file='manual_pdos',exist=file_exists)
  if(file_exists) then
@@ -651,10 +650,11 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  proj_charge(:) = 0.0_dp
 
  do atom_sampled = natom1,natom2
+   !write(stdout, *) '====== atom ', atom_sampled, ' ======'
  do ispin=1,nspin
 
    !! Only loop over occupied states
-   do istate=1,nocc
+   do istate=1, SIZE(c_matrix_cmplx, DIM=2)
      proj_state_i(:) = ( 0.0_dp, 0.0_dp )
 
      cs_vector_i(:) = MATMUL( s_matrix_sqrt(:,:) , CONJG(c_matrix_cmplx(:,istate,ispin)) )
@@ -668,6 +668,13 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
      enddo
      proj_charge(atom_sampled) = proj_charge(atom_sampled) &
                         + occupation(istate,ispin) * REAL(SUM(proj_state_i(:)))
+     !write(stdout, *) 'state ', istate
+     !write(stdout, '(2(2x,f6.2))') REAL(SUM(proj_state_i(:)))
+     if ( file_lowdin == stdout ) then
+       if ( NINT(REAL(SUM(proj_state_i(:)))) == 1 ) then
+         atom_state_occ(istate, ispin) = atom_sampled
+       end if
+     end if
    enddo
 
  enddo
@@ -675,7 +682,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
 
  n_column = 2 + natom_basis
  write(myfmt, '("(1x,",I0,"(2x,es18.8))")') n_column
- write(file_lowdin,fmt=myfmt) time_cur, xatom(3,natom), proj_charge
+ if ( file_lowdin /= stdout ) write(file_lowdin,fmt=myfmt) time_cur, xatom(3,natom), proj_charge
 
 end subroutine lowdin_pdos_cmplx
 

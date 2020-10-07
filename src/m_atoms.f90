@@ -24,6 +24,7 @@ module m_atoms
  real(dp),allocatable,public    :: zvalence(:)
  real(dp),allocatable,protected :: zatom(:)
  integer,allocatable,protected  :: zbasis(:)
+ integer,allocatable,public     :: atom_state_occ(:,:)
 
  real(dp),allocatable,protected :: xatom(:,:)
  real(dp),allocatable,protected :: xbasis(:,:)

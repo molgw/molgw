@@ -31,7 +31,8 @@ module m_tddft_propagator
   module procedure propagate_orth_ham_2
  end interface propagate_orth
 
- integer,private                    :: nocc, ncycle_max = 20
+ integer,private                    :: nocc, ncycle_max = 30
+ integer,allocatable,private        :: count_atom_e(:,:), count_atom_e_copy(:,:)
  real(dp),private                   :: dipole(3)
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
@@ -79,15 +80,15 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !=====initial values
  integer                    :: nstate,info,min_index(1),icycle,ind
- real(dp),allocatable       :: energy_tddft(:)
+ real(dp),allocatable       :: energy_tddft(:,:)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
  complex(dp),allocatable    :: p_matrix_hist(:,:,:)
- complex(dp),allocatable    :: m_matrix_cmplx(:,:) ! M = S**-1 * ( H - i*D )
- complex(dp),allocatable    :: m_eigenvector(:,:)
- real(dp),allocatable       :: m_eigenval(:)
+ complex(dp),allocatable    :: m_matrix_cmplx(:,:,:) ! M = S**-1 * ( H - i*D )
+ complex(dp),allocatable    :: m_eigenvector(:,:,:)
+ real(dp),allocatable       :: m_eigenval(:,:)
  real(dp),allocatable       :: s_matrix_inverse(:,:)
  real(dp),allocatable       :: interm_v_list(:)
  real(dp)                   :: small_v_list(3)=[0.01_dp, 0.05_dp, 0.25_dp]
@@ -230,14 +231,30 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
    call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
-   allocate(energy_tddft(nstate))
+   allocate(energy_tddft(nstate,nspin))
    do ispin=1, nspin
-     call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft,c_matrix_orth_start_complete_cmplx(:,:,ispin))
+     call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft(:,ispin),c_matrix_orth_start_complete_cmplx(:,:,ispin))
    end do
    ! in order to save the memory, we dont keep inoccupied states (nocc+1:nstate)
    c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
    !deallocate(energy_tddft)
+
+   ! associate each state to an atom
+   allocate( atom_state_occ(nstate, nspin) )
+   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min)
+   ! count the number of e- on each atom
+   allocate( count_atom_e(natom, nspin), count_atom_e_copy(natom, nspin) )
+   count_atom_e(:, :) = 0
+   do ispin = 1, nspin
+     do istate = 1, nstate
+       do iatom = 1, natom
+         if ( atom_state_occ(istate, ispin) == iatom ) &
+           count_atom_e(iatom, ispin) = count_atom_e(iatom, ispin) + occupation(istate, ispin)
+       end do
+     end do
+     !write(stdout, *) count_atom_e(:, ispin)
+   end do
 
    ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
@@ -252,29 +269,47 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
        write(stdout,'(/,1x,a)')
 
+       allocate( m_matrix_cmplx, MOLD = h_small_cmplx )
+       allocate( m_eigenvector, MOLD = m_matrix_cmplx )
+       allocate( m_eigenval(nstate,nspin) )
+
        do ispin=1, nspin
-         allocate(m_matrix_cmplx, MOLD=h_small_cmplx(:,:,ispin))
-         allocate(m_eigenvector, MOLD=m_matrix_cmplx)
-         allocate(m_eigenval(nstate))
-
          ! in ortho basis : M' = X**H * (H-iD) * X
-         m_matrix_cmplx(:,:) = MATMUL(( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ), x_matrix(:,:))
-         m_matrix_cmplx(:,:) = MATMUL(TRANSPOSE(x_matrix(:,:)), m_matrix_cmplx(:,:))
+         m_matrix_cmplx(:,:,ispin) = MATMUL(( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ), x_matrix(:,:))
+         m_matrix_cmplx(:,:,ispin) = MATMUL(TRANSPOSE(x_matrix(:,:)), m_matrix_cmplx(:,:,ispin))
          ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
-         call diagonalize( postscf_diago_flavor, m_matrix_cmplx, m_eigenval, m_eigenvector )
-         !write(stdout, *), 'eigenvalues = ', m_eigenval(:)
-         !write(stdout, "(*('('f6.2xsf6.2x')':x))") c_matrix_orth_cmplx(1, 1:nocc, 2)
-
-         ! take corresponding states (in energy ascending order) for C'(t0)
-         c_matrix_orth_cmplx(:,1:nocc,ispin) = m_eigenvector(:,1:nocc)
-         ! C = X * C'
-         c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
-
-         deallocate(m_matrix_cmplx)
-         deallocate(m_eigenvector)
-         deallocate(m_eigenval)
-
+         call diagonalize( postscf_diago_flavor, m_matrix_cmplx(:,:,ispin), m_eigenval(:,ispin), m_eigenvector(:,:,ispin) )
+         ! M = X * M'
+         m_eigenvector(:,:,ispin) = MATMUL( x_matrix(:,:) , m_eigenvector(:,:,ispin) )
        end do
+
+       ! assign new states to corresponding atoms
+       call lowdin_pdos_cmplx(basis,s_matrix_sqrt,m_eigenvector,occupation,stdout,time_min)
+       ! set new occupations
+       count_atom_e_copy = count_atom_e
+       occupation(:,:) = 0
+       do ispin=1, nspin
+         do istate = 1, nstate
+           iatom = atom_state_occ(istate, ispin)
+           occupation(istate, ispin) = MIN( count_atom_e_copy(iatom, ispin), -nspin+3 )
+           count_atom_e_copy(iatom, ispin) = count_atom_e_copy(iatom, ispin) - occupation(istate, ispin)
+         end do
+       end do
+       nocc = get_number_occupied_states(occupation)
+
+       ! get new c_matrix_cmplx
+       call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
+       call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
+       c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
+       !write(stdout, '(a10,5(2x,a10))'), 'SCF', ' ', 'TDDFT', ' ', 'occupation'
+       !write(stdout, '(a10,6(2x,a10))'), 'spin1', 'spin 2', 'spin1', 'spin2', 'spin1', 'spin2'
+       !do istate = 1, 10
+       !   write(stdout, '(f10.4,6(2x,f10.4))'), energy_tddft(istate,:), m_eigenval(istate,:), occupation(istate, :)
+       !end do
+
+       deallocate(m_matrix_cmplx)
+       deallocate(m_eigenvector)
+       deallocate(m_eigenval)
 
        call setup_hamiltonian_cmplx(basis,                      &
                                     nstate,                     &
@@ -310,6 +345,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    end if
    deallocate(energy_tddft)
+   deallocate(atom_state_occ, count_atom_e, count_atom_e_copy)
+
  end if
  en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
@@ -387,8 +424,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
  if( print_charge_tddft_ ) then
-   !call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,0,time_min)
-   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,0,time_min)
+   !call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,time_min)
+   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,time_min)
  end if
 
  call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field,0)
@@ -500,8 +537,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
          call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
        end if
-       !call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,iwrite_step-1,time_cur)
-       call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,iwrite_step-1,time_cur)
+       !call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,time_cur)
+       call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,time_cur)
      end if
    end if
 
