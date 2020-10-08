@@ -86,8 +86,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
  complex(dp),allocatable    :: p_matrix_hist(:,:,:)
- complex(dp),allocatable    :: m_matrix_cmplx(:,:,:) ! M = S**-1 * ( H - i*D )
- complex(dp),allocatable    :: m_eigenvector(:,:,:)
+ complex(dp),allocatable    :: m_matrix_small(:,:,:) ! M = S**-1 * ( H - i*D )
+ complex(dp),allocatable    :: m_eigenvec_small(:,:,:), m_eigenvector(:,:,:)
  real(dp),allocatable       :: m_eigenval(:,:)
  real(dp),allocatable       :: s_matrix_inverse(:,:)
  real(dp),allocatable       :: interm_v_list(:)
@@ -269,18 +269,19 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
        write(stdout,'(/,1x,a)')
 
-       allocate( m_matrix_cmplx, MOLD = h_small_cmplx )
-       allocate( m_eigenvector, MOLD = m_matrix_cmplx )
-       allocate( m_eigenval(nstate,nspin) )
+       allocate( m_matrix_small, MOLD = h_small_cmplx )
+       allocate( m_eigenvec_small, MOLD = h_small_cmplx )
+       allocate( m_eigenvector(basis%nbf,nstate,nspin), m_eigenval(nstate,nspin) )
 
        do ispin=1, nspin
          ! in ortho basis : M' = X**H * (H-iD) * X
-         m_matrix_cmplx(:,:,ispin) = MATMUL(( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ), x_matrix(:,:))
-         m_matrix_cmplx(:,:,ispin) = MATMUL(TRANSPOSE(x_matrix(:,:)), m_matrix_cmplx(:,:,ispin))
+         m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), &
+             MATMUL( (h_cmplx(:,:,ispin) - im*d_matrix(:,:)), x_matrix(:,:) ) )
          ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
-         call diagonalize( postscf_diago_flavor, m_matrix_cmplx(:,:,ispin), m_eigenval(:,ispin), m_eigenvector(:,:,ispin) )
+         call diagonalize( postscf_diago_flavor, m_matrix_small(:,:,ispin), &
+                           m_eigenval(:,ispin), m_eigenvec_small(:,:,ispin) )
          ! M = X * M'
-         m_eigenvector(:,:,ispin) = MATMUL( x_matrix(:,:) , m_eigenvector(:,:,ispin) )
+         m_eigenvector(:,:,ispin) = MATMUL( x_matrix(:,:) , m_eigenvec_small(:,:,ispin) )
        end do
 
        ! assign new states to corresponding atoms
@@ -307,9 +308,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        !   write(stdout, '(f10.4,6(2x,f10.4))'), energy_tddft(istate,:), m_eigenval(istate,:), occupation(istate, :)
        !end do
 
-       deallocate(m_matrix_cmplx)
-       deallocate(m_eigenvector)
-       deallocate(m_eigenval)
+       deallocate(m_matrix_small)
+       deallocate(m_eigenvec_small)
+       deallocate(m_eigenvector, m_eigenval)
 
        call setup_hamiltonian_cmplx(basis,                      &
                                     nstate,                     &
