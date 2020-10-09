@@ -259,7 +259,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
 
-     allocate(p_matrix_hist, MOLD=p_matrix_cmplx(:,:,:))
+     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+     allocate( p_matrix_hist, SOURCE = p_matrix_cmplx(:,:,:) )
+     allocate( h_hist_cmplx(basis%nbf,basis%nbf,nspin,2) )
+     h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
 
      ! self-consistency loop for C(t0) convergence in ortho basis
      ! M = H-iD is Hermitian at t0
@@ -327,22 +330,22 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
        call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
 
-       if( icycle == 1 ) then
-         p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+       rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
+       !print*, 'abs(rms) = ', ABS(rms)
+       if( ABS(rms) < 1.e-6 ) then
+         write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
+         exit
        else
-         rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
-         !print*, 'abs(rms) = ', ABS(rms)
-         if( ABS(rms) < 1.e-8 ) then
-           write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
-           exit
-         else
-           if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
-         end if
-         p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+         if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
        end if
+       p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+       h_hist_cmplx(:,:,:,2) = h_hist_cmplx(:,:,:,1)
+       h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
+       ! simple mixing of H
+       h_cmplx = 0.5_dp * h_hist_cmplx(:,:,:,1) + 0.5_dp * h_hist_cmplx(:,:,:,2)
 
      end do
-     deallocate(p_matrix_hist)
+     deallocate(p_matrix_hist, h_hist_cmplx)
 
    end if
    deallocate(energy_tddft)
