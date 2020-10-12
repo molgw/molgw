@@ -32,11 +32,11 @@ module m_tddft_propagator
  end interface propagate_orth
 
  integer,private                    :: nocc, ncycle_max = 30
- integer,allocatable,private        :: count_atom_e(:,:), count_atom_e_copy(:,:)
  real(dp),private                   :: dipole(3)
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
  real(dp),allocatable,private       :: xbasis_start(:,:)
+ real(dp),allocatable,private       :: count_atom_e(:,:), count_atom_e_copy(:,:)
  real(dp),private                   :: excit_field_norm
  !==hamiltonian extrapolation variables==
  real(dp),allocatable,private       :: extrap_coefs(:)
@@ -295,7 +295,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        do ispin=1, nspin
          do istate = 1, nstate
            iatom = atom_state_occ(istate, ispin)
-           occupation(istate, ispin) = MIN( count_atom_e_copy(iatom, ispin), -nspin+3 )
+           occupation(istate, ispin) = MIN( count_atom_e_copy(iatom, ispin), spin_fact )
            count_atom_e_copy(iatom, ispin) = count_atom_e_copy(iatom, ispin) - occupation(istate, ispin)
          end do
        end do
