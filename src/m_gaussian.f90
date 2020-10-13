@@ -110,6 +110,119 @@ end function eval_gaussian
 
 
 !=========================================================================
+function eval_gaussian_fourier(ga,k) RESULT(gaussian_fourier)
+ implicit none
+ type(gaussian),intent(in) :: ga
+ real(dp),intent(in) :: k(3)
+ complex(dp) :: gaussian_fourier
+!=====
+ real(dp) :: k2,kx2,ky2,kz2
+ complex(dp) :: gx,gy,gz
+ integer :: il
+!=====
+
+ ! Fourier transform phi(k) = int dr e^{-ikr} phi(r)
+
+ kx2 = k(1)**2
+ ky2 = k(2)**2
+ kz2 = k(3)**2
+ k2 = SUM(k(:)**2)
+
+ ! X direction
+ select case(ga%nx)
+ case(0)
+   gx = 1.0_dp
+ case(2)
+   gx = -kx2 + 2.0_dp * ga%alpha
+ case(4)
+   gx = kx2**2 - 12.0_dp * ga%alpha * kx2 + 12.0_dp * ga%alpha**2
+ case(6)
+   gx = -kx2**3 + 30.0_dp * ga%alpha * kx2**2 - 180.0_dp * ga%alpha**2 * kx2 &
+                        + 120.0_dp * ga%alpha**3
+ case(8)
+   gx = kx2**4 - 56.0_dp * ga%alpha * kx2**3 + 840.0_dp * ga%alpha**2 * kx2**2 &
+                               - 3360.0_dp * ga%alpha**3 * kx2 + 1680.0_dp * ga%alpha**4
+ case(1)
+   gx = -im * k(1)
+ case(3)
+   gx = im * k(1)**3 - 6.0_dp * ga%alpha * im * k(1)
+ case(5)
+   gx = -im * k(1)**5 + 20.0_dp * ga%alpha * im * k(1)**3 - 60.0_dp * ga%alpha**2 * im * k(1)
+ case(7)
+   gx = im * k(1)**7 - 42.0_dp * ga%alpha * im * k(1)**5 &
+                     + 420.0_dp * ga%alpha**2 * im * k(1)**3 &
+                     - 840.0_dp * ga%alpha**3 * im * k(1)
+ case default
+   call die('eval_gaussian_fourier: too high angular momentum')
+ end select
+
+ ! Y direction
+ select case(ga%ny)
+ case(0)
+   gy = 1.0_dp
+ case(2)
+   gy = -ky2 + 2.0_dp * ga%alpha
+ case(4)
+   gy = ky2**2 - 12.0_dp * ga%alpha * ky2 + 12.0_dp * ga%alpha**2
+ case(6)
+   gy = -ky2**3 + 30.0_dp * ga%alpha * ky2**2 - 180.0_dp * ga%alpha**2 * ky2 &
+                        + 120.0_dp * ga%alpha**3
+ case(8)
+   gy = ky2**4 - 56.0_dp * ga%alpha * ky2**3 + 840.0_dp * ga%alpha**2 * ky2**2 &
+                               - 3360.0_dp * ga%alpha**3 * ky2 + 1680.0_dp * ga%alpha**4
+ case(1)
+   gy = -im * k(2)
+ case(3)
+   gy = im * k(2)**3 - 6.0_dp * ga%alpha * im * k(2)
+ case(5)
+   gy = -im * k(2)**5 + 20.0_dp * ga%alpha * im * k(2)**3 - 60.0_dp * ga%alpha**2 * im * k(2)
+ case(7)
+   gy = im * k(2)**7 - 42.0_dp * ga%alpha * im * k(2)**5 &
+                     + 420.0_dp * ga%alpha**2 * im * k(2)**3 &
+                     - 840.0_dp * ga%alpha**3 * im * k(2)
+ case default
+   call die('eval_gaussian_fourier: too high angular momentum')
+ end select
+
+ ! Z direction
+ select case(ga%nz)
+ case(0)
+   gz = 1.0_dp
+ case(2)
+   gz = -kz2 + 2.0_dp * ga%alpha
+ case(4)
+   gz = kz2**2 - 12.0_dp * ga%alpha * kz2 + 12.0_dp * ga%alpha**2
+ case(6)
+   gz = -kz2**3 + 30.0_dp * ga%alpha * kz2**2 - 180.0_dp * ga%alpha**2 * kz2 &
+                        + 120.0_dp * ga%alpha**3
+ case(8)
+   gz = kz2**4 - 56.0_dp * ga%alpha * kz2**3 + 840.0_dp * ga%alpha**2 * kz2**2 &
+                               - 3360.0_dp * ga%alpha**3 * kz2 + 1680.0_dp * ga%alpha**4
+ case(1)
+   gz = -im * k(3)
+ case(3)
+   gz = im * k(3)**3 - 6.0_dp * ga%alpha * im * k(3)
+ case(5)
+   gz = -im * k(3)**5 + 20.0_dp * ga%alpha * im * k(3)**3 - 60.0_dp * ga%alpha**2 * im * k(3)
+ case(7)
+   gz = im * k(3)**7 - 42.0_dp * ga%alpha * im * k(3)**5 &
+                     + 420.0_dp * ga%alpha**2 * im * k(3)**3 &
+                     - 840.0_dp * ga%alpha**3 * im * k(3)
+ case default
+   call die('eval_gaussian_fourier: too high angular momentum')
+ end select
+
+ gaussian_fourier = gx * gy * gz * (pi/ga%alpha)**(1.5_dp) / (2*ga%alpha)**(ga%nx+ga%ny+ga%nz)   &
+                         * EXP( -0.25_dp * k2 / ga%alpha ) &
+                         * EXP( -im * DOT_PRODUCT(k,ga%x0) )
+ !
+ ! normalize the cartesian gaussian
+ gaussian_fourier = gaussian_fourier * ga%norm_factor
+
+end function eval_gaussian_fourier
+
+
+!=========================================================================
 function eval_gaussian_grad(ga,x)
  implicit none
  type(gaussian),intent(in) :: ga
@@ -205,20 +318,6 @@ subroutine print_gaussian(ga)
  write(stdout,*)
 
 end subroutine print_gaussian
-
-
-!=========================================================================
-subroutine product_gaussian(ga,gb,gprod)
- implicit none
- type(gaussian),intent(in) :: ga,gb
- type(gaussian),intent(out) :: gprod
-!=====
-
- if( ANY( ABS(ga%x0(:) - gb%x0(:)) > 1.d-6 ) ) call die('different positions not implemented for product')
-
- call init_gaussian_general(ga%nx+gb%nx,ga%ny+gb%ny,ga%nz+gb%nz,ga%alpha+gb%alpha,ga%x0,gprod)
-
-end subroutine product_gaussian
 
 
 !=========================================================================
