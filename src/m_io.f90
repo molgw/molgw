@@ -599,9 +599,10 @@ end subroutine lowdin_pdos
 
 
 !=========================================================================
-subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,time_cur)
+subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,time_cur,atom_state_occ)
  implicit none
  integer,intent(in)         :: file_lowdin
+ integer,intent(inout),optional  :: atom_state_occ(:,:)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: s_matrix_sqrt(:,:)
  real(dp),intent(in)        :: time_cur
@@ -624,7 +625,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
 !=====
 
  if( .NOT. is_iomaster ) return
- if( ALLOCATED(atom_state_occ) ) atom_state_occ(:,:) = 0
+ if( PRESENT(atom_state_occ) ) atom_state_occ(:,:) = 0
 
  inquire(file='manual_pdos',exist=file_exists)
  if(file_exists) then
@@ -670,7 +671,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
                         + occupation(istate,ispin) * REAL(SUM(proj_state_i(:)))
      !write(stdout, *) 'state ', istate
      !write(stdout, '(2(2x,f6.2))') REAL(SUM(proj_state_i(:)))
-     if ( file_lowdin == stdout ) then
+     if ( PRESENT( atom_state_occ ) ) then
        if ( NINT(REAL(SUM(proj_state_i(:)))) == 1 ) then
          atom_state_occ(istate, ispin) = atom_sampled
        end if

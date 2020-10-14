@@ -45,9 +45,16 @@ module m_tddft_propagator
  complex(dp),allocatable,private    :: h_hist_cmplx(:,:,:,:)
  complex(dp),allocatable,private    :: c_matrix_hist_cmplx(:,:,:,:)
  integer,private                    :: ntau
+ !==C(t0) initialization variables==
+ integer,allocatable                :: atom_state_occ(:,:)
+ real(dp),allocatable               :: m_eigenval(:,:)
+ complex(dp),allocatable,private    :: p_matrix_cmplx_hist(:,:,:)
+ complex(dp),allocatable            :: m_matrix_small(:,:,:) ! M' = X**H * ( H - i*D ) * X
+ complex(dp),allocatable            :: m_eigenvec_small(:,:,:), m_eigenvector(:,:,:)
+ complex(dp),private                :: rms
  !==frozen core==
- real(dp),allocatable       :: energies_start(:,:)
- complex(dp),allocatable    :: a_matrix_orth_start_cmplx(:,:,:)
+ real(dp),allocatable               :: energies_start(:,:)
+ complex(dp),allocatable            :: a_matrix_orth_start_cmplx(:,:,:)
  !====
 
  type(energy_contributions),private :: en_tddft
@@ -85,15 +92,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
- complex(dp),allocatable    :: p_matrix_hist(:,:,:)
- complex(dp),allocatable    :: m_matrix_small(:,:,:) ! M = S**-1 * ( H - i*D )
- complex(dp),allocatable    :: m_eigenvec_small(:,:,:), m_eigenvector(:,:,:)
- real(dp),allocatable       :: m_eigenval(:,:)
- real(dp),allocatable       :: s_matrix_inverse(:,:)
- real(dp),allocatable       :: interm_v_list(:)
- real(dp)                   :: small_v_list(3)=[0.01_dp, 0.05_dp, 0.25_dp]
- complex(dp)                :: rms
- logical                    :: is_converged
 !=====TDDFT loop variables=============================
  integer                    :: iatom
  integer                    :: itau
@@ -242,7 +240,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    ! associate each state to an atom
    allocate( atom_state_occ(nstate, nspin) )
-   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min)
+   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min,atom_state_occ)
    ! count the number of e- on each atom
    allocate( count_atom_e(natom, nspin), count_atom_e_copy(natom, nspin) )
    count_atom_e(:, :) = 0
@@ -260,7 +258,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
 
      call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-     allocate( p_matrix_hist, SOURCE = p_matrix_cmplx(:,:,:) )
+     allocate( p_matrix_cmplx_hist, SOURCE = p_matrix_cmplx(:,:,:) )
      allocate( h_hist_cmplx(basis%nbf,basis%nbf,nspin,2) )
      h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
 
@@ -278,8 +276,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
        do ispin=1, nspin
          ! in ortho basis : M' = X**H * (H-iD) * X
-         m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), &
-             MATMUL( (h_cmplx(:,:,ispin) - im*d_matrix(:,:)), x_matrix(:,:) ) )
+         m_eigenvector(:,:,ispin)  = MATMUL( (h_cmplx(:,:,ispin) - im*d_matrix(:,:)), x_matrix(:,:) )
+         m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
          ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
          call diagonalize( postscf_diago_flavor, m_matrix_small(:,:,ispin), &
                            m_eigenval(:,ispin), m_eigenvec_small(:,:,ispin) )
@@ -288,15 +286,17 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        end do
 
        ! assign new states to corresponding atoms
-       call lowdin_pdos_cmplx(basis,s_matrix_sqrt,m_eigenvector,occupation,stdout,time_min)
+       call lowdin_pdos_cmplx(basis,s_matrix_sqrt,m_eigenvector,occupation,stdout,time_min,atom_state_occ)
        ! set new occupations
-       count_atom_e_copy = count_atom_e
-       occupation(:,:) = 0
+       count_atom_e_copy(:,:) = count_atom_e(:,:)
+       occupation(:,:) = 0.0_dp
        do ispin=1, nspin
          do istate = 1, nstate
            iatom = atom_state_occ(istate, ispin)
-           occupation(istate, ispin) = MIN( count_atom_e_copy(iatom, ispin), spin_fact )
-           count_atom_e_copy(iatom, ispin) = count_atom_e_copy(iatom, ispin) - occupation(istate, ispin)
+           if( iatom > 0 .AND. iatom <= natom ) then
+             occupation(istate, ispin) = MIN( count_atom_e_copy(iatom, ispin), spin_fact )
+             count_atom_e_copy(iatom, ispin) = count_atom_e_copy(iatom, ispin) - occupation(istate, ispin)
+           end if
          end do
        end do
        nocc = get_number_occupied_states(occupation)
@@ -330,7 +330,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
        call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
 
-       rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
+       rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
        !print*, 'abs(rms) = ', ABS(rms)
        if( ABS(rms) < 1.e-6 ) then
          write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
@@ -338,14 +338,14 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        else
          if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
        end if
-       p_matrix_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+       p_matrix_cmplx_hist(:,:,:) = p_matrix_cmplx(:,:,:)
        h_hist_cmplx(:,:,:,2) = h_hist_cmplx(:,:,:,1)
        h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
        ! simple mixing of H
        h_cmplx = 0.5_dp * h_hist_cmplx(:,:,:,1) + 0.5_dp * h_hist_cmplx(:,:,:,2)
 
      end do
-     deallocate(p_matrix_hist, h_hist_cmplx)
+     deallocate(p_matrix_cmplx_hist, h_hist_cmplx)
 
    end if
    deallocate(energy_tddft)
