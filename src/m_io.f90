@@ -433,13 +433,13 @@ end subroutine mulliken_pdos
 
 
 !=========================================================================
-subroutine plot_wfn(nstate,basis,c_matrix)
+subroutine plot_wfn(basis,c_matrix)
  implicit none
- integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
 !=====
  integer,parameter          :: nr=2000
+ integer                    :: nstate
  real(dp),parameter         :: length=10.0_dp
  integer                    :: ir
  integer                    :: istate1,istate2,istate,ispin
@@ -454,6 +454,7 @@ subroutine plot_wfn(nstate,basis,c_matrix)
 
  if( .NOT. is_iomaster ) return
 
+ nstate = SIZE(c_matrix,DIM=2)
 
  write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions'
  inquire(file='manual_plotwfn',exist=file_exists)
@@ -509,6 +510,85 @@ subroutine plot_wfn(nstate,basis,c_matrix)
  deallocate(phase,phi)
 
 end subroutine plot_wfn
+
+
+!=========================================================================
+subroutine plot_wfn_fourier(basis,c_matrix)
+ implicit none
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+!=====
+ integer                    :: nstate,istate1,istate2
+ integer,parameter          :: nq=200
+ real(dp),parameter         :: dq=0.10_dp
+ real(dp)                   :: qunit(3),qvec(3)
+ integer                    :: iq,istate,ibf,ishell
+ integer                    :: gt,li,ni_cart,ibf1,ibf1_cart,ibf2,i_cart
+ complex(dp)                :: basis_function_q(basis%nbf)
+ complex(dp),allocatable    :: basis_function_q_cart(:)
+ integer,allocatable        :: file_state(:)
+ character(len=4)           :: cstate
+ real(dp),allocatable       :: ekin(:)
+!=====
+
+ nstate = SIZE(c_matrix,DIM=2)
+ qunit(1) = 1.0_dp
+ qunit(2) = 0.0_dp
+ qunit(3) = 0.0_dp
+
+ qunit(:) = qunit(:) / NORM2(qunit(:))
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ istate1=1
+ istate2=1
+ allocate(file_state(istate1:istate2))
+ do istate=istate1,istate2
+   write(cstate,'(i4.4)') istate
+   open(newunit=file_state(istate),file='wfn_fourier_'//cstate//'.dat',action='write')
+ enddo
+
+ allocate(ekin(istate1:istate2))
+ ekin(:) = 0.0_dp
+
+ do iq=0,nq
+   qvec(:) = qunit(:) * iq * dq
+
+   do ishell=1,basis%nshell
+     li        = basis%shell(ishell)%am
+     ni_cart   = number_basis_function_am('CART',li)
+     ibf1      = basis%shell(ishell)%istart
+     ibf1_cart = basis%shell(ishell)%istart_cart
+     ibf2      = basis%shell(ishell)%iend
+
+     allocate(basis_function_q_cart(ni_cart))
+
+     do i_cart=1,ni_cart
+       basis_function_q_cart(i_cart) = basis_function_fourier(basis%bfc(ibf1_cart+i_cart-1),qvec)
+       !write(stdout,*) qvec(1),basis_function_q_cart(i_cart)   !FBFB
+     enddo
+     basis_function_q(ibf1:ibf2) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)), basis_function_q_cart(:) )
+     deallocate(basis_function_q_cart)
+
+   enddo
+
+
+   do istate=istate1,istate2
+     write(file_state(istate),'(f12.5,2x,2(1x,f14.6))') NORM2(qvec(:)),DOT_PRODUCT(basis_function_q(:),c_matrix(:,istate,1))
+     ekin(istate) = ekin(istate) + 4.0_dp * pi * dq * NORM2(qvec)**4 &
+                                     * ABS(DOT_PRODUCT(basis_function_q(:),c_matrix(:,istate,1)))**2 * ( 2.0_dp *pi )**3
+   enddo
+
+ enddo
+
+ do istate=istate1,istate2
+   write(stdout,*) 'kinetic energy',istate,0.5_dp*ekin
+   close(file_state(istate))
+ enddo
+ deallocate(file_state)
+ deallocate(ekin)
+
+end subroutine plot_wfn_fourier
 
 
 !=========================================================================

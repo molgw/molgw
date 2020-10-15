@@ -121,7 +121,7 @@ function eval_gaussian_fourier(ga,k) RESULT(gaussian_fourier)
  integer :: il
 !=====
 
- ! Fourier transform phi(k) = int dr e^{-ikr} phi(r)
+ ! Fourier transform phi(k) = 1/(2pi)**3 int dr e^{-ikr} phi(r)
 
  kx2 = k(1)**2
  ky2 = k(2)**2
@@ -145,13 +145,14 @@ function eval_gaussian_fourier(ga,k) RESULT(gaussian_fourier)
  case(1)
    gx = -im * k(1)
  case(3)
-   gx = im * k(1)**3 - 6.0_dp * ga%alpha * im * k(1)
+   gx =  im * k(1)**3 -  6.0_dp * ga%alpha    * im * k(1)
  case(5)
-   gx = -im * k(1)**5 + 20.0_dp * ga%alpha * im * k(1)**3 - 60.0_dp * ga%alpha**2 * im * k(1)
+   gx = -im * k(1)**5 + 20.0_dp * ga%alpha    * im * k(1)**3 &
+                      - 60.0_dp * ga%alpha**2 * im * k(1)
  case(7)
-   gx = im * k(1)**7 - 42.0_dp * ga%alpha * im * k(1)**5 &
-                     + 420.0_dp * ga%alpha**2 * im * k(1)**3 &
-                     - 840.0_dp * ga%alpha**3 * im * k(1)
+   gx =  im * k(1)**7 -  42.0_dp * ga%alpha    * im * k(1)**5 &
+                      + 420.0_dp * ga%alpha**2 * im * k(1)**3 &
+                      - 840.0_dp * ga%alpha**3 * im * k(1)
  case default
    call die('eval_gaussian_fourier: too high angular momentum')
  end select
@@ -173,11 +174,12 @@ function eval_gaussian_fourier(ga,k) RESULT(gaussian_fourier)
  case(1)
    gy = -im * k(2)
  case(3)
-   gy = im * k(2)**3 - 6.0_dp * ga%alpha * im * k(2)
+   gy =  im * k(2)**3 -  6.0_dp * ga%alpha    * im * k(2)
  case(5)
-   gy = -im * k(2)**5 + 20.0_dp * ga%alpha * im * k(2)**3 - 60.0_dp * ga%alpha**2 * im * k(2)
+   gy = -im * k(2)**5 + 20.0_dp * ga%alpha    * im * k(2)**3 &
+                      - 60.0_dp * ga%alpha**2 * im * k(2)
  case(7)
-   gy = im * k(2)**7 - 42.0_dp * ga%alpha * im * k(2)**5 &
+   gy = im * k(2)**7 - 42.0_dp * ga%alpha     * im * k(2)**5 &
                      + 420.0_dp * ga%alpha**2 * im * k(2)**3 &
                      - 840.0_dp * ga%alpha**3 * im * k(2)
  case default
@@ -201,11 +203,12 @@ function eval_gaussian_fourier(ga,k) RESULT(gaussian_fourier)
  case(1)
    gz = -im * k(3)
  case(3)
-   gz = im * k(3)**3 - 6.0_dp * ga%alpha * im * k(3)
+   gz =  im * k(3)**3 - 6.0_dp * ga%alpha     * im * k(3)
  case(5)
-   gz = -im * k(3)**5 + 20.0_dp * ga%alpha * im * k(3)**3 - 60.0_dp * ga%alpha**2 * im * k(3)
+   gz = -im * k(3)**5 + 20.0_dp * ga%alpha    * im * k(3)**3 &
+                      - 60.0_dp * ga%alpha**2 * im * k(3)
  case(7)
-   gz = im * k(3)**7 - 42.0_dp * ga%alpha * im * k(3)**5 &
+   gz =  im * k(3)**7 - 42.0_dp * ga%alpha    * im * k(3)**5 &
                      + 420.0_dp * ga%alpha**2 * im * k(3)**3 &
                      - 840.0_dp * ga%alpha**3 * im * k(3)
  case default
@@ -214,7 +217,8 @@ function eval_gaussian_fourier(ga,k) RESULT(gaussian_fourier)
 
  gaussian_fourier = gx * gy * gz * (pi/ga%alpha)**(1.5_dp) / (2*ga%alpha)**(ga%nx+ga%ny+ga%nz)   &
                          * EXP( -0.25_dp * k2 / ga%alpha ) &
-                         * EXP( -im * DOT_PRODUCT(k,ga%x0) )
+                         * EXP( -im * DOT_PRODUCT(k,ga%x0) ) &
+                         / ( 2.0_dp * pi )**3
  !
  ! normalize the cartesian gaussian
  gaussian_fourier = gaussian_fourier * ga%norm_factor
