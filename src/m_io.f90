@@ -519,8 +519,6 @@ subroutine plot_wfn_fourier(basis,c_matrix)
  real(dp),intent(in)        :: c_matrix(:,:,:)
 !=====
  integer                    :: nstate,istate1,istate2
- integer,parameter          :: nq=200
- real(dp),parameter         :: dq=0.10_dp
  real(dp)                   :: qunit(3),qvec(3)
  integer                    :: iq,istate,ibf,ishell
  integer                    :: gt,li,ni_cart,ibf1,ibf1_cart,ibf2,i_cart
@@ -528,31 +526,62 @@ subroutine plot_wfn_fourier(basis,c_matrix)
  complex(dp),allocatable    :: basis_function_q_cart(:)
  integer,allocatable        :: file_state(:)
  character(len=4)           :: cstate
- real(dp),allocatable       :: ekin(:)
+ integer,parameter :: n1=86
+ integer,parameter :: nqradial=30
+ integer,parameter          :: nq=200
+ real(dp),parameter         :: dq=0.10_dp
+ !integer,parameter          :: nq=n1*nqradial
+ !integer :: ix1,iqradial
+ !real(dp) :: xtmp,weight
+ !real(dp) :: qlist(3,nq),wq(nq)
+ !real(dp) :: x1(n1),y1(n1),z1(n1),w1(n1)
+ !real(dp) :: xa(nqradial),wxa(nqradial)
+ !real(dp),parameter :: alpha= 5.0_dp
+ !real(dp),allocatable       :: ekin(:)
 !=====
 
  nstate = SIZE(c_matrix,DIM=2)
  qunit(1) = 1.0_dp
- qunit(2) = 0.0_dp
- qunit(3) = 0.0_dp
-
+ qunit(2) = 1.0_dp
+ qunit(3) = 1.0_dp
  qunit(:) = qunit(:) / NORM2(qunit(:))
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
  istate1=1
- istate2=1
+ istate2=2
  allocate(file_state(istate1:istate2))
  do istate=istate1,istate2
    write(cstate,'(i4.4)') istate
    open(newunit=file_state(istate),file='wfn_fourier_'//cstate//'.dat',action='write')
  enddo
 
- allocate(ekin(istate1:istate2))
- ekin(:) = 0.0_dp
+ !allocate(ekin(istate1:istate2))
+ !ekin(:) = 0.0_dp
 
- do iq=0,nq
+ !do iqradial=1,nqradial
+ !  xtmp = ( iqradial - 0.5_dp ) / REAL(nqradial,dp)
+ !  xa(iqradial)   = -alpha * log( 1.0_dp - xtmp**3)
+ !  wxa(iqradial)  = 3.0_dp * alpha * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nqradial,dp)
+ !enddo
+ !call ld0086(x1,y1,z1,w1,iq)
+ !iq = 0
+ !do iqradial=1,nqradial
+ !  do ix1=1,n1
+ !    iq = iq + 1
+ !    wq(iq) = wxa(iqradial) * w1(ix1) * 4.0_dp * pi * xa(iqradial)**2
+ !    qlist(1,iq) = xa(iqradial) * x1(ix1)
+ !    qlist(2,iq) = xa(iqradial) * y1(ix1)
+ !    qlist(3,iq) = xa(iqradial) * z1(ix1)
+ !  enddo
+ !enddo
+
+
+ do iq=1,nq
    qvec(:) = qunit(:) * iq * dq
+   weight = 4.0_dp * pi * NORM2(qvec)**2 * dq
+   !qvec(:) = qlist(:,iq)
+   !weight = wq(iq)
 
    do ishell=1,basis%nshell
      li        = basis%shell(ishell)%am
@@ -565,7 +594,6 @@ subroutine plot_wfn_fourier(basis,c_matrix)
 
      do i_cart=1,ni_cart
        basis_function_q_cart(i_cart) = basis_function_fourier(basis%bfc(ibf1_cart+i_cart-1),qvec)
-       !write(stdout,*) qvec(1),basis_function_q_cart(i_cart)   !FBFB
      enddo
      basis_function_q(ibf1:ibf2) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)), basis_function_q_cart(:) )
      deallocate(basis_function_q_cart)
@@ -574,19 +602,19 @@ subroutine plot_wfn_fourier(basis,c_matrix)
 
 
    do istate=istate1,istate2
-     write(file_state(istate),'(f12.5,2x,2(1x,f14.6))') NORM2(qvec(:)),DOT_PRODUCT(basis_function_q(:),c_matrix(:,istate,1))
-     ekin(istate) = ekin(istate) + 4.0_dp * pi * dq * NORM2(qvec)**4 &
-                                     * ABS(DOT_PRODUCT(basis_function_q(:),c_matrix(:,istate,1)))**2 * ( 2.0_dp *pi )**3
+     write(file_state(istate),'(f12.5,2x,2(1x,es16.6))') NORM2(qvec(:)),DOT_PRODUCT(basis_function_q(:),c_matrix(:,istate,1))
+     !ekin(istate) = ekin(istate) + weight * NORM2(qvec)**2 &
+     !                                * ABS(DOT_PRODUCT(basis_function_q(:),c_matrix(:,istate,1)))**2 * ( 2.0_dp *pi )**3
    enddo
 
  enddo
 
  do istate=istate1,istate2
-   write(stdout,*) 'kinetic energy',istate,0.5_dp*ekin
+   !write(stdout,*) 'kinetic energy',istate,0.5_dp*ekin(istate)
    close(file_state(istate))
  enddo
  deallocate(file_state)
- deallocate(ekin)
+ !deallocate(ekin)
 
 end subroutine plot_wfn_fourier
 
