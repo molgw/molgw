@@ -374,10 +374,10 @@ subroutine scf_loop(is_restart,&
 
  write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
 
- if( ABS(en_gks%exx) > 1.0e-6) then
+ if( ABS(en_gks%exx) > 1.0e-10) then
    write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en_gks%exx
-   write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%nuc_nuc + en_gks%kinetic &
-                                                                  + en_gks%nucleus + en_gks%hartree + en_gks%exx
+   en_gks%totalexx = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx
+   write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en_gks%totalexx
  endif
 
  if( print_yaml_ .AND. is_iomaster ) then

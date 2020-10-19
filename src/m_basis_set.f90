@@ -1684,5 +1684,23 @@ end subroutine basis_function_gos
 
 
 !=========================================================================
+function basis_function_fourier(bf,qvec) RESULT(fourier_bf)
+ implicit none
+ type(basis_function),intent(in)  :: bf
+ real(dp),intent(in)              :: qvec(3)
+ complex(dp)                      :: fourier_bf
+!=====
+ integer                          :: ig
+!=====
+
+ fourier_bf = 0.0_dp
+ do ig=1,bf%ngaussian
+   fourier_bf = fourier_bf + eval_gaussian_fourier(bf%g(ig),qvec) * bf%coeff(ig)
+ enddo
+
+end function basis_function_fourier
+
+
+!=========================================================================
 end module m_basis_set
 !=========================================================================
