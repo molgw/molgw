@@ -20,6 +20,7 @@ module m_dm_mbpt
  use m_hamiltonian_wrapper
  use m_scf
  use m_multipole
+ use m_pt_density_matrix
 
 
 contains
@@ -80,15 +81,15 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
    select case(TRIM(pt_density_matrix))
    case('ONE-RING')
      ! This keyword calculates the 1-ring density matrix as it is derived in PT2 theory
-     call onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_corr)
+     call onering_density_matrix(occupation,energy,c_matrix,p_matrix_corr)
    case('PT2')
      ! This keyword calculates the PT2 density matrix as it is derived in PT2 theory (differs from MP2 density matrix)
-     call pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_corr)
+     call pt2_density_matrix(occupation,energy,c_matrix,p_matrix_corr)
    case('GW','G0W0')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
-     call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
+     call gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
    case('EVGW','GNWN')
      ! This keyword calculates the GW density matrix calculated with GW QP energies
@@ -100,7 +101,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
      endif
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy_qp,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
-     call gw_density_matrix(nstate,basis,occupation,energy_qp,c_matrix,wpol,p_matrix_corr)
+     call gw_density_matrix(occupation,energy_qp,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
      deallocate(energy_qp)
    case('GW_IMAGINARY','G0W0_IMAGINARY')
@@ -108,14 +109,14 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
      ! using an imaginary axis integral
      call init_spectral_function(nstate,occupation,nomega_imag,wpol)
      call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,wpol)
-     call gw_density_matrix_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
+     call gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
    case('GW_DYSON','G0W0_DYSON')
      ! This keyword calculates the GW density matrix as it is derived in the new GW theory
      ! using an imaginary axis integral
      call init_spectral_function(nstate,occupation,nomega_imag,wpol)
      call polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,wpol)
-     call gw_density_matrix_dyson_imag(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_corr)
+     call gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix_corr)
      call destroy_spectral_function(wpol)
    case('HF')
    case default
@@ -200,20 +201,22 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
 
    call calculate_exchange(basis,p_matrix_corr,hamiltonian_exx_corr,ex=en_dm_corr%exx)
 
-   en_dm_corr%total = en_dm_corr%nuc_nuc + en_dm_corr%kinetic + en_dm_corr%nucleus +  en_dm_corr%hartree + en_dm_corr%exx
+   en_dm_corr%totalexx = en_dm_corr%nuc_nuc + en_dm_corr%kinetic + en_dm_corr%nucleus +  en_dm_corr%hartree + en_dm_corr%exx
    write(stdout,'(/,1x,a)') 'Energies from correlated density matrix'
    write(stdout,'(a35,1x,f19.10)')   'Kinetic Energy (Ha):',en_dm_corr%kinetic
    write(stdout,'(a35,1x,f19.10)')   'Nucleus Energy (Ha):',en_dm_corr%nucleus
    write(stdout,'(a35,1x,f19.10)')   'Hartree Energy (Ha):',en_dm_corr%hartree
    write(stdout,'(a35,1x,f19.10)')  'Exchange Energy (Ha):',en_dm_corr%exx
-   write(stdout,'(a35,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%total
+   write(stdout,'(a35,1x,f19.10)') 'Total EXX Energy (Ha):',en_dm_corr%totalexx
 
 
    if( ABS(en_dm_corr%gw) > 1.0e-8_dp ) then
      write(stdout,'(a35,1x,f19.10)')  'GW correlation Energy (Ha):',en_dm_corr%gw
-     en_dm_corr%total = en_dm_corr%total + en_dm_corr%gw
+     en_dm_corr%total = en_dm_corr%totalexx + en_dm_corr%gw
      write(stdout,'(a35,1x,f19.10)')  'Total GM Energy (Ha):',en_dm_corr%total
      if( print_yaml_ ) call print_energy_yaml('linearized gw dm energy',en_dm_corr)
+   else
+     if( print_yaml_ ) call print_energy_yaml('correlated dm energy',en_dm_corr)
    endif
 
    nocc = get_number_occupied_states(occupation)

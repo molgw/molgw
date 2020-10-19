@@ -689,13 +689,13 @@ end subroutine lowdin_pdos_cmplx
 
 
 !=========================================================================
-subroutine plot_wfn(nstate,basis,c_matrix)
+subroutine plot_wfn(basis,c_matrix)
  implicit none
- integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
 !=====
  integer,parameter          :: nr=2000
+ integer                    :: nstate
  real(dp),parameter         :: length=10.0_dp
  integer                    :: ir
  integer                    :: istate1,istate2,istate,ispin
@@ -710,6 +710,7 @@ subroutine plot_wfn(nstate,basis,c_matrix)
 
  if( .NOT. is_iomaster ) return
 
+ nstate = SIZE(c_matrix,DIM=2)
 
  write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions'
  inquire(file='manual_plotwfn',exist=file_exists)
@@ -765,6 +766,113 @@ subroutine plot_wfn(nstate,basis,c_matrix)
  deallocate(phase,phi)
 
 end subroutine plot_wfn
+
+
+!=========================================================================
+subroutine plot_wfn_fourier(basis,c_matrix)
+ implicit none
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+!=====
+ integer                    :: nstate,istate1,istate2
+ real(dp)                   :: qunit(3),qvec(3)
+ integer                    :: iq,istate,ibf,ishell
+ integer                    :: gt,li,ni_cart,ibf1,ibf1_cart,ibf2,i_cart
+ complex(dp)                :: basis_function_q(basis%nbf)
+ complex(dp),allocatable    :: basis_function_q_cart(:)
+ integer,allocatable        :: file_state(:)
+ character(len=4)           :: cstate
+ integer,parameter :: n1=86
+ integer,parameter :: nqradial=30
+ integer,parameter          :: nq=200
+ real(dp),parameter         :: dq=0.10_dp
+ !integer,parameter          :: nq=n1*nqradial
+ !integer :: ix1,iqradial
+ !real(dp) :: xtmp,weight
+ !real(dp) :: qlist(3,nq),wq(nq)
+ !real(dp) :: x1(n1),y1(n1),z1(n1),w1(n1)
+ !real(dp) :: xa(nqradial),wxa(nqradial)
+ !real(dp),parameter :: alpha= 5.0_dp
+ !real(dp),allocatable       :: ekin(:)
+!=====
+
+ nstate = SIZE(c_matrix,DIM=2)
+ qunit(1) = 1.0_dp
+ qunit(2) = 1.0_dp
+ qunit(3) = 1.0_dp
+ qunit(:) = qunit(:) / NORM2(qunit(:))
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ istate1=1
+ istate2=2
+ allocate(file_state(istate1:istate2))
+ do istate=istate1,istate2
+   write(cstate,'(i4.4)') istate
+   open(newunit=file_state(istate),file='wfn_fourier_'//cstate//'.dat',action='write')
+ enddo
+
+ !allocate(ekin(istate1:istate2))
+ !ekin(:) = 0.0_dp
+
+ !do iqradial=1,nqradial
+ !  xtmp = ( iqradial - 0.5_dp ) / REAL(nqradial,dp)
+ !  xa(iqradial)   = -alpha * log( 1.0_dp - xtmp**3)
+ !  wxa(iqradial)  = 3.0_dp * alpha * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nqradial,dp)
+ !enddo
+ !call ld0086(x1,y1,z1,w1,iq)
+ !iq = 0
+ !do iqradial=1,nqradial
+ !  do ix1=1,n1
+ !    iq = iq + 1
+ !    wq(iq) = wxa(iqradial) * w1(ix1) * 4.0_dp * pi * xa(iqradial)**2
+ !    qlist(1,iq) = xa(iqradial) * x1(ix1)
+ !    qlist(2,iq) = xa(iqradial) * y1(ix1)
+ !    qlist(3,iq) = xa(iqradial) * z1(ix1)
+ !  enddo
+ !enddo
+
+
+ do iq=1,nq
+   qvec(:) = qunit(:) * iq * dq
+   weight = 4.0_dp * pi * NORM2(qvec)**2 * dq
+   !qvec(:) = qlist(:,iq)
+   !weight = wq(iq)
+
+   do ishell=1,basis%nshell
+     li        = basis%shell(ishell)%am
+     ni_cart   = number_basis_function_am('CART',li)
+     ibf1      = basis%shell(ishell)%istart
+     ibf1_cart = basis%shell(ishell)%istart_cart
+     ibf2      = basis%shell(ishell)%iend
+
+     allocate(basis_function_q_cart(ni_cart))
+
+     do i_cart=1,ni_cart
+       basis_function_q_cart(i_cart) = basis_function_fourier(basis%bfc(ibf1_cart+i_cart-1),qvec)
+     enddo
+     basis_function_q(ibf1:ibf2) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)), basis_function_q_cart(:) )
+     deallocate(basis_function_q_cart)
+
+   enddo
+
+
+   do istate=istate1,istate2
+     write(file_state(istate),'(f12.5,2x,2(1x,es16.6))') NORM2(qvec(:)),DOT_PRODUCT(basis_function_q(:),c_matrix(:,istate,1))
+     !ekin(istate) = ekin(istate) + weight * NORM2(qvec)**2 &
+     !                                * ABS(DOT_PRODUCT(basis_function_q(:),c_matrix(:,istate,1)))**2 * ( 2.0_dp *pi )**3
+   enddo
+
+ enddo
+
+ do istate=istate1,istate2
+   !write(stdout,*) 'kinetic energy',istate,0.5_dp*ekin(istate)
+   close(file_state(istate))
+ enddo
+ deallocate(file_state)
+ !deallocate(ekin)
+
+end subroutine plot_wfn_fourier
 
 
 !=========================================================================
@@ -1200,7 +1308,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
      ao_map(ibf2+13)=g_aos( 8)
      ao_map(ibf2+14)=g_aos( 9)
    else                ! h-, i-,...shell
-     write(stdout,'(1x,a,i5,a)') "Shell type",shell_typ,"not reordered."
+     write(stdout,'(1x,a,i5,a)') "Shell type",shell_typ," not reordered."
    endif
    ibf2 = ibf2 + iprim_per_shell
 
@@ -3145,17 +3253,17 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
  logical :: file_exists,found
  integer :: fu
  integer :: istat
- integer :: ispin,ibf,jbf,ijbf
+ integer :: ispin,ibf,jbf,ijbf,ibf_molgw
  integer :: nel
- integer :: block_d(6,6)
- integer :: block_f(10,10)
- integer :: block_g(15,15)
- integer :: block_h(21,21)
- integer :: block_j(28,28)
  real(dp) :: swap(basis%nbf,basis%nbf)
  real(dp),allocatable :: p_matrix_read(:)
  character(len=256) :: line
  character(len=100) :: keyword
+ integer :: am,nbf_am
+ type g2m
+   real(dp),allocatable    :: block(:,:)
+ end type
+ type(g2m),allocatable :: reordering(:)
 !=====
 
  p_matrix_out(:,:,:) = 0.0_dp
@@ -3166,10 +3274,12 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
    return
  endif
 
- if( basis%gaussian_type /= 'CART' ) then
-   call issue_warning('read_gaussian_fchk: Pure gaussians not coded yet')
-   return
- endif
+ allocate(reordering(0:MOLGW_LMAX))
+ do am=0,MOLGW_LMAX
+   nbf_am = number_basis_function_am(basis%gaussian_type,am)
+   allocate(reordering(am)%block(nbf_am,nbf_am))
+   reordering(am)%block(:,:) = 0
+ enddo
 
  if( is_iomaster ) then
 
@@ -3230,127 +3340,77 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
    enddo
    close(fu)
 
-
+   !
    ! Reorder the basis functions from Gaussian to Libint convention
-   ! s and p orbitals are unchanged
-   ! gaussian d orbital order is xx, yy, zz, xy, yz, xz
-   ! libint   d orbital order is xx, xy, xz, yy, yz, zz
+   !
+   if( basis%gaussian_type == 'CART') then
+     ! s and p orbitals are unchanged
+     ! gaussian d orbital order is xx, yy, zz, xy, yz, xz
+     ! libint   d orbital order is xx, xy, xz, yy, yz, zz
+     reordering(0)%block(:,:) = 1
 
-   block_d(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, &
-                             0, 0, 0, 0, 1, 0, &
-                             0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, &
-                             0, 0, 1, 0, 0, 0 ] , [ 6, 6 ] )
+     reordering(1)%block(:,:) = RESHAPE( [ 1, 0, 0, 0, 1, 0, 0, 0, 1] , [ 3, 3 ] )
 
-   block_f(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
-                             0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
-                             0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
-                             0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
-                             0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
-                             0, 0, 1, 0, 0, 0, 0, 0, 0, 0 ] , [ 10, 10 ] )    !OK
+     reordering(2)%block(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, &
+                                           0, 0, 0, 1, 0, 0, &
+                                           0, 0, 0, 0, 1, 0, &
+                                           0, 1, 0, 0, 0, 0, &
+                                           0, 0, 0, 0, 0, 1, &
+                                           0, 0, 1, 0, 0, 0 ] , [ 6, 6 ] )
 
-   block_g(:,:) = RESHAPE( [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 15, 15 ] )
+     reordering(3)%block(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
+                                           0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
+                                           0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
+                                           0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
+                                           0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
+                                           0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
+                                           0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
+                                           0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
+                                           0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
+                                           0, 0, 1, 0, 0, 0, 0, 0, 0, 0 ] , [ 10, 10 ] )    !OK
 
-   block_h(:,:) = RESHAPE( [ &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 21, 21 ] )
-
-   block_j(:,:) = RESHAPE( [ &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
-                             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 28, 28 ] )
+     do am=4,MOLGW_LMAX
+       nbf_am = number_basis_function_am(basis%gaussian_type,am)
+       do ibf=1,nbf_am
+         reordering(am)%block(ibf,nbf_am+1-ibf) = 1
+       enddo
+     enddo
+   else
+     ! s
+     reordering(0)%block(1,1) = 1
+     ! p
+     reordering(1)%block(1,3) = 1
+     reordering(1)%block(2,1) = 1
+     reordering(1)%block(3,2) = 1
+     do am=2,MOLGW_LMAX
+       nbf_am = number_basis_function_am(basis%gaussian_type,am)
+       do ibf=1,nbf_am
+         ibf_molgw = ( nbf_am + 1 ) / 2 - ( 2 * MODULO(ibf,2) - 1 ) * ibf / 2
+         reordering(am)%block(ibf,ibf_molgw) = 1
+       enddo
+     enddo
+   endif
 
    swap(:,:) = 0.0_dp
    ibf = 1
    do while( ibf <= basis%nbf )
-     select case(basis%bfc(ibf)%am)
-     case(0)
-       swap(ibf,ibf) = 1.0_dp
-     case(1)
-       swap(ibf  ,ibf  ) = 1.0_dp
-       swap(ibf+1,ibf+1) = 1.0_dp
-       swap(ibf+2,ibf+2) = 1.0_dp
-     case(2)
-       swap(ibf:ibf+5,ibf:ibf+5) = block_d(:,:)
-     case(3)
-       swap(ibf:ibf+9,ibf:ibf+9) = block_f(:,:)
-     case(4)
-       swap(ibf:ibf+14,ibf:ibf+14) = block_g(:,:)
-     case(5)
-       swap(ibf:ibf+20,ibf:ibf+20) = block_h(:,:)
-     case(6)
-       swap(ibf:ibf+27,ibf:ibf+27) = block_j(:,:)
-     case default
+     am = basis%bff(ibf)%am
+     if( am > MOLGW_LMAX ) &
        call die('read_gaussian_fchk: too high angular momentum, not coded yet')
-     end select
-     ibf = ibf + number_basis_function_am('CART',basis%bfc(ibf)%am)
+     nbf_am = number_basis_function_am(basis%gaussian_type,am)
+
+     swap(ibf:ibf+nbf_am-1,ibf:ibf+nbf_am-1) = reordering(am)%block(:,:)
+
+     ibf = ibf + nbf_am
+
    enddo
 
    p_matrix_out(:,:,1) = MATMUL( TRANSPOSE(swap), MATMUL(p_matrix_out(:,:,1),swap) )
 
+   do am=0,MOLGW_LMAX
+     deallocate(reordering(am)%block)
+   enddo
+   deallocate(reordering)
 
    !call dump_out_matrix(.TRUE.,'gaussian density matrix',SIZE(p_matrix_out,DIM=1),SIZE(p_matrix_out,DIM=3),p_matrix_out)
 
