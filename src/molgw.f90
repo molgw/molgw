@@ -440,7 +440,7 @@ program molgw
     call static_quadrupole(basis,occupation,c_matrix)
   endif
  
-  if( print_wfn_ )  call plot_wfn(nstate,basis,c_matrix)
+  if( print_wfn_ )  call plot_wfn(basis,c_matrix)
   if( print_wfn_ )  call plot_rho(basis,occupation,c_matrix)
   if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
   if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy)
