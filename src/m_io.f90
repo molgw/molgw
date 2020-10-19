@@ -788,7 +788,7 @@ subroutine plot_wfn_fourier(basis,c_matrix)
  real(dp),parameter         :: dq=0.10_dp
  !integer,parameter          :: nq=n1*nqradial
  !integer :: ix1,iqradial
- !real(dp) :: xtmp,weight
+ real(dp) :: xtmp,weight
  !real(dp) :: qlist(3,nq),wq(nq)
  !real(dp) :: x1(n1),y1(n1),z1(n1),w1(n1)
  !real(dp) :: xa(nqradial),wxa(nqradial)
