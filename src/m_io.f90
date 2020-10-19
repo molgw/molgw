@@ -601,27 +601,27 @@ end subroutine lowdin_pdos
 !=========================================================================
 subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,time_cur,atom_state_occ)
  implicit none
- integer,intent(in)         :: file_lowdin
- integer,intent(inout),optional  :: atom_state_occ(:,:)
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: s_matrix_sqrt(:,:)
- real(dp),intent(in)        :: time_cur
- real(dp),intent(in)        :: occupation(:,:)
- complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+ integer,intent(in)             :: file_lowdin
+ integer,intent(inout),optional :: atom_state_occ(:,:)
+ type(basis_set),intent(in)     :: basis
+ real(dp),intent(in)            :: s_matrix_sqrt(:,:)
+ real(dp),intent(in)            :: time_cur
+ real(dp),intent(in)            :: occupation(:,:)
+ complex(dp),intent(in)         :: c_matrix_cmplx(:,:,:)
 !=====
- integer                    :: ibf,li,ibf1,ibf2,ishell,ibf_ibf,n_column
- integer                    :: natom1,natom2,istate,ispin,atom_sampled
- logical                    :: file_exists
- integer                    :: pdosfile
- complex(dp)                :: proj_state_i(0:basis%ammax)
- complex(dp)                :: cs_vector_i(basis%nbf)
- integer                    :: iatom_ibf(basis%nbf)
- integer                    :: li_ibf(basis%nbf)
- real(dp)                   :: proj_charge(natom_basis)
- real(dp)                   :: proj_atom(natom_basis)
- integer                    :: iatom_basis, nocc
- character(len=20)          :: myfmt
- integer,parameter          :: lmax = 2
+ integer                        :: ibf,li,ibf1,ibf2,ishell,ibf_ibf,n_column
+ integer                        :: natom1,natom2,istate,ispin,atom_sampled
+ logical                        :: file_exists
+ integer                        :: pdosfile
+ complex(dp)                    :: proj_state_i(0:basis%ammax)
+ complex(dp)                    :: cs_vector_i(basis%nbf)
+ integer                        :: iatom_ibf(basis%nbf)
+ integer                        :: li_ibf(basis%nbf)
+ real(dp)                       :: proj_charge(natom_basis)
+ real(dp)                       :: proj_atom(natom_basis)
+ integer                        :: iatom_basis, nocc
+ character(len=20)              :: myfmt
+ integer,parameter              :: lmax = 2
 !=====
 
  if( .NOT. is_iomaster ) return
@@ -788,7 +788,7 @@ subroutine plot_wfn_fourier(basis,c_matrix)
  real(dp),parameter         :: dq=0.10_dp
  !integer,parameter          :: nq=n1*nqradial
  !integer :: ix1,iqradial
- !real(dp) :: xtmp,weight
+ real(dp) :: xtmp,weight
  !real(dp) :: qlist(3,nq),wq(nq)
  !real(dp) :: x1(n1),y1(n1),z1(n1),w1(n1)
  !real(dp) :: xa(nqradial),wxa(nqradial)

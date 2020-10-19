@@ -56,7 +56,7 @@ program molgw
   use m_multipole
   use m_io
   implicit none
- 
+
  !=====
   type(basis_set)            :: basis
   type(basis_set)            :: auxil_basis
@@ -82,7 +82,7 @@ program molgw
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
  !=====
- 
+
   !
   !
   ! Part 1 / 3 : Initialization
@@ -171,7 +171,7 @@ program molgw
     else
       call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix)
     end if
- 
+
     allocate(occupation(nstate,nspin))
     allocate(    energy(nstate,nspin))
     !
@@ -453,9 +453,9 @@ program molgw
   if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
   if( print_dens_traj_points_set_ ) call plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
   if( .FALSE. ) call write_cube_from_header('GKS',basis,occupation,c_matrix)
- 
- 
- 
+
+
+
   !
   ! RT-TDDFT Simulation (only if SCF cycles were converged)
   !
@@ -487,9 +487,9 @@ program molgw
   call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
   call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
   call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
- 
- 
- 
+
+
+
   !
   ! Prepare the diagonal of the matrix Sigma_x - Vxc
   ! for the forthcoming GW or PT corrections
