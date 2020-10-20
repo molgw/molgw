@@ -624,7 +624,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  integer,parameter              :: lmax = 2
 !=====
 
- if( .NOT. is_iomaster ) return
+ !if( .NOT. is_iomaster ) return
  if( PRESENT(atom_state_occ) ) atom_state_occ(:,:) = 0
 
  inquire(file='manual_pdos',exist=file_exists)
@@ -683,7 +683,9 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
 
  n_column = 2 + natom_basis
  write(myfmt, '("(1x,",I0,"(2x,es18.8))")') n_column
- if ( file_lowdin /= stdout ) write(file_lowdin,fmt=myfmt) time_cur, xatom(3,natom), proj_charge
+ if ( is_iomaster ) then
+   if ( file_lowdin /= stdout ) write(file_lowdin,fmt=myfmt) time_cur, xatom(3,natom), proj_charge
+ end if
 
 end subroutine lowdin_pdos_cmplx
 

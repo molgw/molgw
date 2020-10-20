@@ -300,6 +300,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          end do
        end do
        nocc = get_number_occupied_states(occupation)
+       !write(100+rank_world,*) nocc
 
        ! get new c_matrix_cmplx
        call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
