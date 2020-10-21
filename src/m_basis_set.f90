@@ -30,6 +30,7 @@ module m_basis_set
    integer                      :: mm                         ! Angular momentum for pure gaussians
    integer                      :: iatom                      ! Centered on which atom
    real(dp)                     :: x0(3)                      ! Coordinates of the gaussian center
+   real(dp)                     :: v0(3)                      ! Velocity of the gaussian center
    integer                      :: ngaussian                  ! Number of primitive gausssians
    type(gaussian),allocatable   :: g(:)                       ! The primitive gaussian functions
    real(dp),allocatable         :: coeff(:)                   ! Their mixing coefficients
@@ -41,6 +42,7 @@ module m_basis_set
    real(dp),allocatable :: alpha(:)
    real(dp),allocatable :: coeff(:)
    real(dp)             :: x0(3)
+   real(dp)             :: v0(3)
    integer              :: iatom
    integer              :: istart,iend                        ! index of the shell's basis functions in the final basis set
    integer              :: istart_cart,iend_cart              ! index of the shell's basis functions in the cartesian basis set
@@ -95,6 +97,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  integer                       :: index_in_shell
  integer                       :: nx,ny,nz,mm
  real(dp)                      :: x0(3)
+ real(dp)                      :: v0(3)
 !=====
 
  basis%nbf           = 0
@@ -185,6 +188,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      enddo
 
      x0(:) = xbasis(:,iatom)
+     v0(:) = vel(:,iatom)
 
      !
      ! Shell setup
@@ -194,6 +198,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      basis%shell(ishell)%am      = am_read
      basis%shell(ishell)%iatom   = iatom
      basis%shell(ishell)%x0(:)   = x0(:)
+     basis%shell(ishell)%v0(:)   = v0(:)
      basis%shell(ishell)%ng      = ng
      allocate(basis%shell(ishell)%alpha(ng))
      allocate(basis%shell(ishell)%coeff(ng))
@@ -586,6 +591,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
        shell_tmp(auxil_basis%nshell)%coeff(1) = 1.0_dp
        shell_tmp(auxil_basis%nshell)%iatom = icenter
        shell_tmp(auxil_basis%nshell)%x0(:) = xbasis(:,icenter)
+       shell_tmp(auxil_basis%nshell)%v0(:) = vel(:,icenter)
      enddo
 
    enddo
@@ -623,6 +629,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
    auxil_basis%shell(ishell)%am     = shell_tmp(ishell)%am
    auxil_basis%shell(ishell)%iatom  = shell_tmp(ishell)%iatom
    auxil_basis%shell(ishell)%x0(:)  = shell_tmp(ishell)%x0(:)
+   auxil_basis%shell(ishell)%v0(:)  = shell_tmp(ishell)%v0(:)
    auxil_basis%shell(ishell)%ng     = shell_tmp(ishell)%ng
    allocate(auxil_basis%shell(ishell)%alpha(1))
    allocate(auxil_basis%shell(ishell)%coeff(1))
@@ -792,6 +799,7 @@ function compare_basis_function(bf1,bf2) result(same_basis_function)
  if( bf1%nz            /= bf2%nz                        ) same_basis_function = .FALSE.
  if( bf1%iatom         /= bf2%iatom                     ) same_basis_function = .FALSE.
  if( ANY(ABS(bf1%x0(:) - bf2%x0(:)) > 1.0e-5_dp )       ) same_basis_function = .FALSE.
+ if( ANY(ABS(bf1%v0(:) - bf2%v0(:)) > 1.0e-5_dp )       ) same_basis_function = .FALSE.
  if( bf1%ngaussian     /= bf2%ngaussian                 ) same_basis_function = .FALSE.
 
  ! If the basis functions already differs, then exit immediately
@@ -877,6 +885,7 @@ subroutine write_basis_function(unitfile,bf)
  write(unitfile)  bf%nz
  write(unitfile)  bf%iatom
  write(unitfile)  bf%x0(:)
+ write(unitfile)  bf%v0(:)
  write(unitfile)  bf%ngaussian
  write(unitfile)  bf%g(:)
  write(unitfile)  bf%coeff(:)
@@ -902,6 +911,7 @@ subroutine read_basis_function(unitfile,bf)
  read(unitfile)  bf%nz
  read(unitfile)  bf%iatom
  read(unitfile)  bf%x0(:)
+ read(unitfile)  bf%v0(:)
  read(unitfile)  bf%ngaussian
  allocate(bf%g(bf%ngaussian))
  read(unitfile)  bf%g(:)
@@ -925,6 +935,7 @@ subroutine write_basis_shell(unitfile,shell)
  write(unitfile) shell%alpha(:)
  write(unitfile) shell%coeff(:)
  write(unitfile) shell%x0(:)
+ write(unitfile) shell%v0(:)
  write(unitfile) shell%iatom
  write(unitfile) shell%istart,shell%iend
  write(unitfile) shell%istart_cart,shell%iend_cart
@@ -948,6 +959,7 @@ subroutine read_basis_shell(unitfile,shell)
  allocate(shell%coeff(shell%ng))
  read(unitfile) shell%coeff(:)
  read(unitfile) shell%x0(:)
+ read(unitfile) shell%v0(:)
  read(unitfile) shell%iatom
  read(unitfile) shell%istart,shell%iend
  read(unitfile) shell%istart_cart,shell%iend_cart
@@ -979,6 +991,7 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell
  bf%amc   = orbital_momentum_name(bf%am)
  bf%iatom = iatom
  bf%x0(:) = x0(:)
+ bf%v0(:) = vel(:,iatom)
  bf%shell_index    = shell_index
  bf%index_in_shell = index_in_shell
 
@@ -1028,6 +1041,7 @@ subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,she
  bf%amc   = orbital_momentum_name(bf%am)
  bf%iatom = iatom
  bf%x0(:) = x0(:)
+ bf%v0(:) = vel(:,iatom)
  bf%shell_index = shell_index
  bf%index_in_shell = index_in_shell
  bf%g(:)%alpha = alpha(:)
@@ -1080,8 +1094,9 @@ subroutine print_basis_function(bf)
  write(stdout,*)
  write(stdout,*) '======  print out a basis function ======'
  write(stdout,'(a30,2x,1(1x,i3))')           'contraction of N gaussians',bf%ngaussian
- write(stdout,'(a30,5x,a1)')                'orbital momentum',bf%amc
+ write(stdout,'(a30,5x,a1)')                 'orbital momentum',bf%amc
  write(stdout,'(a30,1x,3(f12.6,2x))')        'centered in',bf%x0(:)
+ write(stdout,'(a30,1x,3(f12.6,2x))')        'center velocity',bf%v0(:)
  do ig=1,bf%ngaussian
    write(stdout,'(a30,2x,1x,i3,2x,f12.6)')   'coefficient',ig,bf%coeff(ig)
  enddo
