@@ -33,8 +33,11 @@ subroutine setup_overlap_fourier(basis_p,basis_t,reference)
   ! TODO the velocity should be read from the basis_t%bff(1)%velocity(:)
   velocity(:) = 0.0_dp
 
+  !
+  !  calculate_gos_ao evaluates  < \phi_a | e^{+i q.r} | \phi_b >
+  !
   ! TODO basis_t = basis_p for the time being
-  call calculate_gos_ao(basis_t,velocity,s_matrix_v)
+  call calculate_gos_ao(basis_t,-velocity,s_matrix_v)
 
 
   if( basis_t%nbf < 6 .OR. basis_p%nbf < 6 ) return

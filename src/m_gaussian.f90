@@ -790,6 +790,11 @@ subroutine evaluate_gos(ga,gb,qvec,gos_ab)
  integer :: ii,jj,kk
 !=====
 
+ !
+ ! Calculate < \phi_\alpha | e^{iq.r} | \phi_beta >
+ !
+ ! Formula from EH Mortensen et al.  Nuclear Instruments and Methods in Physics Research B69 24 (1992)
+ !
  pp = ga%alpha + gb%alpha
  a2 = SUM( ga%x0(:)**2 )
  b2 = SUM( gb%x0(:)**2 )
