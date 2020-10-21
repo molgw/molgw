@@ -55,6 +55,7 @@ program molgw
   use m_restart
   use m_multipole
   use m_io
+  use m_fourier_quadrature
   implicit none
 
   !=====
@@ -271,6 +272,17 @@ program molgw
     !
     ! Nucleus-electron interaction
     call setup_nucleus(basis,hamiltonian_nucleus)
+
+    !
+    ! Testing the quadrature in Fourier space
+    ! FBFB: Xixi look: this is the new Fourier coding.
+    !if( .TRUE. ) then
+    !  !                        basis projectile n basis_target
+    !  call setup_overlap_fourier(basis,basis,s_matrix)
+    !  call setup_kinetic_fourier(basis,basis,hamiltonian_kinetic)
+    !  call setup_nucleus_fourier(basis,basis,hamiltonian_nucleus)
+    !endif
+
 
     if( nelement_ecp > 0 ) then
       call setup_nucleus_ecp(basis,hamiltonian_nucleus)
