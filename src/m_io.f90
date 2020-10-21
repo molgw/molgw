@@ -837,7 +837,7 @@ subroutine plot_wfn_fourier(basis,c_matrix)
 
  do iq=1,nq
    qvec(:) = qunit(:) * iq * dq
-   weight = 4.0_dp * pi * NORM2(qvec)**2 * dq
+   !weight = 4.0_dp * pi * NORM2(qvec)**2 * dq
    !qvec(:) = qlist(:,iq)
    !weight = wq(iq)
 

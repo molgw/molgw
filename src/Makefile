@@ -116,9 +116,9 @@ level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o m_restart.o m_multipole.o
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 
-level065: m_pt_density_matrix.o
+level065: m_pt_density_matrix.o m_fourier_quadrature.o
 
-level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_dm_mbpt.o m_tddft_propagator.o
+level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_dm_mbpt.o m_tddft_propagator.o 
 
 level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o \
           gwgamma_selfenergy.o bse.o \
@@ -144,7 +144,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
         m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o \
         m_spectral_function.o m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_ci.o  \
         m_hamiltonian_wrapper.o \
-        m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o \
+        m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o m_fourier_quadrature.o \
         linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o \
         bse.o m_multipole.o m_io.o m_restart.o mp2.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
         molgw.o
@@ -161,7 +161,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
                         mp2.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o bse.o \
                         linear_response.o static_polarizability.o m_multipole.o m_io.o m_restart.o \
                         m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_scf_loop.o m_dm_analysis.o \
-                        m_hamiltonian_wrapper.o \
+                        m_hamiltonian_wrapper.o m_fourier_quadrature.o \
                         pdbssolver1.o m_selfenergy_evaluation.o real_spherical_harmonics.o force.o m_tddft_propagator.o \
                         molgw.o \
                         -o ../molgw \
@@ -179,6 +179,10 @@ molgw.o: m_definitions.f90 m_warning.f90 m_tddft_variables.f90 m_timing.f90 m_me
          m_virtual_orbital_space.f90 m_selfenergy_evaluation.f90 \
          molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
+
+m_fourier_quadrature.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_atoms.f90 m_basis_set.f90 m_inputparam.f90 m_hamiltonian_onebody.f90 \
+        m_fourier_quadrature.f90
+	$(FC_W_OPTS) -c m_fourier_quadrature.f90  $(LIBXC_INCS)
 
 force.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_atoms.f90 m_basis_set.f90 m_inputparam.f90 m_hamiltonian_onebody.f90 m_eri.f90 m_eri_calculate.f90 \
          force.f90
