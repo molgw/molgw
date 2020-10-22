@@ -116,6 +116,10 @@ subroutine setup_nucleus_fourier(basis_p,basis_t,reference)
 
   enucl(:,:) = 0.0_dp
   do iq=1,nq
+    ! Parallelization over the MPI world
+    ! => OPENMP parallelization may be used at lower level: inside setup_gos_ao
+    if( MODULO(iq-1,nproc_world) /= rank_world ) cycle
+
     qvec(:) = qlist(:,iq)
     qpvvec(:) = qvec(:) + velocity(:)
     weight = wq(iq)
@@ -140,7 +144,10 @@ subroutine setup_nucleus_fourier(basis_p,basis_t,reference)
   enddo
   enucl(:,:) = enucl(:,:) / (2.0_dp * pi)**3
 
+  call xsum_world(enucl)
+
   call stop_clock(timing_tmp1)
+
 
   if( basis_t%nbf < 6 .OR. basis_p%nbf < 6 ) return
 
@@ -228,6 +235,10 @@ subroutine setup_kinetic_fourier(basis_p,basis_t,reference)
 
   ekin(:,:) = 0.0_dp
   do iq=1,nq
+    ! Parallelization over the MPI world
+    ! => OPENMP parallelization used only in ZGERC
+    if( MODULO(iq-1,nproc_world) /= rank_world ) cycle
+
     qvec(:) = qlist(:,iq)
     qmvvec(:) = qvec(:) - velocity(:)
     weight = wq(iq)
@@ -279,7 +290,10 @@ subroutine setup_kinetic_fourier(basis_p,basis_t,reference)
 
   enddo
 
+  ! the CONJG() is imposed by the definition of ZGERC
   ekin(:,:) = 0.5_dp * CONJG( ekin(:,:) ) * (2.0_dp * pi)**3
+
+  call xsum_world(ekin)
 
   if( basis_t%nbf < 6 .OR. basis_p%nbf < 6 ) return
 
