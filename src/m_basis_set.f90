@@ -188,7 +188,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      enddo
 
      x0(:) = xbasis(:,iatom)
-     v0(:) = vel(:,iatom)
+     v0(:) = velbasis(:,iatom)
 
      !
      ! Shell setup
@@ -226,10 +226,10 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
        ! Add the new basis function
        jbf_cart = jbf_cart + 1
        index_in_shell = index_in_shell + 1
-       call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bfc(jbf_cart))
+       call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,v0,alpha,coeff,ishell,index_in_shell,basis%bfc(jbf_cart))
        if(basis%gaussian_type == 'CART') then
          jbf = jbf + 1
-         call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
+         call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,v0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
        endif
 
        ! Break the loop when nz is equal to l
@@ -251,7 +251,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
        do mm=-am_read,am_read
          jbf = jbf + 1
          index_in_shell = index_in_shell + 1
-         call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
+         call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,v0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
        enddo
      endif
 
@@ -326,14 +326,16 @@ subroutine moving_basis_set(new_basis)
         do ig = 1, ng
           new_basis%bfc(jbf_cart)%g(ig)%x0(:) = xproj_basis(:)
         enddo
-        call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,alpha,coeff,ishell,index_in_shell,new_basis%bfc(jbf_cart) )
+        call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,velbasis(:,proj_iatom),&
+                         alpha,coeff,ishell,index_in_shell,new_basis%bfc(jbf_cart) )
         if( new_basis%gaussian_type == 'CART' ) then
           jbf           = jbf + 1
           coeff(:)      = new_basis%bff(jbf)%coeff(:)
           do ig = 1, ng
             new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
           enddo
-          call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+          call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,&
+               velbasis(:,proj_iatom),alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
         endif
 
         ! Break the loop when nz is equal to l
@@ -358,7 +360,8 @@ subroutine moving_basis_set(new_basis)
           do ig = 1, ng
             new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
           enddo
-          call init_basis_function_pure( normalized,ng,am,mm,proj_iatom,xproj_basis,alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+          call init_basis_function_pure( normalized,ng,am,mm,proj_iatom,xproj_basis,&
+               velbasis(:,proj_iatom),alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
         enddo
       endif
       deallocate(alpha,coeff)
@@ -591,7 +594,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
        shell_tmp(auxil_basis%nshell)%coeff(1) = 1.0_dp
        shell_tmp(auxil_basis%nshell)%iatom = icenter
        shell_tmp(auxil_basis%nshell)%x0(:) = xbasis(:,icenter)
-       shell_tmp(auxil_basis%nshell)%v0(:) = vel(:,icenter)
+       shell_tmp(auxil_basis%nshell)%v0(:) = velbasis(:,icenter)
      enddo
 
    enddo
@@ -654,12 +657,12 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
      ! Add the new basis function
      jbf_cart = jbf_cart + 1
      index_in_shell = index_in_shell + 1
-     call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
-                              shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bfc(jbf_cart))
+     call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%v0,&
+               shell_tmp(ishell)%alpha,shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bfc(jbf_cart))
      if(auxil_basis%gaussian_type == 'CART') then
        jbf = jbf + 1
-       call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
-                                shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
+       call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%v0,&
+               shell_tmp(ishell)%alpha,shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
      endif
 
      ! Break the loop when nz is equal to l
@@ -682,7 +685,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
        jbf = jbf + 1
        index_in_shell = index_in_shell + 1
        call init_basis_function_pure(normalized,1,am_current,mm,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0, &
-                                shell_tmp(ishell)%alpha,shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
+           shell_tmp(ishell)%v0,shell_tmp(ishell)%alpha,shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
      enddo
    endif
 
@@ -968,11 +971,11 @@ end subroutine read_basis_shell
 
 
 !=========================================================================
-subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,index_in_shell,bf)
+subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,v0,alpha,coeff,shell_index,index_in_shell,bf)
  implicit none
  logical,intent(in)               :: normalized
  integer,intent(in)               :: ng,nx,ny,nz,shell_index,iatom,index_in_shell
- real(dp),intent(in)              :: x0(3),alpha(ng)
+ real(dp),intent(in)              :: x0(3),alpha(ng),v0(3)
  real(dp),intent(in)              :: coeff(ng)
  type(basis_function),intent(out) :: bf
 !=====
@@ -991,7 +994,7 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell
  bf%amc   = orbital_momentum_name(bf%am)
  bf%iatom = iatom
  bf%x0(:) = x0(:)
- bf%v0(:) = vel(:,iatom)
+ bf%v0(:) = v0(:)
  bf%shell_index    = shell_index
  bf%index_in_shell = index_in_shell
 
@@ -1020,11 +1023,11 @@ end subroutine init_basis_function
 
 
 !=========================================================================
-subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,shell_index,index_in_shell,bf)
+subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,v0,alpha,coeff,shell_index,index_in_shell,bf)
  implicit none
  logical,intent(in)               :: normalized
  integer,intent(in)               :: ng,am,mm,shell_index,iatom,index_in_shell
- real(dp),intent(in)              :: x0(3),alpha(ng)
+ real(dp),intent(in)              :: x0(3),alpha(ng),v0(3)
  real(dp),intent(in)              :: coeff(ng)
  type(basis_function),intent(out) :: bf
 !=====
@@ -1041,7 +1044,7 @@ subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,she
  bf%amc   = orbital_momentum_name(bf%am)
  bf%iatom = iatom
  bf%x0(:) = x0(:)
- bf%v0(:) = vel(:,iatom)
+ bf%v0(:) = v0(:)
  bf%shell_index = shell_index
  bf%index_in_shell = index_in_shell
  bf%g(:)%alpha = alpha(:)
@@ -1303,6 +1306,7 @@ subroutine basis_function_prod(bf1,bf2,bfprod)
  real(dp)          :: coeff
  real(dp)          :: alpha(1)
  real(dp)          :: x0(3)
+ real(dp)          :: v0(3)
  real(dp)          :: exp_fact
 !=====
 
@@ -1317,6 +1321,7 @@ subroutine basis_function_prod(bf1,bf2,bfprod)
      alpha(1) = bf1%g(ig)%alpha + bf2%g(jg)%alpha
      coeff = bf1%coeff(ig) * bf2%coeff(jg) *  bf1%g(ig)%norm_factor * bf2%g(jg)%norm_factor
      x0(:)  = ( bf1%g(ig)%alpha * bf1%x0(:) + bf2%g(jg)%alpha * bf2%x0(:) ) / alpha(1)
+     v0(:)  = bf1%v0(:) - bf2%v0(:)
      exp_fact = EXP( -bf1%g(ig)%alpha * bf2%g(jg)%alpha / alpha(1) * SUM( (bf1%x0(:)-bf2%x0(:))**2 ) )
 
      do ix=0,bf1%nx + bf2%nx
@@ -1328,7 +1333,7 @@ subroutine basis_function_prod(bf1,bf2,bfprod)
            ibf = ibf + 1
 
            coeff_xyzg(1) = coeff * c_x * c_y * c_z
-           call init_basis_function(unnormalized,1,ix,iy,iz,0,x0,alpha,coeff_xyzg,fake_shell,fake_index,bfprod(ibf))
+           call init_basis_function(unnormalized,1,ix,iy,iz,0,x0,v0,alpha,coeff_xyzg,fake_shell,fake_index,bfprod(ibf))
 
            ! override the normalization
            ! the product gaussians are UNnormalized
@@ -1388,14 +1393,16 @@ subroutine basis_function_dipole(bf1,bf2,dipole)
  bf2_alpha(:) = bf2%g(:)%alpha
 
  ! first set up | (x-Bx) phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0,bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0,bf2%x0,bf2%v0,&
+                           bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | (x-Bx) phi2 >
  call overlap_basis_function(bf1,bftmp,dipole_tmp)
  dipole(1) = dipole_tmp
  ! first set up | Bx phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%v0,&
+                           bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | Bx phi2 >
@@ -1403,14 +1410,16 @@ subroutine basis_function_dipole(bf1,bf2,dipole)
  dipole(1) = dipole(1) + dipole_tmp * bf2%x0(1)
 
  ! first set up | (y-By) phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,0,bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,0,bf2%x0,bf2%v0,&
+                           bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | (y-By) phi2 >
  call overlap_basis_function(bf1,bftmp,dipole_tmp)
  dipole(2) = dipole_tmp
  ! first set up | By phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%v0,&
+                           bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | By phi2 >
@@ -1418,14 +1427,16 @@ subroutine basis_function_dipole(bf1,bf2,dipole)
  dipole(2) = dipole(2) + dipole_tmp * bf2%x0(2)
 
  ! first set up | (z-Bz) phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,0,bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,0,bf2%x0,bf2%v0,&
+                           bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | (z-Bz) phi2 >
  call overlap_basis_function(bf1,bftmp,dipole_tmp)
  dipole(3) = dipole_tmp
  ! first set up | Bz phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%v0,&
+                           bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | Bz phi2 >
@@ -1466,7 +1477,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | (x-Bx)*(y-By) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny+1,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | (x-Bx)*(y-By) phi2 >
@@ -1475,7 +1486,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | Bx*(y-By) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | Bx*(y-By) phi2 >
@@ -1484,7 +1495,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | By*(x-Bx) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | By*(x-Bx) phi2 >
@@ -1504,7 +1515,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | (x-Bx)*(z-Bz) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz+1,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | (x-Bx)*(z-Bz) phi2 >
@@ -1513,7 +1524,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | Bx*(z-Bz) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | Bx*(z-Bz) phi2 >
@@ -1522,7 +1533,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | Bz*(x-Bx) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | Bz*(x-Bx) phi2 >
@@ -1542,7 +1553,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | (y-By)*(z-Bz) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz+1,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | (y-By)*(z-Bz) phi2 >
@@ -1551,7 +1562,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | By*(z-Bz) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | By*(z-Bz) phi2 >
@@ -1560,7 +1571,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | Bz*(y-By) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | Bz*(y-By) phi2 >
@@ -1580,7 +1591,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | (x-Bx)*(x-Bx) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx+2,bf2%ny,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | (x-Bx)^2 phi2 >
@@ -1589,7 +1600,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | 2Bx*(x-Bx) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | 2Bx*(x-Bx) phi2 >
@@ -1598,7 +1609,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | Bx**2 phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | Bx**2 phi2 >
@@ -1612,7 +1623,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | (y-By)^2 phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+2,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | (y-By)^2 phi2 >
@@ -1621,7 +1632,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | 2B*(y-By) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | 2B*(y-By) phi2 >
@@ -1630,7 +1641,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | By**2 phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | By**2 phi2 >
@@ -1644,7 +1655,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | (z-Bz)^2 phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+2,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | (z-Bz)^2 phi2 >
@@ -1653,7 +1664,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | 2B*(z-Bz) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | 2B*(z-Bz) phi2 >
@@ -1662,7 +1673,7 @@ subroutine basis_function_quadrupole(bf1,bf2,quad)
 
  ! first set up | Bz**2 phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0, &
-                          bf2%x0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+                 bf2%x0,bf2%v0,bf2_alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
  ! then overlap < phi1 | Bz**2 phi2 >
