@@ -277,6 +277,122 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 end subroutine init_basis_set
 
 !=========================================================================
+subroutine split_basis_set(basis,basis_t,basis_p)
+ implicit none
+
+ type(basis_set),intent(in)    :: basis
+ type(basis_set),intent(out)   :: basis_t, basis_p
+!=====
+ integer                       :: ibf, ibf_p, ibf_t, ng,ig
+ integer                       :: ishell, ishell_p, ishell_t
+ integer                       :: ibf_cart, ibf_cart_p, ibf_cart_t
+ real(dp),allocatable          :: alpha(:),coeff(:)
+ logical,parameter             :: normalized=.TRUE.
+ integer                       :: iatom
+ integer                       :: index_in_shell
+ integer                       :: nx,ny,nz,mm
+ real(dp)                      :: x0(3)
+ real(dp)                      :: v0(3)
+!=====
+
+ !! first get all size info for TARGET and PROJECTILE basis
+ !! while skipping GHOST basis
+
+ basis_p%nbf           = 0
+ basis_p%nbf_cart      = 0
+ basis_p%nshell        = 0
+ basis_p%gaussian_type = basis%gaussian_type
+
+ basis_t%nbf           = 0
+ basis_t%nbf_cart      = 0
+ basis_t%nshell        = 0
+ basis_t%gaussian_type = basis%gaussian_type
+
+ do ibf = 1, basis%nbf
+   if ( basis%bff(ibf)%iatom == natom_basis ) then
+     basis_p%nbf = basis_p%nbf + 1
+   else if ( basis%bff(ibf)%iatom <= natom_basis-nghost-nprojectile ) then
+     basis_t%nbf = basis_t%nbf + 1
+   end if
+ end do
+
+ do ibf_cart = 1, basis%nbf_cart
+   if ( basis%bfc(ibf_cart)%iatom == natom_basis ) then
+     basis_p%nbf_cart = basis_p%nbf_cart + 1
+   else if ( basis%bfc(ibf_cart)%iatom <= natom_basis-nghost-nprojectile ) then
+     basis_t%nbf_cart = basis_t%nbf_cart + 1
+   end if
+ end do
+
+ do ishell = 1, basis%nshell
+   if ( basis%shell(ishell)%iatom == natom_basis ) then
+     basis_p%nshell = basis_p%nshell + 1
+   else if ( basis%shell(ishell)%iatom <= natom_basis-nghost-nprojectile ) then
+     basis_t%nshell = basis_t%nshell + 1
+   end if
+ end do
+
+ !! allocate bff, bfc and shell for T/P basis_set
+ !! then assign each of them one by one from the original big basis_set
+
+ allocate( basis_p%bff(basis_p%nbf) )
+ allocate( basis_p%bfc(basis_p%nbf_cart) )
+ allocate( basis_p%shell(basis_p%nshell) )
+
+ allocate( basis_t%bff(basis_t%nbf) )
+ allocate( basis_t%bfc(basis_t%nbf_cart) )
+ allocate( basis_t%shell(basis_t%nshell) )
+
+ ibf_p = 0
+ ibf_t = 0
+ do ibf = 1, basis%nbf
+   if ( basis%bff(ibf)%iatom == natom_basis ) then
+     ibf_p = ibf_p + 1
+     basis_p%bff(ibf_p) = basis%bff(ibf)
+   else if ( basis%bff(ibf)%iatom <= natom_basis-nghost-nprojectile ) then
+     ibf_t = ibf_t + 1
+     basis_t%bff(ibf_t) = basis%bff(ibf)
+   end if
+ end do
+
+ ibf_cart_p = 0
+ ibf_cart_t = 0
+ do ibf_cart = 1, basis%nbf_cart
+   if(basis%bfc(ibf_cart)%iatom == natom_basis) then
+     ibf_cart_p = ibf_cart_p + 1
+     basis_p%bfc(ibf_cart_p) = basis%bfc(ibf_cart)
+   else if ( basis%bfc(ibf_cart)%iatom <= natom_basis-nghost-nprojectile ) then
+     ibf_cart_t = ibf_cart_t + 1
+     basis_t%bfc(ibf_cart_t) = basis%bfc(ibf_cart)
+   end if
+ end do
+
+ ishell_p = 0
+ ishell_t = 0
+ do ishell = 1, basis%nshell
+   if(basis%shell(ishell)%iatom == natom_basis) then
+     ishell_p = ishell_p + 1
+     basis_p%shell(ishell_p) = basis%shell(ishell)
+   else if ( basis%shell(ishell)%iatom <= natom_basis-nghost-nprojectile ) then
+     ishell_t = ishell_t + 1
+     basis_t%shell(ishell_t) = basis%shell(ishell)
+   end if
+ end do
+
+ !! Find the maximum angular momentum employed in T/P basis set
+ basis_t%ammax = MAXVAL(basis_t%bfc(:)%am)
+ basis_p%ammax = MAXVAL(basis_p%bfc(:)%am)
+
+ write(stdout,'(a,/)') '==== TARGET basis summary ===='
+ call echo_basis_summary(basis_t)
+
+ write(stdout,'(a,/)') '==== PROJECTILE basis summary ===='
+ call echo_basis_summary(basis_p)
+
+
+end subroutine split_basis_set
+
+!=========================================================================
 subroutine moving_basis_set(new_basis)
  implicit none
 
