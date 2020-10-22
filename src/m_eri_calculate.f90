@@ -753,8 +753,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
 #if defined(HAVE_SCALAPACK)
 
-   call die('eri3_genuine and SCALAPACK to be implemented soon')
-
    do jlocal=1,nlocal
      jglobal = INDXL2G(jlocal,NB_3center,ipcol_3center,first_col,npcol_3center)
      eri_2center_sqrt(:,jlocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jglobal) )
@@ -1153,42 +1151,59 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call stop_clock(timing_eri_3center_ints)
 
 
-   !
-   ! Second part: perform  \sum_Q (\alpha\beta|Q) (Q|P)^{-1/2}
-   !
-   call start_clock(timing_eri_3center_matmul)
+   if( eri3_genuine_ ) then
 
-   if( cntxt_3center > 0 ) then
+     call start_clock(timing_eri_3center_copy)
      if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
-       call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
-                   1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
-                          eri_2center    ,1,1,desc_2center,   &
-                   0.0_dp,eri_3center    ,ipair_first,1,desc_eri3)
+       call PDLACPY('A',mpair,auxil_basis%nbf,eri_3center_tmp,1,1,desc_3tmp, &
+                    eri_3center,ipair_first,1,desc_eri3)
 #else
-       call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
-                  1.0_dp,eri_3center_tmp,mpair,   &
-                         eri_2center,auxil_basis%nbf,       &
-                  0.0_dp,eri_3center(ipair_first,1),npair)
+       call DLACPY('A',mpair,auxil_basis%nbf,eri_3center_tmp(1,1),mpair,eri_3center(ipair_first,1),npair)
 #endif
      else
-#if defined(HAVE_SCALAPACK)
-       call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
-                   1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
-                          eri_2center_lr ,1,1,desc_2center,   &
-                   0.0_dp,eri_3center_lr ,ipair_first,1,desc_eri3_lr)
-#else
-       call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf,  &
-                  1.0_dp,eri_3center_tmp,mpair,              &
-                         eri_2center_lr,auxil_basis%nbf,     &
-                  0.0_dp,eri_3center_lr(ipair_first,1),npair)
-#endif
+       call die('calculate_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
      endif
+     call stop_clock(timing_eri_3center_copy)
+   else
+     !
+     ! Second part: perform  \sum_Q (\alpha\beta|Q) (Q|P)^{-1/2}
+     !
+     call start_clock(timing_eri_3center_matmul)
+
+     if( cntxt_3center > 0 ) then
+       if( .NOT. is_longrange ) then
+#if defined(HAVE_SCALAPACK)
+         call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
+                     1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
+                            eri_2center    ,1,1,desc_2center,   &
+                     0.0_dp,eri_3center    ,ipair_first,1,desc_eri3)
+#else
+         call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
+                    1.0_dp,eri_3center_tmp,mpair,   &
+                           eri_2center,auxil_basis%nbf,       &
+                    0.0_dp,eri_3center(ipair_first,1),npair)
+#endif
+       else
+#if defined(HAVE_SCALAPACK)
+         call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
+                     1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
+                            eri_2center_lr ,1,1,desc_2center,   &
+                     0.0_dp,eri_3center_lr ,ipair_first,1,desc_eri3_lr)
+#else
+         call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf,  &
+                    1.0_dp,eri_3center_tmp,mpair,              &
+                           eri_2center_lr,auxil_basis%nbf,     &
+                    0.0_dp,eri_3center_lr(ipair_first,1),npair)
+#endif
+       endif
+     endif
+
+     call stop_clock(timing_eri_3center_matmul)
    endif
 
    call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
 
-   call stop_clock(timing_eri_3center_matmul)
 
    !
    ! Loop over batches ends here

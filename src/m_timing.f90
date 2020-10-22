@@ -77,6 +77,7 @@ module m_timing
  integer,parameter :: timing_x_m_vxc             = 58
  integer,parameter :: timing_auto_auxil          = 59
  integer,parameter :: timing_stopping            = 60
+ integer,parameter :: timing_eri_3center_copy    = 61
 
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -222,6 +223,7 @@ subroutine output_timing()
  call output_timing_line('3-center integrals',timing_eri_3center,1)
  call output_timing_line('Integrals evaluation',timing_eri_3center_ints,2)
  call output_timing_line('Matrix multiplication',timing_eri_3center_matmul,2)
+ call output_timing_line('Matrix copy',timing_eri_3center_copy,2)
  call output_timing_line('Overlap matrix S',timing_overlap,1)
  call output_timing_line('Approximate guess Hamiltonian',timing_approx_ham,1)
  call output_timing_line('Kinetic Hamiltonian',timing_hamiltonian_kin,1)
