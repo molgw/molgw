@@ -15,14 +15,14 @@ module m_eri_calculate
  use m_basis_set
  use m_timing
  use m_cart_to_pure
- use m_inputparam,only: scalapack_block_min,incore_,eri3_nbatch
+ use m_inputparam,only: scalapack_block_min,incore_,eri3_nbatch,eri3_genuine_
  use m_eri
  use m_libint_tools
 
 
- real(dp),private,allocatable :: eri_2center(:,:)
- real(dp),private,allocatable :: eri_2center_lr(:,:)
- integer,private              :: desc_2center(NDEL)
+ real(dp),protected,allocatable :: eri_2center(:,:)
+ real(dp),protected,allocatable :: eri_2center_lr(:,:)
+ integer,protected              :: desc_2center(NDEL)
 
 
 contains
@@ -703,7 +703,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  !
 #if defined(HAVE_SCALAPACK)
 
-   call clean_allocate('2-center integrals sqrt',eri_2center_sqrt,mlocal,nlocal)
+   call clean_allocate('tmp 2-center integrals',eri_2center_sqrt,mlocal,nlocal)
 
    ! B = A
    call PDLACPY('A',auxil_basis%nbf,auxil_basis%nbf,eri_2center_tmp,1,1,desc2center,eri_2center_sqrt,1,1,desc2center)
@@ -733,98 +733,153 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  call xmax_ortho(nauxil_kept)
  nauxil_neglect = auxil_basis%nbf - nauxil_kept
 
- if( .NOT. is_longrange ) then
-   nauxil_2center = nauxil_kept
-   ! Prepare the distribution of the 3-center integrals
-   ! nauxil_3center variable is now set up
-   call distribute_auxil_basis(nauxil_2center)
- else
-   nauxil_2center_lr = nauxil_kept
-   ! Prepare the distribution of the 3-center integrals
-   ! nauxil_3center_lr variable is now set up
-   call distribute_auxil_basis_lr(nauxil_2center_lr)
- endif
-
- if( cntxt_3center < 0 ) return
-
  !
- ! Now resize the 2-center matrix accordingly
- ! Set mlocal => nauxil_3center
- ! Set nlocal => nauxil_kept < auxil_basis%nbf
- mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
- nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+ !
+ ! Important fork here:
+ !
+ !
+ if( eri3_genuine_ ) then
 
+   !
+   ! eri3_genuine_ will need eri_2center := (P|1/r12|Q)^{-1}
+   !
 
- if( .NOT. is_longrange ) then
+   ! In this case, no auxiliary basis is removed
+   nauxil_2center = auxil_basis%nbf
+   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(nauxil_2center ,NB_3center,ipcol_3center,first_col,npcol_3center)
+   desc_2center(:) = desc2center(:)
    call clean_allocate('Distributed 2-center integrals',eri_2center,mlocal,nlocal)
- else
-   call clean_allocate('Distributed LR 2-center integrals',eri_2center_lr,mlocal,nlocal)
- endif
 
 #if defined(HAVE_SCALAPACK)
- call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
- !
- ! Create a rectangular matrix with only 1 / SQRT( eigval) on a diagonal
- eri_2center_tmp(:,:) = 0.0_dp
- do jlocal=1,nlocal
-   jglobal = INDXL2G(jlocal,NB_3center,ipcol_3center,first_col,npcol_3center)
-   do ilocal=1,mlocal
-     iglobal = INDXL2G(ilocal,MB_3center,iprow_3center,first_row,nprow_3center)
 
-     if( iglobal == jglobal + nauxil_neglect ) eri_2center_tmp(ilocal,jlocal) = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
+   call die('eri3_genuine and SCALAPACK to be implemented soon')
 
+   do jlocal=1,nlocal
+     jglobal = INDXL2G(jlocal,NB_3center,ipcol_3center,first_col,npcol_3center)
+     eri_2center_sqrt(:,jlocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jglobal) )
    enddo
- enddo
+
+   call PDSYRK('L','N',nauxil_2center,nauxil_2center,1.0_dp,eri_2center_sqrt,1,1,desc_2center,  &
+               0.0_dp,eri_2center,1,1,desc_2center)
+
+   call symmetrize_matrix_sca('L',nauxil_2center,desc_2center,eri_2center,desc_2center,eri_2center_sqrt)
+   eri_2center(:,:) = eri_2center_sqrt(:,:)
+
+#else
+   do ibf_auxil=1,nauxil_2center
+     eri_2center_sqrt(:,ibf_auxil) = eri_2center_sqrt(:,ibf_auxil) / SQRT( eigval(ibf_auxil) )
+   enddo
+   call DSYRK('L','N',nauxil_2center,nauxil_2center,1.0d0,eri_2center_sqrt,nauxil_2center,0.0d0,eri_2center,nauxil_2center)
+
+   call matrix_lower_to_full_dp(eri_2center)
+
+#endif
+
+   write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, inverted and stored'
 
 
- if( .NOT. is_longrange ) then
-   call PDGEMM('N','N',auxil_basis%nbf,nauxil_2center,auxil_basis%nbf, &
-               1.0_dp,eri_2center_sqrt ,1,1,desc2center,  &
-                      eri_2center_tmp,1,1,desc_2center,   &
-               0.0_dp,eri_2center    ,1,1,desc_2center)
  else
-   call PDGEMM('N','N',auxil_basis%nbf,nauxil_2center_lr,auxil_basis%nbf, &
-               1.0_dp,eri_2center_sqrt ,1,1,desc2center,  &
-                      eri_2center_tmp,1,1,desc_2center,   &
-               0.0_dp,eri_2center_lr ,1,1,desc_2center)
- endif
 
- call clean_deallocate('tmp 2-center integrals',eri_2center_tmp)
+   !
+   ! Rotated 3-center integrals will need  eri_2center := (P|1/r12|Q)^{-1/2}
+   !
+
+   if( .NOT. is_longrange ) then
+     nauxil_2center = nauxil_kept
+     ! Prepare the distribution of the 3-center integrals
+     ! nauxil_3center variable is now set up
+     call distribute_auxil_basis(nauxil_2center)
+   else
+     nauxil_2center_lr = nauxil_kept
+     ! Prepare the distribution of the 3-center integrals
+     ! nauxil_3center_lr variable is now set up
+     call distribute_auxil_basis_lr(nauxil_2center_lr)
+   endif
+
+   if( cntxt_3center < 0 ) return
+
+   !
+   ! Now resize the 2-center matrix accordingly
+   ! Set mlocal => nauxil_3center
+   ! Set nlocal => nauxil_kept < auxil_basis%nbf
+   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
+                 first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+
+
+   if( .NOT. is_longrange ) then
+     call clean_allocate('Distributed 2-center integrals',eri_2center,mlocal,nlocal)
+   else
+     call clean_allocate('Distributed LR 2-center integrals',eri_2center_lr,mlocal,nlocal)
+   endif
+
+#if defined(HAVE_SCALAPACK)
+   call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
+   !
+   ! Create a rectangular matrix with only 1 / SQRT( eigval) on a diagonal
+   eri_2center_tmp(:,:) = 0.0_dp
+   do jlocal=1,nlocal
+     jglobal = INDXL2G(jlocal,NB_3center,ipcol_3center,first_col,npcol_3center)
+     do ilocal=1,mlocal
+       iglobal = INDXL2G(ilocal,MB_3center,iprow_3center,first_row,nprow_3center)
+
+       if( iglobal == jglobal + nauxil_neglect ) eri_2center_tmp(ilocal,jlocal) = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
+
+     enddo
+   enddo
+
+
+   if( .NOT. is_longrange ) then
+     call PDGEMM('N','N',auxil_basis%nbf,nauxil_2center,auxil_basis%nbf, &
+                 1.0_dp,eri_2center_sqrt ,1,1,desc2center,  &
+                        eri_2center_tmp,1,1,desc_2center,   &
+                 0.0_dp,eri_2center    ,1,1,desc_2center)
+   else
+     call PDGEMM('N','N',auxil_basis%nbf,nauxil_2center_lr,auxil_basis%nbf, &
+                 1.0_dp,eri_2center_sqrt ,1,1,desc2center,  &
+                        eri_2center_tmp,1,1,desc_2center,   &
+                 0.0_dp,eri_2center_lr ,1,1,desc_2center)
+   endif
+
+   call clean_deallocate('tmp 2-center integrals',eri_2center_tmp)
 
 #else
 
- ilocal = 0
- do jlocal=1,auxil_basis%nbf
-   if( eigval(jlocal) < TOO_LOW_EIGENVAL ) cycle
-   ilocal = ilocal + 1
-   eri_2center_sqrt(:,ilocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jlocal) )
- enddo
+   ilocal = 0
+   do jlocal=1,auxil_basis%nbf
+     if( eigval(jlocal) < TOO_LOW_EIGENVAL ) cycle
+     ilocal = ilocal + 1
+     eri_2center_sqrt(:,ilocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jlocal) )
+   enddo
 
- if( .NOT. is_longrange ) then
-   do ibf_auxil=1,nauxil_3center
-     jbf_auxil = ibf_auxil_g(ibf_auxil)
-     eri_2center(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
-   enddo
- else
-   do ibf_auxil=1,nauxil_3center_lr
-     jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
-     eri_2center_lr(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
-   enddo
- endif
+   if( .NOT. is_longrange ) then
+     do ibf_auxil=1,nauxil_3center
+       jbf_auxil = ibf_auxil_g(ibf_auxil)
+       eri_2center(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+     enddo
+   else
+     do ibf_auxil=1,nauxil_3center_lr
+       jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
+       eri_2center_lr(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+     enddo
+   endif
 
 
 #endif
 
- call clean_deallocate('2-center integrals sqrt',eri_2center_sqrt)
 
 
 
- write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, diagonalized and stored'
- write(stdout,'(1x,a,es16.6)') 'Lowest eigenvalue: ',MINVAL(eigval(:))
- write(stdout,'(1x,a,i6)')     'Some have been eliminated due to too large overlap ',nauxil_neglect
- write(stdout,'(1x,a,es16.6)') 'because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
+   write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, diagonalized and stored'
+   write(stdout,'(1x,a,es16.6)') 'Lowest eigenvalue: ',MINVAL(eigval(:))
+   write(stdout,'(1x,a,i6)')     'Some have been eliminated due to too large overlap ',nauxil_neglect
+   write(stdout,'(1x,a,es16.6)') 'because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
 
+ endif
+
+ call clean_deallocate('tmp 2-center integrals',eri_2center_sqrt)
 
  call stop_clock(timing_eri_2center)
 

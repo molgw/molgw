@@ -141,6 +141,15 @@ ecp_type:
     basis set should have ecp_type='PP', so that MOLGW looks for the file Au_PP in
     the basis_path folder.
 
+eri3_genuine:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: If set to 'yes', the 2-center integrals will not be diagonalized
+           and 3-center electron repulsion integrals will remain the genuine 3-center integrals.
+
 gaussian_type:
   family: general
   datatype: characters
@@ -324,7 +333,7 @@ print_wfn_files:
   experimental: 'no'
   default: 'no'
   comment: 'Prints WFN files which can be used as input for post processing. WFN files contain the information about
- the electronic density and several packages use them to gather chemical information (see programs like: AIMPAC, AIMALL, among others). Setting this variable to yes will produce WFN files for ground-state calculations as well as for GW-corrected densities. Note: currently, only cartesian basis are supported.' 
+ the electronic density and several packages use them to gather chemical information (see programs like: AIMPAC, AIMALL, among others). Setting this variable to yes will produce WFN files for ground-state calculations as well as for GW-corrected densities. Note: currently, only cartesian basis are supported.'
 
 print_density_matrix:
   family: io
