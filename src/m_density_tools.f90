@@ -16,8 +16,6 @@ module m_density_tools
  use m_hamiltonian_tools,only: get_number_occupied_states
  use m_dft_grid
 
- complex(dp),parameter :: COMPLEX_ONE  = (1.0_dp,0.0_dp)
- complex(dp),parameter :: COMPLEX_ZERO = (0.0_dp,0.0_dp)
 
 contains
 

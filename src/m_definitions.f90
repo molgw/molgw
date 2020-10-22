@@ -35,6 +35,8 @@ module m_definitions
  real(dp),parameter     :: pi    = 3.14159265358979323_dp
  real(dp),parameter     :: pi2   = pi**2
  complex(dp),parameter  :: im    = (0.0_dp,1.0_dp)
+ complex(dp),parameter  :: COMPLEX_ONE  = (1.0_dp,0.0_dp)
+ complex(dp),parameter  :: COMPLEX_ZERO = (0.0_dp,0.0_dp)
 
 
  !
