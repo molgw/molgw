@@ -737,14 +737,34 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 #endif
 
    !
-   ! Skip the too small eigenvalues
-   nauxil_kept = COUNT( eigval(:) > TOO_LOW_EIGENVAL )
+   ! Skip the too small eigenvalues if not genuine
+   !
+   if( .NOT. eri3_genuine_ ) then
+     nauxil_kept = COUNT( eigval(:) > TOO_LOW_EIGENVAL )
+   else
+     nauxil_kept = auxil_basis%nbf
+   endif
 
  else
    nauxil_kept    = 0
  endif
  call xmax_ortho(nauxil_kept)
  nauxil_neglect = auxil_basis%nbf - nauxil_kept
+
+
+ if( .NOT. is_longrange ) then
+   nauxil_2center = nauxil_kept
+   ! Prepare the distribution of the 3-center integrals
+   ! nauxil_3center variable is now set up
+   call distribute_auxil_basis(nauxil_2center)
+ else
+   nauxil_2center_lr = nauxil_kept
+   ! Prepare the distribution of the 3-center integrals
+   ! nauxil_3center_lr variable is now set up
+   call distribute_auxil_basis_lr(nauxil_2center_lr)
+ endif
+
+
 
  !
  !
@@ -795,18 +815,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
    !
    ! Rotated 3-center integrals will need  eri_2center := (P|1/r12|Q)^{-1/2}
    !
-
-   if( .NOT. is_longrange ) then
-     nauxil_2center = nauxil_kept
-     ! Prepare the distribution of the 3-center integrals
-     ! nauxil_3center variable is now set up
-     call distribute_auxil_basis(nauxil_2center)
-   else
-     nauxil_2center_lr = nauxil_kept
-     ! Prepare the distribution of the 3-center integrals
-     ! nauxil_3center_lr variable is now set up
-     call distribute_auxil_basis_lr(nauxil_2center_lr)
-   endif
 
    if( cntxt_3center < 0 ) return
 
@@ -1166,6 +1174,9 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
    if( eri3_genuine_ ) then
 
+     !
+     ! Second part: just a copy in the genuine case
+     !
      call start_clock(timing_eri_3center_copy)
      if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
@@ -1178,7 +1189,9 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
        call die('calculate_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
      endif
      call stop_clock(timing_eri_3center_copy)
+
    else
+
      !
      ! Second part: perform  \sum_Q (\alpha\beta|Q) (Q|P)^{-1/2}
      !
@@ -1232,7 +1245,9 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 
  if( .NOT. is_longrange ) then
-   call clean_deallocate('Distributed 2-center integrals',eri_2center)
+   if( .NOT. eri3_genuine_ ) then
+     call clean_deallocate('Distributed 2-center integrals',eri_2center)
+   endif
    if( cntxt_3center < 0 ) then
      eri_3center(:,:) = 0.0_dp
    endif
