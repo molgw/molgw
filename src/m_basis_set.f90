@@ -286,47 +286,39 @@ subroutine split_basis_set(basis,basis_t,basis_p)
  integer                       :: ibf, ibf_p, ibf_t
  integer                       :: ishell, ishell_p, ishell_t
  integer                       :: ibf_cart, ibf_cart_p, ibf_cart_t
- integer                       :: iatom, ntarget_basis
+ integer                       :: iatom
 !=====
 
- ntarget_basis = natom_basis - nghost - nprojectile
-
- !! first get all size info for TARGET and PROJECTILE basis
- !! while skipping GHOST basis
+ !! basis set is split into moving (P) and fixed (T+G) centered basis
+ !! first get size info for allocation
 
  basis_p%nbf           = 0
  basis_p%nbf_cart      = 0
  basis_p%nshell        = 0
  basis_p%gaussian_type = basis%gaussian_type
 
- basis_t%nbf           = 0
- basis_t%nbf_cart      = 0
- basis_t%nshell        = 0
- basis_t%gaussian_type = basis%gaussian_type
-
  do ibf = 1, basis%nbf
-   if ( basis%bff(ibf)%iatom == natom_basis ) then
+   if ( ANY( basis%bff(ibf)%v0 > 1.0e-4 ) ) then       ! == if moving
      basis_p%nbf = basis_p%nbf + 1
-   else if ( basis%bff(ibf)%iatom <= ntarget_basis ) then
-     basis_t%nbf = basis_t%nbf + 1
    end if
  end do
 
  do ibf_cart = 1, basis%nbf_cart
-   if ( basis%bfc(ibf_cart)%iatom == natom_basis ) then
+   if ( ANY( basis%bfc(ibf_cart)%v0 > 1.0e-4 ) ) then
      basis_p%nbf_cart = basis_p%nbf_cart + 1
-   else if ( basis%bfc(ibf_cart)%iatom <= ntarget_basis ) then
-     basis_t%nbf_cart = basis_t%nbf_cart + 1
    end if
  end do
 
  do ishell = 1, basis%nshell
-   if ( basis%shell(ishell)%iatom == natom_basis ) then
+   if ( ANY( basis%shell(ishell)%v0 > 1.0e-4 ) ) then
      basis_p%nshell = basis_p%nshell + 1
-   else if ( basis%shell(ishell)%iatom <= ntarget_basis ) then
-     basis_t%nshell = basis_t%nshell + 1
    end if
  end do
+
+ basis_t%nbf           = basis%nbf - basis_p%nbf
+ basis_t%nbf_cart      = basis%nbf_cart - basis_p%nbf_cart
+ basis_t%nshell        = basis%nshell - basis_p%nshell
+ basis_t%gaussian_type = basis%gaussian_type
 
  !! allocate bff, bfc and shell for T/P basis_set
  !! then assign each of them one by one from the original big basis_set
@@ -342,10 +334,10 @@ subroutine split_basis_set(basis,basis_t,basis_p)
  ibf_p = 0
  ibf_t = 0
  do ibf = 1, basis%nbf
-   if ( basis%bff(ibf)%iatom == natom_basis ) then
+   if ( ANY( basis%bff(ibf)%v0 > 1.0e-4 ) ) then
      ibf_p = ibf_p + 1
      basis_p%bff(ibf_p) = basis%bff(ibf)
-   else if ( basis%bff(ibf)%iatom <= ntarget_basis ) then
+   else
      ibf_t = ibf_t + 1
      basis_t%bff(ibf_t) = basis%bff(ibf)
    end if
@@ -354,10 +346,10 @@ subroutine split_basis_set(basis,basis_t,basis_p)
  ibf_cart_p = 0
  ibf_cart_t = 0
  do ibf_cart = 1, basis%nbf_cart
-   if(basis%bfc(ibf_cart)%iatom == natom_basis) then
+   if ( ANY( basis%bfc(ibf_cart)%v0 > 1.0e-4 ) ) then
      ibf_cart_p = ibf_cart_p + 1
      basis_p%bfc(ibf_cart_p) = basis%bfc(ibf_cart)
-   else if ( basis%bfc(ibf_cart)%iatom <= ntarget_basis ) then
+   else
      ibf_cart_t = ibf_cart_t + 1
      basis_t%bfc(ibf_cart_t) = basis%bfc(ibf_cart)
    end if
@@ -366,10 +358,10 @@ subroutine split_basis_set(basis,basis_t,basis_p)
  ishell_p = 0
  ishell_t = 0
  do ishell = 1, basis%nshell
-   if(basis%shell(ishell)%iatom == natom_basis) then
+   if( ANY( basis%shell(ishell)% v0 > 1.0e-4 ) ) then
      ishell_p = ishell_p + 1
      basis_p%shell(ishell_p) = basis%shell(ishell)
-   else if ( basis%shell(ishell)%iatom <= ntarget_basis ) then
+   else
      ishell_t = ishell_t + 1
      basis_t%shell(ishell_t) = basis%shell(ishell)
    end if
