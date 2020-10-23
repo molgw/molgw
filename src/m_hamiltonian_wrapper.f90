@@ -35,6 +35,7 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
  real(dp),intent(out),optional :: eh
 !=====
  real(dp) :: ehartree
+ real(dp),allocatable :: rho_coeff(:,:)
 !=====
 
 
@@ -46,7 +47,13 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
      call setup_hartree_oneshell(basis,p_matrix,hhartree,ehartree)
    endif
  else
-   call setup_hartree_ri(p_matrix,hhartree,ehartree)
+   if( .NOT. eri3_genuine_ ) then
+     call setup_hartree_ri(p_matrix,hhartree,ehartree)
+   else
+     call calculate_density_auxilbasis(p_matrix,rho_coeff)
+     call setup_hartree_genuine_ri(p_matrix,rho_coeff,hhartree,ehartree)
+     deallocate(rho_coeff)
+   endif
  endif
 
  if( PRESENT(eh) ) eh = ehartree

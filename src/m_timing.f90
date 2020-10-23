@@ -78,6 +78,7 @@ module m_timing
  integer,parameter :: timing_auto_auxil          = 59
  integer,parameter :: timing_stopping            = 60
  integer,parameter :: timing_eri_3center_copy    = 61
+ integer,parameter :: timing_rhoauxil            = 62
 
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -111,6 +112,7 @@ module m_timing
  integer,parameter :: timing_tddft_vxc              = 133
  integer,parameter :: timing_tddft_frozen_core      = 134
  integer,parameter :: timing_tddft_q_matrix         = 135
+ integer,parameter :: timing_tddft_rhoauxil         = 136
 
 
  integer,private     :: count_rate,count_max

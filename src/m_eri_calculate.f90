@@ -29,6 +29,19 @@ contains
 
 
 !=========================================================================
+subroutine destroy_eri_3center()
+ implicit none
+ !=====
+
+ if(ALLOCATED(eri_2center)) then
+   call clean_deallocate('2-center integrals',eri_2center)
+ endif
+ call destroy_eri_3center_lowerlevel()
+
+end subroutine destroy_eri_3center
+
+
+!=========================================================================
 subroutine calculate_eri(print_eri_,basis,rcut)
  implicit none
  logical,intent(in)           :: print_eri_

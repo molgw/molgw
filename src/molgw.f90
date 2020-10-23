@@ -199,7 +199,7 @@ program molgw
     !
     ! Attempt to evaluate the peak memory
     !
-    if( memory_evaluation_) call evaluate_memory(basis%nbf,auxil_basis%nbf,nstate,occupation)
+    if( memory_evaluation_ ) call evaluate_memory(basis%nbf,auxil_basis%nbf,nstate,occupation)
 
 
     if( .NOT. has_auxil_basis ) then

@@ -537,7 +537,7 @@ end subroutine setup_shellpair
 
 
 !=================================================================
-subroutine destroy_eri_3center()
+subroutine destroy_eri_3center_lowerlevel()
  implicit none
 !=====
 
@@ -554,7 +554,7 @@ subroutine destroy_eri_3center()
    call clean_deallocate('3-center integrals',eri_3center)
  endif
 
-end subroutine destroy_eri_3center
+end subroutine destroy_eri_3center_lowerlevel
 
 
 !=================================================================
