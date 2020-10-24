@@ -765,6 +765,14 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  endif
 
 
+ !
+ ! Now resize the 2-center matrix if needed
+ ! Set mlocal => nauxil_3center
+ ! Set nlocal => nauxil_kept < auxil_basis%nbf
+ mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+ nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
+                 first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
  !
  !
@@ -776,12 +784,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
    !
    ! eri3_genuine_ will need eri_2center := (P|1/r12|Q)^{-1}
    !
-
-   ! In this case, no auxiliary basis is removed
-   nauxil_2center = auxil_basis%nbf
-   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
-   nlocal = NUMROC(nauxil_2center ,NB_3center,ipcol_3center,first_col,npcol_3center)
-   desc_2center(:) = desc2center(:)
    call clean_allocate('Distributed 2-center integrals',eri_2center,mlocal,nlocal)
 
 #if defined(HAVE_SCALAPACK)
@@ -793,9 +795,8 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
    call PDSYRK('L','N',nauxil_2center,nauxil_2center,1.0_dp,eri_2center_sqrt,1,1,desc_2center,  &
                0.0_dp,eri_2center,1,1,desc_2center)
-
    call symmetrize_matrix_sca('L',nauxil_2center,desc_2center,eri_2center,desc_2center,eri_2center_sqrt)
-   eri_2center(:,:) = eri_2center_sqrt(:,:)
+
 
 #else
    do ibf_auxil=1,nauxil_2center
@@ -818,14 +819,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
    if( cntxt_3center < 0 ) return
 
-   !
-   ! Now resize the 2-center matrix accordingly
-   ! Set mlocal => nauxil_3center
-   ! Set nlocal => nauxil_kept < auxil_basis%nbf
-   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
-   nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
-   call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
-                 first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
 
    if( .NOT. is_longrange ) then
