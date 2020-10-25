@@ -539,28 +539,21 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  implicit none
  type(basis_set),intent(in)   :: auxil_basis
  real(dp),intent(in)          :: rcut
-!=====
+ !=====
  logical                      :: is_longrange
  integer                      :: ishell,kshell
  integer                      :: n1c,n3c
  integer                      :: ni,nk
  integer                      :: ami,amk
  integer                      :: ibf,kbf
- integer                      :: agt
- integer                      :: info
- integer                      :: nauxil_neglect,nauxil_kept
- real(dp)                     :: eigval(auxil_basis%nbf)
+ integer                      :: agt,info
  real(dp),allocatable         :: integrals(:,:)
- real(dp)                     :: symmetrization_factor
- real(dp),allocatable         :: eri_2center_sqrt(:,:)
- real(dp),allocatable         :: eri_2center_tmp(:,:)
  integer                      :: mlocal,nlocal
- integer                      :: iglobal,jglobal,ilocal,jlocal
+ integer                      :: iglobal,ilocal
  integer                      :: kglobal,klocal
- integer                      :: desc2center(NDEL)
  logical                      :: skip_shell
-!=====
-! variables used to call C
+ !=====
+ ! variables used to call C
  real(C_DOUBLE)               :: rcut_libint
  integer(C_INT)               :: am1,am3
  integer(C_INT)               :: ng1,ng3
@@ -568,11 +561,10 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  real(C_DOUBLE)               :: x01(3),x03(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
-!=====
- integer :: ibf_auxil,jbf_auxil
-!=====
+ !=====
 
  call start_clock(timing_eri_2center)
+ call start_clock(timing_eri_2center_ints)
 
 
  is_longrange = (rcut > 1.0e-12_dp)
@@ -603,14 +595,14 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
    ! Set nlocal => auxil_basis%nbf
    mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
    nlocal = NUMROC(auxil_basis%nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
-   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,MB_3center,NB_3center, &
+   call DESCINIT(desc_2center,auxil_basis%nbf,auxil_basis%nbf,MB_3center,NB_3center, &
                  first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
-   call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
+   call clean_allocate('2-center integrals',eri_2center,mlocal,nlocal)
 
 
    ! Initialization need since we are going to symmetrize the matrix then
-   eri_2center_tmp(:,:) = 0.0_dp
+   eri_2center(:,:) = 0.0_dp
 
 
    do kshell=1,auxil_basis%nshell
@@ -633,13 +625,9 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
        !
        ! Order the angular momenta so that libint is pleased
-       ! 1) am3 >= am1
+       !     am3 >= am1
+       ! Therefore only the lower part of eri_2center will be properly calculated
        if( amk < ami ) cycle
-       if( amk == ami ) then
-         symmetrization_factor = 0.5_dp
-       else
-         symmetrization_factor = 1.0_dp
-       endif
 
        ! Check if this shell is actually needed for the local matrix
        skip_shell = .TRUE.
@@ -701,7 +689,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
            endif
 
 
-           eri_2center_tmp(ilocal,klocal) = integrals(ibf,kbf) * symmetrization_factor
+           eri_2center(ilocal,klocal) = integrals(ibf,kbf)
 
          enddo
        enddo
@@ -711,6 +699,62 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
      enddo   ! ishell
    enddo   ! kshell
 
+ endif
+
+ call stop_clock(timing_eri_2center_ints)
+
+end subroutine calculate_eri_2center_scalapack
+
+
+!=========================================================================
+subroutine invert_eri_2center_scalapack(auxil_basis,rcut)
+ implicit none
+ type(basis_set),intent(in)   :: auxil_basis
+ real(dp),intent(in)          :: rcut
+ !=====
+ logical                      :: is_longrange
+ integer                      :: ishell,kshell
+ integer                      :: agt,info
+ integer                      :: nauxil_neglect,nauxil_kept
+ real(dp)                     :: eigval(auxil_basis%nbf)
+ real(dp),allocatable         :: eri_2center_sqrt(:,:)
+ real(dp),allocatable         :: eri_2center_tmp(:,:)
+ integer                      :: mlocal,nlocal
+ integer                      :: iglobal,jglobal,ilocal,jlocal
+ integer                      :: kglobal,klocal
+ integer                      :: desc2center(NDEL)
+ integer                      :: ibf_auxil,jbf_auxil
+ !=====
+
+ call start_clock(timing_eri_2center_invert)
+
+ is_longrange = (rcut > 1.0e-12_dp)
+ agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
+
+
+ if( .NOT. is_longrange ) then
+#if defined(HAVE_SCALAPACK)
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals inversion using a SCALAPACK grid (LIBINT): ',nprow_3center,' x ',npcol_3center
+#else
+   write(stdout,'(a)') ' 2-center integrals (LIBINT)'
+#endif
+ else
+#if defined(HAVE_SCALAPACK)
+   write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals inversion using a SCALAPACK grid (LIBINT): ', &
+                               nprow_3center,' x ',npcol_3center
+#else
+   write(stdout,'(a)') ' 2-center LR integrals (LIBINT)'
+#endif
+ endif
+
+
+ if( cntxt_3center > 0 ) then
+
+   mlocal = SIZE(eri_2center,DIM=1)
+   nlocal = SIZE(eri_2center,DIM=2)
+   call move_alloc(eri_2center,eri_2center_tmp)
+   desc2center(:) = desc_2center(:)
+
  !
  ! Symmetrize and then diagonalize the 2-center integral matrix
  !
@@ -718,17 +762,23 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
    call clean_allocate('tmp 2-center integrals',eri_2center_sqrt,mlocal,nlocal)
 
+   !
+   ! No need to symmetrize since the diago only considers the lower trinagle of eri_2center_tmp
+   ! => commenting the following
    ! B = A
-   call PDLACPY('A',auxil_basis%nbf,auxil_basis%nbf,eri_2center_tmp,1,1,desc2center,eri_2center_sqrt,1,1,desc2center)
+   !call PDLACPY('A',auxil_basis%nbf,auxil_basis%nbf,eri_2center_tmp,1,1,desc2center,eri_2center_sqrt,1,1,desc2center)
    ! A = A + B**T
-   call PDGEADD('T',auxil_basis%nbf,auxil_basis%nbf,1.0d0,eri_2center_sqrt,1,1,desc2center,1.0d0,eri_2center_tmp,1,1,desc2center)
+   !call PDGEADD('T',auxil_basis%nbf,auxil_basis%nbf,1.0d0,eri_2center_sqrt,1,1,desc2center,1.0d0,eri_2center_tmp,1,1,desc2center)
    ! Diagonalize
    call diagonalize_sca(' ',eri_2center_tmp,desc2center,eigval,eri_2center_sqrt,desc2center)
    call clean_deallocate('tmp 2-center integrals',eri_2center_tmp)
 
 #else
 
-   eri_2center_tmp(:,:) = eri_2center_tmp(:,:) + TRANSPOSE( eri_2center_tmp(:,:) )
+   !
+   ! No need to symmetrize since the diago only considers the lower trinagle of eri_2center_tmp
+   ! => commenting the following
+   !eri_2center_tmp(:,:) = eri_2center_tmp(:,:) + TRANSPOSE( eri_2center_tmp(:,:) )
    ! Symmetrize
    ! Diagonalize
    call diagonalize_scalapack(' ',scalapack_block_min,eri_2center_tmp,eigval)
@@ -882,8 +932,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 #endif
 
 
-
-
    write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, diagonalized and stored'
    write(stdout,'(1x,a,es16.6)') 'Lowest eigenvalue: ',MINVAL(eigval(:))
    write(stdout,'(1x,a,i6)')     'Some have been eliminated due to too large overlap ',nauxil_neglect
@@ -893,9 +941,10 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
  call clean_deallocate('tmp 2-center integrals',eri_2center_sqrt)
 
+ call stop_clock(timing_eri_2center_invert)
  call stop_clock(timing_eri_2center)
 
-end subroutine calculate_eri_2center_scalapack
+end subroutine invert_eri_2center_scalapack
 
 
 !=========================================================================
