@@ -217,7 +217,6 @@ program molgw
 
       ! 2-center integrals
       call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
-      call invert_eri_2center_scalapack(auxil_basis,0.0_dp)
       ! 3-center integrals
       call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
 
@@ -227,7 +226,6 @@ program molgw
       if(calc_type%need_exchange_lr ) then
         ! 2-center integrals
         call calculate_eri_2center_scalapack(auxil_basis,rcut)
-        call invert_eri_2center_scalapack(auxil_basis,rcut)
         ! 3-center integrals
         call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
       endif
