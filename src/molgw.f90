@@ -209,7 +209,7 @@ program molgw
     !
     ! Attempt to evaluate the peak memory
     !
-    if( memory_evaluation_) call evaluate_memory(basis%nbf,auxil_basis%nbf,nstate,occupation)
+    if( memory_evaluation_ ) call evaluate_memory(basis%nbf,auxil_basis%nbf,nstate,occupation)
 
 
     if( .NOT. has_auxil_basis ) then
@@ -227,6 +227,7 @@ program molgw
 
       ! 2-center integrals
       call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
+      call invert_eri_2center_scalapack(auxil_basis,0.0_dp)
       ! 3-center integrals
       call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
 
@@ -236,6 +237,7 @@ program molgw
       if(calc_type%need_exchange_lr ) then
         ! 2-center integrals
         call calculate_eri_2center_scalapack(auxil_basis,rcut)
+        call invert_eri_2center_scalapack(auxil_basis,rcut)
         ! 3-center integrals
         call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
       endif

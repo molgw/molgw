@@ -156,6 +156,7 @@ module m_inputparam
  logical,protected                :: print_yaml_
  logical,protected                :: stopping_
  logical,protected                :: assume_scf_converged_
+ logical,protected                :: eri3_genuine_
 
  real(dp),protected               :: rcut = 0.0_dp
 
@@ -763,6 +764,7 @@ subroutine read_inputfile_namelist()
  print_yaml_                 = yesno_to_logical(print_yaml)
  stopping_                   = yesno_to_logical(stopping)
  assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
+ eri3_genuine_               = yesno_to_logical(eri3_genuine)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)

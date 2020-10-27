@@ -13,7 +13,7 @@
 <p>
 <a href=#charge>charge</a> <a href=#length_unit>length_unit</a> <a href=#magnetization>magnetization</a> <a href=#natom>natom</a> <a href=#nghost>nghost</a> <a href=#nspin>nspin</a> <a href=#temperature>temperature</a> <a href=#xyz_file>xyz_file</a> <h3>General input variables</h3>
 <p>
-<a href=#auto_auxil_fsam>auto_auxil_fsam</a> <a href=#auto_auxil_lmaxinc>auto_auxil_lmaxinc</a> <a href=#auxil_basis>auxil_basis</a> <a href=#basis>basis</a> <a href=#comment>comment</a> <a href=#ecp_auxil_basis>ecp_auxil_basis</a> <a href=#ecp_basis>ecp_basis</a> <a href=#ecp_elements>ecp_elements</a> <a href=#ecp_quality>ecp_quality</a> <a href=#ecp_type>ecp_type</a> <a href=#gaussian_type>gaussian_type</a> <a href=#incore>incore</a> <a href=#memory_evaluation>memory_evaluation</a> <a href=#move_nuclei>move_nuclei</a> <a href=#nstep>nstep</a> <a href=#scf>scf</a> <a href=#tolforce>tolforce</a> <h3>Self-consistency input variables</h3>
+<a href=#auto_auxil_fsam>auto_auxil_fsam</a> <a href=#auto_auxil_lmaxinc>auto_auxil_lmaxinc</a> <a href=#auxil_basis>auxil_basis</a> <a href=#basis>basis</a> <a href=#comment>comment</a> <a href=#ecp_auxil_basis>ecp_auxil_basis</a> <a href=#ecp_basis>ecp_basis</a> <a href=#ecp_elements>ecp_elements</a> <a href=#ecp_quality>ecp_quality</a> <a href=#ecp_type>ecp_type</a> <a href=#eri3_genuine>eri3_genuine</a> <a href=#gaussian_type>gaussian_type</a> <a href=#incore>incore</a> <a href=#memory_evaluation>memory_evaluation</a> <a href=#move_nuclei>move_nuclei</a> <a href=#nstep>nstep</a> <a href=#scf>scf</a> <a href=#tolforce>tolforce</a> <h3>Self-consistency input variables</h3>
 <p>
 <a href=#alpha_hybrid>alpha_hybrid</a> <a href=#alpha_mixing>alpha_mixing</a> <a href=#beta_hybrid>beta_hybrid</a> <a href=#density_matrix_damping>density_matrix_damping</a> <a href=#diis_switch>diis_switch</a> <a href=#gamma_hybrid>gamma_hybrid</a> <a href=#grid_quality>grid_quality</a> <a href=#init_hamiltonian>init_hamiltonian</a> <a href=#integral_quality>integral_quality</a> <a href=#kerker_k0>kerker_k0</a> <a href=#level_shifting_energy>level_shifting_energy</a> <a href=#min_overlap>min_overlap</a> <a href=#mixing_scheme>mixing_scheme</a> <a href=#npulay_hist>npulay_hist</a> <a href=#nscf>nscf</a> <a href=#partition_scheme>partition_scheme</a> <a href=#scf_diago_flavor>scf_diago_flavor</a> <a href=#tolscf>tolscf</a> <h3>Correlation and excited states post-treatment input variables</h3>
 <p>
@@ -31,489 +31,495 @@
 <br><br>
 <ul>
 <hr>
-<a name=auto_auxil_fsam><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>auto_auxil_fsam</b>  </span>  
+<a name=auto_auxil_fsam><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>auto_auxil_fsam</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1.5<br><br>
 Sets the F_SAM parameter in the automatic generation of the auxiliary basis set. The closer to 1.0 the more auxiliary basis functions it will generate. See Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.</li><br>
 <hr>
-<a name=auto_auxil_lmaxinc><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>auto_auxil_lmaxinc</b>  </span>  
+<a name=auto_auxil_lmaxinc><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>auto_auxil_lmaxinc</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets the l_MAXINC parameter in the automatic generation of the auxiliary basis set. The larger the more auxiliary basis functions it will generate. See Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.</li><br>
 <hr>
-<a name=auxil_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>auxil_basis</b>  </span>  
+<a name=auxil_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>auxil_basis</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Sets the auxiliary basis set. For instance, cc-pVDZ-RI for a Weigend basis set. If present, the auxiliary basis will be used for both the scf cycles and the postscf calculations (TD-DFT, BSE, or GW).</li><br>
 <hr>
-<a name=basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>basis</b>  </span>  
+<a name=basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>basis</b>  </span>
 <br><br>
 <i>Mandatory</i><br>
 Default: None<br><br>
 Sets the basis set For Pople sets, use 6-31G for instance or 6-31pGs, where p stands for + and s for *. For Dunning sets, use aug-cc-pVTZ for instance. Note that Pople sets are to be used with gaussian_type='cart' One may use ones own basis sets provided that the files are labeled X_mybasisset where X is the element.</li><br>
 <hr>
-<a name=comment><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>comment</b>  </span>  
+<a name=comment><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>comment</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 This is a free expression place. Use it as you wish for commenting, naming, labeling etc. (140 character max just as twitter)</li><br>
 <hr>
-<a name=ecp_auxil_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_auxil_basis</b>  </span>  
+<a name=ecp_auxil_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_auxil_basis</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Name of the auxiliary basis set to be used for elements specified in list ecp_elements.</li><br>
 <hr>
-<a name=ecp_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_basis</b>  </span>  
+<a name=ecp_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_basis</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Name of the basis set to be used for elements specified in list ecp_elements.</li><br>
 <hr>
-<a name=ecp_elements><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_elements</b>  </span>  
+<a name=ecp_elements><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_elements</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Contains the list of elements (separated by spaces) that should be treated with an Effective Core Potential.</li><br>
 <hr>
-<a name=ecp_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_quality</b>  </span>  
+<a name=ecp_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_quality</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: high<br><br>
 Sets the number of grid points use to evaluate the Effective Core Potential integrals in real space. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br>
 <hr>
-<a name=ecp_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_type</b>  </span>  
+<a name=ecp_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_type</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Name of the Effective Core Potential. For instance, Gold using the cc-pVDZ-PP basis set should have ecp_type='PP', so that MOLGW looks for the file Au_PP in the basis_path folder.</li><br>
 <hr>
-<a name=gaussian_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gaussian_type</b>  </span>  
+<a name=eri3_genuine><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eri3_genuine</b>  </span>
+<br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+If set to 'yes', the 2-center integrals will not be diagonalized and 3-center electron repulsion integrals will remain the genuine 3-center integrals.</li><br>
+<hr>
+<a name=gaussian_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gaussian_type</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: pure<br><br>
 Asks for pure or spherical Gaussian type orbitals with 'pure' or for Cartesian Gaussian orbital with 'cart'.</li><br>
 <hr>
-<a name=incore><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>incore</b>  </span>  
+<a name=incore><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>incore</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: yes<br><br>
 Specify if the 4-center integrals are all calculated at once and stored or if they are calculated on-the-fly.</li><br>
 <hr>
-<a name=memory_evaluation><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>memory_evaluation</b>  </span>  
+<a name=memory_evaluation><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>memory_evaluation</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Requests a memory evaluation. MOLGW will start normaly, evaluate the size of the arrays, and exit without performing an actual calculation.</li><br>
 <hr>
-<a name=move_nuclei><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>move_nuclei</b>  </span>  
+<a name=move_nuclei><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>move_nuclei</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Tells the code to move or not the position of the nuclei. Available options are 'no' or 'relax'.</li><br>
 <hr>
-<a name=nstep><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nstep</b>  </span>  
+<a name=nstep><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nstep</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 50<br><br>
 Sets the number of steps when moving the nuclei.</li><br>
 <hr>
-<a name=scf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scf</b>  </span>  
+<a name=scf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scf</b>  </span>
 <br><br>
 <i>Mandatory</i><br>
 Default: None<br><br>
-Contains the self-consistent scheme name. 
+Contains the self-consistent scheme name.
 Try LDA, PBE, HSE06, or HF for instance</li><br>
 <hr>
-<a name=tolforce><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tolforce</b>  </span>  
+<a name=tolforce><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tolforce</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1e-05<br><br>
 Sets the target threshold for the maximum force component after nuclei relaxation.</li><br>
 <hr>
-<a name=eri3_nbatch><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eri3_nbatch</b>  </span>  
+<a name=eri3_nbatch><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eri3_nbatch</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets the number of batches when calculating the 3-center integrals. Having a large eri3_nbatch reduces the memory foot print, however it may lower the performance.</li><br>
 <hr>
-<a name=eri3_npcol><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eri3_npcol</b>  </span>  
+<a name=eri3_npcol><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eri3_npcol</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets number of column processors for the distribution of the 3-center integrals.  eri3_nprow X eri3_npcol must be equal to the number of MPI threads else MOLGW decides on its own.</li><br>
 <hr>
-<a name=eri3_nprow><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eri3_nprow</b>  </span>  
+<a name=eri3_nprow><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eri3_nprow</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets number of row processors for the distribution of the 3-center integrals.  eri3_nprow X eri3_npcol must be equal to the number of MPI threads else MOLGW decides on its own.</li><br>
 <hr>
-<a name=grid_memory><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>grid_memory</b>  </span>  
+<a name=grid_memory><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>grid_memory</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 400.0<br><br>
 Sets the maximum memory usage in Mb allowed to store the wavefunctions on the quadrature points for XC integrals.</li><br>
 <hr>
-<a name=mpi_nproc_ortho><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>mpi_nproc_ortho</b>  </span>  
+<a name=mpi_nproc_ortho><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>mpi_nproc_ortho</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets the number of processors left to parallelize on other directions. The main direction (auxiliary basis or DFT grid points) is obtained by <b>mpi_nproc</b> / <b>mpi_nproc_ortho</b>, which must be an integer.</li><br>
 <hr>
-<a name=scalapack_block_min><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scalapack_block_min</b>  </span>  
+<a name=scalapack_block_min><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scalapack_block_min</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1000<br><br>
 Sets the minimum block size to distribute a non-distributed matrix with SCALAPACK. If scalapack_block_min=400, then a 900x900 matrix will be distributed on a 2x2 processor grid. If scalapack_block_min=500, then a 900x900 matrix will no be distributed.</li><br>
 <hr>
-<a name=basis_path><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>basis_path</b>  </span>  
+<a name=basis_path><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>basis_path</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Sets the path pointing to the basis functions files.                  If not specified, then the basis set files will be searched in folder ~molgw/basis/.</li><br>
 <hr>
-<a name=force_energy_qp><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>force_energy_qp</b>  </span>  
+<a name=force_energy_qp><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>force_energy_qp</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Force the reading of the ENERGY_QP file whatever the postscf choice.</li><br>
 <hr>
-<a name=ignore_bigrestart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ignore_bigrestart</b>  </span>  
+<a name=ignore_bigrestart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ignore_bigrestart</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Considers a big RESTART as if it was a small RESTART.</li><br>
 <hr>
-<a name=print_bigrestart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_bigrestart</b>  </span>  
+<a name=print_bigrestart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_bigrestart</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: yes<br><br>
 Prints the big RESTART file at the end of the SCF loop. There are two kinds of RESTART files: the small RESTART and the big RESTART. The latter is written only when self-consistency has been reached. It contains all the states and the Hamiltonian and allows one to completely skip the scf loop or to start over with another basis set.</li><br>
 <hr>
-<a name=print_cube><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_cube</b>  </span>  
+<a name=print_cube><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_cube</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints some wavefunctions in a 3D volumetric file with cube format</li><br>
 <hr>
-<a name=print_wfn_files><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_wfn_files</b>  </span>  
+<a name=print_wfn_files><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_wfn_files</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints WFN files which can be used as input for post processing. WFN files contain the information about the electronic density and several packages use them to gather chemical information (see programs like: AIMPAC, AIMALL, among others). Setting this variable to yes will produce WFN files for ground-state calculations as well as for GW-corrected densities. Note: currently, only cartesian basis are supported.</li><br>
 <hr>
-<a name=print_density_matrix><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_density_matrix</b>  </span>  
+<a name=print_density_matrix><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_density_matrix</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the density matrix in the DENSITY_MATRIX file</li><br>
 <hr>
-<a name=print_eri><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_eri</b>  </span>  
+<a name=print_eri><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_eri</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Dumps the Electron Repulsion Integral on a file.</li><br>
 <hr>
-<a name=print_hartree><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_hartree</b>  </span>  
+<a name=print_hartree><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_hartree</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the Hartree potential and exchange expectation value on eigenstates.</li><br>
 <hr>
-<a name=print_multipole><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_multipole</b>  </span>  
+<a name=print_multipole><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_multipole</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the electric multipole expansion for the electronic density and the nuclei.</li><br>
 <hr>
-<a name=print_pdos><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_pdos</b>  </span>  
+<a name=print_pdos><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_pdos</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the Mulliken weight of each eigenvector on a given atom or a given series of atoms.</li><br>
 <hr>
-<a name=print_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_restart</b>  </span>  
+<a name=print_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_restart</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: yes<br><br>
 Prints a small RESTART file at each SCF cycle. There are two kinds of RESTART files: the small RESTART and the big RESTART. The former contains only the information about the occupied wavefunctions. This is a very small file and the writing should not hit too much on performance.</li><br>
 <hr>
-<a name=print_rho_grid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_rho_grid</b>  </span>  
+<a name=print_rho_grid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_rho_grid</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the electronic density discretized on the DFT grid into a file 'rho_grid.dat'. The density is calculated from the DENSITY_MATRIX file or from a Gaussian file using 'read_fchk'.</li><br>
 <hr>
-<a name=print_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_sigma</b>  </span>  
+<a name=print_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_sigma</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the value of the GW self-energy on the sampling frequencies in files.</li><br>
 <hr>
-<a name=print_spatial_extension><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_spatial_extension</b>  </span>  
+<a name=print_spatial_extension><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_spatial_extension</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the wavefunction extension calculated as &lt;r<sup>2</sup>&gt; - &lt;r&gt;<sup>2</sup></li><br>
 <hr>
-<a name=print_w><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_w</b>  </span>  
+<a name=print_w><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_w</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Dumps the spectral function of the screened Coulomb W. This is necessary for a subsequent BSE run.</li><br>
 <hr>
-<a name=print_wfn><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_wfn</b>  </span>  
+<a name=print_wfn><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_wfn</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints some wavefunctions along some selected lines.</li><br>
 <hr>
-<a name=print_yaml><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_yaml</b>  </span>  
+<a name=print_yaml><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_yaml</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: yes<br><br>
 Creates an output file in YAML format. Easier to read for python post-processing.</li><br>
 <hr>
-<a name=read_fchk><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>read_fchk</b>  </span>  
+<a name=read_fchk><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>read_fchk</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Triggers the reading of an external Gaussian formatted checkpoint file (named gaussian.fchk) that contains density matrices. Basis sets have to be precisely the same in MOLGW and in Gaussian, which requires a manual input of the basis set in both codes. Options are 'no' (no reading), 'SCF' (for self-consistent field), 'CC' (for coupled-cluster), or 'MP2' (for MP2). Today, only works for Cartesian Gaussian and for spin restricted calculations.</li><br>
 <hr>
-<a name=read_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>read_restart</b>  </span>  
+<a name=read_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>read_restart</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Read the RESTART file and restart from it.</li><br>
 <hr>
-<a name=calc_dens_disc><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_dens_disc</b>  </span>  
+<a name=calc_dens_disc><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_dens_disc</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Calculate electronic density in the discs during the real-time dynamics</li><br>
 <hr>
-<a name=calc_q_matrix><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_q_matrix</b>  </span>  
+<a name=calc_q_matrix><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_q_matrix</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Calculate and print q_matrix which is the projection of a propagated state psi(t) onto the initial state psi(0) in the real-time dynamics</li><br>
 <hr>
-<a name=calc_spectrum><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_spectrum</b>  </span>  
+<a name=calc_spectrum><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_spectrum</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Calculates absorption spectrum in the real-time dynamics</li><br>
 <hr>
-<a name=print_cube_diff_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_cube_diff_tddft</b>  </span>  
+<a name=print_cube_diff_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_cube_diff_tddft</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the difference of electronic density with respect to initial density in a 3D volumetric file with cube format for each simulation step in the real-time dynamics</li><br>
 <hr>
-<a name=print_cube_rho_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_cube_rho_tddft</b>  </span>  
+<a name=print_cube_rho_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_cube_rho_tddft</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints electronic density in a 3D volumetric file with cube format for each simulation step in the real-time dynamics</li><br>
 <hr>
-<a name=print_dens_traj><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_dens_traj</b>  </span>  
+<a name=print_dens_traj><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_dens_traj</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the electronic density along the projectile trajectory for several impact parameters using real wave function</li><br>
 <hr>
-<a name=print_dens_traj_points_set><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_dens_traj_points_set</b>  </span>  
+<a name=print_dens_traj_points_set><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_dens_traj_points_set</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the electronic density between pairs of points given in manual_dens_points_set file.</li><br>
 <hr>
-<a name=print_dens_traj_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_dens_traj_tddft</b>  </span>  
+<a name=print_dens_traj_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_dens_traj_tddft</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the electronic density along the projectile trajectory for several impact parameters in the real-time dynamics</li><br>
 <hr>
-<a name=print_line_rho_diff_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_line_rho_diff_tddft</b>  </span>  
+<a name=print_line_rho_diff_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_line_rho_diff_tddft</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints electronic density difference along a line, which parameters must be provided in manual_plot_rho_tddft file.</li><br>
 <hr>
-<a name=print_line_rho_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_line_rho_tddft</b>  </span>  
+<a name=print_line_rho_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_line_rho_tddft</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints electronic density along a line, which parameters must be provided in manual_plot_rho_tddft file.</li><br>
 <hr>
-<a name=print_tddft_matrices><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_tddft_matrices</b>  </span>  
+<a name=print_tddft_matrices><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_tddft_matrices</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints some matrices of the real-time dynamics into the file check_matrix.dat.</li><br>
 <hr>
-<a name=print_charge_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_charge_tddft</b>  </span>  
+<a name=print_charge_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_charge_tddft</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints a Mulliken_Charge file that contains real-time mulliken projections.</li><br>
 <hr>
-<a name=print_tddft_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_tddft_restart</b>  </span>  
+<a name=print_tddft_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_tddft_restart</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: yes<br><br>
 Prints a RESTART_TDDFT file which contains wavefunction coefficients for the last time moment of a simulation.</li><br>
 <hr>
-<a name=read_tddft_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>read_tddft_restart</b>  </span>  
+<a name=read_tddft_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>read_tddft_restart</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Ignore the RESTART_TDDFT file.</li><br>
 <hr>
-<a name=write_step><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>write_step</b>  </span>  
+<a name=write_step><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>write_step</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Determines the time step for data recording in the real-time dynamics</li><br>
 <hr>
-<a name=calc_charge_step><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_charge_step</b>  </span>  
+<a name=calc_charge_step><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_charge_step</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Determines the time step for local charge analysis and writing to file</li><br>
 <hr>
-<a name=assume_scf_converged><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>assume_scf_converged</b>  </span>  
+<a name=assume_scf_converged><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>assume_scf_converged</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Allows for a post-scf calculation whatever the outcome of the SCF loop. Especially useful when restarting from another SCF calculations with nscf=0</li><br>
 <hr>
-<a name=ci_greens_function><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_greens_function</b>  </span>  
-<b><font color="red">EXPERIMENTAL</font> </b> 
+<a name=ci_greens_function><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_greens_function</b>  </span>
+<b><font color="red">EXPERIMENTAL</font> </b>
 <br><br>
 <i>Optional</i><br>
 Default: holes<br><br>
 EXPERIMENTAL. Selects which part of the Green's function is to be calculated: holes, electrons, or both.</li><br>
 <hr>
-<a name=ci_nstate><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_nstate</b>  </span>  
+<a name=ci_nstate><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_nstate</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Selects how many CI states should be calculated in the diagonalization. If ci_nstate is lower than the number of configuration,  a Davidson partial diagonalization is performed, else a full (SCA)LAPACK diagonalization is triggered.</li><br>
 <hr>
-<a name=ci_nstate_self><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_nstate_self</b>  </span>  
+<a name=ci_nstate_self><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_nstate_self</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Selects how many CI states in the N+1 or N-1 electron calculations. If ci_nstate_self is lower than the number of configuration,  a Davidson partial diagonalization is performed, else a full (SCA)LAPACK diagonalization is triggered.</li><br>
 <hr>
-<a name=ci_spin_multiplicity><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_spin_multiplicity</b>  </span>  
+<a name=ci_spin_multiplicity><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_spin_multiplicity</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Spin multiplicity in CI calculations.</li><br>
 <hr>
-<a name=ci_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_type</b>  </span>  
+<a name=ci_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ci_type</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: all<br><br>
 Selects which excitations will be included in the CI expansion. Valid choices are 'all', 'CISD', 'CISDT', 'CISDTQ'.</li><br>
 <hr>
-<a name=dft_core><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>dft_core</b>  </span>  
+<a name=dft_core><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>dft_core</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of states considered as core in &lt;&Sigma;<sub>x</sub>-<i>v</i><sub>xc</sub>&gt. This options is meant to mimic the pseudopotential approximation.</li><br>
 <hr>
-<a name=ecp_small_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_small_basis</b>  </span>  
-<b><font color="red">EXPERIMENTAL</font> </b> 
+<a name=ecp_small_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_small_basis</b>  </span>
+<b><font color="red">EXPERIMENTAL</font> </b>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. This is the small basis set used for elements with an effective core potential. Only meaningful for GW.</li><br>
 <hr>
-<a name=eta><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eta</b>  </span>  
+<a name=eta><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eta</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.001<br><br>
 Is a the tiny imaginary part used in the denominator of the Green's function to shift the pole off the axis, so to avoid divergences.This is an energy in Hartree. It should be set to the lowest value possible in theory. However, in practice, a too low value of eta would induce huge and unstable GW corrections. The default value is usually very accurate and there is no need to use a lower value. But for states apart from the band gap, a large value of eta may be beneficial for stability. eta=0.01 is already much more stable. Note that for QSGW increasing eta is most often unavoidable.</li><br>
 <hr>
-<a name=frozencore><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>frozencore</b>  </span>  
+<a name=frozencore><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>frozencore</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Triggers the neglect of core states in GW. H, He, Li, Be have no core states. B-Na have the 1s. Al-Ca have the 1s2s2p. Manual tuning could be achieved with ncoreg, ncorew.</li><br>
 <hr>
-<a name=gwgamma_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gwgamma_tddft</b>  </span>  
-<b><font color="red">EXPERIMENTAL</font> </b> 
+<a name=gwgamma_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gwgamma_tddft</b>  </span>
+<b><font color="red">EXPERIMENTAL</font> </b>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground-state calculation.</li><br>
 <hr>
-<a name=ncoreg><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncoreg</b>  </span>  
+<a name=ncoreg><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncoreg</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of frozen core states in the Green's function G.</li><br>
 <hr>
-<a name=ncorew><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncorew</b>  </span>  
+<a name=ncorew><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncorew</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of frozen core states in the screened Coulomb interaction W, in TD-DFT, and in BSE.</li><br>
 <hr>
-<a name=nexcitation><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nexcitation</b>  </span>  
+<a name=nexcitation><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nexcitation</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of neutral excitations to be calculated in TD-DFT or BSE.                  0 stands for all the states and triggers the full diagonalization.</li><br>
 <hr>
-<a name=nomega_imag><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nomega_imag</b>  </span>  
+<a name=nomega_imag><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nomega_imag</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of frequencies used to perform the integral on the imaginary axis</li><br>
 <hr>
-<a name=nomega_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nomega_sigma</b>  </span>  
+<a name=nomega_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nomega_sigma</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 51<br><br>
 Sets the number of frequencies used to solve the quasiparticle equation in the GW self-energy.</li><br>
 <hr>
-<a name=nstep_dav><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nstep_dav</b>  </span>  
+<a name=nstep_dav><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nstep_dav</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 15<br><br>
 Sets the maximum number of Davidson partial diagonalization steps. Used for TD-DFT, BSE, and full CI.</li><br>
 <hr>
-<a name=nstep_gw><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nstep_gw</b>  </span>  
+<a name=nstep_gw><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nstep_gw</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets the number of GW iterations for eigenvalue self-consistent GW calculations (GnWn or GnW0).</li><br>
 <hr>
-<a name=nvirtualg><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nvirtualg</b>  </span>  
+<a name=nvirtualg><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nvirtualg</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 100000<br><br>
 Sets the starting state beyond which states are excluded from the sum in the Green's function G.</li><br>
 <hr>
-<a name=nvirtualw><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nvirtualw</b>  </span>  
+<a name=nvirtualw><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nvirtualw</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 100000<br><br>
 Sets the starting state beyond which states are excluded from the sum in the screened Coulomb interaction W, in TD-DFT, and in BSE.</li><br>
 <hr>
-<a name=postscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>postscf</b>  </span>  
+<a name=postscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>postscf</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
-Contains the post-processing scheme name. 
+Contains the post-processing scheme name.
 TD stands for TD-DFT or TD-HF.
 BSE stands for Bethe-Salpeter.
 GW stands for perturbative G0W0.
@@ -522,369 +528,369 @@ GnWn stands for GW with eigenvalue self-consistentcy on both G and W.
 MP2 stands for guess what.
 GWGAMMA (EXPERIMENTAL) stands for vertex corrections.</li><br>
 <hr>
-<a name=postscf_diago_flavor><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>postscf_diago_flavor</b>  </span>  
+<a name=postscf_diago_flavor><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>postscf_diago_flavor</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default:  <br><br>
 Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations. Available choices are ' ', 'R', 'D', and 'X'.</li><br>
 <hr>
-<a name=pt3_a_diagrams><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>pt3_a_diagrams</b>  </span>  
+<a name=pt3_a_diagrams><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>pt3_a_diagrams</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: yes<br><br>
 Switch whether to calculate the A diagrams family in PT3. A diagrams are the self-consistent diagrams (PT2 inclusions in the Green's function). Valid choices include: 'yes', 'no', or 'only'.</li><br>
 <hr>
-<a name=pt_density_matrix><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>pt_density_matrix</b>  </span>  
+<a name=pt_density_matrix><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>pt_density_matrix</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Triggers the calculation of a correlated density matrix within MBPT. Valid choices include: 'no', 'PT2', 'ONE-RING', or 'GW'.</li><br>
 <hr>
-<a name=rcut_mbpt><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>rcut_mbpt</b>  </span>  
-<b><font color="red">EXPERIMENTAL</font> </b> 
+<a name=rcut_mbpt><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>rcut_mbpt</b>  </span>
+<b><font color="red">EXPERIMENTAL</font> </b>
 <br><br>
 <i>Optional</i><br>
 Default: 1.0<br><br>
 EXPERIMENTAL</li><br>
 <hr>
-<a name=scissor><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scissor</b>  </span>  
+<a name=scissor><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scissor</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets a rigid energy shift of the unoccupied states, so to mimick a GW calculation without actually doing it.</li><br>
 <hr>
-<a name=selfenergy_state_max><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>selfenergy_state_max</b>  </span>  
+<a name=selfenergy_state_max><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>selfenergy_state_max</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 100000<br><br>
 Sets the final states for the range of the self-energy evaluation</li><br>
 <hr>
-<a name=selfenergy_state_min><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>selfenergy_state_min</b>  </span>  
+<a name=selfenergy_state_min><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>selfenergy_state_min</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets the starting states for the range of the self-energy evaluation</li><br>
 <hr>
-<a name=selfenergy_state_range><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>selfenergy_state_range</b>  </span>  
+<a name=selfenergy_state_range><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>selfenergy_state_range</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 100000<br><br>
 Sets the range of states around the HOMO level for the self-energy evaluation. For instance, selfenergy_state_range=0 will trigger the calculation of the HOMO only. selfenergy_state_range=1 will trigger the evaluation of the HOMO-1, HOMO, HOMO+1. etc.</li><br>
 <hr>
-<a name=small_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>small_basis</b>  </span>  
-<b><font color="red">EXPERIMENTAL</font> </b> 
+<a name=small_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>small_basis</b>  </span>
+<b><font color="red">EXPERIMENTAL</font> </b>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. Only meaningful for GW.</li><br>
 <hr>
-<a name=step_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>step_sigma</b>  </span>  
+<a name=step_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>step_sigma</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.01<br><br>
 Sets the spacing between frequencies in the GW self-energy evaluation.</li><br>
 <hr>
-<a name=stopping><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>stopping</b>  </span>  
+<a name=stopping><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>stopping</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Triggers the calculation of the stopping power within linear-response theory. Only effective when postscf='td' or 'bse'.</li><br>
 <hr>
-<a name=tda><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tda</b>  </span>  
+<a name=tda><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tda</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Triggers the use of Tamm-Dancoff approximation in TD-DFT or BSE.</li><br>
 <hr>
-<a name=tddft_grid_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_grid_quality</b>  </span>  
+<a name=tddft_grid_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_grid_quality</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: high<br><br>
 Sets the number of grid points use to evaluate the exchange-correlation integrals in real space for the TDDFT kernel. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br>
 <hr>
-<a name=toldav><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>toldav</b>  </span>  
+<a name=toldav><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>toldav</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0001<br><br>
 Sets the tolerance criterium for the maximum norm of the residual in the Davidson diagonalization of TD-DFT, BSE, and full CI.</li><br>
 <hr>
-<a name=triplet><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>triplet</b>  </span>  
+<a name=triplet><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>triplet</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Triggers the calculation of the triplet final state in TD-DFT or BSE.</li><br>
 <hr>
-<a name=use_correlated_density_matrix><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>use_correlated_density_matrix</b>  </span>  
+<a name=use_correlated_density_matrix><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>use_correlated_density_matrix</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Chooses to use another density matrix for the Fock hamiltonian to be employed in self-energy calculations.                  Used in conjonction with 'pt_density_matrix' or with 'read_fchk' or read an existing DENSITY_MATRIX file.</li><br>
 <hr>
-<a name=virtual_fno><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>virtual_fno</b>  </span>  
+<a name=virtual_fno><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>virtual_fno</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Activates the Frozen Natural Orbitals technique to span the virtual orbitals subspace with fewer orbitals. The dimension of the space is set up with the input keyword nvirtualg or nvirtualw. Actually the virtual orbital space is determined by the minimum MIN(nvirtualg,nvirtualw).</li><br>
 <hr>
-<a name=excit_dir><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_dir</b>  </span>  
+<a name=excit_dir><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_dir</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: (1.0, 0.0, 0.0)<br><br>
 Excitation direction for the real-time dynamics.</li><br>
 <hr>
-<a name=excit_kappa><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_kappa</b>  </span>  
+<a name=excit_kappa><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_kappa</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 2e-05<br><br>
 Maximum Gaussian excitation field strength in atomic units.</li><br>
 <hr>
-<a name=excit_name><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_name</b>  </span>  
+<a name=excit_name><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_name</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: NO<br><br>
 Sets the type of excitation of a system in the real-time dynamics.  'GAU' stands for a linearly polarized uniform Gaussian electric field</li><br>
 <hr>
-<a name=excit_omega><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_omega</b>  </span>  
+<a name=excit_omega><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_omega</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.2<br><br>
 The excitation pulse width in atomic units for the real-time dynamics.</li><br>
 <hr>
-<a name=excit_time0><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_time0</b>  </span>  
+<a name=excit_time0><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_time0</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 3.0<br><br>
 Center of the excitation pulse in atomic units for the real-time dynamics.</li><br>
 <hr>
-<a name=n_hist><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>n_hist</b>  </span>  
+<a name=n_hist><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>n_hist</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 2<br><br>
 Number of memorised previous hamiltonian values for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.</li><br>
 <hr>
-<a name=n_iter><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>n_iter</b>  </span>  
+<a name=n_iter><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>n_iter</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 2<br><br>
 Sets the number of iterations for the PC7 in the real-time dynamics</li><br>
 <hr>
-<a name=n_restart_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>n_restart_tddft</b>  </span>  
+<a name=n_restart_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>n_restart_tddft</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 50<br><br>
 RESTART_TDDFT file will be written during simulation each n_retart_tddft iteration (provided that print_tddft_restart is yes)</li><br>
 <hr>
-<a name=ncore_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncore_tddft</b>  </span>  
+<a name=ncore_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncore_tddft</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of frozen core states in the real-time dynamics.</li><br>
 <hr>
-<a name=pred_corr><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>pred_corr</b>  </span>  
+<a name=pred_corr><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>pred_corr</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: PC1<br><br>
 Sets the predictor-corrector scheme in the real-time dynamics.</li><br>
 <hr>
-<a name=prop_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>prop_type</b>  </span>  
+<a name=prop_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>prop_type</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: MAG2<br><br>
 Sets the type of propagation algorithm in the real-time dynamics. 'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.</li><br>
 <hr>
-<a name=projectile_charge_scaling><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>projectile_charge_scaling</b>  </span>  
+<a name=projectile_charge_scaling><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>projectile_charge_scaling</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1.0<br><br>
 Rescaling of the projectile charge</li><br>
 <hr>
-<a name=r_disc><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>r_disc</b>  </span>  
+<a name=r_disc><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>r_disc</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 200.0<br><br>
 Radius of the disc for density calculations (option calc_dens_disc) for the real-time dynamics.</li><br>
 <hr>
-<a name=tddft_frozencore><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_frozencore</b>  </span>  
+<a name=tddft_frozencore><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_frozencore</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Do not "propagate" states mentioned in the manual_tddft_frozencore file in the real-time dynamics.</li><br>
 <hr>
-<a name=time_sim><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>time_sim</b>  </span>  
+<a name=time_sim><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>time_sim</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 10.0<br><br>
 Duration of a real-time dynamics in atomic units.</li><br>
 <hr>
-<a name=time_step><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>time_step</b>  </span>  
+<a name=time_step><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>time_step</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1.0<br><br>
 Time step for real-time dynamics in atomic units.</li><br>
 <hr>
-<a name=vel_projectile><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>vel_projectile</b>  </span>  
+<a name=vel_projectile><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>vel_projectile</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: (0.0, 0.0, 1.0)<br><br>
 Projectile initial velocity.</li><br>
 <hr>
-<a name=alpha_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>alpha_hybrid</b>  </span>  
+<a name=alpha_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>alpha_hybrid</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of range-independent exact-exchange</li><br>
 <hr>
-<a name=alpha_mixing><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>alpha_mixing</b>  </span>  
+<a name=alpha_mixing><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>alpha_mixing</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.7<br><br>
 Sets the amount of output density-matrix for the next iteration. When the SCF cycles have difficulties to converge, one may try to lower this value.</li><br>
 <hr>
-<a name=beta_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>beta_hybrid</b>  </span>  
+<a name=beta_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>beta_hybrid</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of long-range exact-exchange</li><br>
 <hr>
-<a name=density_matrix_damping><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>density_matrix_damping</b>  </span>  
+<a name=density_matrix_damping><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>density_matrix_damping</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Adds an additional linear mixing on the density matrix in combination with the Hamiltonian mixing in order to damp out the charge oscillations. Especially useful for metallic systems.</li><br>
 <hr>
-<a name=diis_switch><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>diis_switch</b>  </span>  
+<a name=diis_switch><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>diis_switch</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.05<br><br>
 When running ADIIS, sets the residue value below which the DIIS method is used to finalize the convergence.</li><br>
 <hr>
-<a name=gamma_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gamma_hybrid</b>  </span>  
+<a name=gamma_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gamma_hybrid</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1000000.0<br><br>
 Only works for Range-Separated hybrid functionals scf='rsh' Sets the separation between long-range and short-range. It is input in bohr^-1.</li><br>
 <hr>
-<a name=grid_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>grid_quality</b>  </span>  
+<a name=grid_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>grid_quality</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: high<br><br>
 Sets the number of grid points use to evaluate the exchange-correlation integrals in real space for the DFT potential and energy. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br>
 <hr>
-<a name=init_hamiltonian><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>init_hamiltonian</b>  </span>  
+<a name=init_hamiltonian><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>init_hamiltonian</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: guess<br><br>
 Selects how to initiate the first hamiltonian for SCF cycles. Today, two options are available: 'guess' for an educated guess based on approximate atomic densities or 'core' for the core hamiltonian.</li><br>
 <hr>
-<a name=integral_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>integral_quality</b>  </span>  
+<a name=integral_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>integral_quality</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: high<br><br>
 Sets the tolerance value for the screening of the negligible integrals. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br>
 <hr>
-<a name=kerker_k0><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>kerker_k0</b>  </span>  
-<b><font color="red">EXPERIMENTAL</font> </b> 
+<a name=kerker_k0><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>kerker_k0</b>  </span>
+<b><font color="red">EXPERIMENTAL</font> </b>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Analog to k0 in Kerker preconditioning for metallic systems. Helps to damp charge oscillations to ensure better SCF convergence.</li><br>
 <hr>
-<a name=level_shifting_energy><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>level_shifting_energy</b>  </span>  
+<a name=level_shifting_energy><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>level_shifting_energy</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets the energy shift up of the unoccupied states. Should help the convergence in the case of small HOMO-LUMO gaps.</li><br>
 <hr>
-<a name=min_overlap><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>min_overlap</b>  </span>  
+<a name=min_overlap><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>min_overlap</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1e-05<br><br>
 Sets the minimal eigenvalue of the overlap matrix S. Small eigenvalues imply overcompleteness of the basis set.</li><br>
 <hr>
-<a name=mixing_scheme><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>mixing_scheme</b>  </span>  
+<a name=mixing_scheme><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>mixing_scheme</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: pulay<br><br>
 Sets the density-matrix update method for SCF cycles. Possible choices are 'pulay' for Pulay DIIS method, 'adiis' for Hu-Yang method, or 'simple' for a simple linear mixing between input and output density-matrices.</li><br>
 <hr>
-<a name=npulay_hist><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>npulay_hist</b>  </span>  
+<a name=npulay_hist><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>npulay_hist</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 6<br><br>
 Sets the history record length for Pulay DIIS.</li><br>
 <hr>
-<a name=nscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nscf</b>  </span>  
+<a name=nscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nscf</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 50<br><br>
 Sets the maximum number of SCF cycles</li><br>
 <hr>
-<a name=partition_scheme><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>partition_scheme</b>  </span>  
+<a name=partition_scheme><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>partition_scheme</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: ssf<br><br>
 Sets the partition scheme for the xc quadrature. Possible choices are 'becke' or 'ssf' (Stratmann-Scuseria-Frisch).</li><br>
 <hr>
-<a name=scf_diago_flavor><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scf_diago_flavor</b>  </span>  
+<a name=scf_diago_flavor><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scf_diago_flavor</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default:  <br><br>
 Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles. Available choices are ' ', 'R', 'D', and 'X'.</li><br>
 <hr>
-<a name=tolscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tolscf</b>  </span>  
+<a name=tolscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tolscf</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1e-07<br><br>
 Sets the residual norm target for the density matrix for the SCF cycles.</li><br>
 <hr>
-<a name=charge><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>charge</b>  </span>  
+<a name=charge><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>charge</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets the total charge of the system. 0 is a neutral system. -2 is a doubly charged anion etc.</li><br>
 <hr>
-<a name=length_unit><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>length_unit</b>  </span>  
+<a name=length_unit><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>length_unit</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: angstrom<br><br>
 Chooses the units of the atomic coordinates. Can be 'angstrom' or 'bohr'. Could be abbreviated in 'A' or 'au'.</li><br>
 <hr>
-<a name=magnetization><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>magnetization</b>  </span>  
+<a name=magnetization><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>magnetization</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets the number of unpaired electrons. In other words, this is the difference between the spin up and spin down occupation. For instance, a spin-doublet calculation is obtained with magnetization=1.0. Only meaningful when nspin=2.</li><br>
 <hr>
-<a name=natom><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>natom</b>  </span>  
+<a name=natom><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>natom</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of atoms in the molecule. This is the number of lines to be read in the following section of the input file if no xyz file is provided.</li><br>
 <hr>
-<a name=nghost><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nghost</b>  </span>  
+<a name=nghost><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nghost</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of ghost atoms in the molecule. Used to place basis function where there is no atom. Useful for Basis Set Superposition Error</li><br>
 <hr>
-<a name=nspin><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nspin</b>  </span>  
+<a name=nspin><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nspin</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets the number of spin channels. 1 enforces spin-restricted calculations. 2 means spin-unrestricted.</li><br>
 <hr>
-<a name=temperature><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>temperature</b>  </span>  
+<a name=temperature><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>temperature</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets the electronic temperature in the Fermi-Dirac functions. Helps the convergence for some systems. The value is input in Hartree atomic units.</li><br>
 <hr>
-<a name=xyz_file><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>xyz_file</b>  </span>  
+<a name=xyz_file><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>xyz_file</b>  </span>
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Specifies the location of the xyz file that contains the atomic positions. It can be used as an alternate route to set atomic coordinate.</li><br>
 </ul>
 <br><br><br><br><br><br><br><br>
-<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 01 October 2020</i><br><br></body>
+<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 22 October 2020</i><br><br></body>
 </html>
