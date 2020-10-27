@@ -21,8 +21,16 @@ module m_eri_calculate
 
 
  real(dp),protected,allocatable :: eri_2center(:,:)
+ real(dp),protected,allocatable :: eri_2center_inv(:,:)
+ real(dp),protected,allocatable :: eri_2center_sqrtinv(:,:)
+
  real(dp),protected,allocatable :: eri_2center_lr(:,:)
+ real(dp),protected,allocatable :: eri_2center_inv_lr(:,:)
+ real(dp),protected,allocatable :: eri_2center_sqrtinv_lr(:,:)
+
  integer,protected              :: desc_2center(NDEL)
+ integer,protected              :: desc_2center_sqrtinv(NDEL)
+ integer,protected              :: desc_2center_sqrtinv_lr(NDEL)
 
 
 contains
@@ -35,6 +43,21 @@ subroutine destroy_eri_3center()
 
  if(ALLOCATED(eri_2center)) then
    call clean_deallocate('2-center integrals',eri_2center)
+ endif
+ if(ALLOCATED(eri_2center_inv)) then
+   call clean_deallocate('2-center integrals inverse',eri_2center_inv)
+ endif
+ if(ALLOCATED(eri_2center_sqrtinv)) then
+   call clean_deallocate('2-center integrals inverse square-root',eri_2center_sqrtinv)
+ endif
+ if(ALLOCATED(eri_2center_lr)) then
+   call clean_deallocate('LR 2-center integrals',eri_2center_lr)
+ endif
+ if(ALLOCATED(eri_2center_inv_lr)) then
+   call clean_deallocate('LR 2-center integrals inverse',eri_2center_inv_lr)
+ endif
+ if(ALLOCATED(eri_2center_sqrtinv_lr)) then
+   call clean_deallocate('LR 2-center integrals inverse square-root',eri_2center_sqrtinv_lr)
  endif
  call destroy_eri_3center_lowerlevel()
 
@@ -537,6 +560,29 @@ end subroutine calculate_eri_4center_shell_grad
 !=========================================================================
 subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  implicit none
+
+ type(basis_set),intent(in)   :: auxil_basis
+ real(dp),intent(in)          :: rcut
+ !=====
+ !=====
+
+ call start_clock(timing_eri_2center)
+
+ call calculate_integrals_eri_2center_scalapack(auxil_basis,rcut)
+ if( eri3_genuine_ ) then
+   call calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
+ else
+   call calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
+ endif
+
+ call stop_clock(timing_eri_2center)
+
+end subroutine calculate_eri_2center_scalapack
+
+
+!=========================================================================
+subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut)
+ implicit none
  type(basis_set),intent(in)   :: auxil_basis
  real(dp),intent(in)          :: rcut
  !=====
@@ -563,7 +609,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  real(C_DOUBLE),allocatable   :: int_shell(:)
  !=====
 
- call start_clock(timing_eri_2center)
  call start_clock(timing_eri_2center_ints)
 
 
@@ -703,18 +748,100 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
  call stop_clock(timing_eri_2center_ints)
 
-end subroutine calculate_eri_2center_scalapack
+end subroutine calculate_integrals_eri_2center_scalapack
 
 
 !=========================================================================
-subroutine invert_eri_2center_scalapack(auxil_basis,rcut)
+subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
  implicit none
  type(basis_set),intent(in)   :: auxil_basis
  real(dp),intent(in)          :: rcut
  !=====
  logical                      :: is_longrange
  integer                      :: ishell,kshell
- integer                      :: agt,info
+ real(dp),allocatable         :: eri_2center_tmp(:,:)
+ integer                      :: mlocal,nlocal
+ integer                      :: desc2center(NDEL)
+ !=====
+
+ call start_clock(timing_eri_2center_invert)
+
+ is_longrange = (rcut > 1.0e-12_dp)
+
+ if( eri3_genuine_ .AND. is_longrange ) call die('calculate_inverse_eri_2center_scalapack: eri3_genuine is not yet compatible &
+                                                  with range-separated hybrids')
+
+ if( .NOT. is_longrange ) then
+#if defined(HAVE_SCALAPACK)
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals inversion using a SCALAPACK grid (LIBINT): ', &
+                               nprow_3center,' x ',npcol_3center
+#else
+   write(stdout,'(a)') ' 2-center integrals inversion (LIBINT)'
+#endif
+ else
+#if defined(HAVE_SCALAPACK)
+   write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals inversion using a SCALAPACK grid (LIBINT): ', &
+                               nprow_3center,' x ',npcol_3center
+#else
+   write(stdout,'(a)') ' 2-center LR integrals inversion (LIBINT)'
+#endif
+ endif
+
+
+ if( cntxt_3center > 0 ) then
+
+   mlocal = SIZE(eri_2center,DIM=1)
+   nlocal = SIZE(eri_2center,DIM=2)
+
+   if( .NOT. is_longrange ) then
+     call clean_allocate('2-center integrals inverse',eri_2center_inv,mlocal,nlocal)
+     eri_2center_inv(:,:)    = eri_2center(:,:)
+     nauxil_2center = auxil_basis%nbf
+     call distribute_auxil_basis(nauxil_2center)
+   else
+     call clean_allocate('2-center LR integrals inverse',eri_2center_inv_lr,mlocal,nlocal)
+     eri_2center_inv_lr(:,:) = eri_2center(:,:)
+     nauxil_2center_lr = auxil_basis%nbf
+     call distribute_auxil_basis_lr(nauxil_2center_lr)
+   endif
+
+   !
+   ! Invert the 2-center integral matrix
+   !
+#if defined(HAVE_SCALAPACK)
+
+   ! I did not find a SCALAPACK equivalent to DSYTRF for real symmetric matrix
+   ! So I use the general inversion routines
+   call symmetrize_matrix_sca('L',nauxil_2center,desc_2center,eri_2center,desc_2center,eri_2center_inv)
+   call invert_sca(desc_2center,eri_2center,eri_2center_inv)
+
+#else
+
+   call invert_symmetric(eri_2center_inv)
+   call matrix_lower_to_full_dp(eri_2center_inv)
+
+#endif
+
+ endif
+
+ call clean_deallocate('2-center integrals',eri_2center)
+
+ write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, inverted and stored'
+
+ call stop_clock(timing_eri_2center_invert)
+
+end subroutine calculate_inverse_eri_2center_scalapack
+
+
+!=========================================================================
+subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
+ implicit none
+ type(basis_set),intent(in)   :: auxil_basis
+ real(dp),intent(in)          :: rcut
+ !=====
+ logical                      :: is_longrange
+ integer                      :: ishell,kshell
+ integer                      :: info
  integer                      :: nauxil_neglect,nauxil_kept
  real(dp)                     :: eigval(auxil_basis%nbf)
  real(dp),allocatable         :: eri_2center_sqrt(:,:)
@@ -729,7 +856,6 @@ subroutine invert_eri_2center_scalapack(auxil_basis,rcut)
  call start_clock(timing_eri_2center_invert)
 
  is_longrange = (rcut > 1.0e-12_dp)
- agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
 
 
  if( .NOT. is_longrange ) then
@@ -872,9 +998,9 @@ subroutine invert_eri_2center_scalapack(auxil_basis,rcut)
 
 
    if( .NOT. is_longrange ) then
-     call clean_allocate('Distributed 2-center integrals',eri_2center,mlocal,nlocal)
+     call clean_allocate('2-center integrals',eri_2center,mlocal,nlocal)
    else
-     call clean_allocate('Distributed LR 2-center integrals',eri_2center_lr,mlocal,nlocal)
+     call clean_allocate('LR 2-center integrals',eri_2center_lr,mlocal,nlocal)
    endif
 
 #if defined(HAVE_SCALAPACK)
@@ -942,9 +1068,8 @@ subroutine invert_eri_2center_scalapack(auxil_basis,rcut)
  call clean_deallocate('tmp 2-center integrals',eri_2center_sqrt)
 
  call stop_clock(timing_eri_2center_invert)
- call stop_clock(timing_eri_2center)
 
-end subroutine invert_eri_2center_scalapack
+end subroutine calculate_inverse_sqrt_eri_2center_scalapack
 
 
 !=========================================================================

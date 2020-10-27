@@ -454,7 +454,7 @@ subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
    call DGEMV('T',npair,nauxil_3center,1.0d0,eri_3center,npair,pmat,1,0.0d0,x_vector,1)
 
    ! R_I = \sum_I ( I | 1/r12 | J )^{-1} * X_J
-   call DGEMV('N',nauxil_2center,nauxil_3center,1.0d0,eri_2center,nauxil_2center,x_vector,1,0.0d0,rho_coeff(:,ispin),1)
+   call DGEMV('N',nauxil_2center,nauxil_3center,1.0d0,eri_2center_inv,nauxil_2center,x_vector,1,0.0d0,rho_coeff(:,ispin),1)
 
  enddo
 

@@ -17,6 +17,10 @@ module m_linear_algebra
    module procedure invert_inplace_cdp
  end interface
 
+ interface invert_symmetric
+   module procedure invert_symmetric_inplace_dp
+ end interface
+
  interface diagonalize_wo_vectors
    module procedure diagonalize_wo_vectors_dp
  end interface
@@ -253,6 +257,41 @@ subroutine invert_inplace_cdp(matrix)
  deallocate(work,ipiv)
 
 end subroutine invert_inplace_cdp
+
+
+!=========================================================================
+subroutine invert_symmetric_inplace_dp(matrix)
+ implicit none
+
+ real(dp),intent(inout) :: matrix(:,:)
+!=====
+ integer              :: nmat,lwork
+ real(dp),allocatable :: work(:)
+ integer,allocatable  :: ipiv(:)
+ integer              :: info
+!=====
+
+ nmat = SIZE( matrix(:,:) , DIM=1)
+ allocate(ipiv(nmat))
+
+ allocate(work(1))
+ lwork = -1
+ call DSYTRF('L',nmat,matrix,nmat,ipiv,work,lwork,info)
+ if(info/=0) call die('FAILURE in DSYTRF query call')
+ lwork = NINT(work(1))
+ write(stdout,*) 'DSYRTF',lwork,nmat
+ deallocate(work)
+
+ allocate(work(lwork))
+ call DSYTRF('L',nmat,matrix,nmat,ipiv,work,lwork,info)
+ if(info/=0) call die('FAILURE in DSYTRF')
+
+ call DSYTRI('L',nmat,matrix,nmat,ipiv,work,info)
+ if(info/=0) call die('FAILURE in DSYTRI')
+
+ deallocate(work,ipiv)
+
+end subroutine invert_symmetric_inplace_dp
 
 
 !=========================================================================
