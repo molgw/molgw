@@ -279,7 +279,6 @@ subroutine invert_symmetric_inplace_dp(matrix)
  call DSYTRF('L',nmat,matrix,nmat,ipiv,work,lwork,info)
  if(info/=0) call die('FAILURE in DSYTRF query call')
  lwork = NINT(work(1))
- write(stdout,*) 'DSYRTF',lwork,nmat
  deallocate(work)
 
  allocate(work(lwork))
