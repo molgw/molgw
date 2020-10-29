@@ -681,16 +681,17 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut)
 
      if( skip_shell ) cycle
 
-
-     do ishell=1,auxil_basis%nshell
+     !
+     ! Only the lower part of eri_2center is calculated
+     do ishell=kshell,auxil_basis%nshell
        ami = auxil_basis%shell(ishell)%am
        ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
 
        !
        ! Order the angular momenta so that libint is pleased
        !     am3 >= am1
-       ! Therefore only the lower part of eri_2center will be properly calculated
-       if( amk < ami ) cycle
+       !if( amk < ami ) cycle
+       ! Commented because LIBINT does not impose this any more
 
        ! Check if this shell is actually needed for the local matrix
        skip_shell = .TRUE.
@@ -763,6 +764,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut)
    enddo   ! kshell
 
  endif
+
 
  call stop_clock(timing_eri_2center_ints)
 
@@ -1059,7 +1061,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
  integer                      :: nauxil_kept
  logical                      :: skip_shell
  integer(kind=int8)           :: libint_calls
- integer                      :: ibatch,ipair_first,ipair_last,mpair
+ integer                      :: ipair_first,ipair_last,mpair
  integer                      :: ipair
 !=====
 ! variables used to call C
@@ -1071,6 +1073,9 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
+
+ ipair_first = 1
+ ipair_last  = npair
 
  is_longrange = (rcut > 1.0e-12_dp)
  rcut_libint = rcut
@@ -1140,8 +1145,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
  ! Loop over batches starts here
  !
  libint_calls = 0
- ipair_first = 1
- ipair_last  = npair
 
  call start_clock(timing_eri_3center_ints)
 
