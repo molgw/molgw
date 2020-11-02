@@ -982,6 +982,9 @@ subroutine read_inputfile_namelist()
  if( nstep_gw > 1 .AND. calc_type%selfenergy_technique /= EVSC ) then
    call die('nstep_gw > 1 is only valid when performing ev-GW. Change either postscf or nstep_gw')
  endif
+ if( eri3_genuine_ .AND. ( calc_type%need_exchange .OR. calc_type%need_exchange_lr ) ) then
+   call die('eri3_genuine does not work with exact-exchange')
+ endif
 
  spin_fact = REAL(-nspin+3,dp)
  electrons = SUM(zvalence(:)) - charge
