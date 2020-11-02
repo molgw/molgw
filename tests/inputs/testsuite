@@ -50,6 +50,12 @@ SCF Total Energy          , -128.4891424970    , 0 , 1.0e-7
 gKS HOMO energy           ,  -22.652055        , 0 , 1.0e-4
 gKS LUMO energy           ,   46.078902        , 0 , 1.0e-4
 
+nh3_genuine_ri.in         , PBE ammonia with genuine RI
+SCF Total Energy          ,  -56.4954295025    , 0 , 1.0e-7
+Hartree Energy            ,   38.4244178820    , 0 , 1.0e-7
+gKS HOMO energy           ,   -5.591748        , 0 , 1.0e-4
+gKS LUMO energy           ,    0.022631        , 0 , 1.0e-4
+
 na2_lda.in               , LDA Na2 molecule without RI, noparallel
 SCF Total Energy          , -322.8615203603    , 0 , 1.0e-7
 gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4

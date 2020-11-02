@@ -1369,6 +1369,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  rcut_libint = rcut
  agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
 
+ if( eri3_genuine_) call die('calculate_eri_3center_scalapack: eri3_genuine should not happen here')
+
  if( .NOT. is_longrange ) then
    nauxil_kept = nauxil_2center
  else
@@ -1591,62 +1593,40 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
    call stop_clock(timing_eri_3center_ints)
 
+   !
+   ! Second part: perform  \sum_Q (\alpha\beta|Q) (Q|P)^{-1/2}
+   !
+   call start_clock(timing_eri_3center_matmul)
 
-   if( eri3_genuine_ ) then
-
-     !
-     ! Second part: just a copy in the genuine case
-     !
-     call start_clock(timing_eri_3center_copy)
+   if( cntxt_3center > 0 ) then
      if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
-       call PDLACPY('A',mpair,auxil_basis%nbf,eri_3center_tmp,1,1,desc_3tmp, &
-                    eri_3center,ipair_first,1,desc_eri3)
+       call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
+                   1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
+                          eri_2center_sqrtinv,1,1,desc_2center,   &
+                   0.0_dp,eri_3center    ,ipair_first,1,desc_eri3)
 #else
-       call DLACPY('A',mpair,auxil_basis%nbf,eri_3center_tmp(1,1),mpair,eri_3center(ipair_first,1),npair)
+       call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
+                  1.0_dp,eri_3center_tmp,mpair,   &
+                         eri_2center_sqrtinv,auxil_basis%nbf,       &
+                  0.0_dp,eri_3center(ipair_first,1),npair)
 #endif
      else
-       call die('calculate_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
-     endif
-     call stop_clock(timing_eri_3center_copy)
-
-   else
-
-     !
-     ! Second part: perform  \sum_Q (\alpha\beta|Q) (Q|P)^{-1/2}
-     !
-     call start_clock(timing_eri_3center_matmul)
-
-     if( cntxt_3center > 0 ) then
-       if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
-         call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
-                     1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
-                            eri_2center_sqrtinv,1,1,desc_2center,   &
-                     0.0_dp,eri_3center    ,ipair_first,1,desc_eri3)
+       call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
+                   1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
+                          eri_2center_sqrtinv_lr,1,1,desc_2center,   &
+                   0.0_dp,eri_3center_lr ,ipair_first,1,desc_eri3_lr)
 #else
-         call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
-                    1.0_dp,eri_3center_tmp,mpair,   &
-                           eri_2center_sqrtinv,auxil_basis%nbf,       &
-                    0.0_dp,eri_3center(ipair_first,1),npair)
+       call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf,  &
+                  1.0_dp,eri_3center_tmp,mpair,              &
+                         eri_2center_sqrtinv_lr,auxil_basis%nbf,     &
+                  0.0_dp,eri_3center_lr(ipair_first,1),npair)
 #endif
-       else
-#if defined(HAVE_SCALAPACK)
-         call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
-                     1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
-                            eri_2center_sqrtinv_lr,1,1,desc_2center,   &
-                     0.0_dp,eri_3center_lr ,ipair_first,1,desc_eri3_lr)
-#else
-         call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf,  &
-                    1.0_dp,eri_3center_tmp,mpair,              &
-                           eri_2center_sqrtinv_lr,auxil_basis%nbf,     &
-                    0.0_dp,eri_3center_lr(ipair_first,1),npair)
-#endif
-       endif
      endif
-
-     call stop_clock(timing_eri_3center_matmul)
    endif
+
+   call stop_clock(timing_eri_3center_matmul)
 
    call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
 
@@ -1665,9 +1645,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 
  if( .NOT. is_longrange ) then
-   if( .NOT. eri3_genuine_ ) then
-     call clean_deallocate('Distributed 2-center integrals',eri_2center)
-   endif
+   call clean_deallocate('Distributed 2-center integrals',eri_2center)
    if( cntxt_3center < 0 ) then
      eri_3center(:,:) = 0.0_dp
    endif

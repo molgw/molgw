@@ -1,0 +1,16 @@
+&molgw
+ comment='Ammonia'
+
+ scf='PBE'
+ 
+ basis='cc-pVTZ'
+ auxil_basis='cc-pVTZ-RI'
+
+ eri3_genuine='yes'
+
+ natom=4
+/
+N    0.257  -0.363   0.000
+H    0.257   0.727   0.000
+H    0.771  -0.727   0.890
+H    0.771  -0.727  -0.890
