@@ -284,14 +284,12 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
  real(dp),intent(out) :: hartree_ao(:,:)
  real(dp),intent(out) :: ehartree
 !=====
- integer              :: nauxil_local,npair_local,iauxil
  integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf
- integer              :: ipair,ipair_local
+ integer              :: ipair
  real(dp),allocatable :: x_vector(:)
- real(dp)             :: rtmp,factor,xtmp_P
+ real(dp)             :: rtmp,factor
  integer              :: timing_xxdft_hartree
- integer              :: desc_partial(NDEL),desc_pmat(NDEL),info
  real(dp),allocatable :: pmat(:)
 !=====
 
@@ -303,7 +301,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
  type is(complex(dp))
    timing_xxdft_hartree   = timing_tddft_hartree
  class default
-   call die("setup_hartree_ri: c_matrix is neither real nor complex")
+   call die("setup_hartree_ri: p_matrix is neither real nor complex")
  end select
 
  call start_clock(timing_xxdft_hartree)
@@ -333,6 +331,8 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
    do ipair=1,npair
      kbf = index_basis(1,ipair)
      lbf = index_basis(2,ipair)
+     ! As all pairs contribute twice for (k,l) and (l,k) and as P is hermitian,
+     ! only the real part survives
      pmat(ipair) = SUM(p_matrix(kbf,lbf,:)%re) * 2.0_dp
    enddo
    !$OMP END DO
@@ -378,6 +378,179 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
  call stop_clock(timing_xxdft_hartree)
 
 end subroutine setup_hartree_ri
+
+
+!=========================================================================
+! calculate_density_auxilbasis
+!
+! Find the coefficients of the density expansion in the auxiliary basis
+! rho(r) = \sum_I  \phi_I(r) R_I
+!
+! From the resolution-of-the-identity on the Coulomb metric
+! R_I = \sum_J \sum_{\alpha\beta} ( I | 1/r12 | J )^{-1} (\alpha\beta | 1/r12 | J ) P_{\alpha\beta}
+!
+!=========================================================================
+subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
+ implicit none
+
+ class(*),intent(in)              :: p_matrix(:,:,:)
+ real(dp),allocatable,intent(out) :: rho_coeff(:,:)
+ !=====
+ integer              :: nbf
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: ipair,ispin
+ real(dp),allocatable :: x_vector(:)
+ real(dp)             :: factor
+ integer              :: timing_xxdft_rhoauxil
+ real(dp),allocatable :: pmat(:)
+ !=====
+
+ select type(p_matrix)
+ type is(real(dp))
+   timing_xxdft_rhoauxil = timing_rhoauxil
+ type is(complex(dp))
+   timing_xxdft_rhoauxil = timing_tddft_rhoauxil
+ class default
+   call die("calculate_density_auxilbasis: p_matrix is neither real nor complex")
+ end select
+
+ call start_clock(timing_xxdft_rhoauxil)
+
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+
+ allocate(rho_coeff(nauxil_2center,nspin))
+
+ allocate(pmat(npair))
+ allocate(x_vector(nauxil_3center))
+
+ do ispin=1,nspin
+
+   select type(p_matrix)
+   type is(real(dp))
+     !$OMP PARALLEL PRIVATE(kbf,lbf)
+     !$OMP DO
+     do ipair=1,npair
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       pmat(ipair) = p_matrix(kbf,lbf,ispin) * 2.0_dp
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+   type is(complex(dp))
+     !$OMP PARALLEL PRIVATE(kbf,lbf)
+     !$OMP DO
+     do ipair=1,npair
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       ! As all pairs contribute twice for (k,l) and (l,k) and as P is hermitian,
+       ! only the real part survives
+       pmat(ipair) = p_matrix(kbf,lbf,ispin)%re * 2.0_dp
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+   end select
+
+   ! X_J = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | J )
+   call DGEMV('T',npair,nauxil_3center,1.0d0,eri_3center,npair,pmat,1,0.0d0,x_vector,1)
+
+   ! R_I = \sum_I ( I | 1/r12 | J )^{-1} * X_J
+   call DGEMV('N',nauxil_2center,nauxil_3center,1.0d0,eri_2center_inv,nauxil_2center,x_vector,1,0.0d0,rho_coeff(:,ispin),1)
+
+ enddo
+
+ call xsum_world(rho_coeff)
+
+ deallocate(x_vector,pmat)
+
+ call stop_clock(timing_xxdft_rhoauxil)
+
+
+end subroutine calculate_density_auxilbasis
+
+
+!=========================================================================
+subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
+ implicit none
+ class(*),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: rho_coeff(:,:)
+ real(dp),intent(out) :: hartree_ao(:,:)
+ real(dp),intent(out) :: ehartree
+ !=====
+ integer              :: nbf
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: ipair,iauxil_local,iauxil_global
+ real(dp),allocatable :: x_vector(:)
+ real(dp)             :: rtmp,factor
+ integer              :: timing_xxdft_hartree
+ real(dp),allocatable :: vh(:)
+ real(dp),allocatable :: rho_coeff_local_nospin(:)
+ !=====
+
+ if( nproc_ortho > 1 ) call die('setup_hartree_genuine_ri: ortho-parallelization not coded')
+
+ nbf = SIZE(hartree_ao(:,:),DIM=1)
+
+ select type(p_matrix)
+ type is(real(dp))
+   timing_xxdft_hartree   = timing_hartree
+ type is(complex(dp))
+   timing_xxdft_hartree   = timing_tddft_hartree
+ class default
+   call die("setup_hartree_ri: p_matrix is neither real nor complex")
+ end select
+
+ call start_clock(timing_xxdft_hartree)
+
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity-expanded density'
+
+ hartree_ao(:,:) = 0.0_dp
+
+ allocate(vh(npair))
+ allocate(rho_coeff_local_nospin(nauxil_3center))
+
+ do iauxil_local=1,nauxil_3center
+   iauxil_global = ibf_auxil_g(iauxil_local)
+   rho_coeff_local_nospin(iauxil_local) = SUM(rho_coeff(iauxil_global,:))
+ enddo
+
+ ! vH_\alpha\beta = \sum_I ( \alpha \beta | 1/r12 | I ) * R_I
+ call DGEMV('N',npair,nauxil_3center,1.0d0,eri_3center,npair,rho_coeff_local_nospin,1,0.0d0,vh,1)
+
+ !$OMP PARALLEL PRIVATE(kbf,lbf)
+ !$OMP DO
+ do ipair=1,npair
+   kbf = index_basis(1,ipair)
+   lbf = index_basis(2,ipair)
+   hartree_ao(kbf,lbf) = vh(ipair)
+   hartree_ao(lbf,kbf) = vh(ipair)
+ enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
+
+ ! Do not forget that the eri_3center(ibf,ibf | P ) included a factor 0.50
+ do ibf=1,nbf
+   hartree_ao(ibf,ibf) = hartree_ao(ibf,ibf) * 2.0_dp
+ enddo
+ deallocate(rho_coeff_local_nospin,vh)
+
+ !
+ ! Sum up the different contribution from different procs
+ call xsum_world(hartree_ao)
+
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
+
+ select type(p_matrix)
+ type is(real(dp))
+   ehartree = 0.5_dp * SUM( hartree_ao(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+ type is(complex(dp))
+   ehartree = 0.5_dp * SUM( hartree_ao(:,:) * SUM(REAL(p_matrix(:,:,:),dp),DIM=3) )
+ end select
+
+
+ call stop_clock(timing_xxdft_hartree)
+
+
+end subroutine setup_hartree_genuine_ri
 
 
 !=========================================================================
@@ -578,7 +751,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
  integer              :: ibf,jbf,ispin,istate
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:),c_t(:,:)
- integer              :: ipair,ipair_local,iauxil
+ integer              :: ipair,iauxil
  integer              :: ibf_auxil_first,nbf_auxil_core
 !=====
 
@@ -664,7 +837,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
  integer              :: ibf,jbf,ispin,istate
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:),c_t(:,:)
- integer              :: ipair,ipair_local,iauxil
+ integer              :: ipair,iauxil
  integer              :: ibf_auxil_first,nbf_auxil_core
 !=====
 
@@ -751,7 +924,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
  integer                 :: nocc
  integer                 :: ibf,jbf,ispin,istate
  complex(dp),allocatable :: tmp_cmplx(:,:),c_t_cmplx(:,:)
- integer                 :: ipair,ipair_local,iauxil
+ integer                 :: ipair,iauxil
  integer                 :: ibf_auxil_first,nbf_auxil_core
 !=====
 

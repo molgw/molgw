@@ -318,7 +318,7 @@ subroutine write_spectral_function(sf)
  integer              :: ierr
  real(dp),allocatable :: buffer(:)
  integer              :: iprodbasis
-#ifdef HAVE_MPI
+#if defined(HAVE_MPI)
  integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
 !=====
@@ -416,7 +416,7 @@ subroutine read_spectral_function(sf,reading_status)
  integer            :: ierr
  real(dp),allocatable :: buffer(:)
  integer            :: iprodbasis
-#ifdef HAVE_MPI
+#if defined(HAVE_MPI)
  integer(kind=MPI_OFFSET_KIND) :: disp
 #else
  integer :: ipole_read

@@ -156,6 +156,7 @@ module m_inputparam
  logical,protected                :: print_yaml_
  logical,protected                :: stopping_
  logical,protected                :: assume_scf_converged_
+ logical,protected                :: eri3_genuine_
 
  real(dp),protected               :: rcut = 0.0_dp
 
@@ -763,6 +764,7 @@ subroutine read_inputfile_namelist()
  print_yaml_                 = yesno_to_logical(print_yaml)
  stopping_                   = yesno_to_logical(stopping)
  assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
+ eri3_genuine_               = yesno_to_logical(eri3_genuine)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
@@ -989,6 +991,9 @@ subroutine read_inputfile_namelist()
  endif
  if( nstep_gw > 1 .AND. calc_type%selfenergy_technique /= EVSC ) then
    call die('nstep_gw > 1 is only valid when performing ev-GW. Change either postscf or nstep_gw')
+ endif
+ if( eri3_genuine_ .AND. ( calc_type%need_exchange .OR. calc_type%need_exchange_lr ) ) then
+   call die('eri3_genuine does not work with exact-exchange')
  endif
 
  spin_fact = REAL(-nspin+3,dp)
