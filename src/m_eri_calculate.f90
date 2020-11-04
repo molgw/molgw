@@ -600,11 +600,11 @@ end subroutine calculate_eri_ri
 
 
 !=========================================================================
-subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask)
+subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil)
  implicit none
  type(basis_set),intent(in)   :: auxil_basis
  real(dp),intent(in)          :: rcut
- logical,intent(in),optional  :: mask(:)
+ logical,intent(in),optional  :: mask_auxil(:)
  !=====
  logical                      :: is_longrange
  integer                      :: ishell,kshell
@@ -635,7 +635,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask)
  is_longrange = (rcut > 1.0e-12_dp)
  rcut_libint = rcut
  agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
- recalculation = ALLOCATED(eri_2center) .AND. PRESENT(mask)
+ recalculation = ALLOCATED(eri_2center) .AND. PRESENT(mask_auxil)
 
  if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
@@ -654,6 +654,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask)
 
  call set_auxil_block_size(auxil_basis%nbf/(npcol_eri3_ao*2))
 
+
  if( cntxt_3center > 0 ) then
 
 
@@ -668,12 +669,13 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask)
    !
    ! Possibility to recalculate a few integrals only
    if( .NOT. recalculation ) then
-     ! Just in case it is already allocate but no optional mask is given
+     ! Just in case it is already allocated but no optional mask_auxil is given
      call clean_deallocate('2-center integrals',eri_2center)
      call clean_allocate('2-center integrals',eri_2center,mlocal,nlocal)
      eri_2center(:,:) = 0.0_dp
    else
-     write(stdout,'(1x,a,i6,a,i6)') '=> This is a recalculation for basis functions: ',COUNT(mask(:)),' / ',auxil_basis%nbf
+     write(stdout,'(3x,a,i6,a,i6)') '=> This is a recalculation for auxiliary basis shell: ', &
+                                    COUNT(mask_auxil(:)),' / ',auxil_basis%nshell
      if( SIZE(eri_2center,DIM=1) /= mlocal .OR. SIZE(eri_2center,DIM=2) /= nlocal ) then
        call die('calculate_integrals_eri_2center_scalapack: recalculation but wrong dimensions of eri_2center')
      endif
@@ -688,14 +690,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask)
      do_shell = .FALSE.
      do kbf=1,nk
        kglobal = auxil_basis%shell(kshell)%istart + kbf - 1
-       if( recalculation ) then
-         do_shell = do_shell &
-                .OR. ( ( ipcol_3center == INDXG2P(kglobal,NB_3center,0,first_col,npcol_3center) )  &
-                       .AND. ( recalculation .AND. mask(kglobal) ) )
-       else
-         do_shell = do_shell &
-                .OR. ( ipcol_3center == INDXG2P(kglobal,NB_3center,0,first_col,npcol_3center) )
-       endif
+       do_shell = do_shell .OR. ( ipcol_3center == INDXG2P(kglobal,NB_3center,0,first_col,npcol_3center) )
      enddo
 
      if( .NOT. do_shell ) cycle
@@ -720,6 +715,13 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask)
        enddo
 
        if( .NOT. do_shell ) cycle
+
+       !
+       ! Skip REcalculation if both shells are "moving" or if both shells are "still"
+       !
+       if( recalculation ) then
+         if( mask_auxil(ishell) .EQV. mask_auxil(kshell) ) cycle
+       endif
 
 
        am1 = auxil_basis%shell(ishell)%am
@@ -1057,11 +1059,12 @@ end subroutine calculate_inverse_sqrt_eri_2center_scalapack
 
 
 !=========================================================================
-subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
+subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask,mask_auxil)
  implicit none
  type(basis_set),intent(in)   :: basis
  type(basis_set),intent(in)   :: auxil_basis
  real(dp),intent(in)          :: rcut
+ logical,intent(in),optional  :: mask(:),mask_auxil(:)
 !=====
  logical                      :: is_longrange
  integer                      :: agt
@@ -1078,9 +1081,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
  integer                      :: iglobal,ilocal,jlocal
  integer                      :: desc_3tmp(NDEL)
  integer                      :: nauxil_kept
- logical                      :: do_shell
+ logical                      :: do_shell,recalculation
  integer(kind=int8)           :: libint_calls
- integer                      :: ipair_first,ipair_last,mpair
  integer                      :: ipair
 !=====
 ! variables used to call C
@@ -1093,12 +1095,14 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
- ipair_first = 1
- ipair_last  = npair
-
  is_longrange = (rcut > 1.0e-12_dp)
  rcut_libint = rcut
  agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
+ recalculation = ALLOCATED(eri_3center) .AND. PRESENT(mask) .AND. PRESENT(mask_auxil)
+ if( recalculation ) then
+    if( SIZE(mask) /= basis%nshell .OR. SIZE(mask_auxil) /= auxil_basis%nshell ) &
+       call die('calculate_integrals_eri_3center_scalapack: dimension problem in the masks')
+ endif
 
  if( is_longrange ) then
    call die('calculate_integrals_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
@@ -1120,9 +1124,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
 #endif
 
 
-#if defined(HAVE_SCALAPACK)
  !
- ! Allocate the final 3-center integral array
+ ! Allocate the 3-center integral array
  ! * Full Range or Long-Range
  !
  if( .NOT. is_longrange ) then
@@ -1136,7 +1139,19 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
    endif
    call xmax_ortho(mlocal)
    call xmax_ortho(nlocal)
-   call clean_allocate('3-center integrals SCALAPACK',eri_3center,mlocal,nlocal)
+   !
+   ! Possibility to recalculate a few integrals only
+   if( .NOT. recalculation ) then
+     ! Just in case it is already allocated but mask or mask_auxil is missing
+     call clean_deallocate('3-center integrals SCALAPACK',eri_3center)
+     call clean_allocate('3-center integrals SCALAPACK',eri_3center,mlocal,nlocal)
+   else
+     write(stdout,'(1x,a,i6,a,i6)') '=> This is a recalculation for basis shells: ',COUNT(mask(:)),      ' / ',basis%nshell
+     write(stdout,'(1x,a,i6,a,i6)') '                 and auxiliary basis shells: ',COUNT(mask_auxil(:)),' / ',auxil_basis%nshell
+     if( SIZE(eri_3center,DIM=1) /= mlocal .OR. SIZE(eri_3center,DIM=2) /= nlocal ) then
+       call die('calculate_integrals_eri_3center_scalapack: recalculation but wrong dimensions of eri_3center')
+     endif
+   endif
  else
    if( cntxt_3center > 0 ) then
      mlocal = NUMROC(npair            ,MB_3center,iprow_3center,first_row,nprow_3center)
@@ -1150,14 +1165,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
    call xmax_ortho(nlocal)
    call clean_allocate('LR 3-center integrals SCALAPACK',eri_3center_lr,mlocal,nlocal)
  endif
-
-#else
- if( .NOT. is_longrange ) then
-   call clean_allocate('3-center integrals',eri_3center,npair,nauxil_2center)
- else
-   call clean_allocate('LR 3-center integrals',eri_3center_lr,npair,nauxil_2center_lr)
- endif
-#endif
 
 
  !
@@ -1174,11 +1181,11 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
    !
    !  Allocate the temporary 3-center integral array
    !
-   ! Set mlocal => mpair
+   ! Set mlocal => npair
    ! Set nlocal => auxil_basis%nbf
-   mlocal = NUMROC(mpair          ,MB_3center,iprow_3center,first_row,nprow_3center)
+   mlocal = NUMROC(npair          ,MB_3center,iprow_3center,first_row,nprow_3center)
    nlocal = NUMROC(auxil_basis%nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
-   call DESCINIT(desc_3tmp,mpair,auxil_basis%nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+   call DESCINIT(desc_3tmp,npair,auxil_basis%nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
 
    do klshellpair=1,nshellpair
@@ -1234,6 +1241,12 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
        enddo
 
        if( .NOT. do_shell ) cycle
+       !
+       ! Skip REcalculation if all the 3 shells are "moving" or if all the 3 shells are "still"
+       !
+       if( recalculation ) then
+         if( mask_auxil(ishell) .EQV. mask(kshell) .AND. mask_auxil(ishell) .EQV. mask(kshell) ) cycle
+       endif
 
        libint_calls = libint_calls + 1
 
@@ -1403,7 +1416,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 
 
-#if defined(HAVE_SCALAPACK)
  !
  ! Allocate the final 3-center integral array
  ! * Full Range or Long-Range
@@ -1433,14 +1445,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call xmax_ortho(nlocal)
    call clean_allocate('LR 3-center integrals SCALAPACK',eri_3center_lr,mlocal,nlocal)
  endif
-
-#else
- if( .NOT. is_longrange ) then
-   call clean_allocate('3-center integrals',eri_3center,npair,nauxil_2center)
- else
-   call clean_allocate('LR 3-center integrals',eri_3center_lr,npair,nauxil_2center_lr)
- endif
-#endif
 
 
  !
