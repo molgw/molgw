@@ -686,8 +686,7 @@ subroutine update_basis_eri(basis,auxil_basis)
    call moving_basis_set(auxil_basis)
    ! Setup new eri 2center / 3center
    call destroy_eri_3center()
-   call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
-   call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
+   call calculate_eri_ri(basis,auxil_basis,0.0_dp)
  else
    call deallocate_eri_4center()
    call calculate_eri(print_eri_,basis,0.0_dp)
