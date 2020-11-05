@@ -587,6 +587,8 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
 
    mask(:)       = ( basis%shell(:)%iatom       == MAXVAL(basis%shell(:)%iatom) )
    mask_auxil(:) = ( auxil_basis%shell(:)%iatom == MAXVAL(auxil_basis%shell(:)%iatom) )
+ else
+   call destroy_eri_3center()
  endif
 
 
