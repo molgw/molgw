@@ -302,10 +302,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        nocc = get_number_occupied_states(occupation)
        !write(100+rank_world,*) nocc
 
-       ! get new c_matrix_cmplx
+       ! get new c_matrix_cmplx and c_matrix_orth_cmplx
        call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
+       call clean_deallocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx)
        call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
+       call clean_allocate('Wavefunctions C for TDDFT',c_matrix_orth_cmplx,basis%nbf,nocc,nspin)
        c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
+       c_matrix_orth_cmplx(:,1:nocc,:) = m_eigenvec_small(:,1:nocc,:)
        !write(stdout, '(a10,5(2x,a10))'), 'SCF', ' ', 'TDDFT', ' ', 'occupation'
        !write(stdout, '(a10,6(2x,a10))'), 'spin1', 'spin 2', 'spin1', 'spin2', 'spin1', 'spin2'
        !do istate = 1, 10
