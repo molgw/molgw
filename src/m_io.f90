@@ -633,8 +633,12 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
    read(pdosfile,*) natom1,natom2
    close(pdosfile)
  else
-   natom1=1
-   natom2=1
+   if( PRESENT( atom_state_occ ) ) then
+     call die("=== FILE ABSENT FOR TDDFT : manual_pdos ===")
+   else
+     natom1=1
+     natom2=1
+   end if
  endif
 
  do ishell=1,basis%nshell
