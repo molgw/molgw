@@ -684,8 +684,9 @@ subroutine update_basis_eri(basis,auxil_basis)
  if( has_auxil_basis ) then
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
    call moving_basis_set(auxil_basis)
+   !
    ! Setup new eri 2center / 3center
-   call destroy_eri_3center()
+   !call destroy_eri_3center()
    call calculate_eri_ri(basis,auxil_basis,0.0_dp)
  else
    call deallocate_eri_4center()

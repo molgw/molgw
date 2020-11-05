@@ -564,7 +564,30 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  type(basis_set),intent(in)   :: basis,auxil_basis
  real(dp),intent(in)          :: rcut
  !=====
+ logical                      :: recalculation
+ logical,allocatable          :: mask(:),mask_auxil(:)
  !=====
+
+ !
+ ! If already allocataed, assume this is a recalculation of TDDFT
+ ! Only recalculate those integrals for projectile/target coupling
+ !
+ ! only implemented when eri3_genuine is 'yes'
+ !
+ recalculation = ALLOCATED(eri_2center) .AND. ALLOCATED(eri_3center) .AND. eri3_genuine_
+ if( recalculation ) then
+   allocate(mask(basis%nshell))
+   allocate(mask_auxil(auxil_basis%nshell))
+
+   ! FIXME: Assume the last atomic center is a moving projectile
+   ! This is very dangerous !
+   ! In the future use the following coding:
+   !mask(:)       = ( NORM2(basis%shell(:)%v0(:)) > 1.0e-6_dp )
+   !mask_auxil(:) = ( NORM2(auxil_basis%shell(:)%v0(:)) > 1.0e-6_dp )
+
+   mask(:)       = ( basis%shell(:)%iatom       == MAXVAL(basis%shell(:)%iatom) )
+   mask_auxil(:) = ( auxil_basis%shell(:)%iatom == MAXVAL(auxil_basis%shell(:)%iatom) )
+ endif
 
 
  !
@@ -572,7 +595,12 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  !
  call start_clock(timing_eri_2center)
 
- call calculate_integrals_eri_2center_scalapack(auxil_basis,rcut)
+ if( recalculation ) then
+   call calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil)
+ else
+   call calculate_integrals_eri_2center_scalapack(auxil_basis,rcut)
+ endif
+
  if( eri3_genuine_ ) then
    call calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
  else
@@ -588,12 +616,20 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  call start_clock(timing_eri_3center)
 
  if( eri3_genuine_ ) then
-   call calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
+   if( recalculation ) then
+     call calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask,mask_auxil)
+   else
+     call calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
+   endif
  else
    call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 
  call stop_clock(timing_eri_3center)
+
+
+ if( ALLOCATED(mask) )       deallocate(mask)
+ if( ALLOCATED(mask_auxil) ) deallocate(mask_auxil)
 
 
 end subroutine calculate_eri_ri
@@ -835,11 +871,16 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
    nlocal = SIZE(eri_2center,DIM=2)
 
    if( .NOT. is_longrange ) then
+     ! Deallocate first in case of a recalculation
+     call clean_deallocate('2-center integrals inverse',eri_2center_inv)
      call clean_allocate('2-center integrals inverse',eri_2center_inv,mlocal,nlocal)
      eri_2center_inv(:,:)    = eri_2center(:,:)
      nauxil_2center = auxil_basis%nbf
-     call distribute_auxil_basis(nauxil_2center)
+     ! Only call if it is not a recalculation
+     if( .NOT. ALLOCATED(ibf_auxil_g) ) call distribute_auxil_basis(nauxil_2center)
    else
+     ! Deallocate first in case of a recalculation
+     call clean_deallocate('2-center LR integrals inverse',eri_2center_inv_lr)
      call clean_allocate('2-center LR integrals inverse',eri_2center_inv_lr,mlocal,nlocal)
      eri_2center_inv_lr(:,:) = eri_2center(:,:)
      nauxil_2center_lr = auxil_basis%nbf
@@ -865,7 +906,6 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
 
  endif
 
- call clean_deallocate('2-center integrals',eri_2center)
 
  write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, inverted and stored'
 
@@ -1084,6 +1124,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
  logical                      :: do_shell,recalculation
  integer(kind=int8)           :: libint_calls
  integer                      :: ipair
+ real(dp)                     :: factor
 !=====
 ! variables used to call C
  real(C_DOUBLE)               :: rcut_libint
@@ -1245,7 +1286,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        ! Skip REcalculation if all the 3 shells are "moving" or if all the 3 shells are "still"
        !
        if( recalculation ) then
-         if( mask_auxil(ishell) .EQV. mask(kshell) .AND. mask_auxil(ishell) .EQV. mask(kshell) ) cycle
+         if( ( mask_auxil(ishell) .EQV. mask(kshell) ) &
+              .AND. ( mask_auxil(ishell) .EQV. mask(lshell) ) ) cycle
        endif
 
        libint_calls = libint_calls + 1
@@ -1273,6 +1315,12 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        do lbf=1,nl
          do kbf=1,nk
            klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
+           ! include a factor 1/2 for equal basis indexes
+           if( index_basis(1,klpair_global) == index_basis(2,klpair_global) ) then
+             factor = 0.5_dp
+           else
+             factor = 1.0_dp
+           endif
 
            if( iprow_3center /= INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) ) cycle
            ilocal = INDXG2L(klpair_global,MB_3center,0,first_row,nprow_3center)
@@ -1282,7 +1330,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
              if( ipcol_3center /= INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) ) cycle
              jlocal = INDXG2L(iglobal,NB_3center,0,first_col,npcol_3center)
 
-             eri_3center(ilocal,jlocal) = integrals(ibf,kbf,lbf)
+             eri_3center(ilocal,jlocal) = integrals(ibf,kbf,lbf) * factor
 
            enddo
          enddo
@@ -1304,9 +1352,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
 
 
-
-
-
    write(stdout,'(1x,a,i20)')      'Number of calls to libint of this proc: ',libint_calls
    call xsum_world(libint_calls)
    write(stdout,'(1x,a,7x,i20)')   'Total number of calls to libint: ',libint_calls
@@ -1322,12 +1367,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
    call xsum_ortho(eri_3center)
    write(stdout,'(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
 
-   ! Include a factor 1/2 for pair containing twice the same basis function
-   do ipair=1,npair
-     ibf = index_basis(1,ipair)
-     jbf = index_basis(2,ipair)
-     if( ibf == jbf ) eri_3center(ipair,:) = eri_3center(ipair,:) * 0.5_dp
-   enddo
  else
    if( cntxt_3center < 0 ) then
      eri_3center_lr(:,:) = 0.0_dp
@@ -1335,12 +1374,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
    call xsum_ortho(eri_3center_lr)
    write(stdout,'(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
 
-   ! Include a factor 1/2 for pair containing twice the same basis function
-   do ipair=1,npair
-     ibf = index_basis(1,ipair)
-     jbf = index_basis(2,ipair)
-     if( ibf == jbf ) eri_3center_lr(ipair,:) = eri_3center_lr(ipair,:) * 0.5_dp
-   enddo
  endif
 
 
