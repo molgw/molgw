@@ -23,6 +23,7 @@ module m_eri_calculate
  real(dp),protected,allocatable :: eri_2center(:,:)
  real(dp),protected,allocatable :: eri_2center_inv(:,:)
  real(dp),protected,allocatable :: eri_2center_sqrtinv(:,:)
+ real(dp),protected,allocatable :: eri_2center_sqrt(:,:)
 
  real(dp),protected,allocatable :: eri_2center_lr(:,:)
  real(dp),protected,allocatable :: eri_2center_inv_lr(:,:)
@@ -49,6 +50,9 @@ subroutine destroy_eri_3center()
  endif
  if(ALLOCATED(eri_2center_sqrtinv)) then
    call clean_deallocate('2-center integrals inverse square-root',eri_2center_sqrtinv)
+ endif
+ if(ALLOCATED(eri_2center_sqrt)) then
+   call clean_deallocate('2-center integrals square-root',eri_2center_sqrt)
  endif
  if(ALLOCATED(eri_2center_lr)) then
    call clean_deallocate('LR 2-center integrals',eri_2center_lr)
@@ -802,7 +806,6 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
  integer                      :: ishell,kshell
  real(dp),allocatable         :: eri_2center_tmp(:,:)
  integer                      :: mlocal,nlocal
- integer                      :: desc2center(NDEL)
  !=====
 
  call start_clock(timing_eri_2center_invert)
@@ -884,13 +887,13 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
  integer                      :: ishell,kshell
  integer                      :: info
  integer                      :: nauxil_neglect,nauxil_kept
+ real(dp)                     :: invsqrt_j,sqrt_j
  real(dp)                     :: eigval(auxil_basis%nbf)
- real(dp),allocatable         :: eri_2center_sqrt(:,:)
- real(dp),allocatable         :: eri_2center_tmp(:,:)
+ real(dp),allocatable         :: eri_2center_eigvec(:,:)
+ real(dp),allocatable         :: eri_2center_tmp(:,:)  !FBFB to be removed
  integer                      :: mlocal,nlocal
  integer                      :: iglobal,jglobal,ilocal,jlocal
  integer                      :: kglobal,klocal
- integer                      :: desc2center(NDEL)
  integer                      :: ibf_auxil,jbf_auxil
  !=====
 
@@ -920,25 +923,24 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
 
    mlocal = SIZE(eri_2center,DIM=1)
    nlocal = SIZE(eri_2center,DIM=2)
-   desc2center(:) = desc_2center(:)
 
    !
    ! Diagonalize the 2-center integral matrix
    !
 #if defined(HAVE_SCALAPACK)
 
-   call clean_allocate('tmp 2-center integrals',eri_2center_sqrt,mlocal,nlocal)
+   call clean_allocate('2-center integrals eigenvectors',eri_2center_eigvec,mlocal,nlocal)
 
    ! No need to symmetrize since the diago only considers the lower triangle of eri_2center
-   call diagonalize_sca(' ',eri_2center,desc2center,eigval,eri_2center_sqrt,desc2center)
-   call clean_deallocate('tmp 2-center integrals',eri_2center)
+   call diagonalize_sca(' ',eri_2center,desc_2center,eigval,eri_2center_eigvec,desc_2center)
+   call clean_deallocate('2-center integrals',eri_2center)
 
 #else
 
    !
    ! No need to symmetrize since the diago only considers the lower trinagle of eri_2center_tmp
    call diagonalize_scalapack(' ',scalapack_block_min,eri_2center,eigval)
-   call move_alloc(eri_2center,eri_2center_sqrt)
+   call move_alloc(eri_2center,eri_2center_eigvec)
 
 #endif
 
@@ -959,22 +961,29 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
    ! Prepare the distribution of the 3-center integrals
    ! nauxil_3center variable is now set up
    call distribute_auxil_basis(nauxil_2center)
+   !
+   ! This is the final descriptor for the 2-center integrals in the eigvec basis
+   ! Set mlocal distributes auxil_basis%nbf
+   ! Set nlocal distributes nauxil_kept <= auxil_basis%nbf
+   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc_2center_sqrtinv,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
+                   first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+
  else
    nauxil_2center_lr = nauxil_kept
    ! Prepare the distribution of the 3-center integrals
    ! nauxil_3center_lr variable is now set up
    call distribute_auxil_basis_lr(nauxil_2center_lr)
+   !
+   ! This is the final descriptor for the LR 2-center integrals in the eigvec basis
+   ! Set mlocal distributes auxil_basis%nbf
+   ! Set nlocal distributes nauxil_kept <= auxil_basis%nbf
+   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc_2center_sqrtinv_lr,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
+                   first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
  endif
-
-
- !
- ! Now resize the 2-center matrix if needed
- ! Set mlocal => nauxil_3center
- ! Set nlocal => nauxil_kept < auxil_basis%nbf
- mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
- nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
- call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
-                 first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
 
  !
@@ -984,60 +993,52 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
  if( cntxt_3center < 0 ) return
 
 
- if( .NOT. is_longrange ) then
-   call clean_allocate('2-center integrals',eri_2center_sqrtinv,mlocal,nlocal)
- else
-   call clean_allocate('LR 2-center integrals',eri_2center_sqrtinv_lr,mlocal,nlocal)
- endif
-
 #if defined(HAVE_SCALAPACK)
- call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
- !
- ! Create a rectangular matrix with only 1 / SQRT( eigval) on a diagonal
- eri_2center_tmp(:,:) = 0.0_dp
- do jlocal=1,nlocal
-   jglobal = INDXL2G(jlocal,NB_3center,ipcol_3center,first_col,npcol_3center)
-   do ilocal=1,mlocal
-     iglobal = INDXL2G(ilocal,MB_3center,iprow_3center,first_row,nprow_3center)
-
-     if( iglobal == jglobal + nauxil_neglect ) eri_2center_tmp(ilocal,jlocal) = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
-
-   enddo
- enddo
-
 
  if( .NOT. is_longrange ) then
-   call PDGEMM('N','N',auxil_basis%nbf,nauxil_2center,auxil_basis%nbf, &
-               1.0_dp,eri_2center_sqrt,1,1,desc2center,  &
-                      eri_2center_tmp,1,1,desc_2center,   &
-               0.0_dp,eri_2center_sqrtinv,1,1,desc_2center)
+
+   call clean_allocate('2-center integrals inverse square-root',eri_2center_sqrtinv,mlocal,nlocal)
+
+   ! First copy a block of eri_2center_eigvec(:,nauxil_neglect+1:) in eri_2center_sqrtinv(:,:)
+   call PDGEMR2D(auxil_basis%nbf,nauxil_2center,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
+                                                   eri_2center_sqrtinv,1,1,desc_2center_sqrtinv,cntxt_3center)
+
+   ! Then rescale eri_2center_sqrtinv(:,j) = eri_2center_sqrtinv(:,j) / SQRT(eigval(j))
+   do jglobal=1,nauxil_2center
+     invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
+     call PDSCAL(auxil_basis%nbf,invsqrt_j,eri_2center_sqrtinv,1,jglobal,desc_2center_sqrtinv,1)
+   enddo
+
  else
-   call PDGEMM('N','N',auxil_basis%nbf,nauxil_2center_lr,auxil_basis%nbf, &
-               1.0_dp,eri_2center_sqrt,1,1,desc2center,  &
-                      eri_2center_tmp,1,1,desc_2center,   &
-               0.0_dp,eri_2center_sqrtinv_lr ,1,1,desc_2center)
+
+   call clean_allocate('LR 2-center integrals inverse square-root',eri_2center_sqrtinv_lr,mlocal,nlocal)
+
+   ! First copy a block of eri_2center_eigvec(:,nauxil_neglect+1:) in eri_2center_sqrtinv_lr(:,:)
+   call PDGEMR2D(auxil_basis%nbf,nauxil_2center_lr,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
+                                                      eri_2center_sqrtinv_lr,1,1,desc_2center_sqrtinv_lr,cntxt_3center)
+
+   ! Then rescale eri_2center_sqrtinv_lr(:,j) = eri_2center_sqrtinv_lr(:,j) / SQRT(eigval(j))
+   do jglobal=1,nauxil_2center_lr
+     invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
+     call PDSCAL(auxil_basis%nbf,invsqrt_j,eri_2center_sqrtinv_lr,1,jglobal,desc_2center_sqrtinv_lr,1)
+   enddo
+
  endif
 
-   call clean_deallocate('tmp 2-center integrals',eri_2center_tmp)
 
 #else
 
- ilocal = 0
- do jlocal=1,auxil_basis%nbf
-   if( eigval(jlocal) < TOO_LOW_EIGENVAL ) cycle
-   ilocal = ilocal + 1
-   eri_2center_sqrt(:,ilocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jlocal) )
- enddo
-
  if( .NOT. is_longrange ) then
-   do ibf_auxil=1,nauxil_3center
-     jbf_auxil = ibf_auxil_g(ibf_auxil)
-     eri_2center_sqrtinv(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+   call clean_allocate('2-center integrals inverse square-root',eri_2center_sqrtinv,mlocal,nlocal)
+   do jglobal=1,nauxil_2center
+     invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
+     eri_2center_sqrtinv(:,jglobal) = eri_2center_eigvec(:,jglobal+nauxil_neglect) * invsqrt_j
    enddo
  else
-   do ibf_auxil=1,nauxil_3center_lr
-     jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
-     eri_2center_sqrtinv_lr(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+   call clean_allocate('LR 2-center integrals inverse square-root',eri_2center_sqrtinv_lr,mlocal,nlocal)
+   do jglobal=1,nauxil_2center_lr
+     invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
+     eri_2center_sqrtinv_lr(:,jglobal) = eri_2center_eigvec(:,jglobal+nauxil_neglect) * invsqrt_j
    enddo
  endif
 
@@ -1050,7 +1051,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
  write(stdout,'(1x,a,i6)')     'Some have been eliminated due to too large overlap ',nauxil_neglect
  write(stdout,'(1x,a,es16.6)') 'because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
 
- call clean_deallocate('tmp 2-center integrals',eri_2center_sqrt)
+ call clean_deallocate('2-center integrals eigenvectors',eri_2center_eigvec)
  call clean_deallocate('2-center integrals',eri_2center)
 
  call stop_clock(timing_eri_2center_inverse_sqrt)
@@ -1617,7 +1618,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 #if defined(HAVE_SCALAPACK)
        call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
                    1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
-                          eri_2center_sqrtinv,1,1,desc_2center,   &
+                          eri_2center_sqrtinv,1,1,desc_2center_sqrtinv,   &
                    0.0_dp,eri_3center    ,ipair_first,1,desc_eri3)
 #else
        call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
@@ -1629,7 +1630,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 #if defined(HAVE_SCALAPACK)
        call PDGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf, &
                    1.0_dp,eri_3center_tmp,1,1,desc_3tmp,      &
-                          eri_2center_sqrtinv_lr,1,1,desc_2center,   &
+                          eri_2center_sqrtinv_lr,1,1,desc_2center_sqrtinv_lr,   &
                    0.0_dp,eri_3center_lr ,ipair_first,1,desc_eri3_lr)
 #else
        call DGEMM('N','N',mpair,nauxil_kept,auxil_basis%nbf,  &
@@ -1659,7 +1660,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
 
  if( .NOT. is_longrange ) then
-   call clean_deallocate('Distributed 2-center integrals',eri_2center)
+   call clean_deallocate('2-center integrals',eri_2center)
+   call clean_deallocate('2-center integrals inverse square-root',eri_2center_sqrtinv)
    if( cntxt_3center < 0 ) then
      eri_3center(:,:) = 0.0_dp
    endif
@@ -1673,7 +1675,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      if( ibf == jbf ) eri_3center(ipair,:) = eri_3center(ipair,:) * 0.5_dp
    enddo
  else
-   call clean_deallocate('Distributed LR 2-center integrals',eri_2center_lr)
+   call clean_deallocate('LR 2-center integrals',eri_2center_lr)
+   call clean_deallocate('LR 2-center integrals inverse square-root',eri_2center_sqrtinv_lr)
    if( cntxt_3center < 0 ) then
      eri_3center_lr(:,:) = 0.0_dp
    endif
