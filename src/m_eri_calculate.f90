@@ -890,11 +890,11 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
  real(dp)                     :: invsqrt_j,sqrt_j
  real(dp)                     :: eigval(auxil_basis%nbf)
  real(dp),allocatable         :: eri_2center_eigvec(:,:)
- real(dp),allocatable         :: eri_2center_tmp(:,:)  !FBFB to be removed
  integer                      :: mlocal,nlocal
  integer                      :: iglobal,jglobal,ilocal,jlocal
  integer                      :: kglobal,klocal
  integer                      :: ibf_auxil,jbf_auxil
+ logical                      :: store_eri_2center_sqrt
  !=====
 
  call start_clock(timing_eri_2center_inverse_sqrt)
@@ -1001,7 +1001,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
 
    ! First copy a block of eri_2center_eigvec(:,nauxil_neglect+1:) in eri_2center_sqrtinv(:,:)
    call PDGEMR2D(auxil_basis%nbf,nauxil_2center,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
-                                                   eri_2center_sqrtinv,1,1,desc_2center_sqrtinv,cntxt_3center)
+                                                eri_2center_sqrtinv,1,1,desc_2center_sqrtinv,cntxt_3center)
 
    ! Then rescale eri_2center_sqrtinv(:,j) = eri_2center_sqrtinv(:,j) / SQRT(eigval(j))
    do jglobal=1,nauxil_2center
@@ -1015,7 +1015,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
 
    ! First copy a block of eri_2center_eigvec(:,nauxil_neglect+1:) in eri_2center_sqrtinv_lr(:,:)
    call PDGEMR2D(auxil_basis%nbf,nauxil_2center_lr,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
-                                                      eri_2center_sqrtinv_lr,1,1,desc_2center_sqrtinv_lr,cntxt_3center)
+                                                   eri_2center_sqrtinv_lr,1,1,desc_2center_sqrtinv_lr,cntxt_3center)
 
    ! Then rescale eri_2center_sqrtinv_lr(:,j) = eri_2center_sqrtinv_lr(:,j) / SQRT(eigval(j))
    do jglobal=1,nauxil_2center_lr
@@ -1042,8 +1042,36 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
    enddo
  endif
 
-
 #endif
+
+ !
+ ! Experimental part that stores eri_2center_sqrt only if file manual_eri2sqrt exists
+ !
+ inquire(file='manual_eri2sqrt',exist=store_eri_2center_sqrt)
+ if( store_eri_2center_sqrt ) then
+   write(stdout,*) 'Experimental: (P|1/sqrt(r12)|I)^{1/2} is calculated and stored'
+   !
+   ! eri_2center_sqrt(auxil_basis%nbf,nauxil_2center) can be distributed
+   ! It uses the same descriptor as eri_2center_sqrtinv
+   call clean_allocate('2-center integrals square-root',eri_2center_sqrt,mlocal,nlocal)
+#if defined(HAVE_SCALAPACK)
+   ! First copy a block of eri_2center_eigvec(:,nauxil_neglect+1:) in eri_2center_sqrt(:,:)
+   call PDGEMR2D(auxil_basis%nbf,nauxil_2center,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
+                                                eri_2center_sqrt,1,1,desc_2center_sqrtinv,cntxt_3center)
+
+   ! Then rescale eri_2center_sqrtinv(:,j) = eri_2center_sqrtinv(:,j) / SQRT(eigval(j))
+   do jglobal=1,nauxil_2center
+     sqrt_j = SQRT( eigval(jglobal+nauxil_neglect) )
+     call PDSCAL(auxil_basis%nbf,sqrt_j,eri_2center_sqrt,1,jglobal,desc_2center_sqrtinv,1)
+   enddo
+#else
+   do jglobal=1,nauxil_2center
+     sqrt_j = SQRT( eigval(jglobal+nauxil_neglect) )
+     eri_2center_sqrt(:,jglobal) = eri_2center_eigvec(:,jglobal+nauxil_neglect) * sqrt_j
+   enddo
+#endif
+ endif
+
 
 
  write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, diagonalized and stored'
