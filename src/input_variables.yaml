@@ -64,6 +64,14 @@ auto_auxil_lmaxinc:
     basis set. The larger the more auxiliary basis functions it will generate. See
     Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.
 
+auto_occupation:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Automatically resets occupation during the TDDFT SCF loop 
+
 auxil_basis:
   family: general
   datatype: characters

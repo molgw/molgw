@@ -285,22 +285,24 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          m_eigenvector(:,:,ispin) = MATMUL( x_matrix(:,:) , m_eigenvec_small(:,:,ispin) )
        end do
 
-       ! assign new states to corresponding atoms
-       call lowdin_pdos_cmplx(basis,s_matrix_sqrt,m_eigenvector,occupation,stdout,time_min,atom_state_occ)
-       ! set new occupations
-       count_atom_e_copy(:,:) = count_atom_e(:,:)
-       occupation(:,:) = 0.0_dp
-       do ispin=1, nspin
-         do istate = 1, nstate
-           iatom = atom_state_occ(istate, ispin)
-           if( iatom > 0 .AND. iatom <= natom ) then
-             occupation(istate, ispin) = MIN( count_atom_e_copy(iatom, ispin), spin_fact )
-             count_atom_e_copy(iatom, ispin) = count_atom_e_copy(iatom, ispin) - occupation(istate, ispin)
-           end if
+       if ( auto_occupation_ ) then
+         ! assign new states to corresponding atoms
+         call lowdin_pdos_cmplx(basis,s_matrix_sqrt,m_eigenvector,occupation,stdout,time_min,atom_state_occ)
+         ! set new occupations
+         count_atom_e_copy(:,:) = count_atom_e(:,:)
+         occupation(:,:) = 0.0_dp
+         do ispin=1, nspin
+           do istate = 1, nstate
+             iatom = atom_state_occ(istate, ispin)
+             if( iatom > 0 .AND. iatom <= natom ) then
+               occupation(istate, ispin) = MIN( count_atom_e_copy(iatom, ispin), spin_fact )
+               count_atom_e_copy(iatom, ispin) = count_atom_e_copy(iatom, ispin) - occupation(istate, ispin)
+             end if
+           end do
          end do
-       end do
-       nocc = get_number_occupied_states(occupation)
-       !write(100+rank_world,*) nocc
+         nocc = get_number_occupied_states(occupation)
+         !write(100+rank_world,*) nocc
+       end if
 
        ! get new c_matrix_cmplx and c_matrix_orth_cmplx
        call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
@@ -309,10 +311,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        call clean_allocate('Wavefunctions C for TDDFT',c_matrix_orth_cmplx,basis%nbf,nocc,nspin)
        c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
        c_matrix_orth_cmplx(:,1:nocc,:) = m_eigenvec_small(:,1:nocc,:)
-       !write(stdout, '(a10,5(2x,a10))'), 'SCF', ' ', 'TDDFT', ' ', 'occupation'
-       !write(stdout, '(a10,6(2x,a10))'), 'spin1', 'spin 2', 'spin1', 'spin2', 'spin1', 'spin2'
+       !write(stdout, '(a10,5(2x,a10))') 'SCF', ' ', 'TDDFT', ' ', 'occupation'
+       !write(stdout, '(a10,6(2x,a10))') 'spin1', 'spin 2', 'spin1', 'spin2', 'spin1', 'spin2'
        !do istate = 1, 10
-       !   write(stdout, '(f10.4,6(2x,f10.4))'), energy_tddft(istate,:), m_eigenval(istate,:), occupation(istate, :)
+       !   write(stdout, '(f10.4,6(2x,f10.4))') energy_tddft(istate,:), m_eigenval(istate,:), occupation(istate, :)
        !end do
 
        deallocate(m_matrix_small)

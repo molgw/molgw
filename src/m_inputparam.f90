@@ -157,6 +157,7 @@ module m_inputparam
  logical,protected                :: stopping_
  logical,protected                :: assume_scf_converged_
  logical,protected                :: eri3_genuine_
+ logical,protected                :: auto_occupation_
 
  real(dp),protected               :: rcut = 0.0_dp
 
@@ -765,6 +766,7 @@ subroutine read_inputfile_namelist()
  stopping_                   = yesno_to_logical(stopping)
  assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
  eri3_genuine_               = yesno_to_logical(eri3_genuine)
+ auto_occupation_            = yesno_to_logical(auto_occupation)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
