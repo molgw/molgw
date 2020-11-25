@@ -238,21 +238,23 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
    !deallocate(energy_tddft)
 
-   ! associate each state to an atom
-   allocate( atom_state_occ(nstate, nspin) )
-   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min,atom_state_occ)
-   ! count the number of e- on each atom
-   allocate( count_atom_e(natom, nspin), count_atom_e_copy(natom, nspin) )
-   count_atom_e(:, :) = 0
-   do ispin = 1, nspin
-     do istate = 1, nstate
-       do iatom = 1, natom
-         if ( atom_state_occ(istate, ispin) == iatom ) &
-           count_atom_e(iatom, ispin) = count_atom_e(iatom, ispin) + occupation(istate, ispin)
+   if ( auto_occupation_ ) then
+     ! associate each state to an atom
+     allocate( atom_state_occ(nstate, nspin) )
+     call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min,atom_state_occ)
+     ! count the number of e- on each atom
+     allocate( count_atom_e(natom, nspin), count_atom_e_copy(natom, nspin) )
+     count_atom_e(:, :) = 0
+     do ispin = 1, nspin
+       do istate = 1, nstate
+         do iatom = 1, natom
+           if ( atom_state_occ(istate, ispin) == iatom ) &
+             count_atom_e(iatom, ispin) = count_atom_e(iatom, ispin) + occupation(istate, ispin)
+         end do
        end do
+       !write(stdout, *) count_atom_e(:, ispin)
      end do
-     !write(stdout, *) count_atom_e(:, ispin)
-   end do
+   end if
 
    ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
