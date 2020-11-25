@@ -357,7 +357,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    end if
    deallocate(energy_tddft)
-   deallocate(atom_state_occ, count_atom_e, count_atom_e_copy)
+   if ( auto_occupation_ ) deallocate(atom_state_occ, count_atom_e, count_atom_e_copy)
 
  end if
  en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
