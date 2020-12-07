@@ -173,8 +173,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  end if
 
  call setup_overlap(basis,s_matrix)
- call setup_D_matrix_analytic(basis,d_matrix)
- call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+ if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   call setup_D_matrix_analytic(basis,d_matrix)
+   call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+ else
+   d_matrix(:,:) = 0.0_dp
+ end if
  ! E_iD = - Tr{P*iD}
  en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
