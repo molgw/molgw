@@ -745,8 +745,8 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  real(dp)                           :: qvec_list(3,nq)
  real(dp)                           :: qvec(3)
  real(dp)                           :: bethe_sumrule(nq)
- integer,parameter                  :: nv=200
- real(dp),parameter                 :: dv=0.10_dp
+ integer,parameter                  :: nv=500
+ real(dp),parameter                 :: dv=0.01_dp
  integer                            :: iv
  real(dp)                           :: stopping_cross_section(nv)
  !real(dp)                           :: stopping_exc(nv,chi%npole_reso)
