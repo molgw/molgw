@@ -175,7 +175,6 @@ Hartree  HOMO expectation ,  250.895321        , 1 , 1.0e-4
 Exchange HOMO expectation ,  -24.840082        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -24.840082        , 1 , 1.0e-4
 
-
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
 Exc. 0001                 ,   32.27823228      , 0 , 1.0e-4
@@ -235,6 +234,12 @@ Lowest neutral excitation ,      2.531059      , 0 , 1.0e-4
 RPA Total energy          ,   -187.8892338918  , 0 , 1.0e-7
 GW HOMO energy            ,    -11.039136      , 0 , 1.0e-4
 GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
+
+n2_lcwpbe.in              , GW@LC-wPBE with RI
+Total Energy              ,   -109.4784567421  , 0 , 1.0e-7
+RPA Total energy          ,   -109.4737102418  , 0 , 1.0e-7
+GW HOMO energy            ,    -15.895624      , 0 , 1.0e-4
+GW LUMO energy            ,      2.153744      , 0 , 1.0e-4
 
 cdo_ecp_gw.in             , CdO- (ECP) within GW@PBE0 with level shifting
 SCF Total Energy          ,    -242.8403302221 , 0 , 5.0e-4     # Loosened criterium

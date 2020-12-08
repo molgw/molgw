@@ -1,0 +1,19 @@
+&molgw
+
+  comment = 'GW after long-range only functional LC-wPBE'
+  scf='rsh'
+  alpha_hybrid = 0.000 
+  beta_hybrid  = 1.000
+  gamma_hybrid = 0.600
+  
+  basis='aug-cc-pVTZ'
+  auxil_basis='auto'
+  
+  postscf='GW'
+  selfenergy_state_range=2
+  
+  natom=2
+/
+N    0.0000  0.0000  0.0000
+N    1.0977  0.0000  0.0000
+
