@@ -793,5 +793,10 @@ velocity   0.000  0.000  0.800,   3.804473       , 0 , 1.0e-4
 velocity   0.000  0.000  1.400,   7.319374       , 0 , 1.0e-4
 velocity   0.000  0.000  2.000,   7.299591       , 0 , 1.0e-4
 
-
+ne_ap_stopping.in        , Linear-response stopping cross section for a non-spherical system
+SCF Total Energy           ,   -134.7929508744   , 0 , 1.0e-7
+Exc. 0001                  ,     37.06922165     , 0 , 1.0e-4
+Sum over oscillator strengths,    9.124419       , 0 , 1.0e-4
+velocity   0.000  0.000  0.250,   0.210189       , 0 , 1.0e-4
+velocity   0.000  0.000  0.500,   1.018946       , 0 , 1.0e-4
 

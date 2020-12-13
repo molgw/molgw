@@ -1,0 +1,21 @@
+&molgw
+ scf='lda'
+
+ basis='cc-pVDZ'
+ auxil_basis='AUTO'
+
+ postscf='td'
+ frozencore='yes'
+
+ stopping='3d'
+ nvel_projectile=2
+ vel_projectile= 0.0 0.0 0.25
+
+ charge = -1.0 
+ excit_name='ANTINUCLEUS'
+
+ length_unit='bohr'
+ natom=1
+/
+Ne 0.   0.  0.
+1  0.0  0.0  0.5

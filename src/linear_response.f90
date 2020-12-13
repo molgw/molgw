@@ -920,17 +920,6 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  call stop_clock(timing_stopping)
 
 
-contains
-
-function smooth_delta(x)
-  real(dp),intent(in) :: x
-  real(dp),parameter :: dx=0.05_dp
-  real(dp) :: smooth_delta
-  !=====
-  !=====
-  smooth_delta = EXP( -x**2/dx**2 ) / ( dx * SQRT(pi) )
-end function smooth_delta
-
 end subroutine stopping_power
 
 
