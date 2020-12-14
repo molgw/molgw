@@ -288,9 +288,13 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. is_bse ) then
-   if( stopping_ ) &
-     call stopping_power(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
    call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,xmy_matrix,eigenvalue)
+   select case(TRIM(lower(stopping)))
+   case('spherical')
+     call stopping_power(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
+   case('3d')
+     call stopping_power_3d(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
+   end select
  endif
 
  !
@@ -726,31 +730,26 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
 !=====
+ integer,parameter                  :: nqradial = 500
+ real(dp),parameter                 :: dqradial = 0.02_dp
+ integer,parameter                  :: nq = nqradial
  integer                            :: gt
  integer                            :: t_ia,t_jb
  integer                            :: t_ia_global,t_jb_global
  integer                            :: nmat
  integer                            :: istate,astate,iaspin
  integer                            :: mpspin
- integer                            :: ishell,jshell
- integer                            :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
- integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart
- integer                            :: iomega,idir
  complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:,:)
  complex(dp),allocatable            :: gos_tddft(:)
- integer,parameter                  :: nq = 500
- real(dp),parameter                 :: dq = 0.02_dp
- integer                            :: iqs,iq,iiq
+ integer                            :: iqs,iq,iiq,iqradial
  real(dp)                           :: fnq(chi%npole_reso)
- real(dp)                           :: qvec_list(3,nq)
- real(dp)                           :: qvec(3)
+ real(dp)                           :: qvec_list(3,nq),wq(nq)
+ real(dp)                           :: qvec(3),qq
  real(dp)                           :: bethe_sumrule(nq)
- integer,parameter                  :: nv=200
- real(dp),parameter                 :: dv=0.10_dp
  integer                            :: iv
- real(dp)                           :: stopping_cross_section(nv)
- !real(dp)                           :: stopping_exc(nv,chi%npole_reso)
- real(dp)                           :: vv
+ real(dp)                           :: stopping_cross_section(nvel_projectile)
+ !real(dp)                           :: stopping_exc(nvel_projectile,chi%npole_reso)
+ real(dp)                           :: vlist(3,nvel_projectile),vv
  integer                            :: stride
  integer                            :: nq_batch
  integer                            :: fstopping
@@ -759,7 +758,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
  call start_clock(timing_stopping)
 
- write(stdout,'(/,a)') ' Calculate the stopping power'
+ write(stdout,'(/,a)') ' Calculate the stopping power in a spherical system'
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
  if (nspin/=1) then
@@ -771,11 +770,23 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  stride = nprow_sd * npcol_sd
  write(stdout,*) 'Parallelize GOS calculation over ',stride
 
+
+ !
+ ! Setup the entire list of projectile velocities
+ !
+ do iv=1,nvel_projectile
+   vlist(:,iv) = vel_projectile(:) * iv
+ enddo
+
+ !
  ! Setup the entire q-vector list
- do iq=1,nq
-   qvec_list(1,iq) = 0.0_dp
-   qvec_list(2,iq) = 0.0_dp
-   qvec_list(3,iq) = iq * dq
+ !
+ do iqradial=1,nqradial
+   qq = iqradial * dqradial
+   qvec_list(1,iqradial) = 0.0_dp
+   qvec_list(2,iqradial) = 0.0_dp
+   qvec_list(3,iqradial) = qq
+   wq(iqradial)          = dqradial
  enddo
 
  if( print_yaml_ .AND. is_iomaster ) then
@@ -791,7 +802,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  allocate(gos_tddft(chi%npole_reso))
 
  write(stdout,'(/,1x,a,f8.3,a,f8.3)') 'Loop over q-vectors from ',NORM2(qvec_list(:,1)),' to ',NORM2(qvec_list(:,nq))
- write(stdout,'(5x,a,f8.3)') 'with increment:',dq
+ write(stdout,'(5x,a,f8.3)') 'with increment:',dqradial
  bethe_sumrule(:) = 0.0_dp
  stopping_cross_section(:) = 0.0_dp
  !stopping_exc(:,:) = 0.0_dp
@@ -852,13 +863,12 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
      write(stdout,'(1x,a,f8.3,a,f12.6)') 'Bethe sumrule for q',NORM2(qvec(:)),':',bethe_sumrule(iq)
 
-     do iv=1,nv
-       vv = iv * dv
+     do iv=1,nvel_projectile
+       vv = NORM2(vlist(:,iv))
        do t_ia=1,nmat
          if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
-              stopping_cross_section(iv) = stopping_cross_section(iv) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
-        ! if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
-        !      stopping_exc(iv,t_ia) = stopping_exc(iv,t_ia) + ( 4.0_dp * pi ) / vv**2  * fnq(t_ia)  / NORM2(qvec) * dq
+              stopping_cross_section(iv) = stopping_cross_section(iv) + ( 4.0_dp * pi ) / vv**2  &
+                                             * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
        enddo
 
      enddo
@@ -879,10 +889,9 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
  write(stdout,*) 'Electronic stopping cross section: v, S0 (a.u.)'
  open(newunit=fstopping,file='stopping.dat')
- do iv=1,nv
-   vv = iv * dv
-   write(stdout,'(2(2x,f12.6))') vv,stopping_cross_section(iv)
-   write(fstopping,'(2(2x,es18.8))') vv,stopping_cross_section(iv)
+ do iv=1,nvel_projectile
+   write(stdout,'(1x,a,3(1x,f6.3),a,f12.6)') 'velocity ',vlist(:,iv),' : ',stopping_cross_section(iv)
+   write(fstopping,'(4(2x,es18.8))') vlist(:,iv),stopping_cross_section(iv)
  enddo
  write(stdout,*)
  close(fstopping)
@@ -892,8 +901,8 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  !      chi%transition_table(1,MAXLOC(ABS(xpy_matrix(:,t_ia)),DIM=1)),&
  !      chi%transition_table(2,MAXLOC(ABS(xpy_matrix(:,t_ia)),DIM=1))
  !enddo
- !do iv=1,nv
- !  vv = iv * dv
+ !do iv=1,nvel_projectile
+ !  vv = NORM2(vlist(:,iv))
  !  do t_ia=1,nmat
  !    write(2000+t_ia,'(2(2x,f12.6))') vv,stopping_exc(iv,t_ia)
  !  enddo
@@ -901,9 +910,10 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
  if( print_yaml_ .AND. is_iomaster )  then
    write(unit_yaml,'(4x,a)') 'stopping cross section:'
-   do iv=1,nv
-     vv = iv * dv
-     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a)') '- [',vv,' , ',stopping_cross_section(iv),']'
+   do iv=1,nvel_projectile
+     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a,es16.6,a,es16.6,a)') '- [',vlist(1,iv),' , ', &
+                                                                         vlist(2,iv),' , ',vlist(3,iv),' , ', &
+                                                                         stopping_cross_section(iv),']'
    enddo
  endif
 
@@ -911,6 +921,159 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
 
 
 end subroutine stopping_power
+
+
+!=========================================================================
+subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalue)
+ use m_definitions
+ use m_timing
+ use m_warning
+ use m_memory
+ use m_mpi
+ use m_scalapack
+ use m_cart_to_pure
+ use m_inputparam
+ use m_basis_set
+ use m_dft_grid
+ use m_spectral_function
+ use m_hamiltonian_onebody
+ implicit none
+
+ integer,intent(in)                 :: nstate,m_x,n_x
+ type(basis_set),intent(in)         :: basis
+ real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+ type(spectral_function),intent(in) :: chi
+ real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
+ real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
+!=====
+ real(dp),parameter                 :: QMAX = 10.0_dp ! cutoff on maximum q norm to save time
+ real(dp)                           :: vlist(3,nvel_projectile),vv
+ integer                            :: gt
+ integer                            :: t_ia,t_jb
+ integer                            :: t_ia_global,t_jb_global
+ integer                            :: nmat
+ integer                            :: istate,astate,iaspin
+ integer                            :: mpspin
+ complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:)
+ complex(dp)                        :: gos_tddft
+ real(dp)                           :: fnq
+ real(dp)                           :: qvec(3),qq
+ integer                            :: iv
+ real(dp)                           :: stopping_cross_section(nvel_projectile)
+ !real(dp)                           :: stopping_exc(nvel_projectile,chi%npole_reso)
+ integer                            :: stride
+ integer                            :: nq_batch
+ integer                            :: fstopping
+ integer,parameter                  :: ncostheta=200  ! from 0 to 1
+ integer,parameter                  :: nphi=1         ! from 0 to 2pi
+ integer                            :: iphi,icostheta
+ real(dp)                           :: phi,costheta,dphi,dcostheta
+!=====
+
+
+ call start_clock(timing_stopping)
+
+ write(stdout,'(/,a)') ' Calculate the stopping power for a 3d system'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ if (nspin/=1) then
+   msg='no nspin/=1 allowed'
+   call issue_warning(msg)
+   return
+ endif
+
+ ! Not implemented in parallel
+ if( nprow_sd * npcol_sd > 1 ) call die('stopping_power_3d: not implemented with MPI parallelization')
+
+ !
+ ! Setup the entire velocity list
+ !
+ do iv=1,nvel_projectile
+   vlist(:,iv) = vel_projectile(:) * iv
+ enddo
+
+
+ stopping_cross_section(:) = 0.0_dp
+ do iv=1,nvel_projectile
+   write(stdout,*) 'iv/nvel_projectile',iv,' / ',nvel_projectile
+   vv = NORM2(vlist(:,iv))
+   do icostheta=1,ncostheta
+     costheta  = REAL(icostheta,dp) / REAL(ncostheta,dp)
+     dcostheta = 1.0_dp / REAL(ncostheta,dp)
+     do iphi=1,nphi
+       phi  = 2.0_dp * pi * REAL(iphi-1,dp) / REAL(nphi,dp)
+       dphi = 2.0_dp * pi / REAL(nphi,dp)
+
+       do t_jb=1,chi%npole_reso ! n_x
+         t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
+
+         qq = ABS(eigenvalue(t_jb) / ( vv * costheta ))
+         qvec(1) = qq * SQRT( 1 - costheta**2 ) * COS(phi)
+         qvec(2) = qq * SQRT( 1 - costheta**2 ) * SIN(phi)
+         qvec(3) = qq * costheta
+         if( qq > QMAX ) cycle
+
+         call start_clock(timing_tmp1)
+         call calculate_gos_ao(basis,qvec,gos_ao)
+         call stop_clock(timing_tmp1)
+
+         call start_clock(timing_tmp2)
+         allocate(gos_mo(nstate,nstate,nspin))
+         gos_mo(:,:,:) = 0.0_dp
+         do mpspin=1,nspin
+           gos_mo(:,:,mpspin) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) ,  MATMUL( gos_ao(:,:) , c_matrix(:,:,mpspin) ) )
+         enddo
+         deallocate(gos_ao)
+         call stop_clock(timing_tmp2)
+         ! call xsum_world(gos_mo)
+
+         call start_clock(timing_tmp3)
+         gos_tddft = (0.0_dp,0.0_dp)
+         do t_ia=1,m_x
+           t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
+           istate = chi%transition_table(1,t_ia_global)
+           astate = chi%transition_table(2,t_ia_global)
+           iaspin = chi%transition_table(3,t_ia_global)
+
+           gos_tddft = gos_tddft &
+                          + gos_mo(istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
+         enddo
+         call stop_clock(timing_tmp3)
+         deallocate(gos_mo)
+         fnq = 2.0_dp * ABS( gos_tddft )**2 * eigenvalue(t_jb) / SUM( qvec(:)**2 )
+
+         stopping_cross_section(iv) = stopping_cross_section(iv) + 2.0_dp / vv**2  &
+                                             * fnq  * dphi * dcostheta    / ABS(costheta)
+
+       enddo
+
+     enddo
+   enddo
+ enddo
+
+
+ write(stdout,*) 'Electronic stopping cross section: v, S0 (a.u.)'
+ open(newunit=fstopping,file='stopping3d.dat')
+ do iv=1,nvel_projectile
+   write(stdout,'(1x,a,3(1x,f6.3),a,f12.6)') 'velocity ',vlist(:,iv),' : ',stopping_cross_section(iv)
+   write(fstopping,'(4(2x,es18.8))') vlist(:,iv),stopping_cross_section(iv)
+ enddo
+ write(stdout,*)
+ close(fstopping)
+
+
+ if( print_yaml_ .AND. is_iomaster )  then
+   write(unit_yaml,'(4x,a)') 'stopping cross section 3d:'
+   do iv=1,nvel_projectile
+     write(unit_yaml,'(8x,a,es16.6,a,es16.6,a,es16.6,a,es16.6,a)') '- [',vlist(1,iv),' , ', &
+                                                                         vlist(2,iv),' , ',vlist(3,iv),' , ', &
+                                                                         stopping_cross_section(iv),']'
+   enddo
+ endif
+
+ call stop_clock(timing_stopping)
+
+end subroutine stopping_power_3d
 
 
 !=========================================================================

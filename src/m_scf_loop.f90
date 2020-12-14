@@ -414,7 +414,7 @@ subroutine get_fock_operator(basis,p_matrix,c_matrix,occupation,en, &
  !
  ! Get the exchange operator if not already calculated
  !
- if( ALL( ABS(hamiltonian_exx(:,:,:)) < 1.0e-6_dp ) ) then
+ if( .NOT. calc_type%need_exchange ) then
    call calculate_exchange(basis,p_matrix,hamiltonian_exx,ex=en%exx,occupation=occupation,c_matrix=c_matrix)
  endif
 
