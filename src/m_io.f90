@@ -324,7 +324,6 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
- real(dp)                   :: proj_atom(natom_basis)
  integer                    :: ielement,iemax,iatom_basis
  integer                    :: atom2element(natom_basis)
  character(len=4)           :: char4
@@ -454,7 +453,6 @@ subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mul
  complex(dp)                :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
- real(dp)                   :: proj_atom(natom_basis)
  integer                    :: iatom_basis, nocc
  character(len=4)           :: char4
  character(len=2)           :: char2
@@ -529,7 +527,6 @@ subroutine lowdin_pdos(basis,s_matrix_sqrt,c_matrix,occupation,energy)
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
- real(dp)                   :: proj_atom(natom_basis)
  integer                    :: iatom_basis
  character(len=4)           :: char4
  character(len=2)           :: char2
@@ -618,7 +615,6 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  integer                        :: iatom_ibf(basis%nbf)
  integer                        :: li_ibf(basis%nbf)
  real(dp)                       :: proj_charge(natom_basis)
- real(dp)                       :: proj_atom(natom_basis)
  integer                        :: iatom_basis, nocc
  character(len=20)              :: myfmt
  integer,parameter              :: lmax = 2
@@ -686,9 +682,13 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  enddo
 
  n_column = 2 + natom_basis
- write(myfmt, '("(1x,",I0,"(2x,es18.8))")') n_column
+ write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
  if ( is_iomaster ) then
-   if ( file_lowdin /= stdout ) write(file_lowdin,fmt=myfmt) time_cur, xatom(3,natom), proj_charge
+   if ( file_lowdin /= stdout ) then
+     write( file_lowdin, fmt=myfmt ) time_cur, xatom(3,natom), proj_charge
+   else
+     write( stdout, * ) 'projectile charge = ', proj_charge(natom2)
+   end if
  end if
 
 end subroutine lowdin_pdos_cmplx
