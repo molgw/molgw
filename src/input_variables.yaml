@@ -1126,6 +1126,13 @@ vel_projectile:
   - 1.0
   comment: Projectile initial velocity. Used for real-time tddft and for linear-response stopping power calculations
 
+tolscf_tddft:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0e-06
+  comment: Sets the residual norm target for the density matrix for the SCF cycles.
 
 #============================================================================
 #                   Self-consistency input variables

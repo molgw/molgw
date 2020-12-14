@@ -317,11 +317,15 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
        call clean_allocate('Wavefunctions C for TDDFT',c_matrix_orth_cmplx,basis%nbf,nocc,nspin)
        c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
        c_matrix_orth_cmplx(:,1:nocc,:) = m_eigenvec_small(:,1:nocc,:)
-       !write(stdout, '(a10,5(2x,a10))') 'SCF', ' ', 'TDDFT', ' ', 'occupation'
-       !write(stdout, '(a10,6(2x,a10))') 'spin1', 'spin 2', 'spin1', 'spin2', 'spin1', 'spin2'
-       !do istate = 1, 10
-       !   write(stdout, '(f10.4,6(2x,f10.4))') energy_tddft(istate,:), m_eigenval(istate,:), occupation(istate, :)
-       !end do
+       if( nspin > 1 ) then
+         write(stdout, '(a10,5(2x,a10))') 'SCF', ' ', 'TDDFT', ' ', 'occupation'
+         write(stdout, '(a10,6(2x,a10))') 'spin1', 'spin 2', 'spin1', 'spin2', 'spin1', 'spin2'
+       else
+         write(stdout, '(a10,3(2x,a10))') 'SCF', 'TDDFT', 'occupation'
+       end if
+       do istate = 1, nstate
+         write(stdout, '(f10.4,6(2x,f10.4))') energy_tddft(istate,:), m_eigenval(istate,:), occupation(istate, :)
+       end do
 
        deallocate(m_matrix_small)
        deallocate(m_eigenvec_small)
@@ -344,7 +348,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
        rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
        !print*, 'abs(rms) = ', ABS(rms)
-       if( ABS(rms) < 1.e-6 ) then
+       if( ABS(rms) < tolscf_tddft ) then
          write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
          exit
        else
