@@ -260,6 +260,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      end do
    end if
 
+   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min)
+   call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,stdout,time_min)
+
    ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
 
@@ -508,12 +511,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
-   print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
-   !call dump_out_matrix(.TRUE.,'===  P Real  ===',p_matrix_cmplx(:,:,:)%re)
-   !call dump_out_matrix(.TRUE.,'===  P Imaginary  ===',p_matrix_cmplx(:,:,:)%im)
-   !call dump_out_matrix(.TRUE.,'===  S  ===',s_matrix)
-   !call dump_out_matrix(.TRUE.,'===  H Real  ===',h_cmplx(:,:,:)%re)
-   !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',h_cmplx(:,:,:)%im)
+   write( stdout, * ) 'Trace(PS) : N e- = ', REAL(Nelec) ! AIMAG(Nelec)
    !call dump_out_matrix(.TRUE.,'===  D  ===',d_matrix)
 
    !
