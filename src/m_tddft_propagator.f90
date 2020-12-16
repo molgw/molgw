@@ -248,7 +248,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min,atom_state_occ)
      ! count the number of e- on each atom
      allocate( count_atom_e(natom, nspin), count_atom_e_copy(natom, nspin) )
-     count_atom_e(:, :) = 0
+     count_atom_e(:, :) = 0.0_dp
      do ispin = 1, nspin
        do istate = 1, nstate
          do iatom = 1, natom
