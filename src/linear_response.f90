@@ -985,6 +985,11 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  ! Not implemented in parallel
  if( nprow_sd * npcol_sd > 1 ) call die('stopping_power_3d: not implemented with MPI parallelization')
 
+ ! Only implemented for velocities along z-axis (developers' laziness)
+ if( ANY(ABS(vel_projectile(1:2)) > 1.0e-6_dp ) ) then
+   write(stdout,*) 'Linear response stopping power only implemented for velocities along Cartesian z-axis'
+   call die('stopping_power_3d: rotate the atoms and the velocity')
+ endif
  !
  ! Setup the entire velocity list
  !
