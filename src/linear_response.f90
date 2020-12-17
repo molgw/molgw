@@ -947,7 +947,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
 !=====
  real(dp),parameter                 :: QMAX = 10.0_dp ! cutoff on maximum q norm to save time
- real(dp)                           :: vlist(3,nvel_projectile),vv
+ real(dp)                           :: vlist(3,nvel_projectile),vv,v1(3),v2(3),v3(3)
  integer                            :: gt
  integer                            :: t_ia,t_jb
  integer                            :: t_ia_global,t_jb_global
@@ -965,7 +965,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  integer                            :: nq_batch
  integer                            :: fstopping
  integer,parameter                  :: ncostheta=200  ! from 0 to 1
- integer,parameter                  :: nphi=1         ! from 0 to 2pi
+ integer,parameter                  :: nphi=6         ! from 0 to 2pi
  integer                            :: iphi,icostheta
  real(dp)                           :: phi,costheta,dphi,dcostheta
 !=====
@@ -986,17 +986,30 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  if( nprow_sd * npcol_sd > 1 ) call die('stopping_power_3d: not implemented with MPI parallelization')
 
  ! Only implemented for velocities along z-axis (developers' laziness)
- if( ANY(ABS(vel_projectile(1:2)) > 1.0e-6_dp ) ) then
-   write(stdout,*) 'Linear response stopping power only implemented for velocities along Cartesian z-axis'
-   call die('stopping_power_3d: rotate the atoms and the velocity')
- endif
+ !if( ANY(ABS(vel_projectile(1:2)) > 1.0e-6_dp ) ) then
+ !  write(stdout,*) 'Linear response stopping power only implemented for velocities along Cartesian z-axis'
+ !  call die('stopping_power_3d: rotate the atoms and the velocity')
+ !endif
  !
  ! Setup the entire velocity list
  !
  do iv=1,nvel_projectile
    vlist(:,iv) = vel_projectile(:) * iv
  enddo
-
+ v3(:) = vel_projectile(:) / NORM2(vel_projectile(:))
+ ! if v3 has no component along x, then v1 will be (1 0 0)
+ if( ABS(v3(1)) < 1.0e-6_dp ) then
+   v1(1) = 1.0_dp
+   v1(2) = 0.0_dp
+   v1(3) = 0.0_dp
+ else
+   v1(1) = -v3(2)
+   v1(2) = v3(1)
+   v1(3) = 0.0_dp
+   v1(:) = v1(:) / NORM2(v1(:))
+ endif
+ call cross_product(v1,v3,v2)
+ v2(:) = -v2(:)
 
  stopping_cross_section(:) = 0.0_dp
  do iv=1,nvel_projectile
@@ -1013,9 +1026,12 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
          t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
 
          qq = ABS(eigenvalue(t_jb) / ( vv * costheta ))
-         qvec(1) = qq * SQRT( 1 - costheta**2 ) * COS(phi)
-         qvec(2) = qq * SQRT( 1 - costheta**2 ) * SIN(phi)
-         qvec(3) = qq * costheta
+         !qvec(1) = qq * SQRT( 1 - costheta**2 ) * COS(phi)
+         !qvec(2) = qq * SQRT( 1 - costheta**2 ) * SIN(phi)
+         !qvec(3) = qq * costheta
+         qvec(:) = qq * SQRT( 1 - costheta**2 ) * COS(phi) * v1(:) &
+                 + qq * SQRT( 1 - costheta**2 ) * SIN(phi) * v2(:) &
+                 + qq * costheta * v3(:)
          if( qq > QMAX ) cycle
 
          call start_clock(timing_tmp1)
