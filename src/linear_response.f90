@@ -869,6 +869,8 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
          if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
               stopping_cross_section(iv) = stopping_cross_section(iv) + ( 4.0_dp * pi ) / vv**2  &
                                              * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
+              !stopping_exc(iv,t_ia) = stopping_exc(iv,t_ia) + ( 4.0_dp * pi ) / vv**2  &
+              !                               * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
        enddo
 
      enddo
@@ -965,7 +967,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  integer                            :: nq_batch
  integer                            :: fstopping
  integer,parameter                  :: ncostheta=200  ! from 0 to 1
- integer,parameter                  :: nphi=1         ! from 0 to 2pi
+ integer,parameter                  :: nphi=8         ! from 0 to 2pi
  integer                            :: iphi,icostheta
  real(dp)                           :: phi,costheta,dphi,dcostheta
 !=====
@@ -1044,6 +1046,8 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
 
          stopping_cross_section(iv) = stopping_cross_section(iv) + 2.0_dp / vv**2  &
                                              * fnq  * dphi * dcostheta    / ABS(costheta)
+         !stopping_exc(iv,t_jb) = stopping_exc(iv,t_jb) + 2.0_dp / vv**2  &
+         !                                    * fnq  * dphi * dcostheta    / ABS(costheta)
 
        enddo
 
