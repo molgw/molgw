@@ -23,6 +23,7 @@ mpirun=''
 nprocs=1
 ncores=1
 debug=False
+listing=False
 
 in_timing_section=True
 sections_separator="--- Timings in (s) and # of calls ---"
@@ -169,7 +170,7 @@ def check_output(out,testinfo):
 ###################################
 # Parse the command line
 
-option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--input-parameter','--debug']
+option_list = ['--keep','--np','--nc','--mpirun','--input','--exclude','--input-parameter','--debug','--list']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
@@ -179,6 +180,7 @@ if len(sys.argv) > 1:
     print('  --nc     n         Set the number of OPENMP threads to n')
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input files      Only run these input files')
+    print('  --list             list all the input files')
     print('  --exclude files    Run all input files but these ones')
     print('  --input-parameter  Only run input files that contain this input parameter. Example:')
     print('                     --input-parameter scf = \'LDA\' ')
@@ -229,6 +231,9 @@ if len(sys.argv) > 1:
 
   if '--debug' in sys.argv:
     debug = True
+
+  if '--list' in sys.argv:
+    listing = True
 
   if len(selected_input_files) * len(excluded_input_files) > 0:
     print('--input and --exclude options are mutually exclusive. Select the one you really want.')
@@ -361,6 +366,16 @@ for line in ftestsuite:
     testinfo[ninput-1].append(parsing)
 
 ftestsuite.close()
+
+###################################
+# List all the input files and exit
+###################################
+if listing:
+    print('=== List of input files in the Suite ===')
+    for i,inpfile in enumerate(input_files):
+        print('{:04}: {}'.format(i+1,inpfile))
+    print('========================================')
+    sys.exit(0)
 
 
 ###################################
