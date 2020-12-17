@@ -953,7 +953,6 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  integer                            :: gt
  integer                            :: t_ia,t_jb
  integer                            :: t_ia_global,t_jb_global
- integer                            :: nmat
  integer                            :: istate,astate,iaspin
  integer                            :: mpspin
  complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:)
@@ -962,7 +961,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  real(dp)                           :: qvec(3),qq
  integer                            :: iv
  real(dp)                           :: stopping_cross_section(nvel_projectile)
- !real(dp)                           :: stopping_exc(nvel_projectile,chi%npole_reso)
+ real(dp)                           :: stopping_exc(nvel_projectile,chi%npole_reso)
  integer                            :: stride
  integer                            :: nq_batch
  integer                            :: fstopping
@@ -970,6 +969,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  integer,parameter                  :: nphi=8         ! from 0 to 2pi
  integer                            :: iphi,icostheta
  real(dp)                           :: phi,costheta,dphi,dcostheta
+ logical                            :: print_exc=.FALSE.
 !=====
 
 
@@ -1014,6 +1014,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  v2(:) = -v2(:)
 
  stopping_cross_section(:) = 0.0_dp
+ stopping_exc(:,:) = 0.0_dp
  do iv=1,nvel_projectile
    write(stdout,*) 'iv/nvel_projectile',iv,' / ',nvel_projectile
    vv = NORM2(vlist(:,iv))
@@ -1067,8 +1068,8 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
 
          stopping_cross_section(iv) = stopping_cross_section(iv) + 2.0_dp / vv**2  &
                                              * fnq  * dphi * dcostheta    / ABS(costheta)
-         !stopping_exc(iv,t_jb) = stopping_exc(iv,t_jb) + 2.0_dp / vv**2  &
-         !                                    * fnq  * dphi * dcostheta    / ABS(costheta)
+         stopping_exc(iv,t_jb) = stopping_exc(iv,t_jb) + 2.0_dp / vv**2  &
+                                             * fnq  * dphi * dcostheta    / ABS(costheta)
 
        enddo
 
@@ -1082,6 +1083,12 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  do iv=1,nvel_projectile
    write(stdout,'(1x,a,3(1x,f6.3),a,f12.6)') 'velocity ',vlist(:,iv),' : ',stopping_cross_section(iv)
    write(fstopping,'(4(2x,es18.8))') vlist(:,iv),stopping_cross_section(iv)
+   if( print_exc ) then
+     vv = NORM2(vlist(:,iv))
+     do t_jb=1,chi%npole_reso
+       write(2000+t_jb,'(2(2x,f12.6))') vv,stopping_exc(iv,t_jb)
+     enddo
+   endif
  enddo
  write(stdout,*)
  close(fstopping)
