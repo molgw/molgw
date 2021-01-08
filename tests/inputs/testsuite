@@ -50,6 +50,12 @@ SCF Total Energy          , -128.4891424970    , 0 , 1.0e-7
 gKS HOMO energy           ,  -22.652055        , 0 , 1.0e-4
 gKS LUMO energy           ,   46.078902        , 0 , 1.0e-4
 
+nh3_genuine_ri.in         , PBE ammonia with genuine RI
+SCF Total Energy          ,  -56.4954295025    , 0 , 1.0e-7
+Hartree Energy            ,   38.4244178820    , 0 , 1.0e-7
+gKS HOMO energy           ,   -5.591748        , 0 , 1.0e-4
+gKS LUMO energy           ,    0.022631        , 0 , 1.0e-4
+
 na2_lda.in               , LDA Na2 molecule without RI, noparallel
 SCF Total Energy          , -322.8615203603    , 0 , 1.0e-7
 gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4
@@ -169,7 +175,6 @@ Hartree  HOMO expectation ,  250.895321        , 1 , 1.0e-4
 Exchange HOMO expectation ,  -24.840082        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -24.840082        , 1 , 1.0e-4
 
-
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
 Exc. 0001                 ,   32.27823228      , 0 , 1.0e-4
@@ -229,6 +234,12 @@ Lowest neutral excitation ,      2.531059      , 0 , 1.0e-4
 RPA Total energy          ,   -187.8892338918  , 0 , 1.0e-7
 GW HOMO energy            ,    -11.039136      , 0 , 1.0e-4
 GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
+
+n2_lcwpbe.in              , GW@LC-wPBE with RI
+Total Energy              ,   -109.4784567421  , 0 , 1.0e-7
+RPA Total energy          ,   -109.4737102418  , 0 , 1.0e-7
+GW HOMO energy            ,    -15.895624      , 0 , 1.0e-4
+GW LUMO energy            ,      2.153744      , 0 , 1.0e-4
 
 cdo_ecp_gw.in             , CdO- (ECP) within GW@PBE0 with level shifting
 SCF Total Energy          ,    -242.8403302221 , 0 , 5.0e-4     # Loosened criterium
@@ -776,6 +787,16 @@ Bethe sumrule for q   0.020,      2.000975       , 0 , 1.0e-4
 Bethe sumrule for q   0.500,      2.007298       , 0 , 1.0e-4
 Bethe sumrule for q   5.000,      1.196301       , 0 , 1.0e-4
 Bethe sumrule for q  10.000,      0.082536       , 0 , 1.0e-4
+velocity   0.000  0.000  0.100,   0.000408       , 0 , 1.0e-4
+velocity   0.000  0.000  0.500,   1.065613       , 0 , 1.0e-4
+velocity   0.000  0.000  0.800,   3.804473       , 0 , 1.0e-4
+velocity   0.000  0.000  1.400,   7.319374       , 0 , 1.0e-4
+velocity   0.000  0.000  2.000,   7.299591       , 0 , 1.0e-4
 
-
+ne_ap_stopping.in        , Linear-response stopping cross section for a non-spherical system
+SCF Total Energy           ,   -134.7929508744   , 0 , 1.0e-7
+Exc. 0001                  ,     37.06922165     , 0 , 1.0e-4
+Sum over oscillator strengths,    9.124419       , 0 , 1.0e-4
+velocity   0.000  0.000  0.250,   0.210189       , 0 , 1.0e-4
+velocity   0.000  0.000  0.500,   1.018946       , 0 , 1.0e-4
 

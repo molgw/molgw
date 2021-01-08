@@ -324,7 +324,6 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
- real(dp)                   :: proj_atom(natom_basis)
  integer                    :: ielement,iemax,iatom_basis
  integer                    :: atom2element(natom_basis)
  character(len=4)           :: char4
@@ -445,23 +444,22 @@ subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mul
  real(dp),intent(in)        :: occupation(:,:)
  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
 !=====
- integer                    :: ibf,li,ibf1,ibf2,ishell
- integer                    :: natom1,natom2,istate,ispin
+ integer                    :: ibf,li,ibf1,ibf2,ishell,n_column
+ integer                    :: natom1,natom2,istate,ispin,atom_sampled
  logical                    :: file_exists
  integer                    :: pdosfile
  integer,intent(in)         :: file_mulliken
- complex(dp)                :: proj_state_i(0:basis%ammax),proj_charge
+ complex(dp)                :: proj_state_i(0:basis%ammax)
+ complex(dp)                :: proj_charge(natom_basis)
  complex(dp)                :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
- real(dp)                   :: proj_atom(natom_basis)
  integer                    :: iatom_basis, nocc
- character(len=4)           :: char4
- character(len=2)           :: char2
+ character(len=20)          :: myfmt
  integer,parameter          :: lmax = 2
 !=====
 
- if( .NOT. is_iomaster ) return
+ !if( .NOT. is_iomaster ) return
 
  inquire(file='manual_pdos',exist=file_exists)
  if(file_exists) then
@@ -486,27 +484,38 @@ subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mul
  nocc        = get_number_occupied_states(occupation)
  proj_charge = ( 0.0_dp, 0.0_dp )
 
+ do atom_sampled = natom1,natom2
  do ispin=1,nspin
 
    !! Only loop over occupied states
-   do istate=1,nocc
+   do istate=1, nocc
      proj_state_i(:) = ( 0.0_dp, 0.0_dp )
-     write(char4,'(i4)') istate
 
      cs_vector_i(:) = MATMUL( s_matrix(:,:) , CONJG(c_matrix_cmplx(:,istate,ispin)) )
 
      do ibf=1,basis%nbf
-       if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
+       if( iatom_ibf(ibf) == atom_sampled ) then
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + c_matrix_cmplx(ibf,istate,ispin) * cs_vector_i(ibf)
        endif
      enddo
-     proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
+     proj_charge(atom_sampled) = proj_charge(atom_sampled) &
+                        + occupation(istate,ispin) * SUM(proj_state_i(:))
 
    enddo
+
+ enddo
  enddo
 
- write(file_mulliken,'(1x,3(2x,es18.8))') time_cur, REAL( proj_charge ), AIMAG(proj_charge)
+ n_column = 2 + natom_basis
+ write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
+ if ( is_iomaster ) then
+   if ( file_mulliken /= stdout ) then
+     write( file_mulliken, fmt=myfmt ) time_cur, xatom(3,natom), REAL( proj_charge )
+   else
+     write( stdout, * ) 'Mulliken projectile charge = ', REAL( proj_charge(natom2) )
+   end if
+ end if
 
 
 end subroutine mulliken_pdos_cmplx
@@ -529,7 +538,6 @@ subroutine lowdin_pdos(basis,s_matrix_sqrt,c_matrix,occupation,energy)
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
- real(dp)                   :: proj_atom(natom_basis)
  integer                    :: iatom_basis
  character(len=4)           :: char4
  character(len=2)           :: char2
@@ -618,7 +626,6 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  integer                        :: iatom_ibf(basis%nbf)
  integer                        :: li_ibf(basis%nbf)
  real(dp)                       :: proj_charge(natom_basis)
- real(dp)                       :: proj_atom(natom_basis)
  integer                        :: iatom_basis, nocc
  character(len=20)              :: myfmt
  integer,parameter              :: lmax = 2
@@ -633,8 +640,12 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
    read(pdosfile,*) natom1,natom2
    close(pdosfile)
  else
-   natom1=1
-   natom2=1
+   if( PRESENT( atom_state_occ ) ) then
+     call die("=== FILE ABSENT FOR TDDFT : manual_pdos ===")
+   else
+     natom1=1
+     natom2=1
+   end if
  endif
 
  do ishell=1,basis%nshell
@@ -682,9 +693,13 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  enddo
 
  n_column = 2 + natom_basis
- write(myfmt, '("(1x,",I0,"(2x,es18.8))")') n_column
+ write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
  if ( is_iomaster ) then
-   if ( file_lowdin /= stdout ) write(file_lowdin,fmt=myfmt) time_cur, xatom(3,natom), proj_charge
+   if ( file_lowdin /= stdout ) then
+     write( file_lowdin, fmt=myfmt ) time_cur, xatom(3,natom), proj_charge
+   else
+     write( stdout, * ) 'Lowdin projectile charge = ', proj_charge(natom2)
+   end if
  end if
 
 end subroutine lowdin_pdos_cmplx

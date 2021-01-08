@@ -10,7 +10,9 @@
  basis='aug-cc-pVQZ'
  auxil_basis='aug-cc-pVQZ-RI'
 
- stopping='yes'
+ stopping='spherical'
+ vel_projectile= 0.0 , 0.0 , 0.10 
+ nvel_projectile=20
 
  length_unit='bohr'
  natom=1

@@ -173,8 +173,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  end if
 
  call setup_overlap(basis,s_matrix)
- call setup_D_matrix_analytic(basis,d_matrix)
- call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+ if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   call setup_D_matrix_analytic(basis,d_matrix)
+   call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+ else
+   d_matrix(:,:) = 0.0_dp
+ end if
  ! E_iD = - Tr{P*iD}
  en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
@@ -238,21 +242,26 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
    !deallocate(energy_tddft)
 
-   ! associate each state to an atom
-   allocate( atom_state_occ(nstate, nspin) )
-   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min,atom_state_occ)
-   ! count the number of e- on each atom
-   allocate( count_atom_e(natom, nspin), count_atom_e_copy(natom, nspin) )
-   count_atom_e(:, :) = 0
-   do ispin = 1, nspin
-     do istate = 1, nstate
-       do iatom = 1, natom
-         if ( atom_state_occ(istate, ispin) == iatom ) &
-           count_atom_e(iatom, ispin) = count_atom_e(iatom, ispin) + occupation(istate, ispin)
+   if ( auto_occupation_ ) then
+     ! associate each state to an atom
+     allocate( atom_state_occ(nstate, nspin) )
+     call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min,atom_state_occ)
+     ! count the number of e- on each atom
+     allocate( count_atom_e(natom, nspin), count_atom_e_copy(natom, nspin) )
+     count_atom_e(:, :) = 0.0_dp
+     do ispin = 1, nspin
+       do istate = 1, nstate
+         do iatom = 1, natom
+           if ( atom_state_occ(istate, ispin) == iatom ) &
+             count_atom_e(iatom, ispin) = count_atom_e(iatom, ispin) + occupation(istate, ispin)
+         end do
        end do
+       !write(stdout, *) count_atom_e(:, ispin)
      end do
-     !write(stdout, *) count_atom_e(:, ispin)
-   end do
+   end if
+
+   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min)
+   call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,stdout,time_min)
 
    ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
@@ -285,32 +294,41 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          m_eigenvector(:,:,ispin) = MATMUL( x_matrix(:,:) , m_eigenvec_small(:,:,ispin) )
        end do
 
-       ! assign new states to corresponding atoms
-       call lowdin_pdos_cmplx(basis,s_matrix_sqrt,m_eigenvector,occupation,stdout,time_min,atom_state_occ)
-       ! set new occupations
-       count_atom_e_copy(:,:) = count_atom_e(:,:)
-       occupation(:,:) = 0.0_dp
-       do ispin=1, nspin
-         do istate = 1, nstate
-           iatom = atom_state_occ(istate, ispin)
-           if( iatom > 0 .AND. iatom <= natom ) then
-             occupation(istate, ispin) = MIN( count_atom_e_copy(iatom, ispin), spin_fact )
-             count_atom_e_copy(iatom, ispin) = count_atom_e_copy(iatom, ispin) - occupation(istate, ispin)
-           end if
+       if ( auto_occupation_ ) then
+         ! assign new states to corresponding atoms
+         call lowdin_pdos_cmplx(basis,s_matrix_sqrt,m_eigenvector,occupation,stdout,time_min,atom_state_occ)
+         ! set new occupations
+         count_atom_e_copy(:,:) = count_atom_e(:,:)
+         occupation(:,:) = 0.0_dp
+         do ispin=1, nspin
+           do istate = 1, nstate
+             iatom = atom_state_occ(istate, ispin)
+             if( iatom > 0 .AND. iatom <= natom ) then
+               occupation(istate, ispin) = MIN( count_atom_e_copy(iatom, ispin), spin_fact )
+               count_atom_e_copy(iatom, ispin) = count_atom_e_copy(iatom, ispin) - occupation(istate, ispin)
+             end if
+           end do
          end do
-       end do
-       nocc = get_number_occupied_states(occupation)
-       !write(100+rank_world,*) nocc
+         nocc = get_number_occupied_states(occupation)
+         !write(100+rank_world,*) nocc
+       end if
 
-       ! get new c_matrix_cmplx
+       ! get new c_matrix_cmplx and c_matrix_orth_cmplx
        call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
+       call clean_deallocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx)
        call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
+       call clean_allocate('Wavefunctions C for TDDFT',c_matrix_orth_cmplx,basis%nbf,nocc,nspin)
        c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
-       !write(stdout, '(a10,5(2x,a10))'), 'SCF', ' ', 'TDDFT', ' ', 'occupation'
-       !write(stdout, '(a10,6(2x,a10))'), 'spin1', 'spin 2', 'spin1', 'spin2', 'spin1', 'spin2'
-       !do istate = 1, 10
-       !   write(stdout, '(f10.4,6(2x,f10.4))'), energy_tddft(istate,:), m_eigenval(istate,:), occupation(istate, :)
-       !end do
+       c_matrix_orth_cmplx(:,1:nocc,:) = m_eigenvec_small(:,1:nocc,:)
+       if( nspin > 1 ) then
+         write(stdout, '(a10,5(2x,a10))') 'SCF', ' ', 'TDDFT', ' ', 'occupation'
+         write(stdout, '(a10,6(2x,a10))') 'spin1', 'spin 2', 'spin1', 'spin2', 'spin1', 'spin2'
+       else
+         write(stdout, '(a10,3(2x,a10))') 'SCF', 'TDDFT', 'occupation'
+       end if
+       do istate = 1, nstate
+         write(stdout, '(f10.4,6(2x,f10.4))') energy_tddft(istate,:), m_eigenval(istate,:), occupation(istate, :)
+       end do
 
        deallocate(m_matrix_small)
        deallocate(m_eigenvec_small)
@@ -333,7 +351,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
        rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
        !print*, 'abs(rms) = ', ABS(rms)
-       if( ABS(rms) < 1.e-6 ) then
+       if( ABS(rms) < tolscf_tddft ) then
          write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
          exit
        else
@@ -350,7 +368,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    end if
    deallocate(energy_tddft)
-   deallocate(atom_state_occ, count_atom_e, count_atom_e_copy)
+   if ( auto_occupation_ ) deallocate(atom_state_occ, count_atom_e, count_atom_e_copy)
 
  end if
  en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
@@ -493,12 +511,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
-   print*, 'Trace(PS) : N e- = ', REAL(Nelec), AIMAG(Nelec)
-   !call dump_out_matrix(.TRUE.,'===  P Real  ===',p_matrix_cmplx(:,:,:)%re)
-   !call dump_out_matrix(.TRUE.,'===  P Imaginary  ===',p_matrix_cmplx(:,:,:)%im)
-   !call dump_out_matrix(.TRUE.,'===  S  ===',s_matrix)
-   !call dump_out_matrix(.TRUE.,'===  H Real  ===',h_cmplx(:,:,:)%re)
-   !call dump_out_matrix(.TRUE.,'===  H Imaginary  ===',h_cmplx(:,:,:)%im)
+   write( stdout, * ) 'Trace(PS) : N e- = ', REAL(Nelec) ! AIMAG(Nelec)
    !call dump_out_matrix(.TRUE.,'===  D  ===',d_matrix)
 
    !
@@ -684,10 +697,10 @@ subroutine update_basis_eri(basis,auxil_basis)
  if( has_auxil_basis ) then
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
    call moving_basis_set(auxil_basis)
+   !
    ! Setup new eri 2center / 3center
-   call destroy_eri_3center()
-   call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
-   call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
+   !call destroy_eri_3center()
+   call calculate_eri_ri(basis,auxil_basis,0.0_dp)
  else
    call deallocate_eri_4center()
    call calculate_eri(print_eri_,basis,0.0_dp)

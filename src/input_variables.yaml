@@ -64,6 +64,14 @@ auto_auxil_lmaxinc:
     basis set. The larger the more auxiliary basis functions it will generate. See
     Yang-Rendell-Frisch, JChemPhys 127, 074102 (2007) for more details.
 
+auto_occupation:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Automatically resets occupation during the TDDFT SCF loop 
+
 auxil_basis:
   family: general
   datatype: characters
@@ -775,6 +783,15 @@ nstep_gw:
   comment: Sets the number of GW iterations for eigenvalue self-consistent GW calculations
     (GnWn or GnW0).
 
+nvel_projectile:
+  family: postscf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Number of velocities used in linear-response stopping power.
+           The first velocity is given by vel_projectile. The next ones are multiples of this initial value.
+
 nvirtualg:
   family: post
   datatype: integer
@@ -893,11 +910,12 @@ step_sigma:
 
 stopping:
   family: post
-  datatype: yes/no
+  datatype: characters
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Triggers the calculation of the stopping power within linear-response theory. Only effective when postscf='td' or 'bse'.
+  comment: Triggers the calculation of the stopping power within linear-response theory.
+           Only effective when postscf='td' or 'bse'. Avaialble values are ''no'', ''spherical'', '''3d''.
 
 tda:
   family: post
@@ -1106,8 +1124,15 @@ vel_projectile:
   - 0.0
   - 0.0
   - 1.0
-  comment: Projectile initial velocity.
+  comment: Projectile initial velocity. Used for real-time tddft and for linear-response stopping power calculations
 
+tolscf_tddft:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0e-06
+  comment: Sets the residual norm target for the density matrix for the SCF cycles.
 
 #============================================================================
 #                   Self-consistency input variables
