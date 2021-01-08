@@ -28,6 +28,7 @@ module m_atoms
  real(dp),allocatable,protected :: xatom(:,:)
  real(dp),allocatable,protected :: xbasis(:,:)
  real(dp),allocatable,protected :: vel(:,:)
+ real(dp),allocatable,protected :: velbasis(:,:)
  real(dp),allocatable,public    :: force(:,:)
 
  ! See we keep these arrays in the long-term
@@ -75,10 +76,13 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  allocate(xbasis(3,natom_basis))
 
  allocate(vel(3,natom))
+ allocate(velbasis(3,natom_basis))
  vel(:,:) = 0.0_dp
+ velbasis(:,:) = 0.0_dp
 
  if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" .OR. excit_name == 'ION' .OR. excit_name == 'ANTIION') then
    vel(:,natom) = vel_projectile(:)
+   velbasis(:,natom_basis) = vel_projectile(:)
  endif
  ! For relaxation or dynamics only
  if( calculate_forces ) then
