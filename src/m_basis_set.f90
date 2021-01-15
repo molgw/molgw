@@ -361,6 +361,10 @@ subroutine split_basis_set(basis,basis_t,basis_p)
    if( ANY( basis%shell(ishell)% v0 > 1.0e-4 ) ) then
      ishell_p = ishell_p + 1
      basis_p%shell(ishell_p) = basis%shell(ishell)
+     basis_p%shell(ishell_p)%istart = basis%shell(ishell)%istart - basis_t%nbf
+     basis_p%shell(ishell_p)%iend = basis%shell(ishell)%iend - basis_t%nbf
+     basis_p%shell(ishell_p)%istart_cart = basis%shell(ishell)%istart_cart - basis_t%nbf_cart
+     basis_p%shell(ishell_p)%iend_cart = basis%shell(ishell)%iend_cart - basis_t%nbf_cart
    else
      ishell_t = ishell_t + 1
      basis_t%shell(ishell_t) = basis%shell(ishell)
@@ -404,71 +408,71 @@ subroutine moving_basis_set(new_basis)
  do ishell = 1, new_basis%nshell
    if( new_basis%shell(ishell)%iatom == proj_iatom ) then
 
-      ! Update projectile position
-      new_basis%shell(ishell)%x0(:)   = xproj_basis(:)
+     ! Update projectile position
+     new_basis%shell(ishell)%x0(:)   = xproj_basis(:)
 
-      ! Basis function setup
-      !
-      am             = new_basis%shell(ishell)%am
-      ng             = new_basis%shell(ishell)%ng
-      jbf            = new_basis%shell(ishell)%istart - 1
-      jbf_cart       = new_basis%shell(ishell)%istart_cart - 1
+     ! Basis function setup
+     !
+     am             = new_basis%shell(ishell)%am
+     ng             = new_basis%shell(ishell)%ng
+     jbf            = new_basis%shell(ishell)%istart - 1
+     jbf_cart       = new_basis%shell(ishell)%istart_cart - 1
 
-      allocate(alpha(ng),coeff(ng))
-      alpha(:)       = new_basis%shell(ishell)%alpha(:)
+     allocate(alpha(ng),coeff(ng))
+     alpha(:)       = new_basis%shell(ishell)%alpha(:)
 
-      nx             = am
-      ny             = 0
-      nz             = 0
-      index_in_shell = 0
+     nx             = am
+     ny             = 0
+     nz             = 0
+     index_in_shell = 0
 
-      do
-        ! Update projectile basis functions
-        jbf_cart        = jbf_cart + 1
-        index_in_shell  = index_in_shell + 1
-        coeff(:)        = new_basis%bfc(jbf_cart)%coeff(:)
-        do ig = 1, ng
-          new_basis%bfc(jbf_cart)%g(ig)%x0(:) = xproj_basis(:)
-        enddo
-        call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,velbasis(:,proj_iatom),&
-                         alpha,coeff,ishell,index_in_shell,new_basis%bfc(jbf_cart) )
-        if( new_basis%gaussian_type == 'CART' ) then
-          jbf           = jbf + 1
-          coeff(:)      = new_basis%bff(jbf)%coeff(:)
-          do ig = 1, ng
-            new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
-          enddo
-          call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,&
-               velbasis(:,proj_iatom),alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
-        endif
+     do
+       ! Update projectile basis functions
+       jbf_cart        = jbf_cart + 1
+       index_in_shell  = index_in_shell + 1
+       coeff(:)        = new_basis%bfc(jbf_cart)%coeff(:)
+       do ig = 1, ng
+         new_basis%bfc(jbf_cart)%g(ig)%x0(:) = xproj_basis(:)
+       enddo
+       call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,velbasis(:,proj_iatom),&
+                        alpha,coeff,ishell,index_in_shell,new_basis%bfc(jbf_cart) )
+       if( new_basis%gaussian_type == 'CART' ) then
+         jbf           = jbf + 1
+         coeff(:)      = new_basis%bff(jbf)%coeff(:)
+         do ig = 1, ng
+           new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
+         enddo
+         call init_basis_function( normalized,ng,nx,ny,nz,proj_iatom,xproj_basis,&
+              velbasis(:,proj_iatom),alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+       endif
 
-        ! Break the loop when nz is equal to l
-        if( nz == am ) exit
+       ! Break the loop when nz is equal to l
+       if( nz == am ) exit
 
-        if( nz < am - nx ) then
-          ny = ny - 1
-          nz = nz + 1
-        else
-          nx = nx - 1
-          ny = am - nx
-          nz = 0
-        endif
+       if( nz < am - nx ) then
+         ny = ny - 1
+         nz = nz + 1
+       else
+         nx = nx - 1
+         ny = am - nx
+         nz = 0
+       endif
 
-      enddo
+     enddo
 
-      index_in_shell = 0
-      if( new_basis%gaussian_type == 'PURE' ) then
-        do mm = -am, am
-          jbf = jbf + 1
-          index_in_shell = index_in_shell + 1
-          do ig = 1, ng
-            new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
-          enddo
-          call init_basis_function_pure( normalized,ng,am,mm,proj_iatom,xproj_basis,&
-               velbasis(:,proj_iatom),alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
-        enddo
-      endif
-      deallocate(alpha,coeff)
+     index_in_shell = 0
+     if( new_basis%gaussian_type == 'PURE' ) then
+       do mm = -am, am
+         jbf = jbf + 1
+         index_in_shell = index_in_shell + 1
+         do ig = 1, ng
+           new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
+         enddo
+         call init_basis_function_pure( normalized,ng,am,mm,proj_iatom,xproj_basis,&
+              velbasis(:,proj_iatom),alpha,coeff,ishell,index_in_shell,new_basis%bff(jbf) )
+       enddo
+     endif
+     deallocate(alpha,coeff)
 
    endif
  enddo

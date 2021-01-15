@@ -33,7 +33,7 @@ module m_tddft_propagator
 
  integer,private                    :: nocc, ncycle_max = 30
  real(dp),private                   :: dipole(3)
- real(dp),private                   :: time_read
+ real(dp),private                   :: time_read !defaut=0.0_dp
  real(dp),allocatable,private       :: xatom_start(:,:)
  real(dp),allocatable,private       :: xbasis_start(:,:)
  real(dp),allocatable,private       :: count_atom_e(:,:), count_atom_e_copy(:,:)
@@ -58,6 +58,8 @@ module m_tddft_propagator
  !====
 
  type(energy_contributions),private :: en_tddft
+ type(basis_set),private            :: basis_t,basis_p
+ type(basis_set),private            :: auxil_basis_t,auxil_basis_p
 
 contains
 
@@ -130,6 +132,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    nocc = get_nocc_from_restart()
  else
    nocc = get_number_occupied_states(occupation)
+ end if
+
+ write(stdout,*) 'Splitting basis set into TARGET and PROJECTILE basis sets'
+ call split_basis_set(basis,basis_t,basis_p)
+ if( has_auxil_basis ) then
+   write(stdout,'(/,a)') 'Splitting up the auxiliary basis set'
+   call split_basis_set(auxil_basis,auxil_basis_t,auxil_basis_p)
  end if
 
  call echo_tddft_variables()
@@ -260,8 +269,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      end do
    end if
 
-   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min)
-   call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,stdout,time_min)
+   !call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min)
+   !call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,stdout,time_min)
 
    ! initialize the wavefunctions to be the eigenstates of M = S**-1 * ( H - i*D )
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
@@ -639,6 +648,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_deallocate('Hamiltonian for TDDFT',h_cmplx)
  call clean_deallocate('h_small_cmplx for TDDFT',h_small_cmplx)
 
+ call destroy_basis_set(basis_t)
+ call destroy_basis_set(basis_p)
+ if( has_auxil_basis ) then
+   call destroy_basis_set(auxil_basis_t)
+   call destroy_basis_set(auxil_basis_p)
+ end if
+
  write(stdout,'(/,x,a)') "End of RT-TDDFT simulation"
  write(stdout,'(1x,a,/)') '=================================================='
  call stop_clock(timing_tddft_loop)
@@ -934,6 +950,7 @@ case('MB_PC2B')
           + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
+     call moving_basis_set(basis_p)
      ! Update S matrix
      call setup_overlap(basis,s_matrix)
      ! Analytic evaluation of D(t+dt/2)
@@ -972,6 +989,7 @@ case('MB_PC2B')
      call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read))
      ! Update all basis and eri
      call update_basis_eri(basis,auxil_basis)
+     call moving_basis_set(basis_p)
      ! Update S matrix
      call setup_overlap(basis,s_matrix)
      ! Update DFT grids for H_xc evaluation
@@ -2358,8 +2376,11 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  ! Projectile excitation with moving basis
  case(EXCIT_PROJECTILE_W_BASIS)
 
-   call setup_kinetic(basis,hamiltonian_kinetic)
-   call nucleus_nucleus_energy(en_tddft%nuc_nuc)
+   if ( itau > 0 ) then
+     !call setup_kinetic(basis,hamiltonian_kinetic)
+     call recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
+     call nucleus_nucleus_energy(en_tddft%nuc_nuc)
+   end if
 
    ! Nucleus-electron interaction due to the fixed target
    do iatom=1,natom-nprojectile
