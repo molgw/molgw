@@ -397,7 +397,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
  enddo
 
  title='===  Kinetic energy contribution ==='
- call dump_out_matrix(.TRUE.,title,hamiltonian_kinetic)
+ call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic)
 
  call stop_clock(timing_hamiltonian_kin)
 
@@ -493,7 +493,7 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
  enddo
 
  title='===  Kinetic energy contribution (Recalc) ==='
- call dump_out_matrix(.TRUE.,title,hamiltonian_kinetic)
+ call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic)
 
  call stop_clock(timing_hamiltonian_kin)
 
