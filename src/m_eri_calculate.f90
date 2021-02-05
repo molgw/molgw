@@ -1217,6 +1217,11 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
    call DESCINIT(desc_3tmp,npair,auxil_basis%nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
 
+   !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
+   !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
+   !$OMP&                 coeff3,coeff4,x03,x04, &
+   !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
+   !$OMP DO REDUCTION(+:libint_calls)
    do klshellpair=1,nshellpair
      kshell = index_shellpair(1,klshellpair)
      lshell = index_shellpair(2,klshellpair)
@@ -1254,16 +1259,13 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
      x03(:) = basis%shell(kshell)%x0(:)
      x04(:) = basis%shell(lshell)%x0(:)
 
-     !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
-     !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
-     !$OMP DO REDUCTION(+:libint_calls)
      do ishell=1,auxil_basis%nshell
 
        ami = auxil_basis%shell(ishell)%am
        ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
 
        ! Check if this shell is actually needed for the local matrix
-       do_shell = .TRUE.
+       do_shell = .FALSE.
        do ibf=1,ni
          iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
          do_shell = do_shell .OR. ( ipcol_3center == INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) )
@@ -1323,16 +1325,13 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        deallocate(alpha1,coeff1)
 
      enddo ! ishell
-     !$OMP END DO
-     !$OMP END PARALLEL
 
      deallocate(alpha3,alpha4)
      deallocate(coeff3,coeff4)
 
    enddo ! klshellpair
-
-
-
+   !$OMP END DO
+   !$OMP END PARALLEL
 
 
 
