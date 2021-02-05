@@ -472,7 +472,7 @@ end subroutine calculate_density_auxilbasis
 subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
  implicit none
  class(*),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: rho_coeff(:,:)
+ real(dp),intent(in)  :: rho_coeff(:,:)
  real(dp),intent(out) :: hartree_ao(:,:)
  real(dp),intent(out) :: ehartree
  !=====
