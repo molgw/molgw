@@ -405,6 +405,102 @@ end subroutine setup_kinetic
 
 
 !=========================================================================
+
+subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
+ implicit none
+ type(basis_set),intent(in) :: basis_t,basis_p
+ real(dp),intent(inout)     :: hamiltonian_kinetic(:,:)
+!=====
+ integer              :: ishell,jshell
+ integer              :: ibf1,ibf2,jbf1,jbf2
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ character(len=100)   :: title
+ real(dp),allocatable :: matrix_tp(:,:)
+
+ real(C_DOUBLE),allocatable :: array_cart(:)
+ integer(C_INT)             :: amA,contrdepthA
+ real(C_DOUBLE)             :: A(3)
+ real(C_DOUBLE),allocatable :: alphaA(:)
+ real(C_DOUBLE),allocatable :: cA(:)
+ integer(C_INT)             :: amB,contrdepthB
+ real(C_DOUBLE)             :: B(3)
+ real(C_DOUBLE),allocatable :: alphaB(:)
+ real(C_DOUBLE),allocatable :: cB(:)
+!=====
+ integer :: i_cart,j_cart,ij
+ integer :: ibf_cart,jbf_cart
+!=====
+
+ call start_clock(timing_hamiltonian_kin)
+#if defined(HAVE_LIBINT_ONEBODY)
+ write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBINT)'
+#else
+ write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (internal)'
+#endif
+
+
+ do jshell=1,basis_p%nshell
+   lj      = basis_p%shell(jshell)%am
+   nj_cart = number_basis_function_am('CART',lj)
+   nj      = number_basis_function_am(basis_p%gaussian_type,lj)
+   jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf_cart
+   jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf_cart
+
+   call set_libint_shell(basis_p%shell(jshell),amB,contrdepthB,B,alphaB,cB)
+
+   do ishell=jshell,basis_t%nshell
+     li      = basis_t%shell(ishell)%am
+     ni_cart = number_basis_function_am('CART',li)
+     ni      = number_basis_function_am(basis_t%gaussian_type,li)
+     ibf1    = basis_t%shell(ishell)%istart
+     ibf2    = basis_t%shell(ishell)%iend
+
+     call set_libint_shell(basis_t%shell(ishell),amA,contrdepthA,A,alphaA,cA)
+
+
+     allocate(array_cart(ni_cart*nj_cart))
+
+
+#if defined(HAVE_LIBINT_ONEBODY)
+     call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
+                         amB,contrdepthB,B,alphaB,cB, &
+                         array_cart)
+     call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix_tp)
+#else
+     ij = 0
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         ij = ij + 1
+         ibf_cart = basis_t%shell(ishell)%istart_cart + i_cart - 1
+         jbf_cart = basis_p%shell(jshell)%istart_cart + j_cart - 1 + basis_t%nbf_cart
+         call kinetic_basis_function(basis_t%bfc(ibf_cart),basis_p%bfc(jbf_cart),array_cart(ij))
+       enddo
+     enddo
+     call transform_molgw_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix_tp)
+#endif
+     deallocate(alphaA,cA)
+
+
+
+     hamiltonian_kinetic(ibf1:ibf2,jbf1:jbf2) = matrix_tp(:,:)
+     hamiltonian_kinetic(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix_tp(:,:))
+
+
+     deallocate(array_cart,matrix_tp)
+
+   enddo
+   deallocate(alphaB,cB)
+ enddo
+
+ title='===  Kinetic energy contribution (Recalc) ==='
+ call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic)
+
+ call stop_clock(timing_hamiltonian_kin)
+
+end subroutine recalc_kinetic
+
+
+!=========================================================================
 subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
  implicit none
  type(basis_set),intent(in) :: basis

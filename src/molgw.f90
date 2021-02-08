@@ -59,8 +59,8 @@ program molgw
   implicit none
 
  !=====
-  type(basis_set)            :: basis,basis_t,basis_p
-  type(basis_set)            :: auxil_basis,auxil_basis_t,auxil_basis_p
+  type(basis_set)            :: basis
+  type(basis_set)            :: auxil_basis
   type(spectral_function)    :: wpol
   type(lbfgs_state)          :: lbfgs_plan
   type(energy_contributions) :: en_gks,en_mbpt
@@ -146,9 +146,6 @@ program molgw
     write(stdout,*) 'Setting up the basis set for wavefunctions'
     call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
 
-    write(stdout,*) 'Splitting basis set into TARGET and PROJECTILE basis sets'
-    call split_basis_set(basis,basis_t,basis_p)
-
     !
     ! SCALAPACK distribution that depends on the system specific size, parameters etc.
     call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol)
@@ -197,10 +194,8 @@ program molgw
       write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
       if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
         call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
-        call split_basis_set(auxil_basis,auxil_basis_t,auxil_basis_p)
       else
         call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
-        call split_basis_set(auxil_basis,auxil_basis_t,auxil_basis_p)
       endif
     endif
 
