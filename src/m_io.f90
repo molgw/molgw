@@ -99,7 +99,7 @@ subroutine header()
 
 !=====
 #if defined(_OPENMP)
- integer,external  :: OMP_get_max_threads
+ integer,external  :: OMP_get_max_threads,OMP_get_num_procs
 #endif
  character(len=40)   :: git_sha
  integer             :: values(8)
@@ -172,6 +172,7 @@ subroutine header()
 
  ! Parallelization details
 #if defined(_OPENMP)
+ write(stdout,'(1x,a,i4)') 'Number of available cores detected by OPENMP:                         ',OMP_get_num_procs()
  write(stdout,'(1x,a,i4)') 'Running with OPENMP parallelization activated with max threads count: ',OMP_get_max_threads()
 #endif
 #if defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
