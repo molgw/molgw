@@ -1518,77 +1518,79 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
      call clean_allocate('TMP 3-center integrals',eri_3center_tmp,mlocal,nlocal)
 
+     !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
+     !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
+     !$OMP&                 coeff3,coeff4,x03,x04, &
+     !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
+     !$OMP DO REDUCTION(+:libint_calls)
+     do ishell=1,auxil_basis%nshell
 
-     do klshellpair=1,nshellpair
-       kshell = index_shellpair(1,klshellpair)
-       lshell = index_shellpair(2,klshellpair)
-
-       amk = basis%shell(kshell)%am
-       aml = basis%shell(lshell)%am
-       nk = number_basis_function_am( basis%gaussian_type , amk )
-       nl = number_basis_function_am( basis%gaussian_type , aml )
-
+       ami = auxil_basis%shell(ishell)%am
+       ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
 
        ! Check if this shell is actually needed for the local matrix
        do_shell = .FALSE.
-       do lbf=1,nl
-         do kbf=1,nk
-           klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
-
-           ! Check if not present in the batch then skip it
-           if( klpair_global < ipair_first .OR. klpair_global > ipair_last ) cycle
-
-           ! Shift origin due to batches
-           klpair_global = klpair_global - ipair_first + 1
-           do_shell = do_shell .OR. ( iprow_3center == INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) )
-         enddo
+       do ibf=1,ni
+         iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
+         do_shell = do_shell .OR. ( ipcol_3center == INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) )
        enddo
 
        if( .NOT. do_shell ) cycle
 
-       am3 = amk
-       am4 = aml
-       n3c = number_basis_function_am( 'CART' , amk )
-       n4c = number_basis_function_am( 'CART' , aml )
-       ng3 = basis%shell(kshell)%ng
-       ng4 = basis%shell(lshell)%ng
-       allocate(alpha3(ng3),alpha4(ng4))
-       allocate(coeff3(ng3),coeff4(ng4))
-       alpha3(:) = basis%shell(kshell)%alpha(:)
-       alpha4(:) = basis%shell(lshell)%alpha(:)
-       coeff3(:) = basis%shell(kshell)%coeff(:)
-       coeff4(:) = basis%shell(lshell)%coeff(:)
-       x03(:) = basis%shell(kshell)%x0(:)
-       x04(:) = basis%shell(lshell)%x0(:)
+       am1 = ami
+       n1c = number_basis_function_am( 'CART' , ami )
+       ng1 = auxil_basis%shell(ishell)%ng
+       allocate(alpha1(ng1))
+       allocate(coeff1(ng1))
+       alpha1(:) = auxil_basis%shell(ishell)%alpha(:)
+       coeff1(:) = auxil_basis%shell(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
+       x01(:) = auxil_basis%shell(ishell)%x0(:)
 
-       !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
-       !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
-       !$OMP DO REDUCTION(+:libint_calls)
-       do ishell=1,auxil_basis%nshell
+       do klshellpair=1,nshellpair
+         kshell = index_shellpair(1,klshellpair)
+         lshell = index_shellpair(2,klshellpair)
 
-         ami = auxil_basis%shell(ishell)%am
-         ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
+         amk = basis%shell(kshell)%am
+         aml = basis%shell(lshell)%am
+         nk = number_basis_function_am( basis%gaussian_type , amk )
+         nl = number_basis_function_am( basis%gaussian_type , aml )
+
 
          ! Check if this shell is actually needed for the local matrix
          do_shell = .FALSE.
-         do ibf=1,ni
-           iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
-           do_shell = do_shell .OR. ( ipcol_3center == INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) )
+         do lbf=1,nl
+           do kbf=1,nk
+             klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
+
+             ! Check if not present in the batch then skip it
+             if( klpair_global < ipair_first .OR. klpair_global > ipair_last ) cycle
+
+             ! Shift origin due to batches
+             klpair_global = klpair_global - ipair_first + 1
+             do_shell = do_shell .OR. ( iprow_3center == INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) )
+           enddo
          enddo
 
          if( .NOT. do_shell ) cycle
 
+         am3 = amk
+         am4 = aml
+         n3c = number_basis_function_am( 'CART' , amk )
+         n4c = number_basis_function_am( 'CART' , aml )
+         ng3 = basis%shell(kshell)%ng
+         ng4 = basis%shell(lshell)%ng
+         allocate(alpha3(ng3),alpha4(ng4))
+         allocate(coeff3(ng3),coeff4(ng4))
+         alpha3(:) = basis%shell(kshell)%alpha(:)
+         alpha4(:) = basis%shell(lshell)%alpha(:)
+         coeff3(:) = basis%shell(kshell)%coeff(:)
+         coeff4(:) = basis%shell(lshell)%coeff(:)
+         x03(:) = basis%shell(kshell)%x0(:)
+         x04(:) = basis%shell(lshell)%x0(:)
+
+
+
          libint_calls = libint_calls + 1
-
-         am1 = ami
-         n1c = number_basis_function_am( 'CART' , ami )
-         ng1 = auxil_basis%shell(ishell)%ng
-         allocate(alpha1(ng1))
-         allocate(coeff1(ng1))
-         alpha1(:) = auxil_basis%shell(ishell)%alpha(:)
-         coeff1(:) = auxil_basis%shell(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
-         x01(:) = auxil_basis%shell(ishell)%x0(:)
-
 
          allocate(int_shell(n1c*n3c*n4c))
 
@@ -1625,16 +1627,17 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
          deallocate(integrals)
          deallocate(int_shell)
-         deallocate(alpha1,coeff1)
 
-       enddo ! ishell
-       !$OMP END DO
-       !$OMP END PARALLEL
 
-       deallocate(alpha3,alpha4)
-       deallocate(coeff3,coeff4)
+         deallocate(alpha3,alpha4)
+         deallocate(coeff3,coeff4)
 
-     enddo ! klshellpair
+       enddo ! klshellpair
+       deallocate(alpha1,coeff1)
+
+     enddo ! ishell
+     !$OMP END DO
+     !$OMP END PARALLEL
 
    endif
 
