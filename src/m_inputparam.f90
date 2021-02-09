@@ -576,7 +576,6 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a25,2x,a)') '         SCF type: ',calc_type%scf_name
  write(stdout,'(a25,2x,a)') '    Post SCF type: ',calc_type%postscf_name
  write(stdout,'(a25,i3)')   ' natom: ',natom
- write(stdout,'(a25,i3)')   ' nghost: ',nghost
  write(stdout,'(a25,f8.4)') ' electrons: ',electrons
  write(stdout,'(a25,f8.4)') ' charge: ',charge
  write(stdout,'(a25,i3)')   ' spin polarization: ',nspin
@@ -585,8 +584,6 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a25,2x,a)') ' basis set: ',basis_name(1)
  write(stdout,'(a25,2x,a)') ' auxiliary basis set: ',auxil_basis_name(1)
  write(stdout,'(a25,2x,a)') ' gaussian type: ',gaussian_type
- write(stdout,'(a25,2x,a)') ' Grid quality: ',grid_quality
- write(stdout,'(a25,2x,a)') ' Integral quality: ',integral_quality
  write(stdout,*)
 
  call output_positions()
