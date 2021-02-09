@@ -316,18 +316,12 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
 
  select type(p_matrix)
  type is(real(dp))
-   !$OMP PARALLEL PRIVATE(kbf,lbf)
-   !$OMP DO
    do ipair=1,npair
      kbf = index_basis(1,ipair)
      lbf = index_basis(2,ipair)
      pmat(ipair) = SUM(p_matrix(kbf,lbf,:)) * 2.0_dp
    enddo
-   !$OMP END DO
-   !$OMP END PARALLEL
  type is(complex(dp))
-   !$OMP PARALLEL PRIVATE(kbf,lbf)
-   !$OMP DO
    do ipair=1,npair
      kbf = index_basis(1,ipair)
      lbf = index_basis(2,ipair)
@@ -335,14 +329,13 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
      ! only the real part survives
      pmat(ipair) = SUM(p_matrix(kbf,lbf,:)%re) * 2.0_dp
    enddo
-   !$OMP END DO
-   !$OMP END PARALLEL
  end select
 
  ! X_P = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | P )
  call DGEMV('T',npair,nauxil_3center,1.0d0,eri_3center,npair,pmat,1,0.0d0,x_vector,1)
  ! v_H_{alpha beta} = \sum_P ( alpha beta | P ) * X_P
  call DGEMV('N',npair,nauxil_3center,1.0d0,eri_3center,npair,x_vector,1,0.0d0,pmat,1)
+
  !$OMP PARALLEL PRIVATE(kbf,lbf)
  !$OMP DO
  do ipair=1,npair
@@ -427,18 +420,12 @@ subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
 
    select type(p_matrix)
    type is(real(dp))
-     !$OMP PARALLEL PRIVATE(kbf,lbf)
-     !$OMP DO
      do ipair=1,npair
        kbf = index_basis(1,ipair)
        lbf = index_basis(2,ipair)
        pmat(ipair) = p_matrix(kbf,lbf,ispin) * 2.0_dp
      enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
    type is(complex(dp))
-     !$OMP PARALLEL PRIVATE(kbf,lbf)
-     !$OMP DO
      do ipair=1,npair
        kbf = index_basis(1,ipair)
        lbf = index_basis(2,ipair)
@@ -446,8 +433,6 @@ subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
        ! only the real part survives
        pmat(ipair) = p_matrix(kbf,lbf,ispin)%re * 2.0_dp
      enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
    end select
 
    ! X_J = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | J )
@@ -472,7 +457,7 @@ end subroutine calculate_density_auxilbasis
 subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
  implicit none
  class(*),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: rho_coeff(:,:)
+ real(dp),intent(in)  :: rho_coeff(:,:)
  real(dp),intent(out) :: hartree_ao(:,:)
  real(dp),intent(out) :: ehartree
  !=====
