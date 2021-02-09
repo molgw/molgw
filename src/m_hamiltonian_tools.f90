@@ -361,26 +361,27 @@ subroutine dump_out_occupation(title,occupation)
 !=====
  integer :: ihomo
  integer :: istate,nstate
+ integer,parameter :: noutput=5
 !=====
 
  nstate = SIZE(occupation,DIM=1)
+
+ ! approximate index of the HOMO (just for output)
+ ihomo = NINT( SUM(occupation(:,:)) / 2.0_dp )
 
  write(stdout,'(/,1x,a)') TRIM(title)
 
  if( nspin == 2 ) then
    write(stdout,'(a)') '           spin 1       spin 2 '
  endif
- do istate=1,nstate
-   if( ANY(occupation(istate,:) > 0.001_dp) ) ihomo = istate
- enddo
 
  select case(nspin)
  case(1)
-   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
+   do istate=MAX(1,ihomo-noutput),MIN(ihomo+noutput,nstate)
      write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1)
    enddo
  case(2)
-   do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
+   do istate=MAX(1,ihomo-noutput),MIN(ihomo+noutput,nstate)
      write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,1),occupation(istate,2)
    enddo
  end select
