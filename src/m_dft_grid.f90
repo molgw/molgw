@@ -76,7 +76,10 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  real(dp),allocatable :: w_grid_tmp(:)
 !=====
 
+ call start_clock(timing_grid_init)
  call start_clock(timing_grid_generation)
+
+
  ngrid_stored = 0
  select case(grid_level_in)
  case(low)       ! accuracy not guaranted, just for quick test runs
@@ -278,7 +281,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          !
          ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
          !
-         s_becke(:,:) = 0.0_dp
+         s_becke(:,:) = 1.0_dp
          !$OMP PARALLEL PRIVATE(mu)
          !$OMP DO
          do katom=1,natom_basis
@@ -292,15 +295,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          !$OMP END DO
          !$OMP END PARALLEL
 
-         p_becke(:) = 1.0_dp
-         !$OMP PARALLEL DO
-         do katom=1,natom_basis
-           do jatom=1,natom_basis
-             if(katom==jatom) cycle
-             p_becke(katom) = p_becke(katom) * s_becke(jatom,katom)
-           enddo
-         enddo
-         !$OMP END PARALLEL DO
+         p_becke(:) = PRODUCT(s_becke(:,:),DIM=1)
          fact_becke = p_becke(iatom) / SUM( p_becke(:) )
 
        case('ssf')
@@ -310,12 +305,12 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
          !
          ! First screen the "obvious" values
-         if( NORM2(rr_grid_tmp(:,ir)-xbasis(:,iatom)) < 0.5_dp * ( 1.0_dp - aa ) * ri * 0.001 ) then
+         if( NORM2(rr_grid_tmp(:,ir)-xbasis(:,iatom)) < 0.5_dp * ( 1.0_dp - aa ) * ri ) then
            fact_becke = 1.0_dp
 
          else
 
-           s_becke(:,:) = 0.0_dp
+           s_becke(:,:) = 1.0_dp
            !$OMP PARALLEL PRIVATE(mu,mu_aa,rtmp)
            !$OMP DO
            do katom=1,natom_basis
@@ -325,11 +320,9 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
                          / NORM2(xbasis(:,katom)-xbasis(:,jatom))
 
                if( mu < -aa ) then
-                 s_becke(jatom,katom) = 1.0_dp
                  s_becke(katom,jatom) = 0.0_dp
                else if( mu > aa ) then
                  s_becke(jatom,katom) = 0.0_dp
-                 s_becke(katom,jatom) = 1.0_dp
                else
                  mu_aa = mu / aa
                  rtmp = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
@@ -343,15 +336,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
            !$OMP END DO
            !$OMP END PARALLEL
 
-           p_becke(:) = 1.0_dp
-           !$OMP PARALLEL DO
-           do katom=1,natom_basis
-             do jatom=1,natom_basis
-               if(katom==jatom) cycle
-               p_becke(katom) = p_becke(katom) * s_becke(jatom,katom)
-             enddo
-           enddo
-           !$OMP END PARALLEL DO
+           p_becke(:) = PRODUCT(s_becke(:,:),DIM=1)
            fact_becke = p_becke(iatom) / SUM( p_becke(:) )
          endif
 
@@ -403,15 +388,16 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
  deallocate(rr_grid_tmp,w_grid_tmp)
 
+ call stop_clock(timing_grid_generation)
+
 
  !
  ! Once the grid is set up,
  ! precalculate the wavefunctions and their gradient on a part of the grid
  !
-
- call start_clock(timing_tmp1)
-
  if( precalculate_wfn ) then
+
+   call start_clock(timing_grid_wfn)
    !
    ! grid_memory is given in Megabytes
    ! If gradient is needed, the storage is 4 times larger
@@ -429,14 +415,14 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    if( needs_gradient ) then
      call prepare_basis_functions_gradr(basis,batch_size)
    endif
+   call stop_clock(timing_grid_wfn)
 
  else
    ngrid_stored = 0
  endif
 
- call stop_clock(timing_tmp1)
 
- call stop_clock(timing_grid_generation)
+ call stop_clock(timing_grid_init)
 
 
 end subroutine init_dft_grid

@@ -48,7 +48,7 @@ module m_timing
  integer,parameter :: timing_eri_screening       = 29
  integer,parameter :: timing_hamiltonian_ecp     = 30
  integer,parameter :: timing_sca_distr1          = 31
- integer,parameter :: timing_grid_generation     = 32
+ integer,parameter :: timing_grid_init           = 32
  integer,parameter :: timing_diis                = 33
  integer,parameter :: timing_approx_ham          = 34
  integer,parameter :: timing_sca_distr2          = 35
@@ -82,6 +82,8 @@ module m_timing
  integer,parameter :: timing_eri_2center_ints    = 63
  integer,parameter :: timing_eri_2center_invert  = 64
  integer,parameter :: timing_eri_2center_inverse_sqrt = 65
+ integer,parameter :: timing_grid_generation     = 66
+ integer,parameter :: timing_grid_wfn            = 67
 
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -240,7 +242,9 @@ subroutine output_timing()
  write(stdout,'(/,a,/)') '                 -------------------------------------'
  write(stdout,'(a,/)')   '                                 SCF'
 
- call output_timing_line('DFT Grid generation',timing_grid_generation,1)
+ call output_timing_line('DFT Grid initialization',timing_grid_init,1)
+ call output_timing_line('Grid generation',timing_grid_generation,2)
+ call output_timing_line('Wavefunction evaluation',timing_grid_wfn,2)
  call output_timing_line('Density matrix',timing_density_matrix,1)
  call output_timing_line('Hartree potential',timing_hartree,1)
  call output_timing_line('Exchange operator',timing_exchange,1)
