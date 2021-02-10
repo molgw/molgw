@@ -762,6 +762,64 @@ end subroutine setup_D_matrix_analytic
 
 
 !=========================================================================
+
+subroutine mb_related_updates(basis,                &
+                              auxil_basis,need_eri, &
+                              time_cur,dt_factor,   &
+                              s_matrix,              &
+                              d_matrix,need_d,      &
+                              need_grid)
+
+ implicit none
+ type(basis_set),intent(inout)      :: basis
+ type(basis_set),intent(inout)      :: auxil_basis
+ real(dp),intent(inout)             :: s_matrix(:,:)
+ real(dp),intent(inout)             :: d_matrix(:,:)
+ real(dp),intent(in)                :: time_cur
+ real(dp),intent(in)                :: dt_factor
+ logical,intent(in)                 :: need_eri,need_d,need_grid
+
+!=====
+
+ call start_clock(timing_update_p_position)
+ ! Update projectile position and its basis center to t+dt/2
+ call change_position_one_atom(natom,xatom_start(:,natom) &
+      + vel(:,natom) * (time_cur - time_read - time_step*dt_factor))
+ call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) &
+      + vel(:,natom) * (time_cur - time_read - time_step*dt_factor))
+ call stop_clock(timing_update_p_position)
+
+ call start_clock(timing_update_basis_eri)
+ if( need_eri ) then
+   ! Update all basis and eri
+   call update_basis_eri(basis,auxil_basis)
+ else
+   ! Update basis only since eri not needed here
+   call moving_basis_set(basis)
+ endif
+ call stop_clock(timing_update_basis_eri)
+
+ call start_clock(timing_update_overlaps)
+ ! Update S matrix
+ call setup_overlap(basis,s_matrix)
+
+ ! Analytic evaluation of D(t+dt/2)
+ if( need_d ) call setup_D_matrix_analytic(basis,d_matrix)
+ call stop_clock(timing_update_overlaps)
+
+ call start_clock(timing_update_dft_grid)
+ ! Update DFT grids for H_xc evaluation
+ if( need_grid ) then
+   if( calc_type%is_dft ) then
+     call destroy_dft_grid()
+     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+   endif
+ endif
+ call stop_clock(timing_update_dft_grid)
+
+end subroutine mb_related_updates
+
+!=========================================================================
 subroutine predictor_corrector(basis,                  &
                                auxil_basis,            &
                                c_matrix_cmplx,         &
@@ -779,8 +837,8 @@ subroutine predictor_corrector(basis,                  &
                                dipole_ao)
 
  implicit none
- type(basis_set),intent(inout)         :: basis
- type(basis_set),intent(inout)         :: auxil_basis
+ type(basis_set),intent(inout)      :: basis
+ type(basis_set),intent(inout)      :: auxil_basis
  complex(dp),intent(inout)          :: c_matrix_cmplx(:,:,:)
  complex(dp),intent(inout)          :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),intent(inout)          :: h_cmplx(:,:,:)
@@ -807,27 +865,12 @@ subroutine predictor_corrector(basis,                  &
  case('MB_PC0')
 
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Analytic evaluation of D(t) ( well conserves C**H*S*C = I )
-     call setup_D_matrix_analytic(basis,d_matrix)
-     ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
-     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
-
-     ! Update projectile position and its basis center to time_cur = t + dt
-     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * ( time_cur - time_read ))
-     ! Update all basis and eri to time_cur
-     call update_basis_eri(basis,auxil_basis)
-     ! Update S matrix and dft grids to time_cur
-     call setup_overlap(basis,s_matrix)
-     if( calc_type%is_dft ) then
-       call destroy_dft_grid()
-       call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
-     endif
-
-   else
-     ! Directly propagate C(t) -> C(t+dt) without updating any terms
-     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+     call mb_related_updates(basis,auxil_basis,.TRUE.,&
+            time_cur,0.0_dp,s_matrix,d_matrix,.TRUE.,.TRUE.)
    endif
+
+   ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
+   call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
    ! Evaluate H(t+dt) using C(t+dt)
    call setup_hamiltonian_cmplx(basis,                  &
@@ -852,15 +895,8 @@ subroutine predictor_corrector(basis,                  &
 
    !--2--PREDICTOR----| C(t)---U[M(t+dt/4)]--->C(t+dt/2)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Update projectile position and its basis center to t+dt/4
-     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
-     ! Update all basis and eri
-     call update_basis_eri(basis,auxil_basis)
-     ! Update S matrix
-     call setup_overlap(basis,s_matrix)
-     ! Analytic evaluation of D(t+dt/4)
-     call setup_D_matrix_analytic(basis,d_matrix)
+     call mb_related_updates(basis,auxil_basis,.FALSE.,&
+            time_cur,3.0_dp/4.0_dp,s_matrix,d_matrix,.TRUE.,.FALSE.)
    endif
 
    ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
@@ -868,20 +904,8 @@ subroutine predictor_corrector(basis,                  &
 
    !--3--CORRECTOR----| C(t+dt/2)-->H(t+dt/2)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Update projectile position and its basis center to t+dt/2
-     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
-     ! Update all basis and eri
-     call update_basis_eri(basis,auxil_basis)
-     ! Update S matrix
-     call setup_overlap(basis,s_matrix)
-     ! Analytic evaluation of D(t+dt/2)
-     call setup_D_matrix_analytic(basis,d_matrix)
-     ! Update DFT grids for H_xc evaluation
-     if( calc_type%is_dft ) then
-       call destroy_dft_grid()
-       call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
-     endif
+     call mb_related_updates(basis,auxil_basis,.TRUE.,&
+            time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.,.TRUE.)
    endif
 
    ! Evaluate H(t+dt/2)
@@ -924,43 +948,23 @@ case('MB_PC2B')
    end if
 
    !--1--PROPAGATE----| C(t)--U[M(t+dt/4)]-->C(t+dt/2)
+   call start_clock(timing_mb_related_update)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Update projectile position and its basis center to t+dt/4
-     call change_position_one_atom(natom,xatom_start(:,natom) &
-          + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) &
-          + vel(:,natom) * (time_cur - time_read - 3.0_dp*time_step/4.0_dp))
-     ! Update basis only since eri not needed here
-     call moving_basis_set(basis)
-     ! Update S matrix
-     call setup_overlap(basis,s_matrix)
-     ! Analytic evaluation of D(t+dt/4)
-     call setup_D_matrix_analytic(basis,d_matrix)
+     call mb_related_updates(basis,auxil_basis,.FALSE.,&
+            time_cur,3.0_dp/4.0_dp,s_matrix,d_matrix,.TRUE.,.FALSE.)
    endif
+   call stop_clock(timing_mb_related_update)
 
    ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
    call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,prop_type)
 
    !--2--EVALUATE----| C(t+dt/2) --> H(t+dt/2)
+   call start_clock(timing_mb_related_update)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Update projectile position and its basis center to t+dt/2
-     call change_position_one_atom(natom,xatom_start(:,natom) &
-          + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) &
-          + vel(:,natom) * (time_cur - time_read - time_step/2.0_dp))
-     ! Update all basis and eri
-     call update_basis_eri(basis,auxil_basis)
-     call moving_basis_set(basis_p)
-     ! Update S matrix
-     call setup_overlap(basis,s_matrix)
-     ! Analytic evaluation of D(t+dt/2)
-     call setup_D_matrix_analytic(basis,d_matrix)
-     ! Update DFT grids for H_xc evaluation
-     if( calc_type%is_dft ) then
-       call destroy_dft_grid()
-       call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
-     endif
+     call mb_related_updates(basis,auxil_basis,.TRUE.,&
+            time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.,.TRUE.)
    endif
+   call stop_clock(timing_mb_related_update)
 
    ! Calculate H(t+dt/2)
    call setup_hamiltonian_cmplx(basis,                        &
@@ -983,21 +987,12 @@ case('MB_PC2B')
    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
    !--4--EVALUATE----| C(t+dt) --> H(t+dt)
+   call start_clock(timing_mb_related_update)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-     ! Update projectile position and its basis center to t+dt
-     call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * (time_cur - time_read))
-     call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) + vel(:,natom) * (time_cur - time_read))
-     ! Update all basis and eri
-     call update_basis_eri(basis,auxil_basis)
-     call moving_basis_set(basis_p)
-     ! Update S matrix
-     call setup_overlap(basis,s_matrix)
-     ! Update DFT grids for H_xc evaluation
-     if( calc_type%is_dft ) then
-       call destroy_dft_grid()
-       call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
-     endif
+     call mb_related_updates(basis,auxil_basis,.TRUE.,&
+            time_cur,0.0_dp,s_matrix,d_matrix,.FALSE.,.TRUE.)
    endif
+   call stop_clock(timing_mb_related_update)
 
    ! Calculate H(t+dt)
    call setup_hamiltonian_cmplx(basis,                        &
@@ -1994,8 +1989,10 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
      !m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
      tmp_matrix_1(:,:) = s_matrix_inverse(:,:)
      tmp_matrix_2(:,:) = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
+     call start_clock(timing_propagate_matmul)
      call ZGEMM('N','N',nbf,nbf,nbf,(1.0d0,0.0d0),tmp_matrix_1,nbf, &
                        tmp_matrix_2,nbf,(0.0d0,0.0d0),m_matrix_cmplx,nbf)
+     call stop_clock(timing_propagate_matmul)
      l_matrix_cmplx(:,:) =  im * m_matrix_cmplx(:,:) * time_step_cur / 2.0_dp
      b_matrix_cmplx(:,:) = -l_matrix_cmplx(:,:)
 

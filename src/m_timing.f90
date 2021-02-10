@@ -104,6 +104,11 @@ module m_timing
  integer,parameter :: timing_tddft_hartree          = 117
  integer,parameter :: timing_tddft_hamiltonian_nuc  = 118
  integer,parameter :: timing_tddft_ham_orthobasis   = 119
+ integer,parameter :: timing_mb_related_update      = 120
+ integer,parameter :: timing_update_p_position      = 121
+ integer,parameter :: timing_update_basis_eri       = 122
+ integer,parameter :: timing_update_overlaps        = 123
+ integer,parameter :: timing_update_dft_grid        = 124
  integer,parameter :: timing_print_cube_rho_tddft   = 125
  integer,parameter :: timing_restart_tddft_file     = 126
  integer,parameter :: timing_propagate_diago        = 127
@@ -298,6 +303,12 @@ subroutine output_timing()
  call output_timing_line('TDDFT Propagator',timing_tddft_propagation,2)
  call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
  call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
+
+ call output_timing_line('Update basis and related terms',timing_mb_related_update,2)
+ call output_timing_line('Update projectile position',timing_update_p_position,3)
+ call output_timing_line('Update basis, auxilary and eri',timing_update_basis_eri,3)
+ call output_timing_line('Update S and D matrices',timing_update_overlaps,3)
+ call output_timing_line('Update DFT grid',timing_update_dft_grid,3)
 
  call output_timing_line('TDDFT frozen core',timing_tddft_frozen_core,3)
  call output_timing_line('TDDFT q_matrix',timing_tddft_q_matrix,3)
