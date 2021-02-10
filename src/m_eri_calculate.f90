@@ -1345,7 +1345,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
    call xsum_world(libint_calls)
    write(stdout,'(1x,a,7x,i20)')   'Total number of calls to libint: ',libint_calls
    write(stdout,'(1x,a,f8.2)')  'Redundant calls due to parallelization and batches (%): ', &
-                                   ( REAL(libint_calls,dp) / ( REAL(nshellpair,dp)*REAL(auxil_basis%nshell,dp) ) - 1.0_dp ) * 100.0_dp
+                                ( REAL(libint_calls,dp) / ( REAL(nshellpair,dp)*REAL(auxil_basis%nshell,dp) ) - 1.0_dp ) &
+                                * 100.0_dp
 
  endif
 

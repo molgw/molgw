@@ -63,7 +63,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  integer              :: ngrid_max_allowed
  integer              :: iradial,iatom,iangular,ir,ir1,igrid
  integer              :: n1,n2,nangular,ngridmax
- real(dp)             :: weight,radius
+ real(dp)             :: weight,radius,ri
  real(dp),allocatable :: x1(:),x2(:)
  real(dp),allocatable :: y1(:),y2(:)
  real(dp),allocatable :: z1(:),z2(:)
@@ -128,7 +128,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
 
  !
- ! LOG3 radial grid
+ ! LOG3 radial grid (Mura - Knowles)
  do iatom=1,natom_basis
 
    select case(zbasis(iatom))
@@ -239,6 +239,14 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  do iatom=1,natom_basis
    radius = element_covalent_radius(zbasis(iatom))
 
+   ! Find the nearest neighbor of atom i
+   ri = 999999.9d0
+   do katom=1,natom_basis
+     if( iatom == katom ) cycle
+     ri = MIN( NORM2( xbasis(:,katom) - xbasis(:,iatom) ) , ri )
+   enddo
+
+
    do iradial=1,nradial
      if( xa(iradial,iatom) < pruning_limit * radius ) then
        nangular = nangular_coarse
@@ -284,52 +292,72 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          !$OMP END DO
          !$OMP END PARALLEL
 
+         p_becke(:) = 1.0_dp
+         !$OMP PARALLEL DO
+         do katom=1,natom_basis
+           do jatom=1,natom_basis
+             if(katom==jatom) cycle
+             p_becke(katom) = p_becke(katom) * s_becke(jatom,katom)
+           enddo
+         enddo
+         !$OMP END PARALLEL DO
+         fact_becke = p_becke(iatom) / SUM( p_becke(:) )
+
        case('ssf')
          !
          ! Partitionning scheme of Stratmann, Scuseria, Frisch, Chem. Phys. Lett. 257, 213 (1996)
          !
-         s_becke(:,:) = 0.0_dp
-         !$OMP PARALLEL PRIVATE(mu,mu_aa,rtmp)
-         !$OMP DO
-         do katom=1,natom_basis
-           do jatom=katom+1,natom_basis
 
-             mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
-                       / NORM2(xbasis(:,katom)-xbasis(:,jatom))
+         !
+         ! First screen the "obvious" values
+         if( NORM2(rr_grid_tmp(:,ir)-xbasis(:,iatom)) < 0.5_dp * ( 1.0_dp - aa ) * ri * 0.001 ) then
+           fact_becke = 1.0_dp
 
-             if( mu < -aa ) then
-               s_becke(jatom,katom) = 1.0_dp
-               s_becke(katom,jatom) = 0.0_dp
-             else if( mu > aa ) then
-               s_becke(jatom,katom) = 0.0_dp
-               s_becke(katom,jatom) = 1.0_dp
-             else
-               mu_aa = mu / aa
-               rtmp = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
+         else
 
-               s_becke(jatom,katom) = 0.5_dp * ( 1.0_dp - rtmp )
-               s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp + rtmp )
-             endif
+           s_becke(:,:) = 0.0_dp
+           !$OMP PARALLEL PRIVATE(mu,mu_aa,rtmp)
+           !$OMP DO
+           do katom=1,natom_basis
+             do jatom=katom+1,natom_basis
 
+               mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
+                         / NORM2(xbasis(:,katom)-xbasis(:,jatom))
+
+               if( mu < -aa ) then
+                 s_becke(jatom,katom) = 1.0_dp
+                 s_becke(katom,jatom) = 0.0_dp
+               else if( mu > aa ) then
+                 s_becke(jatom,katom) = 0.0_dp
+                 s_becke(katom,jatom) = 1.0_dp
+               else
+                 mu_aa = mu / aa
+                 rtmp = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
+
+                 s_becke(jatom,katom) = 0.5_dp * ( 1.0_dp - rtmp )
+                 s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp + rtmp )
+               endif
+
+             enddo
            enddo
-         enddo
-         !$OMP END DO
-         !$OMP END PARALLEL
+           !$OMP END DO
+           !$OMP END PARALLEL
+
+           p_becke(:) = 1.0_dp
+           !$OMP PARALLEL DO
+           do katom=1,natom_basis
+             do jatom=1,natom_basis
+               if(katom==jatom) cycle
+               p_becke(katom) = p_becke(katom) * s_becke(jatom,katom)
+             enddo
+           enddo
+           !$OMP END PARALLEL DO
+           fact_becke = p_becke(iatom) / SUM( p_becke(:) )
+         endif
 
        case default
          call die('Invalid choice for the partition scheme. Change partion_scheme value in the input file')
        end select
-
-       p_becke(:) = 1.0_dp
-       !$OMP PARALLEL DO
-       do katom=1,natom_basis
-         do jatom=1,natom_basis
-           if(katom==jatom) cycle
-           p_becke(katom) = p_becke(katom) * s_becke(jatom,katom)
-         enddo
-       enddo
-       !$OMP END PARALLEL DO
-       fact_becke = p_becke(iatom) / SUM( p_becke(:) )
 
        w_grid_tmp(ir) = weight * fact_becke
 
@@ -381,6 +409,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  ! precalculate the wavefunctions and their gradient on a part of the grid
  !
 
+ call start_clock(timing_tmp1)
 
  if( precalculate_wfn ) then
    !
@@ -405,6 +434,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    ngrid_stored = 0
  endif
 
+ call stop_clock(timing_tmp1)
 
  call stop_clock(timing_grid_generation)
 
@@ -466,9 +496,7 @@ subroutine prepare_basis_functions_r(basis,batch_size)
  endif
  call clean_allocate('basis ftns on grid',bfr,basis%nbf,ngrid_stored)
 
- do igrid=1,ngrid_stored,batch_size
-   call calculate_basis_functions_r_batch(basis,batch_size,rr_grid(:,igrid:igrid+batch_size-1),bfr(:,igrid:igrid+batch_size-1))
- enddo
+ call calculate_basis_functions_r_batch(basis,rr_grid(:,1:ngrid_stored),bfr)
 
 end subroutine prepare_basis_functions_r
 
@@ -492,12 +520,7 @@ subroutine prepare_basis_functions_gradr(basis,batch_size)
  call clean_allocate('basis grad ftns on grid',bfgz,basis%nbf,ngrid_stored)
 
 
- do igrid=1,ngrid_stored,batch_size
-   call calculate_basis_functions_gradr_batch(basis,batch_size,rr_grid(:,igrid:igrid+batch_size-1), &
-                                              bfgx(:,igrid:igrid+batch_size-1), &
-                                              bfgy(:,igrid:igrid+batch_size-1), &
-                                              bfgz(:,igrid:igrid+batch_size-1))
- enddo
+ call calculate_basis_functions_gradr_batch(basis,rr_grid(:,1:ngrid_stored),bfgx,bfgy,bfgz)
 
 end subroutine prepare_basis_functions_gradr
 
@@ -520,7 +543,7 @@ subroutine get_basis_functions_r_batch(basis,igrid,basis_function_r)
  if( igrid <= ngrid_stored .AND. igrid+nr-1 <= ngrid_stored ) then
    basis_function_r(:,:) = bfr(:,igrid:igrid+nr-1)
  else
-   call calculate_basis_functions_r_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1),basis_function_r)
+   call calculate_basis_functions_r_batch(basis,rr_grid(:,igrid:igrid+nr-1),basis_function_r)
  endif
 
 end subroutine get_basis_functions_r_batch
@@ -546,7 +569,7 @@ subroutine get_basis_functions_gradr_batch(basis,igrid,bf_gradx,bf_grady,bf_grad
    bf_grady(:,:) = bfgy(:,igrid:igrid+nr-1)
    bf_gradz(:,:) = bfgz(:,igrid:igrid+nr-1)
  else
-   call calculate_basis_functions_gradr_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1), &
+   call calculate_basis_functions_gradr_batch(basis,rr_grid(:,igrid:igrid+nr-1), &
                                               bf_gradx,bf_grady,bf_gradz)
  endif
 
@@ -571,6 +594,8 @@ subroutine calculate_basis_functions_r(basis,rr,basis_function_r)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
+ !$OMP PARALLEL PRIVATE(li,ni_cart,ibf1,ibf1_cart,ibf2,basis_function_r_cart)
+ !$OMP DO
  do ishell=1,basis%nshell
    li        = basis%shell(ishell)%am
    ni_cart   = number_basis_function_am('CART',li)
@@ -588,31 +613,35 @@ subroutine calculate_basis_functions_r(basis,rr,basis_function_r)
    deallocate(basis_function_r_cart)
 
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
 
 end subroutine calculate_basis_functions_r
 
 
 !=========================================================================
-subroutine calculate_basis_functions_r_batch(basis,nr,rr,basis_function_r)
+subroutine calculate_basis_functions_r_batch(basis,rr,basis_function_r)
  implicit none
 
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nr
- real(dp),intent(in)        :: rr(3,nr)
- real(dp),intent(out)       :: basis_function_r(basis%nbf,nr)
+ real(dp),intent(in)        :: rr(:,:)
+ real(dp),intent(out)       :: basis_function_r(:,:)
 !=====
  integer              :: gt
- integer              :: ir
+ integer              :: ir,nr
  integer              :: ishell,ibf1,ibf2,ibf1_cart
  integer              :: i_cart
  integer              :: ni_cart,li
  real(dp),allocatable :: basis_function_r_cart(:,:)
 !=====
 
+ nr = SIZE(basis_function_r(:,:),DIM=2)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
+ !$OMP PARALLEL PRIVATE(li,ni_cart,ibf1,ibf1_cart,ibf2,basis_function_r_cart)
+ !$OMP DO
  do ishell=1,basis%nshell
    li      = basis%shell(ishell)%am
    ni_cart = number_basis_function_am('CART',li)
@@ -632,6 +661,8 @@ subroutine calculate_basis_functions_r_batch(basis,nr,rr,basis_function_r)
    deallocate(basis_function_r_cart)
 
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
 
 end subroutine calculate_basis_functions_r_batch
@@ -654,6 +685,8 @@ subroutine calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
+ !$OMP PARALLEL PRIVATE(li,ni_cart,ibf1,ibf1_cart,ibf2,basis_function_gradr_cart)
+ !$OMP DO
  do ishell=1,basis%nshell
    li      = basis%shell(ishell)%am
    ni_cart = number_basis_function_am('CART',li)
@@ -672,32 +705,36 @@ subroutine calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
    deallocate(basis_function_gradr_cart)
 
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
 
 end subroutine calculate_basis_functions_gradr
 
 
 !=========================================================================
-subroutine calculate_basis_functions_gradr_batch(basis,nr,rr,bf_gradx,bf_grady,bf_gradz)
+subroutine calculate_basis_functions_gradr_batch(basis,rr,bf_gradx,bf_grady,bf_gradz)
  implicit none
 
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nr
- real(dp),intent(in)        :: rr(3,nr)
- real(dp),intent(out)       :: bf_gradx(basis%nbf,nr)
- real(dp),intent(out)       :: bf_grady(basis%nbf,nr)
- real(dp),intent(out)       :: bf_gradz(basis%nbf,nr)
+ real(dp),intent(in)        :: rr(:,:)
+ real(dp),intent(out)       :: bf_gradx(:,:)
+ real(dp),intent(out)       :: bf_grady(:,:)
+ real(dp),intent(out)       :: bf_gradz(:,:)
 !=====
  integer              :: gt
- integer              :: ir
+ integer              :: ir,nr
  integer              :: ishell,ibf1,ibf2,ibf1_cart
  integer              :: i_cart
  integer              :: ni_cart,li
  real(dp),allocatable :: basis_function_gradr_cart(:,:,:)
 !=====
 
+ nr = SIZE(bf_gradx,DIM=2)
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
+ !$OMP PARALLEL PRIVATE(li,ni_cart,ibf1,ibf1_cart,ibf2,basis_function_gradr_cart)
+ !$OMP DO
  do ishell=1,basis%nshell
    li      = basis%shell(ishell)%am
    ni_cart = number_basis_function_am('CART',li)
@@ -720,6 +757,8 @@ subroutine calculate_basis_functions_gradr_batch(basis,nr,rr,bf_gradx,bf_grady,b
    deallocate(basis_function_gradr_cart)
 
  enddo
+ !$OMP END DO
+ !$OMP END PARALLEL
 
 
 end subroutine calculate_basis_functions_gradr_batch
