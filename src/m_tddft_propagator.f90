@@ -1968,7 +1968,7 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al,
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
  complex(dp),allocatable    :: m_matrix_cmplx(:,:) ! M = S**-1 * ( H - i*D )
- complex(dp),allocatable    :: tmp_matrix_1(:,:),tmp_matrix_2(:,:)
+ complex(dp),allocatable    :: tmp_matrix_1(:,:),tmp_matrix_2(:,:),tmp_matrix_3(:,:)
  real(dp),allocatable       :: s_matrix_inverse(:,:)
 !=====
 
@@ -1987,6 +1987,7 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
      allocate(m_matrix_cmplx,MOLD=h_cmplx(:,:,1))
      allocate(tmp_matrix_1,MOLD=h_cmplx(:,:,1))
      allocate(tmp_matrix_2,MOLD=h_cmplx(:,:,1))
+     allocate(tmp_matrix_3,MOLD=c_matrix_cmplx(:,:,1))
      allocate(s_matrix_inverse,MOLD=s_matrix)
 
      call invert(s_matrix,s_matrix_inverse)
@@ -2013,14 +2014,14 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
      !call dump_out_matrix(.TRUE.,'===  U*U**H REAL ===',REAL(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
      !call dump_out_matrix(.TRUE.,'===  U*U**H AIMAG ===',AIMAG(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
      !c_matrix_cmplx(:,:,ispin)  = MATMUL( b_matrix_cmplx(:,:),c_matrix_cmplx(:,:,ispin))
-     tmp_matrix_2(:,:) = c_matrix_cmplx(:,:,ispin)
+     tmp_matrix_3(:,:) = c_matrix_cmplx(:,:,ispin)
      call ZGEMM('N','N',nbf,nocc,nbf,(1.0d0,0.0d0),tmp_matrix_1,nbf, &
-                       tmp_matrix_2,nbf,(0.0d0,0.0d0),c_matrix_cmplx(:,:,ispin),nbf)
+                       tmp_matrix_3,nbf,(0.0d0,0.0d0),c_matrix_cmplx(:,:,ispin),nbf)
 
      deallocate(l_matrix_cmplx)
      deallocate(b_matrix_cmplx)
      deallocate(m_matrix_cmplx)
-     deallocate(tmp_matrix_1,tmp_matrix_2)
+     deallocate(tmp_matrix_1,tmp_matrix_2,tmp_matrix_3)
      deallocate(s_matrix_inverse)
 
    case('MAG2')
