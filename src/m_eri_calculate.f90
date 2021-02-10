@@ -1317,6 +1317,12 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        n4c = number_basis_function_am( 'CART' , aml )
        ng3 = basis%shell(kshell)%ng
        ng4 = basis%shell(lshell)%ng
+
+       if(ALLOCATED(alpha3)) deallocate(alpha3)
+       if(ALLOCATED(alpha4)) deallocate(alpha4)
+       if(ALLOCATED(coeff3)) deallocate(coeff3)
+       if(ALLOCATED(coeff4)) deallocate(coeff4)
+
        allocate(alpha3(ng3),alpha4(ng4))
        allocate(coeff3(ng3),coeff4(ng4))
        alpha3(:) = basis%shell(kshell)%alpha(:)
@@ -1338,7 +1344,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        libint_calls = libint_calls + 1
 
 
-
+       if(ALLOCATED(int_shell)) deallocate(int_shell)
+       if(ALLOCATED(integrals)) deallocate(integrals)
        allocate(int_shell(n1c*n3c*n4c))
 
        call libint_3center(am1,ng1,x01,alpha1,coeff1, &
@@ -1373,13 +1380,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
          enddo
        enddo
 
-
-       deallocate(integrals)
-       deallocate(int_shell)
-
-
-       deallocate(alpha3,alpha4)
-       deallocate(coeff3,coeff4)
 
      enddo ! klshellpair
 
