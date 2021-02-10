@@ -1203,17 +1203,30 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
                           +  bf_gradz_batch(:,ir) * dedgd_r_batch(3,ir,ispin) * weight_batch(ir)
        enddo
        !$OMP END PARALLEL DO
+       call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ao(:,:,ispin),basis%nbf)
      else
+
        !
        ! LDA
        !
-       !$OMP PARALLEL DO
-       do ir=1,nr
-         tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
-       enddo
-       !$OMP END PARALLEL DO
+       ! When of all deddr are negative, one can calculate its square-root and use the twice faster DSYRK routine
+       ! The negative sign is restored at the DSYRK stage.
+       if( ANY( dedd_r_batch(:,:) > 1.0d-10 ) ) then
+         !$OMP PARALLEL DO
+         do ir=1,nr
+           tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
+         enddo
+         !$OMP END PARALLEL DO
+         call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ao(:,:,ispin),basis%nbf)
+       else
+         !$OMP PARALLEL DO
+         do ir=1,nr
+           tmp_batch(:,ir) = SQRT( MAX(-weight_batch(ir) * dedd_r_batch(ispin,ir),1.1d-10) ) * basis_function_r_batch(:,ir)
+         enddo
+         !$OMP END PARALLEL DO
+         call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ao(:,:,ispin),basis%nbf)
+       endif
      endif
-     call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ao(:,:,ispin),basis%nbf)
 
    enddo
    deallocate(tmp_batch)
