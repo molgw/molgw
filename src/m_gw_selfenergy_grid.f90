@@ -26,17 +26,17 @@ contains
 
 
 !=========================================================================
-subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,erpa,wpol)
+subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,wpol)
   implicit none
 
   type(basis_set),intent(in)            :: basis
-  integer,intent(in)                    :: nstate
-  real(dp),intent(in)                   :: occupation(nstate,nspin)
-  real(dp),intent(in)                   :: energy(nstate,nspin)
-  real(dp),intent(in)                   :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)                   :: occupation(:,:)
+  real(dp),intent(in)                   :: energy(:,:)
+  real(dp),intent(in)                   :: c_matrix(:,:,:)
   real(dp),intent(out)                  :: erpa
   type(spectral_function),intent(inout) :: wpol
   !=====
+  integer              :: nstate
   integer              :: iomega
   integer              :: ilocal,jlocal
   integer              :: iglobal,jglobal
@@ -64,6 +64,8 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 #if defined(HAVE_SCALAPACK)
   write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow_sd,' x ',npcol_sd
 #endif
+
+  nstate = SIZE(occupation,DIM=1)
 
 
   if( wpol%nomega_quad < 1 ) call die('polarizability_grid_sca: nomega_imag input variable should be greater than 1')
@@ -203,16 +205,16 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
 
  !=========================================================================
- subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
+ subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
   implicit none
 
   type(basis_set),intent(in)          :: basis
-  integer,intent(in)                  :: nstate
-  real(dp),intent(in)                 :: energy(nstate,nspin)
-  real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)                 :: energy(:,:)
+  real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(spectral_function),intent(in)  :: wpol
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  integer              :: nstate
   integer              :: iomegas
   integer              :: iomega
   integer              :: info
@@ -236,6 +238,8 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
   call start_clock(timing_gw_self)
 
   write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies'
+
+  nstate = SIZE(energy,DIM=1)
 
   nprow = 1
   npcol = 1

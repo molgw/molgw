@@ -206,7 +206,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
            enforce_rpa = calc_type%is_bse
            call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
          else
-           call polarizability_grid_scalapack(basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,wpol)
+           call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,wpol)
          endif
        endif
 
@@ -220,7 +220,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
      select case(calc_type%selfenergy_technique)
      case(imaginary_axis_pade)
-       call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
+       call gw_selfenergy_imag_scalapack(basis,energy_g,c_matrix,wpol,se)
        call self_energy_pade(se)
      case(exact_dyson)
        call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
