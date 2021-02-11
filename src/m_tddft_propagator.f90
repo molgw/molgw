@@ -1963,7 +1963,7 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al,
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
  complex(dp),allocatable    :: m_matrix_cmplx(:,:) ! M = S**-1 * ( H - i*D )
- complex(dp),allocatable    :: tmp_matrix_1(:,:),tmp_matrix_2(:,:),tmp_matrix_3(:,:)
+ complex(dp),allocatable    :: tmp_matrix_1(:,:),tmp_matrix_2(:,:)
  real(dp),allocatable       :: s_matrix_inverse(:,:)
 !=====
 
@@ -1980,10 +1980,9 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
      allocate(l_matrix_cmplx,MOLD=h_cmplx(:,:,1))
      allocate(b_matrix_cmplx,MOLD=h_cmplx(:,:,1))
      allocate(m_matrix_cmplx,MOLD=h_cmplx(:,:,1))
+     allocate(s_matrix_inverse,MOLD=s_matrix)   ! REAL
      allocate(tmp_matrix_1,MOLD=h_cmplx(:,:,1))
      allocate(tmp_matrix_2,MOLD=h_cmplx(:,:,1))
-     allocate(tmp_matrix_3,MOLD=c_matrix_cmplx(:,:,1))
-     allocate(s_matrix_inverse,MOLD=s_matrix)
 
      call invert(s_matrix,s_matrix_inverse)
      !m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
@@ -1993,6 +1992,9 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
      call ZGEMM('N','N',nbf,nbf,nbf,(1.0d0,0.0d0),tmp_matrix_1,nbf, &
                        tmp_matrix_2,nbf,(0.0d0,0.0d0),m_matrix_cmplx,nbf)
      call stop_clock(timing_propagate_matmul)
+     deallocate(tmp_matrix_1,tmp_matrix_2)
+     deallocate(s_matrix_inverse)
+
      l_matrix_cmplx(:,:) =  im * m_matrix_cmplx(:,:) * time_step_cur / 2.0_dp
      b_matrix_cmplx(:,:) = -l_matrix_cmplx(:,:)
 
@@ -2002,24 +2004,21 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
      end do
      call invert(l_matrix_cmplx)
 
+     allocate(tmp_matrix_1,MOLD=h_cmplx(:,:,1))
+     allocate(tmp_matrix_2,MOLD=c_matrix_cmplx(:,:,1))
      call start_clock(timing_propagate_matmul)
      !b_matrix_cmplx(:,:)        = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
      call ZGEMM('N','N',nbf,nbf,nbf,(1.0d0,0.0d0),l_matrix_cmplx,nbf, &
                        b_matrix_cmplx,nbf,(0.0d0,0.0d0),tmp_matrix_1,nbf)
-     !call dump_out_matrix(.TRUE.,'===  U REAL  ===',REAL(b_matrix_cmplx))
-     !call dump_out_matrix(.TRUE.,'===  U AIMAG ===',AIMAG(b_matrix_cmplx))
-     !call dump_out_matrix(.TRUE.,'===  U*U**H REAL ===',REAL(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
-     !call dump_out_matrix(.TRUE.,'===  U*U**H AIMAG ===',AIMAG(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
      !c_matrix_cmplx(:,:,ispin)  = MATMUL( b_matrix_cmplx(:,:),c_matrix_cmplx(:,:,ispin))
-     tmp_matrix_3(:,:) = c_matrix_cmplx(:,:,ispin)
+     tmp_matrix_2(:,:) = c_matrix_cmplx(:,:,ispin)
      call ZGEMM('N','N',nbf,nocc,nbf,(1.0d0,0.0d0),tmp_matrix_1,nbf, &
-                       tmp_matrix_3,nbf,(0.0d0,0.0d0),c_matrix_cmplx(:,:,ispin),nbf)
+                       tmp_matrix_2,nbf,(0.0d0,0.0d0),c_matrix_cmplx(:,:,ispin),nbf)
 
      deallocate(l_matrix_cmplx)
      deallocate(b_matrix_cmplx)
      deallocate(m_matrix_cmplx)
-     deallocate(tmp_matrix_1,tmp_matrix_2,tmp_matrix_3)
-     deallocate(s_matrix_inverse)
+     deallocate(tmp_matrix_1,tmp_matrix_2)
 
    case('MAG2')
      allocate(b_matrix_cmplx,MOLD=h_cmplx(:,:,1))
