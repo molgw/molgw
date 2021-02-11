@@ -22,6 +22,7 @@ module m_selfenergy_evaluation
  use m_selfenergy_tools
  use m_virtual_orbital_space
  use m_io
+ use m_gw_selfenergy_grid
 
 
 

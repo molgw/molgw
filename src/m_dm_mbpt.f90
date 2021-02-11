@@ -21,6 +21,7 @@ module m_dm_mbpt
  use m_scf
  use m_multipole
  use m_pt_density_matrix
+ use m_gw_selfenergy_grid
 
 
 contains
