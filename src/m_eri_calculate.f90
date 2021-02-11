@@ -1268,6 +1268,14 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
        if( .NOT. do_shell ) cycle
 
+       !
+       ! Skip REcalculation if all the 3 shells are "moving" or if all the 3 shells are "still"
+       !
+       if( recalculation ) then
+         if( mask_auxil(ishell) .EQV. mask(kshell) .AND. mask_auxil(ishell) .EQV. mask(kshell) ) cycle
+       endif
+
+
        am3 = amk
        am4 = aml
        n3c = number_basis_function_am( 'CART' , amk )
@@ -1284,16 +1292,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        x04(:) = basis%shell(lshell)%x0(:)
 
 
-       !
-       ! Skip REcalculation if all the 3 shells are "moving" or if all the 3 shells are "still"
-       !
-       if( recalculation ) then
-         if( mask_auxil(ishell) .EQV. mask(kshell) .AND. mask_auxil(ishell) .EQV. mask(kshell) ) cycle
-       endif
-
        libint_calls = libint_calls + 1
-
-
 
        allocate(int_shell(n1c*n3c*n4c))
 
@@ -1322,7 +1321,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
            enddo
          enddo
        enddo
-
 
        deallocate(integrals)
        deallocate(int_shell)
