@@ -1311,6 +1311,15 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
        if( .NOT. do_shell ) cycle
 
+       !
+       ! Skip REcalculation if all the 3 shells are "moving" or if all the 3 shells are "still"
+       !
+       if( recalculation ) then
+         if( ( mask_auxil(ishell) .EQV. mask(kshell) ) &
+              .AND. ( mask_auxil(ishell) .EQV. mask(lshell) ) ) cycle
+       endif
+
+
        am3 = amk
        am4 = aml
        n3c = number_basis_function_am( 'CART' , amk )
@@ -1318,10 +1327,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        ng3 = basis%shell(kshell)%ng
        ng4 = basis%shell(lshell)%ng
 
-       if(ALLOCATED(alpha3)) deallocate(alpha3)
-       if(ALLOCATED(alpha4)) deallocate(alpha4)
-       if(ALLOCATED(coeff3)) deallocate(coeff3)
-       if(ALLOCATED(coeff4)) deallocate(coeff4)
 
        allocate(alpha3(ng3),alpha4(ng4))
        allocate(coeff3(ng3),coeff4(ng4))
@@ -1333,19 +1338,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        x04(:) = basis%shell(lshell)%x0(:)
 
 
-       !
-       ! Skip REcalculation if all the 3 shells are "moving" or if all the 3 shells are "still"
-       !
-       if( recalculation ) then
-         if( ( mask_auxil(ishell) .EQV. mask(kshell) ) &
-              .AND. ( mask_auxil(ishell) .EQV. mask(lshell) ) ) cycle
-       endif
-
        libint_calls = libint_calls + 1
 
-
-       if(ALLOCATED(int_shell)) deallocate(int_shell)
-       if(ALLOCATED(integrals)) deallocate(integrals)
        allocate(int_shell(n1c*n3c*n4c))
 
        call libint_3center(am1,ng1,x01,alpha1,coeff1, &
@@ -1380,6 +1374,11 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
          enddo
        enddo
 
+       deallocate(integrals)
+       deallocate(int_shell)
+
+       deallocate(alpha3,alpha4)
+       deallocate(coeff3,coeff4)
 
      enddo ! klshellpair
 
@@ -1395,7 +1394,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
    call xsum_world(libint_calls)
    write(stdout,'(1x,a,7x,i20)')   'Total number of calls to libint: ',libint_calls
    write(stdout,'(1x,a,f8.2)')  'Redundant calls due to parallelization and batches (%): ', &
-                                   ( REAL(libint_calls,dp) / ( REAL(nshellpair,dp)*REAL(auxil_basis%nshell,dp) ) - 1.0_dp ) * 100.0_dp
+                                ( REAL(libint_calls,dp) / ( REAL(nshellpair,dp)*REAL(auxil_basis%nshell,dp) ) - 1.0_dp ) &
+                                * 100.0_dp
 
  endif
 
