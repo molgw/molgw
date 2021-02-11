@@ -8,14 +8,6 @@
 !
 !=========================================================================
 module m_gw_selfenergy_grid
-
-
-
-contains
-
-
-!=========================================================================
-subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,erpa,wpol)
   use m_definitions
   use m_timing
   use m_warning
@@ -27,6 +19,14 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
   use m_basis_set
   use m_spectral_function
   use m_eri_ao_mo
+  use m_selfenergy_tools
+
+
+contains
+
+
+!=========================================================================
+subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix,erpa,wpol)
   implicit none
 
   type(basis_set),intent(in)            :: basis
@@ -204,17 +204,6 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
  !=========================================================================
  subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
-  use m_definitions
-  use m_timing
-  use m_warning
-  use m_memory
-  use m_scalapack
-  use m_inputparam
-  use m_mpi
-  use m_basis_set
-  use m_spectral_function
-  use m_eri_ao_mo
-  use m_selfenergy_tools
   implicit none
 
   type(basis_set),intent(in)          :: basis

@@ -114,9 +114,9 @@ level040: m_spectral_function.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.
 
 level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o m_restart.o m_multipole.o
 
-level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o m_gw_selfenergy_grid.o 
+level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 
-level065: m_pt_density_matrix.o m_fourier_quadrature.o
+level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o 
 
 level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_dm_mbpt.o m_tddft_propagator.o 
 
