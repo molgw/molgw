@@ -1353,12 +1353,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        do lbf=1,nl
          do kbf=1,nk
            klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
-           ! include a factor 1/2 for equal basis indexes
-           if( index_basis(1,klpair_global) == index_basis(2,klpair_global) ) then
-             factor = 0.5_dp
-           else
-             factor = 1.0_dp
-           endif
 
            if( iprow_3center /= INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) ) cycle
            ilocal = INDXG2L(klpair_global,MB_3center,0,first_row,nprow_3center)
@@ -1368,7 +1362,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
              if( ipcol_3center /= INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) ) cycle
              jlocal = INDXG2L(iglobal,NB_3center,0,first_col,npcol_3center)
 
-             eri_3center(ilocal,jlocal) = integrals(ibf,kbf,lbf) * factor
+             eri_3center(ilocal,jlocal) = integrals(ibf,kbf,lbf)
 
            enddo
          enddo
@@ -1406,6 +1400,12 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
    call xsum_ortho(eri_3center)
    write(stdout,'(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
 
+   ! Include a factor 1/2 for pair containing twice the same basis function
+   do ipair=1,npair
+     ibf = index_basis(1,ipair)
+     jbf = index_basis(2,ipair)
+     if( ibf == jbf ) eri_3center(ipair,:) = eri_3center(ipair,:) * 0.5_dp
+   enddo
  else
    if( cntxt_3center < 0 ) then
      eri_3center_lr(:,:) = 0.0_dp
@@ -1413,6 +1413,12 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
    call xsum_ortho(eri_3center_lr)
    write(stdout,'(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
 
+   ! Include a factor 1/2 for pair containing twice the same basis function
+   do ipair=1,npair
+     ibf = index_basis(1,ipair)
+     jbf = index_basis(2,ipair)
+     if( ibf == jbf ) eri_3center_lr(ipair,:) = eri_3center_lr(ipair,:) * 0.5_dp
+   enddo
  endif
 
 
