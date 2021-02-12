@@ -109,7 +109,7 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
  integer            :: nstate
  character(len=3)   :: ctmp
  character(len=256) :: filename
- integer            :: selfenergyfile
+ integer            :: selfenergyfile,selfenergyfile_cmplx
  integer            :: pstate,pspin
  integer            :: iomega
  real(dp)           :: spectral_function_w(nspin),sign_occ(nspin)
@@ -152,16 +152,23 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
                                              - energy0(pstate,:) - exchange_m_vxc(pstate,:) ) * Ha_eV,   &
                                             spectral_function_w(:) / Ha_eV
    enddo
-   if( se%nomegai > 0 ) then
-     do iomega=-se%nomegai,se%nomegai
-       write(selfenergyfile,'(20(f16.8,2x))') ( se%omegai(iomega) + se%energy0(pstate,:) )*Ha_eV,     &
-                                              REAL(se%sigmai(iomega,pstate,:),dp) * Ha_eV,            &
-                                              AIMAG(se%sigmai(iomega,pstate,:)) * Ha_eV,              &
-                                              0.0_dp,0.0_dp
-     enddo
-   endif
    write(selfenergyfile,*)
    close(selfenergyfile)
+
+   if( se%nomegai > 0 ) then
+     filename = TRIM(filename_root) // '_cmplx_state' // TRIM(ctmp) // '.dat'
+     write(stdout,'(1x,a,a)') 'Writing selfenergy for complex frequencies in file: ', TRIM(filename)
+     open(newunit=selfenergyfile_cmplx,file=filename)
+     write(selfenergyfile_cmplx,'(a)') &
+      '#       omega (eV)          Re SigmaC (eV)     Im SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)'
+     do iomega=-se%nomegai,se%nomegai
+       write(selfenergyfile_cmplx,'(20(f16.8,2x))') ( se%omegai(iomega) + se%energy0(pstate,:) )*Ha_eV,     &
+                                                    REAL(se%sigmai(iomega,pstate,:),dp) * Ha_eV,            &
+                                                    AIMAG(se%sigmai(iomega,pstate,:)) * Ha_eV,              &
+                                                    0.0_dp,0.0_dp
+     enddo
+     close(selfenergyfile_cmplx)
+   endif
 
  enddo
 
@@ -512,10 +519,27 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  real(dp),parameter   :: beta=1.0_dp
  integer              :: iomega,pstate
  real(dp),allocatable :: omega_gaussleg(:)
+ real(dp)             :: efermi
+ integer              :: iunittmp
+ logical              :: manual_efermi
 !=====
 
  se%nomegai = 0
  se%nomega  = 0
+
+ inquire(file='manual_efermi',exist=manual_efermi)
+ if(manual_efermi) then
+   open(newunit=iunittmp,file='manual_efermi',action='read')
+   read(iunittmp,*) efermi
+   close(iunittmp)
+   !
+   ! efermi needs to be in the HOMO-LUMO gap
+   if( efermi < MAXVAL(energy0(nhomo_G,:)) .OR. efermi > MINVAL(energy0(nhomo_G+1,:)) ) then
+     write(stdout,*) 'efermi is out of the HOMO-LUMO gap:',efermi,&
+                     MAXVAL(energy0(nhomo_G,:)),MINVAL(energy0(nhomo_G+1,:))
+     call die('init_selfenergy_grid: efermi needs to be in the HOMO-LUMO gap')
+   endif
+ endif
 
  select case(selfenergy_technique)
 
@@ -578,14 +602,16 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
 
  !
  ! Set the central point of the grid
+ !
  allocate(se%energy0(nsemin:nsemax,nspin))
 
  select case(selfenergy_technique)
  case(imaginary_axis_pade)
-   ! Find the center of the HOMO-LUMO gap
-   forall(pstate=nsemin:nsemax)
-     se%energy0(pstate,:) = 0.5_dp * ( energy0(nhomo_G,:) + energy0(nhomo_G+1,:) )
-   end forall
+   if(.NOT. manual_efermi) then
+     ! Find the center of the HOMO-LUMO gap
+     efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G,:)) + MINVAL(energy0(nhomo_G+1,:)) )
+   endif
+   se%energy0(nsemin:nsemax,:) = efermi
  case default
    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
  end select
