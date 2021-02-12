@@ -1263,7 +1263,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
    !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
    !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
    !$OMP&                 coeff3,coeff4,x03,x04, &
-   !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
+   !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal,factor)
    !$OMP DO REDUCTION(+:libint_calls)
    do ishell=1,auxil_basis%nshell
 
@@ -1357,12 +1357,15 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
            if( iprow_3center /= INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) ) cycle
            ilocal = INDXG2L(klpair_global,MB_3center,0,first_row,nprow_3center)
 
+           ! By convention, eri_3center contains 1/2 (alpha beta | P ) when alpha = beta
+           factor = MERGE( 0.5_dp, 1.0_dp, index_basis(1,klpair_global) == index_basis(2,klpair_global) )
+
            do ibf=1,ni
              iglobal = auxil_basis%shell(ishell)%istart+ibf-1
              if( ipcol_3center /= INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) ) cycle
              jlocal = INDXG2L(iglobal,NB_3center,0,first_col,npcol_3center)
 
-             eri_3center(ilocal,jlocal) = integrals(ibf,kbf,lbf)
+             eri_3center(ilocal,jlocal) = integrals(ibf,kbf,lbf) * factor
 
            enddo
          enddo
@@ -1399,26 +1402,12 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
    endif
    call xsum_ortho(eri_3center)
    write(stdout,'(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
-
-   ! Include a factor 1/2 for pair containing twice the same basis function
-   do ipair=1,npair
-     ibf = index_basis(1,ipair)
-     jbf = index_basis(2,ipair)
-     if( ibf == jbf ) eri_3center(ipair,:) = eri_3center(ipair,:) * 0.5_dp
-   enddo
  else
    if( cntxt_3center < 0 ) then
      eri_3center_lr(:,:) = 0.0_dp
    endif
    call xsum_ortho(eri_3center_lr)
    write(stdout,'(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
-
-   ! Include a factor 1/2 for pair containing twice the same basis function
-   do ipair=1,npair
-     ibf = index_basis(1,ipair)
-     jbf = index_basis(2,ipair)
-     if( ibf == jbf ) eri_3center_lr(ipair,:) = eri_3center_lr(ipair,:) * 0.5_dp
-   enddo
  endif
 
 
@@ -1748,6 +1737,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call xsum_ortho(eri_3center)
    write(stdout,'(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
 
+   ! By convention, eri_3center contains 1/2 (alpha beta | P ) when alpha = beta
    ! Include a factor 1/2 for pair containing twice the same basis function
    do ipair=1,npair
      ibf = index_basis(1,ipair)
@@ -1763,6 +1753,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    call xsum_ortho(eri_3center_lr)
    write(stdout,'(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
 
+   ! By convention, eri_3center contains 1/2 (alpha beta | P ) when alpha = beta
    ! Include a factor 1/2 for pair containing twice the same basis function
    do ipair=1,npair
      ibf = index_basis(1,ipair)
