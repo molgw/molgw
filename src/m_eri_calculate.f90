@@ -1273,8 +1273,10 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        ! Skip REcalculation if all the 3 shells are "moving" or if all the 3 shells are "still"
        !
        if( recalculation ) then
-         if( mask_auxil(ishell) .EQV. mask(kshell) .AND. mask_auxil(ishell) .EQV. mask(kshell) ) cycle
+         if( ( mask_auxil(ishell) .EQV. mask(kshell) ) &
+              .AND. ( mask_auxil(ishell) .EQV. mask(lshell) ) ) cycle
        endif
+
 
 
        am3 = amk
