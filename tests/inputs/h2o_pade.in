@@ -16,7 +16,7 @@
  nomega_sigma=101
 
  step_sigmai=0.075
- nomega_sigmai=101
+ nomega_sigmai=50
 
  print_sigma='yes'
 

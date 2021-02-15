@@ -556,7 +556,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    se%nomega = nomega_sigma/2
    allocate(se%omega(-se%nomega:se%nomega))
    do iomega=-se%nomega,se%nomega
-     se%omega(iomega) = step_sigma * iomega
+     se%omega(iomega) = efermi + step_sigma * iomega
    enddo
 
    !
@@ -911,9 +911,9 @@ subroutine self_energy_pade(se)
  do pspin=1,nspin
    do pstate=nsemin,nsemax
      do iomega=-se%nomega,se%nomega
-       sign_eta = -SIGN( 1.0_dp , REAL(se%omega(iomega),dp) )
-       se%sigma(iomega,pstate,pspin) = pade( se%omegai(:) + se%energy0(pstate,pspin), se%sigmai(:,pstate,pspin)  , &
-                                              se%omega(iomega) + se%energy0(pstate,pspin) + ieta * sign_eta )
+       sign_eta = -SIGN( 1.0_dp , REAL(se%omega(iomega),dp) - REAL(se%omegai(0),dp))
+       se%sigma(iomega,pstate,pspin) = pade( se%omegai(:), se%sigmai(:,pstate,pspin)  , &
+                                              se%omega(iomega) + ieta * sign_eta )
      enddo
    enddo
  enddo
