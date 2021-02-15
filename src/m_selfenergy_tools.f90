@@ -581,7 +581,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    allocate(se%omega_calc(se%nomega_calc))
    do iomega=1,se%nomega_calc
      se%omega_calc(iomega) = MAXVAL(energy0(nhomo_G,:)) + 0.01_dp &
-                             + iomega / REAL(se%nomega,dp) &
+                             + (iomega-1) / (se%nomega_calc-1.0_dp) &
                                  * ( MINVAL(energy0(nhomo_G+1,:)) - MAXVAL(energy0(nhomo_G,:)) - 0.02_dp)
    enddo
 
@@ -783,7 +783,7 @@ subroutine destroy_selfenergy_grid(se)
    implicit none
 
    type(selfenergy_grid),intent(inout) :: se
-!=====
+ !=====
  integer :: pstate,pspin
  integer :: iomega
  integer :: ilbfgs,ipp,ii,info
@@ -796,7 +796,7 @@ subroutine destroy_selfenergy_grid(se)
  real(dp)          :: dchi2(nparam*npp)
  real(dp)          :: chi2
  type(lbfgs_state) :: lbfgs_plan
-!=====
+ !=====
 
  do pspin=1,nspin
    do pstate=nsemin,nsemax
@@ -951,6 +951,41 @@ subroutine self_energy_pade(se)
 
 
 end subroutine self_energy_pade
+
+
+!=========================================================================
+! Fit a low-order polynomial on the available real frequencies for sigma
+! and make an extrapolation/interpolation to the requested frequencies
+subroutine self_energy_polynomial(se)
+ implicit none
+
+ type(selfenergy_grid),intent(inout) :: se
+!=====
+ integer :: pspin,pstate,iomega
+ real(dp) :: a0,a1,a2     ! Polynomial coefficients a0 + a1*x + a2*x**2 + ...
+!=====
+
+ do pspin=1,nspin
+   do pstate=nsemin,nsemax
+
+     a0 = se%sigma_calc(se%nomega_calc/2+1,pstate,pspin)%re
+     a1 = ( se%sigma_calc(se%nomega_calc,pstate,pspin)%re - se%sigma_calc(1,pstate,pspin)%re ) &
+            / ( se%omega_calc(se%nomega_calc)%re - se%omega_calc(1)%re )
+     a2 = (            se%sigma_calc(se%nomega_calc,pstate,pspin)%re   &
+            +          se%sigma_calc(1,pstate,pspin)%re                 &
+            - 2.0_dp * se%sigma_calc(se%nomega_calc/2+1,pstate,pspin)%re ) &
+            / ( se%omega_calc(se%nomega_calc)%re - se%omega_calc(1)%re )**2 * 2.0_dp
+
+     do iomega=-se%nomega,se%nomega
+       se%sigma(iomega,pstate,pspin) = a0 + a1 * (se%omega(iomega)-se%omega_calc(se%nomega_calc/2+1)) &
+                                          + a2 * (se%omega(iomega)-se%omega_calc(se%nomega_calc/2+1))**2
+     enddo
+
+   enddo
+ enddo
+
+
+end subroutine self_energy_polynomial
 
 
 !=========================================================================

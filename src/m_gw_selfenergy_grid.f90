@@ -215,8 +215,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   type(selfenergy_grid),intent(inout) :: se
   !=====
   integer              :: nstate
-  integer              :: iomegas
-  integer              :: iomega
+  integer              :: iomega_calc,iomega
   integer              :: info
   real(dp),allocatable :: eri3_sca(:,:)
   real(dp),allocatable :: chi_eri3_sca(:,:)
@@ -238,6 +237,11 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   call start_clock(timing_gw_self)
 
   write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies'
+  write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
+  do iomega_calc=1,se%nomega_calc
+    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_calc,se%omega_calc(iomega_calc)*Ha_eV
+  enddo
+  write(stdout,'(1x,a)') '========================================================'
 
   nstate = SIZE(energy,DIM=1)
 
