@@ -923,8 +923,8 @@ subroutine self_energy_pade(se)
  integer  :: pstate,pspin
  integer  :: iomega,iomega_calc
  real(dp) :: sign_eta
- complex(dp) :: omega_sym(2*se%nomega_calc+1)
- complex(dp) :: sigma_sym(2*se%nomega_calc+1)
+ complex(dp) :: omega_sym(2*se%nomega_calc-1)
+ complex(dp) :: sigma_sym(2*se%nomega_calc-1)
 !=====
 
  do pspin=1,nspin
@@ -932,17 +932,18 @@ subroutine self_energy_pade(se)
 
      ! First create the symmetric sigma
      ! using sigma(-iw) = sigma(iw)*
-     omega_sym(1) = se%omega_calc(1)
-     sigma_sym(1) = se%sigma_calc(1,pstate,pspin)
+     omega_sym(se%nomega_calc) = se%omega_calc(1)
+     sigma_sym(se%nomega_calc) = se%sigma_calc(1,pstate,pspin)
      do iomega_calc=2,se%nomega_calc
-       omega_sym(2*iomega_calc-2) = se%omega_calc(iomega_calc)
-       sigma_sym(2*iomega_calc-2) = se%sigma_calc(iomega_calc,pstate,pspin)
-       omega_sym(2*iomega_calc-1) = CONJG(se%omega_calc(iomega_calc))
-       sigma_sym(2*iomega_calc-1) = CONJG(se%sigma_calc(iomega_calc,pstate,pspin))
+       omega_sym(se%nomega_calc+iomega_calc-1) = se%omega_calc(iomega_calc)
+       sigma_sym(se%nomega_calc+iomega_calc-1) = se%sigma_calc(iomega_calc,pstate,pspin)
+       omega_sym(se%nomega_calc-iomega_calc+1) = CONJG(se%omega_calc(iomega_calc))
+       sigma_sym(se%nomega_calc-iomega_calc+1) = CONJG(se%sigma_calc(iomega_calc,pstate,pspin))
      enddo
 
+
      do iomega=-se%nomega,se%nomega
-       sign_eta = -SIGN( 1.0_dp , se%omega(iomega)%re - omega_sym(1)%re )
+       sign_eta = -SIGN( 1.0_dp , se%omega(iomega)%re - se%omega_calc(1)%re )
        se%sigma(iomega,pstate,pspin) = pade(omega_sym,sigma_sym, se%omega(iomega) + ieta * sign_eta )
      enddo
    enddo
