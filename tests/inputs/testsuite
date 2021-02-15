@@ -564,7 +564,14 @@ Total force atom    2     ,     -0.0000036520  , 0 , 1.0e-6
 atom    1   H             ,      -0.692180     , 0 , 1.0e-3
 atom    2   H             ,       0.692180     , 0 , 1.0e-3
 
-h2o_pade.in               , GW calculation with Pade analytic continuation
+h2o_gw_pade.in            , GW calculation with Pade analytic continuation
+SCF Total Energy          , -76.3797751143     , 0 , 1.0e-7
+RPA correlation energy    ,  -0.3839751863     , 0 , 1.0e-7
+RPA Total energy          , -76.4392995158     , 0 , 1.0e-7
+GW HOMO energy            , -12.131041         , 0 , 1.0e-4
+GW LUMO energy            ,   0.883074         , 0 , 1.0e-4
+
+h2o_gw_polynomial.in      , GW calculation with polynomical continuation
 SCF Total Energy          , -76.3797751143     , 0 , 1.0e-7
 RPA correlation energy    ,  -0.3839751863     , 0 , 1.0e-7
 RPA Total energy          , -76.4392995158     , 0 , 1.0e-7

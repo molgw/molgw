@@ -201,7 +201,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
        endif
        ! If reading has failed, then do the calculation
        if( reading_status /= 0 ) then
-         if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
+         if( calc_type%selfenergy_technique /= imaginary_axis_pade  &
+           & .AND. calc_type%selfenergy_technique /= imaginary_axis_homolumo ) then
            ! in case of BSE calculation, enforce RPA here
            enforce_rpa = calc_type%is_bse
            call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
@@ -222,6 +223,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      case(imaginary_axis_pade)
        call gw_selfenergy_imag_scalapack(basis,energy_g,c_matrix,wpol,se)
        call self_energy_pade(se)
+     case(imaginary_axis_homolumo)
+       call gw_selfenergy_imag_scalapack(basis,energy_g,c_matrix,wpol,se)
      case(exact_dyson)
        call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
      case default

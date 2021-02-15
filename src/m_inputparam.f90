@@ -29,6 +29,7 @@ module m_inputparam
  integer,parameter :: static_selfenergy       = 105
  integer,parameter :: imaginary_axis_integral = 106
  integer,parameter :: exact_dyson             = 107
+ integer,parameter :: imaginary_axis_homolumo = 108
 
  !
  ! Self-energy approximation
@@ -221,10 +222,14 @@ subroutine init_calculation_type(scf,postscf)
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = COHSEX
      calc_type%selfenergy_technique = static_selfenergy
-   case('G0W0_IMAGINARY','GW_IMAGINARY')
+   case('G0W0_AC','GW_AC','G0W0_PADE','GW_PADE')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx    = GW_IMAG
      calc_type%selfenergy_technique = imaginary_axis_pade
+   case('G0W0_HOMOLUMO','GW_HOMOLUMO')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx    = GW_IMAG
+     calc_type%selfenergy_technique = imaginary_axis_homolumo
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0SOX0

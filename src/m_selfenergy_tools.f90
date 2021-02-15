@@ -567,6 +567,23 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
      se%omegai(iomega) = efermi + step_sigmai * iomega * im
    enddo
 
+ case(imaginary_axis_homolumo)
+   !
+   ! Set the final sampling points for Sigma on the real axis
+   se%nomega = nomega_sigma/2
+   allocate(se%omega(-se%nomega:se%nomega))
+   do iomega=-se%nomega,se%nomega
+     se%omega(iomega) = efermi &
+                   + 0.5_dp * iomega / REAL(se%nomega,dp) &
+                     * ( MINVAL(energy0(nhomo_G+1,:)) - MAXVAL(energy0(nhomo_G,:)) - 0.02_dp)
+   enddo
+
+   !
+   ! Set the calculated sampling points for Sigma on the imaginary axis
+   se%nomegai = se%nomega
+   allocate(se%omegai(-se%nomegai:se%nomegai))
+   se%omegai(:) = se%omega(:)
+
  case(imaginary_axis_integral)
    !
    ! No final sampling points for Sigma on the real axis
@@ -608,18 +625,17 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  allocate(se%energy0(nsemin:nsemax,nspin))
 
  select case(selfenergy_technique)
- case(imaginary_axis_pade)
+ case(imaginary_axis_pade,imaginary_axis_homolumo)
    ! in this case the central point is already included in the complex frequency se%omegai
    se%energy0(nsemin:nsemax,:) = 0.0_dp
  case default
    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
  end select
 
- !
- ! Set the central point of the grid
  allocate(se%sigma(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+
  select case(selfenergy_technique)
- case(imaginary_axis_pade,imaginary_axis_integral)
+ case(imaginary_axis_pade,imaginary_axis_integral,imaginary_axis_homolumo)
    allocate(se%sigmai(-se%nomegai:se%nomegai,nsemin:nsemax,nspin))
  end select
 
