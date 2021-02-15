@@ -742,6 +742,14 @@ nomega_sigma:
   comment: Sets the number of frequencies used to solve the quasiparticle equation
     in the GW self-energy.
 
+nomega_sigmai:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Sets the number of imaginary frequencies used to fit the analytic continuation of the GW self-energy.
+
 nstep_dav:
   family: post
   datatype: integer
@@ -884,6 +892,14 @@ step_sigma:
   experimental: 'no'
   default: 0.01
   comment: Sets the spacing between frequencies in the GW self-energy evaluation.
+
+step_sigmai:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.03
+  comment: Sets the spacing between the imaginary frequencies in the GW self-energy analytic continuation evaluation.
 
 stopping:
   family: post

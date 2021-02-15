@@ -539,6 +539,8 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
                      MAXVAL(energy0(nhomo_G,:)),MINVAL(energy0(nhomo_G+1,:))
      call die('init_selfenergy_grid: efermi needs to be in the HOMO-LUMO gap')
    endif
+ else
+   efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G,:)) + MINVAL(energy0(nhomo_G+1,:)) )
  endif
 
  select case(selfenergy_technique)
@@ -559,10 +561,10 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
 
    !
    ! Set the calculated sampling points for Sigma on the imaginary axis
-   se%nomegai = nomega_sigma / 2
+   se%nomegai = nomega_sigmai
    allocate(se%omegai(-se%nomegai:se%nomegai))
    do iomega=-se%nomegai,se%nomegai
-     se%omegai(iomega) = step_sigma * iomega * im * 3.0_dp
+     se%omegai(iomega) = efermi + step_sigmai * iomega * im
    enddo
 
  case(imaginary_axis_integral)
@@ -607,11 +609,8 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
 
  select case(selfenergy_technique)
  case(imaginary_axis_pade)
-   if(.NOT. manual_efermi) then
-     ! Find the center of the HOMO-LUMO gap
-     efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G,:)) + MINVAL(energy0(nhomo_G+1,:)) )
-   endif
-   se%energy0(nsemin:nsemax,:) = efermi
+   ! in this case the central point is already included in the complex frequency se%omegai
+   se%energy0(nsemin:nsemax,:) = 0.0_dp
  case default
    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
  end select
@@ -630,143 +629,143 @@ end subroutine init_selfenergy_grid
 !=========================================================================
 subroutine destroy_selfenergy_grid(se)
  implicit none
- type(selfenergy_grid),intent(inout) :: se
-!=====
+   type(selfenergy_grid),intent(inout) :: se
+  !=====
 
- se%nomega  = 0
- se%nomegai = 0
- if( ALLOCATED(se%omega) )  deallocate(se%omega)
- if( ALLOCATED(se%omegai) ) deallocate(se%omegai)
- deallocate(se%energy0)
- deallocate(se%sigma)
- if( ALLOCATED(se%sigmai) )  deallocate(se%sigmai)
- if( ALLOCATED(se%weighti) ) deallocate(se%weighti)
+   se%nomega  = 0
+   se%nomegai = 0
+   if( ALLOCATED(se%omega) )  deallocate(se%omega)
+   if( ALLOCATED(se%omegai) ) deallocate(se%omegai)
+   deallocate(se%energy0)
+   deallocate(se%sigma)
+   if( ALLOCATED(se%sigmai) )  deallocate(se%sigmai)
+   if( ALLOCATED(se%weighti) ) deallocate(se%weighti)
 
-end subroutine destroy_selfenergy_grid
+  end subroutine destroy_selfenergy_grid
 
 
-!=========================================================================
-subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
- implicit none
+  !=========================================================================
+  subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
+   implicit none
 
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: energy(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(in)        :: hamiltonian_fock(:,:,:)
- real(dp),intent(out)       :: exchange_m_vxc(:,:,:)
-!=====
- integer              :: nstate
- integer              :: ispin,pstate
- real(dp)             :: exc
- real(dp),allocatable :: occupation_tmp(:,:)
- real(dp),allocatable :: p_matrix_tmp(:,:,:)
- real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
-!=====
+   type(basis_set),intent(in) :: basis
+   real(dp),intent(in)        :: occupation(:,:)
+   real(dp),intent(in)        :: energy(:,:)
+   real(dp),intent(in)        :: c_matrix(:,:,:)
+   real(dp),intent(in)        :: hamiltonian_fock(:,:,:)
+   real(dp),intent(out)       :: exchange_m_vxc(:,:,:)
+  !=====
+   integer              :: nstate
+   integer              :: ispin,pstate
+   real(dp)             :: exc
+   real(dp),allocatable :: occupation_tmp(:,:)
+   real(dp),allocatable :: p_matrix_tmp(:,:,:)
+   real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
+  !=====
 
- call start_clock(timing_x_m_vxc)
- write(stdout,*) 'Calculate the (Sigma_x - Vxc) matrix'
+   call start_clock(timing_x_m_vxc)
+   write(stdout,*) 'Calculate the (Sigma_x - Vxc) matrix'
 
- nstate = SIZE(occupation,DIM=1)
-
- !
- ! Testing the core/valence splitting
- !
- if(dft_core > 0) then
-   if( beta_hybrid > 0.001 ) then
-     call die('setup_exchange_m_vxc: RSH not implemented for DFT core-valence splitting')
-   endif
-   write(msg,'(a,i4,2x,i4)') 'DFT core-valence interaction switched on up to state = ',dft_core
-   call issue_warning(msg)
-
-   allocate(occupation_tmp(nstate,nspin))
-   allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
-   allocate(hxc_val(basis%nbf,basis%nbf,nspin))
-   allocate(hexx_val(basis%nbf,basis%nbf,nspin))
-   allocate(hxmxc(basis%nbf,basis%nbf,nspin))
-
-   ! Override the occupation of the core electrons
-   occupation_tmp(:,:) = occupation(:,:)
-   occupation_tmp(1:dft_core,:) = 0.0_dp
-
-   if( calc_type%is_dft ) then
-     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.FALSE.,BATCH_SIZE)
-     call setup_density_matrix(c_matrix,occupation_tmp,p_matrix_tmp)
-     call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation_tmp,c_matrix,hxc_val,exc)
-     call destroy_dft_grid()
-   endif
-
-   call calculate_exchange(basis,p_matrix_tmp,hexx_val,occupation=occupation_tmp,c_matrix=c_matrix)
-
-   hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)
-   hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:)
-
-   deallocate(occupation_tmp,p_matrix_tmp)
+   nstate = SIZE(occupation,DIM=1)
 
    !
-   ! Calculate the matrix Sigma_x - Vxc
-   ! for the forthcoming GW corrections
+   ! Testing the core/valence splitting
    !
-   call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
+   if(dft_core > 0) then
+     if( beta_hybrid > 0.001 ) then
+       call die('setup_exchange_m_vxc: RSH not implemented for DFT core-valence splitting')
+     endif
+     write(msg,'(a,i4,2x,i4)') 'DFT core-valence interaction switched on up to state = ',dft_core
+     call issue_warning(msg)
 
-   deallocate(hxc_val,hexx_val,hxmxc)
+     allocate(occupation_tmp(nstate,nspin))
+     allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
+     allocate(hxc_val(basis%nbf,basis%nbf,nspin))
+     allocate(hexx_val(basis%nbf,basis%nbf,nspin))
+     allocate(hxmxc(basis%nbf,basis%nbf,nspin))
 
- else
+     ! Override the occupation of the core electrons
+     occupation_tmp(:,:) = occupation(:,:)
+     occupation_tmp(1:dft_core,:) = 0.0_dp
 
-   !
-   ! Calculate the matrix < p | Sigma_x - Vxc | q >
-   ! this is equal to < p | F - H | q > and < p | H | q > = e_p \delta_{pq}
+     if( calc_type%is_dft ) then
+       call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.FALSE.,BATCH_SIZE)
+       call setup_density_matrix(c_matrix,occupation_tmp,p_matrix_tmp)
+       call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation_tmp,c_matrix,hxc_val,exc)
+       call destroy_dft_grid()
+     endif
 
-   call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
+     call calculate_exchange(basis,p_matrix_tmp,hexx_val,occupation=occupation_tmp,c_matrix=c_matrix)
 
-   do ispin=1,nspin
-     do pstate=1,nstate
-       exchange_m_vxc(pstate,pstate,ispin) = exchange_m_vxc(pstate,pstate,ispin) - energy(pstate,ispin)
+     hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)
+     hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:)
+
+     deallocate(occupation_tmp,p_matrix_tmp)
+
+     !
+     ! Calculate the matrix Sigma_x - Vxc
+     ! for the forthcoming GW corrections
+     !
+     call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
+
+     deallocate(hxc_val,hexx_val,hxmxc)
+
+   else
+
+     !
+     ! Calculate the matrix < p | Sigma_x - Vxc | q >
+     ! this is equal to < p | F - H | q > and < p | H | q > = e_p \delta_{pq}
+
+     call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
+
+     do ispin=1,nspin
+       do pstate=1,nstate
+         exchange_m_vxc(pstate,pstate,ispin) = exchange_m_vxc(pstate,pstate,ispin) - energy(pstate,ispin)
+       enddo
      enddo
+
+   endif
+
+   call stop_clock(timing_x_m_vxc)
+
+  end subroutine setup_exchange_m_vxc
+
+
+  !=========================================================================
+  subroutine apply_qs_approximation(s_matrix,c_matrix,selfenergy)
+   implicit none
+
+   real(dp),intent(in)    :: s_matrix(:,:),c_matrix(:,:,:)
+   real(dp),intent(inout) :: selfenergy(:,:,:)
+  !=====
+   integer :: ispin
+  !=====
+
+   !
+   ! Kotani's Hermitianization trick
+   !
+   do ispin=1,nspin
+     selfenergy(:,:,ispin) = 0.5_dp * ( selfenergy(:,:,ispin) + TRANSPOSE(selfenergy(:,:,ispin)) )
+
+     ! Transform the matrix elements back to the AO basis
+     ! do not forget the overlap matrix S
+     ! C^T S C = I
+     ! the inverse of C is C^T S
+     ! the inverse of C^T is S C
+     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , &
+                               MATMUL( selfenergy(nsemin:nsemax,nsemin:nsemax,ispin), &
+                                 MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
+
    enddo
 
- endif
-
- call stop_clock(timing_x_m_vxc)
-
-end subroutine setup_exchange_m_vxc
+  end subroutine apply_qs_approximation
 
 
-!=========================================================================
-subroutine apply_qs_approximation(s_matrix,c_matrix,selfenergy)
- implicit none
+  !=========================================================================
+  subroutine self_energy_fit(se)
+   implicit none
 
- real(dp),intent(in)    :: s_matrix(:,:),c_matrix(:,:,:)
- real(dp),intent(inout) :: selfenergy(:,:,:)
-!=====
- integer :: ispin
-!=====
-
- !
- ! Kotani's Hermitianization trick
- !
- do ispin=1,nspin
-   selfenergy(:,:,ispin) = 0.5_dp * ( selfenergy(:,:,ispin) + TRANSPOSE(selfenergy(:,:,ispin)) )
-
-   ! Transform the matrix elements back to the AO basis
-   ! do not forget the overlap matrix S
-   ! C^T S C = I
-   ! the inverse of C is C^T S
-   ! the inverse of C^T is S C
-   selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , &
-                             MATMUL( selfenergy(nsemin:nsemax,nsemin:nsemax,ispin), &
-                               MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
-
- enddo
-
-end subroutine apply_qs_approximation
-
-
-!=========================================================================
-subroutine self_energy_fit(se)
- implicit none
-
- type(selfenergy_grid),intent(inout) :: se
+   type(selfenergy_grid),intent(inout) :: se
 !=====
  integer :: pstate,pspin
  integer :: iomega

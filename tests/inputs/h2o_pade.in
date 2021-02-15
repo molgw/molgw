@@ -15,6 +15,11 @@
  step_sigma=0.025
  nomega_sigma=101
 
+ step_sigmai=0.075
+ nomega_sigmai=101
+
+ print_sigma='yes'
+
 
  natom=3
 /

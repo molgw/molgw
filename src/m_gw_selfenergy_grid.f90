@@ -303,9 +303,9 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
 
           sigmaigw(:,mstate,mpspin) = sigmaigw(:,mstate,mpspin) &
                         - wpol%weight_quad(iomega) &
-                            * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) ) &
+                            * (  1.0_dp / ( ( se%omegai(0:) - energy(pstate,mpspin) ) &
                                               + im * wpol%omega_quad(iomega) )   &
-                               + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) )  &
+                               + 1.0_dp / ( ( se%omegai(0:) - energy(pstate,mpspin) )  &
                                               - im * wpol%omega_quad(iomega) )  ) &
                            * v_chi_v_p /  (2.0_dp * pi)
         enddo
