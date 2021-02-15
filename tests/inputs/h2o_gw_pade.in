@@ -7,7 +7,7 @@
  eta=1.0e-2
  min_overlap = 5.0e-4
 
- postscf='g0w0_imaginary'
+ postscf='g0w0_pade'
  frozencore='yes'
  selfenergy_state_range=1
  nomega_imag = 64
