@@ -227,8 +227,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   integer              :: meri3,neri3
   integer              :: mstate,pstate,mpspin
   integer              :: prange,plocal
-  logical              :: negative_imaginary_axis
-  complex(dp),allocatable :: omegai_calc(:),sigmaigw(:,:,:)
+  complex(dp),allocatable :: sigmaigw(:,:,:)
   !=====
 
 
@@ -266,19 +265,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
 
   call DESCINIT(desc_eri3_t,nauxil_2center,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
 
-
-  ! If some frequencies have a negative imaginary part, then we dont need to calculate them
-  ! and we will obtain them from the complex conjugation of the positive imaginary part
-  negative_imaginary_axis = ANY( se%omegai(:)%im < -1.0e-8_dp )
-  if( negative_imaginary_axis ) then
-    allocate(sigmaigw(0:se%nomegai,nsemin:nsemax,nspin))
-    allocate(omegai_calc(0:se%nomegai))
-    omegai_calc(0:se%nomegai) = se%omegai(0:se%nomegai)
-  else
-    allocate(sigmaigw(-se%nomegai:se%nomegai,nsemin:nsemax,nspin))
-    allocate(omegai_calc(-se%nomegai:se%nomegai))
-    omegai_calc(:) = se%omegai(:)
-  endif
+  allocate(sigmaigw(se%nomega_calc,nsemin:nsemax,nspin))
   sigmaigw(:,:,:) = 0.0_dp
 
   do mpspin=1,nspin
@@ -314,9 +301,9 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
 
           sigmaigw(:,mstate,mpspin) = sigmaigw(:,mstate,mpspin) &
                         - wpol%weight_quad(iomega) &
-                            * (  1.0_dp / ( ( omegai_calc(:) - energy(pstate,mpspin) ) &
+                            * (  1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) ) &
                                               + im * wpol%omega_quad(iomega) )   &
-                               + 1.0_dp / ( ( omegai_calc(:) - energy(pstate,mpspin) )  &
+                               + 1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) )  &
                                               - im * wpol%omega_quad(iomega) )  ) &
                            * v_chi_v_p /  (2.0_dp * pi)
         enddo
@@ -329,14 +316,10 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   enddo
   call xsum_world(sigmaigw)
 
-  if( negative_imaginary_axis ) then
-    do iomegas=0,se%nomegai
-      se%sigmai(iomegas,:,:) = CONJG(sigmaigw(-iomegas,:,:))
-      se%sigmai(iomegas,:,:) = sigmaigw(iomegas,:,:)
-    enddo
-  endif
+  se%sigma_calc(:,:,:) = sigmaigw(:,:,:)
 
-  deallocate(sigmaigw,omegai_calc)
+
+  deallocate(sigmaigw)
   call clean_deallocate('TMP 3-center MO integrals',eri3_sca)
   call clean_deallocate('TMP 3-center MO integrals',chi_eri3_sca)
 

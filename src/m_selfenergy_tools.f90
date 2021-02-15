@@ -38,13 +38,13 @@ module m_selfenergy_tools
  ! Selfenergy evaluated on a frequency grid
  type selfenergy_grid
    integer                 :: nomega
-   integer                 :: nomegai
+   integer                 :: nomega_calc
    complex(dp),allocatable :: omega(:)
-   complex(dp),allocatable :: omegai(:)
-   real(dp),allocatable    :: weighti(:)
+   complex(dp),allocatable :: omega_calc(:)
+   real(dp),allocatable    :: weight_calc(:)
    real(dp),allocatable    :: energy0(:,:)
    complex(dp),allocatable :: sigma(:,:,:)
-   complex(dp),allocatable :: sigmai(:,:,:)
+   complex(dp),allocatable :: sigma_calc(:,:,:)
  end type
 
 
@@ -155,16 +155,15 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
    write(selfenergyfile,*)
    close(selfenergyfile)
 
-   if( se%nomegai > 0 ) then
+   if( se%nomega_calc > 0 ) then
      filename = TRIM(filename_root) // '_cmplx_state' // TRIM(ctmp) // '.dat'
      write(stdout,'(1x,a,a)') 'Writing selfenergy for complex frequencies in file: ', TRIM(filename)
      open(newunit=selfenergyfile_cmplx,file=filename)
      write(selfenergyfile_cmplx,'(a)') &
       '#       omega (eV)          Re SigmaC (eV)     Im SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)'
-     do iomega=-se%nomegai,se%nomegai
-       write(selfenergyfile_cmplx,'(20(f16.8,2x))') ( se%omegai(iomega) + se%energy0(pstate,:) )*Ha_eV,     &
-                                                    REAL(se%sigmai(iomega,pstate,:),dp) * Ha_eV,            &
-                                                    AIMAG(se%sigmai(iomega,pstate,:)) * Ha_eV,              &
+     do iomega=1,se%nomega_calc
+       write(selfenergyfile_cmplx,'(20(f16.8,2x))') ( se%omega_calc(iomega) + se%energy0(pstate,:) )*Ha_eV,   &
+                                                    se%sigma_calc(iomega,pstate,:) * Ha_eV,                   &
                                                     0.0_dp,0.0_dp
      enddo
      close(selfenergyfile_cmplx)
@@ -524,8 +523,8 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  logical              :: manual_efermi
 !=====
 
- se%nomegai = 0
- se%nomega  = 0
+ se%nomega_calc = 0
+ se%nomega      = 0
 
  inquire(file='manual_efermi',exist=manual_efermi)
  if(manual_efermi) then
@@ -561,10 +560,10 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
 
    !
    ! Set the calculated sampling points for Sigma on the imaginary axis
-   se%nomegai = nomega_sigmai
-   allocate(se%omegai(-se%nomegai:se%nomegai))
-   do iomega=-se%nomegai,se%nomegai
-     se%omegai(iomega) = efermi + step_sigmai * iomega * im
+   se%nomega_calc = nomega_sigma_calc
+   allocate(se%omega_calc(se%nomega_calc))
+   do iomega=1,se%nomega_calc
+     se%omega_calc(iomega) = efermi + step_sigma_calc * (iomega-1) * im
    enddo
 
  case(imaginary_axis_homolumo)
@@ -573,16 +572,18 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    se%nomega = nomega_sigma/2
    allocate(se%omega(-se%nomega:se%nomega))
    do iomega=-se%nomega,se%nomega
-     se%omega(iomega) = efermi &
-                   + 0.5_dp * iomega / REAL(se%nomega,dp) &
-                     * ( MINVAL(energy0(nhomo_G+1,:)) - MAXVAL(energy0(nhomo_G,:)) - 0.02_dp)
+     se%omega(iomega) = efermi + step_sigma * iomega
    enddo
 
    !
-   ! Set the calculated sampling points for Sigma on the imaginary axis
-   se%nomegai = se%nomega
-   allocate(se%omegai(-se%nomegai:se%nomegai))
-   se%omegai(:) = se%omega(:)
+   ! Set the initial sampling points for Sigma on the real axis inside the HOMO-LUMO gap
+   se%nomega_calc = nomega_sigma_calc
+   allocate(se%omega_calc(se%nomega_calc))
+   do iomega=1,se%nomega_calc
+     se%omega_calc(iomega) = MAXVAL(energy0(nhomo_G,:)) + 0.01_dp &
+                             + iomega / REAL(se%nomega,dp) &
+                                 * ( MINVAL(energy0(nhomo_G+1,:)) - MAXVAL(energy0(nhomo_G,:)) - 0.02_dp)
+   enddo
 
  case(imaginary_axis_integral)
    !
@@ -592,17 +593,17 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    !
    ! Set the calculated sampling points for Sigma on the imaginary axis
    ! so to have a Gauss-Legendre type quadrature
-   se%nomegai = nomega_sigma
-   allocate(se%omegai(se%nomegai))
-   allocate(se%weighti(se%nomegai))
-   allocate(omega_gaussleg(se%nomegai))
-   call coeffs_gausslegint(0.0_dp,1.0_dp,omega_gaussleg,se%weighti,se%nomegai)
+   se%nomega_calc = nomega_sigma
+   allocate(se%omega_calc(se%nomega_calc))
+   allocate(se%weight_calc(se%nomega_calc))
+   allocate(omega_gaussleg(se%nomega_calc))
+   call coeffs_gausslegint(0.0_dp,1.0_dp,omega_gaussleg,se%weight_calc,se%nomega_calc)
 
    ! Variable change [0,1] -> [0,+\inf[
-   do iomega=1,se%nomegai
-     se%weighti(iomega) = se%weighti(iomega) / ( 2.0_dp**alpha - 1.0_dp ) &
+   do iomega=1,se%nomega_calc
+     se%weight_calc(iomega) = se%weight_calc(iomega) / ( 2.0_dp**alpha - 1.0_dp ) &
                                  * alpha * (1.0_dp -  omega_gaussleg(iomega))**(-alpha-1.0_dp) * beta
-     se%omegai(iomega)  = im / ( 2.0_dp**alpha - 1.0_dp ) &
+     se%omega_calc(iomega)  = im / ( 2.0_dp**alpha - 1.0_dp ) &
                                * ( 1.0_dp / (1.0_dp - omega_gaussleg(iomega))**alpha - 1.0_dp ) * beta
    enddo
    deallocate(omega_gaussleg)
@@ -626,7 +627,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
 
  select case(selfenergy_technique)
  case(imaginary_axis_pade,imaginary_axis_homolumo)
-   ! in this case the central point is already included in the complex frequency se%omegai
+   ! in this case the central point is already included in the complex frequency se%omega_calc
    se%energy0(nsemin:nsemax,:) = 0.0_dp
  case default
    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
@@ -636,7 +637,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
 
  select case(selfenergy_technique)
  case(imaginary_axis_pade,imaginary_axis_integral,imaginary_axis_homolumo)
-   allocate(se%sigmai(-se%nomegai:se%nomegai,nsemin:nsemax,nspin))
+   allocate(se%sigma_calc(se%nomega_calc,nsemin:nsemax,nspin))
  end select
 
 end subroutine init_selfenergy_grid
@@ -648,14 +649,14 @@ subroutine destroy_selfenergy_grid(se)
    type(selfenergy_grid),intent(inout) :: se
   !=====
 
-   se%nomega  = 0
-   se%nomegai = 0
+   se%nomega      = 0
+   se%nomega_calc = 0
    if( ALLOCATED(se%omega) )  deallocate(se%omega)
-   if( ALLOCATED(se%omegai) ) deallocate(se%omegai)
+   if( ALLOCATED(se%omega_calc) ) deallocate(se%omega_calc)
    deallocate(se%energy0)
    deallocate(se%sigma)
-   if( ALLOCATED(se%sigmai) )  deallocate(se%sigmai)
-   if( ALLOCATED(se%weighti) ) deallocate(se%weighti)
+   if( ALLOCATED(se%sigma_calc) )  deallocate(se%sigma_calc)
+   if( ALLOCATED(se%weight_calc) ) deallocate(se%weight_calc)
 
   end subroutine destroy_selfenergy_grid
 
@@ -842,10 +843,10 @@ subroutine destroy_selfenergy_grid(se)
      write(stdout,'(1x,a)') '=========================='
 
 
-     do iomega=-se%nomegai,se%nomegai
-       write(500+pstate,'(6(1x,f18.8))') (se%omegai(iomega) + se%energy0(pstate,pspin))*Ha_eV, &
-                                         se%sigmai(iomega,pstate,pspin)*Ha_eV, &
-                                         eval_func(coeff, se%omegai(iomega) + se%energy0(pstate,pspin) )*Ha_eV
+     do iomega=1,se%nomega_calc
+       write(500+pstate,'(6(1x,f18.8))') (se%omega_calc(iomega) + se%energy0(pstate,pspin))*Ha_eV, &
+                                         se%sigma_calc(iomega,pstate,pspin)*Ha_eV, &
+                                         eval_func(coeff, se%omega_calc(iomega) + se%energy0(pstate,pspin) )*Ha_eV
      enddo
 
 
@@ -888,18 +889,18 @@ function eval_chi2(coeff_in)
  real(dp),intent(in)    :: coeff_in(nparam*npp)
  real(dp)               :: eval_chi2
 !=====
- integer  :: iomegai
+ integer  :: iomega_calc
  real(dp) :: weight
  real(dp) :: norm
 !=====
 
  eval_chi2 = 0.0_dp
  norm      = 0.0_dp
- do iomegai=-se%nomegai,se%nomegai
-   weight = 1.0_dp / ABS(1.0_dp+se%omegai(iomegai))**2
+ do iomega_calc=1,se%nomega_calc
+   weight = 1.0_dp / ABS(1.0_dp+se%omega_calc(iomega_calc))**2
    eval_chi2 = eval_chi2         &
-                + ABS( se%sigmai(iomegai,pstate,pspin) &
-                      - eval_func(coeff_in, se%omegai(iomegai) + se%energy0(pstate,pspin) ) )**2 &
+                + ABS( se%sigma_calc(iomega_calc,pstate,pspin) &
+                      - eval_func(coeff_in, se%omega_calc(iomega_calc) + se%energy0(pstate,pspin) ) )**2 &
                       * weight
    norm = norm + weight
 
@@ -920,16 +921,29 @@ subroutine self_energy_pade(se)
  type(selfenergy_grid),intent(inout) :: se
 !=====
  integer  :: pstate,pspin
- integer  :: iomega
+ integer  :: iomega,iomega_calc
  real(dp) :: sign_eta
+ complex(dp) :: omega_sym(2*se%nomega_calc+1)
+ complex(dp) :: sigma_sym(2*se%nomega_calc+1)
 !=====
 
  do pspin=1,nspin
    do pstate=nsemin,nsemax
+
+     ! First create the symmetric sigma
+     ! using sigma(-iw) = sigma(iw)*
+     omega_sym(1) = se%omega_calc(1)
+     sigma_sym(1) = se%sigma_calc(1,pstate,pspin)
+     do iomega_calc=2,se%nomega_calc
+       omega_sym(2*iomega_calc-2) = se%omega_calc(iomega_calc)
+       sigma_sym(2*iomega_calc-2) = se%sigma_calc(iomega_calc,pstate,pspin)
+       omega_sym(2*iomega_calc-1) = CONJG(se%omega_calc(iomega_calc))
+       sigma_sym(2*iomega_calc-1) = CONJG(se%sigma_calc(iomega_calc,pstate,pspin))
+     enddo
+
      do iomega=-se%nomega,se%nomega
-       sign_eta = -SIGN( 1.0_dp , REAL(se%omega(iomega),dp) - REAL(se%omegai(0),dp))
-       se%sigma(iomega,pstate,pspin) = pade( se%omegai(:), se%sigmai(:,pstate,pspin)  , &
-                                              se%omega(iomega) + ieta * sign_eta )
+       sign_eta = -SIGN( 1.0_dp , se%omega(iomega)%re - omega_sym(1)%re )
+       se%sigma(iomega,pstate,pspin) = pade(omega_sym,sigma_sym, se%omega(iomega) + ieta * sign_eta )
      enddo
    enddo
  enddo

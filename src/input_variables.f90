@@ -80,7 +80,7 @@
     nexcitation,       &
     nomega_imag,       &
     nomega_sigma,       &
-    nomega_sigmai,       &
+    nomega_sigma_calc,       &
     nstep_dav,       &
     nstep_gw,       &
     nvel_projectile,       &
@@ -97,7 +97,7 @@
     selfenergy_state_range,       &
     small_basis,       &
     step_sigma,       &
-    step_sigmai,       &
+    step_sigma_calc,       &
     stopping,       &
     tda,       &
     tddft_grid_quality,       &
@@ -225,7 +225,7 @@
  nexcitation=0
  nomega_imag=0
  nomega_sigma=51
- nomega_sigmai=1
+ nomega_sigma_calc=1
  nstep_dav=15
  nstep_gw=1
  nvel_projectile=1
@@ -242,7 +242,7 @@
  selfenergy_state_range=100000
  small_basis=''
  step_sigma=0.01_dp 
- step_sigmai=0.03_dp 
+ step_sigma_calc=0.03_dp 
  stopping='no'
  tda='no'
  tddft_grid_quality='high'

@@ -79,7 +79,7 @@
  write(stdout,'(1x,a24,2x,i8)') 'nexcitation',nexcitation 
  write(stdout,'(1x,a24,2x,i8)') 'nomega_imag',nomega_imag 
  write(stdout,'(1x,a24,2x,i8)') 'nomega_sigma',nomega_sigma 
- write(stdout,'(1x,a24,2x,i8)') 'nomega_sigmai',nomega_sigmai 
+ write(stdout,'(1x,a24,2x,i8)') 'nomega_sigma_calc',nomega_sigma_calc 
  write(stdout,'(1x,a24,2x,i8)') 'nstep_dav',nstep_dav 
  write(stdout,'(1x,a24,2x,i8)') 'nstep_gw',nstep_gw 
  write(stdout,'(1x,a24,2x,i8)') 'nvel_projectile',nvel_projectile 
@@ -96,7 +96,7 @@
  write(stdout,'(1x,a24,2x,i8)') 'selfenergy_state_range',selfenergy_state_range 
  write(stdout,'(1x,a24,6x,a)') 'small_basis',small_basis 
  write(stdout,'(1x,a24,2x,es16.8)') 'step_sigma',step_sigma 
- write(stdout,'(1x,a24,2x,es16.8)') 'step_sigmai',step_sigmai 
+ write(stdout,'(1x,a24,2x,es16.8)') 'step_sigma_calc',step_sigma_calc 
  write(stdout,'(1x,a24,6x,a)') 'stopping',stopping 
  write(stdout,'(1x,a24,6x,a)') 'tda',tda 
  write(stdout,'(1x,a24,6x,a)') 'tddft_grid_quality',tddft_grid_quality 

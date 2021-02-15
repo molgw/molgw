@@ -742,13 +742,13 @@ nomega_sigma:
   comment: Sets the number of frequencies used to solve the quasiparticle equation
     in the GW self-energy.
 
-nomega_sigmai:
+nomega_sigma_calc:
   family: post
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
   default: 1
-  comment: Sets the number of imaginary frequencies used to fit the analytic continuation of the GW self-energy.
+  comment: Sets the number of frequencies where the GW self-energy is actually calculated.
 
 nstep_dav:
   family: post
@@ -891,15 +891,15 @@ step_sigma:
   mandatory: 'no'
   experimental: 'no'
   default: 0.01
-  comment: Sets the spacing between frequencies in the GW self-energy evaluation.
+  comment: Sets the spacing between frequencies in the final GW self-energy output.
 
-step_sigmai:
+step_sigma_calc:
   family: post
   datatype: real
   mandatory: 'no'
   experimental: 'no'
   default: 0.03
-  comment: Sets the spacing between the imaginary frequencies in the GW self-energy analytic continuation evaluation.
+  comment: Sets the spacing between the frequencies where the GW self-energy is actually calculated.
 
 stopping:
   family: post
@@ -908,7 +908,7 @@ stopping:
   experimental: 'no'
   default: 'no'
   comment: Triggers the calculation of the stopping power within linear-response theory.
-           Only effective when postscf='td' or 'bse'. Avaialble values are ''no'', ''spherical'', '''3d''.
+           Only effective when postscf=''td'' or ''bse''. Avaialble values are ''no'', ''spherical'', ''3d''.
 
 tda:
   family: post

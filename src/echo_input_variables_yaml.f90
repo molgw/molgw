@@ -79,7 +79,7 @@
  write(unit_yaml,'(4x,a,19x,i8)') 'nexcitation:',nexcitation 
  write(unit_yaml,'(4x,a,19x,i8)') 'nomega_imag:',nomega_imag 
  write(unit_yaml,'(4x,a,18x,i8)') 'nomega_sigma:',nomega_sigma 
- write(unit_yaml,'(4x,a,17x,i8)') 'nomega_sigmai:',nomega_sigmai 
+ write(unit_yaml,'(4x,a,13x,i8)') 'nomega_sigma_calc:',nomega_sigma_calc 
  write(unit_yaml,'(4x,a,21x,i8)') 'nstep_dav:',nstep_dav 
  write(unit_yaml,'(4x,a,22x,i8)') 'nstep_gw:',nstep_gw 
  write(unit_yaml,'(4x,a,15x,i8)') 'nvel_projectile:',nvel_projectile 
@@ -96,7 +96,7 @@
  write(unit_yaml,'(4x,a,8x,i8)') 'selfenergy_state_range:',selfenergy_state_range 
  write(unit_yaml,'(4x,a,19x,a)') 'small_basis:',TRIM(small_basis) 
  write(unit_yaml,'(4x,a,20x,es16.8)') 'step_sigma:',step_sigma 
- write(unit_yaml,'(4x,a,19x,es16.8)') 'step_sigmai:',step_sigmai 
+ write(unit_yaml,'(4x,a,15x,es16.8)') 'step_sigma_calc:',step_sigma_calc 
  write(unit_yaml,'(4x,a,22x,a)') 'stopping:',TRIM(stopping) 
  write(unit_yaml,'(4x,a,27x,a)') 'tda:',yesno_to_TrueFalse(tda) 
  write(unit_yaml,'(4x,a,12x,a)') 'tddft_grid_quality:',TRIM(tddft_grid_quality) 

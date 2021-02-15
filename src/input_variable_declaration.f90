@@ -76,7 +76,7 @@
  integer,protected :: nexcitation
  integer,protected :: nomega_imag
  integer,protected :: nomega_sigma
- integer,protected :: nomega_sigmai
+ integer,protected :: nomega_sigma_calc
  integer,protected :: nstep_dav
  integer,protected :: nstep_gw
  integer,protected :: nvel_projectile
@@ -93,7 +93,7 @@
  integer,protected :: selfenergy_state_range
  character(len=256),protected :: small_basis
  real(dp),protected :: step_sigma
- real(dp),protected :: step_sigmai
+ real(dp),protected :: step_sigma_calc
  character(len=256),protected :: stopping
  character(len=3),protected :: tda
  character(len=256),protected :: tddft_grid_quality
