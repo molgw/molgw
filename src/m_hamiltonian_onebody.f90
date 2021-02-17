@@ -126,7 +126,7 @@ end subroutine setup_overlap
 subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
  implicit none
  type(basis_set),intent(in) :: basis1,basis2
- real(dp),intent(out)       :: s_matrix(basis1%nbf,basis2%nbf)
+ real(dp),intent(out)       :: s_matrix(:,:)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
@@ -212,6 +212,40 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 
 
 end subroutine setup_overlap_mixedbasis
+
+
+!=========================================================================
+subroutine recalc_overlap(basis_t,basis_p,s_matrix)
+ implicit none
+ type(basis_set),intent(in) :: basis_t,basis_p
+ real(dp),intent(inout)       :: s_matrix(:,:)
+!=====
+ integer              :: ibf1,ibf2,jbf1,jbf2
+ character(len=100)   :: title
+ real(dp),allocatable :: matrix_tp(:,:)
+!=====
+
+ ibf1    = basis_t%shell(1)%istart
+ ibf2    = basis_t%shell(basis_t%nshell)%iend
+
+ jbf1    = basis_p%shell(1)%istart + basis_t%nbf
+ jbf2    = basis_p%shell(basis_p%nshell)%iend + basis_t%nbf
+
+ allocate( matrix_tp(basis_t%nbf,basis_p%nbf) )
+
+ call setup_overlap_mixedbasis(basis_t,basis_p,matrix_tp)
+
+ s_matrix(ibf1:ibf2,jbf1:jbf2) = matrix_tp(:,:)
+ s_matrix(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix_tp(:,:))
+
+ deallocate( matrix_tp )
+
+
+ title='=== Overlap matrix S (Recalc) ==='
+ call dump_out_matrix(.FALSE.,title,s_matrix)
+
+
+end subroutine recalc_overlap
 
 
 !=========================================================================

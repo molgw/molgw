@@ -802,7 +802,8 @@ subroutine mb_related_updates(basis,                &
 
  call start_clock(timing_update_overlaps)
  ! Update S matrix
- call setup_overlap(basis,s_matrix)
+ !call setup_overlap(basis,s_matrix)
+ call recalc_overlap(basis_t,basis_p,s_matrix)
 
  ! Analytic evaluation of D(t+dt/2)
  if( need_d ) call setup_D_matrix_analytic(basis,d_matrix)

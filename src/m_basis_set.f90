@@ -388,7 +388,7 @@ end subroutine split_basis_set
 subroutine moving_basis_set(new_basis)
  implicit none
 
- type(basis_set),intent(inout)       :: new_basis
+ type(basis_set),intent(inout) :: new_basis
 !=====
  real(dp)                      :: xproj_basis(3)
  integer                       :: jbf,ng,ig
