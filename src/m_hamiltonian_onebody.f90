@@ -239,7 +239,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
  real(C_DOUBLE),allocatable        :: cB(:)
 !=====
 
- call start_clock(timing_overlap)
+ call start_clock(timing_overlap_grad)
  write(stdout,'(/,a)') ' Setup gradient of the overlap matrix S (LIBINT)'
 
  do jshell=1,basis%nshell
@@ -303,7 +303,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
  title='=== Overlap matrix S (LIBINT) Z ==='
  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,3))
 
- call stop_clock(timing_overlap)
+ call stop_clock(timing_overlap_grad)
 
 
 end subroutine setup_overlap_grad
@@ -443,12 +443,12 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
    lj      = basis_p%shell(jshell)%am
    nj_cart = number_basis_function_am('CART',lj)
    nj      = number_basis_function_am(basis_p%gaussian_type,lj)
-   jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf_cart
-   jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf_cart
+   jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf
+   jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf
 
    call set_libint_shell(basis_p%shell(jshell),amB,contrdepthB,B,alphaB,cB)
 
-   do ishell=jshell,basis_t%nshell
+   do ishell=1,basis_t%nshell
      li      = basis_t%shell(ishell)%am
      ni_cart = number_basis_function_am('CART',li)
      ni      = number_basis_function_am(basis_t%gaussian_type,li)

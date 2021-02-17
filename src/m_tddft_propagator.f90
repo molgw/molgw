@@ -797,6 +797,7 @@ subroutine mb_related_updates(basis,                &
    ! Update basis only since eri not needed here
    call moving_basis_set(basis)
  endif
+ call moving_basis_set(basis_p)
  call stop_clock(timing_update_basis_eri)
 
  call start_clock(timing_update_overlaps)
@@ -2390,8 +2391,8 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  case(EXCIT_PROJECTILE_W_BASIS)
 
    if ( itau > 0 ) then
-     call setup_kinetic(basis,hamiltonian_kinetic)
-     !call recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
+     !call setup_kinetic(basis,hamiltonian_kinetic)
+     call recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
      call nucleus_nucleus_energy(en_tddft%nuc_nuc)
    end if
 

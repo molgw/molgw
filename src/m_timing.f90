@@ -31,7 +31,7 @@ module m_timing
  integer,parameter :: timing_mp2_energy          = 12
  integer,parameter :: timing_pt_self             = 13
  integer,parameter :: timing_eri_4center_eigen   = 14
-                                              ! 15 is available
+ integer,parameter :: timing_overlap_grad        = 15
  integer,parameter :: timing_eri_2center         = 16
  integer,parameter :: timing_eri_3center         = 17
  integer,parameter :: timing_eri_3center_eigen   = 18
@@ -312,6 +312,7 @@ subroutine output_timing()
  call output_timing_line('Update projectile position',timing_update_p_position,3)
  call output_timing_line('Update basis, auxilary and eri',timing_update_basis_eri,3)
  call output_timing_line('Update S and D matrices',timing_update_overlaps,3)
+ call output_timing_line('Gradient of overlap',timing_overlap_grad,4)
  call output_timing_line('Update DFT grid',timing_update_dft_grid,3)
 
  call output_timing_line('TDDFT frozen core',timing_tddft_frozen_core,3)
