@@ -342,6 +342,10 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
 
 end subroutine setup_overlap_grad
 
+!=========================================================================
+!subroutine recalc_overlap_grad
+
+!end subroutine recalc_overlap_grad
 
 !=========================================================================
 subroutine setup_kinetic(basis,hamiltonian_kinetic)
