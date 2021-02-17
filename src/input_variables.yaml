@@ -270,7 +270,7 @@ scalapack_block_min:
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
-  default: 1000
+  default: 100000
   comment: Sets the minimum block size to distribute a non-distributed matrix with
     SCALAPACK. If scalapack_block_min=400, then a 900x900 matrix will be distributed
     on a 2x2 processor grid. If scalapack_block_min=500, then a 900x900 matrix will
