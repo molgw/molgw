@@ -183,7 +183,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  call setup_overlap(basis,s_matrix)
  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-   call setup_D_matrix_analytic(basis,d_matrix)
+   call setup_D_matrix_analytic(basis,d_matrix,.FALSE.)
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  else
    d_matrix(:,:) = 0.0_dp
@@ -726,12 +726,13 @@ end subroutine update_basis_eri
 
 
 !=========================================================================
-subroutine setup_D_matrix_analytic(basis,d_matrix)
+subroutine setup_D_matrix_analytic(basis,d_matrix,recalc)
  implicit none
  type(basis_set),intent(in)          :: basis
- real(dp),intent(out)                :: d_matrix(:,:)
+ real(dp),intent(inout)              :: d_matrix(:,:)
+ logical,intent(in)                  :: recalc
 !=====
- integer :: jbf,ibasis_center
+ integer                             :: jbf,ibasis_center
  real(dp),allocatable                :: s_matrix_grad(:,:,:)
 !=====
 
@@ -740,7 +741,11 @@ subroutine setup_D_matrix_analytic(basis,d_matrix)
  allocate(s_matrix_grad(basis%nbf,basis%nbf,3))
 
  ! This routine returns s_grad = < grad_R phi_alpha | phi_beta >
- call setup_overlap_grad(basis,s_matrix_grad)
+ if ( recalc ) then
+   call recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
+ else
+   call setup_overlap_grad(basis,s_matrix_grad)
+ end if
 
  ! We want D:
  !    D = < phi_alpha | d/dt phi_beta >
@@ -751,10 +756,16 @@ subroutine setup_D_matrix_analytic(basis,d_matrix)
  s_matrix_grad(:,:,2) = TRANSPOSE(s_matrix_grad(:,:,2))
  s_matrix_grad(:,:,3) = TRANSPOSE(s_matrix_grad(:,:,3))
 
- do jbf=1,basis%nbf
-   ibasis_center = basis%bff(jbf)%iatom
-   d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel(:,ibasis_center) )
- enddo
+ if ( recalc ) then
+   do jbf=basis_t%nbf+1,basis%nbf
+     d_matrix(1:basis_t%nbf,jbf) = MATMUL( s_matrix_grad(1:basis_t%nbf,jbf,:), vel(:,natom) )
+   end do
+ else
+   do jbf=1,basis%nbf
+     ibasis_center = basis%bff(jbf)%iatom
+     d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel(:,ibasis_center) )
+   end do
+ end if
 
  deallocate(s_matrix_grad)
 
@@ -806,7 +817,7 @@ subroutine mb_related_updates(basis,                &
  call recalc_overlap(basis_t,basis_p,s_matrix)
 
  ! Analytic evaluation of D(t+dt/2)
- if( need_d ) call setup_D_matrix_analytic(basis,d_matrix)
+ if( need_d ) call setup_D_matrix_analytic(basis,d_matrix,.TRUE.)
  call stop_clock(timing_update_overlaps)
 
  call start_clock(timing_update_dft_grid)
