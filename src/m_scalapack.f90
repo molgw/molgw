@@ -389,9 +389,9 @@ end subroutine create_distributed_copy_nospin_cdp
 !=========================================================================
 subroutine gather_distributed_copy_nospin_dp(desc,matrix,matrix_global)
  implicit none
- integer,intent(in)               :: desc(NDEL)
- real(dp),allocatable,intent(in)  :: matrix(:,:)
- real(dp),intent(out)             :: matrix_global(:,:)
+ integer,intent(in)   :: desc(NDEL)
+ real(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out) :: matrix_global(:,:)
 !=====
  integer              :: cntxt
  integer              :: mlocal,nlocal,mglobal,nglobal
@@ -450,9 +450,9 @@ end subroutine gather_distributed_copy_nospin_dp
 !=========================================================================
 subroutine gather_distributed_copy_spin_dp(desc,matrix,matrix_global)
  implicit none
- integer,intent(in)               :: desc(NDEL)
- real(dp),allocatable,intent(in)  :: matrix(:,:,:)
- real(dp),intent(out)             :: matrix_global(:,:,:)
+ integer,intent(in)   :: desc(NDEL)
+ real(dp),intent(in)  :: matrix(:,:,:)
+ real(dp),intent(out) :: matrix_global(:,:,:)
 !=====
  integer              :: cntxt
  integer              :: idim3,ndim3
