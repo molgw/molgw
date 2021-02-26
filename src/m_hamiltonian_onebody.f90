@@ -367,8 +367,11 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
  real(C_DOUBLE),allocatable        :: cB(:)
 !=====
 
+ !! We only need to calculate < grad P | T > here since we'll transpose
+ !! S_grad to get D => only < T | grad P > needs recalc in D
+
  call start_clock(timing_overlap_grad)
- write(stdout,'(/,a)') ' Setup gradient of the overlap matrix S (LIBINT)'
+ write(stdout,'(/,a)') 'Recalculate gradient of the overlap matrix S (LIBINT)'
 
  s_matrix_grad(:,:,:) = 0.0_dp
 
@@ -562,9 +565,9 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
 
  call start_clock(timing_hamiltonian_kin)
 #if defined(HAVE_LIBINT_ONEBODY)
- write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBINT)'
+ write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (LIBINT)'
 #else
- write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (internal)'
+ write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (internal)'
 #endif
 
 
@@ -857,6 +860,123 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
  endif
 
 end subroutine setup_nucleus
+
+
+!=========================================================================
+subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
+ use m_atoms
+ implicit none
+ type(basis_set),intent(in)  :: basis_t,basis_p
+ real(dp),intent(inout)        :: hamiltonian_nucleus(:,:)
+!=====
+ integer              :: ishell,jshell
+ integer              :: ibf1,ibf2,jbf1,jbf2
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ integer              :: iatom
+ real(dp),allocatable :: matrix_tp(:,:)
+ real(C_DOUBLE),allocatable        :: array_cart(:)
+ real(C_DOUBLE),allocatable        :: array_cart_C(:)
+ integer(C_INT)                    :: amA,contrdepthA
+ real(C_DOUBLE)                    :: A(3)
+ real(C_DOUBLE),allocatable        :: alphaA(:)
+ real(C_DOUBLE),allocatable        :: cA(:)
+ integer(C_INT)                    :: amB,contrdepthB
+ real(C_DOUBLE)                    :: B(3)
+ real(C_DOUBLE),allocatable        :: alphaB(:)
+ real(C_DOUBLE),allocatable        :: cB(:)
+ real(C_DOUBLE)                    :: C(3)
+ integer  :: i_cart,j_cart,ij
+ integer  :: ibf_cart,jbf_cart
+ real(dp) :: nucleus
+!=====
+
+ call start_clock(timing_tddft_hamiltonian_nuc)
+
+#if defined(HAVE_LIBINT_ONEBODY)
+ write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBINT)'
+#else
+   write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (internal)'
+#endif
+
+ do jshell = 1,basis_p%nshell
+   lj      = basis_p%shell(jshell)%am
+   nj_cart = number_basis_function_am('CART',lj)
+   nj      = number_basis_function_am(basis_p%gaussian_type,lj)
+   jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf
+   jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf
+
+   if( MODULO(jshell-1,nproc_world) /= rank_world ) cycle
+
+   call set_libint_shell(basis_p%shell(jshell),amB,contrdepthB,B,alphaB,cB)
+
+   !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,amA,contrdepthA,A,alphaA,cA,array_cart,array_cart_C,C,matrix_tp, &
+   !$OMP&                 ij,ibf_cart,jbf_cart,nucleus)
+   !$OMP DO
+   do ishell = 1,basis_t%nshell
+     li      = basis_t%shell(ishell)%am
+     ni_cart = number_basis_function_am('CART',li)
+     ni      = number_basis_function_am(basis_t%gaussian_type,li)
+     ibf1    = basis_t%shell(ishell)%istart
+     ibf2    = basis_t%shell(ishell)%iend
+
+     call set_libint_shell(basis_t%shell(ishell),amA,contrdepthA,A,alphaA,cA)
+
+
+     allocate(array_cart(ni_cart*nj_cart))
+     allocate(array_cart_C(ni_cart*nj_cart))
+     array_cart(:) = 0.0_dp
+
+     do iatom = 1, natom-1
+       ! Skip the contribution if iatom is projectile
+       C(:) = xatom(:,iatom)
+#if defined(HAVE_LIBINT_ONEBODY)
+       call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
+                           amB,contrdepthB,B,alphaB,cB, &
+                           C,array_cart_C)
+       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
+#else
+       ij = 0
+       do i_cart=1,ni_cart
+         do j_cart=1,nj_cart
+           ij = ij + 1
+           ibf_cart = basis_t%shell(ishell)%istart_cart + i_cart - 1
+           jbf_cart = basis_p%shell(jshell)%istart_cart + j_cart - 1 + basis_t%nbf_cart
+           call nucleus_basis_function(basis_t%bfc(ibf_cart),basis_p%bfc(jbf_cart),zvalence(iatom),xatom(:,iatom),nucleus)
+           array_cart(ij) = array_cart(ij) + nucleus
+         enddo
+       enddo
+#endif
+
+     enddo
+     deallocate(alphaA,cA)
+
+#if defined(HAVE_LIBINT_ONEBODY)
+     call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix_tp)
+#else
+     call transform_molgw_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix_tp)
+#endif
+
+     hamiltonian_nucleus(ibf1:ibf2,jbf1:jbf2) = matrix_tp(:,:)
+     hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix_tp(:,:))
+
+
+     deallocate(array_cart,array_cart_C,matrix_tp)
+
+   enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
+   deallocate(alphaB,cB)
+ enddo
+
+ !
+ ! Reduce operation
+ call xsum_world(hamiltonian_nucleus)
+
+ call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution (Recalc) ===',hamiltonian_nucleus)
+
+ call stop_clock(timing_tddft_hamiltonian_nuc)
+
+end subroutine recalc_nucleus
 
 
 !=========================================================================
