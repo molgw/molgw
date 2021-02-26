@@ -2406,13 +2406,15 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
      !call setup_kinetic(basis,hamiltonian_kinetic)
      call recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
      call nucleus_nucleus_energy(en_tddft%nuc_nuc)
+     ! Nucleus-electron interaction due to the fixed target
+     call recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
    end if
 
    ! Nucleus-electron interaction due to the fixed target
-   do iatom=1,natom-nprojectile
-     fixed_atom_list(iatom) = iatom
-   enddo
-   call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
+   !do iatom=1,natom-nprojectile
+   !  fixed_atom_list(iatom) = iatom
+   !enddo
+   !call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
 
    !
    ! Nucleus-electron interaction due to the projectile only
