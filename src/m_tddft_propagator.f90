@@ -544,8 +544,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      if( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
                                                                iwrite_step,time_cur,nr_line_rho,point_a,point_b,rho_start)
      if( print_cube_rho_tddft_  )     call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
-     if( print_cube_diff_tddft_ )     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
-                                                                         iwrite_step,cube_density_start,nx,ny,nz)
      if( calc_dens_disc_ )            call calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx, &
                                                                                iwrite_step,time_cur)
 !     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
@@ -558,6 +556,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end if
 
    if( ABS(time_cur / (calc_charge_step)- NINT(time_cur / (calc_charge_step))) < 1.0e-7 ) then
+     if( print_cube_diff_tddft_ )     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
+                                                                         iwrite_step,cube_density_start,nx,ny,nz)
      if( print_charge_tddft_ ) then
        if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
          call clean_deallocate('Transformation matrix X',x_matrix)

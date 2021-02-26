@@ -2602,7 +2602,7 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
 
  if( is_iomaster ) then
    do ispin=1,nspin
-     write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'dens_diff.cube'
+     write(file_name,'(i4.4,a,i1,a)') num,'_',ispin,'dens_diff.cube'
      open(newunit=ocuberho(ispin),file=file_name)
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
      write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
