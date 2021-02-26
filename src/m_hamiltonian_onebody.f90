@@ -972,6 +972,80 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
  ! Reduce operation
  call xsum_world(hamiltonian_nucleus)
 
+ do jshell = 1,basis_p%nshell
+   lj      = basis_p%shell(jshell)%am
+   nj_cart = number_basis_function_am('CART',lj)
+   nj      = number_basis_function_am(basis_p%gaussian_type,lj)
+   jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf
+   jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf
+
+   if( MODULO(jshell-1,nproc_world) /= rank_world ) cycle
+
+   call set_libint_shell(basis_p%shell(jshell),amB,contrdepthB,B,alphaB,cB)
+
+   !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,amA,contrdepthA,A,alphaA,cA,array_cart,array_cart_C,C,matrix_tp, &
+   !$OMP&                 ij,ibf_cart,jbf_cart,nucleus)
+   !$OMP DO
+   do ishell = jshell,basis_p%nshell
+     li      = basis_p%shell(ishell)%am
+     ni_cart = number_basis_function_am('CART',li)
+     ni      = number_basis_function_am(basis_p%gaussian_type,li)
+     ibf1    = basis_p%shell(ishell)%istart + basis_t%nbf
+     ibf2    = basis_p%shell(ishell)%iend + basis_t%nbf
+
+     call set_libint_shell(basis_p%shell(ishell),amA,contrdepthA,A,alphaA,cA)
+
+
+     allocate(array_cart(ni_cart*nj_cart))
+     allocate(array_cart_C(ni_cart*nj_cart))
+     array_cart(:) = 0.0_dp
+
+     do iatom = 1, natom-1
+       ! Skip the contribution if iatom is projectile
+       C(:) = xatom(:,iatom)
+#if defined(HAVE_LIBINT_ONEBODY)
+       call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
+                           amB,contrdepthB,B,alphaB,cB, &
+                           C,array_cart_C)
+       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
+#else
+       ij = 0
+       do i_cart=1,ni_cart
+         do j_cart=1,nj_cart
+           ij = ij + 1
+           ibf_cart = basis_p%shell(ishell)%istart_cart + i_cart - 1 + basis_t%nbf_cart
+           jbf_cart = basis_p%shell(jshell)%istart_cart + j_cart - 1 + basis_t%nbf_cart
+           call nucleus_basis_function(basis_p%bfc(ibf_cart),basis_p%bfc(jbf_cart),zvalence(iatom),xatom(:,iatom),nucleus)
+           array_cart(ij) = array_cart(ij) + nucleus
+         enddo
+       enddo
+#endif
+
+     enddo
+     deallocate(alphaA,cA)
+
+#if defined(HAVE_LIBINT_ONEBODY)
+     call transform_libint_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix_tp)
+#else
+     call transform_molgw_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix_tp)
+#endif
+
+     hamiltonian_nucleus(ibf1:ibf2,jbf1:jbf2) = matrix_tp(:,:)
+     hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix_tp(:,:))
+
+
+     deallocate(array_cart,array_cart_C,matrix_tp)
+
+   enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
+   deallocate(alphaB,cB)
+ enddo
+
+ !
+ ! Reduce operation
+ call xsum_world(hamiltonian_nucleus)
+
  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution (Recalc) ===',hamiltonian_nucleus)
 
  call stop_clock(timing_tddft_hamiltonian_nuc)
