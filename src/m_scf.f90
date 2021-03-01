@@ -97,6 +97,10 @@ subroutine init_scf(nbf_in,nstate_in)
 
   if( nprow_sd * npcol_sd > 1 ) then
     write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK processor grid used to reduce memory footprint: ',nprow_sd,' x ',npcol_sd
+
+    if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
+      call die('init_scf: ADIIS and EDIIS not implemented with SCALAPACK use DIIS or simple mixing instead')
+    endif
   endif
 
   iscf          = 0
@@ -300,39 +304,33 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
     allocate(matrix_tmp2(mh,nh))
     do ispin=1,nspin
 
-      ! M1 = H * P
-      call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,ham_distrib(:,:,ispin),1,1,desch,          &
-                  p_matrix_distrib(:,:,ispin),1,1,desch,0.0_dp,matrix_tmp1,1,1,desch)
+      ! M2 = P * S
+      call PDSYMM('L','L',nbf_scf,nbf_scf,1.0d0,p_matrix_distrib(:,:,ispin),1,1,desch,&
+                  s_matrix_distrib,1,1,desch,0.0d0,matrix_tmp2,1,1,desch)
+      ! M1 = H * M2 = H * P * S
+      call PDSYMM('L','L',nbf_scf,nbf_scf,1.0d0,ham_distrib(:,:,ispin),1,1,desch, &
+                  matrix_tmp2,1,1,desch,0.0d0,matrix_tmp1,1,1,desch)
+      ! M2 = S * P * H = ( H * P * S )**T = M1**T
+      call PDTRAN(nbf_scf,nbf_scf,1.0d0,matrix_tmp1,1,1,desch,0.0d0,matrix_tmp2,1,1,desch)
+      ! M2 = H * P * S - S * P * H = M1 - M2
+      matrix_tmp2(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
 
-       ! M2 = ( H * P ) * S
-       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,matrix_tmp1,1,1,desch,          &
-                   s_matrix_distrib,1,1,desch,0.0_dp,matrix_tmp2,1,1,desch)
+      deallocate(matrix_tmp1)
+      allocate(matrix_tmp1(mc,nc))
 
-       ! M1 = S * P
-       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,s_matrix_distrib,1,1,desch,          &
-                   p_matrix_distrib(:,:,ispin),1,1,desch,0.0_dp,matrix_tmp1,1,1,desch)
+      ! M1 = M2 * X
+      call PDGEMM('N','N',nbf_scf,nstate_scf,nbf_scf,1.0_dp,matrix_tmp2,1,1,desch,      &
+                  x_matrix_distrib,1,1,descc,0.0_dp,matrix_tmp1,1,1,descc)
 
-       ! M2 = M2 - ( S * P ) * H
-       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,matrix_tmp1,1,1,desch,          &
-                   ham_distrib(:,:,ispin),1,1,desch,-1.0_dp,matrix_tmp2,1,1,desch)
-
-
-       deallocate(matrix_tmp1)
-       allocate(matrix_tmp1(mc,nc))
-
-       ! M1 = M2 * X
-       call PDGEMM('N','N',nbf_scf,nstate_scf,nbf_scf,1.0_dp,matrix_tmp2,1,1,desch,      &
-                   x_matrix_distrib,1,1,descc,0.0_dp,matrix_tmp1,1,1,descc)
-
-       ! R = X^T * M1
-       call PDGEMM('T','N',nstate_scf,nstate_scf,nbf_scf,1.0_dp,x_matrix_distrib,1,1,descc,      &
-                   matrix_tmp1,1,1,descc,0.0_dp,res_hist(:,:,ispin,1),1,1,descr)
+      ! R = X^T * M1
+      call PDGEMM('T','N',nstate_scf,nstate_scf,nbf_scf,1.0_dp,x_matrix_distrib,1,1,descc,      &
+                  matrix_tmp1,1,1,descc,0.0_dp,res_hist(:,:,ispin,1),1,1,descr)
 
 
-     enddo
-     deallocate(matrix_tmp1,matrix_tmp2)
+    enddo
+    deallocate(matrix_tmp1,matrix_tmp2)
 
-   endif
+  endif
 
 #else
   allocate(matrix_tmp1(nbf_scf,nbf_scf))
