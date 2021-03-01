@@ -240,147 +240,250 @@ subroutine simple_prediction(p_matrix,ham)
     p_matrix_hist(:,:,:,1) = alpha_mixing * p_matrix_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * p_matrix_hist(:,:,:,2)
 
   endif
-  call gather_distributed_copy_spin_dp(desch,ham_hist(:,:,:,1),ham)
-  call gather_distributed_copy_spin_dp(desch,p_matrix_hist(:,:,:,1),p_matrix)
+  call gather_distributed_copy(desch,ham_hist(:,:,:,1),ham)
+  call gather_distributed_copy(desch,p_matrix_hist(:,:,:,1),p_matrix)
 
 end subroutine simple_prediction
 
 
 !=========================================================================
 subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
- implicit none
- real(dp),intent(in)    :: s_matrix(:,:)
- real(dp),intent(in)    :: x_matrix(:,:)
- real(dp),intent(inout) :: p_matrix(:,:,:)
- real(dp),intent(inout) :: ham(:,:,:)
-!=====
- integer                :: ispin
- integer                :: ihist
- real(dp),allocatable   :: matrix_tmp1(:,:)
- real(dp),allocatable   :: matrix_tmp2(:,:)
- real(dp),allocatable   :: a_matrix(:,:)
- real(dp),allocatable   :: a_matrix_inv(:,:)
- real(dp),allocatable   :: residual_pred(:,:,:)
- real(dp)               :: residual,work(1)
-!=====
+  implicit none
+  real(dp),intent(in)    :: s_matrix(:,:)
+  real(dp),intent(in)    :: x_matrix(:,:)
+  real(dp),intent(inout) :: p_matrix(:,:,:)
+  real(dp),intent(inout) :: ham(:,:,:)
+  !=====
+  integer                :: ispin
+  integer                :: ihist
+  real(dp),allocatable   :: matrix_tmp1(:,:)
+  real(dp),allocatable   :: matrix_tmp2(:,:)
+  real(dp),allocatable   :: a_matrix(:,:)
+  real(dp),allocatable   :: a_matrix_inv(:,:)
+  real(dp),allocatable   :: residual_pred(:,:,:)
+  real(dp)               :: residual,work(1)
+#if defined(HAVE_SCALAPACK)
+  real(dp),allocatable   :: s_matrix_distrib(:,:)
+  real(dp),allocatable   :: x_matrix_distrib(:,:)
+  real(dp),allocatable   :: p_matrix_distrib(:,:,:)
+  real(dp),allocatable   :: ham_distrib(:,:,:)
+#endif
+  !=====
 
- call start_clock(timing_diis)
-
-
- write(stdout,'(/,1x,a)') 'Pulay DIIS mixing'
-
-
- allocate(a_matrix(nhist_current+1,nhist_current+1))
- allocate(a_matrix_inv(nhist_current+1,nhist_current+1))
-
- !
- ! Calculate the new residual as proposed in
- ! P. Pulay, J. Comput. Chem. 3, 554 (1982).
- !
- !  R =  X^T * [ H * P * S - S * P * H ] * X
-
- allocate(matrix_tmp1(nbf_scf,nbf_scf))
- allocate(matrix_tmp2(nbf_scf,nbf_scf))
-
- do ispin=1,nspin
-
-   ! M2 = P * S
-   call DSYMM('L','L',nbf_scf,nbf_scf,1.0d0,p_matrix(1,1,ispin),nbf_scf,s_matrix,nbf_scf,0.0d0,matrix_tmp2,nbf_scf)
-
-   ! M1 = H * M2 = H * P * S
-   call DSYMM('L','L',nbf_scf,nbf_scf,1.0d0,ham(1,1,ispin),nbf_scf,matrix_tmp2,nbf_scf,0.0d0,matrix_tmp1,nbf_scf)
-
-   ! M2 = S * P * H = ( H * P * S )**T = M1**T
-   matrix_tmp2(:,:) = TRANSPOSE( matrix_tmp1(:,:) )
-
-   ! M1 = H * P * S - S * P * H = M1 - M2
-   matrix_tmp1(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
-
-   !
-   ! R = X^T * M1 * X
-   ! Remeber that S**-1 = X * X^T
-   call matmul_transaba_scalapack(scalapack_block_min,x_matrix,matrix_tmp1,res_hist(:,:,ispin,1))
-
- enddo
-
- deallocate(matrix_tmp1)
- deallocate(matrix_tmp2)
+  call start_clock(timing_diis)
 
 
- !
- ! Build up a_matrix that contains the scalar product of residuals
- !
-
- !
- ! The older parts of a_matrix are saved in a_matrix_hist
- ! Just calculate the new ones
- a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1)**2 ) * nspin
-
- do ihist=2,nhist_current
-   a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) ) * nspin
-   a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
- enddo
+  write(stdout,'(/,1x,a)') 'Pulay DIIS mixing'
 
 
- a_matrix(1:nhist_current,1:nhist_current) = a_matrix_hist(1:nhist_current,1:nhist_current)
+  allocate(a_matrix(nhist_current+1,nhist_current+1))
+  allocate(a_matrix_inv(nhist_current+1,nhist_current+1))
+
+  !
+  ! Calculate the new residual as proposed in
+  ! P. Pulay, J. Comput. Chem. 3, 554 (1982).
+  !
+  !  R =  X^T * [ H * P * S - S * P * H ] * X
+
+#if defined(HAVE_SCALAPACK)
+  if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
+    allocate(p_matrix_distrib(mh,nh,nspin))
+    call create_distributed_copy(p_matrix,desch,p_matrix_distrib)
+    allocate(ham_distrib(mh,nh,nspin))
+    call create_distributed_copy(ham,desch,ham_distrib)
+    allocate(s_matrix_distrib(mh,nh))
+    call create_distributed_copy(s_matrix,desch,s_matrix_distrib)
+    allocate(x_matrix_distrib(mc,nc))
+    call create_distributed_copy(x_matrix,descc,x_matrix_distrib)
+
+    allocate(matrix_tmp1(mh,nh))
+    allocate(matrix_tmp2(mh,nh))
+    do ispin=1,nspin
+
+      ! M1 = H * P
+      call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,ham_distrib(:,:,ispin),1,1,desch,          &
+                  p_matrix_distrib(:,:,ispin),1,1,desch,0.0_dp,matrix_tmp1,1,1,desch)
+
+       ! M2 = ( H * P ) * S
+       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,matrix_tmp1,1,1,desch,          &
+                   s_matrix_distrib,1,1,desch,0.0_dp,matrix_tmp2,1,1,desch)
+
+       ! M1 = S * P
+       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,s_matrix_distrib,1,1,desch,          &
+                   p_matrix_distrib(:,:,ispin),1,1,desch,0.0_dp,matrix_tmp1,1,1,desch)
+
+       ! M2 = M2 - ( S * P ) * H
+       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,matrix_tmp1,1,1,desch,          &
+                   ham_distrib(:,:,ispin),1,1,desch,-1.0_dp,matrix_tmp2,1,1,desch)
 
 
- !
- ! DIIS algorithm from Pulay (1980)
- !
- a_matrix(1:nhist_current,nhist_current+1) = -1.0_dp
- a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
- a_matrix(nhist_current+1,nhist_current+1) =  0.0_dp
+       deallocate(matrix_tmp1)
+       allocate(matrix_tmp1(mc,nc))
 
- a_matrix_inv(:,:) = a_matrix(:,:)
- call invert(a_matrix_inv)
+       ! M1 = M2 * X
+       call PDGEMM('N','N',nbf_scf,nstate_scf,nbf_scf,1.0_dp,matrix_tmp2,1,1,desch,      &
+                   x_matrix_distrib,1,1,descc,0.0_dp,matrix_tmp1,1,1,descc)
 
- alpha_diis(1:nhist_current) = -a_matrix_inv(1:nhist_current,nhist_current+1)
-
- ! Renormalize the coefficients
- ! It should not be needed in principle, but sometimes it is
- if( ABS( SUM(alpha_diis(1:nhist_current)) -1.0_dp ) > 1.0e-4_dp ) then
-   call issue_warning('DIIS coefficients rescaled')
-   alpha_diis(1:nhist_current) = alpha_diis(1:nhist_current) / SUM( alpha_diis(1:nhist_current) )
- endif
-
- !
- ! Output the residual history and coefficients
- !
- write(stdout,'(a,4x,30(2x,es12.5))') '  Residuals:',( SQRT(a_matrix(ihist,ihist)) , ihist=1,nhist_current )
- write(stdout,'(a,30(2x,f12.6))')     ' Alpha DIIS: ',alpha_diis(1:nhist_current)
+       ! R = X^T * M1
+       call PDGEMM('T','N',nstate_scf,nstate_scf,nbf_scf,1.0_dp,x_matrix_distrib,1,1,descc,      &
+                   matrix_tmp1,1,1,descc,0.0_dp,res_hist(:,:,ispin,1),1,1,descr)
 
 
- !
- ! Calculate the predicted hamiltonian
- !
- !residual_pred(:,:,:) = 0.0_dp
- !ham(:,:,:)           = 0.0_dp
- !p_matrix(:,:,:)      = 0.0_dp
- !do ihist=1,nhist_current
- !  residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
- !  ham(:,:,:)           = ham(:,:,:)           + alpha_diis(ihist) * ham_hist(:,:,:,ihist)
- !  p_matrix(:,:,:)      = p_matrix(:,:,:)      + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
- !enddo
+     enddo
+     deallocate(matrix_tmp1,matrix_tmp2)
 
- allocate(residual_pred(SIZE(res_hist,DIM=1),SIZE(res_hist,DIM=2),nspin))
+   endif
 
- call DGEMV('N',nstate_scf*nstate_scf*nspin,nhist_current,1.0d0,res_hist     ,nstate_scf*nstate_scf*nspin, &
-            alpha_diis,1,0.0d0,residual_pred,1)
- call DGEMV('N',nbf_scf*nbf_scf*nspin      ,nhist_current,1.0d0,ham_hist     ,nbf_scf*nbf_scf*nspin      , &
-            alpha_diis,1,0.0d0,ham,1)
- call DGEMV('N',nbf_scf*nbf_scf*nspin      ,nhist_current,1.0d0,p_matrix_hist,nbf_scf*nbf_scf*nspin      , &
-            alpha_diis,1,0.0d0,p_matrix,1)
+#else
+  allocate(matrix_tmp1(nbf_scf,nbf_scf))
+  allocate(matrix_tmp2(nbf_scf,nbf_scf))
 
- write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',NORM2( residual_pred(:,:,:) ) * SQRT(REAL(nspin,dp))
+  do ispin=1,nspin
 
- deallocate(residual_pred)
+    ! M2 = P * S
+    call DSYMM('L','L',nbf_scf,nbf_scf,1.0d0,p_matrix(1,1,ispin),nbf_scf,s_matrix,nbf_scf,0.0d0,matrix_tmp2,nbf_scf)
 
- deallocate(a_matrix)
- deallocate(a_matrix_inv)
+    ! M1 = H * M2 = H * P * S
+    call DSYMM('L','L',nbf_scf,nbf_scf,1.0d0,ham(1,1,ispin),nbf_scf,matrix_tmp2,nbf_scf,0.0d0,matrix_tmp1,nbf_scf)
+
+    ! M2 = S * P * H = ( H * P * S )**T = M1**T
+    matrix_tmp2(:,:) = TRANSPOSE( matrix_tmp1(:,:) )
+
+    ! M1 = H * P * S - S * P * H = M1 - M2
+    matrix_tmp1(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
+
+    !
+    ! R = X^T * M1 * X
+    ! Remember that S**-1 = X * X^T
+    call matmul_transaba_scalapack(scalapack_block_min,x_matrix,matrix_tmp1,res_hist(:,:,ispin,1))
+
+  enddo
+  deallocate(matrix_tmp2)
+  deallocate(matrix_tmp1)
+#endif
 
 
- call stop_clock(timing_diis)
+  !
+  ! Build up a_matrix that contains the scalar product of residuals
+  !
+
+  !
+  ! The older parts of a_matrix are saved in a_matrix_hist
+  ! Just calculate the new ones
+#if defined(HAVE_SCALAPACK)
+  if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
+    a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1)**2 ) * nspin
+    do ihist=2,nhist_current
+      a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) ) * nspin
+      a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
+    enddo
+  else
+    a_matrix_hist(1,1:nhist_current) = 0.0_dp
+    a_matrix_hist(1:nhist_current,1) = 0.0_dp
+  endif
+  call xsum_world(a_matrix_hist(1,1))
+  call xsum_world(a_matrix_hist(1,2:nhist_current))
+  call xsum_world(a_matrix_hist(2:nhist_current,1))
+
+#else
+  a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1)**2 ) * nspin
+
+  do ihist=2,nhist_current
+    a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) ) * nspin
+    a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
+  enddo
+#endif
+
+
+  a_matrix(1:nhist_current,1:nhist_current) = a_matrix_hist(1:nhist_current,1:nhist_current)
+
+
+  !
+  ! DIIS algorithm from Pulay (1980)
+  !
+  a_matrix(1:nhist_current,nhist_current+1) = -1.0_dp
+  a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
+  a_matrix(nhist_current+1,nhist_current+1) =  0.0_dp
+
+  a_matrix_inv(:,:) = a_matrix(:,:)
+  call invert(a_matrix_inv)
+
+  alpha_diis(1:nhist_current) = -a_matrix_inv(1:nhist_current,nhist_current+1)
+
+  ! Renormalize the coefficients
+  ! It should not be needed in principle, but sometimes it is
+  if( ABS( SUM(alpha_diis(1:nhist_current)) -1.0_dp ) > 1.0e-4_dp ) then
+    call issue_warning('DIIS coefficients rescaled')
+    alpha_diis(1:nhist_current) = alpha_diis(1:nhist_current) / SUM( alpha_diis(1:nhist_current) )
+  endif
+
+  !
+  ! Output the residual history and coefficients
+  !
+  write(stdout,'(a,4x,30(2x,es12.5))') '  Residuals:',( SQRT(a_matrix(ihist,ihist)) , ihist=1,nhist_current )
+  write(stdout,'(a,30(2x,f12.6))')     ' Alpha DIIS: ',alpha_diis(1:nhist_current)
+
+
+  !
+  ! Calculate the predicted hamiltonian
+  !
+  !residual_pred(:,:,:) = 0.0_dp
+  !ham(:,:,:)           = 0.0_dp
+  !p_matrix(:,:,:)      = 0.0_dp
+  !do ihist=1,nhist_current
+  !  residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
+  !  ham(:,:,:)           = ham(:,:,:)           + alpha_diis(ihist) * ham_hist(:,:,:,ihist)
+  !  p_matrix(:,:,:)      = p_matrix(:,:,:)      + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
+  !enddo
+
+  allocate(residual_pred(mr,nr,nspin))
+
+#if defined(HAVE_SCALAPACK)
+  if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
+    residual = 0.0_dp
+    residual_pred(:,:,:)    = 0.0_dp
+    ham_distrib(:,:,:)      = 0.0_dp
+    p_matrix_distrib(:,:,:) = 0.0_dp
+    do ispin=1,nspin
+
+      do ihist=1,nhist_current
+        call PDGEADD('N',nstate_scf,nstate_scf,alpha_diis(ihist),res_hist(:,:,ispin,ihist),1,1,descr,&
+                     1.0_dp,residual_pred(:,:,ispin),1,1,descr)
+        call PDGEADD('N',nbf_scf,nbf_scf,alpha_diis(ihist),ham_hist(:,:,ispin,ihist),1,1,desch,&
+                     1.0_dp,ham_distrib(:,:,ispin),1,1,desch)
+        call PDGEADD('N',nbf_scf,nbf_scf,alpha_diis(ihist),p_matrix_hist(:,:,ispin,ihist),1,1,desch,&
+                     1.0_dp,p_matrix_distrib(:,:,ispin),1,1,desch)
+      enddo
+
+      residual = residual + PDLANGE('F',nstate_scf,nstate_scf,residual_pred(:,:,ispin),1,1,descr,work)**2
+    enddo
+
+  else
+    residual = -1.0_dp
+  endif
+  call xmax_world(residual)
+  call gather_distributed_copy(desch,ham_distrib,ham)
+  call gather_distributed_copy(desch,p_matrix_distrib,p_matrix)
+  write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',SQRT( residual * nspin )
+
+#else
+  call DGEMV('N',nstate_scf*nstate_scf*nspin,nhist_current,1.0d0,res_hist     ,nstate_scf*nstate_scf*nspin, &
+             alpha_diis,1,0.0d0,residual_pred,1)
+  call DGEMV('N',nbf_scf*nbf_scf*nspin      ,nhist_current,1.0d0,ham_hist     ,nbf_scf*nbf_scf*nspin      , &
+             alpha_diis,1,0.0d0,ham,1)
+  call DGEMV('N',nbf_scf*nbf_scf*nspin      ,nhist_current,1.0d0,p_matrix_hist,nbf_scf*nbf_scf*nspin      , &
+             alpha_diis,1,0.0d0,p_matrix,1)
+
+  write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',NORM2( residual_pred(:,:,:) ) * SQRT(REAL(nspin,dp))
+
+#endif
+
+  deallocate(residual_pred)
+
+  deallocate(a_matrix)
+  deallocate(a_matrix_inv)
+
+  call stop_clock(timing_diis)
 
 end subroutine diis_prediction
 
