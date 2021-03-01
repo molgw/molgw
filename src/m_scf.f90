@@ -74,7 +74,10 @@ subroutine init_scf(nbf_in,nstate_in)
   implicit none
   integer,intent(in)  :: nbf_in,nstate_in
   !=====
+  integer :: info
   !=====
+
+  write(stdout,'(/,1x,a)') 'Initialize the SCF mixing'
 
   adiis_regime = .FALSE.
 
@@ -88,11 +91,13 @@ subroutine init_scf(nbf_in,nstate_in)
   nc = NUMROC(nstate_scf,block_col,ipcol_sd,first_col,npcol_sd)
   mr = NUMROC(nstate_scf,block_row,iprow_sd,first_row,nprow_sd)
   nr = NUMROC(nstate_scf,block_col,ipcol_sd,first_col,npcol_sd)
+  call DESCINIT(desch,nbf_scf,nbf_scf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mh),info)
+  call DESCINIT(descc,nbf_scf,nstate_scf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mc),info)
+  call DESCINIT(descr,nstate_scf,nstate_scf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mr),info)
 
-  write(1000+rank_world,*) 'FBFB proc grid',iprow_sd,ipcol_sd
-  write(1000+rank_world,*) 'FBFB',mh,nh
-  write(1000+rank_world,*) 'FBFB',mc,nc
-  write(1000+rank_world,*) 'FBFB',mr,nr
+  if( nprow_sd * npcol_sd > 1 ) then
+    write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK processor grid used to reduce memory footprint: ',nprow_sd,' x ',npcol_sd
+  endif
 
   iscf          = 0
   nhist_current = 0
@@ -125,6 +130,7 @@ subroutine init_scf(nbf_in,nstate_in)
 
   allocate(en_hist(nhistmax))
 
+  write(stdout,*)
 
 end subroutine init_scf
 
@@ -210,7 +216,8 @@ subroutine hamiltonian_prediction(s_matrix,x_matrix,p_matrix,ham,etot)
     call xdiis_prediction(p_matrix,ham)
   endif
 
-  p_matrix_in(:,:,:) = p_matrix(:,:,:)
+  ! p_matrix_in(:,:,:) = p_matrix(:,:,:)
+  call create_distributed_copy(p_matrix,desch,p_matrix_in)
   deallocate(alpha_diis)
 
 end subroutine hamiltonian_prediction
@@ -401,9 +408,6 @@ subroutine xdiis_prediction(p_matrix,ham)
  integer,parameter :: nbfgs = 20
  real(dp) :: f_xdiis,f_xdiis_min
  real(dp),parameter :: alpha_max=0.60_dp
-#if defined(HAVE_SCALAPACK)
- real(dp),external      :: PDLANGE
-#endif
 !=====
 
  call start_clock(timing_diis)
@@ -740,45 +744,59 @@ end subroutine density_matrix_preconditioning
 
 !=========================================================================
 function check_converged(p_matrix_new)
- implicit none
+  implicit none
 
- logical               :: check_converged
- real(dp),intent(in)   :: p_matrix_new(:,:,:)
-!=====
- real(dp)              :: rms
-!=====
+  logical               :: check_converged
+  real(dp),intent(in)   :: p_matrix_new(:,:,:)
+  !=====
+  real(dp)              :: rms
+#if defined(HAVE_SCALAPACK)
+  real(dp),allocatable  :: delta_p_distrib(:,:,:)
+  real(dp)              :: work(1)
+#endif
+  !=====
 
- rms = NORM2( p_matrix_new(:,:,:) - p_matrix_hist(:,:,:,1) ) * SQRT( REAL(nspin,dp) )
+#if defined(HAVE_SCALAPACK)
+  allocate(delta_p_distrib,MOLD=p_matrix_hist(:,:,:,1))
+  call create_distributed_copy(p_matrix_new,desch,delta_p_distrib)
+  delta_p_distrib(:,:,:) = delta_p_distrib(:,:,:) - p_matrix_hist(:,:,:,1)
 
+  rms = PDLANGE('F',nbf_scf,nbf_scf,delta_p_distrib,1,1,desch,work) * SQRT( REAL(nspin,dp) )
 
- write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms
+  deallocate(delta_p_distrib)
 
- if( ( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) .AND. adiis_regime ) then
-   if( rms < diis_switch ) then
-     write(stdout,'(1x,a,es12.5)') 'Fair convergence has been reached: lower than ',diis_switch
-     write(stdout,*) 'Now switch on regular DIIS'
-     adiis_regime = .FALSE.
-   endif
- endif
+#else
+  rms = NORM2( p_matrix_new(:,:,:) - p_matrix_hist(:,:,:,1) ) * SQRT( REAL(nspin,dp) )
+#endif
 
- if( rms < tolscf ) then
-   check_converged = .TRUE.
-   write(stdout,*) ' ===> convergence has been reached'
-   write(stdout,*)
- else
-   check_converged = .FALSE.
-   write(stdout,*) ' ===> convergence not reached yet'
-   write(stdout,*)
+  write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms
 
-   if( iscf == nscf ) then
-     if( rms > 1.0e-2_dp ) then
-       call issue_warning('SCF convergence is very poor')
-     else if( rms > 1.0e-4_dp ) then
-       call issue_warning('SCF convergence is poor')
-     endif
-   endif
+  if( ( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) .AND. adiis_regime ) then
+    if( rms < diis_switch ) then
+      write(stdout,'(1x,a,es12.5)') 'Fair convergence has been reached: lower than ',diis_switch
+      write(stdout,*) 'Now switch on regular DIIS'
+      adiis_regime = .FALSE.
+    endif
+  endif
 
- endif
+  if( rms < tolscf ) then
+    check_converged = .TRUE.
+    write(stdout,*) ' ===> convergence has been reached'
+    write(stdout,*)
+  else
+    check_converged = .FALSE.
+    write(stdout,*) ' ===> convergence not reached yet'
+    write(stdout,*)
+
+    if( iscf == nscf ) then
+      if( rms > 1.0e-2_dp ) then
+        call issue_warning('SCF convergence is very poor')
+      else if( rms > 1.0e-4_dp ) then
+        call issue_warning('SCF convergence is poor')
+      endif
+    endif
+
+  endif
 
 
 end function check_converged
