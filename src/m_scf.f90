@@ -490,247 +490,247 @@ end subroutine diis_prediction
 
 !=========================================================================
 subroutine xdiis_prediction(p_matrix,ham)
- use m_lbfgs
- implicit none
- real(dp),intent(out)   :: p_matrix(:,:,:)
- real(dp),intent(out)   :: ham(:,:,:)
-!=====
- type(lbfgs_state)      :: lbfgs_plan
- integer                :: ispin
- integer                :: ihist,jhist,khist
- real(dp),allocatable   :: alpha_diis_mc(:)
- real(dp)               :: ph_trace
- real(dp),allocatable   :: half_ph(:,:)
- real(dp),allocatable   :: ti(:),gradf(:),ci(:),dcdt(:,:),diag(:)
- real(dp)               :: sum_ti2
- integer :: info,iproc
- integer :: imc,ibfgs
- integer :: nseed,iseed
- integer,allocatable :: seed(:)
- integer,parameter :: nmc = 1000000
- integer,parameter :: nbfgs = 20
- real(dp) :: f_xdiis,f_xdiis_min
- real(dp),parameter :: alpha_max=0.60_dp
-!=====
+  use m_lbfgs
+  implicit none
+  real(dp),intent(out)   :: p_matrix(:,:,:)
+  real(dp),intent(out)   :: ham(:,:,:)
+  !=====
+  type(lbfgs_state)      :: lbfgs_plan
+  integer                :: ispin
+  integer                :: ihist,jhist,khist
+  real(dp),allocatable   :: alpha_diis_mc(:)
+  real(dp)               :: ph_trace
+  real(dp),allocatable   :: half_ph(:,:)
+  real(dp),allocatable   :: ti(:),gradf(:),ci(:),dcdt(:,:),diag(:)
+  real(dp)               :: sum_ti2
+  integer :: info,iproc
+  integer :: imc,ibfgs
+  integer :: nseed,iseed
+  integer,allocatable :: seed(:)
+  integer,parameter :: nmc = 1000000
+  integer,parameter :: nbfgs = 20
+  real(dp) :: f_xdiis,f_xdiis_min
+  real(dp),parameter :: alpha_max=0.60_dp
+  !=====
 
- call start_clock(timing_diis)
-
-
- write(stdout,'(/,1x,a)') TRIM(mixing_scheme)//' mixing'
-
- p_dot_h_hist(1,:) = 0.0_dp
- p_dot_h_hist(:,1) = 0.0_dp
-
- do ihist=1,nhist_current
-   do ispin=1,nspin
-     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,ihist),ham_hist(:,:,ispin,1),ph_trace)
-     p_dot_h_hist(ihist,1) =  p_dot_h_hist(ihist,1) + ph_trace
-   enddo
- enddo
-
- do jhist=2,nhist_current
-   do ispin=1,nspin
-     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,1),ham_hist(:,:,ispin,jhist),ph_trace)
-     p_dot_h_hist(1,jhist) =  p_dot_h_hist(1,jhist) + ph_trace
-   enddo
- enddo
+  call start_clock(timing_diis)
 
 
- allocate(alpha_diis_mc(nhist_current))
- allocate(half_ph(nhist_current,nhist_current))
- half_ph(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current) * 0.5_dp
+  write(stdout,'(/,1x,a)') TRIM(mixing_scheme)//' mixing'
+
+  p_dot_h_hist(1,:) = 0.0_dp
+  p_dot_h_hist(:,1) = 0.0_dp
+
+  do ihist=1,nhist_current
+    do ispin=1,nspin
+      call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,ihist),ham_hist(:,:,ispin,1),ph_trace)
+      p_dot_h_hist(ihist,1) =  p_dot_h_hist(ihist,1) + ph_trace
+    enddo
+  enddo
+
+  do jhist=2,nhist_current
+    do ispin=1,nspin
+      call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,1),ham_hist(:,:,ispin,jhist),ph_trace)
+      p_dot_h_hist(1,jhist) =  p_dot_h_hist(1,jhist) + ph_trace
+    enddo
+  enddo
 
 
- allocate(diag(nhist_current))
-
- do ihist=1,nhist_current
-   diag(ihist) = en_hist(ihist) - half_ph(ihist,ihist)
- enddo
+  allocate(alpha_diis_mc(nhist_current))
+  allocate(half_ph(nhist_current,nhist_current))
+  half_ph(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current) * 0.5_dp
 
 
- allocate(ti(nhist_current),ci(nhist_current))
- allocate(dcdt(nhist_current,nhist_current))
- allocate(gradf(nhist_current))
+  allocate(diag(nhist_current))
 
- ci(1)               = 1.0_dp
- ci(2:nhist_current) = 0.0_dp
- alpha_diis(:)  = ci(:)
- f_xdiis_min = eval_f_xdiis(ci)
-
- if( nhist_current > 1 ) then
-
-   do ihist=1,nhist_current
-     ti(1)  = 1.0_dp
-     ti(2:) = 0.2_dp
-   enddo
-
-   call lbfgs_init(lbfgs_plan,nhist_current,5)
-
-   do ibfgs=1,nbfgs
-
-     sum_ti2 = SUM( ti(:)**2 )
-     ci(:) = ti(:)**2 / sum_ti2
-
-     do jhist=1,nhist_current
-       do ihist=1,nhist_current
-         dcdt(ihist,jhist) = - 2.0_dp * ti(ihist)**2 * ti(jhist) / sum_ti2**2
-       enddo
-       dcdt(jhist,jhist) = dcdt(jhist,jhist) + 2.0_dp * ti(jhist) / sum_ti2
-     enddo
+  do ihist=1,nhist_current
+    diag(ihist) = en_hist(ihist) - half_ph(ihist,ihist)
+  enddo
 
 
-     ! Evaluate XDIIS function
-     f_xdiis =  eval_f_xdiis(ci)
+  allocate(ti(nhist_current),ci(nhist_current))
+  allocate(dcdt(nhist_current,nhist_current))
+  allocate(gradf(nhist_current))
 
-     gradf(:) = eval_gradf_xdiis(ci,dcdt)
+  ci(1)               = 1.0_dp
+  ci(2:nhist_current) = 0.0_dp
+  alpha_diis(:)  = ci(:)
+  f_xdiis_min = eval_f_xdiis(ci)
 
-     ! Perform a LBGS step
-     info = lbfgs_execute(lbfgs_plan,ti,f_xdiis,gradf)
+  if( nhist_current > 1 ) then
 
-     !
-     ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
-     if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
-        exit
-     endif
+    do ihist=1,nhist_current
+      ti(1)  = 1.0_dp
+      ti(2:) = 0.2_dp
+    enddo
 
-     if( info <= 0 ) exit
+    call lbfgs_init(lbfgs_plan,nhist_current,5)
 
-   enddo
+    do ibfgs=1,nbfgs
 
-   call lbfgs_destroy(lbfgs_plan)
+      sum_ti2 = SUM( ti(:)**2 )
+      ci(:) = ti(:)**2 / sum_ti2
 
-   sum_ti2 = SUM( ti(:)**2 )
-   ci(:) = ti(:)**2 / sum_ti2
-   f_xdiis = eval_f_xdiis(ci)
-
-   if( f_xdiis < f_xdiis_min ) then
-     alpha_diis(:) = ci(:)
-     f_xdiis_min = f_xdiis
-   endif
-
-
-   ! If a coefficient is too large, start again the minimization
-   if( ANY( alpha_diis(2:) > alpha_max ) ) then
-
-     !
-     ! Find the offender
-     khist = MAXLOC(alpha_diis(2:),DIM=1) + 1
-     write(stdout,'(1x,a,i4,1x,f12.6)') 'Performing a sub-optimal XDIIS because one too-old coefficient is too large: ', &
-                                        khist,alpha_diis(khist)
-
-     call RANDOM_SEED(SIZE=nseed)
-     allocate(seed(nseed))
-     do iseed=1,nseed
-       seed(iseed) = NINT( rank_world * iseed * pi * 27.21 )
-     enddo
-     call RANDOM_SEED(PUT=seed)
-     deallocate(seed)
-
-     alpha_diis(1)   = alpha_max
-     alpha_diis(2:)  = (1.0_dp - alpha_max) / REAL(nhist_current-1,dp)
-     f_xdiis_min = eval_f_xdiis(alpha_diis)
-
-     do imc=1,nmc
-       if( MODULO( imc - 1 , nproc_world ) /= rank_world ) cycle
-
-       ! Find random coefficients that keep alpha_k = alpha_max and that sum up to 1
-       call RANDOM_NUMBER(alpha_diis_mc)
-       alpha_diis_mc(khist) = alpha_max
-       sum_ti2 = ( SUM( alpha_diis_mc(:khist-1) ) + SUM( alpha_diis_mc(khist+1:) ) )
-       alpha_diis_mc(:khist-1) = alpha_diis_mc(:khist-1) / sum_ti2 * (1.0_dp - alpha_max)
-       alpha_diis_mc(khist+1:) = alpha_diis_mc(khist+1:) / sum_ti2 * (1.0_dp - alpha_max)
-
-       f_xdiis = eval_f_xdiis(alpha_diis_mc)
-
-       if( f_xdiis < f_xdiis_min ) then
-         f_xdiis_min = f_xdiis
-         alpha_diis(:) = alpha_diis_mc(:)
-       endif
-
-     enddo
-
-     ! Propage f_xdiis_min and alpha_diis to all procs
-     f_xdiis = f_xdiis_min
-     call xmin_world(f_xdiis_min)
-
-     if( ABS( f_xdiis_min - f_xdiis ) < 1.0e-14_dp ) then
-       iproc = rank_world
-     else
-       iproc = -1
-     endif
-     call xmax_world(iproc)
-     call xbcast_world(iproc,alpha_diis)
+      do jhist=1,nhist_current
+        do ihist=1,nhist_current
+          dcdt(ihist,jhist) = - 2.0_dp * ti(ihist)**2 * ti(jhist) / sum_ti2**2
+        enddo
+        dcdt(jhist,jhist) = dcdt(jhist,jhist) + 2.0_dp * ti(jhist) / sum_ti2
+      enddo
 
 
-   endif
+      ! Evaluate XDIIS function
+      f_xdiis =  eval_f_xdiis(ci)
+
+      gradf(:) = eval_gradf_xdiis(ci,dcdt)
+
+      ! Perform a LBGS step
+      info = lbfgs_execute(lbfgs_plan,ti,f_xdiis,gradf)
+
+      !
+      ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
+      if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
+         exit
+      endif
+
+      if( info <= 0 ) exit
+
+    enddo
+
+    call lbfgs_destroy(lbfgs_plan)
+
+    sum_ti2 = SUM( ti(:)**2 )
+    ci(:) = ti(:)**2 / sum_ti2
+    f_xdiis = eval_f_xdiis(ci)
+
+    if( f_xdiis < f_xdiis_min ) then
+      alpha_diis(:) = ci(:)
+      f_xdiis_min = f_xdiis
+    endif
 
 
- endif
+    ! If a coefficient is too large, start again the minimization
+    if( ANY( alpha_diis(2:) > alpha_max ) ) then
+
+      !
+      ! Find the offender
+      khist = MAXLOC(alpha_diis(2:),DIM=1) + 1
+      write(stdout,'(1x,a,i4,1x,f12.6)') 'Performing a sub-optimal XDIIS because one too-old coefficient is too large: ', &
+                                         khist,alpha_diis(khist)
+
+      call RANDOM_SEED(SIZE=nseed)
+      allocate(seed(nseed))
+      do iseed=1,nseed
+        seed(iseed) = NINT( rank_world * iseed * pi * 27.21 )
+      enddo
+      call RANDOM_SEED(PUT=seed)
+      deallocate(seed)
+
+      alpha_diis(1)   = alpha_max
+      alpha_diis(2:)  = (1.0_dp - alpha_max) / REAL(nhist_current-1,dp)
+      f_xdiis_min = eval_f_xdiis(alpha_diis)
+
+      do imc=1,nmc
+        if( MODULO( imc - 1 , nproc_world ) /= rank_world ) cycle
+
+        ! Find random coefficients that keep alpha_k = alpha_max and that sum up to 1
+        call RANDOM_NUMBER(alpha_diis_mc)
+        alpha_diis_mc(khist) = alpha_max
+        sum_ti2 = ( SUM( alpha_diis_mc(:khist-1) ) + SUM( alpha_diis_mc(khist+1:) ) )
+        alpha_diis_mc(:khist-1) = alpha_diis_mc(:khist-1) / sum_ti2 * (1.0_dp - alpha_max)
+        alpha_diis_mc(khist+1:) = alpha_diis_mc(khist+1:) / sum_ti2 * (1.0_dp - alpha_max)
+
+        f_xdiis = eval_f_xdiis(alpha_diis_mc)
+
+        if( f_xdiis < f_xdiis_min ) then
+          f_xdiis_min = f_xdiis
+          alpha_diis(:) = alpha_diis_mc(:)
+        endif
+
+      enddo
+
+      ! Propage f_xdiis_min and alpha_diis to all procs
+      f_xdiis = f_xdiis_min
+      call xmin_world(f_xdiis_min)
+
+      if( ABS( f_xdiis_min - f_xdiis ) < 1.0e-14_dp ) then
+        iproc = rank_world
+      else
+        iproc = -1
+      endif
+      call xmax_world(iproc)
+      call xbcast_world(iproc,alpha_diis)
 
 
- deallocate(ti,ci,gradf)
- deallocate(dcdt)
- deallocate(diag)
+    endif
 
- write(stdout,'(1x,a,12(2x,f16.6))') TRIM(mixing_scheme)//' final coefficients:',alpha_diis(:)
- write(stdout,'(1x,a,12(2x,f16.8))') 'Total energy history:    ',en_hist(1:nhist_current)
- write(stdout,'(1x,a,12(2x,f16.8))') TRIM(mixing_scheme)//' final energy:      ',f_xdiis_min
 
- ham(:,:,:)      = 0.0_dp
- p_matrix(:,:,:) = 0.0_dp
- do ihist=1,nhist_current
-   ham(:,:,:)      = ham(:,:,:)      + alpha_diis(ihist) * ham_hist(:,:,:,ihist)
-   p_matrix(:,:,:) = p_matrix(:,:,:) + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
- enddo
+  endif
 
- deallocate(alpha_diis_mc)
- deallocate(half_ph)
 
- call stop_clock(timing_diis)
+  deallocate(ti,ci,gradf)
+  deallocate(dcdt)
+  deallocate(diag)
+
+  write(stdout,'(1x,a,12(2x,f16.6))') TRIM(mixing_scheme)//' final coefficients:',alpha_diis(:)
+  write(stdout,'(1x,a,12(2x,f16.8))') 'Total energy history:    ',en_hist(1:nhist_current)
+  write(stdout,'(1x,a,12(2x,f16.8))') TRIM(mixing_scheme)//' final energy:      ',f_xdiis_min
+
+  ham(:,:,:)      = 0.0_dp
+  p_matrix(:,:,:) = 0.0_dp
+  do ihist=1,nhist_current
+    ham(:,:,:)      = ham(:,:,:)      + alpha_diis(ihist) * ham_hist(:,:,:,ihist)
+    p_matrix(:,:,:) = p_matrix(:,:,:) + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
+  enddo
+
+  deallocate(alpha_diis_mc)
+  deallocate(half_ph)
+
+  call stop_clock(timing_diis)
 
 
 contains
 
 
 function eval_f_xdiis(xi)
- real(dp),intent(in) :: xi(nhist_current)
- real(dp) :: eval_f_xdiis
-!=====
+  real(dp),intent(in) :: xi(nhist_current)
+  real(dp) :: eval_f_xdiis
+  !=====
 
- select case(mixing_scheme)
- case('EDIIS')
-   eval_f_xdiis = DOT_PRODUCT( xi , MATMUL( half_ph , xi ) ) + DOT_PRODUCT( xi , diag )
- case('ADIIS')
-   eval_f_xdiis =  en_hist(1) - 2.0_dp * half_ph(1,1)  &
-                + 2.0_dp * DOT_PRODUCT( xi , half_ph(:,1) ) &
-                - 2.0_dp * DOT_PRODUCT( half_ph(1,:) , xi )  &
-                + 2.0_dp * DOT_PRODUCT( xi , MATMUL( half_ph , xi ) )
- case default
-   call die('eval_f_xdiis: sheme not allowed')
- end select
+  select case(mixing_scheme)
+  case('EDIIS')
+    eval_f_xdiis = DOT_PRODUCT( xi , MATMUL( half_ph , xi ) ) + DOT_PRODUCT( xi , diag )
+  case('ADIIS')
+    eval_f_xdiis =  en_hist(1) - 2.0_dp * half_ph(1,1)  &
+                 + 2.0_dp * DOT_PRODUCT( xi , half_ph(:,1) ) &
+                 - 2.0_dp * DOT_PRODUCT( half_ph(1,:) , xi )  &
+                 + 2.0_dp * DOT_PRODUCT( xi , MATMUL( half_ph , xi ) )
+  case default
+    call die('eval_f_xdiis: sheme not allowed')
+  end select
 
 end function eval_f_xdiis
 
 
 function eval_gradf_xdiis(xi,dxdt)
- real(dp),intent(in) :: xi(nhist_current)
- real(dp),intent(in) :: dxdt(nhist_current,nhist_current)
- real(dp) :: eval_gradf_xdiis(nhist_current)
-!=====
+  real(dp),intent(in) :: xi(nhist_current)
+  real(dp),intent(in) :: dxdt(nhist_current,nhist_current)
+  real(dp) :: eval_gradf_xdiis(nhist_current)
+  !=====
 
- select case(mixing_scheme)
- case('EDIIS')
-   eval_gradf_xdiis(:) = MATMUL( diag , dxdt ) + MATMUL( TRANSPOSE(dxdt) , MATMUL( half_ph , xi ) )  &
-                                               + MATMUL( xi , MATMUL( half_ph , dxdt ) )
- case('ADIIS')
-   eval_gradf_xdiis(:) =  &
-                 2.0_dp * MATMUL( TRANSPOSE(dxdt) , half_ph(:,1) ) &
-               - 2.0_dp * MATMUL( half_ph(1,:) , dxdt )  &
-               + 2.0_dp * MATMUL( TRANSPOSE(dxdt) , MATMUL( half_ph , xi ) )  &
-               + 2.0_dp * MATMUL( xi , MATMUL( half_ph , dxdt ) )
- case default
-   call die('eval_gradf_xdiis: sheme not allowed')
- end select
+  select case(mixing_scheme)
+  case('EDIIS')
+    eval_gradf_xdiis(:) = MATMUL( diag , dxdt ) + MATMUL( TRANSPOSE(dxdt) , MATMUL( half_ph , xi ) )  &
+                                                + MATMUL( xi , MATMUL( half_ph , dxdt ) )
+  case('ADIIS')
+    eval_gradf_xdiis(:) =  &
+                  2.0_dp * MATMUL( TRANSPOSE(dxdt) , half_ph(:,1) ) &
+                - 2.0_dp * MATMUL( half_ph(1,:) , dxdt )  &
+                + 2.0_dp * MATMUL( TRANSPOSE(dxdt) , MATMUL( half_ph , xi ) )  &
+                + 2.0_dp * MATMUL( xi , MATMUL( half_ph , dxdt ) )
+  case default
+    call die('eval_gradf_xdiis: sheme not allowed')
+  end select
 
 end function eval_gradf_xdiis
 
@@ -739,107 +739,107 @@ end subroutine xdiis_prediction
 
 !=========================================================================
 subroutine density_matrix_preconditioning(hkin,s_matrix,p_matrix_new)
- implicit none
+  implicit none
 
- real(dp),intent(in)      :: hkin(:,:)
- real(dp),intent(in)      :: s_matrix(:,:)
- real(dp),intent(inout)   :: p_matrix_new(:,:,:)
-!=====
- real(dp),allocatable     :: hkin_tmp(:,:)
- real(dp),allocatable     :: hkin_inv(:,:)
- real(dp),allocatable     :: delta_p_matrix(:,:)
- integer :: mlocal,nlocal
- integer :: ilocal,jlocal
- integer :: iglobal,jglobal
- integer :: nbf,ispin,ihist
- real(dp),allocatable :: matrix(:,:)
- real(dp) :: trace_ref,trace_current
-!=====
-
-
- if( kerker_k0 > 1.0e-6_dp ) then
-
-   !
-   ! EXPERIMENTAL CODING which is not functional as of today
-   call assert_experimental()
-
-   nbf = SIZE(hkin,DIM=1)
-
-   write(stdout,'(1x,a,f8.3)') 'Preconditioning a la Kerker for the density matrix with k0: ',kerker_k0
-
-   allocate(hkin_tmp,SOURCE=hkin)
-   allocate(hkin_inv,MOLD=hkin)
-   allocate(delta_p_matrix,MOLD=hkin)
-
-   do iglobal=1,nbf
-     hkin_tmp(iglobal,iglobal) = hkin_tmp(iglobal,iglobal) + 0.5_dp * kerker_k0**2
-   enddo
-   hkin_inv(:,:) = hkin_tmp(:,:)
-   call invert(hkin_inv)
-   hkin_inv(:,:) = -hkin_inv(:,:) * 0.5_dp * kerker_k0**2
-   do iglobal=1,nbf
-     hkin_inv(iglobal,iglobal) = hkin_inv(iglobal,iglobal) + 1.0_dp
-   enddo
-
-   write(stdout,*) '================================'
-   do iglobal=1,20
-     write(stdout,'(*(2x,f6.2))') hkin(iglobal,1:20)
-   enddo
-   write(stdout,*) '================================'
-   do iglobal=1,20
-     write(stdout,'(*(2x,f6.2))') hkin_inv(iglobal,1:20)
-   enddo
-   write(stdout,*) '================================'
-
-   write(stdout,*) '=============P_MATRIX BEFORE===='
-   do iglobal=1,20
-     write(stdout,'(*(2x,f6.2))') p_matrix_new(iglobal,1:20,1)
-   enddo
-   write(stdout,*) '================================'
-
-   allocate(matrix(nbf,nbf))
-   matrix(:,:) = MATMUL( p_matrix_new(:,:,1) , s_matrix )
-   write(stdout,*) 'TRACE PS',matrix_trace(matrix)
+  real(dp),intent(in)      :: hkin(:,:)
+  real(dp),intent(in)      :: s_matrix(:,:)
+  real(dp),intent(inout)   :: p_matrix_new(:,:,:)
+  !=====
+  real(dp),allocatable     :: hkin_tmp(:,:)
+  real(dp),allocatable     :: hkin_inv(:,:)
+  real(dp),allocatable     :: delta_p_matrix(:,:)
+  integer :: mlocal,nlocal
+  integer :: ilocal,jlocal
+  integer :: iglobal,jglobal
+  integer :: nbf,ispin,ihist
+  real(dp),allocatable :: matrix(:,:)
+  real(dp) :: trace_ref,trace_current
+  !=====
 
 
+  if( kerker_k0 > 1.0e-6_dp ) then
 
-   do ispin=1,nspin
-     matrix(:,:) = MATMUL( p_matrix_in(:,:,ispin) , s_matrix )
-     trace_ref = matrix_trace(matrix)
+    !
+    ! EXPERIMENTAL CODING which is not functional as of today
+    call assert_experimental()
 
-     p_matrix_new(:,:,ispin) = p_matrix_in(:,:,ispin) + MATMUL( hkin_inv , p_matrix_new(:,:,ispin) - p_matrix_in(:,:,ispin) )
+    nbf = SIZE(hkin,DIM=1)
 
-     matrix(:,:) = MATMUL( p_matrix_new(:,:,ispin) , s_matrix )
-     trace_current = matrix_trace(matrix)
+    write(stdout,'(1x,a,f8.3)') 'Preconditioning a la Kerker for the density matrix with k0: ',kerker_k0
 
-     p_matrix_new(:,:,ispin) = p_matrix_new(:,:,ispin) + p_matrix_in(:,:,ispin) * (trace_ref-trace_current) / trace_ref
+    allocate(hkin_tmp,SOURCE=hkin)
+    allocate(hkin_inv,MOLD=hkin)
+    allocate(delta_p_matrix,MOLD=hkin)
 
-   enddo
+    do iglobal=1,nbf
+      hkin_tmp(iglobal,iglobal) = hkin_tmp(iglobal,iglobal) + 0.5_dp * kerker_k0**2
+    enddo
+    hkin_inv(:,:) = hkin_tmp(:,:)
+    call invert(hkin_inv)
+    hkin_inv(:,:) = -hkin_inv(:,:) * 0.5_dp * kerker_k0**2
+    do iglobal=1,nbf
+      hkin_inv(iglobal,iglobal) = hkin_inv(iglobal,iglobal) + 1.0_dp
+    enddo
 
-   write(stdout,*) '=============P_MATRIX AFTER ===='
-   do iglobal=1,20
-     write(stdout,'(*(2x,f6.2))') p_matrix_new(iglobal,1:20,1)
-   enddo
-   write(stdout,*) '================================'
+    write(stdout,*) '================================'
+    do iglobal=1,20
+      write(stdout,'(*(2x,f6.2))') hkin(iglobal,1:20)
+    enddo
+    write(stdout,*) '================================'
+    do iglobal=1,20
+      write(stdout,'(*(2x,f6.2))') hkin_inv(iglobal,1:20)
+    enddo
+    write(stdout,*) '================================'
 
-   matrix(:,:) = MATMUL( p_matrix_new(:,:,1) , s_matrix )
-   write(stdout,*) 'TRACE PS after',matrix_trace(matrix)
-   deallocate(matrix)
+    write(stdout,*) '=============P_MATRIX BEFORE===='
+    do iglobal=1,20
+      write(stdout,'(*(2x,f6.2))') p_matrix_new(iglobal,1:20,1)
+    enddo
+    write(stdout,*) '================================'
 
-   deallocate(hkin_tmp)
-   deallocate(hkin_inv)
-   deallocate(delta_p_matrix)
+    allocate(matrix(nbf,nbf))
+    matrix(:,:) = MATMUL( p_matrix_new(:,:,1) , s_matrix )
+    write(stdout,*) 'TRACE PS',matrix_trace(matrix)
 
- endif
 
- if( density_matrix_damping > 1.0e-6 ) then
 
-   write(stdout,'(1x,a,f8.4)') 'Apply a density damping with mixing: ',density_matrix_damping
-   do ispin=1,nspin
-     p_matrix_new(:,:,:) = p_matrix_in(:,:,:) +  ( p_matrix_new(:,:,:) - p_matrix_in(:,:,:) ) * ( 1.0_dp - density_matrix_damping)
-   enddo
+    do ispin=1,nspin
+      matrix(:,:) = MATMUL( p_matrix_in(:,:,ispin) , s_matrix )
+      trace_ref = matrix_trace(matrix)
 
- endif
+      p_matrix_new(:,:,ispin) = p_matrix_in(:,:,ispin) + MATMUL( hkin_inv , p_matrix_new(:,:,ispin) - p_matrix_in(:,:,ispin) )
+
+      matrix(:,:) = MATMUL( p_matrix_new(:,:,ispin) , s_matrix )
+      trace_current = matrix_trace(matrix)
+
+      p_matrix_new(:,:,ispin) = p_matrix_new(:,:,ispin) + p_matrix_in(:,:,ispin) * (trace_ref-trace_current) / trace_ref
+
+    enddo
+
+    write(stdout,*) '=============P_MATRIX AFTER ===='
+    do iglobal=1,20
+      write(stdout,'(*(2x,f6.2))') p_matrix_new(iglobal,1:20,1)
+    enddo
+    write(stdout,*) '================================'
+
+    matrix(:,:) = MATMUL( p_matrix_new(:,:,1) , s_matrix )
+    write(stdout,*) 'TRACE PS after',matrix_trace(matrix)
+    deallocate(matrix)
+
+    deallocate(hkin_tmp)
+    deallocate(hkin_inv)
+    deallocate(delta_p_matrix)
+
+  endif
+
+  if( density_matrix_damping > 1.0e-6 ) then
+
+    write(stdout,'(1x,a,f8.4)') 'Apply a density damping with mixing: ',density_matrix_damping
+    do ispin=1,nspin
+      p_matrix_new(:,:,:) = p_matrix_in(:,:,:) +  ( p_matrix_new(:,:,:) - p_matrix_in(:,:,:) ) * ( 1.0_dp - density_matrix_damping)
+    enddo
+
+  endif
 
 
 end subroutine density_matrix_preconditioning
@@ -907,40 +907,40 @@ end function check_converged
 
 !=========================================================================
 subroutine print_energy_yaml(name,en)
- implicit none
- character(len=*),intent(in)           :: name
- type(energy_contributions),intent(in) :: en
-!=====
-!=====
+  implicit none
+  character(len=*),intent(in)           :: name
+  type(energy_contributions),intent(in) :: en
+  !=====
+  !=====
 
- if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
+  if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
 
- write(unit_yaml,'(/,a,a)') TRIM(name),':'
- write(unit_yaml,'(4x,a,a)')           'unit:                ','    Ha'
- if( ABS(en%total) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'total:               ',en%total
- if( ABS(en%totalexx) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'total exx:           ',en%totalexx
- write(unit_yaml,'(4x,a,1x,es18.8)')   'nucleus-nucleus:     ',en%nuc_nuc
- write(unit_yaml,'(4x,a,1x,es18.8)')   'kinetic:             ',en%kinetic
- write(unit_yaml,'(4x,a,1x,es18.8)')   'electron-nucleus:    ',en%nucleus
- write(unit_yaml,'(4x,a,1x,es18.8)')   'hartree:             ',en%hartree
- if( ABS(en%exx) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'exchange:            ',en%exx
- if( ABS(en%exx_hyb) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'hybrid exchange:     ',en%exx_hyb
- if( ABS(en%xc) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'exchange-correlation:',en%xc
- if( ABS(en%rpa) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'rpa correlation:     ',en%rpa
- if( ABS(en%gw) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'gw correlation:      ',en%gw
- if( ABS(en%mp2) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'mp2 correlation:     ',en%mp2
- if( ABS(en%mp3) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'mp3 correlation:     ',en%mp3
- if( ABS(en%excit) > 1.0e-10_dp ) &
-   write(unit_yaml,'(4x,a,1x,es18.8)') 'excitation:          ',en%excit
+  write(unit_yaml,'(/,a,a)') TRIM(name),':'
+  write(unit_yaml,'(4x,a,a)')           'unit:                ','    Ha'
+  if( ABS(en%total) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'total:               ',en%total
+  if( ABS(en%totalexx) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'total exx:           ',en%totalexx
+  write(unit_yaml,'(4x,a,1x,es18.8)')   'nucleus-nucleus:     ',en%nuc_nuc
+  write(unit_yaml,'(4x,a,1x,es18.8)')   'kinetic:             ',en%kinetic
+  write(unit_yaml,'(4x,a,1x,es18.8)')   'electron-nucleus:    ',en%nucleus
+  write(unit_yaml,'(4x,a,1x,es18.8)')   'hartree:             ',en%hartree
+  if( ABS(en%exx) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'exchange:            ',en%exx
+  if( ABS(en%exx_hyb) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'hybrid exchange:     ',en%exx_hyb
+  if( ABS(en%xc) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'exchange-correlation:',en%xc
+  if( ABS(en%rpa) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'rpa correlation:     ',en%rpa
+  if( ABS(en%gw) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'gw correlation:      ',en%gw
+  if( ABS(en%mp2) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'mp2 correlation:     ',en%mp2
+  if( ABS(en%mp3) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'mp3 correlation:     ',en%mp3
+  if( ABS(en%excit) > 1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'excitation:          ',en%excit
 
 
 end subroutine print_energy_yaml
