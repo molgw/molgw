@@ -300,9 +300,9 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
     allocate(x_matrix_distrib(mc,nc))
     call create_distributed_copy(x_matrix,descc,x_matrix_distrib)
 
-    allocate(matrix_tmp1(mh,nh))
-    allocate(matrix_tmp2(mh,nh))
     do ispin=1,nspin
+      allocate(matrix_tmp1(mh,nh))
+      allocate(matrix_tmp2(mh,nh))
 
       ! M2 = P * S
       call PDSYMM('L','L',nbf_scf,nbf_scf,1.0d0,p_matrix_distrib(:,:,ispin),1,1,desch,&
@@ -327,8 +327,8 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
                   matrix_tmp1,1,1,descc,0.0_dp,res_hist(:,:,ispin,1),1,1,descr)
 
 
+      deallocate(matrix_tmp1,matrix_tmp2)
     enddo
-    deallocate(matrix_tmp1,matrix_tmp2)
 
   endif
 
