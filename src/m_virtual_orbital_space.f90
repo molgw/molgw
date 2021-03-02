@@ -320,7 +320,7 @@ subroutine calculate_virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
          eri_ci_i(astate) = eri_eigen(cstate,istate,ispin,astate,istate,ispin) &
                               / ( energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin) )
        enddo
-!       call xsum_auxil(eri_ci_i)
+!       call auxil%sum(eri_ci_i)
 
        do bstate=nsemax+1,nstate
          do astate=nsemax+1,nstate

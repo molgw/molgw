@@ -137,7 +137,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
          if( t_ia_global == t_jb_global ) then
            !
            ! Only one proc should add the diagonal
-           if( rank_auxil == 0 ) then
+           if( auxil%rank == 0 ) then
              apb_block(t_ia,t_jb) =  apb_block(t_ia,t_jb) + ( energy(bstate,jbspin) - energy(jstate,jbspin) )
              amb_block(t_ia,t_jb) =  amb_block(t_ia,t_jb) + ( energy(bstate,jbspin) - energy(jstate,jbspin) )
            endif
@@ -150,8 +150,8 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
      enddo
 
 
-     call xsum_auxil(amb_block)
-     call xsum_auxil(apb_block)
+     call auxil%sum(amb_block)
+     call auxil%sum(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        amb_matrix(:,:) = amb_block(:,:)
@@ -362,7 +362,7 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
 
      deallocate(eri_3center_left,eri_3center_right)
 
-     call xsum_auxil(apb_block)
+     call auxil%sum(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
@@ -547,7 +547,7 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
 
      !
      ! real-space integration grid is distributed, one needs to sum contributions here
-     call xsum_grid(apb_block)
+     call grid%sum(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        !$OMP PARALLEL WORKSHARE
@@ -717,10 +717,10 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  !
  jstate_min = ncore_W+1
  jstate_max = MAXVAL( wpol%transition_table(1,1:wpol%npole_reso) )
- do irank=0,rank_ortho
+ do irank=0,ortho%rank
    if( irank > 0 ) jstate_min = jstate_max + 1
    jstate_max = MAXVAL( wpol%transition_table(1,1:wpol%npole_reso) )
-   jstate_max = MIN( jstate_min + (jstate_max-jstate_min+1) / (nproc_ortho-irank) - 1 , jstate_max )
+   jstate_max = MIN( jstate_min + (jstate_max-jstate_min+1) / (ortho%nproc-irank) - 1 , jstate_max )
  enddo
 
  call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
@@ -786,9 +786,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
          do jstate=jstate_min,jstate_max
            wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( w0_local(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
          enddo
-         call xsum_auxil(wp0_i)
+         call auxil%sum(wp0_i)
 
-         if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil ) then
+         if( iproc_ibf_auxil(ibf_auxil_global) == auxil%rank ) then
            wp0(ibf_auxil_l(ibf_auxil_global),:,:,iaspin) = wp0_i(:,:)
          endif
 
@@ -804,12 +804,12 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
 
        do ibf_auxil=1,nauxil_2center
 
-         if( iproc_ibf_auxil(ibf_auxil) == rank_auxil ) then
+         if( iproc_ibf_auxil(ibf_auxil) == auxil%rank ) then
            residue_i(:) = wpol_static%residue_left(ibf_auxil_l(ibf_auxil),:)
          else
            residue_i(:) = 0.0_dp
          endif
-         call xsum_auxil(residue_i)
+         call auxil%sum(residue_i)
 
          vsqrt_chi_vsqrt_i(:) = 0.0_dp
          do ipole=1,wpol_static%npole_reso
@@ -823,9 +823,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
            wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( vsqrt_chi_vsqrt_i(:), &
                                                           eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
          enddo
-         call xsum_auxil(wp0_i)
+         call auxil%sum(wp0_i)
 
-         if( iproc_ibf_auxil(ibf_auxil) == rank_auxil ) then
+         if( iproc_ibf_auxil(ibf_auxil) == auxil%rank ) then
            wp0(ibf_auxil_l(ibf_auxil),:,:,iaspin) = wp0_i(:,:)
          endif
 

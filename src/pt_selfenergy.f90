@@ -9,7 +9,6 @@
 subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,se,emp2)
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_warning
  use m_timing
  use m_basis_set
@@ -69,7 +68,7 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
 
  do pqispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !LOOP of the first Green's function
-     if( MODULO( istate - (ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( istate - (ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
 
      if( .NOT. has_auxil_basis ) then
        call calculate_eri_4center_eigen(c_matrix,istate,pqispin,eri_eigenstate_i)
@@ -151,10 +150,10 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
    enddo
  enddo ! pqispin
 
- call xsum_ortho(selfenergy_ring)
- call xsum_ortho(selfenergy_sox)
- call xsum_ortho(emp2_ring)
- call xsum_ortho(emp2_sox)
+ call ortho%sum(selfenergy_ring)
+ call ortho%sum(selfenergy_sox)
+ call ortho%sum(emp2_ring)
+ call ortho%sum(emp2_sox)
 
  emp2_ring = 0.5_dp * emp2_ring
  emp2_sox  = 0.5_dp * emp2_sox
@@ -317,7 +316,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
 
  do pqispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !LOOP of the first Green's function
-     if( MODULO( istate - (ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( istate - (ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
 
      if( .NOT. has_auxil_basis ) then
        call calculate_eri_4center_eigen(c_matrix,istate,pqispin,eri_eigenstate_i)
@@ -399,10 +398,10 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
    enddo
  enddo ! pqispin
 
- call xsum_ortho(selfenergy_ring)
- call xsum_ortho(selfenergy_sox)
- call xsum_ortho(emp2_ring)
- call xsum_ortho(emp2_sox)
+ call ortho%sum(selfenergy_ring)
+ call ortho%sum(selfenergy_sox)
+ call ortho%sum(emp2_ring)
+ call ortho%sum(emp2_sox)
 
  emp2_ring = 0.5_dp * emp2_ring
  emp2_sox  = 0.5_dp * emp2_sox
@@ -439,7 +438,6 @@ end subroutine pt2_selfenergy_qs
 subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,occupation,energy,c_matrix,se,emp3)
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_warning
  use m_timing
  use m_basis_set
@@ -527,7 +525,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! A1   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
@@ -555,7 +553,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! A2   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do cstate=nhomo_G+1,nvirtual_G-1
            eri_pqbc = eri_eigen(pstate,qstate,pqspin,cstate,bstate,pqspin)
@@ -584,7 +582,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! A3,A4   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
@@ -612,7 +610,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! A5,A6   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
@@ -647,7 +645,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
      !
      ! B1 i,j    a
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do istate=ncore_G+1,nhomo_G
          do jstate=ncore_G+1,nhomo_G
            eri_pija = eri_eigen(pstate,istate,pqspin,jstate,astate,pqspin)
@@ -667,7 +665,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! B2 i    a,b
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
@@ -690,7 +688,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
      !
      ! C1   i   a,b,c,d
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
@@ -717,7 +715,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! C2+C3   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
@@ -744,7 +742,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! C4+C5   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do istate=ncore_G+1,nhomo_G
          do jstate=ncore_G+1,nhomo_G
            eri_pija = eri_eigen(pstate,istate,pqspin,jstate,astate,pqspin)
@@ -770,7 +768,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! C6   i,j,k,l   a
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do kstate=ncore_G+1,nhomo_G
          do lstate=ncore_G+1,nhomo_G
            eri_pkla = eri_eigen(pstate,kstate,pqspin,lstate,astate,pqspin)
@@ -800,7 +798,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
      !
      ! D1   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do cstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
@@ -835,7 +833,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! D2+D3   i,j   a,b,c
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
@@ -870,7 +868,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! D4+D5   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
@@ -904,7 +902,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
      ! D6   i,j,k   a,b
      do astate=nhomo_G+1,nvirtual_G-1
-       if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
        do bstate=nhomo_G+1,nvirtual_G-1
          do istate=ncore_G+1,nhomo_G
            do jstate=ncore_G+1,nhomo_G
@@ -939,7 +937,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
    endif
 
-   call xsum_ortho(selfenergy(:,:,pstate,:))
+   call ortho%sum(selfenergy(:,:,pstate,:))
 
    write(stdout,'(i4,*(2x,f12.4))') pstate, &
                                     SUM(REAL(selfenergy(0,ONERING:SOX_,pstate,pqspin),dp),DIM=1) * Ha_eV, &

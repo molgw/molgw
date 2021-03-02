@@ -9,7 +9,6 @@
 subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_timing
  use m_inputparam
  use m_warning,only: issue_warning
@@ -69,7 +68,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  do ispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-     if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+     if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and pstate
@@ -86,7 +85,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
-       call xsum_auxil(bra)
+       call auxil%sum(bra)
      endif
 
 
@@ -101,7 +100,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
      do ipole=1,wpol%npole_reso
 
-       if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
+       if( MODULO( ipole - 1 , auxil%nproc ) /= auxil%rank ) cycle
 
 
        select case(selfenergy_approx)
@@ -186,7 +185,6 @@ end subroutine gw_selfenergy
 subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,exchange_m_vxc)
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_timing
  use m_inputparam
  use m_warning,only: issue_warning
@@ -277,7 +275,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  do ispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-     if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+     if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
      !
      ! indeces
      jstate = istate - ncore_G
@@ -309,7 +307,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 #else
        matrix_wing(irecord+1:irecord+wpol%npole_reso,:) = &
              MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
-       call xsum_auxil(matrix_wing(irecord+1:irecord+wpol%npole_reso,:))
+       call auxil%sum(matrix_wing(irecord+1:irecord+wpol%npole_reso,:))
 #endif
      endif
 
@@ -647,7 +645,6 @@ end subroutine gw_selfenergy_scalapack
 subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_timing
  use m_inputparam
  use m_warning,only: issue_warning
@@ -697,7 +694,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  do ispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-     if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+     if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and pstate
@@ -714,7 +711,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
-       call xsum_auxil(bra)
+       call auxil%sum(bra)
      endif
 
 
@@ -728,7 +725,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
      do ipole=1,wpol%npole_reso
 
-       if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
+       if( MODULO( ipole - 1 , auxil%nproc ) /= auxil%rank ) cycle
 
        select case(calc_type%selfenergy_approx)
 

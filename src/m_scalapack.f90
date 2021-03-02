@@ -51,7 +51,7 @@ module m_scalapack
  integer,protected :: iproc_sca = 0
 
 
- ! SCALAPACK grid: auxiliary basis distribution in AO basis ( alpha beta | P ): 1 x nproc_auxil
+ ! SCALAPACK grid: auxiliary basis distribution in AO basis ( alpha beta | P ): 1 x auxil%nproc
  integer,protected :: cntxt_eri3_ao
  integer,protected :: nprow_eri3_ao
  integer,protected :: npcol_eri3_ao
@@ -60,7 +60,7 @@ module m_scalapack
  integer,protected :: MB_eri3_ao = 1
  integer,protected :: NB_eri3_ao = 1
 
- ! SCALAPACK grid: auxiliary basis distribution in MO basis ( P | i j): nproc_auxil x 1
+ ! SCALAPACK grid: auxiliary basis distribution in MO basis ( P | i j): auxil%nproc x 1
  integer,protected :: cntxt_eri3_mo
  integer,protected :: nprow_eri3_mo
  integer,protected :: npcol_eri3_mo
@@ -2536,7 +2536,7 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
 
  !
  ! Create the SCALAPACK context cntxt_eri3_ao and cntxt_eri3_mo
- ! that precisely matches the MPI_COMMUNICATOR comm_auxil
+ ! that precisely matches the MPI_COMMUNICATOR auxil%comm
  !
  call BLACS_GET( -1, 0, cntxt_eri3_ao )
  call BLACS_GET( -1, 0, cntxt_eri3_mo )
@@ -2545,25 +2545,25 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
    call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
  endif
 
- allocate(usermap(nproc_auxil))
- do iproc_auxil=0,nproc_auxil-1
-   usermap(iproc_auxil+1) = iproc_auxil * nproc_ortho
+ allocate(usermap(auxil%nproc))
+ do iproc_auxil=0,auxil%nproc-1
+   usermap(iproc_auxil+1) = iproc_auxil * ortho%nproc
  enddo
- call BLACS_GRIDMAP(cntxt_eri3_ao,usermap,1          ,1,nproc_auxil)
- call BLACS_GRIDMAP(cntxt_eri3_mo,usermap,nproc_auxil,nproc_auxil,1)
+ call BLACS_GRIDMAP(cntxt_eri3_ao,usermap,1          ,1,auxil%nproc)
+ call BLACS_GRIDMAP(cntxt_eri3_mo,usermap,auxil%nproc,auxil%nproc,1)
  deallocate(usermap)
 
  call BLACS_GRIDINFO(cntxt_eri3_ao,nprow_eri3_ao,npcol_eri3_ao,iprow_eri3_ao,ipcol_eri3_ao)
- call xmax_ortho(nprow_eri3_ao)
- call xmax_ortho(npcol_eri3_ao)
- call xmax_ortho(iprow_eri3_ao)
- call xmax_ortho(ipcol_eri3_ao)
+ call ortho%max(nprow_eri3_ao)
+ call ortho%max(npcol_eri3_ao)
+ call ortho%max(iprow_eri3_ao)
+ call ortho%max(ipcol_eri3_ao)
 
  call BLACS_GRIDINFO(cntxt_eri3_mo,nprow_eri3_mo,npcol_eri3_mo,iprow_eri3_mo,ipcol_eri3_mo)
- call xmax_ortho(nprow_eri3_mo)
- call xmax_ortho(npcol_eri3_mo)
- call xmax_ortho(iprow_eri3_mo)
- call xmax_ortho(ipcol_eri3_mo)
+ call ortho%max(nprow_eri3_mo)
+ call ortho%max(npcol_eri3_mo)
+ call ortho%max(iprow_eri3_mo)
+ call ortho%max(ipcol_eri3_mo)
 
  ! 3center integrals distribution
  if( eri3_nprow * eri3_npcol == nproc_sca ) then

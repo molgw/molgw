@@ -65,18 +65,18 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
      ibf_auxil = ibf_auxil_g(ibf_auxil_local)
      eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local,istate,astate,iaspin)
    enddo
-   call xsum_auxil(eri_3center_ij)
+   call auxil%sum(eri_3center_ij)
 
 
    do jbf_auxil=1,nauxil_2center
-     if( MODULO( jbf_auxil , nproc_auxil ) /= rank_auxil ) cycle
+     if( MODULO( jbf_auxil , auxil%nproc ) /= auxil%rank ) cycle
      vsqchi0vsq(:,jbf_auxil) = vsqchi0vsq(:,jbf_auxil) &
           + eri_3center_ij(:) * eri_3center_ij(jbf_auxil) * denom
    enddo
 
  enddo
 
- call xsum_auxil(vsqchi0vsq)
+ call auxil%sum(vsqchi0vsq)
 
 
  !

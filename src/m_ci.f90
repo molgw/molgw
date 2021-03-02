@@ -888,13 +888,13 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
    enddo
  enddo
  h%nnz_total = REAL( h%nnz , dp )
- call xsum_auxil(h%nnz_total)
+ call auxil%sum(h%nnz_total)
  write(stdout,'(1x,a,i10)')  ' CI hamiltonian elements on this proc: ',h%nnz
  nnztmp = h%nnz
- call xmin_auxil(nnztmp)
+ call auxil%min(nnztmp)
  write(stdout,'(1x,a,i10)')  'Min CI hamiltonian elements on a proc: ',nnztmp
  nnztmp = h%nnz
- call xmax_auxil(nnztmp)
+ call auxil%max(nnztmp)
  write(stdout,'(1x,a,i10)')  'Max CI hamiltonian elements on a proc: ',nnztmp
  ! total number of terms in the triangular matrix is N * (N-1) / 2
  write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp) / REAL(conf%nconf-1,dp) * 200.0_dp
@@ -929,7 +929,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  enddo
 
  h%nnz_total = REAL( h%col_ptr(mvec+1) ,dp)
- call xsum_auxil(h%nnz_total)
+ call auxil%sum(h%nnz_total)
  write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp) / REAL(conf%nconf-1,dp) * 200.0_dp
 
 
@@ -1495,7 +1495,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  !
  ! Then override them in case eigvec isn't empty
  rtmp = ABS(eigvec(1,1))
- call xsum_auxil(rtmp)
+ call auxil%sum(rtmp)
  if( rtmp > 1.0e-12_dp ) then
    write(stdout,*) 'Found existing eigenvectors'
    bb(:,1:neig_calc) = eigvec(:,:)
@@ -1740,7 +1740,7 @@ subroutine translate_eigvec_ci(conf_in,desc_vec_in,eigvec_in,conf_out,desc_vec_o
    else
      eigvec_tmp(:) = 0.0_dp
    endif
-   call xsum_auxil(eigvec_tmp)
+   call auxil%sum(eigvec_tmp)
 
    do iconf_out=1,conf_out%nconf
      if( ALL( conf_in%keyud(:,iconf_in) == conf_out%keyud(:,iconf_out) ) ) then
@@ -1806,7 +1806,7 @@ subroutine write_eigvec_ci(filename,conf,desc_vec,eigvec,eigval,residual_norm)
      iconf = rowindex_local_to_global(desc_vec,iconf_local)
      eigvec_tmp(iconf) = eigvec(iconf_local,ieig)
    enddo
-   call xsum_auxil(iomaster,eigvec_tmp)
+   call auxil%sum(eigvec_tmp)
    if( is_iomaster ) write(cifile) eigvec_tmp(:)
  enddo
  if( is_iomaster ) close(cifile)

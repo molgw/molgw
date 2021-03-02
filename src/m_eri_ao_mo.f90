@@ -9,7 +9,6 @@
 module m_eri_ao_mo
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_scalapack
  use m_memory
  use m_warning
@@ -37,7 +36,7 @@ function eri_eigen(istate,jstate,ijspin,kstate,lstate,klspin)
 
  if(has_auxil_basis) then
    eri_eigen = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
-   call xsum_auxil(eri_eigen)
+   call auxil%sum(eri_eigen)
  else
    eri_eigen = eri_4center_eigen_uks(istate,jstate,kstate,lstate)
  endif
@@ -56,7 +55,7 @@ function eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
 
  eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
 
- call xsum_auxil(eri_eigen_ri)
+ call auxil%sum(eri_eigen_ri)
 
 end function eri_eigen_ri
 
@@ -251,7 +250,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
 
 
  do istate=nstate_min,nstate_max
-   if( MODULO( istate - nstate_min , nproc_ortho ) /= rank_ortho ) cycle
+   if( MODULO( istate - nstate_min , ortho%nproc ) /= ortho%rank ) cycle
 
    eri_tmp3(:,:,:) = 0.0_dp
 
@@ -331,7 +330,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
  call clean_deallocate('TMP array',eri_tmp2)
  call clean_deallocate('TMP array',eri_tmp3)
 
- call xsum_ortho(eri_4center_eigen_uks)
+ call ortho%sum(eri_4center_eigen_uks)
 
  call stop_clock(timing_eri_4center_eigen)
 
@@ -418,7 +417,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
    !$OMP END PARALLEL DO
 
    do iauxil=1,nauxil_3center
-     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
 
      tmp1(:,:) = 0.0_dp
      !$OMP PARALLEL PRIVATE(kbf,lbf)
@@ -448,7 +447,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
  call clean_deallocate('TMP 3-center ints',tmp2)
  call clean_deallocate('TMP 3-center ints',c_t)
  call clean_deallocate('TMP 3-center ints',tmp1)
- call xsum_ortho(eri_3center_eigen)
+ call ortho%sum(eri_3center_eigen)
 
  call stop_clock(timing_eri_3center_eigen)
 

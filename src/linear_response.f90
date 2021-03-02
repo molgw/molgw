@@ -1311,7 +1311,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
  !
  ! Since wpol%residue_left and eri_3tmp are distributed, we have to sum up
- call xsum_auxil(energy_gm)
+ call auxil%sum(energy_gm)
 
  deallocate(eri_3tmp)
 
@@ -1356,8 +1356,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
                             wpol%residue_left,1,1,desc_auxil,cntxt_sd)
  !
  ! Do not forget ortho parallelization direction
- if( nproc_ortho > 1 ) then
-   call xbcast_ortho(0,wpol%residue_left)
+ if( ortho%nproc > 1 ) then
+   call ortho%bcast(0,wpol%residue_left)
  endif
 
  call clean_deallocate('TMP v**1/2 * (X+Y)',vsqrt_xpy)
@@ -1372,7 +1372,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  enddo
 
  energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) )
- call xsum_auxil(energy_gm)
+ call auxil%sum(energy_gm)
 
 
 #endif

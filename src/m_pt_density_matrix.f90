@@ -9,7 +9,6 @@
 module m_pt_density_matrix
   use m_definitions
   use m_mpi
-  use m_mpi_ortho
   use m_warning
   use m_timing
   use m_basis_set
@@ -387,12 +386,12 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
   nstate_virt = nvirtual_G - nhomo_G - 1
   allocate(bra_occ(wpol%npole_reso,ncore_G+1:nhomo_G))
   allocate(bra_virt(wpol%npole_reso,nhomo_G+1:nvirtual_G-1))
-  npole_local = NUMROC(wpol%npole_reso,1,rank_auxil,0,nproc_auxil)
+  npole_local = NUMROC(wpol%npole_reso,1,auxil%rank,0,auxil%nproc)
   allocate(bra_occ_local(npole_local,ncore_G+1:nhomo_G))
   allocate(bra_virt_local(npole_local,nhomo_G+1:nvirtual_G-1))
 
   do astate=nhomo_G+1,nvirtual_G-1
-    if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+    if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
 
     ! A1
     !bra_occ(:,ncore_G+1:nhomo_G) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,pqspin) )
@@ -400,11 +399,11 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
                           1.0d0,wpol%residue_left,nauxil_3center, &
                                 eri_3center_eigen(1,ncore_G+1,astate,pqspin),nauxil_3center, &
                           0.0_dp,bra_occ(1,ncore_G+1),wpol%npole_reso)
-    call xsum_auxil(bra_occ)
+    call auxil%sum(bra_occ)
 
     ipole_local = 0
     do ipole=1,wpol%npole_reso
-      if( MODULO( ipole-1 , nproc_auxil ) /= rank_auxil ) cycle
+      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
       ipole_local = ipole_local + 1
       do jstate=ncore_G+1,nhomo_G
         bra_occ_local(ipole_local,jstate) = bra_occ(ipole,jstate) &
@@ -423,11 +422,11 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
                           1.0d0,wpol%residue_left,nauxil_3center,  &
                                 eri_3center_eigen(1,nhomo_G+1,astate,pqspin),nauxil_3center, &
                           0.0_dp,bra_virt(1,nhomo_G+1),wpol%npole_reso)
-    call xsum_auxil(bra_virt)
+    call auxil%sum(bra_virt)
 
     ipole_local = 0
     do ipole=1,wpol%npole_reso
-      if( MODULO( ipole-1 , nproc_auxil ) /= rank_auxil ) cycle
+      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
       ipole_local = ipole_local + 1
       do bstate=nhomo_G+1,nvirtual_G-1
         bra_virt_local(ipole_local,bstate) = bra_virt(ipole,bstate)
@@ -440,7 +439,7 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
   enddo
 
   do istate=ncore_G+1,nhomo_G
-    if( MODULO( istate - (ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+    if( MODULO( istate - (ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
 
     ! A2
     !bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,pqspin) )
@@ -448,11 +447,11 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
                           1.0d0,wpol%residue_left,nauxil_3center,  &
                                 eri_3center_eigen(1,nhomo_G+1,istate,pqspin),nauxil_3center, &
                           0.0_dp,bra_virt(1,nhomo_G+1),wpol%npole_reso)
-    call xsum_auxil(bra_virt)
+    call auxil%sum(bra_virt)
 
     ipole_local = 0
     do ipole=1,wpol%npole_reso
-      if( MODULO( ipole-1 , nproc_auxil ) /= rank_auxil ) cycle
+      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
       ipole_local = ipole_local + 1
       do bstate=nhomo_G+1,nvirtual_G-1
         bra_virt_local(ipole_local,bstate) = bra_virt(ipole,bstate) &
@@ -470,11 +469,11 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
                           1.0d0,wpol%residue_left,nauxil_3center, &
                                 eri_3center_eigen(1,ncore_G+1,istate,pqspin),nauxil_3center, &
                           0.0_dp,bra_occ(1,ncore_G+1),wpol%npole_reso)
-    call xsum_auxil(bra_occ)
+    call auxil%sum(bra_occ)
 
     ipole_local = 0
     do ipole=1,wpol%npole_reso
-      if( MODULO( ipole-1 , nproc_auxil ) /= rank_auxil ) cycle
+      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
       ipole_local = ipole_local + 1
       do jstate=ncore_G+1,nhomo_G
         bra_occ_local(ipole_local,jstate) = bra_occ(ipole,jstate)

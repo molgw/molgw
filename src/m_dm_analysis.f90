@@ -52,7 +52,7 @@ subroutine dm_dump(basis)
 
  write(stdout,'(/,1x,a)') 'Dump the electronic density into a file'
 
- if( nproc_grid > 1 ) call die('dm_dump: not coded in parallel. Run with 1 core only')
+ if( grid%nproc > 1 ) call die('dm_dump: not coded in parallel. Run with 1 core only')
 
  nstate = basis%nbf
 
@@ -117,7 +117,7 @@ subroutine dm_dump(basis)
  close(file_rho_grid)
 
  ! not coded in parallel
- !call xsum_grid(normalization_test)
+ !call grid%sum(normalization_test)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization_test(:)
 

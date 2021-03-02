@@ -9,7 +9,6 @@
 subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_timing
  use m_inputparam
  use m_warning
@@ -91,7 +90,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
    !==========================
    do bstate=ncore_G+1,nvirtual_G-1
      if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
-     if( MODULO( bstate-(ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( bstate-(ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
 
      do istate=ncore_G+1,nvirtual_G-1
        if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
@@ -104,7 +103,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
            vcoul2 = eri_eigen(istate,bstate,ispin,kstate,mstate,ispin)
            if( gwgamma_tddft_ ) then
              fxc = eval_fxc_rks_singlet(istate,bstate,ispin,kstate,mstate,ispin)
-             call xsum_grid(fxc)
+             call grid%sum(fxc)
              vcoul2 = alpha_hybrid * vcoul2 - fxc
 
 !             if( ABS( eri_eigen(istate,bstate,ispin,kstate,mstate,ispin) -vcoul2)> 0.10 ) then
@@ -133,7 +132,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
    !==========================
    do cstate=ncore_G+1,nvirtual_G-1
      if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty) cycle
-     if( MODULO( cstate-(ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( cstate-(ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
 
      do jstate=ncore_G+1,nvirtual_G-1
        if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
@@ -146,7 +145,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
            vcoul2 = eri_eigen(astate,jstate,ispin,cstate,mstate,ispin)
            if( gwgamma_tddft_ ) then
              fxc = eval_fxc_rks_singlet(astate,jstate,ispin,cstate,mstate,ispin)
-             call xsum_grid(fxc)
+             call grid%sum(fxc)
              vcoul2 = alpha_hybrid * vcoul2 - fxc
 
 !             if( ABS( eri_eigen(astate,jstate,ispin,cstate,mstate,ispin) -vcoul2 )> 0.10 ) then
@@ -175,7 +174,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
  enddo
 
- call xsum_ortho(sigma_sox)
+ call ortho%sum(sigma_sox)
 
 
  if( calc_type%selfenergy_approx == G0W0GAMMA0 ) then
@@ -187,7 +186,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
      do spole=1,wpol%npole_reso
 
-       if( MODULO( spole - 1 , nproc_ortho ) /= rank_ortho ) cycle
+       if( MODULO( spole - 1 , ortho%nproc ) /= ortho%rank ) cycle
        write(stdout,*) 'SOSEX W poles:',spole,' / ',wpol%npole_reso
 
        pole_s = wpol%pole(spole)
@@ -197,7 +196,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
            ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
            bra(:,mstate)     = MATMUL( wpol%residue_left(:,spole) , eri_3center_eigen(:,:,mstate,ispin) )
          enddo
-         call xsum_auxil(bra)
+         call auxil%sum(bra)
        else
          ! Here just grab the precalculated value
          forall(istate=ncore_G+1:nvirtual_G-1, mstate=ncore_G+1:MAX(nhomo_G,nsemax))
@@ -223,7 +222,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                vcoul = eri_eigen(istate,kstate,ispin,bstate,mstate,ispin)
                if( gwgamma_tddft_ ) then
                  fxc = eval_fxc_rks_singlet(istate,kstate,ispin,bstate,mstate,ispin)
-                 call xsum_grid(fxc)
+                 call grid%sum(fxc)
                  vcoul = alpha_hybrid * vcoul - fxc
                endif
 
@@ -254,7 +253,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                vcoul = eri_eigen(istate,cstate,ispin,bstate,mstate,ispin)
                if( gwgamma_tddft_ ) then
                  fxc = eval_fxc_rks_singlet(istate,cstate,ispin,bstate,mstate,ispin)
-                 call xsum_grid(fxc)
+                 call grid%sum(fxc)
                  vcoul = alpha_hybrid * vcoul - fxc
                endif
 
@@ -294,7 +293,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                vcoul = eri_eigen(astate,kstate,ispin,jstate,mstate,ispin)
                if( gwgamma_tddft_ ) then
                  fxc = eval_fxc_rks_singlet(astate,kstate,ispin,jstate,mstate,ispin)
-                 call xsum_grid(fxc)
+                 call grid%sum(fxc)
                  vcoul = alpha_hybrid * vcoul - fxc
                endif
 
@@ -334,7 +333,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                vcoul = eri_eigen(astate,cstate,ispin,jstate,mstate,ispin)
                if( gwgamma_tddft_ ) then
                  fxc = eval_fxc_rks_singlet(astate,cstate,ispin,jstate,mstate,ispin)
-                 call xsum_grid(fxc)
+                 call grid%sum(fxc)
                  vcoul = alpha_hybrid * vcoul - fxc
                endif
 
@@ -356,7 +355,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
      enddo !spole
    enddo !ispin
 
-   call xsum_ortho(sigma_gamma)
+   call ortho%sum(sigma_gamma)
 
  endif
 
