@@ -13,6 +13,7 @@
  selfenergy_state_max=6
  nomega_imag = 64
 
+ nomega_sigma_calc=21
  nomega_sigma=101
 
  print_sigma='yes'

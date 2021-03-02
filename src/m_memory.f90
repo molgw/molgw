@@ -2,7 +2,7 @@
 ! This file is part of MOLGW.
 ! Author: Fabien Bruneval
 !
-! This modules contains
+! This module contains
 ! the memory management
 !=========================================================================
 module m_memory
