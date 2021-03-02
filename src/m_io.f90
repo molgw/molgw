@@ -136,7 +136,7 @@ subroutine header()
  do
    lchar = SCAN(chartmp(kchar:nchar),' ')
    if( lchar == 0 ) exit
-   write(stdout,'(6x,a,a)') 'FCOPT  ',chartmp(kchar:kchar+lchar-1)
+   write(stdout,'(6x,a,a)') 'FCFLAGS ',chartmp(kchar:kchar+lchar-1)
    kchar = kchar + lchar
  enddo
  write(stdout,*)

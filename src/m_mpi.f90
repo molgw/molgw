@@ -7,25 +7,21 @@
 !
 !=========================================================================
 module m_mpi
- use m_definitions
- use m_warning,only: die
- use m_mpi_world
- use m_mpi_auxil
- use m_mpi_grid
- use m_mpi_ortho
-#ifdef HAVE_MPI
- use mpi
+  use m_definitions
+  use m_warning,only: die
+  use m_mpi_world
+  use m_mpi_auxil
+  use m_mpi_grid
+  use m_mpi_ortho
+  use m_mpi_tools
+#if defined(HAVE_MPI)
+!!!!#include<mpif.h>
+  use mpi
 #endif
 
 
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_auxil     = .TRUE.
-
-#ifdef HAVE_SCALAPACK
- logical,parameter :: parallel_scalapack = .TRUE.
-#else
- logical,parameter :: parallel_scalapack = .FALSE.
-#endif
 
 !===================================================
 ! MPI distribution
@@ -44,19 +40,20 @@ module m_mpi
 !===================================================
 
 
- integer,protected :: iomaster = 0
- logical,protected :: is_iomaster = .TRUE.
+  integer,protected :: iomaster = 0
+  logical,protected :: is_iomaster = .TRUE.
 
- integer,private :: ngrid_mpi
+  integer,private :: ngrid_mpi
 
- integer,allocatable,private :: task_proc(:)
- integer,allocatable,private :: ntask_proc(:)
- integer,allocatable,private :: task_number(:)
+  integer,allocatable,private :: task_proc(:)
+  integer,allocatable,private :: ntask_proc(:)
+  integer,allocatable,private :: task_number(:)
 
- integer,allocatable,private :: task_grid_proc(:)    ! index of the processor working for this grid point
- integer,allocatable,private :: ntask_grid_proc(:)   ! number of grid points for each procressor
- integer,allocatable,private :: task_grid_number(:)  ! local index of the grid point
+  integer,allocatable,private :: task_grid_proc(:)    ! index of the processor working for this grid point
+  integer,allocatable,private :: ntask_grid_proc(:)   ! number of grid points for each procressor
+  integer,allocatable,private :: task_grid_number(:)  ! local index of the grid point
 
+  type(mpi_communicator),protected :: world
 
 
 contains
@@ -64,14 +61,15 @@ contains
 
 !=========================================================================
 subroutine init_mpi_world()
- implicit none
+  implicit none
 
-!=====
- integer :: ier
-!=====
+  !=====
+  integer :: ierror
+  integer :: ier
+  !=====
 
-#ifdef HAVE_MPI
- call MPI_INIT(ier)
+#if defined(HAVE_MPI)
+ call MPI_INIT(ierror)
 
  comm_world = MPI_COMM_WORLD
  call MPI_COMM_SIZE(comm_world,nproc_world,ier)
@@ -81,6 +79,8 @@ subroutine init_mpi_world()
  nproc_world = 1
  rank_world  = 0
 #endif
+
+ call world%init(MPI_COMM_WORLD)
 
 
  if( rank_world /= iomaster ) then
@@ -167,7 +167,7 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
 #endif
 
 
-#ifdef HAVE_MPI
+#if defined(HAVE_MPI)
   write(stdout,'(/,a)')       ' ==== MPI info'
   write(stdout,'(a50,1x,i6)')  'Number of proc:',nproc_world
   write(stdout,'(a50,1x,i6)')  'nproc_grid:    ',nproc_grid
@@ -176,7 +176,11 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
   write(stdout,'(a50,1x,i6)')  'Master proc is:',iomaster
   write(stdout,'(a50,6x,l1)') 'Parallelize auxiliary basis:',parallel_auxil
   write(stdout,'(a50,6x,l1)')  'Parallelize XC grid points:',parallel_grid
-  write(stdout,'(a50,6x,l1)')               'Use SCALAPACK:',parallel_scalapack
+#if defined(HAVE_SCALAPACK)
+  write(stdout,'(a50,6x,l1)')               'Use SCALAPACK:',.TRUE.
+#else
+  write(stdout,'(a50,6x,l1)')               'Use SCALAPACK:',.FALSE.
+#endif
   write(stdout,'(/)')
 #endif
 
