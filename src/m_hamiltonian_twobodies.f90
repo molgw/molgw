@@ -133,7 +133,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
  logical,allocatable     :: skip_shellpair(:)
  real(dp)                :: cost(nshellpair)
  real(dp)                :: cost2(nshellpair)
- real(dp)                :: load(nproc_world)
+ real(dp)                :: load(world%nproc)
  integer                 :: shellpair_cpu(nshellpair)
  logical                 :: mask(nshellpair)
 !=====
@@ -195,8 +195,8 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
    nk = number_basis_function_am( basis%gaussian_type , basis%shell(kshell)%am )
    nl = number_basis_function_am( basis%gaussian_type , basis%shell(lshell)%am )
 
-   !if( MODULO(klshellpair,nproc_world) /= rank_world ) cycle
-   if( shellpair_cpu(klshellpair) - 1 /= rank_world ) cycle
+   !if( MODULO(klshellpair,world%nproc) /= world%rank ) cycle
+   if( shellpair_cpu(klshellpair) - 1 /= world%rank ) cycle
 
    if( skip_shellpair(klshellpair) ) cycle
 
@@ -263,7 +263,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
 
  hartree_ao(:,:) = hartree_ao(:,:) + TRANSPOSE( hartree_ao(:,:) )
 
- call xsum_world(hartree_ao)
+ call world%sum(hartree_ao)
 
  call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
@@ -355,7 +355,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
 
  !
  ! Sum up the different contribution from different procs
- call xsum_world(hartree_ao)
+ call world%sum(hartree_ao)
  hartree_ao(:,:) = hartree_ao(:,:) / REAL(nproc_ortho,dp)
 
  call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
@@ -443,7 +443,7 @@ subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
 
  enddo
 
- call xsum_world(rho_coeff)
+ call world%sum(rho_coeff)
 
  deallocate(x_vector,pmat)
 
@@ -520,7 +520,7 @@ subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
 
  !
  ! Sum up the different contribution from different procs
- call xsum_world(hartree_ao)
+ call world%sum(hartree_ao)
 
  call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
@@ -799,7 +799,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
      enddo
    enddo
  enddo
- call xsum_world(exchange_ao)
+ call world%sum(exchange_ao)
 
  eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
 
@@ -887,7 +887,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
      enddo
    enddo
  enddo
- call xsum_world(exchange_ao)
+ call world%sum(exchange_ao)
 
  eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
 
@@ -970,7 +970,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
      enddo
    enddo
  enddo
- call xsum_world(exchange_ao)
+ call world%sum(exchange_ao)
 
  eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * CONJG( p_matrix(:,:,:) ) ) , dp)
 

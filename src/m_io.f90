@@ -62,7 +62,7 @@ subroutine this_is_the_end()
 
  if( print_yaml_ .AND. is_iomaster ) then
    write(unit_yaml,'(/,a)')  'run:'
-   write(unit_yaml,'(4x,a,1x,i6)')  'mpi tasks:  ',nproc_world
+   write(unit_yaml,'(4x,a,1x,i6)')  'mpi tasks:  ',world%nproc
 #if defined(_OPENMP)
    write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',OMP_get_max_threads()
 #else
@@ -1940,7 +1940,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
    istate2=nocc(ispin)
    charge_layer(:)=0.0_dp
    do iz=1,nz
-     if(MODULO(iz-1,nproc_world)/=rank_world) cycle
+     if(MODULO(iz-1,world%nproc)/=world%rank) cycle
      rr(3) = ( zmin + (iz-1)*dz )
      do ix=1,nx
        rr(1) = ( xmin + (ix-1)*dx )
@@ -1957,7 +1957,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
      enddo
    enddo
 
-   call xsum_world(charge_layer(:))
+   call world%sum(charge_layer(:))
 
    charge_layer = charge_layer * dx*dy
 
@@ -2352,7 +2352,7 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
    !$OMP PARALLEL PRIVATE(basis_function_r,rr,ix,iy,iz,phi_cmplx)
    !$OMP DO
    do ix=1,nx
-!     if(MODULO(ix-1,nproc_world)/=rank_world) cycle
+!     if(MODULO(ix-1,world%nproc)/=world%rank) cycle
      rr(1) = ( xmin + (ix-1)*dx )
      do iy=1,ny
        rr(2) = ( ymin + (iy-1)*dy )
@@ -2374,7 +2374,7 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
    call stop_clock(timing_tmp0)
 
 !   call start_clock(timing_tmp1)
-!   call xsum_world(dens_diff)
+!   call world%sum(dens_diff)
 !   call stop_clock(timing_tmp1)
 
    if( is_iomaster ) then
@@ -3165,7 +3165,7 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
  endif
 
  ! Broadcast the density matrix from proc iomaster to all the other procs.
- call xbcast_world(iomaster,p_matrix_out)
+ call world%bcast(iomaster,p_matrix_out)
 
 
 end subroutine read_gaussian_fchk

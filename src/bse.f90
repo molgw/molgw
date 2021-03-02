@@ -164,7 +164,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
    enddo
  enddo
 
- call xsum_world(rpa_correlation)
+ call world%sum(rpa_correlation)
 
  !
  ! Set up the diagonal of A-B in the RPA approximation
@@ -270,7 +270,7 @@ subroutine get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correl
    endif
  enddo
 
- call xsum_world(rpa_correlation)
+ call world%sum(rpa_correlation)
 
 
 end subroutine get_rpa_correlation
@@ -909,8 +909,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
      enddo
 
 
-     call xsum_world(amb_block)
-     call xsum_world(apb_block)
+     call world%sum(amb_block)
+     call world%sum(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        amb_matrix(:,:) = amb_matrix(:,:) + amb_block(:,:)

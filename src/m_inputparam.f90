@@ -807,8 +807,8 @@ subroutine read_inputfile_namelist()
  if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
  if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
 
- if( MODULO( nproc_world , mpi_nproc_ortho) /= 0 ) then
-   write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',nproc_world
+ if( MODULO( world%nproc , mpi_nproc_ortho) /= 0 ) then
+   write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',world%nproc
    mpi_nproc_ortho = 1
    call issue_warning('mpi_nproc_ortho value is invalid. Override it and set mpi_nproc_ortho=1')
  endif

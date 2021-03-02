@@ -159,8 +159,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  enddo !ispin
 
  ! Sum up the contribution from different poles (= different procs)
- call xsum_world(se%sigma)
- call xsum_world(energy_gw)
+ call world%sum(se%sigma)
+ call world%sum(energy_gw)
 
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
@@ -322,7 +322,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  !
  ! Dump the matrix on files (1 file per SCALAPACK thread)
  write(stdout,*) 'Dump the big sparse matrix on disk'
- write(ctmp,'(i4.4)') rank_world
+ write(ctmp,'(i4.4)') world%rank
  open(newunit=fu,file='MATRIX_'//ctmp,form='formatted',action='write')
 
  ! only master writes the head and the long diagonal
@@ -402,7 +402,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      if( eigval(jmat) < mu ) nelect = nelect + spin_fact * weight
      if( weight > 5.0e-2_dp ) then
        call PDAMAX(mstate,rtmp,jstate,matrix,1,jmat,desc_matrix,1)
-       call xmax_world(jstate)
+       call world%max(jstate)
        write(stdout,'(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ',jstate,': ',eigval(jmat)*Ha_eV,weight
      endif
      write(fu,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,weight
@@ -626,7 +626,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  enddo !pspin
 
  ! Sum up the contribution from different poles (= different procs)
- call xsum_world(sigmagw)
+ call world%sum(sigmagw)
 
  se%sigma(:,:,:) = sigmagw(:,:,:)
  deallocate(sigmagw)
@@ -781,7 +781,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  enddo !ispin
 
  ! Sum up the contribution from different poles (= different procs)
- call xsum_world(selfenergy)
+ call world%sum(selfenergy)
 
 
  ! Kotani's hermitianization trick

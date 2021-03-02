@@ -260,7 +260,7 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
    ! Then overwrite the interesting energy with the calculated GW one
    do pstate=nsemin,nsemax
 
-     if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
+     if( MODULO(pstate-nsemin,world%nproc) /= world%rank ) cycle
 
      do pspin=1,nspin
        !
@@ -282,9 +282,9 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
 
    enddo
 
-   call xsum_world(energy_qp_g)
-   call xsum_world(z_weight)
-   call xsum_world(energy_fixed_point)
+   call world%sum(energy_qp_g)
+   call world%sum(z_weight)
+   call world%sum(energy_fixed_point)
 
    ! Master IO node outputs the solution details
    write(stdout,'(/,1x,a)') 'state spin    QP energy (eV)  QP spectral weight'

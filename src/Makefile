@@ -94,7 +94,7 @@ level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.
 
 level005: m_warning.o real_spherical_harmonics.o
 
-level008: m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_tools.o
+level008: m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_tools.o
 
 level010: m_tddft_variables.o m_elements.o m_timing.o m_memory.o \
           m_string_tools.o m_numerical_tools.o m_linear_algebra.o  \
@@ -135,7 +135,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
 ../molgw: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
         m_warning.o real_spherical_harmonics.o m_lbfgs.o \
-        m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_tools.o m_libxc_tools.o \
+        m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_tools.o m_libxc_tools.o \
         m_elements.o m_tddft_variables.o m_timing.o m_memory.o m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_mpi.o m_cart_to_pure.o \
         m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
@@ -150,7 +150,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
         molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
-                        m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_tools.o \
+                        m_mpi.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_tools.o \
                         m_libxc_tools.o m_scalapack.o m_tddft_variables.o m_timing.o m_memory.o m_inputparam.o \
                         m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
                         m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
@@ -378,9 +378,6 @@ m_ecp.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_string_tools.f90 m_ecp
 m_scalapack.o: m_definitions.f90 m_warning.f90 m_linear_algebra.f90 m_mpi.f90 m_scalapack.f90
 	$(FC_W_OPTS) -c m_scalapack.f90 $(LIBXC_INCS)
 
-m_mpi_world.o: m_definitions.f90 m_warning.f90 m_mpi_world.f90
-	$(FC_W_OPTS) -c m_mpi_world.f90 $(LIBXC_INCS)
-
 m_mpi_ortho.o: m_definitions.f90 m_warning.f90 m_mpi_ortho.f90
 	$(FC_W_OPTS) -c m_mpi_ortho.f90 $(LIBXC_INCS)
 
@@ -390,9 +387,12 @@ m_mpi_auxil.o: m_definitions.f90 m_warning.f90 m_mpi_auxil.f90
 m_mpi_grid.o: m_definitions.f90 m_warning.f90 m_mpi_grid.f90
 	$(FC_W_OPTS) -c m_mpi_grid.f90 $(LIBXC_INCS)
 
-m_mpi.o: m_definitions.f90 m_warning.f90 m_mpi_world.f90 m_mpi_auxil.f90 m_mpi_grid.f90 m_mpi_ortho.f90  \
+m_mpi.o: m_definitions.f90 m_warning.f90 m_mpi_auxil.f90 m_mpi_grid.f90 m_mpi_ortho.f90 m_mpi_tools.f90  \
          m_mpi.f90
 	$(FC_W_OPTS) -c m_mpi.f90 $(LIBXC_INCS)
+
+m_mpi_tools.o: m_definitions.f90 m_warning.f90  m_mpi_tools.f90
+	$(FC_W_OPTS) -c m_mpi_tools.f90 $(LIBXC_INCS)
 
 m_string_tools.o: m_definitions.f90 m_warning.f90 m_string_tools.f90
 	$(FC_W_OPTS) -c m_string_tools.f90 $(LIBXC_INCS)

@@ -379,9 +379,9 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
     a_matrix_hist(1,1:nhist_current) = 0.0_dp
     a_matrix_hist(1:nhist_current,1) = 0.0_dp
   endif
-  call xsum_world(a_matrix_hist(1,1))
-  call xsum_world(a_matrix_hist(1,2:nhist_current))
-  call xsum_world(a_matrix_hist(2:nhist_current,1))
+  call world%sum(a_matrix_hist(1,1))
+  call world%sum(a_matrix_hist(1,2:nhist_current))
+  call world%sum(a_matrix_hist(2:nhist_current,1))
 
 #else
   a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1)**2 ) * nspin
@@ -459,7 +459,7 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
   else
     residual = -1.0_dp
   endif
-  call xmax_world(residual)
+  call world%max(residual)
   call gather_distributed_copy(desch,ham_distrib,ham)
   call gather_distributed_copy(desch,p_matrix_distrib,p_matrix)
   write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',SQRT( residual * nspin )
@@ -619,7 +619,7 @@ subroutine xdiis_prediction(p_matrix,ham)
       call RANDOM_SEED(SIZE=nseed)
       allocate(seed(nseed))
       do iseed=1,nseed
-        seed(iseed) = NINT( rank_world * iseed * pi * 27.21 )
+        seed(iseed) = NINT( world%rank * iseed * pi * 27.21 )
       enddo
       call RANDOM_SEED(PUT=seed)
       deallocate(seed)
@@ -629,7 +629,7 @@ subroutine xdiis_prediction(p_matrix,ham)
       f_xdiis_min = eval_f_xdiis(alpha_diis)
 
       do imc=1,nmc
-        if( MODULO( imc - 1 , nproc_world ) /= rank_world ) cycle
+        if( MODULO( imc - 1 , world%nproc ) /= world%rank ) cycle
 
         ! Find random coefficients that keep alpha_k = alpha_max and that sum up to 1
         call RANDOM_NUMBER(alpha_diis_mc)
@@ -649,15 +649,15 @@ subroutine xdiis_prediction(p_matrix,ham)
 
       ! Propage f_xdiis_min and alpha_diis to all procs
       f_xdiis = f_xdiis_min
-      call xmin_world(f_xdiis_min)
+      call world%min(f_xdiis_min)
 
       if( ABS( f_xdiis_min - f_xdiis ) < 1.0e-14_dp ) then
-        iproc = rank_world
+        iproc = world%rank
       else
         iproc = -1
       endif
-      call xmax_world(iproc)
-      call xbcast_world(iproc,alpha_diis)
+      call world%max(iproc)
+      call world%bcast(iproc,alpha_diis)
 
 
     endif

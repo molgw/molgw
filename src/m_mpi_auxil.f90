@@ -16,7 +16,7 @@ module m_mpi_auxil
 
 !===================================================
 ! MPI distribution
-!  Example: nproc_ortho = 2 x  nproc_auxil = 8  = nproc_world = 16
+!  Example: nproc_ortho = 2 x  nproc_auxil = 8  = world%nproc = 16
 !
 ! comm_world
 !

@@ -238,8 +238,8 @@ subroutine scf_loop(is_restart,&
 
    ! Make sure all the MPI tasks have the exact same Hamiltonian
    ! It helps stabilizing the SCF cycles in parallel
-   call xsum_world(hamiltonian)
-   hamiltonian(:,:,:) = hamiltonian(:,:,:) / REAL(nproc_world,dp)
+   call world%sum(hamiltonian)
+   hamiltonian(:,:,:) = hamiltonian(:,:,:) / REAL(world%nproc,dp)
 
    !
    ! If requested, the level shifting procedure is triggered:

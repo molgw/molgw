@@ -318,7 +318,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
 
     enddo
   enddo
-  call xsum_world(sigmaigw)
+  call world%sum(sigmaigw)
 
   se%sigma_calc(:,:,:) = sigmaigw(:,:,:)
 

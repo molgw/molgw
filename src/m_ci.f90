@@ -992,7 +992,7 @@ subroutine full_ci_nelectrons_selfenergy()
      eigvec0(iconf_global) = eigvec_0(iconf,jconf)
    enddo
  enddo
- call xsum_world(eigvec0)
+ call world%sum(eigvec0)
 
 
  !
@@ -1037,7 +1037,7 @@ subroutine full_ci_nelectrons_selfenergy()
      enddo
    enddo
 
-   call xsum_world(fs_occ)
+   call world%sum(fs_occ)
 
    do is=1,ns_occ
      es_occ(is) = energy_0(1) - energy_p(is)
@@ -1092,7 +1092,7 @@ subroutine full_ci_nelectrons_selfenergy()
      enddo
    enddo
 
-   call xsum_world(fs_virt)
+   call world%sum(fs_virt)
 
    do is=1,ns_virt
      es_virt(is) = energy_m(is) - energy_0(1)
@@ -1550,7 +1550,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
      call PDNRM2(conf%nconf,norm2_i,qq,1,ieig,desc_qq,1)
      residual_norm = MAX( residual_norm , norm2_i )
    enddo
-   call xmax_world(residual_norm)
+   call world%max(residual_norm)
 
    write(stdout,'(1x,a,i4,1x,i5,1x,es12.4,1x,f19.10)') 'Cycle, Subspace dim, Max residual norm, Electronic energy: ', &
                                                       icycle,mm,residual_norm,lambda(1)

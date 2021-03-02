@@ -415,11 +415,11 @@ subroutine gather_distributed_copy_nospin_dp(desc,matrix,matrix_global)
 
  ! Find the master
  if( iprow == 0 .AND. ipcol == 0 ) then
-   rank_master = rank_world
+   rank_master = world%rank
  else
    rank_master = -1
  endif
- call xmax_world(rank_master)
+ call world%max(rank_master)
 
  if( iprow < nprow .AND. ipcol < npcol ) then
 
@@ -442,7 +442,7 @@ subroutine gather_distributed_copy_nospin_dp(desc,matrix,matrix_global)
 
  endif
 
- call xbcast_world(rank_master,matrix_global)
+ call world%bcast(rank_master,matrix_global)
 
 #else
 
@@ -477,11 +477,11 @@ subroutine gather_distributed_copy_spin_dp(desc,matrix,matrix_global)
 
  ! Find the master
  if( iprow == 0 .AND. ipcol == 0 ) then
-   rank_master = rank_world
+   rank_master = world%rank
  else
    rank_master = -1
  endif
- call xmax_world(rank_master)
+ call world%max(rank_master)
 
  if( iprow < nprow .AND. ipcol < npcol ) then
    mlocal  = SIZE( matrix , DIM=1 )
@@ -505,7 +505,7 @@ subroutine gather_distributed_copy_spin_dp(desc,matrix,matrix_global)
    enddo
 
  endif
- call xbcast_world(rank_master,matrix_global)
+ call world%bcast(rank_master,matrix_global)
 
 #else
   matrix_global(:,:,:) = matrix(:,:,:)
@@ -537,11 +537,11 @@ subroutine gather_distributed_copy_nospin_cdp(desc,matrix,matrix_global)
 
  ! Find the master
  if( iprow == 0 .AND. ipcol == 0 ) then
-   rank_master = rank_world
+   rank_master = world%rank
  else
    rank_master = -1
  endif
- call xmax_world(rank_master)
+ call world%max(rank_master)
 
  if( iprow < nprow .AND. ipcol < npcol ) then
    mlocal  = SIZE( matrix , DIM=1 )
@@ -563,7 +563,7 @@ subroutine gather_distributed_copy_nospin_cdp(desc,matrix,matrix_global)
 
  endif
 
- call xbcast_world(rank_master,matrix_global)
+ call world%bcast(rank_master,matrix_global)
 
 #else
 
@@ -1036,11 +1036,11 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
 
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank_world
+     rank_master = world%rank
    else
      rank_master = -1
    endif
-   call xmax_world(rank_master)
+   call world%max(rank_master)
 
    !
    ! Participate to the diagonalization only if the CPU has been selected
@@ -1068,7 +1068,7 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
    endif
 
    ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast_world(rank_master,eigval)
+   call world%bcast(rank_master,eigval)
 
 
  else ! Only one SCALAPACK proc
@@ -1120,11 +1120,11 @@ subroutine diagonalize_scalapack_cdp(flavor,scalapack_block_min,matrix_global,ei
 
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank_world
+     rank_master = world%rank
    else
      rank_master = -1
    endif
-   call xmax_world(rank_master)
+   call world%max(rank_master)
 
    !
    ! Participate to the diagonalization only if the CPU has been selected
@@ -1152,7 +1152,7 @@ subroutine diagonalize_scalapack_cdp(flavor,scalapack_block_min,matrix_global,ei
    endif
 
    ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast_world(rank_master,eigval)
+   call world%bcast(rank_master,eigval)
 
 
  else ! Only one SCALAPACK proc
@@ -2090,7 +2090,7 @@ subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trac
      ab_trace = 0.0_dp
    endif
 
-   call xsum_world(ab_trace)
+   call world%sum(ab_trace)
 
 
 
@@ -2541,7 +2541,7 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
  call BLACS_GET( -1, 0, cntxt_eri3_ao )
  call BLACS_GET( -1, 0, cntxt_eri3_mo )
 
- if( rank_world /= iproc_sca ) then
+ if( world%rank /= iproc_sca ) then
    call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
  endif
 
@@ -3010,7 +3010,7 @@ subroutine diagonalize_davidson_sca(tolerance,desch,ham,neig,eigval,desc_vec,eig
      if( iglobal == jglobal ) ham_diag(iglobal) = ham(ilocal,jlocal)
    enddo
  enddo
- call xsum_world(ham_diag)
+ call world%sum(ham_diag)
 
  ncycle = 30
  mm     = neig
@@ -3106,7 +3106,7 @@ subroutine diagonalize_davidson_sca(tolerance,desch,ham,neig,eigval,desc_vec,eig
      call PDNRM2(mmat,norm2_i,qq,1,ieig,desc_qq,1)
      residual_norm = MAX( residual_norm , norm2_i )
    enddo
-   call xmax_world(residual_norm)
+   call world%max(residual_norm)
 
 
    write(stdout,'(1x,a,i4,1x,i4,1x,es12.4,1x,f18.8)') 'Cycle, Subspace dim, Max residual norm, Electronic energy: ', &

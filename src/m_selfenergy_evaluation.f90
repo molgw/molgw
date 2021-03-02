@@ -476,7 +476,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    call destroy_selfenergy_grid(se)
 
    ! Synchronization of all CPUs before going on
-   call barrier_world()
+   call world%barrier()
  enddo ! nstep_gw
 
  deallocate(exchange_m_vxc_diag)

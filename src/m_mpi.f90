@@ -9,7 +9,6 @@
 module m_mpi
   use m_definitions
   use m_warning,only: die
-  use m_mpi_world
   use m_mpi_auxil
   use m_mpi_grid
   use m_mpi_ortho
@@ -25,9 +24,9 @@ module m_mpi
 
 !===================================================
 ! MPI distribution
-!  Example: nproc_ortho = 2 x  nproc_auxil = 8  = nproc_world = 16
+!  Example: nproc_ortho = 2 x  nproc_auxil = 8  = world%nproc = 16
 !
-! comm_world
+! world%comm
 !
 ! rank_auxil         0 |  1 |  2 |     |  7
 ! rank_ortho       ---------------------------
@@ -65,28 +64,18 @@ subroutine init_mpi_world()
 
   !=====
   integer :: ierror
-  integer :: ier
   !=====
 
 #if defined(HAVE_MPI)
  call MPI_INIT(ierror)
-
- comm_world = MPI_COMM_WORLD
- call MPI_COMM_SIZE(comm_world,nproc_world,ier)
- call MPI_COMM_RANK(comm_world,rank_world,ier)
-
-#else
- nproc_world = 1
- rank_world  = 0
 #endif
 
  call world%init(MPI_COMM_WORLD)
 
-
- if( rank_world /= iomaster ) then
+ if( world%rank /= iomaster ) then
    is_iomaster = .FALSE.
 #if defined(DEBUG)
-   call set_standard_output(2000+rank_world)
+   call set_standard_output(2000+world%rank)
 #else
    close(stdout)
    open(unit=stdout,file='/dev/null')
@@ -114,44 +103,44 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
  !
  ! Set up grid communicator
  !
-! nproc_grid = nproc_world / nproc_ortho
+! nproc_grid = world%nproc / nproc_ortho
 !
-! color = MODULO( rank_world , nproc_ortho )
-! call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_grid,ier);
+! color = MODULO( world%rank , nproc_ortho )
+! call MPI_COMM_SPLIT(world%comm,color,world%rank,comm_grid,ier);
 !
 ! call MPI_COMM_SIZE(comm_grid,nproc_grid,ier)
 ! call MPI_COMM_RANK(comm_grid,rank_grid,ier)
-! if( nproc_grid /= nproc_world / nproc_ortho ) then
-!   write(stdout,*) rank_world,color,nproc_grid,nproc_world,nproc_ortho
+! if( nproc_grid /= world%nproc / nproc_ortho ) then
+!   write(stdout,*) world%rank,color,nproc_grid,world%nproc,nproc_ortho
 !   call die('Problem in init_mpi')
 ! endif
 
- nproc_grid = nproc_world
- comm_grid = comm_world
- rank_grid = rank_world
+ comm_grid = world%comm
+ nproc_grid = world%nproc
+ rank_grid = world%rank
 
  !
  ! Set up auxil communicator
  !
- nproc_auxil = nproc_world / nproc_ortho
+ nproc_auxil = world%nproc / nproc_ortho
 
- color = MODULO( rank_world , nproc_ortho )
- call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_auxil,ier);
+ color = MODULO( world%rank , nproc_ortho )
+ call MPI_COMM_SPLIT(world%comm,color,world%rank,comm_auxil,ier);
 
  call MPI_COMM_SIZE(comm_auxil,nproc_auxil,ier)
  call MPI_COMM_RANK(comm_auxil,rank_auxil,ier)
- if( nproc_auxil /= nproc_world / nproc_ortho ) then
-   write(stdout,*) rank_world,color,nproc_auxil,nproc_world,nproc_ortho
+ if( nproc_auxil /= world%nproc / nproc_ortho ) then
+   write(stdout,*) world%rank,color,nproc_auxil,world%nproc,nproc_ortho
    call die('Problem in init_mpi')
  endif
 
  !
  ! Set up ortho communicator
  !
- nproc_ortho = nproc_world / nproc_auxil
+ nproc_ortho = world%nproc / nproc_auxil
 
- color = rank_world / nproc_ortho
- call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_ortho,ier);
+ color = world%rank / nproc_ortho
+ call MPI_COMM_SPLIT(world%comm,color,world%rank,comm_ortho,ier);
  call MPI_COMM_RANK(comm_ortho,rank_ortho,ier)
 
 
@@ -169,7 +158,7 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
 
 #if defined(HAVE_MPI)
   write(stdout,'(/,a)')       ' ==== MPI info'
-  write(stdout,'(a50,1x,i6)')  'Number of proc:',nproc_world
+  write(stdout,'(a50,1x,i6)')  'Number of proc:',world%nproc
   write(stdout,'(a50,1x,i6)')  'nproc_grid:    ',nproc_grid
   write(stdout,'(a50,1x,i6)')  'nproc_auxil:   ',nproc_auxil
   write(stdout,'(a50,1x,i6)')  'nproc_ortho:   ',nproc_ortho

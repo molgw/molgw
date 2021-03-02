@@ -484,7 +484,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
    enddo
 
  enddo
- call xsum_world(residue)
+ call world%sum(residue)
 
  deallocate(dipole_mo)
 
@@ -547,7 +547,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
          endif
        endif
      enddo
-     call xmax_world(t_ia_global)
+     call world%max(t_ia_global)
      if( t_ia_global == 0 ) cycle
 
      istate = chi%transition_table(1,t_ia_global)
@@ -591,7 +591,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
          coeff(chi%npole_reso + t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) - xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
        endif
      enddo
-     call xsum_world(coeff)
+     call world%sum(coeff)
 
 
      do t_ia_global=1,chi%npole_reso
@@ -829,7 +829,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
      call stop_clock(timing_tmp2)
    enddo
 
-   call xsum_world(gos_mo)
+   call world%sum(gos_mo)
 
    do iiq=1,nq_batch
      iq = iqs + iiq - 1
@@ -851,7 +851,7 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
        enddo
 
      enddo
-     call xsum_world(gos_tddft)
+     call world%sum(gos_tddft)
      call stop_clock(timing_tmp3)
 
 
@@ -1046,7 +1046,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
          enddo
          deallocate(gos_ao)
          call stop_clock(timing_tmp2)
-         ! call xsum_world(gos_mo)
+         ! call world%sum(gos_mo)
 
          call start_clock(timing_tmp3)
          gos_tddft = (0.0_dp,0.0_dp)

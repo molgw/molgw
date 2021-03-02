@@ -367,7 +367,7 @@ subroutine identify_negligible_shellpair(basis)
  integer                      :: ami,amj
  integer                      :: ishell,jshell
  real(dp),allocatable         :: integrals(:,:,:,:)
- real(dp)                     :: workload(nproc_world)
+ real(dp)                     :: workload(world%nproc)
  integer                      :: shell_proc(basis%nshell)
 !=====
 ! variables used to call C
@@ -400,7 +400,7 @@ subroutine identify_negligible_shellpair(basis)
  do jshell=1,basis%nshell
    !
    ! Workload is distributed here
-   if( shell_proc(jshell) /= rank_world ) cycle
+   if( shell_proc(jshell) /= world%rank ) cycle
 
    amj = basis%shell(jshell)%am
    nj  = number_basis_function_am( basis%gaussian_type , amj )
@@ -459,7 +459,7 @@ subroutine identify_negligible_shellpair(basis)
    deallocate(alpha2,coeff2)
  enddo
 
- call xand_world(negligible_shellpair)
+ call world%and(negligible_shellpair)
 
  call stop_clock(timing_eri_screening)
 

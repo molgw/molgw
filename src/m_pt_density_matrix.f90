@@ -493,7 +493,7 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
     enddo
   enddo
 
-  call xsum_world(p_matrix_gw)
+  call world%sum(p_matrix_gw)
 
   deallocate(bra_occ)
   deallocate(bra_virt)
@@ -662,7 +662,7 @@ subroutine gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix)
 
     enddo
   enddo
-  call xsum_world(p_matrix_gw)
+  call world%sum(p_matrix_gw)
 
   !debug
   call dump_out_matrix(.FALSE.,'P matrix',p_matrix_gw)
