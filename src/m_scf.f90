@@ -373,14 +373,11 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
     a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1)**2 ) * nspin
     do ihist=2,nhist_current
       a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) ) * nspin
-      a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
     enddo
   else
-    a_matrix_hist(1,1:nhist_current) = 0.0_dp
     a_matrix_hist(1:nhist_current,1) = 0.0_dp
   endif
   call world%sum(a_matrix_hist(1,1))
-  call world%sum(a_matrix_hist(1,2:nhist_current))
   call world%sum(a_matrix_hist(2:nhist_current,1))
 
 #else
@@ -388,9 +385,9 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
 
   do ihist=2,nhist_current
     a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) ) * nspin
-    a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
   enddo
 #endif
+  a_matrix_hist(1,2:nhist_current) = a_matrix_hist(2:nhist_current,1)
 
 
   a_matrix(1:nhist_current,1:nhist_current) = a_matrix_hist(1:nhist_current,1:nhist_current)
