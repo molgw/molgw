@@ -746,6 +746,7 @@ subroutine density_matrix_preconditioning(hkin,s_matrix,p_matrix_new)
   real(dp),allocatable     :: hkin_tmp(:,:)
   real(dp),allocatable     :: hkin_inv(:,:)
   real(dp),allocatable     :: delta_p_matrix(:,:)
+  real(dp),allocatable     :: p_matrix_new_distrib(:,:,:)
   integer :: mlocal,nlocal
   integer :: ilocal,jlocal
   integer :: iglobal,jglobal
@@ -833,9 +834,15 @@ subroutine density_matrix_preconditioning(hkin,s_matrix,p_matrix_new)
   if( density_matrix_damping > 1.0e-6 ) then
 
     write(stdout,'(1x,a,f8.4)') 'Apply a density damping with mixing: ',density_matrix_damping
+    allocate(p_matrix_new_distrib,MOLD=p_matrix_in)
+    call create_distributed_copy(p_matrix_new,desch,p_matrix_new_distrib)
+
     do ispin=1,nspin
-      p_matrix_new(:,:,:) = p_matrix_in(:,:,:) +  ( p_matrix_new(:,:,:) - p_matrix_in(:,:,:) ) * ( 1.0_dp - density_matrix_damping)
+      p_matrix_new_distrib(:,:,:) = p_matrix_in(:,:,:) &
+                    +  ( p_matrix_new_distrib(:,:,:) - p_matrix_in(:,:,:) ) * ( 1.0_dp - density_matrix_damping)
     enddo
+    call gather_distributed_copy(desch,p_matrix_new_distrib,p_matrix_new)
+    deallocate(p_matrix_new_distrib)
 
   endif
 
