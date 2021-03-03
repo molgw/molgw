@@ -17,6 +17,7 @@ module m_selfenergy_tools
  use m_inputparam
  use m_basis_set
  use m_dft_grid
+ use m_hamiltonian_onebody
  use m_hamiltonian_wrapper
  use m_lbfgs
 
@@ -986,6 +987,115 @@ subroutine self_energy_polynomial(se)
 
 
 end subroutine self_energy_polynomial
+
+
+!=========================================================================
+! Prediction the CBS limit for GW
+!
+! No this is not black magic...
+!
+! Using the simplest model from Bruneval et al. JCTC 2020
+! convergence error
+! Delta E_i = A_basis + B_basis * ln( t_i )
+! where t_i = < \phi_i | -\nabla^2 / 2 | \phi_i >
+subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: eqp(:,:)
+ !=====
+ integer  :: pspin,pstate,iatom
+ logical  :: basis_recognized
+ real(dp) :: abasis,bbasis
+ real(dp) :: hkin(basis%nbf,basis%nbf)
+ real(dp) :: t_i(nsemin:nsemax,nspin)
+ real(dp) :: deltae(nspin)
+ !=====
+
+ !
+ ! Be careful this routine is in eV !
+ !
+ write(stdout,'(/,1x,a)') 'Estimate the Complete Basis Set limit for free'
+ write(stdout,*)          '  see Bruneval, Maliyov, Lapointe, Marinica, JCTC (2020)'
+
+ !
+ ! Retrieve the linear regression parameters trained on a benchmark of organic molecules (GW@BHLYP level)
+ !
+ !
+ write(stdout,*) TRIM(basis_name(1))
+ write(stdout,*) TRIM(basis_name(2))
+ basis_recognized = .TRUE.
+ do iatom=2,SIZE(basis_name(:))
+   if( TRIM(basis_name(iatom)) /= TRIM(basis_name(1)) ) basis_recognized = .FALSE.
+ enddo
+
+ select case(TRIM(basis_name(1)))
+ case('cc-pVDZ')
+   abasis =  0.9383
+   bbasis = -0.4500
+ case('cc-pVTZ')
+   abasis =  0.4863
+   bbasis = -0.2156
+ case('cc-pVQZ')
+   abasis =  0.2703
+   bbasis = -0.1066
+ case('cc-pV5Z')
+   abasis =  0.1271
+   bbasis = -0.0483
+ case('cc-pV6Z')
+   abasis =  0.1271 * 0.5    ! evaluated
+   bbasis = -0.0483 * 0.5    ! evaluated
+ case('aug-cc-pVDZ')
+   abasis =  0.5351
+   bbasis = -0.3061
+ case('aug-cc-pVTZ')
+   abasis =   0.5063
+   bbasis =  -0.2086
+ case('aug-cc-pVQZ')
+   abasis =  0.5063  * 0.5    ! evaluated
+   bbasis = -0.2086  * 0.5    ! evaluated
+ case('aug-cc-pV5Z')
+   abasis =  0.5063  * 0.25    ! evaluated
+   bbasis = -0.2086  * 0.25    ! evaluated
+ case('aug-cc-pV6Z')
+   abasis =  0.5063  * 0.125    ! evaluated
+   bbasis = -0.2086  * 0.125    ! evaluated
+ case default
+   basis_recognized = .FALSE.
+ end select
+
+ if( .NOT. basis_recognized ) then
+    write(stdout,*) 'basis set is not recognized: automatic extrapolation to CBS not possible'
+    write(stdout,*) 'only fitted for a Dunning basis cc-pVXZ or aug-cc-pVXZ'
+    write(stdout,*) 'only fitted for the same basis on all atoms'
+    return
+ endif
+
+ call setup_kinetic(basis,hkin)
+
+ do pspin=1,nspin
+   do pstate=nsemin,nsemax
+     t_i(pstate,pspin) = DOT_PRODUCT( c_matrix(:,pstate,pspin) ,  MATMUL( hkin(:,:) ,  c_matrix(:,pstate,pspin) ) ) * Ha_eV
+   enddo
+ enddo
+
+
+ write(stdout,'(/,1x,a)') 'Extrapolation to CBS (eV)'
+ write(stdout,'(1x,a,f7.4,a,f7.4,a)') 'Magical formula: Delta e_i = ',abasis,' + ',bbasis,' x LOG( <i|-\nabla^2/2|i> )'
+
+ write(stdout,'(/,16x,a,a,a)') '<i|-\nabla^2/2|i>     Delta e_i      e_i(',TRIM(basis_name(1)),')        CBS'
+ do pstate=nsemin,nsemax
+    deltae(:) = abasis + bbasis * LOG( t_i(pstate,:) )
+    write(stdout,'(1x,a,i4,*(4x,f14.6))') 'state: ',pstate, &
+                                          t_i(pstate,:),    &
+                                          deltae(:), &
+                                          eqp(pstate,:)*Ha_eV, &
+                                          eqp(pstate,:)*Ha_eV + deltae
+ enddo
+
+
+end subroutine selfenergy_convergence_prediction
 
 
 !=========================================================================

@@ -453,6 +453,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      deallocate(energy_qp_z)
    end select
 
+   call selfenergy_convergence_prediction(basis,c_matrix,energy_qp_new)
+
    !
    ! Write the QP energies on disk: ENERGY_QP file
    !
