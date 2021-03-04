@@ -1017,14 +1017,13 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
  ! Be careful this routine is in eV !
  !
  write(stdout,'(/,1x,a)') 'Estimate the Complete Basis Set limit for free'
- write(stdout,*)          '  see Bruneval, Maliyov, Lapointe, Marinica, JCTC (2020)'
+ write(stdout,*)          '  see Bruneval, Maliyov, Lapointe, Marinica, JCTC 16, 4399 (2020)'
+ write(stdout,*)          '      https://doi.org/10.1021/acs.jctc.0c00433'
 
  !
  ! Retrieve the linear regression parameters trained on a benchmark of organic molecules (GW@BHLYP level)
  !
  !
- write(stdout,*) TRIM(basis_name(1))
- write(stdout,*) TRIM(basis_name(2))
  basis_recognized = .TRUE.
  do iatom=2,SIZE(basis_name(:))
    if( TRIM(basis_name(iatom)) /= TRIM(basis_name(1)) ) basis_recognized = .FALSE.
@@ -1066,7 +1065,7 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
  end select
 
  if( .NOT. basis_recognized ) then
-    write(stdout,*) 'basis set is not recognized: automatic extrapolation to CBS not possible'
+    write(stdout,*) 'Automatic extrapolation to CBS not possible because the basis set is not recognized'
     write(stdout,*) 'only fitted for a Dunning basis cc-pVXZ or aug-cc-pVXZ'
     write(stdout,*) 'only fitted for the same basis on all atoms'
     return
@@ -1081,10 +1080,15 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
  enddo
 
 
- write(stdout,'(/,1x,a)') 'Extrapolation to CBS (eV)'
- write(stdout,'(1x,a,f7.4,a,f7.4,a)') 'Magical formula: Delta e_i = ',abasis,' + ',bbasis,' x LOG( <i|-\nabla^2/2|i> )'
+ write(stdout,'(/,1x,a,a)')           'For basis: ',basis_name(1)
+ write(stdout,'(1x,a,f7.4,a,f7.4,a)') 'Magical formula reads Delta E_i = ',abasis,' + ', &
+                                      bbasis,' x LOG( <i|-\nabla^2/2|i>  (eV) ) (eV)'
+ write(stdout,'(5x,a)')               'Formula was trained for organic molecules and GW@BHLYP'
+ write(stdout,'(5x,a)')               'Accuracy is correct for cc-pVDZ and excellent above'
+ write(stdout,'(5x,a)')               'Accuracy is excellent for aug-cc-pVDZ and above'
 
- write(stdout,'(/,16x,a,a,a)') '<i|-\nabla^2/2|i>     Delta e_i      e_i(',TRIM(basis_name(1)),')        CBS'
+ write(stdout,'(/,1x,a)') 'Extrapolation to CBS (eV)'
+ write(stdout,'(16x,a,a,a)') '<i|-\nabla^2/2|i>      Delta E_i         E_i(',TRIM(basis_name(1)),')     E_i(CBS)'
  do pstate=nsemin,nsemax
     deltae(:) = abasis + bbasis * LOG( t_i(pstate,:) )
     write(stdout,'(1x,a,i4,*(4x,f14.6))') 'state: ',pstate, &

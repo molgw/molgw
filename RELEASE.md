@@ -12,12 +12,16 @@
 - Xixi Qi (CEA SRMP, France)
 
 ### Changes affecting the usage
+- Automatic suggestion of an extrapolation to the Complete Basis Set limit for GW energies
+- GW analytic continuation technique is fully functional. Use postscf='G0W0_pade'. It is much faster than the analytic formula but it is mostly reliable close to the HOMO-LUMO gap.
+- Reduced memory consumption in the Pulay history (SCALAPACK distribution of the large arrays)
 - Improved OPENMP
 
 ### Changes affecting the compilation
 - Assuming now that all Fortran compilers have Fortran 2008 capabilities. Preprocessor key FORTRAN2008 has been removed.
 
 ### Changes affecting the developers
+- Introduce high-level mpi tools for instance, world%sum() for reduction, world%nproc, world%rank for information
 
 
 -----------------------------------------
