@@ -905,13 +905,10 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
    jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf
    jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf
 
-   if( MODULO(jshell-1,nproc_world) /= rank_world ) cycle
+   !if( MODULO(jshell-1,nproc_world) /= rank_world ) cycle
 
    call set_libint_shell(basis_p%shell(jshell),amB,contrdepthB,B,alphaB,cB)
 
-   !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,amA,contrdepthA,A,alphaA,cA,array_cart,array_cart_C,C,matrix_tp, &
-   !$OMP&                 ij,ibf_cart,jbf_cart,nucleus)
-   !$OMP DO
    do ishell = 1,basis_t%nshell
      li      = basis_t%shell(ishell)%am
      ni_cart = number_basis_function_am('CART',li)
@@ -1015,14 +1012,12 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      deallocate(array_cart,array_cart_C,matrix_tp)
 
    enddo
-   !$OMP END DO
-   !$OMP END PARALLEL
    deallocate(alphaB,cB)
  enddo
 
  !
  ! Reduce operation
- call xsum_world(hamiltonian_nucleus)
+ !call xsum_world(hamiltonian_nucleus)
 
  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution (Recalc) ===',hamiltonian_nucleus)
 
