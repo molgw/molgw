@@ -1091,7 +1091,7 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
  write(stdout,'(16x,a,a,a)') '<i|-\nabla^2/2|i>      Delta E_i         E_i(',TRIM(basis_name(1)),')     E_i(CBS)'
  do pstate=nsemin,nsemax
     deltae(:) = abasis + bbasis * LOG( t_i(pstate,:) )
-    write(stdout,'(1x,a,i4,*(4x,f14.6))') 'state: ',pstate, &
+    write(stdout,'(1x,a,i4,a,*(4x,f14.6))') 'state ',pstate,':', &
                                           t_i(pstate,:),    &
                                           deltae(:), &
                                           eqp(pstate,:)*Ha_eV, &
