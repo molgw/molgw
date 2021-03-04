@@ -7,9 +7,7 @@
 !
 !=========================================================================
 module m_io
-#if defined(FORTRAN2008)
  use,intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
-#endif
  use m_definitions
  use m_mpi
  use m_timing
@@ -103,9 +101,7 @@ subroutine header()
 #endif
  character(len=40)   :: git_sha
  integer             :: values(8)
-#if defined(FORTRAN2008)
  integer             :: nchar,kchar,lchar
-#endif
  character(len=1024) :: chartmp
 !=====
 ! variables used to call C
@@ -126,7 +122,6 @@ subroutine header()
  write(stdout,'(/,/,1x,70("="))')
 
  write(stdout,'(/,a,a,/)') ' MOLGW commit git SHA: ',git_sha
-#if defined(FORTRAN2008)
  write(stdout,'(1x,a,a)')    'compiled with ',compiler_version()
  write(stdout,'(1x,a)')      'with options: '
  chartmp = compiler_options()
@@ -140,7 +135,6 @@ subroutine header()
    kchar = kchar + lchar
  enddo
  write(stdout,*)
-#endif
 
 
  call date_and_time(VALUES=values)

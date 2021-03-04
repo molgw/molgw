@@ -3,6 +3,24 @@
 -----------------------------------------
 
 -----------------------------------------
+## What's new in version 2.E
+### Overview
+
+
+### Contributors
+- Fabien Bruneval (CEA SRMP, France)
+- Xixi Qi (CEA SRMP, France)
+
+### Changes affecting the usage
+- Improved OPENMP
+
+### Changes affecting the compilation
+- Assuming now that all Fortran compilers have Fortran 2008 capabilities. Preprocessor key FORTRAN2008 has been removed.
+
+### Changes affecting the developers
+
+
+-----------------------------------------
 ## What's new in version 2.D
 ### Overview
 - Compatibility with gcc/gfortran 10
