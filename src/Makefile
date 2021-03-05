@@ -445,7 +445,7 @@ archive:
             ../tmp/molgw
 	cp -rp  ../src/*.py ../src/*.f90 ../src/*.f  \
             ../src/*.cc ../src/*.h  \
-            ../src/my_machine.arch ../src/Makefile \
+            ../src/Makefile \
             ../tmp/molgw/src
 	cd ../tmp && tar czf ../molgw.tgz molgw/
 	rm -rf ../tmp/

@@ -77,9 +77,9 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
       fi = occupation(istate,pqispin)
       ei = energy(istate,pqispin)
  
- !$OMP PARALLEL
- !$OMP DO PRIVATE(qstate,fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,omega,fact_comp,fact_energy) &
- !$OMP REDUCTION(+:emp2_ring,emp2_sox)
+      !$OMP PARALLEL
+      !$OMP DO PRIVATE(qstate,fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,omega,fact_comp,fact_energy) &
+      !$OMP REDUCTION(+:emp2_ring,emp2_sox)
       do pstate=nsemin,nsemax ! external loop ( bra )
         qstate=pstate         ! external loop ( ket )
  
@@ -145,8 +145,8 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
           enddo
         enddo
       enddo
- !$OMP END DO
- !$OMP END PARALLEL
+      !$OMP END DO
+      !$OMP END PARALLEL
     enddo
   enddo ! pqispin
  
@@ -177,11 +177,11 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
     emp2 = 0.0_dp
   endif
  
- !$OMP PARALLEL
- !$OMP WORKSHARE
+  !$OMP PARALLEL
+  !$OMP WORKSHARE
   se%sigma(:,:,:) = selfenergy_ring(:,:,:) + selfenergy_sox(:,:,:)
- !$OMP END WORKSHARE
- !$OMP END PARALLEL
+  !$OMP END WORKSHARE
+  !$OMP END PARALLEL
  
   write(stdout,'(/,1x,a)') ' Spin  State      1-ring             SOX              PT2'
   do pqispin=1,nspin
@@ -325,9 +325,9 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
       fi = occupation(istate,pqispin)
       ei = energy(istate,pqispin)
  
- !$OMP PARALLEL
- !$OMP DO PRIVATE(fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,ep,eq,fact_comp,fact_energy)   &
- !$OMP REDUCTION(+:emp2_ring,emp2_sox) COLLAPSE(2)
+      !$OMP PARALLEL
+      !$OMP DO PRIVATE(fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,ep,eq,fact_comp,fact_energy)   &
+      !$OMP REDUCTION(+:emp2_ring,emp2_sox) COLLAPSE(2)
       do pstate=nsemin,nsemax ! external loop ( bra )
         do qstate=nsemin,nsemax   ! external loop ( ket )
  
@@ -393,8 +393,8 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
           enddo
         enddo
       enddo
- !$OMP END DO
- !$OMP END PARALLEL
+      !$OMP END DO
+      !$OMP END PARALLEL
     enddo
   enddo ! pqispin
  
@@ -415,11 +415,11 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
     emp2 = 0.0_dp
   endif
  
- !$OMP PARALLEL
- !$OMP WORKSHARE
+  !$OMP PARALLEL
+  !$OMP WORKSHARE
   selfenergy(:,:,:) = REAL( selfenergy_ring(:,:,:) + selfenergy_sox(:,:,:) ,dp)
- !$OMP END WORKSHARE
- !$OMP END PARALLEL
+  !$OMP END WORKSHARE
+  !$OMP END PARALLEL
  
   call apply_qs_approximation(s_matrix,c_matrix,selfenergy)
  
