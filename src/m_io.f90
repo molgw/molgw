@@ -81,9 +81,8 @@ subroutine this_is_the_end()
    close(unit_yaml)
  endif
 
- write(stdout,*)
- write(stdout,*) 'When using MOLGW for a publication, citation to the following article is appreciated:'
- write(stdout,*) '    Bruneval, Rangel, Hamed, Shao, Yang, Neaton, Comput. Phys. Comm. 208, 149 (2016).'
+ write(stdout,'(/,1x,a)') 'When using MOLGW for a publication, citation to the following article is appreciated:'
+ write(stdout,'(6x,a)')   '    Bruneval, Rangel, Hamed, Shao, Yang, Neaton, Comput. Phys. Comm. 208, 149 (2016).'
  write(stdout,'(/,1x,a,/)') 'This is the end'
 
  call finish_mpi()

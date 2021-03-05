@@ -951,7 +951,6 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,desc_x
  real(dp)                           :: vlist(3,nvel_projectile),vv,v1(3),v2(3),v3(3)
  integer                            :: gt
  integer                            :: t_ia,t_jb
- integer                            :: t_ia_global,t_jb_global
  integer                            :: nmat
  integer                            :: istate,astate,iaspin
  integer                            :: mpspin
@@ -1055,11 +1054,10 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,desc_x
 
          call start_clock(timing_tmp3)
          gos_tddft = (0.0_dp,0.0_dp)
-         do t_ia=1,m_x
-           t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
-           istate = chi%transition_table(1,t_ia_global)
-           astate = chi%transition_table(2,t_ia_global)
-           iaspin = chi%transition_table(3,t_ia_global)
+         do t_ia=1,chi%npole_reso
+           istate = chi%transition_table(1,t_ia)
+           astate = chi%transition_table(2,t_ia)
+           iaspin = chi%transition_table(3,t_ia)
 
            gos_tddft = gos_tddft &
                           + gos_mo(istate,astate,iaspin) * xpy_matrix_global(t_ia,t_jb) * SQRT(spin_fact)
