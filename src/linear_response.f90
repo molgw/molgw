@@ -294,7 +294,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    case('spherical')
      call stopping_power(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
    case('3d')
-     call stopping_power_3d(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
+     call stopping_power_3d(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,desc_x,eigenvalue)
    end select
  endif
 
@@ -925,7 +925,7 @@ end subroutine stopping_power
 
 
 !=========================================================================
-subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalue)
+subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,desc_x,eigenvalue)
  use m_definitions
  use m_timing
  use m_warning
@@ -940,7 +940,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  use m_hamiltonian_onebody
  implicit none
 
- integer,intent(in)                 :: nstate,m_x,n_x
+ integer,intent(in)                 :: nstate,m_x,n_x,desc_x(NDEL)
  type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
@@ -969,6 +969,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
  integer,parameter                  :: nphi=6         ! from 0 to 2pi
  integer                            :: iphi,icostheta
  real(dp)                           :: phi,costheta,dphi,dcostheta
+ real(dp),allocatable               :: xpy_matrix_global(:,:)
 !=====
 
 
@@ -983,20 +984,21 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
    return
  endif
 
- ! Not implemented in parallel
- if( nprow_sd * npcol_sd > 1 ) call die('stopping_power_3d: not implemented with MPI parallelization')
+ call clean_allocate('temporary non-distributed X+Y matrix',xpy_matrix_global,chi%npole_reso,chi%npole_reso)
+ call gather_distributed_copy(desc_x,xpy_matrix,xpy_matrix_global)
 
- ! Only implemented for velocities along z-axis (developers' laziness)
- !if( ANY(ABS(vel_projectile(1:2)) > 1.0e-6_dp ) ) then
- !  write(stdout,*) 'Linear response stopping power only implemented for velocities along Cartesian z-axis'
- !  call die('stopping_power_3d: rotate the atoms and the velocity')
- !endif
  !
  ! Setup the entire velocity list
  !
  do iv=1,nvel_projectile
    vlist(:,iv) = vel_projectile(:) * iv
  enddo
+
+ !
+ ! Set the 3 axis (v1, v2, v3)
+ ! v3 is along v
+ ! v1 and v2 are orthogonal to v
+ !
  v3(:) = vel_projectile(:) / NORM2(vel_projectile(:))
  ! if v3 has no component along x, then v1 will be (1 0 0)
  if( ABS(v3(1)) < 1.0e-6_dp ) then
@@ -1023,8 +1025,10 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
        phi  = 2.0_dp * pi * REAL(iphi-1,dp) / REAL(nphi,dp)
        dphi = 2.0_dp * pi / REAL(nphi,dp)
 
+       ! Poor man parallelization
+       if( MODULO( iphi-1 + nphi*(icostheta-1), world%nproc ) /= world%rank ) cycle
+
        do t_jb=1,chi%npole_reso ! n_x
-         t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
 
          qq = ABS(eigenvalue(t_jb) / ( vv * costheta ))
          !qvec(1) = qq * SQRT( 1 - costheta**2 ) * COS(phi)
@@ -1058,7 +1062,7 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
            iaspin = chi%transition_table(3,t_ia_global)
 
            gos_tddft = gos_tddft &
-                          + gos_mo(istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
+                          + gos_mo(istate,astate,iaspin) * xpy_matrix_global(t_ia,t_jb) * SQRT(spin_fact)
          enddo
          call stop_clock(timing_tmp3)
          deallocate(gos_mo)
@@ -1071,8 +1075,11 @@ subroutine stopping_power_3d(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenv
 
      enddo
    enddo
- enddo
+ enddo ! velocity
 
+ call world%sum(stopping_cross_section)
+
+ call clean_deallocate('temporary non-distributed X+Y matrix',xpy_matrix_global)
 
  write(stdout,*) 'Electronic stopping cross section: v, S0 (a.u.)'
  open(newunit=fstopping,file='stopping3d.dat')

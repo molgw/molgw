@@ -807,6 +807,11 @@ subroutine read_inputfile_namelist()
  if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
  if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
 
+ if( mpi_nproc_ortho > world%nproc ) then
+   mpi_nproc_ortho = world%nproc
+   call issue_warning('mpi_nproc_ortho has been resized to the max number of processors')
+   write(stdout,'(1x,a,i4)') 'Now mpi_nproc_ortho = ',mpi_nproc_ortho
+ endif
  if( MODULO( world%nproc , mpi_nproc_ortho) /= 0 ) then
    write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',world%nproc
    mpi_nproc_ortho = 1

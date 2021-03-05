@@ -5,11 +5,14 @@
 -----------------------------------------
 ## What's new in version 2.E
 ### Overview
-
+- MOLGW proposes automatically an extrapolated GW energy to the  Complete Basis Set limit when using Dunning basis sets
+- GW with analytic continuation is now robust for the HOMO-LUMO gap region. Tested for C60 in aug-cc-pV5Z (>7500 basis functions)
+- small bug fixes, speed-ups, memory reductions
 
 ### Contributors
 - Fabien Bruneval (CEA SRMP, France)
 - Xixi Qi (CEA SRMP, France)
+- Mauricio Rodriguez-Mayorga (CEA SRMP, France)
 
 ### Changes affecting the usage
 - Automatic suggestion of an extrapolation to the Complete Basis Set limit for GW energies
@@ -22,7 +25,6 @@
 
 ### Changes affecting the developers
 - Introduce high-level mpi tools for instance, world%sum() for reduction, world%nproc, world%rank for information
-
 
 -----------------------------------------
 ## What's new in version 2.D
