@@ -112,7 +112,7 @@ level030: m_eri_calculate.o m_density_tools.o m_io.o
 
 level040: m_spectral_function.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o
 
-level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o m_restart.o m_multipole.o
+level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o m_restart.o m_multipole.o m_spectra.o
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 
@@ -141,7 +141,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
         m_basis_set.o \
         m_inputparam.o \
         m_eri.o m_scf.o m_dft_grid.o m_libint_tools.o m_selfenergy_tools.o \
-        m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o \
+        m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o m_spectra.o \
         m_spectral_function.o m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_ci.o  \
         m_hamiltonian_wrapper.o \
         m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o m_fourier_quadrature.o \
@@ -154,7 +154,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
                         m_libxc_tools.o m_scalapack.o m_tddft_variables.o m_timing.o m_memory.o m_inputparam.o \
                         m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
                         m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
-                        m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o \
+                        m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o m_spectra.o \
                         m_spectral_function.o m_ci.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o \
@@ -238,7 +238,7 @@ static_polarizability.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 
 
 linear_response.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_cart_to_pure.f90 m_scalapack.f90 m_io.f90 \
                    m_inputparam.f90 m_block_diago.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 m_dft_grid.f90 m_hamiltonian_onebody.f90 \
-                   linear_response.f90
+                   m_spectra.f90 linear_response.f90
 	$(FC_W_OPTS) -c linear_response.f90 $(LIBXC_INCS)
 
 m_hamiltonian_onebody.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_memory.f90 m_timing.f90 m_atoms.f90 m_cart_to_pure.f90 m_ecp.f90 m_dft_grid.f90 \
@@ -334,6 +334,10 @@ m_spectral_function.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_
 m_eri_ao_mo.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 \
                m_scalapack.f90 m_eri.f90 m_eri_ao_mo.f90
 	$(FC_W_OPTS) -c m_eri_ao_mo.f90 $(LIBXC_INCS)
+
+m_spectra.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_mpi.f90 m_cart_to_pure.f90 \
+               m_scalapack.f90 m_spectral_function.f90 m_hamiltonian_onebody.f90 m_spectra.f90
+	$(FC_W_OPTS) -c m_spectra.f90 $(LIBXC_INCS)
 
 m_tddft_fxc.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_dft_grid.f90 m_density_tools.f90 m_libxc_tools.f90 \
                 m_tddft_fxc.f90
