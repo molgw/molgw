@@ -67,7 +67,7 @@ module m_timing
  integer,parameter :: timing_zeroes_ci           = 48
  integer,parameter :: timing_density_matrix_cmplx= 49
  integer,parameter :: timing_aomo_pola           = 50
- integer,parameter :: timing_aomo_ci             = 51
+ integer,parameter :: timing_aomo_gw             = 51
  integer,parameter :: timing_mbpt_dm             = 52
  integer,parameter :: timing_eri_3center_ints    = 53
  integer,parameter :: timing_eri_3center_matmul  = 54
@@ -266,9 +266,10 @@ subroutine output_timing()
  call output_timing_line('Sigma_x - Vxc',timing_x_m_vxc,1)
 
  ! Linear response polarization RPA or TDDFT or BSE
+ call output_timing_line('3-center AO to MO transform',timing_eri_3center_eigen,1)
  call output_timing_line('Response function chi on grid',timing_rpa_dynamic,1)
  call output_timing_line('Response function chi',timing_pola,1)
- call output_timing_line('3-center AO to MO transform',timing_eri_3center_eigen,2)
+ call output_timing_line('3-center AO to MO transform in chi',timing_aomo_pola,2)
  call output_timing_line('4-center AO to MO transform',timing_eri_4center_eigen,2)
  call output_timing_line('Static polarization for BSE',timing_rpa_static,2)
  call output_timing_line('Build 2-particle Hamiltonian',timing_build_h2p,2)
@@ -284,6 +285,7 @@ subroutine output_timing()
  call output_timing_line('MBPT density matrix',timing_mbpt_dm,1)
 
  call output_timing_line('GW self-energy',timing_gw_self,1)
+ call output_timing_line('3-center AO to MO transform in GW',timing_aomo_gw,2)
  call output_timing_line('PT self-energy',timing_pt_self,1)
  call output_timing_line('GWGamma self-energy',timing_gwgamma_self,1)
  call output_timing_line('MP2 energy',timing_mp2_energy,1)
