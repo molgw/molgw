@@ -433,7 +433,7 @@ contains
 function auxiliary(ia,ib,ff,gg,fa,fb,fab)
   integer,intent(in) :: ia,ib
   real(dp),intent(in) :: fa,fb,fab
-  complex(dp),intent(out) :: ff,gg
+  complex(dp),intent(in) :: ff,gg
   complex(dp) :: auxiliary
   !=====
   complex(dp),parameter :: one = (1.0_dp,0.0_dp)
