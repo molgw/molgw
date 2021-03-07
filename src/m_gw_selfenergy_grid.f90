@@ -68,7 +68,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   nstate = SIZE(occupation,DIM=1)
 
 
-  if( wpol%nomega_quad < 1 ) call die('polarizability_grid_sca: nomega_imag input variable should be greater than 1')
+  if( wpol%nomega_quad < 1 ) call die('polarizability_grid_sca: nomega_chi_imag input variable should be greater than 1')
 
   if( .NOT. has_auxil_basis ) then
     call die('dynamical_polarizability_sca requires an auxiliary basis')

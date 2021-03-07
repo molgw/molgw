@@ -981,8 +981,8 @@ subroutine read_inputfile_namelist()
  !
  ! Some additional checks
  !
- if(calc_type%selfenergy_approx == GW_IMAG .AND. nomega_imag<1) &
-   call die('when asking for a numerical evaluation of the self-energy, one needs nomega_imag > 0')
+ if(calc_type%selfenergy_approx == GW_IMAG .AND. nomega_chi_imag<1) &
+   call die('when asking for a numerical evaluation of the self-energy, one needs nomega_chi_imag > 0')
  if(calc_type%selfenergy_approx == GW_IMAG .AND. nomega_sigma_calc==1) &
    call issue_warning('when asking for a numerical evaluation of the self-energy,' &
                    // ' consider more frequencies than just one for sigma.' &

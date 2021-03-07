@@ -189,7 +189,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
        write(stdout,'(/,1x,a,/)') 'GnW0 calculations skip the re-calculation of W'
      else
 
-       call init_spectral_function(nstate_small,occupation,nomega_imag,wpol)
+       call init_spectral_function(nstate_small,occupation,nomega_chi_imag,wpol)
 
        ! Try to read a spectral function file in order to skip the polarizability calculation
        ! Skip the reading if GnWn (=evGW) is requested
