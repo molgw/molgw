@@ -10,7 +10,7 @@
 
  pt_density_matrix='GW_IMAGINARY'
  use_correlated_density_matrix='yes'
- nomega_imag = 128
+ nomega_chi_imag = 128
  nomega_sigma = 16
 
 

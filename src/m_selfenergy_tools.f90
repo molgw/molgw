@@ -1010,7 +1010,7 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
  real(dp) :: abasis,bbasis
  real(dp) :: hkin(basis%nbf,basis%nbf)
  real(dp) :: t_i(nsemin:nsemax,nspin)
- real(dp) :: deltae(nspin)
+ real(dp) :: deltae
  !=====
 
  !
@@ -1088,14 +1088,16 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
  write(stdout,'(5x,a)')               'Accuracy is excellent for aug-cc-pVDZ and above'
 
  write(stdout,'(/,1x,a)') 'Extrapolation to CBS (eV)'
- write(stdout,'(16x,a,a,a)') '<i|-\nabla^2/2|i>      Delta E_i         E_i(',TRIM(basis_name(1)),')     E_i(CBS)'
- do pstate=nsemin,nsemax
-    deltae(:) = abasis + bbasis * LOG( t_i(pstate,:) )
-    write(stdout,'(1x,a,i4,a,*(4x,f14.6))') 'state ',pstate,':', &
-                                          t_i(pstate,:),    &
-                                          deltae(:), &
-                                          eqp(pstate,:)*Ha_eV, &
-                                          eqp(pstate,:)*Ha_eV + deltae
+ write(stdout,'(25x,a,a,a)') '<i|-\nabla^2/2|i>    Delta E_i     E_i(',TRIM(basis_name(1)),')      E_i(CBS)'
+ do pspin=1,nspin
+   do pstate=nsemin,nsemax
+      deltae = abasis + bbasis * LOG( t_i(pstate,pspin) )
+      write(stdout,'(1x,a,i4,a,i2,a,*(4x,f12.6))') 'state ',pstate,' spin ',pspin,' : ', &
+                                            t_i(pstate,pspin),    &
+                                            deltae, &
+                                            eqp(pstate,pspin)*Ha_eV, &
+                                            eqp(pstate,pspin)*Ha_eV + deltae
+   enddo
  enddo
 
 

@@ -809,9 +809,9 @@ velocity   0.000  0.000  0.500,   1.018946       , 0 , 1.0e-4
 
 ch4_cbs.in                , CBS extrapolation
 SCF Total Energy          ,    -40.4856598233   , 0 , 1.0e-7
-state    5                ,     25.861771       , 0 , 1.0e-4
-state    5                ,     -0.460572       , 1 , 1.0e-4
-state    5                ,    -14.095145       , 2 , 1.0e-4
-state    5                ,    -14.555717       , 3 , 1.0e-4
+state    5 spin  1        ,     25.861771       , 0 , 1.0e-4
+state    5 spin  1        ,     -0.460572       , 1 , 1.0e-4
+state    5 spin  1        ,    -14.095145       , 2 , 1.0e-4
+state    5 spin  1        ,    -14.555717       , 3 , 1.0e-4
 
 

@@ -6,7 +6,7 @@
   auxil_basis = 'PAUTO'
 
   postscf     ='G0W0_PADE'
-  nomega_imag=16
+  nomega_chi_imag=16
   step_sigma=0.02
   nomega_sigma_calc=10
   step_sigma_calc=0.2

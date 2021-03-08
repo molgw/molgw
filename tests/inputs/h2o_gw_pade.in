@@ -10,7 +10,7 @@
  postscf='g0w0_pade'
  frozencore='yes'
  selfenergy_state_range=1
- nomega_imag = 64
+ nomega_chi_imag = 64
 
  step_sigma=0.025
  nomega_sigma=101
