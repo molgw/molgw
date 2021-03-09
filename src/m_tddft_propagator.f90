@@ -482,7 +482,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  !open( newunit=checkfile, file='S_matrix.dat' )
 
  do while ( (time_cur - time_sim) < 1.0e-10 )
-   if(itau==3) call start_clock(timing_tddft_one_iter)
+   if ( itau == 3 ) then
+     call start_clock(timing_tddft_one_iter)
+     if( print_cube_diff_tddft_ .AND. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) &
+     call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
+   end if
 
    !
    ! Use c_matrix_orth_cmplx and h_small_cmplx at (time_cur-time_step) as start values,
@@ -556,8 +560,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end if
 
    if( ABS(time_cur / (calc_charge_step)- NINT(time_cur / (calc_charge_step))) < 1.0e-7 ) then
-     if( print_cube_diff_tddft_ )     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
-                                                                         iwrite_step,cube_density_start,nx,ny,nz)
+     if( print_cube_diff_tddft_ .AND. itau > 3 ) &    
+     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
+         iwrite_step,cube_density_start,nx,ny,nz)
      if( print_charge_tddft_ ) then
        if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
          call clean_deallocate('Transformation matrix X',x_matrix)
