@@ -1,0 +1,19 @@
+OPENMP= -fopenmp
+
+CPPFLAGS=-cpp -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL
+
+FC=mpif90
+FCFLAGS=  -O2
+
+CXX=g++
+CXXFLAGS= -O2
+
+LAPACK=
+
+SCALAPACK= ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a -Wl,--end-group -lgomp -lpthread -lm -ldl
+
+LIBXC_ROOT=
+
+LIBINT_ROOT=
+
+FFTW_ROOT=
