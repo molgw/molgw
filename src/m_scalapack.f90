@@ -51,7 +51,7 @@ module m_scalapack
  integer,protected :: iproc_sca = 0
 
 
- ! SCALAPACK grid: auxiliary basis distribution in AO basis ( alpha beta | P ): 1 x nproc_auxil
+ ! SCALAPACK grid: auxiliary basis distribution in AO basis ( alpha beta | P ): 1 x auxil%nproc
  integer,protected :: cntxt_eri3_ao
  integer,protected :: nprow_eri3_ao
  integer,protected :: npcol_eri3_ao
@@ -60,7 +60,7 @@ module m_scalapack
  integer,protected :: MB_eri3_ao = 1
  integer,protected :: NB_eri3_ao = 1
 
- ! SCALAPACK grid: auxiliary basis distribution in MO basis ( P | i j): nproc_auxil x 1
+ ! SCALAPACK grid: auxiliary basis distribution in MO basis ( P | i j): auxil%nproc x 1
  integer,protected :: cntxt_eri3_mo
  integer,protected :: nprow_eri3_mo
  integer,protected :: npcol_eri3_mo
@@ -159,7 +159,7 @@ module m_scalapack
    module procedure matmul_transaba_scalapack_cdp
  end interface
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P,PDLATRA,PDLAMCH
 #endif
 
@@ -298,12 +298,15 @@ subroutine create_distributed_copy_nospin_dp(matrix_global,desc,matrix)
 !=====
  integer              :: mlocal,nlocal
  integer              :: ilocal,jlocal,iglobal,jglobal
+ integer              :: nprow,npcol,iprow,ipcol
 !=====
 
  mlocal = SIZE( matrix , DIM=1 )
  nlocal = SIZE( matrix , DIM=2 )
 
- if( desc(CTXT_) > 0 ) then
+ call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
+
+ if( iprow < nprow .AND. ipcol < npcol ) then
    do jlocal=1,nlocal
      jglobal = colindex_local_to_global(desc,jlocal)
      do ilocal=1,mlocal
@@ -330,13 +333,16 @@ subroutine create_distributed_copy_spin_dp(matrix_global,desc,matrix)
  integer              :: idim3,ndim3
  integer              :: mlocal,nlocal
  integer              :: ilocal,jlocal,iglobal,jglobal
+ integer              :: nprow,npcol,iprow,ipcol
 !=====
 
  mlocal = SIZE( matrix , DIM=1 )
  nlocal = SIZE( matrix , DIM=2 )
  ndim3  = SIZE( matrix , DIM=3 )
 
- if( desc(CTXT_) > 0 ) then
+ call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
+
+ if( iprow < nprow .AND. ipcol < npcol ) then
    do idim3=1,ndim3
      do jlocal=1,nlocal
        jglobal = colindex_local_to_global(desc,jlocal)
@@ -364,12 +370,15 @@ subroutine create_distributed_copy_nospin_cdp(matrix_global,desc,matrix)
 !=====
  integer              :: mlocal,nlocal
  integer              :: ilocal,jlocal,iglobal,jglobal
+ integer              :: nprow,npcol,iprow,ipcol
 !=====
 
  mlocal = SIZE( matrix , DIM=1 )
  nlocal = SIZE( matrix , DIM=2 )
 
- if( desc(CTXT_) > 0 ) then
+ call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
+
+ if( iprow < nprow .AND. ipcol < npcol ) then
    do jlocal=1,nlocal
      jglobal = colindex_local_to_global(desc,jlocal)
      do ilocal=1,mlocal
@@ -389,9 +398,9 @@ end subroutine create_distributed_copy_nospin_cdp
 !=========================================================================
 subroutine gather_distributed_copy_nospin_dp(desc,matrix,matrix_global)
  implicit none
- integer,intent(in)               :: desc(NDEL)
- real(dp),allocatable,intent(in)  :: matrix(:,:)
- real(dp),intent(out)             :: matrix_global(:,:)
+ integer,intent(in)   :: desc(NDEL)
+ real(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out) :: matrix_global(:,:)
 !=====
  integer              :: cntxt
  integer              :: mlocal,nlocal,mglobal,nglobal
@@ -399,20 +408,20 @@ subroutine gather_distributed_copy_nospin_dp(desc,matrix,matrix_global)
  integer              :: rank_master,iprow,ipcol,nprow,npcol
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  cntxt = desc(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
  ! Find the master
  if( iprow == 0 .AND. ipcol == 0 ) then
-   rank_master = rank_world
+   rank_master = world%rank
  else
    rank_master = -1
  endif
- call xmax_world(rank_master)
+ call world%max(rank_master)
 
- if( cntxt > 0 ) then
+ if( iprow < nprow .AND. ipcol < npcol ) then
 
    mlocal  = SIZE( matrix , DIM=1 )
    nlocal  = SIZE( matrix , DIM=2 )
@@ -433,7 +442,7 @@ subroutine gather_distributed_copy_nospin_dp(desc,matrix,matrix_global)
 
  endif
 
- call xbcast_world(rank_master,matrix_global)
+ call world%bcast(rank_master,matrix_global)
 
 #else
 
@@ -450,9 +459,9 @@ end subroutine gather_distributed_copy_nospin_dp
 !=========================================================================
 subroutine gather_distributed_copy_spin_dp(desc,matrix,matrix_global)
  implicit none
- integer,intent(in)               :: desc(NDEL)
- real(dp),allocatable,intent(in)  :: matrix(:,:,:)
- real(dp),intent(out)             :: matrix_global(:,:,:)
+ integer,intent(in)   :: desc(NDEL)
+ real(dp),intent(in)  :: matrix(:,:,:)
+ real(dp),intent(out) :: matrix_global(:,:,:)
 !=====
  integer              :: cntxt
  integer              :: idim3,ndim3
@@ -461,20 +470,20 @@ subroutine gather_distributed_copy_spin_dp(desc,matrix,matrix_global)
  integer              :: rank_master,iprow,ipcol,nprow,npcol
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  cntxt = desc(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
  ! Find the master
  if( iprow == 0 .AND. ipcol == 0 ) then
-   rank_master = rank_world
+   rank_master = world%rank
  else
    rank_master = -1
  endif
- call xmax_world(rank_master)
+ call world%max(rank_master)
 
- if( cntxt > 0 ) then
+ if( iprow < nprow .AND. ipcol < npcol ) then
    mlocal  = SIZE( matrix , DIM=1 )
    nlocal  = SIZE( matrix , DIM=2 )
    mglobal = SIZE( matrix_global , DIM=1 )
@@ -496,7 +505,7 @@ subroutine gather_distributed_copy_spin_dp(desc,matrix,matrix_global)
    enddo
 
  endif
- call xbcast_world(rank_master,matrix_global)
+ call world%bcast(rank_master,matrix_global)
 
 #else
   matrix_global(:,:,:) = matrix(:,:,:)
@@ -521,21 +530,20 @@ subroutine gather_distributed_copy_nospin_cdp(desc,matrix,matrix_global)
  integer              :: rank_master,iprow,ipcol,nprow,npcol
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  cntxt = desc(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
  ! Find the master
  if( iprow == 0 .AND. ipcol == 0 ) then
-   rank_master = rank_world
+   rank_master = world%rank
  else
    rank_master = -1
  endif
- call xmax_world(rank_master)
+ call world%max(rank_master)
 
- if( cntxt > 0 ) then
-
+ if( iprow < nprow .AND. ipcol < npcol ) then
    mlocal  = SIZE( matrix , DIM=1 )
    nlocal  = SIZE( matrix , DIM=2 )
    mglobal = SIZE( matrix_global , DIM=1 )
@@ -555,7 +563,7 @@ subroutine gather_distributed_copy_nospin_cdp(desc,matrix,matrix_global)
 
  endif
 
- call xbcast_world(rank_master,matrix_global)
+ call world%bcast(rank_master,matrix_global)
 
 #else
 
@@ -1029,16 +1037,16 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
 
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank_world
+     rank_master = world%rank
    else
      rank_master = -1
    endif
-   call xmax_world(rank_master)
+   call world%max(rank_master)
 
    !
    ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
      nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
 
@@ -1055,13 +1063,13 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
 
    call gather_distributed_copy(descm,matrix,matrix_global)
 
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      deallocate(matrix)
      call BLACS_GRIDEXIT( cntxt )
    endif
 
    ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast_world(rank_master,eigval)
+   call world%bcast(rank_master,eigval)
 
 
  else ! Only one SCALAPACK proc
@@ -1112,16 +1120,16 @@ subroutine diagonalize_scalapack_cdp(flavor,scalapack_block_min,matrix_global,ei
 
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank_world
+     rank_master = world%rank
    else
      rank_master = -1
    endif
-   call xmax_world(rank_master)
+   call world%max(rank_master)
 
    !
    ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
      nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
 
@@ -1138,13 +1146,13 @@ subroutine diagonalize_scalapack_cdp(flavor,scalapack_block_min,matrix_global,ei
 
    call gather_distributed_copy(descm,matrix,matrix_global)
 
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      deallocate(matrix)
      call BLACS_GRIDEXIT( cntxt )
    endif
 
    ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast_world(rank_master,eigval)
+   call world%bcast(rank_master,eigval)
 
 
  else ! Only one SCALAPACK proc
@@ -1195,7 +1203,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
  if( lmat1 /= nmat ) call die('Dimension error in matmul_ab_scalapack_dp')
 
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
@@ -1208,7 +1216,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
    !
    ! Participate to the calculation only if the CPU has been selected
    ! in the grid
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
 
      !
      ! Distribute A
@@ -1244,7 +1252,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
 
    call gather_distributed_copy(descc,c_matrix_local,c_matrix)
 
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      deallocate(c_matrix_local)
      call BLACS_GRIDEXIT( cntxt )
    endif
@@ -1307,7 +1315,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
  if( lmat1 /= nmat ) call die('Dimension error in matmul_ab_scalapack_cdp')
 
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
@@ -1320,7 +1328,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
    !
    ! Participate to the calculation only if the CPU has been selected
    ! in the grid
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
 
      !
      ! Distribute A
@@ -1356,7 +1364,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
 
    call gather_distributed_copy(descc,c_matrix_local,c_matrix)
 
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      deallocate(c_matrix_local)
      call BLACS_GRIDEXIT( cntxt )
    endif
@@ -1425,7 +1433,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matri
  if( lmat1 /= lmat ) call die('Dimension error in matmul_abc_scalapack_dp')
 
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
@@ -1439,7 +1447,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matri
    !
    ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
 
      !
      ! Distribute A
@@ -1496,7 +1504,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matri
 
    call gather_distributed_copy(descd,d_matrix_local,d_matrix)
 
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      deallocate(d_matrix_local)
      call BLACS_GRIDEXIT( cntxt )
    endif
@@ -1579,7 +1587,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
  if( lmat1 /= lmat ) call die('Dimension error in matmul_abc_scalapack_cdp')
 
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
@@ -1593,7 +1601,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
    !
    ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
 
      !
      ! Distribute A
@@ -1650,7 +1658,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
 
    call gather_distributed_copy(descd,d_matrix_local,d_matrix)
 
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      deallocate(d_matrix_local)
      call BLACS_GRIDEXIT( cntxt )
    endif
@@ -1740,7 +1748,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_
  endif
 
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call select_nprow_npcol(scalapack_block_min,mmat,mmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
@@ -1753,7 +1761,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_
    !
    ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
 
      !
      ! Distribute A
@@ -1801,7 +1809,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_
 
    call gather_distributed_copy(descc,c_matrix_local,c_matrix)
 
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      deallocate(c_matrix_local)
      call BLACS_GRIDEXIT( cntxt )
    endif
@@ -1892,7 +1900,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
  endif
 
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call select_nprow_npcol(scalapack_block_min,mmat,mmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
@@ -1905,7 +1913,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
    !
    ! Participate to the diagonalization only if the CPU has been selected
    ! in the grid
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
 
      !
      ! Distribute A
@@ -1953,7 +1961,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
 
    call gather_distributed_copy(descc,c_matrix_local,c_matrix)
 
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
      deallocate(c_matrix_local)
      call BLACS_GRIDEXIT( cntxt )
    endif
@@ -2029,7 +2037,7 @@ subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trac
    call die('Dimension error in trace_transab_scalapack'//msg)
  endif
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call select_nprow_npcol(scalapack_block_min,kmat1,kmat2,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
@@ -2042,7 +2050,7 @@ subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trac
    !
    ! Participate to the calculation only if the CPU has been selected
    ! in the grid
-   if( cntxt > 0 ) then
+   if( iprow < nprow .AND. ipcol < npcol ) then
 
      !
      ! Distribute A
@@ -2082,7 +2090,7 @@ subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trac
      ab_trace = 0.0_dp
    endif
 
-   call xsum_world(ab_trace)
+   call world%sum(ab_trace)
 
 
 
@@ -2158,7 +2166,7 @@ subroutine matmul_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matr
  if( lmat1 /= lmat ) call die('Dimension error in matmul_abc_scalapack')
 
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
 
  cntxt = desca(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
@@ -2167,7 +2175,7 @@ subroutine matmul_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matr
  !
  ! Participate to the diagonalization only if the CPU has been selected
  ! in the grid
- if( cntxt > 0 ) then
+ if( iprow < nprow .AND. ipcol < npcol ) then
 
    !
    ! Prepare M = A * B
@@ -2243,7 +2251,7 @@ subroutine matmul_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c
    call die('Dimension error in matmul_transaba_scalapack'//msg)
  endif
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  cntxt = desca(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') ' Matrix product A**T * B * A using SCALAPACK with a grid',nprow,' x ',npcol
@@ -2251,7 +2259,7 @@ subroutine matmul_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c
  !
  ! Participate to the diagonalization only if the CPU has been selected
  ! in the grid
- if( cntxt > 0 ) then
+ if( iprow < nprow .AND. ipcol < npcol ) then
 
    !
    ! Prepare M = A^T * B
@@ -2397,7 +2405,7 @@ subroutine invert_sca(desc,matrix,matrix_inv)
  integer  :: lwork,liwork
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  cntxt = desc(CTXT_)
  call BLACS_GRIDINFO(cntxt,nprow,npcol,iprow,ipcol)
 
@@ -2477,7 +2485,7 @@ subroutine init_scalapack()
                       // 'This may affect the performance. Try to change the number of processors')
  endif
 
- call BLACS_GET( -1, 0, cntxt_sd )
+ call BLACS_GET( 0, 0, cntxt_sd )
  call BLACS_GRIDINIT( cntxt_sd, 'R', nprow_sd, npcol_sd )
  call BLACS_GRIDINFO( cntxt_sd, nprow_sd, npcol_sd, iprow_sd, ipcol_sd )
 
@@ -2528,34 +2536,34 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
 
  !
  ! Create the SCALAPACK context cntxt_eri3_ao and cntxt_eri3_mo
- ! that precisely matches the MPI_COMMUNICATOR comm_auxil
+ ! that precisely matches the MPI_COMMUNICATOR auxil%comm
  !
  call BLACS_GET( -1, 0, cntxt_eri3_ao )
  call BLACS_GET( -1, 0, cntxt_eri3_mo )
 
- if( rank_world /= iproc_sca ) then
+ if( world%rank /= iproc_sca ) then
    call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
  endif
 
- allocate(usermap(nproc_auxil))
- do iproc_auxil=0,nproc_auxil-1
-   usermap(iproc_auxil+1) = iproc_auxil * nproc_ortho
+ allocate(usermap(auxil%nproc))
+ do iproc_auxil=0,auxil%nproc-1
+   usermap(iproc_auxil+1) = iproc_auxil * ortho%nproc
  enddo
- call BLACS_GRIDMAP(cntxt_eri3_ao,usermap,1          ,1,nproc_auxil)
- call BLACS_GRIDMAP(cntxt_eri3_mo,usermap,nproc_auxil,nproc_auxil,1)
+ call BLACS_GRIDMAP(cntxt_eri3_ao,usermap,1          ,1,auxil%nproc)
+ call BLACS_GRIDMAP(cntxt_eri3_mo,usermap,auxil%nproc,auxil%nproc,1)
  deallocate(usermap)
 
  call BLACS_GRIDINFO(cntxt_eri3_ao,nprow_eri3_ao,npcol_eri3_ao,iprow_eri3_ao,ipcol_eri3_ao)
- call xmax_ortho(nprow_eri3_ao)
- call xmax_ortho(npcol_eri3_ao)
- call xmax_ortho(iprow_eri3_ao)
- call xmax_ortho(ipcol_eri3_ao)
+ call ortho%max(nprow_eri3_ao)
+ call ortho%max(npcol_eri3_ao)
+ call ortho%max(iprow_eri3_ao)
+ call ortho%max(ipcol_eri3_ao)
 
  call BLACS_GRIDINFO(cntxt_eri3_mo,nprow_eri3_mo,npcol_eri3_mo,iprow_eri3_mo,ipcol_eri3_mo)
- call xmax_ortho(nprow_eri3_mo)
- call xmax_ortho(npcol_eri3_mo)
- call xmax_ortho(iprow_eri3_mo)
- call xmax_ortho(ipcol_eri3_mo)
+ call ortho%max(nprow_eri3_mo)
+ call ortho%max(npcol_eri3_mo)
+ call ortho%max(iprow_eri3_mo)
+ call ortho%max(ipcol_eri3_mo)
 
  ! 3center integrals distribution
  if( eri3_nprow * eri3_npcol == nproc_sca ) then
@@ -2612,7 +2620,7 @@ function row_block_size(mglobal,iprow,nprow)
  integer            :: row_block_size
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  row_block_size = NUMROC(mglobal,block_row,iprow,first_row,nprow)
 #else
  row_block_size = mglobal
@@ -2629,7 +2637,7 @@ function col_block_size(nglobal,ipcol,npcol)
  integer            :: col_block_size
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  col_block_size = NUMROC(nglobal,block_col,ipcol,first_col,npcol)
 #else
  col_block_size = nglobal
@@ -2650,7 +2658,7 @@ function rowindex_global_to_local_distrib(distribution,iglobal) result(ilocal)
  ! returns the local index if this is proc in charge
  ! else returns 0
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  select case(distribution)
  case('S')
    if( iprow_sd == INDXG2P(iglobal,block_row,0,first_row,nprow_sd) ) then
@@ -2693,7 +2701,7 @@ function colindex_global_to_local_distrib(distribution,jglobal) result(jlocal)
  ! returns the local index if this is proc in charge
  ! else returns 0
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  select case(distribution)
  case('S')
    if( ipcol_sd == INDXG2P(jglobal,block_col,0,first_col,npcol_sd) ) then
@@ -2733,7 +2741,7 @@ function rowindex_local_to_global_distrib(distribution,ilocal) result(iglobal)
 !=====
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  select case(distribution)
  case('S')
    iglobal = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
@@ -2760,7 +2768,7 @@ function rowindex_local_to_global_procindex(iprow,nprow,ilocal) result(iglobal)
 !=====
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
 #else
  iglobal = ilocal
@@ -2775,12 +2783,12 @@ function rowindex_local_to_global_descriptor(desc,ilocal) result(iglobal)
  integer,intent(in)          :: desc(NDEL),ilocal
  integer                     :: iglobal
 !=====
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  integer          :: iprow,ipcol,nprow,npcol
 #endif
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
  iglobal = INDXL2G(ilocal,desc(MB_),iprow,desc(RSRC_),nprow)
 #else
@@ -2796,12 +2804,12 @@ function rowindex_global_to_local_descriptor(desc,iglobal) result(ilocal)
  integer,intent(in)          :: desc(NDEL),iglobal
  integer                     :: ilocal
 !=====
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  integer          :: iprow,ipcol,nprow,npcol
 #endif
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
  if( iprow == INDXG2P(iglobal,desc(MB_),0,desc(RSRC_),nprow) ) then
    ilocal = INDXG2L(iglobal,desc(MB_),0,desc(RSRC_),nprow)
@@ -2824,7 +2832,7 @@ function colindex_local_to_global_distrib(distribution,jlocal) result(jglobal)
 !=====
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  select case(distribution)
  case('S')
    jglobal = INDXL2G(jlocal,block_col,ipcol_sd,first_col,npcol_sd)
@@ -2851,7 +2859,7 @@ function colindex_local_to_global_procindex(ipcol,npcol,jlocal) result(jglobal)
 !=====
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
 #else
  jglobal = jlocal
@@ -2866,12 +2874,12 @@ function colindex_local_to_global_descriptor(desc,jlocal) result(jglobal)
  integer,intent(in)          :: desc(NDEL),jlocal
  integer                     :: jglobal
 !=====
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  integer          :: iprow,ipcol,nprow,npcol
 #endif
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
  jglobal = INDXL2G(jlocal,desc(NB_),ipcol,desc(CSRC_),npcol)
 #else
@@ -2887,12 +2895,12 @@ function colindex_global_to_local_descriptor(desc,jglobal) result(jlocal)
  integer,intent(in)          :: desc(NDEL),jglobal
  integer                     :: jlocal
 !=====
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  integer          :: iprow,ipcol,nprow,npcol
 #endif
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
  if( ipcol == INDXG2P(jglobal,desc(NB_),0,desc(CSRC_),npcol) ) then
    jlocal = INDXG2L(jglobal,desc(NB_),0,desc(CSRC_),npcol)
@@ -2941,13 +2949,13 @@ subroutine finish_scalapack()
  implicit none
 !=====
 
-#ifdef HAVE_SCALAPACK
+#if defined(HAVE_SCALAPACK)
  call BLACS_GRIDEXIT( cntxt_sd )
  call BLACS_GRIDEXIT( cntxt_cd )
  call BLACS_GRIDEXIT( cntxt_rd )
  call BLACS_GRIDEXIT( cntxt_3center )
- if( cntxt_eri3_ao > 0 ) call BLACS_GRIDEXIT( cntxt_eri3_ao )
- if( cntxt_eri3_mo > 0 ) call BLACS_GRIDEXIT( cntxt_eri3_mo )
+ if( cntxt_eri3_ao >= 0 ) call BLACS_GRIDEXIT( cntxt_eri3_ao )
+ if( cntxt_eri3_mo >= 0 ) call BLACS_GRIDEXIT( cntxt_eri3_mo )
  call BLACS_EXIT( 0 )
 #endif
 
@@ -3002,7 +3010,7 @@ subroutine diagonalize_davidson_sca(tolerance,desch,ham,neig,eigval,desc_vec,eig
      if( iglobal == jglobal ) ham_diag(iglobal) = ham(ilocal,jlocal)
    enddo
  enddo
- call xsum_world(ham_diag)
+ call world%sum(ham_diag)
 
  ncycle = 30
  mm     = neig
@@ -3098,7 +3106,7 @@ subroutine diagonalize_davidson_sca(tolerance,desch,ham,neig,eigval,desc_vec,eig
      call PDNRM2(mmat,norm2_i,qq,1,ieig,desc_qq,1)
      residual_norm = MAX( residual_norm , norm2_i )
    enddo
-   call xmax_world(residual_norm)
+   call world%max(residual_norm)
 
 
    write(stdout,'(1x,a,i4,1x,i4,1x,es12.4,1x,f18.8)') 'Cycle, Subspace dim, Max residual norm, Electronic energy: ', &

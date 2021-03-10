@@ -564,12 +564,19 @@ Total force atom    2     ,     -0.0000036520  , 0 , 1.0e-6
 atom    1   H             ,      -0.692180     , 0 , 1.0e-3
 atom    2   H             ,       0.692180     , 0 , 1.0e-3
 
-h2o_pade.in               , GW calculation with Pade analytic continuation
+h2o_gw_pade.in            , GW calculation with Pade analytic continuation
 SCF Total Energy          , -76.3797751143     , 0 , 1.0e-7
 RPA correlation energy    ,  -0.3839751863     , 0 , 1.0e-7
 RPA Total energy          , -76.4392995158     , 0 , 1.0e-7
-GW HOMO energy            , -12.131040         , 0 , 1.0e-4
+GW HOMO energy            , -12.131041         , 0 , 1.0e-4
 GW LUMO energy            ,   0.883074         , 0 , 1.0e-4
+
+h2o_gw_polynomial.in      , GW calculation with polynomical continuation
+SCF Total Energy          , -76.3797751143     , 0 , 1.0e-7
+RPA correlation energy    ,  -0.3839751863     , 0 , 1.0e-7
+RPA Total energy          , -76.4392995158     , 0 , 1.0e-7
+GW HOMO energy            , -12.175845         , 0 , 1.0e-4
+GW LUMO energy            ,   0.884386         , 0 , 1.0e-4
 
 h2o_mp3.in                , MP3 total energy with RI
 SCF Total Energy          , -76.0262395455     , 0 , 1.0e-7
@@ -793,10 +800,18 @@ velocity   0.000  0.000  0.800,   3.804473       , 0 , 1.0e-4
 velocity   0.000  0.000  1.400,   7.319374       , 0 , 1.0e-4
 velocity   0.000  0.000  2.000,   7.299591       , 0 , 1.0e-4
 
-ne_ap_stopping.in        , Linear-response stopping cross section for a non-spherical system
+ne_ap_stopping.in          , Linear-response stopping cross section for a non-spherical system
 SCF Total Energy           ,   -134.7929508744   , 0 , 1.0e-7
 Exc. 0001                  ,     37.06922165     , 0 , 1.0e-4
 Sum over oscillator strengths,    9.124419       , 0 , 1.0e-4
 velocity   0.000  0.000  0.250,   0.210189       , 0 , 1.0e-4
 velocity   0.000  0.000  0.500,   1.018946       , 0 , 1.0e-4
+
+ch4_cbs.in                , CBS extrapolation
+SCF Total Energy          ,    -40.4856598233   , 0 , 1.0e-7
+state    5 spin  1        ,     25.861771       , 0 , 1.0e-4
+state    5 spin  1        ,     -0.460572       , 1 , 1.0e-4
+state    5 spin  1        ,    -14.095145       , 2 , 1.0e-4
+state    5 spin  1        ,    -14.555717       , 3 , 1.0e-4
+
 

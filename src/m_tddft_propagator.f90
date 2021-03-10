@@ -2215,22 +2215,13 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix(1,1),basis%nbf, &
                                                   m_tmpr1(1,1),nstate,   &
                                             0.0d0,m_tmpr2(1,1),basis%nbf)
-   ! This workaround is needed for ifort 17, which is not comfortable with Fortan2008
-#if defined(FORTRAN2008)
    c_matrix_cmplx(:,:,ispin)%re = m_tmpr2(:,:)
-#else
-   c_matrix_cmplx(:,:,ispin) = m_tmpr2(:,:)
-#endif
    ! 2. Imaginary part
    m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%im
    call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix(1,1),basis%nbf, &
                                                   m_tmpr1(1,1),nstate,   &
                                             0.0d0,m_tmpr2(1,1),basis%nbf)
-#if defined(FORTRAN2008)
    c_matrix_cmplx(:,:,ispin)%im = m_tmpr2(:,:)
-#else
-   c_matrix_cmplx(:,:,ispin) = c_matrix_cmplx(:,:,ispin) + im * m_tmpr2(:,:)
-#endif
 
    deallocate(m_tmpr1,m_tmpr2)
 

@@ -278,7 +278,7 @@ scalapack_block_min:
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
-  default: 1000
+  default: 100000
   comment: Sets the minimum block size to distribute a non-distributed matrix with
     SCALAPACK. If scalapack_block_min=400, then a 900x900 matrix will be distributed
     on a 2x2 processor grid. If scalapack_block_min=500, then a 900x900 matrix will
@@ -747,13 +747,13 @@ nexcitation:
   comment: Sets the number of neutral excitations to be calculated in TD-DFT or BSE.                  0
     stands for all the states and triggers the full diagonalization.
 
-nomega_imag:
+nomega_chi_imag:
   family: post
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
   default: 0
-  comment: Sets the number of frequencies used to perform the integral on the imaginary
+  comment: Sets the number of frequencies for the response function used to perform the integral on the imaginary
     axis
 
 nomega_sigma:
@@ -764,6 +764,14 @@ nomega_sigma:
   default: 51
   comment: Sets the number of frequencies used to solve the quasiparticle equation
     in the GW self-energy.
+
+nomega_sigma_calc:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Sets the number of frequencies where the GW self-energy is actually calculated.
 
 nstep_dav:
   family: post
@@ -906,7 +914,15 @@ step_sigma:
   mandatory: 'no'
   experimental: 'no'
   default: 0.01
-  comment: Sets the spacing between frequencies in the GW self-energy evaluation.
+  comment: Sets the spacing between frequencies in the final GW self-energy output.
+
+step_sigma_calc:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.03
+  comment: Sets the spacing between the frequencies where the GW self-energy is actually calculated.
 
 stopping:
   family: post
@@ -915,7 +931,7 @@ stopping:
   experimental: 'no'
   default: 'no'
   comment: Triggers the calculation of the stopping power within linear-response theory.
-           Only effective when postscf='td' or 'bse'. Avaialble values are ''no'', ''spherical'', '''3d''.
+           Only effective when postscf=''td'' or ''bse''. Avaialble values are ''no'', ''spherical'', ''3d''.
 
 tda:
   family: post

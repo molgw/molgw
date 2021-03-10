@@ -413,7 +413,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx,n
    deallocate(rhor_batch)
 
  enddo ! loop on the batches
- call xsum_grid(charge_disc(:,:))
+ call grid%sum(charge_disc(:,:))
 
  if( is_iomaster ) then
 

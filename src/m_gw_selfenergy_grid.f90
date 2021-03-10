@@ -68,7 +68,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   nstate = SIZE(occupation,DIM=1)
 
 
-  if( wpol%nomega_quad < 1 ) call die('polarizability_grid_sca: nomega_imag input variable should be greater than 1')
+  if( wpol%nomega_quad < 1 ) call die('polarizability_grid_sca: nomega_chi_imag input variable should be greater than 1')
 
   if( .NOT. has_auxil_basis ) then
     call die('dynamical_polarizability_sca requires an auxiliary basis')
@@ -85,7 +85,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   write(stdout,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_2center,' x ',nauxil_2center
   write(stdout,'(1x,a,i7,a,i7)') 'Distributed in ',wpol%mchi,' x ',wpol%nchi
 
-  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
 
 
 
@@ -215,8 +215,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   type(selfenergy_grid),intent(inout) :: se
   !=====
   integer              :: nstate
-  integer              :: iomegas
-  integer              :: iomega
+  integer              :: iomega_calc,iomega
   integer              :: info
   real(dp),allocatable :: eri3_sca(:,:)
   real(dp),allocatable :: chi_eri3_sca(:,:)
@@ -238,6 +237,11 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   call start_clock(timing_gw_self)
 
   write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies'
+  write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
+  do iomega_calc=1,se%nomega_calc
+    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_calc,se%omega_calc(iomega_calc)*Ha_eV
+  enddo
+  write(stdout,'(1x,a)') '========================================================'
 
   nstate = SIZE(energy,DIM=1)
 
@@ -250,7 +254,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
 #endif
 
 
-  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
+  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax,timing=timing_aomo_gw)
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -263,11 +267,10 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
   call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca,meri3,neri3)
 
-  call DESCINIT(desc_eri3_t,nauxil_2center,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
+  call DESCINIT(desc_eri3_t,nauxil_2center,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo, &
+                MAX(1,nauxil_3center),info)
 
-
-  ! OPENMP does not want to reduce se%sigmai then work with a temporary array sigmaigw
-  allocate(sigmaigw(0:se%nomegai,nsemin:nsemax,nspin))
+  allocate(sigmaigw(se%nomega_calc,nsemin:nsemax,nspin))
   sigmaigw(:,:,:) = 0.0_dp
 
   do mpspin=1,nspin
@@ -303,9 +306,9 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
 
           sigmaigw(:,mstate,mpspin) = sigmaigw(:,mstate,mpspin) &
                         - wpol%weight_quad(iomega) &
-                            * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) ) &
+                            * (  1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) ) &
                                               + im * wpol%omega_quad(iomega) )   &
-                               + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(0:) - energy(pstate,mpspin) )  &
+                               + 1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) )  &
                                               - im * wpol%omega_quad(iomega) )  ) &
                            * v_chi_v_p /  (2.0_dp * pi)
         enddo
@@ -316,13 +319,12 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
 
     enddo
   enddo
-  call xsum_world(sigmaigw)
+  call world%sum(sigmaigw)
 
-  se%sigmai(0:,:,:) = sigmaigw(0:,:,:)
-  forall(iomegas=1:se%nomegai)
-    se%sigmai(-iomegas,:,:) = CONJG( sigmaigw(iomegas,:,:) )
-  end forall
+  se%sigma_calc(:,:,:) = sigmaigw(:,:,:)
 
+
+  deallocate(sigmaigw)
   call clean_deallocate('TMP 3-center MO integrals',eri3_sca)
   call clean_deallocate('TMP 3-center MO integrals',chi_eri3_sca)
 
@@ -335,6 +337,4 @@ end subroutine gw_selfenergy_imag_scalapack
 
 !=========================================================================
 end module m_gw_selfenergy_grid
-
-
 !=========================================================================

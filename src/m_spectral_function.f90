@@ -376,7 +376,7 @@ subroutine write_spectral_function(sf)
    ! data distribution
    allocate(buffer(sf%npole_reso))
    do ibf_auxil=1,sf%nprodbasis_total
-     if( rank_auxil == iproc_ibf_auxil(ibf_auxil) ) then
+     if( auxil%rank == iproc_ibf_auxil(ibf_auxil) ) then
 
        buffer(:) = sf%residue_left(ibf_auxil_l(ibf_auxil),:)
        call MPI_FILE_WRITE_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
@@ -490,7 +490,7 @@ subroutine read_spectral_function(sf,reading_status)
    ! data distribution
    allocate(buffer(sf%npole_reso))
    do ibf_auxil=1,nauxil_2center
-     if( rank_auxil == iproc_ibf_auxil(ibf_auxil) ) then
+     if( auxil%rank == iproc_ibf_auxil(ibf_auxil) ) then
        call MPI_FILE_READ_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
        sf%residue_left(ibf_auxil_l(ibf_auxil),:) = buffer(:)
      endif

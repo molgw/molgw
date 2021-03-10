@@ -1151,8 +1151,8 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matri
 
 
    ! Poor man distribution TODO replace by a broadcast
-   call xsum_world(energy)
-   call xsum_world(c_matrix)
+   call world%sum(energy)
+   call world%sum(c_matrix)
 
  else ! only one proc selected
 #endif

@@ -367,7 +367,7 @@ subroutine identify_negligible_shellpair(basis)
  integer                      :: ami,amj
  integer                      :: ishell,jshell
  real(dp),allocatable         :: integrals(:,:,:,:)
- real(dp)                     :: workload(nproc_world)
+ real(dp)                     :: workload(world%nproc)
  integer                      :: shell_proc(basis%nshell)
 !=====
 ! variables used to call C
@@ -400,7 +400,7 @@ subroutine identify_negligible_shellpair(basis)
  do jshell=1,basis%nshell
    !
    ! Workload is distributed here
-   if( shell_proc(jshell) /= rank_world ) cycle
+   if( shell_proc(jshell) /= world%rank ) cycle
 
    amj = basis%shell(jshell)%am
    nj  = number_basis_function_am( basis%gaussian_type , amj )
@@ -459,7 +459,7 @@ subroutine identify_negligible_shellpair(basis)
    deallocate(alpha2,coeff2)
  enddo
 
- call xand_world(negligible_shellpair)
+ call world%and(negligible_shellpair)
 
  call stop_clock(timing_eri_screening)
 
@@ -691,11 +691,11 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 !=====
  integer :: iproc
  integer :: ilocal,iglobal
- integer :: nbf_local_iproc(0:nproc_auxil-1)
+ integer :: nbf_local_iproc(0:auxil%nproc-1)
 !=====
 
  ! Use SCALAPACK routines to distribute the auxiliary basis
- ! Assume a processor grid: 1 x nproc_auxil
+ ! Assume a processor grid: 1 x auxil%nproc
 
  do iproc=0,npcol_eri3_ao-1
    nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,NB_eri3_ao,iproc,first_col,npcol_eri3_ao)
@@ -733,14 +733,14 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 !=====
  integer :: iproc
  integer :: ilocal,iglobal
- integer :: nbf_local_iproc_lr(0:nproc_auxil-1)
+ integer :: nbf_local_iproc_lr(0:auxil%nproc-1)
 !=====
  integer :: ibf,ibf_local
 !=====
 
 
  ! Use SCALAPACK routines to distribute the auxiliary basis
- ! Assume a processor grid: 1 x nproc_auxil
+ ! Assume a processor grid: 1 x auxil%nproc
 
  do iproc=0,npcol_eri3_ao-1
    nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis,NB_eri3_ao,iproc,first_col,npcol_eri3_ao)
@@ -795,8 +795,8 @@ subroutine reshuffle_distribution_3center()
    mlocal = -1
    nlocal = -1
  endif
- call xmax_ortho(mlocal)
- call xmax_ortho(nlocal)
+ call ortho%max(mlocal)
+ call ortho%max(nlocal)
 
  if( cntxt_3center > 0 ) then
    call move_alloc(eri_3center,eri_3center_tmp)
@@ -817,7 +817,7 @@ subroutine reshuffle_distribution_3center()
  if( cntxt_eri3_ao <= 0 ) then
    eri_3center(:,:) = 0.0_dp
  endif
- call xsum_ortho(eri_3center)
+ call ortho%sum(eri_3center)
 #endif
 
 

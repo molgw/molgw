@@ -780,7 +780,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
    jbf1    = basis%shell(jshell)%istart
    jbf2    = basis%shell(jshell)%iend
 
-   if( MODULO(jshell-1,nproc_world) /= rank_world ) cycle
+   if( MODULO(jshell-1,world%nproc) /= world%rank ) cycle
 
    call set_libint_shell(basis%shell(jshell),amB,contrdepthB,B,alphaB,cB)
 
@@ -849,7 +849,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
 
  !
  ! Reduce operation
- call xsum_world(hamiltonian_nucleus)
+ call world%sum(hamiltonian_nucleus)
 
  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution ===',hamiltonian_nucleus)
 
@@ -1069,10 +1069,10 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian gradient (LIBINT)'
- if( nproc_world > 1 ) then
+ if( world%nproc > 1 ) then
    natom_local=0
    do iatom=1,natom
-     if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
+     if( world%rank /= MODULO(iatom-1,world%nproc) ) cycle
      natom_local = natom_local + 1
    enddo
    write(stdout,'(a)')         '   Parallelizing over atoms'
@@ -1108,7 +1108,7 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 
 
      do iatom=1,natom
-       if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
+       if( world%rank /= MODULO(iatom-1,world%nproc) ) cycle
 
 
        C(:) = xatom(:,iatom)
@@ -1170,7 +1170,7 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 
  !
  ! Reduce operation
- call xsum_world(hamiltonian_nucleus_grad)
+ call world%sum(hamiltonian_nucleus_grad)
 
  title='===  Nucleus potential contribution (LIBINT) C1X==='
  call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,1,1))
@@ -1395,8 +1395,8 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  !
  ! Since there will be an allreduce operation in the end,
  ! anticipate by dividing the input value of Hnucl by the number of procs
- if( nproc_world > 1 ) then
-   hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) / nproc_world
+ if( world%nproc > 1 ) then
+   hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) / world%nproc
  endif
 
  n1 = nangular_ecp
@@ -1463,7 +1463,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
    allocate(int_fixed_r(basis%nbf,nproj))
 
    do iradial=1,nradial_ecp
-     if( MODULO(iradial-1,nproc_world) /= rank_world ) cycle
+     if( MODULO(iradial-1,world%nproc) /= world%rank ) cycle
 
      int_fixed_r(:,:) = 0.0_dp
      do i1=1,nangular_ecp
@@ -1522,7 +1522,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
  enddo
 
- call xsum_world(hamiltonian_nucleus)
+ call world%sum(hamiltonian_nucleus)
 
  title='=== ECP Nucleus potential contribution ==='
  call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus)

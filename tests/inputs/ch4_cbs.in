@@ -1,0 +1,23 @@
+&molgw
+  comment     = 'ch4'
+           
+  basis       = 'aug-cc-pVDZ'
+  scf         = 'BHLYP'
+  auxil_basis = 'PAUTO'
+
+  postscf     ='G0W0_PADE'
+  nomega_chi_imag=16
+  step_sigma=0.02
+  nomega_sigma_calc=10
+  step_sigma_calc=0.2
+  frozencore='yes'
+  selfenergy_state_range=0
+
+  natom = 5
+/
+6           .000000     .000000     .000000
+1           .629118     .629118     .629118
+1          -.629118    -.629118     .629118
+1           .629118    -.629118    -.629118
+1          -.629118     .629118    -.629118
+

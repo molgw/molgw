@@ -9,6 +9,7 @@
  selfenergy_state_min=5
  selfenergy_state_max=6
  
+ mpi_nproc_ortho=2
 
  natom=1
 /

@@ -133,7 +133,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
  logical,allocatable     :: skip_shellpair(:)
  real(dp)                :: cost(nshellpair)
  real(dp)                :: cost2(nshellpair)
- real(dp)                :: load(nproc_world)
+ real(dp)                :: load(world%nproc)
  integer                 :: shellpair_cpu(nshellpair)
  logical                 :: mask(nshellpair)
 !=====
@@ -195,8 +195,8 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
    nk = number_basis_function_am( basis%gaussian_type , basis%shell(kshell)%am )
    nl = number_basis_function_am( basis%gaussian_type , basis%shell(lshell)%am )
 
-   !if( MODULO(klshellpair,nproc_world) /= rank_world ) cycle
-   if( shellpair_cpu(klshellpair) - 1 /= rank_world ) cycle
+   !if( MODULO(klshellpair,world%nproc) /= world%rank ) cycle
+   if( shellpair_cpu(klshellpair) - 1 /= world%rank ) cycle
 
    if( skip_shellpair(klshellpair) ) cycle
 
@@ -263,7 +263,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
 
  hartree_ao(:,:) = hartree_ao(:,:) + TRANSPOSE( hartree_ao(:,:) )
 
- call xsum_world(hartree_ao)
+ call world%sum(hartree_ao)
 
  call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
@@ -355,8 +355,8 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
 
  !
  ! Sum up the different contribution from different procs
- call xsum_world(hartree_ao)
- hartree_ao(:,:) = hartree_ao(:,:) / REAL(nproc_ortho,dp)
+ call world%sum(hartree_ao)
+ hartree_ao(:,:) = hartree_ao(:,:) / REAL(ortho%nproc,dp)
 
  call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
@@ -443,7 +443,7 @@ subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
 
  enddo
 
- call xsum_world(rho_coeff)
+ call world%sum(rho_coeff)
 
  deallocate(x_vector,pmat)
 
@@ -471,7 +471,7 @@ subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
  real(dp),allocatable :: rho_coeff_local_nospin(:)
  !=====
 
- if( nproc_ortho > 1 ) call die('setup_hartree_genuine_ri: ortho-parallelization not coded')
+ if( ortho%nproc > 1 ) call die('setup_hartree_genuine_ri: ortho-parallelization not coded')
 
  nbf = SIZE(hartree_ao(:,:),DIM=1)
 
@@ -520,7 +520,7 @@ subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
 
  !
  ! Sum up the different contribution from different procs
- call xsum_world(hartree_ao)
+ call world%sum(hartree_ao)
 
  call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
@@ -766,7 +766,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
    !$OMP END PARALLEL DO
 
    do iauxil=1,nauxil_local
-     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
      tmp(:,:) = 0.0_dp
      !$OMP PARALLEL PRIVATE(ibf,jbf)
      !$OMP DO REDUCTION(+:tmp)
@@ -799,7 +799,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
      enddo
    enddo
  enddo
- call xsum_world(exchange_ao)
+ call world%sum(exchange_ao)
 
  eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
 
@@ -854,7 +854,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
 
 
    do iauxil=1,nauxil_local
-     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
      tmp(:,:) = 0.0_dp
      !$OMP PARALLEL PRIVATE(ibf,jbf)
      !$OMP DO REDUCTION(+:tmp)
@@ -887,7 +887,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
      enddo
    enddo
  enddo
- call xsum_world(exchange_ao)
+ call world%sum(exchange_ao)
 
  eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
 
@@ -937,7 +937,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
    !$OMP END PARALLEL DO
 
    do iauxil=1,nauxil_3center
-     if( MODULO( iauxil - 1 , nproc_ortho ) /= rank_ortho ) cycle
+     if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
      tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
      !$OMP PARALLEL PRIVATE(ibf,jbf)
      !$OMP DO REDUCTION(+:tmp_cmplx)
@@ -970,7 +970,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
      enddo
    enddo
  enddo
- call xsum_world(exchange_ao)
+ call world%sum(exchange_ao)
 
  eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * CONJG( p_matrix(:,:,:) ) ) , dp)
 
@@ -1268,9 +1268,9 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
  !
  ! Sum up the contributions from all procs only if needed
- call xsum_grid(normalization)
- call xsum_grid(vxc_ao)
- call xsum_grid(exc_xc)
+ call grid%sum(normalization)
+ call grid%sum(vxc_ao)
+ call grid%sum(exc_xc)
 
 
 #else
@@ -1317,7 +1317,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
  do iatom=1,natom
-   if( rank_grid /= MODULO(iatom,nproc_grid) ) cycle
+   if( grid%rank /= MODULO(iatom,grid%nproc) ) cycle
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
@@ -1390,9 +1390,9 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
  enddo ! loop on the grid point
  !
  ! Sum up the contributions from all procs only if needed
- call xsum_grid(normalization)
- call xsum_grid(exc)
- call xsum_grid(vhxc_ao)
+ call grid%sum(normalization)
+ call grid%sum(exc)
+ call grid%sum(vhxc_ao)
 
  ! Symmetrize vhxc
  do ibf=1,basis%nbf

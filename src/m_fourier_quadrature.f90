@@ -118,7 +118,7 @@ subroutine setup_nucleus_fourier(basis_p,basis_t,reference)
   do iq=1,nq
     ! Parallelization over the MPI world
     ! => OPENMP parallelization may be used at lower level: inside setup_gos_ao
-    if( MODULO(iq-1,nproc_world) /= rank_world ) cycle
+    if( MODULO(iq-1,world%nproc) /= world%rank ) cycle
 
     qvec(:) = qlist(:,iq)
     qpvvec(:) = qvec(:) + velocity(:)
@@ -144,7 +144,7 @@ subroutine setup_nucleus_fourier(basis_p,basis_t,reference)
   enddo
   enucl(:,:) = enucl(:,:) / (2.0_dp * pi)**3
 
-  call xsum_world(enucl)
+  call world%sum(enucl)
 
   call stop_clock(timing_tmp1)
 
@@ -237,7 +237,7 @@ subroutine setup_kinetic_fourier(basis_p,basis_t,reference)
   do iq=1,nq
     ! Parallelization over the MPI world
     ! => OPENMP parallelization used only in ZGERC
-    if( MODULO(iq-1,nproc_world) /= rank_world ) cycle
+    if( MODULO(iq-1,world%nproc) /= world%rank ) cycle
 
     qvec(:) = qlist(:,iq)
     qmvvec(:) = qvec(:) - velocity(:)
@@ -293,7 +293,7 @@ subroutine setup_kinetic_fourier(basis_p,basis_t,reference)
   ! the CONJG() is imposed by the definition of ZGERC
   ekin(:,:) = 0.5_dp * CONJG( ekin(:,:) ) * (2.0_dp * pi)**3
 
-  call xsum_world(ekin)
+  call world%sum(ekin)
 
   if( basis_t%nbf < 6 .OR. basis_p%nbf < 6 ) return
 
@@ -433,7 +433,7 @@ contains
 function auxiliary(ia,ib,ff,gg,fa,fb,fab)
   integer,intent(in) :: ia,ib
   real(dp),intent(in) :: fa,fb,fab
-  complex(dp),intent(out) :: ff,gg
+  complex(dp),intent(in) :: ff,gg
   complex(dp) :: auxiliary
   !=====
   complex(dp),parameter :: one = (1.0_dp,0.0_dp)

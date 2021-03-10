@@ -67,7 +67,7 @@ module m_timing
  integer,parameter :: timing_zeroes_ci           = 48
  integer,parameter :: timing_density_matrix_cmplx= 49
  integer,parameter :: timing_aomo_pola           = 50
- integer,parameter :: timing_aomo_ci             = 51
+ integer,parameter :: timing_aomo_gw             = 51
  integer,parameter :: timing_mbpt_dm             = 52
  integer,parameter :: timing_eri_3center_ints    = 53
  integer,parameter :: timing_eri_3center_matmul  = 54
@@ -137,80 +137,81 @@ contains
 
 !=========================================================================
 subroutine init_timing()
- implicit none
- !=====
- !=====
+  implicit none
+  !=====
+  !=====
 
- time_running(:) = .FALSE.
- timing(:)       = 0.0_dp
- calls(:)        = 0
+  time_running(:) = .FALSE.
+  timing(:)       = 0.0_dp
+  calls(:)        = 0
 
- call system_clock(COUNT_RATE=count_rate,COUNT_MAX=count_max)
+  call system_clock(COUNT_RATE=count_rate,COUNT_MAX=count_max)
 
 end subroutine init_timing
 
 
 !=========================================================================
 function get_timing(itiming) RESULT(time)
- implicit none
+  implicit none
 
- integer,intent(in) :: itiming
- real(dp)           :: time
- !=====
- !=====
+  integer,intent(in) :: itiming
+  real(dp)           :: time
+  !=====
+  !=====
 
- time = timing(itiming)
+  time = timing(itiming)
 
 end function get_timing
 
 
 !=========================================================================
 subroutine start_clock(itiming)
- implicit none
- integer,intent(in) :: itiming
-!=====
- integer            :: count_tmp
-!=====
+  implicit none
+  integer,intent(in) :: itiming
+  !=====
+  integer            :: count_tmp
+  !=====
 
- if(time_running(itiming)) then
-   write(stdout,*) 'clock # is already started:',itiming
-   call die('error in start clock')
- endif
+  if(time_running(itiming)) then
+    write(stdout,*) 'clock # is already started:',itiming
+    call die('error in start clock')
+  endif
 
- time_running(itiming)=.TRUE.
+  time_running(itiming)=.TRUE.
 
- call system_clock(COUNT=count_tmp)
- time_start(itiming) = count_tmp
- calls(itiming) = calls(itiming) + 1
+  call system_clock(COUNT=count_tmp)
+  time_start(itiming) = count_tmp
+  calls(itiming) = calls(itiming) + 1
 
 end subroutine start_clock
 
 
 !=========================================================================
 subroutine stop_clock(itiming)
- implicit none
+  implicit none
 
- integer,intent(in) :: itiming
-!=====
- integer            :: count_tmp
-!=====
+  integer,intent(in) :: itiming
+  !=====
+  integer            :: count_tmp
+  !=====
 
- if(.NOT.time_running(itiming)) then
-   write(stdout,*) 'clock # has not been started:',itiming
-   call die('error in stop clock')
- endif
+  if(.NOT.time_running(itiming)) then
+    write(stdout,*) 'clock # has not been started:',itiming
+    call die('error in stop clock')
+  endif
 
 
- time_running(itiming)=.FALSE.
+  time_running(itiming)=.FALSE.
 
- call system_clock(COUNT=count_tmp)
- timing(itiming) = timing(itiming) + MODULO( count_tmp - NINT(time_start(itiming)) , count_max) / REAL(count_rate,dp)
+  call system_clock(COUNT=count_tmp)
+  timing(itiming) = timing(itiming) + MODULO( count_tmp - NINT(time_start(itiming)) , count_max) / REAL(count_rate,dp)
 
 end subroutine stop_clock
 
 
 !=========================================================================
 subroutine output_timing()
+
  implicit none
 !=====
 !=====
@@ -271,9 +272,10 @@ subroutine output_timing()
  call output_timing_line('Sigma_x - Vxc',timing_x_m_vxc,1)
 
  ! Linear response polarization RPA or TDDFT or BSE
+ call output_timing_line('3-center AO to MO transform',timing_eri_3center_eigen,1)
  call output_timing_line('Response function chi on grid',timing_rpa_dynamic,1)
  call output_timing_line('Response function chi',timing_pola,1)
- call output_timing_line('3-center AO to MO transform',timing_eri_3center_eigen,2)
+ call output_timing_line('3-center AO to MO transform in chi',timing_aomo_pola,2)
  call output_timing_line('4-center AO to MO transform',timing_eri_4center_eigen,2)
  call output_timing_line('Static polarization for BSE',timing_rpa_static,2)
  call output_timing_line('Build 2-particle Hamiltonian',timing_build_h2p,2)
@@ -287,8 +289,8 @@ subroutine output_timing()
 
  ! Self-energies
  call output_timing_line('MBPT density matrix',timing_mbpt_dm,1)
-
  call output_timing_line('GW self-energy',timing_gw_self,1)
+ call output_timing_line('3-center AO to MO transform in GW',timing_aomo_gw,2)
  call output_timing_line('PT self-energy',timing_pt_self,1)
  call output_timing_line('GWGamma self-energy',timing_gwgamma_self,1)
  call output_timing_line('MP2 energy',timing_mp2_energy,1)
@@ -364,50 +366,50 @@ end subroutine output_timing
 
 !=========================================================================
 subroutine output_timing_line(title,itiming,level)
- implicit none
+  implicit none
 
- character(len=*),intent(in) :: title
- integer,intent(in)          :: itiming
- integer,intent(in)          :: level
-!=====
- integer,parameter            :: max_length = 46
- character(len=max_length+10) :: prepend
- integer                      :: lt,lp
- character(len=3)             :: key
-!=====
+  character(len=*),intent(in) :: title
+  integer,intent(in)          :: itiming
+  integer,intent(in)          :: level
+  !=====
+  integer,parameter            :: max_length = 46
+  character(len=max_length+10) :: prepend
+  integer                      :: lt,lp
+  character(len=3)             :: key
+  !=====
 
- ! No writing if the timing counter has never been used
- if( calls(itiming) < 1 ) return
+  ! No writing if the timing counter has never been used
+  if( calls(itiming) < 1 ) return
 
- lt = LEN_TRIM(title)
+  lt = LEN_TRIM(title)
 
- if( lt > max_length ) &
-     call die('output_timing_line: title string too long. Shorten it or increase the string length. Ask developers')
+  if( lt > max_length ) &
+      call die('output_timing_line: title string too long. Shorten it or increase the string length. Ask developers')
 
- select case(level)
- case(0)
-   prepend = ''
- case(1)
-   prepend = '|'
- case(2)
-   prepend = '      |'
- case(3)
-   prepend = '            |'
- case(4)
-   prepend = '                   |'
- end select
+  select case(level)
+  case(0)
+    prepend = ''
+  case(1)
+    prepend = '|'
+  case(2)
+    prepend = '      |'
+  case(3)
+    prepend = '            |'
+  case(4)
+    prepend = '                   |'
+  end select
 
- lp = LEN_TRIM(prepend)
+  lp = LEN_TRIM(prepend)
 
- prepend = TRIM(prepend) // REPEAT('-',max_length-lt-lp)
+  prepend = TRIM(prepend) // REPEAT('-',max_length-lt-lp)
 
- write(key,'(i3.3)') max_length+1
+  write(key,'(i3.3)') max_length+1
 
- if( level == 0 ) then
-   write(stdout,'(1x,a'//key//',4x,f12.2)') TRIM(title),timing(itiming)
- else
-   write(stdout,'(1x,a,1x,a,4x,f12.2,2x,i8)') TRIM(prepend),TRIM(title),timing(itiming),calls(itiming)
- endif
+  if( level == 0 ) then
+    write(stdout,'(1x,a'//key//',4x,f12.2)') TRIM(title),timing(itiming)
+  else
+    write(stdout,'(1x,a,1x,a,4x,f12.2,2x,i8)') TRIM(prepend),TRIM(title),timing(itiming),calls(itiming)
+  endif
 
 
 end subroutine output_timing_line
@@ -415,3 +417,4 @@ end subroutine output_timing_line
 
 !=========================================================================
 end module m_timing
+!=========================================================================

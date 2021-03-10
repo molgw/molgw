@@ -261,7 +261,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
        ir = ir + 1
 
        ! Parallelization of the weights generation
-       if( MODULO(ir-1,nproc_world) /= rank_world ) cycle
+       if( MODULO(ir-1,world%nproc) /= world%rank ) cycle
 
        if( xa(iradial,iatom) < pruning_limit * radius ) then
          rr_grid_tmp(1,ir) = xa(iradial,iatom) * x2(iangular) + xbasis(1,iatom)
@@ -353,8 +353,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  deallocate(x1,y1,z1,w1)
  deallocate(x2,y2,z2,w2)
 
- call xsum_world(rr_grid_tmp)
- call xsum_world(w_grid_tmp)
+ call world%sum(rr_grid_tmp)
+ call world%sum(w_grid_tmp)
 
 
  ! Denombrate the number of non-negligible weight in the quadrature

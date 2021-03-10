@@ -888,13 +888,13 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
    enddo
  enddo
  h%nnz_total = REAL( h%nnz , dp )
- call xsum_auxil(h%nnz_total)
+ call auxil%sum(h%nnz_total)
  write(stdout,'(1x,a,i10)')  ' CI hamiltonian elements on this proc: ',h%nnz
  nnztmp = h%nnz
- call xmin_auxil(nnztmp)
+ call auxil%min(nnztmp)
  write(stdout,'(1x,a,i10)')  'Min CI hamiltonian elements on a proc: ',nnztmp
  nnztmp = h%nnz
- call xmax_auxil(nnztmp)
+ call auxil%max(nnztmp)
  write(stdout,'(1x,a,i10)')  'Max CI hamiltonian elements on a proc: ',nnztmp
  ! total number of terms in the triangular matrix is N * (N-1) / 2
  write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp) / REAL(conf%nconf-1,dp) * 200.0_dp
@@ -929,7 +929,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  enddo
 
  h%nnz_total = REAL( h%col_ptr(mvec+1) ,dp)
- call xsum_auxil(h%nnz_total)
+ call auxil%sum(h%nnz_total)
  write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp) / REAL(conf%nconf-1,dp) * 200.0_dp
 
 
@@ -992,7 +992,7 @@ subroutine full_ci_nelectrons_selfenergy()
      eigvec0(iconf_global) = eigvec_0(iconf,jconf)
    enddo
  enddo
- call xsum_world(eigvec0)
+ call world%sum(eigvec0)
 
 
  !
@@ -1037,7 +1037,7 @@ subroutine full_ci_nelectrons_selfenergy()
      enddo
    enddo
 
-   call xsum_world(fs_occ)
+   call world%sum(fs_occ)
 
    do is=1,ns_occ
      es_occ(is) = energy_0(1) - energy_p(is)
@@ -1092,7 +1092,7 @@ subroutine full_ci_nelectrons_selfenergy()
      enddo
    enddo
 
-   call xsum_world(fs_virt)
+   call world%sum(fs_virt)
 
    do is=1,ns_virt
      es_virt(is) = energy_m(is) - energy_0(1)
@@ -1495,7 +1495,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  !
  ! Then override them in case eigvec isn't empty
  rtmp = ABS(eigvec(1,1))
- call xsum_auxil(rtmp)
+ call auxil%sum(rtmp)
  if( rtmp > 1.0e-12_dp ) then
    write(stdout,*) 'Found existing eigenvectors'
    bb(:,1:neig_calc) = eigvec(:,:)
@@ -1550,7 +1550,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
      call PDNRM2(conf%nconf,norm2_i,qq,1,ieig,desc_qq,1)
      residual_norm = MAX( residual_norm , norm2_i )
    enddo
-   call xmax_world(residual_norm)
+   call world%max(residual_norm)
 
    write(stdout,'(1x,a,i4,1x,i5,1x,es12.4,1x,f19.10)') 'Cycle, Subspace dim, Max residual norm, Electronic energy: ', &
                                                       icycle,mm,residual_norm,lambda(1)
@@ -1740,7 +1740,7 @@ subroutine translate_eigvec_ci(conf_in,desc_vec_in,eigvec_in,conf_out,desc_vec_o
    else
      eigvec_tmp(:) = 0.0_dp
    endif
-   call xsum_auxil(eigvec_tmp)
+   call auxil%sum(eigvec_tmp)
 
    do iconf_out=1,conf_out%nconf
      if( ALL( conf_in%keyud(:,iconf_in) == conf_out%keyud(:,iconf_out) ) ) then
@@ -1806,7 +1806,7 @@ subroutine write_eigvec_ci(filename,conf,desc_vec,eigvec,eigval,residual_norm)
      iconf = rowindex_local_to_global(desc_vec,iconf_local)
      eigvec_tmp(iconf) = eigvec(iconf_local,ieig)
    enddo
-   call xsum_auxil(iomaster,eigvec_tmp)
+   call auxil%sum(eigvec_tmp)
    if( is_iomaster ) write(cifile) eigvec_tmp(:)
  enddo
  if( is_iomaster ) close(cifile)

@@ -9,7 +9,6 @@
 subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_timing
  use m_inputparam
  use m_warning,only: issue_warning
@@ -56,7 +55,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
 
  if(has_auxil_basis) then
-   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
+   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
  endif
 
 
@@ -69,7 +68,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  do ispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-     if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+     if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and pstate
@@ -86,7 +85,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
-       call xsum_auxil(bra)
+       call auxil%sum(bra)
      endif
 
 
@@ -101,7 +100,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
      do ipole=1,wpol%npole_reso
 
-       if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
+       if( MODULO( ipole - 1 , auxil%nproc ) /= auxil%rank ) cycle
 
 
        select case(selfenergy_approx)
@@ -159,8 +158,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  enddo !ispin
 
  ! Sum up the contribution from different poles (= different procs)
- call xsum_world(se%sigma)
- call xsum_world(energy_gw)
+ call world%sum(se%sigma)
+ call world%sum(energy_gw)
 
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
@@ -186,7 +185,6 @@ end subroutine gw_selfenergy
 subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,exchange_m_vxc)
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_timing
  use m_inputparam
  use m_warning,only: issue_warning
@@ -241,7 +239,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  endif
 
  if(has_auxil_basis) then
-   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
+   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
  endif
 
  mstate = nvirtual_G - ncore_G - 1
@@ -277,7 +275,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  do ispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-     if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+     if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
      !
      ! indeces
      jstate = istate - ncore_G
@@ -309,7 +307,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 #else
        matrix_wing(irecord+1:irecord+wpol%npole_reso,:) = &
              MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
-       call xsum_auxil(matrix_wing(irecord+1:irecord+wpol%npole_reso,:))
+       call auxil%sum(matrix_wing(irecord+1:irecord+wpol%npole_reso,:))
 #endif
      endif
 
@@ -322,7 +320,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  !
  ! Dump the matrix on files (1 file per SCALAPACK thread)
  write(stdout,*) 'Dump the big sparse matrix on disk'
- write(ctmp,'(i4.4)') rank_world
+ write(ctmp,'(i4.4)') world%rank
  open(newunit=fu,file='MATRIX_'//ctmp,form='formatted',action='write')
 
  ! only master writes the head and the long diagonal
@@ -402,7 +400,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      if( eigval(jmat) < mu ) nelect = nelect + spin_fact * weight
      if( weight > 5.0e-2_dp ) then
        call PDAMAX(mstate,rtmp,jstate,matrix,1,jmat,desc_matrix,1)
-       call xmax_world(jstate)
+       call world%max(jstate)
        write(stdout,'(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ',jstate,': ',eigval(jmat)*Ha_eV,weight
      endif
      write(fu,'(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV,weight
@@ -516,7 +514,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  end select
 
 
- call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
+ call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax,timing=timing_aomo_gw)
 
 
 
@@ -626,7 +624,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  enddo !pspin
 
  ! Sum up the contribution from different poles (= different procs)
- call xsum_world(sigmagw)
+ call world%sum(sigmagw)
 
  se%sigma(:,:,:) = sigmagw(:,:,:)
  deallocate(sigmagw)
@@ -647,7 +645,6 @@ end subroutine gw_selfenergy_scalapack
 subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
- use m_mpi_ortho
  use m_timing
  use m_inputparam
  use m_warning,only: issue_warning
@@ -687,7 +684,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
 
  if(has_auxil_basis) then
-   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
+   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
  endif
 
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
@@ -697,7 +694,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  do ispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-     if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+     if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and pstate
@@ -714,7 +711,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
-       call xsum_auxil(bra)
+       call auxil%sum(bra)
      endif
 
 
@@ -728,7 +725,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
      do ipole=1,wpol%npole_reso
 
-       if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
+       if( MODULO( ipole - 1 , auxil%nproc ) /= auxil%rank ) cycle
 
        select case(calc_type%selfenergy_approx)
 
@@ -781,7 +778,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  enddo !ispin
 
  ! Sum up the contribution from different poles (= different procs)
- call xsum_world(selfenergy)
+ call world%sum(selfenergy)
 
 
  ! Kotani's hermitianization trick

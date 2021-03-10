@@ -17,6 +17,7 @@ module m_selfenergy_tools
  use m_inputparam
  use m_basis_set
  use m_dft_grid
+ use m_hamiltonian_onebody
  use m_hamiltonian_wrapper
  use m_lbfgs
 
@@ -38,13 +39,13 @@ module m_selfenergy_tools
  ! Selfenergy evaluated on a frequency grid
  type selfenergy_grid
    integer                 :: nomega
-   integer                 :: nomegai
+   integer                 :: nomega_calc
    complex(dp),allocatable :: omega(:)
-   complex(dp),allocatable :: omegai(:)
-   real(dp),allocatable    :: weighti(:)
+   complex(dp),allocatable :: omega_calc(:)
+   real(dp),allocatable    :: weight_calc(:)
    real(dp),allocatable    :: energy0(:,:)
    complex(dp),allocatable :: sigma(:,:,:)
-   complex(dp),allocatable :: sigmai(:,:,:)
+   complex(dp),allocatable :: sigma_calc(:,:,:)
  end type
 
 
@@ -109,7 +110,7 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
  integer            :: nstate
  character(len=3)   :: ctmp
  character(len=256) :: filename
- integer            :: selfenergyfile
+ integer            :: selfenergyfile,selfenergyfile_cmplx
  integer            :: pstate,pspin
  integer            :: iomega
  real(dp)           :: spectral_function_w(nspin),sign_occ(nspin)
@@ -152,16 +153,22 @@ subroutine write_selfenergy_omega(filename_root,exchange_m_vxc,occupation,energy
                                              - energy0(pstate,:) - exchange_m_vxc(pstate,:) ) * Ha_eV,   &
                                             spectral_function_w(:) / Ha_eV
    enddo
-   if( se%nomegai > 0 ) then
-     do iomega=-se%nomegai,se%nomegai
-       write(selfenergyfile,'(20(f16.8,2x))') ( se%omegai(iomega) + se%energy0(pstate,:) )*Ha_eV,     &
-                                              REAL(se%sigmai(iomega,pstate,:),dp) * Ha_eV,            &
-                                              AIMAG(se%sigmai(iomega,pstate,:)) * Ha_eV,              &
-                                              0.0_dp,0.0_dp
-     enddo
-   endif
    write(selfenergyfile,*)
    close(selfenergyfile)
+
+   if( se%nomega_calc > 0 ) then
+     filename = TRIM(filename_root) // '_cmplx_state' // TRIM(ctmp) // '.dat'
+     write(stdout,'(1x,a,a)') 'Writing selfenergy for complex frequencies in file: ', TRIM(filename)
+     open(newunit=selfenergyfile_cmplx,file=filename)
+     write(selfenergyfile_cmplx,'(a)') &
+      '#       omega (eV)          Re SigmaC (eV)     Im SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)'
+     do iomega=1,se%nomega_calc
+       write(selfenergyfile_cmplx,'(20(f16.8,2x))') ( se%omega_calc(iomega) + se%energy0(pstate,:) )*Ha_eV,   &
+                                                    se%sigma_calc(iomega,pstate,:) * Ha_eV,                   &
+                                                    0.0_dp,0.0_dp
+     enddo
+     close(selfenergyfile_cmplx)
+   endif
 
  enddo
 
@@ -254,7 +261,7 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
    ! Then overwrite the interesting energy with the calculated GW one
    do pstate=nsemin,nsemax
 
-     if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
+     if( MODULO(pstate-nsemin,world%nproc) /= world%rank ) cycle
 
      do pspin=1,nspin
        !
@@ -276,9 +283,9 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
 
    enddo
 
-   call xsum_world(energy_qp_g)
-   call xsum_world(z_weight)
-   call xsum_world(energy_fixed_point)
+   call world%sum(energy_qp_g)
+   call world%sum(z_weight)
+   call world%sum(energy_fixed_point)
 
    ! Master IO node outputs the solution details
    write(stdout,'(/,1x,a)') 'state spin    QP energy (eV)  QP spectral weight'
@@ -512,10 +519,29 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
  real(dp),parameter   :: beta=1.0_dp
  integer              :: iomega,pstate
  real(dp),allocatable :: omega_gaussleg(:)
+ real(dp)             :: efermi
+ integer              :: iunittmp
+ logical              :: manual_efermi
 !=====
 
- se%nomegai = 0
- se%nomega  = 0
+ se%nomega_calc = 0
+ se%nomega      = 0
+
+ inquire(file='manual_efermi',exist=manual_efermi)
+ if(manual_efermi) then
+   open(newunit=iunittmp,file='manual_efermi',action='read')
+   read(iunittmp,*) efermi
+   close(iunittmp)
+   !
+   ! efermi needs to be in the HOMO-LUMO gap
+   if( efermi < MAXVAL(energy0(nhomo_G,:)) .OR. efermi > MINVAL(energy0(nhomo_G+1,:)) ) then
+     write(stdout,*) 'efermi is out of the HOMO-LUMO gap:',efermi,&
+                     MAXVAL(energy0(nhomo_G,:)),MINVAL(energy0(nhomo_G+1,:))
+     call die('init_selfenergy_grid: efermi needs to be in the HOMO-LUMO gap')
+   endif
+ else
+   efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G,:)) + MINVAL(energy0(nhomo_G+1,:)) )
+ endif
 
  select case(selfenergy_technique)
 
@@ -530,15 +556,34 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    se%nomega = nomega_sigma/2
    allocate(se%omega(-se%nomega:se%nomega))
    do iomega=-se%nomega,se%nomega
-     se%omega(iomega) = step_sigma * iomega
+     se%omega(iomega) = efermi + step_sigma * iomega
    enddo
 
    !
    ! Set the calculated sampling points for Sigma on the imaginary axis
-   se%nomegai = nomega_sigma / 2
-   allocate(se%omegai(-se%nomegai:se%nomegai))
-   do iomega=-se%nomegai,se%nomegai
-     se%omegai(iomega) = step_sigma * iomega * im * 3.0_dp
+   se%nomega_calc = nomega_sigma_calc
+   allocate(se%omega_calc(se%nomega_calc))
+   do iomega=1,se%nomega_calc
+     se%omega_calc(iomega) = efermi + step_sigma_calc * (iomega-1) * im
+   enddo
+
+ case(imaginary_axis_homolumo)
+   !
+   ! Set the final sampling points for Sigma on the real axis
+   se%nomega = nomega_sigma/2
+   allocate(se%omega(-se%nomega:se%nomega))
+   do iomega=-se%nomega,se%nomega
+     se%omega(iomega) = efermi + step_sigma * iomega
+   enddo
+
+   !
+   ! Set the initial sampling points for Sigma on the real axis inside the HOMO-LUMO gap
+   se%nomega_calc = nomega_sigma_calc
+   allocate(se%omega_calc(se%nomega_calc))
+   do iomega=1,se%nomega_calc
+     se%omega_calc(iomega) = MAXVAL(energy0(nhomo_G,:)) + 0.01_dp &
+                             + (iomega-1) / (se%nomega_calc-1.0_dp) &
+                                 * ( MINVAL(energy0(nhomo_G+1,:)) - MAXVAL(energy0(nhomo_G,:)) - 0.02_dp)
    enddo
 
  case(imaginary_axis_integral)
@@ -549,17 +594,17 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
    !
    ! Set the calculated sampling points for Sigma on the imaginary axis
    ! so to have a Gauss-Legendre type quadrature
-   se%nomegai = nomega_sigma
-   allocate(se%omegai(se%nomegai))
-   allocate(se%weighti(se%nomegai))
-   allocate(omega_gaussleg(se%nomegai))
-   call coeffs_gausslegint(0.0_dp,1.0_dp,omega_gaussleg,se%weighti,se%nomegai)
+   se%nomega_calc = nomega_sigma
+   allocate(se%omega_calc(se%nomega_calc))
+   allocate(se%weight_calc(se%nomega_calc))
+   allocate(omega_gaussleg(se%nomega_calc))
+   call coeffs_gausslegint(0.0_dp,1.0_dp,omega_gaussleg,se%weight_calc,se%nomega_calc)
 
    ! Variable change [0,1] -> [0,+\inf[
-   do iomega=1,se%nomegai
-     se%weighti(iomega) = se%weighti(iomega) / ( 2.0_dp**alpha - 1.0_dp ) &
+   do iomega=1,se%nomega_calc
+     se%weight_calc(iomega) = se%weight_calc(iomega) / ( 2.0_dp**alpha - 1.0_dp ) &
                                  * alpha * (1.0_dp -  omega_gaussleg(iomega))**(-alpha-1.0_dp) * beta
-     se%omegai(iomega)  = im / ( 2.0_dp**alpha - 1.0_dp ) &
+     se%omega_calc(iomega)  = im / ( 2.0_dp**alpha - 1.0_dp ) &
                                * ( 1.0_dp / (1.0_dp - omega_gaussleg(iomega))**alpha - 1.0_dp ) * beta
    enddo
    deallocate(omega_gaussleg)
@@ -578,24 +623,22 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
 
  !
  ! Set the central point of the grid
+ !
  allocate(se%energy0(nsemin:nsemax,nspin))
 
  select case(selfenergy_technique)
- case(imaginary_axis_pade)
-   ! Find the center of the HOMO-LUMO gap
-   forall(pstate=nsemin:nsemax)
-     se%energy0(pstate,:) = 0.5_dp * ( energy0(nhomo_G,:) + energy0(nhomo_G+1,:) )
-   end forall
+ case(imaginary_axis_pade,imaginary_axis_homolumo)
+   ! in this case the central point is already included in the complex frequency se%omega_calc
+   se%energy0(nsemin:nsemax,:) = 0.0_dp
  case default
    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
  end select
 
- !
- ! Set the central point of the grid
  allocate(se%sigma(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+
  select case(selfenergy_technique)
- case(imaginary_axis_pade,imaginary_axis_integral)
-   allocate(se%sigmai(-se%nomegai:se%nomegai,nsemin:nsemax,nspin))
+ case(imaginary_axis_pade,imaginary_axis_integral,imaginary_axis_homolumo)
+   allocate(se%sigma_calc(se%nomega_calc,nsemin:nsemax,nspin))
  end select
 
 end subroutine init_selfenergy_grid
@@ -604,144 +647,144 @@ end subroutine init_selfenergy_grid
 !=========================================================================
 subroutine destroy_selfenergy_grid(se)
  implicit none
- type(selfenergy_grid),intent(inout) :: se
-!=====
+   type(selfenergy_grid),intent(inout) :: se
+  !=====
 
- se%nomega  = 0
- se%nomegai = 0
- if( ALLOCATED(se%omega) )  deallocate(se%omega)
- if( ALLOCATED(se%omegai) ) deallocate(se%omegai)
- deallocate(se%energy0)
- deallocate(se%sigma)
- if( ALLOCATED(se%sigmai) )  deallocate(se%sigmai)
- if( ALLOCATED(se%weighti) ) deallocate(se%weighti)
+   se%nomega      = 0
+   se%nomega_calc = 0
+   if( ALLOCATED(se%omega) )  deallocate(se%omega)
+   if( ALLOCATED(se%omega_calc) ) deallocate(se%omega_calc)
+   deallocate(se%energy0)
+   deallocate(se%sigma)
+   if( ALLOCATED(se%sigma_calc) )  deallocate(se%sigma_calc)
+   if( ALLOCATED(se%weight_calc) ) deallocate(se%weight_calc)
 
-end subroutine destroy_selfenergy_grid
+  end subroutine destroy_selfenergy_grid
 
 
-!=========================================================================
-subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
- implicit none
+  !=========================================================================
+  subroutine setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
+   implicit none
 
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: energy(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(in)        :: hamiltonian_fock(:,:,:)
- real(dp),intent(out)       :: exchange_m_vxc(:,:,:)
-!=====
- integer              :: nstate
- integer              :: ispin,pstate
- real(dp)             :: exc
- real(dp),allocatable :: occupation_tmp(:,:)
- real(dp),allocatable :: p_matrix_tmp(:,:,:)
- real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
-!=====
+   type(basis_set),intent(in) :: basis
+   real(dp),intent(in)        :: occupation(:,:)
+   real(dp),intent(in)        :: energy(:,:)
+   real(dp),intent(in)        :: c_matrix(:,:,:)
+   real(dp),intent(in)        :: hamiltonian_fock(:,:,:)
+   real(dp),intent(out)       :: exchange_m_vxc(:,:,:)
+  !=====
+   integer              :: nstate
+   integer              :: ispin,pstate
+   real(dp)             :: exc
+   real(dp),allocatable :: occupation_tmp(:,:)
+   real(dp),allocatable :: p_matrix_tmp(:,:,:)
+   real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
+  !=====
 
- call start_clock(timing_x_m_vxc)
- write(stdout,*) 'Calculate the (Sigma_x - Vxc) matrix'
+   call start_clock(timing_x_m_vxc)
+   write(stdout,*) 'Calculate the (Sigma_x - Vxc) matrix'
 
- nstate = SIZE(occupation,DIM=1)
-
- !
- ! Testing the core/valence splitting
- !
- if(dft_core > 0) then
-   if( beta_hybrid > 0.001 ) then
-     call die('setup_exchange_m_vxc: RSH not implemented for DFT core-valence splitting')
-   endif
-   write(msg,'(a,i4,2x,i4)') 'DFT core-valence interaction switched on up to state = ',dft_core
-   call issue_warning(msg)
-
-   allocate(occupation_tmp(nstate,nspin))
-   allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
-   allocate(hxc_val(basis%nbf,basis%nbf,nspin))
-   allocate(hexx_val(basis%nbf,basis%nbf,nspin))
-   allocate(hxmxc(basis%nbf,basis%nbf,nspin))
-
-   ! Override the occupation of the core electrons
-   occupation_tmp(:,:) = occupation(:,:)
-   occupation_tmp(1:dft_core,:) = 0.0_dp
-
-   if( calc_type%is_dft ) then
-     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.FALSE.,BATCH_SIZE)
-     call setup_density_matrix(c_matrix,occupation_tmp,p_matrix_tmp)
-     call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation_tmp,c_matrix,hxc_val,exc)
-     call destroy_dft_grid()
-   endif
-
-   call calculate_exchange(basis,p_matrix_tmp,hexx_val,occupation=occupation_tmp,c_matrix=c_matrix)
-
-   hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)
-   hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:)
-
-   deallocate(occupation_tmp,p_matrix_tmp)
+   nstate = SIZE(occupation,DIM=1)
 
    !
-   ! Calculate the matrix Sigma_x - Vxc
-   ! for the forthcoming GW corrections
+   ! Testing the core/valence splitting
    !
-   call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
+   if(dft_core > 0) then
+     if( beta_hybrid > 0.001 ) then
+       call die('setup_exchange_m_vxc: RSH not implemented for DFT core-valence splitting')
+     endif
+     write(msg,'(a,i4,2x,i4)') 'DFT core-valence interaction switched on up to state = ',dft_core
+     call issue_warning(msg)
 
-   deallocate(hxc_val,hexx_val,hxmxc)
+     allocate(occupation_tmp(nstate,nspin))
+     allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
+     allocate(hxc_val(basis%nbf,basis%nbf,nspin))
+     allocate(hexx_val(basis%nbf,basis%nbf,nspin))
+     allocate(hxmxc(basis%nbf,basis%nbf,nspin))
 
- else
+     ! Override the occupation of the core electrons
+     occupation_tmp(:,:) = occupation(:,:)
+     occupation_tmp(1:dft_core,:) = 0.0_dp
 
-   !
-   ! Calculate the matrix < p | Sigma_x - Vxc | q >
-   ! this is equal to < p | F - H | q > and < p | H | q > = e_p \delta_{pq}
+     if( calc_type%is_dft ) then
+       call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.FALSE.,BATCH_SIZE)
+       call setup_density_matrix(c_matrix,occupation_tmp,p_matrix_tmp)
+       call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation_tmp,c_matrix,hxc_val,exc)
+       call destroy_dft_grid()
+     endif
 
-   call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
+     call calculate_exchange(basis,p_matrix_tmp,hexx_val,occupation=occupation_tmp,c_matrix=c_matrix)
 
-   do ispin=1,nspin
-     do pstate=1,nstate
-       exchange_m_vxc(pstate,pstate,ispin) = exchange_m_vxc(pstate,pstate,ispin) - energy(pstate,ispin)
+     hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)
+     hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:)
+
+     deallocate(occupation_tmp,p_matrix_tmp)
+
+     !
+     ! Calculate the matrix Sigma_x - Vxc
+     ! for the forthcoming GW corrections
+     !
+     call matrix_ao_to_mo(c_matrix,hxmxc,exchange_m_vxc)
+
+     deallocate(hxc_val,hexx_val,hxmxc)
+
+   else
+
+     !
+     ! Calculate the matrix < p | Sigma_x - Vxc | q >
+     ! this is equal to < p | F - H | q > and < p | H | q > = e_p \delta_{pq}
+
+     call matrix_ao_to_mo(c_matrix,hamiltonian_fock,exchange_m_vxc)
+
+     do ispin=1,nspin
+       do pstate=1,nstate
+         exchange_m_vxc(pstate,pstate,ispin) = exchange_m_vxc(pstate,pstate,ispin) - energy(pstate,ispin)
+       enddo
      enddo
+
+   endif
+
+   call stop_clock(timing_x_m_vxc)
+
+  end subroutine setup_exchange_m_vxc
+
+
+  !=========================================================================
+  subroutine apply_qs_approximation(s_matrix,c_matrix,selfenergy)
+   implicit none
+
+   real(dp),intent(in)    :: s_matrix(:,:),c_matrix(:,:,:)
+   real(dp),intent(inout) :: selfenergy(:,:,:)
+  !=====
+   integer :: ispin
+  !=====
+
+   !
+   ! Kotani's Hermitianization trick
+   !
+   do ispin=1,nspin
+     selfenergy(:,:,ispin) = 0.5_dp * ( selfenergy(:,:,ispin) + TRANSPOSE(selfenergy(:,:,ispin)) )
+
+     ! Transform the matrix elements back to the AO basis
+     ! do not forget the overlap matrix S
+     ! C^T S C = I
+     ! the inverse of C is C^T S
+     ! the inverse of C^T is S C
+     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , &
+                               MATMUL( selfenergy(nsemin:nsemax,nsemin:nsemax,ispin), &
+                                 MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
+
    enddo
 
- endif
-
- call stop_clock(timing_x_m_vxc)
-
-end subroutine setup_exchange_m_vxc
+  end subroutine apply_qs_approximation
 
 
-!=========================================================================
-subroutine apply_qs_approximation(s_matrix,c_matrix,selfenergy)
- implicit none
+  !=========================================================================
+  subroutine self_energy_fit(se)
+   implicit none
 
- real(dp),intent(in)    :: s_matrix(:,:),c_matrix(:,:,:)
- real(dp),intent(inout) :: selfenergy(:,:,:)
-!=====
- integer :: ispin
-!=====
-
- !
- ! Kotani's Hermitianization trick
- !
- do ispin=1,nspin
-   selfenergy(:,:,ispin) = 0.5_dp * ( selfenergy(:,:,ispin) + TRANSPOSE(selfenergy(:,:,ispin)) )
-
-   ! Transform the matrix elements back to the AO basis
-   ! do not forget the overlap matrix S
-   ! C^T S C = I
-   ! the inverse of C is C^T S
-   ! the inverse of C^T is S C
-   selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , &
-                             MATMUL( selfenergy(nsemin:nsemax,nsemin:nsemax,ispin), &
-                               MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
-
- enddo
-
-end subroutine apply_qs_approximation
-
-
-!=========================================================================
-subroutine self_energy_fit(se)
- implicit none
-
- type(selfenergy_grid),intent(inout) :: se
-!=====
+   type(selfenergy_grid),intent(inout) :: se
+ !=====
  integer :: pstate,pspin
  integer :: iomega
  integer :: ilbfgs,ipp,ii,info
@@ -754,7 +797,7 @@ subroutine self_energy_fit(se)
  real(dp)          :: dchi2(nparam*npp)
  real(dp)          :: chi2
  type(lbfgs_state) :: lbfgs_plan
-!=====
+ !=====
 
  do pspin=1,nspin
    do pstate=nsemin,nsemax
@@ -801,10 +844,10 @@ subroutine self_energy_fit(se)
      write(stdout,'(1x,a)') '=========================='
 
 
-     do iomega=-se%nomegai,se%nomegai
-       write(500+pstate,'(6(1x,f18.8))') (se%omegai(iomega) + se%energy0(pstate,pspin))*Ha_eV, &
-                                         se%sigmai(iomega,pstate,pspin)*Ha_eV, &
-                                         eval_func(coeff, se%omegai(iomega) + se%energy0(pstate,pspin) )*Ha_eV
+     do iomega=1,se%nomega_calc
+       write(500+pstate,'(6(1x,f18.8))') (se%omega_calc(iomega) + se%energy0(pstate,pspin))*Ha_eV, &
+                                         se%sigma_calc(iomega,pstate,pspin)*Ha_eV, &
+                                         eval_func(coeff, se%omega_calc(iomega) + se%energy0(pstate,pspin) )*Ha_eV
      enddo
 
 
@@ -847,18 +890,18 @@ function eval_chi2(coeff_in)
  real(dp),intent(in)    :: coeff_in(nparam*npp)
  real(dp)               :: eval_chi2
 !=====
- integer  :: iomegai
+ integer  :: iomega_calc
  real(dp) :: weight
  real(dp) :: norm
 !=====
 
  eval_chi2 = 0.0_dp
  norm      = 0.0_dp
- do iomegai=-se%nomegai,se%nomegai
-   weight = 1.0_dp / ABS(1.0_dp+se%omegai(iomegai))**2
+ do iomega_calc=1,se%nomega_calc
+   weight = 1.0_dp / ABS(1.0_dp+se%omega_calc(iomega_calc))**2
    eval_chi2 = eval_chi2         &
-                + ABS( se%sigmai(iomegai,pstate,pspin) &
-                      - eval_func(coeff_in, se%omegai(iomegai) + se%energy0(pstate,pspin) ) )**2 &
+                + ABS( se%sigma_calc(iomega_calc,pstate,pspin) &
+                      - eval_func(coeff_in, se%omega_calc(iomega_calc) + se%energy0(pstate,pspin) ) )**2 &
                       * weight
    norm = norm + weight
 
@@ -879,22 +922,186 @@ subroutine self_energy_pade(se)
  type(selfenergy_grid),intent(inout) :: se
 !=====
  integer  :: pstate,pspin
- integer  :: iomega
+ integer  :: iomega,iomega_calc
  real(dp) :: sign_eta
+ complex(dp) :: omega_sym(2*se%nomega_calc-1)
+ complex(dp) :: sigma_sym(2*se%nomega_calc-1)
 !=====
 
  do pspin=1,nspin
    do pstate=nsemin,nsemax
+
+     ! First create the symmetric sigma
+     ! using sigma(-iw) = sigma(iw)*
+     omega_sym(se%nomega_calc) = se%omega_calc(1)
+     sigma_sym(se%nomega_calc) = se%sigma_calc(1,pstate,pspin)
+     do iomega_calc=2,se%nomega_calc
+       omega_sym(se%nomega_calc+iomega_calc-1) = se%omega_calc(iomega_calc)
+       sigma_sym(se%nomega_calc+iomega_calc-1) = se%sigma_calc(iomega_calc,pstate,pspin)
+       omega_sym(se%nomega_calc-iomega_calc+1) = CONJG(se%omega_calc(iomega_calc))
+       sigma_sym(se%nomega_calc-iomega_calc+1) = CONJG(se%sigma_calc(iomega_calc,pstate,pspin))
+     enddo
+
+
      do iomega=-se%nomega,se%nomega
-       sign_eta = -SIGN( 1.0_dp , REAL(se%omega(iomega),dp) )
-       se%sigma(iomega,pstate,pspin) = pade( se%omegai(:) + se%energy0(pstate,pspin), se%sigmai(:,pstate,pspin)  , &
-                                              se%omega(iomega) + se%energy0(pstate,pspin) + ieta * sign_eta )
+       sign_eta = -SIGN( 1.0_dp , se%omega(iomega)%re - se%omega_calc(1)%re )
+       se%sigma(iomega,pstate,pspin) = pade(omega_sym,sigma_sym, se%omega(iomega) + ieta * sign_eta )
      enddo
    enddo
  enddo
 
 
 end subroutine self_energy_pade
+
+
+!=========================================================================
+! Fit a low-order polynomial on the available real frequencies for sigma
+! and make an extrapolation/interpolation to the requested frequencies
+subroutine self_energy_polynomial(se)
+ implicit none
+
+ type(selfenergy_grid),intent(inout) :: se
+!=====
+ integer :: pspin,pstate,iomega
+ real(dp) :: a0,a1,a2     ! Polynomial coefficients a0 + a1*x + a2*x**2 + ...
+!=====
+
+ do pspin=1,nspin
+   do pstate=nsemin,nsemax
+
+     a0 = se%sigma_calc(se%nomega_calc/2+1,pstate,pspin)%re
+     a1 = ( se%sigma_calc(se%nomega_calc,pstate,pspin)%re - se%sigma_calc(1,pstate,pspin)%re ) &
+            / ( se%omega_calc(se%nomega_calc)%re - se%omega_calc(1)%re )
+     a2 = (            se%sigma_calc(se%nomega_calc,pstate,pspin)%re   &
+            +          se%sigma_calc(1,pstate,pspin)%re                 &
+            - 2.0_dp * se%sigma_calc(se%nomega_calc/2+1,pstate,pspin)%re ) &
+            / ( se%omega_calc(se%nomega_calc)%re - se%omega_calc(1)%re )**2 * 2.0_dp
+
+     do iomega=-se%nomega,se%nomega
+       se%sigma(iomega,pstate,pspin) = a0 + a1 * (se%omega(iomega)-se%omega_calc(se%nomega_calc/2+1)) &
+                                          + a2 * (se%omega(iomega)-se%omega_calc(se%nomega_calc/2+1))**2
+     enddo
+
+   enddo
+ enddo
+
+
+end subroutine self_energy_polynomial
+
+
+!=========================================================================
+! Prediction the CBS limit for GW
+!
+! No this is not black magic...
+!
+! Using the simplest model from Bruneval et al. JCTC 2020
+! convergence error
+! Delta E_i = A_basis + B_basis * ln( t_i )
+! where t_i = < \phi_i | -\nabla^2 / 2 | \phi_i >
+subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: eqp(:,:)
+ !=====
+ integer  :: pspin,pstate,iatom
+ logical  :: basis_recognized
+ real(dp) :: abasis,bbasis
+ real(dp) :: hkin(basis%nbf,basis%nbf)
+ real(dp) :: t_i(nsemin:nsemax,nspin)
+ real(dp) :: deltae
+ !=====
+
+ !
+ ! Be careful this routine is in eV !
+ !
+ write(stdout,'(/,1x,a)') 'Estimate the Complete Basis Set limit for free'
+ write(stdout,*)          '  see Bruneval, Maliyov, Lapointe, Marinica, JCTC 16, 4399 (2020)'
+ write(stdout,*)          '      https://doi.org/10.1021/acs.jctc.0c00433'
+
+ !
+ ! Retrieve the linear regression parameters trained on a benchmark of organic molecules (GW@BHLYP level)
+ !
+ !
+ basis_recognized = .TRUE.
+ do iatom=2,SIZE(basis_name(:))
+   if( TRIM(basis_name(iatom)) /= TRIM(basis_name(1)) ) basis_recognized = .FALSE.
+ enddo
+
+ select case(TRIM(basis_name(1)))
+ case('cc-pVDZ')
+   abasis =  0.9383
+   bbasis = -0.4500
+ case('cc-pVTZ')
+   abasis =  0.4863
+   bbasis = -0.2156
+ case('cc-pVQZ')
+   abasis =  0.2703
+   bbasis = -0.1066
+ case('cc-pV5Z')
+   abasis =  0.1271
+   bbasis = -0.0483
+ case('cc-pV6Z')
+   abasis =  0.1271 * 0.5    ! evaluated
+   bbasis = -0.0483 * 0.5    ! evaluated
+ case('aug-cc-pVDZ')
+   abasis =  0.5351
+   bbasis = -0.3061
+ case('aug-cc-pVTZ')
+   abasis =   0.5063
+   bbasis =  -0.2086
+ case('aug-cc-pVQZ')
+   abasis =  0.5063  * 0.5    ! evaluated
+   bbasis = -0.2086  * 0.5    ! evaluated
+ case('aug-cc-pV5Z')
+   abasis =  0.5063  * 0.25    ! evaluated
+   bbasis = -0.2086  * 0.25    ! evaluated
+ case('aug-cc-pV6Z')
+   abasis =  0.5063  * 0.125    ! evaluated
+   bbasis = -0.2086  * 0.125    ! evaluated
+ case default
+   basis_recognized = .FALSE.
+ end select
+
+ if( .NOT. basis_recognized ) then
+    write(stdout,*) 'Automatic extrapolation to CBS not possible because the basis set is not recognized'
+    write(stdout,*) 'only fitted for a Dunning basis cc-pVXZ or aug-cc-pVXZ'
+    write(stdout,*) 'only fitted for the same basis on all atoms'
+    return
+ endif
+
+ call setup_kinetic(basis,hkin)
+
+ do pspin=1,nspin
+   do pstate=nsemin,nsemax
+     t_i(pstate,pspin) = DOT_PRODUCT( c_matrix(:,pstate,pspin) ,  MATMUL( hkin(:,:) ,  c_matrix(:,pstate,pspin) ) ) * Ha_eV
+   enddo
+ enddo
+
+
+ write(stdout,'(/,1x,a,a)')           'For basis: ',basis_name(1)
+ write(stdout,'(1x,a,f7.4,a,f7.4,a)') 'Magical formula reads Delta E_i = ',abasis,' + ', &
+                                      bbasis,' x LOG( <i|-\nabla^2/2|i>  (eV) ) (eV)'
+ write(stdout,'(5x,a)')               'Formula was trained for organic molecules and GW@BHLYP'
+ write(stdout,'(5x,a)')               'Accuracy is correct for cc-pVDZ and excellent above'
+ write(stdout,'(5x,a)')               'Accuracy is excellent for aug-cc-pVDZ and above'
+
+ write(stdout,'(/,1x,a)') 'Extrapolation to CBS (eV)'
+ write(stdout,'(25x,a,a,a)') '<i|-\nabla^2/2|i>    Delta E_i     E_i(',TRIM(basis_name(1)),')      E_i(CBS)'
+ do pspin=1,nspin
+   do pstate=nsemin,nsemax
+      deltae = abasis + bbasis * LOG( t_i(pstate,pspin) )
+      write(stdout,'(1x,a,i4,a,i2,a,*(4x,f12.6))') 'state ',pstate,' spin ',pspin,' : ', &
+                                            t_i(pstate,pspin),    &
+                                            deltae, &
+                                            eqp(pstate,pspin)*Ha_eV, &
+                                            eqp(pstate,pspin)*Ha_eV + deltae
+   enddo
+ enddo
+
+
+end subroutine selfenergy_convergence_prediction
 
 
 !=========================================================================

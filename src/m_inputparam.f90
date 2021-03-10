@@ -29,6 +29,7 @@ module m_inputparam
  integer,parameter :: static_selfenergy       = 105
  integer,parameter :: imaginary_axis_integral = 106
  integer,parameter :: exact_dyson             = 107
+ integer,parameter :: imaginary_axis_homolumo = 108
 
  !
  ! Self-energy approximation
@@ -224,10 +225,14 @@ subroutine init_calculation_type(scf,postscf)
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = COHSEX
      calc_type%selfenergy_technique = static_selfenergy
-   case('G0W0_IMAGINARY','GW_IMAGINARY')
+   case('G0W0_AC','GW_AC','G0W0_PADE','GW_PADE')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx    = GW_IMAG
      calc_type%selfenergy_technique = imaginary_axis_pade
+   case('G0W0_HOMOLUMO','GW_HOMOLUMO')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx    = GW_IMAG
+     calc_type%selfenergy_technique = imaginary_axis_homolumo
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0SOX0
@@ -809,8 +814,13 @@ subroutine read_inputfile_namelist()
  if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
  if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
 
- if( MODULO( nproc_world , mpi_nproc_ortho) /= 0 ) then
-   write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',nproc_world
+ if( mpi_nproc_ortho > world%nproc ) then
+   mpi_nproc_ortho = world%nproc
+   call issue_warning('mpi_nproc_ortho has been resized to the max number of processors')
+   write(stdout,'(1x,a,i4)') 'Now mpi_nproc_ortho = ',mpi_nproc_ortho
+ endif
+ if( MODULO( world%nproc , mpi_nproc_ortho) /= 0 ) then
+   write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',world%nproc
    mpi_nproc_ortho = 1
    call issue_warning('mpi_nproc_ortho value is invalid. Override it and set mpi_nproc_ortho=1')
  endif
@@ -983,6 +993,12 @@ subroutine read_inputfile_namelist()
  !
  ! Some additional checks
  !
+ if(calc_type%selfenergy_approx == GW_IMAG .AND. nomega_chi_imag<1) &
+   call die('when asking for a numerical evaluation of the self-energy, one needs nomega_chi_imag > 0')
+ if(calc_type%selfenergy_approx == GW_IMAG .AND. nomega_sigma_calc==1) &
+   call issue_warning('when asking for a numerical evaluation of the self-energy,' &
+                   // ' consider more frequencies than just one for sigma.' &
+                   // ' nomega_sigma_calc > 1 advised')
  if( nexcitation /=0 .AND. calc_type%is_gw ) then
    call die('Davidson diago is not compatible with GW. Set nexcitation to 0')
  endif
