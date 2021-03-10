@@ -2267,7 +2267,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
 !=====
  integer                    :: gt
  integer                    :: nocc(2),nocc_max
- real(dp),parameter         :: length=4.0_dp
+ real(dp),parameter         :: length=10.0_dp
  integer                    :: ibf
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
@@ -2282,7 +2282,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
  integer                    :: icubefile
- integer                    :: i_max_atom
+ integer                    :: i_max_atom,i_max_basis
  integer                    :: ndim1,ndim2,ndim3
 !=====
 
@@ -2290,6 +2290,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
 
  call start_clock(timing_print_cube_rho_tddft)
 
+ write(stdout,'(/,1x,a)') 'Initialize cube density'
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
  if( .NOT. in_tddft_loop ) then
@@ -2317,18 +2318,20 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- if( excit_type%form==EXCIT_PROJECTILE ) then
-   i_max_atom=natom-nprojectile
+ i_max_atom=natom-nprojectile
+
+ if( excit_type%form==EXCIT_PROJECTILE_W_BASIS ) then
+   i_max_basis=natom_basis-nprojectile
  else
-   i_max_atom=natom
+   i_max_basis=natom_basis
  endif
 
- xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
- xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
- ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,:) )) - length
- ymax =MAX(MAXVAL( xatom(2,1:i_max_atom) ),MAXVAL( xbasis(2,:) )) + length
- zmin =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
- zmax =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
+ xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,1:i_max_basis) )) - length/2.0_dp
+ xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,1:i_max_basis) )) + length/2.0_dp
+ ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,1:i_max_basis) )) - length/2.0_dp
+ ymax =MAX(MAXVAL( xatom(2,1:i_max_atom) ),MAXVAL( xbasis(2,1:i_max_basis) )) + length/2.0_dp
+ zmin =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,1:i_max_basis) )) - length
+ zmax =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,1:i_max_basis) )) + length
  dx = (xmax-xmin)/REAL(nx,dp)
  dy = (ymax-ymin)/REAL(ny,dp)
  dz = (zmax-zmin)/REAL(nz,dp)
@@ -2671,6 +2674,7 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
  end do
 
  deallocate(phi_cmplx)
+ call clean_deallocate("dens_diff for the cube density",dens_diff)
 
  call stop_clock(timing_print_cube_rho_tddft)
 

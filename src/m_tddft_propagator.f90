@@ -482,7 +482,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  !open( newunit=checkfile, file='S_matrix.dat' )
 
  do while ( (time_cur - time_sim) < 1.0e-10 )
-   if(itau==3) call start_clock(timing_tddft_one_iter)
+   if ( itau == 3 ) then
+     call start_clock(timing_tddft_one_iter)
+     if ( print_cube_diff_tddft_ .AND. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) &
+     call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
+   end if
 
    !
    ! Use c_matrix_orth_cmplx and h_small_cmplx at (time_cur-time_step) as start values,
@@ -525,12 +529,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
-   ! 5) Mulliken_Charge file.
-   ! 3) and 4) in case of light excitation. 5) in case of Mulliken analysis.
+   ! 5) Mulliken/Lowdin charge file.
+   ! 3) and 4) in case of light excitation. 5) in case of charge analysis.
 
-   if( ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7 ) then
+   if ( ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7 ) then
 
-     if(excit_type%form==EXCIT_LIGHT) then
+     if ( excit_type%form == EXCIT_LIGHT ) then
       call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
       call static_dipole(basis,p_matrix_in=p_matrix_cmplx,dipole_ao_in=dipole_ao,dipole_out=dipole)
      end if
@@ -540,26 +544,27 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
      call print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field,itau)
 
-     if( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
-     if( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
+     if ( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
+     if ( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
                                                                iwrite_step,time_cur,nr_line_rho,point_a,point_b,rho_start)
-     if( print_cube_rho_tddft_  )     call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
-     if( calc_dens_disc_ )            call calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx, &
+     if ( print_cube_rho_tddft_  )     call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
+     if ( calc_dens_disc_ )            call calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx, &
                                                                                iwrite_step,time_cur)
-!     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
+!     if ( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
 
-     if(calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx, &
+     if (calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx, &
                                                 istate_cut,file_q_matrix,time_cur)
 
      iwrite_step = iwrite_step + 1
 
    end if
 
-   if( ABS(time_cur / (calc_charge_step)- NINT(time_cur / (calc_charge_step))) < 1.0e-7 ) then
-     if( print_cube_diff_tddft_ )     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
-                                                                         iwrite_step,cube_density_start,nx,ny,nz)
-     if( print_charge_tddft_ ) then
-       if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   if ( ABS(time_cur / (calc_charge_step)- NINT(time_cur / (calc_charge_step))) < 1.0e-7 ) then
+     if ( print_cube_diff_tddft_ .AND. itau > 3 ) &
+     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
+         iwrite_step,cube_density_start,nx,ny,nz)
+     if ( print_charge_tddft_ ) then
+       if ( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
          call clean_deallocate('Transformation matrix X',x_matrix)
          call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
          call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
@@ -571,13 +576,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    !
    !--TIMING of one iteration--
-   if(itau==3) then
+   if ( itau == 3 ) then
      call stop_clock(timing_tddft_one_iter)
      call output_timing_one_iter()
    end if
 
    ! ---print tdddft restart each n_restart_tddft steps---
-   if( print_tddft_restart_ .AND. mod(itau,n_restart_tddft)==0 ) then
+   if ( print_tddft_restart_ .AND. mod(itau,n_restart_tddft)==0 ) then
      if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
        call write_restart_tddft(nstate,time_cur,occupation,c_matrix_cmplx)
      else
@@ -591,7 +596,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 !---
  end do
  !close(checkfile)
- in_tddft_loop=.FALSE.
+ in_tddft_loop = .FALSE.
 !********end time loop*******************
 
  if(print_tddft_restart_) then

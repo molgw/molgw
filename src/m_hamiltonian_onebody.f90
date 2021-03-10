@@ -873,7 +873,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
  integer              :: ibf1,ibf2,jbf1,jbf2
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  integer              :: iatom
- real(dp),allocatable :: matrix_tp(:,:)
+ real(dp),allocatable :: matrix(:,:)
  real(C_DOUBLE),allocatable        :: array_cart(:)
  real(C_DOUBLE),allocatable        :: array_cart_C(:)
  integer(C_INT)                    :: amA,contrdepthA
@@ -909,6 +909,11 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
 
    call set_libint_shell(basis_p%shell(jshell),amB,contrdepthB,B,alphaB,cB)
 
+   !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,amA,contrdepthA,A,alphaA,cA,array_cart,array_cart_C,C,matrix, &
+   !$OMP&                 ij,ibf_cart,jbf_cart,nucleus)
+   !$OMP DO
+
+   !! The first loop calculates <T|P> and <P|T> parts
    do ishell = 1,basis_t%nshell
      li      = basis_t%shell(ishell)%am
      ni_cart = number_basis_function_am('CART',li)
@@ -948,19 +953,20 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      deallocate(alphaA,cA)
 
 #if defined(HAVE_LIBINT_ONEBODY)
-     call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix_tp)
+     call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix)
 #else
-     call transform_molgw_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix_tp)
+     call transform_molgw_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix)
 #endif
 
-     hamiltonian_nucleus(ibf1:ibf2,jbf1:jbf2) = matrix_tp(:,:)
-     hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix_tp(:,:))
+     hamiltonian_nucleus(ibf1:ibf2,jbf1:jbf2) = matrix(:,:)
+     hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix(:,:))
 
 
-     deallocate(array_cart,array_cart_C,matrix_tp)
+     deallocate(array_cart,array_cart_C,matrix)
 
    enddo
 
+   !! The second loop calculates <P|P> part
    do ishell = jshell,basis_p%nshell
      li      = basis_p%shell(ishell)%am
      ni_cart = number_basis_function_am('CART',li)
@@ -1000,18 +1006,20 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      deallocate(alphaA,cA)
 
 #if defined(HAVE_LIBINT_ONEBODY)
-     call transform_libint_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix_tp)
+     call transform_libint_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix)
 #else
-     call transform_molgw_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix_tp)
+     call transform_molgw_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix)
 #endif
 
-     hamiltonian_nucleus(ibf1:ibf2,jbf1:jbf2) = matrix_tp(:,:)
-     hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix_tp(:,:))
+     hamiltonian_nucleus(ibf1:ibf2,jbf1:jbf2) = matrix(:,:)
+     hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix(:,:))
 
 
-     deallocate(array_cart,array_cart_C,matrix_tp)
+     deallocate(array_cart,array_cart_C,matrix)
 
    enddo
+   !$OMP END DO
+   !$OMP END PARALLEL
    deallocate(alphaB,cB)
  enddo
 
