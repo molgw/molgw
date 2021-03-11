@@ -1025,7 +1025,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
 
  !
  ! Reduce operation
- !call xsum_world(hamiltonian_nucleus)
+ !call world%sum(hamiltonian_nucleus)
 
  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution (Recalc) ===',hamiltonian_nucleus)
 
