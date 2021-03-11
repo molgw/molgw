@@ -63,15 +63,16 @@ subroutine init_mpi_world()
   implicit none
 
   !=====
-  integer :: ierror
+  integer :: dummy,ierror
   !=====
 
 #if defined(HAVE_MPI)
   call MPI_INIT(ierror)
-  call world%init(MPI_COMM_WORLD)
-#endif
 
-  !call world%init(MPI_COMM_WORLD)
+  call world%init(MPI_COMM_WORLD)
+#else
+  call world%init(dummy)
+#endif
 
   if( world%rank /= iomaster ) then
     is_iomaster = .FALSE.
