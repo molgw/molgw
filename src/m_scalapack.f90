@@ -2457,6 +2457,52 @@ end subroutine invert_sca
 
 
 !=========================================================================
+subroutine invert_chol_sca(desc,matrix)
+ implicit none
+
+ integer,intent(in)     :: desc(NDEL)
+ real(dp),intent(inout) :: matrix(:,:)
+ !=====
+ integer  :: cntxt
+ integer  :: nprow,npcol,iprow,ipcol
+ integer  :: nmat
+ integer  :: info
+ !=====
+
+#if defined(HAVE_SCALAPACK)
+ cntxt = desc(CTXT_)
+ call BLACS_GRIDINFO(cntxt,nprow,npcol,iprow,ipcol)
+
+ if( nprow * npcol > 1 ) then
+
+   if( iprow < nprow .AND. ipcol < npcol ) then
+
+     nmat = desc(M_)
+
+     call PDPOTRI('L',nmat,matrix,1,1,desc,info)
+
+     if( info /=0 ) call die('FAILURE in PDPOTRI')
+
+   endif
+
+ else
+   !call invert_symmetric(matrix)
+   nmat = SIZE(matrix,DIM=1)
+   call DPOTRI('L',nmat,matrix,nmat,info)
+ endif
+
+#else
+
+ !call invert_symmetric(matrix)
+ nmat = SIZE(matrix,DIM=1)
+ call DPOTRI('L',nmat,matrix,nmat,info)
+
+#endif
+
+end subroutine invert_chol_sca
+
+
+!=========================================================================
 subroutine init_scalapack()
  implicit none
 
