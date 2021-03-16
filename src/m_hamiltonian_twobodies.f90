@@ -380,7 +380,7 @@ end subroutine setup_hartree_ri
 ! rho(r) = \sum_I  \phi_I(r) R_I
 !
 ! From the resolution-of-the-identity on the Coulomb metric
-! R_I = \sum_J \sum_{\alpha\beta} ( I | 1/r12 | J )^{-1} (\alpha\beta | 1/r12 | J ) P_{\alpha\beta}
+! R_I = \sum_J \sum_{\alpha\beta}  P_{\alpha\beta} (\alpha\beta | 1/r12 | J ) ( I | 1/r12 | J )^{-1}
 !
 !=========================================================================
 subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
