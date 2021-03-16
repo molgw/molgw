@@ -2479,24 +2479,25 @@ subroutine invert_chol_sca(desc,matrix)
 
      nmat = desc(M_)
 
-     call PDPOTRI('L',nmat,matrix,1,1,desc,info)
+     call PDPOTRF('L',nmat,matrix,1,1,desc,info)
+     if( info /=0 ) call die('FAILURE in PDPOTRF')
 
+     call PDPOTRI('L',nmat,matrix,1,1,desc,info)
      if( info /=0 ) call die('FAILURE in PDPOTRI')
 
    endif
 
  else
-   !call invert_symmetric(matrix)
+#endif
+
    nmat = SIZE(matrix,DIM=1)
+   call DPOTRF('L',nmat,matrix,nmat,info)
+   if( info /=0 ) call die('FAILURE in DPOTRF')
    call DPOTRI('L',nmat,matrix,nmat,info)
+   if( info /=0 ) call die('FAILURE in DPOTRI')
+
+#if defined(HAVE_SCALAPACK)
  endif
-
-#else
-
- !call invert_symmetric(matrix)
- nmat = SIZE(matrix,DIM=1)
- call DPOTRI('L',nmat,matrix,nmat,info)
-
 #endif
 
 end subroutine invert_chol_sca
