@@ -686,6 +686,10 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
    endif
 
 
+   !$OMP PARALLEL PRIVATE(amk,nk,do_shell,kglobal,ami,ni,iglobal, &
+   !$OMP&                 am1,am3,n1c,n3c,int_shell,ng1,ng3,alpha1,alpha3,x01,x03,coeff1,coeff3,&
+   !$OMP&                 klocal,ilocal,integrals)
+   !$OMP DO
    do kshell=1,auxil_basis%nshell
      amk = auxil_basis%shell(kshell)%am
      nk  = number_basis_function_am( auxil_basis%gaussian_type , amk )
@@ -787,6 +791,8 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 
      enddo   ! ishell
    enddo   ! kshell
+   !$OMP END DO
+   !$OMP END PARALLEL
 
  endif
 
@@ -938,7 +944,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
 #else
 
    !
-   ! No need to symmetrize since the diago only considers the lower trinagle of eri_2center_tmp
+   ! No need to symmetrize since the diago only considers the lower trinagle of eri_2center
    call diagonalize_scalapack(' ',scalapack_block_min,eri_2center,eigval)
    call move_alloc(eri_2center,eri_2center_eigvec)
 
