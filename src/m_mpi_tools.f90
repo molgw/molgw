@@ -44,8 +44,10 @@ module m_mpi_tools
     ! broadcast
     generic :: bcast  => mpic_bcast_dp
     generic :: bcast  => mpic_bcast_cdp
+    generic :: bcast  => mpic_bcast_i
     procedure :: mpic_bcast_dp
     procedure :: mpic_bcast_cdp
+    procedure :: mpic_bcast_i
   end type mpi_communicator
 
 
@@ -282,6 +284,31 @@ subroutine mpic_and_l(mpic,array)
   endif
 
 end subroutine mpic_and_l
+
+
+!=========================================================================
+subroutine mpic_bcast_i(mpic,rank,array)
+  implicit none
+  class(mpi_communicator),intent(in) :: mpic
+  integer,intent(in)    :: rank
+  integer,intent(inout) :: array(:)
+  !=====
+  integer :: nsize
+  integer :: ierror=0
+  !=====
+
+  if( mpic%nproc == 1 ) return
+
+  nsize = SIZE(array)
+
+#if defined(HAVE_MPI)
+  call MPI_BCAST(array,nsize,MPI_INTEGER,rank,mpic%comm,ierror)
+#endif
+  if( ierror /= 0 ) then
+    write(stdout,*) 'error in MPI_BCAST'
+  endif
+
+end subroutine mpic_bcast_i
 
 
 !=========================================================================
