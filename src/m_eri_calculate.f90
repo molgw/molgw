@@ -863,14 +863,15 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
    ! I found a SCALAPACK equivalent to DSYTRF for real symmetric matrix: PDPOTRF/PDPOTRI
    ! but it requires that the matrix is positive definite (Cholevski decomposition)
    ! Coulomb 2-center integrals are positive definite in theory
-   ! but in practice, some numerical noise may spoil it or not... I don't know
    ! This is just to say to be careful
+   ! call invert_chol_sca(desc_2center,eri_2center_inv)
+   ! call symmetrize_matrix_sca('L',nauxil_2center,desc_2center,eri_2center_inv,desc_2center,eri_2center)
 
-   !call symmetrize_matrix_sca('L',nauxil_2center,desc_2center,eri_2center,desc_2center,eri_2center_inv)
-   !call invert_sca(desc_2center,eri_2center,eri_2center_inv)
+   ! but in practice, some numerical noise occurs and the Cholevski decomposition fails
+   ! Use the slower but safer:
+   call symmetrize_matrix_sca('L',nauxil_2center,desc_2center,eri_2center,desc_2center,eri_2center_inv)
+   call invert_sca(desc_2center,eri_2center,eri_2center_inv)
 
-   call invert_chol_sca(desc_2center,eri_2center_inv)
-   call symmetrize_matrix_sca('L',nauxil_2center,desc_2center,eri_2center_inv,desc_2center,eri_2center)
 
 #else
 
