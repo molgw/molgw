@@ -1995,40 +1995,32 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
    select case(prop_type)
 
    case('CN')
+   !! C(t+dt) = U(t, t+dt) * C(t)
+   !! U = [S + i * dt/2 * ( H - i*D )]^-1 * [S - i * dt/2 * ( H - i*D )]
+
      allocate(l_matrix_cmplx,MOLD=h_cmplx(:,:,1))
      allocate(b_matrix_cmplx,MOLD=h_cmplx(:,:,1))
      allocate(m_matrix_cmplx,MOLD=h_cmplx(:,:,1))
-     allocate(s_matrix_inverse,MOLD=s_matrix)   ! REAL
-     allocate(tmp_matrix_1,MOLD=h_cmplx(:,:,1))
-     allocate(tmp_matrix_2,MOLD=h_cmplx(:,:,1))
 
-     call invert(s_matrix,s_matrix_inverse)
-     !m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
-     tmp_matrix_1(:,:) = s_matrix_inverse(:,:)
-     tmp_matrix_2(:,:) = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
-     call start_clock(timing_propagate_matmul)
-     call ZGEMM('N','N',nbf,nbf,nbf,(1.0d0,0.0d0),tmp_matrix_1,nbf, &
-                       tmp_matrix_2,nbf,(0.0d0,0.0d0),m_matrix_cmplx,nbf)
-     call stop_clock(timing_propagate_matmul)
-     deallocate(tmp_matrix_1,tmp_matrix_2)
-     deallocate(s_matrix_inverse)
+     m_matrix_cmplx(:,:) = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
 
      l_matrix_cmplx(:,:) =  im * m_matrix_cmplx(:,:) * time_step_cur / 2.0_dp
      b_matrix_cmplx(:,:) = -l_matrix_cmplx(:,:)
 
-     do ibf=1,size(s_matrix,dim=1)
-       b_matrix_cmplx(ibf,ibf) = b_matrix_cmplx(ibf,ibf) + 1.0_dp
-       l_matrix_cmplx(ibf,ibf) = l_matrix_cmplx(ibf,ibf) + 1.0_dp
-     end do
+     l_matrix_cmplx(:,:) = l_matrix_cmplx(:,:) + s_matrix(:,:)
+     b_matrix_cmplx(:,:) = b_matrix_cmplx(:,:) + s_matrix(:,:)
+
+     call start_clock(timing_propagate_inverse)
      call invert(l_matrix_cmplx)
+     call stop_clock(timing_propagate_inverse)
 
      allocate(tmp_matrix_1,MOLD=h_cmplx(:,:,1))
      allocate(tmp_matrix_2,MOLD=c_matrix_cmplx(:,:,1))
      call start_clock(timing_propagate_matmul)
-     !b_matrix_cmplx(:,:)        = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
+     !U_matrix(:,:)              = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
      call ZGEMM('N','N',nbf,nbf,nbf,(1.0d0,0.0d0),l_matrix_cmplx,nbf, &
                        b_matrix_cmplx,nbf,(0.0d0,0.0d0),tmp_matrix_1,nbf)
-     !c_matrix_cmplx(:,:,ispin)  = MATMUL( b_matrix_cmplx(:,:),c_matrix_cmplx(:,:,ispin))
+     !c_matrix_cmplx(:,:,ispin)  = MATMUL( U_matrix(:,:),c_matrix_cmplx(:,:,ispin))
      tmp_matrix_2(:,:) = c_matrix_cmplx(:,:,ispin)
      call ZGEMM('N','N',nbf,nocc,nbf,(1.0d0,0.0d0),tmp_matrix_1,nbf, &
                        tmp_matrix_2,nbf,(0.0d0,0.0d0),c_matrix_cmplx(:,:,ispin),nbf)

@@ -10,7 +10,7 @@ module m_timing
   use m_definitions
   use m_warning,only: die
 
-  integer,parameter :: NTIMING=140
+  integer,parameter :: NTIMING=150
 
   integer,parameter :: timing_total               =  1
 
@@ -123,6 +123,7 @@ module m_timing
   integer,parameter :: timing_tddft_frozen_core      = 134
   integer,parameter :: timing_tddft_q_matrix         = 135
   integer,parameter :: timing_tddft_rhoauxil         = 136
+  integer,parameter :: timing_propagate_inverse      = 137
 
 
   integer,private     :: count_rate,count_max
@@ -310,6 +311,7 @@ subroutine output_timing()
   call output_timing_line('TDDFT Propagator',timing_tddft_propagation,2)
   call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
   call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
+  call output_timing_line('TDDFT propagator invert',timing_propagate_inverse,3)
 
   call output_timing_line('Update basis and related terms',timing_mb_related_update,2)
   call output_timing_line('Update projectile position',timing_update_p_position,3)
