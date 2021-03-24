@@ -916,7 +916,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
    !$OMP&                 ij,ibf_cart,jbf_cart,nucleus)
    !$OMP DO
 
-   !! The first loop calculates <T|P> and <P|T> parts
+   !! The first loop calculates <T|1/R_T|P>
    do ishell = 1,basis_t%nshell
      li      = basis_t%shell(ishell)%am
      ni_cart = number_basis_function_am('CART',li)
@@ -962,7 +962,6 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
 #endif
 
      hamiltonian_nucleus(ibf1:ibf2,jbf1:jbf2) = matrix(:,:)
-!     hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix(:,:))
 
      deallocate(array_cart,array_cart_C,matrix)
 
@@ -971,7 +970,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
    !$OMP END DO
    !$OMP END PARALLEL
 
-   !! The second loop calculates <P|P> part
+   !! The second loop calculates <P|1/R_T|P>
    do ishell = jshell,basis_p%nshell
      li      = basis_p%shell(ishell)%am
      ni_cart = number_basis_function_am('CART',li)
@@ -1029,7 +1028,6 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
  !
  ! Reduce operation
  call world%sum(hamiltonian_nucleus( :, basis_t%nbf+1: ))
-! call world%sum(hamiltonian_nucleus( basis_t%nbf+1:, 1:basis_t%nbf ))
  hamiltonian_nucleus( basis_t%nbf+1:, : ) = TRANSPOSE( hamiltonian_nucleus( :, basis_t%nbf+1: ) )
 
  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution (Recalc) ===',hamiltonian_nucleus)
