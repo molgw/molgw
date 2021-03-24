@@ -895,8 +895,11 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
 #if defined(HAVE_LIBINT_ONEBODY)
  write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
-   write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (internal)'
+ write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (internal)'
 #endif
+
+ hamiltonian_nucleus( :, basis_t%nbf+1: ) = 0.0_dp
+ hamiltonian_nucleus( basis_t%nbf+1:, 1:basis_t%nbf ) = 0.0_dp
 
  do jshell = 1,basis_p%nshell
    lj      = basis_p%shell(jshell)%am
@@ -905,7 +908,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
    jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf
    jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf
 
-   !if( MODULO(jshell-1,nproc_world) /= rank_world ) cycle
+   if( MODULO(jshell-1,world%nproc) /= world%rank ) cycle
 
    call set_libint_shell(basis_p%shell(jshell),amB,contrdepthB,B,alphaB,cB)
 
@@ -959,12 +962,14 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
 #endif
 
      hamiltonian_nucleus(ibf1:ibf2,jbf1:jbf2) = matrix(:,:)
-     hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix(:,:))
-
+!     hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix(:,:))
 
      deallocate(array_cart,array_cart_C,matrix)
 
    enddo
+
+   !$OMP END DO
+   !$OMP END PARALLEL
 
    !! The second loop calculates <P|P> part
    do ishell = jshell,basis_p%nshell
@@ -1014,18 +1019,18 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      hamiltonian_nucleus(ibf1:ibf2,jbf1:jbf2) = matrix(:,:)
      hamiltonian_nucleus(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix(:,:))
 
-
      deallocate(array_cart,array_cart_C,matrix)
 
    enddo
-   !$OMP END DO
-   !$OMP END PARALLEL
+
    deallocate(alphaB,cB)
  enddo
 
  !
  ! Reduce operation
- !call world%sum(hamiltonian_nucleus)
+ call world%sum(hamiltonian_nucleus( :, basis_t%nbf+1: ))
+! call world%sum(hamiltonian_nucleus( basis_t%nbf+1:, 1:basis_t%nbf ))
+ hamiltonian_nucleus( basis_t%nbf+1:, : ) = TRANSPOSE( hamiltonian_nucleus( :, basis_t%nbf+1: ) )
 
  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution (Recalc) ===',hamiltonian_nucleus)
 
