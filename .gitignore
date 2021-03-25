@@ -11,4 +11,4 @@ src/basis_path.f90
 src/my_machine*.arch*
 tests/tmp_*
 __pycache__/
-*/__pycache__/
+*.py[cod]
