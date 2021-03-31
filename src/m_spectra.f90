@@ -568,9 +568,9 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
   integer                            :: mpspin
   complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:,:)
   complex(dp)                        :: gos_tddft
-  real(dp)                           :: fnq(nvel_projectile,chi%npole_reso)
-  real(dp)                           :: qvec(3),qq(nvel_projectile,chi%npole_reso)
-  integer                            :: iv
+  real(dp)                           :: fnq
+  real(dp)                           :: qvec(3),qq
+  integer                            :: iv,idir
   real(dp)                           :: stopping_cross_section(nvel_projectile)
   real(dp)                           :: stopping_exc(nvel_projectile,chi%npole_reso)
   integer                            :: stride
@@ -629,10 +629,18 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
 
   stopping_cross_section(:) = 0.0_dp
   stopping_exc(:,:) = 0.0_dp
-  fnq(:,:) = 0.0_dp
+  fnq = 0.0_dp
+  !phi = [ 0.0_dp, pi/2.0_dp, 0.0_dp]
+  !costheta = [ 0.0_dp, 0.0_dp, 1.0_dp ]
+
   do iv=1,nvel_projectile
+
+    !open(2000+iv)
+    !write(2000+iv,*) 'n ','fnq  ','qq   ','costheta     ','phi'
+
     write(stdout,*) 'iv/nvel_projectile',iv,' / ',nvel_projectile
     vv = NORM2(vlist(:,iv))
+    !do idir = 1, 3
     do icostheta=1,ncostheta
       costheta  = REAL(icostheta,dp) / REAL(ncostheta,dp)
       dcostheta = 1.0_dp / REAL(ncostheta,dp)
@@ -645,14 +653,14 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
 
         do t_jb=1,chi%npole_reso
 
-          qq(iv,t_jb) = ABS(eigenvalue(t_jb) / ( vv * costheta ))
+          qq = ABS(eigenvalue(t_jb) / ( vv * costheta ))
           !qvec(1) = qq * SQRT( 1 - costheta**2 ) * COS(phi)
           !qvec(2) = qq * SQRT( 1 - costheta**2 ) * SIN(phi)
           !qvec(3) = qq * costheta
-          qvec(:) = qq(iv,t_jb) * SQRT( 1 - costheta**2 ) * COS(phi) * v1(:) &
-                  + qq(iv,t_jb) * SQRT( 1 - costheta**2 ) * SIN(phi) * v2(:) &
-                  + qq(iv,t_jb) * costheta * v3(:)
-          if( qq(iv,t_jb) > QMAX ) cycle
+          qvec(:) = qq * SQRT( 1 - costheta**2 ) * COS(phi) * v1(:) &
+                  + qq * SQRT( 1 - costheta**2 ) * SIN(phi) * v2(:) &
+                  + qq * costheta * v3(:)
+          if( qq > QMAX ) cycle
 
           call start_clock(timing_tmp1)
           call calculate_gos_ao(basis,qvec,gos_ao)
@@ -680,17 +688,20 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
           enddo
           call stop_clock(timing_tmp3)
           deallocate(gos_mo)
-          fnq(iv,t_jb) = 2.0_dp * ABS( gos_tddft )**2 * eigenvalue(t_jb) / SUM( qvec(:)**2 )
+          fnq = 2.0_dp * ABS( gos_tddft )**2 * eigenvalue(t_jb) / SUM( qvec(:)**2 )
 
           stopping_cross_section(iv) = stopping_cross_section(iv) + 2.0_dp / vv**2  &
-                                              * fnq(iv,t_jb)  * dphi * dcostheta    / ABS(costheta)
+                                              * fnq  * dphi * dcostheta    / ABS(costheta)
           stopping_exc(iv,t_jb) = stopping_exc(iv,t_jb) + 2.0_dp / vv**2  &
-                                              * fnq(iv,t_jb)  * dphi * dcostheta    / ABS(costheta)
+                                              * fnq  * dphi * dcostheta    / ABS(costheta)
+
+          !write(2000+iv,'(1x,i5.2,4(2x,f12.6))') t_jb,fnq,qq,costheta(idir),phi(idir)
 
         enddo
 
       enddo
     enddo
+    !close(2000+iv)
   enddo ! velocity
 
   call world%sum(stopping_cross_section)
@@ -702,12 +713,9 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
   do iv=1,nvel_projectile
     write(stdout,'(1x,a,3(1x,f6.3),a,f12.6)') 'velocity ',vlist(:,iv),' : ',stopping_cross_section(iv)
     write(fstopping,'(4(2x,es18.8))') vlist(:,iv),stopping_cross_section(iv)
-    !do t_jb=1,20
-    !  write(2000+iv,*) t_jb,fnq(iv,t_jb),qq(iv,t_jb)
-    !enddo
     if( print_exc ) then
       vv = NORM2(vlist(:,iv))
-      do t_jb=1,20
+      do t_jb=1,15
         write(2000+t_jb,'(2(2x,f12.6))') vv,stopping_exc(iv,t_jb)
       enddo
     endif
