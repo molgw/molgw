@@ -8,9 +8,10 @@
 !=========================================================================
 module m_ecp
   use m_definitions
-  use m_string_tools,only: capitalize,append_to_list,orbital_momentum_name,orbital_momentum_number
-  use m_warning,only: die,issue_warning
+  use m_string_tools, only: capitalize,append_to_list,orbital_momentum_name,orbital_momentum_number
+  use m_warning, only: die,issue_warning
   use m_elements
+  use ISO_FORTRAN_ENV, only: IOSTAT_END
  
  
   integer,protected                :: nelement_ecp
@@ -149,7 +150,6 @@ end subroutine init_ecp
 
 !=========================================================================
 subroutine read_ecp_file(ecpunit,element,ecpi)
-  use ISO_FORTRAN_ENV,only: iostat_end
   implicit none
  
   integer,intent(in)                           :: ecpunit
@@ -172,7 +172,7 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
     iline = iline + 1
     if( line(1:5) == '_____' ) then
       read(ecpunit,'(a)',iostat=istat) line
-      if( istat == iostat_end ) then
+      if( istat == IOSTAT_END ) then
         end_of_file = .TRUE.
         exit
       endif
@@ -217,7 +217,7 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
       istat = 0
       do while(istat == 0)
         read(ecpunit,'(a)',iostat=istat) line
-        if( istat == iostat_end ) then
+        if( istat == IOSTAT_END ) then
           end_of_file = .TRUE.
           exit
         endif
