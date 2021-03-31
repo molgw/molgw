@@ -469,7 +469,6 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
   complex(dp)             :: denom1,denom2
   real(dp)                :: num1,num2,num3
   real(dp)                :: num1a,num1b,num2a,num2b,num3a,num3b
-  real(dp)                :: numgw
   real(dp)                :: eri_pqjk,eri_pjqk,eri_pqbc,eri_pbqc,eri_pqjc,eri_pjqc,eri_pqkb,eri_pkqb
   real(dp)                :: eri_paib,eri_pbia,eri_iajc,eri_ijac,eri_qcjb,eri_qbjc
   real(dp)                :: eri_pija,eri_pjia,eri_qija,eri_qaib
@@ -516,16 +515,21 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
   pqspin = 1
   do pstate=nsemin,nsemax
     qstate = pstate
- 
- 
+
     !
     ! A diagrams family
     !
     if( pt3_a_diagrams == 'ONLY' .OR. pt3_a_diagrams == 'YES' ) then
  
-      ! A1   i,j,k   a,b
+      !$OMP PARALLEL PRIVATE( &
+      !$OMP&                 eri_pqjk,eri_pjqk,eri_pqbc,eri_pbqc,eri_pqjc,eri_pjqc,eri_pqkb,eri_pkqb, &
+      !$OMP&                 eri_kaib,eri_icja,eri_acib,eri_ikja, &
+      !$OMP&                 denom1,denom2,num2)
+      !$OMP DO REDUCTION(+:selfenergy(:,Ah:Ax,pstate,pqspin))
       do astate=nhomo_G+1,nvirtual_G-1
         if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+
+        ! A1   i,j,k   a,b
         do bstate=nhomo_G+1,nvirtual_G-1
           do istate=ncore_G+1,nhomo_G
             do jstate=ncore_G+1,nhomo_G
@@ -549,11 +553,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
-      ! A2   i,j   a,b,c
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        ! A2   i,j   a,b,c
         do bstate=nhomo_G+1,nvirtual_G-1
           do cstate=nhomo_G+1,nvirtual_G-1
             eri_pqbc = eri_eigen(pstate,qstate,pqspin,cstate,bstate,pqspin)
@@ -578,11 +579,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
-      ! A3,A4   i,j   a,b,c
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        ! A3,A4   i,j   a,b,c
         do bstate=nhomo_G+1,nvirtual_G-1
           do istate=ncore_G+1,nhomo_G
             do jstate=ncore_G+1,nhomo_G
@@ -606,11 +604,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
-      ! A5,A6   i,j,k   a,b
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        ! A5,A6   i,j,k   a,b
         do bstate=nhomo_G+1,nvirtual_G-1
           do istate=ncore_G+1,nhomo_G
             do jstate=ncore_G+1,nhomo_G
@@ -635,18 +630,25 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
           enddo
         enddo
       enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
  
     endif
  
  
     if( pt3_a_diagrams == 'NO' .OR. pt3_a_diagrams == 'YES' ) then
+
       !
       ! B diagrams family (= 2nd order diagrams)
       !
-      ! B1 i,j    a
+      !$OMP PARALLEL PRIVATE(eri_paib,eri_pbia,eri_pija,eri_pjia,eri_qija,eri_qaib,denom1)
+      !$OMP DO COLLAPSE(2) REDUCTION(+:selfenergy(:,ONERING:SOX_,pstate,pqspin)) 
       do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
         do istate=ncore_G+1,nhomo_G
+
+          if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+
+          ! B1 i,j    a
           do jstate=ncore_G+1,nhomo_G
             eri_pija = eri_eigen(pstate,istate,pqspin,jstate,astate,pqspin)
             eri_pjia = eri_eigen(pstate,jstate,pqspin,istate,astate,pqspin)
@@ -660,14 +662,9 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                                                         - eri_pjia * eri_qija / denom1
             enddo
           enddo
-        enddo
-      enddo
  
-      ! B2 i    a,b
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
-        do bstate=nhomo_G+1,nvirtual_G-1
-          do istate=ncore_G+1,nhomo_G
+          ! B2 i    a,b
+          do bstate=nhomo_G+1,nvirtual_G-1
             eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
             eri_pbia = eri_eigen(pstate,bstate,pqspin,istate,astate,pqspin)
             eri_qaib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
@@ -680,15 +677,30 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                                                         -  eri_pbia * eri_qaib / denom1
             enddo
           enddo
-        enddo
-      enddo
+
+        enddo  ! istate
+      enddo  ! astate
+      !$OMP END DO
+      !$OMP END PARALLEL
  
       !
       ! C diagrams family
       !
-      ! C1   i   a,b,c,d
+      call start_clock(timing_tmp7)
+      !$OMP PARALLEL PRIVATE( &
+      !$OMP&                 eri_pqjk,eri_pjqk,eri_pqbc,eri_pbqc,eri_pqjc,eri_pjqc,eri_pqkb,eri_pkqb, &
+      !$OMP&                 eri_paib,eri_pbia,eri_iajc,eri_ijac,eri_qcjb,eri_qbjc, &
+      !$OMP&                 eri_pija,eri_pjia,eri_qija,eri_qaib, &
+      !$OMP&                 eri_pkla,eri_plka, &
+      !$OMP&                 eri_qjbc,eri_qjkb,eri_qkjb,eri_qbik,eri_qkib, &
+      !$OMP&                 denom1,denom2, &
+      !$OMP&                 num1,num2,num3, &
+      !$OMP&                 num1a,num1b,num2a,num2b,num3a,num3b )
+      !$OMP DO REDUCTION(+:selfenergy(:,Cd:TWORINGS,pstate,pqspin)) 
       do astate=nhomo_G+1,nvirtual_G-1
         if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+
+        ! C1   i   a,b,c,d
         do bstate=nhomo_G+1,nvirtual_G-1
           do istate=ncore_G+1,nhomo_G
             eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
@@ -711,11 +723,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
-      ! C2+C3   i,j,k   a,b
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        ! C2+C3   i,j,k   a,b
         do bstate=nhomo_G+1,nvirtual_G-1
           do istate=ncore_G+1,nhomo_G
             eri_paib = eri_eigen(pstate,astate,pqspin,istate,bstate,pqspin)
@@ -738,11 +747,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
-      ! C4+C5   i,j   a,b,c
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        ! C4+C5   i,j   a,b,c
         do istate=ncore_G+1,nhomo_G
           do jstate=ncore_G+1,nhomo_G
             eri_pija = eri_eigen(pstate,istate,pqspin,jstate,astate,pqspin)
@@ -764,11 +770,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
-      ! C6   i,j,k,l   a
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        ! C6   i,j,k,l   a
         do kstate=ncore_G+1,nhomo_G
           do lstate=ncore_G+1,nhomo_G
             eri_pkla = eri_eigen(pstate,kstate,pqspin,lstate,astate,pqspin)
@@ -791,14 +794,11 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
-      !
-      ! D diagrams family
-      !
-      ! D1   i,j   a,b,c
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        !
+        ! D diagrams family
+        !
+        ! D1   i,j   a,b,c
         do cstate=nhomo_G+1,nvirtual_G-1
           do istate=ncore_G+1,nhomo_G
             do jstate=ncore_G+1,nhomo_G
@@ -828,12 +828,9 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
  
-      ! D2+D3   i,j   a,b,c
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        ! D2+D3   i,j   a,b,c
         do bstate=nhomo_G+1,nvirtual_G-1
           do istate=ncore_G+1,nhomo_G
             do jstate=ncore_G+1,nhomo_G
@@ -863,12 +860,9 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
  
-      ! D4+D5   i,j,k   a,b
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        ! D4+D5   i,j,k   a,b
         do bstate=nhomo_G+1,nvirtual_G-1
           do istate=ncore_G+1,nhomo_G
             do jstate=ncore_G+1,nhomo_G
@@ -898,11 +892,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
             enddo
           enddo
         enddo
-      enddo
  
-      ! D6   i,j,k   a,b
-      do astate=nhomo_G+1,nvirtual_G-1
-        if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+        ! D6   i,j,k   a,b
         do bstate=nhomo_G+1,nvirtual_G-1
           do istate=ncore_G+1,nhomo_G
             do jstate=ncore_G+1,nhomo_G
@@ -934,6 +925,9 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
           enddo
         enddo
       enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+      call stop_clock(timing_tmp7)
  
     endif
  

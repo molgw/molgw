@@ -7,7 +7,7 @@
 !
 !=========================================================================
 module m_io
- use,intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
+ use,intrinsic :: ISO_FORTRAN_ENV, only: COMPILER_VERSION,COMPILER_OPTIONS
  use m_definitions
  use m_mpi
  use m_timing
@@ -124,9 +124,9 @@ subroutine header()
  write(stdout,'(/,/,1x,70("="))')
 
  write(stdout,'(/,a,a,/)') ' MOLGW commit git SHA: ',git_sha
- write(stdout,'(1x,a,a)')    'compiled with ',compiler_version()
+ write(stdout,'(1x,a,a)')    'compiled with ',COMPILER_VERSION()
  write(stdout,'(1x,a)')      'with options: '
- chartmp = compiler_options()
+ chartmp = COMPILER_OPTIONS()
  nchar = LEN(TRIM(chartmp))
  kchar = 1
  lchar = 0
