@@ -379,6 +379,11 @@ subroutine identify_negligible_shellpair(basis)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
+ if( TOL_INT < 0.0_dp ) then
+   write(stdout,'(/,a)') ' Integral quality is insane, skip Cauchy-Schwartz screening'
+   return
+ endif
+
  call start_clock(timing_eri_screening)
  write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals'
 
