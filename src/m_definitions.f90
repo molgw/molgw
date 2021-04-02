@@ -10,7 +10,7 @@ module m_definitions
   use,intrinsic :: ISO_FORTRAN_ENV, only: OUTPUT_UNIT,ERROR_UNIT
   use,intrinsic :: ISO_C_BINDING, only: C_INT,C_DOUBLE,C_BOOL,C_PTR,C_CHAR,C_NULL_PTR,C_F_POINTER
 #if defined(_OPENMP)
-  use,intrinsic :: OMP_LIB, only: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM,OMP_GET_MAX_THREADS
+  use OMP_LIB, only: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM,OMP_GET_MAX_THREADS
 #endif
 
 
