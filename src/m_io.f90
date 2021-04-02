@@ -689,11 +689,12 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  enddo
  enddo
 
- n_column = 2 + natom_basis
+ !n_column = 2 + natom_basis
+ n_column = 3 + natom2 - natom1
  write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
  if ( is_iomaster ) then
    if ( file_lowdin /= stdout ) then
-     write( file_lowdin, fmt=myfmt ) time_cur, xatom(3,natom), proj_charge
+     write( file_lowdin, fmt=myfmt ) time_cur, xatom(3,natom), proj_charge(natom1:natom2)
    else
      write( stdout, * ) 'Lowdin projectile charge = ', proj_charge(natom2)
    end if
