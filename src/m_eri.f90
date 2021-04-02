@@ -380,6 +380,7 @@ subroutine identify_negligible_shellpair(basis)
 !=====
 
  if( TOL_INT < 0.0_dp ) then
+   negligible_shellpair(:,:) = .FALSE.
    write(stdout,'(/,a)') ' Integral quality is insane, skip Cauchy-Schwartz screening'
    return
  endif
