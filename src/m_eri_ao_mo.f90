@@ -91,9 +91,6 @@ subroutine calculate_eri_4center_eigen(c_matrix,istate,ijspin,eri_eigenstate_i)
   real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
   integer(kind=int8)   :: iint
   integer              :: index_ij,index_kl,stride
-#if defined(_OPENMP)
-  integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
-#endif
  !=====
 
   nbf    = SIZE(c_matrix,DIM=1)
@@ -221,9 +218,6 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
   real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:),eri_tmp1b(:,:)
   integer(kind=int8)   :: iint
   integer              :: index_ij,index_kl,stride
-#if defined(_OPENMP)
-  integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
-#endif
   !=====
 
   nbf    = SIZE(c_matrix,DIM=1)

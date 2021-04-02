@@ -985,7 +985,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
           !$OMP END SINGLE
         enddo
       enddo
-
+  
       ! D6   i,j,k   a,b
       do astate=nhomo_G+1,nvirtual_G-1
         do istate=ncore_G+1,nhomo_G
@@ -1051,6 +1051,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
                                      REAL(selfenergy(0,Deh,pstate,pqspin),dp) * Ha_eV
   enddo
 
+
   select case(selfenergy_approx)
   case(PT3)
     se%sigma(:,:,:) = SUM(selfenergy(:,ONERING:Deh,:,:),DIM=2)
@@ -1063,6 +1064,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
   end select
 
   deallocate(selfenergy)
+  deallocate(selfenergy1,selfenergy2,selfenergy0)
+
   if(has_auxil_basis) then
     call destroy_eri_3center_eigen()
   else

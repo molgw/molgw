@@ -46,11 +46,8 @@ contains
 subroutine this_is_the_end()
  implicit none
 
-!=====
-#if defined(_OPENMP)
- integer,external  :: OMP_get_max_threads
-#endif
-!=====
+ !=====
+ !=====
 
  call total_memory_statement()
 
@@ -62,7 +59,7 @@ subroutine this_is_the_end()
    write(unit_yaml,'(/,a)')  'run:'
    write(unit_yaml,'(4x,a,1x,i6)')  'mpi tasks:  ',world%nproc
 #if defined(_OPENMP)
-   write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',OMP_get_max_threads()
+   write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',OMP_GET_MAX_THREADS()
 #else
    write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',1
 #endif
@@ -98,9 +95,6 @@ subroutine header()
  implicit none
 
 !=====
-#if defined(_OPENMP)
- integer,external  :: OMP_get_max_threads,OMP_get_num_procs
-#endif
  character(len=40)   :: git_sha
  integer             :: values(8)
  integer             :: nchar,kchar,lchar
@@ -168,8 +162,7 @@ subroutine header()
 
  ! Parallelization details
 #if defined(_OPENMP)
- write(stdout,'(1x,a,i4)') 'Number of available cores detected by OPENMP:                         ',OMP_get_num_procs()
- write(stdout,'(1x,a,i4)') 'Running with OPENMP parallelization activated with max threads count: ',OMP_get_max_threads()
+ write(stdout,'(1x,a,i4)') 'Running with OPENMP parallelization activated with max threads count: ',OMP_GET_MAX_THREADS()
 #endif
 #if defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
  write(stdout,*) 'Running with MPI'
