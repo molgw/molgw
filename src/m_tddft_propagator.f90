@@ -153,6 +153,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_allocate('Hamiltonian for TDDFT',h_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
+ call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
 
  allocate(xatom_start(3,natom))
  allocate(xbasis_start(3,natom_basis))
@@ -165,15 +166,14 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    else
      ! assign xatom_start, c_matrix_orth_cmplx, time_min with values given in RESTART File
      call read_restart_tddft(nstate,time_read,occupation,c_matrix_orth_cmplx)
-     do ispin=1,nspin
-       c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
-     end do
    end if
+
    time_min = time_read
    xprojectile = xatom_start(:,natom)
    call change_position_one_atom(natom,xprojectile)
    call change_basis_center_one_atom(natom_basis,xprojectile)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) call update_basis_eri(basis,auxil_basis)
+
  else
    c_matrix_cmplx(:,:,:) = c_matrix(:,1:nocc,:)
    xatom_start=xatom
@@ -182,19 +182,26 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  end if
 
  call setup_overlap(basis,s_matrix)
+ call setup_x_matrix(min_overlap,s_matrix,nstate_tmp,x_matrix)
+ ! x_matrix is now allocated with dimension (basis%nbf,nstate))
+
  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
    call setup_D_matrix_analytic(basis,d_matrix,.FALSE.)
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+   call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
  else
    d_matrix(:,:) = 0.0_dp
+   if( nstate /= nstate_tmp ) then
+     call die('Error with nstate in the TDDFT propagator')
+   end if
  end if
- ! E_iD = - Tr{P*iD}
- en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
- ! x_matrix is now allocated with dimension (basis%nbf,nstate))
- call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
- if( nstate /= nstate_tmp ) then
-   call die('Error with nstate in the TDDFT propagator')
+ if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
+   if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS ) then
+     do ispin=1,nspin
+       c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
+     end do
+   end if
  end if
 
  call nucleus_nucleus_energy(en_tddft%nuc_nuc)
@@ -241,33 +248,36 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
-   call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
-   allocate(energy_tddft(nstate,nspin))
-   do ispin=1, nspin
-     call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft(:,ispin),c_matrix_orth_start_complete_cmplx(:,:,ispin))
-   end do
-   ! in order to save the memory, we dont keep inoccupied states (nocc+1:nstate)
-   c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
-   call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
-   !deallocate(energy_tddft)
-
-   if ( auto_occupation_ ) then
-     ! associate each state to an atom
-     allocate( atom_state_occ(nstate, nspin) )
-     call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min,atom_state_occ)
-     ! count the number of e- on each atom
-     allocate( count_atom_e(natom, nspin), count_atom_e_copy(natom, nspin) )
-     count_atom_e(:, :) = 0.0_dp
-     do ispin = 1, nspin
-       do istate = 1, nstate
-         do iatom = 1, natom
-           if ( atom_state_occ(istate, ispin) == iatom ) &
-             count_atom_e(iatom, ispin) = count_atom_e(iatom, ispin) + occupation(istate, ispin)
-         end do
-       end do
-       !write(stdout, *) count_atom_e(:, ispin)
+   if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS ) then
+     call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
+     allocate(energy_tddft(nstate,nspin))
+     do ispin=1, nspin
+       call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft(:,ispin),c_matrix_orth_start_complete_cmplx(:,:,ispin))
      end do
+     ! in order to save the memory, we dont keep inoccupied states (nocc+1:nstate)
+     c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
+     call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx)
+     deallocate(energy_tddft)
    end if
+ end if
+
+  ! if ( auto_occupation_ ) then
+  !   ! associate each state to an atom
+  !   allocate( atom_state_occ(nstate, nspin) )
+  !   call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min,atom_state_occ)
+  !   ! count the number of e- on each atom
+  !   allocate( count_atom_e(natom, nspin), count_atom_e_copy(natom, nspin) )
+  !   count_atom_e(:, :) = 0.0_dp
+  !   do ispin = 1, nspin
+  !     do istate = 1, nstate
+  !       do iatom = 1, natom
+  !         if ( atom_state_occ(istate, ispin) == iatom ) &
+  !           count_atom_e(iatom, ispin) = count_atom_e(iatom, ispin) + occupation(istate, ispin)
+  !       end do
+  !     end do
+  !     !write(stdout, *) count_atom_e(:, ispin)
+  !   end do
+  ! end if
 
    !call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,stdout,time_min)
    !call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,stdout,time_min)
@@ -376,10 +386,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    !  deallocate(p_matrix_cmplx_hist, h_hist_cmplx)
 !
    !end if
-   deallocate(energy_tddft)
-   if ( auto_occupation_ ) deallocate(atom_state_occ, count_atom_e, count_atom_e_copy)
+   !deallocate(energy_tddft)
+   !if ( auto_occupation_ ) deallocate(atom_state_occ, count_atom_e, count_atom_e_copy)
 
- end if
+
+ ! E_iD = - Tr{P*iD}
  en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
  ! Number of iterations
@@ -565,9 +576,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
          iwrite_step,cube_density_start,nx,ny,nz)
      if ( print_charge_tddft_ ) then
        if ( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-         call clean_deallocate('Transformation matrix X',x_matrix)
-         call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
-         call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix,s_matrix_sqrt)
+         call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
        end if
        !call mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mulliken,time_cur)
        call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,time_cur)
@@ -900,9 +909,10 @@ subroutine predictor_corrector(basis,                  &
                                 c_matrix_cmplx,             &
                                 hamiltonian_kinetic,        &
                                 hamiltonian_nucleus,        &
-                                dipole_ao=dipole_ao,        &
-                                hamiltonian_cmplx=h_cmplx,  &
-                                en=en_tddft)
+                                h_small_cmplx,              &
+                                x_matrix,                   &
+                                dipole_ao,                  &
+                                h_cmplx,en_tddft)
 
 
 ! ///////////////////////////////////
@@ -936,9 +946,10 @@ subroutine predictor_corrector(basis,                  &
                                 c_matrix_hist_cmplx(:,:,:,1), &
                                 hamiltonian_kinetic,          &
                                 hamiltonian_nucleus,          &
-                                dipole_ao=dipole_ao,          &
-                                hamiltonian_cmplx=h_cmplx,    &
-                                en=en_tddft)
+                                h_small_cmplx,                &
+                                x_matrix,                     &
+                                dipole_ao,                    &
+                                h_cmplx,en_tddft)
 
    !--4--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
@@ -994,9 +1005,10 @@ case('MB_PC2B')
                                 c_matrix_hist_cmplx(:,:,:,1), &
                                 hamiltonian_kinetic,          &
                                 hamiltonian_nucleus,          &
-                                dipole_ao=dipole_ao,          &
-                                hamiltonian_cmplx=h_cmplx,    &
-                                en=en_tddft)
+                                h_small_cmplx,                &
+                                x_matrix,                     &
+                                dipole_ao,                    &
+                                h_cmplx,en_tddft)
 
    ! Save in history : n_hist-1
    if (n_hist > 1) h_hist_cmplx(:,:,:,n_hist-1) = h_cmplx
@@ -1022,9 +1034,10 @@ case('MB_PC2B')
                                 c_matrix_cmplx,               &
                                 hamiltonian_kinetic,          &
                                 hamiltonian_nucleus,          &
-                                dipole_ao=dipole_ao,          &
-                                hamiltonian_cmplx=h_cmplx,    &
-                                en=en_tddft)
+                                h_small_cmplx,                &
+                                x_matrix,                     &
+                                dipole_ao,                    &
+                                h_cmplx,en_tddft)
 
    !--5--UPDATE----| C(t+dt) -> C(t); H(t+dt) -> H(t)
    c_matrix_hist_cmplx(:,:,:,1) = c_matrix_cmplx(:,:,:)
@@ -2302,10 +2315,10 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  real(dp),intent(inout)          :: hamiltonian_kinetic(basis%nbf,basis%nbf)
  real(dp),intent(inout)          :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),allocatable,intent(in) :: dipole_ao(:,:,:)
- real(dp),intent(in),optional             :: x_matrix(basis%nbf,nstate)
- complex(dp),intent(in)                   :: c_matrix_cmplx(basis%nbf,nocc,nspin)
- complex(dp),intent(out)                  :: hamiltonian_cmplx(basis%nbf,basis%nbf,nspin)
- complex(dp),intent(out),optional         :: h_small_cmplx(nstate,nstate,nspin)
+ real(dp),intent(in)             :: x_matrix(basis%nbf,nstate)
+ complex(dp),intent(in)          :: c_matrix_cmplx(basis%nbf,nocc,nspin)
+ complex(dp),intent(out)         :: hamiltonian_cmplx(basis%nbf,basis%nbf,nspin)
+ complex(dp),intent(out)         :: h_small_cmplx(nstate,nstate,nspin)
  type(energy_contributions),intent(inout) :: en
 !=====
  logical              :: calc_excit_
@@ -2395,12 +2408,6 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
      call recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
    end if
 
-   ! Nucleus-electron interaction due to the fixed target
-   !do iatom=1,natom-nprojectile
-   !  fixed_atom_list(iatom) = iatom
-   !enddo
-   !call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
-
    !
    ! Nucleus-electron interaction due to the projectile only
    projectile_list(1) = natom
@@ -2419,7 +2426,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
    hamiltonian_cmplx(:,:,ispin) = hamiltonian_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
  enddo
 
- if( PRESENT(x_matrix) .AND. PRESENT( h_small_cmplx ) ) then
+ if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS ) then
    ! Perform the canonical transform from the original basis to the orthogonal one
    call transform_hamiltonian_ortho(x_matrix,hamiltonian_cmplx,h_small_cmplx)
  end if

@@ -168,9 +168,10 @@ program molgw
     !
     ! A crucial parameter is defined here: nstate
     if(print_pdos_) then
-      call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix,s_matrix_sqrt)
+      call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
+      call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
     else
-      call setup_sqrt_overlap(min_overlap,s_matrix,nstate,x_matrix)
+      call setup_x_matrix(min_overlap,s_matrix,nstate,x_matrix)
     end if
 
     allocate(occupation(nstate,nspin))
