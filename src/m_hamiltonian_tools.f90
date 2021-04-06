@@ -116,7 +116,7 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  real(dp),intent(in)     :: occupation(:,:)
  complex(dp),intent(out) :: p_matrix_cmplx(:,:,:)
 !=====
- integer :: nbf,nstate,nocc
+ integer :: nbf,nocc
  integer :: ispin,ibf,jbf
  integer :: istate
  complex(dp),allocatable :: c_matrix_sqrtocc(:,:)
@@ -126,7 +126,6 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
 
  nbf    = SIZE(c_matrix_cmplx(:,:,:),DIM=1)
  nocc   = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
- nstate = SIZE(occupation(:,:),DIM=1)
 
  if( ANY( occupation(:,:) < 0.0_dp ) ) call die('setup_density_matrix_cmplx: negative occupation number should not happen here.')
 
@@ -821,13 +820,13 @@ end subroutine level_shifting_down
 
 
 !=========================================================================
-subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix)
+subroutine setup_x_matrix(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
  real(dp),intent(in)                :: s_matrix(:,:)
  integer,intent(out)                :: nstate
- real(dp),allocatable,intent(inout) :: x_matrix(:,:)
+ real(dp),allocatable,intent(out)   :: x_matrix(:,:)
 !=====
  integer  :: nbf
  integer  :: istate,jbf
@@ -844,6 +843,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix)
 
  matrix_tmp(:,:) = s_matrix(:,:)
  ! Diagonalization with or without SCALAPACK
+ !! S = U*s*U^H
  call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
@@ -858,17 +858,19 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
 
+ !! X = U*s^(-1/2)
  istate = 0
  do jbf=1,nbf
    if( s_eigval(jbf) > TOL_OVERLAP ) then
      istate = istate + 1
      x_matrix(:,istate) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
    endif
+
  enddo
 
  deallocate(matrix_tmp,s_eigval)
 
-end subroutine setup_sqrt_overlap
+end subroutine setup_x_matrix
 
 
 !=========================================================================

@@ -125,7 +125,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  call setup_overlap(basis,s_matrix)
 
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
- call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,x_matrix)
+ call setup_x_matrix(min_overlap,s_matrix,nstate_tmp,x_matrix)
  if( nstate /= nstate_tmp ) then
    call die('Error with nstate in the TDDFT propagator')
  end if
