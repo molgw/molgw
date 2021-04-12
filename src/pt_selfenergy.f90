@@ -985,7 +985,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
           !$OMP END SINGLE
         enddo
       enddo
-  
+
       ! D6   i,j,k   a,b
       do astate=nhomo_G+1,nvirtual_G-1
         do istate=ncore_G+1,nhomo_G

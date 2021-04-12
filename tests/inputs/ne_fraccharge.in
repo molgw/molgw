@@ -1,0 +1,13 @@
+&molgw
+ scf='LDA'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ init_hamiltonian='core'   !FIXME default guess crashes MOLGW
+
+ natom=3
+/
+    Ne   0.0000     0.0  0.0
+-0.001   0.000      2.0  2.0   none none
+ 0.001   0.000      2.1 -2.1   NONE none
