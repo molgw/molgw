@@ -918,7 +918,7 @@ subroutine print_energy_yaml(name,en)
   if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
 
   write(unit_yaml,'(/,a,a)') TRIM(name),':'
-  write(unit_yaml,'(4x,a,a)')           'unit:                ','    Ha'
+  write(unit_yaml,'(4x,a)')             'unit: Ha'
   if( ABS(en%total) > 1.0e-10_dp ) &
     write(unit_yaml,'(4x,a,1x,es18.8)') 'total:               ',en%total
   if( ABS(en%totalexx) > 1.0e-10_dp ) &
