@@ -414,7 +414,7 @@ subroutine init_dft_type(key)
   enddo
  
   select case(TRIM(key))
- #if defined(HAVE_LIBXC)
+#if defined(HAVE_LIBXC)
   !
   ! LDA functionals
   case('LDAX')
@@ -552,7 +552,7 @@ subroutine init_dft_type(key)
     dft_xc(2)%id = XC_LDA_C_PW
     dft_xc(1)%coeff =  1.00_dp - alpha_hybrid
     dft_xc(2)%coeff =  1.00_dp
- #endif
+#endif
   case default
     call die('Error reading keyword scf')
   end select
