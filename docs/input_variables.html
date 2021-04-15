@@ -46,37 +46,37 @@ Sets the l_MAXINC parameter in the automatic generation of the auxiliary basis s
 <a name=auxil_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>auxil_basis</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Sets the auxiliary basis set. For instance, cc-pVDZ-RI for a Weigend basis set. If present, the auxiliary basis will be used for both the scf cycles and the postscf calculations (TD-DFT, BSE, or GW).</li><br>
 <hr>
 <a name=basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>basis</b>  </span>  
 <br><br>
 <i>Mandatory</i><br>
-Default: None<br><br>
-Sets the basis set For Pople sets, use 6-31G for instance or 6-31pGs, where p stands for + and s for *. For Dunning sets, use aug-cc-pVTZ for instance. Note that Pople sets are to be used with gaussian_type='cart' One may use ones own basis sets provided that the files are labeled X_mybasisset where X is the element.</li><br>
+Default: none<br><br>
+Sets the basis set For Pople sets, use 6-31G for instance or 6-31+G\*. For Dunning sets, use aug-cc-pVTZ for instance. Note that Pople sets are to be used with gaussian_type='cart' One may use ones own basis sets provided that the files are labeled X_mybasisset where X is the element.</li><br>
 <hr>
 <a name=comment><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>comment</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 This is a free expression place. Use it as you wish for commenting, naming, labeling etc. (140 character max just as twitter)</li><br>
 <hr>
 <a name=ecp_auxil_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_auxil_basis</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Name of the auxiliary basis set to be used for elements specified in list ecp_elements.</li><br>
 <hr>
 <a name=ecp_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_basis</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Name of the basis set to be used for elements specified in list ecp_elements.</li><br>
 <hr>
 <a name=ecp_elements><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_elements</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Contains the list of elements (separated by spaces) that should be treated with an Effective Core Potential.</li><br>
 <hr>
 <a name=ecp_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_quality</b>  </span>  
@@ -88,7 +88,7 @@ Sets the number of grid points use to evaluate the Effective Core Potential inte
 <a name=ecp_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_type</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Name of the Effective Core Potential. For instance, Gold using the cc-pVDZ-PP basis set should have ecp_type='PP', so that MOLGW looks for the file Au_PP in the basis_path folder.</li><br>
 <hr>
 <a name=eri3_genuine><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eri3_genuine</b>  </span>  
@@ -130,7 +130,7 @@ Sets the number of steps when moving the nuclei.</li><br>
 <a name=scf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scf</b>  </span>  
 <br><br>
 <i>Mandatory</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Contains the self-consistent scheme name. 
 Try LDA, PBE, HSE06, or HF for instance</li><br>
 <hr>
@@ -179,7 +179,7 @@ Sets the minimum block size to distribute a non-distributed matrix with SCALAPAC
 <a name=basis_path><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>basis_path</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Sets the path pointing to the basis functions files.                  If not specified, then the basis set files will be searched in folder ~molgw/basis/.</li><br>
 <hr>
 <a name=force_energy_qp><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>force_energy_qp</b>  </span>  
@@ -427,7 +427,7 @@ Sets the number of states considered as core in &lt;&Sigma;<sub>x</sub>-<i>v</i>
 <b><font color="red">EXPERIMENTAL</font> </b> 
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. This is the small basis set used for elements with an effective core potential. Only meaningful for GW.</li><br>
 <hr>
 <a name=eta><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eta</b>  </span>  
@@ -518,7 +518,7 @@ Sets the starting state beyond which states are excluded from the sum in the scr
 <a name=postscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>postscf</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Contains the post-processing scheme name. 
 TD stands for TD-DFT or TD-HF.
 BSE stands for Bethe-Salpeter.
@@ -581,7 +581,7 @@ Sets the range of states around the HOMO level for the self-energy evaluation. F
 <b><font color="red">EXPERIMENTAL</font> </b> 
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. Only meaningful for GW.</li><br>
 <hr>
 <a name=step_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>step_sigma</b>  </span>  
@@ -653,7 +653,7 @@ Maximum Gaussian excitation field strength in atomic units.</li><br>
 <a name=excit_name><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_name</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: NO<br><br>
+Default: no<br><br>
 Sets the type of excitation of a system in the real-time dynamics.  'GAU' stands for a linearly polarized uniform Gaussian electric field</li><br>
 <hr>
 <a name=excit_omega><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>excit_omega</b>  </span>  
@@ -894,9 +894,9 @@ Sets the electronic temperature in the Fermi-Dirac functions. Helps the converge
 <a name=xyz_file><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>xyz_file</b>  </span>  
 <br><br>
 <i>Optional</i><br>
-Default: None<br><br>
+Default: none<br><br>
 Specifies the location of the xyz file that contains the atomic positions. It can be used as an alternate route to set atomic coordinate.</li><br>
 </ul>
 <br><br><br><br><br><br><br><br>
-<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 07 March 2021</i><br><br></body>
+<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 15 April 2021</i><br><br></body>
 </html>

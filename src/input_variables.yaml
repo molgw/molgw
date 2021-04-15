@@ -80,8 +80,8 @@ basis:
   mandatory: 'yes'
   experimental: 'no'
   default: ''
-  comment: Sets the basis set For Pople sets, use 6-31G for instance or 6-31pGs, where
-    p stands for + and s for *. For Dunning sets, use aug-cc-pVTZ for instance. Note
+  comment: Sets the basis set For Pople sets, use 6-31G for instance or 6-31+G\*.
+    For Dunning sets, use aug-cc-pVTZ for instance. Note
     that Pople sets are to be used with gaussian_type='cart' One may use ones own
     basis sets provided that the files are labeled X_mybasisset where X is the element.
 
@@ -997,7 +997,7 @@ excit_name:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: 'NO'
+  default: 'no'
   comment: "Sets the type of excitation of a system in the real-time dynamics.  'GAU' stands for a linearly polarized uniform Gaussian electric field"
 
 excit_omega:
