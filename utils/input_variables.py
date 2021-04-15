@@ -44,7 +44,7 @@ def printmd(output,key,value):
   output.write('### '+key+'\n\n')
 
   if value['experimental'] == 'yes':
-    output.write('**EXPERIMENTAL** \n\n')
+    output.write('**experimental** \n\n')
 
   if value['mandatory'] == 'yes':
     output.write('*Mandatory* \n\n')

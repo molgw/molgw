@@ -897,7 +897,7 @@ Allows for a post-scf calculation whatever the outcome of the SCF loop. Especial
 ---
 ### ci_greens_function
 
-**EXPERIMENTAL** 
+**experimental** 
 
 *Optional* 
 
@@ -971,7 +971,7 @@ Sets the number of states considered as core in &lt;&Sigma;<sub>x</sub>-<i>v</i>
 ---
 ### ecp_small_basis
 
-**EXPERIMENTAL** 
+**experimental** 
 
 *Optional* 
 
@@ -1009,7 +1009,7 @@ Triggers the neglect of core states in GW. H, He, Li, Be have no core states. B-
 ---
 ### gwgamma_tddft
 
-**EXPERIMENTAL** 
+**experimental** 
 
 *Optional* 
 
@@ -1210,7 +1210,7 @@ Triggers the calculation of a correlated density matrix within MBPT. Valid choic
 ---
 ### rcut_mbpt
 
-**EXPERIMENTAL** 
+**experimental** 
 
 *Optional* 
 
@@ -1272,7 +1272,7 @@ Sets the range of states around the HOMO level for the self-energy evaluation. F
 ---
 ### small_basis
 
-**EXPERIMENTAL** 
+**experimental** 
 
 *Optional* 
 
@@ -1706,7 +1706,7 @@ Sets the tolerance value for the screening of the negligible integrals. Possible
 ---
 ### kerker_k0
 
-**EXPERIMENTAL** 
+**experimental** 
 
 *Optional* 
 
