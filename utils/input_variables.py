@@ -50,17 +50,14 @@ def printmd(output,key,value):
     output.write('*Mandatory* \n\n')
   else:
     output.write('*Optional* \n\n')
-  output.write('Family: '+value['family']+' \n\n')
-  output.write('Type: '+value['datatype']+' \n\n') 
-
-  output.write('| Family  |' + value['family']        +'| \n')
-  output.write('| Type    |' + value['datatype']      +'| \n')
-  output.write('| Default |' + str(value['default'])  +'| \n\n')
+  output.write('**Family:** '+value['family']+' \n\n')
+  output.write('**Type:** '+value['datatype']+' \n\n') 
 
   if value['default'] == '':
-    output.write('Default: None \n\n')
+    output.write('**Default:** None \n\n')
   else:
-    output.write('Default: '+str(value['default'])+' \n\n')
+    output.write('**Default:** '+str(value['default'])+' \n\n')
+  output.write('**Description:** \n\n') 
   output.write(    value['comment']+' \n\n\n')
 
 
