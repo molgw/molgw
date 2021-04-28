@@ -287,7 +287,7 @@ basis_path:
   mandatory: 'no'
   experimental: 'no'
   default: ''
-  comment: Sets the path pointing to the basis functions files.                  If
+  comment: Sets the path pointing to the basis functions files. If
     not specified, then the basis set files will be searched in folder ~molgw/basis/.
 
 force_energy_qp:
