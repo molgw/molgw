@@ -892,7 +892,7 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell
 
  ! All the gaussians of the contraction have the same orbital momentum
  do ig=1,bf%ngaussian
-   call init_gaussian_general(nx,ny,nz,alpha(ig),x0,bf%g(ig))
+   call init_gaussian_cart(nx,ny,nz,alpha(ig),x0,bf%g(ig))
    bf%coeff(ig) = coeff(ig)
  enddo
 
@@ -946,7 +946,7 @@ subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,she
 
 !  ! All the gaussians of the contraction have the same orbital momentum
 !  do ig=1,bf%ngaussian
-!    call init_gaussian_general(nx,ny,nz,alpha(ig),x0,bf%g(ig))
+!    call init_gaussian_cart(nx,ny,nz,alpha(ig),x0,bf%g(ig))
 !    bf%coeff(ig) = coeff(ig)
 !  enddo
 !
