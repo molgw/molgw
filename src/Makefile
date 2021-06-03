@@ -282,6 +282,17 @@ mp2.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
 noft.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
        m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 \
        noft.f90
+	cp m_definitions.mod ./noft/m_vars.mod 
+	$(FC_W_OPTS) -c ./noft/m_cg.F90
+	$(FC_W_OPTS) -c ./noft/m_integd.F90
+	$(FC_W_OPTS) -c ./noft/m_rdmd.F90
+	$(FC_W_OPTS) -c ./noft/m_elag.F90
+	$(FC_W_OPTS) -c ./noft/m_diagf.F90
+	$(FC_W_OPTS) -c ./noft/m_gammatodm2.F90
+	$(FC_W_OPTS) -c ./noft/m_e_grad_occ.F90
+	$(FC_W_OPTS) -c ./noft/m_optocc.F90
+	$(FC_W_OPTS) -c ./noft/m_optorb.F90
+	$(FC_W_OPTS) -c ./noft/m_noft_driver.F90
 	$(FC_W_OPTS) -c noft.f90 $(LIBXC_INCS)
 
 m_virtual_orbital_space.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_scalapack.f90 \

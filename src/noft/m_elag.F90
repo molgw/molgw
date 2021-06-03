@@ -1,0 +1,514 @@
+!!****m* DoNOF/m_elag
+!! NAME
+!!  m_elag
+!!
+!! FUNCTION
+!!  Module to build the Lagrange multipliers Lambda 
+!!
+!! COPYRIGHT
+!! This file is distributed under the terms of the
+!! GNU General Public License, see http://www.gnu.org/copyleft/gpl.txt .
+!!
+!!
+!! PARENTS
+!!  m_optorb
+!!
+!! CHILDREN
+!!  m_rdmd
+!!
+!! SOURCE
+
+module m_elag
+
+ use m_rdmd
+ use m_integd
+
+ implicit none
+
+!!private :: 
+!!***
+!!****t* m_rdmd/rdm_t
+!! NAME
+!! rdm_t
+!!
+!! FUNCTION
+!! Datatype storing noft quantities and arrays needed
+!!
+!! SOURCE
+
+ type,public :: elag_t
+
+  logical::diagLpL=.true.        ! Do the diag. using (lambda+lambda)/2?
+  logical::diagLpL_done=.false.  ! Did we use use (lambda+lambda)/2?
+  integer::imethod=1             ! Method used for optimization (1-> Diag F matrix)
+  integer::MaxScaling=0          ! Max scaling reductions employed to avoid divergence of diag[F]
+  integer::itscale=1             ! Above this number of iterations we do MaxScaling=MaxScaling+1
+  integer::itolLambda=4          ! Integer used to define 10**-itolLambda as threshold of Lambda_pq-Lambda_qp* convergence
+  integer::itoldiis=3            ! Integer used to define 10**-itoldiis as threshold of DIIS trigger
+  integer::idiis=0               ! Current DIIS iteration
+  integer::ndiis=5               ! The number of iterations required to apply DIIS is ndiis+1
+  integer::ndiis_array           ! Size of the arrays used in DIIS (ndiis+2)
+  real(dp)::sumdiff_old  ! Old value of sum_pq |F_pq|  for p/=q 
+  real(dp)::tolE         ! Tolerance that will be imposed in Energy convergence
+! arrays 
+  real(dp),allocatable,dimension(:)::F_diag       ! F_pp (Diag. part of the F matrix)
+  real(dp),allocatable,dimension(:)::Coef_DIIS    ! DIIS coefs. used to build linear comb. of F matrices
+  real(dp),allocatable,dimension(:,:)::Lambdas    ! Lambda_pq (Lagrange multipliers matrix)
+  real(dp),allocatable,dimension(:,:)::DIIS_mat   ! DIIS matrix used to solve the system of eqs. DIIS_MAT*Coef_DIIS = (0 0 ... 0 1) 
+  real(dp),allocatable,dimension(:,:,:)::F_DIIS   ! F matrices used by DIIS
+
+ contains 
+   procedure :: free => elag_free
+   ! Destructor.
+
+   procedure :: build => build_elag
+   ! Use integrals and the 1,2-RDM to build Lambdas matrix.
+
+   procedure :: diag_lag => diag_lambda_ekt
+   ! Diagonalize the matrix Lambdas (or divided by occ. numbers) to compute canonical orbs. or EKT.
+
+   procedure :: clean_diis => wipeout_diis
+   ! Set to ZERO all arrays employed by DIIS.
+
+   procedure :: print_Fdiag => print_F_diag
+   ! Print the F_diag vector to un unformated file.
+
+   procedure :: dyson_orb => dyson_orbs
+   ! Compute Dyson orbs. after EKT diagonalization.
+
+ end type elag_t
+
+ public :: elag_init 
+!!***
+
+CONTAINS  !==============================================================================
+
+!!***
+!!****f* DoNOF/elag_init
+!! NAME
+!! elag_init
+!!
+!! FUNCTION
+!!  Initialize the data type elag_t 
+!!
+!! INPUTS
+!! NBF_tot=Number of total orbitals
+!! diagLpL_in=Diagonalize 0.5 (Lambda+Lambda) for the first iteration?
+!! itolLambda=Used as 10**-itolLambda to check for Lambda_pq-Lambda_qp* convergence
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,tolE_in)
+!Arguments ------------------------------------
+!scalars
+ logical,intent(in)::diagLpL_in
+ integer,intent(in)::NBF_tot,itolLambda_in,ndiis_in,imethod_in
+ real(dp),intent(in)::tolE_in
+ type(elag_t),intent(inout)::ELAGd
+!Local variables ------------------------------
+!scalars
+ real(dp)::totMEM
+!arrays
+!************************************************************************
+
+ ELAGd%imethod=imethod_in
+ ELAGd%itolLambda=itolLambda_in
+ ELAGd%diagLpL=diagLpL_in
+ ELAGd%ndiis=ndiis_in
+ ELAGd%ndiis_array=ELAGd%ndiis+2
+ ELAGd%tolE=tolE_in
+ ! Calculate memory needed
+ totMEM=NBF_tot+2*NBF_tot*NBF_tot
+ if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+  totMEM=totMEM+ELAGd%ndiis_array+ELAGd%ndiis_array*NBF_tot*NBF_tot+ELAGd%ndiis_array*ELAGd%ndiis_array
+ endif
+ totMEM=8*totMEM       ! Bytes
+ totMEM=totMEM*1.0d-6  ! Bytes to Mb  
+ if(totMEM>1.0d3) then     ! Mb to Gb
+  write(*,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*1.0d-3,' Gb'
+ elseif(totMEM<1.0d0) then ! Mb to Kb
+  write(*,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*1.0d3,' Kb'
+ else                      ! Mb
+  write(*,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM,' Mb'
+ endif
+ ! Allocate arrays
+ allocate(ELAGd%F_diag(NBF_tot))
+ allocate(ELAGd%Lambdas(NBF_tot,NBF_tot)) 
+ if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+  allocate(ELAGd%Coef_DIIS(ELAGd%ndiis_array))
+  allocate(ELAGd%F_DIIS(ELAGd%ndiis_array,NBF_tot,NBF_tot))
+  allocate(ELAGd%DIIS_mat(ELAGd%ndiis_array,ELAGd%ndiis_array)) 
+ endif 
+ 
+end subroutine elag_init
+!!***
+
+!!***
+!!****f* DoNOF/elag_free
+!! NAME
+!! elag_free
+!!
+!! FUNCTION
+!!  Free allocated arrays of the data type elag_t 
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine elag_free(ELAGd)
+!Arguments ------------------------------------
+!scalars
+ class(elag_t),intent(inout)::ELAGd
+!Local variables ------------------------------
+!scalars
+!arrays
+!************************************************************************
+
+ deallocate(ELAGd%F_diag) 
+ deallocate(ELAGd%Lambdas) 
+ if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+  deallocate(ELAGd%Coef_DIIS)
+  deallocate(ELAGd%F_DIIS)
+  deallocate(ELAGd%DIIS_mat) 
+ endif 
+
+end subroutine elag_free
+!!***
+
+!!****f* DoNOF/build_elag
+!! NAME
+!! build_elag
+!!
+!! FUNCTION
+!!  Build the Lagrange multipliers Lambda matrix. Nothe that the electron rep. integrals are given in DoNOF format
+!!
+!! INPUTS
+!!  RDMd=Object containg all required variables whose arrays are properly updated
+!!  INTEGd=Object containg all integrals
+!!
+!! OUTPUT
+!!  ELAGd%Lambdas=Matrix build with the Lagrange multipliers Lambda_pq
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine build_elag(ELAGd,RDMd,INTEGd,DM2_J,DM2_K)
+!Arguments ------------------------------------
+!scalars
+ class(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(in)::INTEGd
+!arrays
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1
+ real(dp)::tol10=1.0d-10
+!arrays
+!************************************************************************
+
+ ELAGd%Lambdas=0.0d0
+
+ do iorb=1,RDMd%NBF_occ
+  ELAGd%Lambdas(iorb,:)=RDMd%occ(iorb)*INTEGd%hCORE(:,iorb)                                         ! Init: Lambda_pq = n_p hCORE_qp
+  ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+RDMd%DM2_IIII(iorb)*INTEGd%ERImol(:,iorb,iorb,iorb)   ! any<->iorb,iorb<->iorb
+  do iorb1=1,RDMd%NBF_occ
+   if(iorb/=iorb1) then
+    if(INTEGd%iERItyp==0) then ! DoNOF notation {ij|lk}
+     ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+DM2_J(iorb,iorb1)*INTEGd%ERImol(:,iorb1,iorb1,iorb) ! any<->iorb,iorb1<->iorb1
+     ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+DM2_K(iorb,iorb1)*INTEGd%ERImol(:,iorb1,iorb,iorb1) ! any<->iorb1,iorb1<->iorb
+    elseif(INTEGd%iERItyp==1) then ! <ij|kl>
+     ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+DM2_J(iorb,iorb1)*INTEGd%ERImol(:,iorb1,iorb,iorb1) ! any<->iorb,iorb1<->iorb1
+     ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+DM2_K(iorb,iorb1)*INTEGd%ERImol(:,iorb1,iorb1,iorb) ! any<->iorb1,iorb1<->iorb
+    elseif(INTEGd%iERItyp==2) then ! (ik|jl)
+     ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+DM2_J(iorb,iorb1)*INTEGd%ERImol(:,iorb,iorb1,iorb1) ! any<->iorb,iorb1<->iorb1
+     ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+DM2_K(iorb,iorb1)*INTEGd%ERImol(:,iorb1,iorb1,iorb) ! any<->iorb1,iorb1<->iorb
+    else
+     ! Nth
+    endif
+   endif
+  enddo
+ enddo 
+ !ELAGd%Lambdas=2.0d0*ELAGd%Lambdas ! We only need half for 'alpha' orbs to define gradients
+
+ ! TODO 
+ if(RDMd%Nsingleocc>0) write(*,'(a)') 'Error! The Lambda_pq matrix construction is not implemented for Nsingleocc>0'
+
+end subroutine build_elag
+!!***
+
+!!****f* DoNOF/diag_lambda_ekt
+!! NAME
+!! diag_lambda_ekt
+!!
+!! FUNCTION
+!!  Diagonalize the Lagrange multipliers Lambda matrix (produce either the 'canonical orbitals' or EKT). 
+!!
+!! INPUTS
+!!  ELAGd%Lambdas=Matrix containing the Lagrange multipliers Lambda_pq
+!!  RDMd=Object containg all required variables whose arrays are properly updated
+!!  INTEGd=Object containg all integrals
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,ekt)
+!Arguments ------------------------------------
+!scalars
+ logical,optional,intent(in)::ekt
+ class(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(in)::RDMd
+ type(integ_t),intent(in)::INTEGd
+!arrays
+ real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::NO_COEF
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,lwork,info
+ real(dp)::sqrt_occ_iorb,sqrt_occ_iorb1,tol6=1d-6
+!arrays
+ character(len=10)::coef_file
+ real(dp),allocatable,dimension(:)::Eigval,Eigval_nocc,Work
+ real(dp),allocatable,dimension(:,:)::Eigvec,CANON_COEF
+!************************************************************************
+
+ allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Eigval(RDMd%NBF_tot),Work(1))
+ allocate(Eigval_nocc(RDMd%NBF_occ))
+ 
+ Eigvec=ELAGd%Lambdas
+
+ if(present(ekt)) then
+  do iorb=1,RDMd%NBF_tot
+   do iorb1=1,RDMd%NBF_tot
+    if(iorb<=RDMd%NBF_occ.and.iorb1<=RDMd%NBF_occ) then
+     sqrt_occ_iorb =dsqrt(RDMd%occ(iorb))
+     sqrt_occ_iorb1=dsqrt(RDMd%occ(iorb1))
+     if((dabs(sqrt_occ_iorb)>tol6).and.(dabs(sqrt_occ_iorb1)>tol6)) then
+      Eigvec(iorb,iorb1)=Eigvec(iorb,iorb1)/(sqrt_occ_iorb*sqrt_occ_iorb1)
+     else
+      Eigvec(iorb,iorb1)=0.0d0
+     endif
+    else
+     Eigvec(iorb,iorb1)=0.0d0
+    endif
+   enddo
+  enddo
+ endif
+
+ ! Diagonalize
+ lwork=-1 
+ call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigval,Work,lwork,info)
+ lwork=nint(Work(1))
+ if(info==0) then
+  deallocate(Work)
+  allocate(Work(lwork)) 
+  call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigval,Work,lwork,info)
+ endif
+
+ ! Print final eigenvalues and orbs.
+ write(*,'(a)') ' '
+ if(present(ekt)) then
+  Eigval=-Eigval
+  call ELAGd%dyson_orb(RDMd,INTEGd,Eigvec,NO_COEF)
+  write(*,'(a)') 'EKT ionization potentials (a.u.)'
+ else
+  coef_file='CANON_COEF'
+  allocate(CANON_COEF(RDMd%NBF_tot,RDMd%NBF_tot))
+  CANON_COEF=matmul(NO_COEF,Eigvec)
+  call RDMd%print_orbs(CANON_COEF,coef_file)
+  deallocate(CANON_COEF)
+  write(*,'(a)') 'Canonical orbital eigenvalues (a.u.)'
+ endif
+
+ Eigval_nocc(1:RDMd%NBF_occ)=Eigval(1:RDMd%NBF_occ)
+ do iorb=1,(RDMd%NBF_occ/10)*10,10
+  write(*,'(f12.6,9f11.6)') Eigval_nocc(iorb:iorb+9)
+ enddo
+ iorb=(RDMd%NBF_occ/10)*10+1
+ write(*,'(f12.6,*(f11.6))') Eigval_nocc(iorb:)
+ write(*,'(a)') ' '
+  
+ deallocate(Eigvec,Work,Eigval,Eigval_nocc)
+
+end subroutine diag_lambda_ekt
+!!***
+
+!!****f* DoNOF/dyson_orbs
+!! NAME
+!!  dyson_orbs   
+!!
+!! FUNCTION
+!!  Compute Dyson orbitals and corrected occ numbers. 
+!!
+!! INPUTS
+!!  RDMd=Object containg all required variables about sizes
+!!  INTEGd=Object containg all integrals
+!!  Eigvec=Eigenvectos obtaing from EKT diag.
+!!  NO_COEF=Nat. orb. coefs
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine dyson_orbs(ELAGd,RDMd,INTEGd,Eigvec,NO_COEF)
+!Arguments ------------------------------------
+!scalars
+ class(elag_t),intent(in)::ELAGd
+ type(rdm_t),intent(in)::RDMd
+ type(integ_t),intent(in)::INTEGd
+!arrays
+ real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::Eigvec,NO_COEF
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,iorb2
+!arrays
+ character(len=10)::coef_file
+ real(dp),allocatable,dimension(:)::DYSON_OCC
+ real(dp),allocatable,dimension(:,:)::DYSON_COEF
+!************************************************************************
+ allocate(DYSON_COEF(RDMd%NBF_tot,RDMd%NBF_tot),DYSON_OCC(RDMd%NBF_occ))
+ DYSON_COEF=0.0d0; DYSON_OCC=0.0d0;
+ ! Unnormalized DYSON_COEF
+ do iorb=1,RDMd%NBF_tot
+  do iorb1=1,RDMd%NBF_occ
+   DYSON_COEF(iorb,iorb1)=0.0d0
+   do iorb2=1,RDMd%NBF_occ
+    DYSON_COEF(iorb,iorb1)=DYSON_COEF(iorb,iorb1)+dsqrt(RDMd%occ(iorb2))*NO_COEF(iorb,iorb2)*Eigvec(iorb2,iorb1)
+   enddo
+  enddo
+ enddo 
+ ! Occ numbers of DYSON_COEF
+ do iorb=1,RDMd%NBF_occ
+  DYSON_OCC(iorb)=0.0d0
+  do iorb1=1,RDMd%NBF_tot
+   DYSON_OCC(iorb)=DYSON_OCC(iorb)+DYSON_COEF(iorb1,iorb)*sum(INTEGd%Overlap(iorb1,:)*DYSON_COEF(:,iorb))
+  enddo
+ enddo
+ ! Normalized DYSON_COEF
+ do iorb=1,RDMd%NBF_occ
+  do iorb1=1,RDMd%NBF_tot
+   DYSON_COEF(iorb1,iorb)=DYSON_COEF(iorb1,iorb)/dsqrt(DYSON_OCC(iorb))
+  enddo
+ enddo
+ ! Print DYSON_COEF
+ coef_file='DYSON_COEF'
+ call RDMd%print_orbs(DYSON_COEF,coef_file)
+ ! Print DYSON occ. numbers
+ DYSON_OCC(:)=2.0d0*DYSON_OCC(:)
+ write(*,'(a,f10.5,a)') 'Dyson occ ',sum(DYSON_OCC(:)),'. Dyson occ. numbers '
+ do iorb=1,(RDMd%NBF_occ/10)*10,10
+  write(*,'(f12.6,9f11.6)') DYSON_OCC(iorb:iorb+9)
+ enddo
+ iorb=(RDMd%NBF_occ/10)*10+1
+ write(*,'(f12.6,*(f11.6))') DYSON_OCC(iorb:)
+ ! Deallocate arrays
+ deallocate(DYSON_COEF,DYSON_OCC)
+
+end subroutine dyson_orbs
+!!***
+
+!!****f* DoNOF/wipeout_diis
+!! NAME
+!! wipeout_diis
+!!
+!! FUNCTION
+!!  Build the Lagrange multipliers Lambda matrix. Nothe that the electron rep. integrals are given in DoNOF format
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine wipeout_diis(ELAGd)
+!Arguments ------------------------------------
+!scalars
+ class(elag_t),intent(inout)::ELAGd
+!arrays
+!Local variables ------------------------------
+!scalars
+!arrays
+!************************************************************************
+
+ ELAGd%idiis=0
+ if(ELAGd%ndiis>0) then
+  ELAGd%Coef_DIIS=0.0d0
+  ELAGd%F_DIIS=0.0d0
+  ELAGd%DIIS_mat=0.0d0
+ endif 
+
+end subroutine wipeout_diis
+!!***
+
+!!***
+!!****f* DoNOF/print_F_diag
+!! NAME
+!! print_F_diag
+!!
+!! FUNCTION
+!!  Print the diagonal elements of the F matrix to a file (used by restart)
+!!
+!! INPUTS
+!!  NBF_tot=Size of the F diag. array
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine print_F_diag(ELAGd,NBF_tot)
+!Arguments ------------------------------------
+!scalars
+ class(elag_t),intent(in)::ELAGd
+ integer,intent(in)::NBF_tot
+!arrays
+!Local variables ------------------------------
+!scalars
+integer::iorb,iunit=312
+!arrays
+
+!************************************************************************
+
+ ! Print F_diag vector
+ open(unit=iunit,form='unformatted',file='F_DIAG')
+ do iorb=1,NBF_tot
+  write(iunit) iorb,ELAGd%F_diag(iorb)
+ enddo
+ write(iunit) 0,0.0d0
+ close(iunit)
+
+end subroutine print_F_diag
+!!***
+
+end module m_elag
+!!***
