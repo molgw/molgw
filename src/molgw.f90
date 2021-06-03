@@ -74,6 +74,7 @@ program molgw
   real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
   real(dp),allocatable    :: hamiltonian_nucleus(:,:)
+  real(dp),allocatable    :: hamiltonian_hCORE(:,:)
   real(dp),allocatable    :: hamiltonian_fock(:,:,:)
   real(dp),allocatable    :: s_matrix(:,:)
   real(dp),allocatable    :: x_matrix(:,:)
@@ -454,6 +455,30 @@ program molgw
   if( .FALSE. ) call plot_wfn_fourier(basis,c_matrix)
 
 
+  !
+  ! Do NOFT optimization
+  !
+  if( calc_type%is_noft ) then
+
+    ! Kinetic energy contribution
+    call setup_kinetic(basis,hamiltonian_kinetic)
+    ! Nucleus-electron interaction
+    call setup_nucleus(basis,hamiltonian_nucleus)
+    call clean_allocate('hCORE operator ',hamiltonian_hCORE,basis%nbf,basis%nbf)
+    hamiltonian_hCORE(:,:)=hamiltonian_kinetic(:,:)+hamiltonian_nucleus(:,:)
+    if(has_auxil_basis) then
+      call noft_energy_ri(nstate,basis,c_matrix,hamiltonian_hCORE,s_matrix,en_gks%total)
+    else
+      ! TODO
+    endif
+
+    en_gks%total = en_gks%nuc_nuc + en_gks%total
+
+    write(stdout,'(a,2x,f19.10)') ' NOFT Total Energy (Ha):',en_gks%total
+    write(stdout,*)
+    call clean_deallocate('hCORE operator ',hamiltonian_hCORE)
+
+  endif
 
   !
   ! RT-TDDFT Simulation (only if SCF cycles were converged)

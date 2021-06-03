@@ -122,7 +122,7 @@ level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_dm_mbp
 
 level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o \
           gwgamma_selfenergy.o bse.o \
-          mp2.o force.o molgw.o
+          mp2.o noft.o force.o molgw.o
 
 
 
@@ -146,7 +146,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
         m_hamiltonian_wrapper.o \
         m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o m_fourier_quadrature.o \
         linear_response.o static_polarizability.o gw_selfenergy.o m_gw_selfenergy_grid.o gwgamma_selfenergy.o \
-        bse.o m_multipole.o m_io.o m_restart.o mp2.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
+        bse.o m_multipole.o m_io.o m_restart.o mp2.o noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
         molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
@@ -158,7 +158,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
                         m_spectral_function.o m_ci.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o \
-                        mp2.o gw_selfenergy.o m_gw_selfenergy_grid.o gwgamma_selfenergy.o bse.o \
+                        mp2.o noft.o gw_selfenergy.o m_gw_selfenergy_grid.o gwgamma_selfenergy.o bse.o \
                         linear_response.o static_polarizability.o m_multipole.o m_io.o m_restart.o \
                         m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_scf_loop.o m_dm_analysis.o \
                         m_hamiltonian_wrapper.o m_fourier_quadrature.o \
@@ -278,6 +278,11 @@ mp2.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
        m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 \
        mp2.f90
 	$(FC_W_OPTS) -c mp2.f90 $(LIBXC_INCS)
+
+noft.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
+       m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 \
+       noft.f90
+	$(FC_W_OPTS) -c noft.f90 $(LIBXC_INCS)
 
 m_virtual_orbital_space.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_scalapack.f90 \
 	                  m_basis_set.f90 m_eri_ao_mo.f90 m_hamiltonian_tools.f90 m_linear_algebra.f90 m_io.f90 \

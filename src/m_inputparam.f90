@@ -72,6 +72,7 @@ module m_inputparam
     logical            :: is_gw
     logical            :: is_mp2
     logical            :: is_mp3
+    logical            :: is_noft
     logical            :: is_selfenergy
     logical            :: is_ci
     logical            :: is_bse,no_bse_kernel,is_td
@@ -181,6 +182,7 @@ subroutine init_calculation_type(scf,postscf)
   calc_type%is_gw                = .FALSE.
   calc_type%is_mp2               = .FALSE.
   calc_type%is_mp3               = .FALSE.
+  calc_type%is_noft              = .FALSE.
   calc_type%is_ci                = .FALSE.
   calc_type%is_bse               = .FALSE.
   calc_type%no_bse_kernel        = .FALSE.
@@ -269,6 +271,8 @@ subroutine init_calculation_type(scf,postscf)
     case('EVMP3_SELFENERGY','EVPT3','EVGF3')
       calc_type%selfenergy_approx = PT3
       calc_type%selfenergy_technique = EVSC
+    case('NOFT')
+      calc_type%is_noft   =.TRUE.
     case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
       calc_type%selfenergy_approx = TWO_RINGS
     case('ONE_RING','ONE-RING','ONERING','1RING')

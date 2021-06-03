@@ -21,9 +21,8 @@ module m_hamiltonian_onebody
  use m_libint_tools
  use m_io
 
-
-
-
+ real(dp),allocatable         :: AhCORE(:,:)                   ! hCORE matrix (T+Ven)
+ real(dp),allocatable         :: AOverlap(:,:)                 ! Atomic orbital overlap matrix
 
 contains
 
