@@ -50,13 +50,12 @@ subroutine noft_energy_ri(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
 
  enoft = 0.0_dp
  
- INOF=7;Ista=1;NBF_occ=5;Nfrozen=0;Npairs=1;Ncoupled=4;Nbeta=1;Nalpha=Nbeta;itermax=1000;NTHRESHL=4;NDIIS=6;
+ INOF=7;Ista=1;NBF_occ=10;Nfrozen=0;Npairs=1;Ncoupled=9;Nbeta=1;Nalpha=Nbeta;itermax=1000;NTHRESHL=4;NDIIS=6;
  tolE=1.0d-8;
  call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Ncoupled,Nbeta,Nalpha,1,2,1,itermax,1,1,&
  & NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,Aoverlap,mo_ints,restart=LRESTART,ireadGAMMAS=1,&
  & ireadOCC=1,ireadCOEF=1,ireadFdiag=1)
 
- write(*,*) 'we are back'
  deallocate(AhCORE,Aoverlap,NO_COEF)
  call stop_clock(timing_noft_energy)
 
