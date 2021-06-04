@@ -1,4 +1,4 @@
-      module m_lbfgs 
+      module m_lbfgs_intern 
 
       USE m_vars
       INTEGER LP,MP
@@ -6,7 +6,7 @@
       COMMON /LB3/MP,LP,GTOL,STPMIN,STPMAX
       DATA MP,LP,GTOL,STPMIN,STPMAX/11,11,9.0D-01,1.0D-20,1.0D+20/
 
-      public :: LBFGS
+      public :: LBFGS_INTERN
 
       contains
   
@@ -16,7 +16,8 @@
 !                                                                      !
 !======================================================================!
 
-      SUBROUTINE LBFGS(N,M,X,F,G,DIAGCO,DIAG,IPRINT,EPS,XTOL,W,IFLAG)
+      SUBROUTINE LBFGS_INTERN(N,M,X,F,G,DIAGCO,DIAG,IPRINT,EPS,XTOL,W,
+     &  IFLAG)
 C
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)   
       INTEGER N,M,IPRINT(2),IFLAG

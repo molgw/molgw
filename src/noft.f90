@@ -5,7 +5,7 @@
 ! This file contains
 ! - NOFT energy opt. with Resolution-of-Identity
 !=========================================================================
-subroutine noft_energy_ri(nstate,basis,c_matrix,hCORE,Overlap,enoft)
+subroutine noft_energy_ri(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
  use m_definitions
  use m_mpi
  use m_cart_to_pure
@@ -13,64 +13,56 @@ subroutine noft_energy_ri(nstate,basis,c_matrix,hCORE,Overlap,enoft)
  use m_eri_ao_mo
  use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore
  use m_hamiltonian_onebody
+ use m_noft_driver
  implicit none
 
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(inout)     :: hCORE(basis%nbf,basis%nbf)
- real(dp),intent(in)        :: Overlap(basis%nbf,basis%nbf)
+ real(dp),intent(inout)     :: AhCORE_in(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: AOverlap_in(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: Vnn
  real(dp),intent(out)       :: enoft
 !====
- integer                    :: istate,jstate,kstate,lstate
- real(dp)                   :: tmp_iajb,energy_denom
+ integer                    :: istate
  real(dp),allocatable       :: NO_COEF(:,:)
- real(dp),allocatable       :: ERImol(:,:,:,:)
- integer                    :: nocc(nspin)
- integer                    :: ncore
- external                   :: mo_ints
+ logical::lrestart=.true.
+ integer::INOF,Ista,NBF_occ,Nfrozen,Npairs,Ncoupled,Nbeta,Nalpha,itermax,NTHRESHL,NDIIS
+ real(dp)::tolE
+ external::mo_ints
 !=====
 
  call start_clock(timing_noft_energy)
 
  write(stdout,'(/,a)') ' RI-NOFT calculation'
 
+ nbf_noft=nstate
  allocate(AhCORE(basis%nbf,basis%nbf),Aoverlap(basis%nbf,basis%nbf),NO_COEF(basis%nbf,basis%nbf))
- allocate(ERImol(basis%nbf,basis%nbf,basis%nbf,basis%nbf))
-
- AhCORE(:,:)=hCORE(:,:)
- Aoverlap(:,:)=overlap(:,:) 
+ 
+ ! Save Atomic hCORE integrals and atomic overlaps
+ AhCORE(:,:)=AhCORE_in(:,:)
+ Aoverlap(:,:)=AOverlap_in(:,:) 
  NO_COEF(:,:)=0.0_dp
- do istate=1,basis%nbf
-  NO_COEF(istate,1:nstate)=c_matrix(istate,1:nstate,1)
+ ! Pass current guess NOs to NO_COEF array
+ do istate=1,nbf_noft
+  NO_COEF(:,istate)=c_matrix(:,istate,1)
  enddo
-
- ncore = ncoreg
- if(is_frozencore) then
-   if( ncore == 0) ncore = atoms_core_states()
- endif
-
- call calculate_eri_3center_eigen(c_matrix,ncore+1,nstate,ncore+1,nstate)
 
  enoft = 0.0_dp
  
- call mo_ints(basis%nbf,NO_COEF,hCORE,ERImol)
- !tmp_iajb = eri_eigen_ri(istate,astate,iaspin,jstate,bstate,jbspin)
- tmp_iajb = eri_eigen_ri(1,2,1,1,2,1)
+ INOF=7;Ista=1;NBF_occ=5;Nfrozen=0;Npairs=1;Ncoupled=4;Nbeta=1;Nalpha=Nbeta;itermax=1000;NTHRESHL=4;NDIIS=6;
+ tolE=1.0d-8;
+ call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Ncoupled,Nbeta,Nalpha,1,2,1,itermax,1,1,&
+ & NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,Aoverlap,mo_ints,restart=LRESTART,ireadGAMMAS=1,&
+ & ireadOCC=1,ireadCOEF=1,ireadFdiag=1)
 
- enoft = enoft + 0.5_dp * energy_denom * tmp_iajb**2
-
-
- write(stdout,'(a,f16.10,/)') ' NOFT :',enoft
-
- call destroy_eri_3center_eigen()
+ write(*,*) 'we are back'
  deallocate(AhCORE,Aoverlap,NO_COEF)
- deallocate(ERImol)
  call stop_clock(timing_noft_energy)
 
 end subroutine noft_energy_ri
 
-subroutine mo_ints(nbf,NO_COEF,hcoreMOL,ERImol)
+subroutine mo_ints(nbf,NO_COEF,hCORE,ERImol)
  use m_definitions
  use m_mpi
  use m_cart_to_pure
@@ -81,15 +73,39 @@ subroutine mo_ints(nbf,NO_COEF,hcoreMOL,ERImol)
 
  integer,intent(in)         :: nbf
  real(dp),intent(in)        :: NO_COEF(nbf,nbf)
- real(dp),intent(inout)     :: hcoreMOL(nbf,nbf)
+ real(dp),intent(inout)     :: hCORE(nbf,nbf)
  real(dp),intent(inout)     :: ERImol(nbf,nbf,nbf,nbf)
 !====
- integer                    :: istate
+ integer                    :: istate,jstate,kstate,lstate
+ real(dp),allocatable       :: tmp_hcore(:,:)
+ real(dp),allocatable       :: c_matrix(:,:,:)
+!=====
 
- write(*,*) 'IN HERE'
- do istate=1,nbf
-  write(*,*) AhCORE(istate,:)
+ ! hCORE part
+ allocate(tmp_hcore(nbf,nbf))
+ hCORE(:,:)=0.0d0; tmp_hcore(:,:)=0.0d0;
+ tmp_hcore=matmul(AhCORE,NO_COEF)
+ hCORE=matmul(transpose(NO_COEF),tmp_hcore)
+ deallocate(tmp_hcore)
+
+ ! ERI terms
+ ERImol(:,:,:,:)=0.0d0
+ allocate(c_matrix(nbf,nbf_noft,1))
+ do istate=1,nbf_noft
+  c_matrix(:,istate,1)=NO_COEF(:,istate)
  enddo
+ call calculate_eri_3center_eigen(c_matrix,1,nbf_noft,1,nbf_noft)
+ do istate=1,nbf_noft
+   do jstate=1,nbf_noft
+     do kstate=1,nbf_noft
+       do lstate=1,nbf_noft
+         ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+       enddo
+     enddo
+   enddo
+ enddo
+ call destroy_eri_3center_eigen()
+ deallocate(c_matrix)
 
 end subroutine mo_ints
 

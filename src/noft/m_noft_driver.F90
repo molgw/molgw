@@ -80,7 +80,7 @@ contains
 
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintints,&
-&  itolLambda,ndiis,tolE_in,Vnn,NO_COEF,Overlap_in,mo_ints,restart,ireadGAMMAS,ireadOCC,&
+&  itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,Overlap_in,mo_ints,restart,ireadGAMMAS,ireadOCC,&
 &  ireadCOEF,ireadFdiag)
 !Arguments ------------------------------------
 !scalars
@@ -90,6 +90,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in,iERItyp_in
  real(dp),intent(in)::Vnn,tolE_in
+ real(dp),intent(inout)::Enof
  external::mo_ints
 !arrays
  real(dp),dimension(NBF_tot_in,NBF_tot_in),intent(in)::Overlap_in
@@ -233,8 +234,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   hONEbody=hONEbody+RDMd%occ(iorb)*INTEGd%hCORE(iorb,iorb)
  enddo
  Vee=Energy-hONEbody
+ Enof=Energy+Vnn
  write(*,'(a)') ' '
- write(*,'(a,f15.6,a,i6,a)') 'Final NOF energy = ',Energy+Vnn,' a.u. after ',iter,' global iter.'
+ write(*,'(a,f15.6,a,i6,a)') 'Final NOF energy = ',Enof,' a.u. after ',iter,' global iter.'
  write(*,'(a,f15.6,a)') 'hCORE            = ',hONEbody,' a.u.'
  write(*,'(a,f15.6,a)') 'Vee              = ',Vee,' a.u.'
  write(*,'(a,f15.6,a)') 'Vnn              = ',Vnn,' a.u.'
