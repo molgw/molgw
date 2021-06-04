@@ -81,7 +81,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  endif
  
  icall=0
- call mo_ints(NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
+ call mo_ints(RDMd%NBF_tot,NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
  call INTEGd%eritoeriJK(RDMd%NBF_occ)
  do
   ! If we used a DIIS step, do not stop after DIIS for small Energy dif.
@@ -116,7 +116,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   endif
 
   ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
-  call mo_ints(NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
+  call mo_ints(RDMd%NBF_tot,NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
   call INTEGd%eritoeriJK(RDMd%NBF_occ)
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,nogamma=nogamma)
  

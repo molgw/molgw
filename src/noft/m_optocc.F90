@@ -150,22 +150,22 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
 60  deallocate(iWork,Work,Work2)
 
   else ! LBFGS
-!   write(*,'(a)') 'Calling LBFGS to optimize occ. numbers'
-!   Nwork=RDMd%Ngammas*(2*msave+1)+2*msave
-!   Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
-!   eps= 1.0d-5; xtol= 1.0d-16; icall=0; iflag=0;
-!   allocate(Work(Nwork),diag(RDMd%Ngammas))
-!   do
-!    call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K)
-!    call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K)
+   write(*,'(a)') 'Calling LBFGS to optimize occ. numbers'
+   Nwork=RDMd%Ngammas*(2*msave+1)+2*msave
+   Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
+   eps= 1.0d-5; xtol= 1.0d-16; icall=0; iflag=0;
+   allocate(Work(Nwork),diag(RDMd%Ngammas))
+   do
+    call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K)
+    call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K)
 !    call LBFGS(RDMd%Ngammas,Mtosave,GAMMAs,Energy,Grad_GAMMAs,diagco,diag,info_print,eps,xtol,Work,iflag)
-!    if(iflag<=0) exit
-!    icall=icall+1
+    if(iflag<=0) exit
+    icall=icall+1
 !  We allow at most 2000 evaluations of Energy and Gradient
-!    if(icall==2000) exit
+    if(icall==2000) exit
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
-!   enddo
-!   deallocate(Work,diag)
+   enddo
+   deallocate(Work,diag)
   endif
  endif 
  
