@@ -33,33 +33,35 @@ subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
  external::mo_ints
 !=====
 
+ ! Init clock
  call start_clock(timing_noft_energy)
 
  write(stdout,'(/,a)') ' RI-NOFT calculation'
 
  nbf_noft=nstate
+ enoft = 0.0_dp
+ ! These can be fixed for a while...
+ itermax=1000;NTHRESHL=4;NDIIS=6;tolE=1.0d-8;imethorb=1;
+
+ ! Allocate arrays and initialize them 
  call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
  call clean_allocate('Aoverlap',Aoverlap,basis%nbf,basis%nbf)
  call clean_allocate('NO_COEF',NO_COEF,basis%nbf,basis%nbf)
  call clean_allocate('NO_occ',occ,nbf_noft,1)
  call clean_allocate('NO_energies',energy,nbf_noft,1)
- 
- ! Save Atomic hCORE integrals and atomic overlaps
+ occ=0.0_dp; energy=0.0_dp;
+  ! Save Atomic hCORE integrals and atomic overlaps
  AhCORE(:,:)=AhCORE_in(:,:)
  Aoverlap(:,:)=AOverlap_in(:,:) 
  NO_COEF(:,:)=0.0_dp
- ! Pass current guess NOs to NO_COEF array
+  ! Copy current guess NOs to NO_COEF array
  do istate=1,nbf_noft
    NO_COEF(:,istate)=c_matrix(:,istate,1)
  enddo
 
- enoft = 0.0_dp
- 
  ! To be input parameters! TODO 
  INOF=7;Ista=1;NBF_occ=10;Nfrozen=0;Npairs=1;Ncoupled=9;Nbeta=1;Nalpha=Nbeta;imethocc=1;iprintdmn=1;iprintints=0 
- occ=0.0_dp; energy=0.0_dp;
- ! Can be fixed for a while
- itermax=1000;NTHRESHL=4;NDIIS=6;tolE=1.0d-8;imethorb=1;
+
  ! Call module initialization and run NOFT calc.
  call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Ncoupled,Nbeta,Nalpha,1,imethocc,imethorb,itermax,&
  & iprintdmn,iprintints,NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,Aoverlap,occ(:,1),mo_ints,&
@@ -76,11 +78,14 @@ subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
  if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ,c_matrix)
  if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ,c_matrix,enoft,energy)
 
+ ! Deallocate arrays 
  call clean_deallocate('AhCORE',AhCORE)
  call clean_deallocate('Aoverlap',Aoverlap)
  call clean_deallocate('NO_COEF',NO_COEF)
  call clean_deallocate('NO_occ',occ)
  call clean_deallocate('NO_energies',energy)
+
+ ! Stop clock
  call stop_clock(timing_noft_energy)
 
 end subroutine noft_energy
