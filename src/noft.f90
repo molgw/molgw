@@ -5,18 +5,18 @@
 ! This file contains
 ! - NOFT energy opt. with Resolution-of-Identity
 !=========================================================================
-subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
+subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
  use m_definitions
  use m_mpi
  use m_cart_to_pure
  use m_basis_set
  use m_eri_ao_mo
- use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore
+ use m_inputparam
  use m_hamiltonian_onebody
  use m_noft_driver
  implicit none
 
- integer,intent(in)         :: nstate
+ integer,intent(in)         :: Nelect,nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(inout)     :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(inout)     :: AhCORE_in(basis%nbf,basis%nbf)
@@ -26,9 +26,7 @@ subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
 !====
  integer                    :: istate
  real(dp),allocatable       :: NO_COEF(:,:),occ(:,:),energy(:,:) 
- logical::lrestart=.true.
- integer::INOF,Ista,NBF_occ,Nfrozen,Npairs,Ncoupled,Nbeta,Nalpha,itermax,NTHRESHL,NDIIS
- integer::imethorb,imethocc,iprintdmn,iprintints
+ integer::imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled,itermax,NTHRESHL,NDIIS
  real(dp)::tolE
  external::mo_ints
 !=====
@@ -40,8 +38,9 @@ subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
 
  nbf_noft=nstate
  enoft = 0.0_dp
- ! These can be fixed for a while...
- itermax=1000;NTHRESHL=4;NDIIS=6;tolE=1.0d-8;imethorb=1;
+ ! These can be fixed for a while... 
+ !  iERItyp=1 -> use notation <ij|kl>
+ itermax=1000;NTHRESHL=4;NDIIS=6;tolE=1.0d-8;imethorb=1;iERItyp=1;
 
  ! Allocate arrays and initialize them 
  call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
@@ -59,14 +58,32 @@ subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
    NO_COEF(:,istate)=c_matrix(:,istate,1)
  enddo
 
- ! To be input parameters! TODO 
- INOF=7;Ista=1;NBF_occ=10;Nfrozen=0;Npairs=1;Ncoupled=9;Nbeta=1;Nalpha=Nbeta;imethocc=1;iprintdmn=1;iprintints=0 
+ ! Not ready for open-shell calcs. (TODO)
+ Nvcoupled=ncoupled-1
+ Nfrozen=(Nelect-2*Npairs)/2
+ Nbeta=Nfrozen+Npairs
+ Nalpha=Nbeta
+ do
+  NBF_occ=Nfrozen+Npairs*(Nvcoupled+1)
+  if(NBF_occ<nbf_noft) then
+   exit
+  else
+   Nvcoupled=Nvcoupled-1
+  endif
+ enddo 
 
  ! Call module initialization and run NOFT calc.
- call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Ncoupled,Nbeta,Nalpha,1,imethocc,imethorb,itermax,&
- & iprintdmn,iprintints,NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,Aoverlap,occ(:,1),mo_ints,&
- & restart=LRESTART,ireadGAMMAS=1,ireadOCC=1,ireadCOEF=1,ireadFdiag=1)
-
+ if(restartnoft=='yes') then
+   call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
+   & imethocc,imethorb,itermax,iprintdmn,iprintints,NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,&
+   & Aoverlap,occ(:,1),mo_ints,&
+   & restart=(restartnoft=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,ireadFdiag=ireadFdiag)
+ else
+   call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
+   & imethocc,imethorb,itermax,iprintdmn,iprintints,NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,&
+   & Aoverlap,occ(:,1),mo_ints)
+ endif
+ 
  ! Update c_matrix with optimized NO_COEF
  do istate=1,nbf_noft
    c_matrix(:,istate,1)=NO_COEF(:,istate)

@@ -65,6 +65,7 @@ program molgw
   type(lbfgs_state)          :: lbfgs_plan
   type(energy_contributions) :: en_gks,en_mbpt
   integer                 :: restart_type
+  integer                 :: nelect
   integer                 :: nstate
   integer                 :: istep
   logical                 :: is_restart,is_big_restart,is_basis_restart
@@ -471,8 +472,9 @@ program molgw
     else
      noft_ri=.false.
     endif
-
-    call noft_energy(nstate,basis,c_matrix,hamiltonian_hCORE,s_matrix,en_gks%total,en_gks%nuc_nuc)
+ 
+    nelect=int(sum(occupation(:,1)))
+    call noft_energy(nelect,nstate,basis,c_matrix,hamiltonian_hCORE,s_matrix,en_gks%total,en_gks%nuc_nuc)
 
     write(stdout,'(a,2x,f19.10)') ' NOFT Total Energy (Ha):',en_gks%total
     write(stdout,*)
