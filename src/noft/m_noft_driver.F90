@@ -71,6 +71,7 @@ contains
 !! ireadGAMMAS, ireadOCC, ireadCOEF, ireadFdiag =Integer restart parameters to read files (true=1)
 !! 
 !! OUTPUT
+!! Occ=Array containing the optimized occ numbers
 !!
 !! PARENTS
 !!  
@@ -80,7 +81,7 @@ contains
 
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintints,&
-&  itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,Overlap_in,mo_ints,restart,ireadGAMMAS,ireadOCC,&
+&  itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,Overlap_in,Occ_inout,mo_ints,restart,ireadGAMMAS,ireadOCC,&
 &  ireadCOEF,ireadFdiag)
 !Arguments ------------------------------------
 !scalars
@@ -93,6 +94,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  real(dp),intent(inout)::Enof
  external::mo_ints
 !arrays
+ real(dp),dimension(NBF_tot_in),intent(inout)::Occ_inout
  real(dp),dimension(NBF_tot_in,NBF_tot_in),intent(in)::Overlap_in
  real(dp),dimension(NBF_tot_in,NBF_tot_in),intent(inout)::NO_COEF
 !Local variables ------------------------------
@@ -212,7 +214,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  ! Print final Extended Koopmans' Theorem (EKT) values
  if(RDMd%Nsingleocc==0) call ELAGd%diag_lag(RDMd,INTEGd,NO_COEF,ekt=ekt)
 
- ! Print optimal occ. numbers
+ ! Print optimal occ. numbers and save them in Occ_inout array
  write(*,'(a)') ' '
  RDMd%occ(:)=2.0d0*RDMd%occ(:)
  write(*,'(a,f10.5,a)') 'Total occ ',sum(RDMd%occ(:)),'. Optimized occ. numbers '
@@ -222,6 +224,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  iorb=(RDMd%NBF_occ/10)*10+1 
  write(*,'(f12.6,*(f11.6))') RDMd%occ(iorb:) 
  write(*,'(a)') ' '
+ Occ_inout=0.0d0
+ Occ_inout(1:RDMd%NBF_occ)=RDMd%occ(1:RDMd%NBF_occ)
 
  ! Print optimized nat. orb. coef.
  coef_file='NO_COEF'

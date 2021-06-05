@@ -473,7 +473,6 @@ program molgw
     endif
 
     call noft_energy(nstate,basis,c_matrix,hamiltonian_hCORE,s_matrix,en_gks%total,en_gks%nuc_nuc)
-    en_gks%total = en_gks%nuc_nuc + en_gks%total
 
     write(stdout,'(a,2x,f19.10)') ' NOFT Total Energy (Ha):',en_gks%total
     write(stdout,*)
