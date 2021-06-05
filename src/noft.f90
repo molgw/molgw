@@ -38,7 +38,11 @@ subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
  write(stdout,'(/,a)') ' RI-NOFT calculation'
 
  nbf_noft=nstate
- allocate(AhCORE(basis%nbf,basis%nbf),Aoverlap(basis%nbf,basis%nbf),NO_COEF(basis%nbf,basis%nbf))
+ call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
+ call clean_allocate('Aoverlap',Aoverlap,basis%nbf,basis%nbf)
+ call clean_allocate('NO_COEF',NO_COEF,basis%nbf,basis%nbf)
+ call clean_allocate('NO_occ',occ,nbf_noft,1)
+ call clean_allocate('NO_energies',energy,nbf_noft,1)
  
  ! Save Atomic hCORE integrals and atomic overlaps
  AhCORE(:,:)=AhCORE_in(:,:)
@@ -53,7 +57,6 @@ subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
  
  ! To be input parameters! TODO 
  INOF=7;Ista=1;NBF_occ=10;Nfrozen=0;Npairs=1;Ncoupled=9;Nbeta=1;Nalpha=Nbeta;imethocc=1;iprintdmn=1;iprintints=0 
- allocate(occ(nbf_noft,1),energy(nbf_noft,1))
  occ=0.0_dp; energy=0.0_dp;
  ! Can be fixed for a while
  itermax=1000;NTHRESHL=4;NDIIS=6;tolE=1.0d-8;imethorb=1;
@@ -73,7 +76,11 @@ subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
  if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ,c_matrix)
  if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ,c_matrix,enoft,energy)
 
- deallocate(AhCORE,Aoverlap,NO_COEF,occ)
+ call clean_deallocate('AhCORE',AhCORE)
+ call clean_deallocate('Aoverlap',Aoverlap)
+ call clean_deallocate('NO_COEF',NO_COEF)
+ call clean_deallocate('NO_occ',occ)
+ call clean_deallocate('NO_energies',energy)
  call stop_clock(timing_noft_energy)
 
 end subroutine noft_energy
@@ -94,24 +101,24 @@ subroutine mo_ints(nbf,NO_COEF,hCORE,ERImol)
 !====
  integer                    :: istate,jstate,kstate,lstate
  real(dp),allocatable       :: tmp_hcore(:,:)
- real(dp),allocatable       :: c_matrix(:,:,:)
+ real(dp),allocatable       :: tmp_c_matrix(:,:,:)
 !=====
 
  ! hCORE part
- allocate(tmp_hcore(nbf,nbf))
+ call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf)
  hCORE(:,:)=0.0d0; tmp_hcore(:,:)=0.0d0;
  tmp_hcore=matmul(AhCORE,NO_COEF)
  hCORE=matmul(transpose(NO_COEF),tmp_hcore)
- deallocate(tmp_hcore)
+ call clean_deallocate('tmp_hcore',tmp_hcore)
 
  ! ERI terms
  ERImol(:,:,:,:)=0.0d0
- allocate(c_matrix(nbf,nbf_noft,1))
+ call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nbf_noft,1)
  do istate=1,nbf_noft
-  c_matrix(:,istate,1)=NO_COEF(:,istate)
+  tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
  enddo
  if(noft_ri) then ! RI case
-   call calculate_eri_3center_eigen(c_matrix,1,nbf_noft,1,nbf_noft)
+   call calculate_eri_3center_eigen(tmp_c_matrix,1,nbf_noft,1,nbf_noft)
    do istate=1,nbf_noft
      do jstate=1,nbf_noft
        do kstate=1,nbf_noft
@@ -125,7 +132,7 @@ subroutine mo_ints(nbf,NO_COEF,hCORE,ERImol)
  else            ! Normal case 
   ! TODO
  endif
- deallocate(c_matrix)
+ call clean_deallocate('tmp_c_matrix',tmp_c_matrix)
 
 end subroutine mo_ints
 
