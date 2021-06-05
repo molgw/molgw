@@ -948,11 +948,11 @@ Considers a big RESTART as if it was a small RESTART.
 
 **Type:** integer 
 
-**Default:** 0 
+**Default:** 1 
 
 **Description:** 
 
-Determine the method used by NOFT to opt. occ. numbers (default=0 Conjugate Gradient, 1=L-BFGS). 
+Determine the method used by NOFT to opt. occ. numbers (default=1 Conjugate Gradient, 2=L-BFGS). 
 
 
 ---

@@ -286,7 +286,7 @@
  diis_switch=0.05_dp 
  gamma_hybrid=1000000.0_dp 
  grid_quality='high'
- imethocc=0
+ imethocc=1
  init_hamiltonian='guess'
  inof=7
  integral_quality='high'

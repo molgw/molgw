@@ -1196,8 +1196,8 @@ imethocc:
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
-  default: 0
-  comment: 'Determine the method used by NOFT to opt. occ. numbers (default=0 Conjugate Gradient, 1=L-BFGS).'
+  default: 1
+  comment: 'Determine the method used by NOFT to opt. occ. numbers (default=1 Conjugate Gradient, 2=L-BFGS).'
 
 init_hamiltonian:
   family: scf
