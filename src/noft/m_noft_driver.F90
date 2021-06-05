@@ -357,7 +357,7 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
  endif
  write(*,'(a,i12)') ' Numb. of basis functions          ',NBF_tot_in
  write(*,'(a,i12)') ' Numb. of occ orbitals             ',NBF_occ_in
- write(*,'(a,i12)') ' Numb. of frozen orbs (occ=2)      ',NBF_occ_in
+ write(*,'(a,i12)') ' Numb. of frozen orbs (occ=2)      ',Nfrozen_in
  write(*,'(a,i12)') ' Numb. of active e- pairs          ',Npairs_in
  write(*,'(a,i12)') ' Numb. of "virtual" coupled orbs   ',Ncoupled_in
  write(*,'(a,i12)') ' Numb. of singly occupied orbs     ',Nalpha_elect_in-Nbeta_elect_in
