@@ -3,6 +3,9 @@ module m_cg
 use m_vars
 implicit none
 
+private::vdflt,parck,itsum,v2norm,rmdcon,lvmul,livmul,litvmu,ltvmul,lupdat,dbdog,dotprd,stopx,vaxpy,reldst,assst,wzbfgs
+private::vcopy,vscopy,vvmulp
+
 public:: deflt,sumit
 
 contains
@@ -22,7 +25,7 @@ subroutine deflt ( alg, iv, liv, lv, v )
   integer alg
   integer iv(liv)
   real(dp) v(lv)
-  external vdflt
+  !external vdflt
   integer miv, mv
   integer miniv(2), minv(2)
   integer algsav, covprt, covreq, dtype, hc, ierr, inith, inits
@@ -112,7 +115,7 @@ subroutine deflt ( alg, iv, liv, lv, v )
   end if
 
   return
-end
+end subroutine deflt
 
 subroutine vdflt ( alg, lv, v )
 !
@@ -127,7 +130,7 @@ subroutine vdflt ( alg, lv, v )
 
   integer alg, lv
   real(dp) v(lv)
-  real(dp) rmdcon
+!  real(dp) rmdcon
   real(dp) machep, mepcrt, one, sqteps, three
   integer afctol, bias, cosmin, decfac, delta0, dfac, dinit, dltfdc
   integer dltfdj, dtinit, d0init, epslon, eta0, fuzz, huberc
@@ -194,7 +197,7 @@ subroutine vdflt ( alg, lv, v )
   end if
 
   return
-end
+end subroutine vdflt
 
 subroutine sumit ( d, fx, g, iv, liv, lv, n, v, x)
 !
@@ -259,8 +262,8 @@ subroutine sumit ( d, fx, g, iv, liv, lv, n, v, x)
   integer        temp1, w, x01, z
   real(dp) t
   real(dp) half, negone, one, onep2, zero
-  logical stopx
-  real(dp) dotprd, reldst, v2norm
+  !logical stopx
+  !real(dp) dotprd, reldst, v2norm
   integer cnvcod, dg, dgnorm, dinit, dstnrm, dst0, f, f0, fdif
   integer gthg, gtstep, g0, incfac, inith, irc, kagqt, lmat, lmax0
   integer lmaxs, mode, model, mxfcal, mxiter, nextv, nfcall, nfgcal
@@ -568,7 +571,7 @@ subroutine sumit ( d, fx, g, iv, liv, lv, n, v, x)
  300  call itsum(d, g, iv, liv, lv, n, v, x)
 
   return
-end
+end subroutine sumit 
 
 subroutine parck ( alg, d, iv, liv, lv, n, v )
 !
@@ -581,7 +584,7 @@ subroutine parck ( alg, d, iv, liv, lv, n, v )
   integer alg, liv, lv, n
   integer iv(liv)
   real(dp) d(n), v(lv)
-  real(dp) rmdcon
+!  real(dp) rmdcon
   integer max0
   integer i, ii, iv1, j, k, l, m, miv1, miv2, ndfalt, parsv1, pu
   integer ijmp, jlim(2), miniv(2), ndflt(2)
@@ -848,7 +851,7 @@ subroutine parck ( alg, d, iv, liv, lv, n, v )
  350  format(/10h /// alg =,i5,15h must be 1 or 2)
 
   return
-end
+end subroutine parck
 
 subroutine itsum ( d, g, iv, liv, lv, p, v, x )
 
@@ -1070,9 +1073,9 @@ subroutine itsum ( d, g, iv, liv, lv, p, v, x )
  999  continue
 
   return
-end
+end subroutine itsum
 
-function v2norm ( p, x )
+function v2norm ( p, x ) result(vv2norm)
 !
 !! V2NORM returns the 2-norm of the p-vector X.
 !
@@ -1089,10 +1092,10 @@ function v2norm ( p, x )
   real(dp) r, scale
   real(dp), save :: sqteta = 0.0D+00
   real(dp) t, xi
-  real(dp) rmdcon
-  real(dp) v2norm
+!  real(dp) rmdcon
+  real(dp) vv2norm
 
-  v2norm = 0.0D+00
+  vv2norm = 0.0D+00
 
   if (p <= 0 ) then
     return
@@ -1115,7 +1118,7 @@ function v2norm ( p, x )
   end if
 
   if ( p <= i ) then
-    v2norm = scale
+    vv2norm = scale
     return
   end if
 
@@ -1142,12 +1145,11 @@ function v2norm ( p, x )
     end if
   end do
 
-  v2norm = scale * sqrt(t)
+  vv2norm = scale * sqrt(t)
 
-  return
-end
+end function v2norm
 
-function rmdcon ( k )
+function rmdcon ( k ) result(mcons)
 !
 !! RMDCON returns machine dependent constants.
 !
@@ -1170,7 +1172,7 @@ function rmdcon ( k )
 !         k = 6... largest machine no. big such that -big exists.
 !
   integer k
-  real(dp) rmdcon
+  real(dp) mcons
   real(dp) big, eta, machep
   integer bigi(4), etai(4), machei(4)
   equivalence (big,bigi(1)), (eta,etai(1)), (machep,machei(1))
@@ -1254,25 +1256,24 @@ function rmdcon ( k )
 !
   go to (10, 20, 30, 40, 50, 60), k
 
- 10   rmdcon = eta
+ 10   mcons = eta
   return
 
- 20   rmdcon = sqrt(256.d+0*eta)/16.d+0
+ 20   mcons = sqrt(256.d+0*eta)/16.d+0
   return
 
- 30   rmdcon = machep
+ 30   mcons = machep
   return
 
- 40   rmdcon = sqrt(machep)
+ 40   mcons = sqrt(machep)
   return
 
- 50   rmdcon = sqrt(big/256.d+0)*16.d+0
+ 50   mcons = sqrt(big/256.d+0)*16.d+0
   return
 
- 60   rmdcon = big
+ 60   mcons = big
 
-  return
-end
+end function rmdcon
 
 subroutine vcopy ( p, y, x )
 !
@@ -1291,7 +1292,7 @@ subroutine vcopy ( p, y, x )
   y(1:p) = x(1:p)
 
   return
-end
+end subroutine vcopy
 
 subroutine vscopy ( p, y, s )
 !
@@ -1305,7 +1306,7 @@ subroutine vscopy ( p, y, s )
   y(1:p) = s
 
   return
-end
+end subroutine vscopy
 
 subroutine vvmulp ( n, x, y, z, k )
 !
@@ -1325,7 +1326,7 @@ subroutine vvmulp ( n, x, y, z, k )
   end if
 
   return
-end
+end subroutine vvmulp
 
 subroutine lvmul ( n, x, l, y )
 !
@@ -1358,7 +1359,7 @@ subroutine lvmul ( n, x, l, y )
   end do
 
   return
-end
+end subroutine lvmul
 
 subroutine livmul ( n, x, l, y )
 !
@@ -1373,8 +1374,8 @@ subroutine livmul ( n, x, l, y )
   integer n
 
   real(dp) x(n), l(*), y(n)
-  external dotprd
-  real(dp) dotprd
+!  external dotprd
+!  real(dp) dotprd
   integer i, j, k
   real(dp) t
 
@@ -1403,7 +1404,7 @@ subroutine livmul ( n, x, l, y )
   end do
 
   return
-end
+end subroutine livmul
 
 subroutine litvmu ( n, x, l, y )
 !
@@ -1444,7 +1445,7 @@ subroutine litvmu ( n, x, l, y )
   end do
 
   return
-end
+end subroutine litvmu
 
 subroutine ltvmul ( n, x, l, y )
 !
@@ -1473,7 +1474,7 @@ subroutine ltvmul ( n, x, l, y )
   end do
 
   return
-end
+end subroutine ltvmul
 
 subroutine lupdat ( beta, gamma, l, lambda, lplus, n, w, z )
 !
@@ -1592,7 +1593,7 @@ subroutine lupdat ( beta, gamma, l, lambda, lplus, n, w, z )
   end do
 
   return
-end
+end subroutine lupdat
 
 subroutine dbdog ( dig, lv, n, nwtstp, step, v )
 !
@@ -1668,8 +1669,8 @@ subroutine dbdog ( dig, lv, n, nwtstp, step, v )
   integer n
 
   real(dp) dig(n), nwtstp(n), step(n), v(lv)
-  external dotprd, v2norm
-  real(dp) dotprd, v2norm
+!  external dotprd, v2norm
+!  real(dp) dotprd, v2norm
   real(dp) cfact, cnorm, ctrnwt, ghinvg, femnsq, gnorm
   real(dp) nwtnrm, relax, rlambd, t, t1, t2
   real(dp) half, two
@@ -1766,23 +1767,22 @@ subroutine dbdog ( dig, lv, n, nwtstp, step, v )
   step(1:n) = t1 * dig(1:n) + t2 * nwtstp(1:n)
 
   return
-end
+end subroutine dbdog
 
-function dotprd ( p, x, y )
+function dotprd ( p, x, y ) result(dtpr)
 !
 !! DOTPRD returns the inner product of vectors X and Y.
 !
   integer p
-
-  real(dp) dotprd
   integer i
-  real(dp) rmdcon
+  real(dp) dtpr
+!  real(dp) rmdcon
   real(dp), save :: sqteta = 0.0D+00
   real(dp) t
   real(dp) x(p)
   real(dp) y(p)
 
-  dotprd = 0.0D+00
+  dtpr = 0.0D+00
 
   if ( sqteta == 0.0D+00 ) then
     sqteta = rmdcon(2)
@@ -1795,16 +1795,15 @@ function dotprd ( p, x, y )
     if (t < sqteta) go to 20
     t = (x(i)/sqteta)*y(i)
     if (abs(t) < sqteta) go to 20
- 10   dotprd = dotprd + x(i)*y(i)
+ 10   dtpr = dtpr + x(i)*y(i)
 
  20 continue
 
   end do
 
-  return
-end
+end function dotprd
 
-function stopx ( )
+function stopx ( ) result(stpx)
 !
 !! STOPX checks to see if the BREAK key has been pressed.
 !
@@ -1820,12 +1819,11 @@ function stopx ( )
 !     function that returns .true. if and only if the interrupt
 !     (break) key has been pressed since the last call on stopx.
 !
-  logical stopx
+  logical stpx
 
-  stopx = .false.
+  stpx = .false.
 
-  return
-end
+end function stopx
 
 subroutine vaxpy ( p, w, a, x, y )
 !
@@ -1849,15 +1847,15 @@ subroutine vaxpy ( p, w, a, x, y )
   w(1:p) = a * x(1:p) + y(1:p)
 
   return
-end
+end subroutine vaxpy
 
-function reldst ( p, d, x, x0 )
+function reldst ( p, d, x, x0 ) result(rreldst)
 !
 !! RELDST computes the relative difference between X and X0.
 !
   integer p
 
-  real(dp) reldst
+  real(dp) rreldst
   real(dp) d(p), x(p), x0(p)
   integer i
   real(dp) emax, t, xmax
@@ -1872,11 +1870,10 @@ function reldst ( p, d, x, x0 )
     if (xmax < t) xmax = t
   end do
 
-  reldst = 0.0D+00
-  if ( xmax > 0.0D+00 ) reldst = emax / xmax
+  rreldst = 0.0D+00
+  if ( xmax > 0.0D+00 ) rreldst = emax / xmax
 
-  return
-end
+end function reldst
 
 subroutine assst ( iv, liv, lv, v )
 !
@@ -2383,7 +2380,7 @@ subroutine assst ( iv, liv, lv, v )
  290  if (-v(nreduc) <= v(rfctol) * abs(v(f0))) iv(irc) = 11
 
   return
-end
+end subroutine assst
 
 subroutine wzbfgs ( l, n, s, w, y, z )
 !
@@ -2419,7 +2416,7 @@ subroutine wzbfgs ( l, n, s, w, y, z )
 
   integer n
 
-  real(dp) dotprd
+!  real(dp) dotprd
   real(dp) cs
   real(dp) cy
   real(dp), parameter :: eps = 0.1D+00
@@ -2452,6 +2449,6 @@ subroutine wzbfgs ( l, n, s, w, y, z )
   z(1:n) = cy * z(1:n) - cs * w(1:n)
 
   return
-end
+end subroutine wzbfgs
 
 end module m_cg

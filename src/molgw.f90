@@ -467,11 +467,12 @@ program molgw
     call clean_allocate('hCORE operator ',hamiltonian_hCORE,basis%nbf,basis%nbf)
     hamiltonian_hCORE(:,:)=hamiltonian_kinetic(:,:)+hamiltonian_nucleus(:,:)
     if(has_auxil_basis) then
-      call noft_energy_ri(nstate,basis,c_matrix,hamiltonian_hCORE,s_matrix,en_gks%total,en_gks%nuc_nuc)
+     noft_ri=.true.
     else
-      ! TODO
+     noft_ri=.false.
     endif
 
+    call noft_energy(nstate,basis,c_matrix,hamiltonian_hCORE,s_matrix,en_gks%total,en_gks%nuc_nuc)
     en_gks%total = en_gks%nuc_nuc + en_gks%total
 
     write(stdout,'(a,2x,f19.10)') ' NOFT Total Energy (Ha):',en_gks%total

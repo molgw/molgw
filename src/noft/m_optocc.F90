@@ -102,53 +102,53 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
  icall=0
  if(.not.conveg) then 
   if(imethod==1) then ! Conjugate gradients. (The subroutine uses goto. It is not clean but needed)
-!   write(*,'(a)') 'Calling CG to optimize occ. numbers'
-!   Nwork=60; Nwork2=71+RDMd%Ngammas*(RDMd%Ngammas+15)/2; 
-!   allocate(iWork(Nwork),Work(RDMd%Ngammas),Work2(Nwork2))
-!   iWork=0; Work=0.1d0;   
-!   if (iWork(1)==0) call deflt(2,iWork, Nwork, Nwork2, Work2)
-!   iflag = iWork(1)
-!   if (iflag == 12 .or. iflag == 13) iWork(vneed) = iWork(vneed) + RDMd%Ngammas
-!   if (iflag == 14) goto 10
-!   if (iflag > 2 .and. iflag < 12) goto 10
-!   ig = 1
-!   if (iflag == 12) iWork(1) = 13
-!   goto 20
-!
-!10  ig = iWork(g)
-!
-!20  call sumit(Work, Energy, Work2(ig), iWork, Nwork, Nwork2, RDMd%Ngammas, Work2, GAMMAs)
-!   if(iWork(1)-2<0) then 
-!    goto 30
-!   elseif(iWork(1)-2==0) then
-!    goto 40
-!   else
-!    goto 50
-!   endif
-!
-!30  icall1 = iWork(nfcall)
-!   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K)
-!   icall=icall+1
-!   if(icall==2000) goto 60
-!   if(icall1<=0) iWork(toobig) = 1
-!   goto 20
-!
-!40  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K)
-!   Work2(ig:ig+RDMd%Ngammas)=Grad_GAMMAs(1:RDMd%Ngammas)
-!   goto 20
-!
-!50  if(iWork(1) /= 14) then
-!       goto 60
-!    endif
+   write(*,'(a)') 'Calling CG to optimize occ. numbers'
+   Nwork=60; Nwork2=71+RDMd%Ngammas*(RDMd%Ngammas+15)/2; 
+   allocate(iWork(Nwork),Work(RDMd%Ngammas),Work2(Nwork2))
+   iWork=0; Work=0.1d0;   
+   if (iWork(1)==0) call deflt(2,iWork, Nwork, Nwork2, Work2)
+   iflag = iWork(1)
+   if (iflag == 12 .or. iflag == 13) iWork(vneed) = iWork(vneed) + RDMd%Ngammas
+   if (iflag == 14) goto 10
+   if (iflag > 2 .and. iflag < 12) goto 10
+   ig = 1
+   if (iflag == 12) iWork(1) = 13
+   goto 20
+
+10  ig = iWork(g)
+
+20  call sumit(Work, Energy, Work2(ig), iWork, Nwork, Nwork2, RDMd%Ngammas, Work2, GAMMAs)
+   if(iWork(1)-2<0) then 
+    goto 30
+   elseif(iWork(1)-2==0) then
+    goto 40
+   else
+    goto 50
+   endif
+
+30  icall1 = iWork(nfcall)
+   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K)
+   icall=icall+1
+   if(icall==2000) goto 60
+   if(icall1<=0) iWork(toobig) = 1
+   goto 20
+
+40  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K)
+   Work2(ig:ig+RDMd%Ngammas)=Grad_GAMMAs(1:RDMd%Ngammas)
+   goto 20
+
+50  if(iWork(1) /= 14) then
+       goto 60
+    endif
 !
 !  Storage allocation
 !
-!   iWork(g) = iWork(nextv)
-!   iWork(nextv) = iWork(g) + RDMd%Ngammas
-!   if(iflag /= 13) goto 10
-!
-!60  deallocate(iWork,Work,Work2)
-!
+   iWork(g) = iWork(nextv)
+   iWork(nextv) = iWork(g) + RDMd%Ngammas
+   if(iflag /= 13) goto 10
+
+60  deallocate(iWork,Work,Work2)
+
   else ! LBFGS
    write(*,'(a)') 'Calling LBFGS to optimize occ. numbers'
    Nwork=RDMd%Ngammas*(2*msave+1)+2*msave

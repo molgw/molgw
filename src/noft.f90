@@ -5,7 +5,7 @@
 ! This file contains
 ! - NOFT energy opt. with Resolution-of-Identity
 !=========================================================================
-subroutine noft_energy_ri(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
+subroutine noft_energy(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
  use m_definitions
  use m_mpi
  use m_cart_to_pure
@@ -28,6 +28,7 @@ subroutine noft_energy_ri(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
  real(dp),allocatable       :: NO_COEF(:,:)
  logical::lrestart=.true.
  integer::INOF,Ista,NBF_occ,Nfrozen,Npairs,Ncoupled,Nbeta,Nalpha,itermax,NTHRESHL,NDIIS
+ integer::imethorb,imethocc,iprintdmn,iprintints
  real(dp)::tolE
  external::mo_ints
 !=====
@@ -50,16 +51,19 @@ subroutine noft_energy_ri(nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
 
  enoft = 0.0_dp
  
- INOF=7;Ista=1;NBF_occ=10;Nfrozen=0;Npairs=1;Ncoupled=9;Nbeta=1;Nalpha=Nbeta;itermax=1000;NTHRESHL=4;NDIIS=6;
- tolE=1.0d-8;
- call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Ncoupled,Nbeta,Nalpha,1,2,1,itermax,1,1,&
- & NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,Aoverlap,mo_ints,restart=LRESTART,ireadGAMMAS=1,&
- & ireadOCC=1,ireadCOEF=1,ireadFdiag=1)
+ ! To be input 
+ INOF=7;Ista=1;NBF_occ=10;Nfrozen=0;Npairs=1;Ncoupled=9;Nbeta=1;Nalpha=Nbeta;imethocc=1;iprintdmn=1;iprintints=0 
+ ! Can be fixed for a while
+ itermax=1000;NTHRESHL=4;NDIIS=6;tolE=1.0d-8;imethorb=1;
+ ! Call module initialization and run NOFT calc.
+ call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Ncoupled,Nbeta,Nalpha,1,imethocc,imethorb,itermax,&
+ & iprintdmn,iprintints,NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,Aoverlap,mo_ints,&
+ & restart=LRESTART,ireadGAMMAS=1,ireadOCC=1,ireadCOEF=1,ireadFdiag=1)
 
  deallocate(AhCORE,Aoverlap,NO_COEF)
  call stop_clock(timing_noft_energy)
 
-end subroutine noft_energy_ri
+end subroutine noft_energy
 
 subroutine mo_ints(nbf,NO_COEF,hCORE,ERImol)
  use m_definitions
@@ -93,17 +97,21 @@ subroutine mo_ints(nbf,NO_COEF,hCORE,ERImol)
  do istate=1,nbf_noft
   c_matrix(:,istate,1)=NO_COEF(:,istate)
  enddo
- call calculate_eri_3center_eigen(c_matrix,1,nbf_noft,1,nbf_noft)
- do istate=1,nbf_noft
-   do jstate=1,nbf_noft
-     do kstate=1,nbf_noft
-       do lstate=1,nbf_noft
-         ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+ if(noft_ri) then
+   call calculate_eri_3center_eigen(c_matrix,1,nbf_noft,1,nbf_noft)
+   do istate=1,nbf_noft
+     do jstate=1,nbf_noft
+       do kstate=1,nbf_noft
+         do lstate=1,nbf_noft
+           ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+         enddo
        enddo
      enddo
    enddo
- enddo
- call destroy_eri_3center_eigen()
+   call destroy_eri_3center_eigen()
+ else
+  ! TODO
+ endif
  deallocate(c_matrix)
 
 end subroutine mo_ints

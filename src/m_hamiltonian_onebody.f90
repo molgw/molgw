@@ -23,6 +23,7 @@ module m_hamiltonian_onebody
 
  real(dp),allocatable         :: AhCORE(:,:)                   ! hCORE matrix (T+Ven)
  real(dp),allocatable         :: AOverlap(:,:)                 ! Atomic orbital overlap matrix
+ logical                      :: noft_ri=.true.                ! Decide whether RI is employed or not in donof.f90 
  integer                      :: nbf_noft=0                    ! NBF_tot used by donof.f90 
 
 contains
