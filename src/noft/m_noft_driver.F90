@@ -195,7 +195,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  write(msg,'(a)') ' '
  call write_output(msg)
  iter=-1;
- call mo_ints(RDMd%NBF_tot,NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
+ call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
  call INTEGd%eritoeriJK(RDMd%NBF_occ)
  call opt_occ(iter,imethocc,RDMd,Vnn,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K) ! Also iter=iter+1
  Energy_old=Energy
