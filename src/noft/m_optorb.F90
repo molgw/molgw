@@ -16,6 +16,7 @@
 !! SOURCE
 module m_optorb
 
+ use m_nofoutput
  use m_rdmd
  use m_integd
  use m_elag
@@ -73,6 +74,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  integer::icall
  real(dp)::sumdiff,maxdiff,Ediff,Energy_old
 !arrays
+ character(len=200)::msg
 !************************************************************************
 
  Energy=0.0d0; Energy_old=0.0d0; convLambda=.false.;nogamma=.true.;
@@ -93,7 +95,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   ! Check if these NO_COEF with the RDMs are already the solution =)
   call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff)
   if(convLambda) then
-   write(*,'(a)') 'Lambda_pq - Lambda_qp* converged for the Hemiticty of Lambda'
+   write(msg,'(a)') 'Lambda_pq - Lambda_qp* converged for the Hemiticty of Lambda'
+   call write_output(msg)
    exit
   else
    if(imethod==1.and.icall==0) then                                        ! F method: adjust MaxScaling for the rest of orb. icall iterations
@@ -128,7 +131,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   ! For this icall using the new NO_COEF (and fixed RDMs). Is the Energy still changing?
   Ediff=Energy_old-Energy
   if((icall>1).and.(dabs(Ediff)<ELAGd%tolE).and.(.not.diddiis)) then ! The energy is not changing anymore (not stopping for DIIS)
-   write(*,'(a)') 'Lambda_pq - Lambda_qp* converged for small energy differences'
+   write(msg,'(a)') 'Lambda_pq - Lambda_qp* converged for small energy differences'
+   call write_output(msg)
    exit
   endif
   Energy_old=Energy
@@ -140,10 +144,13 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  
  ! Calc. the final Energy using fixed RDMs and the new NO_COEF (before going back to occ. optimization)
  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,nogamma=nogamma)
- write(*,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
+ write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
+ call write_output(msg)
  if(imethod==1.and.iter>0) then
-  write(*,'(a,f15.6)') 'Max. [Lambda_pq - Lambda_qp*]= ',maxdiff
-  write(*,'(a,f17.8)') 'Energy difference orb. opt.=',Ediff
+  write(msg,'(a,f15.6)') 'Max. [Lambda_pq - Lambda_qp*]= ',maxdiff
+  call write_output(msg)
+  write(msg,'(a,f17.8)') 'Energy difference orb. opt.=',Ediff
+  call write_output(msg)
  endif
  
  !if(icall==30) write(*,'(a)') 'Warning! Max. number of iterations (30) reached in orb. optimization'

@@ -16,6 +16,7 @@
 !! SOURCE
 module m_optocc
 
+ use m_nofoutput
  use m_rdmd
  use m_cg
  use m_lbfgs_intern
@@ -73,6 +74,7 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
  integer::igamma,iflag,ig,icall,icall1,Mtosave,Nwork,Nwork2
  real(dp)::eps,xtol,tolgamma=1.0d-6
 !arrays
+ character(len=200)::msg
  integer,dimension(2)::info_print
  integer,allocatable,dimension(:)::iWork
  real(dp),allocatable,dimension(:)::GAMMAs,Grad_GAMMAs,diag,Work,Work2
@@ -102,7 +104,8 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
  icall=0
  if(.not.conveg) then 
   if(imethod==1) then ! Conjugate gradients. (The subroutine uses goto. It is not clean but needed)
-   write(*,'(a)') 'Calling CG to optimize occ. numbers'
+   write(msg,'(a)') 'Calling CG to optimize occ. numbers'
+   call write_output(msg)
    Nwork=60; Nwork2=71+RDMd%Ngammas*(RDMd%Ngammas+15)/2; 
    allocate(iWork(Nwork),Work(RDMd%Ngammas),Work2(Nwork2))
    iWork=0; Work=0.1d0;   
@@ -150,7 +153,8 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
 60  deallocate(iWork,Work,Work2)
 
   else ! LBFGS
-   write(*,'(a)') 'Calling LBFGS to optimize occ. numbers'
+   write(msg,'(a)') 'Calling LBFGS to optimize occ. numbers'
+   call write_output(msg)
    Nwork=RDMd%Ngammas*(2*msave+1)+2*msave
    Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
    eps= 1.0d-5; xtol= 1.0d-16; icall=0; iflag=0;
@@ -172,11 +176,17 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
  iter=iter+1
  RDMd%GAMMAs_old=GAMMAs
  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K)
- write(*,'(a,f15.6,a,i6,a)') 'Occ. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
- write(*,'(a,i6)') 'Number of global iter. ',iter
- write(*,'(a)') ' '
+ write(msg,'(a,f15.6,a,i6,a)') 'Occ. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
+ call write_output(msg)
+ write(msg,'(a,i6)') 'Number of global iter. ',iter
+ call write_output(msg)
+ write(msg,'(a)') ' '
+ call write_output(msg)
  
- if(icall==2000) write(*,'(a)') 'Warning! Max. number of iterations (2000) reached in occ. optimization'
+ if(icall==2000) then
+  write(msg,'(a)') 'Warning! Max. number of iterations (2000) reached in occ. optimization'
+  call write_output(msg)
+ endif
 
  deallocate(GAMMAs,Grad_GAMMAs)
 

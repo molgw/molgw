@@ -15,6 +15,7 @@
 
 module m_integd
 
+ use m_nofoutput
  use m_vars
  implicit none
 
@@ -84,6 +85,7 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in)
  integer::NBF_ldiag
  real(dp)::totMEM
 !arrays
+ character(len=200)::msg
 !************************************************************************
 
  INTEGd%iERItyp=iERItyp_in
@@ -93,12 +95,13 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in)
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*1.0d-6  ! Bytes to Mb  
  if(totMEM>1.0d3) then     ! Mb to Gb
-  write(*,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*1.0d-3,' Gb'
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*1.0d-3,' Gb'
  elseif(totMEM<1.0d0) then ! Mb to Kb
-  write(*,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*1.0d3,' Kb'
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*1.0d3,' Kb'
  else                      ! Mb
-  write(*,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM,' Mb'
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM,' Mb'
  endif
+ call write_output(msg)
  ! Allocate arrays
  allocate(INTEGd%ERI_J(NBF_ldiag),INTEGd%ERI_K(NBF_ldiag))
  allocate(INTEGd%hCORE(NBF_tot,NBF_tot),INTEGd%Overlap(NBF_tot,NBF_tot))

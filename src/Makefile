@@ -148,7 +148,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
         linear_response.o static_polarizability.o gw_selfenergy.o m_gw_selfenergy_grid.o gwgamma_selfenergy.o \
         bse.o m_multipole.o m_io.o m_restart.o mp2.o noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
         m_cg.o m_diagf.o m_e_grad_occ.o m_elag.o m_gammatodm2.o m_integd.o m_lbfgs_intern.o m_noft_driver.o m_optocc.o m_optorb.o m_rdmd.o\
-        molgw.o
+        m_nofoutput.o molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
                         m_mpi.o m_mpi_tools.o \
@@ -161,7 +161,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o \
                         mp2.o noft.o gw_selfenergy.o m_gw_selfenergy_grid.o gwgamma_selfenergy.o bse.o \
                         m_cg.o m_diagf.o m_e_grad_occ.o m_elag.o m_gammatodm2.o m_integd.o m_lbfgs_intern.o m_noft_driver.o m_optocc.o \
-                        m_optorb.o m_rdmd.o \
+                        m_optorb.o m_rdmd.o m_nofoutput.o \
                         linear_response.o static_polarizability.o m_multipole.o m_io.o m_restart.o \
                         m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_scf_loop.o m_dm_analysis.o \
                         m_hamiltonian_wrapper.o m_fourier_quadrature.o \
@@ -285,10 +285,11 @@ mp2.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
 noft.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
        m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 \
        noft.f90 ./noft/m_cg.F90 ./noft/m_lbfgs_intern.F ./noft/m_integd.F90 ./noft/m_rdmd.F90 \
-       ./noft/m_elag.F90 ./noft/m_diagf.F90 ./noft/m_gammatodm2.F90 \
+       ./noft/m_elag.F90 ./noft/m_diagf.F90 ./noft/m_gammatodm2.F90 ./noft/m_nofoutput.F90 \
        ./noft/m_e_grad_occ.F90 ./noft/m_optocc.F90 ./noft/m_optorb.F90 \
        ./noft/m_noft_driver.F90
 	cp m_definitions.mod ./noft/m_vars.mod 
+	$(FC_W_OPTS) -c ./noft/m_nofoutput.F90
 	$(FC_W_OPTS) -c ./noft/m_cg.F90
 	$(FC_W_OPTS) -w -ffixed-form -fd-lines-as-comments -c ./noft/m_lbfgs_intern.F
 	$(FC_W_OPTS) -c ./noft/m_integd.F90

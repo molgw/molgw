@@ -28,6 +28,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,
  real(dp),allocatable       :: NO_COEF(:,:),occ(:,:),energy(:,:) 
  integer::imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled,itermax,NTHRESHL,NDIIS
  real(dp)::tolE
+ character(len=200)         :: ofile_name
  external::mo_ints
 !=====
 
@@ -36,6 +37,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,
 
  write(stdout,'(/,a)') ' RI-NOFT calculation'
 
+ ofile_name='molgw.noft'
  nbf_noft=nstate
  enoft = 0.0_dp
  ! These can be fixed for a while... 
@@ -76,12 +78,12 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,
  if(restartnoft=='yes') then
    call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
    & imethocc,imethorb,itermax,iprintdmn,iprintints,NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,&
-   & Aoverlap,occ(:,1),mo_ints,&
+   & Aoverlap,occ(:,1),mo_ints,ofile_name,&
    & restart=(restartnoft=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,ireadFdiag=ireadFdiag)
  else
    call run_noft(INOF,Ista,nbf_noft,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
    & imethocc,imethorb,itermax,iprintdmn,iprintints,NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,&
-   & Aoverlap,occ(:,1),mo_ints)
+   & Aoverlap,occ(:,1),mo_ints,ofile_name)
  endif
  
  ! Update c_matrix with optimized NO_COEF

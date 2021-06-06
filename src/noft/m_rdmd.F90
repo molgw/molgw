@@ -15,6 +15,7 @@
 
 module m_rdmd 
 
+ use m_nofoutput
  use m_vars
  implicit none
 
@@ -114,6 +115,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
 !scalars
  real(dp)::totMEM
 !arrays
+ character(len=200)::msg
 !************************************************************************
 
  RDMd%INOF=INOF
@@ -135,12 +137,13 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*1.0d-6  ! Bytes to Mb  
  if(totMEM>1.0d3) then     ! Mb to Gb
-  write(*,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*1.0d-3,' Gb'
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*1.0d-3,' Gb'
  elseif(totMEM<1.0d0) then ! Mb to Kb
-  write(*,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*1.0d3,' Kb'
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*1.0d3,' Kb'
  else                      ! Mb
-  write(*,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM,' Mb'
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM,' Mb'
  endif 
+ call write_output(msg)
  ! Allocate arrays
  allocate(RDMd%DM2_J(RDMd%NBF_occ*RDMd%NBF_occ),RDMd%DM2_K(RDMd%NBF_occ*RDMd%NBF_occ)) 
  allocate(RDMd%Docc_gamma(RDMd%NBF_occ*RDMd%Ngammas)) 
