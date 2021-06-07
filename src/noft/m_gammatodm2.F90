@@ -236,7 +236,7 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs)
  elseif(RDMd%INOF==5) then
   call dm2_pnof5(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_IIII,RDMd%DM2_J,RDMd%DM2_K,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K)
- else if(RDMd%INOF==7) then
+ elseif(RDMd%INOF==7) then
   call dm2_pnof7(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_IIII,RDMd%DM2_J,RDMd%DM2_K,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K)
  else

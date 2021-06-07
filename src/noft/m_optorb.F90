@@ -149,7 +149,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  if(imethod==1.and.iter>0) then
   write(msg,'(a,f15.6)') 'Max. [Lambda_pq - Lambda_qp*]= ',maxdiff
   call write_output(msg)
-  write(msg,'(a,f17.8)') 'Energy difference orb. opt.=',Ediff
+  write(msg,'(a,f19.10)') 'Energy difference orb. opt.=',Ediff
   call write_output(msg)
  endif
  

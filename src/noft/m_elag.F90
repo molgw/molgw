@@ -44,7 +44,7 @@ module m_elag
   integer::imethod=1             ! Method used for optimization (1-> Diag F matrix)
   integer::MaxScaling=0          ! Max scaling reductions employed to avoid divergence of diag[F]
   integer::itscale=1             ! Above this number of iterations we do MaxScaling=MaxScaling+1
-  integer::itolLambda=4          ! Integer used to define 10**-itolLambda as threshold of Lambda_pq-Lambda_qp* convergence
+  integer::itolLambda=5          ! Integer used to define 10**-itolLambda as threshold of Lambda_pq-Lambda_qp* convergence
   integer::itoldiis=3            ! Integer used to define 10**-itoldiis as threshold of DIIS trigger
   integer::idiis=0               ! Current DIIS iteration
   integer::ndiis=5               ! The number of iterations required to apply DIIS is ndiis+1
