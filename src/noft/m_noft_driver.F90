@@ -66,11 +66,11 @@ contains
 !! tolE_in=Tolerance on energy convergence
 !! Vnn=Fixed nuclear-nuclear interaction energy
 !! NO_COEF=Guess NO coefs (probably HF ones)
-!! Overlap_in= Overlap of Atomic. orbs. matrix
-!! mo_ints=External subroutine that for given NO_COEF gives back hCORE and ERImol
+!! AOverlap_in= Overlap of atomic orbs. (matrix)
+!! mo_ints=External subroutine that for given NO_COEF updates the hCORE and ERImol matrices
 !! ofile_name=Name of the output file
 !! restart=Logical parameter to decided whether we do restart
-!! ireadGAMMAS, ireadOCC, ireadCOEF, ireadFdiag =Integer restart parameters to read files (true=1)
+!! ireadGAMMAS, ireadOCC, ireadCOEF, ireadFdiag =Integer restart parameters that control the read of checkpoint files (true=1)
 !! 
 !! OUTPUT
 !! Occ=Array containing the optimized occ numbers
@@ -83,7 +83,7 @@ contains
 
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintints,&
-&  itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,Overlap_in,Occ_inout,mo_ints,ofile_name,&
+&  itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,AOverlap_in,Occ_inout,mo_ints,ofile_name,&
 &  restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag)   ! Optional
 !Arguments ------------------------------------
 !scalars
@@ -98,7 +98,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !arrays
  character(len=100),intent(in)::ofile_name
  real(dp),dimension(NBF_tot_in),intent(inout)::Occ_inout
- real(dp),dimension(NBF_tot_in,NBF_tot_in),intent(in)::Overlap_in
+ real(dp),dimension(NBF_tot_in,NBF_tot_in),intent(in)::AOverlap_in
  real(dp),dimension(NBF_tot_in,NBF_tot_in),intent(inout)::NO_COEF
 !Local variables ------------------------------
 !scalars
@@ -121,37 +121,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 
  ! Initialize output
  call init_output(ofile_name)
+
  ! Write Header
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') ' -------------------------------------------'
- call write_output(msg)
- write(msg,'(a)') ' Entering RUN-NOF module for NOFT calcs.'
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') ' Developed by: Dr. M. Rodriguez-Mayorga '
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') '  First version: VU Amsterdam 2021 '
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- call date_and_time(date=date,time=time,zone=zone,values=tvalues)
- write(msg,'(a)') ' Starting date and time'
- call write_output(msg)
- write(msg,'(a,a2,a,a2,a,a4,a,i2,a,i2,a,i2)') " ",date(7:8),"/",date(5:6),"/",date(1:4)," ",tvalues(5),":",&
- & tvalues(6),":",tvalues(7)
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') ' -------------------------------------------'
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
+ call write_header()
 
  ! Print user defined parameters used in this run
  if(present(restart)) then
@@ -179,7 +151,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  ! Initialize RDMd, INTEGd, and ELAGd objects.
  call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 & Nbeta_elect_in,Nalpha_elect_in)
- call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,Overlap_in)
+ call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in)
  call elag_init(ELAGd,RDMd%NBF_tot,diagLpL,itolLambda,ndiis,imethorb,tolE_in)
 
  ! Check for the presence of restart files. Then, if they are available read them (only if required)
@@ -287,58 +259,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call RDMd%free() 
 
  ! Write Footer
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') ' -------------------------------------------'
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- call date_and_time(date=date,time=time,zone=zone,values=tvalues)
- write(msg,'(a)') ' Final date and time'
- call write_output(msg)
- write(msg,'(a,a2,a,a2,a,a4,a,i2,a,i2,a,i2)') " ",date(7:8),"/",date(5:6),"/",date(1:4)," ",tvalues(5),":",&
- & tvalues(6),":",tvalues(7)
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') ' Normal termination of RUN-NOF module.'
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') '   |                   | '
- call write_output(msg)
- write(msg,'(a)') '   |                   | '
- call write_output(msg)
- write(msg,'(a)') '   |                   | '
- call write_output(msg)
- write(msg,'(a)') '   |        <^>        | '
- call write_output(msg)
- write(msg,'(a)') '   ||===I||(-@-)||I===|| '
- call write_output(msg)
- write(msg,'(a)') '   |        \_/        | '
- call write_output(msg)
- write(msg,'(a)') '   |                   | '
- call write_output(msg)
- write(msg,'(a)') '   |                   | '
- call write_output(msg)
- write(msg,'(a)') '   |                   | '
- call write_output(msg)
- write(msg,'(a)') '   |                   | '
- call write_output(msg)
- write(msg,'(a)') '   |                   | '
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') ' "Your feeble skills are no match for the '
- call write_output(msg)
- write(msg,'(a)') ' power of the dark side." Emperor Palpatine '
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') ' -------------------------------------------'
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
+ call write_footer()
  
  ! Close unit 313 used for output file
  call close_output()

@@ -42,7 +42,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,
  nbf_noft=nstate  ! Number of lin. indep. molecular orbitals
  ! These can be fixed for a while... 
  !  iERItyp=1 -> use notation <ij|kl>
- itermax=1000;NTHRESHL=5;NDIIS=6;tolE=1.0d-9;imethorb=1;iERItyp=1;
+ itermax=1000;NTHRESHL=5;NDIIS=5;tolE=1.0d-9;imethorb=1;iERItyp=1;
 
  ! Allocate arrays and initialize them 
  call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
