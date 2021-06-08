@@ -1284,6 +1284,14 @@ ista:
   default: 1
   comment: 'Decide whether to use PNOF7 or PNOF7s (default=1 for PNOF7s).'
 
+ithresh_lambda:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 5
+  comment: 'Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.'
+
 kerker_k0:
   family: scf
   datatype: real
@@ -1353,6 +1361,22 @@ nscf:
   default: 50
   comment: Sets the maximum number of SCF cycles
 
+ndiis_nof:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 5
+  comment: 'Number of orb. optimization iterations used in DIIS by NOFT module.'
+
+nscf_nof:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1000
+  comment: 'Maximum number of global iterations used by NOFT module.'
+
 restartnoft:
   family: scf
   datatype: yes/no
@@ -1378,6 +1402,14 @@ scf_diago_flavor:
   default: ' '
   comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles.
     Available choices are ' ', 'R', 'D', and 'X'.
+
+tolE_nof:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0e-09
+  comment: 'Threshold used to determine that the energy convergence change in NOFT calcs. is small, hence we have converged.'
 
 tolscf:
   family: scf

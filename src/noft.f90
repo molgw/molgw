@@ -5,7 +5,7 @@
 ! This file contains
 ! - NOFT energy opt. with Resolution-of-Identity
 !=========================================================================
-subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,Vnn)
+subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,Vnn)
  use m_definitions
  use m_mpi
  use m_cart_to_pure
@@ -22,12 +22,11 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,
  real(dp),intent(inout)     :: AhCORE_in(basis%nbf,basis%nbf)
  real(dp),intent(in)        :: AOverlap_in(basis%nbf,basis%nbf)
  real(dp),intent(in)        :: Vnn
- real(dp),intent(out)       :: enoft
+ real(dp),intent(out)       :: Enoft
 !====
  integer                    :: istate
  real(dp),allocatable       :: NO_COEF(:,:),occ(:,:),energy(:,:),occ_print(:,:) 
- integer::imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled,itermax,NTHRESHL,NDIIS
- real(dp)::tolE
+ integer::imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled
  character(len=200)         :: ofile_name
  external::mo_ints
 !=====
@@ -38,11 +37,11 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,
  write(stdout,'(/,a)') ' RI-NOFT calculation'
 
  ofile_name='molgw.noft'
- enoft = 0.0_dp
+ Enoft = 0.0_dp
  nbf_noft=nstate  ! Number of lin. indep. molecular orbitals
  ! These can be fixed for a while... 
  !  iERItyp=1 -> use notation <ij|kl>
- itermax=1000;NTHRESHL=5;NDIIS=5;tolE=1.0d-9;imethorb=1;iERItyp=1;
+ imethorb=1;iERItyp=1;
 
  ! Allocate arrays and initialize them 
  call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
@@ -77,12 +76,12 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,
  ! Call module initialization and run NOFT calc.
  if(restartnoft=='yes') then
    call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
-   & imethocc,imethorb,itermax,iprintdmn,iprintints,NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,&
+   & imethocc,imethorb,nscf_nof,iprintdmn,iprintints,ithresh_lambda,ndiis_nof,Enoft,tolE_nof,Vnn,NO_COEF,&
    & Aoverlap,occ(:,1),mo_ints,ofile_name,&
    & restart=(restartnoft=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,ireadFdiag=ireadFdiag)
  else
    call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
-   & imethocc,imethorb,itermax,iprintdmn,iprintints,NTHRESHL,NDIIS,enoft,tolE,Vnn,NO_COEF,&
+   & imethocc,imethorb,nscf_nof,iprintdmn,iprintints,ithresh_lambda,ndiis_nof,Enoft,tolE_nof,Vnn,NO_COEF,&
    & Aoverlap,occ(:,1),mo_ints,ofile_name)
  endif
  
@@ -98,7 +97,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,enoft,
    if( print_wfn_ )  call plot_wfn(basis,c_matrix)
    if( print_wfn_ )  call plot_rho(basis,occ_print,c_matrix)
    if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ_print,c_matrix)
-   if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,enoft,energy)
+   if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,Enoft,energy)
    call clean_deallocate('Occ_print',occ_print)
  endif
 
