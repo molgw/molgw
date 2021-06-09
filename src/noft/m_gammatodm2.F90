@@ -457,7 +457,6 @@ subroutine dm2_pnof5(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2
 !arrays
 !************************************************************************
 
- DM2_L=0.0d0; DDM2_gamma_L=0.0d0
 !-----------------------------------------------------------------------
 !                Inter-pair interactions for PNOF5 (Nc)
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
@@ -466,14 +465,16 @@ subroutine dm2_pnof5(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2
   do iorb1=1,RDMd%NBF_occ
    DM2_J(iorb,iorb1) = 2.0d0*RDMd%occ(iorb)*RDMd%occ(iorb1)
    DM2_K(iorb,iorb1) = -RDMd%occ(iorb)*RDMd%occ(iorb1)
+   DM2_L(iorb,iorb1) = 0.0d0
    do igamma=1,RDMd%Ngammas
     DDM2_gamma_J(iorb,iorb1,igamma) = 2.0d0*Docc_gamma(iorb,igamma)*RDMd%occ(iorb1)
     DDM2_gamma_K(iorb,iorb1,igamma) = -Docc_gamma(iorb,igamma)*RDMd%occ(iorb1)
+    DDM2_gamma_L(iorb,iorb1,igamma) = 0.0d0 
    enddo
   enddo
  enddo
 !- - - - - - - - - - - - - - - - - - - - - - - -              
- if(RDMd%Nsingleocc>1) then
+ if(RDMd%Nsingleocc>1) then ! TODO
   do iorb=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
    do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
     DM2_K(iorb,iorb1) = -2.0d0*RDMd%occ(iorb)*RDMd%occ(iorb1)
@@ -492,21 +493,27 @@ subroutine dm2_pnof5(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2
    iorb4 = RDMd%Nfrozen+iorb1
    DM2_J(iorb3,iorb4) = 0.0d0
    DM2_J(iorb4,iorb3) = 0.0d0
-   DM2_K(iorb3,iorb4) = -sqrt_occ(iorb3)*sqrt_occ(iorb4)
-   DM2_K(iorb4,iorb3) = -sqrt_occ(iorb4)*sqrt_occ(iorb3)
+   DM2_K(iorb3,iorb4) = 0.0d0
+   DM2_K(iorb4,iorb3) = 0.0d0
+   DM2_L(iorb3,iorb4) = -sqrt_occ(iorb3)*sqrt_occ(iorb4)
+   DM2_L(iorb4,iorb3) = -sqrt_occ(iorb4)*sqrt_occ(iorb3)
    do igamma=1,RDMd%Ngammas
     DDM2_gamma_J(iorb3,iorb4,igamma) = 0.0d0
     DDM2_gamma_J(iorb4,iorb3,igamma) = 0.0d0
-    DDM2_gamma_K(iorb3,iorb4,igamma) = -Dsqrt_occ_gamma(iorb3,igamma)*sqrt_occ(iorb4)
-    DDM2_gamma_K(iorb4,iorb3,igamma) = -Dsqrt_occ_gamma(iorb4,igamma)*sqrt_occ(iorb3)
+    DDM2_gamma_K(iorb3,iorb4,igamma) = 0.0d0
+    DDM2_gamma_K(iorb4,iorb3,igamma) = 0.0d0
+    DDM2_gamma_L(iorb3,iorb4,igamma) = -Dsqrt_occ_gamma(iorb3,igamma)*sqrt_occ(iorb4)
+    DDM2_gamma_L(iorb4,iorb3,igamma) = -Dsqrt_occ_gamma(iorb4,igamma)*sqrt_occ(iorb3)
    enddo
    do iorb=RDMd%Npairs_p_sing+RDMd%Ncoupled*(RDMd%Npairs-iorb2)+1,RDMd%Npairs_p_sing+RDMd%Ncoupled*(RDMd%Npairs-iorb2+1)
     iorb5 = RDMd%Nfrozen+iorb
     DM2_J(iorb5,iorb4) = 0.0d0
-    DM2_K(iorb5,iorb4) =  sqrt_occ(iorb5)*sqrt_occ(iorb4)
+    DM2_K(iorb5,iorb4) = 0.0d0
+    DM2_L(iorb5,iorb4) = sqrt_occ(iorb5)*sqrt_occ(iorb4)
     do igamma=1,RDMd%Ngammas
      DDM2_gamma_J(iorb5,iorb4,igamma) = 0.0d0
-     DDM2_gamma_K(iorb5,iorb4,igamma) =  Dsqrt_occ_gamma(iorb5,igamma)*sqrt_occ(iorb4)
+     DDM2_gamma_K(iorb5,iorb4,igamma) = 0.0d0
+     DDM2_gamma_L(iorb5,iorb4,igamma) = Dsqrt_occ_gamma(iorb5,igamma)*sqrt_occ(iorb4)
     enddo
    enddo
   enddo
@@ -518,9 +525,11 @@ subroutine dm2_pnof5(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2
   DM2_IIII(iorb)=RDMd%occ(iorb)
   DM2_J(iorb,iorb)=0.0d0
   DM2_K(iorb,iorb)=0.0d0
+  DM2_L(iorb,iorb)=0.0d0
   RDMd%Dfni_ni(iorb)=1.0d0
   DDM2_gamma_J(iorb,iorb,:)=0.0d0
   DDM2_gamma_K(iorb,iorb,:)=0.0d0
+  DDM2_gamma_L(iorb,iorb,:)=0.0d0
  enddo
 !-----------------------------------------------------------------------
 end subroutine dm2_pnof5
@@ -573,7 +582,6 @@ subroutine dm2_pnof7(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2
  real(dp),allocatable,dimension(:,:)::DFIs
 !************************************************************************
 
- DM2_L=0.0d0; DDM2_gamma_L=0.0d0
 !-----------------------------------------------------------------------
 !     FIs
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -610,16 +618,18 @@ subroutine dm2_pnof7(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2
  do iorb=1,RDMd%NBF_occ
   do iorb1=1,RDMd%NBF_occ
    DM2_J(iorb,iorb1) = 2.0d0*RDMd%occ(iorb)*RDMd%occ(iorb1)
-   DM2_K(iorb,iorb1) = -RDMd%occ(iorb)*RDMd%occ(iorb1) - FIs(iorb)*FIs(iorb1)
+   DM2_K(iorb,iorb1) = -RDMd%occ(iorb)*RDMd%occ(iorb1) 
+   DM2_L(iorb,iorb1) = -FIs(iorb)*FIs(iorb1)
    do igamma=1,RDMd%Ngammas
     DDM2_gamma_J(iorb,iorb1,igamma) = 2.0d0*Docc_gamma(iorb,igamma)*RDMd%occ(iorb1)
-    DDM2_gamma_K(iorb,iorb1,igamma) = -Docc_gamma(iorb,igamma)*RDMd%occ(iorb1) - DFIs(iorb,igamma)*FIs(iorb1)
+    DDM2_gamma_K(iorb,iorb1,igamma) = -Docc_gamma(iorb,igamma)*RDMd%occ(iorb1)
+    DDM2_gamma_L(iorb,iorb1,igamma) = -DFIs(iorb,igamma)*FIs(iorb1)
    enddo
   enddo
  enddo
  deallocate(FIs,DFIs)
 !- - - - - - - - - - - - - - - - - - - - - - - -              
- if(RDMd%Nsingleocc>1) then
+ if(RDMd%Nsingleocc>1) then ! TODO
   do iorb=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
    do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
     DM2_K(iorb,iorb1) = -2.0d0*RDMd%occ(iorb)*RDMd%occ(iorb1)
@@ -638,21 +648,27 @@ subroutine dm2_pnof7(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2
    iorb4 = RDMd%Nfrozen+iorb1
    DM2_J(iorb3,iorb4) = 0.0d0
    DM2_J(iorb4,iorb3) = 0.0d0
-   DM2_K(iorb3,iorb4) = -sqrt_occ(iorb3)*sqrt_occ(iorb4)
-   DM2_K(iorb4,iorb3) = -sqrt_occ(iorb4)*sqrt_occ(iorb3)
+   DM2_K(iorb3,iorb4) = 0.0d0
+   DM2_K(iorb4,iorb3) = 0.0d0
+   DM2_L(iorb3,iorb4) = -sqrt_occ(iorb3)*sqrt_occ(iorb4)
+   DM2_L(iorb4,iorb3) = -sqrt_occ(iorb4)*sqrt_occ(iorb3)
    do igamma=1,RDMd%Ngammas
     DDM2_gamma_J(iorb3,iorb4,igamma) = 0.0d0
     DDM2_gamma_J(iorb4,iorb3,igamma) = 0.0d0
-    DDM2_gamma_K(iorb3,iorb4,igamma) = -Dsqrt_occ_gamma(iorb3,igamma)*sqrt_occ(iorb4)
-    DDM2_gamma_K(iorb4,iorb3,igamma) = -Dsqrt_occ_gamma(iorb4,igamma)*sqrt_occ(iorb3)
+    DDM2_gamma_K(iorb3,iorb4,igamma) = 0.0d0
+    DDM2_gamma_K(iorb4,iorb3,igamma) = 0.0d0
+    DDM2_gamma_L(iorb3,iorb4,igamma) = -Dsqrt_occ_gamma(iorb3,igamma)*sqrt_occ(iorb4)
+    DDM2_gamma_L(iorb4,iorb3,igamma) = -Dsqrt_occ_gamma(iorb4,igamma)*sqrt_occ(iorb3)
    enddo
    do iorb=RDMd%Npairs_p_sing+RDMd%Ncoupled*(RDMd%Npairs-iorb2)+1,RDMd%Npairs_p_sing+RDMd%Ncoupled*(RDMd%Npairs-iorb2+1)
     iorb5 = RDMd%Nfrozen+iorb
     DM2_J(iorb5,iorb4) = 0.0d0
-    DM2_K(iorb5,iorb4) = sqrt_occ(iorb5)*sqrt_occ(iorb4)
+    DM2_K(iorb5,iorb4) = 0.0d0
+    DM2_L(iorb5,iorb4) = sqrt_occ(iorb5)*sqrt_occ(iorb4)
     do igamma=1,RDMd%Ngammas
      DDM2_gamma_J(iorb5,iorb4,igamma) = 0.0d0
-     DDM2_gamma_K(iorb5,iorb4,igamma) = Dsqrt_occ_gamma(iorb5,igamma)*sqrt_occ(iorb4)
+     DDM2_gamma_K(iorb5,iorb4,igamma) = 0.0d0
+     DDM2_gamma_L(iorb5,iorb4,igamma) = Dsqrt_occ_gamma(iorb5,igamma)*sqrt_occ(iorb4)
     enddo
    enddo
   enddo
@@ -664,9 +680,11 @@ subroutine dm2_pnof7(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2
   DM2_IIII(iorb)=RDMd%occ(iorb)
   DM2_J(iorb,iorb)=0.0d0
   DM2_K(iorb,iorb)=0.0d0
+  DM2_L(iorb,iorb)=0.0d0
   RDMd%Dfni_ni(iorb)=1.0d0
   DDM2_gamma_J(iorb,iorb,:)=0.0d0
   DDM2_gamma_K(iorb,iorb,:)=0.0d0
+  DDM2_gamma_L(iorb,iorb,:)=0.0d0
  enddo
 !-----------------------------------------------------------------------
 end subroutine dm2_pnof7

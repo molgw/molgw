@@ -131,7 +131,7 @@ subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,nogamma)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   endif
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- else 
+ else ! TODO
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 !      High-Spin Multiplet State (S>0,Ms=S)
@@ -288,7 +288,7 @@ subroutine calc_Grad_occ(RDMd,Grad,hCORE,ERI_J,ERI_K,ERI_L)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   endif
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --     
- else
+ else ! TODO
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 !      High-Spin Multiplet State (S>0,Ms=S)
