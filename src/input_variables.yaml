@@ -1310,6 +1310,14 @@ level_shifting_energy:
   comment: Sets the energy shift up of the unoccupied states. Should help the convergence
     in the case of small HOMO-LUMO gaps.
 
+lowmemERI:
+  family: scf
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: 'Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) in NOFT module.'
+
 min_overlap:
   family: scf
   datatype: real

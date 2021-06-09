@@ -69,6 +69,7 @@ contains
 !! AOverlap_in= Overlap of atomic orbs. (matrix)
 !! mo_ints=External subroutine that for given NO_COEF updates the hCORE and ERImol matrices
 !! ofile_name=Name of the output file
+!! lowmemERI=Logical parameter to decided whether to store only (NBF_tot,NBF_occ,NBF_occ,NBF_occ) part of the nat. orb. ERIs
 !! restart=Logical parameter to decided whether we do restart
 !! ireadGAMMAS, ireadOCC, ireadCOEF, ireadFdiag =Integer restart parameters that control the read of checkpoint files (true=1)
 !! 
@@ -84,11 +85,11 @@ contains
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintints,&
 &  itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,AOverlap_in,Occ_inout,mo_ints,ofile_name,&
-&  restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag)   ! Optional
+&  lowmemERI,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag)   ! Optional
 !Arguments ------------------------------------
 !scalars
  integer,optional,intent(in)::ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag
- logical,optional,intent(in)::restart
+ logical,optional,intent(in)::restart,lowmemERI
  integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,itolLambda,ndiis
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in,iERItyp_in
@@ -151,7 +152,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  ! Initialize RDMd, INTEGd, and ELAGd objects.
  call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 & Nbeta_elect_in,Nalpha_elect_in)
- call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in)
+ if(present(lowmemERI)) then
+  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in,lowmemERI=lowmemERI)
+ else
+  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in)
+ endif
  call elag_init(ELAGd,RDMd%NBF_tot,diagLpL,itolLambda,ndiis,imethorb,tolE_in)
 
  ! Check for the presence of restart files. Then, if they are available read them (only if required)
@@ -167,7 +172,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  write(msg,'(a)') ' '
  call write_output(msg)
  iter=-1;
- call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
+ call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
  call INTEGd%eritoeriJK(RDMd%NBF_occ)
  call opt_occ(iter,imethocc,RDMd,Vnn,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K) ! Also iter=iter+1
  Energy_old=Energy
@@ -201,8 +206,17 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  ! Print optimized 1,2-RDMs
  if(iprintdmn==1) call RDMd%print_dmn(RDMd%DM2_J,RDMd%DM2_K) 
 
- ! Print hCORE and ERImol integrals in the last (opt) NO_COEF basis
- if(iprintints==1)  call INTEGd%print_int(RDMd%NBF_tot)
+ ! Print hCORE and ERImol integrals in the last (opt) NO_COEF basis (if lowmemERI=.false. NBF_tot, otherwise only NBF_occ)
+ if(iprintints==1) then
+  if(present(lowmemERI)) then
+   if(lowmemERI) then
+    write(msg,'(a,f10.5,a)') 'Comment: Printing only the occ. ERI in the opt. nat. orb. basis'
+    call write_output(msg)
+   endif
+  else
+  endif
+  call INTEGd%print_int()
+ endif
 
  ! Print final diagonalized INTEGd%Lambdas values
  call ELAGd%diag_lag(RDMd,INTEGd,NO_COEF)

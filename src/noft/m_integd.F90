@@ -31,6 +31,7 @@ module m_integd
  type,public :: integ_t
 
  integer::iERItyp=0              ! Type of ERI notation to use DoNOF=0, Physicist = 1, Chemist = 2   
+ integer::NBF_jkl=0              ! Size of the basis for the <:j|kl> terms   
 ! arrays 
  real(dp),allocatable,dimension(:)::ERI_J,ERI_K
  real(dp),allocatable,dimension(:,:)::hCORE,Overlap
@@ -74,9 +75,10 @@ CONTAINS  !=====================================================================
 !!
 !! SOURCE
 
-subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in)
+subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,lowmemERI)
 !Arguments ------------------------------------
 !scalars
+ logical,optional,intent(in)::lowmemERI
  integer,intent(in)::NBF_tot,NBF_occ,iERItyp_in
  type(integ_t),intent(inout)::INTEGd
  real(dp),dimension(NBF_tot,NBF_tot),intent(in)::Overlap_in
@@ -89,9 +91,19 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in)
 !************************************************************************
 
  INTEGd%iERItyp=iERItyp_in
+ INTEGd%NBF_jkl=NBF_tot
  NBF_ldiag=NBF_occ*(NBF_occ+1)/2
  ! Calculate memory needed
- totMEM=2*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
+ if(present(lowmemERI)) then
+  if(lowmemERI) then
+   totMEM=2*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_occ*NBF_occ*NBF_occ
+   INTEGd%NBF_jkl=NBF_occ
+  else
+   totMEM=2*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
+  endif
+ else
+  totMEM=2*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
+ endif
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*1.0d-6  ! Bytes to Mb  
  if(totMEM>1.0d3) then     ! Mb to Gb
@@ -105,7 +117,7 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in)
  ! Allocate arrays
  allocate(INTEGd%ERI_J(NBF_ldiag),INTEGd%ERI_K(NBF_ldiag))
  allocate(INTEGd%hCORE(NBF_tot,NBF_tot),INTEGd%Overlap(NBF_tot,NBF_tot))
- allocate(INTEGd%ERImol(NBF_tot,NBF_tot,NBF_tot,NBF_tot))
+ allocate(INTEGd%ERImol(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
  INTEGd%Overlap=Overlap_in
 
 end subroutine integ_init
@@ -216,10 +228,9 @@ end subroutine eri_to_eriJK
 !!
 !! SOURCE
 
-subroutine print_ints(INTEGd,NBF_tot)
+subroutine print_ints(INTEGd)
 !Arguments ------------------------------------
 !scalars
- integer,intent(in)::NBF_tot
  class(integ_t),intent(in)::INTEGd
 !Local variables ------------------------------
 !scalars
@@ -230,10 +241,10 @@ subroutine print_ints(INTEGd,NBF_tot)
  
  ! Print ERImol
  open(unit=iunit,form='unformatted',file='ERImol')
- do iorb=1,NBF_tot
-  do iorb1=1,NBF_tot
-   do iorb2=1,NBF_tot
-    do iorb3=1,NBF_tot
+ do iorb=1,INTEGd%NBF_jkl
+  do iorb1=1,INTEGd%NBF_jkl
+   do iorb2=1,INTEGd%NBF_jkl
+    do iorb3=1,INTEGd%NBF_jkl
      if(dabs(INTEGd%ERImol(iorb,iorb1,iorb2,iorb3))>tol8) then
       if(INTEGd%iERItyp==0) then
        write(iunit) iorb,iorb1,iorb3,iorb2,INTEGd%ERImol(iorb,iorb1,iorb2,iorb3) ! DoNOF {ij|lk} 
@@ -255,8 +266,8 @@ subroutine print_ints(INTEGd,NBF_tot)
 
  ! Print hCORE
  open(unit=iunit,form='unformatted',file='hCORE')
- do iorb=1,NBF_tot
-  do iorb1=1,NBF_tot
+ do iorb=1,INTEGd%NBF_jkl
+  do iorb1=1,INTEGd%NBF_jkl
    if(dabs(INTEGd%hCORE(iorb,iorb1))>tol8) then
     write(iunit) iorb,iorb1,INTEGd%hCORE(iorb,iorb1)
    endif

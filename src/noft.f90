@@ -77,12 +77,12 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  if(restartnoft=='yes') then
    call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
    & imethocc,imethorb,nscf_nof,iprintdmn,iprintints,ithresh_lambda,ndiis_nof,Enoft,tolE_nof,Vnn,NO_COEF,&
-   & Aoverlap,occ(:,1),mo_ints,ofile_name,&
+   & Aoverlap,occ(:,1),mo_ints,ofile_name,lowmemERI=(lowmemERI=='yes'),&
    & restart=(restartnoft=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,ireadFdiag=ireadFdiag)
  else
    call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
    & imethocc,imethorb,nscf_nof,iprintdmn,iprintints,ithresh_lambda,ndiis_nof,Enoft,tolE_nof,Vnn,NO_COEF,&
-   & Aoverlap,occ(:,1),mo_ints,ofile_name)
+   & Aoverlap,occ(:,1),mo_ints,ofile_name,lowmemERI=(lowmemERI=='yes'))
  endif
  
  ! Update c_matrix with optimized NO_COEF
@@ -113,7 +113,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
 
 end subroutine noft_energy
 
-subroutine mo_ints(nbf,nbf_occ,NO_COEF,hCORE,ERImol)
+subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol)
  use m_definitions
  use m_mpi
  use m_cart_to_pure
@@ -122,10 +122,10 @@ subroutine mo_ints(nbf,nbf_occ,NO_COEF,hCORE,ERImol)
  use m_hamiltonian_onebody
  implicit none
 
- integer,intent(in)         :: nbf,nbf_occ
+ integer,intent(in)         :: nbf,nbf_occ,nbf_kji
  real(dp),intent(in)        :: NO_COEF(nbf,nbf)
  real(dp),intent(inout)     :: hCORE(nbf,nbf)
- real(dp),intent(inout)     :: ERImol(nbf,nbf,nbf,nbf)
+ real(dp),intent(inout)     :: ERImol(nbf,nbf_kji,nbf_kji,nbf_kji)
 !====
  integer                    :: istate,jstate,kstate,lstate
  real(dp),allocatable       :: tmp_hcore(:,:)
