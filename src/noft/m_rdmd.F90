@@ -39,7 +39,7 @@ module m_rdmd
   integer::Nsingleocc=0          ! Number of singly occ orbitals
   integer::NBF_tot               ! Number of total orbitals
   integer::NBF_occ               ! Number of frozen plus active orbitals
-  integer::NBF_ldiag             ! Size of the arrays that contain J and K integrals
+  integer::NBF_ldiag             ! Size of the arrays that contain J, K, and L integrals
   integer::Ncoupled              ! Number of 'virtual' coupled orbital per 'occupied' orbital  
   integer::Npairs                ! Number of electron pairs
   integer::Npairs_p_sing         ! Number of electron pairs plus number of singly occ orbitals
@@ -48,9 +48,9 @@ module m_rdmd
 ! arrays 
   real(dp),allocatable,dimension(:)::occ
   real(dp),allocatable,dimension(:)::GAMMAs_old
-  real(dp),allocatable,dimension(:)::DM2_J,DM2_K,DM2_IIII
+  real(dp),allocatable,dimension(:)::DM2_J,DM2_K,DM2_L,DM2_IIII
   real(dp),allocatable,dimension(:)::Docc_gamma,Dfni_ni
-  real(dp),allocatable,dimension(:)::DDM2_gamma_J,DDM2_gamma_K
+  real(dp),allocatable,dimension(:)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
 
  contains 
    procedure :: free => rdm_free
@@ -132,7 +132,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  RDMd%NBF_ldiag=RDMd%NBF_occ*(RDMd%NBF_occ+1)/2
  RDMd%Ngammas=RDMd%Ncoupled*RDMd%Npairs
  ! Calculate memory needed
- totMEM=2*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas+2*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas
+ totMEM=3*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas+3*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas
  totMEM=totMEM+RDMd%Ngammas+3*RDMd%NBF_occ
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*1.0d-6  ! Bytes to Mb  
@@ -145,10 +145,13 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  endif 
  call write_output(msg)
  ! Allocate arrays
- allocate(RDMd%DM2_J(RDMd%NBF_occ*RDMd%NBF_occ),RDMd%DM2_K(RDMd%NBF_occ*RDMd%NBF_occ)) 
+ allocate(RDMd%DM2_J(RDMd%NBF_occ*RDMd%NBF_occ))
+ allocate(RDMd%DM2_K(RDMd%NBF_occ*RDMd%NBF_occ))
+ allocate(RDMd%DM2_L(RDMd%NBF_occ*RDMd%NBF_occ))
  allocate(RDMd%Docc_gamma(RDMd%NBF_occ*RDMd%Ngammas)) 
  allocate(RDMd%DDM2_gamma_J(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas))
  allocate(RDMd%DDM2_gamma_K(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas)) 
+ allocate(RDMd%DDM2_gamma_L(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas)) 
  allocate(RDMd%GAMMAs_old(RDMd%Ngammas))
  allocate(RDMd%DM2_IIII(RDMd%NBF_occ),RDMd%Dfni_ni(RDMd%NBF_occ)) 
  allocate(RDMd%occ(RDMd%NBF_occ))
@@ -186,10 +189,11 @@ subroutine rdm_free(RDMd)
  deallocate(RDMd%GAMMAs_old)
  deallocate(RDMd%occ)
  deallocate(RDMd%DM2_IIII)
- deallocate(RDMd%DM2_J,RDMd%DM2_K) 
+ deallocate(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
  deallocate(RDMd%Docc_gamma,RDMd%Dfni_ni) 
  deallocate(RDMd%DDM2_gamma_J)
- deallocate(RDMd%DDM2_gamma_K) 
+ deallocate(RDMd%DDM2_gamma_K)
+ deallocate(RDMd%DDM2_gamma_L)
 
 end subroutine rdm_free
 !!***
@@ -213,12 +217,12 @@ end subroutine rdm_free
 !!
 !! SOURCE
 
-subroutine print_rdm(RDMd,DM2_J,DM2_K)
+subroutine print_rdm(RDMd,DM2_J,DM2_K,DM2_L)
 !Arguments ------------------------------------
 !scalars
  class(rdm_t),intent(inout)::RDMd
 !arrays
- real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(in)::DM2_J,DM2_K
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(in)::DM2_J,DM2_K,DM2_L
 !Local variables ------------------------------
 !scalars
 integer::iorb,iorb1,iunit=312
@@ -240,6 +244,10 @@ real(dp)::tol8=1.0d-8
    if(dabs(DM2_K(iorb,iorb1))>tol8) then
     write(iunit) iorb,iorb1,iorb1,iorb,DM2_K(iorb,iorb1)
     write(iunit) iorb1,iorb,iorb,iorb1,DM2_K(iorb,iorb1)
+   endif
+   if(dabs(DM2_L(iorb,iorb1))>tol8) then
+    write(iunit) iorb,iorb,iorb1,iorb1,DM2_L(iorb,iorb1)
+    write(iunit) iorb1,iorb1,iorb,iorb,DM2_L(iorb,iorb1)
    endif
   enddo
  enddo

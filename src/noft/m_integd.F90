@@ -33,7 +33,7 @@ module m_integd
  integer::iERItyp=0              ! Type of ERI notation to use DoNOF=0, Physicist = 1, Chemist = 2   
  integer::NBF_jkl=0              ! Size of the basis for the <:j|kl> terms   
 ! arrays 
- real(dp),allocatable,dimension(:)::ERI_J,ERI_K
+ real(dp),allocatable,dimension(:)::ERI_J,ERI_K,ERI_L
  real(dp),allocatable,dimension(:,:)::hCORE,Overlap
  real(dp),allocatable,dimension(:,:,:,:)::ERImol
 
@@ -41,8 +41,8 @@ module m_integd
    procedure :: free => integ_free
    ! Destructor.
 
-   procedure :: eritoeriJK => eri_to_eriJK  
-   ! ERImol to ERI_J and ERI_K.
+   procedure :: eritoeriJKL => eri_to_eriJKL
+   ! ERImol to ERI_J, ERI_K, and ERI_L.
 
    procedure :: print_int => print_ints 
    ! Print hCORE and ERImol integrals in their current status
@@ -96,13 +96,13 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,lowmemERI)
  ! Calculate memory needed
  if(present(lowmemERI)) then
   if(lowmemERI) then
-   totMEM=2*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_occ*NBF_occ*NBF_occ
+   totMEM=3*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_occ*NBF_occ*NBF_occ
    INTEGd%NBF_jkl=NBF_occ
   else
-   totMEM=2*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
+   totMEM=3*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
   endif
  else
-  totMEM=2*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
+  totMEM=3*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
  endif
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*1.0d-6  ! Bytes to Mb  
@@ -115,7 +115,7 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,lowmemERI)
  endif
  call write_output(msg)
  ! Allocate arrays
- allocate(INTEGd%ERI_J(NBF_ldiag),INTEGd%ERI_K(NBF_ldiag))
+ allocate(INTEGd%ERI_J(NBF_ldiag),INTEGd%ERI_K(NBF_ldiag),INTEGd%ERI_L(NBF_ldiag))
  allocate(INTEGd%hCORE(NBF_tot,NBF_tot),INTEGd%Overlap(NBF_tot,NBF_tot))
  allocate(INTEGd%ERImol(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
  INTEGd%Overlap=Overlap_in
@@ -155,17 +155,18 @@ subroutine integ_free(INTEGd)
  deallocate(INTEGd%ERImol) 
  deallocate(INTEGd%ERI_J) 
  deallocate(INTEGd%ERI_K) 
+ deallocate(INTEGd%ERI_L) 
 
 end subroutine integ_free
 !!***
 
 !!***
-!!****f* DoNOF/eri_to_eriJK
+!!****f* DoNOF/eri_to_eriJKL
 !! NAME
-!! eri_to_eriJK
+!! eri_to_eriJKL
 !!
 !! FUNCTION
-!!  Get ERI_J, ERI_K from ERI
+!!  Get ERI_J, ERI_K, and ERI_L from ERI
 !!
 !! INPUTS
 !!
@@ -177,7 +178,7 @@ end subroutine integ_free
 !!
 !! SOURCE
 
-subroutine eri_to_eriJK(INTEGd,NBF_occ)
+subroutine eri_to_eriJKL(INTEGd,NBF_occ)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::NBF_occ
@@ -194,12 +195,15 @@ subroutine eri_to_eriJK(INTEGd,NBF_occ)
    if(INTEGd%iERItyp==0) then
     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! J in DoNOF {ij|ji}
     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! K in DoNOF {ij|ij}
+    INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! L in DoNOF {ii|jj}
    elseif(INTEGd%iERItyp==1) then
     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! J in <ij|ij>
     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! K in <ij|ji>
+    INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! L in <ii|jj>
    elseif(INTEGd%iERItyp==2) then
     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! J in (ii|jj)
     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! K in (ij|ji)
+    INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! L in (ij|ij)
    else 
     ! Nth
    endif
@@ -207,7 +211,7 @@ subroutine eri_to_eriJK(INTEGd,NBF_occ)
   enddo
  enddo
 
-end subroutine eri_to_eriJK
+end subroutine eri_to_eriJKL
 !!***
 
 !!***

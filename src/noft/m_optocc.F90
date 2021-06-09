@@ -45,6 +45,7 @@ contains
 !!  hCORE=One-body integrals (h_pq) 
 !!  ERI_J=Lower triangular part of the J_pq matrix
 !!  ERI_K=Lower triangular part of the K_pq matrix
+!!  ERI_L=Lower triangular part of the L_pq matrix
 !!  Vnn=Nuclear-nuclear rep. energy
 !!
 !! OUTPUT
@@ -56,7 +57,7 @@ contains
 !!
 !! SOURCE
 
-subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K) 
+subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L)
 !Arguments ------------------------------------
 !scalars
  integer,intent(inout)::iter
@@ -66,7 +67,7 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
- real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K 
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
 !Local variables ------------------------------
 !scalars
  logical::diagco,conveg=.false.
@@ -90,8 +91,8 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
  endif
 
  ! Check if the current GAMMAs already solve the problem. Is it converged? 
- call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K)
- call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K)
+ call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+ call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
  conveg=.true.
  do igamma=1,RDMd%Ngammas
   if(dabs(Grad_GAMMAs(igamma))>tolgamma.and.conveg) then
@@ -130,13 +131,13 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
    endif
 
 30  icall1 = iWork(nfcall)
-   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K)
+   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
    icall=icall+1
    if(icall==2000) goto 60
    if(icall1<=0) iWork(toobig) = 1
    goto 20
 
-40  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K)
+40  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
    Work2(ig:ig+RDMd%Ngammas)=Grad_GAMMAs(1:RDMd%Ngammas)
    goto 20
 
@@ -160,8 +161,8 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
    eps= 1.0d-5; xtol= 1.0d-16; icall=0; iflag=0;
    allocate(Work(Nwork),diag(RDMd%Ngammas))
    do
-    call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K)
-    call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K)
+    call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+    call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
     call LBFGS_INTERN(RDMd%Ngammas,Mtosave,GAMMAs,Energy,Grad_GAMMAs,diagco,diag,info_print,eps,xtol,Work,iflag)
     if(iflag<=0) exit
     icall=icall+1
@@ -175,7 +176,7 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K)
  
  iter=iter+1
  RDMd%GAMMAs_old=GAMMAs
- call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K)
+ call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
  write(msg,'(a,f15.6,a,i6,a)') 'Occ. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
  write(msg,'(a,i6)') 'Number of global iter. ',iter

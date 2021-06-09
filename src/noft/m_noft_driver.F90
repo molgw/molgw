@@ -173,8 +173,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  iter=-1;
  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
- call INTEGd%eritoeriJK(RDMd%NBF_occ)
- call opt_occ(iter,imethocc,RDMd,Vnn,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K) ! Also iter=iter+1
+ call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+ call opt_occ(iter,imethocc,RDMd,Vnn,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L) ! Also iter=iter+1
  Energy_old=Energy
 
  ! Orb. and occ. optimization
@@ -188,7 +188,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call RDMd%print_orbs_bin(NO_COEF)
 
   ! Occ. optimization
-  call opt_occ(iter,imethocc,RDMd,Vnn,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K) ! Also iter=iter+1
+  call opt_occ(iter,imethocc,RDMd,Vnn,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L) ! Also iter=iter+1
   call RDMd%print_gammas()
 
   ! Check convergence
@@ -204,7 +204,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  enddo
 
  ! Print optimized 1,2-RDMs
- if(iprintdmn==1) call RDMd%print_dmn(RDMd%DM2_J,RDMd%DM2_K) 
+ if(iprintdmn==1) call RDMd%print_dmn(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
 
  ! Print hCORE and ERImol integrals in the last (opt) NO_COEF basis (if lowmemERI=.false. NBF_tot, otherwise only NBF_occ)
  if(iprintints==1) then
