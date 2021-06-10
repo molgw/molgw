@@ -87,7 +87,11 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L)
  if((iter==-1).and.RDMd%GAMMAs_nread) then 
   GAMMAs=0.785398163       ! Perturbed occ. numbers (i.e pi/4) -> occ(i<Fermi level) = 0.75
  else
-  GAMMAs=RDMd%GAMMAs_old   ! Read from previous run
+  if(RDMd%INOF==0) then    ! HF set occ. to 0 or 1. open-shell TODO
+   GAMMAs=0.0d0
+  else
+   GAMMAs=RDMd%GAMMAs_old  ! Read from previous run
+  endif
  endif
 
  ! Check if the current GAMMAs already solve the problem. Is it converged? 
@@ -175,7 +179,11 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L)
  endif 
  
  iter=iter+1
- RDMd%GAMMAs_old=GAMMAs
+ if(RDMd%INOF==0) then ! Ensure that for HF we keep occ. 0 or 1
+  RDMd%GAMMAs_old=0.0d0
+ else
+  RDMd%GAMMAs_old=GAMMAs
+ endif
  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
  write(msg,'(a,f15.6,a,i6,a)') 'Occ. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
