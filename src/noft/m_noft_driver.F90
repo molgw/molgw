@@ -199,7 +199,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   Energy_old=Energy
   
   ! Check maximum number of iterations
-  if(iter>itermax) exit
+  if(iter>=itermax) exit
 
  enddo
 
