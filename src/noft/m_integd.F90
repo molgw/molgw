@@ -30,10 +30,12 @@ module m_integd
 
  type,public :: integ_t
 
- integer::iERItyp=0              ! Type of ERI notation to use DoNOF=0, Physicist = 1, Chemist = 2   
- integer::NBF_jkl=0              ! Size of the basis for the <:j|kl> terms   
+ integer::iERItyp=0              ! Type of ERI notation to use DoNOF=0, Physicist=1, Chemist=2, Vectorial(Phys)=-1   
+ integer::NBF_jkl=0              ! Size of the basis for the <:j|kl> terms
+ integer::NBF2,NBF3,NBF4         ! Sizes used in the vectorial allocation of ERIs
 ! arrays 
  real(dp),allocatable,dimension(:)::ERI_J,ERI_K,ERI_L
+ real(dp),allocatable,dimension(:)::ERImolv
  real(dp),allocatable,dimension(:,:)::hCORE,Overlap
  real(dp),allocatable,dimension(:,:,:,:)::ERImol
 
@@ -117,7 +119,16 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,lowmemERI)
  ! Allocate arrays
  allocate(INTEGd%ERI_J(NBF_ldiag),INTEGd%ERI_K(NBF_ldiag),INTEGd%ERI_L(NBF_ldiag))
  allocate(INTEGd%hCORE(NBF_tot,NBF_tot),INTEGd%Overlap(NBF_tot,NBF_tot))
- allocate(INTEGd%ERImol(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
+ if(INTEGd%iERItyp/=-1) then ! Allocate ERImol all types except vectorial
+  allocate(INTEGd%ERImol(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
+  allocate(INTEGd%ERImolv(1))
+ else                        ! Allocate vectorial ERI case
+  INTEGd%NBF2=NBF_tot
+  INTEGd%NBF3=INTEGd%NBF2*INTEGd%NBF_jkl
+  INTEGd%NBF4=INTEGd%NBF3*INTEGd%NBF_jkl
+  allocate(INTEGd%ERImol(1,1,1,1))
+  allocate(INTEGd%ERImolv(NBF_tot*INTEGd%NBF_jkl*INTEGd%NBF_jkl*INTEGd%NBF_jkl))
+ endif
  INTEGd%Overlap=Overlap_in
 
 end subroutine integ_init
@@ -153,6 +164,7 @@ subroutine integ_free(INTEGd)
  deallocate(INTEGd%hCORE) 
  deallocate(INTEGd%Overlap) 
  deallocate(INTEGd%ERImol) 
+ deallocate(INTEGd%ERImolv) 
  deallocate(INTEGd%ERI_J) 
  deallocate(INTEGd%ERI_K) 
  deallocate(INTEGd%ERI_L) 
@@ -185,7 +197,7 @@ subroutine eri_to_eriJKL(INTEGd,NBF_occ)
  class(integ_t),intent(inout)::INTEGd
 !Local variables ------------------------------
 !scalars
- integer::iorb,iorb1,iorb2
+ integer::iorb,iorb1,iorb2,iorbm1,iorb1m1
 !arrays
 !************************************************************************
 
@@ -204,6 +216,12 @@ subroutine eri_to_eriJKL(INTEGd,NBF_occ)
     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! J in (ii|jj)
     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! K in (ij|ji)
     INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! L in (ij|ij)
+   elseif(INTEGd%iERItyp==-1) then
+    iorbm1=iorb-1
+    iorb1m1=iorb1-1
+    INTEGd%ERI_J(iorb2)=INTEGd%ERImolv(iorbm1+iorb1m1*INTEGd%NBF2+iorbm1*INTEGd%NBF3+iorb1m1*INTEGd%NBF4+1) ! J in <i+j*NBF2+i*NBF3+j*NBF4> 
+    INTEGd%ERI_K(iorb2)=INTEGd%ERImolv(iorbm1+iorb1m1*INTEGd%NBF2+iorb1m1*INTEGd%NBF3+iorbm1*INTEGd%NBF4+1) ! K in <i+j*NBF2+j*NBF3+i*NBF4> 
+    INTEGd%ERI_L(iorb2)=INTEGd%ERImolv(iorbm1+iorbm1*INTEGd%NBF2+iorb1m1*INTEGd%NBF3+iorb1m1*INTEGd%NBF4+1) ! L in <i+i*NBF2+j*NBF3+j*NBF4> 
    else 
     ! Nth
    endif
@@ -239,7 +257,8 @@ subroutine print_ints(INTEGd)
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iunit=312
- real(dp)::tol8=1.0d-8
+ integer::iorbm1,iorb1m1,iorb2m1,iorb3m1
+ real(dp)::ERIval,tol8=1.0d-8
 !arrays
 !************************************************************************
  
@@ -249,15 +268,27 @@ subroutine print_ints(INTEGd)
   do iorb1=1,INTEGd%NBF_jkl
    do iorb2=1,INTEGd%NBF_jkl
     do iorb3=1,INTEGd%NBF_jkl
-     if(dabs(INTEGd%ERImol(iorb,iorb1,iorb2,iorb3))>tol8) then
-      if(INTEGd%iERItyp==0) then
-       write(iunit) iorb,iorb1,iorb3,iorb2,INTEGd%ERImol(iorb,iorb1,iorb2,iorb3) ! DoNOF {ij|lk} 
-      elseif(INTEGd%iERItyp==1) then
-       write(iunit) iorb,iorb1,iorb2,iorb3,INTEGd%ERImol(iorb,iorb1,iorb2,iorb3) ! <ij|kl>
-      elseif(INTEGd%iERItyp==2) then
-       write(iunit) iorb,iorb2,iorb1,iorb3,INTEGd%ERImol(iorb,iorb1,iorb2,iorb3) ! (ik|jl)
-      else
-       ! Nth
+     if(INTEGd%iERItyp/=-1) then
+      ERIval=INTEGd%ERImol(iorb,iorb1,iorb2,iorb3)
+      if(dabs(ERIval)>tol8) then
+       if(INTEGd%iERItyp==0) then
+        write(iunit) iorb,iorb1,iorb3,iorb2,ERIval ! DoNOF {ij|lk} 
+       elseif(INTEGd%iERItyp==1) then
+        write(iunit) iorb,iorb1,iorb2,iorb3,ERIval ! <ij|kl>
+       elseif(INTEGd%iERItyp==2) then
+        write(iunit) iorb,iorb2,iorb1,iorb3,ERIval ! (ik|jl)
+       else
+        ! Nth
+       endif
+      endif
+     else
+      iorbm1=iorb-1
+      iorb1m1=iorb1-1
+      iorb2m1=iorb2-1
+      iorb3m1=iorb3-1
+      ERIval=INTEGd%ERImolv(iorbm1+iorb1m1*INTEGd%NBF2+iorb2m1*INTEGd%NBF3+iorb3m1*INTEGd%NBF4+1) ! <i+j*NBF2+k*NBF3+l*NBF4> 
+      if(dabs(ERIval)>tol8) then
+       write(iunit) iorb,iorb1,iorb2,iorb3,ERIval
       endif
      endif
     enddo

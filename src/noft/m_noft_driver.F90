@@ -95,7 +95,16 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in,iERItyp_in
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
- external::mo_ints
+ interface
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,NO_COEF,hCORE,ERImol,ERImolv)
+  implicit none
+  integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
+  double precision,intent(in)::NO_COEF(NBF_tot,NBF_tot)
+  double precision,intent(inout)::hCORE(NBF_tot,NBF_tot)
+  double precision,optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
+  double precision,optional,intent(inout)::ERImolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
+  end subroutine mo_ints
+ end interface
 !arrays
  character(len=100),intent(in)::ofile_name
  real(dp),dimension(NBF_tot_in),intent(inout)::Occ_inout
@@ -172,7 +181,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  write(msg,'(a)') ' '
  call write_output(msg)
  iter=-1;
- call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,INTEGd%ERImol)
+ call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImol=INTEGd%ERImol)
  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
  call opt_occ(iter,imethocc,RDMd,Vnn,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L) ! Also iter=iter+1
  Energy_old=Energy
