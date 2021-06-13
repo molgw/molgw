@@ -141,27 +141,29 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv)
  call clean_deallocate('tmp_hcore',tmp_hcore)
 
  ! ERI terms
- ERImol(:,:,:,:)=0.0_dp
- call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nbf_noft,1)
- do istate=1,nbf_noft
-  tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
- enddo
- if(noft_ri) then ! RI case
-   call calculate_eri_3center_eigen(tmp_c_matrix,1,nbf_noft,1,nbf_noft)
-   do istate=1,nbf_occ
-     do jstate=1,nbf_occ
-       do kstate=1,nbf_occ
-         do lstate=1,nbf_noft
-           ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+ if(present(ERImol)) then
+   ERImol(:,:,:,:)=0.0_dp
+   call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nbf_noft,1)
+   do istate=1,nbf_noft
+    tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
+   enddo
+   if(noft_ri) then ! RI case
+     call calculate_eri_3center_eigen(tmp_c_matrix,1,nbf_noft,1,nbf_noft)
+     do istate=1,nbf_occ
+       do jstate=1,nbf_occ
+         do kstate=1,nbf_occ
+           do lstate=1,nbf_noft
+             ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+           enddo
          enddo
        enddo
      enddo
-   enddo
-   call destroy_eri_3center_eigen()
- else            ! Normal case 
-  ! TODO
+     call destroy_eri_3center_eigen()
+   else            ! Normal case 
+    ! TODO
+   endif
+   call clean_deallocate('tmp_c_matrix',tmp_c_matrix)
  endif
- call clean_deallocate('tmp_c_matrix',tmp_c_matrix)
 
 end subroutine mo_ints
 
