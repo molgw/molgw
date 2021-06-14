@@ -12,7 +12,7 @@ ifeq ($(CXXFLAGS),)
   CXXFLAGS=-O2
 endif
 ifeq ($(CPPFLAGS),)
-  CPPFLAGS=-cpp -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY
+  CPPFLAGS=-cpp -DHAVE_LIBXC
 endif
 ifeq ($(LAPACK),)
   LAPACK=-lblas -llapack
@@ -247,7 +247,7 @@ linear_response.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memo
 
 m_hamiltonian_onebody.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_memory.f90 m_timing.f90 m_atoms.f90 m_cart_to_pure.f90 m_ecp.f90 m_dft_grid.f90 \
                         m_basis_set.f90 m_libint_tools.f90 m_inputparam.f90 m_tddft_variables.f90 m_io.f90 m_hamiltonian_onebody.f90
-	$(FC_W_OPTS) -c m_hamiltonian_onebody.f90 $(LIBXC_INCS)
+	$(FC_W_OPTS) -c m_hamiltonian_onebody.f90 $(LIBXC_INCS) $(LIBINT_INCS)
 
 m_hamiltonian_tools.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_cart_to_pure.f90 \
 	               m_linear_algebra.f90 m_inputparam.f90 m_basis_set.f90 m_hamiltonian_tools.f90
@@ -373,7 +373,7 @@ libint_twobody_grad.o: libint_molgw.h libint_twobody_grad.cc
 	$(CXX_W_OPTS) -c libint_twobody_grad.cc $(LIBINT_INCS)
 
 m_libint_tools.o: m_definitions.f90 m_cart_to_pure.f90 m_basis_set.f90 m_libint_tools.f90
-	$(FC_W_OPTS) -c m_libint_tools.f90 $(LIBXC_INCS)
+	$(FC_W_OPTS) -c m_libint_tools.f90 $(LIBXC_INCS) $(LIBINT_INCS)
 
 m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_warning.f90 m_cart_to_pure.f90 m_timing.f90 m_elements.f90 m_atoms.f90 m_mpi.f90 m_basis_set.f90 m_numerical_tools.f90 \
               m_dft_grid.f90

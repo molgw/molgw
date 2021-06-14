@@ -7,24 +7,26 @@
 ! with no distribution of the memory
 !
 !=========================================================================
-module m_hamiltonian_onebody
- use m_definitions
- use m_tddft_variables
- use m_timing
- use m_mpi
- use m_scalapack
- use m_warning
- use m_memory
- use m_cart_to_pure
- use m_inputparam,only: nspin,spin_fact,scalapack_block_min
- use m_basis_set
- use m_libint_tools
- use m_io
+#include<libint2/libint2_params.h>
 
- real(dp),allocatable         :: AhCORE(:,:)                   ! hCORE matrix (T+Ven)
- real(dp),allocatable         :: AOverlap(:,:)                 ! Atomic orbital overlap matrix
- logical                      :: noft_ri=.true.                ! Decide whether RI is employed or not in donof.f90 
- integer                      :: nbf_noft=0                    ! Total number of lin. indep. states (nstate) used in NOFT calc
+module m_hamiltonian_onebody
+  use m_definitions
+  use m_tddft_variables
+  use m_timing
+  use m_mpi
+  use m_scalapack
+  use m_warning
+  use m_memory
+  use m_cart_to_pure
+  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
+  use m_basis_set
+  use m_libint_tools
+  use m_io
+
+  real(dp),allocatable         :: AhCORE(:,:)                   ! hCORE matrix (T+Ven)
+  real(dp),allocatable         :: AOverlap(:,:)                 ! Atomic orbital overlap matrix
+  logical                      :: noft_ri=.true.                ! Decide whether RI is employed or not in donof.f90 
+  integer                      :: nbf_noft=0                    ! Total number of lin. indep. states (nstate) used in NOFT calc
 
 contains
 
@@ -55,7 +57,7 @@ subroutine setup_overlap(basis,s_matrix)
  integer :: ibf_cart,jbf_cart
 !=====
  call start_clock(timing_overlap)
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
  write(stdout,'(/,a)') ' Setup overlap matrix S (LIBINT)'
 #else
  write(stdout,'(/,a)') ' Setup overlap matrix S (internal)'
@@ -82,7 +84,7 @@ subroutine setup_overlap(basis,s_matrix)
 
      allocate(array_cart(ni_cart*nj_cart))
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -149,7 +151,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 !=====
 
  call start_clock(timing_overlap)
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
  write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBINT)'
 #else
  write(stdout,'(/,a)') ' Setup mixed overlap matrix S (internal)'
@@ -178,7 +180,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 
      allocate(array_cart(ni_cart*nj_cart))
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -265,7 +267,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if (LIBINT2_DERIV_ONEBODY_ORDER > 0)
      call libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
@@ -337,7 +339,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
 !=====
 
  call start_clock(timing_hamiltonian_kin)
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBINT)'
 #else
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (internal)'
@@ -366,7 +368,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
      allocate(array_cart(ni_cart*nj_cart))
 
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
      call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -456,7 +458,7 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if LIBINT2_DERIV_ONEBODY_ORDER > 0
      call libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
@@ -534,7 +536,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
    call start_clock(timing_hamiltonian_nuc)
  end if
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
    write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
@@ -581,7 +583,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
        endif
 
        C(:) = xatom(:,iatom)
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
@@ -602,7 +604,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
      enddo
      deallocate(alphaA,cA)
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #else
      call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
@@ -714,7 +716,7 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 
        C(:) = xatom(:,iatom)
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if LIBINT2_DERIV_ONEBODY_ORDER > 0
        call libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
                                 amB,contrdepthB,B,alphaB,cB, &
                                 C,                           &
