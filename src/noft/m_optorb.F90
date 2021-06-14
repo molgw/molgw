@@ -109,7 +109,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   ! Check if these NO_COEF with the RDMs are already the solution =)
   call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff)
   if(convLambda) then
-   write(msg,'(a)') 'Lambda_pq - Lambda_qp* converged for the Hemiticty of Lambda'
+   write(msg,'(a)') 'Lambda_qp - Lambda_pq* converged for the Hemiticty of Lambda'
    call write_output(msg)
    exit
   else
@@ -149,7 +149,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   ! For this icall using the new NO_COEF (and fixed RDMs). Is the Energy still changing?
   Ediff=Energy_old-Energy
   if((icall>1).and.(dabs(Ediff)<ELAGd%tolE).and.(.not.diddiis)) then ! The energy is not changing anymore (not stopping for DIIS itertation)
-   write(msg,'(a)') 'Lambda_pq - Lambda_qp* converged for small energy differences'
+   write(msg,'(a)') 'Lambda_qp - Lambda_pq* converged for small energy differences'
    call write_output(msg)
    exit
   endif
@@ -165,7 +165,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
  if(imethod==1.and.iter>0) then
-  write(msg,'(a,f15.6)') 'Max. [Lambda_pq - Lambda_qp*]= ',maxdiff
+  write(msg,'(a,f15.6)') 'Max. [Lambda_qp - Lambda_pq*]= ',maxdiff
   call write_output(msg)
   write(msg,'(a,f19.10)') 'Energy difference orb. opt.=',Ediff
   call write_output(msg)
@@ -182,7 +182,7 @@ end subroutine opt_orb
 !!  lambda_conv
 !!
 !! FUNCTION
-!!  Check if the Lambda matrix already fulfils the condition Lambda_pq-Lambda_qp^* <= tol_dif_lambda.
+!!  Check if the Lambda matrix already fulfils the condition Lambda_qp-Lambda_pq^* <= tol_dif_lambda.
 !!
 !! INPUTS
 !!

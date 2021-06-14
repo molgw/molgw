@@ -150,7 +150,6 @@ subroutine write_header()
 !arrays
 !Local variables ------------------------------
 !scalars
- integer::iunit=313
 !arrays
  character(len=200)::msg
  character(8)::date
@@ -218,7 +217,6 @@ subroutine write_footer()
 !arrays
 !Local variables ------------------------------
 !scalars
- integer::iunit=313
 !arrays
  character(len=200)::msg
  character(8)::date

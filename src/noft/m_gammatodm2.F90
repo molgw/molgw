@@ -370,7 +370,7 @@ subroutine dm2_mbb(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2_K
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ,RDMd%Ngammas),intent(inout)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
 !Local variables ------------------------------
 !scalars
- integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,igamma
+ integer::iorb,iorb1,igamma
 !arrays
 !************************************************************************
 

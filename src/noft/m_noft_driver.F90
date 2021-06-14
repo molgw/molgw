@@ -121,10 +121,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !arrays
  character(len=10)::coef_file
  character(len=200)::msg
- character(8)::date
- character(10)::time
- character(5)::zone
- integer,dimension(8)::tvalues
 !************************************************************************
 
  diagLpL=.true.; restart_param=.false.;
@@ -468,7 +464,7 @@ subroutine read_restart(RDMd,ELAGd,NO_COEF,ireadGAMMAS,ireadOCC,ireadCOEF,ireadF
  real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
 !Local variables ------------------------------
 !scalars
- integer::iunit,istat,intvar,intvar1,icount
+ integer::iunit=310,istat,intvar,intvar1,icount
  real(dp)::doubvar
  real(dp),allocatable,dimension(:)::GAMMAS_in
  real(dp),allocatable,dimension(:,:)::NO_COEF_in

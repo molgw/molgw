@@ -26,7 +26,7 @@ module m_elag
 
  implicit none
 
-!!private :: 
+ private :: dyson_orbs
 !!***
 !!****t* m_rdmd/rdm_t
 !! NAME
@@ -44,7 +44,7 @@ module m_elag
   integer::imethod=1             ! Method used for optimization (1-> Diag F matrix)
   integer::MaxScaling=0          ! Max scaling reductions employed to avoid divergence of diag[F]
   integer::itscale=1             ! Above this number of iterations we do MaxScaling=MaxScaling+1
-  integer::itolLambda=5          ! Integer used to define 10**-itolLambda as threshold of Lambda_pq-Lambda_qp* convergence
+  integer::itolLambda=5          ! Integer used to define 10**-itolLambda as threshold of Lambda_qp-Lambda_pq* convergence
   integer::itoldiis=3            ! Integer used to define 10**-itoldiis as threshold of DIIS trigger
   integer::idiis=0               ! Current DIIS iteration
   integer::ndiis=5               ! The number of iterations required to apply DIIS is ndiis+1
@@ -74,9 +74,6 @@ module m_elag
    procedure :: print_Fdiag => print_F_diag
    ! Print the F_diag vector to un unformated file.
 
-   procedure :: dyson_orb => dyson_orbs
-   ! Compute Dyson orbs. after EKT diagonalization.
-
  end type elag_t
 
  public :: elag_init 
@@ -95,7 +92,7 @@ CONTAINS  !=====================================================================
 !! INPUTS
 !! NBF_tot=Number of total orbitals
 !! diagLpL_in=Diagonalize 0.5 (Lambda+Lambda) for the first iteration?
-!! itolLambda=Used as 10**-itolLambda to check for Lambda_pq-Lambda_qp* convergence
+!! itolLambda=Used as 10**-itolLambda to check for Lambda_qp-Lambda_pq* convergence
 !!
 !! OUTPUT
 !!
@@ -221,7 +218,6 @@ subroutine build_elag(ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,iorbv,iorbv1
- real(dp)::tol10=1.0d-10
 !arrays
  character(len=200)::msg
 !************************************************************************
@@ -357,7 +353,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,ekt)
  call write_output(msg)
  if(present(ekt)) then
   Eigval=-Eigval
-  call ELAGd%dyson_orb(RDMd,INTEGd,Eigvec,NO_COEF)
+  call dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF)
   write(msg,'(a)') 'EKT ionization potentials (a.u.)'
   call write_output(msg)
  else
@@ -407,10 +403,9 @@ end subroutine diag_lambda_ekt
 !!
 !! SOURCE
 
-subroutine dyson_orbs(ELAGd,RDMd,INTEGd,Eigvec,NO_COEF)
+subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF)
 !Arguments ------------------------------------
 !scalars
- class(elag_t),intent(in)::ELAGd
  type(rdm_t),intent(in)::RDMd
  type(integ_t),intent(in)::INTEGd
 !arrays
