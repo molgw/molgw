@@ -8,6 +8,8 @@
 ! * subroutines to pass from row-major (C convention) to column-major (Fortran convention)
 !
 !=========================================================================
+#include<libint2/libint2_params.h>
+
 module m_libint_tools
  use m_definitions
  use m_cart_to_pure
@@ -21,7 +23,7 @@ module m_libint_tools
 
  interface
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if (LIBINT2_SUPPORT_ONEBODY)
    subroutine libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              overlapAB) bind(C)
@@ -72,7 +74,7 @@ module m_libint_tools
    end subroutine libint_elecpot
 #endif
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if (LIBINT2_DERIV_ONEBODY_ORDER > 0)
    subroutine libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              overlapABx,overlapABy,overlapABz) bind(C)
@@ -131,7 +133,8 @@ module m_libint_tools
      real(C_DOUBLE),intent(inout) :: elecpotBz(*)
 
    end subroutine libint_elecpot_grad
-
+#endif
+#if (LIBINT2_DERIV_ERI_ORDER >0)
    subroutine libint_4center_grad(amA,contrdepthA,A,alphaA,cA, &
                                   amB,contrdepthB,B,alphaB,cB, &
                                   amC,contrdepthC,C,alphaC,cC, &

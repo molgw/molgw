@@ -182,22 +182,17 @@ subroutine header()
                                 ammax,orbital_momentum_name(ammax)
  call set_molgw_lmax(ammax)
 
-#if defined(HAVE_LIBINT_GRADIENTS) && !defined(HAVE_LIBINT_ONEBODY)
- call die('MOLGW gradients requires both compilations HAVE_LIBINT_GRADIENTS and HAVE_LIBINT_ONEBODY')
-#endif
+ if( .NOT. has_onebody ) then
+   write(stdout,'(1x,a)')  'Running with external LIBINT calculation of the one-body operators (faster)'
+ else
+   write(stdout,'(1x,a)')  'Running with internal calculation of the one-body operators (slower)'
+ endif
 
-#if defined(HAVE_LIBINT_ONEBODY)
- if( .NOT. has_onebody ) &
-   call die('MOLGW compiled with LIBINT one-body terms, however the LIBINT compilation does not calculate the one-body terms')
- write(stdout,'(1x,a)')  'Running with external LIBINT calculation of the one-body operators (faster)'
-#else
- write(stdout,'(1x,a)')  'Running with internal calculation of the one-body operators (slower)'
+#if defined(LIBINT2_DERIV_ONEBODY_ORDER) && (LIBINT2_DERIV_ONEBODY_ORDER > 0)
+ write(stdout,'(1x,a)') 'Running with external LIBINT calculation of the gradients of the one-body integrals'
 #endif
-
-#if defined(HAVE_LIBINT_GRADIENTS)
- if( .NOT. has_gradient ) &
-   call die('LIBINT compilation does not have the first derivative')
- write(stdout,'(1x,a)') 'Running with external LIBINT calculation of the gradients of the integrals'
+#if defined(LIBINT2_DERIV_ERI_ORDER) && (LIBINT2_DERIV_ERI_ORDER > 0)
+ write(stdout,'(1x,a)') 'Running with external LIBINT calculation of the gradients of the Coulomb integrals'
 #endif
  write(stdout,*)
  write(stdout,*)

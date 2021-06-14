@@ -17,7 +17,7 @@
 
 /* Code */
 
-#if defined(HAVE_LIBINT_ONEBODY) && defined(HAVE_LIBINT_GRADIENTS)
+#if defined(LIBINT2_SUPPORT_ONEBODY) && (LIBINT2_DERIV_ONEBODY_ORDER > 0)
 
 /* ==========================================================================
  *                           Overlap

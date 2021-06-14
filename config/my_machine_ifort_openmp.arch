@@ -3,7 +3,7 @@ PYTHON=python3
 
 FC=ifort
 
-CPPFLAGS= -DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY -DHAVE_MKL
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_MKL
 
 CXX=icpc -std=c++11
 FCFLAGS= -fpp -O3 -xhost -qopt-matmul
