@@ -57,9 +57,10 @@ contains
 !!
 !! SOURCE
 
-subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L)
 !Arguments ------------------------------------
 !scalars
+ logical,intent(in)::keep_occs
  integer,intent(inout)::iter
  integer,intent(in)::imethod
  real(dp),intent(in)::Vnn
@@ -107,7 +108,7 @@ subroutine opt_occ(iter,imethod,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L)
 
  ! Do iterations if the current GAMMAs do not produce small gradients
  icall=0
- if(.not.conveg) then 
+ if((.not.conveg).and.(.not.keep_occs)) then 
   if(imethod==1) then ! Conjugate gradients. (The subroutine uses goto. It is not clean but needed)
    write(msg,'(a)') 'Calling CG to optimize occ. numbers'
    call write_output(msg)

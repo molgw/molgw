@@ -1209,6 +1209,14 @@ init_hamiltonian:
     options are available: ''guess'' for an educated guess based on approximate atomic
     densities or ''core'' for the core hamiltonian.'
 
+iNOTupdateOCC:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Ask for NOFT optimization but keeping fixed the read occ numbers (or GAMMAS).'
+
 inof:
   family: scf
   datatype: integer
