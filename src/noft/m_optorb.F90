@@ -147,7 +147,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   endif
 
   ! For this icall using the new NO_COEF (and fixed RDMs). Is the Energy still changing?
-  Ediff=Energy_old-Energy
+  Ediff=Energy-Energy_old
   if((icall>1).and.(dabs(Ediff)<ELAGd%tolE).and.(.not.diddiis)) then ! The energy is not changing anymore (not stopping for DIIS itertation)
    write(msg,'(a)') 'Lambda_qp - Lambda_pq* converged for small energy differences'
    call write_output(msg)
