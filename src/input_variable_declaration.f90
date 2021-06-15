@@ -128,6 +128,7 @@
  integer,protected :: imethocc
  character(len=256),protected :: init_hamiltonian
  integer,protected :: iNOTupdateOCC
+ integer,protected :: iNOTupdateORB
  integer,protected :: inof
  character(len=256),protected :: integral_quality
  integer,protected :: iprintdmn

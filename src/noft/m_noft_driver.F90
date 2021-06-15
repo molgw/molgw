@@ -71,7 +71,7 @@ contains
 !! ofile_name=Name of the output file
 !! lowmemERI=Logical parameter to decided whether to store only (NBF_tot,NBF_occ,NBF_occ,NBF_occ) part of the nat. orb. ERIs
 !! restart=Logical parameter to decided whether we do restart
-!! ireadGAMMAS, ireadOCC, ireadCOEF, ireadFdiag, iNOTupdateOCC =Integer restart parameters that control the read of checkpoint files (true=1)
+!! ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB=Integer restart parameters that control the read of checkpoint files (true=1)
 !! 
 !! OUTPUT
 !! Occ=Array containing the optimized occ numbers
@@ -85,10 +85,10 @@ contains
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintints,&
 &  itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,AOverlap_in,Occ_inout,mo_ints,ofile_name,&
-&  lowmemERI,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC)   ! Optional
+&  lowmemERI,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB)   ! Optional
 !Arguments ------------------------------------
 !scalars
- integer,optional,intent(in)::ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC
+ integer,optional,intent(in)::ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB
  logical,optional,intent(in)::restart,lowmemERI
  integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,itolLambda,ndiis
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in
@@ -112,7 +112,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  real(dp),dimension(NBF_tot_in,NBF_tot_in),intent(inout)::NO_COEF
 !Local variables ------------------------------
 !scalars
- logical::ekt,diagLpL,restart_param,keep_occs=.false.
+ logical::ekt,diagLpL,restart_param,keep_occs=.false.,keep_orbs=.false.
  integer::iorb,iter
  real(dp)::Energy,Energy_old,Vee,hONEbody
  type(rdm_t),target::RDMd
@@ -134,12 +134,13 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  ! Print user defined parameters used in this run
  if(present(restart)) then
   if(present(ireadGAMMAS).and.present(ireadCOEF).and.present(ireadFdiag).and.present(ireadOCC).and.&
-&    present(iNOTupdateOCC)) then
+&    present(iNOTupdateOCC).and.present(iNOTupdateORB)) then
    restart_param=.true.
    call echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,&
 &  iprintints,itolLambda,ndiis,tolE_in,restart=restart,ireadGAMMAS=ireadGAMMAS,&
-&  ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC)
+&  ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,&
+&  iNOTupdateORB=iNOTupdateORB)
   else
    write(msg,'(a)') 'Warning! Asking for restart but the restart parameters are unspecified (not restarting).' 
    call write_output(msg)
@@ -194,13 +195,24 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L) ! Also iter=iter+1
  Energy_old=Energy
 
+ ! Check if we have to update orbs. or keep them fixed
+ if(present(iNOTupdateORB)) then
+  if(iNOTupdateORB==1) then
+   keep_orbs=.true.
+  else
+   keep_orbs=.false.
+  endif
+ endif
+
  ! Orb. and occ. optimization
  do
   ! Orb. optimization
-  call ELAGd%clean_diis()
-  call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
-  if(imethorb==1) then ! For F diag method, print F_pp elements after each global iteration
-   call ELAGd%print_Fdiag(RDMd%NBF_tot)
+  if(.not.keep_orbs) then
+   call ELAGd%clean_diis()
+   call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
+   if(imethorb==1) then ! For F diag method, print F_pp elements after each global iteration
+    call ELAGd%print_Fdiag(RDMd%NBF_tot)
+   endif
   endif
   call RDMd%print_orbs_bin(NO_COEF)
 
@@ -326,11 +338,12 @@ end subroutine run_noft
 
 subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,&
-&  iprintints,itolLambda,ndiis,tolE_in,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC)
+&  iprintints,itolLambda,ndiis,tolE_in,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,&
+&  iNOTupdateOCC,iNOTupdateORB)
 !Arguments ------------------------------------
 !scalars
  logical,optional,intent(in)::restart
- integer,optional,intent(in)::ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC
+ integer,optional,intent(in)::ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB
  integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,itolLambda,ndiis
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in
@@ -439,6 +452,8 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
    call write_output(msg)
   endif
   write(msg,'(a,i12)') ' Restart NOT update OCCs (true=1)  ',iNOTupdateOCC
+  call write_output(msg)
+  write(msg,'(a,i12)') ' Restart NOT update ORBs (true=1)  ',iNOTupdateORB
   call write_output(msg)
  endif
  write(msg,'(a)') ' '

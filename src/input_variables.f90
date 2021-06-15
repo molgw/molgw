@@ -132,6 +132,7 @@
     imethocc,       &
     init_hamiltonian,       &
     iNOTupdateOCC,       &
+    iNOTupdateORB,       &
     inof,       &
     integral_quality,       &
     iprintdmn,       &
@@ -295,6 +296,7 @@
  imethocc=1
  init_hamiltonian='guess'
  iNOTupdateOCC=0
+ iNOTupdateORB=0
  inof=7
  integral_quality='high'
  iprintdmn=0

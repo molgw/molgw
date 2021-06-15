@@ -131,6 +131,7 @@
  write(unit_yaml,'(4x,a,22x,i8)') 'imethocc:',imethocc 
  write(unit_yaml,'(4x,a,14x,a)') 'init_hamiltonian:',TRIM(init_hamiltonian) 
  write(unit_yaml,'(4x,a,17x,i8)') 'iNOTupdateOCC:',iNOTupdateOCC 
+ write(unit_yaml,'(4x,a,17x,i8)') 'iNOTupdateORB:',iNOTupdateORB 
  write(unit_yaml,'(4x,a,26x,i8)') 'inof:',inof 
  write(unit_yaml,'(4x,a,14x,a)') 'integral_quality:',TRIM(integral_quality) 
  write(unit_yaml,'(4x,a,21x,i8)') 'iprintdmn:',iprintdmn 

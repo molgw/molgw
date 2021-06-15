@@ -1215,7 +1215,15 @@ iNOTupdateOCC:
   mandatory: 'no'
   experimental: 'no'
   default: 0
-  comment: 'Ask for NOFT optimization but keeping fixed the read occ numbers (or GAMMAS).'
+  comment: 'Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.'
+
+iNOTupdateORB:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Do a NOFT optimization but keeping fixed the orbitals read.'
 
 inof:
   family: scf

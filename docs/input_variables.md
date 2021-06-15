@@ -54,6 +54,7 @@
 [imethocc](#imethocc) 
 [init_hamiltonian](#init_hamiltonian) 
 [iNOTupdateOCC](#iNOTupdateOCC) 
+[iNOTupdateORB](#iNOTupdateORB) 
 [inof](#inof) 
 [integral_quality](#integral_quality) 
 [iprintdmn](#iprintdmn) 
@@ -942,7 +943,23 @@ EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground
 
 **Description:** 
 
-Ask for NOFT optimization but keeping fixed the read occ numbers (or GAMMAS). 
+Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read. 
+
+
+---
+### iNOTupdateORB
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Do a NOFT optimization but keeping fixed the orbitals read. 
 
 
 ---

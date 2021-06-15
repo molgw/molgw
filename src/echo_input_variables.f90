@@ -131,6 +131,7 @@
  write(stdout,'(1x,a24,2x,i8)') 'imethocc',imethocc 
  write(stdout,'(1x,a24,6x,a)') 'init_hamiltonian',init_hamiltonian 
  write(stdout,'(1x,a24,2x,i8)') 'iNOTupdateOCC',iNOTupdateOCC 
+ write(stdout,'(1x,a24,2x,i8)') 'iNOTupdateORB',iNOTupdateORB 
  write(stdout,'(1x,a24,2x,i8)') 'inof',inof 
  write(stdout,'(1x,a24,6x,a)') 'integral_quality',integral_quality 
  write(stdout,'(1x,a24,2x,i8)') 'iprintdmn',iprintdmn 
