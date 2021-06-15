@@ -24,8 +24,9 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  real(dp),intent(in)        :: Vnn
  real(dp),intent(out)       :: Enoft
 !====
- integer                    :: istate
- real(dp),allocatable       :: NO_COEF(:,:),occ(:,:),energy(:,:),occ_print(:,:) 
+ integer                    :: istate,lwork,info
+ real(dp),allocatable       :: NO_COEF(:,:),occ(:,:),energy(:,:),occ_print(:,:)
+ real(dp),allocatable       :: tmp_mat0(:,:),tmp_mat(:,:),Work(:) 
  integer::imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled
  character(len=200)         :: ofile_name
  external::mo_ints
@@ -53,11 +54,30 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
   ! Save Atomic hCORE integrals and atomic overlaps
  AhCORE(:,:)=AhCORE_in(:,:)
  Aoverlap(:,:)=AOverlap_in(:,:) 
-  ! Copy current guess NOs to NO_COEF array
+  ! Initially copy c_matrix (HF orbs) to NO_COEF
  NO_COEF(:,:)=0.0_dp
  do istate=1,nbf_noft
    NO_COEF(:,istate)=c_matrix(:,istate,1)
  enddo
+  ! Replace NO_COEF by Hcore orbs for the initial GUESS?
+ if(TRIM(init_hamiltonian)=='CORE') then
+   allocate(tmp_mat0(basis%nbf,basis%nbf),tmp_mat(basis%nbf,basis%nbf),Work(1))
+   tmp_mat0=matmul(AhCORE_in,NO_COEF)
+   tmp_mat=matmul(transpose(NO_COEF),tmp_mat0)
+   lwork=-1
+   call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
+   lwork=nint(Work(1))
+   if(info==0) then
+    deallocate(Work)
+    allocate(Work(lwork))
+    energy=0.0_dp
+    call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
+   endif
+   tmp_mat0=matmul(NO_COEF,tmp_mat)
+   NO_COEF=tmp_mat0
+   write(stdout,'(/,a)') ' Approximate hamiltonian Hcore used as GUESS in NOFT calc.'
+   deallocate(tmp_mat0,tmp_mat,Work)
+ endif 
 
  ! Not ready for open-shell calcs. (TODO)
  Nvcoupled=ncoupled-1
