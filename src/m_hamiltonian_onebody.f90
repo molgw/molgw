@@ -398,7 +398,7 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#if defined(HAVE_LIBINT_GRADIENTS) || defined(HAVE_LIBINT_ONEBODY_GRADIENTS)
+#if (LIBINT2_DERIV_ONEBODY_ORDER > 0)
      call libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
@@ -565,7 +565,7 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
 !=====
 
  call start_clock(timing_hamiltonian_kin)
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
  write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (LIBINT)'
 #else
  write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (internal)'
@@ -594,7 +594,7 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
      allocate(array_cart(ni_cart*nj_cart))
 
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
      call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -893,7 +893,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
 
  call start_clock(timing_tddft_hamiltonian_nuc)
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
  write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
  write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (internal)'
@@ -935,7 +935,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      do iatom = 1, natom-1
        ! Skip the contribution if iatom is projectile
        C(:) = xatom(:,iatom)
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
@@ -956,7 +956,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      enddo
      deallocate(alphaA,cA)
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
      call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix)
 #else
      call transform_molgw_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix)
@@ -989,7 +989,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      do iatom = 1, natom-1
        ! Skip the contribution if iatom is projectile
        C(:) = xatom(:,iatom)
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
@@ -1010,7 +1010,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      enddo
      deallocate(alphaA,cA)
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
      call transform_libint_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix)
 #else
      call transform_molgw_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix)

@@ -941,9 +941,9 @@ subroutine read_inputfile_namelist()
 
   endif
 
-#if !defined(HAVE_LIBINT_ONEBODY) || !defined(HAVE_LIBINT_GRADIENTS)
+#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0)
   if( move_nuclei /= 'no' ) then
-    call die('Need to compile MOLGW with HAVE_LIBINT_ONEBODY and HAVE_LIBINT_GRADIENTS to have move_nuclei different from no')
+    call die('LIBINT does not contain the gradients of the integrals that are needed when move_nuclei is different from no')
   endif
 #endif
 
