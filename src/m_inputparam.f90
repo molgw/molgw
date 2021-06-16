@@ -681,6 +681,7 @@ subroutine read_inputfile_namelist()
        exit
      endif
      ichart=ichart+1
+     if(ichart+2>140) exit
     enddo
     output_name=TRIM(output_name(1:idot))
     open(newunit=inputfile,file=TRIM(input_file_name),status='old')
