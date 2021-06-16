@@ -75,7 +75,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
    endif
    tmp_mat0=matmul(NO_COEF,tmp_mat)
    NO_COEF=tmp_mat0
-   write(stdout,'(/,a)') ' Approximate hamiltonian Hcore used as GUESS in NOFT calc.'
+   write(stdout,'(/,a)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
    deallocate(tmp_mat0,tmp_mat,Work)
  endif 
 
