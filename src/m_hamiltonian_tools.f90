@@ -822,10 +822,10 @@ end subroutine level_shifting_down
 subroutine setup_x_matrix(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  implicit none
 
- real(dp),intent(in)                          :: TOL_OVERLAP
- real(dp),intent(in)                          :: s_matrix(:,:)
- integer,intent(out)                          :: nstate
- real(dp),allocatable,intent(out)             :: x_matrix(:,:)
+ real(dp),intent(in)                :: TOL_OVERLAP
+ real(dp),intent(in)                :: s_matrix(:,:)
+ integer,intent(out)                :: nstate
+ real(dp),allocatable,intent(out)   :: x_matrix(:,:)
 !=====
  integer  :: nbf
  integer  :: istate,jbf,i_sign

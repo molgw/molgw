@@ -46,11 +46,8 @@ contains
 subroutine this_is_the_end()
  implicit none
 
-!=====
-#if defined(_OPENMP)
- integer,external  :: OMP_get_max_threads
-#endif
-!=====
+ !=====
+ !=====
 
  call total_memory_statement()
 
@@ -62,7 +59,7 @@ subroutine this_is_the_end()
    write(unit_yaml,'(/,a)')  'run:'
    write(unit_yaml,'(4x,a,1x,i6)')  'mpi tasks:  ',world%nproc
 #if defined(_OPENMP)
-   write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',OMP_get_max_threads()
+   write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',OMP_GET_MAX_THREADS()
 #else
    write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',1
 #endif
@@ -98,9 +95,6 @@ subroutine header()
  implicit none
 
 !=====
-#if defined(_OPENMP)
- integer,external  :: OMP_get_max_threads,OMP_get_num_procs
-#endif
  character(len=40)   :: git_sha
  integer             :: values(8)
  integer             :: nchar,kchar,lchar
@@ -120,7 +114,7 @@ subroutine header()
 
  write(stdout,'(1x,70("="))')
  write(stdout,'(/,/,12x,a,/)') 'Welcome to the fascinating world of MOLGW'
- write(stdout,'(24x,a)')       'version 2.E'
+ write(stdout,'(24x,a)')       'version 2.F'
  write(stdout,'(/,/,1x,70("="))')
 
  write(stdout,'(/,a,a,/)') ' MOLGW commit git SHA: ',git_sha
@@ -168,8 +162,7 @@ subroutine header()
 
  ! Parallelization details
 #if defined(_OPENMP)
- write(stdout,'(1x,a,i4)') 'Number of available cores detected by OPENMP:                         ',OMP_get_num_procs()
- write(stdout,'(1x,a,i4)') 'Running with OPENMP parallelization activated with max threads count: ',OMP_get_max_threads()
+ write(stdout,'(1x,a,i4)') 'Running with OPENMP parallelization activated with max threads count: ',OMP_GET_MAX_THREADS()
 #endif
 #if defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
  write(stdout,*) 'Running with MPI'
@@ -189,22 +182,17 @@ subroutine header()
                                 ammax,orbital_momentum_name(ammax)
  call set_molgw_lmax(ammax)
 
-#if defined(HAVE_LIBINT_GRADIENTS) && !defined(HAVE_LIBINT_ONEBODY)
- call die('MOLGW gradients requires both compilations HAVE_LIBINT_GRADIENTS and HAVE_LIBINT_ONEBODY')
-#endif
+ if( .NOT. has_onebody ) then
+   write(stdout,'(1x,a)')  'Running with external LIBINT calculation of the one-body operators (faster)'
+ else
+   write(stdout,'(1x,a)')  'Running with internal calculation of the one-body operators (slower)'
+ endif
 
-#if defined(HAVE_LIBINT_ONEBODY)
- if( .NOT. has_onebody ) &
-   call die('MOLGW compiled with LIBINT one-body terms, however the LIBINT compilation does not calculate the one-body terms')
- write(stdout,'(1x,a)')  'Running with external LIBINT calculation of the one-body operators (faster)'
-#else
- write(stdout,'(1x,a)')  'Running with internal calculation of the one-body operators (slower)'
+#if defined(LIBINT2_DERIV_ONEBODY_ORDER) && (LIBINT2_DERIV_ONEBODY_ORDER > 0)
+ write(stdout,'(1x,a)') 'Running with external LIBINT calculation of the gradients of the one-body integrals'
 #endif
-
-#if defined(HAVE_LIBINT_GRADIENTS)
- if( .NOT. has_gradient ) &
-   call die('LIBINT compilation does not have the first derivative')
- write(stdout,'(1x,a)') 'Running with external LIBINT calculation of the gradients of the integrals'
+#if defined(LIBINT2_DERIV_ERI_ORDER) && (LIBINT2_DERIV_ERI_ORDER > 0)
+ write(stdout,'(1x,a)') 'Running with external LIBINT calculation of the gradients of the Coulomb integrals'
 #endif
  write(stdout,*)
  write(stdout,*)

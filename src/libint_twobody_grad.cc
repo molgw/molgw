@@ -17,7 +17,7 @@
 
 /* Code */
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if (LIBINT2_DERIV_ERI_ORDER > 0) && (LIBINT2_DERIV_ERI2_ORDER > 0) && (LIBINT2_DERIV_ERI3_ORDER > 0)
 
 /* ==========================================================================
  *                           2-center integrals

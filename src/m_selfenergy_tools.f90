@@ -471,7 +471,7 @@ subroutine output_qp_energy_yaml(calcname,energy0,exchange_m_vxc,se,energy1,ener
 
  if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
 
- write(unit_yaml,'(/,a,a)') calcname, ' selfenergy:'
+ write(unit_yaml,'(/,a,a)') lower(calcname),' selfenergy:'
  write(unit_yaml,'(4x,a)') 'correlation:'
  write(unit_yaml,'(8x,a)') 'unit: eV'
  do pspin=1,nspin

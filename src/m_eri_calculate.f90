@@ -499,7 +499,7 @@ subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
  allocate(gradDy(n1c*n2c*n3c*n4c))
  allocate(gradDz(n1c*n2c*n3c*n4c))
 
-#if defined(HAVE_LIBINT_GRADIENTS)
+#if (LIBINT2_DERIV_ERI_ORDER > 0)
  call libint_4center_grad(am1,ng1,x01,alpha1,coeff1, &
                           am2,ng2,x02,alpha2,coeff2, &
                           am3,ng3,x03,alpha3,coeff3, &
@@ -696,9 +696,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 
  call set_auxil_block_size(auxil_basis%nbf/(npcol_eri3_ao*2))
 
-
  if( cntxt_3center > 0 ) then
-
 
    ! Set mlocal => auxil_basis%nbf
    ! Set nlocal => auxil_basis%nbf
@@ -1017,28 +1015,33 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
    ! Prepare the distribution of the 3-center integrals
    ! nauxil_3center variable is now set up
    call distribute_auxil_basis(nauxil_2center)
-   !
-   ! This is the final descriptor for the 2-center integrals in the eigvec basis
-   ! Set mlocal distributes auxil_basis%nbf
-   ! Set nlocal distributes nauxil_kept <= auxil_basis%nbf
-   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
-   nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
-   call DESCINIT(desc_2center_sqrtinv,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
-                   first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
+   if( cntxt_3center > 0 ) then
+     !
+     ! This is the final descriptor for the 2-center integrals in the eigvec basis
+     ! Set mlocal distributes auxil_basis%nbf
+     ! Set nlocal distributes nauxil_kept <= auxil_basis%nbf
+     mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+     nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
+     call DESCINIT(desc_2center_sqrtinv,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
+                     first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+   endif
  else
    nauxil_2center_lr = nauxil_kept
    ! Prepare the distribution of the 3-center integrals
    ! nauxil_3center_lr variable is now set up
    call distribute_auxil_basis_lr(nauxil_2center_lr)
-   !
-   ! This is the final descriptor for the LR 2-center integrals in the eigvec basis
-   ! Set mlocal distributes auxil_basis%nbf
-   ! Set nlocal distributes nauxil_kept <= auxil_basis%nbf
-   mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
-   nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
-   call DESCINIT(desc_2center_sqrtinv_lr,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
-                   first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+
+   if( cntxt_3center > 0 ) then
+     !
+     ! This is the final descriptor for the LR 2-center integrals in the eigvec basis
+     ! Set mlocal distributes auxil_basis%nbf
+     ! Set nlocal distributes nauxil_kept <= auxil_basis%nbf
+     mlocal = NUMROC(auxil_basis%nbf,MB_3center,iprow_3center,first_row,nprow_3center)
+     nlocal = NUMROC(nauxil_kept    ,NB_3center,ipcol_3center,first_col,npcol_3center)
+     call DESCINIT(desc_2center_sqrtinv_lr,auxil_basis%nbf,nauxil_kept,MB_3center,NB_3center, &
+                     first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+   endif
  endif
 
 

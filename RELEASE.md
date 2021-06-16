@@ -2,6 +2,26 @@
 #    MOLGW: Release Notes
 -----------------------------------------
 
+
+-----------------------------------------
+## What's new in version 2.F
+### Overview
+- MOLGW is now compatible with LIBXC 5
+- MOLGW automatically detects the LIBINT configuration. Easier compilation
+- Possibility to add point charges in the structure
+
+### Contributors
+- Fabien Bruneval (CEA SRMP, France)
+
+### Changes affecting the usage
+- Fractional point charges (without basis functions) can be specified in the structure using the syntax:
+ 0.100   0.000  0.000  0.000   none  none   #   q   x y z  basis  auxiliary_basis
+
+### Changes affecting the compilation
+- MOLGW can be linked against LIBXC 5
+- MOLGW detects LIBINT configuration to know wheter the one-body integrals and the gradients are available. Preprocessor instructions such as `-DHAVE_LIBNIT_ONEDOBY` are not needed anymore.
+
+
 -----------------------------------------
 ## What's new in version 2.E
 ### Overview
@@ -25,6 +45,7 @@
 
 ### Changes affecting the developers
 - Introduce high-level mpi tools for instance, world%sum() for reduction, world%nproc, world%rank for information
+
 
 -----------------------------------------
 ## What's new in version 2.D
@@ -50,6 +71,7 @@ Compiler options such as `-ffree-line-length-none` are not needed any more.
 
 ### Changes affecting the developers
 - Please respect the 132-character limit of Fortran.
+
 
 -----------------------------------------
 ## What's new in version 2.C

@@ -16,7 +16,7 @@
 
 
 
-#if defined(HAVE_LIBINT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY)
 
 /* ==========================================================================
  *                           Overlap

@@ -39,9 +39,6 @@ subroutine setup_hartree(p_matrix,hartree_ao,ehartree)
  integer(kind=int8)   :: iint
  integer              :: index_ij,index_kl,stride
  real(dp)             :: fact_ij,fact_kl
-#if defined(_OPENMP)
- integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
-#endif
 !=====
 
  call start_clock(timing_hartree)
@@ -549,9 +546,6 @@ subroutine setup_exchange(p_matrix,exchange_ao,eexchange)
  integer              :: ibf,jbf,kbf,lbf,ispin
  integer(kind=int8)   :: iint
  integer              :: index_ik,index_lj,stride
-#if defined(_OPENMP)
- integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
-#endif
 !=====
 
  call start_clock(timing_exchange)
@@ -641,9 +635,6 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ao,eexchange)
  integer              :: ibf,jbf,kbf,lbf,ispin
  integer(kind=int8)   :: iint
  integer              :: index_ik,index_lj,stride
-#if defined(_OPENMP)
- integer,external :: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
-#endif
 !=====
 
  call start_clock(timing_exchange)
