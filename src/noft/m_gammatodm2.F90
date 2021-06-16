@@ -25,7 +25,7 @@ module m_gammatodm2
 
  implicit none
 
- private :: dm2_hf,dm2_mbb,dm2_pnof5,dm2_pnof7
+ private :: dm2_hf,dm2_mbb,dm2_power,dm2_pnof5,dm2_pnof7
 !!***
 
  public :: gamma_to_2rdm
@@ -215,11 +215,11 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs)
  endif
  deallocate(Docc_gamma0,Dsqrt_occ_gamma0)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-!     Sum of the Holes below the Fermi Level (RDMd%SUMS)
+!     Sum of the Holes below the Fermi Level (RDMd%Sums)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- RDMd%SUMS = DFLOAT(RDMd%Nbeta_elect)
+ RDMd%Sums = DFLOAT(RDMd%Nbeta_elect)
  do iorb=1,RDMd%Nbeta_elect
-  RDMd%SUMS = RDMd%SUMS - RDMd%occ(iorb)
+  RDMd%Sums = RDMd%Sums - RDMd%occ(iorb)
  enddo
 !-----------------------------------------------------------------------
 !                   DM2_J, DM2_K, DDM2_gamma_J, DDM2_gamma_K
@@ -232,6 +232,9 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs)
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
  elseif(RDMd%INOF==-1) then
   call dm2_mbb(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_IIII,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
+  & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
+ elseif(RDMd%INOF==-2) then
+  call dm2_power(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_IIII,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
  elseif(RDMd%INOF==5) then
   call dm2_pnof5(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_IIII,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
@@ -410,6 +413,92 @@ subroutine dm2_mbb(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2_K
  enddo
 !-----------------------------------------------------------------------
 end subroutine dm2_mbb
+!!***
+
+!!***
+!!****f* DoNOF/dm2_power
+!! NAME
+!! dm2_power
+!!
+!! FUNCTION
+!!  Build from the occ numbers and its derivatives the 2-RDM elements and its derivatives w.r.t. gamma for POWER 
+!!
+!! INPUTS
+!! sqrt_occ=Square root of the occupancies of the frozen + active orbitals
+!! Docc_gamma=Matrix with the derivative of occ numbers vs gamma
+!! Dsqrt_occ_gamma=Matrix with the derivative of sqrt(occ numbers) vs gamma
+!!
+!! OUTPUT
+!! DM2_IIII=DM2 same orb elements
+!! DM2_J=DM2 elements that use J integrals 
+!! DM2_K=DM2 elements that use K integrals 
+!! DM2_L=DM2 elements that use L integrals 
+!! DDM2_gamma_J=Derivative of the DM2 elements w.r.t. gamma that use J integrals 
+!! DDM2_gamma_K=Derivative of the DM2 elements w.r.t. gamma that use K integrals
+!! DDM2_gamma_L=Derivative of the DM2 elements w.r.t. gamma that use L integrals
+!!
+!! PARENTS
+!!
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine dm2_power(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_IIII,DM2_J,DM2_K,DM2_L,DDM2_gamma_J,DDM2_gamma_K,&
+& DDM2_gamma_L)
+!Arguments ------------------------------------
+!scalars
+ type(rdm_t),intent(inout)::RDMd
+!arrays
+ real(dp),dimension(RDMd%NBF_occ),intent(in)::sqrt_occ
+ real(dp),dimension(RDMd%NBF_occ,RDMd%Ngammas),intent(in)::Dsqrt_occ_gamma,Docc_gamma
+ real(dp),dimension(RDMd%NBF_occ),intent(inout)::DM2_IIII
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ,RDMd%Ngammas),intent(inout)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,igamma
+ real(dp)::ONEmLpower
+!arrays
+!************************************************************************
+
+ ONEmLpower=1.0d0-RDMd%Lpower
+ DM2_L=0.0d0; DDM2_gamma_L=0.0d0; 
+!     DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq [ DDM2_Jpqk = 2DNpk*Nq, DDM2_Kpq = -DNpk*Nq ] 
+ do iorb=1,RDMd%NBF_occ
+  do iorb1=1,RDMd%NBF_occ
+   DM2_J(iorb,iorb1) = 2.0d0*RDMd%occ(iorb)*RDMd%occ(iorb1)
+   DM2_K(iorb,iorb1) = -((RDMd%occ(iorb)*RDMd%occ(iorb1))**RDMd%Lpower)
+   do igamma=1,RDMd%Ngammas
+    DDM2_gamma_J(iorb,iorb1,igamma) = 2.0d0*Docc_gamma(iorb,igamma)*RDMd%occ(iorb1)
+    DDM2_gamma_K(iorb,iorb1,igamma) = -RDMd%Lpower*RDMd%occ(iorb1)*Docc_gamma(iorb,igamma)&
+&                                   *((RDMd%occ(iorb)*RDMd%occ(iorb1))**ONEmLpower)
+   enddo
+  enddo
+ enddo
+!- - - - - - - - - - - - - - - - - - - - - - - -              
+ if(RDMd%Nsingleocc>1) then
+  do iorb=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
+   do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
+    DM2_K(iorb,iorb1) = -2.0d0*sqrt_occ(iorb)*sqrt_occ(iorb1)
+    do igamma=1,RDMd%Ngammas
+     DDM2_gamma_K(iorb,iorb1,igamma) = -2.0d0*Dsqrt_occ_gamma(iorb,igamma)*sqrt_occ(iorb1)
+    enddo
+   enddo
+  enddo
+ end if
+!-----------------------------------------------------------------------
+!          DM2(iorb,iorb,iorb,iorb)=2*OCC(iorb)*OCC(iorb)-OCC(iorb)
+!-----------------------------------------------------------------------
+ do iorb=1,RDMd%NBF_occ
+  DM2_IIII(iorb)=2.0d0*RDMd%occ(iorb)*RDMd%occ(iorb)-(RDMd%occ(iorb)**(2.0d0*RDMd%Lpower))
+  DM2_J(iorb,iorb)=0.0d0
+  DM2_K(iorb,iorb)=0.0d0
+  RDMd%Dfni_ni(iorb)=4.0d0*RDMd%occ(iorb)-2.0d0*RDMd%Lpower*(RDMd%occ(iorb)**(2.0d0*RDMd%Lpower-1.0d0))
+  DDM2_gamma_J(iorb,iorb,:)=0.0d0
+  DDM2_gamma_K(iorb,iorb,:)=0.0d0
+ enddo
+!-----------------------------------------------------------------------
+end subroutine dm2_power
 !!***
 
 !!****f* DoNOF/dm2_pnof5

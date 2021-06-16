@@ -99,11 +99,11 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
    & imethocc,imethorb,nscf_nof,iprintdmn,iprintints,ithresh_lambda,ndiis_nof,Enoft,tolE_nof,Vnn,NO_COEF,&
    & Aoverlap,occ(:,1),mo_ints,ofile_name,lowmemERI=(lowmemERI=='yes'),&
    & restart=(restartnoft=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
-   & ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB)
+   & ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=Lpower)
  else
    call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
    & imethocc,imethorb,nscf_nof,iprintdmn,iprintints,ithresh_lambda,ndiis_nof,Enoft,tolE_nof,Vnn,NO_COEF,&
-   & Aoverlap,occ(:,1),mo_ints,ofile_name,lowmemERI=(lowmemERI=='yes'))
+   & Aoverlap,occ(:,1),mo_ints,ofile_name,lowmemERI=(lowmemERI=='yes'),Lpower=Lpower)
  endif
  
  ! Update c_matrix with optimized NO_COEF

@@ -44,7 +44,8 @@ module m_rdmd
   integer::Npairs                ! Number of electron pairs
   integer::Npairs_p_sing         ! Number of electron pairs plus number of singly occ orbitals
   integer::Ngammas               ! Number of gammas (independet variables used in occ optimization procedure)
-  real(dp)::Sums
+  real(dp)::Sums                 ! Used to define old PNOFs (i=2->4, 6)
+  real(dp)::Lpower=0.53d0        ! Power functional exponent
 ! arrays 
   real(dp),allocatable,dimension(:)::occ
   real(dp),allocatable,dimension(:)::GAMMAs_old
@@ -104,12 +105,13 @@ CONTAINS  !=====================================================================
 !! SOURCE
 
 subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
-&  Ncoupled,Nbeta_elect,Nalpha_elect)
+&  Ncoupled,Nbeta_elect,Nalpha_elect,Lpower)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::INOF,Ista
  integer,intent(in)::NBF_tot,NBF_occ,Nfrozen,Npairs,Ncoupled
  integer,intent(in)::Nbeta_elect,Nalpha_elect
+ real(dp),optional,intent(in)::Lpower
  type(rdm_t),intent(inout)::RDMd
 !Local variables ------------------------------
 !scalars
@@ -119,6 +121,11 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
 !************************************************************************
 
  RDMd%INOF=INOF
+ if(RDMd%INOF==-2) then
+  if(present(Lpower)) then
+   RDMd%Lpower=Lpower
+  endif
+ endif
  RDMd%Ista=Ista
  RDMd%Nfrozen=Nfrozen
  RDMd%Nbeta_elect=Nbeta_elect

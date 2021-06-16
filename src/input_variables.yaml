@@ -1231,7 +1231,7 @@ inof:
   mandatory: 'no'
   experimental: 'no'
   default: 7
-  comment: 'Select the NOFT approx. to use (default=7 PNOF7). Other options are 5 for PNOF5, 0 for HF, and -1 for Muller.'
+  comment: 'Select the NOFT approx. to use (default=7 PNOF7). Other options are 5 for PNOF5, 0 for HF, -1 for Muller, and -2 for Power.'
 
 integral_quality:
   family: scf
@@ -1333,6 +1333,14 @@ lowmemERI:
   experimental: 'no'
   default: 'yes'
   comment: 'Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) in NOFT module.'
+
+Lpower:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.53
+  comment: 'Power functional approximation exponent used in NOFT calcs.'
 
 min_overlap:
   family: scf

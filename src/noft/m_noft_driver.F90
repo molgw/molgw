@@ -72,6 +72,7 @@ contains
 !! lowmemERI=Logical parameter to decided whether to store only (NBF_tot,NBF_occ,NBF_occ,NBF_occ) part of the nat. orb. ERIs
 !! restart=Logical parameter to decided whether we do restart
 !! ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB=Integer restart parameters that control the read of checkpoint files (true=1)
+!! lPower=Real exponent used to define the power functional
 !! 
 !! OUTPUT
 !! Occ=Array containing the optimized occ numbers
@@ -85,14 +86,15 @@ contains
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintints,&
 &  itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,AOverlap_in,Occ_inout,mo_ints,ofile_name,&
-&  lowmemERI,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB)   ! Optional
+&  lowmemERI,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB,Lpower)   ! Optional
 !Arguments ------------------------------------
 !scalars
- integer,optional,intent(in)::ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB
  logical,optional,intent(in)::restart,lowmemERI
+ integer,optional,intent(in)::ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB
  integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,itolLambda,ndiis
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in,iERItyp_in
+ real(dp),optional,intent(in)::Lpower
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
@@ -157,8 +159,18 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
 
  ! Initialize RDMd, INTEGd, and ELAGd objects.
- call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
+ if(INOF_in==-2) then
+  if(present(Lpower)) then
+   call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
+&  Nbeta_elect_in,Nalpha_elect_in,Lpower=Lpower)
+  else
+   call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
+&  Nbeta_elect_in,Nalpha_elect_in)
+  endif
+ else
+  call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 & Nbeta_elect_in,Nalpha_elect_in)
+ endif
  if(present(lowmemERI)) then
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in,lowmemERI=lowmemERI)
  else
@@ -378,6 +390,11 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a)') ' A.M.K. Muller, Phys. Lett., 105A, 446 (1984)'
   call write_output(msg)
   write(msg,'(a)') ' M.A. Buijse and E.J. Baerends, Mol. Phys., 100, 401 (2002)'
+  call write_output(msg)
+ elseif(INOF_in==-2) then
+  write(msg,'(a)') ' Using Power approximation'
+  call write_output(msg)
+  write(msg,'(a)') ' J. Cioslowski and K. Pernal, J. Chem. Phys, 111, 3396 (1999)'
   call write_output(msg)
  elseif(INOF_in==5) then
   write(msg,'(a)') ' Using PNOF5e approximation'
