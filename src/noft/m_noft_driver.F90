@@ -613,7 +613,7 @@ subroutine read_restart(RDMd,ELAGd,NO_COEF,ireadGAMMAS,ireadOCC,ireadCOEF,ireadF
    call occtogamma(RDMd) 
    RDMd%occ=0.0d0   
    RDMd%GAMMAs_nread=.false.
-   write(msg,'(a)') 'GAMMAs (indep. variables) calculated using DM1 file'
+   write(msg,'(a)') 'GAMMAs (indep. variables) updated using occ. numbers.'
    call write_output(msg)
   endif
  endif
