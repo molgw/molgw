@@ -491,7 +491,7 @@ subroutine read_restart(RDMd,ELAGd,NO_COEF,ireadGAMMAS,ireadOCC,ireadCOEF,ireadF
 !scalars
  integer::iunit=310,istat,intvar,intvar1,icount
  real(dp)::doubvar
- real(dp),allocatable,dimension(:)::GAMMAS_in
+ real(dp),allocatable,dimension(:)::GAMMAS_in,tmp_occ
  real(dp),allocatable,dimension(:,:)::NO_COEF_in
 !arrays
  character(len=200)::msg
@@ -525,7 +525,7 @@ subroutine read_restart(RDMd,ELAGd,NO_COEF,ireadGAMMAS,ireadOCC,ireadCOEF,ireadF
   deallocate(NO_COEF_in)
  endif
 
- ! Read GAMMAs (indep. parameters used to optimize occs.) from GAMMAS file
+ ! Read GAMMAs (indep. parameters used to optimize occs.) from GAMMAS file 
  if(ireadGAMMAS==1) then
   allocate(GAMMAS_in(RDMd%Ngammas))
   open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
@@ -553,7 +553,10 @@ subroutine read_restart(RDMd,ELAGd,NO_COEF,ireadGAMMAS,ireadOCC,ireadCOEF,ireadF
   close(iunit)
   deallocate(GAMMAS_in)
  endif
+
+ ! Read Occs to compute GAMMAS (using DM1 or FORM_OCC files)
  if(ireadOCC==1) then
+  ! Reading DM1 binary file
   open(unit=iunit,form='unformatted',file='DM1',iostat=istat,status='old')
   icount=0
   if(istat==0) then
@@ -569,10 +572,42 @@ subroutine read_restart(RDMd,ELAGd,NO_COEF,ireadGAMMAS,ireadOCC,ireadCOEF,ireadF
      exit
     endif
    enddo
+   if(icount==RDMd%NBF_occ) then
+    write(msg,'(a)') 'OCCs. read from (binary) DM1 file'
+    call write_output(msg)
+   endif
   endif
+  close(iunit)
+  ! Reading FORM_OCC binary file
+  open(unit=iunit,form='formatted',file='FORM_OCC',iostat=istat,status='old')
+  allocate(tmp_occ(RDMd%NBF_occ))
+  if(istat==0) then
+   icount=0
+   do
+    read(iunit,*,iostat=istat) intvar,doubvar
+    if(istat/=0) then
+     exit
+    endif
+    if((intvar/=0).and.intvar<=RDMd%NBF_occ) then
+     tmp_occ(intvar)=doubvar
+     icount=icount+1
+    else
+     exit
+    endif
+   enddo
+   if(icount==RDMd%NBF_occ) then
+    write(*,*) tmp_occ(:)
+    write(msg,'(a)') 'OCCs. read from (formatted) FORM_OCC file'
+    call write_output(msg)
+    RDMd%occ=tmp_occ
+   endif
+  endif
+  deallocate(tmp_occ)
+  close(iunit)
+  ! OCC -> GAMMAs
   if(icount==RDMd%NBF_occ) then
    if(ireadGAMMAS==1) then
-    write(msg,'(a)') 'Comment: computing GAMMAs using occ. read from DM1 file'
+    write(msg,'(a)') 'Comment: computing GAMMAs using occ. read'
     call write_output(msg)
    endif
    RDMd%occ(:)=0.5d0*RDMd%occ(:)
@@ -582,7 +617,6 @@ subroutine read_restart(RDMd,ELAGd,NO_COEF,ireadGAMMAS,ireadOCC,ireadCOEF,ireadF
    write(msg,'(a)') 'GAMMAs (indep. variables) calculated using DM1 file'
    call write_output(msg)
   endif
-  close(iunit)
  endif
 
  ! Read diag. part of the F matrix for Lambda_pq - Lambda_qp* method
