@@ -596,7 +596,6 @@ subroutine read_restart(RDMd,ELAGd,NO_COEF,ireadGAMMAS,ireadOCC,ireadCOEF,ireadF
     endif
    enddo
    if(icount==RDMd%NBF_occ) then
-    write(*,*) tmp_occ(:)
     write(msg,'(a)') 'OCCs. read from (formatted) FORM_OCC file'
     call write_output(msg)
     RDMd%occ=tmp_occ

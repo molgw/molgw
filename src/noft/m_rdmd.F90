@@ -266,9 +266,9 @@ real(dp)::tol8=1.0d-8
  ! Print the FORM_OCC file
  open(unit=iunit,form='formatted',file='FORM_OCC')
  do iorb=1,RDMd%NBF_occ
-  write(iunit,*) iorb,2.0d0*RDMd%occ(iorb)
+  write(iunit,'(i5,f17.10)') iorb,2.0d0*RDMd%occ(iorb)
  enddo
- write(iunit) 0,0.0d0
+ write(iunit,'(i5,f17.10)') 0,0.0d0
  close(iunit)
 
 end subroutine print_rdm
