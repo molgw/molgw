@@ -619,7 +619,7 @@ subroutine read_inputfile_namelist()
   implicit none
  
   !=====
-  integer              :: ninput_argument
+  integer              :: idot,ichart,ninput_argument
   character(len=140)   :: input_file_name
   integer              :: inputfile
   logical              :: file_exists
@@ -672,6 +672,17 @@ subroutine read_inputfile_namelist()
       write(stdout,*) 'Tried to open file:',TRIM(input_file_name)
       call die('Input file not found')
     endif
+    output_name=TRIM(input_file_name)
+    idot=1
+    ichart=1
+    do
+     if(output_name(ichart:ichart+2)==".in") then
+       idot=ichart
+       exit
+     endif
+     ichart=ichart+1
+    enddo
+    output_name=TRIM(output_name(1:idot))
     open(newunit=inputfile,file=TRIM(input_file_name),status='old')
   case(0)
     inputfile = 5

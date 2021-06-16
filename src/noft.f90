@@ -35,9 +35,12 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  ! Init clock
  call start_clock(timing_noft_energy)
 
+ ! Write hearder and set name for $name.noft file
  write(stdout,'(/,a)') ' RI-NOFT calculation'
+ write(ofile_name,'(2a)') trim(output_name),'noft'
+ write(stdout,'(3a)') ' writting NOFT results to ',trim(ofile_name),' file.'
+ write(stdout,'(a)') ' '
 
- ofile_name='molgw.noft'
  Enoft = 0.0_dp
  nbf_noft=nstate  ! Number of lin. indep. molecular orbitals
  ! These can be fixed for a while... 

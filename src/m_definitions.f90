@@ -56,6 +56,9 @@ module m_definitions
   integer,parameter :: very_high = 40
   integer,parameter :: insane    = 50
 
+  !
+  ! Name of the output file used by NOFT calcs.
+  character(len=140)::output_name
 
 contains
 
