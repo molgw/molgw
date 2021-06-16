@@ -885,9 +885,10 @@ subroutine itsum ( d, g, iv, liv, lv, p, v, x )
 
   pu = iv(prunit)
 
-  if ( pu == 0 ) then
+! MRM: Do not print information
+!  if ( pu == 0 ) then
     return
-  end if
+!  end if
 
   iv1 = iv(1)
   if (iv1 > 62) iv1 = iv1 - 51
