@@ -771,15 +771,6 @@ subroutine read_inputfile_namelist()
     call die('mixing scheme not recognized')
   end select
 
-  select case(TRIM(length_unit))
-  case('A','ANGSTROM')
-    length_factor = 1.0_dp/bohr_A
-  case('BOHR','AU','A.U','A.U.')
-    length_factor = 1.0_dp
-  case default
-    call die('units for lengths in input file not understood')
-  end select
-
   select case(TRIM(pt3_a_diagrams))
   case('YES','NO','ONLY')
   case default
@@ -804,142 +795,6 @@ subroutine read_inputfile_namelist()
   if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
   if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
 
-  if( mpi_nproc_ortho > world%nproc ) then
-    mpi_nproc_ortho = world%nproc
-    call issue_warning('mpi_nproc_ortho has been resized to the max number of processors')
-    write(stdout,'(1x,a,i4)') 'Now mpi_nproc_ortho = ',mpi_nproc_ortho
-  endif
-  if( MODULO( world%nproc , mpi_nproc_ortho) /= 0 ) then
-    write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',world%nproc
-    mpi_nproc_ortho = 1
-    call issue_warning('mpi_nproc_ortho value is invalid. Override it and set mpi_nproc_ortho=1')
-  endif
-
-  call init_excitation_type(excit_type)
-  nprojectile = 0
-  if( excit_type%form == EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-    nprojectile = 1
-  end if
-
-  !
-  ! Read the atom positions if no xyz file is specified
-  if( LEN(TRIM(xyz_file)) == 0 ) then
-    !
-    ! In this case, natom must be set to a positive value
-    if(natom<1) call die('natom<1')
-
-    if(excit_type%form == EXCIT_PROJECTILE_W_BASIS) then
-      natom_basis = natom + nghost + nprojectile
-    else
-      natom_basis = natom + nghost
-    endif
-    natom = natom + nprojectile
-
-    !
-    ! Need to know the number of atoms to allocate the basis arrays
-    allocate(auxil_basis_name(natom_basis))
-    allocate(small_basis_name(natom_basis))
-    allocate(basis_name(natom_basis))
-    allocate(ecp_basis_name(natom_basis))
-    allocate(ecp_auxil_basis_name(natom_basis))
-    allocate(ecp_small_basis_name(natom_basis))
-    basis_name(:)           = standardize_basis_name(basis)
-    auxil_basis_name(:)     = standardize_basis_name(auxil_basis)
-    small_basis_name(:)     = standardize_basis_name(small_basis)
-    ecp_basis_name(:)       = standardize_basis_name(ecp_basis)
-    ecp_auxil_basis_name(:) = standardize_basis_name(ecp_auxil_basis)
-    ecp_small_basis_name(:) = standardize_basis_name(ecp_small_basis)
-
-    allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
-    do iatom=1,natom+nghost
-      ! First, read the full line
-      read(inputfile,'(a)') line_char
-
-      ! Then, try to interpret it
-      read(line_char,*,iostat=info2) atom_symbol,x_read(:,iatom),ctmp1,ctmp2
-      if( info2 == 0 ) then
-        basis_name(iatom)           = standardize_basis_name(TRIM(ctmp1))
-        ecp_basis_name(iatom)       = standardize_basis_name(TRIM(ctmp1))
-        auxil_basis_name(iatom)     = standardize_basis_name(TRIM(ctmp2))
-        ecp_auxil_basis_name(iatom) = standardize_basis_name(TRIM(ctmp2))
-
-      else
-        read(line_char,*,iostat=info1) atom_symbol,x_read(:,iatom),ctmp1
-        if( info1 == 0 ) then
-          basis_name(iatom)     = standardize_basis_name(TRIM(ctmp1))
-          ecp_basis_name(iatom) = standardize_basis_name(TRIM(ctmp1))
-        else
-          read(line_char,*) atom_symbol,x_read(:,iatom)
-          if(iatom == natom+nghost .AND. excit_type%form == EXCIT_PROJECTILE_W_BASIS) call die('projectile basis not found')
-        endif
-      endif
-
-      !
-      ! First, try to interpret atom_symbol as an integer
-      read(atom_symbol,'(i2)',iostat=info) atom_number
-      ! If it fails, then assumes it is a character
-      if( info /=0 ) then
-        atom_number = element_number(atom_symbol)
-      endif
-      zatom_read(iatom) = atom_number
-    enddo
-  else
-    !
-    ! Try to open the xyz file
-    write(stdout,'(a,a)') ' Opening xyz file: ',TRIM(xyz_file)
-    inquire(file=TRIM(xyz_file),exist=file_exists)
-    if( .NOT. file_exists) then
-      write(stdout,*) 'Tried to open the requested xyz file:',TRIM(xyz_file)
-      call die('xyz file not found')
-    endif
-    open(newunit=xyzfile,file=TRIM(xyz_file),status='old')
-    read(xyzfile,*) natom_read
-    if( natom /= 0 .AND. natom+nghost+nprojectile /= natom_read ) then
-      call die('the number of atoms in the input file does not correspond to the number of atoms in the xyz file')
-    endif
-    read(xyzfile,*)
-
-    !natom read from xyz file but not from input file
-    natom = natom_read - nghost
-    natom_basis = natom_read - nprojectile
-
-    !
-    ! Need to know the number of atoms to allocate the basis arrays
-    allocate(auxil_basis_name(natom_basis))
-    allocate(small_basis_name(natom_basis))
-    allocate(basis_name(natom_basis))
-    allocate(ecp_basis_name(natom_basis))
-    allocate(ecp_auxil_basis_name(natom_basis))
-    allocate(ecp_small_basis_name(natom_basis))
-    basis_name(:)           = standardize_basis_name(basis)
-    auxil_basis_name(:)     = standardize_basis_name(auxil_basis)
-    small_basis_name(:)     = standardize_basis_name(small_basis)
-    ecp_basis_name(:)       = standardize_basis_name(ecp_basis)
-    ecp_auxil_basis_name(:) = standardize_basis_name(ecp_auxil_basis)
-    ecp_small_basis_name(:) = standardize_basis_name(ecp_small_basis)
-
-    allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
-    do iatom=1,natom+nghost
-      read(xyzfile,*) atom_symbol,x_read(:,iatom)
-      !
-      ! First, try to interpret atom_symbol as an integer
-      read(atom_symbol,'(i2)',iostat=info) atom_number
-      ! If it fails, then assumes it is a character
-      if( info /=0 ) then
-        atom_number = element_number(atom_symbol)
-      endif
-      zatom_read(iatom) = atom_number
-    enddo
-
-    close(xyzfile)
-
-
-    if( ABS(length_factor - 1.0_dp ) < 1.0e-6_dp  ) then
-      write(stdout,*) 'xyz files are always in Angstrom. However, length_unit was set to bohr'
-      call die('Please set length_unit to Angstrom')
-    endif
-
-  endif
 
 #if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0)
   if( move_nuclei /= 'no' ) then
@@ -960,7 +815,7 @@ subroutine read_inputfile_namelist()
 
   call init_excitation_type(excit_type)
   nprojectile=0
-  if( excit_type%form==EXCIT_PROJECTILE ) then
+  if( excit_type%form == EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
     nprojectile=1
   end if
 
@@ -1132,7 +987,11 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
     ! In this case, natom must be set to a positive value
     if(natom<1) call die('natom<1')
 
-    natom_basis = natom + nghost
+    if(excit_type%form == EXCIT_PROJECTILE_W_BASIS) then
+      natom_basis = natom + nghost + nprojectile
+    else
+      natom_basis = natom + nghost
+    endif
     natom = natom + nprojectile
 
     !
