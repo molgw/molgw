@@ -310,21 +310,21 @@ subroutine output_positions()
  write(stdout,*) '      Atom list'
  write(stdout,*) '                       bohr                                        angstrom'
  do iatom=1,natom-nprojectile
-   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
-                                                           element_name(REAL(zatom(iatom),dp)),': ',  &
+   write(stdout,'(1x,a,i3,2x,a8,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
+                                                           element_name_long(zatom(iatom)),': ',  &
                                                            xatom(:,iatom),xatom(:,iatom)*bohr_A
  enddo
 
  if( nghost > 0 ) write(stdout,'(a)') ' == ghost list'
  do ighost=1,nghost
-   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
-                                           element_name(REAL(zbasis(natom-nprojectile+ighost),dp)),': ',  &
+   write(stdout,'(1x,a,i3,2x,a8,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
+                                           element_name_long(REAL(zbasis(natom-nprojectile+ighost),dp)),': ',  &
                                            xbasis(:,natom-nprojectile+ighost),xbasis(:,natom-nprojectile+ighost)*bohr_A
  enddo
  if( nprojectile > 0 ) then
    write(stdout,'(a)') ' == projectile'
-   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
-                                                           element_name(REAL(zatom(natom),dp)),': ',  &
+   write(stdout,'(1x,a,i3,2x,a8,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
+                                                           element_name_long(zatom(natom)),': ',  &
                                                            xatom(:,natom),xatom(:,natom)*bohr_A
  endif
 
