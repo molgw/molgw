@@ -14,10 +14,9 @@ module m_atoms
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp
 
- integer,public                 :: natom_basis
+ integer,public                 :: ncenter_basis
  integer,public                 :: natom
  integer,public                 :: nghost
- integer,protected              :: natom_type
  integer,protected              :: nbond
  integer,public                 :: nprojectile
 
@@ -71,8 +70,8 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  allocate(zatom(natom))
  allocate(zvalence(natom))
  ! xbasis and zbasis designate the basis centers and nature
- allocate(zbasis(natom_basis))
- allocate(xbasis(3,natom_basis))
+ allocate(zbasis(ncenter_basis))
+ allocate(xbasis(3,ncenter_basis))
 
  allocate(vel(3,natom))
  vel(:,:) = 0.0_dp
@@ -99,16 +98,16 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  ! 3. projectile       :    nucleus |   no
  !
  ! natom       contains the number of sites having a nucleus: number of physical atoms + number of ionic projectiles (0 or 1)
- ! natom_basis contains the number of sites having basis functions:  number of physical atoms + number of ghost atoms
+ ! ncenter_basis contains the number of sites having basis functions:  number of physical atoms + number of ghost atoms
  !
  if( nprojectile == 0 ) then
    xatom(:,1:natom) = x_read(:,1:natom)
    zatom(1:natom)   = zatom_read(1:natom)
  else
-   xatom(:,1:natom_basis-nghost) = x_read(:,1:natom_basis-nghost)
-   zatom(1:natom_basis-nghost)   = zatom_read(1:natom_basis-nghost)
-   xatom(:,natom)                = x_read(:,natom_basis+nprojectile)
-   zatom(natom)                  = zatom_read(natom_basis+nprojectile)
+   xatom(:,1:ncenter_basis-nghost) = x_read(:,1:ncenter_basis-nghost)
+   zatom(1:ncenter_basis-nghost)   = zatom_read(1:ncenter_basis-nghost)
+   xatom(:,natom)                = x_read(:,ncenter_basis+nprojectile)
+   zatom(natom)                  = zatom_read(ncenter_basis+nprojectile)
  endif
 
 
@@ -126,8 +125,8 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  ! Ghost atoms do not have a positive nucleus
  !zatom(natom+1:natom+nghost) = 0.0_dp
  ! But ghost atoms have basis functions centered on them.
- zbasis(1:natom_basis)   = NINT(zatom_read(1:natom_basis))
- xbasis(:,1:natom_basis) = x_read(:,1:natom_basis)
+ zbasis(1:ncenter_basis)   = NINT(zatom_read(1:ncenter_basis))
+ xbasis(:,1:ncenter_basis) = x_read(:,1:ncenter_basis)
 
  !
  ! Check for atoms too close
