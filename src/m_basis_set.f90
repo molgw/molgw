@@ -77,8 +77,8 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
  character(len=4),intent(in) :: gaussian_type
  character(len=*),intent(in) :: basis_path
- character(len=100),intent(in) :: basis_name(natom_basis)
- character(len=100),intent(in) :: ecp_basis_name(natom_basis)
+ character(len=100),intent(in) :: basis_name(ncenter_basis)
+ character(len=100),intent(in) :: ecp_basis_name(ncenter_basis)
  type(basis_set),intent(out)   :: basis
 !=====
  character(len=200)            :: basis_filename
@@ -90,7 +90,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  integer                       :: basisfile
  integer                       :: am_read,nshell_file
  logical,parameter             :: normalized=.TRUE.
- integer                       :: iatom
+ integer                       :: icenter
  integer                       :: index_in_shell
  integer                       :: nx,ny,nz,mm
  real(dp)                      :: x0(3)
@@ -104,21 +104,21 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  !
  ! LOOP OVER ATOMS
  !
- do iatom=1,natom_basis
+ do icenter=1,ncenter_basis
    if( nelement_ecp > 0 ) then
-     if( ANY( element_ecp(:) == zbasis(iatom) ) ) then
-       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp)))) &
-                        // '_' // TRIM(ecp_basis_name(iatom)))
-       if( TRIM(capitalize(ecp_basis_name(iatom))) == 'NONE' ) cycle
+     if( ANY( element_ecp(:) == zbasis(icenter) ) ) then
+       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+                        // '_' // TRIM(ecp_basis_name(icenter)))
+       if( TRIM(capitalize(ecp_basis_name(icenter))) == 'NONE' ) cycle
      else
-       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp)))) &
-                       // '_' // TRIM(basis_name(iatom)))
-       if( TRIM(capitalize(basis_name(iatom))) == 'NONE' ) cycle
+       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+                       // '_' // TRIM(basis_name(icenter)))
+       if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
      endif
    else
-     basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp)))) &
-                     // '_' // TRIM(basis_name(iatom)))
-     if( TRIM(capitalize(basis_name(iatom))) == 'NONE' ) cycle
+     basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+                     // '_' // TRIM(basis_name(icenter)))
+     if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
    endif
 
    inquire(file=TRIM(basis_filename),exist=file_exists)
@@ -158,22 +158,22 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  jbf         = 0
  jbf_cart    = 0
  ishell      = 0
- do iatom=1,natom_basis
+ do icenter=1,ncenter_basis
 
    if( nelement_ecp > 0 ) then
-     if( ANY( element_ecp(:) == zbasis(iatom) ) ) then
-       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp)))) &
-                        // '_' // TRIM(ecp_basis_name(iatom)))
-       if( TRIM(capitalize(ecp_basis_name(iatom))) == 'NONE' ) cycle
+     if( ANY( element_ecp(:) == zbasis(icenter) ) ) then
+       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+                        // '_' // TRIM(ecp_basis_name(icenter)))
+       if( TRIM(capitalize(ecp_basis_name(icenter))) == 'NONE' ) cycle
      else
-       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp)))) &
-                       // '_' // TRIM(basis_name(iatom)))
-       if( TRIM(capitalize(basis_name(iatom))) == 'NONE' ) cycle
+       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+                       // '_' // TRIM(basis_name(icenter)))
+       if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
      endif
    else
-     basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp)))) &
-                      // '_' //TRIM(basis_name(iatom)))
-     if( TRIM(capitalize(basis_name(iatom))) == 'NONE' ) cycle
+     basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+                      // '_' //TRIM(basis_name(icenter)))
+     if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
    endif
 
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
@@ -186,7 +186,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
        read(basisfile,*) alpha(ig),coeff(ig)
      enddo
 
-     x0(:) = xbasis(:,iatom)
+     x0(:) = xbasis(:,icenter)
 
      !
      ! Shell setup
@@ -194,7 +194,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      ishell = ishell + 1
 
      basis%shell(ishell)%am      = am_read
-     basis%shell(ishell)%iatom   = iatom
+     basis%shell(ishell)%iatom   = icenter
      basis%shell(ishell)%x0(:)   = x0(:)
      basis%shell(ishell)%ng      = ng
      allocate(basis%shell(ishell)%alpha(ng))
@@ -222,10 +222,10 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
        ! Add the new basis function
        jbf_cart = jbf_cart + 1
        index_in_shell = index_in_shell + 1
-       call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bfc(jbf_cart))
+       call init_basis_function(normalized,ng,nx,ny,nz,icenter,x0,alpha,coeff,ishell,index_in_shell,basis%bfc(jbf_cart))
        if(basis%gaussian_type == 'CART') then
          jbf = jbf + 1
-         call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
+         call init_basis_function(normalized,ng,nx,ny,nz,icenter,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
        endif
 
        ! Break the loop when nz is equal to l
@@ -247,7 +247,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
        do mm=-am_read,am_read
          jbf = jbf + 1
          index_in_shell = index_in_shell + 1
-         call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
+         call init_basis_function_pure(normalized,ng,am_read,mm,icenter,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
        enddo
      endif
 
@@ -316,7 +316,7 @@ end subroutine echo_basis_summary
 subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
  implicit none
 
- character(len=100),intent(in) :: auxil_basis_name(natom_basis)
+ character(len=100),intent(in) :: auxil_basis_name(ncenter_basis)
  character(len=4),intent(in)   :: gaussian_type
  type(basis_set),intent(in)    :: basis
  real(dp),intent(in)           :: auto_auxil_fsam

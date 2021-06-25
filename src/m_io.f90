@@ -309,9 +309,9 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
- real(dp)                   :: proj_atom(natom_basis)
- integer                    :: ielement,iemax,iatom_basis
- integer                    :: atom2element(natom_basis)
+ real(dp)                   :: proj_atom(ncenter_basis)
+ integer                    :: ielement,iemax,icenter
+ integer                    :: atom2element(ncenter_basis)
  character(len=4)           :: char4
  character(len=2)           :: char2
  real(dp),allocatable       :: proj_element(:,:)
@@ -354,8 +354,8 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
    if( ANY(zbasis(:) == ielement) ) then
      iemax = iemax + 1
    endif
-   do iatom_basis=1,natom_basis
-     if( zbasis(iatom_basis) == ielement ) atom2element(iatom_basis) = iemax
+   do icenter=1,ncenter_basis
+     if( zbasis(icenter) == ielement ) atom2element(icenter) = iemax
    enddo
  enddo
  allocate(proj_element(0:lmax+1,iemax),element_list(iemax))
