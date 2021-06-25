@@ -243,17 +243,18 @@ subroutine dump_out_matrix_nospin_dp(print_matrix,title,matrix)
 !=====
  integer,parameter :: MAXSIZE=50
 !=====
- integer :: imat,nmat
+ integer :: imat,nmat_row,nmat_col
 !=====
 
  if( .NOT. print_matrix ) return
 
- nmat  = SIZE(matrix,DIM=1)
+ nmat_row  = SIZE(matrix,DIM=1)
+ nmat_col  = SIZE(matrix,DIM=2)
 
  write(stdout,'(/,1x,a)') TRIM(title)
 
- do imat=1,MIN(nmat,MAXSIZE)
-   write(stdout,'(1x,i3,*(1x,f12.5))') imat,matrix(imat,1:MIN(nmat,MAXSIZE))
+ do imat=1,MIN(nmat_row,MAXSIZE)
+   write(stdout,'(1x,i3,*(1x,f12.5))') imat,matrix(imat,1:MIN(nmat_col,MAXSIZE))
  enddo
  write(stdout,*)
 
@@ -268,12 +269,13 @@ subroutine dump_out_matrix_cdp(print_matrix,title,matrix)
  complex(dp),intent(in)      :: matrix(:,:,:)
 !=====
  integer,parameter :: MAXSIZE=50
- integer :: imat,ispin,nmat,nspin
+ integer :: imat,ispin,nmat_row,nmat_col,nspin
 !=====
 
  if( .NOT. print_matrix ) return
 
- nmat  = SIZE(matrix,DIM=1)
+ nmat_row  = SIZE(matrix,DIM=1)
+ nmat_col  = SIZE(matrix,DIM=2)
  nspin = SIZE(matrix,DIM=3)
 
  write(stdout,'(/,1x,a)') TRIM(title)
@@ -282,8 +284,8 @@ subroutine dump_out_matrix_cdp(print_matrix,title,matrix)
    if(nspin==2) then
      write(stdout,'(a,i1)') ' spin polarization # ',ispin
    endif
-   do imat=1,MIN(nmat,MAXSIZE)
-     write(stdout,'(1x,i3,*(1x,2(1x,f12.5)))') imat,matrix(imat,1:MIN(nmat,MAXSIZE),ispin)
+   do imat=1,MIN(nmat_row,MAXSIZE)
+     write(stdout,'(1x,i3,*(1x,2(1x,f12.5)))') imat,matrix(imat,1:MIN(nmat_col,MAXSIZE),ispin)
    enddo
    write(stdout,*)
  enddo

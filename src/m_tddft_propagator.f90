@@ -736,12 +736,12 @@ subroutine setup_D_matrix_analytic(basis,d_matrix,recalc)
 
  if ( recalc ) then
    do jbf=basis_t%nbf+1,basis%nbf
-     d_matrix(1:basis_t%nbf,jbf) = MATMUL( s_matrix_grad(1:basis_t%nbf,jbf,:), vel(:,natom) )
+     d_matrix(1:basis_t%nbf,jbf) = MATMUL( s_matrix_grad(1:basis_t%nbf,jbf,:), velbasis(:,natom_basis) )
    end do
  else
    do jbf=1,basis%nbf
      ibasis_center = basis%bff(jbf)%iatom
-     d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel(:,ibasis_center) )
+     d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), velbasis(:,ibasis_center) )
    end do
  end if
 
@@ -2370,6 +2370,10 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
      call nucleus_nucleus_energy(en_tddft%nuc_nuc)
      ! Nucleus-electron interaction due to the fixed target
      call recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
+     !do iatom=1,natom-nprojectile
+      ! fixed_atom_list(iatom) = iatom
+     !enddo
+     !call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
    end if
 
    !

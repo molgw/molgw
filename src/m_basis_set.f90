@@ -362,7 +362,7 @@ subroutine split_basis_set(basis,basis_t,basis_p)
  ishell_p = 0
  ishell_t = 0
  do ishell = 1, basis%nshell
-   if( ANY( basis%shell(ishell)% v0 > 1.0e-4 ) ) then
+   if( ANY( basis%shell(ishell)%v0 > 1.0e-4 ) ) then
      ishell_p = ishell_p + 1
      basis_p%shell(ishell_p) = basis%shell(ishell)
      basis_p%shell(ishell_p)%istart = basis%shell(ishell)%istart - basis_t%nbf
@@ -406,11 +406,12 @@ subroutine moving_basis_set(new_basis)
  integer                       :: proj_iatom
 !=====
 ! Projectile is always the last of atom/atom_basis list
- proj_iatom   = natom_basis
- xproj_basis(:) = xbasis(:,proj_iatom)
 
  do ishell = 1, new_basis%nshell
-   if( new_basis%shell(ishell)%iatom == proj_iatom ) then
+   if( ANY(new_basis%shell(ishell)%v0 > 1.0e-4) ) then
+
+     proj_iatom = new_basis%shell(ishell)%iatom
+     xproj_basis(:) = xbasis(:,proj_iatom)
 
      ! Update projectile position
      new_basis%shell(ishell)%x0(:)   = xproj_basis(:)
