@@ -360,13 +360,15 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  ! Denombrate the number of non-negligible weight in the quadrature
  ngrid = COUNT( w_grid_tmp(:) > TOL_WEIGHT )
 
+ write(stdout,'(/,a)')      ' Setup the DFT quadrature'
+ write(stdout,'(1x,a,i12)') 'Total number of grid points: ',ngrid
+
  ! Distribute the grid over processors
  call init_dft_grid_distribution(ngrid)
 
- write(stdout,'(/,a)')              ' Setup the DFT quadrature'
  write(stdout,'(a,i4,1x,i4,1x,i4)') ' discretization grid per atom [radial , angular max - angular min] ', &
                                     nradial,nangular_fine,nangular_coarse
- write(stdout,'(a,i8)')             ' total number of real-space points for this processor',ngrid
+ write(stdout,'(a,i8)')             ' total number of real-space points for this mpi task',ngrid
 
  allocate(rr_grid(3,ngrid),w_grid(ngrid))
 

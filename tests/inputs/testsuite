@@ -95,9 +95,10 @@ gKS LUMO energy           ,   -3.007564        , 1 , 1.0e-4
 
 ne_fraccharge.in          , Neon atoms with two fractional charges
 number of basis functions ,      56            , 0 , 1.0e-7
-SCF Total Energy          , -128.1560680244    , 0 , 1.0e-7
-gKS HOMO energy           ,  -12.210450        , 0 , 1.0e-4
-gKS LUMO energy           ,   35.105654        , 0 , 1.0e-4
+Total number of grid points,    4258            , 0 , 1.0e-7
+SCF Total Energy          , -128.1560939423    , 0 , 1.0e-7
+gKS HOMO energy           ,  -12.210687        , 0 , 1.0e-4
+gKS LUMO energy           ,   35.106709        , 0 , 1.0e-4
 
 lih_ghost.in              , LiH molecule with addition basis functions on ghost atoms
 Kinetic Energy            ,    8.3706447990    , 0 , 1.0e-7
