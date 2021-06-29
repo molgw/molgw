@@ -510,7 +510,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
- integer              :: iatom
+ integer              :: icenter
  real(dp),allocatable :: matrix(:,:)
  real(C_DOUBLE),allocatable        :: array_cart(:)
  real(C_DOUBLE),allocatable        :: array_cart_C(:)
@@ -574,18 +574,18 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
      allocate(array_cart_C(ni_cart*nj_cart))
      array_cart(:) = 0.0_dp
 
-     do iatom=1,natom
-       ! Skip the contribution if iatom is not contained in the list
+     do icenter=1,ncenter_nuclei
+       ! Skip the contribution if icenter is not contained in the list
        if( PRESENT(atom_list) ) then
-         if( ALL(atom_list(:) /= iatom ) ) cycle
+         if( ALL(atom_list(:) /= icenter ) ) cycle
        endif
 
-       C(:) = xatom(:,iatom)
+       C(:) = xatom(:,icenter)
 #if defined(LIBINT2_SUPPORT_ONEBODY)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
-       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
+       array_cart(:) = array_cart(:) - zvalence(icenter) * array_cart_C(:)
 #else
        ij = 0
        do i_cart=1,ni_cart
@@ -593,7 +593,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
            ij = ij + 1
            ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
            jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(iatom),xatom(:,iatom),nucleus)
+           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(icenter),xatom(:,icenter),nucleus)
            array_cart(ij) = array_cart(ij) + nucleus
          enddo
        enddo
@@ -640,13 +640,13 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
  use m_atoms
  implicit none
  type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,natom+1,3)
+ real(dp),intent(out)       :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
  integer              :: natom_local
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
- integer              :: iatom
+ integer              :: icenter
  character(len=100)   :: title
  real(dp),allocatable :: matrixA(:,:)
  real(dp),allocatable :: matrixB(:,:)
@@ -668,16 +668,19 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
  real(C_DOUBLE)                    :: C(3)
 !=====
 
+ if( ncenter_basis /= ncenter_nuclei ) call die('setup_nucleus_grad: not implemented with ghosts or projectiles')
+
  call start_clock(timing_hamiltonian_nuc)
+
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian gradient (LIBINT)'
  if( world%nproc > 1 ) then
    natom_local=0
-   do iatom=1,natom
-     if( world%rank /= MODULO(iatom-1,world%nproc) ) cycle
+   do icenter=1,ncenter_nuclei
+     if( world%rank /= MODULO(icenter-1,world%nproc) ) cycle
      natom_local = natom_local + 1
    enddo
    write(stdout,'(a)')         '   Parallelizing over atoms'
-   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',ncenter_nuclei
  endif
 
  hamiltonian_nucleus_grad(:,:,:,:) = 0.0_dp
@@ -708,11 +711,11 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
      allocate(array_cart_gradBz(ni_cart*nj_cart))
 
 
-     do iatom=1,natom
-       if( world%rank /= MODULO(iatom-1,world%nproc) ) cycle
+     do icenter=1,ncenter_nuclei
+       if( world%rank /= MODULO(icenter-1,world%nproc) ) cycle
 
 
-       C(:) = xatom(:,iatom)
+       C(:) = xatom(:,icenter)
 
 #if LIBINT2_DERIV_ONEBODY_ORDER > 0
        call libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
@@ -723,33 +726,33 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 #else
        call die('nuclear potential gradient not implemented without LIBINT one-body and gradient terms')
 #endif
-       array_cart_gradAx(:) = array_cart_gradAx(:) * (-zvalence(iatom))
-       array_cart_gradAy(:) = array_cart_gradAy(:) * (-zvalence(iatom))
-       array_cart_gradAz(:) = array_cart_gradAz(:) * (-zvalence(iatom))
-       array_cart_gradBx(:) = array_cart_gradBx(:) * (-zvalence(iatom))
-       array_cart_gradBy(:) = array_cart_gradBy(:) * (-zvalence(iatom))
-       array_cart_gradBz(:) = array_cart_gradBz(:) * (-zvalence(iatom))
+       array_cart_gradAx(:) = array_cart_gradAx(:) * (-zvalence(icenter))
+       array_cart_gradAy(:) = array_cart_gradAy(:) * (-zvalence(icenter))
+       array_cart_gradAz(:) = array_cart_gradAz(:) * (-zvalence(icenter))
+       array_cart_gradBx(:) = array_cart_gradBx(:) * (-zvalence(icenter))
+       array_cart_gradBy(:) = array_cart_gradBy(:) * (-zvalence(icenter))
+       array_cart_gradBz(:) = array_cart_gradBz(:) * (-zvalence(icenter))
 
        ! X
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAx,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBx,matrixB)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,iatom  ,1) = -matrixA(:,:) - matrixB(:,:)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,1) = hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,1) &
-                                                                + matrixA(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,1) = -matrixA(:,:) - matrixB(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,1) = &
+                  hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,1) + matrixA(:,:)
 
        ! Y
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAy,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBy,matrixB)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,iatom  ,2) = -matrixA(:,:) - matrixB(:,:)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,2) = hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,2) &
-                                                                + matrixA(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,2) = -matrixA(:,:) - matrixB(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,2) = &
+                  hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,2) + matrixA(:,:)
 
        ! Z
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAz,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBz,matrixB)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,iatom  ,3) = -matrixA(:,:) - matrixB(:,:)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,3) = hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,3) &
-                                                                + matrixA(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,3) = -matrixA(:,:) - matrixB(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,3) = &
+                  hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,3) + matrixA(:,:)
 
      enddo
      deallocate(alphaA,cA)
@@ -968,7 +971,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
  integer              :: ibf,jbf
- integer              :: iatom
+ integer              :: icenter
 
  integer              :: iecp
  integer              :: iproj,nproj
@@ -1041,10 +1044,10 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  enddo
 
 
- do iatom=1,natom
+ do icenter=1,ncenter_nuclei
    element_has_ecp = .FALSE.
    do ie=1,nelement_ecp
-     if( ABS( element_ecp(ie) - zatom(iatom) ) < 1.0e-5_dp ) then
+     if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
        element_has_ecp = .TRUE.
        exit
      endif
@@ -1068,9 +1071,9 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
      int_fixed_r(:,:) = 0.0_dp
      do i1=1,nangular_ecp
-       rr(1) = xa(iradial) * x1(i1) + xatom(1,iatom)
-       rr(2) = xa(iradial) * y1(i1) + xatom(2,iatom)
-       rr(3) = xa(iradial) * z1(i1) + xatom(3,iatom)
+       rr(1) = xa(iradial) * x1(i1) + xatom(1,icenter)
+       rr(2) = xa(iradial) * y1(i1) + xatom(2,icenter)
+       rr(3) = xa(iradial) * z1(i1) + xatom(3,icenter)
        call calculate_basis_functions_r(basis,rr,basis_function_r)
 
        cos_theta = z1(i1)

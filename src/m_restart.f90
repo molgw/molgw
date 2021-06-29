@@ -75,9 +75,9 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
  ! RESTART file type SMALL_RESTART=1 or BIG_RESTART=2
  write(restartfile) restart_type
  ! Atomic structure
- write(restartfile) natom
- write(restartfile) zatom(1:natom)
- write(restartfile) xatom(:,1:natom)
+ write(restartfile) ncenter_nuclei
+ write(restartfile) zatom(1:ncenter_nuclei)
+ write(restartfile) xatom(:,1:ncenter_nuclei)
  ! Calculation type
  write(restartfile) calc_type%scf_name
  ! Basis set
@@ -216,9 +216,9 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
  allocate(zatom_read(natom_read),x_read(3,natom_read))
  read(restartfile) zatom_read(1:natom_read)
  read(restartfile) x_read(:,1:natom_read)
- if( natom_read /= natom  &
-  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,natom)) - zatom(1:MIN(natom_read,natom)) ) > 1.0e-5_dp ) &
-  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,natom)) - xatom(:,1:MIN(natom_read,natom))   ) > 1.0e-5_dp ) ) then
+ if( natom_read /= ncenter_nuclei  &
+  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,ncenter_nuclei)) - zatom(1:MIN(natom_read,ncenter_nuclei)) ) > 1.0e-5_dp ) &
+  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,ncenter_nuclei)) - xatom(:,1:MIN(natom_read,ncenter_nuclei))   ) > 1.0e-5_dp ) ) then
    same_geometry = .FALSE.
    call issue_warning('RESTART file: Geometry has changed')
  else

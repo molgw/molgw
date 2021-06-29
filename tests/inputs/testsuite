@@ -813,6 +813,13 @@ Sum over oscillator strengths,    9.124419       , 0 , 1.0e-4
 velocity   0.000  0.000  0.250,   0.210189       , 0 , 1.0e-4
 velocity   0.000  0.000  0.500,   1.018946       , 0 , 1.0e-4
 
+ne_ap_stopping2.in          , Linear-response stopping cross section for a non-spherical system with another input for the geometry
+SCF Total Energy           ,   -134.7929508744   , 0 , 1.0e-7
+Exc. 0001                  ,     37.06922165     , 0 , 1.0e-4
+Sum over oscillator strengths,    9.124419       , 0 , 1.0e-4
+velocity   0.000  0.000  0.250,   0.210189       , 0 , 1.0e-4
+velocity   0.000  0.000  0.500,   1.018946       , 0 , 1.0e-4
+
 ch4_cbs.in                , CBS extrapolation
 SCF Total Energy          ,    -40.4856598233   , 0 , 1.0e-7
 state    5 spin  1        ,     25.861771       , 0 , 1.0e-4

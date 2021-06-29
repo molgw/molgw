@@ -84,7 +84,7 @@ ffor.write(header)
 
 for key,value in input_var_dict.items():
   # Exclude a few input variable due to name clash
-  if key in ['basis','auxil_basis','natom','nghost','read_restart']:
+  if key in ['basis','auxil_basis','read_restart']:
     continue
 
   if   value['datatype'] =='integer':

@@ -125,7 +125,7 @@ subroutine setup_nucleus_fourier(basis_p,basis_t,reference)
     weight = wq(iq)
 
     structure_factor = (0.0_dp,0.0_dp)
-    do iatom=1,natom
+    do iatom=1,ncenter_nuclei
       structure_factor = structure_factor &
                 - zvalence(iatom) * EXP( im * DOT_PRODUCT(qvec(:),xatom(:,iatom)) )
     enddo

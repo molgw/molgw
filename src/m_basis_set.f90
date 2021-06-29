@@ -28,7 +28,7 @@ module m_basis_set
    character(len=1)             :: amc                        ! Angular momentum letter: s, p, d, f ...
    integer                      :: nx,ny,nz                   ! Angular momentum for cartesian gaussians
    integer                      :: mm                         ! Angular momentum for pure gaussians
-   integer                      :: iatom                      ! Centered on which atom
+   integer                      :: icenter                    ! Centered on which atom
    real(dp)                     :: x0(3)                      ! Coordinates of the gaussian center
    integer                      :: ngaussian                  ! Number of primitive gausssians
    type(gaussian),allocatable   :: g(:)                       ! The primitive gaussian functions
@@ -41,7 +41,7 @@ module m_basis_set
    real(dp),allocatable :: alpha(:)
    real(dp),allocatable :: coeff(:)
    real(dp)             :: x0(3)
-   integer              :: iatom
+   integer              :: icenter
    integer              :: istart,iend                        ! index of the shell's basis functions in the final basis set
    integer              :: istart_cart,iend_cart              ! index of the shell's basis functions in the cartesian basis set
  end type shell_type
@@ -77,8 +77,8 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
  character(len=4),intent(in) :: gaussian_type
  character(len=*),intent(in) :: basis_path
- character(len=100),intent(in) :: basis_name(ncenter_basis)
- character(len=100),intent(in) :: ecp_basis_name(ncenter_basis)
+ character(len=100),intent(in) :: basis_name(:)
+ character(len=100),intent(in) :: ecp_basis_name(:)
  type(basis_set),intent(out)   :: basis
 !=====
  character(len=200)            :: basis_filename
@@ -194,7 +194,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      ishell = ishell + 1
 
      basis%shell(ishell)%am      = am_read
-     basis%shell(ishell)%iatom   = icenter
+     basis%shell(ishell)%icenter = icenter
      basis%shell(ishell)%x0(:)   = x0(:)
      basis%shell(ishell)%ng      = ng
      allocate(basis%shell(ishell)%alpha(ng))
@@ -316,7 +316,7 @@ end subroutine echo_basis_summary
 subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
  implicit none
 
- character(len=100),intent(in) :: auxil_basis_name(ncenter_basis)
+ character(len=100),intent(in) :: auxil_basis_name(:)
  character(len=4),intent(in)   :: gaussian_type
  type(basis_set),intent(in)    :: basis
  real(dp),intent(in)           :: auto_auxil_fsam
@@ -357,7 +357,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
  write(stdout,'(1x,a25,i3)')   'Parameter l_MAXINC: ',auto_auxil_lmaxinc
 
 
- ncenter = MAXVAL( basis%shell(:)%iatom )
+ ncenter = MAXVAL( basis%shell(:)%icenter )
  !
  ! Evaluate the maximum number of shells possible
  nshell_max = 0
@@ -365,7 +365,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
    nprim = 0
    lmax_obs = 0
    do ishell=1,basis%nshell
-     if( basis%shell(ishell)%iatom == icenter ) then
+     if( basis%shell(ishell)%icenter == icenter ) then
        nprim = nprim + basis%shell(ishell)%ng
        lmax_obs = MAX( lmax_obs , basis%shell(ishell)%am )
      endif
@@ -390,7 +390,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
    am_current = 0
    zcenter = zbasis(icenter)
 
-   ncandidate = SUM( basis%shell(:)%ng , MASK=(basis%shell(:)%iatom == icenter) )
+   ncandidate = SUM( basis%shell(:)%ng , MASK=(basis%shell(:)%icenter == icenter) )
    if( pauto ) ncandidate = ncandidate**2
    allocate(remaining_candidate(ncandidate))
    allocate(exponent_candidate(ncandidate),exponent_trial(ncandidate))
@@ -403,7 +403,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
    index_exp = 0
    lmax_obs = 0
    do ishell=1,basis%nshell
-     if( basis%shell(ishell)%iatom /= icenter ) cycle
+     if( basis%shell(ishell)%icenter /= icenter ) cycle
      lmax_obs = MAX( lmax_obs , basis%shell(ishell)%am )
 
      if( pauto ) then
@@ -411,7 +411,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
        ! All the exponents sums are considered
        ! All the angular momenta sums are considered
        do jshell=1,basis%nshell
-         if( basis%shell(jshell)%iatom /= icenter ) cycle
+         if( basis%shell(jshell)%icenter /= icenter ) cycle
          nprim = basis%shell(ishell)%ng * basis%shell(jshell)%ng
          do iprim=1,basis%shell(ishell)%ng
            do jprim=1,basis%shell(jshell)%ng
@@ -492,7 +492,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
        allocate(shell_tmp(auxil_basis%nshell)%coeff(1))
        shell_tmp(auxil_basis%nshell)%alpha(1) = exponent_selected
        shell_tmp(auxil_basis%nshell)%coeff(1) = 1.0_dp
-       shell_tmp(auxil_basis%nshell)%iatom = icenter
+       shell_tmp(auxil_basis%nshell)%icenter = icenter
        shell_tmp(auxil_basis%nshell)%x0(:) = xbasis(:,icenter)
      enddo
 
@@ -529,7 +529,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
    am_current = shell_tmp(ishell)%am
 
    auxil_basis%shell(ishell)%am     = shell_tmp(ishell)%am
-   auxil_basis%shell(ishell)%iatom  = shell_tmp(ishell)%iatom
+   auxil_basis%shell(ishell)%icenter  = shell_tmp(ishell)%icenter
    auxil_basis%shell(ishell)%x0(:)  = shell_tmp(ishell)%x0(:)
    auxil_basis%shell(ishell)%ng     = shell_tmp(ishell)%ng
    allocate(auxil_basis%shell(ishell)%alpha(1))
@@ -555,11 +555,11 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
      ! Add the new basis function
      jbf_cart = jbf_cart + 1
      index_in_shell = index_in_shell + 1
-     call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
+     call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%icenter,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
                               shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bfc(jbf_cart))
      if(auxil_basis%gaussian_type == 'CART') then
        jbf = jbf + 1
-       call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
+       call init_basis_function(normalized,1,nx,ny,nz,shell_tmp(ishell)%icenter,shell_tmp(ishell)%x0,shell_tmp(ishell)%alpha,&
                                 shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
      endif
 
@@ -582,7 +582,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
      do mm=-am_current,am_current
        jbf = jbf + 1
        index_in_shell = index_in_shell + 1
-       call init_basis_function_pure(normalized,1,am_current,mm,shell_tmp(ishell)%iatom,shell_tmp(ishell)%x0, &
+       call init_basis_function_pure(normalized,1,am_current,mm,shell_tmp(ishell)%icenter,shell_tmp(ishell)%x0, &
                                 shell_tmp(ishell)%alpha,shell_tmp(ishell)%coeff,ishell,index_in_shell,auxil_basis%bff(jbf))
      enddo
    endif
@@ -698,7 +698,7 @@ function compare_basis_function(bf1,bf2) result(same_basis_function)
  if( bf1%nx            /= bf2%nx                        ) same_basis_function = .FALSE.
  if( bf1%ny            /= bf2%ny                        ) same_basis_function = .FALSE.
  if( bf1%nz            /= bf2%nz                        ) same_basis_function = .FALSE.
- if( bf1%iatom         /= bf2%iatom                     ) same_basis_function = .FALSE.
+ if( bf1%icenter         /= bf2%icenter                 ) same_basis_function = .FALSE.
  if( ANY(ABS(bf1%x0(:) - bf2%x0(:)) > 1.0e-5_dp )       ) same_basis_function = .FALSE.
  if( bf1%ngaussian     /= bf2%ngaussian                 ) same_basis_function = .FALSE.
 
@@ -783,7 +783,7 @@ subroutine write_basis_function(unitfile,bf)
  write(unitfile)  bf%nx
  write(unitfile)  bf%ny
  write(unitfile)  bf%nz
- write(unitfile)  bf%iatom
+ write(unitfile)  bf%icenter
  write(unitfile)  bf%x0(:)
  write(unitfile)  bf%ngaussian
  write(unitfile)  bf%g(:)
@@ -808,7 +808,7 @@ subroutine read_basis_function(unitfile,bf)
  read(unitfile)  bf%nx
  read(unitfile)  bf%ny
  read(unitfile)  bf%nz
- read(unitfile)  bf%iatom
+ read(unitfile)  bf%icenter
  read(unitfile)  bf%x0(:)
  read(unitfile)  bf%ngaussian
  allocate(bf%g(bf%ngaussian))
@@ -833,7 +833,7 @@ subroutine write_basis_shell(unitfile,shell)
  write(unitfile) shell%alpha(:)
  write(unitfile) shell%coeff(:)
  write(unitfile) shell%x0(:)
- write(unitfile) shell%iatom
+ write(unitfile) shell%icenter
  write(unitfile) shell%istart,shell%iend
  write(unitfile) shell%istart_cart,shell%iend_cart
 
@@ -856,7 +856,7 @@ subroutine read_basis_shell(unitfile,shell)
  allocate(shell%coeff(shell%ng))
  read(unitfile) shell%coeff(:)
  read(unitfile) shell%x0(:)
- read(unitfile) shell%iatom
+ read(unitfile) shell%icenter
  read(unitfile) shell%istart,shell%iend
  read(unitfile) shell%istart_cart,shell%iend_cart
 
@@ -864,10 +864,10 @@ end subroutine read_basis_shell
 
 
 !=========================================================================
-subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,index_in_shell,bf)
+subroutine init_basis_function(normalized,ng,nx,ny,nz,icenter,x0,alpha,coeff,shell_index,index_in_shell,bf)
  implicit none
  logical,intent(in)               :: normalized
- integer,intent(in)               :: ng,nx,ny,nz,shell_index,iatom,index_in_shell
+ integer,intent(in)               :: ng,nx,ny,nz,shell_index,icenter,index_in_shell
  real(dp),intent(in)              :: x0(3),alpha(ng)
  real(dp),intent(in)              :: coeff(ng)
  type(basis_function),intent(out) :: bf
@@ -885,7 +885,7 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell
  bf%am    = nx + ny + nz
  bf%mm    = -100          ! A fake value
  bf%amc   = orbital_momentum_name(bf%am)
- bf%iatom = iatom
+ bf%icenter = icenter
  bf%x0(:) = x0(:)
  bf%shell_index    = shell_index
  bf%index_in_shell = index_in_shell
@@ -915,10 +915,10 @@ end subroutine init_basis_function
 
 
 !=========================================================================
-subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,shell_index,index_in_shell,bf)
+subroutine init_basis_function_pure(normalized,ng,am,mm,icenter,x0,alpha,coeff,shell_index,index_in_shell,bf)
  implicit none
  logical,intent(in)               :: normalized
- integer,intent(in)               :: ng,am,mm,shell_index,iatom,index_in_shell
+ integer,intent(in)               :: ng,am,mm,shell_index,icenter,index_in_shell
  real(dp),intent(in)              :: x0(3),alpha(ng)
  real(dp),intent(in)              :: coeff(ng)
  type(basis_function),intent(out) :: bf
@@ -934,7 +934,7 @@ subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,she
  bf%am    = am
  bf%mm    = mm
  bf%amc   = orbital_momentum_name(bf%am)
- bf%iatom = iatom
+ bf%icenter = icenter
  bf%x0(:) = x0(:)
  bf%shell_index = shell_index
  bf%index_in_shell = index_in_shell

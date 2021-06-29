@@ -12,6 +12,7 @@ module m_tddft_propagator
  use m_warning
  use m_timing
  use m_tddft_variables
+ use m_atoms
  use m_string_tools
  use m_multipole
  use m_basis_set
@@ -60,7 +61,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  real(dp),intent(inout)     :: occupation(:,:)
  logical,intent(in)         :: restart_tddft_is_correct
 !=====
- integer                    :: fixed_atom_list(natom-nprojectile)
+ integer                    :: fixed_atom_list(ncenter_nuclei-nprojectile)
  integer                    :: ispin
  integer                    :: istate,nstate_tmp
  integer                    :: nwrite_step
@@ -140,7 +141,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  !
  ! hamiltonian_nucleus contains the contribution from all the fixed atoms (i.e. excluding the projectile)
  ! Remember: the projectile is always the last atom
- do iatom=1,natom-nprojectile
+ do iatom=1,ncenter_nuclei-nprojectile
    fixed_atom_list(iatom) = iatom
  enddo
  call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
@@ -165,7 +166,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
 
 
- allocate(xatom_start(3,natom))
+ allocate(xatom_start(3,ncenter_nuclei))
 
  write(stdout,'(/,1x,a)') "===INITIAL CONDITIONS==="
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
@@ -176,8 +177,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
    do ispin=1,nspin
      c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
    end do
-   xprojectile = xatom(:,natom)
-   call change_position_one_atom(natom,xprojectile)
+   xprojectile = xatom(:,ncenter_nuclei)
+   call change_position_one_atom(ncenter_nuclei,xprojectile)
  else
    c_matrix_cmplx(:,:,:) = c_matrix(:,1:nocc,:)
    xatom_start=xatom
@@ -854,7 +855,7 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
  select case(excit_type%form)
  case(EXCIT_PROJECTILE)
    write(file_time_data,"(f10.4,11(2x,es16.8e3))") &
-      time_cur, en_tddft%total, xatom(:,natom), en_tddft%nuc_nuc, en_tddft%nucleus, &
+      time_cur, en_tddft%total, xatom(:,ncenter_nuclei), en_tddft%nuc_nuc, en_tddft%nucleus, &
       en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
       en_tddft%excit
    call output_projectile_position()
@@ -1030,7 +1031,7 @@ subroutine calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_ma
    end do
 
    if( is_iomaster) then
-     write(file_q_matrix(ispin),"(F10.4,30(2x,es16.8E3))") time_cur, xatom(:,natom), q_occ(:)
+     write(file_q_matrix(ispin),"(F10.4,30(2x,es16.8E3))") time_cur, xatom(:,ncenter_nuclei), q_occ(:)
    end if
  end do
 
@@ -1100,9 +1101,9 @@ subroutine write_restart_tddft(nstate,time_cur,occupation,c_matrix_orth_cmplx)
  ! Current Time
  write(restartfile) time_cur
  ! Atomic structure
- write(restartfile) natom
- write(restartfile) zatom(1:natom)
- write(restartfile) xatom(:,1:natom)
+ write(restartfile) ncenter_nuclei
+ write(restartfile) zatom(1:ncenter_nuclei)
+ write(restartfile) xatom(:,1:ncenter_nuclei)
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
    do istate=1,nocc
@@ -1177,10 +1178,9 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
  read(restartfile) time_cur_read
 
  !Different number of atoms in restart and input files is not provided for tddft restart
- !natom
  read(restartfile) natom_read
- if( natom_read /= natom ) then
-   call issue_warning('RESTART_TDDFT file: natom is not the same.')
+ if( natom_read /= ncenter_nuclei ) then
+   call issue_warning('RESTART_TDDFT file: number of atoms has changed.')
    restart_is_correct=.FALSE.
    close(restartfile)
    return
@@ -1189,9 +1189,10 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
  allocate(zatom_read(natom_read),x_read(3,natom_read))
  read(restartfile) zatom_read(1:natom_read)
  read(restartfile) x_read(:,1:natom_read)
- if( natom_read /= natom  &
-  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,natom)) - zatom(1:MIN(natom_read,natom)) ) > 1.0e-5_dp ) &
-  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,natom-nprojectile)) - xatom(:,1:MIN(natom_read,natom-nprojectile)) ) &
+ if( natom_read /= ncenter_nuclei  &
+  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,ncenter_nuclei)) - zatom(1:MIN(natom_read,ncenter_nuclei)) ) > 1.0e-5_dp ) &
+  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,ncenter_nuclei-nprojectile)) &
+                   - xatom(:,1:MIN(natom_read,ncenter_nuclei-nprojectile)) ) &
             > 1.0e-5_dp ) ) then
    call issue_warning('RESTART_TDDFT file: Geometry has changed')
  endif
@@ -1694,13 +1695,14 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
    !
    ! Move the projectile
-   call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
+   call change_position_one_atom(ncenter_nuclei, &
+                                 xatom_start(:,ncenter_nuclei) + vel_nuclei(:,ncenter_nuclei) * ( time_cur - time_read ))
 
    call nucleus_nucleus_energy(en_tddft%nuc_nuc)
 
    !
    ! Nucleus-electron interaction due to the projectile only
-   projectile_list(1) = natom
+   projectile_list(1) = ncenter_nuclei
    allocate(hamiltonian_projectile(basis%nbf,basis%nbf))
    call setup_nucleus(basis,hamiltonian_projectile,projectile_list)
 

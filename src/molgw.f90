@@ -116,7 +116,6 @@ program molgw
   ! Build all the Cartesian to Pure Gaussian transforms
   call setup_cart_to_pure_transforms()
 
-
   !
   ! Prepare relaxation with LBFGS
   if( move_nuclei == 'relax' ) then

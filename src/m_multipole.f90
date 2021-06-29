@@ -32,7 +32,7 @@ subroutine static_dipole(basis,occupation,c_matrix_in,p_matrix_in,dipole_ao_in,d
   real(dp),optional,intent(in)     :: dipole_ao_in(:,:,:)
   real(dp),optional,intent(out)    :: dipole_out(3)
   !=====
-  integer                    :: iatom,idir
+  integer                    :: icenter,idir
   real(dp)                   :: dipole(3)
   real(dp),allocatable       :: dipole_ao(:,:,:)
   real(dp),allocatable       :: p_matrix(:,:,:)
@@ -70,8 +70,8 @@ subroutine static_dipole(basis,occupation,c_matrix_in,p_matrix_in,dipole_ao_in,d
   deallocate(dipole_ao,p_matrix)
 
   ! Add the nuclear part
-  do iatom=1,natom
-    dipole(:) = dipole(:) + zvalence(iatom) * xatom(:,iatom)
+  do icenter=1,ncenter_nuclei
+    dipole(:) = dipole(:) + zvalence(icenter) * xatom(:,icenter)
   enddo
 
   if( .NOT. PRESENT(dipole_out) ) then
@@ -92,7 +92,7 @@ subroutine static_quadrupole(basis,occupation,c_matrix)
   type(basis_set),intent(in) :: basis
   real(dp),intent(in)        :: occupation(:,:),c_matrix(:,:,:)
   !=====
-  integer                    :: iatom,idir,jdir
+  integer                    :: icenter,idir,jdir
   real(dp)                   :: trace
   real(dp)                   :: quad(3,3)
   real(dp),allocatable       :: quad_ao(:,:,:,:)
@@ -119,9 +119,9 @@ subroutine static_quadrupole(basis,occupation,c_matrix)
 
   deallocate(quad_ao)
 
-  do iatom=1,natom
+  do icenter=1,ncenter_nuclei
     do jdir=1,3
-      quad(:,jdir) = quad(:,jdir) + zvalence(iatom) * xatom(:,iatom) * xatom(jdir,iatom)
+      quad(:,jdir) = quad(:,jdir) + zvalence(icenter) * xatom(:,icenter) * xatom(jdir,icenter)
     enddo
   enddo
 
