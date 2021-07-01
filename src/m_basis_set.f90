@@ -501,8 +501,10 @@ subroutine echo_basis_summary(basis)
  endif
  write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
 
- write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
- write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
+ if( basis%nshell > 0 ) then
+   write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
+   write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
+ end if
 
  if( basis%ammax > MOLGW_LMAX ) then
    write(stdout,*) 'Maximum angular momentum: ',basis%ammax

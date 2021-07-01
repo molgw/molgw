@@ -80,10 +80,15 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  vel(:,:) = 0.0_dp
  velbasis(:,:) = 0.0_dp
 
- if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" .OR. excit_name == 'ION' .OR. excit_name == 'ANTIION') then
+ if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" ) then
+   vel(:,natom) = vel_projectile(:)
+ endif
+
+ if( excit_name == 'ION' .OR. excit_name == 'ANTIION' ) then
    vel(:,natom) = vel_projectile(:)
    velbasis(:,natom_basis) = vel_projectile(:)
  endif
+ 
  ! For relaxation or dynamics only
  if( calculate_forces ) then
    allocate(force(3,natom))
