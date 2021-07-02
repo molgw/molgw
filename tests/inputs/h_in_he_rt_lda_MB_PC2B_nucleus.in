@@ -1,0 +1,29 @@
+&molgw
+  comment                 = 'DZ/v1p0/p5'
+
+  scf                            = 'lda'
+  read_restart                   = 'no'
+  read_tddft_restart             = 'no'
+  print_tddft_restart            = 'yes'
+  basis                          = 'cc-pVTZ'
+  auxil_basis                    = 'cc-pVTZ-RI'
+  charge                         = 1
+  natom                          = 1
+  nghost                         = 0
+  postscf                        = 'real_time'
+  integral_quality	     	 = 'insane'
+  grid_quality                   = 'medium'
+  tddft_grid_quality             = 'medium'
+  eri3_genuine 			 = 'yes'
+  time_step                      = 0.1
+  time_sim                       = 10.0
+  pred_corr                      = 'MB_PC2B'
+  n_hist                         = 2
+  prop_type                      = 'CN'
+  length_unit                    = 'bohr'
+  excit_name                     = 'nucleus'
+  vel_projectile                 = 0.0 0.0 1.0
+  write_step                     = 0.1
+/
+He	0.000   0.000   0.000 
+H  	0.000   1.000  -10.00 

@@ -627,14 +627,14 @@ SCF Total Energy          ,  -76.3418386927     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.5745023928     , 0 , 1.0e-7
 
 h2o_rt_tddft_h_proj_pbe0_restart.in, RT-TDDFT proj without basis pbe0 restart, restart tddft
-RT-TDDFT Total Energy     ,  -75.5098148640     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.5098148640     , 0 , 1.0e-3
 
 h2o_rt_tddft_h_proj_temp_pbe0.in , RT-TDDFT PBE0 with temperature,tddft
 SCF Total Energy          ,  -76.3191476781     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.5420266865     , 0 , 1.0e-7
 
 h2o_rt_tddft_h_proj_temp_pbe0_restart.in , RT-TDDFT PBE0 with temperature restart, restart tddft
-RT-TDDFT Total Energy     ,  -75.4884909894     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.4884909894     , 0 , 1.0e-3
 
 h2o_rt_tddft_h_proj_pbe0_TZ.in , RT-TDDFT with projectile without basis within PBE0,tddft
 SCF Total Energy          ,  -76.3757991664     , 0 , 1.0e-7
@@ -820,4 +820,17 @@ state    5 spin  1        ,     -0.460572       , 1 , 1.0e-4
 state    5 spin  1        ,    -14.095145       , 2 , 1.0e-4
 state    5 spin  1        ,    -14.555717       , 3 , 1.0e-4
 
+h_in_he_rt_lda_MB_PC2B_nucleus.in, RT-TDDFT projectile without basis function PC="MB_PC2B",tddft
+SCF Total Energy          ,  -2.8337962835     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -2.6671498390     , 0 , 1.0e-7
+
+h_in_he_rt_lda_MB_PC2B_ions.in, RT-TDDFT projectile with moving basis function PC="MB_PC2B",tddft
+SCF Total Energy          ,  -2.8337964147     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -2.3670891862     , 0 , 1.0e-7
+Number of electrons	  ,  2.001640	       , 0 , 1.0e-4
+
+he_in_h_ghost_rt_lda_MB_PC2B.in, RT-TDDFT projectile in ghost PC="MB_PC2B",tddft
+SCF Total Energy          ,  -2.8337639336     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -1.3498412081     , 0 , 1.0e-7
+Number of electrons       ,  1.997076          , 0 , 1.0e-4
 
