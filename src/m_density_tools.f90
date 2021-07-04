@@ -7,48 +7,55 @@
 !
 !=========================================================================
 module m_density_tools
- use m_definitions
- use m_mpi
- use m_atoms
- use m_gaussian
- use m_inputparam
- use m_basis_set
- use m_hamiltonian_tools,only: get_number_occupied_states
- use m_dft_grid
+  use m_definitions
+  use m_mpi
+  use m_atoms
+  use m_gaussian
+  use m_inputparam
+  use m_basis_set
+  use m_hamiltonian_tools,only: get_number_occupied_states
+  use m_dft_grid
 
 
 contains
 
 
 !=========================================================================
-subroutine setup_atomic_density(rr,rhor)
- implicit none
+subroutine setup_atomic_density(basis,rr,rhor)
+  implicit none
 
- real(dp),intent(in)  :: rr(3)
- real(dp),intent(out) :: rhor
-!=====
- real(dp),parameter   :: bondcharge=1.000_dp
- integer              :: iatom,igau,ngau
- real(dp)             :: dr
- real(dp),allocatable :: alpha(:),coeff(:)
-!=====
+  type(basis_set),intent(in) :: basis
+  real(dp),intent(in)        :: rr(3)
+  real(dp),intent(out)       :: rhor
+  !=====
+  real(dp),parameter   :: bondcharge=1.000_dp
+  integer              :: icenter,igau,ngau,ibf
+  real(dp)             :: dr
+  real(dp),allocatable :: alpha(:),coeff(:)
+  logical              :: found
+  !=====
 
- rhor = 0.0_dp
- do iatom=1,natom-nprojectile
+  rhor = 0.0_dp
+  do icenter=1,ncenter_nuclei
+    ! Only place electrons were both a basis function and a Coulomb center are present
+    found = .FALSE.
+    do ibf=1,basis%nbf
+      found = found .OR. ( NORM2( xatom(:,icenter) - basis%bff(ibf)%x0(:) ) < 1.0e-6_dp )
+    enddo
+    if( .NOT. found ) cycle
 
-   ngau = 4
-   allocate(alpha(ngau),coeff(ngau))
-   call element_atomicdensity(zvalence(iatom),zatom(iatom),coeff,alpha)
+    ngau = 4
+    allocate(alpha(ngau),coeff(ngau))
+    call element_atomicdensity(zvalence(icenter),zatom(icenter),coeff,alpha)
 
-   dr=NORM2( rr(:) - xatom(:,iatom) )
+    dr = NORM2( rr(:) - xatom(:,icenter) )
 
-   do igau=1,ngau
-     rhor     = rhor     + SQRT(alpha(igau)/pi)**3 * EXP( -alpha(igau)*dr**2) * coeff(igau)
-   enddo
+    do igau=1,ngau
+      rhor = rhor + SQRT(alpha(igau)/pi)**3 * EXP( -alpha(igau)*dr**2) * coeff(igau)
+    enddo
 
-   deallocate(alpha,coeff)
- enddo
-
+    deallocate(alpha,coeff)
+  enddo
 
 end subroutine setup_atomic_density
 
@@ -333,9 +340,9 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx,n
  nocc = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
 
  if( excit_type%form==EXCIT_PROJECTILE ) then
-   i_max_atom=natom-nprojectile
+   i_max_atom=ncenter_nuclei-nprojectile
  else
-   i_max_atom=natom
+   i_max_atom=ncenter_nuclei
  endif
 
  inquire(file='manual_disc_dft_grid',exist=file_exists)
@@ -417,7 +424,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx,n
    enddo
 
    do ispin=1,nspin
-     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
+     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,ncenter_nuclei)*bohr_A
      do idisc=1,ndisc
        write(file_out(ispin),'(F16.4,F19.10,i6)') (z_min+idisc*dz_disc)*bohr_A,charge_disc(idisc,ispin),count_z_section(idisc,ispin)
      end do

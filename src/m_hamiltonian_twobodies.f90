@@ -1297,8 +1297,9 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
  real(dp)             :: normalization
  real(dp)             :: exc
  real(dp)             :: vhgau(basis%nbf,basis%nbf)
- integer              :: iatom,ngau
+ integer              :: icenter,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
+ logical              :: found
 !=====
 
  call start_clock(timing_approx_ham)
@@ -1307,15 +1308,23 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
- do iatom=1,natom
-   if( grid%rank /= MODULO(iatom,grid%nproc) ) cycle
+ do icenter=1,ncenter_nuclei
+   if( grid%rank /= MODULO(icenter,grid%nproc) ) cycle
+
+   ! Only place electrons were both a basis function and a Coulomb center are present
+   found = .FALSE.
+   do ibf=1,basis%nbf
+     found = found .OR. ( NORM2( xatom(:,icenter) - basis%bff(ibf)%x0(:) ) < 1.0e-6_dp )
+   enddo
+   if( .NOT. found ) cycle
+
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
-   call element_atomicdensity(zvalence(iatom),zatom(iatom),coeff,alpha)
+   call element_atomicdensity(zvalence(icenter),zatom(icenter),coeff,alpha)
 
 
-   call calculate_eri_approximate_hartree(basis,xatom(:,iatom),coeff,alpha,vhgau)
+   call calculate_eri_approximate_hartree(basis,xatom(:,icenter),coeff,alpha,vhgau)
    vhxc_ao(:,:) = vhxc_ao(:,:) + vhgau(:,:)
 
    deallocate(alpha,coeff)
@@ -1350,7 +1359,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
    ! Calculate the density at points r
    do ir=1,nr
      igrid = igrid_start + ir - 1
-     call setup_atomic_density(rr_grid(:,igrid),rhor_batch(ir))
+     call setup_atomic_density(basis,rr_grid(:,igrid),rhor_batch(ir))
    enddo
 
    !

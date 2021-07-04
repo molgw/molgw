@@ -90,7 +90,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
 
   force_ovp(:,:) = 0.0_dp
   do ibf=1,basis%nbf
-    iatom = basis%bff(ibf)%iatom
+    iatom = basis%bff(ibf)%icenter
     force_ovp(:,iatom) = force_ovp(:,iatom) + 2.0_dp * MATMUL( r_matrix(ibf,:) , grad_onebody(:,ibf,:) )
   enddo
   deallocate(grad_onebody)
@@ -104,7 +104,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
 
   force_kin(:,:) = 0.0_dp
   do ibf=1,basis%nbf
-    iatom = basis%bff(ibf)%iatom
+    iatom = basis%bff(ibf)%icenter
     force_kin(:,iatom) = force_kin(:,iatom) + 2.0_dp * MATMUL( SUM( p_matrix(ibf,:,:),DIM=2) , grad_onebody(ibf,:,:) )
   enddo
   deallocate(grad_onebody)
@@ -118,7 +118,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
 
   force_nuc(:,:) = 0.0_dp
   do ibf=1,basis%nbf
-    iatom = basis%bff(ibf)%iatom
+    iatom = basis%bff(ibf)%icenter
     force_nuc(:,iatom) = force_nuc(:,iatom) + 2.0_dp * MATMUL( SUM( p_matrix(ibf,:,:),DIM=2) , grad_nucleus(ibf,:,natom+1,:) )
   enddo
 
@@ -179,7 +179,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
           fact = -2.0_dp
         endif
 
-        iatom = basis%shell(ishell)%iatom
+        iatom = basis%shell(ishell)%icenter
         do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
           do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
             do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -196,7 +196,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
         enddo
 
         if( ishell /= jshell ) then
-          iatom = basis%shell(jshell)%iatom
+          iatom = basis%shell(jshell)%icenter
           do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
             do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
               do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -222,7 +222,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
             fact = -2.0_dp
           endif
 
-          iatom = basis%shell(kshell)%iatom
+          iatom = basis%shell(kshell)%icenter
           do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
             do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
               do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -239,7 +239,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
           enddo
 
           if( kshell /= lshell ) then
-            iatom = basis%shell(lshell)%iatom
+            iatom = basis%shell(lshell)%icenter
             do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
               do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
                 do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -265,7 +265,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
       !
       if( .NOT. ( skip_shellpair(ishell,kshell) .AND. skip_shellpair(jshell,lshell) ) &
           .OR. .NOT. ( skip_shellpair(ishell,lshell) .AND. skip_shellpair(jshell,kshell) ) ) then
-        iatom = basis%shell(ishell)%iatom
+        iatom = basis%shell(ishell)%icenter
         do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
           do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
             do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -282,7 +282,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
         enddo
 
         if( kshell /= lshell ) then
-          iatom = basis%shell(ishell)%iatom
+          iatom = basis%shell(ishell)%icenter
           do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
             do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
               do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -300,7 +300,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
         endif
 
         if( ishell /= jshell ) then
-          iatom = basis%shell(jshell)%iatom
+          iatom = basis%shell(jshell)%icenter
           do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
             do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
               do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -317,7 +317,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
           enddo
 
           if( kshell /= lshell ) then
-            iatom = basis%shell(jshell)%iatom
+            iatom = basis%shell(jshell)%icenter
             do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
               do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
                 do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -338,7 +338,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
         !
         ! When the opposite is not calculated by LIBINT:
         if( basis%shell(ishell)%am + basis%shell(jshell)%am /= basis%shell(kshell)%am + basis%shell(lshell)%am ) then
-          iatom = basis%shell(kshell)%iatom
+          iatom = basis%shell(kshell)%icenter
           do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
             do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
               do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -355,7 +355,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
           enddo
 
           if( ishell /= jshell ) then
-            iatom = basis%shell(kshell)%iatom
+            iatom = basis%shell(kshell)%icenter
             do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
               do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
                 do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -373,7 +373,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
           endif
 
           if( kshell /= lshell ) then
-            iatom = basis%shell(lshell)%iatom
+            iatom = basis%shell(lshell)%icenter
             do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
               do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
                 do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
@@ -389,7 +389,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
               enddo
             enddo
             if( ishell /= jshell ) then
-              iatom = basis%shell(lshell)%iatom
+              iatom = basis%shell(lshell)%icenter
               do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
                 do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
                   do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
