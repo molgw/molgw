@@ -79,7 +79,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  integer                    :: istate,nstate_tmp
  integer                    :: nwrite_step
  real(dp)                   :: time_min
- real(dp)                   :: xprojectile(3)
  real(dp),allocatable       :: dipole_ao(:,:,:)
  real(dp),allocatable       :: s_matrix(:,:)
  real(dp),allocatable       :: d_matrix(:,:)
@@ -169,9 +168,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end if
 
    time_min = time_read
-   xprojectile = xatom_start(:,natom)
-   call change_position_one_atom(natom,xprojectile)
-   call change_basis_center_one_atom(natom_basis,xprojectile)
+   call change_position_one_atom(natom,xatom_start(:,natom))
+   call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis))
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) call update_basis_eri(basis,auxil_basis)
 
  else
