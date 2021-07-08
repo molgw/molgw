@@ -1,0 +1,14 @@
+&molgw
+ scf='lda'
+
+ ecp_basis='aug-cc-pV5Z'
+ auxil_basis='AUTO'
+
+ ecp_elements='Ne'
+ ecp_type='tm.psp6'
+ ecp_quality='h'
+
+ natom=1
+/
+Ne          .000000     .000000     .000000   
+

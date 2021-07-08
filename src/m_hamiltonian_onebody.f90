@@ -988,6 +988,10 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  integer              :: necp,ie
  character(len=100)   :: title
  logical              :: element_has_ecp
+ real(dp)             :: r1,r2
+ real(dp),allocatable :: vr(:),ur(:)
+ real(dp),allocatable :: kb(:,:)
+ integer              :: ir
 !=====
 
  ! Check if there are some ECP
@@ -1056,6 +1060,9 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
    if( .NOT. element_has_ecp ) cycle
 
    necp = ecp(ie)%necp
+   if( ecp(ie)%mmax > 0 ) then
+     allocate(vr(necp),ur(necp))
+   endif
 
 
    nproj = 0
@@ -1065,9 +1072,35 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
      endif
    enddo
    allocate(int_fixed_r(basis%nbf,nproj))
+   allocate(kb(basis%nbf,nproj))
+   kb(:,:) = 0.0_dp
 
    do iradial=1,nradial_ecp
      if( MODULO(iradial-1,world%nproc) /= world%rank ) cycle
+
+     if( ecp(ie)%mmax > 0 ) then
+       ir = 1
+       do while( ecp(ie)%rad(ir) < xa(iradial) )
+         ir = ir + 1
+       enddo
+       r1 = ecp(ie)%rad(MAX(ir-1,1))
+       r2 = ecp(ie)%rad(MIN(ir,ecp(ie)%mmax))
+       if( ir > 1 ) then
+          vr(:) = ( xa(iradial) - r1 ) / ( r2 - r1 ) * ecp(ie)%vpspll(ir  ,:) &
+                 +( r2 - xa(iradial) ) / ( r2 - r1 ) * ecp(ie)%vpspll(ir-1,:)
+          ur(:) = ( xa(iradial) - r1 ) / ( r2 - r1 ) * ecp(ie)%wfll(ir  ,:) &
+                 +( r2 - xa(iradial) ) / ( r2 - r1 ) * ecp(ie)%wfll(ir-1,:)
+       else
+         vr(:) = ecp(ie)%vpspll(1,:)
+         ur(:) = ecp(ie)%wfll(1,:)
+       endif
+       ! remove the Coulomb part for the local part: it is treated in the regular routine setup_nucleus
+       do iecp=1,necp
+         if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
+           vr(iecp) = vr(iecp) + zvalence(icenter) /  xa(iradial)
+         endif
+       enddo
+     endif
 
      int_fixed_r(:,:) = 0.0_dp
      do i1=1,nangular_ecp
@@ -1083,27 +1116,75 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        do iecp=1,necp
 
          if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
-           do jbf=1,basis%nbf
-             do ibf=1,basis%nbf
-               hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
-                   + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
-                      * wxa(iradial) * xa(iradial)**2  &
-                      * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+           if( ecp(ie)%mmax == 0 ) then
+             do jbf=1,basis%nbf
+               do ibf=1,basis%nbf
+                 hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                     + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
+                        * wxa(iradial) * xa(iradial)**2  &
+                        * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+               enddo
              enddo
-           enddo
+           else  ! numerical local
+             do jbf=1,basis%nbf
+               do ibf=1,basis%nbf
+                 hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                     + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
+                        * wxa(iradial) * xa(iradial)**2  &
+                        * vr(iecp)
+               enddo
+             enddo
+           endif
 
-         else
-           do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
-             iproj = iproj + 1
-             int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
-                                       * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
-                                          * w1(i1) * 4.0_dp * pi
-           enddo
+         else  ! non local
+           if( ecp(ie)%mmax == 0 ) then
+             do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+               iproj = iproj + 1
+               int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
+                                         * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                            * w1(i1) * 4.0_dp * pi
+             enddo
+           else ! numerical kleinman-bylander projectors
+             do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+               iproj = iproj + 1
+               kb(:,iproj) = kb(:,iproj) + basis_function_r(:) &
+                                 * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                    * w1(i1) * 4.0_dp * pi *  wxa(iradial) * xa(iradial) &
+                                        * vr(iecp) * ur(iecp)
+             enddo
+           endif
          endif
 
-       enddo
+       enddo ! iecp
      enddo ! (theta, phi) points
 
+     ! non-local ECP contribution
+     if( ecp(ie)%mmax == 0 ) then
+       iproj = 0
+       do iecp=1,necp
+         if( ecp(ie)%lk(iecp) /= -1 ) then
+           do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+             iproj = iproj + 1
+             do jbf=1,basis%nbf
+               do ibf=1,basis%nbf
+                 hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                     + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
+                        * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+               enddo
+             enddo
+           enddo
+         endif
+       enddo
+     endif
+
+   enddo  ! iradial
+
+   deallocate(int_fixed_r)
+   deallocate(ur,vr)
+
+
+   ! non-local numerical grid contribution
+   if( ecp(ie)%mmax > 0 ) then
      iproj = 0
      do iecp=1,necp
        if( ecp(ie)%lk(iecp) /= -1 ) then
@@ -1111,20 +1192,16 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
            iproj = iproj + 1
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf
-               hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
-                   + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
-                      * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+               hamiltonian_nucleus(ibf,jbf) =  hamiltonian_nucleus(ibf,jbf)  &
+                   + kb(ibf,iproj) * kb(jbf,iproj) / ecp(ie)%ekb(iecp)
              enddo
            enddo
          enddo
        endif
      enddo
+   endif
 
-   enddo
-
-   deallocate(int_fixed_r)
-
- enddo
+ enddo ! ie
 
  call world%sum(hamiltonian_nucleus)
 
