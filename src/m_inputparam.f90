@@ -1116,7 +1116,7 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
   do iatom=1,natom
     do ielement_ecp=1,nelement_ecp
       if( ABS( element_ecp(ielement_ecp) - zatom(iatom) ) < 1.0e-5_dp ) then
-        zvalence(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%nelec , dp )
+        zvalence(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%ncore , dp )
         exit
       endif
     enddo

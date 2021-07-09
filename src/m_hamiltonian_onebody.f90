@@ -1060,10 +1060,6 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
    if( .NOT. element_has_ecp ) cycle
 
    necp = ecp(ie)%necp
-   if( ecp(ie)%mmax > 0 ) then
-     allocate(vr(necp),ur(necp))
-   endif
-
 
    nproj = 0
    do iecp=1,necp
@@ -1071,28 +1067,44 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        nproj = nproj + number_basis_function_am('PURE',ecp(ie)%lk(iecp))
      endif
    enddo
-   allocate(int_fixed_r(basis%nbf,nproj))
-   allocate(kb(basis%nbf,nproj))
-   kb(:,:) = 0.0_dp
+   select case(ecp(ie)%ecp_format)
+   case(ECP_PSP6)
+     allocate(vr(necp),ur(necp))
+     allocate(kb(basis%nbf,nproj))
+     kb(:,:) = 0.0_dp
+   case(ECP_PSP8)
+     allocate(vr(necp))
+     allocate(kb(basis%nbf,nproj))
+     kb(:,:) = 0.0_dp
+   case(ECP_NWCHEM)
+     allocate(int_fixed_r(basis%nbf,nproj))
+   end select
+
 
    do iradial=1,nradial_ecp
      if( MODULO(iradial-1,world%nproc) /= world%rank ) cycle
 
-     if( ecp(ie)%mmax > 0 ) then
+     ! Linear interpolation of the potentials and pseudo wavefunctions
+     select case(ecp(ie)%ecp_format)
+     case(ECP_PSP6,ECP_PSP8)
        ir = 1
        do while( ecp(ie)%rad(ir) < xa(iradial) )
          ir = ir + 1
+         if( ir > ecp(ie)%mmax ) exit
        enddo
+       if( ir > ecp(ie)%mmax ) cycle
        r1 = ecp(ie)%rad(MAX(ir-1,1))
        r2 = ecp(ie)%rad(MIN(ir,ecp(ie)%mmax))
        if( ir > 1 ) then
           vr(:) = ( xa(iradial) - r1 ) / ( r2 - r1 ) * ecp(ie)%vpspll(ir  ,:) &
                  +( r2 - xa(iradial) ) / ( r2 - r1 ) * ecp(ie)%vpspll(ir-1,:)
-          ur(:) = ( xa(iradial) - r1 ) / ( r2 - r1 ) * ecp(ie)%wfll(ir  ,:) &
-                 +( r2 - xa(iradial) ) / ( r2 - r1 ) * ecp(ie)%wfll(ir-1,:)
+          if( ALLOCATED(ur) ) then
+            ur(:) = ( xa(iradial) - r1 ) / ( r2 - r1 ) * ecp(ie)%wfll(ir  ,:) &
+                   +( r2 - xa(iradial) ) / ( r2 - r1 ) * ecp(ie)%wfll(ir-1,:)
+          endif
        else
          vr(:) = ecp(ie)%vpspll(1,:)
-         ur(:) = ecp(ie)%wfll(1,:)
+         if( ALLOCATED(ur) ) ur(:) = ecp(ie)%wfll(1,:)
        endif
        ! remove the Coulomb part for the local part: it is treated in the regular routine setup_nucleus
        do iecp=1,necp
@@ -1100,9 +1112,9 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
            vr(iecp) = vr(iecp) + zvalence(icenter) /  xa(iradial)
          endif
        enddo
-     endif
+     end select
 
-     int_fixed_r(:,:) = 0.0_dp
+     if( ALLOCATED(int_fixed_r) ) int_fixed_r(:,:) = 0.0_dp
      do i1=1,nangular_ecp
        rr(1) = xa(iradial) * x1(i1) + xatom(1,icenter)
        rr(2) = xa(iradial) * y1(i1) + xatom(2,icenter)
@@ -1115,8 +1127,12 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        iproj = 0
        do iecp=1,necp
 
-         if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
-           if( ecp(ie)%mmax == 0 ) then
+         !
+         ! Treat the local potential:
+         !
+         if( ecp(ie)%lk(iecp) == -1 ) then
+           select case(ecp(ie)%ecp_format)
+           case(ECP_NWCHEM)
              do jbf=1,basis%nbf
                do ibf=1,basis%nbf
                  hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
@@ -1125,7 +1141,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
                         * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
                enddo
              enddo
-           else  ! numerical local
+           case(ECP_PSP6,ECP_PSP8)
              do jbf=1,basis%nbf
                do ibf=1,basis%nbf
                  hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
@@ -1134,17 +1150,21 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
                         * vr(iecp)
                enddo
              enddo
-           endif
+           end select
 
-         else  ! non local
-           if( ecp(ie)%mmax == 0 ) then
+         else
+           !
+           ! non local case
+           !
+           select case(ecp(ie)%ecp_format)
+           case(ECP_NWCHEM)
              do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
                iproj = iproj + 1
                int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
                                          * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
                                             * w1(i1) * 4.0_dp * pi
              enddo
-           else ! numerical kleinman-bylander projectors
+           case(ECP_PSP6)
              do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
                iproj = iproj + 1
                kb(:,iproj) = kb(:,iproj) + basis_function_r(:) &
@@ -1152,14 +1172,22 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
                                     * w1(i1) * 4.0_dp * pi *  wxa(iradial) * xa(iradial) &
                                         * vr(iecp) * ur(iecp)
              enddo
-           endif
+           case(ECP_PSP8)
+             do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+               iproj = iproj + 1
+               kb(:,iproj) = kb(:,iproj) + basis_function_r(:) &
+                                 * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                    * w1(i1) * 4.0_dp * pi *  wxa(iradial) * xa(iradial) &
+                                        * vr(iecp)
+             enddo
+           end select
          endif
 
        enddo ! iecp
      enddo ! (theta, phi) points
 
      ! non-local ECP contribution
-     if( ecp(ie)%mmax == 0 ) then
+     if( ecp(ie)%ecp_format == ECP_NWCHEM ) then
        iproj = 0
        do iecp=1,necp
          if( ecp(ie)%lk(iecp) /= -1 ) then
@@ -1179,12 +1207,14 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
    enddo  ! iradial
 
-   deallocate(int_fixed_r)
-   deallocate(ur,vr)
+   if( ALLOCATED(int_fixed_r) ) deallocate(int_fixed_r)
+   if( ALLOCATED(ur) ) deallocate(ur)
+   if( ALLOCATED(vr) ) deallocate(vr)
 
 
    ! non-local numerical grid contribution
-   if( ecp(ie)%mmax > 0 ) then
+   select case(ecp(ie)%ecp_format)
+   case(ECP_PSP6,ECP_PSP8)
      iproj = 0
      do iecp=1,necp
        if( ecp(ie)%lk(iecp) /= -1 ) then
@@ -1193,13 +1223,13 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf
                hamiltonian_nucleus(ibf,jbf) =  hamiltonian_nucleus(ibf,jbf)  &
-                   + kb(ibf,iproj) * kb(jbf,iproj) / ecp(ie)%ekb(iecp)
+                   + kb(ibf,iproj) * kb(jbf,iproj) * ecp(ie)%ekb(iecp)
              enddo
            enddo
          enddo
        endif
      enddo
-   endif
+   end select
 
  enddo ! ie
 

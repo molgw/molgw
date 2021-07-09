@@ -14,11 +14,16 @@ module m_ecp
   use ISO_FORTRAN_ENV, only: IOSTAT_END
 
 
+  integer,parameter :: ECP_NWCHEM = 1
+  integer,parameter :: ECP_PSP6   = 2
+  integer,parameter :: ECP_PSP8   = 3
+
   integer,protected                :: nelement_ecp
   integer,protected,allocatable    :: element_ecp(:)
 
   type effective_core_potential
-    integer              :: nelec          ! number of core electrons
+    integer              :: ecp_format
+    integer              :: ncore          ! number of core electrons
     integer              :: necp           ! number of projectors
     integer,allocatable  :: lk(:)          ! angular momentum of the projector (-1 stands for local component)
     ! ECP
@@ -57,7 +62,6 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
   character(len=5)   :: amc
   integer :: ilen,inextblank,ielement_ecp,iecp
   logical :: file_exists
-  logical :: psp6
   !=====
 
   !
@@ -109,7 +113,9 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
   nelement_ecp = SIZE(element_ecp)
   allocate(ecp(nelement_ecp))
 
-  psp6 = ( INDEX(ecp_name,'psp6') /= 0 )
+  ecp(:)%ecp_format = ECP_NWCHEM
+  if( INDEX(ecp_name,'psp6') /= 0 ) ecp(:)%ecp_format = ECP_PSP6
+  if( INDEX(ecp_name,'psp8') /= 0 ) ecp(:)%ecp_format = ECP_PSP8
 
   !
   ! Second, read the ECP parameters from ECP file
@@ -129,14 +135,18 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
       call die('init_ecp: ECP file not found')
     endif
 
-    if( psp6 ) then
-      call read_psp6_file(ecp_filename,element,ecp(ielement_ecp))
-    else
+    select case(ecp(ielement_ecp)%ecp_format)
+    case(ECP_NWCHEM)
       call read_ecp_file(ecp_filename,element,ecp(ielement_ecp))
-    endif
+    case(ECP_PSP6)
+      call read_psp6_file(ecp_filename,element,ecp(ielement_ecp))
+    case(ECP_PSP8)
+      call read_psp8_file(ecp_filename,element,ecp(ielement_ecp))
+    end select
 
-    write(stdout,'(6x,a,i3)') 'Core electrons ',ecp(ielement_ecp)%nelec
-    if( psp6 ) then
+    write(stdout,'(6x,a,i3)') 'Core electrons ',ecp(ielement_ecp)%ncore
+    select case(ecp(ielement_ecp)%ecp_format)
+    case(ECP_PSP6,ECP_PSP8)
       write(stdout,'(6x,a)') 'l_k    KB energy'
 
       do iecp=1,ecp(ielement_ecp)%necp
@@ -147,7 +157,7 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
         endif
         write(stdout,'(6x,a,3x,f14.6)') amc,ecp(ielement_ecp)%ekb(iecp)
       enddo
-    else
+    case(ECP_NWCHEM)
       write(stdout,'(6x,a)') 'l_k      n_k       zeta_k          d_k  '
 
       do iecp=1,ecp(ielement_ecp)%necp
@@ -162,10 +172,9 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
                             ecp(ielement_ecp)%zetak(iecp), &
                             ecp(ielement_ecp)%dk(iecp)
       enddo
-    endif
+    end select
 
   enddo
-
 
 
 end subroutine init_ecp
@@ -229,7 +238,7 @@ subroutine read_ecp_file(ecp_filename,element,ecpi)
     i2 = INDEX(line,' ')
     amc = capitalize(line(1:i2-1))
     if( amc == 'NELEC' ) then
-      read(line(i2+1:),'(i10)') ecpi%nelec
+      read(line(i2+1:),'(i10)') ecpi%ncore
       line='_____'
       cycle
     endif
@@ -278,6 +287,7 @@ end subroutine read_ecp_file
 
 
 !=========================================================================
+! Read psp6 ABINIT format for Haman or TM pseudos generated with FHIPP
 subroutine read_psp6_file(ecp_filename,element,ecpi)
   implicit none
 
@@ -302,7 +312,7 @@ subroutine read_psp6_file(ecp_filename,element,ecpi)
     read(ecpunit,*) title
   enddo
 
-  ecpi%nelec = NINT(zatom - zion)
+  ecpi%ncore = NINT(zatom - zion)
   ecpi%necp  = lmax + 1
   allocate(ecpi%lk(lmax+1))
   do il=0,lmax
@@ -347,7 +357,7 @@ subroutine read_psp6_file(ecp_filename,element,ecpi)
   !  end do
   !enddo
 
-  ! Calculate the KB denominators
+  ! Calculate the KB "energy"
   ecpi%ekb(:) = 0.0_dp
   do il=1,lmax+1
     if( il == lloc + 1 ) cycle
@@ -360,6 +370,7 @@ subroutine read_psp6_file(ecp_filename,element,ecpi)
                 + ecpi%rad(ir)  * ecpi%vpspll(ir,il)   * ecpi%wfll(ir,il)**2 ) &
                         * al / 2.0_dp
     end do
+    ecpi%ekb(il) = 1.0_dp / ecpi%ekb(il)
   enddo
 
 
@@ -367,6 +378,91 @@ subroutine read_psp6_file(ecp_filename,element,ecpi)
 
 
 end subroutine read_psp6_file
+
+
+!=========================================================================
+! Read psp8 ABINIT format for Don R Haman ONCVPSP pseudopotential type
+subroutine read_psp8_file(ecp_filename,element,ecpi)
+  implicit none
+
+  character(*),intent(in)                      :: ecp_filename
+  character(len=2),intent(in)                  :: element
+  type(effective_core_potential),intent(inout) :: ecpi
+  !=====
+  integer  :: ecpunit
+  integer  :: ir,il,jdum,iecp,jecp,iproj
+  integer  :: pspdat,pspcod,pspxc,lmax,lloc,mmax,r2well
+  real(dp) :: zatom,zion,al
+  character(len=128) :: title
+  integer  :: nproj(5),extension_switch(5)
+  !=====
+
+
+  open(newunit=ecpunit,file=TRIM(ecp_filename),status='old',action='read')
+
+  ! Ne    ONCVPSP-3.3.0  r_core=   1.31204   1.70576
+  ! 10.0000      8.0000      171101    zatom,zion,pspd
+  ! 8   -1012   1     4   400     0    pspcod,pspxc,lmax,lloc,mmax,r2well
+  ! 3.99000000  0.00000000  0.00000000    rchrg fchrg qchrg
+  ! 2     2     0     0     0    nproj
+  ! 1     1           extension_switch
+  ! 0                         2.5609260873145D+00 -4.8346372575205D-01
+  ! 1  0.0000000000000D+00  6.8997318969366D-10  3.1387163701435D-10
+  ! 2  1.0000000000000D-02  9.2957245369341D-02  1.4251575380487D-02
+  ! 3  2.0000000000000D-02  1.8565156365333D-01  2.8580421518622D-02
+  ! 4  3.0000000000000D-02  2.7782021681486D-01  4.3063059135132D-02
+
+
+  read(ecpunit,*) title
+  read(ecpunit,*) zatom,zion,pspdat
+  read(ecpunit,*) pspcod,pspxc,lmax,lloc,mmax,r2well
+  read(ecpunit,*) title  ! dont read non linear core corrections
+  read(ecpunit,*) nproj(:)
+  read(ecpunit,*) extension_switch(1:lmax+1)
+  if( ANY(extension_switch(1:lmax+1) /= 1) ) call die('read_psp8_file: relativistic pseudo file not implemented')
+
+
+  ecpi%ncore = NINT(zatom - zion)
+  ecpi%necp  = SUM(nproj(:)) + 1   ! +1 corresponds to the local potential
+  allocate(ecpi%lk(ecpi%necp))
+  iecp = 0
+  do il=0,4
+    do iproj=1,nproj(il+1)
+      iecp = iecp + 1
+      ecpi%lk(iecp) = il
+    enddo
+  enddo
+  ! Last one is the local potential
+  ecpi%lk(ecpi%necp) = -1
+  ecpi%mmax     = mmax
+
+
+  allocate(ecpi%rad(mmax))
+  allocate(ecpi%vpspll(mmax,ecpi%necp))
+  allocate(ecpi%ekb(ecpi%necp))
+
+  iecp = 0
+  jecp = 0
+  do il=0,lmax
+    iecp = jecp + 1
+    jecp = iecp + nproj(il+1) - 1
+    read(ecpunit,*) jdum,ecpi%ekb(iecp:jecp)
+    do ir=1,mmax
+      read(ecpunit,*) jdum,ecpi%rad(ir),ecpi%vpspll(ir,iecp:jecp)
+    end do
+  enddo
+
+  ! Read local potential
+  read(ecpunit,*) jdum
+  do ir=1,mmax
+    read(ecpunit,*) jdum,ecpi%rad(ir),ecpi%vpspll(ir,ecpi%necp)
+  end do
+
+
+  close(ecpunit)
+
+
+end subroutine read_psp8_file
 
 
 !=========================================================================
