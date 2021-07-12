@@ -196,6 +196,7 @@ subroutine read_ecp_file(ecp_filename,element,ecpi)
   logical            :: end_of_file
   !=====
 
+  write(stdout,*) 'read NWCHEM ECP file:',TRIM(ecp_filename)
   open(newunit=ecpunit,file=TRIM(ecp_filename),status='old',action='read')
 
   ! Reading an ECP file in NWCHEM format
@@ -303,6 +304,7 @@ subroutine read_psp6_file(ecp_filename,element,ecpi)
   !=====
 
 
+  write(stdout,*) 'read PSP6 ECP file:',TRIM(ecp_filename)
   open(newunit=ecpunit,file=TRIM(ecp_filename),status='old',action='read')
 
   read(ecpunit,*) title
@@ -394,10 +396,11 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
   integer  :: pspdat,pspcod,pspxc,lmax,lloc,mmax,r2well
   real(dp) :: zatom,zion,al
   character(len=128) :: title
-  integer  :: nproj(5),extension_switch(5)
+  integer  :: nproj(5),extension_switch(2)
   !=====
 
 
+  write(stdout,*) 'read PSP8 ECP file:',TRIM(ecp_filename)
   open(newunit=ecpunit,file=TRIM(ecp_filename),status='old',action='read')
 
   ! Ne    ONCVPSP-3.3.0  r_core=   1.31204   1.70576
@@ -418,8 +421,8 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
   read(ecpunit,*) pspcod,pspxc,lmax,lloc,mmax,r2well
   read(ecpunit,*) title  ! dont read non linear core corrections
   read(ecpunit,*) nproj(:)
-  read(ecpunit,*) extension_switch(1:lmax+1)
-  if( ANY(extension_switch(1:lmax+1) /= 1) ) call die('read_psp8_file: relativistic pseudo file not implemented')
+  read(ecpunit,*) extension_switch(:)
+  if( ANY(extension_switch(:) /= 1) ) call die('read_psp8_file: relativistic pseudo file not implemented')
 
 
   ecpi%ncore = NINT(zatom - zion)

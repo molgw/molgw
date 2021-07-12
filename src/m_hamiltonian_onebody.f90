@@ -1207,10 +1207,6 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
    enddo  ! iradial
 
-   if( ALLOCATED(int_fixed_r) ) deallocate(int_fixed_r)
-   if( ALLOCATED(ur) ) deallocate(ur)
-   if( ALLOCATED(vr) ) deallocate(vr)
-
 
    ! non-local numerical grid contribution
    select case(ecp(ie)%ecp_format)
@@ -1230,6 +1226,12 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        endif
      enddo
    end select
+
+
+   if( ALLOCATED(kb) ) deallocate(kb)
+   if( ALLOCATED(int_fixed_r) ) deallocate(int_fixed_r)
+   if( ALLOCATED(ur) ) deallocate(ur)
+   if( ALLOCATED(vr) ) deallocate(vr)
 
  enddo ! ie
 
