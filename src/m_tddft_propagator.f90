@@ -77,7 +77,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  integer                    :: fixed_atom_list(natom-nprojectile)
  integer                    :: ispin
  integer                    :: istate,nstate_tmp
- integer                    :: nwrite_step
  real(dp)                   :: time_min
  real(dp),allocatable       :: dipole_ao(:,:,:)
  real(dp),allocatable       :: s_matrix(:,:)
@@ -219,7 +218,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    call setup_nucleus_ecp(basis,hamiltonian_nucleus)
  endif
 
- if(write_step / time_step - NINT( write_step / time_step ) > 0.0E-10_dp .OR. write_step < time_step ) then
+ if(write_step / time_step - NINT( write_step / time_step ) > 1.0E-10_dp .OR. write_step < time_step ) then
    call die("Tddft error: write_step is not a multiple of time_step or smaller than time_step.")
  end if
 
@@ -281,7 +280,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  ! Number of iterations
  ntau = NINT( (time_sim-time_min) / time_step )
- nwrite_step = NINT( (time_sim - time_min) / write_step )
 
  if(excit_type%form==EXCIT_LIGHT) then
    call clean_allocate('Dipole_basis for TDDFT',dipole_ao,basis%nbf,basis%nbf,3)
