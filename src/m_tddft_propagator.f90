@@ -31,7 +31,7 @@ module m_tddft_propagator
   module procedure propagate_orth_ham_2
  end interface propagate_orth
 
- integer,private                    :: nocc, ncycle_max = 50
+ integer,private                    :: nocc
  real(dp),private                   :: dipole(3)
  real(dp),private                   :: time_read !defaut=0.0_dp
  real(dp),allocatable,private       :: xatom_start(:,:)
@@ -87,7 +87,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  real(dp),allocatable       :: hamiltonian_kinetic(:,:)
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !=====initial values
- integer                    :: nstate,info,min_index(1),icycle,ind
+ integer                    :: nstate,info,min_index(1),ind
  real(dp),allocatable       :: energy_tddft(:,:)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
@@ -246,7 +246,24 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
-   if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS ) then
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     !! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
+     !! which are also that of  U = S**-1 * ( H - i*D )
+     call init_c_matrix(basis,               &
+                        time_min,            &
+                        s_matrix,            &
+                        x_matrix,            &
+                        d_matrix,            &
+                        occupation ,         &
+                        hamiltonian_kinetic, &
+                        hamiltonian_nucleus, &
+                        dipole_ao,           &
+                        c_matrix_cmplx,      &
+                        c_matrix_orth_cmplx, &
+                        h_cmplx,             &
+                        h_small_cmplx,       &
+                        en_tddft)
+   else
      call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
      allocate(energy_tddft(nstate,nspin))
      do ispin=1, nspin
@@ -259,101 +276,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end if
  end if
 
-
-   !! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
-   !! which are also that of  U = S**-1 * ( H - i*D )
-   !if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-
-   !  call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-   !  allocate( p_matrix_cmplx_hist, SOURCE = p_matrix_cmplx(:,:,:) )
-   !  allocate( h_hist_cmplx(basis%nbf,basis%nbf,nspin,2) )
-   !  h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
-
-   !  ! self-consistency loop for C(t0) convergence in ortho basis
-   !  ! M = H - iD + mv**2*S is Hermitian at t0
-   !  do icycle = 1, ncycle_max
-
-   !    write(stdout,'(/,1x,a)')
-   !    write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
-   !    write(stdout,'(/,1x,a)')
-
-   !    allocate( m_matrix_small, MOLD = h_small_cmplx )
-   !    allocate( m_eigenvec_small, MOLD = h_small_cmplx )
-   !    allocate( m_eigenvector(basis%nbf,nstate,nspin), m_eigenval(nstate,nspin) )
-
-   !    do ispin=1, nspin
-   !      ! in ortho basis : M' = X**H * (H-iD+mv**2*S) * X
-   !      m_eigenvector(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
-   !      m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
-   !                       + 0.5_dp*SUM(vel(:,natom)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
-   !      m_eigenvector(:,:,ispin)  = MATMUL( m_eigenvector(:,:,ispin), x_matrix(:,:) )
-   !      m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
-   !      ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
-   !      call diagonalize( postscf_diago_flavor, m_matrix_small(:,:,ispin), &
-   !                        m_eigenval(:,ispin), m_eigenvec_small(:,:,ispin) )
-   !      ! M = X * M'
-   !      m_eigenvector(:,:,ispin) = MATMUL( x_matrix(:,:) , m_eigenvec_small(:,:,ispin) )
-   !    end do
-
-   !    ! get new c_matrix_cmplx and c_matrix_orth_cmplx
-   !    call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
-   !    call clean_deallocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx)
-   !    call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
-   !    call clean_allocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
-   !    c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
-   !    c_matrix_orth_cmplx(:,1:nocc,:) = m_eigenvec_small(:,1:nocc,:)
-   !    if( nspin > 1 ) then
-   !      write(stdout, '(a10,3(2x,a10))') 'TDDFT energy', ' ', 'occupation'
-   !      write(stdout, '(a10,4(2x,a10))') 'spin1', 'spin2', 'spin1', 'spin2'
-   !    else
-   !      write(stdout, '(a10,2(2x,a10))') 'TDDFT energy', 'occupation'
-   !    end if
-   !    do istate = 1, nstate
-   !      write(stdout, '(f10.4,4(2x,f10.4))') m_eigenval(istate,:), occupation(istate, :)
-   !    end do
-   !    deallocate(m_matrix_small)
-   !    deallocate(m_eigenvec_small, m_eigenvector)
-   !    deallocate(m_eigenval)
-
-   !    call setup_hamiltonian_cmplx(basis,                    &
-   !                                 nstate,                   &
-   !                                 0,                        &
-   !                                 time_min,                 &
-   !                                 0.0_dp,                   &
-   !                                 occupation,               &
-   !                                 c_matrix_cmplx,           &
-   !                                 hamiltonian_kinetic,      &
-   !                                 hamiltonian_nucleus,      &
-   !                                 h_small_cmplx,            &
-   !                                 x_matrix,                 &
-   !                                 dipole_ao,                &
-   !                                 h_cmplx,en_tddft)
-
-   !    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-   !    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
-
-   !    rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
-   !    !print*, 'abs(rms) = ', ABS(rms)
-   !    if( ABS(rms) < tolscf_tddft ) then
-   !      write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
-   !      exit
-   !    else
-   !      if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
-   !    end if
-   !    p_matrix_cmplx_hist(:,:,:) = p_matrix_cmplx(:,:,:)
-   !    h_hist_cmplx(:,:,:,2) = h_hist_cmplx(:,:,:,1)
-   !    h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
-   !    ! simple mixing of H
-   !    h_cmplx = 0.5_dp * h_hist_cmplx(:,:,:,1) + 0.5_dp * h_hist_cmplx(:,:,:,2)
-
-   !  end do
-   !  deallocate(p_matrix_cmplx_hist, h_hist_cmplx)
-
-   !end if
- !end if
-
  ! E_iD = - Tr{P*iD}
- en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+ !en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
  ! Number of iterations
  ntau = NINT( (time_sim-time_min) / time_step )
@@ -375,7 +299,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  !==frozen core: energy initialization==
  if( ncore_tddft > 0 ) then
-   call clean_allocate('Inial energies for the frozen core',energies_start,nstate,nspin)
+   call clean_allocate('Initial energies for the frozen core',energies_start,nstate,nspin)
    call clean_allocate('a_matrix_orth_start_cmplx for the frozen core',a_matrix_orth_start_cmplx,nstate,nstate,nspin)
    do ispin=1, nspin
      call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energies_start(:,ispin),a_matrix_orth_start_cmplx(:,:,ispin))
@@ -672,6 +596,135 @@ subroutine output_timing_one_iter()
 
 end subroutine output_timing_one_iter
 
+!=========================================================================
+
+subroutine init_c_matrix(basis,               &
+                         time_min,            &
+                         s_matrix,            &
+                         x_matrix,            &
+                         d_matrix,            &
+                         occupation ,         &
+                         hamiltonian_kinetic, &
+                         hamiltonian_nucleus, &
+                         dipole_ao,           &
+                         c_matrix_cmplx,      &
+                         c_matrix_orth_cmplx, &
+                         h_cmplx,             &
+                         h_small_cmplx,       &
+                         en_tddft)
+
+  implicit none
+  type(basis_set),intent(in)      :: basis
+  real(dp),intent(in)             :: time_min
+  real(dp),intent(in)             :: x_matrix(:,:)
+  real(dp),intent(in)             :: s_matrix(:,:)
+  real(dp),intent(in)             :: d_matrix(:,:)
+  real(dp),intent(in)             :: occupation(:,:)
+  real(dp),intent(inout)          :: hamiltonian_kinetic(:,:)
+  real(dp),intent(inout)          :: hamiltonian_nucleus(:,:)
+  real(dp),intent(in),allocatable :: dipole_ao(:,:,:)
+  complex(dp),intent(inout),allocatable  :: c_matrix_cmplx(:,:,:)
+  complex(dp),intent(inout),allocatable  :: c_matrix_orth_cmplx(:,:,:)
+  complex(dp),intent(inout)       :: h_cmplx(:,:,:)
+  complex(dp),intent(inout)       :: h_small_cmplx(:,:,:)
+  type(energy_contributions),intent(inout) :: en_tddft
+!====
+  integer                       :: icycle, ncycle_max = 50
+  integer                       :: ispin, istate, nstate
+  complex(dp),allocatable       :: p_matrix_cmplx(:,:,:)
+  complex(dp),allocatable       :: m_matrix_small(:,:,:) ! M' = X**H * ( H - i*D ) * X
+  complex(dp),allocatable       :: m_eigenvec_small(:,:,:), m_eigenvector(:,:,:)
+!====
+
+  nstate = SIZE(occupation(:,:),DIM=1)
+  allocate( p_matrix_cmplx(basis%nbf,basis%nbf,nspin) )
+
+  call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+  allocate( p_matrix_cmplx_hist, SOURCE = p_matrix_cmplx(:,:,:) )
+  allocate( h_hist_cmplx(basis%nbf,basis%nbf,nspin,2) )
+  h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
+
+  ! self-consistency loop for C(t0) convergence in ortho basis
+  ! M = H - iD + mv**2*S is Hermitian at t0
+  do icycle = 1, ncycle_max
+
+    write(stdout,'(/,1x,a)')
+    write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
+    write(stdout,'(/,1x,a)')
+
+    allocate( m_matrix_small, MOLD = h_small_cmplx )
+    allocate( m_eigenvec_small, MOLD = h_small_cmplx )
+    allocate( m_eigenvector(basis%nbf,nstate,nspin), m_eigenval(nstate,nspin) )
+
+    do ispin=1, nspin
+      ! in ortho basis : M' = X**H * (H-iD+mv**2*S) * X
+      m_eigenvector(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
+      m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
+                       + 0.5_dp*SUM(vel(:,natom)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
+      m_eigenvector(:,:,ispin)  = MATMUL( m_eigenvector(:,:,ispin), x_matrix(:,:) )
+      m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
+      ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
+      call diagonalize( postscf_diago_flavor, m_matrix_small(:,:,ispin), &
+                        m_eigenval(:,ispin), m_eigenvec_small(:,:,ispin) )
+      ! M = X * M'
+      m_eigenvector(:,:,ispin) = MATMUL( x_matrix(:,:) , m_eigenvec_small(:,:,ispin) )
+    end do
+
+    ! get new c_matrix_cmplx and c_matrix_orth_cmplx
+    call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
+    call clean_deallocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx)
+    call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
+    call clean_allocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
+    c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
+    c_matrix_orth_cmplx(:,1:nocc,:) = m_eigenvec_small(:,1:nocc,:)
+    if( nspin > 1 ) then
+      write(stdout, '(a10,3(2x,a10))') 'TDDFT energy', ' ', 'occupation'
+      write(stdout, '(a10,4(2x,a10))') 'spin1', 'spin2', 'spin1', 'spin2'
+    else
+      write(stdout, '(a10,2(2x,a10))') 'TDDFT energy', 'occupation'
+    end if
+    do istate = 1, nocc
+      write(stdout, '(f10.4,4(2x,f10.4))') m_eigenval(istate,:), occupation(istate, :)
+    end do
+    deallocate(m_matrix_small)
+    deallocate(m_eigenvec_small, m_eigenvector)
+    deallocate(m_eigenval)
+
+    call setup_hamiltonian_cmplx(basis,                    &
+                                 nstate,                   &
+                                 0,                        &
+                                 time_min,                 &
+                                 0.0_dp,                   &
+                                 occupation,               &
+                                 c_matrix_cmplx,           &
+                                 hamiltonian_kinetic,      &
+                                 hamiltonian_nucleus,      &
+                                 h_small_cmplx,            &
+                                 x_matrix,                 &
+                                 dipole_ao,                &
+                                 h_cmplx,en_tddft)
+
+    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+
+    rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
+    !print*, 'abs(rms) = ', ABS(rms)
+    if( ABS(rms) < tolscf_tddft ) then
+      write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
+      exit
+    else
+      if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
+    end if
+    p_matrix_cmplx_hist(:,:,:) = p_matrix_cmplx(:,:,:)
+    h_hist_cmplx(:,:,:,2) = h_hist_cmplx(:,:,:,1)
+    h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
+    ! simple mixing of H
+    h_cmplx = 0.5_dp * h_hist_cmplx(:,:,:,1) + 0.5_dp * h_hist_cmplx(:,:,:,2)
+
+  end do
+  deallocate(p_matrix_cmplx, p_matrix_cmplx_hist, h_hist_cmplx)
+
+end subroutine init_c_matrix
 
 !=========================================================================
 subroutine update_basis_eri(basis,auxil_basis)
