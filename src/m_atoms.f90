@@ -112,14 +112,12 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
  ! ncenter_nuclei contains the number of sites having a nucleus
  ! ncenter_basis  contains the number of sites having basis functions
  !
- write(*,*) 'FBFB',nprojectile
  xatom(:,1:ncenter_nuclei-nprojectile) = x_read(:,1:ncenter_nuclei-nprojectile)
  zatom(1:ncenter_nuclei-nprojectile)   = zatom_read(1:ncenter_nuclei-nprojectile)
  if( nprojectile == 1 ) then
    xatom(:,ncenter_nuclei) = x_read(:,natom_read)
    zatom(ncenter_nuclei)   = zatom_read(natom_read)
  endif
- write(*,*) 'FBFB',zatom_read(:)
 
  if( excit_name == "ANTINUCLEUS" ) then
    zatom(ncenter_nuclei) = -zatom(ncenter_nuclei)
@@ -140,13 +138,6 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
    xbasis(:,jcenter) = x_read(:,iatom)
    zbasis(jcenter)   = NINT(zatom_read(iatom))
  enddo
- write(*,*) 'FBFB  ======='
- write(*,*) COUNT(.NOT. nucleus_wo_basis(:))
- write(*,*) ncenter_basis
- write(*,*) ncenter_nuclei
- write(*,*) xbasis(:,:)
- write(*,*) zbasis(:)
- write(*,*) '=== B  ======='
 
  !
  ! Check for atoms too close
