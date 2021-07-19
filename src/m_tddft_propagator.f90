@@ -179,13 +179,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  end if
 
  call setup_overlap(basis,s_matrix)
+ call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
  call setup_x_matrix(min_overlap,s_matrix,nstate_tmp,x_matrix)
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
 
  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
    call setup_D_matrix_analytic(basis,d_matrix,.FALSE.)
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-   call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
  else
    d_matrix(:,:) = 0.0_dp
    if( nstate /= nstate_tmp ) then
