@@ -300,11 +300,13 @@ subroutine fock_density_matrix(basis,occupation,energy,c_matrix,hfock,p_matrix)
 
   p_matrix_mo(:,:,:) = 0.0_dp
   do pqspin=1,nspin
+    ! Fill the diagonal
     do pstate=1,nstate
       p_matrix_mo(pstate,pstate,pqspin) = occupation(pstate,pqspin)
     enddo
-    do istate=1,nhomo_G
-      do astate=nhomo_G+1,nstate
+
+    do istate=ncore_G+1,nhomo_G
+      do astate=nhomo_G+1,nvirtual_G-1
         p_matrix_mo(istate,astate,pqspin) = hfock_mo(istate,astate,pqspin)  &
                                                / ( energy(istate,pqspin) - energy(astate,pqspin) ) * spin_fact
         p_matrix_mo(astate,istate,pqspin) = p_matrix_mo(istate,astate,pqspin)
@@ -362,9 +364,9 @@ subroutine fock_density_matrix_second_order(basis,occupation,energy,c_matrix,hfo
   !
   ! occupied - occupied block
   do pqspin=1,nspin
-    do istate=1,nhomo_G
-      do jstate=1,nhomo_G
-        do astate=nhomo_G+1,nstate
+    do istate=ncore_G+1,nhomo_G
+      do jstate=ncore_G+1,nhomo_G
+        do astate=nhomo_G+1,nvirtual_G-1
           p_matrix_mo(istate,jstate,pqspin) = p_matrix_mo(istate,jstate,pqspin) &
              - spin_fact * delta_sigma_mo(istate,astate,pqspin)  * delta_sigma_mo(astate,jstate,pqspin) &
                      / ( ( energy(astate,pqspin) - energy(istate,pqspin) ) * ( energy(astate,pqspin) - energy(jstate,pqspin) ) )
@@ -375,9 +377,9 @@ subroutine fock_density_matrix_second_order(basis,occupation,energy,c_matrix,hfo
   !
   ! virtual - virtual block
   do pqspin=1,nspin
-    do astate=nhomo_G+1,nstate
-      do bstate=nhomo_G+1,nstate
-        do istate=1,nhomo_G
+    do astate=nhomo_G+1,nvirtual_G-1
+      do bstate=nhomo_G+1,nvirtual_G-1
+        do istate=ncore_G+1,nhomo_G
           p_matrix_mo(astate,bstate,pqspin) = p_matrix_mo(astate,bstate,pqspin) &
              + spin_fact * delta_sigma_mo(astate,istate,pqspin)  * delta_sigma_mo(istate,bstate,pqspin) &
                      / ( ( energy(istate,pqspin) - energy(astate,pqspin) ) * ( energy(istate,pqspin) - energy(bstate,pqspin) ) )
@@ -388,15 +390,15 @@ subroutine fock_density_matrix_second_order(basis,occupation,energy,c_matrix,hfo
   !
   ! occupied - virtual block
   do pqspin=1,nspin
-    do istate=1,nhomo_G
-      do astate=nhomo_G+1,nstate
+    do istate=ncore_G+1,nhomo_G
+      do astate=nhomo_G+1,nvirtual_G-1
 
-        do bstate=nhomo_G+1,nstate
+        do bstate=nhomo_G+1,nvirtual_G-1
           p_matrix_mo(istate,astate,pqspin) = p_matrix_mo(istate,astate,pqspin) &
              + spin_fact * delta_sigma_mo(istate,bstate,pqspin)  * delta_sigma_mo(bstate,astate,pqspin) &
                      / ( ( energy(istate,pqspin) - energy(astate,pqspin) ) * ( energy(istate,pqspin) - energy(bstate,pqspin) ) )
         enddo
-        do jstate=1,nhomo_G
+        do jstate=ncore_G+1,nhomo_G
           p_matrix_mo(istate,astate,pqspin) = p_matrix_mo(istate,astate,pqspin) &
              - spin_fact * delta_sigma_mo(istate,bstate,pqspin)  * delta_sigma_mo(bstate,astate,pqspin) &
                      / ( ( energy(astate,pqspin) - energy(istate,pqspin) ) * ( energy(astate,pqspin) - energy(jstate,pqspin) ) )
@@ -408,8 +410,8 @@ subroutine fock_density_matrix_second_order(basis,occupation,energy,c_matrix,hfo
   !
   ! virtual - occupied block (by symmetry)
   do pqspin=1,nspin
-    do astate=nhomo_G+1,nstate
-      do istate=1,nhomo_G
+    do astate=nhomo_G+1,nvirtual_G-1
+      do istate=ncore_G+1,nhomo_G
         p_matrix_mo(astate,istate,pqspin) = p_matrix_mo(istate,astate,pqspin)
       enddo
     enddo
