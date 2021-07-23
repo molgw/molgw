@@ -572,17 +572,18 @@ subroutine summary_input()
   !
   ! Summarize some important input parameters
   write(stdout,'(/,a,/)')    ' Summary of important input parameters '
-  write(stdout,'(a25,2x,a)') '         SCF type: ',calc_type%scf_name
-  write(stdout,'(a25,2x,a)') '    Post SCF type: ',calc_type%postscf_name
-  write(stdout,'(a25,i3)')   ' natom: ',natom
-  write(stdout,'(a25,f8.4)') ' electrons: ',electrons
-  write(stdout,'(a25,f8.4)') ' charge: ',charge
-  write(stdout,'(a25,i3)')   ' spin polarization: ',nspin
-  write(stdout,'(a25,f8.4)') ' magnetization: ',magnetization
-  write(stdout,'(a25,2x,a)') ' basis file path:',basis_path
-  write(stdout,'(a25,2x,a)') ' basis set: ',basis_name(1)
-  write(stdout,'(a25,2x,a)') ' auxiliary basis set: ',auxil_basis_name(1)
-  write(stdout,'(a25,2x,a)') ' gaussian type: ',gaussian_type
+  write(stdout,'(a30,2x,a)') '         SCF type: ',calc_type%scf_name
+  write(stdout,'(a30,2x,a)') '    Post SCF type: ',calc_type%postscf_name
+  write(stdout,'(a30,i3)')   ' number of atoms: ',ncenter_nuclei
+  write(stdout,'(a30,i3)')   ' number of basis centers: ',ncenter_basis
+  write(stdout,'(a30,f8.4)') ' electrons: ',electrons
+  write(stdout,'(a30,f8.4)') ' charge: ',charge
+  write(stdout,'(a30,i3)')   ' spin polarization: ',nspin
+  write(stdout,'(a30,f8.4)') ' magnetization: ',magnetization
+  write(stdout,'(a30,2x,a)') ' basis file path:',basis_path
+  write(stdout,'(a30,2x,a)') ' basis set: ',basis_name(1)
+  write(stdout,'(a30,2x,a)') ' auxiliary basis set: ',auxil_basis_name(1)
+  write(stdout,'(a30,2x,a)') ' gaussian type: ',gaussian_type
   write(stdout,*)
 
   call output_positions()
@@ -939,7 +940,7 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
   character(len=*),intent(in) :: ecp_basis,ecp_small_basis,ecp_auxil_basis
   !=====
   integer              :: natom_read
-  integer              :: element,iatom,ielement_ecp
+  integer              :: element,iatom,ielement_ecp,icenter
   integer              :: info,info1,info2,xyzfile
   character(len=12)    :: element_symbol
   real(dp),allocatable :: zatom_read(:),x_read(:,:)
@@ -1113,10 +1114,10 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
   call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)
   ! If ECP are used, tweak the nuclei charges here
   zvalence(:) = zatom(:)
-  do iatom=1,natom
+  do icenter=1,ncenter_nuclei
     do ielement_ecp=1,nelement_ecp
-      if( ABS( element_ecp(ielement_ecp) - zatom(iatom) ) < 1.0e-5_dp ) then
-        zvalence(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%ncore , dp )
+      if( ABS( element_ecp(ielement_ecp) - zatom(icenter) ) < 1.0e-5_dp ) then
+        zvalence(icenter) = zatom(icenter) - REAL( ecp(ielement_ecp)%ncore , dp )
         exit
       endif
     enddo
