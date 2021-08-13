@@ -1694,6 +1694,8 @@ subroutine get_ab()
 end subroutine get_ab
 
 #else
+ eigval(:)   = 0.0_dp
+ eigvec(:,:) = 0.0_dp
  call die('diagonalize_davidson_ci: only works with a compilation using SCALAPACK')
 #endif
 

@@ -529,6 +529,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
 
  inquire(file='manual_efermi',exist=manual_efermi)
  if(manual_efermi) then
+   write(stdout,*) 'Reading manual_efermi file'
    open(newunit=iunittmp,file='manual_efermi',action='read')
    read(iunittmp,*) efermi
    close(iunittmp)
