@@ -39,14 +39,13 @@ module m_inputparam
   integer,parameter :: GnWn         = 206
   integer,parameter :: GW           = 207
   integer,parameter :: GW_IMAG      = 216
-  integer,parameter :: G0W0GAMMA0   = 217
-  integer,parameter :: G0W0SOX0     = 219
+  integer,parameter :: GWSOSEX      = 217
+  integer,parameter :: GWSOX        = 219
   integer,parameter :: PT2          = 220
   integer,parameter :: ONE_RING     = 221
   integer,parameter :: SOX          = 222
   integer,parameter :: PT3          = 223
   integer,parameter :: TWO_RINGS    = 224
-  integer,parameter :: GWSOX        = 225
   integer,parameter :: GWPT3        = 226
 
   !
@@ -230,25 +229,22 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW_IMAG
       calc_type%selfenergy_technique = imaginary_axis_homolumo
-    case('G0W0SOX0')
-      calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = G0W0SOX0
-    case('GWSOX')
+    case('G0W0SOX0','GWSOX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOX
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('G0W0GAMMA0','GWGAMMA')
+    case('G0W0GAMMA0','GWGAMMA','GWSOSEX')
       calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = G0W0GAMMA0
-    case('GWTDDFTGAMMA','G0WTDDFTGAMMA0')
+      calc_type%selfenergy_approx = GWSOSEX
+    case('GWTDDFTGAMMA','G0WTDDFTGAMMA0','GWTDDFTSOSEX')
       calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = G0W0GAMMA0
+      calc_type%selfenergy_approx = GWSOSEX
       calc_type%is_td    =.TRUE.
-    case('EVGWGAMMA','GNW0GAMMAN')
+    case('EVGWGAMMA','GNW0GAMMAN','GWSOSEX')
       calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = G0W0GAMMA0
+      calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = EVSC
     case('LRGW')
       calc_type%is_gw      =.TRUE.
