@@ -47,6 +47,8 @@ module m_inputparam
   integer,parameter :: PT3          = 223
   integer,parameter :: TWO_RINGS    = 224
   integer,parameter :: GWPT3        = 226
+  integer,parameter :: G0W0SOX0     = 227
+  integer,parameter :: G0W0Gamma0   = 228
 
   !
   ! TDDFT variables
@@ -237,14 +239,17 @@ subroutine init_calculation_type(scf,postscf)
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('G0W0GAMMA0','GWGAMMA','GWSOSEX')
+    case('GWSOSEX')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GWSOSEX
+    case('G0W0GAMMA0','GWGAMMA')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
     case('GWTDDFTGAMMA','G0WTDDFTGAMMA0','GWTDDFTSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%is_td    =.TRUE.
-    case('EVGWGAMMA','GNW0GAMMAN','GWSOSEX')
+    case('EVGWGAMMA','GNW0GAMMAN')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = EVSC
