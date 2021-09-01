@@ -242,7 +242,7 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%is_td    =.TRUE.
-    case('EVGWGAMMA','GNW0GAMMAN','GWSOSEX')
+    case('EVGWGAMMA','GNW0GAMMAN','GNW0SOSEX','EVGWSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = EVSC
