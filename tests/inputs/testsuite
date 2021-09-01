@@ -140,6 +140,10 @@ SCF Total Energy          , -34.3976454937     , 0 , 1.0e-7
 gKS HOMO energy           , -13.513103         , 0 , 1.0e-4
 gKS LUMO energy           ,   1.926585         , 0 , 1.0e-4
 
+ne_psp8.in                , LDA Ne atom with numerical pseudo in ONCVPSP psp8 format
+SCF Total Energy          , -33.3866795065     , 0 , 1.0e-7
+gKS HOMO energy           , -13.532263         , 0 , 1.0e-4
+
 h2o_scalapack.in          , H2O molecule within PBE0 with possibly SCALAPACK
 gKS HOMO energy           ,   -9.039335        , 0 , 1.0e-4
 gKS LUMO energy           ,   -0.359596        , 0 , 1.0e-4

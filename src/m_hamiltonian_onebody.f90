@@ -1041,19 +1041,6 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  end select
 
 
- select case(ecp(1)%ecp_format)
- case(ECP_PSP6,ECP_PSP8)
-   do iradial=1,nradial_ecp
-     xa(iradial)  = ecp(1)%rad(iradial)
-     wxa(iradial) = ecp(1)%rad(iradial+1)-ecp(1)%rad(iradial)
-   enddo
- case default
-   do iradial=1,nradial_ecp
-     xtmp = ( iradial - 0.5_dp ) / REAL(nradial_ecp,dp)
-     xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
-     wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial_ecp,dp)
-   enddo
- end select
 
 
 
@@ -1070,6 +1057,20 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
    if( .NOT. element_has_ecp ) cycle
 
    necp = ecp(ie)%necp
+
+   select case(ecp(ie)%ecp_format)
+   case(ECP_PSP6,ECP_PSP8)
+     do iradial=1,nradial_ecp
+       xa(iradial)  = ecp(ie)%rad(iradial)
+       wxa(iradial) = ecp(ie)%rad(iradial+1)-ecp(ie)%rad(iradial)
+     enddo
+   case default
+     do iradial=1,nradial_ecp
+       xtmp = ( iradial - 0.5_dp ) / REAL(nradial_ecp,dp)
+       xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
+       wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial_ecp,dp)
+     enddo
+   end select
 
    nproj = 0
    do iecp=1,necp
@@ -1094,18 +1095,19 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
    do iradial=1,nradial_ecp
      if( MODULO(iradial-1,world%nproc) /= world%rank ) cycle
 
-     ! Linear interpolation of the potentials and pseudo wavefunctions
+     ! avoid x=0, divergence in the local component and 0 weight anyway
+     if( ABS(xa(iradial)) < 1.0e-10_dp ) cycle
+
      select case(ecp(ie)%ecp_format)
      case(ECP_PSP6,ECP_PSP8)
         vr(:) = ecp(ie)%vpspll(iradial,:)
-        write(1002,'(*(1x,es18.6))') xa(iradial),wxa(iradial),vr(:)
         if( ALLOCATED(ur) ) then
           ur(:) = ecp(ie)%wfll(iradial,:)
         endif
        ! remove the Coulomb part for the local part: it is treated in the regular routine setup_nucleus
        do iecp=1,necp
          if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
-           vr(iecp) = vr(iecp) + zvalence(icenter) /  xa(MAX(2,iradial))
+           vr(iecp) = vr(iecp) + zvalence(icenter) /  xa(iradial)
          endif
        enddo
      end select

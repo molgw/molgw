@@ -96,7 +96,6 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
   case default
     call die('integration quality not recognized')
   end select
-  write(stdout,'(1x,a,i5,2x,i5)') 'ECP are integrated numerically with a grid (radial,angular): ',nradial_ecp,nangular_ecp
 
 
   do while( ilen > 0 )
@@ -176,6 +175,11 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
 
   enddo
 
+  select case(ecp(1)%ecp_format)
+  case(ECP_PSP6,ECP_PSP8)
+    nradial_ecp = MINVAL(ecp(:)%mmax) - 1   ! Remove the last point for safety, usually all the projectors are zero anyway there
+  end select
+  write(stdout,'(1x,a,i5,2x,i5)') 'ECP are integrated numerically with a grid (radial,angular): ',nradial_ecp,nangular_ecp
 
 end subroutine init_ecp
 
