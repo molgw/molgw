@@ -1041,11 +1041,21 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  end select
 
 
- do iradial=1,nradial_ecp
-   xtmp = ( iradial - 0.5_dp ) / REAL(nradial_ecp,dp)
-   xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
-   wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial_ecp,dp)
- enddo
+ select case(ecp(1)%ecp_format)
+ case(ECP_PSP6,ECP_PSP8)
+   do iradial=1,nradial_ecp
+     xa(iradial)  = ecp(1)%rad(iradial)
+     wxa(iradial) = ecp(1)%rad(iradial+1)-ecp(1)%rad(iradial)
+   enddo
+ case default
+   do iradial=1,nradial_ecp
+     xtmp = ( iradial - 0.5_dp ) / REAL(nradial_ecp,dp)
+     xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
+     wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial_ecp,dp)
+   enddo
+ end select
+
+
 
 
  do icenter=1,ncenter_nuclei
@@ -1087,29 +1097,15 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
      ! Linear interpolation of the potentials and pseudo wavefunctions
      select case(ecp(ie)%ecp_format)
      case(ECP_PSP6,ECP_PSP8)
-       ir = 1
-       do while( ecp(ie)%rad(ir) < xa(iradial) )
-         ir = ir + 1
-         if( ir > ecp(ie)%mmax ) exit
-       enddo
-       if( ir > ecp(ie)%mmax ) cycle
-       r1 = ecp(ie)%rad(MAX(ir-1,1))
-       r2 = ecp(ie)%rad(MIN(ir,ecp(ie)%mmax))
-       if( ir > 1 ) then
-          vr(:) = ( xa(iradial) - r1 ) / ( r2 - r1 ) * ecp(ie)%vpspll(ir  ,:) &
-                 +( r2 - xa(iradial) ) / ( r2 - r1 ) * ecp(ie)%vpspll(ir-1,:)
-          if( ALLOCATED(ur) ) then
-            ur(:) = ( xa(iradial) - r1 ) / ( r2 - r1 ) * ecp(ie)%wfll(ir  ,:) &
-                   +( r2 - xa(iradial) ) / ( r2 - r1 ) * ecp(ie)%wfll(ir-1,:)
-          endif
-       else
-         vr(:) = ecp(ie)%vpspll(1,:)
-         if( ALLOCATED(ur) ) ur(:) = ecp(ie)%wfll(1,:)
-       endif
+        vr(:) = ecp(ie)%vpspll(iradial,:)
+        write(1002,'(*(1x,es18.6))') xa(iradial),wxa(iradial),vr(:)
+        if( ALLOCATED(ur) ) then
+          ur(:) = ecp(ie)%wfll(iradial,:)
+        endif
        ! remove the Coulomb part for the local part: it is treated in the regular routine setup_nucleus
        do iecp=1,necp
          if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
-           vr(iecp) = vr(iecp) + zvalence(icenter) /  xa(iradial)
+           vr(iecp) = vr(iecp) + zvalence(icenter) /  xa(MAX(2,iradial))
          endif
        enddo
      end select
