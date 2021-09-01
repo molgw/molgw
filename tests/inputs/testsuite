@@ -136,9 +136,9 @@ gKS HOMO energy           ,  -5.216078         , 0 , 1.0e-4
 gKS LUMO energy           ,  -1.700107         , 0 , 1.0e-4
 
 ne_psp6.in                , LDA Ne atom with numerical pseudo in ABINIT psp6 format
-SCF Total Energy          , -34.3976454937     , 0 , 1.0e-7
-gKS HOMO energy           , -13.513103         , 0 , 1.0e-4
-gKS LUMO energy           ,   1.926585         , 0 , 1.0e-4
+SCF Total Energy          , -34.4029673176     , 0 , 1.0e-7
+gKS HOMO energy           , -13.530724         , 0 , 1.0e-4
+gKS LUMO energy           ,   1.936774         , 0 , 1.0e-4
 
 ne_psp8.in                , LDA Ne atom with numerical pseudo in ONCVPSP psp8 format
 SCF Total Energy          , -33.3866795065     , 0 , 1.0e-7

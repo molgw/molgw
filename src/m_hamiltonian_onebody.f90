@@ -1062,7 +1062,11 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
    case(ECP_PSP6,ECP_PSP8)
      do iradial=1,nradial_ecp
        xa(iradial)  = ecp(ie)%rad(iradial)
-       wxa(iradial) = ecp(ie)%rad(iradial+1)-ecp(ie)%rad(iradial)
+       if(iradial == 1) then
+         wxa(iradial) = ecp(ie)%rad(iradial+1)-ecp(ie)%rad(iradial)
+       else
+         wxa(iradial) = 0.5_dp * ( ecp(ie)%rad(iradial+1)-ecp(ie)%rad(iradial-1) )
+       endif
      enddo
    case default
      do iradial=1,nradial_ecp
