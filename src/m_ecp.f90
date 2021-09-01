@@ -429,7 +429,7 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
   ecpi%necp  = SUM(nproj(:)) + 1   ! +1 corresponds to the local potential
   allocate(ecpi%lk(ecpi%necp))
   iecp = 0
-  do il=0,4
+  do il=0,SIZE(nproj)-1
     do iproj=1,nproj(il+1)
       iecp = iecp + 1
       ecpi%lk(iecp) = il
@@ -439,7 +439,6 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
   ecpi%lk(ecpi%necp) = -1
   ecpi%mmax     = mmax
 
-
   allocate(ecpi%rad(mmax))
   allocate(ecpi%vpspll(mmax,ecpi%necp))
   allocate(ecpi%ekb(ecpi%necp))
@@ -447,6 +446,7 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
   iecp = 0
   jecp = 0
   do il=0,lmax
+    if( nproj(il+1) < 1 ) cycle
     iecp = jecp + 1
     jecp = iecp + nproj(il+1) - 1
     read(ecpunit,*) jdum,ecpi%ekb(iecp:jecp)
