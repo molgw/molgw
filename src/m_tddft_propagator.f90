@@ -192,7 +192,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      call die('Error with nstate in the TDDFT propagator')
    end if
  end if
- call dump_out_matrix(.TRUE.,'===  D  ===',d_matrix)
 
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
    if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS ) then
@@ -421,7 +420,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
    write( stdout, * ) 'Trace(PS) : N e- = ', REAL(Nelec) ! AIMAG(Nelec)
-   call dump_out_matrix(.TRUE.,'===  D  ===',d_matrix)
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
