@@ -379,8 +379,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if ( itau == 3 ) then
      call start_clock(timing_tddft_one_iter)
-     if ( print_cube_diff_tddft_ .AND. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) &
-     call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
+     !if ( print_cube_diff_tddft_ .AND. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) &
+     !call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
    end if
 
    !
@@ -658,7 +658,7 @@ subroutine init_c_matrix(basis,               &
       ! in ortho basis : M' = X**H * (H-iD+mv**2*S) * X
       m_eigenvector(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
       m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
-                       + 0.5_dp*SUM(vel(:,natom)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
+                       + SUM(vel(:,natom)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
       m_eigenvector(:,:,ispin)  = MATMUL( m_eigenvector(:,:,ispin), x_matrix(:,:) )
       m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
       ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
@@ -732,6 +732,7 @@ subroutine update_basis_eri(basis,auxil_basis)
  type(basis_set),intent(inout)      :: auxil_basis
 !=====
 
+ write(stdout,'(/,a)') ' Update moving basis set'
  call moving_basis_set(basis)
 
  !call deallocate_eri()
@@ -820,7 +821,7 @@ subroutine mb_related_updates(basis,                &
 !=====
 
  call start_clock(timing_update_p_position)
- ! Update projectile position and its basis center to t+dt/2
+ ! Update projectile position and its basis center to t+dt/n
  call change_position_one_atom(natom,xatom_start(:,natom) &
       + vel(:,natom) * (time_cur - time_read - time_step*dt_factor))
  call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) &
