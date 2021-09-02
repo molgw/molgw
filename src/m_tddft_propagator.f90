@@ -59,7 +59,7 @@ module m_tddft_propagator
 
  type(energy_contributions),private :: en_tddft
  type(basis_set),private            :: basis_t,basis_p
- type(basis_set),private            :: auxil_basis_t,auxil_basis_p
+ !type(basis_set),private            :: auxil_basis_t,auxil_basis_p
 
 contains
 
@@ -134,10 +134,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  write(stdout,*) 'Splitting basis set into TARGET and PROJECTILE basis sets'
  call split_basis_set(basis,basis_t,basis_p)
- if( has_auxil_basis ) then
-   write(stdout,'(/,a)') 'Splitting up the auxiliary basis set'
-   call split_basis_set(auxil_basis,auxil_basis_t,auxil_basis_p)
- end if
+ !if( has_auxil_basis ) then
+ !  write(stdout,'(/,a)') 'Splitting up the auxiliary basis set'
+ !  call split_basis_set(auxil_basis,auxil_basis_t,auxil_basis_p)
+ !end if
 
  call echo_tddft_variables()
 
@@ -192,6 +192,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      call die('Error with nstate in the TDDFT propagator')
    end if
  end if
+ call dump_out_matrix(.TRUE.,'===  D  ===',d_matrix)
 
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
    if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS ) then
@@ -420,7 +421,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
    write( stdout, * ) 'Trace(PS) : N e- = ', REAL(Nelec) ! AIMAG(Nelec)
-   !call dump_out_matrix(.TRUE.,'===  D  ===',d_matrix)
+   call dump_out_matrix(.TRUE.,'===  D  ===',d_matrix)
 
    !
    ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
@@ -548,10 +549,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  call destroy_basis_set(basis_t)
  call destroy_basis_set(basis_p)
- if( has_auxil_basis ) then
-   call destroy_basis_set(auxil_basis_t)
-   call destroy_basis_set(auxil_basis_p)
- end if
+ !if( has_auxil_basis ) then
+ !  call destroy_basis_set(auxil_basis_t)
+ !  call destroy_basis_set(auxil_basis_p)
+ !end if
 
  write(stdout,'(/,x,a)') "End of RT-TDDFT simulation"
  write(stdout,'(1x,a,/)') '=================================================='
@@ -805,8 +806,8 @@ end subroutine setup_D_matrix_analytic
 subroutine mb_related_updates(basis,                &
                               auxil_basis,need_eri, &
                               time_cur,dt_factor,   &
-                              s_matrix,              &
-                              d_matrix,need_d,      &
+                              s_matrix,             &
+                              d_matrix,             &
                               need_grid)
 
  implicit none
@@ -816,7 +817,7 @@ subroutine mb_related_updates(basis,                &
  real(dp),intent(inout)             :: d_matrix(:,:)
  real(dp),intent(in)                :: time_cur
  real(dp),intent(in)                :: dt_factor
- logical,intent(in)                 :: need_eri,need_d,need_grid
+ logical,intent(in)                 :: need_eri,need_grid
 
 !=====
 
@@ -844,8 +845,8 @@ subroutine mb_related_updates(basis,                &
  !call setup_overlap(basis,s_matrix)
  call recalc_overlap(basis_t,basis_p,s_matrix)
 
- ! Analytic evaluation of D(t+dt/2)
- if( need_d ) call setup_D_matrix_analytic(basis,d_matrix,.TRUE.)
+ ! Analytic evaluation of D(t+dt/n)
+ call setup_D_matrix_analytic(basis,d_matrix,.TRUE.)
  call stop_clock(timing_update_overlaps)
 
  call start_clock(timing_update_dft_grid)
@@ -907,7 +908,7 @@ subroutine predictor_corrector(basis,                  &
 
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call mb_related_updates(basis,auxil_basis,.TRUE.,&
-            time_cur,0.0_dp,s_matrix,d_matrix,.TRUE.,.TRUE.)
+            time_cur,0.0_dp,s_matrix,d_matrix,.TRUE.)
    endif
 
    ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
@@ -938,7 +939,7 @@ subroutine predictor_corrector(basis,                  &
    !--2--PREDICTOR----| C(t)---U[M(t+dt/4)]--->C(t+dt/2)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call mb_related_updates(basis,auxil_basis,.FALSE.,&
-            time_cur,3.0_dp/4.0_dp,s_matrix,d_matrix,.TRUE.,.FALSE.)
+            time_cur,3.0_dp/4.0_dp,s_matrix,d_matrix,.FALSE.)
    endif
 
    ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
@@ -947,7 +948,7 @@ subroutine predictor_corrector(basis,                  &
    !--3--CORRECTOR----| C(t+dt/2)-->H(t+dt/2)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call mb_related_updates(basis,auxil_basis,.TRUE.,&
-            time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.,.TRUE.)
+            time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.)
    endif
 
    ! Evaluate H(t+dt/2)
@@ -994,7 +995,7 @@ case('MB_PC2B')
    call start_clock(timing_mb_related_update)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call mb_related_updates(basis,auxil_basis,.FALSE.,&
-            time_cur,3.0_dp/4.0_dp,s_matrix,d_matrix,.TRUE.,.FALSE.)
+            time_cur,3.0_dp/4.0_dp,s_matrix,d_matrix,.FALSE.)
    endif
    call stop_clock(timing_mb_related_update)
 
@@ -1005,7 +1006,7 @@ case('MB_PC2B')
    call start_clock(timing_mb_related_update)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call mb_related_updates(basis,auxil_basis,.TRUE.,&
-            time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.,.TRUE.)
+            time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.)
    endif
    call stop_clock(timing_mb_related_update)
 
@@ -1034,7 +1035,7 @@ case('MB_PC2B')
    call start_clock(timing_mb_related_update)
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      call mb_related_updates(basis,auxil_basis,.TRUE.,&
-            time_cur,0.0_dp,s_matrix,d_matrix,.FALSE.,.TRUE.)
+            time_cur,0.0_dp,s_matrix,d_matrix,.TRUE.)
    endif
    call stop_clock(timing_mb_related_update)
 
