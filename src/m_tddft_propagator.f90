@@ -379,8 +379,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if ( itau == 3 ) then
      call start_clock(timing_tddft_one_iter)
-     !if ( print_cube_diff_tddft_ .AND. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) &
-     !call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
+     if ( print_cube_diff_tddft_ .AND. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) &
+     call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
    end if
 
    !
