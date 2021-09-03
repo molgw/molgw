@@ -4,7 +4,7 @@
   scf                            = 'lda'
   read_restart                   = 'no'
   read_tddft_restart             = 'no'
-  print_tddft_restart            = 'yes'
+  print_tddft_restart            = 'no'
   basis                          = 'cc-pVTZ'
   auxil_basis                    = 'cc-pVTZ-RI'
   charge                         = 0
