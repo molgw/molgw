@@ -159,7 +159,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  write(stdout,'(/,1x,a)') "===INITIAL CONDITIONS==="
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
-   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .OR. pred_corr(1:2)=='MB' ) then
      call read_restart_tddft(nstate,time_read,occupation,c_matrix_cmplx)
    else
      ! assign xatom_start, c_matrix_orth_cmplx, time_min with values given in RESTART File
@@ -194,7 +194,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  end if
 
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
-   if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS ) then
+   if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS .AND. pred_corr(1:2)/='MB' ) then
      do ispin=1,nspin
        c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
      end do
@@ -475,7 +475,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    ! ---print tdddft restart each n_restart_tddft steps---
    if ( print_tddft_restart_ .AND. mod(itau,n_restart_tddft)==0 ) then
-     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .OR. pred_corr(1:2)=='MB' ) then
        call write_restart_tddft(nstate,time_cur,occupation,c_matrix_cmplx)
      else
        call write_restart_tddft(nstate,time_cur,occupation,c_matrix_orth_cmplx)
@@ -492,7 +492,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 !********end time loop*******************
 
  if(print_tddft_restart_) then
-   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS  .OR. pred_corr(1:2)=='MB') then
      !time_cur-time_step to be consistent with the actual last moment of the simulation
      call write_restart_tddft(nstate,time_cur-time_step,occupation,c_matrix_cmplx)
    else
