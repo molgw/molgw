@@ -186,6 +186,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
    call setup_D_matrix_analytic(basis,d_matrix,.FALSE.)
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+   en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
  else
    d_matrix(:,:) = 0.0_dp
    if( nstate /= nstate_tmp ) then
@@ -248,20 +249,21 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      !! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
      !! which are also that of  U = S**-1 * ( H - i*D )
-     call init_c_matrix(basis,               &
-                        time_min,            &
-                        s_matrix,            &
-                        x_matrix,            &
-                        d_matrix,            &
-                        occupation ,         &
-                        hamiltonian_kinetic, &
-                        hamiltonian_nucleus, &
-                        dipole_ao,           &
-                        c_matrix_cmplx,      &
-                        c_matrix_orth_cmplx, &
-                        h_cmplx,             &
-                        h_small_cmplx,       &
-                        en_tddft)
+     !call init_c_matrix(basis,               &
+     !                   time_min,            &
+     !                   s_matrix,            &
+     !                   x_matrix,            &
+     !                   d_matrix,            &
+     !                   occupation ,         &
+     !                   hamiltonian_kinetic, &
+     !                   hamiltonian_nucleus, &
+     !                   dipole_ao,           &
+     !                   c_matrix_cmplx,      &
+     !                   c_matrix_orth_cmplx, &
+     !                   h_cmplx,             &
+     !                   h_small_cmplx,       &
+     !                   en_tddft)
+     continue
    else
      call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
      allocate(energy_tddft(nstate,nspin))
