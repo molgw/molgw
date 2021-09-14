@@ -289,54 +289,9 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
   !
   !  R =  X^T * [ H * P * S - S * P * H ] * X
 
-#if defined(HAVE_SCALAPACK)
-  if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
-    allocate(p_matrix_distrib(mh,nh,nspin))
-    call create_distributed_copy(p_matrix,desch,p_matrix_distrib)
-    allocate(ham_distrib(mh,nh,nspin))
-    call create_distributed_copy(ham,desch,ham_distrib)
-    allocate(s_matrix_distrib(mh,nh))
-    call create_distributed_copy(s_matrix,desch,s_matrix_distrib)
-    allocate(x_matrix_distrib(mc,nc))
-    call create_distributed_copy(x_matrix,descc,x_matrix_distrib)
-
-    do ispin=1,nspin
-      allocate(matrix_tmp1(mh,nh))
-      allocate(matrix_tmp2(mh,nh))
-
-      ! M2 = P * S
-      call PDSYMM('L','L',nbf_scf,nbf_scf,1.0d0,p_matrix_distrib(:,:,ispin),1,1,desch,&
-                  s_matrix_distrib,1,1,desch,0.0d0,matrix_tmp2,1,1,desch)
-      ! M1 = H * M2 = H * P * S
-      call PDSYMM('L','L',nbf_scf,nbf_scf,1.0d0,ham_distrib(:,:,ispin),1,1,desch, &
-                  matrix_tmp2,1,1,desch,0.0d0,matrix_tmp1,1,1,desch)
-      ! M2 = S * P * H = ( H * P * S )**T = M1**T
-      call PDTRAN(nbf_scf,nbf_scf,1.0d0,matrix_tmp1,1,1,desch,0.0d0,matrix_tmp2,1,1,desch)
-      ! M2 = H * P * S - S * P * H = M1 - M2
-      matrix_tmp2(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
-
-      deallocate(matrix_tmp1)
-      allocate(matrix_tmp1(mc,nc))
-
-      ! M1 = M2 * X
-      call PDGEMM('N','N',nbf_scf,nstate_scf,nbf_scf,1.0_dp,matrix_tmp2,1,1,desch,      &
-                  x_matrix_distrib,1,1,descc,0.0_dp,matrix_tmp1,1,1,descc)
-
-      ! R = X^T * M1
-      call PDGEMM('T','N',nstate_scf,nstate_scf,nbf_scf,1.0_dp,x_matrix_distrib,1,1,descc,      &
-                  matrix_tmp1,1,1,descc,0.0_dp,res_hist(:,:,ispin,1),1,1,descr)
-
-
-      deallocate(matrix_tmp1,matrix_tmp2)
-    enddo
-
-  endif
-
-#else
-  allocate(matrix_tmp1(nbf_scf,nbf_scf))
-  allocate(matrix_tmp2(nbf_scf,nbf_scf))
-
   do ispin=1,nspin
+    allocate(matrix_tmp1(nbf_scf,nbf_scf))
+    allocate(matrix_tmp2(nbf_scf,nbf_scf))
 
     ! M2 = P * S
     call DSYMM('L','L',nbf_scf,nbf_scf,1.0d0,p_matrix(1,1,ispin),nbf_scf,s_matrix,nbf_scf,0.0d0,matrix_tmp2,nbf_scf)
@@ -350,15 +305,24 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
     ! M1 = H * P * S - S * P * H = M1 - M2
     matrix_tmp1(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
 
+    deallocate(matrix_tmp2)
+    allocate(matrix_tmp2(nstate_scf,nstate_scf))
     !
     ! R = X^T * M1 * X
     ! Remember that S**-1 = X * X^T
-    call matmul_transaba_scalapack(scalapack_block_min,x_matrix,matrix_tmp1,res_hist(:,:,ispin,1))
+    call matmul_transaba_scalapack(scalapack_block_min,x_matrix,matrix_tmp1,matrix_tmp2)
 
-  enddo
-  deallocate(matrix_tmp2)
-  deallocate(matrix_tmp1)
+#if defined(HAVE_SCALAPACK)
+  if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
+    call create_distributed_copy(matrix_tmp2,descr,res_hist(:,:,ispin,1))
+  endif
+#else
+    res_hist(:,:,ispin,1) = matrix_tmp2(:,:)
 #endif
+
+    deallocate(matrix_tmp2)
+    deallocate(matrix_tmp1)
+  enddo
 
 
   !
@@ -434,6 +398,8 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
   allocate(residual_pred(mr,nr,nspin))
 
 #if defined(HAVE_SCALAPACK)
+  allocate(ham_distrib(mh,nh,nspin))
+  allocate(p_matrix_distrib(mh,nh,nspin))
   if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
     residual = 0.0_dp
     residual_pred(:,:,:)    = 0.0_dp
@@ -460,6 +426,8 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
   call gather_distributed_copy(desch,ham_distrib,ham)
   call gather_distributed_copy(desch,p_matrix_distrib,p_matrix)
   write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',SQRT( residual * nspin )
+
+  deallocate(ham_distrib,p_matrix_distrib)
 
 #else
   call DGEMV('N',nstate_scf*nstate_scf*nspin,nhist_current,1.0d0,res_hist     ,nstate_scf*nstate_scf*nspin, &
