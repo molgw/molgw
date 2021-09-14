@@ -292,13 +292,6 @@ program molgw
 
     if( restart_tddft_is_correct .AND. read_tddft_restart_ ) exit
 
-    if( is_basis_restart ) then
-      !
-      ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-      call issue_warning('basis restart is not fully implemented: use with care')
-      call diagonalize_hamiltonian_scalapack(hamiltonian_fock,x_matrix,energy,c_matrix)
-    endif
-
 
     !
     ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,

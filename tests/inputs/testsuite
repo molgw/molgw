@@ -71,6 +71,12 @@ SCF Total Energy          , -154.9342671231    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.693777        , 0 , 1.0e-4
 gKS LUMO energy           ,    3.220523        , 0 , 1.0e-4
 
+h2o_pbe0.in               , PBE0 water with a small basis
+SCF Total Energy          , -76.3408991125     , 0 , 1.0e-7
+
+h2o_pbe0_basis_restart.in, PBE0 water restarting from a previous run with a smaller basis, restart
+SCF Total Energy          , -76.3527592768     , 0 , 1.0e-7
+
 na08_damping.in           , LDA Na8 cluster with density damping stopped after 2 SCF cycles
 SCF Total Energy          , -1232.7456930389   , 0 , 1.0e-7
 Convergence criterium     ,     6.45101E+02    , 0 , 1.0e-1
