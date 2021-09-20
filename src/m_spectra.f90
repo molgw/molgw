@@ -352,10 +352,10 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
   real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
   !=====
   integer                            :: nstate,m_x,n_x
-!  integer,parameter                  :: nqradial = 500
-!  real(dp),parameter                 :: dqradial = 0.02_dp
-  integer,parameter                  :: nqradial = 1500
-  real(dp),parameter                 :: dqradial = 0.01_dp
+  integer,parameter                  :: nqradial = 500
+  real(dp),parameter                 :: dqradial = 0.02_dp
+!  integer,parameter                  :: nqradial = 1500
+!  real(dp),parameter                 :: dqradial = 0.01_dp
   integer,parameter                  :: nq = nqradial
   integer                            :: gt
   integer                            :: t_ia,t_jb
