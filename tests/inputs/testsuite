@@ -71,6 +71,12 @@ SCF Total Energy          , -154.9342671231    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.693777        , 0 , 1.0e-4
 gKS LUMO energy           ,    3.220523        , 0 , 1.0e-4
 
+h2o_pbe0.in               , PBE0 water with a small basis
+SCF Total Energy          , -76.3408991125     , 0 , 1.0e-7
+
+h2o_pbe0_basis_restart.in, PBE0 water restarting from a previous run with a smaller basis, restart
+SCF Total Energy          , -76.3527592768     , 0 , 1.0e-7
+
 na08_damping.in           , LDA Na8 cluster with density damping stopped after 2 SCF cycles
 SCF Total Energy          , -1232.7456930389   , 0 , 1.0e-7
 Convergence criterium     ,     6.45101E+02    , 0 , 1.0e-1
@@ -95,9 +101,10 @@ gKS LUMO energy           ,   -3.007564        , 1 , 1.0e-4
 
 ne_fraccharge.in          , Neon atoms with two fractional charges
 number of basis functions ,      56            , 0 , 1.0e-7
-SCF Total Energy          , -128.1560680244    , 0 , 1.0e-7
-gKS HOMO energy           ,  -12.210450        , 0 , 1.0e-4
-gKS LUMO energy           ,   35.105654        , 0 , 1.0e-4
+Total number of grid points,    4258            , 0 , 1.0e-7
+SCF Total Energy          , -128.1560939423    , 0 , 1.0e-7
+gKS HOMO energy           ,  -12.210687        , 0 , 1.0e-4
+gKS LUMO energy           ,   35.106709        , 0 , 1.0e-4
 
 lih_ghost.in              , LiH molecule with addition basis functions on ghost atoms
 Kinetic Energy            ,    8.3706447990    , 0 , 1.0e-7
@@ -133,6 +140,15 @@ zn2_ecp.in                , PBE zinc dimer with ECP and RI
 SCF Total Energy          , -454.2107706479    , 0 , 5.0e-4   # Loosened criterium
 gKS HOMO energy           ,  -5.216078         , 0 , 1.0e-4
 gKS LUMO energy           ,  -1.700107         , 0 , 1.0e-4
+
+ne_psp6.in                , LDA Ne atom with numerical pseudo in ABINIT psp6 format
+SCF Total Energy          , -34.4029673176     , 0 , 1.0e-7
+gKS HOMO energy           , -13.530724         , 0 , 1.0e-4
+gKS LUMO energy           ,   1.936774         , 0 , 1.0e-4
+
+ne_psp8.in                , LDA Ne atom with numerical pseudo in ONCVPSP psp8 format
+SCF Total Energy          , -33.3866795065     , 0 , 1.0e-7
+gKS HOMO energy           , -13.532263         , 0 , 1.0e-4
 
 h2o_scalapack.in          , H2O molecule within PBE0 with possibly SCALAPACK
 gKS HOMO energy           ,   -9.039335        , 0 , 1.0e-4
@@ -752,12 +768,13 @@ GW LUMO energy            ,      3.373258       , 0 , 1.0e-4
 
 co_gw_dm_pbe0.in          , G0W0 based on G0W0 density matrix based on PBE0
 SCF Total Energy          ,   -113.1959738781   , 0 , 1.0e-7
-Kinetic Energy            ,    112.7399854170   , 0 , 1.0e-7
-Nucleus Energy            ,   -309.7492450698   , 0 , 1.0e-7
-Hartree Energy            ,     75.6937103320   , 0 , 1.0e-7
-Exchange Energy           ,    -13.1369464994   , 0 , 1.0e-7
-GW HOMO energy            ,    -13.170820       , 0 , 1.0e-4
-GW LUMO energy            ,      3.015772       , 0 , 1.0e-4
+Trace                     ,     14.000000       , 0 , 1.0e-4
+Kinetic Energy            ,    112.5902914956   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.5853966982   , 0 , 1.0e-7
+Hartree Energy            ,     75.6702552756   , 0 , 1.0e-7
+Exchange Energy           ,    -13.1260407194   , 0 , 1.0e-7
+GW HOMO energy            ,    -13.178304       , 0 , 1.0e-4
+GW LUMO energy            ,      3.008745       , 0 , 1.0e-4
 
 co_gw_pt2_dm.in           , G0W0 based on PT2 density matrix
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
@@ -807,6 +824,13 @@ velocity   0.000  0.000  1.400,   7.319374       , 0 , 1.0e-4
 velocity   0.000  0.000  2.000,   7.299591       , 0 , 1.0e-4
 
 ne_ap_stopping.in          , Linear-response stopping cross section for a non-spherical system
+SCF Total Energy           ,   -134.7929508744   , 0 , 1.0e-7
+Exc. 0001                  ,     37.06922165     , 0 , 1.0e-4
+Sum over oscillator strengths,    9.124419       , 0 , 1.0e-4
+velocity   0.000  0.000  0.250,   0.210189       , 0 , 1.0e-4
+velocity   0.000  0.000  0.500,   1.018946       , 0 , 1.0e-4
+
+ne_ap_stopping2.in          , Linear-response stopping cross section for a non-spherical system with another input for the geometry
 SCF Total Energy           ,   -134.7929508744   , 0 , 1.0e-7
 Exc. 0001                  ,     37.06922165     , 0 , 1.0e-4
 Sum over oscillator strengths,    9.124419       , 0 , 1.0e-4

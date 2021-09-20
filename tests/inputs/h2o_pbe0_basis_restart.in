@@ -1,0 +1,15 @@
+&molgw
+ nscf=1
+
+ scf='PBE0'
+
+ basis='aug-cc-pVTZ'
+ auxil_basis='aug-cc-pVTZ-RI'
+ read_restart='yes'
+ print_restart='no'
+
+ natom=3
+/
+8    0.000000     0.000000     0.119105    
+1    0.000000     0.760508    -0.476421
+1    0.000000    -0.760508    -0.476421

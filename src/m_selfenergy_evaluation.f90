@@ -100,14 +100,12 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      selfenergy_tag='ONE_RING'
    case(SOX)
      selfenergy_tag='SOX'
-   case(G0W0SOX0)
-     selfenergy_tag='GWSOX'
    case(GWSOX)
      selfenergy_tag='GWSOX'
    case(GWPT3)
      selfenergy_tag='GWPT3'
-   case(G0W0Gamma0)
-     selfenergy_tag='GWGamma'
+   case(GWSOSEX)
+     selfenergy_tag='GWSOSEX'
    case(COHSEX)
      selfenergy_tag='COHSEX'
    case default
@@ -304,7 +302,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    !
    ! GWGamma
    !
-   if( calc_type%selfenergy_approx == G0W0GAMMA0 .OR. calc_type%selfenergy_approx == G0W0SOX0 ) then
+   if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWSOX ) then
      call init_spectral_function(nstate,occupation,0,wpol)
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation

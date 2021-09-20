@@ -738,7 +738,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
- integer              :: iatom
+ integer              :: icenter
  real(dp),allocatable :: matrix(:,:)
  real(C_DOUBLE),allocatable        :: array_cart(:)
  real(C_DOUBLE),allocatable        :: array_cart_C(:)
@@ -802,18 +802,18 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
      allocate(array_cart_C(ni_cart*nj_cart))
      array_cart(:) = 0.0_dp
 
-     do iatom=1,natom
-       ! Skip the contribution if iatom is not contained in the list
+     do icenter=1,ncenter_nuclei
+       ! Skip the contribution if icenter is not contained in the list
        if( PRESENT(atom_list) ) then
-         if( ALL(atom_list(:) /= iatom ) ) cycle
+         if( ALL(atom_list(:) /= icenter ) ) cycle
        endif
 
-       C(:) = xatom(:,iatom)
+       C(:) = xatom(:,icenter)
 #if defined(LIBINT2_SUPPORT_ONEBODY)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
-       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
+       array_cart(:) = array_cart(:) - zvalence(icenter) * array_cart_C(:)
 #else
        ij = 0
        do i_cart=1,ni_cart
@@ -821,7 +821,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
            ij = ij + 1
            ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
            jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(iatom),xatom(:,iatom),nucleus)
+           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(icenter),xatom(:,icenter),nucleus)
            array_cart(ij) = array_cart(ij) + nucleus
          enddo
        enddo
@@ -932,7 +932,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      allocate(array_cart_C(ni_cart*nj_cart))
      array_cart(:) = 0.0_dp
 
-     do iatom = 1, natom-1
+     do iatom = 1, natom
        ! Skip the contribution if iatom is projectile
        C(:) = xatom(:,iatom)
 #if defined(LIBINT2_SUPPORT_ONEBODY)
@@ -986,7 +986,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      allocate(array_cart_C(ni_cart*nj_cart))
      array_cart(:) = 0.0_dp
 
-     do iatom = 1, natom-1
+     do iatom = 1, natom
        ! Skip the contribution if iatom is projectile
        C(:) = xatom(:,iatom)
 #if defined(LIBINT2_SUPPORT_ONEBODY)
@@ -1043,13 +1043,13 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
  use m_atoms
  implicit none
  type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,natom+1,3)
+ real(dp),intent(out)       :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
  integer              :: natom_local
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
- integer              :: iatom
+ integer              :: icenter
  character(len=100)   :: title
  real(dp),allocatable :: matrixA(:,:)
  real(dp),allocatable :: matrixB(:,:)
@@ -1071,16 +1071,19 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
  real(C_DOUBLE)                    :: C(3)
 !=====
 
+ if( ncenter_basis /= ncenter_nuclei ) call die('setup_nucleus_grad: not implemented with ghosts or projectiles')
+
  call start_clock(timing_hamiltonian_nuc)
+
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian gradient (LIBINT)'
  if( world%nproc > 1 ) then
    natom_local=0
-   do iatom=1,natom
-     if( world%rank /= MODULO(iatom-1,world%nproc) ) cycle
+   do icenter=1,ncenter_nuclei
+     if( world%rank /= MODULO(icenter-1,world%nproc) ) cycle
      natom_local = natom_local + 1
    enddo
    write(stdout,'(a)')         '   Parallelizing over atoms'
-   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',ncenter_nuclei
  endif
 
  hamiltonian_nucleus_grad(:,:,:,:) = 0.0_dp
@@ -1111,11 +1114,11 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
      allocate(array_cart_gradBz(ni_cart*nj_cart))
 
 
-     do iatom=1,natom
-       if( world%rank /= MODULO(iatom-1,world%nproc) ) cycle
+     do icenter=1,ncenter_nuclei
+       if( world%rank /= MODULO(icenter-1,world%nproc) ) cycle
 
 
-       C(:) = xatom(:,iatom)
+       C(:) = xatom(:,icenter)
 
 #if LIBINT2_DERIV_ONEBODY_ORDER > 0
        call libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
@@ -1126,33 +1129,33 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 #else
        call die('nuclear potential gradient not implemented without LIBINT one-body and gradient terms')
 #endif
-       array_cart_gradAx(:) = array_cart_gradAx(:) * (-zvalence(iatom))
-       array_cart_gradAy(:) = array_cart_gradAy(:) * (-zvalence(iatom))
-       array_cart_gradAz(:) = array_cart_gradAz(:) * (-zvalence(iatom))
-       array_cart_gradBx(:) = array_cart_gradBx(:) * (-zvalence(iatom))
-       array_cart_gradBy(:) = array_cart_gradBy(:) * (-zvalence(iatom))
-       array_cart_gradBz(:) = array_cart_gradBz(:) * (-zvalence(iatom))
+       array_cart_gradAx(:) = array_cart_gradAx(:) * (-zvalence(icenter))
+       array_cart_gradAy(:) = array_cart_gradAy(:) * (-zvalence(icenter))
+       array_cart_gradAz(:) = array_cart_gradAz(:) * (-zvalence(icenter))
+       array_cart_gradBx(:) = array_cart_gradBx(:) * (-zvalence(icenter))
+       array_cart_gradBy(:) = array_cart_gradBy(:) * (-zvalence(icenter))
+       array_cart_gradBz(:) = array_cart_gradBz(:) * (-zvalence(icenter))
 
        ! X
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAx,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBx,matrixB)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,iatom  ,1) = -matrixA(:,:) - matrixB(:,:)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,1) = hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,1) &
-                                                                + matrixA(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,1) = -matrixA(:,:) - matrixB(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,1) = &
+                  hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,1) + matrixA(:,:)
 
        ! Y
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAy,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBy,matrixB)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,iatom  ,2) = -matrixA(:,:) - matrixB(:,:)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,2) = hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,2) &
-                                                                + matrixA(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,2) = -matrixA(:,:) - matrixB(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,2) = &
+                  hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,2) + matrixA(:,:)
 
        ! Z
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAz,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBz,matrixB)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,iatom  ,3) = -matrixA(:,:) - matrixB(:,:)
-       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,3) = hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,natom+1,3) &
-                                                                + matrixA(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,3) = -matrixA(:,:) - matrixB(:,:)
+       hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,3) = &
+                  hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,3) + matrixA(:,:)
 
      enddo
      deallocate(alphaA,cA)
@@ -1371,7 +1374,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
  integer              :: ibf,jbf
- integer              :: iatom
+ integer              :: icenter
 
  integer              :: iecp
  integer              :: iproj,nproj
@@ -1388,6 +1391,10 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  integer              :: necp,ie
  character(len=100)   :: title
  logical              :: element_has_ecp
+ real(dp)             :: r1,r2
+ real(dp),allocatable :: vr(:),ur(:)
+ real(dp),allocatable :: kb(:,:)
+ integer              :: ir
 !=====
 
  ! Check if there are some ECP
@@ -1437,17 +1444,14 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  end select
 
 
- do iradial=1,nradial_ecp
-   xtmp = ( iradial - 0.5_dp ) / REAL(nradial_ecp,dp)
-   xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
-   wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial_ecp,dp)
- enddo
 
 
- do iatom=1,natom
+
+
+ do icenter=1,ncenter_nuclei
    element_has_ecp = .FALSE.
    do ie=1,nelement_ecp
-     if( ABS( element_ecp(ie) - zatom(iatom) ) < 1.0e-5_dp ) then
+     if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
        element_has_ecp = .TRUE.
        exit
      endif
@@ -1457,6 +1461,23 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
    necp = ecp(ie)%necp
 
+   select case(ecp(ie)%ecp_format)
+   case(ECP_PSP6,ECP_PSP8)
+     do iradial=1,nradial_ecp
+       xa(iradial)  = ecp(ie)%rad(iradial)
+       if(iradial == 1) then
+         wxa(iradial) = ecp(ie)%rad(iradial+1)-ecp(ie)%rad(iradial)
+       else
+         wxa(iradial) = 0.5_dp * ( ecp(ie)%rad(iradial+1)-ecp(ie)%rad(iradial-1) )
+       endif
+     enddo
+   case default
+     do iradial=1,nradial_ecp
+       xtmp = ( iradial - 0.5_dp ) / REAL(nradial_ecp,dp)
+       xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
+       wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial_ecp,dp)
+     enddo
+   end select
 
    nproj = 0
    do iecp=1,necp
@@ -1464,16 +1485,45 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        nproj = nproj + number_basis_function_am('PURE',ecp(ie)%lk(iecp))
      endif
    enddo
-   allocate(int_fixed_r(basis%nbf,nproj))
+   select case(ecp(ie)%ecp_format)
+   case(ECP_PSP6)
+     allocate(vr(necp),ur(necp))
+     allocate(kb(basis%nbf,nproj))
+     kb(:,:) = 0.0_dp
+   case(ECP_PSP8)
+     allocate(vr(necp))
+     allocate(kb(basis%nbf,nproj))
+     kb(:,:) = 0.0_dp
+   case(ECP_NWCHEM)
+     allocate(int_fixed_r(basis%nbf,nproj))
+   end select
+
 
    do iradial=1,nradial_ecp
      if( MODULO(iradial-1,world%nproc) /= world%rank ) cycle
 
-     int_fixed_r(:,:) = 0.0_dp
+     ! avoid x=0, divergence in the local component and 0 weight anyway
+     if( ABS(xa(iradial)) < 1.0e-10_dp ) cycle
+
+     select case(ecp(ie)%ecp_format)
+     case(ECP_PSP6,ECP_PSP8)
+        vr(:) = ecp(ie)%vpspll(iradial,:)
+        if( ALLOCATED(ur) ) then
+          ur(:) = ecp(ie)%wfll(iradial,:)
+        endif
+       ! remove the Coulomb part for the local part: it is treated in the regular routine setup_nucleus
+       do iecp=1,necp
+         if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
+           vr(iecp) = vr(iecp) + zvalence(icenter) /  xa(iradial)
+         endif
+       enddo
+     end select
+
+     if( ALLOCATED(int_fixed_r) ) int_fixed_r(:,:) = 0.0_dp
      do i1=1,nangular_ecp
-       rr(1) = xa(iradial) * x1(i1) + xatom(1,iatom)
-       rr(2) = xa(iradial) * y1(i1) + xatom(2,iatom)
-       rr(3) = xa(iradial) * z1(i1) + xatom(3,iatom)
+       rr(1) = xa(iradial) * x1(i1) + xatom(1,icenter)
+       rr(2) = xa(iradial) * y1(i1) + xatom(2,icenter)
+       rr(3) = xa(iradial) * z1(i1) + xatom(3,icenter)
        call calculate_basis_functions_r(basis,rr,basis_function_r)
 
        cos_theta = z1(i1)
@@ -1482,28 +1532,90 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
        iproj = 0
        do iecp=1,necp
 
-         if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
-           do jbf=1,basis%nbf
-             do ibf=1,basis%nbf
-               hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
-                   + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
-                      * wxa(iradial) * xa(iradial)**2  &
-                      * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+         !
+         ! Treat the local potential:
+         !
+         if( ecp(ie)%lk(iecp) == -1 ) then
+           select case(ecp(ie)%ecp_format)
+           case(ECP_NWCHEM)
+             do jbf=1,basis%nbf
+               do ibf=1,basis%nbf
+                 hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                     + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
+                        * wxa(iradial) * xa(iradial)**2  &
+                        * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+               enddo
              enddo
-           enddo
+           case(ECP_PSP6,ECP_PSP8)
+             do jbf=1,basis%nbf
+               do ibf=1,basis%nbf
+                 hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                     + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
+                        * wxa(iradial) * xa(iradial)**2  &
+                        * vr(iecp)
+               enddo
+             enddo
+           end select
 
          else
-           do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
-             iproj = iproj + 1
-             int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
-                                       * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
-                                          * w1(i1) * 4.0_dp * pi
-           enddo
+           !
+           ! non local case
+           !
+           select case(ecp(ie)%ecp_format)
+           case(ECP_NWCHEM)
+             do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+               iproj = iproj + 1
+               int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
+                                         * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                            * w1(i1) * 4.0_dp * pi
+             enddo
+           case(ECP_PSP6)
+             do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+               iproj = iproj + 1
+               kb(:,iproj) = kb(:,iproj) + basis_function_r(:) &
+                                 * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                    * w1(i1) * 4.0_dp * pi *  wxa(iradial) * xa(iradial) &
+                                        * vr(iecp) * ur(iecp)
+             enddo
+           case(ECP_PSP8)
+             do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+               iproj = iproj + 1
+               kb(:,iproj) = kb(:,iproj) + basis_function_r(:) &
+                                 * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                    * w1(i1) * 4.0_dp * pi *  wxa(iradial) * xa(iradial) &
+                                        * vr(iecp)
+             enddo
+           end select
          endif
 
-       enddo
+       enddo ! iecp
      enddo ! (theta, phi) points
 
+     ! non-local ECP contribution
+     if( ecp(ie)%ecp_format == ECP_NWCHEM ) then
+       iproj = 0
+       do iecp=1,necp
+         if( ecp(ie)%lk(iecp) /= -1 ) then
+           do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+             iproj = iproj + 1
+             do jbf=1,basis%nbf
+               do ibf=1,basis%nbf
+                 hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                     + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
+                        * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+               enddo
+             enddo
+           enddo
+         endif
+       enddo
+     endif
+
+   enddo  ! iradial
+
+
+   ! non-local numerical grid contribution
+   select case(ecp(ie)%ecp_format)
+   case(ECP_PSP6,ECP_PSP8)
      iproj = 0
      do iecp=1,necp
        if( ecp(ie)%lk(iecp) /= -1 ) then
@@ -1511,20 +1623,22 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
            iproj = iproj + 1
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf
-               hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
-                   + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
-                      * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+               hamiltonian_nucleus(ibf,jbf) =  hamiltonian_nucleus(ibf,jbf)  &
+                   + kb(ibf,iproj) * kb(jbf,iproj) * ecp(ie)%ekb(iecp)
              enddo
            enddo
          enddo
        endif
      enddo
+   end select
 
-   enddo
 
-   deallocate(int_fixed_r)
+   if( ALLOCATED(kb) ) deallocate(kb)
+   if( ALLOCATED(int_fixed_r) ) deallocate(int_fixed_r)
+   if( ALLOCATED(ur) ) deallocate(ur)
+   if( ALLOCATED(vr) ) deallocate(vr)
 
- enddo
+ enddo ! ie
 
  call world%sum(hamiltonian_nucleus)
 

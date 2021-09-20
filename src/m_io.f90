@@ -311,8 +311,8 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
- integer                    :: ielement,iemax,iatom_basis
- integer                    :: atom2element(natom_basis)
+ integer                    :: ielement,iemax,icenter
+ integer                    :: atom2element(ncenter_basis)
  character(len=4)           :: char4
  character(len=2)           :: char2
  real(dp),allocatable       :: proj_element(:,:)
@@ -346,24 +346,24 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
    ibf1    = basis%shell(ishell)%istart
    ibf2    = basis%shell(ishell)%iend
 
-   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%iatom
+   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%icenter
    li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
  enddo
 
  ! Find the unique elements in the system
  iemax = 0
  do ielement=1,nelement_max
-   if( ANY(zbasis(1:natom_basis) == ielement) ) then
+   if( ANY(zbasis(1:ncenter_basis) == ielement) ) then
      iemax = iemax + 1
    endif
-   do iatom_basis=1,natom_basis
-     if( zbasis(iatom_basis) == ielement ) atom2element(iatom_basis) = iemax
+   do icenter=1,ncenter_basis
+     if( zbasis(icenter) == ielement ) atom2element(icenter) = iemax
    enddo
  enddo
  allocate(proj_element(0:lmax+1,iemax),element_list(iemax))
  iemax = 0
  do ielement=1,nelement_max
-   if( ANY(zbasis(1:natom_basis) == ielement) ) then
+   if( ANY(zbasis(1:ncenter_basis) == ielement) ) then
      iemax = iemax + 1
      element_list(iemax) = ielement
    endif
@@ -437,7 +437,7 @@ subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mul
  integer                    :: pdosfile
  integer,intent(in)         :: file_mulliken
  complex(dp)                :: proj_state_i(0:basis%ammax)
- complex(dp)                :: proj_charge(natom_basis)
+ complex(dp)                :: proj_charge(ncenter_basis)
  complex(dp)                :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
  integer                    :: li_ibf(basis%nbf)
@@ -463,7 +463,7 @@ subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mul
    ibf2    = basis%shell(ishell)%iend
 
    !! Label basis functions with atom index
-   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%iatom
+   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%icenter
    !! Label basis functions with angular momentum index
    li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
  enddo
@@ -494,11 +494,11 @@ subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mul
  enddo
  enddo
 
- n_column = 2 + natom_basis
+ n_column = 2 + ncenter_basis
  write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
  if ( is_iomaster ) then
    if ( file_mulliken /= stdout ) then
-     write( file_mulliken, fmt=myfmt ) time_cur, xatom(3,natom), REAL( proj_charge )
+     write( file_mulliken, fmt=myfmt ) time_cur, xatom(3,ncenter_nuclei), REAL( proj_charge )
    else
      write( stdout, * ) 'Mulliken projectile charge = ', REAL( proj_charge(natom2) )
    end if
@@ -554,7 +554,7 @@ subroutine lowdin_pdos(basis,s_matrix_sqrt,c_matrix,occupation,energy)
    ibf1    = basis%shell(ishell)%istart
    ibf2    = basis%shell(ishell)%iend
 
-   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%iatom
+   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%icenter
    li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
  enddo
 
@@ -612,7 +612,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  complex(dp)                    :: cs_vector_i(basis%nbf)
  integer                        :: iatom_ibf(basis%nbf)
  integer                        :: li_ibf(basis%nbf)
- real(dp)                       :: proj_charge(natom_basis)
+ real(dp)                       :: proj_charge(ncenter_basis)
  integer                        :: iatom_basis, nocc
  character(len=20)              :: myfmt
  integer,parameter              :: lmax = 2
@@ -640,7 +640,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
    ibf2    = basis%shell(ishell)%iend
 
    !! Label basis functions with atom index
-   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%iatom
+   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%icenter
    !! Label basis functions with angular momentum index
    li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
  enddo
@@ -679,12 +679,12 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  enddo
  enddo
 
- !n_column = 2 + natom_basis
+ !n_column = 2 + ncenter_basis
  n_column = 3 + natom2 - natom1
  write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
  if ( is_iomaster ) then
    if ( file_lowdin /= stdout ) then
-     write( file_lowdin, fmt=myfmt ) time_cur, xatom(3,natom), proj_charge(natom1:natom2)
+     write( file_lowdin, fmt=myfmt ) time_cur, xatom(3,ncenter_nuclei), proj_charge(natom1:natom2)
    else
      write( stdout, * ) 'Lowdin projectile charge = ', proj_charge(natom2)
    end if
@@ -1036,7 +1036,7 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
  real(dp)                    :: xmin,xmax,ymin,ymax,zmin,zmax
  real(dp)                    :: dx,dy,dz
  real(dp)                    :: basis_function_r(basis%nbf)
- integer                     :: ix,iy,iz,iatom
+ integer                     :: ix,iy,iz,icenter
  integer,allocatable         :: ocubefile(:,:)
  integer                     :: ocuberho(nspin)
  character(len=200)          :: file_name
@@ -1092,12 +1092,12 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
      open(newunit=ocubefile(istate,ispin),file=file_name)
      write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
      write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate1
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin,zmin
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n1,dx,0.,0.
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n2,0.,dy,0.
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n3,0.,0.,dz
-     do iatom=1,natom
-       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+     do icenter=1,ncenter_nuclei
+       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
      enddo
    enddo
  enddo
@@ -1111,12 +1111,12 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
      open(newunit=ocuberho(ispin),file=file_name)
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
      write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin,zmin
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') n1,dx,0.,0.
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') n2,0.,dy,0.
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') n3,0.,0.,dz
-     do iatom=1,natom
-       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+     do icenter=1,ncenter_nuclei
+       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
      enddo
    enddo
 
@@ -1180,7 +1180,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  real(dp),parameter     :: TOL_OCC   = 1.0e-8_dp
  real(dp),parameter     :: TOL_COEFF = 1.0e-8_dp
  character(len=200)     :: file_name
- integer                :: nstate,iatom,iprim,nprim,igaus,ishell,nshell,shell_typ,prev_typ
+ integer                :: nstate,icenter,iprim,nprim,igaus,ishell,nshell,shell_typ,prev_typ
  integer                :: istyp,iprim_per_shell,iprint,ilast,istate,ibf,ibf2,nocc,ispin,nxp,nyp,nzp
  integer                :: owfn
  real(dp)               :: dfact
@@ -1228,10 +1228,10 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
  nprim = SUM(basis%bfc(:)%ngaussian)
  write(owfn,'(a80)') 'MOLGW WFN file generated'
- write(owfn,'(a8,10x,i5,a13,1x,i6,a11,4x,i5,a7)') 'GAUSSIAN',nocc,' MOL ORBITALS',nprim,' PRIMITIVES',natom,' NUCLEI'
- do iatom=1,natom
-   write(owfn,'(a4,i4,4x,a7,i3,a1,1x,3f12.8,a10,f5.1)') el_list(NINT(zatom(iatom))),iatom, &
-   '(CENTRE',iatom,')',xatom(:,iatom),'  CHARGE =',zatom(iatom)
+ write(owfn,'(a8,10x,i5,a13,1x,i6,a11,4x,i5,a7)') 'GAUSSIAN',nocc,' MOL ORBITALS',nprim,' PRIMITIVES',ncenter_nuclei,' NUCLEI'
+ do icenter=1,ncenter_nuclei
+   write(owfn,'(a4,i4,4x,a7,i3,a1,1x,3f12.8,a10,f5.1)') el_list(NINT(zatom(icenter))),icenter, &
+   '(CENTRE',icenter,')',xatom(:,icenter),'  CHARGE =',zatom(icenter)
  enddo
 
  allocate(icent(nprim),itype(nprim),expon(nprim),prim_coefs(nprim))
@@ -1247,7 +1247,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  expon = 0.0_dp
  coefs_prims(:,:) = 0.0_dp
  prim_coefs(:) = 0.0_dp
- nshell=SIZE(basis%shell(:)%iatom)
+ nshell=SIZE(basis%shell(:)%icenter)
 
  do ibf=1,basis%nbf
    ao_map(ibf) = ibf
@@ -1408,7 +1408,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
        dfact = double_factorial(nxp) * double_factorial(nyp) * double_factorial(nzp)
        prim_coefs(iprim) = basis%shell(ishell)%coeff(igaus) / SQRT(dfact)
        itype(iprim) = prim_per_shell(istyp)
-       icent(iprim) = basis%shell(ishell)%iatom
+       icent(iprim) = basis%shell(ishell)%icenter
        expon(iprim) = basis%shell(ishell)%alpha(igaus)
        iprim = iprim + 1
      enddo
@@ -1510,7 +1510,7 @@ subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,tim
  real(dp)                   :: xxmin,xxmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ir,ih,iatom
+ integer                    :: ir,ih,icenter
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -1631,7 +1631,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  real(dp)                   :: xxmin,xxmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ir,ih,iatom
+ integer                    :: ir,ih,icenter
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -1806,7 +1806,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
  real(dp)                   :: xxmin,xxmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ir,ih,iatom
+ integer                    :: ir,ih,icenter
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -1982,7 +1982,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz,iatom
+ integer                    :: ix,iy,iz,icenter
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -2033,9 +2033,9 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  end if
 
  if( excit_type%form==EXCIT_PROJECTILE ) then
-   i_max_atom=natom-nprojectile
+   i_max_atom=ncenter_nuclei-nprojectile
  else
-   i_max_atom=natom
+   i_max_atom=ncenter_nuclei
  endif
 
  xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
@@ -2053,12 +2053,12 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
    open(newunit=ocuberho(ispin),file=file_name)
    write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
    write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
+   write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin, zmin
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
-   do iatom=1,natom
-     write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+   do icenter=1,ncenter_nuclei
+     write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
    enddo
  enddo
 
@@ -2119,7 +2119,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
  real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz,iatom
+ integer                    :: ix,iy,iz
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -2169,11 +2169,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
  endif
  allocate(phi_cmplx(istate1:istate2,nspin))
 
- if( excit_type%form==EXCIT_PROJECTILE ) then
-   i_max_atom=natom-nprojectile
- else
-   i_max_atom=natom
- endif
+ i_max_atom = ncenter_nuclei - nprojectile
 
  xmin =MINVAL( xatom(1,1:i_max_atom) ) - length
  xmax =MAXVAL( xatom(1,1:i_max_atom) ) + length
@@ -2190,7 +2186,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
    do ispin=1,nspin
      write(file_name,'(a,i4.4,a,i1,a,i3.3,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",INT(r_disc),r_disc-INT(r_disc),".dat"
      open(newunit=file_out(ispin),file=file_name)
-     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
+     write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,ncenter_nuclei)*bohr_A
    enddo
  end if
 
@@ -2264,7 +2260,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
  real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz,iatom
+ integer                    :: ix,iy,iz
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -2305,12 +2301,12 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- i_max_atom=natom-nprojectile
+ i_max_atom = ncenter_nuclei - nprojectile
 
  if( excit_type%form==EXCIT_PROJECTILE_W_BASIS ) then
-   i_max_basis=natom_basis-nprojectile
+   i_max_basis = ncenter_basis - nprojectile
  else
-   i_max_basis=natom_basis
+   i_max_basis = ncenter_basis
  endif
 
  xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,1:i_max_basis) )) - length/2.0_dp
@@ -2398,7 +2394,7 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
  real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz,iatom
+ integer                    :: ix,iy,iz,icenter
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -2440,11 +2436,7 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- if( excit_type%form==EXCIT_PROJECTILE ) then
-   i_max_atom=natom-nprojectile
- else
-   i_max_atom=natom
- endif
+ i_max_atom = ncenter_nuclei - nprojectile
 
  xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
  xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
@@ -2461,12 +2453,12 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
    open(newunit=ocuberho(ispin),file=file_name)
    write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
    write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
+   write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin, zmin
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
    write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
-   do iatom=1,natom
-     write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+   do icenter=1,ncenter_nuclei
+     write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
    enddo
  enddo
 
@@ -2533,7 +2525,7 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
  real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz,iatom
+ integer                    :: ix,iy,iz,icenter
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -2574,12 +2566,12 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- i_max_atom=natom-nprojectile
+ i_max_atom = ncenter_nuclei - nprojectile
 
  if( excit_type%form==EXCIT_PROJECTILE_W_BASIS ) then
-   i_max_basis=natom_basis-nprojectile
+   i_max_basis = ncenter_basis - nprojectile
  else
-   i_max_basis=natom_basis
+   i_max_basis = ncenter_basis
  endif
 
  xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,1:i_max_basis) )) - length/2.0_dp
@@ -2598,12 +2590,12 @@ subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matr
      open(newunit=ocuberho(ispin),file=file_name)
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
      write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin, zmin
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
-     do iatom=1,natom
-       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+     do icenter=1,ncenter_nuclei
+       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
      enddo
    enddo
  end if
@@ -2694,7 +2686,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
  real(dp)                   :: xxmin,xxmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ir,iatom
+ integer                    :: ir
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -2752,7 +2744,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
    write(file_name,'(i4.4,a,i1,a)') num,'_',ispin,'_line_density.dat'
    open(newunit=line_rho(ispin),file=file_name)
 !   write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
-   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,ncenter_nuclei)*bohr_A
  enddo
 
  do ir=0,nr
@@ -2817,7 +2809,7 @@ subroutine plot_rho_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  do ispin=1,nspin
    write(file_name,'(a,i4.4,a,i1,a)') 'diff_',num,'_',ispin,'_line_density.dat'
    open(newunit=line_rho(ispin),file=file_name)
-   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,ncenter_nuclei)*bohr_A
  enddo
 
  do ir=1,nr_line_rho
@@ -2883,7 +2875,7 @@ subroutine calc_rho_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmpl
  do ispin=1,nspin
    write(file_name,'(a)') 'total_initial_line_density.dat'
    open(newunit=line_rho(ispin),file=file_name)
-   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,natom)*bohr_A
+   write(line_rho(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,ncenter_nuclei)*bohr_A
  enddo
 
  do ir=1,nr_line_rho
@@ -2965,7 +2957,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
  real(dp)                   :: xxmin,xxmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ir,ih,iatom
+ integer                    :: ir,ih
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
@@ -3083,7 +3075,7 @@ subroutine write_cube_from_header(rootname,basis,occupation,c_matrix)
  integer                     :: natom1
  integer                     :: n1,n2,n3
  integer                     :: i1,i2,i3
- integer                     :: istate1,istate2,istate,ispin,iatom
+ integer                     :: istate1,istate2,istate,ispin,icenter
  integer,allocatable         :: ocubefile(:,:)
  integer                     :: ocuberho(nspin)
  real(dp)                    :: dv,nelect,rhor
@@ -3112,10 +3104,10 @@ subroutine write_cube_from_header(rootname,basis,occupation,c_matrix)
  read(icubefile,*) n1,dr(:,1)
  read(icubefile,*) n2,dr(:,2)
  read(icubefile,*) n3,dr(:,3)
- do iatom=1,natom1
+ do icenter=1,natom1
    read(icubefile,*)
  enddo
- if( natom1 /= natom ) then
+ if( natom1 /= ncenter_nuclei ) then
    call issue_warning('write_cube_from_header: wrong input number of atoms. Skip cube file generation')
    return
  endif
@@ -3162,12 +3154,12 @@ subroutine write_cube_from_header(rootname,basis,occupation,c_matrix)
      open(newunit=ocuberho(ispin),file=file_name)
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
      write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin,zmin
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') n1,dr(:,1)
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') n2,dr(:,2)
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') n3,dr(:,3)
-     do iatom=1,natom
-       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+     do icenter=1,ncenter_nuclei
+       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
      enddo
    enddo
  endif
@@ -3179,12 +3171,12 @@ subroutine write_cube_from_header(rootname,basis,occupation,c_matrix)
        open(newunit=ocubefile(istate,ispin),file=file_name)
        write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
        write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate1
-       write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+       write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin,zmin
        write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n1,dr(:,1)
        write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n2,dr(:,2)
        write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n3,dr(:,3)
-       do iatom=1,natom
-         write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+       do icenter=1,ncenter_nuclei
+         write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
        enddo
      enddo
    enddo

@@ -589,8 +589,8 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
    !mask(:)       = ( NORM2(basis%shell(:)%v0(:)) > 1.0e-6_dp )
    !mask_auxil(:) = ( NORM2(auxil_basis%shell(:)%v0(:)) > 1.0e-6_dp )
 
-   mask(:)       = ( basis%shell(:)%iatom       == MAXVAL(basis%shell(:)%iatom) )
-   mask_auxil(:) = ( auxil_basis%shell(:)%iatom == MAXVAL(auxil_basis%shell(:)%iatom) )
+   mask(:)       = ( basis%shell(:)%icenter       == MAXVAL(basis%shell(:)%icenter) )
+   mask_auxil(:) = ( auxil_basis%shell(:)%icenter == MAXVAL(auxil_basis%shell(:)%icenter) )
  else
    call destroy_eri_3center()
  endif

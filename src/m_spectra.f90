@@ -352,8 +352,10 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
   real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
   !=====
   integer                            :: nstate,m_x,n_x
-  integer,parameter                  :: nqradial = 500
-  real(dp),parameter                 :: dqradial = 0.02_dp
+!  integer,parameter                  :: nqradial = 500
+!  real(dp),parameter                 :: dqradial = 0.02_dp
+  integer,parameter                  :: nqradial = 1500
+  real(dp),parameter                 :: dqradial = 0.01_dp
   integer,parameter                  :: nq = nqradial
   integer                            :: gt
   integer                            :: t_ia,t_jb
@@ -494,6 +496,9 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
           if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
                stopping_cross_section(iv) = stopping_cross_section(iv) + ( 4.0_dp * pi ) / vv**2  &
                                               * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
+          !if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
+          !     stopping_exc(iv,t_ia) = stopping_exc(iv,t_ia) + ( 4.0_dp * pi ) / vv**2  &
+          !                                    * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
         enddo
 
       enddo
@@ -528,8 +533,8 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
   !enddo
   !do iv=1,nvel_projectile
   !  vv = NORM2(vlist(:,iv))
-  !  do t_ia=1,nmat
-  !    write(2000+t_ia,'(2(2x,f12.6))') vv,stopping_exc(iv,t_ia)
+  !  do t_ia=1,12 ! nmat
+  !    write(stdout,'(i6,1x,2(2x,f12.6))') t_ia,vv,stopping_exc(iv,t_ia)
   !  enddo
   !enddo
 
@@ -690,7 +695,7 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
           deallocate(gos_mo)
           fnq = 2.0_dp * ABS( gos_tddft )**2 * eigenvalue(t_jb) / SUM( qvec(:)**2 )
 
-          stopping_cross_section(iv) = stopping_cross_section(iv) + 2.0_dp / vv**2  &
+          stopping_exc(iv,t_jb) = stopping_exc(iv,t_jb) + 2.0_dp / vv**2  &
                                               * fnq  * dphi * dcostheta    / ABS(costheta)
           stopping_exc(iv,t_jb) = stopping_exc(iv,t_jb) + 2.0_dp / vv**2  &
                                               * fnq  * dphi * dcostheta    / ABS(costheta)
@@ -704,7 +709,8 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
     !close(2000+iv)
   enddo ! velocity
 
-  call world%sum(stopping_cross_section)
+  call world%sum(stopping_exc)
+  stopping_cross_section(:) = SUM(stopping_exc(:,:),DIM=2)
 
   call clean_deallocate('temporary non-distributed X+Y matrix',xpy_matrix_global)
 
@@ -722,6 +728,9 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
   enddo
   write(stdout,*)
   close(fstopping)
+  do iv=1,nvel_projectile
+    write(stdout,'(*(2x,es18.8))') vlist(:,iv),stopping_cross_section(iv),stopping_exc(iv,1:20)
+  enddo
 
 
   if( print_yaml_ .AND. is_iomaster )  then

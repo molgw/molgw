@@ -210,6 +210,28 @@ end function element_name
 
 
 !=========================================================================
+function element_name_long(zatom)
+ implicit none
+ real(dp),intent(in) :: zatom
+ character(len=8)  :: element_name_long
+!=====
+
+ if( NINT(zatom) > nelement_max ) then
+   write(stdout,'(a,i3,a)') 'Element symbol is not one of first ',nelement_max,' elements'
+   call die('element symbol not understood')
+ endif
+
+ if( zatom > 0.0 .AND. ABS(NINT(zatom)-zatom) < 1.0e-9_dp ) then
+   element_name_long = element_list(NINT(ABS(zatom)))
+ else
+   write(element_name_long,'(f8.4)') zatom
+ endif
+
+
+end function element_name_long
+
+
+!=========================================================================
 subroutine element_atomicdensity(zval,zatom,coeff,alpha)
  implicit none
  real(dp),intent(in)  :: zval

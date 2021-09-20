@@ -117,7 +117,6 @@ program molgw
   ! Build all the Cartesian to Pure Gaussian transforms
   call setup_cart_to_pure_transforms()
 
-
   !
   ! Prepare relaxation with LBFGS
   if( move_nuclei == 'relax' ) then
@@ -299,13 +298,6 @@ program molgw
 
     if( restart_tddft_is_correct .AND. read_tddft_restart_ ) exit
 
-    if( is_basis_restart ) then
-      !
-      ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-      call issue_warning('basis restart is not fully implemented: use with care')
-      call diagonalize_hamiltonian_scalapack(hamiltonian_fock,x_matrix,energy,c_matrix)
-    endif
-
 
     !
     ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
@@ -320,28 +312,42 @@ program molgw
 
     if( .NOT. is_restart) then
 
-      allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
 
+      !
+      ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
+      !                         or by reading a Gaussian fchk
+      !
       select case(TRIM(init_hamiltonian))
       case('GUESS')
-        !
-        ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-        !
         ! Calculate a very approximate vhxc based on simple gaussians density placed on atoms
+        allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
+
         call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
 
         hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+
+        write(stdout,'(/,a)') ' Approximate hamiltonian'
+        call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+
+        deallocate(hamiltonian_tmp)
+
       case('CORE')
+        allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
+
         hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+
+        write(stdout,'(/,a)') ' Approximate hamiltonian'
+        call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+
+        deallocate(hamiltonian_tmp)
+
+      case('GAUSSIAN')
+        !call read_gaussian_fchk !TODO
 
       case default
         call die('molgw: init_hamiltonian option is not valid')
       end select
 
-      write(stdout,'(/,a)') ' Approximate hamiltonian'
-      call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-
-      deallocate(hamiltonian_tmp)
 
       ! The hamiltonian is still spin-independent:
       c_matrix(:,:,nspin) = c_matrix(:,:,1)

@@ -84,7 +84,7 @@ ffor.write(header)
 
 for key,value in input_var_dict.items():
   # Exclude a few input variable due to name clash
-  if key in ['basis','auxil_basis','natom','nghost','read_restart']:
+  if key in ['basis','auxil_basis','read_restart']:
     continue
 
   if   value['datatype'] =='integer':
@@ -149,15 +149,15 @@ ffor.write(header)
 
 for key,value in input_var_dict.items():
   if   value['datatype'] =='integer':
-    fortran_format = '\'(1x,a24,2x,i8)\''
+    fortran_format = '\'(1x,a32,2x,i8)\''
   elif value['datatype'] =='real':
-    fortran_format = '\'(1x,a24,2x,es16.8)\''
+    fortran_format = '\'(1x,a32,2x,es16.8)\''
   elif value['datatype'] =='vector_1d_3':
-    fortran_format = '\'(1x,a24,2x,"(",3(es16.8,2x),")")\''
+    fortran_format = '\'(1x,a32,2x,"(",3(es16.8,2x),")")\''
   elif value['datatype'] =='yes/no':
-    fortran_format = '\'(1x,a24,6x,a)\''
+    fortran_format = '\'(1x,a32,6x,a)\''
   elif value['datatype'] =='characters':
-    fortran_format = '\'(1x,a24,6x,a)\''
+    fortran_format = '\'(1x,a32,6x,a)\''
   else:
     sys.exit('Datatype of variable '+str(key)+' ('+str(value['datatype'])+') is not known')
   ffor.write(' write(stdout,'+fortran_format+') \''+key+'\','+key+' \n')

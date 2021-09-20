@@ -12,6 +12,7 @@ module m_tddft_propagator
  use m_warning
  use m_timing
  use m_tddft_variables
+ use m_atoms
  use m_string_tools
  use m_multipole
  use m_basis_set
@@ -74,7 +75,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  real(dp),intent(inout)     :: occupation(:,:)
  logical,intent(in)         :: restart_tddft_is_correct
 !=====
- integer                    :: fixed_atom_list(natom-nprojectile)
+ integer                    :: fixed_atom_list(ncenter_nuclei-nprojectile)
  integer                    :: ispin
  integer                    :: istate,nstate_tmp
  real(dp)                   :: time_min
@@ -153,8 +154,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
 
- allocate(xatom_start(3,natom))
- allocate(xbasis_start(3,natom_basis))
+ allocate(xatom_start(3,ncenter_nuclei))
+ allocate(xbasis_start(3,ncenter_basis))
 
  write(stdout,'(/,1x,a)') "===INITIAL CONDITIONS==="
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
@@ -167,8 +168,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end if
 
    time_min = time_read
-   call change_position_one_atom(natom,xatom_start(:,natom))
-   call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis))
+   call change_position_one_atom(ncenter_nuclei, xatom_start(:,ncenter_nuclei))
+   call change_basis_center_one_atom(ncenter_basis, xbasis_start(:,ncenter_basis))
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) call update_basis_eri(basis,auxil_basis)
 
  else
@@ -210,7 +211,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  ! hamiltonian_nucleus contains the contribution from all the fixed atoms (i.e. excluding the projectile)
  ! Remember: the projectile is always the last atom
- do iatom=1,natom-nprojectile
+ do iatom=1,ncenter_nuclei-nprojectile
    fixed_atom_list(iatom) = iatom
  enddo
  call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
@@ -659,7 +660,7 @@ subroutine init_c_matrix(basis,               &
       ! in ortho basis : M' = X**H * (H-iD+mv**2*S) * X
       m_eigenvector(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
       m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
-                       + SUM(vel(:,natom)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
+                       + SUM(vel_nuclei(:,ncenter_nuclei)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
       m_eigenvector(:,:,ispin)  = MATMUL( m_eigenvector(:,:,ispin), x_matrix(:,:) )
       m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
       ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
@@ -787,12 +788,12 @@ subroutine setup_D_matrix_analytic(basis,d_matrix,recalc)
 
  if ( recalc ) then
    do jbf=basis_t%nbf+1,basis%nbf
-     d_matrix(1:basis_t%nbf,jbf) = MATMUL( s_matrix_grad(1:basis_t%nbf,jbf,:), velbasis(:,natom_basis) )
+     d_matrix(1:basis_t%nbf,jbf) = MATMUL( s_matrix_grad(1:basis_t%nbf,jbf,:), vel_basis(:,ncenter_basis) )
    end do
  else
    do jbf=1,basis%nbf
-     ibasis_center = basis%bff(jbf)%iatom
-     d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), velbasis(:,ibasis_center) )
+     ibasis_center = basis%bff(jbf)%icenter
+     d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel_basis(:,ibasis_center) )
    end do
  end if
 
@@ -823,10 +824,10 @@ subroutine mb_related_updates(basis,                &
 
  call start_clock(timing_update_p_position)
  ! Update projectile position and its basis center to t+dt/n
- call change_position_one_atom(natom,xatom_start(:,natom) &
-      + vel(:,natom) * (time_cur - time_read - time_step*dt_factor))
- call change_basis_center_one_atom(natom_basis,xbasis_start(:,natom_basis) &
-      + vel(:,natom) * (time_cur - time_read - time_step*dt_factor))
+ call change_position_one_atom(ncenter_nuclei,xatom_start(:,ncenter_nuclei) &
+      + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step*dt_factor))
+ call change_basis_center_one_atom(ncenter_basis,xbasis_start(:,ncenter_basis) &
+      + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step*dt_factor))
  call stop_clock(timing_update_p_position)
 
  call start_clock(timing_update_basis_eri)
@@ -1425,7 +1426,7 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
  select case(excit_type%form)
  case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
    write(file_time_data,"(f10.4,12(2x,es16.8e3))") &
-      time_cur, en_tddft%total, xatom(:,natom), en_tddft%nuc_nuc, en_tddft%nucleus, &
+      time_cur, en_tddft%total, xatom(:,ncenter_basis), en_tddft%nuc_nuc, en_tddft%nucleus, &
       en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
       en_tddft%excit, en_tddft%id
    call output_projectile_position()
@@ -1611,7 +1612,7 @@ subroutine calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_ma
    end do
 
    if( is_iomaster) then
-     write(file_q_matrix(ispin),"(F10.4,30(2x,es16.8E3))") time_cur, xatom(:,natom), q_occ(:)
+     write(file_q_matrix(ispin),"(F10.4,30(2x,es16.8E3))") time_cur, xatom(:,ncenter_nuclei), q_occ(:)
    end if
  end do
 
@@ -1683,11 +1684,11 @@ subroutine write_restart_tddft(nstate,time_cur,occupation,c_matrix_tddft)
  ! Current Time
  write(restartfile) time_cur
  ! Atomic structure
- write(restartfile) natom
- write(restartfile) natom_basis
- write(restartfile) zatom(1:natom)
- write(restartfile) xatom(:,1:natom)
- write(restartfile) xbasis(:,1:natom_basis)
+ write(restartfile) ncenter_nuclei
+ write(restartfile) ncenter_basis
+ write(restartfile) zatom(1:ncenter_nuclei)
+ write(restartfile) xatom(:,1:ncenter_nuclei)
+ write(restartfile) xbasis(:,1:ncenter_basis)
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
    do istate=1,nocc
@@ -1762,19 +1763,18 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
  read(restartfile) time_cur_read
 
  !Different number of atoms in restart and input files is not provided for tddft restart
- !natom
  read(restartfile) natom_read
- if( natom_read /= natom ) then
-   call issue_warning('RESTART_TDDFT file: natom is not the same.')
+ if( natom_read /= ncenter_nuclei ) then
+   call issue_warning('RESTART_TDDFT file: number of atoms has changed.')
    restart_is_correct=.FALSE.
    close(restartfile)
    return
  end if
 
- !natom_basis
+ !ncenter_basis
  read(restartfile) nbasis_read
- if( nbasis_read /= natom_basis ) then
-   call issue_warning('RESTART_TDDFT file: natom_basis is not the same.')
+ if( nbasis_read /= ncenter_basis ) then
+   call issue_warning('RESTART_TDDFT file: number of basis has changed.')
    restart_is_correct=.FALSE.
    close(restartfile)
    return
@@ -1790,10 +1790,12 @@ subroutine check_restart_tddft(nstate,occupation,restart_is_correct)
                 - xatom(:,1:natom_read-nprojectile) ) > 1.0e-5_dp ) ) then
    call issue_warning('RESTART_TDDFT file: Atom geometry has changed')
  endif
+
  if( ANY( ABS( xbasis_read(:,1:nbasis_read-nprojectile) &
             - xbasis(:,1:nbasis_read-nprojectile) ) > 1.0e-5_dp ) ) then
    call issue_warning('RESTART_TDDFT file: Basis geometry has changed')
  endif
+
  deallocate(zatom_read,x_read,xbasis_read)
 
  ! Here we do not read c_matrix_orth_cmplx from the RESTART_TDDFT file
@@ -2340,7 +2342,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  integer              :: ispin, idir, iatom
  real(dp)             :: excit_field(3)
  complex(dp)          :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
- integer              :: projectile_list(1),fixed_atom_list(natom-nprojectile)
+ integer              :: projectile_list(1),fixed_atom_list(ncenter_nuclei-nprojectile)
  real(dp),allocatable :: hamiltonian_projectile(:,:)
 !=====
 
@@ -2395,13 +2397,14 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
    !
    ! Move the projectile
-   call change_position_one_atom(natom,xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read ))
+   call change_position_one_atom(ncenter_nuclei, &
+                                 xatom_start(:,ncenter_nuclei) + vel_nuclei(:,ncenter_nuclei) * ( time_cur - time_read ))
 
    call nucleus_nucleus_energy(en_tddft%nuc_nuc)
 
    !
    ! Nucleus-electron interaction due to the projectile only
-   projectile_list(1) = natom
+   projectile_list(1) = ncenter_nuclei
    allocate(hamiltonian_projectile(basis%nbf,basis%nbf))
    call setup_nucleus(basis,hamiltonian_projectile,projectile_list)
 
@@ -2421,7 +2424,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
      call nucleus_nucleus_energy(en_tddft%nuc_nuc)
      ! Nucleus-electron interaction due to the fixed target
      call recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
-     !do iatom=1,natom-nprojectile
+     !do iatom=1,ncenter_nuclei-nprojectile
       ! fixed_atom_list(iatom) = iatom
      !enddo
      !call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
@@ -2429,7 +2432,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
    !
    ! Nucleus-electron interaction due to the projectile only
-   projectile_list(1) = natom
+   projectile_list(1) = ncenter_nuclei
    allocate(hamiltonian_projectile(basis%nbf,basis%nbf))
    call setup_nucleus(basis,hamiltonian_projectile,projectile_list)
 

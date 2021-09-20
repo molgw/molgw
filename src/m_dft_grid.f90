@@ -61,7 +61,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  integer,intent(in)         :: batch_size
 !=====
  integer              :: ngrid_max_allowed
- integer              :: iradial,iatom,iangular,ir,ir1,igrid
+ integer              :: iradial,icenter,iangular,ir,ir1,igrid
  integer              :: n1,n2,nangular,ngridmax
  real(dp)             :: weight,radius,ri
  real(dp),allocatable :: x1(:),x2(:)
@@ -69,9 +69,9 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  real(dp),allocatable :: z1(:),z2(:)
  real(dp),allocatable :: w1(:),w2(:)
  real(dp),allocatable :: xa(:,:),wxa(:,:)
- real(dp)             :: p_becke(natom_basis),s_becke(natom_basis,natom_basis),fact_becke
+ real(dp)             :: p_becke(ncenter_basis),s_becke(ncenter_basis,ncenter_basis),fact_becke
  real(dp)             :: mu,alpha,xtmp,mu_aa,rtmp
- integer              :: jatom,katom
+ integer              :: jcenter,kcenter
  real(dp),allocatable :: rr_grid_tmp(:,:)
  real(dp),allocatable :: w_grid_tmp(:)
 !=====
@@ -106,7 +106,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    call die('integration quality not recognized')
  end select
 
- allocate(xa(nradial,natom_basis),wxa(nradial,natom_basis))
+ allocate(xa(nradial,ncenter_basis),wxa(nradial,ncenter_basis))
  allocate(x1(nangular_fine),y1(nangular_fine),z1(nangular_fine),w1(nangular_fine))
  allocate(x2(nangular_coarse),y2(nangular_coarse),z2(nangular_coarse),w2(nangular_coarse))
 
@@ -124,17 +124,17 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 ! xa(:,1)  = log( 2.0_dp / (1.0_dp - xa(:,1) ) ) / log(2.0_dp)
 !
 ! ! All atoms have the same grid
-! do iatom=2,natom_basis
-!   xa(:,iatom)  =  xa(:,1)
-!   wxa(:,iatom) = wxa(:,1)
+! do icenter=2,ncenter_basis
+!   xa(:,icenter)  =  xa(:,1)
+!   wxa(:,icenter) = wxa(:,1)
 ! enddo
 
 
  !
  ! LOG3 radial grid (Mura - Knowles)
- do iatom=1,natom_basis
+ do icenter=1,ncenter_basis
 
-   select case(zbasis(iatom))
+   select case(zbasis(icenter))
    case(3,4,11,12,19,20,30,48)
      alpha = 7.0_dp
    case default
@@ -143,8 +143,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
    do iradial=1,nradial
      xtmp = ( iradial - 0.5_dp ) / REAL(nradial,dp)
-     xa(iradial,iatom)   = -alpha * log( 1.0_dp - xtmp**3)
-     wxa(iradial,iatom)  = 3.0_dp * alpha * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial,dp)
+     xa(iradial,icenter)   = -alpha * log( 1.0_dp - xtmp**3)
+     wxa(iradial,icenter)  = 3.0_dp * alpha * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial,dp)
    enddo
 
  enddo
@@ -221,10 +221,10 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
  ! Calculate the maximum number of grid points
  ngridmax = 0
- do iatom=1,natom_basis
-   radius = element_covalent_radius(zbasis(iatom))
+ do icenter=1,ncenter_basis
+   radius = element_covalent_radius(zbasis(icenter))
    do iradial=1,nradial
-     if( xa(iradial,iatom) < pruning_limit * radius ) then
+     if( xa(iradial,icenter) < pruning_limit * radius ) then
        ngridmax = ngridmax + nangular_coarse
      else
        ngridmax = ngridmax + nangular_fine
@@ -239,19 +239,19 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  rr_grid_tmp(:,:) = 0.0_dp
  w_grid_tmp(:)    = 0.0_dp
  ir    = 0
- do iatom=1,natom_basis
-   radius = element_covalent_radius(zbasis(iatom))
+ do icenter=1,ncenter_basis
+   radius = element_covalent_radius(zbasis(icenter))
 
    ! Find the nearest neighbor of atom i
    ri = 999999.9d0
-   do katom=1,natom_basis
-     if( iatom == katom ) cycle
-     ri = MIN( NORM2( xbasis(:,katom) - xbasis(:,iatom) ) , ri )
+   do kcenter=1,ncenter_basis
+     if( icenter == kcenter ) cycle
+     ri = MIN( NORM2( xbasis(:,kcenter) - xbasis(:,icenter) ) , ri )
    enddo
 
 
    do iradial=1,nradial
-     if( xa(iradial,iatom) < pruning_limit * radius ) then
+     if( xa(iradial,icenter) < pruning_limit * radius ) then
        nangular = nangular_coarse
      else
        nangular = nangular_fine
@@ -263,16 +263,16 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
        ! Parallelization of the weights generation
        if( MODULO(ir-1,world%nproc) /= world%rank ) cycle
 
-       if( xa(iradial,iatom) < pruning_limit * radius ) then
-         rr_grid_tmp(1,ir) = xa(iradial,iatom) * x2(iangular) + xbasis(1,iatom)
-         rr_grid_tmp(2,ir) = xa(iradial,iatom) * y2(iangular) + xbasis(2,iatom)
-         rr_grid_tmp(3,ir) = xa(iradial,iatom) * z2(iangular) + xbasis(3,iatom)
-         weight   = wxa(iradial,iatom) * w2(iangular) * xa(iradial,iatom)**2 * 4.0_dp * pi
+       if( xa(iradial,icenter) < pruning_limit * radius ) then
+         rr_grid_tmp(1,ir) = xa(iradial,icenter) * x2(iangular) + xbasis(1,icenter)
+         rr_grid_tmp(2,ir) = xa(iradial,icenter) * y2(iangular) + xbasis(2,icenter)
+         rr_grid_tmp(3,ir) = xa(iradial,icenter) * z2(iangular) + xbasis(3,icenter)
+         weight   = wxa(iradial,icenter) * w2(iangular) * xa(iradial,icenter)**2 * 4.0_dp * pi
        else
-         rr_grid_tmp(1,ir) = xa(iradial,iatom) * x1(iangular) + xbasis(1,iatom)
-         rr_grid_tmp(2,ir) = xa(iradial,iatom) * y1(iangular) + xbasis(2,iatom)
-         rr_grid_tmp(3,ir) = xa(iradial,iatom) * z1(iangular) + xbasis(3,iatom)
-         weight   = wxa(iradial,iatom) * w1(iangular) * xa(iradial,iatom)**2 * 4.0_dp * pi
+         rr_grid_tmp(1,ir) = xa(iradial,icenter) * x1(iangular) + xbasis(1,icenter)
+         rr_grid_tmp(2,ir) = xa(iradial,icenter) * y1(iangular) + xbasis(2,icenter)
+         rr_grid_tmp(3,ir) = xa(iradial,icenter) * z1(iangular) + xbasis(3,icenter)
+         weight   = wxa(iradial,icenter) * w1(iangular) * xa(iradial,icenter)**2 * 4.0_dp * pi
        endif
 
 
@@ -284,19 +284,19 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          s_becke(:,:) = 1.0_dp
          !$OMP PARALLEL PRIVATE(mu)
          !$OMP DO
-         do katom=1,natom_basis
-           do jatom=1,natom_basis
-             if(katom==jatom) cycle
-             mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
-                       / NORM2(xbasis(:,katom)-xbasis(:,jatom))
-             s_becke(jatom,katom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+         do kcenter=1,ncenter_basis
+           do jcenter=1,ncenter_basis
+             if(kcenter==jcenter) cycle
+             mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jcenter)) ) &
+                       / NORM2(xbasis(:,kcenter)-xbasis(:,jcenter))
+             s_becke(jcenter,kcenter) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
            enddo
          enddo
          !$OMP END DO
          !$OMP END PARALLEL
 
          p_becke(:) = PRODUCT(s_becke(:,:),DIM=1)
-         fact_becke = p_becke(iatom) / SUM( p_becke(:) )
+         fact_becke = p_becke(icenter) / SUM( p_becke(:) )
 
        case('ssf')
          !
@@ -305,7 +305,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
          !
          ! First screen the "obvious" values
-         if( NORM2(rr_grid_tmp(:,ir)-xbasis(:,iatom)) < 0.5_dp * ( 1.0_dp - aa ) * ri ) then
+         if( NORM2(rr_grid_tmp(:,ir)-xbasis(:,icenter)) < 0.5_dp * ( 1.0_dp - aa ) * ri ) then
            fact_becke = 1.0_dp
 
          else
@@ -313,22 +313,22 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
            s_becke(:,:) = 1.0_dp
            !$OMP PARALLEL PRIVATE(mu,mu_aa,rtmp)
            !$OMP DO
-           do katom=1,natom_basis
-             do jatom=katom+1,natom_basis
+           do kcenter=1,ncenter_basis
+             do jcenter=kcenter+1,ncenter_basis
 
-               mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
-                         / NORM2(xbasis(:,katom)-xbasis(:,jatom))
+               mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jcenter)) ) &
+                         / NORM2(xbasis(:,kcenter)-xbasis(:,jcenter))
 
                if( mu < -aa ) then
-                 s_becke(katom,jatom) = 0.0_dp
+                 s_becke(kcenter,jcenter) = 0.0_dp
                else if( mu > aa ) then
-                 s_becke(jatom,katom) = 0.0_dp
+                 s_becke(jcenter,kcenter) = 0.0_dp
                else
                  mu_aa = mu / aa
                  rtmp = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
 
-                 s_becke(jatom,katom) = 0.5_dp * ( 1.0_dp - rtmp )
-                 s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp + rtmp )
+                 s_becke(jcenter,kcenter) = 0.5_dp * ( 1.0_dp - rtmp )
+                 s_becke(kcenter,jcenter) = 0.5_dp * ( 1.0_dp + rtmp )
                endif
 
              enddo
@@ -337,7 +337,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
            !$OMP END PARALLEL
 
            p_becke(:) = PRODUCT(s_becke(:,:),DIM=1)
-           fact_becke = p_becke(iatom) / SUM( p_becke(:) )
+           fact_becke = p_becke(icenter) / SUM( p_becke(:) )
          endif
 
        case default
@@ -360,13 +360,15 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  ! Denombrate the number of non-negligible weight in the quadrature
  ngrid = COUNT( w_grid_tmp(:) > TOL_WEIGHT )
 
+ write(stdout,'(/,a)')      ' Setup the DFT quadrature'
+ write(stdout,'(1x,a,i12)') 'Total number of grid points: ',ngrid
+
  ! Distribute the grid over processors
  call init_dft_grid_distribution(ngrid)
 
- write(stdout,'(/,a)')              ' Setup the DFT quadrature'
  write(stdout,'(a,i4,1x,i4,1x,i4)') ' discretization grid per atom [radial , angular max - angular min] ', &
                                     nradial,nangular_fine,nangular_coarse
- write(stdout,'(a,i8)')             ' total number of real-space points for this processor',ngrid
+ write(stdout,'(a,i8)')             ' total number of real-space points for this mpi task',ngrid
 
  allocate(rr_grid(3,ngrid),w_grid(ngrid))
 

@@ -14,7 +14,7 @@ module m_restart
  use m_atoms
  use m_basis_set
  use m_hamiltonian_tools,only: dump_out_occupation
- use m_hamiltonian_onebody,only: setup_overlap_mixedbasis
+ use m_hamiltonian_onebody,only: setup_overlap_mixedbasis, setup_overlap
  use m_linear_algebra,only: invert
 
 
@@ -75,9 +75,9 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
  ! RESTART file type SMALL_RESTART=1 or BIG_RESTART=2
  write(restartfile) restart_type
  ! Atomic structure
- write(restartfile) natom
- write(restartfile) zatom(1:natom)
- write(restartfile) xatom(:,1:natom)
+ write(restartfile) ncenter_nuclei
+ write(restartfile) zatom(1:ncenter_nuclei)
+ write(restartfile) xatom(:,1:ncenter_nuclei)
  ! Calculation type
  write(restartfile) calc_type%scf_name
  ! Basis set
@@ -157,10 +157,8 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
  real(dp),allocatable       :: occupation_read(:,:)
  real(dp),allocatable       :: energy_read(:,:)
  real(dp),allocatable       :: c_matrix_read(:,:,:)
- real(dp),allocatable       :: hfock_read(:,:,:)
+ real(dp),allocatable       :: overlapm1(:,:)
  real(dp),allocatable       :: overlap_mixedbasis(:,:)
- real(dp),allocatable       :: overlap_smallbasis(:,:)
- real(dp),allocatable       :: overlap_bigbasis_approx(:,:)
 !=====
 
  inquire(file=restart_filename,exist=file_exists)
@@ -216,9 +214,9 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
  allocate(zatom_read(natom_read),x_read(3,natom_read))
  read(restartfile) zatom_read(1:natom_read)
  read(restartfile) x_read(:,1:natom_read)
- if( natom_read /= natom  &
-  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,natom)) - zatom(1:MIN(natom_read,natom)) ) > 1.0e-5_dp ) &
-  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,natom)) - xatom(:,1:MIN(natom_read,natom))   ) > 1.0e-5_dp ) ) then
+ if( natom_read /= ncenter_nuclei  &
+  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,ncenter_nuclei)) - zatom(1:MIN(natom_read,ncenter_nuclei)) ) > 1.0e-5_dp ) &
+  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,ncenter_nuclei)) - xatom(:,1:MIN(natom_read,ncenter_nuclei))   ) > 1.0e-5_dp ) ) then
    same_geometry = .FALSE.
    call issue_warning('RESTART file: Geometry has changed')
  else
@@ -297,20 +295,50 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
      read(restartfile) c_matrix_read(:,istate,ispin)
    enddo
  enddo
- c_matrix(:,:,:) = 0.0_dp
- do ispin=1,nspin_read
-   do istate=1,MIN(nstate_local,nstate)
-     c_matrix(1:MIN(basis_read%nbf,basis%nbf),istate,ispin) &
-          = c_matrix_read(1:MIN(basis_read%nbf,basis%nbf),istate,ispin)
-   enddo
- enddo
- ! Fill the rest of the array with identity
- if( nstate_local < nstate ) then
+
+ if( same_basis ) then
+   c_matrix(:,:,:) = 0.0_dp
    do ispin=1,nspin_read
+     do istate=1,MIN(nstate_local,nstate)
+       c_matrix(1:MIN(basis_read%nbf,basis%nbf),istate,ispin) &
+            = c_matrix_read(1:MIN(basis_read%nbf,basis%nbf),istate,ispin)
+     enddo
+   enddo
+   ! Fill the rest of the array with identity
+   if( nstate_local < nstate ) then
+     do ispin=1,nspin_read
+       do istate=nstate_local+1,nstate
+         c_matrix(istate,istate,ispin) = 1.0_dp
+       enddo
+     enddo
+   endif
+ else
+   allocate(overlapm1(basis%nbf,basis%nbf))
+   allocate(overlap_mixedbasis(basis%nbf,basis_read%nbf))
+
+   ! Calculate the overlap matrix of the final basis set
+   call setup_overlap(basis,overlapm1)
+
+   ! Invert the overlap of the final basis set
+   call invert(overlapm1)
+
+   ! Get the scalar products between the old and the new basis sets
+   ! Be aware: this is a rectangular matrix
+   call setup_overlap_mixedbasis(basis,basis_read,overlap_mixedbasis)
+   do ispin=1,nspin_read
+     c_matrix(:,1:nstate_local,ispin) = MATMUL(overlapm1(:,:), &
+                                             MATMUL(overlap_mixedbasis(:,:) , c_matrix_read(:,1:nstate_local,ispin) ) )
+     ! Fill the rest of the array with identity
      do istate=nstate_local+1,nstate
        c_matrix(istate,istate,ispin) = 1.0_dp
      enddo
    enddo
+   deallocate(overlapm1,overlap_mixedbasis)
+
+   restart_type = BASIS_RESTART
+   close(restartfile)
+   return
+
  endif
 
 
@@ -332,67 +360,6 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
      if( same_geometry ) then
        restart_type = BIG_RESTART
      endif
-     close(restartfile)
-     return
-
-   else
-
-     allocate(hfock_read(basis_read%nbf,basis_read%nbf,nspin_read))
-
-     do ispin=1,nspin_read
-       do ibf=1,basis_read%nbf
-         read(restartfile) hfock_read(:,ibf,ispin)
-       enddo
-     enddo
-
-     !
-     ! If the basis sets differ, then one needs to transpose the parts of the hamiltonian
-     ! for a clever starting point.
-
-     allocate(overlap_smallbasis(basis_read%nbf,basis_read%nbf))
-     allocate(overlap_bigbasis_approx(basis%nbf,basis%nbf))
-     allocate(overlap_mixedbasis(basis_read%nbf,basis%nbf))
-
-     ! Calculate the overlap matrix of the read basis set, named "smallbasis"
-     call setup_overlap_mixedbasis(basis_read,basis_read,overlap_smallbasis)
-
-     ! Invert the overlap of the read basis set
-     call invert(overlap_smallbasis)
-
-     ! Get the scalar products between the old and the new basis sets
-     ! Be aware: this is a rectangular matrix
-     call setup_overlap_mixedbasis(basis_read,basis,overlap_mixedbasis)
-
-     !
-     ! Evaluate the estimated overlap matrix with the small basis set that is read
-     ! in the RESTART file
-     ! Since the diagonal of the overlap matrix should be 1 by definition, this
-     ! allows us to evaluate how wrong we are and disregard the terms in the
-     ! hamiltonian which are poorly evaluated in the small basis set.
-     overlap_bigbasis_approx(:,:) = MATMUL( TRANSPOSE( overlap_mixedbasis), MATMUL( overlap_smallbasis , overlap_mixedbasis ) )
-
-     overlap_mixedbasis(:,:) = MATMUL( overlap_smallbasis(:,:)  , overlap_mixedbasis(:,:) )
-
-     do ispin=1,nspin_read
-       hamiltonian_fock(:,:,ispin) = MATMUL( TRANSPOSE(overlap_mixedbasis) , MATMUL( hfock_read(:,:,ispin), overlap_mixedbasis ) )
-     enddo
-
-     !
-     ! Disregard the term that are too wrong = evaluated overlap below 0.99
-     ! by giving a huge value to the Hartree
-     ! part of the Hamiltonian
-     do ibf=1,basis%nbf
-       if( ABS(overlap_bigbasis_approx(ibf,ibf) - 1.0_dp ) > 0.010_dp ) then
-         hamiltonian_fock(ibf,ibf,:) = 0.0_dp
-       endif
-     enddo
-     deallocate(overlap_smallbasis)
-     deallocate(overlap_mixedbasis)
-     deallocate(overlap_bigbasis_approx)
-
-     deallocate(hfock_read)
-
-     restart_type = BASIS_RESTART
      close(restartfile)
      return
 
