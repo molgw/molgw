@@ -352,10 +352,10 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
   real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
   !=====
   integer                            :: nstate,m_x,n_x
-!  integer,parameter                  :: nqradial = 500
-!  real(dp),parameter                 :: dqradial = 0.02_dp
-  integer,parameter                  :: nqradial = 1500
-  real(dp),parameter                 :: dqradial = 0.01_dp
+  integer,parameter                  :: nqradial = 500
+  real(dp),parameter                 :: dqradial = 0.02_dp
+!  integer,parameter                  :: nqradial = 1500
+!  real(dp),parameter                 :: dqradial = 0.01_dp
   integer,parameter                  :: nq = nqradial
   integer                            :: gt
   integer                            :: t_ia,t_jb
@@ -582,7 +582,7 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
   integer                            :: nq_batch
   integer                            :: fstopping
   integer,parameter                  :: ncostheta=200  ! from 0 to 1
-  integer,parameter                  :: nphi=8         ! from 0 to 2pi
+  integer,parameter                  :: nphi=6         ! from 0 to 2pi
   integer                            :: iphi,icostheta
   real(dp)                           :: phi,costheta,dphi,dcostheta
   real(dp),allocatable               :: xpy_matrix_global(:,:)
