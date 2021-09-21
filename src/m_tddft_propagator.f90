@@ -250,21 +250,25 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      !! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
      !! which are also that of  U = S**-1 * ( H - i*D )
-     !call init_c_matrix(basis,               &
-     !                   time_min,            &
-     !                   s_matrix,            &
-     !                   x_matrix,            &
-     !                   d_matrix,            &
-     !                   occupation ,         &
-     !                   hamiltonian_kinetic, &
-     !                   hamiltonian_nucleus, &
-     !                   dipole_ao,           &
-     !                   c_matrix_cmplx,      &
-     !                   c_matrix_orth_cmplx, &
-     !                   h_cmplx,             &
-     !                   h_small_cmplx,       &
-     !                   en_tddft)
-     continue
+     if( natom <= 1 ) then
+       call init_c_matrix(basis,               &
+                          time_min,            &
+                          s_matrix,            &
+                          x_matrix,            &
+                          d_matrix,            &
+                          occupation ,         &
+                          hamiltonian_kinetic, &
+                          hamiltonian_nucleus, &
+                          dipole_ao,           &
+                          c_matrix_cmplx,      &
+                          c_matrix_orth_cmplx, &
+                          h_cmplx,             &
+                          h_small_cmplx,       &
+                          en_tddft)
+     else
+       write(stdout, *) '===== C matrix initialization is skipped ====='
+       continue
+     end if
    else
      call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
      allocate(energy_tddft(nstate,nspin))
