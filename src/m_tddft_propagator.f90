@@ -266,6 +266,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                           h_small_cmplx,       &
                           en_tddft)
      else
+       write(stdout, *)
        write(stdout, *) '===== C matrix initialization is skipped ====='
        continue
      end if
