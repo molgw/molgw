@@ -1,0 +1,14 @@
+&molgw
+ scf='lda'
+
+ basis_path='../inputs/'
+ ecp_basis='test'
+ auxil_basis='AUTO'
+
+ ecp_elements='Ne'
+ ecp_type='pseudodojo.psp8'
+
+ natom=1
+/
+Ne          .000000     .000000     .000000   
+
