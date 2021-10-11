@@ -1431,7 +1431,7 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
  select case(excit_type%form)
  case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
    write(file_time_data,"(f10.4,12(2x,es16.8e3))") &
-      time_cur, en_tddft%total, xatom(:,ncenter_basis), en_tddft%nuc_nuc, en_tddft%nucleus, &
+      time_cur, en_tddft%total, xatom(:,ncenter_nuclei), en_tddft%nuc_nuc, en_tddft%nucleus, &
       en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
       en_tddft%excit, en_tddft%id
    call output_projectile_position()
