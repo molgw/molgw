@@ -49,7 +49,7 @@ module m_rdmd
 ! arrays 
   real(dp),allocatable,dimension(:)::occ
   real(dp),allocatable,dimension(:)::GAMMAs_old
-  real(dp),allocatable,dimension(:)::DM2_J,DM2_K,DM2_L,DM2_IIII
+  real(dp),allocatable,dimension(:)::DM2_J,DM2_K,DM2_L,DM2_iiii
   real(dp),allocatable,dimension(:)::Docc_gamma,Dfni_ni
   real(dp),allocatable,dimension(:)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
 
@@ -160,7 +160,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  allocate(RDMd%DDM2_gamma_K(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas)) 
  allocate(RDMd%DDM2_gamma_L(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas)) 
  allocate(RDMd%GAMMAs_old(RDMd%Ngammas))
- allocate(RDMd%DM2_IIII(RDMd%NBF_occ),RDMd%Dfni_ni(RDMd%NBF_occ)) 
+ allocate(RDMd%DM2_iiii(RDMd%NBF_occ),RDMd%Dfni_ni(RDMd%NBF_occ)) 
  allocate(RDMd%occ(RDMd%NBF_occ))
 
 end subroutine rdm_init
@@ -195,7 +195,7 @@ subroutine rdm_free(RDMd)
 
  deallocate(RDMd%GAMMAs_old)
  deallocate(RDMd%occ)
- deallocate(RDMd%DM2_IIII)
+ deallocate(RDMd%DM2_iiii)
  deallocate(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
  deallocate(RDMd%Docc_gamma,RDMd%Dfni_ni) 
  deallocate(RDMd%DDM2_gamma_J)
@@ -242,7 +242,7 @@ real(dp)::tol8=1.0d-8
  ! TODO: Missing terms for Nsingleocc>0 !
  open(unit=iunit,form='unformatted',file='DM2')
  do iorb=1,RDMd%NBF_occ
-  if(dabs(RDMd%DM2_IIII(iorb))>tol8) write(iunit) iorb,iorb,iorb,iorb,RDMd%DM2_IIII(iorb) 
+  if(dabs(RDMd%DM2_iiii(iorb))>tol8) write(iunit) iorb,iorb,iorb,iorb,RDMd%DM2_iiii(iorb) 
   do iorb1=1,iorb-1
    if(dabs(DM2_J(iorb,iorb1))>tol8) then
      write(iunit) iorb,iorb1,iorb,iorb1,DM2_J(iorb,iorb1)  

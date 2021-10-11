@@ -17,10 +17,12 @@
 !! CHILDREN
 !!   m_optocc
 !!   m_optorb
+!!   m_gitver
 !!
 !! SOURCE
 module m_noft_driver
 
+ use m_gitver
  use m_nofoutput
  use m_rdmd
  use m_integd
@@ -122,16 +124,18 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  type(elag_t),target::ELAGd
 !arrays
  character(len=10)::coef_file
+ character(len=100)::sha_git
  character(len=200)::msg
 !************************************************************************
 
  diagLpL=.true.; restart_param=.false.;
 
  ! Initialize output
+ call gitversion(sha_git) 
  call init_output(ofile_name)
 
  ! Write Header
- call write_header()
+ call write_header(sha_git)
 
  ! Print user defined parameters used in this run
  if(present(restart)) then

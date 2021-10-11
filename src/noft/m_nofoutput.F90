@@ -144,10 +144,11 @@ end subroutine close_output
 !!
 !! SOURCE
 
-subroutine write_header()
+subroutine write_header(sha)
 !Arguments ------------------------------------
 !scalars
 !arrays
+ character(len=100),intent(in)::sha
 !Local variables ------------------------------
 !scalars
 !arrays
@@ -182,6 +183,8 @@ subroutine write_header()
  & tvalues(6),":",tvalues(7)
  call write_output(msg)
  write(msg,'(a)') ' '
+ call write_output(msg)
+ write(msg,'(a,a)') ' GitHub commit SHA: ',sha
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)

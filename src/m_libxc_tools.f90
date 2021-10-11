@@ -252,7 +252,7 @@ subroutine init_libxc_info(dft_xc)
 
    !
    ! Tune the range for range separated hybrids
-   if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE ) then
+   if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE .or. dft_xc(ixc)%id == XC_GGA_X_HJS_B88 ) then
 #if (XC_MAJOR_VERSION > 4)
      call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega',dft_xc(ixc)%gamma)
 #else

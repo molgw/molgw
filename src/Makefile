@@ -90,7 +90,7 @@ spectrum:
 all: molgw spectrum
 
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
-          lebedev_quadrature.o pdbssolver1.o boys_function.o m_nofoutput.o
+          lebedev_quadrature.o pdbssolver1.o boys_function.o m_gitver.o m_nofoutput.o
 
 level005: m_warning.o real_spherical_harmonics.o m_cg.o m_lbfgs_intern.o 
 
@@ -146,8 +146,8 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
         m_hamiltonian_wrapper.o \
         m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o m_fourier_quadrature.o \
         linear_response.o static_polarizability.o gw_selfenergy.o m_gw_selfenergy_grid.o gwgamma_selfenergy.o \
-        m_nofoutput.o m_cg.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_elag.o m_gammatodm2.o m_diagf.o m_e_grad_occ.o \
-        m_optocc.o m_optorb.o m_noft_driver.o \
+        m_gitver.o m_nofoutput.o m_cg.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_elag.o m_gammatodm2.o m_diagf.o \
+        m_e_grad_occ.o m_optocc.o m_optorb.o m_noft_driver.o \
         bse.o m_multipole.o m_io.o m_restart.o mp2.o noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
         molgw.o
 	$(LINKER) \
@@ -160,7 +160,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
                         m_spectral_function.o m_ci.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o \
-                        m_nofoutput.o m_cg.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_elag.o m_gammatodm2.o m_diagf.o \
+                        m_gitver.o m_nofoutput.o m_cg.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_elag.o m_gammatodm2.o m_diagf.o \
                         m_e_grad_occ.o m_optocc.o m_optorb.o m_noft_driver.o \
                         mp2.o noft.o gw_selfenergy.o m_gw_selfenergy_grid.o gwgamma_selfenergy.o bse.o \
                         linear_response.o static_polarizability.o m_multipole.o m_io.o m_restart.o \
@@ -280,6 +280,9 @@ m_restart.o: m_definitions.f90 m_timing.f90 m_mpi.f90 m_atoms.f90 m_basis_set.f9
 
 m_nofoutput.o: m_definitions.f90 ./noft/m_nofoutput.F90
 	$(FC_W_OPTS) -c ./noft/m_nofoutput.F90
+
+m_gitver.o: ./noft/m_gitver.F90
+	$(FC_W_OPTS) -c ./noft/m_gitver.F90
 
 m_cg.o: m_definitions.f90 ./noft/m_cg.F90 
 	cp m_definitions.mod ./noft/m_vars.mod 
@@ -507,6 +510,9 @@ archive:
 	rm -rf ../tmp/
 
 prepare_sourcecode:
+	chmod 777 ./noft/gitversion.sh
+	./noft/gitversion.sh
+	mv m_gitver.F90 ./noft 
 	$(PYTHON) prepare_sourcecode.py
 
 input:
