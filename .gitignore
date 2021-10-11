@@ -12,3 +12,5 @@ src/my_machine*.arch*
 tests/tmp_*
 __pycache__/
 *.py[cod]
+src/noft/m_gitver.F90
+src/noft/donof/
