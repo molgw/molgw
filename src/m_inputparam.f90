@@ -396,7 +396,7 @@ subroutine init_dft_type(key)
     nxc = 1
   case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHX','LDA0')
     nxc = 2
-  case('RSH','RSH2')
+  case('RSH')
     nxc = 3
   case default
     write(stdout,*) 'error reading calculation type'
@@ -539,15 +539,6 @@ subroutine init_dft_type(key)
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
     dft_xc(3)%id = XC_GGA_C_PBE
-    dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
-    dft_xc(2)%coeff = beta_hybrid
-    dft_xc(3)%coeff = 1.00_dp
-    rcut            = 1.0_dp / gamma_hybrid
-    dft_xc(2)%gamma = gamma_hybrid
-  case('RSH2')
-    dft_xc(1)%id = XC_GGA_X_B88
-    dft_xc(2)%id = XC_GGA_X_HJS_B88
-    dft_xc(3)%id = XC_GGA_C_LYP
     dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
     dft_xc(2)%coeff = beta_hybrid
     dft_xc(3)%coeff = 1.00_dp
