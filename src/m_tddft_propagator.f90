@@ -461,7 +461,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    end if
 
-   if ( ABS(time_cur / (calc_charge_step)- NINT(time_cur / (calc_charge_step))) < 1.0e-7 ) then
+   if ( ABS(time_cur / (calc_charge_step)- NINT(time_cur / (calc_charge_step))) < 1.0e-4 ) then
      if ( print_cube_diff_tddft_ .AND. itau > 3 ) &
      call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
          iwrite_step,cube_density_start,nx,ny,nz)
