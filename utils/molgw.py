@@ -17,6 +17,8 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
+bohr_ang = 0.529177
+Ha_eV    = 27.211
 
 
 ########################################################################
@@ -108,5 +110,11 @@ def create_gw100_json(filename,data,**kwargs):
 
 
 ########################################################################
+def kev_to_au(mass,e_kev):
+    return (1000.*e_kev*2.0/Ha_eV/(1836.1253*mass))**0.5
 
+def au_to_kev(mass,v_au):
+    return 0.5*mass*1836.1253*v_au**2*Ha_eV/1000.
+    
 
+########################################################################
