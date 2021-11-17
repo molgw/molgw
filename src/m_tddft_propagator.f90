@@ -57,6 +57,8 @@ module m_tddft_propagator
  real(dp),allocatable               :: energies_start(:,:)
  complex(dp),allocatable            :: a_matrix_orth_start_cmplx(:,:,:)
  !====
+ complex(dp),allocatable            :: gos_ao(:,:),gos_mo(:,:)
+ complex(dp)                           :: norm
 
  type(energy_contributions),private :: en_tddft
  type(basis_set),private            :: basis_t,basis_p
@@ -89,7 +91,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 !=====initial values
  integer                    :: nstate,info,min_index(1),ind
  real(dp),allocatable       :: energy_tddft(:,:)
- complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
+ complex(dp),allocatable    :: c_matrix_cmplx(:,:,:), c_matrix_cmplx_scf(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
@@ -148,6 +150,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  call clean_allocate('Nucleus operator V for TDDFT',hamiltonian_nucleus,basis%nbf,basis%nbf)
 
  call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
+ !call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx_scf,basis%nbf,nocc,nspin)
  call clean_allocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
  call clean_allocate('Hamiltonian for TDDFT',h_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
@@ -174,6 +177,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
  else
    c_matrix_cmplx(:,:,:) = c_matrix(:,1:nocc,:)
+   !c_matrix_cmplx_scf(:,:,:) = c_matrix(:,1:nocc,:)
    xatom_start=xatom
    xbasis_start=xbasis
    time_min=0.0_dp
@@ -282,6 +286,19 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      deallocate(energy_tddft)
    end if
  end if
+
+ !!!!! Test for |<psi_scf|e^ivr|psi_t0>|^2 = 1
+
+ !call calculate_gos_ao_mb(basis,gos_ao)
+ !allocate(gos_mo(nocc,nocc))
+ !gos_mo(:,:) = MATMUL( TRANSPOSE(CONJG( c_matrix_cmplx(:,:,1) )), MATMUL( gos_ao(:,:), c_matrix_cmplx_scf(:,:,1) ) )
+ !deallocate(gos_ao)
+ !call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx_scf)
+ !norm = matrix_trace_cmplx(MATMUL( CONJG(TRANSPOSE(gos_mo)), gos_mo ))
+ !deallocate(gos_mo)
+ !write(stdout,*) 'NORM = ', norm
+
+ !!!!! End of test
 
  ! E_iD = - Tr{P*iD}
  !en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
@@ -665,7 +682,7 @@ subroutine init_c_matrix(basis,               &
       ! in ortho basis : M' = X**H * (H-iD+mv**2*S) * X
       m_eigenvector(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
       m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_eigenvector(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
-                       + SUM(vel_nuclei(:,ncenter_nuclei)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
+                       + 0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
       m_eigenvector(:,:,ispin)  = MATMUL( m_eigenvector(:,:,ispin), x_matrix(:,:) )
       m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
       ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
@@ -683,10 +700,10 @@ subroutine init_c_matrix(basis,               &
     c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
     c_matrix_orth_cmplx(:,1:nocc,:) = m_eigenvec_small(:,1:nocc,:)
     if( nspin > 1 ) then
-      write(stdout, '(a10,3(2x,a10))') 'TDDFT energy', ' ', 'occupation'
+      write(stdout, '(a15,3(2x,a10))') 'TDDFT energy', ' ', 'occupation'
       write(stdout, '(a10,4(2x,a10))') 'spin1', 'spin2', 'spin1', 'spin2'
     else
-      write(stdout, '(a10,2(2x,a10))') 'TDDFT energy', 'occupation'
+      write(stdout, '(a15,2(2x,a10))') 'TDDFT energy', 'occupation'
     end if
     do istate = 1, nocc
       write(stdout, '(f10.4,4(2x,f10.4))') m_eigenval(istate,:), occupation(istate, :)
