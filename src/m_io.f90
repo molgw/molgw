@@ -949,6 +949,74 @@ end subroutine plot_rho
 
 
 !=========================================================================
+subroutine plot_rho_xy(basis,occupation,c_matrix)
+ implicit none
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+!=====
+ integer                    :: nrxy, nrz
+ real(dp),parameter         :: length = 4.0_dp
+ integer                    :: nstate
+ integer                    :: irx, iry, irz
+ integer                    :: ispin
+ real(dp)                   :: rr(3)
+ real(dp),allocatable       :: phi(:,:)
+ real(dp)                   :: drxy, drz, rho_xy
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: unit_rho
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ write(stdout,'(/,1x,a)') 'Plotting the density'
+
+ nstate = SIZE(occupation,DIM=1)
+
+ nrxy = 50
+ nrz = 200
+
+ drxy = ( 2.01755_dp*1.88973_dp + length ) / REAL(nrxy-1, dp)
+ drz = ( MAXVAL(xbasis(3,:)) - MINVAL(xbasis(3,:)) + 2.0_dp*length ) / REAL(nrz-1, dp)
+
+ rr(1) = 0.0_dp - 0.5_dp*length - drxy
+
+ allocate( phi(nstate, nspin) )
+
+ open(newunit = unit_rho, file = 'density_plane_xy.dat', action = 'write')
+ do irx = 1, nrxy
+   rr(1) = rr(1) + drxy
+   rr(2) = 0.0_dp - 0.5_dp*length - drxy
+
+   do iry = 1, nrxy
+     rr(2) = rr(2) + drxy
+     rr(3) = MINVAL(xbasis(3,:)) - length - drz
+
+     rho_xy = 0.0_dp
+     do irz = 1, nrz
+       rr(3) = rr(3) + drz
+
+       call calculate_basis_functions_r(basis, rr, basis_function_r)
+
+       do ispin=1,nspin
+         phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
+       end do
+
+       rho_xy = rho_xy + SUM( phi(:,:)**2 * occupation(:,:) )
+     end do
+
+     write(unit_rho, '(3(1x,e12.5))') rr(1:2) / 1.88973_dp, rho_xy / REAL(nrz, dp)
+
+   end do
+ end do
+ close(unit_rho)
+
+ deallocate(phi)
+
+end subroutine plot_rho_xy
+
+
+!=========================================================================
 subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
  implicit none
  integer,intent(in)         :: nstate

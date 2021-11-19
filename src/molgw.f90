@@ -467,6 +467,7 @@ program molgw
   if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
   if( print_dens_traj_points_set_ ) call plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
   if( .FALSE. ) call write_cube_from_header('GKS',basis,occupation,c_matrix)
+  !call plot_rho_xy(basis, occupation, c_matrix)      !plot density integrated on axis z in plane xy
 
 
 
