@@ -967,7 +967,7 @@ subroutine plot_rho_xy(basis,occupation,c_matrix)
  integer                    :: unit_rho
 !=====
 
- if( .NOT. is_iomaster ) return
+ !if( .NOT. is_iomaster ) return
 
  write(stdout,'(/,1x,a)') 'Plotting the density'
 
