@@ -17,8 +17,8 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-bohr_ang = 0.529177
-Ha_eV    = 27.211
+bohr_ang =  0.52917721092
+Ha_eV    = 27.21138505
 
 
 ########################################################################
@@ -42,6 +42,15 @@ def get_chemical_formula(calc):
         elif n > 0:
             formula += e
     return formula
+
+ 
+########################################################################
+def print_xyz_file(calc,filename):
+    atom_list = calc["physical system"]["atom list"]
+    with open(filename,'w') as f:
+        f.write('{}\n\n'.format(len(atom_list)))
+        for atom in atom_list:
+            f.write('{:2}   {:14.8f} {:14.8f} {:14.8f}\n'.format(atom[0],float(atom[1])*bohr_ang,float(atom[2])*bohr_ang,float(atom[3])*bohr_ang))
 
 
 ########################################################################

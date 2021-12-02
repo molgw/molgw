@@ -592,6 +592,10 @@ program molgw
 
   endif
 
+  if( calc_type%is_mp2 .OR. calc_type%is_mp3 ) then
+    call print_energy_yaml('mbpt energy',en_gks)
+  endif
+
 
   !
   ! Linear-response time dependent calculations work for BSE and TDDFT
