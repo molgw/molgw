@@ -888,7 +888,7 @@ subroutine plot_rho(basis,occupation,c_matrix)
  real(dp),intent(in)        :: c_matrix(:,:,:)
 !=====
  integer,parameter          :: nr=5000
- real(dp),parameter         :: length=4.0_dp
+ real(dp),parameter         :: length=8.0_dp
  integer                    :: nstate
  integer                    :: ir
  integer                    :: ispin
