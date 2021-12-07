@@ -59,6 +59,7 @@ module m_scf
     real(dp) :: total    = 0.0_dp
     real(dp) :: totalexx = 0.0_dp
     real(dp) :: excit    = 0.0_dp      ! TDDFT excitation energy
+    real(dp) :: time     = -1.0_dp     ! time in TDDFT
   end type
 
 #if defined(HAVE_SCALAPACK)
@@ -887,6 +888,8 @@ subroutine print_energy_yaml(name,en)
 
   write(unit_yaml,'(/,a,a)') TRIM(name),':'
   write(unit_yaml,'(4x,a)')             'unit: Ha'
+  if( en%time > -1.0e-10_dp ) &
+    write(unit_yaml,'(4x,a,1x,es18.8)') 'time:                ',en%time
   if( ABS(en%total) > 1.0e-10_dp ) &
     write(unit_yaml,'(4x,a,1x,es18.8)') 'total:               ',en%total
   if( ABS(en%totalexx) > 1.0e-10_dp ) &

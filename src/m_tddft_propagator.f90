@@ -80,6 +80,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  complex(dp),allocatable    :: h_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
 !=====TDDFT loop variables=============================
+ character(len=8)           :: time_key
  integer                    :: iatom
  integer                    :: itau
  integer                    :: iwrite_step
@@ -289,6 +290,9 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
  call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field,0)
+ en_tddft%time = time_min
+ write(time_key,'(i8)') 0
+ call print_energy_yaml('tddft energy '//TRIM(ADJUSTL(time_key)),en_tddft)
 
  time_min = time_min + time_step
 
@@ -350,6 +354,9 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
                      + en_tddft%hartree + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
 
      call print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field,itau)
+     en_tddft%time = time_cur
+     write(time_key,'(i8)') iwrite_step
+     call print_energy_yaml('tddft energy '//TRIM(ADJUSTL(time_key)),en_tddft)
 
      if( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
      if( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
