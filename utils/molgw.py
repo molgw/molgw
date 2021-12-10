@@ -5,7 +5,7 @@
 # Author: Fabien Bruneval
 #
 # This python module provides useful functions to read molgw.yaml files
-# 
+#
 #
 ##################################################
 
@@ -17,6 +17,8 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
+bohr_ang =  0.52917721092
+Ha_eV    = 27.21138505
 
 
 ########################################################################
@@ -29,7 +31,7 @@ def get_chemical_formula(calc):
     element_list += [ 'O', 'F', 'Cl', 'Br', 'I', 'H']
 
     numbers = [0 for x in element_list]
-    
+
     for atom in calc["physical system"]["atom list"]:
         i = element_list.index(atom[0])
         numbers[i] += 1
@@ -43,9 +45,18 @@ def get_chemical_formula(calc):
 
 
 ########################################################################
+def print_xyz_file(calc,filename):
+    atom_list = calc["physical system"]["atom list"]
+    with open(filename,'w') as f:
+        f.write('{}\n\n'.format(len(atom_list)))
+        for atom in atom_list:
+            f.write('{:2}   {:14.8f} {:14.8f} {:14.8f}\n'.format(atom[0],float(atom[1])*bohr_ang,float(atom[2])*bohr_ang,float(atom[3])*bohr_ang))
+
+
+########################################################################
 def get_homo_energy(approx,calc):
     homo = int(calc["physical system"]["electrons"] * 0.50)
-    key = approx + " energy" 
+    key = approx + " energy"
     try:
         ehomo = -9999.9
         for state in calc[key]["spin channel 1"].keys():
@@ -59,7 +70,7 @@ def get_homo_energy(approx,calc):
 ########################################################################
 def get_lumo_energy(approx,calc):
     homo = int(calc["physical system"]["electrons"] * 0.50)
-    key = approx + " energy" 
+    key = approx + " energy"
     try:
         elumo = 9999.9
         for state in calc[key]["spin channel 1"].keys():
@@ -108,5 +119,8 @@ def create_gw100_json(filename,data,**kwargs):
 
 
 ########################################################################
+def kev_to_au(mass,e_kev):
+    return (1000.*e_kev*2.0/Ha_eV/(1836.1253*mass))**0.5
 
-
+def au_to_kev(mass,v_au):
+    return 0.5*mass*1836.1253*v_au**2*Ha_eV/1000.

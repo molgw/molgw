@@ -693,8 +693,6 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
           deallocate(gos_mo)
           fnq = 2.0_dp * ABS( gos_tddft )**2 * eigenvalue(t_jb) / SUM( qvec(:)**2 )
 
-          stopping_cross_section(iv) = stopping_cross_section(iv) + 2.0_dp / vv**2  &
-                                              * fnq  * dphi * dcostheta    / ABS(costheta)
           stopping_exc(iv,t_jb) = stopping_exc(iv,t_jb) + 2.0_dp / vv**2  &
                                               * fnq  * dphi * dcostheta    / ABS(costheta)
 
@@ -707,7 +705,8 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
     !close(2000+iv)
   enddo ! velocity
 
-  call world%sum(stopping_cross_section)
+  call world%sum(stopping_exc)
+  stopping_cross_section(:) = SUM(stopping_exc(:,:),DIM=2)
 
   call clean_deallocate('temporary non-distributed X+Y matrix',xpy_matrix_global)
 

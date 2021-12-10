@@ -1,12 +1,12 @@
 &molgw
-  comment                 = 'DZ/v1p0/p5'
+  comment                 = 'TZ/v1p0/p5'
 
   scf                            = 'lda'
   read_restart                   = 'no'
   read_tddft_restart             = 'no'
   print_tddft_restart            = 'no'
   basis                          = 'cc-pVTZ'
-  auxil_basis                    = 'cc-pVTZ-RI'
+  auxil_basis                    = 'cc-pVDZ-RI'
   charge                         = 0
   natom                          = 0
   nghost                         = 1
@@ -25,5 +25,5 @@
   vel_projectile                 = 0.0 0.0 1.0
   write_step                     = 0.1
 /
-H	0.000   0.000   0.000	cc-pVTZ	cc-pVTZ-RI
-He  	0.000   1.000  -10.00	cc-pVTZ	cc-pVTZ-RI 
+H	0.000   0.000   0.000	
+He  	0.000   1.000  -10.00	cc-pVTZ	cc-pVDZ-RI 

@@ -853,15 +853,15 @@ RT-TDDFT Total Energy     ,  -2.7195375026     , 0 , 1.0e-5
 
 h_in_he_rt_lda_MB_PC2B_ions.in, RT-TDDFT PC="MB_PC2B" projectile with basis
 SCF Total Energy          ,  -2.8286834572     , 0 , 1.0e-7
-RT-TDDFT Total Energy     ,  -2.3310339401     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -2.3308199555     , 0 , 1.0e-7
 Number of electrons	  ,  2.002093	       , 0 , 1.0e-4
 
 h_in_he_rt_lda_MB_PC2B_ions_restart.in, RT-TDDFT PC="MB_PC2B" projectile with basis, restart
-RT-TDDFT Total Energy     ,  -2.1266291891     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -2.1264231497     , 0 , 1.0e-7
 Number of electrons	  ,  2.000330	       , 0 , 1.0e-4
 
 he_in_h_ghost_rt_lda_MB_PC2B.in, RT-TDDFT PC="MB_PC2B" projectile in ghost
-SCF Total Energy          ,  -2.8337639336     , 0 , 1.0e-7
-RT-TDDFT Total Energy     ,  -1.5735522509     , 0 , 1.0e-7
-Number of electrons       ,  1.999946          , 0 , 1.0e-4
+SCF Total Energy          ,  -2.8356240593     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -1.6095548394     , 0 , 1.0e-7
+Number of electrons       ,  1.999590          , 0 , 1.0e-4
 
