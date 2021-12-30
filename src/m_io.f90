@@ -901,7 +901,6 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  real(dp),intent(in),optional :: energy(:,:)
 !=====
  integer,parameter      :: el_max    = 106
- real(dp),parameter     :: TOL_OCC   = 1.0e-8_dp
  real(dp),parameter     :: TOL_COEFF = 1.0e-8_dp
  character(len=200)     :: file_name
  integer                :: nstate,icenter,iprim,nprim,igaus,ishell,nshell,shell_typ,prev_typ
@@ -936,7 +935,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
    return
  endif
 
- nstate = SIZE(occupation(:,:),DIM=1)
+ nstate = MIN( SIZE(occupation(:,:),DIM=1), SIZE(c_matrix(:,:,:),DIM=2) )
 
  write(stdout,'(/,1x,a,/)') 'Preparing the WFN file'
 
@@ -946,7 +945,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
  nocc = 0
  do istate=1,nstate
    do ispin=1,nspin
-     if( ABS(occupation(istate,ispin) ) > TOL_OCC ) nocc = nocc + 1
+     if( ABS(occupation(istate,ispin) ) > completely_empty ) nocc = nocc + 1
    enddo
  enddo
 
@@ -1186,7 +1185,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
  do istate=1,nstate
    do ispin=1,nspin
-     if( ABS(occupation(istate,ispin))> TOL_OCC) then
+     if( ABS(occupation(istate,ispin)) > completely_empty ) then
        mo_coefs(:) = c_matrix(ao_map(:),istate,ispin)
        !write(*,'(*(f7.3))') mo_coefs(:)
        prim_coefs(1:nprim) = MATMUL(mo_coefs(:),coefs_prims(:,1:nprim))
