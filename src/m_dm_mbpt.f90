@@ -183,6 +183,9 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
   if( print_cube_ ) then
     call plot_cube_wfn('MBPT',basis,natural_occupation,c_matrix_tmp)
   endif
+  if( print_wfn_ ) then
+    call plot_rho('MBPT',basis,natural_occupation,c_matrix_tmp)
+  endif
   if( print_wfn_files_ ) then
     call print_wfn_file('MBPT',basis,natural_occupation,c_matrix_tmp,en_dm_corr%total)
   endif
@@ -238,7 +241,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
 
   if( print_multipole_ ) then
     call get_c_matrix_from_p_matrix(p_matrix_corr,c_matrix_tmp,occupation_tmp)
-    if( .FALSE. ) call plot_rho(basis,occupation_tmp,c_matrix_tmp)
+    if( .FALSE. ) call plot_rho('MBPT',basis,occupation_tmp,c_matrix_tmp)
     if( .FALSE. ) call write_cube_from_header('MBPT',basis,occupation_tmp,c_matrix_tmp)
     if( print_multipole_ ) then
       call static_dipole(basis,occupation_tmp,c_matrix_tmp)

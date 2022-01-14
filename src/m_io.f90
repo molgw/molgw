@@ -605,11 +605,12 @@ end subroutine plot_wfn_fourier
 
 
 !=========================================================================
-subroutine plot_rho(basis,occupation,c_matrix)
+subroutine plot_rho(rootname,basis,occupation,c_matrix)
  implicit none
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(in)         :: occupation(:,:)
+ real(dp),intent(in)         :: c_matrix(:,:,:)
+ character(len=*),intent(in) :: rootname
 !=====
  integer,parameter          :: nr=5000
  real(dp),parameter         :: length=4.0_dp
@@ -651,7 +652,8 @@ subroutine plot_rho(basis,occupation,c_matrix)
  xxmin = MINVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) - length
  xxmax = MAXVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) + length
 
- open(newunit=unit_rho,file='density_cut.dat',action='write')
+ open(newunit=unit_rho,file=TRIM(rootname)//'_density_cut.dat',action='write')
+ write(unit_rho,*) '#   r (bohr)      rho(r) (e/bohr**3) '
  do ir=1,nr
    rr(:) = ( xxmin + (ir-1)*(xxmax-xxmin)/REAL(nr-1,dp) ) * u(:) + a(:)
 
@@ -662,7 +664,7 @@ subroutine plot_rho(basis,occupation,c_matrix)
      phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
    enddo
 
-   write(unit_rho,'(2(1x,e12.5))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
+   write(unit_rho,'(2(1x,e14.6))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
 
  enddo
  close(unit_rho)

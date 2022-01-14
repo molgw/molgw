@@ -450,7 +450,7 @@ program molgw
   endif
 
   if( print_wfn_ )  call plot_wfn(basis,c_matrix)
-  if( print_wfn_ )  call plot_rho(basis,occupation,c_matrix)
+  if( print_wfn_ )  call plot_rho('GKS',basis,occupation,c_matrix)
   if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
   if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy)
   if( print_pdos_ ) call mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)

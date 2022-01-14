@@ -254,7 +254,7 @@ subroutine init_libxc_info(dft_xc)
    ! Tune the range for range separated hybrids
    if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE .or. dft_xc(ixc)%id == XC_GGA_X_HJS_B88 ) then
 #if (XC_MAJOR_VERSION > 4)
-     call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega',dft_xc(ixc)%gamma)
+     call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
 #else
      call xc_gga_x_hjs_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
 #endif
@@ -262,7 +262,7 @@ subroutine init_libxc_info(dft_xc)
    endif
    if( dft_xc(ixc)%id == XC_GGA_X_WPBEH ) then
 #if (XC_MAJOR_VERSION > 4)
-     call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega',dft_xc(ixc)%gamma)
+     call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
 #else
      call xc_gga_x_wpbeh_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
 #endif
