@@ -119,7 +119,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
    call clean_allocate('Occ_print',occ_print,nbf_noft,1)
    occ_print(1:nbf_noft,1)=occ(1:nbf_noft,1)
    if( print_wfn_ )  call plot_wfn(basis,c_matrix)
-   if( print_wfn_ )  call plot_rho(basis,occ_print,c_matrix)
+   if( print_wfn_ )  call plot_rho('NOFT',basis,occ_print,c_matrix)
    if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ_print,c_matrix)
    if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,Enoft,energy)
    call clean_deallocate('Occ_print',occ_print)
