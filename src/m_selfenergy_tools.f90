@@ -229,15 +229,16 @@ end subroutine find_qp_energy_linearization
 
 
 !=========================================================================
-subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
+subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g,zz)
  implicit none
 
  type(selfenergy_grid),intent(in) :: se
  real(dp),intent(in)  :: exchange_m_vxc(:,:),energy0(:,:)
  real(dp),intent(out) :: energy_qp_g(:,:)
+ real(dp),intent(out),optional    :: zz(:,:)
 !=====
  integer,parameter :: NFIXED_POINTS_MAX = 4
- integer  :: nfixed,ifixed
+ integer  :: nfixed,ifixed,iqp
  integer  :: nstate,pstate,pspin
  real(dp) :: energy_fixed_point(NFIXED_POINTS_MAX,nsemin:nsemax,nspin),z_weight(NFIXED_POINTS_MAX,nsemin:nsemax,nspin)
  real(dp) :: equation_lhs(-se%nomega:se%nomega),equation_rhs(-se%nomega:se%nomega)
@@ -272,20 +273,33 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g)
        equation_rhs(:) = REAL(se%sigma(:,pstate,pspin),dp) + exchange_m_vxc(pstate,pspin) + energy0(pstate,pspin)
        call find_fixed_point(equation_lhs,equation_rhs,energy_fixed_point(:,pstate,pspin),z_weight(:,pstate,pspin))
 
-       ! If no reasonable QP energy found, then set E_qp to E_gKS for safety
-       if( z_weight(1,pstate,pspin) < 1.0e-6_dp ) then
-         energy_qp_g(pstate,pspin) = energy0(pstate,pspin)
-       else
-         energy_qp_g(pstate,pspin) = energy_fixed_point(1,pstate,pspin)
-       endif
-
      enddo
 
    enddo
 
-   call world%sum(energy_qp_g)
    call world%sum(z_weight)
    call world%sum(energy_fixed_point)
+   do pspin=1,nspin
+     do pstate=nsemin,nsemax
+       !
+       ! The Quasiparticle is the QP equation solution with the largest Z
+       !
+       if( MAXVAL(z_weight(:,pstate,pspin)) > 1.0e-6_dp ) then
+         iqp = MAXLOC(z_weight(:,pstate,pspin),DIM=1)
+         
+         energy_qp_g(pstate,pspin) = energy_fixed_point(iqp,pstate,pspin)
+         if( PRESENT(zz) ) then
+           zz(pstate,pspin) = z_weight(iqp,pstate,pspin)
+         endif
+       else
+         ! If no solution has a finite weight, then for safety set QP energy to GKS energy
+         energy_qp_g(pstate,pspin) = energy0(pstate,pspin)
+         if( PRESENT(zz) ) then
+           zz(pstate,pspin) = 1.0_dp
+         endif
+       endif
+    enddo
+  enddo
 
    ! Master IO node outputs the solution details
    write(stdout,'(/,1x,a)') 'state spin    QP energy (eV)  QP spectral weight'
@@ -393,6 +407,7 @@ subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy
  real(dp),intent(in),optional :: energy2(:,:),zz(:,:)
 !=====
  integer           :: pstate,ii
+ real(dp)          :: sigc_qp(nspin)
  character(len=36) :: sigc_label
 !=====
 
@@ -423,9 +438,12 @@ subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy
 
    do pstate=nsemin,nsemax
 
+     sigc_qp(:) = energy2(pstate,:) - energy0(pstate,:) - exchange_m_vxc(pstate,:)
+
      write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy0(pstate,:)*Ha_eV,  &
                                           exchange_m_vxc(pstate,:)*Ha_eV,  &
-                                          REAL(se%sigma(0,pstate,:)*Ha_eV,dp),  &
+                                          !REAL(se%sigma(0,pstate,:)*Ha_eV,dp),  &
+                                          sigc_qp(:)*Ha_eV,  &
                                           zz(pstate,:),                    &
                                           energy1(pstate,:)*Ha_eV,         &
                                           energy2(pstate,:)*Ha_eV
@@ -466,6 +484,7 @@ subroutine output_qp_energy_yaml(calcname,energy0,exchange_m_vxc,se,energy1,ener
  real(dp),intent(in),optional :: energy2(:,:),zz(:,:)
 !=====
  integer          :: pstate,ii,pspin
+ real(dp)         :: sigc_qp
  character(len=6) :: char6
 !=====
 
@@ -477,8 +496,13 @@ subroutine output_qp_energy_yaml(calcname,energy0,exchange_m_vxc,se,energy1,ener
  do pspin=1,nspin
    write(unit_yaml,'(8x,a,i2,a)') 'spin channel',pspin,':'
    do pstate=nsemin,nsemax
+     if( PRESENT(energy2)) then
+       sigc_qp = energy2(pstate,pspin) - energy0(pstate,pspin) - exchange_m_vxc(pstate,pspin)
+     else
+       sigc_qp = se%sigma(0,pstate,pspin)
+     endif
      write(char6,'(i6)') pstate
-     write(unit_yaml,'(12x,a6,a,1x,es18.8)') ADJUSTL(char6),':',REAL(se%sigma(0,pstate,pspin),dp) * Ha_eV
+     write(unit_yaml,'(12x,a6,a,1x,es18.8)') ADJUSTL(char6),':',sigc_qp * Ha_eV
    enddo
  enddo
 

@@ -888,7 +888,7 @@ subroutine read_inputfile_namelist()
     write(unit_yaml,'(4x,a)') 'basis list:'
     do icenter=1,ncenter_basis
       write(unit_yaml,'(8x,a,"[ ",a2,", ",a,", ",a,"]")') '- ', &
-              element_name(REAL(zatom(icenter),dp)),TRIM(basis_name(icenter)),TRIM(auxil_basis_name(icenter))
+              element_name(REAL(zbasis(icenter),dp)),TRIM(basis_name(icenter)),TRIM(auxil_basis_name(icenter))
     end do
 
   endif
