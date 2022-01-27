@@ -247,7 +247,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
   !
   ! For some calculation conditions, the rest of the subroutine is irrelevant
   ! So skip it! Skip it!
-  if( is_triplet .OR. nexc /= chi%npole_reso ) then
+  if( is_triplet ) then
     deallocate(residue)
     return
   endif

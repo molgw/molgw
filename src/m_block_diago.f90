@@ -216,14 +216,13 @@ end subroutine diago_4blocks_rpa_sca
 
 
 !=========================================================================
-subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,amb_diag_rpa, &
+subroutine diago_4blocks_davidson(toldav,nstep,amb_diag_rpa, &
                                   amb_matrix,apb_matrix,desc_apb, &
                                   bigomega,xpy_matrix,xmy_matrix,desc_x)
  implicit none
 
  real(dp),intent(in)    :: toldav
  integer,intent(in)     :: nstep
- integer,intent(in)     :: nexcitation
  integer,intent(in)     :: desc_apb(NDEL),desc_x(NDEL)
  real(dp),intent(in)    :: amb_diag_rpa(:)
  real(dp),intent(inout) :: amb_matrix(:,:)
@@ -233,6 +232,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,amb_diag_rpa, &
  real(dp),intent(out)   :: xmy_matrix(:,:)
 !=====
  integer              :: nmat,m_apb,n_apb,m_x,n_x
+ integer              :: nexcitation
  integer              :: descb(NDEL),desce(NDEL)
  integer,parameter    :: SMALL_BLOCK=4
  integer              :: nbb,nbbc,nbba
@@ -263,7 +263,8 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,amb_diag_rpa, &
 
  write(stdout,'(/,a,i4)') ' Performing the Davidson block diago'
 
- nmat  = SIZE(bigomega)
+ nmat        = desc_x(M_)
+ nexcitation = SIZE(bigomega)
  m_apb = SIZE(apb_matrix,DIM=1)
  n_apb = SIZE(apb_matrix,DIM=2)
  m_x   = SIZE(xpy_matrix,DIM=1)
@@ -379,9 +380,9 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,amb_diag_rpa, &
 
 
  ! Calculate and store   b (A+B) b = b^T [ (A+B) b ]
- call DGEMM('T','N',nbbc,nbbc,nmat,1.0_dp,bb(:,1:nbbc),nmat,apb_bb(:,1:nbbc),nmat,0.0_dp,bb_apb_bb(1:nbbc,1:nbbc),nbbc)
+ call DGEMM('T','N',nbbc,nbbc,nmat,1.0_dp,bb(:,1:nbbc),nmat,apb_bb(:,1:nbbc),nmat,0.0_dp,bb_apb_bb(:,1:nbbc),nbb)
  ! Calculate and store   b (A-B) b = b^T [ (A-B) b ]
- call DGEMM('T','N',nbbc,nbbc,nmat,1.0_dp,bb(:,1:nbbc),nmat,amb_bb(:,1:nbbc),nmat,0.0_dp,bb_amb_bb(1:nbbc,1:nbbc),nbbc)
+ call DGEMM('T','N',nbbc,nbbc,nmat,1.0_dp,bb(:,1:nbbc),nmat,amb_bb(:,1:nbbc),nmat,0.0_dp,bb_amb_bb(:,1:nbbc),nbb)
 
 
  do icycle=1,nstep
@@ -587,7 +588,7 @@ subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,amb_diag_rpa, &
  ! Remember
  ! L = | X - Y >
  ! R = | X + Y >
- bigomega(1:nexcitation) = bigomega_tmp(1:nexcitation)
+ bigomega(:) = bigomega_tmp(1:nexcitation)
 
 #if !defined(HAVE_SCALAPACK)
 
