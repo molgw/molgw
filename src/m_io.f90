@@ -657,7 +657,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
 
  nocc        = get_number_occupied_states(occupation)
  allocate(proj_charge(natom_total))
- allocate(proj_charge_orb(sum(atom_nbf))
+ allocate(proj_charge_orb(sum(atom_nbf)))
  proj_charge(:) = 0.0_dp
  proj_charge_orb(:) = 0.0_dp
 
@@ -666,7 +666,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  do ispin=1,nspin
 
    !! Only loop over occupied states
-   do istate=1, 3!SIZE(c_matrix_cmplx, DIM=2)
+   do istate=1, SIZE(c_matrix_cmplx, DIM=2)
      proj_state_i(:) = ( 0.0_dp, 0.0_dp )
 
      cs_vector_i(:) = MATMUL( s_matrix_sqrt(:,:) , CONJG(c_matrix_cmplx(:,istate,ispin)) )
@@ -678,7 +678,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + ABS( cs_vector_i(ibf) )**2
          proj_charge_orb(count + offset) = proj_charge_orb(count + offset) &
-                        + occupation(istate,ispin) * REAL(proj_state_i(li))
+                        + occupation(istate,ispin) * REAL(ABS( cs_vector_i(ibf) )**2)
        endif
      enddo
      proj_charge(atom_sampled-natom1+1) = proj_charge(atom_sampled-natom1+1) &
