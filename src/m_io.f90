@@ -678,7 +678,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + ABS( cs_vector_i(ibf) )**2
          !proj_charge_orb(count + offset) = proj_charge_orb(count + offset) &
-                        + occupation(istate,ispin) * REAL(ABS( cs_vector_i(ibf) )**2)
+          !              + occupation(istate,ispin) * REAL(ABS( cs_vector_i(ibf) )**2)
        endif
      enddo
      proj_charge(atom_sampled-natom1+1) = proj_charge(atom_sampled-natom1+1) &
