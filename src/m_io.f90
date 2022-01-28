@@ -612,7 +612,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  complex(dp)                    :: cs_vector_i(basis%nbf)
  integer                        :: iatom_ibf(basis%nbf)
  integer                        :: li_ibf(basis%nbf)
- real(dp),allocatable           :: proj_charge(:),proj_charge_orb(:)
+ real(dp),allocatable           :: proj_charge(:)!,proj_charge_orb(:)
  integer,allocatable            :: atom_nbf(:)
  integer                        :: iatom_basis,nocc,natom_total,count,offset
  character(len=20)              :: myfmt
@@ -657,9 +657,9 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
 
  nocc        = get_number_occupied_states(occupation)
  allocate(proj_charge(natom_total))
- allocate(proj_charge_orb(sum(atom_nbf)))
+ !allocate(proj_charge_orb(sum(atom_nbf)))
  proj_charge(:) = 0.0_dp
- proj_charge_orb(:) = 0.0_dp
+ !proj_charge_orb(:) = 0.0_dp
 
  offset = 0
  do atom_sampled = natom1,natom2
@@ -677,7 +677,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
          count = count + 1
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + ABS( cs_vector_i(ibf) )**2
-         proj_charge_orb(count + offset) = proj_charge_orb(count + offset) &
+         !proj_charge_orb(count + offset) = proj_charge_orb(count + offset) &
                         + occupation(istate,ispin) * REAL(ABS( cs_vector_i(ibf) )**2)
        endif
      enddo
@@ -695,17 +695,17 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  offset = sum(atom_nbf(1:atom_sampled-natom1+1))
  enddo
 
- n_column = 2 + size(proj_charge) + size(proj_charge_orb)
+ n_column = 2 + size(proj_charge)! + size(proj_charge_orb)
  write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
  if ( is_iomaster ) then
    if ( file_lowdin /= stdout ) then
-     write( file_lowdin, fmt=myfmt ) time_cur, xatom(3,ncenter_nuclei), proj_charge(:), proj_charge_orb(:)
+     write( file_lowdin, fmt=myfmt ) time_cur, xatom(3,ncenter_nuclei), proj_charge(:)!, proj_charge_orb(:)
    else
      write( stdout, * ) 'Lowdin projectile charge = ', proj_charge(size(proj_charge))
    end if
  end if
 
- deallocate(proj_charge, proj_charge_orb)
+ deallocate(proj_charge)!, proj_charge_orb)
  deallocate(atom_nbf)
 
 end subroutine lowdin_pdos_cmplx
