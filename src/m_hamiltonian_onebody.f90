@@ -895,16 +895,26 @@ subroutine calculate_quadrupole_ao(basis,quadrupole_ao)
  implicit none
  type(basis_set),intent(in)         :: basis
  real(dp),allocatable,intent(out)   :: quadrupole_ao(:,:,:,:)
-
 !=====
  integer              :: gt
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
  integer              :: li,lj,ni_cart,nj_cart,i_cart,j_cart
- integer              :: idir,jdir
+ integer              :: idir,jdir,ijdir
  real(dp),allocatable :: quadrupole_cart(:,:,:,:)
+#if defined(HAVE_LIBCINT)
+ integer :: info
+ integer :: shls(2)
+ real(dp),allocatable :: array_cart(:,:)
+ real(dp),allocatable :: matrix(:,:)
+#endif
 !=====
 
+#if defined(HAVE_LIBCINT)
+ write(stdout,'(/,a)') ' Setup quadrupole matrix (LIBCINT)'
+#else
+ write(stdout,'(/,a)') ' Setup quadrupole matrix (internal)'
+#endif
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
  allocate(quadrupole_ao(basis%nbf,basis%nbf,3,3))
@@ -925,6 +935,25 @@ subroutine calculate_quadrupole_ao(basis,quadrupole_ao)
      ibf2      = basis%shell(ishell)%iend
 
 
+#if defined(HAVE_LIBCINT)
+     allocate(array_cart(ni_cart*nj_cart,9))
+     shls(1) = ishell-1  ! C convention starts with 0
+     shls(2) = jshell-1  ! C convention starts with 0
+     info = cint1e_rr_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+
+     ijdir=0
+     do jdir=1,3
+       do idir=1,3
+         ijdir=ijdir+1
+         call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,ijdir),matrix)
+         quadrupole_ao(ibf1:ibf2,jbf1:jbf2,idir,jdir) = matrix(:,:)
+         quadrupole_ao(jbf1:jbf2,ibf1:ibf2,idir,jdir) = TRANSPOSE(matrix(:,:))
+       enddo
+     enddo
+     deallocate(matrix)
+
+     deallocate(array_cart)
+#else
      allocate(quadrupole_cart(ni_cart,nj_cart,3,3))
 
      do i_cart=1,ni_cart
@@ -940,8 +969,9 @@ subroutine calculate_quadrupole_ao(basis,quadrupole_ao)
                MATMUL(  quadrupole_cart(:,:,idir,jdir) , cart_to_pure(lj,gt)%matrix(:,:) ) )
        enddo
      enddo
-
      deallocate(quadrupole_cart)
+#endif
+
 
    enddo
  enddo
