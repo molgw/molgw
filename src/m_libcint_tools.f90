@@ -59,6 +59,14 @@ module m_libcint_tools
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_rr_cart
 
+    integer(C_INT) function cint1e_cg_irxp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_cg_irxp_cart
+
   end interface
 
 
@@ -130,96 +138,6 @@ subroutine init_libcint(basis)
 
 
 end subroutine init_libcint
-
-
-#if FALSE
-!=========================================================================
-! DEMO
-subroutine setup_overlap_libcint(basis,s_matrix)
- implicit none
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: s_matrix(basis%nbf,basis%nbf)
-!=====
- integer              :: ishell,jshell
- integer              :: ibf1,ibf2,jbf1,jbf2
- integer              :: ni,nj,ni_cart,nj_cart,li,lj
- character(len=100)   :: title
- real(dp),allocatable :: matrix(:,:)
-
- real(C_DOUBLE),allocatable :: array_cart(:)
- integer(C_INT)             :: amA,contrdepthA
- real(C_DOUBLE)             :: A(3)
- real(C_DOUBLE),allocatable :: alphaA(:)
- real(C_DOUBLE),allocatable :: cA(:)
- integer(C_INT)             :: amB,contrdepthB
- real(C_DOUBLE)             :: B(3)
- real(C_DOUBLE),allocatable :: alphaB(:)
- real(C_DOUBLE),allocatable :: cB(:)
-!=====
- integer :: i_cart,j_cart,ij
- integer :: ibf_cart,jbf_cart
- integer :: info
- integer :: shls(2)
-!=====
- call start_clock(timing_overlap)
-#if defined(HAVE_LIBCINT)
- write(stdout,'(/,a)') ' Setup overlap matrix S (LIBCINT)'
-#else
- call die('HAVE_LIBCINT is false')
-#endif
-
- do jshell=1,basis%nshell
-   lj      = basis%shell(jshell)%am
-   nj_cart = number_basis_function_am('CART',lj)
-   nj      = number_basis_function_am(basis%gaussian_type,lj)
-   jbf1    = basis%shell(jshell)%istart
-   jbf2    = basis%shell(jshell)%iend
-
-   call set_libint_shell(basis%shell(jshell),amB,contrdepthB,B,alphaB,cB)
-
-   do ishell=jshell,basis%nshell
-     li      = basis%shell(ishell)%am
-     ni_cart = number_basis_function_am('CART',li)
-     ni      = number_basis_function_am(basis%gaussian_type,li)
-     ibf1    = basis%shell(ishell)%istart
-     ibf2    = basis%shell(ishell)%iend
-
-     call set_libint_shell(basis%shell(ishell),amA,contrdepthA,A,alphaA,cA)
-
-
-     allocate(array_cart(ni_cart*nj_cart))
-
-#if defined(HAVE_LIBCINT)
-     shls(1) = ishell-1  ! C convention starts with 0
-     shls(2) = jshell-1  ! C convention starts with 0
-     info = cint1e_ovlp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
-
-
-     !call transform_libint_to_molgw(basis%gaussian_type,li,lj,RESHAPE(TRANSPOSE(array_cart),[ni_cart*nj_cart]),matrix)
-     call transform_libcint_to_molgw_2d(basis%gaussian_type,li,lj,array_cart,matrix)
-#endif
-
-     deallocate(alphaA,cA)
-
-
-     s_matrix(ibf1:ibf2,jbf1:jbf2) = matrix(:,:)
-     s_matrix(jbf1:jbf2,ibf1:ibf2) = TRANSPOSE(matrix(:,:))
-
-     deallocate(array_cart,matrix)
-
-   enddo
-   deallocate(alphaB,cB)
- enddo
-
- title='=== Overlap matrix S (LIBCINT) ==='
- call dump_out_matrix(.FALSE.,title,s_matrix)
-
-
- call stop_clock(timing_overlap)
-
-
-end subroutine setup_overlap_libcint
-#endif
 
 
 !=========================================================================
