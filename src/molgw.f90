@@ -56,6 +56,7 @@ program molgw
   use m_multipole
   use m_io
   use m_fourier_quadrature
+  use m_libcint_tools
   implicit none
 
   !=====
@@ -149,6 +150,10 @@ program molgw
     call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol)
 
     if( print_rho_grid_ ) call dm_dump(basis)
+
+#if defined(HAVE_LIBCINT)
+    call init_libcint(basis)
+#endif
 
     !
     ! Calculate overlap matrix S so to obtain "nstate" as soon as possible

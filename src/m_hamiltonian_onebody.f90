@@ -21,6 +21,7 @@ module m_hamiltonian_onebody
   use m_inputparam,only: nspin,spin_fact,scalapack_block_min
   use m_basis_set
   use m_libint_tools
+  use m_libcint_tools
   use m_io
 
 
@@ -53,9 +54,16 @@ subroutine setup_overlap(basis,s_matrix)
 !=====
  integer :: i_cart,j_cart,ij
  integer :: ibf_cart,jbf_cart
+#if defined(HAVE_LIBCINT)
+ integer :: info
+ integer :: shls(2)
+#endif
 !=====
+
  call start_clock(timing_overlap)
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+ write(stdout,'(/,a)') ' Setup overlap matrix S (LIBCINT)'
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
  write(stdout,'(/,a)') ' Setup overlap matrix S (LIBINT)'
 #else
  write(stdout,'(/,a)') ' Setup overlap matrix S (internal)'
@@ -82,7 +90,14 @@ subroutine setup_overlap(basis,s_matrix)
 
      allocate(array_cart(ni_cart*nj_cart))
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+     shls(1) = ishell-1  ! C convention starts with 0
+     shls(2) = jshell-1  ! C convention starts with 0
+     info = cint1e_ovlp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+
+     call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)

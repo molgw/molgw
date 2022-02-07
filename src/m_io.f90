@@ -175,6 +175,10 @@ subroutine header()
  call die('Code compiled with MPI, but without SCALAPACK. This is not permitted')
 #endif
 
+#if defined(HAVE_LIBCINT)
+ write(stdout,*) 'Code compiled with LIBCINT support'
+#endif
+
  ! LIBINT details
  call libint_init(ammax,has_onebody,has_gradient)
  write(stdout,'(1x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
