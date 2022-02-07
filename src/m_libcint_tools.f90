@@ -32,7 +32,26 @@ module m_libcint_tools
   real(C_DOUBLE),protected,allocatable :: env(:)
 
 
-  integer,external :: cint1e_ovlp_cart
+
+  interface
+
+    integer(C_INT) function cint1e_ovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_ovlp_cart
+
+    integer(C_INT) function cint1e_r_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_r_cart
+
+  end interface
 
 
  interface transform_libcint_to_molgw

@@ -815,8 +815,19 @@ subroutine calculate_dipole_ao(basis,dipole_ao)
  integer              :: li,lj,ni_cart,nj_cart,i_cart,j_cart
  integer              :: idir
  real(dp),allocatable :: dipole_cart(:,:,:)
+#if defined(HAVE_LIBCINT)
+ integer :: info
+ integer :: shls(2)
+ real(dp),allocatable :: array_cart(:,:)
+ real(dp),allocatable :: matrix(:,:)
+#endif
 !=====
 
+#if defined(HAVE_LIBCINT)
+ write(stdout,'(/,a)') ' Setup dipole matrix (LIBCINT)'
+#else
+ write(stdout,'(/,a)') ' Setup dipole matrix (internal)'
+#endif
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
  allocate(dipole_ao(basis%nbf,basis%nbf,3))
@@ -837,6 +848,21 @@ subroutine calculate_dipole_ao(basis,dipole_ao)
      ibf2      = basis%shell(ishell)%iend
 
 
+#if defined(HAVE_LIBCINT)
+     allocate(array_cart(ni_cart*nj_cart,3))
+     shls(1) = ishell-1  ! C convention starts with 0
+     shls(2) = jshell-1  ! C convention starts with 0
+     info = cint1e_r_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+
+     do idir=1,3
+       call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
+       dipole_ao(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
+       dipole_ao(jbf1:jbf2,ibf1:ibf2,idir) = TRANSPOSE(matrix(:,:))
+     enddo
+     deallocate(matrix)
+
+     deallocate(array_cart)
+#else
      allocate(dipole_cart(3,ni_cart,nj_cart))
 
      do i_cart=1,ni_cart
@@ -851,9 +877,14 @@ subroutine calculate_dipole_ao(basis,dipole_ao)
      enddo
 
      deallocate(dipole_cart)
+#endif
 
    enddo
  enddo
+
+ call dump_out_matrix(.FALSE.,'===  Dipole AO X ===',dipole_ao(:,:,1))
+ call dump_out_matrix(.FALSE.,'===  Dipole AO Y ===',dipole_ao(:,:,2))
+ call dump_out_matrix(.FALSE.,'===  Dipole AO Z ===',dipole_ao(:,:,3))
 
 
 end subroutine calculate_dipole_ao
