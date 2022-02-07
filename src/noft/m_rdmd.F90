@@ -142,11 +142,11 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  totMEM=3*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas+3*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas
  totMEM=totMEM+RDMd%Ngammas+3*RDMd%NBF_occ
  totMEM=8*totMEM       ! Bytes
- totMEM=totMEM*1.0d-6  ! Bytes to Mb  
- if(totMEM>1.0d3) then     ! Mb to Gb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*1.0d-3,' Gb'
- elseif(totMEM<1.0d0) then ! Mb to Kb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*1.0d3,' Kb'
+ totMEM=totMEM*tol6    ! Bytes to Mb  
+ if(totMEM>thousand) then     ! Mb to Gb
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*tol3,' Gb'
+ elseif(totMEM<one) then ! Mb to Kb
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*thousand,' Kb'
  else                      ! Mb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM,' Mb'
  endif 
@@ -233,7 +233,6 @@ subroutine print_rdm(RDMd,DM2_J,DM2_K,DM2_L)
 !Local variables ------------------------------
 !scalars
 integer::iorb,iorb1,iunit=312
-real(dp)::tol8=1.0d-8
 !arrays
 
 !************************************************************************
@@ -258,24 +257,24 @@ real(dp)::tol8=1.0d-8
    endif
   enddo
  enddo
- write(iunit) 0,0,0,0,0.0d0
- write(iunit) 0,0,0,0,0.0d0
+ write(iunit) 0,0,0,0,zero
+ write(iunit) 0,0,0,0,zero
  close(iunit)
 
  ! Print the 1-RDM
  open(unit=iunit,form='unformatted',file='DM1')
  do iorb=1,RDMd%NBF_occ
-  write(iunit) iorb,iorb,2.0d0*RDMd%occ(iorb)
+  write(iunit) iorb,iorb,two*RDMd%occ(iorb)
  enddo
- write(iunit) 0,0,0.0d0
+ write(iunit) 0,0,zero
  close(iunit)
 
  ! Print the FORM_OCC file
  open(unit=iunit,form='formatted',file='FORM_OCC')
  do iorb=1,RDMd%NBF_occ
-  write(iunit,'(i5,f17.10)') iorb,2.0d0*RDMd%occ(iorb)
+  write(iunit,'(i5,f17.10)') iorb,two*RDMd%occ(iorb)
  enddo
- write(iunit,'(i5,f17.10)') 0,0.0d0
+ write(iunit,'(i5,f17.10)') 0,zero
  close(iunit)
 
 end subroutine print_rdm
@@ -368,7 +367,7 @@ integer::iorb,iorb1,iunit=312
    write(iunit) iorb,iorb1,COEF(iorb,iorb1)
   enddo
  enddo
- write(iunit) 0,0,0.0d0
+ write(iunit) 0,0,zero
  close(iunit)
 
 end subroutine print_orb_coefs_bin
@@ -409,7 +408,7 @@ integer::igamma,iunit=312
  do igamma=1,RDMd%Ngammas
   write(iunit) igamma,RDMd%GAMMAs_old(igamma)
  enddo
- write(iunit) 0,0.0d0
+ write(iunit) 0,zero
  close(iunit)
 
 end subroutine print_gammas_old

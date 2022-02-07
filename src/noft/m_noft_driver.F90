@@ -58,7 +58,7 @@ contains
 !! Nbeta_elect_in=Number of beta electrons (N/2 for spin compensated systems)
 !! Nalpha_elect_in=Number of beta electrons (N/2 for spin compensated systems)
 !! iERItyp_in=Index organization used for ERIs ({ij|lk}, <ij|kl>, and (ik|jl))
-!! imethocc=Method used for OCC opt. CG (1) or L-BFGS (2)
+!! imethocc=Method used for OCC opt. LBFGS(1) or CG (2)
 !! imethorb=Method used to opt. orbs. currently only F_diag (1)
 !! itermax=Max. number of global iters
 !! iprintdmn=Print opt. 1,2-DMNs 
@@ -237,7 +237,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call RDMd%print_gammas()
 
   ! Check convergence
-  if(abs(Energy-Energy_old)<ELAGd%tolE) then
+  if(dabs(Energy-Energy_old)<ELAGd%tolE) then
    Energy_old=Energy
    exit
   endif
@@ -272,7 +272,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  ! Print optimal occ. numbers and save them in Occ_inout array
  write(msg,'(a)') ' '
  call write_output(msg)
- RDMd%occ(:)=2.0d0*RDMd%occ(:)
+ RDMd%occ(:)=two*RDMd%occ(:)
  write(msg,'(a,f10.5,a)') 'Total occ ',sum(RDMd%occ(:)),'. Optimized occ. numbers '
  call write_output(msg)
  do iorb=1,(RDMd%NBF_occ/10)*10,10
@@ -284,7 +284,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)
- Occ_inout=0.0d0
+ Occ_inout=zero
  Occ_inout(1:RDMd%NBF_occ)=RDMd%occ(1:RDMd%NBF_occ)
 
  ! Print optimized nat. orb. coef.
@@ -293,7 +293,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call RDMd%print_orbs_bin(NO_COEF)
  
  ! Print final Energy and its components (occs are already [0:2])
- hONEbody=0.0d0
+ hONEbody=zero
  do iorb=1,RDMd%NBF_occ
   hONEbody=hONEbody+RDMd%occ(iorb)*INTEGd%hCORE(iorb,iorb)
  enddo
@@ -435,16 +435,16 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
  write(msg,'(a,i12)') ' Numb. of singly occupied orbs     ',Nalpha_elect_in-Nbeta_elect_in
  call write_output(msg)
  if(imethocc==1) then
-  write(msg,'(a,i12)') ' CG method used in occ opt.        ',imethocc
+  write(msg,'(a,i12)') ' L-BFGS method used in occ opt.    ',imethocc
   call write_output(msg)
  else
-  write(msg,'(a,i12)') ' L-BFGS method used in occ opt.    ',imethocc
+  write(msg,'(a,i12)') ' CG method used in occ opt.        ',imethocc
   call write_output(msg)
  endif
  if(imethorb==1) then
   write(msg,'(a,i12)') ' F_diag method used in orb opt.    ',imethorb
   call write_output(msg)
-  write(msg,'(a,e10.3)') ' Tolerance Lambda convergence        ',1.0d1**(-itolLambda)
+  write(msg,'(a,e10.3)') ' Tolerance Lambda convergence        ',ten**(-itolLambda)
   call write_output(msg)
   write(msg,'(a,i12)') ' Numb. of iter used in DIIS        ',ndiis
   call write_output(msg)
@@ -630,9 +630,9 @@ subroutine read_restart(RDMd,ELAGd,NO_COEF,ireadGAMMAS,ireadOCC,ireadCOEF,ireadF
     write(msg,'(a)') 'Comment: computing GAMMAs using occ. read'
     call write_output(msg)
    endif
-   RDMd%occ(:)=0.5d0*RDMd%occ(:)
+   RDMd%occ(:)=half*RDMd%occ(:)
    call occtogamma(RDMd) 
-   RDMd%occ=0.0d0   
+   RDMd%occ=zero   
    RDMd%GAMMAs_nread=.false.
    write(msg,'(a)') 'GAMMAs (indep. variables) updated using occ. numbers.'
    call write_output(msg)
@@ -701,22 +701,22 @@ subroutine occtogamma(RDMd)
  allocate(Holes(RDMd%Npairs*(RDMd%Ncoupled-1)))
  do iorb=1,RDMd%Npairs
   iorb1 = RDMd%Nfrozen+iorb                                           ! iorb1=RDMd%Nfrozen+1,RDMd%Nbeta_elect
-  RDMd%GAMMAs_old(iorb) = dacos(dsqrt(2.0d0*RDMd%occ(iorb1)-1.0d0))
+  RDMd%GAMMAs_old(iorb) = dacos(dsqrt(two*RDMd%occ(iorb1)-one))
   if(RDMd%Ncoupled/=1) then
    iorb2 = (RDMd%Ncoupled-1)*(iorb-1)+1
    iorb3 = (RDMd%Ncoupled-1)*iorb
-   hole_iorb1 = 1.0d0 - RDMd%occ(iorb1)
+   hole_iorb1 = one - RDMd%occ(iorb1)
    Holes(iorb2:iorb3) = hole_iorb1
    do iorb6=1,RDMd%Ncoupled-1
     iorb4 = (RDMd%Ncoupled-1)*(iorb-1)+iorb6                          ! iorb4=1,RDMd%pairs*(RDMd%Ncoupled-1)
     iorb5 = RDMd%Npairs+iorb4                                         ! iorb5=RDMd%pairs+1,RDMd%pairs*RDMd%Ncoupled
     iorb1 = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-iorb)+iorb6  ! iorb1=RDMd%Nalpha_elect+1,RDMd%Nalpha_elect+RDMd%Ncoupled*RDMd%pairs-1         
-    if(Holes(iorb4)>0.0d0) then
+    if(Holes(iorb4)>zero) then
      argum=dsqrt(RDMd%occ(iorb1)/Holes(iorb4))
-     if(argum>1.0d0)argum=1.0d0
+     if(argum>one)argum=one
      RDMd%GAMMAs_old(iorb5)=dasin(argum)
     else
-     RDMd%GAMMAs_old(iorb5) = 0.0d0
+     RDMd%GAMMAs_old(iorb5) = zero
     endif
     if(iorb6<RDMd%Ncoupled-1) then
      do iorb7=1,RDMd%Ncoupled-1-iorb6

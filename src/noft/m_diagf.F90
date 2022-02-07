@@ -65,17 +65,17 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF)
  real(dp)::thresholddiis
 !arrays
  real(dp),allocatable,dimension(:)::Work
- real(dp),allocatable,dimension(:,:)::Eigvec,New_NO_COEF ! Eigvec is initailly the F matrix
+ real(dp),allocatable,dimension(:,:)::Eigvec,New_NO_COEF ! Eigvec is initially the F matrix
 !************************************************************************
  
- thresholddiis=1.0d1**(-ELAGd%itoldiis)
+ thresholddiis=ten**(-ELAGd%itoldiis)
  allocate(New_NO_COEF(RDMd%NBF_tot,RDMd%NBF_tot),Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Work(1))
 
  if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
   ELAGd%diagLpL_done=.true. 
   do iorb=1,RDMd%NBF_tot 
    do iorb1=1,iorb-1
-    Eigvec(iorb,iorb1)=0.5d0*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
+    Eigvec(iorb,iorb1)=half*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
     Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)
    enddo
    Eigvec(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
@@ -103,7 +103,7 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF)
  if(info==0) then
   deallocate(Work)
   allocate(Work(lwork))
-  ELAGd%F_diag=0.0d0
+  ELAGd%F_diag=zero
   call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
  endif
 
@@ -153,8 +153,8 @@ subroutine scale_F(MaxScaling,Fpq)
 !************************************************************************
  do iscale=1,MaxScaling
   Abs_Fpq=dabs(Fpq)
-  if(Abs_Fpq>1.0d1**(9-iscale).and.Abs_Fpq<1.0d1**(10-iscale)) then
-   Fpq=0.1d0*Fpq
+  if(Abs_Fpq>ten**(9-iscale).and.Abs_Fpq<ten**(10-iscale)) then
+   Fpq=tol1*Fpq
   endif
  enddo 
 end subroutine scale_F
@@ -201,16 +201,16 @@ subroutine diis_F(diddiis,RDMd,ELAGd,Eigvec)
  do idiis1=1,ELAGd%idiis
   ELAGd%DIIS_mat(idiis1,ELAGd%idiis) = traceF(RDMd,ELAGd,idiis1)
   ELAGd%DIIS_mat(ELAGd%idiis,idiis1) = ELAGd%DIIS_mat(idiis1,ELAGd%idiis)
-  ELAGd%DIIS_mat(idiis1,idiisp1) = -1.0d0
-  ELAGd%DIIS_mat(idiisp1,idiis1) = -1.0d0
+  ELAGd%DIIS_mat(idiis1,idiisp1) = -one
+  ELAGd%DIIS_mat(idiisp1,idiis1) = -one
  enddo
- ELAGd%DIIS_mat(idiisp1,idiisp1) = 0.0d0
+ ELAGd%DIIS_mat(idiisp1,idiisp1) = zero
  if(ELAGd%idiis>ELAGd%ndiis) then
   diddiis=.true.
   allocate(IPIV(ELAGd%ndiis_array))
   IPIV=0
-  ELAGd%Coef_DIIS=0.0d0
-  ELAGd%Coef_DIIS(ELAGd%ndiis_array) = -1.0d0
+  ELAGd%Coef_DIIS=zero
+  ELAGd%Coef_DIIS(ELAGd%ndiis_array) = -one
   call DGESV(ELAGd%ndiis_array,1,ELAGd%DIIS_mat,ELAGd%ndiis_array,IPIV,ELAGd%Coef_DIIS,ELAGd%ndiis_array,info)
   deallocate(IPIV)
   do iorb=1,RDMd%NBF_tot
@@ -256,7 +256,7 @@ function traceF(RDMd,ELAGd,idiis_in) result(traceFF)
  integer::iorb,iorb1
 !arrays
 !************************************************************************
-traceFF = 0.0d0
+traceFF = zero
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,iorb-1
    traceFF=traceFF+ELAGd%F_DIIS(idiis_in,iorb,iorb1)*ELAGd%F_DIIS(ELAGd%idiis,iorb1,iorb)

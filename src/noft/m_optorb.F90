@@ -87,9 +87,9 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  character(len=200)::msg
 !************************************************************************
 
- Energy=0.0d0; Energy_old=0.0d0; convLambda=.false.;nogamma=.true.;
+ Energy=zero; Energy_old=zero; convLambda=.false.;nogamma=.true.;
  if((imethod==1).and.(iter==0)) then
-  ELAGd%sumdiff_old=0.0d0
+  ELAGd%sumdiff_old=zero
  endif
  
  icall=0
@@ -114,11 +114,11 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
    exit
   else
    if(imethod==1.and.icall==0) then                                        ! F method: adjust MaxScaling for the rest of orb. icall iterations
-    if(iter>2.and.iter>ELAGd%itscale.and.(sumdiff>ELAGd%sumdiff_old)) then ! Parameters chosen empirically (i.e. experience) to
+    if(iter>2.and.iter>ELAGd%itscale.and.(sumdiff>ELAGd%sumdiff_old)) then ! Parameters chosen from experience to
      ELAGd%itscale=iter+10                                                 ! ensure convergence. Maybe we can set them as input variables?
      ELAGd%MaxScaling=ELAGd%MaxScaling+1
      if(ELAGd%MaxScaling>ELAGd%itolLambda) then
-      ELAGd%MaxScaling=2                                                   ! One more empirical/experience parameter =(
+      ELAGd%MaxScaling=2                                                   ! One more empirical/experience parameter used for convergence =(
      endif
     endif
     ELAGd%sumdiff_old=sumdiff
@@ -209,8 +209,8 @@ subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff)
 !arrays
 !************************************************************************
 
- tol_dif_Lambda=1.0d1**(-ELAGd%itolLambda)
- converg_lamb=.true.; sumdiff=0.0d0; maxdiff=0.0d0;
+ tol_dif_Lambda=ten**(-ELAGd%itolLambda)
+ converg_lamb=.true.; sumdiff=zero; maxdiff=zero;
  
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,RDMd%NBF_tot

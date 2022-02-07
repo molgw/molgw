@@ -71,10 +71,9 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
 !Local variables ------------------------------
 !scalars
- logical::diagco,conveg=.false.
+ logical::diagco,conveg=.false.,debug=.false.
  integer,parameter::msave=7,nextv=47,nfcall=6,nfgcal=7,g=28,toobig=2,vneed=4
- integer::igamma,iflag,ig,icall,icall1,Mtosave,Nwork,Nwork2
- real(dp)::eps,xtol,tolgamma=1.0d-6
+ integer::iorb,igamma,iflag,ig,icall,icall1,Mtosave,Nwork,Nwork2
 !arrays
  character(len=200)::msg
  integer,dimension(2)::info_print
@@ -82,14 +81,14 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  real(dp),allocatable,dimension(:)::GAMMAs,Grad_GAMMAs,diag,Work,Work2
 !************************************************************************
 
- Energy=0.0d0
+ Energy=zero
  allocate(GAMMAs(RDMd%Ngammas),Grad_GAMMAs(RDMd%Ngammas))
- Grad_GAMMAs=0.0d0
+ Grad_GAMMAs=zero
  if((iter==-1).and.RDMd%GAMMAs_nread) then 
-  GAMMAs=0.785398163       ! Perturbed occ. numbers (i.e pi/4) -> occ(i<Fermi level) = 0.75
+  GAMMAs=pi/four          ! Perturbed occ. numbers (i.e pi/4) -> occ(i<Fermi level) = 0.75
  else
   if(RDMd%INOF==0) then    ! HF set occ. to 0 or 1. open-shell TODO
-   GAMMAs=0.0d0
+   GAMMAs=zero
   else
    GAMMAs=RDMd%GAMMAs_old  ! Read from previous run
   endif
@@ -100,21 +99,39 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
  conveg=.true.
  do igamma=1,RDMd%Ngammas
-  if(dabs(Grad_GAMMAs(igamma))>tolgamma.and.conveg) then
+  if(dabs(Grad_GAMMAs(igamma))>tol6.and.conveg) then
    conveg=.false.
   endif 
-  Grad_GAMMAs(igamma)=0.0d0
+  Grad_GAMMAs(igamma)=zero
  enddo
 
  ! Do iterations if the current GAMMAs do not produce small gradients
  icall=0
  if((.not.conveg).and.(.not.keep_occs)) then 
-  if(imethod==1) then ! Conjugate gradients. (The subroutine uses goto. It is not clean but needed)
+  if(imethod==1) then ! LBFGS
+   write(msg,'(a)') 'Calling LBFGS to optimize occ. numbers'
+   call write_output(msg)
+   Nwork=RDMd%Ngammas*(2*msave+1)+2*msave
+   Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
+   icall=0; iflag=0;
+   allocate(Work(Nwork),diag(RDMd%Ngammas))
+   do
+    call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+    call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
+    call LBFGS_INTERN(RDMd%Ngammas,Mtosave,GAMMAs,Energy,Grad_GAMMAs,diagco,diag,info_print,tol5,tol16,Work,iflag)
+    if(iflag<=0) exit
+    icall=icall+1
+!  We allow at most 2000 evaluations of Energy and Gradient
+    if(icall==2000) exit
+!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
+   enddo
+   deallocate(Work,diag)
+  else ! Conjugate gradients. (The subroutine uses goto. It is not clean but needed...)
    write(msg,'(a)') 'Calling CG to optimize occ. numbers'
    call write_output(msg)
    Nwork=60; Nwork2=71+RDMd%Ngammas*(RDMd%Ngammas+15)/2; 
    allocate(iWork(Nwork),Work(RDMd%Ngammas),Work2(Nwork2))
-   iWork=0; Work=0.1d0;   
+   iWork=0; Work=tol1;   
    if (iWork(1)==0) call deflt(2,iWork, Nwork, Nwork2, Work2)
    iflag = iWork(1)
    if (iflag == 12 .or. iflag == 13) iWork(vneed) = iWork(vneed) + RDMd%Ngammas
@@ -158,36 +175,31 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
 
 60  deallocate(iWork,Work,Work2)
 
-  else ! LBFGS
-   write(msg,'(a)') 'Calling LBFGS to optimize occ. numbers'
-   call write_output(msg)
-   Nwork=RDMd%Ngammas*(2*msave+1)+2*msave
-   Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
-   eps= 1.0d-5; xtol= 1.0d-16; icall=0; iflag=0;
-   allocate(Work(Nwork),diag(RDMd%Ngammas))
-   do
-    call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
-    call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
-    call LBFGS_INTERN(RDMd%Ngammas,Mtosave,GAMMAs,Energy,Grad_GAMMAs,diagco,diag,info_print,eps,xtol,Work,iflag)
-    if(iflag<=0) exit
-    icall=icall+1
-!  We allow at most 2000 evaluations of Energy and Gradient
-    if(icall==2000) exit
-!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
-   enddo
-   deallocate(Work,diag)
   endif
  endif 
  
  iter=iter+1
  if(RDMd%INOF==0) then ! Ensure that for HF we keep occ. 0 or 1
-  RDMd%GAMMAs_old=0.0d0
+  RDMd%GAMMAs_old=zero
  else
   RDMd%GAMMAs_old=GAMMAs
  endif
  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
  write(msg,'(a,f15.6,a,i6,a)') 'Occ. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
+ if(debug) then
+  RDMd%occ(:)=two*RDMd%occ(:)
+  write(msg,'(a,f10.5,a)') 'Total occ ',sum(RDMd%occ(:)),'. Optimized occ. numbers '
+  call write_output(msg)
+  do iorb=1,(RDMd%NBF_occ/10)*10,10
+   write(msg,'(f12.6,9f11.6)') RDMd%occ(iorb:iorb+9)
+   call write_output(msg)
+  enddo
+  iorb=(RDMd%NBF_occ/10)*10+1
+  write(msg,'(f12.6,*(f11.6))') RDMd%occ(iorb:)
+  call write_output(msg)
+  RDMd%occ(:)=half*RDMd%occ(:)
+ endif
  write(msg,'(a,i6)') 'Number of global iter. ',iter
  call write_output(msg)
  write(msg,'(a)') ' '

@@ -128,11 +128,11 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
   totMEM=totMEM+ELAGd%ndiis_array+ELAGd%ndiis_array*NBF_tot*NBF_tot+ELAGd%ndiis_array*ELAGd%ndiis_array
  endif
  totMEM=8*totMEM       ! Bytes
- totMEM=totMEM*1.0d-6  ! Bytes to Mb  
- if(totMEM>1.0d3) then     ! Mb to Gb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*1.0d-3,' Gb'
- elseif(totMEM<1.0d0) then ! Mb to Kb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*1.0d3,' Kb'
+ totMEM=totMEM*tol6    ! Bytes to Mb  
+ if(totMEM>thousand) then     ! Mb to Gb
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*tol3,' Gb'
+ elseif(totMEM<one) then   ! Mb to Kb
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*thousand,' Kb'
  else                      ! Mb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM,' Mb'
  endif
@@ -222,7 +222,7 @@ subroutine build_elag(ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
  character(len=200)::msg
 !************************************************************************
 
- ELAGd%Lambdas=0.0d0
+ ELAGd%Lambdas=zero
 
  do iorb=1,RDMd%NBF_occ
   ELAGd%Lambdas(iorb,:)=RDMd%occ(iorb)*INTEGd%hCORE(:,iorb)                                         ! Init: Lambda_pq = n_p hCORE_qp
@@ -264,7 +264,7 @@ subroutine build_elag(ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
    enddo
   endif
  enddo 
- !ELAGd%Lambdas=2.0d0*ELAGd%Lambdas ! We only need half for 'alpha' orbs to define gradients
+ !ELAGd%Lambdas=two*ELAGd%Lambdas ! We only need half for 'alpha' orbs to define gradients
 
  ! TODO 
  if(RDMd%Nsingleocc>0) then
@@ -329,10 +329,10 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,ekt)
      if((dabs(sqrt_occ_iorb)>tol6).and.(dabs(sqrt_occ_iorb1)>tol6)) then
       Eigvec(iorb,iorb1)=Eigvec(iorb,iorb1)/(sqrt_occ_iorb*sqrt_occ_iorb1)
      else
-      Eigvec(iorb,iorb1)=0.0d0
+      Eigvec(iorb,iorb1)=zero
      endif
     else
-     Eigvec(iorb,iorb1)=0.0d0
+     Eigvec(iorb,iorb1)=zero
     endif
    enddo
   enddo
@@ -420,11 +420,11 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF)
  real(dp),allocatable,dimension(:,:)::DYSON_COEF
 !************************************************************************
  allocate(DYSON_COEF(RDMd%NBF_tot,RDMd%NBF_tot),DYSON_OCC(RDMd%NBF_occ))
- DYSON_COEF=0.0d0; DYSON_OCC=0.0d0;
+ DYSON_COEF=zero; DYSON_OCC=zero;
  ! Unnormalized DYSON_COEF
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,RDMd%NBF_occ
-   DYSON_COEF(iorb,iorb1)=0.0d0
+   DYSON_COEF(iorb,iorb1)=zero
    do iorb2=1,RDMd%NBF_occ
     DYSON_COEF(iorb,iorb1)=DYSON_COEF(iorb,iorb1)+dsqrt(RDMd%occ(iorb2))*NO_COEF(iorb,iorb2)*Eigvec(iorb2,iorb1)
    enddo
@@ -432,7 +432,7 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF)
  enddo 
  ! Occ numbers of DYSON_COEF
  do iorb=1,RDMd%NBF_occ
-  DYSON_OCC(iorb)=0.0d0
+  DYSON_OCC(iorb)=zero
   do iorb1=1,RDMd%NBF_tot
    DYSON_OCC(iorb)=DYSON_OCC(iorb)+DYSON_COEF(iorb1,iorb)*sum(INTEGd%Overlap(iorb1,:)*DYSON_COEF(:,iorb))
   enddo
@@ -447,7 +447,7 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF)
  coef_file='DYSON_COEF'
  call RDMd%print_orbs(DYSON_COEF,coef_file)
  ! Print DYSON occ. numbers
- DYSON_OCC(:)=2.0d0*DYSON_OCC(:)
+ DYSON_OCC(:)=two*DYSON_OCC(:)
  write(msg,'(a,f10.5,a)') 'Dyson occ ',sum(DYSON_OCC(:)),'. Dyson occ. numbers '
  call write_output(msg)
  do iorb=1,(RDMd%NBF_occ/10)*10,10
@@ -492,9 +492,9 @@ subroutine wipeout_diis(ELAGd)
 
  ELAGd%idiis=0
  if(ELAGd%ndiis>0) then
-  ELAGd%Coef_DIIS=0.0d0
-  ELAGd%F_DIIS=0.0d0
-  ELAGd%DIIS_mat=0.0d0
+  ELAGd%Coef_DIIS=zero
+  ELAGd%F_DIIS=zero
+  ELAGd%DIIS_mat=zero
  endif 
 
 end subroutine wipeout_diis
@@ -537,7 +537,7 @@ integer::iorb,iunit=312
  do iorb=1,NBF_tot
   write(iunit) iorb,ELAGd%F_diag(iorb)
  enddo
- write(iunit) 0,0.0d0
+ write(iunit) 0,zero
  close(iunit)
 
 end subroutine print_F_diag

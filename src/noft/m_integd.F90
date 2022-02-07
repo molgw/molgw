@@ -107,11 +107,11 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,lowmemERI)
   totMEM=3*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
  endif
  totMEM=8*totMEM       ! Bytes
- totMEM=totMEM*1.0d-6  ! Bytes to Mb  
- if(totMEM>1.0d3) then     ! Mb to Gb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*1.0d-3,' Gb'
- elseif(totMEM<1.0d0) then ! Mb to Kb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*1.0d3,' Kb'
+ totMEM=totMEM*tol6    ! Bytes to Mb  
+ if(totMEM>thousand) then     ! Mb to Gb
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*tol3,' Gb'
+ elseif(totMEM<one) then ! Mb to Kb
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*thousand,' Kb'
  else                      ! Mb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM,' Mb'
  endif
@@ -258,7 +258,7 @@ subroutine print_ints(INTEGd)
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iunit=312
  integer::iorbm1,iorb1m1,iorb2m1,iorb3m1
- real(dp)::ERIval,tol8=1.0d-8
+ real(dp)::ERIval
 !arrays
 !************************************************************************
  
@@ -295,8 +295,8 @@ subroutine print_ints(INTEGd)
    enddo
   enddo
  enddo 
- write(iunit) 0,0,0,0,0.0d0
- write(iunit) 0,0,0,0,0.0d0
+ write(iunit) 0,0,0,0,zero
+ write(iunit) 0,0,0,0,zero
  close(iunit)
 
  ! Print hCORE
@@ -308,7 +308,7 @@ subroutine print_ints(INTEGd)
    endif
   enddo
  enddo
- write(iunit) 0,0,0.0d0
+ write(iunit) 0,0,zero
  close(iunit)
 
 end subroutine print_ints
