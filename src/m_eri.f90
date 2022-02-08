@@ -16,6 +16,7 @@ module m_eri
  use m_timing
  use m_cart_to_pure
  use m_libint_tools
+ use m_libcint_tools
  use m_scalapack
  use m_inputparam,only: integral_level
 
@@ -377,6 +378,10 @@ subroutine identify_negligible_shellpair(basis)
  real(C_DOUBLE)               :: x01(3),x02(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
+#if defined(HAVE_LIBCINT)
+ integer(C_INT) :: info
+ integer(C_INT) :: shls(4)
+#endif
 !=====
 
  if( TOL_INT < 0.0_dp ) then
@@ -387,6 +392,7 @@ subroutine identify_negligible_shellpair(basis)
 
  call start_clock(timing_eri_screening)
  write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals'
+
 
  !
  ! Load balancing
@@ -437,6 +443,17 @@ subroutine identify_negligible_shellpair(basis)
 
      allocate( int_shell( n1c*n2c*n1c*n2c ) )
 
+#if defined(HAVE_LIBCINT)
+     shls(1) = ishell-1  ! C convention starts with 0
+     shls(2) = jshell-1  ! C convention starts with 0
+     shls(3) = ishell-1  ! C convention starts with 0
+     shls(4) = jshell-1  ! C convention starts with 0
+
+     info = cint2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+
+     call transform_libcint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
+
+#else
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
                          am1,ng1,x01,alpha1,coeff1, &
@@ -444,6 +461,7 @@ subroutine identify_negligible_shellpair(basis)
                          0.0_C_DOUBLE,int_shell)
 
      call transform_libint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
+#endif
 
      do ibf=1,ni
        do jbf=1,nj

@@ -10,7 +10,7 @@ module m_libcint_tools
   integer,private,parameter :: LIBCINT_NUC_MOD_OF = 3
   integer,private,parameter :: LIBCINT_PTR_ZETA   = 4
   integer,private,parameter :: LIBCINT_ATM_SLOTS  = 6
-  
+
   integer,private,parameter :: LIBCINT_ATOM_OF    = 1
   integer,private,parameter :: LIBCINT_ANG_OF     = 2
   integer,private,parameter :: LIBCINT_NPRIM_OF   = 3
@@ -19,7 +19,7 @@ module m_libcint_tools
   integer,private,parameter :: LIBCINT_PTR_EXP    = 6
   integer,private,parameter :: LIBCINT_PTR_COEFF  = 7
   integer,private,parameter :: LIBCINT_BAS_SLOTS  = 8
-  
+
   integer,private,parameter :: LIBCINT_PTR_COMMON_ORIG = 1
   integer,private,parameter :: LIBCINT_PTR_RINV_ORIG   = 4
   integer,private,parameter :: LIBCINT_PTR_ENV_START = 20
@@ -27,11 +27,13 @@ module m_libcint_tools
   integer,private,parameter :: LIBCINT_env_size=10000
 
   integer(C_INT),protected :: LIBCINT_natm,LIBCINT_nbas
+  integer(C_INT),protected :: LIBCINT_AUXIL_BASIS_START
   integer(C_INT),protected,allocatable :: atm(:,:)
   integer(C_INT),protected,allocatable :: bas(:,:)
   real(C_DOUBLE),protected,allocatable :: env(:)
 
-
+  integer,external :: cint2e_cart
+  integer,external :: cint2c2e_cart
 
   interface
 
@@ -83,13 +85,22 @@ module m_libcint_tools
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_cg_irxp_cart
 
+    !integer(C_INT) function cint2e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+    !  import :: C_INT,C_DOUBLE,C_PTR
+    !  integer(C_INT),value  :: natm,nbas
+    !  real(C_DOUBLE),intent(in) :: env(*)
+    !  integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+    !  real(C_DOUBLE),intent(out) :: array_cart(*)
+    !  type(C_PTR) :: opt(*)
+    !end function cint2e_cart
+
   end interface
 
 
   interface transform_libcint_to_molgw
     module procedure transform_libcint_to_molgw_2d
     !module procedure transform_libcint_to_molgw_3d
-    !module procedure transform_libcint_to_molgw_4d
+    module procedure transform_libcint_to_molgw_4d
   end interface
 
 
@@ -97,17 +108,26 @@ contains
 
 
 !=========================================================================
-subroutine init_libcint(basis)
+subroutine init_libcint(basis,auxil_basis)
   implicit none
-  type(basis_set),intent(in) :: basis
+  type(basis_set),intent(in)          :: basis
+  type(basis_set),optional,intent(in) :: auxil_basis
   !=====
   integer :: off,icenter_basis,ishell
   !=====
 
-  write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data'
+  if( PRESENT(auxil_basis) ) then
+    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data: basis and auxiliary basis'
+  else
+    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data: basis'
+  endif
 
   LIBCINT_natm = ncenter_basis
   LIBCINT_nbas = basis%nshell
+  if( PRESENT(auxil_basis) ) then
+    LIBCINT_nbas = LIBCINT_nbas + auxil_basis%nshell
+  endif
+
   allocate(atm(LIBCINT_ATM_SLOTS,LIBCINT_natm))
   allocate(bas(LIBCINT_BAS_SLOTS,LIBCINT_nbas))
   allocate(env(LIBCINT_env_size))
@@ -134,23 +154,38 @@ subroutine init_libcint(basis)
     env(off+1:off+basis%shell(ishell)%ng) = basis%shell(ishell)%alpha(:)
     off = off + basis%shell(ishell)%ng
     bas(LIBCINT_PTR_COEFF,ishell) = off
-    !env(off+1:off+basis%shell(ishell)%ng) = basis%shell(ishell)%coeff(:) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * basis%shell(ishell)%am + 1 )
     select case(basis%shell(ishell)%am)
     case(0,1)
-      env(off+1:off+basis%shell(ishell)%ng) = basis%shell(ishell)%coeff(:) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * basis%shell(ishell)%am + 1 )
+      env(off+1:off+basis%shell(ishell)%ng) = basis%shell(ishell)%coeff(:) &
+                * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * basis%shell(ishell)%am + 1 )
     case default
       env(off+1:off+basis%shell(ishell)%ng) = basis%shell(ishell)%coeff(:)
     end select
-    !CINTgto_norm(bas(ANG_OF,n), env(bas(PTR_EXP,n)+1))
-    !env(off + 1) = .7 * CINTgto_norm(bas(ANG_OF,ishell), env(bas(PTR_EXP,ishell)+1))
-    !env(off + 2) = .6 * CINTgto_norm(bas(ANG_OF,ishell), env(bas(PTR_EXP,ishell)+2))
-    !env(off + 3) = .5 * CINTgto_norm(bas(ANG_OF,ishell), env(bas(PTR_EXP,ishell)+3))
-    !env(off + 4) = .4 * CINTgto_norm(bas(ANG_OF,ishell), env(bas(PTR_EXP,ishell)+1))
-    !env(off + 5) = .3 * CINTgto_norm(bas(ANG_OF,ishell), env(bas(PTR_EXP,ishell)+2))
-    !env(off + 6) = .2 * CINTgto_norm(bas(ANG_OF,ishell), env(bas(PTR_EXP,ishell)+3))
     off = off + basis%shell(ishell)%ng
   enddo
 
+  LIBCINT_AUXIL_BASIS_START = basis%nshell
+
+  if( PRESENT(auxil_basis) ) then
+    do ishell=1,auxil_basis%nshell
+      bas(LIBCINT_ATOM_OF  ,LIBCINT_AUXIL_BASIS_START + ishell)  = auxil_basis%shell(ishell)%icenter - 1 ! C convention starts with 0
+      bas(LIBCINT_ANG_OF   ,LIBCINT_AUXIL_BASIS_START + ishell)  = auxil_basis%shell(ishell)%am
+      bas(LIBCINT_NPRIM_OF ,LIBCINT_AUXIL_BASIS_START + ishell)  = auxil_basis%shell(ishell)%ng
+      bas(LIBCINT_NCTR_OF  ,LIBCINT_AUXIL_BASIS_START + ishell)  = 1   ! so far take shells one at a time (even if they share exponents)
+      bas(LIBCINT_PTR_EXP  ,LIBCINT_AUXIL_BASIS_START + ishell)  = off ! note the 0-based index
+      env(off+1:off+auxil_basis%shell(ishell)%ng) = auxil_basis%shell(ishell)%alpha(:)
+      off = off + auxil_basis%shell(ishell)%ng
+      bas(LIBCINT_PTR_COEFF,LIBCINT_AUXIL_BASIS_START + ishell) = off
+      select case(auxil_basis%shell(ishell)%am)
+      case(0,1)
+        env(off+1:off+auxil_basis%shell(ishell)%ng) = auxil_basis%shell(ishell)%coeff(:) &
+                  * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * auxil_basis%shell(ishell)%am + 1 )
+      case default
+        env(off+1:off+auxil_basis%shell(ishell)%ng) = auxil_basis%shell(ishell)%coeff(:)
+      end select
+      off = off + auxil_basis%shell(ishell)%ng
+    enddo
+  endif
 
 
 end subroutine init_libcint
@@ -187,18 +222,79 @@ subroutine transform_libcint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_o
   n2c = number_basis_function_am('CART',am2)
   n1  = number_basis_function_am(gaussian_type,am1)
   n2  = number_basis_function_am(gaussian_type,am2)
- 
+
   if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2))
- 
+
   allocate(matrix_tmp(n1c,n2))
   ! Transform the right index
   matrix_tmp(:,:) = MATMUL( RESHAPE(array_in(:),[n1c,n2c]) , cart_to_pure_norm(am2,gt_tag)%matrix(:,:) )
   ! Transform the left index
   matrix_out(:,:) = MATMUL( TRANSPOSE(cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1)), matrix_tmp(:,:) )
- 
+
   deallocate(matrix_tmp)
 
 end subroutine transform_libcint_to_molgw_2d
+
+
+!=========================================================================
+! FBFB FIXME not ready
+subroutine transform_libcint_to_molgw_4d(gaussian_type,am1,am2,am3,am4,array_in,matrix_out)
+  implicit none
+  character(len=4),intent(in)      :: gaussian_type
+  integer,intent(in)               :: am1,am2,am3,am4
+  real(C_DOUBLE),intent(in)        :: array_in(:)
+  real(dp),allocatable,intent(out) :: matrix_out(:,:,:,:)
+  !=====
+  integer :: n1,n2,n3,n4,n1c,n2c,n3c,n4c
+  integer :: i1,i2
+  integer :: gt_tag
+  real(dp),allocatable :: matrix_tmp0(:,:)
+  real(dp),allocatable :: matrix_tmp1(:,:)
+  real(dp),allocatable :: matrix_tmp2(:,:)
+  real(dp),allocatable :: matrix_tmp3(:,:)
+  !=====
+
+  gt_tag = get_gaussian_type_tag(gaussian_type)
+  n1c = number_basis_function_am('CART',am1)
+  n2c = number_basis_function_am('CART',am2)
+  n3c = number_basis_function_am('CART',am3)
+  n4c = number_basis_function_am('CART',am4)
+  n1  = number_basis_function_am(gaussian_type,am1)
+  n2  = number_basis_function_am(gaussian_type,am2)
+  n3  = number_basis_function_am(gaussian_type,am3)
+  n4  = number_basis_function_am(gaussian_type,am4)
+
+  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2,n3,n4))
+
+  allocate(matrix_tmp1(n1,n2c*n3c*n4c))
+  allocate(matrix_tmp2(n2,n3c*n4c))
+  allocate(matrix_tmp3(n3,n4c))
+
+
+  ! Transform the 1st index
+  allocate(matrix_tmp0(n2c*n3c*n4c,n1c))
+  matrix_tmp0(:,:) = RESHAPE( array_in(:) , (/ n2c * n3c * n4c , n1c /) )
+
+  matrix_tmp1(1:n1,:) = TRANSPOSE( MATMUL( matrix_tmp0(:,:) , cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
+  deallocate(matrix_tmp0)
+
+  do i1=1,n1
+    ! Transform the 2nd index
+    matrix_tmp2(1:n2,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp1(i1,:) , (/ n3c * n4c , n2c /) ) ,  &
+                                              cart_to_pure_norm(am2,gt_tag)%matrix(1:n2c,1:n2) ) )
+    do i2=1,n2
+      ! Transform the 3rd index
+      matrix_tmp3(1:n3,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp2(i2,:) , (/ n4c , n3c /) ) ,  &
+                                              cart_to_pure_norm(am3,gt_tag)%matrix(1:n3c,1:n3) ) )
+
+      ! Transform the 4th index
+      matrix_out(i1,i2,:,:) = MATMUL( matrix_tmp3(:,:) , cart_to_pure_norm(am4,gt_tag)%matrix(:,:) )
+    enddo
+  enddo
+
+  deallocate(matrix_tmp1,matrix_tmp2,matrix_tmp3)
+
+end subroutine transform_libcint_to_molgw_4d
 
 
 !=========================================================================
