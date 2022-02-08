@@ -70,11 +70,11 @@ module m_libcint_tools
   end interface
 
 
- interface transform_libcint_to_molgw
-   module procedure transform_libcint_to_molgw_2d
-   !module procedure transform_libcint_to_molgw_3d
-   !module procedure transform_libcint_to_molgw_4d
- end interface
+  interface transform_libcint_to_molgw
+    module procedure transform_libcint_to_molgw_2d
+    !module procedure transform_libcint_to_molgw_3d
+    !module procedure transform_libcint_to_molgw_4d
+  end interface
 
 
 contains
