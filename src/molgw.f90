@@ -145,15 +145,16 @@ program molgw
     write(stdout,*) 'Setting up the basis set for wavefunctions'
     call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
 
+#if defined(HAVE_LIBCINT)
+    call init_libcint(basis)
+#endif
+
     !
     ! SCALAPACK distribution that depends on the system specific size, parameters etc.
     call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol)
 
     if( print_rho_grid_ ) call dm_dump(basis)
 
-#if defined(HAVE_LIBCINT)
-    call init_libcint(basis)
-#endif
 
     !
     ! Calculate overlap matrix S so to obtain "nstate" as soon as possible
@@ -163,6 +164,10 @@ program molgw
     ! Build up the overlap matrix S
     ! S only depends onto the basis set
     call setup_overlap(basis,s_matrix)
+    block
+    real(dp),allocatable :: rxp(:,:,:)
+    call setup_rxp_ao(basis,rxp)
+    end block
 
     !
     ! Calculate the square root inverse of the overlap matrix S
@@ -417,6 +422,11 @@ program molgw
       endif
     endif
 
+#if defined(HAVE_LIBCINT)
+    ! Reinitialize LIBCINT if atoms move
+    call destroy_libcint()
+#endif
+
   enddo ! istep
 
 
@@ -437,6 +447,10 @@ program molgw
   !
   !
   call start_clock(timing_postscf)
+
+#if defined(HAVE_LIBCINT)
+    call init_libcint(basis)
+#endif
 
   !
   ! Evaluate spin contamination
@@ -635,8 +649,11 @@ program molgw
   if(has_auxil_basis) call destroy_basis_set(auxil_basis)
   call destroy_atoms()
 
-  call destroy_cart_to_pure_transforms()
+#if defined(HAVE_LIBCINT)
+    call destroy_libcint()
+#endif
 
+  call destroy_cart_to_pure_transforms()
 
   call stop_clock(timing_postscf)
   call stop_clock(timing_total)

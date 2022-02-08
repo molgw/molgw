@@ -823,7 +823,7 @@ subroutine setup_rxp_ao(basis,rxp_ao)
 !=====
 
 #if defined(HAVE_LIBCINT)
- write(stdout,'(/,a)') ' Setup dipole matrix (LIBCINT)'
+ write(stdout,'(/,a)') ' Setup r x p matrix (LIBCINT)'
 #else
  call die('setup_rxp_ao: r x p calculations requires LIBCINT')
 #endif
@@ -853,7 +853,6 @@ subroutine setup_rxp_ao(basis,rxp_ao)
      do idir=1,3
        call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
        rxp_ao(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
-       rxp_ao(jbf1:jbf2,ibf1:ibf2,idir) = TRANSPOSE(matrix(:,:))
      enddo
      deallocate(matrix)
 
@@ -925,7 +924,7 @@ subroutine calculate_dipole_ao(basis,dipole_ao)
      do idir=1,3
        call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
        dipole_ao(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
-       dipole_ao(jbf1:jbf2,ibf1:ibf2,idir) = TRANSPOSE(matrix(:,:))
+       !dipole_ao(jbf1:jbf2,ibf1:ibf2,idir) = TRANSPOSE(matrix(:,:))
      enddo
      deallocate(matrix)
 
@@ -1015,7 +1014,7 @@ subroutine calculate_quadrupole_ao(basis,quadrupole_ao)
          ijdir=ijdir+1
          call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,ijdir),matrix)
          quadrupole_ao(ibf1:ibf2,jbf1:jbf2,idir,jdir) = matrix(:,:)
-         quadrupole_ao(jbf1:jbf2,ibf1:ibf2,idir,jdir) = TRANSPOSE(matrix(:,:))
+         !quadrupole_ao(jbf1:jbf2,ibf1:ibf2,idir,jdir) = TRANSPOSE(matrix(:,:))
        enddo
      enddo
      deallocate(matrix)
@@ -1044,6 +1043,7 @@ subroutine calculate_quadrupole_ao(basis,quadrupole_ao)
    enddo
  enddo
 
+ call dump_out_matrix(.FALSE.,'===  Quadrupole AO XX ===',quadrupole_ao(:,:,1,1))
 
 end subroutine calculate_quadrupole_ao
 

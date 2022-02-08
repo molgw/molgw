@@ -141,35 +141,50 @@ end subroutine init_libcint
 
 
 !=========================================================================
+subroutine destroy_libcint()
+  implicit none
+
+  LIBCINT_natm = 0
+  LIBCINT_nbas = 0
+  deallocate(atm)
+  deallocate(bas)
+  deallocate(env)
+
+end subroutine destroy_libcint
+
+
+!=========================================================================
 subroutine transform_libcint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_out)
- implicit none
- character(len=4),intent(in)      :: gaussian_type
- integer,intent(in)               :: am1,am2
- real(C_DOUBLE),intent(in)        :: array_in(:)
- real(dp),allocatable,intent(out) :: matrix_out(:,:)
-!=====
- integer :: n1,n2,n1c,n2c
- integer :: gt_tag
- real(dp),allocatable :: matrix_tmp(:,:)
-!=====
+  implicit none
+  character(len=4),intent(in)      :: gaussian_type
+  integer,intent(in)               :: am1,am2
+  real(C_DOUBLE),intent(in)        :: array_in(:)
+  real(dp),allocatable,intent(out) :: matrix_out(:,:)
+  !=====
+  integer :: n1,n2,n1c,n2c
+  integer :: gt_tag
+  real(dp),allocatable :: matrix_tmp(:,:)
+  !=====
 
- gt_tag = get_gaussian_type_tag(gaussian_type)
- n1c = number_basis_function_am('CART',am1)
- n2c = number_basis_function_am('CART',am2)
- n1  = number_basis_function_am(gaussian_type,am1)
- n2  = number_basis_function_am(gaussian_type,am2)
-
- if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2))
-
- allocate(matrix_tmp(n1c,n2))
- ! Transform the right index
- matrix_tmp(:,:) = MATMUL( RESHAPE(array_in(:),[n1c,n2c]) , cart_to_pure_norm(am2,gt_tag)%matrix(:,:) )
- ! Transform the left index
- matrix_out(:,:) = MATMUL( TRANSPOSE(cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1)), matrix_tmp(:,:) )
-
- deallocate(matrix_tmp)
+  gt_tag = get_gaussian_type_tag(gaussian_type)
+  n1c = number_basis_function_am('CART',am1)
+  n2c = number_basis_function_am('CART',am2)
+  n1  = number_basis_function_am(gaussian_type,am1)
+  n2  = number_basis_function_am(gaussian_type,am2)
+ 
+  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2))
+ 
+  allocate(matrix_tmp(n1c,n2))
+  ! Transform the right index
+  matrix_tmp(:,:) = MATMUL( RESHAPE(array_in(:),[n1c,n2c]) , cart_to_pure_norm(am2,gt_tag)%matrix(:,:) )
+  ! Transform the left index
+  matrix_out(:,:) = MATMUL( TRANSPOSE(cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1)), matrix_tmp(:,:) )
+ 
+  deallocate(matrix_tmp)
 
 end subroutine transform_libcint_to_molgw_2d
 
 
+!=========================================================================
 end module m_libcint_tools
+!=========================================================================
