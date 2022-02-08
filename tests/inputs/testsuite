@@ -71,6 +71,15 @@ SCF Total Energy          , -154.9342671231    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.693777        , 0 , 1.0e-4
 gKS LUMO energy           ,    3.220523        , 0 , 1.0e-4
 
+h2o_distorted.in          , BHLYP distorted water (having quadrupole)
+SCF Total Energy          , -76.3815547520     , 0 , 1.0e-7
+Dipole (a.u.)             ,   -0.097584        , 0 , 1.0e-4
+Dipole (a.u.)             ,    0.005780        , 1 , 1.0e-4
+Dipole (a.u.)             ,   -0.785808        , 2 , 1.0e-4
+Quadrupole (a.u.)         ,   -5.234602        , 0 , 1.0e-4
+Quadrupole (a.u.)         ,    0.068177        , 1 , 1.0e-4
+Quadrupole (a.u.)         ,    0.054699        , 2 , 1.0e-4
+
 h2o_pbe0.in               , PBE0 water with a small basis
 SCF Total Energy          , -76.3408991125     , 0 , 1.0e-7
 

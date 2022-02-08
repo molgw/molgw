@@ -164,10 +164,6 @@ program molgw
     ! Build up the overlap matrix S
     ! S only depends onto the basis set
     call setup_overlap(basis,s_matrix)
-    block
-    real(dp),allocatable :: rxp(:,:,:)
-    call setup_rxp_ao(basis,rxp)
-    end block
 
     !
     ! Calculate the square root inverse of the overlap matrix S
