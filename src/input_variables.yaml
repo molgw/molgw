@@ -1170,6 +1170,14 @@ diis_switch:
   comment: When running ADIIS, sets the residue value below which the DIIS method
     is used to finalize the convergence.
 
+fcidump:
+  family: scf
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: 'Print the FCIDUMP file in NOFT module.'
+
 gamma_hybrid:
   family: scf
   datatype: real
@@ -1251,6 +1259,14 @@ iprintdmn:
   experimental: 'no'
   default: 0
   comment: 'Print optimized NOFT 1,2-RDMs (default=0 not to print them).'
+
+iprintswdmn:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Print optimized spin-with NOFT 1,2-RDMs (default=0 not to print them).'
 
 iprintints:
   family: scf

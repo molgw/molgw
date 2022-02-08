@@ -49,6 +49,9 @@ module m_integd
    procedure :: print_int => print_ints 
    ! Print hCORE and ERImol integrals in their current status
 
+   procedure :: print_dump => print_fcidump
+   ! Print FCIDUMP integrals file in their current status
+
  end type integ_t
 
  public :: integ_init     ! Main creation method.
@@ -312,6 +315,82 @@ subroutine print_ints(INTEGd)
  close(iunit)
 
 end subroutine print_ints
+!!***
+
+!!***
+!!****f* DoNOF/print_fcidump
+!! NAME
+!! print_fcidump
+!!
+!! FUNCTION
+!!  Print FCIDUMP integrals in their current status 
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine print_fcidump(INTEGd,Nel,Vnn)
+!Arguments ------------------------------------
+ integer,intent(in)::Nel
+ real(dp),intent(in)::Vnn
+!scalars
+ class(integ_t),intent(in)::INTEGd
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,iorb2,iorb3,iunit=312
+ integer::iorbm1,iorb1m1,iorb2m1,iorb3m1
+ real(dp)::ERIval
+!arrays
+!************************************************************************
+ 
+ ! Print FCIDUMP
+ open(unit=iunit,file='FCIDUMP')
+ write(iunit,'(a12,i4,a8,i4)') '$ FCI NORB =',INTEGd%NBF_jkl,' NELEC =',Nel
+ write(iunit,'(a10,i10)') '  MEMORY =',1000000
+ write(iunit,'(a1)') '$ '
+ do iorb=1,INTEGd%NBF_jkl
+  do iorb1=1,iorb
+   do iorb2=iorb,INTEGd%NBF_jkl
+    do iorb3=1,iorb2
+     if(INTEGd%iERItyp/=-1) then
+      if(INTEGd%iERItyp==0) then
+       ERIval=INTEGd%ERImol(iorb,iorb2,iorb3,iorb1) ! DoNOF {ij|lk}
+      elseif(INTEGd%iERItyp==1) then
+       ERIval=INTEGd%ERImol(iorb,iorb2,iorb1,iorb3) ! <ij|kl>
+      elseif(INTEGd%iERItyp==2) then
+       ERIval=INTEGd%ERImol(iorb,iorb1,iorb2,iorb3) ! (ik|jl)
+      else
+       ERIval=zero                                  ! Nth
+      endif
+     else
+      iorbm1=iorb-1
+      iorb1m1=iorb1-1
+      iorb2m1=iorb2-1
+      iorb3m1=iorb3-1
+      ERIval=INTEGd%ERImolv(iorbm1+iorb2m1*INTEGd%NBF2+iorb1m1*INTEGd%NBF3+iorb3m1*INTEGd%NBF4+1) ! <i+j*NBF2+k*NBF3+l*NBF4> 
+     endif
+     if(dabs(ERIval)>tol8) write(iunit,'(f15.8,4i4)') ERIval,iorb,iorb1,iorb2,iorb3
+    enddo
+   enddo
+  enddo
+ enddo 
+ do iorb=1,INTEGd%NBF_jkl
+  do iorb1=1,iorb
+   if(dabs(INTEGd%hCORE(iorb,iorb1))>tol8) then
+    write(iunit,'(f15.8,4i4)') INTEGd%hCORE(iorb,iorb1),iorb,iorb1,0,0
+   endif
+  enddo
+ enddo
+ write(iunit,'(f15.8,4i4)') Vnn,0,0,0,0
+ close(iunit)
+
+end subroutine print_fcidump
 !!***
 
 end module m_integd

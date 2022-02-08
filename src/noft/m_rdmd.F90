@@ -60,6 +60,9 @@ module m_rdmd
    procedure :: print_dmn => print_rdm
    ! Print the 1,2-RDMs into unformated files.
 
+   procedure :: print_swdmn => print_swrdm
+   ! Print the spin-with 1,2-RDMs into formated files.
+
    procedure :: print_orbs => print_orb_coefs
    ! Print orbital coefs to a formated file.
 
@@ -278,6 +281,52 @@ integer::iorb,iorb1,iunit=312
  close(iunit)
 
 end subroutine print_rdm
+!!***
+
+!!***
+!!****f* DoNOF/print_swrdm
+!! NAME
+!! print_swrdm
+!!
+!! FUNCTION
+!!  Print the spin-with 2-RDM matrix allocated in rdm_t to the binary file DM2 
+!!  Print the spin-with 1-RDM matrix allocated in rdm_t to the binary file DM1
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine print_swrdm(RDMd)
+!Arguments ------------------------------------
+!scalars
+ class(rdm_t),intent(inout)::RDMd
+!arrays
+!Local variables ------------------------------
+!scalars
+integer::iorb,iunit=312
+!arrays
+
+!************************************************************************
+
+ ! Print the sw 2-RDM
+ ! TODO: Missing terms for Nsingleocc>0 !
+
+ ! Print the sw 1-RDM
+ open(unit=iunit,file='swDM1')
+ do iorb=1,RDMd%NBF_occ
+  write(iunit,'(f15.8,2i4)') half*RDMd%occ(iorb),2*iorb-1,2*iorb-1
+  write(iunit,'(f15.8,2i4)') half*RDMd%occ(iorb),2*iorb,2*iorb
+ enddo
+ write(iunit,'(f15.8,2i4)') zero,0,0
+ close(iunit)
+
+end subroutine print_swrdm
 !!***
 
 !!***

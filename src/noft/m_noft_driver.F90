@@ -62,6 +62,7 @@ contains
 !! imethorb=Method used to opt. orbs. currently only F_diag (1)
 !! itermax=Max. number of global iters
 !! iprintdmn=Print opt. 1,2-DMNs 
+!! iprintswdmn=Print opt. spin-with 1,2-DMNs 
 !! iprintints=Print ERIs in MO basis
 !! itolLambda=Tol for Lambda_pq - Lambda_qp* is 10**-itolLambda
 !! ndiis=Numb. of iter. used in orb. opt. to call DIIS
@@ -86,15 +87,15 @@ contains
 !! SOURCE
 
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
-&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintints,&
-&  itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,AOverlap_in,Occ_inout,mo_ints,ofile_name,&
-&  lowmemERI,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB,Lpower)   ! Optional
+&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
+&  iprintints,itolLambda,ndiis,Enof,tolE_in,Vnn,NO_COEF,AOverlap_in,Occ_inout,mo_ints,ofile_name,&
+&  lowmemERI,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB,Lpower,fcidump)   ! Optional
 !Arguments ------------------------------------
 !scalars
- logical,optional,intent(in)::restart,lowmemERI
+ logical,optional,intent(in)::restart,lowmemERI,fcidump
  integer,optional,intent(in)::ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB
- integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,itolLambda,ndiis
- integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in
+ integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,iprintswdmn
+ integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,itolLambda,ndiis  
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in,iERItyp_in
  real(dp),optional,intent(in)::Lpower
  real(dp),intent(in)::Vnn,tolE_in
@@ -117,7 +118,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !Local variables ------------------------------
 !scalars
  logical::ekt,diagLpL,restart_param,keep_occs=.false.,keep_orbs=.false.
- integer::iorb,iter
+ integer::iorb,iter,ifcidump
  real(dp)::Energy,Energy_old,Vee,hONEbody
  type(rdm_t),target::RDMd
  type(integ_t),target::INTEGd
@@ -128,11 +129,16 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  character(len=200)::msg
 !************************************************************************
 
- diagLpL=.true.; restart_param=.false.;
+ diagLpL=.true.; restart_param=.false.; ifcidump=0;
 
  ! Initialize output
  call gitversion(sha_git) 
  call init_output(ofile_name)
+
+ ! Check whether to print a FCIDUMP file and the sw-RDMs
+ if(present(fcidump)) then 
+  if(fcidump) ifcidump=1
+ endif
 
  ! Write Header
  call write_header(sha_git)
@@ -143,8 +149,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &    present(iNOTupdateOCC).and.present(iNOTupdateORB)) then
    restart_param=.true.
    call echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
-&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,&
-&  iprintints,itolLambda,ndiis,tolE_in,restart=restart,ireadGAMMAS=ireadGAMMAS,&
+&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
+&  iprintints,itolLambda,ndiis,ifcidump,tolE_in,restart=restart,ireadGAMMAS=ireadGAMMAS,&
 &  ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,&
 &  iNOTupdateORB=iNOTupdateORB)
   else
@@ -152,14 +158,14 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call write_output(msg)
    restart_param=.false.
    call echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
-&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,&
-&  iprintints,itolLambda,ndiis,tolE_in)
+&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
+&  iprintints,itolLambda,ndiis,ifcidump,tolE_in)
   endif
  else 
   restart_param=.false.
   call echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
-&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,&
-&  iprintints,itolLambda,ndiis,tolE_in)
+&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
+&  iprintints,itolLambda,ndiis,ifcidump,tolE_in)
  endif
 
  ! Initialize RDMd, INTEGd, and ELAGd objects.
@@ -248,8 +254,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 
  enddo
 
- ! Print optimized 1,2-RDMs
- if(iprintdmn==1) call RDMd%print_dmn(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
+ ! Print optimized (spin-with?) 1,2-RDMs
+ if(iprintdmn==1) call RDMd%print_swdmn() 
+ if(iprintswdmn==1) call RDMd%print_dmn(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
 
  ! Print hCORE and ERImol integrals in the last (opt) NO_COEF basis (if lowmemERI=.false. NBF_tot, otherwise only NBF_occ)
  if(iprintints==1) then
@@ -315,6 +322,23 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  ! Free all allocated RDMd, INTEGd, and ELAGd arrays
  call ELAGd%free() 
  call INTEGd%free()
+ ! Reallocated INTEGd and print FCIDUMP file if required
+ if(ifcidump==1) then
+  write(msg,'(a)') ' '
+  call write_output(msg)
+  write(msg,'(a)') ' Reallocating the INTEG to print the FCIDUMP file'
+  call write_output(msg)
+  write(msg,'(a)') ' '
+  call write_output(msg)
+  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in)
+  if(INTEGd%iERItyp/=-1) then
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImol=INTEGd%ERImol)
+  else
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImolv=INTEGd%ERImolv)
+  endif
+  call INTEGd%print_dump(RDMd%Nalpha_elect+RDMd%Nbeta_elect,Vnn)
+  call INTEGd%free()
+ endif
  call RDMd%free() 
 
  ! Write Footer
@@ -343,6 +367,7 @@ end subroutine run_noft
 !! Ncoupled_in=Number of coupled orbitals per electron pair MINUS ONE
 !! Nbeta_elect_in=Number of beta electrons (N/2 for spin compensated systems)
 !! Nalpha_elect_in=Number of beta electrons (N/2 for spin compensated systems)
+!! ifcidump=Print the FCIDUMP file 1 or not 0.
 !!
 !! OUTPUT
 !!
@@ -353,15 +378,15 @@ end subroutine run_noft
 !! SOURCE
 
 subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
-&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,&
-&  iprintints,itolLambda,ndiis,tolE_in,restart,ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,&
-&  iNOTupdateOCC,iNOTupdateORB)
+&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
+&  iprintints,itolLambda,ndiis,ifcidump,tolE_in,restart,ireadGAMMAS,ireadOCC,ireadCOEF,&
+&  ireadFdiag,iNOTupdateOCC,iNOTupdateORB)
 !Arguments ------------------------------------
 !scalars
  logical,optional,intent(in)::restart
  integer,optional,intent(in)::ireadGAMMAS,ireadOCC,ireadCOEF,ireadFdiag,iNOTupdateOCC,iNOTupdateORB
- integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,itolLambda,ndiis
- integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in
+ integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,iprintints
+ integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,ifcidump,itolLambda,ndiis  
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in
  real(dp),intent(in)::tolE_in
 !arrays
@@ -458,7 +483,11 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
  call write_output(msg)
  write(msg,'(a,i12)') ' Print optimal 1,2-RDMs (true=1)   ',iprintdmn
  call write_output(msg)
+ write(msg,'(a,i12)') ' Print optimal sw-RDMs (true=1)    ',iprintswdmn
+ call write_output(msg)
  write(msg,'(a,i12)') ' Print last hCORE and ERImol ints  ',iprintints
+ call write_output(msg)
+ write(msg,'(a,i12)') ' Print FCIDUMP file (true=1)       ',ifcidump
  call write_output(msg)
  ! Check for the presence of restart files. If they are available, read them if required (default=not to read)
  if(present(restart)) then
