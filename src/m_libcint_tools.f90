@@ -53,6 +53,22 @@ module m_libcint_tools
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_kin_cart
 
+    integer(C_INT) function cint1e_nuc_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_nuc_cart
+
+    integer(C_INT) function cint1e_rinv_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_rinv_cart
+
     integer(C_INT) function cint1e_ipovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
       import :: C_INT,C_DOUBLE
       integer(C_INT),value  :: natm,nbas
@@ -85,6 +101,7 @@ module m_libcint_tools
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_cg_irxp_cart
 
+    !FIXME this interface does not work and I don't know why
     !integer(C_INT) function cint2e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
     !  import :: C_INT,C_DOUBLE,C_PTR
     !  integer(C_INT),value  :: natm,nbas
@@ -99,6 +116,18 @@ module m_libcint_tools
 
 
 contains
+
+
+!=========================================================================
+subroutine set_rinv_origin_libcint(x0)
+  implicit none
+  real(dp),intent(in) :: x0(3)
+  !=====
+  !=====
+
+  env(LIBCINT_PTR_RINV_ORIG+1:LIBCINT_PTR_RINV_ORIG+3) = x0(:)
+
+end subroutine set_rinv_origin_libcint
 
 
 !=========================================================================
@@ -135,7 +164,7 @@ subroutine init_libcint(basis,auxil_basis)
   do icenter_basis=1,ncenter_basis
     atm(LIBCINT_CHARGE_OF,icenter_basis) = zbasis(icenter_basis)
     atm(LIBCINT_PTR_COORD,icenter_basis) = off ! note the 0-based index
-    env(off+1:off+3) =  xbasis(:,icenter_basis)
+    env(off+1:off+3) = xbasis(:,icenter_basis)
     off = off + 3
   enddo
 

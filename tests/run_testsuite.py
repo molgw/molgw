@@ -80,8 +80,8 @@ def check_output(out,testinfo):
   for line in open(tmpfolder+'/'+out,'r').readlines():
     if  'Angular momentum is too high' in line:
       test_files_skipped += 1
-      print('LIBINT installation does not have the high enough angular momenta => skip test')
-      skipping_reason.append('LIBINT installation does not have high enough angular momenta')
+      print('LIBINT or LIBCINT installation does not have the high enough angular momenta => skip test')
+      skipping_reason.append('LIBINT or LIBCINT installation does not have high enough angular momenta')
       return
   #
   # Second check if there is a memory leak

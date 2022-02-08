@@ -560,6 +560,8 @@ end subroutine setup_kinetic_grad
 
 
 !=========================================================================
+! Calculate \sum_c ( \alpha | -Z_c/|r - R_c| | \beta )
+!
 subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   use m_atoms
   implicit none
@@ -586,6 +588,10 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   integer  :: i_cart,j_cart,ij
   integer  :: ibf_cart,jbf_cart
   real(dp) :: nucleus
+#if defined(HAVE_LIBCINT)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+#endif
   !=====
 
   if( in_tddft_loop ) then
@@ -594,10 +600,12 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
     call start_clock(timing_hamiltonian_nuc)
   end if
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBCINT)'
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
-    write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
+  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
 #endif
 
   if( PRESENT(atom_list) ) then
@@ -641,7 +649,14 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
         endif
 
         C(:) = xatom(:,icenter)
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+        call set_rinv_origin_libcint(xatom(:,icenter))
+        shls(1) = jshell-1  ! C convention starts with 0
+        shls(2) = ishell-1  ! C convention starts with 0
+        info = cint1e_rinv_cart(array_cart_C, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+        array_cart(:) = array_cart(:) - zvalence(icenter) * array_cart_C(:)
+
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
         call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                             amB,contrdepthB,B,alphaB,cB, &
                             C,array_cart_C)
@@ -662,7 +677,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
       enddo
       deallocate(alphaA,cA)
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY) || defined(HAVE_LIBCINT)
       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #else
       call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
