@@ -33,7 +33,7 @@ module m_libcint_tools
   real(C_DOUBLE),protected,allocatable :: env(:)
 
   integer,external :: cint2e_cart
-  integer,external :: cint2c2e_cart
+  integer,external :: cint2c2e_cart,cint3c2e_cart
 
   interface
 
@@ -192,9 +192,9 @@ subroutine destroy_libcint()
   LIBCINT_natm = 0
   LIBCINT_nbas = 0
   LIBCINT_AUXIL_BASIS_START = 0
-  deallocate(atm)
-  deallocate(bas)
-  deallocate(env)
+  if( ALLOCATED(atm) ) deallocate(atm)
+  if( ALLOCATED(bas) ) deallocate(bas)
+  if( ALLOCATED(env) ) deallocate(env)
 
 end subroutine destroy_libcint
 

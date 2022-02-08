@@ -451,7 +451,12 @@ program molgw
   call start_clock(timing_postscf)
 
 #if defined(HAVE_LIBCINT)
+  call destroy_libcint()
+  if( has_auxil_basis) then
+    call init_libcint(basis,auxil_basis)
+  else
     call init_libcint(basis)
+  endif
 #endif
 
   !

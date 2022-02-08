@@ -451,17 +451,14 @@ subroutine identify_negligible_shellpair(basis)
 
      info = cint2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
 
-     call transform_libint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
-
 #else
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
                          am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
                          0.0_C_DOUBLE,int_shell)
-
-     call transform_libint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
 #endif
+     call transform_libint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
 
      do ibf=1,ni
        do jbf=1,nj
