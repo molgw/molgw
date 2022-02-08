@@ -871,7 +871,7 @@ end subroutine setup_rxp_ao
 
 
 !=========================================================================
-subroutine calculate_dipole_ao(basis,dipole_ao)
+subroutine setup_dipole_ao(basis,dipole_ao)
  implicit none
  type(basis_set),intent(in)         :: basis
  real(dp),allocatable,intent(out)   :: dipole_ao(:,:,:)
@@ -954,11 +954,11 @@ subroutine calculate_dipole_ao(basis,dipole_ao)
  call dump_out_matrix(.FALSE.,'===  Dipole AO Z ===',dipole_ao(:,:,3))
 
 
-end subroutine calculate_dipole_ao
+end subroutine setup_dipole_ao
 
 
 !=========================================================================
-subroutine calculate_quadrupole_ao(basis,quadrupole_ao)
+subroutine setup_quadrupole_ao(basis,quadrupole_ao)
  implicit none
  type(basis_set),intent(in)         :: basis
  real(dp),allocatable,intent(out)   :: quadrupole_ao(:,:,:,:)
@@ -1045,11 +1045,11 @@ subroutine calculate_quadrupole_ao(basis,quadrupole_ao)
 
  call dump_out_matrix(.FALSE.,'===  Quadrupole AO XX ===',quadrupole_ao(:,:,1,1))
 
-end subroutine calculate_quadrupole_ao
+end subroutine setup_quadrupole_ao
 
 
 !=========================================================================
-subroutine calculate_gos_ao(basis,qvec,gos_ao)
+subroutine setup_gos_ao(basis,qvec,gos_ao)
  implicit none
  type(basis_set),intent(in)          :: basis
  real(dp),intent(in)                 :: qvec(3)
@@ -1102,7 +1102,7 @@ subroutine calculate_gos_ao(basis,qvec,gos_ao)
  !$OMP END PARALLEL
 
 
-end subroutine calculate_gos_ao
+end subroutine setup_gos_ao
 
 
 !=========================================================================

@@ -11,7 +11,7 @@ module m_multipole
  use m_basis_set
  use m_inputparam
  use m_hamiltonian_tools,only: setup_density_matrix
- use m_hamiltonian_onebody,only: calculate_dipole_ao,calculate_quadrupole_ao
+ use m_hamiltonian_onebody,only: setup_dipole_ao,setup_quadrupole_ao
  use m_atoms
 
 
@@ -49,7 +49,7 @@ subroutine static_dipole(basis,occupation,c_matrix_in,p_matrix_in,dipole_ao_in,d
     !
     ! First precalculate all the needed dipole in the basis set
     !
-    call calculate_dipole_ao(basis,dipole_ao)
+    call setup_dipole_ao(basis,dipole_ao)
   else
     dipole_ao(:,:,:) = dipole_ao_in(:,:,:)
   endif
@@ -106,7 +106,7 @@ subroutine static_quadrupole(basis,occupation,c_matrix)
   !
   ! First precalculate all the needed quadrupoles in the basis set
   !
-  call calculate_quadrupole_ao(basis,quad_ao)
+  call setup_quadrupole_ao(basis,quad_ao)
 
   call setup_density_matrix(c_matrix,occupation,p_matrix)
 
@@ -175,8 +175,8 @@ subroutine spatial_extension(basis,c_matrix)
   !
   ! First precalculate all the dipole and quadrupole in the AO basis set
   !
-  call calculate_dipole_ao(basis,dipole_ao)
-  call calculate_quadrupole_ao(basis,quad_ao)
+  call setup_dipole_ao(basis,dipole_ao)
+  call setup_quadrupole_ao(basis,quad_ao)
   allocate(trace_dipole_ao(nbf,nbf))
   allocate(trace_quad_ao(nbf,nbf))
   trace_dipole_ao(:,:) =  dipole_ao(:,:,1) + dipole_ao(:,:,2) + dipole_ao(:,:,3)
