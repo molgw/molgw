@@ -31,6 +31,8 @@ contains
 
 
 !=========================================================================
+! Calculate ( \alpha | \beta )
+!
 subroutine setup_overlap(basis,s_matrix)
   implicit none
   type(basis_set),intent(in) :: basis
@@ -139,6 +141,8 @@ end subroutine setup_overlap
 
 
 !=========================================================================
+! Calculate ( \alpha | \beta ) when \alpha and \beta belong to 2 different basis sets
+!
 subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
   implicit none
   type(basis_set),intent(in) :: basis1,basis2
@@ -231,6 +235,9 @@ end subroutine setup_overlap_mixedbasis
 
 
 !=========================================================================
+! Calculate ( \nabla_{R_\alpha} \alpha | \beta )             <-> LIBINT integral
+!                 = - ( \nabla_r \alpha | \beta )            <-> LIBCINT integral
+!
 subroutine setup_overlap_grad(basis,s_matrix_grad)
   implicit none
   type(basis_set),intent(in) :: basis
@@ -253,10 +260,22 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
   real(C_DOUBLE)                    :: B(3)
   real(C_DOUBLE),allocatable        :: alphaB(:)
   real(C_DOUBLE),allocatable        :: cB(:)
+#if defined(HAVE_LIBCINT)
+  integer                           :: idir
+  real(C_DOUBLE),allocatable        :: array_cart(:,:)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+#endif
   !=====
 
   call start_clock(timing_overlap)
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Setup overlap matrix S (LIBCINT)'
+#elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
   write(stdout,'(/,a)') ' Setup gradient of the overlap matrix S (LIBINT)'
+#else
+      call die('setup_overlap_grad: overlap gradient not implemented without LIBINT or LIBCINT one-body gradient terms')
+#endif
 
   do jshell=1,basis%nshell
     lj      = basis%shell(jshell)%am
@@ -274,30 +293,40 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
       ibf1    = basis%shell(ishell)%istart
       ibf2    = basis%shell(ishell)%iend
 
+
+
+#if defined(HAVE_LIBCINT)
+      allocate(array_cart(ni_cart*nj_cart,3))
+      shls(1) = ishell-1  ! C convention starts with 0
+      shls(2) = jshell-1  ! C convention starts with 0
+      info = cint1e_ipovlp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+
+      do idir=1,3
+        call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
+        ! There is a sign change wrt to LIBINT
+        s_matrix_grad(ibf1:ibf2,jbf1:jbf2,idir) = -matrix(:,:)
+      enddo
+      deallocate(matrix)
+
+      deallocate(array_cart)
+
+#elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
       call set_libint_shell(basis%shell(ishell),amA,contrdepthA,A,alphaA,cA)
 
       allocate(array_cart_gradx(ni_cart*nj_cart))
       allocate(array_cart_grady(ni_cart*nj_cart))
       allocate(array_cart_gradz(ni_cart*nj_cart))
-
-#if (LIBINT2_DERIV_ONEBODY_ORDER > 0)
       call libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                                amB,contrdepthB,B,alphaB,cB, &
                                array_cart_gradx,array_cart_grady,array_cart_gradz)
-#else
-      call die('overlap gradient not implemented without LIBINT one-body gradient terms')
-#endif
 
-      deallocate(alphaA,cA)
 
       ! X
       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradx,matrix)
       s_matrix_grad(ibf1:ibf2,jbf1:jbf2,1) = matrix(:,:)
-
       ! Y
       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_grady,matrix)
       s_matrix_grad(ibf1:ibf2,jbf1:jbf2,2) = matrix(:,:)
-
       ! Z
       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradz,matrix)
       s_matrix_grad(ibf1:ibf2,jbf1:jbf2,3) = matrix(:,:)
@@ -307,17 +336,19 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
       deallocate(array_cart_grady)
       deallocate(array_cart_gradz)
       deallocate(matrix)
+      deallocate(alphaA,cA)
+#endif
 
     enddo
     deallocate(alphaB,cB)
   enddo
 
-  title='=== Overlap matrix S (LIBINT) X ==='
-  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,1))
-  title='=== Overlap matrix S (LIBINT) Y ==='
-  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,2))
-  title='=== Overlap matrix S (LIBINT) Z ==='
-  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,3))
+  title='=== Overlap grad matrix X ==='
+  call dump_out_matrix(.TRUE.,title,s_matrix_grad(:,:,1))
+  title='=== Overlap grad matrix Y ==='
+  call dump_out_matrix(.TRUE.,title,s_matrix_grad(:,:,2))
+  title='=== Overlap grad matrix Z ==='
+  call dump_out_matrix(.TRUE.,title,s_matrix_grad(:,:,3))
 
   call stop_clock(timing_overlap)
 
@@ -326,6 +357,8 @@ end subroutine setup_overlap_grad
 
 
 !=========================================================================
+! Calculate  ( \alpha | p**2 / 2 | \beta )
+!
 subroutine setup_kinetic(basis,hamiltonian_kinetic)
   implicit none
   type(basis_set),intent(in) :: basis
@@ -816,6 +849,8 @@ end subroutine setup_nucleus_grad
 
 
 !=========================================================================
+! Calculate  ( \alpha | r x p | \beta )
+!
 subroutine setup_rxp_ao(basis,rxp_ao)
   implicit none
   type(basis_set),intent(in)         :: basis
@@ -883,6 +918,8 @@ end subroutine setup_rxp_ao
 
 
 !=========================================================================
+! Calculate  ( \alpha | r | \beta )
+!
 subroutine setup_dipole_ao(basis,dipole_ao)
   implicit none
   type(basis_set),intent(in)         :: basis
@@ -970,6 +1007,8 @@ end subroutine setup_dipole_ao
 
 
 !=========================================================================
+! Calculate  ( \alpha | x*y | \beta ) tensor
+!
 subroutine setup_quadrupole_ao(basis,quadrupole_ao)
   implicit none
   type(basis_set),intent(in)         :: basis
@@ -1061,6 +1100,8 @@ end subroutine setup_quadrupole_ao
 
 
 !=========================================================================
+! Calculate  ( \alpha | e^{i q.r} | \beta )
+!
 subroutine setup_gos_ao(basis,qvec,gos_ao)
   implicit none
   type(basis_set),intent(in)          :: basis
@@ -1118,6 +1159,8 @@ end subroutine setup_gos_ao
 
 
 !=========================================================================
+! Calculate ( \alpha | V_ecp - Z/r | \beta )
+!
 subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
   use m_atoms
   use m_dft_grid
