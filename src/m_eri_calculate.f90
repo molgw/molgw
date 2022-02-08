@@ -749,13 +749,12 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
        allocate( int_shell( n1c*n3c ) )
 
 #if defined(HAVE_LIBCINT)
-       shls(1) = LIBCINT_AUXIL_BASIS_START + ishell-1  ! C convention starts with 0
-       shls(2) = LIBCINT_AUXIL_BASIS_START + kshell-1  ! C convention starts with 0
+       shls(1) = LIBCINT_AUXIL_BASIS_START + kshell-1  ! C convention starts with 0
+       shls(2) = LIBCINT_AUXIL_BASIS_START + ishell-1  ! C convention starts with 0
 
        cint_info = cint2c2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
 
-       call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
-       !call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
+       call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
 
 #else
 

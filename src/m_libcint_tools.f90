@@ -97,12 +97,6 @@ module m_libcint_tools
   end interface
 
 
-  interface transform_libcint_to_molgw
-    module procedure transform_libcint_to_molgw_2d
-    !module procedure transform_libcint_to_molgw_3d
-    module procedure transform_libcint_to_molgw_4d
-  end interface
-
 
 contains
 
@@ -197,104 +191,12 @@ subroutine destroy_libcint()
 
   LIBCINT_natm = 0
   LIBCINT_nbas = 0
+  LIBCINT_AUXIL_BASIS_START = 0
   deallocate(atm)
   deallocate(bas)
   deallocate(env)
 
 end subroutine destroy_libcint
-
-
-!=========================================================================
-subroutine transform_libcint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_out)
-  implicit none
-  character(len=4),intent(in)      :: gaussian_type
-  integer,intent(in)               :: am1,am2
-  real(C_DOUBLE),intent(in)        :: array_in(:)
-  real(dp),allocatable,intent(out) :: matrix_out(:,:)
-  !=====
-  integer :: n1,n2,n1c,n2c
-  integer :: gt_tag
-  real(dp),allocatable :: matrix_tmp(:,:)
-  !=====
-
-  gt_tag = get_gaussian_type_tag(gaussian_type)
-  n1c = number_basis_function_am('CART',am1)
-  n2c = number_basis_function_am('CART',am2)
-  n1  = number_basis_function_am(gaussian_type,am1)
-  n2  = number_basis_function_am(gaussian_type,am2)
-
-  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2))
-
-  allocate(matrix_tmp(n1c,n2))
-  ! Transform the right index
-  matrix_tmp(:,:) = MATMUL( RESHAPE(array_in(:),[n1c,n2c]) , cart_to_pure_norm(am2,gt_tag)%matrix(:,:) )
-  ! Transform the left index
-  matrix_out(:,:) = MATMUL( TRANSPOSE(cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1)), matrix_tmp(:,:) )
-
-  deallocate(matrix_tmp)
-
-end subroutine transform_libcint_to_molgw_2d
-
-
-!=========================================================================
-! FBFB FIXME not ready
-subroutine transform_libcint_to_molgw_4d(gaussian_type,am1,am2,am3,am4,array_in,matrix_out)
-  implicit none
-  character(len=4),intent(in)      :: gaussian_type
-  integer,intent(in)               :: am1,am2,am3,am4
-  real(C_DOUBLE),intent(in)        :: array_in(:)
-  real(dp),allocatable,intent(out) :: matrix_out(:,:,:,:)
-  !=====
-  integer :: n1,n2,n3,n4,n1c,n2c,n3c,n4c
-  integer :: i1,i2
-  integer :: gt_tag
-  real(dp),allocatable :: matrix_tmp0(:,:)
-  real(dp),allocatable :: matrix_tmp1(:,:)
-  real(dp),allocatable :: matrix_tmp2(:,:)
-  real(dp),allocatable :: matrix_tmp3(:,:)
-  !=====
-
-  gt_tag = get_gaussian_type_tag(gaussian_type)
-  n1c = number_basis_function_am('CART',am1)
-  n2c = number_basis_function_am('CART',am2)
-  n3c = number_basis_function_am('CART',am3)
-  n4c = number_basis_function_am('CART',am4)
-  n1  = number_basis_function_am(gaussian_type,am1)
-  n2  = number_basis_function_am(gaussian_type,am2)
-  n3  = number_basis_function_am(gaussian_type,am3)
-  n4  = number_basis_function_am(gaussian_type,am4)
-
-  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2,n3,n4))
-
-  allocate(matrix_tmp1(n1,n2c*n3c*n4c))
-  allocate(matrix_tmp2(n2,n3c*n4c))
-  allocate(matrix_tmp3(n3,n4c))
-
-
-  ! Transform the 1st index
-  allocate(matrix_tmp0(n2c*n3c*n4c,n1c))
-  matrix_tmp0(:,:) = RESHAPE( array_in(:) , (/ n2c * n3c * n4c , n1c /) )
-
-  matrix_tmp1(1:n1,:) = TRANSPOSE( MATMUL( matrix_tmp0(:,:) , cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
-  deallocate(matrix_tmp0)
-
-  do i1=1,n1
-    ! Transform the 2nd index
-    matrix_tmp2(1:n2,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp1(i1,:) , (/ n3c * n4c , n2c /) ) ,  &
-                                              cart_to_pure_norm(am2,gt_tag)%matrix(1:n2c,1:n2) ) )
-    do i2=1,n2
-      ! Transform the 3rd index
-      matrix_tmp3(1:n3,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp2(i2,:) , (/ n4c , n3c /) ) ,  &
-                                              cart_to_pure_norm(am3,gt_tag)%matrix(1:n3c,1:n3) ) )
-
-      ! Transform the 4th index
-      matrix_out(i1,i2,:,:) = MATMUL( matrix_tmp3(:,:) , cart_to_pure_norm(am4,gt_tag)%matrix(:,:) )
-    enddo
-  enddo
-
-  deallocate(matrix_tmp1,matrix_tmp2,matrix_tmp3)
-
-end subroutine transform_libcint_to_molgw_4d
 
 
 !=========================================================================

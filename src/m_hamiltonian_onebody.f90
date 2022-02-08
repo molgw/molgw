@@ -93,11 +93,11 @@ subroutine setup_overlap(basis,s_matrix)
       allocate(array_cart(ni_cart*nj_cart))
 
 #if defined(HAVE_LIBCINT)
-      shls(1) = ishell-1  ! C convention starts with 0
-      shls(2) = jshell-1  ! C convention starts with 0
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
       info = cint1e_ovlp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
 
-      call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
       call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
@@ -297,12 +297,12 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
 
 #if defined(HAVE_LIBCINT)
       allocate(array_cart(ni_cart*nj_cart,3))
-      shls(1) = ishell-1  ! C convention starts with 0
-      shls(2) = jshell-1  ! C convention starts with 0
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
       info = cint1e_ipovlp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
 
       do idir=1,3
-        call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
+        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
         ! There is a sign change wrt to LIBINT
         s_matrix_grad(ibf1:ibf2,jbf1:jbf2,idir) = -matrix(:,:)
       enddo
@@ -421,11 +421,11 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
 
 
 #if defined(HAVE_LIBCINT)
-      shls(1) = ishell-1  ! C convention starts with 0
-      shls(2) = jshell-1  ! C convention starts with 0
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
       info = cint1e_kin_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
 
-      call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
       call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
@@ -893,12 +893,12 @@ subroutine setup_rxp_ao(basis,rxp_ao)
 
 #if defined(HAVE_LIBCINT)
       allocate(array_cart(ni_cart*nj_cart,3))
-      shls(1) = ishell-1  ! C convention starts with 0
-      shls(2) = jshell-1  ! C convention starts with 0
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
       info = cint1e_cg_irxp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
 
       do idir=1,3
-        call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
+        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
         rxp_ao(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
       enddo
       deallocate(matrix)
@@ -966,12 +966,12 @@ subroutine setup_dipole_ao(basis,dipole_ao)
 
 #if defined(HAVE_LIBCINT)
       allocate(array_cart(ni_cart*nj_cart,3))
-      shls(1) = ishell-1  ! C convention starts with 0
-      shls(2) = jshell-1  ! C convention starts with 0
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
       info = cint1e_r_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
 
       do idir=1,3
-        call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
+        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
         dipole_ao(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
         !dipole_ao(jbf1:jbf2,ibf1:ibf2,idir) = TRANSPOSE(matrix(:,:))
       enddo
@@ -1055,15 +1055,15 @@ subroutine setup_quadrupole_ao(basis,quadrupole_ao)
 
 #if defined(HAVE_LIBCINT)
       allocate(array_cart(ni_cart*nj_cart,9))
-      shls(1) = ishell-1  ! C convention starts with 0
-      shls(2) = jshell-1  ! C convention starts with 0
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
       info = cint1e_rr_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
 
       ijdir=0
       do jdir=1,3
         do idir=1,3
           ijdir=ijdir+1
-          call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,ijdir),matrix)
+          call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,ijdir),matrix)
           quadrupole_ao(ibf1:ibf2,jbf1:jbf2,idir,jdir) = matrix(:,:)
           !quadrupole_ao(jbf1:jbf2,ibf1:ibf2,idir,jdir) = TRANSPOSE(matrix(:,:))
         enddo

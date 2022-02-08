@@ -444,14 +444,14 @@ subroutine identify_negligible_shellpair(basis)
      allocate( int_shell( n1c*n2c*n1c*n2c ) )
 
 #if defined(HAVE_LIBCINT)
-     shls(1) = ishell-1  ! C convention starts with 0
-     shls(2) = jshell-1  ! C convention starts with 0
-     shls(3) = ishell-1  ! C convention starts with 0
-     shls(4) = jshell-1  ! C convention starts with 0
+     shls(1) = jshell-1  ! C convention starts with 0
+     shls(2) = ishell-1  ! C convention starts with 0
+     shls(3) = jshell-1  ! C convention starts with 0
+     shls(4) = ishell-1  ! C convention starts with 0
 
      info = cint2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
 
-     call transform_libcint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
+     call transform_libint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
 
 #else
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
