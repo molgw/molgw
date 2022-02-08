@@ -658,11 +658,15 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 #endif
 #endif
  else
+#if defined(HAVE_LIBCINT)
+   call die('calculate_integrals_eri_2center_scalapack: range-separation not yet implemented with LIBCINT')
+#else
 #if defined(HAVE_SCALAPACK)
    write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals distributed using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center,' x ',npcol_3center
 #else
    write(stdout,'(a)') ' 2-center LR integrals (LIBINT)'
+#endif
 #endif
  endif
 
