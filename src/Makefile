@@ -169,6 +169,7 @@ level100: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
                         $(LIBXC) $(LIBXC_INCS)  \
                         $(LIBINT) $(LIBINT_INCS) \
                         $(ELPA) $(ELPA_INCS) \
+                        $(LIBCINT) \
                         $(LINKS)
 
 molgw.o: m_definitions.f90 m_warning.f90 m_tddft_variables.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_lbfgs.f90 \

@@ -55,8 +55,8 @@ subroutine setup_overlap(basis,s_matrix)
   integer :: i_cart,j_cart,ij
   integer :: ibf_cart,jbf_cart
 #if defined(HAVE_LIBCINT)
-  integer :: info
-  integer :: shls(2)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
 #endif
   !=====
 
@@ -349,10 +349,16 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
   !=====
   integer :: i_cart,j_cart,ij
   integer :: ibf_cart,jbf_cart
+#if defined(HAVE_LIBCINT)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+#endif
   !=====
 
   call start_clock(timing_hamiltonian_kin)
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBCINT)'
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
   write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBINT)'
 #else
   write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (internal)'
@@ -381,7 +387,14 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
       allocate(array_cart(ni_cart*nj_cart))
 
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+      shls(1) = ishell-1  ! C convention starts with 0
+      shls(2) = jshell-1  ! C convention starts with 0
+      info = cint1e_kin_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+
+      call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
       call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
                           amB,contrdepthB,B,alphaB,cB, &
                           array_cart)
@@ -399,7 +412,6 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
       call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #endif
       deallocate(alphaA,cA)
-
 
 
       hamiltonian_kinetic(ibf1:ibf2,jbf1:jbf2) = matrix(:,:)
@@ -815,9 +827,9 @@ subroutine setup_rxp_ao(basis,rxp_ao)
   integer              :: li,lj,ni_cart,nj_cart
   integer              :: idir
 #if defined(HAVE_LIBCINT)
-  integer :: info
-  integer :: shls(2)
-  real(dp),allocatable :: array_cart(:,:)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+  real(C_DOUBLE),allocatable :: array_cart(:,:)
   real(dp),allocatable :: matrix(:,:)
 #endif
   !=====
@@ -883,9 +895,9 @@ subroutine setup_dipole_ao(basis,dipole_ao)
   integer              :: idir
   real(dp),allocatable :: dipole_cart(:,:,:)
 #if defined(HAVE_LIBCINT)
-  integer :: info
-  integer :: shls(2)
-  real(dp),allocatable :: array_cart(:,:)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+  real(C_DOUBLE),allocatable :: array_cart(:,:)
   real(dp),allocatable :: matrix(:,:)
 #endif
   !=====
@@ -970,9 +982,9 @@ subroutine setup_quadrupole_ao(basis,quadrupole_ao)
   integer              :: idir,jdir,ijdir
   real(dp),allocatable :: quadrupole_cart(:,:,:,:)
 #if defined(HAVE_LIBCINT)
-  integer :: info
-  integer :: shls(2)
-  real(dp),allocatable :: array_cart(:,:)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+  real(C_DOUBLE),allocatable :: array_cart(:,:)
   real(dp),allocatable :: matrix(:,:)
 #endif
   !=====
