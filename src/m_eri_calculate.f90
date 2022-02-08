@@ -750,7 +750,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 
        cint_info = cint2c2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
 
-       call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
+       call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
        !call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
 
 #else
