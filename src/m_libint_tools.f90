@@ -8,7 +8,9 @@
 ! * subroutines to pass from row-major (C convention) to column-major (Fortran convention)
 !
 !=========================================================================
+#if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
+#endif
 
 module m_libint_tools
   use m_definitions

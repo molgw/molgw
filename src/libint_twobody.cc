@@ -5,6 +5,7 @@
  * with contracted gaussians
  * Author: F. Bruneval
  */
+#if !defined(NO_LIBINT)
 #include<libint2.h>
 #include<libint2/util/memory.h>
 #include<stdlib.h>
@@ -13,7 +14,7 @@
 #include<math.h>
 #include<assert.h>
 #include "libint_molgw.h"
-
+#endif
 
 
 /* Code */
@@ -23,9 +24,14 @@
  * ========================================================================== */
 extern "C" {
 void libint_init(int *ammax, bool *has_onebody, bool *has_gradient) {
- LIBINT2_PREFIXED_NAME(libint2_static_init)();
 
+#if !defined(NO_LIBINT)
+ LIBINT2_PREFIXED_NAME(libint2_static_init)();
  *ammax = LIBINT2_MAX_AM ;
+#else
+ *ammax = 0 ;
+#endif
+
 
 #if defined(LIBINT2_SUPPORT_ONEBODY)
  *has_onebody  = LIBINT2_SUPPORT_ONEBODY ;
@@ -44,6 +50,7 @@ void libint_init(int *ammax, bool *has_onebody, bool *has_gradient) {
 
 
 
+#if !defined(NO_LIBINT)
 /* ==========================================================================
  *                           2-center integrals
  * ========================================================================== */
@@ -544,5 +551,5 @@ void libint_4center(int amA, int contrdepthA , double A [] , double alphaA [], d
 }
 }
 
-
+#endif
 /* ========================================================================== */

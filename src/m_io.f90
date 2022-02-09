@@ -177,13 +177,22 @@ subroutine header()
 #endif
 
 
+ !
+ ! Integrals section
+ !
+
  ! LIBINT details
  call libint_init(ammax,has_onebody,has_gradient)
+#if !defined(NO_LIBINT)
  write(stdout,'(1x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
  write(stdout,'(6x,a,i5,3x,a)') 'max angular momentum handled by your LIBINT compilation: ', &
                                 ammax,orbital_momentum_name(ammax)
+#endif
+
+ ! LIBCINT details
 #if defined(HAVE_LIBCINT)
  ammax = 6
+ has_onebody = .TRUE.
  write(stdout,'(/,1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ',ammax
  call check_capability_libcint()
  if( .NOT. libcint_has_range_separation ) then
@@ -191,10 +200,15 @@ subroutine header()
  endif
 #endif
 
+#if !defined(HAVE_LIBCINT) && defined(NO_LIBINT)
+ write(stdout,*) 'Code compiled with no integral library: nor LIBINT nor LIBCINT'
+ call die('Please compile MOLGW with LIBINT or LIBCINT')
+#endif
+
  call set_molgw_lmax(ammax)
 
  if( .NOT. has_onebody ) then
-   write(stdout,'(1x,a)')  'Running with external LIBINT calculation of the one-body operators (faster)'
+   write(stdout,'(1x,a)')  'Running with external LIBINT or LIBCINT calculation of the one-body operators (faster)'
  else
    write(stdout,'(1x,a)')  'Running with internal calculation of the one-body operators (slower)'
  endif

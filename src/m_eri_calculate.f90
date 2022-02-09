@@ -989,17 +989,17 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
 
  if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
-   write(stdout,'(a,i4,a,i4)') ' 2-center integrals inverse square-root using a SCALAPACK grid (LIBINT): ', &
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals inverse square-root using a SCALAPACK grid: ', &
                                nprow_3center,' x ',npcol_3center
 #else
-   write(stdout,'(a)') ' 2-center integrals inverse square-root (LIBINT)'
+   write(stdout,'(a)') ' 2-center integrals inverse square-root'
 #endif
  else
 #if defined(HAVE_SCALAPACK)
-   write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals inverse square-root using a SCALAPACK grid (LIBINT): ', &
+   write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals inverse square-root using a SCALAPACK grid: ', &
                                nprow_3center,' x ',npcol_3center
 #else
-   write(stdout,'(a)') ' 2-center LR integrals inverse square-root (LIBINT)'
+   write(stdout,'(a)') ' 2-center LR integrals inverse square-root'
 #endif
  endif
 
@@ -1908,12 +1908,16 @@ subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vh
    x04(:) = basis%shell(lshell)%x0(:)
 
 
+#if !defined(NO_LIBINT)
    call libint_3center(am1,ng1,x01,alpha1,coeff1, &
                        am3,ng3,x03,alpha3,coeff3, &
                        am4,ng4,x04,alpha4,coeff4, &
                        0.0_C_DOUBLE,int_shell)
 
    call transform_libint_to_molgw(basis%gaussian_type,0,basis%gaussian_type,amk,aml,int_shell,integrals)
+#else
+   call die('calculate_eri_approximate_hartree: need LIBINT here')
+#endif
 
 
    do lbf=1,nl

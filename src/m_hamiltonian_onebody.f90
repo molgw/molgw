@@ -7,7 +7,9 @@
 ! with no distribution of the memory
 !
 !=========================================================================
+#if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
+#endif
 
 module m_hamiltonian_onebody
   use m_definitions

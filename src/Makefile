@@ -44,7 +44,7 @@ else
   LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
 endif
 ifeq ($(LIBINT_ROOT),)
-  LIBINT=-lint2
+  LIBINT=
   LIBINT_INCS=
 else
   LIBINT=-L$(LIBINT_ROOT)/lib -lint2
