@@ -235,7 +235,7 @@ subroutine print_rdm(RDMd,DM2_J,DM2_K,DM2_L)
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(in)::DM2_J,DM2_K,DM2_L
 !Local variables ------------------------------
 !scalars
-integer::iorb,iorb1,iunit=312
+ integer::iorb,iorb1,iunit=312
 !arrays
 
 !************************************************************************
@@ -309,22 +309,53 @@ subroutine print_swrdm(RDMd)
 !arrays
 !Local variables ------------------------------
 !scalars
-integer::iorb,iunit=312
+ integer::iorb,iorb1,iorb2,iorbmin,iorbmax
+ integer::NsdORBs,NBF2,NsdVIRT,iunit=312
+ real(dp)::Delem
 !arrays
-
+ integer,allocatable,dimension(:)::coup
+ real(dp),allocatable,dimension(:)::OCC
 !************************************************************************
 
- ! Print the sw 2-RDM
- ! TODO: Missing terms for Nsingleocc>0 !
+ NBF2=2*RDMd%NBF_occ
+ NsdORBs=RDMd%Nfrozen+RDMd%Npairs
+ NsdVIRT=RDMd%NBF_occ-NsdORBs
+ allocate(coup(NBF2),OCC(NBF2))
+ OCC=zero
 
  ! Print the sw 1-RDM
  open(unit=iunit,file='swDM1')
  do iorb=1,RDMd%NBF_occ
-  write(iunit,'(f15.8,2i4)') half*RDMd%occ(iorb),2*iorb-1,2*iorb-1
-  write(iunit,'(f15.8,2i4)') half*RDMd%occ(iorb),2*iorb,2*iorb
+  Delem=RDMd%occ(iorb)
+  if(dabs(Delem)>tol8) then
+   OCC(2*iorb-1)=Delem
+   OCC(2*iorb)  =OCC(2*iorb-1)
+   write(iunit,'(f15.8,2i4)') OCC(2*iorb-1),2*iorb-1,2*iorb-1
+   write(iunit,'(f15.8,2i4)') OCC(2*iorb),2*iorb,2*iorb
+  endif
  enddo
  write(iunit,'(f15.8,2i4)') zero,0,0
  close(iunit)
+
+ ! Print the sw 2-RDM
+ ! TODO: Missing terms for Nsingleocc>0 !
+ coup=-1
+ do iorb=1,NsdORBs
+  iorbmin=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+1
+  iorbmax=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+RDMd%Ncoupled
+  do iorb1=1,NsdVIRT
+   iorb2=iorb1+NsdORBs
+   if((iorbmin<=iorb2.and.iorb2<=iorbmax).and.(iorbmax<=RDMd%NBF_occ)) then
+    coup(2*iorb-1) =iorb
+    coup(2*iorb)   =iorb
+    coup(2*iorb2-1)=iorb
+    coup(2*iorb2)  =iorb
+   endif
+  enddo
+ enddo
+ 
+ 
+ deallocate(coup,OCC) 
 
 end subroutine print_swrdm
 !!***

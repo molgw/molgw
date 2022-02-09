@@ -89,7 +89,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  Nalpha=Nbeta
  do
   NBF_occ=Nfrozen+Npairs*(Nvcoupled+1)
-  if(NBF_occ<nbf_noft) then
+  if(NBF_occ<=nbf_noft) then
    exit
   else
    Nvcoupled=Nvcoupled-1
