@@ -309,8 +309,8 @@ subroutine print_swrdm(RDMd)
 !arrays
 !Local variables ------------------------------
 !scalars
- integer::iorb,iorb1,iorb2,iorbmin,iorbmax
- integer::NsdORBs,NBF2,NsdVIRT,iunit=312
+ integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorb6,iorb7
+ integer::iorbmin,iorbmax,NsdORBs,NBF2,NsdVIRT,iunit=312
  real(dp)::Delem
 !arrays
  integer,allocatable,dimension(:)::coup
@@ -353,7 +353,78 @@ subroutine print_swrdm(RDMd)
    endif
   enddo
  enddo
- 
+ open(unit=iunit,file='swDM2')
+ do iorb=1,NBF2
+  do iorb1=1,NBF2
+   do iorb2=1,NBF2
+    do iorb3=1,NBF2
+     if((mod(iorb,2)==mod(iorb2,2)).and.(mod(iorb1,2)==mod(iorb3,2))) then
+      !! Check for spinless indeces (used for PI_ii,kk)
+      if(mod(iorb,2)==0) then
+       iorb4=iorb/2
+       iorb6=iorb2/2
+      else
+       iorb4=(iorb+1)/2
+       iorb6=(iorb2+1)/2
+      endif
+      if(mod(iorb1,2)==0) then
+       iorb5=iorb1/2
+       iorb7=iorb3/2
+      else
+       iorb5=(iorb1+1)/2
+       iorb7=(iorb3+1)/2
+      endif
+      Delem=ZERO
+      !! SD
+      ! Hartree
+      if((iorb==iorb2).and.(iorb1==iorb3)) then
+       Delem=half*OCC(iorb)*OCC(iorb1)
+      endif
+      ! Exchange
+      if((iorb==iorb3).and.(iorb1==iorb2)) then
+       Delem=Delem-half*OCC(iorb)*OCC(iorb1)
+      endif
+      !! PNOFi
+      ! Hartree
+      if((iorb==iorb2).and.(iorb1==iorb3).and.coup(iorb)==coup(iorb1)) then
+       if(coup(iorb)/=-1) Delem=Delem-half*OCC(iorb)*OCC(iorb1)
+      endif
+      ! Exchange
+      if((iorb==iorb3).and.(iorb1==iorb2).and.coup(iorb)==coup(iorb1)) then
+       if(coup(iorb)/=-1) Delem=Delem+half*OCC(iorb)*OCC(iorb1)
+      endif
+      ! Time-inversion
+      if((iorb4==iorb5).and.(iorb6==iorb7).and.(iorb/=iorb1.and.iorb2/=iorb3)) then
+       if(coup(iorb)==coup(iorb2).and.coup(iorb)/=-1) then
+        if(iorb4<=NsdORBs .or. iorb6<=NsdORBs) then
+         if(iorb4==iorb6) Delem=Delem+half*OCC(iorb)
+         if(iorb4/=iorb6) Delem=Delem-half*dsqrt(OCC(iorb)*OCC(iorb2))
+        else
+         if(iorb4==iorb6) Delem=Delem+half*OCC(iorb)
+         if(iorb4/=iorb6) Delem=Delem+half*dsqrt(OCC(iorb)*OCC(iorb2))
+        endif
+       else
+        if(RDMD%INOF==7) then
+         if(RDMD%Ista==1) then
+          Delem=Delem-two*((one-OCC(iorb))*OCC(iorb)*(one-OCC(iorb2))*OCC(iorb2))
+         else
+          Delem=Delem-half*dsqrt((one-OCC(iorb))*OCC(iorb)*(one-OCC(iorb2))*OCC(iorb2))
+         endif
+        endif
+       endif
+      endif
+      ! Print the ^2D_ij,kl element
+      if(abs(Delem)>tol8) then
+       write(313,'(f15.8,4i4)') Delem,iorb,iorb1,iorb2,iorb3
+      endif
+      ! Done iorb,iorb1,iorb2,iorb3
+     endif 
+    enddo
+   enddo
+  enddo
+ enddo
+ write(313,'(f15.8,4i4)') zero,0,0,0,0
+ close(iunit)
  
  deallocate(coup,OCC) 
 
