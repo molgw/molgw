@@ -191,10 +191,9 @@ subroutine header()
 
  ! LIBCINT details
 #if defined(HAVE_LIBCINT)
- ammax = 6
  has_onebody = .TRUE.
+ call check_capability_libcint(ammax)
  write(stdout,'(/,1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ',ammax
- call check_capability_libcint()
  if( .NOT. libcint_has_range_separation ) then
    write(stdout,'(1x,a,i5)')   'Current LIBCINT compilation has no range-separation capability'
  endif

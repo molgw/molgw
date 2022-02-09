@@ -126,8 +126,10 @@ contains
 !=========================================================================
 ! Check with a known integral whether LIBCINT considers LIBCINT_PTR_RANGE_OMEGA
 !
-subroutine check_capability_libcint()
+subroutine check_capability_libcint(lmax)
   implicit none
+
+  integer,intent(out) :: lmax
   !=====
   real(C_DOUBLE) :: fake_env(50),integral(1)
   integer(C_INT) :: fake_atm(LIBCINT_ATM_SLOTS,1)
@@ -136,6 +138,13 @@ subroutine check_capability_libcint()
   integer        :: info,off
   real(dp),parameter :: reference_value = 3.8052728203379578E-002_dp
   !=====
+
+  ! LIBCINT goes up to lmax=7
+  if( lmax /= 0 ) then 
+    lmax = MIN(lmax,7)
+  else
+    lmax = 7
+  endif
 
   fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.11_dp  ! omega = 0.11 bohr**-1
   off = LIBCINT_PTR_ENV_START
@@ -294,6 +303,122 @@ subroutine destroy_libcint()
 
 end subroutine destroy_libcint
 
+
+!=========================================================================
+subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
+                           amC,contrdepthC,C,alphaC,cC, &
+                           amD,contrdepthD,D,alphaD,cD, &
+                           rcut,eriACD)
+  implicit none
+
+  integer(C_INT),value         :: amA,contrdepthA
+  real(C_DOUBLE),intent(in)    :: A(*)
+  real(C_DOUBLE),intent(in)    :: alphaA(*)
+  real(C_DOUBLE),intent(in)    :: cA(*)
+  integer(C_INT),value         :: amC,contrdepthC
+  real(C_DOUBLE),intent(in)    :: C(*)
+  real(C_DOUBLE),intent(in)    :: alphaC(*)
+  real(C_DOUBLE),intent(in)    :: cC(*)
+  integer(C_INT),value         :: amD,contrdepthD
+  real(C_DOUBLE),intent(in)    :: D(*)
+  real(C_DOUBLE),intent(in)    :: alphaD(*)
+  real(C_DOUBLE),intent(in)    :: cD(*)
+  real(C_DOUBLE),intent(in),value :: rcut
+  real(C_DOUBLE),intent(inout)    :: eriACD(*)
+  !=====
+  real(C_DOUBLE) :: tmp_env(100)
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,3)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,3)
+  integer(C_INT) :: shls(3)
+  integer        :: info,off
+  !=====
+
+  !tmp_env(:) = 0.0_dp
+
+  if( rcut < 1.0e-12 ) then
+    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp  
+  else
+    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_dp / rcut
+  endif
+  off = LIBCINT_PTR_ENV_START
+
+  tmp_atm(LIBCINT_CHARGE_OF,1) = 1
+  tmp_atm(LIBCINT_PTR_COORD,1) = off
+  tmp_env(off+1:off+3) = D(1:3)
+  off = off + 3
+  tmp_atm(LIBCINT_CHARGE_OF,2) = 1
+  tmp_atm(LIBCINT_PTR_COORD,2) = off
+  tmp_env(off+1:off+3) = C(1:3)
+  off = off + 3
+  tmp_atm(LIBCINT_CHARGE_OF,3) = 1
+  tmp_atm(LIBCINT_PTR_COORD,3) = off
+  tmp_env(off+1:off+3) = A(1:3)
+  off = off + 3
+
+  !
+  ! D
+  tmp_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   ,1)  = amD
+  tmp_bas(LIBCINT_NPRIM_OF ,1)  = contrdepthD
+  tmp_bas(LIBCINT_NCTR_OF  ,1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthD) = alphaD(1:contrdepthD)
+  off = off + contrdepthD
+  tmp_bas(LIBCINT_PTR_COEFF,1) = off
+  select case(amD)
+  case(0,1)
+    env(off+1:off+contrdepthD) = cD(1:contrdepthD) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amD + 1 )
+  case default
+    env(off+1:off+contrdepthD) = cD(1:contrdepthD)
+  end select
+  write(*,*) env(off+1:off+contrdepthD)
+  off = off + contrdepthD
+  !
+  ! C
+  tmp_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   ,2)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF ,2)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  ,2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
+  off = off + contrdepthC
+  tmp_bas(LIBCINT_PTR_COEFF,2) = off
+  select case(amC)
+  case(0,1)
+    env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
+  case default
+    env(off+1:off+contrdepthC) = cC(1:contrdepthC)
+  end select
+  write(*,*) env(off+1:off+contrdepthC)
+  off = off + contrdepthC
+  !
+  ! A
+  tmp_bas(LIBCINT_ATOM_OF  ,3)  = 2 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   ,3)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF ,3)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  ,3)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  ,3)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
+  off = off + contrdepthA
+  tmp_bas(LIBCINT_PTR_COEFF,3) = off
+  select case(amA)
+  case(0,1)
+    env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
+  case default
+    env(off+1:off+contrdepthA) = cA(1:contrdepthA)
+  end select
+  write(*,*) env(off+1:off+contrdepthA)
+  off = off + contrdepthA
+
+
+  shls(1) = 0
+  shls(2) = 1
+  shls(3) = 2
+
+  info = cint3c2e_cart(eriACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, 0_C_LONG)
+
+
+end subroutine libcint_3center
 
 !=========================================================================
 end module m_libcint_tools
