@@ -415,7 +415,7 @@ subroutine print_swrdm(RDMd)
       endif
       ! Print the ^2D_ij,kl element
       if(abs(Delem)>tol8) then
-       write(313,'(f15.8,4i4)') Delem,iorb,iorb1,iorb2,iorb3
+       write(iunit,'(f15.8,4i4)') Delem,iorb,iorb1,iorb2,iorb3
       endif
       ! Done iorb,iorb1,iorb2,iorb3
      endif 
@@ -423,7 +423,7 @@ subroutine print_swrdm(RDMd)
    enddo
   enddo
  enddo
- write(313,'(f15.8,4i4)') zero,0,0,0,0
+ write(iunit,'(f15.8,4i4)') zero,0,0,0,0
  close(iunit)
  
  deallocate(coup,OCC) 
