@@ -897,11 +897,11 @@ subroutine setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
  call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
 
  ! Fix the sign of eigenvectors in matrix_tmp to be positive on the 1st element
- do i_sign = 1,nbf
-   if( matrix_tmp(1,i_sign)/abs(matrix_tmp(1,i_sign)) < 0.0_dp ) then
-     matrix_tmp(:,i_sign) = -matrix_tmp(:,i_sign)
-   end if
- enddo
+ !do i_sign = 1,nbf
+ !  if( matrix_tmp(1,i_sign)/abs(matrix_tmp(1,i_sign)) < 0.0_dp ) then
+ !    matrix_tmp(:,i_sign) = -matrix_tmp(:,i_sign)
+ !  end if
+ !enddo
 
  do jbf=1,nbf
    y_matrix(:,jbf) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
