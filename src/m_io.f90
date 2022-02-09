@@ -613,8 +613,8 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  integer                        :: iatom_ibf(basis%nbf)
  integer                        :: li_ibf(basis%nbf)
  real(dp),allocatable           :: proj_charge(:)!,proj_charge_orb(:)
- integer,allocatable            :: atom_nbf(:)
- integer                        :: iatom_basis,nocc,natom_total,count,offset
+ integer,allocatable            :: nbf_per_atom(:)
+ integer                        :: iatom_basis,nocc,natom_total,count_nbf,offset_nbf
  character(len=20)              :: myfmt
  integer,parameter              :: lmax = 2
 !=====
@@ -637,8 +637,8 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  endif
 
  natom_total = natom2 - natom1 + 1
- allocate(atom_nbf(natom_total))
- atom_nbf(:) = 0
+ allocate(nbf_per_atom(natom_total))
+ nbf_per_atom(:) = 0
 
  do ishell=1,basis%nshell
    ibf1    = basis%shell(ishell)%istart
@@ -648,7 +648,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
    iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%icenter
    do atom_sampled = natom1,natom2
      if (atom_sampled == basis%shell(ishell)%icenter) then
-       atom_nbf(atom_sampled-natom1+1) = atom_nbf(atom_sampled-natom1+1) + ibf2-ibf1+1
+       nbf_per_atom(atom_sampled-natom1+1) = nbf_per_atom(atom_sampled-natom1+1) + ibf2-ibf1+1
      end if
    end do
    !! Label basis functions with angular momentum index
@@ -657,11 +657,11 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
 
  nocc        = get_number_occupied_states(occupation)
  allocate(proj_charge(natom_total))
- !allocate(proj_charge_orb(sum(atom_nbf)))
+ !allocate(proj_charge_orb(nbf_per_atom(end)))
  proj_charge(:) = 0.0_dp
  !proj_charge_orb(:) = 0.0_dp
 
- offset = 0
+ offset_nbf = 0
  do atom_sampled = natom1,natom2
  do ispin=1,nspin
 
@@ -671,13 +671,13 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
 
      cs_vector_i(:) = MATMUL( s_matrix_sqrt(:,:) , CONJG(c_matrix_cmplx(:,istate,ispin)) )
 
-     count = 0
+     count_nbf = 0
      do ibf=1,basis%nbf
        if ( iatom_ibf(ibf) == atom_sampled ) then
-         count = count + 1
+         count_nbf = count_nbf + 1
          li = li_ibf(ibf)
          proj_state_i(li) = proj_state_i(li) + ABS( cs_vector_i(ibf) )**2
-         !proj_charge_orb(count + offset) = proj_charge_orb(count + offset) &
+         !proj_charge_orb(count_nbf + offset_nbf) = proj_charge_orb(count_nbf + offset_nbf) &
           !              + occupation(istate,ispin) * REAL(ABS( cs_vector_i(ibf) )**2)
        endif
      enddo
@@ -692,7 +692,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
    enddo
 
  enddo
- offset = sum(atom_nbf(1:atom_sampled-natom1+1))
+ offset_nbf = sum(nbf_per_atom(1:atom_sampled-natom1+1))
  enddo
 
  n_column = 2 + size(proj_charge)! + size(proj_charge_orb)
@@ -706,7 +706,7 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  end if
 
  deallocate(proj_charge)!, proj_charge_orb)
- deallocate(atom_nbf)
+ deallocate(nbf_per_atom)
 
 end subroutine lowdin_pdos_cmplx
 
