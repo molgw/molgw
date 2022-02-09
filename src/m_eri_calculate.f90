@@ -153,14 +153,16 @@ subroutine calculate_eri_4center(basis,rcut)
 #if defined(HAVE_LIBCINT)
  if( .NOT. is_longrange ) then
    write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBCINT)'
+   call set_erf_screening_length_libcint(0.0_dp)
  else
-   call die('calculate_eri_4center: range-separation not implemented yet with LIBCINT')
+   write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBCINT)'
+   call set_erf_screening_length_libcint(rcut)
  endif
 #else
  if( .NOT. is_longrange ) then
-   write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBINT)'
+   write(stdout,'(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBINT)'
  else
-   write(stdout,'(/,a)') ' Calculate and store the 4-center LR Coulomb integrals (LIBINT)'
+   write(stdout,'(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBINT)'
  endif
 #endif
 
@@ -291,7 +293,11 @@ subroutine calculate_eri_4center(basis,rcut)
  !$OMP END DO
  !$OMP END PARALLEL
 
- write(stdout,'(a,/)') ' All ERI have been calculated'
+ if( .NOT. is_longrange ) then
+   write(stdout,'(a,/)') ' All 4-center ERI have been calculated'
+ else
+   write(stdout,'(a,/)') ' All LR 4-center ERI have been calculated'
+ endif
 
 
 end subroutine calculate_eri_4center
@@ -325,8 +331,12 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
 !=====
 
  is_longrange = (rcut > 1.0e-12_dp)
- rcut_libint = rcut
 
+#if defined(HAVE_LIBCINT)
+ call set_erf_screening_length_libcint(rcut)
+#else
+ rcut_libint = rcut
+#endif
 
 
  kshell = index_shellpair(1,klshellpair)
@@ -679,23 +689,31 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 #if defined(HAVE_SCALAPACK)
 #if defined(HAVE_LIBCINT)
    write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ',nprow_3center,' x ',npcol_3center
+   call set_erf_screening_length_libcint(0.0_dp)
 #else
    write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBINT): ',nprow_3center,' x ',npcol_3center
 #endif
 #else
 #if defined(HAVE_LIBCINT)
    write(stdout,'(a)') ' 2-center integrals (LIBCINT)'
+   call set_erf_screening_length_libcint(0.0_dp)
 #else
    write(stdout,'(a)') ' 2-center integrals (LIBINT)'
 #endif
 #endif
  else
-#if defined(HAVE_LIBCINT)
-   call die('calculate_integrals_eri_2center_scalapack: range-separation not yet implemented with LIBCINT')
-#else
 #if defined(HAVE_SCALAPACK)
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ',nprow_3center,' x ',npcol_3center
+   call set_erf_screening_length_libcint(rcut)
+#else
    write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals distributed using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center,' x ',npcol_3center
+#endif
+#else
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(a)') ' 2-center integrals (LIBCINT)'
+   call set_erf_screening_length_libcint(rcut)
 #else
    write(stdout,'(a)') ' 2-center LR integrals (LIBINT)'
 #endif
@@ -1208,9 +1226,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        call die('calculate_integrals_eri_3center_scalapack: dimension problem in the masks')
  endif
 
- if( is_longrange ) then
-   call die('calculate_integrals_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
- endif
 
  if( .NOT. is_longrange ) then
    nauxil_kept = nauxil_2center
@@ -1219,9 +1234,14 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
  endif
 
  if( .NOT. is_longrange ) then
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBCINT 3center)'
+   call set_erf_screening_length_libcint(0.0_dp)
+#else
    write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
+#endif
  else
-   write(stdout,'(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBINT 3center)'
+   call die('calculate_integrals_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
  endif
 #if defined(HAVE_SCALAPACK)
  write(stdout,'(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
@@ -1511,10 +1531,21 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 
  if( .NOT. is_longrange ) then
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBCINT 3center)'
+   call set_erf_screening_length_libcint(0.0_dp)
+#else
    write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
+#endif
  else
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBCINT 3center)'
+   call set_erf_screening_length_libcint(rcut)
+#else
    write(stdout,'(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBINT 3center)'
+#endif
  endif
+
 #if defined(HAVE_SCALAPACK)
  write(stdout,'(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
 #endif
@@ -1656,7 +1687,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
          n4c = number_basis_function_am( 'CART' , aml )
          allocate(int_shell(n1c*n3c*n4c))
 
-#if defined(HAVE_LIBCINT)  && FALSE
+#if defined(HAVE_LIBCINT)
          shls(1) = lshell-1                              ! C convention starts with 0
          shls(2) = kshell-1                              ! C convention starts with 0
          shls(3) = LIBCINT_AUXIL_BASIS_START + ishell-1  ! C convention starts with 0

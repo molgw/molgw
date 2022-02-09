@@ -15,6 +15,7 @@ module m_io
  use m_warning,only: issue_warning
  use m_string_tools,only: orbital_momentum_name
  use m_libint_tools,only: libint_init
+ use m_libcint_tools,only: libcint_has_range_separation,check_capability_libcint
  use m_libxc_tools,only: xc_version
  use m_linear_algebra,only: determinant_3x3_matrix
  use m_inputparam
@@ -184,6 +185,10 @@ subroutine header()
 #if defined(HAVE_LIBCINT)
  ammax = 6
  write(stdout,'(/,1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ',ammax
+ call check_capability_libcint()
+ if( .NOT. libcint_has_range_separation ) then
+   write(stdout,'(1x,a,i5)')   'Current LIBCINT compilation has no range-separation capability'
+ endif
 #endif
 
  call set_molgw_lmax(ammax)

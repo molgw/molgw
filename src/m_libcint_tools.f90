@@ -4,13 +4,15 @@ module m_libcint_tools
   use m_basis_set
   use m_atoms
 
-
+  ! LIBCINT_atm array meaning
   integer,private,parameter :: LIBCINT_CHARGE_OF  = 1
   integer,private,parameter :: LIBCINT_PTR_COORD  = 2
   integer,private,parameter :: LIBCINT_NUC_MOD_OF = 3
   integer,private,parameter :: LIBCINT_PTR_ZETA   = 4
   integer,private,parameter :: LIBCINT_ATM_SLOTS  = 6
 
+  !
+  ! LIBCINT_bas array meaning
   integer,private,parameter :: LIBCINT_ATOM_OF    = 1
   integer,private,parameter :: LIBCINT_ANG_OF     = 2
   integer,private,parameter :: LIBCINT_NPRIM_OF   = 3
@@ -22,7 +24,8 @@ module m_libcint_tools
 
   integer,private,parameter :: LIBCINT_PTR_COMMON_ORIG = 1
   integer,private,parameter :: LIBCINT_PTR_RINV_ORIG   = 4
-  integer,private,parameter :: LIBCINT_PTR_ENV_START = 20
+  integer,private,parameter :: LIBCINT_PTR_RANGE_OMEGA = 8
+  integer,private,parameter :: LIBCINT_PTR_ENV_START   = 20
 
   integer,private,parameter :: LIBCINT_env_size=10000
 
@@ -32,8 +35,10 @@ module m_libcint_tools
   integer(C_INT),protected,allocatable :: bas(:,:)
   real(C_DOUBLE),protected,allocatable :: env(:)
 
-  integer,external :: cint2e_cart
-  integer,external :: cint2c2e_cart,cint3c2e_cart
+  logical,protected :: libcint_has_range_separation
+  integer,external  :: cint2e_cart
+  integer,external  :: cint2c2e_cart
+  integer,external  :: cint3c2e_cart
 
   interface
 
@@ -119,6 +124,47 @@ contains
 
 
 !=========================================================================
+! Check with a known integral whether LIBCINT considers LIBCINT_PTR_RANGE_OMEGA
+!
+subroutine check_capability_libcint()
+  implicit none
+  !=====
+  real(C_DOUBLE) :: fake_env(50),integral(1)
+  integer(C_INT) :: fake_atm(LIBCINT_ATM_SLOTS,1)
+  integer(C_INT) :: fake_bas(LIBCINT_BAS_SLOTS,1)
+  integer(C_INT) :: shls(2)
+  integer        :: info,off
+  real(dp),parameter :: reference_value = 3.8052728203379578E-002_dp
+  !=====
+
+  fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.11_dp  ! omega = 0.11 bohr**-1
+  off = LIBCINT_PTR_ENV_START
+
+  fake_atm(LIBCINT_CHARGE_OF,1) = 1
+  fake_atm(LIBCINT_PTR_COORD,1) = off
+  fake_env(off+1:off+3) = 0.0_dp
+  off = off + 3
+  fake_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
+  fake_bas(LIBCINT_ANG_OF   ,1)  = 0
+  fake_bas(LIBCINT_NPRIM_OF ,1)  = 1
+  fake_bas(LIBCINT_NCTR_OF  ,1)  = 1
+  fake_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  fake_env(off+1) = 2.0_dp  ! alpha = 2.0
+  off = off + 1
+  fake_bas(LIBCINT_PTR_COEFF,1) = off
+  fake_env(off+1) = 1.0    ! coefficient = 1.0
+
+
+  shls(:) = 0
+  info = cint2c2e_cart(integral, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env, 0_C_LONG)
+
+  libcint_has_range_separation = ABS( integral(1) - reference_value ) < 1.0e-12_dp 
+
+
+end subroutine check_capability_libcint
+
+
+!=========================================================================
 subroutine set_rinv_origin_libcint(x0)
   implicit none
   real(dp),intent(in) :: x0(3)
@@ -128,6 +174,27 @@ subroutine set_rinv_origin_libcint(x0)
   env(LIBCINT_PTR_RINV_ORIG+1:LIBCINT_PTR_RINV_ORIG+3) = x0(:)
 
 end subroutine set_rinv_origin_libcint
+
+
+!=========================================================================
+subroutine set_erf_screening_length_libcint(rcut)
+  implicit none
+  real(dp),intent(in) :: rcut
+  !=====
+  !=====
+
+  ! LIBCINT convention: a positive omega = 1/rcut means long-range only
+  if( rcut > 1.0e-12_dp ) then
+    ! Ensure that LIBCINT can calculated "erf" range-separated Coulomb interaction
+    if( .NOT. libcint_has_range_separation ) then
+       call die('')
+    endif
+    env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_dp / rcut
+  else
+    env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp 
+  endif
+
+end subroutine set_erf_screening_length_libcint
 
 
 !=========================================================================
