@@ -140,7 +140,7 @@ subroutine check_capability_libcint(lmax)
   !=====
 
   ! LIBCINT goes up to lmax=7
-  if( lmax /= 0 ) then 
+  if( lmax > 0 ) then 
     lmax = MIN(lmax,7)
   else
     lmax = 7
@@ -311,29 +311,29 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
                            rcut,eriACD)
   implicit none
 
-  integer(C_INT),value         :: amA,contrdepthA
-  real(C_DOUBLE),intent(in)    :: A(*)
-  real(C_DOUBLE),intent(in)    :: alphaA(*)
-  real(C_DOUBLE),intent(in)    :: cA(*)
-  integer(C_INT),value         :: amC,contrdepthC
-  real(C_DOUBLE),intent(in)    :: C(*)
-  real(C_DOUBLE),intent(in)    :: alphaC(*)
-  real(C_DOUBLE),intent(in)    :: cC(*)
-  integer(C_INT),value         :: amD,contrdepthD
-  real(C_DOUBLE),intent(in)    :: D(*)
-  real(C_DOUBLE),intent(in)    :: alphaD(*)
-  real(C_DOUBLE),intent(in)    :: cD(*)
-  real(C_DOUBLE),intent(in),value :: rcut
-  real(C_DOUBLE),intent(inout)    :: eriACD(*)
+  integer(C_INT),intent(in)    :: amA,contrdepthA
+  real(C_DOUBLE),intent(in)    :: A(:)
+  real(C_DOUBLE),intent(in)    :: alphaA(:)
+  real(C_DOUBLE),intent(in)    :: cA(:)
+  integer(C_INT),intent(in)    :: amC,contrdepthC
+  real(C_DOUBLE),intent(in)    :: C(:)
+  real(C_DOUBLE),intent(in)    :: alphaC(:)
+  real(C_DOUBLE),intent(in)    :: cC(:)
+  integer(C_INT),intent(in)    :: amD,contrdepthD
+  real(C_DOUBLE),intent(in)    :: D(:)
+  real(C_DOUBLE),intent(in)    :: alphaD(:)
+  real(C_DOUBLE),intent(in)    :: cD(:)
+  real(C_DOUBLE),intent(in)    :: rcut
+  real(C_DOUBLE),intent(inout)    :: eriACD(:)
   !=====
-  real(C_DOUBLE) :: tmp_env(100)
+  real(C_DOUBLE) :: tmp_env(1000)
   integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,3)
   integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,3)
   integer(C_INT) :: shls(3)
   integer        :: info,off
   !=====
 
-  !tmp_env(:) = 0.0_dp
+  tmp_env(:) = 0.0_dp
 
   if( rcut < 1.0e-12 ) then
     tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp  
@@ -367,11 +367,10 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
   tmp_bas(LIBCINT_PTR_COEFF,1) = off
   select case(amD)
   case(0,1)
-    env(off+1:off+contrdepthD) = cD(1:contrdepthD) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amD + 1 )
+    tmp_env(off+1:off+contrdepthD) = cD(1:contrdepthD) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amD + 1 )
   case default
-    env(off+1:off+contrdepthD) = cD(1:contrdepthD)
+    tmp_env(off+1:off+contrdepthD) = cD(1:contrdepthD)
   end select
-  write(*,*) env(off+1:off+contrdepthD)
   off = off + contrdepthD
   !
   ! C
@@ -385,11 +384,10 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
   tmp_bas(LIBCINT_PTR_COEFF,2) = off
   select case(amC)
   case(0,1)
-    env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
+    tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
   case default
-    env(off+1:off+contrdepthC) = cC(1:contrdepthC)
+    tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
   end select
-  write(*,*) env(off+1:off+contrdepthC)
   off = off + contrdepthC
   !
   ! A
@@ -403,11 +401,10 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
   tmp_bas(LIBCINT_PTR_COEFF,3) = off
   select case(amA)
   case(0,1)
-    env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
+    tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
   case default
-    env(off+1:off+contrdepthA) = cA(1:contrdepthA)
+    tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
   end select
-  write(*,*) env(off+1:off+contrdepthA)
   off = off + contrdepthA
 
 
@@ -419,6 +416,7 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
 
 
 end subroutine libcint_3center
+
 
 !=========================================================================
 end module m_libcint_tools
