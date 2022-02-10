@@ -383,7 +383,8 @@ subroutine init_dft_type(key)
   select case(TRIM(key))
   case('LDAX','HFPBE','PBEX','PBEHX','BX','PW91X','RPPX',&
        'BHANDH','BHANDHLYP','BHLYP','B3LYP','B3LYP5', &
-       'PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX')
+       'PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX',&
+       'WB97','WB97X')
     nxc = 1
   case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHX','LDA0')
     nxc = 2
@@ -499,6 +500,18 @@ subroutine init_dft_type(key)
   case('PBE0')
     dft_xc(1)%id = XC_HYB_GGA_XC_PBEH
     alpha_hybrid   = 0.25_dp
+  case('WB97')
+    dft_xc(1)%id = XC_HYB_GGA_XC_WB97
+    alpha_hybrid  = 0.0_dp
+    beta_hybrid   = 1.0_dp
+    gamma_hybrid  = 0.40_dp
+    rcut          = 1.0_dp / gamma_hybrid
+  case('WB97X')
+    dft_xc(1)%id = XC_HYB_GGA_XC_WB97X
+    alpha_hybrid  = 0.157706_dp
+    beta_hybrid   = 1.0_dp - alpha_hybrid
+    gamma_hybrid  = 0.30_dp
+    rcut          = 1.0_dp / gamma_hybrid
   case('HSE03')
     dft_xc(1)%id  = XC_HYB_GGA_XC_HSE03
     alpha_hybrid  = 0.25_dp
