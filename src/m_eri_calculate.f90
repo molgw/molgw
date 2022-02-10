@@ -688,10 +688,12 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
  if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
 #if defined(HAVE_LIBCINT)
-   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ',nprow_3center,' x ',npcol_3center
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ', &
+                               nprow_3center,' x ',npcol_3center
    call set_erf_screening_length_libcint(0.0_dp)
 #else
-   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBINT): ',nprow_3center,' x ',npcol_3center
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBINT): ', &
+                               nprow_3center,' x ',npcol_3center
 #endif
 #else
 #if defined(HAVE_LIBCINT)
@@ -704,7 +706,8 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
  else
 #if defined(HAVE_SCALAPACK)
 #if defined(HAVE_LIBCINT)
-   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ',nprow_3center,' x ',npcol_3center
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ', &
+                               nprow_3center,' x ',npcol_3center
    call set_erf_screening_length_libcint(rcut)
 #else
    write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals distributed using a SCALAPACK grid (LIBINT): ', &
