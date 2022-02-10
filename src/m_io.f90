@@ -206,7 +206,7 @@ subroutine header()
 
  call set_molgw_lmax(ammax)
 
- if( .NOT. has_onebody ) then
+ if( has_onebody ) then
    write(stdout,'(1x,a)')  'Running with external LIBINT or LIBCINT calculation of the one-body operators (faster)'
  else
    write(stdout,'(1x,a)')  'Running with internal calculation of the one-body operators (slower)'

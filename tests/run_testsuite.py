@@ -294,7 +294,7 @@ have_openmp           = 'Running with OPENMP' in open(tmpfolder+'/fake.out').rea
 have_libxc            = 'Running with LIBXC' in open(tmpfolder+'/fake.out').read()
 have_mpi              = 'Running with MPI' in open(tmpfolder+'/fake.out').read()
 have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder+'/fake.out').read()
-have_libint_onebody   = 'Running with external LIBINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
+have_libint_onebody   = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
 have_libint_gradients = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
 #with open(tmpfolder+'/fake.out','r') as ffake:
 #  for line in ffake:
