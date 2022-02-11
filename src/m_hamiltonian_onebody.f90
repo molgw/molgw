@@ -1239,7 +1239,6 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  enddo ! ie
 
  call world%sum(hamiltonian_ecp)
- write(world%nproc*100+world%rank,*) hamiltonian_ecp(8,8) !FBFB
 
  hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + hamiltonian_ecp(:,:)
  if( ALLOCATED(hamiltonian_kb) ) then
