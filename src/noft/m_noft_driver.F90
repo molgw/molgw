@@ -332,9 +332,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call write_output(msg)
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in)
   if(INTEGd%iERItyp/=-1) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImol=INTEGd%ERImol)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_tot,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImol=INTEGd%ERImol)
   else
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImolv=INTEGd%ERImolv)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_tot,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImolv=INTEGd%ERImolv)
   endif
   call INTEGd%print_dump(RDMd%Nalpha_elect+RDMd%Nbeta_elect,Vnn)
   call INTEGd%free()
