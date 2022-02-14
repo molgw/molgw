@@ -174,7 +174,9 @@ subroutine check_capability_libcint(lmax)
 
 
   shls(:) = 0
+#if defined(HAVE_LIBCINT)
   info = cint2c2e_cart(integral, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env, 0_C_LONG)
+#endif
 
   libcint_has_range_separation = ABS( integral(1) - reference_value ) < 1.0e-12_dp 
 
@@ -421,7 +423,9 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
   shls(2) = 1
   shls(3) = 2
 
+#if defined(HAVE_LIBCINT)
   info = cint3c2e_cart(eriACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, 0_C_LONG)
+#endif
 
 
 end subroutine libcint_3center
@@ -535,7 +539,9 @@ subroutine libcint_overlap_3center(amA,contrdepthA,A,alphaA,cA, &
   shls(2) = 1
   shls(3) = 2
 
+#if defined(HAVE_LIBCINT)
   info = cint3c1e_cart(ovlpACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, 0_C_LONG)
+#endif
 
 
 end subroutine libcint_overlap_3center
