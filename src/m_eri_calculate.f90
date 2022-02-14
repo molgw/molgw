@@ -1921,7 +1921,6 @@ subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vh
                        am3,ng3,x03,alpha3,coeff3, &
                        am4,ng4,x04,alpha4,coeff4, &
                        0.0_C_DOUBLE,int_shell)
-   write(*,*) int_shell(:)
 #endif
    call transform_libint_to_molgw(basis%gaussian_type,0,basis%gaussian_type,amk,aml,int_shell,integrals)
 
