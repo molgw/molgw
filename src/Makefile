@@ -340,7 +340,7 @@ m_eri_ao_mo.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f
 	$(FC_W_OPTS) -c m_eri_ao_mo.f90 $(LIBXC_INCS)
 
 m_spectra.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_mpi.f90 m_cart_to_pure.f90 \
-               m_scalapack.f90 m_spectral_function.f90 m_hamiltonian_onebody.f90 m_spectra.f90
+               m_scalapack.f90 m_spectral_function.f90 m_hamiltonian_tools.f90 m_hamiltonian_onebody.f90 m_spectra.f90
 	$(FC_W_OPTS) -c m_spectra.f90 $(LIBXC_INCS)
 
 m_tddft_fxc.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_dft_grid.f90 m_density_tools.f90 m_libxc_tools.f90 \
