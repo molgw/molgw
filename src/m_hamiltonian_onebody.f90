@@ -926,12 +926,81 @@ subroutine setup_rxp_ao(basis,rxp_ao)
     enddo
   enddo
 
-  call dump_out_matrix(.TRUE.,'===  r x p matrix X ===',rxp_ao(:,:,1))
-  call dump_out_matrix(.TRUE.,'===  r x p matrix Y ===',rxp_ao(:,:,2))
-  call dump_out_matrix(.TRUE.,'===  r x p matrix Z ===',rxp_ao(:,:,3))
+  call dump_out_matrix(.FALSE.,'===  r x p matrix X ===',rxp_ao(:,:,1))
+  call dump_out_matrix(.FALSE.,'===  r x p matrix Y ===',rxp_ao(:,:,2))
+  call dump_out_matrix(.FALSE.,'===  r x p matrix Z ===',rxp_ao(:,:,3))
 
 
 end subroutine setup_rxp_ao
+
+
+!=========================================================================
+! Calculate  GIAO ( \alpha | r x p | \beta )
+! gauge-independent atomic orbital
+subroutine setup_giao_rxp_ao(basis,giao_rxp_ao)
+  implicit none
+  type(basis_set),intent(in)         :: basis
+  real(dp),allocatable,intent(out)   :: giao_rxp_ao(:,:,:)
+  !=====
+  integer              :: gt
+  integer              :: ishell,jshell
+  integer              :: ibf1,ibf2,jbf1,jbf2
+  integer              :: li,lj,ni_cart,nj_cart
+  integer              :: idir
+#if defined(HAVE_LIBCINT)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+  real(C_DOUBLE),allocatable :: array_cart(:,:)
+  real(dp),allocatable :: matrix(:,:)
+#endif
+  !=====
+
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Setup GIAO r x p matrix (LIBCINT)'
+#else
+  call die('setup_giao_rxp_ao: r x p calculations requires LIBCINT')
+#endif
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
+  allocate(giao_rxp_ao(basis%nbf,basis%nbf,3))
+
+
+  do jshell=1,basis%nshell
+    lj        = basis%shell(jshell)%am
+    nj_cart   = number_basis_function_am('CART',lj)
+    jbf1      = basis%shell(jshell)%istart
+    jbf2      = basis%shell(jshell)%iend
+
+    do ishell=1,basis%nshell
+      li        = basis%shell(ishell)%am
+      ni_cart   = number_basis_function_am('CART',li)
+      ibf1      = basis%shell(ishell)%istart
+      ibf2      = basis%shell(ishell)%iend
+
+#if defined(HAVE_LIBCINT)
+      allocate(array_cart(ni_cart*nj_cart,3))
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
+      info = cint1e_giao_irjxp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+
+      do idir=1,3
+        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
+        giao_rxp_ao(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
+      enddo
+      deallocate(matrix)
+
+      deallocate(array_cart)
+#endif
+
+    enddo
+  enddo
+
+  call dump_out_matrix(.FALSE.,'===  GIAO r x p matrix X ===',giao_rxp_ao(:,:,1))
+  call dump_out_matrix(.FALSE.,'===  GIAO r x p matrix Y ===',giao_rxp_ao(:,:,2))
+  call dump_out_matrix(.FALSE.,'===  GIAO r x p matrix Z ===',giao_rxp_ao(:,:,3))
+
+
+end subroutine setup_giao_rxp_ao
 
 
 !=========================================================================
