@@ -35,6 +35,26 @@ SCF Total Energy          , -128.5470596583    , 0 , 1.0e-7
 gKS HOMO energy           ,  -23.140408        , 0 , 1.0e-4
 gKS LUMO energy           ,   10.036631        , 0 , 1.0e-4
 
+he_wb97.in                , He with wB97 functional wo RI
+SCF Total Energy          ,   -2.8943088825    , 0 , 1.0e-7
+gKS HOMO energy           ,  -20.795329        , 0 , 1.0e-4
+
+he_wb97x.in               , He with wB97X functional wo RI
+SCF Total Energy          ,   -2.8980609307    , 0 , 1.0e-7
+gKS HOMO energy           ,  -20.856905        , 0 , 1.0e-4
+
+he_pbe_libxc.in           , He with PBE functional wo RI using LIBXC index
+SCF Total Energy          ,   -2.8869559704    , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.724589        , 0 , 1.0e-4
+
+he_pbeh_libxc.in          , He with PBEH=PBE0 functional wo RI using LIBXC index
+SCF Total Energy          ,   -2.8893617513    , 0 , 1.0e-7
+gKS HOMO energy           ,  -18.193561        , 0 , 1.0e-4
+
+he_wb97x_libxc.in         , He with wB97X functional wo RI using LIBXC index
+SCF Total Energy          ,   -2.8980609307    , 0 , 1.0e-7
+gKS HOMO energy           ,  -20.856905        , 0 , 1.0e-4
+
 ne_pbe_autori.in          ,  PBE neon atom cc-pVTZ with auto RI
 SCF Total Energy          , -128.8459979064    , 0 , 1.0e-7
 gKS HOMO energy           ,  -12.875360        , 0 , 1.0e-4

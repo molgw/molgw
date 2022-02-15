@@ -6,6 +6,7 @@
 ! the methods to set up and store the input parameters from the input file
 !
 !=========================================================================
+#include "molgw.h"
 module m_inputparam
   use m_definitions
   use m_mpi
@@ -376,38 +377,25 @@ subroutine init_dft_type(key)
 
   character(len=*),intent(in)          :: key
   !=====
-  integer              :: ixc,nxc
+  integer              :: ixc,off1,off2
+  real(C_DOUBLE)       :: globalx_libxc,srx_libxc,omega_libxc
   !=====
 
-
-  select case(TRIM(key))
-  case('LDAX','HFPBE','PBEX','PBEHX','BX','PW91X','RPPX',&
-       'BHANDH','BHANDHLYP','BHLYP','B3LYP','B3LYP5', &
-       'PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX')
-    nxc = 1
-  case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHX','LDA0')
-    nxc = 2
-  case('RSH')
-    nxc = 3
-  case default
-    write(stdout,*) 'error reading calculation type'
-    write(stdout,*) TRIM(key)
-    call die('DFT xc is unknown')
-  end select
 
   if( ALLOCATED(dft_xc) ) then
     call destroy_libxc_info(dft_xc)
   endif
 
-
   !
   ! Prepare the object dft_xc
-  allocate(dft_xc(nxc))
-  do ixc=1,nxc
-    dft_xc(ixc)%nspin = nspin
-    ! default is one, otherwise it is modified later
-    dft_xc(ixc)%coeff = 1.0_dp
-  enddo
+  allocate(dft_xc(3))
+  dft_xc(:)%nspin = nspin
+  ! default is one, otherwise it is modified later
+  dft_xc(:)%coeff = 1.0_dp
+  ! id = 0 means not xc
+  dft_xc(:)%id    = 0
+
+
 
   select case(TRIM(key))
 #if defined(HAVE_LIBXC)
@@ -499,33 +487,41 @@ subroutine init_dft_type(key)
   case('PBE0')
     dft_xc(1)%id = XC_HYB_GGA_XC_PBEH
     alpha_hybrid   = 0.25_dp
+  case('WB97')
+    dft_xc(1)%id = XC_HYB_GGA_XC_WB97
+    alpha_hybrid  = 0.0_dp
+    beta_hybrid   = 1.0_dp
+    gamma_hybrid  = 0.40_dp
+  case('WB97X')
+    dft_xc(1)%id = XC_HYB_GGA_XC_WB97X
+    alpha_hybrid  = 0.157706_dp
+    beta_hybrid   = 1.0_dp - alpha_hybrid
+    gamma_hybrid  = 0.30_dp
   case('HSE03')
     dft_xc(1)%id  = XC_HYB_GGA_XC_HSE03
     alpha_hybrid  = 0.25_dp
     beta_hybrid   = -alpha_hybrid
-    rcut            = 1.0_dp / ( 0.15_dp / SQRT(2.0_dp) )
+    gamma_hybrid  = 0.15_dp / SQRT(2.0_dp)
   case('HSE06')
     dft_xc(1)%id  = XC_HYB_GGA_XC_HSE06
     alpha_hybrid  = 0.25_dp
     beta_hybrid   = -alpha_hybrid
     gamma_hybrid  = 0.11_dp
-    rcut          = 1.0_dp / gamma_hybrid
   case('HSE08')
     dft_xc(1)%id  = XC_HYB_GGA_XC_HJS_PBE
     alpha_hybrid  = 0.25_dp
     beta_hybrid   = -alpha_hybrid
     gamma_hybrid    = 0.11_dp
-    rcut            = 1.0_dp / 0.11_dp
   case('CAM-B3LYP')
     dft_xc(1)%id  = XC_HYB_GGA_XC_CAM_B3LYP
     alpha_hybrid  =  0.19_dp
     beta_hybrid   =  0.46_dp
-    rcut            =  1.0_dp / 0.33_dp
+    gamma_hybrid  = 0.33_dp
   case('TUNED-CAM-B3LYP')
     dft_xc(1)%id  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
     alpha_hybrid  =  0.0799_dp
     beta_hybrid   =  0.9201_dp
-    rcut          =  1.0_dp / 0.150_dp
+    gamma_hybrid  = 0.150_dp
   case('RSH')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
@@ -533,14 +529,12 @@ subroutine init_dft_type(key)
     dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
     dft_xc(2)%coeff = beta_hybrid
     dft_xc(3)%coeff = 1.00_dp
-    rcut            = 1.0_dp / gamma_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   case('RSHX')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
     dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
     dft_xc(2)%coeff = beta_hybrid
-    rcut           = 1.0_dp / gamma_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   case('LDA0')
     alpha_hybrid   = 0.25_dp
@@ -550,10 +544,56 @@ subroutine init_dft_type(key)
     dft_xc(2)%coeff =  1.00_dp
 #endif
   case default
-    call die('Error reading keyword scf')
+
+    !
+    ! Possibility offered to enter directly the LIBXC index of the functional
+    ! using  LIBXC:101+130 for PBE
+    !
+    ! Check whether the key starts with "LIBXC:")
+    off1 = INDEX(key,"LIBXC:")
+    if( off1 > 0 ) then
+      write(stdout,'(1x,a,a)') 'Reading a manual input of the LIBXC indeces: ',TRIM(key)
+      off1 = off1 + 6
+
+      ixc = 0
+      off2 = off1
+      do while( off2 == off1 )
+        ! Look for "+" sign to assemble LIBXC functionals
+        off2 = INDEX(key(off1:),"+") - 2 + off1
+        ixc = ixc + 1
+        if( ixc > SIZE(dft_xc) ) &
+          call die('init_dft_type: too many functionals in the input string. Maximum is 3')
+        if( off2 < off1 ) then
+          read(key(off1:),'(i4)') dft_xc(ixc)%id
+        else
+          read(key(off1:off2),'(i4)') dft_xc(ixc)%id
+          off2 = off2+2
+          off1 = off2
+        endif
+     enddo
+
+    else
+      call die('init_dft_type: Error reading keyword scf. DFT type not understood')
+    endif
   end select
 
   call init_libxc_info(dft_xc)
+
+#if defined(HAVE_LIBXC)
+  !
+  ! If "LIBXC:" syntax, obtain exact-exchange parameters from LIBXC
+  if( INDEX(key,"LIBXC:") > 0 ) then
+     ! Assumes hybrid functionals consists of only one XC id
+     call xc_hyb_cam_coef(dft_xc(1)%func,omega_libxc,globalx_libxc,srx_libxc)
+     gamma_hybrid = omega_libxc
+     alpha_hybrid = globalx_libxc + srx_libxc
+     beta_hybrid  = -srx_libxc
+  endif
+#endif
+
+  if( gamma_hybrid > 1.0e-12 ) then
+    rcut = 1.0_dp / gamma_hybrid
+  endif
 
 end subroutine init_dft_type
 
@@ -580,6 +620,9 @@ subroutine summary_input()
   write(stdout,'(a30,2x,a)') ' basis set: ',basis_name(1)
   write(stdout,'(a30,2x,a)') ' auxiliary basis set: ',auxil_basis_name(1)
   write(stdout,'(a30,2x,a)') ' gaussian type: ',gaussian_type
+  write(stdout,'(a30,f8.4)') ' global exchange: ',alpha_hybrid
+  write(stdout,'(a30,f8.4)') ' long-range-only exchange: ',beta_hybrid
+  write(stdout,'(a30,f8.4)') ' range-separation (bohr-1): ',gamma_hybrid
   write(stdout,*)
 
   call output_positions()

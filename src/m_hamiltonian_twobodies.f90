@@ -6,6 +6,7 @@
 ! the methods to evaluate the Kohn-Sham Hamiltonian
 !
 !=========================================================================
+#include "molgw.h"
 module m_hamiltonian_twobodies
  use m_definitions
  use m_timing

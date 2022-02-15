@@ -1282,6 +1282,8 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
   real(dp),allocatable :: vr(:),ur(:)
   real(dp),allocatable :: kb(:,:)
   integer              :: ir
+  real(dp)             :: hamiltonian_ecp(basis%nbf,basis%nbf)
+  real(dp),allocatable :: hamiltonian_kb(:,:)
   !=====
 
   ! Check if there are some ECP
@@ -1290,12 +1292,9 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
   call start_clock(timing_ecp)
 
-  !
-  ! Since there will be an allreduce operation in the end,
-  ! anticipate by dividing the input value of Hnucl by the number of procs
-  if( world%nproc > 1 ) then
-    hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) / world%nproc
-  endif
+
+  hamiltonian_ecp(:,:) = 0.0_dp
+
 
   n1 = nangular_ecp
   select case(nangular_ecp)
@@ -1343,6 +1342,11 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
     if( .NOT. element_has_ecp ) cycle
 
     necp = ecp(ie)%necp
+
+    if( ANY(ecp(:)%ecp_format==ECP_PSP6) .OR. ANY(ecp(:)%ecp_format==ECP_PSP8) ) then
+      allocate(hamiltonian_kb(basis%nbf,basis%nbf))
+      hamiltonian_kb(:,:) = 0.0_dp
+    endif
 
     select case(ecp(ie)%ecp_format)
     case(ECP_PSP6,ECP_PSP8)
@@ -1423,7 +1427,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
             case(ECP_NWCHEM)
               do jbf=1,basis%nbf
                 do ibf=1,basis%nbf
-                  hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                  hamiltonian_ecp(ibf,jbf) = hamiltonian_ecp(ibf,jbf)  &
                       + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
                          * wxa(iradial) * xa(iradial)**2  &
                          * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
@@ -1432,7 +1436,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
             case(ECP_PSP6,ECP_PSP8)
               do jbf=1,basis%nbf
                 do ibf=1,basis%nbf
-                  hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                  hamiltonian_ecp(ibf,jbf) = hamiltonian_ecp(ibf,jbf)  &
                       + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
                          * wxa(iradial) * xa(iradial)**2  &
                          * vr(iecp)
@@ -1483,7 +1487,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
               iproj = iproj + 1
               do jbf=1,basis%nbf
                 do ibf=1,basis%nbf
-                  hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                  hamiltonian_ecp(ibf,jbf) = hamiltonian_ecp(ibf,jbf)  &
                       + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
                          * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
                 enddo
@@ -1499,14 +1503,16 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
     ! non-local numerical grid contribution
     select case(ecp(ie)%ecp_format)
     case(ECP_PSP6,ECP_PSP8)
+      call world%sum(kb)
       iproj = 0
       do iecp=1,necp
         if( ecp(ie)%lk(iecp) /= -1 ) then
           do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
             iproj = iproj + 1
+            ! One should use DSYRK below instead
             do jbf=1,basis%nbf
               do ibf=1,basis%nbf
-                hamiltonian_nucleus(ibf,jbf) =  hamiltonian_nucleus(ibf,jbf)  &
+                hamiltonian_kb(ibf,jbf) =  hamiltonian_kb(ibf,jbf)  &
                     + kb(ibf,iproj) * kb(jbf,iproj) * ecp(ie)%ekb(iecp)
               enddo
             enddo
@@ -1523,12 +1529,21 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
   enddo ! ie
 
-  call world%sum(hamiltonian_nucleus)
+ call world%sum(hamiltonian_ecp)
+
+ hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + hamiltonian_ecp(:,:)
+ if( ALLOCATED(hamiltonian_kb) ) then
+   hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + hamiltonian_kb(:,:)
+   deallocate(hamiltonian_kb)
+ endif
+
 
   title='=== ECP Nucleus potential contribution ==='
   call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus)
 
+
   call stop_clock(timing_ecp)
+
 
 end subroutine setup_nucleus_ecp
 

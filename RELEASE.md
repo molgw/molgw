@@ -6,8 +6,9 @@
 -----------------------------------------
 ## What's new in version 2.G
 ### Overview
-- MOLGW is now compatible with LIBXC 5
-- new basis functions (Dunning
+- new basis functions (Dunning 7Z)
+- pseudopotential in numerical format PSP6 or PSP8 can be used 
+- LIBXC functionals can be called directly if one knows their unique LIBXC identifier
 - various bug fixes
 
 ### Contributors
@@ -16,11 +17,10 @@
 
 ### Changes affecting the usage
 - Dynamical self-energy correlation contribution and Spectral weight Z are now reported for omega=E_qp instead of omega=E_gKS
-- In the "graphical solution", E_qp is taken as the one with the largest weight
 - MOLGW can use "solid-state" norm-conserving pseudopotentials in the PSP6 or PSP8 format (from http://www.pseudo-dojo.org/ for instance).
 This is slow but functional. It is intended for tests.
 - Python script to extract the basis set from a Gaussian formatted checkpoint file (.fchk): `create_basis_from_gaussian_fchk.py`
-
+- All the LIBXC functionals can be called directly with syntax: `scf='LIBXC:101+130'` for PBE for instance 
 
 ### Changes affecting the compilation
 ### Changes affecting the developers
