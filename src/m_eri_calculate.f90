@@ -144,15 +144,27 @@ subroutine calculate_eri_4center(basis,rcut)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
+ integer(C_INT)               :: cint_info
+ integer(C_INT)               :: shls(4)
 !=====
 
  is_longrange = (rcut > 1.0e-12_dp)
  rcut_libint = rcut
+#if defined(HAVE_LIBCINT)
  if( .NOT. is_longrange ) then
-   write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals'
+   write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBCINT)'
+   call set_erf_screening_length_libcint(0.0_dp)
  else
-   write(stdout,'(/,a)') ' Calculate and store the 4-center LR Coulomb integrals'
+   write(stdout,'(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBCINT)'
+   call set_erf_screening_length_libcint(rcut)
  endif
+#else
+ if( .NOT. is_longrange ) then
+   write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBINT)'
+ else
+   write(stdout,'(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBINT)'
+ endif
+#endif
 
 
  ! ymbyun 2018/05/21
@@ -160,7 +172,7 @@ subroutine calculate_eri_4center(basis,rcut)
  !$OMP PARALLEL
  !$OMP DO PRIVATE(ishell,jshell,kshell,lshell, ijshellpair,klshellpair, n1c,n2c,n3c,n4c, ni,nj,nk,nl, ami,amj,amk,aml, &
  !$OMP & ibf,jbf,kbf,lbf, integrals, ng1,ng2,ng3,ng4, am1,am2,am3,am4, x01,x02,x03,x04, coeff1,coeff2,coeff3,coeff4, &
- !$OMP & alpha1,alpha2,alpha3,alpha4, int_shell)
+ !$OMP & alpha1,alpha2,alpha3,alpha4,cint_info,shls,int_shell)
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
@@ -220,11 +232,21 @@ subroutine calculate_eri_4center(basis,rcut)
 
      allocate(int_shell(n1c*n2c*n3c*n4c))
 
+#if defined(HAVE_LIBCINT)
+     shls(1) = lshell-1  ! C convention starts with 0
+     shls(2) = kshell-1  ! C convention starts with 0
+     shls(3) = jshell-1  ! C convention starts with 0
+     shls(4) = ishell-1  ! C convention starts with 0
+
+     cint_info = cint2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+
+#else
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
                          am3,ng3,x03,alpha3,coeff3, &
                          am4,ng4,x04,alpha4,coeff4, &
                          rcut_libint,int_shell)
+#endif
 
      call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,int_shell,integrals)
 
@@ -271,7 +293,11 @@ subroutine calculate_eri_4center(basis,rcut)
  !$OMP END DO
  !$OMP END PARALLEL
 
- write(stdout,'(a,/)') ' All ERI have been calculated'
+ if( .NOT. is_longrange ) then
+   write(stdout,'(a,/)') ' All 4-center ERI have been calculated'
+ else
+   write(stdout,'(a,/)') ' All LR 4-center ERI have been calculated'
+ endif
 
 
 end subroutine calculate_eri_4center
@@ -300,11 +326,17 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE),allocatable   :: shell_libint(:)
+ integer(C_INT)               :: cint_info
+ integer(C_INT)               :: shls(4)
 !=====
 
  is_longrange = (rcut > 1.0e-12_dp)
- rcut_libint = rcut
 
+#if defined(HAVE_LIBCINT)
+ call set_erf_screening_length_libcint(rcut)
+#else
+ rcut_libint = rcut
+#endif
 
 
  kshell = index_shellpair(1,klshellpair)
@@ -364,12 +396,22 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
 
  allocate(shell_libint(n1c*n2c*n3c*n4c))
 
+#if defined(HAVE_LIBCINT)
+ shls(1) = lshell-1  ! C convention starts with 0
+ shls(2) = kshell-1  ! C convention starts with 0
+ shls(3) = jshell-1  ! C convention starts with 0
+ shls(4) = ishell-1  ! C convention starts with 0
+
+ cint_info = cint2e_cart(shell_libint, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+
+#else
  call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                      am2,ng2,x02,alpha2,coeff2, &
                      am3,ng3,x03,alpha3,coeff3, &
                      am4,ng4,x04,alpha4,coeff4, &
                      rcut_libint, &
                      shell_libint)
+#endif
 
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,shell_libint,shellABCD)
 
@@ -631,6 +673,8 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
  real(C_DOUBLE)               :: x01(3),x03(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
+ integer(C_INT) :: cint_info
+ integer(C_INT) :: shls(2)
  !=====
 
  call start_clock(timing_eri_2center_ints)
@@ -643,18 +687,42 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 
  if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
-   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBINT): ',nprow_3center,' x ',npcol_3center
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ', &
+                               nprow_3center,' x ',npcol_3center
+   call set_erf_screening_length_libcint(0.0_dp)
+#else
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBINT): ', &
+                               nprow_3center,' x ',npcol_3center
+#endif
+#else
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(a)') ' 2-center integrals (LIBCINT)'
+   call set_erf_screening_length_libcint(0.0_dp)
 #else
    write(stdout,'(a)') ' 2-center integrals (LIBINT)'
 #endif
+#endif
  else
 #if defined(HAVE_SCALAPACK)
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ', &
+                               nprow_3center,' x ',npcol_3center
+   call set_erf_screening_length_libcint(rcut)
+#else
    write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals distributed using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center,' x ',npcol_3center
+#endif
+#else
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(a)') ' 2-center integrals (LIBCINT)'
+   call set_erf_screening_length_libcint(rcut)
 #else
    write(stdout,'(a)') ' 2-center LR integrals (LIBINT)'
 #endif
+#endif
  endif
+
 
  call set_auxil_block_size(auxil_basis%nbf/(npcol_eri3_ao*2))
 
@@ -686,7 +754,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 
    !$OMP PARALLEL PRIVATE(amk,nk,do_shell,kglobal,ami,ni,iglobal, &
    !$OMP&                 am1,am3,n1c,n3c,int_shell,ng1,ng3,alpha1,alpha3,x01,x03,coeff1,coeff3,&
-   !$OMP&                 klocal,ilocal,integrals)
+   !$OMP&                 klocal,ilocal,shls,info,cint_info,integrals)
    !$OMP DO
    do kshell=1,auxil_basis%nshell
      amk = auxil_basis%shell(kshell)%am
@@ -729,12 +797,20 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
          if( mask_auxil(ishell) .EQV. mask_auxil(kshell) ) cycle
        endif
 
-
-       am1 = auxil_basis%shell(ishell)%am
-       am3 = auxil_basis%shell(kshell)%am
        n1c = number_basis_function_am( 'CART' , ami )
        n3c = number_basis_function_am( 'CART' , amk )
        allocate( int_shell( n1c*n3c ) )
+
+#if defined(HAVE_LIBCINT)
+       shls(1) = LIBCINT_AUXIL_BASIS_START + kshell-1  ! C convention starts with 0
+       shls(2) = LIBCINT_AUXIL_BASIS_START + ishell-1  ! C convention starts with 0
+
+       cint_info = cint2c2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+
+#else
+
+       am1 = auxil_basis%shell(ishell)%am
+       am3 = auxil_basis%shell(kshell)%am
        ng1 = auxil_basis%shell(ishell)%ng
        ng3 = auxil_basis%shell(kshell)%ng
        allocate(alpha1(ng1),alpha3(ng3))
@@ -747,14 +823,14 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
        coeff1(:)=auxil_basis%shell(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
        coeff3(:)=auxil_basis%shell(kshell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
 
-
        call libint_2center(am1,ng1,x01,alpha1,coeff1, &
                            am3,ng3,x03,alpha3,coeff3, &
                            rcut_libint,int_shell)
 
-
        deallocate(alpha1,alpha3)
        deallocate(coeff1,coeff3)
+
+#endif
 
        call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
 
@@ -916,17 +992,17 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
 
  if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
-   write(stdout,'(a,i4,a,i4)') ' 2-center integrals inverse square-root using a SCALAPACK grid (LIBINT): ', &
+   write(stdout,'(a,i4,a,i4)') ' 2-center integrals inverse square-root using a SCALAPACK grid: ', &
                                nprow_3center,' x ',npcol_3center
 #else
-   write(stdout,'(a)') ' 2-center integrals inverse square-root (LIBINT)'
+   write(stdout,'(a)') ' 2-center integrals inverse square-root'
 #endif
  else
 #if defined(HAVE_SCALAPACK)
-   write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals inverse square-root using a SCALAPACK grid (LIBINT): ', &
+   write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals inverse square-root using a SCALAPACK grid: ', &
                                nprow_3center,' x ',npcol_3center
 #else
-   write(stdout,'(a)') ' 2-center LR integrals inverse square-root (LIBINT)'
+   write(stdout,'(a)') ' 2-center LR integrals inverse square-root'
 #endif
  endif
 
@@ -1140,6 +1216,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
  real(C_DOUBLE)               :: x01(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
+ integer(C_INT)               :: cint_info
+ integer(C_INT)               :: shls(3)
 !=====
 
  is_longrange = (rcut > 1.0e-12_dp)
@@ -1151,9 +1229,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        call die('calculate_integrals_eri_3center_scalapack: dimension problem in the masks')
  endif
 
- if( is_longrange ) then
-   call die('calculate_integrals_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
- endif
 
  if( .NOT. is_longrange ) then
    nauxil_kept = nauxil_2center
@@ -1162,9 +1237,14 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
  endif
 
  if( .NOT. is_longrange ) then
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBCINT 3center)'
+   call set_erf_screening_length_libcint(0.0_dp)
+#else
    write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
+#endif
  else
-   write(stdout,'(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBINT 3center)'
+   call die('calculate_integrals_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
  endif
 #if defined(HAVE_SCALAPACK)
  write(stdout,'(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
@@ -1237,7 +1317,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
    !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
    !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
-   !$OMP&                 coeff3,coeff4,x03,x04, &
+   !$OMP&                 coeff3,coeff4,x03,x04,cint_info,shls, &
    !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal,factor)
    !$OMP DO REDUCTION(+:libint_calls)
    do ishell=1,auxil_basis%nshell
@@ -1295,11 +1375,22 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        endif
 
 
+       libint_calls = libint_calls + 1
 
-       am3 = amk
-       am4 = aml
        n3c = number_basis_function_am( 'CART' , amk )
        n4c = number_basis_function_am( 'CART' , aml )
+       allocate(int_shell(n1c*n3c*n4c))
+
+#if defined(HAVE_LIBCINT)
+       shls(1) = lshell-1                              ! C convention starts with 0
+       shls(2) = kshell-1                              ! C convention starts with 0
+       shls(3) = LIBCINT_AUXIL_BASIS_START + ishell-1  ! C convention starts with 0
+
+       cint_info = cint3c2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+
+#else
+       am3 = amk
+       am4 = aml
        ng3 = basis%shell(kshell)%ng
        ng4 = basis%shell(lshell)%ng
        allocate(alpha3(ng3),alpha4(ng4))
@@ -1312,15 +1403,15 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        x04(:) = basis%shell(lshell)%x0(:)
 
 
-       libint_calls = libint_calls + 1
-
-       allocate(int_shell(n1c*n3c*n4c))
 
        call libint_3center(am1,ng1,x01,alpha1,coeff1, &
                            am3,ng3,x03,alpha3,coeff3, &
                            am4,ng4,x04,alpha4,coeff4, &
                            rcut_libint,int_shell)
 
+       deallocate(alpha3,alpha4)
+       deallocate(coeff3,coeff4)
+#endif
        call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
 
 
@@ -1349,8 +1440,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        deallocate(int_shell)
 
 
-       deallocate(alpha3,alpha4)
-       deallocate(coeff3,coeff4)
 
      enddo ! klshellpair
 
@@ -1428,6 +1517,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  real(C_DOUBLE)               :: x01(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
+ integer(C_INT)               :: cint_info
+ integer(C_INT)               :: shls(3)
 !=====
 
  is_longrange = (rcut > 1.0e-12_dp)
@@ -1443,10 +1534,21 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 
  if( .NOT. is_longrange ) then
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBCINT 3center)'
+   call set_erf_screening_length_libcint(0.0_dp)
+#else
    write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
+#endif
  else
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBCINT 3center)'
+   call set_erf_screening_length_libcint(rcut)
+#else
    write(stdout,'(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBINT 3center)'
+#endif
  endif
+
 #if defined(HAVE_SCALAPACK)
  write(stdout,'(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
 #endif
@@ -1528,7 +1630,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
      !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
      !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
-     !$OMP&                 coeff3,coeff4,x03,x04, &
+     !$OMP&                 coeff3,coeff4,x03,x04,shls,cint_info, &
      !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
      !$OMP DO REDUCTION(+:libint_calls)
      do ishell=1,auxil_basis%nshell
@@ -1581,10 +1683,23 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
          if( .NOT. do_shell ) cycle
 
-         am3 = amk
-         am4 = aml
+
+         libint_calls = libint_calls + 1
+
          n3c = number_basis_function_am( 'CART' , amk )
          n4c = number_basis_function_am( 'CART' , aml )
+         allocate(int_shell(n1c*n3c*n4c))
+
+#if defined(HAVE_LIBCINT)
+         shls(1) = lshell-1                              ! C convention starts with 0
+         shls(2) = kshell-1                              ! C convention starts with 0
+         shls(3) = LIBCINT_AUXIL_BASIS_START + ishell-1  ! C convention starts with 0
+
+         cint_info = cint3c2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+
+#else
+         am3 = amk
+         am4 = aml
          ng3 = basis%shell(kshell)%ng
          ng4 = basis%shell(lshell)%ng
          allocate(alpha3(ng3),alpha4(ng4))
@@ -1596,17 +1711,14 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
          x03(:) = basis%shell(kshell)%x0(:)
          x04(:) = basis%shell(lshell)%x0(:)
 
-
-
-         libint_calls = libint_calls + 1
-
-         allocate(int_shell(n1c*n3c*n4c))
-
          call libint_3center(am1,ng1,x01,alpha1,coeff1, &
                              am3,ng3,x03,alpha3,coeff3, &
                              am4,ng4,x04,alpha4,coeff4, &
                              rcut_libint,int_shell)
 
+         deallocate(alpha3,alpha4)
+         deallocate(coeff3,coeff4)
+#endif
          call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
 
 
@@ -1633,12 +1745,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
          enddo
 
 
-         deallocate(integrals)
          deallocate(int_shell)
-
-
-         deallocate(alpha3,alpha4)
-         deallocate(coeff3,coeff4)
+         deallocate(integrals)
 
        enddo ! klshellpair
        deallocate(alpha1,coeff1)
@@ -1785,6 +1893,8 @@ subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vh
    am4 = aml
    n3c = number_basis_function_am( 'CART' , amk )
    n4c = number_basis_function_am( 'CART' , aml )
+   allocate( int_shell(n3c*n4c) )
+
    ng1 = SIZE(coeff_rho)
    ng3 = basis%shell(kshell)%ng
    ng4 = basis%shell(lshell)%ng
@@ -1800,13 +1910,18 @@ subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vh
    x03(:) = basis%shell(kshell)%x0(:)
    x04(:) = basis%shell(lshell)%x0(:)
 
-   allocate( int_shell(n3c*n4c) )
 
+#if defined(HAVE_LIBCINT)
+   call libcint_3center(am1,ng1,x01,alpha1,coeff1, &
+                        am3,ng3,x03,alpha3,coeff3, &
+                        am4,ng4,x04,alpha4,coeff4, &
+                        0.0_C_DOUBLE,int_shell)
+#else
    call libint_3center(am1,ng1,x01,alpha1,coeff1, &
                        am3,ng3,x03,alpha3,coeff3, &
                        am4,ng4,x04,alpha4,coeff4, &
                        0.0_C_DOUBLE,int_shell)
-
+#endif
    call transform_libint_to_molgw(basis%gaussian_type,0,basis%gaussian_type,amk,aml,int_shell,integrals)
 
 

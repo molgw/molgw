@@ -80,8 +80,8 @@ def check_output(out,testinfo):
   for line in open(tmpfolder+'/'+out,'r').readlines():
     if  'Angular momentum is too high' in line:
       test_files_skipped += 1
-      print('LIBINT installation does not have the high enough angular momenta => skip test')
-      skipping_reason.append('LIBINT installation does not have high enough angular momenta')
+      print('LIBINT or LIBCINT installation does not have the high enough angular momenta => skip test')
+      skipping_reason.append('LIBINT or LIBCINT installation does not have high enough angular momenta')
       return
   #
   # Second check if there is a memory leak
@@ -101,12 +101,12 @@ def check_output(out,testinfo):
         print('No memory leak'.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
         success += 1
         success_in_this_file += 1
-        fdiff.write(str(tested).rjust(6) + parsing2[0].rjust(30) \
+        fdiff.write("Memory leak".rjust(30)+str(tested).rjust(6) + parsing2[0].rjust(30) \
               + str(ref).rjust(30)+str(float(parsing2[0]) - ref).rjust(30)+'  OK  \n')
         break
       else:
         print('No memory leak'.rjust(30)+'[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
-        fdiff.write(str(tested).rjust(6) + parsing2[0].rjust(30) \
+        fdiff.write("Memory leak".rjust(30)+str(tested).rjust(6) + parsing2[0].rjust(30) \
               + str(ref).rjust(30)+str(float(parsing2[0]) - ref).rjust(30)+' FAIL \n')
         break
 
@@ -152,12 +152,12 @@ def check_output(out,testinfo):
           print(key.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
           success += 1
           success_in_this_file += 1
-          fdiff.write(str(tested).rjust(6) + parsing2[pos].rjust(30) \
+          fdiff.write(key.rjust(30)+str(tested).rjust(6) + parsing2[pos].rjust(30) \
                 + str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+'  OK  \n')
           break
         else:
           print(key.rjust(30)+'[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
-          fdiff.write(str(tested).rjust(6) + parsing2[pos].rjust(30) \
+          fdiff.write(key.rjust(30)+str(tested).rjust(6) + parsing2[pos].rjust(30) \
                 + str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+' FAIL \n')
           break
     if not key_found:
@@ -294,7 +294,7 @@ have_openmp           = 'Running with OPENMP' in open(tmpfolder+'/fake.out').rea
 have_libxc            = 'Running with LIBXC' in open(tmpfolder+'/fake.out').read()
 have_mpi              = 'Running with MPI' in open(tmpfolder+'/fake.out').read()
 have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder+'/fake.out').read()
-have_libint_onebody   = 'Running with external LIBINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
+have_libint_onebody   = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
 have_libint_gradients = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
 #with open(tmpfolder+'/fake.out','r') as ffake:
 #  for line in ffake:
@@ -457,7 +457,7 @@ test_files_success = 0
 skipping_reason    = []
 
 fdiff = open(tmpfolder+'/diff', 'w')
-fdiff.write('#  test index          calculated                   reference                   difference        test status \n')
+fdiff.write('#       property tested          test index              calculated                 reference                 difference        test status \n')
 
 for iinput in range(ninput):
 

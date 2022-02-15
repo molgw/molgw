@@ -5,6 +5,8 @@
  * with contracted gaussians
  * Author: F. Bruneval
  */
+#include "molgw.h"
+#if !defined(NO_LIBINT)
 #include<libint2.h>
 #include<libint2/util/memory.h>
 #include<stdlib.h>
@@ -13,7 +15,7 @@
 #include<math.h>
 #include<assert.h>
 #include "libint_molgw.h"
-
+#endif
 
 
 #if defined(LIBINT2_SUPPORT_ONEBODY)

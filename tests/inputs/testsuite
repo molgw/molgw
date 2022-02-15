@@ -41,11 +41,11 @@ gKS HOMO energy           ,  -20.795329        , 0 , 1.0e-4
 
 he_wb97x.in               , He with wB97X functional wo RI
 SCF Total Energy          ,   -2.8980609307    , 0 , 1.0e-7
-gKS HOMO energy           ,  -20.859715        , 0 , 1.0e-4
+gKS HOMO energy           ,  -20.856905        , 0 , 1.0e-4
 
 he_pbe_libxc.in           , He with PBE functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8869559704    , 0 , 1.0e-7
-gKS HOMO energy           ,  -15.724331        , 0 , 1.0e-4
+gKS HOMO energy           ,  -15.724589        , 0 , 1.0e-4
 
 he_pbeh_libxc.in          , He with PBEH=PBE0 functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8893617513    , 0 , 1.0e-7
@@ -53,7 +53,7 @@ gKS HOMO energy           ,  -18.193561        , 0 , 1.0e-4
 
 he_wb97x_libxc.in         , He with wB97X functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8980609307    , 0 , 1.0e-7
-gKS HOMO energy           ,  -20.859715        , 0 , 1.0e-4
+gKS HOMO energy           ,  -20.856905        , 0 , 1.0e-4
 
 ne_pbe_autori.in          ,  PBE neon atom cc-pVTZ with auto RI
 SCF Total Energy          , -128.8459979064    , 0 , 1.0e-7
@@ -90,6 +90,15 @@ butadiene_diago.in        , HF butadiene with diagonalizations made with (P)DSYE
 SCF Total Energy          , -154.9342671231    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.693777        , 0 , 1.0e-4
 gKS LUMO energy           ,    3.220523        , 0 , 1.0e-4
+
+h2o_distorted.in          , BHLYP distorted water (having quadrupole)
+SCF Total Energy          , -76.3815547520     , 0 , 1.0e-7
+Dipole (a.u.)             ,   -0.097584        , 0 , 1.0e-4
+Dipole (a.u.)             ,    0.005780        , 1 , 1.0e-4
+Dipole (a.u.)             ,   -0.785808        , 2 , 1.0e-4
+Quadrupole (a.u.)         ,   -5.234602        , 0 , 1.0e-4
+Quadrupole (a.u.)         ,    0.068177        , 1 , 1.0e-4
+Quadrupole (a.u.)         ,    0.054699        , 2 , 1.0e-4
 
 h2o_pbe0.in               , PBE0 water with a small basis
 SCF Total Energy          , -76.3408991125     , 0 , 1.0e-7

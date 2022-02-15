@@ -6,6 +6,7 @@
 ! the methods to set up and store the input parameters from the input file
 !
 !=========================================================================
+#include "molgw.h"
 module m_inputparam
   use m_definitions
   use m_mpi

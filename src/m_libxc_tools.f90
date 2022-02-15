@@ -7,6 +7,7 @@
 ! * explicit interfaces with C binding
 !
 !=========================================================================
+#include "molgw.h"
 module m_libxc_tools
  use m_definitions
  use m_warning
