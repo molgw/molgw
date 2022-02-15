@@ -6,6 +6,7 @@
 ! the routines to extract the optical spectra, stopping power in linear-response
 !
 !=========================================================================
+#include "molgw.h"
 module m_spectra
  use m_definitions
  use m_timing

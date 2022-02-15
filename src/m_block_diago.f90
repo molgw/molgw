@@ -8,6 +8,7 @@
 ! (  A  B  ) ( X )    ( X )
 ! ( -A -B  ) ( Y )  = ( Y ) \Omega
 !=========================================================================
+#include "molgw.h"
 module m_block_diago
  use m_definitions
  use m_timing

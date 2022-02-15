@@ -6,6 +6,7 @@
 ! the timings of the code
 !
 !=========================================================================
+#include "molgw.h"
 module m_timing
   use m_definitions
   use m_warning,only: die

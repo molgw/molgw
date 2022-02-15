@@ -7,6 +7,7 @@
 ! with no distribution of the memory
 !
 !=========================================================================
+#include "molgw.h"
 module m_hamiltonian_wrapper
  use m_definitions
  use m_timing

@@ -6,6 +6,7 @@
 ! the methods and data concerning the periodic table elements
 !
 !=========================================================================
+#include "molgw.h"
 module m_elements
  use m_definitions
  use m_warning,only: die

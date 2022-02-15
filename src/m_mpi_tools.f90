@@ -6,6 +6,7 @@
 ! the high-level MPI routines for parallelization over all procs (=world)
 !
 !=========================================================================
+#include "molgw.h"
 module m_mpi_tools
   use m_definitions
   use m_warning,only: die

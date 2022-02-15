@@ -7,6 +7,7 @@
 ! PT2, PT3, GW, evGW, COHSEX, GWGamma, etc.
 !
 !=========================================================================
+#include "molgw.h"
 module m_selfenergy_evaluation
  use m_definitions
  use m_timing

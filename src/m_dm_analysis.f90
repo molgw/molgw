@@ -1,4 +1,12 @@
 !=========================================================================
+! This file is part of MOLGW.
+! Author: Fabien Bruneval
+!
+! This module contains
+!  analysis tools for the one-body reduced density-matrix
+!
+!=========================================================================
+#include "molgw.h"
 module m_dm_analysis
  use m_definitions
  use m_timing

@@ -6,6 +6,7 @@
 ! the methods to manipulate the Kohn-Sham Hamiltonian and wavefunctions
 !
 !=========================================================================
+#include "molgw.h"
 module m_hamiltonian_tools
  use m_definitions
  use m_timing

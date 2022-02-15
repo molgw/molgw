@@ -24,6 +24,7 @@
 !   3. Post-processings: GW, MP2, CI, TDDFT etc.
 !
 !=========================================================================
+#include "molgw.h"
 program molgw
   use m_definitions
   use m_timing

@@ -6,6 +6,7 @@
 ! the self-consistent field cycle methods (DIIS, simple mixing)
 !
 !=========================================================================
+#include "molgw.h"
 module m_scf
   use m_definitions
   use m_warning

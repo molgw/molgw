@@ -6,6 +6,7 @@
 ! the reading or the calculation of correlated density matrix
 !
 !=========================================================================
+#include "molgw.h"
 module m_dm_mbpt
   use m_definitions
   use m_timing

@@ -6,6 +6,7 @@
 !  the evaluation of the real spherical harmonics S_lm(cos theta, phi)
 !
 !=========================================================================
+#include "molgw.h"
 function real_spherical_harmonics(ll,mm,cos_theta,phi) result(slm)
   use m_definitions
   implicit none

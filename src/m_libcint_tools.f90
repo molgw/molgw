@@ -1,3 +1,11 @@
+!=========================================================================
+! This file is part of MOLGW.
+! Author: Fabien Bruneval
+!
+! This module contains
+! basic tools to work with LIBCINT library
+!=========================================================================
+#include "molgw.h"
 module m_libcint_tools
   use m_definitions
   use m_cart_to_pure

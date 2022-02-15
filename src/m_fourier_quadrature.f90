@@ -1,10 +1,13 @@
 !=========================================================================
+! This file is part of MOLGW.
+! Author: Fabien Bruneval
+!
 ! Test implementation of quadrature in Fourier space to get the integrals for
 ! - overlap()
 ! - kinetic
 ! - electron-nucleus()
 !=========================================================================
-
+#include "molgw.h"
 module m_fourier_quadrature
   use m_definitions
   use m_warning

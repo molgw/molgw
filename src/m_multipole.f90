@@ -6,6 +6,7 @@
 ! the subroutines to calculate the static dipole and static quadrupole tensor
 !
 !=========================================================================
+#include "molgw.h"
 module m_multipole
  use m_definitions
  use m_basis_set

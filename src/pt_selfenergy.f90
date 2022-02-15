@@ -6,6 +6,7 @@
 ! the perturbation theory to 2nd order evaluation of the self-energy
 !
 !=========================================================================
+#include "molgw.h"
 subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,se,emp2)
   use m_definitions
   use m_mpi

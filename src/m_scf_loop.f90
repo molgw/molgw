@@ -6,6 +6,7 @@
 ! the main SCF loop for Hartree-Fock or generalized Kohn-Sham
 !
 !=========================================================================
+#include "molgw.h"
 module m_scf_loop
  use m_definitions
  use m_timing

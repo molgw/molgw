@@ -6,6 +6,7 @@
 ! the method to calculate the 2-, 3-, and 4-center Coulomb integrals
 !
 !=========================================================================
+#include "molgw.h"
 module m_eri_calculate
  use m_definitions
  use m_mpi

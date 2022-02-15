@@ -6,6 +6,7 @@
 ! the methods to perform the Atomic Orbital to Molecular Orbital transform
 !
 !=========================================================================
+#include "molgw.h"
 module m_eri_ao_mo
   use m_definitions
   use m_mpi

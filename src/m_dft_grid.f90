@@ -7,6 +7,7 @@
 ! exchange-correlation integrals
 !
 !=========================================================================
+#include "molgw.h"
 module m_dft_grid
  use m_definitions
  use m_warning,only: die

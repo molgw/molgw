@@ -6,6 +6,7 @@
 ! the time propagation of the KS wavefunctions for TDDFT
 !
 !=========================================================================
+#include "molgw.h"
 module m_tddft_propagator
  use m_definitions
  use m_memory

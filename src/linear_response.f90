@@ -6,6 +6,7 @@
 ! the routines to calculate the polarizability within RPA, TDDFT or BSE
 !
 !=========================================================================
+#include "molgw.h"
 subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy,c_matrix,en_rpa,en_gw,wpol_out)
  use m_definitions
  use m_timing
