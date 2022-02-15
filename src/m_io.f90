@@ -6,6 +6,7 @@
 ! the procedures for input and outputs
 !
 !=========================================================================
+#include "molgw.h"
 module m_io
  use,intrinsic :: ISO_FORTRAN_ENV, only: COMPILER_VERSION,COMPILER_OPTIONS
  use m_definitions

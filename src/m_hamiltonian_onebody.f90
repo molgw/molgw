@@ -7,6 +7,7 @@
 ! with no distribution of the memory
 !
 !=========================================================================
+#include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
 #endif

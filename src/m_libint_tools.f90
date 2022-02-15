@@ -8,6 +8,7 @@
 ! * subroutines to pass from row-major (C convention) to column-major (Fortran convention)
 !
 !=========================================================================
+#include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
 #endif
