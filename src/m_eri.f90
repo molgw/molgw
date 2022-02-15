@@ -378,10 +378,8 @@ subroutine identify_negligible_shellpair(basis)
  real(C_DOUBLE)               :: x01(3),x02(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
-#if defined(HAVE_LIBCINT)
  integer(C_INT) :: info
  integer(C_INT) :: shls(4)
-#endif
 !=====
 
  if( TOL_INT < 0.0_dp ) then
@@ -430,7 +428,7 @@ subroutine identify_negligible_shellpair(basis)
    x02(:) = basis%shell(jshell)%x0(:)
 
    !$OMP PARALLEL PRIVATE(ami,ni,am1,n1c,ng1,alpha1,coeff1,x01, &
-   !$OMP                  int_shell,integrals)
+   !$OMP                  shls,info,int_shell,integrals)
    !$OMP DO
    do ishell=1,basis%nshell
      ami = basis%shell(ishell)%am
@@ -438,13 +436,7 @@ subroutine identify_negligible_shellpair(basis)
 
      ni = number_basis_function_am( basis%gaussian_type , ami )
      n1c = number_basis_function_am( 'CART' , ami )
-     am1 = basis%shell(ishell)%am
-     ng1 = basis%shell(ishell)%ng
 
-     allocate(alpha1(ng1),coeff1(ng1))
-     alpha1(:) = basis%shell(ishell)%alpha(:)
-     x01(:) = basis%shell(ishell)%x0(:)
-     coeff1(:) = basis%shell(ishell)%coeff(:)
 
      allocate( int_shell( n1c*n2c*n1c*n2c ) )
 
@@ -457,11 +449,18 @@ subroutine identify_negligible_shellpair(basis)
      info = cint2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
 
 #else
+     am1 = basis%shell(ishell)%am
+     ng1 = basis%shell(ishell)%ng
+     allocate(alpha1(ng1),coeff1(ng1))
+     alpha1(:) = basis%shell(ishell)%alpha(:)
+     x01(:) = basis%shell(ishell)%x0(:)
+     coeff1(:) = basis%shell(ishell)%coeff(:)
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
                          am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
                          0.0_C_DOUBLE,int_shell)
+     deallocate(alpha1,coeff1)
 #endif
      call transform_libint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
 
@@ -477,7 +476,6 @@ subroutine identify_negligible_shellpair(basis)
 
      deallocate(integrals)
      deallocate(int_shell)
-     deallocate(alpha1,coeff1)
 
    enddo
    !$OMP END DO

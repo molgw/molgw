@@ -172,7 +172,7 @@ subroutine calculate_eri_4center(basis,rcut)
  !$OMP PARALLEL
  !$OMP DO PRIVATE(ishell,jshell,kshell,lshell, ijshellpair,klshellpair, n1c,n2c,n3c,n4c, ni,nj,nk,nl, ami,amj,amk,aml, &
  !$OMP & ibf,jbf,kbf,lbf, integrals, ng1,ng2,ng3,ng4, am1,am2,am3,am4, x01,x02,x03,x04, coeff1,coeff2,coeff3,coeff4, &
- !$OMP & alpha1,alpha2,alpha3,alpha4, int_shell)
+ !$OMP & alpha1,alpha2,alpha3,alpha4,cint_info,shls,int_shell)
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
@@ -754,7 +754,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 
    !$OMP PARALLEL PRIVATE(amk,nk,do_shell,kglobal,ami,ni,iglobal, &
    !$OMP&                 am1,am3,n1c,n3c,int_shell,ng1,ng3,alpha1,alpha3,x01,x03,coeff1,coeff3,&
-   !$OMP&                 klocal,ilocal,shls,info,integrals)
+   !$OMP&                 klocal,ilocal,shls,info,cint_info,integrals)
    !$OMP DO
    do kshell=1,auxil_basis%nshell
      amk = auxil_basis%shell(kshell)%am
@@ -1317,7 +1317,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
    !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
    !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
-   !$OMP&                 coeff3,coeff4,x03,x04, &
+   !$OMP&                 coeff3,coeff4,x03,x04,cint_info,shls, &
    !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal,factor)
    !$OMP DO REDUCTION(+:libint_calls)
    do ishell=1,auxil_basis%nshell
@@ -1630,7 +1630,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
      !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
      !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
-     !$OMP&                 coeff3,coeff4,x03,x04, &
+     !$OMP&                 coeff3,coeff4,x03,x04,shls,cint_info, &
      !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
      !$OMP DO REDUCTION(+:libint_calls)
      do ishell=1,auxil_basis%nshell

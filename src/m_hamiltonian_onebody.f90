@@ -590,10 +590,9 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   integer  :: i_cart,j_cart,ij
   integer  :: ibf_cart,jbf_cart
   real(dp) :: nucleus
-#if defined(HAVE_LIBCINT)
   integer(C_INT) :: info
   integer(C_INT) :: shls(2)
-#endif
+  real(C_DOUBLE) :: env_local(SIZE(env))
   !=====
 
   if( in_tddft_loop ) then
@@ -628,7 +627,9 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
     call set_libint_shell(basis%shell(jshell),amB,contrdepthB,B,alphaB,cB)
 
     !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,amA,contrdepthA,A,alphaA,cA,array_cart,array_cart_C,C,matrix, &
-    !$OMP&                 ij,ibf_cart,jbf_cart,nucleus)
+    !$OMP&                 ij,ibf_cart,jbf_cart,info,shls,env_local,nucleus)
+
+    env_local(:) = env(:)
     !$OMP DO
     do ishell=jshell,basis%nshell
       li      = basis%shell(ishell)%am
@@ -652,10 +653,10 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
 
         C(:) = xatom(:,icenter)
 #if defined(HAVE_LIBCINT)
-        call set_rinv_origin_libcint(xatom(:,icenter))
+        call set_rinv_origin_libcint(xatom(:,icenter),env_local)
         shls(1) = jshell-1  ! C convention starts with 0
         shls(2) = ishell-1  ! C convention starts with 0
-        info = cint1e_rinv_cart(array_cart_C, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+        info = cint1e_rinv_cart(array_cart_C, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env_local)
         array_cart(:) = array_cart(:) - zvalence(icenter) * array_cart_C(:)
 
 #elif defined(LIBINT2_SUPPORT_ONEBODY)

@@ -185,13 +185,14 @@ end subroutine check_capability_libcint
 
 
 !=========================================================================
-subroutine set_rinv_origin_libcint(x0)
+subroutine set_rinv_origin_libcint(x0,env_local)
   implicit none
   real(dp),intent(in) :: x0(3)
+  real(C_DOUBLE),intent(inout) :: env_local(:)
   !=====
   !=====
 
-  env(LIBCINT_PTR_RINV_ORIG+1:LIBCINT_PTR_RINV_ORIG+3) = x0(:)
+  env_local(LIBCINT_PTR_RINV_ORIG+1:LIBCINT_PTR_RINV_ORIG+3) = x0(:)
 
 end subroutine set_rinv_origin_libcint
 
