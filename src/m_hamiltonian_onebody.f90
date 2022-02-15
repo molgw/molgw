@@ -593,7 +593,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   real(dp) :: nucleus
   integer(C_INT) :: info
   integer(C_INT) :: shls(2)
-  real(C_DOUBLE) :: env_local(SIZE(env))
+  real(C_DOUBLE),allocatable :: env_local(:)
   !=====
 
   if( in_tddft_loop ) then
@@ -630,7 +630,10 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
     !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,amA,contrdepthA,A,alphaA,cA,array_cart,array_cart_C,C,matrix, &
     !$OMP&                 ij,ibf_cart,jbf_cart,info,shls,env_local,nucleus)
 
-    env_local(:) = env(:)
+#if defined(HAVE_LIBCINT)
+    allocate(env_local,SOURCE=env)
+#endif
+
     !$OMP DO
     do ishell=jshell,basis%nshell
       li      = basis%shell(ishell)%am
@@ -695,6 +698,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
 
     enddo
     !$OMP END DO
+    if( ALLOCATED(env_local) ) deallocate(env_local)
     !$OMP END PARALLEL
     deallocate(alphaB,cB)
   enddo

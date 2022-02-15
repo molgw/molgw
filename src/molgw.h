@@ -12,3 +12,12 @@
 #define NO_LIBINT
 #endif
 #endif
+
+#if !defined(NO_LIBXC)
+#if !defined(HAVE_LIBXC)
+#define HAVE_LIBXC
+#endif
+#endif
+
+
+

@@ -155,12 +155,12 @@ subroutine calculate_eri_4center(basis,rcut)
    write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBCINT)'
    call set_erf_screening_length_libcint(0.0_dp)
  else
-   write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBCINT)'
+   write(stdout,'(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBCINT)'
    call set_erf_screening_length_libcint(rcut)
  endif
 #else
  if( .NOT. is_longrange ) then
-   write(stdout,'(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBINT)'
+   write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBINT)'
  else
    write(stdout,'(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBINT)'
  endif
