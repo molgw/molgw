@@ -6,6 +6,7 @@
 ! subroutine to generate clever representations of the virtual orbital space
 !
 !=========================================================================
+#include "molgw.h"
 module m_virtual_orbital_space
  use m_definitions
  use m_timing

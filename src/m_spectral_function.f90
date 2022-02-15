@@ -6,6 +6,7 @@
 ! the spectral decomposition of the screened Coulomb interaction W
 !
 !=========================================================================
+#include "molgw.h"
 module m_spectral_function
  use m_definitions
  use m_mpi

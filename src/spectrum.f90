@@ -6,6 +6,7 @@
 ! the main program to transform TDDFT time data into frequency spectra
 !
 !=========================================================================
+#include "molgw.h"
 program spectrum
  use m_definitions
  use m_warning

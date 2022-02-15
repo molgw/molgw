@@ -6,6 +6,7 @@
 ! some basic numerical algorithms
 !
 !=========================================================================
+#include "molgw.h"
 module m_numerical_tools
   use m_definitions
   use m_warning,only: die

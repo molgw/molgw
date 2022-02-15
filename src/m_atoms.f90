@@ -6,6 +6,7 @@
 ! the structure of the molecule (atomic positions etc)
 !
 !=========================================================================
+#include "molgw.h"
 module m_atoms
   use m_definitions
   use m_warning,only: die,issue_warning

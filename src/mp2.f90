@@ -6,6 +6,7 @@
 ! - MP2 total energy with or without Resolution-of-Identity
 ! - Single excitation contribution to total energy
 !=========================================================================
+#include "molgw.h"
 subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  use m_definitions
  use m_mpi

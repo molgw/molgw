@@ -6,6 +6,7 @@
 ! the methods and data for Effective Core Potentials (ECP)
 !
 !=========================================================================
+#include "molgw.h"
 module m_ecp
   use m_definitions
   use m_string_tools, only: capitalize,append_to_list,orbital_momentum_name,orbital_momentum_number

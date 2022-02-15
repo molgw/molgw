@@ -6,6 +6,7 @@
 ! rho(r), grad rho(r), vxc in specific case, etc..
 !
 !=========================================================================
+#include "molgw.h"
 module m_density_tools
   use m_definitions
   use m_mpi

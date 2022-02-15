@@ -6,6 +6,7 @@
 ! the methods to perform operations on an individual Cartesian Gaussian functions
 !
 !=========================================================================
+#include "molgw.h"
 module m_gaussian
   use m_definitions
   use m_mpi

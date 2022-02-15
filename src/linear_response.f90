@@ -6,6 +6,7 @@
 ! the routines to calculate the polarizability within RPA, TDDFT or BSE
 !
 !=========================================================================
+#include "molgw.h"
 subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy,c_matrix,en_rpa,en_gw,wpol_out)
  use m_definitions
  use m_timing
@@ -229,13 +230,13 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  nexc = nexcitation
  if( nexc == 0 ) nexc = nmat
 
- allocate(eigenvalue(nmat))
+ allocate(eigenvalue(nexc))
 
  ! Allocate (X+Y)
  ! Allocate (X-Y) only if actually needed
  m_x = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
  n_x = NUMROC(nexc,block_col,ipcol_sd,first_col,npcol_sd)
- call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_x),info)
+ call DESCINIT(desc_x,nmat,nexc,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_x),info)
 
  call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
  if( .NOT. is_rpa .OR. is_tda ) &
@@ -252,7 +253,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
 
    else ! Partial diagonalization with Davidson
      ! The following call works with AND without SCALAPACK
-     call diago_4blocks_davidson(toldav,nstep_dav,nexcitation,amb_diag_rpa,amb_matrix,apb_matrix,desc_apb, &
+     call diago_4blocks_davidson(toldav,nstep_dav,amb_diag_rpa,amb_matrix,apb_matrix,desc_apb, &
                                  eigenvalue,xpy_matrix,xmy_matrix,desc_x)
    endif
  else

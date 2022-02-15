@@ -6,6 +6,7 @@
 ! a variable used for the Real Time Time-Dependent DFT
 !
 !=========================================================================
+#include "molgw.h"
 module m_tddft_variables
  
  logical :: in_tddft_loop = .FALSE.

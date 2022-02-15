@@ -6,6 +6,7 @@
 ! the reading or the calculation of correlated density matrix
 !
 !=========================================================================
+#include "molgw.h"
 module m_dm_mbpt
   use m_definitions
   use m_timing
@@ -183,6 +184,9 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
   if( print_cube_ ) then
     call plot_cube_wfn('MBPT',basis,natural_occupation,c_matrix_tmp)
   endif
+  if( print_wfn_ ) then
+    call plot_rho('MBPT',basis,natural_occupation,c_matrix_tmp)
+  endif
   if( print_wfn_files_ ) then
     call print_wfn_file('MBPT',basis,natural_occupation,c_matrix_tmp,en_dm_corr%total)
   endif
@@ -225,7 +229,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
     nocc = get_number_occupied_states(occupation)
     allocate(h_ii(nstate,nspin))
 
-    call matrix_ao_to_mo_diag(c_matrix,RESHAPE(hamiltonian_hartree_corr,(/basis%nbf,basis%nbf,1/)),h_ii)
+    call matrix_ao_to_mo_diag(c_matrix,hamiltonian_hartree_corr,h_ii)
     call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',occupation,h_ii)
     write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
 
@@ -238,7 +242,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
 
   if( print_multipole_ ) then
     call get_c_matrix_from_p_matrix(p_matrix_corr,c_matrix_tmp,occupation_tmp)
-    if( .FALSE. ) call plot_rho(basis,occupation_tmp,c_matrix_tmp)
+    if( .FALSE. ) call plot_rho('MBPT',basis,occupation_tmp,c_matrix_tmp)
     if( .FALSE. ) call write_cube_from_header('MBPT',basis,occupation_tmp,c_matrix_tmp)
     if( print_multipole_ ) then
       call static_dipole(basis,occupation_tmp,c_matrix_tmp)

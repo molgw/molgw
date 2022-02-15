@@ -6,6 +6,7 @@
 !  the evaluation of the Boys function used for Coulomb integrals
 !
 !=========================================================================
+#include "molgw.h"
 subroutine boys_function_c(fnt,nn,tt)  BIND(C)
   use,intrinsic :: ISO_C_BINDING,only: C_INT,C_DOUBLE
   implicit none

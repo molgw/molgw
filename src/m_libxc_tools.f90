@@ -7,6 +7,7 @@
 ! * explicit interfaces with C binding
 !
 !=========================================================================
+#include "molgw.h"
 module m_libxc_tools
  use m_definitions
  use m_warning
@@ -210,6 +211,25 @@ module m_libxc_tools
      real(C_DOUBLE)             :: v2sigma2(*)
    end subroutine xc_gga_fxc
 
+   subroutine xc_hyb_cam_coef(func,omega,alpha,beta) BIND(C)
+     import :: C_PTR,C_INT,C_DOUBLE
+     implicit none
+     type(C_PTR)                :: func
+     real(C_DOUBLE)             :: omega,alpha,beta
+   end subroutine xc_hyb_cam_coef
+
+   function xc_functional_get_number(name) BIND(C)
+     import :: C_INT,C_CHAR
+     integer(C_INT) :: xc_functional_get_number
+     character(KIND=C_CHAR),intent(in) :: name
+   end function
+
+   function xc_functional_get_name(number) BIND(C)
+     import :: C_INT,C_CHAR
+     character(KIND=C_CHAR) :: xc_functional_get_name
+     integer(C_INT),intent(in) :: number
+   end function
+
 end interface
 
 
@@ -222,7 +242,7 @@ subroutine init_libxc_info(dft_xc)
 
  type(dft_xc_info),allocatable,intent(inout) :: dft_xc(:)
 !=====
- integer :: nxc,ixc
+ integer :: ixc
  type(C_PTR)          :: cptr_tmp
 !=====
 
@@ -230,8 +250,8 @@ subroutine init_libxc_info(dft_xc)
    call die('init_libxc_info: dft_xc_info type should have been allocated already at this stage')
  endif
 
- nxc = SIZE(dft_xc)
- dft_xc(:)%nxc = nxc
+ dft_xc(:)%nxc = COUNT( dft_xc(:)%id /= 0 )
+
 
 #if defined(HAVE_LIBXC)
 
@@ -239,7 +259,7 @@ subroutine init_libxc_info(dft_xc)
  ! Initialize the DFT objects for LIBXC
  !
 
- do ixc=1,nxc
+ do ixc=1,dft_xc(1)%nxc
 
    cptr_tmp = xc_func_alloc()
    call c_f_pointer(cptr_tmp,dft_xc(ixc)%func)
@@ -249,12 +269,11 @@ subroutine init_libxc_info(dft_xc)
      call die('init_libxc_info: error in LIBXC xc_func_init')
    endif
 
-
    !
    ! Tune the range for range separated hybrids
    if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE ) then
 #if (XC_MAJOR_VERSION > 4)
-     call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega',dft_xc(ixc)%gamma)
+     call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
 #else
      call xc_gga_x_hjs_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
 #endif
@@ -262,7 +281,7 @@ subroutine init_libxc_info(dft_xc)
    endif
    if( dft_xc(ixc)%id == XC_GGA_X_WPBEH ) then
 #if (XC_MAJOR_VERSION > 4)
-     call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega',dft_xc(ixc)%gamma)
+     call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
 #else
      call xc_gga_x_wpbeh_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
 #endif
@@ -273,7 +292,7 @@ subroutine init_libxc_info(dft_xc)
 
 
  dft_xc(:)%needs_gradient = .FALSE.
- do ixc=1,nxc
+ do ixc=1,dft_xc(1)%nxc
    dft_xc(ixc)%family = xc_family_from_id(dft_xc(ixc)%id,C_NULL_PTR,C_NULL_PTR)
    dft_xc(:)%needs_gradient = dft_xc(:)%needs_gradient .OR. dft_xc(ixc)%family == XC_FAMILY_GGA &
                                                        .OR. dft_xc(ixc)%family == XC_FAMILY_HYB_GGA

@@ -12,6 +12,7 @@
 ! Do not forget the preprocessor flags!
 !
 !=========================================================================
+#include "molgw.h"
 module m_scalapack
  use m_definitions
  use m_warning

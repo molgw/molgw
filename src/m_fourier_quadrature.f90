@@ -1,10 +1,13 @@
 !=========================================================================
+! This file is part of MOLGW.
+! Author: Fabien Bruneval
+!
 ! Test implementation of quadrature in Fourier space to get the integrals for
 ! - overlap()
 ! - kinetic
 ! - electron-nucleus()
 !=========================================================================
-
+#include "molgw.h"
 module m_fourier_quadrature
   use m_definitions
   use m_warning
@@ -34,9 +37,9 @@ subroutine setup_overlap_fourier(basis_p,basis_t,reference)
   velocity(:) = 0.0_dp
 
   !
-  !  setup_gos_ao evaluates  < \phi_a | e^{i q.r} | \phi_b >
+  !  setup_gos_fourier evaluates  < \phi_a | e^{i q.r} | \phi_b >
   !
-  call setup_gos_ao(basis_p,basis_t,-velocity,s_matrix_v)
+  call setup_gos_fourier(basis_p,basis_t,-velocity,s_matrix_v)
 
 
   if( basis_t%nbf < 6 .OR. basis_p%nbf < 6 ) return
@@ -117,7 +120,7 @@ subroutine setup_nucleus_fourier(basis_p,basis_t,reference)
   enucl(:,:) = 0.0_dp
   do iq=1,nq
     ! Parallelization over the MPI world
-    ! => OPENMP parallelization may be used at lower level: inside setup_gos_ao
+    ! => OPENMP parallelization may be used at lower level: inside setup_gos_fourier
     if( MODULO(iq-1,world%nproc) /= world%rank ) cycle
 
     qvec(:) = qlist(:,iq)
@@ -130,7 +133,7 @@ subroutine setup_nucleus_fourier(basis_p,basis_t,reference)
                 - zvalence(iatom) * EXP( im * DOT_PRODUCT(qvec(:),xatom(:,iatom)) )
     enddo
 
-    call setup_gos_ao(basis_p,basis_t,-qpvvec,s_matrix_mqmv)
+    call setup_gos_fourier(basis_p,basis_t,-qpvvec,s_matrix_mqmv)
 
     enucl(:,:) = enucl(:,:) + weight * 4.0_dp * pi / NORM2(qvec)**2 &
                                    * s_matrix_mqmv(:,:) * structure_factor
@@ -328,7 +331,7 @@ end subroutine setup_kinetic_fourier
 
 
 !=========================================================================
-subroutine setup_gos_ao(basis_p,basis_t,qvec,gos_ao)
+subroutine setup_gos_fourier(basis_p,basis_t,qvec,gos_ao)
   implicit none
   type(basis_set),intent(in)          :: basis_p
   type(basis_set),intent(in)          :: basis_t
@@ -382,7 +385,7 @@ subroutine setup_gos_ao(basis_p,basis_t,qvec,gos_ao)
   !$OMP END PARALLEL
 
 
-end subroutine setup_gos_ao
+end subroutine setup_gos_fourier
 
 
 !=========================================================================

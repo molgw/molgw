@@ -6,6 +6,7 @@
 ! the procedures for input and outputs
 !
 !=========================================================================
+#include "molgw.h"
 module m_io
  use,intrinsic :: ISO_FORTRAN_ENV, only: COMPILER_VERSION,COMPILER_OPTIONS
  use m_definitions
@@ -15,6 +16,7 @@ module m_io
  use m_warning,only: issue_warning
  use m_string_tools,only: orbital_momentum_name
  use m_libint_tools,only: libint_init
+ use m_libcint_tools,only: libcint_has_range_separation,check_capability_libcint
  use m_libxc_tools,only: xc_version
  use m_linear_algebra,only: determinant_3x3_matrix
  use m_inputparam
@@ -175,15 +177,38 @@ subroutine header()
  call die('Code compiled with MPI, but without SCALAPACK. This is not permitted')
 #endif
 
+
+ !
+ ! Integrals section
+ !
+
  ! LIBINT details
  call libint_init(ammax,has_onebody,has_gradient)
+#if !defined(NO_LIBINT)
  write(stdout,'(1x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
  write(stdout,'(6x,a,i5,3x,a)') 'max angular momentum handled by your LIBINT compilation: ', &
                                 ammax,orbital_momentum_name(ammax)
+#endif
+
+ ! LIBCINT details
+#if defined(HAVE_LIBCINT)
+ has_onebody = .TRUE.
+ call check_capability_libcint(ammax)
+ write(stdout,'(/,1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ',ammax
+ if( .NOT. libcint_has_range_separation ) then
+   write(stdout,'(1x,a,i5)')   'Current LIBCINT compilation has no range-separation capability'
+ endif
+#endif
+
+#if !defined(HAVE_LIBCINT) && defined(NO_LIBINT)
+ write(stdout,*) 'Code compiled with no integral library: nor LIBINT nor LIBCINT'
+ call die('Please compile MOLGW with LIBINT or LIBCINT')
+#endif
+
  call set_molgw_lmax(ammax)
 
- if( .NOT. has_onebody ) then
-   write(stdout,'(1x,a)')  'Running with external LIBINT calculation of the one-body operators (faster)'
+ if( has_onebody ) then
+   write(stdout,'(1x,a)')  'Running with external LIBINT or LIBCINT calculation of the one-body operators (faster)'
  else
    write(stdout,'(1x,a)')  'Running with internal calculation of the one-body operators (slower)'
  endif
@@ -899,11 +924,12 @@ end subroutine plot_wfn_fourier
 
 
 !=========================================================================
-subroutine plot_rho(basis,occupation,c_matrix)
+subroutine plot_rho(rootname,basis,occupation,c_matrix)
  implicit none
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(:,:)
- real(dp),intent(in)        :: c_matrix(:,:,:)
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(in)         :: occupation(:,:)
+ real(dp),intent(in)         :: c_matrix(:,:,:)
+ character(len=*),intent(in) :: rootname
 !=====
  integer,parameter          :: nr=5000
  real(dp),parameter         :: length=8.0_dp
@@ -945,7 +971,8 @@ subroutine plot_rho(basis,occupation,c_matrix)
  xxmin = MINVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) - length
  xxmax = MAXVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) + length
 
- open(newunit=unit_rho,file='density_cut.dat',action='write')
+ open(newunit=unit_rho,file=TRIM(rootname)//'_density_cut.dat',action='write')
+ write(unit_rho,*) '#   r (bohr)      rho(r) (e/bohr**3) '
  do ir=1,nr
    rr(:) = ( xxmin + (ir-1)*(xxmax-xxmin)/REAL(nr-1,dp) ) * u(:) + a(:)
 
@@ -956,7 +983,7 @@ subroutine plot_rho(basis,occupation,c_matrix)
      phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
    enddo
 
-   write(unit_rho,'(2(1x,e12.5))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
+   write(unit_rho,'(2(1x,e14.6))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
 
  enddo
  close(unit_rho)

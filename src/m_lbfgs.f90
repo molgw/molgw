@@ -6,6 +6,7 @@
 !  an LBFGS minimization algorithm
 !
 !=========================================================================
+#include "molgw.h"
 module m_lbfgs
  use m_definitions
 

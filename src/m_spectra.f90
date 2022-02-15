@@ -6,6 +6,7 @@
 ! the routines to extract the optical spectra, stopping power in linear-response
 !
 !=========================================================================
+#include "molgw.h"
 module m_spectra
  use m_definitions
  use m_timing
@@ -82,7 +83,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
   !
   ! First precalculate all the needed dipole in the basis set
   !
-  call calculate_dipole_ao(basis,dipole_ao)
+  call setup_dipole_ao(basis,dipole_ao)
 
   !
   ! Get the dipole oscillator strength on states
@@ -247,7 +248,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
   !
   ! For some calculation conditions, the rest of the subroutine is irrelevant
   ! So skip it! Skip it!
-  if( is_triplet .OR. nexc /= chi%npole_reso ) then
+  if( is_triplet ) then
     deallocate(residue)
     return
   endif
@@ -443,7 +444,7 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
       qvec(:) = qvec_list(:,iq)
       ! Get the gos oscillator strength on states
       call start_clock(timing_tmp1)
-      call calculate_gos_ao(basis,qvec,gos_ao)
+      call setup_gos_ao(basis,qvec,gos_ao)
       call stop_clock(timing_tmp1)
 
       call start_clock(timing_tmp2)
@@ -666,7 +667,7 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
           if( qq > QMAX ) cycle
 
           call start_clock(timing_tmp1)
-          call calculate_gos_ao(basis,qvec,gos_ao)
+          call setup_gos_ao(basis,qvec,gos_ao)
           call stop_clock(timing_tmp1)
 
           call start_clock(timing_tmp2)

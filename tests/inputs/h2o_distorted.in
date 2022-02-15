@@ -1,0 +1,15 @@
+&molgw
+ scf='BHLYP'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ read_restart='no'
+ print_restart='yes'
+
+ print_multipole='yes'
+
+ natom=3
+/
+8    0.050000     0.000000     0.119105    
+1    0.000000     0.780508    -0.496421
+1   -0.050000    -0.760508    -0.476421

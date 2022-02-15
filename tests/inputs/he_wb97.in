@@ -1,0 +1,12 @@
+&molgw
+ scf='wB97'
+
+ basis='cc-pVDZ'
+
+ nscf= 100
+ tolscf=1.0e-10
+
+ natom=1
+/
+He 0. 0. 0.
+

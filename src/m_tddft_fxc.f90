@@ -7,6 +7,7 @@
 ! and in particular integrals ( i a | f_xc | j b )
 !
 !=========================================================================
+#include "molgw.h"
 module m_tddft_fxc
  use m_definitions
  use m_warning

@@ -6,6 +6,7 @@
 ! the reading / writing methods for the RESTART files
 !
 !=========================================================================
+#include "molgw.h"
 module m_restart
  use m_definitions
  use m_timing

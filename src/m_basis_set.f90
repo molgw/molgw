@@ -7,6 +7,7 @@
 ! It works for both wavefunctions basis sets and auxiliary basis sets
 !
 !=========================================================================
+#include "molgw.h"
 module m_basis_set
  use m_definitions
  use m_warning

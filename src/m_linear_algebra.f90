@@ -6,6 +6,7 @@
 ! the linear algebra routines
 !
 !=========================================================================
+#include "molgw.h"
 module m_linear_algebra
   use m_definitions
   use m_warning,only: die
