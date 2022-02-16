@@ -64,7 +64,9 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  enddo
   ! Replace NO_COEF by Hcore orbs for the initial GUESS?
  if(TRIM(init_hamiltonian)=='CORE') then
-   allocate(tmp_mat0(basis%nbf,basis%nbf),tmp_mat(basis%nbf,basis%nbf),Work(1))
+   call clean_allocate('tmp_mat0',tmp_mat0,basis%nbf,basis%nbf)
+   call clean_allocate('tmp_mat',tmp_mat,basis%nbf,basis%nbf)
+   allocate(Work(1))
    tmp_mat0=matmul(AhCORE_in,NO_COEF)
    tmp_mat=matmul(transpose(NO_COEF),tmp_mat0)
    lwork=-1
@@ -79,7 +81,9 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
    tmp_mat0=matmul(NO_COEF,tmp_mat)
    NO_COEF=tmp_mat0
    write(stdout,'(/,a)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
-   deallocate(tmp_mat0,tmp_mat,Work)
+   call clean_deallocate('tmp_mat0',tmp_mat0)
+   call clean_deallocate('tmp_mat',tmp_mat)
+   deallocate(Work)
  endif 
 
  ! Not ready for open-shell calcs. (TODO)
@@ -154,27 +158,27 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv)
  real(dp),optional,intent(inout) :: ERImol(nbf,nbf_kji,nbf_kji,nbf_kji)
  real(dp),optional,intent(inout) :: ERImolv(nbf*nbf_kji*nbf_kji*nbf_kji)
 !====
- integer                    :: istate,jstate,kstate,lstate
+ integer                    :: istate,jstate,kstate,lstate,verbose=-1
  real(dp),allocatable       :: tmp_hcore(:,:)
  real(dp),allocatable       :: tmp_c_matrix(:,:,:)
 !=====
 
  ! hCORE part
- call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf)
+ call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,verbose)
  hCORE(:,:)=0.0_dp; tmp_hcore(:,:)=0.0_dp;
  tmp_hcore=matmul(AhCORE,NO_COEF)
  hCORE=matmul(transpose(NO_COEF),tmp_hcore)
- call clean_deallocate('tmp_hcore',tmp_hcore)
+ call clean_deallocate('tmp_hcore',tmp_hcore,verbose)
 
  ! ERI terms
  if(present(ERImol)) then
    ERImol(:,:,:,:)=0.0_dp
-   call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nbf_noft,1)
+   call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nbf_noft,1,verbose)
    do istate=1,nbf_noft
     tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
    enddo
    if(noft_ri) then ! RI case
-     call calculate_eri_3center_eigen(tmp_c_matrix,1,nbf_noft,1,nbf_noft)
+     call calculate_eri_3center_eigen(tmp_c_matrix,1,nbf_noft,1,nbf_noft,verbose=verbose)
      do istate=1,nbf_occ
        do jstate=1,nbf_occ
          do kstate=1,nbf_occ
@@ -184,11 +188,11 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv)
          enddo
        enddo
      enddo
-     call destroy_eri_3center_eigen()
+     call destroy_eri_3center_eigen(verbose)
    else            ! Normal case 
     ! TODO
    endif
-   call clean_deallocate('tmp_c_matrix',tmp_c_matrix)
+   call clean_deallocate('tmp_c_matrix',tmp_c_matrix,verbose)
  endif
 
 end subroutine mo_ints

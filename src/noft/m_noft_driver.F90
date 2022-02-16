@@ -326,7 +326,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  if(ifcidump==1) then
   write(msg,'(a)') ' '
   call write_output(msg)
-  write(msg,'(a)') ' Reallocating the INTEG to print the FCIDUMP file'
+  write(msg,'(a)') ' Reallocating the INTEGd to print the FCIDUMP file'
   call write_output(msg)
   write(msg,'(a)') ' '
   call write_output(msg)

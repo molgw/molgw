@@ -232,12 +232,13 @@ end subroutine clean_allocate_1d_int8
 
 
 !=========================================================================
-subroutine clean_allocate_2d(array_name,array,n1,n2)
+subroutine clean_allocate_2d(array_name,array,n1,n2,verbose)
   implicit none
 
   character(len=*),intent(in)        :: array_name
   real(dp),allocatable,intent(inout) :: array(:,:)
   integer,intent(in)                 :: n1,n2
+  integer,optional,intent(in)        :: verbose
   !=====
   integer             :: info
   real(dp)            :: mem_mb
@@ -261,18 +262,23 @@ subroutine clean_allocate_2d(array_name,array,n1,n2)
   total_memory = total_memory + mem_mb
   peak_memory = MAX(peak_memory,total_memory)
 
-  call write_memory_allocate(array_name,mem_mb)
+  if(PRESENT(verbose)) then
+   if(verbose/=-1) call write_memory_allocate(array_name,mem_mb)
+  else
+   call write_memory_allocate(array_name,mem_mb)
+  endif
 
 end subroutine clean_allocate_2d
 
 
 !=========================================================================
-subroutine clean_allocate_2d_range(array_name,array,n1s,n1f,n2s,n2f)
+subroutine clean_allocate_2d_range(array_name,array,n1s,n1f,n2s,n2f,verbose)
   implicit none
 
   character(len=*),intent(in)        :: array_name
   real(dp),allocatable,intent(inout) :: array(:,:)
   integer,intent(in)                 :: n1s,n1f,n2s,n2f
+  integer,optional,intent(in)        :: verbose
   !=====
   integer             :: info
   real(dp)            :: mem_mb
@@ -296,18 +302,23 @@ subroutine clean_allocate_2d_range(array_name,array,n1s,n1f,n2s,n2f)
   total_memory = total_memory + mem_mb
   peak_memory = MAX(peak_memory,total_memory)
 
-  call write_memory_allocate(array_name,mem_mb)
+  if(PRESENT(verbose)) then
+   if(verbose/=-1) call write_memory_allocate(array_name,mem_mb)
+  else
+   call write_memory_allocate(array_name,mem_mb)
+  endif
 
 end subroutine clean_allocate_2d_range
 
 
 !=========================================================================
-subroutine clean_allocate_3d(array_name,array,n1,n2,n3)
+subroutine clean_allocate_3d(array_name,array,n1,n2,n3,verbose)
   implicit none
 
   character(len=*),intent(in)       :: array_name
   real(dp),allocatable,intent(inout) :: array(:,:,:)
   integer,intent(in)                 :: n1,n2,n3
+  integer,optional,intent(in)        :: verbose
   !=====
   integer             :: info
   real(dp)            :: mem_mb
@@ -331,7 +342,11 @@ subroutine clean_allocate_3d(array_name,array,n1,n2,n3)
   total_memory = total_memory + mem_mb
   peak_memory = MAX(peak_memory,total_memory)
 
-  call write_memory_allocate(array_name,mem_mb)
+  if(PRESENT(verbose)) then
+   if(verbose/=-1) call write_memory_allocate(array_name,mem_mb)
+  else
+   call write_memory_allocate(array_name,mem_mb)
+  endif
 
 end subroutine clean_allocate_3d
 
@@ -372,12 +387,13 @@ end subroutine clean_allocate_3d_range
 
 
 !=========================================================================
-subroutine clean_allocate_4d(array_name,array,n1,n2,n3,n4)
+subroutine clean_allocate_4d(array_name,array,n1,n2,n3,n4,verbose)
   implicit none
 
   character(len=*),intent(in)       :: array_name
   real(dp),allocatable,intent(inout) :: array(:,:,:,:)
   integer,intent(in)                 :: n1,n2,n3,n4
+  integer,optional,intent(in)        :: verbose
   !=====
   integer             :: info
   real(dp)            :: mem_mb
@@ -401,18 +417,23 @@ subroutine clean_allocate_4d(array_name,array,n1,n2,n3,n4)
   total_memory = total_memory + mem_mb
   peak_memory = MAX(peak_memory,total_memory)
 
-  call write_memory_allocate(array_name,mem_mb)
+  if(PRESENT(verbose)) then
+   if(verbose/=-1) call write_memory_allocate(array_name,mem_mb)
+  else
+   call write_memory_allocate(array_name,mem_mb)
+  endif
 
 end subroutine clean_allocate_4d
 
 
 !=========================================================================
-subroutine clean_allocate_4d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f,n4s,n4f)
+subroutine clean_allocate_4d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f,n4s,n4f,verbose)
   implicit none
 
   character(len=*),intent(in)        :: array_name
   real(dp),allocatable,intent(inout) :: array(:,:,:,:)
   integer,intent(in)                 :: n1s,n1f,n2s,n2f,n3s,n3f,n4s,n4f
+  integer,optional,intent(in)        :: verbose
   !=====
   integer             :: info
   real(dp)            :: mem_mb
@@ -436,7 +457,11 @@ subroutine clean_allocate_4d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f,n4s,
   total_memory = total_memory + mem_mb
   peak_memory = MAX(peak_memory,total_memory)
 
-  call write_memory_allocate(array_name,mem_mb)
+  if(PRESENT(verbose)) then
+   if(verbose/=-1) call write_memory_allocate(array_name,mem_mb)
+  else
+   call write_memory_allocate(array_name,mem_mb)
+  endif
 
 end subroutine clean_allocate_4d_range
 
@@ -664,11 +689,12 @@ end subroutine clean_deallocate_1d
 
 
 !=========================================================================
-subroutine clean_deallocate_2d(array_name,array)
+subroutine clean_deallocate_2d(array_name,array,verbose)
   implicit none
 
   character(len=*),intent(in)       :: array_name
   real(dp),allocatable,intent(inout) :: array(:,:)
+  integer,optional,intent(in)        :: verbose
   !=====
   real(dp)            :: mem_mb
   integer             :: n1,n2
@@ -685,18 +711,23 @@ subroutine clean_deallocate_2d(array_name,array)
   deallocate(array)
 
   total_memory = total_memory - mem_mb
-
-  call write_memory_deallocate(array_name,mem_mb)
+  
+  if(PRESENT(verbose)) then
+   if(verbose/=-1)call write_memory_deallocate(array_name,mem_mb)
+  else
+   call write_memory_deallocate(array_name,mem_mb)
+  endif
 
 end subroutine clean_deallocate_2d
 
 
 !=========================================================================
-subroutine clean_deallocate_3d(array_name,array)
+subroutine clean_deallocate_3d(array_name,array,verbose)
   implicit none
 
   character(len=*),intent(in)       :: array_name
   real(dp),allocatable,intent(inout) :: array(:,:,:)
+  integer,optional,intent(in)        :: verbose
   !=====
   real(dp)            :: mem_mb
   integer             :: n1,n2,n3
@@ -715,17 +746,22 @@ subroutine clean_deallocate_3d(array_name,array)
 
   total_memory = total_memory - mem_mb
 
-  call write_memory_deallocate(array_name,mem_mb)
+  if(PRESENT(verbose)) then
+   if(verbose/=-1)call write_memory_deallocate(array_name,mem_mb)
+  else
+   call write_memory_deallocate(array_name,mem_mb)
+  endif
 
 end subroutine clean_deallocate_3d
 
 
 !=========================================================================
-subroutine clean_deallocate_4d(array_name,array)
+subroutine clean_deallocate_4d(array_name,array,verbose)
   implicit none
 
   character(len=*),intent(in)       :: array_name
   real(dp),allocatable,intent(inout) :: array(:,:,:,:)
+  integer,optional,intent(in)        :: verbose
   !=====
   real(dp)            :: mem_mb
   integer             :: n1,n2,n3,n4
@@ -745,7 +781,11 @@ subroutine clean_deallocate_4d(array_name,array)
 
   total_memory = total_memory - mem_mb
 
-  call write_memory_deallocate(array_name,mem_mb)
+  if(PRESENT(verbose)) then
+   if(verbose/=-1)call write_memory_deallocate(array_name,mem_mb)
+  else
+   call write_memory_deallocate(array_name,mem_mb)
+  endif
 
 end subroutine clean_deallocate_4d
 
