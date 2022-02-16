@@ -3,8 +3,10 @@
 ! Author: Fabien Bruneval
 !
 ! This module contains
-! the memory management
+!   the memory management
+!
 !=========================================================================
+#include "molgw.h"
 module m_memory
   use m_definitions
   use m_warning,only: die

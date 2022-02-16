@@ -6,6 +6,7 @@
 ! basic tools to play with the calculated self-energies
 !
 !=========================================================================
+#include "molgw.h"
 module m_selfenergy_tools
  use m_definitions
  use m_warning

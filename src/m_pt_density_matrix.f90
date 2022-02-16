@@ -6,6 +6,7 @@
 ! the many-body perturbation theory to obtain the (perturbative) density matrix
 !
 !=========================================================================
+#include "molgw.h"
 module m_pt_density_matrix
   use m_definitions
   use m_mpi

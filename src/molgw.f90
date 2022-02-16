@@ -24,6 +24,7 @@
 !   3. Post-processings: GW, MP2, CI, TDDFT etc.
 !
 !=========================================================================
+#include "molgw.h"
 program molgw
   use m_definitions
   use m_timing
@@ -56,6 +57,7 @@ program molgw
   use m_multipole
   use m_io
   use m_fourier_quadrature
+  use m_libcint_tools
   implicit none
 
   !=====
@@ -146,6 +148,7 @@ program molgw
     write(stdout,*) 'Setting up the basis set for wavefunctions'
     call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
 
+
     !
     ! SCALAPACK distribution that depends on the system specific size, parameters etc.
     call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol)
@@ -153,9 +156,29 @@ program molgw
     if( print_rho_grid_ ) call dm_dump(basis)
 
     !
+    ! If an auxiliary basis is given, then set it up now
+    if( has_auxil_basis ) then
+      write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
+      if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
+        call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
+      else
+        call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
+      endif
+    endif
+
+#if defined(HAVE_LIBCINT)
+    if( has_auxil_basis) then
+      call init_libcint(basis,auxil_basis)
+    else
+      call init_libcint(basis)
+    endif
+#endif
+
+    !
     ! Calculate overlap matrix S so to obtain "nstate" as soon as possible
     !
     call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
+
     !
     ! Build up the overlap matrix S
     ! S only depends onto the basis set
@@ -184,16 +207,6 @@ program molgw
     ! ERI are to be stored in the module m_eri
     call prepare_eri(basis)
 
-    !
-    ! If an auxiliary basis is given, then set it up now
-    if( has_auxil_basis ) then
-      write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-      if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
-        call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
-      else
-        call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
-      endif
-    endif
 
     call calculation_parameters_yaml(basis%nbf,auxil_basis%nbf,nstate)
 
@@ -414,6 +427,11 @@ program molgw
       endif
     endif
 
+#if defined(HAVE_LIBCINT)
+    ! Reinitialize LIBCINT if atoms move
+    call destroy_libcint()
+#endif
+
   enddo ! istep
 
 
@@ -434,6 +452,15 @@ program molgw
   !
   !
   call start_clock(timing_postscf)
+
+#if defined(HAVE_LIBCINT)
+  call destroy_libcint()
+  if( has_auxil_basis) then
+    call init_libcint(basis,auxil_basis)
+  else
+    call init_libcint(basis)
+  endif
+#endif
 
   !
   ! Evaluate spin contamination
@@ -657,8 +684,11 @@ program molgw
   if(has_auxil_basis) call destroy_basis_set(auxil_basis)
   call destroy_atoms()
 
-  call destroy_cart_to_pure_transforms()
+#if defined(HAVE_LIBCINT)
+    call destroy_libcint()
+#endif
 
+  call destroy_cart_to_pure_transforms()
 
   call stop_clock(timing_postscf)
   call stop_clock(timing_total)

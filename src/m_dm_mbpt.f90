@@ -6,6 +6,7 @@
 ! the reading or the calculation of correlated density matrix
 !
 !=========================================================================
+#include "molgw.h"
 module m_dm_mbpt
   use m_definitions
   use m_timing
@@ -228,7 +229,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
     nocc = get_number_occupied_states(occupation)
     allocate(h_ii(nstate,nspin))
 
-    call matrix_ao_to_mo_diag(c_matrix,RESHAPE(hamiltonian_hartree_corr,(/basis%nbf,basis%nbf,1/)),h_ii)
+    call matrix_ao_to_mo_diag(c_matrix,hamiltonian_hartree_corr,h_ii)
     call dump_out_energy('=== Hartree expectation value from correlated density matrix ===',occupation,h_ii)
     write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
 

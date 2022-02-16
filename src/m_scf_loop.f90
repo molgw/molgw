@@ -6,6 +6,7 @@
 ! the main SCF loop for Hartree-Fock or generalized Kohn-Sham
 !
 !=========================================================================
+#include "molgw.h"
 module m_scf_loop
  use m_definitions
  use m_timing
@@ -466,7 +467,7 @@ subroutine print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltoni
    write(stdout,'(1x,a,a)') 'RESTART file read: ','RESTART_TEST'
  endif
 
- call matrix_ao_to_mo_diag(c_matrix_restart,RESHAPE(hamiltonian_hartree,(/basis%nbf,basis%nbf,1/)),h_ii)
+ call matrix_ao_to_mo_diag(c_matrix_restart,hamiltonian_hartree,h_ii)
  call dump_out_energy('=== Hartree expectation value ===',occupation,h_ii)
  call dump_out_energy_yaml('hartree expectation value',h_ii,1,nstate)
  write(stdout,'(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):',h_ii(nocc,:) * Ha_eV
@@ -507,7 +508,7 @@ subroutine print_expectations(basis,c_matrix,hkin)
  allocate(p_matrix(nbf,nbf,nspin))
  allocate(ekin(nstate,nspin))
 
- call matrix_ao_to_mo_diag(c_matrix,RESHAPE(hkin,(/nbf,nbf,1/)),ekin)
+ call matrix_ao_to_mo_diag(c_matrix,hkin,ekin)
 
 
  if( print_yaml_ .AND. is_iomaster ) then

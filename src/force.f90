@@ -6,6 +6,7 @@
 ! the calculation of the forces (requires LIBINT with gradients)
 !
 !=========================================================================
+#include "molgw.h"
 subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
   use m_definitions
   use m_warning

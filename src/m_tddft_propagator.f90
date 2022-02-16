@@ -6,6 +6,7 @@
 ! the time propagation of the KS wavefunctions for TDDFT
 !
 !=========================================================================
+#include "molgw.h"
 module m_tddft_propagator
  use m_definitions
  use m_memory
@@ -222,7 +223,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_corr
 
  if(excit_type%form==EXCIT_LIGHT) then
    call clean_allocate('Dipole_basis for TDDFT',dipole_ao,basis%nbf,basis%nbf,3)
-   call calculate_dipole_ao(basis,dipole_ao)
+   call setup_dipole_ao(basis,dipole_ao)
  end if
 
  if( print_dens_traj_tddft_ ) then

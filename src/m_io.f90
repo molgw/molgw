@@ -6,6 +6,7 @@
 ! the procedures for input and outputs
 !
 !=========================================================================
+#include "molgw.h"
 module m_io
  use,intrinsic :: ISO_FORTRAN_ENV, only: COMPILER_VERSION,COMPILER_OPTIONS
  use m_definitions
@@ -15,6 +16,7 @@ module m_io
  use m_warning,only: issue_warning
  use m_string_tools,only: orbital_momentum_name
  use m_libint_tools,only: libint_init
+ use m_libcint_tools,only: libcint_has_range_separation,check_capability_libcint
  use m_libxc_tools,only: xc_version
  use m_linear_algebra,only: determinant_3x3_matrix
  use m_inputparam
@@ -175,15 +177,38 @@ subroutine header()
  call die('Code compiled with MPI, but without SCALAPACK. This is not permitted')
 #endif
 
+
+ !
+ ! Integrals section
+ !
+
  ! LIBINT details
  call libint_init(ammax,has_onebody,has_gradient)
+#if !defined(NO_LIBINT)
  write(stdout,'(1x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
  write(stdout,'(6x,a,i5,3x,a)') 'max angular momentum handled by your LIBINT compilation: ', &
                                 ammax,orbital_momentum_name(ammax)
+#endif
+
+ ! LIBCINT details
+#if defined(HAVE_LIBCINT)
+ has_onebody = .TRUE.
+ call check_capability_libcint(ammax)
+ write(stdout,'(/,1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ',ammax
+ if( .NOT. libcint_has_range_separation ) then
+   write(stdout,'(1x,a,i5)')   'Current LIBCINT compilation has no range-separation capability'
+ endif
+#endif
+
+#if !defined(HAVE_LIBCINT) && defined(NO_LIBINT)
+ write(stdout,*) 'Code compiled with no integral library: nor LIBINT nor LIBCINT'
+ call die('Please compile MOLGW with LIBINT or LIBCINT')
+#endif
+
  call set_molgw_lmax(ammax)
 
- if( .NOT. has_onebody ) then
-   write(stdout,'(1x,a)')  'Running with external LIBINT calculation of the one-body operators (faster)'
+ if( has_onebody ) then
+   write(stdout,'(1x,a)')  'Running with external LIBINT or LIBCINT calculation of the one-body operators (faster)'
  else
    write(stdout,'(1x,a)')  'Running with internal calculation of the one-body operators (slower)'
  endif

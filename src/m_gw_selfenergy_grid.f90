@@ -7,6 +7,7 @@
 ! on a grid of imaginary frequencies
 !
 !=========================================================================
+#include "molgw.h"
 module m_gw_selfenergy_grid
   use m_definitions
   use m_timing

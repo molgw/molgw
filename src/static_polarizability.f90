@@ -6,6 +6,7 @@
 ! the routine to calculate the static polarizability within RPA
 !
 !=========================================================================
+#include "molgw.h"
 subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  use m_definitions
  use m_timing

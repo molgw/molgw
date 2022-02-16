@@ -6,6 +6,7 @@
 ! the methods to manipulate the Kohn-Sham Hamiltonian and wavefunctions
 !
 !=========================================================================
+#include "molgw.h"
 module m_hamiltonian_tools
  use m_definitions
  use m_timing
@@ -526,33 +527,38 @@ end subroutine output_homolumo
 subroutine matrix_ao_to_mo_diag(c_matrix,matrix_in,diag_out)
  implicit none
  real(dp),intent(in)  :: c_matrix(:,:,:)
- real(dp),intent(in)  :: matrix_in(:,:,:)
+ real(dp),intent(in)  :: matrix_in(..)
  real(dp),intent(out) :: diag_out(:,:)
 !=====
- integer              :: nbf,nstate,nspin_ham
+ integer              :: nbf,nstate,nspin_local
  integer              :: ispin,istate,ispin_ham
  real(dp),allocatable :: vector_tmp(:)
 !=====
 
- nbf       = SIZE(c_matrix(:,:,:),DIM=1)
- nstate    = SIZE(c_matrix(:,:,:),DIM=2)
- nspin_ham = SIZE(matrix_in,DIM=3)
+ nbf         = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate      = SIZE(c_matrix(:,:,:),DIM=2)
+ nspin_local = SIZE(c_matrix(:,:,:),DIM=3)
 
 
  allocate(vector_tmp(nbf))
 
  do ispin=1,nspin
 
-   ispin_ham = MIN(ispin,nspin_ham)
-
    !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
    !diag_i =  DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix_restart(:,istate,ispin) ) )
    do istate=1,nstate
 
      ! H * C_i
-     call DSYMV('L',nbf,1.0d0,matrix_in(1,1,ispin_ham),nbf, &
-                              c_matrix(1,istate,ispin),1,  &
-                        0.0d0,vector_tmp,1)
+     select rank(matrix_in)
+     rank(2)
+       call DSYMV('L',nbf,1.0d0,matrix_in(1,1),nbf, &
+                                c_matrix(1,istate,ispin),1,  &
+                          0.0d0,vector_tmp,1)
+     rank(3)
+       call DSYMV('L',nbf,1.0d0,matrix_in(1,1,ispin),nbf, &
+                                c_matrix(1,istate,ispin),1,  &
+                          0.0d0,vector_tmp,1)
+     end select
      ! C_i**T * (H * C_i)
      diag_out(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , vector_tmp(:) )
 
@@ -567,7 +573,8 @@ end subroutine matrix_ao_to_mo_diag
 subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
  implicit none
  real(dp),intent(in)  :: c_matrix(:,:,:)
- real(dp),intent(in)  :: matrix_in(:,:,:)
+ real(dp),intent(in)  :: matrix_in(..)
+ !real(dp),intent(in)  :: matrix_in(:,:,:)
  real(dp),intent(out) :: matrix_out(:,:,:)
 !=====
  integer                 :: nbf,nstate,nspin_local
@@ -586,9 +593,16 @@ subroutine matrix_ao_to_mo(c_matrix,matrix_in,matrix_out)
    !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
 
    ! H * C
-   call DSYMM('L','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nbf, &
-                                       c_matrix(1,1,ispin),nbf,  &
-                                 0.0d0,matrix_tmp(1,1),nbf)
+   select rank(matrix_in)
+   rank(2)
+     call DSYMM('L','L',nbf,nstate,1.0d0,matrix_in(1,1),nbf, &
+                                         c_matrix(1,1,ispin),nbf,  &
+                                   0.0d0,matrix_tmp(1,1),nbf)
+   rank(3)
+     call DSYMM('L','L',nbf,nstate,1.0d0,matrix_in(1,1,ispin),nbf, &
+                                         c_matrix(1,1,ispin),nbf,  &
+                                   0.0d0,matrix_tmp(1,1),nbf)
+   end select
 
    ! C**T * (H * C)
 #if defined(HAVE_MKL)
@@ -1139,7 +1153,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matri
      !! h_small(:,:) = MATMUL( TRANSPOSE(x_matrix(:,:)) , &
      !!                          MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
      call matrix_ao_to_mo(RESHAPE(x_matrix,[nbf,nstate,1]), &
-                          hamiltonian(:,:,ispin:ispin),h_small2)
+                          hamiltonian(:,:,ispin),h_small2)
 
      !allocate(h_small(nbf,nstate))
      !! H * X

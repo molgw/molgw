@@ -6,6 +6,7 @@
 ! the matrix to transform CART gaussian to PURE (=spherical) gaussian
 !
 !=========================================================================
+#include "molgw.h"
 module m_cart_to_pure
  use m_definitions
  use m_warning

@@ -7,6 +7,7 @@
 ! using occupation number vectors
 !
 !==================================================================
+#include "molgw.h"
 module m_ci
  use m_definitions
  use m_mpi

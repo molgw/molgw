@@ -6,6 +6,7 @@
 ! the management of the warning and error messages.
 !
 !=========================================================================
+#include "molgw.h"
 module m_warning
  use m_definitions
 

@@ -6,6 +6,7 @@
 ! the MPI information and MPI basic functions
 !
 !=========================================================================
+#include "molgw.h"
 module m_mpi
   use m_definitions
   use m_warning,only: die

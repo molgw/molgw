@@ -6,6 +6,7 @@
 ! within different flavors: GWSOSEX GWSOX
 !
 !=========================================================================
+#include "molgw.h"
 subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   use m_definitions
   use m_mpi

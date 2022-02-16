@@ -6,6 +6,7 @@
 ! or alternatively, the TDDFT "Casida" equations
 !
 !=========================================================================
+#include "molgw.h"
 subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
                                 m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
  use m_definitions

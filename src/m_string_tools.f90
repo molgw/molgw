@@ -6,6 +6,7 @@
 ! some unsorted basic operation on strings and lists
 !
 !=========================================================================
+#include "molgw.h"
 module m_string_tools
   use m_definitions
   use m_warning,only: die

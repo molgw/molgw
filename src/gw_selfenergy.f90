@@ -6,6 +6,7 @@
 ! within different flavors: G0W0, GnW0, GnWn, COHSEX, QSGW
 !
 !=========================================================================
+#include "molgw.h"
 subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
