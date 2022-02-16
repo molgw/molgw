@@ -47,8 +47,8 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
 
  Enoft = 0.0_dp
  nbf_noft=nstate  ! Number of lin. indep. molecular orbitals
- ! These can be fixed for a while... 
- !  iERItyp=1 -> use notation <ij|kl>
+ ! These varibles will remain fixed for a while
+ ! iERItyp=1 -> use notation <ij|kl>
  imethorb=1;iERItyp=1;
 
  ! Allocate arrays and initialize them 
@@ -84,7 +84,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
    endif
    tmp_mat0=matmul(NO_COEF,tmp_mat)
    NO_COEF=tmp_mat0
-   if(verbose/=-1) write(stdout,'(/,a)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
+   write(stdout,'(/,a,/)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
    call clean_deallocate('tmp_mat0',tmp_mat0,verbose)
    call clean_deallocate('tmp_mat',tmp_mat,verbose)
    deallocate(Work)
@@ -126,13 +126,13 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
 
  ! If required print post-procesing files 
  if(print_wfn_ .or. print_cube_ .or. print_wfn_files_ ) then
-   call clean_allocate('Occ_print',occ_print,nbf_noft,1)
+   call clean_allocate('Occ_print',occ_print,nbf_noft,1,verbose)
    occ_print(1:nbf_noft,1)=occ(1:nbf_noft,1)
    if( print_wfn_ )  call plot_wfn(basis,c_matrix)
    if( print_wfn_ )  call plot_rho('NOFT',basis,occ_print,c_matrix)
    if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ_print,c_matrix)
    if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,Enoft,energy)
-   call clean_deallocate('Occ_print',occ_print)
+   call clean_deallocate('Occ_print',occ_print,verbose)
  endif
 
  ! Deallocate arrays and print the normal termination 
