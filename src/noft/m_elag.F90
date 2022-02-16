@@ -129,7 +129,7 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
  endif
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
- if(totMEM>thousand) then     ! Mb to Gb
+ if(totMEM>thousand) then  ! Mb to Gb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*tol3,' Gb'
  elseif(totMEM<one) then   ! Mb to Kb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*thousand,' Kb'

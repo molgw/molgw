@@ -146,9 +146,9 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  totMEM=totMEM+RDMd%Ngammas+3*RDMd%NBF_occ
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
- if(totMEM>thousand) then     ! Mb to Gb
+ if(totMEM>thousand) then  ! Mb to Gb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*tol3,' Gb'
- elseif(totMEM<one) then ! Mb to Kb
+ elseif(totMEM<one) then   ! Mb to Kb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*thousand,' Kb'
  else                      ! Mb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM,' Mb'

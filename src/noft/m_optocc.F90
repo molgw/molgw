@@ -85,7 +85,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  allocate(GAMMAs(RDMd%Ngammas),Grad_GAMMAs(RDMd%Ngammas))
  Grad_GAMMAs=zero
  if((iter==-1).and.RDMd%GAMMAs_nread) then 
-  GAMMAs=pi/four          ! Perturbed occ. numbers (i.e pi/4) -> occ(i<Fermi level) = 0.75
+  GAMMAs=pi/four           ! Perturbed occ. numbers (i.e pi/4) -> occ(i<Fermi level) = 0.75
  else
   if(RDMd%INOF==0) then    ! HF set occ. to 0 or 1. open-shell TODO
    GAMMAs=zero
@@ -108,6 +108,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  ! Do iterations if the current GAMMAs do not produce small gradients
  icall=0
  if((.not.conveg).and.(.not.keep_occs)) then 
+!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
   if(imethod==1) then ! LBFGS
    write(msg,'(a)') 'Calling LBFGS to optimize occ. numbers'
    call write_output(msg)
@@ -121,11 +122,11 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
     call LBFGS_INTERN(RDMd%Ngammas,Mtosave,GAMMAs,Energy,Grad_GAMMAs,diagco,diag,info_print,tol5,tol16,Work,iflag)
     if(iflag<=0) exit
     icall=icall+1
-!  We allow at most 2000 evaluations of Energy and Gradient
+    !  We allow at most 2000 evaluations of Energy and Gradient
     if(icall==2000) exit
-!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
    enddo
    deallocate(Work,diag)
+!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
   else ! Conjugate gradients. (The subroutine uses goto. It is not clean but needed...)
    write(msg,'(a)') 'Calling CG to optimize occ. numbers'
    call write_output(msg)
@@ -166,9 +167,9 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
 50  if(iWork(1) /= 14) then
        goto 60
     endif
-!
-!  Storage allocation
-!
+   !
+   !  Storage allocation
+   !
    iWork(g) = iWork(nextv)
    iWork(nextv) = iWork(g) + RDMd%Ngammas
    if(iflag /= 13) goto 10
@@ -176,6 +177,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
 60  deallocate(iWork,Work,Work2)
 
   endif
+!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  endif 
  
  iter=iter+1

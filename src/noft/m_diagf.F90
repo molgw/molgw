@@ -173,7 +173,7 @@ end subroutine scale_F
 !!  ELAGd=Langragian descriptor
 !!
 !! OUTPUT
-!!  Eigvec=F matrix on input, DIIS F matrix on output
+!!  F_mat=F matrix on input, DIIS F matrix on output
 !!
 !! PARENTS
 !!  
@@ -181,14 +181,14 @@ end subroutine scale_F
 !!
 !! SOURCE
 
-subroutine diis_F(diddiis,RDMd,ELAGd,Eigvec) 
+subroutine diis_F(diddiis,RDMd,ELAGd,F_mat) 
 !Arguments ------------------------------------
 !scalars
  logical,intent(inout)::diddiis
  type(elag_t),intent(inout)::ELAGd
  type(rdm_t),intent(in)::RDMd
 !arrays
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::Eigvec
+ real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::F_mat
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,idiis1,idiisp1,info
@@ -196,27 +196,27 @@ subroutine diis_F(diddiis,RDMd,ELAGd,Eigvec)
  integer,allocatable,dimension(:)::IPIV
 !************************************************************************
  ELAGd%idiis=ELAGd%idiis+1 
- ELAGd%F_DIIS(ELAGd%idiis,:,:)=Eigvec(:,:)
+ ELAGd%F_DIIS(ELAGd%idiis,:,:)=F_mat(:,:)
  idiisp1=ELAGd%idiis+1
  do idiis1=1,ELAGd%idiis
-  ELAGd%DIIS_mat(idiis1,ELAGd%idiis) = traceF(RDMd,ELAGd,idiis1)
-  ELAGd%DIIS_mat(ELAGd%idiis,idiis1) = ELAGd%DIIS_mat(idiis1,ELAGd%idiis)
-  ELAGd%DIIS_mat(idiis1,idiisp1) = -one
-  ELAGd%DIIS_mat(idiisp1,idiis1) = -one
+  ELAGd%DIIS_mat(idiis1,ELAGd%idiis)=traceF(RDMd,ELAGd,idiis1)
+  ELAGd%DIIS_mat(ELAGd%idiis,idiis1)=ELAGd%DIIS_mat(idiis1,ELAGd%idiis)
+  ELAGd%DIIS_mat(idiis1,idiisp1)=-one
+  ELAGd%DIIS_mat(idiisp1,idiis1)=-one
  enddo
- ELAGd%DIIS_mat(idiisp1,idiisp1) = zero
+ ELAGd%DIIS_mat(idiisp1,idiisp1)=zero
  if(ELAGd%idiis>ELAGd%ndiis) then
   diddiis=.true.
   allocate(IPIV(ELAGd%ndiis_array))
   IPIV=0
   ELAGd%Coef_DIIS=zero
-  ELAGd%Coef_DIIS(ELAGd%ndiis_array) = -one
+  ELAGd%Coef_DIIS(ELAGd%ndiis_array)=-one
   call DGESV(ELAGd%ndiis_array,1,ELAGd%DIIS_mat,ELAGd%ndiis_array,IPIV,ELAGd%Coef_DIIS,ELAGd%ndiis_array,info)
   deallocate(IPIV)
   do iorb=1,RDMd%NBF_tot
    do iorb1=1,iorb-1
-    Eigvec(iorb,iorb1)=sum(ELAGd%Coef_DIIS(1:ELAGd%ndiis_array-1)*ELAGd%F_DIIS(1:ELAGd%ndiis_array-1,iorb,iorb1))
-    Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)
+    F_mat(iorb,iorb1)=sum(ELAGd%Coef_DIIS(1:ELAGd%ndiis_array-1)*ELAGd%F_DIIS(1:ELAGd%ndiis_array-1,iorb,iorb1))
+    F_mat(iorb1,iorb)=F_mat(iorb,iorb1)
    enddo
   enddo
   call ELAGd%clean_diis()

@@ -111,9 +111,9 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,lowmemERI)
  endif
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
- if(totMEM>thousand) then     ! Mb to Gb
+ if(totMEM>thousand) then  ! Mb to Gb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*tol3,' Gb'
- elseif(totMEM<one) then ! Mb to Kb
+ elseif(totMEM<one) then   ! Mb to Kb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM*thousand,' Kb'
  else                      ! Mb
   write(msg,'(a,f10.3,a)') 'Mem. required for storing INTEGd object ',totMEM,' Mb'
