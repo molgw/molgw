@@ -5,6 +5,7 @@
 ! This file contains
 ! - NOFT energy opt. with Resolution-of-Identity
 !=========================================================================
+#include "molgw.h"
 subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,Vnn)
  use m_definitions
  use m_mpi
