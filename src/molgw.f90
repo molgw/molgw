@@ -70,6 +70,7 @@ program molgw
   integer                 :: nelect
   integer                 :: nstate
   integer                 :: istep
+  integer                 :: verbose=-1
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: is_converged
@@ -498,7 +499,7 @@ program molgw
     call setup_kinetic(basis,hamiltonian_kinetic)
     ! Nucleus-electron interaction
     call setup_nucleus(basis,hamiltonian_nucleus)
-    call clean_allocate('hCORE operator ',hamiltonian_hCORE,basis%nbf,basis%nbf)
+    call clean_allocate('hCORE operator ',hamiltonian_hCORE,basis%nbf,basis%nbf,verbose)
     hamiltonian_hCORE(:,:)=hamiltonian_kinetic(:,:)+hamiltonian_nucleus(:,:)
     if(has_auxil_basis) then
      noft_ri=.true.
@@ -511,7 +512,7 @@ program molgw
 
     write(stdout,'(a,2x,f19.10)') ' NOFT Total Energy (Ha):',en_gks%total
     write(stdout,*)
-    call clean_deallocate('hCORE operator ',hamiltonian_hCORE)
+    call clean_deallocate('hCORE operator ',hamiltonian_hCORE,verbose)
 
   endif
 
