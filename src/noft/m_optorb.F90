@@ -81,7 +81,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
 !Local variables ------------------------------
 !scalars
  logical::convLambda,nogamma,diddiis
- integer::icall
+ integer::icall,iorbmax1,iorbmax2
  real(dp)::sumdiff,maxdiff,Ediff,Energy_old
 !arrays
  character(len=200)::msg
@@ -107,7 +107,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
 
   ! Check if these NO_COEF with the RDMs are already the solution =)
-  call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff)
+  call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff,iorbmax1,iorbmax2)
   if(convLambda) then
    write(msg,'(a)') 'Lambda_qp - Lambda_pq* converged for the Hemiticty of Lambda'
    call write_output(msg)
@@ -165,7 +165,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
  if(imethod==1.and.iter>0) then
-  write(msg,'(a,f15.6)') 'Max. [Lambda_qp - Lambda_pq*]= ',maxdiff
+  write(msg,'(a,f15.6,a,i5,a,i5,a)') 'Max. [Lambda_qp - Lambda_pq*]= ',maxdiff,' pair (',iorbmax1,',',iorbmax2,')'
   call write_output(msg)
   write(msg,'(a,f19.10)') 'Energy difference orb. opt.=',Ediff
   call write_output(msg)
@@ -194,10 +194,11 @@ end subroutine opt_orb
 !!
 !! SOURCE
 
-subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff)
+subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,iorbmax1,iorbmax2)
 !Arguments ------------------------------------
 !scalars
  logical,intent(inout)::converg_lamb
+ integer,intent(inout)::iorbmax1,iorbmax2
  real(dp),intent(inout)::sumdiff,maxdiff
  type(elag_t),intent(in)::ELAGd
  type(rdm_t),intent(in)::RDMd
@@ -221,6 +222,8 @@ subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff)
    endif
    if(diff>maxdiff) then
     maxdiff=diff
+    iorbmax1=iorb
+    iorbmax2=iorb1
    endif
   enddo
  enddo

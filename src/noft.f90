@@ -28,7 +28,8 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  integer                    :: istate,lwork,info
  real(dp),allocatable       :: NO_COEF(:,:),occ(:,:),energy(:,:),occ_print(:,:)
  real(dp),allocatable       :: tmp_mat0(:,:),tmp_mat(:,:),Work(:) 
- integer::imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled
+ integer                    :: imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled
+ integer                    :: verbose=-1
  character(len=200)         :: ofile_name
  external::mo_ints
 !=====
@@ -67,8 +68,8 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  enddo
   ! Replace NO_COEF by Hcore orbs for the initial GUESS?
  if(TRIM(init_hamiltonian)=='CORE') then
-   call clean_allocate('tmp_mat0',tmp_mat0,basis%nbf,basis%nbf)
-   call clean_allocate('tmp_mat',tmp_mat,basis%nbf,basis%nbf)
+   call clean_allocate('tmp_mat0',tmp_mat0,basis%nbf,basis%nbf,verbose)
+   call clean_allocate('tmp_mat',tmp_mat,basis%nbf,basis%nbf,verbose)
    allocate(Work(1))
    tmp_mat0=matmul(AhCORE_in,NO_COEF)
    tmp_mat=matmul(transpose(NO_COEF),tmp_mat0)
@@ -83,9 +84,9 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
    endif
    tmp_mat0=matmul(NO_COEF,tmp_mat)
    NO_COEF=tmp_mat0
-   write(stdout,'(/,a)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
-   call clean_deallocate('tmp_mat0',tmp_mat0)
-   call clean_deallocate('tmp_mat',tmp_mat)
+   if(verbose/=-1) write(stdout,'(/,a)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
+   call clean_deallocate('tmp_mat0',tmp_mat0,verbose)
+   call clean_deallocate('tmp_mat',tmp_mat,verbose)
    deallocate(Work)
  endif 
 
