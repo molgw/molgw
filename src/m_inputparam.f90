@@ -590,7 +590,6 @@ subroutine summary_input()
   write(stdout,'(a30,2x,a)') ' auxiliary basis set: ',auxil_basis_name(1)
   write(stdout,'(a30,2x,a)') ' gaussian type: ',gaussian_type
   write(stdout,*)
-write(*,*) 'MAU',alpha_hybrid,beta_hybrid,gamma_hybrid,rcut
 
   call output_positions()
 

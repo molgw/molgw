@@ -36,10 +36,12 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  call start_clock(timing_noft_energy)
 
  ! Write hearder and set name for $name.noft file
- write(stdout,'(/,a)') ' RI-NOFT calculation'
  write(ofile_name,'(2a)') trim(output_name),'noft'
- write(stdout,'(3a)') ' writting NOFT results to ',trim(ofile_name),' file.'
- write(stdout,'(a)') ' '
+ write(stdout,'(/,a)') ' =================================================='
+ write(stdout,'(a)')   ' RI-NOFT calculation'
+ write(stdout,'(3a)')  ' writting NOFT results to ',trim(ofile_name),' file.'
+ write(stdout,'(a)')   ' =================================================='
+ write(stdout,'(/,a)') ' '
 
  Enoft = 0.0_dp
  nbf_noft=nstate  ! Number of lin. indep. molecular orbitals
@@ -131,12 +133,16 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
    call clean_deallocate('Occ_print',occ_print)
  endif
 
- ! Deallocate arrays 
+ ! Deallocate arrays and print the normal termination 
  call clean_deallocate('AhCORE',AhCORE)
  call clean_deallocate('Aoverlap',Aoverlap)
  call clean_deallocate('NO_COEF',NO_COEF)
  call clean_deallocate('NO_occ',occ)
  call clean_deallocate('NO_energies',energy)
+ write(stdout,'(/,a)') ' =================================================='
+ write(stdout,'(a)')   ' RI-NOFT SCF done'
+ write(stdout,'(a)')   ' =================================================='
+ write(stdout,'(/,a)') ' '
 
  ! Stop clock
  call stop_clock(timing_noft_energy)
