@@ -37,12 +37,6 @@ module m_libcint_tools
 
   integer,private,parameter :: LIBCINT_env_size=10000
 
-  integer(C_INT),protected :: LIBCINT_natm,LIBCINT_nbas
-  integer(C_INT),protected :: LIBCINT_AUXIL_BASIS_START
-  integer(C_INT),protected,allocatable :: atm(:,:)
-  integer(C_INT),protected,allocatable :: bas(:,:)
-  real(C_DOUBLE),protected,allocatable :: env(:)
-
   logical,protected :: libcint_has_range_separation
   integer,external  :: cint2e_cart
   integer,external  :: cint2c2e_cart
@@ -157,7 +151,7 @@ subroutine check_capability_libcint(lmax)
   !=====
 
   ! LIBCINT goes up to lmax=7
-  if( lmax > 0 ) then 
+  if( lmax > 0 ) then
     lmax = MIN(lmax,7)
   else
     lmax = 7
@@ -186,7 +180,7 @@ subroutine check_capability_libcint(lmax)
   info = cint2c2e_cart(integral, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env, 0_C_LONG)
 #endif
 
-  libcint_has_range_separation = ABS( integral(1) - reference_value ) < 1.0e-12_dp 
+  libcint_has_range_separation = ABS( integral(1) - reference_value ) < 1.0e-12_dp
 
 
 end subroutine check_capability_libcint
@@ -195,7 +189,7 @@ end subroutine check_capability_libcint
 !=========================================================================
 subroutine set_rinv_origin_libcint(x0,env_local)
   implicit none
-  real(dp),intent(in) :: x0(3)
+  real(dp),intent(in)          :: x0(3)
   real(C_DOUBLE),intent(inout) :: env_local(:)
   !=====
   !=====
@@ -206,9 +200,10 @@ end subroutine set_rinv_origin_libcint
 
 
 !=========================================================================
-subroutine set_erf_screening_length_libcint(rcut)
+subroutine set_erf_screening_length_libcint(basis,rcut)
   implicit none
-  real(dp),intent(in) :: rcut
+  type(basis_set),intent(inout) :: basis
+  real(dp),intent(in)           :: rcut
   !=====
   !=====
 
@@ -218,91 +213,91 @@ subroutine set_erf_screening_length_libcint(rcut)
     if( .NOT. libcint_has_range_separation ) then
        call die('')
     endif
-    env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_dp / rcut
+    basis%LIBCINT_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_dp / rcut
   else
-    env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp 
+    basis%LIBCINT_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp
   endif
 
 end subroutine set_erf_screening_length_libcint
 
 
 !=========================================================================
-subroutine init_libcint(basis,auxil_basis)
+subroutine init_libcint(basis1,basis2)
   implicit none
-  type(basis_set),intent(in)          :: basis
-  type(basis_set),optional,intent(in) :: auxil_basis
+  type(basis_set),intent(inout)       :: basis1
+  type(basis_set),optional,intent(in) :: basis2
   !=====
   integer :: off,icenter_basis,ishell
   !=====
 
-  if( PRESENT(auxil_basis) ) then
-    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data: basis and auxiliary basis'
+  if( PRESENT(basis2) ) then
+    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 2 basis sets'
   else
-    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data: basis'
+    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 1 basis set'
   endif
 
-  LIBCINT_natm = ncenter_basis
-  LIBCINT_nbas = basis%nshell
-  if( PRESENT(auxil_basis) ) then
-    LIBCINT_nbas = LIBCINT_nbas + auxil_basis%nshell
+  basis1%LIBCINT_natm = ncenter_basis
+  basis1%LIBCINT_nbas = basis1%nshell
+  if( PRESENT(basis2) ) then
+    basis1%LIBCINT_nbas = basis1%LIBCINT_nbas + basis2%nshell
   endif
 
-  allocate(atm(LIBCINT_ATM_SLOTS,LIBCINT_natm))
-  allocate(bas(LIBCINT_BAS_SLOTS,LIBCINT_nbas))
-  allocate(env(LIBCINT_env_size))
+  allocate(basis1%LIBCINT_atm(LIBCINT_ATM_SLOTS,basis1%LIBCINT_natm))
+  allocate(basis1%LIBCINT_bas(LIBCINT_BAS_SLOTS,basis1%LIBCINT_nbas))
+  allocate(basis1%LIBCINT_env(LIBCINT_env_size))
 
   ! real space origin
-  env(LIBCINT_PTR_COMMON_ORIG+1) = 0.0_C_DOUBLE
-  env(LIBCINT_PTR_COMMON_ORIG+2) = 0.0_C_DOUBLE
-  env(LIBCINT_PTR_COMMON_ORIG+3) = 0.0_C_DOUBLE
+  basis1%LIBCINT_env(LIBCINT_PTR_COMMON_ORIG+1) = 0.0_C_DOUBLE
+  basis1%LIBCINT_env(LIBCINT_PTR_COMMON_ORIG+2) = 0.0_C_DOUBLE
+  basis1%LIBCINT_env(LIBCINT_PTR_COMMON_ORIG+3) = 0.0_C_DOUBLE
   off = LIBCINT_PTR_ENV_START
 
   do icenter_basis=1,ncenter_basis
-    atm(LIBCINT_CHARGE_OF,icenter_basis) = zbasis(icenter_basis)
-    atm(LIBCINT_PTR_COORD,icenter_basis) = off ! note the 0-based index
-    env(off+1:off+3) = xbasis(:,icenter_basis)
+    basis1%LIBCINT_atm(LIBCINT_CHARGE_OF,icenter_basis) = zbasis(icenter_basis)
+    basis1%LIBCINT_atm(LIBCINT_PTR_COORD,icenter_basis) = off ! note the 0-based index
+    basis1%LIBCINT_env(off+1:off+3) = xbasis(:,icenter_basis)
     off = off + 3
   enddo
 
-  do ishell=1,basis%nshell
-    bas(LIBCINT_ATOM_OF  ,ishell)  = basis%shell(ishell)%icenter - 1 ! C convention starts with 0
-    bas(LIBCINT_ANG_OF   ,ishell)  = basis%shell(ishell)%am
-    bas(LIBCINT_NPRIM_OF ,ishell)  = basis%shell(ishell)%ng
-    bas(LIBCINT_NCTR_OF  ,ishell)  = 1   ! so far take shells one at a time (even if they share exponents)
-    bas(LIBCINT_PTR_EXP  ,ishell)  = off ! note the 0-based index
-    env(off+1:off+basis%shell(ishell)%ng) = basis%shell(ishell)%alpha(:)
-    off = off + basis%shell(ishell)%ng
-    bas(LIBCINT_PTR_COEFF,ishell) = off
-    select case(basis%shell(ishell)%am)
+  do ishell=1,basis1%nshell
+    basis1%LIBCINT_bas(LIBCINT_ATOM_OF  ,ishell)  = basis1%shell(ishell)%icenter - 1 ! C convention starts with 0
+    basis1%LIBCINT_bas(LIBCINT_ANG_OF   ,ishell)  = basis1%shell(ishell)%am
+    basis1%LIBCINT_bas(LIBCINT_NPRIM_OF ,ishell)  = basis1%shell(ishell)%ng
+    basis1%LIBCINT_bas(LIBCINT_NCTR_OF  ,ishell)  = 1   ! so far take shells one at a time (even if they share exponents)
+    basis1%LIBCINT_bas(LIBCINT_PTR_EXP  ,ishell)  = off ! note the 0-based index
+    basis1%LIBCINT_env(off+1:off+basis1%shell(ishell)%ng) = basis1%shell(ishell)%alpha(:)
+    off = off + basis1%shell(ishell)%ng
+    basis1%LIBCINT_bas(LIBCINT_PTR_COEFF,ishell) = off
+    select case(basis1%shell(ishell)%am)
     case(0,1)
-      env(off+1:off+basis%shell(ishell)%ng) = basis%shell(ishell)%coeff(:) &
-                * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * basis%shell(ishell)%am + 1 )
+      basis1%LIBCINT_env(off+1:off+basis1%shell(ishell)%ng) = basis1%shell(ishell)%coeff(:) &
+                * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * basis1%shell(ishell)%am + 1 )
     case default
-      env(off+1:off+basis%shell(ishell)%ng) = basis%shell(ishell)%coeff(:)
+      basis1%LIBCINT_env(off+1:off+basis1%shell(ishell)%ng) = basis1%shell(ishell)%coeff(:)
     end select
-    off = off + basis%shell(ishell)%ng
+    off = off + basis1%shell(ishell)%ng
   enddo
 
-  LIBCINT_AUXIL_BASIS_START = basis%nshell
+  basis1%LIBCINT_offset = basis1%nshell
 
-  if( PRESENT(auxil_basis) ) then
-    do ishell=1,auxil_basis%nshell
-      bas(LIBCINT_ATOM_OF  ,LIBCINT_AUXIL_BASIS_START + ishell)  = auxil_basis%shell(ishell)%icenter - 1 ! C convention starts with 0
-      bas(LIBCINT_ANG_OF   ,LIBCINT_AUXIL_BASIS_START + ishell)  = auxil_basis%shell(ishell)%am
-      bas(LIBCINT_NPRIM_OF ,LIBCINT_AUXIL_BASIS_START + ishell)  = auxil_basis%shell(ishell)%ng
-      bas(LIBCINT_NCTR_OF  ,LIBCINT_AUXIL_BASIS_START + ishell)  = 1   ! so far take shells one at a time (even if they share exponents)
-      bas(LIBCINT_PTR_EXP  ,LIBCINT_AUXIL_BASIS_START + ishell)  = off ! note the 0-based index
-      env(off+1:off+auxil_basis%shell(ishell)%ng) = auxil_basis%shell(ishell)%alpha(:)
-      off = off + auxil_basis%shell(ishell)%ng
-      bas(LIBCINT_PTR_COEFF,LIBCINT_AUXIL_BASIS_START + ishell) = off
-      select case(auxil_basis%shell(ishell)%am)
+  if( PRESENT(basis2) ) then
+    do ishell=1,basis2%nshell
+      basis1%LIBCINT_bas(LIBCINT_ATOM_OF  ,basis1%LIBCINT_offset + ishell)  = basis2%shell(ishell)%icenter - 1 ! C convention starts with 0
+      basis1%LIBCINT_bas(LIBCINT_ANG_OF   ,basis1%LIBCINT_offset + ishell)  = basis2%shell(ishell)%am
+      basis1%LIBCINT_bas(LIBCINT_NPRIM_OF ,basis1%LIBCINT_offset + ishell)  = basis2%shell(ishell)%ng
+      basis1%LIBCINT_bas(LIBCINT_NCTR_OF  ,basis1%LIBCINT_offset + ishell)  = 1   ! so far take shells one at a time (even if they share exponents)
+      basis1%LIBCINT_bas(LIBCINT_PTR_EXP  ,basis1%LIBCINT_offset + ishell)  = off ! note the 0-based index
+      basis1%LIBCINT_env(off+1:off+basis2%shell(ishell)%ng) = basis2%shell(ishell)%alpha(:)
+      off = off + basis2%shell(ishell)%ng
+      basis1%LIBCINT_bas(LIBCINT_PTR_COEFF,basis1%LIBCINT_offset + ishell) = off
+      select case(basis2%shell(ishell)%am)
       case(0,1)
-        env(off+1:off+auxil_basis%shell(ishell)%ng) = auxil_basis%shell(ishell)%coeff(:) &
-                  * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * auxil_basis%shell(ishell)%am + 1 )
+        basis1%LIBCINT_env(off+1:off+basis2%shell(ishell)%ng) = basis2%shell(ishell)%coeff(:) &
+                  * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * basis2%shell(ishell)%am + 1 )
       case default
-        env(off+1:off+auxil_basis%shell(ishell)%ng) = auxil_basis%shell(ishell)%coeff(:)
+        basis1%LIBCINT_env(off+1:off+basis2%shell(ishell)%ng) = basis2%shell(ishell)%coeff(:)
       end select
-      off = off + auxil_basis%shell(ishell)%ng
+      off = off + basis2%shell(ishell)%ng
     enddo
   endif
 
@@ -311,15 +306,18 @@ end subroutine init_libcint
 
 
 !=========================================================================
-subroutine destroy_libcint()
+subroutine destroy_libcint(basis)
   implicit none
+  type(basis_set),intent(inout) :: basis
+  !=====
+  !=====
 
-  LIBCINT_natm = 0
-  LIBCINT_nbas = 0
-  LIBCINT_AUXIL_BASIS_START = 0
-  if( ALLOCATED(atm) ) deallocate(atm)
-  if( ALLOCATED(bas) ) deallocate(bas)
-  if( ALLOCATED(env) ) deallocate(env)
+  basis%LIBCINT_natm = 0
+  basis%LIBCINT_nbas = 0
+  basis%LIBCINT_offset = 0
+  if( ALLOCATED(basis%LIBCINT_atm) ) deallocate(basis%LIBCINT_atm)
+  if( ALLOCATED(basis%LIBCINT_bas) ) deallocate(basis%LIBCINT_bas)
+  if( ALLOCATED(basis%LIBCINT_env) ) deallocate(basis%LIBCINT_env)
 
 end subroutine destroy_libcint
 
@@ -356,7 +354,7 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
   tmp_env(:) = 0.0_dp
 
   if( rcut < 1.0e-12 ) then
-    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp  
+    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp
   else
     tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_dp / rcut
   endif
@@ -472,7 +470,7 @@ subroutine libcint_overlap_3center(amA,contrdepthA,A,alphaA,cA, &
   tmp_env(:) = 0.0_dp
 
   if( rcut < 1.0e-12 ) then
-    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp  
+    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp
   else
     tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_dp / rcut
   endif

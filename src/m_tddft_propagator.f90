@@ -2353,7 +2353,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
  implicit none
 !=====
- type(basis_set),intent(in)      :: basis
+ type(basis_set),intent(inout)   :: basis
  integer,intent(in)              :: nstate
  integer,intent(in)              :: itau
  real(dp),intent(in)             :: time_cur

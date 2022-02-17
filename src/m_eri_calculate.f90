@@ -72,11 +72,11 @@ end subroutine destroy_eri_3center
 !=========================================================================
 subroutine calculate_eri(print_eri_,basis,rcut)
  implicit none
- logical,intent(in)           :: print_eri_
- type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: rcut
+ logical,intent(in)            :: print_eri_
+ type(basis_set),intent(inout) :: basis
+ real(dp),intent(in)           :: rcut
 !=====
- integer(int8)                :: iint
+ integer(int8)                 :: iint
 !=====
 
  call start_clock(timing_eri_4center)
@@ -124,8 +124,8 @@ end subroutine calculate_eri
 !=========================================================================
 subroutine calculate_eri_4center(basis,rcut)
  implicit none
- type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: rcut
+ type(basis_set),intent(inout) :: basis
+ real(dp),intent(in)           :: rcut
 !=====
  logical                      :: is_longrange
  integer                      :: ishell,jshell,kshell,lshell
@@ -154,10 +154,10 @@ subroutine calculate_eri_4center(basis,rcut)
 #if defined(HAVE_LIBCINT)
  if( .NOT. is_longrange ) then
    write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBCINT)'
-   call set_erf_screening_length_libcint(0.0_dp)
+   call set_erf_screening_length_libcint(basis,0.0_dp)
  else
    write(stdout,'(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBCINT)'
-   call set_erf_screening_length_libcint(rcut)
+   call set_erf_screening_length_libcint(basis,rcut)
  endif
 #else
  if( .NOT. is_longrange ) then
@@ -239,7 +239,8 @@ subroutine calculate_eri_4center(basis,rcut)
      shls(3) = jshell-1  ! C convention starts with 0
      shls(4) = ishell-1  ! C convention starts with 0
 
-     cint_info = cint2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+     cint_info = cint2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                             basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
 
 #else
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
@@ -308,7 +309,7 @@ end subroutine calculate_eri_4center
 subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
                                        shellABCD)
  implicit none
- type(basis_set),intent(in)       :: basis
+ type(basis_set),intent(inout)    :: basis
  real(dp),intent(in)              :: rcut
  integer,intent(in)               :: ijshellpair,klshellpair
  real(dp),allocatable,intent(out) :: shellABCD(:,:,:,:)
@@ -334,7 +335,7 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
  is_longrange = (rcut > 1.0e-12_dp)
 
 #if defined(HAVE_LIBCINT)
- call set_erf_screening_length_libcint(rcut)
+ call set_erf_screening_length_libcint(basis,rcut)
 #else
  rcut_libint = rcut
 #endif
@@ -403,7 +404,8 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
  shls(3) = jshell-1  ! C convention starts with 0
  shls(4) = ishell-1  ! C convention starts with 0
 
- cint_info = cint2e_cart(shell_libint, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+ cint_info = cint2e_cart(shell_libint, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                         basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
 
 #else
  call libint_4center(am1,ng1,x01,alpha1,coeff1, &
@@ -433,13 +435,13 @@ end subroutine calculate_eri_4center_shell
 subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
                                             shell_gradA,shell_gradB,shell_gradC,shell_gradD)
  implicit none
- type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: rcut
- integer,intent(in)           :: ijshellpair,klshellpair
- real(dp),intent(out)         :: shell_gradA(:,:,:,:,:)
- real(dp),intent(out)         :: shell_gradB(:,:,:,:,:)
- real(dp),intent(out)         :: shell_gradC(:,:,:,:,:)
- real(dp),intent(out)         :: shell_gradD(:,:,:,:,:)
+ type(basis_set),intent(inout) :: basis
+ real(dp),intent(in)           :: rcut
+ integer,intent(in)            :: ijshellpair,klshellpair
+ real(dp),intent(out)          :: shell_gradA(:,:,:,:,:)
+ real(dp),intent(out)          :: shell_gradB(:,:,:,:,:)
+ real(dp),intent(out)          :: shell_gradC(:,:,:,:,:)
+ real(dp),intent(out)          :: shell_gradD(:,:,:,:,:)
 !=====
  logical                      :: is_longrange
  integer                      :: ishell,jshell,kshell,lshell
@@ -608,8 +610,8 @@ end subroutine calculate_eri_4center_shell_grad
 subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  implicit none
 
- type(basis_set),intent(in)   :: basis,auxil_basis
- real(dp),intent(in)          :: rcut
+ type(basis_set),intent(inout) :: basis,auxil_basis
+ real(dp),intent(in)           :: rcut
  !=====
  logical                      :: recalculation
  logical,allocatable          :: mask(:),mask_auxil(:)
@@ -687,9 +689,9 @@ end subroutine calculate_eri_ri
 !=========================================================================
 subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil)
  implicit none
- type(basis_set),intent(in)   :: auxil_basis
- real(dp),intent(in)          :: rcut
- logical,intent(in),optional  :: mask_auxil(:)
+ type(basis_set),intent(inout) :: auxil_basis
+ real(dp),intent(in)           :: rcut
+ logical,intent(in),optional   :: mask_auxil(:)
  !=====
  logical                      :: is_longrange
  integer                      :: ishell,kshell
@@ -729,7 +731,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 #if defined(HAVE_LIBCINT)
    write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ', &
                                nprow_3center,' x ',npcol_3center
-   call set_erf_screening_length_libcint(0.0_dp)
+   call set_erf_screening_length_libcint(auxil_basis,0.0_dp)
 #else
    write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center,' x ',npcol_3center
@@ -737,7 +739,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 #else
 #if defined(HAVE_LIBCINT)
    write(stdout,'(a)') ' 2-center integrals (LIBCINT)'
-   call set_erf_screening_length_libcint(0.0_dp)
+   call set_erf_screening_length_libcint(auxil_basis,0.0_dp)
 #else
    write(stdout,'(a)') ' 2-center integrals (LIBINT)'
 #endif
@@ -747,7 +749,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 #if defined(HAVE_LIBCINT)
    write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBCINT): ', &
                                nprow_3center,' x ',npcol_3center
-   call set_erf_screening_length_libcint(rcut)
+   call set_erf_screening_length_libcint(auxil_basis,rcut)
 #else
    write(stdout,'(a,i4,a,i4)') ' 2-center LR integrals distributed using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center,' x ',npcol_3center
@@ -755,7 +757,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
 #else
 #if defined(HAVE_LIBCINT)
    write(stdout,'(a)') ' 2-center integrals (LIBCINT)'
-   call set_erf_screening_length_libcint(rcut)
+   call set_erf_screening_length_libcint(auxil_basis,rcut)
 #else
    write(stdout,'(a)') ' 2-center LR integrals (LIBINT)'
 #endif
@@ -841,10 +843,11 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
        allocate( int_shell( n1c*n3c ) )
 
 #if defined(HAVE_LIBCINT)
-       shls(1) = LIBCINT_AUXIL_BASIS_START + kshell-1  ! C convention starts with 0
-       shls(2) = LIBCINT_AUXIL_BASIS_START + ishell-1  ! C convention starts with 0
+       shls(1) = kshell-1  ! C convention starts with 0
+       shls(2) = ishell-1  ! C convention starts with 0
 
-       cint_info = cint2c2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+       cint_info = cint2c2e_cart(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                                 auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
 
 #else
 
@@ -918,8 +921,8 @@ end subroutine calculate_integrals_eri_2center_scalapack
 !=========================================================================
 subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
  implicit none
- type(basis_set),intent(in)   :: auxil_basis
- real(dp),intent(in)          :: rcut
+ type(basis_set),intent(inout) :: auxil_basis
+ real(dp),intent(in)           :: rcut
  !=====
  logical                      :: is_longrange
  integer                      :: ishell,kshell
@@ -1011,8 +1014,8 @@ end subroutine calculate_inverse_eri_2center_scalapack
 !=========================================================================
 subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
  implicit none
- type(basis_set),intent(in)   :: auxil_basis
- real(dp),intent(in)          :: rcut
+ type(basis_set),intent(inout) :: auxil_basis
+ real(dp),intent(in)           :: rcut
  !=====
  logical                      :: is_longrange
  integer                      :: ishell,kshell
@@ -1226,10 +1229,10 @@ end subroutine calculate_inverse_sqrt_eri_2center_scalapack
 !=========================================================================
 subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask,mask_auxil)
  implicit none
- type(basis_set),intent(in)   :: basis
- type(basis_set),intent(in)   :: auxil_basis
- real(dp),intent(in)          :: rcut
- logical,intent(in),optional  :: mask(:),mask_auxil(:)
+ type(basis_set),intent(inout) :: basis
+ type(basis_set),intent(inout) :: auxil_basis
+ real(dp),intent(in)           :: rcut
+ logical,intent(in),optional   :: mask(:),mask_auxil(:)
 !=====
  logical                      :: is_longrange
  integer                      :: agt
@@ -1282,7 +1285,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
  if( .NOT. is_longrange ) then
 #if defined(HAVE_LIBCINT)
    write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBCINT 3center)'
-   call set_erf_screening_length_libcint(0.0_dp)
+   call set_erf_screening_length_libcint(basis,0.0_dp)
 #else
    write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
 #endif
@@ -1427,9 +1430,10 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 #if defined(HAVE_LIBCINT)
        shls(1) = lshell-1                              ! C convention starts with 0
        shls(2) = kshell-1                              ! C convention starts with 0
-       shls(3) = LIBCINT_AUXIL_BASIS_START + ishell-1  ! C convention starts with 0
+       shls(3) = basis%LIBCINT_offset + ishell-1  ! C convention starts with 0
 
-       cint_info = cint3c2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+       cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                 basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
 
 #else
        am3 = amk
@@ -1529,8 +1533,8 @@ end subroutine calculate_integrals_eri_3center_scalapack
 !=========================================================================
 subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  implicit none
- type(basis_set),intent(in)   :: basis
- type(basis_set),intent(in)   :: auxil_basis
+ type(basis_set),intent(inout) :: basis
+ type(basis_set),intent(inout) :: auxil_basis
  real(dp),intent(in)          :: rcut
 !=====
  logical                      :: is_longrange
@@ -1581,14 +1585,14 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  if( .NOT. is_longrange ) then
 #if defined(HAVE_LIBCINT)
    write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBCINT 3center)'
-   call set_erf_screening_length_libcint(0.0_dp)
+   call set_erf_screening_length_libcint(basis,0.0_dp)
 #else
    write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
 #endif
  else
 #if defined(HAVE_LIBCINT)
    write(stdout,'(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBCINT 3center)'
-   call set_erf_screening_length_libcint(rcut)
+   call set_erf_screening_length_libcint(basis,rcut)
 #else
    write(stdout,'(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBINT 3center)'
 #endif
@@ -1738,9 +1742,10 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 #if defined(HAVE_LIBCINT)
          shls(1) = lshell-1                              ! C convention starts with 0
          shls(2) = kshell-1                              ! C convention starts with 0
-         shls(3) = LIBCINT_AUXIL_BASIS_START + ishell-1  ! C convention starts with 0
+         shls(3) = basis%LIBCINT_offset + ishell-1  ! C convention starts with 0
 
-         cint_info = cint3c2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+         cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                   basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
 
 #else
          am3 = amk
@@ -1898,7 +1903,7 @@ end subroutine calculate_eri_3center_scalapack
 !=========================================================================
 subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vhrho)
  implicit none
- type(basis_set),intent(in)   :: basis
+ type(basis_set),intent(inout) :: basis
  real(dp),intent(in)          :: x0_rho(3)
  real(dp),intent(in)          :: coeff_rho(:),alpha_rho(:)
  real(dp),intent(inout)       :: vhrho(:,:)

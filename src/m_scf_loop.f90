@@ -46,7 +46,7 @@ subroutine scf_loop(is_restart,&
 
 !=====
  logical,intent(in)                 :: is_restart
- type(basis_set),intent(in)         :: basis
+ type(basis_set),intent(inout)      :: basis
  real(dp),intent(in)                :: x_matrix(:,:)
  real(dp),intent(in)                :: s_matrix(:,:)
  real(dp),intent(in)                :: hamiltonian_kinetic(:,:)
@@ -487,9 +487,9 @@ end subroutine print_hartee_expectation
 subroutine print_expectations(basis,c_matrix,hkin)
  implicit none
 
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(in)        :: hkin(:,:)
+ type(basis_set),intent(inout) :: basis
+ real(dp),intent(in)           :: c_matrix(:,:,:)
+ real(dp),intent(in)           :: hkin(:,:)
 !=====
  real(dp),allocatable       :: p_matrix(:,:,:)
  real(dp),allocatable       :: hh(:,:),ekin(:,:)
