@@ -415,13 +415,25 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
  real(C_DOUBLE)                    :: B(3)
  real(C_DOUBLE),allocatable        :: alphaB(:)
  real(C_DOUBLE),allocatable        :: cB(:)
+#if defined(HAVE_LIBCINT)
+  integer                           :: idir
+  real(C_DOUBLE),allocatable        :: array_cart(:,:)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+#endif
 !=====
 
  !! We only need to calculate < grad P | T > here since we'll transpose
  !! S_grad to get D => only < T | grad P > needs recalc in D
 
  call start_clock(timing_overlap_grad)
- write(stdout,'(/,a)') 'Recalculate gradient of the overlap matrix S (LIBINT)'
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') 'Recalculate gradient of the overlap matrix S (LIBCINT)'
+#elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
+  write(stdout,'(/,a)') 'Recalculate gradient of the overlap matrix S (LIBINT)'
+#else
+  call die('recalc_overlap_grad: missing LIBINT or LIBCINT one-body gradient terms')
+#endif
 
  s_matrix_grad(:,:,:) = 0.0_dp
 
@@ -441,19 +453,31 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
      ibf1    = basis_p%shell(ishell)%istart + basis_t%nbf
      ibf2    = basis_p%shell(ishell)%iend + basis_t%nbf
 
+#if defined(HAVE_LIBCINT)
+      allocate(array_cart(ni_cart*nj_cart,3))
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1+basis_t%nshell  ! C convention starts with 0
+      info = cint1e_ipovlp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+
+      do idir=1,3
+        call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart(:,idir),matrix_tp)
+        ! There is a sign change wrt LIBINT
+        s_matrix_grad(ibf1:ibf2,jbf1:jbf2,idir) = -matrix_tp(:,:)
+      enddo
+      deallocate(matrix_tp)
+
+      deallocate(array_cart)
+
+#elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
+
      call set_libint_shell(basis_p%shell(ishell),amA,contrdepthA,A,alphaA,cA)
 
      allocate(array_cart_gradx(ni_cart*nj_cart))
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
-
-#if (LIBINT2_DERIV_ONEBODY_ORDER > 0)
      call libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
-#else
-     call die('overlap gradient not implemented without LIBINT one-body gradient terms')
-#endif
 
      deallocate(alphaA,cA)
 
@@ -474,6 +498,7 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
      deallocate(array_cart_grady)
      deallocate(array_cart_gradz)
      deallocate(matrix_tp)
+#endif
 
    enddo
    deallocate(alphaB,cB)
