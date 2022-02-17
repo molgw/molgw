@@ -47,6 +47,7 @@ contains
 !! OUTPUT
 !!  RDMd=Object containg all required variables whose arrays are properly updated
 !!  GAMMAs=Independent variables used in the unconstrained optimization as cos^2 (gamma) + sin^2 (gamma) = 1
+!!  chempot=When looking for chemical potential calc. the d OCC(iorb)/d GAMMAs_igamma =1 (i.e. we only want dDM2/dOCC(iorb))
 !!
 !! PARENTS
 !!  
@@ -54,9 +55,10 @@ contains
 !!
 !! SOURCE
 
-subroutine gamma_to_2rdm(RDMd,GAMMAs)
+subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !Arguments ------------------------------------
 !scalars
+ logical,optional,intent(in)::chempot
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),dimension(RDMd%Ngammas),intent(in)::GAMMAs
@@ -214,6 +216,16 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs)
   deallocate(hole,Dhole_gamma)
  endif
  deallocate(Docc_gamma0,Dsqrt_occ_gamma0)
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+!     If we are looking for the chemical potential mu = h_ii + d Vee/dn_i
+!     (Here we pretend that OCC(iorb) = GAMMAs(iorb))
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ if(present(chempot)) then
+  do iorb=1,RDMd%NBF_occ
+   Docc_gamma(iorb,:)=one
+   Dsqrt_occ_gamma(iorb,:)=half/(dsqrt(RDMd%occ(iorb))+tol8)
+  enddo
+ endif 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     Sum of the Holes below the Fermi Level (RDMd%Sums)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -407,7 +419,7 @@ subroutine dm2_mbb(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_K
   DM2_iiii(iorb)=two*RDMd%occ(iorb)*RDMd%occ(iorb)-RDMd%occ(iorb)
   DM2_J(iorb,iorb)=zero
   DM2_K(iorb,iorb)=zero
-  RDMd%Dfni_ni(iorb)=4.0d0*RDMd%occ(iorb)-one
+  RDMd%Dfni_ni(iorb)=four*RDMd%occ(iorb)-one
   DDM2_gamma_J(iorb,iorb,:)=zero
   DDM2_gamma_K(iorb,iorb,:)=zero
  enddo
@@ -487,13 +499,13 @@ subroutine dm2_power(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2
   enddo
  end if
 !-----------------------------------------------------------------------
-!          DM2(iorb,iorb,iorb,iorb)=2*OCC(iorb)*OCC(iorb)-OCC(iorb)
+!          DM2(iorb,iorb,iorb,iorb)=2*OCC(iorb)*OCC(iorb)- (OCC(iorb)**(2*power)
 !-----------------------------------------------------------------------
  do iorb=1,RDMd%NBF_occ
   DM2_iiii(iorb)=two*RDMd%occ(iorb)*RDMd%occ(iorb)-(RDMd%occ(iorb)**(two*RDMd%Lpower))
   DM2_J(iorb,iorb)=zero
   DM2_K(iorb,iorb)=zero
-  RDMd%Dfni_ni(iorb)=4.0d0*RDMd%occ(iorb)-two*RDMd%Lpower*(RDMd%occ(iorb)**(two*RDMd%Lpower-one))
+  RDMd%Dfni_ni(iorb)=four*RDMd%occ(iorb)-two*RDMd%Lpower*(RDMd%occ(iorb)**(two*RDMd%Lpower-one))
   DDM2_gamma_J(iorb,iorb,:)=zero
   DDM2_gamma_K(iorb,iorb,:)=zero
  enddo

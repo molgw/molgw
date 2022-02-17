@@ -51,6 +51,7 @@ contains
 !!  ERI_K=Lower triangular part of the K_pq matrix
 !!  ERI_L=Lower triangular part of the L_pq matrix
 !!  nogamma=Do not build OCC, DM2_J, DM2_K, etc from GAMMAs (use the stored ones).
+!!  chempot=Create the DM2 and the DDM2_w.r.t_occs matrices.
 !!
 !! OUTPUT
 !!  Energy=Energy computed from the occs (actually from gammas)
@@ -61,10 +62,10 @@ contains
 !!
 !! SOURCE
 
-subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,nogamma) 
+subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,nogamma,chempot) 
 !Arguments ------------------------------------
 !scalars
- logical,optional,intent(in)::nogamma
+ logical,optional,intent(in)::nogamma,chempot
  real(dp),intent(inout)::Energy
  type(rdm_t),intent(inout)::RDMd
 !arrays
@@ -78,8 +79,12 @@ subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,nogamma)
 !************************************************************************
 
  if(.not.present(nogamma)) then 
-  call gamma_to_2rdm(RDMd,GAMMAs)
- endif
+  if(present(chempot)) then
+   call gamma_to_2rdm(RDMd,GAMMAs,chempot=chempot)
+  else
+   call gamma_to_2rdm(RDMd,GAMMAs)
+  endif
+ endif 
  Energy=zero
  if(RDMd%Nsingleocc==0) then
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

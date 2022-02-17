@@ -47,7 +47,7 @@ module m_rdmd
   real(dp)::Sums                 ! Used to define old PNOFs (i=2->4, 6)
   real(dp)::Lpower=0.53d0        ! Power functional exponent
 ! arrays 
-  real(dp),allocatable,dimension(:)::occ
+  real(dp),allocatable,dimension(:)::occ,chempot_orb
   real(dp),allocatable,dimension(:)::GAMMAs_old
   real(dp),allocatable,dimension(:)::DM2_J,DM2_K,DM2_L,DM2_iiii
   real(dp),allocatable,dimension(:)::Docc_gamma,Dfni_ni
@@ -143,7 +143,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  RDMd%Ngammas=RDMd%Ncoupled*RDMd%Npairs
  ! Calculate memory needed
  totMEM=3*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas+3*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas
- totMEM=totMEM+RDMd%Ngammas+3*RDMd%NBF_occ
+ totMEM=totMEM+RDMd%Ngammas+4*RDMd%NBF_occ
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
  if(totMEM>thousand) then  ! Mb to Gb
@@ -164,7 +164,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  allocate(RDMd%DDM2_gamma_L(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas)) 
  allocate(RDMd%GAMMAs_old(RDMd%Ngammas))
  allocate(RDMd%DM2_iiii(RDMd%NBF_occ),RDMd%Dfni_ni(RDMd%NBF_occ)) 
- allocate(RDMd%occ(RDMd%NBF_occ))
+ allocate(RDMd%occ(RDMd%NBF_occ),RDMd%chempot_orb(RDMd%NBF_occ))
 
 end subroutine rdm_init
 !!***
@@ -197,7 +197,7 @@ subroutine rdm_free(RDMd)
 !************************************************************************
 
  deallocate(RDMd%GAMMAs_old)
- deallocate(RDMd%occ)
+ deallocate(RDMd%occ,RDMd%chempot_orb)
  deallocate(RDMd%DM2_iiii)
  deallocate(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
  deallocate(RDMd%Docc_gamma,RDMd%Dfni_ni) 

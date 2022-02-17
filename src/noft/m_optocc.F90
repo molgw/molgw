@@ -27,7 +27,7 @@ module m_optocc
 !!private :: 
 !!***
 
- public :: opt_occ 
+ public :: opt_occ,occ_chempot 
 !!***
 
 contains
@@ -215,6 +215,55 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  deallocate(GAMMAs,Grad_GAMMAs)
 
 end subroutine opt_occ
+!!***
+
+!!***
+!!****f* DoNOF/occ_chempot
+!! NAME
+!!  occ_chempot
+!!
+!! FUNCTION
+!!  STH MAU 
+!!
+!! INPUTS
+!!  hCORE=One-body integrals (h_pq) 
+!!  ERI_J=Lower triangular part of the J_pq matrix
+!!  ERI_K=Lower triangular part of the K_pq matrix
+!!  ERI_L=Lower triangular part of the L_pq matrix
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L)
+!Arguments ------------------------------------
+!scalars
+ type(rdm_t),intent(inout)::RDMd
+!arrays
+ real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
+!Local variables ------------------------------
+!scalars
+ logical::chempot
+ real(dp)::Energy
+!arrays
+ real(dp),allocatable,dimension(:)::GAMMAs,Grad_GAMMAs
+!************************************************************************
+
+ Energy=zero
+ allocate(GAMMAs(RDMd%Ngammas),Grad_GAMMAs(RDMd%Ngammas))
+ GAMMAs=RDMd%GAMMAs_old  ! Read from previous run
+
+ ! Calc. the 2RDM and derivatives in RDMd
+ call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,chempot=chempot)
+
+ deallocate(GAMMAs,Grad_GAMMAs)
+
+end subroutine occ_chempot
 !!***
 
 end module m_optocc 
