@@ -1312,62 +1312,6 @@ end subroutine overlap_basis_function
 
 
 !=========================================================================
-subroutine time_derivative_integral(bf1,bf2,dt,dt_integral)
- implicit none
- type(basis_function),intent(in) :: bf1,bf2
- real(dp),intent(in)             :: dt
- real(dp),intent(out)            :: dt_integral
-!=====
- integer                         :: ig,jg
- real(dp)                        :: overlap_one_gaussian
-!=====
-
- dt_integral=0.0_dp
- do ig=1,bf1%ngaussian
-   do jg=1,bf2%ngaussian
-     call overlap_recurrence(bf1%g(ig),bf2%g(jg),overlap_one_gaussian)
-     dt_integral = dt_integral + overlap_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
-   enddo
- enddo
-
-
-end subroutine time_derivative_integral
-
-
-!=========================================================================
-subroutine overlap_three_basis_function(bf1,bf2,bf3,overlap)
- implicit none
- type(basis_function),intent(in) :: bf1,bf2,bf3
- real(dp),intent(out)            :: overlap
-!=====
- type(basis_function),allocatable :: bf12(:)
- integer                          :: ibf
- real(dp)                         :: overlap_tmp
-!=====
-
- !
- ! first multiply the two first basis functions
- call basis_function_prod(bf1,bf2,bf12)
-
- !
- ! then overlap the product and the third basis function
- overlap = 0.0_dp
- do ibf=1,SIZE(bf12(:))
-
-   call overlap_basis_function(bf12(ibf),bf3,overlap_tmp)
-   overlap = overlap + overlap_tmp
-   call destroy_basis_function(bf12(ibf))
-
- enddo
- !
- ! don't forget to destroy it, else memory is leaking
- deallocate(bf12)
-
-
-end subroutine overlap_three_basis_function
-
-
-!=========================================================================
 subroutine kinetic_basis_function(bf1,bf2,kinetic)
  implicit none
  type(basis_function),intent(in) :: bf1,bf2

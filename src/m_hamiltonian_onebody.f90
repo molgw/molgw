@@ -172,7 +172,9 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
   !=====
 
   call start_clock(timing_overlap)
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(LIBCINT)
+  write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBCINT)'
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
   write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBINT)'
 #else
   write(stdout,'(/,a)') ' Setup mixed overlap matrix S (internal)'
@@ -201,7 +203,14 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 
       allocate(array_cart(ni_cart*nj_cart))
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+      call libcint_overlap(amA,contrdepthA,A,alphaA,cA, &
+                           amB,contrdepthB,B,alphaB,cB, &
+                           array_cart)
+
+      call transform_libint_to_molgw(basis1%gaussian_type,li,lj,array_cart,matrix)
+
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
       call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                           amB,contrdepthB,B,alphaB,cB, &
                           array_cart)
