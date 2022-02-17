@@ -166,7 +166,10 @@ program molgw
 
 #if defined(HAVE_LIBCINT)
     if( has_auxil_basis) then
+      ! basis object will contain the information for the joint (basis,auxil_basis)
       call init_libcint(basis,auxil_basis)
+      ! auxil_basis object will contain the information for the sole auxil_basis
+      call init_libcint(auxil_basis)
     else
       call init_libcint(basis)
     endif
@@ -427,7 +430,8 @@ program molgw
 
 #if defined(HAVE_LIBCINT)
     ! Reinitialize LIBCINT if atoms move
-    call destroy_libcint()
+    call destroy_libcint(basis)
+    if(has_auxil_basis) call destroy_libcint(auxil_basis)
 #endif
 
   enddo ! istep
@@ -452,9 +456,11 @@ program molgw
   call start_clock(timing_postscf)
 
 #if defined(HAVE_LIBCINT)
-  call destroy_libcint()
+  call destroy_libcint(basis)
   if( has_auxil_basis) then
+    call destroy_libcint(auxil_basis)
     call init_libcint(basis,auxil_basis)
+    call init_libcint(auxil_basis)
   else
     call init_libcint(basis)
   endif
@@ -658,7 +664,8 @@ program molgw
   call destroy_atoms()
 
 #if defined(HAVE_LIBCINT)
-    call destroy_libcint()
+    call destroy_libcint(basis)
+    if(has_auxil_basis) call destroy_libcint(auxil_basis)
 #endif
 
   call destroy_cart_to_pure_transforms()

@@ -57,10 +57,10 @@ contains
 subroutine calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_correct)
  implicit none
 
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(inout)     :: occupation(:,:)
- logical,intent(in)         :: restart_tddft_is_correct
+ type(basis_set),intent(inout) :: basis
+ real(dp),intent(in)           :: c_matrix(:,:,:)
+ real(dp),intent(inout)        :: occupation(:,:)
+ logical,intent(in)            :: restart_tddft_is_correct
 !=====
  integer                    :: fixed_atom_list(ncenter_nuclei-nprojectile)
  integer                    :: ispin
@@ -492,7 +492,7 @@ subroutine predictor_corrector(basis,                  &
                                dipole_ao)
 
  implicit none
- type(basis_set),intent(in)      :: basis
+ type(basis_set),intent(inout)   :: basis
  complex(dp),intent(out)         :: c_matrix_cmplx(:,:,:)
  complex(dp),intent(inout)       :: c_matrix_orth_cmplx(:,:,:)
  complex(dp),intent(out)         :: h_cmplx(:,:,:)
@@ -1629,7 +1629,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
  implicit none
 !=====
- type(basis_set),intent(in)      :: basis
+ type(basis_set),intent(inout)   :: basis
  integer,intent(in)              :: nstate
  integer,intent(in)              :: itau
  real(dp),intent(in)             :: time_cur

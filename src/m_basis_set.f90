@@ -67,6 +67,12 @@ module m_basis_set
    type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
    type(shell_type),allocatable     :: shell(:)
 
+   integer(C_INT) :: LIBCINT_natm,LIBCINT_nbas
+   integer(C_INT) :: LIBCINT_offset
+   integer(C_INT),allocatable :: LIBCINT_atm(:,:)
+   integer(C_INT),allocatable :: LIBCINT_bas(:,:)
+   real(C_DOUBLE),allocatable :: LIBCINT_env(:)
+
  end type basis_set
 
 contains
