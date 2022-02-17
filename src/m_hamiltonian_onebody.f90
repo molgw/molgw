@@ -459,7 +459,8 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
       allocate(array_cart(ni_cart*nj_cart,3))
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1+basis_t%nshell  ! C convention starts with 0
-      info = cint1e_ipovlp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+      info = cint1e_ipovlp_cart(array_cart, shls, basis_t%LIBCINT_atm, &
+            basis_t%LIBCINT_natm, basis_t%LIBCINT_bas, basis_t%LIBCINT_nbas, basis_t%LIBCINT_env)
 
       do idir=1,3
         call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart(:,idir),matrix_tp)
@@ -653,10 +654,16 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
 !=====
  integer :: i_cart,j_cart,ij
  integer :: ibf_cart,jbf_cart
+#if defined(HAVE_LIBCINT)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+#endif
 !=====
 
  call start_clock(timing_hamiltonian_kin)
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+ write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (LIBCINT)'
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
  write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (LIBINT)'
 #else
  write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (internal)'
@@ -683,9 +690,15 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
 
 
      allocate(array_cart(ni_cart*nj_cart))
+#if defined(HAVE_LIBCINT)
+      shls(1) = jshell-1+basis_t%nshell  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
+      info = cint1e_kin_cart(array_cart, shls, basis_t%LIBCINT_atm, basis_t%LIBCINT_natm, &
+                             basis_t%LIBCINT_bas, basis_t%LIBCINT_nbas, basis_t%LIBCINT_env)
 
+      call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix_tp)
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
      call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
