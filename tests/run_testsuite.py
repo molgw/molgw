@@ -101,12 +101,12 @@ def check_output(out,testinfo):
         print('No memory leak'.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
         success += 1
         success_in_this_file += 1
-        fdiff.write("Memory leak".rjust(30)+str(tested).rjust(6) + parsing2[0].rjust(30) \
+        fdiff.write(str(tested).rjust(6) + "Memory leak".rjust(30) + parsing2[0].rjust(30) \
               + str(ref).rjust(30)+str(float(parsing2[0]) - ref).rjust(30)+'  OK  \n')
         break
       else:
         print('No memory leak'.rjust(30)+'[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
-        fdiff.write("Memory leak".rjust(30)+str(tested).rjust(6) + parsing2[0].rjust(30) \
+        fdiff.write(str(tested).rjust(6) + "Memory leak".rjust(30) + parsing2[0].rjust(30) \
               + str(ref).rjust(30)+str(float(parsing2[0]) - ref).rjust(30)+' FAIL \n')
         break
 
@@ -152,12 +152,12 @@ def check_output(out,testinfo):
           print(key.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
           success += 1
           success_in_this_file += 1
-          fdiff.write(key.rjust(30)+str(tested).rjust(6) + parsing2[pos].rjust(30) \
+          fdiff.write(str(tested).rjust(6) + key.rjust(30)+ parsing2[pos].rjust(30) \
                 + str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+'  OK  \n')
           break
         else:
           print(key.rjust(30)+'[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
-          fdiff.write(key.rjust(30)+str(tested).rjust(6) + parsing2[pos].rjust(30) \
+          fdiff.write(str(tested).rjust(6) + key.rjust(30)+ parsing2[pos].rjust(30) \
                 + str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+' FAIL \n')
           break
     if not key_found:
@@ -457,7 +457,7 @@ test_files_success = 0
 skipping_reason    = []
 
 fdiff = open(tmpfolder+'/diff', 'w')
-fdiff.write('#       property tested          test index              calculated                 reference                 difference        test status \n')
+fdiff.write('#   test index       property tested                     calculated                 reference                 difference        test status \n')
 
 for iinput in range(ninput):
 
@@ -492,9 +492,10 @@ for iinput in range(ninput):
 
   print('\nRunning test file: '+inp)
   print(test_names[iinput])
+  fdiff.write("# " + inp + "\n")
 
   clean_run(inp,out,restart)
-
+  
   check_output(out,testinfo[iinput])
 
 
