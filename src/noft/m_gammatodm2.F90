@@ -217,22 +217,24 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
  endif
  deallocate(Docc_gamma0,Dsqrt_occ_gamma0)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-!     If we are looking for the chemical potential mu = h_ii + d Vee/dn_i
-!     (Here we pretend that OCC(iorb) = GAMMAs(iorb))
+!   If we are computing the chemical potential(s) mu = h_ii + d Vee/dn_i
+!(We pretend that OCC(iorb) = GAMMAs(iorb) and d OCC(iorb) = d GAMMAs(iorb))
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  if(present(chempot)) then
+  Docc_gamma = one; Dsqrt_occ_gamma = zero;
   do iorb=1,RDMd%NBF_occ
-   Docc_gamma(iorb,:)=one
-   Dsqrt_occ_gamma(iorb,:)=half/(dsqrt(RDMd%occ(iorb))+tol8)
+   if(dabs(RDMd%occ(iorb))>tol20) then
+    Dsqrt_occ_gamma(iorb,:)=half/dsqrt(RDMd%occ(iorb))
+   endif
   enddo
  endif 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     Sum of the Holes below the Fermi Level (RDMd%Sums)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- RDMd%Sums = DFLOAT(RDMd%Nbeta_elect)
- do iorb=1,RDMd%Nbeta_elect
-  RDMd%Sums = RDMd%Sums - RDMd%occ(iorb)
- enddo
+! RDMd%Sums = DFLOAT(RDMd%Nbeta_elect)
+! do iorb=1,RDMd%Nbeta_elect
+!  RDMd%Sums = RDMd%Sums - RDMd%occ(iorb)
+! enddo
 !-----------------------------------------------------------------------
 !                   DM2_J, DM2_K, DDM2_gamma_J, DDM2_gamma_K
 !Comment: This is not the cleanest way to call them but it is fastest way 

@@ -44,7 +44,7 @@ module m_rdmd
   integer::Npairs                ! Number of electron pairs
   integer::Npairs_p_sing         ! Number of electron pairs plus number of singly occ orbitals
   integer::Ngammas               ! Number of gammas (independet variables used in occ optimization procedure)
-  real(dp)::Sums                 ! Used to define old PNOFs (i=2->4, 6)
+  !real(dp)::Sums                 ! Used to define old PNOFs (i=2->4, 6)
   real(dp)::Lpower=0.53d0        ! Power functional exponent
 ! arrays 
   real(dp),allocatable,dimension(:)::occ,chempot_orb

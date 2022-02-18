@@ -119,7 +119,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !scalars
  logical::ekt,diagLpL,restart_param,keep_occs=.false.,keep_orbs=.false.
  integer::iorb,iter,ifcidump
- real(dp)::Energy,Energy_old,Vee,hONEbody
+ real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val
  type(rdm_t),target::RDMd
  type(integ_t),target::INTEGd
  type(elag_t),target::ELAGd
@@ -305,6 +305,14 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  write(msg,'(a)') 'Chemical potential per orbital (a.u.) '
  call write_output(msg)
  call occ_chempot(RDMd,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L)
+ chempot_val=-ten**(ten)
+ do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
+  if(dabs(RDMd%occ(iorb))>tol8) then
+   if(RDMd%chempot_orb(iorb)>chempot_val) chempot_val=RDMd%chempot_orb(iorb) 
+  else
+   RDMd%chempot_orb(iorb)=zero
+  endif
+ enddo
  do iorb=1,(RDMd%NBF_occ/10)*10,10
   write(msg,'(f12.6,9f11.6)') RDMd%chempot_orb(iorb:iorb+9)
   call write_output(msg)
@@ -314,7 +322,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)
- RDMd%chempot_orb(1)=maxval(RDMd%chempot_orb(RDMd%Nfrozen+1:RDMd%NBF_occ))
  
  ! Print final Energy and its components (occs are already [0:2])
  hONEbody=zero
@@ -333,7 +340,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  write(msg,'(a,f15.6,a)') 'Vnn              = ',Vnn,' a.u.'
  call write_output(msg)
- write(msg,'(a,f15.6,a)') 'chem. pot.       = ',RDMd%chempot_orb(1),' a.u.'
+ write(msg,'(a,f15.6,a,f15.6,a)') 'chem. pot.       = ',chempot_val,' a.u.,',chempot_val*Ha_eV,' eV'
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)

@@ -30,7 +30,8 @@ module m_vars
  real(dp), parameter :: tol16 = 1.0d-16
  real(dp), parameter :: tol20 = 1.0d-20
  real(dp), parameter :: thousand = 1.0d3
- real(dp), parameter :: pi   = dacos(-one)
+ real(dp), parameter :: pi = dacos(-one)
+ real(dp), parameter :: Ha_eV = 27.21138505
 
 end module m_vars
 !!***
