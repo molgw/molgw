@@ -172,7 +172,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
   !=====
 
   call start_clock(timing_overlap)
-#if defined(LIBCINT)
+#if defined(HAVE_LIBCINT)
   write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
   write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBINT)'
@@ -351,8 +351,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
 
       do idir=1,3
         call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
-        ! There is a sign change wrt to LIBINT
-        s_matrix_grad(ibf1:ibf2,jbf1:jbf2,idir) = -matrix(:,:)
+        s_matrix_grad(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
       enddo
       deallocate(matrix)
 
@@ -392,11 +391,11 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
   enddo
 
   title='=== Overlap grad matrix X ==='
-  call dump_out_matrix(.TRUE.,title,s_matrix_grad(:,:,1))
+  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,1))
   title='=== Overlap grad matrix Y ==='
-  call dump_out_matrix(.TRUE.,title,s_matrix_grad(:,:,2))
+  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,2))
   title='=== Overlap grad matrix Z ==='
-  call dump_out_matrix(.TRUE.,title,s_matrix_grad(:,:,3))
+  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,3))
 
   call stop_clock(timing_overlap)
 
@@ -473,8 +472,7 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
 
       do idir=1,3
         call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart(:,idir),matrix_tp)
-        ! There is a sign change wrt LIBINT
-        s_matrix_grad(ibf1:ibf2,jbf1:jbf2,idir) = -matrix_tp(:,:)
+        s_matrix_grad(ibf1:ibf2,jbf1:jbf2,idir) = matrix_tp(:,:)
       enddo
       deallocate(matrix_tp)
 
@@ -516,11 +514,11 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
    deallocate(alphaB,cB)
  enddo
 
- title='=== Overlap matrix S (LIBINT) X ==='
+ title='=== Overlap grad matrix S_X ==='
  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,1))
- title='=== Overlap matrix S (LIBINT) Y ==='
+ title='=== Overlap grad matrix S_Y ==='
  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,2))
- title='=== Overlap matrix S (LIBINT) Z ==='
+ title='=== Overlap grad matrix S_Z ==='
  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,3))
 
  call stop_clock(timing_overlap_grad)
@@ -663,10 +661,6 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
 !=====
  integer :: i_cart,j_cart,ij
  integer :: ibf_cart,jbf_cart
-#if defined(HAVE_LIBCINT)
-  integer(C_INT) :: info
-  integer(C_INT) :: shls(2)
-#endif
 !=====
 
  call start_clock(timing_hamiltonian_kin)
@@ -700,11 +694,9 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
 
      allocate(array_cart(ni_cart*nj_cart))
 #if defined(HAVE_LIBCINT)
-      shls(1) = jshell-1+basis_t%nshell  ! C convention starts with 0
-      shls(2) = ishell-1  ! C convention starts with 0
-      info = cint1e_kin_cart(array_cart, shls, basis_t%LIBCINT_atm, basis_t%LIBCINT_natm, &
-                             basis_t%LIBCINT_bas, basis_t%LIBCINT_nbas, basis_t%LIBCINT_env)
-
+      call libcint_kinetic(amA,contrdepthA,A,alphaA,cA, &
+                         amB,contrdepthB,B,alphaB,cB, &
+                         array_cart)
       call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix_tp)
 
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -1029,7 +1021,9 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
 
  call start_clock(timing_tddft_hamiltonian_nuc)
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+ write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBCINT)'
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
  write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
  write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (internal)'
@@ -1071,7 +1065,13 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      do iatom = 1, natom
        ! Skip the contribution if iatom is projectile
        C(:) = xatom(:,iatom)
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+
+#if defined(HAVE_LIBCINT)
+       call libcint_elecpot(amA,contrdepthA,A,alphaA,cA, &
+                           amB,contrdepthB,B,alphaB,cB, &
+                           C,array_cart_C)
+       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
@@ -1092,7 +1092,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      enddo
      deallocate(alphaA,cA)
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY) || defined(HAVE_LIBCINT)
      call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix)
 #else
      call transform_molgw_to_molgw(basis_t%gaussian_type,li,lj,array_cart,matrix)
@@ -1125,7 +1125,13 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      do iatom = 1, natom
        ! Skip the contribution if iatom is projectile
        C(:) = xatom(:,iatom)
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+
+#if defined(HAVE_LIBCINT)
+       call libcint_elecpot(amA,contrdepthA,A,alphaA,cA, &
+                           amB,contrdepthB,B,alphaB,cB, &
+                           C,array_cart_C)
+       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
@@ -1146,7 +1152,7 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
      enddo
      deallocate(alphaA,cA)
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(LIBINT2_SUPPORT_ONEBODY) || defined(HAVE_LIBCINT)
      call transform_libint_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix)
 #else
      call transform_molgw_to_molgw(basis_p%gaussian_type,li,lj,array_cart,matrix)
