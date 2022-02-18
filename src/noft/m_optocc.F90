@@ -223,7 +223,8 @@ end subroutine opt_occ
 !!  occ_chempot
 !!
 !! FUNCTION
-!!  STH MAU 
+!!  Compute the 2RDM from GAMMAs and the gradients.
+!!  Then, compute the chem. pot. for each orbital. 
 !!
 !! INPUTS
 !!  hCORE=One-body integrals (h_pq) 
@@ -260,6 +261,7 @@ subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L)
 
  ! Calc. the 2RDM and derivatives in RDMd
  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,chempot=chempot)
+ call calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L)
 
  deallocate(GAMMAs,Grad_GAMMAs)
 

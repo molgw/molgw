@@ -30,7 +30,7 @@ module m_e_grad_occ
  private :: dm2_x_eri,occ_x_eri,Ddm2_gamma_x_ERI,Docc_gamma_x_ERI
 !!***
 
- public :: calc_E_occ,calc_Grad_occ
+ public :: calc_E_occ,calc_Grad_occ,calc_Chem_pot
 !!***
 
 contains
@@ -353,6 +353,89 @@ subroutine calc_Grad_occ(RDMd,Grad,hCORE,ERI_J,ERI_K,ERI_L)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 end subroutine calc_Grad_occ
+!!***
+
+!!***
+!!****f* DoNOF/calc_Chem_pot
+!! NAME
+!!  calc_Chem_pot
+!!
+!! FUNCTION
+!!  Calculate the chemical potential for each orbital
+!!
+!! INPUTS
+!!  hCORE=One-body integrals (h_pq) we only use the diag part (h_pp)
+!!  ERI_J=Lower triangular part of the J_pq matrix
+!!  ERI_K=Lower triangular part of the K_pq matrix
+!!  ERI_L=Lower triangular part of the L_pq matrix
+!!
+!! OUTPUT
+!!  RDMd%chempot_orb=conatins chem. pot. for each orbital
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L) 
+!Arguments ------------------------------------
+!scalars
+ type(rdm_t),intent(inout)::RDMd
+!arrays
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
+ real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,ipair,igamma=1
+!arrays
+!************************************************************************
+ 
+ if(RDMd%Nsingleocc==0) then
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  if(RDMd%Ncoupled==1) then       ! PNOFi(1): Perfect Pairing (RDMd%Ncoupled=1)
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   do ipair=1,RDMd%Npairs
+    iorb = RDMd%Nfrozen+ipair
+    RDMd%chempot_orb(iorb) = two*hCORE(iorb,iorb)                                    &
+   &         +  RDMd%Dfni_ni(iorb) * ERI_J(iorb*(iorb+1)/2)                          &
+   &         + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)  &
+   &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)          &
+   &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) )
+    iorb = RDMd%Nalpha_elect+RDMd%Npairs-ipair+1
+    RDMd%chempot_orb(iorb) = two*hCORE(iorb,iorb)                                    &
+   &         + RDMd%Dfni_ni(iorb) * ERI_J(iorb*(iorb+1)/2)                           &
+   &         + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)  &
+   &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)          &
+   &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) )
+   enddo
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  else                 ! PNOFi(Nc): Extended PNOF (RDMd%Ncoupled>1)
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   do ipair=1,RDMd%Npairs
+    iorb = RDMd%Nfrozen+ipair
+    RDMd%chempot_orb(iorb) = two*hCORE(iorb,iorb)                                    &
+    &        + RDMd%Dfni_ni(iorb) * ERI_J(iorb*(iorb+1)/2)                           &
+    &        + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)  &
+    &        + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)          &
+    &        + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) )
+    do iorb1=1,RDMd%Ncoupled
+     iorb = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-ipair)+iorb1
+     RDMd%chempot_orb(iorb) = two*hCORE(iorb,iorb)                                   &
+    &         + RDMd%Dfni_ni(iorb) * ERI_J(iorb*(iorb+1)/2)                          &
+    &         + two * (Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)  &
+    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)         &
+    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) )
+    enddo
+   enddo
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  endif
+!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --     
+ endif
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ RDMd%chempot_orb=half*RDMd%chempot_orb
+
+end subroutine calc_Chem_pot
 !!***
 
 !!***
