@@ -87,7 +87,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  character(len=200)::msg
 !************************************************************************
 
- Energy=zero; Energy_old=zero; convLambda=.false.;nogamma=.true.;
+ Ediff=zero; Energy=zero; Energy_old=zero; convLambda=.false.;nogamma=.true.;
  if((imethod==1).and.(iter==0)) then
   ELAGd%sumdiff_old=zero
  endif
