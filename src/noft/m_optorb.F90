@@ -99,6 +99,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImolv=INTEGd%ERImolv)
  endif
  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+ call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L,nogamma=nogamma)
  do
   ! If we used a DIIS step, do not stop after DIIS for small Energy dif.
   diddiis=.false.
