@@ -324,6 +324,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  
  ! Print final Energy and its components (occs are already [0:2])
+ RDMd%occ(:)=two*RDMd%occ(:)
  hONEbody=zero
  do iorb=1,RDMd%NBF_occ
   hONEbody=hONEbody+RDMd%occ(iorb)*INTEGd%hCORE(iorb,iorb)
