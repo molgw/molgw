@@ -186,7 +186,7 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv)
     tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
    enddo
    if(noft_ri) then ! RI case
-     call calculate_eri_3center_eigen(tmp_c_matrix,1,nbf_noft,1,nbf_noft,verbose=verbose)
+     call calculate_eri_3center_eigen(tmp_c_matrix,1,nbf_noft,1,nbf_kji,verbose=verbose)
      do istate=1,nbf_occ
        do jstate=1,nbf_occ
          do kstate=1,nbf_occ
