@@ -281,7 +281,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
      allocate(energy_tddft(nstate,nspin))
      do ispin=1, nspin
-       call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft(:,ispin),c_matrix_orth_start_complete_cmplx(:,:,ispin))
+       call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft(:,ispin),&
+            c_matrix_orth_start_complete_cmplx(:,:,ispin))
      end do
      ! in order to save the memory, we dont keep inoccupied states (nocc+1:nstate)
      c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_orth_start_complete_cmplx(1:nstate,1:nocc,1:nspin)
@@ -2102,7 +2103,8 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
 
      call invert(s_matrix,s_matrix_inverse)
      m_matrix_cmplx(:,:) = MATMUL(s_matrix_inverse(:,:),( h_cmplx(:,:,ispin) - im*d_matrix(:,:) ))
-     b_matrix_cmplx(:,:) = (-im) * m_matrix_cmplx(:,:) * time_step_cur - 0.5_dp * (time_step_cur**2) * MATMUL( m_matrix_cmplx(:,:), m_matrix_cmplx(:,:) )
+     b_matrix_cmplx(:,:) = (-im) * m_matrix_cmplx(:,:) * time_step_cur - 0.5_dp * &
+            (time_step_cur**2) * MATMUL( m_matrix_cmplx(:,:), m_matrix_cmplx(:,:) )
 
      do ibf=1,size(s_matrix,dim=1)
        b_matrix_cmplx(ibf,ibf) = b_matrix_cmplx(ibf,ibf) + 1.0_dp

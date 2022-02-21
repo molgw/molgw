@@ -192,12 +192,8 @@ program molgw
     ! calculation
     !
     ! A crucial parameter is defined here: nstate
-    if(print_pdos_) then
-      call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
-      call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
-    else
-      call setup_x_matrix(min_overlap,s_matrix,nstate,x_matrix)
-    end if
+    call setup_x_matrix(min_overlap,s_matrix,nstate,x_matrix)
+
 
     allocate(occupation(nstate,nspin))
     allocate(    energy(nstate,nspin))
@@ -423,7 +419,6 @@ program molgw
           if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
           call clean_deallocate('Overlap matrix S',s_matrix)
           call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
-          call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
           call clean_deallocate('Fock operator F',hamiltonian_fock)
           call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
           call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
@@ -492,8 +487,11 @@ program molgw
   if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
   if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy)
   if( print_pdos_ ) then
+    call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
+    call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
     call mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
     call lowdin_pdos(basis,s_matrix_sqrt,c_matrix,occupation,energy)
+    call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
   endif
   if( print_spatial_extension_ ) call spatial_extension(basis,c_matrix)
   if( .FALSE.     ) call plot_rho_list(nstate,basis,occupation,c_matrix)
@@ -534,7 +532,6 @@ program molgw
   call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
   call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
   call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
-  call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
 
 
 
