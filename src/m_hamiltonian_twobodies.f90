@@ -116,10 +116,10 @@ end subroutine setup_hartree
 !=========================================================================
 subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ao,ehartree)
  implicit none
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: p_matrix(:,:,:)
- real(dp),intent(out)       :: hartree_ao(:,:)
- real(dp),intent(out)       :: ehartree
+ type(basis_set),intent(inout) :: basis
+ real(dp),intent(in)           :: p_matrix(:,:,:)
+ real(dp),intent(out)          :: hartree_ao(:,:)
+ real(dp),intent(out)          :: ehartree
 !=====
  real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-7_dp
  integer                 :: ijshellpair,klshellpair
@@ -1284,8 +1284,8 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
  use m_eri_calculate
  implicit none
 
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: vhxc_ao(basis%nbf,basis%nbf)
+ type(basis_set),intent(inout) :: basis
+ real(dp),intent(out)          :: vhxc_ao(basis%nbf,basis%nbf)
 !=====
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: basis_function_r_batch(:,:)

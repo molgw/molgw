@@ -19,11 +19,11 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
   use m_hamiltonian_onebody
   implicit none
 
-  type(basis_set),intent(in) :: basis
-  integer,intent(in)         :: nstate
-  real(dp),intent(in)        :: occupation(nstate,nspin)
-  real(dp),intent(in)        :: energy(nstate,nspin)
-  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+  type(basis_set),intent(inout) :: basis
+  integer,intent(in)            :: nstate
+  real(dp),intent(in)           :: occupation(nstate,nspin)
+  real(dp),intent(in)           :: energy(nstate,nspin)
+  real(dp),intent(in)           :: c_matrix(basis%nbf,nstate,nspin)
   !=====
   real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-2
   integer                 :: ijshellpair,klshellpair

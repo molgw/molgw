@@ -100,7 +100,8 @@ subroutine setup_overlap(basis,s_matrix)
 #if defined(HAVE_LIBCINT)
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1  ! C convention starts with 0
-      info = cint1e_ovlp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+      info = cint1e_ovlp_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                              basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
 
       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 
@@ -173,7 +174,9 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
   !=====
 
   call start_clock(timing_overlap)
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(LIBCINT)
+  write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBCINT)'
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
   write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBINT)'
 #else
   write(stdout,'(/,a)') ' Setup mixed overlap matrix S (internal)'
@@ -202,7 +205,14 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 
       allocate(array_cart(ni_cart*nj_cart))
 
-#if defined(LIBINT2_SUPPORT_ONEBODY)
+#if defined(HAVE_LIBCINT)
+      call libcint_overlap(amA,contrdepthA,A,alphaA,cA, &
+                           amB,contrdepthB,B,alphaB,cB, &
+                           array_cart)
+
+      call transform_libint_to_molgw(basis1%gaussian_type,li,lj,array_cart,matrix)
+
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
       call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                           amB,contrdepthB,B,alphaB,cB, &
                           array_cart)
@@ -304,7 +314,8 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
       allocate(array_cart(ni_cart*nj_cart,3))
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1  ! C convention starts with 0
-      info = cint1e_ipovlp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+      info = cint1e_ipovlp_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
 
       do idir=1,3
         call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
@@ -428,7 +439,8 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
 #if defined(HAVE_LIBCINT)
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1  ! C convention starts with 0
-      info = cint1e_kin_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+      info = cint1e_kin_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                             basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
 
       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 
@@ -633,7 +645,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
     !$OMP&                 ij,ibf_cart,jbf_cart,info,shls,env_local,nucleus)
 
 #if defined(HAVE_LIBCINT)
-    allocate(env_local,SOURCE=env)
+    allocate(env_local,SOURCE=basis%LIBCINT_env)
 #endif
 
     !$OMP DO
@@ -662,13 +674,16 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
         call set_rinv_origin_libcint(xatom(:,icenter),env_local)
         shls(1) = jshell-1  ! C convention starts with 0
         shls(2) = ishell-1  ! C convention starts with 0
-        info = cint1e_rinv_cart(array_cart_C, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env_local)
+        info = cint1e_rinv_cart(array_cart_C, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                basis%LIBCINT_bas, basis%LIBCINT_nbas, env_local)
+
         array_cart(:) = array_cart(:) - zvalence(icenter) * array_cart_C(:)
 
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
         call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                             amB,contrdepthB,B,alphaB,cB, &
                             C,array_cart_C)
+
         array_cart(:) = array_cart(:) - zvalence(icenter) * array_cart_C(:)
 #else
         ij = 0
@@ -920,7 +935,8 @@ subroutine setup_rxp_ao(basis,rxp_ao)
       allocate(array_cart(ni_cart*nj_cart,3))
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1  ! C convention starts with 0
-      info = cint1e_cg_irxp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+      info = cint1e_cg_irxp_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                 basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
 
       do idir=1,3
         call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
@@ -989,7 +1005,8 @@ subroutine setup_giao_rxp_ao(basis,giao_rxp_ao)
       allocate(array_cart(ni_cart*nj_cart,3))
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1  ! C convention starts with 0
-      info = cint1e_giao_irjxp_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+      info = cint1e_giao_irjxp_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                    basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
 
       do idir=1,3
         call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
@@ -1062,7 +1079,8 @@ subroutine setup_dipole_ao(basis,dipole_ao)
       allocate(array_cart(ni_cart*nj_cart,3))
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1  ! C convention starts with 0
-      info = cint1e_r_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+      info = cint1e_r_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                           basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
 
       do idir=1,3
         call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
@@ -1151,7 +1169,8 @@ subroutine setup_quadrupole_ao(basis,quadrupole_ao)
       allocate(array_cart(ni_cart*nj_cart,9))
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1  ! C convention starts with 0
-      info = cint1e_rr_cart(array_cart, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env)
+      info = cint1e_rr_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                            basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
 
       ijdir=0
       do jdir=1,3

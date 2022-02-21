@@ -84,7 +84,7 @@ contains
 subroutine prepare_eri(basis)
  implicit none
 !=====
- type(basis_set),intent(in) :: basis
+ type(basis_set),intent(inout) :: basis
 !=====
 !=====
 
@@ -360,27 +360,27 @@ end function negligible_basispair
 subroutine identify_negligible_shellpair(basis)
  implicit none
 
- type(basis_set),intent(in)   :: basis
+ type(basis_set),intent(inout) :: basis
 !=====
- integer                      :: ip
- integer                      :: ibf,jbf
- integer                      :: n1c,n2c
- integer                      :: ni,nj
- integer                      :: ami,amj
- integer                      :: ishell,jshell
- real(dp),allocatable         :: integrals(:,:,:,:)
- real(dp)                     :: workload(world%nproc)
- integer                      :: shell_proc(basis%nshell)
+ integer                       :: ip
+ integer                       :: ibf,jbf
+ integer                       :: n1c,n2c
+ integer                       :: ni,nj
+ integer                       :: ami,amj
+ integer                       :: ishell,jshell
+ real(dp),allocatable          :: integrals(:,:,:,:)
+ real(dp)                      :: workload(world%nproc)
+ integer                       :: shell_proc(basis%nshell)
 !=====
 ! variables used to call C
- integer(C_INT)               :: am1,am2
- integer(C_INT)               :: ng1,ng2
- real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
- real(C_DOUBLE)               :: x01(3),x02(3)
- real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:)
- real(C_DOUBLE),allocatable   :: int_shell(:)
- integer(C_INT) :: info
- integer(C_INT) :: shls(4)
+ integer(C_INT)                :: am1,am2
+ integer(C_INT)                :: ng1,ng2
+ real(C_DOUBLE),allocatable    :: alpha1(:),alpha2(:)
+ real(C_DOUBLE)                :: x01(3),x02(3)
+ real(C_DOUBLE),allocatable    :: coeff1(:),coeff2(:)
+ real(C_DOUBLE),allocatable    :: int_shell(:)
+ integer(C_INT)                :: info
+ integer(C_INT)                :: shls(4)
 !=====
 
  if( TOL_INT < 0.0_dp ) then
@@ -392,7 +392,7 @@ subroutine identify_negligible_shellpair(basis)
  call start_clock(timing_eri_screening)
 #if defined(HAVE_LIBCINT)
  write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals (LIBCINT)'
- call set_erf_screening_length_libcint(0.0_dp)
+ call set_erf_screening_length_libcint(basis,0.0_dp)
 #else
  write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals (LIBINT)'
 #endif
@@ -447,7 +447,8 @@ subroutine identify_negligible_shellpair(basis)
      shls(3) = jshell-1  ! C convention starts with 0
      shls(4) = ishell-1  ! C convention starts with 0
 
-     info = cint2e_cart(int_shell, shls, atm, LIBCINT_natm, bas, LIBCINT_nbas, env, 0_C_LONG)
+     info = cint2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                        basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
 
 #else
      am1 = basis%shell(ishell)%am

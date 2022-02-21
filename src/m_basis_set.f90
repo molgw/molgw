@@ -67,6 +67,12 @@ module m_basis_set
    type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
    type(shell_type),allocatable     :: shell(:)
 
+   integer(C_INT) :: LIBCINT_natm,LIBCINT_nbas
+   integer(C_INT) :: LIBCINT_offset
+   integer(C_INT),allocatable :: LIBCINT_atm(:,:)
+   integer(C_INT),allocatable :: LIBCINT_bas(:,:)
+   real(C_DOUBLE),allocatable :: LIBCINT_env(:)
+
  end type basis_set
 
 contains
@@ -1078,39 +1084,6 @@ subroutine overlap_basis_function(bf1,bf2,overlap)
 
 
 end subroutine overlap_basis_function
-
-
-!=========================================================================
-subroutine overlap_three_basis_function(bf1,bf2,bf3,overlap)
- implicit none
- type(basis_function),intent(in) :: bf1,bf2,bf3
- real(dp),intent(out)            :: overlap
-!=====
- type(basis_function),allocatable :: bf12(:)
- integer                          :: ibf
- real(dp)                         :: overlap_tmp
-!=====
-
- !
- ! first multiply the two first basis functions
- call basis_function_prod(bf1,bf2,bf12)
-
- !
- ! then overlap the product and the third basis function
- overlap = 0.0_dp
- do ibf=1,SIZE(bf12(:))
-
-   call overlap_basis_function(bf12(ibf),bf3,overlap_tmp)
-   overlap = overlap + overlap_tmp
-   call destroy_basis_function(bf12(ibf))
-
- enddo
- !
- ! don't forget to destroy it, else memory is leaking
- deallocate(bf12)
-
-
-end subroutine overlap_three_basis_function
 
 
 !=========================================================================

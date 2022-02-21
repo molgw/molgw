@@ -30,7 +30,7 @@ contains
 !=========================================================================
 subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
  implicit none
- type(basis_set),intent(in)    :: basis
+ type(basis_set),intent(inout) :: basis
  class(*),intent(in)           :: p_matrix(:,:,:)
  real(dp),intent(out)          :: hhartree(:,:)
  real(dp),intent(out),optional :: eh
@@ -151,12 +151,12 @@ end subroutine calculate_exchange_lr
 subroutine calculate_hamiltonian_hxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_hxc,en_inout)
  implicit none
 
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nstate
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(:,:,:)
- real(dp),intent(in)        :: p_matrix(:,:,:)
- real(dp),intent(out)       :: hamiltonian_hxc(:,:,:)
+ type(basis_set),intent(inout) :: basis
+ integer,intent(in)            :: nstate
+ real(dp),intent(in)           :: occupation(nstate,nspin)
+ real(dp),intent(in)           :: c_matrix(:,:,:)
+ real(dp),intent(in)           :: p_matrix(:,:,:)
+ real(dp),intent(out)          :: hamiltonian_hxc(:,:,:)
  type(energy_contributions),intent(inout) :: en_inout
 !=====
  integer              :: ispin
@@ -249,11 +249,11 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
                                               en_inout)
  implicit none
 
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(:,:)
- complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
- complex(dp),intent(in)     :: p_matrix_cmplx(:,:,:)
- complex(dp),intent(out)    :: hamiltonian_hxc_cmplx(:,:,:)
+ type(basis_set),intent(inout) :: basis
+ real(dp),intent(in)           :: occupation(:,:)
+ complex(dp),intent(in)        :: c_matrix_cmplx(:,:,:)
+ complex(dp),intent(in)        :: p_matrix_cmplx(:,:,:)
+ complex(dp),intent(out)       :: hamiltonian_hxc_cmplx(:,:,:)
  type(energy_contributions),intent(inout) :: en_inout
 !=====
  integer                    :: nstate

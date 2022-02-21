@@ -33,14 +33,14 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
                        hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
   implicit none
 
-  type(basis_set),intent(in)      :: basis
-  real(dp),intent(in)             :: occupation(:,:)
-  real(dp),intent(in)             :: energy(:,:)
-  real(dp),intent(in)             :: c_matrix(:,:,:)
-  real(dp),intent(in)             :: s_matrix(:,:)
-  real(dp),intent(in)             :: hamiltonian_kinetic(:,:)
-  real(dp),intent(in)             :: hamiltonian_nucleus(:,:)
-  real(dp),intent(inout)          :: hamiltonian_fock(:,:,:)
+  type(basis_set),intent(inout) :: basis
+  real(dp),intent(in)           :: occupation(:,:)
+  real(dp),intent(in)           :: energy(:,:)
+  real(dp),intent(in)           :: c_matrix(:,:,:)
+  real(dp),intent(in)           :: s_matrix(:,:)
+  real(dp),intent(in)           :: hamiltonian_kinetic(:,:)
+  real(dp),intent(in)           :: hamiltonian_nucleus(:,:)
+  real(dp),intent(inout)        :: hamiltonian_fock(:,:,:)
   !=====
   integer                    :: nstate,nocc
   logical                    :: density_matrix_found
