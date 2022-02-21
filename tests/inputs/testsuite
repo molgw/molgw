@@ -45,7 +45,7 @@ gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-3   # Loosened criteri
 
 he_pbe_libxc.in           , He with PBE functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8869559704    , 0 , 1.0e-7
-gKS HOMO energy           ,  -15.724589        , 0 , 1.0e-4
+gKS HOMO energy           ,  -15.724589        , 0 , 1.0e-3
 
 he_pbeh_libxc.in          , He with PBEH=PBE0 functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8893617513    , 0 , 1.0e-7
