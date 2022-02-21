@@ -767,18 +767,19 @@ subroutine update_basis_eri(basis,auxil_basis)
 
  write(stdout,'(/,a)') ' Update moving basis set'
  call moving_basis_set(basis)
-
- !call deallocate_eri()
- !call prepare_eri(basis)
+ call destroy_libcint(basis)
 
  if( has_auxil_basis ) then
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
    call moving_basis_set(auxil_basis)
+   call destroy_libcint(auxil_basis)
+   call init_libcint(basis, auxil_basis)
+   call init_libcint(auxil_basis)
    !
    ! Setup new eri 2center / 3center
-   !call destroy_eri_3center()
    call calculate_eri_ri(basis,auxil_basis,0.0_dp)
  else
+   call init_libcint(basis)
    call deallocate_eri_4center()
    call calculate_eri(print_eri_,basis,0.0_dp)
  endif
@@ -868,20 +869,23 @@ subroutine mb_related_updates(basis,                &
  else
    ! Update basis only since eri not needed here
    call moving_basis_set(basis)
+   call destroy_libcint(basis)
+   call init_libcint(basis)
  endif
  call moving_basis_set(basis_p)
  call destroy_libcint(basis_p)
  call destroy_libcint(basis_t)
  call init_libcint(basis_t, basis_p)
+ call init_libcint(basis_p)
  call stop_clock(timing_update_basis_eri)
 
  call start_clock(timing_update_overlaps)
  ! Update S matrix
- !call setup_overlap(basis,s_matrix)
- call recalc_overlap(basis_t,basis_p,s_matrix)
+ call setup_overlap(basis,s_matrix)
+ !call recalc_overlap(basis_t,basis_p,s_matrix)
 
  ! Analytic evaluation of D(t+dt/n)
- call setup_D_matrix_analytic(basis,d_matrix,.TRUE.)
+ call setup_D_matrix_analytic(basis,d_matrix,.FALSE.)
  call stop_clock(timing_update_overlaps)
 
  call start_clock(timing_update_dft_grid)
@@ -2453,15 +2457,15 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  case(EXCIT_PROJECTILE_W_BASIS)
 
    if ( itau > 0 ) then
-     !call setup_kinetic(basis,hamiltonian_kinetic)
-     call recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
+     call setup_kinetic(basis,hamiltonian_kinetic)
+     !call recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
      call nucleus_nucleus_energy(en_tddft%nuc_nuc)
      ! Nucleus-electron interaction due to the fixed target
-     call recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
-     !do iatom=1,ncenter_nuclei-nprojectile
-      ! fixed_atom_list(iatom) = iatom
-     !enddo
-     !call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
+     !call recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
+     do iatom=1,ncenter_nuclei-nprojectile
+       fixed_atom_list(iatom) = iatom
+     enddo
+     call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
    end if
 
    !
