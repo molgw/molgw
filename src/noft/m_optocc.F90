@@ -10,7 +10,6 @@
 !!
 !! CHILDREN
 !!  m_e_grad_occ
-!!  m_cg
 !!  m_lbfgs
 !!
 !! SOURCE
@@ -18,7 +17,6 @@ module m_optocc
 
  use m_nofoutput
  use m_rdmd
- use m_cg
  use m_lbfgs_intern
  use m_e_grad_occ
 
@@ -38,7 +36,7 @@ contains
 !!  opt_occ
 !!
 !! FUNCTION
-!!  Call the CG of LBFGS subroutines for occ optimization 
+!!  Call the L-BFGS subroutine for occ optimization 
 !!
 !! INPUTS
 !!  imethocc=Method to use for the occ. optimization (default = 0, i.e. conjugate gradients)
@@ -73,12 +71,11 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
 !scalars
  logical::diagco,conveg=.false.,debug=.false.
  integer,parameter::msave=7,nextv=47,nfcall=6,nfgcal=7,g=28,toobig=2,vneed=4
- integer::iorb,igamma,iflag,ig,icall,icall1,Mtosave,Nwork,Nwork2
+ integer::iorb,igamma,iflag,icall,Mtosave,Nwork
 !arrays
  character(len=200)::msg
  integer,dimension(2)::info_print
- integer,allocatable,dimension(:)::iWork
- real(dp),allocatable,dimension(:)::GAMMAs,Grad_GAMMAs,diag,Work,Work2
+ real(dp),allocatable,dimension(:)::GAMMAs,Grad_GAMMAs,diag,Work
 !************************************************************************
 
  Energy=zero
@@ -127,54 +124,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
    enddo
    deallocate(Work,diag)
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
-  else ! Conjugate gradients. (The subroutine uses goto. It is not clean but needed...)
-   write(msg,'(a)') 'Calling CG to optimize occ. numbers'
-   call write_output(msg)
-   Nwork=60; Nwork2=71+RDMd%Ngammas*(RDMd%Ngammas+15)/2; 
-   allocate(iWork(Nwork),Work(RDMd%Ngammas),Work2(Nwork2))
-   iWork=0; Work=tol1;   
-   if (iWork(1)==0) call deflt(2,iWork, Nwork, Nwork2, Work2)
-   iflag = iWork(1)
-   if (iflag == 12 .or. iflag == 13) iWork(vneed) = iWork(vneed) + RDMd%Ngammas
-   if (iflag == 14) goto 10
-   if (iflag > 2 .and. iflag < 12) goto 10
-   ig = 1
-   if (iflag == 12) iWork(1) = 13
-   goto 20
-
-10  ig = iWork(g)
-
-20  call sumit(Work, Energy, Work2(ig), iWork, Nwork, Nwork2, RDMd%Ngammas, Work2, GAMMAs)
-   if(iWork(1)-2<0) then 
-    goto 30
-   elseif(iWork(1)-2==0) then
-    goto 40
-   else
-    goto 50
-   endif
-
-30  icall1 = iWork(nfcall)
-   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
-   icall=icall+1
-   if(icall==2000) goto 60
-   if(icall1<=0) iWork(toobig) = 1
-   goto 20
-
-40  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
-   Work2(ig:ig+RDMd%Ngammas)=Grad_GAMMAs(1:RDMd%Ngammas)
-   goto 20
-
-50  if(iWork(1) /= 14) then
-       goto 60
-    endif
-   !
-   !  Storage allocation
-   !
-   iWork(g) = iWork(nextv)
-   iWork(nextv) = iWork(g) + RDMd%Ngammas
-   if(iflag /= 13) goto 10
-
-60  deallocate(iWork,Work,Work2)
+  else ! TODO add an alternative to L-BFGS
 
   endif
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
