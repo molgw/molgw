@@ -58,7 +58,7 @@ contains
 !! Nbeta_elect_in=Number of beta electrons (N/2 for spin compensated systems)
 !! Nalpha_elect_in=Number of beta electrons (N/2 for spin compensated systems)
 !! iERItyp_in=Index organization used for ERIs ({ij|lk}, <ij|kl>, and (ik|jl))
-!! imethocc=Method used for OCC opt. LBFGS(1) or CG (2)
+!! imethocc=Method used for OCC opt. L-BFGS(1) or CG (2)
 !! imethorb=Method used to opt. orbs. currently only F_diag (1)
 !! itermax=Max. number of global iters
 !! iprintdmn=Print opt. 1,2-DMNs 
@@ -300,10 +300,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call RDMd%print_orbs_bin(NO_COEF)
 
  ! Calculate the chem. pot. = d E / d occ 
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') 'Chemical potential per orbital (a.u.) '
- call write_output(msg)
  call occ_chempot(RDMd,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L)
  chempot_val=-ten**(ten)
  do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
@@ -313,6 +309,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    RDMd%chempot_orb(iorb)=zero
   endif
  enddo
+ write(msg,'(a)') ' '
+ call write_output(msg)
+ write(msg,'(a,f10.5,a,f10.5,a)') 'Chem. potential ',chempot_val,' (a.u.) ',chempot_val*Ha_eV,' (eV), and per orbital (a.u.)'
+ call write_output(msg)
  do iorb=1,(RDMd%NBF_occ/10)*10,10
   write(msg,'(f12.6,9f11.6)') RDMd%chempot_orb(iorb:iorb+9)
   call write_output(msg)
@@ -335,13 +335,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  write(msg,'(a,f15.6,a,i6,a)') 'Final NOF energy = ',Enof,' a.u. after ',iter,' global iter.'
  call write_output(msg)
- write(msg,'(a,f15.6,a)') 'hCORE            = ',hONEbody,' a.u.'
+ write(msg,'(a,f15.6,a)') 'Hcore            = ',hONEbody,' a.u.'
  call write_output(msg)
  write(msg,'(a,f15.6,a)') 'Vee              = ',Vee,' a.u.'
  call write_output(msg)
  write(msg,'(a,f15.6,a)') 'Vnn              = ',Vnn,' a.u.'
- call write_output(msg)
- write(msg,'(a,f15.6,a,f15.6,a)') 'chem. pot.       = ',chempot_val,' a.u.,',chempot_val*Ha_eV,' eV'
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)

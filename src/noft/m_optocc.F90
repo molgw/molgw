@@ -110,7 +110,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  if((.not.conveg).and.(.not.keep_occs)) then 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
   if(imethod==1) then ! LBFGS
-   write(msg,'(a)') 'Calling LBFGS to optimize occ. numbers'
+   write(msg,'(a)') 'Calling L-BFGS to optimize occ. numbers'
    call write_output(msg)
    Nwork=RDMd%Ngammas*(2*msave+1)+2*msave
    Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
