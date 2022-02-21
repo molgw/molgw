@@ -174,7 +174,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
   !=====
 
   call start_clock(timing_overlap)
-#if defined(LIBCINT)
+#if defined(HAVE_LIBCINT)
   write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
   write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBINT)'
