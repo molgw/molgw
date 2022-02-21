@@ -172,7 +172,7 @@ subroutine write_header(sha)
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)
- write(msg,'(a)') '  First version: VU Amsterdam 2021 '
+ write(msg,'(a)') '  First version: VU Amsterdam 2022 '
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)
