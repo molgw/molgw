@@ -636,7 +636,7 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
 
    mask(:)       = ( basis%shell(:)%icenter       == MAXVAL(basis%shell(:)%icenter) )
    mask_auxil(:) = ( auxil_basis%shell(:)%icenter == MAXVAL(auxil_basis%shell(:)%icenter) )
- else
+ elseif(rcut < 1.0e-6_dp) then
    call destroy_eri_3center()
  endif
 
