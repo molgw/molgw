@@ -842,7 +842,7 @@ subroutine setup_x_matrix(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  real(dp),allocatable,intent(out)   :: x_matrix(:,:)
 !=====
  integer  :: nbf
- integer  :: istate,jbf,i_sign
+ integer  :: istate,jbf
  real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
