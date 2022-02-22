@@ -4,14 +4,15 @@
 
  basis='cc-pVTZ'
  auxil_basis='cc-pVTZ-RI'
+ gaussian_type='cart'
 
  natom=2
 
  ncoupled=10
  restartnoft='yes'
- ireadCOEF=1
+ ireadCOEF=0
  ireadFdiag=1
- iNOTupdateOCC=0
+ iNOTupdateOCC=1
  iNOTupdateORB=0
  ireadGAMMAS=1
 

@@ -4,6 +4,7 @@
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
+ gaussian_type='cart'
 
  natom=2
 
