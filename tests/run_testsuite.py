@@ -296,6 +296,7 @@ have_mpi              = 'Running with MPI' in open(tmpfolder+'/fake.out').read()
 have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder+'/fake.out').read()
 have_libint_onebody   = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
 have_libint_gradients = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
+is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder+'/fake.out').read()
 #with open(tmpfolder+'/fake.out','r') as ffake:
 #  for line in ffake:
 #    if 'Perform diagonalizations with (Sca)LAPACK routines' in line:
@@ -305,8 +306,12 @@ print('                   OPENMP: {}'.format(have_openmp) )
 print('                      MPI: {}'.format(have_mpi) )
 print('                SCALAPACK: {}'.format(have_scalapack) )
 print('                    LIBXC: {}'.format(have_libxc) )
-print('            1-body LIBINT: {}'.format(have_libint_onebody) )
-print('         gradients LIBINT: {}'.format(have_libint_gradients) )
+if is_libcint:
+    print('                integrals: LIBCINT' )
+else:
+    print('                integrals: LIBINT' )
+print('         1-body integrals: {}'.format(have_libint_onebody) )
+print('      gradients integrals: {}'.format(have_libint_gradients) )
 #print('        (Sca)LAPACK diago: {}'.format(lapack_diago_flavor) )
 print()
 
