@@ -286,43 +286,33 @@ m_gitver.o: ./noft/m_gitver.F90
 	$(FC_W_OPTS) -c ./noft/m_gitver.F90
 
 m_lbfgs_intern.o: m_definitions.f90 ./noft/m_lbfgs_intern.F
-	cp m_definitions.mod ./noft/m_vars.mod 
-	$(FC_W_OPTS) -w -ffixed-form -fd-lines-as-comments -c ./noft/m_lbfgs_intern.F
+	$(FC_W_OPTS) -c ./noft/m_lbfgs_intern.F
 
 m_integd.o: m_definitions.f90 ./noft/m_integd.F90
-	cp m_definitions.mod ./noft/m_vars.mod 
 	$(FC_W_OPTS) -c ./noft/m_integd.F90
 
 m_rdmd.o: m_definitions.f90 ./noft/m_rdmd.F90
-	cp m_definitions.mod ./noft/m_vars.mod 
 	$(FC_W_OPTS) -c ./noft/m_rdmd.F90
 
 m_elag.o: m_definitions.f90 ./noft/m_elag.F90
-	cp m_definitions.mod ./noft/m_vars.mod 
 	$(FC_W_OPTS) -c ./noft/m_elag.F90
 
 m_gammatodm2.o: m_definitions.f90 ./noft/m_gammatodm2.F90
-	cp m_definitions.mod ./noft/m_vars.mod 
 	$(FC_W_OPTS) -c ./noft/m_gammatodm2.F90
 
 m_diagf.o: m_definitions.f90 ./noft/m_diagf.F90
-	cp m_definitions.mod ./noft/m_vars.mod 
 	$(FC_W_OPTS) -c ./noft/m_diagf.F90
 
 m_e_grad_occ.o: m_definitions.f90 ./noft/m_e_grad_occ.F90
-	cp m_definitions.mod ./noft/m_vars.mod 
 	$(FC_W_OPTS) -c ./noft/m_e_grad_occ.F90
 
 m_optocc.o: m_definitions.f90 ./noft/m_optocc.F90
-	cp m_definitions.mod ./noft/m_vars.mod 
 	$(FC_W_OPTS) -c ./noft/m_optocc.F90
 
 m_optorb.o: m_definitions.f90 ./noft/m_optorb.F90
-	cp m_definitions.mod ./noft/m_vars.mod 
 	$(FC_W_OPTS) -c ./noft/m_optorb.F90
 
 m_noft_driver.o: m_definitions.f90 ./noft/m_noft_driver.F90
-	cp m_definitions.mod ./noft/m_vars.mod 
 	$(FC_W_OPTS) -c ./noft/m_noft_driver.F90
 	
 mp2.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \

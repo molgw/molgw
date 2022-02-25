@@ -1,6 +1,6 @@
-!!****m* DoNOF/m_vars
+!!****m* DoNOF/m_definitions
 !! NAME
-!! m_vars
+!! m_definitions
 !!
 !! FUNCTION
 !! Define size vars e.g. real(dp).
@@ -11,7 +11,7 @@
 !!
 !! SOURCE
 
-module m_vars
+module m_definitions
 
  implicit none
  integer, parameter :: dp = kind(1.d0)
@@ -33,5 +33,5 @@ module m_vars
  real(dp), parameter :: pi = dacos(-one)
  real(dp), parameter :: Ha_eV = 27.21138505
 
-end module m_vars
+end module m_definitions
 !!***

@@ -16,7 +16,7 @@
 module m_integd
 
  use m_nofoutput
- use m_vars
+ use m_definitions
  implicit none
 
 !!****t* m_integd/integ_t
