@@ -44,7 +44,6 @@ module m_rdmd
   integer::Npairs                ! Number of electron pairs
   integer::Npairs_p_sing         ! Number of electron pairs plus number of singly occ orbitals
   integer::Ngammas               ! Number of gammas (independet variables used in occ optimization procedure)
-  !real(dp)::Sums                 ! Used to define old PNOFs (i=2->4, 6)
   real(dp)::Lpower=0.53d0        ! Power functional exponent
 ! arrays 
   real(dp),allocatable,dimension(:)::occ,chempot_orb
@@ -451,28 +450,41 @@ end subroutine print_swrdm
 !!
 !! SOURCE
 
-subroutine print_orb_coefs(RDMd,COEF,name_file)
+subroutine print_orb_coefs(RDMd,name_file,COEF,COEFc)
 !Arguments ------------------------------------
 !scalars
  class(rdm_t),intent(in)::RDMd
 !arrays
  character(len=10)::name_file 
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF
+ real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEFc
 !Local variables ------------------------------
 !scalars
-integer::iorb,iorb1,iunit=312
+ logical::cpx_mos=.false.
+ integer::iorb,iorb1,iunit=312
 !arrays
 
 !************************************************************************
 
+ if(present(COEFc)) cpx_mos=.true.
  ! Print the orb. coefs
  open(unit=iunit,form='formatted',file=name_file)
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,(RDMd%NBF_tot/10)*10,10
-   write(iunit,'(f14.8,9f13.8)') COEF(iorb1:iorb1+9,iorb)  
+   if(cpx_mos) then
+    write(iunit,'(f14.8,9f13.8)') real(COEFc(iorb1:iorb1+9,iorb))
+    write(iunit,'(f14.8,9f13.8)') aimag(COEFc(iorb1:iorb1+9,iorb))
+   else
+    write(iunit,'(f14.8,9f13.8)') COEF(iorb1:iorb1+9,iorb)
+   endif
   enddo
   iorb1=(RDMd%NBF_tot/10)*10+1
-  write(iunit,'(f14.8,*(f13.8))') COEF(iorb1:,iorb)
+  if(cpx_mos) then
+    write(iunit,'(f14.8,*(f13.8))') real(COEFc(iorb1:,iorb))
+    write(iunit,'(f14.8,*(f13.8))') aimag(COEFc(iorb1:,iorb))
+  else
+   write(iunit,'(f14.8,*(f13.8))') COEF(iorb1:,iorb)
+  endif
  enddo
  close(iunit)
 
@@ -498,27 +510,38 @@ end subroutine print_orb_coefs
 !!
 !! SOURCE
 
-subroutine print_orb_coefs_bin(RDMd,COEF)
+subroutine print_orb_coefs_bin(RDMd,COEF,COEFc)
 !Arguments ------------------------------------
 !scalars
  class(rdm_t),intent(in)::RDMd
 !arrays
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF
+ real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEFc
 !Local variables ------------------------------
 !scalars
-integer::iorb,iorb1,iunit=312
+ logical::cpx_mos=.false.
+ integer::iorb,iorb1,iunit=312
 !arrays
 
 !************************************************************************
-
+ 
+ if(present(COEFc)) cpx_mos=.true.
  ! Print the orb. coefs
  open(unit=iunit,form='unformatted',file='NO_COEF_BIN')
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,RDMd%NBF_tot
-   write(iunit) iorb,iorb1,COEF(iorb,iorb1)
+   if(cpx_mos) then
+    write(iunit) iorb,iorb1,COEFc(iorb,iorb1)
+   else
+    write(iunit) iorb,iorb1,COEF(iorb,iorb1)
+   endif
   enddo
  enddo
- write(iunit) 0,0,zero
+ if(cpx_mos) then
+  write(iunit) 0,0,zero
+ else
+  write(iunit) 0,0,COMPLEX_ZERO
+ endif
  close(iunit)
 
 end subroutine print_orb_coefs_bin

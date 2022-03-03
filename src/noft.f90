@@ -108,14 +108,14 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  if(restartnoft=='yes') then
    call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
    & imethocc,imethorb,nscf_nof,iprintdmn,iprintswdmn,iprintints,ithresh_lambda,ndiis_nof,&
-   & Enoft,tolE_nof,Vnn,NO_COEF,Aoverlap,occ(:,1),mo_ints,ofile_name,lowmemERI=(lowmemERI=='yes'),&
+   & Enoft,tolE_nof,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(lowmemERI=='yes'),&
    & restart=(restartnoft=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
    & ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=Lpower,&
    & fcidump=(fcidump=='yes'))
  else
    call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
    & imethocc,imethorb,nscf_nof,iprintdmn,iprintswdmn,iprintints,ithresh_lambda,ndiis_nof,&
-   & Enoft,tolE_nof,Vnn,NO_COEF,Aoverlap,occ(:,1),mo_ints,ofile_name,lowmemERI=(lowmemERI=='yes'),&
+   & Enoft,tolE_nof,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(lowmemERI=='yes'),&
    & Lpower=Lpower,fcidump=(fcidump=='yes'))
  endif
  
@@ -151,7 +151,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
 
 end subroutine noft_energy
 
-subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv)
+subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COEFc,hCOREc,ERIcmol,ERIcmolv)
  use m_definitions
  use m_mpi
  use m_cart_to_pure
@@ -161,10 +161,14 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv)
  implicit none
 
  integer,intent(in)         :: nbf,nbf_occ,nbf_kji
- real(dp),intent(in)        :: NO_COEF(nbf,nbf)
- real(dp),intent(inout)     :: hCORE(nbf,nbf)
+ real(dp),optional,intent(in)    :: NO_COEF(nbf,nbf)
+ real(dp),optional,intent(inout) :: hCORE(nbf,nbf)
  real(dp),optional,intent(inout) :: ERImol(nbf,nbf_kji,nbf_kji,nbf_kji)
  real(dp),optional,intent(inout) :: ERImolv(nbf*nbf_kji*nbf_kji*nbf_kji)
+ complex(dp),optional,intent(in)    :: NO_COEFc(nbf,nbf)
+ complex(dp),optional,intent(inout) :: hCOREc(nbf,nbf)
+ complex(dp),optional,intent(inout) :: ERIcmol(nbf,nbf_kji,nbf_kji,nbf_kji)
+ complex(dp),optional,intent(inout) :: ERIcmolv(nbf*nbf_kji*nbf_kji*nbf_kji)
 !====
  integer                    :: istate,jstate,kstate,lstate,verbose=-1
  real(dp),allocatable       :: tmp_hcore(:,:)

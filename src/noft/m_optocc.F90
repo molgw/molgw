@@ -19,6 +19,7 @@ module m_optocc
  use m_rdmd
  use m_lbfgs_intern
  use m_e_grad_occ
+ use m_e_grad_occ_cpx
 
  implicit none
 
@@ -55,7 +56,7 @@ contains
 !!
 !! SOURCE
 
-subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L,hCOREc,ERIc_J,ERIc_K,ERIc_L)
 !Arguments ------------------------------------
 !scalars
  logical,intent(in)::keep_occs
@@ -65,11 +66,13 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  real(dp),intent(inout)::Energy
  type(rdm_t),intent(inout)::RDMd
 !arrays
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
- real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
+ real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
+ real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCOREc
+ complex(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERIc_J,ERIc_K,ERIc_L 
 !Local variables ------------------------------
 !scalars
- logical::diagco,conveg=.false.,debug=.false.
+ logical::diagco,conveg=.false.,debug=.false.,cpx_mos=.false.
  integer,parameter::msave=7,nextv=47,nfcall=6,nfgcal=7,g=28,toobig=2,vneed=4
  integer::iorb,igamma,iflag,icall,Mtosave,Nwork
 !arrays
@@ -78,6 +81,9 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  real(dp),allocatable,dimension(:)::GAMMAs,Grad_GAMMAs,diag,Work
 !************************************************************************
 
+ if(present(hCOREc).and.present(ERIc_J).and.present(ERIc_K).and.present(ERIc_L)) then
+  cpx_mos=.true.
+ endif
  Energy=zero
  allocate(GAMMAs(RDMd%Ngammas),Grad_GAMMAs(RDMd%Ngammas))
  Grad_GAMMAs=zero
@@ -92,8 +98,13 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  endif
 
  ! Check if the current GAMMAs already solve the problem. Is it converged? 
- call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
- call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
+ if(cpx_mos) then
+  call calc_E_occ_cpx(RDMd,GAMMAs,Energy,hCOREc,ERIc_J,ERIc_K,ERIc_L)
+  call calc_Grad_occ_cpx(RDMd,Grad_GAMMAs,hCOREc,ERIc_J,ERIc_K,ERIc_L)
+ else
+  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
+ endif
  conveg=.true.
  do igamma=1,RDMd%Ngammas
   if(dabs(Grad_GAMMAs(igamma))>tol6.and.conveg) then
@@ -114,8 +125,13 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
    icall=0; iflag=0;
    allocate(Work(Nwork),diag(RDMd%Ngammas))
    do
-    call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
-    call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
+    if(cpx_mos) then
+     call calc_E_occ_cpx(RDMd,GAMMAs,Energy,hCOREc,ERIc_J,ERIc_K,ERIc_L)
+     call calc_Grad_occ_cpx(RDMd,Grad_GAMMAs,hCOREc,ERIc_J,ERIc_K,ERIc_L)
+    else
+     call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+     call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L)
+    endif
     call LBFGS_INTERN(RDMd%Ngammas,Mtosave,GAMMAs,Energy,Grad_GAMMAs,diagco,diag,info_print,tol5,tol16,Work,iflag)
     if(iflag<=0) exit
     icall=icall+1
@@ -136,7 +152,11 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  else
   RDMd%GAMMAs_old=GAMMAs
  endif
- call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+ if(cpx_mos) then
+  call calc_E_occ_cpx(RDMd,GAMMAs,Energy,hCOREc,ERIc_J,ERIc_K,ERIc_L)
+ else
+  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+ endif
  write(msg,'(a,f15.6,a,i6,a)') 'Occ. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
  Grad_GAMMAs(:)=dabs(Grad_GAMMAs(:))
@@ -193,28 +213,38 @@ end subroutine opt_occ
 !!
 !! SOURCE
 
-subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L)
+subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,hCOREc,ERIc_J,ERIc_K,ERIc_L)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
 !arrays
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
- real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
+ real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
+ real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCOREc
+ complex(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERIc_J,ERIc_K,ERIc_L 
 !Local variables ------------------------------
 !scalars
- logical::chempot
+ logical::chempot,cpx_mos=.false.
  real(dp)::Energy
 !arrays
  real(dp),allocatable,dimension(:)::GAMMAs,Grad_GAMMAs
 !************************************************************************
 
+ if(present(hCOREc).and.present(ERIc_J).and.present(ERIc_K).and.present(ERIc_L)) then
+  cpx_mos=.true.
+ endif
  Energy=zero
  allocate(GAMMAs(RDMd%Ngammas),Grad_GAMMAs(RDMd%Ngammas))
  GAMMAs=RDMd%GAMMAs_old  ! Read from previous run
 
  ! Calc. the 2RDM and derivatives in RDMd
- call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,chempot=chempot)
- call calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L)
+ if(cpx_mos) then
+  call calc_E_occ_cpx(RDMd,GAMMAs,Energy,hCOREc,ERIc_J,ERIc_K,ERIc_L,chempot=chempot)
+  call calc_Chem_pot_cpx(RDMd,hCOREc,ERIc_J,ERIc_K,ERIc_L)
+ else
+  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,chempot=chempot)
+  call calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L)
+ endif
 
  deallocate(GAMMAs,Grad_GAMMAs)
 

@@ -39,6 +39,7 @@ module m_elag
 
  type,public :: elag_t
 
+  logical::cpx_lambdas=.false.   ! True for complex Lambdas (i.e. complex orbitals)
   logical::diagLpL=.true.        ! Do the diag. using (lambda+lambda)/2?
   logical::diagLpL_done=.false.  ! Did we use use (lambda+lambda)/2?
   integer::imethod=1             ! Method used for optimization (1-> Diag F matrix)
@@ -57,6 +58,7 @@ module m_elag
   real(dp),allocatable,dimension(:,:)::Lambdas    ! Lambda_pq (Lagrange multipliers matrix)
   real(dp),allocatable,dimension(:,:)::DIIS_mat   ! DIIS matrix used to solve the system of eqs. DIIS_MAT*Coef_DIIS = (0 0 ... 0 1) 
   real(dp),allocatable,dimension(:,:,:)::F_DIIS   ! F matrices used by DIIS
+  complex(dp),allocatable,dimension(:,:)::LambdasC ! Lambda_pq (complex Lagrange multipliers matrix)
 
  contains 
    procedure :: free => elag_free
@@ -102,10 +104,10 @@ CONTAINS  !=====================================================================
 !!
 !! SOURCE
 
-subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,tolE_in)
+subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,tolE_in,cpx_mos)
 !Arguments ------------------------------------
 !scalars
- logical,intent(in)::diagLpL_in
+ logical,intent(in)::diagLpL_in,cpx_mos
  integer,intent(in)::NBF_tot,itolLambda_in,ndiis_in,imethod_in
  real(dp),intent(in)::tolE_in
  type(elag_t),intent(inout)::ELAGd
@@ -116,6 +118,7 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
  character(len=200)::msg
 !************************************************************************
 
+ ELAGd%cpx_lambdas=cpx_mos
  ELAGd%imethod=imethod_in
  ELAGd%itolLambda=itolLambda_in
  ELAGd%diagLpL=diagLpL_in
@@ -123,9 +126,16 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
  ELAGd%ndiis_array=ELAGd%ndiis+2
  ELAGd%tolE=tolE_in
  ! Calculate memory needed
- totMEM=NBF_tot+2*NBF_tot*NBF_tot
- if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
-  totMEM=totMEM+ELAGd%ndiis_array+ELAGd%ndiis_array*NBF_tot*NBF_tot+ELAGd%ndiis_array*ELAGd%ndiis_array
+ if(cpx_mos) then
+  totMEM=NBF_tot+4*NBF_tot*NBF_tot
+  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+   totMEM=totMEM+ELAGd%ndiis_array+ELAGd%ndiis_array*NBF_tot*NBF_tot+ELAGd%ndiis_array*ELAGd%ndiis_array
+  endif
+ else
+  totMEM=NBF_tot+NBF_tot*NBF_tot
+  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+   totMEM=totMEM+ELAGd%ndiis_array+ELAGd%ndiis_array*NBF_tot*NBF_tot+ELAGd%ndiis_array*ELAGd%ndiis_array
+  endif
  endif
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
@@ -139,7 +149,11 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
  call write_output(msg)
  ! Allocate arrays
  allocate(ELAGd%F_diag(NBF_tot))
- allocate(ELAGd%Lambdas(NBF_tot,NBF_tot)) 
+ if(cpx_mos) then
+  allocate(ELAGd%LambdasC(NBF_tot,NBF_tot)) 
+ else 
+  allocate(ELAGd%Lambdas(NBF_tot,NBF_tot)) 
+ endif
  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
   allocate(ELAGd%Coef_DIIS(ELAGd%ndiis_array))
   allocate(ELAGd%F_DIIS(ELAGd%ndiis_array,NBF_tot,NBF_tot))
@@ -177,7 +191,11 @@ subroutine elag_free(ELAGd)
 !************************************************************************
 
  deallocate(ELAGd%F_diag) 
- deallocate(ELAGd%Lambdas) 
+ if(ELAGd%cpx_lambdas) then
+  deallocate(ELAGd%LambdasC) 
+ else
+  deallocate(ELAGd%Lambdas) 
+ endif
  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
   deallocate(ELAGd%Coef_DIIS)
   deallocate(ELAGd%F_DIIS)
@@ -360,7 +378,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,ekt)
   coef_file='CANON_COEF'
   allocate(CANON_COEF(RDMd%NBF_tot,RDMd%NBF_tot))
   CANON_COEF=matmul(NO_COEF,Eigvec)
-  call RDMd%print_orbs(CANON_COEF,coef_file)
+  call RDMd%print_orbs(coef_file,COEF=CANON_COEF)
   deallocate(CANON_COEF)
   write(msg,'(a)') 'Canonical orbital eigenvalues (a.u.)'
   call write_output(msg)
@@ -445,7 +463,7 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF)
  enddo
  ! Print DYSON_COEF
  coef_file='DYSON_COEF'
- call RDMd%print_orbs(DYSON_COEF,coef_file)
+ call RDMd%print_orbs(coef_file,COEF=DYSON_COEF)
  ! Print DYSON occ. numbers
  DYSON_OCC(:)=two*DYSON_OCC(:)
  write(msg,'(a,f10.5,a)') 'Dyson occ ',sum(DYSON_OCC(:)),'. Dyson occ. numbers '

@@ -22,6 +22,7 @@ module m_optorb
  use m_elag
  use m_diagf
  use m_e_grad_occ
+ use m_e_grad_occ_cpx
 
  implicit none
 
@@ -57,7 +58,7 @@ contains
 !!
 !! SOURCE
 
-subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints) 
+subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_COEFc) 
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::iter,imethod
@@ -67,17 +68,23 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
  interface 
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,NO_COEF,hCORE,ERImol,ERImolv)
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,NO_COEF,hCORE,ERImol,ERImolv,NO_COEFc,hCOREc,ERIcmol,ERIcmolv)
+  use m_definitions
   implicit none
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
-  double precision,intent(in)::NO_COEF(NBF_tot,NBF_tot)
-  double precision,intent(inout)::hCORE(NBF_tot,NBF_tot)
-  double precision,optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
-  double precision,optional,intent(inout)::ERImolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
+  real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)
+  real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
+  real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
+  real(dp),optional,intent(inout)::ERImolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
+  complex(dp),optional,intent(in)::NO_COEFc(NBF_tot,NBF_tot)
+  complex(dp),optional,intent(inout)::hCOREc(NBF_tot,NBF_tot)
+  complex(dp),optional,intent(inout)::ERIcmol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
+  complex(dp),optional,intent(inout)::ERIcmolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
   end subroutine mo_ints
  end interface
 !arrays
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
+ real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEFc
 !Local variables ------------------------------
 !scalars
  logical::convLambda,nogamma,diddiis
@@ -93,13 +100,29 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  endif
  
  icall=0
- if(INTEGd%iERItyp/=-1) then
-  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImol=INTEGd%ERImol)
+ if(INTEGd%complex_ints) then
+  if(INTEGd%iERItyp/=-1) then
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEFc=NO_COEFc,hCOREc=INTEGd%hCOREc, &
+  & ERIcmol=INTEGd%ERIcmol)
+  else
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEFc=NO_COEFc,hCOREc=INTEGd%hCOREc, &
+  & ERIcmolv=INTEGd%ERIcmolv)
+  endif
+  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+  call calc_E_occ_cpx(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCOREc,INTEGd%ERIc_J,INTEGd%ERIc_K, &
+  & INTEGd%ERIc_L,nogamma=nogamma)
  else
-  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImolv=INTEGd%ERImolv)
+  if(INTEGd%iERItyp/=-1) then
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
+  & ERImol=INTEGd%ERImol)
+  else
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
+  & ERImolv=INTEGd%ERImolv)
+  endif
+  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  & INTEGd%ERI_L,nogamma=nogamma)
  endif
- call INTEGd%eritoeriJKL(RDMd%NBF_occ)
- call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L,nogamma=nogamma)
  do
   ! If we used a DIIS step, do not stop after DIIS for small Energy dif.
   diddiis=.false.
@@ -108,7 +131,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
 
   ! Check if these NO_COEF with the RDMs are already the solution =)
-  call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff,iorbmax1,iorbmax2)
+  call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff,iorbmax1,iorbmax2,INTEGd%complex_ints)
   if(convLambda) then
    write(msg,'(a)') 'Lambda_qp - Lambda_pq* converged for the Hemiticty of Lambda'
    call write_output(msg)
@@ -134,13 +157,29 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
   endif
 
   ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
-  if(INTEGd%iERItyp/=-1) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImol=INTEGd%ERImol)
+  if(INTEGd%complex_ints) then
+   if(INTEGd%iERItyp/=-1) then
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEFc=NO_COEFc,hCOREc=INTEGd%hCOREc, &
+   & ERIcmol=INTEGd%ERIcmol)
+   else
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEFc=NO_COEFc,hCOREc=INTEGd%hCOREc, &
+   & ERIcmolv=INTEGd%ERIcmolv)
+   endif
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ_cpx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCOREc,INTEGd%ERIc_J,INTEGd%ERIc_K, &
+   & INTEGd%ERIc_L,nogamma=nogamma)
   else
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF,INTEGd%hCORE,ERImolv=INTEGd%ERImolv)
+   if(INTEGd%iERItyp/=-1) then
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+   & ERImol=INTEGd%ERImol)
+   else
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+   & ERImolv=INTEGd%ERImolv)
+   endif
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+   & INTEGd%ERI_L,nogamma=nogamma)
   endif
-  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L,nogamma=nogamma)
  
   ! Check if we did Diag[(Lambda_pq + Lambda_qp*)/2] for F method (first iteration)
   if((imethod==1.and.iter==0).and.ELAGd%diagLpL_done) then ! For F method if we did Diag[(Lambda_pq + Lambda_qp*)/2].
@@ -162,7 +201,13 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,NO_COEF,mo_ints)
  enddo
  
  ! Calc. the final Energy using fixed RDMs and the new NO_COEF (before going back to occ. optimization)
- call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K,INTEGd%ERI_L,nogamma=nogamma)
+ if(INTEGd%complex_ints) then
+  call calc_E_occ_cpx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCOREc,INTEGd%ERIc_J,INTEGd%ERIc_K, &
+  & INTEGd%ERIc_L,nogamma=nogamma)
+ else
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  & INTEGd%ERI_L,nogamma=nogamma)
+ endif
  write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
  if(imethod==1.and.iter>0) then
@@ -195,9 +240,10 @@ end subroutine opt_orb
 !!
 !! SOURCE
 
-subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,iorbmax1,iorbmax2)
+subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,iorbmax1,iorbmax2,cpx_mos)
 !Arguments ------------------------------------
 !scalars
+ logical,intent(in)::cpx_mos
  logical,intent(inout)::converg_lamb
  integer,intent(inout)::iorbmax1,iorbmax2
  real(dp),intent(inout)::sumdiff,maxdiff
@@ -216,7 +262,11 @@ subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,iorbmax1,iorbmax2
  
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,RDMd%NBF_tot
-   diff=dabs(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
+   if(cpx_mos) then
+    diff=cdabs(ELAGd%LambdasC(iorb1,iorb)-conjg(ELAGd%LambdasC(iorb,iorb1)))
+   else
+    diff=dabs(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
+   endif
    sumdiff=sumdiff+diff
    if((diff>=tol_dif_Lambda) .and. converg_lamb) then
     converg_lamb=.false.

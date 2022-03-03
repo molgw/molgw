@@ -32,6 +32,9 @@ module m_definitions
  real(dp), parameter :: thousand = 1.0d3
  real(dp), parameter :: pi = dacos(-one)
  real(dp), parameter :: Ha_eV = 27.21138505
+ complex(dp),parameter  :: im    = (0.0_dp,1.0_dp)
+ complex(dp),parameter  :: COMPLEX_ONE  = (1.0_dp,0.0_dp)
+ complex(dp),parameter  :: COMPLEX_ZERO = (0.0_dp,0.0_dp)
 
 end module m_definitions
 !!***

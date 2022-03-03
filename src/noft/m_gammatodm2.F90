@@ -228,13 +228,6 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
    endif
   enddo
  endif 
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-!     Sum of the Holes below the Fermi Level (RDMd%Sums)
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! RDMd%Sums = DFLOAT(RDMd%Nbeta_elect)
-! do iorb=1,RDMd%Nbeta_elect
-!  RDMd%Sums = RDMd%Sums - RDMd%occ(iorb)
-! enddo
 !-----------------------------------------------------------------------
 !                   DM2_J, DM2_K, DDM2_gamma_J, DDM2_gamma_K
 !Comment: This is not the cleanest way to call them but it is fastest way 
