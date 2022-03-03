@@ -315,10 +315,20 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
 
  ! Print final diagonalized INTEGd%Lambdas values
- call ELAGd%diag_lag(RDMd,INTEGd,NO_COEF)
+ if(cpx_mos) then
+  call ELAGd%diag_lag(RDMd,INTEGd,NO_COEFc=NO_COEFc)
+ else
+  call ELAGd%diag_lag(RDMd,INTEGd,NO_COEF=NO_COEF)
+ endif
 
  ! Print final Extended Koopmans' Theorem (EKT) values
- if(RDMd%Nsingleocc==0) call ELAGd%diag_lag(RDMd,INTEGd,NO_COEF,ekt=ekt)
+ if(RDMd%Nsingleocc==0) then
+  if(cpx_mos) then
+   call ELAGd%diag_lag(RDMd,INTEGd,NO_COEFc=NO_COEFc,ekt=ekt)
+  else
+   call ELAGd%diag_lag(RDMd,INTEGd,NO_COEF=NO_COEF,ekt=ekt)
+  endif
+ endif
 
  ! Print optimal occ. numbers and save them in Occ_inout array
  write(msg,'(a)') ' '
