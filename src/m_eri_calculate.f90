@@ -613,6 +613,7 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  type(basis_set),intent(inout) :: basis,auxil_basis
  real(dp),intent(in)           :: rcut
  !=====
+ integer                      :: ishell,iauxil_shell
  logical                      :: recalculation
  logical,allocatable          :: mask(:),mask_auxil(:)
  !=====
@@ -628,16 +629,14 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
    allocate(mask(basis%nshell))
    allocate(mask_auxil(auxil_basis%nshell))
 
-   ! FIXME: Assume the last atomic center is a moving projectile
-   ! This is very dangerous !
-   ! In the future use the following coding:
-   !mask(:)       = ( NORM2(basis%shell(:)%v0(:)) > 1.0e-6_dp )
-   !mask_auxil(:) = ( NORM2(auxil_basis%shell(:)%v0(:)) > 1.0e-6_dp )
-
-   mask(:)       = ( basis%shell(:)%icenter       == MAXVAL(basis%shell(:)%icenter) )
-   mask_auxil(:) = ( auxil_basis%shell(:)%icenter == MAXVAL(auxil_basis%shell(:)%icenter) )
- elseif(rcut < 1.0e-6_dp) then
-   call destroy_eri_3center()
+   do ishell = 1, basis%nshell
+     mask(ishell) = ANY( basis%shell(ishell)%v0 > 1.0e-6_dp )
+   end do
+   do iauxil_shell = 1, auxil_basis%nshell
+     mask_auxil(iauxil_shell) = ANY( auxil_basis%shell(iauxil_shell)%v0 > 1.0e-6_dp )
+   end do
+   !mask(:)       = ( basis%shell(:)%icenter       == MAXVAL(basis%shell(:)%icenter) )
+   !mask_auxil(:) = ( auxil_basis%shell(:)%icenter == MAXVAL(auxil_basis%shell(:)%icenter) )
  endif
 
 
