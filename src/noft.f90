@@ -28,7 +28,9 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  integer                    :: istate,lwork,info
  real(dp),allocatable       :: occ(:,:),energy(:,:),occ_print(:,:)
  real(dp),allocatable       :: NO_COEF(:,:)
+ complex(dp),allocatable    :: NO_COEFc(:,:)
  real(dp),allocatable       :: tmp_mat0(:,:),tmp_mat(:,:),Work(:) 
+ complex(dp),allocatable    :: tmp_mat0C(:,:)
  integer                    :: imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled
  integer                    :: verbose=-1
  character(len=200)         :: ofile_name
@@ -46,7 +48,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  write(stdout,'(a)')   ' =================================================='
  write(stdout,'(/,a)') ' '
 
- Enoft = 0.0_dp
+ Enoft = zero
  nbf_noft=nstate  ! Number of lin. indep. molecular orbitals
  ! These varibles will remain fixed for a while
  ! iERItyp=1 -> use notation <ij|kl>
@@ -55,18 +57,29 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  ! Allocate arrays and initialize them 
  call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
  call clean_allocate('Aoverlap',Aoverlap,basis%nbf,basis%nbf)
- call clean_allocate('NO_COEF',NO_COEF,basis%nbf,basis%nbf)
  call clean_allocate('NO_occ',occ,basis%nbf,1)
  call clean_allocate('NO_energies',energy,basis%nbf,1)
- occ=0.0_dp; energy=0.0_dp;
+ if(complexnoft=='yes') then
+   call clean_allocate('NO_COEFc',NO_COEFc,basis%nbf,basis%nbf)
+ else
+   call clean_allocate('NO_COEF',NO_COEF,basis%nbf,basis%nbf)
+ endif
+ occ=zero; energy=zero;
   ! Save Atomic hCORE integrals and atomic overlaps
  AhCORE(:,:)=AhCORE_in(:,:)
  Aoverlap(:,:)=AOverlap_in(:,:) 
   ! Initially copy c_matrix (HF orbs) to NO_COEF
- NO_COEF(:,:)=0.0_dp
- do istate=1,nbf_noft
-   NO_COEF(:,istate)=c_matrix(:,istate,1)
- enddo
+ if(complexnoft=='yes') then
+   NO_COEFc(:,:)=complex_zero
+   do istate=1,nbf_noft
+     NO_COEFc(:,istate)=c_matrix(:,istate,1)
+   enddo
+ else
+   NO_COEF(:,:)=zero
+   do istate=1,nbf_noft
+     NO_COEF(:,istate)=c_matrix(:,istate,1)
+   enddo
+ endif
   ! Replace NO_COEF by Hcore orbs for the initial GUESS?
  if(TRIM(init_hamiltonian)=='CORE') then
    call clean_allocate('tmp_mat0',tmp_mat0,basis%nbf,basis%nbf,verbose)
@@ -78,13 +91,20 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
    call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
    lwork=nint(Work(1))
    if(info==0) then
-    deallocate(Work)
-    allocate(Work(lwork))
-    energy=0.0_dp
-    call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
+     deallocate(Work)
+     allocate(Work(lwork))
+     energy=zero
+     call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
    endif
-   tmp_mat0=matmul(NO_COEF,tmp_mat)
-   NO_COEF=tmp_mat0
+   if(complexnoft=='yes') then
+    call clean_allocate('tmp_mat0C',tmp_mat0C,basis%nbf,basis%nbf,verbose)
+    tmp_mat0C=matmul(NO_COEFc,tmp_mat)
+    NO_COEFc=tmp_mat0C
+    call clean_deallocate('tmp_mat0C',tmp_mat0C,verbose)
+   else
+     tmp_mat0=matmul(NO_COEF,tmp_mat)
+     NO_COEF=tmp_mat0
+   endif
    write(stdout,'(/,a,/)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
    call clean_deallocate('tmp_mat0',tmp_mat0,verbose)
    call clean_deallocate('tmp_mat',tmp_mat,verbose)
@@ -99,49 +119,87 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  do
   NBF_occ=Nfrozen+Npairs*(Nvcoupled+1)
   if(NBF_occ<=nbf_noft) then
-   exit
+    exit
   else
-   Nvcoupled=Nvcoupled-1
+    Nvcoupled=Nvcoupled-1
   endif
  enddo 
 
  ! Call module initialization and run NOFT calc.
- if(restartnoft=='yes') then
-   call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
-   & imethocc,imethorb,nscf_nof,iprintdmn,iprintswdmn,iprintints,ithresh_lambda,ndiis_nof,&
-   & Enoft,tolE_nof,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(lowmemERI=='yes'),&
-   & restart=(restartnoft=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
-   & ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=Lpower,&
-   & fcidump=(fcidump=='yes'))
+ if(complexnoft=='yes') then
+   if(restartnoft=='yes') then
+     call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
+     & imethocc,imethorb,nscf_nof,iprintdmn,iprintswdmn,iprintints,ithresh_lambda,ndiis_nof,&
+     & Enoft,tolE_nof,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEFc=NO_COEFc,lowmemERI=(lowmemERI=='yes'),&
+     & restart=(restartnoft=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
+     & ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=Lpower,&
+     & fcidump=(fcidump=='yes'))
+   else
+     call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
+     & imethocc,imethorb,nscf_nof,iprintdmn,iprintswdmn,iprintints,ithresh_lambda,ndiis_nof,&
+     & Enoft,tolE_nof,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEFc=NO_COEFc,lowmemERI=(lowmemERI=='yes'),&
+     & Lpower=Lpower,fcidump=(fcidump=='yes'))
+   endif
  else
-   call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
-   & imethocc,imethorb,nscf_nof,iprintdmn,iprintswdmn,iprintints,ithresh_lambda,ndiis_nof,&
-   & Enoft,tolE_nof,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(lowmemERI=='yes'),&
-   & Lpower=Lpower,fcidump=(fcidump=='yes'))
+   if(restartnoft=='yes') then
+     call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
+     & imethocc,imethorb,nscf_nof,iprintdmn,iprintswdmn,iprintints,ithresh_lambda,ndiis_nof,&
+     & Enoft,tolE_nof,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(lowmemERI=='yes'),&
+     & restart=(restartnoft=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
+     & ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=Lpower,&
+     & fcidump=(fcidump=='yes'))
+   else
+     call run_noft(INOF,Ista,basis%nbf,NBF_occ,Nfrozen,Npairs,Nvcoupled,Nbeta,Nalpha,iERItyp,&
+     & imethocc,imethorb,nscf_nof,iprintdmn,iprintswdmn,iprintints,ithresh_lambda,ndiis_nof,&
+     & Enoft,tolE_nof,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(lowmemERI=='yes'),&
+     & Lpower=Lpower,fcidump=(fcidump=='yes'))
+   endif
  endif
  
- ! Update c_matrix with optimized NO_COEF
- do istate=1,nbf_noft 
-   c_matrix(:,istate,1)=NO_COEF(:,istate)
- enddo
-
  ! If required print post-procesing files 
- if(print_wfn_ .or. print_cube_ .or. print_wfn_files_ ) then
-   call clean_allocate('Occ_print',occ_print,nbf_noft,1,verbose)
-   occ_print(1:nbf_noft,1)=occ(1:nbf_noft,1)
-   if( print_wfn_ )  call plot_wfn(basis,c_matrix)
-   if( print_wfn_ )  call plot_rho('NOFT',basis,occ_print,c_matrix)
-   if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ_print,c_matrix)
-   if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,Enoft,energy)
-   call clean_deallocate('Occ_print',occ_print,verbose)
+ if(complexnoft=='yes') then
+   if(print_wfn_files_ ) then
+     call clean_allocate('Occ_print',occ_print,nbf_noft,1,verbose)
+     occ_print(1:nbf_noft,1)=occ(1:nbf_noft,1)
+     ! Update c_matrix with real part of optimized NO_COEF
+     do istate=1,nbf_noft 
+       c_matrix(:,istate,1)=real(NO_COEFc(:,istate))
+     enddo
+     call print_wfn_file('NOFT_RE',basis,occ_print,c_matrix,Enoft,energy)
+     ! Update c_matrix with imaginary part of optimized NO_COEF
+     do istate=1,nbf_noft 
+       c_matrix(:,istate,1)=aimag(NO_COEFc(:,istate))
+     enddo
+     call print_wfn_file('NOFT_IM',basis,occ_print,c_matrix,Enoft,energy)
+     call clean_deallocate('Occ_print',occ_print,verbose)
+   endif
+ else
+   ! Update c_matrix with optimized NO_COEF
+   do istate=1,nbf_noft 
+     c_matrix(:,istate,1)=NO_COEF(:,istate)
+   enddo
+   ! Select the post-procesing files 
+   if(print_wfn_ .or. print_cube_ .or. print_wfn_files_ ) then
+     call clean_allocate('Occ_print',occ_print,nbf_noft,1,verbose)
+     occ_print(1:nbf_noft,1)=occ(1:nbf_noft,1)
+     if( print_wfn_ )  call plot_wfn(basis,c_matrix)
+     if( print_wfn_ )  call plot_rho('NOFT',basis,occ_print,c_matrix)
+     if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ_print,c_matrix)
+     if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,Enoft,energy)
+     call clean_deallocate('Occ_print',occ_print,verbose)
+   endif
  endif
 
  ! Deallocate arrays and print the normal termination 
  call clean_deallocate('AhCORE',AhCORE)
  call clean_deallocate('Aoverlap',Aoverlap)
- call clean_deallocate('NO_COEF',NO_COEF)
  call clean_deallocate('NO_occ',occ)
  call clean_deallocate('NO_energies',energy)
+ if(complexnoft=='yes') then
+   call clean_deallocate('NO_COEFc',NO_COEFc)
+ else
+   call clean_deallocate('NO_COEF',NO_COEF)
+ endif
  write(stdout,'(/,a)') ' =================================================='
  write(stdout,'(a)')   ' RI-NOFT SCF done'
  write(stdout,'(a)')   ' =================================================='
@@ -178,14 +236,14 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COEFc,hCO
 
  ! hCORE part
  call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,verbose)
- hCORE(:,:)=0.0_dp; tmp_hcore(:,:)=0.0_dp;
+ hCORE(:,:)=zero; tmp_hcore(:,:)=zero;
  tmp_hcore=matmul(AhCORE,NO_COEF)
  hCORE=matmul(transpose(NO_COEF),tmp_hcore)
  call clean_deallocate('tmp_hcore',tmp_hcore,verbose)
 
  ! ERI terms
  if(present(ERImol)) then
-   ERImol(:,:,:,:)=0.0_dp
+   ERImol(:,:,:,:)=zero
    call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nbf_noft,1,verbose)
    do istate=1,nbf_noft
     tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)

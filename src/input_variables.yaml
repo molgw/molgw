@@ -1151,6 +1151,14 @@ beta_hybrid:
   comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount
     of long-range exact-exchange
 
+complexnoft:
+  family: scf
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: 'Use complex molecular orb. coeficients in NOFT calcs. (default=no).'
+
 density_matrix_damping:
   family: scf
   datatype: real
@@ -1425,14 +1433,6 @@ nscf_nof:
   default: 1000
   comment: 'Maximum number of global iterations used by NOFT module.'
 
-restartnoft:
-  family: scf
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: 'Use binary files to restart NOFT calcs. (default=no).'
-
 partition_scheme:
   family: scf
   datatype: characters
@@ -1441,6 +1441,14 @@ partition_scheme:
   default: 'ssf'
   comment: Sets the partition scheme for the xc quadrature. Possible choices are 'becke'
     or 'ssf' (Stratmann-Scuseria-Frisch).
+
+restartnoft:
+  family: scf
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: 'Use binary files to restart NOFT calcs. (default=no).'
 
 scf_diago_flavor:
   family: scf
