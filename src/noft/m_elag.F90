@@ -21,6 +21,7 @@
 module m_elag
 
  use m_nofoutput
+ use m_definitions
  use m_rdmd
  use m_integd
 
@@ -369,7 +370,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEFc,ekt)
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,lwork,info
- real(dp)::sqrt_occ_iorb,sqrt_occ_iorb1,tol6=1d-6
+ real(dp)::sqrt_occ_iorb,sqrt_occ_iorb1
 !arrays
  character(len=10)::coef_file
  character(len=200)::msg
