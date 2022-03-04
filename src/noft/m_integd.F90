@@ -410,8 +410,8 @@ subroutine print_ints(INTEGd)
     enddo
    enddo
   enddo 
-  write(iunit) 0,0,0,0,COMPLEX_ZERO
-  write(iunit) 0,0,0,0,COMPLEX_ZERO
+  write(iunit) 0,0,0,0,complex_zero
+  write(iunit) 0,0,0,0,complex_zero
  endif
  close(iunit)
 
@@ -434,7 +434,7 @@ subroutine print_ints(INTEGd)
     endif
    enddo
   enddo
-  write(iunit) 0,0,COMPLEX_ZERO
+  write(iunit) 0,0,complex_zero
  endif
  close(iunit)
 

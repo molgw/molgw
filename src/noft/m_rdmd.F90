@@ -541,7 +541,7 @@ subroutine print_orb_coefs_bin(RDMd,COEF,COEFc)
  if(cpx_mos) then
   write(iunit) 0,0,zero
  else
-  write(iunit) 0,0,COMPLEX_ZERO
+  write(iunit) 0,0,complex_zero
  endif
  close(iunit)
 

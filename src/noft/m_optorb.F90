@@ -151,7 +151,11 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
 
   ! Update NO_COEF
   if(imethod==1) then ! Build F matrix for iterative diagonalization
-   call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF) ! Build new NO_COEF and set icall=icall+1
+   if(INTEGd%complex_ints) then
+    call diagF_to_coefC(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEFc) ! Build new NO_COEF and set icall=icall+1
+   else
+    call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF) ! Build new NO_COEF and set icall=icall+1
+   endif
   else                ! Use Newton method to produce new COEFs
    ! TODO
   endif
