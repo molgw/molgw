@@ -26,7 +26,8 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  real(dp),intent(out)       :: Enoft
 !====
  integer                    :: istate,lwork,info
- real(dp),allocatable       :: NO_COEF(:,:),occ(:,:),energy(:,:),occ_print(:,:)
+ real(dp),allocatable       :: occ(:,:),energy(:,:),occ_print(:,:)
+ real(dp),allocatable       :: NO_COEF(:,:)
  real(dp),allocatable       :: tmp_mat0(:,:),tmp_mat(:,:),Work(:) 
  integer                    :: imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled
  integer                    :: verbose=-1
