@@ -352,10 +352,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  coef_file='NO_COEF'
  if(cpx_mos) then
   call RDMd%print_orbs(coef_file,COEFc=NO_COEFc)
+  call RDMd%print_orbs_bin(COEFc=NO_COEFc)
  else
   call RDMd%print_orbs(coef_file,COEF=NO_COEF)
+  call RDMd%print_orbs_bin(COEF=NO_COEF)
  endif
- call RDMd%print_orbs_bin(NO_COEF)
 
  ! Calculate the chem. pot. = d E / d occ
  if(cpx_mos) then
