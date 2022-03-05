@@ -141,20 +141,7 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,complex_ints_
  endif
  call write_output(msg)
  ! Allocate arrays
- if(.not.INTEGd%complex_ints) then
-  allocate(INTEGd%ERI_J(NBF_ldiag),INTEGd%ERI_K(NBF_ldiag),INTEGd%ERI_L(NBF_ldiag))
-  allocate(INTEGd%hCORE(NBF_tot,NBF_tot),INTEGd%Overlap(NBF_tot,NBF_tot))
-  if(INTEGd%iERItyp/=-1) then ! Allocate ERImol all types except vectorial
-   allocate(INTEGd%ERImol(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
-   allocate(INTEGd%ERImolv(1))
-  else                        ! Allocate vectorial ERI case
-   INTEGd%NBF2=NBF_tot
-   INTEGd%NBF3=INTEGd%NBF2*INTEGd%NBF_jkl
-   INTEGd%NBF4=INTEGd%NBF3*INTEGd%NBF_jkl
-   allocate(INTEGd%ERImol(1,1,1,1))
-   allocate(INTEGd%ERImolv(NBF_tot*INTEGd%NBF_jkl*INTEGd%NBF_jkl*INTEGd%NBF_jkl))
-  endif
- else
+ if(INTEGd%complex_ints) then
   allocate(INTEGd%ERIc_J(NBF_ldiag),INTEGd%ERIc_K(NBF_ldiag),INTEGd%ERIc_L(NBF_ldiag))
   allocate(INTEGd%hCOREc(NBF_tot,NBF_tot),INTEGd%Overlap(NBF_tot,NBF_tot))
   if(INTEGd%iERItyp/=-1) then ! Allocate ERImol all types except vectorial
@@ -166,6 +153,19 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,complex_ints_
    INTEGd%NBF4=INTEGd%NBF3*INTEGd%NBF_jkl
    allocate(INTEGd%ERIcmol(1,1,1,1))
    allocate(INTEGd%ERIcmolv(NBF_tot*INTEGd%NBF_jkl*INTEGd%NBF_jkl*INTEGd%NBF_jkl))
+  endif
+ else
+  allocate(INTEGd%ERI_J(NBF_ldiag),INTEGd%ERI_K(NBF_ldiag),INTEGd%ERI_L(NBF_ldiag))
+  allocate(INTEGd%hCORE(NBF_tot,NBF_tot),INTEGd%Overlap(NBF_tot,NBF_tot))
+  if(INTEGd%iERItyp/=-1) then ! Allocate ERImol all types except vectorial
+   allocate(INTEGd%ERImol(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
+   allocate(INTEGd%ERImolv(1))
+  else                        ! Allocate vectorial ERI case
+   INTEGd%NBF2=NBF_tot
+   INTEGd%NBF3=INTEGd%NBF2*INTEGd%NBF_jkl
+   INTEGd%NBF4=INTEGd%NBF3*INTEGd%NBF_jkl
+   allocate(INTEGd%ERImol(1,1,1,1))
+   allocate(INTEGd%ERImolv(NBF_tot*INTEGd%NBF_jkl*INTEGd%NBF_jkl*INTEGd%NBF_jkl))
   endif
  endif
 
@@ -201,20 +201,20 @@ subroutine integ_free(INTEGd)
 !arrays
 !************************************************************************
 
- if(.not.INTEGd%complex_ints) then
-  deallocate(INTEGd%hCORE) 
-  deallocate(INTEGd%ERImol) 
-  deallocate(INTEGd%ERImolv) 
-  deallocate(INTEGd%ERI_J) 
-  deallocate(INTEGd%ERI_K) 
-  deallocate(INTEGd%ERI_L)
- else
+ if(INTEGd%complex_ints) then
   deallocate(INTEGd%hCOREc) 
   deallocate(INTEGd%ERIcmol) 
   deallocate(INTEGd%ERIcmolv) 
   deallocate(INTEGd%ERIc_J) 
   deallocate(INTEGd%ERIc_K) 
   deallocate(INTEGd%ERIc_L)
+ else
+  deallocate(INTEGd%hCORE) 
+  deallocate(INTEGd%ERImol) 
+  deallocate(INTEGd%ERImolv) 
+  deallocate(INTEGd%ERI_J) 
+  deallocate(INTEGd%ERI_K) 
+  deallocate(INTEGd%ERI_L)
  endif 
  deallocate(INTEGd%Overlap) 
 
@@ -250,35 +250,7 @@ subroutine eri_to_eriJKL(INTEGd,NBF_occ)
 !arrays
 !************************************************************************
 
- if(.not.INTEGd%complex_ints) then
-  iorb2=1
-  do iorb=1,NBF_occ
-   do iorb1=1,iorb
-    if(INTEGd%iERItyp==0) then
-     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! J in DoNOF {ij|ji}
-     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! K in DoNOF {ij|ij}
-     INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! L in DoNOF {ii|jj}
-    elseif(INTEGd%iERItyp==1) then
-     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! J in <ij|ij>
-     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! K in <ij|ji>
-     INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! L in <ii|jj>
-    elseif(INTEGd%iERItyp==2) then
-     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! J in (ii|jj)
-     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! K in (ij|ji)
-     INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! L in (ij|ij)
-    elseif(INTEGd%iERItyp==-1) then
-     iorbm1=iorb-1
-     iorb1m1=iorb1-1
-     INTEGd%ERI_J(iorb2)=INTEGd%ERImolv(iorbm1+iorb1m1*INTEGd%NBF2+iorbm1*INTEGd%NBF3+iorb1m1*INTEGd%NBF4+1) ! J in <i+j*NBF2+i*NBF3+j*NBF4> 
-     INTEGd%ERI_K(iorb2)=INTEGd%ERImolv(iorbm1+iorb1m1*INTEGd%NBF2+iorb1m1*INTEGd%NBF3+iorbm1*INTEGd%NBF4+1) ! K in <i+j*NBF2+j*NBF3+i*NBF4> 
-     INTEGd%ERI_L(iorb2)=INTEGd%ERImolv(iorbm1+iorbm1*INTEGd%NBF2+iorb1m1*INTEGd%NBF3+iorb1m1*INTEGd%NBF4+1) ! L in <i+i*NBF2+j*NBF3+j*NBF4> 
-    else 
-     ! Nth
-    endif
-    iorb2=iorb2+1
-   enddo
-  enddo
- else
+ if(INTEGd%complex_ints) then
   iorb2=1
   do iorb=1,NBF_occ
    do iorb1=1,iorb
@@ -300,6 +272,34 @@ subroutine eri_to_eriJKL(INTEGd,NBF_occ)
      INTEGd%ERIc_J(iorb2)=INTEGd%ERIcmolv(iorbm1+iorb1m1*INTEGd%NBF2+iorbm1*INTEGd%NBF3+iorb1m1*INTEGd%NBF4+1) ! J in <i+j*NBF2+i*NBF3+j*NBF4> 
      INTEGd%ERIc_K(iorb2)=INTEGd%ERIcmolv(iorbm1+iorb1m1*INTEGd%NBF2+iorb1m1*INTEGd%NBF3+iorbm1*INTEGd%NBF4+1) ! K in <i+j*NBF2+j*NBF3+i*NBF4> 
      INTEGd%ERIc_L(iorb2)=INTEGd%ERIcmolv(iorbm1+iorbm1*INTEGd%NBF2+iorb1m1*INTEGd%NBF3+iorb1m1*INTEGd%NBF4+1) ! L in <i+i*NBF2+j*NBF3+j*NBF4> 
+    else 
+     ! Nth
+    endif
+    iorb2=iorb2+1
+   enddo
+  enddo
+ else
+  iorb2=1
+  do iorb=1,NBF_occ
+   do iorb1=1,iorb
+    if(INTEGd%iERItyp==0) then
+     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! J in DoNOF {ij|ji}
+     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! K in DoNOF {ij|ij}
+     INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! L in DoNOF {ii|jj}
+    elseif(INTEGd%iERItyp==1) then
+     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! J in <ij|ij>
+     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! K in <ij|ji>
+     INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! L in <ii|jj>
+    elseif(INTEGd%iERItyp==2) then
+     INTEGd%ERI_J(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! J in (ii|jj)
+     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! K in (ij|ji)
+     INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb,iorb1) ! L in (ij|ij)
+    elseif(INTEGd%iERItyp==-1) then
+     iorbm1=iorb-1
+     iorb1m1=iorb1-1
+     INTEGd%ERI_J(iorb2)=INTEGd%ERImolv(iorbm1+iorb1m1*INTEGd%NBF2+iorbm1*INTEGd%NBF3+iorb1m1*INTEGd%NBF4+1) ! J in <i+j*NBF2+i*NBF3+j*NBF4> 
+     INTEGd%ERI_K(iorb2)=INTEGd%ERImolv(iorbm1+iorb1m1*INTEGd%NBF2+iorb1m1*INTEGd%NBF3+iorbm1*INTEGd%NBF4+1) ! K in <i+j*NBF2+j*NBF3+i*NBF4> 
+     INTEGd%ERI_L(iorb2)=INTEGd%ERImolv(iorbm1+iorbm1*INTEGd%NBF2+iorb1m1*INTEGd%NBF3+iorb1m1*INTEGd%NBF4+1) ! L in <i+i*NBF2+j*NBF3+j*NBF4> 
     else 
      ! Nth
     endif
@@ -344,41 +344,7 @@ subroutine print_ints(INTEGd)
  
  ! Print ERImol
  open(unit=iunit,form='unformatted',file='ERImol')
- if(.not.INTEGd%complex_ints) then
-  do iorb=1,INTEGd%NBF_jkl
-   do iorb1=1,INTEGd%NBF_jkl
-    do iorb2=1,INTEGd%NBF_jkl
-     do iorb3=1,INTEGd%NBF_jkl
-      if(INTEGd%iERItyp/=-1) then
-       ERIval=INTEGd%ERImol(iorb,iorb1,iorb2,iorb3)
-       if(dabs(ERIval)>tol8) then
-        if(INTEGd%iERItyp==0) then
-         write(iunit) iorb,iorb1,iorb3,iorb2,ERIval ! DoNOF {ij|lk} 
-        elseif(INTEGd%iERItyp==1) then
-         write(iunit) iorb,iorb1,iorb2,iorb3,ERIval ! <ij|kl>
-        elseif(INTEGd%iERItyp==2) then
-         write(iunit) iorb,iorb2,iorb1,iorb3,ERIval ! (ik|jl)
-        else
-         ! Nth
-        endif
-       endif
-      else
-       iorbm1=iorb-1
-       iorb1m1=iorb1-1
-       iorb2m1=iorb2-1
-       iorb3m1=iorb3-1
-       ERIval=INTEGd%ERImolv(iorbm1+iorb1m1*INTEGd%NBF2+iorb2m1*INTEGd%NBF3+iorb3m1*INTEGd%NBF4+1) ! <i+j*NBF2+k*NBF3+l*NBF4> 
-       if(dabs(ERIval)>tol8) then
-        write(iunit) iorb,iorb1,iorb2,iorb3,ERIval
-       endif
-      endif
-     enddo
-    enddo
-   enddo
-  enddo 
-  write(iunit) 0,0,0,0,zero
-  write(iunit) 0,0,0,0,zero
- else
+ if(INTEGd%complex_ints) then
   do iorb=1,INTEGd%NBF_jkl
    do iorb1=1,INTEGd%NBF_jkl
     do iorb2=1,INTEGd%NBF_jkl
@@ -412,21 +378,46 @@ subroutine print_ints(INTEGd)
   enddo 
   write(iunit) 0,0,0,0,complex_zero
   write(iunit) 0,0,0,0,complex_zero
+ else
+  do iorb=1,INTEGd%NBF_jkl
+   do iorb1=1,INTEGd%NBF_jkl
+    do iorb2=1,INTEGd%NBF_jkl
+     do iorb3=1,INTEGd%NBF_jkl
+      if(INTEGd%iERItyp/=-1) then
+       ERIval=INTEGd%ERImol(iorb,iorb1,iorb2,iorb3)
+       if(dabs(ERIval)>tol8) then
+        if(INTEGd%iERItyp==0) then
+         write(iunit) iorb,iorb1,iorb3,iorb2,ERIval ! DoNOF {ij|lk} 
+        elseif(INTEGd%iERItyp==1) then
+         write(iunit) iorb,iorb1,iorb2,iorb3,ERIval ! <ij|kl>
+        elseif(INTEGd%iERItyp==2) then
+         write(iunit) iorb,iorb2,iorb1,iorb3,ERIval ! (ik|jl)
+        else
+         ! Nth
+        endif
+       endif
+      else
+       iorbm1=iorb-1
+       iorb1m1=iorb1-1
+       iorb2m1=iorb2-1
+       iorb3m1=iorb3-1
+       ERIval=INTEGd%ERImolv(iorbm1+iorb1m1*INTEGd%NBF2+iorb2m1*INTEGd%NBF3+iorb3m1*INTEGd%NBF4+1) ! <i+j*NBF2+k*NBF3+l*NBF4> 
+       if(dabs(ERIval)>tol8) then
+        write(iunit) iorb,iorb1,iorb2,iorb3,ERIval
+       endif
+      endif
+     enddo
+    enddo
+   enddo
+  enddo 
+  write(iunit) 0,0,0,0,zero
+  write(iunit) 0,0,0,0,zero
  endif
  close(iunit)
 
  ! Print hCORE
  open(unit=iunit,form='unformatted',file='hCORE')
- if(.not.INTEGd%complex_ints) then
-  do iorb=1,INTEGd%NBF_jkl
-   do iorb1=1,INTEGd%NBF_jkl
-    if(dabs(INTEGd%hCORE(iorb,iorb1))>tol8) then
-     write(iunit) iorb,iorb1,INTEGd%hCORE(iorb,iorb1)
-    endif
-   enddo
-  enddo
-  write(iunit) 0,0,zero
- else
+ if(INTEGd%complex_ints) then
   do iorb=1,INTEGd%NBF_jkl
    do iorb1=1,INTEGd%NBF_jkl
     if(cdabs(INTEGd%hCOREc(iorb,iorb1))>tol8) then
@@ -435,6 +426,15 @@ subroutine print_ints(INTEGd)
    enddo
   enddo
   write(iunit) 0,0,complex_zero
+ else
+  do iorb=1,INTEGd%NBF_jkl
+   do iorb1=1,INTEGd%NBF_jkl
+    if(dabs(INTEGd%hCORE(iorb,iorb1))>tol8) then
+     write(iunit) iorb,iorb1,INTEGd%hCORE(iorb,iorb1)
+    endif
+   enddo
+  enddo
+  write(iunit) 0,0,zero
  endif
  close(iunit)
 

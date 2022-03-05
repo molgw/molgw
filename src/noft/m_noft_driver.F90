@@ -385,13 +385,19 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)
- 
+
  ! Print final Energy and its components (occs are already [0:2])
  RDMd%occ(:)=two*RDMd%occ(:)
  hONEbody=zero
- do iorb=1,RDMd%NBF_occ
-  hONEbody=hONEbody+RDMd%occ(iorb)*INTEGd%hCORE(iorb,iorb)
- enddo
+ if(cpx_mos) then
+  do iorb=1,RDMd%NBF_occ
+   hONEbody=hONEbody+RDMd%occ(iorb)*real(INTEGd%hCOREc(iorb,iorb))
+  enddo
+ else
+  do iorb=1,RDMd%NBF_occ
+   hONEbody=hONEbody+RDMd%occ(iorb)*INTEGd%hCORE(iorb,iorb)
+  enddo
+ endif
  Vee=Energy-hONEbody
  Enof=Energy+Vnn
  write(msg,'(a)') ' '
@@ -411,7 +417,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call ELAGd%free() 
  call INTEGd%free()
  ! Reallocated INTEGd and print FCIDUMP file if required for real orbs
- if(ifcidump==1) then
+ if(ifcidump==1.and.(.not.cpx_mos)) then
   write(msg,'(a)') ' '
   call write_output(msg)
   write(msg,'(a)') ' Reallocating the INTEGd to print the FCIDUMP file'
@@ -419,16 +425,14 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   write(msg,'(a)') ' '
   call write_output(msg)
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in,cpx_mos)
-  if(.not.cpx_mos) then
-   if(INTEGd%iERItyp/=-1) then
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImol=INTEGd%ERImol)
-   else
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImolv=INTEGd%ERImolv)
-   endif
-   call INTEGd%print_dump(RDMd%Nalpha_elect+RDMd%Nbeta_elect,Vnn)
+  if(INTEGd%iERItyp/=-1) then
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+  & ERImol=INTEGd%ERImol)
+  else
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+  & ERImolv=INTEGd%ERImolv)
   endif
+  call INTEGd%print_dump(RDMd%Nalpha_elect+RDMd%Nbeta_elect,Vnn)
   call INTEGd%free()
  endif
  call RDMd%free() 

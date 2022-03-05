@@ -157,12 +157,14 @@ subroutine diagF_to_coefC(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEFc)
  integer::iorb,iorb1,lwork,info
  real(dp)::thresholddiis
 !arrays
+ real(dp),allocatable,dimension(:)::RWork
  complex(dp),allocatable,dimension(:)::Work
  complex(dp),allocatable,dimension(:,:)::EigvecC,New_NO_COEFc ! Eigvec is initially the F matrix
 !************************************************************************
  
  thresholddiis=ten**(-ELAGd%itoldiis)
- allocate(New_NO_COEFc(RDMd%NBF_tot,RDMd%NBF_tot),EigvecC(RDMd%NBF_tot,RDMd%NBF_tot),Work(1))
+ allocate(New_NO_COEFc(RDMd%NBF_tot,RDMd%NBF_tot),EigvecC(RDMd%NBF_tot,RDMd%NBF_tot),Work(1),RWork(3*RDMd%NBF_tot-2))
+ RWork=complex_zero
 
  if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
   ELAGd%diagLpL_done=.true. 
@@ -193,13 +195,13 @@ subroutine diagF_to_coefC(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEFc)
 
  ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
  lwork=-1
- call ZHEEV('V','L',RDMd%NBF_tot,EigvecC,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
+ call ZHEEV('V','L',RDMd%NBF_tot,EigvecC,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,RWork,info)
  lwork=nint(real(Work(1)))
  if(info==0) then
   deallocate(Work)
   allocate(Work(lwork))
   ELAGd%F_diag=zero
-  call ZHEEV('V','L',RDMd%NBF_tot,EigvecC,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
+  call ZHEEV('V','L',RDMd%NBF_tot,EigvecC,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,RWork,info)
  endif
 
  ! Update the NO_COEF
@@ -209,7 +211,7 @@ subroutine diagF_to_coefC(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEFc)
  ! Increase icall (iterator accumulator)
  icall=icall+1
 
- deallocate(New_NO_COEFc,EigvecC,Work)
+ deallocate(New_NO_COEFc,EigvecC,Work,RWorK)
 
 end subroutine diagF_to_coefC
 !!***

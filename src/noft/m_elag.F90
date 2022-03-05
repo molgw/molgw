@@ -389,11 +389,13 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEFc,ekt)
  character(len=200)::msg
  real(dp),allocatable,dimension(:)::Eigval,Eigval_nocc,Work
  real(dp),allocatable,dimension(:,:)::Eigvec,CANON_COEF
+ real(dp),allocatable,dimension(:)::RWork
  complex(dp),allocatable,dimension(:)::WorkC
  complex(dp),allocatable,dimension(:,:)::EigvecC,CANON_COEFc
 !************************************************************************
 
- allocate(Eigval_nocc(RDMd%NBF_occ),Eigval(RDMd%NBF_tot))
+ allocate(Eigval_nocc(RDMd%NBF_occ),Eigval(RDMd%NBF_tot),RWork(3*RDMd%NBF_tot-2))
+ RWork=complex_zero
  
  if(ELAGd%cpx_lambdas) then
   allocate(EigvecC(RDMd%NBF_tot,RDMd%NBF_tot),WorkC(1))
@@ -436,12 +438,12 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEFc,ekt)
  ! Diagonalize
  lwork=-1
  if(ELAGd%cpx_lambdas) then
-  call ZHEEV('V','L',RDMd%NBF_tot,EigvecC,RDMd%NBF_tot,Eigval,WorkC,lwork,info)
+  call ZHEEV('V','L',RDMd%NBF_tot,EigvecC,RDMd%NBF_tot,Eigval,WorkC,lwork,RWork,info)
   lwork=nint(real(WorkC(1)))
   if(info==0) then
    deallocate(WorkC)
    allocate(WorkC(lwork)) 
-   call ZHEEV('V','L',RDMd%NBF_tot,EigvecC,RDMd%NBF_tot,Eigval,WorkC,lwork,info)
+   call ZHEEV('V','L',RDMd%NBF_tot,EigvecC,RDMd%NBF_tot,Eigval,WorkC,lwork,RWork,info)
   endif
  else 
   call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigval,Work,lwork,info)
@@ -498,7 +500,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEFc,ekt)
  else
   deallocate(Eigvec,Work)
  endif
- deallocate(Eigval,Eigval_nocc)
+ deallocate(Eigval,Eigval_nocc,RWork)
 
 end subroutine diag_lambda_ekt
 !!***
