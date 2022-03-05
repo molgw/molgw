@@ -397,6 +397,9 @@ NOFT Total Energy         ,     -0.9996198350  , 0 , 1.0e-5
 co_noft.in                , RI-NOFT calculation applied to dissociated CO with RI
 NOFT Total Energy         ,   -112.520116497   , 0 , 1.0e-5
 
+co_noft_cpx.in            , RI-NOFT calculation applied to dissociated CO with RI (complex orbs)
+NOFT Total Energy         ,   -112.520116497   , 0 , 1.0e-5
+
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
 Configurations            ,      324           , 0 , 1.0e-7
