@@ -13,6 +13,7 @@
 !! SOURCE
 module m_diagf
 
+ use m_nofoutput
  use m_rdmd
  use m_elag
 
@@ -157,6 +158,7 @@ subroutine diagF_to_coefC(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEFc)
  integer::iorb,iorb1,lwork,info
  real(dp)::thresholddiis
 !arrays
+ character(len=200)::msg
  real(dp),allocatable,dimension(:)::RWork
  complex(dp),allocatable,dimension(:)::Work
  complex(dp),allocatable,dimension(:,:)::EigvecC,New_NO_COEFc ! Eigvec is initially the F matrix
@@ -174,14 +176,18 @@ subroutine diagF_to_coefC(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEFc)
     EigvecC(iorb1,iorb)=conjg(EigvecC(iorb,iorb1))
    enddo
    EigvecC(iorb,iorb)=complex_zero
-   EigvecC(iorb,iorb)=real(ELAGd%LambdasC(iorb,iorb))
+   EigvecC(iorb,iorb)=ELAGd%LambdasC(iorb,iorb)
+   if(abs(aimag(EigvecC(iorb,iorb)))>tol8) then
+    write(msg,'(a,f15.8,a,i4)') 'Warning! Large Imaginary[Lambda_pp] value ',aimag(EigvecC(iorb,iorb)),' orb ',iorb
+    call write_output(msg)
+   endif
   enddo
  else
   do iorb=1,RDMd%NBF_tot 
    do iorb1=1,iorb-1
     EigvecC(iorb,iorb1)=ELAGd%LambdasC(iorb1,iorb)-conjg(ELAGd%LambdasC(iorb,iorb1))
     call scale_Fc(ELAGd%MaxScaling+9,EigvecC(iorb,iorb1)) ! Scale the Fpq element to avoid divergence
-    EigvecC(iorb1,iorb)=conjg(EigvecC(iorb,iorb1))        ! Fpq=Fqp
+    EigvecC(iorb1,iorb)=conjg(EigvecC(iorb,iorb1))        ! Fpq=Fqp*
    enddo
    EigvecC(iorb,iorb)=complex_zero
    EigvecC(iorb,iorb)=ELAGd%F_diag(iorb)
