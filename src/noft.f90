@@ -310,6 +310,7 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COEFc,hCO
      endif
      call clean_deallocate('tmp_c_matrix',tmp_c_matrix,verbose)
    endif
+
  endif
 
 end subroutine mo_ints
