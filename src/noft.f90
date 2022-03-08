@@ -31,7 +31,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  real(dp),allocatable       :: occ(:,:),energy(:,:),occ_print(:,:)
  real(dp),allocatable       :: NO_COEF(:,:)
  real(dp),allocatable       :: tmp_mat0(:,:),tmp_mat(:,:),Work(:) 
-! complex(dp)                :: ran_numC
+ complex(dp)                :: ran_numC
  complex(dp),allocatable    :: NO_COEFc(:,:)
  complex(dp),allocatable    :: tmp_mat0C(:,:)
  character(len=200)         :: ofile_name
@@ -72,14 +72,14 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
   ! Initially copy c_matrix (HF orbs) to NO_COEF
  if(complexnoft=='yes') then
    NO_COEFc(:,:)=complex_zero
-!   call random_number(ran_num)
-!   ran_numC=exp(im*ran_num)
+   !call random_number(ran_num)
+   !ran_numC=exp(im*ran_num)
    do istate=1,nbf_noft
-!     call random_number(ran_num)
+     !call random_number(ran_num)
      !NO_COEFc(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
      !NO_COEFc(:,istate)=ran_numC*c_matrix(:,istate,1)
-     !NO_COEFc(:,istate)=im*c_matrix(:,istate,1)  ! OK
-     NO_COEFc(:,istate)=c_matrix(:,istate,1)      ! OK
+     !NO_COEFc(:,istate)=im*c_matrix(:,istate,1)       ! OK
+     NO_COEFc(:,istate)=c_matrix(:,istate,1)          ! OK
    enddo
  else
    NO_COEF(:,:)=zero
@@ -305,8 +305,8 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COEFc,hCO
          enddo
        enddo
        call destroy_eri_3center_eigen(verbose)
-     else            ! Normal case 
-      ! TODO
+     else            ! Normal case (not using RI)
+       call form_erimol(nbf_noft,nbf_occ,tmp_c_matrix,ERImol)
      endif
      call clean_deallocate('tmp_c_matrix',tmp_c_matrix,verbose)
    endif

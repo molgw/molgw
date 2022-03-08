@@ -660,6 +660,59 @@ subroutine destroy_eri_3center_eigenC(verbose)
 
 end subroutine destroy_eri_3center_eigenC
 
+!=================================================================
+subroutine form_erimol(nstate_tot,nstate_occ,c_matrix,ERImol)
+ implicit none
+
+ integer,intent(in)            :: nstate_tot,nstate_occ
+ real(dp),optional,intent(in)  :: c_matrix(nstate_tot,nstate_tot,nspin)
+ real(dp),optional,intent(out) :: ERImol(nstate_tot,nstate_occ,nstate_occ,nstate_occ)
+!=====
+ integer                    :: pstate,istate,jstate,kstate
+ integer                    :: ibf,jbf,abf,bbf
+ real(dp)                   :: tmp_pxjx(nstate_tot,nstate_tot)
+ real(dp)                   :: tmp_pijx(nstate_tot)
+ real(dp),allocatable       :: tmp_pxxx(:,:,:)
+!=====
+
+ allocate(tmp_pxxx(nstate_tot,nstate_tot,nstate_tot))
+
+ do pstate=1,nstate_tot
+   tmp_pxxx(:,:,:) = 0.0_dp
+   do bbf=1,nstate_tot
+     do jbf=1,nstate_tot
+       if( negligible_basispair(jbf,bbf) ) cycle
+       do abf=1,nstate_tot
+         do ibf=1,nstate_tot
+           if( negligible_basispair(ibf,abf) ) cycle
+           tmp_pxxx(abf,jbf,bbf) = tmp_pxxx(abf,jbf,bbf) &
+&             + c_matrix(ibf,pstate,1) * eri(ibf,abf,jbf,bbf)
+         enddo
+       enddo
+     enddo
+   enddo
+   do jstate=1,nstate_occ
+     tmp_pxjx(:,:) = 0.0_dp
+     do bbf=1,nstate_tot
+       do abf=1,nstate_tot
+         tmp_pxjx(abf,bbf) = SUM( c_matrix(:,jstate,1) * tmp_pxxx(abf,:,bbf) )
+       enddo
+     enddo
+     do istate=1,nstate_occ
+       tmp_pijx(:) = 0.0_dp
+       do bbf=1,nstate_tot
+         tmp_pijx(bbf) = SUM( c_matrix(:,istate,1) * tmp_pxjx(:,bbf) ) 
+       enddo
+       do kstate=1,nstate_occ
+         ERImol(pstate,jstate,istate,kstate) = SUM( tmp_pijx(:) * c_matrix(:,kstate,1) ) ! < pi|jk>
+       enddo
+     enddo
+   enddo
+ enddo ! pstate
+
+ deallocate(tmp_pxxx)
+
+end subroutine form_erimol
 
 !=========================================================================
 end module m_eri_ao_mo
