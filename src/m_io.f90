@@ -185,9 +185,7 @@ subroutine header()
  ! LIBINT details
  call libint_init(ammax,has_onebody,has_gradient)
 #if !defined(NO_LIBINT)
- write(stdout,'(1x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
- write(stdout,'(6x,a,i5,3x,a)') 'max angular momentum handled by your LIBINT compilation: ', &
-                                ammax,orbital_momentum_name(ammax)
+ write(stdout,'(/,1x,a,i5)') 'Code compiled with LIBINT support with max angular momentum: ',ammax
 #endif
 
  ! LIBCINT details
@@ -232,15 +230,17 @@ subroutine dump_out_matrix_dp(print_matrix,title,matrix)
  logical,intent(in)          :: print_matrix
  character(len=*),intent(in) :: title
  real(dp),intent(in)         :: matrix(:,:,:)
-!=====
+ !=====
  integer,parameter :: MAXSIZE=50
-!=====
- integer :: imat,ispin,nspin,nmat
-!=====
+ !=====
+ real(dp) :: row(MIN(SIZE(matrix,DIM=2),MAXSIZE))
+ integer  :: imat,ispin,nspin,mmat,nmat
+ !=====
 
- if( .NOT. print_matrix ) return
+ if( .NOT. print_matrix .AND. .NOT. debug ) return
 
- nmat  = SIZE(matrix,DIM=1)
+ mmat  = SIZE(matrix,DIM=1)
+ nmat  = SIZE(matrix,DIM=2)
  nspin = SIZE(matrix,DIM=3)
 
  write(stdout,'(/,1x,a)') TRIM(title)
@@ -249,8 +249,13 @@ subroutine dump_out_matrix_dp(print_matrix,title,matrix)
    if(nspin==2) then
      write(stdout,'(a,i1)') ' spin polarization # ',ispin
    endif
-   do imat=1,MIN(nmat,MAXSIZE)
-     write(stdout,'(1x,i3,*(1x,f12.5))') imat,matrix(imat,1:MIN(nmat,MAXSIZE),ispin)
+   do imat=1,MIN(mmat,MAXSIZE)
+     where( ABS(matrix(imat,1:MIN(nmat,MAXSIZE),ispin)) > 1.0e-5_dp )
+       row(:) = matrix(imat,1:MIN(nmat,MAXSIZE),ispin)
+     elsewhere
+       row(:) = 1.0e-6_dp
+     end where
+     write(stdout,'(1x,i3,*(1x,f12.5))') imat,row(:)
    enddo
    write(stdout,*)
  enddo
@@ -265,20 +270,27 @@ subroutine dump_out_matrix_nospin_dp(print_matrix,title,matrix)
  logical,intent(in)          :: print_matrix
  character(len=*),intent(in) :: title
  real(dp),intent(in)         :: matrix(:,:)
-!=====
+ !=====
  integer,parameter :: MAXSIZE=50
-!=====
- integer :: imat,nmat
-!=====
+ !=====
+ real(dp) :: row(MIN(SIZE(matrix,DIM=2),MAXSIZE))
+ integer :: imat,mmat,nmat
+ !=====
 
- if( .NOT. print_matrix ) return
+ if( .NOT. print_matrix .AND. .NOT. debug ) return
 
- nmat  = SIZE(matrix,DIM=1)
+ mmat  = SIZE(matrix,DIM=1)
+ nmat  = SIZE(matrix,DIM=2)
 
  write(stdout,'(/,1x,a)') TRIM(title)
 
- do imat=1,MIN(nmat,MAXSIZE)
-   write(stdout,'(1x,i3,*(1x,f12.5))') imat,matrix(imat,1:MIN(nmat,MAXSIZE))
+ do imat=1,MIN(mmat,MAXSIZE)
+   where( ABS(matrix(imat,1:MIN(nmat,MAXSIZE))) > 1.0e-5_dp )
+     row(:) = matrix(imat,1:MIN(nmat,MAXSIZE))
+   elsewhere
+     row(:) = 1.0e-6_dp
+   end where
+   write(stdout,'(1x,i3,*(1x,f12.5))') imat,row(:)
  enddo
  write(stdout,*)
 
@@ -291,14 +303,17 @@ subroutine dump_out_matrix_cdp(print_matrix,title,matrix)
  logical,intent(in)          :: print_matrix
  character(len=*),intent(in) :: title
  complex(dp),intent(in)      :: matrix(:,:,:)
-!=====
+ !=====
  integer,parameter :: MAXSIZE=50
- integer :: imat,ispin,nmat,nspin
-!=====
+ !=====
+ real(dp) :: row(MIN(SIZE(matrix,DIM=2),MAXSIZE))
+ integer  :: imat,ispin,mmat,nmat,nspin
+ !=====
 
- if( .NOT. print_matrix ) return
+ if( .NOT. print_matrix .AND. .NOT. debug ) return
 
- nmat  = SIZE(matrix,DIM=1)
+ mmat  = SIZE(matrix,DIM=1)
+ nmat  = SIZE(matrix,DIM=2)
  nspin = SIZE(matrix,DIM=3)
 
  write(stdout,'(/,1x,a)') TRIM(title)
@@ -307,8 +322,13 @@ subroutine dump_out_matrix_cdp(print_matrix,title,matrix)
    if(nspin==2) then
      write(stdout,'(a,i1)') ' spin polarization # ',ispin
    endif
-   do imat=1,MIN(nmat,MAXSIZE)
-     write(stdout,'(1x,i3,*(1x,2(1x,f12.5)))') imat,matrix(imat,1:MIN(nmat,MAXSIZE),ispin)
+   do imat=1,MIN(mmat,MAXSIZE)
+     where( ABS(matrix(imat,1:MIN(nmat,MAXSIZE),ispin)) > 1.0e-5_dp )
+       row(:) = matrix(imat,1:MIN(nmat,MAXSIZE),ispin)
+     elsewhere
+       row(:) = 1.0e-6_dp
+     end where
+     write(stdout,'(1x,i3,*(1x,2(1x,f12.5)))') imat,row(:)
    enddo
    write(stdout,*)
  enddo

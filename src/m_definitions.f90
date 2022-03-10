@@ -14,6 +14,11 @@ module m_definitions
   use OMP_LIB, only: OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM,OMP_GET_MAX_THREADS
 #endif
 
+#if defined(DEBUG)
+  logical,parameter :: debug=.TRUE.
+#else
+  logical,parameter :: debug=.FALSE.
+#endif
 
   integer,parameter  :: dp = KIND(0.d0)
   integer,parameter  :: sp = KIND(0.0)
