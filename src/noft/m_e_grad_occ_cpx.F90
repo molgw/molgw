@@ -463,10 +463,10 @@ select case(icase)
 !     DDM2_JorK*ERI. 
 !-----------------------------------------------------------------------
   do iorb1=1,iorb-1
-   Grad_Ddm2_ERI_iorb = Grad_Ddm2_ERI_iorb + DDM2_JorKorL(iorb,iorb1,igamma)*ERI(iorb1+iorb*(iorb-1)/2)
+   Grad_Ddm2_ERI_iorb = Grad_Ddm2_ERI_iorb + DDM2_JorKorL(iorb,iorb1,igamma)*real(ERI(iorb1+iorb*(iorb-1)/2))
   enddo
   do iorb1=iorb+1,RDMd%NBF_occ
-   Grad_Ddm2_ERI_iorb = Grad_Ddm2_ERI_iorb + DDM2_JorKorL(iorb,iorb1,igamma)*conjg(ERI(iorb+iorb1*(iorb1-1)/2))
+   Grad_Ddm2_ERI_iorb = Grad_Ddm2_ERI_iorb + DDM2_JorKorL(iorb,iorb1,igamma)*real(ERI(iorb+iorb1*(iorb1-1)/2))
   enddo
 !-----------------------------------------------------------------------
  case(1)
