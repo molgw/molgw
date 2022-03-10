@@ -882,11 +882,11 @@ subroutine mb_related_updates(basis,                &
 
  call start_clock(timing_update_overlaps)
  ! Update S matrix
- call setup_overlap(basis,s_matrix)
- !call recalc_overlap(basis_t,basis_p,s_matrix)
+ !call setup_overlap(basis,s_matrix)
+ call recalc_overlap(basis_t,basis_p,s_matrix)
 
  ! Analytic evaluation of D(t+dt/n)
- call setup_D_matrix_analytic(basis,d_matrix,.FALSE.)
+ call setup_D_matrix_analytic(basis,d_matrix,.TRUE.)
  call stop_clock(timing_update_overlaps)
 
  call start_clock(timing_update_dft_grid)
@@ -2459,15 +2459,15 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
  case(EXCIT_PROJECTILE_W_BASIS)
 
    if ( itau > 0 ) then
-     call setup_kinetic(basis,hamiltonian_kinetic)
-     !call recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
+     !call setup_kinetic(basis,hamiltonian_kinetic)
+     call recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
      call nucleus_nucleus_energy(en_tddft%nuc_nuc)
      ! Nucleus-electron interaction due to the fixed target
-     !call recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
-     do iatom=1,ncenter_nuclei-nprojectile
-       fixed_atom_list(iatom) = iatom
-     enddo
-     call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
+     call recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
+     !do iatom=1,ncenter_nuclei-nprojectile
+     !  fixed_atom_list(iatom) = iatom
+     !enddo
+     !call setup_nucleus(basis,hamiltonian_nucleus,fixed_atom_list)
    end if
 
    !
