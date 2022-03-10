@@ -622,7 +622,11 @@ subroutine summary_input()
   write(stdout,'(a30,2x,a)') ' gaussian type: ',gaussian_type
   write(stdout,'(a30,f8.4)') ' global exchange: ',alpha_hybrid
   write(stdout,'(a30,f8.4)') ' long-range-only exchange: ',beta_hybrid
-  write(stdout,'(a30,f8.4)') ' range-separation (bohr-1): ',gamma_hybrid
+  if( rcut > 1.0e-6_dp ) then
+    write(stdout,'(a30,f8.4)') ' range-separation (bohr-1): ',gamma_hybrid
+  else
+    write(stdout,'(a30,a)') ' range-separation (bohr-1): ',' none'
+  endif
   write(stdout,*)
 
   call output_positions()
