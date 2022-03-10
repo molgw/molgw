@@ -44,7 +44,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
  ! Write hearder and set name for $name.noft file
  write(ofile_name,'(2a)') trim(output_name),'noft'
  write(stdout,'(/,a)') ' =================================================='
- write(stdout,'(a)')   ' RI-NOFT calculation'
+ write(stdout,'(a)')   ' NOFT calculation'
  write(stdout,'(3a)')  ' writting NOFT results to ',trim(ofile_name),' file.'
  write(stdout,'(a)')   ' =================================================='
  write(stdout,'(/,a)') ' '
@@ -208,7 +208,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
    call clean_deallocate('NO_COEF',NO_COEF)
  endif
  write(stdout,'(/,a)') ' =================================================='
- write(stdout,'(a)')   ' RI-NOFT SCF done'
+ write(stdout,'(a)')   ' NOFT SCF done'
  write(stdout,'(a)')   ' =================================================='
  write(stdout,'(/,a)') ' '
 
@@ -272,7 +272,7 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COEFc,hCO
        enddo
        call destroy_eri_3center_eigenC(verbose)
      else            ! Normal case (not using RI) 
-       call form_erimol(nbf_noft,nbf_occ,c_matrixC=tmp_c_matrixC,ERImolC=ERIcmol)
+       call form_erimol(nbf,nbf_noft,nbf_kji,c_matrixC=tmp_c_matrixC,ERImolC=ERIcmol)
      endif
      call clean_deallocate('tmp_c_matrix',tmp_c_matrixC,verbose)
    endif
@@ -306,7 +306,7 @@ subroutine mo_ints(nbf,nbf_occ,nbf_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COEFc,hCO
        enddo
        call destroy_eri_3center_eigen(verbose)
      else            ! Normal case (not using RI)
-       call form_erimol(nbf_noft,nbf_occ,c_matrix=tmp_c_matrix,ERImol=ERImol)
+       call form_erimol(nbf,nbf_noft,nbf_kji,c_matrix=tmp_c_matrix,ERImol=ERImol)
      endif
      call clean_deallocate('tmp_c_matrix',tmp_c_matrix,verbose)
    endif

@@ -661,14 +661,14 @@ subroutine destroy_eri_3center_eigenC(verbose)
 end subroutine destroy_eri_3center_eigenC
 
 !=================================================================
-subroutine form_erimol(nstate_tot,nstate_occ,c_matrix,c_matrixC,ERImol,ERImolC)
+subroutine form_erimol(nbf,nstate_tot,nstate_jkl,c_matrix,c_matrixC,ERImol,ERImolC)
  implicit none
 
- integer,intent(in)            :: nstate_tot,nstate_occ
- real(dp),optional,intent(in)  :: c_matrix(nstate_tot,nstate_tot,nspin)
- real(dp),optional,intent(out) :: ERImol(nstate_tot,nstate_occ,nstate_occ,nstate_occ)
- complex(dp),optional,intent(in)  :: c_matrixC(nstate_tot,nstate_tot,nspin)
- complex(dp),optional,intent(out) :: ERImolC(nstate_tot,nstate_occ,nstate_occ,nstate_occ)
+ integer,intent(in)            :: nbf,nstate_tot,nstate_jkl
+ real(dp),optional,intent(in)  :: c_matrix(nbf,nstate_tot,nspin)
+ real(dp),optional,intent(out) :: ERImol(nstate_tot,nstate_jkl,nstate_jkl,nstate_jkl)
+ complex(dp),optional,intent(in)  :: c_matrixC(nbf,nstate_tot,nspin)
+ complex(dp),optional,intent(out) :: ERImolC(nstate_tot,nstate_jkl,nstate_jkl,nstate_jkl)
 !=====
  integer                 :: pstate,istate,jstate,kstate
  integer                 :: ibf,jbf,abf,bbf
@@ -679,38 +679,38 @@ subroutine form_erimol(nstate_tot,nstate_occ,c_matrix,c_matrixC,ERImol,ERImolC)
  complex(dp),allocatable :: tmp_pijxC(:)
  complex(dp),allocatable :: tmp_pxxxC(:,:,:)
 !=====
-
+! Build <ij|kl> integrals
+!=====
  if(present(c_matrixC).and.present(ERImolC)) then
 
-   allocate(tmp_pxxxC(nstate_tot,nstate_tot,nstate_tot),tmp_pxjxC(nstate_tot,nstate_tot))
-   allocate(tmp_pijxC(nstate_tot))
+   allocate(tmp_pxxxC(nbf,nbf,nbf),tmp_pxjxC(nbf,nbf),tmp_pijxC(nbf))
 
    do pstate=1,nstate_tot
      tmp_pxxxC(:,:,:) = (0.0_dp,0.0_dp)
-     do bbf=1,nstate_tot
-       do jbf=1,nstate_tot
+     do bbf=1,nbf
+       do jbf=1,nbf
          if( negligible_basispair(jbf,bbf) ) cycle
-         do abf=1,nstate_tot
-           do ibf=1,nstate_tot
+         do abf=1,nbf
+           do ibf=1,nbf
              if( negligible_basispair(ibf,abf) ) cycle
              tmp_pxxxC(abf,jbf,bbf)=tmp_pxxxC(abf,jbf,bbf)+conjg(c_matrixC(ibf,pstate,1))*eri(ibf,abf,jbf,bbf)
            enddo
          enddo
        enddo
      enddo
-     do jstate=1,nstate_occ
+     do jstate=1,nstate_jkl
        tmp_pxjxC(:,:) = (0.0_dp,0.0_dp)
-       do bbf=1,nstate_tot
-         do abf=1,nstate_tot
+       do bbf=1,nbf
+         do abf=1,nbf
            tmp_pxjxC(abf,bbf) = SUM( conjg(c_matrixC(:,jstate,1)) * tmp_pxxxC(abf,:,bbf) )
          enddo
        enddo
-       do istate=1,nstate_occ
+       do istate=1,nstate_jkl
          tmp_pijxC(:) = (0.0_dp,0.0_dp)
-         do bbf=1,nstate_tot
+         do bbf=1,nbf
            tmp_pijxC(bbf) = SUM( c_matrixC(:,istate,1) * tmp_pxjxC(:,bbf) )
          enddo
-         do kstate=1,nstate_occ
+         do kstate=1,nstate_jkl
            ERImolC(pstate,jstate,istate,kstate) = SUM( tmp_pijxC(:) * c_matrixC(:,kstate,1) ) ! < pi|jk>
          enddo
        enddo
@@ -721,35 +721,34 @@ subroutine form_erimol(nstate_tot,nstate_occ,c_matrix,c_matrixC,ERImol,ERImolC)
 
  elseif(present(c_matrix).and.present(ERImol)) then
  
-   allocate(tmp_pxxx(nstate_tot,nstate_tot,nstate_tot),tmp_pxjx(nstate_tot,nstate_tot))
-   allocate(tmp_pijx(nstate_tot))
+   allocate(tmp_pxxx(nbf,nbf,nbf),tmp_pxjx(nbf,nbf),tmp_pijx(nbf))
 
    do pstate=1,nstate_tot
      tmp_pxxx(:,:,:) = 0.0_dp
-     do bbf=1,nstate_tot
-       do jbf=1,nstate_tot
+     do bbf=1,nbf
+       do jbf=1,nbf
          if( negligible_basispair(jbf,bbf) ) cycle
-         do abf=1,nstate_tot
-           do ibf=1,nstate_tot
+         do abf=1,nbf
+           do ibf=1,nbf
              if( negligible_basispair(ibf,abf) ) cycle
              tmp_pxxx(abf,jbf,bbf)=tmp_pxxx(abf,jbf,bbf)+c_matrix(ibf,pstate,1)*eri(ibf,abf,jbf,bbf)
            enddo
          enddo
        enddo
      enddo
-     do jstate=1,nstate_occ
+     do jstate=1,nstate_jkl
        tmp_pxjx(:,:) = 0.0_dp
-       do bbf=1,nstate_tot
-         do abf=1,nstate_tot
+       do bbf=1,nbf
+         do abf=1,nbf
            tmp_pxjx(abf,bbf) = SUM( c_matrix(:,jstate,1) * tmp_pxxx(abf,:,bbf) )
          enddo
        enddo
-       do istate=1,nstate_occ
+       do istate=1,nstate_jkl
          tmp_pijx(:) = 0.0_dp
-         do bbf=1,nstate_tot
+         do bbf=1,nbf
            tmp_pijx(bbf) = SUM( c_matrix(:,istate,1) * tmp_pxjx(:,bbf) ) 
          enddo
-         do kstate=1,nstate_occ
+         do kstate=1,nstate_jkl
            ERImol(pstate,jstate,istate,kstate) = SUM( tmp_pijx(:) * c_matrix(:,kstate,1) ) ! < pi|jk>
          enddo
        enddo
