@@ -4,7 +4,7 @@ PYTHON=python
 # Sequential compilation
 FC=ifort
 
-CPPFLAGS=-DHAVE_LIBXC
+CPPFLAGS=-DHAVE_LIBXC -DHAVE_LIBCINT
 
 CXX=icpc -std=c++11
 FCFLAGS= -fpp -O3 -xhost -parallel -qopt-matmul
@@ -16,6 +16,8 @@ SCALAPACK=
 
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
-LIBINT_ROOT=${HOME}/src/libint-2.4.2/
+#LIBINT_ROOT=${HOME}/src/libint-2.4.2/
 
 FFTW_ROOT=
+
+LIBCINT=

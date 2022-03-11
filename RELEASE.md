@@ -4,8 +4,9 @@
 
 
 -----------------------------------------
-## What's new in version 2.G
+## What's new in version 3.0
 ### Overview
+- LIBCINT library can be used instead of LIBINT
 - new basis functions (Dunning 7Z)
 - pseudopotential in numerical format PSP6 or PSP8 can be used 
 - LIBXC functionals can be called directly if one knows their unique LIBXC identifier
@@ -17,12 +18,17 @@
 
 ### Changes affecting the usage
 - Dynamical self-energy correlation contribution and Spectral weight Z are now reported for omega=E_qp instead of omega=E_gKS
-- MOLGW can use "solid-state" norm-conserving pseudopotentials in the PSP6 or PSP8 format (from http://www.pseudo-dojo.org/ for instance).
+- MOLGW can use "solid-state" norm-conserving pseudopotentials in the PSP6 or PSP8 format (from [pseudo-dojo.org](http://www.pseudo-dojo.org/) for instance).
 This is slow but functional. It is intended for tests.
 - Python script to extract the basis set from a Gaussian formatted checkpoint file (.fchk): `create_basis_from_gaussian_fchk.py`
 - All the LIBXC functionals can be called directly with syntax: `scf='LIBXC:101+130'` for PBE for instance 
 
 ### Changes affecting the compilation
+- The C library [LIBCINT](https://github.com/sunqm/libcint) can replace LIBINT with noticeable advantages.
+LIBCINT is easy to compile on any architecture (it's coded in plain C) and its compilation time is low.
+According to our tests, LIBCINT appears as twice faster than LIBINT at runtime.
+To use LIBCINT, `my_machine.arch` should contain `LIBCINT=-lcint` and preprocessing option `-DHAVE_LIBCINT`
+
 ### Changes affecting the developers
 
 

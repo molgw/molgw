@@ -4,7 +4,7 @@ PYTHON=python3
 # Parallel MPI SCALAPACK compilation
 FC=mpif90
 
-CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_LIBCINT
 
 CXX=icpc  -std=c++11
 FCFLAGS= -fpp -O3 -xhost -qopt-matmul
@@ -16,6 +16,8 @@ SCALAPACK= -L${MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_
 
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
-LIBINT_ROOT=${HOME}/src/libint-2.4.2/
+#LIBINT_ROOT=${HOME}/src/libint-2.4.2/
 
 FFTW_ROOT=
+
+LIBCINT=-lcint

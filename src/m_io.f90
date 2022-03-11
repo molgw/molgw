@@ -185,14 +185,14 @@ subroutine header()
  ! LIBINT details
  call libint_init(ammax,has_onebody,has_gradient)
 #if !defined(NO_LIBINT)
- write(stdout,'(/,1x,a,i5)') 'Code compiled with LIBINT support with max angular momentum: ',ammax
+ write(stdout,'(1x,a,i5)') 'Code compiled with LIBINT support with max angular momentum: ',ammax
 #endif
 
  ! LIBCINT details
 #if defined(HAVE_LIBCINT)
  has_onebody = .TRUE.
  call check_capability_libcint(ammax)
- write(stdout,'(/,1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ',ammax
+ write(stdout,'(1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ',ammax
  if( .NOT. libcint_has_range_separation ) then
    write(stdout,'(1x,a,i5)')   'Current LIBCINT compilation has no range-separation capability'
  endif
