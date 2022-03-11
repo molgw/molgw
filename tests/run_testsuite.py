@@ -484,8 +484,8 @@ for iinput in range(ninput):
   if need_gradients[iinput] and not have_libint_gradients:
     test_files_skipped += 1
     print('\nSkipping test file: '+inp)
-    print('  because this compilation of MOLGW does not have the gradients from LIBINT')
-    skipping_reason.append('this compilation of MOLGW does not have the gradients from LIBINT')
+    print('  because this compilation of MOLGW does not have the integral gradients')
+    skipping_reason.append('this compilation of MOLGW does not have the integral gradients')
     continue
   if not parallel[iinput] and nprocs > 1:
     test_files_skipped += 1
