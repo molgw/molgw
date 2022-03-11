@@ -4,7 +4,7 @@ PYTHON=python3
 # Parallel MPI SCALAPACK compilation
 FC=mpif90 
 
-CPPFLAGS=-DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK
+CPPFLAGS=-DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_LIBCINT
 
 CXX=g++
 FCFLAGS= -cpp -O3 -march=native -mtune=native  # -O0 -g -check all -traceback 
@@ -16,6 +16,8 @@ SCALAPACK=-L${HOME}/src/scalapack-2.0.2/ -lscalapack
 
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
-LIBINT_ROOT=${HOME}/src/libint-2.4.2/
+#LIBINT_ROOT=${HOME}/src/libint-2.4.2/
+
+LIBCINT=-lcint
 
 FFTW_ROOT=

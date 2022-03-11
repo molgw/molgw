@@ -1,7 +1,7 @@
 # Sequential compilation
 FC=gfortran 
 
-CPPFLAGS=-DHAVE_LIBXC -DDEBUG
+CPPFLAGS=-DHAVE_LIBXC -DHAVE_LIBCINT -DDEBUG
 
 CXX=g++
 FCFLAGS=-cpp  -O0 -g -fcheck=all
@@ -13,6 +13,8 @@ SCALAPACK=
 
 LIBXC_ROOT=/opt/libxc-4.3.4/
 
-LIBINT_ROOT=/opt/libint-2.4.2/
+LIBINT_ROOT=
+
+LIBCINT=-lcint
 
 FFTW_ROOT=

@@ -4,7 +4,7 @@ PYTHON=python3
 # Sequential compilation
 FC=gfortran
 
-CPPFLAGS=-DHAVE_LIBXC
+CPPFLAGS=-DHAVE_LIBXC -DHAVE_LIBCINT
 
 CXX=g++
 FCFLAGS= -cpp -O2 # -O0 -g -check all -traceback 
@@ -19,3 +19,5 @@ LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 LIBINT_ROOT=${HOME}/src/libint-2.4.2/
 
 FFTW_ROOT=
+
+LIBCINT=-lcint

@@ -3,7 +3,7 @@ PYTHON=python3
 
 FC=ifort
 
-CPPFLAGS= -DHAVE_LIBXC -DHAVE_MKL
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_MKL -DHAVE_LIBCINT
 
 CXX=icpc -std=c++11
 FCFLAGS= -fpp -O3 -xhost -qopt-matmul
@@ -15,4 +15,8 @@ SCALAPACK=
 
 LIBXC_ROOT=/opt/libxc-4.3.4/
 
-LIBINT_ROOT=/opt/libint-2.4.2/
+#LIBINT_ROOT=/opt/libint-2.4.2/
+
+LIBCINT=-lcint
+
+
