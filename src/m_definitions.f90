@@ -39,12 +39,14 @@ module m_definitions
   ! Mathematical constants
   real(dp),parameter     :: pi    = 3.14159265358979323_dp
   real(dp),parameter     :: pi2   = pi**2
-  real(dp), parameter :: zero = 0.0_dp
-  real(dp), parameter :: half = 0.5_dp
-  real(dp), parameter :: one  = 1.0_dp
-  real(dp), parameter :: two  = 2.0_dp
-  real(dp), parameter :: four = 4.0_dp
-  real(dp), parameter :: ten  = 1.0d1
+  real(dp), parameter :: zero   = 0.0_dp
+  real(dp), parameter :: half   = 0.5_dp
+  real(dp), parameter :: one    = 1.0_dp
+  real(dp), parameter :: two    = 2.0_dp
+  real(dp), parameter :: four   = 4.0_dp
+  real(dp), parameter :: eight  = 8.0_dp
+  real(dp), parameter :: ten    = 1.0d1
+  real(dp), parameter :: twelve = 1.2d1
   complex(dp),parameter  :: im    = (0.0_dp,1.0_dp)
   complex(dp),parameter  :: COMPLEX_ONE  = (1.0_dp,0.0_dp)
   complex(dp),parameter  :: COMPLEX_ZERO = (0.0_dp,0.0_dp)

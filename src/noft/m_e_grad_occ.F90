@@ -31,7 +31,7 @@ module m_e_grad_occ
  private :: dm2_x_eri,occ_x_eri,Ddm2_gamma_x_ERI,Docc_gamma_x_ERI
 !!***
 
- public :: calc_E_occ,calc_Grad_occ,calc_Chem_pot
+ public :: calc_E_occ,calc_Grad_occ,num_calc_Grad_occ,calc_Chem_pot
 !!***
 
 contains
@@ -354,6 +354,77 @@ subroutine calc_Grad_occ(RDMd,Grad,hCORE,ERI_J,ERI_K,ERI_L)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 end subroutine calc_Grad_occ
+!!***
+
+!!***
+!!****f* DoNOF/num_calc_Grad_occ
+!! NAME
+!!  num_calc_Grad_occ
+!!
+!! FUNCTION
+!!  Calculate the (numerical) Gradient of the energy from gamma independent parameters 
+!!
+!! INPUTS
+!!  GAMMAs=Indep. variables used in the occ. optimization 
+!!  hCORE=One-body integrals (h_pq) we only use the diag part (h_pp)
+!!  ERI_J=Lower triangular part of the J_pq matrix
+!!  ERI_K=Lower triangular part of the K_pq matrix
+!!  ERI_L=Lower triangular part of the L_pq matrix
+!!
+!! OUTPUT
+!!  Energy=Energy computed from the occs (actually from gammas)
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L) 
+!Arguments ------------------------------------
+!scalars
+ type(rdm_t),intent(inout)::RDMd
+ real(dp),dimension(RDMd%Ngammas),intent(inout)::Grad
+!arrays
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
+ real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
+ real(dp),dimension(RDMd%Ngammas),intent(in)::GAMMAs
+!Local variables ------------------------------
+!scalars
+ integer::igamma
+ real(dp)::Energy,grad_igamma,step=tol3
+!arrays
+ real(dp),allocatable,dimension(:)::GAMMAs_num
+!************************************************************************
+ 
+ allocate(GAMMAs_num(RDMd%Ngammas)) 
+ Grad = zero
+ do igamma=1,RDMd%Ngammas
+  GAMMAs_num=GAMMAs; grad_igamma=zero;
+  ! 2*step
+  GAMMAS_num(igamma)=GAMMAS_num(igamma)+two*step
+  call calc_E_occ(RDMd,GAMMAs_num,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+  grad_igamma=-Energy
+  ! step
+  GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
+  call calc_E_occ(RDMd,GAMMAs_num,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+  grad_igamma=grad_igamma+eight*Energy
+  ! -step 
+  GAMMAS_num(igamma)=GAMMAS_num(igamma)-two*step
+  call calc_E_occ(RDMd,GAMMAs_num,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+  grad_igamma=grad_igamma-eight*Energy
+  ! -2step 
+  GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
+  call calc_E_occ(RDMd,GAMMAs_num,Energy,hCORE,ERI_J,ERI_K,ERI_L)
+  grad_igamma=grad_igamma-eight*Energy
+  ! Save the gradient
+  Grad(igamma)=grad_igamma/(twelve*step)
+ enddo
+ deallocate(GAMMAs_num) 
+ 
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+end subroutine num_calc_Grad_occ
 !!***
 
 !!***

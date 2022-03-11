@@ -20,7 +20,9 @@ module m_definitions
  real(dp), parameter :: one  = 1.0d0
  real(dp), parameter :: two  = 2.0d0
  real(dp), parameter :: four = 4.0d0
+ real(dp), parameter :: eight= 8.0d0
  real(dp), parameter :: ten  = 1.0d1
+ real(dp), parameter :: twelve = 1.2d1
  real(dp), parameter :: tol1 = 1.0d-1
  real(dp), parameter :: tol3 = 1.0d-3
  real(dp), parameter :: tol5 = 1.0d-5

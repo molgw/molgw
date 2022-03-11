@@ -27,7 +27,7 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
 !====
  integer                    :: istate,lwork,info,verbose=-1
  integer                    :: imethorb,iERItyp,NBF_occ,Nfrozen,Nbeta,Nalpha,Nvcoupled
- real(dp)                   :: ran_num
+! real(dp)                   :: ran_num
  real(dp),allocatable       :: occ(:,:),energy(:,:),occ_print(:,:)
  real(dp),allocatable       :: NO_COEF(:,:)
  real(dp),allocatable       :: tmp_mat0(:,:),tmp_mat(:,:),Work(:) 
@@ -75,11 +75,11 @@ subroutine noft_energy(Nelect,nstate,basis,c_matrix,AhCORE_in,AOverlap_in,Enoft,
 !   call random_number(ran_num)
 !   ran_numC=exp(im*ran_num)
    do istate=1,nbf_noft
-     !call random_number(ran_num)
-     !NO_COEFc(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
-     !NO_COEFc(:,istate)=ran_numC*c_matrix(:,istate,1)
-     !NO_COEFc(:,istate)=im*c_matrix(:,istate,1)       ! OK
-     NO_COEFc(:,istate)=c_matrix(:,istate,1)          ! OK
+!     call random_number(ran_num)
+!     NO_COEFc(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
+!     NO_COEFc(:,istate)=ran_numC*c_matrix(:,istate,1)
+!     NO_COEFc(:,istate)=im*c_matrix(:,istate,1)
+     NO_COEFc(:,istate)=c_matrix(:,istate,1)     ! This is a faked complex orbs usage because orbs are still real. TODO
    enddo
  else
    NO_COEF(:,:)=zero
