@@ -272,8 +272,8 @@ subroutine print_rdm(RDMd,DM2_J,DM2_K,DM2_L)
  write(iunit) 0,0,zero
  close(iunit)
 
- ! Print the FORM_OCC file
- open(unit=iunit,form='formatted',file='FORM_OCC')
+ ! Print the FORM_occ file
+ open(unit=iunit,form='formatted',file='FORM_occ')
  do iorb=1,RDMd%NBF_occ
   write(iunit,'(i5,f17.10)') iorb,two*RDMd%occ(iorb)
  enddo
@@ -314,24 +314,24 @@ subroutine print_swrdm(RDMd)
  real(dp)::Delem
 !arrays
  integer,allocatable,dimension(:)::coup
- real(dp),allocatable,dimension(:)::OCC
+ real(dp),allocatable,dimension(:)::occ
 !************************************************************************
 
  NBF2=2*RDMd%NBF_occ
  NsdORBs=RDMd%Nfrozen+RDMd%Npairs
  NsdVIRT=RDMd%NBF_occ-NsdORBs
- allocate(coup(NBF2),OCC(NBF2))
- OCC=zero
+ allocate(coup(NBF2),occ(NBF2))
+ occ=zero
 
  ! Print the sw 1-RDM
  open(unit=iunit,file='swDM1')
  do iorb=1,RDMd%NBF_occ
   Delem=RDMd%occ(iorb)
   if(dabs(Delem)>tol8) then
-   OCC(2*iorb-1)=Delem
-   OCC(2*iorb)  =OCC(2*iorb-1)
-   write(iunit,'(f15.8,2i4)') OCC(2*iorb-1),2*iorb-1,2*iorb-1
-   write(iunit,'(f15.8,2i4)') OCC(2*iorb),2*iorb,2*iorb
+   occ(2*iorb-1)=Delem
+   occ(2*iorb)  =occ(2*iorb-1)
+   write(iunit,'(f15.8,2i4)') occ(2*iorb-1),2*iorb-1,2*iorb-1
+   write(iunit,'(f15.8,2i4)') occ(2*iorb),2*iorb,2*iorb
   endif
  enddo
  write(iunit,'(f15.8,2i4)') zero,0,0
@@ -378,37 +378,37 @@ subroutine print_swrdm(RDMd)
       !! SD
       ! Hartree
       if((iorb==iorb2).and.(iorb1==iorb3)) then
-       Delem=half*OCC(iorb)*OCC(iorb1)
+       Delem=half*occ(iorb)*occ(iorb1)
       endif
       ! Exchange
       if((iorb==iorb3).and.(iorb1==iorb2)) then
-       Delem=Delem-half*OCC(iorb)*OCC(iorb1)
+       Delem=Delem-half*occ(iorb)*occ(iorb1)
       endif
       !! PNOFi
       ! Hartree
       if((iorb==iorb2).and.(iorb1==iorb3).and.coup(iorb)==coup(iorb1)) then
-       if(coup(iorb)/=-1) Delem=Delem-half*OCC(iorb)*OCC(iorb1)
+       if(coup(iorb)/=-1) Delem=Delem-half*occ(iorb)*occ(iorb1)
       endif
       ! Exchange
       if((iorb==iorb3).and.(iorb1==iorb2).and.coup(iorb)==coup(iorb1)) then
-       if(coup(iorb)/=-1) Delem=Delem+half*OCC(iorb)*OCC(iorb1)
+       if(coup(iorb)/=-1) Delem=Delem+half*occ(iorb)*occ(iorb1)
       endif
       ! Time-inversion
       if((iorb4==iorb5).and.(iorb6==iorb7).and.(iorb/=iorb1.and.iorb2/=iorb3)) then
        if(coup(iorb)==coup(iorb2).and.coup(iorb)/=-1) then
         if(iorb4<=NsdORBs .or. iorb6<=NsdORBs) then
-         if(iorb4==iorb6) Delem=Delem+half*OCC(iorb)
-         if(iorb4/=iorb6) Delem=Delem-half*dsqrt(OCC(iorb)*OCC(iorb2))
+         if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
+         if(iorb4/=iorb6) Delem=Delem-half*dsqrt(occ(iorb)*occ(iorb2))
         else
-         if(iorb4==iorb6) Delem=Delem+half*OCC(iorb)
-         if(iorb4/=iorb6) Delem=Delem+half*dsqrt(OCC(iorb)*OCC(iorb2))
+         if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
+         if(iorb4/=iorb6) Delem=Delem+half*dsqrt(occ(iorb)*occ(iorb2))
         endif
        else
         if(RDMD%INOF==7) then
          if(RDMD%Ista==1) then
-          Delem=Delem-two*((one-OCC(iorb))*OCC(iorb)*(one-OCC(iorb2))*OCC(iorb2))
+          Delem=Delem-two*((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
          else
-          Delem=Delem-half*dsqrt((one-OCC(iorb))*OCC(iorb)*(one-OCC(iorb2))*OCC(iorb2))
+          Delem=Delem-half*dsqrt((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
          endif
         endif
        endif
@@ -426,7 +426,7 @@ subroutine print_swrdm(RDMd)
  write(iunit,'(f15.8,4i4)') zero,0,0,0,0
  close(iunit)
  
- deallocate(coup,OCC) 
+ deallocate(coup,occ) 
 
 end subroutine print_swrdm
 !!***
@@ -451,14 +451,14 @@ end subroutine print_swrdm
 !!
 !! SOURCE
 
-subroutine print_orb_coefs(RDMd,name_file,COEF,COEFc)
+subroutine print_orb_coefs(RDMd,name_file,COEF,COEF_cmplx)
 !Arguments ------------------------------------
 !scalars
  class(rdm_t),intent(in)::RDMd
 !arrays
  character(len=10)::name_file 
  real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF
- complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEFc
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF_cmplx
 !Local variables ------------------------------
 !scalars
  logical::cpx_mos=.false.
@@ -467,22 +467,22 @@ subroutine print_orb_coefs(RDMd,name_file,COEF,COEFc)
 
 !************************************************************************
 
- if(present(COEFc)) cpx_mos=.true.
+ if(present(COEF_cmplx)) cpx_mos=.true.
  ! Print the orb. coefs
  open(unit=iunit,form='formatted',file=name_file)
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,(RDMd%NBF_tot/10)*10,10
    if(cpx_mos) then
-    write(iunit,'(f14.8,9f13.8)') real(COEFc(iorb1:iorb1+9,iorb))
-    write(iunit,'(f14.8,9f13.8)') aimag(COEFc(iorb1:iorb1+9,iorb))
+    write(iunit,'(f14.8,9f13.8)') real(COEF_cmplx(iorb1:iorb1+9,iorb))
+    write(iunit,'(f14.8,9f13.8)') aimag(COEF_cmplx(iorb1:iorb1+9,iorb))
    else
     write(iunit,'(f14.8,9f13.8)') COEF(iorb1:iorb1+9,iorb)
    endif
   enddo
   iorb1=(RDMd%NBF_tot/10)*10+1
   if(cpx_mos) then
-    write(iunit,'(f14.8,*(f13.8))') real(COEFc(iorb1:,iorb))
-    write(iunit,'(f14.8,*(f13.8))') aimag(COEFc(iorb1:,iorb))
+    write(iunit,'(f14.8,*(f13.8))') real(COEF_cmplx(iorb1:,iorb))
+    write(iunit,'(f14.8,*(f13.8))') aimag(COEF_cmplx(iorb1:,iorb))
   else
    write(iunit,'(f14.8,*(f13.8))') COEF(iorb1:,iorb)
   endif
@@ -511,13 +511,13 @@ end subroutine print_orb_coefs
 !!
 !! SOURCE
 
-subroutine print_orb_coefs_bin(RDMd,COEF,COEFc)
+subroutine print_orb_coefs_bin(RDMd,COEF,COEF_cmplx)
 !Arguments ------------------------------------
 !scalars
  class(rdm_t),intent(in)::RDMd
 !arrays
  real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF
- complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEFc
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF_cmplx
 !Local variables ------------------------------
 !scalars
  logical::cpx_mos=.false.
@@ -526,13 +526,13 @@ subroutine print_orb_coefs_bin(RDMd,COEF,COEFc)
 
 !************************************************************************
  
- if(present(COEFc)) cpx_mos=.true.
+ if(present(COEF_cmplx)) cpx_mos=.true.
  ! Print the orb. coefs
  open(unit=iunit,form='unformatted',file='NO_COEF_BIN')
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,RDMd%NBF_tot
    if(cpx_mos) then
-    write(iunit) iorb,iorb1,COEFc(iorb,iorb1)
+    write(iunit) iorb,iorb1,COEF_cmplx(iorb,iorb1)
    else
     write(iunit) iorb,iorb1,COEF(iorb,iorb1)
    endif

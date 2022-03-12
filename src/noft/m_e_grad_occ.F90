@@ -51,7 +51,7 @@ contains
 !!  ERI_J=Lower triangular part of the J_pq matrix
 !!  ERI_K=Lower triangular part of the K_pq matrix
 !!  ERI_L=Lower triangular part of the L_pq matrix
-!!  nogamma=Do not build OCC, DM2_J, DM2_K, etc from GAMMAs (use the stored ones).
+!!  nogamma=Do not build occ, DM2_J, DM2_K, etc from GAMMAs (use the stored ones).
 !!  chempot=Create the DM2 and the DDM2_w.r.t_occs matrices.
 !!
 !! OUTPUT
@@ -392,7 +392,7 @@ subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L)
 !Local variables ------------------------------
 !scalars
  integer::igamma
- real(dp)::Energy,grad_igamma,step=tol3
+ real(dp)::Energy_num,grad_igamma,step=tol3
 !arrays
  real(dp),allocatable,dimension(:)::GAMMAs_num
 !************************************************************************
@@ -400,29 +400,27 @@ subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L)
  allocate(GAMMAs_num(RDMd%Ngammas)) 
  Grad = zero
  do igamma=1,RDMd%Ngammas
-  GAMMAs_num=GAMMAs; grad_igamma=zero;
+  GAMMAs_num=GAMMAs;
   ! 2*step
   GAMMAS_num(igamma)=GAMMAS_num(igamma)+two*step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy,hCORE,ERI_J,ERI_K,ERI_L)
-  grad_igamma=-Energy
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L)
+  grad_igamma=-Energy_num
   ! step
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy,hCORE,ERI_J,ERI_K,ERI_L)
-  grad_igamma=grad_igamma+eight*Energy
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L)
+  grad_igamma=grad_igamma+eight*Energy_num
   ! -step 
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-two*step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy,hCORE,ERI_J,ERI_K,ERI_L)
-  grad_igamma=grad_igamma-eight*Energy
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L)
+  grad_igamma=grad_igamma-eight*Energy_num
   ! -2step 
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy,hCORE,ERI_J,ERI_K,ERI_L)
-  grad_igamma=grad_igamma-eight*Energy
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L)
+  grad_igamma=grad_igamma+Energy_num
   ! Save the gradient
   Grad(igamma)=grad_igamma/(twelve*step)
  enddo
  deallocate(GAMMAs_num) 
- 
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 end subroutine num_calc_Grad_occ
 !!***
@@ -597,7 +595,7 @@ end function dm2_x_eri
 !!  occ_x_eri
 !!
 !! FUNCTION
-!!  Multiply the OCCs by the two electron repulsion integrals (ERIs) to produce energy contributions.
+!!  Multiply the occs by the two electron repulsion integrals (ERIs) to produce energy contributions.
 !!  Note: Term with iorb=iorb1 is not included
 !!
 !! INPUTS
@@ -610,14 +608,14 @@ end function dm2_x_eri
 !!
 !! SOURCE
 
-function occ_x_eri(RDMd,icase,iorb,OCC,ERI) result(E_occERI_iorb)
+function occ_x_eri(RDMd,icase,iorb,occ,ERI) result(E_occERI_iorb)
 !Arguments ------------------------------------
 !scalars
  real(dp)::E_occERI_iorb
  integer,intent(in)::icase,iorb
  type(rdm_t),intent(inout)::RDMd
 !arrays
- real(dp),dimension(RDMd%NBF_occ),intent(in)::OCC
+ real(dp),dimension(RDMd%NBF_occ),intent(in)::occ
  real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI 
 !Local variables ------------------------------
 !scalars
@@ -629,29 +627,29 @@ select case(icase)
 !-----------------------------------------------------------------------
  case(0)
 !-----------------------------------------------------------------------
-!     OCC*ERI, Sum only for Nsingleocc
+!     occ*ERI, Sum only for Nsingleocc
 !-----------------------------------------------------------------------
   do iorb1=RDMd%Nbeta_elect+1,iorb-1
-   E_occERI_iorb = E_occERI_iorb + OCC(iorb1)*ERI(iorb1+iorb*(iorb-1)/2)
+   E_occERI_iorb = E_occERI_iorb + occ(iorb1)*ERI(iorb1+iorb*(iorb-1)/2)
   enddo
   do iorb1=iorb+1,RDMd%Nalpha_elect
-   E_occERI_iorb = E_occERI_iorb + OCC(iorb1)*ERI(iorb+iorb1*(iorb1-1)/2)
+   E_occERI_iorb = E_occERI_iorb + occ(iorb1)*ERI(iorb+iorb1*(iorb1-1)/2)
   enddo
 !--------------------------------------------------------------------      
  case(1)
 !-----------------------------------------------------------------------
-!     OCC*ERI, iorb<Nbeta_elect<iorb1 (Sum only for Nsingleocc)
+!     occ*ERI, iorb<Nbeta_elect<iorb1 (Sum only for Nsingleocc)
 !-----------------------------------------------------------------------
   do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
-   E_occERI_iorb = E_occERI_iorb + OCC(iorb)*ERI(iorb+iorb1*(iorb1-1)/2)
+   E_occERI_iorb = E_occERI_iorb + occ(iorb)*ERI(iorb+iorb1*(iorb1-1)/2)
   enddo
 !-----------------------------------------------------------------------      
  case(2)
 !-----------------------------------------------------------------------
-!     OCC*ERI, iorb>Nalpha_elect>iorb1 (Sum only for Nsingleocc)
+!     occ*ERI, iorb>Nalpha_elect>iorb1 (Sum only for Nsingleocc)
 !-----------------------------------------------------------------------
   do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
-   E_occERI_iorb = E_occERI_iorb + OCC(iorb)*ERI(iorb1+iorb*(iorb-1)/2)
+   E_occERI_iorb = E_occERI_iorb + occ(iorb)*ERI(iorb1+iorb*(iorb-1)/2)
   enddo
 !-----------------------------------------------------------------------
 end select

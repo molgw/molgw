@@ -47,7 +47,7 @@ contains
 !! OUTPUT
 !!  RDMd=Object containg all required variables whose arrays are properly updated
 !!  GAMMAs=Independent variables used in the unconstrained optimization as cos^2 (gamma) + sin^2 (gamma) = 1
-!!  chempot=When looking for chemical potential calc. the d OCC(iorb)/d GAMMAs_igamma =1 (i.e. we only want dDM2/dOCC(iorb))
+!!  chempot=When looking for chemical potential calc. the d occ(iorb)/d GAMMAs_igamma =1 (i.e. we only want dDM2/docc(iorb))
 !!
 !! PARENTS
 !!  
@@ -91,12 +91,12 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !     Occupancies (RDMd%Nfrozen+1,RDMd%Nfrozen+RDMd%Npairs)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  do igamma=1,RDMd%Npairs
-  iorb1 = RDMd%Nfrozen+igamma
-  RDMd%occ(iorb1) = dcos(GAMMAs(igamma))
-  RDMd%occ(iorb1) = half + half*RDMd%occ(iorb1)*RDMd%occ(iorb1)
-  Docc_gamma0(iorb1) = -half*dsin(two*GAMMAs(igamma))
-  sqrt_occ(iorb1) = dsqrt(RDMd%occ(iorb1))
-  Dsqrt_occ_gamma0(iorb1) = half*Docc_gamma0(iorb1)/sqrt_occ(iorb1)
+  iorb = RDMd%Nfrozen+igamma
+  RDMd%occ(iorb) = dcos(GAMMAs(igamma))
+  RDMd%occ(iorb) = half + half*RDMd%occ(iorb)*RDMd%occ(iorb)
+  Docc_gamma0(iorb) = -half*dsin(two*GAMMAs(igamma))
+  sqrt_occ(iorb) = dsqrt(RDMd%occ(iorb))
+  Dsqrt_occ_gamma0(iorb) = half*Docc_gamma0(iorb)/sqrt_occ(iorb)
  enddo
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     Occupancies (RDMd%Nfrozen+RDMd%Npairs+1,Nalpha=RDMd%Nfrozen+RDMd%Npairs_p_sing)
@@ -114,21 +114,23 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     Occupancies (Nalpha+1,RDMd%NBF_occ)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- if(RDMd%Ncoupled==1) then            ! PNOFi(1): Perfect Pairing (RDMd%Ncoupled=1)
+ if(RDMd%Ncoupled==1) then            ! NOF: Perfect Pairing (RDMd%Ncoupled=1)
   Docc_gamma = zero; Dsqrt_occ_gamma = zero;
   do igamma=1,RDMd%Npairs
-   iorb = RDMd%Nfrozen+igamma         ! iorb=RDMd%Nfrozen+1,RDMd%Nbeta_elect 
+   ! iorb=RDMd%Nfrozen+1,RDMd%Nbeta_elect 
+   iorb = RDMd%Nfrozen+igamma
    Docc_gamma(iorb,igamma) = Docc_gamma0(iorb)
    Dsqrt_occ_gamma(iorb,igamma) = Dsqrt_occ_gamma0(iorb)
-   iorb1 = RDMd%Nalpha_elect+RDMd%Npairs-igamma+1  ! iorb1=RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-igamma)+RDMd%Ncoupled with RDMd%Ncoupled=1
-   sqrt_occ(iorb1) = dsin(GAMMAs(igamma))*dsqrt(half)
-   Dsqrt_occ_gamma0(iorb1) = dcos(GAMMAs(igamma))*dsqrt(half)
-   Dsqrt_occ_gamma(iorb1,igamma) = Dsqrt_occ_gamma0(iorb1)
-   RDMd%occ(iorb1) = sqrt_occ(iorb1)*sqrt_occ(iorb1)
-   Docc_gamma0(iorb1) = half*dsin(two*GAMMAs(igamma))
-   Docc_gamma(iorb1,igamma) = Docc_gamma0(iorb1)
+   ! iorb=RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-igamma)+RDMd%Ncoupled with RDMd%Ncoupled=1
+   iorb = RDMd%Nalpha_elect+RDMd%Npairs-igamma+1
+   sqrt_occ(iorb) = dsin(GAMMAs(igamma))*dsqrt(half)
+   Dsqrt_occ_gamma0(iorb) = dcos(GAMMAs(igamma))*dsqrt(half)
+   Dsqrt_occ_gamma(iorb,igamma) = Dsqrt_occ_gamma0(iorb)
+   RDMd%occ(iorb) = sqrt_occ(iorb)*sqrt_occ(iorb)
+   Docc_gamma0(iorb) = half*dsin(two*GAMMAs(igamma))
+   Docc_gamma(iorb,igamma) = Docc_gamma0(iorb)
   enddo
- else                            ! PNOFi(Nc): Extended PNOF (RDMd%Ncoupled>1)
+ else                                 ! NOF: Extended NOF (RDMd%Ncoupled>1)
   allocate(hole(RDMd%Ngammas-RDMd%Npairs),Dhole_gamma(RDMd%Ngammas-RDMd%Npairs,RDMd%Ngammas))
   Docc_gamma = zero;  Dsqrt_occ_gamma = zero;  hole = zero;  Dhole_gamma = zero;
   do igamma1=1,RDMd%Npairs                      ! igamma=igamma1=1,RDMd%Npairs
@@ -144,10 +146,14 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
     iorb4 = (RDMd%Ncoupled-1)*(igamma1-1)+iorb3                           ! iorb4=1,RDMd%Npairs*(RDMd%Ncoupled-1)
     igamma = RDMd%Npairs+iorb4                                            ! igamma=RDMd%Npairs+1,RDMd%Npairs*RDMd%Ncoupled
     iorb5 = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-igamma1)+iorb3   ! iorb5=RDMd%Nalpha_elect+1,RDMd%Nalpha_elect+RDMd%Ncoupled*RDMd%Npairs-1
-    sqrt_occ_orb = dsin(GAMMAs(igamma))
-    occ_orb = sqrt_occ_orb*sqrt_occ_orb
+    occ_orb = (dsin(GAMMAs(igamma)))**two
     Docc_gamma0(iorb5) = dsin(two*GAMMAs(igamma))
-    Dsqrt_occ_gamma0(iorb5) = dcos(GAMMAs(igamma))
+    sqrt_occ_orb = dsqrt(occ_orb)
+    if(sqrt_occ_orb>zero) then
+     Dsqrt_occ_gamma0(iorb5) = half*Docc_gamma0(iorb5)/sqrt_occ_orb
+    else
+     Dsqrt_occ_gamma0(iorb5) = zero
+    endif
     RDMd%occ(iorb5) =  hole(iorb4)*occ_orb
     sqrt_hole_orb = dsqrt(hole(iorb4))
     sqrt_occ(iorb5) = sqrt_hole_orb*sqrt_occ_orb
@@ -187,10 +193,14 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !- - - - iorb4 = iorb2 - last occ  - - - - - - - - - - - - - -
    igamma = RDMd%Npairs+iorb2               ! igamma=RDMd%Npairs+igamma1*(RDMd%Ncoupled-1)
    iorb5 = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-igamma1)+RDMd%Ncoupled
-   sqrt_occ_orb = dcos(GAMMAs(igamma))
-   hole_orb = sqrt_occ_orb*sqrt_occ_orb 
+   hole_orb = (dcos(GAMMAs(igamma)))**two 
    Docc_gamma0(iorb5)  = -dsin(two*GAMMAs(igamma))
-   Dsqrt_occ_gamma0(iorb5) = -dsin(GAMMAs(igamma))
+   sqrt_occ_orb = dsqrt(hole_orb)
+   if(sqrt_occ_orb>zero) then
+    Dsqrt_occ_gamma0(iorb5) = half*Docc_gamma0(iorb5)/sqrt_occ_orb 
+   else
+    Dsqrt_occ_gamma0(iorb5) = zero
+   endif
    RDMd%occ(iorb5) = hole(iorb2)*hole_orb
    sqrthole_orb = dsqrt(hole(iorb2))
    sqrt_occ(iorb5)= sqrthole_orb*sqrt_occ_orb
@@ -209,7 +219,7 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
      Dsqrt_occ_gamma(iorb5,igamma2) = zero
     endif
    enddo
-   Docc_gamma(iorb5,igamma) = hole(iorb2) *Docc_gamma0(iorb5)
+   Docc_gamma(iorb5,igamma) = hole(iorb2)*Docc_gamma0(iorb5)
    Dsqrt_occ_gamma(iorb5,igamma) = sqrthole_orb*Dsqrt_occ_gamma0(iorb5)
 !- - - - iorb4 = iorb2 - last occ  - - - - - - - - - - - - - -
   enddo
@@ -218,7 +228,7 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
  deallocate(Docc_gamma0,Dsqrt_occ_gamma0)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !   If we are computing the chemical potential(s) mu = h_ii + d Vee/dn_i
-!(We pretend that OCC(iorb) = GAMMAs(iorb) and d OCC(iorb) = d GAMMAs(iorb))
+!(We pretend that occ(iorb) = GAMMAs(iorb) and d occ(iorb) = d GAMMAs(iorb))
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  if(present(chempot)) then
   Docc_gamma = one; Dsqrt_occ_gamma = zero;
@@ -325,7 +335,7 @@ subroutine dm2_hf(RDMd,Docc_gamma,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma_J,DDM2_g
   enddo
  end if
 !-----------------------------------------------------------------------
-!                 DM2(iorb,iorb,iorb,iorb)=OCC(iorb)*OCC(iorb)
+!                 DM2(iorb,iorb,iorb,iorb)=occ(iorb)*occ(iorb)
 !-----------------------------------------------------------------------
  do iorb=1,RDMd%NBF_occ
   DM2_iiii(iorb)=RDMd%occ(iorb)*RDMd%occ(iorb)
@@ -408,7 +418,7 @@ subroutine dm2_mbb(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_K
   enddo
  end if
 !-----------------------------------------------------------------------
-!          DM2(iorb,iorb,iorb,iorb)=2*OCC(iorb)*OCC(iorb)-OCC(iorb)
+!          DM2(iorb,iorb,iorb,iorb)=2*occ(iorb)*occ(iorb)-occ(iorb)
 !-----------------------------------------------------------------------
  do iorb=1,RDMd%NBF_occ
   DM2_iiii(iorb)=two*RDMd%occ(iorb)*RDMd%occ(iorb)-RDMd%occ(iorb)
@@ -494,7 +504,7 @@ subroutine dm2_power(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2
   enddo
  end if
 !-----------------------------------------------------------------------
-!          DM2(iorb,iorb,iorb,iorb)=2*OCC(iorb)*OCC(iorb)- (OCC(iorb)**(2*power)
+!          DM2(iorb,iorb,iorb,iorb)=2*occ(iorb)*occ(iorb)- (occ(iorb)**(2*power)
 !-----------------------------------------------------------------------
  do iorb=1,RDMd%NBF_occ
   DM2_iiii(iorb)=two*RDMd%occ(iorb)*RDMd%occ(iorb)-(RDMd%occ(iorb)**(two*RDMd%Lpower))
@@ -615,7 +625,7 @@ subroutine dm2_pnof5(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2
   enddo
  enddo
 !-----------------------------------------------------------------------
-!                 DM2(iorb,iorb,iorb,iorb)=OCC(iorb)
+!                 DM2(iorb,iorb,iorb,iorb)=occ(iorb)
 !-----------------------------------------------------------------------
  do iorb=1,RDMd%NBF_occ
   DM2_iiii(iorb)=RDMd%occ(iorb)
@@ -770,7 +780,7 @@ subroutine dm2_pnof7(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2
   enddo
  enddo
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-!                 DM2(iorb,iorb,iorb,iorb)=OCC(iorb)
+!                 DM2(iorb,iorb,iorb,iorb)=occ(iorb)
 !-----------------------------------------------------------------------
  do iorb=1,RDMd%NBF_occ
   DM2_iiii(iorb)=RDMd%occ(iorb)

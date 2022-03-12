@@ -3,7 +3,7 @@
 !!  m_optorb
 !!
 !! FUNCTION
-!!  Module prepared to compute orb optimization for a fixed set of OCCs and 2-RDM
+!!  Module prepared to compute orb optimization for a fixed set of occs and 2-RDM
 !!
 !! PARENTS
 !!  m_noft_driver
@@ -58,7 +58,7 @@ contains
 !!
 !! SOURCE
 
-subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_COEFc) 
+subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_COEF_cmplx) 
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::iter,imethod
@@ -68,7 +68,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
  interface 
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,NO_COEF,hCORE,ERImol,ERImolv,NO_COEFc,hCOREc,ERIcmol,ERIcmolv)
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,NO_COEF,hCORE,ERImol,ERImolv,NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolv_cmplx)
   use m_definitions
   implicit none
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
@@ -76,15 +76,15 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
   real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
   real(dp),optional,intent(inout)::ERImolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
-  complex(dp),optional,intent(in)::NO_COEFc(NBF_tot,NBF_tot)
-  complex(dp),optional,intent(inout)::hCOREc(NBF_tot,NBF_tot)
-  complex(dp),optional,intent(inout)::ERIcmol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
-  complex(dp),optional,intent(inout)::ERIcmolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
+  complex(dp),optional,intent(in)::NO_COEF_cmplx(NBF_tot,NBF_tot)
+  complex(dp),optional,intent(inout)::hCORE_cmplx(NBF_tot,NBF_tot)
+  complex(dp),optional,intent(inout)::ERImol_cmplx(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
+  complex(dp),optional,intent(inout)::ERImolv_cmplx(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
   end subroutine mo_ints
  end interface
 !arrays
  real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
- complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEFc
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
 !Local variables ------------------------------
 !scalars
  logical::convLambda,nogamma,diddiis
@@ -102,15 +102,15 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
  icall=0
  if(INTEGd%complex_ints) then
   if(INTEGd%iERItyp/=-1) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEFc=NO_COEFc,hCOREc=INTEGd%hCOREc, &
-  & ERIcmol=INTEGd%ERIcmol)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF_cmplx=NO_COEF_cmplx,hCORE_cmplx=INTEGd%hCORE_cmplx, &
+  & ERImol_cmplx=INTEGd%ERImol_cmplx)
   else
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEFc=NO_COEFc,hCOREc=INTEGd%hCOREc, &
-  & ERIcmolv=INTEGd%ERIcmolv)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF_cmplx=NO_COEF_cmplx,hCORE_cmplx=INTEGd%hCORE_cmplx, &
+  & ERImolv_cmplx=INTEGd%ERImolv_cmplx)
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-  call calc_E_occ_cpx(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCOREc,INTEGd%ERIc_J,INTEGd%ERIc_K, &
-  & INTEGd%ERIc_L,nogamma=nogamma)
+  call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+  & INTEGd%ERI_L_cmplx,nogamma=nogamma)
  else
   if(INTEGd%iERItyp/=-1) then
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
@@ -152,7 +152,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   ! Update NO_COEF
   if(imethod==1) then ! Build F matrix for iterative diagonalization
    if(INTEGd%complex_ints) then
-    call diagF_to_coefC(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEFc) ! Build new NO_COEF and set icall=icall+1
+    call diagF_to_coef_cmplx(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF_cmplx) ! Build new NO_COEF and set icall=icall+1
    else
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF) ! Build new NO_COEF and set icall=icall+1
    endif
@@ -163,15 +163,15 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
   if(INTEGd%complex_ints) then
    if(INTEGd%iERItyp/=-1) then
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEFc=NO_COEFc,hCOREc=INTEGd%hCOREc, &
-   & ERIcmol=INTEGd%ERIcmol)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF_cmplx=NO_COEF_cmplx,hCORE_cmplx=INTEGd%hCORE_cmplx, &
+   & ERImol_cmplx=INTEGd%ERImol_cmplx)
    else
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEFc=NO_COEFc,hCOREc=INTEGd%hCOREc, &
-   & ERIcmolv=INTEGd%ERIcmolv)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF_cmplx=NO_COEF_cmplx,hCORE_cmplx=INTEGd%hCORE_cmplx, &
+   & ERImolv_cmplx=INTEGd%ERImolv_cmplx)
    endif
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   call calc_E_occ_cpx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCOREc,INTEGd%ERIc_J,INTEGd%ERIc_K, &
-   & INTEGd%ERIc_L,nogamma=nogamma)
+   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
   else
    if(INTEGd%iERItyp/=-1) then
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
@@ -206,8 +206,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
  
  ! Calc. the final Energy using fixed RDMs and the new NO_COEF (before going back to occ. optimization)
  if(INTEGd%complex_ints) then
-  call calc_E_occ_cpx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCOREc,INTEGd%ERIc_J,INTEGd%ERIc_K, &
-  & INTEGd%ERIc_L,nogamma=nogamma)
+  call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+  & INTEGd%ERI_L_cmplx,nogamma=nogamma)
  else
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
   & INTEGd%ERI_L,nogamma=nogamma)
@@ -267,7 +267,7 @@ subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,iorbmax1,iorbmax2
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,RDMd%NBF_tot
    if(cpx_mos) then
-    diff=cdabs(ELAGd%LambdasC(iorb1,iorb)-conjg(ELAGd%LambdasC(iorb,iorb1)))
+    diff=cdabs(ELAGd%Lambdas_cmplx(iorb1,iorb)-conjg(ELAGd%Lambdas_cmplx(iorb,iorb1)))
    else
     diff=dabs(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
    endif
