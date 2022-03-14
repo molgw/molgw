@@ -1,0 +1,22 @@
+&molgw
+  comment     = 'CH4 calculated with G_HF W_TDHF'
+           
+  scf         = 'hf'
+  basis       = 'aug-cc-pVTZ'
+  auxil_basis = 'aug-cc-pVTZ-RI'
+
+  postscf     = 'GWTDDFT'
+
+  selfenergy_state_range = 1
+
+  ncoreg      = 1
+  ncorew      = 1
+
+  natom = 5
+/
+6           .000000     .000000     .000000   
+1           .629118     .629118     .629118
+1          -.629118    -.629118     .629118
+1           .629118    -.629118    -.629118
+1          -.629118     .629118    -.629118
+

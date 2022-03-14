@@ -873,4 +873,13 @@ state    5 spin  1        ,     -0.460572       , 1 , 1.0e-4
 state    5 spin  1        ,    -14.095145       , 2 , 1.0e-4
 state    5 spin  1        ,    -14.555717       , 3 , 1.0e-4
 
+ch4_gwtdhf.in             , GW calculation with W from TDHF
+SCF Total Energy          ,    -40.2135693443   , 0 , 1.0e-7
+Exc. 0001                 ,     11.03679656     , 0 , 1.0e-4
+Exc. 0001                 ,      0.15397039     , 1 , 1.0e-4
+Exc. 0004                 ,     12.35813294     , 0 , 1.0e-4
+Exc. 0004                 ,      0.00380397     , 1 , 1.0e-4
+GW HOMO energy            ,    -14.341403       , 0 , 1.0e-4
+GW LUMO energy            ,      0.689333       , 0 , 1.0e-4
+
 

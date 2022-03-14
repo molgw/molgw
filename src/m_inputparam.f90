@@ -74,7 +74,7 @@ module m_inputparam
     logical            :: is_mp3
     logical            :: is_selfenergy
     logical            :: is_ci
-    logical            :: is_bse,no_bse_kernel,is_td
+    logical            :: is_bse,no_bse_kernel,include_tddft_kernel
     integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
     integer            :: selfenergy_approx         ! GW, COHSEX, PT2
   end type calculation_type
@@ -184,7 +184,7 @@ subroutine init_calculation_type(scf,postscf)
   calc_type%is_ci                = .FALSE.
   calc_type%is_bse               = .FALSE.
   calc_type%no_bse_kernel        = .FALSE.
-  calc_type%is_td                = .FALSE.
+  calc_type%include_tddft_kernel = .FALSE.
   calc_type%is_real_time         = .FALSE.
   calc_type%selfenergy_technique = one_shot
   calc_type%selfenergy_approx    = 0
@@ -217,7 +217,7 @@ subroutine init_calculation_type(scf,postscf)
     case('GWTDDFT','G0WTDDFT')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW
-      calc_type%is_td    =.TRUE.
+      calc_type%include_tddft_kernel =.TRUE.
     case('COHSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = COHSEX
@@ -242,7 +242,7 @@ subroutine init_calculation_type(scf,postscf)
     case('GWTDDFTGAMMA','G0WTDDFTGAMMA0','GWTDDFTSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
-      calc_type%is_td    =.TRUE.
+      calc_type%include_tddft_kernel = .TRUE.
     case('EVGWGAMMA','GNW0GAMMAN','GNW0SOSEX','EVGWSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
@@ -283,7 +283,7 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_bse        = .TRUE.
       calc_type%no_bse_kernel = .TRUE.
     case('TD')
-      calc_type%is_td = .TRUE.
+      calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
     case default
