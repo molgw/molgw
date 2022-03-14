@@ -1,0 +1,23 @@
+&molgw
+ scf='hf'
+ tolscf=1.0e-2
+
+ basis='cc-pVTZ'
+ auxil_basis='cc-pVTZ-RI'
+ gaussian_type='cart'
+
+ natom=2
+
+ ncoupled=10
+ restartnoft='yes'
+ ireadCOEF=0
+ ireadFdiag=1
+ iNOTupdateOCC=1
+ iNOTupdateORB=0
+ ireadGAMMAS=1
+
+ postscf='noft'
+ 
+/
+H  -10.0 0. 0.
+H   10.0 0. 0. 

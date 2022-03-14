@@ -48,6 +48,8 @@ module m_inputparam
   integer,parameter :: PT3          = 223
   integer,parameter :: TWO_RINGS    = 224
   integer,parameter :: GWPT3        = 226
+  integer,parameter :: G0W0SOX0     = 227
+  integer,parameter :: G0W0Gamma0   = 228
 
   !
   ! TDDFT variables
@@ -72,6 +74,7 @@ module m_inputparam
     logical            :: is_gw
     logical            :: is_mp2
     logical            :: is_mp3
+    logical            :: is_noft
     logical            :: is_selfenergy
     logical            :: is_ci
     logical            :: is_bse,no_bse_kernel,include_tddft_kernel
@@ -181,6 +184,7 @@ subroutine init_calculation_type(scf,postscf)
   calc_type%is_gw                = .FALSE.
   calc_type%is_mp2               = .FALSE.
   calc_type%is_mp3               = .FALSE.
+  calc_type%is_noft              = .FALSE.
   calc_type%is_ci                = .FALSE.
   calc_type%is_bse               = .FALSE.
   calc_type%no_bse_kernel        = .FALSE.
@@ -236,7 +240,10 @@ subroutine init_calculation_type(scf,postscf)
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('G0W0GAMMA0','GWGAMMA','GWSOSEX')
+    case('GWSOSEX')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GWSOSEX
+    case('G0W0GAMMA0','GWGAMMA')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
     case('GWTDDFTGAMMA','G0WTDDFTGAMMA0','GWTDDFTSOSEX')
@@ -266,6 +273,8 @@ subroutine init_calculation_type(scf,postscf)
     case('EVMP3_SELFENERGY','EVPT3','EVGF3')
       calc_type%selfenergy_approx = PT3
       calc_type%selfenergy_technique = EVSC
+    case('NOFT')
+      calc_type%is_noft   =.TRUE.
     case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
       calc_type%selfenergy_approx = TWO_RINGS
     case('ONE_RING','ONE-RING','ONERING','1RING')
@@ -466,24 +475,24 @@ subroutine init_dft_type(key)
   ! Meta-GGA functionals
   case('RPPX')
     dft_xc(1)%id = XC_MGGA_X_RPP09
-    alpha_hybrid   = 0.00_dp
+    alpha_hybrid = 0.00_dp
   !
   ! Hybrid functionals
   case('HFPBE')
     dft_xc(1)%id = XC_GGA_C_PBE
-    alpha_hybrid   = 1.00_dp
+    alpha_hybrid = 1.00_dp
   case('BHANDH')
     dft_xc(1)%id = XC_HYB_GGA_XC_BHANDH
-    alpha_hybrid   = 0.50_dp
+    alpha_hybrid = 0.50_dp
   case('BHANDHLYP','BHLYP')
     dft_xc(1)%id = XC_HYB_GGA_XC_BHANDHLYP
-    alpha_hybrid   = 0.50_dp
+    alpha_hybrid = 0.50_dp
   case('B3LYP')
     dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP
-    alpha_hybrid   = 0.20_dp
+    alpha_hybrid = 0.20_dp
   case('B3LYP5')
     dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP5
-    alpha_hybrid   = 0.20_dp
+    alpha_hybrid = 0.20_dp
   case('PBE0')
     dft_xc(1)%id = XC_HYB_GGA_XC_PBEH
     alpha_hybrid   = 0.25_dp
@@ -522,6 +531,7 @@ subroutine init_dft_type(key)
     alpha_hybrid  =  0.0799_dp
     beta_hybrid   =  0.9201_dp
     gamma_hybrid  = 0.150_dp
+    dft_xc(2)%gamma = gamma_hybrid
   case('RSH')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
@@ -537,11 +547,11 @@ subroutine init_dft_type(key)
     dft_xc(2)%coeff = beta_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   case('LDA0')
-    alpha_hybrid   = 0.25_dp
+    alpha_hybrid = 0.25_dp
     dft_xc(1)%id = XC_LDA_X
     dft_xc(2)%id = XC_LDA_C_PW
-    dft_xc(1)%coeff =  1.00_dp - alpha_hybrid
-    dft_xc(2)%coeff =  1.00_dp
+    dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
+    dft_xc(2)%coeff = 1.00_dp
 #endif
   case default
 
@@ -657,7 +667,7 @@ subroutine read_inputfile_namelist()
   implicit none
 
   !=====
-  integer              :: ninput_argument
+  integer              :: idot,ichart,ninput_argument
   character(len=140)   :: input_file_name
   integer              :: inputfile
   logical              :: file_exists
@@ -710,6 +720,18 @@ subroutine read_inputfile_namelist()
       write(stdout,*) 'Tried to open file:',TRIM(input_file_name)
       call die('Input file not found')
     endif
+    output_name=TRIM(input_file_name)
+    idot=1
+    ichart=1
+    do
+     if(output_name(ichart:ichart+2)==".in") then
+       idot=ichart
+       exit
+     endif
+     ichart=ichart+1
+     if(ichart+2>140) exit
+    enddo
+    output_name=TRIM(output_name(1:idot))
     open(newunit=inputfile,file=TRIM(input_file_name),status='old')
   case(0)
     inputfile = 5

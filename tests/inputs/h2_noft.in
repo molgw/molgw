@@ -1,0 +1,16 @@
+&molgw
+ scf='hf'
+ tolscf=1.0e-2
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ gaussian_type='cart'
+
+ natom=2
+
+ ncoupled=10
+ postscf='noft'
+ 
+/
+H  -10.0 0. 0.
+H   10.0 0. 0. 

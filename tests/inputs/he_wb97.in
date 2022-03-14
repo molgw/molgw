@@ -1,6 +1,6 @@
 &molgw
  scf='wB97'
-
+ mixing_scheme='simple' 
  basis='cc-pVDZ'
  mixing_scheme='simple'
 

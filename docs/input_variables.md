@@ -47,20 +47,43 @@
 [alpha_hybrid](#alpha_hybrid) 
 [alpha_mixing](#alpha_mixing) 
 [beta_hybrid](#beta_hybrid) 
+[complexnoft](#complexnoft) 
 [density_matrix_damping](#density_matrix_damping) 
 [diis_switch](#diis_switch) 
+[fcidump](#fcidump) 
 [gamma_hybrid](#gamma_hybrid) 
 [grid_quality](#grid_quality) 
+[imethocc](#imethocc) 
 [init_hamiltonian](#init_hamiltonian) 
+[iNOTupdateOCC](#iNOTupdateOCC) 
+[iNOTupdateORB](#iNOTupdateORB) 
+[inof](#inof) 
 [integral_quality](#integral_quality) 
+[iprintdmn](#iprintdmn) 
+[iprintswdmn](#iprintswdmn) 
+[iprintints](#iprintints) 
+[ireadCOEF](#ireadCOEF) 
+[ireadFdiag](#ireadFdiag) 
+[ireadGAMMAS](#ireadGAMMAS) 
+[ireadOCC](#ireadOCC) 
+[ista](#ista) 
+[ithresh_lambda](#ithresh_lambda) 
 [kerker_k0](#kerker_k0) 
 [level_shifting_energy](#level_shifting_energy) 
+[lowmemERI](#lowmemERI) 
+[Lpower](#Lpower) 
 [min_overlap](#min_overlap) 
 [mixing_scheme](#mixing_scheme) 
+[npairs](#npairs) 
+[ncoupled](#ncoupled) 
 [npulay_hist](#npulay_hist) 
 [nscf](#nscf) 
+[ndiis_nof](#ndiis_nof) 
+[nscf_nof](#nscf_nof) 
 [partition_scheme](#partition_scheme) 
+[restartnoft](#restartnoft) 
 [scf_diago_flavor](#scf_diago_flavor) 
+[tolE_nof](#tolE_nof) 
 [tolscf](#tolscf) 
 
 
@@ -184,6 +207,22 @@
 ---
 
 ## Complete list of input variables 
+
+---
+### Lpower
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** real 
+
+**Default:** 0.53 
+
+**Description:** 
+
+Power functional approximation exponent used in NOFT calcs. 
+
 
 ---
 ### alpha_hybrid
@@ -489,6 +528,22 @@ Selects which excitations will be included in the CI expansion. Valid choices ar
 **Description:** 
 
 This is a free expression place. Use it as you wish for commenting, naming, labeling etc. (140 character max just as twitter) 
+
+
+---
+### complexnoft
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Use complex molecular orb. coeficients in NOFT calcs. (default=no). 
 
 
 ---
@@ -798,6 +853,22 @@ Center of the excitation pulse in atomic units for the real-time dynamics.
 
 
 ---
+### fcidump
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Print the FCIDUMP file in NOFT module. 
+
+
+---
 ### force_energy_qp
 
 *Optional* 
@@ -912,6 +983,38 @@ EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground
 
 
 ---
+### iNOTupdateOCC
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read. 
+
+
+---
+### iNOTupdateORB
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Do a NOFT optimization but keeping fixed the orbitals read. 
+
+
+---
 ### ignore_bigrestart
 
 *Optional* 
@@ -925,6 +1028,22 @@ EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground
 **Description:** 
 
 Considers a big RESTART as if it was a small RESTART. 
+
+
+---
+### imethocc
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 1 
+
+**Description:** 
+
+Determine the method used by NOFT to opt. occ. numbers (default=1 Conjugate Gradient, 2=L-BFGS). 
 
 
 ---
@@ -960,6 +1079,22 @@ Selects how to initiate the first hamiltonian for SCF cycles. Today, two options
 
 
 ---
+### inof
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 7 
+
+**Description:** 
+
+Select the NOFT approx. to use (default=7 PNOF7). Other options are 5 for PNOF5, 0 for HF, -1 for Muller, and -2 for Power. 
+
+
+---
 ### integral_quality
 
 *Optional* 
@@ -973,6 +1108,150 @@ Selects how to initiate the first hamiltonian for SCF cycles. Today, two options
 **Description:** 
 
 Sets the tolerance value for the screening of the negligible integrals. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot. 
+
+
+---
+### iprintdmn
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Print optimized NOFT 1,2-RDMs (default=0 not to print them). 
+
+
+---
+### iprintints
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Print hCORE and ERImol integrals in the optimized basis (default=0 not to print them). 
+
+
+---
+### iprintswdmn
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Print optimized spin-with NOFT 1,2-RDMs (default=0 not to print them). 
+
+
+---
+### ireadCOEF
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Read NO_COEF file to use those coefficients as initial guess (default=0 not to read them). 
+
+
+---
+### ireadFdiag
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Read F_pp values from F_DIAG file and use them as indep. variables in occ. optimization (default=0 not to read them). 
+
+
+---
+### ireadGAMMAS
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimization (default=0 not to read them). 
+
+
+---
+### ireadOCC
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Read occ. from DM1 file and use them to compute Gammas_i (the indep. variables in occ. optimization). The default=0 not to read them. 
+
+
+---
+### ista
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 1 
+
+**Description:** 
+
+Decide whether to use PNOF7 or PNOF7s (default=1 for PNOF7s). 
+
+
+---
+### ithresh_lambda
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 5 
+
+**Description:** 
+
+Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity. 
 
 
 ---
@@ -1023,6 +1302,22 @@ Chooses the units of the atomic coordinates. Can be 'angstrom' or 'bohr'. Could 
 **Description:** 
 
 Sets the energy shift up of the unoccupied states. Should help the convergence in the case of small HOMO-LUMO gaps. 
+
+
+---
+### lowmemERI
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** yes/no 
+
+**Default:** yes 
+
+**Description:** 
+
+Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) in NOFT module. 
 
 
 ---
@@ -1234,6 +1529,38 @@ Sets the number of frozen core states in the screened Coulomb interaction W, in 
 
 
 ---
+### ncoupled
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 2 
+
+**Description:** 
+
+Number of coupled orbs. per pair used in NOFT calcs. (default=2 perfect pairing). 
+
+
+---
+### ndiis_nof
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 5 
+
+**Description:** 
+
+Number of orb. optimization iterations used in DIIS by NOFT module. 
+
+
+---
 ### nexcitation
 
 *Optional* 
@@ -1314,6 +1641,22 @@ Sets the number of frequencies where the GW self-energy is actually calculated.
 
 
 ---
+### npairs
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 1 
+
+**Description:** 
+
+Number of active electron pairs used in NOFT calcs. (default=1 pair). 
+
+
+---
 ### npulay_hist
 
 *Optional* 
@@ -1343,6 +1686,22 @@ Sets the history record length for Pulay DIIS.
 **Description:** 
 
 Sets the maximum number of SCF cycles 
+
+
+---
+### nscf_nof
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** integer 
+
+**Default:** 1000 
+
+**Description:** 
+
+Maximum number of global iterations used by NOFT module. 
 
 
 ---
@@ -2059,6 +2418,22 @@ Ignore the RESTART_TDDFT file.
 
 
 ---
+### restartnoft
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Use binary files to restart NOFT calcs. (default=no). 
+
+
+---
 ### scalapack_block_min
 
 *Optional* 
@@ -2334,6 +2709,22 @@ Time step for real-time dynamics in atomic units.
 
 
 ---
+### tolE_nof
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** real 
+
+**Default:** 1e-09 
+
+**Description:** 
+
+Threshold used to determine that the energy convergence change in NOFT calcs. is small, hence we have converged. 
+
+
+---
 ### toldav
 
 *Optional* 
@@ -2479,6 +2870,6 @@ Specifies the location of the xyz file that contains the atomic positions. It ca
 
 
 
-*Generated by input_variables.py on 21 July 2021* 
+*Generated by input_variables.py on 04 March 2022* 
 
 

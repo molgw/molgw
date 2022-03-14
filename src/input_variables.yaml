@@ -1151,6 +1151,14 @@ beta_hybrid:
   comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount
     of long-range exact-exchange
 
+complexnoft:
+  family: scf
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: 'Use complex molecular orb. coeficients in NOFT calcs. (default=no).'
+
 density_matrix_damping:
   family: scf
   datatype: real
@@ -1169,6 +1177,14 @@ diis_switch:
   default: 0.05
   comment: When running ADIIS, sets the residue value below which the DIIS method
     is used to finalize the convergence.
+
+fcidump:
+  family: scf
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: 'Print the FCIDUMP file in NOFT module.'
 
 gamma_hybrid:
   family: scf
@@ -1191,6 +1207,14 @@ grid_quality:
     'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging
     since it is overdoing a lot.
 
+imethocc:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: 'Determine the method used by NOFT to opt. occ. numbers (default=1 Conjugate Gradient, 2=L-BFGS).'
+
 init_hamiltonian:
   family: scf
   datatype: characters
@@ -1200,6 +1224,30 @@ init_hamiltonian:
   comment: 'Selects how to initiate the first hamiltonian for SCF cycles. Today, two
     options are available: ''guess'' for an educated guess based on approximate atomic
     densities or ''core'' for the core hamiltonian.'
+
+iNOTupdateOCC:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.'
+
+iNOTupdateORB:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Do a NOFT optimization but keeping fixed the orbitals read.'
+
+inof:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 7
+  comment: 'Select the NOFT approx. to use (default=7 PNOF7). Other options are 5 for PNOF5, 0 for HF, -1 for Muller, and -2 for Power.'
 
 integral_quality:
   family: scf
@@ -1211,6 +1259,78 @@ integral_quality:
     Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be
     abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only
     meant for debugging since it is overdoing a lot.
+
+iprintdmn:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Print optimized NOFT 1,2-RDMs (default=0 not to print them).'
+
+iprintswdmn:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Print optimized spin-with NOFT 1,2-RDMs (default=0 not to print them).'
+
+iprintints:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Print hCORE and ERImol integrals in the optimized basis (default=0 not to print them).'
+
+ireadCOEF:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Read NO_COEF file to use those coefficients as initial guess (default=0 not to read them).'
+
+ireadFdiag:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Read F_pp values from F_DIAG file and use them as indep. variables in occ. optimization (default=0 not to read them).'
+
+ireadGAMMAS:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimization (default=0 not to read them).'
+
+ireadOCC:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: 'Read occ. from DM1 file and use them to compute Gammas_i (the indep. variables in occ. optimization). The default=0 not to read them.'
+
+ista:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: 'Decide whether to use PNOF7 or PNOF7s (default=1 for PNOF7s).'
+
+ithresh_lambda:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 5
+  comment: 'Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.'
 
 kerker_k0:
   family: scf
@@ -1229,6 +1349,22 @@ level_shifting_energy:
   default: 0.0
   comment: Sets the energy shift up of the unoccupied states. Should help the convergence
     in the case of small HOMO-LUMO gaps.
+
+lowmemERI:
+  family: scf
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: 'Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) in NOFT module.'
+
+Lpower:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.53
+  comment: 'Power functional approximation exponent used in NOFT calcs.'
 
 min_overlap:
   family: scf
@@ -1249,6 +1385,22 @@ mixing_scheme:
     are 'pulay' for Pulay DIIS method, 'adiis' for Hu-Yang method, or 'simple' for
     a simple linear mixing between input and output density-matrices.
 
+npairs:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: 'Number of active electron pairs used in NOFT calcs. (default=1 pair).'
+
+ncoupled:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 2
+  comment: 'Number of coupled orbs. per pair used in NOFT calcs. (default=2 perfect pairing).'
+
 npulay_hist:
   family: scf
   datatype: integer
@@ -1265,6 +1417,22 @@ nscf:
   default: 50
   comment: Sets the maximum number of SCF cycles
 
+ndiis_nof:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 5
+  comment: 'Number of orb. optimization iterations used in DIIS by NOFT module.'
+
+nscf_nof:
+  family: scf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1000
+  comment: 'Maximum number of global iterations used by NOFT module.'
+
 partition_scheme:
   family: scf
   datatype: characters
@@ -1274,6 +1442,14 @@ partition_scheme:
   comment: Sets the partition scheme for the xc quadrature. Possible choices are 'becke'
     or 'ssf' (Stratmann-Scuseria-Frisch).
 
+restartnoft:
+  family: scf
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: 'Use binary files to restart NOFT calcs. (default=no).'
+
 scf_diago_flavor:
   family: scf
   datatype: characters
@@ -1282,6 +1458,14 @@ scf_diago_flavor:
   default: ' '
   comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles.
     Available choices are ' ', 'R', 'D', and 'X'.
+
+tolE_nof:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0e-09
+  comment: 'Threshold used to determine that the energy convergence change in NOFT calcs. is small, hence we have converged.'
 
 tolscf:
   family: scf

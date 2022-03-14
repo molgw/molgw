@@ -388,6 +388,18 @@ Total Spin S**2           ,      2.0000        , 0 , 1.0e-3
 2-ring diagram            ,     -0.0373333132  , 0 , 1.0e-7
 SOX diagram               ,      0.0373293160  , 0 , 1.0e-7
 
+h2_noft.in                , RI-NOFT calculation applied to dissociated H2 with RI
+NOFT Total Energy         ,     -0.9985575214  , 0 , 1.0e-5
+
+h2_noft_restart.in        , RI-NOFT calculation applied to dissociated H2 with RI using restart
+NOFT Total Energy         ,     -0.9996198350  , 0 , 1.0e-5
+
+n2_noft.in                , RI-NOFT calculation applied to dissociated N2 with RI
+NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
+
+n2_noft_cpx.in            , RI-NOFT calculation applied to dissociated N2 with RI (complex orbs)
+NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
+
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
 Configurations            ,      324           , 0 , 1.0e-7

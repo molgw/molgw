@@ -32,7 +32,7 @@ module m_timing
   integer,parameter :: timing_mp2_energy          = 12
   integer,parameter :: timing_pt_self             = 13
   integer,parameter :: timing_eri_4center_eigen   = 14
-                                               ! 15 is available
+  integer,parameter :: timing_noft_energy         = 15
   integer,parameter :: timing_eri_2center         = 16
   integer,parameter :: timing_eri_3center         = 17
   integer,parameter :: timing_eri_3center_eigen   = 18
