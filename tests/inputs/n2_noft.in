@@ -8,8 +8,8 @@
 
  natom=2
 
- npairs=3
- ncoupled=2
+ noft_npairs=3
+ noft_ncoupled=2
  postscf='noft'
 /
 N   0. 0. 0.
