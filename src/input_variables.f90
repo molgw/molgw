@@ -301,7 +301,7 @@
  init_hamiltonian='guess'
  noft_NOTupdateOCC='no'
  noft_NOTupdateORB='no'
- noft_functional=7
+ noft_functional='PNOF7'
  integral_quality='high'
  noft_printdmn='no'
  noft_printswdmn='no'

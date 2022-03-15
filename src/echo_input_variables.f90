@@ -133,7 +133,7 @@
  write(stdout,'(1x,a32,6x,a)') 'init_hamiltonian',init_hamiltonian 
  write(stdout,'(1x,a32,6x,a)') 'noft_NOTupdateOCC',noft_NOTupdateOCC 
  write(stdout,'(1x,a32,6x,a)') 'noft_NOTupdateORB',noft_NOTupdateORB 
- write(stdout,'(1x,a32,2x,i8)') 'noft_functional',noft_functional 
+ write(stdout,'(1x,a32,6x,a)') 'noft_functional',noft_functional 
  write(stdout,'(1x,a32,6x,a)') 'integral_quality',integral_quality 
  write(stdout,'(1x,a32,6x,a)') 'noft_printdmn',noft_printdmn 
  write(stdout,'(1x,a32,6x,a)') 'noft_printswdmn',noft_printswdmn 

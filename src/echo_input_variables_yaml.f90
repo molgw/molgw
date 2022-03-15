@@ -133,7 +133,7 @@
  write(unit_yaml,'(4x,a,14x,a)') 'init_hamiltonian:',TRIM(init_hamiltonian) 
  write(unit_yaml,'(4x,a,13x,a)') 'noft_NOTupdateOCC:',yesno_to_TrueFalse(noft_NOTupdateOCC) 
  write(unit_yaml,'(4x,a,13x,a)') 'noft_NOTupdateORB:',yesno_to_TrueFalse(noft_NOTupdateORB) 
- write(unit_yaml,'(4x,a,15x,i8)') 'noft_functional:',noft_functional 
+ write(unit_yaml,'(4x,a,15x,a)') 'noft_functional:',TRIM(noft_functional) 
  write(unit_yaml,'(4x,a,14x,a)') 'integral_quality:',TRIM(integral_quality) 
  write(unit_yaml,'(4x,a,17x,a)') 'noft_printdmn:',yesno_to_TrueFalse(noft_printdmn) 
  write(unit_yaml,'(4x,a,15x,a)') 'noft_printswdmn:',yesno_to_TrueFalse(noft_printswdmn) 

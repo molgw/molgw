@@ -130,7 +130,7 @@
  character(len=256),protected :: init_hamiltonian
  character(len=3),protected :: noft_NOTupdateOCC
  character(len=3),protected :: noft_NOTupdateORB
- integer,protected :: noft_functional
+ character(len=256),protected :: noft_functional
  character(len=256),protected :: integral_quality
  character(len=3),protected :: noft_printdmn
  character(len=3),protected :: noft_printswdmn

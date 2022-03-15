@@ -1374,13 +1374,13 @@ Print the FCIDUMP file in NOFT module.
 
 **Family:** scf 
 
-**Type:** integer 
+**Type:** characters 
 
-**Default:** 7 
+**Default:** PNOF7 
 
 **Description:** 
 
-Select the NOFT approx. to use (default=7 PNOF7). Other options are 5 for PNOF5, 0 for HF, -1 for Muller, and -2 for Power. 
+Select the NOFT approx. to use (default=PNOF7). Other options are PNOF5, HF, MULLER, and POWER. 
 
 
 ---

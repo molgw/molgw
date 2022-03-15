@@ -1235,11 +1235,11 @@ noft_NOTupdateORB:
 
 noft_functional:
   family: scf
-  datatype: integer
+  datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: 7
-  comment: 'Select the NOFT approx. to use (default=7 PNOF7). Other options are 5 for PNOF5, 0 for HF, -1 for Muller, and -2 for Power.'
+  default: PNOF7
+  comment: 'Select the NOFT approx. to use (default=PNOF7). Other options are PNOF5, HF, MULLER, and POWER.'
 
 integral_quality:
   family: scf
