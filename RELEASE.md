@@ -7,10 +7,11 @@
 ## What's new in version 3.0
 ### Overview
 - LIBCINT library can be used instead of LIBINT
+- GW calculations with W from TDDFT
 - new basis functions (Dunning 7Z)
 - pseudopotential in numerical format PSP6 or PSP8 can be used 
 - LIBXC functionals can be called directly if one knows their unique LIBXC identifier
-- various bug fixes
+- various bug fixes, typos
 
 ### Contributors
 - Fabien Bruneval (CEA SRMP, France)
@@ -18,6 +19,7 @@
 
 ### Changes affecting the usage
 - Dynamical self-energy correlation contribution and Spectral weight Z are now reported for omega=E_qp instead of omega=E_gKS
+- `postscf='GWTDDFT'` triggers the calculation of W with HF or TDDFT kernel included 
 - MOLGW can use "solid-state" norm-conserving pseudopotentials in the PSP6 or PSP8 format (from [pseudo-dojo.org](http://www.pseudo-dojo.org/) for instance).
 This is slow but functional. It is intended for tests.
 - Python script to extract the basis set from a Gaussian formatted checkpoint file (.fchk): `create_basis_from_gaussian_fchk.py`
