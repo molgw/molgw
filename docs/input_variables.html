@@ -816,7 +816,7 @@ Do a NOFT optimization but keeping fixed the orbitals read.</li><br>
 <br><br>
 <i>Optional</i><br>
 Default: PNOF7<br><br>
-Select the NOFT approx. to use (default=PNOF7). Other options are PNOF5, HF, MULLER, and POWER.</li><br>
+Select the NOFT approx. to use (default= 'PNOF7'). Other options are 'PNOF5', 'HF', 'MULLER', and 'POWER'.</li><br>
 <hr>
 <a name=integral_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>integral_quality</b>  </span>  
 <br><br>
@@ -828,49 +828,49 @@ Sets the tolerance value for the screening of the negligible integrals. Possible
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
-Print optimized NOFT 1,2-RDMs (default=0 not to print them).</li><br>
+Print optimized NOFT 1,2-RDMs (default= 'no').</li><br>
 <hr>
 <a name=noft_printswdmn><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>noft_printswdmn</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
-Print optimized spin-with NOFT 1,2-RDMs (default=0 not to print them).</li><br>
+Print optimized spin-with NOFT 1,2-RDMs (default= 'no').</li><br>
 <hr>
 <a name=noft_printints><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>noft_printints</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
-Print hCORE and ERImol integrals in the optimized basis (default=0 not to print them).</li><br>
+Print hCORE and ERImol integrals in the optimized basis (default= 'no').</li><br>
 <hr>
 <a name=noft_readCOEF><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>noft_readCOEF</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
-Read NO_COEF file to use those coefficients as initial guess (default=0 not to read them).</li><br>
+Read NO_COEF file to use those coefficients as initial guess (default= 'no').</li><br>
 <hr>
 <a name=noft_readFdiag><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>noft_readFdiag</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
-Read F_pp values from F_DIAG file and use them as indep. variables in occ. optimization (default=0 not to read them).</li><br>
+Read F_pp values from F_DIAG file and use them as diag. of Fpq matrix (default= 'no').</li><br>
 <hr>
 <a name=noft_readGAMMAS><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>noft_readGAMMAS</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
-Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimization (default=0 not to read them).</li><br>
+Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimization (default= 'no').</li><br>
 <hr>
 <a name=noft_readOCC><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>noft_readOCC</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
-Read occ. from DM1 file and use them to compute Gammas_i (the indep. variables in occ. optimization). The default=0 not to read them.</li><br>
+Read occ. from DM1 file and use them to compute Gammas (the indep. variables in occ. optimization). Default= 'no'.</li><br>
 <hr>
 <a name=noft_sta><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>noft_sta</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: yes<br><br>
-Decide whether to use PNOF7 or PNOF7s (default=1 for PNOF7s).</li><br>
+Decide whether to use PNOF7 or PNOF7s (default= 'yes', use 'PNOF7s').</li><br>
 <hr>
 <a name=noft_ithresh_lambda><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>noft_ithresh_lambda</b>  </span>  
 <br><br>
@@ -925,7 +925,7 @@ Number of active electron pairs used in NOFT calcs. (default=1 pair).</li><br>
 <br><br>
 <i>Optional</i><br>
 Default: 2<br><br>
-Number of coupled orbs. per pair used in NOFT calcs. (default=2 perfect pairing).</li><br>
+Number of coupled orbs. per pair used in NOFT calcs. (default=2, perfect pairing).</li><br>
 <hr>
 <a name=npulay_hist><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>npulay_hist</b>  </span>  
 <br><br>
@@ -943,13 +943,13 @@ Sets the maximum number of SCF cycles</li><br>
 <br><br>
 <i>Optional</i><br>
 Default: 5<br><br>
-Number of orb. optimization iterations used in DIIS by NOFT module.</li><br>
+Number of orb. optimization iterations used in DIIS by NOFT module (default=5).</li><br>
 <hr>
 <a name=noft_nscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>noft_nscf</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: 1000<br><br>
-Maximum number of global iterations used by NOFT module.</li><br>
+Maximum number of global iterations used by NOFT module (default=1000).</li><br>
 <hr>
 <a name=partition_scheme><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>partition_scheme</b>  </span>  
 <br><br>
@@ -961,7 +961,7 @@ Sets the partition scheme for the xc quadrature. Possible choices are 'becke' or
 <br><br>
 <i>Optional</i><br>
 Default: no<br><br>
-Use binary files to restart NOFT calcs. (default=no).</li><br>
+Use binary files to restart NOFT calcs. (default= 'no').</li><br>
 <hr>
 <a name=scf_diago_flavor><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scf_diago_flavor</b>  </span>  
 <br><br>
@@ -973,7 +973,7 @@ Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles. Availab
 <br><br>
 <i>Optional</i><br>
 Default: 1e-09<br><br>
-Threshold used to determine that the energy convergence change in NOFT calcs. is small, hence we have converged.</li><br>
+Threshold used to determine that the energy change in NOFT calcs. is small; hence, it has converged.</li><br>
 <hr>
 <a name=tolscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tolscf</b>  </span>  
 <br><br>
@@ -1030,5 +1030,5 @@ Default: none<br><br>
 Specifies the location of the xyz file that contains the atomic positions. It can be used as an alternate route to set atomic coordinate.</li><br>
 </ul>
 <br><br><br><br><br><br><br><br>
-<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 15 March 2022</i><br><br></body>
+<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 16 March 2022</i><br><br></body>
 </html>

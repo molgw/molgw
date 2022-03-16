@@ -1157,7 +1157,7 @@ noft_complex:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Use complex molecular orb. coeficients in NOFT calcs. (default=no).'
+  comment: Use complex molecular orb. coeficients in NOFT calcs. (default=no).
 
 density_matrix_damping:
   family: scf
@@ -1184,7 +1184,7 @@ noft_fcidump:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Print the FCIDUMP file in NOFT module.'
+  comment: Print the FCIDUMP file in NOFT module.
 
 gamma_hybrid:
   family: scf
@@ -1223,7 +1223,7 @@ noft_NOTupdateOCC:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.'
+  comment: Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.
 
 noft_NOTupdateORB:
   family: scf
@@ -1231,7 +1231,7 @@ noft_NOTupdateORB:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Do a NOFT optimization but keeping fixed the orbitals read.'
+  comment: Do a NOFT optimization but keeping fixed the orbitals read.
 
 noft_functional:
   family: scf
@@ -1239,7 +1239,7 @@ noft_functional:
   mandatory: 'no'
   experimental: 'no'
   default: PNOF7
-  comment: 'Select the NOFT approx. to use (default=PNOF7). Other options are PNOF5, HF, MULLER, and POWER.'
+  comment: Select the NOFT approx. to use (default= 'PNOF7'). Other options are 'PNOF5', 'HF', 'MULLER', and 'POWER'.
 
 integral_quality:
   family: scf
@@ -1258,7 +1258,7 @@ noft_printdmn:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Print optimized NOFT 1,2-RDMs (default=0 not to print them).'
+  comment: Print optimized NOFT 1,2-RDMs (default= 'no').
 
 noft_printswdmn:
   family: scf
@@ -1266,7 +1266,7 @@ noft_printswdmn:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Print optimized spin-with NOFT 1,2-RDMs (default=0 not to print them).'
+  comment: Print optimized spin-with NOFT 1,2-RDMs (default= 'no').
 
 noft_printints:
   family: scf
@@ -1274,7 +1274,7 @@ noft_printints:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Print hCORE and ERImol integrals in the optimized basis (default=0 not to print them).'
+  comment: Print hCORE and ERImol integrals in the optimized basis (default= 'no').
 
 noft_readCOEF:
   family: scf
@@ -1282,7 +1282,7 @@ noft_readCOEF:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Read NO_COEF file to use those coefficients as initial guess (default=0 not to read them).'
+  comment: Read NO_COEF file to use those coefficients as initial guess (default= 'no').
 
 noft_readFdiag:
   family: scf
@@ -1290,7 +1290,7 @@ noft_readFdiag:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Read F_pp values from F_DIAG file and use them as indep. variables in occ. optimization (default=0 not to read them).'
+  comment: Read F_pp values from F_DIAG file and use them as diag. of Fpq matrix (default= 'no').
 
 noft_readGAMMAS:
   family: scf
@@ -1298,7 +1298,7 @@ noft_readGAMMAS:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimization (default=0 not to read them).'
+  comment: Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimization (default= 'no').
 
 noft_readOCC:
   family: scf
@@ -1306,7 +1306,7 @@ noft_readOCC:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Read occ. from DM1 file and use them to compute Gammas_i (the indep. variables in occ. optimization). The default=0 not to read them.'
+  comment: Read occ. from DM1 file and use them to compute Gammas (the indep. variables in occ. optimization). Default= 'no'.
 
 noft_sta:
   family: scf
@@ -1314,7 +1314,7 @@ noft_sta:
   mandatory: 'no'
   experimental: 'no'
   default: 'yes'
-  comment: 'Decide whether to use PNOF7 or PNOF7s (default=1 for PNOF7s).'
+  comment: Decide whether to use PNOF7 or PNOF7s (default= 'yes', use 'PNOF7s').
 
 noft_ithresh_lambda:
   family: scf
@@ -1322,7 +1322,7 @@ noft_ithresh_lambda:
   mandatory: 'no'
   experimental: 'no'
   default: 5
-  comment: 'Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.'
+  comment: Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.
 
 kerker_k0:
   family: scf
@@ -1348,7 +1348,7 @@ noft_lowmemERI:
   mandatory: 'no'
   experimental: 'no'
   default: 'yes'
-  comment: 'Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) in NOFT module.'
+  comment: Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) in NOFT module.
 
 noft_Lpower:
   family: scf
@@ -1356,7 +1356,7 @@ noft_Lpower:
   mandatory: 'no'
   experimental: 'no'
   default: 0.53
-  comment: 'Power functional approximation exponent used in NOFT calcs.'
+  comment: Power functional approximation exponent used in NOFT calcs.
 
 min_overlap:
   family: scf
@@ -1383,7 +1383,7 @@ noft_npairs:
   mandatory: 'no'
   experimental: 'no'
   default: 1
-  comment: 'Number of active electron pairs used in NOFT calcs. (default=1 pair).'
+  comment: Number of active electron pairs used in NOFT calcs. (default=1 pair).
 
 noft_ncoupled:
   family: scf
@@ -1391,7 +1391,7 @@ noft_ncoupled:
   mandatory: 'no'
   experimental: 'no'
   default: 2
-  comment: 'Number of coupled orbs. per pair used in NOFT calcs. (default=2 perfect pairing).'
+  comment: Number of coupled orbs. per pair used in NOFT calcs. (default=2, perfect pairing).
 
 npulay_hist:
   family: scf
@@ -1415,7 +1415,7 @@ noft_ndiis:
   mandatory: 'no'
   experimental: 'no'
   default: 5
-  comment: 'Number of orb. optimization iterations used in DIIS by NOFT module.'
+  comment: Number of orb. optimization iterations used in DIIS by NOFT module (default=5).
 
 noft_nscf:
   family: scf
@@ -1423,7 +1423,7 @@ noft_nscf:
   mandatory: 'no'
   experimental: 'no'
   default: 1000
-  comment: 'Maximum number of global iterations used by NOFT module.'
+  comment: Maximum number of global iterations used by NOFT module (default=1000).
 
 partition_scheme:
   family: scf
@@ -1440,7 +1440,7 @@ noft_restart:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Use binary files to restart NOFT calcs. (default=no).'
+  comment: Use binary files to restart NOFT calcs. (default= 'no').
 
 scf_diago_flavor:
   family: scf
@@ -1457,7 +1457,7 @@ noft_tolE:
   mandatory: 'no'
   experimental: 'no'
   default: 1.0e-09
-  comment: 'Threshold used to determine that the energy convergence change in NOFT calcs. is small, hence we have converged.'
+  comment: Threshold used to determine that the energy change in NOFT calcs. is small; hence, it has converged.
 
 tolscf:
   family: scf
