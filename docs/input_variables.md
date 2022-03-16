@@ -47,42 +47,20 @@
 [alpha_hybrid](#alpha_hybrid) 
 [alpha_mixing](#alpha_mixing) 
 [beta_hybrid](#beta_hybrid) 
-[noft_complex](#noft_complex) 
 [density_matrix_damping](#density_matrix_damping) 
 [diis_switch](#diis_switch) 
-[noft_fcidump](#noft_fcidump) 
 [gamma_hybrid](#gamma_hybrid) 
 [grid_quality](#grid_quality) 
 [init_hamiltonian](#init_hamiltonian) 
-[noft_NOTupdateOCC](#noft_NOTupdateOCC) 
-[noft_NOTupdateORB](#noft_NOTupdateORB) 
-[noft_functional](#noft_functional) 
 [integral_quality](#integral_quality) 
-[noft_printdmn](#noft_printdmn) 
-[noft_printswdmn](#noft_printswdmn) 
-[noft_printints](#noft_printints) 
-[noft_readCOEF](#noft_readCOEF) 
-[noft_readFdiag](#noft_readFdiag) 
-[noft_readGAMMAS](#noft_readGAMMAS) 
-[noft_readOCC](#noft_readOCC) 
-[noft_sta](#noft_sta) 
-[noft_ithresh_lambda](#noft_ithresh_lambda) 
 [kerker_k0](#kerker_k0) 
 [level_shifting_energy](#level_shifting_energy) 
-[noft_lowmemERI](#noft_lowmemERI) 
-[noft_Lpower](#noft_Lpower) 
 [min_overlap](#min_overlap) 
 [mixing_scheme](#mixing_scheme) 
-[noft_npairs](#noft_npairs) 
-[noft_ncoupled](#noft_ncoupled) 
 [npulay_hist](#npulay_hist) 
 [nscf](#nscf) 
-[noft_ndiis](#noft_ndiis) 
-[noft_nscf](#noft_nscf) 
 [partition_scheme](#partition_scheme) 
-[noft_restart](#noft_restart) 
 [scf_diago_flavor](#scf_diago_flavor) 
-[noft_tolE](#noft_tolE) 
 [tolscf](#tolscf) 
 
 
@@ -128,6 +106,32 @@
 [triplet](#triplet) 
 [use_correlated_density_matrix](#use_correlated_density_matrix) 
 [virtual_fno](#virtual_fno) 
+
+
+## Natural Orbital Functional Theory 
+
+[noft_complex](#noft_complex) 
+[noft_fcidump](#noft_fcidump) 
+[noft_NOTupdateOCC](#noft_NOTupdateOCC) 
+[noft_NOTupdateORB](#noft_NOTupdateORB) 
+[noft_functional](#noft_functional) 
+[noft_printdmn](#noft_printdmn) 
+[noft_printswdmn](#noft_printswdmn) 
+[noft_printints](#noft_printints) 
+[noft_readCOEF](#noft_readCOEF) 
+[noft_readFdiag](#noft_readFdiag) 
+[noft_readGAMMAS](#noft_readGAMMAS) 
+[noft_readOCC](#noft_readOCC) 
+[noft_sta](#noft_sta) 
+[noft_ithresh_lambda](#noft_ithresh_lambda) 
+[noft_lowmemERI](#noft_lowmemERI) 
+[noft_Lpower](#noft_Lpower) 
+[noft_npairs](#noft_npairs) 
+[noft_ncoupled](#noft_ncoupled) 
+[noft_ndiis](#noft_ndiis) 
+[noft_nscf](#noft_nscf) 
+[noft_restart](#noft_restart) 
+[noft_tolE](#noft_tolE) 
 
 
 ## IO input variables 
@@ -1292,7 +1296,7 @@ Sets the number of ghost atoms in the molecule. Used to place basis function whe
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** real 
 
@@ -1308,7 +1312,7 @@ Power functional approximation exponent used in NOFT calcs.
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1324,7 +1328,7 @@ Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1340,7 +1344,7 @@ Do a NOFT optimization but keeping fixed the orbitals read.
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1356,7 +1360,7 @@ Use complex molecular orb. coeficients in NOFT calcs. (default=no).
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1372,7 +1376,7 @@ Print the FCIDUMP file in NOFT module.
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** characters 
 
@@ -1388,7 +1392,7 @@ Select the NOFT approx. to use (default= 'PNOF7'). Other options are 'PNOF5', 'H
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** integer 
 
@@ -1404,7 +1408,7 @@ Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1420,7 +1424,7 @@ Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) i
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** integer 
 
@@ -1436,7 +1440,7 @@ Number of coupled orbs. per pair used in NOFT calcs. (default=2, perfect pairing
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** integer 
 
@@ -1452,7 +1456,7 @@ Number of orb. optimization iterations used in DIIS by NOFT module (default=5).
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** integer 
 
@@ -1468,7 +1472,7 @@ Number of active electron pairs used in NOFT calcs. (default=1 pair).
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** integer 
 
@@ -1484,7 +1488,7 @@ Maximum number of global iterations used by NOFT module (default=1000).
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1500,7 +1504,7 @@ Print optimized NOFT 1,2-RDMs (default= 'no').
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1516,7 +1520,7 @@ Print hCORE and ERImol integrals in the optimized basis (default= 'no').
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1532,7 +1536,7 @@ Print optimized spin-with NOFT 1,2-RDMs (default= 'no').
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1548,7 +1552,7 @@ Read NO_COEF file to use those coefficients as initial guess (default= 'no').
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1564,7 +1568,7 @@ Read F_pp values from F_DIAG file and use them as diag. of Fpq matrix (default= 
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1580,7 +1584,7 @@ Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimiza
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1596,7 +1600,7 @@ Read occ. from DM1 file and use them to compute Gammas (the indep. variables in 
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1612,7 +1616,7 @@ Use binary files to restart NOFT calcs. (default= 'no').
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** yes/no 
 
@@ -1628,7 +1632,7 @@ Decide whether to use PNOF7 or PNOF7s (default= 'yes', use 'PNOF7s').
 
 *Optional* 
 
-**Family:** scf 
+**Family:** noft 
 
 **Type:** real 
 

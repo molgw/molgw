@@ -250,6 +250,12 @@ for key,value in input_var_dict.items():
   if value['family'] =='post':
     fhtml.write('<a href=#'+key+'>'+key+'</a> ')
 
+# Noft
+fhtml.write('<h3>Natural Orbital Functional Theory</h3>\n<p>\n')
+for key,value in input_var_dict.items():
+  if value['family'] =='noft':
+    fhtml.write('<a href=#'+key+'>'+key+'</a> ')
+
 # IO family
 fhtml.write('<h3>IO input variables</h3>\n<p>\n')
 for key,value in input_var_dict.items():
@@ -338,6 +344,13 @@ fmd.write('\n\n')
 fmd.write('## Correlation and excited states post-treatment input variables \n\n')
 for key,value in input_var_dict.items():
   if value['family'] =='post':
+    fmd.write('['+key+'](#'+key+') \n')
+fmd.write('\n\n')
+
+# Noft
+fmd.write('## Natural Orbital Functional Theory \n\n')
+for key,value in input_var_dict.items():
+  if value['family'] =='noft':
     fmd.write('['+key+'](#'+key+') \n')
 fmd.write('\n\n')
 

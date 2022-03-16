@@ -263,11 +263,13 @@ C
       POINT= 0
       FINISH= .FALSE.
       IF(DIAGCO) THEN
-         DO 30 I=1,N
- 30      IF (DIAG(I).LE.ZERO) GO TO 195
+         DO I=1,N
+           IF (DIAG(I).LE.ZERO) GO TO 195
+         ENDDO
       ELSE
-         DO 40 I=1,N
- 40      DIAG(I)= 1.0D0
+         DO I=1,N
+           DIAG(I)= 1.0D0
+         ENDDO
       ENDIF
 C
 C     THE WORK VECTOR W IS DIVIDED AS FOLLOWS:
@@ -287,8 +289,7 @@ C     CIRCULAR ORDER CONTROLLED BY THE PARAMETER POINT.
 C
       ISPT= N+2*M
       IYPT= ISPT+N*M     
-      DO 50 I=1,N
- 50   W(ISPT+I)= -G(I)*DIAG(I)
+      W(ISPT+1:ISPT+N)= -G(1:N)*DIAG(1:N)
       GNORM= DSQRT(DDOT(N,G,1,G,1))
       STP1= ONE/GNORM
 C
@@ -313,16 +314,16 @@ C
          YS= DDOT(N,W(IYPT+NPT+1),1,W(ISPT+NPT+1),1)
       IF(.NOT.DIAGCO) THEN
          YY= DDOT(N,W(IYPT+NPT+1),1,W(IYPT+NPT+1),1)
-         DO 90 I=1,N
-   90    DIAG(I)= YS/YY
+         DIAG(1:N)= YS/YY
       ELSE
          IFLAG=2
          RETURN
       ENDIF
  100  CONTINUE
       IF(DIAGCO) THEN
-        DO 110 I=1,N
- 110    IF (DIAG(I).LE.ZERO) GO TO 195
+        DO I=1,N
+          IF (DIAG(I).LE.ZERO) GO TO 195
+        ENDDO
       ENDIF
 C
 C     COMPUTE -H*G USING THE FORMULA GIVEN IN: Nocedal, J. 1980,
@@ -333,8 +334,7 @@ C
       CP= POINT
       IF (POINT.EQ.0) CP=M
       W(N+CP)= ONE/YS
-      DO 112 I=1,N
- 112  W(I)= -G(I)
+      W(1:N)= -G(1:N)
       CP= POINT
       DO 125 I= 1,BOUND
          CP=CP-1
@@ -346,8 +346,7 @@ C
          CALL DAXPY(N,-W(INMC),W(IYCN+1),1,W,1)
  125  CONTINUE
 C
-      DO 130 I=1,N
- 130  W(I)=DIAG(I)*W(I)
+      W(1:N)=DIAG(1:N)*W(1:N)
 C
       DO 145 I=1,BOUND
          YR= DDOT(N,W(IYPT+CP*N+1),1,W,1)
@@ -363,8 +362,9 @@ C
 C     STORE THE NEW SEARCH DIRECTION
 C     ------------------------------
 C
-       DO 160 I=1,N
- 160   W(ISPT+POINT*N+I)= W(I)
+       DO I=1,N
+         W(ISPT+POINT*N+I)= W(I)
+       ENDDO
 C
 C     OBTAIN THE ONE-DIMENSIONAL MINIMIZER OF THE FUNCTION 
 C     BY USING THE LINE SEARCH ROUTINE MCSRCH
@@ -372,8 +372,7 @@ C     ----------------------------------------------------
  165  NFEV=0
       STP=ONE
       IF (ITER.EQ.1) STP=STP1
-      DO 170 I=1,N
- 170  W(I)=G(I)
+      W(1:N)=G(1:N)
  172  CONTINUE
       CALL MCSRCH(N,X,F,G,W(ISPT+POINT*N+1),STP,FTOL,
      *            XTOL,MAXFEV,INFO,NFEV,DIAG)
@@ -388,9 +387,10 @@ C     COMPUTE THE NEW STEP AND GRADIENT CHANGE
 C     -----------------------------------------
 C
       NPT=POINT*N
-      DO 175 I=1,N
-      W(ISPT+NPT+I)= STP*W(ISPT+NPT+I)
- 175  W(IYPT+NPT+I)= G(I)-W(I)
+      DO I=1,N
+        W(ISPT+NPT+I)= STP*W(ISPT+NPT+I)
+        W(IYPT+NPT+I)= G(I)-W(I)
+      ENDDO
       POINT=POINT+1
       IF (POINT.EQ.M)POINT=0
 C
