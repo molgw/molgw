@@ -501,13 +501,11 @@ program molgw
   !
   if( calc_type%is_noft ) then
 
-    !FB2MARM: I would suggest to use a new energy object here: en_noft 
     en_noft = en_gks
     call noft_energy(NINT(electrons),basis,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
                      en_noft%total,en_noft%nuc_nuc)
 
-    write(stdout,'(a,2x,f19.10)') ' NOFT Total Energy (Ha):',en_noft%total
-    write(stdout,*)
+    write(stdout,'(a,2x,f19.10,/)') ' NOFT Total Energy (Ha):',en_noft%total
 
   endif
 
