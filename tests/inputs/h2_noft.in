@@ -8,7 +8,7 @@
 
  natom=2
 
- ncoupled=10
+ noft_ncoupled=10
  postscf='noft'
  
 /
