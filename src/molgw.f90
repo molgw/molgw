@@ -58,6 +58,7 @@ program molgw
   use m_io
   use m_fourier_quadrature
   use m_libcint_tools
+  use m_noft
   implicit none
 
   !=====
@@ -65,7 +66,7 @@ program molgw
   type(basis_set)            :: auxil_basis
   type(spectral_function)    :: wpol
   type(lbfgs_state)          :: lbfgs_plan
-  type(energy_contributions) :: en_gks,en_mbpt
+  type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
   integer                 :: nelect
   integer                 :: nstate
@@ -78,7 +79,6 @@ program molgw
   real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
   real(dp),allocatable    :: hamiltonian_nucleus(:,:)
-  real(dp),allocatable    :: hamiltonian_hCORE(:,:)
   real(dp),allocatable    :: hamiltonian_fock(:,:,:)
   real(dp),allocatable    :: s_matrix(:,:)
   real(dp),allocatable    :: x_matrix(:,:)
@@ -501,24 +501,13 @@ program molgw
   !
   if( calc_type%is_noft ) then
 
-    ! Kinetic energy contribution
-    call setup_kinetic(basis,hamiltonian_kinetic)
-    ! Nucleus-electron interaction
-    call setup_nucleus(basis,hamiltonian_nucleus)
-    call clean_allocate('hCORE operator ',hamiltonian_hCORE,basis%nbf,basis%nbf,verbose)
-    hamiltonian_hCORE(:,:)=hamiltonian_kinetic(:,:)+hamiltonian_nucleus(:,:)
-    if(has_auxil_basis) then
-     noft_ri=.true.
-    else
-     noft_ri=.false.
-    endif
- 
-    nelect=int(sum(occupation(:,1)))
-    call noft_energy(nelect,nstate,basis,c_matrix,hamiltonian_hCORE,s_matrix,en_gks%total,en_gks%nuc_nuc)
+    !FB2MARM: I would suggest to use a new energy object here: en_noft 
+    en_noft = en_gks
+    call noft_energy(NINT(electrons),basis,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
+                     en_noft%total,en_noft%nuc_nuc)
 
-    write(stdout,'(a,2x,f19.10)') ' NOFT Total Energy (Ha):',en_gks%total
+    write(stdout,'(a,2x,f19.10)') ' NOFT Total Energy (Ha):',en_noft%total
     write(stdout,*)
-    call clean_deallocate('hCORE operator ',hamiltonian_hCORE,verbose)
 
   endif
 
