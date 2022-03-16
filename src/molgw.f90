@@ -71,7 +71,6 @@ program molgw
   integer                 :: nelect
   integer                 :: nstate
   integer                 :: istep
-  integer                 :: verbose=-1
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: is_converged

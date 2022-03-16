@@ -365,7 +365,8 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   implicit none
   real(dp),intent(in)         :: c_matrix(:,:,:)
   integer,optional,intent(in) :: mstate_min,mstate_max,nstate_min,nstate_max
-  integer,optional,intent(in) :: timing,verbose
+  integer,optional,intent(in) :: timing
+  logical,optional,intent(in) :: verbose
   !=====
   integer              :: nbf,nstate
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
@@ -383,12 +384,12 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
     call start_clock(timing_eri_3center_eigen)
   endif
   
-  if(present(verbose)) then
-   if(verbose/=-1) then
-    write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
-   endif
+  if(PRESENT(verbose)) then
+    if(verbose) then
+      write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    endif
   else
-   write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
   endif
 
   nbf    = SIZE(c_matrix,DIM=1)
@@ -422,23 +423,23 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   nstate_count_ = nstate_max_ - nstate_min_ + 1
 
   !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
-  if(present(verbose)) then
-   call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center, &
-                      mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose)
+  if(PRESENT(verbose)) then
+    call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center, &
+                       mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose)
   else
-   call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center, &
-                      mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
+    call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center, &
+                        mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
   endif
   eri_3center_eigen(:,:,:,:) = 0.0_dp
 
-  if(present(verbose)) then
+  if(PRESENT(verbose)) then
     call clean_allocate('TMP 3-center ints',tmp1,mstate_min_,mstate_max_,1,nbf,verbose)
     call clean_allocate('TMP 3-center ints',c_t ,mstate_min_,mstate_max_,1,nbf,verbose)
     call clean_allocate('TMP 3-center ints',tmp2,mstate_min_,mstate_max_,nstate_min_,nstate_max_,verbose)
   else
-   call clean_allocate('TMP 3-center ints',tmp1,mstate_min_,mstate_max_,1,nbf)
-   call clean_allocate('TMP 3-center ints',c_t ,mstate_min_,mstate_max_,1,nbf)
-   call clean_allocate('TMP 3-center ints',tmp2,mstate_min_,mstate_max_,nstate_min_,nstate_max_)
+    call clean_allocate('TMP 3-center ints',tmp1,mstate_min_,mstate_max_,1,nbf)
+    call clean_allocate('TMP 3-center ints',c_t ,mstate_min_,mstate_max_,1,nbf)
+    call clean_allocate('TMP 3-center ints',tmp2,mstate_min_,mstate_max_,nstate_min_,nstate_max_)
   endif
 
   do klspin=1,nspin
@@ -473,14 +474,14 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
     enddo !iauxil
   enddo !klspin
 
-  if(present(verbose)) then
-   call clean_deallocate('TMP 3-center ints',tmp2,verbose)
-   call clean_deallocate('TMP 3-center ints',c_t,verbose)
-   call clean_deallocate('TMP 3-center ints',tmp1,verbose)
+  if(PRESENT(verbose)) then
+    call clean_deallocate('TMP 3-center ints',tmp2,verbose)
+    call clean_deallocate('TMP 3-center ints',c_t,verbose)
+    call clean_deallocate('TMP 3-center ints',tmp1,verbose)
   else
-   call clean_deallocate('TMP 3-center ints',tmp2)
-   call clean_deallocate('TMP 3-center ints',c_t)
-   call clean_deallocate('TMP 3-center ints',tmp1)
+    call clean_deallocate('TMP 3-center ints',tmp2)
+    call clean_deallocate('TMP 3-center ints',c_t)
+    call clean_deallocate('TMP 3-center ints',tmp1)
   endif
   call ortho%sum(eri_3center_eigen)
 
@@ -498,7 +499,8 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
   implicit none
   complex(dp),intent(in)         :: c_matrix_cmplx(:,:,:)
   integer,optional,intent(in) :: mstate_min,mstate_max,nstate_min,nstate_max
-  integer,optional,intent(in) :: timing,verbose
+  integer,optional,intent(in) :: timing
+  logical,optional,intent(in) :: verbose
   !=====
   integer              :: nbf,nstate
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
@@ -516,12 +518,12 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
     call start_clock(timing_eri_3center_eigen)
   endif
   
-  if(present(verbose)) then
-   if(verbose/=-1) then
-    write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
-   endif
+  if(PRESENT(verbose)) then
+    if(verbose) then
+      write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    endif
   else
-   write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
   endif
 
   nbf    = SIZE(c_matrix_cmplx,DIM=1)
@@ -555,23 +557,23 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
   nstate_count_ = nstate_max_ - nstate_min_ + 1
 
   !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
-  if(present(verbose)) then
-   call clean_allocate('3-center MO integrals',eri_3center_eigen_cmplx,1,nauxil_3center, &
-                      mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose)
+  if(PRESENT(verbose)) then
+    call clean_allocate('3-center MO integrals',eri_3center_eigen_cmplx,1,nauxil_3center, &
+                        mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose)
   else
-   call clean_allocate('3-center MO integrals',eri_3center_eigen_cmplx,1,nauxil_3center, &
-                      mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
+    call clean_allocate('3-center MO integrals',eri_3center_eigen_cmplx,1,nauxil_3center, &
+                        mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
   endif
   eri_3center_eigen_cmplx(:,:,:,:) = (0.0_dp,0.0_dp)
 
-  if(present(verbose)) then
+  if(PRESENT(verbose)) then
     call clean_allocate('TMP 3-center ints',tmp1C,mstate_min_,mstate_max_,1,nbf,verbose)
     call clean_allocate('TMP 3-center ints',c_tC ,mstate_min_,mstate_max_,1,nbf,verbose)
     call clean_allocate('TMP 3-center ints',tmp2C,mstate_min_,mstate_max_,nstate_min_,nstate_max_,verbose)
   else
-   call clean_allocate('TMP 3-center ints',tmp1C,mstate_min_,mstate_max_,1,nbf)
-   call clean_allocate('TMP 3-center ints',c_tC ,mstate_min_,mstate_max_,1,nbf)
-   call clean_allocate('TMP 3-center ints',tmp2C,mstate_min_,mstate_max_,nstate_min_,nstate_max_)
+    call clean_allocate('TMP 3-center ints',tmp1C,mstate_min_,mstate_max_,1,nbf)
+    call clean_allocate('TMP 3-center ints',c_tC ,mstate_min_,mstate_max_,1,nbf)
+    call clean_allocate('TMP 3-center ints',tmp2C,mstate_min_,mstate_max_,nstate_min_,nstate_max_)
   endif
 
   do klspin=1,nspin
@@ -606,7 +608,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
     enddo !iauxil
   enddo !klspin
 
-  if(present(verbose)) then
+  if(PRESENT(verbose)) then
    call clean_deallocate('TMP 3-center ints',tmp2C,verbose)
    call clean_deallocate('TMP 3-center ints',c_tC,verbose)
    call clean_deallocate('TMP 3-center ints',tmp1C,verbose)
@@ -630,15 +632,15 @@ end subroutine calculate_eri_3center_eigen_cmplx
 subroutine destroy_eri_3center_eigen(verbose)
   implicit none
   !=====
-  integer,optional,intent(in) :: verbose
+  logical,optional,intent(in) :: verbose
   !=====
 
-  if(present(verbose)) then
-   if(verbose/=-1) write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
+  if(PRESENT(verbose)) then
+   if(verbose) write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
    call clean_deallocate('3-center MO integrals',eri_3center_eigen,verbose)
   else
    write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
-   call clean_deallocate('3-center MO integrals',eri_3center_eigen,verbose)
+   call clean_deallocate('3-center MO integrals',eri_3center_eigen)
   endif
 
 end subroutine destroy_eri_3center_eigen
@@ -647,15 +649,15 @@ end subroutine destroy_eri_3center_eigen
 subroutine destroy_eri_3center_eigen_cmplx(verbose)
   implicit none
   !=====
-  integer,optional,intent(in) :: verbose
+  logical,optional,intent(in) :: verbose
   !=====
 
-  if(present(verbose)) then
-   if(verbose/=-1) write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
-   call clean_deallocate('3-center MO integrals',eri_3center_eigen_cmplx,verbose)
+  if(PRESENT(verbose)) then
+    if(verbose) write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
+    call clean_deallocate('3-center MO integrals',eri_3center_eigen_cmplx,verbose)
   else
-   write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
-   call clean_deallocate('3-center MO integrals',eri_3center_eigen_cmplx,verbose)
+    write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
+    call clean_deallocate('3-center MO integrals',eri_3center_eigen_cmplx)
   endif
 
 end subroutine destroy_eri_3center_eigen_cmplx
