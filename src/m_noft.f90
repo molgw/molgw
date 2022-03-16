@@ -277,8 +277,9 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COE
  complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
 !=====
 
-! Comment: Despite the arrays are of size nbf x nbf, we use nstate_noft = num. lin. indep. states in the ERI 
-! transformation. Only because we want to save time in the loops
+! MRM:
+! Comment: Despite the arrays are of size nbf x nbf, we use nstate_noft = num. lin. indep. states in the ERI  transformation. 
+! Doing this, we save some time in the loops because nstate_noft <= nbf
 
  if(noft_complex=='yes') then
 
