@@ -38,6 +38,7 @@
 # [rt_tddft]     Real time TDDFT input variables
 # [scf]          Self-consistency input variables
 # [system]       Physical system setup input variables
+# [noft]         Natural Orbital Functional Theory
 #
 
 #============================================================================
@@ -1152,7 +1153,7 @@ beta_hybrid:
     of long-range exact-exchange
 
 noft_complex:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1179,7 +1180,7 @@ diis_switch:
     is used to finalize the convergence.
 
 noft_fcidump:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1218,7 +1219,7 @@ init_hamiltonian:
     densities or ''core'' for the core hamiltonian.'
 
 noft_NOTupdateOCC:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1226,7 +1227,7 @@ noft_NOTupdateOCC:
   comment: Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.
 
 noft_NOTupdateORB:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1234,7 +1235,7 @@ noft_NOTupdateORB:
   comment: Do a NOFT optimization but keeping fixed the orbitals read.
 
 noft_functional:
-  family: scf
+  family: noft
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
@@ -1253,7 +1254,7 @@ integral_quality:
     meant for debugging since it is overdoing a lot.
 
 noft_printdmn:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1261,7 +1262,7 @@ noft_printdmn:
   comment: Print optimized NOFT 1,2-RDMs (default= 'no').
 
 noft_printswdmn:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1269,7 +1270,7 @@ noft_printswdmn:
   comment: Print optimized spin-with NOFT 1,2-RDMs (default= 'no').
 
 noft_printints:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1277,7 +1278,7 @@ noft_printints:
   comment: Print hCORE and ERImol integrals in the optimized basis (default= 'no').
 
 noft_readCOEF:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1285,7 +1286,7 @@ noft_readCOEF:
   comment: Read NO_COEF file to use those coefficients as initial guess (default= 'no').
 
 noft_readFdiag:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1293,7 +1294,7 @@ noft_readFdiag:
   comment: Read F_pp values from F_DIAG file and use them as diag. of Fpq matrix (default= 'no').
 
 noft_readGAMMAS:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1301,7 +1302,7 @@ noft_readGAMMAS:
   comment: Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimization (default= 'no').
 
 noft_readOCC:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1309,7 +1310,7 @@ noft_readOCC:
   comment: Read occ. from DM1 file and use them to compute Gammas (the indep. variables in occ. optimization). Default= 'no'.
 
 noft_sta:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1317,7 +1318,7 @@ noft_sta:
   comment: Decide whether to use PNOF7 or PNOF7s (default= 'yes', use 'PNOF7s').
 
 noft_ithresh_lambda:
-  family: scf
+  family: noft
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
@@ -1343,7 +1344,7 @@ level_shifting_energy:
     in the case of small HOMO-LUMO gaps.
 
 noft_lowmemERI:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1351,7 +1352,7 @@ noft_lowmemERI:
   comment: Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) in NOFT module.
 
 noft_Lpower:
-  family: scf
+  family: noft
   datatype: real
   mandatory: 'no'
   experimental: 'no'
@@ -1378,7 +1379,7 @@ mixing_scheme:
     a simple linear mixing between input and output density-matrices.
 
 noft_npairs:
-  family: scf
+  family: noft
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
@@ -1386,7 +1387,7 @@ noft_npairs:
   comment: Number of active electron pairs used in NOFT calcs. (default=1 pair).
 
 noft_ncoupled:
-  family: scf
+  family: noft
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
@@ -1410,7 +1411,7 @@ nscf:
   comment: Sets the maximum number of SCF cycles
 
 noft_ndiis:
-  family: scf
+  family: noft
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
@@ -1418,7 +1419,7 @@ noft_ndiis:
   comment: Number of orb. optimization iterations used in DIIS by NOFT module (default=5).
 
 noft_nscf:
-  family: scf
+  family: noft
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
@@ -1435,7 +1436,7 @@ partition_scheme:
     or 'ssf' (Stratmann-Scuseria-Frisch).
 
 noft_restart:
-  family: scf
+  family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
@@ -1452,7 +1453,7 @@ scf_diago_flavor:
     Available choices are ' ', 'R', 'D', and 'X'.
 
 noft_tolE:
-  family: scf
+  family: noft
   datatype: real
   mandatory: 'no'
   experimental: 'no'
