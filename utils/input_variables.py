@@ -318,7 +318,7 @@ fhtml.close()
 print("Setting up file: ../docs/input_variables.md")
 fmd = open('../docs/input_variables.md','w')
 
-fmd.write('# MOLGW Input variable list\n\n')
+fmd.write('# Input variable list\n\n')
 fmd.write('*Version ' + version + '*\n\n')
 fmd.write('---\n\n')
 

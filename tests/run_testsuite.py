@@ -282,14 +282,22 @@ try:
 except OSError:
   pass
 
+###################################
+# Parse molgw.h to obtain MOLGW version
+###################################
+with open('../src/molgw.h', 'r') as stream:
+    version = ''
+    for line in stream:
+        words = line.split()
+        if len(words) > 1:
+            if words[0] == '#define' and words[1] == 'MOLGW_VERSION':
+                version = words[2].replace('\"','').replace('\'','')
 
 ###################################
 # Run the fake.in input to get MOLGW compilation options
 ###################################
 clean_run('fake.in','fake.out',False)
-#ffake = open(tmpfolder+'/fake.out','r')
-#for line in ffake:
-#ffake.close()
+
 have_openmp           = 'Running with OPENMP' in open(tmpfolder+'/fake.out').read()
 have_libxc            = 'Running with LIBXC' in open(tmpfolder+'/fake.out').read()
 have_mpi              = 'Running with MPI' in open(tmpfolder+'/fake.out').read()
@@ -297,10 +305,13 @@ have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder+'/fake.out').
 have_libint_onebody   = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
 have_libint_gradients = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
 is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder+'/fake.out').read()
+
 #with open(tmpfolder+'/fake.out','r') as ffake:
 #  for line in ffake:
 #    if 'Perform diagonalizations with (Sca)LAPACK routines' in line:
 #      lapack_diago_flavor = line.split(':')[1].strip()
+
+print('MOLGW version: ' + version)
 print('MOLGW compilation details:')
 print('                   OPENMP: {}'.format(have_openmp) )
 print('                      MPI: {}'.format(have_mpi) )
