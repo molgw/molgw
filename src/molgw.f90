@@ -499,6 +499,7 @@ program molgw
   ! Do NOFT optimization
   !
   if( calc_type%is_noft ) then
+    if( nspin /= 1 ) call die('molgw: NOFT calculations need spin-restriction. Set nspin to 1')
 
     en_noft = en_gks
     call noft_energy(NINT(electrons),basis,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
