@@ -34,6 +34,7 @@ MOLGW implements the following schemes:
 - TD-HF
 - TD-DFT
 - BSE
+- HF/DFT+NOFT (MULLER, POWER, PNOF5, and PNOF7)
 
 
 ## Installation

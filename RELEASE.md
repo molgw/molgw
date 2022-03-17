@@ -18,12 +18,13 @@
 - Nike Dattani (Waterloo)
 
 ### Changes affecting the usage
-- Dynamical self-energy correlation contribution and Spectral weight Z are now reported for omega=E_qp instead of omega=E_gKS
-- `postscf='GWTDDFT'` triggers the calculation of W with HF or TDDFT kernel included 
+- Dynamical self-energy correlation contribution and Spectral weight Z are now reported for omega=E_qp instead of omega=E_gKS.
+- `postscf='GWTDDFT'` triggers the calculation of W with HF or TDDFT kernel included. 
 - MOLGW can use "solid-state" norm-conserving pseudopotentials in the PSP6 or PSP8 format (from [pseudo-dojo.org](http://www.pseudo-dojo.org/) for instance).
 This is slow but functional. It is intended for tests.
-- Python script to extract the basis set from a Gaussian formatted checkpoint file (.fchk): `create_basis_from_gaussian_fchk.py`
-- All the LIBXC functionals can be called directly with syntax: `scf='LIBXC:101+130'` for PBE for instance 
+- Python script to extract the basis set from a Gaussian formatted checkpoint file (.fchk): `create_basis_from_gaussian_fchk.py`.
+- All the LIBXC functionals can be called directly with syntax: `scf='LIBXC:101+130'` for PBE for instance. 
+- Natural orbital functional theory (a.k.a. reduced density matrix functional theory) approximations are now available for singlet-states.
 
 ### Changes affecting the compilation
 - The C library [LIBCINT](https://github.com/sunqm/libcint) can replace LIBINT with noticeable advantages.
