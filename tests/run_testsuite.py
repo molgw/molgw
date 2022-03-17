@@ -311,8 +311,8 @@ is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder+'
 #    if 'Perform diagonalizations with (Sca)LAPACK routines' in line:
 #      lapack_diago_flavor = line.split(':')[1].strip()
 
-print('MOLGW version: ' + version)
-print('MOLGW compilation details:')
+print('MOLGW details:')
+print('            MOLGW version: ' + version)
 print('                   OPENMP: {}'.format(have_openmp) )
 print('                      MPI: {}'.format(have_mpi) )
 print('                SCALAPACK: {}'.format(have_scalapack) )
