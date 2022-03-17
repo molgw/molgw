@@ -31,6 +31,11 @@
     mpi_nproc_ortho,       &
     scalapack_block_min,       &
     basis_path,       &
+    cube_nx,       &
+    cube_ny,       &
+    cube_nz,       &
+    cube_state_min,       &
+    cube_state_max,       &
     force_energy_qp,       &
     ignore_bigrestart,       &
     print_bigrestart,       &
@@ -198,6 +203,11 @@
  mpi_nproc_ortho=1
  scalapack_block_min=100000
  basis_path=''
+ cube_nx=30
+ cube_ny=30
+ cube_nz=30
+ cube_state_min=0
+ cube_state_max=0
  force_energy_qp='no'
  ignore_bigrestart='no'
  print_bigrestart='yes'

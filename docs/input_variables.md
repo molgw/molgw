@@ -139,6 +139,11 @@
 ## IO input variables 
 
 [basis_path](#basis_path) 
+[cube_nx](#cube_nx) 
+[cube_ny](#cube_ny) 
+[cube_nz](#cube_nz) 
+[cube_state_min](#cube_state_min) 
+[cube_state_max](#cube_state_max) 
 [force_energy_qp](#force_energy_qp) 
 [ignore_bigrestart](#ignore_bigrestart) 
 [print_bigrestart](#print_bigrestart) 
@@ -517,6 +522,86 @@ Selects which excitations will be included in the CI expansion. Valid choices ar
 **Description:** 
 
 This is a free expression place. Use it as you wish for commenting, naming, labeling etc. (140 character max just as twitter) 
+
+
+---
+### cube_nx
+
+*Optional* 
+
+**Family:** io 
+
+**Type:** integer 
+
+**Default:** 30 
+
+**Description:** 
+
+Sets the number of grid points along X in cube file outputs 
+
+
+---
+### cube_ny
+
+*Optional* 
+
+**Family:** io 
+
+**Type:** integer 
+
+**Default:** 30 
+
+**Description:** 
+
+Sets the number of grid points along Y in cube file outputs 
+
+
+---
+### cube_nz
+
+*Optional* 
+
+**Family:** io 
+
+**Type:** integer 
+
+**Default:** 30 
+
+**Description:** 
+
+Sets the number of grid points along Z in cube file outputs 
+
+
+---
+### cube_state_max
+
+*Optional* 
+
+**Family:** io 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Sets the state range maximum used in cube file outputs 
+
+
+---
+### cube_state_min
+
+*Optional* 
+
+**Family:** io 
+
+**Type:** integer 
+
+**Default:** 0 
+
+**Description:** 
+
+Sets the state range minimum used in cube file outputs 
 
 
 ---

@@ -30,6 +30,11 @@
  write(stdout,'(1x,a32,2x,i8)') 'mpi_nproc_ortho',mpi_nproc_ortho 
  write(stdout,'(1x,a32,2x,i8)') 'scalapack_block_min',scalapack_block_min 
  write(stdout,'(1x,a32,6x,a)') 'basis_path',basis_path 
+ write(stdout,'(1x,a32,2x,i8)') 'cube_nx',cube_nx 
+ write(stdout,'(1x,a32,2x,i8)') 'cube_ny',cube_ny 
+ write(stdout,'(1x,a32,2x,i8)') 'cube_nz',cube_nz 
+ write(stdout,'(1x,a32,2x,i8)') 'cube_state_min',cube_state_min 
+ write(stdout,'(1x,a32,2x,i8)') 'cube_state_max',cube_state_max 
  write(stdout,'(1x,a32,6x,a)') 'force_energy_qp',force_energy_qp 
  write(stdout,'(1x,a32,6x,a)') 'ignore_bigrestart',ignore_bigrestart 
  write(stdout,'(1x,a32,6x,a)') 'print_bigrestart',print_bigrestart 

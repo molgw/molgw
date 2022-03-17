@@ -291,6 +291,46 @@ basis_path:
   comment: Sets the path pointing to the basis functions files. If
     not specified, then the basis set files will be searched in folder ~molgw/basis/.
 
+cube_nx:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 30
+  comment: Sets the number of grid points along X in cube file outputs
+
+cube_ny:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 30
+  comment: Sets the number of grid points along Y in cube file outputs
+
+cube_nz:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 30
+  comment: Sets the number of grid points along Z in cube file outputs
+
+cube_state_min:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the state range minimum used in cube file outputs
+
+cube_state_max:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the state range maximum used in cube file outputs
+
 force_energy_qp:
   family: io
   datatype: yes/no

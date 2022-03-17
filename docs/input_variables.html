@@ -22,7 +22,7 @@
 <p>
 <a href=#noft_complex>noft_complex</a> <a href=#noft_fcidump>noft_fcidump</a> <a href=#noft_NOTupdateOCC>noft_NOTupdateOCC</a> <a href=#noft_NOTupdateORB>noft_NOTupdateORB</a> <a href=#noft_functional>noft_functional</a> <a href=#noft_printdmn>noft_printdmn</a> <a href=#noft_printswdmn>noft_printswdmn</a> <a href=#noft_printints>noft_printints</a> <a href=#noft_readCOEF>noft_readCOEF</a> <a href=#noft_readFdiag>noft_readFdiag</a> <a href=#noft_readGAMMAS>noft_readGAMMAS</a> <a href=#noft_readOCC>noft_readOCC</a> <a href=#noft_sta>noft_sta</a> <a href=#noft_ithresh_lambda>noft_ithresh_lambda</a> <a href=#noft_lowmemERI>noft_lowmemERI</a> <a href=#noft_Lpower>noft_Lpower</a> <a href=#noft_npairs>noft_npairs</a> <a href=#noft_ncoupled>noft_ncoupled</a> <a href=#noft_ndiis>noft_ndiis</a> <a href=#noft_nscf>noft_nscf</a> <a href=#noft_restart>noft_restart</a> <a href=#noft_tolE>noft_tolE</a> <h3>IO input variables</h3>
 <p>
-<a href=#basis_path>basis_path</a> <a href=#force_energy_qp>force_energy_qp</a> <a href=#ignore_bigrestart>ignore_bigrestart</a> <a href=#print_bigrestart>print_bigrestart</a> <a href=#print_cube>print_cube</a> <a href=#print_wfn_files>print_wfn_files</a> <a href=#print_density_matrix>print_density_matrix</a> <a href=#print_eri>print_eri</a> <a href=#print_hartree>print_hartree</a> <a href=#print_multipole>print_multipole</a> <a href=#print_pdos>print_pdos</a> <a href=#print_restart>print_restart</a> <a href=#print_rho_grid>print_rho_grid</a> <a href=#print_sigma>print_sigma</a> <a href=#print_spatial_extension>print_spatial_extension</a> <a href=#print_w>print_w</a> <a href=#print_wfn>print_wfn</a> <a href=#print_yaml>print_yaml</a> <a href=#read_fchk>read_fchk</a> <a href=#read_restart>read_restart</a> <h3>Hardware input variables</h3>
+<a href=#basis_path>basis_path</a> <a href=#cube_nx>cube_nx</a> <a href=#cube_ny>cube_ny</a> <a href=#cube_nz>cube_nz</a> <a href=#cube_state_min>cube_state_min</a> <a href=#cube_state_max>cube_state_max</a> <a href=#force_energy_qp>force_energy_qp</a> <a href=#ignore_bigrestart>ignore_bigrestart</a> <a href=#print_bigrestart>print_bigrestart</a> <a href=#print_cube>print_cube</a> <a href=#print_wfn_files>print_wfn_files</a> <a href=#print_density_matrix>print_density_matrix</a> <a href=#print_eri>print_eri</a> <a href=#print_hartree>print_hartree</a> <a href=#print_multipole>print_multipole</a> <a href=#print_pdos>print_pdos</a> <a href=#print_restart>print_restart</a> <a href=#print_rho_grid>print_rho_grid</a> <a href=#print_sigma>print_sigma</a> <a href=#print_spatial_extension>print_spatial_extension</a> <a href=#print_w>print_w</a> <a href=#print_wfn>print_wfn</a> <a href=#print_yaml>print_yaml</a> <a href=#read_fchk>read_fchk</a> <a href=#read_restart>read_restart</a> <h3>Hardware input variables</h3>
 <p>
 <a href=#eri3_nbatch>eri3_nbatch</a> <a href=#eri3_npcol>eri3_npcol</a> <a href=#eri3_nprow>eri3_nprow</a> <a href=#grid_memory>grid_memory</a> <a href=#mpi_nproc_ortho>mpi_nproc_ortho</a> <a href=#scalapack_block_min>scalapack_block_min</a> <h3>Real time TDDFT</h3>
 <p>
@@ -184,6 +184,36 @@ Sets the minimum block size to distribute a non-distributed matrix with SCALAPAC
 <i>Optional</i><br>
 Default: none<br><br>
 Sets the path pointing to the basis functions files. If not specified, then the basis set files will be searched in folder ~molgw/basis/.</li><br>
+<hr>
+<a name=cube_nx><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>cube_nx</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 30<br><br>
+Sets the number of grid points along X in cube file outputs</li><br>
+<hr>
+<a name=cube_ny><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>cube_ny</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 30<br><br>
+Sets the number of grid points along Y in cube file outputs</li><br>
+<hr>
+<a name=cube_nz><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>cube_nz</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 30<br><br>
+Sets the number of grid points along Z in cube file outputs</li><br>
+<hr>
+<a name=cube_state_min><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>cube_state_min</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 0<br><br>
+Sets the state range minimum used in cube file outputs</li><br>
+<hr>
+<a name=cube_state_max><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>cube_state_max</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 0<br><br>
+Sets the state range maximum used in cube file outputs</li><br>
 <hr>
 <a name=force_energy_qp><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>force_energy_qp</b>  </span>  
 <br><br>

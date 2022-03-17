@@ -28,6 +28,11 @@
  integer,protected :: mpi_nproc_ortho
  integer,protected :: scalapack_block_min
  character(len=256),protected :: basis_path
+ integer,protected :: cube_nx
+ integer,protected :: cube_ny
+ integer,protected :: cube_nz
+ integer,protected :: cube_state_min
+ integer,protected :: cube_state_max
  character(len=3),protected :: force_energy_qp
  character(len=3),protected :: ignore_bigrestart
  character(len=3),protected :: print_bigrestart

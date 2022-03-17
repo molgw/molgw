@@ -30,6 +30,11 @@
  write(unit_yaml,'(4x,a,15x,i8)') 'mpi_nproc_ortho:',mpi_nproc_ortho 
  write(unit_yaml,'(4x,a,11x,i8)') 'scalapack_block_min:',scalapack_block_min 
  write(unit_yaml,'(4x,a,20x,a)') 'basis_path:',TRIM(basis_path) 
+ write(unit_yaml,'(4x,a,23x,i8)') 'cube_nx:',cube_nx 
+ write(unit_yaml,'(4x,a,23x,i8)') 'cube_ny:',cube_ny 
+ write(unit_yaml,'(4x,a,23x,i8)') 'cube_nz:',cube_nz 
+ write(unit_yaml,'(4x,a,16x,i8)') 'cube_state_min:',cube_state_min 
+ write(unit_yaml,'(4x,a,16x,i8)') 'cube_state_max:',cube_state_max 
  write(unit_yaml,'(4x,a,15x,a)') 'force_energy_qp:',yesno_to_TrueFalse(force_energy_qp) 
  write(unit_yaml,'(4x,a,13x,a)') 'ignore_bigrestart:',yesno_to_TrueFalse(ignore_bigrestart) 
  write(unit_yaml,'(4x,a,14x,a)') 'print_bigrestart:',yesno_to_TrueFalse(print_bigrestart) 
