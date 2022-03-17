@@ -61,6 +61,14 @@ def printmd(output,key,value):
   output.write(    value['comment']+' \n\n\n')
 
 
+with open('../src/molgw.h', 'r') as stream:
+    version = ''
+    for line in stream:
+        words = line.split()
+        if len(words) > 1:
+            if words[0] == '#define' and words[1] == 'MOLGW_VERSION':
+                version = words[2].replace('\"','').replace('\'','')
+print('MOLGW version: ' + version)
 
 with open('../src/input_variables.yaml', 'r') as stream:
     input_var_dict = load(stream,Loader=Loader)
@@ -217,7 +225,8 @@ fhtml.write('</head>\n')
 
 fhtml.write('<body>\n')
 fhtml.write('<a name=top>\n')
-fhtml.write('<h1>Input variable list</h1>\n')
+fhtml.write('<h1>MOLGW Input variable list</h1>\n')
+fhtml.write('<i>Version: ' + version + '<i>\n')
 fhtml.write('<hr>\n<br>\n')
 
 # Mandatory
@@ -309,7 +318,8 @@ fhtml.close()
 print("Setting up file: ../docs/input_variables.md")
 fmd = open('../docs/input_variables.md','w')
 
-fmd.write('# Input variable list\n\n')
+fmd.write('# MOLGW Input variable list\n\n')
+fmd.write('*Version ' + version + '*\n\n')
 fmd.write('---\n\n')
 
 # Mandatory
