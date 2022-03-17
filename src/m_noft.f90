@@ -25,10 +25,9 @@ module m_noft
 contains
 
 !=========================================================================
-subroutine noft_energy(nelectrons,basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
+subroutine noft_energy(basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
  implicit none
 
- integer,intent(in)         :: nelectrons
  type(basis_set),intent(in) :: basis
  real(dp),intent(inout)     :: c_matrix(:,:,:)
  real(dp),intent(in)        :: Aoverlap(:,:)
@@ -37,6 +36,7 @@ subroutine noft_energy(nelectrons,basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
  real(dp),intent(out)       :: Enoft
 !====
  integer                    :: istate,lwork,info
+ integer                    :: nelectrons
  integer                    :: imethorb,imethocc,iERItyp,nstate_occ,nstate_frozen,nstate_beta,nstate_alpha,nstate_coupled
  integer                    :: iNOTupdateOCC,iNOTupdateORB,iprintdmn,iprintswdmn,iprintints,ireadOCC,ireadCOEF 
  integer                    :: ireadFdiag,ireadGAMMAs,ista,inof 
@@ -159,6 +159,7 @@ subroutine noft_energy(nelectrons,basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
  endif 
 
  ! Not ready for open-shell calcs. (TODO)
+ nelectrons = NINT(electrons)
  nstate_coupled=noft_ncoupled-1
  nstate_frozen=(nelectrons-2*noft_npairs)/2
  nstate_beta=nstate_frozen+noft_npairs

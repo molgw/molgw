@@ -64,7 +64,7 @@ Many standard Gaussian basis sets are shipped with MOLGW.
 
 More basis sets can be obtained from [Basis Set Exchange](https://bse.pnl.gov/bse/portal)
 The file can be generated from a NWChem file using the script
-`~molgw/utils/basis_nwchem2molgw.py B_aug-cc-pVDZ.nwchem`
+`~molgw/utils/basisset_nwchem2molgw.py aug-cc-pVDZ.nwchem`
 
 You may even create your own.
 

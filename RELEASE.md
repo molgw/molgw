@@ -10,12 +10,13 @@
 - GW calculations with W from TDDFT
 - new basis functions (Dunning 7Z)
 - pseudopotential in numerical format PSP6 or PSP8 can be used 
-- LIBXC functionals can be called directly if one knows their unique LIBXC identifier
+- LIBXC functionals can be called directly if one knows their unique LIBXC index
 - various bug fixes, typos
 
 ### Contributors
-- Fabien Bruneval (CEA SRMP, France)
-- Nike Dattani (Waterloo)
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+- Mauricio Rodriguez-Mayorga (Vrije Universiteit, Amsterdam, Netherlands)
+- Nike Dattani (HPQC Labs, Waterloo, Canada)
 
 ### Changes affecting the usage
 - Dynamical self-energy correlation contribution and Spectral weight Z are now reported for omega=E_qp instead of omega=E_gKS.
@@ -25,6 +26,8 @@ This is slow but functional. It is intended for tests.
 - Python script to extract the basis set from a Gaussian formatted checkpoint file (.fchk): `create_basis_from_gaussian_fchk.py`.
 - All the LIBXC functionals can be called directly with syntax: `scf='LIBXC:101+130'` for PBE for instance. 
 - Natural orbital functional theory (a.k.a. reduced density matrix functional theory) approximations are now available for singlet-states.
+NOFT calculations are triggered with `postscf='NOFT'`.
+The corresponding input variables start with `noft_`. Available functionals include: Muller, power, PNOF5, and PNOF7.
 
 ### Changes affecting the compilation
 - The C library [LIBCINT](https://github.com/sunqm/libcint) can replace LIBINT with noticeable advantages.
@@ -33,7 +36,7 @@ According to our tests, LIBCINT appears as twice faster than LIBINT at runtime.
 To use LIBCINT, `my_machine.arch` should contain `LIBCINT=-lcint` and preprocessing option `-DHAVE_LIBCINT`
 
 ### Changes affecting the developers
-
+- LIBCINT library offers many integral types that were not available with LIBINT. New opportunities are open.
 
 -----------------------------------------
 ## What's new in version 2.F
