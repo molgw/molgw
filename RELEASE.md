@@ -17,17 +17,20 @@
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
 - Mauricio Rodriguez-Mayorga (Vrije Universiteit, Amsterdam, Netherlands)
 - Nike Dattani (HPQC Labs, Waterloo, Canada)
+- Zohreh Hashemi (University of Bayreuth, Germany)
 
 ### Changes affecting the usage
+- Natural orbital functional theory (a.k.a. reduced density matrix functional theory) approximations are now available for singlet-states.
+NOFT calculations are triggered with `postscf='NOFT'`.
+The corresponding input variables start with `noft_`. Available functionals include: Muller, power, PNOF5, and PNOF7.
 - Dynamical self-energy correlation contribution and Spectral weight Z are now reported for omega=E_qp instead of omega=E_gKS.
 - `postscf='GWTDDFT'` triggers the calculation of W with HF or TDDFT kernel included. 
 - MOLGW can use "solid-state" norm-conserving pseudopotentials in the PSP6 or PSP8 format (from [pseudo-dojo.org](http://www.pseudo-dojo.org/) for instance).
 This is slow but functional. It is intended for tests.
 - Python script to extract the basis set from a Gaussian formatted checkpoint file (.fchk): `create_basis_from_gaussian_fchk.py`.
 - All the LIBXC functionals can be called directly with syntax: `scf='LIBXC:101+130'` for PBE for instance. 
-- Natural orbital functional theory (a.k.a. reduced density matrix functional theory) approximations are now available for singlet-states.
-NOFT calculations are triggered with `postscf='NOFT'`.
-The corresponding input variables start with `noft_`. Available functionals include: Muller, power, PNOF5, and PNOF7.
+- Possibility to tune the cube file output with new input variables `cube_nx`, `cube_ny`, `cube_nz`, `cube_state_min`, `cube_state_max`.
+- Possibility to output the transition density in BSE/TDDFT
 
 ### Changes affecting the compilation
 - The C library [LIBCINT](https://github.com/sunqm/libcint) can replace LIBINT with noticeable advantages.
