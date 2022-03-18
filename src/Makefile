@@ -492,6 +492,7 @@ tarball:
 archive:
 	+make prepare_sourcecode
 	mkdir -p ../tmp/molgw/src
+	mkdir -p ../tmp/molgw/src/noft
 	cp -rp  ../README.md ../COPYING ../RELEASE.md  \
             ../basis/ ../utils/ ../tests/            \
             ../docs/ ../config/   \
@@ -500,6 +501,9 @@ archive:
             ../src/*.cc ../src/*.h  \
             ../src/Makefile \
             ../tmp/molgw/src
+	cp -rp  ../src/noft/*.F90 ../src/noft/*.F  \
+            ../src/noft/*.sh  \
+            ../tmp/molgw/src/noft/
 	cd ../tmp && tar czf ../molgw.tgz molgw/
 	rm -rf ../tmp/
 
