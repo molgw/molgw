@@ -63,9 +63,6 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
   character(len=32)                  :: symsymbol
   character(len=6)                   :: char6
   !=====TransDens
-  logical,parameter                  :: print_transition_density_ = .TRUE.
-  integer,parameter                  :: cube_nx=30,cube_ny=30,cube_nz=30
-  integer,parameter                  :: cube_state_min=1,cube_state_max=5
   character(len=200)                 :: file_name
   real(dp)                           :: xpy_global(2*chi%npole_reso)
   integer                            :: icubefile

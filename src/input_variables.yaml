@@ -365,7 +365,15 @@ print_cube:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Prints some wavefunctions in a 3D volumetric file with cube format
+  comment: Prints some wavefunctions in a 3d volumetric file in cube file format
+
+print_transition_density:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the difference of transition density \sum_{ia} C_{ia}^n \phi_i(r) \phi_a(r) of each optical excitation n in cube files.
 
 print_wfn_files:
   family: io
