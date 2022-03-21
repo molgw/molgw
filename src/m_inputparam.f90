@@ -150,6 +150,7 @@ module m_inputparam
   logical,protected                :: print_dens_traj_tddft_
   logical,protected                :: print_dens_traj_
   logical,protected                :: print_dens_traj_points_set_
+  logical,protected                :: print_transition_density_
   logical,protected                :: calc_q_matrix_
   logical,protected                :: calc_dens_disc_
   logical,protected                :: calc_spectrum_
@@ -808,6 +809,7 @@ subroutine read_inputfile_namelist()
   print_dens_traj_tddft_      = yesno_to_logical(print_dens_traj_tddft)
   print_dens_traj_            = yesno_to_logical(print_dens_traj)
   print_dens_traj_points_set_ = yesno_to_logical(print_dens_traj_points_set)
+  print_transition_density_   = yesno_to_logical(print_transition_density)
   calc_q_matrix_              = yesno_to_logical(calc_q_matrix)
   calc_dens_disc_             = yesno_to_logical(calc_dens_disc)
   calc_spectrum_              = yesno_to_logical(calc_spectrum)
