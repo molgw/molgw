@@ -17,12 +17,11 @@
 !! CHILDREN
 !!   m_optocc
 !!   m_optorb
-!!   m_gitver
+!!   gitver
 !!
 !! SOURCE
 module m_noft_driver
 
- use m_gitver
  use m_nofoutput
  use m_rdmd
  use m_integd
