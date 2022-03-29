@@ -2079,14 +2079,25 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
          enddo
        enddo
      enddo
+     cube_density_start(:,:) = 0.0_dp
+     !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+     !$OMP DO
      do ir=1,cube_nx*cube_ny*cube_nz
+       if(MODULO(ir-1,world%nproc)/=world%rank) cycle
+
        call calculate_basis_functions_r(basis,rr(:,ir),basis_function_r)
        do ispin=1,nspin
          phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
          cube_density_start(ir,ispin)=SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact
        enddo
      enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
 
+     call world%sum(cube_density_start)
+
+   else
+     call die('should not happen')
    endif
 
 
@@ -2123,7 +2134,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
      !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
      !$OMP DO
      do ir=1,cube_nx*cube_ny*cube_nz
-  !     if(MODULO(ix-1,world%nproc)/=world%rank) cycle
+       if(MODULO(ir-1,world%nproc)/=world%rank) cycle
   
        call calculate_basis_functions_r(basis,rr(:,ir),basis_function_r)
   
@@ -2136,9 +2147,9 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
      !$OMP END PARALLEL
      !call stop_clock(timing_tmp0)
   
-  !   call start_clock(timing_tmp1)
-  !   call world%sum(dens_diff)
-  !   call stop_clock(timing_tmp1)
+     !call start_clock(timing_tmp1)
+     call world%sum(dens_diff)
+     !call stop_clock(timing_tmp1)
   
      if( is_iomaster ) then
        !call start_clock(timing_tmp2)
