@@ -167,12 +167,13 @@ end subroutine clean_allocate_i2d
 
 
 !=========================================================================
-subroutine clean_allocate_1d(array_name,array,n1)
+subroutine clean_allocate_1d(array_name,array,n1,verbose)
   implicit none
 
-  character(len=*),intent(in)       :: array_name
+  character(len=*),intent(in)        :: array_name
   real(dp),allocatable,intent(inout) :: array(:)
   integer,intent(in)                 :: n1
+  logical,optional,intent(in)        :: verbose
   !=====
   integer             :: info
   real(dp)            :: mem_mb
@@ -196,7 +197,11 @@ subroutine clean_allocate_1d(array_name,array,n1)
   total_memory = total_memory + mem_mb
   peak_memory = MAX(peak_memory,total_memory)
 
-  call write_memory_allocate(array_name,mem_mb)
+  if(PRESENT(verbose)) then
+    if(verbose) call write_memory_allocate(array_name,mem_mb)
+  else
+    call write_memory_allocate(array_name,mem_mb)
+  endif
 
 end subroutine clean_allocate_1d
 

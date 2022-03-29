@@ -1972,139 +1972,34 @@ end subroutine calc_density_in_disc_cmplx_regular
 
 
 !=========================================================================
-subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,cube_density_start)
+subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
  implicit none
-
- integer,intent(in)         :: nstate
- integer,intent(in)         :: nocc_dim
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
- real(dp),intent(inout)     :: cube_density_start(:,:,:,:)
-!=====
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(in)         :: occupation(:,:)
+ complex(dp),intent(in)      :: c_matrix_cmplx(:,:,:)
+ logical,intent(in),optional :: initialize
+ !=====
  integer                    :: gt
  integer                    :: nocc(2),nocc_max
  real(dp),parameter         :: length=4.0_dp
  integer                    :: ibf
  integer                    :: istate,ispin
- real(dp)                   :: rr(3)
  complex(dp),allocatable    :: phi_cmplx(:,:)
  real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
  real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz
- integer                    :: ibf_cart,ni_cart,ni,li,i_cart
- real(dp),allocatable       :: basis_function_r_cart(:)
- integer,allocatable        :: ocubefile(:,:)
- integer                    :: icubefile
- integer                    :: i_max_atom
- integer                    :: ndim1,ndim2,ndim3
-!=====
-
- if( .NOT. is_iomaster ) return
-
- call start_clock(timing_print_cube_rho_tddft)
-
- gt = get_gaussian_type_tag(basis%gaussian_type)
-
- if( .NOT. in_tddft_loop ) then
-   write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
- end if
- ! Find highest occupied state
- nocc = 0
- nocc_max = 0
- do ispin=1,nspin
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty)  cycle
-     nocc(ispin) = istate
-     if( istate > nocc_max ) nocc_max = istate
-   enddo
-   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
-     call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-   endif
- enddo
-
-
- allocate(phi_cmplx(1:nocc_max,nspin))
- if( .NOT. in_tddft_loop ) then
-   write(stdout,'(a,2(2x,i4))')   ' states:   ',1,nocc_max
- end if
-
- i_max_atom = ncenter_nuclei - nprojectile
-
- xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
- xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
- ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,:) )) - length
- ymax =MAX(MAXVAL( xatom(2,1:i_max_atom) ),MAXVAL( xbasis(2,:) )) + length
- zmin =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
- zmax =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
- dx = (xmax-xmin)/REAL(cube_nx,dp)
- dy = (ymax-ymin)/REAL(cube_ny,dp)
- dz = (zmax-zmin)/REAL(cube_nz,dp)
-
- do ix=1,cube_nx
-   rr(1) = ( xmin + (ix-1)*dx )
-   do iy=1,cube_ny
-     rr(2) = ( ymin + (iy-1)*dy )
-     do iz=1,cube_nz
-       rr(3) = ( zmin + (iz-1)*dz )
-
-       call calculate_basis_functions_r(basis,rr,basis_function_r)
-
-       do ispin=1,nspin
-         phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
-         cube_density_start(ix,iy,iz,ispin)=SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact
-       enddo
-
-     enddo
-   enddo
- enddo
-
- deallocate(phi_cmplx)
-
- call stop_clock(timing_print_cube_rho_tddft)
-
-end subroutine calc_cube_initial_cmplx
-
-
-!=========================================================================
-subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,cube_density_start)
- implicit none
-
- integer,intent(in)         :: nstate
- integer,intent(in)         :: nocc_dim
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
- real(dp),intent(in)        :: cube_density_start(:,:,:,:)
- integer,intent(in)         :: num
-!=====
- integer                    :: gt
- integer                    :: nocc(2),nocc_max
- real(dp),parameter         :: length=4.0_dp
- integer                    :: ibf
- integer                    :: istate,ispin
- real(dp)                   :: rr(3)
- complex(dp),allocatable    :: phi_cmplx(:,:)
- real(dp)                   :: u(3),a(3)
- logical                    :: file_exists
- real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
- real(dp)                   :: dx,dy,dz
- real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz,icenter
- integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ integer                    :: ix,iy,iz,icenter,ir
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
  integer                    :: ocuberho(nspin)
  character(len=200)         :: file_name
- integer                    :: icubefile
- integer                    :: i_max_atom
- integer                    :: ndim1,ndim2,ndim3
-!=====
-
- if( .NOT. is_iomaster ) return
+ real(dp),allocatable       :: dens_diff(:)
+ integer,save               :: snapshot_index
+ real(dp),allocatable,save  :: rr(:,:)
+ real(dp),allocatable,save  :: cube_density_start(:,:)
+ !=====
 
  call start_clock(timing_print_cube_rho_tddft)
 
@@ -2117,7 +2012,7 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
  nocc = 0
  nocc_max = 0
  do ispin=1,nspin
-   do istate=1,nstate
+   do istate=1,SIZE(occupation,DIM=1)
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc(ispin) = istate
      if( istate > nocc_max ) nocc_max = istate
@@ -2133,61 +2028,135 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
    write(stdout,'(a,2(2x,i4))')   ' states:   ',1,nocc_max
  end if
 
- i_max_atom = ncenter_nuclei - nprojectile
+ !
+ ! First call: initialization and storage
+ !
+ if( PRESENT(initialize) ) then
+   if( initialize) then
 
- xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
- xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
- ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,:) )) - length
- ymax =MAX(MAXVAL( xatom(2,1:i_max_atom) ),MAXVAL( xbasis(2,:) )) + length
- zmin =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
- zmax =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
- dx = (xmax-xmin)/REAL(cube_nx,dp)
- dy = (ymax-ymin)/REAL(cube_ny,dp)
- dz = (zmax-zmin)/REAL(cube_nz,dp)
+     write(stdout,'(/,1x,a)') 'Initialize density for plots'
 
- do ispin=1,nspin
-   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'dens_diff.cube'
-   open(newunit=ocuberho(ispin),file=file_name)
-   write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
-   write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin, zmin
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nx,dx,0.,0.
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_ny,0.,dy,0.
-   write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nz,0.,0.,dz
-   do icenter=1,ncenter_nuclei
-     write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
-   enddo
- enddo
+     snapshot_index = 0
+     allocate(rr(3,cube_nx*cube_ny*cube_nz))
+     allocate(cube_density_start(cube_nx*cube_ny*cube_nz,nspin))
 
- do ix=1,cube_nx
-   rr(1) = ( xmin + (ix-1)*dx )
-   do iy=1,cube_ny
-     rr(2) = ( ymin + (iy-1)*dy )
-     do iz=1,cube_nz
-       rr(3) = ( zmin + (iz-1)*dz )
+     ! First find the extreme positions for all the starting positions
+     xmin =MIN(MINVAL( xatom(1,:) ),MINVAL( xbasis(1,:) ))
+     ymin =MIN(MINVAL( xatom(2,:) ),MINVAL( xbasis(2,:) ))
+     zmin =MIN(MINVAL( xatom(3,:) ),MINVAL( xbasis(3,:) ))
+     xmax =MAX(MAXVAL( xatom(1,:) ),MAXVAL( xbasis(1,:) ))
+     ymax =MAX(MAXVAL( xatom(2,:) ),MAXVAL( xbasis(2,:) ))
+     zmax =MAX(MAXVAL( xatom(3,:) ),MAXVAL( xbasis(3,:) ))
 
-!       call start_clock(timing_tmp0)
-       call calculate_basis_functions_r(basis,rr,basis_function_r)
-!       call stop_clock(timing_tmp0)
+     ! Second find the extreme positions for all the final positions
+     xmin = MIN(xmin , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
+     ymin = MIN(ymin , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
+     zmin = MIN(zmin , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
+     xmax = MAX(xmax , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
+     ymax = MAX(ymax , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
+     zmax = MAX(zmax , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
 
+     xmin = xmin - length
+     ymin = ymin - length
+     zmin = zmin - length
+     xmax = xmax + length
+     ymax = ymax + length
+     zmax = zmax + length
+
+     dx = (xmax-xmin)/REAL(cube_nx,dp)
+     dy = (ymax-ymin)/REAL(cube_ny,dp)
+     dz = (zmax-zmin)/REAL(cube_nz,dp)
+
+     ir = 0
+     do ix=1,cube_nx
+       do iy=1,cube_ny
+         do iz=1,cube_nz
+           ir = ir + 1
+           rr(1,ir) = xmin + (ix-1)*dx
+           rr(2,ir) = ymin + (iy-1)*dy
+           rr(3,ir) = zmin + (iz-1)*dz
+         enddo
+       enddo
+     enddo
+     do ir=1,cube_nx*cube_ny*cube_nz
+       call calculate_basis_functions_r(basis,rr(:,ir),basis_function_r)
        do ispin=1,nspin
          phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
-!       call start_clock(timing_tmp1)
-         write(ocuberho(ispin),'(50(e16.8,2x))') SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) &
-                                                  * spin_fact &
-                                                    - cube_density_start(ix,iy,iz,ispin)
-!       call stop_clock(timing_tmp1)
+         cube_density_start(ir,ispin)=SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact
        enddo
-
      enddo
-   enddo
- enddo
 
- do ispin=1,nspin
-   close(ocuberho(ispin))
- end do
+   endif
 
- deallocate(phi_cmplx)
+
+ else  ! not first call
+
+   write(stdout,'(/,1x,a)') 'Plot density difference'
+
+   snapshot_index = snapshot_index + 1
+  
+  
+   if( is_iomaster ) then
+     do ispin=1,nspin
+       write(file_name,'(i3.3,a,i1,a)') snapshot_index,'_',ispin,'dens_diff.cube'
+       open(newunit=ocuberho(ispin),file=file_name)
+       write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
+       write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
+       write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin, zmin
+       write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nx,dx,0.,0.
+       write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_ny,0.,dy,0.
+       write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nz,0.,0.,dz
+       do icenter=1,ncenter_nuclei
+         write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
+       enddo
+     enddo
+   end if
+  
+   call clean_allocate("dens_diff for the cube density",dens_diff,cube_nx*cube_ny*cube_nz,verbose=.FALSE.)
+  
+   do ispin=1,nspin
+  
+     !call start_clock(timing_tmp0)
+     dens_diff(:) = 0.0_dp
+  
+     !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+     !$OMP DO
+     do ir=1,cube_nx*cube_ny*cube_nz
+  !     if(MODULO(ix-1,world%nproc)/=world%rank) cycle
+  
+       call calculate_basis_functions_r(basis,rr(:,ir),basis_function_r)
+  
+       phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
+       dens_diff(ir) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact &
+                              - cube_density_start(ir,ispin)
+  
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+     !call stop_clock(timing_tmp0)
+  
+  !   call start_clock(timing_tmp1)
+  !   call world%sum(dens_diff)
+  !   call stop_clock(timing_tmp1)
+  
+     if( is_iomaster ) then
+       !call start_clock(timing_tmp2)
+       do ir=1,cube_nx*cube_ny*cube_nz
+         write(ocuberho(ispin),'(50(e16.8,2x))') dens_diff(ir)
+       end do
+       !call stop_clock(timing_tmp2)
+     end if
+  
+   enddo !do ispin
+  
+   do ispin=1,nspin
+     close(ocuberho(ispin))
+   end do
+  
+   deallocate(phi_cmplx)
+   call clean_deallocate("dens_diff for the cube density",dens_diff,verbose=.FALSE.)
+
+ endif
 
  call stop_clock(timing_print_cube_rho_tddft)
 
@@ -2195,152 +2164,46 @@ end subroutine plot_cube_diff_cmplx
 
 
 !=========================================================================
-subroutine plot_cube_diff_parallel_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,cube_density_start)
-
+subroutine charge_projectile_cmplx(basis,occupation,c_matrix_cmplx)
  implicit none
- integer,intent(in)         :: nstate
- integer,intent(in)         :: nocc_dim
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
- real(dp),intent(in)        :: cube_density_start(:,:,:,:)
- integer,intent(in)         :: num
-!=====
- integer                    :: gt
- integer                    :: nocc(2),nocc_max
- real(dp),parameter         :: length=4.0_dp
- integer                    :: ibf
- integer                    :: istate,ispin
- real(dp)                   :: rr(3)
- complex(dp),allocatable    :: phi_cmplx(:,:)
- real(dp)                   :: u(3),a(3)
- logical                    :: file_exists
- real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
- real(dp)                   :: dx,dy,dz
- real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz,icenter
- integer                    :: ibf_cart,ni_cart,ni,li,i_cart
- real(dp),allocatable       :: basis_function_r_cart(:)
- integer,allocatable        :: ocubefile(:,:)
- integer                    :: ocuberho(nspin)
- character(len=200)         :: file_name
- integer                    :: icubefile
- integer                    :: i_max_atom
- integer                    :: ndim1,ndim2,ndim3
- real(dp),allocatable       :: dens_diff(:,:,:)
-!=====
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(in)         :: occupation(:,:)
+ complex(dp),intent(in)      :: c_matrix_cmplx(:,:,:)
+ !=====
+ real(dp),parameter :: radius = 2.0_dp
+ integer,parameter :: nr=30
+ integer,parameter :: nang=50
+ integer  :: n1,ir,iang,ispin
+ real(dp) :: x1(nang),y1(nang),z1(nang),w1(nang)
+ real(dp) :: rr(3),dr,charge
+ real(dp) :: basis_function_r(basis%nbf)
+ real(dp) :: phi_cmplx(SIZE(c_matrix_cmplx,DIM=2),nspin)
+ !=====
 
- call start_clock(timing_print_cube_rho_tddft)
+ call ld0050(x1,y1,z1,w1,n1)
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
+ charge = 0.0_dp
+ do ir=1,nr
+   do iang=1,nang
+     rr(1) = ir/REAL(nr,dp) * radius * x1(iang)
+     rr(2) = ir/REAL(nr,dp) * radius * y1(iang)
+     rr(3) = ir/REAL(nr,dp) * radius * z1(iang)
+     dr = SUM(rr(:)**2) * radius / REAL(nr,dp)
+     rr(:) = rr(:) + xatom(:,ncenter_nuclei)
 
- if( .NOT. in_tddft_loop ) then
-   write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
- end if
- ! Find highest occupied state
- nocc = 0
- nocc_max = 0
- do ispin=1,nspin
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty)  cycle
-     nocc(ispin) = istate
-     if( istate > nocc_max ) nocc_max = istate
+     call calculate_basis_functions_r(basis,rr,basis_function_r)
+
+     do ispin=1,nspin
+       phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
+       charge = charge + SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:SIZE(c_matrix_cmplx,DIM=2),ispin) ) &
+                           * 4.0_dp * pi * w1(iang) * dr
+     enddo
    enddo
-   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
-     call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-   endif
  enddo
+ write(stdout,*) 'charge : ',charge
 
 
- allocate(phi_cmplx(1:nocc_max,nspin))
- if( .NOT. in_tddft_loop ) then
-   write(stdout,'(a,2(2x,i4))')   ' states:   ',1,nocc_max
- end if
-
- i_max_atom = ncenter_nuclei - nprojectile
-
- xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
- xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
- ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,:) )) - length
- ymax =MAX(MAXVAL( xatom(2,1:i_max_atom) ),MAXVAL( xbasis(2,:) )) + length
- zmin =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
- zmax =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
- dx = (xmax-xmin)/REAL(cube_nx,dp)
- dy = (ymax-ymin)/REAL(cube_ny,dp)
- dz = (zmax-zmin)/REAL(cube_nz,dp)
-
- if( is_iomaster ) then
-   do ispin=1,nspin
-     write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'dens_diff.cube'
-     open(newunit=ocuberho(ispin),file=file_name)
-     write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
-     write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin, zmin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nx,dx,0.,0.
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_ny,0.,dy,0.
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nz,0.,0.,dz
-     do icenter=1,ncenter_nuclei
-       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
-     enddo
-   enddo
- end if
-
- call clean_allocate("dens_diff for the cube density",dens_diff,cube_nx,cube_ny,cube_nz)
-
- do ispin=1,nspin
-   dens_diff=0.d0
-   call start_clock(timing_tmp0)
-   !$OMP PARALLEL PRIVATE(basis_function_r,rr,ix,iy,iz,phi_cmplx)
-   !$OMP DO
-   do ix=1,cube_nx
-!     if(MODULO(ix-1,world%nproc)/=world%rank) cycle
-     rr(1) = ( xmin + (ix-1)*dx )
-     do iy=1,cube_ny
-       rr(2) = ( ymin + (iy-1)*dy )
-       do iz=1,cube_nz
-         rr(3) = ( zmin + (iz-1)*dz )
-
-         call calculate_basis_functions_r(basis,rr,basis_function_r)
-
-         phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
-         dens_diff(ix,iy,iz) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact &
-                                                                        - cube_density_start(ix,iy,iz,ispin)
-
-       enddo
-
-     enddo
-   enddo
-   !$OMP END DO
-   !$OMP END PARALLEL
-   call stop_clock(timing_tmp0)
-
-!   call start_clock(timing_tmp1)
-!   call world%sum(dens_diff)
-!   call stop_clock(timing_tmp1)
-
-   if( is_iomaster ) then
-     call start_clock(timing_tmp2)
-     do ix=1,cube_nx
-       do iy=1,cube_ny
-         do iz=1,cube_nz
-           write(ocuberho(ispin),'(50(e16.8,2x))') dens_diff(ix,iy,iz)
-         end do
-       end do
-     end do
-     call stop_clock(timing_tmp2)
-   end if
-
- enddo !do ispin
-
- do ispin=1,nspin
-   close(ocuberho(ispin))
- end do
-
- deallocate(phi_cmplx)
-
- call stop_clock(timing_print_cube_rho_tddft)
-
-end subroutine plot_cube_diff_parallel_cmplx
+end subroutine charge_projectile_cmplx
 
 
 !=========================================================================
@@ -2436,9 +2299,9 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
    call calculate_basis_functions_r(basis,rr,basis_function_r)
 
    do ispin=1,nspin
-     phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
-     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)), &
-                                             SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) )
+     phi_cmplx(:,ispin) = matmul( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') dot_product(rr(:),u(:)), &
+                                             sum( abs(phi_cmplx(:,ispin))**2 * occupation(:nocc_dim,ispin) )
    enddo
  enddo
 
@@ -2612,6 +2475,7 @@ subroutine initialize_rho_diff_cmplx(nr_line_rho,point_a,point_b)
  endif
 
 end subroutine initialize_rho_diff_cmplx
+
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
