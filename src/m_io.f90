@@ -1291,7 +1291,7 @@ subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,tim
 
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
- end if
+ endif
  ! Find highest occupied state
  nocc = 0
  nocc_max = 0
@@ -1428,7 +1428,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
 
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
- end if
+ endif
 
  inquire(file='manual_dens_traj',exist=file_exists)
  if(file_exists) then
@@ -1462,7 +1462,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
        istate_cut(iline,2) = nstate
      else
        call die("manual_q_matrix_param must contain 1 or two fields.")
-     end if
+     endif
 
    end do
    close(statesfile)
@@ -1605,7 +1605,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
 
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
- end if
+ endif
 
  inquire(file='manual_dens_points_set',exist=file_exists)
  if(file_exists) then
@@ -1643,7 +1643,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
        istate_cut(iline,2) = nstate
      else
        call die("manual_q_matrix_param must contain 1 or two fields.")
-     end if
+     endif
 
    end do
    close(statesfile)
@@ -1758,7 +1758,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
- end if
+ endif
  ! Find highest occupied state
  nocc = 0
  nocc_max = 0
@@ -1777,7 +1777,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  allocate(phi_cmplx(1:nocc_max,nspin))
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(a,2(2x,i4))')   ' states:   ',1,nocc_max
- end if
+ endif
 
  if( excit_type%form==EXCIT_PROJECTILE ) then
    i_max_atom=ncenter_nuclei-nprojectile
@@ -1880,7 +1880,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
 
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(/,1x,a)') 'Calculate electronic density in discs'
- end if
+ endif
  ! Find highest occupied state
  nocc = 0
  nocc_max = 0
@@ -1926,7 +1926,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
      open(newunit=file_out(ispin),file=file_name)
      write(file_out(ispin),'(a,F12.6,a,3F12.6)') '# Time: ',time_cur, '  Projectile position (A): ',xatom(:,ncenter_nuclei)*bohr_A
    enddo
- end if
+ endif
 
  allocate(charge_layer(cube_nz))
 
@@ -1944,7 +1944,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
            call calculate_basis_functions_r(basis,rr,basis_function_r)
            phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
            charge_layer(iz)=charge_layer(iz)+SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact
-         end if
+         endif
 
        enddo
      enddo
@@ -1960,7 +1960,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
        write(file_out(ispin),'(F16.4,F19.10)') rr(3)*bohr_A,charge_layer(iz)
      end do
      close(file_out(ispin))
-   end if
+   endif
 
  enddo ! ispin
 
@@ -1987,8 +1987,6 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
  complex(dp),allocatable    :: phi_cmplx(:,:)
  real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
- real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
- real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ix,iy,iz,icenter,ir
  real(dp),allocatable       :: basis_function_r_cart(:)
@@ -1997,6 +1995,8 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
  character(len=200)         :: file_name
  real(dp),allocatable       :: dens_diff(:)
  integer,save               :: snapshot_index
+ real(dp),save              :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp),save              :: dx,dy,dz
  real(dp),allocatable,save  :: rr(:,:)
  real(dp),allocatable,save  :: cube_density_start(:,:)
  !=====
@@ -2007,7 +2007,8 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
 
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
- end if
+ endif
+
  ! Find highest occupied state
  nocc = 0
  nocc_max = 0
@@ -2026,7 +2027,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
  allocate(phi_cmplx(1:nocc_max,nspin))
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(a,2(2x,i4))')   ' states:   ',1,nocc_max
- end if
+ endif
 
  !
  ! First call: initialization and storage
@@ -2110,7 +2111,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
          write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
        enddo
      enddo
-   end if
+   endif
   
    call clean_allocate("dens_diff for the cube density",dens_diff,cube_nx*cube_ny*cube_nz,verbose=.FALSE.)
   
@@ -2145,7 +2146,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
          write(ocuberho(ispin),'(50(e16.8,2x))') dens_diff(ir)
        end do
        !call stop_clock(timing_tmp2)
-     end if
+     endif
   
    enddo !do ispin
   
@@ -2251,7 +2252,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions along one line'
- end if
+ endif
  ! Find highest occupied state
  nocc = 0
  nocc_max = 0
@@ -2524,7 +2525,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
 
  if( .NOT. in_tddft_loop ) then
    write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
- end if
+ endif
  ! Find highest occupied state
  nocc = 0
  nocc_max = 0
