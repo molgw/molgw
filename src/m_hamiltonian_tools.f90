@@ -415,9 +415,9 @@ subroutine dump_out_energy(title,occupation,energy)
  do istate=MAX(1,nocc-MAXSIZE/2),MIN(nstate,nocc+MAXSIZE/2)
    select case(nspin)
    case(1)
-     write(stdout,'(1x,i3,2(1x,f12.5),4x,f8.4)') istate,energy(istate,1),energy(istate,1)*Ha_eV,occupation(istate,1)
+     write(stdout,'(1x,i5,2(1x,f12.5),4x,f8.4)') istate,energy(istate,1),energy(istate,1)*Ha_eV,occupation(istate,1)
    case(2)
-     write(stdout,'(1x,i3,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,1),energy(istate,2), &
+     write(stdout,'(1x,i5,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,1),energy(istate,2), &
                                                           energy(istate,1)*Ha_eV,energy(istate,2)*Ha_eV, &
                                                           occupation(istate,1),occupation(istate,2)
    end select

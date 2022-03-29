@@ -35,7 +35,7 @@ module m_libcint_tools
   integer,private,parameter :: LIBCINT_PTR_RANGE_OMEGA = 8
   integer,private,parameter :: LIBCINT_PTR_ENV_START   = 20
 
-  integer,private,parameter :: LIBCINT_env_size=10000
+  integer,private,parameter :: LIBCINT_env_size=100000
 
   logical,protected :: libcint_has_range_separation
   integer,external  :: cint2e_cart
@@ -231,9 +231,9 @@ subroutine init_libcint(basis1,basis2)
   !=====
 
   if( PRESENT(basis2) ) then
-    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 2 basis sets'
+    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 2 basis sets (basis and auxiliary basis)'
   else
-    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 1 basis set'
+    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 1 basis set (basis or auxiliary basis)'
   endif
 
   basis1%LIBCINT_natm = ncenter_basis
@@ -303,7 +303,7 @@ subroutine init_libcint(basis1,basis2)
       off = off + basis2%shell(ishell)%ng
     enddo
   endif
-
+  write(stdout,'(1x,a,i8)') 'LIBCINT environment maximum index: ',off
 
 end subroutine init_libcint
 
