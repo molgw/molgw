@@ -136,3 +136,66 @@ def au_to_kev(mass,v_au):
     
 
 ########################################################################
+class gaussian_cube:
+    atoms_element = []    # list of elements
+    atoms_position = []   # list of positions
+    nx = 0                # number of grid points along 1st vector
+    ny = 0                # number of grid points along 2nd vector
+    nz = 0                # number of grid points along 3rd vector
+    dx = []               # 1st vector
+    dy = []               # 2nd vector
+    dz = []               # 3rd vector
+    rr = []               # grid points list
+    data = []             # volumetric data
+    dv = 0.0              # grid point associated volume
+
+    # Initialize class with a file "filename"
+    def __init__(self,filename):
+
+        cf=open(filename,'r')
+        cf.readline()
+        cf.readline()
+
+        line = cf.readline().split()
+        natom = int(line[0])
+        r0 = [float(x) for x in line[1:5]]
+        line = cf.readline().split()
+        self.nx = int(line[0])
+        self.dx = [float(x) for x in line[1:5]]
+        line = cf.readline().split()
+        self.ny = int(line[0])
+        self.dy = [float(x) for x in line[1:5]]
+        line = cf.readline().split()
+        self.nz = int(line[0])
+        self.dz = [float(x) for x in line[1:5]]
+        # atom list
+        self.atoms_element = []
+        self.atoms_position = []
+        for i in range(natom):
+            line = cf.readline().split()
+            self.atoms_element.append(int(line[0]))
+            self.atoms_position.append([float(line[2]), float(line[3]), float(line[4])])
+
+        # volumetric data
+        self.data = []
+        for line in cf:
+             self.data.extend( float(x) for x in line.split() )
+        cf.close()
+
+        self.rr = []
+        for ix in range(self.nx):
+            for iy in range(self.ny):
+                for iz in range(self.nz):
+                    x = r0[0] + ix * self.dx[0] + iy * self.dy[0] + iz * self.dz[0]
+                    y = r0[1] + ix * self.dx[1] + iy * self.dy[1] + iz * self.dz[1]
+                    z = r0[2] + ix * self.dx[2] + iy * self.dy[2] + iz * self.dz[2]
+                    self.rr.append([x,y,z])
+        self.dv = self.dx[0] * self.dy[1] * self.dz[2] \
+                 +self.dx[1] * self.dy[2] * self.dz[0] \
+                 +self.dx[2] * self.dy[0] * self.dz[1] \
+                 -self.dx[2] * self.dy[1] * self.dz[0] \
+                 -self.dx[0] * self.dy[2] * self.dz[1] \
+                 -self.dx[1] * self.dy[0] * self.dz[2]
+        return
+
+########################################################################
