@@ -326,6 +326,9 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g,zz)
    do pstate=nsemin,nsemax
      energy_qp_g(pstate,:) = energy0(pstate,:) + REAL(se%sigma(0,pstate,:),dp) + exchange_m_vxc(pstate,:)
    enddo
+   if( PRESENT(zz) ) then
+     zz(:,:) = 1.0_dp
+   endif
 
  endif
 
