@@ -9,7 +9,7 @@
 #
 ##################################################
 
-import os
+import os, sys
 import json
 from yaml import load, dump
 try:
@@ -91,6 +91,7 @@ def get_lumo_energy(approx,calc):
 
 
 ########################################################################
+# returns a list of dictionaries: one dictionary per yaml file in the directory
 def parse_yaml_files(directory):
     # List all the yaml files in the directory
     yaml_files = []
@@ -110,6 +111,24 @@ def parse_yaml_files(directory):
                 print(yaml_file + ' is corrupted')
                 pass
     return calc
+
+
+########################################################################
+# check if a calculation dictionary is valid
+# - "scf is converged" exists
+# - "scf is converged" is True
+# - "run" exists ("run" key is written in YAML file at the very end of a MOLGW calculation)
+def check_calc(calc):
+    valid = True
+    try:
+        calc["scf is converged"]
+        calc["run"]
+    except KeyError:
+        valid = False
+    except:
+        sys.exit(1)
+    return valid and calc["scf is converged"]
+
 
 ########################################################################
 def create_gw100_json(filename,data,**kwargs):
