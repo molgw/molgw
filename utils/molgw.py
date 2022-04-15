@@ -71,7 +71,7 @@ def get_homo_energy(approx,calc):
     else:
         energies += [ ei for ei in calc[key]["spin channel 2"].values()]
     energies.sort()
-    return energies[int(calc["physical system"]["electrons"])-1]
+    return energies[int(calc["physical system"]["electrons"])-1 - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
 
 ########################################################################
@@ -83,7 +83,7 @@ def get_lumo_energy(approx,calc):
     else:
         energies += [ ei for ei in calc[key]["spin channel 2"].values()]
     energies.sort()
-    return energies[int(calc["physical system"]["electrons"])]
+    return energies[int(calc["physical system"]["electrons"]) - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
 
 ########################################################################
