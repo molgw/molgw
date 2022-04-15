@@ -64,30 +64,26 @@ def print_xyz_file(calc,filename):
 
 ########################################################################
 def get_homo_energy(approx,calc):
-    homo = int(calc["physical system"]["electrons"] * 0.50)
-    key = approx + " energy" 
-    try:
-        ehomo = -9999.9
-        for state in calc[key]["spin channel 1"].keys():
-            if int(state) <= homo:
-                ehomo = max(ehomo,float(calc[key]["spin channel 1"][state]))
-        return ehomo
-    except:
-        return None
+    key = approx + " energy"
+    energies = [ ei for ei in calc[key]["spin channel 1"].values()]
+    if calc["input parameters"]["nspin"] == 1:
+        energies += [ ei for ei in calc[key]["spin channel 1"].values()]
+    else:
+        energies += [ ei for ei in calc[key]["spin channel 2"].values()]
+    energies.sort()
+    return energies[int(calc["physical system"]["electrons"])-1]
 
 
 ########################################################################
 def get_lumo_energy(approx,calc):
-    homo = int(calc["physical system"]["electrons"] * 0.50)
-    key = approx + " energy" 
-    try:
-        elumo = 9999.9
-        for state in calc[key]["spin channel 1"].keys():
-            if int(state) > homo:
-                elumo = min(elumo,float(calc[key]["spin channel 1"][state]))
-        return elumo
-    except:
-        return None
+    key = approx + " energy"
+    energies = [ ei for ei in calc[key]["spin channel 1"].values()]
+    if calc["input parameters"]["nspin"] == 1:
+        energies += [ ei for ei in calc[key]["spin channel 1"].values()]
+    else:
+        energies += [ ei for ei in calc[key]["spin channel 2"].values()]
+    energies.sort()
+    return energies[int(calc["physical system"]["electrons"])]
 
 
 ########################################################################
