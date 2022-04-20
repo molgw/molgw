@@ -886,6 +886,14 @@ subroutine read_inputfile_namelist()
   has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
   has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''
 
+  ! To avoid SCREENED_COULOMB bug:
+  ! SCREENED_COULOMB file unfortunately depends on the diagonalization of the 2-center Coulomb repulsion of the the auxiliary basis.
+  ! It is therefore runtime-dependent and should not be used!
+  if( print_w_ .AND. has_auxil_basis ) then
+    call die('input check: print_w is not numerically stable when using an auxiliary basis.' // &
+             ' Do not use this keyword and everything is gonna be alright')
+  endif
+
   !
   ! Interpret the scf and postscf input parameters
   call init_calculation_type(scf,postscf)

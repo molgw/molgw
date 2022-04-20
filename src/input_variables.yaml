@@ -469,7 +469,8 @@ print_w:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Dumps the spectral function of the screened Coulomb W. This is necessary for a subsequent BSE run.'
+  comment: 'Dumps the spectral function of the screened Coulomb W. This is necessary for a subsequent BSE run when no auxiliary basis is used.
+            When an auxiliary basis is used, MOLGW quickly recalculates the static polarizability with the sum-over-states formula at the BSE stage.'
 
 print_wfn:
   family: io

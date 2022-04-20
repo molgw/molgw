@@ -9,7 +9,7 @@
 #
 ##################################################
 
-import os
+import os, sys
 import json
 from yaml import load, dump
 try:
@@ -64,33 +64,30 @@ def print_xyz_file(calc,filename):
 
 ########################################################################
 def get_homo_energy(approx,calc):
-    homo = int(calc["physical system"]["electrons"] * 0.50)
-    key = approx + " energy" 
-    try:
-        ehomo = -9999.9
-        for state in calc[key]["spin channel 1"].keys():
-            if int(state) <= homo:
-                ehomo = max(ehomo,float(calc[key]["spin channel 1"][state]))
-        return ehomo
-    except:
-        return None
+    key = approx + " energy"
+    energies = [ ei for ei in calc[key]["spin channel 1"].values()]
+    if calc["input parameters"]["nspin"] == 1:
+        energies += [ ei for ei in calc[key]["spin channel 1"].values()]
+    else:
+        energies += [ ei for ei in calc[key]["spin channel 2"].values()]
+    energies.sort()
+    return energies[int(calc["physical system"]["electrons"])-1 - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
 
 ########################################################################
 def get_lumo_energy(approx,calc):
-    homo = int(calc["physical system"]["electrons"] * 0.50)
-    key = approx + " energy" 
-    try:
-        elumo = 9999.9
-        for state in calc[key]["spin channel 1"].keys():
-            if int(state) > homo:
-                elumo = min(elumo,float(calc[key]["spin channel 1"][state]))
-        return elumo
-    except:
-        return None
+    key = approx + " energy"
+    energies = [ ei for ei in calc[key]["spin channel 1"].values()]
+    if calc["input parameters"]["nspin"] == 1:
+        energies += [ ei for ei in calc[key]["spin channel 1"].values()]
+    else:
+        energies += [ ei for ei in calc[key]["spin channel 2"].values()]
+    energies.sort()
+    return energies[int(calc["physical system"]["electrons"]) - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
 
 ########################################################################
+# returns a list of dictionaries: one dictionary per yaml file in the directory
 def parse_yaml_files(directory):
     # List all the yaml files in the directory
     yaml_files = []
@@ -110,6 +107,24 @@ def parse_yaml_files(directory):
                 print(yaml_file + ' is corrupted')
                 pass
     return calc
+
+
+########################################################################
+# check if a calculation dictionary is valid
+# - "scf is converged" exists
+# - "scf is converged" is True
+# - "run" exists ("run" key is written in YAML file at the very end of a MOLGW calculation)
+def check_calc(calc):
+    valid = True
+    try:
+        calc["scf is converged"]
+        calc["run"]
+    except KeyError:
+        valid = False
+    except:
+        sys.exit(1)
+    return valid and calc["scf is converged"]
+
 
 ########################################################################
 def create_gw100_json(filename,data,**kwargs):
