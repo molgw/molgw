@@ -508,7 +508,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
   integer              :: kbf,lbf,iauxil
   integer              :: lstate
   integer              :: klspin
-  complex(dp),allocatable :: tmp1C(:,:),tmp2C(:,:),c_tC(:,:)
+  complex(dp),allocatable :: tmp1_cmplx(:,:),tmp2_cmplx(:,:),c_t_cmplx(:,:)
   integer              :: ipair
   !=====
 
@@ -567,55 +567,55 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
   eri_3center_eigen_cmplx(:,:,:,:) = (0.0_dp,0.0_dp)
 
   if(PRESENT(verbose)) then
-    call clean_allocate('TMP 3-center ints',tmp1C,mstate_min_,mstate_max_,1,nbf,verbose)
-    call clean_allocate('TMP 3-center ints',c_tC ,mstate_min_,mstate_max_,1,nbf,verbose)
-    call clean_allocate('TMP 3-center ints',tmp2C,mstate_min_,mstate_max_,nstate_min_,nstate_max_,verbose)
+    call clean_allocate('TMP 3-center ints',tmp1_cmplx,mstate_min_,mstate_max_,1,nbf,verbose)
+    call clean_allocate('TMP 3-center ints',c_t_cmplx ,mstate_min_,mstate_max_,1,nbf,verbose)
+    call clean_allocate('TMP 3-center ints',tmp2_cmplx,mstate_min_,mstate_max_,nstate_min_,nstate_max_,verbose)
   else
-    call clean_allocate('TMP 3-center ints',tmp1C,mstate_min_,mstate_max_,1,nbf)
-    call clean_allocate('TMP 3-center ints',c_tC ,mstate_min_,mstate_max_,1,nbf)
-    call clean_allocate('TMP 3-center ints',tmp2C,mstate_min_,mstate_max_,nstate_min_,nstate_max_)
+    call clean_allocate('TMP 3-center ints',tmp1_cmplx,mstate_min_,mstate_max_,1,nbf)
+    call clean_allocate('TMP 3-center ints',c_t_cmplx ,mstate_min_,mstate_max_,1,nbf)
+    call clean_allocate('TMP 3-center ints',tmp2_cmplx,mstate_min_,mstate_max_,nstate_min_,nstate_max_)
   endif
 
   do klspin=1,nspin
 
-    c_tC(:,:)  = CONJG( TRANSPOSE( c_matrix_cmplx(:,mstate_min_:mstate_max_,klspin) ) )
+    c_t_cmplx(:,:)  = CONJG( TRANSPOSE( c_matrix_cmplx(:,mstate_min_:mstate_max_,klspin) ) )
 
     do iauxil=1,nauxil_3center
       if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
 
-      tmp1C(:,:) = complex_zero
+      tmp1_cmplx(:,:) = complex_zero
       !$OMP PARALLEL PRIVATE(kbf,lbf)
-      !$OMP DO REDUCTION(+:tmp1C)
+      !$OMP DO REDUCTION(+:tmp1_cmplx)
       do ipair=1,npair
         kbf = index_basis(1,ipair)
         lbf = index_basis(2,ipair)
-        tmp1C(:,kbf) = tmp1C(:,kbf) +  c_tC(:,lbf) * eri_3center(ipair,iauxil)
-        tmp1C(:,lbf) = tmp1C(:,lbf) +  c_tC(:,kbf) * eri_3center(ipair,iauxil)
+        tmp1_cmplx(:,kbf) = tmp1_cmplx(:,kbf) +  c_t_cmplx(:,lbf) * eri_3center(ipair,iauxil)
+        tmp1_cmplx(:,lbf) = tmp1_cmplx(:,lbf) +  c_t_cmplx(:,kbf) * eri_3center(ipair,iauxil)
       enddo
       !$OMP END DO
       !$OMP END PARALLEL
 
       ! Transformation of the second index
       call ZGEMM('N','N',mstate_count_,nstate_count_,nbf, &
-                 complex_one,tmp1C(mstate_min_,1),mstate_count_,   &
+                 complex_one,tmp1_cmplx(mstate_min_,1),mstate_count_,   &
                        c_matrix_cmplx(1,nstate_min_,klspin),nbf, &
-                 complex_zero,tmp2C(mstate_min_,nstate_min_),mstate_count_)
+                 complex_zero,tmp2_cmplx(mstate_min_,nstate_min_),mstate_count_)
 
       ! Transposition + complex conjugation happens here!
       eri_3center_eigen_cmplx(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
-                                  = conjg( tmp2C(mstate_min_:mstate_max_,nstate_min_:nstate_max_) )
+                                  = conjg( tmp2_cmplx(mstate_min_:mstate_max_,nstate_min_:nstate_max_) )
 
     enddo !iauxil
   enddo !klspin
 
   if(PRESENT(verbose)) then
-   call clean_deallocate('TMP 3-center ints',tmp2C,verbose)
-   call clean_deallocate('TMP 3-center ints',c_tC,verbose)
-   call clean_deallocate('TMP 3-center ints',tmp1C,verbose)
+   call clean_deallocate('TMP 3-center ints',tmp2_cmplx,verbose)
+   call clean_deallocate('TMP 3-center ints',c_t_cmplx,verbose)
+   call clean_deallocate('TMP 3-center ints',tmp1_cmplx,verbose)
   else
-   call clean_deallocate('TMP 3-center ints',tmp2C)
-   call clean_deallocate('TMP 3-center ints',c_tC)
-   call clean_deallocate('TMP 3-center ints',tmp1C)
+   call clean_deallocate('TMP 3-center ints',tmp2_cmplx)
+   call clean_deallocate('TMP 3-center ints',c_t_cmplx)
+   call clean_deallocate('TMP 3-center ints',tmp1_cmplx)
   endif
   call ortho%sum(eri_3center_eigen_cmplx)
 
