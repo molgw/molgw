@@ -790,12 +790,10 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
  real(dp),intent(in)         :: c_matrix(:,:,:)
 !=====
  integer                     :: nstate
- integer                     :: n1,n2,n3
  real(dp),parameter          :: length=3.499470_dp
  integer                     :: istate,ispin
  real(dp)                    :: rr(3)
  real(dp),allocatable        :: phi(:,:)
- logical                     :: file_exists
  real(dp)                    :: xmin,xmax,ymin,ymax,zmin,zmax
  real(dp)                    :: dx,dy,dz
  real(dp)                    :: basis_function_r(basis%nbf)
@@ -812,16 +810,6 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
 
  nstate = SIZE(occupation(:,:),DIM=1)
 
- inquire(file='manual_cubewfn',exist=file_exists)
- if(file_exists) then
-   open(newunit=icubefile,file='manual_cubewfn',status='old')
-   read(icubefile,*) n1,n2,n3
-   close(icubefile)
- else
-   n1=40
-   n2=40
-   n3=40
- endif
  if( cube_state_min < 1 )      call die('plot_cube_wfn: cube_state_min should be >= 1')
  if( cube_state_max > nstate ) call die('plot_cube_wfn: cube_state_max should be < nstate')
 
@@ -834,9 +822,9 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
  ymax =MAX(MAXVAL( xatom(2,:) ),MAXVAL( xbasis(2,:) )) + length
  zmin =MIN(MINVAL( xatom(3,:) ),MINVAL( xbasis(3,:) )) - length
  zmax =MAX(MAXVAL( xatom(3,:) ),MAXVAL( xbasis(3,:) )) + length
- dx = (xmax-xmin)/REAL(n1,dp)
- dy = (ymax-ymin)/REAL(n2,dp)
- dz = (zmax-zmin)/REAL(n3,dp)
+ dx = (xmax-xmin)/REAL(cube_nx,dp)
+ dy = (ymax-ymin)/REAL(cube_ny,dp)
+ dz = (zmax-zmin)/REAL(cube_nz,dp)
 ! xmin = -15.001591d0
 ! ymin = -15.001591d0
 ! zmin = -17.037892d0
@@ -853,9 +841,9 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
      write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
      write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin,zmin
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n1,dx,0.,0.
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n2,0.,dy,0.
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') n3,0.,0.,dz
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') cube_nx,dx,0.,0.
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') cube_ny,0.,dy,0.
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') cube_nz,0.,0.,dz
      do icenter=1,ncenter_nuclei
        write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
      enddo
@@ -871,19 +859,19 @@ subroutine plot_cube_wfn(rootname,basis,occupation,c_matrix)
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
      write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin,zmin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') n1,dx,0.,0.
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') n2,0.,dy,0.
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') n3,0.,0.,dz
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nx,dx,0.,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_ny,0.,dy,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nz,0.,0.,dz
      do icenter=1,ncenter_nuclei
        write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
      enddo
    enddo
 
-   do ix=1,n1
+   do ix=1,cube_nx
      rr(1) = xmin + (ix-1)*dx
-     do iy=1,n2
+     do iy=1,cube_ny
        rr(2) = ymin + (iy-1)*dy
-       do iz=1,n3
+       do iz=1,cube_nz
          rr(3) = zmin + (iz-1)*dz
 
          call calculate_basis_functions_r(basis,rr,basis_function_r)
