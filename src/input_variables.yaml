@@ -1531,6 +1531,30 @@ charge:
   comment: Sets the total charge of the system. 0 is a neutral system. -2 is a doubly
     charged anion etc.
 
+electric_field_x:
+  family: system
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the magnitude of the electric field along x
+
+electric_field_y:
+  family: system
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the magnitude of the electric field along y
+
+electric_field_z:
+  family: system
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the magnitude of the electric field along z
+
 length_unit:
   family: system
   datatype: characters
