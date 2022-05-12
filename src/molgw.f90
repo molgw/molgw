@@ -287,6 +287,10 @@ program molgw
     call setup_nucleus(basis,hamiltonian_nucleus)
 
     !
+    ! External electric field
+    call setup_electric_field(basis,hamiltonian_nucleus)
+
+    !
     ! Testing the quadrature in Fourier space
     !if( .TRUE. ) then
     !  !                        basis projectile n basis_target

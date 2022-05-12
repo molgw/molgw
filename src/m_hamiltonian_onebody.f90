@@ -1026,6 +1026,30 @@ end subroutine setup_giao_rxp_ao
 
 
 !=========================================================================
+subroutine setup_electric_field(basis,hext)
+  implicit none
+  type(basis_set),intent(in)         :: basis
+  real(dp),allocatable,intent(inout) :: hext(:,:)
+  !=====
+  real(dp),allocatable :: dipole_ao(:,:,:)
+  !=====
+
+  if( ABS(electric_field_x) < 1.0e-6_dp  &
+     .AND. ABS(electric_field_y) < 1.0e-6_dp &
+     .AND. ABS(electric_field_z) < 1.0e-6_dp ) return
+
+  call setup_dipole_ao(basis,dipole_ao)
+
+  hext(:,:) = hext(:,:) + electric_field_x * dipole_ao(:,:,1) &
+                        + electric_field_y * dipole_ao(:,:,2) &
+                        + electric_field_z * dipole_ao(:,:,3)
+
+  deallocate(dipole_ao)
+
+end subroutine setup_electric_field
+
+
+!=========================================================================
 ! Calculate  ( \alpha | r | \beta )
 !
 subroutine setup_dipole_ao(basis,dipole_ao)
