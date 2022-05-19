@@ -78,7 +78,7 @@ module m_timing
   integer,parameter :: timing_x_m_vxc             = 58
   integer,parameter :: timing_auto_auxil          = 59
   integer,parameter :: timing_stopping            = 60
-  !integer,parameter :: timing_             = 61    ! available
+  integer,parameter :: timing_noft_energy         = 61
   integer,parameter :: timing_rhoauxil            = 62
   integer,parameter :: timing_eri_2center_ints    = 63
   integer,parameter :: timing_eri_2center_invert  = 64

@@ -29,7 +29,6 @@ module m_hamiltonian_onebody
 
 
 
-
 contains
 
 
@@ -1474,6 +1473,30 @@ end subroutine setup_giao_rxp_ao
 
 
 !=========================================================================
+subroutine setup_electric_field(basis,hext)
+  implicit none
+  type(basis_set),intent(in)         :: basis
+  real(dp),allocatable,intent(inout) :: hext(:,:)
+  !=====
+  real(dp),allocatable :: dipole_ao(:,:,:)
+  !=====
+
+  if( ABS(electric_field_x) < 1.0e-6_dp  &
+     .AND. ABS(electric_field_y) < 1.0e-6_dp &
+     .AND. ABS(electric_field_z) < 1.0e-6_dp ) return
+
+  call setup_dipole_ao(basis,dipole_ao)
+
+  hext(:,:) = hext(:,:) + electric_field_x * dipole_ao(:,:,1) &
+                        + electric_field_y * dipole_ao(:,:,2) &
+                        + electric_field_z * dipole_ao(:,:,3)
+
+  deallocate(dipole_ao)
+
+end subroutine setup_electric_field
+
+
+!=========================================================================
 ! Calculate  ( \alpha | r | \beta )
 !
 subroutine setup_dipole_ao(basis,dipole_ao)
@@ -1853,6 +1876,13 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
   end select
 
 
+  if( ANY(ecp(:)%ecp_format==ECP_PSP6) .OR. ANY(ecp(:)%ecp_format==ECP_PSP8) ) then
+    if( .NOT. allocated(hamiltonian_kb) ) then
+      allocate(hamiltonian_kb(basis%nbf,basis%nbf))
+      hamiltonian_kb(:,:) = 0.0_dp
+    endif
+  endif
+
   do icenter=1,ncenter_nuclei
     element_has_ecp = .FALSE.
     do ie=1,nelement_ecp
@@ -1866,10 +1896,6 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
     necp = ecp(ie)%necp
 
-    if( ANY(ecp(:)%ecp_format==ECP_PSP6) .OR. ANY(ecp(:)%ecp_format==ECP_PSP8) ) then
-      allocate(hamiltonian_kb(basis%nbf,basis%nbf))
-      hamiltonian_kb(:,:) = 0.0_dp
-    endif
 
     select case(ecp(ie)%ecp_format)
     case(ECP_PSP6,ECP_PSP8)
@@ -2050,15 +2076,15 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
     if( ALLOCATED(ur) ) deallocate(ur)
     if( ALLOCATED(vr) ) deallocate(vr)
 
-  enddo ! ie
+  enddo ! icenter
 
- call world%sum(hamiltonian_ecp)
+  call world%sum(hamiltonian_ecp)
 
- hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + hamiltonian_ecp(:,:)
- if( ALLOCATED(hamiltonian_kb) ) then
-   hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + hamiltonian_kb(:,:)
-   deallocate(hamiltonian_kb)
- endif
+  hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + hamiltonian_ecp(:,:)
+  if( ALLOCATED(hamiltonian_kb) ) then
+    hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + hamiltonian_kb(:,:)
+    deallocate(hamiltonian_kb)
+  endif
 
 
   title='=== ECP Nucleus potential contribution ==='

@@ -2,6 +2,7 @@
  scf='LIBXC:101+130'
 
  basis='aug-cc-pVDZ'
+ grid_quality='veryhigh'
 
  nscf= 100
  tolscf=1.0e-10

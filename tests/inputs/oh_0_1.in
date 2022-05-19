@@ -8,7 +8,6 @@
 
  postscf='GnW0'
  frozencore='yes'
- print_w='yes'
 
  charge=0
  nspin=2

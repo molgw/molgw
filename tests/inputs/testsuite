@@ -45,7 +45,7 @@ gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-3   # Loosened criteri
 
 he_pbe_libxc.in           , He with PBE functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8869559704    , 0 , 1.0e-7
-gKS HOMO energy           ,  -15.724589        , 0 , 3.0e-3
+gKS HOMO energy           ,  -15.724589        , 0 , 3.0e-3   # Loosened criterium
 
 he_pbeh_libxc.in          , He with PBEH=PBE0 functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8893617513    , 0 , 1.0e-7
@@ -387,6 +387,18 @@ SCF Total Energy          ,     -0.9561408560  , 0 , 1.0e-7
 Total Spin S**2           ,      2.0000        , 0 , 1.0e-3
 2-ring diagram            ,     -0.0373333132  , 0 , 1.0e-7
 SOX diagram               ,      0.0373293160  , 0 , 1.0e-7
+
+h2_noft.in                , RI-NOFT calculation applied to dissociated H2 with RI
+NOFT Total Energy         ,     -0.9985575214  , 0 , 1.0e-5
+
+h2_noft_restart.in        , RI-NOFT calculation applied to dissociated H2 with RI using restart
+NOFT Total Energy         ,     -0.9996198350  , 0 , 1.0e-5
+
+n2_noft.in                , RI-NOFT calculation applied to dissociated N2 with RI
+NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
+
+n2_noft_cpx.in            , RI-NOFT calculation applied to dissociated N2 with RI (complex orbs)
+NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
@@ -873,6 +885,15 @@ state    5 spin  1        ,     -0.460572       , 1 , 1.0e-4
 state    5 spin  1        ,    -14.095145       , 2 , 1.0e-4
 state    5 spin  1        ,    -14.555717       , 3 , 1.0e-4
 
+ch4_gwtdhf.in             , GW calculation with W from TDHF
+SCF Total Energy          ,    -40.2135693443   , 0 , 1.0e-7
+Exc. 0001                 ,     11.03679656     , 0 , 1.0e-4
+Exc. 0001                 ,      0.15397039     , 1 , 1.0e-4
+Exc. 0004                 ,     12.35813294     , 0 , 1.0e-4
+Exc. 0004                 ,      0.00380397     , 1 , 1.0e-4
+GW HOMO energy            ,    -14.341403       , 0 , 1.0e-4
+GW LUMO energy            ,      0.689333       , 0 , 1.0e-4
+
 h_in_he_rt_lda_MB_PC2B_nucleus.in, RT-TDDFT PC="MB_PC2B" projectile without basis
 SCF Total Energy          ,  -2.8287092624     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -2.6776119436     , 0 , 1.0e-7
@@ -893,4 +914,3 @@ he_in_h_ghost_rt_lda_MB_PC2B.in, RT-TDDFT PC="MB_PC2B" projectile in ghost
 SCF Total Energy          ,  -2.8356240593     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -1.6095548394     , 0 , 1.0e-7
 Number of electrons       ,  1.999590          , 0 , 1.0e-4
-

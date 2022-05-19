@@ -38,6 +38,7 @@
 # [rt_tddft]     Real time TDDFT input variables
 # [scf]          Self-consistency input variables
 # [system]       Physical system setup input variables
+# [noft]         Natural Orbital Functional Theory
 #
 
 #============================================================================
@@ -298,6 +299,46 @@ basis_path:
   comment: Sets the path pointing to the basis functions files. If
     not specified, then the basis set files will be searched in folder ~molgw/basis/.
 
+cube_nx:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 30
+  comment: Sets the number of grid points along X in cube file outputs
+
+cube_ny:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 30
+  comment: Sets the number of grid points along Y in cube file outputs
+
+cube_nz:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 30
+  comment: Sets the number of grid points along Z in cube file outputs
+
+cube_state_min:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the state range minimum used in cube file outputs
+
+cube_state_max:
+  family: io
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0
+  comment: Sets the state range maximum used in cube file outputs
+
 force_energy_qp:
   family: io
   datatype: yes/no
@@ -332,7 +373,15 @@ print_cube:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Prints some wavefunctions in a 3D volumetric file with cube format
+  comment: Prints some wavefunctions in a 3d volumetric file in cube file format
+
+print_transition_density:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the difference of transition density \sum_{ia} C_{ia}^n \phi_i(r) \phi_a(r) of each optical excitation n in cube files.
 
 print_wfn_files:
   family: io
@@ -428,7 +477,8 @@ print_w:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: 'Dumps the spectral function of the screened Coulomb W. This is necessary for a subsequent BSE run.'
+  comment: 'Dumps the spectral function of the screened Coulomb W. This is necessary for a subsequent BSE run when no auxiliary basis is used.
+            When an auxiliary basis is used, MOLGW quickly recalculates the static polarizability with the sum-over-states formula at the BSE stage.'
 
 print_wfn:
   family: io
@@ -1181,6 +1231,14 @@ beta_hybrid:
   comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount
     of long-range exact-exchange
 
+noft_complex:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use complex molecular orb. coeficients in NOFT calcs. (default=no).
+
 density_matrix_damping:
   family: scf
   datatype: real
@@ -1199,6 +1257,14 @@ diis_switch:
   default: 0.05
   comment: When running ADIIS, sets the residue value below which the DIIS method
     is used to finalize the convergence.
+
+noft_fcidump:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Print the FCIDUMP file in NOFT module.
 
 gamma_hybrid:
   family: scf
@@ -1231,6 +1297,30 @@ init_hamiltonian:
     options are available: ''guess'' for an educated guess based on approximate atomic
     densities or ''core'' for the core hamiltonian.'
 
+noft_NOTupdateOCC:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.
+
+noft_NOTupdateORB:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Do a NOFT optimization but keeping fixed the orbitals read.
+
+noft_functional:
+  family: noft
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: PNOF7
+  comment: Select the NOFT approx. to use (default= 'PNOF7'). Other options are 'PNOF5', 'HF', 'MULLER', and 'POWER'.
+
 integral_quality:
   family: scf
   datatype: characters
@@ -1241,6 +1331,78 @@ integral_quality:
     Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be
     abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only
     meant for debugging since it is overdoing a lot.
+
+noft_printdmn:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Print optimized NOFT 1,2-RDMs (default= 'no').
+
+noft_printswdmn:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Print optimized spin-with NOFT 1,2-RDMs (default= 'no').
+
+noft_printints:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Print hCORE and ERImol integrals in the optimized basis (default= 'no').
+
+noft_readCOEF:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Read NO_COEF file to use those coefficients as initial guess (default= 'no').
+
+noft_readFdiag:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Read F_pp values from F_DIAG file and use them as diag. of Fpq matrix (default= 'no').
+
+noft_readGAMMAS:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimization (default= 'no').
+
+noft_readOCC:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Read occ. from DM1 file and use them to compute Gammas (the indep. variables in occ. optimization). Default= 'no'.
+
+noft_sta:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Decide whether to use PNOF7 or PNOF7s (default= 'yes', use 'PNOF7s').
+
+noft_ithresh_lambda:
+  family: noft
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 5
+  comment: Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.
 
 kerker_k0:
   family: scf
@@ -1259,6 +1421,22 @@ level_shifting_energy:
   default: 0.0
   comment: Sets the energy shift up of the unoccupied states. Should help the convergence
     in the case of small HOMO-LUMO gaps.
+
+noft_lowmemERI:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) in NOFT module.
+
+noft_Lpower:
+  family: noft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.53
+  comment: Power functional approximation exponent used in NOFT calcs.
 
 min_overlap:
   family: scf
@@ -1279,6 +1457,22 @@ mixing_scheme:
     are 'pulay' for Pulay DIIS method, 'adiis' for Hu-Yang method, or 'simple' for
     a simple linear mixing between input and output density-matrices.
 
+noft_npairs:
+  family: noft
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Number of active electron pairs used in NOFT calcs. (default=1 pair).
+
+noft_ncoupled:
+  family: noft
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 2
+  comment: Number of coupled orbs. per pair used in NOFT calcs. (default=2, perfect pairing).
+
 npulay_hist:
   family: scf
   datatype: integer
@@ -1295,6 +1489,22 @@ nscf:
   default: 50
   comment: Sets the maximum number of SCF cycles
 
+noft_ndiis:
+  family: noft
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 5
+  comment: Number of orb. optimization iterations used in DIIS by NOFT module (default=5).
+
+noft_nscf:
+  family: noft
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1000
+  comment: Maximum number of global iterations used by NOFT module (default=1000).
+
 partition_scheme:
   family: scf
   datatype: characters
@@ -1304,6 +1514,14 @@ partition_scheme:
   comment: Sets the partition scheme for the xc quadrature. Possible choices are 'becke'
     or 'ssf' (Stratmann-Scuseria-Frisch).
 
+noft_restart:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use binary files to restart NOFT calcs. (default= 'no').
+
 scf_diago_flavor:
   family: scf
   datatype: characters
@@ -1312,6 +1530,14 @@ scf_diago_flavor:
   default: ' '
   comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles.
     Available choices are ' ', 'R', 'D', and 'X'.
+
+noft_tolE:
+  family: noft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0e-09
+  comment: Threshold used to determine that the energy change in NOFT calcs. is small; hence, it has converged.
 
 tolscf:
   family: scf
@@ -1334,6 +1560,30 @@ charge:
   default: 0.0
   comment: Sets the total charge of the system. 0 is a neutral system. -2 is a doubly
     charged anion etc.
+
+electric_field_x:
+  family: system
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the magnitude of the electric field along x
+
+electric_field_y:
+  family: system
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the magnitude of the electric field along y
+
+electric_field_z:
+  family: system
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the magnitude of the electric field along z
 
 length_unit:
   family: system

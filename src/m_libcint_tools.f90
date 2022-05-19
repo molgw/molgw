@@ -35,7 +35,7 @@ module m_libcint_tools
   integer,private,parameter :: LIBCINT_PTR_RANGE_OMEGA = 8
   integer,private,parameter :: LIBCINT_PTR_ENV_START   = 20
 
-  integer,private,parameter :: LIBCINT_env_size=10000
+  integer,private,parameter :: LIBCINT_env_size=100000
 
   logical,protected :: libcint_has_range_separation
   integer,external  :: cint2e_cart
@@ -213,9 +213,9 @@ subroutine set_erf_screening_length_libcint(basis,rcut)
     if( .NOT. libcint_has_range_separation ) then
        call die('')
     endif
-    basis%LIBCINT_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_dp / rcut
+    basis%LIBCINT_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_C_DOUBLE / rcut
   else
-    basis%LIBCINT_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp
+    basis%LIBCINT_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_C_DOUBLE
   endif
 
 end subroutine set_erf_screening_length_libcint
@@ -231,9 +231,9 @@ subroutine init_libcint(basis1,basis2)
   !=====
 
   if( PRESENT(basis2) ) then
-    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 2 basis sets'
+    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 2 basis sets (basis and auxiliary basis)'
   else
-    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 1 basis set'
+    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 1 basis set (basis or auxiliary basis)'
   endif
 
   basis1%LIBCINT_natm = ncenter_basis
@@ -245,6 +245,9 @@ subroutine init_libcint(basis1,basis2)
   allocate(basis1%LIBCINT_atm(LIBCINT_ATM_SLOTS,basis1%LIBCINT_natm))
   allocate(basis1%LIBCINT_bas(LIBCINT_BAS_SLOTS,basis1%LIBCINT_nbas))
   allocate(basis1%LIBCINT_env(LIBCINT_env_size))
+  ! Zero-ing the env(:) array is compulsory
+  ! Fortan may put garbage (ifort) and C does not like it
+  basis1%LIBCINT_env(:) = 0.0_C_DOUBLE
 
   ! real space origin
   basis1%LIBCINT_env(LIBCINT_PTR_COMMON_ORIG+1) = 0.0_C_DOUBLE
@@ -300,7 +303,7 @@ subroutine init_libcint(basis1,basis2)
       off = off + basis2%shell(ishell)%ng
     enddo
   endif
-
+  write(stdout,'(1x,a,i8)') 'LIBCINT environment maximum index: ',off
 
 end subroutine init_libcint
 
@@ -353,10 +356,10 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
 
   tmp_env(:) = 0.0_dp
 
-  if( rcut < 1.0e-12 ) then
-    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_dp
+  if( rcut < 1.0e-12_dp ) then
+    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_C_DOUBLE
   else
-    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_dp / rcut
+    tmp_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_C_DOUBLE / rcut
   endif
   off = LIBCINT_PTR_ENV_START
 

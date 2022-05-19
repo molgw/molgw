@@ -62,13 +62,25 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
   integer                            :: parityi,parityj,reflectioni,reflectionj
   character(len=32)                  :: symsymbol
   character(len=6)                   :: char6
+  !=====TransDens
+  character(len=200)                 :: file_name
+  real(dp)                           :: xpy_global(2*chi%npole_reso)
+  integer                            :: icubefile
+  real(dp),allocatable               :: phi(:,:),transdens(:)
+  real(dp),parameter                 :: length=3.499470_dp
+  real(dp)                           :: rr(3)
+  real(dp)                           :: xmin,xmax,ymin,ymax,zmin,zmax
+  real(dp)                           :: dx,dy,dz
+  integer                            :: ix,iy,iz,iatom,igrid,ntot
+  real(dp)                           :: basis_function_r(basis%nbf)
+  real(dp)                           :: start, finish, start2, finish2, start3, finish3
   !=====
 
 
-  call start_clock(timing_spectrum)
   !
   ! Calculate the spectrum now
   !
+  call start_clock(timing_spectrum)
 
   write(stdout,'(/,a)') ' Calculate the optical spectrum'
 
@@ -145,6 +157,8 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
 
   trk_sumrule=0.0_dp
   mean_excitation=0.0_dp
+
+
   do t_jb_global=1,nexc
     t_jb = colindex_global_to_local('S',t_jb_global)
 
@@ -215,6 +229,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
       !
       ! Output the transition coefficients
       coeff(:) = 0.0_dp
+      xpy_global(:) = 0.0_dp
       do t_ia=1,m_x
         t_ia_global = rowindex_local_to_global('S',t_ia)
         istate = chi%transition_table(1,t_ia_global)
@@ -224,10 +239,72 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
           coeff(                 t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) + xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
           ! Anti-Resonant
           coeff(chi%npole_reso + t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) - xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
+          xpy_global(            t_ia_global) = xpy_matrix(t_ia,t_jb)
         endif
       enddo
       call world%sum(coeff)
+      call world%sum(xpy_global)
 
+      ! Transition densities output in cube files
+      if( t_jb_global >= cube_state_min .AND. t_jb_global <= cube_state_max .AND. nspin == 1 .AND. print_transition_density_ ) then
+        xmin =MIN(MINVAL( xatom(1,:) ),MINVAL( xbasis(1,:) )) - length
+        xmax =MAX(MAXVAL( xatom(1,:) ),MAXVAL( xbasis(1,:) )) + length
+        ymin =MIN(MINVAL( xatom(2,:) ),MINVAL( xbasis(2,:) )) - length
+        ymax =MAX(MAXVAL( xatom(2,:) ),MAXVAL( xbasis(2,:) )) + length
+        zmin =MIN(MINVAL( xatom(3,:) ),MINVAL( xbasis(3,:) )) - length
+        zmax =MAX(MAXVAL( xatom(3,:) ),MAXVAL( xbasis(3,:) )) + length
+        dx = (xmax-xmin)/REAL(cube_nx,dp)
+        dy = (ymax-ymin)/REAL(cube_ny,dp)
+        dz = (zmax-zmin)/REAL(cube_nz,dp)
+        ntot = cube_nx * cube_ny * cube_nz
+
+        if( is_iomaster ) then
+          allocate(phi(basis%nbf,nspin))
+          allocate(transdens(ntot))
+          write(file_name,'(a,i2.2,a)') 'trans-density_',t_jb_global,'.cube'
+          open(newunit=icubefile,file=file_name)
+          write(icubefile,'(a,i4)') 'cube file generated from MOLGW',t_jb_global
+          write(icubefile,'(a,i4)') 'Transition density for excitation number',t_jb_global
+          write(icubefile,'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+          write(icubefile,'(i6,3(f12.6,2x))') cube_nx,dx,0.,0.
+          write(icubefile,'(i6,3(f12.6,2x))') cube_ny,0.,dy,0.
+          write(icubefile,'(i6,3(f12.6,2x))') cube_nz,0.,0.,dz
+     
+          do iatom=1,natom
+            write(icubefile,'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+          enddo
+
+          igrid = 0
+          do ix=1,cube_nx
+            rr(1) = xmin + (ix-1)*dx
+            do iy=1,cube_ny
+              rr(2) = ymin + (iy-1)*dy
+              do iz=1,cube_nz
+                rr(3) = zmin + (iz-1)*dz
+                igrid = igrid + 1
+     
+                call calculate_basis_functions_r(basis,rr,basis_function_r)
+                phi(:,1) = MATMUL( basis_function_r(:) , c_matrix(:,:,1) )
+     
+                transdens(igrid)= 0.0_dp
+                do t_ia_global=1,chi%npole_reso
+                  istate = chi%transition_table(1,t_ia_global)
+                  astate = chi%transition_table(2,t_ia_global)
+                  transdens(igrid) = transdens(igrid) + xpy_global(t_ia_global) * phi(istate,1) * phi(astate,1)
+                enddo ! t_ia_global
+     
+              enddo ! iz
+            enddo ! iy
+          enddo ! ix
+     
+          do igrid=1,ntot
+            write(icubefile,'(e16.8)') SQRT(2.0_dp) * transdens(igrid)
+          enddo
+          deallocate(phi,transdens)
+
+          close(icubefile)
+        end if
+      endif
 
       do t_ia_global=1,chi%npole_reso
         istate = chi%transition_table(1,t_ia_global)
@@ -497,7 +574,7 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
                                               * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
           !if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
           !     stopping_exc(iv,t_ia) = stopping_exc(iv,t_ia) + ( 4.0_dp * pi ) / vv**2  &
-          !                                    * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
+          !                                     * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
         enddo
 
       enddo

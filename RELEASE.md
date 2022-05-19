@@ -4,27 +4,45 @@
 
 
 -----------------------------------------
-## What's new in version 2.G
+## What's new in version 3.0
 ### Overview
-- new basis functions (Dunning 7Z)
+- LIBCINT library as an alternative to LIBINT
+- Natural Orbital Functional Theory (NOFT)
+- GW calculations with W from TDDFT
 - pseudopotential in numerical format PSP6 or PSP8 can be used 
-- LIBXC functionals can be called directly if one knows their unique LIBXC identifier
-- various bug fixes
+- LIBXC functionals can be called directly if one knows their unique LIBXC index
+- expansion of the python utilities in molgw.py
+- new basis functions (Dunning 7Z)
+- various bug fixes, typos
 
 ### Contributors
-- Fabien Bruneval (CEA SRMP, France)
-- Nike Dattani (Waterloo)
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+- Mauricio Rodriguez-Mayorga (Vrije Universiteit, Amsterdam, Netherlands)
+- Nike Dattani (HPQC Labs, Waterloo, Canada)
+- Zohreh Hashemi (University of Bayreuth, Germany)
 
 ### Changes affecting the usage
-- Dynamical self-energy correlation contribution and Spectral weight Z are now reported for omega=E_qp instead of omega=E_gKS
-- MOLGW can use "solid-state" norm-conserving pseudopotentials in the PSP6 or PSP8 format (from http://www.pseudo-dojo.org/ for instance).
+- Natural orbital functional theory (a.k.a. reduced density matrix functional theory) approximations are now available for singlet-states.
+NOFT calculations are triggered with `postscf='NOFT'`.
+The corresponding input variables start with `noft_`. Available functionals include: Muller, power, PNOF5, and PNOF7.
+- Dynamical self-energy correlation contribution and Spectral weight Z are now reported for omega=E_qp instead of omega=E_gKS.
+- `postscf='GWTDDFT'` triggers the calculation of W with HF or TDDFT kernel included. 
+- MOLGW can use "solid-state" norm-conserving pseudopotentials in the PSP6 or PSP8 format (from [pseudo-dojo.org](http://www.pseudo-dojo.org/) for instance).
 This is slow but functional. It is intended for tests.
-- Python script to extract the basis set from a Gaussian formatted checkpoint file (.fchk): `create_basis_from_gaussian_fchk.py`
-- All the LIBXC functionals can be called directly with syntax: `scf='LIBXC:101+130'` for PBE for instance 
+- Python script to extract the basis set from a Gaussian formatted checkpoint file (.fchk): `create_basis_from_gaussian_fchk.py`.
+- All the LIBXC functionals can be called directly with syntax: `scf='LIBXC:101+130'` for PBE for instance. 
+- Possibility to tune the cube file output with new input variables `cube_nx`, `cube_ny`, `cube_nz`, `cube_state_min`, `cube_state_max`.
+- Possibility to output the transition density in BSE/TDDFT.
+- Possibility to read Gaussian cube files with molgw.py
 
 ### Changes affecting the compilation
-### Changes affecting the developers
+- The C library [LIBCINT](https://github.com/sunqm/libcint) can replace LIBINT with noticeable advantages.
+LIBCINT is easy to compile on any architecture (it's coded in plain C) and its compilation time is low.
+According to our tests, LIBCINT appears as twice faster than LIBINT at runtime.
+To use LIBCINT, `my_machine.arch` should contain `LIBCINT=-lcint` and preprocessing option `-DHAVE_LIBCINT`
 
+### Changes affecting the developers
+- LIBCINT library offers many integral types that were not available with LIBINT. New opportunities are open.
 
 -----------------------------------------
 ## What's new in version 2.F

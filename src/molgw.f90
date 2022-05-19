@@ -58,6 +58,7 @@ program molgw
   use m_io
   use m_fourier_quadrature
   use m_libcint_tools
+  use m_noft
   implicit none
 
  !=====
@@ -65,8 +66,9 @@ program molgw
   type(basis_set)            :: auxil_basis
   type(spectral_function)    :: wpol
   type(lbfgs_state)          :: lbfgs_plan
-  type(energy_contributions) :: en_gks,en_mbpt
+  type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
+  integer                 :: nelect
   integer                 :: nstate
   integer                 :: istep
   logical                 :: is_restart,is_big_restart,is_basis_restart
@@ -287,6 +289,10 @@ program molgw
     call setup_nucleus(basis,hamiltonian_nucleus)
 
     !
+    ! External electric field
+    call setup_electric_field(basis,hamiltonian_nucleus)
+
+    !
     ! Testing the quadrature in Fourier space
     !if( .TRUE. ) then
     !  !                        basis projectile n basis_target
@@ -501,6 +507,19 @@ program molgw
   !call plot_rho_xy(basis, occupation, c_matrix)      !plot density integrated on axis z in plane xy
 
 
+  !
+  ! Do NOFT optimization
+  !
+  if( calc_type%is_noft ) then
+    if( nspin /= 1 ) call die('molgw: NOFT calculations need spin-restriction. Set nspin to 1')
+
+    en_noft = en_gks
+    call noft_energy(basis,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
+                     en_noft%total,en_noft%nuc_nuc)
+
+    write(stdout,'(a,2x,f19.10,/)') ' NOFT Total Energy (Ha):',en_noft%total
+
+  endif
 
   !
   ! RT-TDDFT Simulation (only if SCF cycles were converged)
@@ -641,7 +660,7 @@ program molgw
   !
   ! Linear-response time dependent calculations work for BSE and TDDFT
   ! (only if the SCF cycles were converged)
-  if( ( calc_type%is_td .OR. calc_type%is_bse ) .AND. is_converged ) then
+  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. is_converged ) then
     call init_spectral_function(nstate,occupation,0,wpol)
     call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
     call destroy_spectral_function(wpol)

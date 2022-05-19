@@ -1,7 +1,8 @@
 &molgw
  scf='wB97'
-
+ mixing_scheme='simple' 
  basis='cc-pVDZ'
+ mixing_scheme='simple'
 
  nscf= 100
  tolscf=1.0e-10

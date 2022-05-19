@@ -1,3 +1,4 @@
 *.o 
 *.mod
+/noft/gitver.F90
 my_machine.arch

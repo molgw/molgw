@@ -1,11 +1,17 @@
-/* !=========================================================================
+/*
+!=========================================================================
 ! This file is part of MOLGW.
 ! Author: Fabien Bruneval
 !
 ! This file contains
 ! the preprocessing options
 !
-!========================================================================= */
+!========================================================================= 
+*/
+
+#if !defined(MOLGW_VERSION)
+#define MOLGW_VERSION "3.0"
+#endif
 
 #if defined(HAVE_LIBCINT)
 #if !defined(NO_LIBINT)
@@ -18,6 +24,4 @@
 #define HAVE_LIBXC
 #endif
 #endif
-
-
 

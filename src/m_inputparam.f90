@@ -48,6 +48,8 @@ module m_inputparam
   integer,parameter :: PT3          = 223
   integer,parameter :: TWO_RINGS    = 224
   integer,parameter :: GWPT3        = 226
+  integer,parameter :: G0W0SOX0     = 227
+  integer,parameter :: G0W0Gamma0   = 228
 
   !
   ! TDDFT variables
@@ -73,9 +75,10 @@ module m_inputparam
     logical            :: is_gw
     logical            :: is_mp2
     logical            :: is_mp3
+    logical            :: is_noft
     logical            :: is_selfenergy
     logical            :: is_ci
-    logical            :: is_bse,no_bse_kernel,is_td
+    logical            :: is_bse,no_bse_kernel,include_tddft_kernel
     integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
     integer            :: selfenergy_approx         ! GW, COHSEX, PT2
   end type calculation_type
@@ -149,6 +152,7 @@ module m_inputparam
   logical,protected                :: print_dens_traj_
   logical,protected                :: print_dens_traj_points_set_
   logical,protected                :: print_charge_tddft_
+  logical,protected                :: print_transition_density_
   logical,protected                :: calc_q_matrix_
   logical,protected                :: calc_dens_disc_
   logical,protected                :: calc_spectrum_
@@ -184,10 +188,11 @@ subroutine init_calculation_type(scf,postscf)
   calc_type%is_gw                = .FALSE.
   calc_type%is_mp2               = .FALSE.
   calc_type%is_mp3               = .FALSE.
+  calc_type%is_noft              = .FALSE.
   calc_type%is_ci                = .FALSE.
   calc_type%is_bse               = .FALSE.
   calc_type%no_bse_kernel        = .FALSE.
-  calc_type%is_td                = .FALSE.
+  calc_type%include_tddft_kernel = .FALSE.
   calc_type%is_real_time         = .FALSE.
   calc_type%selfenergy_technique = one_shot
   calc_type%selfenergy_approx    = 0
@@ -220,7 +225,7 @@ subroutine init_calculation_type(scf,postscf)
     case('GWTDDFT','G0WTDDFT')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW
-      calc_type%is_td    =.TRUE.
+      calc_type%include_tddft_kernel =.TRUE.
     case('COHSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = COHSEX
@@ -239,13 +244,16 @@ subroutine init_calculation_type(scf,postscf)
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('G0W0GAMMA0','GWGAMMA','GWSOSEX')
+    case('GWSOSEX')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GWSOSEX
+    case('G0W0GAMMA0','GWGAMMA')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
     case('GWTDDFTGAMMA','G0WTDDFTGAMMA0','GWTDDFTSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
-      calc_type%is_td    =.TRUE.
+      calc_type%include_tddft_kernel = .TRUE.
     case('EVGWGAMMA','GNW0GAMMAN','GNW0SOSEX','EVGWSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
@@ -269,6 +277,8 @@ subroutine init_calculation_type(scf,postscf)
     case('EVMP3_SELFENERGY','EVPT3','EVGF3')
       calc_type%selfenergy_approx = PT3
       calc_type%selfenergy_technique = EVSC
+    case('NOFT')
+      calc_type%is_noft   =.TRUE.
     case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
       calc_type%selfenergy_approx = TWO_RINGS
     case('ONE_RING','ONE-RING','ONERING','1RING')
@@ -286,7 +296,7 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_bse        = .TRUE.
       calc_type%no_bse_kernel = .TRUE.
     case('TD')
-      calc_type%is_td = .TRUE.
+      calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
     case default
@@ -469,24 +479,24 @@ subroutine init_dft_type(key)
   ! Meta-GGA functionals
   case('RPPX')
     dft_xc(1)%id = XC_MGGA_X_RPP09
-    alpha_hybrid   = 0.00_dp
+    alpha_hybrid = 0.00_dp
   !
   ! Hybrid functionals
   case('HFPBE')
     dft_xc(1)%id = XC_GGA_C_PBE
-    alpha_hybrid   = 1.00_dp
+    alpha_hybrid = 1.00_dp
   case('BHANDH')
     dft_xc(1)%id = XC_HYB_GGA_XC_BHANDH
-    alpha_hybrid   = 0.50_dp
+    alpha_hybrid = 0.50_dp
   case('BHANDHLYP','BHLYP')
     dft_xc(1)%id = XC_HYB_GGA_XC_BHANDHLYP
-    alpha_hybrid   = 0.50_dp
+    alpha_hybrid = 0.50_dp
   case('B3LYP')
     dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP
-    alpha_hybrid   = 0.20_dp
+    alpha_hybrid = 0.20_dp
   case('B3LYP5')
     dft_xc(1)%id = XC_HYB_GGA_XC_B3LYP5
-    alpha_hybrid   = 0.20_dp
+    alpha_hybrid = 0.20_dp
   case('PBE0')
     dft_xc(1)%id = XC_HYB_GGA_XC_PBEH
     alpha_hybrid   = 0.25_dp
@@ -525,6 +535,7 @@ subroutine init_dft_type(key)
     alpha_hybrid  =  0.0799_dp
     beta_hybrid   =  0.9201_dp
     gamma_hybrid  = 0.150_dp
+    dft_xc(2)%gamma = gamma_hybrid
   case('RSH')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
@@ -540,11 +551,11 @@ subroutine init_dft_type(key)
     dft_xc(2)%coeff = beta_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   case('LDA0')
-    alpha_hybrid   = 0.25_dp
+    alpha_hybrid = 0.25_dp
     dft_xc(1)%id = XC_LDA_X
     dft_xc(2)%id = XC_LDA_C_PW
-    dft_xc(1)%coeff =  1.00_dp - alpha_hybrid
-    dft_xc(2)%coeff =  1.00_dp
+    dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
+    dft_xc(2)%coeff = 1.00_dp
 #endif
   case default
 
@@ -612,19 +623,23 @@ subroutine summary_input()
   write(stdout,'(/,a,/)')    ' Summary of important input parameters '
   write(stdout,'(a30,2x,a)') '         SCF type: ',calc_type%scf_name
   write(stdout,'(a30,2x,a)') '    Post SCF type: ',calc_type%postscf_name
-  write(stdout,'(a30,i3)')   ' number of atoms: ',ncenter_nuclei
-  write(stdout,'(a30,i3)')   ' number of basis centers: ',ncenter_basis
-  write(stdout,'(a30,f8.4)') ' electrons: ',electrons
-  write(stdout,'(a30,f8.4)') ' charge: ',charge
+  write(stdout,'(a30,i4)')   ' number of atoms: ',ncenter_nuclei
+  write(stdout,'(a30,i4)')   ' number of basis centers: ',ncenter_basis
+  write(stdout,'(a30,f10.4)') ' electrons: ',electrons
+  write(stdout,'(a30,f10.4)') ' charge: ',charge
   write(stdout,'(a30,i3)')   ' spin polarization: ',nspin
-  write(stdout,'(a30,f8.4)') ' magnetization: ',magnetization
+  write(stdout,'(a30,f10.4)') ' magnetization: ',magnetization
   write(stdout,'(a30,2x,a)') ' basis file path:',basis_path
   write(stdout,'(a30,2x,a)') ' basis set: ',basis_name(1)
   write(stdout,'(a30,2x,a)') ' auxiliary basis set: ',auxil_basis_name(1)
   write(stdout,'(a30,2x,a)') ' gaussian type: ',gaussian_type
-  write(stdout,'(a30,f8.4)') ' global exchange: ',alpha_hybrid
-  write(stdout,'(a30,f8.4)') ' long-range-only exchange: ',beta_hybrid
-  write(stdout,'(a30,f8.4)') ' range-separation (bohr-1): ',gamma_hybrid
+  write(stdout,'(a30,f10.4)') ' global exchange: ',alpha_hybrid
+  write(stdout,'(a30,f10.4)') ' long-range-only exchange: ',beta_hybrid
+  if( rcut > 1.0e-6_dp ) then
+    write(stdout,'(a30,f8.4)') ' range-separation (bohr-1): ',gamma_hybrid
+  else
+    write(stdout,'(a30,a)') ' range-separation (bohr-1): ',' none'
+  endif
   write(stdout,*)
 
   call output_positions()
@@ -655,7 +670,7 @@ subroutine read_inputfile_namelist()
   implicit none
 
   !=====
-  integer              :: ninput_argument
+  integer              :: idot,ichart,ninput_argument
   character(len=140)   :: input_file_name
   integer              :: inputfile
   logical              :: file_exists
@@ -708,6 +723,18 @@ subroutine read_inputfile_namelist()
       write(stdout,*) 'Tried to open file:',TRIM(input_file_name)
       call die('Input file not found')
     endif
+    output_name=TRIM(input_file_name)
+    idot=1
+    ichart=1
+    do
+     if(output_name(ichart:ichart+2)==".in") then
+       idot=ichart
+       exit
+     endif
+     ichart=ichart+1
+     if(ichart+2>140) exit
+    enddo
+    output_name=TRIM(output_name(1:idot))
     open(newunit=inputfile,file=TRIM(input_file_name),status='old')
   case(0)
     inputfile = 5
@@ -785,6 +812,7 @@ subroutine read_inputfile_namelist()
   print_dens_traj_tddft_      = yesno_to_logical(print_dens_traj_tddft)
   print_dens_traj_            = yesno_to_logical(print_dens_traj)
   print_dens_traj_points_set_ = yesno_to_logical(print_dens_traj_points_set)
+  print_transition_density_   = yesno_to_logical(print_transition_density)
   calc_q_matrix_              = yesno_to_logical(calc_q_matrix)
   calc_dens_disc_             = yesno_to_logical(calc_dens_disc)
   calc_spectrum_              = yesno_to_logical(calc_spectrum)
@@ -863,6 +891,14 @@ subroutine read_inputfile_namelist()
 
   has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
   has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''
+
+  ! To avoid SCREENED_COULOMB bug:
+  ! SCREENED_COULOMB file unfortunately depends on the diagonalization of the 2-center Coulomb repulsion of the the auxiliary basis.
+  ! It is therefore runtime-dependent and should not be used!
+  if( print_w_ .AND. has_auxil_basis ) then
+    call die('input check: print_w is not numerically stable when using an auxiliary basis.' // &
+             ' Do not use this keyword and everything is gonna be alright')
+  endif
 
   !
   ! Interpret the scf and postscf input parameters

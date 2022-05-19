@@ -4,7 +4,7 @@ PYTHON=python
 # Parallel MPI SCALAPACK compilation
 FC=mpif90
 
-CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_LIBCINT
 
 CXX=icpc  -std=c++11
 FCFLAGS= -fpp -O3 -xKNL -qopt-matmul
@@ -17,7 +17,9 @@ SCALAPACK= -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thre
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
 # Better to use a LIBINT compilation, specifically compiled for KNL (x 2-3 speed-up in the integral evaluation)
-LIBINT_ROOT=${HOME}/src/libint-2.4.2-knl/
+#LIBINT_ROOT=${HOME}/src/libint-2.4.2-knl/
 
 FFTW_ROOT=
+
+LIBCINT=-lcint
 

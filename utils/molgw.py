@@ -9,7 +9,7 @@
 #
 ##################################################
 
-import os
+import os, sys
 import json
 from yaml import load, dump
 try:
@@ -64,33 +64,30 @@ def print_xyz_file(calc,filename):
 
 ########################################################################
 def get_homo_energy(approx,calc):
-    homo = int(calc["physical system"]["electrons"] * 0.50)
     key = approx + " energy"
-    try:
-        ehomo = -9999.9
-        for state in calc[key]["spin channel 1"].keys():
-            if int(state) <= homo:
-                ehomo = max(ehomo,float(calc[key]["spin channel 1"][state]))
-        return ehomo
-    except:
-        return None
+    energies = [ ei for ei in calc[key]["spin channel 1"].values()]
+    if calc["input parameters"]["nspin"] == 1:
+        energies += [ ei for ei in calc[key]["spin channel 1"].values()]
+    else:
+        energies += [ ei for ei in calc[key]["spin channel 2"].values()]
+    energies.sort()
+    return energies[int(calc["physical system"]["electrons"])-1 - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
 
 ########################################################################
 def get_lumo_energy(approx,calc):
-    homo = int(calc["physical system"]["electrons"] * 0.50)
     key = approx + " energy"
-    try:
-        elumo = 9999.9
-        for state in calc[key]["spin channel 1"].keys():
-            if int(state) > homo:
-                elumo = min(elumo,float(calc[key]["spin channel 1"][state]))
-        return elumo
-    except:
-        return None
+    energies = [ ei for ei in calc[key]["spin channel 1"].values()]
+    if calc["input parameters"]["nspin"] == 1:
+        energies += [ ei for ei in calc[key]["spin channel 1"].values()]
+    else:
+        energies += [ ei for ei in calc[key]["spin channel 2"].values()]
+    energies.sort()
+    return energies[int(calc["physical system"]["electrons"]) - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
 
 ########################################################################
+# returns a list of dictionaries: one dictionary per yaml file in the directory
 def parse_yaml_files(directory):
     # List all the yaml files in the directory
     yaml_files = []
@@ -110,6 +107,24 @@ def parse_yaml_files(directory):
                 print(yaml_file + ' is corrupted')
                 pass
     return calc
+
+
+########################################################################
+# check if a calculation dictionary is valid
+# - "scf is converged" exists
+# - "scf is converged" is True
+# - "run" exists ("run" key is written in YAML file at the very end of a MOLGW calculation)
+def check_calc(calc):
+    valid = True
+    try:
+        calc["scf is converged"]
+        calc["run"]
+    except KeyError:
+        valid = False
+    except:
+        sys.exit(1)
+    return valid and calc["scf is converged"]
+
 
 ########################################################################
 def create_gw100_json(filename,data,**kwargs):
@@ -133,3 +148,69 @@ def kev_to_au(mass,e_kev):
 
 def au_to_kev(mass,v_au):
     return 0.5*mass*1836.1253*v_au**2*Ha_eV/1000.
+
+
+########################################################################
+class gaussian_cube:
+    atoms_element = []    # list of elements
+    atoms_position = []   # list of positions
+    nx = 0                # number of grid points along 1st vector
+    ny = 0                # number of grid points along 2nd vector
+    nz = 0                # number of grid points along 3rd vector
+    dx = []               # 1st vector
+    dy = []               # 2nd vector
+    dz = []               # 3rd vector
+    rr = []               # grid points list
+    data = []             # volumetric data
+    dv = 0.0              # grid point associated volume
+
+    # Initialize class with a file "filename"
+    def __init__(self,filename):
+
+        cf=open(filename,'r')
+        cf.readline()
+        cf.readline()
+
+        line = cf.readline().split()
+        natom = int(line[0])
+        r0 = [float(x) for x in line[1:5]]
+        line = cf.readline().split()
+        self.nx = int(line[0])
+        self.dx = [float(x) for x in line[1:5]]
+        line = cf.readline().split()
+        self.ny = int(line[0])
+        self.dy = [float(x) for x in line[1:5]]
+        line = cf.readline().split()
+        self.nz = int(line[0])
+        self.dz = [float(x) for x in line[1:5]]
+        # atom list
+        self.atoms_element = []
+        self.atoms_position = []
+        for i in range(natom):
+            line = cf.readline().split()
+            self.atoms_element.append(int(line[0]))
+            self.atoms_position.append([float(line[2]), float(line[3]), float(line[4])])
+
+        # volumetric data
+        self.data = []
+        for line in cf:
+             self.data.extend( float(x) for x in line.split() )
+        cf.close()
+
+        self.rr = []
+        for ix in range(self.nx):
+            for iy in range(self.ny):
+                for iz in range(self.nz):
+                    x = r0[0] + ix * self.dx[0] + iy * self.dy[0] + iz * self.dz[0]
+                    y = r0[1] + ix * self.dx[1] + iy * self.dy[1] + iz * self.dz[1]
+                    z = r0[2] + ix * self.dx[2] + iy * self.dy[2] + iz * self.dz[2]
+                    self.rr.append([x,y,z])
+        self.dv = self.dx[0] * self.dy[1] * self.dz[2] \
+                 +self.dx[1] * self.dy[2] * self.dz[0] \
+                 +self.dx[2] * self.dy[0] * self.dz[1] \
+                 -self.dx[2] * self.dy[1] * self.dz[0] \
+                 -self.dx[0] * self.dy[2] * self.dz[1] \
+                 -self.dx[1] * self.dy[0] * self.dz[2]
+        return
+
+########################################################################

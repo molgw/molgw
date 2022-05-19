@@ -13,7 +13,7 @@ module m_warning
 
  integer,parameter          :: NWARNINGMAX=100
  integer,private            :: nwarning
- character(len=100),private :: warning_list(NWARNINGMAX)
+ character(len=128),private :: warning_list(NWARNINGMAX)
 
  character(len=128)         :: msg
 

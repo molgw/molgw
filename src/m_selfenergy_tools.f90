@@ -252,7 +252,7 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g,zz)
 
    write(stdout,'(/,1x,a)') 'Graphical solution to the QP equation'
    write(stdout,'(1x,a,sp,f8.3,a,f8.3)') 'Scanning range around the input energy (eV): ', &
-                                REAL(se%omega(-se%nomega),dp)*Ha_eV,'  --',REAL(se%omega(se%nomega),dp)*Ha_eV
+                                se%omega(-se%nomega)%re * Ha_eV,'  --',se%omega(se%nomega)%re * Ha_eV
    write(stdout,'(1x,a,i6)')             'Number of discretization points:             ',SIZE(se%omega(:))
 
    ! First, a dummy initialization
@@ -270,8 +270,8 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g,zz)
        ! QP equation:
        ! E_GW = E0 + \omega =  E_gKS + \Sigma_c(E0+\omega) + \Sigma_x - v_xc
        !
-       equation_lhs(:) = REAL(se%omega(:),dp)+se%energy0(pstate,pspin)
-       equation_rhs(:) = REAL(se%sigma(:,pstate,pspin),dp) + exchange_m_vxc(pstate,pspin) + energy0(pstate,pspin)
+       equation_lhs(:) = se%omega(:)%re + se%energy0(pstate,pspin)
+       equation_rhs(:) = se%sigma(:,pstate,pspin)%re + exchange_m_vxc(pstate,pspin) + energy0(pstate,pspin)
        call find_fixed_point(equation_lhs,equation_rhs,energy_fixed_point(:,pstate,pspin),z_weight(:,pstate,pspin))
 
      enddo
@@ -312,6 +312,9 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g,zz)
                    ( energy_fixed_point(ifixed,pstate,pspin)*Ha_eV,z_weight(ifixed,pstate,pspin), ifixed = 1,nfixed)
        else
          write(stdout,'(1x,i5,2x,i3,a)') pstate,pspin,'      has no graphical solution in the calculated range'
+         !
+         ! If no solution, approximate GW self-energy with \Sigma_c(e^GKS)
+         energy_qp_g(pstate,pspin) = energy0(pstate,pspin) + se%sigma(0,pstate,pspin)%re + exchange_m_vxc(pstate,pspin)
        endif
      enddo
    enddo
@@ -324,8 +327,11 @@ subroutine find_qp_energy_graphical(se,exchange_m_vxc,energy0,energy_qp_g,zz)
  else
 
    do pstate=nsemin,nsemax
-     energy_qp_g(pstate,:) = energy0(pstate,:) + REAL(se%sigma(0,pstate,:),dp) + exchange_m_vxc(pstate,:)
+     energy_qp_g(pstate,:) = energy0(pstate,:) + se%sigma(0,pstate,:)%re + exchange_m_vxc(pstate,:)
    enddo
+   if( PRESENT(zz) ) then
+     zz(:,:) = 1.0_dp
+   endif
 
  endif
 
@@ -443,7 +449,7 @@ subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy
 
      write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy0(pstate,:)*Ha_eV,  &
                                           exchange_m_vxc(pstate,:)*Ha_eV,  &
-                                          !REAL(se%sigma(0,pstate,:)*Ha_eV,dp),  &
+                                          !se%sigma(0,pstate,:)%re*Ha_eV,  &
                                           sigc_qp(:)*Ha_eV,  &
                                           zz(pstate,:),                    &
                                           energy1(pstate,:)*Ha_eV,         &
@@ -463,7 +469,7 @@ subroutine output_qp_energy(calcname,energy0,exchange_m_vxc,ncomponent,se,energy
 
      write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy0(pstate,:)*Ha_eV,       &
                                           exchange_m_vxc(pstate,:)*Ha_eV,       &
-                                          REAL(se%sigma(0,pstate,:)*Ha_eV,dp),  &
+                                          se%sigma(0,pstate,:)%re*Ha_eV,  &
                                           energy1(pstate,:)*Ha_eV
    enddo
 

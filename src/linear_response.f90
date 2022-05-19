@@ -69,7 +69,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
 
  !
  ! Set up flag is_tddft and is_bse
- is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
+ is_tddft = calc_type%include_tddft_kernel .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
  is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
 
  !
@@ -83,7 +83,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
    call issue_warning(msg)
  else
-   if(calc_type%is_td) then        ! TDDFT or TDHF
+   if(calc_type%include_tddft_kernel) then        ! TDDFT or TDHF
      alpha_local = alpha_hybrid
    else if(is_bse .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
      alpha_local = 1.0_dp
@@ -279,6 +279,8 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
    write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
    write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',en_rpa
+ else
+   en_rpa = 0.0_dp
  endif
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
@@ -289,7 +291,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
  ! Calculate the optical sprectrum
  ! and the dynamic dipole tensor
  !
- if( calc_type%is_td .OR. is_bse ) then
+ if( calc_type%include_tddft_kernel .OR. is_bse ) then
    call optical_spectrum(basis,occupation,c_matrix,wpol_out,xpy_matrix,xmy_matrix,eigenvalue)
    select case(TRIM(lower(stopping)))
    case('spherical')

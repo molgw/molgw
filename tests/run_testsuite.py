@@ -282,31 +282,47 @@ try:
 except OSError:
   pass
 
+###################################
+# Parse molgw.h to obtain MOLGW version
+###################################
+with open('../src/molgw.h', 'r') as stream:
+    version = ''
+    for line in stream:
+        words = line.split()
+        if len(words) > 1:
+            if words[0] == '#define' and words[1] == 'MOLGW_VERSION':
+                version = words[2].replace('\"','').replace('\'','')
 
 ###################################
 # Run the fake.in input to get MOLGW compilation options
 ###################################
 clean_run('fake.in','fake.out',False)
-#ffake = open(tmpfolder+'/fake.out','r')
-#for line in ffake:
-#ffake.close()
+
 have_openmp           = 'Running with OPENMP' in open(tmpfolder+'/fake.out').read()
 have_libxc            = 'Running with LIBXC' in open(tmpfolder+'/fake.out').read()
 have_mpi              = 'Running with MPI' in open(tmpfolder+'/fake.out').read()
 have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder+'/fake.out').read()
 have_libint_onebody   = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
 have_libint_gradients = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
+is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder+'/fake.out').read()
+
 #with open(tmpfolder+'/fake.out','r') as ffake:
 #  for line in ffake:
 #    if 'Perform diagonalizations with (Sca)LAPACK routines' in line:
 #      lapack_diago_flavor = line.split(':')[1].strip()
-print('MOLGW compilation details:')
+
+print('MOLGW details:')
+print('            MOLGW version: ' + version)
 print('                   OPENMP: {}'.format(have_openmp) )
 print('                      MPI: {}'.format(have_mpi) )
 print('                SCALAPACK: {}'.format(have_scalapack) )
 print('                    LIBXC: {}'.format(have_libxc) )
-print('            1-body LIBINT: {}'.format(have_libint_onebody) )
-print('         gradients LIBINT: {}'.format(have_libint_gradients) )
+if is_libcint:
+    print('                integrals: LIBCINT' )
+else:
+    print('                integrals: LIBINT' )
+print('         1-body integrals: {}'.format(have_libint_onebody) )
+print('      gradients integrals: {}'.format(have_libint_gradients) )
 #print('        (Sca)LAPACK diago: {}'.format(lapack_diago_flavor) )
 print()
 
@@ -479,8 +495,8 @@ for iinput in range(ninput):
   if need_gradients[iinput] and not have_libint_gradients:
     test_files_skipped += 1
     print('\nSkipping test file: '+inp)
-    print('  because this compilation of MOLGW does not have the gradients from LIBINT')
-    skipping_reason.append('this compilation of MOLGW does not have the gradients from LIBINT')
+    print('  because this compilation of MOLGW does not have the integral gradients')
+    skipping_reason.append('this compilation of MOLGW does not have the integral gradients')
     continue
   if not parallel[iinput] and nprocs > 1:
     test_files_skipped += 1
