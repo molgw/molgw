@@ -45,7 +45,7 @@ gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-3   # Loosened criteri
 
 he_pbe_libxc.in           , He with PBE functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8869559704    , 0 , 1.0e-7
-gKS HOMO energy           ,  -15.724589        , 0 , 1.0e-3
+gKS HOMO energy           ,  -15.724589        , 0 , 3.0e-3
 
 he_pbeh_libxc.in          , He with PBEH=PBE0 functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8893617513    , 0 , 1.0e-7
@@ -463,8 +463,8 @@ ch2o_bse.in               , BSE on formaldehyde , restart
 Lowest neutral excitation ,      3.389151       , 0 , 1.0e-4
 0002 :                    ,      7.92628881     , 0 , 1.0e-4
 0002 :                    ,      0.11520374     , 1 , 1.0e-4
-Sum over oscillator strengths , 12.019322       , 0 , 1.0e-4
-polarizability trace      ,     13.347761       , 0 , 1.0e-4
+Sum over oscillator strengths , 12.036833       , 0 , 1.0e-4
+polarizability trace      ,     13.347008       , 0 , 1.0e-4
 
 ch2o_bse_nokernel.in      , BSE wo kernel on formaldehyde , restart
 0001 :                    ,     13.08500930     , 0 , 1.0e-4
