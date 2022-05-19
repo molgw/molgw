@@ -11,11 +11,11 @@ import molgw
 def readdata(f,n,data_type='float'):
     data = []
     if data_type == 'float':
-        for i in range(n//5+1):
+        for i in range((n-1)//5+1):
             line = f.readline()
             data.extend([float(x) for x in line.split()])
     else:
-        for i in range(n//6+1):
+        for i in range((n-1)//6+1):
             line = f.readline()
             data.extend([int(x) for x in line.split()])
     return data
