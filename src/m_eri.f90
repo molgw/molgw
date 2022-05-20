@@ -432,7 +432,7 @@ subroutine identify_negligible_shellpair(basis)
    !$OMP                  shls,info,int_shell,integrals)
    !$OMP DO
    do ishell=1,basis%nshell
-     if( ANY(basis%shell(ishell)%v0(:) > 1e-6) ) then
+     if( ANY(basis%shell(ishell)%v0(:) > 1e-6) .OR. ANY(basis%shell(jshell)%v0(:) > 1e-6) ) then
        negligible_shellpair(ishell,jshell) = .FALSE.
        negligible_shellpair(jshell,ishell) = .FALSE.
        cycle

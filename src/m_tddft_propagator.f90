@@ -408,8 +408,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if ( itau == 3 ) then
      call start_clock(timing_tddft_one_iter)
-     if ( print_cube_diff_tddft_ .AND. excit_type%form == EXCIT_PROJECTILE_W_BASIS ) &
-     call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
    end if
 
    !
@@ -487,9 +485,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
    end if
 
    if ( ABS(time_cur / (calc_charge_step)- NINT(time_cur / (calc_charge_step))) < 1.0e-4 ) then
-     if ( print_cube_diff_tddft_ .AND. itau > 3 ) &
-     call plot_cube_diff_parallel_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
-         iwrite_step,cube_density_start,nx,ny,nz)
      if ( print_charge_tddft_ ) then
        if ( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
          call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
