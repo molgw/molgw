@@ -163,8 +163,12 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
   enddo
   call matrix_ao_to_mo(c_matrix_tmp,p_matrix_corr,p_matrix_mo)
 
+  ! Multiply by -1 so to order the eigenvalues (natural occupations) from the largest to the smallest
+  p_matrix_mo(:,:,:) = -p_matrix_mo(:,:,:)
   do ispin=1,nspin
     call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,p_matrix_mo(:,:,ispin),natural_occupation(:,ispin))
+    ! restore the correct positive sign here
+    natural_occupation(:,ispin) = -natural_occupation(:,ispin)
     write(stdout,'(/,1x,a,i3)')  'Natural occupations for spin: ',ispin
     write(stdout,'(10(2x,f14.6))') natural_occupation(:,ispin)
     write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(natural_occupation(:,ispin))
