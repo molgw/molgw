@@ -320,7 +320,7 @@ cube_state_min:
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
-  default: 0
+  default: 1
   comment: Sets the state range minimum used in cube file outputs
 
 cube_state_max:
@@ -328,7 +328,7 @@ cube_state_max:
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
-  default: 0
+  default: 1
   comment: Sets the state range maximum used in cube file outputs
 
 force_energy_qp:
