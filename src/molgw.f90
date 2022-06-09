@@ -159,10 +159,11 @@ program molgw
     ! If an auxiliary basis is given, then set it up now
     if( has_auxil_basis ) then
       write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-      if( TRIM(capitalize(auxil_basis_name(1))) /= 'AUTO' .AND. TRIM(capitalize(auxil_basis_name(1))) /= 'PAUTO' ) then
-        call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
-      else
+      if( TRIM(capitalize(auxil_basis_name(1))) == 'AUTO' .OR. TRIM(capitalize(auxil_basis_name(1))) == 'PAUTO'   &
+         .OR.  TRIM(capitalize(ecp_auxil_basis_name(1))) == 'AUTO' .OR. TRIM(capitalize(ecp_auxil_basis_name(1))) == 'PAUTO' ) then
         call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
+      else
+        call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
       endif
     endif
 
