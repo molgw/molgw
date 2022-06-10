@@ -211,7 +211,7 @@ subroutine set_erf_screening_length_libcint(basis,rcut)
   if( rcut > 1.0e-12_dp ) then
     ! Ensure that LIBCINT can calculated "erf" range-separated Coulomb interaction
     if( .NOT. libcint_has_range_separation ) then
-       call die('')
+       call die('set_erf_screening_length_libcint: LIBCINT compilation does not support range separation')
     endif
     basis%LIBCINT_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_C_DOUBLE / rcut
   else
