@@ -1677,7 +1677,7 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
     call set_rinv_origin_libcint(xatom(:,icenter),env_local_erf)
     alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc   ! \alpha_pp in Krack's notations
     write(*,*) 'FBFB: ',ecp(ie)%gth_rpploc,alphapp
-    env_local_erf(LIBCINT_PTR_RINV_ZETA+1) =  alphapp
+    env_local_erf(LIBCINT_PTR_RINV_ZETA+1) =  alphapp**2
     env_local(LIBCINT_PTR_RINV_ZETA+1) =  0.0_dp
 
     do jshell=1,basis%nshell
