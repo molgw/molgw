@@ -1617,7 +1617,7 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
   !=====
   integer              :: ishell,jshell
   integer              :: ibf1,ibf2,jbf1,jbf2
-  integer              :: ni,nj,ni_cart,nj_cart,nk_cart,li,lj
+  integer              :: ni,nj,ni_cart,nj_cart,nk_cart,li,lj,il,ibf,jbf,ijpl
   integer              :: icenter
   real(dp),allocatable :: matrix(:,:)
   real(C_DOUBLE),allocatable        :: array_cart(:)
@@ -1636,7 +1636,7 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
   real(C_DOUBLE),allocatable :: alphaC(:)
   real(C_DOUBLE),allocatable :: cC(:)
   real(dp) :: nucleus
-  integer(C_INT) :: info
+  integer(C_INT) :: info,ipl,jpl
   integer(C_INT) :: shls(2)
   real(C_DOUBLE),allocatable :: env_local_erf(:)
   real(C_DOUBLE),allocatable :: env_local(:)
@@ -1646,6 +1646,7 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
   logical              :: element_has_ecp
   integer,parameter :: LIBCINT_PTR_RINV_ZETA = 7
   integer :: ie,iloc
+  real(dp),allocatable :: proj_i(:,:,:)
   !=====
 
 
@@ -1659,6 +1660,9 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
   hamiltonian_ecp(:,:) = 0.0_dp
 
   do icenter=1,ncenter_nuclei
+    ! MPI parallelization over ECP centers
+    if( MODULO(icenter-1,world%nproc) /= world%rank ) cycle
+
     element_has_ecp = .FALSE.
     do ie=1,nelement_ecp
       if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
@@ -1671,12 +1675,15 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
     C(:) = xatom(:,icenter)
     hamiltonian_tmp(:,:) = 0.0_dp
 
+    !
+    ! First, the local part
+    !
     allocate(env_local,SOURCE=basis%LIBCINT_env)
     allocate(env_local_erf,SOURCE=basis%LIBCINT_env)
     call set_rinv_origin_libcint(xatom(:,icenter),env_local)
     call set_rinv_origin_libcint(xatom(:,icenter),env_local_erf)
     alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc   ! \alpha_pp in Krack's notations
-    write(*,*) 'FBFB: ',ecp(ie)%gth_rpploc,alphapp
+    ! LIBCINT needs the square since the input is the Gaussian distribution exponent
     env_local_erf(LIBCINT_PTR_RINV_ZETA+1) =  alphapp**2
     env_local(LIBCINT_PTR_RINV_ZETA+1) =  0.0_dp
 
@@ -1687,13 +1694,9 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
       jbf1    = basis%shell(jshell)%istart
       jbf2    = basis%shell(jshell)%iend
 
-      if( MODULO(jshell-1,world%nproc) /= world%rank ) cycle
 
       call set_libint_shell(basis%shell(jshell),amB,contrdepthB,B,alphaB,cB)
 
-!!!      !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,array_cart,array_cart_C,C,matrix, &
-!!!      !$OMP&                 ij,info,shls,env_local,nucleus)
-!!!      !$OMP DO
       do ishell=jshell,basis%nshell
         li      = basis%shell(ishell)%am
         ni_cart = number_basis_function_am('CART',li)
@@ -1723,10 +1726,8 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
 
         deallocate(array_cart_C)
 
-        write(*,*) 'FBFB: ecp(ie)%gth_nloc',ecp(ie)%gth_nloc
         do iloc=1,ecp(ie)%gth_nloc
           nk_cart = number_basis_function_am('CART',2*iloc-2)
-          write(*,*) 'FBFB nk_cart',nk_cart
           allocate(array_cart_C(ni_cart*nj_cart*nk_cart))
           allocate(array_cart_Ctmp(nk_cart,ni_cart*nj_cart))
           amC = 2*iloc - 2
@@ -1734,17 +1735,11 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
           allocate(cC(contrdepthC),alphaC(contrdepthC))
           cC(1) = ecp(ie)%gth_cipp(iloc) / ecp(ie)%gth_rpploc**amC
           alphaC(1) = alphapp**2
-          write(*,*) 'FBFB: amC, cc alphac',amC,cC(1),alphaC(1)
 
-          !call libcint_overlap(amA,contrdepthA,A,alphaA,cA, &
-          !                   amB,contrdepthB,B,alphaB,cB, &
-          !                   array_cart_C)
           call libcint_overlap_3center(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              amC,contrdepthC,C,alphaC,cC, &
                              array_cart_C)
-          write(*,*) '=== FBFB ====='
-          write(*,*) array_cart_C(:)
           array_cart_Ctmp(:,:) = RESHAPE( array_cart_C(:) , [nk_cart,ni_cart*nj_cart])
           select case(amc)
           case(0)
@@ -1790,24 +1785,107 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
 
 
     enddo !jshell
-!!!    !$OMP END DO
-!!!    !$OMP END PARALLEL
+
     deallocate(env_local)
     deallocate(env_local_erf)
 
     hamiltonian_ecp(:,:) = hamiltonian_ecp(:,:) + hamiltonian_tmp(:,:)
 
+
+    !
+    ! Second, the non-local part
+    !
+    hamiltonian_tmp(:,:) = 0.0_dp
+
+    allocate(env_local,SOURCE=basis%LIBCINT_env)
+    call set_rinv_origin_libcint(xatom(:,icenter),env_local)
+
+    do il=1,ecp(ie)%gth_nl
+      li      = il -1
+      ni      = number_basis_function_am('PURE',li)
+      ni_cart = number_basis_function_am('CART',li)
+      allocate(proj_i(basis%nbf,ni,ecp(ie)%gth_npl(il)))
+
+      do ipl=1,ecp(ie)%gth_npl(il)
+
+        amC = li
+        contrdepthC = 1
+        allocate(cC(contrdepthC),alphaC(contrdepthC))
+        alphaC(1) = 1.0_dp / ( 2.0_dp * ecp(ie)%gth_rl(il)**2 )
+        ! Normalization factor from HGH PRB 58, 3641 (1998)
+        cC(1) = SQRT( 2.0_dp / GAMMA(li+(4.0_dp*ipl-1.0_dp)/2.0_dp) ) / ecp(ie)%gth_rl(il)**(li+(4.0_dp*ipl-1.0_dp)/2.0_dp)
+
+        do jshell=1,basis%nshell
+          lj      = basis%shell(jshell)%am
+          nj_cart = number_basis_function_am('CART',lj)
+          nj      = number_basis_function_am(basis%gaussian_type,lj)
+          jbf1    = basis%shell(jshell)%istart
+          jbf2    = basis%shell(jshell)%iend
+
+          call set_libint_shell(basis%shell(jshell),amB,contrdepthB,B,alphaB,cB)
+
+
+          allocate(array_cart(ni_cart*nj_cart))
+          allocate(array_cart_C(ni_cart*nj_cart))
+
+#if defined(HAVE_LIBCINT)
+          call libcint_gth_projector(amB,contrdepthB,B,alphaB,cB, &
+                                     amC,contrdepthC,C,alphaC,cC, &
+                                     ipl,array_cart_C)
+          array_cart(:) = array_cart_C(:)
+#endif
+
+          call transform_libint_to_molgw_gth_projector(basis%gaussian_type,li,lj,array_cart,matrix)
+
+          proj_i(jbf1:jbf2,:,ipl) = TRANSPOSE(matrix(:,:))
+
+
+          deallocate(array_cart,array_cart_C,matrix)
+        enddo ! jshell
+
+        deallocate(cC,alphaC)
+      enddo ! ipl
+
+
+      ijpl = 0
+      do ipl=1,ecp(ie)%gth_npl(il)
+        do jpl=ipl,ecp(ie)%gth_npl(il)
+          ijpl = ijpl + 1
+          if( ipl == jpl ) then
+            call DSYRK('L','N',basis%nbf,ni,ecp(ie)%gth_hijl(ijpl,il),proj_i(:,:,ipl),basis%nbf,1.0_dp,hamiltonian_tmp,basis%nbf)
+          else
+            call DSYR2K('L','N',basis%nbf,ni,ecp(ie)%gth_hijl(ijpl,il),proj_i(:,:,ipl),basis%nbf, &
+                                                                       proj_i(:,:,jpl),basis%nbf,1.0_dp,hamiltonian_tmp,basis%nbf)
+          endif
+        enddo
+      enddo
+
+      deallocate(proj_i)
+
+    enddo ! il
+
+    deallocate(env_local)
+
+    ! Symmetrize lower to full
+    do jbf=1,basis%nbf
+      do ibf=jbf+1,basis%nbf
+        hamiltonian_tmp(jbf,ibf) = hamiltonian_tmp(ibf,jbf)
+      enddo
+    enddo
+
+    hamiltonian_ecp(:,:) = hamiltonian_ecp(:,:) + hamiltonian_tmp(:,:)
+
+
   enddo !center
 
   !
   ! Reduce operation
-  call world%sum(hamiltonian_nucleus)
+  call world%sum(hamiltonian_ecp)
 
   call dump_out_matrix(.TRUE.,'=== ECP Nucleus potential contribution ===',hamiltonian_ecp)
 
   hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + hamiltonian_ecp(:,:)
 
-  !call die('enough')
 
 end subroutine setup_nucleus_ecp_analytic
 

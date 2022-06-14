@@ -446,6 +446,41 @@ end subroutine transform_libint_to_molgw_4d
 
 
 !=========================================================================
+! Here index 1 stands for the projector which is always 'PURE' and already normalized
+subroutine transform_libint_to_molgw_gth_projector(gaussian_type,am1,am2,array_in,matrix_out)
+  implicit none
+  character(len=4),intent(in)      :: gaussian_type
+  integer,intent(in)               :: am1,am2
+  real(C_DOUBLE),intent(in)        :: array_in(:)
+  real(dp),allocatable,intent(out) :: matrix_out(:,:)
+  !=====
+  integer :: n1,n2,n1c,n2c
+  integer :: gt_tag
+  real(dp),allocatable :: matrix_tmp(:,:)
+  !=====
+
+  gt_tag = get_gaussian_type_tag(gaussian_type)
+  n1c = number_basis_function_am('CART',am1)
+  n2c = number_basis_function_am('CART',am2)
+  n1  = number_basis_function_am('PURE',am1)
+  n2  = number_basis_function_am(gaussian_type,am2)
+
+  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2))
+  allocate(matrix_tmp(n1,n2c))
+
+  ! Transform the 1st index
+  matrix_tmp(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , &
+                    cart_to_pure(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
+
+  ! Transform the 2nd index
+  matrix_out(:,:) = MATMUL( matrix_tmp(:,:) , cart_to_pure_norm(am2,gt_tag)%matrix(:,:) )
+
+  deallocate(matrix_tmp)
+
+end subroutine transform_libint_to_molgw_gth_projector
+
+
+!=========================================================================
 subroutine set_libint_shell(shell,amA,contrdepthA,A,alphaA,cA)
   implicit none
 

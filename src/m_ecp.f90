@@ -36,8 +36,10 @@ module m_ecp
     real(dp)              :: gth_rpploc      ! r_loc^pp   following Krack's notation [Theor Chem Acc 114, 145 (2005)]
     integer               :: gth_nloc        ! number of Ci^pp coefficients in the local potential
     real(dp),allocatable  :: gth_cipp(:)     ! Ci^pp      following Krack's notation
+    integer               :: gth_nl          ! number of angular momenta
+    integer,allocatable   :: gth_npl(:)      ! number of projectors for angular momentum l
     real(dp),allocatable  :: gth_rl(:)       ! r^l        following Krack's notation
-    real(dp),allocatable  :: gth_hijl(:)     ! h_ij^l     following Krack's notation
+    real(dp),allocatable  :: gth_hijl(:,:)   ! h_ij^l     following Krack's notation
     ! KB numerical pseudo on a grid
     integer              :: mmax = 0
     real(dp),allocatable :: rad(:)
@@ -45,6 +47,7 @@ module m_ecp
     real(dp),allocatable :: vpspll(:,:)
     real(dp),allocatable :: ekb(:)
   end type
+
 
   type(effective_core_potential),allocatable :: ecp(:)
 
@@ -498,10 +501,9 @@ subroutine read_gth_file(ecp_filename,element,ecpi)
   type(effective_core_potential),intent(inout) :: ecpi
   !=====
   integer            :: ecpunit
-  integer            :: iline,i1,i2,i3,i4,istat
-  character(len=132) :: line,amc
-  integer            :: read_n
-  real(dp)           :: read_zeta,read_d
+  integer            :: iline,i1,i2,i3,i4,istat,il
+  character(len=132) :: line
+  real(dp)           :: rtmp
   logical            :: end_of_file
   !=====
 
@@ -531,18 +533,38 @@ subroutine read_gth_file(ecp_filename,element,ecpi)
   read(ecpunit,*,iostat=istat) ecpi%gth_rpploc,ecpi%gth_nloc
   allocate(ecpi%gth_cipp(ecpi%gth_nloc))
   read(ecpunit,*,iostat=istat) i1
-  ecpi%necp = i1
+  ecpi%gth_nl = i1
+  allocate(ecpi%gth_rl(ecpi%gth_nl))
+  allocate(ecpi%gth_npl(ecpi%gth_nl))
+  allocate(ecpi%gth_hijl(6,ecpi%gth_nl))
+  do il=1,ecpi%gth_nl
+    read(ecpunit,*,iostat=istat) rtmp,ecpi%gth_npl(il)
+    if( ecpi%gth_npl(il) > 1 ) then
+      read(ecpunit,*,iostat=istat)
+    endif
+  enddo
   close(ecpunit)
 
   open(newunit=ecpunit,file=TRIM(ecp_filename),status='old',action='read')
   read(ecpunit,'(a)',iostat=istat) line
   read(ecpunit,'(a)',iostat=istat) line
   read(ecpunit,*,iostat=istat) ecpi%gth_rpploc,i1,ecpi%gth_cipp(:)
+  read(ecpunit,*,iostat=istat) i1
+  do il=1,ecpi%gth_nl
+    select case(ecpi%gth_npl(il))
+    case(1)
+      read(ecpunit,*,iostat=istat) ecpi%gth_rl(il),i1,ecpi%gth_hijl(1,il)
+    case(2)
+      read(ecpunit,*,iostat=istat) ecpi%gth_rl(il),i1,ecpi%gth_hijl(1:2,il)
+      read(ecpunit,*,iostat=istat)                    ecpi%gth_hijl(3,il)
+    case default
+      call die('read_gth_file: i > 2 in non-local GTH projector not coded yet')
+    end select
+  enddo
 
-
-  ! FBFB finish this
 
   close(ecpunit)
+
 
 end subroutine read_gth_file
 
