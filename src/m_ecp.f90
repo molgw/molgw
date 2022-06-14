@@ -539,9 +539,8 @@ subroutine read_gth_file(ecp_filename,element,ecpi)
   allocate(ecpi%gth_hijl(6,ecpi%gth_nl))
   do il=1,ecpi%gth_nl
     read(ecpunit,*,iostat=istat) rtmp,ecpi%gth_npl(il)
-    if( ecpi%gth_npl(il) > 1 ) then
-      read(ecpunit,*,iostat=istat)
-    endif
+    if( ecpi%gth_npl(il) > 1 ) read(ecpunit,*,iostat=istat)
+    if( ecpi%gth_npl(il) > 2 ) read(ecpunit,*,iostat=istat)
   enddo
   close(ecpunit)
 
@@ -557,8 +556,12 @@ subroutine read_gth_file(ecp_filename,element,ecpi)
     case(2)
       read(ecpunit,*,iostat=istat) ecpi%gth_rl(il),i1,ecpi%gth_hijl(1:2,il)
       read(ecpunit,*,iostat=istat)                    ecpi%gth_hijl(3,il)
+    case(3)
+      read(ecpunit,*,iostat=istat) ecpi%gth_rl(il),i1,ecpi%gth_hijl(1:3,il)
+      read(ecpunit,*,iostat=istat)                    ecpi%gth_hijl(4:5,il)
+      read(ecpunit,*,iostat=istat)                    ecpi%gth_hijl(  6,il)
     case default
-      call die('read_gth_file: i > 2 in non-local GTH projector not coded yet')
+      call die('read_gth_file: i > 3 in non-local GTH projector is not possible')
     end select
   enddo
 
