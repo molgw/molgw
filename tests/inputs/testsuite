@@ -281,6 +281,11 @@ GW HOMO energy            ,  -12.668274       , 1 , 1.0e-4
 GW LUMO energy            ,    0.872077       , 0 , 1.0e-4
 GW LUMO energy            ,    1.238943       , 1 , 1.0e-4
 
+h2_even_tempered.in       , GW@HF on H2 molecules (even-tempered basis)
+SCF Total Energy          ,   -1.1291656908    , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.686847        , 0 , 1.0e-4
+GW HOMO energy            ,  -16.091881        , 0 , 1.0e-4
+
 co2.in                    , GW@LDA CO2 without RI with 6-31G, noparallel
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
 Nucleus Energy            ,   -548.2550188543  , 0 , 1.0e-7

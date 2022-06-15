@@ -81,10 +81,11 @@ basis:
   mandatory: 'yes'
   experimental: 'no'
   default: ''
-  comment: Sets the basis set For Pople sets, use 6-31G for instance or 6-31+G\*.
+  comment: Sets the basis set. For Pople sets, use 6-31G for instance or 6-31+G\*.
     For Dunning sets, use aug-cc-pVTZ for instance. Note
     that Pople sets are to be used with gaussian_type='cart' One may use ones own
     basis sets provided that the files are labeled X_mybasisset where X is the element.
+    Use 'even_tempered' for a systematic even-tempered basis. 
 
 comment:
   family: general
@@ -150,6 +151,34 @@ eri3_genuine:
   default: 'no'
   comment: If set to 'yes', the 2-center integrals will not be diagonalized
            and 3-center electron repulsion integrals will remain the genuine 3-center integrals.
+
+even_tempered_alpha:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0
+  comment: Largest exponent (most localized gaussian) in the even-tempered basis set construction.
+           Only meaningful when basis='even_tempered'.
+
+even_tempered_beta:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.5
+  comment: Ratio between two subsequent exponents in the the even-tempered basis set construction. 
+           Only meaningful when basis='even_tempered'.
+
+even_tempered_n_list:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: '1'
+  comment: List of number of orbital for each angular momentum. Expects a string of space-separated integers.
+           The maximum angular momentum is determined from the number of integers in the string.
+           Only meaningful when basis='even_tempered'.
 
 gaussian_type:
   family: general

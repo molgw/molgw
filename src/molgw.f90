@@ -146,7 +146,8 @@ program molgw
     ! Build up the basis set
     !
     write(stdout,*) 'Setting up the basis set for wavefunctions'
-    call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
+    call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
+                        even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
 
 
     !
@@ -163,7 +164,8 @@ program molgw
          .OR.  TRIM(capitalize(ecp_auxil_basis_name(1))) == 'AUTO' .OR. TRIM(capitalize(ecp_auxil_basis_name(1))) == 'PAUTO' ) then
         call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,auto_auxil_lmaxinc,auxil_basis)
       else
-        call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
+        call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type, &
+                            even_tempered_alpha,even_tempered_beta,even_tempered_n_list,auxil_basis)
       endif
     endif
 
