@@ -216,8 +216,8 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
      allocate(even_tempered_exponent(nshell_file))
      allocate(even_tempered_am(nshell_file))
      write(stdout,'(/,1x,a,i4)')         'Even-tempered basis is constructed for center: ',icenter
-     write(stdout,'(1x,a25,f8.3)')       'Parameter    alpha: ',even_tempered_alpha
-     write(stdout,'(1x,a25,f8.3)')       'Parameter     beta: ',even_tempered_beta
+     write(stdout,'(1x,a25,es16.4)')       'Parameter    alpha: ',even_tempered_alpha
+     write(stdout,'(1x,a25,es16.4)')       'Parameter     beta: ',even_tempered_beta
      write(stdout,'(1x,a25,*(i3,1x))')   'Parameter     lmax: ',SIZE(n_list(:))-1
      write(stdout,'(1x,a25,*(i3,1x))')   'Parameter   n_list: ',n_list(:)
      ishell_file = 0
@@ -471,9 +471,9 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
      endif
    enddo
    if( pauto ) then
-     nshell_max = nshell_max + nprim**2 * get_lmax_abs(lmax_obs,zbasis(icenter))
+     nshell_max = nshell_max + nprim**2 * ( get_lmax_abs(lmax_obs,zbasis(icenter)) + 1 )
    else
-     nshell_max = nshell_max + nprim * get_lmax_abs(lmax_obs,zbasis(icenter))
+     nshell_max = nshell_max + nprim * ( get_lmax_abs(lmax_obs,zbasis(icenter)) + 1 )
    endif
  enddo
 
