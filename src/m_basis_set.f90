@@ -216,8 +216,8 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
      allocate(even_tempered_exponent(nshell_file))
      allocate(even_tempered_am(nshell_file))
      write(stdout,'(/,1x,a,i4)')         'Even-tempered basis is constructed for center: ',icenter
-     write(stdout,'(1x,a25,es16.4)')       'Parameter    alpha: ',even_tempered_alpha
-     write(stdout,'(1x,a25,es16.4)')       'Parameter     beta: ',even_tempered_beta
+     write(stdout,'(1x,a25,es16.4)')     'Parameter    alpha: ',even_tempered_alpha
+     write(stdout,'(1x,a25,es16.4)')     'Parameter     beta: ',even_tempered_beta
      write(stdout,'(1x,a25,*(i3,1x))')   'Parameter     lmax: ',SIZE(n_list(:))-1
      write(stdout,'(1x,a25,*(i3,1x))')   'Parameter   n_list: ',n_list(:)
      ishell_file = 0
@@ -225,7 +225,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
        do ils=1,n_list(il)
          ishell_file = ishell_file + 1
          even_tempered_am(ishell_file)       = il-1
-         even_tempered_exponent(ishell_file) = even_tempered_alpha * even_tempered_beta**(ils-1)
+         even_tempered_exponent(ishell_file) = even_tempered_alpha * even_tempered_beta**( ((ils+2)/2-1)*(2*MODULO(ils,2)-1) )
          write(stdout,'(5x,a,es16.6,1x,i2)') '* even-tempered basis function (exponent, angular momentum):',&
                                               even_tempered_exponent(ishell_file), even_tempered_am(ishell_file)
        enddo

@@ -158,7 +158,7 @@ even_tempered_alpha:
   mandatory: 'no'
   experimental: 'no'
   default: 1.0
-  comment: Largest exponent (most localized gaussian) in the even-tempered basis set construction.
+  comment: Central exponent (most localized gaussian) in the even-tempered basis set construction.
            Only meaningful when basis='even_tempered'.
 
 even_tempered_beta:
