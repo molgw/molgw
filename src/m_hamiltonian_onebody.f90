@@ -360,11 +360,11 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
   enddo
 
   title='=== Overlap grad matrix X ==='
-  call dump_out_matrix(.TRUE.,title,s_matrix_grad(:,:,1))
+  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,1))
   title='=== Overlap grad matrix Y ==='
-  call dump_out_matrix(.TRUE.,title,s_matrix_grad(:,:,2))
+  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,2))
   title='=== Overlap grad matrix Z ==='
-  call dump_out_matrix(.TRUE.,title,s_matrix_grad(:,:,3))
+  call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,3))
 
   call stop_clock(timing_overlap)
 
@@ -723,7 +723,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   ! Reduce operation
   call world%sum(hamiltonian_nucleus)
 
-  call dump_out_matrix(.TRUE.,'===  Nucleus potential contribution ===',hamiltonian_nucleus)
+  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution ===',hamiltonian_nucleus)
 
   if( in_tddft_loop ) then
     call stop_clock(timing_tddft_hamiltonian_nuc)
@@ -1882,7 +1882,7 @@ subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
   ! Reduce operation
   call world%sum(hamiltonian_ecp)
 
-  call dump_out_matrix(.TRUE.,'=== ECP Nucleus potential contribution ===',hamiltonian_ecp)
+  call dump_out_matrix(.FALSE.,'=== ECP Nucleus potential contribution ===',hamiltonian_ecp)
 
   hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + hamiltonian_ecp(:,:)
 
