@@ -2,6 +2,21 @@
 #    MOLGW: Release Notes
 -----------------------------------------
 
+----------------------------------------
+## What's new in version 3.1.alpha
+### Overview
+- GTH pseudo potentials in CP2K format
+- even-tempered basis
+
+### Contributors
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+
+### Changes affecting the usage
+
+### Changes affecting the compilation
+
+### Changes affecting the developers
+
 
 -----------------------------------------
 ## What's new in version 3.0
@@ -43,6 +58,7 @@ To use LIBCINT, `my_machine.arch` should contain `LIBCINT=-lcint` and preprocess
 
 ### Changes affecting the developers
 - LIBCINT library offers many integral types that were not available with LIBINT. New opportunities are open.
+
 
 -----------------------------------------
 ## What's new in version 2.F

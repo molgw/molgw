@@ -1,0 +1,17 @@
+&molgw
+ 
+   scf='hf'
+   postscf='GW'
+   selfenergy_state_range=1
+
+   basis='even_tempered'
+   auxil_basis='auto'
+   even_tempered_alpha=10.0
+   even_tempered_beta= 0.3
+   even_tempered_n_list= '10 4 4'
+
+   natom=2
+/
+H  0. 0. 0.0
+H  0. 0. 0.8
+

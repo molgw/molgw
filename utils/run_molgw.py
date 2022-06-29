@@ -13,15 +13,8 @@
 
 import os, sys, shutil, stat, subprocess
 import collections
+import molgw
 
-##################################################
-
-def print_input_file(f,calc):
-    for key, value in calc.items():
-        if type(value) in [type(int()),type(float())] :
-            f.write('  {:30} = {}\n'.format(key,value) )
-        else:
-            f.write('  {:30} = \'{}\'\n'.format(key,value) )
 
 
 
@@ -126,12 +119,22 @@ for molecule in molecule_list:
   
         script.write('cd ' + folder + '\n')
         
-        with open('molgw.in','w') as fin:
-            fin.write('&molgw\n')
-            fin.write('  comment                 = \'' + molecule + '\'\n\n')
-            print_input_file(fin,calc)
-            fin.write('  xyz_file                = \'../../structures/' + molecule + '.xyz\'\n')
-            fin.write('/\n')
+        calc["comment"]  = molecule
+
+        # Two possible techniques to input the geometry
+        if False:
+            fxyz = open('../../structures/' + molecule + '.xyz',"r")
+            natom = int( fxyz.readline() )
+            calc["natom"] = natom
+            fxyz.readline()
+            string = fxyz.read()
+            fxyz.close()
+            calc["xyz"] = string
+        else:
+            calc["xyz_file"] = '../../structures/' + molecule + '.xyz'
+
+        molgw.print_input_file('molgw.in',calc)
+
   
         script.write(executable + ' molgw.in > molgw.out\n')
         if run_it:

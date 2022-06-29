@@ -179,6 +179,10 @@ ne_psp8.in                , LDA Ne atom with numerical pseudo in ONCVPSP psp8 fo
 SCF Total Energy          , -33.3866795065     , 0 , 1.0e-7
 gKS HOMO energy           , -13.532263         , 0 , 1.0e-4
 
+ne_gth.in                 , BLYP Ne atom with analytical pseudo in GTH formalism
+SCF Total Energy          , -34.9153582541     , 0 , 1.0e-7
+gKS HOMO energy           , -13.008824         , 0 , 1.0e-4
+
 h2o_scalapack.in          , H2O molecule within PBE0 with possibly SCALAPACK
 gKS HOMO energy           ,   -9.039335        , 0 , 1.0e-4
 gKS LUMO energy           ,   -0.359596        , 0 , 1.0e-4
@@ -276,6 +280,11 @@ GW HOMO energy            ,   -8.289499       , 0 , 1.0e-4
 GW HOMO energy            ,  -12.668274       , 1 , 1.0e-4
 GW LUMO energy            ,    0.872077       , 0 , 1.0e-4
 GW LUMO energy            ,    1.238943       , 1 , 1.0e-4
+
+h2_even_tempered.in       , GW@HF on H2 molecules (even-tempered basis)
+SCF Total Energy          ,   -1.1291656908    , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.686847        , 0 , 1.0e-4
+GW HOMO energy            ,  -16.091881        , 0 , 1.0e-4
 
 co2.in                    , GW@LDA CO2 without RI with 6-31G, noparallel
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7

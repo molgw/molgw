@@ -53,6 +53,22 @@ module m_libcint_tools
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_ovlp_cart
 
+    integer(C_INT) function cint1e_r2_origj_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_r2_origj_cart
+
+    integer(C_INT) function cint1e_r4_origj_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_r4_origj_cart
+
     integer(C_INT) function cint1e_kin_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
       import :: C_INT,C_DOUBLE
       integer(C_INT),value  :: natm,nbas
@@ -211,7 +227,7 @@ subroutine set_erf_screening_length_libcint(basis,rcut)
   if( rcut > 1.0e-12_dp ) then
     ! Ensure that LIBCINT can calculated "erf" range-separated Coulomb interaction
     if( .NOT. libcint_has_range_separation ) then
-       call die('')
+       call die('set_erf_screening_length_libcint: LIBCINT compilation does not support range separation')
     endif
     basis%LIBCINT_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_C_DOUBLE / rcut
   else
@@ -800,6 +816,99 @@ subroutine libcint_overlap_3center(amA,contrdepthA,A,alphaA,cA, &
 
 
 end subroutine libcint_overlap_3center
+
+
+!=========================================================================
+! Special routine for gth projectors
+! p_i^lm (r) = N_i^l Y_lm( (r-RC)^) (r-RC)**(l+2i−2) exp(-alphaC * (r-RC)**2)
+! Strategy
+! if iproj=1, it reduces to an overlap
+! if iproj=2, it reduces to an int1e_r2_origj
+! if iproj=3, it reduces to an int1e_r4_origj
+subroutine libcint_gth_projector(amA,contrdepthA,A,alphaA,cA, &
+                                 amC,contrdepthC,C,alphaC,cC, &
+                                 iproj,ovlpAC)
+  implicit none
+
+  integer(C_INT),intent(in)    :: amA,contrdepthA
+  real(C_DOUBLE),intent(in)    :: A(:)
+  real(C_DOUBLE),intent(in)    :: alphaA(:)
+  real(C_DOUBLE),intent(in)    :: cA(:)
+  integer(C_INT),intent(in)    :: amC,contrdepthC
+  real(C_DOUBLE),intent(in)    :: C(:)
+  real(C_DOUBLE),intent(in)    :: alphaC(:)
+  real(C_DOUBLE),intent(in)    :: cC(:)
+  integer(C_INT),intent(in)    :: iproj
+  real(C_DOUBLE),intent(inout)    :: ovlpAC(:)
+  !=====
+  real(C_DOUBLE) :: tmp_env(1000)
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,2)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,2)
+  integer(C_INT) :: shls(2)
+  integer        :: info,off
+  !=====
+
+  tmp_env(:) = 0.0_dp
+
+  off = LIBCINT_PTR_ENV_START
+
+  tmp_atm(LIBCINT_CHARGE_OF,1) = 1
+  tmp_atm(LIBCINT_PTR_COORD,1) = off
+  tmp_env(off+1:off+3) = C(1:3)
+  off = off + 3
+  tmp_atm(LIBCINT_CHARGE_OF,2) = 1
+  tmp_atm(LIBCINT_PTR_COORD,2) = off
+  tmp_env(off+1:off+3) = A(1:3)
+  off = off + 3
+
+  !
+  ! C
+  tmp_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   ,1)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF ,1)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  ,1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
+  off = off + contrdepthC
+  tmp_bas(LIBCINT_PTR_COEFF,1) = off
+  tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
+  off = off + contrdepthC
+  !
+  ! A
+  tmp_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   ,2)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF ,2)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  ,2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
+  off = off + contrdepthA
+  tmp_bas(LIBCINT_PTR_COEFF,2) = off
+  select case(amA)
+  case(0,1)
+    tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
+  case default
+    tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
+  end select
+  off = off + contrdepthA
+
+
+  shls(1) = 0
+  shls(2) = 1
+
+#if defined(HAVE_LIBCINT)
+  select case(iproj)
+  case(1)
+    info = cint1e_ovlp_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+  case(2)
+    info = cint1e_r2_origj_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+  case(3)
+    info = cint1e_r4_origj_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+  case default
+  end select
+#endif
+
+
+end subroutine libcint_gth_projector
 
 
 !=========================================================================

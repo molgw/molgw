@@ -14,7 +14,7 @@ module m_basis_set
  use m_timing
  use m_mpi
  use m_elements
- use m_string_tools, only: orbital_momentum_name
+ use m_string_tools, only: orbital_momentum_name,append_to_list
  use m_atoms
  use m_ecp
  use m_gaussian
@@ -75,17 +75,22 @@ module m_basis_set
 
  end type basis_set
 
+ private :: form_n_list
+
 contains
 
 
 !=========================================================================
-subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
+subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
+                          even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
  implicit none
 
- character(len=4),intent(in) :: gaussian_type
  character(len=*),intent(in) :: basis_path
  character(len=100),intent(in) :: basis_name(:)
+ character(len=4),intent(in) :: gaussian_type
  character(len=100),intent(in) :: ecp_basis_name(:)
+ real(dp),intent(in)           :: even_tempered_alpha,even_tempered_beta
+ character(len=*),intent(in)   :: even_tempered_n_list
  type(basis_set),intent(out)   :: basis
 !=====
  character(len=200)            :: basis_filename
@@ -101,6 +106,10 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  integer                       :: index_in_shell
  integer                       :: nx,ny,nz,mm
  real(dp)                      :: x0(3)
+ integer,allocatable :: n_list(:)
+ integer :: il,ils
+ real(dp),allocatable :: even_tempered_exponent(:)
+ integer,allocatable  :: even_tempered_am(:)
 !=====
 
  basis%nbf           = 0
@@ -128,33 +137,47 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
    endif
 
-   inquire(file=TRIM(basis_filename),exist=file_exists)
-   if(.NOT.file_exists) then
-     write(stdout,'(1x,a,a)') 'Looking for file ',TRIM(basis_filename)
-     write(stdout,'(1x,a)')   'Remember the basis directory path is obtained (by priority order) from:'
-     write(stdout,'(1x,a)')   '  1. the input variable basis_path'
-     write(stdout,'(1x,a)')   '  2. the environment variable MOLGW_BASIS_PATH'
-     write(stdout,'(1x,a)')   '  3. the location of the sources'
-     call die('init_basis_set: basis set file not found')
-   endif
+   if( INDEX(capitalize(basis_filename),'EVEN_TEMPERED' ) ==  0 ) then
+     inquire(file=TRIM(basis_filename),exist=file_exists)
+     if(.NOT.file_exists) then
+       write(stdout,'(1x,a,a)') 'Looking for file ',TRIM(basis_filename)
+       write(stdout,'(1x,a)')   'Remember the basis directory path is obtained (by priority order) from:'
+       write(stdout,'(1x,a)')   '  1. the input variable basis_path'
+       write(stdout,'(1x,a)')   '  2. the environment variable MOLGW_BASIS_PATH'
+       write(stdout,'(1x,a)')   '  3. the location of the sources'
+       call die('init_basis_set: basis set file not found')
+     endif
 
-   !
-   ! read first to get all the dimensions
-   open(newunit=basisfile,file=TRIM(basis_filename),status='old')
-   read(basisfile,*) nshell_file
-   if(nshell_file<1) call die('ERROR in basis set file')
-   do ishell_file=1,nshell_file
-     read(basisfile,*) ng,am_read
-     if(ng<1) call die('ERROR in basis set file')
-     if(am_read==10) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
-     basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_read)
-     basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_read)
-     basis%nshell   = basis%nshell   + 1
-     do ig=1,ng
-       read(basisfile,*)
+     !
+     ! read first to get all the dimensions
+     open(newunit=basisfile,file=TRIM(basis_filename),status='old')
+     read(basisfile,*) nshell_file
+     if(nshell_file<1) call die('ERROR in basis set file')
+     do ishell=1,nshell_file
+       read(basisfile,*) ng,am_read
+       if(ng<1) call die('ERROR in basis set file')
+       if(am_read==10) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
+       basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_read)
+       basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_read)
+       basis%nshell   = basis%nshell   + 1
+       do ig=1,ng
+         read(basisfile,*)
+       enddo
      enddo
-   enddo
-   close(basisfile)
+     close(basisfile)
+
+   else
+     !
+     ! in case of even-tempered basis, parse the options that matters for the dimensions
+     call form_n_list(even_tempered_n_list,n_list)
+
+     do il=1,SIZE(n_list(:))
+       basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,il-1) * n_list(il)
+       basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,il-1) * n_list(il)
+       basis%nshell   = basis%nshell   + n_list(il)
+     enddo
+     deallocate(n_list)
+   endif
 
  enddo
 
@@ -183,22 +206,56 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
    endif
 
-   open(newunit=basisfile,file=TRIM(basis_filename),status='old')
-   read(basisfile,*) nshell_file
-   do ishell_file=1,nshell_file
-     read(basisfile,*) ng,am_read
-     allocate(alpha(ng),coeff(ng))
 
-     do ig=1,ng
-       read(basisfile,*) alpha(ig),coeff(ig)
+   if( INDEX(capitalize(basis_filename),'EVEN_TEMPERED' ) ==  0 ) then
+     open(newunit=basisfile,file=TRIM(basis_filename),status='old')
+     read(basisfile,*) nshell_file
+   else
+     call form_n_list(even_tempered_n_list,n_list)
+     nshell_file = SUM(n_list(:))
+     allocate(even_tempered_exponent(nshell_file))
+     allocate(even_tempered_am(nshell_file))
+     write(stdout,'(/,1x,a,i4)')         'Even-tempered basis is constructed for center: ',icenter
+     write(stdout,'(1x,a25,es16.4)')     'Parameter    alpha: ',even_tempered_alpha
+     write(stdout,'(1x,a25,es16.4)')     'Parameter     beta: ',even_tempered_beta
+     write(stdout,'(1x,a25,*(i3,1x))')   'Parameter     lmax: ',SIZE(n_list(:))-1
+     write(stdout,'(1x,a25,*(i3,1x))')   'Parameter   n_list: ',n_list(:)
+     ishell_file = 0
+     do il=1,SIZE(n_list(:))
+       do ils=1,n_list(il)
+         ishell_file = ishell_file + 1
+         even_tempered_am(ishell_file)       = il-1
+         even_tempered_exponent(ishell_file) = even_tempered_alpha * even_tempered_beta**( ((ils+2)/2-1)*(2*MODULO(ils,2)-1) )
+         write(stdout,'(5x,a,es16.6,1x,i2)') '* even-tempered basis function (exponent, angular momentum):',&
+                                              even_tempered_exponent(ishell_file), even_tempered_am(ishell_file)
+       enddo
      enddo
+   endif
+
+   do ishell_file=1,nshell_file
+     ishell = ishell + 1
+
+     if( INDEX(capitalize(basis_filename),'EVEN_TEMPERED' ) ==  0 ) then
+       read(basisfile,*) ng,am_read
+       allocate(alpha(ng),coeff(ng))
+
+       do ig=1,ng
+         read(basisfile,*) alpha(ig),coeff(ig)
+       enddo
+     else
+       ng      = 1
+       am_read = even_tempered_am(ishell_file)
+       allocate(alpha(1),coeff(1))
+       alpha(1) = even_tempered_exponent(ishell_file)
+       coeff(1) = even_tempered_exponent(ishell_file)
+
+     endif
 
      x0(:) = xbasis(:,icenter)
 
      !
      ! Shell setup
      !
-     ishell = ishell + 1
 
      basis%shell(ishell)%am      = am_read
      basis%shell(ishell)%icenter = icenter
@@ -265,19 +322,55 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
      deallocate(alpha,coeff)
    enddo
-   close(basisfile)
+
+   if( INDEX(capitalize(basis_filename),'EVEN_TEMPERED' ) ==  0 ) then
+     close(basisfile)
+   else
+     deallocate(even_tempered_am,even_tempered_exponent)
+     deallocate(n_list)
+   endif
 
  !
- ! END OF THE LOOP OVER ATOMS
- enddo
+ ! END OF THE LOOP OVER BASIS CENTERS
+ enddo ! icenter
 
  ! Find the maximum angular momentum employed in the basis set
  basis%ammax = MAXVAL(basis%bfc(:)%am)
 
  call echo_basis_summary(basis)
 
-
 end subroutine init_basis_set
+
+
+!=========================================================================
+subroutine form_n_list(string_in,integers)
+ character(len=*),intent(in)     :: string_in
+ integer,allocatable,intent(inout) :: integers(:)
+ !====
+ character(len=256) :: string
+ integer :: ilen,inextblank,itmp
+ !====
+
+ if( ALLOCATED(integers) ) deallocate(integers)
+
+ ilen = LEN(TRIM(string_in))
+ if( ilen == 0 ) then
+   call die('init_basis_set_even_tempered: even-tempered basis requested but even_tempered_n_list is empty')
+ endif
+
+ string = string_in
+ do while( ilen > 0 )
+   string = ADJUSTL(string)
+   inextblank = INDEX(string,' ')
+
+   read(string(1:inextblank-1),'(i3)') itmp
+   call append_to_list(itmp,integers)
+
+   string = string(inextblank+1:)
+   ilen = LEN(TRIM(string))
+ enddo
+
+ end subroutine form_n_list
 
 
 !=========================================================================
@@ -378,9 +471,9 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
      endif
    enddo
    if( pauto ) then
-     nshell_max = nshell_max + nprim**2 * get_lmax_abs(lmax_obs,zbasis(icenter))
+     nshell_max = nshell_max + nprim**2 * ( get_lmax_abs(lmax_obs,zbasis(icenter)) + 1 )
    else
-     nshell_max = nshell_max + nprim * get_lmax_abs(lmax_obs,zbasis(icenter))
+     nshell_max = nshell_max + nprim * ( get_lmax_abs(lmax_obs,zbasis(icenter)) + 1 )
    endif
  enddo
 

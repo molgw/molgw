@@ -14,7 +14,7 @@
 <p>
 <a href=#charge>charge</a> <a href=#electric_field_x>electric_field_x</a> <a href=#electric_field_y>electric_field_y</a> <a href=#electric_field_z>electric_field_z</a> <a href=#length_unit>length_unit</a> <a href=#magnetization>magnetization</a> <a href=#natom>natom</a> <a href=#nghost>nghost</a> <a href=#nspin>nspin</a> <a href=#temperature>temperature</a> <a href=#xyz_file>xyz_file</a> <h3>General input variables</h3>
 <p>
-<a href=#auto_auxil_fsam>auto_auxil_fsam</a> <a href=#auto_auxil_lmaxinc>auto_auxil_lmaxinc</a> <a href=#auxil_basis>auxil_basis</a> <a href=#basis>basis</a> <a href=#comment>comment</a> <a href=#ecp_auxil_basis>ecp_auxil_basis</a> <a href=#ecp_basis>ecp_basis</a> <a href=#ecp_elements>ecp_elements</a> <a href=#ecp_quality>ecp_quality</a> <a href=#ecp_type>ecp_type</a> <a href=#eri3_genuine>eri3_genuine</a> <a href=#gaussian_type>gaussian_type</a> <a href=#incore>incore</a> <a href=#memory_evaluation>memory_evaluation</a> <a href=#move_nuclei>move_nuclei</a> <a href=#nstep>nstep</a> <a href=#scf>scf</a> <a href=#tolforce>tolforce</a> <h3>Self-consistency input variables</h3>
+<a href=#auto_auxil_fsam>auto_auxil_fsam</a> <a href=#auto_auxil_lmaxinc>auto_auxil_lmaxinc</a> <a href=#auxil_basis>auxil_basis</a> <a href=#basis>basis</a> <a href=#comment>comment</a> <a href=#ecp_auxil_basis>ecp_auxil_basis</a> <a href=#ecp_basis>ecp_basis</a> <a href=#ecp_elements>ecp_elements</a> <a href=#ecp_quality>ecp_quality</a> <a href=#ecp_type>ecp_type</a> <a href=#eri3_genuine>eri3_genuine</a> <a href=#even_tempered_alpha>even_tempered_alpha</a> <a href=#even_tempered_beta>even_tempered_beta</a> <a href=#even_tempered_n_list>even_tempered_n_list</a> <a href=#gaussian_type>gaussian_type</a> <a href=#incore>incore</a> <a href=#memory_evaluation>memory_evaluation</a> <a href=#move_nuclei>move_nuclei</a> <a href=#nstep>nstep</a> <a href=#scf>scf</a> <a href=#tolforce>tolforce</a> <h3>Self-consistency input variables</h3>
 <p>
 <a href=#alpha_hybrid>alpha_hybrid</a> <a href=#alpha_mixing>alpha_mixing</a> <a href=#beta_hybrid>beta_hybrid</a> <a href=#density_matrix_damping>density_matrix_damping</a> <a href=#diis_switch>diis_switch</a> <a href=#gamma_hybrid>gamma_hybrid</a> <a href=#grid_quality>grid_quality</a> <a href=#init_hamiltonian>init_hamiltonian</a> <a href=#integral_quality>integral_quality</a> <a href=#kerker_k0>kerker_k0</a> <a href=#level_shifting_energy>level_shifting_energy</a> <a href=#min_overlap>min_overlap</a> <a href=#mixing_scheme>mixing_scheme</a> <a href=#npulay_hist>npulay_hist</a> <a href=#nscf>nscf</a> <a href=#partition_scheme>partition_scheme</a> <a href=#scf_diago_flavor>scf_diago_flavor</a> <a href=#tolscf>tolscf</a> <h3>Correlation and excited states post-treatment input variables</h3>
 <p>
@@ -56,7 +56,7 @@ Sets the auxiliary basis set. For instance, cc-pVDZ-RI for a Weigend basis set. 
 <br><br>
 <i>Mandatory</i><br>
 Default: none<br><br>
-Sets the basis set For Pople sets, use 6-31G for instance or 6-31+G\*. For Dunning sets, use aug-cc-pVTZ for instance. Note that Pople sets are to be used with gaussian_type='cart' One may use ones own basis sets provided that the files are labeled X_mybasisset where X is the element.</li><br>
+Sets the basis set. For Pople sets, use 6-31G for instance or 6-31+G\*. For Dunning sets, use aug-cc-pVTZ for instance. Note that Pople sets are to be used with gaussian_type='cart' One may use ones own basis sets provided that the files are labeled X_mybasisset where X is the element. Use 'even_tempered' for a systematic even-tempered basis.</li><br>
 <hr>
 <a name=comment><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>comment</b>  </span>  
 <br><br>
@@ -99,6 +99,24 @@ Name of the Effective Core Potential. For instance, Gold using the cc-pVDZ-PP ba
 <i>Optional</i><br>
 Default: no<br><br>
 If set to 'yes', the 2-center integrals will not be diagonalized and 3-center electron repulsion integrals will remain the genuine 3-center integrals.</li><br>
+<hr>
+<a name=even_tempered_alpha><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>even_tempered_alpha</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 1.0<br><br>
+Central exponent (most localized gaussian) in the even-tempered basis set construction. Only meaningful when basis='even_tempered'.</li><br>
+<hr>
+<a name=even_tempered_beta><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>even_tempered_beta</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 0.5<br><br>
+Ratio between two subsequent exponents in the the even-tempered basis set construction. Only meaningful when basis='even_tempered'.</li><br>
+<hr>
+<a name=even_tempered_n_list><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>even_tempered_n_list</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 1<br><br>
+List of number of orbital for each angular momentum. Expects a string of space-separated integers. The maximum angular momentum is determined from the number of integers in the string. Only meaningful when basis='even_tempered'.</li><br>
 <hr>
 <a name=gaussian_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gaussian_type</b>  </span>  
 <br><br>
@@ -1087,5 +1105,5 @@ Default: none<br><br>
 Specifies the location of the xyz file that contains the atomic positions. It can be used as an alternate route to set atomic coordinate.</li><br>
 </ul>
 <br><br><br><br><br><br><br><br>
-<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 31 May 2022</i><br><br></body>
+<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 17 June 2022</i><br><br></body>
 </html>

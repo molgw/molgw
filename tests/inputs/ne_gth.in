@@ -1,0 +1,13 @@
+&molgw
+ scf='blyp'
+
+ ecp_basis='DZVP_cp2k'
+ auxil_basis='AUTO'
+
+ ecp_elements='Ne'
+ ecp_type='blyp.gth'
+
+ natom=1
+/
+Ne          .000000     .000000     .000000   
+

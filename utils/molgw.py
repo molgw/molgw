@@ -143,6 +143,23 @@ def create_gw100_json(filename,data,**kwargs):
 
 
 ########################################################################
+def print_input_file(filename,calc):
+    with open(filename,'w') as f:
+        f.write('&molgw\n')
+        for key, value in calc.items():
+            if key == "xyz":
+                continue
+            if type(value) in [type(int()),type(float())]:
+                f.write('  {:30} = {}\n'.format(key,value) )
+            else:
+                f.write('  {:30} = \'{}\'\n'.format(key,value) )
+        f.write('/\n')
+        if "xyz" in calc:
+            f.write(calc["xyz"])
+
+
+########################################################################
+# Conversions for stopping power
 def kev_to_au(mass,e_kev):
     return (1000.*e_kev*2.0/Ha_eV/(1836.1253*mass))**0.5
 
@@ -151,6 +168,7 @@ def au_to_kev(mass,v_au):
     
 
 ########################################################################
+# Load a gaussian cube file into a class
 class gaussian_cube:
     atoms_element = []    # list of elements
     atoms_position = []   # list of positions
