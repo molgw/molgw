@@ -342,6 +342,7 @@ restarting     = []
 parallel       = []
 need_scalapack = []
 need_gradients = []
+need_libcint   = []
 test_names     = []
 testinfo       = []
 
@@ -361,6 +362,7 @@ for line in ftestsuite:
     parallel.append(True)
     need_scalapack.append(False)
     need_gradients.append(False)
+    need_libcint.append(False)
 
   if len(parsing) == 3:
     ninput+=1
@@ -377,6 +379,7 @@ for line in ftestsuite:
       parallel.append(True)
     need_scalapack.append( 'need_scalapack' in parsing[2].lower() )
     need_gradients.append( 'need_gradients' in parsing[2].lower() )
+    need_libcint.append( 'need_libcint' in parsing[2].lower() )
 
   elif len(parsing) == 4:
     testinfo[ninput-1].append(parsing)
@@ -486,6 +489,12 @@ for iinput in range(ninput):
   out     = input_files[iinput].split('.in')[0]+'.out'
   restart = restarting[iinput]
 
+  if need_libcint[iinput] and not is_libcint:
+    test_files_skipped += 1
+    print('\nSkipping test file: '+inp)
+    print('  because this compilation of MOLGW does not have LIBCINT')
+    skipping_reason.append('this compilation of MOLGW does not have LIBCINT')
+    continue
   if need_scalapack[iinput] and not have_scalapack:
     test_files_skipped += 1
     print('\nSkipping test file: '+inp)
