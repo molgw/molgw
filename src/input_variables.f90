@@ -309,8 +309,8 @@
  n_iter=2
  n_restart_tddft=50
  ncore_tddft=0
- pred_corr='PC1'
- prop_type='MAG2'
+ pred_corr='PC2B'
+ prop_type='CN'
  projectile_charge_scaling=1.0_dp 
  r_disc=200.0_dp 
  tddft_frozencore='no'

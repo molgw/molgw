@@ -24,6 +24,8 @@
   excit_name                     = 'ion'
   vel_projectile                 = 0.0 0.0 1.0
   write_step                     = 0.1
+  print_charge_tddft             = 'yes' ! Print Lowdin charge on the projectile
+  calc_charge_step               = 1.0
 /
 He	0.000   0.000   0.000 
 H  	0.000   1.000  -10.00	cc-pVDZ	cc-pVDZ-RI 

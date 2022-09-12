@@ -1009,7 +1009,7 @@ subroutine predictor_corrector(basis,                  &
 
 
 ! ///////////////////////////////////
-case('MB_PC2B')
+ case('MB_PC2B')
 
    h_cmplx = ( 0.0_dp, 0.0_dp )
 
@@ -1502,8 +1502,8 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
    !write(file_mulliken,"(A)") "# Time (a.u.)        Re{q_A}         Im{q_A}"
 
    open(newunit=file_lowdin, file="lowdin_charge.dat")
-   write(file_lowdin,"(A)") "##### This is the Lodwin charge file #####"
-   write(file_lowdin,"(A)") "# Time (a.u.)        z_proj        q_A"
+   write(file_lowdin,"(A)") "##### This is the Lowdin charge file #####"
+   write(file_lowdin,"(A)") "# Time (a.u.)    x_proj, y_proj, z_proj (bohr)       q_A"
  end if
 
 !---------------------------------

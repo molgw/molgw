@@ -2125,7 +2125,7 @@ Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculatio
 
 **Type:** characters 
 
-**Default:** PC1 
+**Default:** PC2B 
 
 **Description:** 
 
@@ -2161,7 +2161,7 @@ Prints the big RESTART file at the end of the SCF loop. There are two kinds of R
 
 **Description:** 
 
-Prints a Mulliken_Charge file that contains real-time mulliken projections. 
+Prints a Mulliken_Charge file that contains real-time mulliken projections. Related keyword calc_charge_step sets the writing times. 
 
 
 ---
@@ -2573,7 +2573,7 @@ Rescaling of the projectile charge
 
 **Type:** characters 
 
-**Default:** MAG2 
+**Default:** CN 
 
 **Description:** 
 

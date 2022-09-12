@@ -654,7 +654,7 @@ print_charge_tddft:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Prints a Mulliken_Charge file that contains real-time mulliken projections.
+  comment: Prints a Mulliken_Charge file that contains real-time mulliken projections. Related keyword calc_charge_step sets the writing times.
 
 print_tddft_restart:
   family: io_rt_tddft
@@ -1158,7 +1158,7 @@ pred_corr:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: PC1
+  default: "PC2B"
   comment: Sets the predictor-corrector scheme in the real-time dynamics.
 
 prop_type:
@@ -1166,7 +1166,7 @@ prop_type:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: 'MAG2'
+  default: 'CN'
   comment: Sets the type of propagation algorithm in the real-time dynamics.
           'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.
 

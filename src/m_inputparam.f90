@@ -922,6 +922,12 @@ subroutine read_inputfile_namelist()
   if( eri3_genuine_ .AND. ( calc_type%need_exchange .OR. calc_type%need_exchange_lr ) ) then
     call die('eri3_genuine does not work with exact-exchange')
   endif
+  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(eri3_genuine_) ) then
+    call die('eri3_genuine is required for moving basis (=excit_name=ion)')
+  endif
+  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(pred_corr(1:2)=='MB') ) then
+    call die('Predictor-correction scheme is not valid for moving basis. Use instead MB_PC2B for instance')
+  endif
 
   spin_fact = REAL(-nspin+3,dp)
   electrons = SUM(zvalence(:)) - charge

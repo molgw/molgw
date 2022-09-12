@@ -674,8 +674,8 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
    if( PRESENT( atom_state_occ ) ) then
      call die("=== FILE ABSENT FOR TDDFT : manual_pdos ===")
    else
-     natom1=1
-     natom2=1
+     natom1=ncenter_nuclei  ! by convention the last atom is the projectile
+     natom2=ncenter_nuclei  ! by convention the last atom is the projectile
    end if
  endif
 
@@ -738,14 +738,13 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
  offset_nbf = sum(nbf_per_atom(1:atom_sampled-natom1+1))
  enddo
 
- n_column = 2 + size(proj_charge)! + size(proj_charge_orb)
+ n_column = 4 + natom_total ! + size(proj_charge_orb)
  write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
  if ( is_iomaster ) then
    if ( file_lowdin /= stdout ) then
-     write( file_lowdin, fmt=myfmt ) time_cur, xatom(3,ncenter_nuclei), proj_charge(:)!, proj_charge_orb(:)
-   else
-     write( stdout, * ) 'Lowdin projectile charge = ', proj_charge(size(proj_charge))
+     write( file_lowdin, fmt=myfmt ) time_cur, xatom(:,ncenter_nuclei), proj_charge(:)!, proj_charge_orb(:)
    end if
+   write(stdout,'(1x,a,es14.6)') 'Lowdin projectile charge: ', proj_charge(natom_total)
  end if
 
  deallocate(proj_charge)!, proj_charge_orb)
