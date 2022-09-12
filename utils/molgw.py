@@ -32,8 +32,16 @@ periodic_table = [ 'H',                                                         
 path = __file__.split("/utils")[0]
 exe  = path + "/molgw"
 
+#class mgwi:
+#
+#    def __init__(self,inp):
+#        self.input_parameters = inp
+
+
 ########################################################################
-def run(inputfile="molgw.in"):
+def run(inputfile="molgw.in",**kwargs):
+    if "pyinput" in kwargs:
+        print_input_file(kwargs["pyinput"],inputfile)       
     process = subprocess.Popen([exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     output, error = process.communicate()
     if len(error) > 100:
