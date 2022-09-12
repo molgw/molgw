@@ -432,6 +432,11 @@ subroutine identify_negligible_shellpair(basis)
    !$OMP                  shls,info,int_shell,integrals)
    !$OMP DO
    do ishell=1,basis%nshell
+     if( ANY(basis%shell(ishell)%v0(:) > 1e-6) .OR. ANY(basis%shell(jshell)%v0(:) > 1e-6) ) then
+       negligible_shellpair(ishell,jshell) = .FALSE.
+       negligible_shellpair(jshell,ishell) = .FALSE.
+       cycle
+     end if
      ami = basis%shell(ishell)%am
      if( ami < amj ) cycle
 
@@ -486,7 +491,9 @@ subroutine identify_negligible_shellpair(basis)
  enddo
 
  call world%and(negligible_shellpair)
-
+ !do ishell=1, basis%nshell
+ !  write(stdout, *) negligible_shellpair(:, ishell)
+ !end do
  call stop_clock(timing_eri_screening)
 
 

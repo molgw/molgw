@@ -60,6 +60,7 @@ module m_scf
     real(dp) :: total    = 0.0_dp
     real(dp) :: totalexx = 0.0_dp
     real(dp) :: excit    = 0.0_dp      ! TDDFT excitation energy
+    real(dp) :: id       = 0.0_dp      ! H-iD correction
     real(dp) :: time     = -1.0_dp     ! time in TDDFT
   end type
 

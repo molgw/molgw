@@ -613,7 +613,31 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  type(basis_set),intent(inout) :: basis,auxil_basis
  real(dp),intent(in)           :: rcut
  !=====
+ integer                      :: ishell,iauxil_shell
+ logical                      :: recalculation
+ logical,allocatable          :: mask(:),mask_auxil(:)
  !=====
+
+ !
+ ! If already allocataed, assume this is a recalculation of TDDFT
+ ! Only recalculate those integrals for projectile/target coupling
+ !
+ ! only implemented when eri3_genuine is 'yes'
+ !
+ recalculation = ALLOCATED(eri_2center) .AND. ALLOCATED(eri_3center) .AND. eri3_genuine_
+ if( recalculation ) then
+   allocate(mask(basis%nshell))
+   allocate(mask_auxil(auxil_basis%nshell))
+
+   do ishell = 1, basis%nshell
+     mask(ishell) = ANY( basis%shell(ishell)%v0 > 1.0e-6_dp )
+   end do
+   do iauxil_shell = 1, auxil_basis%nshell
+     mask_auxil(iauxil_shell) = ANY( auxil_basis%shell(iauxil_shell)%v0 > 1.0e-6_dp )
+   end do
+   !mask(:)       = ( basis%shell(:)%icenter       == MAXVAL(basis%shell(:)%icenter) )
+   !mask_auxil(:) = ( auxil_basis%shell(:)%icenter == MAXVAL(auxil_basis%shell(:)%icenter) )
+ endif
 
 
  !
@@ -621,7 +645,12 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  !
  call start_clock(timing_eri_2center)
 
- call calculate_integrals_eri_2center_scalapack(auxil_basis,rcut)
+ if( recalculation ) then
+   call calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil)
+ else
+   call calculate_integrals_eri_2center_scalapack(auxil_basis,rcut)
+ endif
+
  if( eri3_genuine_ ) then
    call calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
  else
@@ -637,12 +666,20 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  call start_clock(timing_eri_3center)
 
  if( eri3_genuine_ ) then
-   call calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
+   if( recalculation ) then
+     call calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask,mask_auxil)
+   else
+     call calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
+   endif
  else
    call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 
  call stop_clock(timing_eri_3center)
+
+
+ if( ALLOCATED(mask) )       deallocate(mask)
+ if( ALLOCATED(mask_auxil) ) deallocate(mask_auxil)
 
 
 end subroutine calculate_eri_ri
@@ -922,11 +959,16 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
    nlocal = SIZE(eri_2center,DIM=2)
 
    if( .NOT. is_longrange ) then
+     ! Deallocate first in case of a recalculation
+     call clean_deallocate('2-center integrals inverse',eri_2center_inv)
      call clean_allocate('2-center integrals inverse',eri_2center_inv,mlocal,nlocal)
      eri_2center_inv(:,:)    = eri_2center(:,:)
      nauxil_2center = auxil_basis%nbf
-     call distribute_auxil_basis(nauxil_2center)
+     ! Only call if it is not a recalculation
+     if( .NOT. ALLOCATED(ibf_auxil_g) ) call distribute_auxil_basis(nauxil_2center)
    else
+     ! Deallocate first in case of a recalculation
+     call clean_deallocate('2-center LR integrals inverse',eri_2center_inv_lr)
      call clean_allocate('2-center LR integrals inverse',eri_2center_inv_lr,mlocal,nlocal)
      eri_2center_inv_lr(:,:) = eri_2center(:,:)
      nauxil_2center_lr = auxil_basis%nbf
@@ -960,7 +1002,6 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
 
  endif
 
- call clean_deallocate('2-center integrals',eri_2center)
 
  write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, inverted and stored'
 
@@ -1398,6 +1439,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        am4 = aml
        ng3 = basis%shell(kshell)%ng
        ng4 = basis%shell(lshell)%ng
+
+
        allocate(alpha3(ng3),alpha4(ng4))
        allocate(coeff3(ng3),coeff4(ng4))
        alpha3(:) = basis%shell(kshell)%alpha(:)

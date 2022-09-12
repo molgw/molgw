@@ -19,7 +19,6 @@ module m_hamiltonian_tools
  use m_linear_algebra
  use m_inputparam
 
-
  interface setup_density_matrix
    module procedure setup_density_matrix_real
    module procedure setup_density_matrix_cmplx
@@ -848,7 +847,7 @@ subroutine setup_x_matrix(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
- write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}'
+ write(stdout,'(/,a)') ' Calculate the transformation matrix X '
 
  nbf = SIZE(s_matrix,DIM=1)
 
@@ -862,9 +861,6 @@ subroutine setup_x_matrix(TOL_OVERLAP,s_matrix,nstate,x_matrix)
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
- !
- ! S**{-1} = X * X**T
- !
  call clean_allocate('Overlap X * X**H = S**-1',x_matrix,nbf,nstate)
 
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
@@ -875,6 +871,7 @@ subroutine setup_x_matrix(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  !! X = U*s^(-1/2)
  istate = 0
  do jbf=1,nbf
+
    if( s_eigval(jbf) > TOL_OVERLAP ) then
      istate = istate + 1
      x_matrix(:,istate) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
@@ -885,6 +882,51 @@ subroutine setup_x_matrix(TOL_OVERLAP,s_matrix,nstate,x_matrix)
  deallocate(matrix_tmp,s_eigval)
 
 end subroutine setup_x_matrix
+
+
+!=========================================================================
+subroutine setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
+ implicit none
+
+ real(dp),intent(in)                          :: s_matrix(:,:)
+ real(dp),allocatable,intent(inout)           :: s_matrix_sqrt(:,:)
+!=====
+ integer  :: nbf
+ integer  :: jbf,i_sign
+ real(dp),allocatable :: s_eigval(:)
+ real(dp),allocatable :: matrix_tmp(:,:)
+ real(dp),allocatable :: y_matrix(:,:)
+!=====
+
+ nbf = SIZE(s_matrix,DIM=1)
+
+ allocate(matrix_tmp(nbf,nbf))
+ allocate(s_eigval(nbf))
+ allocate(y_matrix(nbf,nbf))
+ y_matrix(:,:) = 0.0_dp
+
+ matrix_tmp(:,:) = s_matrix(:,:)
+ ! Diagonalization with SCALAPACK
+ !! S = U*s*U^H
+ call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
+
+ ! Fix the sign of eigenvectors in matrix_tmp to be positive on the 1st element
+ !do i_sign = 1,nbf
+ !  if( matrix_tmp(1,i_sign)/abs(matrix_tmp(1,i_sign)) < 0.0_dp ) then
+ !    matrix_tmp(:,i_sign) = -matrix_tmp(:,i_sign)
+ !  end if
+ !enddo
+
+ do jbf=1,nbf
+   y_matrix(:,jbf) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
+ enddo
+
+ !! Calculate S^{1/2} matrix
+ s_matrix_sqrt(:,:) = MATMUL( matrix_tmp(:,:), TRANSPOSE( y_matrix(:,:) ) )
+
+ deallocate(matrix_tmp,s_eigval,y_matrix)
+
+end subroutine setup_sqrt_overlap
 
 
 !=========================================================================

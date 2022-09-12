@@ -5,7 +5,7 @@
 # Author: Fabien Bruneval
 #
 # This python module provides useful functions to read molgw.yaml files
-# 
+#
 #
 ##################################################
 
@@ -65,7 +65,7 @@ def get_chemical_formula(calc):
     element_list += [ 'O', 'F', 'Cl', 'Br', 'I', 'H']
 
     numbers = [0 for x in element_list]
-    
+
     for atom in calc["physical system"]["atom list"]:
         i = element_list.index(atom[0])
         numbers[i] += 1
@@ -77,7 +77,7 @@ def get_chemical_formula(calc):
             formula += e
     return formula
 
- 
+
 ########################################################################
 def print_xyz_file(calc,filename):
     atom_list = calc["physical system"]["atom list"]
@@ -190,7 +190,7 @@ def kev_to_au(e_kev,mass=1.0):
 
 def au_to_kev(v_au,mass=1.0):
     return 0.5*mass*1836.1253*v_au**2*Ha_eV/1000.
-    
+
 
 ########################################################################
 # Load a gaussian cube file into a class

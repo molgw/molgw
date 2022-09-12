@@ -1020,6 +1020,7 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: descm(NDEL),descz(NDEL)
  real(dp),allocatable :: matrix(:,:)
+ real(dp),allocatable :: eigvec(:,:)
  integer :: rank_master
 !=====
 
@@ -1083,7 +1084,6 @@ subroutine diagonalize_scalapack_dp(flavor,scalapack_block_min,matrix_global,eig
 
 
 end subroutine diagonalize_scalapack_dp
-
 
 !=========================================================================
 ! Diagonalize a non-distributed matrix
