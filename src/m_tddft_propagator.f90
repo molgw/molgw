@@ -108,6 +108,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
  complex(dp)                :: Nelec
  logical                    :: is_identity_ ! keep this varibale
+ logical                    :: moving_basis
 !==cube_diff varibales====================================
  real(dp),allocatable       :: cube_density_start(:,:,:,:)
  logical                    :: file_exists
@@ -135,6 +136,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  else
    nocc = get_number_occupied_states(occupation)
  end if
+ !
+ !
+ ! Initialize main switch moving_basis == .TRUE.  => propagate C
+ !                                                => effective hamiltonian = S^-1 (H - iD)
+ !                        moving_basis == .FALSE. => propagate C' = XC
+ !                                                => effective hamiltonian = H
+ moving_basis = excit_type%form == EXCIT_PROJECTILE_W_BASIS .OR. pred_corr(1:2)=='MB'
 
  write(stdout,*) 'Splitting basis set into TARGET and PROJECTILE basis sets'
  call split_basis_set(basis,basis_t,basis_p)
@@ -165,7 +173,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  write(stdout,'(/,1x,a)') "===INITIAL CONDITIONS==="
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
-   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .OR. pred_corr(1:2)=='MB' ) then
+   if( moving_basis ) then
      call read_restart_tddft(nstate,time_read,occupation,c_matrix_cmplx)
    else
      ! assign xatom_start, c_matrix_orth_cmplx, time_min with values given in RESTART File
@@ -595,6 +603,7 @@ subroutine echo_tddft_variables()
  write(stdout,'(2x,a32,2x,es16.8)') 'Simulation time: time_sim',time_sim
  write(stdout,'(2x,a32,2x,es16.8)') 'Time step: time_step',time_step
  write(stdout,'(2x,a32,2x,i8)') 'Number of iterations: ntau',NINT((time_sim)/time_step)
+ write(stdout,'(2x,a32,6x,l1)') 'Moving basis: ',moving_basis
  write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector: pred_corr',pred_corr
  write(stdout,'(2x,a32,6x,a)')      'Propagator: prop_type',prop_type
  write(stdout,'(2x,a32,2x,i8)')     'Number of occupied states: nocc',nocc
