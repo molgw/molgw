@@ -9,7 +9,7 @@
 #
 ##################################################
 
-import os, sys
+import os, sys, subprocess
 import json
 from yaml import load, dump
 try:
@@ -28,6 +28,23 @@ periodic_table = [ 'H',                                                         
                    'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', \
                    'Th', 'Pa',  'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', \
                    'Fr', 'Ra', 'Ac', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt' ]
+
+path = __file__.split("/utils")[0]
+exe  = path + "/molgw"
+
+########################################################################
+def run(inputfile="molgw.in"):
+    process = subprocess.Popen([exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    output, error = process.communicate()
+    if len(error) > 100:
+        print(error.decode("utf-8"))
+    with open('molgw.yaml', 'r') as stream:
+        try:
+            results = load(stream,Loader=Loader)
+        except:
+            print('molgw.yaml file is corrupted')
+            pass
+    return results
 
 
 ########################################################################
@@ -143,26 +160,44 @@ def create_gw100_json(filename,data,**kwargs):
 
 
 ########################################################################
-def kev_to_au(mass,e_kev):
+def print_input_file(calc,filename="molgw.in"):
+    with open(filename,'w') as f:
+        f.write('&molgw\n')
+        for key, value in calc.items():
+            if key == "xyz":
+                continue
+            if type(value) in [type(int()),type(float())]:
+                f.write('  {:30} = {}\n'.format(key,value) )
+            else:
+                f.write('  {:30} = \'{}\'\n'.format(key,value) )
+        f.write('/\n')
+        if "xyz" in calc:
+            f.write(calc["xyz"])
+
+
+########################################################################
+# Conversions for stopping power
+def kev_to_au(e_kev,mass=1.0):
     return (1000.*e_kev*2.0/Ha_eV/(1836.1253*mass))**0.5
 
-def au_to_kev(mass,v_au):
+def au_to_kev(v_au,mass=1.0):
     return 0.5*mass*1836.1253*v_au**2*Ha_eV/1000.
 
 
 ########################################################################
+# Load a gaussian cube file into a class
 class gaussian_cube:
     atoms_element = []    # list of elements
     atoms_position = []   # list of positions
     nx = 0                # number of grid points along 1st vector
     ny = 0                # number of grid points along 2nd vector
     nz = 0                # number of grid points along 3rd vector
-    dx = []               # 1st vector
-    dy = []               # 2nd vector
-    dz = []               # 3rd vector
+    dx = []               # 1st vector in bohr
+    dy = []               # 2nd vector in bohr
+    dz = []               # 3rd vector in bohr
     rr = []               # grid points list
     data = []             # volumetric data
-    dv = 0.0              # grid point associated volume
+    dv = 0.0              # grid point associated volume in bohr^3
 
     # Initialize class with a file "filename"
     def __init__(self,filename):

@@ -18,6 +18,7 @@ module m_ecp
   integer,parameter :: ECP_NWCHEM = 1
   integer,parameter :: ECP_PSP6   = 2
   integer,parameter :: ECP_PSP8   = 3
+  integer,parameter :: ECP_GTH    = 4
 
   integer,protected                :: nelement_ecp
   integer,protected,allocatable    :: element_ecp(:)
@@ -31,6 +32,14 @@ module m_ecp
     integer,allocatable  :: nk(:)          ! r**(nk-2)
     real(dp),allocatable :: dk(:)          ! dk coefficient
     real(dp),allocatable :: zetak(:)       ! zetak coefficient (gaussian exponent)
+    ! Analytic GTH
+    real(dp)              :: gth_rpploc      ! r_loc^pp   following Krack's notation [Theor Chem Acc 114, 145 (2005)]
+    integer               :: gth_nloc        ! number of Ci^pp coefficients in the local potential
+    real(dp),allocatable  :: gth_cipp(:)     ! Ci^pp      following Krack's notation
+    integer               :: gth_nl          ! number of angular momenta
+    integer,allocatable   :: gth_npl(:)      ! number of projectors for angular momentum l
+    real(dp),allocatable  :: gth_rl(:)       ! r^l        following Krack's notation
+    real(dp),allocatable  :: gth_hijl(:,:)   ! h_ij^l     following Krack's notation
     ! KB numerical pseudo on a grid
     integer              :: mmax = 0
     real(dp),allocatable :: rad(:)
@@ -38,6 +47,7 @@ module m_ecp
     real(dp),allocatable :: vpspll(:,:)
     real(dp),allocatable :: ekb(:)
   end type
+
 
   type(effective_core_potential),allocatable :: ecp(:)
 
@@ -114,8 +124,9 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
   allocate(ecp(nelement_ecp))
 
   ecp(:)%ecp_format = ECP_NWCHEM
-  if( INDEX(ecp_name,'psp6') /= 0 ) ecp(:)%ecp_format = ECP_PSP6
-  if( INDEX(ecp_name,'psp8') /= 0 ) ecp(:)%ecp_format = ECP_PSP8
+  if( INDEX(capitalize(ecp_name),'PSP6') /= 0 ) ecp(:)%ecp_format = ECP_PSP6
+  if( INDEX(capitalize(ecp_name),'PSP8') /= 0 ) ecp(:)%ecp_format = ECP_PSP8
+  if( INDEX(capitalize(ecp_name),'GTH') /= 0 )  ecp(:)%ecp_format = ECP_GTH
 
   !
   ! Second, read the ECP parameters from ECP file
@@ -142,6 +153,8 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
       call read_psp6_file(ecp_filename,element,ecp(ielement_ecp))
     case(ECP_PSP8)
       call read_psp8_file(ecp_filename,element,ecp(ielement_ecp))
+    case(ECP_GTH)
+      call read_gth_file(ecp_filename,element,ecp(ielement_ecp))
     end select
 
     write(stdout,'(6x,a,i3)') 'Core electrons ',ecp(ielement_ecp)%ncore
@@ -180,7 +193,13 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
   case(ECP_PSP6,ECP_PSP8)
     nradial_ecp = MINVAL(ecp(:)%mmax) - 1   ! Remove the last point for safety, usually all the projectors are zero anyway there
   end select
-  write(stdout,'(1x,a,i5,2x,i5)') 'ECP are integrated numerically with a grid (radial,angular): ',nradial_ecp,nangular_ecp
+
+  select case(ecp(1)%ecp_format)
+  case(ECP_GTH)
+    write(stdout,'(1x,a)') 'ECP are integrated analytically'
+  case default
+    write(stdout,'(1x,a,i5,2x,i5)') 'ECP are integrated numerically with a grid (radial,angular): ',nradial_ecp,nangular_ecp
+  end select
 
 end subroutine init_ecp
 
@@ -471,6 +490,86 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
 
 
 end subroutine read_psp8_file
+
+
+!=========================================================================
+subroutine read_gth_file(ecp_filename,element,ecpi)
+  implicit none
+
+  character(*),intent(in)                      :: ecp_filename
+  character(len=2),intent(in)                  :: element
+  type(effective_core_potential),intent(inout) :: ecpi
+  !=====
+  integer            :: ecpunit
+  integer            :: iline,i1,i2,i3,i4,istat,il
+  character(len=132) :: line
+  real(dp)           :: rtmp
+  logical            :: end_of_file
+  !=====
+
+  write(stdout,*) 'read GTH ECP file:',TRIM(ecp_filename)
+  open(newunit=ecpunit,file=TRIM(ecp_filename),status='old',action='read')
+
+  ! Reading an GTH file in CP2K format
+
+  ! First line is a comment
+  read(ecpunit,'(a)',iostat=istat) line
+
+  ! Second line contains 1, 2, or 3 integers that counts the number of valence electrons for s, p, d
+  read(ecpunit,'(a)',iostat=istat) line
+
+  i1=0;i2=0;i3=0
+  read(line,*,iostat=istat) i1,i2,i3
+  if( istat /= 0 ) then
+    read(line,*,iostat=istat) i1,i2
+    if( istat /= 0 ) then
+      read(line,*,iostat=istat) i1
+      if( istat /= 0 ) call die('read_gth_file: 2nd line is not compliant with CP2K format')
+    endif
+  endif
+
+  ecpi%ncore = element_number(element) - i1 - i2 - i3
+
+  read(ecpunit,*,iostat=istat) ecpi%gth_rpploc,ecpi%gth_nloc
+  allocate(ecpi%gth_cipp(ecpi%gth_nloc))
+  read(ecpunit,*,iostat=istat) i1
+  ecpi%gth_nl = i1
+  allocate(ecpi%gth_rl(ecpi%gth_nl))
+  allocate(ecpi%gth_npl(ecpi%gth_nl))
+  allocate(ecpi%gth_hijl(6,ecpi%gth_nl))
+  do il=1,ecpi%gth_nl
+    read(ecpunit,*,iostat=istat) rtmp,ecpi%gth_npl(il)
+    if( ecpi%gth_npl(il) > 1 ) read(ecpunit,*,iostat=istat)
+    if( ecpi%gth_npl(il) > 2 ) read(ecpunit,*,iostat=istat)
+  enddo
+  close(ecpunit)
+
+  open(newunit=ecpunit,file=TRIM(ecp_filename),status='old',action='read')
+  read(ecpunit,'(a)',iostat=istat) line
+  read(ecpunit,'(a)',iostat=istat) line
+  read(ecpunit,*,iostat=istat) ecpi%gth_rpploc,i1,ecpi%gth_cipp(:)
+  read(ecpunit,*,iostat=istat) i1
+  do il=1,ecpi%gth_nl
+    select case(ecpi%gth_npl(il))
+    case(1)
+      read(ecpunit,*,iostat=istat) ecpi%gth_rl(il),i1,ecpi%gth_hijl(1,il)
+    case(2)
+      read(ecpunit,*,iostat=istat) ecpi%gth_rl(il),i1,ecpi%gth_hijl(1:2,il)
+      read(ecpunit,*,iostat=istat)                    ecpi%gth_hijl(3,il)
+    case(3)
+      read(ecpunit,*,iostat=istat) ecpi%gth_rl(il),i1,ecpi%gth_hijl(1:3,il)
+      read(ecpunit,*,iostat=istat)                    ecpi%gth_hijl(4:5,il)
+      read(ecpunit,*,iostat=istat)                    ecpi%gth_hijl(  6,il)
+    case default
+      call die('read_gth_file: i > 3 in non-local GTH projector is not possible')
+    end select
+  enddo
+
+
+  close(ecpunit)
+
+
+end subroutine read_gth_file
 
 
 !=========================================================================
