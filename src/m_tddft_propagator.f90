@@ -40,6 +40,7 @@ module m_tddft_propagator
  real(dp),allocatable,private       :: xbasis_start(:,:)
  real(dp),allocatable,private       :: count_atom_e(:,:), count_atom_e_copy(:,:)
  real(dp),private                   :: excit_field_norm
+ logical,private                    :: moving_basis
  !==hamiltonian extrapolation variables==
  real(dp),allocatable,private       :: extrap_coefs(:)
  complex(dp),allocatable,private    :: h_small_hist_cmplx(:,:,:,:)
@@ -103,12 +104,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  integer                    :: iwrite_step
  integer                    :: file_time_data,file_excit_field
  integer                    :: file_dipole_time
- integer                    :: file_mulliken, file_lowdin, checkfile
+ integer                    :: file_mulliken, file_lowdin
  real(dp)                   :: time_cur,time_one_iter
  complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
  complex(dp)                :: Nelec
  logical                    :: is_identity_ ! keep this varibale
- logical                    :: moving_basis
 !==cube_diff varibales====================================
  real(dp),allocatable       :: cube_density_start(:,:,:,:)
  logical                    :: file_exists
@@ -139,8 +139,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  !
  !
  ! Initialize main switch moving_basis == .TRUE.  => propagate C
- !                                                => effective hamiltonian = S^-1 (H - iD)
- !                        moving_basis == .FALSE. => propagate C' = XC
+ !                                                => effective hamiltonian = S^{-1} (H - iD)
+ !                        moving_basis == .FALSE. => propagate C' = X^{-1} C
  !                                                => effective hamiltonian = H
  moving_basis = excit_type%form == EXCIT_PROJECTILE_W_BASIS .OR. pred_corr(1:2)=='MB'
 
@@ -210,7 +210,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  end if
 
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
-   if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS .AND. pred_corr(1:2)/='MB' ) then
+   if( .NOT. moving_basis ) then
      do ispin=1,nspin
        c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
      end do
@@ -265,6 +265,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      !! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
      !! which are also that of  U = S**-1 * ( H - i*D )
      if( natom <= 1 ) then
+       ! only tested for natom==1
        call init_c_matrix(basis,               &
                           time_min,            &
                           s_matrix,            &
@@ -411,7 +412,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  iwrite_step = 1
  itau = 1
  in_tddft_loop = .TRUE.
- !open( newunit=checkfile, file='S_matrix.dat' )
 
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if ( itau == 3 ) then
@@ -511,7 +511,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
    ! ---print tdddft restart each n_restart_tddft steps---
    if ( print_tddft_restart_ .AND. mod(itau,n_restart_tddft)==0 ) then
-     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .OR. pred_corr(1:2)=='MB' ) then
+     if( moving_basis ) then
        call write_restart_tddft(nstate,time_cur,occupation,c_matrix_cmplx)
      else
        call write_restart_tddft(nstate,time_cur,occupation,c_matrix_orth_cmplx)
@@ -523,12 +523,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
 !---
  end do
- !close(checkfile)
  in_tddft_loop = .FALSE.
 !********end time loop*******************
 
  if(print_tddft_restart_) then
-   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS  .OR. pred_corr(1:2)=='MB') then
+   if( moving_basis ) then
      !time_cur-time_step to be consistent with the actual last moment of the simulation
      call write_restart_tddft(nstate,time_cur-time_step,occupation,c_matrix_cmplx)
    else
@@ -600,14 +599,14 @@ subroutine echo_tddft_variables()
  implicit none
 
  write(stdout,'(/,1x,a)') 'The most important variables of this section:'
- write(stdout,'(2x,a32,2x,es16.8)') 'Simulation time: time_sim',time_sim
- write(stdout,'(2x,a32,2x,es16.8)') 'Time step: time_step',time_step
- write(stdout,'(2x,a32,2x,i8)') 'Number of iterations: ntau',NINT((time_sim)/time_step)
- write(stdout,'(2x,a32,6x,l1)') 'Moving basis: ',moving_basis
- write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector: pred_corr',pred_corr
- write(stdout,'(2x,a32,6x,a)')      'Propagator: prop_type',prop_type
- write(stdout,'(2x,a32,2x,i8)')     'Number of occupied states: nocc',nocc
- write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length: n_hist',n_hist
+ write(stdout,'(2x,a32,2x,es16.8)') 'Simulation time:',time_sim
+ write(stdout,'(2x,a32,2x,es16.8)') 'Time step:',time_step
+ write(stdout,'(2x,a32,2x,i8)') 'Number of iterations:',NINT((time_sim)/time_step)
+ write(stdout,'(2x,a32,6x,l1)') 'Moving basis:',moving_basis
+ write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector:',TRIM(pred_corr)
+ write(stdout,'(2x,a32,6x,a)')      'Propagator:',TRIM(prop_type)
+ write(stdout,'(2x,a32,2x,i8)')     'Number of occupied states:',nocc
+ write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length:',n_hist
 
 end subroutine echo_tddft_variables
 
@@ -797,7 +796,7 @@ subroutine setup_D_matrix_analytic(basis,d_matrix,recalc)
  real(dp),intent(inout)              :: d_matrix(:,:)
  logical,intent(in)                  :: recalc
 !=====
- integer                             :: jbf,ibasis_center
+ integer                             :: jbf
  real(dp),allocatable                :: s_matrix_grad(:,:,:)
 !=====
 
@@ -823,12 +822,15 @@ subroutine setup_D_matrix_analytic(basis,d_matrix,recalc)
 
  if ( recalc ) then
    do jbf=basis_t%nbf+1,basis%nbf
-     d_matrix(1:basis_t%nbf,jbf) = MATMUL( s_matrix_grad(1:basis_t%nbf,jbf,:), vel_basis(:,ncenter_basis) )
+     d_matrix(1:basis_t%nbf,jbf) = s_matrix_grad(1:basis_t%nbf,jbf,1) * basis_p%bff(1)%v0(1) &
+                                  +s_matrix_grad(1:basis_t%nbf,jbf,2) * basis_p%bff(1)%v0(2) &
+                                  +s_matrix_grad(1:basis_t%nbf,jbf,3) * basis_p%bff(1)%v0(3)
    end do
  else
    do jbf=1,basis%nbf
-     ibasis_center = basis%bff(jbf)%icenter
-     d_matrix(:,jbf) = MATMUL( s_matrix_grad(:,jbf,:), vel_basis(:,ibasis_center) )
+     d_matrix(:,jbf) = s_matrix_grad(:,jbf,1) * basis%bff(jbf)%v0(1) &
+                     + s_matrix_grad(:,jbf,2) * basis%bff(jbf)%v0(2) &
+                     + s_matrix_grad(:,jbf,3) * basis%bff(jbf)%v0(3)
    end do
  end if
 
