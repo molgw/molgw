@@ -446,10 +446,10 @@ subroutine split_basis_set(basis,basis_t,basis_p)
  basis_t%ammax = MAXVAL(basis_t%bfc(:)%am)
  basis_p%ammax = MAXVAL(basis_p%bfc(:)%am)
 
- write(stdout,'(/,a)') '==== TARGET basis summary ===='
+ write(stdout,'(/,1x,a)') '==== TARGET basis summary ===='
  call echo_basis_summary(basis_t)
 
- write(stdout,'(/,a)') '==== PROJECTILE basis summary ===='
+ write(stdout,'(/,1x,a)') '==== PROJECTILE basis summary ===='
  call echo_basis_summary(basis_p)
 
 

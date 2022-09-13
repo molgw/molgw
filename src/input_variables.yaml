@@ -1194,6 +1194,14 @@ tddft_frozencore:
   default: 'no'
   comment: Do not "propagate" states mentioned in the manual_tddft_frozencore file in the real-time dynamics.
 
+tddft_wfn_t0:
+  family: rt_tddft
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'SCF'
+  comment: Specifies the method to obtain the initial wavefunctions. Possible values are 'SCF' or 'STATIONNARY'.
+
 time_sim:
   family: rt_tddft
   datatype: real

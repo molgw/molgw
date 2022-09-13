@@ -440,9 +440,9 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
 
  call start_clock(timing_overlap_grad)
 #if defined(HAVE_LIBCINT)
-  write(stdout,'(/,a)') 'Recalculate gradient of the overlap matrix S (LIBCINT)'
+  write(stdout,'(/,1x,a)') 'Recalculate gradient of the overlap matrix S (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
-  write(stdout,'(/,a)') 'Recalculate gradient of the overlap matrix S (LIBINT)'
+  write(stdout,'(/,1x,a)') 'Recalculate gradient of the overlap matrix S (LIBINT)'
 #else
   call die('recalc_overlap_grad: missing LIBINT or LIBCINT one-body gradient terms')
 #endif
@@ -667,11 +667,11 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
 
  call start_clock(timing_hamiltonian_kin)
 #if defined(HAVE_LIBCINT)
- write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (LIBCINT)'
+ write(stdout,'(/,1x,a)') 'Recalculate kinetic part of the Hamiltonian (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
- write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (LIBINT)'
+ write(stdout,'(/,1x,a)') 'Recalculate kinetic part of the Hamiltonian (LIBINT)'
 #else
- write(stdout,'(/,a)') 'Recalculate kinetic part of the Hamiltonian (internal)'
+ write(stdout,'(/,1x,a)') 'Recalculate kinetic part of the Hamiltonian (internal)'
 #endif
 
 
@@ -1023,11 +1023,11 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
  call start_clock(timing_tddft_hamiltonian_nuc)
 
 #if defined(HAVE_LIBCINT)
- write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBCINT)'
+ write(stdout,'(/,1x,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
- write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBINT)'
+ write(stdout,'(/,1x,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
- write(stdout,'(/,a)') 'Recalculate nucleus-electron part of the Hamiltonian (internal)'
+ write(stdout,'(/,1x,a)') 'Recalculate nucleus-electron part of the Hamiltonian (internal)'
 #endif
 
  hamiltonian_nucleus( :, basis_t%nbf+1: ) = 0.0_dp

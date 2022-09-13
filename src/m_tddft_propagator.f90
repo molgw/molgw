@@ -259,12 +259,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                               h_cmplx,en_tddft)
 
 
- ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      !! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
      !! which are also that of  U = S**-1 * ( H - i*D )
-     if( natom <= 1 ) then
+     select case(tddft_wfn_t0)
+     case('STATIONNARY')
        ! only tested for natom==1
        call init_c_matrix(basis,               &
                           time_min,            &
@@ -280,12 +280,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                           h_cmplx,             &
                           h_small_cmplx,       &
                           en_tddft)
-     else
-       write(stdout, *)
-       write(stdout, *) '===== C matrix initialization is skipped ====='
-       continue
-     end if
+     case('SCF')
+       write(stdout,'(/,1x,a)') '===== C matrix initialization is skipped ====='
+     end select
    else
+     ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
      call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
      allocate(energy_tddft(nstate,nspin))
      do ispin=1, nspin
@@ -300,7 +299,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  end if
 
  !!!!! Test for |<psi_scf|e^ivr|psi_t0>|^2 = 1
-
  !call calculate_gos_ao_mb(basis,gos_ao)
  !allocate(gos_mo(nocc,nocc))
  !gos_mo(:,:) = MATMUL( TRANSPOSE(CONJG( c_matrix_cmplx(:,:,1) )), MATMUL( gos_ao(:,:), c_matrix_cmplx_scf(:,:,1) ) )
