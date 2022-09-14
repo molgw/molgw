@@ -199,7 +199,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
  ! x_matrix is now allocated with dimension (basis%nbf,nstate))
 
  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-   call setup_D_matrix_analytic(basis,d_matrix,.FALSE.)
+   call setup_d_matrix(basis,d_matrix,.FALSE.)
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
  else
@@ -259,6 +259,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                               h_cmplx,en_tddft)
 
 
+ !
+ ! If not restarting, initialize the coefficients C(t=0)
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
      !! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
@@ -266,22 +268,24 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
      select case(tddft_wfn_t0)
      case('STATIONNARY')
        ! only tested for natom==1
-       call init_c_matrix(basis,               &
-                          time_min,            &
-                          s_matrix,            &
-                          x_matrix,            &
-                          d_matrix,            &
-                          occupation ,         &
-                          hamiltonian_kinetic, &
-                          hamiltonian_nucleus, &
-                          dipole_ao,           &
-                          c_matrix_cmplx,      &
-                          c_matrix_orth_cmplx, &
-                          h_cmplx,             &
-                          h_small_cmplx,       &
-                          en_tddft)
+       call stationnary_c_matrix(basis,               &
+                                 time_min,            &
+                                 s_matrix,            &
+                                 x_matrix,            &
+                                 d_matrix,            &
+                                 occupation ,         &
+                                 hamiltonian_kinetic, &
+                                 hamiltonian_nucleus, &
+                                 dipole_ao,           &
+                                 c_matrix_cmplx,      &
+                                 c_matrix_orth_cmplx, &
+                                 h_cmplx,             &
+                                 h_small_cmplx,       &
+                                 en_tddft)
      case('SCF')
        write(stdout,'(/,1x,a)') '===== C matrix initialization is skipped ====='
+     case default
+       call die('calculate_propagation: tddft_wfn_t0 value not recognized')
      end select
    else
      ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
@@ -611,38 +615,39 @@ end subroutine echo_tddft_variables
 
 !=========================================================================
 subroutine output_timing_one_iter()
- implicit none
- real(dp)           :: time_one_iter, time_one_iter_H
-!=====
-
-  time_one_iter = get_timing(timing_tddft_one_iter)
-  write(stdout,'(/,1x,a)') '**********************************'
-  write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
-  write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Hamiltonian recalculation costs", time_one_iter_H,"s"
-  write(stdout,"(1x,a32,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &
-                                            time_one_iter*ntau/60.0_dp, &
-                                            "min  = ", time_one_iter*ntau/3600.0_dp, "hrs"
-  write(stdout,'(1x,a)') '**********************************'
-  flush(stdout)
+  implicit none
+  real(dp)           :: time_one_iter, time_one_iter_H
+  !=====
+  !=====
+ 
+   time_one_iter = get_timing(timing_tddft_one_iter)
+   write(stdout,'(/,1x,a)') '**********************************'
+   write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
+   write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Hamiltonian recalculation costs", time_one_iter_H,"s"
+   write(stdout,"(1x,a32,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &
+                                             time_one_iter*ntau/60.0_dp, &
+                                             "min  = ", time_one_iter*ntau/3600.0_dp, "hrs"
+   write(stdout,'(1x,a)') '**********************************'
+   flush(stdout)
 
 end subroutine output_timing_one_iter
 
-!=========================================================================
 
-subroutine init_c_matrix(basis,               &
-                         time_min,            &
-                         s_matrix,            &
-                         x_matrix,            &
-                         d_matrix,            &
-                         occupation ,         &
-                         hamiltonian_kinetic, &
-                         hamiltonian_nucleus, &
-                         dipole_ao,           &
-                         c_matrix_cmplx,      &
-                         c_matrix_orth_cmplx, &
-                         h_cmplx,             &
-                         h_small_cmplx,       &
-                         en_tddft)
+!=========================================================================
+subroutine stationnary_c_matrix(basis,               &
+                                time_min,            &
+                                s_matrix,            &
+                                x_matrix,            &
+                                d_matrix,            &
+                                occupation ,         &
+                                hamiltonian_kinetic, &
+                                hamiltonian_nucleus, &
+                                dipole_ao,           &
+                                c_matrix_cmplx,      &
+                                c_matrix_orth_cmplx, &
+                                h_cmplx,             &
+                                h_small_cmplx,       &
+                                en_tddft)
 
   implicit none
   type(basis_set),intent(inout)   :: basis
@@ -659,13 +664,13 @@ subroutine init_c_matrix(basis,               &
   complex(dp),intent(inout)       :: h_cmplx(:,:,:)
   complex(dp),intent(inout)       :: h_small_cmplx(:,:,:)
   type(energy_contributions),intent(inout) :: en_tddft
-!====
+  !====
   integer                       :: icycle, ncycle_max = 50
   integer                       :: ispin, istate, nstate
   complex(dp),allocatable       :: p_matrix_cmplx(:,:,:)
   complex(dp),allocatable       :: m_matrix_small(:,:,:) ! M' = X**H * ( H - i*D ) * X
   complex(dp),allocatable       :: m_eigenvec_small(:,:,:), m_eigenvector(:,:,:)
-!====
+  !====
 
   nstate = SIZE(occupation(:,:),DIM=1)
   allocate( p_matrix_cmplx(basis%nbf,basis%nbf,nspin) )
@@ -755,90 +760,90 @@ subroutine init_c_matrix(basis,               &
   end do
   deallocate(p_matrix_cmplx, p_matrix_cmplx_hist, h_hist_cmplx)
 
-end subroutine init_c_matrix
+end subroutine stationnary_c_matrix
+
 
 !=========================================================================
 subroutine update_basis_eri(basis,auxil_basis)
 
- implicit none
- type(basis_set),intent(inout)      :: basis
- type(basis_set),intent(inout)      :: auxil_basis
-!=====
-
- write(stdout,'(/,a)') ' Update moving basis set'
- call moving_basis_set(basis)
- call destroy_libcint(basis)
-
- if( has_auxil_basis ) then
-   write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-   call moving_basis_set(auxil_basis)
-   call destroy_libcint(auxil_basis)
-   call init_libcint(basis, auxil_basis)
-   call init_libcint(auxil_basis)
-   !
-   ! Setup new eri 2center / 3center
-   call calculate_eri_ri(basis,auxil_basis,0.0_dp)
- else
-   call init_libcint(basis)
-   call deallocate_eri_4center()
-   call calculate_eri(print_eri_,basis,0.0_dp)
- endif
+  implicit none
+  type(basis_set),intent(inout)      :: basis
+  type(basis_set),intent(inout)      :: auxil_basis
+  !=====
+ 
+  write(stdout,'(/,a)') ' Update moving basis set'
+  call moving_basis_set(basis)
+  call destroy_libcint(basis)
+ 
+  if( has_auxil_basis ) then
+    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
+    call moving_basis_set(auxil_basis)
+    call destroy_libcint(auxil_basis)
+    call init_libcint(basis, auxil_basis)
+    call init_libcint(auxil_basis)
+    !
+    ! Setup new eri 2center / 3center
+    call calculate_eri_ri(basis,auxil_basis,0.0_dp)
+  else
+    call init_libcint(basis)
+    call deallocate_eri_4center()
+    call calculate_eri(print_eri_,basis,0.0_dp)
+  endif
 
 end subroutine update_basis_eri
 
 
 !=========================================================================
-subroutine setup_D_matrix_analytic(basis,d_matrix,recalc)
- implicit none
- type(basis_set),intent(in)          :: basis
- real(dp),intent(inout)              :: d_matrix(:,:)
- logical,intent(in)                  :: recalc
-!=====
- integer                             :: jbf
- real(dp),allocatable                :: s_matrix_grad(:,:,:)
-!=====
+subroutine setup_d_matrix(basis,d_matrix,recalc)
+  implicit none
+  type(basis_set),intent(in)          :: basis
+  real(dp),intent(inout)              :: d_matrix(:,:)
+  logical,intent(in)                  :: recalc
+  !=====
+  integer                             :: jbf
+  real(dp),allocatable                :: s_matrix_grad(:,:,:)
+  !=====
+ 
+  write(stdout,'(/,a)') ' Setup overlap time derivative matrix D (analytic)'
+ 
+  allocate(s_matrix_grad(basis%nbf,basis%nbf,3))
+ 
+  ! This routine returns s_grad = < grad_R phi_alpha | phi_beta >
+  if ( recalc ) then
+    call recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
+  else
+    call setup_overlap_grad(basis,s_matrix_grad)
+  end if
+ 
+  ! We want D:
+  !    D = < phi_alpha | d/dt phi_beta >
+  !      = < phi_alpha | grad_R phi_beta > . v
+  !      = s_grad**T . v
+ 
+  s_matrix_grad(:,:,1) = TRANSPOSE(s_matrix_grad(:,:,1))
+  s_matrix_grad(:,:,2) = TRANSPOSE(s_matrix_grad(:,:,2))
+  s_matrix_grad(:,:,3) = TRANSPOSE(s_matrix_grad(:,:,3))
+ 
+  if ( recalc ) then
+    do jbf=basis_t%nbf+1,basis%nbf
+      d_matrix(1:basis_t%nbf,jbf) = s_matrix_grad(1:basis_t%nbf,jbf,1) * basis_p%bff(1)%v0(1) &
+                                   +s_matrix_grad(1:basis_t%nbf,jbf,2) * basis_p%bff(1)%v0(2) &
+                                   +s_matrix_grad(1:basis_t%nbf,jbf,3) * basis_p%bff(1)%v0(3)
+    end do
+  else
+    do jbf=1,basis%nbf
+      d_matrix(:,jbf) = s_matrix_grad(:,jbf,1) * basis%bff(jbf)%v0(1) &
+                      + s_matrix_grad(:,jbf,2) * basis%bff(jbf)%v0(2) &
+                      + s_matrix_grad(:,jbf,3) * basis%bff(jbf)%v0(3)
+    end do
+  end if
+ 
+  deallocate(s_matrix_grad)
 
- write(stdout,'(/,a)') ' Setup overlap time derivative matrix D (analytic)'
-
- allocate(s_matrix_grad(basis%nbf,basis%nbf,3))
-
- ! This routine returns s_grad = < grad_R phi_alpha | phi_beta >
- if ( recalc ) then
-   call recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
- else
-   call setup_overlap_grad(basis,s_matrix_grad)
- end if
-
- ! We want D:
- !    D = < phi_alpha | d/dt phi_beta >
- !      = < phi_alpha | grad_R phi_beta > . v
- !      = s_grad**T . v
-
- s_matrix_grad(:,:,1) = TRANSPOSE(s_matrix_grad(:,:,1))
- s_matrix_grad(:,:,2) = TRANSPOSE(s_matrix_grad(:,:,2))
- s_matrix_grad(:,:,3) = TRANSPOSE(s_matrix_grad(:,:,3))
-
- if ( recalc ) then
-   do jbf=basis_t%nbf+1,basis%nbf
-     d_matrix(1:basis_t%nbf,jbf) = s_matrix_grad(1:basis_t%nbf,jbf,1) * basis_p%bff(1)%v0(1) &
-                                  +s_matrix_grad(1:basis_t%nbf,jbf,2) * basis_p%bff(1)%v0(2) &
-                                  +s_matrix_grad(1:basis_t%nbf,jbf,3) * basis_p%bff(1)%v0(3)
-   end do
- else
-   do jbf=1,basis%nbf
-     d_matrix(:,jbf) = s_matrix_grad(:,jbf,1) * basis%bff(jbf)%v0(1) &
-                     + s_matrix_grad(:,jbf,2) * basis%bff(jbf)%v0(2) &
-                     + s_matrix_grad(:,jbf,3) * basis%bff(jbf)%v0(3)
-   end do
- end if
-
- deallocate(s_matrix_grad)
-
-end subroutine setup_D_matrix_analytic
+end subroutine setup_d_matrix
 
 
 !=========================================================================
-
 subroutine mb_related_updates(basis,                &
                               auxil_basis,need_eri, &
                               time_cur,dt_factor,   &
@@ -888,7 +893,7 @@ subroutine mb_related_updates(basis,                &
  call recalc_overlap(basis_t,basis_p,s_matrix)
 
  ! Analytic evaluation of D(t+dt/n)
- call setup_D_matrix_analytic(basis,d_matrix,.TRUE.)
+ call setup_d_matrix(basis,d_matrix,.TRUE.)
  call stop_clock(timing_update_overlaps)
 
  call start_clock(timing_update_dft_grid)
