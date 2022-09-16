@@ -1344,7 +1344,11 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
  !
  libint_calls = 0
 
- call start_clock(timing_eri_3center_ints)
+ if( .NOT. recalculation ) then
+   call start_clock(timing_eri_3center_ints)
+ else
+   call start_clock(timing_tddft_eri_3center_ints)
+ endif
 
  !
  ! Skip section for procs that do not participate to the distribution (ortho paral)
@@ -1523,7 +1527,11 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
  endif
 
 
- call stop_clock(timing_eri_3center_ints)
+ if( .NOT. recalculation ) then
+   call stop_clock(timing_eri_3center_ints)
+ else
+   call stop_clock(timing_tddft_eri_3center_ints)
+ endif
 
 
 end subroutine calculate_integrals_eri_3center_scalapack

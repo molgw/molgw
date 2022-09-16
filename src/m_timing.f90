@@ -125,6 +125,7 @@ module m_timing
   integer,parameter :: timing_tddft_q_matrix         = 135
   integer,parameter :: timing_tddft_rhoauxil         = 136
   integer,parameter :: timing_propagate_inverse      = 137
+  integer,parameter :: timing_tddft_eri_3center_ints = 138
 
 
   integer,private     :: count_rate,count_max
@@ -317,6 +318,7 @@ subroutine output_timing()
   call output_timing_line('Update basis and related terms',timing_mb_related_update,2)
   call output_timing_line('Update projectile position',timing_update_p_position,3)
   call output_timing_line('Update basis, auxilary and eri',timing_update_basis_eri,3)
+  call output_timing_line('Update 3-center ERI',timing_tddft_eri_3center_ints,4)
   call output_timing_line('Update S and D matrices',timing_update_overlaps,3)
   call output_timing_line('Gradient of overlap',timing_overlap_grad,4)
   call output_timing_line('Update DFT grid',timing_update_dft_grid,3)
