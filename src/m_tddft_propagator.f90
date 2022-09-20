@@ -683,7 +683,7 @@ subroutine stationnary_c_matrix(basis,               &
   h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
 
   ! self-consistency loop for C(t0) convergence in ortho basis
-  ! M = H - iD + mv**2*S is Hermitian at t0
+  ! M = H - iD + mv**2*S is Hermitian at t0 if the projectile and the target do not overlap
   do icycle = 1, ncycle_max
 
     write(stdout,'(/,1x,a)')
@@ -698,29 +698,33 @@ subroutine stationnary_c_matrix(basis,               &
     do ispin=1, nspin
       ! in ortho basis : M' = X**H * (H-iD+mv**2*S) * X
       m_tmp(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
+      !FBFB Why (1/2) m v**2 ?
       m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
                        + 0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
       m_eigenvector(:,:,ispin)  = MATMUL( m_tmp(:,:,ispin), x_matrix(:,:) )
       m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
       ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
+
+      ! Diagonalization assumes Hermitianity of m_matrix_small
       call diagonalize( postscf_diago_flavor, m_matrix_small(:,:,ispin), &
                         m_eigenval(:,ispin), m_eigenvec_small(:,:,ispin) )
       ! M = X * M'
       m_eigenvector(:,:,ispin) = MATMUL( x_matrix(:,:) , m_eigenvec_small(:,:,ispin) )
     end do
 
-    ! get new c_matrix_cmplx and c_matrix_orth_cmplx
-    call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
-    call clean_deallocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx)
-    call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
-    call clean_allocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
+    !FBFB useless
+    !call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
+    !call clean_deallocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx)
+    !call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
+    !call clean_allocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
+
     c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
     c_matrix_orth_cmplx(:,1:nocc,:) = m_eigenvec_small(:,1:nocc,:)
     if( nspin > 1 ) then
-      write(stdout, '(a15,3(2x,a10))') 'TDDFT energy', ' ', 'occupation'
+      write(stdout, '(a15,3(2x,a10))') 'Propagator eigenvalues (Ha)', ' ', 'occupation'
       write(stdout, '(a10,4(2x,a10))') 'spin1', 'spin2', 'spin1', 'spin2'
     else
-      write(stdout, '(a15,2(2x,a10))') 'TDDFT energy', 'occupation'
+      write(stdout, '(a15,2(2x,a10))') 'Propagator eigenvalues (Ha)', 'occupation'
     end if
     do istate = 1, nocc
       write(stdout, '(f10.4,4(2x,f10.4))') m_eigenval(istate,:), occupation(istate, :)
@@ -947,6 +951,7 @@ subroutine predictor_corrector(basis,                  &
   real(dp),allocatable,intent(in)    :: dipole_ao(:,:,:)
   !=====
   integer              :: nstate,iextr,i_iter,file_iter_norm
+  real(dp),allocatable :: d_matrix_old(:,:) ! FBFB
   !=====
 
   nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
@@ -1055,8 +1060,11 @@ subroutine predictor_corrector(basis,                  &
     !--2--EVALUATE----| C(t+dt/2) --> H(t+dt/2)
     call start_clock(timing_mb_related_update)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+      allocate(d_matrix_old,SOURCE=d_matrix)
       call mb_related_updates(basis,auxil_basis,.TRUE.,&
              time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.)
+      write(*,*) 'FBFB',NORM2( d_matrix(:,:) - d_matrix_old(:,:))
+      deallocate(d_matrix_old)
     endif
     call stop_clock(timing_mb_related_update)
 
@@ -1469,7 +1477,7 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
   write(stdout,'(/,1x,a)') &
      '==================================================================================================='
   write(stdout,'(1x,a,i8,a)') &
-     '===================== RT-TDDFT values for the iteration  ',itau,' ================================='
+     '===================== RT-TDDFT values for time step  ',itau,' ================================='
   write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
   write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en_tddft%total
 
