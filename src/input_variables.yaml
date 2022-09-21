@@ -1202,6 +1202,22 @@ tddft_wfn_t0:
   default: 'SCF'
   comment: Specifies the method to obtain the initial wavefunctions. Possible values are 'SCF' or 'STATIONNARY'.
 
+tddft_energy_shift:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Shifts the TDDFT eigenvalues in when tddft_wfn_t0='STATIONNARY' to tune the occupation of the projectile. A positive value would depopulate the projectile (hopefully).
+
+tddft_charge:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Overall charge in the system fo the TDDFT calculation. It can differ from 'charge' in the DFT part.
+
 time_sim:
   family: rt_tddft
   datatype: real

@@ -54,7 +54,6 @@ module m_tddft_propagator
   complex(dp),allocatable,private    :: p_matrix_cmplx_hist(:,:,:)
   complex(dp),allocatable            :: m_matrix_small(:,:,:) ! M' = X**H * ( H - i*D ) * X
   complex(dp),allocatable            :: m_eigenvec_small(:,:,:), m_eigenvector(:,:,:)
-  complex(dp),private                :: rms
   !==frozen core==
   real(dp),allocatable               :: energies_start(:,:)
   complex(dp),allocatable            :: a_matrix_orth_start_cmplx(:,:,:)
@@ -128,8 +127,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   write(stdout,'(/,/,1x,a)') '=================================================='
   write(stdout,'(x,a,/)')    'RT-TDDFT simulation'
 
-  ! Here this occupation comes from the set_occupation subroutine with zero temperature
   nstate = SIZE(occupation(:,:),DIM=1)
+
+  ! Tweak the occupation if the number of electrons has changed from DFT to TDDFT
+  if( ABS(tddft_charge-charge)> 1.0e-5_dp ) then 
+    write(stdout,*) 'Set new occupations for TDDFT'
+    call set_occupation(0.0_dp,electrons+charge-tddft_charge,magnetization,RESHAPE([0.0_dp],[1,1]),occupation)
+  endif
 
   if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
     nocc = get_nocc_from_restart()
@@ -160,7 +164,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   call clean_allocate('Nucleus operator V for TDDFT',hamiltonian_nucleus,basis%nbf,basis%nbf)
 
   call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
-  !call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx_scf,basis%nbf,nocc,nspin)
   call clean_allocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
   call clean_allocate('Hamiltonian for TDDFT',h_cmplx,basis%nbf,basis%nbf,nspin)
   call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
@@ -171,6 +174,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   allocate(xbasis_start(3,ncenter_basis))
 
   write(stdout,'(/,1x,a)') "===INITIAL CONDITIONS==="
+
   ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
   if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
     if( moving_basis ) then
@@ -606,6 +610,7 @@ subroutine echo_tddft_variables()
   write(stdout,'(2x,a32,2x,i8)') 'Number of iterations:',NINT((time_sim)/time_step)
   write(stdout,'(2x,a32,6x,l1)') 'Moving basis:',moving_basis
   write(stdout,'(2x,a32,6x,a)')  'Initial wavefunctions:',TRIM(tddft_wfn_t0)
+  write(stdout,'(2x,a32,2x,f14.6)') 'Charge:',tddft_charge
   write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector:',TRIM(pred_corr)
   write(stdout,'(2x,a32,6x,a)')      'Propagator:',TRIM(prop_type)
   write(stdout,'(2x,a32,2x,i8)')     'Number of occupied states:',nocc
@@ -666,12 +671,14 @@ subroutine stationnary_c_matrix(basis,               &
   complex(dp),intent(inout)       :: h_small_cmplx(:,:,:)
   type(energy_contributions),intent(inout) :: en_tddft
   !====
-  integer                       :: icycle, ncycle_max = 50
-  integer                       :: ispin, istate, nstate
+  integer,parameter             :: nhist=4
+  integer                       :: ihist,icycle,ncycle_max = 50
+  integer                       :: ispin,istate,nstate
   complex(dp),allocatable       :: p_matrix_cmplx(:,:,:)
   complex(dp),allocatable       :: m_matrix_small(:,:,:) ! M' = X**H * ( H - i*D ) * X
   complex(dp),allocatable       :: m_eigenvec_small(:,:,:), m_eigenvector(:,:,:)
   complex(dp),allocatable       :: m_tmp(:,:,:)
+  real(dp)                      :: rms
   !====
 
   nstate = SIZE(occupation(:,:),DIM=1)
@@ -679,10 +686,12 @@ subroutine stationnary_c_matrix(basis,               &
 
   call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
   allocate( p_matrix_cmplx_hist, SOURCE = p_matrix_cmplx(:,:,:) )
-  allocate( h_hist_cmplx(basis%nbf,basis%nbf,nspin,2) )
-  h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
+  allocate( h_hist_cmplx(basis%nbf,basis%nbf,nspin,nhist) )
+  do ihist=1,nhist
+    h_hist_cmplx(:,:,:,ihist) = h_cmplx(:,:,:)
+  enddo
 
-  ! self-consistency loop for C(t0) convergence in ortho basis
+  ! Self-consistency loop for C(t0)
   ! M = H - iD + mv**2*S is Hermitian at t0 if the projectile and the target do not overlap
   do icycle = 1, ncycle_max
 
@@ -700,7 +709,8 @@ subroutine stationnary_c_matrix(basis,               &
       m_tmp(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
       !FBFB Why (1/2) m v**2 ?
       m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
-                       + 0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2)*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
+            + (0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2) + tddft_energy_shift )*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
+                       
       m_eigenvector(:,:,ispin)  = MATMUL( m_tmp(:,:,ispin), x_matrix(:,:) )
       m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
       ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
@@ -712,22 +722,16 @@ subroutine stationnary_c_matrix(basis,               &
       m_eigenvector(:,:,ispin) = MATMUL( x_matrix(:,:) , m_eigenvec_small(:,:,ispin) )
     end do
 
-    !FBFB useless
-    !call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)
-    !call clean_deallocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx)
-    !call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
-    !call clean_allocate('Wavefunctions in ortho base C'' for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
-
     c_matrix_cmplx(:,1:nocc,:) = m_eigenvector(:,1:nocc,:)
     c_matrix_orth_cmplx(:,1:nocc,:) = m_eigenvec_small(:,1:nocc,:)
     if( nspin > 1 ) then
-      write(stdout, '(a15,3(2x,a10))') 'Propagator eigenvalues (Ha)', ' ', 'occupation'
+      write(stdout, '(a30,3(2x,a10))') 'Propagator eigenvalues (eV)', ' ', 'occupation'
       write(stdout, '(a10,4(2x,a10))') 'spin1', 'spin2', 'spin1', 'spin2'
     else
-      write(stdout, '(a15,2(2x,a10))') 'Propagator eigenvalues (Ha)', 'occupation'
+      write(stdout, '(a30,2(2x,a10))') 'Propagator eigenvalues (eV)', 'occupation'
     end if
-    do istate = 1, nocc
-      write(stdout, '(f10.4,4(2x,f10.4))') m_eigenval(istate,:), occupation(istate, :)
+    do istate=1,MIN(nocc+5,nstate)
+      write(stdout, '(4x,4(2x,f12.6))') m_eigenval(istate,:)*Ha_eV, occupation(istate, :)
     end do
     deallocate(m_matrix_small)
     deallocate(m_eigenvec_small, m_eigenvector,m_tmp)
@@ -751,18 +755,25 @@ subroutine stationnary_c_matrix(basis,               &
     en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
     rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
-    !print*, 'abs(rms) = ', ABS(rms)
-    if( ABS(rms) < tolscf_tddft ) then
-      write(stdout,'(/,1x,a,/)') "=== CONVERGENCE REACHED ==="
+    write(stdout,'(1x,a,es14.6)') 'Changes in density matrix: ',rms
+
+    if( rms < tolscf_tddft ) then
+      write(stdout,'(1x,a,/)') "=== CONVERGENCE REACHED ==="
       exit
     else
       if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
     end if
+
+    !
+    ! History mixing to damp the charge oscillations (poor man solution)
+    !
     p_matrix_cmplx_hist(:,:,:) = p_matrix_cmplx(:,:,:)
-    h_hist_cmplx(:,:,:,2) = h_hist_cmplx(:,:,:,1)
+    do ihist=nhist,2,-1
+      h_hist_cmplx(:,:,:,ihist) = h_hist_cmplx(:,:,:,ihist-1)
+    enddo
     h_hist_cmplx(:,:,:,1) = h_cmplx(:,:,:)
-    ! simple mixing of H
-    h_cmplx = 0.5_dp * h_hist_cmplx(:,:,:,1) + 0.5_dp * h_hist_cmplx(:,:,:,2)
+    ! Simple mixing of H over the last nhist iterations
+    h_cmplx = SUM( h_hist_cmplx(:,:,:,:) , DIM=4) / REAL(nhist,dp)
 
   end do
   deallocate(p_matrix_cmplx, p_matrix_cmplx_hist, h_hist_cmplx)
