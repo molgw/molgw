@@ -925,3 +925,11 @@ he_in_h_ghost_rt_lda_MB_PC2B.in, RT-TDDFT PC="MB_PC2B" projectile in ghost
 SCF Total Energy          ,  -2.8356240593     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -1.6095548394     , 0 , 1.0e-7
 Number of electrons       ,   1.999590         , 0 , 1.0e-4
+
+benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++
+SCF Total Energy          , -232.8924918216    , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -230.4199238294    , 0 , 1.0e-7
+Number of electrons       ,    41.994968       , 0 , 1.0e-4
+
+
+

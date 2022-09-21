@@ -863,11 +863,11 @@ end subroutine setup_d_matrix
 
 !=========================================================================
 subroutine mb_related_updates(basis,                &
-                               auxil_basis,need_eri, &
-                               time_cur,dt_factor,   &
-                               s_matrix,             &
-                               d_matrix,             &
-                               need_grid)
+                              auxil_basis,need_eri, &
+                              time_cur,dt_factor,   &
+                              s_matrix,             &
+                              d_matrix,             &
+                              need_grid)
 
   implicit none
   type(basis_set),intent(inout)      :: basis

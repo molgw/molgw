@@ -1,0 +1,49 @@
+&molgw
+  comment                 = 'He2+ -> C6H6'
+
+  gaussian_type='CART'
+
+  tolscf = 1.0e-5
+  scf                            = 'lda'
+  read_tddft_restart             = 'no'
+  print_tddft_restart            = 'no'
+  basis                          = 'pcSseg-1'
+  auxil_basis                    = 'cc-pVDZ-RI'
+  charge                         = 0
+  natom                          = 12
+  nghost                         = 0
+  postscf                        = 'real_time'
+  grid_quality                   = 'medium'
+  tddft_grid_quality             = 'medium'
+
+  eri3_genuine                   = 'yes'
+
+  time_step                      =  0.05
+  write_step                     =  0.05
+  time_sim                       =  1.00
+  pred_corr                      = 'MB_PC1'
+  n_hist                         = 2
+  excit_name                     = 'ion'
+  vel_projectile                 = 0.0 0.0 1.0
+
+  ! Prepare an He2++ ion
+  tddft_charge=2.0
+  tddft_wfn_t0 = 'stationnary'
+  tddft_energy_shift=4.0
+  tolscf_tddft = 1.0e-1
+
+/
+H    0.000000     2.484212     0.000000
+H    0.000000     -2.484212    0.000000
+H    2.151390     1.242106     0.000000
+H    -2.151390    -1.242106    0.000000
+H    -2.151390    1.242106     0.000000
+H    2.151390     -1.242106    0.000000
+C    0.000000     1.396792     0.000000    pcSseg-1   cc-pVDZ-RI
+C    0.000000     -1.396792    0.000000    pcSseg-1   cc-pVDZ-RI
+C    1.209657     0.698396     0.000000    pcSseg-1   cc-pVDZ-RI
+C    -1.209657    -0.698396    0.000000    pcSseg-1   cc-pVDZ-RI
+C    -1.209657    0.698396     0.000000    pcSseg-1   cc-pVDZ-RI
+C    1.209657     -0.698396    0.000000    pcSseg-1   cc-pVDZ-RI
+He   0.600000     0.3000    -2.00000000    pcSseg-1  cc-pVDZ-RI
+
