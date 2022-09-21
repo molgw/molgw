@@ -951,7 +951,6 @@ subroutine predictor_corrector(basis,                  &
   real(dp),allocatable,intent(in)    :: dipole_ao(:,:,:)
   !=====
   integer              :: nstate,iextr,i_iter,file_iter_norm
-  real(dp),allocatable :: d_matrix_old(:,:) ! FBFB
   !=====
 
   nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
@@ -991,11 +990,13 @@ subroutine predictor_corrector(basis,                  &
     !--1--PREDICTOR----| H(t-3dt/2),H(t-dt/2)-->H(t+dt/4)
     h_cmplx = -3.0_dp/4.0_dp*h_hist_cmplx(:,:,:,1) + 7.0_dp/4.0_dp*h_hist_cmplx(:,:,:,2)
 
+
     !--2--PREDICTOR----| C(t)---U[M(t+dt/4)]--->C(t+dt/2)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis,auxil_basis,.FALSE.,&
              time_cur,3.0_dp/4.0_dp,s_matrix,d_matrix,.FALSE.)
     endif
+
 
     ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
     call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,prop_type)
@@ -1060,11 +1061,8 @@ subroutine predictor_corrector(basis,                  &
     !--2--EVALUATE----| C(t+dt/2) --> H(t+dt/2)
     call start_clock(timing_mb_related_update)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
-      allocate(d_matrix_old,SOURCE=d_matrix)
       call mb_related_updates(basis,auxil_basis,.TRUE.,&
              time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.)
-      write(*,*) 'FBFB',NORM2( d_matrix(:,:) - d_matrix_old(:,:))
-      deallocate(d_matrix_old)
     endif
     call stop_clock(timing_mb_related_update)
 
@@ -2072,12 +2070,12 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
   complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al,
   complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
   complex(dp),allocatable    :: m_matrix_cmplx(:,:) ! M = S**-1 * ( H - i*D )
-  complex(dp),allocatable    :: tmp_matrix_1(:,:),tmp_matrix_2(:,:)
+  complex(dp),allocatable    :: u_matrix_cmplx(:,:),c_matrix_previous_cmplx(:,:)
   real(dp),allocatable       :: s_matrix_inverse(:,:)
   !=====
 
-  nbf = size(s_matrix,dim=1)
-  nocc = size(c_matrix_cmplx,dim=2)
+  nbf = SIZE(s_matrix,DIM=1)
+  nocc = SIZE(c_matrix_cmplx,DIM=2)
 
   call start_clock(timing_tddft_propagation)
 
@@ -2102,21 +2100,20 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
       call invert(l_matrix_cmplx)
       call stop_clock(timing_propagate_inverse)
 
-      allocate(tmp_matrix_1,MOLD=h_cmplx(:,:,1))
+      allocate(u_matrix_cmplx,MOLD=h_cmplx(:,:,1))
       call start_clock(timing_propagate_matmul)
       !U_matrix(:,:)              = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
       call ZGEMM('N','N',nbf,nbf,nbf,(1.0d0,0.0d0),l_matrix_cmplx,nbf, &
-                        b_matrix_cmplx,nbf,(0.0d0,0.0d0),tmp_matrix_1,nbf)
+                        b_matrix_cmplx,nbf,(0.0d0,0.0d0),u_matrix_cmplx,nbf)
       deallocate(l_matrix_cmplx)
       deallocate(b_matrix_cmplx)
 
-      allocate(tmp_matrix_2,MOLD=c_matrix_cmplx(:,:,1))
+      allocate(c_matrix_previous_cmplx,SOURCE=c_matrix_cmplx(:,:,1))
       !c_matrix_cmplx(:,:,ispin)  = MATMUL( U_matrix(:,:),c_matrix_cmplx(:,:,ispin))
-      tmp_matrix_2(:,:) = c_matrix_cmplx(:,:,ispin)
-      call ZGEMM('N','N',nbf,nocc,nbf,(1.0d0,0.0d0),tmp_matrix_1,nbf, &
-                        tmp_matrix_2,nbf,(0.0d0,0.0d0),c_matrix_cmplx(:,:,ispin),nbf)
+      call ZGEMM('N','N',nbf,nocc,nbf,(1.0d0,0.0d0),u_matrix_cmplx,nbf, &
+                        c_matrix_previous_cmplx,nbf,(0.0d0,0.0d0),c_matrix_cmplx(:,:,ispin),nbf)
 
-      deallocate(tmp_matrix_1,tmp_matrix_2)
+      deallocate(u_matrix_cmplx,c_matrix_previous_cmplx)
 
     case('MAG2')
       allocate(b_matrix_cmplx,MOLD=h_cmplx(:,:,1))
@@ -2128,7 +2125,7 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
       b_matrix_cmplx(:,:) = (-im) * m_matrix_cmplx(:,:) * time_step_cur - 0.5_dp * &
              (time_step_cur**2) * MATMUL( m_matrix_cmplx(:,:), m_matrix_cmplx(:,:) )
 
-      do ibf=1,size(s_matrix,dim=1)
+      do ibf=1,SIZE(s_matrix,DIM=1)
         b_matrix_cmplx(ibf,ibf) = b_matrix_cmplx(ibf,ibf) + 1.0_dp
       end do
       !call dump_out_matrix(.TRUE.,'===  U*U**H REAL ===',REAL(MATMUL(b_matrix_cmplx(:,:), CONJG(TRANSPOSE(b_matrix_cmplx(:,:))))))
