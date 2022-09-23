@@ -4,7 +4,7 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 #
-# This python module provides useful functions to read molgw.yaml files
+# This python module provides useful functions to automate MOLGW
 #
 #
 ##################################################
@@ -36,6 +36,32 @@ exe  = path + "/molgw"
 #
 #    def __init__(self,inp):
 #        self.input_parameters = inp
+
+########################################################################
+def check_input(pyinput):
+    sanity = True
+    yml = path + '/src/input_variables.yaml'
+    with open(yml, 'r') as stream:
+        try:
+            input_vars = load(stream,Loader=Loader)
+        except:
+            print('input_variables.yaml file is corrupted')
+            pass
+    # Check keywords exist
+    keywords = [k for k in input_vars.keys() ]
+    for k in pyinput:
+        if not k.lower() in keywords:
+            print('Wrong input variable:    ' + k)
+            sanity = False
+
+    # Check all mandatory keywords are there
+    mandatory = [k for k in input_vars.keys() if input_vars[k]["mandatory"]=="yes" ]
+    for k in mandatory:
+        if not k in [key.lower() for key in pyinput]:
+            print('Mandatory keyword not present:   ' + k)
+            sanity = False
+
+    return sanity
 
 
 ########################################################################
