@@ -282,9 +282,9 @@ GW LUMO energy            ,    0.872077       , 0 , 1.0e-4
 GW LUMO energy            ,    1.238943       , 1 , 1.0e-4
 
 h2_even_tempered.in       , GW@HF on H2 molecules (even-tempered basis)
-SCF Total Energy          ,   -1.1291656908    , 0 , 1.0e-7
-gKS HOMO energy           ,  -15.686847        , 0 , 1.0e-4
-GW HOMO energy            ,  -16.091881        , 0 , 1.0e-4
+SCF Total Energy          ,   -1.1307346964    , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.702396        , 0 , 1.0e-4
+GW HOMO energy            ,  -16.036617        , 0 , 1.0e-4
 
 co2.in                    , GW@LDA CO2 without RI with 6-31G, noparallel
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
@@ -902,5 +902,34 @@ Exc. 0004                 ,     12.35813294     , 0 , 1.0e-4
 Exc. 0004                 ,      0.00380397     , 1 , 1.0e-4
 GW HOMO energy            ,    -14.341403       , 0 , 1.0e-4
 GW LUMO energy            ,      0.689333       , 0 , 1.0e-4
+
+h_in_he_rt_lda_MB_PC2B_nucleus.in, RT-TDDFT PC="MB_PC2B" projectile without basis
+SCF Total Energy          ,  -2.8287092624     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -2.6776119436     , 0 , 1.0e-7
+
+h_in_he_rt_lda_MB_PC2B_nucleus_restart.in, RT-TDDFT PC="MB_PC2B" projectile without basis, restart
+RT-TDDFT Total Energy     ,  -2.7195375026     , 0 , 1.0e-5
+
+h_in_he_rt_lda_MB_PC2B_ions.in, RT-TDDFT PC="MB_PC2B" projectile with basis
+SCF Total Energy          ,  -2.8286834572     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -2.3308199555     , 0 , 1.0e-7
+Number of electrons	  ,  2.002093	       , 0 , 1.0e-4
+Lowdin projectile charge  ,  8.379366E-01      , 0 , 1.0e-4
+
+h_in_he_rt_lda_MB_PC2B_ions_restart.in, RT-TDDFT PC="MB_PC2B" projectile with basis, restart
+RT-TDDFT Total Energy     ,  -2.1264231497     , 0 , 1.0e-7
+Number of electrons	  ,  2.000330	       , 0 , 1.0e-4
+Lowdin projectile charge  ,  5.409376E-01      , 0 , 1.0e-4
+
+he_in_h_ghost_rt_lda_MB_PC2B.in, RT-TDDFT PC="MB_PC2B" projectile in ghost
+SCF Total Energy          ,  -2.8356240593     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -1.6095548394     , 0 , 1.0e-7
+Number of electrons       ,   1.999590         , 0 , 1.0e-4
+
+benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++
+SCF Total Energy          , -232.8924918216    , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -230.4199238294    , 0 , 1.0e-7
+Number of electrons       ,    41.994968       , 0 , 1.0e-4
+
 
 

@@ -11,7 +11,7 @@ module m_timing
   use m_definitions
   use m_warning,only: die
 
-  integer,parameter :: NTIMING=140
+  integer,parameter :: NTIMING=150
 
   integer,parameter :: timing_total               =  1
 
@@ -32,7 +32,7 @@ module m_timing
   integer,parameter :: timing_mp2_energy          = 12
   integer,parameter :: timing_pt_self             = 13
   integer,parameter :: timing_eri_4center_eigen   = 14
-  integer,parameter :: timing_noft_energy         = 15
+  integer,parameter :: timing_overlap_grad        = 15
   integer,parameter :: timing_eri_2center         = 16
   integer,parameter :: timing_eri_3center         = 17
   integer,parameter :: timing_eri_3center_eigen   = 18
@@ -78,7 +78,7 @@ module m_timing
   integer,parameter :: timing_x_m_vxc             = 58
   integer,parameter :: timing_auto_auxil          = 59
   integer,parameter :: timing_stopping            = 60
-  !integer,parameter :: timing_             = 61    ! available
+  integer,parameter :: timing_noft_energy         = 61
   integer,parameter :: timing_rhoauxil            = 62
   integer,parameter :: timing_eri_2center_ints    = 63
   integer,parameter :: timing_eri_2center_invert  = 64
@@ -107,6 +107,11 @@ module m_timing
   integer,parameter :: timing_tddft_hartree          = 117
   integer,parameter :: timing_tddft_hamiltonian_nuc  = 118
   integer,parameter :: timing_tddft_ham_orthobasis   = 119
+  integer,parameter :: timing_mb_related_update      = 120
+  integer,parameter :: timing_update_p_position      = 121
+  integer,parameter :: timing_update_basis_eri       = 122
+  integer,parameter :: timing_update_overlaps        = 123
+  integer,parameter :: timing_update_dft_grid        = 124
   integer,parameter :: timing_print_cube_rho_tddft   = 125
   integer,parameter :: timing_restart_tddft_file     = 126
   integer,parameter :: timing_propagate_diago        = 127
@@ -119,6 +124,8 @@ module m_timing
   integer,parameter :: timing_tddft_frozen_core      = 134
   integer,parameter :: timing_tddft_q_matrix         = 135
   integer,parameter :: timing_tddft_rhoauxil         = 136
+  integer,parameter :: timing_propagate_inverse      = 137
+  integer,parameter :: timing_tddft_eri_3center_ints = 138
 
 
   integer,private     :: count_rate,count_max
@@ -207,9 +214,10 @@ end subroutine stop_clock
 
 !=========================================================================
 subroutine output_timing()
+
   implicit none
-  !=====
-  !=====
+ !=====
+ !=====
 
   write(stdout,'(/,a,/)') '                 --- Timings in (s) and # of calls ---'
 
@@ -285,7 +293,6 @@ subroutine output_timing()
 
   ! Self-energies
   call output_timing_line('MBPT density matrix',timing_mbpt_dm,1)
-
   call output_timing_line('GW self-energy',timing_gw_self,1)
   call output_timing_line('3-center AO to MO transform in GW',timing_aomo_gw,2)
   call output_timing_line('PT self-energy',timing_pt_self,1)
@@ -306,6 +313,15 @@ subroutine output_timing()
   call output_timing_line('TDDFT Propagator',timing_tddft_propagation,2)
   call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
   call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
+  call output_timing_line('TDDFT propagator invert',timing_propagate_inverse,3)
+
+  call output_timing_line('Update basis and related terms',timing_mb_related_update,2)
+  call output_timing_line('Update projectile position',timing_update_p_position,3)
+  call output_timing_line('Update basis, auxilary and eri',timing_update_basis_eri,3)
+  call output_timing_line('Update 3-center ERI',timing_tddft_eri_3center_ints,4)
+  call output_timing_line('Update S and D matrices',timing_update_overlaps,3)
+  call output_timing_line('Gradient of overlap',timing_overlap_grad,4)
+  call output_timing_line('Update DFT grid',timing_update_dft_grid,3)
 
   call output_timing_line('TDDFT frozen core',timing_tddft_frozen_core,3)
   call output_timing_line('TDDFT q_matrix',timing_tddft_q_matrix,3)

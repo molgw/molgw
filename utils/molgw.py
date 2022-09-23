@@ -4,12 +4,13 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 #
-# This python module provides useful functions to read molgw.yaml files
-# 
+# This python module provides useful functions to automate MOLGW
+#
 #
 ##################################################
 
-import os, sys
+import os, sys, subprocess
+import difflib
 import json
 from yaml import load, dump
 try:
@@ -29,6 +30,66 @@ periodic_table = [ 'H',                                                         
                    'Th', 'Pa',  'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', \
                    'Fr', 'Ra', 'Ac', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt' ]
 
+path = __file__.split("/utils")[0]
+exe  = path + "/molgw"
+
+#class mgwi:
+#
+#    def __init__(self,inp):
+#        self.input_parameters = inp
+
+########################################################################
+def check_input(pyinput):
+    sanity = True
+    yml = path + '/src/input_variables.yaml'
+    with open(yml, 'r') as stream:
+        try:
+            input_vars = load(stream,Loader=Loader)
+        except:
+            print('input_variables.yaml file is corrupted')
+            pass
+    # Check keywords exist
+    keywords = [k for k in input_vars.keys() ]
+    for k in pyinput:
+        if not k.lower() in keywords:
+            print('Wrong input variable:    ' + k)
+            similar = ''
+            for kk in keywords:
+                if difflib.SequenceMatcher(None,k,kk).ratio() > 0.6:
+                    #print(kk,difflib.SequenceMatcher(None,k,kk).ratio())
+                    similar += ' ' + kk
+            if len(similar) > 0:
+                print(' -> did you mean:   ' + similar)
+            else:
+                print(' -> no similar keyword found')
+            sanity = False
+
+    # Check all mandatory keywords are there
+    mandatory = [k for k in input_vars.keys() if input_vars[k]["mandatory"]=="yes" ]
+    for k in mandatory:
+        if not k in [key.lower() for key in pyinput]:
+            print('Mandatory keyword not present:   ' + k)
+            sanity = False
+
+    return sanity
+
+
+########################################################################
+def run(inputfile="molgw.in",**kwargs):
+    if "pyinput" in kwargs:
+        print_input_file(kwargs["pyinput"],inputfile)       
+    process = subprocess.Popen([exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    output, error = process.communicate()
+    if len(error) > 100:
+        print(error.decode("utf-8"))
+    with open('molgw.yaml', 'r') as stream:
+        try:
+            results = load(stream,Loader=Loader)
+        except:
+            print('molgw.yaml file is corrupted')
+            pass
+    return results
+
 
 ########################################################################
 def get_chemical_formula(calc):
@@ -40,7 +101,7 @@ def get_chemical_formula(calc):
     element_list += [ 'O', 'F', 'Cl', 'Br', 'I', 'H']
 
     numbers = [0 for x in element_list]
-    
+
     for atom in calc["physical system"]["atom list"]:
         i = element_list.index(atom[0])
         numbers[i] += 1
@@ -52,7 +113,7 @@ def get_chemical_formula(calc):
             formula += e
     return formula
 
- 
+
 ########################################################################
 def print_xyz_file(calc,filename):
     atom_list = calc["physical system"]["atom list"]
@@ -143,7 +204,7 @@ def create_gw100_json(filename,data,**kwargs):
 
 
 ########################################################################
-def print_input_file(filename,calc):
+def print_input_file(calc,filename="molgw.in"):
     with open(filename,'w') as f:
         f.write('&molgw\n')
         for key, value in calc.items():
@@ -160,12 +221,12 @@ def print_input_file(filename,calc):
 
 ########################################################################
 # Conversions for stopping power
-def kev_to_au(mass,e_kev):
+def kev_to_au(e_kev,mass=1.0):
     return (1000.*e_kev*2.0/Ha_eV/(1836.1253*mass))**0.5
 
-def au_to_kev(mass,v_au):
+def au_to_kev(v_au,mass=1.0):
     return 0.5*mass*1836.1253*v_au**2*Ha_eV/1000.
-    
+
 
 ########################################################################
 # Load a gaussian cube file into a class
@@ -175,12 +236,12 @@ class gaussian_cube:
     nx = 0                # number of grid points along 1st vector
     ny = 0                # number of grid points along 2nd vector
     nz = 0                # number of grid points along 3rd vector
-    dx = []               # 1st vector
-    dy = []               # 2nd vector
-    dz = []               # 3rd vector
+    dx = []               # 1st vector in bohr
+    dy = []               # 2nd vector in bohr
+    dz = []               # 3rd vector in bohr
     rr = []               # grid points list
     data = []             # volumetric data
-    dv = 0.0              # grid point associated volume
+    dv = 0.0              # grid point associated volume in bohr^3
 
     # Initialize class with a file "filename"
     def __init__(self,filename):

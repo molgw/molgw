@@ -8,7 +8,7 @@
    auxil_basis='auto'
    even_tempered_alpha=10.0
    even_tempered_beta= 0.3
-   even_tempered_n_list= '10 4 4'
+   even_tempered_n_list= '10 8 4'
 
    natom=2
 /

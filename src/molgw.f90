@@ -61,7 +61,7 @@ program molgw
   use m_noft
   implicit none
 
-  !=====
+ !=====
   type(basis_set)            :: basis
   type(basis_set)            :: auxil_basis
   type(spectral_function)    :: wpol
@@ -81,11 +81,12 @@ program molgw
   real(dp),allocatable    :: hamiltonian_fock(:,:,:)
   real(dp),allocatable    :: s_matrix(:,:)
   real(dp),allocatable    :: x_matrix(:,:)
+  real(dp),allocatable    :: s_matrix_sqrt(:,:)
   real(dp),allocatable    :: c_matrix(:,:,:)
   real(dp),allocatable    :: energy(:,:)
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
-  !=====
+ !=====
 
   !
   !
@@ -197,6 +198,7 @@ program molgw
     !
     ! A crucial parameter is defined here: nstate
     call setup_x_matrix(min_overlap,s_matrix,nstate,x_matrix)
+
 
     allocate(occupation(nstate,nspin))
     allocate(    energy(nstate,nspin))
@@ -454,7 +456,7 @@ program molgw
   if( assume_scf_converged_ ) is_converged = .TRUE.
   if( .NOT. is_converged ) then
     call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. &
-                        Use keyword assume_scf_converged to override this security check')
+                 Use keyword assume_scf_converged to override this security check')
   endif
 
   !
@@ -493,13 +495,19 @@ program molgw
   if( print_wfn_ )  call plot_rho('GKS',basis,occupation,c_matrix)
   if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
   if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy)
-  if( print_pdos_ ) call mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
+  if( print_pdos_ ) then
+    call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
+    call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
+    call mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
+    call lowdin_pdos(basis,s_matrix_sqrt,c_matrix,occupation,energy)
+    call clean_deallocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt)
+  endif
   if( print_spatial_extension_ ) call spatial_extension(basis,c_matrix)
   if( .FALSE.     ) call plot_rho_list(nstate,basis,occupation,c_matrix)
   if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
   if( print_dens_traj_points_set_ ) call plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
   if( .FALSE. ) call write_cube_from_header('GKS',basis,occupation,c_matrix)
-  if( .FALSE. ) call plot_wfn_fourier(basis,c_matrix)
+  !call plot_rho_xy(basis, occupation, c_matrix)      !plot density integrated on axis z in plane xy
 
 
   !
@@ -520,7 +528,7 @@ program molgw
   ! RT-TDDFT Simulation (only if SCF cycles were converged)
   !
   if( calc_type%is_real_time .AND. is_converged ) then
-    call calculate_propagation(basis,occupation,c_matrix,restart_tddft_is_correct)
+    call calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
   end if
 
   !

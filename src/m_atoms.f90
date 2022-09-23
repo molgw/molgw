@@ -28,6 +28,7 @@ module m_atoms
   real(dp),allocatable,protected :: xatom(:,:)
   real(dp),allocatable,protected :: xbasis(:,:)
   real(dp),allocatable,protected :: vel_nuclei(:,:)
+  real(dp),allocatable,protected :: vel_basis(:,:)
   real(dp),allocatable,public    :: force(:,:)
 
   ! See if we keep these arrays in the long-term
@@ -83,10 +84,16 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
   allocate(xbasis(3,ncenter_basis))
 
   allocate(vel_nuclei(3,ncenter_nuclei))
+  allocate(vel_basis(3,ncenter_basis))
   vel_nuclei(:,:) = 0.0_dp
+  vel_basis(:,:) = 0.0_dp
 
-  if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" ) then
-    vel_nuclei(:,ncenter_nuclei)=vel_projectile(:)
+  if( nprojectile /= 0 ) then
+    vel_nuclei(:,ncenter_nuclei) = vel_projectile(:)
+  endif
+
+  if( excit_name == 'ION' .OR. excit_name == 'ANTIION' ) then
+    vel_basis(:,ncenter_basis) = vel_projectile(:)
   endif
 
   ! For relaxation or dynamics only
@@ -108,19 +115,19 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
  ! List of atoms is organized as follows:
  ! 1. physical atoms   :    nucleus | basis
  ! 2. ghost atoms      :      no    | basis
- ! 3. projectile       :    nucleus | basis or not
+ ! 3. projectile       :    nucleus |   yes if 'ION' / no if 'NUCLEUS' or 'ANTINUCLEUS'
  !
  ! ncenter_nuclei contains the number of sites having a nucleus
  ! ncenter_basis  contains the number of sites having basis functions
  !
  xatom(:,1:ncenter_nuclei-nprojectile) = x_read(:,1:ncenter_nuclei-nprojectile)
  zatom(1:ncenter_nuclei-nprojectile)   = zatom_read(1:ncenter_nuclei-nprojectile)
- if( nprojectile == 1 ) then
+ if( nprojectile /= 0 ) then
    xatom(:,ncenter_nuclei) = x_read(:,natom_read)
    zatom(ncenter_nuclei)   = zatom_read(natom_read)
  endif
 
- if( excit_name == "ANTINUCLEUS" ) then
+ if( excit_name == "ANTINUCLEUS" .OR. excit_name == "ANTIION" ) then
    zatom(ncenter_nuclei) = -zatom(ncenter_nuclei)
  endif
  !
@@ -131,6 +138,7 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
    zatom(ncenter_nuclei) = zatom(ncenter_nuclei) * projectile_charge_scaling
  end if
 
+ !! Setup basis identity and centers
  ! Ghost atoms do not have a positive nucleus
  jcenter = 0
  do iatom=1,natom_read
@@ -153,7 +161,7 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
  enddo
 
  !
- ! Find the covalent bonds based a simple distance criterium
+ ! Find the covalent bonds based on simple distance criterium
  nbond = 0
  do iatom=1,ncenter_nuclei
    do jatom=iatom+1,ncenter_nuclei
@@ -253,6 +261,18 @@ subroutine change_position_one_atom(iatom,xposition)
   xatom(:,iatom) = xposition(:)
 
 end subroutine change_position_one_atom
+
+
+!=========================================================================
+subroutine change_basis_center_one_atom(iatom,xposition)
+ implicit none
+ integer,intent(in)   :: iatom
+ real(dp),intent(in)  :: xposition(3)
+!=====
+
+ xbasis(:,iatom) = xposition(:)
+
+end subroutine change_basis_center_one_atom
 
 
 !=========================================================================

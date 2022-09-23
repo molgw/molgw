@@ -53,9 +53,10 @@ module m_inputparam
 
   !
   ! TDDFT variables
-  integer,parameter :: EXCIT_NO         = 501
-  integer,parameter :: EXCIT_LIGHT      = 502
-  integer,parameter :: EXCIT_PROJECTILE = 503
+  integer,parameter :: EXCIT_NO                 = 501
+  integer,parameter :: EXCIT_LIGHT              = 502
+  integer,parameter :: EXCIT_PROJECTILE         = 503
+  integer,parameter :: EXCIT_PROJECTILE_W_BASIS = 504
 
   integer,protected           :: unit_yaml
   character(len=10),parameter :: filename_yaml = 'molgw.yaml'
@@ -150,6 +151,7 @@ module m_inputparam
   logical,protected                :: print_dens_traj_tddft_
   logical,protected                :: print_dens_traj_
   logical,protected                :: print_dens_traj_points_set_
+  logical,protected                :: print_charge_tddft_
   logical,protected                :: print_transition_density_
   logical,protected                :: calc_q_matrix_
   logical,protected                :: calc_dens_disc_
@@ -159,6 +161,7 @@ module m_inputparam
   logical,protected                :: print_yaml_
   logical,protected                :: assume_scf_converged_
   logical,protected                :: eri3_genuine_
+  logical,protected                :: auto_occupation_
 
   real(dp),protected               :: rcut = 0.0_dp
 
@@ -352,10 +355,8 @@ end subroutine init_calculation_type
 !=========================================================================
 subroutine init_excitation_type(excit_type)
   implicit none
-
   type(excitation_type),intent(inout)  ::  excit_type
-  !=====
-  !=====
+ !=====
 
   excit_type%name  = excit_name
   excit_type%kappa = excit_kappa
@@ -365,12 +366,14 @@ subroutine init_excitation_type(excit_type)
 
   if( LEN(TRIM(excit_name)) /= 0 ) then
     select case (excit_type%name)
+    case("ION","ANTIION")
+      excit_type%form = EXCIT_PROJECTILE_W_BASIS
     case("NUCLEUS","ANTINUCLEUS")
-      excit_type%form=EXCIT_PROJECTILE
+      excit_type%form = EXCIT_PROJECTILE
     case("NO")
-      excit_type%form=EXCIT_NO
+      excit_type%form = EXCIT_NO
     case("GAU","HSW","STEP","DEL")
-      excit_type%form=EXCIT_LIGHT
+      excit_type%form = EXCIT_LIGHT
     case default
       write(stdout,*) 'error reading excitation name (excit_name variable)'
       write(stdout,*) TRIM(excit_name)
@@ -614,7 +617,6 @@ subroutine summary_input()
   implicit none
 
   !=====
-  !=====
 
   !
   ! Summarize some important input parameters
@@ -792,6 +794,7 @@ subroutine read_inputfile_namelist()
   print_restart_            = yesno_to_logical(print_restart)
   print_bigrestart_         = yesno_to_logical(print_bigrestart)
   print_pdos_               = yesno_to_logical(print_pdos)
+  print_charge_tddft_       = yesno_to_logical(print_charge_tddft)
   print_spatial_extension_  = yesno_to_logical(print_spatial_extension)
   print_multipole_          = yesno_to_logical(print_multipole)
   print_cube_               = yesno_to_logical(print_cube)
@@ -818,6 +821,7 @@ subroutine read_inputfile_namelist()
   print_yaml_                 = yesno_to_logical(print_yaml)
   assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
   eri3_genuine_               = yesno_to_logical(eri3_genuine)
+  auto_occupation_            = yesno_to_logical(auto_occupation)
 
   tddft_grid_level   = interpret_quality(tddft_grid_quality)
   grid_level         = interpret_quality(grid_quality)
@@ -855,6 +859,8 @@ subroutine read_inputfile_namelist()
   if(nomega_sigma<0)    call die('nomega_sigma < 0')
   if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
   if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
+
+
 #if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0)
   if( move_nuclei /= 'no' ) then
     call die('LIBINT does not contain the gradients of the integrals that are needed when move_nuclei is different from no')
@@ -873,7 +879,7 @@ subroutine read_inputfile_namelist()
   endif
 
   call init_excitation_type(excit_type)
-  nprojectile = MERGE(1,0,excit_type%form==EXCIT_PROJECTILE)
+  nprojectile = MERGE(1,0,excit_type%form==EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS)
 
   !
   ! If no nuclei motion is requested, then override nstep and set it to 1
@@ -915,6 +921,12 @@ subroutine read_inputfile_namelist()
   endif
   if( eri3_genuine_ .AND. ( calc_type%need_exchange .OR. calc_type%need_exchange_lr ) ) then
     call die('eri3_genuine does not work with exact-exchange')
+  endif
+  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(eri3_genuine_) ) then
+    call die('eri3_genuine is required for moving basis (=excit_name=ion)')
+  endif
+  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(pred_corr(1:2)=='MB') ) then
+    call die('Predictor-correction scheme is not valid for moving basis. Use instead MB_PC2B for instance')
   endif
 
   spin_fact = REAL(-nspin+3,dp)
@@ -1047,10 +1059,15 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
   if( LEN(TRIM(xyz_file)) == 0 ) then
     !
     ! In this case, natom must be set to a positive value
-    if(natom<0) call die('natom<0')
+    !if(natom<1) call die('natom<1')
 
-    ncenter_basis_max  = natom + nghost
+    if(excit_type%form == EXCIT_PROJECTILE_W_BASIS) then
+      ncenter_basis_max = natom + nghost + nprojectile
+    else
+      ncenter_basis_max = natom + nghost
+    endif
     ncenter_nuclei = natom + nprojectile
+
     natom_read     = natom + nghost + nprojectile
     allocate(nucleus_wo_basis(natom_read))
     nucleus_wo_basis(:) = .FALSE.
