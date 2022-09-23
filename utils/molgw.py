@@ -10,6 +10,7 @@
 ##################################################
 
 import os, sys, subprocess
+import difflib
 import json
 from yaml import load, dump
 try:
@@ -52,6 +53,15 @@ def check_input(pyinput):
     for k in pyinput:
         if not k.lower() in keywords:
             print('Wrong input variable:    ' + k)
+            similar = ''
+            for kk in keywords:
+                if difflib.SequenceMatcher(None,k,kk).ratio() > 0.6:
+                    #print(kk,difflib.SequenceMatcher(None,k,kk).ratio())
+                    similar += ' ' + kk
+            if len(similar) > 0:
+                print(' -> did you mean:   ' + similar)
+            else:
+                print(' -> no similar keyword found')
             sanity = False
 
     # Check all mandatory keywords are there
