@@ -130,7 +130,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   nstate = SIZE(occupation(:,:),DIM=1)
 
   ! Tweak the occupation if the number of electrons has changed from DFT to TDDFT
-  if( ABS(tddft_charge-charge)> 1.0e-5_dp ) then 
+  ! tddft_charge = -999.0 is the default value that implies tddft_charge=charge
+  if( ABS(tddft_charge+999.0_dp) > 1.0e-5_dp .AND. ABS(tddft_charge-charge)> 1.0e-5_dp ) then 
     write(stdout,*) 'Set new occupations for TDDFT'
     call set_occupation(0.0_dp,electrons+charge-tddft_charge,magnetization,RESHAPE([0.0_dp],[1,1]),occupation)
   endif

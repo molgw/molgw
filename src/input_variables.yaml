@@ -1215,8 +1215,8 @@ tddft_charge:
   datatype: real
   mandatory: 'no'
   experimental: 'no'
-  default: 0.0
-  comment: Overall charge in the system fo the TDDFT calculation. It can differ from 'charge' in the DFT part.
+  default: -999.0
+  comment: Overall charge in the system fo the TDDFT calculation. Default value means it is equal to 'charge' in the DFT part. But if specified, it can differ from 'charge'.
 
 time_sim:
   family: rt_tddft

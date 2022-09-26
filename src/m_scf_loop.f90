@@ -41,7 +41,7 @@ subroutine scf_loop(is_restart,&
                     occupation, &
                     energy, &
                     hamiltonian_fock,&
-                    c_matrix,en_gks,is_converged)
+                    c_matrix,en_gks,scf_has_converged)
  implicit none
 
 !=====
@@ -56,7 +56,7 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable,intent(inout) :: hamiltonian_fock(:,:,:)
  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
  type(energy_contributions),intent(inout) :: en_gks
- logical,intent(out)                :: is_converged
+ logical,intent(out)                :: scf_has_converged
 !=====
  type(spectral_function) :: wpol
  integer                 :: nstate
@@ -310,10 +310,10 @@ subroutine scf_loop(is_restart,&
       call density_matrix_preconditioning(hamiltonian_kinetic,s_matrix,p_matrix)
 
 
-   is_converged = check_converged(p_matrix)
+   scf_has_converged = check_converged(p_matrix)
    inquire(file='STOP',exist=stopfile_found)
 
-   if( is_converged .OR. stopfile_found ) exit
+   if( scf_has_converged .OR. stopfile_found ) exit
 
    !
    ! Write down a "small" RESTART file at each step
@@ -357,7 +357,7 @@ subroutine scf_loop(is_restart,&
  !
  ! Form the final Fock matrix and store it only if needed
  !
- if( is_converged  &
+ if( scf_has_converged  &
    .AND. ( print_bigrestart_  &
           .OR. TRIM(pt_density_matrix) /= 'NO'   &
           .OR. calc_type%selfenergy_approx > 0  )  ) then
@@ -384,7 +384,7 @@ subroutine scf_loop(is_restart,&
  endif
 
  if( print_yaml_ .AND. is_iomaster ) then
-   if( is_converged ) then
+   if( scf_has_converged ) then
      write(unit_yaml,'(/,a)') 'scf is converged: True'
    else
      write(unit_yaml,'(/,a)') 'scf is converged: False'
