@@ -20,6 +20,7 @@
   pred_corr                      = 'MB_PC2B'
   n_hist                         = 2
   prop_type                      = 'CN'
+  tddft_wfn_t0                   = 'stationary'
   length_unit                    = 'bohr'
   excit_name                     = 'ion'
   vel_projectile                 = 0.0 0.0 1.0

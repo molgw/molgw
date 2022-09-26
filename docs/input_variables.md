@@ -3077,7 +3077,7 @@ Sets the residual norm target for the density matrix for the SCF cycles.
 
 **Type:** real 
 
-**Default:** 1e-06 
+**Default:** 0.0001 
 
 **Description:** 
 

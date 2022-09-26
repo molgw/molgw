@@ -323,7 +323,7 @@
  time_sim=10.0_dp 
  time_step=1.0_dp 
  vel_projectile=(/ 0.0_dp , 0.0_dp , 1.0_dp /)
- tolscf_tddft=1e-06_dp 
+ tolscf_tddft=0.0001_dp 
  alpha_hybrid=0.0_dp 
  alpha_mixing=0.7_dp 
  beta_hybrid=0.0_dp 

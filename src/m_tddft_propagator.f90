@@ -697,7 +697,7 @@ subroutine stationnary_c_matrix(basis,               &
   do icycle = 1, ncycle_max
 
     write(stdout,'(/,1x,a)')
-    write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
+    write(stdout,*) '=============== Stationary state iteration', icycle, '==============='
     write(stdout,'(/,1x,a)')
 
     allocate( m_matrix_small, MOLD = h_small_cmplx )
@@ -710,7 +710,7 @@ subroutine stationnary_c_matrix(basis,               &
       m_tmp(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
       !FBFB Why (1/2) m v**2 ?
       m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
-            + (0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2) + tddft_energy_shift )*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
+            + (0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2) + tddft_energy_shift ) * s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
                        
       m_eigenvector(:,:,ispin)  = MATMUL( m_tmp(:,:,ispin), x_matrix(:,:) )
       m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
@@ -755,15 +755,16 @@ subroutine stationnary_c_matrix(basis,               &
     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
     en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
-    rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
-    write(stdout,'(1x,a,es14.6)') 'Changes in density matrix: ',rms
-
-    if( rms < tolscf_tddft ) then
-      write(stdout,'(1x,a,/)') "=== CONVERGENCE REACHED ==="
-      exit
-    else
-      if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
-    end if
+    if( icycle > 1 ) then
+      rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
+      write(stdout,'(1x,a,es14.6)') 'Changes in density matrix: ',rms
+      if( rms < tolscf_tddft ) then
+        write(stdout,'(1x,a,/)') "=== CONVERGENCE REACHED ==="
+        exit
+      else
+        if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
+      end if
+    endif
 
     !
     ! History mixing to damp the charge oscillations (poor man solution)

@@ -1250,7 +1250,7 @@ tolscf_tddft:
   datatype: real
   mandatory: 'no'
   experimental: 'no'
-  default: 1.0e-06
+  default: 1.0e-04
   comment: Sets the residual norm target for the density matrix for the SCF cycles.
 
 #============================================================================
