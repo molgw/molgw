@@ -2921,7 +2921,7 @@ Overall charge in the system fo the TDDFT calculation. Default value means it is
 
 **Description:** 
 
-Shifts the TDDFT eigenvalues in when tddft_wfn_t0='STATIONNARY' to tune the occupation of the projectile. A positive value would depopulate the projectile (hopefully). 
+Shifts the TDDFT eigenvalues in when tddft_wfn_t0='STATIONARY' to tune the occupation of the projectile. A positive value would depopulate the projectile (=creates a positive ion). 
 
 
 ---
@@ -2969,7 +2969,7 @@ Sets the number of grid points use to evaluate the exchange-correlation integral
 
 **Description:** 
 
-Specifies the method to obtain the initial wavefunctions. Possible values are 'SCF' or 'STATIONNARY'. 
+Specifies the method to obtain the initial wavefunctions. Possible values are 'SCF' or 'STATIONARY'. 
 
 
 ---

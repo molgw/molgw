@@ -269,7 +269,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       select case(capitalize(tddft_wfn_t0))
-      case('STATIONNARY')
+      case('STATIONARY')
         ! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
         ! which are also that of  U = S**-1 * ( H - i*D )
         call stationnary_c_matrix(basis,               &

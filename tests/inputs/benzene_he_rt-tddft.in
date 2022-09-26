@@ -28,7 +28,7 @@
 
   ! Prepare an He2++ ion
   tddft_charge=2.0
-  tddft_wfn_t0 = 'stationnary'
+  tddft_wfn_t0 = 'stationary'
   tddft_energy_shift=4.0
   tolscf_tddft = 1.0e-1
 

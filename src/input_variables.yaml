@@ -1200,7 +1200,7 @@ tddft_wfn_t0:
   mandatory: 'no'
   experimental: 'no'
   default: 'SCF'
-  comment: Specifies the method to obtain the initial wavefunctions. Possible values are 'SCF' or 'STATIONNARY'.
+  comment: Specifies the method to obtain the initial wavefunctions. Possible values are 'SCF' or 'STATIONARY'.
 
 tddft_energy_shift:
   family: rt_tddft
@@ -1208,7 +1208,7 @@ tddft_energy_shift:
   mandatory: 'no'
   experimental: 'no'
   default: 0.0
-  comment: Shifts the TDDFT eigenvalues in when tddft_wfn_t0='STATIONNARY' to tune the occupation of the projectile. A positive value would depopulate the projectile (hopefully).
+  comment: Shifts the TDDFT eigenvalues in when tddft_wfn_t0='STATIONARY' to tune the occupation of the projectile. A positive value would depopulate the projectile (=creates a positive ion).
 
 tddft_charge:
   family: rt_tddft
