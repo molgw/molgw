@@ -643,7 +643,7 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  !
  ! 2-center integrals neeeded for RI on the Coulomb metric
  !
- call start_clock(timing_eri_2center)
+ call start_clock(MERGE(timing_tddft_eri_2center,timing_eri_2center,in_rt_tddft))
 
  if( recalculation ) then
    call calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil)
@@ -657,13 +657,13 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
    call calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
  endif
 
- call stop_clock(timing_eri_2center)
+ call stop_clock(MERGE(timing_tddft_eri_2center,timing_eri_2center,in_rt_tddft))
 
 
  !
  ! 3-center integrals neeeded for RI on the Coulomb metric
  !
- call start_clock(timing_eri_3center)
+ call start_clock(MERGE(timing_tddft_eri_3center,timing_eri_3center,in_rt_tddft))
 
  if( eri3_genuine_ ) then
    if( recalculation ) then
@@ -675,7 +675,7 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
    call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 
- call stop_clock(timing_eri_3center)
+ call stop_clock(MERGE(timing_tddft_eri_3center,timing_eri_3center,in_rt_tddft))
 
 
  if( ALLOCATED(mask) )       deallocate(mask)
@@ -717,7 +717,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
  integer(C_INT) :: shls(2)
  !=====
 
- call start_clock(timing_eri_2center_ints)
+ call start_clock(MERGE(timing_tddft_eri_2center_ints,timing_eri_2center_ints,in_rt_tddft))
 
 
  is_longrange = (rcut > 1.0e-12_dp)
@@ -912,7 +912,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
  endif
 
 
- call stop_clock(timing_eri_2center_ints)
+ call stop_clock(MERGE(timing_tddft_eri_2center_ints,timing_eri_2center_ints,in_rt_tddft))
 
 end subroutine calculate_integrals_eri_2center_scalapack
 
@@ -929,7 +929,7 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
  integer                      :: mlocal,nlocal
  !=====
 
- call start_clock(timing_eri_2center_invert)
+ call start_clock(MERGE(timing_tddft_eri_2center_invert,timing_eri_2center_invert,in_rt_tddft))
 
  is_longrange = (rcut > 1.0e-12_dp)
 
@@ -1005,7 +1005,7 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
 
  write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, inverted and stored'
 
- call stop_clock(timing_eri_2center_invert)
+ call stop_clock(MERGE(timing_tddft_eri_2center_invert,timing_eri_2center_invert,in_rt_tddft))
 
 end subroutine calculate_inverse_eri_2center_scalapack
 

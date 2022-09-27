@@ -77,8 +77,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  real(dp),allocatable :: w_grid_tmp(:)
 !=====
 
- call start_clock(timing_grid_init)
- call start_clock(timing_grid_generation)
+ call start_clock(MERGE(timing_tddft_grid_init,timing_grid_init,in_rt_tddft))
+ call start_clock(MERGE(timing_tddft_grid_generation,timing_grid_generation,in_rt_tddft))
 
 
  ngrid_stored = 0
@@ -391,7 +391,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
  deallocate(rr_grid_tmp,w_grid_tmp)
 
- call stop_clock(timing_grid_generation)
+ call stop_clock(MERGE(timing_tddft_grid_generation,timing_grid_generation,in_rt_tddft))
 
 
  !
@@ -400,7 +400,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  !
  if( precalculate_wfn ) then
 
-   call start_clock(timing_grid_wfn)
+   call start_clock(MERGE(timing_tddft_grid_wfn,timing_grid_wfn,in_rt_tddft))
    !
    ! grid_memory is given in Megabytes
    ! If gradient is needed, the storage is 4 times larger
@@ -418,14 +418,14 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    if( needs_gradient ) then
      call prepare_basis_functions_gradr(basis,batch_size)
    endif
-   call stop_clock(timing_grid_wfn)
+   call stop_clock(MERGE(timing_tddft_grid_wfn,timing_grid_wfn,in_rt_tddft))
 
  else
    ngrid_stored = 0
  endif
 
 
- call stop_clock(timing_grid_init)
+ call stop_clock(MERGE(timing_tddft_grid_init,timing_grid_init,in_rt_tddft))
 
 
 end subroutine init_dft_grid

@@ -14,7 +14,6 @@
 
 module m_hamiltonian_onebody
   use m_definitions
-  use m_tddft_variables
   use m_timing
   use m_mpi
   use m_scalapack
@@ -67,7 +66,7 @@ subroutine setup_overlap(basis,s_matrix)
 #endif
   !=====
 
-  call start_clock(timing_overlap)
+  call start_clock(MERGE(0,timing_overlap,in_rt_tddft))
 #if defined(HAVE_LIBCINT)
   write(stdout,'(/,a)') ' Setup overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -140,7 +139,7 @@ subroutine setup_overlap(basis,s_matrix)
   call dump_out_matrix(.FALSE.,title,s_matrix)
 
 
-  call stop_clock(timing_overlap)
+  call stop_clock(MERGE(0,timing_overlap,in_rt_tddft))
 
 
 end subroutine setup_overlap
@@ -173,7 +172,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
   integer :: ibf_cart,jbf_cart
   !=====
 
-  call start_clock(timing_overlap)
+  call start_clock(MERGE(0,timing_overlap,in_rt_tddft))
 #if defined(HAVE_LIBCINT)
   write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -243,7 +242,7 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
   enddo
 
 
-  call stop_clock(timing_overlap)
+  call stop_clock(MERGE(0,timing_overlap,in_rt_tddft))
 
 
 end subroutine setup_overlap_mixedbasis
@@ -317,7 +316,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
 #endif
   !=====
 
-  call start_clock(timing_overlap)
+  call start_clock(MERGE(0,timing_overlap,in_rt_tddft))
 #if defined(HAVE_LIBCINT)
   write(stdout,'(/,a)') ' Setup overlap matrix S (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
@@ -399,7 +398,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
   title='=== Overlap grad matrix Z ==='
   call dump_out_matrix(.FALSE.,title,s_matrix_grad(:,:,3))
 
-  call stop_clock(timing_overlap)
+  call stop_clock(MERGE(0,timing_overlap,in_rt_tddft))
 
 
 end subroutine setup_overlap_grad
@@ -560,7 +559,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
 #endif
   !=====
 
-  call start_clock(timing_hamiltonian_kin)
+  call start_clock(MERGE(0,timing_hamiltonian_kin,in_rt_tddft))
 #if defined(HAVE_LIBCINT)
   write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -633,7 +632,7 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
   title='===  Kinetic energy contribution ==='
   call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic)
 
-  call stop_clock(timing_hamiltonian_kin)
+  call stop_clock(MERGE(0,timing_hamiltonian_kin,in_rt_tddft))
 
 end subroutine setup_kinetic
 
@@ -665,7 +664,7 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
  integer :: ibf_cart,jbf_cart
 !=====
 
- call start_clock(timing_hamiltonian_kin)
+ call start_clock(MERGE(timing_tddft_kin,timing_hamiltonian_kin,in_rt_tddft))
 #if defined(HAVE_LIBCINT)
  write(stdout,'(/,1x,a)') 'Recalculate kinetic part of the Hamiltonian (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -735,7 +734,7 @@ subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
  title='===  Kinetic energy contribution (Recalc) ==='
  call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic)
 
- call stop_clock(timing_hamiltonian_kin)
+ call stop_clock(MERGE(timing_tddft_kin,timing_hamiltonian_kin,in_rt_tddft))
 
 end subroutine recalc_kinetic
 
@@ -867,7 +866,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   real(C_DOUBLE),allocatable :: env_local(:)
   !=====
 
-  if( in_tddft_loop ) then
+  if( in_rt_tddft ) then
     call start_clock(timing_tddft_hamiltonian_nuc)
   else
     call start_clock(timing_hamiltonian_nuc)
@@ -983,7 +982,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
 
   call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution ===',hamiltonian_nucleus)
 
-  if( in_tddft_loop ) then
+  if( in_rt_tddft ) then
     call stop_clock(timing_tddft_hamiltonian_nuc)
   else
     call stop_clock(timing_hamiltonian_nuc)

@@ -48,7 +48,6 @@ program molgw
   use m_selfenergy_evaluation
   use m_scf_loop
   use m_tddft_propagator
-  use m_tddft_variables
   use m_virtual_orbital_space
   use m_ci
   use m_dm_analysis

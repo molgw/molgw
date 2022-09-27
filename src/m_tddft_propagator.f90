@@ -12,7 +12,6 @@ module m_tddft_propagator
   use m_memory
   use m_warning
   use m_timing
-  use m_tddft_variables
   use m_atoms
   use m_string_tools
   use m_multipole
@@ -131,7 +130,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   ! Tweak the occupation if the number of electrons has changed from DFT to TDDFT
   ! tddft_charge = -999.0 is the default value that implies tddft_charge=charge
-  if( ABS(tddft_charge+999.0_dp) > 1.0e-5_dp .AND. ABS(tddft_charge-charge)> 1.0e-5_dp ) then 
+  if( ABS(tddft_charge+999.0_dp) > 1.0e-5_dp .AND. ABS(tddft_charge-charge)> 1.0e-5_dp ) then
     write(stdout,*) 'Set new occupations for TDDFT'
     call set_occupation(0.0_dp,electrons+charge-tddft_charge,magnetization,RESHAPE([0.0_dp],[1,1]),occupation)
   endif
@@ -418,7 +417,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   time_cur = time_min
   iwrite_step = 1
   itau = 1
-  in_tddft_loop = .TRUE.
+  call switch_on_rt_tddft_timers()
 
   do while ( (time_cur - time_sim) < 1.0e-10 )
     if ( itau == 3 ) then
@@ -530,7 +529,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   !---
   end do
-  in_tddft_loop = .FALSE.
+
+  call switch_off_rt_tddft_timers()
   !********end time loop*******************
 
   if(print_tddft_restart_) then
@@ -711,7 +711,7 @@ subroutine stationnary_c_matrix(basis,               &
       !FBFB Why (1/2) m v**2 ?
       m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
             + (0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2) + tddft_energy_shift ) * s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
-                       
+
       m_eigenvector(:,:,ispin)  = MATMUL( m_tmp(:,:,ispin), x_matrix(:,:) )
       m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
       ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
@@ -882,13 +882,11 @@ subroutine mb_related_updates(basis,                &
   !=====
   !=====
 
-  call start_clock(timing_update_p_position)
   ! Update projectile position and its basis center to t+dt/n
   call change_position_one_atom(ncenter_nuclei,xatom_start(:,ncenter_nuclei) &
        + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step*dt_factor))
   call change_basis_center_one_atom(ncenter_basis,xbasis_start(:,ncenter_basis) &
        + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step*dt_factor))
-  call stop_clock(timing_update_p_position)
 
   call start_clock(timing_update_basis_eri)
   if( need_eri ) then
@@ -916,7 +914,6 @@ subroutine mb_related_updates(basis,                &
   call setup_d_matrix(basis,d_matrix,.TRUE.)
   call stop_clock(timing_update_overlaps)
 
-  call start_clock(timing_update_dft_grid)
   ! Update DFT grids for H_xc evaluation
   if( need_grid ) then
     if( calc_type%is_dft ) then
@@ -924,7 +921,6 @@ subroutine mb_related_updates(basis,                &
       call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
     endif
   endif
-  call stop_clock(timing_update_dft_grid)
 
 end subroutine mb_related_updates
 
@@ -1061,23 +1057,19 @@ subroutine predictor_corrector(basis,                  &
     end if
 
     !--1--PROPAGATE----| C(t)--U[M(t+dt/4)]-->C(t+dt/2)
-    call start_clock(timing_mb_related_update)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis,auxil_basis,.FALSE.,&
              time_cur,3.0_dp/4.0_dp,s_matrix,d_matrix,.FALSE.)
     endif
-    call stop_clock(timing_mb_related_update)
 
     ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
     call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,prop_type)
 
     !--2--EVALUATE----| C(t+dt/2) --> H(t+dt/2)
-    call start_clock(timing_mb_related_update)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis,auxil_basis,.TRUE.,&
              time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.)
     endif
-    call stop_clock(timing_mb_related_update)
 
     ! Calculate H(t+dt/2)
     call setup_hamiltonian_cmplx(basis,                        &
@@ -1101,12 +1093,10 @@ subroutine predictor_corrector(basis,                  &
     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
     !--4--EVALUATE----| C(t+dt) --> H(t+dt)
-    call start_clock(timing_mb_related_update)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis,auxil_basis,.TRUE.,&
              time_cur,0.0_dp,s_matrix,d_matrix,.TRUE.)
     endif
-    call stop_clock(timing_mb_related_update)
 
     ! Calculate H(t+dt)
     call setup_hamiltonian_cmplx(basis,                        &
