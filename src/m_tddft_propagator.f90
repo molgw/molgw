@@ -103,7 +103,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: file_time_data,file_excit_field
   integer                    :: file_dipole_time
   integer                    :: file_mulliken, file_lowdin
-  real(dp)                   :: time_cur,time_one_iter
+  real(dp)                   :: time_cur
   complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
   complex(dp)                :: Nelec
   logical                    :: is_identity_ ! keep this varibale
@@ -321,7 +321,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   ! E_iD = - Tr{P*iD}
   !en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
-  ! Number of iterations
+  ! Number of time steps
   ntau = NINT( (time_sim-time_min) / time_step )
 
   if(excit_type%form==EXCIT_LIGHT) then
@@ -608,14 +608,14 @@ subroutine echo_tddft_variables()
   write(stdout,'(/,1x,a)') 'The most important variables of this section:'
   write(stdout,'(2x,a32,2x,es16.8)') 'Simulation time:',time_sim
   write(stdout,'(2x,a32,2x,es16.8)') 'Time step:',time_step
-  write(stdout,'(2x,a32,2x,i8)') 'Number of iterations:',NINT((time_sim)/time_step)
+  write(stdout,'(2x,a32,2x,i8)') 'Number of time steps:',NINT((time_sim)/time_step)
   write(stdout,'(2x,a32,6x,l1)') 'Moving basis:',moving_basis
   write(stdout,'(2x,a32,6x,a)')  'Initial wavefunctions:',TRIM(tddft_wfn_t0)
   write(stdout,'(2x,a32,2x,f14.6)') 'Charge:',tddft_charge
   write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector:',TRIM(pred_corr)
   write(stdout,'(2x,a32,6x,a)')      'Propagator:',TRIM(prop_type)
-  write(stdout,'(2x,a32,2x,i8)')     'Number of occupied states:',nocc
-  write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length:',n_hist
+  write(stdout,'(2x,a32,2x,i8)')     'Number of propagated states:',nocc
+  write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length for PC:',n_hist
 
 end subroutine echo_tddft_variables
 
@@ -623,17 +623,15 @@ end subroutine echo_tddft_variables
 !=========================================================================
 subroutine output_timing_one_iter()
   implicit none
-  real(dp)           :: time_one_iter, time_one_iter_H
+  real(dp)           :: time_one_iter
   !=====
   !=====
 
    time_one_iter = get_timing(timing_tddft_one_iter)
    write(stdout,'(/,1x,a)') '**********************************'
-   write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
-   write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Hamiltonian recalculation costs", time_one_iter_H,"s"
-   write(stdout,"(1x,a32,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &
-                                             time_one_iter*ntau/60.0_dp, &
-                                             "min  = ", time_one_iter*ntau/3600.0_dp, "hrs"
+   write(stdout,"(1x,a32,2x,f14.6)") "Time of one iteration (s): ", time_one_iter
+   write(stdout,"(1x,a32,2x,2(f12.2,1x))") "Estimated calculation time (s), (hrs):", time_one_iter*ntau,  &
+                                                                                     time_one_iter*ntau/3600.0_dp
    write(stdout,'(1x,a)') '**********************************'
    flush(stdout)
 

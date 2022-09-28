@@ -2109,7 +2109,7 @@ end subroutine setup_nucleus_ecp_quadrature
 
 
 !=========================================================================
-! Calculate ( \alpha | V_ecp - Z/r | \beta ) with an analytic formula
+! Calculate ( \alpha | V_ecp - Z/r | \beta ) with an analytic formula for GTH pseudos
 !
 subroutine setup_nucleus_ecp_analytic(basis,hamiltonian_nucleus)
   implicit none
