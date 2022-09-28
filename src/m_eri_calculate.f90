@@ -669,7 +669,13 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
    if( recalculation ) then
      call calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask,mask_auxil)
    else
-     call calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
+     if( .TRUE. ) then
+       write(*,*) 'FBFB HACK eri3'
+       call calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut)
+     else
+       write(*,*) 'FBFB HACK overlap3'
+       call calculate_overlap_3center_scalapack(basis,auxil_basis,rcut)
+     endif
    endif
  else
    call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
@@ -1535,6 +1541,265 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
 
 end subroutine calculate_integrals_eri_3center_scalapack
+
+
+!=========================================================================
+subroutine calculate_overlap_3center_scalapack(basis,auxil_basis,rcut,mask,mask_auxil)
+ implicit none
+ type(basis_set),intent(inout) :: basis
+ type(basis_set),intent(inout) :: auxil_basis
+ real(dp),intent(in)           :: rcut
+ logical,intent(in),optional   :: mask(:),mask_auxil(:)
+!=====
+ logical                      :: is_longrange
+ integer                      :: agt
+ integer                      :: ishell,kshell,lshell
+ integer                      :: klshellpair
+ integer                      :: n1c,n3c,n4c
+ integer                      :: ni,nk,nl
+ integer                      :: ami,amk,aml
+ integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: info
+ real(dp),allocatable         :: integrals(:,:,:)
+ integer                      :: klpair_global
+ integer                      :: mlocal,nlocal
+ integer                      :: iglobal,ilocal,jlocal
+ integer                      :: desc_3tmp(NDEL)
+ integer                      :: nauxil_kept
+ logical                      :: do_shell,recalculation
+ integer(kind=int8)           :: libint_calls
+ integer                      :: ipair
+ real(dp)                     :: factor
+!=====
+! variables used to call C
+ real(C_DOUBLE)               :: rcut_libint
+ integer(C_INT)               :: am1,am3,am4
+ integer(C_INT)               :: ng1,ng3,ng4
+ real(C_DOUBLE),allocatable   :: alpha1(:),alpha3(:),alpha4(:)
+ real(C_DOUBLE)               :: x01(3),x03(3),x04(3)
+ real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:),coeff4(:)
+ real(C_DOUBLE),allocatable   :: int_shell(:)
+ integer(C_INT)               :: cint_info
+ integer(C_INT)               :: shls(3)
+!=====
+
+ is_longrange = .FALSE.
+ rcut_libint = rcut
+ agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
+ recalculation = ALLOCATED(eri_3center) .AND. PRESENT(mask) .AND. PRESENT(mask_auxil)
+ if( recalculation ) then
+    if( SIZE(mask) /= basis%nshell .OR. SIZE(mask_auxil) /= auxil_basis%nshell ) &
+       call die('calculate_overlap_3center_scalapack: dimension problem in the masks')
+ endif
+
+
+ nauxil_kept = nauxil_2center
+
+#if defined(HAVE_LIBCINT)
+   write(stdout,'(/,a)')    ' Calculate and store all the 3-center overlaps (LIBCINT 3center)'
+#else
+   write(stdout,'(/,a)')    ' Calculate and store all the 3-center overlaps (LIBINT 3center)'
+#endif
+#if defined(HAVE_SCALAPACK)
+ write(stdout,'(a,i4,a,i4)') ' 3-center overlaps distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
+#endif
+
+
+ !
+ ! Allocate the 3-center integral array
+ ! * Full Range or Long-Range
+ !
+ if( cntxt_3center > 0 ) then
+   mlocal = NUMROC(npair         ,MB_3center,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(nauxil_2center,NB_3center,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc_eri3,npair,nauxil_2center,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+ else
+   mlocal = 0
+   nlocal = 0
+ endif
+ call ortho%max(mlocal)
+ call ortho%max(nlocal)
+ !
+ ! Possibility to recalculate a few integrals only
+ if( .NOT. recalculation ) then
+   ! Just in case it is already allocated but mask or mask_auxil is missing
+   call clean_deallocate('3-center integrals SCALAPACK',eri_3center)
+   call clean_allocate('3-center integrals SCALAPACK',eri_3center,mlocal,nlocal)
+ else
+   write(stdout,'(1x,a,i6,a,i6)') '=> This is a recalculation for basis shells: ',COUNT(mask(:)),      ' / ',basis%nshell
+   write(stdout,'(1x,a,i6,a,i6)') '                 and auxiliary basis shells: ',COUNT(mask_auxil(:)),' / ',auxil_basis%nshell
+   if( SIZE(eri_3center,DIM=1) /= mlocal .OR. SIZE(eri_3center,DIM=2) /= nlocal ) then
+     call die('calculate_overlap_3center_scalapack: recalculation but wrong dimensions of eri_3center')
+   endif
+ endif
+
+
+ !
+ ! Loop over batches starts here
+ !
+ libint_calls = 0
+
+ if( .NOT. recalculation ) then
+   call start_clock(timing_eri_3center_ints)
+ else
+   call start_clock(timing_tddft_eri_3center_ints)
+ endif
+
+ !
+ ! Skip section for procs that do not participate to the distribution (ortho paral)
+ if( cntxt_3center > 0 ) then
+
+   !
+   !  Allocate the temporary 3-center integral array
+   !
+   ! Set mlocal => npair
+   ! Set nlocal => auxil_basis%nbf
+   mlocal = NUMROC(npair          ,MB_3center,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(auxil_basis%nbf,NB_3center,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc_3tmp,npair,auxil_basis%nbf,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+
+
+   !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
+   !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
+   !$OMP&                 coeff3,coeff4,x03,x04,cint_info,shls, &
+   !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal,factor)
+   !$OMP DO REDUCTION(+:libint_calls)
+   do ishell=1,auxil_basis%nshell
+
+     ami = auxil_basis%shell(ishell)%am
+     ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
+
+     ! Check if this shell is actually needed for the local matrix
+     do_shell = .FALSE.
+     do ibf=1,ni
+       iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
+       do_shell = do_shell .OR. ( ipcol_3center == INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) )
+     enddo
+     if( .NOT. do_shell ) cycle
+
+     am1 = ami
+     n1c = number_basis_function_am( 'CART' , ami )
+     ng1 = auxil_basis%shell(ishell)%ng
+     allocate(alpha1(ng1))
+     allocate(coeff1(ng1))
+     alpha1(:) = auxil_basis%shell(ishell)%alpha(:)
+     coeff1(:) = auxil_basis%shell(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
+     x01(:) = auxil_basis%shell(ishell)%x0(:)
+
+
+
+     do klshellpair=1,nshellpair
+       kshell = index_shellpair(1,klshellpair)
+       lshell = index_shellpair(2,klshellpair)
+
+       amk = basis%shell(kshell)%am
+       aml = basis%shell(lshell)%am
+       nk = number_basis_function_am( basis%gaussian_type , amk )
+       nl = number_basis_function_am( basis%gaussian_type , aml )
+
+
+       ! Check if this shell is actually needed for the local matrix
+       do_shell = .FALSE.
+       do lbf=1,nl
+         do kbf=1,nk
+           klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
+
+           do_shell = do_shell .OR. ( iprow_3center == INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) )
+         enddo
+       enddo
+
+       if( .NOT. do_shell ) cycle
+
+       !
+       ! Skip REcalculation if all the 3 shells are "moving" or if all the 3 shells are "still"
+       !
+       if( recalculation ) then
+         if( ( mask_auxil(ishell) .EQV. mask(kshell) ) &
+              .AND. ( mask_auxil(ishell) .EQV. mask(lshell) ) ) cycle
+       endif
+
+
+       libint_calls = libint_calls + 1
+
+       n3c = number_basis_function_am( 'CART' , amk )
+       n4c = number_basis_function_am( 'CART' , aml )
+       allocate(int_shell(n1c*n3c*n4c))
+
+#if defined(HAVE_LIBCINT)
+       shls(1) = lshell-1                              ! C convention starts with 0
+       shls(2) = kshell-1                              ! C convention starts with 0
+       shls(3) = basis%LIBCINT_offset + ishell-1  ! C convention starts with 0
+
+       cint_info = cint3c1e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                 basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+       !int_shell(:) = 0.0_dp  !FBFB
+
+#else
+       call die('not existing')
+#endif
+       call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+
+
+       do lbf=1,nl
+         do kbf=1,nk
+           klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
+
+           if( iprow_3center /= INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) ) cycle
+           ilocal = INDXG2L(klpair_global,MB_3center,0,first_row,nprow_3center)
+
+           ! By convention, eri_3center contains 1/2 (alpha beta | P ) when alpha = beta
+           factor = MERGE( 0.5_dp, 1.0_dp, index_basis(1,klpair_global) == index_basis(2,klpair_global) )
+
+           do ibf=1,ni
+             iglobal = auxil_basis%shell(ishell)%istart+ibf-1
+             if( ipcol_3center /= INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) ) cycle
+             jlocal = INDXG2L(iglobal,NB_3center,0,first_col,npcol_3center)
+
+             eri_3center(ilocal,jlocal) = integrals(ibf,kbf,lbf) * factor
+
+           enddo
+         enddo
+       enddo
+
+       deallocate(integrals)
+       deallocate(int_shell)
+
+
+
+     enddo ! klshellpair
+
+     deallocate(alpha1,coeff1)
+
+   enddo ! ishell
+   !$OMP END DO
+   !$OMP END PARALLEL
+
+
+
+   write(stdout,'(1x,a,i20)')      'Number of calls to libint of this proc: ',libint_calls
+   call world%sum(libint_calls)
+   write(stdout,'(1x,a,7x,i20)')   'Total number of calls to libint: ',libint_calls
+   write(stdout,'(1x,a,f8.2)')  'Redundant calls due to parallelization and batches (%): ', &
+                                ( REAL(libint_calls,dp) / ( REAL(nshellpair,dp)*REAL(auxil_basis%nshell,dp) ) - 1.0_dp ) &
+                                * 100.0_dp
+
+ endif
+
+ if( cntxt_3center < 0 ) then
+   eri_3center(:,:) = 0.0_dp
+ endif
+ call ortho%sum(eri_3center)
+ write(stdout,'(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
+
+
+ if( .NOT. recalculation ) then
+   call stop_clock(timing_eri_3center_ints)
+ else
+   call stop_clock(timing_tddft_eri_3center_ints)
+ endif
+
+
+end subroutine calculate_overlap_3center_scalapack
 
 
 !=========================================================================
