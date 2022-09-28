@@ -38,9 +38,11 @@ module m_libcint_tools
   integer,private,parameter :: LIBCINT_env_size=100000
 
   logical,protected :: libcint_has_range_separation
+
   integer,external  :: cint2e_cart
   integer,external  :: cint2c2e_cart
   integer,external  :: cint3c2e_cart
+  integer,external  :: cint3c2e_sph
   integer,external  :: cint3c1e_cart
 
   interface
@@ -52,6 +54,14 @@ module m_libcint_tools
       integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_ovlp_cart
+
+    integer(C_INT) function cint1e_ovlp_sph(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_ovlp_sph
 
     integer(C_INT) function cint1e_r2_origj_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
       import :: C_INT,C_DOUBLE
