@@ -115,11 +115,9 @@ subroutine noft_energy(basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
    call random_number(ran_num)
    ran_num_cmplx=exp(im*ran_num)
    do istate=1,nstate_noft
-!     call random_number(ran_num)
-!     NO_COEF_cmplx(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
-!     NO_COEF_cmplx(:,istate)=ran_num_cmplx*c_matrix(:,istate,1)
-!     NO_COEF_cmplx(:,istate)=im*c_matrix(:,istate,1)
-     NO_COEF_cmplx(:,istate)=c_matrix(:,istate,1)     ! This is a faked complex orbs usage because orbs are still real. TODO
+     call random_number(ran_num) ! For complex orbs include a random phase to have real and imaginary parts
+     NO_COEF_cmplx(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
+     NO_COEF_cmplx(:,istate)=ran_num_cmplx*c_matrix(:,istate,1)
    enddo
  else
    NO_COEF(:,:)=zero

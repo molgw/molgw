@@ -257,23 +257,23 @@ subroutine build_elag(ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
  if(ELAGd%cpx_lambdas) then
   ELAGd%Lambdas_cmplx=complex_zero
   do iorb=1,RDMd%NBF_occ
-   ELAGd%Lambdas_cmplx(iorb,:)=RDMd%occ(iorb)*INTEGd%hCORE_cmplx(:,iorb)                                           ! Init: Lambda_pq = n_p hCORE_qp
+   ELAGd%Lambdas_cmplx(iorb,:)=RDMd%occ(iorb)*real(INTEGd%hCORE_cmplx(:,iorb))                                        ! Init: Lambda_pq = n_p hCORE_qp
    if(INTEGd%iERItyp/=-1) then
-    ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+RDMd%DM2_iiii(iorb)*INTEGd%ERImol_cmplx(:,iorb,iorb,iorb)   ! any->iorb,iorb->iorb
+    ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+RDMd%DM2_iiii(iorb)*real(INTEGd%ERImol_cmplx(:,iorb,iorb,iorb))   ! any->iorb,iorb->iorb
     do iorb1=1,RDMd%NBF_occ
      if(iorb/=iorb1) then
       if(INTEGd%iERItyp==0) then ! DoNOF notation {ij|lk}
-       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_J(iorb,iorb1)*INTEGd%ERImol_cmplx(:,iorb1,iorb1,iorb) ! any->iorb,iorb1->iorb1
-       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_K(iorb,iorb1)*INTEGd%ERImol_cmplx(:,iorb1,iorb,iorb1) ! any->iorb1,iorb1->iorb
-       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_L(iorb,iorb1)*INTEGd%ERImol_cmplx(:,iorb,iorb1,iorb1) ! any->iorb1,iorb->iorb1
+       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_J(iorb,iorb1)*real(INTEGd%ERImol_cmplx(:,iorb1,iorb1,iorb)) ! any->iorb,iorb1->iorb1
+       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_K(iorb,iorb1)*real(INTEGd%ERImol_cmplx(:,iorb1,iorb,iorb1)) ! any->iorb1,iorb1->iorb
+       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_L(iorb,iorb1)*real(INTEGd%ERImol_cmplx(:,iorb,iorb1,iorb1)) ! any->iorb1,iorb->iorb1
       elseif(INTEGd%iERItyp==1) then ! <ij|kl>
-       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_J(iorb,iorb1)*INTEGd%ERImol_cmplx(:,iorb1,iorb,iorb1) ! any->iorb,iorb1->iorb1
-       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_K(iorb,iorb1)*INTEGd%ERImol_cmplx(:,iorb1,iorb1,iorb) ! any->iorb1,iorb1->iorb
-       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_L(iorb,iorb1)*INTEGd%ERImol_cmplx(:,iorb,iorb1,iorb1) ! any->iorb1,iorb->iorb1
+       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_J(iorb,iorb1)*real(INTEGd%ERImol_cmplx(:,iorb1,iorb,iorb1)) ! any->iorb,iorb1->iorb1
+       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_K(iorb,iorb1)*real(INTEGd%ERImol_cmplx(:,iorb1,iorb1,iorb)) ! any->iorb1,iorb1->iorb
+       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_L(iorb,iorb1)*real(INTEGd%ERImol_cmplx(:,iorb,iorb1,iorb1)) ! any->iorb1,iorb->iorb1
       elseif(INTEGd%iERItyp==2) then ! (ik|jl)
-       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_J(iorb,iorb1)*INTEGd%ERImol_cmplx(:,iorb,iorb1,iorb1) ! any->iorb,iorb1->iorb1
-       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_K(iorb,iorb1)*INTEGd%ERImol_cmplx(:,iorb1,iorb1,iorb) ! any->iorb1,iorb1->iorb
-       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_L(iorb,iorb1)*INTEGd%ERImol_cmplx(:,iorb1,iorb,iorb1) ! any->iorb1,iorb->iorb1
+       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_J(iorb,iorb1)*real(INTEGd%ERImol_cmplx(:,iorb,iorb1,iorb1)) ! any->iorb,iorb1->iorb1
+       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_K(iorb,iorb1)*real(INTEGd%ERImol_cmplx(:,iorb1,iorb1,iorb)) ! any->iorb1,iorb1->iorb
+       ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_L(iorb,iorb1)*real(INTEGd%ERImol_cmplx(:,iorb1,iorb,iorb1)) ! any->iorb1,iorb->iorb1
       else
        ! Nth
       endif
@@ -282,17 +282,17 @@ subroutine build_elag(ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
    else
     iorbv= (iorb-1)*(INTEGd%NBF2+INTEGd%NBF3+INTEGd%NBF4)+1
     iorbv1=(iorb-1)*(INTEGd%NBF2+INTEGd%NBF3+INTEGd%NBF4)+INTEGd%NBF2
-    ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+RDMd%DM2_iiii(iorb)*INTEGd%ERImolv_cmplx(iorbv:iorbv1)   ! any->iorb,iorb->iorb
+    ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+RDMd%DM2_iiii(iorb)*real(INTEGd%ERImolv_cmplx(iorbv:iorbv1))   ! any->iorb,iorb->iorb
     do iorb1=1,RDMd%NBF_occ
      iorbv= (iorb1-1)*(INTEGd%NBF2+INTEGd%NBF4)+(iorb-1)*INTEGd%NBF3+1
      iorbv1=(iorb1-1)*(INTEGd%NBF2+INTEGd%NBF4)+(iorb-1)*INTEGd%NBF3+INTEGd%NBF2
-     ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_J(iorb,iorb1)*INTEGd%ERImolv_cmplx(iorbv:iorbv1) ! any->iorb,iorb1->iorb1
+     ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_J(iorb,iorb1)*real(INTEGd%ERImolv_cmplx(iorbv:iorbv1)) ! any->iorb,iorb1->iorb1
      iorbv= (iorb1-1)*(INTEGd%NBF2+INTEGd%NBF3)+(iorb-1)*INTEGd%NBF4+1
      iorbv1=(iorb1-1)*(INTEGd%NBF2+INTEGd%NBF3)+(iorb-1)*INTEGd%NBF4+INTEGd%NBF2
-     ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_K(iorb,iorb1)*INTEGd%ERImolv_cmplx(iorbv:iorbv1) ! any->iorb1,iorb1->iorb
+     ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_K(iorb,iorb1)*real(INTEGd%ERImolv_cmplx(iorbv:iorbv1)) ! any->iorb1,iorb1->iorb
      iorbv= (iorb1-1)*(INTEGd%NBF3+INTEGd%NBF4)+(iorb-1)*INTEGd%NBF2+1
      iorbv1=(iorb1-1)*(INTEGd%NBF3+INTEGd%NBF4)+(iorb-1)*INTEGd%NBF2+INTEGd%NBF2
-     ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_L(iorb,iorb1)*INTEGd%ERImolv_cmplx(iorbv:iorbv1) ! any->iorb1,iorb->iorb1
+     ELAGd%Lambdas_cmplx(iorb,:)=ELAGd%Lambdas_cmplx(iorb,:)+DM2_L(iorb,iorb1)*real(INTEGd%ERImolv_cmplx(iorbv:iorbv1)) ! any->iorb1,iorb->iorb1
     enddo
    endif
   enddo 
