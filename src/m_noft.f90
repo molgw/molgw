@@ -44,7 +44,6 @@ subroutine noft_energy(basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
  real(dp),allocatable       :: occ(:,:),energy(:,:),occ_print(:,:)
  real(dp),allocatable       :: NO_COEF(:,:)
  real(dp),allocatable       :: tmp_mat0(:,:),tmp_mat(:,:),Work(:) 
- complex(dp)                :: ran_num_cmplx
  complex(dp),allocatable    :: NO_COEF_cmplx(:,:)
  complex(dp),allocatable    :: tmp_mat_cmplx(:,:)
  character(len=200)         :: ofile_name
@@ -112,12 +111,9 @@ subroutine noft_energy(basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
  ! Initially copy c_matrix (HF orbs) to NO_COEF
  if(noft_complex=='yes') then
    NO_COEF_cmplx(:,:)=complex_zero
-   call random_number(ran_num)
-   ran_num_cmplx=exp(im*ran_num)
    do istate=1,nstate_noft
      call random_number(ran_num) ! For complex orbs include a random phase to have real and imaginary parts
      NO_COEF_cmplx(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
-     NO_COEF_cmplx(:,istate)=ran_num_cmplx*c_matrix(:,istate,1)
    enddo
  else
    NO_COEF(:,:)=zero

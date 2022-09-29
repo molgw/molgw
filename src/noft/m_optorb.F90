@@ -131,7 +131,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
 
   ! Check if these NO_COEF with the RDMs are already the solution =)
-  call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff,iorbmax1,iorbmax2,INTEGd%complex_ints)
+  call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff,iorbmax1,iorbmax2)
   if(convLambda) then
    write(msg,'(a)') 'Lambda_qp - Lambda_pq* converged for the Hemiticty of Lambda'
    call write_output(msg)
@@ -152,9 +152,9 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   ! Update NO_COEF
   if(imethod==1) then ! Build F matrix for iterative diagonalization
    if(INTEGd%complex_ints) then
-    call diagF_to_coef_cmplx(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF_cmplx) ! Build new NO_COEF and set icall=icall+1
+    call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF_cmplx=NO_COEF_cmplx) ! Build new NO_COEF and set icall=icall+1
    else
-    call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF) ! Build new NO_COEF and set icall=icall+1
+    call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF=NO_COEF) ! Build new NO_COEF and set icall=icall+1
    endif
   else                ! Use Newton method to produce new COEFs
    ! TODO
@@ -244,10 +244,9 @@ end subroutine opt_orb
 !!
 !! SOURCE
 
-subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,iorbmax1,iorbmax2,cpx_mos)
+subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,iorbmax1,iorbmax2)
 !Arguments ------------------------------------
 !scalars
- logical,intent(in)::cpx_mos
  logical,intent(inout)::converg_lamb
  integer,intent(inout)::iorbmax1,iorbmax2
  real(dp),intent(inout)::sumdiff,maxdiff
@@ -266,11 +265,7 @@ subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,iorbmax1,iorbmax2
  
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,RDMd%NBF_tot
-   if(cpx_mos) then
-    diff=cdabs(ELAGd%Lambdas_cmplx(iorb1,iorb)-conjg(ELAGd%Lambdas_cmplx(iorb,iorb1)))
-   else
-    diff=dabs(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
-   endif
+   diff=dabs(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
    sumdiff=sumdiff+diff
    if((diff>=tol_dif_Lambda) .and. converg_lamb) then
     converg_lamb=.false.
