@@ -97,12 +97,26 @@ subroutine setup_overlap(basis,s_matrix)
       allocate(array_cart(ni_cart*nj_cart))
 
 #if defined(HAVE_LIBCINT)
+
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1  ! C convention starts with 0
-      info = cint1e_ovlp_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                              basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
 
-      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+      if( basis%gaussian_type == 'CART' ) then
+        info = cint1e_ovlp_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
+        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+      else
+#if defined(HAVE_LIBCINT_PYPZPX)
+        info = cint1e_ovlp_sph(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                              basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
+        call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+#else
+        ! old coding
+        info = cint1e_ovlp_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
+        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+#endif
+      endif
 
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
       call libint_overlap(amA,contrdepthA,A,alphaA,cA, &

@@ -102,7 +102,7 @@ subroutine header()
  character(len=1024) :: chartmp
 !=====
 ! variables used to call C
- integer(C_INT)      :: ammax
+ integer(C_INT)      :: ammax=0
  logical(C_BOOL)     :: has_onebody,has_gradient
  integer(C_INT)      :: libxc_version(3)
 !=====
@@ -193,8 +193,11 @@ subroutine header()
  call check_capability_libcint(ammax)
  write(stdout,'(1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ',ammax
  if( .NOT. libcint_has_range_separation ) then
-   write(stdout,'(1x,a,i5)')   'Current LIBCINT compilation has no range-separation capability'
+   write(stdout,'(1x,a,i5)') 'Current LIBCINT compilation has no range-separation capability'
  endif
+#if defined(HAVE_LIBCINT_PYPZPX)
+ write(stdout,'(1x,a,i5)') 'Current LIBCINT compilation needs to PYPZPX ordering'
+#endif
 #endif
 
 #if !defined(HAVE_LIBCINT) && defined(NO_LIBINT)

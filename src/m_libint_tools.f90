@@ -19,6 +19,7 @@ module m_libint_tools
   use m_basis_set
 
 
+
   !=========================================================================
   ! interfaces to libint wrappers in C/C++ with iso_c_binding
   !=========================================================================
@@ -267,7 +268,6 @@ module m_libint_tools
   end interface
 
 
-
 contains
 
 
@@ -373,7 +373,7 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_rig
           ii = ii + 1
           matrix_out(i1,i2,i3) = array_in(ii) * cart_to_pure_norm(am1,CARTG)%matrix(i1,i1) &
                                               * cart_to_pure_norm(am2,CARTG)%matrix(i2,i2) &
-                                              * cart_to_pure_norm(am3,CARTG)%matrix(i3,i3) 
+                                              * cart_to_pure_norm(am3,CARTG)%matrix(i3,i3)
         enddo
       enddo
     enddo
