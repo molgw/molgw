@@ -52,6 +52,7 @@ module m_libcint_tools
   logical,protected :: libcint_has_range_separation
 
   integer,external  :: cint2e_cart
+  integer,external  :: cint2c2e_sph
   integer,external  :: cint2c2e_cart
   integer,external  :: cint3c2e_cart
   integer,external  :: cint3c2e_sph

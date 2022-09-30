@@ -845,8 +845,21 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
        shls(1) = kshell-1  ! C convention starts with 0
        shls(2) = ishell-1  ! C convention starts with 0
 
-       cint_info = cint2c2e_cart(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
-                                 auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
+       if( auxil_basis%gaussian_type == 'CART' ) then
+         cint_info = cint2c2e_cart(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                                   auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
+         call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
+       else
+#if defined(HAVE_LIBCINT_PYPZPX)
+         cint_info = cint2c2e_sph(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                                  auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
+         call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
+#else
+         cint_info = cint2c2e_cart(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                                   auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
+         call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
+#endif
+       endif
 
 #else
 
@@ -871,9 +884,8 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
        deallocate(alpha1,alpha3)
        deallocate(coeff1,coeff3)
 
-#endif
-
        call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
+#endif
 
        deallocate(int_shell)
 
