@@ -195,9 +195,6 @@ subroutine header()
  if( .NOT. libcint_has_range_separation ) then
    write(stdout,'(1x,a,i5)') 'Current LIBCINT compilation has no range-separation capability'
  endif
-#if defined(HAVE_LIBCINT_PYPZPX)
- write(stdout,'(1x,a,i5)') 'Current LIBCINT compilation needs to PYPZPX ordering'
-#endif
 #endif
 
 #if !defined(HAVE_LIBCINT) && defined(NO_LIBINT)

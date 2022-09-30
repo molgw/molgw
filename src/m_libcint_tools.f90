@@ -287,7 +287,7 @@ subroutine check_capability_libcint(lmax)
   libcint_has_correct_ordering = ABS( ovlp(5) - ref_value_pz_overlap ) < 1.0e-10_dp
 
   if( .NOT. libcint_has_correct_ordering ) then
-    call die('check_capability_libcint: your LIBCINT compilation has incompatible p-orbital ordering.' // &
+    call die('check_capability_libcint: your LIBCINT compilation has incompatible p-orbital ordering. ' // &
              'Please recompile it with -DPXPZPY=1')
   endif
   deallocate(ovlp)

@@ -121,6 +121,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
   !====
 
+  call switch_on_rt_tddft_timers()
   call start_clock(timing_tddft_loop)
 
   write(stdout,'(/,/,1x,a)') '=================================================='
@@ -243,7 +244,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   end if
 
   if( calc_type%is_dft ) then
-     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+     call init_dft_grid(basis,tddft_grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
   endif
 
   ! Getting starting value of the Hamiltonian
@@ -271,20 +272,20 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       case('STATIONARY')
         ! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
         ! which are also that of  U = S**-1 * ( H - i*D )
-        call stationnary_c_matrix(basis,               &
-                                  time_min,            &
-                                  s_matrix,            &
-                                  x_matrix,            &
-                                  d_matrix,            &
-                                  occupation ,         &
-                                  hamiltonian_kinetic, &
-                                  hamiltonian_nucleus, &
-                                  dipole_ao,           &
-                                  c_matrix_cmplx,      &
-                                  c_matrix_orth_cmplx, &
-                                  h_cmplx,             &
-                                  h_small_cmplx,       &
-                                  en_tddft)
+        call stationary_c_matrix(basis,               &
+                                 time_min,            &
+                                 s_matrix,            &
+                                 x_matrix,            &
+                                 d_matrix,            &
+                                 occupation ,         &
+                                 hamiltonian_kinetic, &
+                                 hamiltonian_nucleus, &
+                                 dipole_ao,           &
+                                 c_matrix_cmplx,      &
+                                 c_matrix_orth_cmplx, &
+                                 h_cmplx,             &
+                                 h_small_cmplx,       &
+                                 en_tddft)
       case('SCF')
         write(stdout,'(/,1x,a)') '===== C matrix initialization is skipped ====='
       case default
@@ -417,7 +418,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   time_cur = time_min
   iwrite_step = 1
   itau = 1
-  call switch_on_rt_tddft_timers()
 
   do while ( (time_cur - time_sim) < 1.0e-10 )
     if ( itau == 3 ) then
@@ -530,7 +530,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   !---
   end do
 
-  call switch_off_rt_tddft_timers()
   !********end time loop*******************
 
   if(print_tddft_restart_) then
@@ -596,7 +595,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   write(stdout,'(/,x,a)') "End of RT-TDDFT simulation"
   write(stdout,'(1x,a,/)') '=================================================='
+
   call stop_clock(timing_tddft_loop)
+  call switch_off_rt_tddft_timers()
 
 end subroutine calculate_propagation
 
@@ -639,20 +640,20 @@ end subroutine output_timing_one_iter
 
 
 !=========================================================================
-subroutine stationnary_c_matrix(basis,               &
-                                time_min,            &
-                                s_matrix,            &
-                                x_matrix,            &
-                                d_matrix,            &
-                                occupation ,         &
-                                hamiltonian_kinetic, &
-                                hamiltonian_nucleus, &
-                                dipole_ao,           &
-                                c_matrix_cmplx,      &
-                                c_matrix_orth_cmplx, &
-                                h_cmplx,             &
-                                h_small_cmplx,       &
-                                en_tddft)
+subroutine stationary_c_matrix(basis,               &
+                               time_min,            &
+                               s_matrix,            &
+                               x_matrix,            &
+                               d_matrix,            &
+                               occupation ,         &
+                               hamiltonian_kinetic, &
+                               hamiltonian_nucleus, &
+                               dipole_ao,           &
+                               c_matrix_cmplx,      &
+                               c_matrix_orth_cmplx, &
+                               h_cmplx,             &
+                               h_small_cmplx,       &
+                               en_tddft)
   implicit none
 
   type(basis_set),intent(inout)   :: basis
@@ -778,7 +779,7 @@ subroutine stationnary_c_matrix(basis,               &
   end do
   deallocate(p_matrix_cmplx, p_matrix_cmplx_hist, h_hist_cmplx)
 
-end subroutine stationnary_c_matrix
+end subroutine stationary_c_matrix
 
 
 !=========================================================================
@@ -916,7 +917,7 @@ subroutine mb_related_updates(basis,                &
   if( need_grid ) then
     if( calc_type%is_dft ) then
       call destroy_dft_grid()
-      call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+      call init_dft_grid(basis,tddft_grid_level,dft_xc(1)%needs_gradient,.FALSE.,BATCH_SIZE)
     endif
   endif
 
