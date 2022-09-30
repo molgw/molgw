@@ -94,7 +94,7 @@ subroutine setup_overlap(basis,s_matrix)
       call set_libint_shell(basis%shell(ishell),amA,contrdepthA,A,alphaA,cA)
 
 
-      allocate(array_cart(ni_cart*nj_cart))
+      allocate(array_cart(ni_cart*nj_cart))  ! it may be too large for spherical gaussian
 
 #if defined(HAVE_LIBCINT)
 
@@ -104,7 +104,7 @@ subroutine setup_overlap(basis,s_matrix)
       if( basis%gaussian_type == 'CART' ) then
         info = cint1e_ovlp_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
                                 basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
-        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+        call transform_libcint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
       else
 #if defined(HAVE_LIBCINT_PYPZPX)
         info = cint1e_ovlp_sph(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &

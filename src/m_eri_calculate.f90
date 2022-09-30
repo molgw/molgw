@@ -1428,23 +1428,35 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
        n3c = number_basis_function_am( 'CART' , amk )
        n4c = number_basis_function_am( 'CART' , aml )
-       allocate(int_shell(n1c*n3c*n4c))
+       allocate(int_shell(n1c*n3c*n4c)) ! it may be too large for spherical gaussian
 
 #if defined(HAVE_LIBCINT)
        shls(1) = lshell-1                              ! C convention starts with 0
        shls(2) = kshell-1                              ! C convention starts with 0
        shls(3) = basis%LIBCINT_offset + ishell-1  ! C convention starts with 0
 
-       cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                                 basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+       if( basis%gaussian_type == 'CART' ) then
+         cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                   basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+         call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+       else
+#if defined(HAVE_LIBCINT_PYPZPX)
+         cint_info = cint3c2e_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                  basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+         call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+#else
+         ! old coding
+         cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                   basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+         call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+#endif
+       endif
 
 #else
        am3 = amk
        am4 = aml
        ng3 = basis%shell(kshell)%ng
        ng4 = basis%shell(lshell)%ng
-
-
        allocate(alpha3(ng3),alpha4(ng4))
        allocate(coeff3(ng3),coeff4(ng4))
        alpha3(:) = basis%shell(kshell)%alpha(:)
@@ -1454,8 +1466,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        x03(:) = basis%shell(kshell)%x0(:)
        x04(:) = basis%shell(lshell)%x0(:)
 
-
-
        call libint_3center(am1,ng1,x01,alpha1,coeff1, &
                            am3,ng3,x03,alpha3,coeff3, &
                            am4,ng4,x04,alpha4,coeff4, &
@@ -1463,8 +1473,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
        deallocate(alpha3,alpha4)
        deallocate(coeff3,coeff4)
-#endif
        call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+#endif
 
 
        do lbf=1,nl
@@ -1751,8 +1761,22 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
          shls(2) = kshell-1                              ! C convention starts with 0
          shls(3) = basis%LIBCINT_offset + ishell-1  ! C convention starts with 0
 
-         cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                                   basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+         if( basis%gaussian_type == 'CART' ) then
+           cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                     basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+           call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+         else
+#if defined(HAVE_LIBCINT_PYPZPX)
+           cint_info = cint3c2e_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                    basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+           call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+#else
+           ! old coding
+           cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                     basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+           call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+#endif
+         endif
 
 #else
          am3 = amk
@@ -1775,8 +1799,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
          deallocate(alpha3,alpha4)
          deallocate(coeff3,coeff4)
-#endif
          call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+#endif
 
 
          do lbf=1,nl
