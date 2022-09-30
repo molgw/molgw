@@ -50,6 +50,7 @@ module m_libcint_tools
   integer,private,parameter :: LIBCINT_env_size=100000
 
   logical,protected :: libcint_has_range_separation
+  logical,protected :: libcint_has_correct_ordering
 
   integer,external  :: cint2e_cart
   integer,external  :: cint2c2e_sph
@@ -187,11 +188,12 @@ subroutine check_capability_libcint(lmax)
   integer,intent(inout) :: lmax
   !=====
   real(C_DOUBLE) :: fake_env(50),integral(1)
-  integer(C_INT) :: fake_atm(LIBCINT_ATM_SLOTS,1)
-  integer(C_INT) :: fake_bas(LIBCINT_BAS_SLOTS,1)
+  integer(C_INT) :: fake_atm(LIBCINT_ATM_SLOTS,2)
+  integer(C_INT) :: fake_bas(LIBCINT_BAS_SLOTS,2)
   integer(C_INT) :: shls(2)
   integer        :: info,off
-  real(dp),parameter :: reference_value = 3.8052728203379578E-002_dp
+  real(dp),parameter :: ref_value_screened_integral = 3.8052728203379578E-002_dp
+  real(dp),parameter :: ref_value_pz_overlap        = 0.22687678568747119_dp
   integer        :: il
   real(C_DOUBLE),allocatable :: ovlp(:)
   !=====
@@ -203,21 +205,25 @@ subroutine check_capability_libcint(lmax)
     lmax = LMAX_LIBCINT
   endif
 
+  fake_env(:) = 0.0_C_DOUBLE
+
+
   !
-  ! Check if LIBCINT has ERF range-separation
-  fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.11_dp  ! omega = 0.11 bohr**-1
+  ! Check out if LIBCINT has ERF range-separation
+  !
+  fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.11_C_DOUBLE  ! omega = 0.11 bohr**-1
   off = LIBCINT_PTR_ENV_START
 
   fake_atm(LIBCINT_CHARGE_OF,1) = 1
   fake_atm(LIBCINT_PTR_COORD,1) = off
-  fake_env(off+1:off+3) = 0.0_dp
+  fake_env(off+1:off+3) = 0.0_C_DOUBLE
   off = off + 3
   fake_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
   fake_bas(LIBCINT_ANG_OF   ,1)  = 0
   fake_bas(LIBCINT_NPRIM_OF ,1)  = 1
   fake_bas(LIBCINT_NCTR_OF  ,1)  = 1
   fake_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
-  fake_env(off+1) = 2.0_dp  ! alpha = 2.0
+  fake_env(off+1) = 2.0_C_DOUBLE  ! alpha = 2.0
   off = off + 1
   fake_bas(LIBCINT_PTR_COEFF,1) = off
   fake_env(off+1) = 1.0    ! coefficient = 1.0
@@ -228,37 +234,93 @@ subroutine check_capability_libcint(lmax)
   info = cint2c2e_cart(integral, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env, 0_C_LONG)
 #endif
 
-  libcint_has_range_separation = ABS( integral(1) - reference_value ) < 1.0e-12_dp
-
+  libcint_has_range_separation = ABS( integral(1) - ref_value_screened_integral ) < 1.0e-10_dp
 
   !
-  ! Find normalization for LIBCINT spherical
+  ! Check out if LIBCINT has PYPZPX ordering for p shells
+  !
+  fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_C_DOUBLE
+  off = LIBCINT_PTR_ENV_START
+
+  ! Atom 1
+  fake_atm(LIBCINT_CHARGE_OF,1) = 1
+  fake_atm(LIBCINT_PTR_COORD,1) = off
+  fake_env(off+1:off+3) = 0.0_C_DOUBLE
+  off = off + 3
+  ! Atom 2
+  fake_atm(LIBCINT_CHARGE_OF,2) = 1
+  fake_atm(LIBCINT_PTR_COORD,2) = off
+  fake_env(off+1) = 0.0_C_DOUBLE
+  fake_env(off+2) = 0.0_C_DOUBLE
+  fake_env(off+3) = 0.5_C_DOUBLE   ! shift along z axis
+  off = off + 3
+
+  ! Basis 1
+  fake_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
+  fake_bas(LIBCINT_ANG_OF   ,1)  = 1 ! p orbital
+  fake_bas(LIBCINT_NPRIM_OF ,1)  = 1
+  fake_bas(LIBCINT_NCTR_OF  ,1)  = 1
+  fake_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  fake_env(off+1) = 1.0_C_DOUBLE  ! alpha = 1.0
+  off = off + 1
+  fake_bas(LIBCINT_PTR_COEFF,1) = off
+  fake_env(off+1) = SQRT(4.0_C_DOUBLE * pi) / SQRT( 2.0_C_DOUBLE * 1 + 1 )  &
+                     * ( 2.0_C_DOUBLE / pi )**0.75_C_DOUBLE * 2.0_C_DOUBLE
+  ! Basis 2
+  fake_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
+  fake_bas(LIBCINT_ANG_OF   ,2)  = 1 ! p orbital
+  fake_bas(LIBCINT_NPRIM_OF ,2)  = 1
+  fake_bas(LIBCINT_NCTR_OF  ,2)  = 1
+  fake_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  fake_env(off+1) = 1.0_C_DOUBLE  ! alpha = 1.0
+  off = off + 1
+  fake_bas(LIBCINT_PTR_COEFF,2) = off
+  fake_env(off+1) = SQRT(4.0_C_DOUBLE * pi) / SQRT( 2.0_C_DOUBLE * 1 + 1 )  &
+                     * ( 2.0_C_DOUBLE / pi )**0.75_C_DOUBLE * 2.0_C_DOUBLE
+  allocate(ovlp(9))
+  shls(1) = 0
+  shls(2) = 1
+#if defined(HAVE_LIBCINT)
+  info = cint1e_ovlp_sph(ovlp, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env)
+#endif
+
+  libcint_has_correct_ordering = ABS( ovlp(5) - ref_value_pz_overlap ) < 1.0e-10_dp
+
+  if( .NOT. libcint_has_correct_ordering ) then
+    call die('check_capability_libcint: your LIBCINT compilation has incompatible p-orbital ordering.' // &
+             'Please recompile it with -DPXPZPY=1')
+  endif
+  deallocate(ovlp)
+
+  !
+  ! Guess normalization for LIBCINT spherical gaussians
+  !
   do il=0,lmax
-    fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.11_dp  ! omega = 0.11 bohr**-1
+    fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_C_DOUBLE
     off = LIBCINT_PTR_ENV_START
 
     fake_atm(LIBCINT_CHARGE_OF,1) = 1
     fake_atm(LIBCINT_PTR_COORD,1) = off
-    fake_env(off+1:off+3) = 0.0_dp
+    fake_env(off+1:off+3) = 0.0_C_DOUBLE
     off = off + 3
     fake_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-    fake_bas(LIBCINT_ANG_OF   ,1)  = 0
+    fake_bas(LIBCINT_ANG_OF   ,1)  = il
     fake_bas(LIBCINT_NPRIM_OF ,1)  = 1
     fake_bas(LIBCINT_NCTR_OF  ,1)  = 1
     fake_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
-    fake_env(off+1) = 1.0_dp  ! alpha = 1.0
+    fake_env(off+1) = 1.0_C_DOUBLE  ! alpha = 1.0
     off = off + 1
     fake_bas(LIBCINT_PTR_COEFF,1) = off
     select case(il)
     case(0,1)
-      fake_env(off+1) = SQRT(4.0_dp * pi) / SQRT( 2.0_dp * il + 1 )  &
-                       * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**il
+      fake_env(off+1) = SQRT(4.0_C_DOUBLE * pi) / SQRT( 2.0_C_DOUBLE * il + 1 )  &
+                       * ( 2.0_C_DOUBLE / pi )**0.75_C_DOUBLE * 2.0_C_DOUBLE**il
     case default
-      fake_env(off+1) = ( 2.0_dp / pi )**0.75_dp * 2.0_dp**il
+      fake_env(off+1) = ( 2.0_C_DOUBLE / pi )**0.75_C_DOUBLE * 2.0_C_DOUBLE**il
     end select
 
     allocate(ovlp((2*il+1)**2))
-    fake_bas(LIBCINT_ANG_OF   ,1)  = il
+    shls(:) = 0
 #if defined(HAVE_LIBCINT)
     info = cint1e_ovlp_sph(ovlp, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env)
 #endif
