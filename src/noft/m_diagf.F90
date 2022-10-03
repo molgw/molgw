@@ -19,7 +19,7 @@ module m_diagf
 
  implicit none
 
- private :: scale_F,diis_F,traceF
+ private :: scale_F,scale_F_cmplx,diis_F,traceF
 !!***
 
  public ::diagF_to_coef 
@@ -66,67 +66,108 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
  integer::iorb,iorb1,lwork,info
  real(dp)::thresholddiis
 !arrays
- real(dp),allocatable,dimension(:)::Work
+ real(dp),allocatable,dimension(:)::Work,RWork
+ complex(dp),allocatable,dimension(:)::Work_cmplx
  real(dp),allocatable,dimension(:,:)::Eigvec,New_NO_COEF ! Eigvec is initially the F matrix
- complex(dp),allocatable,dimension(:,:)::New_NO_COEF_cmplx 
+ complex(dp),allocatable,dimension(:,:)::Eigvec_cmplx,New_NO_COEF_cmplx 
 !************************************************************************
  
  thresholddiis=ten**(-ELAGd%itoldiis)
- allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Work(1))
 
- if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
-  ELAGd%diagLpL_done=.true. 
-  do iorb=1,RDMd%NBF_tot 
-   do iorb1=1,iorb-1
-    Eigvec(iorb,iorb1)=half*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
-    Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)
-   enddo
-   Eigvec(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
-  enddo
- else
-  do iorb=1,RDMd%NBF_tot 
-   do iorb1=1,iorb-1
-    Eigvec(iorb,iorb1)=ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1)
-    call scale_F(ELAGd%MaxScaling+9,Eigvec(iorb,iorb1)) ! Scale the Fpq element to avoid divergence
-    Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)               ! Fpq=Fqp
-   enddo
-   Eigvec(iorb,iorb)=ELAGd%F_diag(iorb)
-  enddo  
- endif
-
- ! Decide whether to do DIIS before diagonalizing
- if(maxdiff<thresholddiis.and.ELAGd%ndiis>0) then
-  call diis_F(diddiis,RDMd,ELAGd,Eigvec)
- endif 
-
- ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
- lwork=-1
- call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
- lwork=nint(Work(1))
- if(info==0) then
-  deallocate(Work)
-  allocate(Work(lwork))
-  ELAGd%F_diag=zero
-  call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
- endif
-
- ! Update the NO_COEF
  if(present(NO_COEF)) then
+
+  allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Work(1))
+  if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
+   ELAGd%diagLpL_done=.true. 
+   do iorb=1,RDMd%NBF_tot 
+    do iorb1=1,iorb-1
+     Eigvec(iorb,iorb1)=half*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
+     Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)
+    enddo
+    Eigvec(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
+   enddo
+  else
+   do iorb=1,RDMd%NBF_tot 
+    do iorb1=1,iorb-1
+     Eigvec(iorb,iorb1)=ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1)
+     call scale_F(ELAGd%MaxScaling+9,Eigvec(iorb,iorb1)) ! Scale the Fpq element to avoid divergence
+     Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)               ! Fpq=Fqp
+    enddo
+    Eigvec(iorb,iorb)=ELAGd%F_diag(iorb)
+   enddo  
+  endif
+
+  ! Decide whether to do DIIS before diagonalizing
+  if(maxdiff<thresholddiis.and.ELAGd%ndiis>0) then
+   call diis_F(diddiis,RDMd,ELAGd,Eigvec)
+  endif 
+
+  ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
+  lwork=-1
+  call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
+  lwork=nint(Work(1))
+  if(info==0) then
+   deallocate(Work)
+   allocate(Work(lwork))
+   ELAGd%F_diag=zero
+   call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
+  endif
+  deallocate(Work)
+
+  ! Update the NO_COEF
   allocate(New_NO_COEF(RDMd%NBF_tot,RDMd%NBF_tot))
   New_NO_COEF=matmul(NO_COEF,Eigvec)
   NO_COEF=New_NO_COEF
-  deallocate(New_NO_COEF)
+  deallocate(New_NO_COEF,Eigvec)
+
  else
+
+  allocate(Eigvec_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),Work_cmplx(1),RWork(3*RDMd%NBF_tot-2))
+  if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
+   ELAGd%diagLpL_done=.true. 
+   do iorb=1,RDMd%NBF_tot 
+    do iorb1=1,iorb-1
+     Eigvec_cmplx(iorb,iorb1)=half*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
+     Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))
+    enddo
+    Eigvec_cmplx(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
+   enddo
+  else
+   do iorb=1,RDMd%NBF_tot 
+    do iorb1=1,iorb-1
+     Eigvec_cmplx(iorb,iorb1)=(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
+     Eigvec_cmplx(iorb,iorb1)=Eigvec_cmplx(iorb,iorb1)+im*(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))
+     call scale_F_cmplx(ELAGd%MaxScaling+9,Eigvec_cmplx(iorb,iorb1))  ! Scale the Fpq element to avoid divergence
+     Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))         ! Fpq=Fqp*
+    enddo
+    Eigvec_cmplx(iorb,iorb)=complex_zero
+    Eigvec_cmplx(iorb,iorb)=ELAGd%F_diag(iorb)
+   enddo  
+  endif
+
+  ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
+  lwork=-1
+  call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,ELAGd%F_diag,Work_cmplx,lwork,RWork,info)
+  lwork=nint(real(Work_cmplx(1)))
+  if(info==0) then
+   deallocate(Work_cmplx)
+   allocate(Work_cmplx(lwork))
+   ELAGd%F_diag=zero
+   call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,ELAGd%F_diag,Work_cmplx,lwork,RWork,info)
+  endif
+  deallocate(Work_cmplx,RWork)
+
+  ! Update the NO_COEF_cmplx
   allocate(New_NO_COEF_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
-  New_NO_COEF_cmplx=matmul(NO_COEF_cmplx,Eigvec)
+  New_NO_COEF_cmplx=matmul(NO_COEF_cmplx,Eigvec_cmplx)
   NO_COEF_cmplx=New_NO_COEF_cmplx
-  deallocate(New_NO_COEF_cmplx)
+  deallocate(New_NO_COEF_cmplx,Eigvec_cmplx)
+
  endif
 
  ! Increase icall (iterator accumulator)
  icall=icall+1
 
- deallocate(Eigvec,Work)
 
 end subroutine diagF_to_coef
 !!***
@@ -170,6 +211,47 @@ subroutine scale_F(MaxScaling,Fpq)
   endif
  enddo 
 end subroutine scale_F
+!!***
+
+!!***
+!!****f* DoNOF/scale_F_cmplx
+!! NAME
+!!  scale_F_cmplx
+!!
+!! FUNCTION
+!!  Scale the F-matrix element
+!!
+!! INPUTS
+!!  MaxScaling=Number of zeros used to scale F
+!!
+!! OUTPUT
+!!  Fpq=Scaled F_pq matrix element
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine scale_F_cmplx(MaxScaling,Fpq)
+!Arguments ------------------------------------
+!scalars
+ integer,intent(in)::MaxScaling
+ complex(dp),intent(inout)::Fpq
+!arrays
+!Local variables ------------------------------
+!scalars
+ integer::iscale
+!arrays
+ real(dp)::Abs_Fpq
+!************************************************************************
+ do iscale=1,MaxScaling
+  Abs_Fpq=cdabs(Fpq)
+  if(Abs_Fpq>ten**(9-iscale).and.Abs_Fpq<ten**(10-iscale)) then
+   Fpq=tol1*Fpq
+  endif
+ enddo
+end subroutine scale_F_cmplx
 !!***
 
 !!***

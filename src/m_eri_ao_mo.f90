@@ -601,9 +601,9 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
                        c_matrix_cmplx(1,nstate_min_,klspin),nbf, &
                  complex_zero,tmp2_cmplx(mstate_min_,nstate_min_),mstate_count_)
 
-      ! Transposition + complex conjugation happens here!
+      ! Transposition (is complex conjugation needed?) happens here!
       eri_3center_eigen_cmplx(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
-                                  = conjg( tmp2_cmplx(mstate_min_:mstate_max_,nstate_min_:nstate_max_) )
+                                  = ( tmp2_cmplx(mstate_min_:mstate_max_,nstate_min_:nstate_max_) )
 
     enddo !iauxil
   enddo !klspin
