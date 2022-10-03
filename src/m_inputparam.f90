@@ -775,6 +775,7 @@ subroutine read_inputfile_namelist()
   read_fchk          = capitalize(read_fchk)
   pt_density_matrix  = capitalize(pt_density_matrix)
   pt3_a_diagrams     = capitalize(pt3_a_diagrams)
+  partition_scheme   = capitalize(partition_scheme)
 
   memory_evaluation_        = yesno_to_logical(memory_evaluation)
   read_restart_             = yesno_to_logical(read_restart)

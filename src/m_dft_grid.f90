@@ -38,7 +38,6 @@ module m_dft_grid
  real(dp),parameter,private :: aa = 0.64_dp ! Scuseria value
 
  real(dp),parameter,private :: TOL_WEIGHT = 1.0e-14_dp
- real(dp),parameter,private :: TOL_BF     = 1.0e-08_dp
 
  !
  ! Function evaluation storage
@@ -278,7 +277,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
 
        select case(partition_scheme)
-       case('becke')
+       case('BECKE')
          !
          ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
          !
@@ -299,7 +298,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          p_becke(:) = PRODUCT(s_becke(:,:),DIM=1)
          fact_becke = p_becke(icenter) / SUM( p_becke(:) )
 
-       case('ssf')
+       case('SSF')
          !
          ! Partitionning scheme of Stratmann, Scuseria, Frisch, Chem. Phys. Lett. 257, 213 (1996)
          !
