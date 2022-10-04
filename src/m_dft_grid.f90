@@ -70,6 +70,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  real(dp),allocatable :: w1(:),w2(:)
  real(dp),allocatable :: xa(:,:),wxa(:,:)
  real(dp)             :: p_becke(ncenter_basis),s_becke(ncenter_basis,ncenter_basis),fact_becke
+ real(dp)             :: rk(ncenter_basis),kj(ncenter_basis,ncenter_basis)
  real(dp)             :: mu,alpha,xtmp,mu_aa,rtmp
  integer              :: jcenter,kcenter
  real(dp),allocatable :: rr_grid_tmp(:,:)
@@ -232,6 +233,12 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    enddo
  enddo
 
+ do kcenter=1,ncenter_basis
+   do jcenter=1,ncenter_basis
+     kj(jcenter,kcenter) = NORM2( xbasis(:,kcenter) - xbasis(:,jcenter) )
+   enddo
+ enddo
+
  !
  ! Temporary storage before the screening of the low weights
  allocate(rr_grid_tmp(3,ngridmax),w_grid_tmp(ngridmax))
@@ -242,12 +249,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  do icenter=1,ncenter_basis
    radius = element_covalent_radius(zbasis(icenter))
 
-   ! Find the nearest neighbor of atom i
-   ri = 999999.9d0
-   do kcenter=1,ncenter_basis
-     if( icenter == kcenter ) cycle
-     ri = MIN( NORM2( xbasis(:,kcenter) - xbasis(:,icenter) ) , ri )
-   enddo
+   ! Find the minimum distance to another atom
+   ri = MINVAL(kj(:,icenter))
 
 
    do iradial=1,nradial
@@ -281,15 +284,19 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          !
          ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
          !
+         do kcenter=1,ncenter_basis
+           rk(kcenter) = NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter))
+         enddo
+
          s_becke(:,:) = 1.0_dp
          !$OMP PARALLEL PRIVATE(mu)
          !$OMP DO
          do kcenter=1,ncenter_basis
-           do jcenter=1,ncenter_basis
-             if(kcenter==jcenter) cycle
-             mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jcenter)) ) &
-                       / NORM2(xbasis(:,kcenter)-xbasis(:,jcenter))
-             s_becke(jcenter,kcenter) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+           do jcenter=kcenter+1,ncenter_basis
+             mu = ( rk(kcenter) - rk(jcenter) ) / kj(kcenter,jcenter)
+             rtmp = smooth_step(smooth_step(smooth_step(mu)))
+             s_becke(jcenter,kcenter) = 0.5_dp * ( 1.0_dp - rtmp )
+             s_becke(kcenter,jcenter) = 0.5_dp * ( 1.0_dp + rtmp )
            enddo
          enddo
          !$OMP END DO
@@ -311,13 +318,17 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          else
 
            s_becke(:,:) = 1.0_dp
+
+           do kcenter=1,ncenter_basis
+             rk(kcenter) = NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter))
+           enddo
+
            !$OMP PARALLEL PRIVATE(mu,mu_aa,rtmp)
            !$OMP DO
            do kcenter=1,ncenter_basis
              do jcenter=kcenter+1,ncenter_basis
 
-               mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jcenter)) ) &
-                         / NORM2(xbasis(:,kcenter)-xbasis(:,jcenter))
+               mu = ( rk(kcenter) - rk(jcenter) ) / kj(kcenter,jcenter)
 
                if( mu < -aa ) then
                  s_becke(kcenter,jcenter) = 0.0_dp
