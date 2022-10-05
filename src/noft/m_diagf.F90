@@ -123,6 +123,7 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
  else
 
   allocate(Eigvec_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),Work_cmplx(1),RWork(3*RDMd%NBF_tot-2),Phases(RDMd%NBF_tot))
+  Phases=complex_zero
   if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
    ELAGd%diagLpL_done=.true. 
    do iorb=1,RDMd%NBF_tot 
@@ -131,6 +132,8 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
      Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))
     enddo
     Eigvec_cmplx(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
+    Phases(iorb)=-im*(ELAGd%Lambdas_im(iorb,iorb)+ELAGd%Lambdas_im(iorb,iorb))
+    if(cdabs(Phases(iorb))<tol8) Phases(iorb)=complex_zero
    enddo
   else
    do iorb=1,RDMd%NBF_tot 
@@ -140,9 +143,8 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
      call scale_F_cmplx(ELAGd%MaxScaling+9,Eigvec_cmplx(iorb,iorb1))  ! Scale the Fpq element to avoid divergence
      Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))         ! Fpq=Fqp*
     enddo
-    Phases(iorb)=im*(ELAGd%Lambdas_im(iorb,iorb)+ELAGd%Lambdas_im(iorb,iorb))
+    Phases(iorb)=-im*(ELAGd%Lambdas_im(iorb,iorb)+ELAGd%Lambdas_im(iorb,iorb))
     if(cdabs(Phases(iorb))<tol8) Phases(iorb)=complex_zero
-    call scale_F_cmplx(ELAGd%MaxScaling+9,Phases(iorb))
     Eigvec_cmplx(iorb,iorb)=complex_zero
     Eigvec_cmplx(iorb,iorb)=ELAGd%F_diag(iorb)
    enddo  

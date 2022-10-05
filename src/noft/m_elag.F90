@@ -133,11 +133,14 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
  ! Calculate memory needed
  if(cpx_mos) then
   totMEM=NBF_tot+2*NBF_tot*NBF_tot
+  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+   totMEM=totMEM+2*ELAGd%ndiis_array+8*ELAGd%ndiis_array*NBF_tot*NBF_tot+4*ELAGd%ndiis_array*ELAGd%ndiis_array
+  endif
  else
   totMEM=NBF_tot+NBF_tot*NBF_tot
- endif
- if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
-  totMEM=totMEM+ELAGd%ndiis_array+ELAGd%ndiis_array*NBF_tot*NBF_tot+ELAGd%ndiis_array*ELAGd%ndiis_array
+  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+   totMEM=totMEM+ELAGd%ndiis_array+ELAGd%ndiis_array*NBF_tot*NBF_tot+ELAGd%ndiis_array*ELAGd%ndiis_array
+  endif
  endif
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
