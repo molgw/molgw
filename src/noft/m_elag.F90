@@ -57,9 +57,13 @@ module m_elag
   real(dp),allocatable,dimension(:)::F_diag         ! F_pp (Diag. part of the F matrix)
   real(dp),allocatable,dimension(:)::Coef_DIIS      ! DIIS coefs. used to build linear comb. of F matrices
   real(dp),allocatable,dimension(:,:)::Lambdas      ! Lambda_pq (Lagrange multipliers matrix)
-  real(dp),allocatable,dimension(:,:)::Lambdas_im     ! Lambda_pq (Lagrange multipliers matrix imag)
+  real(dp),allocatable,dimension(:,:)::Lambdas_im   ! Lambda_pq (Lagrange multipliers matrix imag part)
   real(dp),allocatable,dimension(:,:)::DIIS_mat     ! DIIS matrix used to solve the system of eqs. DIIS_MAT*Coef_DIIS = (0 0 ... 0 1) 
   real(dp),allocatable,dimension(:,:,:)::F_DIIS     ! F matrices used by DIIS
+  complex(dp),allocatable,dimension(:)::Coef_DIIS_cmplx  ! DIIS coefs. used to build linear comb. of F matrices (complex)
+  complex(dp),allocatable,dimension(:,:)::DIIS_mat_cmplx ! DIIS matrix used to solve the system of eqs. DIIS_MAT*Coef_DIIS = (0 0 ... 0 1) (complex)
+  complex(dp),allocatable,dimension(:,:,:)::F_DIIS_cmplx ! F matrices used by DIIS (complex)
+
 
  contains 
    procedure :: free => elag_free
@@ -150,12 +154,18 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
  allocate(ELAGd%Lambdas(NBF_tot,NBF_tot)) 
  if(cpx_mos) then
   allocate(ELAGd%Lambdas_im(NBF_tot,NBF_tot)) 
+  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+   allocate(ELAGd%Coef_DIIS_cmplx(ELAGd%ndiis_array))
+   allocate(ELAGd%F_DIIS_cmplx(ELAGd%ndiis_array,NBF_tot,NBF_tot))
+   allocate(ELAGd%DIIS_mat_cmplx(ELAGd%ndiis_array,ELAGd%ndiis_array)) 
+  endif
+ else 
+  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+   allocate(ELAGd%Coef_DIIS(ELAGd%ndiis_array))
+   allocate(ELAGd%F_DIIS(ELAGd%ndiis_array,NBF_tot,NBF_tot))
+   allocate(ELAGd%DIIS_mat(ELAGd%ndiis_array,ELAGd%ndiis_array)) 
+  endif
  endif
- if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
-  allocate(ELAGd%Coef_DIIS(ELAGd%ndiis_array))
-  allocate(ELAGd%F_DIIS(ELAGd%ndiis_array,NBF_tot,NBF_tot))
-  allocate(ELAGd%DIIS_mat(ELAGd%ndiis_array,ELAGd%ndiis_array)) 
- endif 
  
 end subroutine elag_init
 !!***
@@ -192,12 +202,18 @@ subroutine elag_free(ELAGd)
  
  if(ELAGd%cpx_lambdas) then
   deallocate(ELAGd%Lambdas_im)
+  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+   deallocate(ELAGd%Coef_DIIS_cmplx)
+   deallocate(ELAGd%F_DIIS_cmplx)
+   deallocate(ELAGd%DIIS_mat_cmplx) 
+  endif 
+ else
+  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+   deallocate(ELAGd%Coef_DIIS)
+   deallocate(ELAGd%F_DIIS)
+   deallocate(ELAGd%DIIS_mat) 
+  endif 
  endif
- if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
-  deallocate(ELAGd%Coef_DIIS)
-  deallocate(ELAGd%F_DIIS)
-  deallocate(ELAGd%DIIS_mat) 
- endif 
 
 end subroutine elag_free
 !!***
@@ -396,9 +412,10 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  
  allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Work(1))
  Eigvec=ELAGd%Lambdas
- if(ELAGd%cpx_lambdas) then
-  Eigvec=Eigvec+ELAGd%Lambdas_im
- endif
+! TODO
+! if(ELAGd%cpx_lambdas) then
+!  Eigvec=Eigvec+ELAGd%Lambdas_im
+! endif
 
  if(present(ekt)) then
   do iorb=1,RDMd%NBF_tot
@@ -419,14 +436,19 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  endif
 
  ! Diagonalize
- lwork=-1
- call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigval,Work,lwork,info)
- lwork=nint(Work(1))
- if(info==0) then
-  deallocate(Work)
-  allocate(Work(lwork)) 
+! TODO
+! if(ELAGd%cpx_lambdas) then
+!
+! else
+  lwork=-1
   call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigval,Work,lwork,info)
- endif
+  lwork=nint(Work(1))
+  if(info==0) then
+   deallocate(Work)
+   allocate(Work(lwork)) 
+   call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigval,Work,lwork,info)
+  endif
+! endif
 
  ! Print final eigenvalues and orbs.
  write(msg,'(a)') ' '
@@ -628,10 +650,18 @@ subroutine wipeout_diis(ELAGd)
 !************************************************************************
 
  ELAGd%idiis=0
- if(ELAGd%ndiis>0) then
-  ELAGd%Coef_DIIS=zero
-  ELAGd%F_DIIS=zero
-  ELAGd%DIIS_mat=zero
+ if(ELAGd%cpx_lambdas) then
+  if(ELAGd%ndiis>0) then
+   ELAGd%Coef_DIIS_cmplx=complex_zero
+   ELAGd%F_DIIS_cmplx=complex_zero
+   ELAGd%DIIS_mat_cmplx=complex_zero
+  endif
+ else
+  if(ELAGd%ndiis>0) then
+   ELAGd%Coef_DIIS=zero
+   ELAGd%F_DIIS=zero
+   ELAGd%DIIS_mat=zero
+  endif
  endif
 
 end subroutine wipeout_diis

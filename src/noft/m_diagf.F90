@@ -19,7 +19,7 @@ module m_diagf
 
  implicit none
 
- private :: scale_F,scale_F_cmplx,diis_F,traceF
+ private :: scale_F,scale_F_cmplx,diis_F,traceF,diis_F_cmplx,traceF_cmplx
 !!***
 
  public ::diagF_to_coef 
@@ -147,6 +147,11 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
     Eigvec_cmplx(iorb,iorb)=ELAGd%F_diag(iorb)
    enddo  
   endif
+
+  ! Decide whether to do DIIS before diagonalizing
+  if(maxdiff<thresholddiis.and.ELAGd%ndiis>0) then
+   call diis_F_cmplx(diddiis,RDMd,ELAGd,Eigvec_cmplx)
+  endif 
 
   ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
   lwork=-1
@@ -363,6 +368,110 @@ function traceF(RDMd,ELAGd,idiis_in) result(traceFF)
   enddo
  enddo 
 end function traceF
+!!***
+
+!!***
+!!****f* DoNOF/diis_F_cmplx
+!! NAME
+!!  diis_F_cmplx
+!!
+!! FUNCTION
+!!  Use DIIS on the F-matrix before diagonalizing it
+!!
+!! INPUTS
+!!  RDMd=Density matrix descriptor
+!!  ELAGd=Langragian descriptor
+!!
+!! OUTPUT
+!!  F_mat=F matrix on input, DIIS F matrix on output
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine diis_F_cmplx(diddiis,RDMd,ELAGd,F_mat)
+!Arguments ------------------------------------
+!scalars
+ logical,intent(inout)::diddiis
+ type(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(in)::RDMd
+!arrays
+ complex(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::F_mat
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,idiis1,idiisp1,info
+!arrays
+ integer,allocatable,dimension(:)::IPIV
+!************************************************************************
+ ELAGd%idiis=ELAGd%idiis+1
+ ELAGd%F_DIIS_cmplx(ELAGd%idiis,:,:)=F_mat(:,:)
+ idiisp1=ELAGd%idiis+1
+ do idiis1=1,ELAGd%idiis
+  ELAGd%DIIS_mat_cmplx(idiis1,ELAGd%idiis)=traceF_cmplx(RDMd,ELAGd,idiis1)
+  ELAGd%DIIS_mat_cmplx(ELAGd%idiis,idiis1)=conjg(ELAGd%DIIS_mat_cmplx(idiis1,ELAGd%idiis))
+  ELAGd%DIIS_mat_cmplx(idiis1,idiisp1)=-complex_one
+  ELAGd%DIIS_mat_cmplx(idiisp1,idiis1)=-complex_one
+ enddo
+ ELAGd%DIIS_mat_cmplx(idiisp1,idiisp1)=complex_zero
+ if(ELAGd%idiis>ELAGd%ndiis) then
+  diddiis=.true.
+  allocate(IPIV(ELAGd%ndiis_array))
+  IPIV=0
+  ELAGd%Coef_DIIS_cmplx=complex_zero
+  ELAGd%Coef_DIIS_cmplx(ELAGd%ndiis_array)=-complex_one
+  call ZGESV(ELAGd%ndiis_array,1,ELAGd%DIIS_mat_cmplx,ELAGd%ndiis_array,IPIV,ELAGd%Coef_DIIS_cmplx,ELAGd%ndiis_array,info)
+  deallocate(IPIV)
+  do iorb=1,RDMd%NBF_tot
+   do iorb1=1,iorb-1
+    F_mat(iorb,iorb1)=sum(ELAGd%Coef_DIIS_cmplx(1:ELAGd%ndiis_array-1)*ELAGd%F_DIIS_cmplx(1:ELAGd%ndiis_array-1,iorb,iorb1))
+    F_mat(iorb1,iorb)=conjg(F_mat(iorb,iorb1))
+   enddo
+  enddo
+  call ELAGd%clean_diis()
+ endif
+
+end subroutine diis_F_cmplx
+!!***
+!!***
+!!****f* DoNOF/traceF_cmplx
+!! NAME
+!!  traceF_cmplx
+!!
+!! FUNCTION
+!!  Multiply F matrices to produce DIIS matrix elements.
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+function traceF_cmplx(RDMd,ELAGd,idiis_in) result(traceFFc)
+!Arguments ------------------------------------
+!scalars
+ integer::idiis_in
+ complex(dp)::traceFFc
+ type(elag_t),intent(in)::ELAGd
+ type(rdm_t),intent(in)::RDMd
+!arrays
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1
+!arrays
+!************************************************************************
+ traceFFc = complex_zero
+ do iorb=1,RDMd%NBF_tot
+  do iorb1=1,iorb-1
+   traceFFc=traceFFc+conjg(ELAGd%F_DIIS_cmplx(idiis_in,iorb,iorb1))*ELAGd%F_DIIS_cmplx(ELAGd%idiis,iorb1,iorb)
+  enddo
+ enddo
+end function traceF_cmplx
 !!***
 
 end module m_diagf
