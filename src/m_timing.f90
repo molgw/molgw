@@ -107,11 +107,11 @@ module m_timing
   integer,parameter :: timing_tddft_hartree          = 117
   integer,parameter :: timing_tddft_hamiltonian_nuc  = 118
   integer,parameter :: timing_tddft_ham_orthobasis   = 119
-  integer,parameter :: timing_mb_related_update      = 120
-  integer,parameter :: timing_update_p_position      = 121
-  integer,parameter :: timing_update_basis_eri       = 122
-  integer,parameter :: timing_update_overlaps        = 123
-  integer,parameter :: timing_update_dft_grid        = 124
+  integer,parameter :: timing_tddft_eri_2center      = 120
+  integer,parameter :: timing_tddft_eri_2center_ints = 121
+  integer,parameter :: timing_tddft_eri_2center_invert = 122
+  integer,parameter :: timing_update_basis_eri       = 123
+  integer,parameter :: timing_update_overlaps        = 124
   integer,parameter :: timing_print_cube_rho_tddft   = 125
   integer,parameter :: timing_restart_tddft_file     = 126
   integer,parameter :: timing_propagate_diago        = 127
@@ -125,7 +125,13 @@ module m_timing
   integer,parameter :: timing_tddft_q_matrix         = 135
   integer,parameter :: timing_tddft_rhoauxil         = 136
   integer,parameter :: timing_propagate_inverse      = 137
-  integer,parameter :: timing_tddft_eri_3center_ints = 138
+  integer,parameter :: timing_tddft_grid_init        = 139
+  integer,parameter :: timing_tddft_grid_generation  = 140
+  integer,parameter :: timing_tddft_grid_wfn         = 141
+
+  integer,parameter :: timing_tddft_eri_3center      = 142
+  integer,parameter :: timing_tddft_eri_3center_ints = 143
+  integer,parameter :: timing_tddft_kin              = 144
 
 
   integer,private     :: count_rate,count_max
@@ -133,6 +139,8 @@ module m_timing
   real(dp),private    :: time_start(NTIMING)
   real(dp),private    :: timing(NTIMING)
   integer(dp),private :: calls(NTIMING)
+
+  logical,protected   :: in_rt_tddft = .FALSE.
 
 
 contains
@@ -175,6 +183,9 @@ subroutine start_clock(itiming)
   integer            :: count_tmp
   !=====
 
+  ! 0 means no timing
+  if(itiming == 0) return
+
   if(time_running(itiming)) then
     write(stdout,*) 'clock # is already started:',itiming
     call die('error in start clock')
@@ -197,6 +208,9 @@ subroutine stop_clock(itiming)
   !=====
   integer            :: count_tmp
   !=====
+
+  ! 0 means no timing
+  if(itiming == 0) return
 
   if(.NOT.time_running(itiming)) then
     write(stdout,*) 'clock # has not been started:',itiming
@@ -251,7 +265,7 @@ subroutine output_timing()
   write(stdout,'(/,a,/)') '                 -------------------------------------'
   write(stdout,'(a,/)')   '                                 SCF'
 
-  call output_timing_line('DFT Grid initialization',timing_grid_init,1)
+  call output_timing_line('DFT grid initialization',timing_grid_init,1)
   call output_timing_line('Grid generation',timing_grid_generation,2)
   call output_timing_line('Wavefunction evaluation',timing_grid_wfn,2)
   call output_timing_line('Density matrix',timing_density_matrix,1)
@@ -310,23 +324,28 @@ subroutine output_timing()
 
   ! RT-TDDFT
   call output_timing_line('TDDFT loop',timing_tddft_loop,1)
-  call output_timing_line('TDDFT Propagator',timing_tddft_propagation,2)
+  call output_timing_line('TDDFT propagator',timing_tddft_propagation,2)
   call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
   call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
   call output_timing_line('TDDFT propagator invert',timing_propagate_inverse,3)
 
-  call output_timing_line('Update basis and related terms',timing_mb_related_update,2)
-  call output_timing_line('Update projectile position',timing_update_p_position,3)
-  call output_timing_line('Update basis, auxilary and eri',timing_update_basis_eri,3)
-  call output_timing_line('Update 3-center ERI',timing_tddft_eri_3center_ints,4)
-  call output_timing_line('Update S and D matrices',timing_update_overlaps,3)
-  call output_timing_line('Gradient of overlap',timing_overlap_grad,4)
-  call output_timing_line('Update DFT grid',timing_update_dft_grid,3)
+  call output_timing_line('Update basis, auxilary and eri',timing_update_basis_eri,2)
+  call output_timing_line('Update 2-center ERI',timing_tddft_eri_2center_ints,3)
+  call output_timing_line('Integrals evaluation',timing_tddft_eri_2center_ints,4)
+  call output_timing_line('Matrix inversion',timing_tddft_eri_2center_invert,4)
+  call output_timing_line('Update 3-center ERI',timing_tddft_eri_3center,3)
+  call output_timing_line('Integrals evaluation',timing_tddft_eri_3center_ints,4)
+  call output_timing_line('Update S and D matrices',timing_update_overlaps,2)
+  call output_timing_line('Gradient of overlap',timing_overlap_grad,3)
+  call output_timing_line('Grid initialization',timing_tddft_grid_init,2)
+  call output_timing_line('Grid generation',timing_tddft_grid_generation,3)
+  call output_timing_line('Wavefunction evaluation',timing_tddft_grid_wfn,3)
 
-  call output_timing_line('TDDFT frozen core',timing_tddft_frozen_core,3)
-  call output_timing_line('TDDFT q_matrix',timing_tddft_q_matrix,3)
+  call output_timing_line('TDDFT frozen core',timing_tddft_frozen_core,2)
+  call output_timing_line('TDDFT q_matrix',timing_tddft_q_matrix,2)
 
   call output_timing_line('Hamiltonian calculation',timing_tddft_hamiltonian,2)
+  call output_timing_line('Kinetic energy',timing_tddft_kin,3)
   call output_timing_line('Complex density matrix',timing_density_matrix_cmplx,3)
   call output_timing_line('Electron-Nucleus potential',timing_tddft_hamiltonian_nuc,3)
   call output_timing_line('Auxiliary basis density',timing_tddft_rhoauxil,3)
@@ -420,6 +439,23 @@ subroutine output_timing_line(title,itiming,level)
 
 
 end subroutine output_timing_line
+
+!=========================================================================
+subroutine switch_on_rt_tddft_timers()
+  implicit none
+
+  in_rt_tddft = .TRUE.
+
+end subroutine switch_on_rt_tddft_timers
+
+
+!=========================================================================
+subroutine switch_off_rt_tddft_timers()
+  implicit none
+
+  in_rt_tddft = .FALSE.
+
+end subroutine switch_off_rt_tddft_timers
 
 
 !=========================================================================

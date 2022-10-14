@@ -19,6 +19,7 @@ module m_libint_tools
   use m_basis_set
 
 
+
   !=========================================================================
   ! interfaces to libint wrappers in C/C++ with iso_c_binding
   !=========================================================================
@@ -267,7 +268,6 @@ module m_libint_tools
   end interface
 
 
-
 contains
 
 
@@ -347,7 +347,7 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_rig
   real(dp),allocatable,intent(out) :: matrix_out(:,:,:)
   !=====
   integer :: n1,n2,n3,n1c,n2c,n3c
-  integer :: i1
+  integer :: i1,i2,i3,ii
   integer :: gt_tagl,gt_tagr
   real(dp),allocatable :: matrix_tmp1(:,:)
   real(dp),allocatable :: matrix_tmp2(:,:)
@@ -364,23 +364,40 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_rig
 
   if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2,n3))
 
-  allocate(matrix_tmp1(n1,n2c*n3c))
-  allocate(matrix_tmp2(n2,n3c))
+  ! When CART -> CART, just normalize (no unitary transform needed)
+  if( gt_tagl == CARTG .AND. gt_tagr == CARTG ) then
+    ii = 0
+    do i1=1,n1
+      do i2=1,n2
+        do i3=1,n3
+          ii = ii + 1
+          matrix_out(i1,i2,i3) = array_in(ii) * cart_to_pure_norm(am1,CARTG)%matrix(i1,i1) &
+                                              * cart_to_pure_norm(am2,CARTG)%matrix(i2,i2) &
+                                              * cart_to_pure_norm(am3,CARTG)%matrix(i3,i3)
+        enddo
+      enddo
+    enddo
+  else
 
-  ! Transform the 1st index
-  matrix_tmp1(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c , n1c /) ) , &
-                      cart_to_pure_norm(am1,gt_tagl)%matrix(1:n1c,1:n1) ) )
+    allocate(matrix_tmp1(n1,n2c*n3c))
+    allocate(matrix_tmp2(n2,n3c))
 
-  do i1=1,n1
-    ! Transform the 2nd index
-    matrix_tmp2(1:n2,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp1(i1,:) , (/ n3c , n2c /) ) ,  &
-                                              cart_to_pure_norm(am2,gt_tagr)%matrix(1:n2c,1:n2) ) )
+    ! Transform the 1st index
+    matrix_tmp1(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c , n1c /) ) , &
+                        cart_to_pure_norm(am1,gt_tagl)%matrix(1:n1c,1:n1) ) )
 
-    ! Transform the 3rd index
-    matrix_out(i1,:,:) = MATMUL( matrix_tmp2(:,:) , cart_to_pure_norm(am3,gt_tagr)%matrix(:,:) )
-  enddo
+    do i1=1,n1
+      ! Transform the 2nd index
+      matrix_tmp2(1:n2,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp1(i1,:) , (/ n3c , n2c /) ) ,  &
+                                                cart_to_pure_norm(am2,gt_tagr)%matrix(1:n2c,1:n2) ) )
 
-  deallocate(matrix_tmp1,matrix_tmp2)
+      ! Transform the 3rd index
+      matrix_out(i1,:,:) = MATMUL( matrix_tmp2(:,:) , cart_to_pure_norm(am3,gt_tagr)%matrix(:,:) )
+    enddo
+
+    deallocate(matrix_tmp1,matrix_tmp2)
+
+  endif
 
 end subroutine transform_libint_to_molgw_3d
 

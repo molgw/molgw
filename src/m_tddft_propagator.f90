@@ -12,7 +12,6 @@ module m_tddft_propagator
   use m_memory
   use m_warning
   use m_timing
-  use m_tddft_variables
   use m_atoms
   use m_string_tools
   use m_multipole
@@ -104,7 +103,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: file_time_data,file_excit_field
   integer                    :: file_dipole_time
   integer                    :: file_mulliken, file_lowdin
-  real(dp)                   :: time_cur,time_one_iter
+  real(dp)                   :: time_cur
   complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
   complex(dp)                :: Nelec
   logical                    :: is_identity_ ! keep this varibale
@@ -122,6 +121,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
   !====
 
+  call switch_on_rt_tddft_timers()
   call start_clock(timing_tddft_loop)
 
   write(stdout,'(/,/,1x,a)') '=================================================='
@@ -130,7 +130,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   nstate = SIZE(occupation(:,:),DIM=1)
 
   ! Tweak the occupation if the number of electrons has changed from DFT to TDDFT
-  if( ABS(tddft_charge-charge)> 1.0e-5_dp ) then 
+  ! tddft_charge = -999.0 is the default value that implies tddft_charge=charge
+  if( ABS(tddft_charge+999.0_dp) > 1.0e-5_dp .AND. ABS(tddft_charge-charge)> 1.0e-5_dp ) then
     write(stdout,*) 'Set new occupations for TDDFT'
     call set_occupation(0.0_dp,electrons+charge-tddft_charge,magnetization,RESHAPE([0.0_dp],[1,1]),occupation)
   endif
@@ -243,7 +244,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   end if
 
   if( calc_type%is_dft ) then
-     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+     call init_dft_grid(basis,tddft_grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
   endif
 
   ! Getting starting value of the Hamiltonian
@@ -268,23 +269,23 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       select case(capitalize(tddft_wfn_t0))
-      case('STATIONNARY')
+      case('STATIONARY')
         ! initialize the wavefunctions to be the eigenstates of M = H - i*D + m*v**2*S
         ! which are also that of  U = S**-1 * ( H - i*D )
-        call stationnary_c_matrix(basis,               &
-                                  time_min,            &
-                                  s_matrix,            &
-                                  x_matrix,            &
-                                  d_matrix,            &
-                                  occupation ,         &
-                                  hamiltonian_kinetic, &
-                                  hamiltonian_nucleus, &
-                                  dipole_ao,           &
-                                  c_matrix_cmplx,      &
-                                  c_matrix_orth_cmplx, &
-                                  h_cmplx,             &
-                                  h_small_cmplx,       &
-                                  en_tddft)
+        call stationary_c_matrix(basis,               &
+                                 time_min,            &
+                                 s_matrix,            &
+                                 x_matrix,            &
+                                 d_matrix,            &
+                                 occupation ,         &
+                                 hamiltonian_kinetic, &
+                                 hamiltonian_nucleus, &
+                                 dipole_ao,           &
+                                 c_matrix_cmplx,      &
+                                 c_matrix_orth_cmplx, &
+                                 h_cmplx,             &
+                                 h_small_cmplx,       &
+                                 en_tddft)
       case('SCF')
         write(stdout,'(/,1x,a)') '===== C matrix initialization is skipped ====='
       case default
@@ -321,7 +322,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   ! E_iD = - Tr{P*iD}
   !en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
-  ! Number of iterations
+  ! Number of time steps
   ntau = NINT( (time_sim-time_min) / time_step )
 
   if(excit_type%form==EXCIT_LIGHT) then
@@ -417,7 +418,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   time_cur = time_min
   iwrite_step = 1
   itau = 1
-  in_tddft_loop = .TRUE.
 
   do while ( (time_cur - time_sim) < 1.0e-10 )
     if ( itau == 3 ) then
@@ -529,7 +529,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   !---
   end do
-  in_tddft_loop = .FALSE.
+
   !********end time loop*******************
 
   if(print_tddft_restart_) then
@@ -595,7 +595,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   write(stdout,'(/,x,a)') "End of RT-TDDFT simulation"
   write(stdout,'(1x,a,/)') '=================================================='
+
   call stop_clock(timing_tddft_loop)
+  call switch_off_rt_tddft_timers()
 
 end subroutine calculate_propagation
 
@@ -607,14 +609,14 @@ subroutine echo_tddft_variables()
   write(stdout,'(/,1x,a)') 'The most important variables of this section:'
   write(stdout,'(2x,a32,2x,es16.8)') 'Simulation time:',time_sim
   write(stdout,'(2x,a32,2x,es16.8)') 'Time step:',time_step
-  write(stdout,'(2x,a32,2x,i8)') 'Number of iterations:',NINT((time_sim)/time_step)
+  write(stdout,'(2x,a32,2x,i8)') 'Number of time steps:',NINT((time_sim)/time_step)
   write(stdout,'(2x,a32,6x,l1)') 'Moving basis:',moving_basis
   write(stdout,'(2x,a32,6x,a)')  'Initial wavefunctions:',TRIM(tddft_wfn_t0)
   write(stdout,'(2x,a32,2x,f14.6)') 'Charge:',tddft_charge
   write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector:',TRIM(pred_corr)
   write(stdout,'(2x,a32,6x,a)')      'Propagator:',TRIM(prop_type)
-  write(stdout,'(2x,a32,2x,i8)')     'Number of occupied states:',nocc
-  write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length:',n_hist
+  write(stdout,'(2x,a32,2x,i8)')     'Number of propagated states:',nocc
+  write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length for PC:',n_hist
 
 end subroutine echo_tddft_variables
 
@@ -622,17 +624,15 @@ end subroutine echo_tddft_variables
 !=========================================================================
 subroutine output_timing_one_iter()
   implicit none
-  real(dp)           :: time_one_iter, time_one_iter_H
+  real(dp)           :: time_one_iter
   !=====
   !=====
 
    time_one_iter = get_timing(timing_tddft_one_iter)
    write(stdout,'(/,1x,a)') '**********************************'
-   write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
-   write(stdout,"(1x,a32,2x,es14.6,1x,a)") "Hamiltonian recalculation costs", time_one_iter_H,"s"
-   write(stdout,"(1x,a32,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &
-                                             time_one_iter*ntau/60.0_dp, &
-                                             "min  = ", time_one_iter*ntau/3600.0_dp, "hrs"
+   write(stdout,"(1x,a32,2x,f14.6)") "Time of one iteration (s): ", time_one_iter
+   write(stdout,"(1x,a32,2x,2(f12.2,1x))") "Estimated calculation time (s), (hrs):", time_one_iter*ntau,  &
+                                                                                     time_one_iter*ntau/3600.0_dp
    write(stdout,'(1x,a)') '**********************************'
    flush(stdout)
 
@@ -640,20 +640,20 @@ end subroutine output_timing_one_iter
 
 
 !=========================================================================
-subroutine stationnary_c_matrix(basis,               &
-                                time_min,            &
-                                s_matrix,            &
-                                x_matrix,            &
-                                d_matrix,            &
-                                occupation ,         &
-                                hamiltonian_kinetic, &
-                                hamiltonian_nucleus, &
-                                dipole_ao,           &
-                                c_matrix_cmplx,      &
-                                c_matrix_orth_cmplx, &
-                                h_cmplx,             &
-                                h_small_cmplx,       &
-                                en_tddft)
+subroutine stationary_c_matrix(basis,               &
+                               time_min,            &
+                               s_matrix,            &
+                               x_matrix,            &
+                               d_matrix,            &
+                               occupation ,         &
+                               hamiltonian_kinetic, &
+                               hamiltonian_nucleus, &
+                               dipole_ao,           &
+                               c_matrix_cmplx,      &
+                               c_matrix_orth_cmplx, &
+                               h_cmplx,             &
+                               h_small_cmplx,       &
+                               en_tddft)
   implicit none
 
   type(basis_set),intent(inout)   :: basis
@@ -696,7 +696,7 @@ subroutine stationnary_c_matrix(basis,               &
   do icycle = 1, ncycle_max
 
     write(stdout,'(/,1x,a)')
-    write(stdout,*) '=============== Initial states convergence iteration', icycle, '==============='
+    write(stdout,*) '=============== Stationary state iteration', icycle, '==============='
     write(stdout,'(/,1x,a)')
 
     allocate( m_matrix_small, MOLD = h_small_cmplx )
@@ -709,8 +709,8 @@ subroutine stationnary_c_matrix(basis,               &
       m_tmp(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
       !FBFB Why (1/2) m v**2 ?
       m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
-            + (0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2) + tddft_energy_shift )*s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
-                       
+            + (0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2) + tddft_energy_shift ) * s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
+
       m_eigenvector(:,:,ispin)  = MATMUL( m_tmp(:,:,ispin), x_matrix(:,:) )
       m_matrix_small(:,:,ispin) = MATMUL( TRANSPOSE(x_matrix(:,:)), m_eigenvector(:,:,ispin) )
       ! diagonalize M'(t0) to get eigenstates C'(t0) for MB propagation
@@ -754,15 +754,16 @@ subroutine stationnary_c_matrix(basis,               &
     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
     en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
-    rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
-    write(stdout,'(1x,a,es14.6)') 'Changes in density matrix: ',rms
-
-    if( rms < tolscf_tddft ) then
-      write(stdout,'(1x,a,/)') "=== CONVERGENCE REACHED ==="
-      exit
-    else
-      if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
-    end if
+    if( icycle > 1 ) then
+      rms = SQRT( SUM(( p_matrix_cmplx(:,:,:) - p_matrix_cmplx_hist(:,:,:) )**2) ) * SQRT( REAL(nspin,dp) )
+      write(stdout,'(1x,a,es14.6)') 'Changes in density matrix: ',rms
+      if( rms < tolscf_tddft ) then
+        write(stdout,'(1x,a,/)') "=== CONVERGENCE REACHED ==="
+        exit
+      else
+        if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
+      end if
+    endif
 
     !
     ! History mixing to damp the charge oscillations (poor man solution)
@@ -778,7 +779,7 @@ subroutine stationnary_c_matrix(basis,               &
   end do
   deallocate(p_matrix_cmplx, p_matrix_cmplx_hist, h_hist_cmplx)
 
-end subroutine stationnary_c_matrix
+end subroutine stationary_c_matrix
 
 
 !=========================================================================
@@ -880,13 +881,11 @@ subroutine mb_related_updates(basis,                &
   !=====
   !=====
 
-  call start_clock(timing_update_p_position)
   ! Update projectile position and its basis center to t+dt/n
   call change_position_one_atom(ncenter_nuclei,xatom_start(:,ncenter_nuclei) &
        + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step*dt_factor))
   call change_basis_center_one_atom(ncenter_basis,xbasis_start(:,ncenter_basis) &
        + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step*dt_factor))
-  call stop_clock(timing_update_p_position)
 
   call start_clock(timing_update_basis_eri)
   if( need_eri ) then
@@ -914,15 +913,13 @@ subroutine mb_related_updates(basis,                &
   call setup_d_matrix(basis,d_matrix,.TRUE.)
   call stop_clock(timing_update_overlaps)
 
-  call start_clock(timing_update_dft_grid)
   ! Update DFT grids for H_xc evaluation
   if( need_grid ) then
     if( calc_type%is_dft ) then
       call destroy_dft_grid()
-      call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+      call init_dft_grid(basis,tddft_grid_level,dft_xc(1)%needs_gradient,.FALSE.,BATCH_SIZE)
     endif
   endif
-  call stop_clock(timing_update_dft_grid)
 
 end subroutine mb_related_updates
 
@@ -1059,23 +1056,19 @@ subroutine predictor_corrector(basis,                  &
     end if
 
     !--1--PROPAGATE----| C(t)--U[M(t+dt/4)]-->C(t+dt/2)
-    call start_clock(timing_mb_related_update)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis,auxil_basis,.FALSE.,&
              time_cur,3.0_dp/4.0_dp,s_matrix,d_matrix,.FALSE.)
     endif
-    call stop_clock(timing_mb_related_update)
 
     ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
     call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,prop_type)
 
     !--2--EVALUATE----| C(t+dt/2) --> H(t+dt/2)
-    call start_clock(timing_mb_related_update)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis,auxil_basis,.TRUE.,&
              time_cur,1.0_dp/2.0_dp,s_matrix,d_matrix,.TRUE.)
     endif
-    call stop_clock(timing_mb_related_update)
 
     ! Calculate H(t+dt/2)
     call setup_hamiltonian_cmplx(basis,                        &
@@ -1099,12 +1092,10 @@ subroutine predictor_corrector(basis,                  &
     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
     !--4--EVALUATE----| C(t+dt) --> H(t+dt)
-    call start_clock(timing_mb_related_update)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis,auxil_basis,.TRUE.,&
              time_cur,0.0_dp,s_matrix,d_matrix,.TRUE.)
     endif
-    call stop_clock(timing_mb_related_update)
 
     ! Calculate H(t+dt)
     call setup_hamiltonian_cmplx(basis,                        &

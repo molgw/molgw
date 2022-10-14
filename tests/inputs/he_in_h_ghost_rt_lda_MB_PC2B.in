@@ -17,6 +17,8 @@
   eri3_genuine 			 = 'yes'
   time_step                      = 0.1
   time_sim                       = 20.0
+  tddft_wfn_t0                   = 'stationary'
+  tolscf_tddft                   = 2.0e-4
   pred_corr                      = 'MB_PC2B'
   n_hist                         = 2
   prop_type                      = 'CN'

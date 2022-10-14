@@ -25,7 +25,6 @@ module m_io
  use m_basis_set
  use m_dft_grid,only: calculate_basis_functions_r
  use m_cart_to_pure
- use m_tddft_variables
  use m_eri,only: npair
  use m_elements
 
@@ -103,7 +102,7 @@ subroutine header()
  character(len=1024) :: chartmp
 !=====
 ! variables used to call C
- integer(C_INT)      :: ammax
+ integer(C_INT)      :: ammax=0
  logical(C_BOOL)     :: has_onebody,has_gradient
  integer(C_INT)      :: libxc_version(3)
 !=====
@@ -194,7 +193,7 @@ subroutine header()
  call check_capability_libcint(ammax)
  write(stdout,'(1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ',ammax
  if( .NOT. libcint_has_range_separation ) then
-   write(stdout,'(1x,a,i5)')   'Current LIBCINT compilation has no range-separation capability'
+   write(stdout,'(1x,a,i5)') 'Current LIBCINT compilation has no range-separation capability'
  endif
 #endif
 
@@ -1636,7 +1635,7 @@ subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,tim
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
  endif
  ! Find highest occupied state
@@ -1773,7 +1772,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
  endif
 
@@ -1950,7 +1949,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate,basis,occupation,c_matrix,num
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
  endif
 
@@ -2103,7 +2102,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
  endif
  ! Find highest occupied state
@@ -2122,7 +2121,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
 
  allocate(phi_cmplx(1:nocc_max,nspin))
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(a,2(2x,i4))')   ' states:   ',1,nocc_max
  endif
 
@@ -2225,7 +2224,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(/,1x,a)') 'Calculate electronic density in discs'
  endif
  ! Find highest occupied state
@@ -2352,7 +2351,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
  endif
 
@@ -2372,7 +2371,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
 
 
  allocate(phi_cmplx(1:nocc_max,nspin))
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(a,2(2x,i4))')   ' states:   ',1,nocc_max
  endif
 
@@ -2608,7 +2607,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions along one line'
  endif
  ! Find highest occupied state
@@ -2881,7 +2880,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_c
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- if( .NOT. in_tddft_loop ) then
+ if( .NOT. in_rt_tddft ) then
    write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
  endif
  ! Find highest occupied state

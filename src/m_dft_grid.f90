@@ -38,7 +38,6 @@ module m_dft_grid
  real(dp),parameter,private :: aa = 0.64_dp ! Scuseria value
 
  real(dp),parameter,private :: TOL_WEIGHT = 1.0e-14_dp
- real(dp),parameter,private :: TOL_BF     = 1.0e-08_dp
 
  !
  ! Function evaluation storage
@@ -71,14 +70,15 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  real(dp),allocatable :: w1(:),w2(:)
  real(dp),allocatable :: xa(:,:),wxa(:,:)
  real(dp)             :: p_becke(ncenter_basis),s_becke(ncenter_basis,ncenter_basis),fact_becke
+ real(dp)             :: rk(ncenter_basis),kj(ncenter_basis,ncenter_basis)
  real(dp)             :: mu,alpha,xtmp,mu_aa,rtmp
  integer              :: jcenter,kcenter
  real(dp),allocatable :: rr_grid_tmp(:,:)
  real(dp),allocatable :: w_grid_tmp(:)
 !=====
 
- call start_clock(timing_grid_init)
- call start_clock(timing_grid_generation)
+ call start_clock(MERGE(timing_tddft_grid_init,timing_grid_init,in_rt_tddft))
+ call start_clock(MERGE(timing_tddft_grid_generation,timing_grid_generation,in_rt_tddft))
 
 
  ngrid_stored = 0
@@ -233,6 +233,12 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    enddo
  enddo
 
+ do kcenter=1,ncenter_basis
+   do jcenter=1,ncenter_basis
+     kj(jcenter,kcenter) = NORM2( xbasis(:,kcenter) - xbasis(:,jcenter) )
+   enddo
+ enddo
+
  !
  ! Temporary storage before the screening of the low weights
  allocate(rr_grid_tmp(3,ngridmax),w_grid_tmp(ngridmax))
@@ -243,12 +249,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  do icenter=1,ncenter_basis
    radius = element_covalent_radius(zbasis(icenter))
 
-   ! Find the nearest neighbor of atom i
-   ri = 999999.9d0
-   do kcenter=1,ncenter_basis
-     if( icenter == kcenter ) cycle
-     ri = MIN( NORM2( xbasis(:,kcenter) - xbasis(:,icenter) ) , ri )
-   enddo
+   ! Find the minimum distance to another atom
+   ri = MINVAL(kj(:,icenter))
 
 
    do iradial=1,nradial
@@ -278,19 +280,23 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
 
        select case(partition_scheme)
-       case('becke')
+       case('BECKE')
          !
          ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
          !
+         do kcenter=1,ncenter_basis
+           rk(kcenter) = NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter))
+         enddo
+
          s_becke(:,:) = 1.0_dp
          !$OMP PARALLEL PRIVATE(mu)
          !$OMP DO
          do kcenter=1,ncenter_basis
-           do jcenter=1,ncenter_basis
-             if(kcenter==jcenter) cycle
-             mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jcenter)) ) &
-                       / NORM2(xbasis(:,kcenter)-xbasis(:,jcenter))
-             s_becke(jcenter,kcenter) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+           do jcenter=kcenter+1,ncenter_basis
+             mu = ( rk(kcenter) - rk(jcenter) ) / kj(kcenter,jcenter)
+             rtmp = smooth_step(smooth_step(smooth_step(mu)))
+             s_becke(jcenter,kcenter) = 0.5_dp * ( 1.0_dp - rtmp )
+             s_becke(kcenter,jcenter) = 0.5_dp * ( 1.0_dp + rtmp )
            enddo
          enddo
          !$OMP END DO
@@ -299,7 +305,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          p_becke(:) = PRODUCT(s_becke(:,:),DIM=1)
          fact_becke = p_becke(icenter) / SUM( p_becke(:) )
 
-       case('ssf')
+       case('SSF')
          !
          ! Partitionning scheme of Stratmann, Scuseria, Frisch, Chem. Phys. Lett. 257, 213 (1996)
          !
@@ -312,13 +318,17 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          else
 
            s_becke(:,:) = 1.0_dp
+
+           do kcenter=1,ncenter_basis
+             rk(kcenter) = NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter))
+           enddo
+
            !$OMP PARALLEL PRIVATE(mu,mu_aa,rtmp)
            !$OMP DO
            do kcenter=1,ncenter_basis
              do jcenter=kcenter+1,ncenter_basis
 
-               mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,kcenter)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jcenter)) ) &
-                         / NORM2(xbasis(:,kcenter)-xbasis(:,jcenter))
+               mu = ( rk(kcenter) - rk(jcenter) ) / kj(kcenter,jcenter)
 
                if( mu < -aa ) then
                  s_becke(kcenter,jcenter) = 0.0_dp
@@ -391,7 +401,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
 
  deallocate(rr_grid_tmp,w_grid_tmp)
 
- call stop_clock(timing_grid_generation)
+ call stop_clock(MERGE(timing_tddft_grid_generation,timing_grid_generation,in_rt_tddft))
 
 
  !
@@ -400,7 +410,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  !
  if( precalculate_wfn ) then
 
-   call start_clock(timing_grid_wfn)
+   call start_clock(MERGE(timing_tddft_grid_wfn,timing_grid_wfn,in_rt_tddft))
    !
    ! grid_memory is given in Megabytes
    ! If gradient is needed, the storage is 4 times larger
@@ -418,14 +428,14 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    if( needs_gradient ) then
      call prepare_basis_functions_gradr(basis,batch_size)
    endif
-   call stop_clock(timing_grid_wfn)
+   call stop_clock(MERGE(timing_tddft_grid_wfn,timing_grid_wfn,in_rt_tddft))
 
  else
    ngrid_stored = 0
  endif
 
 
- call stop_clock(timing_grid_init)
+ call stop_clock(MERGE(timing_tddft_grid_init,timing_grid_init,in_rt_tddft))
 
 
 end subroutine init_dft_grid

@@ -643,7 +643,7 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
  !
  ! 2-center integrals neeeded for RI on the Coulomb metric
  !
- call start_clock(timing_eri_2center)
+ call start_clock(MERGE(timing_tddft_eri_2center,timing_eri_2center,in_rt_tddft))
 
  if( recalculation ) then
    call calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil)
@@ -657,13 +657,13 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
    call calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
  endif
 
- call stop_clock(timing_eri_2center)
+ call stop_clock(MERGE(timing_tddft_eri_2center,timing_eri_2center,in_rt_tddft))
 
 
  !
  ! 3-center integrals neeeded for RI on the Coulomb metric
  !
- call start_clock(timing_eri_3center)
+ call start_clock(MERGE(timing_tddft_eri_3center,timing_eri_3center,in_rt_tddft))
 
  if( eri3_genuine_ ) then
    if( recalculation ) then
@@ -675,7 +675,7 @@ subroutine calculate_eri_ri(basis,auxil_basis,rcut)
    call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  endif
 
- call stop_clock(timing_eri_3center)
+ call stop_clock(MERGE(timing_tddft_eri_3center,timing_eri_3center,in_rt_tddft))
 
 
  if( ALLOCATED(mask) )       deallocate(mask)
@@ -717,7 +717,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
  integer(C_INT) :: shls(2)
  !=====
 
- call start_clock(timing_eri_2center_ints)
+ call start_clock(MERGE(timing_tddft_eri_2center_ints,timing_eri_2center_ints,in_rt_tddft))
 
 
  is_longrange = (rcut > 1.0e-12_dp)
@@ -845,8 +845,14 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
        shls(1) = kshell-1  ! C convention starts with 0
        shls(2) = ishell-1  ! C convention starts with 0
 
-       cint_info = cint2c2e_cart(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
-                                 auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
+       if( auxil_basis%gaussian_type == 'CART' ) then
+         cint_info = cint2c2e_cart(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                                   auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
+       else
+         cint_info = cint2c2e_sph(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                                  auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
+       endif
+       call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
 
 #else
 
@@ -871,9 +877,8 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
        deallocate(alpha1,alpha3)
        deallocate(coeff1,coeff3)
 
-#endif
-
        call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
+#endif
 
        deallocate(int_shell)
 
@@ -912,7 +917,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
  endif
 
 
- call stop_clock(timing_eri_2center_ints)
+ call stop_clock(MERGE(timing_tddft_eri_2center_ints,timing_eri_2center_ints,in_rt_tddft))
 
 end subroutine calculate_integrals_eri_2center_scalapack
 
@@ -929,7 +934,7 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
  integer                      :: mlocal,nlocal
  !=====
 
- call start_clock(timing_eri_2center_invert)
+ call start_clock(MERGE(timing_tddft_eri_2center_invert,timing_eri_2center_invert,in_rt_tddft))
 
  is_longrange = (rcut > 1.0e-12_dp)
 
@@ -1005,7 +1010,7 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
 
  write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, inverted and stored'
 
- call stop_clock(timing_eri_2center_invert)
+ call stop_clock(MERGE(timing_tddft_eri_2center_invert,timing_eri_2center_invert,in_rt_tddft))
 
 end subroutine calculate_inverse_eri_2center_scalapack
 
@@ -1428,23 +1433,27 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
        n3c = number_basis_function_am( 'CART' , amk )
        n4c = number_basis_function_am( 'CART' , aml )
-       allocate(int_shell(n1c*n3c*n4c))
+       allocate(int_shell(n1c*n3c*n4c)) ! it may be too large for spherical gaussian
 
 #if defined(HAVE_LIBCINT)
        shls(1) = lshell-1                              ! C convention starts with 0
        shls(2) = kshell-1                              ! C convention starts with 0
        shls(3) = basis%LIBCINT_offset + ishell-1  ! C convention starts with 0
 
-       cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                                 basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+       if( basis%gaussian_type == 'CART' ) then
+         cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                   basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+       else
+         cint_info = cint3c2e_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                  basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+       endif
+       call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
 
 #else
        am3 = amk
        am4 = aml
        ng3 = basis%shell(kshell)%ng
        ng4 = basis%shell(lshell)%ng
-
-
        allocate(alpha3(ng3),alpha4(ng4))
        allocate(coeff3(ng3),coeff4(ng4))
        alpha3(:) = basis%shell(kshell)%alpha(:)
@@ -1454,8 +1463,6 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
        x03(:) = basis%shell(kshell)%x0(:)
        x04(:) = basis%shell(lshell)%x0(:)
 
-
-
        call libint_3center(am1,ng1,x01,alpha1,coeff1, &
                            am3,ng3,x03,alpha3,coeff3, &
                            am4,ng4,x04,alpha4,coeff4, &
@@ -1463,8 +1470,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
        deallocate(alpha3,alpha4)
        deallocate(coeff3,coeff4)
-#endif
        call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+#endif
 
 
        do lbf=1,nl
@@ -1751,8 +1758,14 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
          shls(2) = kshell-1                              ! C convention starts with 0
          shls(3) = basis%LIBCINT_offset + ishell-1  ! C convention starts with 0
 
-         cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                                   basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+         if( basis%gaussian_type == 'CART' ) then
+           cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                     basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+         else
+           cint_info = cint3c2e_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                    basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+         endif
+         call transform_libcint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
 
 #else
          am3 = amk
@@ -1775,8 +1788,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
          deallocate(alpha3,alpha4)
          deallocate(coeff3,coeff4)
-#endif
          call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+#endif
 
 
          do lbf=1,nl

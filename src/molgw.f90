@@ -48,7 +48,6 @@ program molgw
   use m_selfenergy_evaluation
   use m_scf_loop
   use m_tddft_propagator
-  use m_tddft_variables
   use m_virtual_orbital_space
   use m_ci
   use m_dm_analysis
@@ -73,7 +72,7 @@ program molgw
   integer                 :: istep
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
-  logical                 :: is_converged
+  logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp
   real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
@@ -277,7 +276,7 @@ program molgw
     if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
     if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
     ! When a BIG RESTART file is provided, assume it contains converged SCF information
-    is_converged     = is_big_restart
+    scf_has_converged = is_big_restart
 
 
     !
@@ -312,8 +311,8 @@ program molgw
     !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
     if( read_tddft_restart_ ) then
       call check_restart_tddft(nstate,occupation,restart_tddft_is_correct)
-      ! When restart_tddft_is_correct  is TRUE, then override is_converged
-      if( restart_tddft_is_correct ) is_converged = .TRUE.
+      ! When restart_tddft_is_correct  is TRUE, then override scf_has_converged
+      if( restart_tddft_is_correct ) scf_has_converged = .TRUE.
     end if
 
 
@@ -394,13 +393,13 @@ program molgw
                     hamiltonian_kinetic,hamiltonian_nucleus,        &
                     occupation,energy,                              &
                     hamiltonian_fock,                               &
-                    c_matrix,en_gks,is_converged)
+                    c_matrix,en_gks,scf_has_converged)
     endif
 
     !
     ! Big RESTART file written if converged
     !
-    if( is_converged .AND. print_bigrestart_ ) then
+    if( scf_has_converged .AND. print_bigrestart_ ) then
       call write_restart(BIG_RESTART,basis,occupation,c_matrix,energy,hamiltonian_fock)
     else
       if( print_restart_ ) then
@@ -452,9 +451,9 @@ program molgw
     call lbfgs_destroy(lbfgs_plan)
   endif
 
-  ! This overrides the value of is_converged
-  if( assume_scf_converged_ ) is_converged = .TRUE.
-  if( .NOT. is_converged ) then
+  ! This overrides the value of scf_has_converged
+  if( assume_scf_converged_ ) scf_has_converged = .TRUE.
+  if( .NOT. scf_has_converged ) then
     call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. &
                  Use keyword assume_scf_converged to override this security check')
   endif
@@ -527,7 +526,7 @@ program molgw
   !
   ! RT-TDDFT Simulation (only if SCF cycles were converged)
   !
-  if( calc_type%is_real_time .AND. is_converged ) then
+  if( calc_type%is_real_time .AND. scf_has_converged ) then
     call calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
   end if
 
@@ -543,9 +542,10 @@ program molgw
   !
   ! Calculate or read a correlated density matrix
   !
-  if( read_fchk /= 'NO' &
-     .OR. TRIM(pt_density_matrix) /= 'NO' &
-     .OR. use_correlated_density_matrix_ ) then
+  if( ( read_fchk /= 'NO' &
+        .OR. TRIM(pt_density_matrix) /= 'NO' &
+        .OR. use_correlated_density_matrix_ ) &
+      .AND. scf_has_converged ) then
     call get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
   endif
 
@@ -570,7 +570,7 @@ program molgw
   !
   ! CI calculation (only if SCF cycles were converged)
   !
-  if( calc_type%is_ci .AND. is_converged ) then
+  if( calc_type%is_ci .AND. scf_has_converged ) then
     if( nspin /= 1 ) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')
 
     !
@@ -663,7 +663,7 @@ program molgw
   !
   ! Linear-response time dependent calculations work for BSE and TDDFT
   ! (only if the SCF cycles were converged)
-  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. is_converged ) then
+  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
     call init_spectral_function(nstate,occupation,0,wpol)
     call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
     call destroy_spectral_function(wpol)
@@ -672,7 +672,7 @@ program molgw
   !
   ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
   ! (only if the SCF cycles were converged)
-  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS .AND. is_converged ) then
+  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS .AND. scf_has_converged ) then
     en_mbpt = en_gks
     call selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
     call print_energy_yaml('mbpt energy',en_mbpt)
