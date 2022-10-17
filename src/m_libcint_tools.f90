@@ -15,7 +15,7 @@ module m_libcint_tools
   integer,private,parameter :: LMAX_LIBCINT = 7
   ! LIBCINT normalization is difficult to guess for pure gaussians
   ! So we obtain it from calls to the overlap rountine
-  real(dp),private :: libcint_pure_norm(LMAX_LIBCINT)
+  real(dp),private :: libcint_pure_norm(0:LMAX_LIBCINT)
 !                  [ 1.0_dp ,                           & ! s
 !                    1.0_dp ,                           & ! p
 !                    1.0_dp / 1.092548430592079070_dp,  & ! d

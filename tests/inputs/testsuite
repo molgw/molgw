@@ -181,7 +181,7 @@ gKS HOMO energy           , -13.532263         , 0 , 1.0e-4
 
 ne_gth.in                 , BLYP Ne atom with analytical pseudo in GTH formalism, need_libcint
 SCF Total Energy          , -34.9153582541     , 0 , 1.0e-7
-gKS HOMO energy           , -13.008824         , 0 , 1.0e-4
+gKS HOMO energy           , -13.008824         , 0 , 1.0e-3   # Loosened  criterium (because of BLYP in LIBXC)
 
 h2o_scalapack.in          , H2O molecule within PBE0 with possibly SCALAPACK
 gKS HOMO energy           ,   -9.039335        , 0 , 1.0e-4
@@ -657,14 +657,14 @@ MP2 Total Energy          , -76.2285265785     , 0 , 1.0e-7
 MP3 Energy                ,  -0.0069228191     , 0 , 1.0e-7
 MP3 Total Energy          , -76.2354493975     , 0 , 1.0e-7
 
-h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT T=200.0 dt=0.5 PC="PC2B",tddft
+h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT T=200.0 dt=0.5 PC="PC2B", tddft
 SCF Total Energy          , -76.0278711935     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -76.0278711836     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-5
 RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-5
 RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-5
 
-h2o_rt_tddft_hf_PC2B_TZ.in, RT-TDDFT within cc-pVTZ T=200.0 dt=0.5 PC="PC2B",tddft
+h2o_rt_tddft_hf_PC2B_TZ.in, RT-TDDFT within cc-pVTZ T=200.0 dt=0.5 PC="PC2B", tddft
 SCF Total Energy          , -76.0571529836     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -76.0571529689     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   0.0001368162     , 0 , 1.0e-5
@@ -688,7 +688,7 @@ h2o_rt_tddft_h_projectile.in, RT-TDDFT projectile without basis function PC="PC2
 SCF Total Energy          ,  -75.8551200924     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.0285116443     , 0 , 1.0e-7
 
-h2o_rt_tddft_h_proj_pbe0.in, RT-TDDFT proj without basis pbe0,tddft
+h2o_rt_tddft_h_proj_pbe0.in, RT-TDDFT proj without basis pbe0, tddft
 SCF Total Energy          ,  -76.3418386927     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.5745023928     , 0 , 1.0e-7
 
@@ -910,23 +910,23 @@ RT-TDDFT Total Energy     ,  -2.6776119436     , 0 , 1.0e-7
 h_in_he_rt_lda_MB_PC2B_nucleus_restart.in, RT-TDDFT PC="MB_PC2B" projectile without basis, restart
 RT-TDDFT Total Energy     ,  -2.7195375026     , 0 , 1.0e-5
 
-h_in_he_rt_lda_MB_PC2B_ions.in, RT-TDDFT PC="MB_PC2B" projectile with basis
+h_in_he_rt_lda_MB_PC2B_ions.in, RT-TDDFT PC="MB_PC2B" projectile with basis, need_gradients
 SCF Total Energy          ,  -2.8286834572     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -2.3308202283     , 0 , 1.0e-5
 Number of electrons	  ,  2.002093	       , 0 , 1.0e-4
 Lowdin projectile charge  ,  8.379366E-01      , 0 , 1.0e-4
 
-h_in_he_rt_lda_MB_PC2B_ions_restart.in, RT-TDDFT PC="MB_PC2B" projectile with basis, restart
+h_in_he_rt_lda_MB_PC2B_ions_restart.in, RT-TDDFT PC="MB_PC2B" projectile with basis, restart need_gradients
 RT-TDDFT Total Energy     ,  -2.1264231497     , 0 , 1.0e-5
 Number of electrons	  ,  2.000330	       , 0 , 1.0e-4
 Lowdin projectile charge  ,  5.409376E-01      , 0 , 1.0e-4
 
-he_in_h_ghost_rt_lda_MB_PC2B.in, RT-TDDFT PC="MB_PC2B" projectile in ghost
+he_in_h_ghost_rt_lda_MB_PC2B.in, RT-TDDFT PC="MB_PC2B" projectile in ghost, need_gradients
 SCF Total Energy          ,  -2.8356240593     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -1.6095526306     , 0 , 1.0e-5
 Number of electrons       ,   1.999590         , 0 , 1.0e-4
 
-benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++
+benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++, need_gradients
 SCF Total Energy          , -232.8924888075    , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -230.4199238294    , 0 , 1.0e-5
 Number of electrons       ,    41.994968       , 0 , 1.0e-4
