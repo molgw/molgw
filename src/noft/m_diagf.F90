@@ -144,7 +144,10 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
      Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))         ! Fpq=Fqp*
     enddo
     Phases(iorb)=-im*(ELAGd%Lambdas_im(iorb,iorb)+ELAGd%Lambdas_im(iorb,iorb))
-    if(cdabs(Phases(iorb))<tol8) Phases(iorb)=complex_zero
+    if(cdabs(Phases(iorb))<tol8) then
+     Phases(iorb)=complex_zero
+    endif 
+    call scale_F_cmplx(ELAGd%MaxScaling+9,Phases(iorb))  ! Scale the Fpp element to avoid divergence
     Eigvec_cmplx(iorb,iorb)=complex_zero
     Eigvec_cmplx(iorb,iorb)=ELAGd%F_diag(iorb)
    enddo  
@@ -154,7 +157,7 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
   if(maxdiff<thresholddiis.and.ELAGd%ndiis>0) then
    call diis_F_cmplx(diddiis,RDMd,ELAGd,Eigvec_cmplx)
   endif 
-
+  
   ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
   lwork=-1
   call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,ELAGd%F_diag,Work_cmplx,lwork,RWork,info)
@@ -166,7 +169,7 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
    call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,ELAGd%F_diag,Work_cmplx,lwork,RWork,info)
   endif
   deallocate(Work_cmplx,RWork)
-
+  
   ! Update the NO_COEF_cmplx
   do iorb=1,RDMd%NBF_tot 
    NO_COEF_cmplx(:,iorb)=exp(Phases(iorb))*NO_COEF_cmplx(:,iorb)
