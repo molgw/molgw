@@ -206,7 +206,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
            enforce_rpa = calc_type%is_bse
            call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
          else
-           call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,wpol)
+           call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
          endif
        endif
 

@@ -504,7 +504,7 @@ archive:
 
 prepare_sourcecode:
 	chmod 777 ./noft/gitversion.sh
-	./noft/gitversion.sh >& /dev/null
+	./noft/gitversion.sh > /dev/null
 	mv gitver.F90 ./noft 
 	$(PYTHON) prepare_sourcecode.py
 

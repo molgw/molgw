@@ -27,14 +27,14 @@ contains
 
 
 !=========================================================================
-subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,wpol)
+subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,egw,wpol)
   implicit none
 
   type(basis_set),intent(in)            :: basis
   real(dp),intent(in)                   :: occupation(:,:)
   real(dp),intent(in)                   :: energy(:,:)
   real(dp),intent(in)                   :: c_matrix(:,:,:)
-  real(dp),intent(out)                  :: erpa
+  real(dp),intent(out)                  :: erpa,egw
   type(spectral_function),intent(inout) :: wpol
   !=====
   integer              :: nstate
@@ -50,7 +50,6 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   real(dp),allocatable :: one_m_chi0(:,:)
   real(dp),allocatable :: one_m_chi0m1(:,:)
   real(dp)             :: eigval(nauxil_2center)
-  real(dp)             :: eint
   integer              :: desc_eri3_t(NDEL)
   integer              :: desc_eri3_final(NDEL)
   integer              :: meri3,neri3
@@ -110,7 +109,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
 
 
   erpa = 0.0_dp
-  eint = 0.0_dp
+  egw  = 0.0_dp
   do iomega=1,wpol%nomega_quad
 
     write(stdout,'(1x,a,i4,a,i4)') 'Loop on frequencies: ',iomega,' / ',wpol%nomega_quad
@@ -166,7 +165,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
     ! might be a bit time-consuming but we only calculate the eigenvalues
     call diagonalize_eigval_sca(postscf_diago_flavor,one_m_chi0m1,wpol%desc_chi,eigval)
     erpa = erpa + SUM( LOG(eigval(:)) + 1.0_dp - eigval(:) ) / (2.0_dp * pi) * wpol%weight_quad(iomega)
-    eint = eint + SUM( -( 1.0_dp - eigval(:) ) / eigval(:) + 1.0_dp - eigval(:) ) / (2.0_dp * pi) * wpol%weight_quad(iomega)
+    egw  = egw + SUM( -( 1.0_dp - eigval(:) ) / eigval(:) + 1.0_dp - eigval(:) ) / (2.0_dp * pi) * wpol%weight_quad(iomega)
 
     call invert_sca(wpol%desc_chi,one_m_chi0,one_m_chi0m1)
 
@@ -197,7 +196,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,w
   call destroy_eri_3center_eigen()
 
   write(stdout,'(/,1x,a,f16.10)') 'RPA correlation energy (Ha): ',erpa
-  write(stdout,'(1x,a,f16.10)')   'GW  correlation energy (Ha): ',eint
+  write(stdout,'(1x,a,f16.10)')   'GW  correlation energy (Ha): ',egw
 
   call stop_clock(timing_rpa_dynamic)
 
