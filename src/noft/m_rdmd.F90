@@ -31,21 +31,22 @@ module m_rdmd
 
  type,public :: rdm_t
 
-  logical::GAMMAs_nread=.true.   ! Are GAMMAS read from previous calc.?
-  integer::INOF=7                ! Functional to use (5-> PNOF5, 7-> PNOF7)
-  integer::Ista=1                ! Use PNOF7s version
-  integer::Nfrozen               ! Number of frozen orbitals in the NOFT calc.
-  integer::Nbeta_elect           ! Number of orbitals containing beta electrons
-  integer::Nalpha_elect          ! Number of orbitals containing alpha electrons
-  integer::Nsingleocc=0          ! Number of singly occ orbitals
-  integer::NBF_tot               ! Number of total orbitals
-  integer::NBF_occ               ! Number of frozen plus active orbitals
-  integer::NBF_ldiag             ! Size of the arrays that contain J, K, and L integrals
-  integer::Ncoupled              ! Number of 'virtual' coupled orbital per 'occupied' orbital  
-  integer::Npairs                ! Number of electron pairs
-  integer::Npairs_p_sing         ! Number of electron pairs plus number of singly occ orbitals
-  integer::Ngammas               ! Number of gammas (independet variables used in occ optimization procedure)
-  real(dp)::Lpower=0.53d0        ! Power functional exponent
+  logical::GAMMAs_nread=.true.     ! Are GAMMAS read from previous calc.?
+  integer::INOF=7                  ! Functional to use (5-> PNOF5, 7-> PNOF7, 8-> GNOF, etc)
+  integer::Ista=1                  ! Use PNOF7s version
+  integer::Nfrozen                 ! Number of frozen orbitals in the NOFT calc.
+  integer::Nbeta_elect             ! Number of orbitals containing beta electrons
+  integer::Nalpha_elect            ! Number of orbitals containing alpha electrons
+  integer::Nsingleocc=0            ! Number of singly occ orbitals
+  integer::NBF_tot                 ! Number of total orbitals
+  integer::NBF_occ                 ! Number of frozen plus active orbitals
+  integer::NBF_ldiag               ! Size of the arrays that contain J, K, and L integrals
+  integer::Ncoupled                ! Number of 'virtual' coupled orbital per 'occupied' orbital  
+  integer::Npairs                  ! Number of electron pairs
+  integer::Npairs_p_sing           ! Number of electron pairs plus number of singly occ orbitals
+  integer::Ngammas                 ! Number of gammas (independet variables used in occ optimization procedure)
+  real(dp)::Lpower=0.53d0          ! Power functional exponent
+  real(dp)::Hcut=0.02d0*dsqrt(two) ! Hcut parameter defined in GNOF to determine the Ecorr type (i.e. dyn or nondyn)
 ! arrays 
   real(dp),allocatable,dimension(:)::occ,chempot_orb
   real(dp),allocatable,dimension(:)::GAMMAs_old
@@ -339,92 +340,97 @@ subroutine print_swrdm(RDMd)
 
  ! Print the sw 2-RDM
  ! TODO: Missing terms for Nsingleocc>0 !
- coup=-1
- do iorb=1,NsdORBs
-  iorbmin=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+1
-  iorbmax=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+RDMd%Ncoupled
-  do iorb1=1,NsdVIRT
-   iorb2=iorb1+NsdORBs
-   if((iorbmin<=iorb2.and.iorb2<=iorbmax).and.(iorbmax<=RDMd%NBF_occ)) then
-    coup(2*iorb-1) =iorb
-    coup(2*iorb)   =iorb
-    coup(2*iorb2-1)=iorb
-    coup(2*iorb2)  =iorb
-   endif
+ ! TODO: sw 2-RDM for GNOF !
+ if(RDMD%INOF==8) then
+  write(*,*) ' WARNING! sw 2-RDM is not available for GNOF!'
+ else
+  coup=-1
+  do iorb=1,NsdORBs
+   iorbmin=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+1
+   iorbmax=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+RDMd%Ncoupled
+   do iorb1=1,NsdVIRT
+    iorb2=iorb1+NsdORBs
+    if((iorbmin<=iorb2.and.iorb2<=iorbmax).and.(iorbmax<=RDMd%NBF_occ)) then
+     coup(2*iorb-1) =iorb
+     coup(2*iorb)   =iorb
+     coup(2*iorb2-1)=iorb
+     coup(2*iorb2)  =iorb
+    endif
+   enddo
   enddo
- enddo
- open(unit=iunit,file='swDM2')
- do iorb=1,NBF2
-  do iorb1=1,NBF2
-   do iorb2=1,NBF2
-    do iorb3=1,NBF2
-     if((mod(iorb,2)==mod(iorb2,2)).and.(mod(iorb1,2)==mod(iorb3,2))) then
-      !! Check for spinless indeces (used for PI_ii,kk)
-      if(mod(iorb,2)==0) then
-       iorb4=iorb/2
-       iorb6=iorb2/2
-      else
-       iorb4=(iorb+1)/2
-       iorb6=(iorb2+1)/2
-      endif
-      if(mod(iorb1,2)==0) then
-       iorb5=iorb1/2
-       iorb7=iorb3/2
-      else
-       iorb5=(iorb1+1)/2
-       iorb7=(iorb3+1)/2
-      endif
-      Delem=ZERO
-      !! SD
-      ! Hartree
-      if((iorb==iorb2).and.(iorb1==iorb3)) then
-       Delem=half*occ(iorb)*occ(iorb1)
-      endif
-      ! Exchange
-      if((iorb==iorb3).and.(iorb1==iorb2)) then
-       Delem=Delem-half*occ(iorb)*occ(iorb1)
-      endif
-      !! PNOFi
-      ! Hartree
-      if((iorb==iorb2).and.(iorb1==iorb3).and.coup(iorb)==coup(iorb1)) then
-       if(coup(iorb)/=-1) Delem=Delem-half*occ(iorb)*occ(iorb1)
-      endif
-      ! Exchange
-      if((iorb==iorb3).and.(iorb1==iorb2).and.coup(iorb)==coup(iorb1)) then
-       if(coup(iorb)/=-1) Delem=Delem+half*occ(iorb)*occ(iorb1)
-      endif
-      ! Time-inversion
-      if((iorb4==iorb5).and.(iorb6==iorb7).and.(iorb/=iorb1.and.iorb2/=iorb3)) then
-       if(coup(iorb)==coup(iorb2).and.coup(iorb)/=-1) then
-        if(iorb4<=NsdORBs .or. iorb6<=NsdORBs) then
-         if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
-         if(iorb4/=iorb6) Delem=Delem-half*dsqrt(occ(iorb)*occ(iorb2))
-        else
-         if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
-         if(iorb4/=iorb6) Delem=Delem+half*dsqrt(occ(iorb)*occ(iorb2))
-        endif
+  open(unit=iunit,file='swDM2')
+  do iorb=1,NBF2
+   do iorb1=1,NBF2
+    do iorb2=1,NBF2
+     do iorb3=1,NBF2
+      if((mod(iorb,2)==mod(iorb2,2)).and.(mod(iorb1,2)==mod(iorb3,2))) then
+       !! Check for spinless indeces (used for PI_ii,kk)
+       if(mod(iorb,2)==0) then
+        iorb4=iorb/2
+        iorb6=iorb2/2
        else
-        if(RDMD%INOF==7) then
-         if(RDMD%Ista==1) then
-          Delem=Delem-two*((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
+        iorb4=(iorb+1)/2
+        iorb6=(iorb2+1)/2
+       endif
+       if(mod(iorb1,2)==0) then
+        iorb5=iorb1/2
+        iorb7=iorb3/2
+       else
+        iorb5=(iorb1+1)/2
+        iorb7=(iorb3+1)/2
+       endif
+       Delem=ZERO
+       !! SD
+       ! Hartree
+       if((iorb==iorb2).and.(iorb1==iorb3)) then
+        Delem=half*occ(iorb)*occ(iorb1)
+       endif
+       ! Exchange
+       if((iorb==iorb3).and.(iorb1==iorb2)) then
+        Delem=Delem-half*occ(iorb)*occ(iorb1)
+       endif
+       !! PNOFi
+       ! Hartree
+       if((iorb==iorb2).and.(iorb1==iorb3).and.coup(iorb)==coup(iorb1)) then
+        if(coup(iorb)/=-1) Delem=Delem-half*occ(iorb)*occ(iorb1)
+       endif
+       ! Exchange
+       if((iorb==iorb3).and.(iorb1==iorb2).and.coup(iorb)==coup(iorb1)) then
+        if(coup(iorb)/=-1) Delem=Delem+half*occ(iorb)*occ(iorb1)
+       endif
+       ! Time-inversion
+       if((iorb4==iorb5).and.(iorb6==iorb7).and.(iorb/=iorb1.and.iorb2/=iorb3)) then
+        if(coup(iorb)==coup(iorb2).and.coup(iorb)/=-1) then
+         if(iorb4<=NsdORBs .or. iorb6<=NsdORBs) then
+          if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
+          if(iorb4/=iorb6) Delem=Delem-half*dsqrt(occ(iorb)*occ(iorb2))
          else
-          Delem=Delem-half*dsqrt((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
+          if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
+          if(iorb4/=iorb6) Delem=Delem+half*dsqrt(occ(iorb)*occ(iorb2))
+         endif
+        else
+         if(RDMD%INOF==7) then
+          if(RDMD%Ista==1) then
+           Delem=Delem-two*((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
+          else
+           Delem=Delem-half*dsqrt((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
+          endif
          endif
         endif
        endif
-      endif
-      ! Print the ^2D_ij,kl element
-      if(abs(Delem)>tol8) then
-       write(iunit,'(f15.8,4i4)') Delem,iorb,iorb1,iorb2,iorb3
-      endif
-      ! Done iorb,iorb1,iorb2,iorb3
-     endif 
+       ! Print the ^2D_ij,kl element
+       if(abs(Delem)>tol8) then
+        write(iunit,'(f15.8,4i4)') Delem,iorb,iorb1,iorb2,iorb3
+       endif
+       ! Done iorb,iorb1,iorb2,iorb3
+      endif 
+     enddo
     enddo
    enddo
   enddo
- enddo
- write(iunit,'(f15.8,4i4)') zero,0,0,0,0
- close(iunit)
+  write(iunit,'(f15.8,4i4)') zero,0,0,0,0
+  close(iunit)
+ endif 
  
  deallocate(coup,occ) 
 
