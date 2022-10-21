@@ -66,13 +66,11 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorb6,iorb7,iorb8
  integer::igamma,igamma1,igamma2
- integer::mult
  real(dp)::occ_orb,hole_orb,sqrt_occ_orb,sqrt_hole_orb,sqrthole_orb
 !arrays
  real(dp),allocatable,dimension(:)::Docc_gamma0,sqrt_occ,Dsqrt_occ_gamma0,hole
  real(dp),allocatable,dimension(:,:)::Dsqrt_occ_gamma,Dhole_gamma,Docc_gamma 
 !************************************************************************
-
 !-----------------------------------------------------------------------
 !                 Occupancies and their Derivatives
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -92,8 +90,7 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  do igamma=1,RDMd%Npairs
   iorb = RDMd%Nfrozen+igamma
-  RDMd%occ(iorb) = dcos(GAMMAs(igamma))
-  RDMd%occ(iorb) = half + half*RDMd%occ(iorb)*RDMd%occ(iorb)
+  RDMd%occ(iorb) = half + half*dcos(GAMMAs(igamma))*dcos(GAMMAs(igamma)) 
   Docc_gamma0(iorb) = -half*dsin(two*GAMMAs(igamma))
   sqrt_occ(iorb) = dsqrt(RDMd%occ(iorb))
   Dsqrt_occ_gamma0(iorb) = half*Docc_gamma0(iorb)/sqrt_occ(iorb)
@@ -101,16 +98,9 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     Occupancies (RDMd%Nfrozen+RDMd%Npairs+1,Nalpha=RDMd%Nfrozen+RDMd%Npairs_p_sing)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- if(RDMd%Nsingleocc>0) then
-  do iorb=RDMd%Npairs+1,RDMd%Npairs_p_sing
-   iorb1 = RDMd%Nfrozen+iorb
-   mult = RDMd%Nalpha_elect - RDMd%Nbeta_elect
-   RDMd%occ(iorb1)  = half*mult/RDMd%Nsingleocc
-   Docc_gamma0(iorb1) = zero
-   sqrt_occ(iorb1) = dsqrt(RDMd%occ(iorb1))
-   Dsqrt_occ_gamma0(iorb1) = zero
-  enddo
- endif
+ !if(RDMd%Nsingleocc>0) then
+ ! TODO
+ !endif
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     Occupancies (Nalpha+1,RDMd%NBF_occ)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -122,107 +112,113 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
    Docc_gamma(iorb,igamma) = Docc_gamma0(iorb)
    Dsqrt_occ_gamma(iorb,igamma) = Dsqrt_occ_gamma0(iorb)
    ! iorb=RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-igamma)+RDMd%Ncoupled with RDMd%Ncoupled=1
-   iorb = RDMd%Nalpha_elect+RDMd%Npairs-igamma+1
-   sqrt_occ(iorb) = dsin(GAMMAs(igamma))*dsqrt(half)
-   Dsqrt_occ_gamma0(iorb) = dcos(GAMMAs(igamma))*dsqrt(half)
-   Dsqrt_occ_gamma(iorb,igamma) = Dsqrt_occ_gamma0(iorb)
-   RDMd%occ(iorb) = sqrt_occ(iorb)*sqrt_occ(iorb)
-   Docc_gamma0(iorb) = half*dsin(two*GAMMAs(igamma))
-   Docc_gamma(iorb,igamma) = Docc_gamma0(iorb)
+   iorb2 = RDMd%Nalpha_elect+RDMd%Npairs-igamma+1
+   RDMd%occ(iorb2) = one-RDMd%occ(iorb)
+   Docc_gamma0(iorb2) = -Docc_gamma0(iorb)
+   Docc_gamma(iorb2,igamma)=Docc_gamma0(iorb2)
+   sqrt_occ(iorb2)=dsqrt(RDMd%occ(iorb2)) 
+   if(sqrt_occ(iorb2)>tol20) then
+    Dsqrt_occ_gamma0(iorb2)=half*Docc_gamma0(iorb2)/sqrt_occ(iorb2)
+   else
+    Dsqrt_occ_gamma0(iorb2)=zero
+   endif
+   Dsqrt_occ_gamma(iorb2,igamma)=Dsqrt_occ_gamma0(iorb2) 
   enddo
  else                                 ! NOF: Extended NOF (RDMd%Ncoupled>1)
   allocate(hole(RDMd%Ngammas-RDMd%Npairs),Dhole_gamma(RDMd%Ngammas-RDMd%Npairs,RDMd%Ngammas))
   Docc_gamma = zero;  Dsqrt_occ_gamma = zero;  hole = zero;  Dhole_gamma = zero;
-  do igamma1=1,RDMd%Npairs                      ! igamma=igamma1=1,RDMd%Npairs
-   iorb = RDMd%Nfrozen+igamma1                  ! iorb=RDMd%Nfrozen+1,RDMd%Nbeta_elect
-   Docc_gamma(iorb,igamma1) = Docc_gamma0(iorb)
-   Dsqrt_occ_gamma(iorb,igamma1) = Dsqrt_occ_gamma0(iorb)
-   iorb1 = (RDMd%Ncoupled-1)*(igamma1-1)+1
-   iorb2 = (RDMd%Ncoupled-1)*igamma1
-   hole(iorb1:iorb2)  = one - RDMd%occ(iorb)
-   Dhole_gamma(iorb1:iorb2,igamma1) = - Docc_gamma0(iorb)
-!- - - -- - - - - - - - - - (igamma1,iorb3) <-> iorb4,igamma,iorb  - - - - - - - - - - - -
-   do iorb3=1,RDMd%Ncoupled-1
-    iorb4 = (RDMd%Ncoupled-1)*(igamma1-1)+iorb3                           ! iorb4=1,RDMd%Npairs*(RDMd%Ncoupled-1)
-    igamma = RDMd%Npairs+iorb4                                            ! igamma=RDMd%Npairs+1,RDMd%Npairs*RDMd%Ncoupled
-    iorb5 = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-igamma1)+iorb3   ! iorb5=RDMd%Nalpha_elect+1,RDMd%Nalpha_elect+RDMd%Ncoupled*RDMd%Npairs-1
-    occ_orb = (dsin(GAMMAs(igamma)))**two
-    Docc_gamma0(iorb5) = dsin(two*GAMMAs(igamma))
-    sqrt_occ_orb = dsqrt(occ_orb)
-    if(sqrt_occ_orb>zero) then
-     Dsqrt_occ_gamma0(iorb5) = half*Docc_gamma0(iorb5)/sqrt_occ_orb
+   do igamma=1,RDMd%Npairs                           ! igamma1=igamma=1,RDMd%Npairs
+    iorb = RDMd%Nfrozen+igamma                                ! iorb=no1+1,nb
+    Docc_gamma(iorb,igamma) = Docc_gamma0(iorb)
+    Dsqrt_occ_gamma(iorb,igamma) = Dsqrt_occ_gamma0(iorb)
+    iorb7 = (RDMd%Ncoupled-1)*(igamma-1)+1
+    iorb6 = (RDMd%Ncoupled-1)*igamma
+    hole(iorb7:iorb6)  = one - RDMd%occ(iorb)
+    Dhole_gamma(iorb7:iorb6,igamma)= - Docc_gamma0(iorb)
+!- -- - - - - - - - - - (igamma,iorb1) <-> iorb2,igamma1,iorb5  - - - - - - - - - - - -
+    do iorb1=1,RDMd%Ncoupled-1
+     iorb2 = (RDMd%Ncoupled-1)*(igamma-1)+iorb1             ! iorb2=1,RDMd%Npairs*(RDMd%Ncoupled-1)
+! igamma1=RDMd%Npairs+1,RDMd%Npairs*RDMd%Ncoupled
+     igamma1 = RDMd%Npairs+iorb2                       
+! iorb5=RDMd%Nalpha_elect+1,RDMd%Nalpha_elect+RDMd%Ncoupled*RDMd%Npairs-1
+     iorb5 = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-igamma)+iorb1           
+     occ_orb = dsin(GAMMAs(igamma1))*dsin(GAMMAs(igamma1))
+     Docc_gamma0(iorb5) = dsin(two*GAMMAs(igamma1))
+     sqrthole_orb = dsqrt(occ_orb)
+     if(sqrthole_orb>tol20) then
+      Dsqrt_occ_gamma0(iorb5) = half*Docc_gamma0(iorb5)/sqrthole_orb
+     else
+      Dsqrt_occ_gamma0(iorb5) = zero
+     end if
+     RDMd%occ(iorb5) = hole(iorb2)*occ_orb
+     sqrt_occ_orb = dsqrt(hole(iorb2))
+     sqrt_occ(iorb5) = sqrt_occ_orb*sqrthole_orb
+     Docc_gamma(iorb5,igamma) = Dhole_gamma(iorb2,igamma)*occ_orb
+     if(sqrt_occ_orb>tol20) then
+      Dsqrt_occ_gamma(iorb5,igamma) = half*Dhole_gamma(iorb2,igamma)*sqrthole_orb/sqrt_occ_orb
+     else
+      Dsqrt_occ_gamma(iorb5,igamma) = zero
+     endif
+     do iorb8=iorb7,iorb2-1                           ! iorb7 < iorb8 < iorb2-1
+      igamma2 = RDMd%Npairs+iorb8                     !   igamma < igamma2 < igamma1
+      Docc_gamma(iorb5,igamma2) = Dhole_gamma(iorb2,igamma2)*occ_orb
+      if(sqrt_occ_orb>tol20) then
+       Dsqrt_occ_gamma(iorb5,igamma2) = half*Dhole_gamma(iorb2,igamma2)*sqrthole_orb/sqrt_occ_orb
+      else
+       Dsqrt_occ_gamma(iorb5,igamma2) = zero
+      endif
+     enddo
+     Docc_gamma(iorb5,igamma1) = hole(iorb2)*Docc_gamma0(iorb5)
+     Dsqrt_occ_gamma(iorb5,igamma1) = sqrt_occ_orb*Dsqrt_occ_gamma0(iorb5)
+!- - hole(iorb2+1) - - - - - - - - - - - - - - - -
+     if(iorb1<RDMd%Ncoupled-1) then
+      do iorb3=1,RDMd%Ncoupled-1-iorb1
+       iorb8 = iorb2+iorb3                          ! iorb2 < iorb8 < igamma*(RDMd%Ncoupled-1)
+       hole(iorb8)  =  hole(iorb8) - RDMd%occ(iorb5)
+       Dhole_gamma(iorb8,igamma)= Dhole_gamma(iorb8,igamma) - Docc_gamma(iorb5,igamma)
+       do iorb4=iorb7,iorb2-1
+        igamma2 = RDMd%Npairs+iorb4
+        Dhole_gamma(iorb8,igamma2)= Dhole_gamma(iorb8,igamma2) - Docc_gamma(iorb5,igamma2)
+       enddo
+       Dhole_gamma(iorb8,igamma1)= Dhole_gamma(iorb8,igamma1) - Docc_gamma(iorb5,igamma1)
+      enddo
+     endif
+!- - hole(iorb2+1) - - - - - - - - - - - - - - - -
+    enddo
+!- -- - - - - - - - - - (igamma,iorb1) <-> iorb2,igamma1,iorb5  - - - - - - - - - - - -
+!- - iorb2 = iorb6 - last RDMd%occ  - - - - - - - - - - - - - -
+    igamma1 = RDMd%Npairs+iorb6               ! igamma1=RDMd%Npairs+igamma*(RDMd%Ncoupled-1)
+    iorb5 = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-igamma)+RDMd%Ncoupled
+    hole_orb = dcos(GAMMAs(igamma1))*dcos(GAMMAs(igamma1))
+    Docc_gamma0(iorb5) = -dsin(two*GAMMAs(igamma1))
+    sqrthole_orb = dsqrt(hole_orb)
+    if(sqrthole_orb>tol20) then
+     Dsqrt_occ_gamma0(iorb5) = half*Docc_gamma0(iorb5)/sqrthole_orb
     else
      Dsqrt_occ_gamma0(iorb5) = zero
-    endif
-    RDMd%occ(iorb5) =  hole(iorb4)*occ_orb
-    sqrt_hole_orb = dsqrt(hole(iorb4))
-    sqrt_occ(iorb5) = sqrt_hole_orb*sqrt_occ_orb
-    Docc_gamma(iorb5,igamma1) = Dhole_gamma(iorb4,igamma1)*occ_orb
-    if(sqrt_hole_orb>zero) then
-     Dsqrt_occ_gamma(iorb5,igamma1) = half*Dhole_gamma(iorb4,igamma1)*sqrt_occ_orb/sqrt_hole_orb
+    end if
+    RDMd%occ(iorb5)  = hole(iorb6)*hole_orb
+    sqrt_hole_orb = dsqrt(hole(iorb6))
+    sqrt_occ(iorb5)= sqrt_hole_orb*sqrthole_orb
+    Docc_gamma(iorb5,igamma) = Dhole_gamma(iorb6,igamma)*hole_orb
+    if(sqrt_hole_orb>tol20) then
+     Dsqrt_occ_gamma(iorb5,igamma) = half*Dhole_gamma(iorb6,igamma)*sqrthole_orb/sqrt_hole_orb
     else
-     Dsqrt_occ_gamma(iorb5,igamma1) = zero
+     Dsqrt_occ_gamma(iorb5,igamma) = zero
     endif
-    do iorb6=iorb1,iorb4-1                   !     iorb1 < iorb6   < iorb4-1
-     igamma2 = RDMd%Npairs+iorb6             !   igamma1 < igamma2 < igamma
-     Docc_gamma(iorb5,igamma2) =  Dhole_gamma(iorb4,igamma2)*occ_orb
-     if(sqrt_hole_orb>zero) then
-      Dsqrt_occ_gamma(iorb5,igamma2) = half*Dhole_gamma(iorb4,igamma2)*sqrt_occ_orb/sqrt_hole_orb
+    do iorb8=iorb7,iorb6-1            ! iorb7 < iorb8 < iorb6-1
+     igamma2 = RDMd%Npairs+iorb8      !   igamma < igamma2 < igamma1
+     Docc_gamma(iorb5,igamma2) = Dhole_gamma(iorb6,igamma2)*hole_orb
+     if(sqrt_hole_orb>tol20) then
+      Dsqrt_occ_gamma(iorb5,igamma2) = half*Dhole_gamma(iorb6,igamma2)*sqrthole_orb/sqrt_hole_orb
      else
       Dsqrt_occ_gamma(iorb5,igamma2) = zero
      endif
     enddo
-    Docc_gamma(iorb5,igamma) = hole(iorb4)*Docc_gamma0(iorb5)
-    Dsqrt_occ_gamma(iorb5,igamma) = sqrt_hole_orb*Dsqrt_occ_gamma0(iorb5)
-!- - - - hole(iorb4+1) - - - - - - - - - - - - - - - -
-    if(iorb3<RDMd%Ncoupled-1) then
-     do iorb7=1,RDMd%Ncoupled-1-iorb3
-      iorb6 = iorb4+iorb7                          ! iorb4 < iorb6 < igamma1*(RDMd%Ncoupled-1)
-      hole(iorb6) = hole(iorb6) - RDMd%occ(iorb5)
-      Dhole_gamma(iorb6,igamma1) = Dhole_gamma(iorb6,igamma1) - Docc_gamma(iorb5,igamma1)
-      do iorb8=iorb1,iorb4-1
-       igamma2 = RDMd%Npairs+iorb8
-       Dhole_gamma(iorb6,igamma2) = Dhole_gamma(iorb6,igamma2) - Docc_gamma(iorb5,igamma2)
-      enddo
-      Dhole_gamma(iorb6,igamma) = Dhole_gamma(iorb6,igamma) - Docc_gamma(iorb5,igamma)
-     enddo
-    endif
-!- - - - hole(iorb4+1) - - - - - - - - - - - - - - - -
+    Docc_gamma(iorb5,igamma1) = hole(iorb6) *Docc_gamma0(iorb5)
+    Dsqrt_occ_gamma(iorb5,igamma1) = sqrt_hole_orb*Dsqrt_occ_gamma0(iorb5)
+!- - iorb2 = iorb6 - last occ  - - - - - - - - - - - - - -
    enddo
-!- - - -- - - - - - - - - - (igamma1,iorb3) <-> iorb4,igamma,iorb  - - - - - - - - - - - -
-!- - - - iorb4 = iorb2 - last occ  - - - - - - - - - - - - - -
-   igamma = RDMd%Npairs+iorb2               ! igamma=RDMd%Npairs+igamma1*(RDMd%Ncoupled-1)
-   iorb5 = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-igamma1)+RDMd%Ncoupled
-   hole_orb = (dcos(GAMMAs(igamma)))**two 
-   Docc_gamma0(iorb5)  = -dsin(two*GAMMAs(igamma))
-   sqrt_occ_orb = dsqrt(hole_orb)
-   if(sqrt_occ_orb>zero) then
-    Dsqrt_occ_gamma0(iorb5) = half*Docc_gamma0(iorb5)/sqrt_occ_orb 
-   else
-    Dsqrt_occ_gamma0(iorb5) = zero
-   endif
-   RDMd%occ(iorb5) = hole(iorb2)*hole_orb
-   sqrthole_orb = dsqrt(hole(iorb2))
-   sqrt_occ(iorb5)= sqrthole_orb*sqrt_occ_orb
-   Docc_gamma(iorb5,igamma1) = Dhole_gamma(iorb2,igamma1)*hole_orb
-   if(sqrthole_orb>zero) then
-    Dsqrt_occ_gamma(iorb5,igamma1) = half*Dhole_gamma(iorb2,igamma1)*sqrt_occ_orb/sqrthole_orb
-   else
-    Dsqrt_occ_gamma(iorb5,igamma1) = zero
-   endif
-   do iorb6=iorb1,iorb2-1            !     iorb1 < iorb6   < iorb2-1
-    igamma2 = RDMd%Npairs+iorb6      !   igamma1 < igamma2 < igamma
-    Docc_gamma(iorb5,igamma2) = Dhole_gamma(iorb2,igamma2)*hole_orb
-    if(sqrthole_orb>zero) then
-     Dsqrt_occ_gamma(iorb5,igamma2) = half*Dhole_gamma(iorb2,igamma2)*sqrt_occ_orb/sqrthole_orb
-    else
-     Dsqrt_occ_gamma(iorb5,igamma2) = zero
-    endif
-   enddo
-   Docc_gamma(iorb5,igamma) = hole(iorb2)*Docc_gamma0(iorb5)
-   Dsqrt_occ_gamma(iorb5,igamma) = sqrthole_orb*Dsqrt_occ_gamma0(iorb5)
-!- - - - iorb4 = iorb2 - last occ  - - - - - - - - - - - - - -
-  enddo
   deallocate(hole,Dhole_gamma)
  endif
  deallocate(Docc_gamma0,Dsqrt_occ_gamma0)
