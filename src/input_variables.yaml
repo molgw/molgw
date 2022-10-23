@@ -1371,8 +1371,8 @@ noft_functional:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: PNOF7
-  comment: Select the NOFT approx. to use (default= 'PNOF7'). Other options are 'PNOF5', 'HF', 'MULLER', and 'POWER'.
+  default: GNOF
+  comment: Select the NOFT approx. to use (default= 'GNOF'). Other options are 'PNOF5', 'PNOF7', 'HF', 'MULLER', and 'POWER'.
 
 integral_quality:
   family: scf
@@ -1446,8 +1446,8 @@ noft_sta:
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
-  default: 'yes'
-  comment: Decide whether to use PNOF7 or PNOF7s (default= 'yes', use 'PNOF7s').
+  default: 'no'
+  comment: Decide whether to use PNOF7 or PNOF7s, but it also affects GNOF (default= 'no', use 'PNOF7' and 'GNOF').
 
 noft_ithresh_lambda:
   family: noft

@@ -67,7 +67,7 @@ subroutine noft_energy(basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
  ! iERItyp=1 -> use notation <ij|kl>
  imethorb=1;iERItyp=1;imethocc=1;iNOTupdateOCC=0;iNOTupdateORB=0;
  iprintdmn=0;iprintswdmn=0;iprintints=0;ireadOCC=0;ireadCOEF=0;
- ireadFdiag=0;ireadGAMMAs=0;ista=0;inof=7;
+ ireadFdiag=0;ireadGAMMAs=0;ista=0;inof=8;
  if(noft_NOTupdateOCC=='yes') iNOTupdateOCC=1 
  if(noft_NOTupdateORB=='yes') iNOTupdateORB=1 
  if(noft_printdmn=='yes') iprintdmn=1 
