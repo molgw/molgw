@@ -12,6 +12,7 @@
 import os, sys, subprocess
 import difflib
 import json
+import copy
 from yaml import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -87,6 +88,7 @@ def run(inputfile="molgw.in",**kwargs):
             results = load(stream,Loader=Loader)
         except:
             print('molgw.yaml file is corrupted')
+            results = {}
             pass
     return results
 
@@ -121,6 +123,44 @@ def print_xyz_file(calc,filename):
         f.write('{}\n\n'.format(len(atom_list)))
         for atom in atom_list:
             f.write('{:2}   {:14.8f} {:14.8f} {:14.8f}\n'.format(atom[0],float(atom[1])*bohr_ang,float(atom[2])*bohr_ang,float(atom[3])*bohr_ang))
+
+
+########################################################################
+def read_xyz_file(filename):
+    with open(filename,'r') as f:
+        line = f.readline()
+        natom = int(line.strip())
+        f.readline()
+        structure = []
+        for i in range(natom):
+            l = f.readline().split()[0:4]
+            structure.append([l[0],float(l[1]),float(l[2]),float(l[3])])
+        return structure
+
+########################################################################
+# structure class is mostly a list of atoms in angstrom
+class structure:
+    def __init__(self,strucin):
+        if type(strucin) == str:
+            self.list = read_xyz_file(strucin)
+        else:
+            self.list = copy.deepcopy(strucin)
+    def print_xyz_file(self,filename,comment=""):
+        with open(filename,'w') as f:
+            f.write('{}\n'.format(len(self.list)))
+            f.write(comment.strip()+'\n')
+            f.write(self.string())
+            #for atom in self.list:
+            #    f.write('{:2}   {:14.8f} {:14.8f} {:14.8f}\n'.format(atom[0],float(atom[1]),float(atom[2]),float(atom[3])))
+    def __repr__(self):
+        return "MOLGW structure (angstrom units)"
+    def string(self):
+        s = ''
+        for atom in self.list:
+            s += "{:<2} {:.6f} {:.6f} {:.6f} \n".format(*atom[0:4])
+        return s
+    def __str__(self):
+        return self.string()
 
 
 ########################################################################
@@ -209,8 +249,8 @@ def print_input_file(calc,filename="molgw.in"):
         f.write('&molgw\n')
         for key, value in calc.items():
             if key == "xyz":
-                continue
-            if type(value) in [type(int()),type(float())]:
+                f.write('  {:30} = {}\n'.format("natom",value.count("\n")) )
+            elif type(value) in [type(int()),type(float())]:
                 f.write('  {:30} = {}\n'.format(key,value) )
             else:
                 f.write('  {:30} = \'{}\'\n'.format(key,value) )
