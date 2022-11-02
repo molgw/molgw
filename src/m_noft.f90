@@ -205,7 +205,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  endif
  
  ! If required print post-procesing files 
- occupation(1:nstate_noft,1)=occ(1:nstate_noft,1)
+ occupation(1:nstate_occ,1)=occ(1:nstate_occ,1)
  if(noft_complex=='yes') then
    if(print_wfn_files_ ) then
      call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
