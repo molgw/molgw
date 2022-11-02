@@ -516,10 +516,14 @@ program molgw
     if( nspin /= 1 ) call die('molgw: NOFT calculations need spin-restriction. Set nspin to 1')
 
     en_noft = en_gks
-    call noft_energy(basis,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
+    call noft_energy(basis,c_matrix,occupation,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
                      en_noft%total,en_noft%nuc_nuc)
 
     write(stdout,'(a,2x,f19.10,/)') ' NOFT Total Energy (Ha):',en_noft%total
+    write(stdout,'(/,1x,a)')  'Natural occupations: '
+    write(stdout,'(10(2x,f14.6))') occupation(:,1)
+    write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
+    write(stdout,*)
 
   endif
 

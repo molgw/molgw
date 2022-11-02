@@ -25,13 +25,14 @@ module m_noft
 contains
 
 !=========================================================================
-subroutine noft_energy(basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
+subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  implicit none
 
  type(basis_set),intent(in) :: basis
  real(dp),intent(inout)     :: c_matrix(:,:,:)
  real(dp),intent(in)        :: Aoverlap(:,:)
  real(dp),intent(in)        :: hkin(:,:),hnuc(:,:)
+ real(dp),intent(inout)     :: occupation(:,:)
  real(dp),intent(in)        :: Vnn
  real(dp),intent(out)       :: Enoft
 !====
@@ -60,7 +61,7 @@ subroutine noft_energy(basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
  write(stdout,'(a)')   ' =================================================='
  write(stdout,'(/,a)') ' '
 
- Enoft = zero
+ Enoft = zero; occupation = zero;
  nstate_noft = SIZE(c_matrix,DIM=2) ! Number of lin. indep. molecular orbitals
 
  ! These varibles will remain fixed for a while
@@ -204,6 +205,7 @@ subroutine noft_energy(basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
  endif
  
  ! If required print post-procesing files 
+ occupation(1:nstate_noft,1)=occ(1:nstate_noft,1)
  if(noft_complex=='yes') then
    if(print_wfn_files_ ) then
      call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
@@ -246,7 +248,7 @@ subroutine noft_energy(basis,c_matrix,hkin,hnuc,Aoverlap,Enoft,Vnn)
    call clean_deallocate('NO_COEF',NO_COEF)
  endif
  write(stdout,'(/,a)') ' =================================================='
- write(stdout,'(a)')   ' NOFT SCF done'
+ write(stdout,'(a)')   ' NOFT SCF loop ends here'
  write(stdout,'(a)')   ' =================================================='
  write(stdout,'(/,a)') ' '
 
