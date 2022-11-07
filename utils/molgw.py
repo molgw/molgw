@@ -76,9 +76,10 @@ def check_input(pyinput):
 
 
 ########################################################################
-def run(inputfile="molgw.in",**kwargs):
-    if "pyinput" in kwargs:
-        print_input_file(kwargs["pyinput"],inputfile)       
+def run(inputfile="molgw.in",pyinput={},mpirun="",openmp=1,**kwargs):
+    if len(pyinput) > 0:
+        print_input_file(pyinput,inputfile)
+    os.environ['OMP_NUM_THREADS'] = str(openmp)
     process = subprocess.Popen([exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     output, error = process.communicate()
     if len(error) > 100:
@@ -139,6 +140,7 @@ def read_xyz_file(filename):
 
 ########################################################################
 # structure class is mostly a list of atoms in angstrom
+# with a few method to read, print, transform
 class structure:
     def __init__(self,strucin):
         if type(strucin) == str:
