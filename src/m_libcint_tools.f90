@@ -325,7 +325,6 @@ subroutine check_capability_libcint(lmax)
     info = cint1e_ovlp_sph(ovlp, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env)
 #endif
     libcint_pure_norm(il) = 1.0_dp / SQRT(ovlp(1))
-    write(stdout,*) il,ovlp(1),libcint_pure_norm(il)
 
     deallocate(ovlp)
   enddo
