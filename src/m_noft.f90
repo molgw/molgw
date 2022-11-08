@@ -115,8 +115,9 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  if(noft_complex=='yes') then
    NO_COEF_cmplx(:,:)=complex_zero
 !   call random_number(ran_num) ! For complex orbs with same random phase (i.e. to have real and imaginary orbs)
+   ran_num=pi/four
    do istate=1,nstate_noft
-     call random_number(ran_num) ! For complex orbs each having its own random phase (i.e. to have real and imaginary orbs)
+!     call random_number(ran_num) ! For complex orbs each having its own random phase (i.e. to have real and imaginary orbs)
      NO_COEF_cmplx(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
 !     NO_COEF_cmplx(:,istate)=im*c_matrix(:,istate,1)
 !     NO_COEF_cmplx(:,istate)=c_matrix(:,istate,1)
