@@ -341,8 +341,8 @@ subroutine print_swrdm(RDMd)
  ! Print the sw 2-RDM
  ! TODO: Missing terms for Nsingleocc>0 !
  ! TODO: sw 2-RDM for GNOF !
- if(RDMD%INOF==8) then
-  write(*,*) ' WARNING! sw 2-RDM is not available for GNOF!'
+ if(RDMD%INOF==8 .or. RDMD%INOF<0) then
+  write(*,*) ' WARNING! sw 2-RDM is not available for GNOF, MULLER, and POWER!'
  else
   coup=-1
   do iorb=1,NsdORBs

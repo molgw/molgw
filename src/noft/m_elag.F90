@@ -408,21 +408,23 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
 !arrays
  character(len=10)::coef_file
  character(len=200)::msg
- real(dp),allocatable,dimension(:)::Eigval,Eigval_nocc,Work
+ real(dp),allocatable,dimension(:)::Eigval,Eigval_nocc,Work,RWork
  real(dp),allocatable,dimension(:,:)::Eigvec,CANON_COEF
- real(dp),allocatable,dimension(:)::RWork
- complex(dp),allocatable,dimension(:,:)::CANON_COEF_cmplx
+ complex(dp),allocatable,dimension(:)::Work_cmplx
+ complex(dp),allocatable,dimension(:,:)::Eigvec_cmplx,CANON_COEF_cmplx 
 !************************************************************************
 
  allocate(Eigval_nocc(RDMd%NBF_occ),Eigval(RDMd%NBF_tot),RWork(3*RDMd%NBF_tot-2))
- RWork=complex_zero
+ RWork=zero
  
- allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Work(1))
- Eigvec=ELAGd%Lambdas
-! TODO
-! if(ELAGd%cpx_lambdas) then
-!  Eigvec=Eigvec+ELAGd%Lambdas_im
-! endif
+ allocate(Work(1),Work_cmplx(1))
+ if(ELAGd%cpx_lambdas) then
+  allocate(Eigvec(1,1),Eigvec_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
+  Eigvec_cmplx=ELAGd%Lambdas+ELAGd%Lambdas_im*im
+ else
+  allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Eigvec_cmplx(1,1))
+  Eigvec=ELAGd%Lambdas
+ endif
 
  if(present(ekt)) then
   do iorb=1,RDMd%NBF_tot
@@ -431,22 +433,40 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
      sqrt_occ_iorb =dsqrt(RDMd%occ(iorb))
      sqrt_occ_iorb1=dsqrt(RDMd%occ(iorb1))
      if((dabs(sqrt_occ_iorb)>tol6).and.(dabs(sqrt_occ_iorb1)>tol6)) then
-      Eigvec(iorb,iorb1)=Eigvec(iorb,iorb1)/(sqrt_occ_iorb*sqrt_occ_iorb1)
+      if(ELAGd%cpx_lambdas) then
+       Eigvec_cmplx(iorb,iorb1)=Eigvec_cmplx(iorb,iorb1)/(sqrt_occ_iorb*sqrt_occ_iorb1)
+      else
+       Eigvec(iorb,iorb1)=Eigvec(iorb,iorb1)/(sqrt_occ_iorb*sqrt_occ_iorb1)
+      endif
+     else
+      if(ELAGd%cpx_lambdas) then
+       Eigvec_cmplx(iorb,iorb1)=complex_zero
+      else
+       Eigvec(iorb,iorb1)=zero
+      endif
+     endif
+    else
+     if(ELAGd%cpx_lambdas) then
+      Eigvec_cmplx(iorb,iorb1)=complex_zero
      else
       Eigvec(iorb,iorb1)=zero
      endif
-    else
-     Eigvec(iorb,iorb1)=zero
     endif
    enddo
   enddo
  endif
 
  ! Diagonalize
-! TODO
-! if(ELAGd%cpx_lambdas) then
-!
-! else
+ if(ELAGd%cpx_lambdas) then
+  lwork=-1
+  call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,Eigval,Work_cmplx,lwork,RWork,info)
+  lwork=nint(real(Work_cmplx(1)))
+  if(info==0) then
+   deallocate(Work_cmplx)
+   allocate(Work_cmplx(lwork))
+   call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,Eigval,Work_cmplx,lwork,RWork,info)
+  endif
+ else
   lwork=-1
   call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigval,Work,lwork,info)
   lwork=nint(Work(1))
@@ -455,7 +475,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
    allocate(Work(lwork)) 
    call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigval,Work,lwork,info)
   endif
-! endif
+ endif
 
  ! Print final eigenvalues and orbs.
  write(msg,'(a)') ' '
@@ -463,9 +483,9 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  if(present(ekt)) then
   Eigval=-Eigval
   if(ELAGd%cpx_lambdas) then
-   call dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF_cmplx=NO_COEF_cmplx)
+   call dyson_orbs(RDMd,INTEGd,Eigvec_cmplx=Eigvec_cmplx,NO_COEF_cmplx=NO_COEF_cmplx)
   else
-   call dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF=NO_COEF)
+   call dyson_orbs(RDMd,INTEGd,Eigvec=Eigvec,NO_COEF=NO_COEF)
   endif
   write(msg,'(a)') 'EKT ionization potentials (a.u.)'
   call write_output(msg)
@@ -473,7 +493,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
   coef_file='CANON_COEF'
   if(ELAGd%cpx_lambdas) then
    allocate(CANON_COEF_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
-   CANON_COEF_cmplx=matmul(NO_COEF_cmplx,Eigvec)
+   CANON_COEF_cmplx=matmul(NO_COEF_cmplx,Eigvec_cmplx)
    call RDMd%print_orbs(coef_file,COEF_cmplx=CANON_COEF_cmplx)
    deallocate(CANON_COEF_cmplx)
   else
@@ -497,8 +517,8 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  write(msg,'(a)') ' '
  call write_output(msg)
   
- deallocate(Eigvec,Work)
- deallocate(Eigval,Eigval_nocc,RWork)
+ deallocate(Eigvec,Eigvec_cmplx,Work)
+ deallocate(Eigval,Eigval_nocc,RWork,Work_cmplx)
 
 end subroutine diag_lambda_ekt
 !!***
@@ -524,14 +544,15 @@ end subroutine diag_lambda_ekt
 !!
 !! SOURCE
 
-subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF,NO_COEF_cmplx)
+subroutine dyson_orbs(RDMd,INTEGd,Eigvec,Eigvec_cmplx,NO_COEF,NO_COEF_cmplx)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(in)::RDMd
  type(integ_t),intent(in)::INTEGd
 !arrays
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::Eigvec
+ real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::Eigvec
  real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::NO_COEF
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::Eigvec_cmplx
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::NO_COEF_cmplx
 !Local variables ------------------------------
 !scalars
@@ -547,7 +568,7 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF,NO_COEF_cmplx)
 !************************************************************************
 
  allocate(DYSON_occ(RDMd%NBF_occ))
- if(present(NO_COEF_cmplx)) cpx_mos=.true.
+ if(present(NO_COEF_cmplx).and.present(Eigvec_cmplx)) cpx_mos=.true.
  ! Compute DYSON_COEFs
  if(cpx_mos) then
   allocate(DYSON_occ_cmplx(RDMd%NBF_occ))
@@ -558,7 +579,8 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF,NO_COEF_cmplx)
    do iorb1=1,RDMd%NBF_occ
     DYSON_COEF_cmplx(iorb,iorb1)=complex_zero
     do iorb2=1,RDMd%NBF_occ
-     DYSON_COEF_cmplx(iorb,iorb1)=DYSON_COEF_cmplx(iorb,iorb1)+dsqrt(RDMd%occ(iorb2))*NO_COEF_cmplx(iorb,iorb2)*Eigvec(iorb2,iorb1)
+     DYSON_COEF_cmplx(iorb,iorb1)=DYSON_COEF_cmplx(iorb,iorb1)+&
+     & dsqrt(RDMd%occ(iorb2))*NO_COEF_cmplx(iorb,iorb2)*Eigvec_cmplx(iorb2,iorb1)
     enddo
    enddo
   enddo
@@ -589,7 +611,8 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF,NO_COEF_cmplx)
    do iorb1=1,RDMd%NBF_occ
     DYSON_COEF(iorb,iorb1)=zero
     do iorb2=1,RDMd%NBF_occ
-     DYSON_COEF(iorb,iorb1)=DYSON_COEF(iorb,iorb1)+dsqrt(RDMd%occ(iorb2))*NO_COEF(iorb,iorb2)*Eigvec(iorb2,iorb1)
+     DYSON_COEF(iorb,iorb1)=DYSON_COEF(iorb,iorb1)+&
+     & dsqrt(RDMd%occ(iorb2))*NO_COEF(iorb,iorb2)*Eigvec(iorb2,iorb1)
     enddo
    enddo
   enddo 
@@ -597,7 +620,8 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,NO_COEF,NO_COEF_cmplx)
   do iorb=1,RDMd%NBF_occ
    DYSON_occ(iorb)=zero
    do iorb1=1,RDMd%NBF_tot
-    DYSON_occ(iorb)=DYSON_occ(iorb)+DYSON_COEF(iorb1,iorb)*sum(INTEGd%Overlap(iorb1,:)*DYSON_COEF(:,iorb))
+    DYSON_occ(iorb)=DYSON_occ(iorb)+DYSON_COEF(iorb1,iorb)&
+   &     *sum(INTEGd%Overlap(iorb1,:)*DYSON_COEF(:,iorb))
    enddo
   enddo
   ! Normalized DYSON_COEF
