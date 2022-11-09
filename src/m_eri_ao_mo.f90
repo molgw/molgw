@@ -688,7 +688,7 @@ subroutine form_erimol(nbf,nstate_tot,nstate_jkl,c_matrix,c_matrix_cmplx,ERImol,
    allocate(tmp_pxxx_cmplx(nbf,nbf,nbf),tmp_pxjx_cmplx(nbf,nbf),tmp_pijx_cmplx(nbf))
 
    do pstate=1,nstate_tot
-     tmp_pxxx_cmplx(:,:,:) = (0.0_dp,0.0_dp)
+     tmp_pxxx_cmplx(:,:,:) = COMPLEX_ZERO
      do bbf=1,nbf
        do jbf=1,nbf
          if( negligible_basispair(jbf,bbf) ) cycle
@@ -701,14 +701,14 @@ subroutine form_erimol(nbf,nstate_tot,nstate_jkl,c_matrix,c_matrix_cmplx,ERImol,
        enddo
      enddo
      do jstate=1,nstate_jkl
-       tmp_pxjx_cmplx(:,:) = (0.0_dp,0.0_dp)
+       tmp_pxjx_cmplx(:,:) = COMPLEX_ZERO
        do bbf=1,nbf
          do abf=1,nbf
            tmp_pxjx_cmplx(abf,bbf) = SUM( conjg(c_matrix_cmplx(:,jstate,1)) * tmp_pxxx_cmplx(abf,:,bbf) )
          enddo
        enddo
        do istate=1,nstate_jkl
-         tmp_pijx_cmplx(:) = (0.0_dp,0.0_dp)
+         tmp_pijx_cmplx(:) = COMPLEX_ZERO
          do bbf=1,nbf
            tmp_pijx_cmplx(bbf) = SUM( c_matrix_cmplx(:,istate,1) * tmp_pxjx_cmplx(:,bbf) )
          enddo
@@ -726,7 +726,7 @@ subroutine form_erimol(nbf,nstate_tot,nstate_jkl,c_matrix,c_matrix_cmplx,ERImol,
    allocate(tmp_pxxx(nbf,nbf,nbf),tmp_pxjx(nbf,nbf),tmp_pijx(nbf))
 
    do pstate=1,nstate_tot
-     tmp_pxxx(:,:,:) = 0.0_dp
+     tmp_pxxx(:,:,:) = zero
      do bbf=1,nbf
        do jbf=1,nbf
          if( negligible_basispair(jbf,bbf) ) cycle
@@ -739,14 +739,14 @@ subroutine form_erimol(nbf,nstate_tot,nstate_jkl,c_matrix,c_matrix_cmplx,ERImol,
        enddo
      enddo
      do jstate=1,nstate_jkl
-       tmp_pxjx(:,:) = 0.0_dp
+       tmp_pxjx(:,:) = zero
        do bbf=1,nbf
          do abf=1,nbf
            tmp_pxjx(abf,bbf) = SUM( c_matrix(:,jstate,1) * tmp_pxxx(abf,:,bbf) )
          enddo
        enddo
        do istate=1,nstate_jkl
-         tmp_pijx(:) = 0.0_dp
+         tmp_pijx(:) = zero
          do bbf=1,nbf
            tmp_pijx(bbf) = SUM( c_matrix(:,istate,1) * tmp_pxjx(:,bbf) ) 
          enddo
