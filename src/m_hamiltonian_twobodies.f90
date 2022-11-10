@@ -1037,9 +1037,10 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
 #if defined(HAVE_LIBXC)
 
- write(stdout,*) 'Calculate DFT XC potential'
- if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
-
+ if(.not.calc_type%is_noft) then ! MRM mutted only for NOFT
+   write(stdout,*) 'Calculate DFT XC potential'
+   if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
+ endif
 
  normalization(:) = 0.0_dp
 
@@ -1270,8 +1271,10 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  write(stdout,*) 'LIBXC is not present'
 #endif
 
- write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
- write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
+ if(.not.calc_type%is_noft) then ! MRM mutted only for NOFT
+   write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+   write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
+ endif
 
  call stop_clock(timing_xxdft_xc)
 

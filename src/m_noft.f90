@@ -300,39 +300,50 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
 
  if( calc_type%is_dft .and. noft_rsh=='yes') then
 
-   call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
-   call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
-   call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
-   occupation=zero
-   occupation(:nstate_occ,1)=two*Occ(:nstate_occ)
-   call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,srExc)
-
    if(noft_complex=='yes') then
+
      !TODO
      write(*,*) 'Warning! The code is not prepared for this end.'
+
    else
-     ! hCORE part
+
+     ! Prepare the srDFT contribution
+     call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
+     call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
+     call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
+     occupation=zero
+     occupation(:nstate_occ,1)=two*Occ(:nstate_occ)
+     tmp_c_matrix=zero
+     do istate=1,nstate_noft
+      tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
+     enddo
+     hamiltonian_xc=zero
+     call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,srExc)
+     call clean_deallocate('occupation',occupation,noft_verbose)
+
+     ! hCORE part (including the srDFT) 
      call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,noft_verbose)
      hCORE(:,:)=zero; tmp_hcore(:,:)=zero;
+     hCORE(:,:)=AhCORE(:,:)+hamiltonian_xc(:,:,1)
+     !tmp_hcore=matmul(hCORE,NO_COEF) TODO use it
      tmp_hcore=matmul(AhCORE,NO_COEF)
      hCORE=matmul(transpose(NO_COEF),tmp_hcore)
+     call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
      call clean_deallocate('tmp_hcore',tmp_hcore,noft_verbose)
 
      ! ERI terms
      if(present(ERImol)) then
        ERImol(:,:,:,:)=zero
-       do istate=1,nstate_noft
-        tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
-       enddo
        if(has_auxil_basis) then ! RI case
          call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
+         !call calculate_eri_3center_eigen_xx_lr(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose) ! TODO
          do istate=1,nstate_occ
            do jstate=1,nstate_occ
              do kstate=1,nstate_occ
                do lstate=1,nstate_noft
                  if(kstate==istate) then ! Hartree
                    ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
-                 else                    ! xc long-range
+                 else                    ! xc long-range ! TODO add alpha_hyb and beta_hyb see scf_loop
                    ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
                  endif
                enddo
@@ -340,17 +351,16 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
            enddo
          enddo
          call destroy_eri_3center_eigen(noft_verbose)
+         !call destroy_eri_3center_eigen_xx_lr(noft_verbose)
        else            ! Normal case (not using RI)
          !TODO
          write(*,*) 'Warning! The code is not prepared for this end.'
        endif
      endif
 
-   endif
+     call clean_deallocate('tmp_c_matrix',tmp_c_matrix,noft_verbose)
 
-   call clean_deallocate('tmp_c_matrix',tmp_c_matrix,noft_verbose)
-   call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
-   call clean_deallocate('occupation',occupation,noft_verbose)
+   endif
 
  else
 
