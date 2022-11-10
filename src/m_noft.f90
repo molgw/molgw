@@ -19,6 +19,7 @@ module m_noft
 
 
  logical,parameter,private    :: noft_verbose = .FALSE.
+ logical                      :: lr_xx_avail = .FALSE.
  integer,private              :: nstate_noft 
  real(dp)                     :: srExc
  real(dp),allocatable,private :: AhCORE(:,:)                   ! hCORE matrix (T+Ven) in AO basis
@@ -28,7 +29,7 @@ module m_noft
 contains
 
 !=========================================================================
-subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
+subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn,ExcsrDFT)
  implicit none
 
  type(basis_set),intent(in),target :: basis
@@ -37,7 +38,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  real(dp),intent(in)       :: hkin(:,:),hnuc(:,:)
  real(dp),intent(inout)    :: occupation(:,:)
  real(dp),intent(in)       :: Vnn
- real(dp),intent(out)      :: Enoft
+ real(dp),intent(out)      :: Enoft,ExcsrDFT
 !====
  integer                   :: istate,lwork,info
  integer                   :: nelectrons
@@ -68,8 +69,9 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
 
  !
  ! Setup the grids for the quadrature of srDFT potential/energy
- if( calc_type%is_dft .and. noft_rsh=='yes') then
+ if( ( calc_type%is_dft .and. noft_rsh=='yes' ) ) then
    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+   if( abs(gamma_hybrid-1000000.0)>tol8 .and. ( abs(alpha_hybrid)>tol8 .or. abs(beta_hybrid)>tol8 ) ) lr_xx_avail=.true.
  endif
 
  Enoft = zero; occupation = zero;
@@ -216,7 +218,11 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
    endif
  endif
  
- if( calc_type%is_dft .and. noft_rsh=='yes' ) call destroy_dft_grid()
+ if( ( calc_type%is_dft .and. noft_rsh=='yes' ) .and. lr_xx_avail ) then
+   ExcsrDFT=srExc
+   Enoft=Enoft+srExc
+   call destroy_dft_grid()
+ endif
  
  ! If required print post-procesing files 
  occupation(1:nstate_occ,1)=occ(1:nstate_occ,1)
@@ -298,7 +304,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
 ! Comment: Despite the arrays are of size nbf x nbf, we use nstate_noft = num. lin. indep. states in the ERI  transformation. 
 ! Doing this, we save some time in the loops because nstate_noft <= nbf
 
- if( calc_type%is_dft .and. noft_rsh=='yes') then
+ if( ( calc_type%is_dft .and. noft_rsh=='yes' ) .and. lr_xx_avail ) then
 
    if(noft_complex=='yes') then
 
@@ -306,7 +312,6 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
      write(*,*) 'Warning! The code is not prepared for this end.'
 
    else
-
      ! Prepare the srDFT contribution
      call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
      call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
@@ -325,8 +330,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
      call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,noft_verbose)
      hCORE(:,:)=zero; tmp_hcore(:,:)=zero;
      hCORE(:,:)=AhCORE(:,:)+hamiltonian_xc(:,:,1)
-     !tmp_hcore=matmul(hCORE,NO_COEF) TODO use it
-     tmp_hcore=matmul(AhCORE,NO_COEF)
+     tmp_hcore=matmul(hCORE,NO_COEF)
      hCORE=matmul(transpose(NO_COEF),tmp_hcore)
      call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
      call clean_deallocate('tmp_hcore',tmp_hcore,noft_verbose)
@@ -335,23 +339,22 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
      if(present(ERImol)) then
        ERImol(:,:,:,:)=zero
        if(has_auxil_basis) then ! RI case
-         call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
-         !call calculate_eri_3center_eigen_xx_lr(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose) ! TODO
+         call calculate_eri_3center_eigen_xx_lr(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose) 
          do istate=1,nstate_occ
            do jstate=1,nstate_occ
              do kstate=1,nstate_occ
                do lstate=1,nstate_noft
                  if(kstate==istate) then ! Hartree
                    ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
-                 else                    ! xc long-range ! TODO add alpha_hyb and beta_hyb see scf_loop
-                   ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+                 else                    ! xc long-range ! 
+                   ERImol(lstate,kstate,jstate,istate)=alpha_hybrid*eri_eigen_ri(lstate,jstate,1,kstate,istate,1)& ! <lk|ji> format used for ERImol
+                   &                                  +beta_hybrid*eri_eigen_ri_lr(lstate,jstate,1,kstate,istate,1) 
                  endif
                enddo
              enddo
            enddo
          enddo
-         call destroy_eri_3center_eigen(noft_verbose)
-         !call destroy_eri_3center_eigen_xx_lr(noft_verbose)
+         call destroy_eri_3center_eigen_xx_lr(noft_verbose)
        else            ! Normal case (not using RI)
          !TODO
          write(*,*) 'Warning! The code is not prepared for this end.'

@@ -517,8 +517,12 @@ program molgw
 
     en_noft = en_gks
     call noft_energy(basis,c_matrix,occupation,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
-                     en_noft%total,en_noft%nuc_nuc)
+                     en_noft%total,en_noft%nuc_nuc,en_noft%xc)
 
+    if( noft_rsh=='yes' ) then
+      write(stdout,'(a,2x,f19.10)') ' NOFT SCF   Energy (Ha):',en_noft%total-en_noft%xc
+      write(stdout,'(a,2x,f19.10)') ' NOFT sr xc Energy (Ha):',en_noft%xc
+    endif
     write(stdout,'(a,2x,f19.10,/)') ' NOFT Total Energy (Ha):',en_noft%total
     write(stdout,'(/,1x,a)')  'Natural occupations: '
     write(stdout,'(8(2x,f14.6))') occupation(:,1)
