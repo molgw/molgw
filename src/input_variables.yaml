@@ -1292,6 +1292,14 @@ noft_complex:
   default: 'no'
   comment: Use complex molecular orb. coeficients in NOFT calcs. (default=no).
 
+noft_rsh:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use long-range NOFT and short-range DFT in NOFT calcs. (default=no).
+
 density_matrix_damping:
   family: scf
   datatype: real

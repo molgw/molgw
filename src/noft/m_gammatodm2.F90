@@ -321,14 +321,6 @@ subroutine dm2_hf(RDMd,Docc_gamma,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma_J,DDM2_g
   enddo
  enddo
 !- - - - - - - - - - - - - - - - - - - - - - - -              
- !if(RDMd%Nsingleocc>1) then
- ! do iorb=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !  do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !   DM2_K(iorb,iorb1) = -two*RDMd%occ(iorb)*RDMd%occ(iorb1)
- !   DDM2_gamma_K(iorb,iorb1,:) = -two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
- !  enddo
- ! enddo
- !end if
 !-----------------------------------------------------------------------
 !                 DM2(iorb,iorb,iorb,iorb)=occ(iorb)*occ(iorb)
 !-----------------------------------------------------------------------
@@ -400,14 +392,6 @@ subroutine dm2_mbb(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_K
   enddo
  enddo
 !- - - - - - - - - - - - - - - - - - - - - - - -              
- !if(RDMd%Nsingleocc>1) then
- ! do iorb=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !  do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !   DM2_K(iorb,iorb1) = -two*sqrt_occ(iorb)*sqrt_occ(iorb1)
- !   DDM2_gamma_K(iorb,iorb1,:) = -two*Dsqrt_occ_gamma(iorb,:)*sqrt_occ(iorb1)
- !  enddo
- ! enddo
- !end if
 !-----------------------------------------------------------------------
 !          DM2(iorb,iorb,iorb,iorb)=2*occ(iorb)*occ(iorb)-occ(iorb)
 !-----------------------------------------------------------------------
@@ -481,14 +465,6 @@ subroutine dm2_power(RDMd,Docc_gamma,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma_J,DDM
   enddo
  enddo
 !- - - - - - - - - - - - - - - - - - - - - - - -              
- !if(RDMd%Nsingleocc>1) then
- ! do iorb=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !  do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !   DM2_K(iorb,iorb1) = -two*sqrt_occ(iorb)*sqrt_occ(iorb1)
- !   DDM2_gamma_K(iorb,iorb1,:) = -two*Dsqrt_occ_gamma(iorb,:)*sqrt_occ(iorb1)
- !  enddo
- ! enddo
- !end if
 !-----------------------------------------------------------------------
 !          DM2(iorb,iorb,iorb,iorb)=2*occ(iorb)*occ(iorb)- (occ(iorb)**(2*power)
 !-----------------------------------------------------------------------
@@ -564,14 +540,6 @@ subroutine dm2_pnof5(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2
   enddo
  enddo
 !- - - - - - - - - - - - - - - - - - - - - - - -              
- !if(RDMd%Nsingleocc>1) then ! TODO
- ! do iorb=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !  do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !   DM2_K(iorb,iorb1) = -two*RDMd%occ(iorb)*RDMd%occ(iorb1)
- !   DDM2_gamma_K(iorb,iorb1,:) = -two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
- !  enddo
- ! enddo
- !end if
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 !                Intra-pair interactions for PNOF5(Nc)
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
@@ -707,14 +675,6 @@ subroutine dm2_pnof7(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2
  enddo
  deallocate(FIs,DFIs)
 !- - - - - - - - - - - - - - - - - - - - - - - -              
- !if(RDMd%Nsingleocc>1) then ! TODO
- ! do iorb=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !  do iorb1=RDMd%Nbeta_elect+1,RDMd%Nalpha_elect
- !   DM2_K(iorb,iorb1) = -two*RDMd%occ(iorb)*RDMd%occ(iorb1)
- !   DDM2_gamma_K(iorb,iorb1,:) = -two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
- !  enddo
- ! enddo
- !end if
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 !                Intra-pair interactions for PNOF7(Nc)
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --

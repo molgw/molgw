@@ -521,7 +521,7 @@ program molgw
 
     write(stdout,'(a,2x,f19.10,/)') ' NOFT Total Energy (Ha):',en_noft%total
     write(stdout,'(/,1x,a)')  'Natural occupations: '
-    write(stdout,'(10(2x,f14.6))') occupation(:,1)
+    write(stdout,'(8(2x,f14.6))') occupation(:,1)
     write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
     write(stdout,*)
 

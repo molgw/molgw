@@ -14,12 +14,15 @@ module m_noft
  use m_eri_ao_mo
  use m_inputparam
  use m_hamiltonian_onebody
+ use m_hamiltonian_twobodies
  use m_noft_driver
 
 
  logical,parameter,private    :: noft_verbose = .FALSE.
  integer,private              :: nstate_noft 
+ real(dp)                     :: srExc
  real(dp),allocatable,private :: AhCORE(:,:)                   ! hCORE matrix (T+Ven) in AO basis
+ type(basis_set),pointer      :: basis_pointer
 
 
 contains
@@ -28,27 +31,29 @@ contains
 subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  implicit none
 
- type(basis_set),intent(in) :: basis
- real(dp),intent(inout)     :: c_matrix(:,:,:)
- real(dp),intent(in)        :: Aoverlap(:,:)
- real(dp),intent(in)        :: hkin(:,:),hnuc(:,:)
- real(dp),intent(inout)     :: occupation(:,:)
- real(dp),intent(in)        :: Vnn
- real(dp),intent(out)       :: Enoft
+ type(basis_set),intent(in),target :: basis
+ real(dp),intent(inout)    :: c_matrix(:,:,:)
+ real(dp),intent(in)       :: Aoverlap(:,:)
+ real(dp),intent(in)       :: hkin(:,:),hnuc(:,:)
+ real(dp),intent(inout)    :: occupation(:,:)
+ real(dp),intent(in)       :: Vnn
+ real(dp),intent(out)      :: Enoft
 !====
- integer                    :: istate,lwork,info
- integer                    :: nelectrons
- integer                    :: imethorb,imethocc,iERItyp,nstate_occ,nstate_frozen,nstate_beta,nstate_alpha,nstate_coupled
- integer                    :: iNOTupdateOCC,iNOTupdateORB,iprintdmn,iprintswdmn,iprintints,ireadOCC,ireadCOEF 
- integer                    :: ireadFdiag,ireadGAMMAs,ista,inof 
- real(dp)                   :: ran_num
- real(dp),allocatable       :: occ(:,:),energy(:,:),occ_print(:,:)
- real(dp),allocatable       :: NO_COEF(:,:)
- real(dp),allocatable       :: tmp_mat0(:,:),tmp_mat(:,:),Work(:) 
- complex(dp),allocatable    :: NO_COEF_cmplx(:,:)
- complex(dp),allocatable    :: tmp_mat_cmplx(:,:)
- character(len=200)         :: ofile_name
+ integer                   :: istate,lwork,info
+ integer                   :: nelectrons
+ integer                   :: imethorb,imethocc,iERItyp,nstate_occ,nstate_frozen,nstate_beta,nstate_alpha,nstate_coupled
+ integer                   :: iNOTupdateOCC,iNOTupdateORB,iprintdmn,iprintswdmn,iprintints,ireadOCC,ireadCOEF 
+ integer                   :: ireadFdiag,ireadGAMMAs,ista,inof 
+ real(dp)                  :: ran_num
+ real(dp),allocatable      :: occ(:,:),energy(:,:),occ_print(:,:)
+ real(dp),allocatable      :: NO_COEF(:,:)
+ real(dp),allocatable      :: tmp_mat0(:,:),tmp_mat(:,:),Work(:) 
+ complex(dp),allocatable   :: NO_COEF_cmplx(:,:)
+ complex(dp),allocatable   :: tmp_mat_cmplx(:,:)
+ character(len=200)        :: ofile_name
 !=====
+
+ basis_pointer=>basis
 
  ! Init clock
  call start_clock(timing_noft_energy)
@@ -60,6 +65,12 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  write(stdout,'(3a)')  ' writting NOFT results to ',trim(ofile_name),' file.'
  write(stdout,'(a)')   ' =================================================='
  write(stdout,'(/,a)') ' '
+
+ !
+ ! Setup the grids for the quadrature of srDFT potential/energy
+ if( calc_type%is_dft .and. noft_rsh=='yes') then
+   call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+ endif
 
  Enoft = zero; occupation = zero;
  nstate_noft = SIZE(c_matrix,DIM=2) ! Number of lin. indep. molecular orbitals
@@ -205,6 +216,8 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
    endif
  endif
  
+ if( calc_type%is_dft .and. noft_rsh=='yes' ) call destroy_dft_grid()
+ 
  ! If required print post-procesing files 
  occupation(1:nstate_occ,1)=occ(1:nstate_occ,1)
  if(noft_complex=='yes') then
@@ -260,10 +273,11 @@ end subroutine noft_energy
 
 
 !==================================================================
-subroutine mo_ints(nbf,nstate_occ,nstate_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolv_cmplx)
+subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolv_cmplx)
  implicit none
 
  integer,intent(in)              :: nbf,nstate_occ,nstate_kji
+ real(dp),intent(in)             :: Occ(nstate_occ)
  real(dp),optional,intent(in)    :: NO_COEF(nbf,nbf)
  real(dp),optional,intent(inout) :: hCORE(nbf,nbf)
  real(dp),optional,intent(inout) :: ERImol(nbf,nstate_kji,nstate_kji,nstate_kji)
@@ -274,8 +288,8 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COE
  complex(dp),optional,intent(inout) :: ERImolv_cmplx(nbf*nstate_kji*nstate_kji*nstate_kji)
 !====
  integer                    :: istate,jstate,kstate,lstate
- real(dp),allocatable       :: tmp_hcore(:,:)
- real(dp),allocatable       :: tmp_c_matrix(:,:,:)
+ real(dp),allocatable       :: tmp_hcore(:,:),occupation(:,:)
+ real(dp),allocatable       :: tmp_c_matrix(:,:,:),hamiltonian_xc(:,:,:)
  complex(dp),allocatable    :: tmp_hcore_cmplx(:,:)
  complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
 !=====
@@ -284,72 +298,130 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,NO_COEF,hCORE,ERImol,ERImolv,NO_COE
 ! Comment: Despite the arrays are of size nbf x nbf, we use nstate_noft = num. lin. indep. states in the ERI  transformation. 
 ! Doing this, we save some time in the loops because nstate_noft <= nbf
 
- if(noft_complex=='yes') then
+ if( calc_type%is_dft .and. noft_rsh=='yes') then
 
-   ! hCORE part
-   call clean_allocate('tmp_hcore',tmp_hcore_cmplx,nbf,nbf,noft_verbose)
-   hCORE_cmplx(:,:)=complex_zero; tmp_hcore_cmplx(:,:)=complex_zero;
-   tmp_hcore_cmplx=matmul(AhCORE,NO_COEF_cmplx)
-   hCORE_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),tmp_hcore_cmplx)
-   call clean_deallocate('tmp_hcore',tmp_hcore_cmplx,noft_verbose)
+   call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
+   call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
+   call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
+   occupation=zero
+   occupation(:nstate_occ,1)=two*Occ(:nstate_occ)
+   call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,srExc)
 
-   ! ERI terms
-   if(present(ERImol_cmplx)) then
-     ERImol_cmplx(:,:,:,:)=complex_zero
-     call clean_allocate('tmp_c_matrix',tmp_c_matrix_cmplex,nbf,nstate_noft,1,noft_verbose)
-     do istate=1,nstate_noft
-      tmp_c_matrix_cmplex(:,istate,1)=NO_COEF_cmplx(:,istate)
-     enddo
-     if(has_auxil_basis) then ! RI case
-       call calculate_eri_3center_eigen_cmplx(tmp_c_matrix_cmplex,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
-       do istate=1,nstate_occ
-         do jstate=1,nstate_occ
-           do kstate=1,nstate_occ
-             do lstate=1,nstate_noft
-               ERImol_cmplx(lstate,kstate,jstate,istate)=eri_eigen_ri_cmplx(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+   if(noft_complex=='yes') then
+     !TODO
+     write(*,*) 'Warning! The code is not prepared for this end.'
+   else
+     ! hCORE part
+     call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,noft_verbose)
+     hCORE(:,:)=zero; tmp_hcore(:,:)=zero;
+     tmp_hcore=matmul(AhCORE,NO_COEF)
+     hCORE=matmul(transpose(NO_COEF),tmp_hcore)
+     call clean_deallocate('tmp_hcore',tmp_hcore,noft_verbose)
+
+     ! ERI terms
+     if(present(ERImol)) then
+       ERImol(:,:,:,:)=zero
+       do istate=1,nstate_noft
+        tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
+       enddo
+       if(has_auxil_basis) then ! RI case
+         call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
+         do istate=1,nstate_occ
+           do jstate=1,nstate_occ
+             do kstate=1,nstate_occ
+               do lstate=1,nstate_noft
+                 if(kstate==istate) then ! Hartree
+                   ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+                 else                    ! xc long-range
+                   ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+                 endif
+               enddo
              enddo
            enddo
          enddo
-       enddo
-       call destroy_eri_3center_eigen_cmplx(noft_verbose)
-     else            ! Normal case (not using RI) 
-       call form_erimol(nbf,nstate_noft,nstate_kji,c_matrix_cmplx=tmp_c_matrix_cmplex,ERImol_cmplx=ERImol_cmplx)
+         call destroy_eri_3center_eigen(noft_verbose)
+       else            ! Normal case (not using RI)
+         !TODO
+         write(*,*) 'Warning! The code is not prepared for this end.'
+       endif
      endif
-     call clean_deallocate('tmp_c_matrix',tmp_c_matrix_cmplex,noft_verbose)
+
    endif
+
+   call clean_deallocate('tmp_c_matrix',tmp_c_matrix,noft_verbose)
+   call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
+   call clean_deallocate('occupation',occupation,noft_verbose)
 
  else
 
-   ! hCORE part
-   call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,noft_verbose)
-   hCORE(:,:)=zero; tmp_hcore(:,:)=zero;
-   tmp_hcore=matmul(AhCORE,NO_COEF)
-   hCORE=matmul(transpose(NO_COEF),tmp_hcore)
-   call clean_deallocate('tmp_hcore',tmp_hcore,noft_verbose)
+   if(noft_complex=='yes') then
 
-   ! ERI terms
-   if(present(ERImol)) then
-     ERImol(:,:,:,:)=zero
-     call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
-     do istate=1,nstate_noft
-      tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
-     enddo
-     if(has_auxil_basis) then ! RI case
-       call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
-       do istate=1,nstate_occ
-         do jstate=1,nstate_occ
-           do kstate=1,nstate_occ
-             do lstate=1,nstate_noft
-               ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+     ! hCORE part
+     call clean_allocate('tmp_hcore',tmp_hcore_cmplx,nbf,nbf,noft_verbose)
+     hCORE_cmplx(:,:)=complex_zero; tmp_hcore_cmplx(:,:)=complex_zero;
+     tmp_hcore_cmplx=matmul(AhCORE,NO_COEF_cmplx)
+     hCORE_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),tmp_hcore_cmplx)
+     call clean_deallocate('tmp_hcore',tmp_hcore_cmplx,noft_verbose)
+
+     ! ERI terms
+     if(present(ERImol_cmplx)) then
+       ERImol_cmplx(:,:,:,:)=complex_zero
+       call clean_allocate('tmp_c_matrix',tmp_c_matrix_cmplex,nbf,nstate_noft,1,noft_verbose)
+       do istate=1,nstate_noft
+        tmp_c_matrix_cmplex(:,istate,1)=NO_COEF_cmplx(:,istate)
+       enddo
+       if(has_auxil_basis) then ! RI case
+         call calculate_eri_3center_eigen_cmplx(tmp_c_matrix_cmplex,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
+         do istate=1,nstate_occ
+           do jstate=1,nstate_occ
+             do kstate=1,nstate_occ
+               do lstate=1,nstate_noft
+                 ERImol_cmplx(lstate,kstate,jstate,istate)=eri_eigen_ri_cmplx(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+               enddo
              enddo
            enddo
          enddo
-       enddo
-       call destroy_eri_3center_eigen(noft_verbose)
-     else            ! Normal case (not using RI)
-       call form_erimol(nbf,nstate_noft,nstate_kji,c_matrix=tmp_c_matrix,ERImol=ERImol)
+         call destroy_eri_3center_eigen_cmplx(noft_verbose)
+       else            ! Normal case (not using RI) 
+         call form_erimol(nbf,nstate_noft,nstate_kji,c_matrix_cmplx=tmp_c_matrix_cmplex,ERImol_cmplx=ERImol_cmplx)
+       endif
+       call clean_deallocate('tmp_c_matrix',tmp_c_matrix_cmplex,noft_verbose)
      endif
-     call clean_deallocate('tmp_c_matrix',tmp_c_matrix,noft_verbose)
+
+   else
+
+     ! hCORE part
+     call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,noft_verbose)
+     hCORE(:,:)=zero; tmp_hcore(:,:)=zero;
+     tmp_hcore=matmul(AhCORE,NO_COEF)
+     hCORE=matmul(transpose(NO_COEF),tmp_hcore)
+     call clean_deallocate('tmp_hcore',tmp_hcore,noft_verbose)
+
+     ! ERI terms
+     if(present(ERImol)) then
+       ERImol(:,:,:,:)=zero
+       call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
+       do istate=1,nstate_noft
+        tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
+       enddo
+       if(has_auxil_basis) then ! RI case
+         call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
+         do istate=1,nstate_occ
+           do jstate=1,nstate_occ
+             do kstate=1,nstate_occ
+               do lstate=1,nstate_noft
+                 ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+               enddo
+             enddo
+           enddo
+         enddo
+         call destroy_eri_3center_eigen(noft_verbose)
+       else            ! Normal case (not using RI)
+         call form_erimol(nbf,nstate_noft,nstate_kji,c_matrix=tmp_c_matrix,ERImol=ERImol)
+       endif
+       call clean_deallocate('tmp_c_matrix',tmp_c_matrix,noft_verbose)
+     endif
+
    endif
 
  endif
