@@ -67,17 +67,20 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorb6,iorb7,iorb8
  integer::igamma,igamma1,igamma2
  real(dp)::occ_orb,hole_orb,sqrt_occ_orb,sqrt_hole_orb,sqrthole_orb
+ real(dp)::exponential,dexponent,hole_dyn
 !arrays
  real(dp),allocatable,dimension(:)::Docc_gamma0,sqrt_occ,Dsqrt_occ_gamma0,hole
- real(dp),allocatable,dimension(:,:)::Dsqrt_occ_gamma,Dhole_gamma,Docc_gamma 
+ real(dp),allocatable,dimension(:,:)::Dsqrt_occ_gamma,Dhole_gamma,Docc_gamma,Docc_dyn 
 !************************************************************************
 !-----------------------------------------------------------------------
 !                 Occupancies and their Derivatives
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  allocate(Docc_gamma0(RDMd%NBF_occ),sqrt_occ(RDMd%NBF_occ),Dsqrt_occ_gamma0(RDMd%NBF_occ))
  allocate(Dsqrt_occ_gamma(RDMd%NBF_occ,RDMd%Ngammas),Docc_gamma(RDMd%NBF_occ,RDMd%Ngammas))
+ allocate(Docc_dyn(RDMd%NBF_occ,RDMd%Ngammas))
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- RDMd%occ = zero; sqrt_occ = zero; Docc_gamma0 = zero; Dsqrt_occ_gamma0 = zero;
+ RDMd%occ = zero; RDMd%occ_dyn = zero; Docc_dyn = zero; sqrt_occ = zero; 
+ Docc_gamma0 = zero; Dsqrt_occ_gamma0 = zero;
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     Occupancies (1,RDMd%Nfrozen)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -222,6 +225,28 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
   deallocate(hole,Dhole_gamma)
  endif
  deallocate(Docc_gamma0,Dsqrt_occ_gamma0)
+!-----------------------------------------------------------------------
+!  Compute dynamic occ and its derivative
+!-----------------------------------------------------------------------
+ do iorb=1,RDMd%Npairs
+  iorb1=RDMd%Nfrozen+iorb
+  hole_dyn=(one-RDMd%occ(iorb1))/RDMd%Hcut 
+  exponential=dexp(-(hole_dyn**two)) 
+  dexponent=-two*hole_dyn/RDMd%Hcut 
+  RDMd%occ_dyn(iorb1)=RDMd%occ(iorb1)*exponential
+  Docc_dyn(iorb1,:)=exponential*Docc_gamma(iorb1,:)*(one-RDMd%occ(iorb1)*dexponent)
+  if(RDMd%Ncoupled>1) then  ! Extended
+   do iorb2=1,RDMd%Ncoupled  
+    iorb3=RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-iorb)+iorb2
+    RDMd%occ_dyn(iorb3)=RDMd%occ(iorb3)*exponential
+    Docc_dyn(iorb3,:)=exponential*(Docc_gamma(iorb3,:)-RDMd%occ(iorb3)*Docc_gamma(iorb1,:)*dexponent)
+   enddo 
+  else                      ! Perfect-pairing
+   iorb2=RDMd%Nalpha_elect+(RDMd%Npairs-iorb)+1
+   RDMd%occ_dyn(iorb2)=RDMd%occ(iorb2)*exponential
+   Docc_dyn(iorb2,:)=exponential*(Docc_gamma(iorb2,:)-RDMd%occ(iorb2)*Docc_gamma(iorb1,:)*dexponent)
+  endif 
+ enddo
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !   If we are computing the chemical potential(s) mu = h_ii + d Vee/dn_i
 !(We pretend that occ(iorb) = GAMMAs(iorb) and d occ(iorb) = d GAMMAs(iorb))
@@ -256,13 +281,15 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
   call dm2_pnof7(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
  elseif(RDMd%INOF==8) then
-  call dm2_gnof(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
+  call dm2_gnof(RDMd,RDMd%Docc_gamma,Docc_dyn,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
  else
   ! Nth
  endif
+ ! Update the rest of the dynamic occ
+ RDMd%occ_dyn(1:RDMd%Nfrozen)=RDMd%occ(1:RDMd%Nfrozen)
 !-----------------------------------------------------------------------
- deallocate(sqrt_occ,Dsqrt_occ_gamma,Docc_gamma)
+ deallocate(sqrt_occ,Dsqrt_occ_gamma,Docc_gamma,Docc_dyn)
  
 end subroutine gamma_to_2rdm
 
@@ -750,14 +777,14 @@ end subroutine dm2_pnof7
 !!
 !! SOURCE
 
-subroutine dm2_gnof(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma_J,DDM2_gamma_K,&
-& DDM2_gamma_L)
+subroutine dm2_gnof(RDMd,Docc_gamma,Docc_dyn,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_K,DM2_L,&
+& DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),dimension(RDMd%NBF_occ),intent(in)::sqrt_occ
- real(dp),dimension(RDMd%NBF_occ,RDMd%Ngammas),intent(in)::Dsqrt_occ_gamma,Docc_gamma
+ real(dp),dimension(RDMd%NBF_occ,RDMd%Ngammas),intent(in)::Dsqrt_occ_gamma,Docc_gamma,Docc_dyn
  real(dp),dimension(RDMd%NBF_occ),intent(inout)::DM2_iiii
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ,RDMd%Ngammas),intent(inout)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
@@ -765,37 +792,16 @@ subroutine dm2_gnof(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5
 !arrays
- real(dp)::exponential,dexponent,hole_dyn
- real(dp),allocatable,dimension(:)::FIs,occ_dyn,sqrt_occ_dyn
- real(dp),allocatable,dimension(:,:)::DFIs,Docc_dyn,Dsqrt_occ_dyn
+ real(dp),allocatable,dimension(:)::FIs,sqrt_occ_dyn
+ real(dp),allocatable,dimension(:,:)::DFIs,Dsqrt_occ_dyn
 !************************************************************************
 
 !-----------------------------------------------------------------------
 !     Dynamic occupation numbers and derivatives
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- allocate(occ_dyn(RDMd%NBF_occ),Docc_dyn(RDMd%NBF_occ,RDMd%Ngammas))
  allocate(sqrt_occ_dyn(RDMd%NBF_occ),Dsqrt_occ_dyn(RDMd%NBF_occ,RDMd%Ngammas))
- occ_dyn = zero; Docc_dyn = zero; sqrt_occ_dyn = zero; Dsqrt_occ_dyn = zero;
- do iorb=1,RDMd%Npairs
-  iorb1=RDMd%Nfrozen+iorb
-  hole_dyn=(one-RDMd%occ(iorb1))/RDMd%Hcut 
-  exponential=dexp(-(hole_dyn**two)) 
-  dexponent=-two*hole_dyn/RDMd%Hcut 
-  occ_dyn(iorb1)= RDMd%occ(iorb1)*exponential
-  Docc_dyn(iorb1,:)=exponential*Docc_gamma(iorb1,:)*(one-RDMd%occ(iorb1)*dexponent)
-  if(RDMd%Ncoupled>1) then  ! Extended
-   do iorb2=1,RDMd%Ncoupled  
-    iorb3=RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-iorb)+iorb2
-    occ_dyn(iorb3)=RDMd%occ(iorb3)*exponential
-    Docc_dyn(iorb3,:)=exponential*(Docc_gamma(iorb3,:)-RDMd%occ(iorb3)*Docc_gamma(iorb1,:)*dexponent)
-   enddo 
-  else                      ! Perfect-pairing
-   iorb2=RDMd%Nalpha_elect+(RDMd%Npairs-iorb)+1
-   occ_dyn(iorb2)=RDMd%occ(iorb2)*exponential
-   Docc_dyn(iorb2,:)=exponential*(Docc_gamma(iorb2,:)-RDMd%occ(iorb2)*Docc_gamma(iorb1,:)*dexponent)
-  endif 
- enddo
- sqrt_occ_dyn(:)=dsqrt(occ_dyn(:))
+ sqrt_occ_dyn = zero; Dsqrt_occ_dyn = zero;
+ sqrt_occ_dyn(:)=dsqrt(RDMd%occ_dyn(:))
  do iorb=1,RDMd%NBF_occ 
   if(sqrt_occ_dyn(iorb)>tol20) then
    Dsqrt_occ_dyn(iorb,:)=half*Docc_dyn(iorb,:)/sqrt_occ_dyn(iorb)
@@ -874,24 +880,24 @@ subroutine dm2_gnof(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_
 !- - - - - - - - - - - - - - - - - - - - - - - - - - -              
  do iorb=RDMd%Nfrozen+1,RDMd%Nbeta_elect
   do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
-   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+occ_dyn(iorb)*occ_dyn(iorb1)
+   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
    DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
-  &  +Docc_dyn(iorb,:)*occ_dyn(iorb1)      
+  &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
   enddo
  enddo
  do iorb=RDMd%Nalpha_elect+1,RDMd%NBF_occ
   do iorb1=RDMd%Nfrozen+1,RDMd%Nbeta_elect
-   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+occ_dyn(iorb)*occ_dyn(iorb1)
+   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
    DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
-  &  +Docc_dyn(iorb,:)*occ_dyn(iorb1)      
+  &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
   enddo
   do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
-   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)+sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+occ_dyn(iorb)*occ_dyn(iorb1)
+   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)+sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
    DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)+Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
-  &  +Docc_dyn(iorb,:)*occ_dyn(iorb1)      
+  &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
   enddo
  enddo
- deallocate(occ_dyn,Docc_dyn,sqrt_occ_dyn,Dsqrt_occ_dyn)
+ deallocate(sqrt_occ_dyn,Dsqrt_occ_dyn)
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 !                Intra-pair interactions for GNOF(Nc)
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
