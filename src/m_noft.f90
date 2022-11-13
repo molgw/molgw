@@ -318,6 +318,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ_dyn,NO_COEF,hCORE,ERImol,ERImol
      write(*,*) 'Warning! The code is not prepared for this end.'
 
    else
+
      ! Prepare the DFT contribution
      call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
      call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
