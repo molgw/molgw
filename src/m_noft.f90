@@ -68,7 +68,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  write(stdout,'(/,a)') ' '
 
  !
- ! Setup the grids for the quadrature of srDFT potential/energy
+ ! Setup the grids for the quadrature of DFT potential/energy
  if( ( calc_type%is_dft .and. noft_dft=='yes' ) ) then
    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
  endif
@@ -331,7 +331,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ_dyn,NO_COEF,hCORE,ERImol,ERImol
      call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
      call clean_deallocate('occupation',occupation,noft_verbose)
 
-     ! hCORE part (including the srDFT) 
+     ! hCORE part (including the DFT) 
      call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,noft_verbose)
      hCORE(:,:)=zero; tmp_hcore(:,:)=zero;
      hCORE=matmul(transpose(NO_COEF(:,:)),matmul(AhCORE(:,:),NO_COEF(:,:)))
