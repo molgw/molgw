@@ -21,7 +21,7 @@ module m_noft
  logical,parameter,private    :: noft_verbose = .FALSE.
  logical                      :: noft_edft = .FALSE.
  integer,private              :: nstate_noft,nstate_frozen 
- real(dp)                     :: ExcDFT
+ real(dp)                     :: ExcDFT,fact_inter
  real(dp),allocatable,private :: AhCORE(:,:)                   ! hCORE matrix (T+Ven) in AO basis
  type(basis_set),pointer      :: basis_pointer
 
@@ -172,7 +172,8 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  endif 
 
  ! Not ready for open-shell calcs. (TODO)
- nelectrons = NINT(electrons)
+ nelectrons=NINT(electrons)
+ fact_inter=(nelectrons-two)/(nelectrons-one) ! to define the inter-pair density for PNOF5-GNOF as  2 sum_i ni - 2/(N-1) sum_i ni with ni [0,1]
  nstate_coupled=noft_ncoupled-1
  nstate_frozen=(nelectrons-2*noft_npairs)/2
  nstate_beta=nstate_frozen+noft_npairs
@@ -323,7 +324,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ_dyn,NO_COEF,hCORE,ERImol,ERImol
      call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
      call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
      call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
-     occupation(:,:)=zero; occupation(:nstate_occ,1)=two*Occ_dyn(:nstate_occ);
+     occupation(:,:)=zero; occupation(:nstate_occ,1)=two*fact_inter*Occ_dyn(:nstate_occ);
      tmp_c_matrix(:,:,:)=zero
      do istate=1,nstate_noft
       tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
