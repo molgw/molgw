@@ -19,7 +19,7 @@ module m_noft
 
 
  logical,parameter,private    :: noft_verbose = .FALSE.
- logical                      :: noft_edft = .FALSE.
+ logical                      :: noft_edft = .FALSE.,long_range = .FALSE.
  integer,private              :: nstate_noft,nstate_frozen 
  real(dp)                     :: ExcDFT,fact_inter
  real(dp),allocatable,private :: AhCORE(:,:)                   ! hCORE matrix (T+Ven) in AO basis
@@ -70,6 +70,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  !
  ! Setup the grids for the quadrature of DFT potential/energy
  if( ( calc_type%is_dft .and. noft_dft=='yes' ) ) then
+   if(calc_type%need_exchange_lr) long_range=.true.
    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
  endif
 
@@ -346,17 +347,33 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ_dyn,NO_COEF,hCORE,ERImol,ERImol
      if(present(ERImol)) then
        ERImol(:,:,:,:)=zero
        if(has_auxil_basis) then ! RI case
-         call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose) 
-         do istate=1,nstate_occ
-           do jstate=1,nstate_occ
-             do kstate=1,nstate_occ
-               do lstate=1,nstate_noft
-                 ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+         if(long_range) then
+           call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose,long_range=long_range)
+           do istate=1,nstate_occ
+             do jstate=1,nstate_occ
+               do kstate=1,nstate_occ
+                 do lstate=1,nstate_noft
+                   ERImol(lstate,kstate,jstate,istate)=&
+                   & alpha_hybrid*eri_eigen_ri(lstate,jstate,1,kstate,istate,1) & ! <lk|ji> format used for ERImol
+                   & + beta_hybrid*eri_eigen_ri_lr(lstate,jstate,1,kstate,istate,1) 
+                 enddo
                enddo
              enddo
            enddo
-         enddo
-         call destroy_eri_3center_eigen(noft_verbose)
+           call destroy_eri_3center_eigen(verbose=noft_verbose,long_range=long_range)
+         else
+           call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
+           do istate=1,nstate_occ
+             do jstate=1,nstate_occ
+               do kstate=1,nstate_occ
+                 do lstate=1,nstate_noft
+                   ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+                 enddo
+               enddo
+             enddo
+           enddo
+           call destroy_eri_3center_eigen(verbose=noft_verbose)
+         endif 
        else            ! Normal case (not using RI)
          !TODO
          write(*,*) 'Warning! The code is not prepared for this end.'
