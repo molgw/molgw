@@ -25,7 +25,7 @@ module m_gammatodm2
 
  implicit none
 
- private :: dm2_hf,dm2_mbb,dm2_power,dm2_pnof5,dm2_pnof7
+ private :: dm2_hf,dm2_mbb,dm2_power,dm2_pnof5,dm2_pnof7,dm2_gnof
 !!***
 
  public :: gamma_to_2rdm
@@ -286,8 +286,6 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
  else
   ! Nth
  endif
- ! Update the rest of the dynamic occ
- RDMd%occ_dyn(1:RDMd%Nfrozen)=RDMd%occ(1:RDMd%Nfrozen)
 !-----------------------------------------------------------------------
  deallocate(sqrt_occ,Dsqrt_occ_gamma,Docc_gamma,Docc_dyn)
  

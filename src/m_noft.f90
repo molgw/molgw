@@ -13,15 +13,17 @@ module m_noft
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam
+ use m_hamiltonian_tools
  use m_hamiltonian_onebody
  use m_hamiltonian_twobodies
+ use m_hamiltonian_wrapper
  use m_noft_driver
 
 
  logical,parameter,private    :: noft_verbose = .FALSE.
  logical                      :: noft_edft = .FALSE.,long_range = .FALSE.
  integer,private              :: nstate_noft,nstate_frozen 
- real(dp)                     :: ExcDFT,fact_inter
+ real(dp)                     :: ExcDFT,Ehartree
  real(dp),allocatable,private :: AhCORE(:,:)                   ! hCORE matrix (T+Ven) in AO basis
  type(basis_set),pointer      :: basis_pointer
 
@@ -74,7 +76,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
  endif
 
- Enoft = zero; occupation = zero;
+ Enoft = zero; occupation = zero; ExcDFT = zero; Ehartree = zero;
  nstate_noft = SIZE(c_matrix,DIM=2) ! Number of lin. indep. molecular orbitals
 
  ! These varibles will remain fixed for a while
@@ -174,7 +176,6 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
 
  ! Not ready for open-shell calcs. (TODO)
  nelectrons=NINT(electrons)
- fact_inter=(nelectrons-two)/(nelectrons-one) ! to define the inter-pair density for PNOF5-GNOF as  2 sum_i ni - 2/(N-1) sum_i ni with ni [0,1]
  nstate_coupled=noft_ncoupled-1
  nstate_frozen=(nelectrons-2*noft_npairs)/2
  nstate_beta=nstate_frozen+noft_npairs
@@ -267,6 +268,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  endif
 
  ! Deallocate arrays and print the normal termination 
+ call clean_deallocate('AhCORE',AhCORE)
  call clean_deallocate('NO_occ',occ)
  call clean_deallocate('NO_energies',energy)
  if(noft_complex=='yes') then
@@ -286,12 +288,12 @@ end subroutine noft_energy
 
 
 !==================================================================
-subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ_dyn,NO_COEF,hCORE,ERImol,ERImolv,NO_COEF_cmplx,hCORE_cmplx,&
+subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO_COEF_cmplx,hCORE_cmplx,&
 & ERImol_cmplx,ERImolv_cmplx)
  implicit none
 
  integer,intent(in)              :: nbf,nstate_occ,nstate_kji
- real(dp),intent(in)             :: Occ_dyn(nstate_occ)
+ real(dp),intent(in)             :: Occ(nstate_occ)
  real(dp),optional,intent(in)    :: NO_COEF(nbf,nbf)
  real(dp),optional,intent(inout) :: hCORE(nbf,nbf)
  real(dp),optional,intent(inout) :: ERImol(nbf,nstate_kji,nstate_kji,nstate_kji)
@@ -302,9 +304,8 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ_dyn,NO_COEF,hCORE,ERImol,ERImol
  complex(dp),optional,intent(inout) :: ERImolv_cmplx(nbf*nstate_kji*nstate_kji*nstate_kji)
 !====
  integer                    :: istate,jstate,kstate,lstate
- real(dp),allocatable       :: tmp_hcore(:,:),occupation(:,:)
- real(dp),allocatable       :: tmp_c_matrix(:,:,:),hamiltonian_xc(:,:,:)
- complex(dp),allocatable    :: tmp_hcore_cmplx(:,:)
+ real(dp),allocatable       :: occupation(:,:),hamiltonian_hartree(:,:)
+ real(dp),allocatable       :: tmp_c_matrix(:,:,:),hamiltonian_xc(:,:,:),p_matrix(:,:,:)
  complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
 !=====
 
@@ -321,27 +322,34 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ_dyn,NO_COEF,hCORE,ERImol,ERImol
 
    else
 
-     ! Prepare the DFT contribution
+     hCORE(:,:)=zero 
      call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
-     call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
-     call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
-     occupation(:,:)=zero; occupation(:nstate_occ,1)=two*fact_inter*Occ_dyn(:nstate_occ);
      tmp_c_matrix(:,:,:)=zero
      do istate=1,nstate_noft
       tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
      enddo
-     hamiltonian_xc(:,:,:)=zero
+
+     ! Prepare the DFT contribution
+     call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
+     call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
+     occupation(:,:)=zero; occupation(:nstate_occ,1)=two*Occ(:nstate_occ); hamiltonian_xc(:,:,:)=zero;
      call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
+     hCORE=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
+     call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
+
+     ! Prepare the Vhartree contribution
+     call clean_allocate('density matrix P',p_matrix,nbf,nbf,1,noft_verbose)
+     call clean_allocate('hamiltonian_hartree',hamiltonian_hartree,nbf,nbf,noft_verbose)
+     p_matrix(:,:,:)=zero; hamiltonian_hartree(:,:)=zero;
+     call setup_density_matrix(tmp_c_matrix,occupation,p_matrix)
+     call calculate_hartree(basis_pointer,p_matrix,hamiltonian_hartree,Ehartree)
+     !hCORE=hCORE+matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_hartree(:,:),NO_COEF(:,:)))
+     call clean_deallocate('hamiltonian hartree',hamiltonian_hartree,noft_verbose)
+     call clean_deallocate('density matrix P',p_matrix,noft_verbose)
      call clean_deallocate('occupation',occupation,noft_verbose)
 
-     ! hCORE part (including the DFT) 
-     call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,noft_verbose)
-     hCORE(:,:)=zero; tmp_hcore(:,:)=zero;
-     hCORE=matmul(transpose(NO_COEF(:,:)),matmul(AhCORE(:,:),NO_COEF(:,:)))
-     tmp_hcore=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
-     hCORE=hCORE+tmp_hcore
-     call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
-     call clean_deallocate('tmp_hcore',tmp_hcore,noft_verbose)
+     ! hCORE = T + Vext (and add the DFT) 
+     hCORE=hCORE+matmul(transpose(NO_COEF(:,:)),matmul(AhCORE(:,:),NO_COEF(:,:)))
 
      ! ERI terms
      if(present(ERImol)) then
@@ -389,11 +397,8 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ_dyn,NO_COEF,hCORE,ERImol,ERImol
    if(noft_complex=='yes') then
 
      ! hCORE part
-     call clean_allocate('tmp_hcore',tmp_hcore_cmplx,nbf,nbf,noft_verbose)
-     hCORE_cmplx(:,:)=complex_zero; tmp_hcore_cmplx(:,:)=complex_zero;
-     tmp_hcore_cmplx=matmul(AhCORE,NO_COEF_cmplx)
-     hCORE_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),tmp_hcore_cmplx)
-     call clean_deallocate('tmp_hcore',tmp_hcore_cmplx,noft_verbose)
+     hCORE_cmplx(:,:)=complex_zero
+     hCORE_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),matmul(AhCORE,NO_COEF_cmplx))
 
      ! ERI terms
      if(present(ERImol_cmplx)) then
@@ -423,11 +428,8 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ_dyn,NO_COEF,hCORE,ERImol,ERImol
    else
 
      ! hCORE part
-     call clean_allocate('tmp_hcore',tmp_hcore,nbf,nbf,noft_verbose)
-     hCORE(:,:)=zero; tmp_hcore(:,:)=zero;
-     tmp_hcore=matmul(AhCORE,NO_COEF)
-     hCORE=matmul(transpose(NO_COEF),tmp_hcore)
-     call clean_deallocate('tmp_hcore',tmp_hcore,noft_verbose)
+     hCORE(:,:)=zero
+     hCORE=matmul(transpose(NO_COEF),matmul(AhCORE,NO_COEF))
 
      ! ERI terms
      if(present(ERImol)) then

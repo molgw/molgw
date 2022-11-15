@@ -304,7 +304,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
 
  call start_clock(timing_xxdft_hartree)
 
- write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+ if(.not.calc_type%is_noft) write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
 
 
  hartree_ao(:,:) = 0.0_dp

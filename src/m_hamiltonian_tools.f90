@@ -69,7 +69,7 @@ subroutine setup_density_matrix_real(c_matrix,occupation,p_matrix)
 
  call start_clock(timing_density_matrix)
 
- write(stdout,'(1x,a)') 'Build density matrix'
+ if(.not.calc_type%is_noft) write(stdout,'(1x,a)') 'Build density matrix'
 
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)

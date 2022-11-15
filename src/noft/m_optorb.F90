@@ -103,10 +103,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
  icall=0
  if(INTEGd%complex_ints) then
   if(INTEGd%iERItyp/=-1) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ_dyn,NO_COEF_cmplx=NO_COEF_cmplx, &
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
   else
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ_dyn,NO_COEF_cmplx=NO_COEF_cmplx, &
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImolv_cmplx=INTEGd%ERImolv_cmplx)
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
@@ -114,10 +114,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
  else
   if(INTEGd%iERItyp/=-1) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ_dyn,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
   & ERImol=INTEGd%ERImol)
   else
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ_dyn,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
   & ERImolv=INTEGd%ERImolv)
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
@@ -164,10 +164,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
   if(INTEGd%complex_ints) then
    if(INTEGd%iERItyp/=-1) then
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ_dyn,NO_COEF_cmplx=NO_COEF_cmplx, &
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
    else
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ_dyn,NO_COEF_cmplx=NO_COEF_cmplx, &
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImolv_cmplx=INTEGd%ERImolv_cmplx)
    endif
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
@@ -175,10 +175,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
    & INTEGd%ERI_L_cmplx,nogamma=nogamma)
   else
    if(INTEGd%iERItyp/=-1) then
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ_dyn,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
    & ERImol=INTEGd%ERImol)
    else
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ_dyn,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
    & ERImolv=INTEGd%ERImolv)
    endif
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
