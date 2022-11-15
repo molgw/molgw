@@ -309,7 +309,6 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
  complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
 !=====
 
-! MRM:
 ! Comment: Despite the arrays are of size nbf x nbf, we use nstate_noft = num. lin. indep. states in the ERI  transformation. 
 ! Doing this, we save some time in the loops because nstate_noft <= nbf
 
@@ -322,12 +321,13 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
 
    else
 
-     hCORE(:,:)=zero 
+     ! Build 3D array for c_matrix and init hCORE
      call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
      tmp_c_matrix(:,:,:)=zero
      do istate=1,nstate_noft
       tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
      enddo
+     hCORE(:,:)=zero 
 
      ! Prepare the DFT contribution
      call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
