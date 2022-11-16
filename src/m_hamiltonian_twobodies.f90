@@ -992,6 +992,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  integer              :: igrid_start,igrid_end,ir
  integer              :: timing_xxdft_xc,timing_xxdft_densities,timing_xxdft_libxc,timing_xxdft_vxc
  real(dp)             :: normalization(nspin)
+ real(dp)             :: normalization_core
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: tmp_batch(:,:)
  real(dp),allocatable :: basis_function_r_batch(:,:)
@@ -1003,6 +1004,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  real(dp),allocatable :: dedgd_r_batch(:,:,:)
  integer(C_INT)             :: nr
  real(C_DOUBLE),allocatable :: rhor_batch(:,:)
+ real(C_DOUBLE),allocatable :: rhor_valcore_batch(:,:)
  real(C_DOUBLE),allocatable :: sigma_batch(:,:)
  real(C_DOUBLE),allocatable :: vrho_batch(:,:)
  real(C_DOUBLE),allocatable :: exc_batch(:)
@@ -1042,6 +1044,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
 
  normalization(:) = 0.0_dp
+ normalization_core = 0.0_dp    ! core density has no spin
 
  !
  ! Loop over batches of grid points
@@ -1054,6 +1057,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
    allocate(weight_batch(nr))
    allocate(rhor_batch(nspin,nr))
+   allocate(rhor_valcore_batch(nspin,nr))
    allocate(basis_function_r_batch(basis%nbf,nr))
    allocate(exc_batch(nr))
    allocate(vrho_batch(nspin,nr))
@@ -1082,9 +1086,17 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    ! Calculate grad rho at points r for spin up and spin down
    if( .NOT. dft_xc(1)%needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
+     if(ALLOCATED(rhocore)) then
+         write(*,*) 'FBFB apply core correction',spin_fact
+         rhor_valcore_batch(1,:)     = rhor_batch(1,:)     + rhocore(igrid_start:igrid_end) / spin_fact
+         rhor_valcore_batch(nspin,:) = rhor_batch(nspin,:) + rhocore(igrid_start:igrid_end) / spin_fact
+     else
+         rhor_valcore_batch(:,:)     = rhor_batch(:,:)
+     endif
    else
      call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch, &
                                    bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
+     rhor_valcore_batch(:,:)     = rhor_batch(:,:)   !FBFB to be coded for GGAs
 
      !$OMP PARALLEL DO
      do ir=1,nr
@@ -1099,7 +1111,10 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    endif
 
    ! Normalization
-   normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
+   normalization(:)      = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
+   if(ALLOCATED(rhocore)) then
+     normalization_core = normalization_core + DOT_PRODUCT( rhocore(igrid_start:igrid_end), weight_batch(:) )
+   endif
 
    call stop_clock(timing_xxdft_densities)
 
@@ -1117,7 +1132,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
      select case(dft_xc(ixc)%family)
      case(XC_FAMILY_LDA)
-       call xc_lda_exc_vxc(dft_xc(ixc)%func,nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
+       call xc_lda_exc_vxc(dft_xc(ixc)%func,nr,rhor_valcore_batch(1,1),exc_batch(1),vrho_batch(1,1))
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
        call xc_gga_exc_vxc(dft_xc(ixc)%func,nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
@@ -1232,6 +1247,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    deallocate(basis_function_r_batch)
    deallocate(exc_batch)
    deallocate(rhor_batch)
+   deallocate(rhor_valcore_batch)
    deallocate(vrho_batch)
    deallocate(dedd_r_batch)
    if( dft_xc(1)%needs_gradient ) then
@@ -1261,6 +1277,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  !
  ! Sum up the contributions from all procs only if needed
  call grid%sum(normalization)
+ call grid%sum(normalization_core)
  call grid%sum(vxc_ao)
  call grid%sum(exc_xc)
 
@@ -1270,7 +1287,10 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  write(stdout,*) 'LIBXC is not present'
 #endif
 
- write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+ write(stdout,'(/,a26,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+ if(ALLOCATED(rhocore)) then
+   write(stdout,'(a26,2(2x,f12.6))') ' Number of core electrons:',normalization_core
+ endif
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
  call stop_clock(timing_xxdft_xc)
