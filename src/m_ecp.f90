@@ -161,7 +161,7 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
     write(stdout,'(6x,a,i3)') 'Core electrons ',ecp(ielement_ecp)%ncore
     select case(ecp(ielement_ecp)%ecp_format)
     case(ECP_PSP6,ECP_PSP8)
-      write(stdout,'(6x,a)') 'l_k    KB energy'
+      write(stdout,'(6x,a)') 'l_k    KB energy (Ha)'
 
       do iecp=1,ecp(ielement_ecp)%necp
         if( ecp(ielement_ecp)%lk(iecp) == -1 ) then
@@ -498,9 +498,6 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
     ecpi%rhocore(:,:) = ecpi%rhocore(:,:) / ( 4.0_dp * pi )
   endif
   
-
-  write(stdout,*) 'FBFB rhocore',SUM( ecpi%rhocore(:,1) * ecpi%rad(:)**2 * 4.0_dp * pi * ( ecpi%rad(2)-ecpi%rad(1) ) )
-
 
   close(ecpunit)
 

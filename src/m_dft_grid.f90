@@ -476,7 +476,6 @@ subroutine setup_rhocore()
      endif
    enddo
 
-   write(*,*) 'FBFB icenter',icenter,element_has_rhocore
    if( .NOT. element_has_rhocore ) cycle
 
    rmax = ecp(ie)%rad(SIZE(ecp(ie)%rad(:)))
@@ -497,7 +496,7 @@ subroutine setup_rhocore()
    enddo
 
  enddo
- write(*,*) 'FBFB rhocore integral: ',SUM(w_grid(:)*rhocore(:))
+ write(*,*) 'Core density integral: ',SUM(w_grid(:)*rhocore(:))
 
 end subroutine setup_rhocore
 

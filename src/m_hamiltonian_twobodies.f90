@@ -1087,16 +1087,15 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    if( .NOT. dft_xc(1)%needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
      if(ALLOCATED(rhocore)) then
-         write(*,*) 'FBFB apply core correction',spin_fact
-         rhor_valcore_batch(1,:)     = rhor_batch(1,:)     + rhocore(igrid_start:igrid_end) / spin_fact
-         rhor_valcore_batch(nspin,:) = rhor_batch(nspin,:) + rhocore(igrid_start:igrid_end) / spin_fact
+         rhor_valcore_batch(1,:)     = rhor_batch(1,:)     + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
+         rhor_valcore_batch(nspin,:) = rhor_batch(nspin,:) + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
      else
          rhor_valcore_batch(:,:)     = rhor_batch(:,:)
      endif
    else
      call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch, &
                                    bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
-     rhor_valcore_batch(:,:)     = rhor_batch(:,:)   !FBFB to be coded for GGAs
+     rhor_valcore_batch(:,:)     = rhor_batch(:,:)   !FIXME FBFB to be coded for GGAs
 
      !$OMP PARALLEL DO
      do ir=1,nr
@@ -1153,7 +1152,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
      end select
 
      ! XC energy
-     exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * SUM(rhor_batch(:,:),DIM=1) ) * dft_xc(ixc)%coeff
+     exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * SUM(rhor_valcore_batch(:,:),DIM=1) ) * dft_xc(ixc)%coeff
 
      dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc(ixc)%coeff
 

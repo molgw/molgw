@@ -179,6 +179,10 @@ ne_psp8.in                , LDA Ne atom with numerical pseudo in ONCVPSP psp8 fo
 SCF Total Energy          , -33.3866795065     , 0 , 1.0e-7
 gKS HOMO energy           , -13.532263         , 0 , 1.0e-4
 
+ar_psp8.in                , LDA Ar atom with numerical pseudo in ONCVPSP psp8 format with NLCC
+SCF Total Energy          , -22.5456669541     , 0 , 1.0e-7
+gKS HOMO energy           , -10.493177         , 0 , 1.0e-4
+
 ne_gth.in                 , BLYP Ne atom with analytical pseudo in GTH formalism, need_libcint
 SCF Total Energy          , -34.9153582541     , 0 , 1.0e-7
 gKS HOMO energy           , -13.008824         , 0 , 1.0e-3   # Loosened  criterium (because of BLYP in LIBXC)
