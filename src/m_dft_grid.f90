@@ -452,6 +452,9 @@ subroutine setup_rhocore()
  real(dp) :: rmax,rr
  logical :: need_rhocore,element_has_rhocore
  !=====
+
+ if( .NOT. ALLOCATED(ecp) ) return
+
  !
  ! Set up rhocore for non-linear core correction from the pseudopotential
  !
