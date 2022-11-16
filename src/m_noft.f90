@@ -343,8 +343,8 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
      p_matrix(:,:,:)=zero; hamiltonian_hartree(:,:)=zero;
      call setup_density_matrix(tmp_c_matrix,occupation,p_matrix)
      call calculate_hartree(basis_pointer,p_matrix,hamiltonian_hartree,Ehartree)
-     !hCORE=hCORE+matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_hartree(:,:),NO_COEF(:,:)))
-     call clean_deallocate('hamiltonian hartree',hamiltonian_hartree,noft_verbose)
+     hCORE=hCORE+matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_hartree(:,:),NO_COEF(:,:)))
+     call clean_deallocate('hamiltonian_hartree',hamiltonian_hartree,noft_verbose)
      call clean_deallocate('density matrix P',p_matrix,noft_verbose)
      call clean_deallocate('occupation',occupation,noft_verbose)
 
@@ -363,7 +363,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
                  do lstate=1,nstate_noft
                    ERImol(lstate,kstate,jstate,istate)=&
                    & alpha_hybrid*eri_eigen_ri(lstate,jstate,1,kstate,istate,1) & ! <lk|ji> format used for ERImol
-                   & + beta_hybrid*eri_eigen_ri_lr(lstate,jstate,1,kstate,istate,1) 
+                   & +beta_hybrid*eri_eigen_ri_lr(lstate,jstate,1,kstate,istate,1) 
                  enddo
                enddo
              enddo
