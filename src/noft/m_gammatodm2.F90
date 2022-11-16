@@ -415,7 +415,7 @@ subroutine dm2_mbb(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_K
 !************************************************************************
 
  DM2_L=zero; DDM2_gamma_L=zero; 
-!     DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq [ DDM2_Jpqk = 2DNpk*Nq, DDM2_Kpq = -DNpk*Nq ] 
+!     DM2_Jpq = 2NpNq, DM2_Kpq = -sqrt(NpNq) 
  do iorb=1,RDMd%NBF_occ
   do iorb1=1,RDMd%NBF_occ
    DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
@@ -486,7 +486,7 @@ subroutine dm2_ca(RDMd,Docc_gamma,sqrt_occ,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma
 !************************************************************************
 
  DM2_L=zero; DDM2_gamma_L=zero; 
-!     DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq [ DDM2_Jpqk = 2DNpk*Nq, DDM2_Kpq = -DNpk*Nq ] 
+!     DM2_Jpq = 2NpNq, DM2_Kpq = -f(Np,Nq)
  do iorb=1,RDMd%NBF_occ
   sqrt_hole1=dsqrt(one-RDMd%occ(iorb))
   do iorb1=1,RDMd%NBF_occ
@@ -563,7 +563,7 @@ subroutine dm2_cga(RDMd,Docc_gamma,sqrt_occ,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamm
 !************************************************************************
 
  DM2_L=zero; DDM2_gamma_L=zero; 
-!     DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq [ DDM2_Jpqk = 2DNpk*Nq, DDM2_Kpq = -DNpk*Nq ] 
+!     DM2_Jpq = 2NpNq, DM2_Kpq = -f(Np,Nq)
  do iorb=1,RDMd%NBF_occ
   sqrt_hole1=dsqrt(two-RDMd%occ(iorb))
   do iorb1=1,RDMd%NBF_occ
@@ -640,7 +640,7 @@ subroutine dm2_gu(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_K,
 !************************************************************************
 
  DM2_L=zero; DDM2_gamma_L=zero; 
-!     DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq [ DDM2_Jpqk = 2DNpk*Nq, DDM2_Kpq = -DNpk*Nq ] 
+!     DM2_Jpq = 2NpNq, DM2_Kpq = -f(Np,Nq)
  do iorb=1,RDMd%NBF_occ
   do iorb1=1,RDMd%NBF_occ
    DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
@@ -712,7 +712,7 @@ subroutine dm2_power(RDMd,Docc_gamma,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma_J,DDM
 
  ONEmLpower=one-RDMd%Lpower
  DM2_L=zero; DDM2_gamma_L=zero; 
-!     DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq [ DDM2_Jpqk = 2DNpk*Nq, DDM2_Kpq = -DNpk*Nq ] 
+!     DM2_Jpq = 2NpNq, DM2_Kpq = -f(Np,Nq)
  do iorb=1,RDMd%NBF_occ
   do iorb1=1,RDMd%NBF_occ
    DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
