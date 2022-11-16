@@ -103,9 +103,15 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  case('PNOF5')
    inof=5
  case('MULLER')
-   inof=-1
+   inof=100
  case('POWER')
-   inof=-2
+   inof=101
+ case('CA')
+   inof=102
+ case('CGA')
+   inof=103
+ case('GU')
+   inof=104
  case('HF')
    inof=0 
  case default
@@ -228,6 +234,10 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
    & mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),restart=.true.,ireadGAMMAS=1,ireadOCC=1,&
    & ireadCOEF=1,ireadFdiag=1,iNOTupdateOCC=1,iNOTupdateORB=1,Lpower=noft_Lpower,fcidump=(noft_fcidump=='yes'))
    Enoft=Enoft+ExcDFT
+   !write(stdout,'(/,a,2x,f19.10)') ' Nucleus-Nucleus (Ha):',Vnn
+   !write(stdout,'(a,2x,f19.10)')   ' Hartree Energy  (Ha):',Ehartree
+   !write(stdout,'(a,2x,f19.10,/)') ' XC Energy (Ha)      :',ExcDFT
+   write(stdout,'(/,a,2x,f19.10,/)') ' XC Energy (Ha)      :',ExcDFT
    call system("rm tmp_dft_noft")
    call destroy_dft_grid()
  endif
@@ -312,7 +322,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
 ! Comment: Despite the arrays are of size nbf x nbf, we use nstate_noft = num. lin. indep. states in the ERI  transformation. 
 ! Doing this, we save some time in the loops because nstate_noft <= nbf
 
- if( ( calc_type%is_dft .and. noft_dft=='yes' ) .and. .not.noft_edft ) then
+ if( ( calc_type%is_dft .and. noft_dft=='yes' ) ) then
 
    if(noft_complex=='yes') then
 
@@ -323,32 +333,34 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
 
      ! Build 3D array for c_matrix and init hCORE
      call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
-     tmp_c_matrix(:,:,:)=zero
+     call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
+     occupation(:,:)=zero; occupation(:nstate_occ,1)=two*Occ(:nstate_occ);
+     tmp_c_matrix(:,:,:)=zero; hCORE(:,:)=zero; 
      do istate=1,nstate_noft
       tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
      enddo
-     hCORE(:,:)=zero 
 
+     if(.not.noft_edft) then
      ! Prepare the DFT contribution
-     call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
-     call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
-     occupation(:,:)=zero; occupation(:nstate_occ,1)=two*Occ(:nstate_occ); hamiltonian_xc(:,:,:)=zero;
-     call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
-     hCORE=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
-     call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
+       call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
+       hamiltonian_xc(:,:,:)=zero;
+       call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
+       hCORE=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
+       call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
 
      ! Prepare the Vhartree contribution
-     call clean_allocate('density matrix P',p_matrix,nbf,nbf,1,noft_verbose)
-     call clean_allocate('hamiltonian_hartree',hamiltonian_hartree,nbf,nbf,noft_verbose)
-     p_matrix(:,:,:)=zero; hamiltonian_hartree(:,:)=zero;
-     call setup_density_matrix(tmp_c_matrix,occupation,p_matrix)
-     call calculate_hartree(basis_pointer,p_matrix,hamiltonian_hartree,Ehartree)
-     hCORE=hCORE+matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_hartree(:,:),NO_COEF(:,:)))
-     call clean_deallocate('hamiltonian_hartree',hamiltonian_hartree,noft_verbose)
-     call clean_deallocate('density matrix P',p_matrix,noft_verbose)
+       !call clean_allocate('density matrix P',p_matrix,nbf,nbf,1,noft_verbose)
+       !call clean_allocate('hamiltonian_hartree',hamiltonian_hartree,nbf,nbf,noft_verbose)
+       !p_matrix(:,:,:)=zero; hamiltonian_hartree(:,:)=zero;
+       !call setup_density_matrix(tmp_c_matrix,occupation,p_matrix)
+       !call calculate_hartree(basis_pointer,p_matrix,hamiltonian_hartree,Ehartree)
+       !hCORE=hCORE+matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_hartree(:,:),NO_COEF(:,:)))
+       !call clean_deallocate('hamiltonian_hartree',hamiltonian_hartree,noft_verbose)
+       !call clean_deallocate('density matrix P',p_matrix,noft_verbose)
+     endif
      call clean_deallocate('occupation',occupation,noft_verbose)
 
-     ! hCORE = T + Vext (and add the DFT) 
+     ! hCORE = T + Vext (and add the DFT if needed) 
      hCORE=hCORE+matmul(transpose(NO_COEF(:,:)),matmul(AhCORE(:,:),NO_COEF(:,:)))
 
      ! ERI terms
@@ -361,9 +373,13 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
              do jstate=1,nstate_occ
                do kstate=1,nstate_occ
                  do lstate=1,nstate_noft
-                   ERImol(lstate,kstate,jstate,istate)=&
-                   & alpha_hybrid*eri_eigen_ri(lstate,jstate,1,kstate,istate,1) & ! <lk|ji> format used for ERImol
-                   & +beta_hybrid*eri_eigen_ri_lr(lstate,jstate,1,kstate,istate,1) 
+                   if(kstate==istate) then ! Hartree
+                     ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+                   else ! XC
+                     !ERImol(lstate,kstate,jstate,istate)=&
+                     !& alpha_hybrid*eri_eigen_ri(lstate,jstate,1,kstate,istate,1) & ! <lk|ji> format used for ERImol
+                     !& +beta_hybrid*eri_eigen_ri_lr(lstate,jstate,1,kstate,istate,1) 
+                   endif
                  enddo
                enddo
              enddo
@@ -375,7 +391,12 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,NO
              do jstate=1,nstate_occ
                do kstate=1,nstate_occ
                  do lstate=1,nstate_noft
-                   ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+                   if(kstate==istate) then ! Hartree
+                     ERImol(lstate,kstate,jstate,istate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+                   else
+                     !ERImol(lstate,kstate,jstate,istate)=&
+                     !& alpha_hybrid*eri_eigen_ri(lstate,jstate,1,kstate,istate,1)  ! <lk|ji> format used for ERImol
+                   endif
                  enddo
                enddo
              enddo

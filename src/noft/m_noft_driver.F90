@@ -178,7 +178,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
 
  ! Initialize RDMd, INTEGd, and ELAGd objects.
- if(INOF_in==-2) then
+ if(INOF_in==101) then
   if(present(Lpower)) then
    call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 &  Nbeta_elect_in,Nalpha_elect_in,Lpower=Lpower)
@@ -511,17 +511,32 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   call write_output(msg)
   write(msg,'(a)') ' L. Cohen and C. Frisberg, J. Chem. Phys, 65, 4234 (1976)'
   call write_output(msg)
- elseif(INOF_in==-1) then
+ elseif(INOF_in==100) then
   write(msg,'(a)') ' Using Muller-Baerends-Buijse approximation'
   call write_output(msg)
   write(msg,'(a)') ' A.M.K. Muller, Phys. Lett., 105A, 446 (1984)'
   call write_output(msg)
   write(msg,'(a)') ' M.A. Buijse and E.J. Baerends, Mol. Phys., 100, 401 (2002)'
   call write_output(msg)
- elseif(INOF_in==-2) then
+ elseif(INOF_in==101) then
   write(msg,'(a)') ' Using Power approximation'
   call write_output(msg)
   write(msg,'(a)') ' J. Cioslowski and K. Pernal, J. Chem. Phys, 111, 3396 (1999)'
+  call write_output(msg)
+ elseif(INOF_in==102) then
+  write(msg,'(a)') ' Using G. Csanyi and T.A. Arias approximation'
+  call write_output(msg)
+  write(msg,'(a)') ' G. Csanyi and T. A. Arias, Phys. Rev. B: Condens. Matter Mater. Phys., 2000, 61, 7348.'
+  call write_output(msg)
+ elseif(INOF_in==103) then
+  write(msg,'(a)') ' Using G. Csanyi, S. Goedecker and T.A. Arias approximation'
+  call write_output(msg)
+  write(msg,'(a)') ' G. Csanyi, S. Goedecker and T. A. Arias, Phys. Rev. A: At. Mol. Opt. Phys., 2002, 65, 032510.'
+  call write_output(msg)
+ elseif(INOF_in==104) then
+  write(msg,'(a)') ' Using S. Goedecker and C. Umrigar approximation'
+  call write_output(msg)
+  write(msg,'(a)') ' S. Goedecker and C. J. Umrigar, Phys. Rev. Lett., 1998, 81,866.'
   call write_output(msg)
  elseif(INOF_in==5) then
   write(msg,'(a)') ' Using PNOF5e approximation'
