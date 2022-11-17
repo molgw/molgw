@@ -23,8 +23,8 @@ module m_noft
  logical,parameter,private    :: noft_verbose=.FALSE.
  logical                      :: rs_noft=.FALSE.,noft_edft=.FALSE.
  integer,private              :: nstate_noft,nstate_frozen 
- real(dp)                     :: ExcDFT,Ehartree
- real(dp),allocatable,private :: AhCORE(:,:)                   ! hCORE matrix (T+Ven) in AO basis
+ real(dp)                     :: ExcDFT,E_t_vext
+ real(dp),allocatable,private :: AhCORE(:,:),T_Vext(:)            ! hCORE matrix (T+Ven) in AO basis
  type(basis_set),pointer      :: basis_pointer
 
 
@@ -82,7 +82,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
  endif
 
- Enoft = zero; occupation = zero; ExcDFT = zero; Ehartree = zero;
+ Enoft = zero; occupation = zero; ExcDFT = zero;
  nstate_noft = SIZE(c_matrix,DIM=2) ! Number of lin. indep. molecular orbitals
 
  ! These varibles will remain fixed for a while
@@ -234,14 +234,18 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  
  if( rs_noft ) then ! Compute total Energy for range-sep NOFT switching off the hamiltonian_xc (we only need hCORE=T+Vext).
    noft_edft=.true. ! this is why we restart but will not update orbs or occs.
+   call clean_allocate('T_Vext',T_Vext,basis%nbf,noft_verbose)
    write(ofile_name,'(a)') 'tmp_dft_noft'
    call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
    & iERItyp,imethocc,imethorb,noft_nscf,0,0,0,noft_ithresh_lambda,noft_ndiis,Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),&
    & mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),restart=.true.,ireadGAMMAS=1,ireadOCC=1,&
    & ireadCOEF=1,ireadFdiag=1,iNOTupdateOCC=1,iNOTupdateORB=1,Lpower=noft_Lpower,fcidump=(noft_fcidump=='yes'),range_sep=rs_noft)
    Enoft=Enoft+ExcDFT
-   write(stdout,'(/,a,2x,f19.10,/)') ' XC Energy (Ha)      :',ExcDFT
+   write(stdout,'(/,a,2x,f19.10)')   ' Nucleus-Nucleus (Ha):',Vnn
+   write(stdout,'(a,2x,f19.10)')     ' Hcore Energy (Ha)   :',sum(T_Vext(:)*occ(:,1))
+   write(stdout,'(a,2x,f19.10,/)')   ' XC Energy (Ha)      :',ExcDFT
    call system("rm tmp_dft_noft")
+   call clean_deallocate('T_Vext',T_Vext,noft_verbose)
    call destroy_dft_grid()
  endif
  
@@ -320,6 +324,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ER
  logical                    :: long_range=.true.
  integer                    :: istate,jstate,kstate,lstate
  character(len=100)         :: msgw
+ real(dp)                   :: full_eri
  real(dp),allocatable       :: occupation(:,:)!,hamiltonian_hartree(:,:)
  real(dp),allocatable       :: tmp_c_matrix(:,:,:),hamiltonian_xc(:,:,:)!,p_matrix(:,:,:)
  complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
@@ -371,6 +376,11 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ER
 
      ! hCORE = T + Vext (and add the DFT if needed) 
      hCORE=hCORE+matmul(transpose(NO_COEF(:,:)),matmul(AhCORE(:,:),NO_COEF(:,:)))
+     if(noft_edft) then
+       do istate=1,nstate_noft
+         T_Vext(istate)=hCORE(istate,istate)
+       enddo
+     endif
 
      ! ERI terms
      if(present(ERImol) .and. present(ERImolH)) then
@@ -381,12 +391,11 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ER
            do jstate=1,nstate_occ
              do kstate=1,nstate_occ
                do lstate=1,nstate_noft
-                 ERImol(lstate,kstate,jstate,istate)=&
-                 & alpha_hybrid*eri_eigen_ri(lstate,jstate,1,kstate,istate,1) & ! <lk|ji> format used for ERImol
+                 full_eri=eri_eigen_ri(lstate,jstate,1,kstate,istate,1)
+                 ERImol(lstate,kstate,jstate,istate)=alpha_hybrid*full_eri & ! <lk| [alpha+beta*erf(gamma r12)]/r12 |ji> format used for ERImol
                  & +beta_hybrid*eri_eigen_ri_lr(lstate,jstate,1,kstate,istate,1) 
-                 if(kstate==istate) then ! Hartree
-                   ERImolH(lstate,istate,jstate)=eri_eigen_ri(lstate,jstate,1,istate,istate,1)&  ! <li|ji> format used for ERImol
-                 & -ERImol(lstate,istate,jstate,istate)
+                 if(kstate==istate) then ! Hartree: <li|ji>^Hartree = <li| 1/r12 |ji> - <li| [alpha+beta*erf(gamma r12)]/r12 |ji>
+                   ERImolH(lstate,istate,jstate)=full_eri-ERImol(lstate,istate,jstate,istate) ! <li|ji> format used for ERImol
                  endif
                enddo
              enddo
