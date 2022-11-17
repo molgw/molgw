@@ -32,6 +32,7 @@ module m_rdmd
  type,public :: rdm_t
 
   logical::GAMMAs_nread=.true.     ! Are GAMMAS read from previous calc.?
+  logical::range_sep=.false.       ! True for rs-NOFT calcs.
   integer::INOF=8                  ! Functional to use (5-> PNOF5, 7-> PNOF7, 8-> GNOF, etc)
   integer::Ista=0                  ! Use PNOF7s with Ista=1
   integer::Nfrozen                 ! Number of frozen orbitals in the NOFT calc.
@@ -50,9 +51,9 @@ module m_rdmd
 ! arrays 
   real(dp),allocatable,dimension(:)::occ,chempot_orb,occ_dyn
   real(dp),allocatable,dimension(:)::GAMMAs_old
-  real(dp),allocatable,dimension(:)::DM2_J,DM2_K,DM2_L,DM2_iiii
+  real(dp),allocatable,dimension(:)::DM2_J,DM2_K,DM2_L,DM2_H,DM2_iiii
   real(dp),allocatable,dimension(:)::Docc_gamma,Dfni_ni
-  real(dp),allocatable,dimension(:)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
+  real(dp),allocatable,dimension(:)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L,DDM2_gamma_H
 
  contains 
    procedure :: free => rdm_free
@@ -109,10 +110,10 @@ CONTAINS  !=====================================================================
 !! SOURCE
 
 subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
-&  Ncoupled,Nbeta_elect,Nalpha_elect,Lpower)
+&  Ncoupled,Nbeta_elect,Nalpha_elect,irs_noft,Lpower)
 !Arguments ------------------------------------
 !scalars
- integer,intent(in)::INOF,Ista
+ integer,intent(in)::INOF,Ista,irs_noft
  integer,intent(in)::NBF_tot,NBF_occ,Nfrozen,Npairs,Ncoupled
  integer,intent(in)::Nbeta_elect,Nalpha_elect
  real(dp),optional,intent(in)::Lpower
@@ -124,6 +125,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  character(len=200)::msg
 !************************************************************************
 
+ if(irs_noft==1) RDMd%range_sep=.true.
  RDMd%INOF=INOF
  if(RDMd%INOF==101) then
   if(present(Lpower)) then
@@ -143,7 +145,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  RDMd%NBF_ldiag=RDMd%NBF_occ*(RDMd%NBF_occ+1)/2
  RDMd%Ngammas=RDMd%Ncoupled*RDMd%Npairs
  ! Calculate memory needed
- totMEM=3*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas+3*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas
+ totMEM=4*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas+4*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas
  totMEM=totMEM+RDMd%Ngammas+5*RDMd%NBF_occ
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
@@ -156,16 +158,19 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  endif 
  call write_output(msg)
  ! Allocate arrays
- allocate(RDMd%DM2_J(RDMd%NBF_occ*RDMd%NBF_occ))
- allocate(RDMd%DM2_K(RDMd%NBF_occ*RDMd%NBF_occ))
- allocate(RDMd%DM2_L(RDMd%NBF_occ*RDMd%NBF_occ))
- allocate(RDMd%Docc_gamma(RDMd%NBF_occ*RDMd%Ngammas)) 
- allocate(RDMd%DDM2_gamma_J(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas))
- allocate(RDMd%DDM2_gamma_K(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas)) 
- allocate(RDMd%DDM2_gamma_L(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas)) 
- allocate(RDMd%GAMMAs_old(RDMd%Ngammas))
- allocate(RDMd%DM2_iiii(RDMd%NBF_occ),RDMd%Dfni_ni(RDMd%NBF_occ)) 
+ allocate(RDMd%DM2_J(RDMd%NBF_occ*RDMd%NBF_occ));RDMd%DM2_J(:)=zero; 
+ allocate(RDMd%DM2_K(RDMd%NBF_occ*RDMd%NBF_occ));RDMd%DM2_K(:)=zero;   
+ allocate(RDMd%DM2_L(RDMd%NBF_occ*RDMd%NBF_occ));RDMd%DM2_L(:)=zero;   
+ allocate(RDMd%DM2_H(RDMd%NBF_occ*RDMd%NBF_occ));RDMd%DM2_H(:)=zero;   
+ allocate(RDMd%Docc_gamma(RDMd%NBF_occ*RDMd%Ngammas));RDMd%Docc_gamma(:)=zero; 
+ allocate(RDMd%DDM2_gamma_J(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_J=zero;
+ allocate(RDMd%DDM2_gamma_K(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_K=zero; 
+ allocate(RDMd%DDM2_gamma_L(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_L=zero; 
+ allocate(RDMd%DDM2_gamma_H(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_H=zero; 
+ allocate(RDMd%GAMMAs_old(RDMd%Ngammas));RDMd%GAMMAs_old=zero;
+ allocate(RDMd%DM2_iiii(RDMd%NBF_occ),RDMd%Dfni_ni(RDMd%NBF_occ));RDMd%DM2_iiii(RDMd%NBF_occ)=zero; 
  allocate(RDMd%occ(RDMd%NBF_occ),RDMd%chempot_orb(RDMd%NBF_occ),RDMd%occ_dyn(RDMd%NBF_occ))
+ RDMd%occ=zero; RDMd%chempot_orb=zero; RDMd%occ_dyn=zero;
 
 end subroutine rdm_init
 !!***
@@ -200,11 +205,12 @@ subroutine rdm_free(RDMd)
  deallocate(RDMd%GAMMAs_old)
  deallocate(RDMd%occ,RDMd%chempot_orb,RDMd%occ_dyn)
  deallocate(RDMd%DM2_iiii)
- deallocate(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
+ deallocate(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_H) 
  deallocate(RDMd%Docc_gamma,RDMd%Dfni_ni) 
  deallocate(RDMd%DDM2_gamma_J)
  deallocate(RDMd%DDM2_gamma_K)
  deallocate(RDMd%DDM2_gamma_L)
+ deallocate(RDMd%DDM2_gamma_H)
 
 end subroutine rdm_free
 !!***

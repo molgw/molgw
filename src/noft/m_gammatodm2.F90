@@ -25,7 +25,7 @@ module m_gammatodm2
 
  implicit none
 
- private :: dm2_hf,dm2_mbb,dm2_ca,dm2_cga,dm2_gu,dm2_power,dm2_pnof5,dm2_pnof7,dm2_gnof
+ private :: dm2_hartree,dm2_hf,dm2_mbb,dm2_ca,dm2_cga,dm2_gu,dm2_power,dm2_pnof5,dm2_pnof7,dm2_gnof
 !!***
 
  public :: gamma_to_2rdm
@@ -260,7 +260,7 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
   enddo
  endif 
 !-----------------------------------------------------------------------
-!                   DM2_J, DM2_K, DDM2_gamma_J, DDM2_gamma_K
+!       DM2_J, DM2_K, DM2_L, DDM2_gamma_J, DDM2_gamma_K, DDM2_gamma_L
 !Comment: This is not the cleanest way to call them but it is fastest way 
 !         to program them without requiring extra memory allocations or pointers.
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -296,9 +296,70 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
   ! Nth
  endif
 !-----------------------------------------------------------------------
+!       DM2_H and DDM2_gamma_H
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ if(RDMd%range_sep) then
+  call dm2_hartree(RDMd,RDMd%Docc_gamma,RDMd%DM2_H,RDMd%DDM2_gamma_H)
+ endif
+!-----------------------------------------------------------------------
  deallocate(sqrt_occ,Dsqrt_occ_gamma,Docc_gamma,Docc_dyn)
  
 end subroutine gamma_to_2rdm
+
+!!***
+!!****f* DoNOF/dm2_hartree
+!! NAME
+!! dm2_hartree
+!!
+!! FUNCTION
+!!  Build from the occ numbers and its derivatives the 2-RDM elements and its derivatives w.r.t. gamma for Hartree
+!!
+!! INPUTS
+!! Docc_gamma=Matrix with the derivative of occ numbers vs gamma
+!!
+!! OUTPUT
+!! DM2_H=DM2 elements that use Hartree integrals 
+!! DDM2_gamma_H=Derivative of the DM2 elements w.r.t. gamma that use Hartree integrals
+!!
+!! PARENTS
+!!
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine dm2_hartree(RDMd,Docc_gamma,DM2_H,DDM2_gamma_H)
+!Arguments ------------------------------------
+!scalars
+ type(rdm_t),intent(inout)::RDMd
+!arrays
+ real(dp),dimension(RDMd%NBF_occ,RDMd%Ngammas),intent(in)::Docc_gamma
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_H
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ,RDMd%Ngammas),intent(inout)::DDM2_gamma_H
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1
+!arrays
+!************************************************************************
+
+ DM2_H=zero; DDM2_gamma_H=zero; 
+!     DM2_Jpq = 2NpNq
+ do iorb=1,RDMd%NBF_occ
+  do iorb1=1,RDMd%NBF_occ
+   DM2_H(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
+   DDM2_gamma_H(iorb,iorb1,:) = two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
+  enddo
+ enddo
+!- - - - - - - - - - - - - - - - - - - - - - - -              
+!-----------------------------------------------------------------------
+!                 DM2(iorb,iorb,iorb,iorb)=2*occ(iorb)*occ(iorb)
+!-----------------------------------------------------------------------
+ do iorb=1,RDMd%NBF_occ
+  DM2_H(iorb,iorb)=two*RDMd%occ(iorb)*RDMd%occ(iorb)
+  DDM2_gamma_H(iorb,iorb,:)=four*Docc_gamma(iorb,:)*RDMd%occ(iorb)
+ enddo
+!-----------------------------------------------------------------------
+end subroutine dm2_hartree
+!!***
 
 !!***
 !!****f* DoNOF/dm2_hf
