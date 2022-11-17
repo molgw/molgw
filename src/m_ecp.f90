@@ -497,9 +497,21 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
     ! in psp8 files, 4*pi*rhoc(r) is written and nobody knows why
     ecpi%rhocore(:,:) = ecpi%rhocore(:,:) / ( 4.0_dp * pi )
   endif
-  
 
   close(ecpunit)
+
+  !
+  ! Checks
+  ! whether the radial grid is regular else die
+  if( ABS( (ecpi%rad(2)-ecpi%rad(1)) - (ecpi%rad(mmax) - ecpi%rad(mmax-1)) ) > 1.0e-5_dp ) then
+    write(stdout,'(1x,a,a)') 'Non-regular grid found in ',TRIM(ecp_filename)
+    call die('read_psp8_file: psp8 radial grid must be regular in this implementation')
+  endif
+  ! whether the first radial grid point is zero
+  if( ecpi%rad(1) > 1.0e-5_dp ) then
+    write(stdout,'(1x,a,a)') 'Non-zero first grid point found in ',TRIM(ecp_filename)
+    call die('read_psp8_file: psp8 radial grid must with zero in this implementation')
+  endif
 
 
 end subroutine read_psp8_file

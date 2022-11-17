@@ -1,0 +1,11 @@
+&molgw
+  scf                            = 'PBE'
+  ecp_basis                      = 'cc-pVTZ-ECP'
+  ecp_auxil_basis                = 'auto'
+  ecp_elements                   = 'Ar'
+  ecp_type                       = 'pseudodojo_PBE.psp8'
+  natom                          = 1
+  basis_path                     = '../inputs/'
+/
+Ar  0.0000  0.0000  0.0000
+
