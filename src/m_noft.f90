@@ -305,7 +305,7 @@ end subroutine noft_energy
 
 
 !==================================================================
-subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolH,NO_COEF_cmplx,hCORE_cmplx,&
+subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolJsr,NO_COEF_cmplx,hCORE_cmplx,&
 & ERImol_cmplx,ERImolv_cmplx)
  implicit none
 
@@ -314,7 +314,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ER
  real(dp),optional,intent(in)    :: NO_COEF(nbf,nbf)
  real(dp),optional,intent(inout) :: hCORE(nbf,nbf)
  real(dp),optional,intent(inout) :: ERImol(nbf,nstate_kji,nstate_kji,nstate_kji)
- real(dp),optional,intent(inout) :: ERImolH(nbf,nstate_kji,nstate_kji)
+ real(dp),optional,intent(inout) :: ERImolJsr(nbf,nstate_kji,nstate_kji)
  real(dp),optional,intent(inout) :: ERImolv(nbf*nstate_kji*nstate_kji*nstate_kji)
  complex(dp),optional,intent(in)    :: NO_COEF_cmplx(nbf,nbf)
  complex(dp),optional,intent(inout) :: hCORE_cmplx(nbf,nbf)
@@ -383,8 +383,8 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ER
      endif
 
      ! ERI terms
-     if(present(ERImol) .and. present(ERImolH)) then
-       ERImol(:,:,:,:)=zero; ERImolH(:,:,:)=zero;
+     if(present(ERImol) .and. present(ERImolJsr)) then
+       ERImol(:,:,:,:)=zero; ERImolJsr(:,:,:)=zero;
        if(has_auxil_basis) then ! RI case
          call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose,long_range=long_range)
          do istate=1,nstate_occ
@@ -395,7 +395,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ER
                  ERImol(lstate,kstate,jstate,istate)=alpha_hybrid*full_eri & ! <lk| [alpha+beta*erf(gamma r12)]/r12 |ji> format used for ERImol
                  & +beta_hybrid*eri_eigen_ri_lr(lstate,jstate,1,kstate,istate,1) 
                  if(kstate==istate) then ! Hartree: <li|ji>^Hartree = <li| 1/r12 |ji> - <li| [alpha+beta*erf(gamma r12)]/r12 |ji>
-                   ERImolH(lstate,istate,jstate)=full_eri-ERImol(lstate,istate,jstate,istate) ! <li|ji> format used for ERImol
+                   ERImolJsr(lstate,istate,jstate)=full_eri-ERImol(lstate,istate,jstate,istate) ! <li|ji> format used for ERImol
                  endif
                enddo
              enddo

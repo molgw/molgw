@@ -296,10 +296,10 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
   ! Nth
  endif
 !-----------------------------------------------------------------------
-!       DM2_H and DDM2_gamma_H
+!       DM2_Jsr and DDM2_gamma_Jsr
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  if(RDMd%range_sep) then
-  call dm2_hartree(RDMd,RDMd%Docc_gamma,RDMd%DM2_H,RDMd%DDM2_gamma_H)
+  call dm2_hartree(RDMd,RDMd%Docc_gamma,RDMd%DM2_Jsr,RDMd%DDM2_gamma_Jsr)
  endif
 !-----------------------------------------------------------------------
  deallocate(sqrt_occ,Dsqrt_occ_gamma,Docc_gamma,Docc_dyn)
@@ -318,8 +318,8 @@ end subroutine gamma_to_2rdm
 !! Docc_gamma=Matrix with the derivative of occ numbers vs gamma
 !!
 !! OUTPUT
-!! DM2_H=DM2 elements that use Hartree integrals 
-!! DDM2_gamma_H=Derivative of the DM2 elements w.r.t. gamma that use Hartree integrals
+!! DM2_Jsr=DM2 elements that use Hartree integrals 
+!! DDM2_gamma_Jsr=Derivative of the DM2 elements w.r.t. gamma that use Hartree integrals
 !!
 !! PARENTS
 !!
@@ -327,26 +327,26 @@ end subroutine gamma_to_2rdm
 !!
 !! SOURCE
 
-subroutine dm2_hartree(RDMd,Docc_gamma,DM2_H,DDM2_gamma_H)
+subroutine dm2_hartree(RDMd,Docc_gamma,DM2_Jsr,DDM2_gamma_Jsr)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),dimension(RDMd%NBF_occ,RDMd%Ngammas),intent(in)::Docc_gamma
- real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_H
- real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ,RDMd%Ngammas),intent(inout)::DDM2_gamma_H
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_Jsr
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ,RDMd%Ngammas),intent(inout)::DDM2_gamma_Jsr
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1
 !arrays
 !************************************************************************
 
- DM2_H=zero; DDM2_gamma_H=zero; 
+ DM2_Jsr=zero; DDM2_gamma_Jsr=zero; 
 !     DM2_Jpq = 2NpNq
  do iorb=1,RDMd%NBF_occ
   do iorb1=1,RDMd%NBF_occ
-   DM2_H(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
-   DDM2_gamma_H(iorb,iorb1,:) = two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
+   DM2_Jsr(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
+   DDM2_gamma_Jsr(iorb,iorb1,:) = two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
   enddo
  enddo
 !- - - - - - - - - - - - - - - - - - - - - - - -              
@@ -354,8 +354,8 @@ subroutine dm2_hartree(RDMd,Docc_gamma,DM2_H,DDM2_gamma_H)
 !                 DM2(iorb,iorb,iorb,iorb)=2*occ(iorb)*occ(iorb)
 !-----------------------------------------------------------------------
  do iorb=1,RDMd%NBF_occ
-  DM2_H(iorb,iorb)=two*RDMd%occ(iorb)*RDMd%occ(iorb)
-  DDM2_gamma_H(iorb,iorb,:)=four*Docc_gamma(iorb,:)*RDMd%occ(iorb)
+  DM2_Jsr(iorb,iorb)=two*RDMd%occ(iorb)*RDMd%occ(iorb)
+  DDM2_gamma_Jsr(iorb,iorb,:)=four*Docc_gamma(iorb,:)*RDMd%occ(iorb)
  enddo
 !-----------------------------------------------------------------------
 end subroutine dm2_hartree

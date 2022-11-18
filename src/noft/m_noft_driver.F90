@@ -100,7 +100,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolH,&
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolJsr,&
   & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolv_cmplx)
   use m_definitions
   implicit none
@@ -110,7 +110,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
   real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
   real(dp),optional,intent(inout)::ERImolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
-  real(dp),optional,intent(inout)::ERImolH(NBF_tot,NBF_jkl,NBF_jkl)
+  real(dp),optional,intent(inout)::ERImolJsr(NBF_tot,NBF_jkl,NBF_jkl)
   complex(dp),optional,intent(in)::NO_COEF_cmplx(NBF_tot,NBF_tot)
   complex(dp),optional,intent(inout)::hCORE_cmplx(NBF_tot,NBF_tot)
   complex(dp),optional,intent(inout)::ERImol_cmplx(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
@@ -245,10 +245,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(INTEGd%range_sep) then
    if(INTEGd%iERItyp/=-1) then
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImol=INTEGd%ERImol,ERImolH=INTEGd%ERImolH)
+   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr)
    else
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImolv=INTEGd%ERImolv,ERImolH=INTEGd%ERImolH)
+   & ERImolv=INTEGd%ERImolv,ERImolJsr=INTEGd%ERImolJsr)
    endif
   else
    if(INTEGd%iERItyp/=-1) then
@@ -261,7 +261,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
-  & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_H=INTEGd%ERI_H) ! Also iter=iter+1
+  & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr) ! Also iter=iter+1
  endif
  Energy_old=Energy
 
@@ -300,7 +300,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
   else
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
-   & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_H=INTEGd%ERI_H) ! Also iter=iter+1
+   & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr) ! Also iter=iter+1
   endif
   call RDMd%print_gammas()
 
@@ -381,7 +381,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call occ_chempot(RDMd,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx)
  else 
-  call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_H=INTEGd%ERI_H)
+  call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr)
  endif
  chempot_val=-ten**(ten)
  do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ

@@ -68,7 +68,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
  interface 
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolH,&
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolJsr,&
   & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolv_cmplx)
   use m_definitions
   implicit none
@@ -78,7 +78,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
   real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
   real(dp),optional,intent(inout)::ERImolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
-  real(dp),optional,intent(inout)::ERImolH(NBF_tot,NBF_jkl,NBF_jkl)
+  real(dp),optional,intent(inout)::ERImolJsr(NBF_tot,NBF_jkl,NBF_jkl)
   complex(dp),optional,intent(in)::NO_COEF_cmplx(NBF_tot,NBF_tot)
   complex(dp),optional,intent(inout)::hCORE_cmplx(NBF_tot,NBF_tot)
   complex(dp),optional,intent(inout)::ERImol_cmplx(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
@@ -118,10 +118,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   if(INTEGd%range_sep) then
    if(INTEGd%iERItyp/=-1) then
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
-   & ERImol=INTEGd%ERImol,ERImolH=INTEGd%ERImolH)
+   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr)
    else
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
-   & ERImolv=INTEGd%ERImolv,ERImolH=INTEGd%ERImolH)
+   & ERImolv=INTEGd%ERImolv,ERImolJsr=INTEGd%ERImolJsr)
    endif
   else
    if(INTEGd%iERItyp/=-1) then
@@ -134,14 +134,14 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
-  & INTEGd%ERI_L,INTEGd%ERI_H,nogamma=nogamma)
+  & INTEGd%ERI_L,INTEGd%ERI_Jsr,nogamma=nogamma)
  endif
  do
   ! If we used a DIIS step, do not stop after DIIS for small Energy dif.
   diddiis=.false.
 
   ! Build Lambda matrix
-  call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_H)
+  call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr)
 
   ! Check if these NO_COEF with the RDMs are already the solution =)
   call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff,maxdiff_all,iorbmax1,iorbmax2)
@@ -189,10 +189,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
    if(INTEGd%range_sep) then
     if(INTEGd%iERItyp/=-1) then
      call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-    & ERImol=INTEGd%ERImol,ERImolH=INTEGd%ERImolH)
+    & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr)
     else
      call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-    & ERImolv=INTEGd%ERImolv,ERImolH=INTEGd%ERImolH)
+    & ERImolv=INTEGd%ERImolv,ERImolJsr=INTEGd%ERImolJsr)
     endif
    else
     if(INTEGd%iERItyp/=-1) then
@@ -205,7 +205,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
    endif
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
-   & INTEGd%ERI_L,INTEGd%ERI_H,nogamma=nogamma)
+   & INTEGd%ERI_L,INTEGd%ERI_Jsr,nogamma=nogamma)
   endif
  
   ! Check if we did Diag[(Lambda_pq + Lambda_qp*)/2] for F method (first iteration)
@@ -233,7 +233,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
  else
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
-  & INTEGd%ERI_L,INTEGd%ERI_H,nogamma=nogamma)
+  & INTEGd%ERI_L,INTEGd%ERI_Jsr,nogamma=nogamma)
  endif
  write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
