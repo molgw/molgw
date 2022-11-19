@@ -205,14 +205,6 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
     nstate_coupled=nstate_coupled-1
   endif
  enddo
- if( irs_noft==1 ) then ! Atenuate the sr-DFT coefficients (for 2e- they are Eq. to 0)
-    !dft_xc(1)%id = XC_GGA_X_PBE
-    dft_xc(1)%coeff = ((nelectrons-2)/(nelectrons-1))*(1.00_dp-(alpha_hybrid+beta_hybrid) )
-    !dft_xc(2)%id = XC_GGA_X_HJS_PBE
-    dft_xc(2)%coeff = ((nelectrons-2)/(nelectrons-1))*beta_hybrid
-    !dft_xc(3)%id = XC_GGA_C_PBE
-    dft_xc(3)%coeff = ((nelectrons-2)/(nelectrons-1))*1.00_dp
- endif
 
  ! Call module initialization and run NOFT calc.
  if(noft_complex=='yes') then
@@ -246,7 +238,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  endif
  
  if( irs_noft/=0 ) then ! Compute total Energy for range-sep NOFT switching off the hamiltonian_xc (we only need hCORE=T+Vext).
-   noft_edft=.true. ! this is why we restart but will not update orbs or occs.
+   noft_edft=.true.     ! So, we restart but we will not update orbs nor occs.
    call clean_allocate('T_Vext',T_Vext,basis%nbf,noft_verbose)
    write(ofile_name,'(a)') 'tmp_dft_noft'
    call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
@@ -374,7 +366,8 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ER
        hCORE=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
        call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
        
-       ! MRM: Actually, we don't need the Vhartree in AO basis... But, we could use it in the future.
+       ! MRM: In rs-NOFT we don't need the Vhartree in AO basis. 
+       !      But, we could use this in the future.
        ! Prepare the Vhartree contribution
          !call clean_allocate('density matrix P',p_matrix,nbf,nbf,1,noft_verbose)
          !call clean_allocate('hamiltonian_hartree',hamiltonian_hartree,nbf,nbf,noft_verbose)

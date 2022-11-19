@@ -229,6 +229,7 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !-----------------------------------------------------------------------
 !  Compute dynamic occ and its derivative
 !-----------------------------------------------------------------------
+ RDMd%occ_dyn(1:RDMd%Nfrozen)=one
  do iorb=1,RDMd%Npairs
   iorb1=RDMd%Nfrozen+iorb
   hole_dyn=(one-RDMd%occ(iorb1))/RDMd%Hcut 
