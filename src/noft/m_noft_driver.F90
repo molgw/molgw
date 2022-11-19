@@ -88,11 +88,11 @@ contains
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
 &  iprintints,itolLambda,ndiis,Enof,tolE_in,Vnn,AOverlap_in,occ_inout,mo_ints,ofile_name,NO_COEF,NO_COEF_cmplx,&
-&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,range_sep)   ! Optional
+&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,irange_sep)   ! Optional
 !Arguments ------------------------------------
 !scalars
- logical,optional,intent(in)::restart,lowmemERI,fcidump,range_sep
- integer,optional,intent(in)::ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB
+ logical,optional,intent(in)::restart,lowmemERI,fcidump
+ integer,optional,intent(in)::ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,irange_sep  
  integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,iprintswdmn
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,itolLambda,ndiis  
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in,iERItyp_in
@@ -100,7 +100,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolJsr,&
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolJsr,ERImolLsr,&
   & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolv_cmplx)
   use m_definitions
   implicit none
@@ -111,6 +111,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
   real(dp),optional,intent(inout)::ERImolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
   real(dp),optional,intent(inout)::ERImolJsr(NBF_tot,NBF_jkl,NBF_jkl)
+  real(dp),optional,intent(inout)::ERImolLsr(NBF_tot,NBF_jkl,NBF_jkl)
   complex(dp),optional,intent(in)::NO_COEF_cmplx(NBF_tot,NBF_tot)
   complex(dp),optional,intent(inout)::hCORE_cmplx(NBF_tot,NBF_tot)
   complex(dp),optional,intent(inout)::ERImol_cmplx(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
@@ -150,8 +151,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
 
  ! Check whether to print a FCIDUMP file and the sw-RDMs
- if(present(range_sep)) then 
-  if(range_sep) irs_noft=1
+ if(present(irange_sep)) then 
+  if(irange_sep/=0) irs_noft=irange_sep
  endif
 
  ! Check if we use complex orbs
@@ -242,13 +243,13 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
  else
-  if(INTEGd%range_sep) then
+  if(INTEGd%irange_sep/=0) then
    if(INTEGd%iERItyp/=-1) then
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr)
+   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr)
    else
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImolv=INTEGd%ERImolv,ERImolJsr=INTEGd%ERImolJsr)
+   & ERImolv=INTEGd%ERImolv,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr)
    endif
   else
    if(INTEGd%iERItyp/=-1) then
@@ -261,7 +262,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
-  & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr) ! Also iter=iter+1
+  & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
  endif
  Energy_old=Energy
 
@@ -300,7 +301,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
   else
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
-   & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr) ! Also iter=iter+1
+   & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
   endif
   call RDMd%print_gammas()
 
@@ -381,7 +382,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call occ_chempot(RDMd,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx)
  else 
-  call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr)
+  call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,&
+   ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr)
  endif
  chempot_val=-ten**(ten)
  do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
@@ -436,7 +438,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call ELAGd%free() 
  call INTEGd%free()
  ! Reallocated INTEGd and print FCIDUMP file if required for real orbs and not rs-NOFT calcs
- if((ifcidump==1.and.(.not.cpx_mos)).and.irs_noft==1) then
+ if((ifcidump==1.and.(.not.cpx_mos)).and.irs_noft/=0) then
   write(msg,'(a)') ' '
   call write_output(msg)
   write(msg,'(a)') ' Warning! Unable to print the FCIDUMP file with range-sep ERIs.'
@@ -444,7 +446,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   write(msg,'(a)') ' '
   call write_output(msg)
  endif
- if((ifcidump==1.and.(.not.cpx_mos)).and.irs_noft/=1) then
+ if((ifcidump==1.and.(.not.cpx_mos)).and.irs_noft==0) then
   write(msg,'(a)') ' '
   call write_output(msg)
   write(msg,'(a)') ' Reallocating the INTEGd to print the FCIDUMP file'
@@ -632,7 +634,9 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
  call write_output(msg)
  write(msg,'(a,i12)') ' Print FCIDUMP file (true=1)       ',ifcidump
  call write_output(msg)
- write(msg,'(a,i12)') ' Do a range-sep NOFT (true=1)      ',irs_noft
+ write(msg,'(a,i12)') ' Do a range-sep NOFT               ',irs_noft
+ call write_output(msg)
+ write(msg,'(a)')     ' (0=no, 1=rs-intra, 2=rs-ex-corr)  '
  call write_output(msg)
  if(cpx_mos_in) then
   write(msg,'(a,i12)') ' Complex orbitals in use (true=1)  ',1

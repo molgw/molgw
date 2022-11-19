@@ -56,7 +56,7 @@ contains
 !!
 !! SOURCE
 
-subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,&
+subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,&
 & hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
 !Arguments ------------------------------------
 !scalars
@@ -68,7 +68,8 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
- real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L,ERI_Jsr
+ real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L
+ real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE_cmplx
  complex(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx 
 !Local variables ------------------------------
@@ -104,9 +105,9 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
   call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
   !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
  else
-  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
-  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
-  !call num_calc_Grad_occ(RDMd,GAMMAs,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
+  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+  !call num_calc_Grad_occ(RDMd,GAMMAs,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
  endif
  conveg=.true.
  do igamma=1,RDMd%Ngammas
@@ -133,9 +134,9 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
      call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
      !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
     else
-     call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
-     call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
-     !call num_calc_Grad_occ(RDMd,GAMMAs,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
+     call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+     call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+     !call num_calc_Grad_occ(RDMd,GAMMAs,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
     endif
     call LBFGS_INTERN(RDMd%Ngammas,Mtosave,GAMMAs,Energy,Grad_GAMMAs,diagco,diag,info_print,tol5,tol16,Work,iflag)
     if(iflag<=0) exit
@@ -160,7 +161,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  if(cpx_mos) then
   call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
  else
-  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
+  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
  endif
  write(msg,'(a,f15.6,a,i6,a)') 'Occ. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
@@ -218,13 +219,14 @@ end subroutine opt_occ
 !!
 !! SOURCE
 
-subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
- real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L,ERI_Jsr 
+ real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L
+ real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE_cmplx
  complex(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx 
 !Local variables ------------------------------
@@ -248,12 +250,12 @@ subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,hCORE_cmplx,ERI_J_cm
   call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,chempot=chempot)
   call calc_Chem_pot_cmplx(RDMd,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
  else
-  if(RDMd%range_sep) then
+  if(RDMd%irange_sep/=0) then
    write(msg,'(a)') 'Warning! In rs-NOFT the chemical potential is computed without the d Exc / dn contribution.'
    call write_output(msg)
   endif
-  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,chempot=chempot)
-  call calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
+  call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,chempot=chempot)
+  call calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
  endif
 
  deallocate(GAMMAs,Grad_GAMMAs)

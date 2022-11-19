@@ -64,7 +64,7 @@ contains
 !!
 !! SOURCE
 
-subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,nogamma,chempot) 
+subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,nogamma,chempot) 
 !Arguments ------------------------------------
 !scalars
  logical,optional,intent(in)::nogamma,chempot
@@ -72,7 +72,8 @@ subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,nogamma
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),dimension(RDMd%Ngammas),intent(in)::GAMMAs
- real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L,ERI_Jsr 
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
 !Local variables ------------------------------
 !scalars
@@ -100,7 +101,13 @@ subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,nogamma
     &      + RDMd%DM2_iiii(iorb) * ERI_J(iorb*(iorb+1)/2)                                             &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_J,ERI_J) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_K,ERI_K)        &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_L,ERI_L)
-    Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr) ! rs-NOFT
+    if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
+     Energy = Energy + RDMd%DM2_iiii(iorb) * ERI_Jsr(iorb*(iorb+1)/2)                                 &
+    &       + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr)       
+    endif
+    if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
+     Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr)
+    endif
    enddo
    do ipair=1,RDMd%Npairs
     iorb = RDMd%Nfrozen+ipair
@@ -108,13 +115,25 @@ subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,nogamma
     &      + RDMd%DM2_iiii(iorb) * ERI_J(iorb*(iorb+1)/2)                                             &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_J,ERI_J) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_K,ERI_K)        &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_L,ERI_L)
-    Energy=Energy+dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr)+dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr)       ! rs-NOFT
+    if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
+     Energy = Energy + RDMd%DM2_iiii(iorb) * ERI_Jsr(iorb*(iorb+1)/2)                                 &
+    &       + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr)       
+    endif
+    if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
+     Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr)
+    endif
     iorb = RDMd%Nalpha_elect+RDMd%Npairs-ipair+1
     Energy = Energy + RDMd%occ(iorb) * two*hCORE(iorb,iorb)                                           &
     &      + RDMd%DM2_iiii(iorb) * ERI_J(iorb*(iorb+1)/2)                                             &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_J,ERI_J) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_K,ERI_K)        &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_L,ERI_L)
-    Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr) ! rs-NOFT
+    if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
+     Energy = Energy + RDMd%DM2_iiii(iorb) * ERI_Jsr(iorb*(iorb+1)/2)                                 &
+    &       + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr)       
+    endif
+    if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
+     Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr)
+    endif
    enddo
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   else                  ! Extended PNOF (Ncoupled>1)
@@ -124,7 +143,13 @@ subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,nogamma
     &      + RDMd%DM2_iiii(iorb) * ERI_J(iorb*(iorb+1)/2)                                             &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_J,ERI_J) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_K,ERI_K)        &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_L,ERI_L)
-    Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr) ! rs-NOFT
+    if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
+     Energy = Energy + RDMd%DM2_iiii(iorb) * ERI_Jsr(iorb*(iorb+1)/2)                                 &
+    &       + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr)       
+    endif
+    if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
+     Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr)
+    endif
    enddo
    do ipair=1,RDMd%Npairs
     iorb = RDMd%Nfrozen+ipair
@@ -132,14 +157,26 @@ subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,nogamma
     &      + RDMd%DM2_iiii(iorb) * ERI_J(iorb*(iorb+1)/2)                                             &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_J,ERI_J) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_K,ERI_K)        &
     &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_L,ERI_L)
-    Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr) ! rs-NOFT
+    if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
+     Energy = Energy + RDMd%DM2_iiii(iorb) * ERI_Jsr(iorb*(iorb+1)/2)                                 &
+    &       + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr)       
+    endif
+    if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
+     Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr)
+    endif
     do iorb1=1,RDMd%Ncoupled
      iorb = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-ipair)+iorb1
      Energy = Energy + RDMd%occ(iorb) * two*hCORE(iorb,iorb)                                          &
      &      + RDMd%DM2_iiii(iorb) * ERI_J(iorb*(iorb+1)/2)                                            &
      &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_J,ERI_J) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_K,ERI_K)       &
      &      + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_L,ERI_L)
-     Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr) ! rs-NOFT
+     if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
+      Energy = Energy + RDMd%DM2_iiii(iorb) * ERI_Jsr(iorb*(iorb+1)/2)                                &
+     &       + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr)       
+     endif
+     if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
+      Energy = Energy + dm2_x_eri(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr) + dm2_x_eri(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr)
+     endif
     enddo
    enddo
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -181,13 +218,14 @@ end subroutine calc_E_occ
 !!
 !! SOURCE
 
-subroutine calc_Grad_occ(RDMd,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr) 
+subroutine calc_Grad_occ(RDMd,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr) 
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
  real(dp),dimension(RDMd%Ngammas),intent(inout)::Grad
 !arrays
- real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L,ERI_Jsr 
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
 !Local variables ------------------------------
 !scalars
@@ -208,16 +246,32 @@ subroutine calc_Grad_occ(RDMd,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
     &         + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)                         &
     &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)                                 &
     &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) )
-     Grad(igamma) = Grad(igamma) + two * Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)    & ! rs-NOFT 
-    &         + Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)       
+     if(RDMd%irange_sep==1) then ! Intra rs-NOFT
+     Grad(igamma) = Grad(igamma) + RDMd%Docc_gamma(iorb+(igamma-1)*RDMd%NBF_occ) * RDMd%Dfni_ni(iorb)        &
+    &         * ERI_Jsr(iorb*(iorb+1)/2)                                                                     &
+    &         + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)                     &
+    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr) )
+     endif
+     if(RDMd%irange_sep==2) then ! Hartree rs-NOFT
+      Grad(igamma) = Grad(igamma) + two * Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)   &
+    &         + Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)
+     endif       
      iorb = RDMd%Nalpha_elect+RDMd%Npairs-ipair+1
      Grad(igamma) = Grad(igamma) + RDMd%Docc_gamma(iorb+(igamma-1)*RDMd%NBF_occ) * two*hCORE(iorb,iorb)      &
     &         + RDMd%Docc_gamma(iorb+(igamma-1)*RDMd%NBF_occ) * RDMd%Dfni_ni(iorb) * ERI_J(iorb*(iorb+1)/2)  &
     &         + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)                         &
     &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)                                 &
     &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) )
-     Grad(igamma) = Grad(igamma) + two * Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)    & ! rs-NOFT 
-    &         + Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)       
+     if(RDMd%irange_sep==1) then ! Intra rs-NOFT
+     Grad(igamma) = Grad(igamma) + RDMd%Docc_gamma(iorb+(igamma-1)*RDMd%NBF_occ) * RDMd%Dfni_ni(iorb)        &
+    &         * ERI_Jsr(iorb*(iorb+1)/2)                                                                     &
+    &         + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)                     &
+    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr) )
+     endif
+     if(RDMd%irange_sep==2) then ! Hartree rs-NOFT
+      Grad(igamma) = Grad(igamma) + two * Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)   &
+    &         + Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)
+     endif       
     enddo
    enddo
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -231,8 +285,16 @@ subroutine calc_Grad_occ(RDMd,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
      &        + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)                         &
      &        + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)                                 &
      &        + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) )
-     Grad(igamma) = Grad(igamma) + two * Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)    & ! rs-NOFT
-     &        + Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)       
+     if(RDMd%irange_sep==1) then ! Intra rs-NOFT
+     Grad(igamma) = Grad(igamma) + RDMd%Docc_gamma(iorb+(igamma-1)*RDMd%NBF_occ) * RDMd%Dfni_ni(iorb)        &
+    &         * ERI_Jsr(iorb*(iorb+1)/2)                                                                     &
+    &         + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)                     &
+    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr) )
+     endif
+     if(RDMd%irange_sep==2) then ! Hartree rs-NOFT
+      Grad(igamma) = Grad(igamma) + two * Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)   &
+    &         + Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)
+     endif       
      do iorb1=1,RDMd%Ncoupled
       iorb = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-ipair)+iorb1
       Grad(igamma) = Grad(igamma) + RDMd%Docc_gamma(iorb+(igamma-1)*RDMd%NBF_occ) * two*hCORE(iorb,iorb)     &
@@ -240,8 +302,16 @@ subroutine calc_Grad_occ(RDMd,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
      &         + two * (Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)                         &
      &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)                                &
      &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) )
-      Grad(igamma) = Grad(igamma) + two * Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)   & ! rs-NOFT    
-     &         + Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)       
+      if(RDMd%irange_sep==1) then ! Intra rs-NOFT
+       Grad(igamma) = Grad(igamma) + RDMd%Docc_gamma(iorb+(igamma-1)*RDMd%NBF_occ) * RDMd%Dfni_ni(iorb)      &
+    &          *  ERI_Jsr(iorb*(iorb+1)/2)                                                                   &
+    &          + two * ( Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)                    &
+    &          + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr) )
+      endif
+      if(RDMd%irange_sep==2) then ! Hartree rs-NOFT
+       Grad(igamma) = Grad(igamma) + two * Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)  &
+    &          + Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)
+      endif       
      enddo
     enddo
    enddo
@@ -285,13 +355,14 @@ end subroutine calc_Grad_occ
 !!
 !! SOURCE
 
-subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr) 
+subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
  real(dp),dimension(RDMd%Ngammas),intent(inout)::Grad
 !arrays
- real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L,ERI_Jsr
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
  real(dp),dimension(RDMd%Ngammas),intent(in)::GAMMAs
 !Local variables ------------------------------
@@ -308,19 +379,19 @@ subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
   GAMMAs_num=GAMMAs;
   ! 2*step
   GAMMAS_num(igamma)=GAMMAS_num(igamma)+two*step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=-Energy_num
   ! step
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=grad_igamma+eight*Energy_num
   ! -step 
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-two*step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=grad_igamma-eight*Energy_num
   ! -2step 
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=grad_igamma+Energy_num
   ! Save the gradient
   Grad(igamma)=grad_igamma/(twelve*step)
@@ -354,12 +425,13 @@ end subroutine num_calc_Grad_occ
 !!
 !! SOURCE
 
-subroutine calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr) 
+subroutine calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr) 
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
 !arrays
- real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L,ERI_Jsr 
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L 
+ real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
 !Local variables ------------------------------
 !scalars
@@ -379,19 +451,33 @@ subroutine calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
    &         + half * RDMd%Dfni_ni(iorb) * ERI_J(iorb*(iorb+1)/2)                    &
    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)          &
    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)          &
-   &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) 
-    RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                  & ! rs-NOFT
-   &     + half * Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)  &
-   &     + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) 
+   &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L)
+    if(RDMd%irange_sep==1) then ! Intra rs-NOF 
+     RDMd%chempot_orb(iorb) = half * RDMd%Dfni_ni(iorb) * ERI_Jsr(iorb*(iorb+1)/2)   &
+   &          + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)     &
+   &          + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr)
+    endif
+    if(RDMd%irange_sep==2) then ! Hartree rs-NOF 
+     RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                 &
+   &      + half * Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) &
+   &      + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) 
+    endif
     iorb = RDMd%Nalpha_elect+RDMd%Npairs-ipair+1
     RDMd%chempot_orb(iorb) = hCORE(iorb,iorb)                                        &
    &         + half * RDMd%Dfni_ni(iorb) * ERI_J(iorb*(iorb+1)/2)                    &
    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)          &
    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)          &
    &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) 
-    RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                  & ! rs-NOFT
-   &     + half * Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)  &
-   &     + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) 
+    if(RDMd%irange_sep==1) then ! Intra rs-NOF 
+     RDMd%chempot_orb(iorb) = half * RDMd%Dfni_ni(iorb) * ERI_Jsr(iorb*(iorb+1)/2)   &
+   &          + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)     &
+   &          + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr)
+    endif
+    if(RDMd%irange_sep==2) then ! Hartree rs-NOF 
+     RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                 &
+   &      + half * Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) &
+   &      + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) 
+    endif
    enddo
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   else                 ! PNOFi(Nc): Extended PNOF (RDMd%Ncoupled>1)
@@ -403,9 +489,16 @@ subroutine calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
     &        + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)          &
     &        + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)          &
     &        + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) 
-    RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                  & ! rs-NOFT
-    &     + half * Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) &
-    &     + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) 
+    if(RDMd%irange_sep==1) then ! Intra rs-NOF 
+     RDMd%chempot_orb(iorb) = half * RDMd%Dfni_ni(iorb) * ERI_Jsr(iorb*(iorb+1)/2)   &
+   &          + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)     &
+   &          + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr)
+    endif
+    if(RDMd%irange_sep==2) then ! Hartree rs-NOF 
+     RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                 &
+   &      + half * Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) &
+   &      + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) 
+    endif
     do iorb1=1,RDMd%Ncoupled
      iorb = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-ipair)+iorb1
      RDMd%chempot_orb(iorb) = hCORE(iorb,iorb)                                       &
@@ -413,9 +506,16 @@ subroutine calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr)
     &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_J,ERI_J)         &
     &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K)         &
     &         + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L) 
-     RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                 & ! rs-NOFT
-    &     + half * Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) &
-    &     + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) 
+     if(RDMd%irange_sep==1) then ! Intra rs-NOF 
+      RDMd%chempot_orb(iorb) = half * RDMd%Dfni_ni(iorb) * ERI_Jsr(iorb*(iorb+1)/2)  &
+   &          + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)     &
+   &          + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr)
+     endif
+     if(RDMd%irange_sep==2) then ! Hartee rs-NOF 
+      RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                &
+   &       + half * Ddm2_gamma_x_ERI(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr)&
+   &       + Ddm2_gamma_x_ERI(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr) 
+     endif
     enddo
    enddo
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

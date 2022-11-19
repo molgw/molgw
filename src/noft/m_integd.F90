@@ -32,15 +32,17 @@ module m_integd
  type,public :: integ_t
 
  logical::complex_ints=.false.   ! Set to true in case complex integrals are employed
- logical::range_sep=.false.      ! true for rs-NOFT calcs.
+ integer::irange_sep=0           ! rs-NOFT calcs. 0=no, 1=intra, 2=ex_corr
  integer::iERItyp=0              ! Type of ERI notation to use DoNOF=0, Physicist=1, Chemist=2, Vectorial(Phys)=-1   
  integer::NBF_jkl=0              ! Size of the basis for the <:j|kl> terms
  integer::NBF2,NBF3,NBF4         ! Sizes used in the vectorial allocation of ERIs
 ! arrays 
- real(dp),allocatable,dimension(:)::ERI_J,ERI_K,ERI_L,ERI_Jsr
+ real(dp),allocatable,dimension(:)::ERI_J,ERI_K,ERI_L
+ real(dp),allocatable,dimension(:)::ERI_Jsr,ERI_Lsr
  real(dp),allocatable,dimension(:)::ERImolv
  real(dp),allocatable,dimension(:,:)::hCORE,Overlap
  real(dp),allocatable,dimension(:,:,:)::ERImolJsr
+ real(dp),allocatable,dimension(:,:,:)::ERImolLsr
  real(dp),allocatable,dimension(:,:,:,:)::ERImol
  complex(dp),allocatable,dimension(:)::ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx
  complex(dp),allocatable,dimension(:)::ERImolv_cmplx
@@ -104,7 +106,7 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,complex_ints_
  character(len=200)::msg
 !************************************************************************
 
- if(irs_noft==1) INTEGd%range_sep=.true.
+ if(irs_noft/=0) INTEGd%irange_sep=irs_noft
  INTEGd%iERItyp=iERItyp_in
  INTEGd%NBF_jkl=NBF_tot
  NBF_ldiag=NBF_occ*(NBF_occ+1)/2
@@ -124,21 +126,21 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,complex_ints_
  else
   if(present(lowmemERI)) then
    if(lowmemERI) then
-    totMEM=3*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_occ*NBF_occ*NBF_occ
+    totMEM=5*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_occ*NBF_occ*NBF_occ
     INTEGd%NBF_jkl=NBF_occ
-    if(INTEGd%range_sep) then
-     totMEM=totMEM+NBF_tot*NBF_occ*NBF_occ
+    if(INTEGd%irange_sep/=0) then
+     totMEM=totMEM+2*NBF_tot*NBF_occ*NBF_occ
     endif
    else
-    totMEM=3*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
-    if(INTEGd%range_sep) then
-     totMEM=totMEM+NBF_tot*NBF_tot*NBF_tot
+    totMEM=5*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
+    if(INTEGd%irange_sep/=0) then
+     totMEM=totMEM+2*NBF_tot*NBF_tot*NBF_tot
     endif
    endif
   else
-   totMEM=3*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
-   if(INTEGd%range_sep) then
-    totMEM=totMEM+NBF_tot*NBF_tot*NBF_tot
+   totMEM=5*NBF_ldiag+2*NBF_tot*NBF_tot+NBF_tot*NBF_tot*NBF_tot*NBF_tot
+   if(INTEGd%irange_sep/=0) then
+    totMEM=totMEM+2*NBF_tot*NBF_tot*NBF_tot
    endif
   endif
  endif
@@ -167,13 +169,17 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,iERItyp_in,Overlap_in,complex_ints_
    allocate(INTEGd%ERImolv_cmplx(NBF_tot*INTEGd%NBF_jkl*INTEGd%NBF_jkl*INTEGd%NBF_jkl))
   endif
  else
-  if(INTEGd%range_sep) then
+  if(INTEGd%irange_sep/=0) then
    allocate(INTEGd%ERImolJsr(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
+   allocate(INTEGd%ERImolLsr(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
   else 
    allocate(INTEGd%ERImolJsr(1,1,1))
+   allocate(INTEGd%ERImolLsr(1,1,1))
   endif
-  allocate(INTEGd%ERI_J(NBF_ldiag),INTEGd%ERI_K(NBF_ldiag),INTEGd%ERI_L(NBF_ldiag),INTEGd%ERI_Jsr(NBF_ldiag))
-  INTEGd%ERI_J=zero; INTEGd%ERI_K=zero; INTEGd%ERI_L=zero; INTEGd%ERI_Jsr=zero;
+  allocate(INTEGd%ERI_J(NBF_ldiag),INTEGd%ERI_K(NBF_ldiag),INTEGd%ERI_L(NBF_ldiag))
+  allocate(INTEGd%ERI_Jsr(NBF_ldiag),INTEGd%ERI_Lsr(NBF_ldiag))
+  INTEGd%ERI_J=zero; INTEGd%ERI_K=zero; INTEGd%ERI_L=zero;
+  INTEGd%ERI_Jsr=zero; INTEGd%ERI_Lsr=zero;
   allocate(INTEGd%hCORE(NBF_tot,NBF_tot),INTEGd%Overlap(NBF_tot,NBF_tot))
   if(INTEGd%iERItyp/=-1) then ! Allocate ERImol all types except vectorial
    allocate(INTEGd%ERImol(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
@@ -230,11 +236,13 @@ subroutine integ_free(INTEGd)
   deallocate(INTEGd%hCORE) 
   deallocate(INTEGd%ERImol) 
   deallocate(INTEGd%ERImolJsr) 
+  deallocate(INTEGd%ERImolLsr) 
   deallocate(INTEGd%ERImolv) 
   deallocate(INTEGd%ERI_J) 
   deallocate(INTEGd%ERI_K) 
   deallocate(INTEGd%ERI_L)
   deallocate(INTEGd%ERI_Jsr)
+  deallocate(INTEGd%ERI_Lsr)
  endif 
  deallocate(INTEGd%Overlap) 
 
@@ -328,7 +336,10 @@ subroutine eri_to_eriJKL(INTEGd,NBF_occ)
     else 
      ! Nth
     endif
-    if(INTEGd%range_sep) INTEGd%ERI_Jsr(iorb2)=INTEGd%ERImolJsr(iorb,iorb1,iorb) ! Hartree <ij|ij>
+    if(INTEGd%irange_sep/=0) then
+     INTEGd%ERI_Jsr(iorb2)=INTEGd%ERImolJsr(iorb,iorb1,iorb) ! Hartree <ij|ij>
+     INTEGd%ERI_Lsr(iorb2)=INTEGd%ERImolLsr(iorb,iorb,iorb1) ! Hartree <ii|jj>
+    endif
     iorb2=iorb2+1
    enddo
   enddo
