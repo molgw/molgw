@@ -229,7 +229,7 @@ end subroutine elag_free
 !!  Build the Lagrange multipliers Lambda matrix. Nothe that the electron rep. integrals are given in DoNOF format
 !!
 !!  For complex orbs. with time-reversal symmetry [i.e. states p_alpha = (p_beta)* ]: 
-!!      < p_alpha q_beta | r_alpha s_beta > =  < p_alpha s_alpha | r_alpha q_beta >
+!!      < p_alpha q_beta | r_alpha s_beta > =  < p_alpha s_alpha | r_alpha q_alpha >
 !!             and      Lij integral (alpha beta) = Kij integral (alpha alpha)
 !!
 !! INPUTS
