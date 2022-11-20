@@ -305,8 +305,8 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
  if(RDMd%irange_sep/=0) then
   call dm2_hartree(RDMd,RDMd%Docc_gamma,RDMd%DM2_Jsr,RDMd%DDM2_gamma_Jsr)
   if(RDMd%irange_sep==1) then
-   call dm2_intra(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_Jsr,RDMd%DM2_Lsr,&
-   & RDMd%DDM2_gamma_Jsr,RDMd%DDM2_gamma_Lsr)
+   call dm2_intra(RDMd,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_Jsr,RDMd%DM2_Lsr,&
+  &  RDMd%DDM2_gamma_Jsr,RDMd%DDM2_gamma_Lsr)
   endif
  endif
 !-----------------------------------------------------------------------
@@ -817,7 +817,6 @@ end subroutine dm2_power
 !!
 !! INPUTS
 !! sqrt_occ=Square root of the occupancies of the frozen + active orbitals
-!! Docc_gamma=Matrix with the derivative of occ numbers vs gamma
 !! Dsqrt_occ_gamma=Matrix with the derivative of sqrt(occ numbers) vs gamma
 !!
 !! OUTPUT
@@ -832,13 +831,13 @@ end subroutine dm2_power
 !!
 !! SOURCE
 
-subroutine dm2_intra(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_L,DDM2_gamma_J,DDM2_gamma_L)
+subroutine dm2_intra(RDMd,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_L,DDM2_gamma_J,DDM2_gamma_L)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),dimension(RDMd%NBF_occ),intent(in)::sqrt_occ
- real(dp),dimension(RDMd%NBF_occ,RDMd%Ngammas),intent(in)::Dsqrt_occ_gamma,Docc_gamma
+ real(dp),dimension(RDMd%NBF_occ,RDMd%Ngammas),intent(in)::Dsqrt_occ_gamma
  real(dp),dimension(RDMd%NBF_occ),intent(inout)::DM2_iiii
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_L
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ,RDMd%Ngammas),intent(inout)::DDM2_gamma_J,DDM2_gamma_L
