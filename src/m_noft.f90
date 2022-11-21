@@ -45,7 +45,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
 !====
  integer                   :: istate,lwork,info
  integer                   :: nelectrons
- integer                   :: imethorb,imethocc,iERItyp,nstate_occ,nstate_beta,nstate_alpha,nstate_coupled
+ integer                   :: imethorb,imethocc,nstate_occ,nstate_beta,nstate_alpha,nstate_coupled
  integer                   :: iNOTupdateOCC,iNOTupdateORB,iprintdmn,iprintswdmn,iprintints,ireadOCC,ireadCOEF 
  integer                   :: ireadFdiag,ireadGAMMAs,ista,inof 
  real(dp)                  :: ran_num
@@ -91,8 +91,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  nstate_noft = SIZE(c_matrix,DIM=2) ! Number of lin. indep. molecular orbitals
 
  ! These varibles will remain fixed for a while
- ! iERItyp=1 -> use notation <ij|kl>
- imethorb=1;iERItyp=1;imethocc=1;iNOTupdateOCC=0;iNOTupdateORB=0;
+ imethorb=1;imethocc=1;iNOTupdateOCC=0;iNOTupdateORB=0;
  iprintdmn=0;iprintswdmn=0;iprintints=0;ireadOCC=0;ireadCOEF=0;
  ireadFdiag=0;ireadGAMMAs=0;ista=0;inof=8;
  if(noft_NOTupdateOCC=='yes') iNOTupdateOCC=1 
@@ -210,28 +209,28 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
  if(noft_complex=='yes') then
    if(noft_restart=='yes') then
      call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-     & iERItyp,imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
+     & imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
      & Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
      & restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
      & ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
      & fcidump=(noft_fcidump=='yes'),irange_sep=irs_noft)
    else
      call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-     & iERItyp,imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
+     & imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
      & Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
      & Lpower=noft_Lpower,fcidump=(noft_fcidump=='yes'),irange_sep=irs_noft)
    endif
  else
    if(noft_restart=='yes') then
      call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-     & iERItyp,imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
+     & imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
      & Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
      & restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
      & ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
      & fcidump=(noft_fcidump=='yes'),irange_sep=irs_noft)
    else
      call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-     & iERItyp,imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
+     & imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
      & Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
      & Lpower=noft_Lpower,fcidump=(noft_fcidump=='yes'),irange_sep=irs_noft)
    endif
@@ -242,7 +241,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
    call clean_allocate('T_Vext',T_Vext,basis%nbf,noft_verbose)
    write(ofile_name,'(a)') 'tmp_dft_noft'
    call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-   & iERItyp,imethocc,imethorb,noft_nscf,0,0,0,noft_ithresh_lambda,noft_ndiis,Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),&
+   & imethocc,imethorb,noft_nscf,0,0,0,noft_ithresh_lambda,noft_ndiis,Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),&
    & mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),restart=.true.,ireadGAMMAS=1,ireadOCC=1,&
    & ireadCOEF=1,ireadFdiag=1,iNOTupdateOCC=1,iNOTupdateORB=1,Lpower=noft_Lpower,fcidump=(noft_fcidump=='yes'),irange_sep=irs_noft)
    Enoft=Enoft+ExcDFT
@@ -310,8 +309,8 @@ end subroutine noft_energy
 
 
 !==================================================================
-subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolJsr,ERImolLsr,&
-& NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolv_cmplx)
+subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
+& NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx)
  implicit none
 
  integer,intent(in)              :: nbf,nstate_occ,nstate_kji
@@ -321,11 +320,9 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolv,ER
  real(dp),optional,intent(inout) :: ERImol(nbf,nstate_kji,nstate_kji,nstate_kji)
  real(dp),optional,intent(inout) :: ERImolJsr(nbf,nstate_kji,nstate_kji)
  real(dp),optional,intent(inout) :: ERImolLsr(nbf,nstate_kji,nstate_kji)
- real(dp),optional,intent(inout) :: ERImolv(nbf*nstate_kji*nstate_kji*nstate_kji)
  complex(dp),optional,intent(in)    :: NO_COEF_cmplx(nbf,nbf)
  complex(dp),optional,intent(inout) :: hCORE_cmplx(nbf,nbf)
  complex(dp),optional,intent(inout) :: ERImol_cmplx(nbf,nstate_kji,nstate_kji,nstate_kji)
- complex(dp),optional,intent(inout) :: ERImolv_cmplx(nbf*nstate_kji*nstate_kji*nstate_kji)
 !====
  logical                    :: long_range=.true.
  integer                    :: istate,jstate,kstate,lstate

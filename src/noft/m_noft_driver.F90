@@ -56,7 +56,6 @@ contains
 !! Ncoupled_in=Number of coupled orbitals per electron pair MINUS ONE
 !! Nbeta_elect_in=Number of beta electrons (N/2 for spin compensated systems)
 !! Nalpha_elect_in=Number of beta electrons (N/2 for spin compensated systems)
-!! iERItyp_in=Index organization used for ERIs ({ij|lk}, <ij|kl>, and (ik|jl))
 !! imethocc=Method used for occ opt. L-BFGS(1) 
 !! imethorb=Method used to opt. orbs. currently only F_diag (1)
 !! itermax=Max. number of global iters
@@ -86,7 +85,7 @@ contains
 !! SOURCE
 
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
-&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,iERItyp_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
+&  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
 &  iprintints,itolLambda,ndiis,Enof,tolE_in,Vnn,AOverlap_in,occ_inout,mo_ints,ofile_name,NO_COEF,NO_COEF_cmplx,&
 &  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,irange_sep)   ! Optional
 !Arguments ------------------------------------
@@ -95,13 +94,13 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  integer,optional,intent(in)::ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,irange_sep  
  integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,iprintswdmn
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,itolLambda,ndiis  
- integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in,iERItyp_in
+ integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in
  real(dp),optional,intent(in)::Lpower
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolv,ERImolJsr,ERImolLsr,&
-  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolv_cmplx)
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
+  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx)
   use m_definitions
   implicit none
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
@@ -109,13 +108,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)
   real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
   real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
-  real(dp),optional,intent(inout)::ERImolv(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
   real(dp),optional,intent(inout)::ERImolJsr(NBF_tot,NBF_jkl,NBF_jkl)
   real(dp),optional,intent(inout)::ERImolLsr(NBF_tot,NBF_jkl,NBF_jkl)
   complex(dp),optional,intent(in)::NO_COEF_cmplx(NBF_tot,NBF_tot)
   complex(dp),optional,intent(inout)::hCORE_cmplx(NBF_tot,NBF_tot)
   complex(dp),optional,intent(inout)::ERImol_cmplx(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
-  complex(dp),optional,intent(inout)::ERImolv_cmplx(NBF_tot*NBF_jkl*NBF_jkl*NBF_jkl)
   end subroutine mo_ints
  end interface
 !arrays
@@ -201,9 +198,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
  
  if(present(lowmemERI)) then
-  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
+  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
  else
-  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in,cpx_mos,irs_noft)
+  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
  endif
  call elag_init(ELAGd,RDMd%NBF_tot,diagLpL,itolLambda,ndiis,imethorb,tolE_in,cpx_mos)
 
@@ -232,33 +229,18 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  iter=-1
  if(cpx_mos) then
-  if(INTEGd%iERItyp/=-1) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
-  else
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
-  & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImolv_cmplx=INTEGd%ERImolv_cmplx)
-  endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
  else
   if(INTEGd%irange_sep/=0) then
-   if(INTEGd%iERItyp/=-1) then
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
    & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr)
-   else
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImolv=INTEGd%ERImolv,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr)
-   endif
   else
-   if(INTEGd%iERItyp/=-1) then
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
    & ERImol=INTEGd%ERImol)
-   else
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImolv=INTEGd%ERImolv)
-   endif
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
@@ -453,14 +435,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call write_output(msg)
   write(msg,'(a)') ' '
   call write_output(msg)
-  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,iERItyp_in,AOverlap_in,cpx_mos,irs_noft)
-  if(INTEGd%iERItyp/=-1) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
+  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
   & ERImol=INTEGd%ERImol)
-  else
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-  & ERImolv=INTEGd%ERImolv)
-  endif
   call INTEGd%print_dump(RDMd%Nalpha_elect+RDMd%Nbeta_elect,Vnn)
   call INTEGd%free()
  endif
