@@ -38,8 +38,7 @@ module m_integd
  real(dp),allocatable,dimension(:)::ERI_J,ERI_K,ERI_L
  real(dp),allocatable,dimension(:)::ERI_Jsr,ERI_Lsr
  real(dp),allocatable,dimension(:,:)::hCORE,Overlap
- real(dp),allocatable,dimension(:,:,:)::ERImolJsr
- real(dp),allocatable,dimension(:,:,:)::ERImolLsr
+ real(dp),allocatable,dimension(:,:,:)::ERImolJsr,ERImolLsr
  real(dp),allocatable,dimension(:,:,:,:)::ERImol
  complex(dp),allocatable,dimension(:)::ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx
  complex(dp),allocatable,dimension(:,:)::hCORE_cmplx
@@ -275,8 +274,8 @@ subroutine eri_to_eriJKL(INTEGd,NBF_occ)
     INTEGd%ERI_K(iorb2)=INTEGd%ERImol(iorb,iorb1,iorb1,iorb) ! K in <ij|ji>
     INTEGd%ERI_L(iorb2)=INTEGd%ERImol(iorb,iorb,iorb1,iorb1) ! L in <ii|jj>
     if(INTEGd%irange_sep/=0) then
-     INTEGd%ERI_Jsr(iorb2)=INTEGd%ERImolJsr(iorb,iorb1,iorb) ! Hartree <ij|ij>
-     INTEGd%ERI_Lsr(iorb2)=INTEGd%ERImolLsr(iorb,iorb,iorb1) ! Hartree <ii|jj>
+     INTEGd%ERI_Jsr(iorb2)=INTEGd%ERImolJsr(iorb,iorb1,iorb) ! J <ij|ij>^sr
+     INTEGd%ERI_Lsr(iorb2)=INTEGd%ERImolLsr(iorb,iorb,iorb1) ! L <ii|jj>^sr
     endif
     iorb2=iorb2+1
    enddo
