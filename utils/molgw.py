@@ -76,12 +76,18 @@ def check_input(pyinput):
 
 
 ########################################################################
-def run(inputfile="molgw.in",pyinput={},mpirun="",openmp=1,**kwargs):
+def run(inputfile="molgw.in",outputfile="",pyinput={},mpirun="",openmp=1,**kwargs):
     if len(pyinput) > 0:
         print_input_file(pyinput,inputfile)
     os.environ['OMP_NUM_THREADS'] = str(openmp)
-    process = subprocess.Popen([exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    if len(mpirun) == 0:
+        process = subprocess.Popen([exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    else:
+        process = subprocess.Popen(mpirun.split()+[exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     output, error = process.communicate()
+    if len(outputfile) >0:
+        with open("molgw.out",'w') as f:
+            f.write(output.decode("utf-8"))
     if len(error) > 100:
         print(error.decode("utf-8"))
     with open('molgw.yaml', 'r') as stream:
