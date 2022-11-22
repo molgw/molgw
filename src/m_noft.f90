@@ -352,7 +352,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
     tmp_c_matrix_cmplex(:,istate,1)=NO_COEF_cmplx(:,istate)
    enddo
 
-   ! hCORE=T+Vext part
+   ! T+Vext part
    hCORE_cmplx(:,:)=complex_zero
    hCORE_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),matmul(AhCORE,NO_COEF_cmplx))
 
@@ -377,7 +377,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
      call clean_deallocate('occupation',occupation,noft_verbose)
    endif
 
-   ! hCORE=T+Vext+hCORE_DFT(?) part
+   ! T+Vext+V_xc(?) part
    hCORE=hCORE+matmul(transpose(NO_COEF),matmul(AhCORE,NO_COEF))
    if( noft_edft ) then
      do istate=1,nstate_noft
@@ -390,7 +390,6 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
  ! Molecular ERImol including all two-body interactions (maybe also including sr-ERImol)
  if( irs_noft/=0 ) then
 
-   ! ERI terms
    if(present(ERImol) .and. present(ERImolJsr) .and. present(ERImolLsr)) then
      ERImol(:,:,:,:)=zero; ERImolJsr(:,:,:)=zero; ERImolLsr(:,:,:)=zero
      if(has_auxil_basis) then ! RI case
@@ -425,7 +424,6 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
 
    if(noft_complex=='yes') then
 
-     ! ERI terms
      if(present(ERImol_cmplx)) then
        ERImol_cmplx(:,:,:,:)=complex_zero
        if(has_auxil_basis) then ! RI case
@@ -447,7 +445,6 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
 
    else
 
-     ! ERI terms
      if(present(ERImol)) then
        ERImol(:,:,:,:)=zero
        if(has_auxil_basis) then ! RI case
