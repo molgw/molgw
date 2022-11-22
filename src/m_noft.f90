@@ -416,7 +416,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
        call destroy_eri_3center_eigen(verbose=noft_verbose,long_range=long_range)
      else            ! Normal case (not using RI)
        !TODO
-       write(msgw,'(a)') 'LR exchange without RI is needed for rs-NOFT, but not coded.'
+       write(msgw,'(a)') 'LR exchange requires RI for rs-NOFT (hint: include the RI basis).'
        call issue_warning(msgw)
      endif
    endif
