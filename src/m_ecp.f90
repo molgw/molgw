@@ -46,6 +46,7 @@ module m_ecp
     real(dp),allocatable :: wfll(:,:)
     real(dp),allocatable :: vpspll(:,:)
     real(dp),allocatable :: ekb(:)
+    real(dp),allocatable :: rhocore(:,:)
   end type
 
 
@@ -160,7 +161,7 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
     write(stdout,'(6x,a,i3)') 'Core electrons ',ecp(ielement_ecp)%ncore
     select case(ecp(ielement_ecp)%ecp_format)
     case(ECP_PSP6,ECP_PSP8)
-      write(stdout,'(6x,a)') 'l_k    KB energy'
+      write(stdout,'(6x,a)') 'l_k    KB energy (Ha)'
 
       do iecp=1,ecp(ielement_ecp)%necp
         if( ecp(ielement_ecp)%lk(iecp) == -1 ) then
@@ -415,9 +416,11 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
   character(len=2),intent(in)                  :: element
   type(effective_core_potential),intent(inout) :: ecpi
   !=====
+  integer,parameter :: nder=4      ! number of derivatives in the rhocore
   integer  :: ecpunit
   integer  :: ir,il,jdum,iecp,jecp,iproj
   integer  :: pspdat,pspcod,pspxc,lmax,lloc,mmax,r2well
+  real(dp) :: rchrg,fchrg,qchrg
   real(dp) :: zatom,zion,al
   character(len=128) :: title
   integer  :: nproj(5),extension_switch(2)
@@ -443,10 +446,12 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
   read(ecpunit,*) title
   read(ecpunit,*) zatom,zion,pspdat
   read(ecpunit,*) pspcod,pspxc,lmax,lloc,mmax,r2well
-  read(ecpunit,*) title  ! dont read non linear core corrections
+  read(ecpunit,*) rchrg,fchrg,qchrg
   read(ecpunit,*) nproj(:)
   read(ecpunit,*) extension_switch(:)
   if( ANY(extension_switch(:) /= 1) ) call die('read_psp8_file: relativistic pseudo file not implemented')
+
+  !if( fchrg > 1.0e-8 ) call die('read_psp8_file: non linear core corrections not implemented')
 
 
   ecpi%ncore = NINT(zatom - zion)
@@ -466,6 +471,7 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
   allocate(ecpi%rad(mmax))
   allocate(ecpi%vpspll(mmax,ecpi%necp))
   allocate(ecpi%ekb(ecpi%necp))
+  if( fchrg > 1.0e-8_dp ) allocate(ecpi%rhocore(mmax,nder+1))
 
   iecp = 0
   jecp = 0
@@ -484,9 +490,28 @@ subroutine read_psp8_file(ecp_filename,element,ecpi)
   do ir=1,mmax
     read(ecpunit,*) jdum,ecpi%rad(ir),ecpi%vpspll(ir,ecpi%necp)
   end do
-
+  if( fchrg > 1.0e-8_dp ) then
+    do ir=1,mmax
+      read(ecpunit,*) jdum,ecpi%rad(ir),ecpi%rhocore(ir,:)
+    end do
+    ! in psp8 files, 4*pi*rhoc(r) is written and nobody knows why
+    ecpi%rhocore(:,:) = ecpi%rhocore(:,:) / ( 4.0_dp * pi )
+  endif
 
   close(ecpunit)
+
+  !
+  ! Checks
+  ! whether the radial grid is regular else die
+  if( ABS( (ecpi%rad(2)-ecpi%rad(1)) - (ecpi%rad(mmax) - ecpi%rad(mmax-1)) ) > 1.0e-5_dp ) then
+    write(stdout,'(1x,a,a)') 'Non-regular grid found in ',TRIM(ecp_filename)
+    call die('read_psp8_file: psp8 radial grid must be regular in this implementation')
+  endif
+  ! whether the first radial grid point is zero
+  if( ecpi%rad(1) > 1.0e-5_dp ) then
+    write(stdout,'(1x,a,a)') 'Non-zero first grid point found in ',TRIM(ecp_filename)
+    call die('read_psp8_file: psp8 radial grid must with zero in this implementation')
+  endif
 
 
 end subroutine read_psp8_file

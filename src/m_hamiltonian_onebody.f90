@@ -409,6 +409,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
 
 end subroutine setup_overlap_grad
 
+
 !=========================================================================
 subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
   implicit none
@@ -532,6 +533,7 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
 
 
 end subroutine recalc_overlap_grad
+
 
 !=========================================================================
 ! Calculate  ( \alpha | p**2 / 2 | \beta )

@@ -19,6 +19,7 @@ module m_dft_grid
  use m_basis_set
  use m_elements
  use m_atoms
+ use m_ecp
  use m_numerical_tools,only: coeffs_gausslegint
 
  integer,parameter :: BATCH_SIZE = 128
@@ -47,6 +48,8 @@ module m_dft_grid
  real(dp),allocatable,private :: bfgy(:,:)
  real(dp),allocatable,private :: bfgz(:,:)
 
+ real(dp),allocatable,protected :: rhocore(:)
+ real(dp),allocatable,protected :: rhocore_grad(:,:)
 
 contains
 
@@ -434,11 +437,79 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    ngrid_stored = 0
  endif
 
+ call setup_rhocore_grid()
 
  call stop_clock(MERGE(timing_tddft_grid_init,timing_grid_init,in_rt_tddft))
 
-
 end subroutine init_dft_grid
+
+
+!=========================================================================
+subroutine setup_rhocore_grid()
+ implicit none
+
+ !=====
+ integer :: ie,icenter,ir,irad
+ real(dp) :: rmax,rr,ra(3),dr
+ logical :: need_rhocore,element_has_rhocore
+ !=====
+
+ if( .NOT. ALLOCATED(ecp) ) return
+
+ !
+ ! Set up rhocore for non-linear core correction from the pseudopotential
+ !
+ if( ANY(ecp(:)%ecp_format==ECP_PSP6) .OR. ANY(ecp(:)%ecp_format==ECP_PSP8) ) then
+   need_rhocore = .FALSE.
+   do ie=1,nelement_ecp
+     need_rhocore = need_rhocore .OR. ALLOCATED(ecp(ie)%rhocore)
+   enddo
+ endif
+
+ if( .NOT. need_rhocore) return
+
+ allocate(rhocore(ngrid))
+ allocate(rhocore_grad(ngrid,3))
+ rhocore(:)        = 0.0_dp
+ rhocore_grad(:,:) = 0.0_dp
+
+ do icenter=1,ncenter_nuclei
+   element_has_rhocore = .FALSE.
+   do ie=1,nelement_ecp
+     if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
+        element_has_rhocore = ALLOCATED(ecp(ie)%rhocore)
+        exit
+     endif
+   enddo
+
+   if( .NOT. element_has_rhocore ) cycle
+
+   rmax = ecp(ie)%rad(ecp(ie)%mmax-1) 
+   dr   = ecp(ie)%rad(2) - ecp(ie)%rad(1)
+
+   do ir=1,ngrid
+      ra(:) = rr_grid(:,ir) - xatom(:,icenter)
+      rr = NORM2( ra(:) )
+      if( rr < rmax ) then
+        irad = FLOOR( rr / dr ) + 1
+        rhocore(ir) = rhocore(ir) &
+            + ecp(ie)%rhocore(irad,1)   * ( ecp(ie)%rad(irad+1) - rr ) / ( ecp(ie)%rad(irad+1)-ecp(ie)%rad(irad) ) &
+            + ecp(ie)%rhocore(irad+1,1) * ( rr - ecp(ie)%rad(irad  ) ) / ( ecp(ie)%rad(irad+1)-ecp(ie)%rad(irad) )
+        ! Avoid division by zero
+        if( rr > 1.0e-8_dp ) then
+          rhocore_grad(ir,:) = rhocore_grad(ir,:) &
+              + (  ecp(ie)%rhocore(irad,2)   * ( ecp(ie)%rad(irad+1) - rr ) / ( ecp(ie)%rad(irad+1)-ecp(ie)%rad(irad) ) &
+                 + ecp(ie)%rhocore(irad+1,2) * ( rr - ecp(ie)%rad(irad  ) ) / ( ecp(ie)%rad(irad+1)-ecp(ie)%rad(irad) ) ) &
+                * ra(:) / rr
+        endif
+      endif
+   enddo
+
+ enddo
+ write(*,*) 'Core density integral: ',SUM(w_grid(:)*rhocore(:))
+
+
+end subroutine setup_rhocore_grid
 
 
 !=========================================================================
@@ -463,6 +534,8 @@ subroutine destroy_dft_grid()
  if( ALLOCATED(bfgz) ) then
    call clean_deallocate('basis grad ftns on grid',bfgz)
  endif
+ if( ALLOCATED(rhocore)) deallocate(rhocore)
+ if( ALLOCATED(rhocore_grad)) deallocate(rhocore_grad)
  call destroy_dft_grid_distribution()
 
 end subroutine destroy_dft_grid

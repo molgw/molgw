@@ -992,6 +992,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  integer              :: igrid_start,igrid_end,ir
  integer              :: timing_xxdft_xc,timing_xxdft_densities,timing_xxdft_libxc,timing_xxdft_vxc
  real(dp)             :: normalization(nspin)
+ real(dp)             :: normalization_core
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: tmp_batch(:,:)
  real(dp),allocatable :: basis_function_r_batch(:,:)
@@ -1043,6 +1044,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  endif
 
  normalization(:) = 0.0_dp
+ normalization_core = 0.0_dp    ! core density has no spin
 
  !
  ! Loop over batches of grid points
@@ -1083,9 +1085,20 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    ! Calculate grad rho at points r for spin up and spin down
    if( .NOT. dft_xc(1)%needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
+     if(ALLOCATED(rhocore)) then
+       do ispin=1,nspin
+         rhor_batch(ispin,:) = rhor_batch(ispin,:) + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
+       enddo
+     endif
    else
      call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch, &
                                    bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
+     if(ALLOCATED(rhocore)) then
+       do ispin=1,nspin
+         rhor_batch(ispin,:)        = rhor_batch(ispin,:)        + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
+         grad_rhor_batch(ispin,:,:) = grad_rhor_batch(ispin,:,:) + rhocore_grad(igrid_start:igrid_end,:) / REAL(nspin,dp)
+       enddo
+     endif
 
      !$OMP PARALLEL DO
      do ir=1,nr
@@ -1100,7 +1113,10 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    endif
 
    ! Normalization
-   normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
+   normalization(:)      = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
+   if(ALLOCATED(rhocore)) then
+     normalization_core = normalization_core + DOT_PRODUCT( rhocore(igrid_start:igrid_end), weight_batch(:) )
+   endif
 
    call stop_clock(timing_xxdft_densities)
 
@@ -1262,6 +1278,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  !
  ! Sum up the contributions from all procs only if needed
  call grid%sum(normalization)
+ call grid%sum(normalization_core)
  call grid%sum(vxc_ao)
  call grid%sum(exc_xc)
 
@@ -1273,6 +1290,9 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
  if(.not.calc_type%is_noft) then ! MRM mutted only for NOFT
    write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+   if(ALLOCATED(rhocore)) then
+     write(stdout,'(a28,2(2x,f12.6))') ' Number of core electrons:',normalization_core
+   endif
    write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
  endif
 
