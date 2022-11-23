@@ -371,7 +371,10 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
      call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
      call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
      occupation(:,:)=zero; occupation(:nstate_occ,1)=two*Occ(:nstate_occ);hamiltonian_xc(:,:,:)=zero;
-     call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
+     ! MRM: The first call of mo_ints contains integrals that are equal to zero
+     if( ANY(occupation(:nstate_occ,1)>completely_empty) ) then
+       call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
+     endif
      hCORE=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
      call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
      call clean_deallocate('occupation',occupation,noft_verbose)
