@@ -9,6 +9,13 @@
 #
 ##################################################
 
+"""
+molgw module contains classes and modules to automate running and reading of MOLGW.
+"""
+
+__author__  = "Fabien Bruneval"
+__version__ = "3.1"
+
 import os, sys, subprocess
 import difflib
 import json
