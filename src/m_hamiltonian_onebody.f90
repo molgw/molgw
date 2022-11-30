@@ -324,7 +324,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
 
   call start_clock(MERGE(0,timing_overlap,in_rt_tddft))
 #if defined(HAVE_LIBCINT)
-  write(stdout,'(/,a)') ' Setup overlap matrix S (LIBCINT)'
+  write(stdout,'(/,a)') ' Setup gradient overlap matrix S (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
   write(stdout,'(/,a)') ' Setup gradient of the overlap matrix S (LIBINT)'
 #else
@@ -353,9 +353,9 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
       allocate(array_cart(ni_cart*nj_cart,3))
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1  ! C convention starts with 0
+
       info = cint1e_ipovlp_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
                                 basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
-
       do idir=1,3
         call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
         s_matrix_grad(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
@@ -408,6 +408,96 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
 
 
 end subroutine setup_overlap_grad
+
+
+!=========================================================================
+! Calculate ( \nabla_{R_A} \alpha | \nabla_{R_B} \beta )
+!                 = ( \nabla_r \alpha | \nabla_r \beta )            <-> LIBCINT integral
+!
+subroutine setup_overlap_hessian(basis,s_matrix_hess)
+  implicit none
+  type(basis_set),intent(in) :: basis
+  real(dp),intent(out)       :: s_matrix_hess(basis%nbf,basis%nbf,3,3)
+  !=====
+  integer              :: ishell,jshell
+  integer              :: ibf1,ibf2,jbf1,jbf2
+  integer              :: ni,nj,ni_cart,nj_cart,li,lj
+  character(len=100)   :: title
+  real(dp),allocatable :: matrix(:,:)
+#if defined(HAVE_LIBCINT)
+  integer                           :: idir,jdir
+  real(C_DOUBLE),allocatable        :: array_cart(:,:,:)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+#endif
+  !=====
+
+  call start_clock(MERGE(0,timing_overlap,in_rt_tddft))
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Setup hessian of the overlap matrix (LIBCINT)'
+#else
+  call die('setup_overlap_hess: overlap hessian not implemented without LIBCINT')
+#endif
+
+  do jshell=1,basis%nshell
+    lj      = basis%shell(jshell)%am
+    nj_cart = number_basis_function_am('CART',lj)
+    nj      = number_basis_function_am(basis%gaussian_type,lj)
+    jbf1    = basis%shell(jshell)%istart
+    jbf2    = basis%shell(jshell)%iend
+
+    do ishell=1,basis%nshell
+      li      = basis%shell(ishell)%am
+      ni_cart = number_basis_function_am('CART',li)
+      ni      = number_basis_function_am(basis%gaussian_type,li)
+      ibf1    = basis%shell(ishell)%istart
+      ibf2    = basis%shell(ishell)%iend
+
+
+
+#if defined(HAVE_LIBCINT)
+      allocate(array_cart(ni_cart*nj_cart,3,3))
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
+      info = cint1e_ipovlpip_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                  basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
+      do idir=1,3
+        do jdir=1,3
+          call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir,jdir),matrix)
+          s_matrix_hess(ibf1:ibf2,jbf1:jbf2,idir,jdir) = matrix(:,:)
+        enddo
+      enddo
+      deallocate(matrix)
+
+      deallocate(array_cart)
+#endif
+
+    enddo
+  enddo
+
+  title='=== Overlap hessian matrix YX ==='
+  call dump_out_matrix(.FALSE.,title,s_matrix_hess(:,:,2,1))
+  title='=== Overlap hessian matrix XY ==='
+  call dump_out_matrix(.FALSE.,title,s_matrix_hess(:,:,1,2))
+  title='=== Overlap hessian matrix XZ ==='
+  call dump_out_matrix(.FALSE.,title,s_matrix_hess(:,:,1,3))
+  title='=== Overlap hessian matrix ZX ==='
+  call dump_out_matrix(.FALSE.,title,s_matrix_hess(:,:,3,1))
+  title='=== Overlap hessian matrix YZ ==='
+  call dump_out_matrix(.FALSE.,title,s_matrix_hess(:,:,2,3))
+  title='=== Overlap hessian matrix ZY ==='
+  call dump_out_matrix(.FALSE.,title,s_matrix_hess(:,:,3,2))
+  title='=== Overlap hessian matrix XX ==='
+  call dump_out_matrix(.FALSE.,title,s_matrix_hess(:,:,1,1))
+  title='=== Overlap hessian matrix YY ==='
+  call dump_out_matrix(.FALSE.,title,s_matrix_hess(:,:,2,2))
+  title='=== Overlap hessian matrix ZZ ==='
+  call dump_out_matrix(.FALSE.,title,s_matrix_hess(:,:,3,3))
+
+  call stop_clock(MERGE(0,timing_overlap,in_rt_tddft))
+
+
+end subroutine setup_overlap_hessian
 
 
 !=========================================================================
@@ -475,9 +565,8 @@ subroutine recalc_overlap_grad(basis_t,basis_p,s_matrix_grad)
       allocate(array_cart(ni_cart*nj_cart,3))
       shls(1) = jshell-1  ! C convention starts with 0
       shls(2) = ishell-1+basis_t%nshell  ! C convention starts with 0
-      info = cint1e_ipovlp_cart(array_cart, shls, basis_t%LIBCINT_atm, &
-            basis_t%LIBCINT_natm, basis_t%LIBCINT_bas, basis_t%LIBCINT_nbas, basis_t%LIBCINT_env)
-
+      info = cint1e_ipovlp_cart(array_cart, shls, basis_t%LIBCINT_atm,basis_t%LIBCINT_natm, &
+                                basis_t%LIBCINT_bas, basis_t%LIBCINT_nbas, basis_t%LIBCINT_env)
       do idir=1,3
         call transform_libint_to_molgw(basis_t%gaussian_type,li,lj,array_cart(:,idir),matrix_tp)
         s_matrix_grad(ibf1:ibf2,jbf1:jbf2,idir) = matrix_tp(:,:)
