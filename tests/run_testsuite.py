@@ -302,8 +302,10 @@ have_openmp           = 'Running with OPENMP' in open(tmpfolder+'/fake.out').rea
 have_libxc            = 'Running with LIBXC' in open(tmpfolder+'/fake.out').read()
 have_mpi              = 'Running with MPI' in open(tmpfolder+'/fake.out').read()
 have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder+'/fake.out').read()
-have_libint_onebody   = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
-have_libint_gradients = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
+have_onebody          = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
+have_gradients        = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read() \
+                        or 'Code compiled with LIBCINT' in open(tmpfolder+'/fake.out').read()
+have_libint_forces    = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
 is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder+'/fake.out').read()
 
 #with open(tmpfolder+'/fake.out','r') as ffake:
@@ -312,17 +314,18 @@ is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder+'
 #      lapack_diago_flavor = line.split(':')[1].strip()
 
 print('MOLGW details:')
-print('            MOLGW version: ' + version)
-print('                   OPENMP: {}'.format(have_openmp) )
-print('                      MPI: {}'.format(have_mpi) )
-print('                SCALAPACK: {}'.format(have_scalapack) )
-print('                    LIBXC: {}'.format(have_libxc) )
+print('              MOLGW version: ' + version)
+print('                     OPENMP: {}'.format(have_openmp) )
+print('                        MPI: {}'.format(have_mpi) )
+print('                  SCALAPACK: {}'.format(have_scalapack) )
+print('                      LIBXC: {}'.format(have_libxc) )
 if is_libcint:
-    print('                integrals: LIBCINT' )
+    print('                  integrals: LIBCINT' )
 else:
-    print('                integrals: LIBINT' )
-print('         1-body integrals: {}'.format(have_libint_onebody) )
-print('      gradients integrals: {}'.format(have_libint_gradients) )
+    print('                  integrals: LIBINT' )
+print('           1-body integrals: {}'.format(have_onebody) )
+print('        gradients integrals: {}'.format(have_gradients) )
+print(' LIBINT gradients integrals: {}'.format(have_libint_forces) )
 #print('        (Sca)LAPACK diago: {}'.format(lapack_diago_flavor) )
 print()
 
@@ -342,6 +345,7 @@ restarting     = []
 parallel       = []
 need_scalapack = []
 need_gradients = []
+need_forces    = []
 need_libcint   = []
 test_names     = []
 testinfo       = []
@@ -362,6 +366,7 @@ for line in ftestsuite:
     parallel.append(True)
     need_scalapack.append(False)
     need_gradients.append(False)
+    need_forces.append(False)
     need_libcint.append(False)
 
   if len(parsing) == 3:
@@ -379,6 +384,7 @@ for line in ftestsuite:
       parallel.append(True)
     need_scalapack.append( 'need_scalapack' in parsing[2].lower() )
     need_gradients.append( 'need_gradients' in parsing[2].lower() )
+    need_forces.append( 'need_forces' in parsing[2].lower() )
     need_libcint.append( 'need_libcint' in parsing[2].lower() )
 
   elif len(parsing) == 4:
@@ -501,11 +507,17 @@ for iinput in range(ninput):
     print('  because this compilation of MOLGW does not have SCALAPACK')
     skipping_reason.append('this compilation of MOLGW does not have SCALAPACK')
     continue
-  if need_gradients[iinput] and not have_libint_gradients:
+  if need_gradients[iinput] and not have_gradients:
     test_files_skipped += 1
     print('\nSkipping test file: '+inp)
     print('  because this compilation of MOLGW does not have the integral gradients')
     skipping_reason.append('this compilation of MOLGW does not have the integral gradients')
+    continue
+  if need_forces[iinput] and not have_libint_forces:
+    test_files_skipped += 1
+    print('\nSkipping test file: '+inp)
+    print('  because this compilation of MOLGW does not have the force integrals')
+    skipping_reason.append('this compilation of MOLGW does not have the force integrals')
     continue
   if not parallel[iinput] and nprocs > 1:
     test_files_skipped += 1
