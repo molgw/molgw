@@ -265,6 +265,10 @@ def print_input_file(calc,filename="molgw.in"):
         for key, value in calc.items():
             if key == "xyz":
                 f.write('  {:30} = {}\n'.format("natom",value.count("\n")) )
+            elif key == "rawxyz":
+                continue
+            elif key == "vel_projectile":
+                f.write('  {:30} = {}\n'.format(key,value) )
             elif type(value) in [type(int()),type(float())]:
                 f.write('  {:30} = {}\n'.format(key,value) )
             else:
@@ -272,6 +276,8 @@ def print_input_file(calc,filename="molgw.in"):
         f.write('/\n')
         if "xyz" in calc:
             f.write(calc["xyz"])
+        if "rawxyz" in calc:
+            f.write(calc["rawxyz"])
 
 
 ########################################################################
