@@ -2768,12 +2768,12 @@ subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
 #if defined(HAVE_MKL)
       call ZGEMMT('L','C','N',nstate,nbf,COMPLEX_ONE,x_matrix_cmplx(1,1),nbf, &
                                                      m_tmp(1,1),nbf,          &
-                                         COMPLEX_ZERO,h_small_cmplx(1,1,ispin),nstate)
+                                         COMPLEX_ZERO,h_small_cmplx(:,:,ispin),nstate)
       call matrix_lower_to_full(h_small_cmplx(:,:,ispin))
 #else
       call ZGEMM('C','N',nstate,nstate,nbf,COMPLEX_ONE,x_matrix_cmplx(1,1),nbf, &
                                                        m_tmp(1,1),nbf,  &
-                                           COMPLEX_ZERO,h_small_cmplx(1,1,ispin),nstate)
+                                           COMPLEX_ZERO,h_small_cmplx(:,:,ispin),nstate)
 #endif
 
       deallocate(m_tmp)
