@@ -265,6 +265,10 @@ subroutine recalc_overlap(basis_t,basis_p,s_matrix)
   real(dp),allocatable :: matrix_tp(:,:)
   !=====
 
+  ! If there is no targer, all the basis functions are moving together
+  ! and there is nothing to do
+  if(basis_t%nshell==0) return
+
   ibf1    = basis_t%shell(1)%istart
   ibf2    = basis_t%shell(basis_t%nshell)%iend
 

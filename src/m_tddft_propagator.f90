@@ -457,6 +457,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
     en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+    en_tddft%work = en_tddft%work + DOT_PRODUCT(force_projectile(:),vel_nuclei(:,ncenter_nuclei))*time_step
 
     write( stdout,'(1x,a,2(1x,es14.8))') 'Number of electrons from Tr(PS): ', &
                                          SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 ) * s_matrix(:,:) )
@@ -480,8 +481,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       en_tddft%time = time_cur
       write(time_key,'(i8)') iwrite_step
       call print_energy_yaml('tddft energy '//TRIM(ADJUSTL(time_key)),en_tddft)
-      !FBFB moving_basis spurious forces correction
-      !call setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,.FALSE.)
 
       if ( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
       if ( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
@@ -871,11 +870,9 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   complex(dp),intent(in)              :: c_matrix_cmplx(:,:,:)
   complex(dp),intent(in)              :: h_cmplx(:,:,:)
   real(dp),intent(in)                 :: occupation(:,:)
-  !real(dp),intent(inout)              :: force_mb_p(3)
   logical,intent(in)                  :: recalc
   !=====
   integer                             :: ibf,idir,istate,jbf,ispin
-  real(dp)                            :: force_mb_p(3)
   real(dp),allocatable                :: s_matrix_hess(:,:,:,:)
   real(dp),allocatable                :: s_matrix_inv(:,:)
   real(dp),allocatable                :: BboldAdagger(:,:,:)
@@ -884,6 +881,7 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   complex(dp),allocatable             :: DboldA2(:,:,:)
   complex(dp),allocatable             :: DboldA3(:,:,:)
   real(dp),allocatable                :: cc_matrix(:,:,:)   ! cc_matrix corresponds to C^A_\alpha\beta in Kunert-Schmidt EPJ-D (2003)
+  complex(dp),allocatable             :: m_matrix(:,:,:)  ! effective propagation operation S**-1 * ( H - iD)
   complex(dp) :: ctmp(3)
   !=====
 
@@ -899,6 +897,7 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   allocate(DboldA2(basis%nbf,basis%nbf,3))
   allocate(DboldA3(basis%nbf,basis%nbf,3))
   allocate(BAdagger(basis%nbf,basis%nbf))
+  allocate(m_matrix(basis%nbf,basis%nbf,nspin))
 
   call setup_overlap_grad(basis,BboldAdagger)
   do ibf=1,basis%nbf
@@ -910,10 +909,21 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
                     + basis%bff(ibf)%v0(2) * BboldAdagger(ibf,:,2) &
                     + basis%bff(ibf)%v0(3) * BboldAdagger(ibf,:,3)
   enddo
+
+  do ispin=1,nspin
+    m_matrix(:,:,ispin) = h_cmplx(:,:,ispin) - im * TRANSPOSE(BAdagger(:,:))
+    m_matrix(:,:,ispin) = MATMUL( s_matrix_inv(:,:) , m_matrix(:,:,ispin) )
+  enddo
   
-  do idir=1,3
-    DboldA1(:,:,idir) = MATMUL( BboldAdagger(:,:,idir), MATMUL( s_matrix_inv, h_cmplx(:,:,1) ) ) &
-                        + MATMUL( MATMUL( h_cmplx(:,:,1), s_matrix_inv), TRANSPOSE( BboldAdagger(:,:,idir) ) )
+!  do idir=1,3
+!    DboldA1(:,:,idir) = MATMUL( BboldAdagger(:,:,idir), MATMUL( s_matrix_inv, h_cmplx(:,:,1) ) ) &
+!                        + MATMUL( MATMUL( h_cmplx(:,:,1), s_matrix_inv), TRANSPOSE( BboldAdagger(:,:,idir) ) )
+!  enddo
+  do ispin=1,nspin
+    do idir=1,3
+      DboldA1(:,:,idir) = MATMUL( BboldAdagger(:,:,idir), m_matrix(:,:,ispin) )  &
+                        + MATMUL( CONJG( TRANSPOSE(m_matrix(:,:,ispin))), TRANSPOSE( BboldAdagger(:,:,idir) ) )
+    enddo
   enddo
 
   ctmp(:) = 0.0_dp
@@ -929,27 +939,7 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
       enddo
     enddo
   enddo
-  write(1001,'(3(2x,es16.8))') ctmp(:)%re
-
-
-  do idir=1,3
-    DboldA2(:,:,idir) = im * MATMUL( BAdagger(:,:), MATMUL( s_matrix_inv, TRANSPOSE(BboldAdagger(:,:,idir)) ) ) &
-                        - im * MATMUL( BboldAdagger(:,:,idir) , MATMUL( s_matrix_inv, TRANSPOSE(BAdagger(:,:)) )  )
-  enddo
-  ctmp(:) = 0.0_dp
-  ispin=1
-  do idir=1,3
-    do istate=1,nocc
-      do ibf=1,basis%nbf
-        do jbf=1,basis%nbf
-          ctmp(idir) = ctmp(idir) + DboldA2(ibf,jbf,idir) &
-                                       * CONJG(c_matrix_cmplx(ibf,istate,ispin)) * c_matrix_cmplx(jbf,istate,ispin) &
-                                       * occupation(istate,ispin)
-        enddo
-      enddo
-    enddo
-  enddo
-  write(1002,'(3(2x,es16.8))') ctmp(:)%re
+  !write(1001,'(*(2x,es16.8))') ctmp(:)
 
 
 
@@ -975,13 +965,13 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   deallocate(s_matrix_hess)
   
   do jbf=1,basis%nbf
-    ! if beta is not on a projectile, then the gradient is not contributing the for on the projectile
+    ! if beta is not on a projectile, then the gradient is not contributing to the force on the projectile
     if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) then
       cc_matrix(:,jbf,:) = 0.0_dp
     endif
   enddo
 
-  ctmp(:) = 0.0_dp
+  !ctmp(:) = 0.0_dp
   ispin=1
   do idir=1,3
     do istate=1,nocc
@@ -998,8 +988,8 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
 
   deallocate(cc_matrix)
 
-  write(1003,'(3(2x,es16.8))') ctmp(:)%re
-  force_mb_p(:) = ctmp(:)%re
+  force_projectile(:) = ctmp(:)%re
+  write(1001,'(*(2x,es16.8))') force_projectile(:)
 
 end subroutine setup_mb_force
 
@@ -1171,6 +1161,9 @@ subroutine predictor_corrector(basis,                  &
                                  x_matrix,                     &
                                  dipole_ao,                    &
                                  h_cmplx,en_tddft)
+
+    !FBFB moving_basis spurious forces correction
+    call setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,.FALSE.)
 
     !--4--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
@@ -1625,10 +1618,10 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
 
   select case(excit_type%form)
   case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
-    write(file_time_data,"(f10.4,12(2x,es16.8e3))") &
+    write(file_time_data,"(f10.4,*(2x,es16.8e3))") &
        time_cur, en_tddft%total, xatom(:,ncenter_nuclei), en_tddft%nuc_nuc, en_tddft%nucleus, &
        en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
-       en_tddft%excit, en_tddft%id
+       en_tddft%excit, en_tddft%id, en_tddft%work
     call output_projectile_position()
 
   case(EXCIT_LIGHT)
@@ -1677,9 +1670,9 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
   !---------------------------------
   select case(excit_type%form)
   case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
-    write(file_time_data,"(a10,12(a18))") &
+    write(file_time_data,"(a10,13(a18))") &
             "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc","enuc_wo_proj","ekin","ehart",&
-            "eexx_hyb","exc","enuc_proj","e_iD"
+            "eexx_hyb","exc","enuc_proj","e_iD","work"
 
   case(EXCIT_LIGHT)
     write(file_time_data,"(a,a)") &
@@ -2768,12 +2761,12 @@ subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
 #if defined(HAVE_MKL)
       call ZGEMMT('L','C','N',nstate,nbf,COMPLEX_ONE,x_matrix_cmplx(1,1),nbf, &
                                                      m_tmp(1,1),nbf,          &
-                                         COMPLEX_ZERO,h_small_cmplx(1,1,ispin),nstate)
+                                         COMPLEX_ZERO,h_small_cmplx(:,:,ispin),nstate)
       call matrix_lower_to_full(h_small_cmplx(:,:,ispin))
 #else
       call ZGEMM('C','N',nstate,nstate,nbf,COMPLEX_ONE,x_matrix_cmplx(1,1),nbf, &
                                                        m_tmp(1,1),nbf,  &
-                                           COMPLEX_ZERO,h_small_cmplx(1,1,ispin),nstate)
+                                           COMPLEX_ZERO,h_small_cmplx(:,:,ispin),nstate)
 #endif
 
       deallocate(m_tmp)

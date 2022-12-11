@@ -30,6 +30,7 @@ module m_atoms
   real(dp),allocatable,protected :: vel_nuclei(:,:)
   real(dp),allocatable,protected :: vel_basis(:,:)
   real(dp),allocatable,public    :: force(:,:)
+  real(dp),public                :: force_projectile(3) = 0.0_dp
 
   ! See if we keep these arrays in the long-term
   real(dp),allocatable,public    :: force_nuc_nuc(:,:)
