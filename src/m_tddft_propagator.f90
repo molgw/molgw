@@ -105,7 +105,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: file_mulliken, file_lowdin
   real(dp)                   :: time_cur
   complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
-  complex(dp)                :: Nelec
   logical                    :: is_identity_ ! keep this varibale
   !==cube_diff varibales====================================
   real(dp),allocatable       :: cube_density_start(:,:,:,:)
@@ -459,8 +458,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
     en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
-    Nelec = SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 )*s_matrix(:,:) )
-    write( stdout, * ) 'Trace(PS) : N e- = ', REAL(Nelec) ! AIMAG(Nelec)
+    write( stdout,'(1x,a,2(1x,es14.8))') 'Number of electrons from Tr(PS): ', &
+                                         SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 ) * s_matrix(:,:) )
 
     !
     ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
@@ -481,6 +480,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       en_tddft%time = time_cur
       write(time_key,'(i8)') iwrite_step
       call print_energy_yaml('tddft energy '//TRIM(ADJUSTL(time_key)),en_tddft)
+      !FBFB moving_basis spurious forces correction
+      !call setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,.FALSE.)
 
       if ( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
       if ( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
@@ -705,7 +706,7 @@ subroutine stationary_c_matrix(basis,               &
     allocate( m_tmp(basis%nbf,basis%nbf,nspin))
 
     do ispin=1, nspin
-      ! in ortho basis : M' = X**H * (H-iD+mv**2*S) * X
+      ! in ortho basis : M' = X**H * ( H-iD+(mv**2+ deltaE)*S ) * X
       m_tmp(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
       !FBFB Why (1/2) m v**2 ?
       m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
@@ -860,6 +861,147 @@ subroutine setup_d_matrix(basis,d_matrix,recalc)
   deallocate(s_matrix_grad)
 
 end subroutine setup_d_matrix
+
+
+!=========================================================================
+subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recalc)
+  implicit none
+  type(basis_set),intent(in)          :: basis
+  real(dp),intent(in)                 :: s_matrix(:,:)
+  complex(dp),intent(in)              :: c_matrix_cmplx(:,:,:)
+  complex(dp),intent(in)              :: h_cmplx(:,:,:)
+  real(dp),intent(in)                 :: occupation(:,:)
+  !real(dp),intent(inout)              :: force_mb_p(3)
+  logical,intent(in)                  :: recalc
+  !=====
+  integer                             :: ibf,idir,istate,jbf,ispin
+  real(dp)                            :: force_mb_p(3)
+  real(dp),allocatable                :: s_matrix_hess(:,:,:,:)
+  real(dp),allocatable                :: s_matrix_inv(:,:)
+  real(dp),allocatable                :: BboldAdagger(:,:,:)
+  real(dp),allocatable                :: BAdagger(:,:)
+  complex(dp),allocatable             :: DboldA1(:,:,:)
+  complex(dp),allocatable             :: DboldA2(:,:,:)
+  complex(dp),allocatable             :: DboldA3(:,:,:)
+  real(dp),allocatable                :: cc_matrix(:,:,:)   ! cc_matrix corresponds to C^A_\alpha\beta in Kunert-Schmidt EPJ-D (2003)
+  complex(dp) :: ctmp(3)
+  !=====
+
+  write(stdout,'(/,a)') ' Setup mb force (analytic)'
+
+  allocate(s_matrix_hess(basis%nbf,basis%nbf,3,3))
+  allocate(s_matrix_inv,MOLD=s_matrix)
+  s_matrix_inv(:,:) = s_matrix(:,:)
+  call invert(s_matrix_inv)
+
+  allocate(BboldAdagger(basis%nbf,basis%nbf,3))
+  allocate(DboldA1(basis%nbf,basis%nbf,3))
+  allocate(DboldA2(basis%nbf,basis%nbf,3))
+  allocate(DboldA3(basis%nbf,basis%nbf,3))
+  allocate(BAdagger(basis%nbf,basis%nbf))
+
+  call setup_overlap_grad(basis,BboldAdagger)
+  do ibf=1,basis%nbf
+    ! if A is not a projectile then BboldAdagger is zero
+    if( ALL( ABS(basis%bff(ibf)%v0(:)) < 1.0e-6_dp ) ) then
+      BboldAdagger(ibf,:,:) = 0.0_dp
+    endif
+    BAdagger(ibf,:) = basis%bff(ibf)%v0(1) * BboldAdagger(ibf,:,1) &
+                    + basis%bff(ibf)%v0(2) * BboldAdagger(ibf,:,2) &
+                    + basis%bff(ibf)%v0(3) * BboldAdagger(ibf,:,3)
+  enddo
+  
+  do idir=1,3
+    DboldA1(:,:,idir) = MATMUL( BboldAdagger(:,:,idir), MATMUL( s_matrix_inv, h_cmplx(:,:,1) ) ) &
+                        + MATMUL( MATMUL( h_cmplx(:,:,1), s_matrix_inv), TRANSPOSE( BboldAdagger(:,:,idir) ) )
+  enddo
+
+  ctmp(:) = 0.0_dp
+  ispin=1
+  do idir=1,3
+    do istate=1,nocc
+      do ibf=1,basis%nbf
+        do jbf=1,basis%nbf
+          ctmp(idir) = ctmp(idir) + DboldA1(ibf,jbf,idir) &
+                                       * CONJG(c_matrix_cmplx(ibf,istate,ispin)) * c_matrix_cmplx(jbf,istate,ispin) &
+                                       * occupation(istate,ispin)
+        enddo
+      enddo
+    enddo
+  enddo
+  write(1001,'(3(2x,es16.8))') ctmp(:)%re
+
+
+  do idir=1,3
+    DboldA2(:,:,idir) = im * MATMUL( BAdagger(:,:), MATMUL( s_matrix_inv, TRANSPOSE(BboldAdagger(:,:,idir)) ) ) &
+                        - im * MATMUL( BboldAdagger(:,:,idir) , MATMUL( s_matrix_inv, TRANSPOSE(BAdagger(:,:)) )  )
+  enddo
+  ctmp(:) = 0.0_dp
+  ispin=1
+  do idir=1,3
+    do istate=1,nocc
+      do ibf=1,basis%nbf
+        do jbf=1,basis%nbf
+          ctmp(idir) = ctmp(idir) + DboldA2(ibf,jbf,idir) &
+                                       * CONJG(c_matrix_cmplx(ibf,istate,ispin)) * c_matrix_cmplx(jbf,istate,ispin) &
+                                       * occupation(istate,ispin)
+        enddo
+      enddo
+    enddo
+  enddo
+  write(1002,'(3(2x,es16.8))') ctmp(:)%re
+
+
+
+  ! This routine returns s_hess = < grad_R_A phi_alpha | grad_R_B phi_beta >
+  call setup_overlap_hessian(basis,s_matrix_hess)
+
+  ! Lets calculate < d/dt phi_alpha | grad_R_B phi_beta >
+  !                  = < v_R_A . grad_R_A phi_alpha | grad_R_B phi_beta >
+  allocate(cc_matrix(basis%nbf,basis%nbf,3))
+
+  do ibf=1,basis%nbf
+    cc_matrix(ibf,:,1) = basis%bff(ibf)%v0(1) * s_matrix_hess(ibf,:,1,1) &
+                       + basis%bff(ibf)%v0(2) * s_matrix_hess(ibf,:,2,1) &
+                       + basis%bff(ibf)%v0(3) * s_matrix_hess(ibf,:,3,1)
+    cc_matrix(ibf,:,2) = basis%bff(ibf)%v0(1) * s_matrix_hess(ibf,:,1,2) &
+                       + basis%bff(ibf)%v0(2) * s_matrix_hess(ibf,:,2,2) &
+                       + basis%bff(ibf)%v0(3) * s_matrix_hess(ibf,:,3,2)
+    cc_matrix(ibf,:,3) = basis%bff(ibf)%v0(1) * s_matrix_hess(ibf,:,1,3) &
+                       + basis%bff(ibf)%v0(2) * s_matrix_hess(ibf,:,2,3) &
+                       + basis%bff(ibf)%v0(3) * s_matrix_hess(ibf,:,3,3)
+  enddo
+
+  deallocate(s_matrix_hess)
+  
+  do jbf=1,basis%nbf
+    ! if beta is not on a projectile, then the gradient is not contributing the for on the projectile
+    if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) then
+      cc_matrix(:,jbf,:) = 0.0_dp
+    endif
+  enddo
+
+  ctmp(:) = 0.0_dp
+  ispin=1
+  do idir=1,3
+    do istate=1,nocc
+      do ibf=1,basis%nbf
+        do jbf=1,basis%nbf
+          ctmp(idir) = ctmp(idir) + im * ( cc_matrix(jbf,ibf,idir) - cc_matrix(ibf,jbf,idir) ) &
+                                        * CONJG(c_matrix_cmplx(ibf,istate,ispin)) * c_matrix_cmplx(jbf,istate,ispin) &
+                                        * occupation(istate,ispin)
+        enddo
+      enddo
+    enddo
+  enddo
+
+
+  deallocate(cc_matrix)
+
+  write(1003,'(3(2x,es16.8))') ctmp(:)%re
+  force_mb_p(:) = ctmp(:)%re
+
+end subroutine setup_mb_force
 
 
 !=========================================================================
@@ -2626,12 +2768,12 @@ subroutine transform_hamiltonian_ortho(x_matrix,h_cmplx,h_small_cmplx)
 #if defined(HAVE_MKL)
       call ZGEMMT('L','C','N',nstate,nbf,COMPLEX_ONE,x_matrix_cmplx(1,1),nbf, &
                                                      m_tmp(1,1),nbf,          &
-                                         COMPLEX_ZERO,h_small_cmplx(1,1,ispin),nstate)
+                                         COMPLEX_ZERO,h_small_cmplx(:,:,ispin),nstate)
       call matrix_lower_to_full(h_small_cmplx(:,:,ispin))
 #else
       call ZGEMM('C','N',nstate,nstate,nbf,COMPLEX_ONE,x_matrix_cmplx(1,1),nbf, &
                                                        m_tmp(1,1),nbf,  &
-                                           COMPLEX_ZERO,h_small_cmplx(1,1,ispin),nstate)
+                                           COMPLEX_ZERO,h_small_cmplx(:,:,ispin),nstate)
 #endif
 
       deallocate(m_tmp)

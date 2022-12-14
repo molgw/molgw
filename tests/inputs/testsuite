@@ -9,7 +9,8 @@
 #    c. (Optional) specific keywords: restart         need the previous run and therefore conserve tmp files
 #                                     noparallel      skip in parallel
 #                                     need_scalapack  only working when SCALAPACK is available
-#                                     need_gradients  only working when LIBINT gradients are available
+#                                     need_gradients  only working when LIBINT or LIBCINT gradients are available
+#                                     need_forces     only working when LIBINT gradients are available
 #
 # 2. Test line comprises 4 commas:
 #    a. Text key to search in the out file
@@ -636,7 +637,7 @@ GW small basis LUMO energy,   0.843681         , 0 , 1.0e-4
 GW HOMO energy            , -12.322069         , 0 , 1.0e-4
 GW LUMO energy            ,   0.817942         , 0 , 1.0e-4
 
-h2_relax.in               , H2 forces without RI, need_gradients
+h2_relax.in               , H2 forces without RI, need_forces
 SCF Total Energy          ,      -1.1313335905 , 0 , 1.0e-5
 H-F force atom      1     ,      0.5090922298  , 0 , 1.0e-3
 H-F force atom      2     ,     -0.5090922298  , 0 , 1.0e-3
@@ -924,7 +925,7 @@ RT-TDDFT Total Energy     ,  -2.7195375026     , 0 , 1.0e-5
 h_in_he_rt_lda_MB_PC2B_ions.in, RT-TDDFT PC="MB_PC2B" projectile with basis, need_gradients
 SCF Total Energy          ,  -2.8286834572     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -2.3308202283     , 0 , 1.0e-5
-Number of electrons	  ,  2.002093	       , 0 , 1.0e-4
+Number of electrons	  ,  2.002093	       , 0 , 5.0e-4  # Loosened criterium
 Lowdin projectile charge  ,  8.379366E-01      , 0 , 1.0e-4
 
 h_in_he_rt_lda_MB_PC2B_ions_restart.in, RT-TDDFT PC="MB_PC2B" projectile with basis, restart need_gradients
@@ -938,9 +939,8 @@ RT-TDDFT Total Energy     ,  -1.6095526306     , 0 , 1.0e-5
 Number of electrons       ,   1.999590         , 0 , 1.0e-4
 
 benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++, need_gradients
-SCF Total Energy          , -232.8924888075    , 0 , 1.0e-7
+SCF Total Energy          , -232.8924888075    , 0 , 1.0e-5   # Loosened criterium
 RT-TDDFT Total Energy     , -230.4199238294    , 0 , 1.0e-5
-Number of electrons       ,    41.994968       , 0 , 1.0e-4
-
+Number of electrons       ,    42.0025941      , 0 , 1.0e-4
 
 
