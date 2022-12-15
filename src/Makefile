@@ -324,7 +324,7 @@ mp2.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
 
 m_noft.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
        m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 \
-       m_noft_driver.f90 m_hamiltonian_onebody.f90 m_noft.f90  
+       m_hamiltonian_onebody.f90 m_noft.f90  
 	$(FC_W_OPTS) -c m_noft.f90 $(LIBXC_INCS)
 
 m_virtual_orbital_space.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_scalapack.f90 \
