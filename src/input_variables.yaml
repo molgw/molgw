@@ -1010,7 +1010,8 @@ stopping:
   experimental: 'no'
   default: 'no'
   comment: Triggers the calculation of the stopping power within linear-response theory.
-           Only effective when postscf=''td'' or ''bse''. Avaialble values are ''no'', ''spherical'', ''3d''.
+           Only effective when postscf=''td'' or ''bse''.
+           Available values are ''no'', ''spherical'', ''3d''.
 
 tda:
   family: post
