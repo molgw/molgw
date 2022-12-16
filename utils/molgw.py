@@ -282,11 +282,27 @@ def print_input_file(calc,filename="molgw.in"):
 
 ########################################################################
 # Conversions for stopping power
-def kev_to_au(e_kev,mass=1.0):
+
+# velocity conversion
+def vel_kev_to_au(e_kev,mass=1.0):
     return (1000.*e_kev*2.0/Ha_eV/(1836.1253*mass))**0.5
 
-def au_to_kev(v_au,mass=1.0):
+def vel_au_to_kev(v_au,mass=1.0):
     return 0.5*mass*1836.1253*v_au**2*Ha_eV/1000.
+
+# stopping cross section (S/rho) conversion
+# Srim is in 1e-15 eV cm**2 /atom
+def scs_srim_to_au(scs_srim):
+    return scs_srim / Ha_eV * (bohr_ang * 1.0e-8) / ( 1.0e15 * (bohr_ang * 1.0e-8)**3 )
+
+def scs_au_to_srim(scs_au):
+    return scs_au * Ha_eV / (bohr_ang * 1.0e-8) * ( 1.0e15 * (bohr_ang * 1.0e-8)**3 )
+
+def se_au_to_kevpernm(se_au):
+    return se_au * (Ha_eV * 1.0e-3) / (bohr_ang * 0.10)
+
+def se_kevpernm_to_au(se_kevpernm):
+    return se_kevpernm / (Ha_eV * 1.0e-3) * (bohr_ang * 0.10)
 
 
 ########################################################################
