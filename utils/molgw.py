@@ -16,6 +16,7 @@ molgw module contains classes and modules to automate running and reading of MOL
 __author__  = "Fabien Bruneval"
 __version__ = "3.1"
 
+import math
 import os, sys, subprocess
 import difflib
 import json
@@ -28,6 +29,7 @@ except ImportError:
 
 bohr_ang =  0.52917721092
 Ha_eV    = 27.21138505
+c_speedlight = 137.035999074   # speed of light in atomic units (fine-structure constant inverse)
 periodic_table = [ 'H',                                                                                                  'He', \
                    'Li', 'Be',                                                              'B',  'C',  'N',  'O',  'F', 'Ne', \
                    'Na', 'Mg',                                                             'Al', 'Si',  'P',  'S', 'Cl', 'Ar', \
@@ -287,6 +289,11 @@ def print_input_file(calc,filename="molgw.in"):
 def vel_kev_to_au(e_kev,mass=1.0):
     return (1000.*e_kev*2.0/Ha_eV/(1836.1253*mass))**0.5
 
+def velrel_kev_to_au(e_kev,mass=1.0):
+    mc2 = 1836.1253*mass*c_speedlight**2
+    e_au = 1000.*e_kev/Ha_eV
+    return c_speedlight*(1.0-(mc2/(e_au+mc2))**2)**0.5
+
 def vel_au_to_kev(v_au,mass=1.0):
     return 0.5*mass*1836.1253*v_au**2*Ha_eV/1000.
 
@@ -304,6 +311,9 @@ def se_au_to_kevpernm(se_au):
 def se_kevpernm_to_au(se_kevpernm):
     return se_kevpernm / (Ha_eV * 1.0e-3) * (bohr_ang * 0.10)
 
+# Classic Bethe-Formula in atomic units
+def scs_bethe_au(v_au,nelec,ionization,charge=1.0):
+     return 4.0*math.pi*nelec*charge**2/v_au**2 * math.log( 2.0*v_au**2/ionization)
 
 ########################################################################
 # Load a gaussian cube file into a class
