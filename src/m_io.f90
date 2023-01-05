@@ -673,8 +673,8 @@ subroutine lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_
    if( PRESENT( atom_state_occ ) ) then
      call die("=== FILE ABSENT FOR TDDFT : manual_pdos ===")
    else
-     natom1=ncenter_nuclei  ! by convention the last atom is the projectile
-     natom2=ncenter_nuclei  ! by convention the last atom is the projectile
+     natom1=MAXVAL(basis%shell(:)%icenter)  ! by convention the last atom is the projectile
+     natom2=natom1                          ! by convention the last atom is the projectile
    end if
  endif
 
