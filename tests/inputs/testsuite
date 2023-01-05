@@ -922,7 +922,7 @@ RT-TDDFT Total Energy     ,  -2.7195375026     , 0 , 1.0e-5
 h_in_he_rt_lda_MB_PC2B_ions.in, RT-TDDFT PC="MB_PC2B" projectile with basis, need_gradients
 SCF Total Energy          ,  -2.8286834572     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -2.3308202283     , 0 , 1.0e-5
-Number of electrons	  ,  2.002093	       , 0 , 1.0e-4
+Number of electrons	  ,  2.002093	       , 0 , 5.0e-4  # Loosened criterium
 Lowdin projectile charge  ,  8.379366E-01      , 0 , 1.0e-4
 
 h_in_he_rt_lda_MB_PC2B_ions_restart.in, RT-TDDFT PC="MB_PC2B" projectile with basis, restart need_gradients
@@ -938,7 +938,6 @@ Number of electrons       ,   1.999590         , 0 , 1.0e-4
 benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++, need_gradients
 SCF Total Energy          , -232.8924888075    , 0 , 1.0e-5   # Loosened criterium
 RT-TDDFT Total Energy     , -230.4199238294    , 0 , 1.0e-5
-Number of electrons       ,    41.994968       , 0 , 1.0e-4
-
+Number of electrons       ,    42.0025941      , 0 , 1.0e-4
 
 

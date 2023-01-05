@@ -430,9 +430,9 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
   real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
   !=====
   integer                            :: nstate,m_x,n_x
-  integer,parameter                  :: nqradial = 500
-  real(dp),parameter                 :: dqradial = 0.02_dp
-  integer,parameter                  :: nq = nqradial
+  integer                            :: nqradial
+  real(dp)                           :: dqradial
+  integer                            :: nq
   integer                            :: gt
   integer                            :: t_ia,t_jb
   integer                            :: t_ia_global,t_jb_global
@@ -443,9 +443,9 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
   complex(dp),allocatable            :: gos_tddft(:)
   integer                            :: iqs,iq,iiq,iqradial
   real(dp)                           :: fnq(chi%npole_reso)
-  real(dp)                           :: qvec_list(3,nq),wq(nq)
+  real(dp),allocatable               :: qvec_list(:,:),wq(:)
+  real(dp),allocatable               :: bethe_sumrule(:)
   real(dp)                           :: qvec(3),qq
-  real(dp)                           :: bethe_sumrule(nq)
   integer                            :: iv
   real(dp)                           :: stopping_cross_section(nvel_projectile)
   !real(dp)                           :: stopping_exc(nvel_projectile,chi%npole_reso)
@@ -457,6 +457,11 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
 
 
   call start_clock(timing_stopping)
+
+  nqradial = stopping_nq
+  dqradial = stopping_dq
+  nq = nqradial
+  allocate(qvec_list(3,nq),wq(nq),bethe_sumrule(nq))
 
   write(stdout,'(/,a)') ' Calculate the stopping power in a spherical system'
   gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -622,6 +627,9 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
                                                                           stopping_cross_section(iv),']'
     enddo
   endif
+
+  
+  deallocate(qvec_list,wq,bethe_sumrule)
 
   call stop_clock(timing_stopping)
 
