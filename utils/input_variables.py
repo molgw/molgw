@@ -168,7 +168,10 @@ for key,value in input_var_dict.items():
     fortran_format = '\'(1x,a32,6x,a)\''
   else:
     sys.exit('Datatype of variable '+str(key)+' ('+str(value['datatype'])+') is not known')
-  ffor.write(' write(stdout,'+fortran_format+') \''+key+'\','+key+' \n')
+  if   value['datatype'] =='characters':
+      ffor.write(' write(stdout,'+fortran_format+') \''+key+'\',TRIM('+key+') \n')
+  else:
+      ffor.write(' write(stdout,'+fortran_format+') \''+key+'\','+key+' \n')
 
 ffor.write('\n\n!======================================================================\n')
 ffor.close()
