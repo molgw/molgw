@@ -456,7 +456,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     !enddo
 
     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
     en_tddft%work = en_tddft%work + DOT_PRODUCT(force_projectile(:),vel_nuclei(:,ncenter_nuclei))*time_step
 
     write( stdout,'(1x,a,2(1x,es14.8))') 'Number of electrons from Tr(PS): ', &
@@ -863,11 +862,12 @@ end subroutine setup_d_matrix
 
 
 !=========================================================================
-subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recalc)
+subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_matrix_cmplx,recalc)
   implicit none
   type(basis_set),intent(in)          :: basis
   real(dp),intent(in)                 :: s_matrix(:,:)
   complex(dp),intent(in)              :: c_matrix_cmplx(:,:,:)
+  complex(dp),intent(in)              :: p_matrix_cmplx(:,:,:)
   complex(dp),intent(in)              :: h_cmplx(:,:,:)
   real(dp),intent(in)                 :: occupation(:,:)
   logical,intent(in)                  :: recalc
@@ -876,7 +876,7 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   real(dp),allocatable                :: s_matrix_hess(:,:,:,:)
   real(dp),allocatable                :: s_matrix_inv(:,:)
   real(dp),allocatable                :: BboldAdagger(:,:,:)
-  real(dp),allocatable                :: BAdagger(:,:)
+  real(dp),allocatable                :: Bdagger(:,:)
   complex(dp),allocatable             :: DboldA1(:,:,:)
   complex(dp),allocatable             :: DboldA2(:,:,:)
   complex(dp),allocatable             :: DboldA3(:,:,:)
@@ -896,29 +896,28 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   allocate(DboldA1(basis%nbf,basis%nbf,3))
   allocate(DboldA2(basis%nbf,basis%nbf,3))
   allocate(DboldA3(basis%nbf,basis%nbf,3))
-  allocate(BAdagger(basis%nbf,basis%nbf))
+  allocate(Bdagger(basis%nbf,basis%nbf))
   allocate(m_matrix(basis%nbf,basis%nbf,nspin))
 
   call setup_overlap_grad(basis,BboldAdagger)
+
   do ibf=1,basis%nbf
     ! if A is not a projectile then BboldAdagger is zero
-    if( ALL( ABS(basis%bff(ibf)%v0(:)) < 1.0e-6_dp ) ) then
-      BboldAdagger(ibf,:,:) = 0.0_dp
-    endif
-    BAdagger(ibf,:) = basis%bff(ibf)%v0(1) * BboldAdagger(ibf,:,1) &
+!FBFB
+!I think these lines were a mistake
+!    if( ALL( ABS(basis%bff(ibf)%v0(:)) < 1.0e-6_dp ) ) then
+!      BboldAdagger(ibf,:,:) = 0.0_dp
+!    endif
+    Bdagger(ibf,:) =  basis%bff(ibf)%v0(1) * BboldAdagger(ibf,:,1) &
                     + basis%bff(ibf)%v0(2) * BboldAdagger(ibf,:,2) &
                     + basis%bff(ibf)%v0(3) * BboldAdagger(ibf,:,3)
   enddo
 
   do ispin=1,nspin
-    m_matrix(:,:,ispin) = h_cmplx(:,:,ispin) - im * TRANSPOSE(BAdagger(:,:))
+    m_matrix(:,:,ispin) = h_cmplx(:,:,ispin) - im * TRANSPOSE(Bdagger(:,:))
     m_matrix(:,:,ispin) = MATMUL( s_matrix_inv(:,:) , m_matrix(:,:,ispin) )
   enddo
   
-!  do idir=1,3
-!    DboldA1(:,:,idir) = MATMUL( BboldAdagger(:,:,idir), MATMUL( s_matrix_inv, h_cmplx(:,:,1) ) ) &
-!                        + MATMUL( MATMUL( h_cmplx(:,:,1), s_matrix_inv), TRANSPOSE( BboldAdagger(:,:,idir) ) )
-!  enddo
   do ispin=1,nspin
     do idir=1,3
       DboldA1(:,:,idir) = MATMUL( BboldAdagger(:,:,idir), m_matrix(:,:,ispin) )  &
@@ -964,12 +963,13 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
 
   deallocate(s_matrix_hess)
   
-  do jbf=1,basis%nbf
-    ! if beta is not on a projectile, then the gradient is not contributing to the force on the projectile
-    if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) then
-      cc_matrix(:,jbf,:) = 0.0_dp
-    endif
-  enddo
+  !FBFB not sure about the next lines. Let's erase them
+  !do jbf=1,basis%nbf
+  !  ! if beta is not on a projectile, then the gradient is not contributing to the force on the projectile
+  !  if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) then
+  !    cc_matrix(:,jbf,:) = 0.0_dp
+  !  endif
+  !enddo
 
   !ctmp(:) = 0.0_dp
   ispin=1
@@ -989,6 +989,13 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   deallocate(cc_matrix)
 
   force_projectile(:) = ctmp(:)%re
+
+
+  ! Add the usual forces here after
+  call nucleus_nucleus_force()
+  !write(*,*) 'FBFB ncenter_nuclei',ncenter_nuclei
+  !force_projectile(:) = force_projectile(:) + force_nuc_nuc(:,ncenter_nuclei)
+
   write(1001,'(*(2x,es16.8))') force_projectile(:)
 
 end subroutine setup_mb_force
@@ -1091,6 +1098,7 @@ subroutine predictor_corrector(basis,                  &
   real(dp),allocatable,intent(in)    :: dipole_ao(:,:,:)
   !=====
   integer              :: nstate,iextr,i_iter,file_iter_norm
+  complex(dp),allocatable            :: p_matrix_cmplx(:,:,:)
   !=====
 
   nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
@@ -1110,7 +1118,8 @@ subroutine predictor_corrector(basis,                  &
     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
 
     ! Evaluate H(t+dt) using C(t+dt)
-    call setup_hamiltonian_cmplx(basis,                  &
+    allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
+    call setup_hamiltonian_cmplx(basis,                      &
                                  nstate,                     &
                                  itau,                       &
                                  time_cur,                   &
@@ -1122,7 +1131,10 @@ subroutine predictor_corrector(basis,                  &
                                  h_small_cmplx,              &
                                  x_matrix,                   &
                                  dipole_ao,                  &
-                                 h_cmplx,en_tddft)
+                                 h_cmplx,en_tddft,p_matrix_cmplx)
+    ! Energies are evaluated at t + dt
+    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+    deallocate(p_matrix_cmplx)
 
 
   case('MB_PC1')
@@ -1148,6 +1160,7 @@ subroutine predictor_corrector(basis,                  &
     endif
 
     ! Evaluate H(t+dt/2)
+    allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
     call setup_hamiltonian_cmplx(basis,                        &
                                  nstate,                       &
                                  itau,                         &
@@ -1160,10 +1173,14 @@ subroutine predictor_corrector(basis,                  &
                                  h_small_cmplx,                &
                                  x_matrix,                     &
                                  dipole_ao,                    &
-                                 h_cmplx,en_tddft)
+                                 h_cmplx,en_tddft,p_matrix_cmplx)
+
+    ! Energies are evaluated at t + dt/2
+    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
     !FBFB moving_basis spurious forces correction
-    call setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,.FALSE.)
+    call setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_matrix_cmplx,.FALSE.)
+    deallocate(p_matrix_cmplx)
 
     !--4--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
@@ -1233,6 +1250,7 @@ subroutine predictor_corrector(basis,                  &
     endif
 
     ! Calculate H(t+dt)
+    allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
     call setup_hamiltonian_cmplx(basis,                        &
                                  nstate,                       &
                                  itau,                         &
@@ -1245,7 +1263,10 @@ subroutine predictor_corrector(basis,                  &
                                  h_small_cmplx,                &
                                  x_matrix,                     &
                                  dipole_ao,                    &
-                                 h_cmplx,en_tddft)
+                                 h_cmplx,en_tddft,p_matrix_cmplx)
+    ! Energies are evaluated at t + dt
+    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+    deallocate(p_matrix_cmplx)
 
     !--5--UPDATE----| C(t+dt) -> C(t); H(t+dt) -> H(t)
     c_matrix_hist_cmplx(:,:,:,1) = c_matrix_cmplx(:,:,:)
@@ -2517,7 +2538,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
                                    x_matrix,                &
                                    dipole_ao,               &
                                    hamiltonian_cmplx,       &
-                                   en)
+                                   en,p_matrix_cmplx_out)
 
   implicit none
 
@@ -2534,6 +2555,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   complex(dp),intent(in)          :: c_matrix_cmplx(basis%nbf,nocc,nspin)
   complex(dp),intent(out)         :: hamiltonian_cmplx(basis%nbf,basis%nbf,nspin)
   complex(dp),intent(out)         :: h_small_cmplx(nstate,nstate,nspin)
+  complex(dp),intent(inout),optional :: p_matrix_cmplx_out(basis%nbf,basis%nbf,nspin)
   type(energy_contributions),intent(inout) :: en
   !=====
   logical              :: calc_excit_
@@ -2547,6 +2569,9 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   call start_clock(timing_tddft_hamiltonian)
 
   call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+  if( PRESENT(p_matrix_cmplx_out) ) then
+    p_matrix_cmplx_out(:,:,:) = p_matrix_cmplx(:,:,:)
+  endif
 
   !--Hamiltonian - Hartree Exchange Correlation---
   call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &

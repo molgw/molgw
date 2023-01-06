@@ -862,10 +862,12 @@ subroutine read_inputfile_namelist()
   if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
 
 
-#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0)
+#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0) 
+#if !defined(HAVE_LIBCINT)
   if( move_nuclei /= 'no' ) then
     call die('LIBINT does not contain the gradients of the integrals that are needed when move_nuclei is different from no')
   endif
+#endif
 #endif
 
   if( mpi_nproc_ortho > world%nproc ) then

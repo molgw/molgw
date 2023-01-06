@@ -40,7 +40,7 @@ module m_atoms
   real(dp),allocatable,public    :: force_exx(:,:)
   real(dp),allocatable,public    :: force_exc(:,:)
   real(dp),allocatable,public    :: force_ovp(:,:)
-  real(dp),allocatable,public    :: force_hl(:,:)
+  real(dp),allocatable,public    :: force_hellfeyn(:,:)
 
   logical,protected              :: inversion=.TRUE.
   logical,protected              :: linear=.TRUE.
@@ -98,19 +98,19 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
   endif
 
   ! For relaxation or dynamics only
-  if( calculate_forces ) then
-    if( natom_in /= ncenter_nuclei .OR. natom_in /= ncenter_basis ) then
-       call die('init_atoms: forces not implemented with ghosts or projectiles')
-    endif
-    allocate(force(3,natom_in))
-    allocate(force_nuc_nuc(3,natom_in))
-    allocate(force_kin(3,natom_in))
-    allocate(force_nuc(3,natom_in))
-    allocate(force_har(3,natom_in))
-    allocate(force_exx(3,natom_in))
-    allocate(force_exc(3,natom_in))
-    allocate(force_ovp(3,natom_in))
-    allocate(force_hl(3,natom_in))
+  if( calculate_forces .OR. excit_name == "ION" .OR. excit_name == 'ANTIION' ) then
+    !if( natom_in /= ncenter_nuclei .OR. natom_in /= ncenter_basis ) then
+    !   call die('init_atoms: forces not implemented with ghosts or projectiles')
+    !endif
+    allocate(force(3,ncenter_nuclei))
+    allocate(force_nuc_nuc(3,ncenter_nuclei))
+    allocate(force_kin(3,ncenter_nuclei))
+    allocate(force_nuc(3,ncenter_nuclei))
+    allocate(force_har(3,ncenter_nuclei))
+    allocate(force_exx(3,ncenter_nuclei))
+    allocate(force_exc(3,ncenter_nuclei))
+    allocate(force_ovp(3,ncenter_nuclei))
+    allocate(force_hellfeyn(3,ncenter_nuclei))
   endif
 
  ! List of atoms is organized as follows:
@@ -281,20 +281,20 @@ subroutine destroy_atoms()
   implicit none
   !=====
 
-  if(ALLOCATED(zatom))         deallocate(zatom)
-  if(ALLOCATED(zvalence))      deallocate(zvalence)
-  if(ALLOCATED(zbasis))        deallocate(zbasis)
-  if(ALLOCATED(xatom))         deallocate(xatom)
-  if(ALLOCATED(xbasis))        deallocate(xbasis)
-  if(ALLOCATED(force))         deallocate(force)
-  if(ALLOCATED(force_nuc_nuc)) deallocate(force_nuc_nuc)
-  if(ALLOCATED(force_kin))     deallocate(force_kin)
-  if(ALLOCATED(force_nuc))     deallocate(force_nuc)
-  if(ALLOCATED(force_har))     deallocate(force_har)
-  if(ALLOCATED(force_exx))     deallocate(force_exx)
-  if(ALLOCATED(force_exc))     deallocate(force_exc)
-  if(ALLOCATED(force_ovp))     deallocate(force_ovp)
-  if(ALLOCATED(force_hl))      deallocate(force_hl)
+  if(ALLOCATED(zatom))          deallocate(zatom)
+  if(ALLOCATED(zvalence))       deallocate(zvalence)
+  if(ALLOCATED(zbasis))         deallocate(zbasis)
+  if(ALLOCATED(xatom))          deallocate(xatom)
+  if(ALLOCATED(xbasis))         deallocate(xbasis)
+  if(ALLOCATED(force))          deallocate(force)
+  if(ALLOCATED(force_nuc_nuc))  deallocate(force_nuc_nuc)
+  if(ALLOCATED(force_kin))      deallocate(force_kin)
+  if(ALLOCATED(force_nuc))      deallocate(force_nuc)
+  if(ALLOCATED(force_har))      deallocate(force_har)
+  if(ALLOCATED(force_exx))      deallocate(force_exx)
+  if(ALLOCATED(force_exc))      deallocate(force_exc)
+  if(ALLOCATED(force_ovp))      deallocate(force_ovp)
+  if(ALLOCATED(force_hellfeyn)) deallocate(force_hellfeyn)
 
 end subroutine destroy_atoms
 

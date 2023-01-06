@@ -110,6 +110,14 @@ module m_libcint_tools
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_rinv_cart
 
+    integer(C_INT) function cint1e_iprinv_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_iprinv_cart
+
     integer(C_INT) function cint1e_ipovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
       import :: C_INT,C_DOUBLE
       integer(C_INT),value  :: natm,nbas
@@ -854,6 +862,91 @@ subroutine libcint_elecpot(amA,contrdepthA,A,alphaA,cA, &
 
 
 end subroutine libcint_elecpot
+
+
+!=========================================================================
+subroutine libcint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
+                                amC,contrdepthC,C,alphaC,cC, &
+                                D,elecpotAC_grad)
+  implicit none
+
+  integer(C_INT),intent(in)    :: amA,contrdepthA
+  real(C_DOUBLE),intent(in)    :: A(:)
+  real(C_DOUBLE),intent(in)    :: alphaA(:)
+  real(C_DOUBLE),intent(in)    :: cA(:)
+  integer(C_INT),intent(in)    :: amC,contrdepthC
+  real(C_DOUBLE),intent(in)    :: C(:)
+  real(C_DOUBLE),intent(in)    :: alphaC(:)
+  real(C_DOUBLE),intent(in)    :: cC(:)
+  real(C_DOUBLE),intent(in)    :: D(:)
+  real(C_DOUBLE),intent(inout) :: elecpotAC_grad(:,:)
+  !=====
+  real(C_DOUBLE) :: tmp_env(1000)
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,2)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,2)
+  integer(C_INT) :: shls(2)
+  integer        :: info,off
+  !=====
+
+  tmp_env(:) = 0.0_dp
+  tmp_env(LIBCINT_PTR_RINV_ORIG+1:LIBCINT_PTR_RINV_ORIG+3) = D(:)
+
+  off = LIBCINT_PTR_ENV_START
+
+  tmp_atm(LIBCINT_CHARGE_OF,1) = 1
+  tmp_atm(LIBCINT_PTR_COORD,1) = off
+  tmp_env(off+1:off+3) = C(1:3)
+  off = off + 3
+  tmp_atm(LIBCINT_CHARGE_OF,2) = 1
+  tmp_atm(LIBCINT_PTR_COORD,2) = off
+  tmp_env(off+1:off+3) = A(1:3)
+  off = off + 3
+
+  !
+  ! C
+  tmp_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   ,1)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF ,1)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  ,1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
+  off = off + contrdepthC
+  tmp_bas(LIBCINT_PTR_COEFF,1) = off
+  select case(amC)
+  case(0,1)
+    tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
+  case default
+    tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
+  end select
+  off = off + contrdepthC
+  !
+  ! A
+  tmp_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   ,2)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF ,2)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  ,2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
+  off = off + contrdepthA
+  tmp_bas(LIBCINT_PTR_COEFF,2) = off
+  select case(amA)
+  case(0,1)
+    tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
+  case default
+    tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
+  end select
+  off = off + contrdepthA
+
+
+  shls(1) = 0
+  shls(2) = 1
+
+#if defined(HAVE_LIBCINT)
+  info = cint1e_iprinv_cart(elecpotAC_grad, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+#endif
+
+
+end subroutine libcint_elecpot_grad
 
 
 !=========================================================================
