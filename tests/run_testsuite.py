@@ -303,9 +303,9 @@ have_libxc            = 'Running with LIBXC' in open(tmpfolder+'/fake.out').read
 have_mpi              = 'Running with MPI' in open(tmpfolder+'/fake.out').read()
 have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder+'/fake.out').read()
 have_onebody          = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
-have_gradients        = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read() \
+have_gradients        = 'Running with external LIBINT calculation of the gradients of the one-body integrals' in open(tmpfolder+'/fake.out').read() \
                         or 'Code compiled with LIBCINT' in open(tmpfolder+'/fake.out').read()
-have_libint_forces    = 'Running with external LIBINT calculation of the gradients of the integrals' in open(tmpfolder+'/fake.out').read()
+have_libint_forces    = 'Running with external LIBINT calculation of the gradients of the Coulomb integrals' in open(tmpfolder+'/fake.out').read()
 is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder+'/fake.out').read()
 
 #with open(tmpfolder+'/fake.out','r') as ffake:
@@ -329,7 +329,7 @@ print(' LIBINT gradients integrals: {}'.format(have_libint_forces) )
 #print('        (Sca)LAPACK diago: {}'.format(lapack_diago_flavor) )
 print()
 
-os.remove(tmpfolder+'/fake.out')
+#os.remove(tmpfolder+'/fake.out')
 
 
 # The default OMP stacksize is generally too small:
