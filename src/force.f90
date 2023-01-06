@@ -16,6 +16,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
   use m_basis_set
   use m_eri
   use m_eri_calculate
+  use m_hamiltonian_tools
   use m_hamiltonian_onebody
   implicit none
 
@@ -43,10 +44,10 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
   logical,allocatable     :: skip_shellpair(:,:)
   !=====
 
-#if !defined(LIBINT2_SUPPORT_ONEBODY) || (LIBINT2_DERIV_ONEBODY_ORDER == 0)
-  call issue_warning('calculate_force: impossible to calculate gradient if LIBINT does not support the gradients')
-  return
-#endif
+  if( .NOT. MOLGW_has_gradient) then
+    call issue_warning('calculate_force: impossible to calculate gradient if LIBINT does not support the gradients')
+    return
+  endif
 
   call start_clock(timing_force)
 

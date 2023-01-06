@@ -29,6 +29,8 @@ module m_definitions
   integer,parameter  :: stderr = ERROR_UNIT
 
   integer,protected  :: MOLGW_LMAX
+  logical,protected  :: MOLGW_has_onebody
+  logical,protected  :: MOLGW_has_gradient
 
   !
   ! Physical constants
@@ -86,13 +88,16 @@ contains
 
 
 !=========================================================================
-subroutine set_molgw_lmax(lmax)
+subroutine set_molgw_lmax(lmax,has_onebody,has_gradient)
   implicit none
   integer,intent(in) :: lmax
+  logical(C_BOOL),intent(in) :: has_onebody,has_gradient
   !=====
   !=====
 
   MOLGW_LMAX = lmax
+  MOLGW_has_onebody  = has_onebody
+  MOLGW_has_gradient = has_gradient
 
 end subroutine set_molgw_lmax
 
