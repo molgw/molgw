@@ -7,6 +7,9 @@
 !
 !=========================================================================
 #include "molgw.h"
+#if !defined(NO_LIBINT)
+#include<libint2/libint2_params.h>
+#endif
 module m_io
  use,intrinsic :: ISO_FORTRAN_ENV, only: COMPILER_VERSION,COMPILER_OPTIONS
  use m_definitions
@@ -183,6 +186,7 @@ subroutine header()
 
  ! LIBINT details
  call libint_init(ammax,has_onebody,has_gradient)
+
 #if !defined(NO_LIBINT)
  write(stdout,'(1x,a,i5)') 'Code compiled with LIBINT support with max angular momentum: ',ammax
 #endif
@@ -202,7 +206,7 @@ subroutine header()
  call die('Please compile MOLGW with LIBINT or LIBCINT')
 #endif
 
- call set_molgw_lmax(ammax)
+ call set_molgw_lmax(ammax,has_onebody,has_gradient)
 
  if( has_onebody ) then
    write(stdout,'(1x,a)')  'Running with external LIBINT or LIBCINT calculation of the one-body operators (faster)'

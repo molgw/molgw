@@ -7,6 +7,9 @@
 !
 !=========================================================================
 #include "molgw.h"
+#if !defined(NO_LIBINT)
+#include<libint2/libint2_params.h>
+#endif
 module m_inputparam
   use m_definitions
   use m_mpi
@@ -636,12 +639,12 @@ subroutine summary_input()
   write(stdout,'(a30,i4)')   ' number of basis centers: ',ncenter_basis
   write(stdout,'(a30,f10.4)') ' electrons: ',electrons
   write(stdout,'(a30,f10.4)') ' charge: ',charge
-  write(stdout,'(a30,i3)')   ' spin polarization: ',nspin
+  write(stdout,'(a30,i4)')   ' spin polarization: ',nspin
   write(stdout,'(a30,f10.4)') ' magnetization: ',magnetization
-  write(stdout,'(a30,2x,a)') ' basis file path:',basis_path
+  write(stdout,'(a30,2x,a)') ' basis file path:',TRIM(basis_path)
   write(stdout,'(a30,2x,a)') ' basis set: ',basis_name(1)
   write(stdout,'(a30,2x,a)') ' auxiliary basis set: ',auxil_basis_name(1)
-  write(stdout,'(a30,2x,a)') ' gaussian type: ',gaussian_type
+  write(stdout,'(a30,2x,a)') ' gaussian type: ',TRIM(gaussian_type)
   write(stdout,'(a30,f10.4)') ' global exchange: ',alpha_hybrid
   write(stdout,'(a30,f10.4)') ' long-range-only exchange: ',beta_hybrid
   if( rcut > 1.0e-6_dp ) then

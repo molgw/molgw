@@ -12,17 +12,10 @@ module m_libcint_tools
   use m_basis_set
   use m_atoms
 
-  integer,private,parameter :: LMAX_LIBCINT = 7
+  integer,private,parameter :: LMAX_LIBCINT = 8
   ! LIBCINT normalization is difficult to guess for pure gaussians
   ! So we obtain it from calls to the overlap rountine
   real(dp),private :: libcint_pure_norm(0:LMAX_LIBCINT)
-!                  [ 1.0_dp ,                           & ! s
-!                    1.0_dp ,                           & ! p
-!                    1.0_dp / 1.092548430592079070_dp,  & ! d
-!                    1.0_dp / 2.890611442640554055_dp,  & ! f
-!                    1.0_dp / 8.671834327921662164_dp,  & ! g
-!                    1.0_dp / 28.76122070983994253_dp,  & ! h
-!                    1.0_dp / 103.8 ]   ! i
 
   ! LIBCINT_atm array meaning
   integer,private,parameter :: LIBCINT_CHARGE_OF  = 1

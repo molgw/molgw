@@ -1010,7 +1010,24 @@ stopping:
   experimental: 'no'
   default: 'no'
   comment: Triggers the calculation of the stopping power within linear-response theory.
-           Only effective when postscf=''td'' or ''bse''. Avaialble values are ''no'', ''spherical'', ''3d''.
+           Only effective when postscf=''td'' or ''bse''.
+           Available values are ''no'', ''spherical'', ''3d''.
+
+stopping_nq:
+  family: postscf
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 500
+  comment: Number of q-vectors in the reciprocal space summation for stopping power calculations.
+
+stopping_dq:
+  family: postscf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.02
+  comment: q-vector increment in the reciprocal space summation for stopping power calculations.
 
 tda:
   family: post
