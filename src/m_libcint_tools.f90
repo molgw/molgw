@@ -118,12 +118,12 @@ module m_libcint_tools
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_iprinv_cart
 
-    integer(C_INT) function cint1e_ipovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+    integer(c_int) function cint1e_ipovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(c)
+      import :: c_int,c_double
+      integer(c_int),value  :: natm,nbas
+      real(c_double),intent(in) :: env(*)
+      integer(c_int),intent(in) :: shls(*),atm(*),bas(*)
+      real(c_double),intent(out) :: array_cart(*)
     end function cint1e_ipovlp_cart
 
     integer(C_INT) function cint1e_ipovlp_sph(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
@@ -141,6 +141,14 @@ module m_libcint_tools
       integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_ipovlpip_cart
+
+    integer(c_int) function cint1e_ipkin_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(c)
+      import :: c_int,c_double
+      integer(c_int),value  :: natm,nbas
+      real(c_double),intent(in) :: env(*)
+      integer(c_int),intent(in) :: shls(*),atm(*),bas(*)
+      real(c_double),intent(out) :: array_cart(*)
+    end function cint1e_ipkin_cart
 
     integer(C_INT) function cint1e_ipovlpip_sph(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
       import :: C_INT,C_DOUBLE
