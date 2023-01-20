@@ -946,11 +946,11 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
   enddo
 
   title='===  Kinetic energy contribution (LIBINT) X ==='
-  call dump_out_matrix(.TRUE.,title,hamiltonian_kinetic_grad(:,:,1))
+  call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic_grad(:,:,1))
   title='===  Kinetic energy contribution (LIBINT) Y ==='
-  call dump_out_matrix(.TRUE.,title,hamiltonian_kinetic_grad(:,:,2))
+  call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic_grad(:,:,2))
   title='===  Kinetic energy contribution (LIBINT) Z ==='
-  call dump_out_matrix(.TRUE.,title,hamiltonian_kinetic_grad(:,:,3))
+  call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic_grad(:,:,3))
 
   call stop_clock(timing_hamiltonian_kin)
 
@@ -1104,7 +1104,7 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   ! Reduce operation
   call world%sum(hamiltonian_nucleus)
 
-  call dump_out_matrix(.TRUE.,'===  Nucleus potential contribution ===',hamiltonian_nucleus)
+  call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution ===',hamiltonian_nucleus)
 
   if( in_rt_tddft ) then
     call stop_clock(timing_tddft_hamiltonian_nuc)
@@ -1412,19 +1412,14 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
                                   amA,contrdepthA,A,alphaA,cA, &
                                   C,array_cart_gradA)
         array_cart_gradA(:,:) = -array_cart_gradA(:,:) * (-zvalence(icenter))
-        write(*,*) 'FBFB icenter',icenter,ishell,jshell
-        write(*,*) 'A',array_cart_gradA(:,1)
-        write(*,*) 'B',array_cart_gradB(:,1)
-        write(*,*) '===================='
-
 
         do idir=1,3
-          call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradA(:,idir),matrixA)
-          call transform_libint_to_molgw(basis%gaussian_type,lj,li,array_cart_gradB(:,idir),matrixB)
-          hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,idir) =  -matrixA(:,:) - matrixB(:,:)
+          call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradB(:,idir),matrixB)
+          call transform_libint_to_molgw(basis%gaussian_type,lj,li,array_cart_gradA(:,idir),matrixA)
+          hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,idir) =  -TRANSPOSE(matrixA(:,:)) - matrixB(:,:)
           !hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,idir) =  matrixB(:,:)
           hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,idir) = &
-                   hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,idir) + matrixA(:,:)
+                   hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,idir) + TRANSPOSE(matrixA(:,:))
         enddo
 
 
@@ -1496,11 +1491,11 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
   do icenter=1,ncenter_nuclei+1
     write(ctmp,'(i03)') icenter
     title='===  Nucleus potential contribution (LIBINT) d/dRCX=== ' // ctmp
-    call dump_out_matrix(.TRUE.,title,hamiltonian_nucleus_grad(:,:,icenter,1))
+    call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,icenter,1))
     title='===  Nucleus potential contribution (LIBINT) d/dRCY=== ' // ctmp
-    call dump_out_matrix(.TRUE.,title,hamiltonian_nucleus_grad(:,:,icenter,2))
+    call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,icenter,2))
     title='===  Nucleus potential contribution (LIBINT) d/dRCZ=== ' // ctmp
-    call dump_out_matrix(.TRUE.,title,hamiltonian_nucleus_grad(:,:,icenter,3))
+    call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,icenter,3))
   enddo
 
 

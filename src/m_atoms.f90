@@ -97,13 +97,13 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
     vel_basis(:,ncenter_basis) = vel_projectile(:)
   endif
 
+  allocate(force_nuc_nuc(3,ncenter_nuclei))
   ! For relaxation or dynamics only
   if( calculate_forces .OR. excit_name == "ION" .OR. excit_name == 'ANTIION' ) then
     !if( natom_in /= ncenter_nuclei .OR. natom_in /= ncenter_basis ) then
     !   call die('init_atoms: forces not implemented with ghosts or projectiles')
     !endif
     allocate(force(3,ncenter_nuclei))
-    allocate(force_nuc_nuc(3,ncenter_nuclei))
     allocate(force_kin(3,ncenter_nuclei))
     allocate(force_nuc(3,ncenter_nuclei))
     allocate(force_har(3,ncenter_nuclei))
@@ -417,6 +417,8 @@ subroutine nucleus_nucleus_force()
   integer              :: icenter,jcenter
   !=====
 
+  write(*,*) 'FBFB',ncenter_nuclei
+
   force_nuc_nuc(:,:) = 0.0_dp
   do icenter=1,ncenter_nuclei
     do jcenter=1,ncenter_nuclei
@@ -426,6 +428,8 @@ subroutine nucleus_nucleus_force()
                                * ( xatom(:,icenter) - xatom(:,jcenter) )
     enddo
   enddo
+  write(*,*) 'FBFB1',force_nuc_nuc(:,1)
+  write(*,*) 'FBFB2',force_nuc_nuc(:,2)
 
 end subroutine nucleus_nucleus_force
 

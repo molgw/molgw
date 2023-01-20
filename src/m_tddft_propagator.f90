@@ -862,6 +862,36 @@ end subroutine setup_d_matrix
 
 
 !=========================================================================
+! Calculate force on the projectile in fixed basis
+subroutine setup_fb_force(basis,p_matrix_cmplx,recalc)
+  implicit none
+  type(basis_set),intent(in)          :: basis
+  complex(dp),intent(in)              :: p_matrix_cmplx(:,:,:)
+  logical,intent(in)                  :: recalc
+  !=====
+  integer                             :: idir
+  real(dp)                            :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
+  !=====
+
+  write(stdout,'(/,a)') ' Setup mb force (analytic)'
+
+
+  call setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
+
+  ! Get the electron-nucleus force
+  do idir=1,3
+    force_projectile(idir) = -SUM( SUM(p_matrix_cmplx(:,:,:),DIM=3) * hamiltonian_nucleus_grad(:,:,ncenter_nuclei,idir) )
+  enddo
+
+  ! Add the nucleus-nucleus force
+  call nucleus_nucleus_force()
+  force_projectile(:) = force_projectile(:) + force_nuc_nuc(:,ncenter_nuclei)
+
+
+end subroutine setup_fb_force
+
+
+!=========================================================================
 subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_matrix_cmplx,recalc)
   implicit none
   type(basis_set),intent(in)          :: basis
@@ -1140,7 +1170,7 @@ subroutine predictor_corrector(basis,                  &
   case('MB_PC1')
 
     !--1--PREDICTOR----| H(t-3dt/2),H(t-dt/2)-->H(t+dt/4)
-    h_cmplx = -3.0_dp/4.0_dp*h_hist_cmplx(:,:,:,1) + 7.0_dp/4.0_dp*h_hist_cmplx(:,:,:,2)
+    h_cmplx(:,:,:) = -3.0_dp/4.0_dp*h_hist_cmplx(:,:,:,1) + 7.0_dp/4.0_dp*h_hist_cmplx(:,:,:,2)
 
 
     !--2--PREDICTOR----| C(t)---U[M(t+dt/4)]--->C(t+dt/2)
@@ -1178,8 +1208,12 @@ subroutine predictor_corrector(basis,                  &
     ! Energies are evaluated at t + dt/2
     en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
-    !FBFB moving_basis spurious forces correction
-    call setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_matrix_cmplx,.FALSE.)
+    ! Moving_basis spurious forces corrections due to incomplete basis
+    if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+      call setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_matrix_cmplx,.FALSE.)
+    else
+      call setup_fb_force(basis,p_matrix_cmplx,.FALSE.)
+    endif
     deallocate(p_matrix_cmplx)
 
     !--4--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
@@ -1301,6 +1335,7 @@ subroutine predictor_corrector(basis,                  &
                         c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
 
     !--3--CORRECTOR----| C(10/4)-->H(10/4)
+    allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
     call setup_hamiltonian_cmplx(basis,                 &
                                  nstate,                    &
                                  itau,                      &
@@ -1313,7 +1348,11 @@ subroutine predictor_corrector(basis,                  &
                                  h_small_cmplx,             &
                                  x_matrix,                  &
                                  dipole_ao,                 &
-                                 h_cmplx,en_tddft)
+                                 h_cmplx,en_tddft,p_matrix_cmplx)
+
+    !Fixed bases have Hellman-Feynman force
+    call setup_fb_force(basis,p_matrix_cmplx,.FALSE.)
+    deallocate(p_matrix_cmplx)
 
     !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
