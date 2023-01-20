@@ -456,7 +456,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     !enddo
 
     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-    en_tddft%work = en_tddft%work + DOT_PRODUCT(force_projectile(:),vel_nuclei(:,ncenter_nuclei))*time_step
+    en_tddft%deltawork_p = DOT_PRODUCT(force_projectile(:),vel_nuclei(:,ncenter_nuclei)) * time_step
+    en_tddft%work_p      = en_tddft%work_p + en_tddft%deltawork_p
 
     write( stdout,'(1x,a,2(1x,es14.8))') 'Number of electrons from Tr(PS): ', &
                                          SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 ) * s_matrix(:,:) )
@@ -870,17 +871,17 @@ subroutine setup_fb_force(basis,p_matrix_cmplx,recalc)
   logical,intent(in)                  :: recalc
   !=====
   integer                             :: idir
-  real(dp)                            :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
+  real(dp)                            :: h_nuc_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
   !=====
 
   write(stdout,'(/,a)') ' Setup mb force (analytic)'
 
 
-  call setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
+  call setup_nucleus_grad(basis,h_nuc_grad)
 
   ! Get the electron-nucleus force
   do idir=1,3
-    force_projectile(idir) = -SUM( SUM(p_matrix_cmplx(:,:,:),DIM=3) * hamiltonian_nucleus_grad(:,:,ncenter_nuclei,idir) )
+    force_projectile(idir) = -SUM( SUM(p_matrix_cmplx(:,:,:),DIM=3) * h_nuc_grad(:,:,ncenter_nuclei,idir) )
   enddo
 
   ! Add the nucleus-nucleus force
@@ -913,6 +914,8 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_mat
   real(dp),allocatable                :: cc_matrix(:,:,:)   ! cc_matrix corresponds to C^A_\alpha\beta in Kunert-Schmidt EPJ-D (2003)
   complex(dp),allocatable             :: m_matrix(:,:,:)  ! effective propagation operation S**-1 * ( H - iD)
   complex(dp) :: ctmp(3)
+  real(dp)                            :: h_nuc_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
+  real(dp)                            :: h_kin_grad(basis%nbf,basis%nbf,3)
   !=====
 
   write(stdout,'(/,a)') ' Setup mb force (analytic)'
@@ -968,7 +971,6 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_mat
       enddo
     enddo
   enddo
-  !write(1001,'(*(2x,es16.8))') ctmp(:)
 
 
 
@@ -1018,15 +1020,23 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_mat
 
   deallocate(cc_matrix)
 
-  force_projectile(:) = ctmp(:)%re
+  !FBFB
+  force_projectile(:) = force_projectile(:) + ctmp(:)%re
 
+  call setup_nucleus_grad(basis,h_nuc_grad)
+  call setup_kinetic_grad(basis,h_kin_grad)
+  do idir=1,3
+    do jbf=1,basis%nbf
+      if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) cycle
+      force_projectile(idir) = force_projectile(idir) &
+                               -SUM( SUM(p_matrix_cmplx(jbf,:,:),DIM=2) &
+                                    * ( h_nuc_grad(:,jbf,ncenter_nuclei+1,idir) + h_kin_grad(:,jbf,idir) ) )
+      force_projectile(idir) = force_projectile(idir) &
+                               -SUM( SUM(p_matrix_cmplx(:,jbf,:),DIM=2) &
+                                    * ( h_nuc_grad(:,jbf,ncenter_nuclei+1,idir) + h_kin_grad(:,jbf,idir) ) )
+    enddo
+  enddo
 
-  ! Add the usual forces here after
-  call nucleus_nucleus_force()
-  !write(*,*) 'FBFB ncenter_nuclei',ncenter_nuclei
-  !force_projectile(:) = force_projectile(:) + force_nuc_nuc(:,ncenter_nuclei)
-
-  write(1001,'(*(2x,es16.8))') force_projectile(:)
 
 end subroutine setup_mb_force
 
@@ -1208,11 +1218,11 @@ subroutine predictor_corrector(basis,                  &
     ! Energies are evaluated at t + dt/2
     en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
+    ! Hellman-Feynman force experienced by the projectile
+    call setup_fb_force(basis,p_matrix_cmplx,.FALSE.)
     ! Moving_basis spurious forces corrections due to incomplete basis
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_matrix_cmplx,.FALSE.)
-    else
-      call setup_fb_force(basis,p_matrix_cmplx,.FALSE.)
     endif
     deallocate(p_matrix_cmplx)
 
@@ -1681,7 +1691,7 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
     write(file_time_data,"(f10.4,*(2x,es16.8e3))") &
        time_cur, en_tddft%total, xatom(:,ncenter_nuclei), en_tddft%nuc_nuc, en_tddft%nucleus, &
        en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
-       en_tddft%excit, en_tddft%id, en_tddft%work
+       en_tddft%excit, en_tddft%id, en_tddft%deltawork_p, en_tddft%work_p
     call output_projectile_position()
 
   case(EXCIT_LIGHT)
@@ -1730,9 +1740,9 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
   !---------------------------------
   select case(excit_type%form)
   case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
-    write(file_time_data,"(a10,13(a18))") &
+    write(file_time_data,"(a10,14(a18))") &
             "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc","enuc_wo_proj","ekin","ehart",&
-            "eexx_hyb","exc","enuc_proj","e_iD","work"
+            "eexx_hyb","exc","enuc_proj","e_iD","deltawork_proj","work_proj"
 
   case(EXCIT_LIGHT)
     write(file_time_data,"(a,a)") &

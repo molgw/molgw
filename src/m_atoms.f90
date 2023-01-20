@@ -417,8 +417,6 @@ subroutine nucleus_nucleus_force()
   integer              :: icenter,jcenter
   !=====
 
-  write(*,*) 'FBFB',ncenter_nuclei
-
   force_nuc_nuc(:,:) = 0.0_dp
   do icenter=1,ncenter_nuclei
     do jcenter=1,ncenter_nuclei
@@ -428,8 +426,6 @@ subroutine nucleus_nucleus_force()
                                * ( xatom(:,icenter) - xatom(:,jcenter) )
     enddo
   enddo
-  write(*,*) 'FBFB1',force_nuc_nuc(:,1)
-  write(*,*) 'FBFB2',force_nuc_nuc(:,2)
 
 end subroutine nucleus_nucleus_force
 
