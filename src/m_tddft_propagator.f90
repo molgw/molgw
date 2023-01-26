@@ -456,11 +456,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     !enddo
 
     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-    en_tddft%deltawork_p = DOT_PRODUCT(force_projectile(:),vel_nuclei(:,ncenter_nuclei)) * time_step
-    en_tddft%work_p      = en_tddft%work_p + en_tddft%deltawork_p
+    en_tddft%work_p_nonconserv = en_tddft%work_p_nonconserv &
+                                 + DOT_PRODUCT(force_projectile_nonconserv(:),vel_nuclei(:,ncenter_nuclei)) * time_step
+    en_tddft%work_p            = en_tddft%work_p &
+                                 + DOT_PRODUCT(force_projectile(:),vel_nuclei(:,ncenter_nuclei)) * time_step
 
-    write( stdout,'(1x,a,2(1x,es14.8))') 'Number of electrons from Tr(PS): ', &
-                                         SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 ) * s_matrix(:,:) )
+    write(stdout,'(1x,a,2(1x,es16.8))') 'Number of electrons from Tr(PS): ', &
+                                        SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 ) * s_matrix(:,:) )
 
     !
     ! Print tddft values into diferent files: 1) standart output; 2) time_data.dat; 3) dipole_time.dat; 4) excitation_time.dat;
@@ -1020,8 +1022,7 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_mat
 
   deallocate(cc_matrix)
 
-  !FBFB
-  force_projectile(:) = force_projectile(:) + ctmp(:)%re
+  force_projectile_nonconserv(:) =  ctmp(:)%re
 
   call setup_nucleus_grad(basis,h_nuc_grad)
   call setup_kinetic_grad(basis,h_kin_grad)
@@ -1036,6 +1037,7 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_mat
                                     * ( h_nuc_grad(:,jbf,ncenter_nuclei+1,idir) + h_kin_grad(:,jbf,idir) ) )
     enddo
   enddo
+
 
 
 end subroutine setup_mb_force
@@ -1691,7 +1693,7 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
     write(file_time_data,"(f10.4,*(2x,es16.8e3))") &
        time_cur, en_tddft%total, xatom(:,ncenter_nuclei), en_tddft%nuc_nuc, en_tddft%nucleus, &
        en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
-       en_tddft%excit, en_tddft%id, en_tddft%deltawork_p, en_tddft%work_p
+       en_tddft%excit, en_tddft%id, en_tddft%work_p_nonconserv, en_tddft%work_p
     call output_projectile_position()
 
   case(EXCIT_LIGHT)
@@ -1742,7 +1744,7 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
   case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
     write(file_time_data,"(a10,14(a18))") &
             "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc","enuc_wo_proj","ekin","ehart",&
-            "eexx_hyb","exc","enuc_proj","e_iD","deltawork_proj","work_proj"
+            "eexx_hyb","exc","enuc_proj","e_iD","work_proj_noncnsrv","work_proj_cnsrv"
 
   case(EXCIT_LIGHT)
     write(file_time_data,"(a,a)") &
