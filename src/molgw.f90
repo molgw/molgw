@@ -630,6 +630,10 @@ program molgw
     write(stdout,*)
     en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx + en_gks%mp2
 
+    if(kappa_hybrid/=one) then
+      en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
+    endif
+
     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%total
     write(stdout,*)
 
@@ -649,6 +653,10 @@ program molgw
     write(stdout,*)
 
     en_gks%total = en_gks%total + en_gks%mp3
+
+    if(kappa_hybrid/=one) then
+      en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp3
+    endif
 
     write(stdout,'(a,2x,f19.10)') ' MP3 Total Energy (Ha):',en_gks%total
     write(stdout,*)

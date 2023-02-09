@@ -209,9 +209,15 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
            call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
          endif
        endif
-
+       if(kappa_hybrid/=one) then ! Print the double-hybrid RPA correlation energy
+         write(stdout,'(/,a,f16.10)')       ' RPA correlation energy will be scaled by :',(one-kappa_hybrid)
+         en_mbpt%rpa=(one-kappa_hybrid)*en_mbpt%rpa
+         write(stdout,'(/,a,f16.10)') ' Scaled RPA correlation energy (Ha): ',en_mbpt%rpa
+       endif
        en_mbpt%total = en_mbpt%total + en_mbpt%rpa
-       if( calc_type%is_dft ) en_mbpt%total = en_mbpt%total - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx
+       if( calc_type%is_dft .AND. kappa_hybrid==one ) then ! Setting Ex = EXX and Ec = Erpa (removing DFT contributions).
+         en_mbpt%total = en_mbpt%total - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx 
+       endif
        if( ABS(en_mbpt%rpa) > 1.e-6_dp) then
          write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_mbpt%total
        endif
