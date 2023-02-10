@@ -251,6 +251,11 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
 
      if( ABS(en_mbpt%gw) > 1.0e-5_dp ) then
+       if(kappa_hybrid/=one) then ! Print the double-hybrid RPA correlation energy
+         write(stdout,'(/,a,f16.10)')       ' Galitskii-Migdal correlation energy will be scaled by :',(one-kappa_hybrid)
+         en_mbpt%gw=(one-kappa_hybrid)*en_mbpt%gw
+         write(stdout,'(/,a,f16.10)') ' Scaled Galitskii-Migdal correlation energy (Ha): ',en_mbpt%gw
+       endif
        write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en_mbpt%total - en_mbpt%rpa + en_mbpt%gw
      endif
 
