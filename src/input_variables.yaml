@@ -1345,6 +1345,15 @@ gamma_hybrid:
   comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the separation
     between long-range and short-range. It is input in bohr^-1.
 
+kappa_hybrid:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1.0
+  comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount
+    of DFT correlation.
+
 grid_quality:
   family: scf
   datatype: characters
