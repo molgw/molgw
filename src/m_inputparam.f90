@@ -336,6 +336,17 @@ subroutine init_calculation_type(scf,postscf)
     calc_type%selfenergy_approx    = COHSEX
     calc_type%selfenergy_technique = QS
     alpha_hybrid            = 1.00_dp
+  case('QSGW-DH')
+    calc_type%is_gw                = .TRUE.
+    calc_type%selfenergy_approx    = GW
+    calc_type%selfenergy_technique = QS
+    calc_type%is_dft=.TRUE.
+    call init_dft_type('RSH')
+  case('QSPT2-DH')
+    calc_type%selfenergy_approx    = PT2
+    calc_type%selfenergy_technique = QS
+    calc_type%is_dft=.TRUE.
+    call init_dft_type('RSH')
   case default
     !
     ! If the calculation type is none of the above, let's assume it is DFT-type
