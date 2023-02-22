@@ -341,7 +341,7 @@ subroutine init_calculation_type(scf,postscf)
     calc_type%selfenergy_approx    = GW
     calc_type%selfenergy_technique = QS
     calc_type%is_dft=.TRUE.
-    call init_dft_type('RSH')
+    call init_dft_type(scf)
   case('QSPT2-DH')
     calc_type%selfenergy_approx    = PT2
     calc_type%selfenergy_technique = QS
@@ -415,7 +415,12 @@ subroutine init_dft_type(key)
 
   !
   ! Prepare the object dft_xc
-  allocate(dft_xc(3))
+  select case(TRIM(key))
+  case('QSGW-DH')
+    allocate(dft_xc(4))
+  case default
+    allocate(dft_xc(3))
+  end select
   dft_xc(:)%nspin = nspin
   ! default is one, otherwise it is modified later
   dft_xc(:)%coeff = 1.0_dp
@@ -558,6 +563,15 @@ subroutine init_dft_type(key)
     dft_xc(2)%coeff = beta_hybrid
     dft_xc(3)%coeff = kappa_hybrid
     dft_xc(2)%gamma = gamma_hybrid
+  case('QSGW-DH')
+    dft_xc(1)%id = XC_GGA_X_PBE
+    dft_xc(2)%id = XC_GGA_C_PBE
+    dft_xc(3)%id = XC_LDA_C_VWN
+    dft_xc(4)%id = XC_LDA_C_PW_RPA
+    dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
+    dft_xc(2)%coeff = kappa_hybrid 
+    dft_xc(3)%coeff = 1.00_dp - kappa_hybrid
+    dft_xc(4)%coeff = -(1.00_dp - kappa_hybrid)
   case('RSHX')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
