@@ -1,0 +1,19 @@
+&molgw
+ scf='b3lyp'
+
+ basis='cc-pVDZ'
+ auxil_basis='auto'
+
+ postscf='td'
+ frozencore='yes'
+ tddft_grid_quality='medium'
+ triplet='yes'
+
+ natom=6
+/
+H   0.000000   0.923274    1.238289
+H   0.000000   -0.923274   1.238289
+H   0.000000   0.923274   -1.238289
+H   0.000000   -0.923274  -1.238289
+C   0.000000   0.000000    0.668188
+C   0.000000   0.000000   -0.668188
