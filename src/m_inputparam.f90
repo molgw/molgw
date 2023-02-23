@@ -566,7 +566,7 @@ subroutine init_dft_type(key)
   case('QSGW-DH')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_C_PBE
-    dft_xc(3)%id = XC_LDA_C_VWN
+    dft_xc(3)%id = XC_LDA_C_PW
     dft_xc(4)%id = XC_LDA_C_PW_RPA
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = kappa_hybrid 
