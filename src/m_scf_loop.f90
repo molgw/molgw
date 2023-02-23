@@ -26,6 +26,7 @@ module m_scf_loop
  use m_hamiltonian_twobodies
  use m_hamiltonian_wrapper
  use m_selfenergy_tools
+ use m_linear_response
  use m_restart
 
 
@@ -183,7 +184,7 @@ subroutine scf_loop(is_restart,&
 
 
      call init_spectral_function(nstate,occupation,0,wpol)
-     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_gks%rpa,en_gks%gw,wpol)
+     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,en_gks%rpa,en_gks%gw,wpol)
 
      if( ABS(en_gks%rpa) > 1.e-6_dp) then
        en_gks%total = en_gks%total + en_gks%rpa

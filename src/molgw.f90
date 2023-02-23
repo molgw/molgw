@@ -58,6 +58,7 @@ program molgw
   use m_fourier_quadrature
   use m_libcint_tools
   use m_noft
+  use m_linear_response
   implicit none
 
  !=====
@@ -665,7 +666,7 @@ program molgw
   ! (only if the SCF cycles were converged)
   if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
     call init_spectral_function(nstate,occupation,0,wpol)
-    call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
     call destroy_spectral_function(wpol)
   endif
 
