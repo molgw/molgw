@@ -711,7 +711,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  call start_clock(timing_build_bse)
  if( .NOT. has_auxil_basis ) call die('Does not have auxil basis. This should not happen')
 
- write(stdout,'(a)')       ' Build W part Auxil'
+ write(stdout,'(a)')      ' Build W part Auxil'
  write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
 
  nmat = desc_apb(M_)

@@ -305,6 +305,7 @@ subroutine init_calculation_type(scf,postscf)
     case('RPA')
       ! nothing to declare
     case('RPAX')
+      call die('Under development: RPAX not working as expected yet')
       calc_type%include_tddft_kernel =.TRUE.
     case default
       call die('Error reading keyword: postscf')
