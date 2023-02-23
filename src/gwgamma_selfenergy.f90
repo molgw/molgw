@@ -60,7 +60,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   if( gwgamma_tddft_ ) then
     write(stdout,*) 'Include a TDDFT kernel contribution to the vertex'
     write(stdout,'(1x,a,f12.4)') 'Exact-exchange amount: ',alpha_hybrid
-    call prepare_tddft(nstate,basis,c_matrix,occupation)
+    call prepare_tddft(.FALSE.,nstate,basis,c_matrix,occupation)
   endif
 
   if(has_auxil_basis) then

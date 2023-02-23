@@ -7,7 +7,7 @@
 !
 !=========================================================================
 #include "molgw.h"
-subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
+subroutine build_amb_apb_common(is_triplet_currently,nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
                                 m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
  use m_definitions
  use m_timing
@@ -20,6 +20,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  use m_eri_ao_mo
  implicit none
 
+ logical,intent(in)                 :: is_triplet_currently
  integer,intent(in)                 :: nmat,nbf,nstate
  real(dp),intent(in)                :: energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
@@ -109,7 +110,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
            endif
          endif
 
-         if( .NOT. is_triplet) then
+         if( .NOT. is_triplet_currently) then
            apb_block(t_ia,t_jb) = 2.0_dp * eri_eigen_iajb * spin_fact
          else
            apb_block(t_ia,t_jb) = 0.0_dp
@@ -278,7 +279,7 @@ end subroutine get_rpa_correlation
 
 
 !=========================================================================
-subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
+subroutine build_apb_hartree_auxil(is_triplet_currently,desc_apb,wpol,m_apb,n_apb,apb_matrix)
  use m_definitions
  use m_timing
  use m_mpi
@@ -287,6 +288,7 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
  use m_eri_ao_mo
  implicit none
 
+ logical,intent(in)                 :: is_triplet_currently
  integer,intent(in)                 :: desc_apb(NDEL)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
@@ -303,7 +305,8 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
  real(dp),allocatable :: eri_3center_left(:),eri_3center_right(:)
 !=====
 
- if( is_triplet) return
+ ! in case of triplet final state, no contribution is to be calculated
+ if( is_triplet_currently) return
 
  call start_clock(timing_build_common)
 
@@ -381,7 +384,7 @@ end subroutine build_apb_hartree_auxil
 
 
 !=========================================================================
-subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matrix)
+subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,desc_apb,wpol,m_apb,n_apb,apb_matrix)
  use m_definitions
  use m_timing
  use m_mpi
@@ -390,6 +393,7 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
  use m_eri_ao_mo
  implicit none
 
+ logical,intent(in)                 :: is_triplet_currently
  integer,intent(in)                 :: desc_apb(NDEL)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
@@ -405,7 +409,8 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
  integer              :: info
 !=====
 
- if( is_triplet) return
+ ! in case of triplet final state, no contribution is to be calculated
+ if( is_triplet_currently) return
 
 #if defined(HAVE_SCALAPACK)
 
@@ -456,7 +461,7 @@ end subroutine build_apb_hartree_auxil_scalapack
 
 
 !=========================================================================
-subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix)
+subroutine build_apb_tddft(is_triplet_currently,nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix)
  use m_definitions
  use m_timing
  use m_warning
@@ -470,6 +475,7 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
  use m_tddft_fxc
  implicit none
 
+ logical,intent(in)                 :: is_triplet_currently
  integer,intent(in)                 :: nmat,nstate
  type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
@@ -493,7 +499,7 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
 
  !
  ! Prepare TDDFT calculations
- call prepare_tddft(nstate,basis,c_matrix,occupation)
+ call prepare_tddft(is_triplet_currently,nstate,basis,c_matrix,occupation)
 
 
  if( nprow_sd * npcol_sd > 1 ) &
@@ -530,7 +536,7 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
          if( t_ia_global < t_jb_global ) cycle
 
          if( nspin == 1 ) then
-           if( .NOT. is_triplet ) then
+           if( .NOT. is_triplet_currently ) then
              xctmp = eval_fxc_rks_singlet(istate,astate,iaspin,jstate,bstate,jbspin)
            else
              xctmp =  eval_fxc_rks_triplet(istate,astate,iaspin,jstate,bstate,jbspin)
