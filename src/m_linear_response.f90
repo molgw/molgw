@@ -301,11 +301,6 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
     write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
     write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',en_rpa
-  else
-    en_rpa = en_rpa * 0.50_dp
-    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
-    write(stdout,'(a)')   ' Eq. (XXX) from J. Chem. Phys. 132, 234114 (2010)'
-    write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',en_rpa
   endif
 
   write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV

@@ -617,6 +617,37 @@ program molgw
   endif
 
   !
+  ! final evaluation for RPAx total energy
+  !
+  if( TRIM(postscf) == 'RPAX' .OR. TRIM(postscf) == 'RPA' ) then
+    en_mbpt = en_gks
+
+    call init_spectral_function(nstate,occupation,0,wpol)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol,enforce_spin_multiplicity=1)
+    call destroy_spectral_function(wpol)
+    if( TRIM(postscf) == 'RPA' ) then
+      en_mbpt%rpa = erpa_tmp
+      write(stdout,'(a,2x,f19.10)') ' RPA Energy      (Ha):',en_mbpt%rpa
+    else
+      en_mbpt%rpa = 0.5_dp * erpa_tmp
+
+      call init_spectral_function(nstate,occupation,0,wpol)
+      call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol,enforce_spin_multiplicity=3)
+      call destroy_spectral_function(wpol)
+      en_mbpt%rpa = en_mbpt%rpa + 1.5_dp * erpa_tmp
+      write(stdout,'(a,2x,f19.10)') ' RPAx Energy      (Ha):',en_mbpt%rpa
+    endif
+    en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa
+
+    write(stdout,*)
+    write(stdout,'(a,2x,f19.10)') ' RPA or RPAx Total Energy (Ha):',en_mbpt%total
+    write(stdout,*)
+    call print_energy_yaml('mbpt energy',en_mbpt)
+
+  endif
+
+
+  !
   ! final evaluation for MP2 total energy
   !
   if( calc_type%is_mp2 ) then
