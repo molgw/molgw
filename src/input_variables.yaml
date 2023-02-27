@@ -897,6 +897,14 @@ nvirtualw:
   comment: Sets the starting state beyond which states are excluded from the sum in
     the screened Coulomb interaction W, in TD-DFT, and in BSE.
 
+only_erpa:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use the polarizability to only compute the RPA corr. energy.
+
 postscf:
   family: post
   datatype: characters

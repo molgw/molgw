@@ -185,12 +185,6 @@ subroutine scf_loop(is_restart,&
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_gks%rpa,en_gks%gw,wpol)
 
-     if(kappa_hybrid/=one) then ! Print double-hybrid RPA correlation energy
-        write(stdout,'(/,a,f16.10)')       ' RPA correlation energy will be scaled by :',(one-kappa_hybrid)
-        en_gks%rpa=(one-kappa_hybrid)*en_gks%rpa
-        write(stdout,'(/,a,f16.10)') ' Scaled RPA correlation energy (Ha): ',en_gks%rpa
-     endif
-
      if( ABS(en_gks%rpa) > 1.e-6_dp) then
        en_gks%total = en_gks%total + en_gks%rpa
        write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_gks%total
@@ -205,10 +199,6 @@ subroutine scf_loop(is_restart,&
 
      call dump_out_matrix(.FALSE.,'=== Self-energy ===',matrix_tmp)
      call destroy_spectral_function(wpol)
-
-     if(kappa_hybrid/=one) then ! Scale the double-hybrid GW contribution before adding it to the Hamiltonian
-       matrix_tmp(:,:,:)=(one-kappa_hybrid)*matrix_tmp(:,:,:)
-     endif
 
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:)
      deallocate(matrix_tmp)
@@ -227,21 +217,12 @@ subroutine scf_loop(is_restart,&
      allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
      call pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,matrix_tmp,en_gks%mp2)
 
-     if(kappa_hybrid/=one) then ! Print double-hybrid MP2 correlation energy
-        write(stdout,'(/,a,f16.10)')       ' MP2 correlation energy will be scaled by :',(one-kappa_hybrid)
-        en_gks%mp2=(one-kappa_hybrid)*en_gks%mp2
-     endif
-
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
      write(stdout,*)
      en_gks%total = en_gks%total + en_gks%mp2
      write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%total
 
      call dump_out_matrix(.FALSE.,'=== Self-energy ===',matrix_tmp)
-
-     if(kappa_hybrid/=one) then ! Scale the double-hybrid PT2 contribution before adding it to the Hamiltonian
-       matrix_tmp(:,:,:)=(one-kappa_hybrid)*matrix_tmp(:,:,:)
-     endif
 
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:)
      deallocate(matrix_tmp)
