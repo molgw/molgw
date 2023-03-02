@@ -215,6 +215,7 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
   use m_inputparam
   use m_spectral_function
   use m_selfenergy_tools
+  use m_linear_response
   implicit none
 
   integer,intent(in)         :: nstate
@@ -240,7 +241,7 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
 
   call init_spectral_function(nstate,occupation,0,vchi0v)
 
-  call polarizability_onering(basis,nstate,energy,c_matrix,vchi0v)
+  call polarizability_onering(basis,energy,c_matrix,vchi0v)
 
 #if defined(HAVE_SCALAPACK)
   call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)

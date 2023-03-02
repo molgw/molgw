@@ -24,6 +24,7 @@ module m_selfenergy_evaluation
  use m_virtual_orbital_space
  use m_io
  use m_gw_selfenergy_grid
+ use m_linear_response
 
 #if defined(HAVE_LIBXC)
 #include <xc_funcs.h>
@@ -206,7 +207,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
              .AND. calc_type%selfenergy_technique /= imaginary_axis_homolumo ) then
            ! in case of BSE calculation, enforce RPA here
            enforce_rpa = calc_type%is_bse
-           call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
+           call polarizability(enforce_rpa,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
          else
            call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
          endif
@@ -340,7 +341,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation
      if( reading_status /= 0 ) then
-       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
+       call polarizability(.FALSE.,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
      endif
 
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
@@ -374,7 +375,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation
      if( reading_status /= 0 ) then
-       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
+       call polarizability(.FALSE.,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
      endif
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 
@@ -433,7 +434,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation
      if( reading_status /= 0 ) then
-       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
+       call polarizability(.FALSE.,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
      endif
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
 

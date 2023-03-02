@@ -295,13 +295,18 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%selfenergy_approx = CI
     case('BSE')
       calc_type%is_bse = .TRUE.
-    case('BSE_RPA','BSE-RPA')
+    case('BSE_RPA','BSE-RPA') ! debug only
       calc_type%is_bse        = .TRUE.
       calc_type%no_bse_kernel = .TRUE.
     case('TD')
       calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
+    case('RPA')
+      ! nothing to declare
+    case('RPAX')
+      call die('Under development: RPAX not working as expected yet')
+      calc_type%include_tddft_kernel =.TRUE.
     case default
       call die('Error reading keyword: postscf')
     end select
