@@ -240,7 +240,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
        endif
        if( ABS(en_mbpt%rpa) > 1.e-6_dp) then
          write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_mbpt%total
-         if(kappa_hybrid/=one) then ! Print the double-hybrid RPA Total energy
+         if(kappa_hybrid/=one) then ! Print the double-hybrid RPA+ Total energy
            write(stdout,'(a,f19.10)') ' RPA+ Total energy (Ha): ',en_mbpt%total-en_mbpt%rpa+Erpa_sie_KP
          endif
        endif
