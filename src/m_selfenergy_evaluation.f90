@@ -219,6 +219,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
          if( ALLOCATED(dft_xc) ) then
            call destroy_libxc_info(dft_xc)
            allocate(dft_xc(2))
+           dft_xc(:)%id = 0
            dft_xc(:)%nspin = nspin
            dft_xc(1)%id = XC_LDA_C_PW      ! HEG
            dft_xc(2)%id = XC_LDA_C_PW_RPA  ! RPA@HEG
@@ -228,6 +229,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
            call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
            call clean_allocate('XC operator RPA+',matrix_tmp,basis%nbf,basis%nbf,nspin)
            call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,matrix_tmp,Erpa_sie_KP)
+           call destroy_dft_grid()
            call clean_deallocate('XC operator RPA+',matrix_tmp)
            write(stdout,'(/,a,f19.10)') ' Scaled E(LHEG) - E(LRPA) correlation energy (Ha):',Erpa_sie_KP
            Erpa_sie_KP=en_mbpt%rpa+Erpa_sie_KP

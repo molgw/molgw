@@ -1,0 +1,19 @@
+&molgw
+ scf='rsh'
+ 
+ basis='Def2-TZVP'
+ auxil_basis='Def2-TZVP-RI'
+ alpha_hybrid=0.693361274
+ kappa_hybrid=0.666666667
+ nscf=1000
+ 
+ ! Post SCF add the MP2 contribution
+ postscf='MP2'
+ frozencore='yes'
+
+ natom=3
+ length_unit='au'
+/
+O 0.00000000000000 0.00000000000000 0.22137196783689
+H 0.00000000000000 1.42997277228976 -0.88549165079982
+H 0.00000000000000 -1.42997277228976 -0.88549165079982
