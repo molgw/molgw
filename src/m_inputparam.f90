@@ -580,8 +580,8 @@ subroutine init_dft_type(key)
   case('B2PLYP')
     dft_xc(1)%id = XC_GGA_X_B88
     dft_xc(2)%id = XC_GGA_C_LYP
-    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.53
-    if( kappa_hybrid == 1.00_dp ) kappa_hybrid=0.73
+    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.53_dp
+    if( kappa_hybrid == 1.00_dp ) kappa_hybrid=0.73_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = kappa_hybrid
   case('QSGW-DH')
