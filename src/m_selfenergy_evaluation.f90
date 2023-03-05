@@ -242,7 +242,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
        if( calc_type%is_dft .AND. kappa_hybrid==one ) then ! Setting Ex = EXX and Ec = Erpa (removing DFT contributions).
          en_mbpt%total = en_mbpt%total - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx 
        endif
-       if( ABS(en_mbpt%rpa) > 1.e-6_dp) then
+       if( ABS(en_mbpt%rpa) > 1.e-6_dp ) then
          write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_mbpt%total
          if( ABS(erpa_sie_KP) > 1.e-6_dp ) then ! Print the double-hybrid RPA+ Total energy
            write(stdout,'(a,f19.10)') ' RPA+ Total energy (Ha): ',en_mbpt%total-en_mbpt%rpa+erpa_sie_KP
