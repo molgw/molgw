@@ -1041,7 +1041,7 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
  logical  :: basis_recognized
  real(dp) :: abasis,bbasis
  real(dp) :: hkin(basis%nbf,basis%nbf)
- real(dp) :: t_i(nsemin:nsemax,nspin),eqp_extrap(nsemin:nsemax,nspin)
+ real(dp) :: t_i(nsemin:nsemax,nspin),eqp_extrap(basis%nbf,nspin)
  real(dp) :: deltae
  !=====
 
