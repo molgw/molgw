@@ -1075,8 +1075,8 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
    abasis =  0.1271
    bbasis = -0.0483
  case('cc-pV6Z')
-   abasis =  0.1271 * 0.5    ! evaluated
-   bbasis = -0.0483 * 0.5    ! evaluated
+   abasis =  0.1271 * 0.46    ! evaluated
+   bbasis = -0.0483 * 0.46    ! evaluated
  case('aug-cc-pVDZ')
    abasis =  0.5351
    bbasis = -0.3061
@@ -1084,14 +1084,14 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
    abasis =   0.5063
    bbasis =  -0.2086
  case('aug-cc-pVQZ')
-   abasis =  0.5063  * 0.5    ! evaluated
-   bbasis = -0.2086  * 0.5    ! evaluated
+   abasis =  0.5063  * 0.46   ! evaluated
+   bbasis = -0.2086  * 0.46   ! evaluated
  case('aug-cc-pV5Z')
-   abasis =  0.5063  * 0.25    ! evaluated
-   bbasis = -0.2086  * 0.25    ! evaluated
+   abasis =  0.5063  * 0.46**2   ! evaluated
+   bbasis = -0.2086  * 0.46**2   ! evaluated
  case('aug-cc-pV6Z')
-   abasis =  0.5063  * 0.125    ! evaluated
-   bbasis = -0.2086  * 0.125    ! evaluated
+   abasis =  0.5063  * 0.46**3   ! evaluated
+   bbasis = -0.2086  * 0.46**3   ! evaluated
  case default
    basis_recognized = .FALSE.
  end select
