@@ -567,7 +567,7 @@ subroutine init_dft_type(key)
     dft_xc(2)%id = XC_LDA_C_PW
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = 1.00_dp
-  case('RSH')   ! This one is also used for double hybrid functionals (e.g. PBEQIDH, PBE0-DH, and their RPA+ versions).
+  case('RSH')   ! This one can also be used for double hybrid functionals (e.g. PBEQIDH, PBE0-DH, and their RPA+ versions).
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
     dft_xc(3)%id = XC_GGA_C_PBE
@@ -576,7 +576,21 @@ subroutine init_dft_type(key)
     dft_xc(3)%coeff = kappa_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   !
-  ! Double Hybrid functionals
+  ! Double Hybrid functionals (used with postscf='MP2' or 'RPA')
+  case('PBE0-DH')  
+    dft_xc(1)%id = XC_GGA_X_PBE
+    dft_xc(2)%id = XC_GGA_C_PBE
+    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.5_dp
+    if( kappa_hybrid == 1.00_dp ) kappa_hybrid=0.875_dp
+    dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
+    dft_xc(2)%coeff = kappa_hybrid
+  case('PBE-QIDH')  
+    dft_xc(1)%id = XC_GGA_X_PBE
+    dft_xc(2)%id = XC_GGA_C_PBE
+    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.693361274_dp
+    if( kappa_hybrid == 1.00_dp ) kappa_hybrid=0.666666667_dp
+    dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
+    dft_xc(2)%coeff = kappa_hybrid
   case('B2PLYP')
     dft_xc(1)%id = XC_GGA_X_B88
     dft_xc(2)%id = XC_GGA_C_LYP
@@ -584,6 +598,8 @@ subroutine init_dft_type(key)
     if( kappa_hybrid == 1.00_dp ) kappa_hybrid=0.73_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = kappa_hybrid
+  !
+  ! QSGW Double Hybrid functional
   case('QSGW-DH')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
