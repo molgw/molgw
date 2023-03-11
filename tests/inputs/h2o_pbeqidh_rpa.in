@@ -1,10 +1,8 @@
 &molgw
- scf='rsh'
+ scf='pbe-qidh'
  
  basis='Def2-TZVP'
  auxil_basis='Def2-TZVP-RI'
- alpha_hybrid=0.693361274
- kappa_hybrid=0.666666667
  nscf=1000
  
  ! Post SCF add the RPA+ contribution

@@ -286,6 +286,10 @@ MP2 Total Energy          ,  -76.3666106951    , 0 , 1.0e-7
 h2o_pbeqidh_rpa.in        , PBE-QIDH-RPA+ double hybrid functional with RI
 RPA+ Total energy (Ha):   ,  -76.3148287740    , 0 , 1.0e-7
 
+h2o_pbe0_dh.in            , PBE0-DH double hybrid functional with RI
+MP2 Energy                ,   -0.0377521092    , 0 , 1.0e-7
+MP2 Total Energy          ,  -76.3764848105    , 0 , 1.0e-7
+
 boron_gw_spinpolarized.in , GW@HF boron atom without RI with spin, noparallel
 Hartree Energy            ,   11.6084909105   , 0 , 1.0e-7
 Total Energy              ,  -24.5299616244   , 0 , 1.0e-7

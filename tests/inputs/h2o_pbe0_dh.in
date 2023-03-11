@@ -1,5 +1,5 @@
 &molgw
- scf='pbe-qidh'
+ scf='pbe0-dh'
  
  basis='Def2-TZVP'
  auxil_basis='Def2-TZVP-RI'
