@@ -48,9 +48,6 @@ do i=1,nBAS
  enddo
 enddo
 
-allocate(eHF(nBas),ERI(nBas,nBas,nBas,nBas),dipole_int(nBas,nBas,ncart))
-eHF=0.0e0;ERI=0.0e0;dipole_int=0.0e0;
-
 call RPAx(TDA,doACFDT,exchange_kernel,singlet,triplet,eta,nBas,nC,nO,nV,nR,nS,ENuc,ERHF,ERI,dipole_int,eHF)
 
 deallocate(eHF,ERI,dipole_int)
