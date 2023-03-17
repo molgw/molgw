@@ -1,0 +1,1682 @@
+ ======================================================================
+
+
+            Welcome to the fascinating world of MOLGW
+
+                        3.1
+
+
+ ======================================================================
+
+ MOLGW commit git SHA: c37a7776a1a6c49e0f4fcf57fd0702c4ca7f3510
+
+ compiled with GCC version 10.2.0
+ with options: 
+      FCFLAGS -cpp 
+      FCFLAGS -I 
+      FCFLAGS /home/marm314/src/libint-2.4.2//include/libint2 
+      FCFLAGS -I 
+      FCFLAGS /home/marm314/src/libint-2.4.2//include 
+      FCFLAGS -imultiarch 
+      FCFLAGS x86_64-linux-gnu 
+      FCFLAGS -D_REENTRANT 
+      FCFLAGS -D 
+      FCFLAGS HAVE_LIBXC 
+      FCFLAGS -mtune=generic 
+      FCFLAGS -march=x86-64 
+      FCFLAGS -O3 
+      FCFLAGS -fopenmp 
+
+ Today is 03/17/2023
+ It is now 23:29
+ And it is too late to work. Go to bed and have a sleep
+
+ Preprocessing and runtime options:
+ Running with LIBXC
+     LIBXC version:  5. 2. 2
+ Running with OPENMP parallelization activated with max threads count:   16
+ Code compiled with LIBINT support with max angular momentum:     5
+ Running with external LIBINT or LIBCINT calculation of the one-body operators (faster)
+ Running with external LIBINT calculation of the gradients of the Coulomb integrals
+
+
+ Opening input file: h2_1.4AU.in
+
+  === Echo the entire list of input variables  ===
+
+                  auto_auxil_fsam    1.50000000E+00
+               auto_auxil_lmaxinc         1
+                  auto_occupation      no 
+                      auxil_basis      cc-pVQZ-RI
+                            basis      cc-pVQZ
+                          comment      
+                  ecp_auxil_basis      
+                        ecp_basis      
+                     ecp_elements      
+                      ecp_quality      high
+                         ecp_type      
+                     eri3_genuine      no 
+              even_tempered_alpha    1.00000000E+00
+               even_tempered_beta    5.00000000E-01
+             even_tempered_n_list      1
+                    gaussian_type      cart
+                           incore      yes
+                memory_evaluation      no 
+                      move_nuclei      no
+                            nstep        50
+                              scf      hf
+                         tolforce    1.00000000E-05
+                      eri3_nbatch         1
+                       eri3_npcol         1
+                       eri3_nprow         1
+                      grid_memory    4.00000000E+02
+                  mpi_nproc_ortho         1
+              scalapack_block_min    100000
+                       basis_path      /home/marm314/Installers/molgw/dhybs/molgw-devel/basis/
+                          cube_nx        30
+                          cube_ny        30
+                          cube_nz        30
+                   cube_state_min         1
+                   cube_state_max         1
+                  force_energy_qp      no 
+                ignore_bigrestart      no 
+                 print_bigrestart      yes
+                       print_cube      no 
+         print_transition_density      no 
+                  print_wfn_files      no 
+             print_density_matrix      no 
+                        print_eri      no 
+                    print_hartree      no 
+                  print_multipole      no 
+                       print_pdos      no 
+                    print_restart      yes
+                   print_rho_grid      no 
+                      print_sigma      no 
+          print_spatial_extension      no 
+                          print_w      no 
+                        print_wfn      no 
+                       print_yaml      yes
+                        read_fchk      no
+                     read_restart      no                                                                                                                                          
+                   calc_dens_disc      no 
+                    calc_q_matrix      no 
+                    calc_spectrum      no 
+            print_cube_diff_tddft      no 
+             print_cube_rho_tddft      no 
+                  print_dens_traj      no 
+       print_dens_traj_points_set      no 
+            print_dens_traj_tddft      no 
+        print_line_rho_diff_tddft      no 
+             print_line_rho_tddft      no 
+             print_tddft_matrices      no 
+               print_charge_tddft      no 
+              print_tddft_restart      yes
+               read_tddft_restart      no 
+                       write_step    1.00000000E+00
+                 calc_charge_step    1.00000000E+00
+             assume_scf_converged      no 
+               ci_greens_function      holes
+                        ci_nstate         1
+                   ci_nstate_self         1
+             ci_spin_multiplicity         1
+                          ci_type      all
+                         dft_core         0
+                  ecp_small_basis      
+                              eta    1.00000000E-03
+                       frozencore      yes
+                    gwgamma_tddft      no 
+                           ncoreg         0
+                           ncorew         0
+                      nexcitation         0
+                  nomega_chi_imag         0
+                     nomega_sigma        51
+                nomega_sigma_calc         1
+                        nstep_dav        15
+                         nstep_gw         1
+                  nvel_projectile         1
+                        nvirtualg    100000
+                        nvirtualw    100000
+                        only_erpa      no 
+                          postscf      RPAx
+             postscf_diago_flavor      
+                   pt3_a_diagrams      yes
+                pt_density_matrix      no
+                        rcut_mbpt    1.00000000E+00
+                          scissor    0.00000000E+00
+             selfenergy_state_max    100000
+             selfenergy_state_min         1
+           selfenergy_state_range    100000
+                      small_basis      
+                       step_sigma    1.00000000E-02
+                  step_sigma_calc    3.00000000E-02
+                         stopping      no
+                      stopping_nq       500
+                      stopping_dq    2.00000000E-02
+                              tda      no 
+               tddft_grid_quality      high
+                           toldav    1.00000000E-04
+                          triplet      no 
+    use_correlated_density_matrix      no 
+                      virtual_fno      no 
+                        excit_dir  (  1.00000000E+00    0.00000000E+00    0.00000000E+00  )
+                      excit_kappa    2.00000000E-05
+                       excit_name      no
+                      excit_omega    2.00000000E-01
+                      excit_time0    3.00000000E+00
+                           n_hist         2
+                           n_iter         2
+                  n_restart_tddft        50
+                      ncore_tddft         0
+                        pred_corr      PC2B
+                        prop_type      CN
+        projectile_charge_scaling    1.00000000E+00
+                           r_disc    2.00000000E+02
+                 tddft_frozencore      no 
+                     tddft_wfn_t0      SCF
+               tddft_energy_shift    0.00000000E+00
+                     tddft_charge   -9.99000000E+02
+                         time_sim    1.00000000E+01
+                        time_step    1.00000000E+00
+                   vel_projectile  (  0.00000000E+00    0.00000000E+00    1.00000000E+00  )
+                     tolscf_tddft    1.00000000E-04
+                     alpha_hybrid    0.00000000E+00
+                     alpha_mixing    7.00000000E-01
+                      beta_hybrid    0.00000000E+00
+                     noft_complex      no 
+           density_matrix_damping    0.00000000E+00
+                      diis_switch    5.00000000E-02
+                     noft_fcidump      no 
+                     gamma_hybrid    1.00000000E+06
+                     kappa_hybrid    1.00000000E+00
+                     grid_quality      high
+                 init_hamiltonian      guess
+                noft_NOTupdateOCC      no 
+                noft_NOTupdateORB      no 
+                  noft_functional      PNOF7
+                 integral_quality      high
+                    noft_printdmn      no 
+                  noft_printswdmn      no 
+                   noft_printints      no 
+                    noft_readCOEF      no 
+                   noft_readFdiag      no 
+                  noft_readGAMMAS      no 
+                     noft_readOCC      no 
+                         noft_sta      yes
+              noft_ithresh_lambda         5
+                        kerker_k0    0.00000000E+00
+            level_shifting_energy    0.00000000E+00
+                   noft_lowmemERI      yes
+                      noft_Lpower    5.30000000E-01
+                      min_overlap    1.00000000E-05
+                    mixing_scheme      pulay
+                      noft_npairs         1
+                    noft_ncoupled         2
+                      npulay_hist         6
+                             nscf       100
+                       noft_ndiis         5
+                        noft_nscf      1000
+                 partition_scheme      ssf
+                     noft_restart      no 
+                 scf_diago_flavor      
+                        noft_tolE    1.00000000E-09
+                           tolscf    1.00000000E-08
+                           charge    0.00000000E+00
+                 electric_field_x    0.00000000E+00
+                 electric_field_y    0.00000000E+00
+                 electric_field_z    0.00000000E+00
+                      length_unit      angstrom
+                    magnetization    0.00000000E+00
+                            natom         2
+                           nghost         0
+                            nspin         1
+                      temperature    0.00000000E+00
+                         xyz_file      
+
+  ================================================
+
+
+ Summary of important input parameters 
+
+                    SCF type:   HF                                                                                                  
+               Post SCF type:   RPAX                                                                                                
+             number of atoms:    2
+     number of basis centers:    2
+                   electrons:     2.0000
+                      charge:     0.0000
+           spin polarization:    1
+               magnetization:     0.0000
+              basis file path:  /home/marm314/Installers/molgw/dhybs/molgw-devel/basis/
+                   basis set:   cc-pVQZ                                                                                             
+         auxiliary basis set:   cc-pVQZ-RI                                                                                          
+               gaussian type:   CART
+             global exchange:     1.0000
+    long-range-only exchange:     0.0000
+   range-separation (bohr-1):  none
+
+
+ ================================
+       Atom list
+                        bohr                                        angstrom
+ atom    1   H      :      0.000000     0.000000     0.000000           0.000000     0.000000     0.000000
+ atom    2   H      :      0.000000     0.000000     1.400000           0.000000     0.000000     0.740848
+ ================================
+
+ Number of bonds     1
+ Molecule has inversion symmetry
+ Molecule is linear
+
+
+ Setting up the cartesian to pure transforms up to l=  5
+ Transformations set up completed for both CARTESIAN and PURE Gaussians
+
+ Setting up the basis set for wavefunctions
+
+                  Total number of basis functions:      70
+                                 Number of shells:      20
+        Maximum angular momentum in the basis set:       3
+                                                         f
+ Basis set is fit and ready
+
+
+ Setting up the auxiliary basis set for Coulomb integrals
+
+                  Total number of basis functions:     140
+                                 Number of shells:      30
+        Maximum angular momentum in the basis set:       4
+                                                         g
+ Basis set is fit and ready
+
+   Allocate:                                   Overlap matrix S,  Mem:   +0.000 (Gb),  Total Mem:    0.000 (Gb)
+
+ Setup overlap matrix S (LIBINT)
+
+ Calculate the transformation matrix X 
+   Allocate:                           Overlap X * X**H = S**-1,  Mem:   +0.000 (Gb),  Total Mem:    0.000 (Gb)
+
+ Filtering basis functions that induce overcompleteness
+   Lowest S eigenvalue is            3.04E-05
+   Tolerance on overlap eigenvalues  1.00E-05
+   Retaining    70 among    70
+
+ === Occupations ===
+     1      2.00000
+     2      0.00000
+     3      0.00000
+     4      0.00000
+     5      0.00000
+     6      0.00000
+
+
+ Tolerance on integrals set to  1.00E-08
+
+ Cauchy-Schwartz screening of the 3- or 4-center integrals (LIBINT)
+
+ Non negligible shellpairs to be computed     210  over a total of     210
+ Saving (%):       0.0000
+   Allocate:                                         index pair,  Mem:   +0.000 (Gb),  Total Mem:    0.000 (Gb)
+   Allocate:                                        index basis,  Mem:   +0.000 (Gb),  Total Mem:    0.000 (Gb)
+ 2-center integrals (LIBINT)
+
+ SCALAPACK block size for auxiliary basis:   64
+   Allocate:                                 2-center integrals,  Mem:   +0.000 (Gb),  Total Mem:    0.000 (Gb)
+ 2-center integrals inverse square-root
+
+ Distribute auxiliary basis functions among processors
+ Max auxiliary basis functions  137 for processor      1
+ Min auxiliary basis functions  137 for processor      1
+   Allocate:             2-center integrals inverse square-root,  Mem:   +0.000 (Gb),  Total Mem:    0.000 (Gb)
+
+ All 2-center integrals have been calculated, diagonalized and stored
+ Lowest eigenvalue:     1.294389E-07
+ Some have been eliminated due to too large overlap      3
+ because their eigenvalue was lower than:    1.000000E-06
+ Deallocate:                    2-center integrals eigenvectors,  Mem:   -0.000 (Gb),  Total Mem:    0.000 (Gb)
+
+ Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)
+   Allocate:                       3-center integrals SCALAPACK,  Mem:   +0.003 (Gb),  Total Mem:    0.003 (Gb)
+   Allocate:                             TMP 3-center integrals,  Mem:   +0.003 (Gb),  Total Mem:    0.005 (Gb)
+ Deallocate:                             TMP 3-center integrals,  Mem:   -0.003 (Gb),  Total Mem:    0.003 (Gb)
+ Number of calls to libint of this proc:                 6300
+ Total number of calls to libint:                        6300
+ Redundant calls due to parallelization and batches (%):     0.00
+ Deallocate:             2-center integrals inverse square-root,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+
+ All 3-center integrals have been calculated and stored
+
+   Allocate:                                 Kinetic operator T,  Mem:   +0.000 (Gb),  Total Mem:    0.003 (Gb)
+   Allocate:                                 Nucleus operator V,  Mem:   +0.000 (Gb),  Total Mem:    0.003 (Gb)
+   Allocate:                                    Fock operator F,  Mem:   +0.000 (Gb),  Total Mem:    0.003 (Gb)
+   Allocate:                                    Wavefunctions C,  Mem:   +0.000 (Gb),  Total Mem:    0.003 (Gb)
+
+ Setup kinetic part of the Hamiltonian (LIBINT)
+
+ Setup nucleus-electron part of the Hamiltonian (LIBINT)
+
+ Calculate approximate HXC potential with a superposition of atomic densities
+ Simple LDA functional on a coarse grid
+
+ Setup the DFT quadrature
+ Total number of grid points:          816
+
+ Distributing the grid among procs
+ Maximum number of grid points for a single proc         816
+ discretization grid per atom [radial , angular max - angular min]   25   26    6
+ total number of real-space points for this mpi task     816
+
+ Number of electrons:      1.993806
+      XC energy (Ha):     -0.530333
+
+ Approximate hamiltonian
+ Generalized diagonalization for spin:   1
+
+ Initialize the SCF mixing
+   Allocate:                               Input density matrix,  Mem:   +0.000 (Gb),  Total Mem:    0.003 (Gb)
+   Allocate:                                Hamiltonian history,  Mem:   +0.000 (Gb),  Total Mem:    0.003 (Gb)
+   Allocate:                             Density matrix history,  Mem:   +0.000 (Gb),  Total Mem:    0.003 (Gb)
+   Allocate:                                   Residual history,  Mem:   +0.000 (Gb),  Total Mem:    0.003 (Gb)
+
+   Allocate:                                Total Hamiltonian H,  Mem:   +0.000 (Gb),  Total Mem:    0.004 (Gb)
+   Allocate:                               Hartree potential Vh,  Mem:   +0.000 (Gb),  Total Mem:    0.004 (Gb)
+   Allocate:                             Exchange operator Sigx,  Mem:   +0.000 (Gb),  Total Mem:    0.004 (Gb)
+   Allocate:                                    XC operator Vxc,  Mem:   +0.000 (Gb),  Total Mem:    0.004 (Gb)
+   Allocate:                                   Density matrix P,  Mem:   +0.000 (Gb),  Total Mem:    0.004 (Gb)
+ Build density matrix
+
+ -------------------------------------------
+ *** SCF cycle No:    1
+
+ Calculate Hartree term with Resolution-of-Identity
+ Calculate Exchange term with Resolution-of-Identity
+
+ Pulay DIIS mixing
+  Residuals:       2.23731E-01
+ Alpha DIIS:       1.000000
+ DIIS predicted residual:   2.23731E-01
+
+ Generalized diagonalization for spin:   1
+
+ === Energies ===
+   #       (Ha)         (eV)      
+     1     -0.57391    -15.61677      2.0000
+  -----------------------------
+     2      0.14954      4.06915      0.0000
+     3      0.21150      5.75512      0.0000
+     4      0.47280     12.86542      0.0000
+     5      0.47280     12.86542      0.0000
+     6      0.50224     13.66672      0.0000
+     7      0.75519     20.54967      0.0000
+     8      0.77096     20.97877      0.0000
+     9      0.77096     20.97877      0.0000
+    10      1.05951     28.83065      0.0000
+    11      1.07342     29.20934      0.0000
+    12      1.36229     37.06981      0.0000
+    13      1.72094     46.82910      0.0000
+    14      1.72094     46.82910      0.0000
+    15      1.96034     53.34357      0.0000
+    16      1.96034     53.34357      0.0000
+    17      2.07234     56.39112      0.0000
+    18      2.20787     60.07916      0.0000
+    19      2.20787     60.07916      0.0000
+    20      2.53995     69.11564      0.0000
+    21      2.53995     69.11564      0.0000
+    22      2.56812     69.88201      0.0000
+    23      2.56812     69.88201      0.0000
+    24      2.63760     71.77275      0.0000
+    25      2.94656     80.17988      0.0000
+    26      3.29226     89.58683      0.0000
+    27      3.29226     89.58683      0.0000
+    28      3.31264     90.14145      0.0000
+    29      3.46375     94.25357      0.0000
+    30      4.27916    116.44183      0.0000
+    31      4.27916    116.44183      0.0000
+    32      4.53381    123.37131      0.0000
+    33      4.93713    134.34614      0.0000
+    34      4.93713    134.34614      0.0000
+    35      5.10422    138.89301      0.0000
+    36      5.73290    156.00008      0.0000
+    37      5.73290    156.00008      0.0000
+    38      6.27255    170.68481      0.0000
+    39      6.27255    170.68481      0.0000
+    40      6.77516    184.36136      0.0000
+    41      6.77516    184.36136      0.0000
+    42      7.32829    199.41285      0.0000
+    43      7.32829    199.41285      0.0000
+    44      7.53792    205.11725      0.0000
+    45      7.63638    207.79651      0.0000
+    46      7.63638    207.79651      0.0000
+    47      7.72779    210.28375      0.0000
+    48      7.81852    212.75267      0.0000
+    49      7.81852    212.75267      0.0000
+    50      8.03399    218.61595      0.0000
+    51      8.03399    218.61595      0.0000
+    52      8.29426    225.69834      0.0000
+    53      8.29426    225.69834      0.0000
+    54      8.85541    240.96786      0.0000
+    55      9.25499    251.84100      0.0000
+    56      9.25499    251.84100      0.0000
+    57      9.52418    259.16599      0.0000
+    58      9.63355    262.14215      0.0000
+    59      9.87371    268.67732      0.0000
+    60      9.87371    268.67732      0.0000
+    61      9.92351    270.03238      0.0000
+    62      9.92351    270.03238      0.0000
+    63     10.15944    276.45249      0.0000
+    64     12.57353    342.14327      0.0000
+    65     12.82777    349.06149      0.0000
+    66     12.82777    349.06149      0.0000
+    67     12.98540    353.35064      0.0000
+    68     16.34143    444.67284      0.0000
+    69     25.75192    700.74530      0.0000
+    70     26.04992    708.85446      0.0000
+
+
+ gKS HOMO energy    (eV):     -15.616766
+ gKS LUMO energy    (eV):       4.069149
+ gKS HOMO-LUMO gap  (eV):      19.685915
+
+
+    Nucleus-Nucleus (Ha):        0.7142856629
+    Kinetic Energy  (Ha):        1.2710056524
+    Nucleus Energy  (Ha):       -3.8101746251
+    Hartree Energy  (Ha):        1.3977024199
+    Exchange Energy (Ha):       -0.6988512100
+
+    Total Energy    (Ha):       -1.1260320998
+
+ Build density matrix
+ Convergence criterium on the density matrix:  1.42579E-01
+  ===> convergence not reached yet
+
+
+ Writing a small RESTART file
+
+ -------------------------------------------
+ *** SCF cycle No:    2
+
+ Calculate Hartree term with Resolution-of-Identity
+ Calculate Exchange term with Resolution-of-Identity
+
+ Pulay DIIS mixing
+  Residuals:       2.80630E-02   2.23731E-01
+ Alpha DIIS:       1.122910     -0.122910
+ DIIS predicted residual:   1.37878E-02
+
+ Generalized diagonalization for spin:   1
+
+ === Energies ===
+   #       (Ha)         (eV)      
+     1     -0.59361    -16.15281      2.0000
+  -----------------------------
+     2      0.14428      3.92602      0.0000
+     3      0.21020      5.71994      0.0000
+     4      0.46089     12.54134      0.0000
+     5      0.46089     12.54134      0.0000
+     6      0.48989     13.33050      0.0000
+     7      0.74916     20.38556      0.0000
+     8      0.76561     20.83318      0.0000
+     9      0.76561     20.83318      0.0000
+    10      1.05125     28.60592      0.0000
+    11      1.07017     29.12079      0.0000
+    12      1.34779     36.67517      0.0000
+    13      1.70278     46.33489      0.0000
+    14      1.70278     46.33489      0.0000
+    15      1.94330     52.87993      0.0000
+    16      1.94330     52.87993      0.0000
+    17      2.05734     55.98304      0.0000
+    18      2.19448     59.71471      0.0000
+    19      2.19448     59.71471      0.0000
+    20      2.52504     68.70995      0.0000
+    21      2.52504     68.70995      0.0000
+    22      2.55544     69.53697      0.0000
+    23      2.55544     69.53697      0.0000
+    24      2.62459     71.41882      0.0000
+    25      2.92586     79.61684      0.0000
+    26      3.28049     89.26676      0.0000
+    27      3.28049     89.26676      0.0000
+    28      3.29067     89.54358      0.0000
+    29      3.44747     93.81049      0.0000
+    30      4.25523    115.79065      0.0000
+    31      4.25523    115.79065      0.0000
+    32      4.51036    122.73303      0.0000
+    33      4.91658    133.78684      0.0000
+    34      4.91658    133.78684      0.0000
+    35      5.08071    138.25312      0.0000
+    36      5.70575    155.26125      0.0000
+    37      5.70575    155.26125      0.0000
+    38      6.23962    169.78867      0.0000
+    39      6.23962    169.78867      0.0000
+    40      6.75087    183.70045      0.0000
+    41      6.75087    183.70045      0.0000
+    42      7.30691    198.83112      0.0000
+    43      7.30691    198.83112      0.0000
+    44      7.51072    204.37703      0.0000
+    45      7.61394    207.18589      0.0000
+    46      7.61394    207.18589      0.0000
+    47      7.70689    209.71504      0.0000
+    48      7.77329    211.52210      0.0000
+    49      7.77329    211.52210      0.0000
+    50      7.99796    217.63552      0.0000
+    51      7.99796    217.63552      0.0000
+    52      8.27032    225.04694      0.0000
+    53      8.27032    225.04694      0.0000
+    54      8.80662    239.64030      0.0000
+    55      9.21549    250.76624      0.0000
+    56      9.21549    250.76624      0.0000
+    57      9.48573    258.11994      0.0000
+    58      9.59648    261.13361      0.0000
+    59      9.83280    267.56412      0.0000
+    60      9.83280    267.56412      0.0000
+    61      9.88549    268.99779      0.0000
+    62      9.88549    268.99779      0.0000
+    63     10.10984    275.10265      0.0000
+    64     12.52484    340.81825      0.0000
+    65     12.78334    347.85244      0.0000
+    66     12.78334    347.85244      0.0000
+    67     12.96125    352.69359      0.0000
+    68     16.29140    443.31144      0.0000
+    69     25.71309    699.68866      0.0000
+    70     26.01151    707.80931      0.0000
+
+
+ gKS HOMO energy    (eV):     -16.152814
+ gKS LUMO energy    (eV):       3.926023
+ gKS HOMO-LUMO gap  (eV):      20.078837
+
+
+    Nucleus-Nucleus (Ha):        0.7142856629
+    Kinetic Energy  (Ha):        1.1465427759
+    Nucleus Energy  (Ha):       -3.6589653060
+    Hartree Energy  (Ha):        1.3296861210
+    Exchange Energy (Ha):       -0.6648430605
+
+    Total Energy    (Ha):       -1.1332938067
+
+ Build density matrix
+ Convergence criterium on the density matrix:  1.86766E-02
+  ===> convergence not reached yet
+
+
+ Writing a small RESTART file
+
+ -------------------------------------------
+ *** SCF cycle No:    3
+
+ Calculate Hartree term with Resolution-of-Identity
+ Calculate Exchange term with Resolution-of-Identity
+
+ Pulay DIIS mixing
+  Residuals:       2.63831E-03   2.80630E-02   2.23731E-01
+ Alpha DIIS:       1.205264     -0.229829      0.024565
+ DIIS predicted residual:   1.21560E-03
+
+ Generalized diagonalization for spin:   1
+
+ === Energies ===
+   #       (Ha)         (eV)      
+     1     -0.59456    -16.17871      2.0000
+  -----------------------------
+     2      0.14381      3.91331      0.0000
+     3      0.21003      5.71513      0.0000
+     4      0.45997     12.51630      0.0000
+     5      0.45997     12.51630      0.0000
+     6      0.48912     13.30974      0.0000
+     7      0.74853     20.36842      0.0000
+     8      0.76507     20.81868      0.0000
+     9      0.76507     20.81868      0.0000
+    10      1.05049     28.58523      0.0000
+    11      1.06978     29.11017      0.0000
+    12      1.34682     36.64879      0.0000
+    13      1.70167     46.30479      0.0000
+    14      1.70167     46.30479      0.0000
+    15      1.94203     52.84540      0.0000
+    16      1.94203     52.84540      0.0000
+    17      2.05613     55.95025      0.0000
+    18      2.19342     59.68595      0.0000
+    19      2.19342     59.68595      0.0000
+    20      2.52379     68.67588      0.0000
+    21      2.52379     68.67588      0.0000
+    22      2.55434     69.50726      0.0000
+    23      2.55434     69.50726      0.0000
+    24      2.62348     71.38850      0.0000
+    25      2.92441     79.57728      0.0000
+    26      3.27946     89.23878      0.0000
+    27      3.27946     89.23878      0.0000
+    28      3.28914     89.50209      0.0000
+    29      3.44617     93.77509      0.0000
+    30      4.25367    115.74833      0.0000
+    31      4.25367    115.74833      0.0000
+    32      4.50872    122.68844      0.0000
+    33      4.91512    133.74715      0.0000
+    34      4.91512    133.74715      0.0000
+    35      5.07898    138.20600      0.0000
+    36      5.70386    155.20994      0.0000
+    37      5.70386    155.20994      0.0000
+    38      6.23751    169.73116      0.0000
+    39      6.23751    169.73116      0.0000
+    40      6.74905    183.65112      0.0000
+    41      6.74905    183.65112      0.0000
+    42      7.30515    198.78317      0.0000
+    43      7.30515    198.78317      0.0000
+    44      7.50869    204.32180      0.0000
+    45      7.61212    207.13628      0.0000
+    46      7.61212    207.13628      0.0000
+    47      7.70512    209.66709      0.0000
+    48      7.77068    211.45108      0.0000
+    49      7.77068    211.45108      0.0000
+    50      7.99560    217.57130      0.0000
+    51      7.99560    217.57130      0.0000
+    52      8.26842    224.99528      0.0000
+    53      8.26842    224.99528      0.0000
+    54      8.80401    239.56938      0.0000
+    55      9.21304    250.69950      0.0000
+    56      9.21304    250.69950      0.0000
+    57      9.48325    258.05224      0.0000
+    58      9.59402    261.06657      0.0000
+    59      9.83029    267.49594      0.0000
+    60      9.83029    267.49594      0.0000
+    61      9.88311    268.93313      0.0000
+    62      9.88311    268.93313      0.0000
+    63     10.10703    275.02622      0.0000
+    64     12.52203    340.74168      0.0000
+    65     12.78068    347.77993      0.0000
+    66     12.78068    347.77993      0.0000
+    67     12.95967    352.65056      0.0000
+    68     16.28859    443.23499      0.0000
+    69     25.71084    699.62743      0.0000
+    70     26.00929    707.74892      0.0000
+
+
+ gKS HOMO energy    (eV):     -16.178715
+ gKS LUMO energy    (eV):       3.913309
+ gKS HOMO-LUMO gap  (eV):      20.092024
+
+
+    Nucleus-Nucleus (Ha):        0.7142856629
+    Kinetic Energy  (Ha):        1.1270154585
+    Nucleus Energy  (Ha):       -3.6337527921
+    Hartree Energy  (Ha):        1.3179690780
+    Exchange Energy (Ha):       -0.6589845390
+
+    Total Energy    (Ha):       -1.1334671317
+
+ Build density matrix
+ Convergence criterium on the density matrix:  2.39263E-03
+  ===> convergence not reached yet
+
+
+ Writing a small RESTART file
+
+ -------------------------------------------
+ *** SCF cycle No:    4
+
+ Calculate Hartree term with Resolution-of-Identity
+ Calculate Exchange term with Resolution-of-Identity
+
+ Pulay DIIS mixing
+  Residuals:       2.24774E-04   2.63831E-03   2.80630E-02   2.23731E-01
+ Alpha DIIS:       1.168772     -0.192948      0.026924     -0.002749
+ DIIS predicted residual:   9.53726E-05
+
+ Generalized diagonalization for spin:   1
+
+ === Energies ===
+   #       (Ha)         (eV)      
+     1     -0.59463    -16.18084      2.0000
+  -----------------------------
+     2      0.14378      3.91247      0.0000
+     3      0.21003      5.71512      0.0000
+     4      0.45992     12.51495      0.0000
+     5      0.45992     12.51495      0.0000
+     6      0.48909     13.30883      0.0000
+     7      0.74849     20.36734      0.0000
+     8      0.76504     20.81775      0.0000
+     9      0.76504     20.81775      0.0000
+    10      1.05046     28.58451      0.0000
+    11      1.06975     29.10938      0.0000
+    12      1.34677     36.64740      0.0000
+    13      1.70162     46.30337      0.0000
+    14      1.70162     46.30337      0.0000
+    15      1.94197     52.84367      0.0000
+    16      1.94197     52.84367      0.0000
+    17      2.05607     55.94851      0.0000
+    18      2.19336     59.68442      0.0000
+    19      2.19336     59.68442      0.0000
+    20      2.52372     68.67402      0.0000
+    21      2.52372     68.67402      0.0000
+    22      2.55429     69.50564      0.0000
+    23      2.55429     69.50564      0.0000
+    24      2.62342     71.38676      0.0000
+    25      2.92435     79.57556      0.0000
+    26      3.27941     89.23716      0.0000
+    27      3.27941     89.23716      0.0000
+    28      3.28907     89.50012      0.0000
+    29      3.44610     93.77317      0.0000
+    30      4.25360    115.74635      0.0000
+    31      4.25360    115.74635      0.0000
+    32      4.50864    122.68625      0.0000
+    33      4.91504    133.74517      0.0000
+    34      4.91504    133.74517      0.0000
+    35      5.07889    138.20360      0.0000
+    36      5.70377    155.20756      0.0000
+    37      5.70377    155.20756      0.0000
+    38      6.23741    169.72855      0.0000
+    39      6.23741    169.72855      0.0000
+    40      6.74897    183.64876      0.0000
+    41      6.74897    183.64876      0.0000
+    42      7.30506    198.78069      0.0000
+    43      7.30506    198.78069      0.0000
+    44      7.50859    204.31905      0.0000
+    45      7.61203    207.13379      0.0000
+    46      7.61203    207.13379      0.0000
+    47      7.70503    209.66460      0.0000
+    48      7.77057    211.44803      0.0000
+    49      7.77057    211.44803      0.0000
+    50      7.99549    217.56845      0.0000
+    51      7.99549    217.56845      0.0000
+    52      8.26833    224.99271      0.0000
+    53      8.26833    224.99271      0.0000
+    54      8.80390    239.56644      0.0000
+    55      9.21293    250.69659      0.0000
+    56      9.21293    250.69659      0.0000
+    57      9.48313    258.04921      0.0000
+    58      9.59391    261.06351      0.0000
+    59      9.83019    267.49297      0.0000
+    60      9.83019    267.49297      0.0000
+    61      9.88301    268.93027      0.0000
+    62      9.88301    268.93027      0.0000
+    63     10.10691    275.02296      0.0000
+    64     12.52190    340.73833      0.0000
+    65     12.78056    347.77677      0.0000
+    66     12.78056    347.77677      0.0000
+    67     12.95959    352.64847      0.0000
+    68     16.28846    443.23163      0.0000
+    69     25.71074    699.62472      0.0000
+    70     26.00920    707.74622      0.0000
+
+
+ gKS HOMO energy    (eV):     -16.180837
+ gKS LUMO energy    (eV):       3.912473
+ gKS HOMO-LUMO gap  (eV):      20.093310
+
+
+    Nucleus-Nucleus (Ha):        0.7142856629
+    Kinetic Energy  (Ha):        1.1257656625
+    Nucleus Energy  (Ha):       -3.6320386119
+    Hartree Energy  (Ha):        1.3170365172
+    Exchange Energy (Ha):       -0.6585182586
+
+    Total Energy    (Ha):       -1.1334690278
+
+ Build density matrix
+ Convergence criterium on the density matrix:  4.38962E-04
+  ===> convergence not reached yet
+
+
+ Writing a small RESTART file
+
+ -------------------------------------------
+ *** SCF cycle No:    5
+
+ Calculate Hartree term with Resolution-of-Identity
+ Calculate Exchange term with Resolution-of-Identity
+
+ Pulay DIIS mixing
+  Residuals:       1.49903E-05   2.24774E-04   2.63831E-03   2.80630E-02   2.23731E-01
+ Alpha DIIS:       1.142293     -0.156999      0.016348     -0.001827      0.000185
+ DIIS predicted residual:   3.22885E-06
+
+ Generalized diagonalization for spin:   1
+
+ === Energies ===
+   #       (Ha)         (eV)      
+     1     -0.59463    -16.18083      2.0000
+  -----------------------------
+     2      0.14378      3.91242      0.0000
+     3      0.21003      5.71508      0.0000
+     4      0.45991     12.51488      0.0000
+     5      0.45991     12.51488      0.0000
+     6      0.48909     13.30878      0.0000
+     7      0.74848     20.36727      0.0000
+     8      0.76504     20.81770      0.0000
+     9      0.76504     20.81770      0.0000
+    10      1.05046     28.58441      0.0000
+    11      1.06975     29.10933      0.0000
+    12      1.34676     36.64731      0.0000
+    13      1.70161     46.30328      0.0000
+    14      1.70161     46.30328      0.0000
+    15      1.94197     52.84357      0.0000
+    16      1.94197     52.84357      0.0000
+    17      2.05607     55.94841      0.0000
+    18      2.19336     59.68433      0.0000
+    19      2.19336     59.68433      0.0000
+    20      2.52372     68.67390      0.0000
+    21      2.52372     68.67390      0.0000
+    22      2.55428     69.50554      0.0000
+    23      2.55428     69.50554      0.0000
+    24      2.62341     71.38666      0.0000
+    25      2.92434     79.57543      0.0000
+    26      3.27940     89.23706      0.0000
+    27      3.27940     89.23706      0.0000
+    28      3.28906     89.50000      0.0000
+    29      3.44610     93.77305      0.0000
+    30      4.25360    115.74623      0.0000
+    31      4.25360    115.74623      0.0000
+    32      4.50863    122.68612      0.0000
+    33      4.91504    133.74505      0.0000
+    34      4.91504    133.74505      0.0000
+    35      5.07888    138.20346      0.0000
+    36      5.70377    155.20742      0.0000
+    37      5.70377    155.20742      0.0000
+    38      6.23740    169.72840      0.0000
+    39      6.23740    169.72840      0.0000
+    40      6.74896    183.64862      0.0000
+    41      6.74896    183.64862      0.0000
+    42      7.30505    198.78055      0.0000
+    43      7.30505    198.78055      0.0000
+    44      7.50858    204.31890      0.0000
+    45      7.61202    207.13365      0.0000
+    46      7.61202    207.13365      0.0000
+    47      7.70503    209.66446      0.0000
+    48      7.77057    211.44785      0.0000
+    49      7.77057    211.44785      0.0000
+    50      7.99549    217.56828      0.0000
+    51      7.99549    217.56828      0.0000
+    52      8.26832    224.99257      0.0000
+    53      8.26832    224.99257      0.0000
+    54      8.80390    239.56626      0.0000
+    55      9.21292    250.69642      0.0000
+    56      9.21292    250.69642      0.0000
+    57      9.48313    258.04905      0.0000
+    58      9.59390    261.06335      0.0000
+    59      9.83018    267.49281      0.0000
+    60      9.83018    267.49281      0.0000
+    61      9.88300    268.93011      0.0000
+    62      9.88300    268.93011      0.0000
+    63     10.10690    275.02278      0.0000
+    64     12.52190    340.73815      0.0000
+    65     12.78055    347.77659      0.0000
+    66     12.78055    347.77659      0.0000
+    67     12.95959    352.64834      0.0000
+    68     16.28846    443.23144      0.0000
+    69     25.71073    699.62457      0.0000
+    70     26.00919    707.74608      0.0000
+
+
+ gKS HOMO energy    (eV):     -16.180831
+ gKS LUMO energy    (eV):       3.912423
+ gKS HOMO-LUMO gap  (eV):      20.093254
+
+
+    Nucleus-Nucleus (Ha):        0.7142856629
+    Kinetic Energy  (Ha):        1.1256899372
+    Nucleus Energy  (Ha):       -3.6319309993
+    Hartree Energy  (Ha):        1.3169727098
+    Exchange Energy (Ha):       -0.6584863549
+
+    Total Energy    (Ha):       -1.1334690443
+
+ Build density matrix
+ Convergence criterium on the density matrix:  4.36141E-05
+  ===> convergence not reached yet
+
+
+ Writing a small RESTART file
+
+ -------------------------------------------
+ *** SCF cycle No:    6
+
+ Calculate Hartree term with Resolution-of-Identity
+ Calculate Exchange term with Resolution-of-Identity
+
+ Pulay DIIS mixing
+  Residuals:       3.04356E-07   1.49903E-05   2.24774E-04   2.63831E-03   2.80630E-02   2.23731E-01
+ Alpha DIIS:       1.080342     -0.090195      0.010845     -0.001098      0.000118     -0.000012
+ DIIS predicted residual:   1.18297E-07
+
+ Generalized diagonalization for spin:   1
+
+ === Energies ===
+   #       (Ha)         (eV)      
+     1     -0.59463    -16.18084      2.0000
+  -----------------------------
+     2      0.14378      3.91242      0.0000
+     3      0.21003      5.71508      0.0000
+     4      0.45991     12.51488      0.0000
+     5      0.45991     12.51488      0.0000
+     6      0.48909     13.30878      0.0000
+     7      0.74848     20.36727      0.0000
+     8      0.76504     20.81770      0.0000
+     9      0.76504     20.81770      0.0000
+    10      1.05046     28.58441      0.0000
+    11      1.06975     29.10933      0.0000
+    12      1.34676     36.64731      0.0000
+    13      1.70161     46.30328      0.0000
+    14      1.70161     46.30328      0.0000
+    15      1.94197     52.84357      0.0000
+    16      1.94197     52.84357      0.0000
+    17      2.05607     55.94841      0.0000
+    18      2.19336     59.68433      0.0000
+    19      2.19336     59.68433      0.0000
+    20      2.52372     68.67391      0.0000
+    21      2.52372     68.67391      0.0000
+    22      2.55428     69.50554      0.0000
+    23      2.55428     69.50554      0.0000
+    24      2.62341     71.38666      0.0000
+    25      2.92434     79.57543      0.0000
+    26      3.27940     89.23706      0.0000
+    27      3.27940     89.23706      0.0000
+    28      3.28906     89.50000      0.0000
+    29      3.44610     93.77306      0.0000
+    30      4.25360    115.74623      0.0000
+    31      4.25360    115.74623      0.0000
+    32      4.50863    122.68612      0.0000
+    33      4.91504    133.74505      0.0000
+    34      4.91504    133.74505      0.0000
+    35      5.07888    138.20346      0.0000
+    36      5.70377    155.20742      0.0000
+    37      5.70377    155.20742      0.0000
+    38      6.23740    169.72840      0.0000
+    39      6.23740    169.72840      0.0000
+    40      6.74896    183.64862      0.0000
+    41      6.74896    183.64862      0.0000
+    42      7.30505    198.78055      0.0000
+    43      7.30505    198.78055      0.0000
+    44      7.50858    204.31890      0.0000
+    45      7.61202    207.13365      0.0000
+    46      7.61202    207.13365      0.0000
+    47      7.70503    209.66447      0.0000
+    48      7.77057    211.44785      0.0000
+    49      7.77057    211.44785      0.0000
+    50      7.99549    217.56829      0.0000
+    51      7.99549    217.56829      0.0000
+    52      8.26832    224.99257      0.0000
+    53      8.26832    224.99257      0.0000
+    54      8.80390    239.56626      0.0000
+    55      9.21292    250.69642      0.0000
+    56      9.21292    250.69642      0.0000
+    57      9.48313    258.04905      0.0000
+    58      9.59390    261.06335      0.0000
+    59      9.83018    267.49281      0.0000
+    60      9.83018    267.49281      0.0000
+    61      9.88300    268.93011      0.0000
+    62      9.88300    268.93011      0.0000
+    63     10.10690    275.02278      0.0000
+    64     12.52190    340.73815      0.0000
+    65     12.78055    347.77659      0.0000
+    66     12.78055    347.77659      0.0000
+    67     12.95959    352.64834      0.0000
+    68     16.28846    443.23144      0.0000
+    69     25.71073    699.62457      0.0000
+    70     26.00919    707.74608      0.0000
+
+
+ gKS HOMO energy    (eV):     -16.180836
+ gKS LUMO energy    (eV):       3.912423
+ gKS HOMO-LUMO gap  (eV):      20.093260
+
+
+    Nucleus-Nucleus (Ha):        0.7142856629
+    Kinetic Energy  (Ha):        1.1256876712
+    Nucleus Energy  (Ha):       -3.6319275433
+    Hartree Energy  (Ha):        1.3169703295
+    Exchange Energy (Ha):       -0.6584851648
+
+    Total Energy    (Ha):       -1.1334690444
+
+ Build density matrix
+ Convergence criterium on the density matrix:  9.15551E-07
+  ===> convergence not reached yet
+
+
+ Writing a small RESTART file
+
+ -------------------------------------------
+ *** SCF cycle No:    7
+
+ Calculate Hartree term with Resolution-of-Identity
+ Calculate Exchange term with Resolution-of-Identity
+
+ Pulay DIIS mixing
+  Residuals:       1.11978E-08   3.04356E-07   1.49903E-05   2.24774E-04   2.63831E-03   2.80630E-02
+ Alpha DIIS:       1.032730     -0.033440      0.000748     -0.000040      0.000002      0.000000
+ DIIS predicted residual:   7.14165E-09
+
+ Generalized diagonalization for spin:   1
+
+ === Energies ===
+   #       (Ha)         (eV)      
+     1     -0.59463    -16.18084      2.0000
+  -----------------------------
+     2      0.14378      3.91242      0.0000
+     3      0.21003      5.71508      0.0000
+     4      0.45991     12.51488      0.0000
+     5      0.45991     12.51488      0.0000
+     6      0.48909     13.30878      0.0000
+     7      0.74848     20.36727      0.0000
+     8      0.76504     20.81770      0.0000
+     9      0.76504     20.81770      0.0000
+    10      1.05046     28.58441      0.0000
+    11      1.06975     29.10933      0.0000
+    12      1.34676     36.64731      0.0000
+    13      1.70161     46.30328      0.0000
+    14      1.70161     46.30328      0.0000
+    15      1.94197     52.84357      0.0000
+    16      1.94197     52.84357      0.0000
+    17      2.05607     55.94841      0.0000
+    18      2.19336     59.68433      0.0000
+    19      2.19336     59.68433      0.0000
+    20      2.52372     68.67390      0.0000
+    21      2.52372     68.67390      0.0000
+    22      2.55428     69.50554      0.0000
+    23      2.55428     69.50554      0.0000
+    24      2.62341     71.38666      0.0000
+    25      2.92434     79.57543      0.0000
+    26      3.27940     89.23706      0.0000
+    27      3.27940     89.23706      0.0000
+    28      3.28906     89.50000      0.0000
+    29      3.44610     93.77306      0.0000
+    30      4.25360    115.74623      0.0000
+    31      4.25360    115.74623      0.0000
+    32      4.50863    122.68612      0.0000
+    33      4.91504    133.74505      0.0000
+    34      4.91504    133.74505      0.0000
+    35      5.07888    138.20346      0.0000
+    36      5.70377    155.20742      0.0000
+    37      5.70377    155.20742      0.0000
+    38      6.23740    169.72840      0.0000
+    39      6.23740    169.72840      0.0000
+    40      6.74896    183.64862      0.0000
+    41      6.74896    183.64862      0.0000
+    42      7.30505    198.78055      0.0000
+    43      7.30505    198.78055      0.0000
+    44      7.50858    204.31890      0.0000
+    45      7.61202    207.13365      0.0000
+    46      7.61202    207.13365      0.0000
+    47      7.70503    209.66447      0.0000
+    48      7.77057    211.44785      0.0000
+    49      7.77057    211.44785      0.0000
+    50      7.99549    217.56828      0.0000
+    51      7.99549    217.56828      0.0000
+    52      8.26832    224.99257      0.0000
+    53      8.26832    224.99257      0.0000
+    54      8.80390    239.56626      0.0000
+    55      9.21292    250.69642      0.0000
+    56      9.21292    250.69642      0.0000
+    57      9.48313    258.04905      0.0000
+    58      9.59390    261.06335      0.0000
+    59      9.83018    267.49281      0.0000
+    60      9.83018    267.49281      0.0000
+    61      9.88300    268.93011      0.0000
+    62      9.88300    268.93011      0.0000
+    63     10.10690    275.02278      0.0000
+    64     12.52190    340.73815      0.0000
+    65     12.78055    347.77659      0.0000
+    66     12.78055    347.77659      0.0000
+    67     12.95959    352.64834      0.0000
+    68     16.28846    443.23144      0.0000
+    69     25.71073    699.62457      0.0000
+    70     26.00919    707.74608      0.0000
+
+
+ gKS HOMO energy    (eV):     -16.180836
+ gKS LUMO energy    (eV):       3.912423
+ gKS HOMO-LUMO gap  (eV):      20.093259
+
+
+    Nucleus-Nucleus (Ha):        0.7142856629
+    Kinetic Energy  (Ha):        1.1256875999
+    Nucleus Energy  (Ha):       -3.6319274431
+    Hartree Energy  (Ha):        1.3169702719
+    Exchange Energy (Ha):       -0.6584851360
+
+    Total Energy    (Ha):       -1.1334690444
+
+ Build density matrix
+ Convergence criterium on the density matrix:  1.89199E-08
+  ===> convergence not reached yet
+
+
+ Writing a small RESTART file
+
+ -------------------------------------------
+ *** SCF cycle No:    8
+
+ Calculate Hartree term with Resolution-of-Identity
+ Calculate Exchange term with Resolution-of-Identity
+
+ Pulay DIIS mixing
+  Residuals:       9.72456E-10   1.11978E-08   3.04356E-07   1.49903E-05   2.24774E-04   2.63831E-03
+ Alpha DIIS:       1.084017     -0.085304      0.001317     -0.000033      0.000003     -0.000000
+ DIIS predicted residual:   6.37582E-10
+
+ Generalized diagonalization for spin:   1
+
+ === Energies ===
+   #       (Ha)         (eV)      
+     1     -0.59463    -16.18084      2.0000
+  -----------------------------
+     2      0.14378      3.91242      0.0000
+     3      0.21003      5.71508      0.0000
+     4      0.45991     12.51488      0.0000
+     5      0.45991     12.51488      0.0000
+     6      0.48909     13.30878      0.0000
+     7      0.74848     20.36727      0.0000
+     8      0.76504     20.81770      0.0000
+     9      0.76504     20.81770      0.0000
+    10      1.05046     28.58441      0.0000
+    11      1.06975     29.10933      0.0000
+    12      1.34676     36.64731      0.0000
+    13      1.70161     46.30328      0.0000
+    14      1.70161     46.30328      0.0000
+    15      1.94197     52.84357      0.0000
+    16      1.94197     52.84357      0.0000
+    17      2.05607     55.94841      0.0000
+    18      2.19336     59.68433      0.0000
+    19      2.19336     59.68433      0.0000
+    20      2.52372     68.67390      0.0000
+    21      2.52372     68.67390      0.0000
+    22      2.55428     69.50554      0.0000
+    23      2.55428     69.50554      0.0000
+    24      2.62341     71.38666      0.0000
+    25      2.92434     79.57543      0.0000
+    26      3.27940     89.23706      0.0000
+    27      3.27940     89.23706      0.0000
+    28      3.28906     89.50000      0.0000
+    29      3.44610     93.77306      0.0000
+    30      4.25360    115.74623      0.0000
+    31      4.25360    115.74623      0.0000
+    32      4.50863    122.68612      0.0000
+    33      4.91504    133.74505      0.0000
+    34      4.91504    133.74505      0.0000
+    35      5.07888    138.20346      0.0000
+    36      5.70377    155.20742      0.0000
+    37      5.70377    155.20742      0.0000
+    38      6.23740    169.72840      0.0000
+    39      6.23740    169.72840      0.0000
+    40      6.74896    183.64862      0.0000
+    41      6.74896    183.64862      0.0000
+    42      7.30505    198.78055      0.0000
+    43      7.30505    198.78055      0.0000
+    44      7.50858    204.31890      0.0000
+    45      7.61202    207.13365      0.0000
+    46      7.61202    207.13365      0.0000
+    47      7.70503    209.66447      0.0000
+    48      7.77057    211.44785      0.0000
+    49      7.77057    211.44785      0.0000
+    50      7.99549    217.56828      0.0000
+    51      7.99549    217.56828      0.0000
+    52      8.26832    224.99257      0.0000
+    53      8.26832    224.99257      0.0000
+    54      8.80390    239.56626      0.0000
+    55      9.21292    250.69642      0.0000
+    56      9.21292    250.69642      0.0000
+    57      9.48313    258.04905      0.0000
+    58      9.59390    261.06335      0.0000
+    59      9.83018    267.49281      0.0000
+    60      9.83018    267.49281      0.0000
+    61      9.88300    268.93011      0.0000
+    62      9.88300    268.93011      0.0000
+    63     10.10690    275.02278      0.0000
+    64     12.52190    340.73815      0.0000
+    65     12.78055    347.77659      0.0000
+    66     12.78055    347.77659      0.0000
+    67     12.95959    352.64834      0.0000
+    68     16.28846    443.23144      0.0000
+    69     25.71073    699.62457      0.0000
+    70     26.00919    707.74608      0.0000
+
+
+ gKS HOMO energy    (eV):     -16.180836
+ gKS LUMO energy    (eV):       3.912423
+ gKS HOMO-LUMO gap  (eV):      20.093259
+
+
+    Nucleus-Nucleus (Ha):        0.7142856629
+    Kinetic Energy  (Ha):        1.1256876026
+    Nucleus Energy  (Ha):       -3.6319274464
+    Hartree Energy  (Ha):        1.3169702732
+    Exchange Energy (Ha):       -0.6584851366
+
+    Total Energy    (Ha):       -1.1334690444
+
+ Build density matrix
+ Convergence criterium on the density matrix:  6.81524E-10
+  ===> convergence has been reached
+
+
+ ==================================================
+ The SCF loop ends here
+ ==================================================
+ Deallocate:                               Input density matrix,  Mem:   -0.000 (Gb),  Total Mem:    0.004 (Gb)
+ Deallocate:                                Hamiltonian history,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                   Residual history,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                             Density matrix history,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                   Density matrix P,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                Total Hamiltonian H,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                               Hartree potential Vh,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                             Exchange operator Sigx,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                    XC operator Vxc,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+
+
+   SCF Total Energy (Ha):       -1.1334690444
+
+         EXX Energy (Ha):       -0.6584851366
+   Total EXX Energy (Ha):       -1.1334690444
+
+ Writing a big RESTART file
+
+ Calculate 3-center integrals on eigenstates: AO -> MO transform
+   Allocate:                              3-center MO integrals,  Mem:   +0.005 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                  TMP 3-center ints,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                  TMP 3-center ints,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                  TMP 3-center ints,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                  TMP 3-center ints,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                  TMP 3-center ints,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                  TMP 3-center ints,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Destroy 3-center integrals on eigenstates
+ Deallocate:                              3-center MO integrals,  Mem:   -0.005 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                   Overlap matrix S,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                 Kinetic operator T,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                 Nucleus operator V,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                           Overlap X * X**H = S**-1,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                    Fock operator F,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+
+ Prepare a polarizability spectral function with
+                               Occupied states:        1
+                                Virtual states:       69
+                              Transition space:       69
+
+ Calculating the polarizability
+ Singlet final state
+
+ Calculate 3-center integrals on eigenstates: AO -> MO transform
+   Allocate:                              3-center MO integrals,  Mem:   +0.005 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                  TMP 3-center ints,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                  TMP 3-center ints,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                  TMP 3-center ints,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                  TMP 3-center ints,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                  TMP 3-center ints,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                  TMP 3-center ints,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                                A+B,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                                A-B,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Build the electron-hole hamiltonian
+ Build diagonal part with auxil basis: Energies
+ Build Hartree part with auxil basis
+ Build W part Auxil
+ Content of Exchange:    1.000
+   Allocate:                              Temporary array for W,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                              Temporary array for W,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                                X+Y,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                                X-Y,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Performing the block diago with Cholesky
+ Deallocate (A+B) and possibly (A-B)
+ Deallocate:                                                A+B,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                                A-B,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Lowest neutral excitation energy (eV):   13.234126
+
+ Calculate the optical spectrum
+
+ Setup dipole matrix (internal)
+
+     Excitation energies (eV)     Oscil. strengths   [Symmetry] 
+ Exc. 0001 :        13.23412551          0.43552020       1u                              
+           1 ->    2      0.70342
+
+ Exc. 0002 :        15.57471218          0.00000000       1g                              
+           1 ->    3     -0.70725
+
+ Exc. 0003 :        19.76810976          0.63373978       1u                              
+           1 ->    4     -0.53421
+           1 ->    5      0.46405
+
+ Exc. 0004 :        19.76810976          0.63373978       1u                              
+           1 ->    4      0.46405
+           1 ->    5      0.53421
+
+ Exc. 0005 :        21.97346616          0.20548325       1u                              
+           1 ->    6      0.70316
+
+ Exc. 0006 :        27.52776131          0.00000000       1g                              
+           1 ->    7      0.70373
+
+ Exc. 0007 :        27.66328384          0.00000000       1g                              
+           1 ->    8      0.70663
+
+ Exc. 0008 :        27.66328384          0.00000000       1g                              
+           1 ->    9      0.70663
+
+ Exc. 0009 :        35.56919743          0.00000000       1g                              
+           1 ->   10     -0.70401
+
+ Exc. 0010 :        36.46436545          0.00000716       1u                              
+           1 ->   11      0.70652
+
+ Exc. 0011 :        43.14307177          0.02206453       1u                              
+           1 ->   12      0.70617
+
+ Exc. 0012 :        51.29648349          0.03828118       1u                              
+           1 ->   13      0.68602
+           1 ->   14      0.17019
+
+ Exc. 0013 :        51.29648349          0.03828118       1u                              
+           1 ->   13      0.17019
+           1 ->   14     -0.68602
+
+ Exc. 0014 :        56.24192187          0.00000000       1g                              
+           1 ->   15      0.70710
+
+ Exc. 0015 :        56.24192187          0.00000000       1g                              
+           1 ->   16     -0.70710
+
+ Exc. 0016 :        61.03162931          0.00000000       1g                              
+           1 ->   17     -0.70607
+
+ Exc. 0017 :        64.33664802          0.00000000       1g                              
+           1 ->   18     -0.69668
+           1 ->   19      0.11532
+
+ Exc. 0018 :        64.33664802          0.00000000       1g                              
+           1 ->   18      0.11532
+           1 ->   19      0.69668
+
+ Exc. 0019 :        72.14844905          0.00094137       1u                              
+           1 ->   20      0.20764
+           1 ->   21     -0.67569
+
+ Exc. 0020 :        72.14844905          0.00094137       1u                              
+           1 ->   20     -0.67569
+           1 ->   21     -0.20764
+
+ Exc. 0021 :        73.04050619          0.00000000       1u                              
+           1 ->   22      0.70709
+
+ Exc. 0022 :        73.04050619          0.00000000       1u                              
+           1 ->   23      0.70709
+
+ Exc. 0023 :        76.33770430          0.00046001       1u                              
+           1 ->   24     -0.70611
+
+ Exc. 0024 :        83.02424800          0.00000000       1g                              
+           1 ->   25      0.70633
+
+ Exc. 0025 :        92.57647538          0.00036473       1u                              
+           1 ->   28      0.70680
+
+ Exc. 0026 :        93.10511038          0.00000000       1g                              
+           1 ->   26     -0.70668
+
+ Exc. 0027 :        93.10511038          0.00000000       1g                              
+           1 ->   27      0.70668
+
+ Exc. 0028 :        97.07035765          0.00000000       1g                              
+           1 ->   29      0.70626
+
+ Exc. 0029 :       118.03147455          0.04174854       1u                              
+           1 ->   30     -0.70683
+
+ Exc. 0030 :       118.03147455          0.04174854       1u                              
+           1 ->   31     -0.70683
+
+
+ TRK sum rule: the two following numbers should compare well
+ Sum over oscillator strengths:     2.100509
+   Number of valence electrons:     2.000000
+
+ Mean excitation energy (eV):    20.801900
+
+ Static dipole polarizability:
+        3.641923       -0.000000       -0.000000
+       -0.000000        3.641923        0.000000
+       -0.000000        0.000000        6.496149
+ Static dipole polarizability trace:     4.593332
+ Deallocate:                                                X-Y,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Spectral function destroyed
+ Deallocate eigenvector array
+ Deallocate:                                                X+Y,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Destroy 3-center integrals on eigenstates
+ Deallocate:                              3-center MO integrals,  Mem:   -0.005 (Gb),  Total Mem:    0.003 (Gb)
+
+ Spectral function destroyed
+ Singlet RPA Energy      (Ha):        -0.0215772525
+
+ Prepare a polarizability spectral function with
+                               Occupied states:        1
+                                Virtual states:       69
+                              Transition space:       69
+
+ Calculating the polarizability
+ Triplet final state
+
+ Calculate 3-center integrals on eigenstates: AO -> MO transform
+   Allocate:                              3-center MO integrals,  Mem:   +0.005 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                  TMP 3-center ints,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                  TMP 3-center ints,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                  TMP 3-center ints,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                  TMP 3-center ints,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                  TMP 3-center ints,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                  TMP 3-center ints,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                                A+B,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                                A-B,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Build the electron-hole hamiltonian
+ Build diagonal part with auxil basis: Energies
+ Build W part Auxil
+ Content of Exchange:    1.000
+   Allocate:                              Temporary array for W,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                              Temporary array for W,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                                X+Y,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+   Allocate:                                                X-Y,  Mem:   +0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Performing the block diago with Cholesky
+ Deallocate (A+B) and possibly (A-B)
+ Deallocate:                                                A+B,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+ Deallocate:                                                A-B,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Lowest neutral excitation energy (eV):    9.578032
+
+ Calculate the optical spectrum
+
+ Setup dipole matrix (internal)
+
+     Excitation energies (eV)     Oscil. strengths   [Symmetry] 
+ Exc. 0001 :         9.57803201          0.00000000       3u                              
+           1 ->    2      0.62731
+           1 ->    6     -0.33178
+
+ Exc. 0002 :        13.12934940          0.00000000       3g                              
+           1 ->    3      0.69677
+           1 ->   10     -0.10527
+
+ Exc. 0003 :        16.35312334          0.00000000       3u                              
+           1 ->    4     -0.30460
+           1 ->    5     -0.63511
+
+ Exc. 0004 :        16.35312334          0.00000000       3u                              
+           1 ->    4      0.63511
+           1 ->    5     -0.30460
+
+ Exc. 0005 :        18.65345088          0.00000000       3u                              
+           1 ->    2      0.33278
+           1 ->    6      0.61361
+           1 ->   12     -0.11535
+
+ Exc. 0006 :        26.13413712          0.00000000       3g                              
+           1 ->    7      0.70118
+
+ Exc. 0007 :        26.71091686          0.00000000       3g                              
+           1 ->    8     -0.38914
+           1 ->    9      0.58869
+
+ Exc. 0008 :        26.71091686          0.00000000       3g                              
+           1 ->    8     -0.58869
+           1 ->    9     -0.38914
+
+ Exc. 0009 :        32.52959679          0.00000000       3g                              
+           1 ->    3      0.10437
+           1 ->   10      0.69752
+
+ Exc. 0010 :        35.96957792          0.00000000       3u                              
+           1 ->   11     -0.69991
+
+ Exc. 0011 :        40.07812439          0.00000000       3u                              
+           1 ->    6      0.12919
+           1 ->   12      0.68763
+
+ Exc. 0012 :        47.91157850          0.00000000       3u                              
+           1 ->   13      0.64869
+           1 ->   14      0.26706
+
+ Exc. 0013 :        47.91157850          0.00000000       3u                              
+           1 ->   13      0.26706
+           1 ->   14     -0.64869
+
+ Exc. 0014 :        54.20150024          0.00000000       3g                              
+           1 ->   15      0.70704
+
+ Exc. 0015 :        54.20150024          0.00000000       3g                              
+           1 ->   16      0.70704
+
+ Exc. 0016 :        58.69215093          0.00000000       3g                              
+           1 ->   17      0.70223
+
+ Exc. 0017 :        62.68730914          0.00000000       3g                              
+           1 ->   18     -0.70343
+
+ Exc. 0018 :        62.68730914          0.00000000       3g                              
+           1 ->   19     -0.70343
+
+ Exc. 0019 :        70.81707605          0.00000000       3u                              
+           1 ->   20      0.52263
+           1 ->   21     -0.47447
+
+ Exc. 0020 :        70.81707605          0.00000000       3u                              
+           1 ->   20     -0.47447
+           1 ->   21     -0.52263
+
+ Exc. 0021 :        71.97536926          0.00000000       3u                              
+           1 ->   22     -0.70707
+
+ Exc. 0022 :        71.97536926          0.00000000       3u                              
+           1 ->   23     -0.70707
+
+ Exc. 0023 :        74.86682006          0.00000000       3u                              
+           1 ->   24      0.70274
+
+ Exc. 0024 :        80.40185066          0.00000000       3g                              
+           1 ->   25     -0.70341
+
+ Exc. 0025 :        90.37868889          0.00000000       3u                              
+           1 ->   28     -0.70451
+
+ Exc. 0026 :        92.25836537          0.00000000       3g                              
+           1 ->   26     -0.70423
+
+ Exc. 0027 :        92.25836537          0.00000000       3g                              
+           1 ->   27     -0.70423
+
+ Exc. 0028 :        95.80785534          0.00000000       3g                              
+           1 ->   29     -0.70410
+
+ Exc. 0029 :       115.87381522          0.00000000       3u                              
+           1 ->   30     -0.70587
+
+ Exc. 0030 :       115.87381522          0.00000000       3u                              
+           1 ->   31      0.70587
+
+ Deallocate:                                                X-Y,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Spectral function destroyed
+ Deallocate eigenvector array
+ Deallocate:                                                X+Y,  Mem:   -0.000 (Gb),  Total Mem:    0.008 (Gb)
+
+ Destroy 3-center integrals on eigenstates
+ Deallocate:                              3-center MO integrals,  Mem:   -0.005 (Gb),  Total Mem:    0.003 (Gb)
+
+ Spectral function destroyed
+ Triplet RPA Energy      (Ha):        -0.0293745242
+ RPAx Energy      (Ha):        -0.0548504126
+
+ RPAx Total Energy (Ha):        -1.1883194570
+
+ Deallocate:                                    Wavefunctions C,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                         index pair,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                        index basis,  Mem:   -0.000 (Gb),  Total Mem:    0.003 (Gb)
+ Deallocate:                                 3-center integrals,  Mem:   -0.003 (Gb),  Total Mem:    0.000 (Gb)
+
+                 ----------------------------
+
+                 --- Memory usage summary ---
+
+ Memory that was not deallocated properly
+                 Memory (Gb):     0.000
+
+ Maximum memory used during the run
+            Peak memory (Gb):     0.008
+
+
+                 --- Timings in (s) and # of calls ---
+
+                                      Total time           40.65
+
+                 -------------------------------------
+
+                                   Total pre SCF            0.36
+                                       Total SCF            1.14
+                                  Total post SCF           39.14
+
+                 -------------------------------------
+
+                             Pre SCF
+
+ |----------------------- Integral pre-screening            0.12         1
+ |--------------------------- 2-center integrals            0.03         1
+       |------------------- Integrals evaluation            0.00         1
+       |-------------------- Matrix inverse sqrt            0.03         1
+ |--------------------------- 3-center integrals            0.07         1
+       |------------------- Integrals evaluation            0.05         1
+       |------------------ Matrix multiplication            0.02         1
+ |----------------------------- Overlap matrix S            0.00         1
+ |---------------- Approximate guess Hamiltonian            0.00         1
+ |-------------------------- Kinetic Hamiltonian            0.00         1
+ |----------------- Electron-nucleus Hamiltonian            0.12         1
+
+                 -------------------------------------
+
+                                 SCF
+
+ |---------------------- DFT grid initialization            0.00         1
+       |------------------------ Grid generation            0.00         1
+ |------------------------------- Density matrix            0.00         9
+ |---------------------------- Hartree potential            0.14         8
+ |---------------------------- Exchange operator            0.83         8
+ |------------------ Hamiltonian diagonalization            0.04         9
+ |---------------------------- Pulay DIIS mixing            0.15         8
+ |------------------------- RESTART file writing            0.00         8
+
+                 -------------------------------------
+
+                            Post SCF
+
+ |------------------ 3-center AO to MO transform            7.40         1
+ |------------------------ Response function chi           14.46         2
+       |----- 3-center AO to MO transform in chi           14.18         2
+       |----------- Build 2-particle Hamiltonian            0.00         2
+             |------------------------- RPA part            0.00         1
+             |------------------------- BSE part            0.00         2
+       |--------------------- Diago 2 particle H            0.02         2
+       |----------------------- Optical spectrum            0.14         2
+
+                 -------------------------------------
+
+
+ When using MOLGW for a publication, citation to the following article is appreciated:
+          Bruneval, Rangel, Hamed, Shao, Yang, Neaton, Comput. Phys. Comm. 208, 149 (2016).
+
+ This is the end
+

@@ -71,6 +71,9 @@ program molgw
   integer                 :: nelect
   integer                 :: nstate
   integer                 :: istep
+  !! MRM TO REMOVE
+  integer                 :: istate,jstate,kstate,lstate
+  !! MRM TO REMOVE
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
@@ -509,6 +512,39 @@ program molgw
   if( .FALSE. ) call write_cube_from_header('GKS',basis,occupation,c_matrix)
   !call plot_rho_xy(basis, occupation, c_matrix)      !plot density integrated on axis z in plane xy
 
+  !
+  ! Print DUMP file
+  !  MRM Lets remove this later: TODO WARNING!
+  !
+  write(*,*) 'MRM HACK'
+  write(*,*) 'MRM: PRINTING DATA FOR T2s RPAx MODULE'
+  write(*,*) 'REMOVE HERE'
+  if( .true. ) then
+    open(unit=511,file='DUMP')
+    write(511,*) basis%nbf
+    write(511,*) 0
+    write(511,*) int(sum(occupation)/2)
+    write(511,*) basis%nbf-int(sum(occupation)/2)
+    write(511,*) 0
+    write(511,*) en_gks%total
+    do istate=1,nstate
+     write(511,*) energy(istate,1)
+    enddo
+    call calculate_eri_3center_eigen(c_matrix,1,nstate,1,nstate)
+    do istate=1,nstate
+      do jstate=1,nstate
+        do kstate=1,nstate
+          do lstate=1,nstate
+            write(511,*) eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+          enddo
+        enddo
+      enddo
+    enddo
+    call destroy_eri_3center_eigen()
+ 
+    close(511)
+  endif
+  write(*,*) 'REMOVE TILL HERE'
 
   !
   ! Do NOFT optimization
