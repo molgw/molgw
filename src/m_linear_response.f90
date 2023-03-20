@@ -28,7 +28,7 @@ contains
 
 !=========================================================================
 subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matrix,en_rpa,en_gw,wpol_out, &
-                          enforce_spin_multiplicity)
+                          enforce_spin_multiplicity,lambda)
   implicit none
 
   logical,intent(in)                    :: enforce_rpa,calculate_w
@@ -38,6 +38,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   real(dp),intent(out)                  :: en_rpa,en_gw
   type(spectral_function),intent(inout) :: wpol_out
   integer,intent(in),optional           :: enforce_spin_multiplicity
+  real(dp),optional                     :: lambda
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
@@ -109,7 +110,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   else
     if(calc_type%include_tddft_kernel) then        ! TDDFT or TDHF
       alpha_local = alpha_hybrid
-    else if(is_bse .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
+    else if( (is_bse .OR. calc_type%include_tdhf_kernel) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
       alpha_local = 1.0_dp
     else                  ! RPA or no_bse_kernel
       alpha_local = 0.0_dp

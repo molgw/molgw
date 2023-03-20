@@ -947,4 +947,11 @@ SCF Total Energy          , -232.8924888075    , 0 , 1.0e-5   # Loosened criteri
 RT-TDDFT Total Energy     , -230.4199238294    , 0 , 1.0e-5
 Number of electrons       ,    42.0025941      , 0 , 1.0e-4
 
+lih_rpa.in                , RPA energy of LiH
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPA Total Energy          ,  -8.0590527892     , 0 , 1.0e-7
 
+
+lih_rpax.in               , RPAX energy (RPAx-II) of LiH
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPAx Total Energy         ,  -8.0599498366     , 0 , 1.0e-7
