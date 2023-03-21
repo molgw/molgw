@@ -1,7 +1,6 @@
 subroutine ACFDT_correlation_energy(ispin,exchange_kernel,nBas,nC,nO,nV,nR,nS,ERI,XpY,XmY,EcAC)
 
 ! Compute the correlation energy via the adiabatic connection formula
-
   implicit none
   include 'parameters.h'
 
@@ -56,10 +55,10 @@ subroutine ACFDT_correlation_energy(ispin,exchange_kernel,nBas,nC,nO,nV,nR,nS,ER
         do b=nO+1,nBas-nR
           jb = jb + 1
 
-            Ap(ia,jb) = (1d0 + delta_spin)*ERI(i,b,a,j) & 
+             Ap(ia,jb) = (1d0 + delta_spin)*ERI(i,b,a,j) & 
                       - delta_Kx*ERI(i,b,j,a)
 
-            Bp(ia,jb) = (1d0 + delta_spin)*ERI(i,j,a,b) &
+             Bp(ia,jb) = (1d0 + delta_spin)*ERI(i,j,a,b) &
                       - delta_Kx*ERI(i,j,b,a)
 
         enddo

@@ -118,7 +118,10 @@ level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o m_linear_
 
 level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o
 
-level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o
+level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o ACFDT_correlation_energy.o \
+          BSE_static_kernel_KB.o      linear_response_B_matrix.o  print_transition_vectors.o  wrap_lapack.o ACFDT.o \
+	  excitation_density.o linear_response_BSE.o oscillator_strength.o  RPAx.o BSE_static_kernel_KA.o linear_response_A_matrix.o \
+	  linear_response.o print_excitation.o utils.o
 
 level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o \
           gwgamma_selfenergy.o bse.o \
@@ -149,6 +152,9 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o \
         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_elag.o m_gammatodm2.o m_diagf.o \
         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_noft_driver.o gitver.o \
         bse.o m_multipole.o m_io.o m_restart.o mp2.o m_noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
+        ACFDT_correlation_energy.o BSE_static_kernel_KB.o linear_response_B_matrix.o  print_transition_vectors.o  wrap_lapack.o ACFDT.o \
+	excitation_density.o linear_response_BSE.o oscillator_strength.o RPAx.o BSE_static_kernel_KA.o linear_response_A_matrix.o \
+	linear_response.o print_excitation.o utils.o \
         molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
@@ -167,6 +173,9 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o \
                         m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_scf_loop.o m_dm_analysis.o \
                         m_hamiltonian_wrapper.o m_fourier_quadrature.o \
                         pdbssolver1.o m_selfenergy_evaluation.o real_spherical_harmonics.o force.o m_tddft_propagator.o \
+			ACFDT_correlation_energy.o BSE_static_kernel_KB.o linear_response_B_matrix.o  print_transition_vectors.o  wrap_lapack.o ACFDT.o \
+			excitation_density.o linear_response_BSE.o oscillator_strength.o  RPAx.o BSE_static_kernel_KA.o linear_response_A_matrix.o \
+			linear_response.o print_excitation.o utils.o \
                         molgw.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
@@ -329,6 +338,51 @@ m_noft.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
        m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 \
        m_hamiltonian_onebody.f90 m_noft.f90  
 	$(FC_W_OPTS) -c m_noft.f90 $(LIBXC_INCS)
+
+ACFDT_correlation_energy.o:  
+	$(FC_W_OPTS) -c ACFDT_correlation_energy.f90  $(LIBXC_INCS)
+
+BSE_static_kernel_KB.o:      
+	$(FC_W_OPTS) -c BSE_static_kernel_KB.f90      $(LIBXC_INCS)
+
+linear_response_B_matrix.o:  
+	$(FC_W_OPTS) -c linear_response_B_matrix.f90  $(LIBXC_INCS)
+
+print_transition_vectors.o:  
+	$(FC_W_OPTS) -c print_transition_vectors.f90  $(LIBXC_INCS)
+
+wrap_lapack.o:
+	$(FC_W_OPTS) -c wrap_lapack.f90 $(LIBXC_INCS)
+
+ACFDT.o:                     
+	$(FC_W_OPTS) -c ACFDT.f90       $(LIBXC_INCS)              
+
+excitation_density.o:        
+	$(FC_W_OPTS) -c excitation_density.f90       $(LIBXC_INCS) 
+
+linear_response_BSE.o:       
+	$(FC_W_OPTS) -c linear_response_BSE.f90       $(LIBXC_INCS)
+
+oscillator_strength.o:  
+	$(FC_W_OPTS) -c oscillator_strength.f90  $(LIBXC_INCS)
+
+RPAx.o:
+	$(FC_W_OPTS) -c RPAx.f90 $(LIBXC_INCS)
+
+BSE_static_kernel_KA.o:      
+	$(FC_W_OPTS) -c BSE_static_kernel_KA.f90  $(LIBXC_INCS)     
+
+linear_response_A_matrix.o:  
+	$(FC_W_OPTS) -c linear_response_A_matrix.f90  $(LIBXC_INCS)
+
+linear_response.o:           
+	$(FC_W_OPTS) -c linear_response.f90           $(LIBXC_INCS)
+
+print_excitation.o:     
+	$(FC_W_OPTS) -c print_excitation.f90     $(LIBXC_INCS)
+
+utils.o:
+	$(FC_W_OPTS) -c utils.f90 $(LIBXC_INCS)
 
 m_virtual_orbital_space.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_scalapack.f90 \
 	                  m_basis_set.f90 m_eri_ao_mo.f90 m_hamiltonian_tools.f90 m_linear_algebra.f90 m_io.f90 \

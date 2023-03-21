@@ -307,6 +307,8 @@ subroutine init_calculation_type(scf,postscf)
     case('RPAX')
       ! call die('Under development: RPAX not working as expected yet')
       calc_type%include_tddft_kernel =.TRUE.
+    case('RPAXI')
+      ! Will use T2s subroutines
     case default
       call die('Error reading keyword: postscf')
     end select

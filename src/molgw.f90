@@ -71,9 +71,6 @@ program molgw
   integer                 :: nelect
   integer                 :: nstate
   integer                 :: istep
-  !! MRM TO REMOVE
-  integer                 :: istate,jstate,kstate,lstate
-  !! MRM TO REMOVE
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
@@ -513,38 +510,54 @@ program molgw
   !call plot_rho_xy(basis, occupation, c_matrix)      !plot density integrated on axis z in plane xy
 
   !
-  ! Print DUMP file
-  !  MRM Lets remove this later: TODO WARNING!
+  !  Calling T2s RPAx subroutines 
+  !  MRM: Lets remove this later: TODO WARNING!
   !
-  write(*,*) 'MRM HACK'
-  write(*,*) 'MRM: PRINTING DATA FOR T2s RPAx MODULE'
-  write(*,*) 'REMOVE HERE'
-  if( .true. ) then
-    open(unit=511,file='DUMP')
-    write(511,*) basis%nbf
-    write(511,*) 0
-    write(511,*) int(sum(occupation)/2)
-    write(511,*) basis%nbf-int(sum(occupation)/2)
-    write(511,*) 0
-    write(511,*) en_gks%total
-    do istate=1,nstate
-     write(511,*) energy(istate,1)
-    enddo
+  if( TRIM(postscf) == 'RPAXI' ) then
+  write(*,*) 'MRM: HACK'
+  write(*,*) 'CALLING T2s RPAx-I/II MODULE'
+  write(*,*) 'REMOVE THIS NASTY THING!'
+  block
+    integer                 :: istate,jstate,kstate,lstate
+    double precision        :: kappa_hyb,ERHF,Enuc=0.0e0
+    double precision,allocatable::eHF(:)
+    double precision,allocatable::ERI(:,:,:,:)
+    double precision,allocatable::dipole_int(:,:,:)
+    allocate(eHF(basis%nbf),ERI(basis%nbf,basis%nbf,basis%nbf,basis%nbf),dipole_int(basis%nbf,basis%nbf,3))
+    !open(unit=511,file='DUMP')
+    !write(511,*) basis%nbf
+    !write(511,*) 0
+    !write(511,*) int(sum(occupation)/2)
+    !write(511,*) basis%nbf-int(sum(occupation)/2)
+    !write(511,*) 0
+    !write(511,*) en_gks%total
+    !do istate=1,nstate
+    ! write(511,*) energy(istate,1)
+    !enddo
+    eHF=0.0e0;ERI=0.0e0;dipole_int=0.0e0
+    ERHF=en_gks%total;kappa_hyb=kappa_hybrid
     call calculate_eri_3center_eigen(c_matrix,1,nstate,1,nstate)
     do istate=1,nstate
+      eHF(istate)=energy(istate,1)
       do jstate=1,nstate
         do kstate=1,nstate
           do lstate=1,nstate
-            write(511,*) eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+    !        write(511,*) eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
+             ERI(istate,jstate,kstate,lstate)=eri_eigen_ri(lstate,jstate,1,kstate,istate,1) ! <lk|ji> format used for ERImol
           enddo
         enddo
       enddo
     enddo
     call destroy_eri_3center_eigen()
- 
-    close(511)
-  endif
-  write(*,*) 'REMOVE TILL HERE'
+    !close(511)
+    write(*,*) 'CALLING RPAx WITH Ncore ',ncoreg
+    write(*,*) 'SCF Total Energy ',en_gks%total
+    call RPAx(.false.,.true.,.false.,.true.,.true.,0.0e0,basis%nbf,ncoreg,int(sum(occupation)/2),basis%nbf-int(sum(occupation)/2),&
+    & 0,(int(sum(occupation)/2)*(basis%nbf-int(sum(occupation)/2))),Enuc,ERHF,ERI,dipole_int,eHF,kappa_hyb) ! RPAx-I
+    deallocate(ERI,dipole_int,eHF)
+  end block
+  write(*,*) 'MRM: REMOVE THIS NASTY THING TILL HERE!'
+  endif !! Till here
 
   !
   ! Do NOFT optimization
