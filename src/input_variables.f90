@@ -98,7 +98,6 @@
     nvel_projectile,       &
     nvirtualg,       &
     nvirtualw,       &
-    only_erpa,       &
     postscf,       &
     postscf_diago_flavor,       &
     pt3_a_diagrams,       &
@@ -288,7 +287,6 @@
  nvel_projectile=1
  nvirtualg=100000
  nvirtualw=100000
- only_erpa='no'
  postscf=''
  postscf_diago_flavor=' '
  pt3_a_diagrams='yes'

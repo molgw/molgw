@@ -97,7 +97,6 @@
  write(stdout,'(1x,a32,2x,i8)') 'nvel_projectile',nvel_projectile 
  write(stdout,'(1x,a32,2x,i8)') 'nvirtualg',nvirtualg 
  write(stdout,'(1x,a32,2x,i8)') 'nvirtualw',nvirtualw 
- write(stdout,'(1x,a32,6x,a)') 'only_erpa',only_erpa 
  write(stdout,'(1x,a32,6x,a)') 'postscf',TRIM(postscf) 
  write(stdout,'(1x,a32,6x,a)') 'postscf_diago_flavor',TRIM(postscf_diago_flavor) 
  write(stdout,'(1x,a32,6x,a)') 'pt3_a_diagrams',TRIM(pt3_a_diagrams) 

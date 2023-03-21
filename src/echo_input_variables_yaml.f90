@@ -97,7 +97,6 @@
  write(unit_yaml,'(4x,a,15x,i8)') 'nvel_projectile:',nvel_projectile 
  write(unit_yaml,'(4x,a,21x,i8)') 'nvirtualg:',nvirtualg 
  write(unit_yaml,'(4x,a,21x,i8)') 'nvirtualw:',nvirtualw 
- write(unit_yaml,'(4x,a,21x,a)') 'only_erpa:',yesno_to_TrueFalse(only_erpa) 
  write(unit_yaml,'(4x,a,23x,a)') 'postscf:',TRIM(postscf) 
  write(unit_yaml,'(4x,a,10x,a)') 'postscf_diago_flavor:',TRIM(postscf_diago_flavor) 
  write(unit_yaml,'(4x,a,16x,a)') 'pt3_a_diagrams:',TRIM(pt3_a_diagrams) 

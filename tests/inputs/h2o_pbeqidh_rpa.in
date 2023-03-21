@@ -6,10 +6,8 @@
  nscf=1000
  
  ! Post SCF add the RPA+ contribution
- postscf='G0W0_AC'
- nomega_chi_imag=40
+ postscf='RPAp'
  frozencore='yes'
- only_erpa='yes'
 
  natom=3
  length_unit='au'

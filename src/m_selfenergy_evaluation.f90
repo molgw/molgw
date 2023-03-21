@@ -17,7 +17,6 @@ module m_selfenergy_evaluation
  use m_eri
  use m_eri_calculate
  use m_eri_ao_mo
- use m_dft_grid
  use m_scf,only: energy_contributions
  use m_spectral_function
  use m_selfenergy_tools
@@ -25,10 +24,6 @@ module m_selfenergy_evaluation
  use m_io
  use m_gw_selfenergy_grid
  use m_linear_response
-
-#if defined(HAVE_LIBXC)
-#include <xc_funcs.h>
-#endif
 
 
 contains
@@ -53,7 +48,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
  integer                 :: reading_status
  integer                 :: nstate_small
  type(spectral_function) :: wpol
- real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: sigc(:,:)
  real(dp),allocatable    :: zz(:,:)
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
@@ -212,48 +206,15 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
            call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
          endif
        endif
-       erpa_sie_KP=0.0_dp
-       if( kappa_hybrid/=zero ) then ! Print the double-hybrid RPA correlation energy
-         write(stdout,'(/,a,f16.10)') ' RPA correlation energy scaled by :',kappa_hybrid
-         en_mbpt%rpa=kappa_hybrid*en_mbpt%rpa
-         write(stdout,'(/,a,f16.10)') ' Scaled RPA correlation energy (Ha): ',en_mbpt%rpa
-         if( ALLOCATED(dft_xc) ) then
-           write(stdout,'(/,a,/)') ' Deallocate dft_xc object before re-allocating it for RPA+ correction.'
-           call destroy_libxc_info(dft_xc)
-         endif
-         allocate(dft_xc(2))
-         dft_xc(:)%id = 0
-         dft_xc(:)%nspin = nspin
-         dft_xc(1)%id = XC_LDA_C_PW      ! HEG
-         dft_xc(2)%id = XC_LDA_C_PW_RPA  ! RPA@HEG
-         dft_xc(1)%coeff = kappa_hybrid
-         dft_xc(2)%coeff = -kappa_hybrid
-         call init_libxc_info(dft_xc)
-         call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
-         call clean_allocate('XC operator RPA+',matrix_tmp,basis%nbf,basis%nbf,nspin)
-         call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,matrix_tmp,erpa_sie_KP)
-         call destroy_dft_grid()
-         call clean_deallocate('XC operator RPA+',matrix_tmp)
-         write(stdout,'(/,a,f19.10)') ' Scaled E(LHEG) - E(LRPA) correlation energy (Ha):',erpa_sie_KP
-         erpa_sie_KP=en_mbpt%rpa+erpa_sie_KP
-         write(stdout,'(/,a,f19.10)') ' Scaled RPA+ correlation energy (Ha):',erpa_sie_KP
-       endif
+
        en_mbpt%total = en_mbpt%total + en_mbpt%rpa
-       if( calc_type%is_dft .AND. kappa_hybrid==zero ) then ! Setting Ex = EXX and Ec = Erpa (removing DFT contributions).
-         en_mbpt%total = en_mbpt%total - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx 
-       endif
+       en_mbpt%total = en_mbpt%total - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx
+
        if( ABS(en_mbpt%rpa) > 1.e-6_dp ) then
          write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_mbpt%total
-         if( ABS(erpa_sie_KP) > 1.e-6_dp ) then ! Print the double-hybrid RPA+ Total energy
-           write(stdout,'(a,f19.10)') ' RPA+ Total energy (Ha): ',en_mbpt%total-en_mbpt%rpa+erpa_sie_KP
-         endif
        endif
 
      endif
-
-     if( only_erpa=='yes' ) then
-         call destroy_spectral_function(wpol)
-     else
 
        select case(calc_type%selfenergy_technique)
        case(imaginary_axis_pade)
@@ -332,8 +293,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
          call destroy_selfenergy_grid(se3)
 
        endif
-
-    endif ! only-RPA energy
 
    endif
 
@@ -461,7 +420,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
    !
    ! Final output the quasiparticle energies, the self-energy etc.
    !
-   if( only_erpa/='yes') then
            
      if( print_sigma_ ) then
        call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),exchange_m_vxc_diag,occupation,energy_g,se)
@@ -508,8 +466,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
      ! Deallocations
      !
      call destroy_selfenergy_grid(se)
-
-   end if
 
    ! Synchronization of all CPUs before going on
    call world%barrier()

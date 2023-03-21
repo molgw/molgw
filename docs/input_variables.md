@@ -97,7 +97,6 @@
 [nstep_gw](#nstep_gw) 
 [nvirtualg](#nvirtualg) 
 [nvirtualw](#nvirtualw) 
-[only_erpa](#only_erpa) 
 [postscf](#postscf) 
 [postscf_diago_flavor](#postscf_diago_flavor) 
 [pt3_a_diagrams](#pt3_a_diagrams) 
@@ -2080,22 +2079,6 @@ Sets the starting state beyond which states are excluded from the sum in the Gre
 **Description:** 
 
 Sets the starting state beyond which states are excluded from the sum in the screened Coulomb interaction W, in TD-DFT, and in BSE. 
-
-
----
-### only_erpa
-
-*Optional* 
-
-**Family:** post 
-
-**Type:** yes/no 
-
-**Default:** no 
-
-**Description:** 
-
-Use the polarizability to only compute the RPA corr. energy. 
 
 
 ---

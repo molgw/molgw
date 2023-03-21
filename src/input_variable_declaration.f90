@@ -94,7 +94,6 @@
  integer,protected :: nvel_projectile
  integer,protected :: nvirtualg
  integer,protected :: nvirtualw
- character(len=3),protected :: only_erpa
  character(len=256),protected :: postscf
  character(len=256),protected :: postscf_diago_flavor
  character(len=256),protected :: pt3_a_diagrams
