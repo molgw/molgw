@@ -307,8 +307,6 @@ subroutine init_calculation_type(scf,postscf)
     case('RPAX')
       ! call die('Under development: RPAX not working as expected yet')
       calc_type%include_tddft_kernel =.TRUE.
-    case('RPAXI')
-      ! Will use T2s subroutines
     case default
       call die('Error reading keyword: postscf')
     end select
@@ -575,7 +573,7 @@ subroutine init_dft_type(key)
     dft_xc(3)%id = XC_GGA_C_PBE
     dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
     dft_xc(2)%coeff = beta_hybrid
-    dft_xc(3)%coeff = kappa_hybrid
+    dft_xc(3)%coeff = 1.00_dp - kappa_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   !
   ! Double Hybrid functionals (used with postscf='MP2' or 'RPA')
@@ -583,25 +581,25 @@ subroutine init_dft_type(key)
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_C_PBE
     if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.5_dp
-    if( kappa_hybrid == 1.00_dp ) kappa_hybrid=0.875_dp
+    if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.125_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
-    dft_xc(2)%coeff = kappa_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
   case('PBE-QIDH')  
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_C_PBE
     if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.693361274_dp
-    if( kappa_hybrid == 1.00_dp ) kappa_hybrid=0.666666667_dp
+    if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.333333333_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
-    dft_xc(2)%coeff = kappa_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
   case('B2PLYP')
     dft_xc(1)%id = XC_GGA_X_B88
     dft_xc(2)%id = XC_GGA_C_LYP
     if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.53_dp
-    if( kappa_hybrid == 1.00_dp ) kappa_hybrid=0.73_dp
+    if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.27_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
-    dft_xc(2)%coeff = kappa_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
   !
-  ! QSGW Double Hybrid functional
+  ! QSGW Double Hybrid functional (MRM: WIP)
   case('QSGW-DH')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
@@ -610,9 +608,9 @@ subroutine init_dft_type(key)
     dft_xc(5)%id = XC_LDA_C_PW_RPA
     dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
     dft_xc(2)%coeff = beta_hybrid
-    dft_xc(3)%coeff = kappa_hybrid
-    dft_xc(4)%coeff = 1.00_dp - kappa_hybrid
-    dft_xc(5)%coeff = - (1.00_dp - kappa_hybrid)
+    dft_xc(3)%coeff = 1.00_dp - kappa_hybrid
+    dft_xc(4)%coeff = kappa_hybrid
+    dft_xc(5)%coeff = - kappa_hybrid
     dft_xc(2)%gamma = gamma_hybrid
 #endif
   case default

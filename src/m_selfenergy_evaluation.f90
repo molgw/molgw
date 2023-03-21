@@ -213,9 +213,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
          endif
        endif
        erpa_sie_KP=0.0_dp
-       if( kappa_hybrid/=one ) then ! Print the double-hybrid RPA correlation energy
-         write(stdout,'(/,a,f16.10)') ' RPA correlation energy scaled by :',(one-kappa_hybrid)
-         en_mbpt%rpa=(one-kappa_hybrid)*en_mbpt%rpa
+       if( kappa_hybrid/=zero ) then ! Print the double-hybrid RPA correlation energy
+         write(stdout,'(/,a,f16.10)') ' RPA correlation energy scaled by :',kappa_hybrid
+         en_mbpt%rpa=kappa_hybrid*en_mbpt%rpa
          write(stdout,'(/,a,f16.10)') ' Scaled RPA correlation energy (Ha): ',en_mbpt%rpa
          if( ALLOCATED(dft_xc) ) then
            write(stdout,'(/,a,/)') ' Deallocate dft_xc object before re-allocating it for RPA+ correction.'
@@ -226,8 +226,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
          dft_xc(:)%nspin = nspin
          dft_xc(1)%id = XC_LDA_C_PW      ! HEG
          dft_xc(2)%id = XC_LDA_C_PW_RPA  ! RPA@HEG
-         dft_xc(1)%coeff = one - kappa_hybrid
-         dft_xc(2)%coeff = -(one - kappa_hybrid)
+         dft_xc(1)%coeff = kappa_hybrid
+         dft_xc(2)%coeff = -kappa_hybrid
          call init_libxc_info(dft_xc)
          call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
          call clean_allocate('XC operator RPA+',matrix_tmp,basis%nbf,basis%nbf,nspin)
@@ -239,7 +239,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
          write(stdout,'(/,a,f19.10)') ' Scaled RPA+ correlation energy (Ha):',erpa_sie_KP
        endif
        en_mbpt%total = en_mbpt%total + en_mbpt%rpa
-       if( calc_type%is_dft .AND. kappa_hybrid==one ) then ! Setting Ex = EXX and Ec = Erpa (removing DFT contributions).
+       if( calc_type%is_dft .AND. kappa_hybrid==zero ) then ! Setting Ex = EXX and Ec = Erpa (removing DFT contributions).
          en_mbpt%total = en_mbpt%total - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx 
        endif
        if( ABS(en_mbpt%rpa) > 1.e-6_dp ) then

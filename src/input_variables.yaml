@@ -1358,9 +1358,9 @@ kappa_hybrid:
   datatype: real
   mandatory: 'no'
   experimental: 'no'
-  default: 1.0
-  comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount
-    of DFT correlation.
+  default: 0.0
+  comment: Works for scf='rsh', 'pbe-qidh', and 'b2plyp'. Sets the amount
+    of Ec^X (X=MP2 or RPA) correlation in double-hybrid DFT functionals.
 
 grid_quality:
   family: scf
