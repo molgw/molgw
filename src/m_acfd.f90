@@ -22,6 +22,7 @@ module m_acfd
   use m_spectral_function
   use m_spectra
   use m_scf
+  use m_gw_selfenergy_grid
   use m_linear_response
 
 #if defined(HAVE_LIBXC)
@@ -40,15 +41,21 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   type(energy_contributions),intent(inout) :: en_mbpt
   !=====
   type(spectral_function)    :: wpol
-  real(dp)                   :: erpa_singlet,erpa_triplet,egw_tmp,erpa_sie_KP
+  real(dp)                   :: erpa_singlet,erpa_triplet,egw_tmp,erpa_sie_KP,erpa_state
   !=====
 
   erpa_sie_KP=0.00_dp
-  call init_spectral_function(nstate,occupation,0,wpol)
-  call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol,enforce_spin_multiplicity=1)
+  if( TRIM(postscf) == 'RPA_IM' .OR. TRIM(postscf) == 'RPAP_IM' ) then
+    call init_spectral_function(nstate,occupation,nomega_chi_imag,wpol)
+    call polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa_state,egw_tmp,wpol)
+  else
+    call init_spectral_function(nstate,occupation,0,wpol)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol,enforce_spin_multiplicity=1)
+    erpa_state=erpa_singlet
+  endif
   call destroy_spectral_function(wpol)
-  if( TRIM(postscf) == 'RPA' .OR. TRIM(postscf) == 'RPAP' ) then
-    en_mbpt%rpa = erpa_singlet
+  if( TRIM(postscf) == 'RPA' .OR. TRIM(postscf) == 'RPAP' .OR. TRIM(postscf) == 'RPA_IM' .OR. TRIM(postscf) == 'RPAP_IM' ) then
+    en_mbpt%rpa = erpa_state
 
     if(kappa_hybrid/=zero) then ! Double-hybrids using RPA (and RPA versions)
       write(stdout,'(/,a,f16.10)') ' RPA Energy scaled by :',kappa_hybrid
@@ -58,7 +65,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
 
     !
     ! RPA+ 
-    if( TRIM(postscf) == 'RPAP' ) then
+    if( TRIM(postscf) == 'RPAP' .OR. TRIM(postscf) == 'RPAP_IM' ) then
       if( ALLOCATED(dft_xc) ) then
          write(stdout,'(/,a,/)') ' Deallocate dft_xc object before re-allocating it for RPA+ correction.'
          call destroy_libxc_info(dft_xc)
@@ -77,7 +84,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
       call destroy_dft_grid()
       call clean_deallocate('XC operator RPA+',matrix_tmp)
       if(kappa_hybrid/=zero) then ! Double-hybrids using RPA (and RPA versions)
-        write(stdout,'(/,a,f16.10)') ' RPA Energy scaled by :',kappa_hybrid
+        write(stdout,'(/,a,f16.10)') ' RPA+ Energy scaled by :',kappa_hybrid
         erpa_sie_KP=kappa_hybrid*erpa_sie_KP
       endif
       write(stdout,'(/,a,f19.10)') ' E(LHEG) - E(LRPA) correlation energy (Ha):',erpa_sie_KP
@@ -91,7 +98,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     endif
 
     write(stdout,*)
-    if( TRIM(postscf) == 'RPAP' ) then
+    if( TRIM(postscf) == 'RPAP' .OR. TRIM(postscf) == 'RPAP_IM' ) then
       write(stdout,'(a,2x,f19.10)') ' RPA+ Total Energy (Ha):',en_mbpt%total
     else
       write(stdout,'(a,2x,f19.10)') ' RPA Total Energy (Ha):',en_mbpt%total
