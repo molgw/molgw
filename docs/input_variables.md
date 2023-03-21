@@ -1241,11 +1241,11 @@ Sets the tolerance value for the screening of the negligible integrals. Possible
 
 **Type:** real 
 
-**Default:** 1.0 
+**Default:** 0.0 
 
 **Description:** 
 
-Works for scf='rsh', 'pbe-qidh', and 'b2plyp' Sets the amount of Ec^X (X=MP2 or RPA) correlation. 
+Works for scf='rsh', 'pbe-qidh', and 'b2plyp'. Sets the amount of Ec^X (X=MP2 or RPA) correlation in double-hybrid DFT functionals. 
 
 
 ---

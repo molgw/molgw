@@ -339,7 +339,7 @@
  diis_switch=0.05_dp 
  noft_fcidump='no'
  gamma_hybrid=1000000.0_dp 
- kappa_hybrid=1.0_dp 
+ kappa_hybrid=0.0_dp 
  grid_quality='high'
  init_hamiltonian='guess'
  noft_NOTupdateOCC='no'
