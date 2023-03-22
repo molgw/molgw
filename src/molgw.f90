@@ -618,6 +618,7 @@ program molgw
 
   !
   ! final evaluation for RPAx total energy
+  ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
   !
   if( TRIM(postscf) == 'RPAX' .OR. TRIM(postscf) == 'RPAP' .OR. TRIM(postscf) == 'RPA' .OR. &
     & TRIM(postscf) == 'RPA_IM' .OR. TRIM(postscf) == 'RPAP_IM' ) then
