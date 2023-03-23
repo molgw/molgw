@@ -305,7 +305,8 @@ have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder+'/fake.out').
 have_onebody          = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder+'/fake.out').read()
 have_gradients        = 'Running with external LIBINT calculation of the gradients of the one-body integrals' in open(tmpfolder+'/fake.out').read() \
                         or 'Code compiled with LIBCINT' in open(tmpfolder+'/fake.out').read()
-have_libint_forces    = 'Running with external LIBINT calculation of the gradients of the Coulomb integrals' in open(tmpfolder+'/fake.out').read()
+#have_libint_forces    = 'Running with external LIBINT calculation of the gradients of the Coulomb integrals' in open(tmpfolder+'/fake.out').read()
+have_libint_forces    = False  # FIXME force calculation is broken as of today
 is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder+'/fake.out').read()
 
 #with open(tmpfolder+'/fake.out','r') as ffake:

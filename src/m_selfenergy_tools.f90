@@ -1041,7 +1041,7 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
  logical  :: basis_recognized
  real(dp) :: abasis,bbasis
  real(dp) :: hkin(basis%nbf,basis%nbf)
- real(dp) :: t_i(nsemin:nsemax,nspin)
+ real(dp) :: t_i(nsemin:nsemax,nspin),eqp_extrap(basis%nbf,nspin)
  real(dp) :: deltae
  !=====
 
@@ -1075,8 +1075,8 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
    abasis =  0.1271
    bbasis = -0.0483
  case('cc-pV6Z')
-   abasis =  0.1271 * 0.5    ! evaluated
-   bbasis = -0.0483 * 0.5    ! evaluated
+   abasis =  0.1271 * 0.46    ! evaluated
+   bbasis = -0.0483 * 0.46    ! evaluated
  case('aug-cc-pVDZ')
    abasis =  0.5351
    bbasis = -0.3061
@@ -1084,14 +1084,14 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
    abasis =   0.5063
    bbasis =  -0.2086
  case('aug-cc-pVQZ')
-   abasis =  0.5063  * 0.5    ! evaluated
-   bbasis = -0.2086  * 0.5    ! evaluated
+   abasis =  0.5063  * 0.46   ! evaluated
+   bbasis = -0.2086  * 0.46   ! evaluated
  case('aug-cc-pV5Z')
-   abasis =  0.5063  * 0.25    ! evaluated
-   bbasis = -0.2086  * 0.25    ! evaluated
+   abasis =  0.5063  * 0.46**2   ! evaluated
+   bbasis = -0.2086  * 0.46**2   ! evaluated
  case('aug-cc-pV6Z')
-   abasis =  0.5063  * 0.125    ! evaluated
-   bbasis = -0.2086  * 0.125    ! evaluated
+   abasis =  0.5063  * 0.46**3   ! evaluated
+   bbasis = -0.2086  * 0.46**3   ! evaluated
  case default
    basis_recognized = .FALSE.
  end select
@@ -1123,14 +1123,18 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
  write(stdout,'(25x,a,a,a)') '<i|-\nabla^2/2|i>    Delta E_i     E_i(',TRIM(basis_name(1)),')      E_i(CBS)'
  do pspin=1,nspin
    do pstate=nsemin,nsemax
+      ! deltae is in eV
       deltae = abasis + bbasis * LOG( t_i(pstate,pspin) )
+      eqp_extrap(pstate,pspin) = eqp(pstate,pspin) + deltae / Ha_eV
       write(stdout,'(1x,a,i4,a,i2,a,*(4x,f12.6))') 'state ',pstate,' spin ',pspin,' : ', &
                                             t_i(pstate,pspin),    &
                                             deltae, &
                                             eqp(pstate,pspin)*Ha_eV, &
-                                            eqp(pstate,pspin)*Ha_eV + deltae
+                                            eqp_extrap(pstate,pspin)*Ha_eV
    enddo
  enddo
+
+ call dump_out_energy_yaml('gw_extrap energy',eqp_extrap,nsemin,nsemax)
 
 
 end subroutine selfenergy_convergence_prediction

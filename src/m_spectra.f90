@@ -31,9 +31,10 @@ contains
 
 
 !=========================================================================
-subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,eigenvalue)
+subroutine optical_spectrum(is_triplet_currently,basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,eigenvalue)
   implicit none
 
+  logical,intent(in)                 :: is_triplet_currently
   type(basis_set),intent(in)         :: basis
   real(dp),intent(in)                :: occupation(:,:),c_matrix(:,:,:)
   type(spectral_function),intent(in) :: chi
@@ -139,7 +140,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
   if( is_iomaster .AND. print_yaml_ ) then
     write(unit_yaml,'(/,a)')  'optical spectrum:'
     write(unit_yaml,'(4x,a)') 'excitations:'
-    if( is_triplet ) then
+    if( is_triplet_currently ) then
       write(unit_yaml,'(8x,a)') 'spin multiplicity: triplet'
     else
       write(unit_yaml,'(8x,a)') 'spin multiplicity: singlet'
@@ -162,7 +163,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
   do t_jb_global=1,nexc
     t_jb = colindex_global_to_local('S',t_jb_global)
 
-    if( is_triplet ) then
+    if( is_triplet_currently ) then
       oscillator_strength = 0.0_dp
     else
       oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residue(:,t_jb_global),residue(:,t_jb_global)) * eigenvalue(t_jb_global)
@@ -177,7 +178,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
 
     if(t_jb_global<=30) then
 
-      if( is_triplet ) then
+      if( is_triplet_currently ) then
         symsymbol='3'
       else
         symsymbol='1'
@@ -269,7 +270,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
           write(icubefile,'(i6,3(f12.6,2x))') cube_nx,dx,0.,0.
           write(icubefile,'(i6,3(f12.6,2x))') cube_ny,0.,dy,0.
           write(icubefile,'(i6,3(f12.6,2x))') cube_nz,0.,0.,dz
-     
+
           do iatom=1,natom
             write(icubefile,'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
           enddo
@@ -282,21 +283,21 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
               do iz=1,cube_nz
                 rr(3) = zmin + (iz-1)*dz
                 igrid = igrid + 1
-     
+
                 call calculate_basis_functions_r(basis,rr,basis_function_r)
                 phi(:,1) = MATMUL( basis_function_r(:) , c_matrix(:,:,1) )
-     
+
                 transdens(igrid)= 0.0_dp
                 do t_ia_global=1,chi%npole_reso
                   istate = chi%transition_table(1,t_ia_global)
                   astate = chi%transition_table(2,t_ia_global)
                   transdens(igrid) = transdens(igrid) + xpy_global(t_ia_global) * phi(istate,1) * phi(astate,1)
                 enddo ! t_ia_global
-     
+
               enddo ! iz
             enddo ! iy
           enddo ! ix
-     
+
           do igrid=1,ntot
             write(icubefile,'(e16.8)') SQRT(2.0_dp) * transdens(igrid)
           enddo
@@ -325,7 +326,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,xpy_matrix,xmy_matrix,
   !
   ! For some calculation conditions, the rest of the subroutine is irrelevant
   ! So skip it! Skip it!
-  if( is_triplet ) then
+  if( is_triplet_currently ) then
     deallocate(residue)
     return
   endif
@@ -628,7 +629,7 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
     enddo
   endif
 
-  
+
   deallocate(qvec_list,wq,bethe_sumrule)
 
   call stop_clock(timing_stopping)

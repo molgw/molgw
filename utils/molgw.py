@@ -95,7 +95,7 @@ def run(inputfile="molgw.in",outputfile="",pyinput={},mpirun="",openmp=1,**kwarg
         process = subprocess.Popen(mpirun.split()+[exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     output, error = process.communicate()
     if len(outputfile) >0:
-        with open("molgw.out",'w') as f:
+        with open(outputfile,'w') as f:
             f.write(output.decode("utf-8"))
     if len(error) > 100:
         print(error.decode("utf-8"))

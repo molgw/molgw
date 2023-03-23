@@ -81,7 +81,7 @@ module m_inputparam
     logical            :: is_noft
     logical            :: is_selfenergy
     logical            :: is_ci
-    logical            :: is_bse,no_bse_kernel,include_tddft_kernel
+    logical            :: is_bse,no_bse_kernel,include_tddft_kernel,include_tdhf_kernel
     integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
     integer            :: selfenergy_approx         ! GW, COHSEX, PT2
   end type calculation_type
@@ -196,6 +196,7 @@ subroutine init_calculation_type(scf,postscf)
   calc_type%is_bse               = .FALSE.
   calc_type%no_bse_kernel        = .FALSE.
   calc_type%include_tddft_kernel = .FALSE.
+  calc_type%include_tdhf_kernel  = .FALSE.
   calc_type%is_real_time         = .FALSE.
   calc_type%selfenergy_technique = one_shot
   calc_type%selfenergy_approx    = 0
@@ -295,13 +296,17 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%selfenergy_approx = CI
     case('BSE')
       calc_type%is_bse = .TRUE.
-    case('BSE_RPA','BSE-RPA')
+    case('BSE_RPA','BSE-RPA') ! debug only
       calc_type%is_bse        = .TRUE.
       calc_type%no_bse_kernel = .TRUE.
     case('TD')
       calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
+    case('RPA')
+      ! nothing to declare
+    case('RPAX','RPAX-II')
+      calc_type%include_tdhf_kernel =.TRUE.
     case default
       call die('Error reading keyword: postscf')
     end select

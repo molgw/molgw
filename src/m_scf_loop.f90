@@ -26,6 +26,7 @@ module m_scf_loop
  use m_hamiltonian_twobodies
  use m_hamiltonian_wrapper
  use m_selfenergy_tools
+ use m_linear_response
  use m_restart
 
 
@@ -183,7 +184,7 @@ subroutine scf_loop(is_restart,&
 
 
      call init_spectral_function(nstate,occupation,0,wpol)
-     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_gks%rpa,en_gks%gw,wpol)
+     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,en_gks%rpa,en_gks%gw,wpol)
 
      if(kappa_hybrid/=one) then ! Print double-hybrid RPA correlation energy
         write(stdout,'(/,a,f16.10)')       ' RPA correlation energy will be scaled by :',(one-kappa_hybrid)

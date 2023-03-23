@@ -457,6 +457,13 @@ Exc. 0001                 ,      0.22685574     , 1 , 1.0e-4
 Exc. 0010                 ,     11.2463169      , 0 , 1.0e-4
 Exc. 0010                 ,      0.40996808     , 1 , 1.0e-4
 
+c2h4_b3lyp_triplet.in     , TDDFT with B3LYP for triplet final state
+SCF Total Energy          ,    -78.5912034336   , 0 , 1.0e-7
+Exc. 0001                 ,      4.07380649     , 0 , 1.0e-4
+Exc. 0001                 ,      0.00000000     , 1 , 1.0e-4
+Exc. 0002                 ,      7.64527152     , 0 , 1.0e-4
+Exc. 0002                 ,      0.00000000     , 1 , 1.0e-4
+
 ch4_bse_scissor.in        , BSE CH4 aug-cc-pVDZ without GW (scissor)
 XC Energy                 ,     -3.5802787452   , 0 , 1.0e-7
 gKS HOMO energy           ,    -12.451955       , 0 , 1.0e-4
@@ -943,4 +950,11 @@ SCF Total Energy          , -232.8924888075    , 0 , 1.0e-5   # Loosened criteri
 RT-TDDFT Total Energy     , -230.4199238294    , 0 , 1.0e-5
 Number of electrons       ,    42.0025941      , 0 , 1.0e-4
 
+lih_rpa.in                , RPA energy of LiH
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPA Total Energy          ,  -8.0590527892     , 0 , 1.0e-7
 
+
+lih_rpax.in               , RPAX energy (RPAx-II) of LiH
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPAx Total Energy         ,  -8.0599498366     , 0 , 1.0e-7
