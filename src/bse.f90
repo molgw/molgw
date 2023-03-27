@@ -7,7 +7,10 @@
 !
 !=========================================================================
 #include "molgw.h"
-subroutine build_amb_apb_common(is_triplet_currently,nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
+
+
+!=========================================================================
+subroutine build_amb_apb_common(is_triplet_currently,lambda,nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
                                 m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
  use m_definitions
  use m_timing
@@ -21,6 +24,7 @@ subroutine build_amb_apb_common(is_triplet_currently,nmat,nbf,nstate,c_matrix,en
  implicit none
 
  logical,intent(in)                 :: is_triplet_currently
+ real(dp),intent(in)                :: lambda
  integer,intent(in)                 :: nmat,nbf,nstate
  real(dp),intent(in)                :: energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
@@ -111,7 +115,7 @@ subroutine build_amb_apb_common(is_triplet_currently,nmat,nbf,nstate,c_matrix,en
          endif
 
          if( .NOT. is_triplet_currently) then
-           apb_block(t_ia,t_jb) = 2.0_dp * eri_eigen_iajb * spin_fact
+           apb_block(t_ia,t_jb) = 2.0_dp * eri_eigen_iajb * spin_fact * lambda
          else
            apb_block(t_ia,t_jb) = 0.0_dp
          endif
@@ -131,8 +135,10 @@ subroutine build_amb_apb_common(is_triplet_currently,nmat,nbf,nstate,c_matrix,en
                  eri_eigen_ibaj = eri_eigenstate_jbmin(istate,astate,jstate,jbspin)
                endif
              endif
-             apb_block(t_ia,t_jb) = apb_block(t_ia,t_jb) - eri_eigen_ijab * alpha_local - eri_eigen_ibaj * alpha_local
-             amb_block(t_ia,t_jb) = amb_block(t_ia,t_jb) - eri_eigen_ijab * alpha_local + eri_eigen_ibaj * alpha_local
+             apb_block(t_ia,t_jb) = apb_block(t_ia,t_jb) - eri_eigen_ijab * alpha_local * lambda &
+                                                         - eri_eigen_ibaj * alpha_local * lambda
+             amb_block(t_ia,t_jb) = amb_block(t_ia,t_jb) - eri_eigen_ijab * alpha_local * lambda &
+                                                         + eri_eigen_ibaj * alpha_local * lambda
            endif
          endif
 
@@ -279,7 +285,7 @@ end subroutine get_rpa_correlation
 
 
 !=========================================================================
-subroutine build_apb_hartree_auxil(is_triplet_currently,desc_apb,wpol,m_apb,n_apb,apb_matrix)
+subroutine build_apb_hartree_auxil(is_triplet_currently,lambda,desc_apb,wpol,m_apb,n_apb,apb_matrix)
  use m_definitions
  use m_timing
  use m_mpi
@@ -289,6 +295,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently,desc_apb,wpol,m_apb,n_ap
  implicit none
 
  logical,intent(in)                 :: is_triplet_currently
+ real(dp),intent(in)                :: lambda
  integer,intent(in)                 :: desc_apb(NDEL)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
@@ -360,7 +367,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently,desc_apb,wpol,m_apb,n_ap
 
        enddo
 
-       call DGER(m_apb_block,n_apb_block,2.0_dp*spin_fact,eri_3center_left,1,eri_3center_right,1,apb_block,m_apb_block)
+       call DGER(m_apb_block,n_apb_block,2.0_dp*spin_fact*lambda,eri_3center_left,1,eri_3center_right,1,apb_block,m_apb_block)
 
      enddo
 
@@ -384,7 +391,7 @@ end subroutine build_apb_hartree_auxil
 
 
 !=========================================================================
-subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,desc_apb,wpol,m_apb,n_apb,apb_matrix)
+subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda,desc_apb,wpol,m_apb,n_apb,apb_matrix)
  use m_definitions
  use m_timing
  use m_mpi
@@ -394,6 +401,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,desc_apb,wpol,
  implicit none
 
  logical,intent(in)                 :: is_triplet_currently
+ real(dp),intent(in)                :: lambda
  integer,intent(in)                 :: desc_apb(NDEL)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
@@ -448,7 +456,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,desc_apb,wpol,
 
 
 
- call PDSYRK('L','T',nmat,nauxil_2center,DBLE(2.0_dp*spin_fact),eri_3tmp_sd,1,1,desc_sd,  &
+ call PDSYRK('L','T',nmat,nauxil_2center,DBLE(2.0_dp*spin_fact*lambda),eri_3tmp_sd,1,1,desc_sd,  &
                                          DBLE(1.0_dp),apb_matrix,1,1,desc_apb)
 
  call clean_deallocate('TMP 3-center integrals',eri_3tmp_sd)
@@ -669,7 +677,7 @@ end subroutine build_amb_apb_bse
 
 
 !=========================================================================
-subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_definitions
  use m_timing
  use m_warning
@@ -682,7 +690,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  use m_eri_ao_mo
  implicit none
 
- real(dp),intent(in)                :: alpha_local
+ real(dp),intent(in)                :: alpha_local,lambda
  integer,intent(in)                 :: desc_apb(NDEL)
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: m_apb,n_apb
@@ -854,7 +862,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
    do iaspin=1,nspin
      do jstate=jstate_min,jstate_max
        wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) &
-                          + alpha_local *  eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin)
+                          + alpha_local * lambda *  eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin)
      enddo
    enddo
 

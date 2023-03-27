@@ -620,7 +620,7 @@ program molgw
   !
   ! final evaluation for RPAx total energy
   !
-  if( TRIM(postscf) == 'RPAX' .OR. TRIM(postscf) == 'RPA' ) then
+  if( TRIM(postscf(1:3)) == 'RPA' ) then
     en_mbpt = en_gks
     call acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   endif

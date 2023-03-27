@@ -303,9 +303,9 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
-    case('RPA')
+    case('RPA','RPA-I')
       ! nothing to declare
-    case('RPAX','RPAX-II')
+    case('RPAX','RPAX-I','RPAX-II')
       calc_type%include_tdhf_kernel =.TRUE.
     case default
       call die('Error reading keyword: postscf')

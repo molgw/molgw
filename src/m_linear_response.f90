@@ -28,7 +28,7 @@ contains
 
 !=========================================================================
 subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matrix,en_rpa,en_gw,wpol_out, &
-                          enforce_spin_multiplicity,lambda)
+                          enforce_spin_multiplicity,lambda,x_matrix,y_matrix,a_matrix,b_matrix)
   implicit none
 
   logical,intent(in)                    :: enforce_rpa,calculate_w
@@ -39,12 +39,14 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   type(spectral_function),intent(inout) :: wpol_out
   integer,intent(in),optional           :: enforce_spin_multiplicity
   real(dp),optional                     :: lambda
+  real(dp),optional                     :: x_matrix(:,:),y_matrix(:,:)
+  real(dp),optional                     :: a_matrix(:,:),b_matrix(:,:)
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
   logical                   :: is_bse
   integer                   :: nmat,nexc
-  real(dp)                  :: alpha_local
+  real(dp)                  :: alpha_local,lambda_
   real(dp),allocatable      :: amb_diag_rpa(:)
   real(dp),allocatable      :: amb_matrix(:,:),apb_matrix(:,:)
   real(dp),allocatable      :: xpy_matrix(:,:),xmy_matrix(:,:)
@@ -68,6 +70,11 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   en_gw  = 0.0_dp
 
   write(stdout,'(/,a)') ' Calculating the polarizability'
+  if( PRESENT(lambda) ) then
+     lambda_ = lambda
+  else
+     lambda_ = 1.0_dp
+  endif
   if( PRESENT(enforce_spin_multiplicity) ) then
     select case(enforce_spin_multiplicity)
     case(1)
@@ -183,12 +190,14 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
     !
     ! Step 1
-    call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
+    if( .NOT. (PRESENT(a_matrix) .AND. PRESENT(b_matrix)) ) then
+      call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
+    endif
 
 #if defined(HAVE_SCALAPACK)
-    call build_apb_hartree_auxil_scalapack(is_triplet_currently,desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
+    call build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda_,desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
 #else
-    call build_apb_hartree_auxil(is_triplet_currently,desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
+    call build_apb_hartree_auxil(is_triplet_currently,lambda_,desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
 #endif
 
 
@@ -199,7 +208,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     !
     ! Step 3
     if(alpha_local > 1.0e-6_dp) then
-      call build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+      call build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
     endif
 
     if( is_bse ) then
@@ -208,11 +217,12 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
     call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,en_rpa)
 
+
   else
 
     !
     ! Step 1
-    call build_amb_apb_common(is_triplet_currently,nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
+    call build_amb_apb_common(is_triplet_currently,lambda,nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
                               m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,en_rpa)
 
     !
@@ -245,8 +255,21 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
   call stop_clock(timing_build_h2p)
 
-  if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
 
+  ! 
+  ! When requesting A and B, calculate them and exit here
+  ! (skip diago etc)
+  !
+  if( PRESENT(a_matrix) .AND. PRESENT(b_matrix) ) then
+    a_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
+    b_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) - amb_matrix(:,:) )
+    call clean_deallocate('A+B',apb_matrix)
+    call clean_deallocate('A-B',amb_matrix)
+    call stop_clock(timing_pola)
+    return
+  endif
+
+  if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
 
   !
   ! Prepare the second dimension of xpy_matrix and xmy_matrix
@@ -262,7 +285,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   call DESCINIT(desc_x,nmat,nexc,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_x),info)
 
   call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
-  if( .NOT. is_rpa .OR. is_tda ) &
+  if( .NOT. is_rpa .OR. is_tda .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
     call clean_allocate('X-Y',xmy_matrix,m_x,n_x)
 
   !
@@ -322,6 +345,13 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     end select
   endif
 
+  ! extract X and Y if requested
+  if( PRESENT(x_matrix) ) then
+    x_matrix(:,:) = 0.5_dp * ( xpy_matrix(:,:) + xmy_matrix(:,:) )
+  endif
+  if( PRESENT(y_matrix) ) then
+    y_matrix(:,:) = 0.5_dp * ( xpy_matrix(:,:) - xmy_matrix(:,:) )
+  endif
   !
   ! Now only the sum ( X + Y ) is needed in fact.
   ! Free ( X - Y ) at once.
@@ -357,7 +387,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   write(stdout,*) 'Deallocate eigenvector array'
   call clean_deallocate('X+Y',xpy_matrix)
 
-  if(has_auxil_basis) call destroy_eri_3center_eigen()
+  if(has_auxil_basis .AND. .NOT. PRESENT(lambda)) call destroy_eri_3center_eigen()
 
   if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
   deallocate(energy_qp)
