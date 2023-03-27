@@ -11,9 +11,9 @@ endif
 ifeq ($(CXXFLAGS),)
   CXXFLAGS=-O2
 endif
-#ifeq ($(CPPFLAGS),)
-#  CPPFLAGS=-cpp -DHAVE_LIBCINT
-#endif
+ifeq ($(CPPFLAGS),)
+  CPPFLAGS=-cpp
+endif
 ifeq ($(LAPACK),)
   LAPACK=-lblas -llapack
 endif
