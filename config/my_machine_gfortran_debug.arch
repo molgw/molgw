@@ -1,7 +1,7 @@
 # Sequential compilation
 FC=gfortran 
 
-CPPFLAGS=-DHAVE_LIBXC -DHAVE_LIBCINT -DDEBUG
+CPPFLAGS=-DHAVE_LIBCINT -DDEBUG
 
 CXX=g++
 FCFLAGS=-cpp  -O0 -g -fcheck=all

@@ -12,7 +12,7 @@ ifeq ($(CXXFLAGS),)
   CXXFLAGS=-O2
 endif
 ifeq ($(CPPFLAGS),)
-  CPPFLAGS=-cpp -DHAVE_LIBXC
+  CPPFLAGS=-cpp -DHAVE_LIBCINT
 endif
 ifeq ($(LAPACK),)
   LAPACK=-lblas -llapack
@@ -34,10 +34,10 @@ LINKER= $(LIBTOOL) $(FC_W_OPTS)
 LINKS= -lstdc++ -lm
 ifeq ($(LIBXC_ROOT),)
   LIBXC_INCS=
-  ifneq (,$(findstring -DHAVE_LIBXC,$(CPPFLAGS)))
-    LIBXC= -lxc
-  else
+  ifeq (,$(findstring -DNO_LIBXC,$(CPPFLAGS)))
     LIBXC=
+  else
+    LIBXC=-lxc
   endif
 else
   LIBXC_INCS=-I$(LIBXC_ROOT)/include
@@ -49,6 +49,9 @@ ifeq ($(LIBINT_ROOT),)
 else
   LIBINT=-L$(LIBINT_ROOT)/lib -lint2
   LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
+endif
+ifeq ($(LIBCINT),)
+  LIBCINT=-lcint
 endif
 ifeq ($(FFTW_ROOT),)
   FFTW=

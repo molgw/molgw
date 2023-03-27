@@ -4,7 +4,7 @@ PYTHON=python3
 # gfortran
 FC=gfortran
 
-CPPFLAGS=-DHAVE_LIBXC
+CPPFLAGS=
 
 CXX=g++
 FCFLAGS= -cpp -O3 -march=native -mtune=native 

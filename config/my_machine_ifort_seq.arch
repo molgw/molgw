@@ -4,7 +4,7 @@ PYTHON=python
 # Sequential compilation
 FC=ifort
 
-CPPFLAGS=-DHAVE_LIBXC -DHAVE_LIBCINT
+CPPFLAGS=-DHAVE_LIBCINT
 
 CXX=icpc -std=c++11
 FCFLAGS= -fpp -O3 -xhost -parallel -qopt-matmul
