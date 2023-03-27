@@ -5,6 +5,7 @@
 ----------------------------------------
 ## What's new in version 3.1.alpha
 ### Overview
+- Simplified compilation
 - GTH pseudo potentials in CP2K format
 - even-tempered basis
 
@@ -14,6 +15,7 @@
 ### Changes affecting the usage
 
 ### Changes affecting the compilation
+- Compilation is by default with LIBXC and LIBCINT. Use preprocessor variable NO_LIBXC or NO_LIBCINT if you want to do otherwise.
 
 ### Changes affecting the developers
 

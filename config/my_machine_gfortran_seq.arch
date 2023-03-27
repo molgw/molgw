@@ -4,7 +4,7 @@ PYTHON=python3
 # Sequential compilation
 FC=gfortran
 
-CPPFLAGS=-DHAVE_LIBCINT
+CPPFLAGS=
 
 CXX=g++
 FCFLAGS= -cpp -O2 # -O0 -g -check all -traceback 

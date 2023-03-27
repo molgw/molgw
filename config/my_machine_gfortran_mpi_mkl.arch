@@ -4,7 +4,7 @@ PYTHON=python3
 # Parallel MPI/SCALAPACK compilation with MKL
 FC=mpif90 
 
-CPPFLAGS=-DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_LIBCINT
+CPPFLAGS=-DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL
 
 CXX=g++
 FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -fexternal-blas -march=native -mtune=native 
