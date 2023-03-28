@@ -148,6 +148,7 @@
  write(stdout,'(1x,a32,2x,es16.8)') 'diis_switch',diis_switch 
  write(stdout,'(1x,a32,6x,a)') 'noft_fcidump',noft_fcidump 
  write(stdout,'(1x,a32,2x,es16.8)') 'gamma_hybrid',gamma_hybrid 
+ write(stdout,'(1x,a32,2x,es16.8)') 'kappa_hybrid',kappa_hybrid 
  write(stdout,'(1x,a32,6x,a)') 'grid_quality',TRIM(grid_quality) 
  write(stdout,'(1x,a32,6x,a)') 'init_hamiltonian',TRIM(init_hamiltonian) 
  write(stdout,'(1x,a32,6x,a)') 'noft_NOTupdateOCC',noft_NOTupdateOCC 

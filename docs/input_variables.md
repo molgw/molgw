@@ -59,6 +59,7 @@
 [density_matrix_damping](#density_matrix_damping) 
 [diis_switch](#diis_switch) 
 [gamma_hybrid](#gamma_hybrid) 
+[kappa_hybrid](#kappa_hybrid) 
 [grid_quality](#grid_quality) 
 [init_hamiltonian](#init_hamiltonian) 
 [integral_quality](#integral_quality) 
@@ -1245,6 +1246,22 @@ Selects how to initiate the first hamiltonian for SCF cycles. Today, two options
 **Description:** 
 
 Sets the tolerance value for the screening of the negligible integrals. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot. 
+
+
+---
+### kappa_hybrid
+
+*Optional* 
+
+**Family:** scf 
+
+**Type:** real 
+
+**Default:** 0.0 
+
+**Description:** 
+
+Works for scf='rsh', 'pbe-qidh', and 'b2plyp'. Sets the amount of Ec^X (X=MP2 or RPA) correlation in double-hybrid DFT functionals. 
 
 
 ---

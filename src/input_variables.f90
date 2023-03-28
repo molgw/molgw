@@ -149,6 +149,7 @@
     diis_switch,       &
     noft_fcidump,       &
     gamma_hybrid,       &
+    kappa_hybrid,       &
     grid_quality,       &
     init_hamiltonian,       &
     noft_NOTupdateOCC,       &
@@ -338,6 +339,7 @@
  diis_switch=0.05_dp 
  noft_fcidump='no'
  gamma_hybrid=1000000.0_dp 
+ kappa_hybrid=0.0_dp 
  grid_quality='high'
  init_hamiltonian='guess'
  noft_NOTupdateOCC='no'

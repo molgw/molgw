@@ -148,6 +148,7 @@
  write(unit_yaml,'(4x,a,19x,es16.8)') 'diis_switch:',diis_switch 
  write(unit_yaml,'(4x,a,18x,a)') 'noft_fcidump:',yesno_to_TrueFalse(noft_fcidump) 
  write(unit_yaml,'(4x,a,18x,es16.8)') 'gamma_hybrid:',gamma_hybrid 
+ write(unit_yaml,'(4x,a,18x,es16.8)') 'kappa_hybrid:',kappa_hybrid 
  write(unit_yaml,'(4x,a,18x,a)') 'grid_quality:',TRIM(grid_quality) 
  write(unit_yaml,'(4x,a,14x,a)') 'init_hamiltonian:',TRIM(init_hamiltonian) 
  write(unit_yaml,'(4x,a,13x,a)') 'noft_NOTupdateOCC:',yesno_to_TrueFalse(noft_NOTupdateOCC) 

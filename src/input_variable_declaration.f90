@@ -145,6 +145,7 @@
  real(dp),protected :: diis_switch
  character(len=3),protected :: noft_fcidump
  real(dp),protected :: gamma_hybrid
+ real(dp),protected :: kappa_hybrid
  character(len=256),protected :: grid_quality
  character(len=256),protected :: init_hamiltonian
  character(len=3),protected :: noft_NOTupdateOCC
