@@ -510,7 +510,6 @@ program molgw
   if( .FALSE. ) call write_cube_from_header('GKS',basis,occupation,c_matrix)
   !call plot_rho_xy(basis, occupation, c_matrix)      !plot density integrated on axis z in plane xy
 
-
   !
   ! Do NOFT optimization
   !
@@ -623,12 +622,13 @@ program molgw
 
   !
   ! final evaluation for RPAx total energy
+  ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
   !
-  if( TRIM(postscf) == 'RPAX' .OR. TRIM(postscf) == 'RPA' ) then
+  if( TRIM(postscf) == 'RPAX' .OR. TRIM(postscf) == 'RPAP' .OR. TRIM(postscf) == 'RPA' .OR. &
+    & TRIM(postscf) == 'RPA_IM' .OR. TRIM(postscf) == 'RPAP_IM' ) then
     en_mbpt = en_gks
     call acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   endif
-
 
   !
   ! final evaluation for MP2 total energy
@@ -645,7 +645,7 @@ program molgw
     write(stdout,*)
     en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx + en_gks%mp2
 
-    if(kappa_hybrid/=one) then
+    if(kappa_hybrid/=zero) then
       en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
     endif
 
@@ -669,7 +669,7 @@ program molgw
 
     en_gks%total = en_gks%total + en_gks%mp3
 
-    if(kappa_hybrid/=one) then
+    if(kappa_hybrid/=zero) then
       en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp3
     endif
 

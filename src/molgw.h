@@ -13,15 +13,13 @@
 #define MOLGW_VERSION "3.1"
 #endif
 
+#if !defined(NO_LIBCINT)
+#define HAVE_LIBCINT
+#endif
+
 #if defined(HAVE_LIBCINT)
 #if !defined(NO_LIBINT)
 #define NO_LIBINT
-#endif
-#endif
-
-#if !defined(NO_LIBXC)
-#if !defined(HAVE_LIBXC)
-#define HAVE_LIBXC
 #endif
 #endif
 

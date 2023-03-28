@@ -112,10 +112,10 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
 
  enddo !iaspin
 
- if(kappa_hybrid/=one) then
-   write(stdout,'(/,a,f16.10)')       ' MP2 contributions will be scaled by :',(one-kappa_hybrid)
-   contrib1=(one-kappa_hybrid)*contrib1
-   contrib2=(one-kappa_hybrid)*contrib2
+ if(kappa_hybrid/=zero) then
+   write(stdout,'(/,a,f16.10)')       ' MP2 contributions will be scaled by :',kappa_hybrid
+   contrib1=kappa_hybrid*contrib1
+   contrib2=kappa_hybrid*contrib2
  endif
 
  emp2 = contrib1 + contrib2
@@ -354,11 +354,11 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
  enddo
 #endif
 
- if(kappa_hybrid/=one) then
-   write(stdout,'(/,a,f16.10)')       ' MP3 contributions will be scaled by :',(one-kappa_hybrid)
-   contrib1=(one-kappa_hybrid)*contrib1
-   contrib2=(one-kappa_hybrid)*contrib2
-   contrib3=(one-kappa_hybrid)*contrib3
+ if(kappa_hybrid/=zero) then
+   write(stdout,'(/,a,f16.10)')       ' MP3 contributions will be scaled by :',kappa_hybrid
+   contrib1=kappa_hybrid*contrib1
+   contrib2=kappa_hybrid*contrib2
+   contrib3=kappa_hybrid*contrib3
  endif
 
  emp3 = contrib1 + contrib2 + contrib3
@@ -510,10 +510,10 @@ subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
 
  deallocate(tmp_ixxx)
 
- if(kappa_hybrid/=one) then
-   write(stdout,'(/,a,f16.10)')       ' MP2 contributions will be scaled by :',(one-kappa_hybrid)
-   contrib1=(one-kappa_hybrid)*contrib1
-   contrib2=(one-kappa_hybrid)*contrib2
+ if(kappa_hybrid/=zero) then
+   write(stdout,'(/,a,f16.10)')       ' MP2 contributions will be scaled by :',kappa_hybrid
+   contrib1=kappa_hybrid*contrib1
+   contrib2=kappa_hybrid*contrib2
  endif
 
  emp2 = contrib1 + contrib2

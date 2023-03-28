@@ -58,11 +58,11 @@ success = 0
 tested = 0
 cppflags_list = []
 
-cppflags_list.append('-DHAVE_LIBXC')
-cppflags_list.append('-DHAVE_LIBXC -DHAVE_LIBINT_ONEBODY')
-cppflags_list.append('-DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK')
-cppflags_list.append('-DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_LIBINT_ONEBODY')
-cppflags_list.append('-DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_LIBINT_ONEBODY -DLAPACK_DIAGO_FLAVOR_D') 
+cppflags_list.append('')
+cppflags_list.append('-DHAVE_LIBINT_ONEBODY')
+cppflags_list.append('-DHAVE_MPI -DHAVE_SCALAPACK')
+cppflags_list.append('-DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_LIBINT_ONEBODY')
+cppflags_list.append('-DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_LIBINT_ONEBODY -DLAPACK_DIAGO_FLAVOR_D') 
 
 try:
   os.remove(tmpfolder+'/tests.log')

@@ -12,7 +12,7 @@ ifeq ($(CXXFLAGS),)
   CXXFLAGS=-O2
 endif
 ifeq ($(CPPFLAGS),)
-  CPPFLAGS=-cpp -DHAVE_LIBXC
+  CPPFLAGS=-cpp
 endif
 ifeq ($(LAPACK),)
   LAPACK=-lblas -llapack
@@ -25,6 +25,7 @@ endif
 #LIBINT_ROOT=
 
 
+-include ../my_machine.arch
 -include ./my_machine.arch
 
 FC_W_OPTS= $(FC) $(FCFLAGS) $(OPENMP) $(CPPFLAGS)
@@ -34,14 +35,14 @@ LINKER= $(LIBTOOL) $(FC_W_OPTS)
 LINKS= -lstdc++ -lm
 ifeq ($(LIBXC_ROOT),)
   LIBXC_INCS=
-  ifneq (,$(findstring -DHAVE_LIBXC,$(CPPFLAGS)))
-    LIBXC= -lxc
+  ifeq (,$(findstring -DNO_LIBXC,$(CPPFLAGS)))
+    LIBXC=-lxc
   else
     LIBXC=
   endif
 else
   LIBXC_INCS=-I$(LIBXC_ROOT)/include
-  LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
+  LIBXC=$(LIBXC_ROOT)/lib/libxc.a
 endif
 ifeq ($(LIBINT_ROOT),)
   LIBINT=
@@ -49,6 +50,9 @@ ifeq ($(LIBINT_ROOT),)
 else
   LIBINT=-L$(LIBINT_ROOT)/lib -lint2
   LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
+endif
+ifeq ($(LIBCINT),)
+  LIBCINT=-lcint
 endif
 ifeq ($(FFTW_ROOT),)
   FFTW=
@@ -116,9 +120,9 @@ level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o m_restart.o m_multipole.o m_spec
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o m_linear_response.o
 
-level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o  m_acfd.o
+level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o
 
-level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o
+level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o 
 
 level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o \
           gwgamma_selfenergy.o bse.o \

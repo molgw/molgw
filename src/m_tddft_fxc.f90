@@ -79,7 +79,7 @@ subroutine prepare_tddft(is_triplet_currently,nstate,basis,c_matrix,occupation)
  type(C_PTR)          :: cptr_tmp
 !=====
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 
  !
  ! Prepare DFT kernel calculation with Libxc
