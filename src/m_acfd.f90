@@ -94,7 +94,8 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     if(kappa_hybrid/=zero) then ! Double-hybrids using RPA (and RPA versions)
       en_mbpt%total = en_mbpt%total + en_mbpt%rpa + erpa_sie_KP 
     else
-      en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa + erpa_sie_KP
+      en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus &
+      &             + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa + erpa_sie_KP
     endif
 
     write(stdout,*)
