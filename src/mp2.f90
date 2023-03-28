@@ -13,14 +13,14 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  use m_cart_to_pure
  use m_basis_set
  use m_eri_ao_mo
- use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore
+ use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore,kappa_hybrid
  implicit none
 
- integer,intent(in)         :: nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)       :: emp2
+ integer,intent(in)           :: nstate
+ type(basis_set),intent(in)   :: basis
+ real(dp),intent(in)          :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)          :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(out)         :: emp2
 !====
  integer                    :: astate,bstate,istate,jstate
  integer                    :: iaspin,jbspin
@@ -112,6 +112,11 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
 
  enddo !iaspin
 
+ if(kappa_hybrid/=zero) then
+   write(stdout,'(/,a,f16.10)')       ' MP2 contributions will be scaled by :',kappa_hybrid
+   contrib1=kappa_hybrid*contrib1
+   contrib2=kappa_hybrid*contrib2
+ endif
 
  emp2 = contrib1 + contrib2
  write(stdout,'(/,a)')       ' MP2 contributions'
@@ -132,7 +137,7 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
  use m_cart_to_pure
  use m_basis_set
  use m_eri_ao_mo
- use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore
+ use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore,kappa_hybrid
  implicit none
 
  integer,intent(in)         :: nstate
@@ -349,7 +354,12 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
  enddo
 #endif
 
-
+ if(kappa_hybrid/=zero) then
+   write(stdout,'(/,a,f16.10)')       ' MP3 contributions will be scaled by :',kappa_hybrid
+   contrib1=kappa_hybrid*contrib1
+   contrib2=kappa_hybrid*contrib2
+   contrib3=kappa_hybrid*contrib3
+ endif
 
  emp3 = contrib1 + contrib2 + contrib3
 ! write(stdout,'(/,a)')       ' MP3 contributions'
@@ -370,14 +380,14 @@ subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
  use m_mpi
  use m_basis_set
  use m_eri_ao_mo
- use m_inputparam,only: nspin,spin_fact,ncoreg
+ use m_inputparam,only: nspin,spin_fact,ncoreg,kappa_hybrid
  implicit none
 
- integer,intent(in)         :: nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)       :: emp2
+ integer,intent(in)           :: nstate
+ type(basis_set),intent(in)   :: basis
+ real(dp),intent(in)          :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)          :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(out)         :: emp2
 !=====
  integer                    :: astate,bstate,istate,jstate
  integer                    :: ibf,jbf,abf,bbf,iaspin,jbspin
@@ -500,6 +510,11 @@ subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
 
  deallocate(tmp_ixxx)
 
+ if(kappa_hybrid/=zero) then
+   write(stdout,'(/,a,f16.10)')       ' MP2 contributions will be scaled by :',kappa_hybrid
+   contrib1=kappa_hybrid*contrib1
+   contrib2=kappa_hybrid*contrib2
+ endif
 
  emp2 = contrib1 + contrib2
  write(stdout,'(/,a)')       ' MP2 contributions'

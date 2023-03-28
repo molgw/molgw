@@ -120,9 +120,9 @@ level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o m_restart.o m_multipole.o m_spec
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o m_linear_response.o
 
-level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o  m_acfd.o
+level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o
 
-level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o
+level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o 
 
 level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o \
           gwgamma_selfenergy.o bse.o \
