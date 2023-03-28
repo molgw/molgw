@@ -124,6 +124,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
       alpha_local = 0.0_dp
     endif
   endif
+  if( enforce_rpa ) alpha_local = 0.0_dp
 
   is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
 
@@ -211,6 +212,8 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     if(alpha_local > 1.0e-6_dp) then
       call build_amb_apb_screened_exchange_auxil(alpha_local,lambda_,desc_apb,wpol_out,wpol_static, &
                                                  m_apb,n_apb,amb_matrix,apb_matrix)
+    else
+      write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
     endif
 
     if( is_bse ) then

@@ -807,10 +807,6 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
   ! Add the exact exchange here
   if( alpha_local > 1.0e-6_dp ) then
 
-    write(*,*) 'FBFB',ALLOCATED(eri_3center_eigen)
-    write(*,*) 'FBFB',alpha_local
-    write(*,*) 'FBFB',lambda
-    write(*,*) 'FBFB'
     do iaspin=1,nspin
       do jstate=jstate_min,jstate_max
         wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) &

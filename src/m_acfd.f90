@@ -38,8 +38,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   !=====
   type(spectral_function)    :: wpol
   real(dp)                   :: erpa_singlet,erpa_triplet,egw_tmp
-  integer,parameter          :: nlambda=20
-  real(dp)                   :: wlambda(nlambda),lambda(nlambda)
+  real(dp)                   :: wlambda(acfd_nlambda),lambda(acfd_nlambda)
   real(dp),allocatable       :: x_matrix(:,:),y_matrix(:,:)
   real(dp),allocatable       :: a_matrix(:,:),b_matrix(:,:)
   integer                    :: nmat,desc_x(NDEL)
@@ -76,15 +75,16 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     write(stdout,*)
 
   case('RPA-I')
-    write(stdout,'(/,1x,a,i4)') 'RPA with integration over lambda with nlambda: ',nlambda 
-    call coeffs_gausslegint(0.0_dp,1.0_dp,lambda,wlambda,nlambda)
+    call die('acfd_total_energy: RPA-I formula not yet tested')
+    write(stdout,'(/,1x,a,i4)') 'RPA with integration over lambda with acfd_nlambda: ',acfd_nlambda
+    call coeffs_gausslegint(0.0_dp,1.0_dp,lambda,wlambda,acfd_nlambda)
 
     call init_spectral_function(nstate,occupation,0,wpol)
     nmat = wpol%npole_reso
     m_x = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
     n_x = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
     call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_x),info)
-  
+
     call clean_allocate('X matrix',x_matrix,m_x,n_x)
     call clean_allocate('Y matrix',y_matrix,m_x,n_x)
 
@@ -96,8 +96,8 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     call destroy_spectral_function(wpol)
 
     en_mbpt%rpa = 0.0_dp
-    do ilambda=1,nlambda
-      write(stdout,'(1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',nlambda
+    do ilambda=1,acfd_nlambda
+      write(stdout,'(1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
       call init_spectral_function(nstate,occupation,0,wpol)
       call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                           enforce_spin_multiplicity=1,lambda=lambda(ilambda),x_matrix=x_matrix,y_matrix=y_matrix)
@@ -122,31 +122,35 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     write(stdout,*)
 
   case('RPAX-I')
-    write(stdout,'(/,1x,a,i4)') 'RPAx with integration over lambda with nlambda: ',nlambda 
-    call coeffs_gausslegint(0.0_dp,1.0_dp,lambda,wlambda,nlambda)
+#if defined(HAVE_SCALAPACK)
+    call die('acfd_total_energy: RPAX-I formula only available in sequential. Please recompile the code.')
+#endif
+    write(stdout,'(/,1x,a,i4)') 'RPAx with integration over lambda with acfd_nlambda: ',acfd_nlambda
+    call coeffs_gausslegint(0.0_dp,1.0_dp,lambda,wlambda,acfd_nlambda)
 
     call init_spectral_function(nstate,occupation,0,wpol)
     nmat = wpol%npole_reso
     m_x = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
     n_x = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
     call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_x),info)
-  
+
     call clean_allocate('X matrix',x_matrix,m_x,n_x)
     call clean_allocate('Y matrix',y_matrix,m_x,n_x)
 
     call clean_allocate('A matrix',a_matrix,m_x,n_x)
     call clean_allocate('B matrix',b_matrix,m_x,n_x)
     !
-    ! Singlet
+    ! Only singlet needed for RPAx-I
     !
     ! Get A and B
-    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
+    call polarizability(.TRUE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                         enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=a_matrix,b_matrix=b_matrix)
     call destroy_spectral_function(wpol)
 
     en_mbpt%rpa = 0.0_dp
-    do ilambda=1,nlambda
-      write(stdout,'(1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',nlambda
+    do ilambda=1,acfd_nlambda
+      write(stdout,'(1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
+      write(stdout,'(1x,a,f12.8)')   'lambda: ',lambda(ilambda)
       call init_spectral_function(nstate,occupation,0,wpol)
       call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                           enforce_spin_multiplicity=1,lambda=lambda(ilambda),x_matrix=x_matrix,y_matrix=y_matrix)
@@ -157,27 +161,6 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
       en_mbpt%rpa = en_mbpt%rpa + erpa_singlet * wlambda(ilambda)
     enddo
     call destroy_spectral_function(wpol)
-    !
-    ! Triplet
-    !
-    ! Get A and B
-    call init_spectral_function(nstate,occupation,0,wpol)
-    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_triplet,egw_tmp,wpol, &
-                        enforce_spin_multiplicity=3,lambda=1.0_dp,a_matrix=a_matrix,b_matrix=b_matrix)
-    call destroy_spectral_function(wpol)
-
-    do ilambda=1,nlambda
-      write(stdout,'(1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',nlambda
-      call init_spectral_function(nstate,occupation,0,wpol)
-      call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_triplet,egw_tmp,wpol, &
-                          enforce_spin_multiplicity=3,lambda=lambda(ilambda),x_matrix=x_matrix,y_matrix=y_matrix)
-      call destroy_spectral_function(wpol)
-
-      call calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa_triplet)
-
-      en_mbpt%rpa = en_mbpt%rpa + 3.0_dp * erpa_triplet * wlambda(ilambda)
-    enddo
-
 
     if(has_auxil_basis) call destroy_eri_3center_eigen()
 
@@ -186,11 +169,11 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     call clean_deallocate('A matrix',a_matrix)
     call clean_deallocate('B matrix',b_matrix)
 
-    write(stdout,'(a,2x,f19.10)') ' RPA Energy      (Ha):',en_mbpt%rpa
+    write(stdout,'(a,2x,f19.10)') ' RPAx-I Energy      (Ha):',en_mbpt%rpa
 
     en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa
     write(stdout,*)
-    write(stdout,'(a,2x,f19.10)') ' RPA Total Energy (Ha):',en_mbpt%total
+    write(stdout,'(a,2x,f19.10)') ' RPAx-I Total Energy (Ha):',en_mbpt%total
     write(stdout,*)
 
   case default
@@ -216,16 +199,16 @@ subroutine calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa)
   allocate(m_matrix,MOLD=a_matrix)
   nmat=SIZE(a_matrix,DIM=1)
   m_matrix(:,:) = -a_matrix(:,:)
-  m_matrix(:,:) = m_matrix(:,:) + MATMUL( x_matrix , MATMUL(a_matrix,TRANSPOSE(x_matrix)) )
-  m_matrix(:,:) = m_matrix(:,:) + MATMUL( y_matrix , MATMUL(a_matrix,TRANSPOSE(y_matrix)) )
-  m_matrix(:,:) = m_matrix(:,:) + MATMUL( x_matrix , MATMUL(b_matrix,TRANSPOSE(y_matrix)) )
-  m_matrix(:,:) = m_matrix(:,:) + MATMUL( y_matrix , MATMUL(b_matrix,TRANSPOSE(x_matrix)) )
+  m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(x_matrix) , MATMUL(a_matrix,x_matrix) )
+  m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(y_matrix) , MATMUL(a_matrix,y_matrix) )
+  m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(x_matrix) , MATMUL(b_matrix,y_matrix) )
+  m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(y_matrix) , MATMUL(b_matrix,x_matrix) )
 
   erpa = 0.0_dp
   do imat=1,nmat
-    erpa = erpa + m_matrix(imat,imat)
+    erpa = erpa + 0.5_dp * m_matrix(imat,imat)
   enddo
-
+  deallocate(m_matrix)
 
 
 end subroutine calculate_ec_acft
