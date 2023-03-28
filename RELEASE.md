@@ -7,16 +7,18 @@
 ### Overview
 - GTH pseudo potentials in CP2K format
 - even-tempered basis
+- Double-hybrid functionals are now available (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.). They require the postscf='MP2' keyword and the amount of EXX and MP2 correlation
+can be defined by the user with the `alpha_hybrid` and `kappa_hybrid` input variables.
 
 ### Contributors
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+- Mauricio Rodriguez-Mayorga (Universitat d'Alacant, Alicante, Spain)
 
 ### Changes affecting the usage
 
 ### Changes affecting the compilation
 
 ### Changes affecting the developers
-
 
 -----------------------------------------
 ## What's new in version 3.0
