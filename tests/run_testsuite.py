@@ -563,5 +563,5 @@ if test_files_skipped > 0 :
 if not keeptmp:
   shutil.rmtree(tmpfolder)
 
-
+sys.exit(abs(success-tested))
 ###################################

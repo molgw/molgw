@@ -25,6 +25,7 @@ endif
 #LIBINT_ROOT=
 
 
+-include ../my_machine.arch
 -include ./my_machine.arch
 
 FC_W_OPTS= $(FC) $(FCFLAGS) $(OPENMP) $(CPPFLAGS)
@@ -35,13 +36,13 @@ LINKS= -lstdc++ -lm
 ifeq ($(LIBXC_ROOT),)
   LIBXC_INCS=
   ifeq (,$(findstring -DNO_LIBXC,$(CPPFLAGS)))
-    LIBXC=
-  else
     LIBXC=-lxc
+  else
+    LIBXC=
   endif
 else
   LIBXC_INCS=-I$(LIBXC_ROOT)/include
-  LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
+  LIBXC=$(LIBXC_ROOT)/lib/libxc.a
 endif
 ifeq ($(LIBINT_ROOT),)
   LIBINT=

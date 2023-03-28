@@ -1,7 +1,6 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 
--include ./my_machine.arch
 
 .PHONY: all clean archive tarball archive
 
@@ -10,6 +9,9 @@ all:
 
 test:
 	cd tests && python ./run_testsuite.py
+
+github-test:
+	cd tests && python ./run_testsuite.py --exclude benzene_he_rt-tddft.in
 
 clean:
 	cd src && $(MAKE) clean
