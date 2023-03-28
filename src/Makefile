@@ -114,11 +114,11 @@ level025: m_eri.o m_scf.o m_dft_grid.o m_optocc.o m_optorb.o
 
 level030: m_eri_calculate.o m_density_tools.o m_io.o
 
-level040: m_spectral_function.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o
+level040: m_spectral_function.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_tddft_fxc.o m_eri_ao_mo.o
 
-level050: m_hamiltonian_wrapper.o m_eri_ao_mo.o m_restart.o m_multipole.o m_spectra.o m_build_bse.o
+level050: m_hamiltonian_wrapper.o m_restart.o m_multipole.o m_spectra.o m_build_bse.o
 
-level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o m_linear_response.o
+level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_linear_response.o
 
 level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o  m_acfd.o
 
