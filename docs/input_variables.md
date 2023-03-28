@@ -1648,7 +1648,7 @@ Print the FCIDUMP file in NOFT module.
 
 **Description:** 
 
-Select the NOFT approx. to use (default= 'GNOF'). Other options are 'PNOF5', 'PNOF7', 'HF', 'MULLER', and 'POWER'. 
+Select the NOFT approx. to use (default= 'GNOF'). Other options are 'PNOF5', 'PNOF7', 'HF', 'MULLER', 'CA', 'CGA', and 'POWER'. 
 
 
 ---
