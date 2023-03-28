@@ -201,11 +201,11 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,e
   call stop_clock(timing_rpa_dynamic)
 
 
- end subroutine polarizability_grid_scalapack
+end subroutine polarizability_grid_scalapack
 
 
- !=========================================================================
- subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
+!=========================================================================
+subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
   implicit none
 
   type(basis_set),intent(in)          :: basis

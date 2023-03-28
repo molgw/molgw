@@ -1036,7 +1036,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
  nstate = SIZE(occupation,DIM=1)
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 
  write(stdout,*) 'Calculate DFT XC potential'
  if( batch_size /= 1 ) write(stdout,'(7x,a,i6)') 'using batches of size ',batch_size

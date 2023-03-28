@@ -13,7 +13,7 @@ module m_libxc_tools
  use m_warning
 
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 #include <xc_funcs.h>
 #include <xc_version.h>
 #endif
@@ -253,7 +253,7 @@ subroutine init_libxc_info(dft_xc)
  dft_xc(:)%nxc = COUNT( dft_xc(:)%id /= 0 )
 
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 
  !
  ! Initialize the DFT objects for LIBXC
@@ -344,7 +344,7 @@ subroutine destroy_libxc_info(dft_xc)
 !=====
 
  do ixc=1,dft_xc(1)%nxc
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
    call xc_func_end(dft_xc(ixc)%func)
    call xc_func_free(dft_xc(ixc)%func)
 #endif

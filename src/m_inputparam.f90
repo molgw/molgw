@@ -20,7 +20,7 @@ module m_inputparam
   use m_string_tools,only: capitalize,yesno_to_logical,yesno_to_TrueFalse
   use m_libxc_tools
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 #include <xc_funcs.h>
 #endif
 
@@ -419,7 +419,7 @@ subroutine init_dft_type(key)
 
 
   select case(TRIM(key))
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
   !
   ! LDA functionals
   case('LDAX')
@@ -601,7 +601,7 @@ subroutine init_dft_type(key)
 
   call init_libxc_info(dft_xc)
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
   !
   ! If "LIBXC:" syntax, obtain exact-exchange parameters from LIBXC
   if( INDEX(key,"LIBXC:") > 0 ) then
