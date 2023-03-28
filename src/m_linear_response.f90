@@ -21,6 +21,7 @@ module m_linear_response
   use m_spectral_function
   use m_eri_ao_mo
   use m_spectra
+  use m_build_bse
 
 
 contains
@@ -208,7 +209,8 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     !
     ! Step 3
     if(alpha_local > 1.0e-6_dp) then
-      call build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+      call build_amb_apb_screened_exchange_auxil(alpha_local,lambda_,desc_apb,wpol_out,wpol_static, &
+                                                 m_apb,n_apb,amb_matrix,apb_matrix)
     endif
 
     if( is_bse ) then
@@ -222,7 +224,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
     !
     ! Step 1
-    call build_amb_apb_common(is_triplet_currently,lambda,nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
+    call build_amb_apb_common(is_triplet_currently,lambda_,nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
                               m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,en_rpa)
 
     !
