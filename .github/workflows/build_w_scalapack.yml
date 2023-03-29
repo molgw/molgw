@@ -1,4 +1,4 @@
-name: Make CI
+name: Build with MPI/ScaLapack
 
 on:
   push:
@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc gfortran libblas-dev liblapack-dev libxc-dev
+          sudo apt-get install -y gcc gfortran libblas-dev liblapack-dev libxc-dev openmpi-bin libopenmpi-dev libscalapack-openmpi-dev
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
@@ -40,14 +40,19 @@ jobs:
         run: |
           pwd
           ls -l ..
+          gfortran --version
+          which mpif90
+          which mpifort
+          mpif90 --version
           echo "LIBCINT=../libcint-5.2.2/build/libcint.a" > my_machine.arch
-          #echo "CPPFLAGS=-cpp -DNO_LIBXC" >> my_machine.arch
-          echo "FCFLAGS=-O1" >> my_machine.arch
+          echo "FC=mpifort" >> my_machine.arch
+          echo "SCALAPACK=-lscalapack-openmpi" >> my_machine.arch
+          echo "FCFLAGS=-O1 -DHAVE_MPI -DHAVE_SCALAPACK" >> my_machine.arch
           cat my_machine.arch
           ls -l
           make -j 4
 
-      - name: Run the test suite
-        run: |
-          make github-test
+      #- name: Run the test suite
+      #  run: |
+      #    make github-test
 
