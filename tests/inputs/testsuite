@@ -275,6 +275,12 @@ PT2 HOMO-LUMO gap         ,   17.743440        , 0 , 1.0e-4
 MP2 Energy                ,   -0.4080027465    , 0 , 1.0e-7
 MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
 
+h2o_pbe_rpa.in            , RPA at PBE 
+RPA Total Energy          ,  -76.3318887813    , 0 , 1.0e-7
+
+h2o_pbe_rpap.in           , RPA+ at PBE 
+RPA+ Total Energy         ,  -76.1385986080    , 0 , 1.0e-7
+
 h2o_b2plyp.in             , B2PLYP double hybrid functional with RI
 MP2 Energy                ,   -0.0812625983    , 0 , 1.0e-7
 MP2 Total Energy          ,  -76.4074345014    , 0 , 1.0e-7
@@ -286,6 +292,12 @@ MP2 Total Energy          ,  -76.3666106951    , 0 , 1.0e-7
 h2o_pbe0_dh.in            , PBE0-DH double hybrid functional with RI
 MP2 Energy                ,   -0.0377521092    , 0 , 1.0e-7
 MP2 Total Energy          ,  -76.3764848105    , 0 , 1.0e-7
+
+h2o_pbeqidh_rpap.in       , PBE-QIDH-RPA+ double hybrid functional
+RPA+ Total Energy         ,  -76.2594859892    , 0 , 1.0e-7
+
+h2o_pbeqidh_rpap_im.in    , PBE-QIDH-RPA+ double hybrid functional with RI and imag. w
+RPA+ Total Energy         ,  -76.2594859892    , 0 , 1.0e-7
 
 boron_gw_spinpolarized.in , GW@HF boron atom without RI with spin, noparallel
 Hartree Energy            ,   11.6084909105   , 0 , 1.0e-7
