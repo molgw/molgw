@@ -740,11 +740,11 @@ subroutine destroy_selfenergy_grid(se)
 
      if( calc_type%is_dft ) then
        call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.FALSE.,BATCH_SIZE)
-       call setup_density_matrix(c_matrix,occupation_tmp,p_matrix_tmp)
        call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation_tmp,c_matrix,hxc_val,exc)
        call destroy_dft_grid()
      endif
 
+     call setup_density_matrix(c_matrix,occupation_tmp,p_matrix_tmp)
      call calculate_exchange(basis,p_matrix_tmp,hexx_val,occupation=occupation_tmp,c_matrix=c_matrix)
 
      hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)

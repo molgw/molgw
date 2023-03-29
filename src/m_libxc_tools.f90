@@ -312,7 +312,7 @@ end subroutine init_libxc_info
 subroutine copy_libxc_info(dft_xc_in,dft_xc_out)
  implicit none
 
- type(dft_xc_info),allocatable,intent(in)    :: dft_xc_in(:)
+ type(dft_xc_info),intent(in)                :: dft_xc_in(:)
  type(dft_xc_info),allocatable,intent(inout) :: dft_xc_out(:)
 !=====
  integer :: nxc,ixc
@@ -322,13 +322,14 @@ subroutine copy_libxc_info(dft_xc_in,dft_xc_out)
  allocate(dft_xc_out(nxc))
 
  do ixc=1,nxc
-   dft_xc_out(ixc)%needs_gradient = dft_xc_in(ixc)%needs_gradient
-   dft_xc_out(ixc)%nxc            = dft_xc_in(ixc)%nxc
-   dft_xc_out(ixc)%id             = dft_xc_in(ixc)%id
-   dft_xc_out(ixc)%coeff          = dft_xc_in(ixc)%coeff
-   dft_xc_out(ixc)%gamma          = dft_xc_in(ixc)%gamma
-   dft_xc_out(ixc)%nspin          = dft_xc_in(ixc)%nspin
-   dft_xc_out(ixc)%family         = dft_xc_in(ixc)%family
+   dft_xc_out(ixc)%needs_gradient =  dft_xc_in(ixc)%needs_gradient
+   dft_xc_out(ixc)%nxc            =  dft_xc_in(ixc)%nxc
+   dft_xc_out(ixc)%id             =  dft_xc_in(ixc)%id
+   dft_xc_out(ixc)%coeff          =  dft_xc_in(ixc)%coeff
+   dft_xc_out(ixc)%gamma          =  dft_xc_in(ixc)%gamma
+   dft_xc_out(ixc)%nspin          =  dft_xc_in(ixc)%nspin
+   dft_xc_out(ixc)%family         =  dft_xc_in(ixc)%family
+   dft_xc_out(ixc)%func           => dft_xc_in(ixc)%func
  enddo
 
 end subroutine copy_libxc_info

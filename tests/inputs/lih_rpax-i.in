@@ -1,0 +1,19 @@
+&molgw
+
+ scf='HF'
+ tolscf=1.0e-8
+ nscf=100
+
+ gaussian_type='cart'
+
+ postscf='RPAX-I'
+ acfd_nlambda=4
+
+ basis='cc-pVTZ'
+ auxil_basis='PAUTO'
+
+ natom=2
+ length_unit='bohr'
+/
+Li   0.000000   0.0  0.00
+H    0.000000   0.0  3.000

@@ -303,12 +303,13 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
-    case('RPA','RPAP','RPA_IM','RPAP_IM')
+    case('RPA','RPAP','RPA_IM','RPAP_IM','RPA+','RPA+_IM')
       ! nothing to declare
-    case('RPAX','RPAX-II')
+    case('RPAX','RPAX-I','RPAX-II')
       calc_type%include_tdhf_kernel =.TRUE.
     case default
-      call die('Error reading keyword: postscf')
+      write(stdout,*) 'postscf: ',TRIM(postscf)
+      call die('init_calculation_type: Error reading keyword: postscf')
     end select
   endif
 
@@ -577,14 +578,14 @@ subroutine init_dft_type(key)
     dft_xc(2)%gamma = gamma_hybrid
   !
   ! Double Hybrid functionals (used with postscf='MP2' or 'RPA')
-  case('PBE0-DH')  
+  case('PBE0-DH')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_C_PBE
     if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.5_dp
     if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.125_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
-  case('PBE-QIDH')  
+  case('PBE-QIDH')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_C_PBE
     if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.693361274_dp

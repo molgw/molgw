@@ -6,7 +6,7 @@
  read_restart='no'
  print_restart='yes'
 
- postscf='RPAp'
+ postscf='RPA+'
 
  natom=3
 /

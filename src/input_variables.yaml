@@ -701,6 +701,14 @@ assume_scf_converged:
   default: 'no'
   comment: Allows for a post-scf calculation whatever the outcome of the SCF loop. Especially useful when restarting from another SCF calculations with nscf=0
 
+acfd_nlambda:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 21
+  comment: Specifies the number of Gauss-Legendre quadrature points when integrating over the coupling constant from 0 to 1.
+
 ci_greens_function:
   family: post
   datatype: characters
