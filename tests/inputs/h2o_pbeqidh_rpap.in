@@ -5,7 +5,7 @@
  auxil_basis='cc-pVDZ-RI'
  read_restart='no'
 
- postscf='RPAp'
+ postscf='RPA+'
 
  natom=3
 /

@@ -5,7 +5,7 @@
  auxil_basis='cc-pVDZ-RI'
  read_restart='no'
 
- postscf='RPAp_IM'
+ postscf='RPA+_IM'
  nomega_chi_imag=40
 
  natom=3

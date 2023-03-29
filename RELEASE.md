@@ -8,19 +8,25 @@
 - Simplified compilation
 - GTH pseudo potentials in CP2K format
 - even-tempered basis
-- Double-hybrid functionals are now available (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.). They require the postscf='MP2' keyword and the amount of EXX and MP2 correlation
-can be defined by the user with the `alpha_hybrid` and `kappa_hybrid` input variables.
+- RPA, RPA+, RPAx (RPAx-II), RPAx-I correlation energies
+- Double-hybrid functionals (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.)
 
 ### Contributors
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
 - Mauricio Rodriguez-Mayorga (Universitat d'Alacant, Alicante, Spain)
 
 ### Changes affecting the usage
+- Even-tempered basis sets can be set with input variables: `even_tempered_alpha`, `even_tempered_beta`, `even_tempered_n_list`.
+- RPA, RPA+, RPAx (RPAx-II) are triggered with `postscf` values: `RPA`, `RPA+`, `RPAx-II`, `RPAx-I`
+- Double-hybrids (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.) require the postscf='MP2' keyword and the amount of EXX and MP2 correlation
+can be defined by the user with the `alpha_hybrid` and `kappa_hybrid` input variables.
+
 
 ### Changes affecting the compilation
-- Compilation is by default with LIBXC and LIBCINT. Use preprocessor variable NO_LIBXC or NO_LIBCINT if you want to do otherwise.
+- Compilation is by default with LIBXC and LIBCINT. Use preprocessor variable NO_LIBXC or NO_LIBCINT if you want to do otherwise. Do not use HAVE_LIBCINT any longer
 
 ### Changes affecting the developers
+
 
 -----------------------------------------
 ## What's new in version 3.0
