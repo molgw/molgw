@@ -46,6 +46,7 @@ jobs:
           mpif90 --version
           echo "LIBCINT=../libcint-5.2.2/build/libcint.a" > my_machine.arch
           echo "FC=mpifort" >> my_machine.arch
+          echo "SCALAPACK=-lscalapack" >> my_machine.arch
           echo "FCFLAGS=-O1 -DHAVE_MPI -DHAVE_SCALAPACK" >> my_machine.arch
           cat my_machine.arch
           ls -l
