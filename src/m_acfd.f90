@@ -26,7 +26,7 @@ module m_acfd
   use m_linear_response
   use m_numerical_tools,only: coeffs_gausslegint
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 #include <xc_funcs.h>
 #endif
 
