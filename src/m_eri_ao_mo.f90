@@ -395,6 +395,11 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   integer              :: ipair
   !=====
 
+  ! eri_3center_eigen is already allocated, then assume that you know what you are doing
+  if( ALLOCATED(eri_3center_eigen) ) then
+    return
+  endif
+
   if( PRESENT(timing) ) then
     call start_clock(timing)
   else

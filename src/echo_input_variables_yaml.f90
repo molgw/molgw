@@ -76,6 +76,7 @@
  write(unit_yaml,'(4x,a,20x,es16.8)') 'write_step:',write_step 
  write(unit_yaml,'(4x,a,14x,es16.8)') 'calc_charge_step:',calc_charge_step 
  write(unit_yaml,'(4x,a,10x,a)') 'assume_scf_converged:',yesno_to_TrueFalse(assume_scf_converged) 
+ write(unit_yaml,'(4x,a,18x,i8)') 'acfd_nlambda:',acfd_nlambda 
  write(unit_yaml,'(4x,a,12x,a)') 'ci_greens_function:',TRIM(ci_greens_function) 
  write(unit_yaml,'(4x,a,21x,i8)') 'ci_nstate:',ci_nstate 
  write(unit_yaml,'(4x,a,16x,i8)') 'ci_nstate_self:',ci_nstate_self 

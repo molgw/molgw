@@ -624,8 +624,7 @@ program molgw
   ! final evaluation for RPAx total energy
   ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
   !
-  if( TRIM(postscf) == 'RPAX' .OR. TRIM(postscf) == 'RPAP' .OR. TRIM(postscf) == 'RPA' .OR. &
-    & TRIM(postscf) == 'RPA_IM' .OR. TRIM(postscf) == 'RPAP_IM' ) then
+  if( TRIM(postscf(1:3)) == 'RPA' ) then
     en_mbpt = en_gks
     call acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   endif

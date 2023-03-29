@@ -76,6 +76,7 @@
  write(stdout,'(1x,a32,2x,es16.8)') 'write_step',write_step 
  write(stdout,'(1x,a32,2x,es16.8)') 'calc_charge_step',calc_charge_step 
  write(stdout,'(1x,a32,6x,a)') 'assume_scf_converged',assume_scf_converged 
+ write(stdout,'(1x,a32,2x,i8)') 'acfd_nlambda',acfd_nlambda 
  write(stdout,'(1x,a32,6x,a)') 'ci_greens_function',TRIM(ci_greens_function) 
  write(stdout,'(1x,a32,2x,i8)') 'ci_nstate',ci_nstate 
  write(stdout,'(1x,a32,2x,i8)') 'ci_nstate_self',ci_nstate_self 

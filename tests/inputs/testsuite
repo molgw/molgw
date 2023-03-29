@@ -296,7 +296,7 @@ MP2 Total Energy          ,  -76.3764848105    , 0 , 1.0e-7
 h2o_pbeqidh_rpap.in       , PBE-QIDH-RPA+ double hybrid functional
 RPA+ Total Energy         ,  -76.2594859892    , 0 , 1.0e-7
 
-h2o_pbeqidh_rpap_im.in    , PBE-QIDH-RPA+ double hybrid functional with RI and imag. w
+h2o_pbeqidh_rpap_im.in    , PBE-QIDH-RPA+ double hybrid functional with RI and imag omegas
 RPA+ Total Energy         ,  -76.2594859892    , 0 , 1.0e-7
 
 boron_gw_spinpolarized.in , GW@HF boron atom without RI with spin, noparallel
@@ -978,7 +978,12 @@ lih_rpa.in                , RPA energy of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPA Total Energy          ,  -8.0590527892     , 0 , 1.0e-7
 
-
 lih_rpax.in               , RPAX energy (RPAx-II) of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx Total Energy         ,  -8.0599498366     , 0 , 1.0e-7
+
+lih_rpax-i.in             , RPAX energy (RPAx-I) of LiH, noparallel
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPAx-I Energy             ,  -0.0483538239     , 0 , 1.0e-7
+RPAx-I Total Energy       ,  -8.0351082545     , 0 , 1.0e-7
+

@@ -161,7 +161,8 @@ module m_scalapack
  end interface
 
 #if defined(HAVE_SCALAPACK)
- integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P,PDLATRA,PDLAMCH
+ integer,external  :: NUMROC,INDXL2G,INDXG2L,INDXG2P
+ real(dp),external :: PDLATRA,PDLAMCH
 #endif
 
 

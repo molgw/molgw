@@ -77,6 +77,7 @@
 ## Correlation and excited states post-treatment input variables 
 
 [assume_scf_converged](#assume_scf_converged) 
+[acfd_nlambda](#acfd_nlambda) 
 [ci_greens_function](#ci_greens_function) 
 [ci_nstate](#ci_nstate) 
 [ci_nstate_self](#ci_nstate_self) 
@@ -234,6 +235,22 @@
 ---
 
 ## Complete list of input variables 
+
+---
+### acfd_nlambda
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** integer 
+
+**Default:** 21 
+
+**Description:** 
+
+Specifies the number of Gauss-Legendre quadrature points when integrating over the coupling constant from 0 to 1. 
+
 
 ---
 ### alpha_hybrid

@@ -77,6 +77,7 @@
     write_step,       &
     calc_charge_step,       &
     assume_scf_converged,       &
+    acfd_nlambda,       &
     ci_greens_function,       &
     ci_nstate,       &
     ci_nstate_self,       &
@@ -268,6 +269,7 @@
  write_step=1_dp 
  calc_charge_step=1_dp 
  assume_scf_converged='no'
+ acfd_nlambda=21
  ci_greens_function='holes'
  ci_nstate=1
  ci_nstate_self=1

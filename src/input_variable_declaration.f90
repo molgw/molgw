@@ -73,6 +73,7 @@
  real(dp),protected :: write_step
  real(dp),protected :: calc_charge_step
  character(len=3),protected :: assume_scf_converged
+ integer,protected :: acfd_nlambda
  character(len=256),protected :: ci_greens_function
  integer,protected :: ci_nstate
  integer,protected :: ci_nstate_self
