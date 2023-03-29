@@ -453,6 +453,9 @@ subroutine init_dft_type(key)
     dft_xc(1)%id = XC_LDA_X
     dft_xc(2)%id = XC_LDA_C_VWN_RPA
     alpha_hybrid   = 0.00_dp
+  case('VWNC')
+    dft_xc(1)%id = XC_LDA_C_VWN
+    alpha_hybrid   = 0.00_dp
   !
   ! GGA functionals
   case('PBEX')
@@ -495,6 +498,12 @@ subroutine init_dft_type(key)
     dft_xc(1)%id = XC_GGA_X_HJS_PBE
     alpha_hybrid   = 0.00_dp
     dft_xc(1)%gamma = gamma_hybrid
+  case('LYP')
+    dft_xc(1)%id = XC_GGA_C_LYP
+    alpha_hybrid   = 0.00_dp
+  case('PBEC')
+    dft_xc(1)%id = XC_GGA_C_PBE
+    alpha_hybrid   = 0.00_dp
   !
   ! Meta-GGA functionals
   case('RPPX')

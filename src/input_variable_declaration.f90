@@ -141,17 +141,29 @@
  real(dp),protected :: alpha_mixing
  real(dp),protected :: beta_hybrid
  character(len=3),protected :: noft_complex
+ character(len=3),protected :: noft_dft
  real(dp),protected :: density_matrix_damping
  real(dp),protected :: diis_switch
- character(len=3),protected :: noft_fcidump
  real(dp),protected :: gamma_hybrid
  real(dp),protected :: kappa_hybrid
  character(len=256),protected :: grid_quality
  character(len=256),protected :: init_hamiltonian
+ character(len=256),protected :: integral_quality
+ real(dp),protected :: kerker_k0
+ real(dp),protected :: level_shifting_energy
+ real(dp),protected :: min_overlap
+ character(len=256),protected :: mixing_scheme
+ real(dp),protected :: tolscf
+ integer,protected :: npulay_hist
+ integer,protected :: nscf
+ character(len=256),protected :: partition_scheme
+ character(len=256),protected :: scf_diago_flavor
+ character(len=3),protected :: noft_rsintra
+ character(len=3),protected :: noft_lowmemERI
+ character(len=3),protected :: noft_fcidump
  character(len=3),protected :: noft_NOTupdateOCC
  character(len=3),protected :: noft_NOTupdateORB
  character(len=256),protected :: noft_functional
- character(len=256),protected :: integral_quality
  character(len=3),protected :: noft_printdmn
  character(len=3),protected :: noft_printswdmn
  character(len=3),protected :: noft_printints
@@ -161,23 +173,13 @@
  character(len=3),protected :: noft_readOCC
  character(len=3),protected :: noft_sta
  integer,protected :: noft_ithresh_lambda
- real(dp),protected :: kerker_k0
- real(dp),protected :: level_shifting_energy
- character(len=3),protected :: noft_lowmemERI
  real(dp),protected :: noft_Lpower
- real(dp),protected :: min_overlap
- character(len=256),protected :: mixing_scheme
  integer,protected :: noft_npairs
  integer,protected :: noft_ncoupled
- integer,protected :: npulay_hist
- integer,protected :: nscf
  integer,protected :: noft_ndiis
  integer,protected :: noft_nscf
- character(len=256),protected :: partition_scheme
  character(len=3),protected :: noft_restart
- character(len=256),protected :: scf_diago_flavor
  real(dp),protected :: noft_tolE
- real(dp),protected :: tolscf
  real(dp),protected :: charge
  real(dp),protected :: electric_field_x
  real(dp),protected :: electric_field_y

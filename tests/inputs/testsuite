@@ -436,11 +436,14 @@ NOFT Total Energy         ,     -0.9985575214  , 0 , 1.0e-5
 h2_noft_restart.in        , RI-NOFT calculation applied to dissociated H2 with RI using restart
 NOFT Total Energy         ,     -0.9996198350  , 0 , 1.0e-5
 
+h2_noft_rsh.in            , RI-NOFT calculation applied to H2 with RI using range-sep NOFT
+NOFT Total Energy         ,     -1.1669251517  , 0 , 1.0e-5
+
 n2_noft.in                , RI-NOFT calculation applied to dissociated N2 with RI
-NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
+NOFT Total Energy         ,   -108.7519260379  , 0 , 5.0e-5
 
 n2_noft_cpx.in            , RI-NOFT calculation applied to dissociated N2 with RI (complex orbs)
-NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
+NOFT Total Energy         ,   -108.7519260379  , 0 , 1.0e-5
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7

@@ -10,6 +10,7 @@
 - even-tempered basis
 - RPA, RPA+, RPAx (RPAx-II), RPAx-I correlation energies
 - Double-hybrid functionals (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.)
+- Inclusion of more RDMFT functionals (e.g. CGA, CA, GU, and GNOF)
 
 ### Contributors
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
@@ -19,7 +20,7 @@
 - Even-tempered basis sets can be set with input variables: `even_tempered_alpha`, `even_tempered_beta`, `even_tempered_n_list`.
 - RPA, RPA+, RPAx (RPAx-II) are triggered with `postscf` values: `RPA`, `RPA+`, `RPAx-II`, `RPAx-I`
 - Double-hybrids (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.) require the postscf='MP2' keyword and the amount of EXX and MP2 correlation
-can be defined by the user with the `alpha_hybrid` and `kappa_hybrid` input variables.
+- GNOF has become the default one in RDMFT calculations.
 
 
 ### Changes affecting the compilation

@@ -145,17 +145,29 @@
     alpha_mixing,       &
     beta_hybrid,       &
     noft_complex,       &
+    noft_dft,       &
     density_matrix_damping,       &
     diis_switch,       &
-    noft_fcidump,       &
     gamma_hybrid,       &
     kappa_hybrid,       &
     grid_quality,       &
     init_hamiltonian,       &
+    integral_quality,       &
+    kerker_k0,       &
+    level_shifting_energy,       &
+    min_overlap,       &
+    mixing_scheme,       &
+    tolscf,       &
+    npulay_hist,       &
+    nscf,       &
+    partition_scheme,       &
+    scf_diago_flavor,       &
+    noft_rsintra,       &
+    noft_lowmemERI,       &
+    noft_fcidump,       &
     noft_NOTupdateOCC,       &
     noft_NOTupdateORB,       &
     noft_functional,       &
-    integral_quality,       &
     noft_printdmn,       &
     noft_printswdmn,       &
     noft_printints,       &
@@ -165,23 +177,13 @@
     noft_readOCC,       &
     noft_sta,       &
     noft_ithresh_lambda,       &
-    kerker_k0,       &
-    level_shifting_energy,       &
-    noft_lowmemERI,       &
     noft_Lpower,       &
-    min_overlap,       &
-    mixing_scheme,       &
     noft_npairs,       &
     noft_ncoupled,       &
-    npulay_hist,       &
-    nscf,       &
     noft_ndiis,       &
     noft_nscf,       &
-    partition_scheme,       &
     noft_restart,       &
-    scf_diago_flavor,       &
     noft_tolE,       &
-    tolscf,       &
     charge,       &
     electric_field_x,       &
     electric_field_y,       &
@@ -335,17 +337,29 @@
  alpha_mixing=0.7_dp 
  beta_hybrid=0.0_dp 
  noft_complex='no'
+ noft_dft='no'
  density_matrix_damping=0.0_dp 
  diis_switch=0.05_dp 
- noft_fcidump='no'
  gamma_hybrid=1000000.0_dp 
  kappa_hybrid=0.0_dp 
  grid_quality='high'
  init_hamiltonian='guess'
+ integral_quality='high'
+ kerker_k0=0.0_dp 
+ level_shifting_energy=0.0_dp 
+ min_overlap=1e-05_dp 
+ mixing_scheme='pulay'
+ tolscf=1e-07_dp 
+ npulay_hist=6
+ nscf=50
+ partition_scheme='ssf'
+ scf_diago_flavor=' '
+ noft_rsintra='yes'
+ noft_lowmemERI='yes'
+ noft_fcidump='no'
  noft_NOTupdateOCC='no'
  noft_NOTupdateORB='no'
- noft_functional='PNOF7'
- integral_quality='high'
+ noft_functional='GNOF'
  noft_printdmn='no'
  noft_printswdmn='no'
  noft_printints='no'
@@ -353,25 +367,15 @@
  noft_readFdiag='no'
  noft_readGAMMAS='no'
  noft_readOCC='no'
- noft_sta='yes'
+ noft_sta='no'
  noft_ithresh_lambda=5
- kerker_k0=0.0_dp 
- level_shifting_energy=0.0_dp 
- noft_lowmemERI='yes'
  noft_Lpower=0.53_dp 
- min_overlap=1e-05_dp 
- mixing_scheme='pulay'
  noft_npairs=1
  noft_ncoupled=2
- npulay_hist=6
- nscf=50
  noft_ndiis=5
  noft_nscf=1000
- partition_scheme='ssf'
  noft_restart='no'
- scf_diago_flavor=' '
  noft_tolE=1e-09_dp 
- tolscf=1e-07_dp 
  charge=0.0_dp 
  electric_field_x=0.0_dp 
  electric_field_y=0.0_dp 
