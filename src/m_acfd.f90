@@ -25,7 +25,7 @@ module m_acfd
   use m_gw_selfenergy_grid
   use m_linear_response
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 #include <xc_funcs.h>
 #endif
 
