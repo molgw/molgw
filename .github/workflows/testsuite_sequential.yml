@@ -23,6 +23,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc gfortran libblas-dev liblapack-dev libxc-dev
+          gfortran --version
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
@@ -38,13 +39,8 @@ jobs:
 
       - name: Make
         run: |
-          pwd
-          ls -l ..
           echo "LIBCINT=../libcint-5.2.2/build/libcint.a" > my_machine.arch
-          #echo "CPPFLAGS=-cpp -DNO_LIBXC" >> my_machine.arch
           echo "FCFLAGS=-O1" >> my_machine.arch
-          cat my_machine.arch
-          ls -l
           make -j 4
 
       - name: Run the test suite

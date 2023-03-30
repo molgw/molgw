@@ -23,6 +23,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc gfortran libblas-dev liblapack-dev libxc-dev openmpi-bin libopenmpi-dev libscalapack-openmpi-dev
+          mpifort --version
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
@@ -38,18 +39,10 @@ jobs:
 
       - name: Make
         run: |
-          pwd
-          ls -l ..
-          gfortran --version
-          which mpif90
-          which mpifort
-          mpif90 --version
           echo "LIBCINT=../libcint-5.2.2/build/libcint.a" > my_machine.arch
           echo "FC=mpifort" >> my_machine.arch
           echo "SCALAPACK=-lscalapack-openmpi" >> my_machine.arch
           echo "FCFLAGS=-O1 -DHAVE_MPI -DHAVE_SCALAPACK" >> my_machine.arch
-          cat my_machine.arch
-          ls -l
           make -j 4
 
       #- name: Run the test suite

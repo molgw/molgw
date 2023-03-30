@@ -11,7 +11,7 @@ test:
 	cd tests && python ./run_testsuite.py
 
 github-test:
-	cd tests && python ./run_testsuite.py --exclude benzene_he_rt-tddft.in
+	cd tests && python ./run_testsuite.py
 
 clean:
 	cd src && $(MAKE) clean
