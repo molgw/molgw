@@ -196,6 +196,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
 
       call calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa_singlet)
 
+      write(stdout,'(1x,a,f12.8)')   'Energy(lambda): ',erpa_singlet
       en_mbpt%rpa = en_mbpt%rpa + erpa_singlet * wlambda(ilambda)
     enddo
     if(has_auxil_basis) call destroy_eri_3center_eigen()
@@ -247,6 +248,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
 
       call calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa_singlet)
 
+      write(stdout,'(1x,a,f12.8)')   'Energy(lambda): ',erpa_singlet
       en_mbpt%rpa = en_mbpt%rpa + erpa_singlet * wlambda(ilambda)
     enddo
     call destroy_spectral_function(wpol)
@@ -258,9 +260,17 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     call clean_deallocate('A matrix',a_matrix)
     call clean_deallocate('B matrix',b_matrix)
 
+    if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
+      write(stdout,'(/,a,f16.10)') ' RPAx-I Energy scaled by :',kappa_hybrid
+      en_mbpt%rpa=kappa_hybrid*en_mbpt%rpa
+    endif
     write(stdout,'(a,2x,f19.10)') ' RPAx-I Energy      (Ha):',en_mbpt%rpa
 
-    en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa
+    if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
+      en_mbpt%total = en_mbpt%total + en_mbpt%rpa
+    else
+      en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa
+    endif
     write(stdout,*)
     write(stdout,'(a,2x,f19.10)') ' RPAx-I Total Energy (Ha):',en_mbpt%total
     write(stdout,*)
