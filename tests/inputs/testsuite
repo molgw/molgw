@@ -982,7 +982,7 @@ lih_rpax.in               , RPAX energy (RPAx-II) of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx Total Energy         ,  -8.0599498366     , 0 , 1.0e-7
 
-lih_rpax-i.in             , RPAX energy (RPAx-I) of LiH, noparallel
+lih_rpax-i.in             , RPAX energy (RPAx-I) of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx-I Energy             ,  -0.0483538239     , 0 , 1.0e-7
 RPAx-I Total Energy       ,  -8.0351082545     , 0 , 1.0e-7

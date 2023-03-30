@@ -38,6 +38,7 @@ MOLGW implements the following schemes:
 - real-time TDDFT
 - HF/DFT+NOFT (MULLER, CGA, CA, GU, POWER, PNOF5, PNOF7, and GNOF)
 
+The Python3 module `molgw.py` is available for automation.
 
 ## Installation
 

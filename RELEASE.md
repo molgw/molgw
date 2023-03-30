@@ -3,14 +3,15 @@
 -----------------------------------------
 
 ----------------------------------------
-## What's new in version 3.1.alpha
+## What's new in version 3.1
 ### Overview
 - Simplified compilation
-- GTH pseudo potentials in CP2K format
-- even-tempered basis
+- Even-tempered basis
 - RPA, RPA+, RPAx (RPAx-II), RPAx-I correlation energies
 - Double-hybrid functionals (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.)
 - Inclusion of more RDMFT functionals (e.g. CGA, CA, GU, and GNOF)
+- GTH pseudo potentials in CP2K format
+- New functionalities in `molgw.py` for running and post-processing series of calculations
 
 ### Contributors
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
@@ -21,12 +22,15 @@
 - RPA, RPA+, RPAx (RPAx-II) are triggered with `postscf` values: `RPA`, `RPA+`, `RPAx-II`, `RPAx-I`
 - Double-hybrids (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.) require the postscf='MP2' keyword and the amount of EXX and MP2 correlation
 - GNOF has become the default one in RDMFT calculations.
-
+- GTH pseudo potentials are assumed when the ECP root name in `ecp_type` contains "GTH" or "gth".
 
 ### Changes affecting the compilation
-- Compilation is by default with LIBXC and LIBCINT. Use preprocessor variable NO_LIBXC or NO_LIBCINT if you want to do otherwise. Do not use HAVE_LIBCINT any longer
+- Compilation is by default with LIBXC and LIBCINT. Use preprocessor variable `-DNO_LIBXC` or `-DNO_LIBCINT` if you want to do otherwise.
+Do not use `-DHAVE_LIBCINT` any longer, else a series of warnings may be issued.
+- A global Makefile has been created in the root.
 
 ### Changes affecting the developers
+- Use `#if !defined(NO_LIBXC)` instead of `#if defined(HAVE_LIBXC)`
 
 
 -----------------------------------------
