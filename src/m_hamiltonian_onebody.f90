@@ -1303,6 +1303,9 @@ end subroutine recalc_nucleus
 
 
 !=========================================================================
+! calculate \nabla_{R_C} ( \nabla_{R_\alpha} \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= 1:ncenter_nuclei
+!       and              ( \nabla_{R_\alpha} \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= ncenter_nuclei+1
+!
 subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
   implicit none
   type(basis_set),intent(in) :: basis
