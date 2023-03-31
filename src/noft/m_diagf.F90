@@ -19,10 +19,10 @@ module m_diagf
 
  implicit none
 
- private :: scale_F,scale_F_cmplx,diis_F,diis_F_cmplx,traceF,traceF_cmplx
+ private :: scale_F,scale_F_cmplx,diis_F,traceF,diis_F_cmplx,traceF_cmplx
 !!***
 
- public ::diagF_to_coef,diagF_to_coef_cmplx 
+ public ::diagF_to_coef 
 !!***
 
 contains
@@ -49,7 +49,7 @@ contains
 !!
 !! SOURCE
 
-subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF) 
+subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_cmplx) 
 !Arguments ------------------------------------
 !scalars
  logical,intent(inout)::diddiis
@@ -59,167 +59,133 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF)
  type(elag_t),intent(inout)::ELAGd
  type(rdm_t),intent(in)::RDMd
 !arrays
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
+ real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,lwork,info
  real(dp)::thresholddiis
 !arrays
- real(dp),allocatable,dimension(:)::Work
+ real(dp),allocatable,dimension(:)::Work,RWork
+ complex(dp),allocatable,dimension(:)::Work_cmplx,Phases
  real(dp),allocatable,dimension(:,:)::Eigvec,New_NO_COEF ! Eigvec is initially the F matrix
+ complex(dp),allocatable,dimension(:,:)::Eigvec_cmplx,New_NO_COEF_cmplx 
 !************************************************************************
  
  thresholddiis=ten**(-ELAGd%itoldiis)
- allocate(New_NO_COEF(RDMd%NBF_tot,RDMd%NBF_tot),Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Work(1))
 
- if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
-  ELAGd%diagLpL_done=.true. 
-  do iorb=1,RDMd%NBF_tot 
-   do iorb1=1,iorb-1
-    Eigvec(iorb,iorb1)=half*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
-    Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)
+ if(present(NO_COEF)) then
+
+  allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Work(1))
+  if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
+   ELAGd%diagLpL_done=.true. 
+   do iorb=1,RDMd%NBF_tot 
+    do iorb1=1,iorb-1
+     Eigvec(iorb,iorb1)=half*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
+     Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)
+    enddo
+    Eigvec(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
    enddo
-   Eigvec(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
-  enddo
- else
-  do iorb=1,RDMd%NBF_tot 
-   do iorb1=1,iorb-1
-    Eigvec(iorb,iorb1)=ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1)
-    call scale_F(ELAGd%MaxScaling+9,Eigvec(iorb,iorb1)) ! Scale the Fpq element to avoid divergence
-    Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)               ! Fpq=Fqp
-   enddo
-   Eigvec(iorb,iorb)=ELAGd%F_diag(iorb)
-  enddo  
- endif
+  else
+   do iorb=1,RDMd%NBF_tot 
+    do iorb1=1,iorb-1
+     Eigvec(iorb,iorb1)=ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1)
+     call scale_F(ELAGd%MaxScaling+9,Eigvec(iorb,iorb1)) ! Scale the Fpq element to avoid divergence
+     Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)               ! Fpq=Fqp
+    enddo
+    Eigvec(iorb,iorb)=ELAGd%F_diag(iorb)
+   enddo  
+  endif
 
- ! Decide whether to do DIIS before diagonalizing
- if(maxdiff<thresholddiis.and.ELAGd%ndiis>0) then
-  call diis_F(diddiis,RDMd,ELAGd,Eigvec)
- endif 
+  ! Decide whether to do DIIS before diagonalizing
+  if(maxdiff<thresholddiis.and.ELAGd%ndiis>0) then
+   call diis_F(diddiis,RDMd,ELAGd,Eigvec)
+  endif 
 
- ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
- lwork=-1
- call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
- lwork=nint(Work(1))
- if(info==0) then
-  deallocate(Work)
-  allocate(Work(lwork))
-  ELAGd%F_diag=zero
+  ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
+  lwork=-1
   call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
- endif
+  lwork=nint(Work(1))
+  if(info==0) then
+   deallocate(Work)
+   allocate(Work(lwork))
+   ELAGd%F_diag=zero
+   call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,info)
+  endif
+  deallocate(Work)
 
- ! Update the NO_COEF
- New_NO_COEF=matmul(NO_COEF,Eigvec)
- NO_COEF=New_NO_COEF
+  ! Update the NO_COEF
+  allocate(New_NO_COEF(RDMd%NBF_tot,RDMd%NBF_tot))
+  New_NO_COEF=matmul(NO_COEF,Eigvec)
+  NO_COEF=New_NO_COEF
+  deallocate(New_NO_COEF,Eigvec)
+
+ else
+
+  allocate(Eigvec_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),Work_cmplx(1),RWork(3*RDMd%NBF_tot-2),Phases(RDMd%NBF_tot))
+  Phases=complex_zero
+  if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
+   ELAGd%diagLpL_done=.true. 
+   do iorb=1,RDMd%NBF_tot 
+    do iorb1=1,iorb-1
+     Eigvec_cmplx(iorb,iorb1)=half*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
+     Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))
+    enddo
+    Eigvec_cmplx(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
+    Phases(iorb)=-im*(ELAGd%Lambdas_im(iorb,iorb)+ELAGd%Lambdas_im(iorb,iorb))
+    if(cdabs(Phases(iorb))<tol8) Phases(iorb)=complex_zero
+   enddo
+  else
+   do iorb=1,RDMd%NBF_tot 
+    do iorb1=1,iorb-1
+     Eigvec_cmplx(iorb,iorb1)=(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
+     Eigvec_cmplx(iorb,iorb1)=Eigvec_cmplx(iorb,iorb1)+im*(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))
+     call scale_F_cmplx(ELAGd%MaxScaling+9,Eigvec_cmplx(iorb,iorb1))  ! Scale the Fpq element to avoid divergence
+     Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))         ! Fpq=Fqp*
+    enddo
+    Phases(iorb)=-im*(ELAGd%Lambdas_im(iorb,iorb)+ELAGd%Lambdas_im(iorb,iorb))
+    if(cdabs(Phases(iorb))<tol8) then
+     Phases(iorb)=complex_zero
+    endif 
+    call scale_F_cmplx(ELAGd%MaxScaling+9,Phases(iorb))  ! Scale the Fpp element to avoid divergence
+    Eigvec_cmplx(iorb,iorb)=complex_zero
+    Eigvec_cmplx(iorb,iorb)=ELAGd%F_diag(iorb)
+   enddo  
+  endif
+
+  ! Decide whether to do DIIS before diagonalizing
+  if(maxdiff<thresholddiis.and.ELAGd%ndiis>0) then
+   call diis_F_cmplx(diddiis,RDMd,ELAGd,Eigvec_cmplx)
+  endif 
+  
+  ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
+  lwork=-1
+  call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,ELAGd%F_diag,Work_cmplx,lwork,RWork,info)
+  lwork=nint(real(Work_cmplx(1)))
+  if(info==0) then
+   deallocate(Work_cmplx)
+   allocate(Work_cmplx(lwork))
+   ELAGd%F_diag=zero
+   call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,ELAGd%F_diag,Work_cmplx,lwork,RWork,info)
+  endif
+  deallocate(Work_cmplx,RWork)
+  
+  ! Update the NO_COEF_cmplx
+  do iorb=1,RDMd%NBF_tot 
+   NO_COEF_cmplx(:,iorb)=exp(Phases(iorb))*NO_COEF_cmplx(:,iorb)
+  enddo
+  allocate(New_NO_COEF_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
+  New_NO_COEF_cmplx=matmul(NO_COEF_cmplx,Eigvec_cmplx)
+  NO_COEF_cmplx=New_NO_COEF_cmplx
+  deallocate(New_NO_COEF_cmplx,Eigvec_cmplx)
+
+ endif
 
  ! Increase icall (iterator accumulator)
  icall=icall+1
 
- deallocate(New_NO_COEF,Eigvec,Work)
 
 end subroutine diagF_to_coef
-!!***
-
-!!***
-!!****f* DoNOF/diagF_to_coef_cmplx
-!! NAME
-!!  diagF_to_coef_cmplx
-!!
-!! FUNCTION
-!!  Build the F-matrix, diagonalize it and update the NO_COEF_cmplx
-!!
-!! INPUTS
-!!  iter=Number of global iteration 
-!!  icall=Number of call from opt_orb subroutine
-!!
-!! OUTPUT
-!!  NO_COEF_cmplx=Updated Nat. orb. coefs. (complex)
-!!  ELAGd%F_diag=Update the diag elements of the F_pq matrix 
-!!
-!! PARENTS
-!!  
-!! CHILDREN
-!!
-!! SOURCE
-
-subroutine diagF_to_coef_cmplx(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF_cmplx) 
-!Arguments ------------------------------------
-!scalars
- logical,intent(inout)::diddiis
- integer,intent(in)::iter
- integer,intent(inout)::icall
- real(dp),intent(in)::maxdiff
- type(elag_t),intent(inout)::ELAGd
- type(rdm_t),intent(in)::RDMd
-!arrays
- complex(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
-!Local variables ------------------------------
-!scalars
- integer::iorb,iorb1,lwork,info
- real(dp)::thresholddiis
-!arrays
- character(len=200)::msg
- real(dp),allocatable,dimension(:)::RWork
- complex(dp),allocatable,dimension(:)::Work
- complex(dp),allocatable,dimension(:,:)::Eigvec_cmplx,New_NO_COEF_cmplx ! Eigvec is initially the F matrix
-!************************************************************************
- 
- thresholddiis=ten**(-ELAGd%itoldiis)
- allocate(New_NO_COEF_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),Eigvec_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),Work(1),RWork(3*RDMd%NBF_tot-2))
- RWork=complex_zero
-
- if((icall==0.and.iter==0).and.(ELAGd%diagLpL.and.(.not.ELAGd%diagLpL_done))) then
-  ELAGd%diagLpL_done=.true. 
-  do iorb=1,RDMd%NBF_tot 
-   do iorb1=1,iorb-1
-    Eigvec_cmplx(iorb,iorb1)=half*(ELAGd%Lambdas_cmplx(iorb,iorb1)+conjg(ELAGd%Lambdas_cmplx(iorb1,iorb)))
-    Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))
-   enddo
-   Eigvec_cmplx(iorb,iorb)=complex_zero
-   Eigvec_cmplx(iorb,iorb)=ELAGd%Lambdas_cmplx(iorb,iorb)
-   if(abs(aimag(Eigvec_cmplx(iorb,iorb)))>tol8) then
-    write(msg,'(a,f15.8,a,i4)') 'Warning! Large Imaginary[Lambda_pp] value ',aimag(Eigvec_cmplx(iorb,iorb)),' orb ',iorb
-    call write_output(msg)
-   endif
-  enddo
- else
-  do iorb=1,RDMd%NBF_tot 
-   do iorb1=1,iorb-1
-    Eigvec_cmplx(iorb,iorb1)=ELAGd%Lambdas_cmplx(iorb1,iorb)-conjg(ELAGd%Lambdas_cmplx(iorb,iorb1))
-    call scale_F_cmplx(ELAGd%MaxScaling+9,Eigvec_cmplx(iorb,iorb1)) ! Scale the Fpq element to avoid divergence
-    Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))        ! Fpq=Fqp*
-   enddo
-   Eigvec_cmplx(iorb,iorb)=complex_zero
-   Eigvec_cmplx(iorb,iorb)=ELAGd%F_diag(iorb)
-  enddo  
- endif
-
- ! Decide whether to do DIIS before diagonalizing
- if(maxdiff<thresholddiis.and.ELAGd%ndiis>0) then
-  call diis_F_cmplx(diddiis,RDMd,ELAGd,Eigvec_cmplx)
- endif 
-
- ! Prepare F_pq diagonalization (stored as Eigvec) and diagonalize it to produce the rot. matrix
- lwork=-1
- call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,RWork,info)
- lwork=nint(real(Work(1)))
- if(info==0) then
-  deallocate(Work)
-  allocate(Work(lwork))
-  ELAGd%F_diag=zero
-  call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,ELAGd%F_diag,Work,lwork,RWork,info)
- endif
-
- ! Update the NO_COEF
- New_NO_COEF_cmplx=matmul(NO_COEF_cmplx,Eigvec_cmplx)
- NO_COEF_cmplx=New_NO_COEF_cmplx
-
- ! Increase icall (iterator accumulator)
- icall=icall+1
-
- deallocate(New_NO_COEF_cmplx,Eigvec_cmplx,Work,RWorK)
-
-end subroutine diagF_to_coef_cmplx
 !!***
 
 !!***
@@ -473,7 +439,6 @@ subroutine diis_F_cmplx(diddiis,RDMd,ELAGd,F_mat)
 
 end subroutine diis_F_cmplx
 !!***
-
 !!***
 !!****f* DoNOF/traceF_cmplx
 !! NAME

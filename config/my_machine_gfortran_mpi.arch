@@ -4,7 +4,7 @@ PYTHON=python3
 # Parallel MPI SCALAPACK compilation
 FC=mpif90 
 
-CPPFLAGS=-DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_LIBCINT
+CPPFLAGS=-DHAVE_MPI -DHAVE_SCALAPACK
 
 CXX=g++
 FCFLAGS= -cpp -O3 -march=native -mtune=native  # -O0 -g -check all -traceback 

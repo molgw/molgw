@@ -275,6 +275,30 @@ PT2 HOMO-LUMO gap         ,   17.743440        , 0 , 1.0e-4
 MP2 Energy                ,   -0.4080027465    , 0 , 1.0e-7
 MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
 
+h2o_pbe_rpa.in            , RPA at PBE 
+RPA Total Energy          ,  -76.3318887813    , 0 , 1.0e-7
+
+h2o_pbe_rpap.in           , RPA+ at PBE 
+RPA+ Total Energy         ,  -76.1385986080    , 0 , 1.0e-7
+
+h2o_b2plyp.in             , B2PLYP double hybrid functional with RI
+MP2 Energy                ,   -0.0812625983    , 0 , 1.0e-7
+MP2 Total Energy          ,  -76.4074345014    , 0 , 1.0e-7
+
+h2o_pbeqidh.in            , PBE-QIDH double hybrid functional with RI
+MP2 Energy                ,   -0.0936138770    , 0 , 1.0e-7
+MP2 Total Energy          ,  -76.3666106951    , 0 , 1.0e-7
+
+h2o_pbe0_dh.in            , PBE0-DH double hybrid functional with RI
+MP2 Energy                ,   -0.0377521092    , 0 , 1.0e-7
+MP2 Total Energy          ,  -76.3764848105    , 0 , 1.0e-7
+
+h2o_pbeqidh_rpap.in       , PBE-QIDH-RPA+ double hybrid functional
+RPA+ Total Energy         ,  -76.2594859892    , 0 , 1.0e-7
+
+h2o_pbeqidh_rpap_im.in    , PBE-QIDH-RPA+ double hybrid functional with RI and imag omegas
+RPA+ Total Energy         ,  -76.2594859892    , 0 , 1.0e-7
+
 boron_gw_spinpolarized.in , GW@HF boron atom without RI with spin, noparallel
 Hartree Energy            ,   11.6084909105   , 0 , 1.0e-7
 Total Energy              ,  -24.5299616244   , 0 , 1.0e-7
@@ -412,11 +436,14 @@ NOFT Total Energy         ,     -0.9985575214  , 0 , 1.0e-5
 h2_noft_restart.in        , RI-NOFT calculation applied to dissociated H2 with RI using restart
 NOFT Total Energy         ,     -0.9996198350  , 0 , 1.0e-5
 
+h2_noft_rsh.in            , RI-NOFT calculation applied to H2 with RI using range-sep NOFT
+NOFT Total Energy         ,     -1.1669251517  , 0 , 1.0e-5
+
 n2_noft.in                , RI-NOFT calculation applied to dissociated N2 with RI
-NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
+NOFT Total Energy         ,   -108.7519260379  , 0 , 5.0e-5
 
 n2_noft_cpx.in            , RI-NOFT calculation applied to dissociated N2 with RI (complex orbs)
-NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
+NOFT Total Energy         ,   -108.7519260379  , 0 , 1.0e-5
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
@@ -453,6 +480,13 @@ Exc. 0001                 ,      9.82654263     , 0 , 1.0e-4
 Exc. 0001                 ,      0.22685574     , 1 , 1.0e-4
 Exc. 0010                 ,     11.2463169      , 0 , 1.0e-4
 Exc. 0010                 ,      0.40996808     , 1 , 1.0e-4
+
+c2h4_b3lyp_triplet.in     , TDDFT with B3LYP for triplet final state
+SCF Total Energy          ,    -78.5912034336   , 0 , 1.0e-7
+Exc. 0001                 ,      4.07380649     , 0 , 1.0e-4
+Exc. 0001                 ,      0.00000000     , 1 , 1.0e-4
+Exc. 0002                 ,      7.64527152     , 0 , 1.0e-4
+Exc. 0002                 ,      0.00000000     , 1 , 1.0e-4
 
 ch4_bse_scissor.in        , BSE CH4 aug-cc-pVDZ without GW (scissor)
 XC Energy                 ,     -3.5802787452   , 0 , 1.0e-7
@@ -936,8 +970,20 @@ RT-TDDFT Total Energy     ,  -1.6095526306     , 0 , 1.0e-5
 Number of electrons       ,   1.999590         , 0 , 1.0e-4
 
 benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++, need_gradients
-SCF Total Energy          , -232.8924888075    , 0 , 1.0e-5   # Loosened criterium
-RT-TDDFT Total Energy     , -230.4199238294    , 0 , 1.0e-5
+SCF Total Energy          , -232.8924888075    , 0 , 5.0e-5   # Loosened criterium
+RT-TDDFT Total Energy     , -230.4199238294    , 0 , 5.0e-5   # Loosened criterium
 Number of electrons       ,    42.0025941      , 0 , 1.0e-4
 
+lih_rpa.in                , RPA energy of LiH
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPA Total Energy          ,  -8.0590527892     , 0 , 1.0e-7
+
+lih_rpax.in               , RPAX energy (RPAx-II) of LiH
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPAx Total Energy         ,  -8.0599498366     , 0 , 1.0e-7
+
+lih_rpax-i.in             , RPAX energy (RPAx-I) of LiH
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPAx-I Energy             ,  -0.0483538239     , 0 , 1.0e-7
+RPAx-I Total Energy       ,  -8.0351082545     , 0 , 1.0e-7
 

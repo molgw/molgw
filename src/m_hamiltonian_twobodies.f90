@@ -304,7 +304,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
 
  call start_clock(timing_xxdft_hartree)
 
- write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+ if(.not.calc_type%is_noft) write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
 
 
  hartree_ao(:,:) = 0.0_dp
@@ -975,7 +975,7 @@ end subroutine setup_exchange_ri_cmplx
 ! Calculate the exchange-correlation potential and energy
 ! * subroutine works for both real and complex wavefunctions c_matrix
 !   using "class" syntax of Fortran2003
-subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
+subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,dft_xc_in)
  implicit none
 
  integer,intent(in)         :: batch_size
@@ -984,8 +984,10 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  class(*),intent(in)        :: c_matrix(:,:,:)
  real(dp),intent(out)       :: vxc_ao(:,:,:)
  real(dp),intent(out)       :: exc_xc
-!=====
- real(dp),parameter   :: TOL_RHO=1.0e-9_dp
+ type(dft_xc_info),intent(in),optional :: dft_xc_in(:)
+ !=====
+ real(dp),parameter            :: TOL_RHO=1.0e-9_dp
+ type(dft_xc_info),allocatable :: dft_xc_local(:)
  integer              :: nstate
  integer              :: ibf,jbf,ispin
  integer              :: ixc
@@ -1008,7 +1010,16 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  real(C_DOUBLE),allocatable :: vrho_batch(:,:)
  real(C_DOUBLE),allocatable :: exc_batch(:)
  real(C_DOUBLE),allocatable :: vsigma_batch(:,:)
-!=====
+ !=====
+
+ !
+ ! create a local copy of dft_xc (from m_inputparam) or dft_xc_in (optional argument)
+ !
+ if( PRESENT(dft_xc_in) ) then
+   call copy_libxc_info(dft_xc_in,dft_xc_local)
+ else
+   call copy_libxc_info(dft_xc,dft_xc_local)
+ endif
 
  exc_xc = 0.0_dp
  vxc_ao(:,:,:) = 0.0_dp
@@ -1036,11 +1047,12 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
  nstate = SIZE(occupation,DIM=1)
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 
- write(stdout,*) 'Calculate DFT XC potential'
- if( batch_size /= 1 ) write(stdout,'(7x,a,i6)') 'using batches of size ',batch_size
-
+ if(.not.calc_type%is_noft) then ! MRM mutted only for NOFT
+   write(stdout,*) 'Calculate DFT XC potential'
+   if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
+ endif
 
  normalization(:) = 0.0_dp
  normalization_core = 0.0_dp    ! core density has no spin
@@ -1061,7 +1073,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    allocate(vrho_batch(nspin,nr))
    allocate(dedd_r_batch(nspin,nr))
 
-   if( dft_xc(1)%needs_gradient ) then
+   if( dft_xc_local(1)%needs_gradient ) then
      allocate(bf_gradx_batch(basis%nbf,nr))
      allocate(bf_grady_batch(basis%nbf,nr))
      allocate(bf_gradz_batch(basis%nbf,nr))
@@ -1076,13 +1088,13 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    call get_basis_functions_r_batch(basis,igrid_start,basis_function_r_batch)
    !
    ! Get the gradient at points r
-   if( dft_xc(1)%needs_gradient ) &
+   if( dft_xc_local(1)%needs_gradient ) &
       call get_basis_functions_gradr_batch(basis,igrid_start,bf_gradx_batch,bf_grady_batch,bf_gradz_batch)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-   if( .NOT. dft_xc(1)%needs_gradient ) then
+   if( .NOT. dft_xc_local(1)%needs_gradient ) then
      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
      if(ALLOCATED(rhocore)) then
        do ispin=1,nspin
@@ -1126,17 +1138,18 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    call start_clock(timing_xxdft_libxc)
 
    dedd_r_batch(:,:) = 0.0_dp
-   if( dft_xc(1)%needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
+   if( dft_xc_local(1)%needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
 
-   do ixc=1,dft_xc(1)%nxc
-     if( ABS(dft_xc(ixc)%coeff) < 1.0e-6_dp ) cycle
+   do ixc=1,dft_xc_local(1)%nxc
+     if( ABS(dft_xc_local(ixc)%coeff) < 1.0e-6_dp ) cycle
 
-     select case(dft_xc(ixc)%family)
+     select case(dft_xc_local(ixc)%family)
      case(XC_FAMILY_LDA)
-       call xc_lda_exc_vxc(dft_xc(ixc)%func,nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
+       call xc_lda_exc_vxc(dft_xc_local(ixc)%func,nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
-       call xc_gga_exc_vxc(dft_xc(ixc)%func,nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
+       call xc_gga_exc_vxc(dft_xc_local(ixc)%func,nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1), &
+                           vrho_batch(1,1),vsigma_batch(1,1))
 
        ! Remove too small densities to stabilize the computation
        ! especially useful for Becke88
@@ -1149,24 +1162,24 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
        enddo
 
      case default
-       write(stdout,*) 'Family id:',ixc,dft_xc(ixc)%family
+       write(stdout,*) 'Family id:',ixc,dft_xc_local(ixc)%family
        call die('dft_exc_vxc_batch: functional is not LDA nor GGA nor hybrid')
      end select
 
      ! XC energy
-     exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * SUM(rhor_batch(:,:),DIM=1) ) * dft_xc(ixc)%coeff
+     exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * SUM(rhor_batch(:,:),DIM=1) ) * dft_xc_local(ixc)%coeff
 
-     dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc(ixc)%coeff
+     dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc_local(ixc)%coeff
 
      !
      ! Set up divergence term if needed (GGA case)
      !
-     if( dft_xc(1)%needs_gradient ) then
+     if( dft_xc_local(1)%needs_gradient ) then
        if(nspin==1) then
 
          do ir=1,nr
            dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1)  &
-                      + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc(ixc)%coeff
+                      + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_local(ixc)%coeff
          enddo
 
        else
@@ -1174,11 +1187,11 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
          do ir=1,nr
            dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1) &
                      + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
-                                 + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc(ixc)%coeff
+                                 + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_local(ixc)%coeff
 
            dedgd_r_batch(:,ir,2) = dedgd_r_batch(:,ir,2) &
                      + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
-                                 + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc(ixc)%coeff
+                                 + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc_local(ixc)%coeff
          enddo
 
        endif
@@ -1198,7 +1211,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
 
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     if( dft_xc(1)%needs_gradient ) then
+     if( dft_xc_local(1)%needs_gradient ) then
        !
        ! GGA
        !
@@ -1250,7 +1263,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
    deallocate(rhor_batch)
    deallocate(vrho_batch)
    deallocate(dedd_r_batch)
-   if( dft_xc(1)%needs_gradient ) then
+   if( dft_xc_local(1)%needs_gradient ) then
      deallocate(bf_gradx_batch)
      deallocate(bf_grady_batch)
      deallocate(bf_gradz_batch)
@@ -1287,11 +1300,13 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc)
  write(stdout,*) 'LIBXC is not present'
 #endif
 
- write(stdout,'(a28,2(2x,f12.6))') ' Number of electrons:',normalization(:) - normalization_core
- if(ALLOCATED(rhocore)) then
-   write(stdout,'(a28,2(2x,f12.6))') ' Number of core electrons:',normalization_core
+ if(.not.calc_type%is_noft) then ! MRM mutted only for NOFT
+   write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+   if(ALLOCATED(rhocore)) then
+     write(stdout,'(a28,2(2x,f12.6))') ' Number of core electrons:',normalization_core
+   endif
+   write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
  endif
- write(stdout,'(a28,2x,f12.6)')      '  DFT xc energy (Ha):',exc_xc
 
  call stop_clock(timing_xxdft_xc)
 

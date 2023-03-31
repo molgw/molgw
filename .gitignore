@@ -9,6 +9,7 @@ src/.tags*
 src/git_sha.f90
 src/basis_path.f90
 src/my_machine*.arch*
+my_machine*.arch*
 tests/tmp_*
 __pycache__/
 *.py[cod]

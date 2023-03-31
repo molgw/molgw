@@ -1,0 +1,15 @@
+&molgw
+ scf='PBE-QIDH'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ read_restart='no'
+
+ postscf='RPA+'
+
+ natom=3
+/
+8    0.000000     0.000000     0.119105    
+1    0.000000     0.760508    -0.476421
+1    0.000000    -0.760508    -0.476421
+

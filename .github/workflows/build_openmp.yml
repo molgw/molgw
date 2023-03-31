@@ -1,0 +1,50 @@
+name: Build with OpenMP activated
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc gfortran libblas-dev liblapack-dev libxc-dev openmpi-bin libopenmpi-dev libscalapack-openmpi-dev
+          gfortran --version
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+
+      - name: Download and build libcint library
+        run: |
+          wget https://github.com/sunqm/libcint/archive/refs/tags/v5.2.2.tar.gz
+          tar -xzvf v5.2.2.tar.gz
+          cd libcint-5.2.2/
+          mkdir build && cd build
+          cmake -DWITH_RANGE_COULOMB=1 -DBUILD_SHARED_LIBS=0 -DPYPZPX=1 ..
+          make
+
+      - name: Make
+        run: |
+          echo "LIBCINT=../libcint-5.2.2/build/libcint.a" > my_machine.arch
+          echo "OPENMP=-fopenmp" >> my_machine.arch
+          echo "FCFLAGS=-O0" >> my_machine.arch
+          make -j 4
+
+      #- name: Run the test suite
+      #  run: |
+      #    make github-test
+

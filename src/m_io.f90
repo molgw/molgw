@@ -156,11 +156,14 @@ subroutine header()
 
 
  write(stdout,'(/,1x,a)') 'Preprocessing and runtime options:'
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
  write(stdout,*) 'Running with LIBXC'
  call xc_version(libxc_version(1),libxc_version(2),libxc_version(3))
  write(chartmp,'(i2,a,i2,a,i2)') libxc_version(1),'.',libxc_version(2),'.',libxc_version(3)
  write(stdout,'(5x,a,a)') 'LIBXC version: ',TRIM(chartmp)
+#else
+ write(stdout,*) 'Running without LIBXC'
+ write(stdout,*) 'Hartree-Fock-only code'
 #endif
 
 

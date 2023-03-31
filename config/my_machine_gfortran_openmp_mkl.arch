@@ -4,7 +4,8 @@ PYTHON=python3
 # Compilation with MKL include
 FC=gfortran 
 
-CPPFLAGS=-DHAVE_LIBXC -DHAVE_MKL
+# don't use LIBCINT, but LIBINT
+CPPFLAGS=-DHAVE_MKL -DNO_LIBCINT
 
 CXX=g++
 FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 

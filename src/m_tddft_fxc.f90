@@ -48,9 +48,10 @@ contains
 
 
 !=========================================================================
-subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
+subroutine prepare_tddft(is_triplet_currently,nstate,basis,c_matrix,occupation)
  implicit none
 
+ logical,intent(in)               :: is_triplet_currently
  integer,intent(in)               :: nstate
  type(basis_set),intent(in)       :: basis
  real(dp),intent(in)              :: c_matrix(basis%nbf,nstate,nspin)
@@ -78,12 +79,12 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  type(C_PTR)          :: cptr_tmp
 !=====
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 
  !
  ! Prepare DFT kernel calculation with Libxc
  !
- nspin_tddft = MERGE(2,nspin,is_triplet)
+ nspin_tddft = MERGE(2,nspin,is_triplet_currently)
  call copy_libxc_info(dft_xc,tddft_xc)
  do ixc=1,tddft_xc(1)%nxc
    tddft_xc(ixc)%nspin = nspin_tddft

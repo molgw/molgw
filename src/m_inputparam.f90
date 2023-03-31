@@ -20,7 +20,7 @@ module m_inputparam
   use m_string_tools,only: capitalize,yesno_to_logical,yesno_to_TrueFalse
   use m_libxc_tools
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
 #include <xc_funcs.h>
 #endif
 
@@ -81,7 +81,7 @@ module m_inputparam
     logical            :: is_noft
     logical            :: is_selfenergy
     logical            :: is_ci
-    logical            :: is_bse,no_bse_kernel,include_tddft_kernel
+    logical            :: is_bse,no_bse_kernel,include_tddft_kernel,include_tdhf_kernel
     integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
     integer            :: selfenergy_approx         ! GW, COHSEX, PT2
   end type calculation_type
@@ -196,6 +196,7 @@ subroutine init_calculation_type(scf,postscf)
   calc_type%is_bse               = .FALSE.
   calc_type%no_bse_kernel        = .FALSE.
   calc_type%include_tddft_kernel = .FALSE.
+  calc_type%include_tdhf_kernel  = .FALSE.
   calc_type%is_real_time         = .FALSE.
   calc_type%selfenergy_technique = one_shot
   calc_type%selfenergy_approx    = 0
@@ -295,15 +296,20 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%selfenergy_approx = CI
     case('BSE')
       calc_type%is_bse = .TRUE.
-    case('BSE_RPA','BSE-RPA')
+    case('BSE_RPA','BSE-RPA') ! debug only
       calc_type%is_bse        = .TRUE.
       calc_type%no_bse_kernel = .TRUE.
     case('TD')
       calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
+    case('RPA','RPAP','RPA_IM','RPAP_IM','RPA+','RPA+_IM')
+      ! nothing to declare
+    case('RPAX','RPAX-I','RPAX-II')
+      calc_type%include_tdhf_kernel =.TRUE.
     case default
-      call die('Error reading keyword: postscf')
+      write(stdout,*) 'postscf: ',TRIM(postscf)
+      call die('init_calculation_type: Error reading keyword: postscf')
     end select
   endif
 
@@ -336,6 +342,12 @@ subroutine init_calculation_type(scf,postscf)
     calc_type%selfenergy_approx    = COHSEX
     calc_type%selfenergy_technique = QS
     alpha_hybrid            = 1.00_dp
+  case('QSGW-DH')
+    calc_type%is_gw         = .TRUE.
+    calc_type%is_dft        = .TRUE.
+    calc_type%selfenergy_approx    = GW
+    calc_type%selfenergy_technique = QS
+    call init_dft_type(scf)
   case default
     !
     ! If the calculation type is none of the above, let's assume it is DFT-type
@@ -404,7 +416,12 @@ subroutine init_dft_type(key)
 
   !
   ! Prepare the object dft_xc
-  allocate(dft_xc(3))
+  select case(TRIM(key))
+    case('QSGW-DH')
+      allocate(dft_xc(5))
+    case default
+      allocate(dft_xc(3))
+  end select
   dft_xc(:)%nspin = nspin
   ! default is one, otherwise it is modified later
   dft_xc(:)%coeff = 1.0_dp
@@ -414,7 +431,7 @@ subroutine init_dft_type(key)
 
 
   select case(TRIM(key))
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
   !
   ! LDA functionals
   case('LDAX')
@@ -435,6 +452,9 @@ subroutine init_dft_type(key)
   case('VWN_RPA')
     dft_xc(1)%id = XC_LDA_X
     dft_xc(2)%id = XC_LDA_C_VWN_RPA
+    alpha_hybrid   = 0.00_dp
+  case('VWNC')
+    dft_xc(1)%id = XC_LDA_C_VWN
     alpha_hybrid   = 0.00_dp
   !
   ! GGA functionals
@@ -478,6 +498,12 @@ subroutine init_dft_type(key)
     dft_xc(1)%id = XC_GGA_X_HJS_PBE
     alpha_hybrid   = 0.00_dp
     dft_xc(1)%gamma = gamma_hybrid
+  case('LYP')
+    dft_xc(1)%id = XC_GGA_C_LYP
+    alpha_hybrid   = 0.00_dp
+  case('PBEC')
+    dft_xc(1)%id = XC_GGA_C_PBE
+    alpha_hybrid   = 0.00_dp
   !
   ! Meta-GGA functionals
   case('RPPX')
@@ -539,14 +565,6 @@ subroutine init_dft_type(key)
     beta_hybrid   =  0.9201_dp
     gamma_hybrid  = 0.150_dp
     dft_xc(2)%gamma = gamma_hybrid
-  case('RSH')
-    dft_xc(1)%id = XC_GGA_X_PBE
-    dft_xc(2)%id = XC_GGA_X_HJS_PBE
-    dft_xc(3)%id = XC_GGA_C_PBE
-    dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
-    dft_xc(2)%coeff = beta_hybrid
-    dft_xc(3)%coeff = 1.00_dp
-    dft_xc(2)%gamma = gamma_hybrid
   case('RSHX')
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
@@ -559,6 +577,51 @@ subroutine init_dft_type(key)
     dft_xc(2)%id = XC_LDA_C_PW
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = 1.00_dp
+  case('RSH')   ! This one can also be used for double hybrid functionals (e.g. PBEQIDH, PBE0-DH, and their RPA+ versions).
+    dft_xc(1)%id = XC_GGA_X_PBE
+    dft_xc(2)%id = XC_GGA_X_HJS_PBE
+    dft_xc(3)%id = XC_GGA_C_PBE
+    dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
+    dft_xc(2)%coeff = beta_hybrid
+    dft_xc(3)%coeff = 1.00_dp - kappa_hybrid
+    dft_xc(2)%gamma = gamma_hybrid
+  !
+  ! Double Hybrid functionals (used with postscf='MP2' or 'RPA')
+  case('PBE0-DH')
+    dft_xc(1)%id = XC_GGA_X_PBE
+    dft_xc(2)%id = XC_GGA_C_PBE
+    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.5_dp
+    if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.125_dp
+    dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
+  case('PBE-QIDH')
+    dft_xc(1)%id = XC_GGA_X_PBE
+    dft_xc(2)%id = XC_GGA_C_PBE
+    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.693361274_dp
+    if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.333333333_dp
+    dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
+  case('B2PLYP')
+    dft_xc(1)%id = XC_GGA_X_B88
+    dft_xc(2)%id = XC_GGA_C_LYP
+    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.53_dp
+    if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.27_dp
+    dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
+  !
+  ! QSGW Double Hybrid functional (MRM: WIP)
+  case('QSGW-DH')
+    dft_xc(1)%id = XC_GGA_X_PBE
+    dft_xc(2)%id = XC_GGA_X_HJS_PBE
+    dft_xc(3)%id = XC_GGA_C_PBE
+    dft_xc(4)%id = XC_LDA_C_PW
+    dft_xc(5)%id = XC_LDA_C_PW_RPA
+    dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
+    dft_xc(2)%coeff = beta_hybrid
+    dft_xc(3)%coeff = 1.00_dp - kappa_hybrid
+    dft_xc(4)%coeff = kappa_hybrid
+    dft_xc(5)%coeff = - kappa_hybrid
+    dft_xc(2)%gamma = gamma_hybrid
 #endif
   case default
 
@@ -596,7 +659,7 @@ subroutine init_dft_type(key)
 
   call init_libxc_info(dft_xc)
 
-#if defined(HAVE_LIBXC)
+#if !defined(NO_LIBXC)
   !
   ! If "LIBXC:" syntax, obtain exact-exchange parameters from LIBXC
   if( INDEX(key,"LIBXC:") > 0 ) then

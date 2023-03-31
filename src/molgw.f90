@@ -58,6 +58,8 @@ program molgw
   use m_fourier_quadrature
   use m_libcint_tools
   use m_noft
+  use m_linear_response
+  use m_acfd
   implicit none
 
  !=====
@@ -508,7 +510,6 @@ program molgw
   if( .FALSE. ) call write_cube_from_header('GKS',basis,occupation,c_matrix)
   !call plot_rho_xy(basis, occupation, c_matrix)      !plot density integrated on axis z in plane xy
 
-
   !
   ! Do NOFT optimization
   !
@@ -516,10 +517,14 @@ program molgw
     if( nspin /= 1 ) call die('molgw: NOFT calculations need spin-restriction. Set nspin to 1')
 
     en_noft = en_gks
-    call noft_energy(basis,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
+    call noft_energy(basis,c_matrix,occupation,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
                      en_noft%total,en_noft%nuc_nuc)
 
     write(stdout,'(a,2x,f19.10,/)') ' NOFT Total Energy (Ha):',en_noft%total
+    write(stdout,'(/,1x,a)')  'Natural occupations: '
+    write(stdout,'(8(2x,f14.6))') occupation(:,1)
+    write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
+    write(stdout,*)
 
   endif
 
@@ -616,6 +621,15 @@ program molgw
   endif
 
   !
+  ! final evaluation for RPAx total energy
+  ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
+  !
+  if( TRIM(postscf(1:3)) == 'RPA' ) then
+    en_mbpt = en_gks
+    call acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
+  endif
+
+  !
   ! final evaluation for MP2 total energy
   !
   if( calc_type%is_mp2 ) then
@@ -629,6 +643,10 @@ program molgw
     write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
     write(stdout,*)
     en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx + en_gks%mp2
+
+    if(kappa_hybrid/=zero) then
+      en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
+    endif
 
     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%total
     write(stdout,*)
@@ -650,6 +668,10 @@ program molgw
 
     en_gks%total = en_gks%total + en_gks%mp3
 
+    if(kappa_hybrid/=zero) then
+      en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp3
+    endif
+
     write(stdout,'(a,2x,f19.10)') ' MP3 Total Energy (Ha):',en_gks%total
     write(stdout,*)
 
@@ -665,7 +687,7 @@ program molgw
   ! (only if the SCF cycles were converged)
   if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
     call init_spectral_function(nstate,occupation,0,wpol)
-    call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
     call destroy_spectral_function(wpol)
   endif
 

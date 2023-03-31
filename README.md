@@ -21,6 +21,7 @@ MOLGW implements the following schemes:
 - GGA (PBE, PW91, BLYP)
 - potential-only meta-GGA (BJ, RPP)
 - hybrid functionals (PBE0, B3LYP)
+- double-hybrid functionals (PBE0-DH, PBE-QIDH, and B2PLYP)
 - screened hybrid functionals (HSE03, HSE06)
 - any user-developped range-separated hybrid based on wPBEH
 
@@ -28,15 +29,16 @@ MOLGW implements the following schemes:
 - GW/PT2 density-matrix
 - QSGW
 - QSMP2
-- MP2@HF
+- MP2@HF (MP2 correlation energy used in double-hybrid DFT functionals)
 - PT2@HF or PT2@DFT
 - PT3@HF or PT3@DFT
 - CI for few electrons 
 - Linear-response TDDFT or TDHF
 - Bethe-Salpeter equation
 - real-time TDDFT
-- HF/DFT+NOFT (MULLER, POWER, PNOF5, and PNOF7)
+- HF/DFT+NOFT (MULLER, CGA, CA, GU, POWER, PNOF5, PNOF7, and GNOF)
 
+The Python3 module `molgw.py` is available for automation.
 
 ## Installation
 

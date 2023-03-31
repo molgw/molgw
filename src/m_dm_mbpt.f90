@@ -23,6 +23,7 @@ module m_dm_mbpt
   use m_multipole
   use m_pt_density_matrix
   use m_gw_selfenergy_grid
+  use m_linear_response
 
 
 contains
@@ -90,7 +91,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
     case('GW','G0W0')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       call init_spectral_function(nstate,occupation,0,wpol)
-      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
+      call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
       call gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix_corr)
       call destroy_spectral_function(wpol)
     case('EVGW','GNWN')
@@ -102,7 +103,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
         energy_qp(:,:) = energy(:,:)
       endif
       call init_spectral_function(nstate,occupation,0,wpol)
-      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy_qp,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
+      call polarizability(.TRUE.,.TRUE.,basis,occupation,energy_qp,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
       call gw_density_matrix(occupation,energy_qp,c_matrix,wpol,p_matrix_corr)
       call destroy_spectral_function(wpol)
       deallocate(energy_qp)
