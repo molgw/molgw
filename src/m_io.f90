@@ -3635,12 +3635,26 @@ subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize,
  logical,intent(in),optional :: finalize
  !=====
  character(len=200)          :: file_name, group_name, snap_name
+ logical                     :: init_, final_
+ !=====
 
 #if defined(HAVE_HDF5)
 
  if( .NOT. is_iomaster ) return
 
  if( PRESENT(initialize) ) then
+   init_ = initialize
+ else
+   init_ = .FALSE.
+ end if
+ 
+ if( PRESENT(finalize) ) then
+   final_ = finalize
+ else
+   final_ = .FALSE.
+ end if
+
+ if( init_ ) then
 
    fid = 0
    gid = 0
@@ -3655,7 +3669,7 @@ subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize,
    call hdf_open_group(fid, trim(group_name), gid)
 
 
- else if( PRESENT(finalize) ) then
+ else if( final_ ) then
 
    call hdf_close_group(gid) 
    call hdf_close_file(fid)
