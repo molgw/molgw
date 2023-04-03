@@ -3679,7 +3679,9 @@ subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize,
 
 #else
 
- call die('To print c_matrix_cmplx into an HDF5 file, MOLGW must be compiled with HDF5: HDF5_ROOT must be specified and the -DHAVE_HDF5 compilation option must be activated')
+call die('To print c_matrix_cmplx into an HDF5 file,' &
+' MOLGW must be compiled with HDF5: HDF5_ROOT must be specified' &
+' and the -DHAVE_HDF5 compilation option must be activated')
 
 #endif
 
