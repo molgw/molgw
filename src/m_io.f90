@@ -3642,17 +3642,11 @@ subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize,
 
  if( .NOT. is_iomaster ) return
 
- if( PRESENT(initialize) ) then
-   init_ = initialize
- else
-   init_ = .FALSE.
- end if
- 
- if( PRESENT(finalize) ) then
-   final_ = finalize
- else
-   final_ = .FALSE.
- end if
+ init_ = .FALSE.
+ final_ = .FALSE.
+
+ if( PRESENT(initialize) ) init_ = initialize
+ if( PRESENT(finalize) ) final_ = finalize
 
  if( init_ ) then
 
