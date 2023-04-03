@@ -3624,5 +3624,73 @@ end subroutine evaluate_memory
 
 
 !=========================================================================
+#if defined(HAVE_HDF5)
+
+subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize, finalize)
+ use m_hdf5_tools
+ use m_inputparam
+ implicit none
+ integer(HID_T), intent(inout) :: fid, gid
+ integer,intent(in)          :: isnap
+ complex(dp),intent(in)      :: c_matrix_cmplx(:,:,:)
+ logical,intent(in),optional :: initialize
+ logical,intent(in),optional :: finalize
+ !=====
+ character(len=200)          :: file_name, group_name, snap_name
+
+ if( .NOT. is_iomaster ) return
+
+ if( PRESENT(initialize) ) then
+
+   fid = 0
+   gid = 0
+
+   write(file_name,'(a)') 'rt_tddft.h5'
+   call hdf_open_file(fid, trim(file_name), status='NEW')
+
+   call hdf_write_dataset(fid, 'time_step', time_step)
+
+   write(group_name,'(a)') 'c_matrix_cmplx'
+   call hdf_create_group(fid, trim(group_name))
+   call hdf_open_group(fid, trim(group_name), gid)
+
+
+ else if( PRESENT(finalize) ) then
+
+   call hdf_close_group(gid) 
+   call hdf_close_file(fid)
+   return
+
+ end if
+
+ write(snap_name,'(a,I0,a)') 'snap_', isnap, '_real'
+ call hdf_write_dataset(gid, TRIM(snap_name), REAL(c_matrix_cmplx, dp))
+
+ write(snap_name,'(a,I0,a)') 'snap_', isnap, '_imag'
+ call hdf_write_dataset(gid, TRIM(snap_name), AIMAG(c_matrix_cmplx))
+
+end subroutine dump_c_matrix_cmplx_hdf5
+
+#else
+
+subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize, finalize)
+ use m_hdf5_tools
+ use m_inputparam
+ implicit none
+ integer, intent(inout)      :: fid, gid
+ integer,intent(in)          :: isnap
+ complex(dp),intent(in)      :: c_matrix_cmplx(:,:,:)
+ logical,intent(in),optional :: initialize
+ logical,intent(in),optional :: finalize
+ !=====
+ character(len=200)          :: file_name, group_name, snap_name
+
+ call die('To print c_matrix_cmplx into an HDF5 file, MOLGW must be compiled with HDF5: HDF5_ROOT must be specified and the -DHAVE_HDF5 compilation option must be activated')
+
+ end subroutine dump_c_matrix_cmplx_hdf5
+
+#endif
+
+!=========================================================================
 end module m_io
 !=========================================================================

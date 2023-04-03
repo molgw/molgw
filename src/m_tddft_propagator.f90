@@ -118,6 +118,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: file_q_matrix(2)
   integer                    :: iocc
   complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
+  !==HDF5==
+#if defined(HAVE_HDF5)
+  integer(HID_T)             :: fid, gid
+#else
+  integer                    :: fid, gid
+#endif
   !====
 
   call switch_on_rt_tddft_timers()
@@ -381,6 +387,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     call plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize=.TRUE.)
   end if
 
+  if( print_c_matrix_cmplx_hdf5_ ) then
+    call dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, 0, initialize=.TRUE.)
+  end if
+
   if(print_line_rho_diff_tddft_) then
     call calc_rho_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min,nr_line_rho,point_a,point_b,rho_start)
     call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min,nr_line_rho,point_a,point_b,rho_start)
@@ -495,6 +505,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       if (calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx, &
                                                  istate_cut,file_q_matrix,time_cur)
 
+      if( print_c_matrix_cmplx_hdf5_ ) call dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, iwrite_step)
+
       iwrite_step = iwrite_step + 1
 
     end if
@@ -532,6 +544,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   end do
 
   !********end time loop*******************
+
+  if( print_c_matrix_cmplx_hdf5_ ) then
+    call dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, 0, finalize=.TRUE.)
+  end if
 
   if(print_tddft_restart_) then
     if( moving_basis ) then
