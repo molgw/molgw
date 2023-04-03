@@ -2428,6 +2428,8 @@ contains
 
   end subroutine hdf_read_attr_string
 
+#else
+  integer, parameter :: HID_T = 8
 #endif
 
 end module m_hdf5_tools

@@ -69,6 +69,7 @@ contains
 
 !=========================================================================
 subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
+  use m_hdf5_tools, only: HID_T
   implicit none
 
   type(basis_set),intent(inout) :: basis
@@ -119,11 +120,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: iocc
   complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
   !==HDF5==
-#if defined(HAVE_HDF5)
   integer(HID_T)             :: fid, gid
-#else
-  integer                    :: fid, gid
-#endif
   !====
 
   call switch_on_rt_tddft_timers()

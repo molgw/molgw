@@ -3624,8 +3624,6 @@ end subroutine evaluate_memory
 
 
 !=========================================================================
-#if defined(HAVE_HDF5)
-
 subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize, finalize)
  use m_hdf5_tools
  use m_inputparam
@@ -3637,6 +3635,8 @@ subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize,
  logical,intent(in),optional :: finalize
  !=====
  character(len=200)          :: file_name, group_name, snap_name
+
+#if defined(HAVE_HDF5)
 
  if( .NOT. is_iomaster ) return
 
@@ -3669,27 +3669,13 @@ subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize,
  write(snap_name,'(a,I0,a)') 'snap_', isnap, '_imag'
  call hdf_write_dataset(gid, TRIM(snap_name), AIMAG(c_matrix_cmplx))
 
-end subroutine dump_c_matrix_cmplx_hdf5
-
 #else
-
-subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize, finalize)
- use m_hdf5_tools
- use m_inputparam
- implicit none
- integer, intent(inout)      :: fid, gid
- integer,intent(in)          :: isnap
- complex(dp),intent(in)      :: c_matrix_cmplx(:,:,:)
- logical,intent(in),optional :: initialize
- logical,intent(in),optional :: finalize
- !=====
- character(len=200)          :: file_name, group_name, snap_name
 
  call die('To print c_matrix_cmplx into an HDF5 file, MOLGW must be compiled with HDF5: HDF5_ROOT must be specified and the -DHAVE_HDF5 compilation option must be activated')
 
- end subroutine dump_c_matrix_cmplx_hdf5
-
 #endif
+
+ end subroutine dump_c_matrix_cmplx_hdf5
 
 !=========================================================================
 end module m_io
