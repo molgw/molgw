@@ -45,5 +45,5 @@ jobs:
 
       - name: Run the test suite
         run: |
-          make github-test
+          make test
 
