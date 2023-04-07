@@ -1,7 +1,7 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 
-PREFIX?=/opt/molgw
+PREFIX?=.
 
 .PHONY: test clean archive tarball archive install
 
