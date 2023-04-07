@@ -1,22 +1,12 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 
-PYTHON=python
-ifeq ($(FC),f77)
-  FC=gfortran
-endif
-ifeq ($(FCFLAGS),)
-  FCFLAGS=-O2
-endif
-ifeq ($(CXXFLAGS),)
-  CXXFLAGS=-O2
-endif
-ifeq ($(CPPFLAGS),)
-  CPPFLAGS=-cpp
-endif
-ifeq ($(LAPACK),)
-  LAPACK=-lblas -llapack
-endif
+PYTHON ?= python
+FCFLAGS ?= -O2
+CXXFLAGS ?=-O2
+CPPFLAGS ?=-cpp
+LAPACK ?=-lblas -llapack
+LIBCINT ?=-lcint
 #SCALAPACK=
 #FFTW_ROOT=
 #ELPA=
@@ -50,9 +40,6 @@ ifeq ($(LIBINT_ROOT),)
 else
   LIBINT=-L$(LIBINT_ROOT)/lib -lint2
   LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
-endif
-ifeq ($(LIBCINT),)
-  LIBCINT=-lcint
 endif
 ifeq ($(FFTW_ROOT),)
   FFTW=
