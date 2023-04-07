@@ -1,11 +1,11 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 
-PREFIX?=.
+PREFIX?=/opt/molgw
 
-.PHONY: all test clean archive tarball archive install
+.PHONY: test clean archive tarball archive install
 
-all:
+molgw:
 	cd src && $(MAKE)
 
 test:
@@ -20,6 +20,11 @@ tarball:
 archive:
 	cd src && $(MAKE) archive
 
-install:
-	cp -u molgw $(PREFIX)/molgw
+install: molgw
+	mkdir -p $(PREFIX)/bin
+	cp -u molgw $(PREFIX)/bin/molgw
+	cp -rp basis $(PREFIX)/basis
+
+#uninstall:
+#	$(RM) -r $(PREFIX)
 
