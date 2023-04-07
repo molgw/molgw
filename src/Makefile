@@ -2,6 +2,9 @@
 # Author: Fabien Bruneval
 
 PYTHON ?= python
+ifeq ($(FC),f77)
+  FC=gfortran
+endif
 FCFLAGS ?= -O2
 CXXFLAGS ?=-O2
 CPPFLAGS ?=-cpp
