@@ -35,7 +35,8 @@ contains
 
 
 !=========================================================================
-subroutine scf_loop(is_restart,&
+subroutine scf_loop(nscf_in,&
+                    is_restart,&
                     basis,&
                     x_matrix,s_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
@@ -46,6 +47,7 @@ subroutine scf_loop(is_restart,&
  implicit none
 
 !=====
+ integer,intent(in)                 :: nscf_in
  logical,intent(in)                 :: is_restart
  type(basis_set),intent(inout)      :: basis
  real(dp),intent(in)                :: x_matrix(:,:)
@@ -105,7 +107,7 @@ subroutine scf_loop(is_restart,&
  !
  ! Start the big scf loop
  !
- do iscf=1,nscf
+ do iscf=1,nscf_in
    write(stdout,'(/,1x,a)') '-------------------------------------------'
    write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
@@ -186,19 +188,9 @@ subroutine scf_loop(is_restart,&
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,en_gks%rpa,en_gks%gw,wpol)
 
-     if( kappa_hybrid/=zero .AND. calc_type%is_dft ) then ! QSGW double-hybrid RPA correlation energy
-       write(stdout,'(/,a,f16.10)') ' RPA+ correlation energy scaled by :',kappa_hybrid
-       en_gks%rpa=kappa_hybrid*en_gks%rpa
-       write(stdout,'(/,a,f16.10)') ' Scaled RPA+ correlation energy (Ha): ',en_gks%rpa
-     endif
-
      if( ABS(en_gks%rpa) > 1.e-6_dp) then
        en_gks%total = en_gks%total + en_gks%rpa
-       if( kappa_hybrid/=zero .AND. calc_type%is_dft ) then ! QSGW double-hybrid RPA correlation energy
-         write(stdout,'(/,a,f19.10)') ' RPA+ Total energy (Ha): ',en_gks%total
-       else
-         write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_gks%total
-       endif
+       write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en_gks%total
       endif
 
      !
@@ -210,10 +202,6 @@ subroutine scf_loop(is_restart,&
 
      call dump_out_matrix(.FALSE.,'=== Self-energy ===',matrix_tmp)
      call destroy_spectral_function(wpol)
-
-     if( kappa_hybrid/=zero .AND. calc_type%is_dft ) then ! QSGW double-hybrid RPA correlation energy
-       matrix_tmp(:,:,:)=kappa_hybrid*matrix_tmp(:,:,:)
-     endif
 
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:)
      deallocate(matrix_tmp)

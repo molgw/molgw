@@ -389,7 +389,8 @@ program molgw
     ! Big SCF loop is in there
     ! Only do it if the calculation is NOT a big restart
     if( .NOT. is_big_restart .AND. nscf > 0 ) then
-      call scf_loop(is_restart,                                     &
+      call scf_loop(nscf,                                           &
+                    is_restart,                                     &
                     basis,                                          &
                     x_matrix,s_matrix,                              &
                     hamiltonian_kinetic,hamiltonian_nucleus,        &
