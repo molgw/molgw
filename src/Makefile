@@ -7,7 +7,7 @@ endif
 -include ../my_machine.arch
 -include ./my_machine.arch
 
-PYTHON ?= python
+PYTHON ?= python3
 FCFLAGS ?= -O2
 CXXFLAGS ?=-O2
 CPPFLAGS ?=-cpp
