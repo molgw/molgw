@@ -1,6 +1,9 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 
+-include ./src/my_machine.arch
+-include ./my_machine.arch
+
 PREFIX?=.
 
 .PHONY: test clean archive tarball archive install
