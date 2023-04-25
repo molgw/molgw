@@ -1,10 +1,13 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 
-PYTHON ?= python
 ifeq ($(FC),f77)
   FC=gfortran
 endif
+-include ../my_machine.arch
+-include ./my_machine.arch
+
+PYTHON ?= python
 FCFLAGS ?= -O2
 CXXFLAGS ?=-O2
 CPPFLAGS ?=-cpp
@@ -18,8 +21,6 @@ LIBCINT ?=-lcint
 #LIBINT_ROOT=
 
 
--include ../my_machine.arch
--include ./my_machine.arch
 
 FC_W_OPTS= $(FC) $(FCFLAGS) $(OPENMP) $(CPPFLAGS)
 CXX_W_OPTS= $(CXX) $(CXXFLAGS) $(CPPFLAGS)
