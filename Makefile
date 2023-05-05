@@ -1,17 +1,18 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 
+-include ./src/my_machine.arch
+-include ./my_machine.arch
 
-.PHONY: all clean archive tarball archive
+PREFIX?=.
 
-all:
+.PHONY: test clean archive tarball archive install
+
+molgw:
 	cd src && $(MAKE)
 
 test:
-	cd tests && python ./run_testsuite.py
-
-github-test:
-	cd tests && python ./run_testsuite.py --exclude benzene_he_rt-tddft.in
+	cd tests && python3 ./run_testsuite.py
 
 clean:
 	cd src && $(MAKE) clean
@@ -22,4 +23,11 @@ tarball:
 archive:
 	cd src && $(MAKE) archive
 
+install: molgw
+	mkdir -p $(PREFIX)/bin
+	cp -u molgw $(PREFIX)/bin/molgw
+	cp -rp basis $(PREFIX)/basis
+
+#uninstall:
+#	$(RM) -r $(PREFIX)
 

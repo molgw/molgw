@@ -146,17 +146,29 @@
  write(stdout,'(1x,a32,2x,es16.8)') 'alpha_mixing',alpha_mixing 
  write(stdout,'(1x,a32,2x,es16.8)') 'beta_hybrid',beta_hybrid 
  write(stdout,'(1x,a32,6x,a)') 'noft_complex',noft_complex 
+ write(stdout,'(1x,a32,6x,a)') 'noft_dft',noft_dft 
  write(stdout,'(1x,a32,2x,es16.8)') 'density_matrix_damping',density_matrix_damping 
  write(stdout,'(1x,a32,2x,es16.8)') 'diis_switch',diis_switch 
- write(stdout,'(1x,a32,6x,a)') 'noft_fcidump',noft_fcidump 
  write(stdout,'(1x,a32,2x,es16.8)') 'gamma_hybrid',gamma_hybrid 
  write(stdout,'(1x,a32,2x,es16.8)') 'kappa_hybrid',kappa_hybrid 
  write(stdout,'(1x,a32,6x,a)') 'grid_quality',TRIM(grid_quality) 
  write(stdout,'(1x,a32,6x,a)') 'init_hamiltonian',TRIM(init_hamiltonian) 
+ write(stdout,'(1x,a32,6x,a)') 'integral_quality',TRIM(integral_quality) 
+ write(stdout,'(1x,a32,2x,es16.8)') 'kerker_k0',kerker_k0 
+ write(stdout,'(1x,a32,2x,es16.8)') 'level_shifting_energy',level_shifting_energy 
+ write(stdout,'(1x,a32,2x,es16.8)') 'min_overlap',min_overlap 
+ write(stdout,'(1x,a32,6x,a)') 'mixing_scheme',TRIM(mixing_scheme) 
+ write(stdout,'(1x,a32,2x,es16.8)') 'tolscf',tolscf 
+ write(stdout,'(1x,a32,2x,i8)') 'npulay_hist',npulay_hist 
+ write(stdout,'(1x,a32,2x,i8)') 'nscf',nscf 
+ write(stdout,'(1x,a32,6x,a)') 'partition_scheme',TRIM(partition_scheme) 
+ write(stdout,'(1x,a32,6x,a)') 'scf_diago_flavor',TRIM(scf_diago_flavor) 
+ write(stdout,'(1x,a32,6x,a)') 'noft_rsintra',noft_rsintra 
+ write(stdout,'(1x,a32,6x,a)') 'noft_lowmemERI',noft_lowmemERI 
+ write(stdout,'(1x,a32,6x,a)') 'noft_fcidump',noft_fcidump 
  write(stdout,'(1x,a32,6x,a)') 'noft_NOTupdateOCC',noft_NOTupdateOCC 
  write(stdout,'(1x,a32,6x,a)') 'noft_NOTupdateORB',noft_NOTupdateORB 
  write(stdout,'(1x,a32,6x,a)') 'noft_functional',TRIM(noft_functional) 
- write(stdout,'(1x,a32,6x,a)') 'integral_quality',TRIM(integral_quality) 
  write(stdout,'(1x,a32,6x,a)') 'noft_printdmn',noft_printdmn 
  write(stdout,'(1x,a32,6x,a)') 'noft_printswdmn',noft_printswdmn 
  write(stdout,'(1x,a32,6x,a)') 'noft_printints',noft_printints 
@@ -166,23 +178,13 @@
  write(stdout,'(1x,a32,6x,a)') 'noft_readOCC',noft_readOCC 
  write(stdout,'(1x,a32,6x,a)') 'noft_sta',noft_sta 
  write(stdout,'(1x,a32,2x,i8)') 'noft_ithresh_lambda',noft_ithresh_lambda 
- write(stdout,'(1x,a32,2x,es16.8)') 'kerker_k0',kerker_k0 
- write(stdout,'(1x,a32,2x,es16.8)') 'level_shifting_energy',level_shifting_energy 
- write(stdout,'(1x,a32,6x,a)') 'noft_lowmemERI',noft_lowmemERI 
  write(stdout,'(1x,a32,2x,es16.8)') 'noft_Lpower',noft_Lpower 
- write(stdout,'(1x,a32,2x,es16.8)') 'min_overlap',min_overlap 
- write(stdout,'(1x,a32,6x,a)') 'mixing_scheme',TRIM(mixing_scheme) 
  write(stdout,'(1x,a32,2x,i8)') 'noft_npairs',noft_npairs 
  write(stdout,'(1x,a32,2x,i8)') 'noft_ncoupled',noft_ncoupled 
- write(stdout,'(1x,a32,2x,i8)') 'npulay_hist',npulay_hist 
- write(stdout,'(1x,a32,2x,i8)') 'nscf',nscf 
  write(stdout,'(1x,a32,2x,i8)') 'noft_ndiis',noft_ndiis 
  write(stdout,'(1x,a32,2x,i8)') 'noft_nscf',noft_nscf 
- write(stdout,'(1x,a32,6x,a)') 'partition_scheme',TRIM(partition_scheme) 
  write(stdout,'(1x,a32,6x,a)') 'noft_restart',noft_restart 
- write(stdout,'(1x,a32,6x,a)') 'scf_diago_flavor',TRIM(scf_diago_flavor) 
  write(stdout,'(1x,a32,2x,es16.8)') 'noft_tolE',noft_tolE 
- write(stdout,'(1x,a32,2x,es16.8)') 'tolscf',tolscf 
  write(stdout,'(1x,a32,2x,es16.8)') 'charge',charge 
  write(stdout,'(1x,a32,2x,es16.8)') 'electric_field_x',electric_field_x 
  write(stdout,'(1x,a32,2x,es16.8)') 'electric_field_y',electric_field_y 

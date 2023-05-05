@@ -67,11 +67,11 @@
 [level_shifting_energy](#level_shifting_energy) 
 [min_overlap](#min_overlap) 
 [mixing_scheme](#mixing_scheme) 
+[tolscf](#tolscf) 
 [npulay_hist](#npulay_hist) 
 [nscf](#nscf) 
 [partition_scheme](#partition_scheme) 
 [scf_diago_flavor](#scf_diago_flavor) 
-[tolscf](#tolscf) 
 
 
 ## Correlation and excited states post-treatment input variables 
@@ -124,6 +124,9 @@
 ## Natural Orbital Functional Theory 
 
 [noft_complex](#noft_complex) 
+[noft_dft](#noft_dft) 
+[noft_rsintra](#noft_rsintra) 
+[noft_lowmemERI](#noft_lowmemERI) 
 [noft_fcidump](#noft_fcidump) 
 [noft_NOTupdateOCC](#noft_NOTupdateOCC) 
 [noft_NOTupdateORB](#noft_NOTupdateORB) 
@@ -137,7 +140,6 @@
 [noft_readOCC](#noft_readOCC) 
 [noft_sta](#noft_sta) 
 [noft_ithresh_lambda](#noft_ithresh_lambda) 
-[noft_lowmemERI](#noft_lowmemERI) 
 [noft_Lpower](#noft_Lpower) 
 [noft_npairs](#noft_npairs) 
 [noft_ncoupled](#noft_ncoupled) 
@@ -1653,6 +1655,22 @@ Use complex molecular orb. coeficients in NOFT calcs. (default=no).
 
 
 ---
+### noft_dft
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Use the hybdrid approach NOFT + DFT in NOFT calcs. (default=no). 
+
+
+---
 ### noft_fcidump
 
 *Optional* 
@@ -1677,11 +1695,11 @@ Print the FCIDUMP file in NOFT module.
 
 **Type:** characters 
 
-**Default:** PNOF7 
+**Default:** GNOF 
 
 **Description:** 
 
-Select the NOFT approx. to use (default= 'PNOF7'). Other options are 'PNOF5', 'HF', 'MULLER', and 'POWER'. 
+Select the NOFT approx. to use (default= 'GNOF'). Other options are 'PNOF5', 'PNOF7', 'HF', 'MULLER', 'CA', 'CGA', and 'POWER'. 
 
 
 ---
@@ -1909,7 +1927,7 @@ Use binary files to restart NOFT calcs. (default= 'no').
 
 
 ---
-### noft_sta
+### noft_rsintra
 
 *Optional* 
 
@@ -1921,7 +1939,23 @@ Use binary files to restart NOFT calcs. (default= 'no').
 
 **Description:** 
 
-Decide whether to use PNOF7 or PNOF7s (default= 'yes', use 'PNOF7s'). 
+Use range-sep of intra-subspace two-body energies in (PNOFi and GNOF). 
+
+
+---
+### noft_sta
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Decide whether to use PNOF7 or PNOF7s, but it also affects GNOF (default= 'no', use 'PNOF7' and 'GNOF'). 
 
 
 ---

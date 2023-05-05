@@ -322,6 +322,9 @@ subroutine output_timing()
   call output_timing_line('CI eigenvector file writing',timing_ci_write,2)
   call output_timing_line('CI self-energy',timing_ci_selfenergy,2)
 
+  ! NOFT
+  call output_timing_line('NOFT calculation',timing_noft_energy,1)
+
   ! RT-TDDFT
   call output_timing_line('TDDFT loop',timing_tddft_loop,1)
   call output_timing_line('TDDFT propagator',timing_tddft_propagation,2)

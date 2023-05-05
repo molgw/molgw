@@ -304,7 +304,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
 
  call start_clock(timing_xxdft_hartree)
 
- write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+ if(.not.calc_type%is_noft) write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
 
 
  hartree_ao(:,:) = 0.0_dp
@@ -1049,9 +1049,10 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
 
 #if !defined(NO_LIBXC)
 
- write(stdout,*) 'Calculate DFT XC potential'
- if( batch_size /= 1 ) write(stdout,'(7x,a,i6)') 'using batches of size ',batch_size
-
+ if(.not.calc_type%is_noft) then ! MRM mutted only for NOFT
+   write(stdout,*) 'Calculate DFT XC potential'
+   if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
+ endif
 
  normalization(:) = 0.0_dp
  normalization_core = 0.0_dp    ! core density has no spin
@@ -1299,11 +1300,13 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
  write(stdout,*) 'LIBXC is not present'
 #endif
 
- write(stdout,'(a28,2(2x,f12.6))') ' Number of electrons:',normalization(:) - normalization_core
- if(ALLOCATED(rhocore)) then
-   write(stdout,'(a28,2(2x,f12.6))') ' Number of core electrons:',normalization_core
+ if(.not.calc_type%is_noft) then ! MRM mutted only for NOFT
+   write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+   if(ALLOCATED(rhocore)) then
+     write(stdout,'(a28,2(2x,f12.6))') ' Number of core electrons:',normalization_core
+   endif
+   write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
  endif
- write(stdout,'(a28,2x,f12.6)')      '  DFT xc energy (Ha):',exc_xc
 
  call stop_clock(timing_xxdft_xc)
 

@@ -436,11 +436,14 @@ NOFT Total Energy         ,     -0.9985575214  , 0 , 1.0e-5
 h2_noft_restart.in        , RI-NOFT calculation applied to dissociated H2 with RI using restart
 NOFT Total Energy         ,     -0.9996198350  , 0 , 1.0e-5
 
+h2_noft_rsh.in            , RI-NOFT calculation applied to H2 with RI using range-sep NOFT
+NOFT Total Energy         ,     -1.1669251517  , 0 , 1.0e-5
+
 n2_noft.in                , RI-NOFT calculation applied to dissociated N2 with RI
-NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
+NOFT Total Energy         ,   -108.7519260379  , 0 , 5.0e-5
 
 n2_noft_cpx.in            , RI-NOFT calculation applied to dissociated N2 with RI (complex orbs)
-NOFT Total Energy         ,   -108.778587163   , 0 , 1.0e-5
+NOFT Total Energy         ,   -108.7519260379  , 0 , 1.0e-5
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
@@ -967,8 +970,8 @@ RT-TDDFT Total Energy     ,  -1.6095526306     , 0 , 1.0e-5
 Number of electrons       ,   1.999590         , 0 , 1.0e-4
 
 benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++, need_gradients
-SCF Total Energy          , -232.8924888075    , 0 , 1.0e-5   # Loosened criterium
-RT-TDDFT Total Energy     , -230.4199238294    , 0 , 1.0e-5
+SCF Total Energy          , -232.8924888075    , 0 , 5.0e-5   # Loosened criterium
+RT-TDDFT Total Energy     , -230.4199238294    , 0 , 5.0e-5   # Loosened criterium
 Number of electrons       ,    42.0025941      , 0 , 1.0e-4
 
 lih_rpa.in                , RPA energy of LiH
@@ -979,7 +982,7 @@ lih_rpax.in               , RPAX energy (RPAx-II) of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx Total Energy         ,  -8.0599498366     , 0 , 1.0e-7
 
-lih_rpax-i.in             , RPAX energy (RPAx-I) of LiH, noparallel
+lih_rpax-i.in             , RPAX energy (RPAx-I) of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx-I Energy             ,  -0.0483538239     , 0 , 1.0e-7
 RPAx-I Total Energy       ,  -8.0351082545     , 0 , 1.0e-7

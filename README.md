@@ -36,8 +36,9 @@ MOLGW implements the following schemes:
 - Linear-response TDDFT or TDHF
 - Bethe-Salpeter equation
 - real-time TDDFT
-- HF/DFT+NOFT (MULLER, POWER, PNOF5, and PNOF7)
+- HF/DFT+NOFT (MULLER, CGA, CA, GU, POWER, PNOF5, PNOF7, and GNOF)
 
+The Python3 module `molgw.py` is available for automation.
 
 ## Installation
 

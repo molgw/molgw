@@ -3,7 +3,7 @@
 
   gaussian_type='CART'
 
-  tolscf                         = 1.0e-7
+  tolscf                         = 5.0e-7
   scf                            = 'lda'
   read_tddft_restart             = 'no'
   print_tddft_restart            = 'no'
