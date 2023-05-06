@@ -8,7 +8,7 @@
 - Simplified compilation
 - Even-tempered basis
 - RPA, RPA+, RPAx (RPAx-II), RPAx-I correlation energies
-- Double-hybrid functionals (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.)
+- Double-hybrid functionals (e.g. B2PLYP, PBE0-DH, PBE-QIDH, RSX-QIDH, etc.)
 - Inclusion of more RDMFT functionals (e.g. CGA, CA, GU, and GNOF)
 - GTH pseudo potentials in CP2K format
 - New functionalities in `molgw.py` for running and post-processing series of calculations

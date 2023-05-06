@@ -709,14 +709,6 @@ acfd_nlambda:
   default: 21
   comment: Specifies the number of Gauss-Legendre quadrature points when integrating over the coupling constant from 0 to 1.
 
-alpha_hybrid_rpa:
-  family: post
-  datatype: real
-  mandatory: 'no'
-  experimental: 'no'
-  default: 0.0
-  comment: Only works for RPA and its variants when using Hartree-Fock orbitals and energies to evaluate one-shot double-hybrid expressions.                                     Sets the amount of exact-echange.
-
 ci_greens_function:
   family: post
   datatype: characters
