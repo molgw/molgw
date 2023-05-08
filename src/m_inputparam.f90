@@ -574,6 +574,7 @@ subroutine init_dft_type(key)
     dft_xc(2)%coeff = beta_hybrid
     dft_xc(3)%coeff = 1.00_dp - kappa_hybrid
     dft_xc(2)%gamma = gamma_hybrid
+    
   !
   ! Double Hybrid functionals (used with postscf='MP2' or 'RPA')
   case('PBE0-DH')
@@ -597,7 +598,7 @@ subroutine init_dft_type(key)
     if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.27_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
-  case('RSX-QIDH') ! They used beta = 1.0 - alpha in RSX-QIDH
+  case('RSX-QIDH','RSH-QIDH') ! They used beta = 1.0 - alpha in RSX-QIDH so that XC_GGA_X_PBE cancels. 
     dft_xc(1)%id = XC_GGA_X_HJS_PBE 
     dft_xc(2)%id = XC_GGA_C_PBE
     if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.693361274_dp
