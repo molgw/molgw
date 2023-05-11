@@ -290,8 +290,8 @@ MP2 Energy                ,   -0.0936138770    , 0 , 1.0e-7
 MP2 Total Energy          ,  -76.3666106951    , 0 , 1.0e-7
 
 h2o_rsxqidh.in            , RSX-QIDH double hybrid functional with RI
-MP2 Energy                ,   -0.0895680133    , 0 , 1.0e-7
-MP2 Total Energy          ,  -76.3694251627    , 0 , 1.0e-7
+MP2 Energy                ,   -0.0896689601    , 0 , 1.0e-7
+MP2 Total Energy          ,  -76.3286588826    , 0 , 1.0e-7
 
 h2o_pbe0_dh.in            , PBE0-DH double hybrid functional with RI
 MP2 Energy                ,   -0.0377521092    , 0 , 1.0e-7
