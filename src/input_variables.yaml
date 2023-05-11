@@ -808,14 +808,6 @@ gwgamma_tddft:
   comment: EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the
     ground-state calculation.
 
-kappa_hybrid_rpa:
-  family: post
-  datatype: real
-  mandatory: 'no'
-  experimental: 'no'
-  default: 0.0
-  comment: Only works for RPA and its variants when using Hartree-Fock orbitals and energies to evaluate one-shot double-hybrid expressions.                                     Sets the amount of Ec^RPA correlation.
-
 ncoreg:
   family: post
   datatype: integer
