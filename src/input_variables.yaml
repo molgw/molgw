@@ -1288,7 +1288,7 @@ alpha_hybrid:
   mandatory: 'no'
   experimental: 'no'
   default: 0.0
-  comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount
+  comment: Only works for Range-Separated hybrid functionals scf='rsh' and double hybrids. Sets the amount
     of range-independent exact-exchange
 
 alpha_mixing:
@@ -1360,7 +1360,7 @@ kappa_hybrid:
   experimental: 'no'
   default: 0.0
   comment: Works for scf='rsh', 'pbe-qidh', and 'b2plyp'. Sets the amount
-    of Ec^X (X=MP2 or RPA) correlation in double-hybrid DFT functionals.
+    of Ec^MP2 correlation in double-hybrid DFT functionals.
 
 grid_quality:
   family: scf

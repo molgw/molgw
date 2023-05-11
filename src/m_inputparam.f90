@@ -342,12 +342,6 @@ subroutine init_calculation_type(scf,postscf)
     calc_type%selfenergy_approx    = COHSEX
     calc_type%selfenergy_technique = QS
     alpha_hybrid            = 1.00_dp
-  case('QSGW-DH')
-    calc_type%is_gw         = .TRUE.
-    calc_type%is_dft        = .TRUE.
-    calc_type%selfenergy_approx    = GW
-    calc_type%selfenergy_technique = QS
-    call init_dft_type(scf)
   case default
     !
     ! If the calculation type is none of the above, let's assume it is DFT-type
@@ -416,12 +410,7 @@ subroutine init_dft_type(key)
 
   !
   ! Prepare the object dft_xc
-  select case(TRIM(key))
-    case('QSGW-DH')
-      allocate(dft_xc(5))
-    case default
-      allocate(dft_xc(3))
-  end select
+  allocate(dft_xc(3))
   dft_xc(:)%nspin = nspin
   ! default is one, otherwise it is modified later
   dft_xc(:)%coeff = 1.0_dp
@@ -553,16 +542,16 @@ subroutine init_dft_type(key)
     dft_xc(1)%id  = XC_HYB_GGA_XC_HJS_PBE
     alpha_hybrid  = 0.25_dp
     beta_hybrid   = -alpha_hybrid
-    gamma_hybrid    = 0.11_dp
+    gamma_hybrid  = 0.11_dp
   case('CAM-B3LYP')
     dft_xc(1)%id  = XC_HYB_GGA_XC_CAM_B3LYP
-    alpha_hybrid  =  0.19_dp
-    beta_hybrid   =  0.46_dp
+    alpha_hybrid  = 0.19_dp
+    beta_hybrid   = 0.46_dp
     gamma_hybrid  = 0.33_dp
   case('TUNED-CAM-B3LYP')
     dft_xc(1)%id  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
-    alpha_hybrid  =  0.0799_dp
-    beta_hybrid   =  0.9201_dp
+    alpha_hybrid  = 0.0799_dp
+    beta_hybrid   = 0.9201_dp
     gamma_hybrid  = 0.150_dp
     dft_xc(2)%gamma = gamma_hybrid
   case('RSHX')
@@ -585,43 +574,50 @@ subroutine init_dft_type(key)
     dft_xc(2)%coeff = beta_hybrid
     dft_xc(3)%coeff = 1.00_dp - kappa_hybrid
     dft_xc(2)%gamma = gamma_hybrid
+    
   !
   ! Double Hybrid functionals (used with postscf='MP2' or 'RPA')
   case('PBE0-DH')
+    if( abs(alpha_hybrid) < tol8 ) alpha_hybrid=0.5_dp
+    if( abs(kappa_hybrid) < tol8 ) kappa_hybrid=0.125_dp
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_C_PBE
-    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.5_dp
-    if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.125_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
   case('PBE-QIDH')
+    if( abs(alpha_hybrid) < tol8 ) alpha_hybrid=0.693361274_dp
+    if( abs(kappa_hybrid) < tol8 ) kappa_hybrid=0.333333333_dp
     dft_xc(1)%id = XC_GGA_X_PBE
     dft_xc(2)%id = XC_GGA_C_PBE
-    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.693361274_dp
-    if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.333333333_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
   case('B2PLYP')
+    if( abs(alpha_hybrid) < tol8 ) alpha_hybrid=0.53_dp
+    if( abs(kappa_hybrid) < tol8 ) kappa_hybrid=0.27_dp
     dft_xc(1)%id = XC_GGA_X_B88
     dft_xc(2)%id = XC_GGA_C_LYP
-    if( alpha_hybrid == 0.00_dp ) alpha_hybrid=0.53_dp
-    if( kappa_hybrid == 0.00_dp ) kappa_hybrid=0.27_dp
     dft_xc(1)%coeff = 1.00_dp - alpha_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
-  !
-  ! QSGW Double Hybrid functional (MRM: WIP)
-  case('QSGW-DH')
-    dft_xc(1)%id = XC_GGA_X_PBE
-    dft_xc(2)%id = XC_GGA_X_HJS_PBE
-    dft_xc(3)%id = XC_GGA_C_PBE
-    dft_xc(4)%id = XC_LDA_C_PW
-    dft_xc(5)%id = XC_LDA_C_PW_RPA
-    dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
-    dft_xc(2)%coeff = beta_hybrid
-    dft_xc(3)%coeff = 1.00_dp - kappa_hybrid
-    dft_xc(4)%coeff = kappa_hybrid
-    dft_xc(5)%coeff = - kappa_hybrid
-    dft_xc(2)%gamma = gamma_hybrid
+  case('RSX-QIDH') ! Using beta = 1.0 - alpha in RSX-QIDH. 
+    if( abs(alpha_hybrid) < tol8 ) alpha_hybrid=0.693361274_dp
+    if( abs(kappa_hybrid) < tol8 ) kappa_hybrid=0.333333333_dp
+    if( abs( gamma_hybrid - 1000000.0_dp) < tol8 ) gamma_hybrid=0.27_dp
+    beta_hybrid  = 1.00_dp - alpha_hybrid
+    dft_xc(1)%id = XC_GGA_X_ITYH_PBE 
+    dft_xc(2)%id = XC_GGA_C_PBE
+    dft_xc(1)%coeff = beta_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
+    dft_xc(1)%gamma = gamma_hybrid
+  case('RSH-QIDH') ! Forcing beta = 1.0 - alpha in RSH (and XC_GGA_X_PBE cancels). 
+    if( abs(alpha_hybrid) < tol8 ) alpha_hybrid=0.693361274_dp
+    if( abs(kappa_hybrid) < tol8 ) kappa_hybrid=0.333333333_dp
+    if( abs( gamma_hybrid - 1000000.0_dp) < tol8 ) gamma_hybrid=0.27_dp
+    beta_hybrid = 1.00_dp - alpha_hybrid
+    dft_xc(1)%id = XC_GGA_X_HJS_PBE 
+    dft_xc(2)%id = XC_GGA_C_PBE
+    dft_xc(1)%coeff = beta_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
+    dft_xc(1)%gamma = gamma_hybrid
 #endif
   case default
 

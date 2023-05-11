@@ -21,7 +21,7 @@ MOLGW implements the following schemes:
 - GGA (PBE, PW91, BLYP)
 - potential-only meta-GGA (BJ, RPP)
 - hybrid functionals (PBE0, B3LYP)
-- double-hybrid functionals (PBE0-DH, PBE-QIDH, and B2PLYP)
+- double-hybrid functionals (PBE0-DH, PBE-QIDH, B2PLYP, and RSX-QIDH)
 - screened hybrid functionals (HSE03, HSE06)
 - any user-developped range-separated hybrid based on wPBEH
 
@@ -138,4 +138,3 @@ The code should compile properly in parallel with "make -j".
 - Xixi Qi
 - Young-Moo Byun
 - Meiyue Shao
-
