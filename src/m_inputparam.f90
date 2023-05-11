@@ -603,10 +603,10 @@ subroutine init_dft_type(key)
     beta_hybrid  = 1.00_dp - alpha_hybrid
     kappa_hybrid = 0.333333333_dp
     gamma_hybrid = 0.27_dp
-    dft_xc(1)%id = XC_HYB_GGA_XC_LC_PBEOP
+    dft_xc(1)%id = XC_GGA_X_ITYH_PBE 
     dft_xc(2)%id = XC_GGA_C_PBE
     dft_xc(1)%coeff = beta_hybrid
-    dft_xc(2)%coeff = ( 1.00_dp - kappa_hybrid ) - beta_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
     dft_xc(1)%gamma = gamma_hybrid
   case('RSH-QIDH') ! Forcing beta = 1.0 - alpha in RSH (and XC_GGA_X_PBE cancels). 
     dft_xc(1)%id = XC_GGA_X_HJS_PBE 
