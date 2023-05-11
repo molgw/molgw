@@ -3,6 +3,24 @@
 -----------------------------------------
 
 ----------------------------------------
+## What's new in version 3.2
+### Overview
+- Double-hybrid functionals
+
+### Contributors
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+- Mauricio Rodriguez-Mayorga (Universitat d'Alacant, Alicante, Spain)
+
+### Changes affecting the usage
+
+### Changes affecting the compilation
+- Makefile has been standardized to help spack packaging
+- `HAVE_MPI` automatically implies  `HAVE_SCALAPACK` and vice-versa
+
+### Changes affecting the developers
+
+
+----------------------------------------
 ## What's new in version 3.1
 ### Overview
 - Simplified compilation

@@ -1,10 +1,11 @@
 # This file is part of MOLGW
 # Author: Fabien Bruneval
 
--include ./src/my_machine.arch
 -include ./my_machine.arch
+-include ./src/my_machine.arch
 
 PREFIX?=.
+PYTHON ?= python3
 
 .PHONY: test clean archive tarball archive install
 
@@ -12,7 +13,7 @@ molgw:
 	cd src && $(MAKE)
 
 test:
-	cd tests && python3 ./run_testsuite.py
+	cd tests && $(PYTHON) ./run_testsuite.py
 
 clean:
 	cd src && $(MAKE) clean

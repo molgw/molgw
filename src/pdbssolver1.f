@@ -8,6 +8,7 @@
 !  (-B -A )
 !
 !=========================================================================
+#include "molgw.h"
 #if defined(HAVE_SCALAPACK)
       SUBROUTINE PDBSSOLVER1( FLAVOR,
      $                        N, M, IM, JM, DESCM, K, IK, JK, DESCK,
