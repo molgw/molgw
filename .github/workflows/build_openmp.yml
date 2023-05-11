@@ -41,7 +41,7 @@ jobs:
         run: |
           echo "LIBCINT=../libcint-5.2.2/build/libcint.a" > my_machine.arch
           echo "OPENMP=-fopenmp" >> my_machine.arch
-          echo "FCFLAGS=-O0" >> my_machine.arch
+          echo "FCFLAGS=-cpp -O0" >> my_machine.arch
           make -j 4
 
       #- name: Run the test suite

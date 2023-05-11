@@ -8,9 +8,9 @@ endif
 -include ./my_machine.arch
 
 PYTHON ?= python3
-FCFLAGS ?= -O2
+FCFLAGS ?= -O2 -cpp
 CXXFLAGS ?=-O2
-CPPFLAGS ?=-cpp
+CPPFLAGS ?=
 LAPACK ?=-lblas -llapack
 LIBCINT ?=-lcint
 #SCALAPACK=

@@ -42,7 +42,8 @@ jobs:
           echo "LIBCINT=../libcint-5.2.2/build/libcint.a" > my_machine.arch
           echo "FC=mpifort" >> my_machine.arch
           echo "SCALAPACK=-lscalapack-openmpi" >> my_machine.arch
-          echo "FCFLAGS=-O1 -DHAVE_MPI -DHAVE_SCALAPACK" >> my_machine.arch
+          echo "FCFLAGS=-cpp -O1" >> my_machine.arch
+          echo "CPPFLAGS=-DHAVE_MPI -DHAVE_SCALAPACK" >> my_machine.arch
           make -j 4
 
       #- name: Run the test suite
