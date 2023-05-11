@@ -35,8 +35,7 @@ contains
 
 
 !=========================================================================
-subroutine scf_loop(nscf_in,&
-                    is_restart,&
+subroutine scf_loop(is_restart,&
                     basis,&
                     x_matrix,s_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
@@ -47,7 +46,6 @@ subroutine scf_loop(nscf_in,&
  implicit none
 
 !=====
- integer,intent(in)                 :: nscf_in
  logical,intent(in)                 :: is_restart
  type(basis_set),intent(inout)      :: basis
  real(dp),intent(in)                :: x_matrix(:,:)
@@ -107,7 +105,7 @@ subroutine scf_loop(nscf_in,&
  !
  ! Start the big scf loop
  !
- do iscf=1,nscf_in
+ do iscf=1,nscf
    write(stdout,'(/,1x,a)') '-------------------------------------------'
    write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
