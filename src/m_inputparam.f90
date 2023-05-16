@@ -543,6 +543,15 @@ subroutine init_dft_type(key)
     alpha_hybrid  = 0.25_dp
     beta_hybrid   = -alpha_hybrid
     gamma_hybrid  = 0.11_dp
+  case('LC-BLYP')
+    dft_xc(1)%id  =  XC_GGA_X_ITYH
+    dft_xc(2)%id  =  XC_GGA_C_LYP
+    if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=0.47_dp
+    alpha_hybrid  = 0.00_dp
+    beta_hybrid   = 1.00_dp
+    dft_xc(1)%coeff = 1.00_dp
+    dft_xc(2)%coeff = 1.00_dp
+    dft_xc(1)%gamma = gamma_hybrid
   case('CAM-B3LYP')
     dft_xc(1)%id  = XC_HYB_GGA_XC_CAM_B3LYP
     alpha_hybrid  = 0.19_dp
@@ -601,7 +610,7 @@ subroutine init_dft_type(key)
   case('RSX-QIDH') ! Using beta = 1.0 - alpha in RSX-QIDH. 
     if( abs(alpha_hybrid) < tol8 ) alpha_hybrid=0.693361274_dp
     if( abs(kappa_hybrid) < tol8 ) kappa_hybrid=0.333333333_dp
-    if( abs( gamma_hybrid - 1000000.0_dp) < tol8 ) gamma_hybrid=0.27_dp
+    if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=0.27_dp
     beta_hybrid  = 1.00_dp - alpha_hybrid
     dft_xc(1)%id = XC_GGA_X_ITYH_PBE 
     dft_xc(2)%id = XC_GGA_C_PBE
@@ -611,7 +620,7 @@ subroutine init_dft_type(key)
   case('RSH-QIDH') ! Forcing beta = 1.0 - alpha in RSH (and XC_GGA_X_PBE cancels). 
     if( abs(alpha_hybrid) < tol8 ) alpha_hybrid=0.693361274_dp
     if( abs(kappa_hybrid) < tol8 ) kappa_hybrid=0.333333333_dp
-    if( abs( gamma_hybrid - 1000000.0_dp) < tol8 ) gamma_hybrid=0.27_dp
+    if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=0.27_dp
     beta_hybrid = 1.00_dp - alpha_hybrid
     dft_xc(1)%id = XC_GGA_X_HJS_PBE 
     dft_xc(2)%id = XC_GGA_C_PBE
