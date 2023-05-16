@@ -543,14 +543,15 @@ subroutine init_dft_type(key)
     alpha_hybrid  = 0.25_dp
     beta_hybrid   = -alpha_hybrid
     gamma_hybrid  = 0.11_dp
-  case('LC-BLYP')
+  case('LC-BLYP') ! Notice that is is built to be used also as a double-hybrid
     dft_xc(1)%id  =  XC_GGA_X_ITYH
     dft_xc(2)%id  =  XC_GGA_C_LYP
+    if( abs(kappa_hybrid) < tol8 ) kappa_hybrid=0.00_dp
     if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=0.47_dp
     alpha_hybrid  = 0.00_dp
     beta_hybrid   = 1.00_dp
     dft_xc(1)%coeff = 1.00_dp
-    dft_xc(2)%coeff = 1.00_dp
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
     dft_xc(1)%gamma = gamma_hybrid
   case('CAM-B3LYP')
     dft_xc(1)%id  = XC_HYB_GGA_XC_CAM_B3LYP
