@@ -5,7 +5,7 @@
 ----------------------------------------
 ## What's new in version 3.2
 ### Overview
-- Double-hybrid functionals
+- Double-hybrid functionals (and more range-sep hybs.)
 
 ### Contributors
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)

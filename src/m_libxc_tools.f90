@@ -295,6 +295,14 @@ subroutine init_libxc_info(dft_xc)
 #endif
      write(stdout,'(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ',dft_xc(ixc)%gamma
    endif
+   if( dft_xc(ixc)%id == XC_GGA_X_ITYH ) then
+#if (XC_MAJOR_VERSION > 4)
+     call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
+#else
+     call xc_gga_x_ityh_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
+#endif
+     write(stdout,'(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ',dft_xc(ixc)%gamma
+   endif
 
  enddo
 
