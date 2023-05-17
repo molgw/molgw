@@ -21,6 +21,7 @@ import os, sys, subprocess
 import difflib
 import json
 import copy
+import pathlib
 from yaml import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -40,7 +41,7 @@ periodic_table = [ 'H',                                                         
                    'Th', 'Pa',  'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', \
                    'Fr', 'Ra', 'Ac', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt' ]
 
-path = __file__.split("/utils")[0]
+path = str(pathlib.Path(__file__).resolve().parent.parent)
 exe  = path + "/molgw"
 
 #class mgwi:

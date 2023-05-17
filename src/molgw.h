@@ -27,7 +27,7 @@
 ! Enforce that HAVE_MPI and HAVE_SCALAPACK are both defined when a single one is defined
 */
 #if defined(HAVE_MPI)
-#if !defined(HAVE_SCALAPACAK)
+#if !defined(HAVE_SCALAPACK)
 #define HAVE_SCALAPACK
 #endif
 #endif
