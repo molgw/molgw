@@ -6,7 +6,7 @@
 ###################################
 
 
-import sys, os, time, shutil, subprocess
+import sys, os, time, shutil, subprocess, pathlib
 
 today=time.strftime("%d")+' '+time.strftime("%B")+' '+time.strftime("%Y")
 
@@ -18,7 +18,7 @@ today=time.strftime("%d")+' '+time.strftime("%B")+' '+time.strftime("%Y")
 ###################################
 
 # Get the location of the ~molgw root
-basis_path = __file__.split("/src")[0]
+basis_path = str(pathlib.Path(__file__).resolve().parent.parent)
 
 # If an installation path is given in environment variable PREFIX, then override basis_path
 basis_path = os.getenv('PREFIX',basis_path)
