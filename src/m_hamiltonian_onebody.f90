@@ -1567,6 +1567,7 @@ subroutine setup_giao_rxp_ao(basis,giao_rxp_ao)
 end subroutine setup_giao_rxp_ao
 
 
+! MRM: Notice that we add the Nuclei-Electric Field interaction energy to nuc_nuc
 !=========================================================================
 subroutine setup_electric_field(basis,hext,energy)
   implicit none

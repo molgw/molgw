@@ -293,6 +293,7 @@ program molgw
     call setup_nucleus(basis,hamiltonian_nucleus)
 
     !
+    ! MRM: Notice that we add the Nuclei-Electric Field interaction energy to nuc_nuc
     ! External electric field
     call setup_electric_field(basis,hamiltonian_nucleus,en_gks%nuc_nuc)
 
