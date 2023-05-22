@@ -294,7 +294,7 @@ program molgw
 
     !
     ! External electric field
-    call setup_electric_field(basis,hamiltonian_nucleus)
+    call setup_electric_field(basis,hamiltonian_nucleus,en_gks%nuc_nuc)
 
     !
     ! Testing the quadrature in Fourier space
