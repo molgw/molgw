@@ -18,7 +18,7 @@
 - `HAVE_MPI` automatically implies  `HAVE_SCALAPACK` and vice-versa
 
 ### Changes affecting the developers
-
+- The Nucleus-Nucleus interaction may also contain the Nuclei-Electric Field interaction.
 
 ----------------------------------------
 ## What's new in version 3.1

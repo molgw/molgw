@@ -1,0 +1,17 @@
+&molgw
+ scf='pbe0'
+ tolscf=1.0e-10
+ electric_field_z=0.001
+
+ basis='cc-pVDZ_gaussian'
+ auxil_basis='cc-pVDZ-RI'
+ gaussian_type='CART'
+
+ frozencore='yes'
+ postscf='RPA_IM'
+ nomega_chi_imag=40
+
+ natom = 2
+/
+8           .000000     .000000     .493003
+6           .000000     .000000    -.657337

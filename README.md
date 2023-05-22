@@ -37,6 +37,7 @@ MOLGW implements the following schemes:
 - Bethe-Salpeter equation
 - real-time TDDFT
 - HF/DFT+NOFT (MULLER, CGA, CA, GU, POWER, PNOF5, PNOF7, and GNOF)
+- Molecules subject to external finite electric fields
 
 The Python3 module `molgw.py` is available for automation.
 
