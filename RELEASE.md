@@ -6,19 +6,24 @@
 ## What's new in version 3.2
 ### Overview
 - Double-hybrid functionals (and more range-sep hybs.)
+- Finite electric field with `electric_field_x`, `electric_field_y`, `electric_field_z`
+- More standard compilation variables
 
 ### Contributors
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
 - Mauricio Rodriguez-Mayorga (Universitat d'Alacant, Alicante, Spain)
 
 ### Changes affecting the usage
+- `electric_field_x`, `electric_field_y`, `electric_field_z` trigger a finite external electric field
+- `PBEsol` functional available
 
 ### Changes affecting the compilation
 - Makefile has been standardized to help spack packaging
 - `HAVE_MPI` automatically implies  `HAVE_SCALAPACK` and vice-versa
 
 ### Changes affecting the developers
-- The Nucleus-Nucleus interaction may also contain the Nuclei-Electric Field interaction.
+- Nucleus-nucleus and nucleus-electron energies also contain the interaction with the external electric field interaction if any
+
 
 ----------------------------------------
 ## What's new in version 3.1

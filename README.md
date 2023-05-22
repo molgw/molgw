@@ -24,7 +24,6 @@ MOLGW implements the following schemes:
 - double-hybrid functionals (PBE0-DH, PBE-QIDH, B2PLYP, and RSX-QIDH)
 - screened hybrid functionals (HSE03, HSE06, CAM-B3LYP, and LC-BLYP)
 - any user-developped range-separated hybrid based on wPBEH
-
 - GW@HF or GW@DFT
 - GW/PT2 density-matrix
 - QSGW
