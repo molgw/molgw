@@ -454,7 +454,7 @@ subroutine init_dft_type(key)
     dft_xc(1)%id    = XC_GGA_X_PBE
     dft_xc(2)%id    = XC_GGA_C_PBE
     alpha_hybrid    = 0.00_dp
-  case('PBE_SOL')
+  case('PBE_SOL','PBESOL')
     dft_xc(1)%id    = XC_GGA_X_PBE_SOL
     dft_xc(2)%id    = XC_GGA_C_PBE_SOL
     alpha_hybrid    = 0.00_dp

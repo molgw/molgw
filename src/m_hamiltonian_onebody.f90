@@ -1567,17 +1567,17 @@ subroutine setup_giao_rxp_ao(basis,giao_rxp_ao)
 end subroutine setup_giao_rxp_ao
 
 
-! MRM: Notice that we add the Nuclei-Electric Field interaction energy to nuc_nuc
 !=========================================================================
-subroutine setup_electric_field(basis,hext,energy)
+! Calculate the Hamiltonian and the energy contributions induced by an external electric field
+subroutine setup_electric_field(basis,hext,eext)
   implicit none
   type(basis_set),intent(in)         :: basis
-  real(dp),intent(inout)             :: energy
+  real(dp),intent(out)               :: eext
   real(dp),allocatable,intent(inout) :: hext(:,:)
   !=====
   integer                            :: icenter
-  real(dp)                           :: Efield(3)
-  real(dp),allocatable :: dipole_ao(:,:,:)
+  real(dp)                           :: efield(3)
+  real(dp),allocatable               :: dipole_ao(:,:,:)
   !=====
 
   if( ABS(electric_field_x) < 1.0e-6_dp  &
@@ -1592,9 +1592,12 @@ subroutine setup_electric_field(basis,hext,energy)
 
   deallocate(dipole_ao)
 
-  Efield(1)=electric_field_x;Efield(2)=electric_field_y;Efield(3)=electric_field_z;
+  efield(1) = electric_field_x
+  efield(2) = electric_field_y
+  efield(3) = electric_field_z
+  eext = 0.0_dp
   do icenter=1,ncenter_nuclei
-    energy = energy - zvalence(icenter) * SUM( xatom(:,icenter) * Efield(:) )
+    eext = eext - zvalence(icenter) * SUM( xatom(:,icenter) * Efield(:) )
   enddo
 
 end subroutine setup_electric_field

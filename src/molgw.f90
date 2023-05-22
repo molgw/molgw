@@ -75,7 +75,7 @@ program molgw
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
-  real(dp)                :: erpa_tmp,egw_tmp
+  real(dp)                :: erpa_tmp,egw_tmp,eext
   real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
   real(dp),allocatable    :: hamiltonian_nucleus(:,:)
@@ -293,9 +293,10 @@ program molgw
     call setup_nucleus(basis,hamiltonian_nucleus)
 
     !
-    ! MRM: Notice that we add the Nuclei-Electric Field interaction energy to nuc_nuc
     ! External electric field
-    call setup_electric_field(basis,hamiltonian_nucleus,en_gks%nuc_nuc)
+    call setup_electric_field(basis,hamiltonian_nucleus,eext)
+    ! MRM: Notice that we add the Nuclei-Electric Field interaction energy to nuc_nuc
+    en_gks%nuc_nuc = en_gks%nuc_nuc + eext
 
     !
     ! Testing the quadrature in Fourier space

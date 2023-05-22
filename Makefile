@@ -9,7 +9,7 @@ PYTHON ?= python3
 
 .PHONY: test clean archive tarball archive install
 
-molgw:
+molgw: $(wildcard src/*.f90) $(wildcard src/*.yaml) $(wildcard src/*.py) $(wildcard src/noft/*.F90)
 	cd src && $(MAKE)
 
 test:
