@@ -161,6 +161,9 @@ subroutine header()
  call xc_version(libxc_version(1),libxc_version(2),libxc_version(3))
  write(chartmp,'(i2,a,i2,a,i2)') libxc_version(1),'.',libxc_version(2),'.',libxc_version(3)
  write(stdout,'(5x,a,a)') 'LIBXC version: ',TRIM(chartmp)
+ if( libxc_version(1) < 5 ) then
+   call die('Code compiled with a too old version of LIBXC. Please update to version 5 or newer')
+ endif
 #else
  write(stdout,*) 'Running without LIBXC'
  write(stdout,*) 'Hartree-Fock-only code'

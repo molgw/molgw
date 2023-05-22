@@ -114,7 +114,6 @@ module m_libxc_tools
      integer(C_INT)            :: xc_func_info_get_flags
    end function xc_func_info_get_flags
 
-#if (XC_MAJOR_VERSION > 4)
    subroutine xc_func_set_ext_params_name(func,name,param) BIND(C)
      import :: C_PTR,C_DOUBLE,C_CHAR
      implicit none
@@ -122,21 +121,6 @@ module m_libxc_tools
      character(kind=C_CHAR)    :: name
      real(C_DOUBLE),value      :: param
    end subroutine xc_func_set_ext_params_name
-#else
-   subroutine xc_gga_x_hjs_set_params(func,omega) BIND(C)
-     import :: C_PTR,C_DOUBLE
-     implicit none
-     type(C_PTR),intent(inout) :: func
-     real(C_DOUBLE),value      :: omega
-   end subroutine xc_gga_x_hjs_set_params
-
-   subroutine xc_gga_x_wpbeh_set_params(func,omega) BIND(C)
-     import :: C_PTR,C_DOUBLE
-     implicit none
-     type(C_PTR),intent(inout) :: func
-     real(C_DOUBLE),value      :: omega
-   end subroutine xc_gga_x_wpbeh_set_params
-#endif
 
    subroutine xc_lda_exc(func,np,rho,exc) BIND(C)
      import :: C_PTR,C_INT,C_DOUBLE
@@ -272,35 +256,19 @@ subroutine init_libxc_info(dft_xc)
    !
    ! Tune the range for range separated hybrids
    if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE .or. dft_xc(ixc)%id == XC_GGA_X_HJS_B88 ) then 
-#if (XC_MAJOR_VERSION > 4)
      call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
-#else
-     call xc_gga_x_hjs_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
-#endif
      write(stdout,'(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ',dft_xc(ixc)%gamma
    endif
    if( dft_xc(ixc)%id == XC_GGA_X_WPBEH ) then
-#if (XC_MAJOR_VERSION > 4)
      call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
-#else
-     call xc_gga_x_wpbeh_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
-#endif
      write(stdout,'(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ',dft_xc(ixc)%gamma
    endif
    if( dft_xc(ixc)%id == XC_GGA_X_ITYH_PBE ) then
-#if (XC_MAJOR_VERSION > 4)
      call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
-#else
-     call xc_gga_x_ityh_pbe_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
-#endif
      write(stdout,'(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ',dft_xc(ixc)%gamma
    endif
    if( dft_xc(ixc)%id == XC_GGA_X_ITYH ) then
-#if (XC_MAJOR_VERSION > 4)
      call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
-#else
-     call xc_gga_x_ityh_set_params(dft_xc(ixc)%func,dft_xc(ixc)%gamma)
-#endif
      write(stdout,'(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ',dft_xc(ixc)%gamma
    endif
 

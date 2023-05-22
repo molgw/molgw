@@ -18,6 +18,7 @@
 - `PBEsol` functional available
 
 ### Changes affecting the compilation
+- LIBXC should be version 5 or newer
 - Makefile has been standardized to help spack packaging
 - `HAVE_MPI` automatically implies  `HAVE_SCALAPACK` and vice-versa
 
