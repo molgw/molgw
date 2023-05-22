@@ -1567,12 +1567,16 @@ subroutine setup_giao_rxp_ao(basis,giao_rxp_ao)
 end subroutine setup_giao_rxp_ao
 
 
+! MRM: Notice that we add the Nuclei-Electric Field interaction energy to nuc_nuc
 !=========================================================================
-subroutine setup_electric_field(basis,hext)
+subroutine setup_electric_field(basis,hext,energy)
   implicit none
   type(basis_set),intent(in)         :: basis
+  real(dp),intent(inout)             :: energy
   real(dp),allocatable,intent(inout) :: hext(:,:)
   !=====
+  integer                            :: icenter
+  real(dp)                           :: Efield(3)
   real(dp),allocatable :: dipole_ao(:,:,:)
   !=====
 
@@ -1587,6 +1591,11 @@ subroutine setup_electric_field(basis,hext)
                         + electric_field_z * dipole_ao(:,:,3)
 
   deallocate(dipole_ao)
+
+  Efield(1)=electric_field_x;Efield(2)=electric_field_y;Efield(3)=electric_field_z;
+  do icenter=1,ncenter_nuclei
+    energy = energy - zvalence(icenter) * SUM( xatom(:,icenter) * Efield(:) )
+  enddo
 
 end subroutine setup_electric_field
 

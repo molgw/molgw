@@ -852,6 +852,11 @@ sih4_g0w0@sc-cohsex.in    , G0W0 for SiH4 based on the previous sc-COHSEX run, r
 GW HOMO energy            ,    -12.855076       , 0 , 1.0e-4
 GW LUMO energy            ,      4.073908       , 0 , 1.0e-4
 
+co_efield_rpa.in          , RPA using imag. freqs. (and RI) including an electric field
+Nucleus-Nucleus           ,     22.0808683692   , 0 , 1.0e-7
+SCF Total Energy          ,   -113.1971652965   , 0 , 1.0e-7
+RPA Total Energy          ,   -113.1376200065   , 0 , 1.0e-7
+
 co_gw_dm.in               , G0W0 based on G0W0 density matrix
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
 Kinetic Energy            ,    112.6578090099   , 0 , 1.0e-7
