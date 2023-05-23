@@ -455,12 +455,12 @@ subroutine setup_rhocore_grid()
  !=====
 
  if( .NOT. ALLOCATED(ecp) ) return
+ need_rhocore = .FALSE.
 
  !
- ! Set up rhocore for non-linear core correction from the pseudopotential
+ ! Set up rhocore for non-linear core correction from the pseudopotential in PSP6 or PSP8 format
  !
  if( ANY(ecp(:)%ecp_format==ECP_PSP6) .OR. ANY(ecp(:)%ecp_format==ECP_PSP8) ) then
-   need_rhocore = .FALSE.
    do ie=1,nelement_ecp
      need_rhocore = need_rhocore .OR. ALLOCATED(ecp(ie)%rhocore)
    enddo

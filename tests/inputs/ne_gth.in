@@ -4,6 +4,7 @@
  ecp_basis='DZVP_cp2k'
  auxil_basis='AUTO'
 
+ npulay_hist=3
  ecp_elements='Ne'
  ecp_type='blyp.gth'
 

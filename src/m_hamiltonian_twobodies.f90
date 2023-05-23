@@ -1301,11 +1301,11 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
 #endif
 
  if(.not.calc_type%is_noft) then ! MRM mutted only for NOFT
-   write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+   write(stdout,'(/,a28,2(2x,f12.6))') ' Number of electrons:',normalization(:)
    if(ALLOCATED(rhocore)) then
-     write(stdout,'(a28,2(2x,f12.6))') ' Number of core electrons:',normalization_core
+     write(stdout,'(a28,2(2x,f12.6))') ' Number of core electrons for NLCC:',normalization_core
    endif
-   write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
+   write(stdout,'(a28,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
  endif
 
  call stop_clock(timing_xxdft_xc)
