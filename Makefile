@@ -4,7 +4,7 @@
 -include ./my_machine.arch
 -include ./src/my_machine.arch
 
-PREFIX?=.
+PREFIX ?=
 PYTHON ?= python3
 
 .PHONY: test clean archive tarball archive install
@@ -28,6 +28,8 @@ install: molgw
 	mkdir -p $(PREFIX)/bin
 	cp -u molgw $(PREFIX)/bin/molgw
 	cp -rp basis $(PREFIX)/basis
+	mkdir -p $(PREFIX)/utils
+	cp -rp utils/*.py $(PREFIX)/utils
 
 #uninstall:
 #	$(RM) -r $(PREFIX)

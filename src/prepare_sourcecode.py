@@ -17,11 +17,12 @@ today=time.strftime("%d")+' '+time.strftime("%B")+' '+time.strftime("%Y")
 #
 ###################################
 
-# Get the location of the ~molgw root
-basis_path = str(pathlib.Path(__file__).resolve().parent.parent)
+# Get the location of the ~molgw root or the destination folder contained in PREFIX
+if len(sys.argv) > 1:
+    basis_path = sys.argv[-1]
+else:
+    basis_path = str(pathlib.Path(__file__).resolve().parent.parent)
 
-# If an installation path is given in environment variable PREFIX, then override basis_path
-basis_path = os.getenv('PREFIX',basis_path)
 basis_path = basis_path + '/basis/'
 
 # Write first in a tmp file that will be moved later

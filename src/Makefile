@@ -7,6 +7,7 @@ endif
 -include ../my_machine.arch
 -include ./my_machine.arch
 
+PREFIX ?=
 PYTHON ?= python3
 FCFLAGS ?= -O2 -cpp
 CXXFLAGS ?=-O2
@@ -510,7 +511,7 @@ prepare_sourcecode:
 	chmod 777 ./noft/gitversion.sh
 	./noft/gitversion.sh > /dev/null
 	mv gitver.F90 ./noft 
-	$(PYTHON) prepare_sourcecode.py
+	$(PYTHON) prepare_sourcecode.py $(PREFIX)
 
 input:
 	$(PYTHON) ../utils/input_variables.py
