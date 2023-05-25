@@ -328,7 +328,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
   write(stdout,'(/,a)') ' Setup gradient of the overlap matrix S (LIBINT)'
 #else
-      call die('setup_overlap_grad: overlap gradient not implemented without LIBINT or LIBCINT one-body gradient terms')
+  call die('setup_overlap_grad: overlap gradient not implemented without LIBINT or LIBCINT one-body gradient terms')
 #endif
 
   do jshell=1,basis%nshell
@@ -736,7 +736,7 @@ end subroutine setup_kinetic
 
 !=========================================================================
 subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
- implicit none
+  implicit none
 
   type(basis_set),intent(in) :: basis_t,basis_p
   real(dp),intent(inout)     :: hamiltonian_kinetic(:,:)
@@ -2071,10 +2071,10 @@ subroutine setup_nucleus_ecp_quadrature(basis,hamiltonian_nucleus)
 
       select case(ecp(ie)%ecp_format)
       case(ECP_PSP6,ECP_PSP8)
-         vr(:) = ecp(ie)%vpspll(iradial,:)
-         if( ALLOCATED(ur) ) then
-           ur(:) = ecp(ie)%wfll(iradial,:)
-         endif
+        vr(:) = ecp(ie)%vpspll(iradial,:)
+        if( ALLOCATED(ur) ) then
+          ur(:) = ecp(ie)%wfll(iradial,:)
+        endif
         ! remove the Coulomb part for the local part: it is treated in the regular routine setup_nucleus
         do iecp=1,necp
           if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component

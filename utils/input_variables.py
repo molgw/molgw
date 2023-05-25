@@ -120,7 +120,7 @@ ffor = open('../src/input_variables.f90','w')
 
 ffor.write(header)
 
-ffor.write(' namelist /molgw/   &\n')
+ffor.write('  namelist /molgw/   &\n')
 for i,key in enumerate(input_var_dict.keys()):
   if i < len(input_var_dict.keys())-1:
     ffor.write('    '+key+',       &\n')

@@ -11,7 +11,6 @@ module m_mpi_tools
   use m_definitions
   use m_warning,only: die
 #if defined(HAVE_MPI)
-!!!#include<mpif.h>
   use mpi
 #endif
 
@@ -89,7 +88,7 @@ subroutine mpic_barrier(mpic)
   !=====
 
 #if defined(HAVE_MPI)
- call MPI_BARRIER(mpic%comm,ierror)
+  call MPI_BARRIER(mpic%comm,ierror)
 #endif
 
 end subroutine mpic_barrier
