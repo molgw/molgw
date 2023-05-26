@@ -126,7 +126,7 @@ subroutine calculate_eri_4center_eigen(c_matrix,istate,ijspin,eri_eigenstate_i)
   real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
   integer(kind=int8)   :: iint
   integer              :: index_ij,index_kl,stride
- !=====
+  !=====
 
   nbf    = SIZE(c_matrix,DIM=1)
   nstate = SIZE(c_matrix,DIM=2)
@@ -405,7 +405,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   else
     call start_clock(timing_eri_3center_eigen)
   endif
-  
+
   if(PRESENT(verbose)) then
     if(verbose) then
       write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
@@ -506,7 +506,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
     if(PRESENT(long_range)) then
       do iauxil=1,nauxil_3center_lr
         if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
-      
+
         tmp1(:,:) = 0.0_dp
         !$OMP PARALLEL PRIVATE(kbf,lbf)
         !$OMP DO REDUCTION(+:tmp1)
@@ -518,17 +518,17 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
         enddo
         !$OMP END DO
         !$OMP END PARALLEL
-      
+
         ! Transformation of the second index
         call DGEMM('N','N',mstate_count_,nstate_count_,nbf, &
                    1.0d0,tmp1(mstate_min_,1),mstate_count_,   &
                          c_matrix(1,nstate_min_,klspin),nbf, &
                    0.0d0,tmp2(mstate_min_,nstate_min_),mstate_count_)
-      
+
         ! Transposition happens here!
         eri_3center_eigen_lr(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
                                     = tmp2(mstate_min_:mstate_max_,nstate_min_:nstate_max_)
-      
+
       enddo !iauxil_lr
     endif
 
@@ -578,7 +578,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
   else
     call start_clock(timing_eri_3center_eigen)
   endif
-  
+
   if(PRESENT(verbose)) then
     if(verbose) then
       write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
@@ -670,13 +670,13 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
   enddo !klspin
 
   if(PRESENT(verbose)) then
-   call clean_deallocate('TMP 3-center ints',tmp2_cmplx,verbose)
-   call clean_deallocate('TMP 3-center ints',c_t_cmplx,verbose)
-   call clean_deallocate('TMP 3-center ints',tmp1_cmplx,verbose)
+    call clean_deallocate('TMP 3-center ints',tmp2_cmplx,verbose)
+    call clean_deallocate('TMP 3-center ints',c_t_cmplx,verbose)
+    call clean_deallocate('TMP 3-center ints',tmp1_cmplx,verbose)
   else
-   call clean_deallocate('TMP 3-center ints',tmp2_cmplx)
-   call clean_deallocate('TMP 3-center ints',c_t_cmplx)
-   call clean_deallocate('TMP 3-center ints',tmp1_cmplx)
+    call clean_deallocate('TMP 3-center ints',tmp2_cmplx)
+    call clean_deallocate('TMP 3-center ints',c_t_cmplx)
+    call clean_deallocate('TMP 3-center ints',tmp1_cmplx)
   endif
   call ortho%sum(eri_3center_eigen_cmplx)
 
@@ -697,19 +697,19 @@ subroutine destroy_eri_3center_eigen(verbose,long_range)
   !=====
 
   if(PRESENT(verbose)) then
-   if(verbose) write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
-   call clean_deallocate('3-center MO integrals',eri_3center_eigen,verbose)
-   if(PRESENT(long_range)) then
-     if(verbose) write(stdout,'(/,a)') ' Destroy 3-center_lr integrals on eigenstates'
-     call clean_deallocate('3-center_lr MO integrals',eri_3center_eigen_lr,verbose)
-   endif
+    if(verbose) write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
+    call clean_deallocate('3-center MO integrals',eri_3center_eigen,verbose)
+    if(PRESENT(long_range)) then
+      if(verbose) write(stdout,'(/,a)') ' Destroy 3-center_lr integrals on eigenstates'
+      call clean_deallocate('3-center_lr MO integrals',eri_3center_eigen_lr,verbose)
+    endif
   else
-   write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
-   call clean_deallocate('3-center MO integrals',eri_3center_eigen)
-   if(PRESENT(long_range)) then
-     write(stdout,'(/,a)') ' Destroy 3-center_lr integrals on eigenstates'
-     call clean_deallocate('3-center_lr MO integrals',eri_3center_eigen_lr)
-   endif
+    write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
+    call clean_deallocate('3-center MO integrals',eri_3center_eigen)
+    if(PRESENT(long_range)) then
+      write(stdout,'(/,a)') ' Destroy 3-center_lr integrals on eigenstates'
+      call clean_deallocate('3-center_lr MO integrals',eri_3center_eigen_lr)
+    endif
   endif
 
 end subroutine destroy_eri_3center_eigen
@@ -734,104 +734,104 @@ end subroutine destroy_eri_3center_eigen_cmplx
 
 !=================================================================
 subroutine form_erimol(nbf,nstate_tot,nstate_jkl,c_matrix,c_matrix_cmplx,ERImol,ERImol_cmplx)
- implicit none
+  implicit none
 
- integer,intent(in)            :: nbf,nstate_tot,nstate_jkl
- real(dp),optional,intent(in)  :: c_matrix(nbf,nstate_tot,nspin)
- real(dp),optional,intent(out) :: ERImol(nstate_tot,nstate_jkl,nstate_jkl,nstate_jkl)
- complex(dp),optional,intent(in)  :: c_matrix_cmplx(nbf,nstate_tot,nspin)
- complex(dp),optional,intent(out) :: ERImol_cmplx(nstate_tot,nstate_jkl,nstate_jkl,nstate_jkl)
-!=====
- integer                 :: pstate,istate,jstate,kstate
- integer                 :: ibf,jbf,abf,bbf
- real(dp),allocatable    :: tmp_pxjx(:,:)
- real(dp),allocatable    :: tmp_pijx(:)
- real(dp),allocatable    :: tmp_pxxx(:,:,:)
- complex(dp),allocatable :: tmp_pxjx_cmplx(:,:)
- complex(dp),allocatable :: tmp_pijx_cmplx(:)
- complex(dp),allocatable :: tmp_pxxx_cmplx(:,:,:)
-!=====
-! Build <ij|kl> integrals
-!=====
- if(present(c_matrix_cmplx).and.present(ERImol_cmplx)) then
+  integer,intent(in)            :: nbf,nstate_tot,nstate_jkl
+  real(dp),optional,intent(in)  :: c_matrix(nbf,nstate_tot,nspin)
+  real(dp),optional,intent(out) :: ERImol(nstate_tot,nstate_jkl,nstate_jkl,nstate_jkl)
+  complex(dp),optional,intent(in)  :: c_matrix_cmplx(nbf,nstate_tot,nspin)
+  complex(dp),optional,intent(out) :: ERImol_cmplx(nstate_tot,nstate_jkl,nstate_jkl,nstate_jkl)
+  !=====
+  integer                 :: pstate,istate,jstate,kstate
+  integer                 :: ibf,jbf,abf,bbf
+  real(dp),allocatable    :: tmp_pxjx(:,:)
+  real(dp),allocatable    :: tmp_pijx(:)
+  real(dp),allocatable    :: tmp_pxxx(:,:,:)
+  complex(dp),allocatable :: tmp_pxjx_cmplx(:,:)
+  complex(dp),allocatable :: tmp_pijx_cmplx(:)
+  complex(dp),allocatable :: tmp_pxxx_cmplx(:,:,:)
+  !=====
+  ! Build <ij|kl> integrals
+  !=====
+  if(present(c_matrix_cmplx).and.present(ERImol_cmplx)) then
 
-   allocate(tmp_pxxx_cmplx(nbf,nbf,nbf),tmp_pxjx_cmplx(nbf,nbf),tmp_pijx_cmplx(nbf))
+    allocate(tmp_pxxx_cmplx(nbf,nbf,nbf),tmp_pxjx_cmplx(nbf,nbf),tmp_pijx_cmplx(nbf))
 
-   do pstate=1,nstate_tot
-     tmp_pxxx_cmplx(:,:,:) = COMPLEX_ZERO
-     do bbf=1,nbf
-       do jbf=1,nbf
-         if( negligible_basispair(jbf,bbf) ) cycle
-         do abf=1,nbf
-           do ibf=1,nbf
-             if( negligible_basispair(ibf,abf) ) cycle
-             tmp_pxxx_cmplx(abf,jbf,bbf)=tmp_pxxx_cmplx(abf,jbf,bbf)+conjg(c_matrix_cmplx(ibf,pstate,1))*eri(ibf,abf,jbf,bbf)
-           enddo
-         enddo
-       enddo
-     enddo
-     do jstate=1,nstate_jkl
-       tmp_pxjx_cmplx(:,:) = COMPLEX_ZERO
-       do bbf=1,nbf
-         do abf=1,nbf
-           tmp_pxjx_cmplx(abf,bbf) = SUM( conjg(c_matrix_cmplx(:,jstate,1)) * tmp_pxxx_cmplx(abf,:,bbf) )
-         enddo
-       enddo
-       do istate=1,nstate_jkl
-         tmp_pijx_cmplx(:) = COMPLEX_ZERO
-         do bbf=1,nbf
-           tmp_pijx_cmplx(bbf) = SUM( c_matrix_cmplx(:,istate,1) * tmp_pxjx_cmplx(:,bbf) )
-         enddo
-         do kstate=1,nstate_jkl
-           ERImol_cmplx(pstate,jstate,istate,kstate) = SUM( tmp_pijx_cmplx(:) * c_matrix_cmplx(:,kstate,1) ) ! < pi|jk>
-         enddo
-       enddo
-     enddo
-   enddo ! pstate
+    do pstate=1,nstate_tot
+      tmp_pxxx_cmplx(:,:,:) = COMPLEX_ZERO
+      do bbf=1,nbf
+        do jbf=1,nbf
+          if( negligible_basispair(jbf,bbf) ) cycle
+          do abf=1,nbf
+            do ibf=1,nbf
+              if( negligible_basispair(ibf,abf) ) cycle
+              tmp_pxxx_cmplx(abf,jbf,bbf)=tmp_pxxx_cmplx(abf,jbf,bbf)+conjg(c_matrix_cmplx(ibf,pstate,1))*eri(ibf,abf,jbf,bbf)
+            enddo
+          enddo
+        enddo
+      enddo
+      do jstate=1,nstate_jkl
+        tmp_pxjx_cmplx(:,:) = COMPLEX_ZERO
+        do bbf=1,nbf
+          do abf=1,nbf
+            tmp_pxjx_cmplx(abf,bbf) = SUM( conjg(c_matrix_cmplx(:,jstate,1)) * tmp_pxxx_cmplx(abf,:,bbf) )
+          enddo
+        enddo
+        do istate=1,nstate_jkl
+          tmp_pijx_cmplx(:) = COMPLEX_ZERO
+          do bbf=1,nbf
+            tmp_pijx_cmplx(bbf) = SUM( c_matrix_cmplx(:,istate,1) * tmp_pxjx_cmplx(:,bbf) )
+          enddo
+          do kstate=1,nstate_jkl
+            ERImol_cmplx(pstate,jstate,istate,kstate) = SUM( tmp_pijx_cmplx(:) * c_matrix_cmplx(:,kstate,1) ) ! < pi|jk>
+          enddo
+        enddo
+      enddo
+    enddo ! pstate
 
-   deallocate(tmp_pxxx_cmplx,tmp_pxjx_cmplx,tmp_pijx_cmplx)
+    deallocate(tmp_pxxx_cmplx,tmp_pxjx_cmplx,tmp_pijx_cmplx)
 
- elseif(present(c_matrix).and.present(ERImol)) then
- 
-   allocate(tmp_pxxx(nbf,nbf,nbf),tmp_pxjx(nbf,nbf),tmp_pijx(nbf))
+    elseif(present(c_matrix).and.present(ERImol)) then
 
-   do pstate=1,nstate_tot
-     tmp_pxxx(:,:,:) = zero
-     do bbf=1,nbf
-       do jbf=1,nbf
-         if( negligible_basispair(jbf,bbf) ) cycle
-         do abf=1,nbf
-           do ibf=1,nbf
-             if( negligible_basispair(ibf,abf) ) cycle
-             tmp_pxxx(abf,jbf,bbf)=tmp_pxxx(abf,jbf,bbf)+c_matrix(ibf,pstate,1)*eri(ibf,abf,jbf,bbf)
-           enddo
-         enddo
-       enddo
-     enddo
-     do jstate=1,nstate_jkl
-       tmp_pxjx(:,:) = zero
-       do bbf=1,nbf
-         do abf=1,nbf
-           tmp_pxjx(abf,bbf) = SUM( c_matrix(:,jstate,1) * tmp_pxxx(abf,:,bbf) )
-         enddo
-       enddo
-       do istate=1,nstate_jkl
-         tmp_pijx(:) = zero
-         do bbf=1,nbf
-           tmp_pijx(bbf) = SUM( c_matrix(:,istate,1) * tmp_pxjx(:,bbf) ) 
-         enddo
-         do kstate=1,nstate_jkl
-           ERImol(pstate,jstate,istate,kstate) = SUM( tmp_pijx(:) * c_matrix(:,kstate,1) ) ! < pi|jk>
-         enddo
-       enddo
-     enddo
-   enddo ! pstate
+    allocate(tmp_pxxx(nbf,nbf,nbf),tmp_pxjx(nbf,nbf),tmp_pijx(nbf))
 
-   deallocate(tmp_pxxx,tmp_pxjx,tmp_pijx)
+    do pstate=1,nstate_tot
+      tmp_pxxx(:,:,:) = zero
+      do bbf=1,nbf
+        do jbf=1,nbf
+          if( negligible_basispair(jbf,bbf) ) cycle
+          do abf=1,nbf
+            do ibf=1,nbf
+              if( negligible_basispair(ibf,abf) ) cycle
+              tmp_pxxx(abf,jbf,bbf)=tmp_pxxx(abf,jbf,bbf)+c_matrix(ibf,pstate,1)*eri(ibf,abf,jbf,bbf)
+            enddo
+          enddo
+        enddo
+      enddo
+      do jstate=1,nstate_jkl
+        tmp_pxjx(:,:) = zero
+        do bbf=1,nbf
+          do abf=1,nbf
+            tmp_pxjx(abf,bbf) = SUM( c_matrix(:,jstate,1) * tmp_pxxx(abf,:,bbf) )
+          enddo
+        enddo
+        do istate=1,nstate_jkl
+          tmp_pijx(:) = zero
+          do bbf=1,nbf
+            tmp_pijx(bbf) = SUM( c_matrix(:,istate,1) * tmp_pxjx(:,bbf) )
+          enddo
+          do kstate=1,nstate_jkl
+            ERImol(pstate,jstate,istate,kstate) = SUM( tmp_pijx(:) * c_matrix(:,kstate,1) ) ! < pi|jk>
+          enddo
+        enddo
+      enddo
+    enddo ! pstate
 
- else
- ! Nth to be done
- endif
+    deallocate(tmp_pxxx,tmp_pxjx,tmp_pijx)
+
+  else
+    ! Nth to be done
+  endif
 
 end subroutine form_erimol
 

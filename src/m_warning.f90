@@ -51,7 +51,7 @@ end subroutine issue_warning
 
 !=========================================================================
 subroutine output_all_warnings()
- implicit none
+  implicit none
 
   !=====
   integer :: iwarning

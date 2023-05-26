@@ -230,8 +230,8 @@ end subroutine stop_clock
 subroutine output_timing()
 
   implicit none
- !=====
- !=====
+  !=====
+  !=====
 
   write(stdout,'(/,a,/)') '                 --- Timings in (s) and # of calls ---'
 

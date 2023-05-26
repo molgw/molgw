@@ -658,9 +658,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
   real(dp),allocatable :: amb_block(:,:)
   real(dp),allocatable :: apb_block(:,:)
 #if defined(HAVE_SCALAPACK)
-   real(dp),allocatable :: vsqrt_chi_vsqrt_i(:),residue_i(:),wp0_i(:,:)
+  real(dp),allocatable :: vsqrt_chi_vsqrt_i(:),residue_i(:),wp0_i(:,:)
 #else
-   real(dp),allocatable :: vsqrt_chi_vsqrt(:,:)
+  real(dp),allocatable :: vsqrt_chi_vsqrt(:,:)
 #endif
   !=====
 
