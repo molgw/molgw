@@ -28,8 +28,8 @@ module m_tddft_propagator
   use m_io
 
   interface propagate_orth
-   module procedure propagate_orth_ham_1
-   module procedure propagate_orth_ham_2
+    module procedure propagate_orth_ham_1
+    module procedure propagate_orth_ham_2
   end interface propagate_orth
 
   integer,private                    :: nocc
@@ -243,7 +243,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   end if
 
   if( calc_type%is_dft ) then
-     call init_dft_grid(basis,tddft_grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+    call init_dft_grid(basis,tddft_grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
   endif
 
   ! Getting starting value of the Hamiltonian
@@ -387,7 +387,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   end if
 
   if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_dft_grid(basis,occupation,c_matrix_cmplx,0,time_min)
- ! if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
+  ! if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
   if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
@@ -469,8 +469,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     if ( ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7 ) then
 
       if ( excit_type%form == EXCIT_LIGHT ) then
-       call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-       call static_dipole(basis,p_matrix_in=p_matrix_cmplx,dipole_ao_in=dipole_ao,dipole_out=dipole)
+        call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+        call static_dipole(basis,p_matrix_in=p_matrix_cmplx,dipole_ao_in=dipole_ao,dipole_out=dipole)
       end if
 
       en_tddft%total = en_tddft%nucleus + en_tddft%kinetic + en_tddft%nuc_nuc &
@@ -525,10 +525,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       end if
     end if
 
-   time_cur = time_min + itau*time_step
-   itau = itau + 1
+    time_cur = time_min + itau*time_step
+    itau = itau + 1
 
-  !---
+    !---
   end do
 
   !********end time loop*******************
@@ -629,13 +629,13 @@ subroutine output_timing_one_iter()
   !=====
   !=====
 
-   time_one_iter = get_timing(timing_tddft_one_iter)
-   write(stdout,'(/,1x,a)') '**********************************'
-   write(stdout,"(1x,a32,2x,f14.6)") "Time of one iteration (s): ", time_one_iter
-   write(stdout,"(1x,a32,2x,2(f12.2,1x))") "Estimated calculation time (s), (hrs):", time_one_iter*ntau,  &
+  time_one_iter = get_timing(timing_tddft_one_iter)
+  write(stdout,'(/,1x,a)') '**********************************'
+  write(stdout,"(1x,a32,2x,f14.6)") "Time of one iteration (s): ", time_one_iter
+  write(stdout,"(1x,a32,2x,2(f12.2,1x))") "Estimated calculation time (s), (hrs):", time_one_iter*ntau,  &
                                                                                      time_one_iter*ntau/3600.0_dp
-   write(stdout,'(1x,a)') '**********************************'
-   flush(stdout)
+  write(stdout,'(1x,a)') '**********************************'
+  flush(stdout)
 
 end subroutine output_timing_one_iter
 
@@ -910,7 +910,7 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
                     + basis%bff(ibf)%v0(2) * BboldAdagger(ibf,:,2) &
                     + basis%bff(ibf)%v0(3) * BboldAdagger(ibf,:,3)
   enddo
-  
+
   do idir=1,3
     DboldA1(:,:,idir) = MATMUL( BboldAdagger(:,:,idir), MATMUL( s_matrix_inv, h_cmplx(:,:,1) ) ) &
                         + MATMUL( MATMUL( h_cmplx(:,:,1), s_matrix_inv), TRANSPOSE( BboldAdagger(:,:,idir) ) )
@@ -973,7 +973,7 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   enddo
 
   deallocate(s_matrix_hess)
-  
+
   do jbf=1,basis%nbf
     ! if beta is not on a projectile, then the gradient is not contributing the for on the projectile
     if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) then
@@ -1108,7 +1108,7 @@ subroutine predictor_corrector(basis,                  &
   write(stdout,'(/,1x,a)') 'PREDICTOR-CORRECTOR BLOCK'
 
   select case (pred_corr)
-  ! ///////////////////////////////////
+    ! ///////////////////////////////////
   case('MB_PC0')
 
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
@@ -1181,7 +1181,7 @@ subroutine predictor_corrector(basis,                  &
     h_hist_cmplx(:,:,:,2) = h_cmplx(:,:,:)
 
 
-  ! ///////////////////////////////////
+    ! ///////////////////////////////////
   case('MB_PC2B')
 
     h_cmplx = ( 0.0_dp, 0.0_dp )
@@ -1259,7 +1259,7 @@ subroutine predictor_corrector(basis,                  &
     h_hist_cmplx(:,:,:,n_hist) = h_cmplx
 
 
-  ! ///////////////////////////////////
+    ! ///////////////////////////////////
   case('PC0')
     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
     call setup_hamiltonian_cmplx(basis,               &
@@ -1277,8 +1277,8 @@ subroutine predictor_corrector(basis,                  &
                                  h_cmplx,en_tddft)
 
 
-  ! ///////////////////////////////////
-  ! Following Cheng and Van Voorhis, Phys Rev B 74 (2006)
+    ! ///////////////////////////////////
+    ! Following Cheng and Van Voorhis, Phys Rev B 74 (2006)
   case('PC1')
     !--1--PREDICTOR----| H(2/4),H(6/4)-->H(9/4)
     h_small_cmplx= -3.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,1)+7.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,2)
@@ -1310,7 +1310,7 @@ subroutine predictor_corrector(basis,                  &
     h_small_hist_cmplx(:,:,:,2)=h_small_cmplx(:,:,:)
 
 
-  ! ///////////////////////////////////
+    ! ///////////////////////////////////
   case('PC2B')
     h_small_cmplx=(0.0_dp,0.0_dp)
     !--0--EXTRAPOLATE----
@@ -1365,10 +1365,10 @@ subroutine predictor_corrector(basis,                  &
     h_small_hist_cmplx(:,:,:,n_hist)=h_small_cmplx
 
 
-  ! ///////////////////////////////////
-  ! Iterative propagation with Lagrange interpolation
-  ! ---------------|t-dt|-----------------|t|----------|t+dt/2)|----------|t+dt|
-  !............|H(n_hist-1)|..........|H(n_hist)|....|H(n_hist+1)|.....|H(n_hist+2)|
+    ! ///////////////////////////////////
+    ! Iterative propagation with Lagrange interpolation
+    ! ---------------|t-dt|-----------------|t|----------|t+dt/2)|----------|t+dt|
+    !............|H(n_hist-1)|..........|H(n_hist)|....|H(n_hist+1)|.....|H(n_hist+2)|
   case('PC3','PC4')
     h_cmplx=(0.0_dp,0.0_dp)
     h_small_hist_cmplx(:,:,:,n_hist+2)=(0.0_dp,0.0_dp)
@@ -1380,10 +1380,10 @@ subroutine predictor_corrector(basis,                  &
     !--2--LOCAL LINEAR INTERPOLATION----| h_cmplx in the 1/2 of the current time interval
     h_small_hist_cmplx(:,:,:,n_hist+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,n_hist)+h_small_hist_cmplx(:,:,:,n_hist+2))
 
-   ! if ( is_iomaster .AND. mod(itau-1,mod_write)==0 ) then
-   !   write(name_iter_norm,"(3A,I4.4,A)") "./iter_norm/", TRIM(pred_corr), "_norm_itau_",itau,".dat"
-   !   open(newunit=file_iter_norm,file=name_iter_norm)
-   ! end if
+    ! if ( is_iomaster .AND. mod(itau-1,mod_write)==0 ) then
+    !   write(name_iter_norm,"(3A,I4.4,A)") "./iter_norm/", TRIM(pred_corr), "_norm_itau_",itau,".dat"
+    !   open(newunit=file_iter_norm,file=name_iter_norm)
+    ! end if
     do i_iter=1,n_iter
       h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,n_hist+1)
       !--3--PREDICTOR (propagation of C(0)-->C(1))
@@ -1409,11 +1409,11 @@ subroutine predictor_corrector(basis,                  &
       h_small_hist_cmplx(:,:,:,n_hist+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,n_hist)+h_small_hist_cmplx(:,:,:,n_hist+2))
 
       !**COMPARISON**
-    !  if( is_iomaster ) then
-    !    if(mod(itau-1,mod_write)==0 ) then
-    !      write(file_iter_norm,*) i_iter, NORM2(ABS(h_small_hist_cmplx(:,:,:,n_hist+1)-h_small_cmplx(:,:,:)))
-    !    end if
-    !  end if
+      !  if( is_iomaster ) then
+      !    if(mod(itau-1,mod_write)==0 ) then
+      !      write(file_iter_norm,*) i_iter, NORM2(ABS(h_small_hist_cmplx(:,:,:,n_hist+1)-h_small_cmplx(:,:,:)))
+      !    end if
+      !  end if
 
     end do ! i_iter
 
@@ -1431,10 +1431,10 @@ subroutine predictor_corrector(basis,                  &
     h_small_hist_cmplx(:,:,:,n_hist)=h_small_hist_cmplx(:,:,:,n_hist+2)
 
 
-   ! ///////////////////////////////////
-   ! Iterative ETRS - enforced time-reversal symmetry
-   ! ---------------|t-dt|-----------------|t|--------------------|t+dt|
-   !............|H(n_hist-1)|..........|H(n_hist)|.............|H(n_hist+1)|
+    ! ///////////////////////////////////
+    ! Iterative ETRS - enforced time-reversal symmetry
+    ! ---------------|t-dt|-----------------|t|--------------------|t+dt|
+    !............|H(n_hist-1)|..........|H(n_hist)|.............|H(n_hist+1)|
   case('PC5','PC6')
     h_cmplx=(0.0_dp,0.0_dp)
     h_small_hist_cmplx(:,:,:,n_hist+1)=(0.0_dp,0.0_dp)
@@ -1464,27 +1464,27 @@ subroutine predictor_corrector(basis,                  &
                                    dipole_ao,               &
                                    h_cmplx,en_tddft)
 
-       c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
+      c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
 
       !**COMPARISON**
     end do ! i_iter
 
-     !--5--PROPAGATION----| C(0)---U[H(1/2)]--->C(!1)
-     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx, &
+    !--5--PROPAGATION----| C(0)---U[H(1/2)]--->C(!1)
+    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx, &
                          h_small_hist_cmplx(:,:,:,n_hist:n_hist+1),x_matrix,"ETRS")
 
     !--6--UPDATE----|
-     c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
+    c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
     c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
     do iextr=1,n_hist
       h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+1)
     end do
 
 
-  ! ///////////////////////////////////
-  ! ETRS proposed by Xavier Andrade
-  ! ---------------|t-dt|-----------------|t|--------------------|t+dt|
-  !............|---------|...............|H(1)|..................|H(2)|
+    ! ///////////////////////////////////
+    ! ETRS proposed by Xavier Andrade
+    ! ---------------|t-dt|-----------------|t|--------------------|t+dt|
+    !............|---------|...............|H(1)|..................|H(2)|
   case('PC7' )
     h_cmplx=(0.0_dp,0.0_dp)
     h_small_hist_cmplx(:,:,:,2)=(0.0_dp,0.0_dp)
@@ -2228,8 +2228,8 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
     select case(prop_type)
 
     case('CN')
-    !! C(t+dt) = U(t, t+dt) * C(t)
-    !! U = [S + i * dt/2 * ( H - i*D )]^-1 * [S - i * dt/2 * ( H - i*D )]
+      !! C(t+dt) = U(t, t+dt) * C(t)
+      !! U = [S + i * dt/2 * ( H - i*D )]^-1 * [S - i * dt/2 * ( H - i*D )]
 
       allocate(l_matrix_cmplx,MOLD=h_cmplx(:,:,1))
       allocate(b_matrix_cmplx,MOLD=h_cmplx(:,:,1))
@@ -2350,7 +2350,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
       !call dump_out_matrix(.TRUE.,'===  B/L AIMAG ===',AIMAG(b_matrix_cmplx))
       c_matrix_orth_cmplx(:,:,ispin) = MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin))
 
- !    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) ) )
+      !    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) ) )
       deallocate(l_matrix_cmplx)
       deallocate(b_matrix_cmplx)
     case('MAG2')
@@ -2425,8 +2425,8 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
       deallocate(m_tmp_2)
       deallocate(a_matrix_orth_cmplx)
 
-      case default
-        call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
+    case default
+      call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
     end select
 
     !
@@ -2502,7 +2502,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
     case default
       call die('Invalid choice of the propagation algorithm for the given PC scheme. Change prop_type value in the input file')
     end select
-     c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
+    c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
   end do
 
   call stop_clock(timing_tddft_propagation)
@@ -2570,8 +2570,8 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   en_tddft%excit = 0.0_dp
 
   select case(excit_type%form)
-  !
-  ! Light excitation
+    !
+    ! Light excitation
   case(EXCIT_LIGHT)
     excit_field = 0.0_dp
     calc_excit_ = .FALSE.
@@ -2596,8 +2596,8 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
       excit_field_norm = 0.0_dp
     end if
 
-  !
-  ! Projectile excitation
+    !
+    ! Projectile excitation
   case(EXCIT_PROJECTILE)
 
     !
@@ -2619,8 +2619,8 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
     en_tddft%excit = REAL( SUM( hamiltonian_projectile(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
     deallocate(hamiltonian_projectile)
 
-  !
-  ! Projectile excitation with moving basis
+    !
+    ! Projectile excitation with moving basis
   case(EXCIT_PROJECTILE_W_BASIS)
 
     if ( itau > 0 ) then
@@ -2829,8 +2829,8 @@ subroutine calculate_excit_field(time_cur,excit_field)
 
   select case(excit_type%name)
   case('GAU') !Gaussian electic field
-    excit_field(:) = excit_type%kappa * EXP( -( time_cur-excit_type%time0 )**2 / 2.0_dp / excit_omega**2 ) * &
-                   & excit_dir_norm(:)
+    excit_field(:) = excit_type%kappa * EXP( -( time_cur-excit_type%time0 )**2 / 2.0_dp / excit_omega**2 ) &
+                     * excit_dir_norm(:)
   case('HSW') !Hann sine window
     excit_field(:) = excit_type%kappa * SIN( pi / excit_omega * ( time_cur - excit_type%time0  ) )**2 * excit_dir_norm(:)
   case('DEL') ! Delta excitation
@@ -2838,7 +2838,7 @@ subroutine calculate_excit_field(time_cur,excit_field)
   case('STEP') ! Step excitation
     excit_field(:) = excit_type%kappa * excit_dir_norm(:)
   case default
-     call die('Invalid choice for the excitation type. Change excit_type value in the input file')
+    call die('Invalid choice for the excitation type. Change excit_type value in the input file')
   end select
 
 end subroutine calculate_excit_field

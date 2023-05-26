@@ -8,18 +8,17 @@
 !=========================================================================
 #include "molgw.h"
 module m_spectra
- use m_definitions
- use m_timing
- use m_warning
- use m_memory
- use m_mpi
- use m_scalapack
- use m_cart_to_pure
- use m_inputparam
- use m_basis_set
- !use m_dft_grid
- use m_spectral_function
- use m_hamiltonian_onebody
+  use m_definitions
+  use m_timing
+  use m_warning
+  use m_memory
+  use m_mpi
+  use m_scalapack
+  use m_cart_to_pure
+  use m_inputparam
+  use m_basis_set
+  use m_spectral_function
+  use m_hamiltonian_onebody
 
 
 
@@ -577,10 +576,10 @@ subroutine stopping_power(basis,c_matrix,chi,xpy_matrix,eigenvalue)
         do t_ia=1,nmat
           if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
                stopping_cross_section(iv) = stopping_cross_section(iv) + ( 4.0_dp * pi ) / vv**2  &
-                                              * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
+                                              * fnq(t_ia)  / NORM2(qvec) * wq(iq)
           !if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
           !     stopping_exc(iv,t_ia) = stopping_exc(iv,t_ia) + ( 4.0_dp * pi ) / vv**2  &
-          !                                     * fnq(t_ia)  / NORM2(qvec) * wq(iq) !&
+          !                                     * fnq(t_ia)  / NORM2(qvec) * wq(iq)
         enddo
 
       enddo
@@ -672,7 +671,7 @@ subroutine stopping_power_3d(basis,c_matrix,chi,xpy_matrix,desc_x,eigenvalue)
   real(dp)                           :: phi,costheta,dphi,dcostheta
   real(dp),allocatable               :: xpy_matrix_global(:,:)
   logical                            :: print_exc=.FALSE.
- !=====
+  !=====
 
 
   call start_clock(timing_stopping)

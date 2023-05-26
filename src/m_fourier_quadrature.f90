@@ -138,12 +138,8 @@ subroutine setup_nucleus_fourier(basis_p,basis_t,reference)
     enucl(:,:) = enucl(:,:) + weight * 4.0_dp * pi / NORM2(qvec)**2 &
                                    * s_matrix_mqmv(:,:) * structure_factor
 
-    !write(1000,*) NORM2(qvec), ABS( weight * 4.0_dp * pi / NORM2(qvec)**2 * s_matrix_mqmv(1,1) * structure_factor )
-
     deallocate(s_matrix_mqmv)
 
-  !enddo
-  !write(1000,*)
   enddo
   enucl(:,:) = enucl(:,:) / (2.0_dp * pi)**3
 

@@ -99,7 +99,7 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
   ! For relaxation or dynamics only
   if( calculate_forces ) then
     if( natom_in /= ncenter_nuclei .OR. natom_in /= ncenter_basis ) then
-       call die('init_atoms: forces not implemented with ghosts or projectiles')
+      call die('init_atoms: forces not implemented with ghosts or projectiles')
     endif
     allocate(force(3,natom_in))
     allocate(force_nuc_nuc(3,natom_in))
@@ -112,96 +112,96 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
     allocate(force_hl(3,natom_in))
   endif
 
- ! List of atoms is organized as follows:
- ! 1. physical atoms   :    nucleus | basis
- ! 2. ghost atoms      :      no    | basis
- ! 3. projectile       :    nucleus |   yes if 'ION' / no if 'NUCLEUS' or 'ANTINUCLEUS'
- !
- ! ncenter_nuclei contains the number of sites having a nucleus
- ! ncenter_basis  contains the number of sites having basis functions
- !
- xatom(:,1:ncenter_nuclei-nprojectile) = x_read(:,1:ncenter_nuclei-nprojectile)
- zatom(1:ncenter_nuclei-nprojectile)   = zatom_read(1:ncenter_nuclei-nprojectile)
- if( nprojectile /= 0 ) then
-   xatom(:,ncenter_nuclei) = x_read(:,natom_read)
-   zatom(ncenter_nuclei)   = zatom_read(natom_read)
- endif
+  ! List of atoms is organized as follows:
+  ! 1. physical atoms   :    nucleus | basis
+  ! 2. ghost atoms      :      no    | basis
+  ! 3. projectile       :    nucleus |   yes if 'ION' / no if 'NUCLEUS' or 'ANTINUCLEUS'
+  !
+  ! ncenter_nuclei contains the number of sites having a nucleus
+  ! ncenter_basis  contains the number of sites having basis functions
+  !
+  xatom(:,1:ncenter_nuclei-nprojectile) = x_read(:,1:ncenter_nuclei-nprojectile)
+  zatom(1:ncenter_nuclei-nprojectile)   = zatom_read(1:ncenter_nuclei-nprojectile)
+  if( nprojectile /= 0 ) then
+    xatom(:,ncenter_nuclei) = x_read(:,natom_read)
+    zatom(ncenter_nuclei)   = zatom_read(natom_read)
+  endif
 
- if( excit_name == "ANTINUCLEUS" .OR. excit_name == "ANTIION" ) then
-   zatom(ncenter_nuclei) = -zatom(ncenter_nuclei)
- endif
- !
- ! In case of a projectile excitation, offer the possibility to tweak
- ! the charge of the projectile with an input variable
- ! Remember that the projectile always comes last in the atom list.
- if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" ) then
-   zatom(ncenter_nuclei) = zatom(ncenter_nuclei) * projectile_charge_scaling
- end if
+  if( excit_name == "ANTINUCLEUS" .OR. excit_name == "ANTIION" ) then
+    zatom(ncenter_nuclei) = -zatom(ncenter_nuclei)
+  endif
+  !
+  ! In case of a projectile excitation, offer the possibility to tweak
+  ! the charge of the projectile with an input variable
+  ! Remember that the projectile always comes last in the atom list.
+  if( excit_name == "NUCLEUS" .OR. excit_name == "ANTINUCLEUS" ) then
+    zatom(ncenter_nuclei) = zatom(ncenter_nuclei) * projectile_charge_scaling
+  end if
 
- !! Setup basis identity and centers
- ! Ghost atoms do not have a positive nucleus
- jcenter = 0
- do iatom=1,natom_read
-   if( nucleus_wo_basis(iatom) ) cycle
-   jcenter = jcenter + 1
-   xbasis(:,jcenter) = x_read(:,iatom)
-   zbasis(jcenter)   = NINT(zatom_read(iatom))
- enddo
+  !! Setup basis identity and centers
+  ! Ghost atoms do not have a positive nucleus
+  jcenter = 0
+  do iatom=1,natom_read
+    if( nucleus_wo_basis(iatom) ) cycle
+    jcenter = jcenter + 1
+    xbasis(:,jcenter) = x_read(:,iatom)
+    zbasis(jcenter)   = NINT(zatom_read(iatom))
+  enddo
 
- !
- ! Check for atoms too close
- do iatom=1,ncenter_nuclei
-   do jatom=iatom+1,ncenter_nuclei
-     if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) < 0.2 ) then
-       write(stdout,*) 'Atoms',iatom,jatom
-       write(stdout,*) 'are closer than 0.2 bohr'
-       call issue_warning('Some atoms are too close')
-     endif
-   enddo
- enddo
+  !
+  ! Check for atoms too close
+  do iatom=1,ncenter_nuclei
+    do jatom=iatom+1,ncenter_nuclei
+      if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) < 0.2 ) then
+        write(stdout,*) 'Atoms',iatom,jatom
+        write(stdout,*) 'are closer than 0.2 bohr'
+        call issue_warning('Some atoms are too close')
+      endif
+    enddo
+  enddo
 
- !
- ! Find the covalent bonds based on simple distance criterium
- nbond = 0
- do iatom=1,ncenter_nuclei
-   do jatom=iatom+1,ncenter_nuclei
-     bond_length =  element_covalent_radius(NINT(zatom(iatom))) + element_covalent_radius(NINT(zatom(jatom)))
-     if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) <  1.2_dp * bond_length  ) then
-       nbond = nbond + 1
-     endif
-   enddo
- enddo
+  !
+  ! Find the covalent bonds based on simple distance criterium
+  nbond = 0
+  do iatom=1,ncenter_nuclei
+    do jatom=iatom+1,ncenter_nuclei
+      bond_length =  element_covalent_radius(NINT(zatom(iatom))) + element_covalent_radius(NINT(zatom(jatom)))
+      if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) <  1.2_dp * bond_length  ) then
+        nbond = nbond + 1
+      endif
+    enddo
+  enddo
 
- !
- ! Does the molecule have inversion symmetry?
- call find_inversion()
+  !
+  ! Does the molecule have inversion symmetry?
+  call find_inversion()
 
- !
- ! Is the molecule linear, planar?
- if( ncenter_nuclei > 2 ) then
-   x21(:) = xatom(:,2) - xatom(:,1)
-   do iatom=3,ncenter_nuclei
-     x31(:) = xatom(:,iatom) - xatom(:,1)
-     call cross_product(x21,x31,xnormal)
-     if( NORM2(xnormal(:)) > tol_geom ) then
-       xnormal(:) = xnormal(:) / NORM2(xnormal(:))
-       linear=.FALSE.
-       exit
-     endif
-   enddo
-   if( .NOT. linear) then
-     do iatom=1,ncenter_nuclei
-       if( ABS(DOT_PRODUCT( xatom(:,iatom) , xnormal(:) )) > tol_geom ) planar=.FALSE.
-     enddo
-   else
-     planar=.FALSE.
-   endif
- else
-  ! Molecule is linear
-  ! Set planar to FALSE for safety
-  linear=.TRUE.
-  planar=.FALSE.
- endif
+  !
+  ! Is the molecule linear, planar?
+  if( ncenter_nuclei > 2 ) then
+    x21(:) = xatom(:,2) - xatom(:,1)
+    do iatom=3,ncenter_nuclei
+      x31(:) = xatom(:,iatom) - xatom(:,1)
+      call cross_product(x21,x31,xnormal)
+      if( NORM2(xnormal(:)) > tol_geom ) then
+        xnormal(:) = xnormal(:) / NORM2(xnormal(:))
+        linear=.FALSE.
+        exit
+      endif
+    enddo
+    if( .NOT. linear) then
+      do iatom=1,ncenter_nuclei
+        if( ABS(DOT_PRODUCT( xatom(:,iatom) , xnormal(:) )) > tol_geom ) planar=.FALSE.
+      enddo
+    else
+      planar=.FALSE.
+    endif
+  else
+    ! Molecule is linear
+    ! Set planar to FALSE for safety
+    linear=.TRUE.
+    planar=.FALSE.
+  endif
 
 
 end subroutine init_atoms
@@ -265,12 +265,12 @@ end subroutine change_position_one_atom
 
 !=========================================================================
 subroutine change_basis_center_one_atom(iatom,xposition)
- implicit none
- integer,intent(in)   :: iatom
- real(dp),intent(in)  :: xposition(3)
-!=====
+  implicit none
+  integer,intent(in)   :: iatom
+  real(dp),intent(in)  :: xposition(3)
+  !=====
 
- xbasis(:,iatom) = xposition(:)
+  xbasis(:,iatom) = xposition(:)
 
 end subroutine change_basis_center_one_atom
 
@@ -392,7 +392,7 @@ end subroutine output_projectile_position
 
 !=========================================================================
 subroutine nucleus_nucleus_energy(energy)
- implicit none
+  implicit none
 
   real(dp),intent(out) :: energy
   !=====
@@ -411,7 +411,7 @@ end subroutine nucleus_nucleus_energy
 
 !=========================================================================
 subroutine nucleus_nucleus_force()
- !=====
+  !=====
   implicit none
   integer              :: icenter,jcenter
   !=====

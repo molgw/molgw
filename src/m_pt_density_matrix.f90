@@ -69,94 +69,94 @@ subroutine pt2_density_matrix(occupation,energy,c_matrix,p_matrix)
 
   ! A1 P_ij sum over k and a,b
   do istate=ncore_G+1,nhomo_G
-  do jstate=ncore_G+1,nhomo_G
-    do kstate=ncore_G+1,nhomo_G
-      do astate=nhomo_G+1,nvirtual_G-1
-        do bstate=nhomo_G+1,nvirtual_G-1
+    do jstate=ncore_G+1,nhomo_G
+      do kstate=ncore_G+1,nhomo_G
+        do astate=nhomo_G+1,nvirtual_G-1
+          do bstate=nhomo_G+1,nvirtual_G-1
 
-          denom1 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(istate,pqspin) - energy(kstate,pqspin)
-          denom2 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin)
+            denom1 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(istate,pqspin) - energy(kstate,pqspin)
+            denom2 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin)
 
-          num1 = 2.0_dp * eri_eigen(istate,astate,pqspin,kstate,bstate,pqspin) &
+            num1 = 2.0_dp * eri_eigen(istate,astate,pqspin,kstate,bstate,pqspin) &
                        - eri_eigen(istate,bstate,pqspin,kstate,astate,pqspin)
-          num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,kstate,bstate,pqspin)
+            num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,kstate,bstate,pqspin)
 
-          p_matrix_pt2(istate,jstate,pqspin) = p_matrix_pt2(istate,jstate,pqspin)  &
+            p_matrix_pt2(istate,jstate,pqspin) = p_matrix_pt2(istate,jstate,pqspin)  &
                   - num1 * num2 / ( denom1 * denom2 )
 
+          enddo
         enddo
       enddo
     enddo
-  enddo
   enddo
 
   ! A2 P_ab sum over  i,j  and c
   do astate=nhomo_G+1,nvirtual_G-1
-  do bstate=nhomo_G+1,nvirtual_G-1
-    do cstate=nhomo_G+1,nvirtual_G-1
-      do istate=ncore_G+1,nhomo_G
-        do jstate=ncore_G+1,nhomo_G
+    do bstate=nhomo_G+1,nvirtual_G-1
+      do cstate=nhomo_G+1,nvirtual_G-1
+        do istate=ncore_G+1,nhomo_G
+          do jstate=ncore_G+1,nhomo_G
 
-          denom1 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin)
-          denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin)
+            denom1 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin)
+            denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin)
 
-          num1 = 2.0_dp * eri_eigen(astate,istate,pqspin,cstate,jstate,pqspin) &
+            num1 = 2.0_dp * eri_eigen(astate,istate,pqspin,cstate,jstate,pqspin) &
                        - eri_eigen(astate,jstate,pqspin,cstate,istate,pqspin)
-          num2 = 2.0_dp * eri_eigen(bstate,istate,pqspin,cstate,jstate,pqspin)
+            num2 = 2.0_dp * eri_eigen(bstate,istate,pqspin,cstate,jstate,pqspin)
 
-          p_matrix_pt2(astate,bstate,pqspin) = p_matrix_pt2(astate,bstate,pqspin)  &
+            p_matrix_pt2(astate,bstate,pqspin) = p_matrix_pt2(astate,bstate,pqspin)  &
                   + num1 * num2 / ( denom1 * denom2 )
 
+          enddo
         enddo
       enddo
     enddo
-  enddo
   enddo
 
   ! A3    P_cj  sum over i, and a,b
   ! A4    P_jc  sum over i, and a,b
   do cstate=nhomo_G+1,nvirtual_G-1
-  do jstate=ncore_G+1,nhomo_G
-    do astate=nhomo_G+1,nvirtual_G-1
-      do bstate=nhomo_G+1,nvirtual_G-1
-        do istate=ncore_G+1,nhomo_G
-          denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-          denom2 = energy(jstate,pqspin) - energy(cstate,pqspin)
-          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
+    do jstate=ncore_G+1,nhomo_G
+      do astate=nhomo_G+1,nvirtual_G-1
+        do bstate=nhomo_G+1,nvirtual_G-1
+          do istate=ncore_G+1,nhomo_G
+            denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+            denom2 = energy(jstate,pqspin) - energy(cstate,pqspin)
+            num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
                 - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
-          num2 = 2.0_dp * eri_eigen(astate,cstate,pqspin,bstate,istate,pqspin)
+            num2 = 2.0_dp * eri_eigen(astate,cstate,pqspin,bstate,istate,pqspin)
 
-          p_matrix_pt2(cstate,jstate,pqspin) = p_matrix_pt2(cstate,jstate,pqspin)  &
+            p_matrix_pt2(cstate,jstate,pqspin) = p_matrix_pt2(cstate,jstate,pqspin)  &
                                             + num1 * num2 / ( denom1 * denom2 )
-          p_matrix_pt2(jstate,cstate,pqspin) = p_matrix_pt2(jstate,cstate,pqspin)  &
+            p_matrix_pt2(jstate,cstate,pqspin) = p_matrix_pt2(jstate,cstate,pqspin)  &
                                             + num1 * num2 / ( denom1 * denom2 )
+          enddo
         enddo
       enddo
     enddo
-  enddo
   enddo
 
   ! A5   P_bk  sum over i,j,a
   ! A6   P_kb  sum over i,j,a
   do bstate=nhomo_G+1,nvirtual_G-1
-  do kstate=ncore_G+1,nhomo_G
-    do astate=nhomo_G+1,nvirtual_G-1
-      do istate=ncore_G+1,nhomo_G
-        do jstate=ncore_G+1,nhomo_G
-          denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-          denom2 = energy(kstate,pqspin) - energy(bstate,pqspin)
-          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
+    do kstate=ncore_G+1,nhomo_G
+      do astate=nhomo_G+1,nvirtual_G-1
+        do istate=ncore_G+1,nhomo_G
+          do jstate=ncore_G+1,nhomo_G
+            denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+            denom2 = energy(kstate,pqspin) - energy(bstate,pqspin)
+            num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) &
                 - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
-          num2 = 2.0_dp * eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
+            num2 = 2.0_dp * eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
 
-          p_matrix_pt2(bstate,kstate,pqspin) = p_matrix_pt2(bstate,kstate,pqspin)  &
+            p_matrix_pt2(bstate,kstate,pqspin) = p_matrix_pt2(bstate,kstate,pqspin)  &
                                             - num1 * num2 / ( denom1 * denom2 )
-          p_matrix_pt2(kstate,bstate,pqspin) = p_matrix_pt2(kstate,bstate,pqspin)  &
+            p_matrix_pt2(kstate,bstate,pqspin) = p_matrix_pt2(kstate,bstate,pqspin)  &
                                             - num1 * num2 / ( denom1 * denom2 )
+          enddo
         enddo
       enddo
     enddo
-  enddo
   enddo
 
 
@@ -227,90 +227,90 @@ subroutine onering_density_matrix(occupation,energy,c_matrix,p_matrix)
 
   ! A1
   do istate=ncore_G+1,nhomo_G
-  do jstate=ncore_G+1,nhomo_G
-    do kstate=ncore_G+1,nhomo_G
-      do astate=nhomo_G+1,nvirtual_G-1
-        do bstate=nhomo_G+1,nvirtual_G-1
+    do jstate=ncore_G+1,nhomo_G
+      do kstate=ncore_G+1,nhomo_G
+        do astate=nhomo_G+1,nvirtual_G-1
+          do bstate=nhomo_G+1,nvirtual_G-1
 
-          denom1 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(istate,pqspin) - energy(kstate,pqspin)
-          denom2 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin)
+            denom1 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(istate,pqspin) - energy(kstate,pqspin)
+            denom2 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin)
 
-          num1 = 2.0_dp * eri_eigen(istate,astate,pqspin,kstate,bstate,pqspin)
-          num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,kstate,bstate,pqspin)
+            num1 = 2.0_dp * eri_eigen(istate,astate,pqspin,kstate,bstate,pqspin)
+            num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,kstate,bstate,pqspin)
 
-          p_matrix_pt2(istate,jstate,pqspin) = p_matrix_pt2(istate,jstate,pqspin)  &
+            p_matrix_pt2(istate,jstate,pqspin) = p_matrix_pt2(istate,jstate,pqspin)  &
                   - num1 * num2 / ( denom1 * denom2 )
 
+          enddo
         enddo
       enddo
     enddo
-  enddo
   enddo
 
   ! A2
   do astate=nhomo_G+1,nvirtual_G-1
-  do bstate=nhomo_G+1,nvirtual_G-1
-    do cstate=nhomo_G+1,nvirtual_G-1
-      do istate=ncore_G+1,nhomo_G
-        do jstate=ncore_G+1,nhomo_G
+    do bstate=nhomo_G+1,nvirtual_G-1
+      do cstate=nhomo_G+1,nvirtual_G-1
+        do istate=ncore_G+1,nhomo_G
+          do jstate=ncore_G+1,nhomo_G
 
-          denom1 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin)
-          denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin)
+            denom1 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin)
+            denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin)
 
-          num1 = 2.0_dp * eri_eigen(astate,istate,pqspin,cstate,jstate,pqspin)
-          num2 = 2.0_dp * eri_eigen(bstate,istate,pqspin,cstate,jstate,pqspin)
+            num1 = 2.0_dp * eri_eigen(astate,istate,pqspin,cstate,jstate,pqspin)
+            num2 = 2.0_dp * eri_eigen(bstate,istate,pqspin,cstate,jstate,pqspin)
 
-          p_matrix_pt2(astate,bstate,pqspin) = p_matrix_pt2(astate,bstate,pqspin)  &
+            p_matrix_pt2(astate,bstate,pqspin) = p_matrix_pt2(astate,bstate,pqspin)  &
                   + num1 * num2 / ( denom1 * denom2 )
 
+          enddo
         enddo
       enddo
     enddo
-  enddo
   enddo
 
   ! A3    P_cj  sum over i,a,b
   ! A4    P_jc  sum over i,a,b
   do cstate=nhomo_G+1,nvirtual_G-1
-  do jstate=ncore_G+1,nhomo_G
-    do astate=nhomo_G+1,nvirtual_G-1
-      do bstate=nhomo_G+1,nvirtual_G-1
-        do istate=ncore_G+1,nhomo_G
-          denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-          denom2 = energy(jstate,pqspin) - energy(cstate,pqspin)
-          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
-          num2 = 2.0_dp * eri_eigen(astate,cstate,pqspin,bstate,istate,pqspin)
+    do jstate=ncore_G+1,nhomo_G
+      do astate=nhomo_G+1,nvirtual_G-1
+        do bstate=nhomo_G+1,nvirtual_G-1
+          do istate=ncore_G+1,nhomo_G
+            denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+            denom2 = energy(jstate,pqspin) - energy(cstate,pqspin)
+            num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
+            num2 = 2.0_dp * eri_eigen(astate,cstate,pqspin,bstate,istate,pqspin)
 
-          p_matrix_pt2(cstate,jstate,pqspin) = p_matrix_pt2(cstate,jstate,pqspin)  &
+            p_matrix_pt2(cstate,jstate,pqspin) = p_matrix_pt2(cstate,jstate,pqspin)  &
                                             + num1 * num2 / ( denom1 * denom2 )
-          p_matrix_pt2(jstate,cstate,pqspin) = p_matrix_pt2(jstate,cstate,pqspin)  &
+            p_matrix_pt2(jstate,cstate,pqspin) = p_matrix_pt2(jstate,cstate,pqspin)  &
                                             + num1 * num2 / ( denom1 * denom2 )
+          enddo
         enddo
       enddo
     enddo
-  enddo
   enddo
 
   ! A5   P_bk  sum over i,j,a
   ! A6   P_kb  sum over i,j,a
   do bstate=nhomo_G+1,nvirtual_G-1
-  do kstate=ncore_G+1,nhomo_G
-    do astate=nhomo_G+1,nvirtual_G-1
-      do istate=ncore_G+1,nhomo_G
-        do jstate=ncore_G+1,nhomo_G
-          denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
-          denom2 = energy(kstate,pqspin) - energy(bstate,pqspin)
-          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
-          num2 = 2.0_dp * eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
+    do kstate=ncore_G+1,nhomo_G
+      do astate=nhomo_G+1,nvirtual_G-1
+        do istate=ncore_G+1,nhomo_G
+          do jstate=ncore_G+1,nhomo_G
+            denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+            denom2 = energy(kstate,pqspin) - energy(bstate,pqspin)
+            num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
+            num2 = 2.0_dp * eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
 
-          p_matrix_pt2(bstate,kstate,pqspin) = p_matrix_pt2(bstate,kstate,pqspin)  &
+            p_matrix_pt2(bstate,kstate,pqspin) = p_matrix_pt2(bstate,kstate,pqspin)  &
                                             - num1 * num2 / ( denom1 * denom2 )
-          p_matrix_pt2(kstate,bstate,pqspin) = p_matrix_pt2(kstate,bstate,pqspin)  &
+            p_matrix_pt2(kstate,bstate,pqspin) = p_matrix_pt2(kstate,bstate,pqspin)  &
                                             - num1 * num2 / ( denom1 * denom2 )
+          enddo
         enddo
       enddo
     enddo
-  enddo
   enddo
 
 
@@ -396,9 +396,9 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
 
     ! A1
     !bra_occ(:,ncore_G+1:nhomo_G) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,pqspin) )
-    call DGEMM('T','N',wpol%npole_reso,nstate_occ,nauxil_3center, &
-                          1.0d0,wpol%residue_left,nauxil_3center, &
-                                eri_3center_eigen(1,ncore_G+1,astate,pqspin),nauxil_3center, &
+    call DGEMM('T','N',wpol%npole_reso,nstate_occ,nauxil_local, &
+                          1.0d0,wpol%residue_left,nauxil_local, &
+                                eri_3center_eigen(1,ncore_G+1,astate,pqspin),nauxil_local, &
                           0.0_dp,bra_occ(1,ncore_G+1),wpol%npole_reso)
     call auxil%sum(bra_occ)
 
@@ -419,9 +419,9 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
     ! A3    P_cj  sum over i,a,b
     ! A4    P_jc  sum over i,a,b     ! not actually calculated, but included through the symmetrization step
     !bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,astate,pqspin) )
-    call DGEMM('T','N',wpol%npole_reso,nstate_virt,nauxil_3center, &
-                          1.0d0,wpol%residue_left,nauxil_3center,  &
-                                eri_3center_eigen(1,nhomo_G+1,astate,pqspin),nauxil_3center, &
+    call DGEMM('T','N',wpol%npole_reso,nstate_virt,nauxil_local, &
+                          1.0d0,wpol%residue_left,nauxil_local,  &
+                                eri_3center_eigen(1,nhomo_G+1,astate,pqspin),nauxil_local, &
                           0.0_dp,bra_virt(1,nhomo_G+1),wpol%npole_reso)
     call auxil%sum(bra_virt)
 
@@ -444,9 +444,9 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
 
     ! A2
     !bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,pqspin) )
-    call DGEMM('T','N',wpol%npole_reso,nstate_virt,nauxil_3center, &
-                          1.0d0,wpol%residue_left,nauxil_3center,  &
-                                eri_3center_eigen(1,nhomo_G+1,istate,pqspin),nauxil_3center, &
+    call DGEMM('T','N',wpol%npole_reso,nstate_virt,nauxil_local, &
+                          1.0d0,wpol%residue_left,nauxil_local,  &
+                                eri_3center_eigen(1,nhomo_G+1,istate,pqspin),nauxil_local, &
                           0.0_dp,bra_virt(1,nhomo_G+1),wpol%npole_reso)
     call auxil%sum(bra_virt)
 
@@ -466,9 +466,9 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
     ! A5   P_bk  sum over i,j,a
     ! A6   P_kb  sum over i,j,a   ! not actually calculated, but included through the symmetrization step
     !bra_occ(:,ncore_G+1:nhomo_G)       = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,istate,pqspin) )
-    call DGEMM('T','N',wpol%npole_reso,nstate_occ,nauxil_3center, &
-                          1.0d0,wpol%residue_left,nauxil_3center, &
-                                eri_3center_eigen(1,ncore_G+1,istate,pqspin),nauxil_3center, &
+    call DGEMM('T','N',wpol%npole_reso,nstate_occ,nauxil_local, &
+                          1.0d0,wpol%residue_left,nauxil_local, &
+                                eri_3center_eigen(1,ncore_G+1,istate,pqspin),nauxil_local, &
                           0.0_dp,bra_occ(1,ncore_G+1),wpol%npole_reso)
     call auxil%sum(bra_occ)
 
@@ -585,17 +585,17 @@ subroutine gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix)
 
   mrange = nvirtual_G - ncore_G - 1
 
-  meri3 = NUMROC(nauxil_2center,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
+  meri3 = NUMROC(nauxil_global,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
   neri3 = NUMROC(mrange        ,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol)
-  call DESCINIT(desc_eri3_final,nauxil_2center,mrange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+  call DESCINIT(desc_eri3_final,nauxil_global,mrange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
                 wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
 
   call clean_allocate('TMP 3-center MO integrals',eri3_sca_p,meri3,neri3)
   call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
   call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
 
-  call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo, &
-                first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
+  call DESCINIT(desc_eri3_t,nauxil_global,mrange,MB_eri3_mo,NB_eri3_mo, &
+                first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_local),info)
 
 
   !
@@ -631,10 +631,10 @@ subroutine gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix)
 
       do iomega=1,wpol%nomega_quad
 
-        call DGEMM('N','N',nauxil_2center,mrange,nauxil_2center,  &
-                   1.0_dp,wpol%chi(:,:,iomega),nauxil_2center,    &
-                          eri3_sca_q          ,nauxil_2center,    &
-                   0.0_dp,chi_eri3_sca_q      ,nauxil_2center)
+        call DGEMM('N','N',nauxil_global,mrange,nauxil_global,  &
+                   1.0_dp,wpol%chi(:,:,iomega),nauxil_global,    &
+                          eri3_sca_q          ,nauxil_global,    &
+                   0.0_dp,chi_eri3_sca_q      ,nauxil_global)
 
         do pstate=qstate,nsemax
           eri3_sca_p(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,pstate,pqspin)
@@ -757,17 +757,17 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
 
   mrange = nvirtual_G - ncore_G - 1
 
-  meri3 = NUMROC(nauxil_2center,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
+  meri3 = NUMROC(nauxil_global,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
   neri3 = NUMROC(mrange        ,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol)
-  call DESCINIT(desc_eri3_final,nauxil_2center,mrange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+  call DESCINIT(desc_eri3_final,nauxil_global,mrange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
                 wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
 
   call clean_allocate('TMP 3-center MO integrals',eri3_sca_p,meri3,neri3)
   call clean_allocate('TMP 3-center MO integrals',eri3_sca_q,meri3,neri3)
   call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca_q,meri3,neri3)
 
-  call DESCINIT(desc_eri3_t,nauxil_2center,mrange,MB_eri3_mo,NB_eri3_mo, &
-                first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
+  call DESCINIT(desc_eri3_t,nauxil_global,mrange,MB_eri3_mo,NB_eri3_mo, &
+                first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_local),info)
 
 
   !
@@ -806,10 +806,10 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
 
       do iomega=1,wpol%nomega_quad
 
-        call DGEMM('N','N',nauxil_2center,mrange,nauxil_2center,  &
-                   1.0_dp,wpol%chi(:,:,iomega),nauxil_2center,    &
-                          eri3_sca_q          ,nauxil_2center,    &
-                   0.0_dp,chi_eri3_sca_q      ,nauxil_2center)
+        call DGEMM('N','N',nauxil_global,mrange,nauxil_global,  &
+                   1.0_dp,wpol%chi(:,:,iomega),nauxil_global,    &
+                          eri3_sca_q          ,nauxil_global,    &
+                   0.0_dp,chi_eri3_sca_q      ,nauxil_global)
 
         do pstate=nsemin,nsemax
           eri3_sca_p(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,pstate,pqspin)
@@ -832,7 +832,7 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
         enddo
 
       enddo
-      
+
       sigma_c_g0(:,qstate,pqspin) = -m_matrix(qstate,qstate,:,pqspin)
       m_matrix(qstate,qstate,:,pqspin) = m_matrix(qstate,qstate,:,pqspin) + (1.0_dp,0.0_dp)
     enddo
@@ -853,11 +853,11 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
   ! Perform the final omega integrals:
   ! delta P_MO = spin_fact /(2 pi i) int_{-inf}^{+inf} d(i omega)  (1-G_0*Sigma)^{-1} * G_0(\mu + i omega)
   !            = spin_fact /(2 pi i) int_{  0 }^{+inf} d(i omega) 2 * Re{ (1-G_0*Sigma)^{-1} * G_0(\mu + i omega) }
-  ! Ec_GM      = spin_fact /(4 pi i) int_{-inf}^{+inf} d(i omega) Sigma(i omega) * G0(i omega) 
+  ! Ec_GM      = spin_fact /(4 pi i) int_{-inf}^{+inf} d(i omega) Sigma(i omega) * G0(i omega)
   !            = spin_fact /(4 pi i) int_{  0 }^{+inf} d(i omega) 2 * Re{ Sigma(i omega) * G0(i omega) }
   ec_gm = 0.0_dp
   p_matrix_gw(:,:,:) = 0.0_dp
-  
+
   do pqspin=1,nspin
     do qstate=nsemin,nsemax
       do pstate=nsemin,nsemax

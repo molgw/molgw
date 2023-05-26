@@ -72,9 +72,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
   write(stdout,'(/,a)') ' Calculating the polarizability'
   if( PRESENT(lambda) ) then
-     lambda_ = lambda
+    lambda_ = lambda
   else
-     lambda_ = 1.0_dp
+    lambda_ = 1.0_dp
   endif
   if( PRESENT(enforce_spin_multiplicity) ) then
     select case(enforce_spin_multiplicity)
@@ -156,7 +156,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
         call die('polarizability: BSE calculation without having a precalculated SCREENED_COULOMB file is impossible ' &
                  // 'unless when using an auxiliary basis')
       endif
-      wpol_static%nprodbasis = nauxil_3center
+      wpol_static%nprodbasis = nauxil_local
       call static_polarizability(nstate,occupation,energy,wpol_static)
     endif
 
@@ -261,7 +261,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   call stop_clock(timing_build_h2p)
 
 
-  ! 
+  !
   ! When requesting A and B, calculate them and exit here
   ! (skip diago etc)
   !
@@ -417,7 +417,7 @@ subroutine polarizability_onering(basis,energy,c_matrix,vchi0v)
   !=====
 
   nstate = SIZE(energy,DIM=1)
-  call allocate_spectral_function(nauxil_3center,vchi0v)
+  call allocate_spectral_function(nauxil_local,vchi0v)
 
   call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
 
@@ -608,14 +608,14 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
 
   write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
 
-  call allocate_spectral_function(nauxil_3center,wpol)
+  call allocate_spectral_function(nauxil_local,wpol)
   wpol%pole(1:wpol%npole_reso) = eigenvalue(:)
 
   nmat = wpol%npole_reso
 
 #if !defined(HAVE_SCALAPACK)
 
-  allocate(eri_3tmp(nauxil_3center,nmat))
+  allocate(eri_3tmp(nauxil_local,nmat))
   do t_jb=1,nmat
     jstate = wpol%transition_table(1,t_jb)
     bstate = wpol%transition_table(2,t_jb)
@@ -628,9 +628,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
   !                                        | Y  X |
   ! => only needs (X+Y)
   !wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
-  call DGEMM('N','N',nauxil_3center,nmat,nmat,DSQRT(spin_fact),eri_3tmp,nauxil_3center, &
+  call DGEMM('N','N',nauxil_local,nmat,nmat,DSQRT(spin_fact),eri_3tmp,nauxil_local, &
                                                                xpy_matrix,nmat, &
-                                                         0.0d0,wpol%residue_left,nauxil_3center)
+                                                         0.0d0,wpol%residue_left,nauxil_local)
 
   energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
   !
@@ -641,7 +641,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
 
 #else
 
-  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_3center,nmat)
+  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_local,nmat)
   do t_jb=1,nmat
     jstate = wpol%transition_table(1,t_jb)
     bstate = wpol%transition_table(2,t_jb)
@@ -651,16 +651,16 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
 
   !
   ! Descriptors
-  mlocal = NUMROC(nauxil_2center,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
-  call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+  mlocal = NUMROC(nauxil_global,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+  call DESCINIT(desc_auxil,nauxil_global,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
-  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
+  mlocal = NUMROC(nauxil_global,block_row,iprow_sd,first_row,nprow_sd)
   nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
-  call DESCINIT(desc_sd,nauxil_2center,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+  call DESCINIT(desc_sd,nauxil_global,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
 
   call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
 
-  call PDGEMR2D(nauxil_2center,nmat,eri_3tmp,1,1,desc_auxil, &
+  call PDGEMR2D(nauxil_global,nmat,eri_3tmp,1,1,desc_auxil, &
                                  eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
 
   call clean_deallocate('TMP 3-center integrals',eri_3tmp)
@@ -668,7 +668,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
   !
   !   SQRT(spin_fact) * v**1/2 * ( X + Y )
   call clean_allocate('TMP v**1/2 * (X+Y)',vsqrt_xpy,mlocal,nlocal)
-  call PDGEMM('N','N',nauxil_2center,nmat,nmat, &
+  call PDGEMM('N','N',nauxil_global,nmat,nmat, &
                 DSQRT(spin_fact),eri_3tmp_sd,1,1,desc_sd,  &
                                   xpy_matrix,1,1,desc_x,   &
                        0.0_dp,     vsqrt_xpy,1,1,desc_sd)
@@ -676,7 +676,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
   call clean_deallocate('TMP 3-center integrals',eri_3tmp_sd)
 
 
-  call PDGEMR2D(nauxil_2center,nmat,vsqrt_xpy,1,1,desc_sd, &
+  call PDGEMR2D(nauxil_global,nmat,vsqrt_xpy,1,1,desc_sd, &
                              wpol%residue_left,1,1,desc_auxil,cntxt_sd)
   !
   ! Do not forget ortho parallelization direction

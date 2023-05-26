@@ -62,7 +62,7 @@ program molgw
   use m_acfd
   implicit none
 
- !=====
+  !=====
   type(basis_set)            :: basis
   type(basis_set)            :: auxil_basis
   type(spectral_function)    :: wpol
@@ -87,7 +87,7 @@ program molgw
   real(dp),allocatable    :: energy(:,:)
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
- !=====
+  !=====
 
   !
   !
@@ -718,8 +718,8 @@ program molgw
   call destroy_atoms()
 
 #if defined(HAVE_LIBCINT)
-    call destroy_libcint(basis)
-    if(has_auxil_basis) call destroy_libcint(auxil_basis)
+  call destroy_libcint(basis)
+  if(has_auxil_basis) call destroy_libcint(auxil_basis)
 #endif
 
   call destroy_cart_to_pure_transforms()

@@ -10,7 +10,7 @@
 module m_string_tools
   use m_definitions
   use m_warning,only: die
- 
+
   interface append_to_list
     module procedure append_to_list_i
     module procedure append_to_list_r
@@ -30,7 +30,7 @@ pure function lower(str)
   character(26), parameter :: low = 'abcdefghijklmnopqrstuvwxyz'
   integer :: ic, ii
   !=====
- 
+
   lower = str
   do ii=1,LEN_TRIM(str)
     ic = INDEX(cap,str(ii:ii))
@@ -50,7 +50,7 @@ pure function capitalize(str)
   character(26), parameter :: low = 'abcdefghijklmnopqrstuvwxyz'
   integer :: ic, ii
   !=====
- 
+
   capitalize = str
   do ii=1,LEN_TRIM(str)
     ic = INDEX(low,str(ii:ii))
@@ -66,7 +66,7 @@ function orbital_momentum_number(amc)
   character(len=1),intent(in) :: amc
   integer :: orbital_momentum_number
   !=====
- 
+
   select case(capitalize(amc))
   case('S')
     orbital_momentum_number = 0
@@ -98,7 +98,7 @@ pure function orbital_momentum_name(am)
   integer,intent(in) :: am
   character(len=1) :: orbital_momentum_name
   !=====
- 
+
   select case(am)
   case(0)
     orbital_momentum_name='s'
@@ -136,27 +136,27 @@ end function orbital_momentum_name
 !=========================================================================
 subroutine append_to_list_i(new_element,list)
   implicit none
- 
+
   integer,intent(in)                :: new_element
   integer,allocatable,intent(inout) :: list(:)
   !=====
   integer :: nsize
   integer,allocatable :: list_old(:)
   !=====
- 
+
   if( ALLOCATED(list) ) then
     nsize = SIZE(list)
   else
     nsize = 0
   endif
- 
+
   ! Copy old list and free the list
   allocate(list_old(nsize))
   if( nsize > 0 ) then
     list_old(1:nsize) =list(1:nsize)
     deallocate(list)
   endif
- 
+
   allocate(list(nsize+1))
   if( nsize > 0 ) then
     list(1:nsize) = list_old(1:nsize)
@@ -169,27 +169,27 @@ end subroutine append_to_list_i
 !=========================================================================
 subroutine append_to_list_r(new_element,list)
   implicit none
- 
+
   real(dp),intent(in)                :: new_element
   real(dp),allocatable,intent(inout) :: list(:)
   !=====
   integer :: nsize
   real(dp),allocatable :: list_old(:)
   !=====
- 
+
   if( ALLOCATED(list) ) then
     nsize = SIZE(list)
   else
     nsize = 0
   endif
- 
+
   ! Copy old list and free the list
   allocate(list_old(nsize))
   if( nsize > 0 ) then
     list_old(1:nsize) =list(1:nsize)
     deallocate(list)
   endif
- 
+
   allocate(list(nsize+1))
   if( nsize > 0 ) then
     list(1:nsize) = list_old(1:nsize)
@@ -207,10 +207,10 @@ pure function get_number_of_elements(string) result(num)
   !=====
   integer   :: ip,pos
   !=====
- 
+
   pos = 1
   num = 0
- 
+
   do
     ip = VERIFY(string(pos:),' ')  !-- Find next non-blank
     if( ip == 0 ) exit             !-- No word found
@@ -227,16 +227,16 @@ end function get_number_of_elements
 !=========================================================================
 subroutine string_to_integers(string_in,iarray)
   implicit none
- 
+
   character(len=*),intent(in) :: string_in
   integer,intent(inout)       :: iarray(:)
   !=====
   character(LEN(string_in)) :: string
   integer                   :: ilen,inextblank,ii
   !=====
- 
+
   string = string_in
- 
+
   ilen = LEN(TRIM(string))
   ii = 0
   do while( ilen > 0 )
@@ -255,16 +255,16 @@ end subroutine string_to_integers
 !=========================================================================
 subroutine string_to_reals(string_in,rarray)
   implicit none
- 
+
   character(len=*),intent(in) :: string_in
   real(dp),intent(inout)      :: rarray(:)
   !=====
   character(LEN(string_in)) :: string
   integer            :: ilen,inextblank,ii
   !=====
- 
+
   string = string_in
- 
+
   ilen = LEN(TRIM(string))
   ii = 0
   do while( ilen > 0 )
@@ -290,7 +290,7 @@ function get_number_of_lines(filename) result(nlines)
   character(len=100)           :: cur_string
   integer   :: file_unit,io
   !=====
- 
+
   nlines=0
   open(newunit=file_unit, file = filename)
   do
@@ -317,7 +317,7 @@ function yesno_to_logical(char_in) RESULT(logical_out)
   case('NO','N','.FA','F','FA','FAL')
     logical_out = .FALSE.
   case default
-   call die('Yes or No, I cannot interpret this input')
+    call die('Yes or No, I cannot interpret this input')
   end select
 
 end function yesno_to_logical
@@ -352,7 +352,7 @@ function yesno_to_TrueFalse(char_in) RESULT(TrueFalse)
   case('NO','N','.FA','F','FA','FAL')
     TrueFalse = 'False'
   case default
-   call die('Yes or No, I cannot interpret this input')
+    call die('Yes or No, I cannot interpret this input')
   end select
 
 end function yesno_to_TrueFalse
