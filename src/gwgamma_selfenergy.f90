@@ -107,13 +107,13 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
               call grid%sum(fxc)
               vcoul2 = alpha_hybrid * vcoul2 - fxc
 
- !             if( ABS( eri_eigen(istate,bstate,ispin,kstate,mstate,ispin) -vcoul2)> 0.10 ) then
- !               write(*,'(4(i4,1x),4(1x,f12.6))') istate,bstate,kstate,mstate, &
- !                  eri_eigen(istate,bstate,ispin,kstate,mstate,ispin), &
- !                  vcoul2
- !               write(*,*) 'Hack'
- !               vcoul2 = eri_eigen(istate,bstate,ispin,kstate,mstate,ispin)
- !             endif
+              !             if( ABS( eri_eigen(istate,bstate,ispin,kstate,mstate,ispin) -vcoul2)> 0.10 ) then
+              !               write(*,'(4(i4,1x),4(1x,f12.6))') istate,bstate,kstate,mstate, &
+              !                  eri_eigen(istate,bstate,ispin,kstate,mstate,ispin), &
+              !                  vcoul2
+              !               write(*,*) 'Hack'
+              !               vcoul2 = eri_eigen(istate,bstate,ispin,kstate,mstate,ispin)
+              !             endif
 
             endif
             !
@@ -149,13 +149,13 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
               call grid%sum(fxc)
               vcoul2 = alpha_hybrid * vcoul2 - fxc
 
- !             if( ABS( eri_eigen(astate,jstate,ispin,cstate,mstate,ispin) -vcoul2 )> 0.10 ) then
- !               write(*,'(4(i4,1x),4(1x,f12.6))') astate,jstate,cstate,mstate, &
- !                  eri_eigen(astate,jstate,ispin,cstate,mstate,ispin), &
- !                  vcoul2
- !!               write(*,*) 'Hack'
- !!               vcoul2 =  eri_eigen(astate,jstate,ispin,cstate,mstate,ispin)
- !             endif
+              !             if( ABS( eri_eigen(astate,jstate,ispin,cstate,mstate,ispin) -vcoul2 )> 0.10 ) then
+              !               write(*,'(4(i4,1x),4(1x,f12.6))') astate,jstate,cstate,mstate, &
+              !                  eri_eigen(astate,jstate,ispin,cstate,mstate,ispin), &
+              !                  vcoul2
+              !!               write(*,*) 'Hack'
+              !!               vcoul2 =  eri_eigen(astate,jstate,ispin,cstate,mstate,ispin)
+              !             endif
 
             endif
             !
@@ -374,11 +374,11 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   end forall
 
 
- ! if( print_sigma_) then
- !   call write_selfenergy_omega('selfenergy_sox'    ,energy,exchange_m_vxc_diag,occupation,energy,sigma_sox)
- !   call write_selfenergy_omega('selfenergy_gamma'  ,energy,exchange_m_vxc_diag,occupation,energy,sigma_gamma)
- !   call write_selfenergy_omega('selfenergy_gwgamma',energy,exchange_m_vxc_diag,occupation,energy,sigma)
- ! endif
+  ! if( print_sigma_) then
+  !   call write_selfenergy_omega('selfenergy_sox'    ,energy,exchange_m_vxc_diag,occupation,energy,sigma_sox)
+  !   call write_selfenergy_omega('selfenergy_gamma'  ,energy,exchange_m_vxc_diag,occupation,energy,sigma_gamma)
+  !   call write_selfenergy_omega('selfenergy_gwgamma',energy,exchange_m_vxc_diag,occupation,energy,sigma)
+  ! endif
 
 
   write(stdout,'(/,a)') ' GWSOSEX self-energy contributions at E0 (eV)'

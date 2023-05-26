@@ -11,10 +11,8 @@ module m_memory
   use m_definitions
   use m_warning,only: die
 
-  real(dp),private :: total_memory = 0.0_dp    ! Total memory occupied
-                                               ! by the big arrays in Mb
-  real(dp),private :: peak_memory  = 0.0_dp    ! Max memory occupied
-                                               ! by the big arrays in Mb
+  real(dp),private :: total_memory = 0.0_dp    ! Total memory occupied by the big arrays in Mb
+  real(dp),private :: peak_memory  = 0.0_dp    ! Max memory occupied by the big arrays in Mb
 
   interface clean_allocate
     module procedure clean_allocate_i1d
@@ -65,16 +63,16 @@ subroutine total_memory_statement()
   implicit none
   !=====
   !=====
- 
+
   write(stdout,'(/,a,/)') '                 ----------------------------'
   write(stdout,'(a)')     '                 --- Memory usage summary ---'
- 
+
   write(stdout,'(/,a)') ' Memory that was not deallocated properly'
   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',total_memory / 1024._dp
- 
+
   write(stdout,'(/,a)') ' Maximum memory used during the run'
   write(stdout,'(a30,f9.3)') ' Peak memory (Gb): ',peak_memory / 1024._dp
- 
+
   write(stdout,*)
 
 end subroutine total_memory_statement
@@ -83,11 +81,11 @@ end subroutine total_memory_statement
 !=========================================================================
 function get_peak_memory() RESULT(peak)
   implicit none
- 
+
   real(dp) :: peak
   !=====
   !=====
- 
+
   peak = peak_memory / 1024.0_dp
 
 
@@ -825,7 +823,7 @@ subroutine clean_deallocate_2d(array_name,array,verbose)
   deallocate(array)
 
   total_memory = total_memory - mem_mb
-  
+
   if(PRESENT(verbose)) then
     if(verbose) call write_memory_deallocate(array_name,mem_mb)
   else

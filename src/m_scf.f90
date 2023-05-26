@@ -316,9 +316,9 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
     call matmul_transaba_scalapack(scalapack_block_min,x_matrix,matrix_tmp1,matrix_tmp2)
 
 #if defined(HAVE_SCALAPACK)
-  if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
-    call create_distributed_copy(matrix_tmp2,descr,res_hist(:,:,ispin,1))
-  endif
+    if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
+      call create_distributed_copy(matrix_tmp2,descr,res_hist(:,:,ispin,1))
+    endif
 #else
     res_hist(:,:,ispin,1) = matrix_tmp2(:,:)
 #endif
@@ -556,7 +556,7 @@ subroutine xdiis_prediction(p_matrix,ham)
       !
       ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
       if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
-         exit
+        exit
       endif
 
       if( info <= 0 ) exit
