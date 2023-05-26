@@ -72,9 +72,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
   write(stdout,'(/,a)') ' Calculating the polarizability'
   if( PRESENT(lambda) ) then
-     lambda_ = lambda
+    lambda_ = lambda
   else
-     lambda_ = 1.0_dp
+    lambda_ = 1.0_dp
   endif
   if( PRESENT(enforce_spin_multiplicity) ) then
     select case(enforce_spin_multiplicity)
@@ -261,7 +261,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   call stop_clock(timing_build_h2p)
 
 
-  ! 
+  !
   ! When requesting A and B, calculate them and exit here
   ! (skip diago etc)
   !
