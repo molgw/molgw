@@ -49,7 +49,7 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,e
   real(dp),allocatable :: chi0(:,:)
   real(dp),allocatable :: one_m_chi0(:,:)
   real(dp),allocatable :: one_m_chi0m1(:,:)
-  real(dp)             :: eigval(nauxil_2center)
+  real(dp)             :: eigval(nauxil_global)
   integer              :: desc_eri3_t(NDEL)
   integer              :: desc_eri3_final(NDEL)
   integer              :: meri3,neri3
@@ -76,13 +76,13 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,e
 
 
 
-  wpol%nprodbasis = nauxil_3center
-  wpol%mchi = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
-  wpol%nchi = NUMROC(nauxil_2center,block_col,ipcol_sd,first_col,npcol_sd)
-  call DESCINIT(wpol%desc_chi,nauxil_2center,nauxil_2center,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,wpol%mchi),info)
+  wpol%nprodbasis = nauxil_local
+  wpol%mchi = NUMROC(nauxil_global,block_row,iprow_sd,first_row,nprow_sd)
+  wpol%nchi = NUMROC(nauxil_global,block_col,ipcol_sd,first_col,npcol_sd)
+  call DESCINIT(wpol%desc_chi,nauxil_global,nauxil_global,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,wpol%mchi),info)
   call clean_allocate('Chi',wpol%chi,wpol%mchi,wpol%nchi,wpol%nomega_quad)
 
-  write(stdout,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_2center,' x ',nauxil_2center
+  write(stdout,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_global,' x ',nauxil_global
   write(stdout,'(1x,a,i7,a,i7)') 'Distributed in ',wpol%mchi,' x ',wpol%nchi
 
   if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
@@ -91,21 +91,21 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,e
 
   !
   ! Get the processor grid included in the input wpol%desc_chi
-  meri3 = NUMROC(nauxil_2center ,wpol%desc_chi(MB_),iprow_sd,wpol%desc_chi(RSRC_),nprow_sd)
+  meri3 = NUMROC(nauxil_global ,wpol%desc_chi(MB_),iprow_sd,wpol%desc_chi(RSRC_),nprow_sd)
   neri3 = NUMROC(wpol%npole_reso,wpol%desc_chi(NB_),ipcol_sd,wpol%desc_chi(CSRC_),npcol_sd)
-  call DESCINIT(desc_eri3_final,nauxil_2center,wpol%npole_reso,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+  call DESCINIT(desc_eri3_final,nauxil_global,wpol%npole_reso,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
                 wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
 
 #if defined(HAVE_SCALAPACK)
   call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
 #endif
-  call clean_allocate('TMP 3-center MO integrals',eri3_t,nauxil_3center,wpol%npole_reso)
+  call clean_allocate('TMP 3-center MO integrals',eri3_t,nauxil_local,wpol%npole_reso)
   call clean_allocate('Chi0',chi0,wpol%mchi,wpol%nchi)
   call clean_allocate('1-Chi0',one_m_chi0,wpol%mchi,wpol%nchi)
   call clean_allocate('(1-Chi0)**-1',one_m_chi0m1,wpol%mchi,wpol%nchi)
 
-  call DESCINIT(desc_eri3_t,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo, &
-                first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_3center),info)
+  call DESCINIT(desc_eri3_t,nauxil_global,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo, &
+                first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_local),info)
 
 
   erpa = 0.0_dp
@@ -132,21 +132,21 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,e
     enddo
 
 #if defined(HAVE_SCALAPACK)
-    call PDGEMR2D(nauxil_2center,wpol%npole_reso,eri3_t,1,1,desc_eri3_t, &
+    call PDGEMR2D(nauxil_global,wpol%npole_reso,eri3_t,1,1,desc_eri3_t, &
                                                  eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
 #endif
 
 #if defined(HAVE_SCALAPACK)
-    call PDSYRK('L','N',nauxil_2center,wpol%npole_reso,1.0_dp,eri3_sca,1,1,desc_eri3_final,0.0_dp,chi0,1,1,wpol%desc_chi)
+    call PDSYRK('L','N',nauxil_global,wpol%npole_reso,1.0_dp,eri3_sca,1,1,desc_eri3_final,0.0_dp,chi0,1,1,wpol%desc_chi)
 #else
-    call DSYRK('L','N',nauxil_2center,wpol%npole_reso,1.0_dp,eri3_t,nauxil_2center,0.0_dp,chi0,nauxil_2center)
+    call DSYRK('L','N',nauxil_global,wpol%npole_reso,1.0_dp,eri3_t,nauxil_global,0.0_dp,chi0,nauxil_global)
 #endif
     chi0(:,:) = -chi0(:,:)
 
 
 
     ! Symmetrize chi0
-    call symmetrize_matrix_sca('L',nauxil_2center,wpol%desc_chi,chi0,wpol%desc_chi,one_m_chi0)
+    call symmetrize_matrix_sca('L',nauxil_global,wpol%desc_chi,chi0,wpol%desc_chi,one_m_chi0)
 
 
     one_m_chi0(:,:) = -chi0(:,:)
@@ -171,15 +171,15 @@ subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,e
 
 
 #if defined(HAVE_SCALAPACK)
-    call PDGEMM('N','N',nauxil_2center,nauxil_2center,nauxil_2center, &
+    call PDGEMM('N','N',nauxil_global,nauxil_global,nauxil_global, &
                 1.0_dp,one_m_chi0m1        ,1,1,wpol%desc_chi,    &
                        chi0                ,1,1,wpol%desc_chi,    &
                 0.0_dp,wpol%chi(:,:,iomega),1,1,wpol%desc_chi)
 #else
-    call DGEMM('N','N',nauxil_2center,nauxil_2center,nauxil_2center, &
-               1.0_dp,one_m_chi0m1,nauxil_2center, &
-                      chi0        ,nauxil_2center, &
-               0.0_dp,wpol%chi(:,:,iomega),nauxil_2center)
+    call DGEMM('N','N',nauxil_global,nauxil_global,nauxil_global, &
+               1.0_dp,one_m_chi0m1,nauxil_global, &
+                      chi0        ,nauxil_global, &
+               0.0_dp,wpol%chi(:,:,iomega),nauxil_global)
 #endif
 
 
@@ -259,16 +259,16 @@ subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
 
   prange = nvirtual_G - ncore_G - 1
 
-  meri3 = NUMROC(nauxil_2center,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
+  meri3 = NUMROC(nauxil_global,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
   neri3 = NUMROC(prange        ,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol)
-  call DESCINIT(desc_eri3_final,nauxil_2center,prange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+  call DESCINIT(desc_eri3_final,nauxil_global,prange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
                 wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
 
   call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
   call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca,meri3,neri3)
 
-  call DESCINIT(desc_eri3_t,nauxil_2center,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo, &
-                MAX(1,nauxil_3center),info)
+  call DESCINIT(desc_eri3_t,nauxil_global,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo, &
+                MAX(1,nauxil_local),info)
 
   allocate(sigmaigw(se%nomega_calc,nsemin:nsemax,nspin))
   sigmaigw(:,:,:) = 0.0_dp
@@ -277,7 +277,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
     do mstate=nsemin,nsemax
 
 #if defined(HAVE_SCALAPACK)
-      call PDGEMR2D(nauxil_2center,prange,eri_3center_eigen(:,:,mstate,mpspin),1,1,desc_eri3_t, &
+      call PDGEMR2D(nauxil_global,prange,eri_3center_eigen(:,:,mstate,mpspin),1,1,desc_eri3_t, &
                                                                       eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
 #else
       eri3_sca(:,1:prange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,mstate,mpspin)
@@ -286,15 +286,15 @@ subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
 
       do iomega=1,wpol%nomega_quad
 #if defined(HAVE_SCALAPACK)
-        call PDGEMM('N','N',nauxil_2center,prange,nauxil_2center,     &
+        call PDGEMM('N','N',nauxil_global,prange,nauxil_global,     &
                     1.0_dp,wpol%chi(:,:,iomega),1,1,wpol%desc_chi,    &
                            eri3_sca            ,1,1,desc_eri3_final,  &
                     0.0_dp,chi_eri3_sca        ,1,1,desc_eri3_final)
 #else
-        call DGEMM('N','N',nauxil_2center,prange,nauxil_2center,  &
-                   1.0_dp,wpol%chi(:,:,iomega),nauxil_2center,    &
-                          eri3_sca            ,nauxil_2center,    &
-                   0.0_dp,chi_eri3_sca        ,nauxil_2center)
+        call DGEMM('N','N',nauxil_global,prange,nauxil_global,  &
+                   1.0_dp,wpol%chi(:,:,iomega),nauxil_global,    &
+                          eri3_sca            ,nauxil_global,    &
+                   0.0_dp,chi_eri3_sca        ,nauxil_global)
 #endif
 
         !$OMP PARALLEL PRIVATE(pstate, v_chi_v_p)

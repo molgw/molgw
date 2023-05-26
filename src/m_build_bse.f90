@@ -329,7 +329,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently,lambda,desc_apb,wpol,m_a
       apb_block(:,:) = 0.0_dp
 
 
-      do ibf_auxil=1,nauxil_3center
+      do ibf_auxil=1,nauxil_local
 
 
         do t_jb=1,n_apb_block
@@ -411,7 +411,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda,desc_ap
   if( nprow_sd * npcol_sd > 1 ) &
      write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
 
-  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_3center,nmat)
+  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_local,nmat)
   do t_jb_global=1,nmat
     jstate = wpol%transition_table(1,t_jb_global)
     bstate = wpol%transition_table(2,t_jb_global)
@@ -421,21 +421,21 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda,desc_ap
 
   !
   ! Descriptors
-  mlocal = NUMROC(nauxil_2center,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
-  call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
-  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
+  mlocal = NUMROC(nauxil_global,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+  call DESCINIT(desc_auxil,nauxil_global,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+  mlocal = NUMROC(nauxil_global,block_row,iprow_sd,first_row,nprow_sd)
   nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
-  call DESCINIT(desc_sd,nauxil_2center,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+  call DESCINIT(desc_sd,nauxil_global,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
   call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
 
-  call PDGEMR2D(nauxil_2center,nmat,eri_3tmp,1,1,desc_auxil, &
+  call PDGEMR2D(nauxil_global,nmat,eri_3tmp,1,1,desc_auxil, &
                                  eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
 
   call clean_deallocate('TMP 3-center integrals',eri_3tmp)
 
 
 
-  call PDSYRK('L','T',nmat,nauxil_2center,DBLE(2.0_dp*spin_fact*lambda),eri_3tmp_sd,1,1,desc_sd,  &
+  call PDSYRK('L','T',nmat,nauxil_global,DBLE(2.0_dp*spin_fact*lambda),eri_3tmp_sd,1,1,desc_sd,  &
                                           DBLE(1.0_dp),apb_matrix,1,1,desc_apb)
 
   call clean_deallocate('TMP 3-center integrals',eri_3tmp_sd)
@@ -686,7 +686,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
     jstate_max = MIN( jstate_min + (jstate_max-jstate_min+1) / (ortho%nproc-irank) - 1 , jstate_max )
   enddo
 
-  call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
+  call clean_allocate('Temporary array for W',wp0,1,nauxil_local,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
   wp0(:,:,:,:) = 0.0_dp
 
 
@@ -694,7 +694,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
 #if !defined(HAVE_SCALAPACK)
     do iaspin=1,nspin
 
-      allocate(vsqrt_chi_vsqrt(nauxil_2center,nauxil_2center))
+      allocate(vsqrt_chi_vsqrt(nauxil_global,nauxil_global))
 
 
       !
@@ -707,7 +707,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
 
         vsqrt_chi_vsqrt(:,:) = 0.0_dp
         do ipole=1,wpol_static%npole_reso
-          do jbf_auxil=1,nauxil_2center
+          do jbf_auxil=1,nauxil_global
             vsqrt_chi_vsqrt(:,jbf_auxil) = vsqrt_chi_vsqrt(:,jbf_auxil) &
                      - wpol_static%residue_left(:,ipole)                 &
                        * wpol_static%residue_left(jbf_auxil,ipole) * 2.0_dp / wpol_static%pole(ipole)
@@ -737,11 +737,11 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
       if( ALLOCATED(wpol_static%chi) ) then
 
         allocate(wp0_i(ncore_W+1:nvirtual_W-1,jstate_min:jstate_max))
-        allocate(w0_local(nauxil_3center))
+        allocate(w0_local(nauxil_local))
 
-        do ibf_auxil_global=1,nauxil_2center
+        do ibf_auxil_global=1,nauxil_global
 
-          do jbf_auxil=1,nauxil_3center
+          do jbf_auxil=1,nauxil_local
             jbf_auxil_global = ibf_auxil_g(jbf_auxil)
             w0_local(jbf_auxil) = wpol_static%chi(ibf_auxil_global,jbf_auxil_global,1)
           enddo
@@ -761,11 +761,11 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
 
       else if( ALLOCATED(wpol_static%residue_left) ) then
 
-        allocate(vsqrt_chi_vsqrt_i(nauxil_3center))
+        allocate(vsqrt_chi_vsqrt_i(nauxil_local))
         allocate(residue_i(wpol_static%npole_reso))
         allocate(wp0_i(ncore_W+1:nvirtual_W-1,jstate_min:jstate_max))
 
-        do ibf_auxil=1,nauxil_2center
+        do ibf_auxil=1,nauxil_global
 
           if( iproc_ibf_auxil(ibf_auxil) == auxil%rank ) then
             residue_i(:) = wpol_static%residue_left(ibf_auxil_l(ibf_auxil),:)

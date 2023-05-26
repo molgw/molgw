@@ -968,16 +968,16 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
      call clean_deallocate('2-center integrals inverse',eri_2center_inv)
      call clean_allocate('2-center integrals inverse',eri_2center_inv,mlocal,nlocal)
      eri_2center_inv(:,:)    = eri_2center(:,:)
-     nauxil_2center = auxil_basis%nbf
+     nauxil_global = auxil_basis%nbf
      ! Only call if it is not a recalculation
-     if( .NOT. ALLOCATED(ibf_auxil_g) ) call distribute_auxil_basis(nauxil_2center)
+     if( .NOT. ALLOCATED(ibf_auxil_g) ) call distribute_auxil_basis(nauxil_global)
    else
      ! Deallocate first in case of a recalculation
      call clean_deallocate('2-center LR integrals inverse',eri_2center_inv_lr)
      call clean_allocate('2-center LR integrals inverse',eri_2center_inv_lr,mlocal,nlocal)
      eri_2center_inv_lr(:,:) = eri_2center(:,:)
-     nauxil_2center_lr = auxil_basis%nbf
-     call distribute_auxil_basis_lr(nauxil_2center_lr)
+     nauxil_global_lr = auxil_basis%nbf
+     call distribute_auxil_basis_lr(nauxil_global_lr)
    endif
 
    !
@@ -990,11 +990,11 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
    ! Coulomb 2-center integrals are positive definite in theory
    ! This is just to say to be careful
    ! call invert_chol_sca(desc_2center,eri_2center_inv)
-   ! call symmetrize_matrix_sca('L',nauxil_2center,desc_2center,eri_2center_inv,desc_2center,eri_2center)
+   ! call symmetrize_matrix_sca('L',nauxil_global,desc_2center,eri_2center_inv,desc_2center,eri_2center)
 
    ! but in practice, some numerical noise occurs and the Cholevski decomposition fails
    ! Use the slower but safer:
-   call symmetrize_matrix_sca('L',nauxil_2center,desc_2center,eri_2center,desc_2center,eri_2center_inv)
+   call symmetrize_matrix_sca('L',nauxil_global,desc_2center,eri_2center,desc_2center,eri_2center_inv)
    call invert_sca(desc_2center,eri_2center,eri_2center_inv)
 
 
@@ -1095,10 +1095,10 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
 
 
  if( .NOT. is_longrange ) then
-   nauxil_2center = nauxil_kept
+   nauxil_global = nauxil_kept
    ! Prepare the distribution of the 3-center integrals
-   ! nauxil_3center variable is now set up
-   call distribute_auxil_basis(nauxil_2center)
+   ! nauxil_local variable is now set up
+   call distribute_auxil_basis(nauxil_global)
 
    if( cntxt_3center > 0 ) then
      !
@@ -1111,10 +1111,10 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
                      first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
    endif
  else
-   nauxil_2center_lr = nauxil_kept
+   nauxil_global_lr = nauxil_kept
    ! Prepare the distribution of the 3-center integrals
-   ! nauxil_3center_lr variable is now set up
-   call distribute_auxil_basis_lr(nauxil_2center_lr)
+   ! nauxil_local_lr variable is now set up
+   call distribute_auxil_basis_lr(nauxil_global_lr)
 
    if( cntxt_3center > 0 ) then
      !
@@ -1143,11 +1143,11 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
    call clean_allocate('2-center integrals inverse square-root',eri_2center_sqrtinv,mlocal,nlocal)
 
    ! First copy a block of eri_2center_eigvec(:,nauxil_neglect+1:) in eri_2center_sqrtinv(:,:)
-   call PDGEMR2D(auxil_basis%nbf,nauxil_2center,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
+   call PDGEMR2D(auxil_basis%nbf,nauxil_global,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
                                                 eri_2center_sqrtinv,1,1,desc_2center_sqrtinv,cntxt_3center)
 
    ! Then rescale eri_2center_sqrtinv(:,j) = eri_2center_sqrtinv(:,j) / SQRT(eigval(j))
-   do jglobal=1,nauxil_2center
+   do jglobal=1,nauxil_global
      invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
      call PDSCAL(auxil_basis%nbf,invsqrt_j,eri_2center_sqrtinv,1,jglobal,desc_2center_sqrtinv,1)
    enddo
@@ -1157,11 +1157,11 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
    call clean_allocate('LR 2-center integrals inverse square-root',eri_2center_sqrtinv_lr,mlocal,nlocal)
 
    ! First copy a block of eri_2center_eigvec(:,nauxil_neglect+1:) in eri_2center_sqrtinv_lr(:,:)
-   call PDGEMR2D(auxil_basis%nbf,nauxil_2center_lr,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
+   call PDGEMR2D(auxil_basis%nbf,nauxil_global_lr,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
                                                    eri_2center_sqrtinv_lr,1,1,desc_2center_sqrtinv_lr,cntxt_3center)
 
    ! Then rescale eri_2center_sqrtinv_lr(:,j) = eri_2center_sqrtinv_lr(:,j) / SQRT(eigval(j))
-   do jglobal=1,nauxil_2center_lr
+   do jglobal=1,nauxil_global_lr
      invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
      call PDSCAL(auxil_basis%nbf,invsqrt_j,eri_2center_sqrtinv_lr,1,jglobal,desc_2center_sqrtinv_lr,1)
    enddo
@@ -1173,13 +1173,13 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
 
  if( .NOT. is_longrange ) then
    call clean_allocate('2-center integrals inverse square-root',eri_2center_sqrtinv,mlocal,nlocal)
-   do jglobal=1,nauxil_2center
+   do jglobal=1,nauxil_global
      invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
      eri_2center_sqrtinv(:,jglobal) = eri_2center_eigvec(:,jglobal+nauxil_neglect) * invsqrt_j
    enddo
  else
    call clean_allocate('LR 2-center integrals inverse square-root',eri_2center_sqrtinv_lr,mlocal,nlocal)
-   do jglobal=1,nauxil_2center_lr
+   do jglobal=1,nauxil_global_lr
      invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
      eri_2center_sqrtinv_lr(:,jglobal) = eri_2center_eigvec(:,jglobal+nauxil_neglect) * invsqrt_j
    enddo
@@ -1194,21 +1194,21 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
  if( store_eri_2center_sqrt ) then
    write(stdout,*) 'Experimental: (P|1/sqrt(r12)|I)^{1/2} is calculated and stored'
    !
-   ! eri_2center_sqrt(auxil_basis%nbf,nauxil_2center) can be distributed
+   ! eri_2center_sqrt(auxil_basis%nbf,nauxil_global) can be distributed
    ! It uses the same descriptor as eri_2center_sqrtinv
    call clean_allocate('2-center integrals square-root',eri_2center_sqrt,mlocal,nlocal)
 #if defined(HAVE_SCALAPACK)
    ! First copy a block of eri_2center_eigvec(:,nauxil_neglect+1:) in eri_2center_sqrt(:,:)
-   call PDGEMR2D(auxil_basis%nbf,nauxil_2center,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
+   call PDGEMR2D(auxil_basis%nbf,nauxil_global,eri_2center_eigvec,1,nauxil_neglect+1,desc_2center, &
                                                 eri_2center_sqrt,1,1,desc_2center_sqrtinv,cntxt_3center)
 
    ! Then rescale eri_2center_sqrtinv(:,j) = eri_2center_sqrtinv(:,j) / SQRT(eigval(j))
-   do jglobal=1,nauxil_2center
+   do jglobal=1,nauxil_global
      sqrt_j = SQRT( eigval(jglobal+nauxil_neglect) )
      call PDSCAL(auxil_basis%nbf,sqrt_j,eri_2center_sqrt,1,jglobal,desc_2center_sqrtinv,1)
    enddo
 #else
-   do jglobal=1,nauxil_2center
+   do jglobal=1,nauxil_global
      sqrt_j = SQRT( eigval(jglobal+nauxil_neglect) )
      eri_2center_sqrt(:,jglobal) = eri_2center_eigvec(:,jglobal+nauxil_neglect) * sqrt_j
    enddo
@@ -1281,9 +1281,9 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
 
 
  if( .NOT. is_longrange ) then
-   nauxil_kept = nauxil_2center
+   nauxil_kept = nauxil_global
  else
-   nauxil_kept = nauxil_2center_lr
+   nauxil_kept = nauxil_global_lr
  endif
 
  if( .NOT. is_longrange ) then
@@ -1308,8 +1308,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
  if( .NOT. is_longrange ) then
    if( cntxt_3center > 0 ) then
      mlocal = NUMROC(npair         ,MB_3center,iprow_3center,first_row,nprow_3center)
-     nlocal = NUMROC(nauxil_2center,NB_3center,ipcol_3center,first_col,npcol_3center)
-     call DESCINIT(desc_eri3,npair,nauxil_2center,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+     nlocal = NUMROC(nauxil_global,NB_3center,ipcol_3center,first_col,npcol_3center)
+     call DESCINIT(desc_eri3,npair,nauxil_global,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
    else
      mlocal = 0
      nlocal = 0
@@ -1332,8 +1332,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
  else
    if( cntxt_3center > 0 ) then
      mlocal = NUMROC(npair            ,MB_3center,iprow_3center,first_row,nprow_3center)
-     nlocal = NUMROC(nauxil_2center_lr,NB_3center,ipcol_3center,first_col,npcol_3center)
-     call DESCINIT(desc_eri3_lr,npair,nauxil_2center_lr,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+     nlocal = NUMROC(nauxil_global_lr,NB_3center,ipcol_3center,first_col,npcol_3center)
+     call DESCINIT(desc_eri3_lr,npair,nauxil_global_lr,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
    else
      mlocal = 0
      nlocal = 0
@@ -1591,9 +1591,9 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  if( eri3_genuine_) call die('calculate_eri_3center_scalapack: eri3_genuine should not happen here')
 
  if( .NOT. is_longrange ) then
-   nauxil_kept = nauxil_2center
+   nauxil_kept = nauxil_global
  else
-   nauxil_kept = nauxil_2center_lr
+   nauxil_kept = nauxil_global_lr
  endif
 
  if( .NOT. is_longrange ) then
@@ -1630,8 +1630,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  if( .NOT. is_longrange ) then
    if( cntxt_3center > 0 ) then
      mlocal = NUMROC(npair         ,MB_3center,iprow_3center,first_row,nprow_3center)
-     nlocal = NUMROC(nauxil_2center,NB_3center,ipcol_3center,first_col,npcol_3center)
-     call DESCINIT(desc_eri3,npair,nauxil_2center,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+     nlocal = NUMROC(nauxil_global,NB_3center,ipcol_3center,first_col,npcol_3center)
+     call DESCINIT(desc_eri3,npair,nauxil_global,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
    else
      mlocal = 0
      nlocal = 0
@@ -1642,8 +1642,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  else
    if( cntxt_3center > 0 ) then
      mlocal = NUMROC(npair            ,MB_3center,iprow_3center,first_row,nprow_3center)
-     nlocal = NUMROC(nauxil_2center_lr,NB_3center,ipcol_3center,first_col,npcol_3center)
-     call DESCINIT(desc_eri3_lr,npair,nauxil_2center_lr,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+     nlocal = NUMROC(nauxil_global_lr,NB_3center,ipcol_3center,first_col,npcol_3center)
+     call DESCINIT(desc_eri3_lr,npair,nauxil_global_lr,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
    else
      mlocal = 0
      nlocal = 0

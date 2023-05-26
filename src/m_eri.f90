@@ -34,8 +34,8 @@ module m_eri
 
   real(dp),allocatable,public :: eri_4center(:)
   real(dp),allocatable,public :: eri_4center_lr(:)
-  real(dp),allocatable,public :: eri_3center(:,:)         ! global size: npair x nauxil_2center
-  real(dp),allocatable,public :: eri_3center_lr(:,:)      ! global size: npair x nauxil_2center_lr
+  real(dp),allocatable,public :: eri_3center(:,:)         ! global size: npair x nauxil_global
+  real(dp),allocatable,public :: eri_3center_lr(:,:)      ! global size: npair x nauxil_global_lr
 
 
   logical,protected,allocatable :: negligible_shellpair(:,:)
@@ -53,13 +53,13 @@ module m_eri
   integer(kind=int8),protected :: nint_4center    ! size of the eri_4center array
   integer,protected            :: npair           ! number of independent pairs (i,j) with i<=j
 
-  integer,public    :: nauxil_2center     ! size of the 2-center matrix
-  integer,public    :: nauxil_2center_lr  ! size of the 2-center LR matrix
+  integer,public    :: nauxil_global     ! size of the 2-center matrix
+  integer,public    :: nauxil_global_lr  ! size of the 2-center LR matrix
 
-  integer,protected :: nauxil_3center     ! size of the 3-center matrix
+  integer,protected :: nauxil_local     ! size of the 3-center matrix
                                           ! may differ from the total number of 3-center integrals due to
                                           ! data distribution
-  integer,protected :: nauxil_3center_lr  ! size of the 3-center matrix
+  integer,protected :: nauxil_local_lr  ! size of the 3-center matrix
                                           ! may differ from the total number of 3-center integrals due to
                                           ! data distribution
 
@@ -734,10 +734,10 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
     nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,NB_eri3_ao,iproc,first_col,npcol_eri3_ao)
   enddo
 
-  nauxil_3center = nbf_local_iproc(ipcol_eri3_ao)
+  nauxil_local = nbf_local_iproc(ipcol_eri3_ao)
 
-  allocate(ibf_auxil_g(nauxil_3center))
-  do ilocal=1,nauxil_3center
+  allocate(ibf_auxil_g(nauxil_local))
+  do ilocal=1,nauxil_local
     ibf_auxil_g(ilocal) = INDXL2G(ilocal,NB_eri3_ao,ipcol_eri3_ao,first_col,npcol_eri3_ao)
   enddo
   allocate(ibf_auxil_l(nbf_auxil_basis))
@@ -779,10 +779,10 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
     nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis,NB_eri3_ao,iproc,first_col,npcol_eri3_ao)
   enddo
 
-  nauxil_3center_lr = nbf_local_iproc_lr(ipcol_eri3_ao)
+  nauxil_local_lr = nbf_local_iproc_lr(ipcol_eri3_ao)
 
-  allocate(ibf_auxil_g_lr(nauxil_3center_lr))
-  do ilocal=1,nauxil_3center_lr
+  allocate(ibf_auxil_g_lr(nauxil_local_lr))
+  do ilocal=1,nauxil_local_lr
     ibf_auxil_g_lr(ilocal) = INDXL2G(ilocal,NB_eri3_ao,ipcol_eri3_ao,first_col,npcol_eri3_ao)
   enddo
   allocate(ibf_auxil_l_lr(nbf_auxil_basis))
@@ -822,7 +822,7 @@ subroutine reshuffle_distribution_3center()
   endif
 
   if( cntxt_eri3_ao > 0 ) then
-    mlocal = NUMROC(nauxil_2center,MB_eri3_ao,iprow_eri3_ao,first_row,nprow_eri3_ao)
+    mlocal = NUMROC(nauxil_global,MB_eri3_ao,iprow_eri3_ao,first_row,nprow_eri3_ao)
     nlocal = NUMROC(npair         ,NB_eri3_ao,ipcol_eri3_ao,first_col,npcol_eri3_ao)
   else
     mlocal = -1
@@ -834,11 +834,11 @@ subroutine reshuffle_distribution_3center()
   if( cntxt_3center > 0 ) then
     call move_alloc(eri_3center,eri_3center_tmp)
 
-    call DESCINIT(desc3final,nauxil_2center,npair,MB_eri3_ao,NB_eri3_ao,first_row,first_col,cntxt_eri3_ao,MAX(1,mlocal),info)
+    call DESCINIT(desc3final,nauxil_global,npair,MB_eri3_ao,NB_eri3_ao,first_row,first_col,cntxt_eri3_ao,MAX(1,mlocal),info)
 
     call clean_allocate('TMP 3-center integrals',eri_3center,mlocal,nlocal)
 
-    call PDGEMR2D(nauxil_2center,npair,eri_3center_tmp,1,1,desc_eri3,eri_3center,1,1,desc3final,cntxt_3center)
+    call PDGEMR2D(nauxil_global,npair,eri_3center_tmp,1,1,desc_eri3,eri_3center,1,1,desc3final,cntxt_3center)
     call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
   else
     call clean_deallocate('3-center integrals',eri_3center)

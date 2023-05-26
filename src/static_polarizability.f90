@@ -28,7 +28,7 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  integer                   :: istate,astate,iaspin
  integer                   :: jbf_auxil,ibf_auxil,ibf_auxil_local
  real(dp),allocatable      :: vsqchi0vsq(:,:)
- real(dp)                  :: eri_3center_ij(nauxil_2center)
+ real(dp)                  :: eri_3center_ij(nauxil_global)
  real(dp)                  :: docc,denom
 !=====
 
@@ -40,9 +40,9 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
    call die('static_polarizability: this implementation requires an auxiliary basis')
  endif
 
- call clean_allocate('Static W',wpol_out%chi,nauxil_2center,nauxil_2center,1)
+ call clean_allocate('Static W',wpol_out%chi,nauxil_global,nauxil_global,1)
 
- call clean_allocate('temp chi0 matrix',vsqchi0vsq,nauxil_2center,nauxil_2center)
+ call clean_allocate('temp chi0 matrix',vsqchi0vsq,nauxil_global,nauxil_global)
 
 
  !
@@ -62,14 +62,14 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
    !
    ! Communicate the needed 3-center integrals
    eri_3center_ij(:) = 0.0_dp
-   do ibf_auxil_local=1,nauxil_3center
+   do ibf_auxil_local=1,nauxil_local
      ibf_auxil = ibf_auxil_g(ibf_auxil_local)
      eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local,istate,astate,iaspin)
    enddo
    call auxil%sum(eri_3center_ij)
 
 
-   do jbf_auxil=1,nauxil_2center
+   do jbf_auxil=1,nauxil_global
      if( MODULO( jbf_auxil , auxil%nproc ) /= auxil%rank ) cycle
      vsqchi0vsq(:,jbf_auxil) = vsqchi0vsq(:,jbf_auxil) &
           + eri_3center_ij(:) * eri_3center_ij(jbf_auxil) * denom
@@ -85,7 +85,7 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  !                                             * v^{1/2} \chi_0 v^{1/2}
  !
  wpol_out%chi(:,:,1) = -vsqchi0vsq(:,:)
- forall(jbf_auxil=1:nauxil_2center)
+ forall(jbf_auxil=1:nauxil_global)
    wpol_out%chi(jbf_auxil,jbf_auxil,1) = 1.0_dp + wpol_out%chi(jbf_auxil,jbf_auxil,1)
  end forall
 

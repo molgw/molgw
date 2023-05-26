@@ -250,10 +250,10 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
  !
  ! Temporary descriptors
  ! desc_wpol for wpol%residue_left
- mlocal = NUMROC(nauxil_2center,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
- call DESCINIT(desc_wpol,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_global,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+ call DESCINIT(desc_wpol,nauxil_global,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
  ! desc_eri for wpol%residue_left
- call DESCINIT(desc_eri,nauxil_2center,mstate,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+ call DESCINIT(desc_eri,nauxil_global,mstate,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
  ! desc_wing for matrix_wing
  mlocal = NUMROC(mwing,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
@@ -301,7 +301,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
 #if defined(HAVE_SCALAPACK)
-       call PDGEMM('T','N',wpol%npole_reso,mstate,nauxil_2center, &
+       call PDGEMM('T','N',wpol%npole_reso,mstate,nauxil_global, &
                    1.0_dp,wpol%residue_left,1,1,desc_wpol,        &
                           eri_3center_eigen(1,nsemin,istate,ispin),1,1,desc_eri,        &
                    0.0_dp,matrix_wing,irecord+1,1,desc_wing)
@@ -522,18 +522,18 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  !
  ! SCALAPACK preparation for W
  !  wpol%residue_left
- mlocal = NUMROC(nauxil_2center ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+ mlocal = NUMROC(nauxil_global ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
  nlocal = NUMROC(wpol%npole_reso,NB_eri3_mo,ipcol_eri3_mo,first_col,npcol_eri3_mo)
- call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo, &
+ call DESCINIT(desc_wauxil,nauxil_global,wpol%npole_reso,MB_eri3_mo,NB_eri3_mo, &
                first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
  !
  ! Change data distribution
  ! from cntxt_eri3_mo to cntxt_sd
- mlocal = NUMROC(nauxil_2center ,block_row,iprow_sd,first_row,nprow_sd)
+ mlocal = NUMROC(nauxil_global ,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(wpol%npole_reso,block_col,ipcol_sd,first_col,npcol_sd)
- call DESCINIT(desc_wsd,nauxil_2center,wpol%npole_reso,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+ call DESCINIT(desc_wsd,nauxil_global,wpol%npole_reso,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
  call clean_allocate('TMP distributed W',wresidue_sd,mlocal,nlocal)
- call PDGEMR2D(nauxil_2center,wpol%npole_reso,wpol%residue_left,1,1,desc_wauxil, &
+ call PDGEMR2D(nauxil_global,wpol%npole_reso,wpol%residue_left,1,1,desc_wauxil, &
                                                     wresidue_sd,1,1,desc_wsd,cntxt_sd)
 
  ! Temporary array sigmagw is created because OPENMP does not want to work directly with se%sigma
@@ -547,9 +547,9 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      !
      ! SCALAPACK preparation for the 3-center integrals
      !
-     mlocal = NUMROC(nauxil_2center      ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+     mlocal = NUMROC(nauxil_global      ,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,NB_eri3_mo,ipcol_eri3_mo,first_col,npcol_eri3_mo)
-     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MB_eri3_mo,NB_eri3_mo, &
+     call DESCINIT(desc_3auxil,nauxil_global,nvirtual_G-ncore_G-1,MB_eri3_mo,NB_eri3_mo, &
                    first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
      if( cntxt_eri3_mo > 0 ) then
@@ -566,12 +566,12 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      !
      ! Change data distribution
      ! from cntxt_eri3_mo to cntxt_sd
-     mlocal = NUMROC(nauxil_2center      ,block_row,iprow_sd,first_row,nprow_sd)
+     mlocal = NUMROC(nauxil_global      ,block_row,iprow_sd,first_row,nprow_sd)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,block_col,ipcol_sd,first_col,npcol_sd)
-     call DESCINIT(desc_3sd,nauxil_2center,nvirtual_G-ncore_G-1,block_row,block_col, &
+     call DESCINIT(desc_3sd,nauxil_global,nvirtual_G-ncore_G-1,block_row,block_col, &
                    first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
      call clean_allocate('TMP 3center eigen',eri_3tmp_sd,mlocal,nlocal,verbose=.FALSE.)
-     call PDGEMR2D(nauxil_2center,nvirtual_G-ncore_G-1,eri_3tmp_auxil,1,1,desc_3auxil, &
+     call PDGEMR2D(nauxil_global,nvirtual_G-ncore_G-1,eri_3tmp_auxil,1,1,desc_3auxil, &
                                                           eri_3tmp_sd,1,1,desc_3sd,cntxt_sd)
      call clean_deallocate('TMP 3center eigen',eri_3tmp_auxil,verbose=.FALSE.)
 
@@ -585,7 +585,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      call clean_allocate('Temporary array',bra,mlocal,nlocal,verbose=.FALSE.)
 
      ! And calculate it
-     call PDGEMM('T','N',wpol%npole_reso,nvirtual_G-ncore_G-1,nauxil_2center, &
+     call PDGEMM('T','N',wpol%npole_reso,nvirtual_G-ncore_G-1,nauxil_global, &
                              1.0_dp,wresidue_sd,1,1,desc_wsd,    &
                                     eri_3tmp_sd,1,1,desc_3sd,    &
                              0.0_dp,bra        ,1,1,desc_bra)

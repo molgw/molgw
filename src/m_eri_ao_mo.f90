@@ -446,17 +446,17 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
 
   !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
   if(PRESENT(verbose)) then
-    call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center, &
+    call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local, &
                        mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose)
     if(PRESENT(long_range)) then
-      call clean_allocate('3-center_lr MO integrals',eri_3center_eigen_lr,1,nauxil_3center_lr, &
+      call clean_allocate('3-center_lr MO integrals',eri_3center_eigen_lr,1,nauxil_local_lr, &
                        mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose)
     endif
   else
-    call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center, &
+    call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local, &
                         mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
     if(PRESENT(long_range)) then
-      call clean_allocate('3-center_lr MO integrals',eri_3center_eigen_lr,1,nauxil_3center_lr, &
+      call clean_allocate('3-center_lr MO integrals',eri_3center_eigen_lr,1,nauxil_local_lr, &
                        mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose)
     endif
   endif
@@ -476,7 +476,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
 
     c_t(:,:)  = TRANSPOSE( c_matrix(:,mstate_min_:mstate_max_,klspin) )
 
-    do iauxil=1,nauxil_3center
+    do iauxil=1,nauxil_local
       if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
 
       tmp1(:,:) = 0.0_dp
@@ -504,7 +504,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
     enddo !iauxil
 
     if(PRESENT(long_range)) then
-      do iauxil=1,nauxil_3center_lr
+      do iauxil=1,nauxil_local_lr
         if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
 
         tmp1(:,:) = 0.0_dp
@@ -619,10 +619,10 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
 
   !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
   if(PRESENT(verbose)) then
-    call clean_allocate('3-center MO integrals',eri_3center_eigen_cmplx,1,nauxil_3center, &
+    call clean_allocate('3-center MO integrals',eri_3center_eigen_cmplx,1,nauxil_local, &
                         mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose)
   else
-    call clean_allocate('3-center MO integrals',eri_3center_eigen_cmplx,1,nauxil_3center, &
+    call clean_allocate('3-center MO integrals',eri_3center_eigen_cmplx,1,nauxil_local, &
                         mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
   endif
   eri_3center_eigen_cmplx(:,:,:,:) = (0.0_dp,0.0_dp)
@@ -641,7 +641,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
 
     c_t_cmplx(:,:)  = CONJG( TRANSPOSE( c_matrix_cmplx(:,mstate_min_:mstate_max_,klspin) ) )
 
-    do iauxil=1,nauxil_3center
+    do iauxil=1,nauxil_local
       if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
 
       tmp1_cmplx(:,:) = complex_zero

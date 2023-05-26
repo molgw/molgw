@@ -310,7 +310,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
   hartree_ao(:,:) = 0.0_dp
 
   allocate(pmat(npair))
-  allocate(x_vector(nauxil_3center))
+  allocate(x_vector(nauxil_local))
 
   select type(p_matrix)
   type is(real(dp))
@@ -330,9 +330,9 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
   end select
 
   ! X_P = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | P )
-  call DGEMV('T',npair,nauxil_3center,1.0d0,eri_3center,npair,pmat,1,0.0d0,x_vector,1)
+  call DGEMV('T',npair,nauxil_local,1.0d0,eri_3center,npair,pmat,1,0.0d0,x_vector,1)
   ! v_H_{alpha beta} = \sum_P ( alpha beta | P ) * X_P
-  call DGEMV('N',npair,nauxil_3center,1.0d0,eri_3center,npair,x_vector,1,0.0d0,pmat,1)
+  call DGEMV('N',npair,nauxil_local,1.0d0,eri_3center,npair,x_vector,1,0.0d0,pmat,1)
 
   !$OMP PARALLEL PRIVATE(kbf,lbf)
   !$OMP DO
@@ -409,10 +409,10 @@ subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
 
   write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
 
-  allocate(rho_coeff(nauxil_2center,nspin))
+  allocate(rho_coeff(nauxil_global,nspin))
 
   allocate(pmat(npair))
-  allocate(x_vector(nauxil_3center))
+  allocate(x_vector(nauxil_local))
 
   do ispin=1,nspin
 
@@ -434,10 +434,10 @@ subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
     end select
 
     ! X_J = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | J )
-    call DGEMV('T',npair,nauxil_3center,1.0d0,eri_3center,npair,pmat,1,0.0d0,x_vector,1)
+    call DGEMV('T',npair,nauxil_local,1.0d0,eri_3center,npair,pmat,1,0.0d0,x_vector,1)
 
     ! R_I = \sum_I ( I | 1/r12 | J )^{-1} * X_J
-    call DGEMV('N',nauxil_2center,nauxil_3center,1.0d0,eri_2center_inv,nauxil_2center,x_vector,1,0.0d0,rho_coeff(:,ispin),1)
+    call DGEMV('N',nauxil_global,nauxil_local,1.0d0,eri_2center_inv,nauxil_global,x_vector,1,0.0d0,rho_coeff(:,ispin),1)
 
   enddo
 
@@ -489,15 +489,15 @@ subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
   hartree_ao(:,:) = 0.0_dp
 
   allocate(vh(npair))
-  allocate(rho_coeff_local_nospin(nauxil_3center))
+  allocate(rho_coeff_local_nospin(nauxil_local))
 
-  do iauxil_local=1,nauxil_3center
+  do iauxil_local=1,nauxil_local
     iauxil_global = ibf_auxil_g(iauxil_local)
     rho_coeff_local_nospin(iauxil_local) = SUM(rho_coeff(iauxil_global,:))
   enddo
 
   ! vH_\alpha\beta = \sum_I ( \alpha \beta | 1/r12 | I ) * R_I
-  call DGEMV('N',npair,nauxil_3center,1.0d0,eri_3center,npair,rho_coeff_local_nospin,1,0.0d0,vh,1)
+  call DGEMV('N',npair,nauxil_local,1.0d0,eri_3center,npair,rho_coeff_local_nospin,1,0.0d0,vh,1)
 
   !$OMP PARALLEL PRIVATE(kbf,lbf)
   !$OMP DO
@@ -723,7 +723,6 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
   real(dp),intent(out) :: exchange_ao(:,:,:)
   real(dp),intent(out) :: eexchange
   !=====
-  integer              :: nauxil_local
   integer              :: nbf,nstate
   integer              :: ibf,jbf,ispin,istate
   integer              :: nocc
@@ -743,8 +742,6 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
 
   nbf    = SIZE(exchange_ao,DIM=1)
   nstate = SIZE(occupation(:,:),DIM=1)
-
-  nauxil_local = nauxil_3center
 
   allocate(tmp(nocc,nbf))
   allocate(c_t(nocc,nbf))
@@ -809,7 +806,6 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
   real(dp),intent(out) :: exchange_ao(:,:,:)
   real(dp),intent(out) :: eexchange
   !=====
-  integer              :: nauxil_local
   integer              :: nbf,nstate
   integer              :: ibf,jbf,ispin,istate
   integer              :: nocc
@@ -830,8 +826,6 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
   nbf    = SIZE(exchange_ao,DIM=1)
   nstate = SIZE(occupation(:,:),DIM=1)
 
-  nauxil_local = nauxil_3center_lr
-
 
   allocate(tmp(nocc,nbf))
   allocate(c_t(nocc,nbf))
@@ -844,8 +838,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
     enddo
     !$OMP END PARALLEL DO
 
-
-    do iauxil=1,nauxil_local
+    do iauxil=1,nauxil_local_lr
       if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
       tmp(:,:) = 0.0_dp
       !$OMP PARALLEL PRIVATE(ibf,jbf)
@@ -928,7 +921,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
     enddo
     !$OMP END PARALLEL DO
 
-    do iauxil=1,nauxil_3center
+    do iauxil=1,nauxil_local
       if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
       tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
       !$OMP PARALLEL PRIVATE(ibf,jbf)

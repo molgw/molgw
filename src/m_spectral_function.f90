@@ -16,7 +16,7 @@ module m_spectral_function
   use m_scalapack
   use m_inputparam
   use m_eri,only: iproc_ibf_auxil,ibf_auxil_l
-  use m_eri_calculate,only: nauxil_2center,nauxil_3center
+  use m_eri_calculate,only: nauxil_global,nauxil_local
   use m_numerical_tools,only: coeffs_gausslegint
 
   !
@@ -206,7 +206,7 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
   enddo
 
   if( has_auxil_basis ) then
-    sf%nprodbasis_total = nauxil_2center
+    sf%nprodbasis_total = nauxil_global
   else
     sf%nprodbasis_total = index_prodstate(nvirtual_W-1,nvirtual_W-1) * nspin
   endif
@@ -476,7 +476,7 @@ subroutine read_spectral_function(sf,reading_status)
   sf%npole_reso = npole_read
 
   if( has_auxil_basis ) then
-    call allocate_spectral_function(nauxil_3center,sf)
+    call allocate_spectral_function(nauxil_local,sf)
   else
     call allocate_spectral_function(nprodbasis_read,sf)
   endif
@@ -490,7 +490,7 @@ subroutine read_spectral_function(sf,reading_status)
     ! Read the residue from "the" universal ordering that does not depend on the
     ! data distribution
     allocate(buffer(sf%npole_reso))
-    do ibf_auxil=1,nauxil_2center
+    do ibf_auxil=1,nauxil_global
       if( auxil%rank == iproc_ibf_auxil(ibf_auxil) ) then
         call MPI_FILE_READ_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
         sf%residue_left(ibf_auxil_l(ibf_auxil),:) = buffer(:)
@@ -531,7 +531,7 @@ subroutine sf_evaluate(sf,omega_cmplx,chi)
   integer :: jprodbasis
   !=====
 
-  if( nauxil_2center /= nauxil_3center ) call die('sf_evaluate: not implemented with MPI')
+  if( nauxil_global /= nauxil_local ) call die('sf_evaluate: not implemented with MPI')
 
   nomega = SIZE(omega_cmplx)
   allocate(chi(sf%nprodbasis,sf%nprodbasis,nomega))
