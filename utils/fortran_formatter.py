@@ -5,6 +5,10 @@ import filecmp
 from pathlib import Path
 
 DEBUG = False
+
+#
+# Coding rules:
+#
 MAX_LINE_LENGTH = 132
 INDENT_UNIT = 2
 
@@ -88,18 +92,21 @@ for ffile in ffiles:
         if line_length(line) > MAX_LINE_LENGTH+1:
             print(f"Line {iline:05d}: too long")
             print(line.rstrip())
+            sys.exit(1)
         #
         # Check for tabs (not allowed!)
         if "\t" in line:
-            print(f"Line {iline:05d}: tab found")
+            print(f"Line {iline:05d}: tabs are forbidden")
             print(line.rstrip())
+            sys.exit(1)
 
         first_word = get_first_word(line)
         #print(iline,"__"+first_word+"__")
 
         if first_word == "&":
-            print(f"Line {iline:05d}: continuation sign at the beginning deprecated")
+            print(f"Line {iline:05d}: continuation sign at the beginning is forbidden")
             print(line.rstrip())
+            sys.exit(1)
 
         #
         # Check indentation

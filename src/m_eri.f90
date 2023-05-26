@@ -48,20 +48,18 @@ module m_eri
 
 
   integer,private   :: nbf_eri               ! local copy of nbf
-  ! 4-byte integers are too small to index the 4-center Coulomb integrals using no-RI/AE/5Z for 3d transition metals.
-  ! Use 8-byte integers instead
+                                             ! 4-byte integers are too small to index the 4-center Coulomb integrals using no-RI/AE/5Z for 3d transition metals.
+                                             ! Use 8-byte integers instead
   integer(kind=int8),protected :: nint_4center    ! size of the eri_4center array
   integer,protected            :: npair           ! number of independent pairs (i,j) with i<=j
 
-  integer,public    :: nauxil_global     ! size of the 2-center matrix
-  integer,public    :: nauxil_global_lr  ! size of the 2-center LR matrix
+  integer,public    :: nauxil_global     ! size of the 2-center matrix    (may differ from auxil_basis%nbf because of filtering)
+  integer,public    :: nauxil_global_lr  ! size of the 2-center LR matrix (may differ from auxil_basis%nbf because of filtering)
 
   integer,protected :: nauxil_local     ! size of the 3-center matrix
-                                          ! may differ from the total number of 3-center integrals due to
-                                          ! data distribution
+                                        ! may differ from the total number of 3-center integrals because of distribution
   integer,protected :: nauxil_local_lr  ! size of the 3-center matrix
-                                          ! may differ from the total number of 3-center integrals due to
-                                          ! data distribution
+                                        ! may differ from the total number of 3-center integrals because of distribution
 
   integer,public    :: desc_eri3(NDEL)
   integer,public    :: desc_eri3_lr(NDEL)
