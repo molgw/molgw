@@ -179,7 +179,7 @@ program spectrum
    write(file_transforms,*) "# omega(eV), |E_excit_dir(omega)|, real(E_excit_dir(omega)), aimag(E_excit_dir(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))"
  endif
  open(newunit=file_dipolar_spectra,file=name_dipolar_spectra)
- write(file_dipolar_spectra,*) "# omega(eV), transform(dipole_x)/|transform(E_dir)|, transform(dipole_y)/|transform(E_dir)|, transform(dipole_z)/|transform(E_dir)|"
+ write(file_dipolar_spectra, '(a)') "# omega(eV), transform(dipole_x)/|transform(E_dir)|, transform(dipole_y)/|transform(E_dir)|, transform(dipole_z)/|transform(E_dir)|"
 
  nomega = ntau
  do iomega=1,nomega/2 ! here iomega correspons to frequency
