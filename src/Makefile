@@ -139,8 +139,8 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o gwgamma_selfen
 ####################################################
 
 
-../spectrum: m_definitions.o m_warning.o spectrum.o
-	$(LINKER) m_definitions.o m_warning.o spectrum.o -o ../spectrum $(FFTW) $(FFTW_INCS) $(LINKS) $(LAPACK)
+../spectrum: m_definitions.o m_warning.o m_string_tools.o spectrum.o 
+	$(LINKER) m_definitions.o m_warning.o m_string_tools.o spectrum.o -o ../spectrum $(FFTW) $(FFTW_INCS) $(LINKS) $(LAPACK)
 
 ../molgw: m_definitions.o m_hdf5_tools.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
@@ -502,7 +502,7 @@ m_tddft_propagator.o: m_definitions.f90 m_basis_set.f90 m_hamiltonian_wrapper.f9
                       m_inputparam.f90 m_dft_grid.f90 m_scf.f90 m_warning.f90 m_timing.f90 m_density_tools.f90 m_atoms.f90 m_tddft_propagator.f90 
 	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS)
 
-spectrum.o: m_definitions.f90 m_warning.f90 spectrum.f90
+spectrum.o: m_definitions.f90 m_warning.f90 m_string_tools.f90 spectrum.f90
 	$(FC_W_OPTS) -c spectrum.f90  $(FFTW_INCS)
 
 tarball:

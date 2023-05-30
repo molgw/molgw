@@ -10,6 +10,8 @@
 program spectrum
  use m_definitions
  use m_warning
+ use m_string_tools
+ use, intrinsic :: iso_c_binding
  implicit none
 
  integer                    :: ntau,ntau_read,itau,idir,iomega,nomega
