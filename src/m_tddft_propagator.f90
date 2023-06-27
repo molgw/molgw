@@ -69,7 +69,7 @@ contains
 
 !=========================================================================
 subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
-  use m_hdf5_tools, only: HID_T
+  use m_hdf5_tools
   implicit none
 
   type(basis_set),intent(inout) :: basis
@@ -120,7 +120,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: iocc
   complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
   !==HDF5==
-  integer(HID_T)             :: fid, gid
+  integer(HID_T)             :: fid, c_mat_group, p_mat_group
   !====
 
   call switch_on_rt_tddft_timers()
@@ -384,8 +384,29 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     call plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize=.TRUE.)
   end if
 
-  if( print_c_matrix_cmplx_hdf5_ ) then
-    call dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, 0, initialize=.TRUE.)
+  ! HANDLING HDF5 files here
+
+  if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_cmplx_hdf5_ ) then
+
+    call hdf_open_file(fid, 'rt_tddft.h5', status='NEW')
+    call hdf_write_dataset(fid, 'time_step', time_step)
+    call hdf_write_dataset(fid, 'occupation', occupation)
+    call hdf_write_dataset(fid, 's_matrix', s_matrix)
+
+    if( excit_type%form == EXCIT_LIGHT ) call hdf_write_dataset(fid, 'dipole_ao', dipole_ao)
+
+    if( print_c_matrix_cmplx_hdf5_ ) then
+      call hdf_create_group(fid, 'c_matrix')
+      call hdf_open_group(fid, 'c_matrix', c_mat_group)
+      call dump_matrix_cmplx_hdf5(fid, c_mat_group, c_matrix_cmplx, 0)
+    end if
+
+    if( print_p_matrix_cmplx_hdf5_ ) then
+      call hdf_create_group(fid, 'p_matrix')
+      call hdf_open_group(fid, 'p_matrix', p_mat_group)
+      call dump_matrix_cmplx_hdf5(fid, p_mat_group, p_matrix_cmplx, 0)
+    end if
+
   end if
 
   if(print_line_rho_diff_tddft_) then
@@ -502,7 +523,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       if (calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx, &
                                                  istate_cut,file_q_matrix,time_cur)
 
-      if( print_c_matrix_cmplx_hdf5_ ) call dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, iwrite_step)
+      if( print_c_matrix_cmplx_hdf5_ ) call dump_matrix_cmplx_hdf5(fid, c_mat_group, c_matrix_cmplx, iwrite_step)
+      if( print_p_matrix_cmplx_hdf5_ ) call dump_matrix_cmplx_hdf5(fid, p_mat_group, p_matrix_cmplx, iwrite_step)
 
       iwrite_step = iwrite_step + 1
 
@@ -542,8 +564,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   !********end time loop*******************
 
-  if( print_c_matrix_cmplx_hdf5_ ) then
-    call dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, 0, finalize=.TRUE.)
+  if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_cmplx_hdf5_ ) then
+
+    call hdf_write_dataset(fid, 'nsnap', itau)
+
+    if(print_c_matrix_cmplx_hdf5_) call hdf_close_group(c_mat_group)
+    if(print_p_matrix_cmplx_hdf5_) call hdf_close_group(p_mat_group)
+    call hdf_close_file(fid)
   end if
 
   if(print_tddft_restart_) then

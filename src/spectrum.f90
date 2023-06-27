@@ -147,12 +147,12 @@ program spectrum
  ! Apply damping to the dipole
  if(output_damped_) then
    open(newunit=file_dipole_damped, file = name_dipole_damped)
-   write(file_dipole_damped,*) "# time(au)                 Dipole_damped_x(D)        Dipole_damped_y(D)        Dipole_damped_z(D)   EXP(-m_times(itau) / damp_factor )"
+   write(file_dipole_damped, '(a)') "# time(au)                 Dipole_damped_x(D)        Dipole_damped_y(D)        Dipole_damped_z(D)   EXP(-m_times(itau) / damp_factor )"
  endif
  do itau=1,ntau
    dipole_time_damped(itau,:)=dipole_time_ref(itau,:)*EXP(-m_times(itau) / damp_factor )
    if(output_damped_) then
-     write(file_dipole_damped,*) m_times(itau), REAL(dipole_time_damped(itau,:),dp)*au_debye, EXP(-m_times(itau) / damp_factor )
+     write(file_dipole_damped,'(5(es16.8E3, 2x))') m_times(itau), REAL(dipole_time_damped(itau,:),dp)*au_debye, EXP(-m_times(itau) / damp_factor )
    endif
  enddo
  if(output_damped_) close(file_dipole_damped)
@@ -176,7 +176,7 @@ program spectrum
  ! Write absorption spectra in the dipolar_spectra file
  if(output_transforms_) then
    open(newunit=file_transforms,file=name_transforms)
-   write(file_transforms,*) "# omega(eV), |E_excit_dir(omega)|, real(E_excit_dir(omega)), aimag(E_excit_dir(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))"
+   write(file_transforms,'(a)') "# omega(eV), |E_excit_dir(omega)|, real(E_excit_dir(omega)), aimag(E_excit_dir(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))"
  endif
  open(newunit=file_dipolar_spectra,file=name_dipolar_spectra)
  write(file_dipolar_spectra, '(a)') "# omega(eV), transform(dipole_x)/|transform(E_dir)|, transform(dipole_y)/|transform(E_dir)|, transform(dipole_z)/|transform(E_dir)|"
@@ -196,7 +196,7 @@ program spectrum
        if(idir==3) write(file_dipolar_spectra,*)
      enddo
      if(output_transforms_) then
-        write(file_transforms,*) pi * iomega / time_sim * Ha_eV, ABS(trans_m_excit_field_dir(iomega)), &
+        write(file_transforms,"(f16.8,6(2x,es16.8E3))") pi * iomega / time_sim * Ha_eV, ABS(trans_m_excit_field_dir(iomega)), &
                                  REAL(trans_m_excit_field_dir(iomega),dp), &
                                  AIMAG(trans_m_excit_field_dir(iomega)), ABS(trans_dipole_time(iomega,1)), &
                                  REAL(trans_dipole_time(iomega,1),dp), AIMAG(trans_dipole_time(iomega,1))

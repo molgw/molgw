@@ -2335,6 +2335,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
  integer                    :: gt
  integer                    :: nocc(2),nocc_max
  real(dp),parameter         :: length=10.0_dp
+ !real(dp),parameter         :: length=5.0_dp
  integer                    :: ibf
  integer                    :: istate,ispin
  complex(dp),allocatable    :: phi_cmplx(:,:)
@@ -2403,12 +2404,12 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
      zmax =MAX(MAXVAL( xatom(3,:) ),MAXVAL( xbasis(3,:) ))
 
      ! Second find the extreme positions for all the final positions
-     xmin = MIN(xmin , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
-     ymin = MIN(ymin , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
-     zmin = MIN(zmin , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
-     xmax = MAX(xmax , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
-     ymax = MAX(ymax , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
-     zmax = MAX(zmax , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
+     !xmin = MIN(xmin , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
+     !ymin = MIN(ymin , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
+     !zmin = MIN(zmin , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
+     !xmax = MAX(xmax , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
+     !ymax = MAX(ymax , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
+     !zmax = MAX(zmax , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
 
      xmin = xmin - length
      ymin = ymin - length
@@ -2463,7 +2464,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
 
    if( is_iomaster ) then
      do ispin=1,nspin
-       write(file_name,'(i3.3,a,i1,a)') snapshot_index,'_',ispin,'dens_diff.cube'
+       write(file_name,'(i4.4,a,i1,a)') snapshot_index,'_',ispin,'dens_diff.cube'
        open(newunit=ocuberho(ispin),file=file_name)
        write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
        write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
@@ -3624,68 +3625,36 @@ end subroutine evaluate_memory
 
 
 !=========================================================================
-subroutine dump_c_matrix_cmplx_hdf5(fid, gid, c_matrix_cmplx, isnap, initialize, finalize)
+subroutine dump_matrix_cmplx_hdf5(fid, gid, matrix_cmplx, isnap)
  use m_hdf5_tools
  use m_inputparam
  implicit none
  integer(HID_T), intent(inout) :: fid, gid
  integer,intent(in)          :: isnap
- complex(dp),intent(in)      :: c_matrix_cmplx(:,:,:)
- logical,intent(in),optional :: initialize
- logical,intent(in),optional :: finalize
+ complex(dp),intent(in)      :: matrix_cmplx(:,:,:)
  !=====
- character(len=200)          :: file_name, group_name, snap_name
- logical                     :: init_, final_
+ character(len=200)          :: file_name, snap_name
  !=====
 
 #if defined(HAVE_HDF5)
 
  if( .NOT. is_iomaster ) return
 
- init_ = .FALSE.
- final_ = .FALSE.
-
- if( PRESENT(initialize) ) init_ = initialize
- if( PRESENT(finalize) ) final_ = finalize
-
- if( init_ ) then
-
-   fid = 0
-   gid = 0
-
-   write(file_name,'(a)') 'rt_tddft.h5'
-   call hdf_open_file(fid, trim(file_name), status='NEW')
-
-   call hdf_write_dataset(fid, 'time_step', time_step)
-
-   write(group_name,'(a)') 'c_matrix_cmplx'
-   call hdf_create_group(fid, trim(group_name))
-   call hdf_open_group(fid, trim(group_name), gid)
-
-
- else if( final_ ) then
-
-   call hdf_close_group(gid) 
-   call hdf_close_file(fid)
-   return
-
- end if
-
  write(snap_name,'(a,I0,a)') 'snap_', isnap, '_real'
- call hdf_write_dataset(gid, TRIM(snap_name), REAL(c_matrix_cmplx, dp))
+ call hdf_write_dataset(gid, TRIM(snap_name), REAL(matrix_cmplx, dp))
 
  write(snap_name,'(a,I0,a)') 'snap_', isnap, '_imag'
- call hdf_write_dataset(gid, TRIM(snap_name), AIMAG(c_matrix_cmplx))
+ call hdf_write_dataset(gid, TRIM(snap_name), AIMAG(matrix_cmplx))
 
 #else
 
-call die('To print c_matrix_cmplx into an HDF5 file, &
+call die('To print matrix_cmplx into an HDF5 file, &
 MOLGW must be compiled with HDF5: HDF5_ROOT must be specified &
 and the -DHAVE_HDF5 compilation option must be activated')
 
 #endif
 
- end subroutine dump_c_matrix_cmplx_hdf5
+ end subroutine dump_matrix_cmplx_hdf5
 
 !=========================================================================
 end module m_io

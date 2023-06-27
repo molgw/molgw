@@ -153,6 +153,7 @@ module m_inputparam
   logical,protected                :: print_line_rho_diff_tddft_
   logical,protected                :: print_dens_traj_tddft_
   logical,protected                :: print_c_matrix_cmplx_hdf5_
+  logical,protected                :: print_p_matrix_cmplx_hdf5_
   logical,protected                :: print_dens_traj_
   logical,protected                :: print_dens_traj_points_set_
   logical,protected                :: print_charge_tddft_
@@ -879,6 +880,7 @@ subroutine read_inputfile_namelist()
   print_line_rho_diff_tddft_  = yesno_to_logical(print_line_rho_diff_tddft)
   print_dens_traj_tddft_      = yesno_to_logical(print_dens_traj_tddft)
   print_c_matrix_cmplx_hdf5_  = yesno_to_logical(print_c_matrix_cmplx_hdf5)
+  print_p_matrix_cmplx_hdf5_  = yesno_to_logical(print_p_matrix_cmplx_hdf5)
   print_dens_traj_            = yesno_to_logical(print_dens_traj)
   print_dens_traj_points_set_ = yesno_to_logical(print_dens_traj_points_set)
   print_transition_density_   = yesno_to_logical(print_transition_density)
@@ -938,7 +940,7 @@ subroutine read_inputfile_namelist()
 
 #if !defined(HAVE_HDF5)
 
-  if( print_c_matrix_cmplx_hdf5_ ) call die('To print c_matrix_cmplx into an HDF5 file, & 
+  if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_cmplx_hdf5_ ) call die('To print c_matrix_cmplx into an HDF5 file, & 
 MOLGW must be compiled with HDF5: HDF5_ROOT must be specified &
 and the -DHAVE_HDF5 compilation option must be activated')
 
