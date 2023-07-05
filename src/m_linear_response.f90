@@ -629,8 +629,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
   ! => only needs (X+Y)
   !wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
   call DGEMM('N','N',nauxil_local,nmat,nmat,DSQRT(spin_fact),eri_3tmp,nauxil_local, &
-                                                               xpy_matrix,nmat, &
-                                                         0.0d0,wpol%residue_left,nauxil_local)
+                                                             xpy_matrix,nmat, &
+                                                       0.0d0,wpol%residue_left,nauxil_local)
 
   energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
   !

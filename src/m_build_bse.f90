@@ -428,15 +428,13 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda,desc_ap
   call DESCINIT(desc_sd,nauxil_global,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
   call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
 
-  call PDGEMR2D(nauxil_global,nmat,eri_3tmp,1,1,desc_auxil, &
-                                 eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
+  call PDGEMR2D(nauxil_global,nmat,eri_3tmp,1,1,desc_auxil,eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
 
   call clean_deallocate('TMP 3-center integrals',eri_3tmp)
 
 
-
   call PDSYRK('L','T',nmat,nauxil_global,DBLE(2.0_dp*spin_fact*lambda),eri_3tmp_sd,1,1,desc_sd,  &
-                                          DBLE(1.0_dp),apb_matrix,1,1,desc_apb)
+                                         DBLE(1.0_dp),apb_matrix,1,1,desc_apb)
 
   call clean_deallocate('TMP 3-center integrals',eri_3tmp_sd)
 #endif
