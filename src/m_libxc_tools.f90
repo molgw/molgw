@@ -271,6 +271,10 @@ subroutine init_libxc_info(dft_xc)
       call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
       write(stdout,'(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ',dft_xc(ixc)%gamma
     endif
+    if( dft_xc(ixc)%id == XC_LDA_C_PMGB06 ) then
+      call xc_func_set_ext_params_name(dft_xc(ixc)%func,C_CHAR_'_omega'//C_NULL_CHAR,dft_xc(ixc)%gamma)
+      write(stdout,'(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ',dft_xc(ixc)%gamma
+    endif
 
   enddo
 

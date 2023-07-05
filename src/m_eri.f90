@@ -21,7 +21,6 @@ module m_eri
   use m_scalapack
   use m_inputparam,only: integral_level
 
-  logical,parameter :: eri_pair_major = .TRUE.
 
   real(dp),parameter,public :: TOO_LOW_EIGENVAL=1.0e-6_dp
 

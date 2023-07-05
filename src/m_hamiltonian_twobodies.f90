@@ -1017,7 +1017,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
   exc_xc = 0.0_dp
   vxc_ao(:,:,:) = 0.0_dp
 
-  if( dft_xc(1)%nxc == 0 ) return
+  if( dft_xc_local(1)%nxc == 0 ) return
 
   !
   ! Switch the timers: complex wavefunctions imply RT-TDDFT run
