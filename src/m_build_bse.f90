@@ -23,6 +23,8 @@ module m_build_bse
   use m_tddft_fxc
 
 
+  
+
 
 contains
 
@@ -329,7 +331,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently,lambda,desc_apb,wpol,m_a
       apb_block(:,:) = 0.0_dp
 
 
-      do ibf_auxil=1,nauxil_local
+      do ibf_auxil=1,SIZE(eri_3center_eigen,DIM=1)
 
 
         do t_jb=1,n_apb_block
@@ -386,7 +388,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda,desc_ap
   integer,intent(in)                 :: m_apb,n_apb
   real(dp),intent(inout)             :: apb_matrix(m_apb,n_apb)
   !=====
-  integer              :: nmat
+  integer              :: nmat,nauxil_local_,nauxil_global_
   integer              :: t_jb_global
   integer              :: jstate,bstate
   integer              :: jbspin
@@ -398,6 +400,14 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda,desc_ap
 
   ! in case of triplet final state, no contribution is to be calculated
   if( is_triplet_currently) return
+
+  if( calc_type%is_lr_mbpt ) then
+    nauxil_global_ = nauxil_global_lr
+    nauxil_local_  = nauxil_local_lr
+  else
+    nauxil_global_ = nauxil_global
+    nauxil_local_  = nauxil_local
+  endif
 
 #if defined(HAVE_SCALAPACK)
 
@@ -411,7 +421,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda,desc_ap
   if( nprow_sd * npcol_sd > 1 ) &
      write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
 
-  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_local,nmat)
+  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_local_,nmat)
   do t_jb_global=1,nmat
     jstate = wpol%transition_table(1,t_jb_global)
     bstate = wpol%transition_table(2,t_jb_global)
@@ -421,20 +431,20 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda,desc_ap
 
   !
   ! Descriptors
-  mlocal = NUMROC(nauxil_global,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
-  call DESCINIT(desc_auxil,nauxil_global,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
-  mlocal = NUMROC(nauxil_global,block_row,iprow_sd,first_row,nprow_sd)
+  mlocal = NUMROC(nauxil_global_,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+  call DESCINIT(desc_auxil,nauxil_global_,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+  mlocal = NUMROC(nauxil_global_,block_row,iprow_sd,first_row,nprow_sd)
   nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
-  call DESCINIT(desc_sd,nauxil_global,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+  call DESCINIT(desc_sd,nauxil_global_,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
   call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
 
-  call PDGEMR2D(nauxil_global,nmat,eri_3tmp,1,1,desc_auxil,eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
+  call PDGEMR2D(nauxil_global_,nmat,eri_3tmp,1,1,desc_auxil,eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
 
   call clean_deallocate('TMP 3-center integrals',eri_3tmp)
 
 
-  call PDSYRK('L','T',nmat,nauxil_global,DBLE(2.0_dp*spin_fact*lambda),eri_3tmp_sd,1,1,desc_sd,  &
-                                         DBLE(1.0_dp),apb_matrix,1,1,desc_apb)
+  call PDSYRK('L','T',nmat,nauxil_global_,DBLE(2.0_dp*spin_fact*lambda),eri_3tmp_sd,1,1,desc_sd,  &
+                                          DBLE(1.0_dp),apb_matrix,1,1,desc_apb)
 
   call clean_deallocate('TMP 3-center integrals',eri_3tmp_sd)
 #endif

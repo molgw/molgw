@@ -94,8 +94,13 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     write(stdout,'(a)') ' Singlet final state'
   endif
 
-  if( has_auxil_basis ) &
-    call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+  if( has_auxil_basis ) then
+    if( calc_type%is_lr_mbpt ) then
+      call calculate_eri_3center_eigen_lr(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+    else
+      call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+    endif
+  endif
 
   ! Set up all the switches to be able to treat
   ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)

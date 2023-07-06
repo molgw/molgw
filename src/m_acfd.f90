@@ -54,6 +54,8 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   !
   ! First the "+" part of RPA+
   !
+  erpa_sie_KP = 0.0_dp
+
   if( TRIM(postscf) == 'RPAP' .OR. TRIM(postscf) == 'RPAP_IM' .OR. TRIM(postscf) == 'RPA+' .OR. TRIM(postscf) == 'RPA+_IM') then
     allocate(dft_xc_tmp(2))
     dft_xc_tmp(:)%id = 0
@@ -74,14 +76,35 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
       erpa_sie_KP = kappa_hybrid * erpa_sie_KP
     endif
     write(stdout,'(/,a,f19.10)') ' E(LHEG) - E(LRPA) correlation energy (Ha):',erpa_sie_KP
-  else
-    erpa_sie_KP = 0.0_dp
   endif
 
+  ! Should we add the missing short-range part?
+  !if( TRIM(postscf) == 'RPALR' ) then
+  !  allocate(dft_xc_tmp(2))
+  !  dft_xc_tmp(:)%id = 0
+  !  dft_xc_tmp(:)%nspin = nspin
+  !  dft_xc_tmp(1)%id = XC_LDA_C_PW      ! HEG
+  !  dft_xc_tmp(2)%id = XC_LDA_C_PMGB06  ! RPALR@HEG
+  !  dft_xc_tmp(1)%coeff = one
+  !  dft_xc_tmp(2)%coeff = -one
+  !  dft_xc_tmp(2)%gamma = 1.0_dp / rcut_mbpt
+  !  call init_libxc_info(dft_xc_tmp)
+  !  call init_dft_grid(basis,grid_level,dft_xc_tmp(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+  !  call clean_allocate('XC operator RPA+',matrix_tmp,basis%nbf,basis%nbf,nspin)
+  !  call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,matrix_tmp,erpa_sie_KP,dft_xc_in=dft_xc_tmp)
+  !  call destroy_dft_grid()
+  !  call destroy_libxc_info(dft_xc_tmp)
+  !  call clean_deallocate('XC operator RPA+',matrix_tmp)
+  !  if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
+  !    write(stdout,'(/,a,f16.10)') ' RPA+ Energy scaled by :',kappa_hybrid
+  !    erpa_sie_KP = kappa_hybrid * erpa_sie_KP
+  !  endif
+  !  write(stdout,'(/,a,f19.10)') ' Ec(HEG) - Ec(LR-RPA) correlation energy (Ha):',erpa_sie_KP
+  !endif
 
 
   select case(TRIM(postscf))
-  case('RPA','RPAP','RPA+')
+  case('RPA','RPAP','RPA+','RPALR')
     call init_spectral_function(nstate,occupation,0,wpol)
     call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol,enforce_spin_multiplicity=1)
     call destroy_spectral_function(wpol)

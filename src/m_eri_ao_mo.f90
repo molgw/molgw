@@ -538,6 +538,134 @@ end subroutine calculate_eri_3center_eigen
 
 
 !=================================================================
+! Calculate LR Coulomb integrals and place them in eri_3center_eigen
+subroutine calculate_eri_3center_eigen_lr(c_matrix,mstate_min,mstate_max,nstate_min,nstate_max,timing,verbose)
+  implicit none
+  real(dp),intent(in)         :: c_matrix(:,:,:)
+  integer,optional,intent(in) :: mstate_min,mstate_max,nstate_min,nstate_max
+  integer,optional,intent(in) :: timing
+  logical,optional,intent(in) :: verbose
+  !=====
+  logical              :: verbose_
+  integer              :: nbf,nstate
+  integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
+  integer              :: mstate_count_,nstate_count_
+  integer              :: kbf,lbf,iauxil,nauxil_local_
+  integer              :: lstate
+  integer              :: klspin
+  real(dp),allocatable :: tmp1(:,:),tmp2(:,:),c_t(:,:)
+  integer              :: ipair
+  !=====
+
+  ! eri_3center_eigen is already allocated, then assume that you know what you are doing
+  if( ALLOCATED(eri_3center_eigen) ) then
+    return
+  endif
+
+  if( PRESENT(timing) ) then
+    call start_clock(timing)
+  else
+    call start_clock(timing_eri_3center_eigen)
+  endif
+
+  if(PRESENT(verbose)) then
+    verbose_ = verbose
+  else
+    verbose_ = .TRUE.
+  endif
+  if(verbose_) then
+    write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+  endif
+
+  nbf    = SIZE(c_matrix,DIM=1)
+  nstate = SIZE(c_matrix,DIM=2)
+
+  if( PRESENT(mstate_min) ) then
+    mstate_min_ = mstate_min
+  else
+    mstate_min_ = 1
+  endif
+
+  if( PRESENT(mstate_max) ) then
+    mstate_max_ = mstate_max
+  else
+    mstate_max_ = nstate
+  endif
+
+  if( PRESENT(nstate_min) ) then
+    nstate_min_ = nstate_min
+  else
+    nstate_min_ = 1
+  endif
+
+  if( PRESENT(nstate_max) ) then
+    nstate_max_ = nstate_max
+  else
+    nstate_max_ = nstate
+  endif
+
+  mstate_count_ = mstate_max_ - mstate_min_ + 1
+  nstate_count_ = nstate_max_ - nstate_min_ + 1
+
+  nauxil_local_ = nauxil_local_lr
+  !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
+  call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local_, &
+                     mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose_)
+  eri_3center_eigen(:,:,:,:) = 0.0_dp
+
+  call clean_allocate('TMP 3-center ints',tmp1,mstate_min_,mstate_max_,1,nbf,verbose_)
+  call clean_allocate('TMP 3-center ints',c_t ,mstate_min_,mstate_max_,1,nbf,verbose_)
+  call clean_allocate('TMP 3-center ints',tmp2,mstate_min_,mstate_max_,nstate_min_,nstate_max_,verbose_)
+
+  do klspin=1,nspin
+
+    c_t(:,:)  = TRANSPOSE( c_matrix(:,mstate_min_:mstate_max_,klspin) )
+
+    do iauxil=1,nauxil_local_
+      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+
+      tmp1(:,:) = 0.0_dp
+      !$OMP PARALLEL PRIVATE(kbf,lbf)
+      !$OMP DO REDUCTION(+:tmp1)
+      do ipair=1,npair
+        kbf = index_basis(1,ipair)
+        lbf = index_basis(2,ipair)
+        tmp1(:,kbf) = tmp1(:,kbf) +  c_t(:,lbf) * eri_3center_lr(ipair,iauxil)
+        tmp1(:,lbf) = tmp1(:,lbf) +  c_t(:,kbf) * eri_3center_lr(ipair,iauxil)
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+
+      ! Transformation of the second index
+      call DGEMM('N','N',mstate_count_,nstate_count_,nbf, &
+                 1.0d0,tmp1(mstate_min_,1),mstate_count_,   &
+                       c_matrix(1,nstate_min_,klspin),nbf, &
+                 0.0d0,tmp2(mstate_min_,nstate_min_),mstate_count_)
+
+      ! Transposition happens here!
+      eri_3center_eigen(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
+                                  = tmp2(mstate_min_:mstate_max_,nstate_min_:nstate_max_)
+
+    enddo !iauxil
+
+  enddo !klspin
+
+  call clean_deallocate('TMP 3-center ints',tmp2,verbose_)
+  call clean_deallocate('TMP 3-center ints',c_t,verbose_)
+  call clean_deallocate('TMP 3-center ints',tmp1,verbose_)
+
+  call ortho%sum(eri_3center_eigen)
+
+  if( PRESENT(timing) ) then
+    call stop_clock(timing)
+  else
+    call stop_clock(timing_eri_3center_eigen)
+  endif
+
+end subroutine calculate_eri_3center_eigen_lr
+
+
+!=================================================================
 subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_max,nstate_min,nstate_max,timing,verbose)
   implicit none
   complex(dp),intent(in)         :: c_matrix_cmplx(:,:,:)
