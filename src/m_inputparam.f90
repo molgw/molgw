@@ -34,6 +34,7 @@ module m_inputparam
   integer,parameter :: imaginary_axis_integral = 106
   integer,parameter :: exact_dyson             = 107
   integer,parameter :: imaginary_axis_homolumo = 108
+  integer,parameter :: contour_deformation     = 109
 
   !
   ! Self-energy approximation
@@ -238,6 +239,10 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW_IMAG
       calc_type%selfenergy_technique = imaginary_axis_pade
+    case('G0W0_CONTOUR','GW_CONTOUR')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx    = GW
+      calc_type%selfenergy_technique = contour_deformation
     case('G0W0_HOMOLUMO','GW_HOMOLUMO')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW_IMAG

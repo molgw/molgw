@@ -197,14 +197,16 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
         endif
         ! If reading has failed, then do the calculation
         if( reading_status /= 0 ) then
-          if( calc_type%selfenergy_technique /= imaginary_axis_pade  &
-             .AND. calc_type%selfenergy_technique /= imaginary_axis_homolumo ) then
+          select case(calc_type%selfenergy_technique)
+          case(imaginary_axis_pade,imaginary_axis_homolumo)
+            call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
+          case(contour_deformation)
+            ! no need for chi, it will be calculated directly inside
+          case default
             ! in case of BSE calculation, enforce RPA here
             enforce_rpa = calc_type%is_bse
             call polarizability(enforce_rpa,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
-          else
-            call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
-          endif
+          end select
         endif
 
         en_mbpt%total = en_mbpt%total + en_mbpt%rpa
@@ -217,6 +219,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
       endif
 
       select case(calc_type%selfenergy_technique)
+      case(contour_deformation)
+        call gw_selfenergy_contour(basis,energy_g,occupation,c_matrix,se)
       case(imaginary_axis_pade)
         call gw_selfenergy_imag_scalapack(basis,energy_g,c_matrix,wpol,se)
         call self_energy_pade(se)

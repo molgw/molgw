@@ -640,7 +640,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
     enddo
     deallocate(omega_gaussleg)
 
-  case(one_shot)
+  case(one_shot,contour_deformation)
     !
     ! Most standard case:
     se%nomega = nomega_sigma/2
@@ -661,6 +661,8 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
   case(imaginary_axis_pade,imaginary_axis_homolumo)
     ! in this case the central point is already included in the complex frequency se%omega_calc
     se%energy0(nsemin:nsemax,:) = 0.0_dp
+  case(contour_deformation)
+    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
   case default
     se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
   end select

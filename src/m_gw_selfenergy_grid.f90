@@ -231,7 +231,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
 
 
   if( .NOT. has_auxil_basis ) then
-    call die('gw_selfenergy_imag_sca requires an auxiliary basis')
+    call die('gw_selfenergy_imag_scalapack requires an auxiliary basis')
   endif
 
   call start_clock(timing_gw_self)
@@ -333,6 +333,395 @@ subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
   call stop_clock(timing_gw_self)
 
 end subroutine gw_selfenergy_imag_scalapack
+
+
+!=========================================================================
+subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
+  implicit none
+
+  type(basis_set),intent(in)          :: basis
+  real(dp),intent(in)                 :: energy(:,:),occupation(:,:)
+  real(dp),intent(in)                 :: c_matrix(:,:,:)
+  type(selfenergy_grid),intent(inout) :: se
+  !=====
+  integer              :: nstate
+  integer              :: iomega,iomega_sigma
+  integer              :: info
+  real(dp),allocatable :: eri3_sca(:,:)
+  real(dp)             :: v_chi_v_p,factor,de
+  integer              :: desc_eri3_t(NDEL)
+  integer              :: iprow,ipcol,nprow,npcol
+  integer              :: desc_eri3_final(NDEL)
+  integer              :: meri3,neri3
+  integer              :: mstate,pstate,mpspin
+  integer              :: prange,plocal
+  complex(dp),allocatable :: sigmagw(:,:,:)
+  type(spectral_function) :: wpol_real,wpol_imag,wpol_realaxis
+  integer              :: neig
+  real(dp),allocatable :: tmp(:),tmp2(:,:)
+  !=====
+
+
+  if( .NOT. has_auxil_basis ) then
+    call die('gw_selfenergy_coutour_scalapack requires an auxiliary basis')
+  endif
+
+  call start_clock(timing_gw_self)
+
+  write(stdout,'(/,1x,a)') 'GW self-energy on a grid of real frequencies centered on the gKS energies'
+  write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
+  do iomega=-se%nomega,se%nomega
+    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega,se%omega(iomega)*Ha_eV
+  enddo
+  write(stdout,'(1x,a)') '========================================================'
+
+  nstate = SIZE(energy,DIM=1)
+
+  nprow = 1
+  npcol = 1
+  iprow = 0
+  ipcol = 0
+
+
+  call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
+
+  call init_spectral_function(nstate,occupation,nomega_chi_imag,wpol_imag)
+  call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
+
+  !call init_spectral_function(nstate,occupation,20,wpol_realaxis)
+  !do iomega=1,20
+  !  wpol_realaxis%omega(iomega) = (iomega-1) * 10.0
+  !enddo
+  !write(*,*) wpol_realaxis%omega(:)
+  !call wpol_realaxis%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
+  !stop 'ENOUG'
+
+
+  prange = nvirtual_G - ncore_G - 1
+
+  meri3 = nauxil_global
+  neri3 = prange
+
+  call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
+
+  call DESCINIT(desc_eri3_t,nauxil_global,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo, &
+                MAX(1,nauxil_local),info)
+
+  allocate(sigmagw(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+  sigmagw(:,:,:) = 0.0_dp
+
+  do mpspin=1,nspin
+    do mstate=nsemin,nsemax
+
+      eri3_sca(:,1:prange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,mstate,mpspin)
+
+
+      !
+      ! Imaginary axis integral
+      !
+      do iomega=1,wpol_imag%nomega_quad
+
+        neig = SIZE(wpol_imag%vchiv_sqrt(iomega)%matrix(:,:),DIM=2)
+        write(*,*) 'neig',neig,' / ',nauxil_global,iomega
+        if( neig == 0 ) cycle
+        allocate(tmp2(neig,prange))
+
+        call DGEMM('T','N',neig,prange,nauxil_global,  &
+                   1.0_dp,wpol_imag%vchiv_sqrt(iomega)%matrix(:,:),nauxil_global,    &
+                          eri3_sca            ,nauxil_global,    &
+                   0.0_dp,tmp2                ,neig)
+
+        !$OMP PARALLEL PRIVATE(pstate, v_chi_v_p)
+        !$OMP DO REDUCTION(+:sigmagw)
+        do plocal=1,neri3
+          pstate = plocal + ncore_G
+
+          v_chi_v_p = -SUM(tmp2(:,plocal)**2)
+
+          ! Avoid the poles that are exactly at the origin of the contour
+          where( ABS( se%energy0(mstate,mpspin) + se%omega(:) - energy(pstate,mpspin) ) > eta )
+
+            sigmagw(:,mstate,mpspin) = sigmagw(:,mstate,mpspin) &
+                          - wpol_imag%weight_quad(iomega) &
+                              * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omega(:) - energy(pstate,mpspin) ) &
+                                                + im * wpol_imag%omega_quad(iomega) )   &
+                                 + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omega(:) - energy(pstate,mpspin) )  &
+                                                - im * wpol_imag%omega_quad(iomega) )  ) &
+                             * v_chi_v_p /  (2.0_dp * pi)
+          end where
+
+        enddo
+        !$OMP END DO
+        !$OMP END PARALLEL
+
+        deallocate(tmp2)
+      enddo
+
+
+      !
+      ! Residues for occupied states
+      !
+      do plocal=1,neri3
+        pstate = INDXL2G(plocal,wpol_imag%desc_chi(NB_),ipcol,wpol_imag%desc_chi(CSRC_),npcol) + ncore_G
+        ! only occupied states  \theta( \mu - e_p)
+        if( pstate >= nlumo_W ) cycle
+
+        do iomega_sigma=-se%nomega,se%nomega
+          ! only poles in the first quadrant  \theta( e_p - omega)
+          de = energy(pstate,mpspin) - (se%energy0(mstate,mpspin) + se%omega(iomega_sigma)%re)
+
+          if( de < -eta ) cycle
+
+          call init_spectral_function(nstate,occupation,1,wpol_real)
+          wpol_real%omega(1) = de
+          call wpol_real%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
+
+
+          neig = SIZE(wpol_real%vchiv_sqrt(1)%matrix(:,:),DIM=2)
+
+          allocate(tmp(neig))
+          tmp(:) = MATMUL( eri3_sca(:,plocal) , wpol_real%vchiv_sqrt(1)%matrix(:,:) )
+
+          factor = MERGE( 0.5_dp, 1.0_dp, ABS(de) < eta )
+
+          sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) + SUM(tmp(:)**2) * factor
+          deallocate(tmp)
+          call destroy_spectral_function(wpol_real)
+
+        enddo
+      enddo
+
+      !
+      ! Residues for empty states
+      !
+      do plocal=1,neri3
+        pstate = INDXL2G(plocal,wpol_imag%desc_chi(NB_),ipcol,wpol_imag%desc_chi(CSRC_),npcol) + ncore_G
+        ! only empty states  \theta( e_p - \mu)
+        if( pstate <= nhomo_W ) cycle
+
+        do iomega_sigma=-se%nomega,se%nomega
+          ! only poles in the third quadrant  \theta( \omega - e_p)
+          de = (se%energy0(mstate,mpspin) + se%omega(iomega_sigma)%re) - energy(pstate,mpspin)
+          if( de < -eta ) cycle
+
+          call init_spectral_function(nstate,occupation,1,wpol_real)
+          wpol_real%omega(1) = de
+          call wpol_real%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
+
+          neig = SIZE(wpol_real%vchiv_sqrt(1)%matrix(:,:),DIM=2)
+
+          allocate(tmp(neig))
+          tmp(:) = MATMUL( eri3_sca(:,plocal) , wpol_real%vchiv_sqrt(1)%matrix(:,:) )
+
+          factor = MERGE( 0.5_dp, 1.0_dp, ABS(de) < eta )
+          sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) - SUM(tmp(:)**2) * factor
+          deallocate(tmp)
+          call destroy_spectral_function(wpol_real)
+
+        enddo
+      enddo
+
+
+    enddo
+  enddo
+  call world%sum(sigmagw)
+
+  se%sigma(:,:,:) = sigmagw(:,:,:)
+
+  deallocate(sigmagw)
+  call clean_deallocate('TMP 3-center MO integrals',eri3_sca)
+  call destroy_spectral_function(wpol_imag)
+
+  call destroy_eri_3center_eigen()
+
+  call stop_clock(timing_gw_self)
+
+end subroutine gw_selfenergy_contour
+
+
+!=========================================================================
+subroutine fsos_selfenergy_imag_scalapack(basis,energy,occupation,c_matrix,wpol,se)
+  implicit none
+
+  type(basis_set),intent(in)          :: basis
+  real(dp),intent(in)                 :: energy(:,:),occupation(:,:)
+  real(dp),intent(in)                 :: c_matrix(:,:,:)
+  type(spectral_function),intent(in)  :: wpol
+  type(selfenergy_grid),intent(inout) :: se
+  !=====
+  integer              :: nstate
+  integer              :: iomega,iomegap
+  integer              :: info
+  real(dp),allocatable :: eri3_sca(:,:)
+  real(dp),allocatable :: chi_eri3_sca(:,:)
+  real(dp)             :: v_chi_v_p
+  integer              :: desc_eri3_t(NDEL)
+  integer              :: iprow,ipcol,nprow,npcol
+  integer              :: desc_eri3_final(NDEL)
+  integer              :: meri3,neri3
+  integer              :: mstate,pstate,mpspin,qstate,rstate,jauxil
+  integer              :: prange,plocal
+  complex(dp),allocatable :: sigmaigw(:,:,:)
+  real(dp) :: term1_iwp,term2_iwiwp,delta_occ_fp
+  real(dp),allocatable :: ww(:,:,:),weig(:,:)
+  integer :: lwork,nsing
+  real(dp),allocatable :: a_matrix(:,:),work(:),u(:,:),vt(:,:),sigma(:)
+  !=====
+
+
+  if( .NOT. has_auxil_basis ) then
+    call die('fsos_selfenergy_imag_scalapack requires an auxiliary basis')
+  endif
+
+  call start_clock(timing_gw_self)
+
+  write(stdout,'(/,1x,a)') 'FSOS self-energy on a grid of imaginary frequencies'
+  write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
+  do iomega=1,se%nomega_calc
+    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega,se%omega_calc(iomega)*Ha_eV
+  enddo
+  write(stdout,'(1x,a)') '========================================================'
+
+  nstate = SIZE(energy,DIM=1)
+
+  nprow = 1
+  npcol = 1
+#if defined(HAVE_SCALAPACK)
+  ! Get the processor grid included in the input wpol%desc_chi
+  call BLACS_GRIDINFO(wpol%desc_chi(CTXT_),nprow,npcol,iprow,ipcol)
+  write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow,' x ',npcol
+#endif
+
+
+  call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
+
+
+  prange = nvirtual_G - ncore_G - 1
+
+  meri3 = NUMROC(nauxil_global,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
+  neri3 = NUMROC(prange        ,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol)
+  call DESCINIT(desc_eri3_final,nauxil_global,prange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+                wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
+
+  call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
+  call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca,meri3,neri3)
+
+  call DESCINIT(desc_eri3_t,nauxil_global,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo, &
+                MAX(1,nauxil_local),info)
+
+  allocate(sigmaigw(se%nomega_calc,nsemin:nsemax,nspin))
+  sigmaigw(:,:,:) = 0.0_dp
+
+
+  ! transform v^1/2* chi * v^1/2 -> 1 + v^1/2* chi * v^1/2
+  allocate(ww,SOURCE=wpol%chi)
+  allocate(weig(nauxil_global,wpol%nomega_quad))
+  !do jauxil=1,SIZE(wpol%chi(:,:,:),DIM=2)
+  !  ww(jauxil,jauxil,:) = ww(jauxil,jauxil,:) + 1.0_dp
+  !enddo
+  do iomegap=1,wpol%nomega_quad
+    call diagonalize(' ',ww(:,:,iomegap),weig(:,iomegap))
+    write(*,*) 'iomegap',iomegap
+    write(*,*) COUNT( ABS(weig(:,iomegap)) < 1.0e-6_dp ),' / ',nauxil_local
+    write(*,*) weig(1:4,iomegap)
+    write(*,*) weig(SIZE(weig,DIM=1)-4:SIZE(weig,DIM=1),iomegap)
+  enddo
+
+  write(*,*) 'Dimensions:'
+  write(*,*) nauxil_global,prange**2
+  write(*,*)
+  allocate(a_matrix(nauxil_global,prange**2))
+  allocate(sigma(nauxil_global))
+  allocate(u(nauxil_global,nauxil_global),vt(nauxil_global,prange**2))
+  a_matrix(:,:) = RESHAPE( eri_3center_eigen(:,:,:,1) , [nauxil_global,prange**2] )
+  write(*,*) '=========A'
+  write(*,*) MAXVAL(ABS(a_matrix(:,:)))
+  write(*,*) a_matrix(1:6,1:6)
+  lwork = -1
+  allocate(work(1))
+  call DGESVD('S', 'S', nauxil_global, prange**2, a_matrix, nauxil_global, sigma, u, nauxil_global, vt, nauxil_global, &
+              work, lwork, info )
+  lwork = NINT(work(1))
+  deallocate(work)
+  allocate(work(lwork))
+  call DGESVD('S', 'S', nauxil_global, prange**2, a_matrix, nauxil_global, sigma, u, nauxil_global, vt, nauxil_global, &
+              work, lwork, info )
+  deallocate(work)
+  write(*,*) info
+  write(*,*) sigma(:)
+  nsing = COUNT(sigma(:) > 5.0e-1_dp)
+  write(*,*) nsing, ' / ',nauxil_global
+
+  do jauxil=1,nauxil_global
+    if( jauxil <= nsing ) then
+      u(:,jauxil) = u(:,jauxil) * sigma(jauxil)
+    else
+      u(:,jauxil) = 0.0_dp
+    endif
+  enddo
+  write(*,*) '=========~~~A'
+  a_matrix(:,:) = MATMUL( u , vt )
+  write(*,*) MAXVAL(ABS(a_matrix(:,:)))
+  write(*,*) a_matrix(1:6,1:6)
+  stop 'ENOUGFH'
+
+  do mpspin=1,nspin
+    do mstate=nsemin,nsemax
+      do iomegap=1,wpol%nomega_quad
+        write(*,*) iomegap,wpol%omega_quad(iomegap)
+        do iomega=1,se%nomega_calc
+
+          write(*,*) iomega,se%omega_calc(iomega)
+          do pstate=ncore_G+1,nvirtual_G-1
+            do qstate=ncore_G+1,nvirtual_G-1
+              do rstate=ncore_G+1,nvirtual_G-1
+
+                delta_occ_fp = occupation(pstate,mpspin) - occupation(qstate,mpspin)
+                term1_iwp = DOT_PRODUCT( eri_3center_eigen(:,qstate,mstate,mpspin) , &
+                                     MATMUL( wpol%chi(:,:,iomegap) , eri_3center_eigen(:,rstate,pstate,mpspin) ) )
+       !         term2_iwwp = DOT_PRODUCT( eri_3center_eigen(:,qstate,mstate,mpspin) , &
+
+
+
+!        !$OMP PARALLEL PRIVATE(pstate, v_chi_v_p)
+!        !$OMP DO REDUCTION(+:sigmaigw)
+!        do plocal=1,neri3
+!          pstate = INDXL2G(plocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
+!
+!          v_chi_v_p = DOT_PRODUCT( eri3_sca(:,plocal) , chi_eri3_sca(:,plocal) )
+!
+!          sigmaigw(:,mstate,mpspin) = sigmaigw(:,mstate,mpspin) &
+!                        - wpol%weight_quad(iomega) &
+!                            * (  1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) ) &
+!                                              + im * wpol%omega_quad(iomega) )   &
+!                               + 1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) )  &
+!                                              - im * wpol%omega_quad(iomega) )  ) &
+!                           * v_chi_v_p /  (2.0_dp * pi)
+!        enddo
+!        !$OMP END DO
+!        !$OMP END PARALLEL
+
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
+    enddo
+  enddo
+  call world%sum(sigmaigw)
+
+  se%sigma_calc(:,:,:) = sigmaigw(:,:,:)
+
+
+  deallocate(sigmaigw)
+  call clean_deallocate('TMP 3-center MO integrals',eri3_sca)
+  call clean_deallocate('TMP 3-center MO integrals',chi_eri3_sca)
+
+  call destroy_eri_3center_eigen()
+
+  call stop_clock(timing_gw_self)
+
+end subroutine fsos_selfenergy_imag_scalapack
 
 
 !=========================================================================

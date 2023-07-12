@@ -18,13 +18,22 @@ module m_spectral_function
   use m_eri,only: iproc_ibf_auxil,ibf_auxil_l
   use m_eri_calculate,only: nauxil_global,nauxil_local
   use m_numerical_tools,only: coeffs_gausslegint
+  use m_basis_set
+  use m_eri_ao_mo
 
   !
   ! General form of any spectral function
   ! z complex number
   ! i, j running on the basis set
-  ! sf_ij(z) = \sum_n L_n(i) R_n(j) / ( z - w_n )
+  ! sf_ij(z) = \sum_n L_n(i) L_n(j) / ( z - w_n )
   !
+  ! or on a grid of frequencies
+  !
+
+  type chi_type
+    real(dp),allocatable :: matrix(:,:)
+    real(dp),allocatable :: eigval(:)
+  end type chi_type
 
   type spectral_function
 
@@ -43,16 +52,20 @@ module m_spectral_function
 
     !
     ! Static or Dynamic W might be stored directly in the auxiliary basis
-    real(dp),allocatable :: chi(:,:,:)
-    integer              :: mchi,nchi
-    integer              :: desc_chi(NDEL)
-    integer              :: nomega_quad           ! Number of quadrature points
-    real(dp),allocatable :: omega_quad(:)         ! quadrature points for numerical integration
-    real(dp),allocatable :: weight_quad(:)        ! quadrature weight for numerical integration
+    real(dp),allocatable    :: chi(:,:,:)
+    integer                 :: mchi,nchi
+    integer                 :: desc_chi(NDEL)
+    integer                 :: nomega_quad           ! Number of quadrature points
+    real(dp),allocatable    :: omega_quad(:)         ! quadrature points for numerical integration
+    real(dp),allocatable    :: weight_quad(:)        ! quadrature weight for numerical integration
+    complex(dp),allocatable :: omega(:)
+
+    type(chi_type),allocatable :: vchiv_sqrt(:)
 
   contains
 
     procedure :: evaluate => sf_evaluate
+    procedure :: vsqrt_chi_vsqrt_rpa => sf_vsqrt_chi_vsqrt_rpa
 
   end type spectral_function
 
@@ -218,6 +231,7 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
   if( sf%nomega_quad > 0 ) then
     allocate(sf%weight_quad(sf%nomega_quad))
     allocate(sf%omega_quad(sf%nomega_quad))
+    allocate(sf%omega(sf%nomega_quad))
 
     if( sf%nomega_quad > 1 ) then
       call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
@@ -230,12 +244,14 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
                                 * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
         sf%omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
                                   * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
+        sf%omega(iomega)       =  sf%omega_quad(iomega) * im
         write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega)*Ha_eV,sf%weight_quad(iomega)
       enddo
     else
       ! Only one omega means static case
       sf%weight_quad(1) = 1.0_dp
       sf%omega_quad(1)  = 0.0_dp
+      sf%omega(1)       = (0.0_dp, 0.0_dp)
     endif
   endif
 
@@ -303,6 +319,8 @@ subroutine destroy_spectral_function(sf)
   endif
   if(ALLOCATED(sf%weight_quad)) deallocate(sf%weight_quad)
   if(ALLOCATED(sf%omega_quad))  deallocate(sf%omega_quad)
+  if(ALLOCATED(sf%omega))       deallocate(sf%omega)
+  if(ALLOCATED(sf%vchiv_sqrt))  deallocate(sf%vchiv_sqrt)
 
   write(stdout,'(/,a)') ' Spectral function destroyed'
 
@@ -550,6 +568,196 @@ subroutine sf_evaluate(sf,omega_cmplx,chi)
 
 
 end subroutine sf_evaluate
+
+
+!=========================================================================
+subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,verbose)
+  implicit none
+
+  class(spectral_function),intent(inout) :: sf
+  type(basis_set),intent(in)             :: basis
+  real(dp),intent(in)                    :: occupation(:,:)
+  real(dp),intent(in)                    :: energy(:,:)
+  real(dp),intent(in)                    :: c_matrix(:,:,:)
+  logical,optional,intent(in)            :: low_rank,verbose
+  !=====
+  real(dp),parameter   :: TOL_LOW_EIGVAL = 1.0e-3_dp
+  logical              :: verbose_,low_rank_,eri_3center_mo_available
+  integer              :: stdout_
+  integer              :: nstate,nomega,non_negligible
+  integer              :: iomega,ieig,jeig
+  integer              :: t_ia
+  integer              :: istate,astate,iaspin
+  integer              :: info
+  real(dp)             :: docc,de,factor
+  real(dp),allocatable :: eri3_t1(:,:),eri3_t2(:,:)
+  real(dp),allocatable :: chi0(:,:)
+  real(dp),allocatable :: chi0tmp(:,:)
+  real(dp)             :: eigval(nauxil_global)
+  integer              :: meri3,neri3
+  !=====
+
+  call start_clock(timing_rpa_dynamic)
+
+  stdout_ = stdout
+  if( PRESENT(verbose) ) then
+    if( .NOT. verbose ) then
+      open(newunit=stdout_,file='/dev/null')
+    endif
+  endif
+  low_rank_ = .FALSE.
+  if( PRESENT(low_rank) ) then
+    low_rank_ = low_rank
+  endif
+
+  nstate = SIZE(occupation,DIM=1)
+  nomega = SIZE(sf%omega)
+
+  write(stdout_,'(/,1x,a,i5,a)') 'Calculation of RPA polarizability on complex grid of ',nomega,' frequencies'
+#if defined(HAVE_SCALAPACK)
+  write(stdout_,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow_sd,' x ',npcol_sd
+#endif
+
+
+
+  if( nomega < 1 ) call die('sf_vsqrt_chi_vsqrt_rpa: sf contains no frequency (nomega==0)')
+  if( .NOT. has_auxil_basis ) call die('sf_vsqrt_chi_vsqrt_rpa: only works with an auxiliary basis')
+
+  sf%nprodbasis = nauxil_local
+  if( low_rank_ ) then
+    allocate(sf%vchiv_sqrt(nomega))
+  endif
+
+  ! Check if (I | p q) integrals are already available
+  !   if not, then calculate them
+  eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
+  if( .NOT. eri_3center_mo_available ) then
+    call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
+  else
+    ! eri_3center_eigen is already available
+    ! check if it has the correct dimensions
+    if(    LBOUND(eri_3center_eigen,DIM=2) > ncore_W+1      &
+      .OR. UBOUND(eri_3center_eigen,DIM=2) < nhomo_W        &
+      .OR. LBOUND(eri_3center_eigen,DIM=3) > nlumo_W        &
+      .OR. UBOUND(eri_3center_eigen,DIM=3) > nvirtual_W-1 ) then
+      call die('sf_vsqrt_chi_vsqrt_rpa: eri_3center_eigen does not contain all the needed states')
+    endif
+  endif
+
+  sf%mchi = NUMROC(nauxil_global,block_row,iprow_sd,first_row,nprow_sd)
+  sf%nchi = NUMROC(nauxil_global,block_col,ipcol_sd,first_col,npcol_sd)
+  call DESCINIT(sf%desc_chi,nauxil_global,nauxil_global,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,sf%mchi),info)
+  call clean_allocate('Chi',sf%chi,sf%mchi,sf%nchi,nomega)
+  write(stdout_,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_global,' x ',nauxil_global
+  write(stdout_,'(1x,a,i7,a,i7)') 'Distributed in ',sf%mchi,' x ',sf%nchi
+
+  !
+  ! Get the processor grid included in the input sf%desc_chi
+  meri3 = NUMROC(nauxil_global ,sf%desc_chi(MB_),iprow_sd,sf%desc_chi(RSRC_),nprow_sd)
+  neri3 = NUMROC(sf%npole_reso,sf%desc_chi(NB_),ipcol_sd,sf%desc_chi(CSRC_),npcol_sd)
+
+  call clean_allocate('TMP 3-center MO integrals',eri3_t1,nauxil_local,sf%npole_reso)
+  call clean_allocate('TMP 3-center MO integrals',eri3_t2,nauxil_local,sf%npole_reso)
+  call clean_allocate('Chi0',chi0,sf%mchi,sf%nchi)
+
+
+  do iomega=1,nomega
+
+    write(stdout_,'(1x,a,i4,a,i4)') 'Loop on frequencies: ',iomega,' / ',nomega
+
+    !
+    ! First evaluate v^{1/2} \chi_0 v^{1/2}
+    !
+    ! Loop over resonant transitions
+    do t_ia=1,sf%npole_reso
+      istate = sf%transition_table(1,t_ia)
+      astate = sf%transition_table(2,t_ia)
+      iaspin = sf%transition_table(3,t_ia)
+
+      docc = occupation(istate,iaspin) - occupation(astate,iaspin)
+      de   = energy(astate,iaspin)     - energy(istate,iaspin)
+      factor = 2.0_dp * docc * de / ( sf%omega(iomega)**2 - de**2 )
+
+      eri3_t1(:,t_ia) = eri_3center_eigen(:,istate,astate,iaspin) * factor
+      eri3_t2(:,t_ia) = eri_3center_eigen(:,istate,astate,iaspin)
+
+    enddo
+
+#if defined(HAVE_MKL)
+    call DGEMMT('L','N','T',nauxil_global,sf%npole_reso,1.0d0,eri3_t1,nauxil_global,eri3_t2,nauxil_global, &
+                0.0d0,chi0,nauxil_global)
+#else
+    call DGEMM('N','T',nauxil_global,nauxil_global,sf%npole_reso,1.0d0,eri3_t1,nauxil_global,eri3_t2,nauxil_global, &
+               0.0d0,chi0,nauxil_global)
+#endif
+
+
+
+
+    allocate(chi0tmp,SOURCE=chi0)
+
+    ! Second
+    ! Diagonalize chi0
+    call diagonalize(postscf_diago_flavor,chi0tmp,eigval)
+    ! transform vsqrt * chi0 * vsqrt in to vsqrt * chi * vsqrt
+    eigval(:) = eigval(:) / (1.0_dp - eigval(:))
+
+    if( low_rank_ ) then
+      non_negligible = COUNT( ABS(eigval(:)) > TOL_LOW_EIGVAL )
+      write(stdout_,*) 'Number of non-negligible eigenvalues:',non_negligible,nauxil_global
+    else
+      non_negligible = COUNT( ABS(eigval(:)) > 1.0e-10_dp )
+    endif
+
+    do jeig=1,non_negligible
+      chi0tmp(:,jeig) = chi0tmp(:,jeig) * SQRT( ABS(eigval(jeig)) )
+    enddo
+
+    if( low_rank_ ) then
+      allocate(sf%vchiv_sqrt(iomega)%matrix(nauxil_global,non_negligible))
+      allocate(sf%vchiv_sqrt(iomega)%eigval(non_negligible))
+      !
+      ! Store the square-root of vsqrt_chi_vsqrt
+      ieig = 0
+      do jeig=1,non_negligible
+        if( ABS(eigval(jeig)) > TOL_LOW_EIGVAL ) then
+          ieig = ieig + 1
+          sf%vchiv_sqrt(iomega)%matrix(:,ieig) = chi0tmp(:,jeig)
+          sf%vchiv_sqrt(iomega)%eigval(ieig)   = eigval(jeig)
+        endif
+      enddo
+
+    else
+      !
+      ! Create the full vsqrt_chi_vsqrt
+      call DSYRK('L','N',nauxil_global,non_negligible,-1.0_dp,chi0tmp,nauxil_global,0.0_dp,sf%chi(:,:,iomega),nauxil_global)
+      call symmetrize_matrix_sca('L',nauxil_global,sf%desc_chi,sf%chi(:,:,iomega),sf%desc_chi,chi0tmp)
+
+    endif
+
+    deallocate(chi0tmp)
+
+
+  enddo
+
+  call clean_deallocate('TMP 3-center MO integrals',eri3_t1)
+  call clean_deallocate('TMP 3-center MO integrals',eri3_t2)
+  call clean_deallocate('Chi0',chi0)
+
+  if( .NOT. eri_3center_mo_available ) then
+    call destroy_eri_3center_eigen()
+  endif
+
+  if( PRESENT(verbose) ) then
+    if( .NOT. verbose ) then
+      close(stdout_)
+    endif
+  endif
+
+  call stop_clock(timing_rpa_dynamic)
+
+
+end subroutine sf_vsqrt_chi_vsqrt_rpa
 
 
 end module m_spectral_function
