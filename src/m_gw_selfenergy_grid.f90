@@ -445,12 +445,12 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
       !
       do iomega=1,wpol_imag%nomega_quad
 
-        neig = SIZE(wpol_imag%vchiv_sqrt(iomega)%matrix(:,:),DIM=2)
+        neig = SIZE(wpol_imag%vchiv_sqrt(iomega)%eigvec(:,:),DIM=2)
         if( neig == 0 ) cycle
         allocate(tmp2(neig,prange))
 
         call DGEMM('T','N',neig,prange,nauxil_global,  &
-                   1.0_dp,wpol_imag%vchiv_sqrt(iomega)%matrix(:,:),nauxil_global,    &
+                   1.0_dp,wpol_imag%vchiv_sqrt(iomega)%eigvec(:,:),nauxil_global,    &
                           eri3_sca            ,nauxil_global,    &
                    0.0_dp,tmp2                ,neig)
 
@@ -459,7 +459,7 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
         do plocal=1,neri3
           pstate = plocal + ncore_G
 
-          v_chi_v_p = -SUM(tmp2(:,plocal)**2)
+          v_chi_v_p = SUM(tmp2(:,plocal)**2*wpol_imag%vchiv_sqrt(iomega)%eigval(:))
 
           ! Avoid the poles that are exactly at the origin of the contour
           where( ABS( se%energy0(mstate,mpspin) + se%omega(:) - energy(pstate,mpspin) ) > eta )
@@ -498,12 +498,13 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
           call wpol_real%interpolate_vsqrt_chi_vsqrt(ABS(de),vchiv_sqrt_tmp)
 
 
-          allocate(tmp(SIZE(vchiv_sqrt_tmp%matrix(:,:),DIM=2)))
-          tmp(:) = MATMUL( eri3_sca(:,plocal) , vchiv_sqrt_tmp%matrix(:,:) )
+          allocate(tmp(SIZE(vchiv_sqrt_tmp%eigvec(:,:),DIM=2)))
+          tmp(:) = MATMUL( eri3_sca(:,plocal) , vchiv_sqrt_tmp%eigvec(:,:) )
 
           factor = MERGE( 0.5_dp, 1.0_dp, ABS(de) < eta )
 
-          sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) + SUM(tmp(:)**2) * factor
+          sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) &
+                                         - SUM( tmp(:)**2 * vchiv_sqrt_tmp%eigval(:) ) * factor
 
           deallocate(tmp)
           call vchiv_sqrt_tmp%destroy()
@@ -526,12 +527,13 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
 
           call wpol_real%interpolate_vsqrt_chi_vsqrt(ABS(de),vchiv_sqrt_tmp)
 
-          allocate(tmp(SIZE(vchiv_sqrt_tmp%matrix(:,:),DIM=2)))
-          tmp(:) = MATMUL( eri3_sca(:,plocal) , vchiv_sqrt_tmp%matrix(:,:) )
+          allocate(tmp(SIZE(vchiv_sqrt_tmp%eigvec(:,:),DIM=2)))
+          tmp(:) = MATMUL( eri3_sca(:,plocal) , vchiv_sqrt_tmp%eigvec(:,:) )
 
           factor = MERGE( 0.5_dp, 1.0_dp, ABS(de) < eta )
 
-          sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) - SUM(tmp(:)**2) * factor
+          sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) &
+                                         + SUM( tmp(:)**2 * vchiv_sqrt_tmp%eigval(:) ) * factor
 
           deallocate(tmp)
           call vchiv_sqrt_tmp%destroy()

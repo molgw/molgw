@@ -36,7 +36,7 @@ module m_spectral_function
   !
 
   type chi_type
-    real(dp),allocatable :: matrix(:,:)
+    real(dp),allocatable :: eigvec(:,:)
     real(dp),allocatable :: eigval(:)
   contains
     procedure :: destroy => ct_destroy
@@ -746,21 +746,22 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
     else
       non_negligible = COUNT( ABS(eigval(:)) > 1.0e-10_dp )
     endif
+    write(stdout,*) 'FBFB most positive eigval',MAXVAL(eigval(:))
 
-    do jeig=1,non_negligible
-      chi0tmp(:,jeig) = chi0tmp(:,jeig) * SQRT( ABS(eigval(jeig)) )
-    enddo
+    !do jeig=1,non_negligible
+    !  chi0tmp(:,jeig) = chi0tmp(:,jeig) * SQRT( ABS(eigval(jeig)) )
+    !enddo
 
     if( low_rank_ ) then
-      allocate(sf%vchiv_sqrt(iomega)%matrix(nauxil_global,non_negligible))
+      allocate(sf%vchiv_sqrt(iomega)%eigvec(nauxil_global,non_negligible))
       allocate(sf%vchiv_sqrt(iomega)%eigval(non_negligible))
       !
-      ! Store the square-root of vsqrt_chi_vsqrt
+      ! Store the eigenelements of vsqrt_chi_vsqrt
       ieig = 0
-      do jeig=1,non_negligible
+      do jeig=1,non_negligible  ! nauxil_global
         if( ABS(eigval(jeig)) > TOL_LOW_EIGVAL ) then
           ieig = ieig + 1
-          sf%vchiv_sqrt(iomega)%matrix(:,ieig) = chi0tmp(:,jeig)
+          sf%vchiv_sqrt(iomega)%eigvec(:,ieig) = chi0tmp(:,jeig)
           sf%vchiv_sqrt(iomega)%eigval(ieig)   = eigval(jeig)
         endif
       enddo
@@ -768,7 +769,13 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
     else
       !
       ! Create the full vsqrt_chi_vsqrt
-      call DSYRK('L','N',nauxil_global,non_negligible,-1.0_dp,chi0tmp,nauxil_global,0.0_dp,sf%chi(:,:,iomega),nauxil_global)
+      sf%chi(:,:,iomega) = 0.0_dp
+      do jeig=1,nauxil_global
+        if( ABS(eigval(jeig)) > TOL_LOW_EIGVAL ) then
+          call DSYRK('L',nauxil_global,eigval(jeig),chi0tmp(:,jeig),1,sf%chi(:,:,iomega),nauxil_global)
+        endif
+      enddo
+      !call DSYRK('L','N',nauxil_global,non_negligible,-1.0d0,chi0tmp,nauxil_global,0.0d0,sf%chi(:,:,iomega),nauxil_global)
       call symmetrize_matrix_sca('L',nauxil_global,sf%desc_chi,sf%chi(:,:,iomega),sf%desc_chi,chi0tmp)
 
     endif
@@ -816,16 +823,17 @@ subroutine sf_interpolate_vsqrt_chi_vsqrt(sf,omega,vchiv_sqrt_omega)
   endif
 
   nomega = SIZE(sf%omega)
-  if( omega > MAXVAL(sf%omega(:)%re) .OR. omega < MINVAL(sf%omega(:)%re) ) &
-        call die('sf_interpolate_vsqrt_chi_vsqrt_rpa: requested frequency out of range')
+  if( omega > MAXVAL(sf%omega(:)%re) .OR. omega < MINVAL(sf%omega(:)%re) ) then
+    write(stdout,*) omega
+    write(stdout,*) sf%omega(1)%re
+    write(stdout,*) sf%omega(SIZE(sf%omega))%re
+    call die('sf_interpolate_vsqrt_chi_vsqrt_rpa: requested frequency out of range')
+  endif
 
-  !do iomega=2,nomega
-  !  if( sf%omega(iomega)%re > omega%re ) exit
-  !enddo
-  !jomega = iomega - 1
+  ! no interpolation, but just take the closest omega
   jomega = MINLOC( ABS(sf%omega(:)%re-omega) , DIM=1 )
 
-  allocate(vchiv_sqrt_omega%matrix,SOURCE=sf%vchiv_sqrt(jomega)%matrix)
+  allocate(vchiv_sqrt_omega%eigvec,SOURCE=sf%vchiv_sqrt(jomega)%eigvec)
   allocate(vchiv_sqrt_omega%eigval,SOURCE=sf%vchiv_sqrt(jomega)%eigval)
 
 end subroutine sf_interpolate_vsqrt_chi_vsqrt
@@ -837,7 +845,7 @@ subroutine ct_destroy(chi)
   !=====
   class(chi_type),intent(inout) :: chi
   !=====
-  if( ALLOCATED(chi%matrix) ) deallocate(chi%matrix)
+  if( ALLOCATED(chi%eigvec) ) deallocate(chi%eigvec)
   if( ALLOCATED(chi%eigval) ) deallocate(chi%eigval)
   
 end subroutine ct_destroy
