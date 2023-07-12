@@ -90,10 +90,10 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
       call pt2_density_matrix(occupation,energy,c_matrix,p_matrix_corr)
     case('GW','G0W0')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
-      call init_spectral_function(nstate,occupation,0,wpol)
+      call wpol%init(nstate,occupation,0)
       call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
       call gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix_corr)
-      call destroy_spectral_function(wpol)
+      call wpol%destroy()
     case('EVGW','GNWN')
       ! This keyword calculates the GW density matrix calculated with GW QP energies
       allocate(energy_qp,MOLD=energy)
@@ -102,25 +102,25 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
         call issue_warning('File energy_qp not found: assuming 1st iteration')
         energy_qp(:,:) = energy(:,:)
       endif
-      call init_spectral_function(nstate,occupation,0,wpol)
+      call wpol%init(nstate,occupation,0)
       call polarizability(.TRUE.,.TRUE.,basis,occupation,energy_qp,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
       call gw_density_matrix(occupation,energy_qp,c_matrix,wpol,p_matrix_corr)
-      call destroy_spectral_function(wpol)
+      call wpol%destroy()
       deallocate(energy_qp)
     case('GW_IMAGINARY','G0W0_IMAGINARY')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       ! using an imaginary axis integral
-      call init_spectral_function(nstate,occupation,nomega_chi_imag,wpol)
+      call wpol%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
       call polarizability_grid_scalapack(basis,occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
       call gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix_corr)
-      call destroy_spectral_function(wpol)
+      call wpol%destroy()
     case('GW_DYSON','G0W0_DYSON')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       ! using an imaginary axis integral
-      call init_spectral_function(nstate,occupation,nomega_chi_imag,wpol)
+      call wpol%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
       call polarizability_grid_scalapack(basis,occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
       call gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix_corr)
-      call destroy_spectral_function(wpol)
+      call wpol%destroy()
     case('HF')
     case('HF_SECOND_ORDER')
       call fock_density_matrix_second_order(basis,occupation,energy,c_matrix,hamiltonian_fock,p_matrix_corr)

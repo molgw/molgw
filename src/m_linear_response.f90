@@ -151,7 +151,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! It is stored in object wpol_static
   !
   if( is_bse ) then
-    call init_spectral_function(nstate,occupation,1,wpol_static)
+    call wpol_static%init(nstate,occupation,1,grid=STATIC)
     call read_spectral_function(wpol_static,reading_status)
 
     ! If a SCREENED_COULOMB file cannot be found,
@@ -222,7 +222,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     endif
 
     if( is_bse ) then
-      call destroy_spectral_function(wpol_static)
+      call wpol_static%destroy()
     endif
 
     call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,en_rpa)
@@ -244,7 +244,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     ! Step 3
     if( is_bse ) then
       call build_amb_apb_bse(wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
-      call destroy_spectral_function(wpol_static)
+      call wpol_static%destroy()
     endif
 
   endif
@@ -390,7 +390,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     if( print_w_ ) call write_spectral_function(wpol_out)
 
   else
-    call destroy_spectral_function(wpol_out)
+    call wpol_out%destroy()
   endif
 
 

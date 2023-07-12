@@ -840,8 +840,15 @@ nomega_chi_imag:
   mandatory: 'no'
   experimental: 'no'
   default: 0
-  comment: Sets the number of frequencies for the response function used to perform the integral on the imaginary
-    axis
+  comment: Sets the number of frequencies for the response function used to perform the integral on the imaginary axis.
+
+nomega_chi_real:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 2
+  comment: Sets the number of frequencies for the response function on the real axis in contour deformation technique.
 
 nomega_sigma:
   family: post

@@ -701,6 +701,11 @@ RPA Total energy          , -76.4392995158     , 0 , 1.0e-7
 GW HOMO energy            , -12.175845         , 0 , 1.0e-4
 GW LUMO energy            ,   0.884386         , 0 , 1.0e-4
 
+h2o_gw_contour.in         , GW@HF calculation with contour deformation, noparallel
+SCF Total Energy          , -76.0571524942     , 0 , 1.0e-7
+GW HOMO energy            , -12.790901         , 0 , 1.0e-4
+GW LUMO energy            ,   3.450105         , 0 , 1.0e-4
+
 h2o_mp3.in                , MP3 total energy with RI
 SCF Total Energy          , -76.0262395455     , 0 , 1.0e-7
 MP2 Energy                ,  -0.2022870330     , 0 , 1.0e-7

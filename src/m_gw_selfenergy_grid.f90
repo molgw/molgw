@@ -348,17 +348,18 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
   integer              :: iomega,iomega_sigma
   integer              :: info
   real(dp),allocatable :: eri3_sca(:,:)
-  real(dp)             :: v_chi_v_p,factor,de
+  real(dp)             :: v_chi_v_p,factor,de,de_max
   integer              :: desc_eri3_t(NDEL)
   integer              :: iprow,ipcol,nprow,npcol
   integer              :: desc_eri3_final(NDEL)
   integer              :: meri3,neri3
   integer              :: mstate,pstate,mpspin
   integer              :: prange,plocal
-  complex(dp),allocatable :: sigmagw(:,:,:)
-  type(spectral_function) :: wpol_real,wpol_imag,wpol_realaxis
   integer              :: neig
   real(dp),allocatable :: tmp(:),tmp2(:,:)
+  type(chi_type)       :: vchiv_sqrt_tmp
+  complex(dp),allocatable :: sigmagw(:,:,:)
+  type(spectral_function) :: wpol_imag,wpol_real
   !=====
 
 
@@ -385,16 +386,39 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
-  call init_spectral_function(nstate,occupation,nomega_chi_imag,wpol_imag)
+  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
   call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
 
-  !call init_spectral_function(nstate,occupation,20,wpol_realaxis)
-  !do iomega=1,20
-  !  wpol_realaxis%omega(iomega) = (iomega-1) * 10.0
-  !enddo
-  !write(*,*) wpol_realaxis%omega(:)
-  !call wpol_realaxis%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
-  !stop 'ENOUG'
+  !
+  ! Find largest real omega needed so to specify the frequency grid
+  de_max = 0.0_dp
+  do mpspin=1,nspin
+    do mstate=nsemin,nsemax
+      do pstate=ncore_G+1,nhomo_G
+        do iomega_sigma=-se%nomega,se%nomega
+          ! only poles in the first quadrant  \theta( e_p - omega)
+          de = energy(pstate,mpspin) - (se%energy0(mstate,mpspin) + se%omega(iomega_sigma)%re)
+          if( de < -eta ) cycle
+          de_max = MAX(de_max,de)
+        enddo
+      enddo
+      do pstate=nlumo_G,nvirtual_G-1
+        do iomega_sigma=-se%nomega,se%nomega
+          ! only poles in the third quadrant  \theta( omega - e_p)
+          de = se%energy0(mstate,mpspin) + se%omega(iomega_sigma)%re - energy(pstate,mpspin)
+          if( de < -eta ) cycle
+          de_max = MAX(de_max,de)
+        enddo
+      enddo
+    enddo
+  enddo
+
+  write(stdout,'(1x,a,f12.6)') 'Maximum real frequency needed (eV): ',de_max * Ha_eV
+  call wpol_real%init(nstate,occupation,nomega_chi_real,grid=REAL_LINEAR,omega_max=de_max)
+  do iomega=1,nomega_chi_real
+    wpol_real%omega(iomega) = REAL(iomega-1,dp)/REAL(nomega_chi_real-1,dp) * de_max
+  enddo
+  call wpol_real%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -422,7 +446,6 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
       do iomega=1,wpol_imag%nomega_quad
 
         neig = SIZE(wpol_imag%vchiv_sqrt(iomega)%matrix(:,:),DIM=2)
-        write(*,*) 'neig',neig,' / ',nauxil_global,iomega
         if( neig == 0 ) cycle
         allocate(tmp2(neig,prange))
 
@@ -464,7 +487,7 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
       do plocal=1,neri3
         pstate = INDXL2G(plocal,wpol_imag%desc_chi(NB_),ipcol,wpol_imag%desc_chi(CSRC_),npcol) + ncore_G
         ! only occupied states  \theta( \mu - e_p)
-        if( pstate >= nlumo_W ) cycle
+        if( pstate >= nlumo_G ) cycle
 
         do iomega_sigma=-se%nomega,se%nomega
           ! only poles in the first quadrant  \theta( e_p - omega)
@@ -472,21 +495,18 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
 
           if( de < -eta ) cycle
 
-          call init_spectral_function(nstate,occupation,1,wpol_real)
-          wpol_real%omega(1) = de
-          call wpol_real%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
+          call wpol_real%interpolate_vsqrt_chi_vsqrt(ABS(de),vchiv_sqrt_tmp)
 
 
-          neig = SIZE(wpol_real%vchiv_sqrt(1)%matrix(:,:),DIM=2)
-
-          allocate(tmp(neig))
-          tmp(:) = MATMUL( eri3_sca(:,plocal) , wpol_real%vchiv_sqrt(1)%matrix(:,:) )
+          allocate(tmp(SIZE(vchiv_sqrt_tmp%matrix(:,:),DIM=2)))
+          tmp(:) = MATMUL( eri3_sca(:,plocal) , vchiv_sqrt_tmp%matrix(:,:) )
 
           factor = MERGE( 0.5_dp, 1.0_dp, ABS(de) < eta )
 
           sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) + SUM(tmp(:)**2) * factor
+
           deallocate(tmp)
-          call destroy_spectral_function(wpol_real)
+          call vchiv_sqrt_tmp%destroy()
 
         enddo
       enddo
@@ -497,26 +517,24 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
       do plocal=1,neri3
         pstate = INDXL2G(plocal,wpol_imag%desc_chi(NB_),ipcol,wpol_imag%desc_chi(CSRC_),npcol) + ncore_G
         ! only empty states  \theta( e_p - \mu)
-        if( pstate <= nhomo_W ) cycle
+        if( pstate <= nhomo_G ) cycle
 
         do iomega_sigma=-se%nomega,se%nomega
           ! only poles in the third quadrant  \theta( \omega - e_p)
           de = (se%energy0(mstate,mpspin) + se%omega(iomega_sigma)%re) - energy(pstate,mpspin)
           if( de < -eta ) cycle
 
-          call init_spectral_function(nstate,occupation,1,wpol_real)
-          wpol_real%omega(1) = de
-          call wpol_real%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
+          call wpol_real%interpolate_vsqrt_chi_vsqrt(ABS(de),vchiv_sqrt_tmp)
 
-          neig = SIZE(wpol_real%vchiv_sqrt(1)%matrix(:,:),DIM=2)
-
-          allocate(tmp(neig))
-          tmp(:) = MATMUL( eri3_sca(:,plocal) , wpol_real%vchiv_sqrt(1)%matrix(:,:) )
+          allocate(tmp(SIZE(vchiv_sqrt_tmp%matrix(:,:),DIM=2)))
+          tmp(:) = MATMUL( eri3_sca(:,plocal) , vchiv_sqrt_tmp%matrix(:,:) )
 
           factor = MERGE( 0.5_dp, 1.0_dp, ABS(de) < eta )
+
           sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) - SUM(tmp(:)**2) * factor
+
           deallocate(tmp)
-          call destroy_spectral_function(wpol_real)
+          call vchiv_sqrt_tmp%destroy()
 
         enddo
       enddo
@@ -530,7 +548,8 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
 
   deallocate(sigmagw)
   call clean_deallocate('TMP 3-center MO integrals',eri3_sca)
-  call destroy_spectral_function(wpol_imag)
+  call wpol_real%destroy()
+  call wpol_imag%destroy()
 
   call destroy_eri_3center_eigen()
 

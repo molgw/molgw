@@ -35,6 +35,7 @@ module m_selfenergy_tools
   !
   ! Highest occupied state
   integer,protected :: nhomo_G
+  integer,protected :: nlumo_G
 
   !
   ! Selfenergy evaluated on a frequency grid
@@ -88,6 +89,13 @@ subroutine selfenergy_set_state_range(nstate_in,occupation)
   do pstate=1,nstate_in
     if( .NOT. ANY( occupation(pstate,:) < completely_empty ) ) then
       nhomo_G = MAX(nhomo_G,pstate)
+    endif
+  enddo
+  ! Find the LUMO index
+  nlumo_G = 100000
+  do pstate=1,nstate_in
+    if( .NOT. ANY( occupation(pstate,:) > completely_empty ) ) then
+      nlumo_G = MIN(nlumo_G,pstate)
     endif
   enddo
 

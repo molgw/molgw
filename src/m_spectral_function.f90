@@ -21,6 +21,11 @@ module m_spectral_function
   use m_basis_set
   use m_eri_ao_mo
 
+  integer,parameter :: NO_GRID        = 0
+  integer,parameter :: IMAGINARY_QUAD = 1
+  integer,parameter :: REAL_LINEAR    = 2
+  integer,parameter :: STATIC         = 3
+
   !
   ! General form of any spectral function
   ! z complex number
@@ -33,6 +38,8 @@ module m_spectral_function
   type chi_type
     real(dp),allocatable :: matrix(:,:)
     real(dp),allocatable :: eigval(:)
+  contains
+    procedure :: destroy => ct_destroy
   end type chi_type
 
   type spectral_function
@@ -66,6 +73,9 @@ module m_spectral_function
 
     procedure :: evaluate => sf_evaluate
     procedure :: vsqrt_chi_vsqrt_rpa => sf_vsqrt_chi_vsqrt_rpa
+    procedure :: interpolate_vsqrt_chi_vsqrt => sf_interpolate_vsqrt_chi_vsqrt
+    procedure :: init    => sf_init
+    procedure :: destroy => sf_destroy
 
   end type spectral_function
 
@@ -116,13 +126,17 @@ end function index_prodstate
 
 
 !=========================================================================
-subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
+subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max)
   implicit none
+  class(spectral_function),intent(out)  :: sf
   integer,intent(in)                    :: nstate
   real(dp),intent(in)                   :: occupation(:,:)
   integer,intent(in)                    :: nomega_in
-  type(spectral_function),intent(out)   :: sf
+  integer,optional,intent(in)           :: grid
+  real(dp),optional,intent(in)          :: omega_max
   !=====
+  integer                               :: grid_ = 0
+  real(dp)                              :: omega_max_ = 1.0_dp
   integer                               :: ijspin,istate,jstate,itrans
   integer                               :: iomega
   integer                               :: nlumo_W_spin(nspin)
@@ -132,7 +146,13 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
   !=====
 
   if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
-    call die('init_spectral_function: nstate is too large')
+    call die('sf_init: nstate is too large')
+  endif
+  if( PRESENT(grid) ) then
+    grid_ = grid
+  endif
+  if( PRESENT(omega_max) ) then
+    omega_max_ = omega_max
   endif
 
   ncore_W      = ncorew
@@ -224,40 +244,58 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
     sf%nprodbasis_total = index_prodstate(nvirtual_W-1,nvirtual_W-1) * nspin
   endif
 
+
   !
-  ! Set the sampling points for Chi (quadrature)
+  ! Set the sampling points for Chi
   sf%nomega_quad    = nomega_in
 
-  if( sf%nomega_quad > 0 ) then
+  select case(grid_)
+  case(STATIC)
+    if( nomega_in /= 1 ) call die('sf_init: static chi requested, number of frequencies should be 1')
+    allocate(sf%weight_quad(sf%nomega_quad))
+    allocate(sf%omega_quad(sf%nomega_quad))
+    allocate(sf%omega(sf%nomega_quad))
+    sf%weight_quad(1) = 1.0_dp
+    sf%omega_quad(1)  = 0.0_dp
+    sf%omega(1)       = (0.0_dp, 0.0_dp)
+  case(IMAGINARY_QUAD)
+    if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
     allocate(sf%weight_quad(sf%nomega_quad))
     allocate(sf%omega_quad(sf%nomega_quad))
     allocate(sf%omega(sf%nomega_quad))
 
-    if( sf%nomega_quad > 1 ) then
-      call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
+    call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
 
-      write(stdout,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
-      ! Variable change [0,1] -> [0,+\inf[
-      write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
-      do iomega=1,sf%nomega_quad
-        sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
-                                * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
-        sf%omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
-                                  * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
-        sf%omega(iomega)       =  sf%omega_quad(iomega) * im
-        write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega)*Ha_eV,sf%weight_quad(iomega)
-      enddo
-    else
-      ! Only one omega means static case
-      sf%weight_quad(1) = 1.0_dp
-      sf%omega_quad(1)  = 0.0_dp
-      sf%omega(1)       = (0.0_dp, 0.0_dp)
-    endif
-  endif
+    write(stdout,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
+    ! Variable change [0,1] -> [0,+\inf[
+    write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
+    do iomega=1,sf%nomega_quad
+      sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
+                              * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
+      sf%omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
+                                * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
+      sf%omega(iomega)       =  sf%omega_quad(iomega) * im
+      write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega)*Ha_eV,sf%weight_quad(iomega)
+    enddo
+
+  case(REAL_LINEAR)
+    if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
+    allocate(sf%weight_quad(sf%nomega_quad))
+    allocate(sf%omega_quad(sf%nomega_quad))
+    allocate(sf%omega(sf%nomega_quad))
+    write(stdout,'(a)') '    #    Frequencies (eV)   real    / imaginary ' 
+    do iomega=1,nomega_in
+      sf%omega(iomega) = REAL(iomega-1,dp)/REAL(nomega_in-1,dp) * omega_max_
+      write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%re*Ha_eV,sf%omega(iomega)%im*Ha_eV
+    enddo
+
+  case default
+    ! No grid, nothing to do
+  end select
 
 
 
-end subroutine init_spectral_function
+end subroutine sf_init
 
 
 !=========================================================================
@@ -304,9 +342,9 @@ end function skip_transition
 
 
 !=========================================================================
-subroutine destroy_spectral_function(sf)
+subroutine sf_destroy(sf)
   implicit none
-  type(spectral_function),intent(inout) :: sf
+  class(spectral_function),intent(inout) :: sf
   !=====
 
   if(ALLOCATED(sf%transition_table)) deallocate(sf%transition_table)
@@ -324,7 +362,7 @@ subroutine destroy_spectral_function(sf)
 
   write(stdout,'(/,a)') ' Spectral function destroyed'
 
-end subroutine destroy_spectral_function
+end subroutine sf_destroy
 
 
 !=========================================================================
@@ -758,6 +796,51 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
 
 
 end subroutine sf_vsqrt_chi_vsqrt_rpa
+
+
+!=========================================================================
+subroutine sf_interpolate_vsqrt_chi_vsqrt(sf,omega,vchiv_sqrt_omega)
+  implicit none
+
+  class(spectral_function),intent(in) :: sf
+  real(dp),intent(in)                 :: omega
+  type(chi_type),intent(out)          :: vchiv_sqrt_omega
+  !=====
+  integer  :: iomega,jomega,nomega
+  !=====
+
+
+  if( ANY( ABS(sf%omega(:)%im) > 1.0e-6_dp ) ) then
+    write(stdout,*) sf%omega(:)
+    call die('sf_interpolate_vsqrt_chi_vsqrt_rpa: for real frequencies only')
+  endif
+
+  nomega = SIZE(sf%omega)
+  if( omega > MAXVAL(sf%omega(:)%re) .OR. omega < MINVAL(sf%omega(:)%re) ) &
+        call die('sf_interpolate_vsqrt_chi_vsqrt_rpa: requested frequency out of range')
+
+  !do iomega=2,nomega
+  !  if( sf%omega(iomega)%re > omega%re ) exit
+  !enddo
+  !jomega = iomega - 1
+  jomega = MINLOC( ABS(sf%omega(:)%re-omega) , DIM=1 )
+
+  allocate(vchiv_sqrt_omega%matrix,SOURCE=sf%vchiv_sqrt(jomega)%matrix)
+  allocate(vchiv_sqrt_omega%eigval,SOURCE=sf%vchiv_sqrt(jomega)%eigval)
+
+end subroutine sf_interpolate_vsqrt_chi_vsqrt
+
+
+!=========================================================================
+subroutine ct_destroy(chi)
+  implicit none
+  !=====
+  class(chi_type),intent(inout) :: chi
+  !=====
+  if( ALLOCATED(chi%matrix) ) deallocate(chi%matrix)
+  if( ALLOCATED(chi%eigval) ) deallocate(chi%eigval)
+  
+end subroutine ct_destroy
 
 
 end module m_spectral_function

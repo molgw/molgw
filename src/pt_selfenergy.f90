@@ -239,7 +239,7 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
   write(stdout,'(/,a)') ' Perform the one-ring self-energy calculation'
   write(stdout,*) 'with the perturbative approach'
 
-  call init_spectral_function(nstate,occupation,0,vchi0v)
+  call vchi0v%init(nstate,occupation,0)
 
   call polarizability_onering(basis,energy,c_matrix,vchi0v)
 
@@ -249,7 +249,7 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
   call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)
 #endif
 
-  call destroy_spectral_function(vchi0v)
+  call vchi0v%destroy()
 
   call stop_clock(timing_pt_self)
 

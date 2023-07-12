@@ -105,9 +105,9 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
 
   select case(TRIM(postscf))
   case('RPA','RPAP','RPA+','RPALR')
-    call init_spectral_function(nstate,occupation,0,wpol)
+    call wpol%init(nstate,occupation,0)
     call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol,enforce_spin_multiplicity=1)
-    call destroy_spectral_function(wpol)
+    call wpol%destroy()
     en_mbpt%rpa = erpa_singlet
     write(stdout,'(a,2x,f19.10)') ' RPA Energy      (Ha):',en_mbpt%rpa
 
@@ -131,9 +131,9 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     endif
 
   case('RPA_IM','RPAP_IM','RPA+_IM')
-    call init_spectral_function(nstate,occupation,nomega_chi_imag,wpol)
+    call wpol%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
     call polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa_state,egw_tmp,wpol)
-    call destroy_spectral_function(wpol)
+    call wpol%destroy()
     en_mbpt%rpa = erpa_state
 
     if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
@@ -156,9 +156,9 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     endif
 
   case('RPAX','RPAX-II')
-    call init_spectral_function(nstate,occupation,0,wpol)
+    call wpol%init(nstate,occupation,0)
     call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol,enforce_spin_multiplicity=1)
-    call destroy_spectral_function(wpol)
+    call wpol%destroy()
     en_mbpt%rpa = 0.50_dp * erpa_singlet
 
     if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
@@ -167,9 +167,9 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     endif
     write(stdout,'(a,2x,f19.10)') ' Singlet RPAx Energy contribution      (Ha):',en_mbpt%rpa
 
-    call init_spectral_function(nstate,occupation,0,wpol)
+    call wpol%init(nstate,occupation,0)
     call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_triplet,egw_tmp,wpol,enforce_spin_multiplicity=3)
-    call destroy_spectral_function(wpol)
+    call wpol%destroy()
     if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
       write(stdout,'(/,a,f16.10)') ' Triplet RPAx Energy scaled by :',kappa_hybrid
       erpa_triplet=kappa_hybrid*erpa_triplet
@@ -193,7 +193,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     write(stdout,'(/,1x,a,i4)') 'RPA with integration over lambda with acfd_nlambda: ',acfd_nlambda
     call coeffs_gausslegint(0.0_dp,1.0_dp,lambda,wlambda,acfd_nlambda)
 
-    call init_spectral_function(nstate,occupation,0,wpol)
+    call wpol%init(nstate,occupation,0)
     nmat = wpol%npole_reso
     m_x = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
     n_x = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
@@ -207,15 +207,15 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     ! Get A and B
     call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                         enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=a_matrix,b_matrix=b_matrix)
-    call destroy_spectral_function(wpol)
+    call wpol%destroy()
 
     en_mbpt%rpa = 0.0_dp
     do ilambda=1,acfd_nlambda
       write(stdout,'(1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
-      call init_spectral_function(nstate,occupation,0,wpol)
+      call wpol%init(nstate,occupation,0)
       call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                           enforce_spin_multiplicity=1,lambda=lambda(ilambda),x_matrix=x_matrix,y_matrix=y_matrix)
-      call destroy_spectral_function(wpol)
+      call wpol%destroy()
 
       call calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa_singlet)
 
@@ -241,7 +241,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     write(stdout,'(/,1x,a,i4)') 'RPAx-I with integration over lambda with acfd_nlambda: ',acfd_nlambda
     call coeffs_gausslegint(0.0_dp,1.0_dp,lambda,wlambda,acfd_nlambda)
 
-    call init_spectral_function(nstate,occupation,0,wpol)
+    call wpol%init(nstate,occupation,0)
     nmat = wpol%npole_reso
     m_x = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
     n_x = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
@@ -258,23 +258,23 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     ! Get A and B
     call polarizability(.TRUE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                         enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=a_matrix,b_matrix=b_matrix)
-    call destroy_spectral_function(wpol)
+    call wpol%destroy()
 
     en_mbpt%rpa = 0.0_dp
     do ilambda=1,acfd_nlambda
       write(stdout,'(1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
       write(stdout,'(1x,a,f12.8)')   'lambda: ',lambda(ilambda)
-      call init_spectral_function(nstate,occupation,0,wpol)
+      call wpol%init(nstate,occupation,0)
       call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                           enforce_spin_multiplicity=1,lambda=lambda(ilambda),x_matrix=x_matrix,y_matrix=y_matrix)
-      call destroy_spectral_function(wpol)
+      call wpol%destroy()
 
       call calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa_singlet)
 
       write(stdout,'(1x,a,f12.8)')   'Energy(lambda): ',erpa_singlet
       en_mbpt%rpa = en_mbpt%rpa + erpa_singlet * wlambda(ilambda)
     enddo
-    call destroy_spectral_function(wpol)
+    call wpol%destroy()
 
     if(has_auxil_basis) call destroy_eri_3center_eigen()
 

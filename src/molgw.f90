@@ -692,9 +692,9 @@ program molgw
   ! Linear-response time dependent calculations work for BSE and TDDFT
   ! (only if the SCF cycles were converged)
   if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
-    call init_spectral_function(nstate,occupation,0,wpol)
+    call wpol%init(nstate,occupation,0)
     call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
-    call destroy_spectral_function(wpol)
+    call wpol%destroy()
   endif
 
   !
