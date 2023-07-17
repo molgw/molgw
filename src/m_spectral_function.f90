@@ -746,7 +746,6 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
     else
       non_negligible = COUNT( ABS(eigval(:)) > 1.0e-10_dp )
     endif
-    write(stdout,*) 'FBFB most positive eigval',MAXVAL(eigval(:))
 
     !do jeig=1,non_negligible
     !  chi0tmp(:,jeig) = chi0tmp(:,jeig) * SQRT( ABS(eigval(jeig)) )
@@ -758,7 +757,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
       !
       ! Store the eigenelements of vsqrt_chi_vsqrt
       ieig = 0
-      do jeig=1,non_negligible  ! nauxil_global
+      do jeig=1,nauxil_global
         if( ABS(eigval(jeig)) > TOL_LOW_EIGVAL ) then
           ieig = ieig + 1
           sf%vchiv_sqrt(iomega)%eigvec(:,ieig) = chi0tmp(:,jeig)
