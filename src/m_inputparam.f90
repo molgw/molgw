@@ -54,6 +54,7 @@ module m_inputparam
   integer,parameter :: GWPT3        = 226
   integer,parameter :: G0W0SOX0     = 227
   integer,parameter :: G0W0Gamma0   = 228
+  integer,parameter :: GWFSOS       = 229
 
   !
   ! TDDFT variables
@@ -239,6 +240,10 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW_IMAG
       calc_type%selfenergy_technique = imaginary_axis_pade
+    case('GWFSOS','GW+FSOS')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx    = GWFSOS
+      calc_type%selfenergy_technique = imaginary_axis_pade
     case('G0W0_CONTOUR','GW_CONTOUR')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW
@@ -253,7 +258,7 @@ subroutine init_calculation_type(scf,postscf)
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('GWSOSEX')
+    case('GWSOSEX','GW+SOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
     case('G0W0GAMMA0','GWGAMMA')

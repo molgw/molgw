@@ -101,13 +101,15 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
     case(SOX)
       selfenergy_tag='SOX'
     case(GWSOX)
-      selfenergy_tag='GWSOX'
+      selfenergy_tag='GW+SOX'
     case(GWPT3)
-      selfenergy_tag='GWPT3'
+      selfenergy_tag='GW+PT3'
     case(GWSOSEX)
-      selfenergy_tag='GWSOSEX'
+      selfenergy_tag='GW+SOSEX'
     case(COHSEX)
       selfenergy_tag='COHSEX'
+    case(GWFSOS)
+      selfenergy_tag='GW+FSOS'
     case default
       write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -301,7 +303,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
     endif
 
     !
-    ! GWGamma
+    ! GW+SOSEX
     !
     if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWSOX ) then
       call wpol%init(nstate,occupation,0)
@@ -329,6 +331,16 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
       call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
       call wpol%destroy()
+    endif
+
+    !
+    ! GW+FSOS
+    ! implementation on the imaginary frequency grid
+    !
+    if( calc_type%selfenergy_approx == GWFSOS ) then
+      call gw_selfenergy_grid(basis,energy_g,occupation,c_matrix,se)
+      call fsos_selfenergy_grid(basis,energy_g,occupation,c_matrix,se)
+      call self_energy_pade(se)
     endif
 
     !

@@ -771,7 +771,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
       sf%chi(:,:,iomega) = 0.0_dp
       do jeig=1,nauxil_global
         if( ABS(eigval(jeig)) > TOL_LOW_EIGVAL ) then
-          call DSYRK('L',nauxil_global,eigval(jeig),chi0tmp(:,jeig),1,sf%chi(:,:,iomega),nauxil_global)
+          call DSYR('L',nauxil_global,eigval(jeig),chi0tmp(:,jeig),1,sf%chi(:,:,iomega),nauxil_global)
         endif
       enddo
       !call DSYRK('L','N',nauxil_global,non_negligible,-1.0d0,chi0tmp,nauxil_global,0.0d0,sf%chi(:,:,iomega),nauxil_global)
