@@ -252,7 +252,7 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW_IMAG
       calc_type%selfenergy_technique = imaginary_axis_homolumo
-    case('G0W0SOX0','GWSOX')
+    case('G0W0SOX0','GWSOX','GW+SOX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOX
     case('GWPT3')

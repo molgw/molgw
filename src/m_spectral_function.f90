@@ -25,6 +25,7 @@ module m_spectral_function
   integer,parameter :: IMAGINARY_QUAD = 1
   integer,parameter :: REAL_LINEAR    = 2
   integer,parameter :: STATIC         = 3
+  integer,parameter :: MANUAL         = 4
 
   !
   ! General form of any spectral function
@@ -288,7 +289,15 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max)
       sf%omega(iomega) = REAL(iomega-1,dp)/REAL(nomega_in-1,dp) * omega_max_
       write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%re*Ha_eV,sf%omega(iomega)%im*Ha_eV
     enddo
-
+  case(MANUAL)
+    if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
+    ! Just allocate and fill with default values
+    allocate(sf%weight_quad(sf%nomega_quad))
+    allocate(sf%omega_quad(sf%nomega_quad))
+    allocate(sf%omega(sf%nomega_quad))
+    sf%weight_quad(1) = 1.0_dp
+    sf%omega_quad(1)  = 0.0_dp
+    sf%omega(1)       = (0.0_dp, 0.0_dp)
   case default
     ! No grid, nothing to do
   end select

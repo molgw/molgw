@@ -699,10 +699,11 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  logical,parameter    :: static_fsos = .TRUE.
   integer              :: nstate
   integer              :: iomega,iomega_sigma,iomegap
   integer              :: info
-  real(dp)             :: v_chi_v_p,factor,de,de_max,df,braket1,braket2
+  real(dp)             :: df,braket1,braket2
   integer              :: desc_eri3_t(NDEL)
   integer              :: iprow,ipcol,nprow,npcol
   integer              :: desc_eri3_final(NDEL)
@@ -747,7 +748,16 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
   call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-  call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+  if( .NOT. static_fsos ) then
+    call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+  else
+    call wpol_one%init(nstate,occupation,1,grid=STATIC)
+    call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+    allocate(wpol_imag%chi(nauxil_global,nauxil_global,wpol_imag%nomega_quad))
+    do iomegap=1,wpol_imag%nomega_quad
+      wpol_imag%chi(:,:,iomegap) = wpol_one%chi(:,:,1)
+    enddo
+  endif
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -769,52 +779,51 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
       ! Imaginary axis integral
       !
       do iomegap=1,wpol_imag%nomega_quad
-
+        ! positive and negative omega'
         do isign=1,-1,-2
+
           do iomega=fom,lom
-            call wpol_one%init(nstate,occupation,1,grid=IMAGINARY_QUAD)
-            wpol_one%omega(1) = ABS( se%omega_calc(iomega)%im + isign * wpol_imag%omega(iomegap)%im ) * im
-            write(stdout,*) iomegap,isign,isign*wpol_imag%omega(iomegap)%im, &
-                            iomega,se%omega_calc(iomega),&
-                            wpol_one%omega(1)
-            call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+            if( .NOT. static_fsos ) then
+              call wpol_one%init(nstate,occupation,1,grid=MANUAL)
+              wpol_one%omega(1) = ABS( se%omega_calc(iomega)%im + isign * wpol_imag%omega(iomegap)%im ) * im
+              call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+            endif
+            write(stdout,*) iomegap,isign,iomega,se%omega_calc(iomega)
 
-            !$OMP PARALLEL PRIVATE(pstate, v_chi_v_p)
-            !$OMP DO REDUCTION(+:sigmagw)
             do rstate=ncore_G+1,nvirtual_G-1
-            do pstate=ncore_G+1,nvirtual_G-1
-            do qstate=ncore_G+1,nvirtual_G-1
+              do pstate=ncore_G+1,nvirtual_G-1
+                do qstate=ncore_G+1,nvirtual_G-1
 
-              df = ( occupation(pstate,mpspin) - occupation(qstate,mpspin) ) / spin_fact 
-              if( ABS(df) < 1.0e-6 ) cycle
+                  df = ( occupation(pstate,mpspin) - occupation(qstate,mpspin) ) / spin_fact 
+                  if( ABS(df) < 1.0e-6 ) cycle
 
 
-              mr(:) = eri_3center_eigen(:,mstate,rstate,mpspin)
-              mp(:) = eri_3center_eigen(:,mstate,pstate,mpspin)
-              pq(:) = eri_3center_eigen(:,pstate,qstate,mpspin)
-              qr(:) = eri_3center_eigen(:,qstate,rstate,mpspin)
+                  mr(:) = eri_3center_eigen(:,mstate,rstate,mpspin)
+                  mp(:) = eri_3center_eigen(:,mstate,pstate,mpspin)
+                  pq(:) = eri_3center_eigen(:,pstate,qstate,mpspin)
+                  qr(:) = eri_3center_eigen(:,qstate,rstate,mpspin)
 
-              braket1 = DOT_PRODUCT( mr(:), MATMUL( wpol_imag%chi(:,:,iomegap), pq(:) ) ) + DOT_PRODUCT( mr, pq )
-              !braket1 = DOT_PRODUCT( mr, pq )  !SOX
+                  ! v + v * chi( +/- iw') * v
+                  braket1 = DOT_PRODUCT( mr(:), MATMUL( wpol_imag%chi(:,:,iomegap), pq(:) ) ) + DOT_PRODUCT( mr, pq )
+                  !braket1 = DOT_PRODUCT( mr, pq )  !SOX
 
-              braket2 = DOT_PRODUCT( qr(:) , MATMUL( wpol_one%chi(:,:,1) , mp(:) ) ) + DOT_PRODUCT( qr, mp)
-              !braket2 = DOT_PRODUCT( qr, mp)  !SOX
+                  ! v + v * chi(iw +/- iw') * v
+                  braket2 = DOT_PRODUCT( qr(:) , MATMUL( wpol_one%chi(:,:,1) , mp(:) ) ) + DOT_PRODUCT( qr, mp)
+                  !braket2 = DOT_PRODUCT( qr, mp)  !SOX or SOSEX
 
-              denom1 = se%omega_calc(iomega) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
-              denom2 = isign * wpol_imag%omega(iomegap) + energy(pstate,mpspin) - energy(qstate,mpspin)
+                  denom1 = se%omega_calc(iomega) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
+                  denom2 = isign * wpol_imag%omega(iomegap) + energy(pstate,mpspin) - energy(qstate,mpspin)
 
-              sigmagw(iomega,mstate,mpspin) = sigmagw(iomega,mstate,mpspin) &
-                            + wpol_imag%weight_quad(iomegap) &
-                               * df * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
+                  sigmagw(iomega,mstate,mpspin) = sigmagw(iomega,mstate,mpspin) &
+                                + wpol_imag%weight_quad(iomegap) &
+                                   * df * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
+                enddo
+              enddo
             enddo
-            enddo
-            enddo
-            !$OMP END DO
-            !$OMP END PARALLEL
 
             !deallocate(tmp2)
-            call wpol_one%destroy()
+            if( .NOT. static_fsos ) call wpol_one%destroy()
           enddo !iomega
         enddo ! isign
       enddo !iomegap
