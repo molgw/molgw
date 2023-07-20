@@ -216,7 +216,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
   type(selfenergy_grid),intent(inout) :: se
   !=====
   integer              :: nstate
-  integer              :: iomega_calc,iomega
+  integer              :: iomega_calc,iomegap
   integer              :: info
   real(dp),allocatable :: eri3_sca(:,:)
   real(dp),allocatable :: chi_eri3_sca(:,:)
@@ -285,15 +285,15 @@ subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
 #endif
 
 
-      do iomega=1,wpol%nomega_quad
+      do iomegap=1,wpol%nomega_quad
 #if defined(HAVE_SCALAPACK)
         call PDGEMM('N','N',nauxil_global,prange,nauxil_global,     &
-                    1.0_dp,wpol%chi(:,:,iomega),1,1,wpol%desc_chi,    &
+                    1.0_dp,wpol%chi(:,:,iomegap),1,1,wpol%desc_chi,    &
                            eri3_sca            ,1,1,desc_eri3_final,  &
                     0.0_dp,chi_eri3_sca        ,1,1,desc_eri3_final)
 #else
         call DGEMM('N','N',nauxil_global,prange,nauxil_global,  &
-                   1.0_dp,wpol%chi(:,:,iomega),nauxil_global,    &
+                   1.0_dp,wpol%chi(:,:,iomegap),nauxil_global,    &
                           eri3_sca            ,nauxil_global,    &
                    0.0_dp,chi_eri3_sca        ,nauxil_global)
 #endif
@@ -306,11 +306,11 @@ subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
           v_chi_v_p = DOT_PRODUCT( eri3_sca(:,plocal) , chi_eri3_sca(:,plocal) )
 
           sigmaigw(:,mstate,mpspin) = sigmaigw(:,mstate,mpspin) &
-                        - wpol%weight_quad(iomega) &
+                        - wpol%weight_quad(iomegap) &
                             * (  1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) ) &
-                                              + im * wpol%omega_quad(iomega) )   &
+                                              + im * wpol%omega_quad(iomegap) )   &
                                + 1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) )  &
-                                              - im * wpol%omega_quad(iomega) )  ) &
+                                              - im * wpol%omega_quad(iomegap) )  ) &
                            * v_chi_v_p /  (2.0_dp * pi)
         enddo
         !$OMP END DO
@@ -346,13 +346,12 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
   type(selfenergy_grid),intent(inout) :: se
   !=====
   integer              :: nstate
-  integer              :: iomega,iomega_sigma
+  integer              :: iomegap,iomega_sigma
   integer              :: info
   real(dp),allocatable :: eri3_sca(:,:)
   real(dp)             :: v_chi_v_p,factor,de,de_max
   integer              :: desc_eri3_t(NDEL)
   integer              :: iprow,ipcol,nprow,npcol
-  integer              :: desc_eri3_final(NDEL)
   integer              :: meri3,neri3
   integer              :: mstate,pstate,mpspin
   integer              :: prange,plocal
@@ -372,8 +371,8 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
 
   write(stdout,'(/,1x,a)') 'GW self-energy on a grid of real frequencies centered on the gKS energies'
   write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
-  do iomega=-se%nomega,se%nomega
-    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega,se%omega(iomega)*Ha_eV
+  do iomega_sigma=-se%nomega,se%nomega
+    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma,se%omega(iomega_sigma)*Ha_eV
   enddo
   write(stdout,'(1x,a)') '========================================================'
 
@@ -416,9 +415,6 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
 
   write(stdout,'(1x,a,f12.6)') 'Maximum real frequency needed (eV): ',de_max * Ha_eV
   call wpol_real%init(nstate,occupation,nomega_chi_real,grid=REAL_LINEAR,omega_max=de_max)
-  do iomega=1,nomega_chi_real
-    wpol_real%omega(iomega) = REAL(iomega-1,dp)/REAL(nomega_chi_real-1,dp) * de_max
-  enddo
   call wpol_real%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
 
 
@@ -444,14 +440,14 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
       !
       ! Imaginary axis integral
       !
-      do iomega=1,wpol_imag%nomega_quad
+      do iomegap=1,wpol_imag%nomega_quad
 
-        neig = SIZE(wpol_imag%vchiv_sqrt(iomega)%eigvec(:,:),DIM=2)
+        neig = SIZE(wpol_imag%vchiv_sqrt(iomegap)%eigvec(:,:),DIM=2)
         if( neig == 0 ) cycle
         allocate(tmp2(neig,prange))
 
         call DGEMM('T','N',neig,prange,nauxil_global,  &
-                   1.0_dp,wpol_imag%vchiv_sqrt(iomega)%eigvec(:,:),nauxil_global,    &
+                   1.0_dp,wpol_imag%vchiv_sqrt(iomegap)%eigvec(:,:),nauxil_global,    &
                           eri3_sca            ,nauxil_global,    &
                    0.0_dp,tmp2                ,neig)
 
@@ -460,17 +456,17 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
         do plocal=1,neri3
           pstate = plocal + ncore_G
 
-          v_chi_v_p = SUM(tmp2(:,plocal)**2*wpol_imag%vchiv_sqrt(iomega)%eigval(:))
+          v_chi_v_p = SUM(tmp2(:,plocal)**2*wpol_imag%vchiv_sqrt(iomegap)%eigval(:))
 
           ! Avoid the poles that are exactly at the origin of the contour
           where( ABS( se%energy0(mstate,mpspin) + se%omega(:) - energy(pstate,mpspin) ) > eta )
 
             sigmagw(:,mstate,mpspin) = sigmagw(:,mstate,mpspin) &
-                          - wpol_imag%weight_quad(iomega) &
+                          - wpol_imag%weight_quad(iomegap) &
                               * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omega(:) - energy(pstate,mpspin) ) &
-                                                + im * wpol_imag%omega_quad(iomega) )   &
+                                                + im * wpol_imag%omega_quad(iomegap) )   &
                                  + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omega(:) - energy(pstate,mpspin) )  &
-                                                - im * wpol_imag%omega_quad(iomega) )  ) &
+                                                - im * wpol_imag%omega_quad(iomegap) )  ) &
                              * v_chi_v_p /  (2.0_dp * pi)
           end where
 
@@ -571,19 +567,17 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   type(selfenergy_grid),intent(inout) :: se
   !=====
   integer              :: nstate
-  integer              :: iomega,iomega_sigma
+  integer              :: iomegap,iomega_sigma
   integer              :: info
   real(dp),allocatable :: eri3_sca(:,:)
-  real(dp)             :: v_chi_v_p,factor,de,de_max
+  real(dp)             :: v_chi_v_p
   integer              :: desc_eri3_t(NDEL)
   integer              :: iprow,ipcol,nprow,npcol
-  integer              :: desc_eri3_final(NDEL)
   integer              :: meri3,neri3
   integer              :: mstate,pstate,mpspin
   integer              :: prange,plocal
   integer              :: neig,fom,lom
-  real(dp),allocatable :: tmp(:),tmp2(:,:)
-  type(chi_type)       :: vchiv_sqrt_tmp
+  real(dp),allocatable :: tmp2(:,:)
   complex(dp),allocatable :: sigmagw(:,:,:)
   type(spectral_function) :: wpol_imag
   !=====
@@ -600,8 +594,8 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
   write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
-  do iomega=LBOUND(se%omega_calc(:),DIM=1),UBOUND(se%omega_calc(:),DIM=1)
-    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega,se%omega_calc(iomega)*Ha_eV
+  do iomega_sigma=LBOUND(se%omega_calc(:),DIM=1),UBOUND(se%omega_calc(:),DIM=1)
+    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma,se%omega_calc(iomega_sigma)*Ha_eV
   enddo
   write(stdout,'(1x,a)') '========================================================'
 
@@ -641,14 +635,14 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
       !
       ! Imaginary axis integral
       !
-      do iomega=1,wpol_imag%nomega_quad
+      do iomegap=1,wpol_imag%nomega_quad
 
-        neig = SIZE(wpol_imag%vchiv_sqrt(iomega)%eigvec(:,:),DIM=2)
+        neig = SIZE(wpol_imag%vchiv_sqrt(iomegap)%eigvec(:,:),DIM=2)
         if( neig == 0 ) cycle
         allocate(tmp2(neig,prange))
 
         call DGEMM('T','N',neig,prange,nauxil_global,  &
-                   1.0_dp,wpol_imag%vchiv_sqrt(iomega)%eigvec(:,:),nauxil_global,    &
+                   1.0_dp,wpol_imag%vchiv_sqrt(iomegap)%eigvec(:,:),nauxil_global,    &
                           eri3_sca            ,nauxil_global,    &
                    0.0_dp,tmp2                ,neig)
 
@@ -657,14 +651,14 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
         do plocal=1,neri3
           pstate = plocal + ncore_G
 
-          v_chi_v_p = SUM(tmp2(:,plocal)**2*wpol_imag%vchiv_sqrt(iomega)%eigval(:))
+          v_chi_v_p = SUM(tmp2(:,plocal)**2*wpol_imag%vchiv_sqrt(iomegap)%eigval(:))
 
           sigmagw(:,mstate,mpspin) = sigmagw(:,mstate,mpspin) &
-                        - wpol_imag%weight_quad(iomega) &
+                        - wpol_imag%weight_quad(iomegap) &
                             * (  1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) ) &
-                                              + im * wpol_imag%omega_quad(iomega) )   &
+                                              + im * wpol_imag%omega_quad(iomegap) )   &
                                + 1.0_dp / ( ( se%omega_calc(:) - energy(pstate,mpspin) )  &
-                                              - im * wpol_imag%omega_quad(iomega) )  ) &
+                                              - im * wpol_imag%omega_quad(iomegap) )  ) &
                            * v_chi_v_p /  (2.0_dp * pi)
 
         enddo
@@ -700,21 +694,19 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
-  logical,parameter    :: analytic_chi = .TRUE.
+  logical,parameter    :: analytic_chi = .FALSE.
   integer              :: nstate
-  integer              :: iomega,iomega_sigma,iomegap
+  integer              :: iomega_sigma,iomegap
   integer              :: info
-  real(dp)             :: df,braket1,braket2
+  real(dp)             :: braket1,braket2
   integer              :: desc_eri3_t(NDEL)
   integer              :: iprow,ipcol,nprow,npcol
-  integer              :: desc_eri3_final(NDEL)
   integer              :: meri3,neri3
-  integer              :: mstate,pstate,qstate,rstate,mpspin,iauxil
+  integer              :: mstate,rstate,mpspin,iauxil
   integer              :: prange,isign
-  integer              :: neig,neig2,fom,lom
-  type(chi_type)       :: vchiv_sqrt_tmp
+  integer              :: fom,lom
   complex(dp),allocatable :: sigmagw(:,:,:)
-  complex(dp)          :: denom1,denom2
+  complex(dp)          :: denom1,denom2,omega_cmplx
   type(spectral_function) :: wpol_imag,wpol_one,wpol_analytic
   real(dp) :: erpa,egw
   ! DGEMM
@@ -736,8 +728,8 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
   write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
-  do iomega=LBOUND(se%omega_calc(:),DIM=1),UBOUND(se%omega_calc(:),DIM=1)
-    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega,se%omega_calc(iomega)*Ha_eV
+  do iomega_sigma=LBOUND(se%omega_calc(:),DIM=1),UBOUND(se%omega_calc(:),DIM=1)
+    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma,se%omega_calc(iomega_sigma)*Ha_eV
   enddo
   write(stdout,'(1x,a)') '========================================================'
 
@@ -799,20 +791,21 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
           !
           ! loop on Sigma(omega)
           !
-          do iomega=fom,lom
+          do iomega_sigma=fom,lom
 
+            omega_cmplx = ABS(se%omega_calc(iomega_sigma)%im+isign*wpol_imag%omega(iomegap)%im)*im
             if( analytic_chi ) then
-              call wpol_analytic%evaluate(ABS(se%omega_calc(iomega)%im+isign*wpol_imag%omega(iomegap)%im)*im,chi_wwp)
+              call wpol_analytic%evaluate(omega_cmplx,chi_wwp)
             else
               call wpol_one%init(nstate,occupation,1,grid=MANUAL,verbose=.FALSE.)
-              wpol_one%omega(1) = ABS( se%omega_calc(iomega)%im + isign * wpol_imag%omega(iomegap)%im ) * im
+              wpol_one%omega(1) = omega_cmplx
               call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.,verbose=.FALSE.)
               chi_wwp(:,:) = wpol_one%chi(:,:,1)
             endif
             do iauxil=1,nauxil_global
               chi_wwp(iauxil,iauxil) = chi_wwp(iauxil,iauxil) + 1.0_dp
             enddo
-            !write(stdout,*) iomegap,isign,iomega,se%omega_calc(iomega)
+            !write(stdout,*) iomegap,isign,iomega_sigma,se%omega_calc(iomega_sigma)
 
             allocate(Ai_m(nauxil_global,ncore_G+1:nhomo_G))
             allocate(Ar_m(nauxil_global,ncore_G+1:nvirtual_G-1))
@@ -863,10 +856,10 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
                   braket1 = braket1_ri(rstate,istate)
                   braket2 = braket2_ri(rstate,istate)
 
-                  denom1 = se%omega_calc(iomega) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
+                  denom1 = se%omega_calc(iomega_sigma) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
                   denom2 = isign * wpol_imag%omega(iomegap) + energy(istate,mpspin) - energy(astate,mpspin)
 
-                  sigmagw(iomega,mstate,mpspin) = sigmagw(iomega,mstate,mpspin) &
+                  sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) &
                                 + wpol_imag%weight_quad(iomegap) &
                                     * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
@@ -942,10 +935,10 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
                   !braket2 = DOT_PRODUCT( ir(:) , MATMUL( wpol_one%chi(:,:,1) , ma(:) ) ) + DOT_PRODUCT( ir, ma)
                   !braket2 = DOT_PRODUCT( ir, ma)  !SOX or SOSEX
 
-                  denom1 = se%omega_calc(iomega) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
+                  denom1 = se%omega_calc(iomega_sigma) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
                   denom2 = isign * wpol_imag%omega(iomegap) + energy(astate,mpspin) - energy(istate,mpspin)
 
-                  sigmagw(iomega,mstate,mpspin) = sigmagw(iomega,mstate,mpspin) &
+                  sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) &
                                 - wpol_imag%weight_quad(iomegap) &
                                     * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
@@ -964,7 +957,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
             deallocate(Ar_m)
 
             if( .NOT. analytic_chi ) call wpol_one%destroy(verbose=.FALSE.)
-          enddo !iomega
+          enddo !iomega_sigma
         enddo ! isign
       enddo !iomegap
 
@@ -995,18 +988,15 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
   !=====
   logical,parameter    :: static_fsos = .FALSE.
   integer              :: nstate
-  integer              :: iomega,iomega_sigma,iomegap
+  integer              :: iomega_sigma,iomegap
   integer              :: info
   real(dp)             :: df,braket1,braket2
   integer              :: desc_eri3_t(NDEL)
   integer              :: iprow,ipcol,nprow,npcol
-  integer              :: desc_eri3_final(NDEL)
   integer              :: meri3,neri3
   integer              :: mstate,pstate,qstate,rstate,mpspin
   integer              :: prange,isign
-  integer              :: neig,neig2,fom,lom
-  real(dp),allocatable :: tmp(:),tmp2(:,:)
-  type(chi_type)       :: vchiv_sqrt_tmp
+  integer              :: fom,lom
   complex(dp),allocatable :: sigmagw(:,:,:)
   complex(dp)          :: denom1,denom2
   type(spectral_function) :: wpol_imag
@@ -1026,8 +1016,8 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
 
   write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
-  do iomega=LBOUND(se%omega_calc(:),DIM=1),UBOUND(se%omega_calc(:),DIM=1)
-    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega,se%omega_calc(iomega)*Ha_eV
+  do iomega_sigma=LBOUND(se%omega_calc(:),DIM=1),UBOUND(se%omega_calc(:),DIM=1)
+    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma,se%omega_calc(iomega_sigma)*Ha_eV
   enddo
   write(stdout,'(1x,a)') '========================================================'
 
@@ -1076,13 +1066,13 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
         ! positive and negative omega'
         do isign=1,-1,-2
 
-          do iomega=fom,lom
+          do iomega_sigma=fom,lom
             if( .NOT. static_fsos ) then
               call wpol_one%init(nstate,occupation,1,grid=MANUAL)
-              wpol_one%omega(1) = ABS( se%omega_calc(iomega)%im + isign * wpol_imag%omega(iomegap)%im ) * im
+              wpol_one%omega(1) = ABS( se%omega_calc(iomega_sigma)%im + isign * wpol_imag%omega(iomegap)%im ) * im
               call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
             endif
-            write(stdout,*) iomegap,isign,iomega,se%omega_calc(iomega)
+            write(stdout,*) iomegap,isign,iomega_sigma,se%omega_calc(iomega_sigma)
 
             do rstate=ncore_G+1,nvirtual_G-1
               do pstate=ncore_G+1,nvirtual_G-1
@@ -1105,10 +1095,10 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
                   braket2 = DOT_PRODUCT( qr(:) , MATMUL( wpol_one%chi(:,:,1) , mp(:) ) ) + DOT_PRODUCT( qr, mp)
                   !braket2 = DOT_PRODUCT( qr, mp)  !SOX or SOSEX
 
-                  denom1 = se%omega_calc(iomega) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
+                  denom1 = se%omega_calc(iomega_sigma) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
                   denom2 = isign * wpol_imag%omega(iomegap) + energy(pstate,mpspin) - energy(qstate,mpspin)
 
-                  sigmagw(iomega,mstate,mpspin) = sigmagw(iomega,mstate,mpspin) &
+                  sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) &
                                 + wpol_imag%weight_quad(iomegap) &
                                    * df * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
@@ -1118,7 +1108,7 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
 
             !deallocate(tmp2)
             if( .NOT. static_fsos ) call wpol_one%destroy()
-          enddo !iomega
+          enddo !iomega_sigma
         enddo ! isign
       enddo !iomegap
 
