@@ -28,10 +28,9 @@ contains
 
 
 !=========================================================================
-subroutine polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa,egw,wpol)
+subroutine polarizability_grid_scalapack(occupation,energy,c_matrix,erpa,egw,wpol)
   implicit none
 
-  type(basis_set),intent(in)            :: basis
   real(dp),intent(in)                   :: occupation(:,:)
   real(dp),intent(in)                   :: energy(:,:)
   real(dp),intent(in)                   :: c_matrix(:,:,:)
@@ -206,10 +205,9 @@ end subroutine polarizability_grid_scalapack
 
 
 !=========================================================================
-subroutine gw_selfenergy_imag_scalapack(basis,energy,c_matrix,wpol,se)
+subroutine gw_selfenergy_imag_scalapack(energy,c_matrix,wpol,se)
   implicit none
 
-  type(basis_set),intent(in)          :: basis
   real(dp),intent(in)                 :: energy(:,:)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(spectral_function),intent(in)  :: wpol
@@ -337,10 +335,9 @@ end subroutine gw_selfenergy_imag_scalapack
 
 
 !=========================================================================
-subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
+subroutine gw_selfenergy_contour(energy,occupation,c_matrix,se)
   implicit none
 
-  type(basis_set),intent(in)          :: basis
   real(dp),intent(in)                 :: energy(:,:),occupation(:,:)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
@@ -387,7 +384,7 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
   call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-  call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
+  call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.TRUE.)
 
   !
   ! Find largest real omega needed so to specify the frequency grid
@@ -415,7 +412,7 @@ subroutine gw_selfenergy_contour(basis,energy,occupation,c_matrix,se)
 
   write(stdout,'(1x,a,f12.6)') 'Maximum real frequency needed (eV): ',de_max * Ha_eV
   call wpol_real%init(nstate,occupation,nomega_chi_real,grid=REAL_LINEAR,omega_max=de_max)
-  call wpol_real%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
+  call wpol_real%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.TRUE.)
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -566,20 +563,18 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  logical,parameter    :: analytic_chi = .FALSE.
   integer              :: nstate
   integer              :: iomegap,iomega_sigma
-  integer              :: info
   real(dp),allocatable :: eri3_sca(:,:)
-  real(dp)             :: v_chi_v_p
-  integer              :: desc_eri3_t(NDEL)
-  integer              :: iprow,ipcol,nprow,npcol
+  real(dp)             :: v_chi_v_p,erpa,egw
   integer              :: meri3,neri3
   integer              :: mstate,pstate,mpspin
   integer              :: prange,plocal
   integer              :: neig,fom,lom
   real(dp),allocatable :: tmp2(:,:)
   complex(dp),allocatable :: sigmagw(:,:,:)
-  type(spectral_function) :: wpol_imag
+  type(spectral_function) :: wpol_imag,wpol_analytic
   !=====
 
 
@@ -588,7 +583,6 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   endif
   fom = LBOUND(se%omega_calc(:),DIM=1)
   lom = UBOUND(se%omega_calc(:),DIM=1)
-  write(*,*) fom,lom
 
   call start_clock(timing_gw_self)
 
@@ -601,16 +595,19 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
   nstate = SIZE(energy,DIM=1)
 
-  nprow = 1
-  npcol = 1
-  iprow = 0
-  ipcol = 0
-
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
+  !
+  ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
   call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-  call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.TRUE.)
+  if( analytic_chi ) then
+    call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
+    call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
+  else
+    !call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
+    call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.TRUE.)
+  endif
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -620,8 +617,6 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
   call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
 
-  call DESCINIT(desc_eri3_t,nauxil_global,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo, &
-                MAX(1,nauxil_local),info)
 
   allocate(sigmagw(fom:lom,nsemin:nsemax,nspin))
   sigmagw(:,:,:) = 0.0_dp
@@ -694,13 +689,10 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
-  logical,parameter    :: analytic_chi = .FALSE.
+  logical,parameter    :: analytic_chi = .TRUE.
   integer              :: nstate
   integer              :: iomega_sigma,iomegap
-  integer              :: info
   real(dp)             :: braket1,braket2
-  integer              :: desc_eri3_t(NDEL)
-  integer              :: iprow,ipcol,nprow,npcol
   integer              :: meri3,neri3
   integer              :: mstate,rstate,mpspin,iauxil
   integer              :: prange,isign
@@ -735,22 +727,17 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
   nstate = SIZE(energy,DIM=1)
 
-  nprow = 1
-  npcol = 1
-  iprow = 0
-  ipcol = 0
-
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
+  !
+  ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
+  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
   if( analytic_chi ) then
-    ! initialize wpol_imag to obtain the quadrature grid points and weights
-    call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
     call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
   else
-    call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-    call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+    call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
   endif
 
 
@@ -759,8 +746,6 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   meri3 = nauxil_global
   neri3 = prange
 
-  call DESCINIT(desc_eri3_t,nauxil_global,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo, &
-                MAX(1,nauxil_local),info)
 
   allocate(sigmagw(fom:lom,nsemin:nsemax,nspin))
   sigmagw(:,:,:) = 0.0_dp
@@ -799,7 +784,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
             else
               call wpol_one%init(nstate,occupation,1,grid=MANUAL,verbose=.FALSE.)
               wpol_one%omega(1) = omega_cmplx
-              call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.,verbose=.FALSE.)
+              call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.,verbose=.FALSE.)
               chi_wwp(:,:) = wpol_one%chi(:,:,1)
             endif
             do iauxil=1,nauxil_global
@@ -978,10 +963,9 @@ end subroutine fsos_selfenergy_grid
 
 
 !=========================================================================
-subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,se)
+subroutine fsos_selfenergy_grid_plain_fortran(energy,occupation,c_matrix,se)
   implicit none
 
-  type(basis_set),intent(in)          :: basis
   real(dp),intent(in)                 :: energy(:,:),occupation(:,:)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
@@ -989,10 +973,7 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
   logical,parameter    :: static_fsos = .FALSE.
   integer              :: nstate
   integer              :: iomega_sigma,iomegap
-  integer              :: info
   real(dp)             :: df,braket1,braket2
-  integer              :: desc_eri3_t(NDEL)
-  integer              :: iprow,ipcol,nprow,npcol
   integer              :: meri3,neri3
   integer              :: mstate,pstate,qstate,rstate,mpspin
   integer              :: prange,isign
@@ -1023,20 +1004,15 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
 
   nstate = SIZE(energy,DIM=1)
 
-  nprow = 1
-  npcol = 1
-  iprow = 0
-  ipcol = 0
-
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
   call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
   if( .NOT. static_fsos ) then
-    call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+    call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
   else
     call wpol_one%init(nstate,occupation,1,grid=STATIC)
-    call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+    call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
     allocate(wpol_imag%chi(nauxil_global,nauxil_global,wpol_imag%nomega_quad))
     do iomegap=1,wpol_imag%nomega_quad
       wpol_imag%chi(:,:,iomegap) = wpol_one%chi(:,:,1)
@@ -1049,8 +1025,6 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
   meri3 = nauxil_global
   neri3 = prange
 
-  call DESCINIT(desc_eri3_t,nauxil_global,prange,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo, &
-                MAX(1,nauxil_local),info)
 
   allocate(sigmagw(fom:lom,nsemin:nsemax,nspin))
   sigmagw(:,:,:) = 0.0_dp
@@ -1070,7 +1044,7 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
             if( .NOT. static_fsos ) then
               call wpol_one%init(nstate,occupation,1,grid=MANUAL)
               wpol_one%omega(1) = ABS( se%omega_calc(iomega_sigma)%im + isign * wpol_imag%omega(iomegap)%im ) * im
-              call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+              call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
             endif
             write(stdout,*) iomegap,isign,iomega_sigma,se%omega_calc(iomega_sigma)
 

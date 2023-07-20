@@ -268,8 +268,8 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
   real(dp),allocatable   :: a_matrix(:,:)
   real(dp),allocatable   :: a_matrix_inv(:,:)
   real(dp),allocatable   :: residual_pred(:,:,:)
-  real(dp)               :: residual,work(1)
 #if defined(HAVE_SCALAPACK)
+  real(dp)               :: residual,work(1)
   real(dp),allocatable   :: s_matrix_distrib(:,:)
   real(dp),allocatable   :: x_matrix_distrib(:,:)
   real(dp),allocatable   :: p_matrix_distrib(:,:,:)
@@ -715,10 +715,8 @@ subroutine density_matrix_preconditioning(hkin,s_matrix,p_matrix_new)
   real(dp),allocatable     :: hkin_inv(:,:)
   real(dp),allocatable     :: delta_p_matrix(:,:)
   real(dp),allocatable     :: p_matrix_new_distrib(:,:,:)
-  integer :: mlocal,nlocal
-  integer :: ilocal,jlocal
-  integer :: iglobal,jglobal
-  integer :: nbf,ispin,ihist
+  integer :: iglobal
+  integer :: nbf,ispin
   real(dp),allocatable :: matrix(:,:)
   real(dp) :: trace_ref,trace_current
   !=====

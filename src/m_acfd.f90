@@ -132,7 +132,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
 
   case('RPA_IM','RPAP_IM','RPA+_IM')
     call wpol%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-    call polarizability_grid_scalapack(basis,occupation,energy,c_matrix,erpa_state,egw_tmp,wpol)
+    call polarizability_grid_scalapack(occupation,energy,c_matrix,erpa_state,egw_tmp,wpol)
     call wpol%destroy()
     en_mbpt%rpa = erpa_state
 

@@ -69,7 +69,6 @@ program molgw
   type(lbfgs_state)          :: lbfgs_plan
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
-  integer                 :: nelect
   integer                 :: nstate
   integer                 :: istep
   logical                 :: is_restart,is_big_restart,is_basis_restart
@@ -458,8 +457,8 @@ program molgw
   ! This overrides the value of scf_has_converged
   if( assume_scf_converged_ ) scf_has_converged = .TRUE.
   if( .NOT. scf_has_converged ) then
-    call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. &
-                 Use keyword assume_scf_converged to override this security check')
+    call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. ' // &
+                       'Use keyword assume_scf_converged to override this security check')
   endif
 
   !
@@ -702,7 +701,7 @@ program molgw
   ! (only if the SCF cycles were converged)
   if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS .AND. scf_has_converged ) then
     en_mbpt = en_gks
-    call selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
+    call selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
     call print_energy_yaml('mbpt energy',en_mbpt)
     call clean_deallocate('Sigx - Vxc',exchange_m_vxc)
   endif

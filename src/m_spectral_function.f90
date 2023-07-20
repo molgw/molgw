@@ -416,11 +416,11 @@ subroutine write_spectral_function(sf)
   type(spectral_function),intent(in) :: sf
   !=====
   integer              :: wfile
-  integer              :: ibf_auxil
-  integer              :: ierr
-  real(dp),allocatable :: buffer(:)
-  integer              :: iprodbasis
 #if defined(HAVE_MPI)
+  integer              :: iprodbasis
+  real(dp),allocatable :: buffer(:)
+  integer              :: ierr
+  integer              :: ibf_auxil
   integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
   !=====
@@ -512,14 +512,14 @@ subroutine read_spectral_function(sf,reading_status)
   !=====
   integer            :: wfile
   character(len=100) :: postscf_name_read
-  integer            :: ibf_auxil
   logical            :: file_exists
   integer            :: npole_read,nprodbasis_read
-  integer            :: ierr
-  real(dp),allocatable :: buffer(:)
-  integer            :: iprodbasis
 #if defined(HAVE_MPI)
+  integer            :: ibf_auxil
+  integer            :: iprodbasis
+  integer            :: ierr
   integer(kind=MPI_OFFSET_KIND) :: disp
+  real(dp),allocatable :: buffer(:)
 #else
   integer :: ipole_read
 #endif
@@ -629,9 +629,8 @@ subroutine sf_evaluate_several_omegas(sf,omega_cmplx,chi)
   real(dp),intent(out) :: chi(:,:,:)
   !=====
   integer :: nomega,iomega,ipole
-  integer :: jprodbasis,jauxil,iauxil
+  integer :: jauxil,iauxil
   real(dp),allocatable :: tmp(:,:)
-  complex(dp),allocatable :: omega_cmplx_(:)
   !=====
   if( nauxil_global /= nauxil_local ) call die('sf_evaluate: not implemented with MPI')
   if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate: should have sf%residue_left available')
@@ -649,8 +648,8 @@ subroutine sf_evaluate_several_omegas(sf,omega_cmplx,chi)
         do jauxil=1,sf%nprodbasis
           chi(:,jauxil,iomega) = chi(:,jauxil,iomega) &
                  + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
-                       * ( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
-                          -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
+                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
+                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
         enddo
       enddo
     enddo
@@ -689,9 +688,8 @@ subroutine sf_evaluate_one_omega(sf,omega_cmplx,chi)
   real(dp),intent(out) :: chi(:,:)
   !=====
   integer :: ipole
-  integer :: jprodbasis,jauxil,iauxil
+  integer :: jauxil,iauxil
   real(dp),allocatable :: tmp(:,:)
-  complex(dp),allocatable :: omega_cmplx_(:)
   !=====
   if( nauxil_global /= nauxil_local ) call die('sf_evaluate: not implemented with MPI')
   if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate: should have sf%residue_left available')
@@ -707,8 +705,8 @@ subroutine sf_evaluate_one_omega(sf,omega_cmplx,chi)
         do jauxil=1,sf%nprodbasis
           chi(:,jauxil) = chi(:,jauxil) &
                  + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
-                       * ( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + im * ieta ) &
-                          -1.0_dp / ( omega_cmplx + sf%pole(ipole) - im * ieta ) )
+                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + im * ieta ) &
+                               -1.0_dp / ( omega_cmplx + sf%pole(ipole) - im * ieta ) )
         enddo
       enddo
 
@@ -736,11 +734,10 @@ end subroutine sf_evaluate_one_omega
 
 
 !=========================================================================
-subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,verbose)
+subroutine sf_vsqrt_chi_vsqrt_rpa(sf,occupation,energy,c_matrix,low_rank,verbose)
   implicit none
 
   class(spectral_function),intent(inout) :: sf
-  type(basis_set),intent(in)             :: basis
   real(dp),intent(in)                    :: occupation(:,:)
   real(dp),intent(in)                    :: energy(:,:)
   real(dp),intent(in)                    :: c_matrix(:,:,:)
@@ -750,7 +747,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
   logical              :: verbose_,low_rank_,eri_3center_mo_available
   integer              :: stdout_
   integer              :: nstate,nomega,non_negligible
-  integer              :: iomega,ieig,jeig
+  integer              :: iomega,ieig,jeig,jauxil
   integer              :: t_ia
   integer              :: istate,astate,iaspin
   integer              :: info
@@ -843,7 +840,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
 
       docc = occupation(istate,iaspin) - occupation(astate,iaspin)
       de   = energy(astate,iaspin)     - energy(istate,iaspin)
-      factor = 2.0_dp * docc * de / ( sf%omega(iomega)**2 - de**2 )
+      factor = REAL( 2.0_dp * docc * de / ( sf%omega(iomega)**2 - de**2 ) )
 
       eri3_t1(:,t_ia) = eri_3center_eigen(:,istate,astate,iaspin) * factor
       eri3_t2(:,t_ia) = eri_3center_eigen(:,istate,astate,iaspin)
@@ -864,27 +861,24 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
     allocate(chi0tmp,SOURCE=chi0)
 
     ! Second
-    ! Diagonalize chi0
-    call diagonalize(postscf_diago_flavor,chi0tmp,eigval)
-    ! transform vsqrt * chi0 * vsqrt in to vsqrt * chi * vsqrt
-    eigval(:) = eigval(:) / (1.0_dp - eigval(:))
-
+    !
+    !   Diagonalize chi0 (low_rank route)
+    ! or 
+    !   invert (1 - chi0)  (standard route)
+    !
     if( low_rank_ ) then
+      call diagonalize(postscf_diago_flavor,chi0tmp,eigval)
+      !
+      ! Transform vsqrt * chi0 * vsqrt in to vsqrt * chi * vsqrt
+      eigval(:) = eigval(:) / (1.0_dp - eigval(:))
       non_negligible = COUNT( ABS(eigval(:)) > TOL_LOW_EIGVAL )
       write(stdout_,*) 'Number of non-negligible eigenvalues:',non_negligible,nauxil_global
-    else
-      non_negligible = COUNT( ABS(eigval(:)) > 1.0e-10_dp )
-    endif
 
-    !do jeig=1,non_negligible
-    !  chi0tmp(:,jeig) = chi0tmp(:,jeig) * SQRT( ABS(eigval(jeig)) )
-    !enddo
-
-    if( low_rank_ ) then
       allocate(sf%vchiv_sqrt(iomega)%eigvec(nauxil_global,non_negligible))
       allocate(sf%vchiv_sqrt(iomega)%eigval(non_negligible))
       !
       ! Store the eigenelements of vsqrt_chi_vsqrt
+      !
       ieig = 0
       do jeig=1,nauxil_global
         if( ABS(eigval(jeig)) > TOL_LOW_EIGVAL ) then
@@ -896,15 +890,16 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,basis,occupation,energy,c_matrix,low_rank,v
 
     else
       !
-      ! Create the full vsqrt_chi_vsqrt
-      sf%chi(:,:,iomega) = 0.0_dp
-      do jeig=1,nauxil_global
-        if( ABS(eigval(jeig)) > TOL_LOW_EIGVAL ) then
-          call DSYR('L',nauxil_global,eigval(jeig),chi0tmp(:,jeig),1,sf%chi(:,:,iomega),nauxil_global)
-        endif
+      ! Calculate and store the full matrix vsqrt_chi_vsqrt
+      !
+      chi0tmp(:,:) = -chi0tmp(:,:)
+      do jauxil=1,nauxil_global
+        chi0tmp(jauxil,jauxil) = 1.0_dp + chi0tmp(jauxil,jauxil)
       enddo
-      !call DSYRK('L','N',nauxil_global,non_negligible,-1.0d0,chi0tmp,nauxil_global,0.0d0,sf%chi(:,:,iomega),nauxil_global)
-      call symmetrize_matrix_sca('L',nauxil_global,sf%desc_chi,sf%chi(:,:,iomega),sf%desc_chi,chi0tmp)
+      call invert(chi0tmp)
+      !sf%chi(:,:,iomega) = MATMUL( chi0tmp, chi0 )
+      call DSYMM('L','L',nauxil_global,nauxil_global,1.0d0,chi0tmp,nauxil_global,chi0,nauxil_global, &
+                 0.0d0,sf%chi(:,:,iomega),nauxil_global)
 
     endif
 
@@ -940,7 +935,7 @@ subroutine sf_interpolate_vsqrt_chi_vsqrt(sf,omega,vchiv_sqrt_omega)
   real(dp),intent(in)                 :: omega
   type(chi_type),intent(out)          :: vchiv_sqrt_omega
   !=====
-  integer  :: iomega,jomega,nomega
+  integer  :: jomega,nomega
   !=====
 
 

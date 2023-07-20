@@ -30,11 +30,10 @@ contains
 
 
 !=========================================================================
-subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
+subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
   implicit none
 
   type(basis_set),intent(in) :: basis
-  type(basis_set),intent(in) :: auxil_basis
   real(dp),intent(in)        :: occupation(:,:)
   real(dp),intent(inout)     :: energy(:,:)
   real(dp),intent(inout)     :: c_matrix(:,:,:)
@@ -48,12 +47,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
   integer                 :: reading_status
   integer                 :: nstate_small
   type(spectral_function) :: wpol
-  real(dp),allocatable    :: sigc(:,:)
   real(dp),allocatable    :: zz(:,:)
   real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
   integer                 :: iomega
   integer                 :: istep_gw,pstate
-  real(dp)                :: erpa_sie_KP
   real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
   real(dp),allocatable    :: energy_g(:,:)
   real(dp),allocatable    :: energy_w(:,:)
@@ -200,7 +197,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
           select case(calc_type%selfenergy_technique)
           case(imaginary_axis_pade,imaginary_axis_homolumo)
             call wpol%init(nstate_small,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-            call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
+            call polarizability_grid_scalapack(occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
           case(contour_deformation)
             ! no need for chi, it will be calculated directly inside
           case default
@@ -222,12 +219,12 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
       select case(calc_type%selfenergy_technique)
       case(contour_deformation)
-        call gw_selfenergy_contour(basis,energy_g,occupation,c_matrix,se)
+        call gw_selfenergy_contour(energy_g,occupation,c_matrix,se)
       case(imaginary_axis_pade)
-        call gw_selfenergy_imag_scalapack(basis,energy_g,c_matrix,wpol,se)
+        call gw_selfenergy_imag_scalapack(energy_g,c_matrix,wpol,se)
         call self_energy_pade(se)
       case(imaginary_axis_homolumo)
-        call gw_selfenergy_imag_scalapack(basis,energy_g,c_matrix,wpol,se)
+        call gw_selfenergy_imag_scalapack(energy_g,c_matrix,wpol,se)
         call self_energy_polynomial(se)
       case(exact_dyson)
         call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
