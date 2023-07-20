@@ -45,6 +45,8 @@ module m_spectral_function
 
   type spectral_function
 
+    integer              :: type                   ! type encodes the storage method
+
     integer              :: nprodbasis_total       ! total over all procs
     integer              :: nprodbasis             ! for this proc
 
@@ -72,7 +74,11 @@ module m_spectral_function
 
   contains
 
-    procedure :: evaluate => sf_evaluate
+    generic :: evaluate => sf_evaluate_several_omegas
+    generic :: evaluate => sf_evaluate_one_omega
+    procedure :: sf_evaluate_several_omegas
+    procedure :: sf_evaluate_one_omega
+
     procedure :: vsqrt_chi_vsqrt_rpa => sf_vsqrt_chi_vsqrt_rpa
     procedure :: interpolate_vsqrt_chi_vsqrt => sf_interpolate_vsqrt_chi_vsqrt
     procedure :: init    => sf_init
@@ -137,7 +143,7 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
   real(dp),optional,intent(in)          :: omega_max
   logical,optional,intent(in)           :: verbose
   !=====
-  integer                               :: grid_ = 0
+  integer                               :: grid_ = NO_GRID
   real(dp)                              :: omega_max_ = 1.0_dp
   integer                               :: stdout_
   integer                               :: ijspin,istate,jstate,itrans
@@ -163,6 +169,8 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
       open(newunit=stdout_,file='/dev/null')
     endif
   endif
+
+  sf%type = grid_
 
   ncore_W      = ncorew
   nvirtual_W   = MIN(nvirtualw,nstate+1)
@@ -292,7 +300,7 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
     allocate(sf%weight_quad(sf%nomega_quad))
     allocate(sf%omega_quad(sf%nomega_quad))
     allocate(sf%omega(sf%nomega_quad))
-    write(stdout_,'(a)') '    #    Frequencies (eV)   real    / imaginary ' 
+    write(stdout_,'(a)') '    #    Frequencies (eV)   real    / imaginary '
     do iomega=1,nomega_in
       sf%omega(iomega) = REAL(iomega-1,dp)/REAL(nomega_in-1,dp) * omega_max_
       write(stdout_,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%re*Ha_eV,sf%omega(iomega)%im*Ha_eV
@@ -306,8 +314,10 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
     sf%weight_quad(1) = 1.0_dp
     sf%omega_quad(1)  = 0.0_dp
     sf%omega(1)       = (0.0_dp, 0.0_dp)
-  case default
+  case(NO_GRID)
     ! No grid, nothing to do
+  case default
+    call die("sf_init: grid choice not valid")
   end select
 
 
@@ -611,36 +621,118 @@ end subroutine read_spectral_function
 
 
 !=========================================================================
-subroutine sf_evaluate(sf,omega_cmplx,chi)
+subroutine sf_evaluate_several_omegas(sf,omega_cmplx,chi)
   implicit none
 
   class(spectral_function),intent(in) :: sf
   complex(dp),intent(in) :: omega_cmplx(:)
-  complex(dp),allocatable,intent(out) :: chi(:,:,:)
+  real(dp),intent(out) :: chi(:,:,:)
   !=====
   integer :: nomega,iomega,ipole
-  integer :: jprodbasis
+  integer :: jprodbasis,jauxil,iauxil
+  real(dp),allocatable :: tmp(:,:)
+  complex(dp),allocatable :: omega_cmplx_(:)
   !=====
-
   if( nauxil_global /= nauxil_local ) call die('sf_evaluate: not implemented with MPI')
+  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate: should have sf%residue_left available')
 
   nomega = SIZE(omega_cmplx)
-  allocate(chi(sf%nprodbasis,sf%nprodbasis,nomega))
 
   chi(:,:,:) = 0.0_dp
-  do iomega=1,nomega
-    do ipole=1,sf%npole_reso
-      do jprodbasis=1,sf%nprodbasis
-        chi(:,jprodbasis,iomega) = chi(:,jprodbasis,iomega) &
-               + sf%residue_left(:,ipole) * sf%residue_left(jprodbasis,ipole) &
-                     * ( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
-                        -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
+
+  !
+  ! for real frequencies, use a naive implementation
+  !
+  if( ANY( ABS(omega_cmplx(:)%re) > 1.0e-6_dp ) ) then
+    do iomega=1,nomega
+      do ipole=1,sf%npole_reso
+        do jauxil=1,sf%nprodbasis
+          chi(:,jauxil,iomega) = chi(:,jauxil,iomega) &
+                 + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
+                       * ( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
+                          -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
+        enddo
       enddo
     enddo
-  enddo
+
+  else
+
+    allocate(tmp,MOLD=sf%residue_left)
+
+    do iomega=1,nomega
+      tmp(:,:) = sf%residue_left(:,:)
+      do ipole=1,sf%npole_reso
+        tmp(:,ipole) = tmp(:,ipole) * SQRT( 2.0_dp * sf%pole(ipole) / ( ABS(omega_cmplx(iomega))**2 + sf%pole(ipole)**2 ) )
+      enddo
+
+      call DSYRK('L','N',nauxil_global,sf%npole_reso,-1.0d0,tmp,nauxil_global,0.0d0,chi(:,:,iomega),nauxil_global)
+      do jauxil=1,nauxil_global
+        do iauxil=jauxil+1,nauxil_global
+          chi(jauxil,iauxil,iomega) = chi(iauxil,jauxil,iomega)
+        enddo
+      enddo
+    enddo
+
+    deallocate(tmp)
+  endif
 
 
-end subroutine sf_evaluate
+end subroutine sf_evaluate_several_omegas
+
+
+!=========================================================================
+subroutine sf_evaluate_one_omega(sf,omega_cmplx,chi)
+  implicit none
+
+  class(spectral_function),intent(in) :: sf
+  complex(dp),intent(in) :: omega_cmplx
+  real(dp),intent(out) :: chi(:,:)
+  !=====
+  integer :: ipole
+  integer :: jprodbasis,jauxil,iauxil
+  real(dp),allocatable :: tmp(:,:)
+  complex(dp),allocatable :: omega_cmplx_(:)
+  !=====
+  if( nauxil_global /= nauxil_local ) call die('sf_evaluate: not implemented with MPI')
+  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate: should have sf%residue_left available')
+
+
+  chi(:,:) = 0.0_dp
+
+  !
+  ! for real frequencies, use a naive implementation
+  !
+  if( ABS(omega_cmplx%re) > 1.0e-6_dp  ) then
+      do ipole=1,sf%npole_reso
+        do jauxil=1,sf%nprodbasis
+          chi(:,jauxil) = chi(:,jauxil) &
+                 + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
+                       * ( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + im * ieta ) &
+                          -1.0_dp / ( omega_cmplx + sf%pole(ipole) - im * ieta ) )
+        enddo
+      enddo
+
+  else
+
+    allocate(tmp,MOLD=sf%residue_left)
+
+    tmp(:,:) = sf%residue_left(:,:)
+    do ipole=1,sf%npole_reso
+      tmp(:,ipole) = tmp(:,ipole) * SQRT( 2.0_dp * sf%pole(ipole) / ( ABS(omega_cmplx)**2 + sf%pole(ipole)**2 ) )
+    enddo
+
+    call DSYRK('L','N',nauxil_global,sf%npole_reso,-1.0d0,tmp,nauxil_global,0.0d0,chi(:,:),nauxil_global)
+    do jauxil=1,nauxil_global
+      do iauxil=jauxil+1,nauxil_global
+        chi(jauxil,iauxil) = chi(iauxil,jauxil)
+      enddo
+    enddo
+
+    deallocate(tmp)
+  endif
+
+
+end subroutine sf_evaluate_one_omega
 
 
 !=========================================================================
@@ -882,7 +974,7 @@ subroutine ct_destroy(chi)
   !=====
   if( ALLOCATED(chi%eigvec) ) deallocate(chi%eigvec)
   if( ALLOCATED(chi%eigval) ) deallocate(chi%eigval)
-  
+
 end subroutine ct_destroy
 
 

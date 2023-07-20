@@ -21,6 +21,7 @@ module m_gw_selfenergy_grid
   use m_spectral_function
   use m_eri_ao_mo
   use m_selfenergy_tools
+  use m_linear_response
 
 
 contains
@@ -699,7 +700,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
-  logical,parameter    :: static_fsos = .FALSE.
+  logical,parameter    :: analytic_chi = .TRUE.
   integer              :: nstate
   integer              :: iomega,iomega_sigma,iomegap
   integer              :: info
@@ -714,9 +715,8 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   type(chi_type)       :: vchiv_sqrt_tmp
   complex(dp),allocatable :: sigmagw(:,:,:)
   complex(dp)          :: denom1,denom2
-  type(spectral_function) :: wpol_imag
-  type(spectral_function) :: wpol_one
-  real(dp) :: mr(nauxil_global),mp(nauxil_global),pq(nauxil_global),qr(nauxil_global)
+  type(spectral_function) :: wpol_imag,wpol_one,wpol_analytic
+  real(dp) :: erpa,egw
   ! DGEMM
   integer :: astate,istate
   real(dp),allocatable :: Ai_m(:,:),Ai_a(:,:),Ar_m(:,:),Ar_a(:,:),tmp(:,:),braket1_ri(:,:),braket2_ri(:,:)
@@ -751,16 +751,14 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
-  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-  if( .NOT. static_fsos ) then
-    call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
+  if( analytic_chi ) then
+    ! initialize wpol_imag to obtain the quadrature grid points and weights
+    call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+    call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
+    call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
   else
-    call wpol_one%init(nstate,occupation,1,grid=STATIC)
-    call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
-    allocate(wpol_imag%chi(nauxil_global,nauxil_global,wpol_imag%nomega_quad))
-    do iomegap=1,wpol_imag%nomega_quad
-      wpol_imag%chi(:,:,iomegap) = wpol_one%chi(:,:,1)
-    enddo
+    call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+    call wpol_imag%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.)
   endif
 
 
@@ -783,24 +781,37 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
       ! Imaginary axis integral
       !
       do iomegap=1,wpol_imag%nomega_quad
-        ! positive and negative omega'
-        chi_wp(:,:) = wpol_imag%chi(:,:,iomegap)
+        if( analytic_chi ) then
+          call wpol_analytic%evaluate(wpol_imag%omega(iomegap),chi_wp)
+        else
+          chi_wp(:,:) = wpol_imag%chi(:,:,iomegap)
+        endif
         do iauxil=1,nauxil_global
           chi_wp(iauxil,iauxil) = chi_wp(iauxil,iauxil) + 1.0_dp
         enddo
         write(stdout,'(1x,a,i4,a,i4)') 'Quadrature on iwp: ',iomegap,' / ',wpol_imag%nomega_quad
+
+        !
+        ! positive and negative omega'
+        !
         do isign=1,-1,-2
 
+          !
+          ! loop on Sigma(omega)
+          !
           do iomega=fom,lom
-            if( .NOT. static_fsos ) then
+
+            if( analytic_chi ) then
+              call wpol_analytic%evaluate(ABS(se%omega_calc(iomega)%im+isign*wpol_imag%omega(iomegap)%im)*im,chi_wwp)
+            else
               call wpol_one%init(nstate,occupation,1,grid=MANUAL,verbose=.FALSE.)
               wpol_one%omega(1) = ABS( se%omega_calc(iomega)%im + isign * wpol_imag%omega(iomegap)%im ) * im
               call wpol_one%vsqrt_chi_vsqrt_rpa(basis,occupation,energy,c_matrix,low_rank=.FALSE.,verbose=.FALSE.)
               chi_wwp(:,:) = wpol_one%chi(:,:,1)
-              do iauxil=1,nauxil_global
-                chi_wwp(iauxil,iauxil) = chi_wwp(iauxil,iauxil) + 1.0_dp
-              enddo
             endif
+            do iauxil=1,nauxil_global
+              chi_wwp(iauxil,iauxil) = chi_wwp(iauxil,iauxil) + 1.0_dp
+            enddo
             !write(stdout,*) iomegap,isign,iomega,se%omega_calc(iomega)
 
             allocate(Ai_m(nauxil_global,ncore_G+1:nhomo_G))
@@ -952,7 +963,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
             deallocate(Ar_m)
 
-            if( .NOT. static_fsos ) call wpol_one%destroy(verbose=.FALSE.)
+            if( .NOT. analytic_chi ) call wpol_one%destroy(verbose=.FALSE.)
           enddo !iomega
         enddo ! isign
       enddo !iomegap
@@ -1077,7 +1088,7 @@ subroutine fsos_selfenergy_grid_plain_fortran(basis,energy,occupation,c_matrix,s
               do pstate=ncore_G+1,nvirtual_G-1
                 do qstate=ncore_G+1,nvirtual_G-1
 
-                  df = ( occupation(pstate,mpspin) - occupation(qstate,mpspin) ) / spin_fact 
+                  df = ( occupation(pstate,mpspin) - occupation(qstate,mpspin) ) / spin_fact
                   if( ABS(df) < 1.0e-6 ) cycle
 
 
