@@ -65,10 +65,9 @@ module m_spectral_function
     real(dp),allocatable    :: chi(:,:,:)
     integer                 :: mchi,nchi
     integer                 :: desc_chi(NDEL)
-    integer                 :: nomega_quad           ! Number of quadrature points
-    real(dp),allocatable    :: omega_quad(:)         ! quadrature points for numerical integration
-    real(dp),allocatable    :: weight_quad(:)        ! quadrature weight for numerical integration
-    complex(dp),allocatable :: omega(:)
+    integer                 :: nomega           ! Number of quadrature points
+    real(dp),allocatable    :: weight_quad(:)   ! quadrature weight for numerical integration
+    complex(dp),allocatable :: omega(:)         ! frequency grid (can real or imaginary)
 
     type(chi_type),allocatable :: vchiv_sqrt(:)
 
@@ -152,6 +151,7 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
   integer                               :: nhomo_W_spin(nspin)
   real(dp),parameter                    :: alpha=1.0_dp ! 0.50_dp
   real(dp),parameter                    :: beta=1.0_dp ! 6.0_dp
+  real(dp),allocatable                  :: omega_quad(:)
   !=====
 
   if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
@@ -264,42 +264,40 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
 
   !
   ! Set the sampling points for Chi
-  sf%nomega_quad    = nomega_in
+  sf%nomega    = nomega_in
 
   select case(grid_)
   case(STATIC)
     if( nomega_in /= 1 ) call die('sf_init: static chi requested, number of frequencies should be 1')
-    allocate(sf%weight_quad(sf%nomega_quad))
-    allocate(sf%omega_quad(sf%nomega_quad))
-    allocate(sf%omega(sf%nomega_quad))
+    allocate(sf%weight_quad(sf%nomega))
+    allocate(sf%omega(sf%nomega))
     sf%weight_quad(1) = 1.0_dp
-    sf%omega_quad(1)  = 0.0_dp
     sf%omega(1)       = (0.0_dp, 0.0_dp)
   case(IMAGINARY_QUAD)
     if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
-    allocate(sf%weight_quad(sf%nomega_quad))
-    allocate(sf%omega_quad(sf%nomega_quad))
-    allocate(sf%omega(sf%nomega_quad))
+    allocate(sf%weight_quad(sf%nomega))
+    allocate(omega_quad(sf%nomega))
+    allocate(sf%omega(sf%nomega))
 
-    call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
+    call coeffs_gausslegint(0.0_dp,1.0_dp,omega_quad,sf%weight_quad,sf%nomega)
 
     write(stdout_,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
     ! Variable change [0,1] -> [0,+\inf[
     write(stdout_,'(a)') '    #    Frequencies (eV)    Quadrature weights'
-    do iomega=1,sf%nomega_quad
+    do iomega=1,sf%nomega
       sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
-                              * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
-      sf%omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
-                                * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
-      sf%omega(iomega)       =  sf%omega_quad(iomega) * im
-      write(stdout_,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega)*Ha_eV,sf%weight_quad(iomega)
+                              * (1.0_dp -  omega_quad(iomega))**(-alpha-1.0_dp) * beta
+      omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
+                                * ( 1.0_dp / (1.0_dp-omega_quad(iomega))**alpha - 1.0_dp ) * beta
+      sf%omega(iomega)       =  omega_quad(iomega) * im
+      write(stdout_,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%im*Ha_eV,sf%weight_quad(iomega)
     enddo
+    deallocate(omega_quad)
 
   case(REAL_LINEAR)
     if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
-    allocate(sf%weight_quad(sf%nomega_quad))
-    allocate(sf%omega_quad(sf%nomega_quad))
-    allocate(sf%omega(sf%nomega_quad))
+    allocate(sf%weight_quad(sf%nomega))
+    allocate(sf%omega(sf%nomega))
     write(stdout_,'(a)') '    #    Frequencies (eV)   real    / imaginary '
     do iomega=1,nomega_in
       sf%omega(iomega) = REAL(iomega-1,dp)/REAL(nomega_in-1,dp) * omega_max_
@@ -308,11 +306,9 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
   case(MANUAL)
     if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
     ! Just allocate and fill with default values
-    allocate(sf%weight_quad(sf%nomega_quad))
-    allocate(sf%omega_quad(sf%nomega_quad))
-    allocate(sf%omega(sf%nomega_quad))
+    allocate(sf%weight_quad(sf%nomega))
+    allocate(sf%omega(sf%nomega))
     sf%weight_quad(1) = 1.0_dp
-    sf%omega_quad(1)  = 0.0_dp
     sf%omega(1)       = (0.0_dp, 0.0_dp)
   case(NO_GRID)
     ! No grid, nothing to do
@@ -401,7 +397,6 @@ subroutine sf_destroy(sf,verbose)
     call clean_deallocate('Chi',sf%chi,verbose=verbose_)
   endif
   if(ALLOCATED(sf%weight_quad)) deallocate(sf%weight_quad)
-  if(ALLOCATED(sf%omega_quad))  deallocate(sf%omega_quad)
   if(ALLOCATED(sf%omega))       deallocate(sf%omega)
   if(ALLOCATED(sf%vchiv_sqrt))  deallocate(sf%vchiv_sqrt)
 
