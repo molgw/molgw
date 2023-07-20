@@ -627,8 +627,8 @@ subroutine sf_evaluate_several_omegas(sf,omega_cmplx,chi)
   integer :: jauxil,iauxil
   real(dp),allocatable :: tmp(:,:)
   !=====
-  if( nauxil_global /= nauxil_local ) call die('sf_evaluate: not implemented with MPI')
-  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate: should have sf%residue_left available')
+  if( nauxil_global /= nauxil_local ) call die('sf_evaluate_several_omegas: not implemented with distributed auxiliary basis')
+  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate_severals_omegas: should have sf%residue_left available')
 
   nomega = SIZE(omega_cmplx)
 
@@ -686,8 +686,8 @@ subroutine sf_evaluate_one_omega(sf,omega_cmplx,chi)
   integer :: jauxil,iauxil
   real(dp),allocatable :: tmp(:,:)
   !=====
-  if( nauxil_global /= nauxil_local ) call die('sf_evaluate: not implemented with MPI')
-  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate: should have sf%residue_left available')
+  if( nauxil_global /= nauxil_local ) call die('sf_evaluate_one_omega: not implemented with distributed auxiliary basis')
+  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate_one_omega: should have sf%residue_left available')
 
 
   chi(:,:) = 0.0_dp
@@ -741,7 +741,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,occupation,energy,c_matrix,low_rank,verbose
   real(dp),parameter   :: TOL_LOW_EIGVAL = 1.0e-3_dp
   logical              :: verbose_,low_rank_,eri_3center_mo_available
   integer              :: stdout_
-  integer              :: nstate,nomega,non_negligible
+  integer              :: nstate,non_negligible
   integer              :: iomega,ieig,jeig,jauxil
   integer              :: t_ia
   integer              :: istate,astate,iaspin
@@ -751,7 +751,6 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,occupation,energy,c_matrix,low_rank,verbose
   real(dp),allocatable :: chi0(:,:)
   real(dp),allocatable :: chi0tmp(:,:)
   real(dp)             :: eigval(nauxil_global)
-  integer              :: meri3,neri3
   !=====
 
   call start_clock(timing_rpa_dynamic)
@@ -770,21 +769,17 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,occupation,energy,c_matrix,low_rank,verbose
   endif
 
   nstate = SIZE(occupation,DIM=1)
-  nomega = SIZE(sf%omega)
 
-  write(stdout_,'(/,1x,a,i5,a)') 'Calculation of RPA polarizability on complex grid of ',nomega,' frequencies'
-#if defined(HAVE_SCALAPACK)
-  write(stdout_,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow_sd,' x ',npcol_sd
-#endif
+  write(stdout_,'(/,1x,a,i5,a)') 'Calculation of RPA polarizability on complex grid of ',sf%nomega,' frequencies'
 
 
-
-  if( nomega < 1 ) call die('sf_vsqrt_chi_vsqrt_rpa: sf contains no frequency (nomega==0)')
+  if( sf%nomega < 1 ) call die('sf_vsqrt_chi_vsqrt_rpa: sf contains no frequency (nomega==0)')
   if( .NOT. has_auxil_basis ) call die('sf_vsqrt_chi_vsqrt_rpa: only works with an auxiliary basis')
+  if( nauxil_global /= nauxil_local ) call die('sf_vsqrt_chi_vsqrt_rpa: not implemented with distributed auxiliary basis')
 
   sf%nprodbasis = nauxil_local
   if( low_rank_ ) then
-    allocate(sf%vchiv_sqrt(nomega))
+    allocate(sf%vchiv_sqrt(sf%nomega))
   endif
 
   ! Check if (I | p q) integrals are already available
@@ -803,26 +798,21 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,occupation,energy,c_matrix,low_rank,verbose
     endif
   endif
 
-  sf%mchi = NUMROC(nauxil_global,block_row,iprow_sd,first_row,nprow_sd)
-  sf%nchi = NUMROC(nauxil_global,block_col,ipcol_sd,first_col,npcol_sd)
+  sf%mchi = nauxil_global
+  sf%nchi = nauxil_global
   call DESCINIT(sf%desc_chi,nauxil_global,nauxil_global,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,sf%mchi),info)
-  call clean_allocate('Chi',sf%chi,sf%mchi,sf%nchi,nomega,verbose=verbose_)
+  call clean_allocate('Chi',sf%chi,sf%mchi,sf%nchi,sf%nomega,verbose=verbose_)
   write(stdout_,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_global,' x ',nauxil_global
   write(stdout_,'(1x,a,i7,a,i7)') 'Distributed in ',sf%mchi,' x ',sf%nchi
-
-  !
-  ! Get the processor grid included in the input sf%desc_chi
-  meri3 = NUMROC(nauxil_global ,sf%desc_chi(MB_),iprow_sd,sf%desc_chi(RSRC_),nprow_sd)
-  neri3 = NUMROC(sf%npole_reso,sf%desc_chi(NB_),ipcol_sd,sf%desc_chi(CSRC_),npcol_sd)
 
   call clean_allocate('TMP 3-center MO integrals',eri3_t1,nauxil_local,sf%npole_reso,verbose=verbose_)
   call clean_allocate('TMP 3-center MO integrals',eri3_t2,nauxil_local,sf%npole_reso,verbose=verbose_)
   call clean_allocate('Chi0',chi0,sf%mchi,sf%nchi,verbose=verbose_)
 
 
-  do iomega=1,nomega
+  do iomega=1,sf%nomega
 
-    write(stdout_,'(1x,a,i4,a,i4)') 'Loop on frequencies: ',iomega,' / ',nomega
+    write(stdout_,'(1x,a,i4,a,i4)') 'Loop on frequencies: ',iomega,' / ',sf%nomega
 
     !
     ! First evaluate v^{1/2} \chi_0 v^{1/2}
@@ -930,7 +920,7 @@ subroutine sf_interpolate_vsqrt_chi_vsqrt(sf,omega,vchiv_sqrt_omega)
   real(dp),intent(in)                 :: omega
   type(chi_type),intent(out)          :: vchiv_sqrt_omega
   !=====
-  integer  :: jomega,nomega
+  integer  :: jomega
   !=====
 
 
@@ -939,7 +929,6 @@ subroutine sf_interpolate_vsqrt_chi_vsqrt(sf,omega,vchiv_sqrt_omega)
     call die('sf_interpolate_vsqrt_chi_vsqrt_rpa: for real frequencies only')
   endif
 
-  nomega = SIZE(sf%omega)
   if( omega > MAXVAL(sf%omega(:)%re) .OR. omega < MINVAL(sf%omega(:)%re) ) then
     write(stdout,*) omega
     write(stdout,*) sf%omega(1)%re

@@ -1020,3 +1020,12 @@ SCF Total Energy          , -100.0391397744    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.259038        , 0 , 1.0e-4
 gKS LUMO energy           ,    1.090268        , 0 , 1.0e-4
 
+ar_gw+fsos.in             , Full second-order screened exchange diagram, noparallel
+SCF Total Energy          , -526.7998408784    , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.991653        , 0 , 1.0e-4
+GW+FSOS HOMO energy       ,  -15.681164        , 0 , 1.0e-4
+
+ar_gw+fsos_analytic.in    , Full second-order screened exchange diagram with analytic chi, noparallel
+SCF Total Energy          , -526.7998408784    , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.991653        , 0 , 1.0e-4
+GW+FSOS HOMO energy       ,  -15.681164        , 0 , 1.0e-4

@@ -348,7 +348,6 @@ subroutine gw_selfenergy_contour(energy,occupation,c_matrix,se)
   real(dp),allocatable :: eri3_sca(:,:)
   real(dp)             :: v_chi_v_p,factor,de,de_max
   integer              :: desc_eri3_t(NDEL)
-  integer              :: iprow,ipcol,nprow,npcol
   integer              :: meri3,neri3
   integer              :: mstate,pstate,mpspin
   integer              :: prange,plocal
@@ -374,11 +373,6 @@ subroutine gw_selfenergy_contour(energy,occupation,c_matrix,se)
   write(stdout,'(1x,a)') '========================================================'
 
   nstate = SIZE(energy,DIM=1)
-
-  nprow = 1
-  npcol = 1
-  iprow = 0
-  ipcol = 0
 
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
@@ -479,7 +473,7 @@ subroutine gw_selfenergy_contour(energy,occupation,c_matrix,se)
       ! Residues for occupied states
       !
       do plocal=1,neri3
-        pstate = INDXL2G(plocal,wpol_imag%desc_chi(NB_),ipcol,wpol_imag%desc_chi(CSRC_),npcol) + ncore_G
+        pstate = plocal + ncore_G
         ! only occupied states  \theta( \mu - e_p)
         if( pstate >= nlumo_G ) cycle
 
@@ -510,7 +504,7 @@ subroutine gw_selfenergy_contour(energy,occupation,c_matrix,se)
       ! Residues for empty states
       !
       do plocal=1,neri3
-        pstate = INDXL2G(plocal,wpol_imag%desc_chi(NB_),ipcol,wpol_imag%desc_chi(CSRC_),npcol) + ncore_G
+        pstate = plocal + ncore_G
         ! only empty states  \theta( e_p - \mu)
         if( pstate <= nhomo_G ) cycle
 
@@ -563,14 +557,13 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
-  logical,parameter    :: analytic_chi = .FALSE.
   integer              :: nstate
   integer              :: iomegap,iomega_sigma
   real(dp),allocatable :: eri3_p_m(:,:)
   real(dp)             :: v_chi_v_p,erpa,egw
   integer              :: mstate,pstate,mpspin
   integer              :: prange
-  integer              :: neig,first_omega,last_omega
+  integer              :: first_omega,last_omega
   real(dp),allocatable :: tmp2(:,:)
   complex(dp),allocatable :: sigmagw(:,:,:)
   type(spectral_function) :: wpol_imag,wpol_analytic
@@ -600,12 +593,13 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   !
   ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
   call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-  if( analytic_chi ) then
+  if( analytic_chi_ ) then
     call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
+    call clean_allocate('Chi',wpol_imag%chi,nauxil_global,nauxil_global,wpol_imag%nomega,verbose=.FALSE.)
+    call wpol_analytic%evaluate(wpol_imag%omega,wpol_imag%chi)
   else
-    !call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
-    call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.TRUE.)
+    call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
   endif
 
 
@@ -627,21 +621,20 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
       ! Imaginary axis integral
       !
       do iomegap=1,wpol_imag%nomega
+        if( MODULO( iomegap-1, ortho%nproc ) /= ortho%rank ) cycle
 
-        neig = SIZE(wpol_imag%vchiv_sqrt(iomegap)%eigvec(:,:),DIM=2)
-        if( neig == 0 ) cycle
-        allocate(tmp2(neig,ncore_G+1:nvirtual_G-1))
+        allocate(tmp2(nauxil_global,ncore_G+1:nvirtual_G-1))
 
-        call DGEMM('T','N',neig,prange,nauxil_global,  &
-                   1.0_dp,wpol_imag%vchiv_sqrt(iomegap)%eigvec(:,:),nauxil_global,    &
+        call DSYMM('L','L',nauxil_global,prange,  &
+                   1.0_dp,wpol_imag%chi(:,:,iomegap),nauxil_global,    &
                           eri3_p_m(:,:),nauxil_global,    &
-                   0.0_dp,tmp2(:,:),neig)
+                   0.0_dp,tmp2(:,:),nauxil_global)
 
         !$OMP PARALLEL PRIVATE(v_chi_v_p)
         !$OMP DO REDUCTION(+:sigmagw)
         do pstate=ncore_G+1,nvirtual_G-1
 
-          v_chi_v_p = SUM(tmp2(:,pstate)**2*wpol_imag%vchiv_sqrt(iomegap)%eigval(:))
+          v_chi_v_p = DOT_PRODUCT( eri3_p_m(:,pstate), tmp2(:,pstate) )
 
           sigmagw(:,mstate,mpspin) = sigmagw(:,mstate,mpspin) &
                         - wpol_imag%weight_quad(iomegap) &
@@ -660,13 +653,14 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
     enddo
   enddo
-  !call world%sum(sigmagw)
+  call ortho%sum(sigmagw)
 
   se%sigma_calc(:,:,:) = sigmagw(:,:,:)
 
   deallocate(sigmagw)
   deallocate(eri3_p_m)
   call wpol_imag%destroy()
+  if( analytic_chi_ ) call wpol_analytic%destroy()
 
   call destroy_eri_3center_eigen()
 
@@ -684,11 +678,9 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
-  logical,parameter    :: analytic_chi = .TRUE.
   integer              :: nstate
   integer              :: iomega_sigma,iomegap
   real(dp)             :: braket1,braket2
-  integer              :: meri3,neri3
   integer              :: mstate,rstate,mpspin,iauxil
   integer              :: prange,isign
   integer              :: first_omega,last_omega
@@ -727,7 +719,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   !
   ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
   call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-  if( analytic_chi ) then
+  if( analytic_chi_ ) then
     call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
   else
@@ -736,9 +728,6 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
 
   prange = nvirtual_G - ncore_G - 1
-
-  meri3 = nauxil_global
-  neri3 = prange
 
 
   allocate(sigmagw(first_omega:last_omega,nsemin:nsemax,nspin))
@@ -752,7 +741,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
       ! Imaginary axis integral
       !
       do iomegap=1,wpol_imag%nomega
-        if( analytic_chi ) then
+        if( analytic_chi_ ) then
           call wpol_analytic%evaluate(wpol_imag%omega(iomegap),chi_wp)
         else
           chi_wp(:,:) = wpol_imag%chi(:,:,iomegap)
@@ -773,7 +762,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
           do iomega_sigma=first_omega,last_omega
 
             omega_cmplx = ABS(se%omega_calc(iomega_sigma)%im+isign*wpol_imag%omega(iomegap)%im)*im
-            if( analytic_chi ) then
+            if( analytic_chi_ ) then
               call wpol_analytic%evaluate(omega_cmplx,chi_wwp)
             else
               call wpol_one%init(nstate,occupation,1,grid=MANUAL,verbose=.FALSE.)
@@ -797,6 +786,8 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
             eri3_r_m(:,:) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,mstate,mpspin)
 
             do astate=nhomo_G+1,nvirtual_G-1
+              if( MODULO( astate - (nhomo_G+1) , ortho%nproc) /= ortho%rank ) cycle
+
               eri3_i_a(:,:) = eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,mpspin)
               eri3_r_a(:,:) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,astate,mpspin)
 
@@ -861,9 +852,10 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
             allocate(braket1_ra(ncore_G+1:nvirtual_G-1,nhomo_G+1:nvirtual_G-1))
             allocate(braket2_ra(ncore_G+1:nvirtual_G-1,nhomo_G+1:nvirtual_G-1))
             allocate(tmp(nauxil_global,nhomo_G+1:nvirtual_G-1))
-
             eri3_a_m(:,:) = eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,mstate,mpspin)
+
             do istate=ncore_G+1,nhomo_G
+              if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
 
               eri3_a_i(:,:) = eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,mpspin)
               eri3_r_i(:,:) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,mpspin)
@@ -935,19 +927,20 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
             deallocate(eri3_r_m)
 
-            if( .NOT. analytic_chi ) call wpol_one%destroy(verbose=.FALSE.)
+            if( .NOT. analytic_chi_ ) call wpol_one%destroy(verbose=.FALSE.)
           enddo !iomega_sigma
         enddo ! isign
       enddo !iomegap
 
     enddo
   enddo
-  call world%sum(sigmagw)
+  call ortho%sum(sigmagw)
 
   se%sigma_calc(:,:,:) = se%sigma_calc(:,:,:) + sigmagw(:,:,:)
 
   deallocate(sigmagw)
   call wpol_imag%destroy()
+  if( analytic_chi_ ) call wpol_analytic%destroy()
 
   call destroy_eri_3center_eigen()
 

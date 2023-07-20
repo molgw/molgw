@@ -165,6 +165,7 @@ module m_inputparam
   logical,protected                :: print_tddft_restart_
   logical,protected                :: print_yaml_
   logical,protected                :: assume_scf_converged_
+  logical,protected                :: analytic_chi_
   logical,protected                :: eri3_genuine_
   logical,protected                :: auto_occupation_
 
@@ -909,6 +910,7 @@ subroutine read_inputfile_namelist()
   print_tddft_restart_        = yesno_to_logical(print_tddft_restart)
   print_yaml_                 = yesno_to_logical(print_yaml)
   assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
+  analytic_chi_               = yesno_to_logical(analytic_chi)
   eri3_genuine_               = yesno_to_logical(eri3_genuine)
   auto_occupation_            = yesno_to_logical(auto_occupation)
 
