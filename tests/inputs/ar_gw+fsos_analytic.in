@@ -9,6 +9,7 @@
  postscf='gw+fsos'
  frozencore='yes'
 
+ mpi_nproc_ortho=1024
  analytic_chi='yes'
 
  selfenergy_state_range=0

@@ -179,13 +179,11 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
     if( ncore_W == 0) ncore_W = atoms_core_states()
   endif
   if( ncore_W > 0 ) then
-    write(msg,'(a,i4,2x,i4)') 'frozen core approximation in W switched on up to state = ',ncore_W
-    call issue_warning(msg)
+    write(stdout_,'(1x,a,i4,2x,i4)') 'frozen core approximation in W switched on up to state = ',ncore_W
   endif
 
   if( nvirtual_W <= nstate ) then
-    write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation in W switched on starting with state = ',nvirtual_W
-    call issue_warning(msg)
+    write(stdout_,'(1x,a,i4,2x,i4)') 'frozen virtual approximation in W switched on starting with state = ',nvirtual_W
   endif
 
   !
@@ -835,6 +833,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,occupation,energy,c_matrix,low_rank,verbose
 #if defined(HAVE_MKL)
     call DGEMMT('L','N','T',nauxil_global,sf%npole_reso,1.0d0,eri3_t1,nauxil_global,eri3_t2,nauxil_global, &
                 0.0d0,chi0,nauxil_global)
+    call matrix_lower_to_full(chi0)
 #else
     call DGEMM('N','T',nauxil_global,nauxil_global,sf%npole_reso,1.0d0,eri3_t1,nauxil_global,eri3_t2,nauxil_global, &
                0.0d0,chi0,nauxil_global)
@@ -881,7 +880,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf,occupation,energy,c_matrix,low_rank,verbose
       do jauxil=1,nauxil_global
         chi0tmp(jauxil,jauxil) = 1.0_dp + chi0tmp(jauxil,jauxil)
       enddo
-      call invert(chi0tmp)
+      call invert_symmetric(chi0tmp)
       !sf%chi(:,:,iomega) = MATMUL( chi0tmp, chi0 )
       call DSYMM('L','L',nauxil_global,nauxil_global,1.0d0,chi0tmp,nauxil_global,chi0,nauxil_global, &
                  0.0d0,sf%chi(:,:,iomega),nauxil_global)

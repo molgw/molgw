@@ -591,7 +591,7 @@ subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
   !
-  ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
+  ! Initialize wpol_imag any way to store chi(:,:,iomegap)
   call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
@@ -678,6 +678,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  logical,parameter    :: impose_sosex=.FALSE.
   integer              :: nstate
   integer              :: iomega_sigma,iomegap
   real(dp)             :: braket1,braket2
@@ -770,6 +771,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
               call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.,verbose=.FALSE.)
               chi_wwp(:,:) = wpol_one%chi(:,:,1)
             endif
+            if( impose_sosex ) chi_wwp(:,:) = 0.0_dp
             do iauxil=1,nauxil_global
               chi_wwp(iauxil,iauxil) = chi_wwp(iauxil,iauxil) + 1.0_dp
             enddo
