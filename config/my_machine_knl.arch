@@ -2,9 +2,9 @@ OPENMP= -qopenmp -parallel
 PYTHON=python
 
 # Parallel MPI SCALAPACK compilation
-FC=mpif90
+FC=mpiifort
 
-CPPFLAGS=-DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL 
+CPPFLAGS=-DHAVE_SCALAPACK -DHAVE_MKL 
 
 CXX=icpc  -std=c++11
 FCFLAGS= -fpp -O3 -xKNL -qopt-matmul
