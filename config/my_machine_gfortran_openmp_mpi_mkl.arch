@@ -1,8 +1,8 @@
 OPENMP= -fopenmp
 
-CPPFLAGS= -DHAVE_MPI -DHAVE_SCALAPACK -DHAVE_MKL
+CPPFLAGS= -DHAVE_SCALAPACK -DHAVE_MKL
 
-FC=mpif90
+FC=mpifort
 FCFLAGS=  -O2 -cpp
 
 CXX=g++
@@ -14,6 +14,6 @@ SCALAPACK= ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MK
 
 LIBXC_ROOT=
 
-LIBCINT_ROOT=-lcint
+LIBCINT=-lcint
 
 FFTW_ROOT=

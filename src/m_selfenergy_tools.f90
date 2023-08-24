@@ -35,6 +35,7 @@ module m_selfenergy_tools
   !
   ! Highest occupied state
   integer,protected :: nhomo_G
+  integer,protected :: nlumo_G
 
   !
   ! Selfenergy evaluated on a frequency grid
@@ -88,6 +89,13 @@ subroutine selfenergy_set_state_range(nstate_in,occupation)
   do pstate=1,nstate_in
     if( .NOT. ANY( occupation(pstate,:) < completely_empty ) ) then
       nhomo_G = MAX(nhomo_G,pstate)
+    endif
+  enddo
+  ! Find the LUMO index
+  nlumo_G = 100000
+  do pstate=1,nstate_in
+    if( .NOT. ANY( occupation(pstate,:) > completely_empty ) ) then
+      nlumo_G = MIN(nlumo_G,pstate)
     endif
   enddo
 
@@ -640,7 +648,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
     enddo
     deallocate(omega_gaussleg)
 
-  case(one_shot)
+  case(one_shot,contour_deformation)
     !
     ! Most standard case:
     se%nomega = nomega_sigma/2
@@ -661,6 +669,8 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
   case(imaginary_axis_pade,imaginary_axis_homolumo)
     ! in this case the central point is already included in the complex frequency se%omega_calc
     se%energy0(nsemin:nsemax,:) = 0.0_dp
+  case(contour_deformation)
+    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
   case default
     se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
   end select

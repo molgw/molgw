@@ -34,6 +34,7 @@ module m_inputparam
   integer,parameter :: imaginary_axis_integral = 106
   integer,parameter :: exact_dyson             = 107
   integer,parameter :: imaginary_axis_homolumo = 108
+  integer,parameter :: contour_deformation     = 109
 
   !
   ! Self-energy approximation
@@ -53,6 +54,7 @@ module m_inputparam
   integer,parameter :: GWPT3        = 226
   integer,parameter :: G0W0SOX0     = 227
   integer,parameter :: G0W0Gamma0   = 228
+  integer,parameter :: GWFSOS       = 229
 
   !
   ! TDDFT variables
@@ -163,6 +165,7 @@ module m_inputparam
   logical,protected                :: print_tddft_restart_
   logical,protected                :: print_yaml_
   logical,protected                :: assume_scf_converged_
+  logical,protected                :: analytic_chi_
   logical,protected                :: eri3_genuine_
   logical,protected                :: auto_occupation_
 
@@ -238,17 +241,25 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW_IMAG
       calc_type%selfenergy_technique = imaginary_axis_pade
+    case('GWFSOS','GW+FSOS')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx    = GWFSOS
+      calc_type%selfenergy_technique = imaginary_axis_pade
+    case('G0W0_CONTOUR','GW_CONTOUR')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx    = GW
+      calc_type%selfenergy_technique = contour_deformation
     case('G0W0_HOMOLUMO','GW_HOMOLUMO')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW_IMAG
       calc_type%selfenergy_technique = imaginary_axis_homolumo
-    case('G0W0SOX0','GWSOX')
+    case('G0W0SOX0','GWSOX','GW+SOX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOX
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('GWSOSEX')
+    case('GWSOSEX','GW+SOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
     case('G0W0GAMMA0','GWGAMMA')
@@ -899,6 +910,7 @@ subroutine read_inputfile_namelist()
   print_tddft_restart_        = yesno_to_logical(print_tddft_restart)
   print_yaml_                 = yesno_to_logical(print_yaml)
   assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
+  analytic_chi_               = yesno_to_logical(analytic_chi)
   eri3_genuine_               = yesno_to_logical(eri3_genuine)
   auto_occupation_            = yesno_to_logical(auto_occupation)
 

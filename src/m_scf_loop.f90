@@ -183,7 +183,7 @@ subroutine scf_loop(is_restart,&
         .AND. ( iscf > 5 .OR. is_restart ) ) then
 
 
-      call init_spectral_function(nstate,occupation,0,wpol)
+      call wpol%init(nstate,occupation,0)
       call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,en_gks%rpa,en_gks%gw,wpol)
 
       if( ABS(en_gks%rpa) > 1.e-6_dp) then
@@ -199,7 +199,7 @@ subroutine scf_loop(is_restart,&
       call gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)
 
       call dump_out_matrix(.FALSE.,'=== Self-energy ===',matrix_tmp)
-      call destroy_spectral_function(wpol)
+      call wpol%destroy()
 
       hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:)
       deallocate(matrix_tmp)

@@ -169,7 +169,7 @@ module m_scalapack
 contains
 
 
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
 !=========================================================================
 ! Fake SCALAPACK subroutines to be able to run without SCALAPACK
 !
@@ -599,7 +599,7 @@ subroutine matmul_diag_sca(side,diag,desc,matrix)
 
   select case(side)
   case('L')
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
     forall(iglobal=1:nglobal)
       matrix(iglobal,:) = matrix(iglobal,:) * diag(iglobal)
     end forall
@@ -616,7 +616,7 @@ subroutine matmul_diag_sca(side,diag,desc,matrix)
 
 
   case('R')
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
     forall(jglobal=1:nglobal)
       matrix(:,jglobal) = matrix(:,jglobal) * diag(jglobal)
     end forall
@@ -2306,7 +2306,7 @@ subroutine symmetrize_matrix_sca(uplo,nglobal,desc,matrix,desc_tmp,matrix_tmp)
   integer                :: iglobal,jglobal,ilocal,jlocal
   !=====
 
-#ifndef HAVE_SCALAPACK
+#if !defined(HAVE_SCALAPACK)
 
   select case(uplo)
   case('L')

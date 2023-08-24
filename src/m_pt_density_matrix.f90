@@ -37,7 +37,6 @@ subroutine pt2_density_matrix(occupation,energy,c_matrix,p_matrix)
   !=====
   integer              :: nstate
   integer              :: file_density_matrix
-  integer              :: pstate,qstate
   integer              :: istate,jstate,kstate
   integer              :: astate,bstate,cstate
   integer              :: pqspin
@@ -195,7 +194,6 @@ subroutine onering_density_matrix(occupation,energy,c_matrix,p_matrix)
   !=====
   integer              :: nstate
   integer              :: file_density_matrix
-  integer              :: pstate,qstate
   integer              :: istate,jstate,kstate
   integer              :: astate,bstate,cstate
   integer              :: pqspin
@@ -629,7 +627,7 @@ subroutine gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix)
       eri3_sca_q(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,qstate,pqspin)
 
 
-      do iomega=1,wpol%nomega_quad
+      do iomega=1,wpol%nomega
 
         call DGEMM('N','N',nauxil_global,mrange,nauxil_global,  &
                    1.0_dp,wpol%chi(:,:,iomega),nauxil_global,    &
@@ -650,8 +648,8 @@ subroutine gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix)
             p_matrix_gw(pstate,qstate,pqspin) = p_matrix_gw(pstate,qstate,pqspin) &
                  - spin_fact * 2.0_dp  / (2.0_dp *  pi)**2  &
                        * SUM( wpol%weight_quad(iomega) * weight_sigma(:) * v_chi_v_pq  &
-                    * REAL( (  1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) + im * wpol%omega_quad(iomega) )    &
-                             + 1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) - im * wpol%omega_quad(iomega) )  ) &
+                    * REAL( (  1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) + wpol%omega(iomega) )    &
+                             + 1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) - wpol%omega(iomega) )  ) &
                             / ( im * omega_sigma(:) - (energy(pstate,pqspin)-mu) )   &
                             / ( im * omega_sigma(:) - (energy(qstate,pqspin)-mu) ) , dp ) )
           enddo
@@ -804,7 +802,7 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
       eri3_sca_q(:,1:mrange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,qstate,pqspin)
 
 
-      do iomega=1,wpol%nomega_quad
+      do iomega=1,wpol%nomega
 
         call DGEMM('N','N',nauxil_global,mrange,nauxil_global,  &
                    1.0_dp,wpol%chi(:,:,iomega),nauxil_global,    &
@@ -824,8 +822,8 @@ subroutine gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix
             ! then -G_0 * Sigma should be multiplied by 1/(2*pi)
             m_matrix(pstate,qstate,:,pqspin) = m_matrix(pstate,qstate,:,pqspin) &
                  + wpol%weight_quad(iomega) * v_chi_v_pq /  ( 2 * pi )  &
-                    * (  1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) + im * wpol%omega_quad(iomega) )    &
-                       + 1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) - im * wpol%omega_quad(iomega) )  ) &
+                    * (  1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) + wpol%omega(iomega) )    &
+                       + 1.0_dp / ( im * omega_sigma(:) - (energy(mstate,pqspin)-mu) - wpol%omega(iomega) )  ) &
                     / ( im * omega_sigma(:) - (energy(pstate,pqspin)-mu) )
           enddo
 
@@ -924,7 +922,7 @@ subroutine update_density_matrix(occupation,c_matrix,p_matrix_mo,p_matrix)
   real(dp),intent(in)    :: p_matrix_mo(:,:,:)
   real(dp),intent(inout) :: p_matrix(:,:,:)
   !=====
-  integer              :: pstate,pqspin
+  integer              :: pstate
   integer              :: nbf,nstate
   real(dp),allocatable :: p_matrix_tmp(:,:,:)
   !=====

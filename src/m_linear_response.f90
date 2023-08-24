@@ -45,7 +45,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
-  logical                   :: is_bse
+  logical                   :: is_bse,eri_3center_mo_available
   integer                   :: nmat,nexc
   real(dp)                  :: alpha_local,lambda_
   real(dp),allocatable      :: amb_diag_rpa(:)
@@ -98,7 +98,10 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     if( calc_type%is_lr_mbpt ) then
       call calculate_eri_3center_eigen_lr(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
     else
-      call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+      eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
+      if( .NOT. eri_3center_mo_available ) then
+        call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+      endif
     endif
   endif
 
@@ -151,7 +154,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! It is stored in object wpol_static
   !
   if( is_bse ) then
-    call init_spectral_function(nstate,occupation,1,wpol_static)
+    call wpol_static%init(nstate,occupation,1,grid=STATIC)
     call read_spectral_function(wpol_static,reading_status)
 
     ! If a SCREENED_COULOMB file cannot be found,
@@ -222,7 +225,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     endif
 
     if( is_bse ) then
-      call destroy_spectral_function(wpol_static)
+      call wpol_static%destroy()
     endif
 
     call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,en_rpa)
@@ -244,7 +247,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     ! Step 3
     if( is_bse ) then
       call build_amb_apb_bse(wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
-      call destroy_spectral_function(wpol_static)
+      call wpol_static%destroy()
     endif
 
   endif
@@ -390,14 +393,15 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     if( print_w_ ) call write_spectral_function(wpol_out)
 
   else
-    call destroy_spectral_function(wpol_out)
+    call wpol_out%destroy()
   endif
 
 
   write(stdout,*) 'Deallocate eigenvector array'
   call clean_deallocate('X+Y',xpy_matrix)
 
-  if(has_auxil_basis .AND. .NOT. PRESENT(lambda)) call destroy_eri_3center_eigen()
+  if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available )  &
+    call destroy_eri_3center_eigen()
 
   if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
   deallocate(energy_qp)

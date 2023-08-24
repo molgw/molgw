@@ -71,6 +71,7 @@ molgw:
 	+make  level025
 	+make  level030
 	+make  level040
+	+make  level045
 	+make  level050
 	+make  level060
 	+make  level065
@@ -106,7 +107,9 @@ level025: m_eri.o m_scf.o m_dft_grid.o m_optocc.o m_optorb.o
 
 level030: m_eri_calculate.o m_density_tools.o m_io.o
 
-level040: m_spectral_function.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_tddft_fxc.o m_eri_ao_mo.o
+level040: m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_tddft_fxc.o m_eri_ao_mo.o
+
+level045: m_spectral_function.o
 
 level050: m_hamiltonian_wrapper.o m_restart.o m_multipole.o m_spectra.o m_build_bse.o
 
@@ -383,7 +386,7 @@ m_ci.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_ba
 	$(FC_W_OPTS) -c m_ci.f90 $(LIBXC_INCS)
 
 m_spectral_function.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_scalapack.f90 m_eri.f90 m_eri_calculate.f90 m_inputparam.f90 m_numerical_tools.f90 \
-                       m_spectral_function.f90
+                       m_basis_set.f90 m_eri_ao_mo.f90 m_spectral_function.f90
 	$(FC_W_OPTS) -c m_spectral_function.f90 $(LIBXC_INCS)
 
 m_eri_ao_mo.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 \

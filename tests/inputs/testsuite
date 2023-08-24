@@ -621,18 +621,18 @@ lih_gwgamma.in            , LiH: GWSOSEX@PBE0 with non-auxiliary basis paralleli
 SCF Total Energy          ,    -8.0512581571    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0854827210    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.426968        , 0 , 1.0e-4
-GWSOSEX HOMO energy       ,    -8.003938        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,    -8.003938        , 0 , 1.0e-4
 
 lih_gwgamma_nori.in       , LiH: GWSOSEX@PBE0 without RI, noparallel
 SCF Total Energy          ,    -8.0461044345    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0363952366    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.038813        , 0 , 1.0e-4
-GWSOSEX HOMO energy       ,    -7.702063        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,    -7.702063        , 0 , 1.0e-4
 
 lih_gwtddftgamma.in       , LIH: GW_TDDFTGamma@HF (W is obtained from TDHF)
 SCF Total Energy          ,    -7.9836862051    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.243410        , 0 , 1.0e-4
-GWSOSEX HOMO energy       ,    -7.332104        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,    -7.332104        , 0 , 1.0e-4
 
 n2_gwgamma.in             , N2: GWSOSEX@BHLYP with frozencore and frozen virtual with ortho paral
 SCF Total Energy          ,  -109.4724604609    , 0 , 1.0e-7
@@ -645,10 +645,10 @@ GW HOMO energy            ,   -14.590159        , 0 , 1.0e-4
 GW HOMO energy            ,   -14.590159        , 1 , 1.0e-4
 GW LUMO energy            ,     4.439916        , 0 , 1.0e-4
 GW LUMO energy            ,     4.439916        , 1 , 1.0e-4
-GWSOSEX HOMO energy       ,   -15.238221        , 0 , 1.0e-4
-GWSOSEX HOMO energy       ,   -15.238221        , 1 , 1.0e-4
-GWSOSEX LUMO energy       ,     4.607546        , 0 , 1.0e-4
-GWSOSEX LUMO energy       ,     4.607546        , 1 , 1.0e-4
+GW+SOSEX HOMO energy      ,   -15.238221        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,   -15.238221        , 1 , 1.0e-4
+GW+SOSEX LUMO energy      ,     4.607546        , 0 , 1.0e-4
+GW+SOSEX LUMO energy      ,     4.607546        , 1 , 1.0e-4
 
 ethene_p_tdhf.in          , C2H4+: TDHF with doublet configuration (spin unrestricted)
 SCF Total Energy          , -77.7149628447      , 0 , 1.0e-7
@@ -700,6 +700,11 @@ RPA correlation energy    ,  -0.3839751863     , 0 , 1.0e-7
 RPA Total energy          , -76.4392995158     , 0 , 1.0e-7
 GW HOMO energy            , -12.175845         , 0 , 1.0e-4
 GW LUMO energy            ,   0.884386         , 0 , 1.0e-4
+
+h2o_gw_contour.in         , GW@HF calculation with contour deformation, noparallel
+SCF Total Energy          , -76.0571524942     , 0 , 1.0e-7
+GW HOMO energy            , -12.790901         , 0 , 1.0e-4
+GW LUMO energy            ,   3.450105         , 0 , 1.0e-4
 
 h2o_mp3.in                , MP3 total energy with RI
 SCF Total Energy          , -76.0262395455     , 0 , 1.0e-7
@@ -1015,3 +1020,12 @@ SCF Total Energy          , -100.0391397744    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.259038        , 0 , 1.0e-4
 gKS LUMO energy           ,    1.090268        , 0 , 1.0e-4
 
+ar_gw+fsos.in             , Full second-order screened exchange diagram
+SCF Total Energy          , -526.7998408784    , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.991653        , 0 , 1.0e-4
+GW+FSOS HOMO energy       ,  -15.681164        , 0 , 1.0e-4
+
+ar_gw+fsos_analytic.in    , Full second-order screened exchange diagram with analytic chi
+SCF Total Energy          , -526.7998408784    , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.991653        , 0 , 1.0e-4
+GW+FSOS HOMO energy       ,  -15.681164        , 0 , 1.0e-4

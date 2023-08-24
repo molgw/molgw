@@ -30,11 +30,10 @@ contains
 
 
 !=========================================================================
-subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
+subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
   implicit none
 
   type(basis_set),intent(in) :: basis
-  type(basis_set),intent(in) :: auxil_basis
   real(dp),intent(in)        :: occupation(:,:)
   real(dp),intent(inout)     :: energy(:,:)
   real(dp),intent(inout)     :: c_matrix(:,:,:)
@@ -48,12 +47,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
   integer                 :: reading_status
   integer                 :: nstate_small
   type(spectral_function) :: wpol
-  real(dp),allocatable    :: sigc(:,:)
   real(dp),allocatable    :: zz(:,:)
   real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
   integer                 :: iomega
   integer                 :: istep_gw,pstate
-  real(dp)                :: erpa_sie_KP
   real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
   real(dp),allocatable    :: energy_g(:,:)
   real(dp),allocatable    :: energy_w(:,:)
@@ -101,13 +98,15 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
     case(SOX)
       selfenergy_tag='SOX'
     case(GWSOX)
-      selfenergy_tag='GWSOX'
+      selfenergy_tag='GW+SOX'
     case(GWPT3)
-      selfenergy_tag='GWPT3'
+      selfenergy_tag='GW+PT3'
     case(GWSOSEX)
-      selfenergy_tag='GWSOSEX'
+      selfenergy_tag='GW+SOSEX'
     case(COHSEX)
       selfenergy_tag='COHSEX'
+    case(GWFSOS)
+      selfenergy_tag='GW+FSOS'
     case default
       write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -185,8 +184,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
         write(stdout,'(/,1x,a,/)') 'GnW0 calculations skip the re-calculation of W'
       else
 
-        call init_spectral_function(nstate_small,occupation,nomega_chi_imag,wpol)
-
         ! Try to read a spectral function file in order to skip the polarizability calculation
         ! Skip the reading if GnWn (=evGW) is requested
         if( calc_type%selfenergy_approx /= GnWn ) then
@@ -197,14 +194,18 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
         endif
         ! If reading has failed, then do the calculation
         if( reading_status /= 0 ) then
-          if( calc_type%selfenergy_technique /= imaginary_axis_pade  &
-             .AND. calc_type%selfenergy_technique /= imaginary_axis_homolumo ) then
+          select case(calc_type%selfenergy_technique)
+          case(imaginary_axis_pade,imaginary_axis_homolumo)
+            call wpol%init(nstate_small,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+            call polarizability_grid_scalapack(occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
+          case(contour_deformation)
+            ! no need for chi, it will be calculated directly inside
+          case default
             ! in case of BSE calculation, enforce RPA here
             enforce_rpa = calc_type%is_bse
+            call wpol%init(nstate_small,occupation,0)
             call polarizability(enforce_rpa,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
-          else
-            call polarizability_grid_scalapack(basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
-          endif
+          end select
         endif
 
         en_mbpt%total = en_mbpt%total + en_mbpt%rpa
@@ -217,11 +218,13 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
       endif
 
       select case(calc_type%selfenergy_technique)
+      case(contour_deformation)
+        call gw_selfenergy_contour(energy_g,occupation,c_matrix,se)
       case(imaginary_axis_pade)
-        call gw_selfenergy_imag_scalapack(basis,energy_g,c_matrix,wpol,se)
+        call gw_selfenergy_imag_scalapack(energy_g,c_matrix,wpol,se)
         call self_energy_pade(se)
       case(imaginary_axis_homolumo)
-        call gw_selfenergy_imag_scalapack(basis,energy_g,c_matrix,wpol,se)
+        call gw_selfenergy_imag_scalapack(energy_g,c_matrix,wpol,se)
         call self_energy_polynomial(se)
       case(exact_dyson)
         call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
@@ -245,7 +248,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
       endif
 
       if( .NOT. ( calc_type%selfenergy_approx == GnW0 .AND. istep_gw < nstep_gw ) ) then
-        call destroy_spectral_function(wpol)
+        call wpol%destroy()
       endif
 
       if( has_small_basis ) then
@@ -297,10 +300,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
     endif
 
     !
-    ! GWGamma
+    ! GW+SOSEX
     !
     if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWSOX ) then
-      call init_spectral_function(nstate,occupation,0,wpol)
+      call wpol%init(nstate,occupation,0)
       call read_spectral_function(wpol,reading_status)
       ! If reading has failed, then do the calculation
       if( reading_status /= 0 ) then
@@ -324,7 +327,17 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
 
 
       call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-      call destroy_spectral_function(wpol)
+      call wpol%destroy()
+    endif
+
+    !
+    ! GW+FSOS
+    ! implementation on the imaginary frequency grid
+    !
+    if( calc_type%selfenergy_approx == GWFSOS ) then
+      call gw_selfenergy_grid(basis,energy_g,occupation,c_matrix,se)
+      call fsos_selfenergy_grid(basis,energy_g,occupation,c_matrix,se)
+      call self_energy_pade(se)
     endif
 
     !
@@ -334,7 +347,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
       !
       ! First perform a standard GW calculation
       !
-      call init_spectral_function(nstate,occupation,0,wpol)
+      call wpol%init(nstate,occupation,0)
       call read_spectral_function(wpol,reading_status)
       ! If reading has failed, then do the calculation
       if( reading_status /= 0 ) then
@@ -393,7 +406,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,ex
       !
       ! First perform a standard GW calculation
       !
-      call init_spectral_function(nstate,occupation,0,wpol)
+      call wpol%init(nstate,occupation,0)
       call read_spectral_function(wpol,reading_status)
       ! If reading has failed, then do the calculation
       if( reading_status /= 0 ) then

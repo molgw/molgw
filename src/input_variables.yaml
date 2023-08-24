@@ -693,6 +693,14 @@ calc_charge_step:
 #       Correlation and excited states post-treatment input variables
 #============================================================================
 
+analytic_chi:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Calculates the spectral decomposition of the response function and then evaluate it on the frequency grid. Only valid for 'GW+FSOS'
+
 assume_scf_converged:
   family: post
   datatype: yes/no
@@ -840,8 +848,15 @@ nomega_chi_imag:
   mandatory: 'no'
   experimental: 'no'
   default: 0
-  comment: Sets the number of frequencies for the response function used to perform the integral on the imaginary
-    axis
+  comment: Sets the number of frequencies for the response function used to perform the integral on the imaginary axis.
+
+nomega_chi_real:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 2
+  comment: Sets the number of frequencies for the response function on the real axis in contour deformation technique.
 
 nomega_sigma:
   family: post

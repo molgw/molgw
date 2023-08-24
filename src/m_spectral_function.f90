@@ -18,15 +18,34 @@ module m_spectral_function
   use m_eri,only: iproc_ibf_auxil,ibf_auxil_l
   use m_eri_calculate,only: nauxil_global,nauxil_local
   use m_numerical_tools,only: coeffs_gausslegint
+  use m_basis_set
+  use m_eri_ao_mo
+
+  integer,parameter :: NO_GRID        = 0
+  integer,parameter :: IMAGINARY_QUAD = 1
+  integer,parameter :: REAL_LINEAR    = 2
+  integer,parameter :: STATIC         = 3
+  integer,parameter :: MANUAL         = 4
 
   !
   ! General form of any spectral function
   ! z complex number
   ! i, j running on the basis set
-  ! sf_ij(z) = \sum_n L_n(i) R_n(j) / ( z - w_n )
+  ! sf_ij(z) = \sum_n L_n(i) L_n(j) / ( z - w_n )
+  !
+  ! or on a grid of frequencies
   !
 
+  type chi_type
+    real(dp),allocatable :: eigvec(:,:)
+    real(dp),allocatable :: eigval(:)
+  contains
+    procedure :: destroy => ct_destroy
+  end type chi_type
+
   type spectral_function
+
+    integer              :: type                   ! type encodes the storage method
 
     integer              :: nprodbasis_total       ! total over all procs
     integer              :: nprodbasis             ! for this proc
@@ -43,16 +62,26 @@ module m_spectral_function
 
     !
     ! Static or Dynamic W might be stored directly in the auxiliary basis
-    real(dp),allocatable :: chi(:,:,:)
-    integer              :: mchi,nchi
-    integer              :: desc_chi(NDEL)
-    integer              :: nomega_quad           ! Number of quadrature points
-    real(dp),allocatable :: omega_quad(:)         ! quadrature points for numerical integration
-    real(dp),allocatable :: weight_quad(:)        ! quadrature weight for numerical integration
+    real(dp),allocatable    :: chi(:,:,:)
+    integer                 :: mchi,nchi
+    integer                 :: desc_chi(NDEL)
+    integer                 :: nomega           ! Number of quadrature points
+    real(dp),allocatable    :: weight_quad(:)   ! quadrature weight for numerical integration
+    complex(dp),allocatable :: omega(:)         ! frequency grid (can real or imaginary)
+
+    type(chi_type),allocatable :: vchiv_sqrt(:)
 
   contains
 
-    procedure :: evaluate => sf_evaluate
+    generic :: evaluate => sf_evaluate_several_omegas
+    generic :: evaluate => sf_evaluate_one_omega
+    procedure :: sf_evaluate_several_omegas
+    procedure :: sf_evaluate_one_omega
+
+    procedure :: vsqrt_chi_vsqrt_rpa => sf_vsqrt_chi_vsqrt_rpa
+    procedure :: interpolate_vsqrt_chi_vsqrt => sf_interpolate_vsqrt_chi_vsqrt
+    procedure :: init    => sf_init
+    procedure :: destroy => sf_destroy
 
   end type spectral_function
 
@@ -103,24 +132,45 @@ end function index_prodstate
 
 
 !=========================================================================
-subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
+subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
   implicit none
+  class(spectral_function),intent(out)  :: sf
   integer,intent(in)                    :: nstate
   real(dp),intent(in)                   :: occupation(:,:)
   integer,intent(in)                    :: nomega_in
-  type(spectral_function),intent(out)   :: sf
+  integer,optional,intent(in)           :: grid
+  real(dp),optional,intent(in)          :: omega_max
+  logical,optional,intent(in)           :: verbose
   !=====
+  integer                               :: grid_ = NO_GRID
+  real(dp)                              :: omega_max_ = 1.0_dp
+  integer                               :: stdout_
   integer                               :: ijspin,istate,jstate,itrans
   integer                               :: iomega
   integer                               :: nlumo_W_spin(nspin)
   integer                               :: nhomo_W_spin(nspin)
   real(dp),parameter                    :: alpha=1.0_dp ! 0.50_dp
   real(dp),parameter                    :: beta=1.0_dp ! 6.0_dp
+  real(dp),allocatable                  :: omega_quad(:)
   !=====
 
   if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
-    call die('init_spectral_function: nstate is too large')
+    call die('sf_init: nstate is too large')
   endif
+  if( PRESENT(grid) ) then
+    grid_ = grid
+  endif
+  if( PRESENT(omega_max) ) then
+    omega_max_ = omega_max
+  endif
+  stdout_ = stdout
+  if( PRESENT(verbose) ) then
+    if( .NOT. verbose ) then
+      open(newunit=stdout_,file='/dev/null')
+    endif
+  endif
+
+  sf%type = grid_
 
   ncore_W      = ncorew
   nvirtual_W   = MIN(nvirtualw,nstate+1)
@@ -129,13 +179,11 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
     if( ncore_W == 0) ncore_W = atoms_core_states()
   endif
   if( ncore_W > 0 ) then
-    write(msg,'(a,i4,2x,i4)') 'frozen core approximation in W switched on up to state = ',ncore_W
-    call issue_warning(msg)
+    write(stdout_,'(1x,a,i4,2x,i4)') 'frozen core approximation in W switched on up to state = ',ncore_W
   endif
 
   if( nvirtual_W <= nstate ) then
-    write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation in W switched on starting with state = ',nvirtual_W
-    call issue_warning(msg)
+    write(stdout_,'(1x,a,i4,2x,i4)') 'frozen virtual approximation in W switched on starting with state = ',nvirtual_W
   endif
 
   !
@@ -162,15 +210,15 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
     enddo
   enddo
 
-  write(stdout,'(/,1x,a)') 'Prepare a polarizability spectral function with'
+  write(stdout_,'(/,1x,a)') 'Prepare a polarizability spectral function with'
   if( nspin == 1 ) then
-    write(stdout,'(30x,a,i8)') ' Occupied states: ',nhomo_W-ncore_W
-    write(stdout,'(30x,a,i8)') '  Virtual states: ',nvirtual_W-nlumo_W
-    write(stdout,'(30x,a,i8)') 'Transition space: ',(nvirtual_W-nlumo_W)*(nhomo_W-ncore_W)
+    write(stdout_,'(30x,a,i8)') ' Occupied states: ',nhomo_W-ncore_W
+    write(stdout_,'(30x,a,i8)') '  Virtual states: ',nvirtual_W-nlumo_W
+    write(stdout_,'(30x,a,i8)') 'Transition space: ',(nvirtual_W-nlumo_W)*(nhomo_W-ncore_W)
   else
-    write(stdout,'(30x,a,i8,2x,i8)') ' Occupied states: ',nhomo_W_spin(:)-ncore_W
-    write(stdout,'(30x,a,i8,2x,i8)') '  Virtual states: ',nvirtual_W-nlumo_W_spin(:)
-    write(stdout,'(30x,a,i8)')       'Transition space: ',(nvirtual_W-nlumo_W_spin(1))*(nhomo_W_spin(1)-ncore_W) &
+    write(stdout_,'(30x,a,i8,2x,i8)') ' Occupied states: ',nhomo_W_spin(:)-ncore_W
+    write(stdout_,'(30x,a,i8,2x,i8)') '  Virtual states: ',nvirtual_W-nlumo_W_spin(:)
+    write(stdout_,'(30x,a,i8)')       'Transition space: ',(nvirtual_W-nlumo_W_spin(1))*(nhomo_W_spin(1)-ncore_W) &
                                                          + (nvirtual_W-nlumo_W_spin(nspin))*(nhomo_W_spin(nspin)-ncore_W)
   endif
 
@@ -211,37 +259,69 @@ subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
     sf%nprodbasis_total = index_prodstate(nvirtual_W-1,nvirtual_W-1) * nspin
   endif
 
+
   !
-  ! Set the sampling points for Chi (quadrature)
-  sf%nomega_quad    = nomega_in
+  ! Set the sampling points for Chi
+  sf%nomega    = nomega_in
 
-  if( sf%nomega_quad > 0 ) then
-    allocate(sf%weight_quad(sf%nomega_quad))
-    allocate(sf%omega_quad(sf%nomega_quad))
+  select case(grid_)
+  case(STATIC)
+    if( nomega_in /= 1 ) call die('sf_init: static chi requested, number of frequencies should be 1')
+    allocate(sf%weight_quad(sf%nomega))
+    allocate(sf%omega(sf%nomega))
+    sf%weight_quad(1) = 1.0_dp
+    sf%omega(1)       = (0.0_dp, 0.0_dp)
+  case(IMAGINARY_QUAD)
+    if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
+    allocate(sf%weight_quad(sf%nomega))
+    allocate(omega_quad(sf%nomega))
+    allocate(sf%omega(sf%nomega))
 
-    if( sf%nomega_quad > 1 ) then
-      call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
+    call coeffs_gausslegint(0.0_dp,1.0_dp,omega_quad,sf%weight_quad,sf%nomega)
 
-      write(stdout,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
-      ! Variable change [0,1] -> [0,+\inf[
-      write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
-      do iomega=1,sf%nomega_quad
-        sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
-                                * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
-        sf%omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
-                                  * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
-        write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega)*Ha_eV,sf%weight_quad(iomega)
-      enddo
-    else
-      ! Only one omega means static case
-      sf%weight_quad(1) = 1.0_dp
-      sf%omega_quad(1)  = 0.0_dp
+    write(stdout_,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
+    ! Variable change [0,1] -> [0,+\inf[
+    write(stdout_,'(a)') '    #    Frequencies (eV)    Quadrature weights'
+    do iomega=1,sf%nomega
+      sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
+                              * (1.0_dp -  omega_quad(iomega))**(-alpha-1.0_dp) * beta
+      omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
+                                * ( 1.0_dp / (1.0_dp-omega_quad(iomega))**alpha - 1.0_dp ) * beta
+      sf%omega(iomega)       =  omega_quad(iomega) * im
+      write(stdout_,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%im*Ha_eV,sf%weight_quad(iomega)
+    enddo
+    deallocate(omega_quad)
+
+  case(REAL_LINEAR)
+    if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
+    allocate(sf%weight_quad(sf%nomega))
+    allocate(sf%omega(sf%nomega))
+    write(stdout_,'(a)') '    #    Frequencies (eV)   real    / imaginary '
+    do iomega=1,nomega_in
+      sf%omega(iomega) = REAL(iomega-1,dp)/REAL(nomega_in-1,dp) * omega_max_
+      write(stdout_,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%re*Ha_eV,sf%omega(iomega)%im*Ha_eV
+    enddo
+  case(MANUAL)
+    if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
+    ! Just allocate and fill with default values
+    allocate(sf%weight_quad(sf%nomega))
+    allocate(sf%omega(sf%nomega))
+    sf%weight_quad(1) = 1.0_dp
+    sf%omega(1)       = (0.0_dp, 0.0_dp)
+  case(NO_GRID)
+    ! No grid, nothing to do
+  case default
+    call die("sf_init: grid choice not valid")
+  end select
+
+
+  if( PRESENT(verbose) ) then
+    if( .NOT. verbose ) then
+      close(stdout_)
     endif
   endif
 
-
-
-end subroutine init_spectral_function
+end subroutine sf_init
 
 
 !=========================================================================
@@ -288,25 +368,39 @@ end function skip_transition
 
 
 !=========================================================================
-subroutine destroy_spectral_function(sf)
+subroutine sf_destroy(sf,verbose)
   implicit none
-  type(spectral_function),intent(inout) :: sf
+  class(spectral_function),intent(inout) :: sf
+  logical,optional,intent(in)            :: verbose
   !=====
+  integer :: stdout_
+  logical :: verbose_
+  !=====
+
+  stdout_ = stdout
+  verbose_ = .TRUE.
+  if( PRESENT(verbose) ) then
+    verbose_ = verbose
+    if( .NOT. verbose ) then
+      open(newunit=stdout_,file='/dev/null')
+    endif
+  endif
 
   if(ALLOCATED(sf%transition_table)) deallocate(sf%transition_table)
   if(ALLOCATED(sf%pole))             deallocate(sf%pole)
   if(ALLOCATED(sf%residue_left)) then
-    call clean_deallocate('Left residue',sf%residue_left)
+    call clean_deallocate('Left residue',sf%residue_left,verbose=verbose_)
   endif
   if(ALLOCATED(sf%chi)) then
-    call clean_deallocate('Chi',sf%chi)
+    call clean_deallocate('Chi',sf%chi,verbose=verbose_)
   endif
   if(ALLOCATED(sf%weight_quad)) deallocate(sf%weight_quad)
-  if(ALLOCATED(sf%omega_quad))  deallocate(sf%omega_quad)
+  if(ALLOCATED(sf%omega))       deallocate(sf%omega)
+  if(ALLOCATED(sf%vchiv_sqrt))  deallocate(sf%vchiv_sqrt)
 
-  write(stdout,'(/,a)') ' Spectral function destroyed'
+  write(stdout_,'(/,a)') ' Spectral function destroyed'
 
-end subroutine destroy_spectral_function
+end subroutine sf_destroy
 
 
 !=========================================================================
@@ -315,11 +409,11 @@ subroutine write_spectral_function(sf)
   type(spectral_function),intent(in) :: sf
   !=====
   integer              :: wfile
-  integer              :: ibf_auxil
-  integer              :: ierr
-  real(dp),allocatable :: buffer(:)
-  integer              :: iprodbasis
 #if defined(HAVE_MPI)
+  integer              :: iprodbasis
+  real(dp),allocatable :: buffer(:)
+  integer              :: ierr
+  integer              :: ibf_auxil
   integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
   !=====
@@ -411,14 +505,14 @@ subroutine read_spectral_function(sf,reading_status)
   !=====
   integer            :: wfile
   character(len=100) :: postscf_name_read
-  integer            :: ibf_auxil
   logical            :: file_exists
   integer            :: npole_read,nprodbasis_read
-  integer            :: ierr
-  real(dp),allocatable :: buffer(:)
-  integer            :: iprodbasis
 #if defined(HAVE_MPI)
+  integer            :: ibf_auxil
+  integer            :: iprodbasis
+  integer            :: ierr
   integer(kind=MPI_OFFSET_KIND) :: disp
+  real(dp),allocatable :: buffer(:)
 #else
   integer :: ipole_read
 #endif
@@ -520,36 +614,346 @@ end subroutine read_spectral_function
 
 
 !=========================================================================
-subroutine sf_evaluate(sf,omega_cmplx,chi)
+subroutine sf_evaluate_several_omegas(sf,omega_cmplx,chi)
   implicit none
 
   class(spectral_function),intent(in) :: sf
   complex(dp),intent(in) :: omega_cmplx(:)
-  complex(dp),allocatable,intent(out) :: chi(:,:,:)
+  real(dp),intent(out) :: chi(:,:,:)
   !=====
   integer :: nomega,iomega,ipole
-  integer :: jprodbasis
+  integer :: jauxil,iauxil
+  real(dp),allocatable :: tmp(:,:)
   !=====
-
-  if( nauxil_global /= nauxil_local ) call die('sf_evaluate: not implemented with MPI')
+  if( nauxil_global /= nauxil_local ) call die('sf_evaluate_several_omegas: not implemented with distributed auxiliary basis')
+  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate_severals_omegas: should have sf%residue_left available')
 
   nomega = SIZE(omega_cmplx)
-  allocate(chi(sf%nprodbasis,sf%nprodbasis,nomega))
 
   chi(:,:,:) = 0.0_dp
-  do iomega=1,nomega
-    do ipole=1,sf%npole_reso
-      do jprodbasis=1,sf%nprodbasis
-        chi(:,jprodbasis,iomega) = chi(:,jprodbasis,iomega) &
-               + sf%residue_left(:,ipole) * sf%residue_left(jprodbasis,ipole) &
-                     * ( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
-                        -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
+
+  !
+  ! for real frequencies, use a naive implementation
+  !
+  if( ANY( ABS(omega_cmplx(:)%re) > 1.0e-6_dp ) ) then
+    do iomega=1,nomega
+      do ipole=1,sf%npole_reso
+        do jauxil=1,sf%nprodbasis
+          chi(:,jauxil,iomega) = chi(:,jauxil,iomega) &
+                 + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
+                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
+                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
+        enddo
       enddo
     enddo
+
+  else
+
+    allocate(tmp,MOLD=sf%residue_left)
+
+    do iomega=1,nomega
+      tmp(:,:) = sf%residue_left(:,:)
+      do ipole=1,sf%npole_reso
+        tmp(:,ipole) = tmp(:,ipole) * SQRT( 2.0_dp * sf%pole(ipole) / ( ABS(omega_cmplx(iomega))**2 + sf%pole(ipole)**2 ) )
+      enddo
+
+      call DSYRK('L','N',nauxil_global,sf%npole_reso,-1.0d0,tmp,nauxil_global,0.0d0,chi(:,:,iomega),nauxil_global)
+      do jauxil=1,nauxil_global
+        do iauxil=jauxil+1,nauxil_global
+          chi(jauxil,iauxil,iomega) = chi(iauxil,jauxil,iomega)
+        enddo
+      enddo
+    enddo
+
+    deallocate(tmp)
+  endif
+
+
+end subroutine sf_evaluate_several_omegas
+
+
+!=========================================================================
+subroutine sf_evaluate_one_omega(sf,omega_cmplx,chi)
+  implicit none
+
+  class(spectral_function),intent(in) :: sf
+  complex(dp),intent(in) :: omega_cmplx
+  real(dp),intent(out) :: chi(:,:)
+  !=====
+  integer :: ipole
+  integer :: jauxil,iauxil
+  real(dp),allocatable :: tmp(:,:)
+  !=====
+  if( nauxil_global /= nauxil_local ) call die('sf_evaluate_one_omega: not implemented with distributed auxiliary basis')
+  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate_one_omega: should have sf%residue_left available')
+
+
+  chi(:,:) = 0.0_dp
+
+  !
+  ! for real frequencies, use a naive implementation
+  !
+  if( ABS(omega_cmplx%re) > 1.0e-6_dp  ) then
+      do ipole=1,sf%npole_reso
+        do jauxil=1,sf%nprodbasis
+          chi(:,jauxil) = chi(:,jauxil) &
+                 + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
+                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + im * ieta ) &
+                               -1.0_dp / ( omega_cmplx + sf%pole(ipole) - im * ieta ) )
+        enddo
+      enddo
+
+  else
+
+    allocate(tmp,MOLD=sf%residue_left)
+
+    tmp(:,:) = sf%residue_left(:,:)
+    do ipole=1,sf%npole_reso
+      tmp(:,ipole) = tmp(:,ipole) * SQRT( 2.0_dp * sf%pole(ipole) / ( ABS(omega_cmplx)**2 + sf%pole(ipole)**2 ) )
+    enddo
+
+    call DSYRK('L','N',nauxil_global,sf%npole_reso,-1.0d0,tmp,nauxil_global,0.0d0,chi(:,:),nauxil_global)
+    do jauxil=1,nauxil_global
+      do iauxil=jauxil+1,nauxil_global
+        chi(jauxil,iauxil) = chi(iauxil,jauxil)
+      enddo
+    enddo
+
+    deallocate(tmp)
+  endif
+
+
+end subroutine sf_evaluate_one_omega
+
+
+!=========================================================================
+subroutine sf_vsqrt_chi_vsqrt_rpa(sf,occupation,energy,c_matrix,low_rank,verbose)
+  implicit none
+
+  class(spectral_function),intent(inout) :: sf
+  real(dp),intent(in)                    :: occupation(:,:)
+  real(dp),intent(in)                    :: energy(:,:)
+  real(dp),intent(in)                    :: c_matrix(:,:,:)
+  logical,optional,intent(in)            :: low_rank,verbose
+  !=====
+  real(dp),parameter   :: TOL_LOW_EIGVAL = 1.0e-3_dp
+  logical              :: verbose_,low_rank_,eri_3center_mo_available
+  integer              :: stdout_
+  integer              :: nstate,non_negligible
+  integer              :: iomega,ieig,jeig,jauxil
+  integer              :: t_ia
+  integer              :: istate,astate,iaspin
+  integer              :: info
+  real(dp)             :: docc,de,factor
+  real(dp),allocatable :: eri3_t1(:,:),eri3_t2(:,:)
+  real(dp),allocatable :: chi0(:,:)
+  real(dp),allocatable :: chi0tmp(:,:)
+  real(dp)             :: eigval(nauxil_global)
+  !=====
+
+  call start_clock(timing_rpa_dynamic)
+
+  stdout_  = stdout
+  verbose_ = .TRUE.
+  if( PRESENT(verbose) ) then
+    verbose_ = verbose
+    if( .NOT. verbose ) then
+      open(newunit=stdout_,file='/dev/null')
+    endif
+  endif
+  low_rank_ = .FALSE.
+  if( PRESENT(low_rank) ) then
+    low_rank_ = low_rank
+  endif
+
+  nstate = SIZE(occupation,DIM=1)
+
+  write(stdout_,'(/,1x,a,i5,a)') 'Calculation of RPA polarizability on complex grid of ',sf%nomega,' frequencies'
+
+
+  if( sf%nomega < 1 ) call die('sf_vsqrt_chi_vsqrt_rpa: sf contains no frequency (nomega==0)')
+  if( .NOT. has_auxil_basis ) call die('sf_vsqrt_chi_vsqrt_rpa: only works with an auxiliary basis')
+  if( nauxil_global /= nauxil_local ) call die('sf_vsqrt_chi_vsqrt_rpa: not implemented with distributed auxiliary basis')
+
+  sf%nprodbasis = nauxil_local
+  if( low_rank_ ) then
+    allocate(sf%vchiv_sqrt(sf%nomega))
+  endif
+
+  ! Check if (I | p q) integrals are already available
+  !   if not, then calculate them
+  eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
+  if( .NOT. eri_3center_mo_available ) then
+    call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
+  else
+    ! eri_3center_eigen is already available
+    ! check if it has the correct dimensions
+    if(    LBOUND(eri_3center_eigen,DIM=2) > ncore_W+1      &
+      .OR. UBOUND(eri_3center_eigen,DIM=2) < nhomo_W        &
+      .OR. LBOUND(eri_3center_eigen,DIM=3) > nlumo_W        &
+      .OR. UBOUND(eri_3center_eigen,DIM=3) > nvirtual_W-1 ) then
+      call die('sf_vsqrt_chi_vsqrt_rpa: eri_3center_eigen does not contain all the needed states')
+    endif
+  endif
+
+  sf%mchi = nauxil_global
+  sf%nchi = nauxil_global
+  call DESCINIT(sf%desc_chi,nauxil_global,nauxil_global,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,sf%mchi),info)
+  call clean_allocate('Chi',sf%chi,sf%mchi,sf%nchi,sf%nomega,verbose=verbose_)
+  write(stdout_,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_global,' x ',nauxil_global
+  write(stdout_,'(1x,a,i7,a,i7)') 'Distributed in ',sf%mchi,' x ',sf%nchi
+
+  call clean_allocate('TMP 3-center MO integrals',eri3_t1,nauxil_local,sf%npole_reso,verbose=verbose_)
+  call clean_allocate('TMP 3-center MO integrals',eri3_t2,nauxil_local,sf%npole_reso,verbose=verbose_)
+  call clean_allocate('Chi0',chi0,sf%mchi,sf%nchi,verbose=verbose_)
+
+
+  do iomega=1,sf%nomega
+
+    write(stdout_,'(1x,a,i4,a,i4)') 'Loop on frequencies: ',iomega,' / ',sf%nomega
+
+    !
+    ! First evaluate v^{1/2} \chi_0 v^{1/2}
+    !
+    ! Loop over resonant transitions
+    do t_ia=1,sf%npole_reso
+      istate = sf%transition_table(1,t_ia)
+      astate = sf%transition_table(2,t_ia)
+      iaspin = sf%transition_table(3,t_ia)
+
+      docc = occupation(istate,iaspin) - occupation(astate,iaspin)
+      de   = energy(astate,iaspin)     - energy(istate,iaspin)
+      factor = REAL( 2.0_dp * docc * de / ( sf%omega(iomega)**2 - de**2 ) )
+
+      eri3_t1(:,t_ia) = eri_3center_eigen(:,istate,astate,iaspin) * factor
+      eri3_t2(:,t_ia) = eri_3center_eigen(:,istate,astate,iaspin)
+
+    enddo
+
+#if defined(HAVE_MKL)
+    call DGEMMT('L','N','T',nauxil_global,sf%npole_reso,1.0d0,eri3_t1,nauxil_global,eri3_t2,nauxil_global, &
+                0.0d0,chi0,nauxil_global)
+    call matrix_lower_to_full(chi0)
+#else
+    call DGEMM('N','T',nauxil_global,nauxil_global,sf%npole_reso,1.0d0,eri3_t1,nauxil_global,eri3_t2,nauxil_global, &
+               0.0d0,chi0,nauxil_global)
+#endif
+
+
+
+
+    allocate(chi0tmp,SOURCE=chi0)
+
+    ! Second
+    !
+    !   Diagonalize chi0 (low_rank route)
+    ! or 
+    !   invert (1 - chi0)  (standard route)
+    !
+    if( low_rank_ ) then
+      call diagonalize(postscf_diago_flavor,chi0tmp,eigval)
+      !
+      ! Transform vsqrt * chi0 * vsqrt in to vsqrt * chi * vsqrt
+      eigval(:) = eigval(:) / (1.0_dp - eigval(:))
+      non_negligible = COUNT( ABS(eigval(:)) > TOL_LOW_EIGVAL )
+      write(stdout_,*) 'Number of non-negligible eigenvalues:',non_negligible,nauxil_global
+
+      allocate(sf%vchiv_sqrt(iomega)%eigvec(nauxil_global,non_negligible))
+      allocate(sf%vchiv_sqrt(iomega)%eigval(non_negligible))
+      !
+      ! Store the eigenelements of vsqrt_chi_vsqrt
+      !
+      ieig = 0
+      do jeig=1,nauxil_global
+        if( ABS(eigval(jeig)) > TOL_LOW_EIGVAL ) then
+          ieig = ieig + 1
+          sf%vchiv_sqrt(iomega)%eigvec(:,ieig) = chi0tmp(:,jeig)
+          sf%vchiv_sqrt(iomega)%eigval(ieig)   = eigval(jeig)
+        endif
+      enddo
+
+    else
+      !
+      ! Calculate and store the full matrix vsqrt_chi_vsqrt
+      !
+      chi0tmp(:,:) = -chi0tmp(:,:)
+      do jauxil=1,nauxil_global
+        chi0tmp(jauxil,jauxil) = 1.0_dp + chi0tmp(jauxil,jauxil)
+      enddo
+      call invert_symmetric(chi0tmp)
+      !sf%chi(:,:,iomega) = MATMUL( chi0tmp, chi0 )
+      call DSYMM('L','L',nauxil_global,nauxil_global,1.0d0,chi0tmp,nauxil_global,chi0,nauxil_global, &
+                 0.0d0,sf%chi(:,:,iomega),nauxil_global)
+
+    endif
+
+    deallocate(chi0tmp)
+
+
   enddo
 
+  call clean_deallocate('TMP 3-center MO integrals',eri3_t1,verbose=verbose_)
+  call clean_deallocate('TMP 3-center MO integrals',eri3_t2,verbose=verbose_)
+  call clean_deallocate('Chi0',chi0,verbose=verbose_)
 
-end subroutine sf_evaluate
+  if( .NOT. eri_3center_mo_available ) then
+    call destroy_eri_3center_eigen()
+  endif
+
+  if( PRESENT(verbose) ) then
+    if( .NOT. verbose ) then
+      close(stdout_)
+    endif
+  endif
+
+  call stop_clock(timing_rpa_dynamic)
+
+end subroutine sf_vsqrt_chi_vsqrt_rpa
+
+
+!=========================================================================
+subroutine sf_interpolate_vsqrt_chi_vsqrt(sf,omega,vchiv_sqrt_omega)
+  implicit none
+
+  class(spectral_function),intent(in) :: sf
+  real(dp),intent(in)                 :: omega
+  type(chi_type),intent(out)          :: vchiv_sqrt_omega
+  !=====
+  integer  :: jomega
+  !=====
+
+
+  if( ANY( ABS(sf%omega(:)%im) > 1.0e-6_dp ) ) then
+    write(stdout,*) sf%omega(:)
+    call die('sf_interpolate_vsqrt_chi_vsqrt_rpa: for real frequencies only')
+  endif
+
+  if( omega > MAXVAL(sf%omega(:)%re) .OR. omega < MINVAL(sf%omega(:)%re) ) then
+    write(stdout,*) omega
+    write(stdout,*) sf%omega(1)%re
+    write(stdout,*) sf%omega(SIZE(sf%omega))%re
+    call die('sf_interpolate_vsqrt_chi_vsqrt_rpa: requested frequency out of range')
+  endif
+
+  ! no interpolation, but just take the closest omega
+  jomega = MINLOC( ABS(sf%omega(:)%re-omega) , DIM=1 )
+
+  allocate(vchiv_sqrt_omega%eigvec,SOURCE=sf%vchiv_sqrt(jomega)%eigvec)
+  allocate(vchiv_sqrt_omega%eigval,SOURCE=sf%vchiv_sqrt(jomega)%eigval)
+
+end subroutine sf_interpolate_vsqrt_chi_vsqrt
+
+
+!=========================================================================
+subroutine ct_destroy(chi)
+  implicit none
+  !=====
+  class(chi_type),intent(inout) :: chi
+  !=====
+  if( ALLOCATED(chi%eigvec) ) deallocate(chi%eigvec)
+  if( ALLOCATED(chi%eigval) ) deallocate(chi%eigval)
+
+end subroutine ct_destroy
 
 
 end module m_spectral_function
