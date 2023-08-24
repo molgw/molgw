@@ -678,6 +678,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  logical,parameter    :: impose_sox=.FALSE.
   logical,parameter    :: impose_sosex=.FALSE.
   integer              :: nstate
   integer              :: iomega_sigma,iomegap
@@ -742,10 +743,14 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
       ! Imaginary axis integral
       !
       do iomegap=1,wpol_imag%nomega
-        if( analytic_chi_ ) then
-          call wpol_analytic%evaluate(wpol_imag%omega(iomegap),chi_wp)
+        if( impose_sox ) then
+          chi_wp(:,:) = 0.0_dp
         else
-          chi_wp(:,:) = wpol_imag%chi(:,:,iomegap)
+          if( analytic_chi_ ) then
+            call wpol_analytic%evaluate(wpol_imag%omega(iomegap),chi_wp)
+          else
+            chi_wp(:,:) = wpol_imag%chi(:,:,iomegap)
+          endif
         endif
         do iauxil=1,nauxil_global
           chi_wp(iauxil,iauxil) = chi_wp(iauxil,iauxil) + 1.0_dp
@@ -763,15 +768,18 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
           do iomega_sigma=first_omega,last_omega
 
             omega_cmplx = ABS(se%omega_calc(iomega_sigma)%im+isign*wpol_imag%omega(iomegap)%im)*im
-            if( analytic_chi_ ) then
-              call wpol_analytic%evaluate(omega_cmplx,chi_wwp)
+            if( impose_sosex .OR. impose_sox ) then
+              chi_wwp(:,:) = 0.0_dp
             else
-              call wpol_one%init(nstate,occupation,1,grid=MANUAL,verbose=.FALSE.)
-              wpol_one%omega(1) = omega_cmplx
-              call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.,verbose=.FALSE.)
-              chi_wwp(:,:) = wpol_one%chi(:,:,1)
+              if( analytic_chi_ ) then
+                call wpol_analytic%evaluate(omega_cmplx,chi_wwp)
+              else
+                call wpol_one%init(nstate,occupation,1,grid=MANUAL,verbose=.FALSE.)
+                wpol_one%omega(1) = omega_cmplx
+                call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.,verbose=.FALSE.)
+                chi_wwp(:,:) = wpol_one%chi(:,:,1)
+              endif
             endif
-            if( impose_sosex ) chi_wwp(:,:) = 0.0_dp
             do iauxil=1,nauxil_global
               chi_wwp(iauxil,iauxil) = chi_wwp(iauxil,iauxil) + 1.0_dp
             enddo
