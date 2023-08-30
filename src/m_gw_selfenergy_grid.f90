@@ -706,7 +706,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
   call start_clock(timing_gw_self)
 
-  write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
+  write(stdout,'(/,1x,a)') 'FSOS self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega,last_omega
     write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma,se%omega_calc(iomega_sigma)*Ha_eV
@@ -768,7 +768,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
           do iomega_sigma=first_omega,last_omega
 
             omega_cmplx = ABS(se%omega_calc(iomega_sigma)%im+isign*wpol_imag%omega(iomegap)%im)*im
-            if( impose_sosex .OR. impose_sox ) then
+            if( impose_sosex ) then
               chi_wwp(:,:) = 0.0_dp
             else
               if( analytic_chi_ ) then
@@ -991,7 +991,7 @@ subroutine fsos_selfenergy_grid_plain_fortran(energy,occupation,c_matrix,se)
 
   call start_clock(timing_gw_self)
 
-  write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
+  write(stdout,'(/,1x,a)') 'FSOS self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega,last_omega
     write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma,se%omega_calc(iomega_sigma)*Ha_eV
