@@ -7,6 +7,7 @@
 !
 !=========================================================================
 #include "molgw.h"
+#define ILL_ON
 subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   use m_definitions
   use m_mpi
@@ -27,6 +28,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   type(spectral_function),intent(in) :: wpol
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  logical,parameter       :: screened_interaction=.TRUE.
   integer                 :: iomega
   complex(dp),allocatable :: sigma_gw(:,:,:)
   complex(dp),allocatable :: sigma_sosex(:,:,:)
@@ -38,6 +40,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   real(dp)                :: vcoul,vcoul1,vcoul2
   real(dp)                :: pole_s
   real(dp)                :: fxc
+  real(dp),allocatable    :: chi_static(:,:)
   !=====
 
   call start_clock(timing_gwgamma_self)
@@ -52,6 +55,8 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
     else
       write(stdout,*) 'Perform a one-shot GWSOSEX calculation'
     endif
+  case(GWGWG)
+    write(stdout,*) 'Perform a one-shot GWSOSEX calculation to prepare full GWGWG'
   case default
     call die('gwgamma_selfenergy: calculation type unknown')
   end select
@@ -73,6 +78,14 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   call clean_allocate('Temporary array',bra,ncore_G+1,nvirtual_G-1,ncore_G+1,MAX(nhomo_G,nsemax))
 
 
+  if( screened_interaction ) then
+    if(has_auxil_basis) then
+      call clean_allocate('chi static',chi_static,nauxil_global,nauxil_global)
+      call wpol%evaluate((0.0_dp,0.0_dp),chi_static)
+    else
+      call die('not implemented')
+    endif
+  endif
 
   !
   !
@@ -178,7 +191,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   call ortho%sum(sigma_sox)
 
 
-  if( calc_type%selfenergy_approx == GWSOSEX ) then
+  if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWGWG ) then
 
     write(stdout,*) 'Calculate dynamical SOSEX'
 
@@ -357,7 +370,8 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
     enddo !ispin
 
     call ortho%sum(sigma_sosex)
-    !sigma_sosex(:,:,:) = 2.0_dp * sigma_sosex(:,:,:)  !FBFB
+    sigma_sosex(:,:,:) = factor_sosex * sigma_sosex(:,:,:)  !  1.0 in the original paper
+                                                            !  but should be 2.0 in reality
 
   endif
 
@@ -372,14 +386,12 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
   forall(astate=nsemin:nsemax)
     se%sigma(:,astate,:) = sigma_gw(:,astate,:) + sigma_sox(:,astate,:) + sigma_sosex(:,astate,:)
-    !se%sigma(:,astate,:) = sigma_gw(:,astate,:) + sigma_sosex(:,astate,:) !FBFB
   end forall
 
 
   ! if( print_sigma_) then
   !   call write_selfenergy_omega('selfenergy_sox'    ,energy,exchange_m_vxc_diag,occupation,energy,sigma_sox)
   !   call write_selfenergy_omega('selfenergy_sosex'  ,energy,exchange_m_vxc_diag,occupation,energy,sigma_sosex)
-  !   call write_selfenergy_omega('selfenergy_gwgamma',energy,exchange_m_vxc_diag,occupation,energy,sigma)
   ! endif
 
 
@@ -414,6 +426,9 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
   if( gwgamma_tddft_ ) then
     call destroy_tddft()
+  endif
+  if( screened_interaction ) then
+    call clean_deallocate('chi static',chi_static)
   endif
 
   call stop_clock(timing_gwgamma_self)
@@ -484,7 +499,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
     do spole=1,wpol%npole_reso
       if( MODULO( spole - 1 , ortho%nproc ) /= ortho%rank ) cycle
-      write(stdout,*) 'W poles:',spole,' / ',wpol%npole_reso
+      write(stdout,*) 'W poles for GWGWG:',spole,' / ',wpol%npole_reso
 
       Omega_s = wpol%pole(spole)
 
@@ -574,6 +589,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,istate) * bra_t(jstate,cstate)
                   num2 = bra_s(qstate,cstate) * bra_s(istate,jstate)
 
+#if defined(ILL_ON)
                   denom1 = omega - ei + Omega_t - 2.0_dp*ieta
                   denom2 = omega - ec + Omega_s               ! ill term
                   denom3 = ej - ec - Omega_t + 3.0_dp*ieta
@@ -587,6 +603,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                   sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
                             + num1 * num2 / denom1 / denom2 / denom3
+#endif
 
                 enddo
               enddo
@@ -603,6 +620,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,astate) * bra_t(jstate,cstate)
                   num2 = bra_s(qstate,cstate) * bra_s(astate,jstate)
 
+#if defined(ILL_ON)
                   denom1 = omega - ea + ej - ec + 3.0_dp*ieta
                   denom2 = omega - ec + Omega_s               ! ill term
                   denom3 = ej - ec - Omega_t + 3.0_dp*ieta
@@ -616,6 +634,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                   sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
                             - num1 * num2 / denom1 / denom2 / denom3
+#endif
 
                 enddo
               enddo
@@ -725,6 +744,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,astate) * bra_t(jstate,cstate)
                   num2 = bra_s(qstate,cstate) * bra_s(astate,jstate)
 
+#if defined(ILL_ON)
                   denom1 = omega - ea - Omega_t - 2.0_dp*ieta
                   denom2 = omega - ea  -ec + ej + 3.0_dp*ieta
                   denom3 = omega - ec + Omega_s  !ill term
@@ -738,6 +758,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                   sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
                             + num1 * num2 / denom1 / denom2 / denom3
+#endif
 
                 enddo
               enddo
@@ -793,9 +814,9 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             enddo
 
             ! any R occ AR occ
-            !  u  t  j   s  j  
+            !  u  t  j   s  j
             !  -> 0
-            
+
             ! occ R emp AR occ
             !  i  t  b   s  k
             do istate=ncore_G+1,nhomo_G
@@ -807,6 +828,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,istate) * bra_t(bstate,kstate)
                   num2 = bra_s(qstate,kstate) * bra_s(istate,bstate)
 
+#if defined(ILL_ON)
                   denom1 = omega - ei + Omega_t - 2.0_dp*ieta
                   denom2 = omega - Omega_s - ek    ! ill term
                   denom3 = ei - eb - Omega_s + 3.0_dp*ieta
@@ -820,6 +842,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                   sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
                             + num1 * num2 / denom1 / denom2 / denom3
+#endif
 
                 enddo
               enddo
@@ -926,6 +949,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,istate) * bra_t(bstate,kstate)
                   num2 = bra_s(qstate,kstate) * bra_s(istate,bstate)
 
+#if defined(ILL_ON)
                   denom1 = Omega_s - ei + eb - 3.0_dp*ieta
                   denom2 = omega - eb - Omega_s - Omega_t + 3.0_dp*ieta
                   denom3 = omega - Omega_s - ek    ! ill term
@@ -939,6 +963,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                   sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
                             + num1 * num2 / denom1 / denom2 / denom3
+#endif
 
                 enddo
               enddo
@@ -968,6 +993,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                   sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
                             + num1 * num2 / denom1 / denom2 / denom3
+
                 enddo
               enddo
             enddo
@@ -989,7 +1015,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
 
   !
-  ! The input sigma contains the GW selfenergy
+  ! The input sigma contains the GW+SOSEX2 selfenergy
   sigma_gw(:,:,:) = se%sigma(:,:,:)
 
 
@@ -999,19 +1025,18 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
 
   ! if( print_sigma_) then
-  !   call write_selfenergy_omega('selfenergy_gwgwg'  ,energy,exchange_m_vxc_diag,occupation,energy,sigma_sosex)
-  !   call write_selfenergy_omega('selfenergy_gwgamma',energy,exchange_m_vxc_diag,occupation,energy,sigma)
+  !   call write_selfenergy_omega('selfenergy_gwgwg',energy,exchange_m_vxc_diag,occupation,energy,sigma_gwgwg)
   ! endif
 
 
   write(stdout,'(/,a)') ' GWGWG self-energy contributions at E0 (eV)'
   if(nspin==1) then
     write(stdout,'(a)') &
-     '   #          E0             SigC_G0W0              SigC_GWGWG                 SigC_TOT'
+     '   #          E0             SigC_GW+SOSEX2         SigC_GWGWG                 SigC_TOT'
   else
     write(stdout,'(a)') &
-      '   #                E0                              SigC_G0W0        ' &
-       // '               SigC_SOSEX                 SigC_TOT'
+      '   #                E0                              SigC_GW+SOSEX2      ' &
+       // '               SigC_GWGWG                 SigC_TOT'
   endif
 
   do pstate=nsemin,nsemax
