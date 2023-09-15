@@ -302,7 +302,8 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     ! GW+SOSEX
     !
-    if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWSOX ) then
+    if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWSOX &
+        .OR. calc_type%selfenergy_approx == GWGWG ) then
       call wpol%init(nstate,occupation,0)
       call read_spectral_function(wpol,reading_status)
       ! If reading has failed, then do the calculation
@@ -327,6 +328,10 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
 
 
       call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+      if( calc_type%selfenergy_approx == GWGWG ) then
+        call gwgwg_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+      endif
+
       call wpol%destroy()
     endif
 

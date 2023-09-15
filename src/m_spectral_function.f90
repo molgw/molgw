@@ -699,7 +699,7 @@ subroutine sf_evaluate_one_omega(sf,omega_cmplx,chi)
           chi(:,jauxil) = chi(:,jauxil) &
                  + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
                        * REAL( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + im * ieta ) &
-                               -1.0_dp / ( omega_cmplx + sf%pole(ipole) - im * ieta ) )
+                              -1.0_dp / ( omega_cmplx + sf%pole(ipole) - im * ieta ) )
         enddo
       enddo
 
