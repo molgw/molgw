@@ -107,6 +107,8 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='COHSEX'
     case(GWFSOS)
       selfenergy_tag='GW+FSOS'
+    case(GWGWG)
+      selfenergy_tag='GW+GWGWG'
     case default
       write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')

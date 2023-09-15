@@ -48,7 +48,7 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
 
 
   write(stdout,'(/,a)') ' Perform the second-order self-energy calculation'
-  write(stdout,*) 'with the perturbative approach'
+  write(stdout,*)       'with the perturbative approach'
 
 
 
