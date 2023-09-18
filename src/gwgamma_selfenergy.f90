@@ -34,7 +34,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   complex(dp),allocatable :: sigma_sox(:,:,:)
   integer                 :: astate,bstate,cstate
   integer                 :: istate,jstate,kstate,ispin,spole
-  integer                 :: mstate
+  integer                 :: pstate
   real(dp),allocatable    :: bra_s(:,:)
   real(dp)                :: vcoul,vcoul1,vcoul2
   real(dp)                :: pole_s
@@ -100,30 +100,30 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
         do kstate=ncore_G+1,nvirtual_G-1
           if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
 
-          do mstate=nsemin,nsemax
+          do pstate=nsemin,nsemax
 
-            vcoul1 = eri_eigen(mstate,istate,ispin,bstate,kstate,ispin)
-            vcoul2 = eri_eigen(istate,bstate,ispin,kstate,mstate,ispin)
+            vcoul1 = eri_eigen(pstate,istate,ispin,bstate,kstate,ispin)
+            vcoul2 = eri_eigen(istate,bstate,ispin,kstate,pstate,ispin)
             if( gwgamma_tddft_ ) then
-              fxc = eval_fxc_rks_singlet(istate,bstate,ispin,kstate,mstate,ispin)
+              fxc = eval_fxc_rks_singlet(istate,bstate,ispin,kstate,pstate,ispin)
               call grid%sum(fxc)
               vcoul2 = alpha_hybrid * vcoul2 - fxc
 
-              !             if( ABS( eri_eigen(istate,bstate,ispin,kstate,mstate,ispin) -vcoul2)> 0.10 ) then
-              !               write(*,'(4(i4,1x),4(1x,f12.6))') istate,bstate,kstate,mstate, &
-              !                  eri_eigen(istate,bstate,ispin,kstate,mstate,ispin), &
+              !             if( ABS( eri_eigen(istate,bstate,ispin,kstate,pstate,ispin) -vcoul2)> 0.10 ) then
+              !               write(*,'(4(i4,1x),4(1x,f12.6))') istate,bstate,kstate,pstate, &
+              !                  eri_eigen(istate,bstate,ispin,kstate,pstate,ispin), &
               !                  vcoul2
               !               write(*,*) 'Hack'
-              !               vcoul2 = eri_eigen(istate,bstate,ispin,kstate,mstate,ispin)
+              !               vcoul2 = eri_eigen(istate,bstate,ispin,kstate,pstate,ispin)
               !             endif
 
             endif
             !
             ! calculate only the diagonal !
             do iomega=-se%nomega,se%nomega
-              sigma_sox(iomega,mstate,ispin) = sigma_sox(iomega,mstate,ispin) &
+              sigma_sox(iomega,pstate,ispin) = sigma_sox(iomega,pstate,ispin) &
                   - vcoul1 * vcoul2            &
-                    / ( energy(mstate,ispin) + se%omega(iomega) &
+                    / ( energy(pstate,ispin) + se%omega(iomega) &
                         - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
             enddo
           enddo
@@ -142,30 +142,30 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
         do astate=ncore_G+1,nvirtual_G-1
           if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty) cycle
 
-          do mstate=nsemin,nsemax
+          do pstate=nsemin,nsemax
 
-            vcoul1 = eri_eigen(mstate,astate,ispin,jstate,cstate,ispin)
-            vcoul2 = eri_eigen(astate,jstate,ispin,cstate,mstate,ispin)
+            vcoul1 = eri_eigen(pstate,astate,ispin,jstate,cstate,ispin)
+            vcoul2 = eri_eigen(astate,jstate,ispin,cstate,pstate,ispin)
             if( gwgamma_tddft_ ) then
-              fxc = eval_fxc_rks_singlet(astate,jstate,ispin,cstate,mstate,ispin)
+              fxc = eval_fxc_rks_singlet(astate,jstate,ispin,cstate,pstate,ispin)
               call grid%sum(fxc)
               vcoul2 = alpha_hybrid * vcoul2 - fxc
 
-              !             if( ABS( eri_eigen(astate,jstate,ispin,cstate,mstate,ispin) -vcoul2 )> 0.10 ) then
-              !               write(*,'(4(i4,1x),4(1x,f12.6))') astate,jstate,cstate,mstate, &
-              !                  eri_eigen(astate,jstate,ispin,cstate,mstate,ispin), &
+              !             if( ABS( eri_eigen(astate,jstate,ispin,cstate,pstate,ispin) -vcoul2 )> 0.10 ) then
+              !               write(*,'(4(i4,1x),4(1x,f12.6))') astate,jstate,cstate,pstate, &
+              !                  eri_eigen(astate,jstate,ispin,cstate,pstate,ispin), &
               !                  vcoul2
               !!               write(*,*) 'Hack'
-              !!               vcoul2 =  eri_eigen(astate,jstate,ispin,cstate,mstate,ispin)
+              !!               vcoul2 =  eri_eigen(astate,jstate,ispin,cstate,pstate,ispin)
               !             endif
 
             endif
             !
             ! calculate only the diagonal !
             do iomega=-se%nomega,se%nomega
-              sigma_sox(iomega,mstate,ispin) = sigma_sox(iomega,mstate,ispin) &
+              sigma_sox(iomega,pstate,ispin) = sigma_sox(iomega,pstate,ispin) &
                   - vcoul1 * vcoul2            &
-                    / ( energy(mstate,ispin) + se%omega(iomega) &
+                    / ( energy(pstate,ispin) + se%omega(iomega) &
                         - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
             enddo
           enddo
@@ -195,15 +195,15 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
         pole_s = wpol%pole(spole)
 
         if(has_auxil_basis) then
-          do mstate=ncore_G+1,MAX(nhomo_G,nsemax)
+          do pstate=ncore_G+1,MAX(nhomo_G,nsemax)
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-            bra_s(:,mstate)     = MATMUL( wpol%residue_left(:,spole) , eri_3center_eigen(:,:,mstate,ispin) )
+            bra_s(:,pstate)     = MATMUL( wpol%residue_left(:,spole) , eri_3center_eigen(:,:,pstate,ispin) )
           enddo
           call auxil%sum(bra_s)
         else
           ! Here just grab the precalculated value
-          forall(istate=ncore_G+1:nvirtual_G-1, mstate=ncore_G+1:MAX(nhomo_G,nsemax))
-            bra_s(istate,mstate) = wpol%residue_left(index_prodstate(istate,mstate) &
+          forall(istate=ncore_G+1:nvirtual_G-1, pstate=ncore_G+1:MAX(nhomo_G,nsemax))
+            bra_s(istate,pstate) = wpol%residue_left(index_prodstate(istate,pstate) &
                                                     + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1), &
                                                    spole)
           end forall
@@ -220,19 +220,19 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
               !
               ! calculate only the diagonal !
-              do mstate=nsemin,nsemax
+              do pstate=nsemin,nsemax
 
-                vcoul = eri_eigen(istate,kstate,ispin,bstate,mstate,ispin)
+                vcoul = eri_eigen(istate,kstate,ispin,bstate,pstate,ispin)
                 if( gwgamma_tddft_ ) then
-                  fxc = eval_fxc_rks_singlet(istate,kstate,ispin,bstate,mstate,ispin)
+                  fxc = eval_fxc_rks_singlet(istate,kstate,ispin,bstate,pstate,ispin)
                   call grid%sum(fxc)
                   vcoul = alpha_hybrid * vcoul - fxc
                 endif
 
                 do iomega=-se%nomega,se%nomega
-                  sigma_sosex(iomega,mstate,ispin) = sigma_sosex(iomega,mstate,ispin) &
-                           - bra_s(kstate,mstate) * bra_s(bstate,istate) * vcoul                          &
-                              / ( energy(mstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
+                  sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
+                           - bra_s(kstate,pstate) * bra_s(bstate,istate) * vcoul                          &
+                              / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
                               / ( -pole_s + energy(istate,ispin) - energy(bstate,ispin) + ieta )
                 enddo
               enddo
@@ -251,26 +251,26 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
               !
               ! calculate only the diagonal !
-              do mstate=nsemin,nsemax
+              do pstate=nsemin,nsemax
 
-                vcoul = eri_eigen(istate,cstate,ispin,bstate,mstate,ispin)
+                vcoul = eri_eigen(istate,cstate,ispin,bstate,pstate,ispin)
                 if( gwgamma_tddft_ ) then
-                  fxc = eval_fxc_rks_singlet(istate,cstate,ispin,bstate,mstate,ispin)
+                  fxc = eval_fxc_rks_singlet(istate,cstate,ispin,bstate,pstate,ispin)
                   call grid%sum(fxc)
                   vcoul = alpha_hybrid * vcoul - fxc
                 endif
 
                 do iomega=-se%nomega,se%nomega
-                  sigma_sosex(iomega,mstate,ispin) = sigma_sosex(iomega,mstate,ispin) &
-                           - bra_s(cstate,mstate) * bra_s(bstate,istate) * vcoul                          &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )    &
-                             / ( energy(mstate,ispin) + se%omega(iomega) &
+                  sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
+                           - bra_s(cstate,pstate) * bra_s(bstate,istate) * vcoul                          &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )    &
+                             / ( energy(pstate,ispin) + se%omega(iomega) &
                                  - energy(cstate,ispin) + energy(istate,ispin) - energy(bstate,ispin) + ieta )
 
 
-                  sigma_sosex(iomega,mstate,ispin) = sigma_sosex(iomega,mstate,ispin) &
-                           + bra_s(cstate,mstate) * bra_s(bstate,istate) * vcoul                          &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(bstate,ispin) &
+                  sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
+                           + bra_s(cstate,pstate) * bra_s(bstate,istate) * vcoul                          &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(bstate,ispin) &
                                  - energy(cstate,ispin) + energy(istate,ispin) + ieta )  &
                              / ( energy(bstate,ispin) - energy(istate,ispin) + pole_s - ieta )
 
@@ -291,27 +291,27 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
               !
               ! calculate only the diagonal !
-              do mstate=nsemin,nsemax
+              do pstate=nsemin,nsemax
 
-                vcoul = eri_eigen(astate,kstate,ispin,jstate,mstate,ispin)
+                vcoul = eri_eigen(astate,kstate,ispin,jstate,pstate,ispin)
                 if( gwgamma_tddft_ ) then
-                  fxc = eval_fxc_rks_singlet(astate,kstate,ispin,jstate,mstate,ispin)
+                  fxc = eval_fxc_rks_singlet(astate,kstate,ispin,jstate,pstate,ispin)
                   call grid%sum(fxc)
                   vcoul = alpha_hybrid * vcoul - fxc
                 endif
 
                 do iomega=-se%nomega,se%nomega
-                  sigma_sosex(iomega,mstate,ispin) = sigma_sosex(iomega,mstate,ispin) &
-                           - bra_s(kstate,mstate) * bra_s(astate,jstate) * vcoul                          &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
+                  sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
+                           - bra_s(kstate,pstate) * bra_s(astate,jstate) * vcoul                          &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
                                 + energy(astate,ispin) - energy(jstate,ispin)  - ieta )  &
                              / ( energy(jstate,ispin) - energy(astate,ispin) - pole_s + ieta )
 
-                  sigma_sosex(iomega,mstate,ispin) = sigma_sosex(iomega,mstate,ispin) &
-                           + bra_s(kstate,mstate) * bra_s(astate,jstate) * vcoul                          &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
+                  sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
+                           + bra_s(kstate,pstate) * bra_s(astate,jstate) * vcoul                          &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
                                  + energy(astate,ispin) - energy(jstate,ispin)  - ieta )  &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )
 
 
                 enddo
@@ -331,19 +331,19 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
               !
               ! calculate only the diagonal !
-              do mstate=nsemin,nsemax
+              do pstate=nsemin,nsemax
 
-                vcoul = eri_eigen(astate,cstate,ispin,jstate,mstate,ispin)
+                vcoul = eri_eigen(astate,cstate,ispin,jstate,pstate,ispin)
                 if( gwgamma_tddft_ ) then
-                  fxc = eval_fxc_rks_singlet(astate,cstate,ispin,jstate,mstate,ispin)
+                  fxc = eval_fxc_rks_singlet(astate,cstate,ispin,jstate,pstate,ispin)
                   call grid%sum(fxc)
                   vcoul = alpha_hybrid * vcoul - fxc
                 endif
 
                 do iomega=-se%nomega,se%nomega
-                  sigma_sosex(iomega,mstate,ispin) = sigma_sosex(iomega,mstate,ispin) &
-                           + bra_s(cstate,mstate) * bra_s(astate,jstate) * vcoul                          &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )  &
+                  sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
+                           + bra_s(cstate,pstate) * bra_s(astate,jstate) * vcoul                          &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )  &
                              / ( pole_s + energy(astate,ispin) - energy(jstate,ispin) - ieta )
 
                 enddo
@@ -450,15 +450,15 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   complex(dp),allocatable :: sigma_gvgw0g(:,:,:)
   integer                 :: astate,bstate,cstate
   integer                 :: istate,jstate,kstate,ispin,spole
-  integer                 :: mstate
+  integer                 :: pstate
   real(dp),allocatable    :: bra_s(:,:)
   real(dp)                :: v_1,w0_1,w0_2
   real(dp)                :: pole_s
   real(dp)                :: fxc
   real(dp),allocatable    :: chi_static(:,:)
-  real(dp),allocatable    :: mi(:),bk(:),ib(:),km(:)
-  real(dp),allocatable    :: ma(:),jc(:),aj(:),cm(:)
-  real(dp),allocatable    :: ik(:),ac(:),bm(:),ak(:),jm(:),ic(:)
+  real(dp),allocatable    :: ip(:),bk(:),ib(:),kp(:)
+  real(dp),allocatable    :: pa(:),jc(:),aj(:),cp(:)
+  real(dp),allocatable    :: ik(:),ac(:),bp(:),ak(:),jp(:),ic(:)
   !=====
 
   call start_clock(timing_gwgamma_self)
@@ -487,18 +487,18 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
     chi_static(ibf_auxil,ibf_auxil) = chi_static(ibf_auxil,ibf_auxil) + 1.0_dp
   enddo
   allocate(ib(nauxil_global))
-  allocate(km(nauxil_global))
-  allocate(mi(nauxil_global))
+  allocate(kp(nauxil_global))
+  allocate(ip(nauxil_global))
   allocate(bk(nauxil_global))
   allocate(aj(nauxil_global))
-  allocate(cm(nauxil_global))
-  allocate(ma(nauxil_global))
+  allocate(cp(nauxil_global))
+  allocate(pa(nauxil_global))
   allocate(jc(nauxil_global))
   allocate(ac(nauxil_global))
   allocate(ik(nauxil_global))
-  allocate(bm(nauxil_global))
+  allocate(bp(nauxil_global))
   allocate(ak(nauxil_global))
-  allocate(jm(nauxil_global))
+  allocate(jp(nauxil_global))
   allocate(ic(nauxil_global))
 
   !
@@ -527,30 +527,30 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
         do kstate=ncore_G+1,nvirtual_G-1
           if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
 
-          do mstate=nsemin,nsemax
+          do pstate=nsemin,nsemax
 
-            !v_1 = eri_eigen(mstate,istate,ispin,bstate,kstate,ispin)
-            !v_2 = eri_eigen(istate,bstate,ispin,kstate,mstate,ispin)
+            !v_1 = eri_eigen(pstate,istate,ispin,bstate,kstate,ispin)
+            !v_2 = eri_eigen(istate,bstate,ispin,kstate,pstate,ispin)
 
-            mi(:) = eri_3center_eigen(:,mstate,istate,ispin)
+            ip(:) = eri_3center_eigen(:,pstate,istate,ispin)
             bk(:) = eri_3center_eigen(:,bstate,kstate,ispin)
-            v_1  = DOT_PRODUCT( mi , bk )
-            w0_1 = DOT_PRODUCT( mi(:) , MATMUL( chi_static(:,:) , bk(:) ) )
+            v_1  = DOT_PRODUCT( ip(:) , bk(:) )
+            w0_1 = DOT_PRODUCT( ip(:) , MATMUL( chi_static(:,:) , bk(:) ) )
 
             ib(:) = eri_3center_eigen(:,istate,bstate,ispin)
-            km(:) = eri_3center_eigen(:,kstate,mstate,ispin)
-            w0_2 = DOT_PRODUCT( ib(:) , MATMUL( chi_static(:,:) , km(:) ) )
+            kp(:) = eri_3center_eigen(:,kstate,pstate,ispin)
+            w0_2 = DOT_PRODUCT( ib(:) , MATMUL( chi_static(:,:) , kp(:) ) )
 
             !
             ! calculate only the diagonal !
             do iomega=-se%nomega,se%nomega
-              sigma_gvgw0g(iomega,mstate,ispin) = sigma_gvgw0g(iomega,mstate,ispin) &
+              sigma_gvgw0g(iomega,pstate,ispin) = sigma_gvgw0g(iomega,pstate,ispin) &
                   - v_1 * w0_2            &
-                    / ( energy(mstate,ispin) + se%omega(iomega) &
+                    / ( energy(pstate,ispin) + se%omega(iomega) &
                         - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
-              sigma_gw0gw0g(iomega,mstate,ispin) = sigma_gw0gw0g(iomega,mstate,ispin) &
+              sigma_gw0gw0g(iomega,pstate,ispin) = sigma_gw0gw0g(iomega,pstate,ispin) &
                   - w0_1 * w0_2            &
-                    / ( energy(mstate,ispin) + se%omega(iomega) &
+                    / ( energy(pstate,ispin) + se%omega(iomega) &
                         - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
             enddo
           enddo
@@ -569,30 +569,30 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
         do astate=ncore_G+1,nvirtual_G-1
           if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty) cycle
 
-          do mstate=nsemin,nsemax
+          do pstate=nsemin,nsemax
 
-            !v_1 = eri_eigen(mstate,astate,ispin,jstate,cstate,ispin)
-            !v_2 = eri_eigen(astate,jstate,ispin,cstate,mstate,ispin)
+            !v_1 = eri_eigen(pstate,astate,ispin,jstate,cstate,ispin)
+            !v_2 = eri_eigen(astate,jstate,ispin,cstate,pstate,ispin)
 
-            ma(:) = eri_3center_eigen(:,mstate,astate,ispin)
+            pa(:) = eri_3center_eigen(:,pstate,astate,ispin)
             jc(:) = eri_3center_eigen(:,jstate,cstate,ispin)
-            v_1  = DOT_PRODUCT( ma , jc )
-            w0_1 = DOT_PRODUCT( ma(:) , MATMUL( chi_static(:,:) , jc(:) ) )
+            v_1  = DOT_PRODUCT( pa(:) , jc(:) )
+            w0_1 = DOT_PRODUCT( pa(:) , MATMUL( chi_static(:,:) , jc(:) ) )
 
             aj(:) = eri_3center_eigen(:,astate,jstate,ispin)
-            cm(:) = eri_3center_eigen(:,cstate,mstate,ispin)
-            w0_2 = DOT_PRODUCT( aj(:) , MATMUL( chi_static(:,:) , cm(:) ) )
+            cp(:) = eri_3center_eigen(:,cstate,pstate,ispin)
+            w0_2 = DOT_PRODUCT( aj(:) , MATMUL( chi_static(:,:) , cp(:) ) )
 
             !
             ! calculate only the diagonal !
             do iomega=-se%nomega,se%nomega
-              sigma_gvgw0g(iomega,mstate,ispin) = sigma_gvgw0g(iomega,mstate,ispin) &
+              sigma_gvgw0g(iomega,pstate,ispin) = sigma_gvgw0g(iomega,pstate,ispin) &
                   - v_1 * w0_2            &
-                    / ( energy(mstate,ispin) + se%omega(iomega) &
+                    / ( energy(pstate,ispin) + se%omega(iomega) &
                         - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
-              sigma_gw0gw0g(iomega,mstate,ispin) = sigma_gw0gw0g(iomega,mstate,ispin) &
+              sigma_gw0gw0g(iomega,pstate,ispin) = sigma_gw0gw0g(iomega,pstate,ispin) &
                   - w0_1 * w0_2            &
-                    / ( energy(mstate,ispin) + se%omega(iomega) &
+                    / ( energy(pstate,ispin) + se%omega(iomega) &
                         - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
             enddo
           enddo
@@ -624,15 +624,15 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
         pole_s = wpol%pole(spole)
 
         if(has_auxil_basis) then
-          do mstate=ncore_G+1,MAX(nhomo_G,nsemax)
+          do pstate=ncore_G+1,MAX(nhomo_G,nsemax)
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-            bra_s(:,mstate)     = MATMUL( wpol%residue_left(:,spole) , eri_3center_eigen(:,:,mstate,ispin) )
+            bra_s(:,pstate)     = MATMUL( wpol%residue_left(:,spole) , eri_3center_eigen(:,:,pstate,ispin) )
           enddo
           call auxil%sum(bra_s)
         else
           ! Here just grab the precalculated value
-          forall(istate=ncore_G+1:nvirtual_G-1, mstate=ncore_G+1:MAX(nhomo_G,nsemax))
-            bra_s(istate,mstate) = wpol%residue_left(index_prodstate(istate,mstate) &
+          forall(istate=ncore_G+1:nvirtual_G-1, pstate=ncore_G+1:MAX(nhomo_G,nsemax))
+            bra_s(istate,pstate) = wpol%residue_left(index_prodstate(istate,pstate) &
                                                     + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1), &
                                                    spole)
           end forall
@@ -649,17 +649,17 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
               !
               ! calculate only the diagonal !
-              do mstate=nsemin,nsemax
+              do pstate=nsemin,nsemax
 
-                !v_2 = eri_eigen(istate,kstate,ispin,bstate,mstate,ispin)
+                !v_2 = eri_eigen(istate,kstate,ispin,bstate,pstate,ispin)
                 ik(:) = eri_3center_eigen(:,istate,kstate,ispin)
-                bm(:) = eri_3center_eigen(:,bstate,mstate,ispin)
-                w0_2 = DOT_PRODUCT( ik(:) , MATMUL( chi_static(:,:) , bm(:) ) )
+                bp(:) = eri_3center_eigen(:,bstate,pstate,ispin)
+                w0_2 = DOT_PRODUCT( ik(:) , MATMUL( chi_static(:,:) , bp(:) ) )
 
                 do iomega=-se%nomega,se%nomega
-                  sigma_gwgw0g(iomega,mstate,ispin) = sigma_gwgw0g(iomega,mstate,ispin) &
-                           - bra_s(kstate,mstate) * bra_s(bstate,istate) * w0_2                          &
-                              / ( energy(mstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
+                  sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
+                           - bra_s(kstate,pstate) * bra_s(bstate,istate) * w0_2                          &
+                              / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
                               / ( -pole_s + energy(istate,ispin) - energy(bstate,ispin) + ieta )
                 enddo
               enddo
@@ -678,24 +678,24 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
               !
               ! calculate only the diagonal !
-              do mstate=nsemin,nsemax
+              do pstate=nsemin,nsemax
 
-                !v_2 = eri_eigen(istate,cstate,ispin,bstate,mstate,ispin)
+                !v_2 = eri_eigen(istate,cstate,ispin,bstate,pstate,ispin)
                 ic(:) = eri_3center_eigen(:,istate,cstate,ispin)
-                bm(:) = eri_3center_eigen(:,bstate,mstate,ispin)
-                w0_2 = DOT_PRODUCT( ic(:) , MATMUL( chi_static(:,:) , bm(:) ) )
+                bp(:) = eri_3center_eigen(:,bstate,pstate,ispin)
+                w0_2 = DOT_PRODUCT( ic(:) , MATMUL( chi_static(:,:) , bp(:) ) )
 
                 do iomega=-se%nomega,se%nomega
-                  sigma_gwgw0g(iomega,mstate,ispin) = sigma_gwgw0g(iomega,mstate,ispin) &
-                           - bra_s(cstate,mstate) * bra_s(bstate,istate) * w0_2                          &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )    &
-                             / ( energy(mstate,ispin) + se%omega(iomega) &
+                  sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
+                           - bra_s(cstate,pstate) * bra_s(bstate,istate) * w0_2                          &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )    &
+                             / ( energy(pstate,ispin) + se%omega(iomega) &
                                  - energy(cstate,ispin) + energy(istate,ispin) - energy(bstate,ispin) + ieta )
 
 
-                  sigma_gwgw0g(iomega,mstate,ispin) = sigma_gwgw0g(iomega,mstate,ispin) &
-                           + bra_s(cstate,mstate) * bra_s(bstate,istate) * w0_2                          &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(bstate,ispin) &
+                  sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
+                           + bra_s(cstate,pstate) * bra_s(bstate,istate) * w0_2                          &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(bstate,ispin) &
                                  - energy(cstate,ispin) + energy(istate,ispin) + ieta )  &
                              / ( energy(bstate,ispin) - energy(istate,ispin) + pole_s - ieta )
 
@@ -716,25 +716,25 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
               !
               ! calculate only the diagonal !
-              do mstate=nsemin,nsemax
+              do pstate=nsemin,nsemax
 
-                !v_2 = eri_eigen(astate,kstate,ispin,jstate,mstate,ispin)
+                !v_2 = eri_eigen(astate,kstate,ispin,jstate,pstate,ispin)
                 ak(:) = eri_3center_eigen(:,astate,kstate,ispin)
-                jm(:) = eri_3center_eigen(:,jstate,mstate,ispin)
-                w0_2 = DOT_PRODUCT( ak(:) , MATMUL( chi_static(:,:) , jm(:) ) )
+                jp(:) = eri_3center_eigen(:,jstate,pstate,ispin)
+                w0_2 = DOT_PRODUCT( ak(:) , MATMUL( chi_static(:,:) , jp(:) ) )
 
                 do iomega=-se%nomega,se%nomega
-                  sigma_gwgw0g(iomega,mstate,ispin) = sigma_gwgw0g(iomega,mstate,ispin) &
-                           - bra_s(kstate,mstate) * bra_s(astate,jstate) * w0_2                          &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
+                  sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
+                           - bra_s(kstate,pstate) * bra_s(astate,jstate) * w0_2                          &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
                                 + energy(astate,ispin) - energy(jstate,ispin)  - ieta )  &
                              / ( energy(jstate,ispin) - energy(astate,ispin) - pole_s + ieta )
 
-                  sigma_gwgw0g(iomega,mstate,ispin) = sigma_gwgw0g(iomega,mstate,ispin) &
-                           + bra_s(kstate,mstate) * bra_s(astate,jstate) * w0_2                          &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
+                  sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
+                           + bra_s(kstate,pstate) * bra_s(astate,jstate) * w0_2                          &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
                                  + energy(astate,ispin) - energy(jstate,ispin)  - ieta )  &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )
 
 
                 enddo
@@ -754,17 +754,17 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
               !
               ! calculate only the diagonal !
-              do mstate=nsemin,nsemax
+              do pstate=nsemin,nsemax
 
-                !v_2 = eri_eigen(astate,cstate,ispin,jstate,mstate,ispin)
+                !v_2 = eri_eigen(astate,cstate,ispin,jstate,pstate,ispin)
                 ac(:) = eri_3center_eigen(:,astate,cstate,ispin)
-                jm(:) = eri_3center_eigen(:,jstate,mstate,ispin)
-                w0_2 = DOT_PRODUCT( ac(:) , MATMUL( chi_static(:,:) , jm(:) ) )
+                jp(:) = eri_3center_eigen(:,jstate,pstate,ispin)
+                w0_2 = DOT_PRODUCT( ac(:) , MATMUL( chi_static(:,:) , jp(:) ) )
 
                 do iomega=-se%nomega,se%nomega
-                  sigma_gwgw0g(iomega,mstate,ispin) = sigma_gwgw0g(iomega,mstate,ispin) &
-                           + bra_s(cstate,mstate) * bra_s(astate,jstate) * w0_2             &
-                             / ( energy(mstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )  &
+                  sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
+                           + bra_s(cstate,pstate) * bra_s(astate,jstate) * w0_2             &
+                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )  &
                              / ( pole_s + energy(astate,ispin) - energy(jstate,ispin) - ieta )
 
                 enddo

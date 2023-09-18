@@ -309,7 +309,6 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     ! GW+SOSEX
     !
     if( calc_type%selfenergy_approx == GWSOSEX &
-        .OR. calc_type%selfenergy_approx == GWSOX &
         .OR. calc_type%selfenergy_approx == GWGWG &
         .OR. calc_type%selfenergy_approx == GW0GW0G &
         .OR. calc_type%selfenergy_approx == GWGW0G &
