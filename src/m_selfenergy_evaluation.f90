@@ -109,6 +109,10 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='GW+FSOS'
     case(GWGWG)
       selfenergy_tag='GW+GWGWG'
+    case(GW0GW0G)
+      selfenergy_tag='GW+GW0GW0G'
+    case(GWGW0G)
+      selfenergy_tag='GW+GWGW0G'
     case default
       write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -304,8 +308,12 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     ! GW+SOSEX
     !
-    if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWSOX &
-        .OR. calc_type%selfenergy_approx == GWGWG ) then
+    if( calc_type%selfenergy_approx == GWSOSEX &
+        .OR. calc_type%selfenergy_approx == GWSOX &
+        .OR. calc_type%selfenergy_approx == GWGWG &
+        .OR. calc_type%selfenergy_approx == GW0GW0G &
+        .OR. calc_type%selfenergy_approx == GWGW0G &
+      ) then
       call wpol%init(nstate,occupation,0)
       call read_spectral_function(wpol,reading_status)
       ! If reading has failed, then do the calculation
@@ -329,7 +337,12 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       deallocate(energy_qp_new)
 
 
-      call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+      if( calc_type%selfenergy_approx == GW0GW0G .OR. calc_type%selfenergy_approx == GWGW0G ) then
+        call gwgw0g_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+      else
+        call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+      endif
+
       if( calc_type%selfenergy_approx == GWGWG ) then
         call gwgwg_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
       endif
