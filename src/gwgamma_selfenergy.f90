@@ -508,9 +508,9 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   allocate(sigma_gw0gw0g(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(sigma_gw(-se%nomega:se%nomega,nsemin:nsemax,nspin))
 
-  sigma_gwgw0g(:,:,:)  = 0.0_dp
-  sigma_gvgw0g(:,:,:)  = 0.0_dp
-  sigma_gw0gw0g(:,:,:) = 0.0_dp
+  sigma_gwgw0g(:,:,:)  = (0.0_dp, 0.0_dp)
+  sigma_gvgw0g(:,:,:)  = (0.0_dp, 0.0_dp)
+  sigma_gw0gw0g(:,:,:) = (0.0_dp, 0.0_dp)
 
 
   write(stdout,*) 'Calculate two static terms analog to SOX'
@@ -792,10 +792,20 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   sigma_gw(:,:,:) = se%sigma(:,:,:)
 
 
-  forall(astate=nsemin:nsemax)
-    se%sigma(:,astate,:) = sigma_gw(:,astate,:) + 2.0_dp * sigma_gvgw0g(:,astate,:) &
-                          - sigma_gw0gw0g(:,astate,:) + 2.0_dp * sigma_gwgw0g(:,astate,:)
-  end forall
+  select case(calc_type%selfenergy_approx)
+  case(GW0GW0G)
+    sigma_gvgw0g(:,:,:) = (0.0_dp, 0.0_dp)
+    forall(astate=nsemin:nsemax)
+      se%sigma(:,astate,:) = sigma_gw(:,astate,:) + sigma_gw0gw0g(:,astate,:)
+    end forall
+  case(GWGW0G)
+    forall(astate=nsemin:nsemax)
+      se%sigma(:,astate,:) = sigma_gw(:,astate,:) + 2.0_dp * sigma_gvgw0g(:,astate,:) &
+                           - sigma_gw0gw0g(:,astate,:) + 2.0_dp * sigma_gwgw0g(:,astate,:)
+    end forall
+  case default
+    call die('gwgw0g_selfenergy: calculation type unknown')
+  end select
 
 
   ! if( print_sigma_) then
