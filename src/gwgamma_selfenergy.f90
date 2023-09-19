@@ -791,7 +791,7 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   case(GW0GW0G)
     sigma_gvgw0g(:,:,:) = (0.0_dp, 0.0_dp)
     forall(pstate=nsemin:nsemax)
-      se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + sigma_gw0gw0g(:,pstate,:)*2.0d0
+      se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + sigma_gw0gw0g(:,pstate,:)
     end forall
     write(stdout,'(/,a)') ' GW0GW0G self-energy contributions at E0 (eV)'
   case(GWGW0G)
