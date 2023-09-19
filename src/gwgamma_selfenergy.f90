@@ -373,8 +373,8 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   sigma_gw(:,:,:) = se%sigma(:,:,:)
 
 
-  forall(astate=nsemin:nsemax)
-    se%sigma(:,astate,:) = sigma_gw(:,astate,:) + sigma_sox(:,astate,:) + sigma_sosex(:,astate,:)
+  forall(pstate=nsemin:nsemax)
+    se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + sigma_sox(:,pstate,:) + sigma_sosex(:,pstate,:)
   end forall
 
 
@@ -394,12 +394,12 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
        // '               SigC_SOSEX                 SigC_TOT'
   endif
 
-  do astate=nsemin,nsemax
-    write(stdout,'(i4,1x,20(1x,f12.6))') astate,energy(astate,:)*Ha_eV,          &
-                                         sigma_gw(0,astate,:)*Ha_eV,   &
-                                         sigma_sox(0,astate,:)*Ha_eV,  &
-                                         sigma_sosex(0,astate,:)*Ha_eV,&
-                                         se%sigma(0,astate,:)*Ha_eV
+  do pstate=nsemin,nsemax
+    write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy(pstate,:)*Ha_eV,          &
+                                         sigma_gw(0,pstate,:)*Ha_eV,   &
+                                         sigma_sox(0,pstate,:)*Ha_eV,  &
+                                         sigma_sosex(0,pstate,:)*Ha_eV,&
+                                         se%sigma(0,pstate,:)*Ha_eV
   enddo
 
 
@@ -462,7 +462,7 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   !=====
 
   call start_clock(timing_gwgamma_self)
-  if( .NOT. has_auxil_basis ) call die('gwgw0g_selfenergy: not implemented with auxiliary basi')
+  if( .NOT. has_auxil_basis ) call die('gwgw0g_selfenergy: not implemented without an auxiliary basis')
 
   write(stdout,*)
   select case(calc_type%selfenergy_approx)
@@ -482,7 +482,9 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
   call clean_allocate('chi static',chi_static,nauxil_global,nauxil_global)
   call wpol%evaluate((0.0_dp,0.0_dp),chi_static)
-  !chi_static(:,:) = 0.0d0   ! to recover GW+SOSEX
+
+  ! Turn dynamic into static for debug purposes
+  !chi_static(:,:) = 0.0d0   ! to recover GW+SOX
   do ibf_auxil=1,nauxil_global
     chi_static(ibf_auxil,ibf_auxil) = chi_static(ibf_auxil,ibf_auxil) + 1.0_dp
   enddo
@@ -518,14 +520,11 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   do ispin=1,nspin
 
     !==========================
-    do bstate=ncore_G+1,nvirtual_G-1
-      if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
+    do bstate=nhomo_G+1,nvirtual_G-1
       if( MODULO( bstate-(ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
 
-      do istate=ncore_G+1,nvirtual_G-1
-        if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
-        do kstate=ncore_G+1,nvirtual_G-1
-          if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
+      do istate=ncore_G+1,nhomo_G
+        do kstate=ncore_G+1,nhomo_G
 
           do pstate=nsemin,nsemax
 
@@ -560,14 +559,11 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
     enddo
 
     !==========================
-    do cstate=ncore_G+1,nvirtual_G-1
-      if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty) cycle
+    do cstate=nhomo_G+1,nvirtual_G-1
       if( MODULO( cstate-(ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
 
-      do jstate=ncore_G+1,nvirtual_G-1
-        if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
-        do astate=ncore_G+1,nvirtual_G-1
-          if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty) cycle
+      do jstate=ncore_G+1,nhomo_G
+        do astate=nhomo_G+1,nvirtual_G-1
 
           do pstate=nsemin,nsemax
 
@@ -633,8 +629,7 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
           ! Here just grab the precalculated value
           forall(istate=ncore_G+1:nvirtual_G-1, pstate=ncore_G+1:MAX(nhomo_G,nsemax))
             bra_s(istate,pstate) = wpol%residue_left(index_prodstate(istate,pstate) &
-                                                    + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1), &
-                                                   spole)
+                                     + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1),spole)
           end forall
         endif
 
@@ -795,14 +790,16 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   select case(calc_type%selfenergy_approx)
   case(GW0GW0G)
     sigma_gvgw0g(:,:,:) = (0.0_dp, 0.0_dp)
-    forall(astate=nsemin:nsemax)
-      se%sigma(:,astate,:) = sigma_gw(:,astate,:) + sigma_gw0gw0g(:,astate,:)
+    forall(pstate=nsemin:nsemax)
+      se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + sigma_gw0gw0g(:,pstate,:)*2.0d0
     end forall
+    write(stdout,'(/,a)') ' GW0GW0G self-energy contributions at E0 (eV)'
   case(GWGW0G)
-    forall(astate=nsemin:nsemax)
-      se%sigma(:,astate,:) = sigma_gw(:,astate,:) + 2.0_dp * sigma_gvgw0g(:,astate,:) &
-                           - sigma_gw0gw0g(:,astate,:) + 2.0_dp * sigma_gwgw0g(:,astate,:)
+    forall(pstate=nsemin:nsemax)
+      se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + 2.0_dp * sigma_gvgw0g(:,pstate,:) &
+                           - sigma_gw0gw0g(:,pstate,:) + 2.0_dp * sigma_gwgw0g(:,pstate,:)
     end forall
+    write(stdout,'(/,a)') ' GWGW0G self-energy contributions at E0 (eV)'
   case default
     call die('gwgw0g_selfenergy: calculation type unknown')
   end select
@@ -814,26 +811,29 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   ! endif
 
 
-  write(stdout,'(/,a)') ' GWGW0G self-energy contributions at E0 (eV)'
   if(nspin==1) then
     write(stdout,'(a)') &
-     '   #          E0             SigC_G0W0                 SigC_GvGW0G      ' &
-     // '       SigC_GW0GW0G          SigC_GWGW0G                SigC_TOT'
+     '   #       E0    SigC_G0W0    SigC_GvGW0G  ' &
+     // ' SigC_GW0GW0G   SigC_G(W-v)GW0G  SigC_G(W-W0)GW0G SigC_TOT'
   else
     write(stdout,'(a)') &
-      '   #                E0                              SigC_G0W0            SigC_SOX' &
-       // '               SigC_SOSEX                 SigC_TOT'
+     '   #       E0    SigC_G0W0    SigC_GvGW0G  ' &
+     // ' SigC_GW0GW0G   SigC_G(W-v)GW0G   SigC_TOT'
   endif
 
-  do astate=nsemin,nsemax
-    write(stdout,'(i4,1x,20(1x,f12.6))') astate,energy(astate,:)*Ha_eV,          &
-                                         sigma_gw(0,astate,:)*Ha_eV,   &
-                                         sigma_gvgw0g(0,astate,:)*Ha_eV,  &
-                                         sigma_gw0gw0g(0,astate,:)*Ha_eV,  &
-                                         sigma_gwgw0g(0,astate,:)*Ha_eV,&
-                                         se%sigma(0,astate,:)*Ha_eV
+  do pstate=nsemin,nsemax
+    write(stdout,'(i4,1x,*(1x,f12.6))') pstate,energy(pstate,:)*Ha_eV,          &
+                                         sigma_gw(0,pstate,:)%re*Ha_eV,   &
+                                         sigma_gvgw0g(0,pstate,:)%re*Ha_eV,  &
+                                         sigma_gw0gw0g(0,pstate,:)%re*Ha_eV,  &
+                                         sigma_gwgw0g(0,pstate,:)%re*Ha_eV,&
+     (sigma_gwgw0g(0,pstate,:)%re+sigma_gvgw0g(0,pstate,:)%re-sigma_gw0gw0g(0,pstate,:)%re)*Ha_eV,&
+                                         se%sigma(0,pstate,:)%re*Ha_eV
   enddo
 
+  do iomega=-se%nomega,se%nomega
+    write(stdout,'(2(2x,f14.6))') (energy(nsemin,1)+se%omega(iomega)%re)*Ha_eV,sigma_gw0gw0g(iomega,nsemin,1)%re*Ha_eV
+  enddo
 
 
 
