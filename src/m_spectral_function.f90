@@ -641,8 +641,8 @@ subroutine sf_evaluate_several_omegas(sf,omega_cmplx,chi)
         do jauxil=1,sf%nprodbasis
           chi(:,jauxil,iomega) = chi(:,jauxil,iomega) &
                  + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
-                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
-                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
+                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + ieta ) &
+                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - ieta ) )
         enddo
       enddo
     enddo
@@ -698,8 +698,8 @@ subroutine sf_evaluate_one_omega(sf,omega_cmplx,chi)
         do jauxil=1,sf%nprodbasis
           chi(:,jauxil) = chi(:,jauxil) &
                  + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
-                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + im * ieta ) &
-                              -1.0_dp / ( omega_cmplx + sf%pole(ipole) - im * ieta ) )
+                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + ieta ) &
+                              -1.0_dp / ( omega_cmplx + sf%pole(ipole) - ieta ) )
         enddo
       enddo
 
