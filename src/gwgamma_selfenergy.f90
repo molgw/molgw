@@ -879,7 +879,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   !=====
   integer                 :: iomega
   complex(dp),allocatable :: sigma_gw(:,:,:)
-  complex(dp),allocatable :: sigma_gwgwg(:,:,:)
+  complex(dp),allocatable :: sigma_gwgwg(:,:,:,:)
   integer                 :: astate,bstate,cstate
   integer                 :: istate,jstate,kstate,pqspin,spole,tpole
   integer                 :: pstate,qstate
@@ -909,10 +909,10 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
   !
   !
-  allocate(sigma_gwgwg(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+  allocate(sigma_gwgwg(-se%nomega:se%nomega,nsemin:nsemax,nspin,18))
   allocate(sigma_gw(-se%nomega:se%nomega,nsemin:nsemax,nspin))
 
-  sigma_gwgwg(:,:,:)  = 0.0_dp
+  sigma_gwgwg(:,:,:,:)  = 0.0_dp
 
 
   do pqspin=1,nspin
@@ -967,7 +967,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = omega + Omega_t + Omega_s - ej -3.0_dp*ieta
                   denom3 = omega + Omega_s - ek -2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,1) = sigma_gwgwg(iomega,pstate,pqspin,1) &
                             + num1 * num2 / denom1 / denom2 / denom3
                 enddo
               enddo
@@ -996,7 +996,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = omega - ei - ek + eb - 3.0_dp*ieta
                   denom3 = omega + Omega_s - ek - 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,2) = sigma_gwgwg(iomega,pstate,pqspin,2) &
                             - num1 * num2 / denom1 / denom2 / denom3
                 enddo
               enddo
@@ -1017,7 +1017,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = omega - ej + Omega_s + Omega_t - 3.0_dp*ieta
                   denom3 = ej - ec - Omega_t + 3.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,3) = sigma_gwgwg(iomega,pstate,pqspin,3) &
                             + num1 * num2 / denom1 / denom2 / denom3
 
                 enddo
@@ -1052,7 +1052,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom3 = omega - ea + ej - ec + 3.0_dp*ieta
                   denom4 = omega - ej + Omega_s + Omega_t - 3.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,4) = sigma_gwgwg(iomega,pstate,pqspin,4) &
                             + num1 * num2 * num3 / denom1 / denom2 / denom3 / denom4
 
                 enddo
@@ -1075,7 +1075,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = omega - ej + Omega_s + Omega_t -3.0_dp*ieta
                   denom3 = omega - ek + Omega_s -2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,5) = sigma_gwgwg(iomega,pstate,pqspin,5) &
                             + num1 * num2 / denom1 / denom2 / denom3
 
                 enddo
@@ -1099,10 +1099,10 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num2 = bra_s(qstate,kstate) * bra_s(astate,jstate)
 
                   denom1 = omega - Omega_t - ea + 2.0_dp*ieta
-                  denom2 = ea - ej + Omega_s -3.0_dp*ieta
+                  denom2 = ea - ej + Omega_s - 3.0_dp*ieta
                   denom3 = omega - ek + Omega_s -2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,6) = sigma_gwgwg(iomega,pstate,pqspin,6) &
                             + num1 * num2 / denom1 / denom2 / denom3
 
                 enddo
@@ -1124,7 +1124,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = ek - eb - Omega_t + 3.0_dp*ieta
                   denom3 = omega + Omega_s - ek - 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,7) = sigma_gwgwg(iomega,pstate,pqspin,7) &
                             + num1 * num2 / denom1 / denom2 / denom3
                 enddo
               enddo
@@ -1145,7 +1145,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = eb - ek + Omega_t - 3.0_dp*ieta
                   denom3 = omega + Omega_s - ek - 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,8) = sigma_gwgwg(iomega,pstate,pqspin,8) &
                             - num1 * num2 / denom1 / denom2 / denom3
                 enddo
               enddo
@@ -1167,7 +1167,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = ea - ej + Omega_s - 3.0_dp*ieta
                   denom3 = omega - ea  - ec + ej + 3.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,9) = sigma_gwgwg(iomega,pstate,pqspin,9) &
                             + num1 * num2 / denom1 / denom2 / denom3
 
                 enddo
@@ -1194,7 +1194,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = ej - ec - Omega_t + 3.0_dp*ieta
                   denom3 = omega - ec - Omega_s + 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,10) = sigma_gwgwg(iomega,pstate,pqspin,10) &
                             - num1 * num2 / denom1 / denom2 / denom3
 
                 enddo
@@ -1216,7 +1216,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = Omega_t - ej  + ec - 3.0_dp*ieta
                   denom3 = omega - ec - Omega_s + 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,11) = sigma_gwgwg(iomega,pstate,pqspin,11) &
                             + num1 * num2 / denom1 / denom2 / denom3
 
                 enddo
@@ -1245,7 +1245,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = ei - eb - Omega_s + 3.0_dp*ieta
                   denom3 = omega - ei - ek + eb - 3.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,12) = sigma_gwgwg(iomega,pstate,pqspin,12) &
                             + num1 * num2 / denom1 / denom2 / denom3
 
                 enddo
@@ -1267,7 +1267,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = ei - eb - Omega_s + 3.0_dp*ieta
                   denom3 = omega - Omega_s - ec + 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,13) = sigma_gwgwg(iomega,pstate,pqspin,13) &
                             + num1 * num2 / denom1 / denom2 / denom3
                 enddo
               enddo
@@ -1293,7 +1293,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = omega - ea - ec + ej + 3.0_dp*ieta
                   denom3 = omega - ec - Omega_s + 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,14) = sigma_gwgwg(iomega,pstate,pqspin,14) &
                             - num1 * num2 / denom1 / denom2 / denom3
 
                 enddo
@@ -1312,10 +1312,10 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num2 = bra_s(qstate,cstate) * bra_s(istate,bstate)
 
                   denom1 = Omega_s - ei + eb - 3.0_dp*ieta
-                  denom2 = omega - eb - Omega_s - Omega_t - 3.0_dp*ieta
+                  denom2 = omega - eb - Omega_s - Omega_t + 3.0_dp*ieta
                   denom3 = omega - Omega_s - ec + 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,15) = sigma_gwgwg(iomega,pstate,pqspin,15) &
                             + num1 * num2 / denom1 / denom2 / denom3
                 enddo
               enddo
@@ -1336,8 +1336,8 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom2 = omega - eb - Omega_s - Omega_t + 3.0_dp*ieta
                   denom3 = omega - Omega_s - ec + 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
-                            - num1 * num2 / denom1 / denom2 / denom3
+                  sigma_gwgwg(iomega,pstate,pqspin,16) = sigma_gwgwg(iomega,pstate,pqspin,16) &
+                            + num1 * num2 / denom1 / denom2 / denom3
                 enddo
               enddo
             enddo
@@ -1370,7 +1370,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom3 = omega - ei - ek + eb - 3.0_dp*ieta
                   denom4 = omega - eb - Omega_s - Omega_t + 3.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,17) = sigma_gwgwg(iomega,pstate,pqspin,17) &
                             + num1 * num2 * num3 / denom1 / denom2 / denom3 / denom4
 
 
@@ -1389,11 +1389,11 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,astate) * bra_t(bstate,kstate)
                   num2 = bra_s(qstate,kstate) * bra_s(astate,bstate)
 
-                  denom1 = omega - Omega_t - ea + 3.0_dp*ieta
+                  denom1 = omega - Omega_t - ea + 2.0_dp*ieta
                   denom2 = omega - eb - Omega_s - Omega_t + 3.0_dp*ieta
-                  denom3 = ek - eb  - Omega_t  + 3.0_dp*ieta
+                  denom3 = Omega_t + eb - ek - 3.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
+                  sigma_gwgwg(iomega,pstate,pqspin,18) = sigma_gwgwg(iomega,pstate,pqspin,18) &
                             + num1 * num2 / denom1 / denom2 / denom3
 
                 enddo
@@ -1422,7 +1422,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
 
   forall(pstate=nsemin:nsemax)
-    se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + sigma_gwgwg(:,pstate,:)
+    se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + SUM(sigma_gwgwg(:,pstate,:,:),DIM=3)
   end forall
 
 
@@ -1432,20 +1432,21 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
 
   write(stdout,'(/,a)') ' GWGWG self-energy contributions at E0 (eV)'
-  if(nspin==1) then
-    write(stdout,'(a)') &
-     '   #          E0             SigC_GW+SOSEX2         SigC_GWGWG                 SigC_TOT'
-  else
-    write(stdout,'(a)') &
-      '   #                E0                              SigC_GW+SOSEX2      ' &
-       // '               SigC_GWGWG                 SigC_TOT'
-  endif
+  write(stdout,'(a)') &
+     '   #            SigC_GWGWG (18 terms)        SigC_GWGWG TOT'
 
   do pstate=nsemin,nsemax
-    write(stdout,'(i4,1x,20(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
-                                         sigma_gw(0,pstate,:)*Ha_eV,   &
-                                         sigma_gwgwg(0,pstate,:)*Ha_eV,&
-                                         se%sigma(0,pstate,:)*Ha_eV
+    write(stdout,'(i4,1x,*(1x,f12.6))') pstate, &
+                                        sigma_gwgwg(0,pstate,:,:)%re*Ha_eV,&
+                                        SUM(sigma_gwgwg(0,pstate,:,:)%re,DIM=2)*Ha_eV
+  enddo
+  write(stdout,'(a)') &
+     '   #          E0             SigC_GW       SigC_GWGWG            SigC_TOT'
+  do pstate=nsemin,nsemax
+    write(stdout,'(i4,1x,*(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
+                                        sigma_gw(0,pstate,:)%re*Ha_eV,   &
+                                        SUM(sigma_gwgwg(0,pstate,:,:)%re,DIM=2)*Ha_eV,&
+                                        se%sigma(0,pstate,:)%re*Ha_eV
   enddo
 
 

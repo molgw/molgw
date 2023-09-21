@@ -1355,11 +1355,17 @@ subroutine gwgwg_selfenergy_real_grid(basis,energy,occupation,c_matrix,se)
       do pstate=nsemin,nsemax
         qstate=pstate
         do ustate=ncore_G+1,nvirtual_G-1
+        !do ustate=ncore_G+1,nhomo_G
+        !do ustate=nhomo_G+1,nvirtual_G-1
           ieta_u = (0.0,1.0_dp) * SIGN(eta, energy(ustate,pqspin) - mu)
           if( iomegap==0 .AND. iomegapp==0) write(*,*) ustate,mu,energy(ustate,pqspin),ieta_u
           do vstate=ncore_G+1,nvirtual_G-1
+          !do vstate=ncore_G+1,nhomo_G
+          !do vstate=nhomo_G+1,nvirtual_G-1
             ieta_v = (0.0,1.0_dp) * SIGN(eta, energy(vstate,pqspin) - mu)
             do wstate=ncore_G+1,nvirtual_G-1
+            !do wstate=ncore_G+1,nhomo_G
+            !do wstate=nhomo_G+1,nvirtual_G-1
               ieta_w = (0.0,1.0_dp) * SIGN(eta, energy(wstate,pqspin) - mu)
 
               qw(:) = eri_3center_eigen(:,qstate,wstate,pqspin)
