@@ -1035,17 +1035,6 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,astate) * bra_t(jstate,cstate)
                   num2 = bra_s(qstate,cstate) * bra_s(astate,jstate)
 
-!                  denom1 = omega - ea + ej - ec + 3.0_dp*ieta
-!                  denom2 = omega - ec + Omega_s               ! ill term
-!                  denom3 = ej - ec - Omega_t + 3.0_dp*ieta
-!                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
-!                            + num1 * num2 / denom1 / denom2 / denom3
-!                  denom1 = ej - Omega_s - ea + 3.0_dp*ieta
-!                  denom2 = omega - ec + Omega_s               ! ill term
-!                  denom3 = omega - ej + Omega_s + Omega_t - 3.0_dp*ieta
-!                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
-!                            + num1 * num2 / denom1 / denom2 / denom3
-
                   num3   = - ( ea + ec - 2.0_dp * ej + Omega_s + Omega_t - 6.0_dp * ieta )
                   denom1 = ej - ea - Omega_s + 3.0_dp*ieta
                   denom2 = ej - ec - Omega_t + 3.0_dp*ieta
@@ -1060,27 +1049,27 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             enddo
 
 
-            ! emp R occ R occ
-            !  a  t  j  s  k
-            do astate=nhomo_G+1,nvirtual_G-1
-              ea = energy(astate,pqspin)
-              do jstate=ncore_G+1,nhomo_G
-                ej = energy(jstate,pqspin)
-                do kstate=ncore_G+1,nhomo_G
-                  ek = energy(kstate,pqspin)
-                  num1 = bra_t(pstate,astate) * bra_t(jstate,kstate)
-                  num2 = bra_s(qstate,kstate) * bra_s(astate,jstate)
+            !! emp R occ R occ
+            !!  a  t  j  s  k
+            !do astate=nhomo_G+1,nvirtual_G-1
+            !  ea = energy(astate,pqspin)
+            !  do jstate=ncore_G+1,nhomo_G
+            !    ej = energy(jstate,pqspin)
+            !    do kstate=ncore_G+1,nhomo_G
+            !      ek = energy(kstate,pqspin)
+            !      num1 = bra_t(pstate,astate) * bra_t(jstate,kstate)
+            !      num2 = bra_s(qstate,kstate) * bra_s(astate,jstate)
 
-                  denom1 = ej - Omega_s - ea + 3.0_dp*ieta
-                  denom2 = omega - ej + Omega_s + Omega_t -3.0_dp*ieta
-                  denom3 = omega - ek + Omega_s -2.0_dp*ieta
+            !      denom1 = ej - Omega_s - ea + 3.0_dp*ieta
+            !      denom2 = omega - ej + Omega_s + Omega_t -3.0_dp*ieta
+            !      denom3 = omega - ek + Omega_s -2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin,5) = sigma_gwgwg(iomega,pstate,pqspin,5) &
-                            + num1 * num2 / denom1 / denom2 / denom3
+            !      sigma_gwgwg(iomega,pstate,pqspin,5) = sigma_gwgwg(iomega,pstate,pqspin,5) &
+            !                + num1 * num2 / denom1 / denom2 / denom3
 
-                enddo
-              enddo
-            enddo
+            !    enddo
+            !  enddo
+            !enddo
 
             !==========================================================
             ! t: ANTIRESONANT
@@ -1179,49 +1168,49 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             ! s: ANTIRESONANT
             !==========================================================
 
-            ! emp R occ AR emp
-            !  a  t  j  s  c
-            do astate=nhomo_G+1,nvirtual_G-1
-              ea = energy(astate,pqspin)
-              do jstate=ncore_G+1,nhomo_G
-                ej = energy(jstate,pqspin)
-                do cstate=nhomo_G+1,nvirtual_G-1
-                  ec = energy(cstate,pqspin)
-                  num1 = bra_t(pstate,astate) * bra_t(jstate,cstate)
-                  num2 = bra_s(qstate,cstate) * bra_s(astate,jstate)
+            !! emp R occ AR emp
+            !!  a  t  j  s  c
+            !do astate=nhomo_G+1,nvirtual_G-1
+            !  ea = energy(astate,pqspin)
+            !  do jstate=ncore_G+1,nhomo_G
+            !    ej = energy(jstate,pqspin)
+            !    do cstate=nhomo_G+1,nvirtual_G-1
+            !      ec = energy(cstate,pqspin)
+            !      num1 = bra_t(pstate,astate) * bra_t(jstate,cstate)
+            !      num2 = bra_s(qstate,cstate) * bra_s(astate,jstate)
 
-                  denom1 = omega - ea + ej - ec + 3.0_dp*ieta
-                  denom2 = ej - ec - Omega_t + 3.0_dp*ieta
-                  denom3 = omega - ec - Omega_s + 2.0_dp*ieta
+            !      denom1 = omega - ea + ej - ec + 3.0_dp*ieta
+            !      denom2 = ej - ec - Omega_t + 3.0_dp*ieta
+            !      denom3 = omega - ec - Omega_s + 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin,10) = sigma_gwgwg(iomega,pstate,pqspin,10) &
-                            - num1 * num2 / denom1 / denom2 / denom3
+            !      sigma_gwgwg(iomega,pstate,pqspin,10) = sigma_gwgwg(iomega,pstate,pqspin,10) &
+            !                - num1 * num2 / denom1 / denom2 / denom3
 
-                enddo
-              enddo
-            enddo
+            !    enddo
+            !  enddo
+            !enddo
 
-            ! occ R occ AR emp
-            !  i  t  j   s  c
-            do istate=ncore_G+1,nhomo_G
-              ei = energy(istate,pqspin)
-              do jstate=ncore_G+1,nhomo_G
-                ej = energy(jstate,pqspin)
-                do cstate=nhomo_G+1,nvirtual_G-1
-                  ec = energy(cstate,pqspin)
-                  num1 = bra_t(pstate,istate) * bra_t(jstate,cstate)
-                  num2 = bra_s(qstate,cstate) * bra_s(istate,jstate)
+            !! occ R occ AR emp
+            !!  i  t  j   s  c
+            !do istate=ncore_G+1,nhomo_G
+            !  ei = energy(istate,pqspin)
+            !  do jstate=ncore_G+1,nhomo_G
+            !    ej = energy(jstate,pqspin)
+            !    do cstate=nhomo_G+1,nvirtual_G-1
+            !      ec = energy(cstate,pqspin)
+            !      num1 = bra_t(pstate,istate) * bra_t(jstate,cstate)
+            !      num2 = bra_s(qstate,cstate) * bra_s(istate,jstate)
 
-                  denom1 = omega - ei + Omega_t - 2.0_dp*ieta
-                  denom2 = Omega_t - ej  + ec - 3.0_dp*ieta
-                  denom3 = omega - ec - Omega_s + 2.0_dp*ieta
+            !      denom1 = omega - ei + Omega_t - 2.0_dp*ieta
+            !      denom2 = Omega_t - ej  + ec - 3.0_dp*ieta
+            !      denom3 = omega - ec - Omega_s + 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin,11) = sigma_gwgwg(iomega,pstate,pqspin,11) &
-                            + num1 * num2 / denom1 / denom2 / denom3
+            !      sigma_gwgwg(iomega,pstate,pqspin,11) = sigma_gwgwg(iomega,pstate,pqspin,11) &
+            !                + num1 * num2 / denom1 / denom2 / denom3
 
-                enddo
-              enddo
-            enddo
+            !    enddo
+            !  enddo
+            !enddo
 
             ! occ R occ AR occ
             !  i  t  j   s  j
@@ -1230,48 +1219,48 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             !  a  t  j   s  j
             !  -> 0
 
-            ! occ R emp AR occ
-            !  i  t  b   s  k
-            do istate=ncore_G+1,nhomo_G
-              ei = energy(istate,pqspin)
-              do bstate=nhomo_G+1,nvirtual_G-1
-                eb = energy(bstate,pqspin)
-                do kstate=ncore_G+1,nhomo_G
-                  ek = energy(kstate,pqspin)
-                  num1 = bra_t(pstate,istate) * bra_t(bstate,kstate)
-                  num2 = bra_s(qstate,kstate) * bra_s(istate,bstate)
+            !! occ R emp AR occ
+            !!  i  t  b   s  k
+            !do istate=ncore_G+1,nhomo_G
+            !  ei = energy(istate,pqspin)
+            !  do bstate=nhomo_G+1,nvirtual_G-1
+            !    eb = energy(bstate,pqspin)
+            !    do kstate=ncore_G+1,nhomo_G
+            !      ek = energy(kstate,pqspin)
+            !      num1 = bra_t(pstate,istate) * bra_t(bstate,kstate)
+            !      num2 = bra_s(qstate,kstate) * bra_s(istate,bstate)
 
-                  denom1 = omega - ei + Omega_t - 2.0_dp*ieta
-                  denom2 = ei - eb - Omega_s + 3.0_dp*ieta
-                  denom3 = omega - ei - ek + eb - 3.0_dp*ieta
+            !      denom1 = omega - ei + Omega_t - 2.0_dp*ieta
+            !      denom2 = ei - eb - Omega_s + 3.0_dp*ieta
+            !      denom3 = omega - ei - ek + eb - 3.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin,12) = sigma_gwgwg(iomega,pstate,pqspin,12) &
-                            + num1 * num2 / denom1 / denom2 / denom3
+            !      sigma_gwgwg(iomega,pstate,pqspin,12) = sigma_gwgwg(iomega,pstate,pqspin,12) &
+            !                + num1 * num2 / denom1 / denom2 / denom3
 
-                enddo
-              enddo
-            enddo
+            !    enddo
+            !  enddo
+            !enddo
 
-            ! occ R emp AR emp
-            !  i  t  b   s  c
-            do istate=ncore_G+1,nhomo_G
-              ei = energy(istate,pqspin)
-              do bstate=nhomo_G+1,nvirtual_G-1
-                eb = energy(bstate,pqspin)
-                do cstate=nhomo_G+1,nvirtual_G-1
-                  ec = energy(cstate,pqspin)
-                  num1 = bra_t(pstate,istate) * bra_t(bstate,cstate)
-                  num2 = bra_s(qstate,cstate) * bra_s(istate,bstate)
+            !! occ R emp AR emp
+            !!  i  t  b   s  c
+            !do istate=ncore_G+1,nhomo_G
+            !  ei = energy(istate,pqspin)
+            !  do bstate=nhomo_G+1,nvirtual_G-1
+            !    eb = energy(bstate,pqspin)
+            !    do cstate=nhomo_G+1,nvirtual_G-1
+            !      ec = energy(cstate,pqspin)
+            !      num1 = bra_t(pstate,istate) * bra_t(bstate,cstate)
+            !      num2 = bra_s(qstate,cstate) * bra_s(istate,bstate)
 
-                  denom1 = omega - ei + Omega_t - 2.0_dp*ieta
-                  denom2 = ei - eb - Omega_s + 3.0_dp*ieta
-                  denom3 = omega - Omega_s - ec + 2.0_dp*ieta
+            !      denom1 = omega - ei + Omega_t - 2.0_dp*ieta
+            !      denom2 = ei - eb - Omega_s + 3.0_dp*ieta
+            !      denom3 = omega - Omega_s - ec + 2.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin,13) = sigma_gwgwg(iomega,pstate,pqspin,13) &
-                            + num1 * num2 / denom1 / denom2 / denom3
-                enddo
-              enddo
-            enddo
+            !      sigma_gwgwg(iomega,pstate,pqspin,13) = sigma_gwgwg(iomega,pstate,pqspin,13) &
+            !                + num1 * num2 / denom1 / denom2 / denom3
+            !    enddo
+            !  enddo
+            !enddo
 
             !==========================================================
             ! t: ANTIRESONANT
@@ -1353,17 +1342,6 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,istate) * bra_t(bstate,kstate)
                   num2 = bra_s(qstate,kstate) * bra_s(istate,bstate)
 
-                  !denom1 = Omega_s - ei + eb - 3.0_dp*ieta
-                  !denom2 = omega - eb - Omega_s - Omega_t + 3.0_dp*ieta
-                  !denom3 = omega - Omega_s - ek    ! ill term
-                  !sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
-                  !          + num1 * num2 / denom1 / denom2 / denom3
-                  !denom1 = omega - ei - ek + eb - 3.0_dp*ieta
-                  !denom2 = eb - ek + Omega_t - 3.0_dp*ieta
-                  !denom3 = omega - Omega_s - ek    ! ill term
-                  !sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
-                  !          + num1 * num2 / denom1 / denom2 / denom3
-
                   num3   = (2.0_dp * eb - ei - ek + Omega_s + Omega_t - 6.0_dp * ieta )
                   denom1 = eb - ei + Omega_s - 3.0_dp*ieta
                   denom2 = eb - ek + Omega_t - 3.0_dp*ieta
@@ -1378,27 +1356,27 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
               enddo
             enddo
 
-            ! emp AR emp AR occ
-            !  a   t  b  s  k
-            do astate=nhomo_G+1,nvirtual_G-1
-              ea = energy(astate,pqspin)
-              do bstate=nhomo_G+1,nvirtual_G-1
-                eb = energy(bstate,pqspin)
-                do kstate=ncore_G+1,nhomo_G
-                  ek = energy(kstate,pqspin)
-                  num1 = bra_t(pstate,astate) * bra_t(bstate,kstate)
-                  num2 = bra_s(qstate,kstate) * bra_s(astate,bstate)
+            !! emp AR emp AR occ
+            !!  a   t  b  s  k
+            !do astate=nhomo_G+1,nvirtual_G-1
+            !  ea = energy(astate,pqspin)
+            !  do bstate=nhomo_G+1,nvirtual_G-1
+            !    eb = energy(bstate,pqspin)
+            !    do kstate=ncore_G+1,nhomo_G
+            !      ek = energy(kstate,pqspin)
+            !      num1 = bra_t(pstate,astate) * bra_t(bstate,kstate)
+            !      num2 = bra_s(qstate,kstate) * bra_s(astate,bstate)
 
-                  denom1 = omega - Omega_t - ea + 2.0_dp*ieta
-                  denom2 = omega - eb - Omega_s - Omega_t + 3.0_dp*ieta
-                  denom3 = Omega_t + eb - ek - 3.0_dp*ieta
+            !      denom1 = omega - Omega_t - ea + 2.0_dp*ieta
+            !      denom2 = omega - eb - Omega_s - Omega_t + 3.0_dp*ieta
+            !      denom3 = Omega_t + eb - ek - 3.0_dp*ieta
 
-                  sigma_gwgwg(iomega,pstate,pqspin,18) = sigma_gwgwg(iomega,pstate,pqspin,18) &
-                            + num1 * num2 / denom1 / denom2 / denom3
+            !      sigma_gwgwg(iomega,pstate,pqspin,18) = sigma_gwgwg(iomega,pstate,pqspin,18) &
+            !                + num1 * num2 / denom1 / denom2 / denom3
 
-                enddo
-              enddo
-            enddo
+            !    enddo
+            !  enddo
+            !enddo
 
 
 
@@ -1411,6 +1389,14 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   enddo !pqspin
 
   call ortho%sum(sigma_gwgwg)
+
+  ! Recover symmetric terms that were skipped
+  sigma_gwgwg(:,:,:, 5) = sigma_gwgwg(:,:,:, 3)
+  sigma_gwgwg(:,:,:,10) = sigma_gwgwg(:,:,:, 9)
+  sigma_gwgwg(:,:,:,11) = sigma_gwgwg(:,:,:, 6)
+  sigma_gwgwg(:,:,:,12) = sigma_gwgwg(:,:,:, 8)
+  sigma_gwgwg(:,:,:,13) = sigma_gwgwg(:,:,:, 7)
+  sigma_gwgwg(:,:,:,18) = sigma_gwgwg(:,:,:,15)
 
 
   write(stdout,'(a)') ' Sigma_c(omega) is calculated'
