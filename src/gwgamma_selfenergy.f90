@@ -127,7 +127,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             do iomega=-se%nomega,se%nomega
               sigma_sox(iomega,pstate,ispin) = sigma_sox(iomega,pstate,ispin) &
                   - vcoul1 * vcoul2            &
-                    / ( energy(pstate,ispin) + se%omega(iomega) &
+                    / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
             enddo
           enddo
@@ -169,7 +169,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             do iomega=-se%nomega,se%nomega
               sigma_sox(iomega,pstate,ispin) = sigma_sox(iomega,pstate,ispin) &
                   - vcoul1 * vcoul2            &
-                    / ( energy(pstate,ispin) + se%omega(iomega) &
+                    / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
             enddo
           enddo
@@ -236,7 +236,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                 do iomega=-se%nomega,se%nomega
                   sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
                            - bra_s(kstate,pstate) * bra_s(bstate,istate) * vcoul                          &
-                              / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
+                              / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
                               / ( -pole_s + energy(istate,ispin) - energy(bstate,ispin) + ieta )
                 enddo
               enddo
@@ -267,14 +267,14 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                 do iomega=-se%nomega,se%nomega
                   sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
                            - bra_s(cstate,pstate) * bra_s(bstate,istate) * vcoul                          &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )    &
-                             / ( energy(pstate,ispin) + se%omega(iomega) &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )    &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                                  - energy(cstate,ispin) + energy(istate,ispin) - energy(bstate,ispin) + ieta )
 
 
                   sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
                            + bra_s(cstate,pstate) * bra_s(bstate,istate) * vcoul                          &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(bstate,ispin) &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(bstate,ispin) &
                                  - energy(cstate,ispin) + energy(istate,ispin) + ieta )  &
                              / ( energy(bstate,ispin) - energy(istate,ispin) + pole_s - ieta )
 
@@ -307,15 +307,15 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                 do iomega=-se%nomega,se%nomega
                   sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
                            - bra_s(kstate,pstate) * bra_s(astate,jstate) * vcoul                          &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
                                 + energy(astate,ispin) - energy(jstate,ispin)  - ieta )  &
                              / ( energy(jstate,ispin) - energy(astate,ispin) - pole_s + ieta )
 
                   sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
                            + bra_s(kstate,pstate) * bra_s(astate,jstate) * vcoul                          &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
                                  + energy(astate,ispin) - energy(jstate,ispin)  - ieta )  &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )
 
 
                 enddo
@@ -347,7 +347,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                 do iomega=-se%nomega,se%nomega
                   sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
                            + bra_s(cstate,pstate) * bra_s(astate,jstate) * vcoul                          &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )  &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )  &
                              / ( pole_s + energy(astate,ispin) - energy(jstate,ispin) - ieta )
 
                 enddo
@@ -399,7 +399,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   endif
 
   do pstate=nsemin,nsemax
-    write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy(pstate,:)*Ha_eV,          &
+    write(stdout,'(i4,1x,20(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
                                          sigma_gw(0,pstate,:)*Ha_eV,   &
                                          sigma_sox(0,pstate,:)*Ha_eV,  &
                                          sigma_sosex(0,pstate,:)*Ha_eV,&
@@ -451,6 +451,8 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   complex(dp),allocatable :: sigma_gw(:,:,:)
   complex(dp),allocatable :: sigma_gwgw0g(:,:,:)
   complex(dp),allocatable :: sigma_gw0gw0g(:,:,:)
+  complex(dp),allocatable :: sigma_gw0gw0g_occ(:,:,:)
+  complex(dp),allocatable :: sigma_gw0gw0g_vir(:,:,:)
   complex(dp),allocatable :: sigma_gvgw0g(:,:,:)
   integer                 :: astate,bstate,cstate
   integer                 :: istate,jstate,kstate,ispin,spole
@@ -513,11 +515,15 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   allocate(sigma_gwgw0g(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(sigma_gvgw0g(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(sigma_gw0gw0g(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+  allocate(sigma_gw0gw0g_occ(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+  allocate(sigma_gw0gw0g_vir(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(sigma_gw(-se%nomega:se%nomega,nsemin:nsemax,nspin))
 
   sigma_gwgw0g(:,:,:)  = (0.0_dp, 0.0_dp)
   sigma_gvgw0g(:,:,:)  = (0.0_dp, 0.0_dp)
   sigma_gw0gw0g(:,:,:) = (0.0_dp, 0.0_dp)
+  sigma_gw0gw0g_occ(:,:,:) = (0.0_dp, 0.0_dp)
+  sigma_gw0gw0g_vir(:,:,:) = (0.0_dp, 0.0_dp)
 
 
   write(stdout,*) 'Calculate two static terms analog to SOX'
@@ -550,11 +556,11 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             do iomega=-se%nomega,se%nomega
               sigma_gvgw0g(iomega,pstate,ispin) = sigma_gvgw0g(iomega,pstate,ispin) &
                   - v_1 * w0_2            &
-                    / ( energy(pstate,ispin) + se%omega(iomega) &
+                    / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
-              sigma_gw0gw0g(iomega,pstate,ispin) = sigma_gw0gw0g(iomega,pstate,ispin) &
+              sigma_gw0gw0g_occ(iomega,pstate,ispin) = sigma_gw0gw0g_occ(iomega,pstate,ispin) &
                   - w0_1 * w0_2            &
-                    / ( energy(pstate,ispin) + se%omega(iomega) &
+                    / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
             enddo
           enddo
@@ -589,11 +595,11 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             do iomega=-se%nomega,se%nomega
               sigma_gvgw0g(iomega,pstate,ispin) = sigma_gvgw0g(iomega,pstate,ispin) &
                   - v_1 * w0_2            &
-                    / ( energy(pstate,ispin) + se%omega(iomega) &
+                    / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
-              sigma_gw0gw0g(iomega,pstate,ispin) = sigma_gw0gw0g(iomega,pstate,ispin) &
+              sigma_gw0gw0g_vir(iomega,pstate,ispin) = sigma_gw0gw0g_vir(iomega,pstate,ispin) &
                   - w0_1 * w0_2            &
-                    / ( energy(pstate,ispin) + se%omega(iomega) &
+                    / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
             enddo
           enddo
@@ -607,7 +613,9 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
 
   call ortho%sum(sigma_gvgw0g)
-  call ortho%sum(sigma_gw0gw0g)
+  call ortho%sum(sigma_gw0gw0g_occ)
+  call ortho%sum(sigma_gw0gw0g_vir)
+  sigma_gw0gw0g(:,:,:) = sigma_gw0gw0g_occ(:,:,:) + sigma_gw0gw0g_vir(:,:,:)
 
 
   if( calc_type%selfenergy_approx == GWGW0G ) then
@@ -659,7 +667,7 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                 do iomega=-se%nomega,se%nomega
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
                            - bra_s(kstate,pstate) * bra_s(bstate,istate) * w0_2                          &
-                              / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
+                              / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
                               / ( -pole_s + energy(istate,ispin) - energy(bstate,ispin) + ieta )
                 enddo
               enddo
@@ -688,14 +696,14 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                 do iomega=-se%nomega,se%nomega
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
                            - bra_s(cstate,pstate) * bra_s(bstate,istate) * w0_2                          &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )    &
-                             / ( energy(pstate,ispin) + se%omega(iomega) &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )    &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                                  - energy(cstate,ispin) + energy(istate,ispin) - energy(bstate,ispin) + ieta )
 
 
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
                            + bra_s(cstate,pstate) * bra_s(bstate,istate) * w0_2                          &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(bstate,ispin) &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(bstate,ispin) &
                                  - energy(cstate,ispin) + energy(istate,ispin) + ieta )  &
                              / ( energy(bstate,ispin) - energy(istate,ispin) + pole_s - ieta )
 
@@ -726,15 +734,15 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                 do iomega=-se%nomega,se%nomega
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
                            - bra_s(kstate,pstate) * bra_s(astate,jstate) * w0_2                          &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
                                 + energy(astate,ispin) - energy(jstate,ispin)  - ieta )  &
                              / ( energy(jstate,ispin) - energy(astate,ispin) - pole_s + ieta )
 
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
                            + bra_s(kstate,pstate) * bra_s(astate,jstate) * w0_2                          &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) &
                                  + energy(astate,ispin) - energy(jstate,ispin)  - ieta )  &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )
 
 
                 enddo
@@ -764,7 +772,7 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                 do iomega=-se%nomega,se%nomega
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
                            + bra_s(cstate,pstate) * bra_s(astate,jstate) * w0_2             &
-                             / ( energy(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )  &
+                             / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(cstate,ispin) - pole_s + ieta )  &
                              / ( pole_s + energy(astate,ispin) - energy(jstate,ispin) - ieta )
 
                 enddo
@@ -796,7 +804,7 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   case(GW0GW0G)
     sigma_gvgw0g(:,:,:) = (0.0_dp, 0.0_dp)
     forall(pstate=nsemin:nsemax)
-      se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + sigma_gw0gw0g(:,pstate,:)
+      se%sigma(:,pstate,:) = sigma_gw0gw0g(:,pstate,:)
     end forall
     write(stdout,'(/,a)') ' GW0GW0G self-energy contributions at E0 (eV)'
   case(GWGW0G)
@@ -816,20 +824,14 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   ! endif
 
 
-  if(nspin==1) then
-    write(stdout,'(a)') &
-     '   #       E0    SigC_G0W0    SigC_GvGW0G  ' &
-     // ' SigC_GW0GW0G   SigC_G(W-v)GW0G  SigC_G(W-W0)GW0G SigC_TOT'
-  else
-    write(stdout,'(a)') &
-     '   #       E0    SigC_G0W0    SigC_GvGW0G  ' &
-     // ' SigC_GW0GW0G   SigC_G(W-v)GW0G   SigC_TOT'
-  endif
+  write(stdout,'(a)') &
+   '   #       E0          GvGW0G    GW0GW0G_occ  GW0GW0G_vir     GW0GW0G     G(W-v)GW0G    G(W-W0)GW0G    Total'
 
   do pstate=nsemin,nsemax
-    write(stdout,'(i4,1x,*(1x,f12.6))') pstate,energy(pstate,:)*Ha_eV,          &
-                                         sigma_gw(0,pstate,:)%re*Ha_eV,   &
+    write(stdout,'(i4,1x,*(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
                                          sigma_gvgw0g(0,pstate,:)%re*Ha_eV,  &
+                                         sigma_gw0gw0g_occ(0,pstate,:)%re*Ha_eV,   &
+                                         sigma_gw0gw0g_vir(0,pstate,:)%re*Ha_eV,   &
                                          sigma_gw0gw0g(0,pstate,:)%re*Ha_eV,  &
                                          sigma_gwgw0g(0,pstate,:)%re*Ha_eV,&
      (sigma_gwgw0g(0,pstate,:)%re+sigma_gvgw0g(0,pstate,:)%re-sigma_gw0gw0g(0,pstate,:)%re)*Ha_eV,&
@@ -943,7 +945,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
         do pstate=nsemin,nsemax
           qstate=pstate
           do iomega=-se%nomega,se%nomega
-            omega = energy(pstate,pqspin) + se%omega(iomega)
+            omega = se%energy0(pstate,pqspin) + se%omega(iomega)
 
             !==========================================================
             ! t: RESONANT
@@ -1440,7 +1442,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   endif
 
   do pstate=nsemin,nsemax
-    write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy(pstate,:)*Ha_eV,          &
+    write(stdout,'(i4,1x,20(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
                                          sigma_gw(0,pstate,:)*Ha_eV,   &
                                          sigma_gwgwg(0,pstate,:)*Ha_eV,&
                                          se%sigma(0,pstate,:)*Ha_eV

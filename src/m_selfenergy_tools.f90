@@ -579,7 +579,9 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
       call die('init_selfenergy_grid: efermi needs to be in the HOMO-LUMO gap')
     endif
   else
-    efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G,:)) + MINVAL(energy0(nhomo_G+1,:)) )
+    if( nsemin <= nhomo_G .AND. nsemax >= nhomo_G+1 ) then
+      efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G,:)) + MINVAL(energy0(nhomo_G+1,:)) )
+    endif
   endif
 
   select case(selfenergy_technique)

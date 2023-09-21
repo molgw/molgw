@@ -25,6 +25,7 @@ module m_selfenergy_evaluation
   use m_gw_selfenergy_grid
   use m_linear_response
 
+  logical,parameter :: arno_approximation = .FALSE.
 
 contains
 
@@ -41,7 +42,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
   type(energy_contributions),intent(inout) :: en_mbpt
   !=====
   integer                 :: nstate
-  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3
+  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gwgw0g
   logical                 :: enforce_rpa
   character(len=36)       :: selfenergy_tag
   integer                 :: reading_status
@@ -333,12 +334,25 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       deallocate(zz)
       deallocate(energy_qp_z)
       call output_homolumo('GW',occupation,energy_qp_new,nsemin,nsemax)
-      deallocate(energy_qp_new)
 
 
       if( calc_type%selfenergy_approx == GW0GW0G .OR. calc_type%selfenergy_approx == GWGW0G ) then
-        call gwgw0g_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-      else
+        if( arno_approximation ) then
+          call issue_warning('selfenergy_evaluation: use arno approximation for GW0GW0G')
+          call init_selfenergy_grid(static_selfenergy,energy_qp_new,se_gwgw0g)
+        else
+          call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_gwgw0g)
+        endif
+        call gwgw0g_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se_gwgw0g)
+        if( arno_approximation ) then
+          do iomega=-se%nomega,se%nomega
+            se%sigma(iomega,:,:) = se%sigma(iomega,:,:) + se_gwgw0g%sigma(0,:,:)
+          enddo
+        else
+          se%sigma(:,:,:) = se%sigma(:,:,:) + se_gwgw0g%sigma(:,:,:)
+        endif
+        call destroy_selfenergy_grid(se_gwgw0g)
+      else ! GWSOSEX
         call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
       endif
 
@@ -347,6 +361,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         !call gwgwg_selfenergy_real_grid(basis,energy_g,occupation,c_matrix,se)
       endif
 
+      deallocate(energy_qp_new)
       call wpol%destroy()
     endif
 
