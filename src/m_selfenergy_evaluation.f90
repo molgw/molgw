@@ -344,6 +344,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
 
       if( calc_type%selfenergy_approx == GWGWG ) then
         call gwgwg_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+        !call gwgwg_selfenergy_real_grid(basis,energy_g,occupation,c_matrix,se)
       endif
 
       call wpol%destroy()

@@ -25,7 +25,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   type(basis_set)                    :: basis
   real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
   real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
-  type(spectral_function),intent(in) :: wpol
+  type(spectral_function),intent(inout) :: wpol
   type(selfenergy_grid),intent(inout) :: se
   !=====
   integer                 :: iomega
@@ -42,6 +42,11 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   !=====
 
   call start_clock(timing_gwgamma_self)
+
+  ! Turn dynamic into static
+  !call issue_warning('FBFB HACK in SOSEX')
+  !wpol%pole(:) = wpol%pole(:) * 1000.0d0
+  !wpol%residue_left(:,:) = wpol%residue_left(:,:) * SQRT( 1000.0d0 )
 
   write(stdout,*)
   select case(calc_type%selfenergy_approx)
@@ -484,6 +489,7 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   call wpol%evaluate((0.0_dp,0.0_dp),chi_static)
 
   ! Turn dynamic into static for debug purposes
+  !call issue_warning('hack to recover GW+SOX for debug purposes')
   !chi_static(:,:) = 0.0d0   ! to recover GW+SOX
   do ibf_auxil=1,nauxil_global
     chi_static(ibf_auxil,ibf_auxil) = chi_static(ibf_auxil,ibf_auxil) + 1.0_dp
@@ -1027,7 +1033,6 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   ec = energy(cstate,pqspin)
                   num1 = bra_t(pstate,astate) * bra_t(jstate,cstate)
                   num2 = bra_s(qstate,cstate) * bra_s(astate,jstate)
-
 #if defined(ILL_ON)
                   denom1 = omega - ea + ej - ec + 3.0_dp*ieta
                   denom2 = omega - ec + Omega_s               ! ill term
@@ -1041,7 +1046,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   denom3 = omega - ej + Omega_s + Omega_t - 3.0_dp*ieta
 
                   sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
-                            - num1 * num2 / denom1 / denom2 / denom3
+                            + num1 * num2 / denom1 / denom2 / denom3
 #endif
 
                 enddo
@@ -1152,21 +1157,12 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,astate) * bra_t(jstate,cstate)
                   num2 = bra_s(qstate,cstate) * bra_s(astate,jstate)
 
-#if defined(ILL_ON)
-                  denom1 = omega - ea - Omega_t - 2.0_dp*ieta
-                  denom2 = omega - ea  -ec + ej + 3.0_dp*ieta
-                  denom3 = omega - ec + Omega_s  !ill term
+                  denom1 = omega - ea - Omega_t + 2.0_dp*ieta
+                  denom2 = ea - ej + Omega_s - 3.0_dp*ieta
+                  denom3 = omega - ea  - ec + ej + 3.0_dp*ieta
 
                   sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
                             + num1 * num2 / denom1 / denom2 / denom3
-
-                  denom1 = omega - ea - Omega_t - 2.0_dp*ieta
-                  denom2 = ea  - ej + Omega_s - 3.0_dp*ieta
-                  denom3 = omega - ec + Omega_s  !ill term
-
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
-                            + num1 * num2 / denom1 / denom2 / denom3
-#endif
 
                 enddo
               enddo
@@ -1239,21 +1235,12 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                   num1 = bra_t(pstate,istate) * bra_t(bstate,kstate)
                   num2 = bra_s(qstate,kstate) * bra_s(istate,bstate)
 
-#if defined(ILL_ON)
                   denom1 = omega - ei + Omega_t - 2.0_dp*ieta
-                  denom2 = omega - Omega_s - ek    ! ill term
-                  denom3 = ei - eb - Omega_s + 3.0_dp*ieta
-
-                  sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
-                            + num1 * num2 / denom1 / denom2 / denom3
-
-                  denom1 = omega - ei + Omega_t - 2.0_dp*ieta
-                  denom2 = omega - Omega_s - ek    ! ill term
+                  denom2 = ei - eb - Omega_s + 3.0_dp*ieta
                   denom3 = omega - ei - ek + eb - 3.0_dp*ieta
 
                   sigma_gwgwg(iomega,pstate,pqspin) = sigma_gwgwg(iomega,pstate,pqspin) &
                             + num1 * num2 / denom1 / denom2 / denom3
-#endif
 
                 enddo
               enddo
