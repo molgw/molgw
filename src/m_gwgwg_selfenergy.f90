@@ -2,12 +2,12 @@
 ! This file is part of MOLGW.
 ! Author: Fabien Bruneval
 !
-! This file contains the calculation of the GW self-energy with vertex function
-! within different flavors: GWSOSEX GWSOX
+! This module contains the calculation of the vertex function
+! within different flavors: SOX, SOSEX, GWGWG, static GW0GW0G
 !
 !=========================================================================
 #include "molgw.h"
-subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
+module m_gwgwg_selfenergy
   use m_definitions
   use m_mpi
   use m_timing
@@ -18,6 +18,14 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   use m_eri_ao_mo
   use m_selfenergy_tools
   use m_tddft_fxc
+  use m_linear_response
+
+
+contains
+
+
+!=========================================================================
+subroutine sosex_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   implicit none
 
   integer,intent(in)                 :: nstate
@@ -57,10 +65,10 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
     else
       write(stdout,*) 'Perform a one-shot GW+SOSEX calculation'
     endif
-  case(GWGWG)
+  case(GWGWG,GWGWG_numerical)
     write(stdout,*) 'Perform a one-shot GW+SOSEX calculation to prepare full GWGWG'
   case default
-    call die('gwgamma_selfenergy: calculation type unknown')
+    call die('sosex_selfenergy: calculation type unknown')
   end select
 
 
@@ -184,7 +192,8 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   call ortho%sum(sigma_sox)
 
 
-  if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWGWG ) then
+  if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWGWG &
+      .OR. calc_type%selfenergy_approx == GWGWG_NUMERICAL ) then
 
     write(stdout,*) 'Calculate dynamical SOSEX'
 
@@ -363,8 +372,6 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
     enddo !ispin
 
     call ortho%sum(sigma_sosex)
-    sigma_sosex(:,:,:) = factor_sosex * sigma_sosex(:,:,:)  !  1.0 in the original paper
-                                                            !  but should be 2.0 in reality
 
   endif
 
@@ -378,7 +385,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
 
   forall(pstate=nsemin:nsemax)
-    se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + sigma_sox(:,pstate,:) + sigma_sosex(:,pstate,:)
+    se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + sigma_sox(:,pstate,:) + factor_sosex * sigma_sosex(:,pstate,:)
   end forall
 
 
@@ -388,22 +395,16 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   ! endif
 
 
-  write(stdout,'(/,a)') ' GWSOSEX self-energy contributions at E0 (eV)'
-  if(nspin==1) then
-    write(stdout,'(a)') &
-     '   #          E0             SigC_G0W0                 SigC_SOX                SigC_SOSEX                 SigC_TOT'
-  else
-    write(stdout,'(a)') &
-      '   #                E0                              SigC_G0W0            SigC_SOX' &
-       // '               SigC_SOSEX                 SigC_TOT'
-  endif
+  write(stdout,'(/,a)') ' GW+SOSEX self-energy contributions at E0 (eV)'
+  write(stdout,'(a)') &
+     '   #          E0       SigC_GW     SigC_SOX   SigC_G(W(w)-v)GvG SigC_TOT'
 
   do pstate=nsemin,nsemax
     write(stdout,'(i4,1x,20(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
-                                         sigma_gw(0,pstate,:)*Ha_eV,   &
-                                         sigma_sox(0,pstate,:)*Ha_eV,  &
-                                         sigma_sosex(0,pstate,:)*Ha_eV,&
-                                         se%sigma(0,pstate,:)*Ha_eV
+                                         sigma_gw(0,pstate,:)%re*Ha_eV,   &
+                                         sigma_sox(0,pstate,:)%re*Ha_eV,  &
+                                         sigma_sosex(0,pstate,:)%re*Ha_eV,&
+                                         se%sigma(0,pstate,:)%re*Ha_eV
   enddo
 
 
@@ -424,20 +425,11 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   call stop_clock(timing_gwgamma_self)
 
 
-end subroutine gwgamma_selfenergy
+end subroutine sosex_selfenergy
 
 
 !=========================================================================
 subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
-  use m_definitions
-  use m_mpi
-  use m_timing
-  use m_inputparam
-  use m_warning
-  use m_basis_set
-  use m_spectral_function
-  use m_eri_ao_mo
-  use m_selfenergy_tools
   implicit none
 
   integer,intent(in)                 :: nstate
@@ -859,15 +851,6 @@ end subroutine gwgw0g_selfenergy
 
 !=========================================================================
 subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
-  use m_definitions
-  use m_mpi
-  use m_timing
-  use m_inputparam
-  use m_warning
-  use m_basis_set
-  use m_spectral_function
-  use m_eri_ao_mo
-  use m_selfenergy_tools
   implicit none
 
   integer,intent(in)                 :: nstate
@@ -1419,7 +1402,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
   write(stdout,'(/,a)') ' GWGWG self-energy contributions at E0 (eV)'
   write(stdout,'(a)') &
-     '   #            SigC_GWGWG (18 terms)        SigC_GWGWG TOT'
+     '   #  SigC_G(W(w)-v)G(W(w)-v)G (18 terms)      SigC_G(W(w)-v)G(W(w)-v)G TOT'
 
   do pstate=nsemin,nsemax
     write(stdout,'(i4,1x,*(1x,f12.6))') pstate, &
@@ -1427,7 +1410,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                                         SUM(sigma_gwgwg(0,pstate,:,:)%re,DIM=2)*Ha_eV
   enddo
   write(stdout,'(a)') &
-     '   #          E0             SigC_GW       SigC_GWGWG            SigC_TOT'
+     '   #          E0       SigC_GW+SOSEX SigC_G(W-v)G(W-v)G SigC_TOT'
   do pstate=nsemin,nsemax
     write(stdout,'(i4,1x,*(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
                                         sigma_gw(0,pstate,:)%re*Ha_eV,   &
@@ -1450,4 +1433,151 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 end subroutine gwgwg_selfenergy
 
 
+!=========================================================================
+subroutine gwgwg_selfenergy_real_grid(basis,energy,occupation,c_matrix,se)
+  implicit none
+
+  type(basis_set),intent(in)          :: basis
+  real(dp),intent(in)                 :: energy(:,:),occupation(:,:)
+  real(dp),intent(in)                 :: c_matrix(:,:,:)
+  type(selfenergy_grid),intent(inout) :: se
+  !=====
+  real(dp)             :: domega
+  logical,parameter    :: static_fsos  = .FALSE.
+  logical,parameter    :: analytic_chi = .TRUE.
+  real(dp)             :: mu
+  integer              :: nstate
+  integer              :: iomega_sigma,iomega,iomegap,iomegapp
+  real(dp)             :: df,braket1,braket2
+  integer              :: pstate,qstate,rstate,pqspin
+  integer              :: ustate,vstate,wstate
+  integer              :: isignp,isignpp
+  integer              :: first_omega,last_omega
+  complex(dp),allocatable :: sigmagwgwg(:,:,:)
+  complex(dp)          :: num1,num2
+  type(spectral_function) :: wpol_analytic
+  real(dp) :: vw(nauxil_global),up(nauxil_global),uv(nauxil_global),qw(nauxil_global)
+  real(dp) :: erpa,egw,omegap,omegapp
+  complex(dp) :: ieta_u,ieta_v,ieta_w,g_u,g_v,g_w
+  complex(dp) :: ctmp1(nomega_chi_imag,2),ctmp2(nomega_chi_imag,2),num
+  complex(dp),allocatable :: chi_omegap(:,:),chi_omegapp(:,:)
+  !=====
+  domega = eta * 0.5_dp
+
+  call start_clock(timing_gw_self)
+
+  if( nspin > 1 ) then
+    call die('gwgwg_selfenergy_real_grid only for spin restricted')
+  endif
+  if( .NOT. has_auxil_basis ) then
+    call die('gwgwg_selfenergy_real_grid requires an auxiliary basis')
+  endif
+  first_omega = -se%nomega
+  last_omega  = se%nomega
+  write(stdout,*) first_omega,last_omega
+
+
+  write(stdout,'(/,1x,a)') 'GWGWG self-energy on a grid of real frequencies with double integration'
+  write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
+  do iomega_sigma=first_omega,last_omega
+    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma,se%omega(iomega_sigma)*Ha_eV
+  enddo
+  write(stdout,'(1x,a)') '========================================================'
+
+  nstate = SIZE(energy,DIM=1)
+
+  mu = 0.5_dp * ( MAXVAL(energy(nhomo_G,:)) + MINVAL(energy(nhomo_G+1,:)) )
+  write(stdout,'(1x,a,f12.3)') 'Fermi energy mu (eV): ',mu*Ha_eV
+
+
+  call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
+
+  if( analytic_chi_ ) then
+    call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
+    call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
+  else
+    call die('analytic_chi is compulsory')
+  endif
+
+  allocate(chi_omegap(nauxil_global,nauxil_global))
+  allocate(chi_omegapp(nauxil_global,nauxil_global))
+
+  allocate(sigmagwgwg(first_omega:last_omega,nsemin:nsemax,nspin))
+  sigmagwgwg(:,:,:) = 0.0_dp
+  pqspin=1
+
+  do iomegap=-nomega_chi_real,nomega_chi_real
+    omegap = domega * iomegap
+    write(stdout,'(1x,a,i4,es12.4)') 'External omega loop (eV): ',iomegap,omegap*Ha_eV
+    call wpol_analytic%evaluate(omegap,chi_omegap)
+
+    do iomegapp=-nomega_chi_real,nomega_chi_real
+      omegapp = domega * (iomegapp-0.5_dp)
+      call wpol_analytic%evaluate(omegapp,chi_omegapp)
+
+      do pstate=nsemin,nsemax
+        qstate=pstate ! diagonal only
+        do ustate=ncore_G+1,nvirtual_G-1
+        !do ustate=ncore_G+1,nhomo_G
+        !do ustate=nhomo_G+1,nvirtual_G-1
+          ieta_u = (0.0,1.0_dp) * SIGN(eta, energy(ustate,pqspin) - mu)
+          do vstate=ncore_G+1,nvirtual_G-1
+          !do vstate=ncore_G+1,nhomo_G
+          !do vstate=nhomo_G+1,nvirtual_G-1
+            ieta_v = (0.0,1.0_dp) * SIGN(eta, energy(vstate,pqspin) - mu)
+            do wstate=ncore_G+1,nvirtual_G-1
+            !do wstate=ncore_G+1,nhomo_G
+            !do wstate=nhomo_G+1,nvirtual_G-1
+              ieta_w = (0.0,1.0_dp) * SIGN(eta, energy(wstate,pqspin) - mu)
+
+              qw(:) = eri_3center_eigen(:,qstate,wstate,pqspin)
+              uv(:) = eri_3center_eigen(:,ustate,vstate,pqspin)
+              up(:) = eri_3center_eigen(:,ustate,pstate,pqspin)
+              vw(:) = eri_3center_eigen(:,vstate,wstate,pqspin)
+              num1 = DOT_PRODUCT( vw(:) , MATMUL( chi_omegap(:,:), up(:) ) )
+              num2 = DOT_PRODUCT( uv(:) , MATMUL( chi_omegapp(:,:) , qw(:) ) )
+
+              do iomega_sigma=first_omega,last_omega
+                g_u = 1.0_dp / ( se%energy0(pstate,pqspin) + se%omega(iomega_sigma) + omegap &
+                                 -energy(ustate,pqspin) + ieta_u )
+                g_v = 1.0_dp / ( se%energy0(pstate,pqspin) + se%omega(iomega_sigma) + omegap &
+                                 + omegapp -energy(vstate,pqspin) + ieta_v )
+                g_w = 1.0_dp / ( se%energy0(pstate,pqspin) + se%omega(iomega_sigma) + omegapp &
+                                 -energy(wstate,pqspin) + ieta_w )
+
+                sigmagwgwg(iomega_sigma,pstate,pqspin) = sigmagwgwg(iomega_sigma,pstate,pqspin) &
+                                                    -1.0_dp / (2.0_dp * pi)**2 * g_u * num1 * g_v * num2 * g_w &
+                                                       * domega**2
+              enddo
+
+            enddo
+          enddo
+        enddo
+      enddo
+
+
+    enddo
+  enddo
+  call world%sum(sigmagwgwg)
+  write(stdout,*) 'Self-energy correction (eV): '
+  do pstate=nsemin,nsemax
+    do iomega_sigma=first_omega,last_omega
+      write(stdout,'(4x,i4,*(4x,f14.6))') pstate,(se%energy0(pstate,1) + se%omega(iomega_sigma)%re)*Ha_eV, &
+                                          sigmagwgwg(iomega_sigma,pstate,1)%re*Ha_eV
+    enddo
+  enddo
+
+  se%sigma(:,:,:) = se%sigma(:,:,:) + sigmagwgwg(:,:,:)
+  deallocate(sigmagwgwg)
+
+
+  call destroy_eri_3center_eigen()
+
+  call stop_clock(timing_gw_self)
+
+
+
+end subroutine gwgwg_selfenergy_real_grid
+
+end module m_gwgwg_selfenergy
 !=========================================================================

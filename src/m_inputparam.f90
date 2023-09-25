@@ -38,26 +38,27 @@ module m_inputparam
 
   !
   ! Self-energy approximation
-  integer,parameter :: CI           =-201
-  integer,parameter :: COHSEX       = 204
-  integer,parameter :: GnW0         = 205
-  integer,parameter :: GnWn         = 206
-  integer,parameter :: GW           = 207
-  integer,parameter :: GW_IMAG      = 216
-  integer,parameter :: GWSOSEX      = 217
-  integer,parameter :: GWSOX        = 219
-  integer,parameter :: PT2          = 220
-  integer,parameter :: ONE_RING     = 221
-  integer,parameter :: SOX          = 222
-  integer,parameter :: PT3          = 223
-  integer,parameter :: TWO_RINGS    = 224
-  integer,parameter :: GWPT3        = 226
-  integer,parameter :: G0W0SOX0     = 227
-  integer,parameter :: G0W0Gamma0   = 228
-  integer,parameter :: GWGWG        = 229
-  integer,parameter :: GWFSOS       = 230
-  integer,parameter :: GW0GW0G      = 231
-  integer,parameter :: GWGW0G       = 232
+  integer,parameter :: CI              =-201
+  integer,parameter :: COHSEX          = 204
+  integer,parameter :: GnW0            = 205
+  integer,parameter :: GnWn            = 206
+  integer,parameter :: GW              = 207
+  integer,parameter :: GW_IMAG         = 216
+  integer,parameter :: GWSOSEX         = 217
+  integer,parameter :: GWSOX           = 219
+  integer,parameter :: PT2             = 220
+  integer,parameter :: ONE_RING        = 221
+  integer,parameter :: SOX             = 222
+  integer,parameter :: PT3             = 223
+  integer,parameter :: TWO_RINGS       = 224
+  integer,parameter :: GWPT3           = 226
+  integer,parameter :: G0W0SOX0        = 227
+  integer,parameter :: G0W0Gamma0      = 228
+  integer,parameter :: GWGWG           = 229
+  integer,parameter :: GWFSOS          = 230
+  integer,parameter :: GW0GW0G         = 231
+  integer,parameter :: GWGW0G          = 232
+  integer,parameter :: GWGWG_NUMERICAL = 233
 
   !
   ! TDDFT variables
@@ -273,6 +274,10 @@ subroutine init_calculation_type(scf,postscf)
     case('GWGWGWG','GW+GWGWG')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGWG
+      factor_sosex = 2.0_dp
+    case('GWGWGWG_NUMERICAL','GW+GWGWG_NUMERICAL')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GWGWG_NUMERICAL
       factor_sosex = 2.0_dp
     case('GW+GW0GW0G')
       calc_type%is_gw    =.TRUE.

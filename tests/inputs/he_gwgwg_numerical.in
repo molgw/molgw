@@ -1,0 +1,23 @@
+&molgw
+ comment='He'
+
+ scf='HF'
+
+ basis='6-31G'
+ auxil_basis='AUTO'
+
+ postscf='gw+gwgwg_numerical'
+ 
+ selfenergy_state_range=0
+
+ analytic_chi='yes'
+ nomega_chi_real=200
+
+ nomega_sigma=3
+ step_sigma=0.1
+
+ eta=0.10
+
+ natom=1
+/
+He  0.0 0.0 0.0

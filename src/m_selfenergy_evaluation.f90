@@ -24,6 +24,7 @@ module m_selfenergy_evaluation
   use m_io
   use m_gw_selfenergy_grid
   use m_linear_response
+  use m_gwgwg_selfenergy
 
   logical,parameter :: arno_approximation = .FALSE.
 
@@ -108,7 +109,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='COHSEX'
     case(GWFSOS)
       selfenergy_tag='GW+FSOS'
-    case(GWGWG)
+    case(GWGWG,GWGWG_NUMERICAL)
       selfenergy_tag='GW+GWGWG'
     case(GW0GW0G)
       selfenergy_tag='GW+GW0GW0G'
@@ -311,6 +312,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     if( calc_type%selfenergy_approx == GWSOSEX &
         .OR. calc_type%selfenergy_approx == GWGWG &
+        .OR. calc_type%selfenergy_approx == GWGWG_NUMERICAL &
         .OR. calc_type%selfenergy_approx == GW0GW0G &
         .OR. calc_type%selfenergy_approx == GWGW0G &
       ) then
@@ -352,13 +354,15 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           se%sigma(:,:,:) = se%sigma(:,:,:) + se_gwgw0g%sigma(:,:,:)
         endif
         call destroy_selfenergy_grid(se_gwgw0g)
-      else ! GWSOSEX
-        call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+      else ! SOSEX
+        call sosex_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
       endif
 
       if( calc_type%selfenergy_approx == GWGWG ) then
         call gwgwg_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-        !call gwgwg_selfenergy_real_grid(basis,energy_g,occupation,c_matrix,se)
+      endif
+      if( calc_type%selfenergy_approx == GWGWG_NUMERICAL ) then
+        call gwgwg_selfenergy_real_grid(basis,energy_g,occupation,c_matrix,se)
       endif
 
       deallocate(energy_qp_new)
@@ -366,7 +370,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     endif
 
     !
-    ! GW+FSOS
+    ! GW+FSOS (be careful)
     ! implementation on the imaginary frequency grid
     !
     if( calc_type%selfenergy_approx == GWFSOS ) then

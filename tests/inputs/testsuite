@@ -1029,3 +1029,12 @@ ar_gw+fsos_analytic.in    , Full second-order screened exchange diagram with ana
 SCF Total Energy          , -526.7998408784    , 0 , 1.0e-7
 gKS HOMO energy           ,  -15.991653        , 0 , 1.0e-4
 GW+FSOS HOMO energy       ,  -15.681164        , 0 , 1.0e-4
+
+he_gwgwg_numerical.in     , GWGWG with numerical integration
+SCF Total Energy          ,   -2.8552377890    , 0 , 1.0e-7
+GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
+
+he_gwgwg_analytic.in      , GWGWG with analytic formula
+SCF Total Energy          ,   -2.8552377890    , 0 , 1.0e-7
+GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
+
