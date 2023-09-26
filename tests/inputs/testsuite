@@ -1036,5 +1036,7 @@ GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
 
 he_gwgwg_analytic.in      , GWGWG with analytic formula
 SCF Total Energy          ,   -2.8552377890    , 0 , 1.0e-7
+GW HOMO energy            ,  -23.691585        , 0 , 1.0e-4
+GW+SOSEX2 HOMO energy     ,  -24.139890        , 0 , 1.0e-4
 GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
 

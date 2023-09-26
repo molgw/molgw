@@ -26,7 +26,7 @@ module m_selfenergy_evaluation
   use m_linear_response
   use m_gwgwg_selfenergy
 
-  logical,parameter :: arno_approximation = .FALSE.
+  logical,parameter :: arno_static_approximation = .FALSE.
 
 contains
 
@@ -43,7 +43,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
   type(energy_contributions),intent(inout) :: en_mbpt
   !=====
   integer                 :: nstate
-  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gwgw0g
+  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gwgw0g,se_sosex,se_gwgwg
   logical                 :: enforce_rpa
   character(len=36)       :: selfenergy_tag
   integer                 :: reading_status
@@ -308,7 +308,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     endif
 
     !
-    ! GW+SOSEX
+    ! GW+SOSEX or GW+GWGWG
     !
     if( calc_type%selfenergy_approx == GWSOSEX &
         .OR. calc_type%selfenergy_approx == GWGWG &
@@ -333,20 +333,24 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
       call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new,zz)
       call output_qp_energy('GW',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+      call output_qp_energy_yaml('GW',energy,exchange_m_vxc_diag,se,energy_qp_z,energy_qp_new,zz)
+      call output_homolumo('GW',occupation,energy_qp_new,nsemin,nsemax)
+      call dump_out_energy_yaml('gw energies',energy_qp_new,nsemin,nsemax)
       deallocate(zz)
       deallocate(energy_qp_z)
-      call output_homolumo('GW',occupation,energy_qp_new,nsemin,nsemax)
+
 
 
       if( calc_type%selfenergy_approx == GW0GW0G .OR. calc_type%selfenergy_approx == GWGW0G ) then
-        if( arno_approximation ) then
+        if( arno_static_approximation ) then
           call issue_warning('selfenergy_evaluation: use arno approximation for GW0GW0G')
+          ! enforce a single frequency located at the GW qp energy
           call init_selfenergy_grid(static_selfenergy,energy_qp_new,se_gwgw0g)
         else
           call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_gwgw0g)
         endif
         call gwgw0g_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se_gwgw0g)
-        if( arno_approximation ) then
+        if( arno_static_approximation ) then
           do iomega=-se%nomega,se%nomega
             se%sigma(iomega,:,:) = se%sigma(iomega,:,:) + se_gwgw0g%sigma(0,:,:)
           enddo
@@ -359,8 +363,22 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       endif
 
       if( calc_type%selfenergy_approx == GWGWG ) then
+        ! Output the GW+SOSEX qp energies before over-riding them
+        allocate(energy_qp_z(nstate,nspin))
+        allocate(zz(nstate,nspin))
+        call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+        call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new,zz)
+        call output_qp_energy('GW+SOSEX2',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+        call output_qp_energy_yaml('GW+SOSEX2',energy,exchange_m_vxc_diag,se,energy_qp_z,energy_qp_new,zz)
+        call output_homolumo('GW+SOSEX2',occupation,energy_qp_new,nsemin,nsemax)
+        call dump_out_energy_yaml('gw+sosex2 energies',energy_qp_new,nsemin,nsemax)
+        deallocate(zz)
+        deallocate(energy_qp_z)
+
         call gwgwg_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
       endif
+
+      ! Implementation for debug purposes
       if( calc_type%selfenergy_approx == GWGWG_NUMERICAL ) then
         call gwgwg_selfenergy_real_grid(basis,energy_g,occupation,c_matrix,se)
       endif
@@ -505,7 +523,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     ! Write the QP energies on disk: ENERGY_QP file
     !
     call write_energy_qp(energy_qp_new)
-    call dump_out_energy_yaml(TRIM(selfenergy_tag)//' energy',energy_qp_new,nsemin,nsemax)
+    call dump_out_energy_yaml(TRIM(selfenergy_tag)//' energies',energy_qp_new,nsemin,nsemax)
 
     !
     ! Output the new HOMO and LUMO energies
