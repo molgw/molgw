@@ -826,7 +826,8 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                                          sigma_gw0gw0g_vir(0,pstate,:)%re*Ha_eV,   &
                                          sigma_gw0gw0g(0,pstate,:)%re*Ha_eV,  &
                                          sigma_gwgw0g(0,pstate,:)%re*Ha_eV,&
-     (sigma_gwgw0g(0,pstate,:)%re+sigma_gvgw0g(0,pstate,:)%re-sigma_gw0gw0g(0,pstate,:)%re)*Ha_eV,&
+     MERGE((sigma_gwgw0g(0,pstate,1)%re+sigma_gvgw0g(0,pstate,:)%re-sigma_gw0gw0g(0,pstate,1)%re)*Ha_eV, &
+           0.0_dp,calc_type%selfenergy_approx==GWGW0G),&
                                          se%sigma(0,pstate,:)%re*Ha_eV
   enddo
 
