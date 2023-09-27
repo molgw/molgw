@@ -440,7 +440,6 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   type(selfenergy_grid),intent(inout) :: se
   !=====
   integer                 :: iomega,ibf_auxil
-  complex(dp),allocatable :: sigma_gw(:,:,:)
   complex(dp),allocatable :: sigma_gwgw0g(:,:,:)
   complex(dp),allocatable :: sigma_gw0gw0g(:,:,:)
   complex(dp),allocatable :: sigma_gw0gw0g_occ(:,:,:)
@@ -509,7 +508,6 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   allocate(sigma_gw0gw0g(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(sigma_gw0gw0g_occ(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(sigma_gw0gw0g_vir(-se%nomega:se%nomega,nsemin:nsemax,nspin))
-  allocate(sigma_gw(-se%nomega:se%nomega,nsemin:nsemax,nspin))
 
   sigma_gwgw0g(:,:,:)  = (0.0_dp, 0.0_dp)
   sigma_gvgw0g(:,:,:)  = (0.0_dp, 0.0_dp)
@@ -787,10 +785,6 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 
 
-  !
-  ! The input sigma contains the GW selfenergy
-  sigma_gw(:,:,:) = se%sigma(:,:,:)
-
 
   select case(calc_type%selfenergy_approx)
   case(GW0GW0G)
@@ -801,7 +795,7 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
     write(stdout,'(/,a)') ' GW0GW0G self-energy contributions at E0 (eV)'
   case(GWGW0G)
     forall(pstate=nsemin:nsemax)
-      se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + 2.0_dp * sigma_gvgw0g(:,pstate,:) &
+      se%sigma(:,pstate,:) = 2.0_dp * sigma_gvgw0g(:,pstate,:) &
                            - sigma_gw0gw0g(:,pstate,:) + 2.0_dp * sigma_gwgw0g(:,pstate,:)
     end forall
     write(stdout,'(/,a)') ' GWGW0G self-energy contributions at E0 (eV)'
