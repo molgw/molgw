@@ -1145,7 +1145,7 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
     enddo
   enddo
 
-  call dump_out_energy_yaml('gw_extrap energy',eqp_extrap,nsemin,nsemax)
+  call dump_out_energy_yaml('gw_extrap energies',eqp_extrap,nsemin,nsemax)
 
 
 end subroutine selfenergy_convergence_prediction

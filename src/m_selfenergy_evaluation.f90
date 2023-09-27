@@ -517,7 +517,9 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       deallocate(energy_qp_z)
     end select
 
-    call selfenergy_convergence_prediction(basis,c_matrix,energy_qp_new)
+    if( calc_type%selfenergy_approx == GW ) then
+      call selfenergy_convergence_prediction(basis,c_matrix,energy_qp_new)
+    endif
 
     !
     ! Write the QP energies on disk: ENERGY_QP file

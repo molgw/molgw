@@ -183,7 +183,7 @@ class structure:
 
 ########################################################################
 def get_homo_energy(approx,calc):
-    key = approx + " energy"
+    key = approx + " energies"
     energies = [ ei for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
         energies += [ ei for ei in calc[key]["spin channel 1"].values()]
@@ -195,7 +195,7 @@ def get_homo_energy(approx,calc):
 
 ########################################################################
 def get_lumo_energy(approx,calc):
-    key = approx + " energy"
+    key = approx + " energies"
     energies = [ ei for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
         energies += [ ei for ei in calc[key]["spin channel 1"].values()]
