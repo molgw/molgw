@@ -2,7 +2,7 @@
   scf='PBE0'
   tolscf=1.0e-10
 
-  postscf='G0W0GAMMA0'
+  postscf='GW+SOSEX'
   selfenergy_state_range=0
 
   basis='6-31G*'

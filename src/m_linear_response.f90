@@ -45,7 +45,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
-  logical                   :: is_bse,eri_3center_mo_available
+  logical                   :: is_bse,is_tdhf,eri_3center_mo_available
   integer                   :: nmat,nexc
   real(dp)                  :: alpha_local,lambda_
   real(dp),allocatable      :: amb_diag_rpa(:)
@@ -112,6 +112,22 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! Set up flag is_tddft and is_bse
   is_tddft = calc_type%include_tddft_kernel .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
   is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
+  is_tdhf  = calc_type%include_tdhf_kernel .AND. .NOT. enforce_rpa
+
+  ! Override choices here
+  if( calculate_w ) then
+    select case(w_screening)
+    case('RPA')
+      ! do nothing
+    case('BSE')
+      ! enforce BSE
+      is_bse   = .TRUE.
+    case('TDHF')
+      is_tdhf = .TRUE.
+    case default
+      call die('polarizability: invalid choice for w_screening')
+    end select
+  endif
 
   !
   ! Set up exchange content alpha_local
@@ -126,7 +142,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   else
     if(calc_type%include_tddft_kernel) then        ! TDDFT or TDHF
       alpha_local = alpha_hybrid
-    else if( (is_bse .OR. calc_type%include_tdhf_kernel) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
+    else if( (is_bse .OR. is_tdhf) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
       alpha_local = 1.0_dp
     else                  ! RPA or no_bse_kernel
       alpha_local = 0.0_dp

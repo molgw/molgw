@@ -617,13 +617,13 @@ Exc. 0002                 ,      0.03083017     , 1 , 1.0e-4
 Exc. 0005                 ,     11.25700794     , 0 , 1.0e-4
 Exc. 0005                 ,      0.00000000     , 1 , 1.0e-4
 
-lih_gwgamma.in            , LiH: GWSOSEX@PBE0 with non-auxiliary basis parallelization (=ortho paral)
+lih_gw+sosex.in           , LiH: GW+SOSEX@PBE0 with non-auxiliary basis parallelization (=ortho paral)
 SCF Total Energy          ,    -8.0512581571    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0854827210    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.426968        , 0 , 1.0e-4
 GW+SOSEX HOMO energy      ,    -8.003938        , 0 , 1.0e-4
 
-lih_gwgamma_nori.in       , LiH: GWSOSEX@PBE0 without RI, noparallel
+lih_gw+sosex_nori.in      , LiH: GW+SOSEX@PBE0 without RI, noparallel
 SCF Total Energy          ,    -8.0461044345    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0363952366    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.038813        , 0 , 1.0e-4
@@ -634,7 +634,7 @@ SCF Total Energy          ,    -7.9836862051    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.243410        , 0 , 1.0e-4
 GW+SOSEX HOMO energy      ,    -7.332104        , 0 , 1.0e-4
 
-n2_gwgamma.in             , N2: GWSOSEX@BHLYP with frozencore and frozen virtual with ortho paral
+n2_gw+sosex.in            , N2: GW+SOSEX@BHLYP with frozencore and frozen virtual with ortho paral
 SCF Total Energy          ,  -109.4724604609    , 0 , 1.0e-7
 gKS HOMO energy           ,   -13.734359        , 0 , 1.0e-4
 gKS HOMO energy           ,   -13.734359        , 1 , 1.0e-4
