@@ -112,7 +112,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! Set up flag is_tddft and is_bse
   is_tddft = calc_type%include_tddft_kernel .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
   is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
-  is_tdhf  = calc_type%include_tdhf_kernel .AND. .NOT. enforce_rpa
+  is_tdhf  = (calc_type%include_tddft_kernel .OR. calc_type%include_tdhf_kernel) .AND. .NOT. enforce_rpa
 
   ! Override choices here
   if( calculate_w ) then
@@ -124,6 +124,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
       is_bse   = .TRUE.
     case('TDHF')
       is_tdhf = .TRUE.
+    case('TDDFT')
+      is_tdhf  = .TRUE.
+      is_tddft = .TRUE.
     case default
       call die('polarizability: invalid choice for w_screening')
     end select
@@ -132,6 +135,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   !
   ! Set up exchange content alpha_local
   ! manual_tdhf can override anything
+  alpha_local = 0.0_dp
   inquire(file='manual_tdhf',exist=has_manual_tdhf)
   if(has_manual_tdhf) then
     open(newunit=tdhffile,file='manual_tdhf',status='old')
@@ -140,7 +144,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
     call issue_warning(msg)
   else
-    if(calc_type%include_tddft_kernel) then        ! TDDFT or TDHF
+    if( is_tddft .OR. calc_type%include_tddft_kernel ) then        ! TDDFT or TDHF
       alpha_local = alpha_hybrid
     else if( (is_bse .OR. is_tdhf) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
       alpha_local = 1.0_dp
@@ -148,11 +152,18 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
       alpha_local = 0.0_dp
     endif
   endif
-  if( enforce_rpa ) alpha_local = 0.0_dp
+  !if( enforce_rpa ) alpha_local = 0.0_dp
 
   is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
 
   call start_clock(timing_build_h2p)
+  write(stdout,'(/,1x,a)') 'Summarize the linear response calculation:'
+  write(stdout,'(1x,a16,l1)')       'RPA:          ',is_rpa
+  write(stdout,'(1x,a16,l1)')       'BSE:          ',is_bse
+  write(stdout,'(1x,a16,l1)')       'TDHF:         ',is_tdhf
+  write(stdout,'(1x,a16,l1)')       'TDDFT:        ',is_tddft
+  write(stdout,'(1x,a16,f6.4)')     'hybrid alpha: ',alpha_local
+  write(stdout,*)
 
   !
   ! Prepare the QP energies
@@ -364,7 +375,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! Calculate the optical sprectrum
   ! and the dynamic dipole tensor
   !
-  if( calc_type%include_tddft_kernel .OR. is_bse ) then
+  if( is_tdhf .OR. is_tddft .OR. is_bse ) then
     call optical_spectrum(is_triplet_currently,basis,occupation,c_matrix,wpol_out,xpy_matrix,xmy_matrix,eigenvalue)
     select case(TRIM(lower(stopping)))
     case('spherical')

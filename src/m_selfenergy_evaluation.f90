@@ -81,7 +81,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     ! Set the character string for the calculation we are currently doing
     select case(calc_type%selfenergy_approx)
-    case(GW,GW_IMAG)
+    case(GW)
       selfenergy_tag='GW'
     case(GnW0)
       write(selfenergy_tag,'(i3)') istep_gw-1
@@ -179,8 +179,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     ! selfenergy = GW or COHSEX
     !
-    if(     calc_type%selfenergy_approx == GW_IMAG     &
-      .OR. calc_type%selfenergy_approx == GW          &
+    if(    calc_type%selfenergy_approx == GW          &
       .OR. calc_type%selfenergy_approx == COHSEX      &
       .OR. calc_type%selfenergy_approx == GnW0        &
       .OR. calc_type%selfenergy_approx == GnWn   ) then
@@ -241,7 +240,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
 #if defined(HAVE_SCALAPACK)
         if( has_auxil_basis &
            .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
-             .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == GW_IMAG) ) then
+             .OR. calc_type%selfenergy_approx == GnWn) ) then
           call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
         else
 #endif
@@ -517,7 +516,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       deallocate(energy_qp_z)
     end select
 
-    if( calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GW_IMAG ) then
+    if( calc_type%selfenergy_approx == GW ) then
       call selfenergy_convergence_prediction(basis,c_matrix,energy_qp_new)
     endif
 

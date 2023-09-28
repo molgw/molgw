@@ -43,7 +43,6 @@ module m_inputparam
   integer,parameter :: GnW0            = 205
   integer,parameter :: GnWn            = 206
   integer,parameter :: GW              = 207
-  integer,parameter :: GW_IMAG         = 216
   integer,parameter :: GWSOSEX         = 217
   integer,parameter :: GWSOX           = 219
   integer,parameter :: PT2             = 220
@@ -232,17 +231,13 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW
       calc_type%selfenergy_technique = exact_dyson
-    case('GWTDDFT','G0WTDDFT')
-      calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = GW
-      calc_type%include_tddft_kernel =.TRUE.
     case('COHSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = COHSEX
       calc_type%selfenergy_technique = static_selfenergy
     case('G0W0_AC','GW_AC','G0W0_PADE','GW_PADE')
       calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx    = GW_IMAG
+      calc_type%selfenergy_approx    = GW
       calc_type%selfenergy_technique = imaginary_axis_pade
     case('GWFSOS','GW+FSOS')
       calc_type%is_gw    =.TRUE.
@@ -254,7 +249,7 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%selfenergy_technique = contour_deformation
     case('G0W0_HOMOLUMO','GW_HOMOLUMO')
       calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx    = GW_IMAG
+      calc_type%selfenergy_approx    = GW
       calc_type%selfenergy_technique = imaginary_axis_homolumo
     case('GWSOX','GW+SOX')
       calc_type%is_gw    =.TRUE.
@@ -1017,9 +1012,9 @@ subroutine read_inputfile_namelist()
   !
   ! Some additional checks
   !
-  if(calc_type%selfenergy_approx == GW_IMAG .AND. nomega_chi_imag<1) &
+  if(calc_type%selfenergy_technique == imaginary_axis_pade .AND. nomega_chi_imag<1) &
     call die('when asking for a numerical evaluation of the self-energy, one needs nomega_chi_imag > 0')
-  if(calc_type%selfenergy_approx == GW_IMAG .AND. nomega_sigma_calc==1) &
+  if(calc_type%selfenergy_technique == imaginary_axis_pade .AND. nomega_sigma_calc==1) &
     call issue_warning('when asking for a numerical evaluation of the self-energy,' &
                     // ' consider more frequencies than just one for sigma.' &
                     // ' nomega_sigma_calc > 1 advised')
