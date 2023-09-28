@@ -52,8 +52,6 @@ module m_inputparam
   integer,parameter :: PT3             = 223
   integer,parameter :: TWO_RINGS       = 224
   integer,parameter :: GWPT3           = 226
-  integer,parameter :: G0W0SOX0        = 227
-  integer,parameter :: G0W0Gamma0      = 228
   integer,parameter :: GWGWG           = 229
   integer,parameter :: GWFSOS          = 230
   integer,parameter :: GW0GW0G         = 231
@@ -258,7 +256,7 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW_IMAG
       calc_type%selfenergy_technique = imaginary_axis_homolumo
-    case('G0W0SOX0','GWSOX','GW+SOX')
+    case('GWSOX','GW+SOX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOX
     case('GWPT3')
@@ -285,9 +283,6 @@ subroutine init_calculation_type(scf,postscf)
     case('GW+GWGW0G')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGW0G
-    case('G0W0GAMMA0','GWGAMMA')
-      calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = GWSOSEX
     case('GWTDDFTGAMMA','G0WTDDFTGAMMA0','GWTDDFTSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
@@ -888,6 +883,7 @@ subroutine read_inputfile_namelist()
   pt_density_matrix  = capitalize(pt_density_matrix)
   pt3_a_diagrams     = capitalize(pt3_a_diagrams)
   partition_scheme   = capitalize(partition_scheme)
+  w_screening        = capitalize(w_screening)
 
   memory_evaluation_        = yesno_to_logical(memory_evaluation)
   read_restart_             = yesno_to_logical(read_restart)

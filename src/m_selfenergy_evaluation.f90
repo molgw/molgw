@@ -517,7 +517,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       deallocate(energy_qp_z)
     end select
 
-    if( calc_type%selfenergy_approx == GW ) then
+    if( calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GW_IMAG ) then
       call selfenergy_convergence_prediction(basis,c_matrix,energy_qp_new)
     endif
 
