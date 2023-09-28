@@ -1096,7 +1096,7 @@ use_correlated_density_matrix:
   experimental: 'no'
   default: 'no'
   comment: Chooses to use another density matrix for the Fock hamiltonian to be employed
-    in self-energy calculations.                  Used in conjonction with 'pt_density_matrix'
+    in self-energy calculations. Used in conjonction with 'pt_density_matrix'
     or with 'read_fchk' or read an existing DENSITY_MATRIX file.
 
 virtual_fno:
@@ -1109,6 +1109,14 @@ virtual_fno:
     subspace with fewer orbitals. The dimension of the space is set up with the input
     keyword nvirtualg or nvirtualw. Actually the virtual orbital space is determined
     by the minimum MIN(nvirtualg,nvirtualw).
+
+w_screening:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'rpa'
+  comment: Selects the approximation of the screening W in GW and beyond. Standard GW needs 'rpa'
 
 
 #============================================================================
