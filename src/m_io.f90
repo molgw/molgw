@@ -3352,6 +3352,9 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
 end subroutine read_gaussian_fchk
 
 !=========================================================================
+! This routine reads the FCHK file to produce the guess for the MOs:
+! Author: Mauricio Rodriguez-Mayorga
+!=========================================================================
 subroutine guess_fchk(c_matrix,file_name,nbf,nstate,nspin)
   implicit none
 
@@ -3393,6 +3396,7 @@ subroutine guess_fchk(c_matrix,file_name,nbf,nstate,nspin)
     endif
     found = ( INDEX(line,TRIM(keyword)) /= 0 )
   enddo
+  write(stdout,'(/,1x,a)') 'Reading Alpha MO coefficients '
   do ijbf=1,(nel/stride-1)*stride+1,stride
     read(fu,*) c_coef(ijbf:ijbf+stride-1)
   enddo
@@ -3404,6 +3408,36 @@ subroutine guess_fchk(c_matrix,file_name,nbf,nstate,nspin)
       c_matrix(ibf,istate,1)=c_coef(ijbf)
     enddo
   enddo
+ 
+  if ( nspin>1 ) then
+
+    rewind(fu)
+    ! Read the fchk file until the Beta MO coefficients are found
+ 
+    keyword='Beta MO coefficients'
+    found = .FALSE.
+    do while( .NOT. found )
+      read(fu,'(a)',iostat=istat) line
+      if( IS_IOSTAT_END(istat) ) then
+        call issue_warning(TRIM(keyword)//' not found in file')
+        return
+      endif
+      found = ( INDEX(line,TRIM(keyword)) /= 0 )
+    enddo
+    write(stdout,'(/,1x,a)') 'Reading Beta MO coefficients '
+    do ijbf=1,(nel/stride-1)*stride+1,stride
+      read(fu,*) c_coef(ijbf:ijbf+stride-1)
+    enddo
+    if( MODULO(nel,stride) /=0 ) read(fu,*) c_coef((nel/stride)*stride+1:nel)
+    ijbf = 0
+    do istate=1,nstate
+      do ibf=1,nbf
+        ijbf = ijbf + 1
+        c_matrix(ibf,istate,2)=c_coef(ijbf)
+      enddo
+    enddo
+
+  endif
 
   close(fu)
 
