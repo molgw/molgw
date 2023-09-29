@@ -86,6 +86,7 @@ program molgw
   real(dp),allocatable    :: energy(:,:)
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
+  character(len=200)      :: file_name
   !=====
 
   !
@@ -365,15 +366,26 @@ program molgw
         deallocate(hamiltonian_tmp)
 
       case('GAUSSIAN')
-        !call read_gaussian_fchk !TODO
+        write(file_name,'(2a)') trim(output_name),'fchk'
+        if(basis%nbf==nstate) then
+          call guess_fchk(c_matrix,file_name,basis%nbf,nstate,nspin)
+        else
+          write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions.'
+          write(*,'(a,/)') ' Performing a CORE guess instead of GAUSSIAN guess for sake.'
+          allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
+          hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+          write(stdout,'(/,a)') ' Approximate hamiltonian'
+          call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+          deallocate(hamiltonian_tmp)
+          c_matrix(:,:,nspin) = c_matrix(:,:,1)
+        endif
 
       case default
         call die('molgw: init_hamiltonian option is not valid')
       end select
 
-
       ! The hamiltonian is still spin-independent:
-      c_matrix(:,:,nspin) = c_matrix(:,:,1)
+      if(TRIM(init_hamiltonian)/='GAUSSIAN') c_matrix(:,:,nspin) = c_matrix(:,:,1)
 
     endif
 
