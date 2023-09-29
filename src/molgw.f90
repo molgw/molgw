@@ -367,11 +367,12 @@ program molgw
 
       case('GAUSSIAN')
         write(file_name,'(2a)') trim(output_name),'fchk'
-        if(basis%nbf==nstate) then
-          call guess_fchk(c_matrix,file_name,basis%nbf,nstate,nspin)
+        if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
+          call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
         else
-          write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions.'
-          write(*,'(a,/)') ' Performing a CORE guess instead of GAUSSIAN guess for sake.'
+          write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions'
+          write(*,'(a)')   "          or pure/spherical basis functions are employed (set gaussian_type='cart')."
+          write(*,'(a,/)') '          Using a CORE guess instead of a GAUSSIAN guess.'
           allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
           hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
           write(stdout,'(/,a)') ' Approximate hamiltonian'
