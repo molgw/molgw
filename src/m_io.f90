@@ -3351,6 +3351,176 @@ subroutine read_gaussian_fchk(read_fchk_in,file_name,basis,p_matrix_out)
 
 end subroutine read_gaussian_fchk
 
+!=========================================================================
+! This routine reads the FCHK file to produce the guess for the MOs:
+! Author: Mauricio Rodriguez-Mayorga
+!=========================================================================
+subroutine read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
+  implicit none
+
+  integer,intent(in)     :: nstate,nspin
+  type(basis_set),intent(in)   :: basis
+  real(dp),intent(inout) :: c_matrix(:,:,:)
+  character(len=*),intent(in) :: file_name
+  !=====
+  character(len=100) :: keyword
+  character(len=256) :: line
+  logical  :: file_exists,found
+  integer,parameter :: stride=5
+  integer  :: fu,istat
+  integer  :: istate,ibf,ijbf,nel
+  integer  :: istyp,ishell,nshell,shell_typ,iprim_per_shell
+  integer  :: p_aos(3)
+  integer  :: d_aos(6)
+  integer  :: f_aos(10)
+  integer  :: g_aos(15)
+  integer,allocatable  :: ao_map(:)
+  real(dp),allocatable :: c_coef(:),c_coef_tmp(:)
+  !=====
+
+  allocate(ao_map(basis%nbf),c_coef_tmp(basis%nbf))
+  nshell=SIZE(basis%shell(:)%icenter)
+
+  do ibf=1,basis%nbf
+    ao_map(ibf) = ibf
+  enddo
+
+  ibf=1
+  do ishell=1,nshell
+    shell_typ=basis%shell(ishell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
+
+    iprim_per_shell=number_basis_function_am('CART',shell_typ)
+
+    ! Order MO Coefs
+    if(shell_typ==1) then                    ! p-shell
+      p_aos(1:3)=ao_map(ibf:ibf+2)
+      ao_map(ibf:ibf+2)=p_aos(:)
+      elseif(shell_typ==2) then                ! d-shell
+      d_aos(1:6)=ao_map(ibf:ibf+5)
+      ! gaussian d orbital order is xx, yy, zz, xy, xz, yz
+      ! libint   d orbital order is xx, xy, xz, yy, yz, zz
+      ao_map(ibf  )=d_aos(1) 
+      ao_map(ibf+1)=d_aos(4)
+      ao_map(ibf+2)=d_aos(5)
+      ao_map(ibf+3)=d_aos(2)
+      ao_map(ibf+4)=d_aos(6)
+      ao_map(ibf+5)=d_aos(3)
+      elseif(shell_typ==3) then                ! f-shell
+      ! gaussian f orbital order is XXX , YYY , ZZZ , XYY , XXY , XXZ , XZZ , YZZ , YYZ , XYZ
+      ! libint   f orbital order is xxx , xxy , xxz , xyy , xyz , xzz , yyy , yyz , yzz , zzz
+      f_aos(1:10)=ao_map(ibf:ibf+9)
+      ao_map(ibf  )=f_aos( 1)
+      ao_map(ibf+1)=f_aos( 5)
+      ao_map(ibf+2)=f_aos( 6)
+      ao_map(ibf+3)=f_aos( 4)
+      ao_map(ibf+4)=f_aos(10)
+      ao_map(ibf+5)=f_aos( 7)
+      ao_map(ibf+6)=f_aos( 2)
+      ao_map(ibf+7)=f_aos( 9)
+      ao_map(ibf+8)=f_aos( 8)
+      ao_map(ibf+9)=f_aos( 3)
+      elseif(shell_typ==4) then                ! g-shell
+      ! gaussian g orbital order is ZZZZ YZZZ YYZZ YYYZ YYYY XZZZ XYZZ XYYZ XYYY XXZZ XXYZ XXYY XXXZ XXXY XXXX
+      ! libint   g orbital order is xxxx xxxy xxxz xxyy xxyz xxzz xyyy xyyz xyzz xzzz yyyy yyyz yyzz yzzz zzzz 
+      g_aos(1:15)=ao_map(ibf:ibf+14)
+      ao_map(ibf  )=g_aos(15)
+      ao_map(ibf+1)=g_aos(14)
+      ao_map(ibf+2)=g_aos(13)
+      ao_map(ibf+3)=g_aos(12)
+      ao_map(ibf+4)=g_aos(11)
+      ao_map(ibf+5)=g_aos(10)
+      ao_map(ibf+6)=g_aos( 9)
+      ao_map(ibf+7)=g_aos( 8)
+      ao_map(ibf+8)=g_aos( 7)
+      ao_map(ibf+9)=g_aos( 6)
+      ao_map(ibf+10)=g_aos(5)
+      ao_map(ibf+11)=g_aos(4)
+      ao_map(ibf+12)=g_aos(3)
+      ao_map(ibf+13)=g_aos(2)
+      ao_map(ibf+14)=g_aos(1)
+      elseif(shell_typ==0) then                ! s-shell
+      ! Do nothing
+    else                ! h-, i-,...shell
+      write(stdout,'(1x,a,i5,a)') "Shell type ",shell_typ," reading from fchk is not coded."
+    endif
+    ibf = ibf + iprim_per_shell
+  enddo
+
+  inquire(file=file_name,exist=file_exists)
+  if( .NOT. file_exists) then
+    call issue_warning('File not found: ' // TRIM(file_name))
+    return
+  endif
+
+  write(stdout,'(/,1x,a,a)') 'Reading an existing Gaussian formatted checkpoint point: ',&
+                             TRIM(file_name)
+
+  nel=nstate*basis%nbf
+  allocate(c_coef(nel))
+
+  open(newunit=fu,file=TRIM(file_name),status='old',action='read')
+
+  ! Read the fchk file until the Alpha MO coefficients are found
+  keyword='Alpha MO coefficients'
+  found = .FALSE.
+  do while( .NOT. found )
+    read(fu,'(a)',iostat=istat) line
+    if( IS_IOSTAT_END(istat) ) then
+      call issue_warning(TRIM(keyword)//' not found in file')
+      return
+    endif
+    found = ( INDEX(line,TRIM(keyword)) /= 0 )
+  enddo
+  write(stdout,'(/,1x,a)') 'Reading Alpha MO coefficients '
+  do ijbf=1,(nel/stride-1)*stride+1,stride
+    read(fu,*) c_coef(ijbf:ijbf+stride-1)
+  enddo
+  if( MODULO(nel,stride) /=0 ) read(fu,*) c_coef((nel/stride)*stride+1:nel)
+  ijbf = 0
+  do istate=1,nstate
+    do ibf=1,basis%nbf
+      ijbf = ijbf + 1
+      c_coef_tmp(ibf)=c_coef(ijbf)
+    enddo
+    c_matrix(:,istate,1)=c_coef_tmp(ao_map(:))
+  enddo
+ 
+  if ( nspin>1 ) then
+
+    rewind(fu)
+    ! Read the fchk file until the Beta MO coefficients are found
+ 
+    keyword='Beta MO coefficients'
+    found = .FALSE.
+    do while( .NOT. found )
+      read(fu,'(a)',iostat=istat) line
+      if( IS_IOSTAT_END(istat) ) then
+        call issue_warning(TRIM(keyword)//' not found in file')
+        return
+      endif
+      found = ( INDEX(line,TRIM(keyword)) /= 0 )
+    enddo
+    write(stdout,'(/,1x,a)') 'Reading Beta MO coefficients '
+    do ijbf=1,(nel/stride-1)*stride+1,stride
+      read(fu,*) c_coef(ijbf:ijbf+stride-1)
+    enddo
+    if( MODULO(nel,stride) /=0 ) read(fu,*) c_coef((nel/stride)*stride+1:nel)
+    ijbf = 0
+    do istate=1,nstate
+      do ibf=1,basis%nbf
+        ijbf = ijbf + 1
+        c_coef_tmp(ibf)=c_coef(ijbf)
+      enddo
+      c_matrix(:,istate,2)=c_coef_tmp(ao_map(:))
+    enddo
+
+  endif
+
+  close(fu)
+
+  deallocate(c_coef,ao_map,c_coef_tmp)
+
+end subroutine read_guess_fchk
 
 !=========================================================================
 subroutine write_energy_qp(energy_qp)
