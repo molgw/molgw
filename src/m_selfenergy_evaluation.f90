@@ -358,7 +358,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         endif
         call destroy_selfenergy_grid(se_gwgw0g)
       else ! SOSEX
-        call sosex_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+        call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
       endif
 
       if( calc_type%selfenergy_approx == GWGWG ) then
@@ -392,7 +392,9 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     if( calc_type%selfenergy_approx == GWFSOS ) then
       call gw_selfenergy_grid(basis,energy_g,occupation,c_matrix,se)
-      call fsos_selfenergy_grid(basis,energy_g,occupation,c_matrix,se)
+      call sox_selfenergy_imag_grid(basis,energy_g,occupation,c_matrix,se)
+      !call sosex_selfenergy_imag_grid(basis,energy_g,occupation,c_matrix,se)
+      !call gwgwg_selfenergy_imag_grid(basis,energy_g,occupation,c_matrix,se)
       call self_energy_pade(se)
     endif
 

@@ -679,12 +679,12 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
   type(selfenergy_grid),intent(inout) :: se
   !=====
   logical,parameter    :: impose_sox=.FALSE.
-  logical,parameter    :: impose_sosex=.FALSE.
+  logical,parameter    :: impose_sosex=.TRUE.
   integer              :: nstate
   integer              :: iomega_sigma,iomegap
   real(dp)             :: braket1,braket2
   integer              :: mstate,rstate,mpspin,iauxil
-  integer              :: prange,isign
+  integer              :: prange,isignp
   integer              :: first_omega,last_omega
   complex(dp),allocatable :: sigmagw(:,:,:)
   complex(dp)          :: denom1,denom2,omega_cmplx
@@ -760,14 +760,14 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
         !
         ! positive and negative omega'
         !
-        do isign=1,-1,-2
+        do isignp=1,-1,-2
 
           !
           ! loop on Sigma(omega)
           !
           do iomega_sigma=first_omega,last_omega
 
-            omega_cmplx = ABS(se%omega_calc(iomega_sigma)%im+isign*wpol_imag%omega(iomegap)%im)*im
+            omega_cmplx = ABS(se%omega_calc(iomega_sigma)%im+isignp*wpol_imag%omega(iomegap)%im)*im
             if( impose_sosex ) then
               chi_wwp(:,:) = 0.0_dp
             else
@@ -783,7 +783,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
             do iauxil=1,nauxil_global
               chi_wwp(iauxil,iauxil) = chi_wwp(iauxil,iauxil) + 1.0_dp
             enddo
-            !write(stdout,*) iomegap,isign,iomega_sigma,se%omega_calc(iomega_sigma)
+            !write(stdout,*) iomegap,isignp,iomega_sigma,se%omega_calc(iomega_sigma)
 
             allocate(eri3_i_m(nauxil_global,ncore_G+1:nhomo_G))
             allocate(eri3_r_m(nauxil_global,ncore_G+1:nvirtual_G-1))
@@ -836,8 +836,8 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
                   braket1 = braket1_ri(rstate,istate)
                   braket2 = braket2_ri(rstate,istate)
 
-                  denom1 = se%omega_calc(iomega_sigma) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
-                  denom2 = isign * wpol_imag%omega(iomegap) + energy(istate,mpspin) - energy(astate,mpspin)
+                  denom1 = se%omega_calc(iomega_sigma) + isignp * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
+                  denom2 = isignp * wpol_imag%omega(iomegap) + energy(istate,mpspin) - energy(astate,mpspin)
 
                   sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) &
                                 + wpol_imag%weight_quad(iomegap) &
@@ -916,8 +916,8 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
                   !braket2 = DOT_PRODUCT( ir(:) , MATMUL( wpol_one%chi(:,:,1) , ma(:) ) ) + DOT_PRODUCT( ir, ma)
                   !braket2 = DOT_PRODUCT( ir, ma)  !SOX or SOSEX
 
-                  denom1 = se%omega_calc(iomega_sigma) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
-                  denom2 = isign * wpol_imag%omega(iomegap) + energy(astate,mpspin) - energy(istate,mpspin)
+                  denom1 = se%omega_calc(iomega_sigma) + isignp * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
+                  denom2 = isignp * wpol_imag%omega(iomegap) + energy(astate,mpspin) - energy(istate,mpspin)
 
                   sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) &
                                 - wpol_imag%weight_quad(iomegap) &
@@ -939,7 +939,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
             if( .NOT. analytic_chi_ ) call wpol_one%destroy(verbose=.FALSE.)
           enddo !iomega_sigma
-        enddo ! isign
+        enddo ! isignp
       enddo !iomegap
 
     enddo
@@ -972,7 +972,7 @@ subroutine fsos_selfenergy_grid_plain_fortran(energy,occupation,c_matrix,se)
   integer              :: iomega_sigma,iomegap
   real(dp)             :: df,braket1,braket2
   integer              :: mstate,pstate,qstate,rstate,mpspin
-  integer              :: isign
+  integer              :: isignp
   integer              :: first_omega,last_omega
   complex(dp),allocatable :: sigmagw(:,:,:)
   complex(dp)          :: denom1,denom2
@@ -1028,15 +1028,15 @@ subroutine fsos_selfenergy_grid_plain_fortran(energy,occupation,c_matrix,se)
       !
       do iomegap=1,wpol_imag%nomega
         ! positive and negative omega'
-        do isign=1,-1,-2
+        do isignp=1,-1,-2
 
           do iomega_sigma=first_omega,last_omega
             if( .NOT. static_fsos ) then
               call wpol_one%init(nstate,occupation,1,grid=MANUAL)
-              wpol_one%omega(1) = ABS( se%omega_calc(iomega_sigma)%im + isign * wpol_imag%omega(iomegap)%im ) * im
+              wpol_one%omega(1) = ABS( se%omega_calc(iomega_sigma)%im + isignp * wpol_imag%omega(iomegap)%im ) * im
               call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
             endif
-            write(stdout,*) iomegap,isign,iomega_sigma,se%omega_calc(iomega_sigma)
+            write(stdout,*) iomegap,isignp,iomega_sigma,se%omega_calc(iomega_sigma)
 
             do rstate=ncore_G+1,nvirtual_G-1
               do pstate=ncore_G+1,nvirtual_G-1
@@ -1059,8 +1059,8 @@ subroutine fsos_selfenergy_grid_plain_fortran(energy,occupation,c_matrix,se)
                   !braket2 = DOT_PRODUCT( qr(:) , MATMUL( wpol_one%chi(:,:,1) , mp(:) ) ) + DOT_PRODUCT( qr, mp)
                   braket2 = DOT_PRODUCT( qr, mp)  !SOX or SOSEX
 
-                  denom1 = se%omega_calc(iomega_sigma) + isign * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
-                  denom2 = isign * wpol_imag%omega(iomegap) + energy(pstate,mpspin) - energy(qstate,mpspin)
+                  denom1 = se%omega_calc(iomega_sigma) + isignp * wpol_imag%omega(iomegap) - energy(rstate,mpspin)
+                  denom2 = isignp * wpol_imag%omega(iomegap) + energy(pstate,mpspin) - energy(qstate,mpspin)
 
                   sigmagw(iomega_sigma,mstate,mpspin) = sigmagw(iomega_sigma,mstate,mpspin) &
                                 + wpol_imag%weight_quad(iomegap) &
@@ -1073,7 +1073,7 @@ subroutine fsos_selfenergy_grid_plain_fortran(energy,occupation,c_matrix,se)
             !deallocate(tmp2)
             if( .NOT. static_fsos ) call wpol_one%destroy()
           enddo !iomega_sigma
-        enddo ! isign
+        enddo ! isignp
       enddo !iomegap
 
     enddo
@@ -1093,147 +1093,6 @@ subroutine fsos_selfenergy_grid_plain_fortran(energy,occupation,c_matrix,se)
 end subroutine fsos_selfenergy_grid_plain_fortran
 
 
-!=========================================================================
-subroutine fsos_selfenergy_double_grid(basis,energy,occupation,c_matrix,se)
-  implicit none
-
-  type(basis_set),intent(in)          :: basis
-  real(dp),intent(in)                 :: energy(:,:),occupation(:,:)
-  real(dp),intent(in)                 :: c_matrix(:,:,:)
-  type(selfenergy_grid),intent(inout) :: se
-  !=====
-  logical,parameter    :: static_fsos  = .FALSE.
-  logical,parameter    :: analytic_chi = .FALSE.
-  integer              :: nstate
-  integer              :: iomega_sigma,iomegap,iomegapp
-  real(dp)             :: df,braket1,braket2
-  integer              :: pstate,qstate,rstate,pqspin
-  integer              :: ustate,vstate,wstate
-  integer              :: isignp,isignpp
-  integer              :: first_omega,last_omega
-  complex(dp),allocatable :: sigmagwgwg(:,:,:)
-  complex(dp)          :: denom1,denom2,denom3
-  type(spectral_function) :: wpol_imag,wpol_analytic
-  !type(spectral_function) :: wpol_one
-  real(dp) :: vw(nauxil_global),up(nauxil_global),uw(nauxil_global),qv(nauxil_global)
-  real(dp) :: erpa,egw
-  !=====
-
-
-  if( .NOT. has_auxil_basis ) then
-    call die('gw_selfenergy_grid requires an auxiliary basis')
-  endif
-  first_omega = LBOUND(se%omega_calc(:),DIM=1)
-  last_omega  = UBOUND(se%omega_calc(:),DIM=1)
-
-  call start_clock(timing_gw_self)
-
-  write(stdout,'(/,1x,a)') 'NEW FSOS self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
-  write(stdout,'(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
-  do iomega_sigma=first_omega,last_omega
-    write(stdout,'(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma,se%omega_calc(iomega_sigma)*Ha_eV
-  enddo
-  write(stdout,'(1x,a)') '========================================================'
-
-  nstate = SIZE(energy,DIM=1)
-
-
-  call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
-
-  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
-  if( analytic_chi_ ) then
-    call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
-    call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
-    call clean_allocate('Chi',wpol_imag%chi,nauxil_global,nauxil_global,wpol_imag%nomega,verbose=.FALSE.)
-    call wpol_analytic%evaluate(wpol_imag%omega,wpol_imag%chi)
-  else
-    call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
-  endif
-
-
-
-  allocate(sigmagwgwg(first_omega:last_omega,nsemin:nsemax,nspin))
-  sigmagwgwg(:,:,:) = 0.0_dp
-
-  do pqspin=1,nspin
-    do pstate=nsemin,nsemax
-      qstate = pstate ! only the diagonal
-
-
-      !
-      ! First imaginary axis integral: i omega'
-      !
-      do iomegap=1,wpol_imag%nomega
-        ! positive and negative omega'
-        do isignp=1,-1,-2
-        !
-        ! Second imaginary axis integral: i omega''
-        !
-        do iomegapp=1,wpol_imag%nomega
-          ! positive and negative omega''
-          do isignpp=1,-1,-2
-
-
-              do iomega_sigma=first_omega,last_omega
-
-                do ustate=ncore_G+1,nvirtual_G-1
-                  do vstate=ncore_G+1,nvirtual_G-1
-                    do wstate=ncore_G+1,nvirtual_G-1
-
-
-                      qv(:) = eri_3center_eigen(:,qstate,vstate,pqspin)
-                      uw(:) = eri_3center_eigen(:,ustate,wstate,pqspin)
-                      up(:) = eri_3center_eigen(:,ustate,pstate,pqspin)
-                      vw(:) = eri_3center_eigen(:,vstate,wstate,pqspin)
-
-                      ! v + v * chi( +/- iw') * v
-                      !braket1 = DOT_PRODUCT( vw(:), MATMUL( wpol_imag%chi(:,:,iomegap), up(:) ) ) + DOT_PRODUCT( vw, up )
-                      braket1 = DOT_PRODUCT( vw(:), MATMUL( wpol_imag%chi(:,:,iomegap), up(:) ) )
-                      !braket1 = DOT_PRODUCT( up, vw )
-
-                      ! v + v * chi( +/- iw'') * v
-                      !braket2 = DOT_PRODUCT( uw(:) , MATMUL( wpol_imag%chi(:,:,iomegapp) , qv(:) ) ) + DOT_PRODUCT( uw, qv)
-                      braket2 = DOT_PRODUCT( uw(:) , MATMUL( wpol_imag%chi(:,:,iomegapp) , qv(:) ) )
-                      !braket2 = DOT_PRODUCT( uw, qv)  !SOX or SOSEX
-
-                      denom1 = se%omega_calc(iomega_sigma) + isignp  * wpol_imag%omega(iomegap)  - energy(ustate,pqspin)
-                      denom2 = se%omega_calc(iomega_sigma) + isignp  * wpol_imag%omega(iomegap)  &
-                                                           + isignpp * wpol_imag%omega(iomegapp) - energy(vstate,pqspin)
-                      denom3 = se%omega_calc(iomega_sigma) + isignpp * wpol_imag%omega(iomegapp) - energy(wstate,pqspin)
-
-                      sigmagwgwg(iomega_sigma,pstate,pqspin) = sigmagwgwg(iomega_sigma,pstate,pqspin) &
-                                    + wpol_imag%weight_quad(iomegap) * wpol_imag%weight_quad(iomegapp)  &
-                                       * ( braket1 * braket2 ) / ( denom1 * denom2 * denom3 ) * ( -1.0_dp / (2.0_dp * pi) ) **2
-
-                    enddo
-                  enddo
-                enddo
-
-              enddo !iomega_sigma
-
-            enddo ! isignpp
-          enddo !iomegapp
-        enddo ! isign
-      enddo !iomegap
-
-    enddo
-  enddo
-  call world%sum(sigmagwgwg)
-
-  write(stdout,*) 'G (W-v) G (W-v) G'
-  do pstate=nsemin,nsemax
-    write(stdout,'(4x,i4,4x,f16.6,1x,f16.6)')  pstate,sigmagwgwg(0,pstate,1)%re*Ha_eV
-  enddo
-  se%sigma_calc(:,:,:) = se%sigma_calc(:,:,:) + sigmagwgwg(:,:,:)
-
-  deallocate(sigmagwgwg)
-  call wpol_imag%destroy()
-
-  call destroy_eri_3center_eigen()
-
-  call stop_clock(timing_gw_self)
-
-end subroutine fsos_selfenergy_double_grid
 
 
 !=========================================================================
