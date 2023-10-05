@@ -1040,3 +1040,29 @@ GW HOMO energy            ,  -23.691585        , 0 , 1.0e-4
 GW+SOSEX2 HOMO energy     ,  -24.139890        , 0 , 1.0e-4
 GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
 
+he_gw+sox.in              , GW+SOX for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOX HOMO energy        ,  -24.821455        , 0 , 1.0e-4
+
+he_gw+sox_pade.in         , GW+SOX for He on the imaginary axis
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOX HOMO energy        ,  -24.821330        , 0 , 1.0e-4
+
+he_gw+sosex.in            , GW+SOSEX for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.745453        , 0 , 1.0e-4
+
+he_gw+sosex_pade.in       , GW+SOSEX for He on the imaginary axis
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.745143        , 0 , 1.0e-4
+
+he_gw+sosex2.in           , GW+SOSEX2 for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.670771        , 0 , 1.0e-4
+
+he_gw+sosex2_pade.in      , GW+SOSEX2 for He on the imaginary axis
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.670254        , 0 , 1.0e-4
+
+
+

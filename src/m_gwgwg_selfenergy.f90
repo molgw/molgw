@@ -1502,7 +1502,7 @@ subroutine sosex_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
-  logical,parameter    :: impose_sox=.FALSE.
+  logical,parameter    :: SOSEX_INCLUDING_SOX=.FALSE.
   integer              :: nstate
   integer              :: iomega_sigma,iomegap
   real(dp)             :: braket1,braket2
@@ -1536,6 +1536,12 @@ subroutine sosex_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
   enddo
   write(stdout,'(1x,a)') '========================================================'
 
+  if( SOSEX_INCLUDING_SOX ) then
+    write(stdout,'(1x,a)') 'Calculate SOSEX including SOX: G*W*G*v*G'
+  else
+    write(stdout,'(1x,a)') 'Calculate SOSEX excluding SOX: G*(W-v)*G*v*G (SOX is calculated elsewhere)'
+  endif
+
   nstate = SIZE(energy,DIM=1)
 
 
@@ -1566,18 +1572,16 @@ subroutine sosex_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
       ! Imaginary axis integral
       !
       do iomegap=1,wpol_imag%nomega
-        if( impose_sox ) then
-          chi_wp(:,:) = 0.0_dp
+        if( analytic_chi_ ) then
+          call wpol_analytic%evaluate(wpol_imag%omega(iomegap),chi_wp)
         else
-          if( analytic_chi_ ) then
-            call wpol_analytic%evaluate(wpol_imag%omega(iomegap),chi_wp)
-          else
-            chi_wp(:,:) = wpol_imag%chi(:,:,iomegap)
-          endif
+          chi_wp(:,:) = wpol_imag%chi(:,:,iomegap)
         endif
-        do iauxil=1,nauxil_global
-          chi_wp(iauxil,iauxil) = chi_wp(iauxil,iauxil) + 1.0_dp
-        enddo
+        if( SOSEX_INCLUDING_SOX ) then
+          do iauxil=1,nauxil_global
+            chi_wp(iauxil,iauxil) = chi_wp(iauxil,iauxil) + 1.0_dp
+          enddo
+        endif
         write(stdout,'(1x,a,i4,a,i4)') 'Quadrature on iwp: ',iomegap,' / ',wpol_imag%nomega
 
         !
@@ -1758,7 +1762,7 @@ subroutine sosex_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
   enddo
   call ortho%sum(sigma_sosex)
 
-  se%sigma_calc(:,:,:) = se%sigma_calc(:,:,:) + sigma_sosex(:,:,:)
+  se%sigma_calc(:,:,:) = se%sigma_calc(:,:,:) + factor_sosex * sigma_sosex(:,:,:)
 
   deallocate(sigma_sosex)
   call wpol_imag%destroy()
@@ -1839,7 +1843,7 @@ subroutine sox_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
             do iomega_sigma=first_omega,last_omega
               sigma_sox(iomega_sigma,pstate,ispin) = sigma_sox(iomega_sigma,pstate,ispin) &
                   - vcoul1 * vcoul2            &
-                    / ( se%omega_calc(iomega_sigma) - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
+                    / ( se%omega_calc(iomega_sigma) - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) )
             enddo
           enddo
 
@@ -1862,7 +1866,7 @@ subroutine sox_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
             do iomega_sigma=first_omega,last_omega
               sigma_sox(iomega_sigma,pstate,ispin) = sigma_sox(iomega_sigma,pstate,ispin) &
                   - vcoul1 * vcoul2            &
-                    / ( se%omega_calc(iomega_sigma) - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
+                    / ( se%omega_calc(iomega_sigma) - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) )
             enddo
           enddo
 
