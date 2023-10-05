@@ -1124,16 +1124,16 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
 
         gi_w = (0.0_dp,0.0_dp)
         do is=1,ns_virt
-          gi_w = gi_w + fs_virt(istate,ispin,is)**2 / ( se%energy0(istate,ispin) + se%omega(iomega) - es_virt(is) + ieta )
+          gi_w = gi_w + fs_virt(istate,ispin,is)**2 / ( se%energy0(istate,1) + se%omega(iomega) - es_virt(is) + ieta )
         enddo
         do is=1,ns_occ
-          gi_w = gi_w + fs_occ(istate,ispin,is)**2 / ( se%energy0(istate,ispin) + se%omega(iomega) - es_occ(is) - ieta )
+          gi_w = gi_w + fs_occ(istate,ispin,is)**2 / ( se%energy0(istate,1) + se%omega(iomega) - es_occ(is) - ieta )
         enddo
-        g0i_w = 1.0_dp / ( se%energy0(istate,ispin) + se%omega(iomega) - energy_gks(istate,1) &
+        g0i_w = 1.0_dp / ( se%energy0(istate,1) + se%omega(iomega) - energy_gks(istate,1) &
                              + ieta * SIGN(1.0_dp,REAL(istate-conf_0%nelec/2-0.5_dp,dp)) )
 
         sigmai_w = 1.0_dp / g0i_w - 1.0_dp / gi_w
-        write(unit_gf,'(*(1x,f18.10))') (se%energy0(istate,ispin) + se%omega(iomega)) * Ha_eV, &
+        write(unit_gf,'(*(1x,f18.10))') (se%energy0(istate,1) + se%omega(iomega)) * Ha_eV, &
                                          gi_w / Ha_eV, g0i_w / Ha_eV, sigmai_w * Ha_eV, &
                                          ABS(AIMAG(gi_w)) / pi / Ha_eV, &
                                          ABS(AIMAG(g0i_w)) / pi / Ha_eV
@@ -1160,7 +1160,7 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
         gi_w = gi_w + SUM(fs_occ(istate,:,is)**2) / ( se%energy0(istate,1) + se%omega(iomega) - es_occ(is) - ieta )
       enddo
 
-      write(unit_gf,'(8(1x,es18.8))') (se%energy0(istate,ispin) + se%omega(iomega)) * Ha_eV, &
+      write(unit_gf,'(8(1x,es18.8))') (se%energy0(istate,1) + se%omega(iomega)) * Ha_eV, &
                                       gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
     enddo
     close(unit_gf)
