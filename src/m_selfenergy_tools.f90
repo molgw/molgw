@@ -559,18 +559,15 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
   real(dp),allocatable :: omega_gaussleg(:)
   real(dp)             :: efermi
   integer              :: iunittmp
-  logical              :: manual_efermi
   !=====
 
   se%nomega_calc = 0
   se%nomega      = 0
 
-  inquire(file='manual_efermi',exist=manual_efermi)
-  if(manual_efermi) then
-    write(stdout,*) 'Reading manual_efermi file'
-    open(newunit=iunittmp,file='manual_efermi',action='read')
-    read(iunittmp,*) efermi
-    close(iunittmp)
+  if( mu_origin > -99.0_dp ) then
+
+    efermi = mu_origin
+
     !
     ! efermi needs to be in the HOMO-LUMO gap
     if( efermi < MAXVAL(energy0(nhomo_G,:)) .OR. efermi > MINVAL(energy0(nhomo_G+1,:)) ) then

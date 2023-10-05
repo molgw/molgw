@@ -21,6 +21,7 @@
  nomega_sigma_calc=21
  step_sigma_calc=0.2
 
+ mu_origin=-0.50
 
  natom=1
 /

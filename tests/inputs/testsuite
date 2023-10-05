@@ -1058,7 +1058,7 @@ he_gw+gwgwg.in            , GW+GWGWG for He
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
 GW+GWGWG HOMO energy      ,  -24.696203        , 0 , 1.0e-4
 
-he_gw+gwgwg_pade.in       , GW+GWGWG for He on the imaginary axis
+he_gw+gwgwg_pade.in       , GW+GWGWG for He on the imaginary axis (setting the axis origin)
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
-GW+GWGWG HOMO energy      ,  -24.693591        , 0 , 1.0e-4
+GW+GWGWG HOMO energy      ,  -24.694923        , 0 , 1.0e-4
 
