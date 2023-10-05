@@ -1,5 +1,6 @@
 &molgw
- comment='He GW+SOX'
+ comment='He GW+SOSEX'
+ mpi_nproc_ortho=1024
 
  scf='HF'
 

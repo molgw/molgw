@@ -1370,7 +1370,7 @@ subroutine gwgwg_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
   integer              :: isignp,isignpp
   integer              :: first_omega,last_omega
   complex(dp),allocatable :: sigmagwgwg(:,:,:)
-  complex(dp)          :: denom1,denom2,denom3
+  complex(dp)          :: denom1,denom2,denom3,denoms
   type(spectral_function) :: wpol_imag,wpol_analytic
   !type(spectral_function) :: wpol_one
   real(dp) :: vw(nauxil_global),up(nauxil_global),uv(nauxil_global),qw(nauxil_global)
@@ -1423,14 +1423,11 @@ subroutine gwgwg_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
       do iomegap=1,wpol_imag%nomega
         if( MODULO( iomegap - 1 , ortho%nproc) /= ortho%rank ) cycle
         write(stdout,'(1x,a,i4,a,i4)') 'Quadrature on omega prime: ',iomegap,' / ',wpol_imag%nomega
-        ! positive and negative omega'
-        do isignp=1,-1,-2
           !
           ! Second imaginary axis integral: i omega''
           !
           do iomegapp=1,wpol_imag%nomega
             ! positive and negative omega''
-            do isignpp=1,-1,-2
 
               do iomega_sigma=first_omega,last_omega
 
@@ -1444,22 +1441,49 @@ subroutine gwgwg_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
                       up(:) = eri_3center_eigen(:,ustate,pstate,pqspin)
                       vw(:) = eri_3center_eigen(:,vstate,wstate,pqspin)
 
-                      ! v + v * chi( +/- iw') * v
-                      !braket1 = DOT_PRODUCT( up, vw )
+                      ! v * chi( +/- iw') * v
                       braket1 = DOT_PRODUCT( vw(:), MATMUL( wpol_imag%chi(:,:,iomegap), up(:) ) )
 
-                      ! v + v * chi( +/- iw'') * v
-                      !braket2 = DOT_PRODUCT( uv, qw)  !SOX or SOSEX
+                      ! v * chi( +/- iw'') * v
                       braket2 = DOT_PRODUCT( uv(:) , MATMUL( wpol_imag%chi(:,:,iomegapp) , qw(:) ) )
 
-                      denom1 = se%omega_calc(iomega_sigma) + isignp  * wpol_imag%omega(iomegap)  - energy(ustate,pqspin)
-                      denom2 = se%omega_calc(iomega_sigma) + isignp  * wpol_imag%omega(iomegap)  &
-                                                           + isignpp * wpol_imag%omega(iomegapp) - energy(vstate,pqspin)
-                      denom3 = se%omega_calc(iomega_sigma) + isignpp * wpol_imag%omega(iomegapp) - energy(wstate,pqspin)
+                      ! +w' +w''
+                      denom1 = se%omega_calc(iomega_sigma) + wpol_imag%omega(iomegap)  - energy(ustate,pqspin)
+                      denom2 = se%omega_calc(iomega_sigma) + wpol_imag%omega(iomegap)  &
+                                                           + wpol_imag%omega(iomegapp) - energy(vstate,pqspin)
+                      denom3 = se%omega_calc(iomega_sigma) + wpol_imag%omega(iomegapp) - energy(wstate,pqspin)
+
+                      denoms = 1.0_dp / ( denom1 * denom2 * denom3 )
+
+                      ! -w' +w''
+                      denom1 = se%omega_calc(iomega_sigma) - wpol_imag%omega(iomegap)  - energy(ustate,pqspin)
+                      denom2 = se%omega_calc(iomega_sigma) - wpol_imag%omega(iomegap)  &
+                                                           + wpol_imag%omega(iomegapp) - energy(vstate,pqspin)
+                      denom3 = se%omega_calc(iomega_sigma) + wpol_imag%omega(iomegapp) - energy(wstate,pqspin)
+
+                      denoms = denoms + 1.0_dp / ( denom1 * denom2 * denom3 )
+
+                      ! +w' -w''
+                      denom1 = se%omega_calc(iomega_sigma) + wpol_imag%omega(iomegap)  - energy(ustate,pqspin)
+                      denom2 = se%omega_calc(iomega_sigma) + wpol_imag%omega(iomegap)  &
+                                                           - wpol_imag%omega(iomegapp) - energy(vstate,pqspin)
+                      denom3 = se%omega_calc(iomega_sigma) - wpol_imag%omega(iomegapp) - energy(wstate,pqspin)
+
+                      denoms = denoms + 1.0_dp / ( denom1 * denom2 * denom3 )
+
+                      ! -w' -w''
+                      denom1 = se%omega_calc(iomega_sigma) - wpol_imag%omega(iomegap)  - energy(ustate,pqspin)
+                      denom2 = se%omega_calc(iomega_sigma) - wpol_imag%omega(iomegap)  &
+                                                           - wpol_imag%omega(iomegapp) - energy(vstate,pqspin)
+                      denom3 = se%omega_calc(iomega_sigma) - wpol_imag%omega(iomegapp) - energy(wstate,pqspin)
+
+                      denoms = denoms + 1.0_dp / ( denom1 * denom2 * denom3 )
+
+
 
                       sigmagwgwg(iomega_sigma,pstate,pqspin) = sigmagwgwg(iomega_sigma,pstate,pqspin) &
                                     + wpol_imag%weight_quad(iomegap) * wpol_imag%weight_quad(iomegapp)  &
-                                       * ( braket1 * braket2 ) / ( denom1 * denom2 * denom3 ) * ( -1.0_dp / (2.0_dp * pi) ) **2
+                                       * ( braket1 * braket2 ) * denoms * ( -1.0_dp / (2.0_dp * pi) ) **2
 
                     enddo
                   enddo
@@ -1467,9 +1491,7 @@ subroutine gwgwg_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
 
               enddo !iomega_sigma
 
-            enddo ! isignpp
           enddo !iomegapp
-        enddo ! isignp
       enddo !iomegap
 
     enddo

@@ -375,17 +375,12 @@ subroutine sf_destroy(sf,verbose)
   class(spectral_function),intent(inout) :: sf
   logical,optional,intent(in)            :: verbose
   !=====
-  integer :: stdout_
   logical :: verbose_
   !=====
 
-  stdout_ = stdout
   verbose_ = .TRUE.
   if( PRESENT(verbose) ) then
     verbose_ = verbose
-    if( .NOT. verbose ) then
-      open(newunit=stdout_,file='/dev/null')
-    endif
   endif
 
   if(ALLOCATED(sf%transition_table)) deallocate(sf%transition_table)
@@ -400,7 +395,9 @@ subroutine sf_destroy(sf,verbose)
   if(ALLOCATED(sf%omega))       deallocate(sf%omega)
   if(ALLOCATED(sf%vchiv_sqrt))  deallocate(sf%vchiv_sqrt)
 
-  write(stdout_,'(/,a)') ' Spectral function destroyed'
+  if( verbose_ ) then
+    write(stdout,'(/,a)') ' Spectral function destroyed'
+  endif
 
 end subroutine sf_destroy
 

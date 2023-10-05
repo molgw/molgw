@@ -1,14 +1,14 @@
 &molgw
- comment='He GW+SOX'
- mpi_nproc_ortho=1024
+ comment='He GW+GWGWG'
 
  scf='HF'
 
  basis='cc-pVDZ'
  auxil_basis='PAUTO'
 
+ mpi_nproc_ortho=1024
 
- postscf='gw+sox'
+ postscf='gw+gwgwg'
 
  selfenergy_state_range=0
 
