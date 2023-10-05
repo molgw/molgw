@@ -1183,7 +1183,7 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
                                         SUM(sigma_gwgwg(0,pstate,:,:)%re,DIM=2)*Ha_eV
   enddo
   write(stdout,'(a)') &
-     '   #          E0       SigC_GW+SOSEX SigC_G(W-v)G(W-v)G SigC_TOT'
+     '   #          E0       SigC_GW+SOSEX2 SigC_G(W-v)G(W-v)G SigC_TOT'
   do pstate=nsemin,nsemax
     write(stdout,'(i4,1x,*(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
                                         sigma_rest(0,pstate,:)%re*Ha_eV,   &
@@ -1421,9 +1421,10 @@ subroutine gwgwg_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
       ! First imaginary axis integral: i omega'
       !
       do iomegap=1,wpol_imag%nomega
+        if( MODULO( iomegap - 1 , ortho%nproc) /= ortho%rank ) cycle
+        write(stdout,'(1x,a,i4,a,i4)') 'Quadrature on omega prime: ',iomegap,' / ',wpol_imag%nomega
         ! positive and negative omega'
         do isignp=1,-1,-2
-          write(stdout,*) iomegap,isignp
           !
           ! Second imaginary axis integral: i omega''
           !
@@ -1473,12 +1474,14 @@ subroutine gwgwg_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
 
     enddo
   enddo
-  call world%sum(sigmagwgwg)
+  call ortho%sum(sigmagwgwg)
 
   write(stdout,*) 'G (W-v) G (W-v) G'
   do pstate=nsemin,nsemax
     do iomega_sigma=first_omega,last_omega
-      write(stdout,'(2(4x,i4),4x,f16.6,1x,f16.6)')  pstate,iomega_sigma,sigmagwgwg(iomega_sigma,pstate,1)%re*Ha_eV
+      write(stdout,'(2(4x,i4),4x,f16.6,1x,f16.6)')  pstate,iomega_sigma, &
+                                                    se%sigma_calc(iomega_sigma,pstate,1)%re*Ha_eV, &
+                                                    sigmagwgwg(iomega_sigma,pstate,1)%re*Ha_eV
     enddo
   enddo
   se%sigma_calc(:,:,:) = se%sigma_calc(:,:,:) + sigmagwgwg(:,:,:)
@@ -1582,7 +1585,7 @@ subroutine sosex_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
             chi_wp(iauxil,iauxil) = chi_wp(iauxil,iauxil) + 1.0_dp
           enddo
         endif
-        write(stdout,'(1x,a,i4,a,i4)') 'Quadrature on iwp: ',iomegap,' / ',wpol_imag%nomega
+        write(stdout,'(1x,a,i4,a,i4)') 'Quadrature on omega prime: ',iomegap,' / ',wpol_imag%nomega
 
         !
         ! positive and negative omega'

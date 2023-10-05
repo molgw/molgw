@@ -43,7 +43,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
   type(energy_contributions),intent(inout) :: en_mbpt
   !=====
   integer                 :: nstate
-  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gwgw0g,se_sosex,se_gwgwg
+  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gwgw0g
   logical                 :: enforce_rpa
   character(len=36)       :: selfenergy_tag
   integer                 :: reading_status

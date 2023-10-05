@@ -281,6 +281,11 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGWG
       factor_sosex = 2.0_dp
+    case('GWGWGWG_PADE','GW+GWGWG_PADE')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GWGWG
+      factor_sosex = 2.0_dp
+      calc_type%selfenergy_technique = imaginary_axis_pade
     case('GWGWGWG_NUMERICAL','GW+GWGWG_NUMERICAL')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGWG_NUMERICAL
