@@ -542,7 +542,7 @@ end subroutine destroy_dft_grid
 
 
 !=========================================================================
-pure function smooth_step(mu)
+function smooth_step(mu)
   real(dp) :: smooth_step
   real(dp),intent(in) :: mu
   !=====
