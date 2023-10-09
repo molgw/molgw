@@ -1428,14 +1428,15 @@ subroutine gwgwg_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
           do vstate=ncore_G+1,nvirtual_G-1
             do wstate=ncore_G+1,nvirtual_G-1
 
-              ! v * chi( +/- iw') * v
-              braket1 = DOT_PRODUCT( vw(:), MATMUL( wpol_imag%chi(:,:,iomegap), up(:) ) )
 
 
               qw(:) = eri_3center_eigen(:,qstate,wstate,pqspin)
               uv(:) = eri_3center_eigen(:,ustate,vstate,pqspin)
               up(:) = eri_3center_eigen(:,ustate,pstate,pqspin)
               vw(:) = eri_3center_eigen(:,vstate,wstate,pqspin)
+
+              ! v * chi( +/- iw') * v
+              braket1 = DOT_PRODUCT( vw(:), MATMUL( wpol_imag%chi(:,:,iomegap), up(:) ) )
 
               !
               ! Second imaginary axis integral: i omega''
