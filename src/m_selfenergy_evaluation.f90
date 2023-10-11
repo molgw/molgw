@@ -69,12 +69,6 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     exchange_m_vxc_diag(pstate,:) = exchange_m_vxc(pstate,pstate,:)
   enddo
 
-  !
-  ! Small imaginary part of the poles in the Green's function
-  ! output here
-  write(msg,'(es9.2)') AIMAG(ieta)
-  call issue_warning('small complex number is '//msg)
-
 
   do istep_gw=1,nstep_gw
 
