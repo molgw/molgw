@@ -431,16 +431,16 @@ end subroutine sosex_selfenergy
 
 
 !=========================================================================
-subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
+subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   implicit none
 
-  integer,intent(in)                 :: nstate
   type(basis_set)                    :: basis
-  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)                :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                :: c_matrix(:,:,:)
   type(spectral_function),intent(in) :: wpol
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  integer                 :: nstate
   integer                 :: iomega,ibf_auxil
   complex(dp),allocatable :: sigma_gwgw0g(:,:,:)
   complex(dp),allocatable :: sigma_gw0gw0g(:,:,:)
@@ -458,10 +458,14 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   real(dp),allocatable    :: ip(:),bk(:),ib(:),kp(:)
   real(dp),allocatable    :: pa(:),jc(:),aj(:),cp(:)
   real(dp),allocatable    :: ik(:),ac(:),bp(:),ak(:),jp(:),ic(:)
+  integer                 :: ustate,state_range,nstate2
+  real(dp),allocatable    :: chi_up(:,:,:),up(:,:,:)
   !=====
 
   call start_clock(timing_gwgamma_self)
   if( .NOT. has_auxil_basis ) call die('gwgw0g_selfenergy: not implemented without an auxiliary basis')
+
+  nstate = SIZE(occupation,DIM=1)
 
   write(stdout,*)
   select case(calc_type%selfenergy_approx)
@@ -503,6 +507,20 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   allocate(jp(nauxil_global))
   allocate(ic(nauxil_global))
 
+  allocate(up(nauxil_global,ncore_G+1:nvirtual_G-1,nsemin:nsemax))
+  allocate(chi_up(nauxil_global,ncore_G+1:nvirtual_G-1,nsemin:nsemax))
+  state_range=nvirtual_G-ncore_G-1
+  nstate2 = state_range * ( nsemax - nsemin +1 )
+  do pstate=nsemin,nsemax
+    do ustate=ncore_G+1,nvirtual_G-1
+      up(:,ustate,pstate) = eri_3center_eigen(:,ustate,pstate,1)
+    enddo
+  enddo
+  call DGEMM('T','N',nauxil_global,nstate2,nauxil_global, &
+              1.0_dp,chi_static,nauxil_global, &
+                     up,nauxil_global, &
+              0.0_dp,chi_up,nauxil_global)
+
   !
   !
   allocate(sigma_gwgw0g(-se%nomega:se%nomega,nsemin:nsemax,nspin))
@@ -537,11 +555,13 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             ip(:) = eri_3center_eigen(:,pstate,istate,ispin)
             bk(:) = eri_3center_eigen(:,bstate,kstate,ispin)
             v_1  = DOT_PRODUCT( ip(:) , bk(:) )
-            w0_1 = DOT_PRODUCT( ip(:) , MATMUL( chi_static(:,:) , bk(:) ) )
+            !w0_1 = DOT_PRODUCT( ip(:) , MATMUL( chi_static(:,:) , bk(:) ) )
+            w0_1 = DOT_PRODUCT( bk(:) , chi_up(:,istate,pstate) )
 
             ib(:) = eri_3center_eigen(:,istate,bstate,ispin)
             kp(:) = eri_3center_eigen(:,kstate,pstate,ispin)
-            w0_2 = DOT_PRODUCT( ib(:) , MATMUL( chi_static(:,:) , kp(:) ) )
+            !w0_2 = DOT_PRODUCT( ib(:) , MATMUL( chi_static(:,:) , kp(:) ) )
+            w0_2 = DOT_PRODUCT( ib(:) , chi_up(:,kstate,pstate) )
 
             !
             ! calculate only the diagonal !
@@ -576,11 +596,13 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
             pa(:) = eri_3center_eigen(:,pstate,astate,ispin)
             jc(:) = eri_3center_eigen(:,jstate,cstate,ispin)
             v_1  = DOT_PRODUCT( pa(:) , jc(:) )
-            w0_1 = DOT_PRODUCT( pa(:) , MATMUL( chi_static(:,:) , jc(:) ) )
+            !w0_1 = DOT_PRODUCT( pa(:) , MATMUL( chi_static(:,:) , jc(:) ) )
+            w0_1 = DOT_PRODUCT( jc(:) , chi_up(:,astate,pstate) )
 
             aj(:) = eri_3center_eigen(:,astate,jstate,ispin)
             cp(:) = eri_3center_eigen(:,cstate,pstate,ispin)
-            w0_2 = DOT_PRODUCT( aj(:) , MATMUL( chi_static(:,:) , cp(:) ) )
+            !w0_2 = DOT_PRODUCT( aj(:) , MATMUL( chi_static(:,:) , cp(:) ) )
+            w0_2 = DOT_PRODUCT( aj(:) , chi_up(:,cstate,pstate) )
 
             !
             ! calculate only the diagonal !
@@ -653,8 +675,9 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                 !v_2 = eri_eigen(istate,kstate,ispin,bstate,pstate,ispin)
                 ik(:) = eri_3center_eigen(:,istate,kstate,ispin)
-                bp(:) = eri_3center_eigen(:,bstate,pstate,ispin)
-                w0_2 = DOT_PRODUCT( ik(:) , MATMUL( chi_static(:,:) , bp(:) ) )
+                !bp(:) = eri_3center_eigen(:,bstate,pstate,ispin)
+                !w0_2 = DOT_PRODUCT( ik(:) , MATMUL( chi_static(:,:) , bp(:) ) )
+                w0_2 = DOT_PRODUCT( ik(:) , chi_up(:,bstate,pstate) )
 
                 do iomega=-se%nomega,se%nomega
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
@@ -682,8 +705,9 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                 !v_2 = eri_eigen(istate,cstate,ispin,bstate,pstate,ispin)
                 ic(:) = eri_3center_eigen(:,istate,cstate,ispin)
-                bp(:) = eri_3center_eigen(:,bstate,pstate,ispin)
-                w0_2 = DOT_PRODUCT( ic(:) , MATMUL( chi_static(:,:) , bp(:) ) )
+                !bp(:) = eri_3center_eigen(:,bstate,pstate,ispin)
+                !w0_2 = DOT_PRODUCT( ic(:) , MATMUL( chi_static(:,:) , bp(:) ) )
+                w0_2 = DOT_PRODUCT( ic(:) , chi_up(:,bstate,pstate) )
 
                 do iomega=-se%nomega,se%nomega
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
@@ -720,8 +744,9 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                 !v_2 = eri_eigen(astate,kstate,ispin,jstate,pstate,ispin)
                 ak(:) = eri_3center_eigen(:,astate,kstate,ispin)
-                jp(:) = eri_3center_eigen(:,jstate,pstate,ispin)
-                w0_2 = DOT_PRODUCT( ak(:) , MATMUL( chi_static(:,:) , jp(:) ) )
+                !jp(:) = eri_3center_eigen(:,jstate,pstate,ispin)
+                !w0_2 = DOT_PRODUCT( ak(:) , MATMUL( chi_static(:,:) , jp(:) ) )
+                w0_2 = DOT_PRODUCT( ak(:) , chi_up(:,jstate,pstate) )
 
                 do iomega=-se%nomega,se%nomega
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
@@ -758,8 +783,9 @@ subroutine gwgw0g_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
                 !v_2 = eri_eigen(astate,cstate,ispin,jstate,pstate,ispin)
                 ac(:) = eri_3center_eigen(:,astate,cstate,ispin)
-                jp(:) = eri_3center_eigen(:,jstate,pstate,ispin)
-                w0_2 = DOT_PRODUCT( ac(:) , MATMUL( chi_static(:,:) , jp(:) ) )
+                !jp(:) = eri_3center_eigen(:,jstate,pstate,ispin)
+                !w0_2 = DOT_PRODUCT( ac(:) , MATMUL( chi_static(:,:) , jp(:) ) )
+                w0_2 = DOT_PRODUCT( ac(:) , chi_up(:,jstate,pstate) )
 
                 do iomega=-se%nomega,se%nomega
                   sigma_gwgw0g(iomega,pstate,ispin) = sigma_gwgw0g(iomega,pstate,ispin) &
@@ -847,16 +873,16 @@ end subroutine gwgw0g_selfenergy
 
 
 !=========================================================================
-subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
+subroutine gwgwg_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   implicit none
 
-  integer,intent(in)                 :: nstate
   type(basis_set)                    :: basis
-  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)                :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                :: c_matrix(:,:,:)
   type(spectral_function),intent(in) :: wpol
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  integer                 :: nstate
   integer                 :: iomega
   complex(dp),allocatable :: sigma_rest(:,:,:)
   complex(dp),allocatable :: sigma_gwgwg(:,:,:,:)
@@ -871,6 +897,8 @@ subroutine gwgwg_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   !=====
 
   call start_clock(timing_gwgamma_self)
+
+  nstate = SIZE(c_matrix,DIM=2)
 
   write(stdout,*)
   write(stdout,*) 'Perform a one-shot GWGWG calculation'
@@ -1208,7 +1236,7 @@ end subroutine gwgwg_selfenergy
 
 
 !=========================================================================
-subroutine gwgwg_selfenergy_real_grid(basis,energy,occupation,c_matrix,se)
+subroutine gwgwg_selfenergy_real_grid(basis,occupation,energy,c_matrix,se)
   implicit none
 
   type(basis_set),intent(in)          :: basis
@@ -1352,7 +1380,7 @@ end subroutine gwgwg_selfenergy_real_grid
 
 
 !=========================================================================
-subroutine gwgwg_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
+subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
   implicit none
 
   type(basis_set),intent(in)          :: basis
@@ -1520,7 +1548,7 @@ end subroutine gwgwg_selfenergy_imag_grid
 
 
 !=========================================================================
-subroutine sosex_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
+subroutine sosex_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
   implicit none
 
   type(basis_set),intent(in)          :: basis
@@ -1802,7 +1830,7 @@ end subroutine sosex_selfenergy_imag_grid
 
 
 !=========================================================================
-subroutine sox_selfenergy_imag_grid(basis,energy,occupation,c_matrix,se)
+subroutine sox_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
   implicit none
 
   type(basis_set)                    :: basis

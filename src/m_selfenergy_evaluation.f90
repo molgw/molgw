@@ -365,7 +365,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           else
             call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_gwgw0g)
           endif
-          call gwgw0g_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se_gwgw0g)
+          call gwgw0g_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_gwgw0g)
           if( arno_static_approximation ) then
             do iomega=-se%nomega,se%nomega
               se%sigma(iomega,:,:) = se%sigma(iomega,:,:) + se_gwgw0g%sigma(0,:,:)
@@ -393,12 +393,12 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           deallocate(zz)
           deallocate(energy_qp_z)
 
-          call gwgwg_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+          call gwgwg_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
 
         case(GWGWG_NUMERICAL)
           call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
 
-          call gwgwg_selfenergy_real_grid(basis,energy_g,occupation,c_matrix,se)
+          call gwgwg_selfenergy_real_grid(basis,occupation,energy_g,c_matrix,se)
         case default
           call die('selfenergy_evaluation: selfenergy type not recognized')
         end select
@@ -409,13 +409,13 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       else
         !
         ! Imaginary frequencies implementation
-        call gw_selfenergy_grid(basis,energy_g,occupation,c_matrix,se)
-        call sox_selfenergy_imag_grid(basis,energy_g,occupation,c_matrix,se)
+        call gw_selfenergy_grid(basis,occupation,energy_g,c_matrix,se)
+        call sox_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
         if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWGWG ) then
-          call sosex_selfenergy_imag_grid(basis,energy_g,occupation,c_matrix,se)
+          call sosex_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
         endif
         if( calc_type%selfenergy_approx == GWGWG ) then
-          call gwgwg_selfenergy_imag_grid(basis,energy_g,occupation,c_matrix,se)
+          call gwgwg_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
         endif
         call self_energy_pade(se)
       endif

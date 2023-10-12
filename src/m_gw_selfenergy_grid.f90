@@ -549,7 +549,7 @@ end subroutine gw_selfenergy_contour
 
 
 !=========================================================================
-subroutine gw_selfenergy_grid(basis,energy,occupation,c_matrix,se)
+subroutine gw_selfenergy_grid(basis,occupation,energy,c_matrix,se)
   implicit none
 
   type(basis_set),intent(in)          :: basis
