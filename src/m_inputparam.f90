@@ -56,6 +56,7 @@ module m_inputparam
   integer,parameter :: GW0GW0G         = 231
   integer,parameter :: GWGW0G          = 232
   integer,parameter :: GWGWG_NUMERICAL = 233
+  integer,parameter :: GWTILDE         = 234
 
   !
   ! TDDFT variables
@@ -296,6 +297,9 @@ subroutine init_calculation_type(scf,postscf)
     case('GW+GWGW0G')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGW0G
+    case('GWTILDE')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GWTILDE
     case('GWTDDFTGAMMA','G0WTDDFTGAMMA0','GWTDDFTSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX

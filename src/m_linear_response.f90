@@ -181,7 +181,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! It is stored in object wpol_static
   !
   if( is_bse ) then
-    call wpol_static%init(nstate,occupation,1,grid=STATIC)
+    call wpol_static%init(nstate,occupation,1,grid_type=STATIC)
     call read_spectral_function(wpol_static,reading_status)
 
     ! If a SCREENED_COULOMB file cannot be found,
@@ -227,9 +227,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
     !
     ! Step 1
-    if( .NOT. (PRESENT(a_matrix) .AND. PRESENT(b_matrix)) ) then
-      call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
-    endif
+    call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
 
 #if defined(HAVE_SCALAPACK)
     call build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda_,desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
@@ -300,13 +298,11 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! When requesting A and B, calculate them and exit here
   ! (skip diago etc)
   !
-  if( PRESENT(a_matrix) .AND. PRESENT(b_matrix) ) then
+  if( PRESENT(a_matrix) ) then
     a_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
+  endif
+  if( PRESENT(b_matrix) ) then
     b_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) - amb_matrix(:,:) )
-    call clean_deallocate('A+B',apb_matrix)
-    call clean_deallocate('A-B',amb_matrix)
-    call stop_clock(timing_pola)
-    return
   endif
 
   if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
@@ -419,8 +415,6 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     ! If requested write the spectral function on file
     if( print_w_ ) call write_spectral_function(wpol_out)
 
-  else
-    call wpol_out%destroy()
   endif
 
 

@@ -109,6 +109,8 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='GW+GW0GW0G'
     case(GWGW0G)
       selfenergy_tag='GW+GWGW0G'
+    case(GWTILDE)
+      selfenergy_tag='GWTILDE'
     case default
       write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -197,7 +199,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         if( reading_status /= 0 ) then
           select case(calc_type%selfenergy_technique)
           case(imaginary_axis_pade,imaginary_axis_homolumo)
-            call wpol%init(nstate_small,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+            call wpol%init(nstate_small,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
             call polarizability_grid_scalapack(occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
           case(contour_deformation)
             ! no need for chi, it will be calculated directly inside
@@ -298,6 +300,13 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
 
       endif
 
+    endif
+
+    !
+    ! Test Starke-Maggio-Kresse
+    !
+    if( calc_type%selfenergy_approx == GWTILDE ) then
+      call gwtilde_selfenergy(basis,occupation,energy_g,c_matrix,se)
     endif
 
     !

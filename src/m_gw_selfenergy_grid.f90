@@ -377,7 +377,7 @@ subroutine gw_selfenergy_contour(energy,occupation,c_matrix,se)
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
-  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
   call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.TRUE.)
 
   !
@@ -405,7 +405,7 @@ subroutine gw_selfenergy_contour(energy,occupation,c_matrix,se)
   enddo
 
   write(stdout,'(1x,a,f12.6)') 'Maximum real frequency needed (eV): ',de_max * Ha_eV
-  call wpol_real%init(nstate,occupation,nomega_chi_real,grid=REAL_LINEAR,omega_max=de_max)
+  call wpol_real%init(nstate,occupation,nomega_chi_real,grid_type=REAL_LINEAR,omega_max=de_max)
   call wpol_real%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.TRUE.)
 
 
@@ -592,9 +592,9 @@ subroutine gw_selfenergy_grid(basis,occupation,energy,c_matrix,se)
 
   !
   ! Initialize wpol_imag any way to store chi(:,:,iomegap)
-  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
-    call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
+    call wpol_analytic%init(nstate,occupation,0,grid_type=NO_GRID)
     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
     call clean_allocate('Chi',wpol_imag%chi,nauxil_global,nauxil_global,wpol_imag%nomega,verbose=.FALSE.)
     call wpol_analytic%evaluate(wpol_imag%omega,wpol_imag%chi)
@@ -720,9 +720,9 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
   !
   ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
-  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
-    call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
+    call wpol_analytic%init(nstate,occupation,0,grid_type=NO_GRID)
     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
@@ -774,7 +774,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
               if( analytic_chi_ ) then
                 call wpol_analytic%evaluate(omega_cmplx,chi_wwp)
               else
-                call wpol_one%init(nstate,occupation,1,grid=MANUAL,verbose=.FALSE.)
+                call wpol_one%init(nstate,occupation,1,grid_type=MANUAL,verbose=.FALSE.)
                 wpol_one%omega(1) = omega_cmplx
                 call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.,verbose=.FALSE.)
                 chi_wwp(:,:) = wpol_one%chi(:,:,1)
@@ -1002,11 +1002,11 @@ subroutine fsos_selfenergy_grid_plain_fortran(energy,occupation,c_matrix,se)
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
-  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
   if( .NOT. static_fsos ) then
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
   else
-    call wpol_one%init(nstate,occupation,1,grid=STATIC)
+    call wpol_one%init(nstate,occupation,1,grid_type=STATIC)
     call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
     allocate(wpol_imag%chi(nauxil_global,nauxil_global,wpol_imag%nomega))
     do iomegap=1,wpol_imag%nomega
@@ -1032,7 +1032,7 @@ subroutine fsos_selfenergy_grid_plain_fortran(energy,occupation,c_matrix,se)
 
           do iomega_sigma=first_omega,last_omega
             if( .NOT. static_fsos ) then
-              call wpol_one%init(nstate,occupation,1,grid=MANUAL)
+              call wpol_one%init(nstate,occupation,1,grid_type=MANUAL)
               wpol_one%omega(1) = ABS( se%omega_calc(iomega_sigma)%im + isignp * wpol_imag%omega(iomegap)%im ) * im
               call wpol_one%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
             endif

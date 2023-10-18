@@ -52,7 +52,7 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   nstate = SIZE(energy,DIM=1)
 
   ! Turn dynamic into static
-  !call issue_warning('FBFB HACK in SOSEX')
+  !call issue_warning('HACK in SOSEX')
   !wpol%pole(:) = wpol%pole(:) * 1000.0d0
   !wpol%residue_left(:,:) = wpol%residue_left(:,:) * SQRT( 1000.0d0 )
 
@@ -890,7 +890,6 @@ subroutine gwgwg_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   integer                 :: istate,jstate,kstate,pqspin,spole,tpole
   integer                 :: pstate,qstate
   real(dp),allocatable    :: bra_t(:,:),bra_s(:,:)
-  real(dp)                :: vcoul,vcoul1,vcoul2
   real(dp)                :: Omega_s,Omega_t
   complex(dp)             :: denom1,denom2,denom3,denom4,num3
   real(dp)                :: omega,num1,num2,ei,ej,ek,ea,eb,ec
@@ -953,7 +952,7 @@ subroutine gwgwg_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
         do pstate=nsemin,nsemax
           qstate=pstate
           do iomega=-se%nomega,se%nomega
-            omega = se%energy0(pstate,pqspin) + se%omega(iomega)
+            omega = se%energy0(pstate,pqspin) + se%omega(iomega)%re
 
             !
             ! 000
@@ -1248,9 +1247,8 @@ subroutine gwgwg_selfenergy_real_grid(basis,occupation,energy,c_matrix,se)
   logical,parameter    :: static_fsos  = .FALSE.
   real(dp)             :: mu
   integer              :: nstate
-  integer              :: iomega_sigma,iomega,iomegap,iomegapp
-  real(dp)             :: df,braket1,braket2
-  integer              :: pstate,qstate,rstate,pqspin
+  integer              :: iomega_sigma,iomegap,iomegapp
+  integer              :: pstate,qstate,pqspin
   integer              :: ustate,vstate,wstate
   integer              :: first_omega,last_omega
   complex(dp),allocatable :: sigmagwgwg(:,:,:)
@@ -1292,7 +1290,7 @@ subroutine gwgwg_selfenergy_real_grid(basis,occupation,energy,c_matrix,se)
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
   if( analytic_chi_ ) then
-    call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
+    call wpol_analytic%init(nstate,occupation,0,grid_type=NO_GRID)
     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
   else
     call die('gwgwg_selfenergy_real_grid: analytic_chi is compulsory')
@@ -1391,8 +1389,8 @@ subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
   logical,parameter    :: static_fsos  = .FALSE.
   integer              :: nstate
   integer              :: iomega_sigma,iomegap,iomegapp
-  real(dp)             :: df,braket1,braket2
-  integer              :: pstate,qstate,rstate,pqspin
+  real(dp)             :: braket1,braket2
+  integer              :: pstate,qstate,pqspin
   integer              :: ustate,vstate,wstate
   integer              :: first_omega,last_omega
   complex(dp),allocatable :: sigmagwgwg(:,:,:)
@@ -1424,9 +1422,9 @@ subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
 
-  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
-    call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
+    call wpol_analytic%init(nstate,occupation,0,grid_type=NO_GRID)
     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
     call clean_allocate('Chi',wpol_imag%chi,nauxil_global,nauxil_global,wpol_imag%nomega,verbose=.FALSE.)
     call wpol_analytic%evaluate(wpol_imag%omega,wpol_imag%chi)
@@ -1603,9 +1601,9 @@ subroutine sosex_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
 
   !
   ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
-  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
-    call wpol_analytic%init(nstate,occupation,0,grid=NO_GRID)
+    call wpol_analytic%init(nstate,occupation,0,grid_type=NO_GRID)
     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
@@ -1945,6 +1943,101 @@ subroutine sox_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
 
 end subroutine sox_selfenergy_imag_grid
 
+
+!=========================================================================
+subroutine gwtilde_selfenergy(basis,occupation,energy,c_matrix,se)
+  implicit none
+
+  type(basis_set)                    :: basis
+  real(dp),intent(in)                :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                :: c_matrix(:,:,:)
+  type(selfenergy_grid),intent(inout) :: se
+  !=====
+  integer                 :: nstate,nmat
+  integer                 :: istate,astate,iaspin,spole,iauxil,it
+  integer                 :: pstate,iomega_sigma
+  real(dp),allocatable    :: x_matrix(:,:),y_matrix(:,:)
+  real(dp),allocatable    :: a_matrix(:,:),b_matrix(:,:)
+  real(dp)                :: erpa_tmp,egw_tmp
+  type(spectral_function) :: wpol
+  complex(dp),allocatable :: sigma_gwtilde(:,:,:)
+  real(dp),allocatable    :: eri_ip(:),eri_ap(:)
+  real(dp),allocatable    :: axpby_matrix(:,:),aypbx_matrix(:,:)
+  !=====
+
+  call start_clock(timing_gw_self)
+
+  if( .NOT. has_auxil_basis ) call die('gwtilde_selfenergy: not implemented without an auxiliary basis')
+  if( nspin > 1 ) call die('gwtilde_selfenergy: not implemented for spin unrestricted')
+
+  nstate = SIZE(energy,DIM=1)
+
+  write(stdout,*) "**********    GWTIDLE   ****************************"
+
+  call wpol%init(nstate,occupation,0)
+  nmat = wpol%npole_reso
+
+  call clean_allocate('X matrix',x_matrix,nmat,nmat)
+  call clean_allocate('Y matrix',y_matrix,nmat,nmat)
+  call clean_allocate('A matrix',a_matrix,nmat,nmat)
+  call clean_allocate('B matrix',b_matrix,nmat,nmat)
+
+  ! Get A and B, X and Y
+  call polarizability(.FALSE.,.TRUE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol, &
+                       a_matrix=a_matrix,b_matrix=b_matrix,x_matrix=x_matrix,y_matrix=y_matrix)
+  !
+  ! A -> A' in Kresse's notation
+  ! Remove the energy difference on the diagonal
+  call remove_a_energy_diag(energy,wpol,a_matrix)
+
+
+  call clean_allocate('AX+BY matrix',axpby_matrix,nmat,nmat)
+  call clean_allocate('AY+BX matrix',aypbx_matrix,nmat,nmat)
+  ! AX + BY
+  axpby_matrix(:,:) = MATMUL( a_matrix, x_matrix ) + MATMUL( b_matrix, y_matrix )
+  ! AY + BX
+  aypbx_matrix(:,:) = MATMUL( a_matrix, y_matrix ) + MATMUL( b_matrix, x_matrix )
+
+  call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
+
+  allocate(sigma_gwtilde(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+  allocate(eri_ip(nauxil_global))
+  allocate(eri_ap(nauxil_global))
+
+  do spole=1,wpol%npole_reso
+    !do istate=ncore_G+1,nhomo_G
+    !  eri_ip(:) = eri_3center_eigen(:,pstate,istate,1)
+    !  sigma_gwtilde(:,pstate,1) = sigma_gwtilde(:,pstate,1) &
+    !               + DOT_PRODUCT( eri_ip(:) , wpol%residue_left(:,spole) ) &
+    !                  / ( se%omega(:) + se%energy0(pstate,1) - energy(istate,1) + wpol%pole(spole) )
+    !enddo
+    do astate=nhomo_G+1,nvirtual_G-1
+      do pstate=nsemin,nsemax
+        eri_ap(:) = eri_3center_eigen(:,pstate,astate,1)
+        sigma_gwtilde(:,pstate,1) = sigma_gwtilde(:,pstate,1) &
+                     + DOT_PRODUCT( eri_ap(:) , wpol%residue_left(:,spole) ) &
+                        / ( se%omega(:) + se%energy0(pstate,1) - energy(astate,1) - wpol%pole(spole) )
+      enddo
+    enddo
+  enddo
+
+
+  call clean_deallocate('X matrix',x_matrix)
+  call clean_deallocate('Y matrix',y_matrix)
+
+  call clean_deallocate('A matrix',a_matrix)
+  call clean_deallocate('B matrix',b_matrix)
+  call clean_deallocate('AX+BY matrix',axpby_matrix)
+  call clean_deallocate('AY+BX matrix',aypbx_matrix)
+
+  deallocate(sigma_gwtilde)
+  deallocate(eri_ip,eri_ap)
+  call destroy_eri_3center_eigen()
+  call wpol%destroy()
+  write(stdout,*) "**********    GWTIDLE   *** THE END ****************"
+  call stop_clock(timing_gw_self)
+
+end subroutine gwtilde_selfenergy
 
 end module m_gwgwg_selfenergy
 !=========================================================================

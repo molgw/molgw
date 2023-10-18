@@ -208,7 +208,6 @@ subroutine test_density_matrix(p_matrix,s_matrix)
   integer              :: nbf
   integer              :: ispin
   real(dp),allocatable :: matrix(:,:)
-  character(len=100)   :: title
   !=====
 
   nbf = SIZE(p_matrix(:,:,:),DIM=1)
@@ -224,10 +223,8 @@ subroutine test_density_matrix(p_matrix,s_matrix)
     matrix(:,:) = MATMUL( p_matrix(:,:,ispin), MATMUL( s_matrix(:,:) , p_matrix(:,:,ispin) ) )
 
 
-    !title='=== PSP ==='
-    !call dump_out_matrix(1,title,matrix)
-    !title='===  P  ==='
-    !call dump_out_matrix(1,title,p_matrix(:,:,ispin))
+    !call dump_out_matrix(1,'=== PSP ===',matrix)
+    !call dump_out_matrix(1,'===  P  ===',p_matrix(:,:,ispin))
 
   enddo
 
@@ -237,9 +234,9 @@ end subroutine test_density_matrix
 
 
 !=========================================================================
-subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
+subroutine set_occupation(temperature,electrons_in,magnetization,energy,occupation)
   implicit none
-  real(dp),intent(in)  :: electrons,magnetization,temperature
+  real(dp),intent(in)  :: electrons_in,magnetization,temperature
   real(dp),intent(in)  :: energy(:,:)
   real(dp),intent(out) :: occupation(:,:)
   !=====
@@ -262,8 +259,8 @@ subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
     inquire(file='manual_occupations',exist=file_exists)
 
     if(.NOT. file_exists) then
-      remaining_electrons(1) = (electrons+magnetization) / REAL(nspin,dp)
-      if(nspin==2) remaining_electrons(2) = (electrons-magnetization) / REAL(nspin,dp)
+      remaining_electrons(1) = (electrons_in+magnetization) / REAL(nspin,dp)
+      if(nspin==2) remaining_electrons(2) = (electrons_in-magnetization) / REAL(nspin,dp)
 
       do istate=1,nstate
         occupation(istate,:) = MIN(remaining_electrons(:), spin_fact)
@@ -294,14 +291,14 @@ subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
                                          temperature,temperature * Ha_K
 
     ! First, set mu half way between the HOMO and the LUMO
-    mu = 0.50_dp * ( energy(NINT(electrons/2.0_dp)+1,1) + energy(NINT(electrons/2.0_dp),1) )
+    mu = 0.50_dp * ( energy(NINT(electrons_in/2.0_dp)+1,1) + energy(NINT(electrons_in/2.0_dp),1) )
 
     delta_mu = 1.0e-5_dp
     electrons_mu = -1.0_dp
     iter = 0
     mu_change = 0.0_dp
 
-    do while( ABS( electrons_mu - electrons ) > 1.0e-8_dp .AND. iter <= 100 )
+    do while( ABS( electrons_mu - electrons_in ) > 1.0e-8_dp .AND. iter <= 100 )
 
       iter = iter + 1
       mu = mu + mu_change
@@ -312,7 +309,7 @@ subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
       grad_electrons = ( SUM( fermi_dirac(energy,mu+delta_mu) ) - SUM( fermi_dirac(energy,mu-delta_mu) ) ) / ( 2.0_dp* delta_mu )
 
       ! Maximum change is made bounded within +/- 0.10 Hartree
-      mu_change = -( electrons_mu - electrons ) / grad_electrons
+      mu_change = -( electrons_mu - electrons_in ) / grad_electrons
       mu_change = MAX( MIN( mu_change , 0.10_dp / REAL(iter) ), -0.10_dp / REAL(iter) )
 
       !     write(*,*) iter,mu,mu_change,0.10_dp / REAL(iter),electrons_mu
@@ -325,7 +322,7 @@ subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
 
   !
   ! final check
-  if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0e-4_dp ) then
+  if( ABS( SUM(occupation(:,:)) - electrons_in ) > 1.0e-4_dp ) then
     write(stdout,*) 'occupation set up failed to give the right number of electrons'
     write(stdout,*) 'sum of occupations',SUM(occupation(:,:))
     write(stdout,*) 'electrons',electrons
@@ -339,14 +336,14 @@ subroutine set_occupation(temperature,electrons,magnetization,energy,occupation)
 
 contains
 
-function fermi_dirac(energy,mu)
+function fermi_dirac(energy_in,mu_in)
   implicit none
-  real(dp),intent(in) :: energy(nstate,nspin)
-  real(dp),intent(in) :: mu
+  real(dp),intent(in) :: energy_in(nstate,nspin)
+  real(dp),intent(in) :: mu_in
   real(dp)            :: fermi_dirac(nstate,nspin)
   !=====
 
-  fermi_dirac(:,:) = spin_fact / ( 1.0_dp + EXP( ( energy(:,:) - mu ) / temperature ) )
+  fermi_dirac(:,:) = spin_fact / ( 1.0_dp + EXP( ( energy_in(:,:) - mu_in ) / temperature ) )
 
 end function fermi_dirac
 

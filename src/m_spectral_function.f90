@@ -134,13 +134,13 @@ end function index_prodstate
 
 
 !=========================================================================
-subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
+subroutine sf_init(sf,nstate,occupation,nomega_in,grid_type,omega_max,verbose)
   implicit none
   class(spectral_function),intent(out)  :: sf
   integer,intent(in)                    :: nstate
   real(dp),intent(in)                   :: occupation(:,:)
   integer,intent(in)                    :: nomega_in
-  integer,optional,intent(in)           :: grid
+  integer,optional,intent(in)           :: grid_type
   real(dp),optional,intent(in)          :: omega_max
   logical,optional,intent(in)           :: verbose
   !=====
@@ -159,8 +159,8 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
   if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
     call die('sf_init: nstate is too large')
   endif
-  if( PRESENT(grid) ) then
-    grid_ = grid
+  if( PRESENT(grid_type) ) then
+    grid_ = grid_type
   endif
   if( PRESENT(omega_max) ) then
     omega_max_ = omega_max
@@ -680,8 +680,7 @@ subroutine sf_evaluate_one_real_omega(sf,omega_real,chi)
   complex(dp),intent(out) :: chi(:,:)
   !=====
   integer :: ipole
-  integer :: jauxil,iauxil
-  real(dp),allocatable :: tmp(:,:)
+  integer :: jauxil
   !=====
   if( nauxil_global /= nauxil_local ) call die('sf_evaluate_one_omega: not implemented with distributed auxiliary basis')
   if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate_one_omega: should have sf%residue_left available')
