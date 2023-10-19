@@ -101,8 +101,6 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='GW+SOSEX'
     case(COHSEX)
       selfenergy_tag='COHSEX'
-    case(GWFSOS)
-      selfenergy_tag='GW+FSOS'
     case(GWGWG,GWGWG_NUMERICAL)
       selfenergy_tag='GW+GWGWG'
     case(GW0GW0G)

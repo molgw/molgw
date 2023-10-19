@@ -1248,7 +1248,6 @@ subroutine gwgwg_selfenergy_real_grid(basis,occupation,energy,c_matrix,se)
   type(selfenergy_grid),intent(inout) :: se
   !=====
   real(dp)             :: domega
-  logical,parameter    :: static_fsos  = .FALSE.
   real(dp)             :: mu
   integer              :: nstate
   integer              :: iomega_sigma,iomegap,iomegapp
@@ -1390,7 +1389,6 @@ subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
-  logical,parameter    :: static_fsos  = .FALSE.
   integer              :: nstate
   integer              :: iomega_sigma,iomegap,iomegapp
   real(dp)             :: braket1,braket2

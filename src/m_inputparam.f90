@@ -52,7 +52,6 @@ module m_inputparam
   integer,parameter :: TWO_RINGS       = 224
   integer,parameter :: GWPT3           = 226
   integer,parameter :: GWGWG           = 229
-  integer,parameter :: GWFSOS          = 230
   integer,parameter :: GW0GW0G         = 231
   integer,parameter :: GWGW0G          = 232
   integer,parameter :: GWGWG_NUMERICAL = 233
@@ -240,10 +239,6 @@ subroutine init_calculation_type(scf,postscf)
     case('G0W0_AC','GW_AC','G0W0_PADE','GW_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW
-      calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWFSOS','GW+FSOS')
-      calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx    = GWFSOS
       calc_type%selfenergy_technique = imaginary_axis_pade
     case('G0W0_CONTOUR','GW_CONTOUR')
       calc_type%is_gw    =.TRUE.
