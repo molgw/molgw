@@ -121,15 +121,6 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
               fxc = eval_fxc_rks_singlet(istate,bstate,ispin,kstate,pstate,ispin)
               call grid%sum(fxc)
               vcoul2 = alpha_hybrid * vcoul2 - fxc
-
-              !             if( ABS( eri_eigen(istate,bstate,ispin,kstate,pstate,ispin) -vcoul2)> 0.10 ) then
-              !               write(*,'(4(i4,1x),4(1x,f12.6))') istate,bstate,kstate,pstate, &
-              !                  eri_eigen(istate,bstate,ispin,kstate,pstate,ispin), &
-              !                  vcoul2
-              !               write(*,*) 'Hack'
-              !               vcoul2 = eri_eigen(istate,bstate,ispin,kstate,pstate,ispin)
-              !             endif
-
             endif
             !
             ! calculate only the diagonal !
@@ -164,15 +155,6 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
               fxc = eval_fxc_rks_singlet(astate,jstate,ispin,cstate,pstate,ispin)
               call grid%sum(fxc)
               vcoul2 = alpha_hybrid * vcoul2 - fxc
-
-              !             if( ABS( eri_eigen(astate,jstate,ispin,cstate,pstate,ispin) -vcoul2 )> 0.10 ) then
-              !               write(*,'(4(i4,1x),4(1x,f12.6))') astate,jstate,cstate,pstate, &
-              !                  eri_eigen(astate,jstate,ispin,cstate,pstate,ispin), &
-              !                  vcoul2
-              !!               write(*,*) 'Hack'
-              !!               vcoul2 =  eri_eigen(astate,jstate,ispin,cstate,pstate,ispin)
-              !             endif
-
             endif
             !
             ! calculate only the diagonal !

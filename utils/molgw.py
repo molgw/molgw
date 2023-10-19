@@ -184,11 +184,11 @@ class structure:
 ########################################################################
 def get_homo_energy(approx,calc):
     key = approx + " energies"
-    energies = [ ei for ei in calc[key]["spin channel 1"].values()]
+    energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
-        energies += [ ei for ei in calc[key]["spin channel 1"].values()]
+        energies += [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     else:
-        energies += [ ei for ei in calc[key]["spin channel 2"].values()]
+        energies += [ float(ei) for ei in calc[key]["spin channel 2"].values()]
     energies.sort()
     return energies[int(calc["physical system"]["electrons"])-1 - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
@@ -196,11 +196,11 @@ def get_homo_energy(approx,calc):
 ########################################################################
 def get_lumo_energy(approx,calc):
     key = approx + " energies"
-    energies = [ ei for ei in calc[key]["spin channel 1"].values()]
+    energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
-        energies += [ ei for ei in calc[key]["spin channel 1"].values()]
+        energies += [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     else:
-        energies += [ ei for ei in calc[key]["spin channel 2"].values()]
+        energies += [ float(ei) for ei in calc[key]["spin channel 2"].values()]
     energies.sort()
     return energies[int(calc["physical system"]["electrons"]) - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
