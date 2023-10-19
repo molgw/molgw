@@ -1,7 +1,8 @@
 &molgw
   scf='HF'
 
-  postscf='GWTDDFTGAMMA'
+  postscf='GW+SOSEX'
+  w_screening='tdhf'
   selfenergy_state_range=0
 
   basis='cc-pVDZ'

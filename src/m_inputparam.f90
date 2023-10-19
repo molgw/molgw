@@ -299,10 +299,6 @@ subroutine init_calculation_type(scf,postscf)
     case('GWTILDE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWTILDE
-    case('GWTDDFTGAMMA','G0WTDDFTGAMMA0','GWTDDFTSOSEX')
-      calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = GWSOSEX
-      calc_type%include_tddft_kernel = .TRUE.
     case('EVGWGAMMA','GNW0GAMMAN','GNW0SOSEX','EVGWSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX

@@ -629,7 +629,7 @@ RPA correlation energy    ,    -0.0363952366    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.038813        , 0 , 1.0e-4
 GW+SOSEX HOMO energy      ,    -7.702063        , 0 , 1.0e-4
 
-lih_gwtddftgamma.in       , LIH: GW_TDDFTGamma@HF (W is obtained from TDHF)
+lih_gw+sosex_w_tdhf.in    , LiH: GW+SOSEX with TDHF screening
 SCF Total Energy          ,    -7.9836862051    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.243410        , 0 , 1.0e-4
 GW+SOSEX HOMO energy      ,    -7.332104        , 0 , 1.0e-4
