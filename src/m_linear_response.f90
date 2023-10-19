@@ -477,29 +477,29 @@ subroutine get_energy_qp(energy,occupation,energy_qp)
   !=====
   integer  :: nstate
   integer  :: reading_status
-  integer  :: mspin,mstate
+  integer  :: pspin,pstate
   !=====
 
   nstate = SIZE(occupation,DIM=1)
   ! If the keyword scissor is used in the input file,
   ! then use it and ignore the ENERGY_QP file
-  if( ABS(scissor) > 1.0e-5_dp ) then
+  if( ABS(scissor) > 1.0e-8_dp ) then
 
     call issue_warning('Using a manual scissor to open up the fundamental gap')
 
     write(stdout,'(a,2(1x,f12.6))') ' Scissor operator with value (eV):',scissor*Ha_eV
-    do mspin=1,nspin
-      do mstate=1,nstate
-        if( occupation(mstate,mspin) > completely_empty/spin_fact ) then
-          energy_qp(mstate,mspin) = energy(mstate,mspin)
+    do pspin=1,nspin
+      do pstate=1,nstate
+        if( occupation(pstate,pspin) > completely_empty/spin_fact ) then
+          energy_qp(pstate,pspin) = energy(pstate,pspin)
         else
-          energy_qp(mstate,mspin) = energy(mstate,mspin) + scissor
+          energy_qp(pstate,pspin) = energy(pstate,pspin) + scissor
         endif
       enddo
     enddo
     write(stdout,'(/,a)') ' Scissor updated energies'
-    do mstate=1,nstate
-      write(stdout,'(i5,4(2x,f16.6))') mstate,energy(mstate,:)*Ha_eV,energy_qp(mstate,:)*Ha_eV
+    do pstate=1,nstate
+      write(stdout,'(i5,4(2x,f16.6))') pstate,energy(pstate,:)*Ha_eV,energy_qp(pstate,:)*Ha_eV
     enddo
     write(stdout,*)
 

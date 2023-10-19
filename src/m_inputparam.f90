@@ -57,6 +57,7 @@ module m_inputparam
   integer,parameter :: GWGW0G          = 232
   integer,parameter :: GWGWG_NUMERICAL = 233
   integer,parameter :: GWTILDE         = 234
+  integer,parameter :: GWGW0RPAG       = 235
 
   !
   ! TDDFT variables
@@ -91,7 +92,7 @@ module m_inputparam
   end type calculation_type
 
   type excitation_type
-    character(len=100)   :: name
+    character(len=256)   :: name
     integer              :: form
     real(dp)             :: kappa, omega, time0
     real(dp)             :: dir(3)
@@ -297,6 +298,9 @@ subroutine init_calculation_type(scf,postscf)
     case('GW+GWGW0G')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGW0G
+    case('GW+GWGW0RPAG')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GWGW0RPAG
     case('GWTILDE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWTILDE
@@ -410,9 +414,8 @@ end subroutine init_calculation_type
 
 
 !=========================================================================
-subroutine init_excitation_type(excit_type)
+subroutine init_excitation_type()
   implicit none
-  type(excitation_type),intent(inout)  ::  excit_type
   !=====
 
   excit_type%name  = excit_name
@@ -1010,7 +1013,7 @@ subroutine read_inputfile_namelist()
     call issue_warning('mpi_nproc_ortho value is invalid. Override it and set mpi_nproc_ortho=1')
   endif
 
-  call init_excitation_type(excit_type)
+  call init_excitation_type()
   nprojectile = MERGE(1,0,excit_type%form==EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS)
 
   !

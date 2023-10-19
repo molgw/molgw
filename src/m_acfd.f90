@@ -316,9 +316,11 @@ subroutine calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa)
   real(dp),intent(in)  :: x_matrix(:,:),y_matrix(:,:),a_matrix(:,:),b_matrix(:,:)
   real(dp),intent(out) :: erpa
   !=====
-  integer :: imat,nmat
+  integer :: nmat
   real(dp),allocatable :: m_matrix(:,:),tmp_matrix(:,:)
+#if defined(HAVE_SCALAPACK)
   integer :: nprow,npcol,myprow,mypcol
+#endif
   !=====
 
   ! Beware that a_matrix and b_matrix are symmetric and in the SCALAPACK case, only the lower part is filled.

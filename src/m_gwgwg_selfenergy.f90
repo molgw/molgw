@@ -431,10 +431,9 @@ end subroutine sosex_selfenergy
 
 
 !=========================================================================
-subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
+subroutine gwgw0g_selfenergy(occupation,energy,c_matrix,wpol,se)
   implicit none
 
-  type(basis_set)                    :: basis
   real(dp),intent(in)                :: occupation(:,:),energy(:,:)
   real(dp),intent(in)                :: c_matrix(:,:,:)
   type(spectral_function),intent(in) :: wpol
@@ -444,8 +443,6 @@ subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   integer                 :: iomega,ibf_auxil
   complex(dp),allocatable :: sigma_gwgw0g(:,:,:)
   complex(dp),allocatable :: sigma_gw0gw0g(:,:,:)
-  complex(dp),allocatable :: sigma_gw0gw0g_occ(:,:,:)
-  complex(dp),allocatable :: sigma_gw0gw0g_vir(:,:,:)
   complex(dp),allocatable :: sigma_gvgw0g(:,:,:)
   integer                 :: astate,bstate,cstate
   integer                 :: istate,jstate,kstate,ispin,spole
@@ -460,6 +457,7 @@ subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   real(dp),allocatable    :: ik(:),ac(:),bp(:),ak(:),jp(:),ic(:)
   integer                 :: ustate,state_range,nstate2
   real(dp),allocatable    :: chi_up(:,:,:),up(:,:,:)
+  type(spectral_function) :: wpol_static_rpa
   !=====
 
   call start_clock(timing_gwgamma_self)
@@ -473,6 +471,8 @@ subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
     write(stdout,*) 'Perform a one-shot GW+GW0GW0G calculation'
   case(GWGW0G)
       write(stdout,*) 'Perform a one-shot GW+GWGW0G calculation'
+  case(GWGW0RPAG)
+      write(stdout,*) 'Perform a one-shot G * W + G * W * G * W_0^RPA * G calculation'
   case default
     call die('gwgw0g_selfenergy: calculation type unknown')
   end select
@@ -484,7 +484,16 @@ subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
 
 
   call clean_allocate('chi static',chi_static,nauxil_global,nauxil_global)
-  call wpol%evaluate((0.0_dp,0.0_dp),chi_static)
+  !
+  ! Calculate a new RPA static screening or use the existing one
+  !
+  if( calc_type%selfenergy_approx == GWGW0RPAG ) then
+    call wpol_static_rpa%init(nstate,occupation,1,grid_type=STATIC)
+    call wpol_static_rpa%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,verbose=.FALSE.)
+    chi_static(:,:) = wpol_static_rpa%chi(:,:,1)
+  else
+    call wpol%evaluate((0.0_dp,0.0_dp),chi_static)
+  endif
 
   ! Turn dynamic into static for debug purposes
   !call issue_warning('hack to recover GW+SOX for debug purposes')
@@ -526,14 +535,10 @@ subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   allocate(sigma_gwgw0g(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(sigma_gvgw0g(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(sigma_gw0gw0g(-se%nomega:se%nomega,nsemin:nsemax,nspin))
-  allocate(sigma_gw0gw0g_occ(-se%nomega:se%nomega,nsemin:nsemax,nspin))
-  allocate(sigma_gw0gw0g_vir(-se%nomega:se%nomega,nsemin:nsemax,nspin))
 
   sigma_gwgw0g(:,:,:)  = (0.0_dp, 0.0_dp)
   sigma_gvgw0g(:,:,:)  = (0.0_dp, 0.0_dp)
   sigma_gw0gw0g(:,:,:) = (0.0_dp, 0.0_dp)
-  sigma_gw0gw0g_occ(:,:,:) = (0.0_dp, 0.0_dp)
-  sigma_gw0gw0g_vir(:,:,:) = (0.0_dp, 0.0_dp)
 
 
   write(stdout,*) 'Calculate two static terms analog to SOX'
@@ -570,7 +575,7 @@ subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
                   - v_1 * w0_2            &
                     / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
-              sigma_gw0gw0g_occ(iomega,pstate,ispin) = sigma_gw0gw0g_occ(iomega,pstate,ispin) &
+              sigma_gw0gw0g(iomega,pstate,ispin) = sigma_gw0gw0g(iomega,pstate,ispin) &
                   - w0_1 * w0_2            &
                     / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(istate,ispin) - energy(kstate,ispin) + energy(bstate,ispin) - ieta )
@@ -611,7 +616,7 @@ subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
                   - v_1 * w0_2            &
                     / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
-              sigma_gw0gw0g_vir(iomega,pstate,ispin) = sigma_gw0gw0g_vir(iomega,pstate,ispin) &
+              sigma_gw0gw0g(iomega,pstate,ispin) = sigma_gw0gw0g(iomega,pstate,ispin) &
                   - w0_1 * w0_2            &
                     / ( se%energy0(pstate,ispin) + se%omega(iomega) &
                         - energy(astate,ispin) - energy(cstate,ispin) + energy(jstate,ispin) + ieta )
@@ -627,12 +632,10 @@ subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
 
 
   call ortho%sum(sigma_gvgw0g)
-  call ortho%sum(sigma_gw0gw0g_occ)
-  call ortho%sum(sigma_gw0gw0g_vir)
-  sigma_gw0gw0g(:,:,:) = sigma_gw0gw0g_occ(:,:,:) + sigma_gw0gw0g_vir(:,:,:)
 
 
-  if( calc_type%selfenergy_approx == GWGW0G ) then
+  if( calc_type%selfenergy_approx == GWGW0G &
+     .OR. calc_type%selfenergy_approx == GWGW0RPAG ) then
 
     write(stdout,*) 'Calculate dynamical term analog to SOSEX'
 
@@ -816,48 +819,50 @@ subroutine gwgw0g_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
 
   select case(calc_type%selfenergy_approx)
   case(GW0GW0G)
-    sigma_gvgw0g(:,:,:) = (0.0_dp, 0.0_dp)
     forall(pstate=nsemin:nsemax)
       se%sigma(:,pstate,:) = sigma_gw0gw0g(:,pstate,:)
     end forall
-    write(stdout,'(/,a)') ' GW0GW0G self-energy contributions at E0 (eV)'
+    write(stdout,'(/,a)') ' G * W(w=0) * G * W(w=0) * G self-energy contributions at E0 (eV)'
+    write(stdout,'(a)') &
+      '   #       E0           GW0GW0G'
+    do pstate=nsemin,nsemax
+      write(stdout,'(i4,1x,*(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV, &
+                                          se%sigma(0,pstate,:)%re*Ha_eV
+    enddo
+
   case(GWGW0G)
     forall(pstate=nsemin:nsemax)
       se%sigma(:,pstate,:) = 2.0_dp * sigma_gvgw0g(:,pstate,:) &
                            - sigma_gw0gw0g(:,pstate,:) + 2.0_dp * sigma_gwgw0g(:,pstate,:)
     end forall
-    write(stdout,'(/,a)') ' GWGW0G self-energy contributions at E0 (eV)'
+    write(stdout,'(/,a)') ' G * W(w) * G * W(w=0) * G self-energy contributions at E0 (eV)'
+    write(stdout,'(a)') &
+      '   #       E0          GvGW0G        GW0GW0G     G(W-v)GW0G    G(W-W0)GW0G    Total'
+
+    do pstate=nsemin,nsemax
+      write(stdout,'(i4,1x,*(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV, &
+                                          sigma_gvgw0g(0,pstate,:)%re*Ha_eV, &
+                                          sigma_gw0gw0g(0,pstate,:)%re*Ha_eV, &
+                                          sigma_gwgw0g(0,pstate,:)%re*Ha_eV, &
+              (sigma_gwgw0g(0,pstate,1)%re+sigma_gvgw0g(0,pstate,:)%re-sigma_gw0gw0g(0,pstate,1)%re)*Ha_eV, &
+                                          se%sigma(0,pstate,:)%re*Ha_eV
+    enddo
+  case(GWGW0RPAG)
+    forall(pstate=nsemin:nsemax)
+      se%sigma(:,pstate,:) = sigma_gvgw0g(:,pstate,:) + sigma_gwgw0g(:,pstate,:)
+    end forall
+    write(stdout,'(/,a)') ' G * W(w) * G * W(w=0)^RPA * G self-energy contributions at E0 (eV)'
+    write(stdout,'(a)') &
+      '   #       E0          GvGW0G          G(W-v)GW0G      Total'
+    do pstate=nsemin,nsemax
+      write(stdout,'(i4,1x,*(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV, &
+                                          sigma_gvgw0g(0,pstate,:)%re*Ha_eV, &
+                                          sigma_gwgw0g(0,pstate,:)%re*Ha_eV, &
+                                          se%sigma(0,pstate,:)%re*Ha_eV
+    enddo
   case default
     call die('gwgw0g_selfenergy: calculation type unknown')
   end select
-
-
-  ! if( print_sigma_) then
-  !   call write_selfenergy_omega('selfenergy_gvgw0g'    ,energy,exchange_m_vxc_diag,occupation,energy,sigma_gvgw0g)
-  !   call write_selfenergy_omega('selfenergy_gwgw0g'  ,energy,exchange_m_vxc_diag,occupation,energy,sigma_gwgw0g)
-  ! endif
-
-
-  write(stdout,'(a)') &
-   '   #       E0          GvGW0G    GW0GW0G_occ  GW0GW0G_vir     GW0GW0G     G(W-v)GW0G    G(W-W0)GW0G    Total'
-
-  do pstate=nsemin,nsemax
-    write(stdout,'(i4,1x,*(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
-                                         sigma_gvgw0g(0,pstate,:)%re*Ha_eV,  &
-                                         sigma_gw0gw0g_occ(0,pstate,:)%re*Ha_eV,   &
-                                         sigma_gw0gw0g_vir(0,pstate,:)%re*Ha_eV,   &
-                                         sigma_gw0gw0g(0,pstate,:)%re*Ha_eV,  &
-                                         sigma_gwgw0g(0,pstate,:)%re*Ha_eV,&
-     MERGE((sigma_gwgw0g(0,pstate,1)%re+sigma_gvgw0g(0,pstate,:)%re-sigma_gw0gw0g(0,pstate,1)%re)*Ha_eV, &
-           0.0_dp,calc_type%selfenergy_approx==GWGW0G),&
-                                         se%sigma(0,pstate,:)%re*Ha_eV
-  enddo
-
-  !DEBUG
-  !do iomega=-se%nomega,se%nomega
-  !  write(stdout,'(2(2x,f14.6))') (energy(nsemin,1)+se%omega(iomega)%re)*Ha_eV,sigma_gw0gw0g(iomega,nsemin,1)%re*Ha_eV
-  !enddo
-
 
 
   call clean_deallocate('Temporary array',bra_s)
@@ -873,10 +878,9 @@ end subroutine gwgw0g_selfenergy
 
 
 !=========================================================================
-subroutine gwgwg_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
+subroutine gwgwg_selfenergy(occupation,energy,c_matrix,wpol,se)
   implicit none
 
-  type(basis_set)                    :: basis
   real(dp),intent(in)                :: occupation(:,:),energy(:,:)
   real(dp),intent(in)                :: c_matrix(:,:,:)
   type(spectral_function),intent(in) :: wpol
@@ -1828,10 +1832,9 @@ end subroutine sosex_selfenergy_imag_grid
 
 
 !=========================================================================
-subroutine sox_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
+subroutine sox_selfenergy_imag_grid(occupation,energy,c_matrix,se)
   implicit none
 
-  type(basis_set)                    :: basis
   real(dp),intent(in)                :: occupation(:,:),energy(:,:)
   real(dp),intent(in)                :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se

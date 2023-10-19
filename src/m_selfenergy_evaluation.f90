@@ -109,6 +109,8 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='GW+GW0GW0G'
     case(GWGW0G)
       selfenergy_tag='GW+GWGW0G'
+    case(GWGW0RPAG)
+      selfenergy_tag='GW+GWGW0RPAG'
     case(GWTILDE)
       selfenergy_tag='GWTILDE'
     case default
@@ -318,6 +320,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         .OR. calc_type%selfenergy_approx == GWGWG_NUMERICAL &
         .OR. calc_type%selfenergy_approx == GW0GW0G &
         .OR. calc_type%selfenergy_approx == GWGW0G &
+        .OR. calc_type%selfenergy_approx == GWGW0RPAG &
       ) then
 
       !
@@ -366,7 +369,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
 
           call destroy_selfenergy_grid(se_sox)
 
-        case(GW0GW0G,GWGW0G)
+        case(GW0GW0G,GWGW0G,GWGW0RPAG)
           if( arno_static_approximation ) then
             call issue_warning('selfenergy_evaluation: use arno approximation for GW0GW0G')
             ! enforce a single frequency located at the GW qp energy
@@ -374,7 +377,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           else
             call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_gwgw0g)
           endif
-          call gwgw0g_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_gwgw0g)
+          call gwgw0g_selfenergy(occupation,energy_g,c_matrix,wpol,se_gwgw0g)
           if( arno_static_approximation ) then
             do iomega=-se%nomega,se%nomega
               se%sigma(iomega,:,:) = se%sigma(iomega,:,:) + se_gwgw0g%sigma(0,:,:)
@@ -402,7 +405,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           deallocate(zz)
           deallocate(energy_qp_z)
 
-          call gwgwg_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
+          call gwgwg_selfenergy(occupation,energy_g,c_matrix,wpol,se)
 
         case(GWGWG_NUMERICAL)
           call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
@@ -419,7 +422,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         !
         ! Imaginary frequencies implementation
         call gw_selfenergy_grid(basis,occupation,energy_g,c_matrix,se)
-        call sox_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
+        call sox_selfenergy_imag_grid(occupation,energy_g,c_matrix,se)
         if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWGWG ) then
           call sosex_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
         endif
