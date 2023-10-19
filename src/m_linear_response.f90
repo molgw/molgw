@@ -483,9 +483,9 @@ subroutine get_energy_qp(energy,occupation,energy_qp)
   nstate = SIZE(occupation,DIM=1)
   ! If the keyword scissor is used in the input file,
   ! then use it and ignore the ENERGY_QP file
-  if( ABS(scissor) > 1.0e-8_dp ) then
+  if( ABS(scissor) > 1.0e-5_dp ) then
 
-    call issue_warning('Using a manual scissor to open up the fundamental gap')
+    call issue_warning('BSE: using a manual scissor to open up the fundamental gap')
 
     write(stdout,'(a,2(1x,f12.6))') ' Scissor operator with value (eV):',scissor*Ha_eV
     do pspin=1,nspin
@@ -502,6 +502,10 @@ subroutine get_energy_qp(energy,occupation,energy_qp)
       write(stdout,'(i5,4(2x,f16.6))') pstate,energy(pstate,:)*Ha_eV,energy_qp(pstate,:)*Ha_eV
     enddo
     write(stdout,*)
+
+  else if( ABS(scissor) > 1.0e-8_dp ) then
+    call issue_warning('BSE: using nor a scissor, nor GW energies')
+    energy_qp(:,:) = energy(:,:)
 
   else
 

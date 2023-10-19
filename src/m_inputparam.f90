@@ -258,7 +258,7 @@ subroutine init_calculation_type(scf,postscf)
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('GWSOSEX','GW+SOSEX')
+    case('GWSOSEX','GW+SOSEX','GW+GWGVG')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
     case('GWSOSEX_PADE','GW+SOSEX_PADE')
