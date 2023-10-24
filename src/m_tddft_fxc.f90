@@ -48,17 +48,17 @@ contains
 
 
 !=========================================================================
-subroutine prepare_tddft(is_triplet_currently,nstate,basis,c_matrix,occupation)
+subroutine prepare_tddft(is_triplet_in,nstate,basis,c_matrix,occupation)
   implicit none
 
-  logical,intent(in)               :: is_triplet_currently
+  logical,intent(in)               :: is_triplet_in
   integer,intent(in)               :: nstate
   type(basis_set),intent(in)       :: basis
   real(dp),intent(in)              :: c_matrix(basis%nbf,nstate,nspin)
   real(dp),intent(in)              :: occupation(nstate,nspin)
   !=====
   type(dft_xc_info),allocatable    :: tddft_xc(:)
-  real(dp),parameter   :: kernel_capping=1.0e14_dp
+  real(dp),parameter   :: kernel_capping = 1.0e14_dp ! for numerical stability
   character(len=256)   :: string
   integer              :: ixc,igrid
   integer              :: ispin
@@ -76,7 +76,6 @@ subroutine prepare_tddft(is_triplet_currently,nstate,basis,c_matrix,occupation)
   real(dp),allocatable :: vsigma_c(:)
   real(dp),allocatable :: v2rhosigma_c(:)
   real(dp),allocatable :: v2sigma2_c(:)
-  type(C_PTR)          :: cptr_tmp
   !=====
 
 #if !defined(NO_LIBXC)
@@ -84,7 +83,7 @@ subroutine prepare_tddft(is_triplet_currently,nstate,basis,c_matrix,occupation)
   !
   ! Prepare DFT kernel calculation with Libxc
   !
-  nspin_tddft = MERGE(2,nspin,is_triplet_currently)
+  nspin_tddft = MERGE(2,nspin,is_triplet_in)
   call copy_libxc_info(dft_xc,tddft_xc)
   do ixc=1,tddft_xc(1)%nxc
     tddft_xc(ixc)%nspin = nspin_tddft
@@ -93,13 +92,13 @@ subroutine prepare_tddft(is_triplet_currently,nstate,basis,c_matrix,occupation)
 
   call init_dft_grid(basis,tddft_grid_level,dft_xc(1)%needs_gradient,.FALSE.,1)
 
-  allocate( rho_c(nspin_tddft)            )
-  allocate( v2rho2_c(2*nspin_tddft-1)     )
-  allocate( sigma_c(2*nspin_tddft-1)      )
-  allocate( vrho_c(nspin_tddft)           )
-  allocate( vsigma_c(2*nspin_tddft-1)     )
-  allocate( v2rhosigma_c(5*nspin_tddft-4) )
-  allocate( v2sigma2_c(5*nspin_tddft-4)   )
+  allocate(rho_c(nspin_tddft))
+  allocate(v2rho2_c(2*nspin_tddft-1))
+  allocate(sigma_c(2*nspin_tddft-1))
+  allocate(vrho_c(nspin_tddft))
+  allocate(vsigma_c(2*nspin_tddft-1))
+  allocate(v2rhosigma_c(5*nspin_tddft-4))
+  allocate(v2sigma2_c(5*nspin_tddft-4))
 
   !
   ! calculate rho, grad rho and the kernel
@@ -219,14 +218,16 @@ subroutine prepare_tddft(is_triplet_currently,nstate,basis,c_matrix,occupation)
 
   endif
 
-  deallocate( rho_c )
-  deallocate( v2rho2_c )
-  deallocate( sigma_c )
-  deallocate( vrho_c )
-  deallocate( vsigma_c )
-  deallocate( v2rhosigma_c )
-  deallocate( v2sigma2_c )
+  deallocate(rho_c)
+  deallocate(v2rho2_c)
+  deallocate(sigma_c)
+  deallocate(vrho_c)
+  deallocate(vsigma_c)
+  deallocate(v2rhosigma_c)
+  deallocate(v2sigma2_c)
   deallocate(tddft_xc)
+#else
+  call die('prepare_tddft: not available without LIBXC')
 #endif
 
 end subroutine prepare_tddft
