@@ -144,6 +144,7 @@ module m_inputparam
   logical,protected                :: print_spatial_extension_
   logical,protected                :: print_cube_
   logical,protected                :: print_wfn_files_
+  logical,protected                :: print_all_wfn_files_
   logical,protected                :: print_multipole_
   logical,protected                :: print_hartree_
   logical,protected                :: print_density_matrix_
@@ -311,6 +312,8 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_bse        = .TRUE.
       calc_type%no_bse_kernel = .TRUE.
     case('TD')
+      calc_type%include_tddft_kernel = .TRUE.
+    case('CPHF','CPKS')
       calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
@@ -889,6 +892,7 @@ subroutine read_inputfile_namelist()
   print_multipole_          = yesno_to_logical(print_multipole)
   print_cube_               = yesno_to_logical(print_cube)
   print_wfn_files_          = yesno_to_logical(print_wfn_files)
+  print_all_wfn_files_      = yesno_to_logical(print_all_wfn_files)
   print_hartree_            = yesno_to_logical(print_hartree)
   print_density_matrix_     = yesno_to_logical(print_density_matrix)
   print_rho_grid_           = yesno_to_logical(print_rho_grid)

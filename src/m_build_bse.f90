@@ -523,7 +523,7 @@ subroutine build_apb_tddft(is_triplet_currently,nmat,nstate,basis,c_matrix,occup
             if( .NOT. is_triplet_currently ) then
               xctmp = eval_fxc_rks_singlet(istate,astate,iaspin,jstate,bstate,jbspin)
             else
-              xctmp =  eval_fxc_rks_triplet(istate,astate,iaspin,jstate,bstate,jbspin)
+              xctmp = eval_fxc_rks_triplet(istate,astate,iaspin,jstate,bstate,jbspin)
             endif
           else
             xctmp =  eval_fxc_uks(istate,astate,iaspin,jstate,bstate,jbspin)

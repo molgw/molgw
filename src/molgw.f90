@@ -509,7 +509,7 @@ program molgw
   if( print_wfn_ )  call plot_wfn(basis,c_matrix)
   if( print_wfn_ )  call plot_rho('GKS',basis,occupation,c_matrix)
   if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
-  if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy)
+  if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy,print_all=print_all_wfn_files_)
   if( print_pdos_ ) then
     call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
     call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
@@ -702,10 +702,16 @@ program molgw
 
   !
   ! Linear-response time dependent calculations work for BSE and TDDFT
+  ! or coupled-pertubed HF/KS
   ! (only if the SCF cycles were converged)
   if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
     call wpol%init(nstate,occupation,0)
     call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
+    call wpol%destroy()
+  endif
+  if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
+    call wpol%init(nstate,occupation,0)
+    call cphf_cpks(basis,occupation,energy,c_matrix,wpol) ! Internally, it will call polarizability
     call wpol%destroy()
   endif
 

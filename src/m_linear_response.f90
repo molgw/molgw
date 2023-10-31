@@ -413,6 +413,118 @@ end subroutine polarizability
 
 
 !=========================================================================
+subroutine cphf_cpks(basis,occupation,energy,c_matrix,wpol_out)
+  implicit none
+
+  type(basis_set),intent(in)            :: basis
+  real(dp),intent(in)                   :: occupation(:,:)
+  real(dp),intent(in)                   :: energy(:,:),c_matrix(:,:,:)
+  type(spectral_function),intent(inout) :: wpol_out
+  !=====
+  integer                   :: ipair,ipair2,m_apb,n_apb,info,lwork,iunit
+  integer                   :: nmat,t_ia,t_jb,jstate,bstate,jbspin,t_jb_global
+  real(dp)                  :: egw_tmp,erpa_singlet,energy_jb
+  integer,allocatable       :: ipiv(:)
+  real(dp),allocatable      :: apb_matrix(:,:),work(:)
+  real(dp),allocatable      :: b_matrix(:,:)
+  !=====
+
+  !
+  ! Prepare the big matrices A and B
+  !
+  nmat = wpol_out%npole_reso
+  !
+  ! The distribution of the two matrices have to be the same for A and B
+  ! This is valid also when SCALAPACK is not used!
+  m_apb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+  n_apb = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
+  call clean_allocate('A',apb_matrix,m_apb,n_apb)
+  call clean_allocate('B',b_matrix,m_apb,n_apb)
+  apb_matrix(:,:) = 0.0_dp
+  b_matrix(:,:)   = 0.0_dp
+
+  ! Get A and B
+  call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
+                      enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=apb_matrix,b_matrix=b_matrix)
+
+  ! Add the diagonal contribution to A
+  do t_jb_global=1,nmat
+    t_ia = rowindex_global_to_local('S',t_jb_global)
+    t_jb = colindex_global_to_local('S',t_jb_global)
+
+    jstate = wpol_out%transition_table(1,t_jb_global)
+    bstate = wpol_out%transition_table(2,t_jb_global)
+    jbspin = wpol_out%transition_table(3,t_jb_global)
+    energy_jb = energy(bstate,jbspin) - energy(jstate,jbspin)
+
+    ! If the diagonal element belongs to this proc, then add it.
+    if( t_ia > 0 .AND. t_jb > 0 ) then
+      apb_matrix(t_ia,t_jb) = apb_matrix(t_ia,t_jb) + energy_jb
+    endif
+  enddo
+
+  apb_matrix(:,:) = apb_matrix(:,:) + b_matrix(:,:)
+
+  call clean_deallocate('B',b_matrix)
+
+  !
+  ! Symmetrize the (A+B) matrix 
+  !
+  if( m_apb/=n_apb ) then
+    msg='The A+B matrix is not a square matrix. Unable to symmetrize it and proceed.'
+    call issue_warning(msg)
+    call clean_deallocate('A+B',apb_matrix)
+    call destroy_eri_3center_eigen()
+    return
+  endif
+
+  do ipair=1,m_apb
+    do ipair2=ipair,m_apb
+      if( abs(apb_matrix(ipair2,ipair)) < 1e-8 ) apb_matrix(ipair2,ipair)=zero
+      apb_matrix(ipair,ipair2)=apb_matrix(ipair2,ipair)
+    enddo
+  enddo
+
+  !
+  ! Invert the (A+B) matrix 
+  !
+  lwork=-1
+  allocate(ipiv(m_apb),work(1))
+  call DGETRF(m_apb,m_apb,apb_matrix,m_apb,ipiv,info)
+  if(info==0) call DGETRI(m_apb,apb_matrix,m_apb,ipiv,work,lwork,info)
+  lwork=int(work(1))
+  deallocate(work)
+  allocate(work(lwork))
+  if(info==0) call DGETRI(m_apb,apb_matrix,m_apb,ipiv,work,lwork,info)
+  deallocate(ipiv,work)
+
+  !
+  ! Print (A+B)^-1 matrix 
+  !
+  if(info==0) then
+    
+    open(unit=iunit,file='inv_apb_mat')
+    write(iunit,*) m_apb
+    do ipair=1,m_apb
+      do ipair2=1,m_apb
+        write(iunit,*) ipair,ipair2,apb_matrix(ipair,ipair2)
+      enddo
+    enddo
+    close(iunit)
+
+  else
+
+    msg='The A+B matrix is not invertible. Unable to proceed.'
+    call issue_warning(msg)
+
+  endif
+
+  call clean_deallocate('A+B',apb_matrix)
+
+end subroutine cphf_cpks
+
+
+!=========================================================================
 subroutine polarizability_onering(basis,energy,c_matrix,vchi0v)
   implicit none
 
