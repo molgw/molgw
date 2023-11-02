@@ -23,7 +23,6 @@ module m_linear_response
   use m_spectra
   use m_build_bse
 
-
 contains
 
 
@@ -422,11 +421,13 @@ subroutine cphf_cpks(basis,occupation,energy,c_matrix,wpol_out)
   type(spectral_function),intent(inout) :: wpol_out
   !=====
   integer                   :: ipair,ipair2,m_apb,n_apb,info,lwork,iunit
-  integer                   :: nmat,t_ia,t_jb,jstate,bstate,jbspin,t_jb_global
+  integer                   :: nprow,npcol,myprow,mypcol
+  integer                   :: t_ia,t_jb,jstate,bstate,jbspin,t_jb_global
+  integer                   :: nmat,nmat_global,desc_x(NDEL)
   real(dp)                  :: egw_tmp,erpa_singlet,energy_jb
   integer,allocatable       :: ipiv(:)
-  real(dp),allocatable      :: apb_matrix(:,:),work(:)
-  real(dp),allocatable      :: b_matrix(:,:)
+  real(dp),allocatable      :: work(:)
+  real(dp),allocatable      :: apb_matrix(:,:),b_matrix(:,:)
   !=====
 
   !
@@ -438,6 +439,8 @@ subroutine cphf_cpks(basis,occupation,energy,c_matrix,wpol_out)
   ! This is valid also when SCALAPACK is not used!
   m_apb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
   n_apb = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
+  call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_apb),info)
+
   call clean_allocate('A',apb_matrix,m_apb,n_apb)
   call clean_allocate('B',b_matrix,m_apb,n_apb)
   apb_matrix(:,:) = 0.0_dp
@@ -467,58 +470,103 @@ subroutine cphf_cpks(basis,occupation,energy,c_matrix,wpol_out)
 
   call clean_deallocate('B',b_matrix)
 
-  !
-  ! Symmetrize the (A+B) matrix 
-  !
-  if( m_apb/=n_apb ) then
-    msg='The A+B matrix is not a square matrix. Unable to symmetrize it and proceed.'
-    call issue_warning(msg)
-    call clean_deallocate('A+B',apb_matrix)
-    call destroy_eri_3center_eigen()
-    return
-  endif
+#if defined(HAVE_SCALAPACK)
+  call BLACS_GRIDINFO(desc_x(CTXT_),nprow,npcol,myprow,mypcol)
+  ! if only one proc, then use default coding
+  if( nprow * npcol > 1 ) then
+    nmat_global = desc_x(M_)
 
-  do ipair=1,m_apb
-    do ipair2=ipair,m_apb
-      if( abs(apb_matrix(ipair2,ipair)) < 1e-8 ) apb_matrix(ipair2,ipair)=zero
-      apb_matrix(ipair,ipair2)=apb_matrix(ipair2,ipair)
-    enddo
-  enddo
-
-  !
-  ! Invert the (A+B) matrix 
-  !
-  lwork=-1
-  allocate(ipiv(m_apb),work(1))
-  call DGETRF(m_apb,m_apb,apb_matrix,m_apb,ipiv,info)
-  if(info==0) call DGETRI(m_apb,apb_matrix,m_apb,ipiv,work,lwork,info)
-  lwork=int(work(1))
-  deallocate(work)
-  allocate(work(lwork))
-  if(info==0) call DGETRI(m_apb,apb_matrix,m_apb,ipiv,work,lwork,info)
-  deallocate(ipiv,work)
-
-  !
-  ! Print (A+B)^-1 matrix 
-  !
-  if(info==0) then
-    
-    open(unit=iunit,file='inv_apb_mat')
-    write(iunit,*) m_apb
-    do ipair=1,m_apb
-      do ipair2=1,m_apb
-        write(iunit,*) ipair,ipair2,apb_matrix(ipair,ipair2)
+    write(*,*) 'MAU SCA',nmat_global,m_apb,n_apb,desc_x(MB_),MB_
+    !
+    ! Invert the (A+B) matrix 
+    !
+    call PDPOTRF('L',nmat_global,apb_matrix,1,1,desc_x,info)
+    if(info==0) then
+       call PDPOTRI('L',nmat_global,apb_matrix,1,1,desc_x,info)
+    endif
+    !
+    ! Print (A+B)^-1 matrix 
+    !
+    if(info==0) then
+      
+      open(unit=iunit,file='inv_apb_mat',access='append')
+      write(iunit,*) nmat_global,SIZE(occupation,DIM=1)
+      do ipair=1,m_apb
+        do ipair2=1,n_apb
+          if(ipair2<ipair) then
+            if( abs(apb_matrix(ipair,ipair2)) < 1e-8 ) apb_matrix(ipair,ipair2)=zero
+            write(iunit,*) ipair,ipair2,apb_matrix(ipair,ipair2)
+          else
+            if( abs(apb_matrix(ipair2,ipair)) < 1e-8 ) apb_matrix(ipair2,ipair)=zero
+            write(iunit,*) ipair,ipair2,apb_matrix(ipair2,ipair)
+          endif
+        enddo
       enddo
-    enddo
-    close(iunit)
+      close(iunit)
+    
+    else
+    
+      msg='The A+B matrix is not invertible. Unable to proceed.'
+      call issue_warning(msg)
+    
+    endif
 
   else
+#endif
 
-    msg='The A+B matrix is not invertible. Unable to proceed.'
-    call issue_warning(msg)
+    write(*,*) 'MAU LAP',nmat,m_apb,n_apb
+   
+    !
+    ! Invert the (A+B) matrix 
+    !
+    lwork=-1
+    allocate(ipiv(nmat),work(1))
+    call DSYTRF('L',nmat,apb_matrix,nmat,ipiv,work,lwork,info)
+    if(info==0) then
+      lwork=int(work(1))
+      deallocate(work)
+      allocate(work(lwork))
+      call DSYTRF('L',nmat,apb_matrix,nmat,ipiv,work,lwork,info)
+      if(info==0) then
+        deallocate(work)
+        allocate(work(nmat))
+        call DSYTRI('L',nmat,apb_matrix,nmat,ipiv,work,info)
+      endif
+    endif
+    deallocate(ipiv,work)
+ 
+    !
+    ! Print (A+B)^-1 matrix 
+    !
+    if(info==0) then
+      
+      open(unit=iunit,file='inv_apb_mat')
+      write(iunit,*) nmat,SIZE(occupation,DIM=1)
+      do ipair=1,nmat
+        do ipair2=1,nmat
+          if(ipair2<ipair) then
+            if( abs(apb_matrix(ipair,ipair2)) < 1e-8 ) apb_matrix(ipair,ipair2)=zero
+            write(iunit,*) ipair,ipair2,apb_matrix(ipair,ipair2)
+          else
+            if( abs(apb_matrix(ipair2,ipair)) < 1e-8 ) apb_matrix(ipair2,ipair)=zero
+            write(iunit,*) ipair,ipair2,apb_matrix(ipair2,ipair)
+          endif
+        enddo
+      enddo
+      close(iunit)
+    
+    else
+    
+      msg='The A+B matrix is not invertible. Unable to proceed.'
+      call issue_warning(msg)
+    
+    endif
 
+#if defined(HAVE_SCALAPACK)
   endif
+#endif
 
+  call destroy_eri_3center_eigen() ! Was built in polarizability subroutine or before
   call clean_deallocate('A+B',apb_matrix)
 
 end subroutine cphf_cpks

@@ -369,7 +369,7 @@ subroutine calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa)
     erpa = erpa + 0.5_dp * PDLATRA(nmat,m_matrix,1,1,desc_x)
   else
 
-#else
+#endif
     nmat=SIZE(a_matrix,DIM=1)
 
     erpa = -0.5_dp * matrix_trace(a_matrix)
@@ -398,7 +398,6 @@ subroutine calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa)
     call DGEMM('T','N',nmat,nmat,nmat,1.0d0,y_matrix,nmat,tmp_matrix,nmat, &
                0.0d0,m_matrix,nmat)
     erpa = erpa + 0.5_dp * matrix_trace(m_matrix)
-#endif
 #if defined(HAVE_SCALAPACK)
   endif
 #endif
