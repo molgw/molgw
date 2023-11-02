@@ -412,12 +412,14 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine cphf_cpks(basis,occupation,energy,c_matrix,wpol_out)
+subroutine cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol_out)
+
   implicit none
 
   type(basis_set),intent(in)            :: basis
   real(dp),intent(in)                   :: occupation(:,:)
   real(dp),intent(in)                   :: energy(:,:),c_matrix(:,:,:)
+  logical,intent(in)                    :: only_invert
   type(spectral_function),intent(inout) :: wpol_out
   !=====
   integer                   :: ipair,ipair2,m_apb,n_apb,info,lwork,iunit
@@ -446,76 +448,77 @@ subroutine cphf_cpks(basis,occupation,energy,c_matrix,wpol_out)
   apb_matrix(:,:) = 0.0_dp
   b_matrix(:,:)   = 0.0_dp
 
-  ! Get A and B
-  call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
-                      enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=apb_matrix,b_matrix=b_matrix)
+  if( .not. only_invert ) then
 
-  ! Add the diagonal contribution to A
-  do t_jb_global=1,nmat
-    t_ia = rowindex_global_to_local('S',t_jb_global)
-    t_jb = colindex_global_to_local('S',t_jb_global)
+    write(stdout,'(/,a,/)') ' Computing the A+B matrix in CPHF/CPKS'
+    ! Get A and B
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
+                        enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=apb_matrix,b_matrix=b_matrix)
+    
+    ! Add the diagonal contribution to A
+    do t_jb_global=1,nmat
+      t_ia = rowindex_global_to_local('S',t_jb_global)
+      t_jb = colindex_global_to_local('S',t_jb_global)
+    
+      jstate = wpol_out%transition_table(1,t_jb_global)
+      bstate = wpol_out%transition_table(2,t_jb_global)
+      jbspin = wpol_out%transition_table(3,t_jb_global)
+      energy_jb = energy(bstate,jbspin) - energy(jstate,jbspin)
+    
+      ! If the diagonal element belongs to this proc, then add it.
+      if( t_ia > 0 .AND. t_jb > 0 ) then
+        apb_matrix(t_ia,t_jb) = apb_matrix(t_ia,t_jb) + energy_jb
+      endif
+    enddo
+    
+    apb_matrix(:,:) = apb_matrix(:,:) + b_matrix(:,:)
 
-    jstate = wpol_out%transition_table(1,t_jb_global)
-    bstate = wpol_out%transition_table(2,t_jb_global)
-    jbspin = wpol_out%transition_table(3,t_jb_global)
-    energy_jb = energy(bstate,jbspin) - energy(jstate,jbspin)
+  else  
 
-    ! If the diagonal element belongs to this proc, then add it.
-    if( t_ia > 0 .AND. t_jb > 0 ) then
-      apb_matrix(t_ia,t_jb) = apb_matrix(t_ia,t_jb) + energy_jb
-    endif
-  enddo
+    write(stdout,'(/,a,/)') ' Reading the A+B matrix from the apb_mat file in CPHF/CPKS'
+    if( nmat==m_apb .and. nmat==n_apb ) then
 
-  apb_matrix(:,:) = apb_matrix(:,:) + b_matrix(:,:)
+      open(unit=iunit,file='apb_mat',status='old')
+      read(iunit,*) ipair,ipair      
+      do ipair=1,nmat
+        do ipair2=1,nmat
+          read(iunit,*) apb_matrix(ipair2,ipair)
+        enddo
+      enddo
+      close(iunit)
+
+    else
+
+      msg='The A+B matrix is not a square matrix stored in 1 procesor. Launch the calc. with only 1 procesor to invert it.'
+      call issue_warning(msg)
+      call destroy_eri_3center_eigen() ! Was built in polarizability subroutine or before
+      call clean_deallocate('A+B',apb_matrix)
+      return
+
+    endif      
+  endif
 
   call clean_deallocate('B',b_matrix)
 
 #if defined(HAVE_SCALAPACK)
+
   call BLACS_GRIDINFO(desc_x(CTXT_),nprow,npcol,myprow,mypcol)
   ! if only one proc, then use default coding
   if( nprow * npcol > 1 ) then
+
     nmat_global = desc_x(M_)
 
-    write(*,*) 'MAU SCA',nmat_global,m_apb,n_apb,desc_x(MB_),MB_
     !
-    ! Invert the (A+B) matrix 
+    ! Print the (A+B) matrix 
     !
-    call PDPOTRF('L',nmat_global,apb_matrix,1,1,desc_x,info)
-    if(info==0) then
-       call PDPOTRI('L',nmat_global,apb_matrix,1,1,desc_x,info)
-    endif
-    !
-    ! Print (A+B)^-1 matrix 
-    !
-    if(info==0) then
-      
-      open(unit=iunit,file='inv_apb_mat',access='append')
-      write(iunit,*) nmat_global,SIZE(occupation,DIM=1)
-      do ipair=1,m_apb
-        do ipair2=1,n_apb
-          if(ipair2<ipair) then
-            if( abs(apb_matrix(ipair,ipair2)) < 1e-8 ) apb_matrix(ipair,ipair2)=zero
-            write(iunit,*) ipair,ipair2,apb_matrix(ipair,ipair2)
-          else
-            if( abs(apb_matrix(ipair2,ipair)) < 1e-8 ) apb_matrix(ipair2,ipair)=zero
-            write(iunit,*) ipair,ipair2,apb_matrix(ipair2,ipair)
-          endif
-        enddo
-      enddo
-      close(iunit)
-    
-    else
-    
-      msg='The A+B matrix is not invertible. Unable to proceed.'
-      call issue_warning(msg)
-    
-    endif
+    allocate(work(nmat_global))
+    call pdlawrite('apb_mat',nmat_global,nmat_global,apb_matrix,1,1,desc_x,0,0,work)
+    deallocate(work)
 
   else
+
 #endif
 
-    write(*,*) 'MAU LAP',nmat,m_apb,n_apb
-   
     !
     ! Invert the (A+B) matrix 
     !

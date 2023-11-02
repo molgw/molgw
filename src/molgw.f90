@@ -73,7 +73,7 @@ program molgw
   integer                 :: istep
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
-  logical                 :: scf_has_converged
+  logical                 :: scf_has_converged,only_invert = .FALSE.
   real(dp)                :: erpa_tmp,egw_tmp,eext
   real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
@@ -710,8 +710,10 @@ program molgw
     call wpol%destroy()
   endif
   if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
+    inquire(file='apb_mat',exist=only_invert)
     call wpol%init(nstate,occupation,0)
-    call cphf_cpks(basis,occupation,energy,c_matrix,wpol) ! Internally, it will call polarizability
+    call cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol) ! Internally, it will call polarizability 
+                                                                      ! if needed
     call wpol%destroy()
   endif
 
