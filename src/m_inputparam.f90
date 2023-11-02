@@ -144,7 +144,7 @@ module m_inputparam
   logical,protected                :: print_spatial_extension_
   logical,protected                :: print_cube_
   logical,protected                :: print_wfn_files_
-  logical,protected                :: print_all_wfn_files_
+  logical,protected                :: print_all_MO_wfn_file_
   logical,protected                :: print_multipole_
   logical,protected                :: print_hartree_
   logical,protected                :: print_density_matrix_
@@ -892,7 +892,7 @@ subroutine read_inputfile_namelist()
   print_multipole_          = yesno_to_logical(print_multipole)
   print_cube_               = yesno_to_logical(print_cube)
   print_wfn_files_          = yesno_to_logical(print_wfn_files)
-  print_all_wfn_files_      = yesno_to_logical(print_all_wfn_files)
+  print_all_MO_wfn_file_    = yesno_to_logical(print_all_MO_wfn_file)
   print_hartree_            = yesno_to_logical(print_hartree)
   print_density_matrix_     = yesno_to_logical(print_density_matrix)
   print_rho_grid_           = yesno_to_logical(print_rho_grid)

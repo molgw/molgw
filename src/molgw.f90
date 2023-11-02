@@ -509,7 +509,7 @@ program molgw
   if( print_wfn_ )  call plot_wfn(basis,c_matrix)
   if( print_wfn_ )  call plot_rho('GKS',basis,occupation,c_matrix)
   if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
-  if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy,print_all=print_all_wfn_files_)
+  if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy,print_all=print_all_MO_wfn_file_)
   if( print_pdos_ ) then
     call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
     call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
