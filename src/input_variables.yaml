@@ -771,6 +771,15 @@ ci_type:
   comment: Selects which excitations will be included in the CI expansion. Valid choices
     are 'all', 'CISD', 'CISDT', 'CISDTQ'.
 
+cphf_cpks_0:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Uses the non-interacting approximation to the CPHF/CPKS. Then, the 
+    polarizability is not computed (all two-body interactions are neglected).
+
 dft_core:
   family: post
   datatype: integer

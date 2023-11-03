@@ -159,6 +159,7 @@ module m_inputparam
   logical,protected                :: print_dens_traj_points_set_
   logical,protected                :: print_charge_tddft_
   logical,protected                :: print_transition_density_
+  logical,protected                :: cphf_cpks_0_
   logical,protected                :: calc_q_matrix_
   logical,protected                :: calc_dens_disc_
   logical,protected                :: calc_spectrum_
@@ -914,6 +915,7 @@ subroutine read_inputfile_namelist()
   print_tddft_restart_        = yesno_to_logical(print_tddft_restart)
   print_yaml_                 = yesno_to_logical(print_yaml)
   assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
+  cphf_cpks_0_                = yesno_to_logical(cphf_cpks_0)
   analytic_chi_               = yesno_to_logical(analytic_chi)
   eri3_genuine_               = yesno_to_logical(eri3_genuine)
   auto_occupation_            = yesno_to_logical(auto_occupation)

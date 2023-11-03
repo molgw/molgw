@@ -452,8 +452,13 @@ subroutine cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol_out)
 
     write(stdout,'(/,a,/)') ' Computing the A+B matrix in CPHF/CPKS'
     ! Get A and B
-    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
+    if ( .not. cphf_cpks_0_ ) then
+      call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
                         enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=apb_matrix,b_matrix=b_matrix)
+    else
+      write(stdout,'(/,a)') ' Comment: Using the non-interacting approximation in CPHF/CPKS.'
+      write(stdout,'(a,/)') ' (A+B)_ia,jb = (energy_a - energy_i) delta_ij delta_ab'
+    endif
     
     ! Add the diagonal contribution to A
     do t_jb_global=1,nmat
