@@ -549,13 +549,6 @@ program molgw
     call calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
   end if
 
-  !
-  ! If RSH calculations were performed, then deallocate the LR integrals which
-  ! are not needed anymore
-  !
-
-  if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
-  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
 
   !
@@ -568,13 +561,10 @@ program molgw
     call get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
   endif
 
-
   call clean_deallocate('Overlap matrix S',s_matrix)
   call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
   call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
   call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
-
-
 
   !
   ! Prepare the diagonal of the matrix Sigma_x - Vxc
@@ -584,6 +574,30 @@ program molgw
     call setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
   endif
   call clean_deallocate('Fock operator F',hamiltonian_fock)
+
+  !
+  ! Linear-response time dependent calculations work for BSE and TDDFT
+  ! or coupled-pertubed HF/KS
+  ! (only if the SCF cycles were converged)
+  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
+    call wpol%init(nstate,occupation,0)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
+    call wpol%destroy()
+  endif
+  if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
+    inquire(file='apb_mat',exist=only_invert)
+    call wpol%init(nstate,occupation,0)
+    call cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol) ! Internally, it will call polarizability 
+                                                                      ! if needed
+    call wpol%destroy()
+  endif
+
+  !
+  ! If RSH calculations were performed, then deallocate the LR integrals which
+  ! are not needed anymore
+  !
+  if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
+  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
 
   !
@@ -699,23 +713,6 @@ program molgw
     call print_energy_yaml('mbpt energy',en_gks)
   endif
 
-
-  !
-  ! Linear-response time dependent calculations work for BSE and TDDFT
-  ! or coupled-pertubed HF/KS
-  ! (only if the SCF cycles were converged)
-  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
-    call wpol%init(nstate,occupation,0)
-    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
-    call wpol%destroy()
-  endif
-  if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
-    inquire(file='apb_mat',exist=only_invert)
-    call wpol%init(nstate,occupation,0)
-    call cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol) ! Internally, it will call polarizability 
-                                                                      ! if needed
-    call wpol%destroy()
-  endif
 
   !
   ! Self-energy calculation: PT2, GW, GWGamma, COHSEX

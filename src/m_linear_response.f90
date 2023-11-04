@@ -52,7 +52,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   real(dp),allocatable      :: xpy_matrix(:,:),xmy_matrix(:,:)
   real(dp),allocatable      :: eigenvalue(:)
   real(dp),allocatable      :: energy_qp(:,:)
-  logical                   :: is_tddft,is_rpa
+  logical                   :: is_tddft,is_rpa,long_range_true=.true.
   logical                   :: has_manual_tdhf
   integer                   :: reading_status
   integer                   :: tdhffile
@@ -97,9 +97,17 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     if( calc_type%is_lr_mbpt ) then
       call calculate_eri_3center_eigen_lr(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
     else
-      eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
-      if( .NOT. eri_3center_mo_available ) then
-        call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+      if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
+        eri_3center_mo_available = ( ALLOCATED(eri_3center_eigen) .AND. ALLOCATED(eri_3center_eigen_lr) )
+        if( .NOT. eri_3center_mo_available ) then
+          call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola,&
+                  long_range=long_range_true)
+        endif
+      else
+        eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
+        if( .NOT. eri_3center_mo_available ) then
+          call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+        endif
       endif
     endif
   endif
@@ -399,8 +407,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   write(stdout,*) 'Deallocate eigenvector array'
   call clean_deallocate('X+Y',xpy_matrix)
 
-  if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available )  &
-    call destroy_eri_3center_eigen()
+  if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
+    call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp))
+  endif
 
   if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
   deallocate(energy_qp)
@@ -574,7 +583,7 @@ subroutine cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol_out)
   endif
 #endif
 
-  call destroy_eri_3center_eigen() ! Was built in polarizability subroutine or before
+  call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
   call clean_deallocate('A+B',apb_matrix)
 
 end subroutine cphf_cpks
