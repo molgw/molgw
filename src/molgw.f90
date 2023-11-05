@@ -587,8 +587,8 @@ program molgw
   if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
     inquire(file='apb_mat',exist=only_invert)
     call wpol%init(nstate,occupation,0)
-    call cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol) ! Internally, it will call polarizability 
-                                                                      ! if needed
+    call coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol) ! Internally, it will call polarizability 
+                                                                              ! (if needed)
     call wpol%destroy()
   endif
 

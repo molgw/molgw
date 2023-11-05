@@ -421,7 +421,7 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol_out)
+subroutine coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol_out)
 
   implicit none
 
@@ -434,9 +434,10 @@ subroutine cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol_out)
   integer                   :: ipair,ipair2,m_apb,n_apb,info,lwork,iunit
   integer                   :: nprow,npcol,myprow,mypcol
   integer                   :: t_ia,t_jb,jstate,bstate,jbspin,t_jb_global
+  integer                   :: istate,astate,nocc,nvirt 
   integer                   :: nmat,nmat_global,desc_x(NDEL)
   real(dp)                  :: egw_tmp,erpa_singlet,energy_jb
-  integer,allocatable       :: ipiv(:)
+  integer,allocatable       :: ipiv(:),ipiv2(:)
   real(dp),allocatable      :: work(:)
   real(dp),allocatable      :: apb_matrix(:,:),b_matrix(:,:)
   !=====
@@ -556,22 +557,53 @@ subroutine cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol_out)
     ! Print (A+B)^-1 matrix 
     !
     if(info==0) then
-      
+
+      nocc=0
+      do istate=1,size(occupation(:,:),dim=1)
+        if(occupation(istate,1)>0.0_dp) nocc=nocc+1
+      enddo
+      nvirt=size(occupation(:,:),dim=1)-nocc
+      allocate(ipiv(nocc*nvirt),ipiv2(nmat))
+      ipiv(:)=0;ipiv2(:)=0;
+      ipair=1
+      do istate=1,nocc
+        if(istate>ncore_W) then
+          do astate=1,nvirt
+            if(astate<(nvirtual_W-nocc)) then
+              ipiv((istate-1)*nvirt+astate)=ipair
+              ipair=ipair+1
+            endif
+          enddo
+        endif
+      enddo
+      ipair2=1
+      do ipair=1,nocc*nvirt
+        if(ipiv(ipair)/=0) then
+          ipiv2(ipair2)=ipair
+          ipair2=ipair2+1
+        endif
+      enddo
+      deallocate(ipiv)
+      !do ipair=1,nmat
+      ! write(*,*) ipiv2(ipair)
+      !enddo
       open(unit=iunit,file='inv_apb_mat')
       write(iunit,*) nmat,SIZE(occupation,DIM=1)
       do ipair=1,nmat
         do ipair2=1,nmat
           if(ipair2<ipair) then
             if( abs(apb_matrix(ipair,ipair2)) < 1e-8 ) apb_matrix(ipair,ipair2)=zero
-            write(iunit,*) ipair,ipair2,apb_matrix(ipair,ipair2)
+            write(iunit,*) ipiv2(ipair),ipiv2(ipair2),apb_matrix(ipair,ipair2)
           else
             if( abs(apb_matrix(ipair2,ipair)) < 1e-8 ) apb_matrix(ipair2,ipair)=zero
-            write(iunit,*) ipair,ipair2,apb_matrix(ipair2,ipair)
+            write(iunit,*) ipiv2(ipair),ipiv2(ipair2),apb_matrix(ipair2,ipair)
           endif
         enddo
       enddo
       close(iunit)
-    
+      
+      deallocate(ipiv2)    
+
     else
     
       msg='The A+B matrix is not invertible. Unable to proceed.'
@@ -586,7 +618,7 @@ subroutine cphf_cpks(basis,occupation,energy,c_matrix,only_invert,wpol_out)
   call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
   call clean_deallocate('A+B',apb_matrix)
 
-end subroutine cphf_cpks
+end subroutine coupled_perturbed
 
 
 !=========================================================================
