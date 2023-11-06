@@ -252,6 +252,39 @@ end subroutine build_amb_apb_diag_auxil
 
 
 !=========================================================================
+subroutine remove_a_energy_diag(energy,wpol,a_matrix)
+  implicit none
+
+  real(dp),intent(in)                :: energy(:,:)
+  type(spectral_function),intent(in) :: wpol
+  real(dp),intent(inout)             :: a_matrix(:,:)
+  !=====
+  integer              :: t_ia,t_jb,t_jb_global
+  integer              :: jstate,bstate
+  integer              :: jbspin
+  !=====
+
+  write(stdout,'(a)') " Remove energy difference on the diagonal of A: Create A'"
+
+  do t_jb_global=1,wpol%npole_reso
+    t_ia = rowindex_global_to_local('S',t_jb_global)
+    t_jb = colindex_global_to_local('S',t_jb_global)
+
+    jstate = wpol%transition_table(1,t_jb_global)
+    bstate = wpol%transition_table(2,t_jb_global)
+    jbspin = wpol%transition_table(3,t_jb_global)
+
+    ! If the diagonal element belongs to this proc, then substract it.
+    if( t_ia > 0 .AND. t_jb > 0 ) then
+       a_matrix(t_ia,t_jb) = a_matrix(t_ia,t_jb) - ( energy(bstate,jbspin) - energy(jstate,jbspin) )
+    endif
+  enddo
+
+
+end subroutine remove_a_energy_diag
+
+
+!=========================================================================
 subroutine get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
   implicit none
 

@@ -13,7 +13,7 @@ molgw: $(wildcard src/*.f90) $(wildcard src/*.yaml) $(wildcard src/*.py) $(wildc
 	cd src && $(MAKE)
 
 test:
-	cd tests && $(PYTHON) ./run_testsuite.py
+	cd tests && $(PYTHON) ./run_testsuite.py --keep
 
 clean:
 	cd src && $(MAKE) clean

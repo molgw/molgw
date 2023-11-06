@@ -390,7 +390,7 @@ subroutine scf_loop(is_restart,&
       write(unit_yaml,'(/,a)') 'scf is converged: False'
     endif
     call print_energy_yaml('scf energy',en_gks)
-    call dump_out_energy_yaml('gks energy',energy)
+    call dump_out_energy_yaml('gks energies',energy)
   endif
 
   call stop_clock(timing_scf)

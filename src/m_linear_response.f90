@@ -44,7 +44,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
-  logical                   :: is_bse,eri_3center_mo_available
+  logical                   :: is_bse,is_tdhf,eri_3center_mo_available
   integer                   :: nmat,nexc
   real(dp)                  :: alpha_local,lambda_
   real(dp),allocatable      :: amb_diag_rpa(:)
@@ -119,10 +119,30 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! Set up flag is_tddft and is_bse
   is_tddft = calc_type%include_tddft_kernel .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
   is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
+  is_tdhf  = (calc_type%include_tddft_kernel .OR. calc_type%include_tdhf_kernel) .AND. .NOT. enforce_rpa
+
+  ! Override choices here
+  if( calculate_w ) then
+    select case(w_screening)
+    case('RPA')
+      ! do nothing
+    case('BSE')
+      ! enforce BSE
+      is_bse   = .TRUE.
+    case('TDHF')
+      is_tdhf = .TRUE.
+    case('TDDFT')
+      is_tdhf  = .TRUE.
+      is_tddft = .TRUE.
+    case default
+      call die('polarizability: invalid choice for w_screening')
+    end select
+  endif
 
   !
   ! Set up exchange content alpha_local
   ! manual_tdhf can override anything
+  alpha_local = 0.0_dp
   inquire(file='manual_tdhf',exist=has_manual_tdhf)
   if(has_manual_tdhf) then
     open(newunit=tdhffile,file='manual_tdhf',status='old')
@@ -131,19 +151,26 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
     call issue_warning(msg)
   else
-    if(calc_type%include_tddft_kernel) then        ! TDDFT or TDHF
+    if( is_tddft .OR. calc_type%include_tddft_kernel ) then        ! TDDFT or TDHF
       alpha_local = alpha_hybrid
-    else if( (is_bse .OR. calc_type%include_tdhf_kernel) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
+    else if( (is_bse .OR. is_tdhf) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
       alpha_local = 1.0_dp
     else                  ! RPA or no_bse_kernel
       alpha_local = 0.0_dp
     endif
   endif
-  if( enforce_rpa ) alpha_local = 0.0_dp
+  !if( enforce_rpa ) alpha_local = 0.0_dp
 
   is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
 
   call start_clock(timing_build_h2p)
+  write(stdout,'(/,1x,a)') 'Summarize the linear response calculation:'
+  write(stdout,'(1x,a16,l1)')       'RPA:          ',is_rpa
+  write(stdout,'(1x,a16,l1)')       'BSE:          ',is_bse
+  write(stdout,'(1x,a16,l1)')       'TDHF:         ',is_tdhf
+  write(stdout,'(1x,a16,l1)')       'TDDFT:        ',is_tddft
+  write(stdout,'(1x,a16,f6.4)')     'hybrid alpha: ',alpha_local
+  write(stdout,*)
 
   !
   ! Prepare the QP energies
@@ -161,7 +188,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! It is stored in object wpol_static
   !
   if( is_bse ) then
-    call wpol_static%init(nstate,occupation,1,grid=STATIC)
+    call wpol_static%init(nstate,occupation,1,grid_type=STATIC)
     call read_spectral_function(wpol_static,reading_status)
 
     ! If a SCREENED_COULOMB file cannot be found,
@@ -207,9 +234,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
     !
     ! Step 1
-    if( .NOT. (PRESENT(a_matrix) .AND. PRESENT(b_matrix)) ) then
-      call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
-    endif
+    call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
 
 #if defined(HAVE_SCALAPACK)
     call build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda_,desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
@@ -280,13 +305,11 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! When requesting A and B, calculate them and exit here
   ! (skip diago etc)
   !
-  if( PRESENT(a_matrix) .AND. PRESENT(b_matrix) ) then
+  if( PRESENT(a_matrix) ) then
     a_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
+  endif
+  if( PRESENT(b_matrix) ) then
     b_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) - amb_matrix(:,:) )
-    call clean_deallocate('A+B',apb_matrix)
-    call clean_deallocate('A-B',amb_matrix)
-    call stop_clock(timing_pola)
-    return
   endif
 
   if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
@@ -355,7 +378,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! Calculate the optical sprectrum
   ! and the dynamic dipole tensor
   !
-  if( calc_type%include_tddft_kernel .OR. is_bse ) then
+  if( is_tdhf .OR. is_tddft .OR. is_bse ) then
     call optical_spectrum(is_triplet_currently,basis,occupation,c_matrix,wpol_out,xpy_matrix,xmy_matrix,eigenvalue)
     select case(TRIM(lower(stopping)))
     case('spherical')
@@ -399,8 +422,6 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     ! If requested write the spectral function on file
     if( print_w_ ) call write_spectral_function(wpol_out)
 
-  else
-    call wpol_out%destroy()
   endif
 
 
@@ -453,7 +474,7 @@ subroutine coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol_o
   n_apb = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
   call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_apb),info)
 
-  call clean_allocate('A',apb_matrix,m_apb,n_apb)
+  call clean_allocate('A+B',apb_matrix,m_apb,n_apb)
   call clean_allocate('B',b_matrix,m_apb,n_apb)
   apb_matrix(:,:) = 0.0_dp
   b_matrix(:,:)   = 0.0_dp
@@ -461,30 +482,29 @@ subroutine coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol_o
   if( .not. only_invert ) then
 
     write(stdout,'(/,a,/)') ' Computing the A+B matrix in CPHF/CPKS'
-    ! Get A and B
-    if ( .not. cphf_cpks_0_ ) then
-      call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
-                        enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=apb_matrix,b_matrix=b_matrix)
-    else
+    if ( cphf_cpks_0_ ) then
+      ! Add only the orbital energy differences to the diagonal
       write(stdout,'(/,a)') ' Comment: Using the non-interacting approximation in CPHF/CPKS.'
       write(stdout,'(a,/)') ' (A+B)_ia,jb = (energy_a - energy_i) delta_ij delta_ab'
+      do t_jb_global=1,nmat
+        t_ia = rowindex_global_to_local('S',t_jb_global)
+        t_jb = colindex_global_to_local('S',t_jb_global)
+      
+        jstate = wpol_out%transition_table(1,t_jb_global)
+        bstate = wpol_out%transition_table(2,t_jb_global)
+        jbspin = wpol_out%transition_table(3,t_jb_global)
+        energy_jb = energy(bstate,jbspin) - energy(jstate,jbspin)
+      
+        ! If the diagonal element belongs to this proc, then add it.
+        if( t_ia > 0 .AND. t_jb > 0 ) then
+          apb_matrix(t_ia,t_jb) = apb_matrix(t_ia,t_jb) + energy_jb
+        endif
+      enddo
+    else
+      ! Get A and B (apb_matrix will contain A)
+      call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
+                        enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=apb_matrix,b_matrix=b_matrix)
     endif
-    
-    ! Add the diagonal contribution to A
-    do t_jb_global=1,nmat
-      t_ia = rowindex_global_to_local('S',t_jb_global)
-      t_jb = colindex_global_to_local('S',t_jb_global)
-    
-      jstate = wpol_out%transition_table(1,t_jb_global)
-      bstate = wpol_out%transition_table(2,t_jb_global)
-      jbspin = wpol_out%transition_table(3,t_jb_global)
-      energy_jb = energy(bstate,jbspin) - energy(jstate,jbspin)
-    
-      ! If the diagonal element belongs to this proc, then add it.
-      if( t_ia > 0 .AND. t_jb > 0 ) then
-        apb_matrix(t_ia,t_jb) = apb_matrix(t_ia,t_jb) + energy_jb
-      endif
-    enddo
     
     apb_matrix(:,:) = apb_matrix(:,:) + b_matrix(:,:)
 
@@ -665,7 +685,7 @@ subroutine get_energy_qp(energy,occupation,energy_qp)
   !=====
   integer  :: nstate
   integer  :: reading_status
-  integer  :: mspin,mstate
+  integer  :: pspin,pstate
   !=====
 
   nstate = SIZE(occupation,DIM=1)
@@ -673,23 +693,27 @@ subroutine get_energy_qp(energy,occupation,energy_qp)
   ! then use it and ignore the ENERGY_QP file
   if( ABS(scissor) > 1.0e-5_dp ) then
 
-    call issue_warning('Using a manual scissor to open up the fundamental gap')
+    call issue_warning('BSE: using a manual scissor to open up the fundamental gap')
 
     write(stdout,'(a,2(1x,f12.6))') ' Scissor operator with value (eV):',scissor*Ha_eV
-    do mspin=1,nspin
-      do mstate=1,nstate
-        if( occupation(mstate,mspin) > completely_empty/spin_fact ) then
-          energy_qp(mstate,mspin) = energy(mstate,mspin)
+    do pspin=1,nspin
+      do pstate=1,nstate
+        if( occupation(pstate,pspin) > completely_empty/spin_fact ) then
+          energy_qp(pstate,pspin) = energy(pstate,pspin)
         else
-          energy_qp(mstate,mspin) = energy(mstate,mspin) + scissor
+          energy_qp(pstate,pspin) = energy(pstate,pspin) + scissor
         endif
       enddo
     enddo
     write(stdout,'(/,a)') ' Scissor updated energies'
-    do mstate=1,nstate
-      write(stdout,'(i5,4(2x,f16.6))') mstate,energy(mstate,:)*Ha_eV,energy_qp(mstate,:)*Ha_eV
+    do pstate=1,nstate
+      write(stdout,'(i5,4(2x,f16.6))') pstate,energy(pstate,:)*Ha_eV,energy_qp(pstate,:)*Ha_eV
     enddo
     write(stdout,*)
+
+  else if( ABS(scissor) > 1.0e-8_dp ) then
+    call issue_warning('BSE: using nor a scissor, nor GW energies')
+    energy_qp(:,:) = energy(:,:)
 
   else
 

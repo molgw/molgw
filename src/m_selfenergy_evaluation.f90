@@ -24,7 +24,9 @@ module m_selfenergy_evaluation
   use m_io
   use m_gw_selfenergy_grid
   use m_linear_response
+  use m_gwgwg_selfenergy
 
+  logical,parameter :: arno_static_approximation = .FALSE.
 
 contains
 
@@ -41,7 +43,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
   type(energy_contributions),intent(inout) :: en_mbpt
   !=====
   integer                 :: nstate
-  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3
+  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gwgw0g
   logical                 :: enforce_rpa
   character(len=36)       :: selfenergy_tag
   integer                 :: reading_status
@@ -67,19 +69,13 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     exchange_m_vxc_diag(pstate,:) = exchange_m_vxc(pstate,pstate,:)
   enddo
 
-  !
-  ! Small imaginary part of the poles in the Green's function
-  ! output here
-  write(msg,'(es9.2)') AIMAG(ieta)
-  call issue_warning('small complex number is '//msg)
-
 
   do istep_gw=1,nstep_gw
 
     !
     ! Set the character string for the calculation we are currently doing
     select case(calc_type%selfenergy_approx)
-    case(GW,GW_IMAG)
+    case(GW)
       selfenergy_tag='GW'
     case(GnW0)
       write(selfenergy_tag,'(i3)') istep_gw-1
@@ -105,8 +101,16 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='GW+SOSEX'
     case(COHSEX)
       selfenergy_tag='COHSEX'
-    case(GWFSOS)
-      selfenergy_tag='GW+FSOS'
+    case(GWGWG,GWGWG_NUMERICAL)
+      selfenergy_tag='GW+GWGWG'
+    case(GW0GW0G)
+      selfenergy_tag='GW+GW0GW0G'
+    case(GWGW0G)
+      selfenergy_tag='GW+GWGW0G'
+    case(GWGW0RPAG)
+      selfenergy_tag='GW+GWGW0RPAG'
+    case(GWTILDE)
+      selfenergy_tag='GWTILDE'
     case default
       write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -171,8 +175,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     ! selfenergy = GW or COHSEX
     !
-    if(     calc_type%selfenergy_approx == GW_IMAG     &
-      .OR. calc_type%selfenergy_approx == GW          &
+    if(    calc_type%selfenergy_approx == GW          &
       .OR. calc_type%selfenergy_approx == COHSEX      &
       .OR. calc_type%selfenergy_approx == GnW0        &
       .OR. calc_type%selfenergy_approx == GnWn   ) then
@@ -196,7 +199,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         if( reading_status /= 0 ) then
           select case(calc_type%selfenergy_technique)
           case(imaginary_axis_pade,imaginary_axis_homolumo)
-            call wpol%init(nstate_small,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+            call wpol%init(nstate_small,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
             call polarizability_grid_scalapack(occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
           case(contour_deformation)
             ! no need for chi, it will be calculated directly inside
@@ -233,7 +236,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
 #if defined(HAVE_SCALAPACK)
         if( has_auxil_basis &
            .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
-             .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == GW_IMAG) ) then
+             .OR. calc_type%selfenergy_approx == GnWn) ) then
           call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
         else
 #endif
@@ -300,76 +303,134 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     endif
 
     !
-    ! GW+SOSEX
+    ! Test Starke-Maggio-Kresse
     !
-    if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWSOX ) then
-      call wpol%init(nstate,occupation,0)
-      call read_spectral_function(wpol,reading_status)
-      ! If reading has failed, then do the calculation
-      if( reading_status /= 0 ) then
-        call polarizability(.FALSE.,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
+    if( calc_type%selfenergy_approx == GWTILDE ) then
+      call gwtilde_selfenergy(basis,occupation,energy_g,c_matrix,se)
+    endif
+
+    !
+    ! GW+SOSEX or GW+GWGWG
+    !
+    if( calc_type%selfenergy_approx == GWSOX &
+        .OR. calc_type%selfenergy_approx == GWSOSEX &
+        .OR. calc_type%selfenergy_approx == GWGWG &
+        .OR. calc_type%selfenergy_approx == GWGWG_NUMERICAL &
+        .OR. calc_type%selfenergy_approx == GW0GW0G &
+        .OR. calc_type%selfenergy_approx == GWGW0G &
+        .OR. calc_type%selfenergy_approx == GWGW0RPAG &
+      ) then
+
+      !
+      ! Two implementations available:
+      ! analytic or imaginary frequencies
+      !
+      if( calc_type%selfenergy_technique /= imaginary_axis_pade ) then
+        call wpol%init(nstate,occupation,0)
+        call read_spectral_function(wpol,reading_status)
+        ! If reading has failed, then do the calculation
+        if( reading_status /= 0 ) then
+          call polarizability(.FALSE.,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
+        endif
+
+        call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+
+        !
+        ! Output the G0W0 results first
+        allocate(energy_qp_z(nstate,nspin))
+        allocate(energy_qp_new(nstate,nspin))
+        allocate(zz(nstate,nspin))
+        call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+        call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new,zz)
+        call output_qp_energy('GW',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+        call output_qp_energy_yaml('GW',energy,exchange_m_vxc_diag,se,energy_qp_z,energy_qp_new,zz)
+        call output_homolumo('GW',occupation,energy_qp_new,nsemin,nsemax)
+        call dump_out_energy_yaml('gw energies',energy_qp_new,nsemin,nsemax)
+        deallocate(zz)
+        deallocate(energy_qp_z)
+
+        !
+        ! selfenergy = GWSOX
+        !
+        select case(calc_type%selfenergy_approx)
+        case(GWSOX)
+          !
+          ! Perform a standard SOX calculation
+          !
+          call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_sox)
+          call pt2_selfenergy(SOX,nstate,basis,occupation,energy_g,c_matrix,se_sox,en_mbpt%mp2)
+
+          !
+          ! Finally add up the contributions and then destroy the se_sox object
+          !
+          se%sigma(:,:,:) = se%sigma(:,:,:) + se_sox%sigma(:,:,:)
+
+          call destroy_selfenergy_grid(se_sox)
+
+        case(GW0GW0G,GWGW0G,GWGW0RPAG)
+          if( arno_static_approximation ) then
+            call issue_warning('selfenergy_evaluation: use arno approximation for GW0GW0G')
+            ! enforce a single frequency located at the GW qp energy
+            call init_selfenergy_grid(static_selfenergy,energy_qp_new,se_gwgw0g)
+          else
+            call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_gwgw0g)
+          endif
+          call gwgw0g_selfenergy(occupation,energy_g,c_matrix,wpol,se_gwgw0g)
+          if( arno_static_approximation ) then
+            do iomega=-se%nomega,se%nomega
+              se%sigma(iomega,:,:) = se%sigma(iomega,:,:) + se_gwgw0g%sigma(0,:,:)
+            enddo
+          else
+            se%sigma(:,:,:) = se%sigma(:,:,:) + se_gwgw0g%sigma(:,:,:)
+          endif
+          call destroy_selfenergy_grid(se_gwgw0g)
+
+        case(GWSOSEX)
+          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
+
+        case(GWGWG)
+          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
+
+          ! Output the GW+SOSEX qp energies before over-riding them
+          allocate(energy_qp_z(nstate,nspin))
+          allocate(zz(nstate,nspin))
+          call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+          call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new,zz)
+          call output_qp_energy('GW+SOSEX2',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+          call output_qp_energy_yaml('GW+SOSEX2',energy,exchange_m_vxc_diag,se,energy_qp_z,energy_qp_new,zz)
+          call output_homolumo('GW+SOSEX2',occupation,energy_qp_new,nsemin,nsemax)
+          call dump_out_energy_yaml('gw+sosex2 energies',energy_qp_new,nsemin,nsemax)
+          deallocate(zz)
+          deallocate(energy_qp_z)
+
+          call gwgwg_selfenergy(occupation,energy_g,c_matrix,wpol,se)
+
+        case(GWGWG_NUMERICAL)
+          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
+
+          call gwgwg_selfenergy_real_grid(basis,occupation,energy_g,c_matrix,se)
+        case default
+          call die('selfenergy_evaluation: selfenergy type not recognized')
+        end select
+
+        deallocate(energy_qp_new)
+        call wpol%destroy()
+
+      else
+        !
+        ! Imaginary frequencies implementation
+        call gw_selfenergy_grid(basis,occupation,energy_g,c_matrix,se)
+        call sox_selfenergy_imag_grid(occupation,energy_g,c_matrix,se)
+        if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWGWG ) then
+          call sosex_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
+        endif
+        if( calc_type%selfenergy_approx == GWGWG ) then
+          call gwgwg_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
+        endif
+        call self_energy_pade(se)
       endif
-
-      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-
-      !
-      ! Output the G0W0 results first
-      allocate(energy_qp_z(nstate,nspin))
-      allocate(energy_qp_new(nstate,nspin))
-      allocate(zz(nstate,nspin))
-      call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-      call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new,zz)
-      call output_qp_energy('GW',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
-      deallocate(zz)
-      deallocate(energy_qp_z)
-      call output_homolumo('GW',occupation,energy_qp_new,nsemin,nsemax)
-      deallocate(energy_qp_new)
-
-
-      call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-      call wpol%destroy()
     endif
 
-    !
-    ! GW+FSOS
-    ! implementation on the imaginary frequency grid
-    !
-    if( calc_type%selfenergy_approx == GWFSOS ) then
-      call gw_selfenergy_grid(basis,energy_g,occupation,c_matrix,se)
-      call fsos_selfenergy_grid(basis,energy_g,occupation,c_matrix,se)
-      call self_energy_pade(se)
-    endif
-
-    !
-    ! selfenergy = GWSOX
-    !
-    if( calc_type%selfenergy_approx == GWSOX ) then
-      !
-      ! First perform a standard GW calculation
-      !
-      call wpol%init(nstate,occupation,0)
-      call read_spectral_function(wpol,reading_status)
-      ! If reading has failed, then do the calculation
-      if( reading_status /= 0 ) then
-        call polarizability(.FALSE.,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
-      endif
-      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
-
-      !
-      ! Second perform a standard SOX calculation
-      !
-      call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_sox)
-      call pt2_selfenergy(SOX,nstate,basis,occupation,energy_g,c_matrix,se_sox,en_mbpt%mp2)
-
-
-      !
-      ! Finally add up the contributions and then destroy the se_sox object
-      !
-      se%sigma(:,:,:) = se%sigma(:,:,:) + se_sox%sigma(:,:,:)
-
-      call destroy_selfenergy_grid(se_sox)
-
-    endif
 
     !
     ! Selfenergy = PT2
@@ -460,13 +521,15 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       deallocate(energy_qp_z)
     end select
 
-    call selfenergy_convergence_prediction(basis,c_matrix,energy_qp_new)
+    if( calc_type%selfenergy_approx == GW ) then
+      call selfenergy_convergence_prediction(basis,c_matrix,energy_qp_new)
+    endif
 
     !
     ! Write the QP energies on disk: ENERGY_QP file
     !
     call write_energy_qp(energy_qp_new)
-    call dump_out_energy_yaml(TRIM(selfenergy_tag)//' energy',energy_qp_new,nsemin,nsemax)
+    call dump_out_energy_yaml(TRIM(selfenergy_tag)//' energies',energy_qp_new,nsemin,nsemax)
 
     !
     ! Output the new HOMO and LUMO energies

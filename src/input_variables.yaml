@@ -833,6 +833,16 @@ gwgamma_tddft:
   comment: EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the
     ground-state calculation.
 
+mu_origin:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: -100.0
+  comment: Energy of the origin of the imaginary axis used in imaginary integration techniques.
+           mu_origin should be in the HOMO-LUMO gap (preferably situated at a distance not too close to either end of the gap).
+           The default value means the center of the HOMO-LUMO gap.
+
 ncoreg:
   family: post
   datatype: integer
@@ -1113,7 +1123,7 @@ use_correlated_density_matrix:
   experimental: 'no'
   default: 'no'
   comment: Chooses to use another density matrix for the Fock hamiltonian to be employed
-    in self-energy calculations.                  Used in conjonction with 'pt_density_matrix'
+    in self-energy calculations. Used in conjonction with 'pt_density_matrix'
     or with 'read_fchk' or read an existing DENSITY_MATRIX file.
 
 virtual_fno:
@@ -1126,6 +1136,14 @@ virtual_fno:
     subspace with fewer orbitals. The dimension of the space is set up with the input
     keyword nvirtualg or nvirtualw. Actually the virtual orbital space is determined
     by the minimum MIN(nvirtualg,nvirtualw).
+
+w_screening:
+  family: post
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'rpa'
+  comment: Selects the approximation of the screening W in GW and beyond. Standard GW needs 'rpa'
 
 
 #============================================================================

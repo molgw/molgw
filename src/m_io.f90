@@ -57,7 +57,11 @@ subroutine this_is_the_end()
 
   call output_timing()
 
-  call output_all_warnings()
+  if( print_yaml_ .AND. is_iomaster ) then
+    call output_all_warnings(unit_yaml)
+  else
+    call output_all_warnings()
+  endif
 
   if( print_yaml_ .AND. is_iomaster ) then
     write(unit_yaml,'(/,a)')  'run:'

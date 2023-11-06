@@ -110,14 +110,14 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
     case('GW_IMAGINARY','G0W0_IMAGINARY')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       ! using an imaginary axis integral
-      call wpol%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+      call wpol%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
       call polarizability_grid_scalapack(occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
       call gw_density_matrix_imag(occupation,energy,c_matrix,wpol,p_matrix_corr)
       call wpol%destroy()
     case('GW_DYSON','G0W0_DYSON')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       ! using an imaginary axis integral
-      call wpol%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+      call wpol%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
       call polarizability_grid_scalapack(occupation,energy,c_matrix,en_dm_corr%rpa,en_dm_corr%gw,wpol)
       call gw_density_matrix_dyson_imag(occupation,energy,c_matrix,wpol,p_matrix_corr)
       call wpol%destroy()

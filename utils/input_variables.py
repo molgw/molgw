@@ -15,6 +15,7 @@ try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
+from collections import OrderedDict
 
 today = time.strftime("%d") + ' ' + time.strftime("%B") + ' ' + time.strftime("%Y")
 path = str(pathlib.Path(__file__).resolve().parent.parent)
@@ -73,6 +74,8 @@ print('MOLGW version: ' + version)
 
 with open(path+'/src/input_variables.yaml', 'r') as stream:
     input_var_dict = load(stream,Loader=Loader)
+sorted_var_dict = OrderedDict(sorted(input_var_dict.items()))
+
 
 #============================================================================
 #            Fortran output: input variable declaration
@@ -157,7 +160,7 @@ ffor = open(path+'/src/echo_input_variables.f90','w')
 
 ffor.write(header)
 
-for key,value in input_var_dict.items():
+for key,value in sorted_var_dict.items():
   if   value['datatype'] =='integer':
     fortran_format = '\'(1x,a32,2x,i8)\''
   elif value['datatype'] =='real':
@@ -187,7 +190,7 @@ ffor = open(path+'/src/echo_input_variables_yaml.f90','w')
 
 ffor.write(header)
 
-for key,value in input_var_dict.items():
+for key,value in sorted_var_dict.items():
   key_modif = key
   right_spaces = str( 30 - len(key) )
 

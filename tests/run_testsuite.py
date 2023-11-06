@@ -164,9 +164,12 @@ def check_output(out,testinfo):
     if not key_found:
       print(key.rjust(30)+'[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
 
-  if success_in_this_file == len(testinfo) + 1:
+  failures_in_this_file = len(testinfo) + 1 - success_in_this_file
+
+  if failures_in_this_file == 0:
      test_files_success += 1
 
+  return failures_in_this_file
 
 ###################################
 # Parse the command line
@@ -485,6 +488,7 @@ skipping_reason    = []
 
 fdiff = open(tmpfolder+'/diff', 'w')
 fdiff.write('#   test index       property tested                     calculated                 reference                 difference        test status \n')
+ffailed = open(tmpfolder+'/failed_tests', 'w')
 
 for iinput in range(ninput):
 
@@ -535,10 +539,13 @@ for iinput in range(ninput):
 
   clean_run(inp,out,restart)
   
-  check_output(out,testinfo[iinput])
+  failures = check_output(out,testinfo[iinput])
+  if failures != 0:
+    ffailed.write(out+"\n")
 
 
 fdiff.close()
+ffailed.close()
 
 print('\n\n===============================')
 print('      Test Suite Summary \n')

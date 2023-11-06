@@ -75,8 +75,10 @@ module m_spectral_function
 
     generic :: evaluate => sf_evaluate_several_omegas
     generic :: evaluate => sf_evaluate_one_omega
+    generic :: evaluate => sf_evaluate_one_real_omega
     procedure :: sf_evaluate_several_omegas
     procedure :: sf_evaluate_one_omega
+    procedure :: sf_evaluate_one_real_omega
 
     procedure :: vsqrt_chi_vsqrt_rpa => sf_vsqrt_chi_vsqrt_rpa
     procedure :: interpolate_vsqrt_chi_vsqrt => sf_interpolate_vsqrt_chi_vsqrt
@@ -132,13 +134,13 @@ end function index_prodstate
 
 
 !=========================================================================
-subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
+subroutine sf_init(sf,nstate,occupation,nomega_in,grid_type,omega_max,verbose)
   implicit none
   class(spectral_function),intent(out)  :: sf
   integer,intent(in)                    :: nstate
   real(dp),intent(in)                   :: occupation(:,:)
   integer,intent(in)                    :: nomega_in
-  integer,optional,intent(in)           :: grid
+  integer,optional,intent(in)           :: grid_type
   real(dp),optional,intent(in)          :: omega_max
   logical,optional,intent(in)           :: verbose
   !=====
@@ -157,8 +159,8 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid,omega_max,verbose)
   if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
     call die('sf_init: nstate is too large')
   endif
-  if( PRESENT(grid) ) then
-    grid_ = grid
+  if( PRESENT(grid_type) ) then
+    grid_ = grid_type
   endif
   if( PRESENT(omega_max) ) then
     omega_max_ = omega_max
@@ -373,17 +375,12 @@ subroutine sf_destroy(sf,verbose)
   class(spectral_function),intent(inout) :: sf
   logical,optional,intent(in)            :: verbose
   !=====
-  integer :: stdout_
   logical :: verbose_
   !=====
 
-  stdout_ = stdout
   verbose_ = .TRUE.
   if( PRESENT(verbose) ) then
     verbose_ = verbose
-    if( .NOT. verbose ) then
-      open(newunit=stdout_,file='/dev/null')
-    endif
   endif
 
   if(ALLOCATED(sf%transition_table)) deallocate(sf%transition_table)
@@ -398,7 +395,9 @@ subroutine sf_destroy(sf,verbose)
   if(ALLOCATED(sf%omega))       deallocate(sf%omega)
   if(ALLOCATED(sf%vchiv_sqrt))  deallocate(sf%vchiv_sqrt)
 
-  write(stdout_,'(/,a)') ' Spectral function destroyed'
+  if( verbose_ ) then
+    write(stdout,'(/,a)') ' Spectral function destroyed'
+  endif
 
 end subroutine sf_destroy
 
@@ -641,8 +640,8 @@ subroutine sf_evaluate_several_omegas(sf,omega_cmplx,chi)
         do jauxil=1,sf%nprodbasis
           chi(:,jauxil,iomega) = chi(:,jauxil,iomega) &
                  + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
-                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + im * ieta ) &
-                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - im * ieta ) )
+                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + ieta ) &
+                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - ieta ) )
         enddo
       enddo
     enddo
@@ -673,6 +672,40 @@ end subroutine sf_evaluate_several_omegas
 
 
 !=========================================================================
+subroutine sf_evaluate_one_real_omega(sf,omega_real,chi)
+  implicit none
+
+  class(spectral_function),intent(in) :: sf
+  real(dp),intent(in) :: omega_real
+  complex(dp),intent(out) :: chi(:,:)
+  !=====
+  integer :: ipole
+  integer :: jauxil
+  !=====
+  if( nauxil_global /= nauxil_local ) call die('sf_evaluate_one_omega: not implemented with distributed auxiliary basis')
+  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate_one_omega: should have sf%residue_left available')
+
+
+  chi(:,:) = 0.0_dp
+
+  !
+  ! for real frequencies, use a naive implementation
+  !
+  do ipole=1,sf%npole_reso
+    do jauxil=1,sf%nprodbasis
+      chi(:,jauxil) = chi(:,jauxil) &
+             + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
+                   * ( 1.0_dp / ( omega_real - sf%pole(ipole) + ieta ) &
+                      -1.0_dp / ( omega_real + sf%pole(ipole) - ieta ) )
+    enddo
+  enddo
+
+
+
+end subroutine sf_evaluate_one_real_omega
+
+
+!=========================================================================
 subroutine sf_evaluate_one_omega(sf,omega_cmplx,chi)
   implicit none
 
@@ -698,8 +731,8 @@ subroutine sf_evaluate_one_omega(sf,omega_cmplx,chi)
         do jauxil=1,sf%nprodbasis
           chi(:,jauxil) = chi(:,jauxil) &
                  + sf%residue_left(:,ipole) * sf%residue_left(jauxil,ipole) &
-                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + im * ieta ) &
-                               -1.0_dp / ( omega_cmplx + sf%pole(ipole) - im * ieta ) )
+                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + ieta ) &
+                              -1.0_dp / ( omega_cmplx + sf%pole(ipole) - ieta ) )
         enddo
       enddo
 
