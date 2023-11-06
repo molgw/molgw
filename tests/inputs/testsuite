@@ -545,6 +545,10 @@ Lowest neutral excitation ,      3.389151       , 0 , 1.0e-4
 Sum over oscillator strengths , 12.036833       , 0 , 1.0e-4
 polarizability trace      ,     13.347008       , 0 , 1.0e-4
 
+ch2o_bse_i.in             , BSE-I using ACDF formula, restart
+BSE-I Energy              ,     -0.2873297776   , 0 , 1.0e-4
+BSE-I Total Energy        ,   -114.1522113795   , 0 , 1.0e-4
+
 ch2o_bse_nokernel.in      , BSE wo kernel on formaldehyde , restart
 0001 :                    ,     13.08500930     , 0 , 1.0e-4
 0002 :                    ,     15.00951006     , 0 , 1.0e-4
