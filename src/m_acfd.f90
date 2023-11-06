@@ -131,7 +131,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     endif
 
   case('RPA_IM','RPAP_IM','RPA+_IM')
-    call wpol%init(nstate,occupation,nomega_chi_imag,grid=IMAGINARY_QUAD)
+    call wpol%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
     call polarizability_grid_scalapack(occupation,energy,c_matrix,erpa_state,egw_tmp,wpol)
     call wpol%destroy()
     en_mbpt%rpa = erpa_state
@@ -258,6 +258,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     ! Get A and B
     call polarizability(.TRUE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                         enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=a_matrix,b_matrix=b_matrix)
+    call remove_a_energy_diag(energy,wpol,a_matrix)
     call wpol%destroy()
 
     en_mbpt%rpa = 0.0_dp
@@ -315,9 +316,11 @@ subroutine calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa)
   real(dp),intent(in)  :: x_matrix(:,:),y_matrix(:,:),a_matrix(:,:),b_matrix(:,:)
   real(dp),intent(out) :: erpa
   !=====
-  integer :: imat,nmat
+  integer :: nmat
   real(dp),allocatable :: m_matrix(:,:),tmp_matrix(:,:)
+#if defined(HAVE_SCALAPACK)
   integer :: nprow,npcol,myprow,mypcol
+#endif
   !=====
 
   ! Beware that a_matrix and b_matrix are symmetric and in the SCALAPACK case, only the lower part is filled.

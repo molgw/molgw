@@ -1,0 +1,23 @@
+&molgw
+ comment='He GW+SOSEX2'
+ mpi_nproc_ortho=1024
+
+ scf='HF'
+
+ basis='cc-pVDZ'
+ auxil_basis='PAUTO'
+
+
+ postscf='gw+sosex2'
+
+ selfenergy_state_range=0
+
+ nomega_sigma=31
+ step_sigma=0.10
+
+ eta=0.001
+
+ natom=1
+/
+He  0.0 0.0 0.0
+

@@ -33,41 +33,41 @@ module m_ci
   real(dp),allocatable,private :: h_1body(:,:)
 
   type, private :: configurations
-  integer             :: nelec
-  integer             :: nelec_valence
-  integer             :: nelec_valence_up
-  integer             :: nelec_valence_down
-  integer             :: nconf
-  integer             :: nstate
-  integer             :: sz
-  integer(kind=key_int),allocatable :: keyud(:,:)  ! its bits encode the occupation: 0 or 1
-                                                   ! first element is spin up
-                                                   ! second element is spin down
-end type
+    integer             :: nelec
+    integer             :: nelec_valence
+    integer             :: nelec_valence_up
+    integer             :: nelec_valence_down
+    integer             :: nconf
+    integer             :: nstate
+    integer             :: sz
+    integer(kind=key_int),allocatable :: keyud(:,:)  ! its bits encode the occupation: 0 or 1
+                                                     ! first element is spin up
+                                                     ! second element is spin down
+  end type
 
-type(configurations),target,private :: conf_0  ! Neutral    configuration: N electrons
-type(configurations),target,private :: conf_p  ! +1-charged configuration: N-1 electrons
-type(configurations),target,private :: conf_m  ! -1-charged configuration: N+1 electrons
-
-integer,private                     :: desc_0(NDEL)
-integer,private                     :: desc_p(NDEL)
-integer,private                     :: desc_m(NDEL)
-
-real(dp),allocatable,private        :: energy_0(:)
-real(dp),allocatable,private        :: energy_p(:)
-real(dp),allocatable,private        :: energy_m(:)
-
-real(dp),allocatable,private        :: eigvec_0(:,:)
-real(dp),allocatable,private        :: eigvec_p(:,:)
-real(dp),allocatable,private        :: eigvec_m(:,:)
-
-type, private ::  sparse_matrix
-real(dp)             :: nnz_total
-integer              :: nnz
-real(dp),allocatable :: val(:)
-integer,allocatable  :: row_ind(:)
-integer,allocatable  :: col_ptr(:)
-end type
+  type(configurations),target,private :: conf_0  ! Neutral    configuration: N electrons
+  type(configurations),target,private :: conf_p  ! +1-charged configuration: N-1 electrons
+  type(configurations),target,private :: conf_m  ! -1-charged configuration: N+1 electrons
+  
+  integer,private                     :: desc_0(NDEL)
+  integer,private                     :: desc_p(NDEL)
+  integer,private                     :: desc_m(NDEL)
+  
+  real(dp),allocatable,private        :: energy_0(:)
+  real(dp),allocatable,private        :: energy_p(:)
+  real(dp),allocatable,private        :: energy_m(:)
+  
+  real(dp),allocatable,private        :: eigvec_0(:,:)
+  real(dp),allocatable,private        :: eigvec_p(:,:)
+  real(dp),allocatable,private        :: eigvec_m(:,:)
+  
+  type, private ::  sparse_matrix
+  real(dp)             :: nnz_total
+  integer              :: nnz
+  real(dp),allocatable :: val(:)
+  integer,allocatable  :: row_ind(:)
+  integer,allocatable  :: col_ptr(:)
+  end type
 
 
 contains
@@ -940,9 +940,10 @@ end subroutine build_ci_hamiltonian_sparse
 
 
 !==================================================================
-subroutine full_ci_nelectrons_selfenergy()
+subroutine full_ci_nelectrons_selfenergy(energy_gks)
   implicit none
 
+  real(dp),intent(in)   :: energy_gks(:,:)
   !=====
   type(selfenergy_grid) :: se
   integer               :: is
@@ -953,12 +954,11 @@ subroutine full_ci_nelectrons_selfenergy()
   real(dp),allocatable  :: fs_occ(:,:,:),fs_virt(:,:,:)
   real(dp),allocatable  :: es_occ(:),es_virt(:)
   integer               :: iomega
-  complex(dp)           :: gi_w
+  complex(dp)           :: gi_w,g0i_w,sigmai_w
   character(len=3)      :: ctmp3
   character(len=1)      :: ctmp1
   integer               :: unit_gf
   real(dp)              :: eigvec0(conf_0%nconf)
-  real(dp)              :: energy0_dummy(nsemax,nspin)
   integer(kind=key_int) :: keyudi(2),keyudj(2)
   !=====
 
@@ -1107,10 +1107,7 @@ subroutine full_ci_nelectrons_selfenergy()
   !
   ! Setup the frequency grid
   !
-  do istate=nsemin,nsemax
-    energy0_dummy(istate,:) = 0.0_dp
-  enddo
-  call init_selfenergy_grid(one_shot,energy0_dummy,se)
+  call init_selfenergy_grid(one_shot,energy_gks(nsemin:nsemax,:),se)
 
 
   !
@@ -1125,15 +1122,21 @@ subroutine full_ci_nelectrons_selfenergy()
       open(newunit=unit_gf,file='exact_greens_function_state'//ctmp3//'_spin'//ctmp1//'.dat',action='write')
       do iomega=-se%nomega,se%nomega
 
-        gi_w = 0.0_dp
+        gi_w = (0.0_dp,0.0_dp)
         do is=1,ns_virt
-          gi_w = gi_w + fs_virt(istate,ispin,is)**2 / ( se%omega(iomega) - es_virt(is) - ieta )
+          gi_w = gi_w + fs_virt(istate,ispin,is)**2 / ( se%energy0(istate,1) + se%omega(iomega) - es_virt(is) + ieta )
         enddo
         do is=1,ns_occ
-          gi_w = gi_w + fs_occ(istate,ispin,is)**2 / ( se%omega(iomega) - es_occ(is) + ieta )
+          gi_w = gi_w + fs_occ(istate,ispin,is)**2 / ( se%energy0(istate,1) + se%omega(iomega) - es_occ(is) - ieta )
         enddo
+        g0i_w = 1.0_dp / ( se%energy0(istate,1) + se%omega(iomega) - energy_gks(istate,1) &
+                             + ieta * SIGN(1.0_dp,REAL(istate-conf_0%nelec/2-0.5_dp,dp)) )
 
-        write(unit_gf,'(8(1x,es18.8))') se%omega(iomega) * Ha_eV, gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
+        sigmai_w = 1.0_dp / g0i_w - 1.0_dp / gi_w
+        write(unit_gf,'(*(1x,f18.10))') (se%energy0(istate,1) + se%omega(iomega)) * Ha_eV, &
+                                         gi_w / Ha_eV, g0i_w / Ha_eV, sigmai_w * Ha_eV, &
+                                         ABS(AIMAG(gi_w)) / pi / Ha_eV, &
+                                         ABS(AIMAG(g0i_w)) / pi / Ha_eV
       enddo
       close(unit_gf)
     enddo
@@ -1151,13 +1154,14 @@ subroutine full_ci_nelectrons_selfenergy()
 
       gi_w = 0.0_dp
       do is=1,ns_virt
-        gi_w = gi_w + SUM(fs_virt(istate,:,is)**2) / ( se%omega(iomega) - es_virt(is) - ieta )
+        gi_w = gi_w + SUM(fs_virt(istate,:,is)**2) / ( se%energy0(istate,1) + se%omega(iomega) - es_virt(is) + ieta )
       enddo
       do is=1,ns_occ
-        gi_w = gi_w + SUM(fs_occ(istate,:,is)**2) / ( se%omega(iomega) - es_occ(is) + ieta )
+        gi_w = gi_w + SUM(fs_occ(istate,:,is)**2) / ( se%energy0(istate,1) + se%omega(iomega) - es_occ(is) - ieta )
       enddo
 
-      write(unit_gf,'(8(1x,es18.8))') se%omega(iomega) * Ha_eV, gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
+      write(unit_gf,'(8(1x,es18.8))') (se%energy0(istate,1) + se%omega(iomega)) * Ha_eV, &
+                                      gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
     enddo
     close(unit_gf)
 

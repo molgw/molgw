@@ -559,18 +559,15 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
   real(dp),allocatable :: omega_gaussleg(:)
   real(dp)             :: efermi
   integer              :: iunittmp
-  logical              :: manual_efermi
   !=====
 
   se%nomega_calc = 0
   se%nomega      = 0
 
-  inquire(file='manual_efermi',exist=manual_efermi)
-  if(manual_efermi) then
-    write(stdout,*) 'Reading manual_efermi file'
-    open(newunit=iunittmp,file='manual_efermi',action='read')
-    read(iunittmp,*) efermi
-    close(iunittmp)
+  if( mu_origin > -99.0_dp ) then
+
+    efermi = mu_origin
+
     !
     ! efermi needs to be in the HOMO-LUMO gap
     if( efermi < MAXVAL(energy0(nhomo_G,:)) .OR. efermi > MINVAL(energy0(nhomo_G+1,:)) ) then
@@ -579,7 +576,11 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
       call die('init_selfenergy_grid: efermi needs to be in the HOMO-LUMO gap')
     endif
   else
-    efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G,:)) + MINVAL(energy0(nhomo_G+1,:)) )
+    if( LBOUND(energy0(:,:),DIM=1) <= nhomo_G .AND. UBOUND(energy0(:,:),DIM=1) >= nhomo_G+1 ) then
+      efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G,:)) + MINVAL(energy0(nhomo_G+1,:)) )
+    else
+      call die('init_selfenergy_grid: not enough states to find the fermi energy')
+    endif
   endif
 
   select case(selfenergy_technique)
@@ -1143,7 +1144,7 @@ subroutine selfenergy_convergence_prediction(basis,c_matrix,eqp)
     enddo
   enddo
 
-  call dump_out_energy_yaml('gw_extrap energy',eqp_extrap,nsemin,nsemax)
+  call dump_out_energy_yaml('gw_extrap energies',eqp_extrap,nsemin,nsemax)
 
 
 end subroutine selfenergy_convergence_prediction

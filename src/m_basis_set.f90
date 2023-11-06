@@ -796,8 +796,9 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
       am_current  = am_selected
 
       ! Save selected shell information
+      write(stdout,'(5x,a,es16.6,1x,i2,1x,i2)') '. auxiliary function (exponent, min - max angular momenta):', &
+                                          exponent_selected,0,am_selected
       do am=0,am_selected
-        write(stdout,'(5x,a,es16.6,1x,i2)') '* auxiliary function (exponent, angular momentum):',exponent_selected,am
         auxil_basis%nshell = auxil_basis%nshell + 1
         shell_tmp(auxil_basis%nshell)%am    = am
         shell_tmp(auxil_basis%nshell)%ng    = 1

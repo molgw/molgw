@@ -616,7 +616,7 @@ program molgw
       if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'ELECTRONS' ) then
         call full_ci_nelectrons(-1,NINT(electrons)+1,1,en_gks%nuc_nuc)
       endif
-      call full_ci_nelectrons_selfenergy()
+      call full_ci_nelectrons_selfenergy(energy)
     endif
 
 

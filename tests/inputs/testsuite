@@ -617,24 +617,24 @@ Exc. 0002                 ,      0.03083017     , 1 , 1.0e-4
 Exc. 0005                 ,     11.25700794     , 0 , 1.0e-4
 Exc. 0005                 ,      0.00000000     , 1 , 1.0e-4
 
-lih_gwgamma.in            , LiH: GWSOSEX@PBE0 with non-auxiliary basis parallelization (=ortho paral)
+lih_gw+sosex.in           , LiH: GW+SOSEX@PBE0 with non-auxiliary basis parallelization (=ortho paral)
 SCF Total Energy          ,    -8.0512581571    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0854827210    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.426968        , 0 , 1.0e-4
 GW+SOSEX HOMO energy      ,    -8.003938        , 0 , 1.0e-4
 
-lih_gwgamma_nori.in       , LiH: GWSOSEX@PBE0 without RI, noparallel
+lih_gw+sosex_nori.in      , LiH: GW+SOSEX@PBE0 without RI, noparallel
 SCF Total Energy          ,    -8.0461044345    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0363952366    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.038813        , 0 , 1.0e-4
 GW+SOSEX HOMO energy      ,    -7.702063        , 0 , 1.0e-4
 
-lih_gwtddftgamma.in       , LIH: GW_TDDFTGamma@HF (W is obtained from TDHF)
+lih_gw+sosex_w_tdhf.in    , LiH: GW+SOSEX with TDHF screening
 SCF Total Energy          ,    -7.9836862051    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.243410        , 0 , 1.0e-4
 GW+SOSEX HOMO energy      ,    -7.332104        , 0 , 1.0e-4
 
-n2_gwgamma.in             , N2: GWSOSEX@BHLYP with frozencore and frozen virtual with ortho paral
+n2_gw+sosex.in            , N2: GW+SOSEX@BHLYP with frozencore and frozen virtual with ortho paral
 SCF Total Energy          ,  -109.4724604609    , 0 , 1.0e-7
 gKS HOMO energy           ,   -13.734359        , 0 , 1.0e-4
 gKS HOMO energy           ,   -13.734359        , 1 , 1.0e-4
@@ -1020,12 +1020,45 @@ SCF Total Energy          , -100.0391397744    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.259038        , 0 , 1.0e-4
 gKS LUMO energy           ,    1.090268        , 0 , 1.0e-4
 
-ar_gw+fsos.in             , Full second-order screened exchange diagram
-SCF Total Energy          , -526.7998408784    , 0 , 1.0e-7
-gKS HOMO energy           ,  -15.991653        , 0 , 1.0e-4
-GW+FSOS HOMO energy       ,  -15.681164        , 0 , 1.0e-4
+he_gwgwg_numerical.in     , GWGWG with numerical integration
+SCF Total Energy          ,   -2.8552377890    , 0 , 1.0e-7
+GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
 
-ar_gw+fsos_analytic.in    , Full second-order screened exchange diagram with analytic chi
-SCF Total Energy          , -526.7998408784    , 0 , 1.0e-7
-gKS HOMO energy           ,  -15.991653        , 0 , 1.0e-4
-GW+FSOS HOMO energy       ,  -15.681164        , 0 , 1.0e-4
+he_gwgwg_analytic.in      , GWGWG with analytic formula
+SCF Total Energy          ,   -2.8552377890    , 0 , 1.0e-7
+GW HOMO energy            ,  -23.691585        , 0 , 1.0e-4
+GW+SOSEX2 HOMO energy     ,  -24.139890        , 0 , 1.0e-4
+GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
+
+he_gw+sox.in              , GW+SOX for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOX HOMO energy        ,  -24.821455        , 0 , 1.0e-4
+
+he_gw+sox_pade.in         , GW+SOX for He on the imaginary axis
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOX HOMO energy        ,  -24.821330        , 0 , 1.0e-4
+
+he_gw+sosex.in            , GW+SOSEX for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.745453        , 0 , 1.0e-4
+
+he_gw+sosex_pade.in       , GW+SOSEX for He on the imaginary axis
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.745143        , 0 , 1.0e-4
+
+he_gw+sosex2.in           , GW+SOSEX2 for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.670771        , 0 , 1.0e-4
+
+he_gw+sosex2_pade.in      , GW+SOSEX2 for He on the imaginary axis
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.670254        , 0 , 1.0e-4
+
+he_gw+gwgwg.in            , GW+GWGWG for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+GWGWG HOMO energy      ,  -24.696203        , 0 , 1.0e-4
+
+he_gw+gwgwg_pade.in       , GW+GWGWG for He on the imaginary axis (setting the axis origin)
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+GWGWG HOMO energy      ,  -24.694923        , 0 , 1.0e-4
+

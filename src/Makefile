@@ -115,11 +115,11 @@ level050: m_hamiltonian_wrapper.o m_restart.o m_multipole.o m_spectra.o m_build_
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_linear_response.o
 
-level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o
+level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o m_gwgwg_selfenergy.o
 
 level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o 
 
-level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o mp2.o force.o \
+level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o \
           molgw.o
 
 
@@ -143,7 +143,7 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o gwgamma_selfen
         m_spectral_function.o m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_ci.o  \
         m_hamiltonian_wrapper.o \
         m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o m_fourier_quadrature.o \
-        m_linear_response.o m_acfd.o static_polarizability.o gw_selfenergy.o m_gw_selfenergy_grid.o gwgamma_selfenergy.o \
+        m_linear_response.o m_acfd.o static_polarizability.o gw_selfenergy.o m_gw_selfenergy_grid.o m_gwgwg_selfenergy.o \
         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_elag.o m_gammatodm2.o m_diagf.o \
         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_noft_driver.o gitver.o \
         m_build_bse.o m_multipole.o m_io.o m_restart.o mp2.o m_noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
@@ -160,7 +160,7 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o gwgamma_selfen
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o \
                         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_elag.o m_gammatodm2.o m_diagf.o \
                         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_noft_driver.o gitver.o \
-                        mp2.o m_noft.o gw_selfenergy.o m_gw_selfenergy_grid.o gwgamma_selfenergy.o m_build_bse.o \
+                        mp2.o m_noft.o gw_selfenergy.o m_gw_selfenergy_grid.o m_gwgwg_selfenergy.o m_build_bse.o \
                         m_linear_response.o m_acfd.o static_polarizability.o m_multipole.o m_io.o m_restart.o \
                         m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_scf_loop.o m_dm_analysis.o \
                         m_hamiltonian_wrapper.o m_fourier_quadrature.o \
@@ -219,9 +219,9 @@ m_dm_analysis.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_ato
               m_dm_analysis.f90
 	$(FC_W_OPTS) -c m_dm_analysis.f90 $(LIBXC_INCS)
 
-gwgamma_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
-      m_inputparam.f90 m_tddft_fxc.f90 m_selfenergy_tools.f90 gwgamma_selfenergy.f90
-	$(FC_W_OPTS) -c gwgamma_selfenergy.f90 $(LIBXC_INCS)
+m_gwgwg_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
+      m_inputparam.f90 m_tddft_fxc.f90 m_selfenergy_tools.f90 m_linear_response.f90 m_gwgwg_selfenergy.f90
+	$(FC_W_OPTS) -c m_gwgwg_selfenergy.f90 $(LIBXC_INCS)
 
 gw_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_scalapack.f90 \
                  m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 m_linear_algebra.f90 \

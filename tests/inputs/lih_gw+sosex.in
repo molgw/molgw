@@ -1,7 +1,7 @@
 &molgw
   scf='PBE0'
 
-  postscf='G0W0GAMMA0'
+  postscf='GW+SOSEX'
   selfenergy_state_range=0
 
   basis='cc-pVTZ'

@@ -1,0 +1,28 @@
+&molgw
+ comment='He GW+SOX on the imaginary axis'
+ mpi_nproc_ortho=1024
+
+ scf='HF'
+
+ basis='cc-pVDZ'
+ auxil_basis='PAUTO'
+
+
+ postscf='gw+sox_pade'
+
+ selfenergy_state_range=0
+
+ nomega_sigma=31
+ step_sigma=0.10
+
+ nomega_chi_imag=16
+ analytic_chi='yes'
+
+ nomega_sigma_calc=21
+ step_sigma_calc=0.1
+
+
+ natom=1
+/
+He  0.0 0.0 0.0
+
