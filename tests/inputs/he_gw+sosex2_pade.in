@@ -7,6 +7,7 @@
  basis='cc-pVDZ'
  auxil_basis='PAUTO'
 
+ npulay_hist=3
 
  postscf='gw+sosex2_pade'
 
