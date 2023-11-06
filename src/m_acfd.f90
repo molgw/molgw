@@ -44,7 +44,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   !=====
   type(dft_xc_info),allocatable  :: dft_xc_tmp(:)
   type(spectral_function)        :: wpol
-  real(dp)                       :: erpa_singlet,erpa_triplet,egw_tmp,erpa_sie_KP,erpa_state
+  real(dp)                       :: ebse_singlet,erpa_singlet,erpa_triplet,egw_tmp,erpa_sie_KP,erpa_state
   real(dp)                       :: wlambda(acfd_nlambda),lambda(acfd_nlambda)
   real(dp),allocatable           :: x_matrix(:,:),y_matrix(:,:)
   real(dp),allocatable           :: a_matrix(:,:),b_matrix(:,:)
@@ -189,7 +189,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     write(stdout,*)
 
   case('RPA-I')
-    call die('acfd_total_energy: RPA-I formula not yet tested')
+
     write(stdout,'(/,1x,a,i4)') 'RPA with integration over lambda with acfd_nlambda: ',acfd_nlambda
     call coeffs_gausslegint(0.0_dp,1.0_dp,lambda,wlambda,acfd_nlambda)
 
@@ -211,14 +211,15 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
 
     en_mbpt%rpa = 0.0_dp
     do ilambda=1,acfd_nlambda
-      write(stdout,'(1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
+      write(stdout,'(/,1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
+      write(stdout,'(1x,a,f12.8)')   'lambda: ',lambda(ilambda)
       call wpol%init(nstate,occupation,0)
       call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                           enforce_spin_multiplicity=1,lambda=lambda(ilambda),x_matrix=x_matrix,y_matrix=y_matrix)
       call wpol%destroy()
-
+   
       call calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa_singlet)
-
+   
       write(stdout,'(1x,a,f12.8)')   'Energy(lambda): ',erpa_singlet
       en_mbpt%rpa = en_mbpt%rpa + erpa_singlet * wlambda(ilambda)
     enddo
@@ -229,9 +230,17 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     call clean_deallocate('A matrix',a_matrix)
     call clean_deallocate('B matrix',b_matrix)
 
+    if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
+      write(stdout,'(/,a,f16.10)') ' RPA Energy scaled by :',kappa_hybrid
+      en_mbpt%rpa=kappa_hybrid*en_mbpt%rpa
+    endif
     write(stdout,'(a,2x,f19.10)') ' RPA Energy      (Ha):',en_mbpt%rpa
 
-    en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa
+    if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
+      en_mbpt%total = en_mbpt%total + en_mbpt%rpa
+    else
+      en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa
+    endif
     write(stdout,*)
     write(stdout,'(a,2x,f19.10)') ' RPA Total Energy (Ha):',en_mbpt%total
     write(stdout,*)
@@ -262,7 +271,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
 
     en_mbpt%rpa = 0.0_dp
     do ilambda=1,acfd_nlambda
-      write(stdout,'(1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
+      write(stdout,'(/,1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
       write(stdout,'(1x,a,f12.8)')   'lambda: ',lambda(ilambda)
       call wpol%init(nstate,occupation,0)
       call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
@@ -297,6 +306,64 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     write(stdout,*)
     write(stdout,'(a,2x,f19.10)') ' RPAx-I Total Energy (Ha):',en_mbpt%total
     write(stdout,*)
+  
+  case('BSE-I')
+    !  P.-F. Loos et al. J. Chem. Phys. Lett. 2020, 11, 9, 3536
+    !  Pros and Cons of the Bethe-Salpeter Formalism for Ground-State Energies
+    write(stdout,'(/,1x,a,i4)') 'BSE-I with integration over lambda with acfd_nlambda: ',acfd_nlambda
+    call coeffs_gausslegint(0.0_dp,1.0_dp,lambda,wlambda,acfd_nlambda)
+
+    call wpol%init(nstate,occupation,0)
+    nmat = wpol%npole_reso
+    m_x = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+    n_x = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
+    call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_x),info)
+
+    call clean_allocate('X matrix',x_matrix,m_x,n_x)
+    call clean_allocate('Y matrix',y_matrix,m_x,n_x)
+
+    call clean_allocate('A matrix',a_matrix,m_x,n_x)
+    call clean_allocate('B matrix',b_matrix,m_x,n_x)
+    ! Get A and B
+    call polarizability(.TRUE.,.FALSE.,basis,occupation,energy,c_matrix,ebse_singlet,egw_tmp,wpol, &
+                        enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=a_matrix,b_matrix=b_matrix)
+    call wpol%destroy()
+
+    en_mbpt%bse = 0.0_dp
+    do ilambda=1,acfd_nlambda
+      write(stdout,'(/,1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
+      write(stdout,'(1x,a,f12.8)')   'lambda: ',lambda(ilambda)
+      call wpol%init(nstate,occupation,0,grid=0)
+      call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,ebse_singlet,egw_tmp,wpol, &
+                          enforce_spin_multiplicity=1,lambda=lambda(ilambda),x_matrix=x_matrix,y_matrix=y_matrix)
+      call wpol%destroy()
+
+      call calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,ebse_singlet)
+
+      write(stdout,'(1x,a,f12.8)')   'Energy(lambda): ',ebse_singlet
+      en_mbpt%bse = en_mbpt%bse + ebse_singlet * wlambda(ilambda)
+    enddo
+    if(has_auxil_basis) call destroy_eri_3center_eigen()
+
+    call clean_deallocate('X matrix',x_matrix)
+    call clean_deallocate('Y matrix',y_matrix)
+    call clean_deallocate('A matrix',a_matrix)
+    call clean_deallocate('B matrix',b_matrix)
+
+    if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using BSE energy
+      write(stdout,'(/,a,f16.10)') ' BSE-I Energy scaled by :',kappa_hybrid
+      en_mbpt%bse=kappa_hybrid*en_mbpt%bse
+    endif
+    write(stdout,'(a,2x,f19.10)') ' BSE-I Energy      (Ha):',en_mbpt%bse
+
+    if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using BSE energy
+      en_mbpt%total = en_mbpt%total + en_mbpt%bse
+    else
+      en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus + en_mbpt%hartree + en_mbpt%exx + en_mbpt%bse
+    endif
+    write(stdout,*)
+    write(stdout,'(a,2x,f19.10)') ' BSE-I Total Energy (Ha):',en_mbpt%total
+    write(stdout,*)
 
   case default
     call die('acfd_total_energy: postscf option not recognized')
@@ -329,6 +396,7 @@ subroutine calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa)
   call BLACS_GRIDINFO(desc_x(CTXT_),nprow,npcol,myprow,mypcol)
   ! if only one proc, then use default coding
   if( nprow * npcol > 1 ) then
+    call die('acfd_total_energy: Running in parallel fails. Sorry')
     ! all global matrices are square and share the same descriptor desc_x
     nmat = desc_x(M_)
 

@@ -739,7 +739,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
       ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
       ! Be careful not to forget it in the following
       do jstate=jstate_min,jstate_max
-        wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = MATMUL( vsqrt_chi_vsqrt(:,:), &
+        wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = lambda * MATMUL( vsqrt_chi_vsqrt(:,:), &
                                                               eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
       enddo
 
@@ -771,7 +771,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
           call auxil%sum(wp0_i)
 
           if( iproc_ibf_auxil(ibf_auxil_global) == auxil%rank ) then
-            wp0(ibf_auxil_l(ibf_auxil_global),:,:,iaspin) = wp0_i(:,:)
+            wp0(ibf_auxil_l(ibf_auxil_global),:,:,iaspin) = lambda * wp0_i(:,:)
           endif
 
         enddo
@@ -808,7 +808,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
           call auxil%sum(wp0_i)
 
           if( iproc_ibf_auxil(ibf_auxil) == auxil%rank ) then
-            wp0(ibf_auxil_l(ibf_auxil),:,:,iaspin) = wp0_i(:,:)
+            wp0(ibf_auxil_l(ibf_auxil),:,:,iaspin) = lambda * wp0_i(:,:)
           endif
 
         enddo

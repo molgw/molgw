@@ -56,6 +56,7 @@ module m_scf
     real(dp) :: mp2      = 0.0_dp
     real(dp) :: mp3      = 0.0_dp
     real(dp) :: rpa      = 0.0_dp
+    real(dp) :: bse      = 0.0_dp
     real(dp) :: gw       = 0.0_dp
     real(dp) :: total    = 0.0_dp
     real(dp) :: totalexx = 0.0_dp

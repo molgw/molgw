@@ -579,7 +579,7 @@ program molgw
   ! Linear-response time dependent calculations work for BSE and TDDFT
   ! or coupled-pertubed HF/KS
   ! (only if the SCF cycles were converged)
-  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
+  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. (scf_has_converged .AND. .NOT. TRIM(postscf) == 'BSE-I') ) then
     call wpol%init(nstate,occupation,0)
     call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
     call wpol%destroy()
@@ -656,7 +656,7 @@ program molgw
   ! final evaluation for RPAx total energy
   ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
   !
-  if( TRIM(postscf(1:3)) == 'RPA' ) then
+  if( TRIM(postscf(1:3)) == 'RPA' .OR. TRIM(postscf) == 'BSE-I' ) then
     en_mbpt = en_gks
     call acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   endif
