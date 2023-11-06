@@ -334,7 +334,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     do ilambda=1,acfd_nlambda
       write(stdout,'(/,1x,a,i4,a,i4)') '=== Lambda',ilambda,' / ',acfd_nlambda
       write(stdout,'(1x,a,f12.8)')   'lambda: ',lambda(ilambda)
-      call wpol%init(nstate,occupation,0,grid=0)
+      call wpol%init(nstate,occupation,0,grid_type=0)
       call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,ebse_singlet,egw_tmp,wpol, &
                           enforce_spin_multiplicity=1,lambda=lambda(ilambda),x_matrix=x_matrix,y_matrix=y_matrix)
       call wpol%destroy()
