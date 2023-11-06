@@ -7,7 +7,7 @@
  auxil_basis='PAUTO'
 
  mpi_nproc_ortho=1024
- npulay_hist=3
+ mixing_scheme='simple'
 
  postscf='gw+gwgwg_pade'
 

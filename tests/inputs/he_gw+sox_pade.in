@@ -7,7 +7,7 @@
  basis='cc-pVDZ'
  auxil_basis='PAUTO'
 
- npulay_hist=3
+ mixing_scheme='simple'
 
  postscf='gw+sox_pade'
 
