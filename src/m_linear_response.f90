@@ -604,9 +604,6 @@ subroutine coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol_o
         endif
       enddo
       deallocate(ipiv)
-      !do ipair=1,nmat
-      ! write(*,*) ipiv2(ipair)
-      !enddo
       open(unit=iunit,file='inv_apb_mat')
       write(iunit,*) nmat,SIZE(occupation,DIM=1)
       do ipair=1,nmat
