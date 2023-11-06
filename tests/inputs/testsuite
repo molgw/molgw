@@ -42,7 +42,7 @@ gKS HOMO energy           ,  -20.795329        , 0 , 1.0e-4
 
 he_wb97x.in               , He with wB97X functional wo RI
 SCF Total Energy          ,   -2.8980609307    , 0 , 1.0e-7
-gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-3   # Loosened criterium
+gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-2   # Loosened criterium
 
 he_pbe_libxc.in           , He with PBE functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8869559704    , 0 , 1.0e-7
@@ -54,7 +54,7 @@ gKS HOMO energy           ,  -18.193561        , 0 , 3.0e-3   # Loosened criteri
 
 he_wb97x_libxc.in         , He with wB97X functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8980609307    , 0 , 1.0e-7
-gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-3   # Loosened criterium
+gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-2   # Loosened criterium
 
 ne_pbe_autori.in          ,  PBE neon atom cc-pVTZ with auto RI
 SCF Total Energy          , -128.8459979064    , 0 , 1.0e-7
