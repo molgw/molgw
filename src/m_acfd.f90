@@ -400,7 +400,7 @@ subroutine calculate_ec_acft(desc_x,a_matrix,b_matrix,x_matrix,y_matrix,erpa)
   call BLACS_GRIDINFO(desc_x(CTXT_),nprow,npcol,myprow,mypcol)
   ! if only one proc, then use default coding
   if( nprow * npcol > 1 ) then
-    call die('acfd_total_energy: Running in parallel fails. Sorry')
+
     ! all global matrices are square and share the same descriptor desc_x
     nmat = desc_x(M_)
 
