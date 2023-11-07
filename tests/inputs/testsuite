@@ -1019,7 +1019,7 @@ RPAx-I Total Energy       ,  -8.0351082545     , 0 , 1.0e-7
 lih_gw.in                 , This only prepares ENERGY_QP file
 GW HOMO-LUMO gap          ,    8.053158        , 0 , 1.0e-4
 
-lih_bse-i.in              , BSE energy (BSE-I) of LiH
+lih_bse-i.in              , BSE energy (BSE-I) of LiH, restart
 SCF Total Energy          ,   -7.9872035011    , 0 , 1.0e-7
 BSE-I Energy              ,   -0.0775580357    , 0 , 1.0e-7
 BSE-I Total Energy        ,   -8.0647615367    , 0 , 1.0e-7
