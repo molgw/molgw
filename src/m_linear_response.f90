@@ -442,25 +442,21 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol_out)
+subroutine coupled_perturbed(basis,occupation,energy,c_matrix,wpol_out)
 
   implicit none
 
   type(basis_set),intent(in)            :: basis
   real(dp),intent(in)                   :: occupation(:,:)
   real(dp),intent(in)                   :: energy(:,:),c_matrix(:,:,:)
-  logical,intent(in)                    :: only_invert
   type(spectral_function),intent(inout) :: wpol_out
   !=====
   integer                   :: ipair,ipair2,m_apb,n_apb,info,lwork,iunit
   integer                   :: nprow,npcol,myprow,mypcol
   integer                   :: t_ia,t_jb,jstate,bstate,jbspin,t_jb_global
-  integer                   :: istate,astate,nocc,nvirt 
-  integer                   :: nmat,nmat_global,desc_x(NDEL)
+  integer                   :: nmat,desc_x(NDEL)
   real(dp)                  :: egw_tmp,erpa_singlet,energy_jb
-  integer,allocatable       :: ipiv(:),ipiv2(:)
-  real(dp),allocatable      :: work(:)
-  real(dp),allocatable      :: apb_matrix(:,:),b_matrix(:,:)
+  real(dp),allocatable      :: apb_matrix(:,:),inv_apb_matrix(:,:),work(:)
   !=====
 
   !
@@ -475,65 +471,47 @@ subroutine coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol_o
   call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_apb),info)
 
   call clean_allocate('A+B',apb_matrix,m_apb,n_apb)
-  call clean_allocate('B',b_matrix,m_apb,n_apb)
+  call clean_allocate('(A+B)^-1',inv_apb_matrix,m_apb,n_apb)
   apb_matrix(:,:) = 0.0_dp
-  b_matrix(:,:)   = 0.0_dp
+  inv_apb_matrix(:,:) = 0.0_dp
 
-  if( .not. only_invert ) then
-
-    write(stdout,'(/,a,/)') ' Computing the A+B matrix in CPHF/CPKS'
-    if ( cphf_cpks_0_ ) then
-      ! Add only the orbital energy differences to the diagonal
-      write(stdout,'(/,a)') ' Comment: Using the non-interacting approximation in CPHF/CPKS.'
-      write(stdout,'(a,/)') ' (A+B)_ia,jb = (energy_a - energy_i) delta_ij delta_ab'
-      do t_jb_global=1,nmat
-        t_ia = rowindex_global_to_local('S',t_jb_global)
-        t_jb = colindex_global_to_local('S',t_jb_global)
-      
-        jstate = wpol_out%transition_table(1,t_jb_global)
-        bstate = wpol_out%transition_table(2,t_jb_global)
-        jbspin = wpol_out%transition_table(3,t_jb_global)
-        energy_jb = energy(bstate,jbspin) - energy(jstate,jbspin)
-      
-        ! If the diagonal element belongs to this proc, then add it.
-        if( t_ia > 0 .AND. t_jb > 0 ) then
-          apb_matrix(t_ia,t_jb) = apb_matrix(t_ia,t_jb) + energy_jb
-        endif
-      enddo
-    else
-      ! Get A and B (apb_matrix will contain A)
-      call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
-                        enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=apb_matrix,b_matrix=b_matrix)
-    endif
+  write(stdout,'(/,a,/)') ' Computing the A+B matrix in CPHF/CPKS'
+  if ( cphf_cpks_0_ ) then
+    ! Add only the orbital energy differences to the diagonal
+    write(stdout,'(/,a)') ' Comment: Using the non-interacting approximation in CPHF/CPKS.'
+    write(stdout,'(a,/)') ' (A+B)_ia,jb = (energy_a - energy_i) delta_ij delta_ab'
+    do t_jb_global=1,nmat
+      t_ia = rowindex_global_to_local('S',t_jb_global)
+      t_jb = colindex_global_to_local('S',t_jb_global)
     
-    apb_matrix(:,:) = apb_matrix(:,:) + b_matrix(:,:)
-
-  else  
-
-    write(stdout,'(/,a,/)') ' Reading the A+B matrix from the apb_mat file in CPHF/CPKS'
-    if( nmat==m_apb .and. nmat==n_apb ) then
-
-      open(unit=iunit,file='apb_mat',status='old')
-      read(iunit,*) ipair,ipair      
-      do ipair=1,nmat
-        do ipair2=1,nmat
-          read(iunit,*) apb_matrix(ipair2,ipair)
-        enddo
-      enddo
-      close(iunit)
-
-    else
-
-      msg='The A+B matrix is not a square matrix stored in 1 procesor. Launch the calc. with only 1 procesor to invert it.'
-      call issue_warning(msg)
-      call destroy_eri_3center_eigen() ! Was built in polarizability subroutine or before
-      call clean_deallocate('A+B',apb_matrix)
-      return
-
-    endif      
+      jstate = wpol_out%transition_table(1,t_jb_global)
+      bstate = wpol_out%transition_table(2,t_jb_global)
+      jbspin = wpol_out%transition_table(3,t_jb_global)
+      energy_jb = energy(bstate,jbspin) - energy(jstate,jbspin)
+    
+      ! If the diagonal element belongs to this proc, then add it.
+      if( t_ia > 0 .AND. t_jb > 0 ) then
+        apb_matrix(t_ia,t_jb) = apb_matrix(t_ia,t_jb) + energy_jb
+      endif
+    enddo
+  else
+    ! Get A and B (apb_matrix will contain A and inv_apb_matrix will contain B)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
+                      enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=apb_matrix,b_matrix=inv_apb_matrix)
   endif
+  
+  apb_matrix(:,:) = apb_matrix(:,:) + inv_apb_matrix(:,:)
+  inv_apb_matrix(:,:) = 0.0_dp
 
-  call clean_deallocate('B',b_matrix)
+  !
+  ! Invert the (A+B) matrix 
+  !
+  call invert_chol_sca(desc_x,apb_matrix)
+
+  ! 
+  ! Symmetrize (A+B)^-1
+  ! 
+  call symmetrize_matrix_sca('L',nmat,desc_x,apb_matrix,desc_x,inv_apb_matrix)
 
 #if defined(HAVE_SCALAPACK)
 
@@ -541,13 +519,11 @@ subroutine coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol_o
   ! if only one proc, then use default coding
   if( nprow * npcol > 1 ) then
 
-    nmat_global = desc_x(M_)
-
     !
     ! Print the (A+B) matrix 
     !
-    allocate(work(nmat_global))
-    call pdlawrite('apb_mat',nmat_global,nmat_global,apb_matrix,1,1,desc_x,0,0,work)
+    allocate(work(nmat))
+    call pdlawrite('inv_apb_mat',nmat,nmat,inv_apb_matrix,1,1,desc_x,0,0,work)
     deallocate(work)
 
   else
@@ -555,78 +531,17 @@ subroutine coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol_o
 #endif
 
     !
-    ! Invert the (A+B) matrix 
-    !
-    lwork=-1
-    allocate(ipiv(nmat),work(1))
-    call DSYTRF('L',nmat,apb_matrix,nmat,ipiv,work,lwork,info)
-    if(info==0) then
-      lwork=int(work(1))
-      deallocate(work)
-      allocate(work(lwork))
-      call DSYTRF('L',nmat,apb_matrix,nmat,ipiv,work,lwork,info)
-      if(info==0) then
-        deallocate(work)
-        allocate(work(nmat))
-        call DSYTRI('L',nmat,apb_matrix,nmat,ipiv,work,info)
-      endif
-    endif
-    deallocate(ipiv,work)
- 
-    !
     ! Print (A+B)^-1 matrix 
     !
-    if(info==0) then
-
-      nocc=0
-      do istate=1,size(occupation(:,:),dim=1)
-        if(occupation(istate,1)>0.0_dp) nocc=nocc+1
+    open(unit=iunit,file='inv_apb_mat')
+    write(iunit,*) nmat,SIZE(occupation,DIM=1)
+    do ipair=1,nmat
+      do ipair2=1,nmat
+        if( abs(apb_matrix(ipair,ipair2)) < 1e-8 ) apb_matrix(ipair,ipair2)=zero
+        write(iunit,*) apb_matrix(ipair,ipair2)
       enddo
-      nvirt=size(occupation(:,:),dim=1)-nocc
-      allocate(ipiv(nocc*nvirt),ipiv2(nmat))
-      ipiv(:)=0;ipiv2(:)=0;
-      ipair=1
-      do istate=1,nocc
-        if(istate>ncore_W) then
-          do astate=1,nvirt
-            if(astate<(nvirtual_W-nocc)) then
-              ipiv((istate-1)*nvirt+astate)=ipair
-              ipair=ipair+1
-            endif
-          enddo
-        endif
-      enddo
-      ipair2=1
-      do ipair=1,nocc*nvirt
-        if(ipiv(ipair)/=0) then
-          ipiv2(ipair2)=ipair
-          ipair2=ipair2+1
-        endif
-      enddo
-      deallocate(ipiv)
-      open(unit=iunit,file='inv_apb_mat')
-      write(iunit,*) nmat,SIZE(occupation,DIM=1)
-      do ipair=1,nmat
-        do ipair2=1,nmat
-          if(ipair2<ipair) then
-            if( abs(apb_matrix(ipair,ipair2)) < 1e-8 ) apb_matrix(ipair,ipair2)=zero
-            write(iunit,*) ipiv2(ipair),ipiv2(ipair2),apb_matrix(ipair,ipair2)
-          else
-            if( abs(apb_matrix(ipair2,ipair)) < 1e-8 ) apb_matrix(ipair2,ipair)=zero
-            write(iunit,*) ipiv2(ipair),ipiv2(ipair2),apb_matrix(ipair2,ipair)
-          endif
-        enddo
-      enddo
-      close(iunit)
-      
-      deallocate(ipiv2)    
-
-    else
-    
-      msg='The A+B matrix is not invertible. Unable to proceed.'
-      call issue_warning(msg)
-    
-    endif
+    enddo
+    close(iunit)
 
 #if defined(HAVE_SCALAPACK)
   endif
@@ -634,6 +549,7 @@ subroutine coupled_perturbed(basis,occupation,energy,c_matrix,only_invert,wpol_o
 
   call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
   call clean_deallocate('A+B',apb_matrix)
+  call clean_deallocate('(A+B)^-1',inv_apb_matrix)
 
 end subroutine coupled_perturbed
 

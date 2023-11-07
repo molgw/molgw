@@ -64,11 +64,10 @@ subroutine build_amb_apb_common(is_triplet_currently,lambda,nmat,nbf,nstate,c_ma
     
   write(stdout,'(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
   write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
-  if( (beta_hybrid > 1.0e-6_dp) .AND. TRIM(postscf) == 'TD' ) then
+  if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+     .OR. TRIM(w_screening)=='TDDFT' ) ) then
     write(stdout,'(a,f8.3)') ' Content of LR-Exchange(missing): ',alpha_local
-    msg='The A+B matrix construted for a TD-DFT calc. does not include the long-range exchange (hint: try &
-        to use an auxiliary basis)'
-    call issue_warning(msg)
+    call die('Long-range exchange not available TD-DFT (Hint: try to use an auxiliary basis)')
   endif
 
   if( .NOT. has_auxil_basis) then
@@ -737,7 +736,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
   call clean_allocate('Temporary array for W',wp0,1,nauxil_local,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
   wp0(:,:,:,:) = 0.0_dp
 
-  if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
+  if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+     .OR. TRIM(w_screening)=='TDDFT' ) ) then
     call clean_allocate('Temporary array for W_lr',wp0_lr,1,nauxil_local,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
     wp0_lr(:,:,:,:) = 0.0_dp
   endif
@@ -859,7 +859,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
   ! Add the exact exchange here
   if( alpha_local > 1.0e-6_dp .OR. beta_hybrid > 1.0e-6_dp ) then
 
-    if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
+    if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+       .OR. TRIM(w_screening)=='TDDFT' ) ) then
 
       do iaspin=1,nspin
         do jstate=jstate_min,jstate_max
@@ -923,7 +924,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
           if( iaspin /= jbspin ) cycle
 
           wtmp = DOT_PRODUCT( eri_3center_eigen(:,astate,bstate,iaspin) , wp0(:,istate,jstate,iaspin) )
-          if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
+          if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+             .OR. TRIM(w_screening)=='TDDFT' ) ) then
             wtmp2 = DOT_PRODUCT( eri_3center_eigen_lr(:,astate,bstate,iaspin) , wp0_lr(:,istate,jstate,iaspin) )
           endif
 
@@ -932,7 +934,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
 
 
           wtmp = DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,iaspin) , wp0(:,astate,jstate,iaspin) )
-          if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
+          if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+             .OR. TRIM(w_screening)=='TDDFT' ) ) then
             wtmp2 = DOT_PRODUCT( eri_3center_eigen_lr(:,istate,bstate,iaspin) , wp0_lr(:,astate,jstate,iaspin) )
           endif
             

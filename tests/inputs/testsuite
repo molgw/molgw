@@ -545,10 +545,6 @@ Lowest neutral excitation ,      3.389151       , 0 , 1.0e-4
 Sum over oscillator strengths , 12.036833       , 0 , 1.0e-4
 polarizability trace      ,     13.347008       , 0 , 1.0e-4
 
-ch2o_bse_i.in             , BSE-I using ACDF formula, restart
-BSE-I Energy              ,     -0.2873297776   , 0 , 1.0e-4
-BSE-I Total Energy        ,   -114.1522113795   , 0 , 1.0e-4
-
 ch2o_bse_nokernel.in      , BSE wo kernel on formaldehyde , restart
 0001 :                    ,     13.08500930     , 0 , 1.0e-4
 0002 :                    ,     15.00951006     , 0 , 1.0e-4
@@ -1007,6 +1003,10 @@ lih_rpa.in                , RPA energy of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPA Total Energy          ,  -8.0590527892     , 0 , 1.0e-7
 
+lih_rpa-i.in              , RPA-I energy of LiH (identical to RPA)
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPA Total Energy          ,  -8.0590527892     , 0 , 1.0e-7
+
 lih_rpax.in               , RPAX energy (RPAx-II) of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx Total Energy         ,  -8.0599498366     , 0 , 1.0e-7
@@ -1015,6 +1015,14 @@ lih_rpax-i.in             , RPAX energy (RPAx-I) of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx-I Energy             ,  -0.0483538239     , 0 , 1.0e-7
 RPAx-I Total Energy       ,  -8.0351082545     , 0 , 1.0e-7
+
+lih_gw.in                 , This only prepares ENERGY_QP file
+GW HOMO-LUMO gap          ,    8.053158        , 0 , 1.0e-4
+
+lih_bse-i.in              , BSE energy (BSE-I) of LiH
+SCF Total Energy          ,   -7.9872035011    , 0 , 1.0e-7
+BSE-I Energy              ,   -0.0775580357    , 0 , 1.0e-7
+BSE-I Total Energy        ,   -8.0647615367    , 0 , 1.0e-7
 
 hf_electricfieldx.in      , Finite-electric field along x for HF dimer with PBEsol
 SCF Total Energy          , -100.0398341300    , 0 , 1.0e-7

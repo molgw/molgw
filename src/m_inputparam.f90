@@ -348,7 +348,7 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
-    case('RPA','RPA-I','RPAP','RPA_IM','RPAP_IM','RPA+','RPA+_IM')
+    case('RPA','RPAP','RPA_IM','RPAP_IM','RPA+','RPA+_IM','RPA-I')
       ! nothing to declare
     case('BSE-I')
       calc_type%is_bse        = .TRUE.
