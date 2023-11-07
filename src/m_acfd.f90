@@ -189,7 +189,6 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     write(stdout,*)
 
   case('RPA-I')
-    call die('acfd_total_energy: RPA-I formula not yet tested')
     write(stdout,'(/,1x,a,i4)') 'RPA with integration over lambda with acfd_nlambda: ',acfd_nlambda
     call coeffs_gausslegint(0.0_dp,1.0_dp,lambda,wlambda,acfd_nlambda)
 
@@ -207,6 +206,7 @@ subroutine acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
     ! Get A and B
     call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol, &
                         enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=a_matrix,b_matrix=b_matrix)
+    call remove_a_energy_diag(energy,wpol,a_matrix)
     call wpol%destroy()
 
     en_mbpt%rpa = 0.0_dp
