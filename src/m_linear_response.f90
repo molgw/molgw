@@ -523,7 +523,10 @@ subroutine coupled_perturbed(basis,occupation,energy,c_matrix,wpol_out)
     ! Print the (A+B)^-1 matrix 
     !
     allocate(work(nmat))
-    call pdlawrite('inv_apb_mat',nmat,nmat,inv_apb_matrix,1,1,desc_x,0,0,work)
+    ! it seems that MKL scalapack/blacs does not have PDLAWRITE
+#if !defined(HAVE_MKL)
+    call PDLAWRITE('inv_apb_mat',nmat,nmat,inv_apb_matrix,1,1,desc_x,0,0,work)
+#endif
     deallocate(work)
     open(unit=iunit,file='inv_apb_mat',status='old',position="append")
     write(iunit,*) SIZE(occupation,DIM=1)
