@@ -1303,7 +1303,7 @@ end subroutine plot_cube_wfn
 ! This routine prints WFN files:
 ! Author: Mauricio Rodriguez-Mayorga
 !=========================================================================
-subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
+subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy,print_all)
   implicit none
 
   character(len=*)             :: rootname
@@ -1311,6 +1311,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
   real(dp),intent(in)          :: etotal
   real(dp),intent(in)          :: occupation(:,:)
   real(dp),intent(in)          :: c_matrix(:,:,:)
+  logical,intent(in),optional  :: print_all
   real(dp),intent(in),optional :: energy(:,:)
   !=====
   integer,parameter      :: el_max    = 106
@@ -1319,7 +1320,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
   integer                :: nstate,icenter,iprim,nprim,igaus,ishell,nshell,shell_typ,prev_typ
   integer                :: istyp,iprim_per_shell,iprint,ilast,istate,ibf,ibf2,nocc,ispin,nxp,nyp,nzp
   integer                :: owfn
-  real(dp)               :: dfact
+  real(dp)               :: dfact,completely_empty_local
   integer                :: p_aos(3)
   integer                :: d_aos(6)
   integer                :: f_aos(10)
@@ -1341,6 +1342,11 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
   if( .NOT. is_iomaster ) return
 
+  completely_empty_local = completely_empty
+  if(present(print_all)) then
+    if(print_all) completely_empty_local = -TEN
+  endif
+
   if( basis%gaussian_type /= 'CART' ) then ! Pure, not implemented (TODO)
     write(stdout,'(/,1x,a)') "Computation of WFN files requires cartesian gaussian functions"
     write(stdout,'(1x,a,/)') "Include: gaussian_type = 'cart' in the input file and run again the calculation."
@@ -1358,7 +1364,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
   nocc = 0
   do istate=1,nstate
     do ispin=1,nspin
-      if( ABS(occupation(istate,ispin) ) > completely_empty ) nocc = nocc + 1
+      if( ABS(occupation(istate,ispin) ) > completely_empty_local ) nocc = nocc + 1
     enddo
   enddo
 
@@ -1598,7 +1604,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy)
 
   do istate=1,nstate
     do ispin=1,nspin
-      if( ABS(occupation(istate,ispin)) > completely_empty ) then
+      if( ABS(occupation(istate,ispin)) > completely_empty_local ) then
         mo_coefs(:) = c_matrix(ao_map(:),istate,ispin)
         !write(*,'(*(f7.3))') mo_coefs(:)
         prim_coefs(1:nprim) = MATMUL(mo_coefs(:),coefs_prims(:,1:nprim))

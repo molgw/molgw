@@ -23,7 +23,6 @@ module m_linear_response
   use m_spectra
   use m_build_bse
 
-
 contains
 
 
@@ -53,7 +52,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   real(dp),allocatable      :: xpy_matrix(:,:),xmy_matrix(:,:)
   real(dp),allocatable      :: eigenvalue(:)
   real(dp),allocatable      :: energy_qp(:,:)
-  logical                   :: is_tddft,is_rpa
+  logical                   :: is_tddft,is_rpa,long_range_true=.true.
   logical                   :: has_manual_tdhf
   integer                   :: reading_status
   integer                   :: tdhffile
@@ -98,9 +97,17 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     if( calc_type%is_lr_mbpt ) then
       call calculate_eri_3center_eigen_lr(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
     else
-      eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
-      if( .NOT. eri_3center_mo_available ) then
-        call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+      if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
+        eri_3center_mo_available = ( ALLOCATED(eri_3center_eigen) .AND. ALLOCATED(eri_3center_eigen_lr) )
+        if( .NOT. eri_3center_mo_available ) then
+          call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola,&
+                  long_range=long_range_true)
+        endif
+      else
+        eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
+        if( .NOT. eri_3center_mo_available ) then
+          call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+        endif
       endif
     endif
   endif
@@ -421,8 +428,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   write(stdout,*) 'Deallocate eigenvector array'
   call clean_deallocate('X+Y',xpy_matrix)
 
-  if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available )  &
-    call destroy_eri_3center_eigen()
+  if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
+    call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp))
+  endif
 
   if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
   deallocate(energy_qp)
@@ -431,6 +439,123 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
 
 end subroutine polarizability
+
+
+!=========================================================================
+subroutine coupled_perturbed(basis,occupation,energy,c_matrix,wpol_out)
+
+  implicit none
+
+  type(basis_set),intent(in)            :: basis
+  real(dp),intent(in)                   :: occupation(:,:)
+  real(dp),intent(in)                   :: energy(:,:),c_matrix(:,:,:)
+  type(spectral_function),intent(inout) :: wpol_out
+  !=====
+  integer                   :: ipair,ipair2,m_apb,n_apb,info,lwork,iunit
+  integer                   :: nprow,npcol,myprow,mypcol
+  integer                   :: t_ia,t_jb,jstate,bstate,jbspin,t_jb_global
+  integer                   :: nmat,desc_x(NDEL)
+  real(dp)                  :: egw_tmp,erpa_singlet,energy_jb
+  real(dp),allocatable      :: tmp_matrix(:,:),inv_apb_matrix(:,:),work(:)
+  !=====
+
+  !
+  ! Prepare the big matrices A and B
+  !
+  nmat = wpol_out%npole_reso
+  !
+  ! The distribution of the two matrices have to be the same for A and B
+  ! This is valid also when SCALAPACK is not used!
+  m_apb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+  n_apb = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
+  call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_apb),info)
+
+  call clean_allocate('Tmp_Mat',tmp_matrix,m_apb,n_apb)
+  call clean_allocate('(A+B)^-1',inv_apb_matrix,m_apb,n_apb)
+  tmp_matrix(:,:) = 0.0_dp
+  inv_apb_matrix(:,:) = 0.0_dp
+
+  write(stdout,'(/,a,/)') ' Computing the A+B matrix in CPHF/CPKS'
+  if ( cphf_cpks_0_ ) then
+    ! Add only the orbital energy differences to the diagonal
+    write(stdout,'(/,a)') ' Comment: Using the non-interacting approximation in CPHF/CPKS.'
+    write(stdout,'(a,/)') ' (A+B)_ia,jb = (energy_a - energy_i) delta_ij delta_ab'
+    do t_jb_global=1,nmat
+      t_ia = rowindex_global_to_local('S',t_jb_global)
+      t_jb = colindex_global_to_local('S',t_jb_global)
+    
+      jstate = wpol_out%transition_table(1,t_jb_global)
+      bstate = wpol_out%transition_table(2,t_jb_global)
+      jbspin = wpol_out%transition_table(3,t_jb_global)
+      energy_jb = energy(bstate,jbspin) - energy(jstate,jbspin)
+    
+      ! If the diagonal element belongs to this proc, then add it.
+      if( t_ia > 0 .AND. t_jb > 0 ) then
+        tmp_matrix(t_ia,t_jb) = tmp_matrix(t_ia,t_jb) + energy_jb
+      endif
+    enddo
+  else
+    ! Get A and B (tmp_matrix will contain A and inv_apb_matrix will contain B)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
+                      enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=tmp_matrix,b_matrix=inv_apb_matrix)
+  endif
+  
+  inv_apb_matrix(:,:) = tmp_matrix(:,:) + inv_apb_matrix(:,:)
+  tmp_matrix(:,:) = 0.0_dp
+
+  !
+  ! Invert the (A+B) matrix 
+  !
+  call invert_chol_sca(desc_x,inv_apb_matrix)
+
+  ! 
+  ! Symmetrize (A+B)^-1
+  ! 
+  call symmetrize_matrix_sca('L',nmat,desc_x,inv_apb_matrix,desc_x,tmp_matrix)
+
+#if defined(HAVE_SCALAPACK)
+
+  call BLACS_GRIDINFO(desc_x(CTXT_),nprow,npcol,myprow,mypcol)
+  ! if only one proc, then use default coding
+  if( nprow * npcol > 1 ) then
+
+    !
+    ! Print the (A+B)^-1 matrix 
+    !
+    allocate(work(nmat))
+    call pdlawrite('inv_apb_mat',nmat,nmat,inv_apb_matrix,1,1,desc_x,0,0,work)
+    deallocate(work)
+    open(unit=iunit,file='inv_apb_mat',status='old',position="append")
+    write(iunit,*) SIZE(occupation,DIM=1)
+    close(iunit)
+
+  else
+
+#endif
+
+    !
+    ! Print (A+B)^-1 matrix 
+    !
+    open(unit=iunit,file='inv_apb_mat')
+    write(iunit,*) nmat,nmat
+    do ipair=1,nmat
+      do ipair2=1,nmat
+        if( abs(inv_apb_matrix(ipair,ipair2)) < 1e-8 ) inv_apb_matrix(ipair,ipair2)=zero
+        write(iunit,*) inv_apb_matrix(ipair,ipair2)
+      enddo
+    enddo
+    write(iunit,*) SIZE(occupation,DIM=1)
+    close(iunit)
+
+#if defined(HAVE_SCALAPACK)
+  endif
+#endif
+
+  call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
+  call clean_deallocate('Tmp_Mat',tmp_matrix)
+  call clean_deallocate('(A+B)^-1',inv_apb_matrix)
+
+end subroutine coupled_perturbed
 
 
 !=========================================================================

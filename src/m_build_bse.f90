@@ -61,9 +61,14 @@ subroutine build_amb_apb_common(is_triplet_currently,lambda,nmat,nbf,nstate,c_ma
   !=====
 
   call start_clock(timing_build_common)
-
+    
   write(stdout,'(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
   write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
+  if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+     .OR. TRIM(w_screening)=='TDDFT' ) ) then
+    write(stdout,'(a,f8.3)') ' Content of LR-Exchange(missing): ',alpha_local
+    call die('Long-range exchange not available TD-DFT (Hint: try to use an auxiliary basis)')
+  endif
 
   if( .NOT. has_auxil_basis) then
     allocate(eri_eigenstate_jbmin(nstate,nstate,nstate,nspin))
@@ -556,7 +561,7 @@ subroutine build_apb_tddft(is_triplet_currently,nmat,nstate,basis,c_matrix,occup
             if( .NOT. is_triplet_currently ) then
               xctmp = eval_fxc_rks_singlet(istate,astate,iaspin,jstate,bstate,jbspin)
             else
-              xctmp =  eval_fxc_rks_triplet(istate,astate,iaspin,jstate,bstate,jbspin)
+              xctmp = eval_fxc_rks_triplet(istate,astate,iaspin,jstate,bstate,jbspin)
             endif
           else
             xctmp =  eval_fxc_uks(istate,astate,iaspin,jstate,bstate,jbspin)
@@ -690,10 +695,10 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
   integer              :: t_ia,t_jb,t_ia_global,t_jb_global
   integer              :: istate,astate,jstate,bstate
   integer              :: iaspin,jbspin
-  real(dp)             :: wtmp
+  real(dp)             :: wtmp,wtmp2=0.0e0_dp
   integer              :: jstate_min,jstate_max
   integer              :: ipole,ibf_auxil,jbf_auxil,ibf_auxil_global,jbf_auxil_global
-  real(dp),allocatable :: wp0(:,:,:,:),w0_local(:)
+  real(dp),allocatable :: wp0(:,:,:,:),wp0_lr(:,:,:,:),w0_local(:)
   integer              :: iprow,ipcol,irank
   integer              :: m_apb_block,n_apb_block
   real(dp),allocatable :: amb_block(:,:)
@@ -710,6 +715,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
 
   write(stdout,'(a)')      ' Build W part Auxil'
   write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
+  if( beta_hybrid > 1.0e-6_dp ) write(stdout,'(a,f8.3)') ' Content of LR-Exchange: ',beta_hybrid
 
   nmat = desc_apb(M_)
   ! Is it an exchange or a screened exchange calculation
@@ -730,6 +736,11 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
   call clean_allocate('Temporary array for W',wp0,1,nauxil_local,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
   wp0(:,:,:,:) = 0.0_dp
 
+  if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+     .OR. TRIM(w_screening)=='TDDFT' ) ) then
+    call clean_allocate('Temporary array for W_lr',wp0_lr,1,nauxil_local,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
+    wp0_lr(:,:,:,:) = 0.0_dp
+  endif
 
   if( is_bse ) then
 #if !defined(HAVE_SCALAPACK)
@@ -761,7 +772,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
       ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
       ! Be careful not to forget it in the following
       do jstate=jstate_min,jstate_max
-        wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = MATMUL( vsqrt_chi_vsqrt(:,:), &
+        wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = lambda * MATMUL( vsqrt_chi_vsqrt(:,:), &
                                                               eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
       enddo
 
@@ -793,7 +804,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
           call auxil%sum(wp0_i)
 
           if( iproc_ibf_auxil(ibf_auxil_global) == auxil%rank ) then
-            wp0(ibf_auxil_l(ibf_auxil_global),:,:,iaspin) = wp0_i(:,:)
+            wp0(ibf_auxil_l(ibf_auxil_global),:,:,iaspin) = lambda * wp0_i(:,:)
           endif
 
         enddo
@@ -830,7 +841,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
           call auxil%sum(wp0_i)
 
           if( iproc_ibf_auxil(ibf_auxil) == auxil%rank ) then
-            wp0(ibf_auxil_l(ibf_auxil),:,:,iaspin) = wp0_i(:,:)
+            wp0(ibf_auxil_l(ibf_auxil),:,:,iaspin) = lambda * wp0_i(:,:)
           endif
 
         enddo
@@ -846,14 +857,30 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
 
   !
   ! Add the exact exchange here
-  if( alpha_local > 1.0e-6_dp ) then
+  if( alpha_local > 1.0e-6_dp .OR. beta_hybrid > 1.0e-6_dp ) then
 
-    do iaspin=1,nspin
-      do jstate=jstate_min,jstate_max
-        wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) &
-                           + alpha_local * lambda *  eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin)
+    if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+       .OR. TRIM(w_screening)=='TDDFT' ) ) then
+
+      do iaspin=1,nspin
+        do jstate=jstate_min,jstate_max
+          wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) &
+                             + alpha_local * lambda *  eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin)
+          wp0_lr(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = wp0_lr(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) &
+                             + beta_hybrid * lambda *  eri_3center_eigen_lr(:,ncore_W+1:nvirtual_W-1,jstate,iaspin)
+        enddo
       enddo
-    enddo
+
+    else
+
+      do iaspin=1,nspin
+        do jstate=jstate_min,jstate_max
+          wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) &
+                             + alpha_local * lambda *  eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin)
+        enddo
+      enddo
+
+    endif
 
   endif
 
@@ -897,15 +924,23 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
           if( iaspin /= jbspin ) cycle
 
           wtmp = DOT_PRODUCT( eri_3center_eigen(:,astate,bstate,iaspin) , wp0(:,istate,jstate,iaspin) )
+          if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+             .OR. TRIM(w_screening)=='TDDFT' ) ) then
+            wtmp2 = DOT_PRODUCT( eri_3center_eigen_lr(:,astate,bstate,iaspin) , wp0_lr(:,istate,jstate,iaspin) )
+          endif
 
-          apb_block(t_ia,t_jb) = -wtmp
-          amb_block(t_ia,t_jb) = -wtmp
+          apb_block(t_ia,t_jb) = -wtmp -wtmp2
+          amb_block(t_ia,t_jb) = -wtmp -wtmp2
 
 
           wtmp = DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,iaspin) , wp0(:,astate,jstate,iaspin) )
-
-          apb_block(t_ia,t_jb) =  apb_block(t_ia,t_jb) - wtmp
-          amb_block(t_ia,t_jb) =  amb_block(t_ia,t_jb) + wtmp
+          if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+             .OR. TRIM(w_screening)=='TDDFT' ) ) then
+            wtmp2 = DOT_PRODUCT( eri_3center_eigen_lr(:,istate,bstate,iaspin) , wp0_lr(:,astate,jstate,iaspin) )
+          endif
+            
+          apb_block(t_ia,t_jb) =  apb_block(t_ia,t_jb) - wtmp -wtmp2
+          amb_block(t_ia,t_jb) =  amb_block(t_ia,t_jb) + wtmp +wtmp2
 
 
         enddo
@@ -928,7 +963,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
   enddo
 
   call clean_deallocate('Temporary array for W',wp0)
-
+  if(allocated(wp0_lr)) call clean_deallocate('Temporary array for W_lr',wp0_lr)
 
   call stop_clock(timing_build_bse)
 

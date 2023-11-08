@@ -146,6 +146,7 @@ module m_inputparam
   logical,protected                :: print_spatial_extension_
   logical,protected                :: print_cube_
   logical,protected                :: print_wfn_files_
+  logical,protected                :: print_all_MO_wfn_file_
   logical,protected                :: print_multipole_
   logical,protected                :: print_hartree_
   logical,protected                :: print_density_matrix_
@@ -160,6 +161,7 @@ module m_inputparam
   logical,protected                :: print_dens_traj_points_set_
   logical,protected                :: print_charge_tddft_
   logical,protected                :: print_transition_density_
+  logical,protected                :: cphf_cpks_0_
   logical,protected                :: calc_q_matrix_
   logical,protected                :: calc_dens_disc_
   logical,protected                :: calc_spectrum_
@@ -342,9 +344,14 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%no_bse_kernel = .TRUE.
     case('TD')
       calc_type%include_tddft_kernel = .TRUE.
+    case('CPHF','CPKS')
+      calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
     case('RPA','RPAP','RPA_IM','RPAP_IM','RPA+','RPA+_IM','RPA-I')
+      ! nothing to declare
+    case('BSE-I')
+      calc_type%is_bse        = .TRUE.
       ! nothing to declare
     case('RPALR')
       calc_type%is_lr_mbpt = .TRUE.
@@ -924,6 +931,7 @@ subroutine read_inputfile_namelist()
   print_multipole_          = yesno_to_logical(print_multipole)
   print_cube_               = yesno_to_logical(print_cube)
   print_wfn_files_          = yesno_to_logical(print_wfn_files)
+  print_all_MO_wfn_file_    = yesno_to_logical(print_all_MO_wfn_file)
   print_hartree_            = yesno_to_logical(print_hartree)
   print_density_matrix_     = yesno_to_logical(print_density_matrix)
   print_rho_grid_           = yesno_to_logical(print_rho_grid)
@@ -945,6 +953,7 @@ subroutine read_inputfile_namelist()
   print_tddft_restart_        = yesno_to_logical(print_tddft_restart)
   print_yaml_                 = yesno_to_logical(print_yaml)
   assume_scf_converged_       = yesno_to_logical(assume_scf_converged)
+  cphf_cpks_0_                = yesno_to_logical(cphf_cpks_0)
   analytic_chi_               = yesno_to_logical(analytic_chi)
   eri3_genuine_               = yesno_to_logical(eri3_genuine)
   auto_occupation_            = yesno_to_logical(auto_occupation)

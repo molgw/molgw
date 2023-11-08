@@ -385,7 +385,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   integer,optional,intent(in) :: timing
   logical,optional,intent(in) :: verbose,long_range
   !=====
-  logical              :: verbose_
+  logical              :: verbose_,lr_exists=.true.
   integer              :: nbf,nstate
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
   integer              :: mstate_count_,nstate_count_
@@ -396,8 +396,12 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   integer              :: ipair
   !=====
 
-  ! eri_3center_eigen is already allocated, then assume that you know what you are doing
-  if( ALLOCATED(eri_3center_eigen) ) then
+  if( PRESENT(long_range) ) then
+    if( long_range .AND. (.NOT. ALLOCATED(eri_3center_eigen_lr)) ) lr_exists=.false.
+  endif
+
+  ! eri_3center_eigen(_lr) is/are already allocated, then assume that you know what you are doing
+  if( ALLOCATED(eri_3center_eigen) .AND. lr_exists ) then
     return
   endif
 
@@ -803,8 +807,10 @@ subroutine destroy_eri_3center_eigen(verbose,long_range)
   if(verbose_) write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
   call clean_deallocate('3-center MO integrals',eri_3center_eigen,verbose_)
   if(PRESENT(long_range)) then
-    if(verbose_) write(stdout,'(/,a)') ' Destroy 3-center_lr integrals on eigenstates'
-    call clean_deallocate('3-center_lr MO integrals',eri_3center_eigen_lr,verbose_)
+    if(long_range) then
+      if(verbose_) write(stdout,'(a,/)') ' Destroy 3-center_lr integrals on eigenstates'
+      call clean_deallocate('3-center_lr MO integrals',eri_3center_eigen_lr,verbose_)
+    endif
   endif
 
 end subroutine destroy_eri_3center_eigen

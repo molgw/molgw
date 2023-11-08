@@ -421,6 +421,14 @@ print_wfn_files:
   comment: 'Prints WFN files which can be used as input for post processing. WFN files contain the information about
  the electronic density and several packages use them to gather chemical information (see programs like: AIMPAC, AIMALL, among others). Setting this variable to yes will produce WFN files for ground-state calculations as well as for GW-corrected densities. Note: currently, only cartesian basis are supported.'
 
+print_all_MO_wfn_file:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: 'Print all molecular orbitals to the WFN file (default=no) '
+
 print_density_matrix:
   family: io
   datatype: yes/no
@@ -762,6 +770,15 @@ ci_type:
   default: all
   comment: Selects which excitations will be included in the CI expansion. Valid choices
     are 'all', 'CISD', 'CISDT', 'CISDTQ'.
+
+cphf_cpks_0:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Uses the non-interacting approximation to the CPHF/CPKS. Then, the 
+    polarizability is not computed (all two-body interactions are neglected).
 
 dft_core:
   family: post

@@ -509,7 +509,7 @@ program molgw
   if( print_wfn_ )  call plot_wfn(basis,c_matrix)
   if( print_wfn_ )  call plot_rho('GKS',basis,occupation,c_matrix)
   if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
-  if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy)
+  if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy,print_all=print_all_MO_wfn_file_)
   if( print_pdos_ ) then
     call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
     call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
@@ -549,13 +549,6 @@ program molgw
     call calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
   end if
 
-  !
-  ! If RSH calculations were performed, then deallocate the LR integrals which
-  ! are not needed anymore
-  !
-
-  if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
-  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
 
   !
@@ -568,13 +561,10 @@ program molgw
     call get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
   endif
 
-
   call clean_deallocate('Overlap matrix S',s_matrix)
   call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
   call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
   call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
-
-
 
   !
   ! Prepare the diagonal of the matrix Sigma_x - Vxc
@@ -584,6 +574,28 @@ program molgw
     call setup_exchange_m_vxc(basis,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc)
   endif
   call clean_deallocate('Fock operator F',hamiltonian_fock)
+
+  !
+  ! Linear-response time dependent calculations work for BSE and TDDFT
+  ! or coupled-pertubed HF/KS
+  ! (only if the SCF cycles were converged)
+  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. (scf_has_converged .AND. .NOT. TRIM(postscf) == 'BSE-I') ) then
+    call wpol%init(nstate,occupation,0)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
+    call wpol%destroy()
+  endif
+  if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
+    call wpol%init(nstate,occupation,0)
+    call coupled_perturbed(basis,occupation,energy,c_matrix,wpol) ! Internally, it will call polarizability
+    call wpol%destroy()
+  endif
+
+  !
+  ! If RSH calculations were performed, then deallocate the LR integrals which
+  ! are not needed anymore
+  !
+  if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
+  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
 
   !
@@ -642,7 +654,7 @@ program molgw
   ! final evaluation for RPAx total energy
   ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
   !
-  if( TRIM(postscf(1:3)) == 'RPA' ) then
+  if( TRIM(postscf(1:3)) == 'RPA' .OR. TRIM(postscf) == 'BSE-I' ) then
     en_mbpt = en_gks
     call acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   endif
@@ -699,15 +711,6 @@ program molgw
     call print_energy_yaml('mbpt energy',en_gks)
   endif
 
-
-  !
-  ! Linear-response time dependent calculations work for BSE and TDDFT
-  ! (only if the SCF cycles were converged)
-  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
-    call wpol%init(nstate,occupation,0)
-    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
-    call wpol%destroy()
-  endif
 
   !
   ! Self-energy calculation: PT2, GW, GWGamma, COHSEX

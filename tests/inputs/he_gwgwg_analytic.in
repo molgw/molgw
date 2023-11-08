@@ -5,6 +5,8 @@
 
  basis='6-31G'
  auxil_basis='AUTO'
+ mixing_scheme='simple'
+ nscf=1000
 
  postscf='gw+gwgwg'
  
