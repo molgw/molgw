@@ -312,6 +312,18 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   if( PRESENT(b_matrix) ) then
     b_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) - amb_matrix(:,:) )
   endif
+  
+  if( PRESENT(a_matrix) .AND. PRESENT(b_matrix) ) then
+    call clean_deallocate('A+B',apb_matrix)
+    call clean_deallocate('A-B',amb_matrix)
+    if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
+      call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp))
+    endif
+    deallocate(amb_diag_rpa,energy_qp)
+    write(stdout,*) ' Skipping diagonalization after building A and B matrices'
+    call stop_clock(timing_pola)
+    return
+  endif
 
   if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
 
