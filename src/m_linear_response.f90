@@ -170,6 +170,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   write(stdout,'(1x,a16,l1)')       'TDHF:         ',is_tdhf
   write(stdout,'(1x,a16,l1)')       'TDDFT:        ',is_tddft
   write(stdout,'(1x,a16,f6.4)')     'hybrid alpha: ',alpha_local
+  write(stdout,'(1x,a16,f6.4)')     'hybrid beta:  ',beta_hybrid
   write(stdout,*)
 
   !
