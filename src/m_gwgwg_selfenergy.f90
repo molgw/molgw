@@ -1289,6 +1289,7 @@ subroutine gwgwg_selfenergy_real_grid(basis,occupation,energy,c_matrix,se)
   pqspin=1
 
   do iomegap=-nomega_chi_real,nomega_chi_real
+    if( MODULO( iomegap - 1 , ortho%nproc) /= ortho%rank ) cycle
     omegap = domega * iomegap
     write(stdout,'(1x,a,i4,es12.4)') 'External omega loop (eV): ',iomegap,omegap*Ha_eV
     call wpol_analytic%evaluate(omegap,chi_omegap)
@@ -1340,7 +1341,7 @@ subroutine gwgwg_selfenergy_real_grid(basis,occupation,energy,c_matrix,se)
 
     enddo
   enddo
-  call world%sum(sigmagwgwg)
+  call ortho%sum(sigmagwgwg)
   write(stdout,*) 'Self-energy correction (eV): '
   do pstate=nsemin,nsemax
     do iomega_sigma=first_omega,last_omega

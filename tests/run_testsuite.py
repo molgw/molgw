@@ -279,7 +279,7 @@ print()
 ###################################
 # Create the temporary folder
 ###################################
-tmpfolder='tmp_'+today
+tmpfolder='tmp'
 
 try:
   os.mkdir(tmpfolder)
