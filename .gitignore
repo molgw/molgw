@@ -11,7 +11,7 @@ src/git_sha.f90
 src/basis_path.f90
 src/my_machine*.arch*
 my_machine*.arch*
-tests/tmp_*
+tests/tmp*
 __pycache__/
 *.py[cod]
 src/noft/m_gitver.F90
