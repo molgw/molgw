@@ -9,6 +9,7 @@
  nscf=1000
 
  postscf='gw+gwgwg_numerical'
+ mpi_nproc_ortho=1024
  
  selfenergy_state_range=0
 
