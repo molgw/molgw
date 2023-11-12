@@ -67,6 +67,9 @@ module m_rdmd
    procedure :: print_swdmn => print_swrdm
    ! Print the spin-with 1,2-RDMs into formated files.
 
+   procedure :: compute_swdm2 => compu_swdm2
+   ! Compute spin-with 2-RDM elements.
+
    procedure :: print_orbs => print_orb_coefs
    ! Print orbital coefs to a formated file.
 
@@ -322,131 +325,219 @@ subroutine print_swrdm(RDMd)
 !arrays
 !Local variables ------------------------------
 !scalars
- integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorb6,iorb7
+ integer::iorb,iorb1,iorb2,iorb3
  integer::iorbmin,iorbmax,NsdORBs,NBF2,NsdVIRT,iunit=312
  real(dp)::Delem
 !arrays
  integer,allocatable,dimension(:)::coup
- real(dp),allocatable,dimension(:)::occ
+ real(dp),allocatable,dimension(:)::occ,occ_dyn
 !************************************************************************
 
  NBF2=2*RDMd%NBF_occ
  NsdORBs=RDMd%Nfrozen+RDMd%Npairs
  NsdVIRT=RDMd%NBF_occ-NsdORBs
- allocate(coup(NBF2),occ(NBF2))
- occ=zero
+ allocate(coup(NBF2),occ(NBF2),occ_dyn(NBF2))
+ occ=zero;occ_dyn=zero;
 
  ! Print the sw 1-RDM
- open(unit=iunit,file='swDM1')
+ open(unit=iunit,file='swDM1',form='unformatted')
  do iorb=1,RDMd%NBF_occ
   Delem=RDMd%occ(iorb)
   if(dabs(Delem)>tol8) then
    occ(2*iorb-1)=Delem
    occ(2*iorb)  =occ(2*iorb-1)
-   write(iunit,'(f15.8,2i4)') occ(2*iorb-1),2*iorb-1,2*iorb-1
-   write(iunit,'(f15.8,2i4)') occ(2*iorb),2*iorb,2*iorb
+   write(iunit) 2*iorb-1,2*iorb-1,occ(2*iorb-1) 
+   write(iunit) 2*iorb,2*iorb    ,occ(2*iorb)  
+  endif
+  Delem=RDMd%occ_dyn(iorb)
+  if(dabs(Delem)>tol8) then
+   occ_dyn(2*iorb-1)=Delem
+   occ_dyn(2*iorb)  =occ_dyn(2*iorb-1)
   endif
  enddo
- write(iunit,'(f15.8,2i4)') zero,0,0
+ write(iunit) 0,0,zero
  close(iunit)
+ do iorb=1,2*RDMd%Nfrozen
+  occ_dyn(iorb)=zero
+ enddo
+
+ ! Prepare coupling map
+ coup=-1
+ do iorb=1,NsdORBs
+  iorbmin=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+1
+  iorbmax=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+RDMd%Ncoupled
+  do iorb1=1,NsdVIRT
+   iorb2=iorb1+NsdORBs
+   if((iorbmin<=iorb2.and.iorb2<=iorbmax).and.(iorbmax<=RDMd%NBF_occ)) then
+    coup(2*iorb-1) =iorb
+    coup(2*iorb)   =iorb
+    coup(2*iorb2-1)=iorb
+    coup(2*iorb2)  =iorb
+   endif
+  enddo
+ enddo
 
  ! Print the sw 2-RDM
  ! TODO: Missing terms for Nsingleocc>0 !
- ! TODO: sw 2-RDM for GNOF !
- if(RDMD%INOF==8 .or. RDMD%INOF<0) then
-  write(*,*) ' WARNING! sw 2-RDM is not available for GNOF, MULLER, and POWER!'
- else
-  coup=-1
-  do iorb=1,NsdORBs
-   iorbmin=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+1
-   iorbmax=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+RDMd%Ncoupled
-   do iorb1=1,NsdVIRT
-    iorb2=iorb1+NsdORBs
-    if((iorbmin<=iorb2.and.iorb2<=iorbmax).and.(iorbmax<=RDMd%NBF_occ)) then
-     coup(2*iorb-1) =iorb
-     coup(2*iorb)   =iorb
-     coup(2*iorb2-1)=iorb
-     coup(2*iorb2)  =iorb
-    endif
-   enddo
-  enddo
-  open(unit=iunit,file='swDM2')
-  do iorb=1,NBF2
-   do iorb1=1,NBF2
-    do iorb2=1,NBF2
-     do iorb3=1,NBF2
-      if((mod(iorb,2)==mod(iorb2,2)).and.(mod(iorb1,2)==mod(iorb3,2))) then
-       !! Check for spinless indeces (used for PI_ii,kk)
-       if(mod(iorb,2)==0) then
-        iorb4=iorb/2
-        iorb6=iorb2/2
-       else
-        iorb4=(iorb+1)/2
-        iorb6=(iorb2+1)/2
-       endif
-       if(mod(iorb1,2)==0) then
-        iorb5=iorb1/2
-        iorb7=iorb3/2
-       else
-        iorb5=(iorb1+1)/2
-        iorb7=(iorb3+1)/2
-       endif
-       Delem=ZERO
-       !! SD
-       ! Hartree
-       if((iorb==iorb2).and.(iorb1==iorb3)) then
-        Delem=half*occ(iorb)*occ(iorb1)
-       endif
-       ! Exchange
-       if((iorb==iorb3).and.(iorb1==iorb2)) then
-        Delem=Delem-half*occ(iorb)*occ(iorb1)
-       endif
-       !! PNOFi
-       ! Hartree
-       if((iorb==iorb2).and.(iorb1==iorb3).and.coup(iorb)==coup(iorb1)) then
-        if(coup(iorb)/=-1) Delem=Delem-half*occ(iorb)*occ(iorb1)
-       endif
-       ! Exchange
-       if((iorb==iorb3).and.(iorb1==iorb2).and.coup(iorb)==coup(iorb1)) then
-        if(coup(iorb)/=-1) Delem=Delem+half*occ(iorb)*occ(iorb1)
-       endif
-       ! Time-inversion
-       if((iorb4==iorb5).and.(iorb6==iorb7).and.(iorb/=iorb1.and.iorb2/=iorb3)) then
-        if(coup(iorb)==coup(iorb2).and.coup(iorb)/=-1) then
-         if(iorb4<=NsdORBs .or. iorb6<=NsdORBs) then
-          if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
-          if(iorb4/=iorb6) Delem=Delem-half*dsqrt(occ(iorb)*occ(iorb2))
-         else
-          if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
-          if(iorb4/=iorb6) Delem=Delem+half*dsqrt(occ(iorb)*occ(iorb2))
-         endif
-        else
-         if(RDMD%INOF==7) then
-          if(RDMD%Ista==1) then
-           Delem=Delem-two*((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
-          else
-           Delem=Delem-half*dsqrt((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
-          endif
-         endif
-        endif
-       endif
-       ! Print the ^2D_ij,kl element
-       if(abs(Delem)>tol8) then
-        write(iunit,'(f15.8,4i4)') Delem,iorb,iorb1,iorb2,iorb3
-       endif
-       ! Done iorb,iorb1,iorb2,iorb3
-      endif 
-     enddo
+ open(unit=iunit,file='swDM2',form='unformatted')
+ do iorb=1,NBF2
+  do iorb1=1,NBF2
+   do iorb2=1,NBF2
+    do iorb3=1,NBF2
+     ! Calculate and print(?) the ^2D_ij,kl element
+     call compu_swdm2(RDMd,occ,occ_dyn,coup,iorb,iorb1,iorb2,iorb3,NBF2,NsdORBs,Delem)
+     if(abs(Delem)>tol8) then
+      write(iunit) iorb,iorb1,iorb2,iorb3,Delem 
+     endif
     enddo
    enddo
   enddo
-  write(iunit,'(f15.8,4i4)') zero,0,0,0,0
-  close(iunit)
- endif 
+ enddo
+ write(iunit) 0,0,0,0,zero
+ close(iunit)
  
- deallocate(coup,occ) 
+ deallocate(coup,occ,occ_dyn) 
 
 end subroutine print_swrdm
+!!***
+
+!!***
+!!****f* DoNOF/compu_swdm2
+!! NAME
+!! compu_swdm
+!!
+!! FUNCTION
+!!  Compute spin-with 2-RDM elements
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine compu_swdm2(RDMd,occ,occ_dyn,coup,iorb,iorb1,iorb2,iorb3,NBF2,NsdORBs,Delem)
+!Arguments ------------------------------------
+!scalars
+ class(rdm_t),intent(in)::RDMd
+ integer,intent(in)::iorb,iorb1,iorb2,iorb3,NsdORBs,NBF2 
+ real(dp),intent(inout)::Delem
+!arrays
+ integer,intent(in)::coup(NBF2)
+ real(dp),intent(in)::occ(NBF2),occ_dyn(NBF2)
+!Local variables ------------------------------
+!scalars
+ integer::iorb4,iorb5,iorb6,iorb7
+!arrays
+!************************************************************************
+
+ Delem=zero
+ if((mod(iorb,2)==mod(iorb2,2)).and.(mod(iorb1,2)==mod(iorb3,2))) then
+  !! Check for spinless indices (used for PI_ii,kk)
+  if(mod(iorb,2)==0) then
+   iorb4=iorb/2
+   iorb6=iorb2/2
+  else
+   iorb4=(iorb+1)/2
+   iorb6=(iorb2+1)/2
+  endif
+  if(mod(iorb1,2)==0) then
+   iorb5=iorb1/2
+   iorb7=iorb3/2
+  else
+   iorb5=(iorb1+1)/2
+   iorb7=(iorb3+1)/2
+  endif
+  !! SD
+  ! Hartree
+  if((iorb==iorb2).and.(iorb1==iorb3)) then
+   Delem=half*occ(iorb)*occ(iorb1)
+  endif
+  ! Exchange
+  if((iorb==iorb3).and.(iorb1==iorb2)) then
+   Delem=Delem-half*occ(iorb)*occ(iorb1)
+  endif
+  ! Cummulants
+  if(RDMd%INOF>=100.or.RDMd%INOF==0) then
+   ! Exchange f(np,nq)       
+   if((iorb==iorb3).and.(iorb1==iorb2)) then
+    select case(RDMd%INOF)
+    case(100)
+     !! MBB
+     Delem=Delem+half*occ(iorb)*occ(iorb1)-half*dsqrt(occ(iorb)*occ(iorb1))
+    case(101)
+     !! Power
+     Delem=Delem+half*occ(iorb)*occ(iorb1)-half*(occ(iorb)*occ(iorb1))**RDMd%Lpower
+    case(102)
+     !! CA
+     Delem=Delem-half*dsqrt(occ(iorb)*occ(iorb1)*(one-occ(iorb))*(one-occ(iorb1)))
+    case(103)
+     !! CGA
+     Delem=Delem+half*occ(iorb)*occ(iorb1) &
+        & -half*(half*dsqrt(occ(iorb)*occ(iorb1)*(two-occ(iorb))*(two-occ(iorb1))) &
+        & +half*RDMd%occ(iorb)*RDMd%occ(iorb1))
+    case(104)
+     !! GU
+     Delem=Delem+half*occ(iorb)*occ(iorb1)-half*dsqrt(occ(iorb)*occ(iorb1))
+      if(iorb==iorb1) then
+       Delem=Delem+half*dsqrt(occ(iorb)*occ(iorb))-half*occ(iorb)*occ(iorb)
+      endif
+    case default
+     Delem=Delem       
+    end select
+   endif
+  else
+   !! PNOFi
+   ! Hartree
+   if((iorb==iorb2).and.(iorb1==iorb3).and.coup(iorb)==coup(iorb1)) then
+    if(coup(iorb)/=-1) Delem=Delem-half*occ(iorb)*occ(iorb1)
+   endif
+   ! Exchange
+   if((iorb==iorb3).and.(iorb1==iorb2).and.coup(iorb)==coup(iorb1)) then
+    if(coup(iorb)/=-1) Delem=Delem+half*occ(iorb)*occ(iorb1)
+   endif
+   ! Time-inversion
+   if((iorb4==iorb5).and.(iorb6==iorb7).and.(iorb/=iorb1.and.iorb2/=iorb3)) then
+    if(coup(iorb)==coup(iorb2).and.coup(iorb)/=-1) then
+     if(iorb4<=NsdORBs .or. iorb6<=NsdORBs) then
+      if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
+      if(iorb4/=iorb6) Delem=Delem-half*dsqrt(occ(iorb)*occ(iorb2))
+     else
+      if(iorb4==iorb6) Delem=Delem+half*occ(iorb)
+      if(iorb4/=iorb6) Delem=Delem+half*dsqrt(occ(iorb)*occ(iorb2))
+     endif
+    else
+     if(RDMD%INOF==7) then
+      if(RDMD%Ista==1) then
+       Delem=Delem-two*((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
+      else
+       Delem=Delem-half*dsqrt((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
+      endif
+     endif
+     if(RDMD%INOF==8) then
+      if(iorb4<=NsdORBs .and. iorb6<=NsdORBs) then
+       if(RDMD%Ista==1) then
+        Delem=Delem+two*((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
+       else
+        Delem=Delem+half*dsqrt((one-occ(iorb))*occ(iorb)*(one-occ(iorb2))*occ(iorb2))
+       endif
+      endif
+      if((iorb4<=NsdORBs .and. iorb6>NsdORBs) .or. (iorb4>NsdORBs .and. iorb6<=NsdORBs) )  then
+        Delem=Delem-half*dsqrt(occ_dyn(iorb)*occ_dyn(iorb2))+half*occ_dyn(iorb)*occ_dyn(iorb2)
+      endif
+      if(iorb4>NsdORBs .and. iorb6>NsdORBs)  then
+        Delem=Delem+half*dsqrt(occ_dyn(iorb)*occ_dyn(iorb2))+half*occ_dyn(iorb)*occ_dyn(iorb2)
+      endif
+     endif
+    endif
+   endif
+  endif 
+ endif 
+
+end subroutine compu_swdm2
 !!***
 
 !!***
