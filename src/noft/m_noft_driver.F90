@@ -299,6 +299,13 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 
  enddo
 
+ ! Print <S^2> expectation value
+ if(cpx_mos) then
+  call s2_calc(RDMd,INTEGd,NO_COEF_cmplx=NO_COEF_cmplx)
+ else
+  call s2_calc(RDMd,INTEGd,NO_COEF=NO_COEF)
+ endif
+
  ! Print optimized (spin-with?) 1,2-RDMs
  if(iprintswdmn==1) call RDMd%print_swdmn() 
  if(iprintdmn==1) call RDMd%print_dmn(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
