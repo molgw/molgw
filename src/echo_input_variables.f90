@@ -106,6 +106,7 @@
   write(stdout,'(1x,a32,6x,a)') 'noft_lowmemERI',noft_lowmemERI 
   write(stdout,'(1x,a32,2x,i8)') 'noft_ncoupled',noft_ncoupled 
   write(stdout,'(1x,a32,2x,i8)') 'noft_ndiis',noft_ndiis 
+  write(stdout,'(1x,a32,6x,a)') 'noft_nophases',noft_nophases 
   write(stdout,'(1x,a32,2x,i8)') 'noft_npairs',noft_npairs 
   write(stdout,'(1x,a32,2x,i8)') 'noft_nscf',noft_nscf 
   write(stdout,'(1x,a32,6x,a)') 'noft_printdmn',noft_printdmn 

@@ -169,6 +169,7 @@
     partition_scheme,       &
     scf_diago_flavor,       &
     noft_complex,       &
+    noft_nophases,       &
     noft_confinment,       &
     noft_iconfinment,       &
     noft_iwconfinment,       &
@@ -371,6 +372,7 @@
  partition_scheme='ssf'
  scf_diago_flavor=' '
  noft_complex='no'
+ noft_nophases='no'
  noft_confinment='no'
  noft_iconfinment='no'
  noft_iwconfinment=0.0_dp 

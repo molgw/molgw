@@ -106,6 +106,7 @@
  write(unit_yaml,'(4x,a,16x,a)') 'noft_lowmemERI:',yesno_to_TrueFalse(noft_lowmemERI) 
  write(unit_yaml,'(4x,a,17x,i8)') 'noft_ncoupled:',noft_ncoupled 
  write(unit_yaml,'(4x,a,20x,i8)') 'noft_ndiis:',noft_ndiis 
+ write(unit_yaml,'(4x,a,17x,a)') 'noft_nophases:',yesno_to_TrueFalse(noft_nophases) 
  write(unit_yaml,'(4x,a,19x,i8)') 'noft_npairs:',noft_npairs 
  write(unit_yaml,'(4x,a,21x,i8)') 'noft_nscf:',noft_nscf 
  write(unit_yaml,'(4x,a,17x,a)') 'noft_printdmn:',yesno_to_TrueFalse(noft_printdmn) 

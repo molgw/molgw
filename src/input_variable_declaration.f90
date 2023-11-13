@@ -165,6 +165,7 @@
  character(len=256),protected :: partition_scheme
  character(len=256),protected :: scf_diago_flavor
  character(len=3),protected :: noft_complex
+ character(len=3),protected :: noft_nophases
  character(len=3),protected :: noft_confinment
  character(len=3),protected :: noft_iconfinment
  real(dp),protected :: noft_iwconfinment

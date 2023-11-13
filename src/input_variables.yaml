@@ -1520,6 +1520,14 @@ noft_complex:
   default: 'no'
   comment: Use complex molecular orb. coeficients in NOFT calcs. (default=no).
 
+noft_nophases:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Force orbitals to be real even if noft_complex='yes' in NOFT calcs. (default=no).
+
 noft_confinment:
   family: noft
   datatype: yes/no

@@ -127,6 +127,7 @@
 ## Natural Orbital Functional Theory 
 
 [noft_complex](#noft_complex) 
+[noft_nophases](#noft_nophases) 
 [noft_confinment](#noft_confinment) 
 [noft_iconfinment](#noft_iconfinment) 
 [noft_iwconfinment](#noft_iwconfinment) 
@@ -1836,6 +1837,22 @@ Number of coupled orbs. per pair used in NOFT calcs. (default=2, perfect pairing
 **Description:** 
 
 Number of orb. optimization iterations used in DIIS by NOFT module (default=5). 
+
+
+---
+### noft_nophases
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Force orbitals to be real even if noft_complex='yes' in NOFT calcs. (default=no). 
 
 
 ---
