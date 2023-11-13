@@ -20,12 +20,13 @@ module m_noft
   use m_noft_driver
 
 
-  logical,parameter,private    :: noft_verbose=.FALSE.
-  logical                      :: noft_edft=.FALSE.,noft_fcidump_in=.FALSE.
-  integer,private              :: nstate_noft,nstate_frozen,irs_noft
-  real(dp)                     :: ExcDFT,E_t_vext
-  real(dp),allocatable,private :: AhCORE(:,:),T_Vext(:)            ! hCORE matrix (T+Ven) in AO basis
-  type(basis_set),pointer      :: basis_pointer
+  logical,parameter,private       :: noft_verbose=.FALSE.
+  logical                         :: noft_edft=.FALSE.,noft_fcidump_in=.FALSE.
+  integer,private                 :: nstate_noft,nstate_frozen,irs_noft
+  real(dp)                        :: ExcDFT,E_t_vext
+  real(dp),allocatable,private    :: AhCORE(:,:),T_Vext(:)            ! hCORE matrix (T+Ven) in AO basis
+  complex(dp),allocatable,private :: AhCORE_cmplx(:,:)
+  type(basis_set),pointer         :: basis_pointer
 
 
 contains
@@ -134,9 +135,18 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
     write(msgw,'(a)') 'The FCIDUMP file is not available with RI.'
     call issue_warning(msgw)
   endif
+  if( noft_fcidump_in .and. noft_complex=='yes' ) then
+    noft_fcidump_in=.false.
+    write(msgw,'(a)') 'The FCIDUMP file is not available with complex orbitals.'
+    call issue_warning(msgw)
+  endif
 
   ! Allocate arrays and initialize them
-  call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
+  if(noft_complex=='yes') then
+    call clean_allocate('AhCORE_cmplx',AhCORE_cmplx,basis%nbf,basis%nbf)
+  else
+    call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
+  endif
   call clean_allocate('NO_occ',occ,basis%nbf,1)
   call clean_allocate('NO_energies',energy,basis%nbf,1)
   if(noft_complex=='yes') then
@@ -147,7 +157,11 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   occ(:,:)    = zero
   energy(:,:) = zero
   ! Save Atomic Orbital hCORE integrals
-  AhCORE(:,:) = hkin(:,:) + hnuc(:,:)
+  if(noft_complex=='yes') then
+    AhCORE_cmplx(:,:) = hkin(:,:) + hnuc(:,:)
+  else
+    AhCORE(:,:) = hkin(:,:) + hnuc(:,:)
+  endif
 
   ! Initially copy c_matrix (HF orbs) to NO_COEF
   if(noft_complex=='yes') then
@@ -171,7 +185,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
     call clean_allocate('tmp_mat0',tmp_mat0,basis%nbf,basis%nbf,noft_verbose)
     call clean_allocate('tmp_mat',tmp_mat,basis%nbf,basis%nbf,noft_verbose)
     allocate(Work(1))
-    tmp_mat0=matmul(AhCORE,NO_COEF)
+    tmp_mat0=matmul(hkin,NO_COEF)+matmul(hnuc,NO_COEF)
     tmp_mat=matmul(transpose(NO_COEF),tmp_mat0)
     lwork=-1
     call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
@@ -300,7 +314,11 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   endif
 
   ! Deallocate arrays and print the normal termination
-  call clean_deallocate('AhCORE',AhCORE)
+  if(noft_complex=='yes') then
+    call clean_deallocate('AhCORE_cmplx',AhCORE_cmplx)
+  else
+    call clean_deallocate('AhCORE',AhCORE)
+  endif
   call clean_deallocate('NO_occ',occ)
   call clean_deallocate('NO_energies',energy)
   if(noft_complex=='yes') then
@@ -358,7 +376,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
 
     ! T+Vext part
     hCORE_cmplx(:,:)=complex_zero
-    hCORE_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),matmul(AhCORE,NO_COEF_cmplx))
+    hCORE_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),matmul(AhCORE_cmplx,NO_COEF_cmplx))
 
   else
 
