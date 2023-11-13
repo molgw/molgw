@@ -44,7 +44,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   real(dp),intent(out)      :: Enoft
   character(len=100)        :: msgw
   !====
-  integer                   :: istate,lwork,info
+  integer                   :: istate,lwork,info,iao,jao
   integer                   :: nelectrons
   integer                   :: imethorb,imethocc,nstate_occ,nstate_beta,nstate_alpha,nstate_coupled
   integer                   :: iNOTupdateOCC,iNOTupdateORB,iprintdmn,iprintswdmn,iprintints,ireadOCC,ireadCOEF
@@ -53,6 +53,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   real(dp),allocatable      :: occ(:,:),energy(:,:),occ_print(:,:)
   real(dp),allocatable      :: NO_COEF(:,:)
   real(dp),allocatable      :: tmp_mat0(:,:),tmp_mat(:,:),Work(:)
+  real(dp),allocatable      :: quad_ao(:,:,:,:)
   complex(dp),allocatable   :: NO_COEF_cmplx(:,:)
   complex(dp),allocatable   :: tmp_mat_cmplx(:,:)
   character(len=200)        :: ofile_name
@@ -159,8 +160,42 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   ! Save Atomic Orbital hCORE integrals
   if(noft_complex=='yes') then
     AhCORE_cmplx(:,:) = hkin(:,:) + hnuc(:,:)
+    if(noft_iconfinment=='yes' .and. noft_iwconfinment>1.0e-6) then
+      write(stdout,'(/,a,f10.5,/)') ' Including a Hermitian confinement with conf. strength ',noft_iwconfinment
+      call setup_quadrupole_ao(basis,quad_ao)
+      do iao=1,basis%nbf
+        do jao=1,iao-1
+          AhCORE_cmplx(iao,jao) = AhCORE_cmplx(iao,jao) &
+                & + im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(iao,jao,1,1) &
+                & + im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(iao,jao,2,2) &
+                & + im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(iao,jao,3,3)
+          AhCORE_cmplx(jao,iao) = AhCORE_cmplx(jao,iao) &
+                & - im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(jao,iao,1,1) &
+                & - im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(jao,iao,2,2) &
+                & - im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(jao,iao,3,3)
+        enddo
+      enddo
+      deallocate(quad_ao) 
+    endif 
   else
     AhCORE(:,:) = hkin(:,:) + hnuc(:,:)
+  endif
+  if(noft_confinment=='yes' .and. noft_rwconfinment>1.0e-6) then ! This is Harmonium atom (a.k.a. Hooke's atom -Z/r -> 1/2 w^2 r^2)
+    write(stdout,'(/,a,f10.5,/)') ' Replacing the nuc-elec Coulombic interaction by a parabolic confinement with conf. strength ',&
+            noft_rwconfinment
+    call setup_quadrupole_ao(basis,quad_ao)
+    if(noft_complex=='yes') then
+      AhCORE_cmplx(:,:) = AhCORE_cmplx(:,:) - hnuc(:,:)  &
+           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,1,1) &
+           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,2,2) &
+           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,3,3)
+    else
+      AhCORE(:,:) = AhCORE(:,:) - hnuc(:,:)  &
+           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,1,1) &
+           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,2,2) &
+           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,3,3)
+    endif
+    deallocate(quad_ao) 
   endif
 
   ! Initially copy c_matrix (HF orbs) to NO_COEF
