@@ -63,6 +63,7 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
 !Local variables ------------------------------
 !scalars
+ logical::large_phase=.false.
  integer::iorb,iorb1,lwork,info
  real(dp)::thresholddiis
 !arrays
@@ -70,6 +71,7 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
  complex(dp),allocatable,dimension(:)::Work_cmplx,Phases
  real(dp),allocatable,dimension(:,:)::Eigvec,New_NO_COEF ! Eigvec is initially the F matrix
  complex(dp),allocatable,dimension(:,:)::Eigvec_cmplx,New_NO_COEF_cmplx 
+ character(len=200)::msg
 !************************************************************************
  
  thresholddiis=ten**(-ELAGd%itoldiis)
@@ -133,7 +135,13 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
     enddo
     Eigvec_cmplx(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
     Phases(iorb)=-im*(ELAGd%Lambdas_im(iorb,iorb)+ELAGd%Lambdas_im(iorb,iorb))
-    if(cdabs(Phases(iorb))<tol8) Phases(iorb)=complex_zero
+    if(cdabs(Phases(iorb))<tol8) then
+     Phases(iorb)=complex_zero
+    else
+     large_phase=.true.
+     write(msg,'(a,i7,f10.5)') ' Large imaginary phase encountered for orbital ',iorb,aimag(Phases(iorb))
+     call write_output(msg)
+    endif
    enddo
   else
    do iorb=1,RDMd%NBF_tot 
@@ -146,11 +154,15 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
     Phases(iorb)=-im*(ELAGd%Lambdas_im(iorb,iorb)+ELAGd%Lambdas_im(iorb,iorb))
     if(cdabs(Phases(iorb))<tol8) then
      Phases(iorb)=complex_zero
-    endif 
-    call scale_F_cmplx(ELAGd%MaxScaling+9,Phases(iorb))  ! Scale the Fpp element to avoid divergence
+    else
+     large_phase=.true.
+     write(msg,'(a,i7,f10.5)') ' Large imaginary phase encountered for orbital ',iorb,aimag(Phases(iorb))
+     call write_output(msg)
+     call scale_F_cmplx(ELAGd%MaxScaling+9,Phases(iorb))  ! Scale the Fpp element to avoid divergence
+    endif
     Eigvec_cmplx(iorb,iorb)=complex_zero
     Eigvec_cmplx(iorb,iorb)=ELAGd%F_diag(iorb)
-   enddo  
+   enddo
   endif
 
   ! Decide whether to do DIIS before diagonalizing
@@ -171,9 +183,11 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
   deallocate(Work_cmplx,RWork)
   
   ! Update the NO_COEF_cmplx
-  do iorb=1,RDMd%NBF_tot 
-   NO_COEF_cmplx(:,iorb)=exp(Phases(iorb))*NO_COEF_cmplx(:,iorb)
-  enddo
+  if(large_phase) then
+   do iorb=1,RDMd%NBF_tot 
+    NO_COEF_cmplx(:,iorb)=exp(Phases(iorb))*NO_COEF_cmplx(:,iorb)
+   enddo
+  endif
   allocate(New_NO_COEF_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
   New_NO_COEF_cmplx=matmul(NO_COEF_cmplx,Eigvec_cmplx)
   NO_COEF_cmplx=New_NO_COEF_cmplx

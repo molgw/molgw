@@ -152,14 +152,14 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   ! Initially copy c_matrix (HF orbs) to NO_COEF
   if(noft_complex=='yes') then
     NO_COEF_cmplx(:,:)=complex_zero
-    !   call random_number(ran_num) ! For complex orbs with same random phase (i.e. to have real and imaginary orbs)
-    ran_num=pi/four
+    write(stdout,'(/,a)') ' Adding Random Imaginary Phases '
+    write(stdout,'(a,/)') ' ------------------------------ '
     do istate=1,nstate_noft
-      !     call random_number(ran_num) ! For complex orbs each having its own random phase (i.e. to have real and imaginary orbs)
+      call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
+      write(stdout,'(a,I10,a,f7.5,a,f7.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
       NO_COEF_cmplx(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
-      !     NO_COEF_cmplx(:,istate)=im*c_matrix(:,istate,1)
-      !     NO_COEF_cmplx(:,istate)=c_matrix(:,istate,1)
     enddo
+    write(stdout,*) ' '
   else
     NO_COEF(:,:)=zero
     do istate=1,nstate_noft

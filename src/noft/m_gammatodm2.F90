@@ -513,6 +513,8 @@ end subroutine dm2_mbb
 !!****f* DoNOF/dm2_ca
 !! NAME
 !! dm2_ca
+!! Equivalent to Constrained-Pairing Mean-Fielf Theory (CPMFT) if used with perfect-pairing
+!! (see T. Tsuchimochi et al. J. Chem. Phys., 133, 13, 2010)
 !!
 !! FUNCTION
 !!  Build from the occ numbers and its derivatives the 2-RDM elements and its derivatives w.r.t. gamma for CA
@@ -554,19 +556,18 @@ subroutine dm2_ca(RDMd,Docc_gamma,sqrt_occ,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma
 !arrays
 !************************************************************************
 
- DM2_L=zero; DDM2_gamma_L=zero; 
-!     DM2_Jpq = 2NpNq, DM2_Kpq = -f(Np,Nq)
+!     DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq, DM2_Lpq = -sqrt[Np (1-Np) Nq (1-Nq)]
  do iorb=1,RDMd%NBF_occ
   sqrt_hole1=dsqrt(one-RDMd%occ(iorb))
   do iorb1=1,RDMd%NBF_occ
    sqrt_hole2=dsqrt(one-RDMd%occ(iorb1))
    DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
-   DM2_K(iorb,iorb1) = -sqrt_occ(iorb)*sqrt_occ(iorb1)*sqrt_hole1*sqrt_hole2 &
-                     & -RDMd%occ(iorb)*RDMd%occ(iorb1)
+   DM2_K(iorb,iorb1) = -RDMd%occ(iorb)*RDMd%occ(iorb1)  
+   DM2_L(iorb,iorb1) = -sqrt_occ(iorb)*sqrt_occ(iorb1)*sqrt_hole1*sqrt_hole2
    DDM2_gamma_J(iorb,iorb1,:) = two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
-   DDM2_gamma_K(iorb,iorb1,:) = -Docc_gamma(iorb,:)*(one-two*RDMd%occ(iorb))*  &
-   & ( sqrt_occ(iorb1)*sqrt_hole2/(two*sqrt_occ(iorb)*sqrt_hole1+tol20) ) &
-   & -Docc_gamma(iorb,:)*RDMd%occ(iorb1)
+   DDM2_gamma_K(iorb,iorb1,:) = -Docc_gamma(iorb,:)*RDMd%occ(iorb1)
+   DDM2_gamma_L(iorb,iorb1,:) = -Docc_gamma(iorb,:)*(one-two*RDMd%occ(iorb))*  &
+   & ( sqrt_occ(iorb1)*sqrt_hole2/(two*sqrt_occ(iorb)*sqrt_hole1+tol20) )
   enddo
  enddo
 !- - - - - - - - - - - - - - - - - - - - - - - -              
@@ -578,9 +579,11 @@ subroutine dm2_ca(RDMd,Docc_gamma,sqrt_occ,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma
   DM2_iiii(iorb)=RDMd%occ(iorb)*(two*RDMd%occ(iorb)-one)
   DM2_J(iorb,iorb)=zero
   DM2_K(iorb,iorb)=zero
+  DM2_L(iorb,iorb)=zero
   RDMd%Dfni_ni(iorb)=four*RDMd%occ(iorb)-one
   DDM2_gamma_J(iorb,iorb,:)=zero
   DDM2_gamma_K(iorb,iorb,:)=zero
+  DDM2_gamma_L(iorb,iorb,:)=zero
  enddo
 !-----------------------------------------------------------------------
 end subroutine dm2_ca
