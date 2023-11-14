@@ -75,7 +75,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
 !Local variables ------------------------------
 !scalars
  logical::diagco,conveg=.false.,debug=.false.,cpx_mos=.false.
- integer,parameter::msave=7,nextv=47,nfcall=6,nfgcal=7,g=28,toobig=2,vneed=4
+ integer,parameter::msave=7
  integer::iorb,igamma,iflag,icall,Mtosave,Nwork
 !arrays
  character(len=200)::msg
