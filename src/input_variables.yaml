@@ -1720,6 +1720,7 @@ noft_ndiis:
   experimental: 'no'
   default: 5
   comment: Number of orb. optimization iterations used in DIIS by NOFT module (default=5).
+    It is possible to switch off the DIIS with a negative number (e.g. -1).
 
 noft_nscf:
   family: noft
