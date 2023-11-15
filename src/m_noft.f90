@@ -220,9 +220,13 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   if(TRIM(init_hamiltonian)=='CORE') then
     call clean_allocate('tmp_mat0',tmp_mat0,basis%nbf,basis%nbf,noft_verbose)
     call clean_allocate('tmp_mat',tmp_mat,basis%nbf,basis%nbf,noft_verbose)
+    tmp_mat0(:,:)=zero
+    do istate=1,nstate_noft
+      tmp_mat0(:,istate)=c_matrix(:,istate,1)
+    enddo
     allocate(Work(1))
-    tmp_mat0=matmul(hkin,NO_COEF)+matmul(hnuc,NO_COEF)
-    tmp_mat=matmul(transpose(NO_COEF),tmp_mat0)
+    tmp_mat=matmul(hkin,tmp_mat0)+matmul(hnuc,tmp_mat0)
+    tmp_mat=matmul(transpose(tmp_mat0),tmp_mat)
     lwork=-1
     call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
     lwork=nint(Work(1))
@@ -233,13 +237,18 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
       call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
     endif
     if(noft_complex=='yes') then
-      call clean_allocate('tmp_mat_cmplx',tmp_mat_cmplx,basis%nbf,basis%nbf,noft_verbose)
-      tmp_mat_cmplx=matmul(NO_COEF_cmplx,tmp_mat)
-      NO_COEF_cmplx=tmp_mat_cmplx
-      call clean_deallocate('tmp_mat_cmplx',tmp_mat_cmplx,noft_verbose)
+      NO_COEF_cmplx=matmul(NO_COEF_cmplx,tmp_mat)
+      write(stdout,'(/,a)') ' Adding New Random Imaginary Phases '
+      write(stdout,'(a,/)') ' ---------------------------------- '
+      do istate=1,nstate_noft
+        call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
+        if(noft_nophases=='yes') ran_num=0.0e0
+        write(stdout,'(a,I10,a,f7.5,a,f7.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
+        NO_COEF_cmplx(:,istate)=exp(im*ran_num)*NO_COEF_cmplx(:,istate)
+      enddo
+      write(stdout,*) ' '
     else
-      tmp_mat0=matmul(NO_COEF,tmp_mat)
-      NO_COEF=tmp_mat0
+      NO_COEF=matmul(NO_COEF,tmp_mat)
     endif
     write(stdout,'(/,a,/)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
     call clean_deallocate('tmp_mat0',tmp_mat0,noft_verbose)
