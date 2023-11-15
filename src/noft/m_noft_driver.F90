@@ -34,7 +34,7 @@ module m_noft_driver
  private :: read_restart,echo_input,occtogamma
 !!***
 
- public :: run_noft
+ public :: run_noft,gram_schmidt
 !!***
 
 contains
@@ -209,9 +209,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   write(msg,'(a)') ' '
   call write_output(msg)
   if(cpx_mos) then
-   call read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,NO_COEF_cmplx=NO_COEF_cmplx)
+   call read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOverlap_in,NO_COEF_cmplx=NO_COEF_cmplx)
   else
-   call read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,NO_COEF=NO_COEF)
+   call read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOverlap_in,NO_COEF=NO_COEF)
   endif
   write(msg,'(a)') ' '
   call write_output(msg)
@@ -668,24 +668,27 @@ end subroutine echo_input
 !!
 !! SOURCE
 
-subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,NO_COEF,NO_COEF_cmplx)
+subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOverlap,NO_COEF,NO_COEF_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag
  type(elag_t),intent(inout)::ELAGd
  type(rdm_t),intent(inout)::RDMd
 !arrays
+ real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::AOverlap
  real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
 !Local variables ------------------------------
 !scalars
- integer::iunit=310,istat,intvar,intvar1,icount
- real(dp)::doubvar
+ logical::nonorthonormal=.false.
+ integer::iunit=310,istat,intvar,intvar1,icount=0
+ integer::istate,jstate
+ real(dp)::doubvar,tol10=1.0e-10
  complex(dp)::cpxvar
- real(dp),allocatable,dimension(:)::GAMMAS_in,tmp_occ
- real(dp),allocatable,dimension(:,:)::NO_COEF_in
- complex(dp),allocatable,dimension(:,:)::NO_COEF_cmplx_in
 !arrays
+ real(dp),allocatable,dimension(:)::GAMMAS_in,tmp_occ
+ real(dp),allocatable,dimension(:,:)::NO_COEF_in,S_NO
+ complex(dp),allocatable,dimension(:,:)::NO_COEF_cmplx_in,S_NO_cmplx
  character(len=200)::msg
 !************************************************************************
 
@@ -711,7 +714,7 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,NO_
    endif
    if(icount==RDMd%NBF_tot*RDMd%NBF_tot) then
     NO_COEF_cmplx(:,:)=NO_COEF_cmplx_in(:,:)
-    write(msg,'(a)') 'NO coefs. read from checkpoint file'
+    write(msg,'(a)') 'Complex NO coefs. read from checkpoint file'
     call write_output(msg)
    endif
    close(iunit)
@@ -738,11 +741,55 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,NO_
    endif
    if(icount==RDMd%NBF_tot*RDMd%NBF_tot) then
     NO_COEF(:,:)=NO_COEF_in(:,:)
-    write(msg,'(a)') 'NO coefs. read from checkpoint file'
+    write(msg,'(a)') 'Real NO coefs. read from checkpoint file'
     call write_output(msg)
    endif
    close(iunit)
    deallocate(NO_COEF_in)
+  endif
+ endif
+ if(icount==RDMd%NBF_tot*RDMd%NBF_tot.and.ireadCOEF==1) then
+  if(present(NO_COEF_cmplx)) then
+   allocate(S_NO_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
+   S_NO_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),matmul(AOverlap,NO_COEF_cmplx))
+   do istate=1,RDMd%NBF_tot
+    do jstate=1,istate
+     if(abs(aimag(S_NO_cmplx(istate,jstate)))>tol10) nonorthonormal=.true.
+     if(istate==jstate.and.abs(S_NO_cmplx(istate,istate)-ONE)>tol10) nonorthonormal=.true.
+     if(istate/=jstate.and.abs(S_NO_cmplx(istate,jstate))>tol10) nonorthonormal=.true.
+    enddo
+   enddo
+   if(nonorthonormal) then
+    write(msg,'(a)') ' Orthonormality violations with the coefs. read.'
+    call write_output(msg)
+    write(msg,'(a)') ' Performing Gram-Schmidt orthonormalization.'
+    call write_output(msg)
+    call gram_schmidt(RDMd%NBF_tot,AOverlap,NO_COEF_cmplx=NO_COEF_cmplx)  
+   else  
+    write(msg,'(a)') ' No orthonormality violations with the coefs. read.'
+    call write_output(msg)
+   endif 
+   deallocate(S_NO_cmplx)
+  else
+   allocate(S_NO(RDMd%NBF_tot,RDMd%NBF_tot))
+   S_NO=matmul(transpose(NO_COEF),matmul(AOverlap,NO_COEF))
+   do istate=1,RDMd%NBF_tot
+    do jstate=1,istate
+     if(istate==jstate.and.abs(S_NO(istate,istate)-ONE)>tol10) nonorthonormal=.true.
+     if(istate/=jstate.and.abs(S_NO(istate,jstate))>tol10) nonorthonormal=.true.
+    enddo
+   enddo
+   if(nonorthonormal) then
+    write(msg,'(a)') ' Orthonormality violations with the coefs. read.'
+    call write_output(msg)
+    write(msg,'(a)') ' Performing Gram-Schmidt orthonormalization.'
+    call write_output(msg)
+    call gram_schmidt(RDMd%NBF_tot,AOverlap,NO_COEF=NO_COEF)
+   else  
+    write(msg,'(a)') ' No orthonormality violations with the coefs. read.'
+    call write_output(msg)
+   endif 
+   deallocate(S_NO)
   endif
  endif
 
@@ -930,6 +977,134 @@ subroutine occtogamma(RDMd)
  deallocate(Holes)
 
 end subroutine occtogamma
+!!***
+
+!!***
+!!****f* DoNOF/gram_schmidt
+!! NAME
+!!  gram_schmidt
+!!
+!! FUNCTION
+!!  Orthonormalize the coefs. read from the checkpoint
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine gram_schmidt(NBF_tot,AOverlap,NO_COEF,NO_COEF_cmplx)
+!Arguments ------------------------------------
+!scalars
+ integer,intent(in)::NBF_tot
+!arrays
+ real(dp),dimension(NBF_tot,NBF_tot),intent(in)::AOverlap
+ real(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::NO_COEF
+ complex(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::NO_COEF_cmplx
+!Local variables ------------------------------
+!scalars
+ logical::nonorthonormal=.false.
+ real(dp),parameter::zero=0.0_dp,tol10=1.0e-10,ONE=1.0e0
+ complex(dp),parameter::complex_zero=(0.0_dp,0.0_dp)
+ integer::iindex,jindex,kindex,lindex
+ real(dp)::scalar_prod,normalization
+ complex(dp)::scalar_prod_cmplx,normalization_cmplx
+!arrays
+ real(dp),allocatable,dimension(:,:)::NO_COEF_new,S_NO
+ complex(dp),allocatable,dimension(:,:)::NO_COEF_cmplx_new,S_NO_cmplx
+ character(len=200)::msg
+!************************************************************************
+ if(present(NO_COEF)) then
+  allocate(S_NO(NBF_tot,NBF_tot),NO_COEF_new(NBF_tot,NBF_tot))
+  NO_COEF_new=zero
+  do iindex=1,NBF_tot
+   NO_COEF_new(:,iindex)=NO_COEF(:,iindex)
+   do jindex=1,iindex-1
+    scalar_prod=zero;normalization=zero;
+    do kindex=1,NBF_tot
+     do lindex=1,NBF_tot
+      scalar_prod=scalar_prod+NO_COEF(kindex,iindex)*NO_COEF_new(lindex,jindex)*AOverlap(kindex,lindex)
+      normalization=normalization+NO_COEF_new(kindex,jindex)*NO_COEF_new(lindex,jindex)*AOverlap(kindex,lindex)
+     enddo 
+    enddo
+    NO_COEF_new(:,iindex)=NO_COEF_new(:,iindex)-scalar_prod*NO_COEF_new(:,jindex)/normalization
+   enddo
+  enddo
+  do iindex=1,NBF_tot
+   normalization=zero
+   do kindex=1,NBF_tot
+    do lindex=1,NBF_tot
+     normalization=normalization+NO_COEF_new(kindex,iindex)*NO_COEF_new(lindex,iindex)*AOverlap(kindex,lindex)
+    enddo 
+   enddo
+   NO_COEF(:,iindex)=NO_COEF_new(:,iindex)/dsqrt(normalization)
+  enddo
+  S_NO=matmul(transpose(NO_COEF),matmul(AOverlap,NO_COEF))
+  do iindex=1,NBF_tot
+   do jindex=1,iindex
+    if(iindex==jindex.and.abs(S_NO(iindex,iindex)-ONE)>tol10) nonorthonormal=.true.
+    if(iindex/=jindex.and.abs(S_NO(iindex,jindex))>tol10) nonorthonormal=.true.
+   enddo
+  enddo
+  if(nonorthonormal) then
+   write(msg,'(a)') ' Error! there are still orthonormality violations after Gram-Schmidt.'
+   call write_output(msg)
+  else  
+   write(msg,'(a)') ' No orthonormality violations after Gram-Schmidt.'
+   call write_output(msg)
+  endif 
+  deallocate(S_NO,NO_COEF_new)
+ else
+  allocate(S_NO_cmplx(NBF_tot,NBF_tot),NO_COEF_cmplx_new(NBF_tot,NBF_tot))
+  NO_COEF_cmplx_new=complex_zero
+  do iindex=1,NBF_tot
+   NO_COEF_cmplx_new(:,iindex)=NO_COEF_cmplx(:,iindex)
+   do jindex=1,iindex-1
+    scalar_prod_cmplx=complex_zero;normalization_cmplx=complex_zero;
+    do kindex=1,NBF_tot
+     do lindex=1,NBF_tot
+      scalar_prod_cmplx=scalar_prod_cmplx+NO_COEF_cmplx(kindex,iindex) &
+            & *conjg(NO_COEF_cmplx_new(lindex,jindex))*AOverlap(kindex,lindex)
+      normalization_cmplx=normalization_cmplx+NO_COEF_cmplx_new(kindex,jindex) &
+            & *conjg(NO_COEF_cmplx_new(lindex,jindex))*AOverlap(kindex,lindex)
+     enddo 
+    enddo
+    NO_COEF_cmplx_new(:,iindex)=NO_COEF_cmplx_new(:,iindex) &
+           & -scalar_prod_cmplx*NO_COEF_cmplx_new(:,jindex)/normalization_cmplx
+   enddo
+  enddo
+  do iindex=1,NBF_tot
+   normalization_cmplx=complex_zero
+   do kindex=1,NBF_tot
+    do lindex=1,NBF_tot
+     normalization_cmplx=normalization_cmplx &
+          &   +NO_COEF_cmplx_new(kindex,iindex)*conjg(NO_COEF_cmplx_new(lindex,iindex))*AOverlap(kindex,lindex)
+    enddo 
+   enddo
+   NO_COEF_cmplx(:,iindex)=NO_COEF_cmplx_new(:,iindex)/dsqrt(real(normalization_cmplx))
+  enddo
+  S_NO_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),matmul(AOverlap,NO_COEF_cmplx))
+  do iindex=1,NBF_tot
+   do jindex=1,iindex
+    if(abs(aimag(S_NO_cmplx(iindex,jindex)))>tol10) nonorthonormal=.true.
+    if(iindex==jindex.and.abs(S_NO_cmplx(iindex,iindex)-ONE)>tol10) nonorthonormal=.true.
+    if(iindex/=jindex.and.abs(S_NO_cmplx(iindex,jindex))>tol10) nonorthonormal=.true.
+   enddo
+  enddo
+  if(nonorthonormal) then
+   write(msg,'(a)') ' Error! there are still orthonormality violations after Gram-Schmidt.'
+   call write_output(msg)
+  else  
+   write(msg,'(a)') ' No orthonormality violations after Gram-Schmidt.'
+   call write_output(msg)
+  endif 
+  deallocate(S_NO_cmplx,NO_COEF_cmplx_new)
+ endif
+end subroutine gram_schmidt
 !!***
 
 end module m_noft_driver
