@@ -317,6 +317,7 @@ subroutine s2_calc(RDMd,INTEGd,NO_COEF,NO_COEF_cmplx)
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
 !Local variables ------------------------------
 !scalars
+ logical::intrinsic_cmplx=.false.
  integer::NBF2,NsdORBs,NsdVIRT
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorb6,iorb7,iorbmin,iorbmax
  real(dp)::Delem,Nelect
@@ -375,6 +376,19 @@ subroutine s2_calc(RDMd,INTEGd,NO_COEF,NO_COEF_cmplx)
   allocate(S_pq_NO_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
   S_pq_NO_cmplx=matmul(transpose(NO_COEF_cmplx),matmul(INTEGd%Overlap,NO_COEF_cmplx)) ! S_pq ^alpha beta not
                                                                                       ! using conjugate
+  do iorb=1,RDMd%NBF_tot
+   do iorb1=1,iorb-1
+    if(abs(S_pq_NO_cmplx(iorb,iorb1))>tol8) intrinsic_cmplx=.true.
+   enddo
+    if(abs(abs(S_pq_NO_cmplx(iorb,iorb1))-ONE)>tol8) intrinsic_cmplx=.true.
+  enddo
+  if(intrinsic_cmplx) then
+   write(msg,'(a,f19.10)') " Orbitals are intrinsically complex ( S_pq ^ss' /= delta_pq Exp[i theta_p] )"
+   call write_output(msg)
+  else
+   write(msg,'(a,f19.10)') " Orbitals are intrinsically real ( S_pq ^ss' = delta_pq Exp[i theta_p] )"
+   call write_output(msg)
+  endif
   ! Calc. <S^2> with the sw 2-RDM
   do iorb=1,NBF2
    do iorb1=1,NBF2
