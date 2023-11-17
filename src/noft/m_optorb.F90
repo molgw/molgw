@@ -380,7 +380,7 @@ subroutine s2_calc(RDMd,INTEGd,NO_COEF,NO_COEF_cmplx)
    do iorb1=1,iorb-1
     if(abs(S_pq_NO_cmplx(iorb,iorb1))>tol8) intrinsic_cmplx=.true.
    enddo
-    if(abs(abs(S_pq_NO_cmplx(iorb,iorb1))-ONE)>tol8) intrinsic_cmplx=.true.
+   if(abs(abs(S_pq_NO_cmplx(iorb,iorb))-ONE)>tol8) intrinsic_cmplx=.true.
   enddo
   if(intrinsic_cmplx) then
    write(msg,'(a,f19.10)') " Orbitals are intrinsically complex ( S_pq ^ss' /= delta_pq Exp[i theta_p] )"
