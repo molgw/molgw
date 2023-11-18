@@ -285,7 +285,7 @@ subroutine build_elag(ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L,DM2_Jsr,DM2_Lsr)
   enddo
  else
   do iorb=1,RDMd%NBF_occ
-   ELAGd%Lambdas(iorb,:)=RDMd%occ(iorb)*INTEGd%hCORE(:,iorb)                                          ! Init: Lambda_pq = n_p hCORE_qp
+   ELAGd%Lambdas(iorb,:)=RDMd%occ(iorb)*INTEGd%hCORE(:,iorb)                                         ! Init: Lambda_pq = n_p hCORE_qp
    ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+RDMd%DM2_iiii(iorb)*INTEGd%ERImol(:,iorb,iorb,iorb)   ! any->iorb,iorb->iorb
    if(INTEGd%irange_sep==1) then
     ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+RDMd%DM2_iiii(iorb)*INTEGd%ERImolJsr(:,iorb,iorb)    ! any->iorb,iorb->iorb
@@ -319,7 +319,7 @@ end subroutine build_elag
 !! diag_lambda_ekt
 !!
 !! FUNCTION
-!!  Diagonalize the Lagrange multipliers Lambda matrix (produce either the 'canonical orbitals' or EKT). 
+!!  Diagonalize the Lagrange multipliers Lambda matrix (produce either the 'canonical orbitals' or EKT).
 !!
 !! INPUTS
 !!  ELAGd%Lambdas=Matrix containing the Lagrange multipliers Lambda_pq
@@ -354,7 +354,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  real(dp),allocatable,dimension(:)::Eigval,Eigval_nocc,Work,RWork
  real(dp),allocatable,dimension(:,:)::Eigvec,CANON_COEF
  complex(dp),allocatable,dimension(:)::Work_cmplx
- complex(dp),allocatable,dimension(:,:)::Eigvec_cmplx,CANON_COEF_cmplx 
+ complex(dp),allocatable,dimension(:,:)::Eigvec_cmplx,CANON_COEF_cmplx
 !************************************************************************
 
  allocate(Eigval_nocc(RDMd%NBF_occ),Eigval(RDMd%NBF_tot),RWork(3*RDMd%NBF_tot-2))
