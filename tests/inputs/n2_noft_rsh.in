@@ -1,0 +1,22 @@
+&molgw
+ scf='rsh'
+ alpha_hybrid=0.0
+ beta_hybrid =1.0
+ gamma_hybrid=0.5
+ tolscf=1.0e-1
+ init_hamiltonian='core'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ gaussian_type='cart'
+
+ natom=2
+
+ postscf='noft'
+ noft_npairs=3
+ noft_functional='hf'
+ noft_dft='yes'
+ noft_rsintra='no'
+/
+N   0. 0. 0.
+N   0. 0. 1.
