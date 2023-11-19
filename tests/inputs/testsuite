@@ -453,6 +453,9 @@ NOFT Total Energy         ,   -108.7519260379  , 0 , 5.0e-5
 n2_noft_cpx.in            , RI-NOFT calculation applied to N2 with RI (complex orbs)
 NOFT Total Energy         ,   -109.0322064109  , 0 , 5.0e-5
 
+n2_noft_rsh.in            , RI-NOFT calculation applied to N2 with RI using range-sep NOFT
+NOFT Total Energy         ,   -109.4196076242  , 0 , 1.0e-5
+
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
 Configurations            ,      324           , 0 , 1.0e-7
