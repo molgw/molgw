@@ -399,9 +399,9 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
   complex(dp),optional,intent(inout) :: ERImol_cmplx(nbf,nstate_kji,nstate_kji,nstate_kji)
   !====
   logical                    :: long_range=.true.
-  integer                    :: istate,jstate,pstate
+  integer                    :: istate,jstate,pstate!,iter
   character(len=100)         :: msgw
-  real(dp)                   :: ERI_lkji
+  real(dp)                   :: ERI_lkji!,Sk_12_004,Sk_12_096,Idyn,Inondyn,weight
   real(dp),allocatable       :: occupation(:,:)
   real(dp),allocatable       :: tmp_c_matrix(:,:,:),hamiltonian_xc(:,:,:)
   complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
@@ -432,12 +432,27 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
       tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
     enddo
 
+    ! TODO there is a bug and it does not match RSH for NOFT_FUNCTIONAL='HF'
     ! Add the sr-NOFT term
     if( (irs_noft/=0) .and. (.not.noft_edft) ) then
       ! Prepare the DFT contribution (takes part only during orb. optimization and is switched off for final energy calculation)
       call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
       call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
       occupation(:,:)=zero; occupation(:nstate_occ,1)=two*Occ(:nstate_occ);hamiltonian_xc(:,:,:)=zero;
+      !do istate=1,nstate_occ ! Weight the ammount of dyn corr. in the occ before computing the DFT contribution
+      !  Sk_12_004=Occ(istate)-0.04e0
+      !  Sk_12_096=Occ(istate)-0.96e0
+      !  do iter=1,12 ! Large stiffness
+      !   Sk_12_004=3.0e0*Sk_12_004/2.0e0-(Sk_12_004**3.0e0)/2.0e0
+      !   Sk_12_096=3.0e0*Sk_12_096/2.0e0-(Sk_12_096**3.0e0)/2.0e0
+      !  enddo
+      !  Sk_12_004=0.5e0*(1.0e0-Sk_12_004)
+      !  Sk_12_096=1.0e0-0.5e0*(1.0e0-Sk_12_096)
+      !  Idyn=Sk_12_004+Sk_12_096
+      !  Inondyn=1.0e0-Idyn
+      !  weight=Idyn/(Idyn+Inondyn)
+      !  occupation(istate,1)=weight*occupation(istate,1)
+      !enddo
       ! MRM: The first call of mo_ints contains integrals that are equal to zero
       if( ANY(occupation(:nstate_occ,1)>completely_empty) ) then
         call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
