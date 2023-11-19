@@ -86,6 +86,8 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
       call issue_warning(msgw)
       irs_noft=0
     endif
+    write(stdout,'(a,f10.5)') ' RS-NOFT amount of exact exchange (alpha_hybrid)           ',alpha_hybrid
+    write(stdout,'(a,f10.5)') ' RS-NOFT amount of long-range exact exchange (beta_hybrid) ',beta_hybrid
     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
   endif
 
@@ -453,7 +455,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
       !  weight=Idyn/(Idyn+Inondyn)
       !  occupation(istate,1)=weight*occupation(istate,1)
       !enddo
-      ! MRM: The first call of mo_ints contains integrals that are equal to zero
+      ! MRM: The first call of mo_ints contains occ(1:Nfrozen+Npairs)=2.0
       if( ANY(occupation(:nstate_occ,1)>completely_empty) ) then
         call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
       endif
@@ -479,6 +481,10 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
       ERImol(:,:,:,:)=zero; ERImolJsr(:,:,:)=zero; ERImolLsr(:,:,:)=zero
       if(has_auxil_basis) then ! RI case
         call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose,long_range=long_range)
+        ! <lk| [alpha+beta*erf(gamma r12)]/r12 |ji> format used for ERImol
+        ! Hartree:  <li|ji>^sr = <li| 1/r12 |ji> - <li| [alpha+beta*erf(gamma r12)]/r12 |ji>
+        ! Time-rev: <lk|ii>^sr = <lk| 1/r12 |ii> - <lk| [alpha+beta*erf(gamma r12)]/r12 |ii>
+        ! Exchange: Not needed a <li|ij>^sr
         do istate=1,nstate_occ
           do jstate=1,nstate_occ
             do pstate=1,nstate_noft
@@ -488,8 +494,10 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
                +beta_hybrid*eri_eigen_ri_lr(pstate,jstate,1,istate,istate,1)
               ERImolJsr(pstate,istate,jstate)=ERI_lkji-ERImol(pstate,istate,jstate,istate)
               ! Exchange: <li|ij> format used for ERImol
-              ERImol(pstate,jstate,jstate,istate)=eri_eigen_ri(pstate,jstate,1,jstate,istate,1)
-              ! Time-rev: <li|jj> format used for ERImol
+              ERI_lkji=eri_eigen_ri(pstate,jstate,1,jstate,istate,1)
+              ERImol(pstate,jstate,jstate,istate)=alpha_hybrid*ERI_lkji &
+               +beta_hybrid*eri_eigen_ri_lr(pstate,jstate,1,jstate,istate,1)
+              ! Time-rev: <li|jj> format used for ERImol (we use exchange eri_eigen_ri because of the real orbitals)
               ERI_lkji=eri_eigen_ri(pstate,jstate,1,istate,jstate,1)
               ERImol(pstate,istate,jstate,jstate)=alpha_hybrid*ERI_lkji &
                +beta_hybrid*eri_eigen_ri_lr(pstate,jstate,1,istate,jstate,1)
