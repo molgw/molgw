@@ -82,9 +82,8 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
       irs_noft=2
     endif
     if( .not.calc_type%need_exchange_lr ) then
-      write(msgw,'(a)') 'LR exchange is needed for rs-NOFT. The calculation will proceed without range-sep.'
-      call issue_warning(msgw)
-      irs_noft=0
+      write(msgw,'(a)') 'LR exchange is needed for rs-NOFT.'
+      call die(msgw)
     endif
     write(stdout,'(a,f10.5)') ' RS-NOFT amount of exact exchange (alpha_hybrid)           ',alpha_hybrid
     write(stdout,'(a,f10.5)') ' RS-NOFT amount of long-range exact exchange (beta_hybrid) ',beta_hybrid
@@ -401,9 +400,9 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
   complex(dp),optional,intent(inout) :: ERImol_cmplx(nbf,nstate_kji,nstate_kji,nstate_kji)
   !====
   logical                    :: long_range=.true.
-  integer                    :: istate,jstate,pstate!,iter
+  integer                    :: istate,jstate,pstate
   character(len=100)         :: msgw
-  real(dp)                   :: ERI_lkji!,Sk_12_004,Sk_12_096,Idyn,Inondyn,weight
+  real(dp)                   :: ERI_lkji
   real(dp),allocatable       :: occupation(:,:)
   real(dp),allocatable       :: tmp_c_matrix(:,:,:),hamiltonian_xc(:,:,:)
   complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
@@ -434,27 +433,12 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
       tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
     enddo
 
-    ! TODO there is a bug and it does not match RSH for NOFT_FUNCTIONAL='HF'
     ! Add the sr-NOFT term
     if( (irs_noft/=0) .and. (.not.noft_edft) ) then
       ! Prepare the DFT contribution (takes part only during orb. optimization and is switched off for final energy calculation)
       call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
       call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
       occupation(:,:)=zero; occupation(:nstate_occ,1)=two*Occ(:nstate_occ);hamiltonian_xc(:,:,:)=zero;
-      !do istate=1,nstate_occ ! Weight the ammount of dyn corr. in the occ before computing the DFT contribution
-      !  Sk_12_004=Occ(istate)-0.04e0
-      !  Sk_12_096=Occ(istate)-0.96e0
-      !  do iter=1,12 ! Large stiffness
-      !   Sk_12_004=3.0e0*Sk_12_004/2.0e0-(Sk_12_004**3.0e0)/2.0e0
-      !   Sk_12_096=3.0e0*Sk_12_096/2.0e0-(Sk_12_096**3.0e0)/2.0e0
-      !  enddo
-      !  Sk_12_004=0.5e0*(1.0e0-Sk_12_004)
-      !  Sk_12_096=1.0e0-0.5e0*(1.0e0-Sk_12_096)
-      !  Idyn=Sk_12_004+Sk_12_096
-      !  Inondyn=1.0e0-Idyn
-      !  weight=Idyn/(Idyn+Inondyn)
-      !  occupation(istate,1)=weight*occupation(istate,1)
-      !enddo
       ! MRM: The first call of mo_ints contains occ(1:Nfrozen+Npairs)=2.0
       if( ANY(occupation(:nstate_occ,1)>completely_empty) ) then
         call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
@@ -482,9 +466,9 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
       if(has_auxil_basis) then ! RI case
         call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose,long_range=long_range)
         ! <lk| [alpha+beta*erf(gamma r12)]/r12 |ji> format used for ERImol
-        ! Hartree:  <li|ji>^sr = <li| 1/r12 |ji> - <li| [alpha+beta*erf(gamma r12)]/r12 |ji>
+        ! Hartree : <li|ji>^sr = <li| 1/r12 |ji> - <li| [alpha+beta*erf(gamma r12)]/r12 |ji>
         ! Time-rev: <lk|ii>^sr = <lk| 1/r12 |ii> - <lk| [alpha+beta*erf(gamma r12)]/r12 |ii>
-        ! Exchange: Not needed a <li|ij>^sr
+        ! Exchange: Not needed a <li|ij>^sr term to be passed to the NOFT module.
         do istate=1,nstate_occ
           do jstate=1,nstate_occ
             do pstate=1,nstate_noft
@@ -509,7 +493,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
       else            ! Normal case (not using RI)
         !TODO
         write(msgw,'(a)') 'LR exchange requires RI for rs-NOFT (hint: include the RI basis).'
-        call issue_warning(msgw)
+        call die(msgw)
       endif
     endif
 
