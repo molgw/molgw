@@ -571,6 +571,9 @@ subroutine init_dft_type(key)
   case('PBE0')
     dft_xc(1)%id = XC_HYB_GGA_XC_PBEH
     alpha_hybrid   = 0.25_dp
+  case('PBE50')
+    dft_xc(1)%id = XC_HYB_GGA_XC_PBE50
+    alpha_hybrid   = 0.50_dp
   case('WB97')
     dft_xc(1)%id = XC_HYB_GGA_XC_WB97
     alpha_hybrid  = 0.0_dp
