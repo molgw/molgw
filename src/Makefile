@@ -498,7 +498,7 @@ archive:
 	mkdir -p ../tmp/molgw/src/noft
 	cp -rp  ../README.md ../COPYING ../RELEASE.md  \
             ../basis/ ../utils/ ../tests/            \
-            ../docs/ ../config/   \
+            ../docs/ ../config/ ../Makefile  \
             ../tmp/molgw
 	cp -rp  ../src/*.py ../src/*.f90 ../src/*.f  \
             ../src/*.cc ../src/*.h  \
