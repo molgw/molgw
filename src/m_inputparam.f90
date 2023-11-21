@@ -172,6 +172,7 @@ module m_inputparam
   logical,protected                :: analytic_chi_
   logical,protected                :: eri3_genuine_
   logical,protected                :: auto_occupation_
+  logical,protected                :: gwgwg_skip_vvv_
 
   real(dp),protected               :: rcut         = 0.0_dp
   real(dp),protected               :: factor_sosex = 1.0_dp
@@ -922,6 +923,7 @@ subroutine read_inputfile_namelist()
   is_virtual_fno            = yesno_to_logical(virtual_fno)
   incore_                   = yesno_to_logical(incore)
 
+  gwgwg_skip_vvv_           = yesno_to_logical(gwgwg_skip_vvv)
   print_eri_                = yesno_to_logical(print_eri)
   print_wfn_                = yesno_to_logical(print_wfn)
   print_w_                  = yesno_to_logical(print_w)
