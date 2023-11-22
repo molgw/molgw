@@ -250,10 +250,7 @@ subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,hCORE_cmplx,
   call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,chempot=chempot)
   call calc_Chem_pot_cmplx(RDMd,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
  else
-  if(RDMd%irange_sep/=0) then
-   write(msg,'(a)') 'Warning! In rs-NOFT the chemical potential is computed without the d Exc / dn contribution.'
-   call write_output(msg)
-  endif
+  ! MRM: Warning! In rs-NOFT, the chemical potential could be computed without the d Exc / dn contribution...
   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,chempot=chempot)
   call calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
  endif

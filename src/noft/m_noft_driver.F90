@@ -367,35 +367,37 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call RDMd%print_orbs_bin(COEF=NO_COEF)
  endif
 
- ! Calculate the chem. pot. = d E / d occ
- if(cpx_mos) then
-  call occ_chempot(RDMd,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
-  & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx)
- else 
-  call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,&
-   ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr)
- endif
- chempot_val=-ten**(ten)
- do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
-  if(dabs(RDMd%occ(iorb))>tol8) then
-   if(RDMd%chempot_orb(iorb)>chempot_val) chempot_val=RDMd%chempot_orb(iorb) 
-  else
-   RDMd%chempot_orb(iorb)=zero
+ ! Calculate the chem. pot. = d E / d occ if it is not rs-NOFT
+ if(irs_noft==0) then
+  if(cpx_mos) then
+   call occ_chempot(RDMd,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
+   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx)
+  else 
+   call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,&
+    ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr)
   endif
- enddo
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a,f10.5,a,f10.5,a)') 'Chem. potential ',chempot_val,' (a.u.) ',chempot_val*Ha_eV,' (eV), and per orbital (a.u.)'
- call write_output(msg)
- do iorb=1,(RDMd%NBF_occ/10)*10,10
-  write(msg,'(f12.6,9f11.6)') RDMd%chempot_orb(iorb:iorb+9)
+  chempot_val=-ten**(ten)
+  do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
+   if(dabs(RDMd%occ(iorb))>tol8) then
+    if(RDMd%chempot_orb(iorb)>chempot_val) chempot_val=RDMd%chempot_orb(iorb) 
+   else
+    RDMd%chempot_orb(iorb)=zero
+   endif
+  enddo
+  write(msg,'(a)') ' '
   call write_output(msg)
- enddo
- iorb=(RDMd%NBF_occ/10)*10+1
- write(msg,'(f12.6,*(f11.6))') RDMd%chempot_orb(iorb:)
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
+  write(msg,'(a,f10.5,a,f10.5,a)') 'Chem. potential ',chempot_val,' (a.u.) ',chempot_val*Ha_eV,' (eV), and per orbital (a.u.)'
+  call write_output(msg)
+  do iorb=1,(RDMd%NBF_occ/10)*10,10
+   write(msg,'(f12.6,9f11.6)') RDMd%chempot_orb(iorb:iorb+9)
+   call write_output(msg)
+  enddo
+  iorb=(RDMd%NBF_occ/10)*10+1
+  write(msg,'(f12.6,*(f11.6))') RDMd%chempot_orb(iorb:)
+  call write_output(msg)
+  write(msg,'(a)') ' '
+  call write_output(msg)
+ endif
 
  ! Print final Energy and its components (occs are already [0:2])
  RDMd%occ(:)=two*RDMd%occ(:)
