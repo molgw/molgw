@@ -183,25 +183,35 @@ program spectrum
 
  nomega = ntau
  do iomega=1,nomega/2 ! here iomega correspons to frequency
-   omega_factor = 4.0_dp * pi * 2 * pi * (iomega-1) / time_sim / c_speedlight
-   if(2*pi * iomega / time_sim * Ha_eV < 500.0_dp) then
-     write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')  2 * pi * iomega / time_sim * Ha_eV
 
-     do idir=1,3
-       if(ABS(trans_m_excit_field_dir(iomega))>1.0e-15) then
-         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/trans_m_excit_field_dir(iomega)) * omega_factor
-       else
-         write(file_dipolar_spectra,"(3(17x,f5.2))",advance='no') -1.0_dp
-       endif
-       if(idir==3) write(file_dipolar_spectra,*)
-     enddo
-     if(output_transforms_) then
-        write(file_transforms,"(f16.8,6(2x,es16.8E3))") pi * iomega / time_sim * Ha_eV, ABS(trans_m_excit_field_dir(iomega)), &
-                                 REAL(trans_m_excit_field_dir(iomega),dp), &
-                                 AIMAG(trans_m_excit_field_dir(iomega)), ABS(trans_dipole_time(iomega,1)), &
-                                 REAL(trans_dipole_time(iomega,1),dp), AIMAG(trans_dipole_time(iomega,1))
+   omega_factor = 4.0_dp * pi * 2.0_dp * pi * (iomega-1) / time_sim / c_speedlight
+
+   write(*,*) omega_factor
+
+   write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')  2.0_dp * pi * iomega / time_sim * Ha_eV
+
+   do idir=1,3
+
+     if(ABS(trans_m_excit_field_dir(iomega))>1.0e-15) then
+       write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/trans_m_excit_field_dir(iomega)) * omega_factor
+     else
+       write(file_dipolar_spectra,"(3(17x,f5.2))",advance='no') -1.0_dp
      endif
+
+     if(idir==3) write(file_dipolar_spectra,*)
+
+   enddo
+
+   if(output_transforms_) then
+      write(file_transforms,"(f16.8,6(2x,es16.8E3))") 2.0_dp * pi * iomega / time_sim * Ha_eV, &
+                               ABS(trans_m_excit_field_dir(iomega)), &
+                               REAL(trans_m_excit_field_dir(iomega),dp), &
+                               AIMAG(trans_m_excit_field_dir(iomega)), &
+                               ABS(trans_dipole_time(iomega,1)), &
+                               REAL(trans_dipole_time(iomega,1),dp), &
+                               AIMAG(trans_dipole_time(iomega,1))
    endif
+
  enddo
 
 
