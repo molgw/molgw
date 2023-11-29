@@ -7,7 +7,7 @@ FC=mpifort
 CPPFLAGS=-DHAVE_SCALAPACK -DHAVE_MKL
 
 CXX=g++
-FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -fexternal-blas -march=native -mtune=native 
+FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 
 CXXFLAGS= -O3 -march=native -mtune=native
 
 # MKL without threads
@@ -19,6 +19,9 @@ LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
 #LIBINT_ROOT=${HOME}/src/libint-2.4.2/
 
-LIBCINT-lcint
+
+# Link to a shared library with RPATH technique
+LIBCINT_PATH=/home/bruneval/devel/spack/opt/spack/linux-fedora39-zen4/gcc-13.2.1/libcint-5.3.0-4p3oc3rkc2vvd5apsbibgwl5ip4rvh7l/lib64/
+LIBCINT=-L${LIBCINT_PATH} -lcint -Wl,-rpath,${LIBCINT_PATH}
 
 FFTW_ROOT=
