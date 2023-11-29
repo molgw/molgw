@@ -87,6 +87,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
     endif
     write(stdout,'(a,f10.5)') ' RS-NOFT amount of exact exchange (alpha_hybrid)           ',alpha_hybrid
     write(stdout,'(a,f10.5)') ' RS-NOFT amount of long-range exact exchange (beta_hybrid) ',beta_hybrid
+    write(stdout,'(a,f10.5)') ' RS-NOFT error function parameter (gamma_hybrid)           ',gamma_hybrid
     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
   endif
 

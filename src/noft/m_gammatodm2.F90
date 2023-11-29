@@ -1258,28 +1258,31 @@ subroutine dm2_gnof(RDMd,Docc_gamma,Docc_dyn,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,D
   enddo
  enddo
  deallocate(FIs,DFIs)
-!- - - - - - - - - - - - - - - - - - - - - - - - - - -              
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !   Dynamic
-!- - - - - - - - - - - - - - - - - - - - - - - - - - -              
- do iorb=RDMd%Nfrozen+1,RDMd%Nbeta_elect
-  do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
-   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
-   DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
-  &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+! (if Ista = 1 it is ignored and we only retain the non-dyn/static contrib)
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ if(RDMd%Ista==0) then
+  do iorb=RDMd%Nfrozen+1,RDMd%Nbeta_elect
+   do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
+    DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
+    DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
+   &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+   enddo
   enddo
- enddo
- do iorb=RDMd%Nalpha_elect+1,RDMd%NBF_occ
-  do iorb1=RDMd%Nfrozen+1,RDMd%Nbeta_elect
-   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
-   DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
-  &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+  do iorb=RDMd%Nalpha_elect+1,RDMd%NBF_occ
+   do iorb1=RDMd%Nfrozen+1,RDMd%Nbeta_elect
+    DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
+    DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
+   &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+   enddo
+   do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
+    DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)+sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
+    DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)+Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
+   &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+   enddo
   enddo
-  do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
-   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)+sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
-   DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)+Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
-  &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
-  enddo
- enddo
+ endif
  deallocate(sqrt_occ_dyn,Dsqrt_occ_dyn)
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 !                Intra-pair interactions for GNOF(Nc)

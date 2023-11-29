@@ -515,11 +515,15 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
  if(INOF_in==7) then
   if(Ista_in==1) then
    write(msg,'(a,i12)') ' PNOF7s version selected Istat     ',Ista_in
-  call write_output(msg)
+   call write_output(msg)
   else
    write(msg,'(a,i12)') ' PNOF7  version selected Istat     ',Ista_in
-  call write_output(msg)
+   call write_output(msg)
   endif
+ endif
+ if(INOF_in==8 .and. Ista_in==1) then
+  write(msg,'(a,i12)') ' GNOF-stat version selected Istat  ',Ista_in
+  call write_output(msg)
  endif
  if(INOF_in==0) then
   write(msg,'(a)') ' Using Hartree-Fock approximation'

@@ -34,7 +34,7 @@ module m_rdmd
   logical::GAMMAs_nread=.true.     ! Are GAMMAS read from previous calc.?
   integer::irange_sep=0            ! rs-NOFT calcs. 0=no, 1=intra, 2=ex_corr
   integer::INOF=8                  ! Functional to use (5-> PNOF5, 7-> PNOF7, 8-> GNOF, etc)
-  integer::Ista=0                  ! Use PNOF7s with Ista=1
+  integer::Ista=0                  ! Use PNOF7s or only static/non-dyn part of GNOF with Ista=1
   integer::Nfrozen                 ! Number of frozen orbitals in the NOFT calc.
   integer::Nbeta_elect             ! Number of orbitals containing beta electrons
   integer::Nalpha_elect            ! Number of orbitals containing alpha electrons
