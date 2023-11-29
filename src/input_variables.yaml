@@ -1569,13 +1569,13 @@ noft_dft:
   default: 'no'
   comment: Use the hybdrid approach NOFT + DFT in NOFT calcs. (default=no).
 
-noft_rsintra:
+noft_rsinter:
   family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
   default: 'yes'
-  comment: Use range-sep of intra-subspace two-body energies in (PNOFi and GNOF).
+  comment: Use range-sep for the inter-subspace two-body interactions in PNOFi and GNOF.
 
 noft_lowmemERI:
   family: noft

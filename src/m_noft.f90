@@ -76,7 +76,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   ! Setup the grids for the quadrature of DFT potential/energy
   irs_noft=0
   if( calc_type%is_dft .and. noft_dft=='yes' ) then
-    if(noft_rsintra=='yes') then
+    if(noft_rsinter=='yes') then
       irs_noft=1
     else
       irs_noft=2
