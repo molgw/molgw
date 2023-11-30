@@ -830,7 +830,15 @@ gwgwg_skip_vvv:
   mandatory: 'no'
   experimental: 'yes'
   default: 'no'
-  comment: EXPERIMENTAL. Skip the 3 virtual state contributions in the GWGWG selfenergy.
+  comment: EXPERIMENTAL. Skip the 3-virtual-state contributions in the GWGWG selfenergy.
+
+gwgwg_skip_vv:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: EXPERIMENTAL. Skip the 2-virtual+1-occupied-state  contributions in the GWGWG selfenergy.
 
 gwgamma_tddft:
   family: post

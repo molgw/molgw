@@ -173,6 +173,7 @@ module m_inputparam
   logical,protected                :: eri3_genuine_
   logical,protected                :: auto_occupation_
   logical,protected                :: gwgwg_skip_vvv_
+  logical,protected                :: gwgwg_skip_vv_
 
   real(dp),protected               :: rcut         = 0.0_dp
   real(dp),protected               :: factor_sosex = 1.0_dp
@@ -924,6 +925,7 @@ subroutine read_inputfile_namelist()
   incore_                   = yesno_to_logical(incore)
 
   gwgwg_skip_vvv_           = yesno_to_logical(gwgwg_skip_vvv)
+  gwgwg_skip_vv_            = yesno_to_logical(gwgwg_skip_vv)
   print_eri_                = yesno_to_logical(print_eri)
   print_wfn_                = yesno_to_logical(print_wfn)
   print_w_                  = yesno_to_logical(print_w)
