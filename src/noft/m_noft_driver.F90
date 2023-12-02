@@ -627,7 +627,7 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
  call write_output(msg)
  write(msg,'(a,i12)') ' Do a range-sep NOFT               ',irs_noft
  call write_output(msg)
- write(msg,'(a)')     ' (0=no, 1=rs-intra, 2=rs-ex-corr)  '
+ write(msg,'(a)')     ' (0=no, 1=rs-inter, 2=rs-ex-corr)  '
  call write_output(msg)
  if(cpx_mos_in) then
   write(msg,'(a,i12)') ' Complex orbitals in use (true=1)  ',1
