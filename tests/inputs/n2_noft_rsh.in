@@ -16,7 +16,6 @@
  noft_npairs=3
  noft_functional='hf'
  noft_dft='yes'
- noft_rsintra='no'
 /
 N   0. 0. 0.
 N   0. 0. 1.

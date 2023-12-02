@@ -1574,8 +1574,8 @@ noft_rsinter:
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
-  default: 'yes'
-  comment: Use range-sep for the inter-subspace two-body interactions in PNOFi and GNOF.
+  default: 'no'
+  comment: Use range-sep for the inter-subspace two-body interactions in NOFT.
 
 noft_lowmemERI:
   family: noft
