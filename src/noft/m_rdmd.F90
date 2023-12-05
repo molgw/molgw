@@ -46,6 +46,7 @@ module m_rdmd
   integer::Npairs                  ! Number of electron pairs
   integer::Npairs_p_sing           ! Number of electron pairs plus number of singly occ orbitals
   integer::Ngammas                 ! Number of gammas (independet variables used in occ optimization procedure)
+  integer::Namplitudes             ! Number of t and z pCCD amplitudes
   real(dp)::Lpower=0.53d0          ! Power functional exponent
   real(dp)::Hcut=0.02d0*dsqrt(two) ! Hcut parameter defined in GNOF to determine the Ecorr type (i.e. dyn or nondyn)
 ! arrays 
@@ -56,6 +57,7 @@ module m_rdmd
   real(dp),allocatable,dimension(:)::Docc_gamma,Dfni_ni
   real(dp),allocatable,dimension(:)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
   real(dp),allocatable,dimension(:)::DDM2_gamma_Jsr,DDM2_gamma_Lsr
+  real(dp),allocatable,dimension(:,:)::t_pccd,z_pccd
 
  contains 
    procedure :: free => rdm_free
@@ -149,9 +151,15 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  RDMd%Npairs_p_sing=RDMd%Npairs+RDMd%Nsingleocc 
  RDMd%NBF_ldiag=RDMd%NBF_occ*(RDMd%NBF_occ+1)/2
  RDMd%Ngammas=RDMd%Ncoupled*RDMd%Npairs
+ RDMd%Namplitudes=RDMd%Npairs*(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))
  ! Calculate memory needed
- totMEM=5*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas+4*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas
- totMEM=totMEM+RDMd%Ngammas+5*RDMd%NBF_occ
+ if(RDMd%INOF>-1) then
+  totMEM=5*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas+RDMd%NBF_occ
+ else
+  totMEM=2*RDMd%Namplitudes
+ endif
+ totMEM=totMEM+5*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas
+ totMEM=totMEM+RDMd%Ngammas+4*RDMd%NBF_occ
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
  if(totMEM>thousand) then  ! Mb to Gb
@@ -169,13 +177,19 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  allocate(RDMd%DM2_Jsr(RDMd%NBF_occ*RDMd%NBF_occ));RDMd%DM2_Jsr(:)=zero;   
  allocate(RDMd%DM2_Lsr(RDMd%NBF_occ*RDMd%NBF_occ));RDMd%DM2_Lsr(:)=zero;   
  allocate(RDMd%Docc_gamma(RDMd%NBF_occ*RDMd%Ngammas));RDMd%Docc_gamma(:)=zero; 
- allocate(RDMd%DDM2_gamma_J(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_J=zero;
- allocate(RDMd%DDM2_gamma_K(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_K=zero; 
- allocate(RDMd%DDM2_gamma_L(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_L=zero; 
- allocate(RDMd%DDM2_gamma_Jsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Jsr=zero; 
- allocate(RDMd%DDM2_gamma_Lsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Lsr=zero; 
+ if(RDMd%INOF>-1) then
+  allocate(RDMd%DDM2_gamma_J(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_J=zero;
+  allocate(RDMd%DDM2_gamma_K(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_K=zero; 
+  allocate(RDMd%DDM2_gamma_L(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_L=zero; 
+  allocate(RDMd%DDM2_gamma_Jsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Jsr=zero; 
+  allocate(RDMd%DDM2_gamma_Lsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Lsr=zero; 
+  allocate(RDMd%Dfni_ni(RDMd%NBF_occ))
+ else
+  allocate(RDMd%t_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
+  allocate(RDMd%z_pccd(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%Npairs))
+ endif  
  allocate(RDMd%GAMMAs_old(RDMd%Ngammas));RDMd%GAMMAs_old=zero;
- allocate(RDMd%DM2_iiii(RDMd%NBF_occ),RDMd%Dfni_ni(RDMd%NBF_occ));RDMd%DM2_iiii(RDMd%NBF_occ)=zero; 
+ allocate(RDMd%DM2_iiii(RDMd%NBF_occ));RDMd%DM2_iiii(RDMd%NBF_occ)=zero; 
  allocate(RDMd%occ(RDMd%NBF_occ),RDMd%chempot_orb(RDMd%NBF_occ),RDMd%occ_dyn(RDMd%NBF_occ))
  RDMd%occ=zero; RDMd%chempot_orb=zero; RDMd%occ_dyn=zero;
 
@@ -214,12 +228,18 @@ subroutine rdm_free(RDMd)
  deallocate(RDMd%DM2_iiii)
  deallocate(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
  deallocate(RDMd%DM2_Jsr,RDMd%DM2_Lsr) 
- deallocate(RDMd%Docc_gamma,RDMd%Dfni_ni) 
- deallocate(RDMd%DDM2_gamma_J)
- deallocate(RDMd%DDM2_gamma_K)
- deallocate(RDMd%DDM2_gamma_L)
- deallocate(RDMd%DDM2_gamma_Jsr)
- deallocate(RDMd%DDM2_gamma_Lsr)
+ deallocate(RDMd%Docc_gamma) 
+ if(RDMd%INOF>-1) then
+  deallocate(RDMd%Dfni_ni) 
+  deallocate(RDMd%DDM2_gamma_J)
+  deallocate(RDMd%DDM2_gamma_K)
+  deallocate(RDMd%DDM2_gamma_L)
+  deallocate(RDMd%DDM2_gamma_Jsr)
+  deallocate(RDMd%DDM2_gamma_Lsr)
+ else
+  deallocate(RDMd%t_pccd)
+  deallocate(RDMd%z_pccd)
+ endif
 
 end subroutine rdm_free
 !!***

@@ -26,7 +26,7 @@ module m_gammatodm2
  implicit none
 
  private :: dm2_hartree,dm2_hf,dm2_mbb,dm2_ca,dm2_cga,dm2_gu,dm2_power,dm2_pnof5,dm2_pnof7,dm2_gnof
- private :: dm2_intra
+ private :: dm2_intra,dm2_pccd
 !!***
 
  public :: gamma_to_2rdm
@@ -270,6 +270,8 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
  if(RDMd%INOF==0) then
   call dm2_hf(RDMd,RDMd%Docc_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
+ elseif(RDMd%INOF==-1) then
+  call dm2_pccd(RDMd,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
  elseif(RDMd%INOF==100) then
   call dm2_mbb(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
@@ -386,7 +388,7 @@ end subroutine dm2_hartree
 !! DM2_iiii=DM2 same orb elements
 !! DM2_J=DM2 elements that use J integrals 
 !! DM2_K=DM2 elements that use K integrals 
-!! DM2_K=DM2 elements that use L integrals 
+!! DM2_L=DM2 elements that use L integrals 
 !! DDM2_gamma_J=Derivative of the DM2 elements w.r.t. gamma that use J integrals 
 !! DDM2_gamma_K=Derivative of the DM2 elements w.r.t. gamma that use K integrals
 !! DDM2_gamma_L=Derivative of the DM2 elements w.r.t. gamma that use L integrals
@@ -1329,6 +1331,69 @@ subroutine dm2_gnof(RDMd,Docc_gamma,Docc_dyn,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,D
  enddo
 !-----------------------------------------------------------------------
 end subroutine dm2_gnof
+!!***
+
+!!***
+!!****f* DoNOF/dm2_pccd
+!! NAME
+!! dm2_pccd
+!!
+!! FUNCTION
+!!  Build from the occ numbers and the 2-RDM elements for pCCD
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!! DM2_iiii=DM2 same orb elements
+!! DM2_J=DM2 elements that use J integrals 
+!! DM2_K=DM2 elements that use K integrals 
+!! DM2_L=DM2 elements that use L integrals 
+!!
+!! PARENTS
+!!
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
+!Arguments ------------------------------------
+!scalars
+ type(rdm_t),intent(inout)::RDMd
+!arrays
+ real(dp),dimension(RDMd%NBF_occ),intent(inout)::DM2_iiii
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1
+!arrays
+!************************************************************************
+
+!- - - - - - - - - - - - - - - - - - - - - - - -              
+
+ !! Build Occ
+  RDMd%occ=zero
+  RDMd%occ(1:RDMd%Nfrozen+RDMd%Npairs)=one
+ !! in the active space. Also, we may need to build RDMd%DM2_Jsr in here
+
+! Hartree-Fock terms DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq
+ DM2_L=zero;
+ do iorb=1,RDMd%NBF_occ
+  do iorb1=1,RDMd%NBF_occ
+   DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
+   DM2_K(iorb,iorb1) = -RDMd%occ(iorb)*RDMd%occ(iorb1)
+  enddo
+ enddo
+!- - - - - - - - - - - - - - - - - - - - - - - -              
+!-----------------------------------------------------------------------
+!                 DM2(iorb,iorb,iorb,iorb)=occ(iorb)*occ(iorb)
+!-----------------------------------------------------------------------
+ do iorb=1,RDMd%NBF_occ
+  DM2_iiii(iorb)=RDMd%occ(iorb)*RDMd%occ(iorb) ! TODO at pCCD level
+  DM2_J(iorb,iorb)=zero
+  DM2_K(iorb,iorb)=zero
+ enddo
+!-----------------------------------------------------------------------
+end subroutine dm2_pccd
 !!***
 
 end module m_gammatodm2

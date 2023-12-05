@@ -128,6 +128,8 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
     inof=104
   case('HF')
     inof=0
+  case('PCCD')
+    inof=-1
   case default
     call die('noft_energy: NOFT functional not recognized. Check your input')
   end select

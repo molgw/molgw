@@ -90,9 +90,10 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  allocate(GAMMAs(RDMd%Ngammas),Grad_GAMMAs(RDMd%Ngammas))
  Grad_GAMMAs=zero
  if((iter==-1).and.RDMd%GAMMAs_nread) then 
-  GAMMAs=pi/four           ! Perturbed occ. numbers (i.e pi/4) -> occ(i<Fermi level) = 0.75
+  GAMMAs=pi/four               ! Perturbed occ. numbers (i.e pi/4) -> occ(i<Fermi level) = 0.75
+  if(RDMd%INOF==0) GAMMAs=zero ! HF set occ. to 0 or 1. open-shell TODO
  else
-  if(RDMd%INOF==0) then    ! HF set occ. to 0 or 1. open-shell TODO
+  if(RDMd%INOF==0) then        ! HF set occ. to 0 or 1. open-shell TODO
    GAMMAs=zero
   else
    GAMMAs=RDMd%GAMMAs_old  ! Read from previous run
@@ -102,12 +103,16 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  ! Check if the current GAMMAs already solve the problem. Is it converged? 
  if(cpx_mos) then
   call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
-  call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
-  !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+  if(RDMd%INOF>-1) then
+   call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+   !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+  endif
  else
   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
-  call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
-  !call num_calc_Grad_occ(RDMd,GAMMAs,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+  if(RDMd%INOF>-1) then
+   call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+   !call num_calc_Grad_occ(RDMd,GAMMAs,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+  endif
  endif
  conveg=.true.
  do igamma=1,RDMd%Ngammas
@@ -117,11 +122,12 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
   Grad_GAMMAs(igamma)=zero
  enddo
 
+!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  ! Do iterations if the current GAMMAs do not produce small gradients
  icall=0
  if((.not.conveg).and.(.not.keep_occs)) then 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
-  if(imethod==1) then ! LBFGS
+  if(imethod==1.and.RDMd%INOF>-1) then ! L-BFGS and not pCCD
    write(msg,'(a)') 'Calling L-BFGS to optimize occ. numbers'
    call write_output(msg)
    Nwork=RDMd%Ngammas*(2*msave+1)+2*msave
@@ -145,12 +151,10 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
     if(icall==2000) exit
    enddo
    deallocate(Work,diag)
-!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
-  else ! TODO add an alternative to L-BFGS
-
   endif
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  endif 
+!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  
  iter=iter+1
  if(RDMd%INOF==0) then ! Ensure that for HF we keep occ. 0 or 1
@@ -163,23 +167,25 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  else
   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
  endif
- write(msg,'(a,f15.6,a,i6,a)') 'Occ. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
- call write_output(msg)
- Grad_GAMMAs(:)=dabs(Grad_GAMMAs(:))
- write(msg,'(a,f15.6)') 'Max. [|Grad Energy w.r.t. GAMMAS|]= ',maxval(Grad_GAMMAs(:))
- call write_output(msg)
- if(debug) then
-  RDMd%occ(:)=two*RDMd%occ(:)
-  write(msg,'(a,f10.5,a)') 'Total occ ',sum(RDMd%occ(:)),'. Optimized occ. numbers '
+ if(RDMd%INOF>-1) then ! Do not print for pCCD
+  write(msg,'(a,f15.6,a,i6,a)') 'Occ. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
   call write_output(msg)
-  do iorb=1,(RDMd%NBF_occ/10)*10,10
-   write(msg,'(f12.6,9f11.6)') RDMd%occ(iorb:iorb+9)
+  Grad_GAMMAs(:)=dabs(Grad_GAMMAs(:))
+  write(msg,'(a,f15.6)') 'Max. [|Grad Energy w.r.t. GAMMAS|]= ',maxval(Grad_GAMMAs(:))
+  call write_output(msg)
+  if(debug) then
+   RDMd%occ(:)=two*RDMd%occ(:)
+   write(msg,'(a,f10.5,a)') 'Total occ ',sum(RDMd%occ(:)),'. Optimized occ. numbers '
    call write_output(msg)
-  enddo
-  iorb=(RDMd%NBF_occ/10)*10+1
-  write(msg,'(f12.6,*(f11.6))') RDMd%occ(iorb:)
-  call write_output(msg)
-  RDMd%occ(:)=half*RDMd%occ(:)
+   do iorb=1,(RDMd%NBF_occ/10)*10,10
+    write(msg,'(f12.6,9f11.6)') RDMd%occ(iorb:iorb+9)
+    call write_output(msg)
+   enddo
+   iorb=(RDMd%NBF_occ/10)*10+1
+   write(msg,'(f12.6,*(f11.6))') RDMd%occ(iorb:)
+   call write_output(msg)
+   RDMd%occ(:)=half*RDMd%occ(:)
+  endif
  endif
  write(msg,'(a,i6)') 'Number of global iter. ',iter
  call write_output(msg)
