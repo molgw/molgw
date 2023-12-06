@@ -234,7 +234,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then
-   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy)
+   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter)
   endif
   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
@@ -249,7 +249,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then
-   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy)
+   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter)
   endif
   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
   & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
@@ -288,13 +288,13 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   ! occ. optimization
   if(cpx_mos) then
    if(RDMd%INOF<0) then
-    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy)
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter)
    endif
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
    & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
   else
    if(RDMd%INOF<0) then
-    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy)
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter)
    endif
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
    & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
@@ -547,6 +547,13 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a)') ' Using Hartree-Fock approximation'
   call write_output(msg)
   write(msg,'(a)') ' L. Cohen and C. Frisberg, J. Chem. Phys, 65, 4234 (1976)'
+  call write_output(msg)
+ elseif(INOF_in==-1) then
+  write(msg,'(a)') ' Using pCCD approximation'
+  call write_output(msg)
+  write(msg,'(a)') ' T. Stein, T.M. Henderson, and G.E. Scuseria, J. Chem. Phys., 140, 214113 (2014)'
+  call write_output(msg)
+  write(msg,'(a)') ' T.M. Henderson, I.W. Bulik, T. Stein and G.E. Scuseria, J. Chem. Phys., 141, 244104 (2014)'
   call write_output(msg)
  elseif(INOF_in==100) then
   write(msg,'(a)') ' Using Muller-Baerends-Buijse approximation'

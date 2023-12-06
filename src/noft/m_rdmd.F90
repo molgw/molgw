@@ -57,7 +57,7 @@ module m_rdmd
   real(dp),allocatable,dimension(:)::Docc_gamma,Dfni_ni
   real(dp),allocatable,dimension(:)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
   real(dp),allocatable,dimension(:)::DDM2_gamma_Jsr,DDM2_gamma_Lsr
-  real(dp),allocatable,dimension(:,:)::t_pccd,z_pccd
+  real(dp),allocatable,dimension(:,:)::t_pccd,t_pccd_old,z_pccd,z_pccd_old
 
  contains 
    procedure :: free => rdm_free
@@ -156,7 +156,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  if(RDMd%INOF>-1) then
   totMEM=5*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas+RDMd%NBF_occ
  else
-  totMEM=2*RDMd%Namplitudes
+  totMEM=4*RDMd%Namplitudes
  endif
  totMEM=totMEM+5*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas
  totMEM=totMEM+RDMd%Ngammas+4*RDMd%NBF_occ
@@ -185,8 +185,10 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
   allocate(RDMd%DDM2_gamma_Lsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Lsr=zero; 
   allocate(RDMd%Dfni_ni(RDMd%NBF_occ))
  else
-  allocate(RDMd%t_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
-  allocate(RDMd%z_pccd(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%Npairs))
+  allocate(RDMd%t_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd=zero;
+  allocate(RDMd%t_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd_old=zero;
+  allocate(RDMd%z_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%z_pccd=zero;
+  allocate(RDMd%z_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%z_pccd_old=zero;
  endif  
  allocate(RDMd%GAMMAs_old(RDMd%Ngammas));RDMd%GAMMAs_old=zero;
  allocate(RDMd%DM2_iiii(RDMd%NBF_occ));RDMd%DM2_iiii(RDMd%NBF_occ)=zero; 
@@ -238,7 +240,9 @@ subroutine rdm_free(RDMd)
   deallocate(RDMd%DDM2_gamma_Lsr)
  else
   deallocate(RDMd%t_pccd)
+  deallocate(RDMd%t_pccd_old)
   deallocate(RDMd%z_pccd)
+  deallocate(RDMd%z_pccd_old)
  endif
 
 end subroutine rdm_free

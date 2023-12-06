@@ -1340,6 +1340,7 @@ end subroutine dm2_gnof
 !!
 !! FUNCTION
 !!  Build from the occ numbers and the 2-RDM elements for pCCD
+!!  We may need to build RDMd%DM2_Jsr in here for range-sep
 !!
 !! INPUTS
 !!
@@ -1364,34 +1365,113 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
 !Local variables ------------------------------
 !scalars
- integer::iorb,iorb1
+ integer::iorb,iorb1,iorb2,iorb3
 !arrays
+ real(dp),allocatable,dimension(:,:)::xij,xab,xia
 !************************************************************************
 
 !- - - - - - - - - - - - - - - - - - - - - - - -              
+!  Build intermediates
+!- - - - - - - - - - - - - - - - - - - - - - - -              
+ allocate(xij(RDMd%Npairs,RDMd%Npairs));xij=zero;
+ allocate(xab(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));xab=zero;
+ allocate(xia(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));xia=zero;
+ 
+ ! xij
+ do iorb=1,RDMd%Npairs ! Occ
+  do iorb1=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+   xij(iorb,:)=xij(iorb,:)+RDMd%t_pccd(iorb,iorb1)*RDMd%z_pccd(:,iorb1)
+  enddo
+ enddo
 
- !! Build Occ
-  RDMd%occ=zero
-  RDMd%occ(1:RDMd%Nfrozen+RDMd%Npairs)=one
- !! in the active space. Also, we may need to build RDMd%DM2_Jsr in here
+ ! xab
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  do iorb1=1,RDMd%Npairs ! Occ
+   xab(iorb,:)=xab(iorb,:)+RDMd%t_pccd(iorb1,:)*RDMd%z_pccd(iorb1,iorb)
+  enddo
+ enddo
 
-! Hartree-Fock terms DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq
- DM2_L=zero;
+ ! xia
+ do iorb=1,RDMd%Npairs ! Occ
+  do iorb1=1,RDMd%Npairs ! Occ
+   xia(iorb,:)=xia(iorb,:)+xij(iorb,iorb1)*RDMd%t_pccd(iorb1,:) 
+  enddo
+ enddo
+
+ ! Build Occ
+ RDMd%occ=zero
+ RDMd%occ(1:RDMd%Nfrozen)=one
+ do iorb=1,RDMd%Npairs ! Occ
+  iorb1=iorb+RDMd%Nfrozen
+  RDMd%occ(iorb1)=one-xij(iorb,iorb)
+ enddo
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  iorb1=iorb+RDMd%Nfrozen+RDMd%Npairs
+  RDMd%occ(iorb1)=xab(iorb,iorb)
+ enddo 
+
+ ! Hartree terms DM2_Jpq = 2NpNq
+ DM2_L=zero; DM2_K=zero;
  do iorb=1,RDMd%NBF_occ
   do iorb1=1,RDMd%NBF_occ
    DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
-   DM2_K(iorb,iorb1) = -RDMd%occ(iorb)*RDMd%occ(iorb1)
   enddo
  enddo
-!- - - - - - - - - - - - - - - - - - - - - - - -              
-!-----------------------------------------------------------------------
-!                 DM2(iorb,iorb,iorb,iorb)=occ(iorb)*occ(iorb)
-!-----------------------------------------------------------------------
- do iorb=1,RDMd%NBF_occ
-  DM2_iiii(iorb)=RDMd%occ(iorb)*RDMd%occ(iorb) ! TODO at pCCD level
+
+ ! Build D_ii^ii
+ do iorb=1,RDMd%Nfrozen
+  DM2_iiii(iorb)=RDMd%occ(iorb)
   DM2_J(iorb,iorb)=zero
-  DM2_K(iorb,iorb)=zero
  enddo
+ do iorb=1,RDMd%Npairs ! Occ
+  iorb1=iorb+RDMd%Nfrozen
+  DM2_iiii(iorb1)=one-xij(iorb,iorb)
+  DM2_J(iorb1,iorb1)=zero
+ enddo
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  iorb1=iorb+RDMd%Nfrozen+RDMd%Npairs
+  DM2_iiii(iorb1)=xab(iorb,iorb)
+  DM2_J(iorb1,iorb1)=zero
+ enddo
+
+ ! Build D_ii^pp, D_pp^ii, D_ip,ip, and D_pi,pi 
+ do iorb=1,RDMd%Npairs ! Occ
+  iorb1=iorb+RDMd%Nfrozen
+  ! D_ii^jj and D_ij^ij for i/=j
+  do iorb2=1,RDMd%Npairs ! Occ
+   iorb3=iorb2+RDMd%Nfrozen
+   if(iorb/=iorb2) then
+    DM2_J(iorb1,iorb3)=two*(one-xij(iorb,iorb)-xij(iorb2,iorb2))       
+    DM2_L(iorb1,iorb3)=xij(iorb,iorb2)  
+   endif
+  enddo
+  ! D_ii^aa, D_aa^ii D_ia^ia
+  do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+   iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+   DM2_J(iorb1,iorb3)=two*(xab(iorb2,iorb2)-RDMd%t_pccd(iorb,iorb2)*RDMd%z_pccd(iorb,iorb2))
+   DM2_J(iorb3,iorb1)=DM2_J(iorb1,iorb3)
+   DM2_L(iorb1,iorb3)=RDMd%t_pccd(iorb,iorb2)+xia(iorb,iorb2)-two*RDMd%t_pccd(iorb,iorb2) &
+  &                  *(xab(iorb2,iorb2)+xij(iorb,iorb)-RDMd%t_pccd(iorb,iorb2)*RDMd%z_pccd(iorb,iorb2))
+   DM2_L(iorb3,iorb1)=RDMd%z_pccd(iorb,iorb2)
+  enddo
+ enddo  
+ 
+ ! Build D_aa^bb for a/=b
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  iorb1=iorb+RDMd%Nfrozen+RDMd%Npairs
+  do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+   iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+   if(iorb/=iorb2) then
+    DM2_L(iorb1,iorb3)=xab(iorb,iorb2)
+   endif
+  enddo
+ enddo
+
+ ! Exchange elements D_pq^qp = -1/2 D_pq^pq for p/=q
+ DM2_K=-half*DM2_J
+
+!-----------------------------------------------------------------------
+ deallocate(xij,xab,xia)
 !-----------------------------------------------------------------------
 end subroutine dm2_pccd
 !!***
