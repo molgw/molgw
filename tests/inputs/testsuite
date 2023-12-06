@@ -71,6 +71,9 @@ SCF Total Energy          , -128.4891424970    , 0 , 1.0e-7
 gKS HOMO energy           ,  -22.652055        , 0 , 1.0e-4
 gKS LUMO energy           ,   46.078902        , 0 , 1.0e-4
 
+kr_rsh_ortho.in           , Range-separated hybrid with mpi_nproc_ortho
+SCF Total Energy          , -2753.4400353850   , 0 , 1.0e-7
+
 nh3_genuine_ri.in         , PBE ammonia with genuine RI
 SCF Total Energy          ,  -56.4954295025    , 0 , 1.0e-7
 Hartree Energy            ,   38.4244178820    , 0 , 1.0e-7

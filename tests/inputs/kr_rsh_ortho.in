@@ -1,0 +1,13 @@
+&molgw
+  mpi_nproc_ortho=16
+  scf='rsh'
+  alpha_hybrid=0.2
+  beta_hybrid=0.2
+  gamma_hybrid=0.29
+
+  basis='Def2-TZVPP'
+  auxil_basis='auto'
+
+  natom=1
+/
+Kr  0. 0. 0.
