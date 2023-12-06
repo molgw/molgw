@@ -1130,10 +1130,13 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
 
 
   !
-  ! Rotated 3-center integrals will need  eri_2center_sqrtinv := (P|1/r12|Q)^{-1/2}
+  ! Rotated 3-center integrals will need eri_2center_sqrtinv := (P|1/r12|Q)^{-1/2}
   !
 
-  if( cntxt_3center < 0 ) return
+  if( cntxt_3center < 0 ) then
+    call stop_clock(timing_eri_2center_inverse_sqrt)
+    return
+  endif
 
 
 #if defined(HAVE_SCALAPACK)

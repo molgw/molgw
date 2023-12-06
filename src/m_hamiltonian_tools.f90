@@ -1211,8 +1211,8 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian,x_matrix,energy,c_matri
       !c_matrix(:,1:nstate,ispin) = MATMUL( x_matrix(:,:) , h_small2(:,:,1) )
       ! C = X * C'
       call DGEMM('N','N',nbf,nstate,nstate,1.0d0,x_matrix(1,1),nbf,      &
-                                                h_small2(1,1,1),nstate, &
-                                          0.0d0,c_matrix(1,1,ispin),nbf)
+                                                 h_small2(1,1,1),nstate, &
+                                           0.0d0,c_matrix(1,1,ispin),nbf)
 
 
       call stop_clock(timing_diago_hamiltonian)
