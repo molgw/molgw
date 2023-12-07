@@ -27,7 +27,7 @@ module m_tz_pCCD_amplitudes
 
  implicit none
 
-!! private :: lambda_conv
+ private :: calc_t_residues,calc_z_residues
 !!***
 
  public :: calc_tz_pCCD_amplitudes
@@ -66,10 +66,9 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
 !arrays
 !Local variables ------------------------------
 !scalars
- logical::dodiis
  integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5
  real(dp)::tol10=1e-10
- real(dp)::sumdiff_t,sumdiff_z,maxdiff_t,maxdiff_z,sum_val,zt_aa,zt_ii
+ real(dp)::sumdiff_t,sumdiff_z,maxdiff_t,maxdiff_z
  real(dp)::Ecorr_new,Ecorr_old,Ecorr_diff,Ediff
 !arrays
  character(len=200)::msg
@@ -93,8 +92,13 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
    iorb1=iorb+RDMd%Nfrozen
    do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
     iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-    RDMd%t_pccd_old(iorb,iorb2)=INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)  &
-  & /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
+    if(INTEGd%complex_ints) then
+     RDMd%t_pccd_old(iorb,iorb2)=real(INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))  &
+  &  /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
+    else
+     RDMd%t_pccd_old(iorb,iorb2)=INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)  &
+  &  /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
+    endif
    enddo
   enddo
  endif
@@ -102,43 +106,13 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
  iter_t=0
  do
 
-  ! Build intermediate y_ij = sum_b v_bb^jj t_i^b 
-  y_ij=zero 
-  do iorb=1,RDMd%Npairs ! Occ
-   iorb1=iorb+RDMd%Nfrozen
-   do iorb2=1,RDMd%Npairs ! Occ
-    iorb3=iorb2+RDMd%Nfrozen
-    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-     iorb5=iorb4+RDMd%Nfrozen+RDMd%Npairs
-     y_ij(iorb,iorb2)=y_ij(iorb,iorb2)+RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
-    enddo
-   enddo
-  enddo
-
-  ! Build t_ia
-  RDMd%t_pccd=zero
+  ! Build t_ia (also builds the intermediate y_ij)
+  call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij) 
   do iorb=1,RDMd%Npairs ! Occ
    iorb1=iorb+RDMd%Nfrozen
    do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
     iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-    RDMd%t_pccd(iorb,iorb2)=INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)
-    sum_val=ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1)
-    do iorb4=1,RDMd%Npairs ! Occ
-     iorb5=iorb4+RDMd%Nfrozen
-     RDMd%t_pccd(iorb,iorb2)=RDMd%t_pccd(iorb,iorb2)+RDMd%t_pccd_old(iorb4,iorb2)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
-     RDMd%t_pccd(iorb,iorb2)=RDMd%t_pccd(iorb,iorb2)+y_ij(iorb,iorb4)*RDMd%t_pccd_old(iorb4,iorb2)
-     sum_val=sum_val-RDMd%t_pccd_old(iorb4,iorb2)*INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
-    enddo
-    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-     iorb5=iorb4+RDMd%Nfrozen+RDMd%Npairs
-     RDMd%t_pccd(iorb,iorb2)=RDMd%t_pccd(iorb,iorb2)+RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
-     sum_val=sum_val-RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
-    enddo
-    sum_val=sum_val-(two*INTEGd%ERImol(iorb1,iorb3,iorb1,iorb3)-INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1) &
-    &        -INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2))
-    sum_val=two*sum_val*RDMd%t_pccd_old(iorb,iorb2)
-    RDMd%t_pccd(iorb,iorb2)=RDMd%t_pccd(iorb,iorb2)+sum_val
-    RDMd%t_pccd(iorb,iorb2)=RDMd%t_pccd_old(iorb,iorb2)-RDMd%t_pccd(iorb,iorb2) &
+    RDMd%t_pccd(iorb,iorb2)=RDMd%t_pccd_old(iorb,iorb2)-RDMd%tz_residue(iorb,iorb2) &
     & /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
    enddo
   enddo
@@ -154,18 +128,22 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
    iorb1=iorb+RDMd%Nfrozen
    do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
     iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-    Ecorr_new=Ecorr_new+RDMd%t_pccd(iorb,iorb2)*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)
+    if(INTEGd%complex_ints) then
+     Ecorr_new=Ecorr_new+RDMd%t_pccd(iorb,iorb2)*real(INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))
+    else        
+     Ecorr_new=Ecorr_new+RDMd%t_pccd(iorb,iorb2)*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)
+    endif 
     sumdiff_t=sumdiff_t+abs(RDMd%t_pccd(iorb,iorb2)-RDMd%t_pccd_old(iorb,iorb2))
     if(abs(RDMd%t_pccd(iorb,iorb2)-RDMd%t_pccd_old(iorb,iorb2))>maxdiff_t) then
      maxdiff_t=abs(RDMd%t_pccd(iorb,iorb2)-RDMd%t_pccd_old(iorb,iorb2))
     endif   
    enddo
   enddo
-
-  ! Update old quantities
-  RDMd%t_pccd_old=RDMd%t_pccd
   Ecorr_diff=Ecorr_new-Ecorr_old
   Ecorr_old=Ecorr_new
+
+  ! Update old t_ia
+  RDMd%t_pccd_old=RDMd%t_pccd
 
   ! Exit if converged
   if(maxdiff_t<tol6 .and. sumdiff_t<tol5) exit
@@ -184,7 +162,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
  ! RDMd%z_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))
  ! z-amplitudes (with fixed t-amplitudes)
 
- ! Init. t_pccd
+ ! Init. z_pccd
  if(iter_global==-1) then
   RDMd%z_pccd_old=RDMd%t_pccd
  endif
@@ -198,7 +176,11 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
    iorb3=iorb2+RDMd%Nfrozen
    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
     iorb5=iorb4+RDMd%Nfrozen+RDMd%Npairs
-    y_ij(iorb,iorb2)=y_ij(iorb,iorb2)+RDMd%t_pccd(iorb2,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
+    if(INTEGd%complex_ints) then
+     y_ij(iorb,iorb2)=y_ij(iorb,iorb2)+RDMd%t_pccd(iorb2,iorb4)*real(INTEGd%ERImol_cmplx(iorb1,iorb5,iorb5,iorb1))
+    else
+     y_ij(iorb,iorb2)=y_ij(iorb,iorb2)+RDMd%t_pccd(iorb2,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
+    endif
    enddo
   enddo
  enddo
@@ -211,7 +193,11 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
    iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
    do iorb4=1,RDMd%Npairs ! Occ
     iorb5=iorb4+RDMd%Nfrozen
-    y_ab(iorb,iorb2)=y_ab(iorb,iorb2)+RDMd%t_pccd(iorb4,iorb2)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
+    if(INTEGd%complex_ints) then
+     y_ab(iorb,iorb2)=y_ab(iorb,iorb2)+RDMd%t_pccd(iorb4,iorb2)*real(INTEGd%ERImol_cmplx(iorb1,iorb5,iorb5,iorb1))
+    else
+     y_ab(iorb,iorb2)=y_ab(iorb,iorb2)+RDMd%t_pccd(iorb4,iorb2)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
+    endif
    enddo
   enddo
  enddo
@@ -219,34 +205,12 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
  do
 
   ! Build z_ia
-  RDMd%z_pccd=zero
+  call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab) 
   do iorb=1,RDMd%Npairs ! Occ
    iorb1=iorb+RDMd%Nfrozen
    do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
     iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-    RDMd%z_pccd(iorb,iorb2)=INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)
-    sum_val=ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1)
-    zt_aa=zero; zt_ii=zero;
-    do iorb4=1,RDMd%Npairs ! Occ
-     iorb5=iorb4+RDMd%Nfrozen
-     RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd(iorb,iorb2)+RDMd%z_pccd_old(iorb4,iorb2)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
-     RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd(iorb,iorb2)+y_ij(iorb,iorb4)*RDMd%z_pccd_old(iorb4,iorb2)
-     sum_val=sum_val-RDMd%t_pccd(iorb4,iorb2)*INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
-     zt_aa=zt_aa+RDMd%t_pccd(iorb4,iorb2)*RDMd%z_pccd_old(iorb4,iorb2)
-    enddo
-    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-     iorb5=iorb4+RDMd%Nfrozen+RDMd%Npairs
-     RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd(iorb,iorb2)+RDMd%z_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
-     RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd(iorb,iorb2)+y_ab(iorb,iorb4)*RDMd%z_pccd_old(iorb,iorb4)
-     sum_val=sum_val-RDMd%t_pccd(iorb,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
-     zt_ii=zt_ii+RDMd%t_pccd(iorb,iorb4)*RDMd%z_pccd_old(iorb,iorb4)
-    enddo
-    sum_val=sum_val-(two*INTEGd%ERImol(iorb1,iorb3,iorb1,iorb3)-INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1) &
-    &        -two*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd(iorb,iorb2))
-    sum_val=two*sum_val*RDMd%z_pccd_old(iorb,iorb2)
-    RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd(iorb,iorb2)-two*(zt_aa+zt_ii)*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)
-    RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd(iorb,iorb2)+sum_val
-    RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd_old(iorb,iorb2)-RDMd%z_pccd(iorb,iorb2) &
+    RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd_old(iorb,iorb2)-RDMd%tz_residue(iorb,iorb2) &
     & /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
    enddo
   enddo
@@ -268,9 +232,10 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
    enddo
   enddo
 
-  ! Exit if converged
+  ! Update old z_ia
   RDMd%z_pccd_old=RDMd%z_pccd
 
+  ! Exit if converged
   if(maxdiff_z<tol6 .and. sumdiff_z<tol5) exit
 
   ! Exit max iter
@@ -304,6 +269,200 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global)
  deallocate(y_ij,y_ab)
 
 end subroutine calc_tz_pCCD_amplitudes
+!!***
+
+!!***
+!!****f* DoNOF/calc_t_residues
+!! NAME
+!!  calc_t_residues
+!!
+!! FUNCTION
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine calc_t_residues(ELAGd,RDMd,INTEGd,y_ij) 
+!Arguments ------------------------------------
+!scalars
+ type(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(inout)::INTEGd
+!arrays
+ real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
+!Local variables ------------------------------
+!scalars
+ integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5
+ real(dp)::sum_tmp
+!arrays
+!************************************************************************
+
+ ! Build intermediate y_ij = sum_b v_bb^jj t_i^b 
+ y_ij=zero 
+ do iorb=1,RDMd%Npairs ! Occ
+  iorb1=iorb+RDMd%Nfrozen
+  do iorb2=1,RDMd%Npairs ! Occ
+   iorb3=iorb2+RDMd%Nfrozen
+   do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+    iorb5=iorb4+RDMd%Nfrozen+RDMd%Npairs
+    if(INTEGd%complex_ints) then
+     y_ij(iorb,iorb2)=y_ij(iorb,iorb2)+RDMd%t_pccd_old(iorb,iorb4)*real(INTEGd%ERImol_cmplx(iorb3,iorb5,iorb5,iorb3))
+    else
+     y_ij(iorb,iorb2)=y_ij(iorb,iorb2)+RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
+    endif 
+   enddo
+  enddo
+ enddo
+
+ ! Build the t residue
+ RDMd%tz_residue=zero
+ do iorb=1,RDMd%Npairs ! Occ
+  iorb1=iorb+RDMd%Nfrozen
+  do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+   iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+   if(INTEGd%complex_ints) then
+    RDMd%tz_residue(iorb,iorb2)=real(INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))
+   else
+    RDMd%tz_residue(iorb,iorb2)=INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)
+   endif
+   sum_tmp=ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1)
+   do iorb4=1,RDMd%Npairs ! Occ
+    iorb5=iorb4+RDMd%Nfrozen
+    if(INTEGd%complex_ints) then
+     RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+RDMd%t_pccd_old(iorb4,iorb2)* &
+     &        real(INTEGd%ERImol_cmplx(iorb1,iorb5,iorb5,iorb1))
+     sum_tmp=sum_tmp-RDMd%t_pccd_old(iorb4,iorb2)*real(INTEGd%ERImol_cmplx(iorb3,iorb5,iorb5,iorb3))
+    else       
+     RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+RDMd%t_pccd_old(iorb4,iorb2)* &
+     &        INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
+     sum_tmp=sum_tmp-RDMd%t_pccd_old(iorb4,iorb2)*INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
+    endif 
+    RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+y_ij(iorb,iorb4)*RDMd%t_pccd_old(iorb4,iorb2)
+   enddo
+   do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+    iorb5=iorb4+RDMd%Nfrozen+RDMd%Npairs
+    if(INTEGd%complex_ints) then
+     RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+RDMd%t_pccd_old(iorb,iorb4)* &
+     &        real(INTEGd%ERImol_cmplx(iorb3,iorb5,iorb5,iorb3))
+     sum_tmp=sum_tmp-RDMd%t_pccd_old(iorb,iorb4)*real(INTEGd%ERImol_cmplx(iorb1,iorb5,iorb5,iorb1))
+    else
+     RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+RDMd%t_pccd_old(iorb,iorb4)* &
+     &        INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
+     sum_tmp=sum_tmp-RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
+    endif
+   enddo
+   if(INTEGd%complex_ints) then
+    sum_tmp=sum_tmp-real(two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb1,iorb3)-INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1) &
+   &         -INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2))
+   else
+    sum_tmp=sum_tmp-(two*INTEGd%ERImol(iorb1,iorb3,iorb1,iorb3)-INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1) &
+   &         -INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2))
+   endif
+   sum_tmp=two*sum_tmp*RDMd%t_pccd_old(iorb,iorb2)
+   RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+sum_tmp
+  enddo
+ enddo
+
+end subroutine calc_t_residues
+!!***
+
+!!***
+!!****f* DoNOF/calc_z_residues
+!! NAME
+!!  calc_z_residues
+!!
+!! FUNCTION
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab) 
+!Arguments ------------------------------------
+!scalars
+ type(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(inout)::INTEGd
+!arrays
+ real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
+ real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))::y_ab
+!Local variables ------------------------------
+!scalars
+ integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5
+ real(dp)::sum_tmp,zt_ii,zt_aa
+!arrays
+!************************************************************************
+
+ ! Build the z residue
+ RDMd%tz_residue=zero
+ do iorb=1,RDMd%Npairs ! Occ
+  iorb1=iorb+RDMd%Nfrozen
+  do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+   iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+   if(INTEGd%complex_ints) then
+    RDMd%tz_residue(iorb,iorb2)=real(INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))
+   else        
+    RDMd%tz_residue(iorb,iorb2)=INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)
+   endif 
+   sum_tmp=ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1)
+   zt_aa=zero; zt_ii=zero;
+   do iorb4=1,RDMd%Npairs ! Occ
+    iorb5=iorb4+RDMd%Nfrozen
+    if(INTEGd%complex_ints) then
+     RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+RDMd%z_pccd_old(iorb4,iorb2)* & 
+     &        real(INTEGd%ERImol_cmplx(iorb1,iorb5,iorb5,iorb1))
+     sum_tmp=sum_tmp-RDMd%t_pccd(iorb4,iorb2)*real(INTEGd%ERImol_cmplx(iorb3,iorb5,iorb5,iorb3))
+    else
+     RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+RDMd%z_pccd_old(iorb4,iorb2)* &
+     &        INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
+     sum_tmp=sum_tmp-RDMd%t_pccd(iorb4,iorb2)*INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
+    endif 
+    RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+y_ij(iorb,iorb4)*RDMd%z_pccd_old(iorb4,iorb2)
+    zt_aa=zt_aa+RDMd%t_pccd(iorb4,iorb2)*RDMd%z_pccd_old(iorb4,iorb2)
+   enddo
+   do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+    iorb5=iorb4+RDMd%Nfrozen+RDMd%Npairs
+    if(INTEGd%complex_ints) then
+     RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+RDMd%z_pccd_old(iorb,iorb4)* &
+     &   real(INTEGd%ERImol_cmplx(iorb3,iorb5,iorb5,iorb3))
+     sum_tmp=sum_tmp-RDMd%t_pccd(iorb,iorb4)*real(INTEGd%ERImol_cmplx(iorb1,iorb5,iorb5,iorb1))
+    else
+     RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+RDMd%z_pccd_old(iorb,iorb4)* &
+     &       INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
+     sum_tmp=sum_tmp-RDMd%t_pccd(iorb,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
+    endif 
+    RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+y_ab(iorb,iorb4)*RDMd%z_pccd_old(iorb,iorb4)
+    zt_ii=zt_ii+RDMd%t_pccd(iorb,iorb4)*RDMd%z_pccd_old(iorb,iorb4)
+   enddo
+   if(INTEGd%complex_ints) then
+    sum_tmp=sum_tmp-real(two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb1,iorb3)-INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1) &
+    &       -two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd(iorb,iorb2))
+    RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)-two*(zt_aa+zt_ii)* & 
+    &        real(INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))
+   else
+    sum_tmp=sum_tmp-(two*INTEGd%ERImol(iorb1,iorb3,iorb1,iorb3)-INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1) &
+    &       -two*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd(iorb,iorb2))
+    RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)-two*(zt_aa+zt_ii)* &
+    &        INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)
+   endif
+   sum_tmp=two*sum_tmp*RDMd%z_pccd_old(iorb,iorb2)
+   RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+sum_tmp
+  enddo
+ enddo
+
+end subroutine calc_z_residues
 !!***
 
 end module m_tz_pCCD_amplitudes
