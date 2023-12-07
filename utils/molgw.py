@@ -21,7 +21,7 @@ import os, sys, subprocess
 import difflib
 import json
 import copy
-import pathlib
+import pathlib, glob
 from yaml import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -180,6 +180,65 @@ class structure:
     def __str__(self):
         return self.string()
 
+########################################################################
+class Molgw_outputs:
+    def __init__(self,origin=''):
+        self.files = []
+        self.data = []
+        if len(origin) == 0:
+            return
+        if isinstance(origin, list):
+            origins = origin
+        else:
+            origins = [origin]
+        for orig in origins:
+            if not os.path.isdir(orig):
+                sys.exit(orig + "is not a valid folder")
+            self.files += glob.glob(orig+"/**/*.yaml",recursive=True)
+        self.files = list(set(self.files))
+        for file in self.files:
+            with open(file,'r') as f:
+                self.data.append(load(f,Loader=Loader))
+    def __len__(self):
+        return len(self.files)
+    def __str__(self):
+        s = f'MOLGW results from {len(self.files)} files'
+        for i,file in enumerate(self.files):
+            s+= f"\n - {file:<30}: {self.data[i]['input parameters']['comment']}"
+        return s
+    def __iter__(self):
+        self.current = 0
+        return self
+    def __next__(self):
+        if self.current < len(self):
+            result = self.data[self.current]
+            self.current += 1
+            return result
+        else:
+            raise StopIteration
+        return self.data
+    # Returns a copy of self containing all those calculations
+    # that match the input parameters mentioned in "filters" dictionary
+    def filtering(self,filters,verbose=False):
+       mgo_filtered = Molgw_outputs()
+       if verbose:
+           print("Selection rules:")
+           for key, value in filters.items():
+               print(f"  {key} == {value}?")
+       for f, d in zip(self.files,self.data):
+           corresponds = True
+           for key, value in filters.items():
+               if d["input parameters"][key] != value:
+                   corresponds = False
+           if corresponds:
+               mgo_filtered.files.append(f)
+               mgo_filtered.data.append(d)
+       if verbose:
+           print(f"Found {len(mgo_filtered)} corresponding calculations")
+       return mgo_filtered
+
+
+
 
 ########################################################################
 def get_homo_energy(approx,calc):
@@ -249,7 +308,7 @@ def check_calc(calc):
 def create_gw100_json(filename,data,**kwargs):
     dict_gw100 = dict()
     dict_gw100["code"]= "MOLGW"
-    dict_gw100["code_version"]= "2.E"
+    dict_gw100["code_version"]= __version__
     dict_gw100["basis"]= "gaussian"
     dict_gw100["qpe"]= "solved"
     dict_gw100["DOI"]= "unpublished"

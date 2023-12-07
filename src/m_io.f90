@@ -65,11 +65,12 @@ subroutine this_is_the_end()
 
   if( print_yaml_ .AND. is_iomaster ) then
     write(unit_yaml,'(/,a)')  'run:'
-    write(unit_yaml,'(4x,a,1x,i6)')  'mpi tasks:  ',world%nproc
+    write(unit_yaml,'(4x,a,1x,a)')   'MOLGW version:  ',MOLGW_VERSION
+    write(unit_yaml,'(4x,a,1x,i6)')  'mpi tasks:      ',world%nproc
 #if defined(_OPENMP)
-    write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',OMP_GET_MAX_THREADS()
+    write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:    ',OMP_GET_MAX_THREADS()
 #else
-    write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:',1
+    write(unit_yaml,'(4x,a,1x,i6)')  'omp threads:    ',1
 #endif
 
     write(unit_yaml,'(4x,a)') 'timing:'
