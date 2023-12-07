@@ -217,6 +217,8 @@ class Molgw_outputs:
         else:
             raise StopIteration
         return self.data
+    # Returns a copy of self containing all those calculations
+    # that match the input parameters mentioned in "filters" dictionary
     def filtering(self,filters,verbose=False):
        mgo_filtered = Molgw_outputs()
        if verbose:
@@ -306,7 +308,7 @@ def check_calc(calc):
 def create_gw100_json(filename,data,**kwargs):
     dict_gw100 = dict()
     dict_gw100["code"]= "MOLGW"
-    dict_gw100["code_version"]= "2.E"
+    dict_gw100["code_version"]= __version__
     dict_gw100["basis"]= "gaussian"
     dict_gw100["qpe"]= "solved"
     dict_gw100["DOI"]= "unpublished"
