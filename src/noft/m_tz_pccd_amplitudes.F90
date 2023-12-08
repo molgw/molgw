@@ -180,7 +180,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   do
    RDMd%t_pccd_old=reshape(diag_tz,(/RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)/))
    call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
-   sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia r_ia^2)
+   sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
    call num_calc_Grad_t_amp(ELAGd,RDMd,INTEGd,y_ij,Grad_residue)
    call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_t,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
    if(iflag<=0) exit
@@ -190,8 +190,9 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   enddo
   deallocate(Work,diag,diag_tz,Grad_residue)
 
-  ! Update final t_ia
+  ! Update final t_ia and error
   RDMd%t_pccd=RDMd%t_pccd_old
+  sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
 
  endif 
 
@@ -295,7 +296,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   do
    RDMd%z_pccd_old=reshape(diag_tz,(/RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)/))
    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-   sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia r_ia^2)
+   sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
    call num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue)
    call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_z,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
    if(iflag<=0) exit
@@ -305,8 +306,9 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   enddo
   deallocate(Work,diag,diag_tz,Grad_residue)
 
-  ! Update final t_ia
+  ! Update final z_ia
   RDMd%z_pccd=RDMd%z_pccd_old
+  sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
 
  endif
 
@@ -327,6 +329,11 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   call write_output(msg)
   write(msg,'(a,f15.6)') 'Max. [z_pq^i+1 - z_pq^i]=      ',maxdiff_z
   call write_output(msg)
+  write(msg,'(a,f15.6)') 'Error t-residues        =      ',sumdiff_t
+  call write_output(msg)
+  write(msg,'(a,f15.6)') 'Error z-residues        =      ',sumdiff_z
+  call write_output(msg)
+  ! This is w.r.t. |0>  (use it only for debug)
   ! This is w.r.t. |0>  (use it only for debug)
   !write(msg,'(a,f15.6)') 'Correlation Energy   =',Ecorr_new
   !call write_output(msg)
