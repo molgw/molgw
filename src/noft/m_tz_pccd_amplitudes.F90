@@ -69,7 +69,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
 !scalars
  logical::diagco
  integer,parameter::msave=7
- integer::imethod_local,iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5
+ integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5
  integer::iflag,Mtosave,Nwork
  real(dp)::tol10=1e-10
  real(dp)::sumdiff_t,sumdiff_z,maxdiff_t,maxdiff_z
@@ -83,7 +83,6 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
 
  Ecorr_new=zero; Ecorr_old=zero; Ecorr_diff=zero;
  maxdiff_t=zero; maxdiff_z=zero; Ediff=Energy;
- imethod_local=imethod
 
  ! Build diag elements of the Lambda matrix (with HF 1-RDM and 2-RDM)
  call ELAGd%build_sd_diag(RDMd,INTEGd)
@@ -110,7 +109,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   enddo
  endif
 
- if(imethod_local==1) then
+ if(imethod/=1) then
 
   iter_t=0
   do
@@ -181,7 +180,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   do
    RDMd%t_pccd_old=reshape(diag_tz,(/RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)/))
    call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
-   sumdiff_t=sum(abs(RDMd%tz_residue(:,:))) ! The function we are minimizing is Sum_ia |r_ia| 
+   sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia r_ia^2)
    call num_calc_Grad_t_amp(ELAGd,RDMd,INTEGd,y_ij,Grad_residue)
    call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_t,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
    if(iflag<=0) exit
@@ -240,7 +239,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   enddo
  enddo
 
- if(imethod_local==1) then
+ if(imethod/=1) then
 
   do
 
@@ -296,7 +295,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   do
    RDMd%z_pccd_old=reshape(diag_tz,(/RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)/))
    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-   sumdiff_z=sum(abs(RDMd%tz_residue(:,:))) ! The function we are minimizing is Sum_ia |r_ia| 
+   sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia r_ia^2)
    call num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue)
    call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_z,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
    if(iflag<=0) exit
@@ -383,19 +382,19 @@ subroutine num_calc_Grad_t_amp(ELAGd,RDMd,INTEGd,y_ij,Grad_residue)
    ! 2*step
    RDMd%t_pccd_old(iorb,iorb1)=RDMd%t_pccd_old(iorb,iorb1)+two*step
    call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
-   sum_tmp=-sum(abs(RDMd%tz_residue(:,:))) 
+   sum_tmp=-dsqrt(sum(RDMd%tz_residue(:,:)**two)) 
    ! step
    RDMd%t_pccd_old(iorb,iorb1)=RDMd%t_pccd_old(iorb,iorb1)-step
    call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
-   sum_tmp=sum_tmp+eight*sum(abs(RDMd%tz_residue(:,:))) 
+   sum_tmp=sum_tmp+eight*dsqrt(sum(RDMd%tz_residue(:,:)**two))
    ! -step
    RDMd%t_pccd_old(iorb,iorb1)=RDMd%t_pccd_old(iorb,iorb1)-two*step
    call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
-   sum_tmp=sum_tmp-eight*sum(abs(RDMd%tz_residue(:,:))) 
+   sum_tmp=sum_tmp-eight*dsqrt(sum(RDMd%tz_residue(:,:)**two))
    ! -2*step
    RDMd%t_pccd_old(iorb,iorb1)=RDMd%t_pccd_old(iorb,iorb1)-step
    call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
-   sum_tmp=sum_tmp+sum(abs(RDMd%tz_residue(:,:))) 
+   sum_tmp=sum_tmp+dsqrt(sum(RDMd%tz_residue(:,:)**two)) 
    ! Save the gradient
    Grad_res_tmp(iorb,iorb1)=sum_tmp/(twelve*step) 
    ! Recover t_pccd_old
@@ -454,19 +453,19 @@ subroutine num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue)
    ! 2*step
    RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)+two*step
    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-   sum_tmp=-sum(abs(RDMd%tz_residue(:,:))) 
+   sum_tmp=-dsqrt(sum(RDMd%tz_residue(:,:)**two))
    ! step
    RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)-step
    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-   sum_tmp=sum_tmp+eight*sum(abs(RDMd%tz_residue(:,:))) 
+   sum_tmp=sum_tmp+eight*dsqrt(sum(RDMd%tz_residue(:,:)**two)) 
    ! -step
    RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)-two*step
    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-   sum_tmp=sum_tmp-eight*sum(abs(RDMd%tz_residue(:,:))) 
+   sum_tmp=sum_tmp-eight*dsqrt(sum(RDMd%tz_residue(:,:)**two))
    ! -2*step
    RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)-step
    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-   sum_tmp=sum_tmp+sum(abs(RDMd%tz_residue(:,:))) 
+   sum_tmp=sum_tmp+dsqrt(sum(RDMd%tz_residue(:,:)**two))
    ! Save the gradient
    Grad_res_tmp(iorb,iorb1)=sum_tmp/(twelve*step) 
    ! Recover z_pccd_old

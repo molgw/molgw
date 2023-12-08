@@ -446,8 +446,8 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
   do iorb=1,RDMd%NBF_tot
    do iorb1=1,RDMd%NBF_tot
     if(iorb<=RDMd%NBF_occ.and.iorb1<=RDMd%NBF_occ) then
-     sqrt_occ_iorb =dsqrt(RDMd%occ(iorb))
-     sqrt_occ_iorb1=dsqrt(RDMd%occ(iorb1))
+     sqrt_occ_iorb =dsqrt(abs(RDMd%occ(iorb)))
+     sqrt_occ_iorb1=dsqrt(abs(RDMd%occ(iorb1)))
      if((RDMd%occ(iorb)>tol8).and.(RDMd%occ(iorb1)>tol8)) then
       if(ELAGd%cpx_lambdas) then
        Eigvec_cmplx(iorb,iorb1)=Eigvec_cmplx(iorb,iorb1)/(sqrt_occ_iorb*sqrt_occ_iorb1)
@@ -596,7 +596,7 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,Eigvec_cmplx,NO_COEF,NO_COEF_cmplx)
     DYSON_COEF_cmplx(iorb,iorb1)=complex_zero
     do iorb2=1,RDMd%NBF_occ
      DYSON_COEF_cmplx(iorb,iorb1)=DYSON_COEF_cmplx(iorb,iorb1)+&
-     & dsqrt(RDMd%occ(iorb2))*NO_COEF_cmplx(iorb,iorb2)*Eigvec_cmplx(iorb2,iorb1)
+     & dsqrt(abs(RDMd%occ(iorb2)))*NO_COEF_cmplx(iorb,iorb2)*Eigvec_cmplx(iorb2,iorb1)
     enddo
    enddo
   enddo
@@ -628,7 +628,7 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,Eigvec_cmplx,NO_COEF,NO_COEF_cmplx)
     DYSON_COEF(iorb,iorb1)=zero
     do iorb2=1,RDMd%NBF_occ
      DYSON_COEF(iorb,iorb1)=DYSON_COEF(iorb,iorb1)+&
-     & dsqrt(RDMd%occ(iorb2))*NO_COEF(iorb,iorb2)*Eigvec(iorb2,iorb1)
+     & dsqrt(abs(RDMd%occ(iorb2)))*NO_COEF(iorb,iorb2)*Eigvec(iorb2,iorb1)
     enddo
    enddo
   enddo 
@@ -643,7 +643,7 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,Eigvec_cmplx,NO_COEF,NO_COEF_cmplx)
   ! Normalized DYSON_COEF
   do iorb=1,RDMd%NBF_occ
    do iorb1=1,RDMd%NBF_tot
-    DYSON_COEF(iorb1,iorb)=DYSON_COEF(iorb1,iorb)/dsqrt(DYSON_occ(iorb))
+    DYSON_COEF(iorb1,iorb)=DYSON_COEF(iorb1,iorb)/dsqrt(abs(DYSON_occ(iorb)))
    enddo
   enddo
   ! Print DYSON_COEF
