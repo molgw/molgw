@@ -303,8 +303,9 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !       DM2_Jsr and DDM2_gamma_Jsr
 !                 &
 !       DM2_Lsr and DDM2_gamma_Lsr
+!          (except for pCDD)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- if(RDMd%irange_sep/=0) then
+ if(RDMd%irange_sep/=0 .and. RDMd%INOF>-1) then
   call dm2_hartree(RDMd,RDMd%Docc_gamma,RDMd%DM2_Jsr,RDMd%DDM2_gamma_Jsr)
   if(RDMd%irange_sep==1) then
    call dm2_intra(RDMd,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_Jsr,RDMd%DM2_Lsr,&
