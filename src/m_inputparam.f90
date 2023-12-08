@@ -326,7 +326,7 @@ subroutine init_calculation_type(scf,postscf)
     case('EVMP3_SELFENERGY','EVPT3','EVGF3')
       calc_type%selfenergy_approx = PT3
       calc_type%selfenergy_technique = EVSC
-    case('NOFT')
+    case('NOFT','PCCD')
       calc_type%is_noft   =.TRUE.
     case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
       calc_type%selfenergy_approx = TWO_RINGS

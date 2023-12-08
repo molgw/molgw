@@ -133,6 +133,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   case default
     call die('noft_energy: NOFT functional not recognized. Check your input')
   end select
+  if(TRIM(postscf)=='PCCD') inof=-1  ! Last check that it is not pCCD
 
   noft_fcidump_in=(noft_fcidump=='yes')
   if( noft_fcidump_in .and. has_auxil_basis ) then
