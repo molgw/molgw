@@ -525,7 +525,7 @@ subroutine calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
  real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
 !Local variables ------------------------------
 !scalars
- integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5
+ integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5
  real(dp)::sum_tmp
 !arrays
 !************************************************************************
@@ -627,7 +627,7 @@ subroutine calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
  real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))::y_ab
 !Local variables ------------------------------
 !scalars
- integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5
+ integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5
  real(dp)::sum_tmp,zt_ii,zt_aa
 !arrays
 !************************************************************************

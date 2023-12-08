@@ -240,7 +240,6 @@ subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,hCORE_cmplx,
  logical::chempot,cpx_mos=.false.
  real(dp)::Energy
 !arrays
- character(len=200)::msg
  real(dp),allocatable,dimension(:)::GAMMAs,Grad_GAMMAs
 !************************************************************************
 

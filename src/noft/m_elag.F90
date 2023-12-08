@@ -354,7 +354,6 @@ subroutine build_sd_diag_elag(ELAGd,RDMd,INTEGd)
 !scalars
  integer::iorb,iorb1
 !arrays
- character(len=200)::msg
 !************************************************************************
 
  ELAGd%Lambdas_pp=zero
