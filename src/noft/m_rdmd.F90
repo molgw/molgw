@@ -32,6 +32,8 @@ module m_rdmd
  type,public :: rdm_t
 
   logical::GAMMAs_nread=.true.     ! Are GAMMAS read from previous calc.?
+  logical::t_amplitudes_nread=.true. ! Are t-amplitudes read from previous calc.?
+  logical::z_amplitudes_nread=.true. ! Are z-amplitudes read from previous calc.?
   integer::irange_sep=0            ! rs-NOFT calcs. 0=no, 1=intra, 2=ex_corr
   integer::INOF=8                  ! Functional to use (5-> PNOF5, 7-> PNOF7, 8-> GNOF, etc)
   integer::Ista=0                  ! Use PNOF7s or only static/non-dyn part of GNOF with Ista=1
@@ -80,6 +82,9 @@ module m_rdmd
 
    procedure :: print_gammas => print_gammas_old
    ! Print GAMMAs_old indep./unconstrained variables.
+
+   procedure :: print_tz_amplitudes => print_tz_amplitudes_old
+   ! Print T and Z CC amplitudes.
 
  end type rdm_t
 
@@ -723,6 +728,60 @@ integer::igamma,iunit=312
 
 end subroutine print_gammas_old
 !!***
+
+!!***
+!!****f* DoNOF/print_amplitudes_old
+!! NAME
+!! print_tz_amplitudes_old
+!!
+!! FUNCTION
+!!  Print the t_pccd and z_pccd vectors allocated in rdm_t to the binary files
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine print_tz_amplitudes_old(RDMd)
+!Arguments ------------------------------------
+!scalars
+ class(rdm_t),intent(inout)::RDMd
+!arrays
+!Local variables ------------------------------
+!scalars
+integer::iamp,aamp,iunit=312
+!arrays
+
+!************************************************************************
+
+ ! Print the t_pccd
+ open(unit=iunit,form='unformatted',file='TAMP')
+ do iamp=1,RDMd%Npairs
+  do aamp=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)
+   write(iunit) iamp,aamp,RDMd%t_pccd(iamp,aamp)
+  enddo
+ enddo
+ write(iunit) 0,0,zero
+ close(iunit)
+
+ ! Print the z_pccd
+ open(unit=iunit,form='unformatted',file='ZAMP')
+ do iamp=1,RDMd%Npairs
+  do aamp=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)
+   write(iunit) iamp,aamp,RDMd%z_pccd(iamp,aamp)
+  enddo
+ enddo
+ write(iunit) 0,0,zero
+ close(iunit)
+
+end subroutine print_tz_amplitudes_old
+!!***
+
 
 end module m_rdmd
 !!***

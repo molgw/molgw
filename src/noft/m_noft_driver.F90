@@ -234,7 +234,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then
-   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc)
+   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
   endif
   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
@@ -249,7 +249,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then
-   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc)
+   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
   endif
   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
   & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
@@ -288,18 +288,19 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   ! occ. optimization
   if(cpx_mos) then
    if(RDMd%INOF<0) then
-    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc)
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
    endif
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
    & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
   else
    if(RDMd%INOF<0) then
-    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc)
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
    endif
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
    & ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
   endif
   call RDMd%print_gammas()
+  if(RDMd%INOF<0) call RDMd%print_tz_amplitudes()
 
   ! Check convergence
   if(dabs(Energy-Energy_old)<ELAGd%tolE) then
@@ -719,7 +720,7 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
  complex(dp)::cpxvar
 !arrays
  real(dp),allocatable,dimension(:)::GAMMAS_in,tmp_occ
- real(dp),allocatable,dimension(:,:)::NO_COEF_in,S_NO
+ real(dp),allocatable,dimension(:,:)::NO_COEF_in,S_NO,TZ_amp
  complex(dp),allocatable,dimension(:,:)::NO_COEF_cmplx_in,S_NO_cmplx
  character(len=200)::msg
 !************************************************************************
@@ -827,35 +828,88 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
 
  ! Read GAMMAs (indep. parameters used to optimize occs.) from GAMMAS file 
  if(ireadGAMMAS==1) then
-  allocate(GAMMAS_in(RDMd%Ngammas))
-  open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
-  icount=0
-  if(istat==0) then
-   do 
-    read(iunit,iostat=istat) intvar,doubvar
-    if(istat/=0) then
-     exit
-    endif
-    if((intvar/=0).and.intvar<=RDMd%Ngammas) then
-     GAMMAs_in(intvar)=doubvar
-     icount=icount+1
-    else
-     exit
-    endif
-   enddo
+  if(RDMd%INOF>-1) then
+   allocate(GAMMAS_in(RDMd%Ngammas))
+   open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
+   icount=0
+   if(istat==0) then
+    do 
+     read(iunit,iostat=istat) intvar,doubvar
+     if(istat/=0) then
+      exit
+     endif
+     if((intvar/=0).and.intvar<=RDMd%Ngammas) then
+      GAMMAs_in(intvar)=doubvar
+      icount=icount+1
+     else
+      exit
+     endif
+    enddo
+   endif
+   if(icount==RDMd%Ngammas) then
+    RDMd%GAMMAs_old(:)=GAMMAS_in(:)
+    RDMd%GAMMAs_nread=.false.
+    write(msg,'(a)') 'GAMMAs (indep. variables) read from checkpoint file'
+    call write_output(msg)
+   endif
+   close(iunit)
+   deallocate(GAMMAS_in)
+  else ! pCCD
+   allocate(TZ_amp(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
+   open(unit=iunit,form='unformatted',file='TAMP',iostat=istat,status='old')
+   icount=0
+   if(istat==0) then
+    do 
+     read(iunit,iostat=istat) intvar,intvar1,doubvar
+     if(istat/=0) then
+      exit
+     endif
+     if(((intvar/=0).and.(intvar1/=0)).and.intvar*intvar1<=RDMd%Namplitudes*RDMd%Namplitudes) then
+      TZ_amp(intvar,intvar1)=doubvar
+      icount=icount+1
+     else
+      exit
+     endif
+    enddo
+   endif
+   if(icount==RDMd%Namplitudes) then
+    RDMd%t_pccd(:,:)=TZ_amp(:,:)
+    RDMd%t_pccd_old(:,:)=TZ_amp(:,:)
+    RDMd%t_amplitudes_nread=.false.
+    write(msg,'(a)') 'T amplitudes read from checkpoint file'
+    call write_output(msg)
+   endif
+   close(iunit)
+   open(unit=iunit,form='unformatted',file='ZAMP',iostat=istat,status='old')
+   icount=0
+   if(istat==0) then
+    do
+     read(iunit,iostat=istat) intvar,intvar1,doubvar
+     if(istat/=0) then
+      exit
+     endif
+     if(((intvar/=0).and.(intvar1/=0)).and.intvar*intvar1<=RDMd%Namplitudes*RDMd%Namplitudes) then
+      TZ_amp(intvar,intvar1)=doubvar
+      icount=icount+1
+     else
+      exit
+     endif
+    enddo
+   endif
+   if(icount==RDMd%Namplitudes) then
+    RDMd%z_pccd(:,:)=TZ_amp(:,:)
+    RDMd%z_pccd_old(:,:)=TZ_amp(:,:)
+    RDMd%z_amplitudes_nread=.false.
+    write(msg,'(a)') 'Z amplitudes read from checkpoint file'
+    call write_output(msg)
+   endif
+   close(iunit)
+   deallocate(TZ_amp)
   endif
-  if(icount==RDMd%Ngammas) then
-   RDMd%GAMMAs_old(:)=GAMMAS_in(:)
-   RDMd%GAMMAs_nread=.false.
-   write(msg,'(a)') 'GAMMAs (indep. variables) read from checkpoint file'
-   call write_output(msg)
-  endif
-  close(iunit)
-  deallocate(GAMMAS_in)
  endif
 
- ! Read occs to compute GAMMAS (using DM1 or FORM_occ files)
- if(ireadocc==1) then
+ ! Read occs to compute GAMMAS (using DM1 or FORM_occ files) except in pCCD case
+ if(ireadocc==1 .and. RDMd%INOF>-1) then
   ! Reading DM1 binary file
   open(unit=iunit,form='unformatted',file='DM1',iostat=istat,status='old')
   icount=0
