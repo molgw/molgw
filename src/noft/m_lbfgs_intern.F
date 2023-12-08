@@ -251,6 +251,7 @@ C
 C     INITIALIZE
 C     ----------
 C
+      LP=-1
       IF(IFLAG.EQ.0) GO TO 10
       GO TO (172,100) IFLAG
   10  ITER= 0
