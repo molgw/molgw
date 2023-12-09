@@ -335,11 +335,13 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   & iter_z,' z-iter.'
  call write_output(msg)
  if(iter_global>0) then
-  Ediff=Ediff-Energy
-  write(msg,'(a,f15.6)') 'Max. [t_pq^i+1 - t_pq^i]=      ',maxdiff_t
-  call write_output(msg)
-  write(msg,'(a,f15.6)') 'Max. [z_pq^i+1 - z_pq^i]=      ',maxdiff_z
-  call write_output(msg)
+  Ediff=Energy-Ediff
+  if(imethod/=1) then
+   write(msg,'(a,f15.6)') 'Max. [t_pq^i+1 - t_pq^i]=      ',maxdiff_t
+   call write_output(msg)
+   write(msg,'(a,f15.6)') 'Max. [z_pq^i+1 - z_pq^i]=      ',maxdiff_z
+   call write_output(msg)
+  endif  
   write(msg,'(a,f15.6)') 'Error t-residues        =      ',sumdiff_t
   call write_output(msg)
   write(msg,'(a,f15.6)') 'Error z-residues        =      ',sumdiff_z
