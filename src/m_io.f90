@@ -3625,26 +3625,33 @@ end subroutine evaluate_memory
 
 
 !=========================================================================
-subroutine dump_matrix_cmplx_hdf5(fid, gid, matrix_cmplx, isnap)
+subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
  use m_hdf5_tools
  use m_inputparam
  implicit none
- integer(HID_T), intent(inout) :: fid, gid
+ integer(HID_T), intent(in) :: f_or_g_id
  integer,intent(in)          :: isnap
  complex(dp),intent(in)      :: matrix_cmplx(:,:,:)
+ character(len=*), intent(in), optional :: matrix_name
  !=====
- character(len=200)          :: file_name, snap_name
+ character(len=200)          :: file_name, snap_name, m_name
  !=====
 
 #if defined(HAVE_HDF5)
 
  if( .NOT. is_iomaster ) return
 
- write(snap_name,'(a,I0,a)') 'snap_', isnap, '_real'
- call hdf_write_dataset(gid, TRIM(snap_name), REAL(matrix_cmplx, dp))
+ if( present(matrix_name) ) then
+   m_name = matrix_name
+ else
+   m_name = 'snap_'
+ end if
 
- write(snap_name,'(a,I0,a)') 'snap_', isnap, '_imag'
- call hdf_write_dataset(gid, TRIM(snap_name), AIMAG(matrix_cmplx))
+ write(snap_name,'(a,I0,a)') TRIM(m_name), isnap, '_real'
+ call hdf_write_dataset(f_or_g_id, TRIM(snap_name), REAL(matrix_cmplx, dp))
+
+ write(snap_name,'(a,I0,a)') TRIM(m_name), isnap, '_imag'
+ call hdf_write_dataset(f_or_g_id, TRIM(snap_name), AIMAG(matrix_cmplx))
 
 #else
 

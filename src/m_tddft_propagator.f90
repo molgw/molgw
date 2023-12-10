@@ -389,6 +389,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_cmplx_hdf5_ ) then
 
     call hdf_open_file(fid, 'rt_tddft.h5', status='NEW')
+
+    call hdf_write_dataset(fid, 'nbf', basis%nbf)
+    call hdf_write_dataset(fid, 'nstate', nstate)
+    call hdf_write_dataset(fid, 'nocc', nocc)
+
     call hdf_write_dataset(fid, 'time_step', time_step)
     call hdf_write_dataset(fid, 'occupation', occupation)
     call hdf_write_dataset(fid, 's_matrix', s_matrix)
@@ -398,14 +403,27 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     if( print_c_matrix_cmplx_hdf5_ ) then
       call hdf_create_group(fid, 'c_matrix')
       call hdf_open_group(fid, 'c_matrix', c_mat_group)
-      call dump_matrix_cmplx_hdf5(fid, c_mat_group, c_matrix_cmplx, 0)
+      call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_cmplx, 0)
     end if
 
     if( print_p_matrix_cmplx_hdf5_ ) then
       call hdf_create_group(fid, 'p_matrix')
       call hdf_open_group(fid, 'p_matrix', p_mat_group)
-      call dump_matrix_cmplx_hdf5(fid, p_mat_group, p_matrix_cmplx, 0)
+      call dump_matrix_cmplx_hdf5(p_mat_group, p_matrix_cmplx, 0)
     end if
+
+    ! save the initial complete c_matrix, nstate x nstate
+    call clean_allocate('c_matrix_orth_start_complete_cmplx for HDF5',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
+    allocate(energy_tddft(nstate,nspin))
+    do ispin=1, nspin
+      call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft(:,ispin),&
+           c_matrix_orth_start_complete_cmplx(:,:,ispin))
+    end do
+
+    call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_orth_start_complete_cmplx, 0, 'c_matrix_ortho_complete_')
+    call clean_deallocate('c_matrix_orth_start_complete_cmplx for HDF5',c_matrix_orth_start_complete_cmplx)
+
+    call hdf_write_dataset(c_mat_group, 'c_matrix_complete_0_real', c_matrix)
 
   end if
 
@@ -523,8 +541,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       if (calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx, &
                                                  istate_cut,file_q_matrix,time_cur)
 
-      if( print_c_matrix_cmplx_hdf5_ ) call dump_matrix_cmplx_hdf5(fid, c_mat_group, c_matrix_cmplx, iwrite_step)
-      if( print_p_matrix_cmplx_hdf5_ ) call dump_matrix_cmplx_hdf5(fid, p_mat_group, p_matrix_cmplx, iwrite_step)
+      if( print_c_matrix_cmplx_hdf5_ ) call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_cmplx, iwrite_step)
+      if( print_p_matrix_cmplx_hdf5_ ) call dump_matrix_cmplx_hdf5(p_mat_group, p_matrix_cmplx, iwrite_step)
 
       iwrite_step = iwrite_step + 1
 
