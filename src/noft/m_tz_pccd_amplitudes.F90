@@ -59,7 +59,8 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
 !Arguments ------------------------------------
 !scalars
  logical,intent(in)::keep_occs
- integer,intent(in)::iter_global,imethod
+ integer,intent(in)::imethod
+ integer,intent(inout)::iter_global
  real(dp),intent(in)::Vnn
  real(dp),intent(inout)::Energy
  type(elag_t),intent(inout)::ELAGd
@@ -324,6 +325,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  endif
 
  ! Calc. the final Energy using new RDMs
+ iter_global=iter_global+1
  if(INTEGd%complex_ints) then
   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
   & INTEGd%ERI_L_cmplx)
@@ -353,6 +355,10 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   write(msg,'(a,f19.10)') 'Energy difference amp. opt.=',Ediff
   call write_output(msg)
  endif
+ write(msg,'(a,i6)') 'Number of global iter. ',iter_global
+ call write_output(msg)
+ write(msg,'(a)') ' '
+ call write_output(msg)
 
  deallocate(y_ij,y_ab)
 
