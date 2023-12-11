@@ -69,9 +69,9 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
 !arrays
 !Local variables ------------------------------
 !scalars
- logical::diagco
+ logical::diagco,converged
  integer,parameter::msave=7
- integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5
+ integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5,ipair
  integer::iflag,Mtosave,Nwork
  real(dp)::tol10=1e-10
  real(dp)::sumdiff_t,sumdiff_z,maxdiff_t,maxdiff_z
@@ -85,7 +85,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
 
  Ecorr_new=zero; Ecorr_old=zero; Ecorr_diff=zero;
  maxdiff_t=zero; maxdiff_z=zero; Ediff=Energy;
- iter_t=0; iter_z=0;
+ iter_t=0; iter_z=0; converged=.false.
 
  ! Build diag elements of the Lambda matrix (with HF 1-RDM and 2-RDM)
  call ELAGd%build_sd_diag(RDMd,INTEGd)
@@ -112,7 +112,21 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   enddo
  endif
 
- if(.not.keep_occs) then
+ ! Check if the current t-amplitudes solve the problem
+ if(iter_global>-1 .and. .not.keep_occs) then
+  converged=.true.       
+  allocate(Grad_residue(RDMd%Namplitudes))
+  call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
+  sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
+  call num_calc_Grad_t_amp(ELAGd,RDMd,INTEGd,y_ij,Grad_residue)
+  do ipair=1,RDMd%Namplitudes
+   if(converged .and. abs(Grad_residue(ipair))>tol6) converged=.false. 
+  enddo
+  if(converged .and. sumdiff_t>tol5) converged=.false.
+  deallocate(Grad_residue)
+ endif
+
+ if(.not.keep_occs .and. .not.converged) then
          
   if(imethod/=1) then
 
@@ -248,77 +262,94 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
    enddo
   enddo
 
-  if(imethod/=1) then
-
-   iter_z=0
-
-   do
-
-    ! Build z_ia
-    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab) 
-    do iorb=1,RDMd%Npairs ! Occ
-     iorb1=iorb+RDMd%Nfrozen
-     do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-      iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-      RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd_old(iorb,iorb2)-RDMd%tz_residue(iorb,iorb2) &
-      & /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
-     enddo
-    enddo
-
-    ! Increment iter. accumulator
-    iter_z=iter_z+1
-   
-    ! Check convergence
-    sumdiff_z=zero
-    maxdiff_z=-one
-    do iorb=1,RDMd%Npairs ! Occ
-     iorb1=iorb+RDMd%Nfrozen
-     do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-      iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-      sumdiff_z=sumdiff_z+abs(RDMd%z_pccd(iorb,iorb2)-RDMd%z_pccd_old(iorb,iorb2))
-      if(abs(RDMd%z_pccd(iorb,iorb2)-RDMd%z_pccd_old(iorb,iorb2))>maxdiff_z) then
-       maxdiff_z=abs(RDMd%z_pccd(iorb,iorb2)-RDMd%z_pccd_old(iorb,iorb2))
-      endif   
-     enddo
-    enddo
-
-    ! Update old z_ia
-    RDMd%z_pccd_old=RDMd%z_pccd
-
-    ! Exit if converged
-    if(maxdiff_z<tol6 .and. sumdiff_z<tol5) exit
-
-    ! Exit max iter
-    if(iter_z==2000) exit
-
-   enddo
-
-  else
-
-   ! L-BFGS
-   write(msg,'(a)') 'Calling L-BFGS to optimize z-amplitudes'
-   call write_output(msg)
-   Nwork=RDMd%Namplitudes*(2*msave+1)+2*msave
-   Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
-   iter_z=0; iflag=0;
-   allocate(Work(Nwork),diag(RDMd%Namplitudes),diag_tz(RDMd%Namplitudes),Grad_residue(RDMd%Namplitudes))
-   diag_tz=reshape(RDMd%z_pccd_old,(/RDMd%Namplitudes/))
-   do
-    RDMd%z_pccd_old=reshape(diag_tz,(/RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)/))
-    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-    sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
-    call num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue)
-    call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_z,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
-    if(iflag<=0) exit
-    iter_z=iter_z+1
-    !  We allow at most 2000 evaluations of Energy and Gradient
-    if(iter_z==2000) exit
-   enddo
-   deallocate(Work,diag,diag_tz,Grad_residue)
-
-   ! Update final z_ia
-   RDMd%z_pccd=RDMd%z_pccd_old
+  ! Check if the current z amplitudes solve the problem
+  if(iter_global>-1) then
+   allocate(Grad_residue(RDMd%Namplitudes))
+   call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
    sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
+   call num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue)
+   do ipair=1,RDMd%Namplitudes
+    if(converged .and. abs(Grad_residue(ipair))>tol6) converged=.false. 
+   enddo
+   if(converged .and. sumdiff_z>tol5) converged=.false.
+   deallocate(Grad_residue)
+  endif
+
+  if(.not. converged) then
+
+   if(imethod/=1) then
+   
+    iter_z=0
+   
+    do
+   
+     ! Build z_ia
+     call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab) 
+     do iorb=1,RDMd%Npairs ! Occ
+      iorb1=iorb+RDMd%Nfrozen
+      do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+       iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+       RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd_old(iorb,iorb2)-RDMd%tz_residue(iorb,iorb2) &
+       & /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
+      enddo
+     enddo
+   
+     ! Increment iter. accumulator
+     iter_z=iter_z+1
+    
+     ! Check convergence
+     sumdiff_z=zero
+     maxdiff_z=-one
+     do iorb=1,RDMd%Npairs ! Occ
+      iorb1=iorb+RDMd%Nfrozen
+      do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+       iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+       sumdiff_z=sumdiff_z+abs(RDMd%z_pccd(iorb,iorb2)-RDMd%z_pccd_old(iorb,iorb2))
+       if(abs(RDMd%z_pccd(iorb,iorb2)-RDMd%z_pccd_old(iorb,iorb2))>maxdiff_z) then
+        maxdiff_z=abs(RDMd%z_pccd(iorb,iorb2)-RDMd%z_pccd_old(iorb,iorb2))
+       endif   
+      enddo
+     enddo
+   
+     ! Update old z_ia
+     RDMd%z_pccd_old=RDMd%z_pccd
+   
+     ! Exit if converged
+     if(maxdiff_z<tol6 .and. sumdiff_z<tol5) exit
+   
+     ! Exit max iter
+     if(iter_z==2000) exit
+   
+    enddo
+   
+   else
+   
+    ! L-BFGS
+    write(msg,'(a)') 'Calling L-BFGS to optimize z-amplitudes'
+    call write_output(msg)
+    Nwork=RDMd%Namplitudes*(2*msave+1)+2*msave
+    Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
+    iter_z=0; iflag=0;
+    allocate(Work(Nwork),diag(RDMd%Namplitudes),diag_tz(RDMd%Namplitudes),Grad_residue(RDMd%Namplitudes))
+    diag_tz=reshape(RDMd%z_pccd_old,(/RDMd%Namplitudes/))
+    do
+     RDMd%z_pccd_old=reshape(diag_tz,(/RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)/))
+     call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
+     sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
+     call num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue)
+     call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_z,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
+     if(iflag<=0) exit
+     iter_z=iter_z+1
+     !  We allow at most 2000 evaluations of Energy and Gradient
+     if(iter_z==2000) exit
+    enddo
+    deallocate(Work,diag,diag_tz,Grad_residue)
+   
+    ! Update final z_ia
+    RDMd%z_pccd=RDMd%z_pccd_old
+    sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
+   
+   endif
 
   endif
 
