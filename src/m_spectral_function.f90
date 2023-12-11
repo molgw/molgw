@@ -153,6 +153,7 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid_type,omega_max,verbose)
   integer                               :: nhomo_W_spin(nspin)
   real(dp),parameter                    :: alpha=1.0_dp ! 0.50_dp
   real(dp),parameter                    :: beta=1.0_dp ! 6.0_dp
+  real(dp),parameter                    :: omega_0=2.5_dp ! Gorling JCP 2022
   real(dp),allocatable                  :: omega_quad(:)
   !=====
 
@@ -279,19 +280,30 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid_type,omega_max,verbose)
     allocate(omega_quad(sf%nomega))
     allocate(sf%omega(sf%nomega))
 
-    call coeffs_gausslegint(0.0_dp,1.0_dp,omega_quad,sf%weight_quad,sf%nomega)
+    if( .TRUE. ) then
+      call coeffs_gausslegint(0.0_dp,1.0_dp,omega_quad,sf%weight_quad,sf%nomega)
 
-    write(stdout_,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
-    ! Variable change [0,1] -> [0,+\inf[
-    write(stdout_,'(a)') '    #    Frequencies (eV)    Quadrature weights'
-    do iomega=1,sf%nomega
-      sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
-                              * (1.0_dp -  omega_quad(iomega))**(-alpha-1.0_dp) * beta
-      omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
-                                * ( 1.0_dp / (1.0_dp-omega_quad(iomega))**alpha - 1.0_dp ) * beta
-      sf%omega(iomega)       =  omega_quad(iomega) * im
-      write(stdout_,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%im*Ha_eV,sf%weight_quad(iomega)
-    enddo
+      write(stdout_,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
+      ! Variable change [0,1] -> [0,+\inf[
+      write(stdout_,'(a)') '    #    Frequencies (eV)    Quadrature weights'
+      do iomega=1,sf%nomega
+        sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
+                                * (1.0_dp -  omega_quad(iomega))**(-alpha-1.0_dp) * beta
+        omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
+                                  * ( 1.0_dp / (1.0_dp-omega_quad(iomega))**alpha - 1.0_dp ) * beta
+        sf%omega(iomega)       =  omega_quad(iomega) * im
+        write(stdout_,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%im*Ha_eV,sf%weight_quad(iomega)
+      enddo
+    else
+      call issue_warning("FBFB hack omega freqs")
+      call coeffs_gausslegint(-1.0_dp,1.0_dp,omega_quad,sf%weight_quad,sf%nomega)
+
+      ! Variable change [-1,1] -> [0,+\inf[
+      do iomega=1,sf%nomega
+        sf%weight_quad(iomega) = sf%weight_quad(iomega) * 2.0_dp * omega_0 / ( 1.0_dp - omega_quad(iomega) )**2
+        sf%omega(iomega)       = im * omega_0 * ( 1.0_dp + omega_quad(iomega) ) / ( 1.0_dp - omega_quad(iomega) )
+      enddo
+    endif
     deallocate(omega_quad)
 
   case(REAL_LINEAR)
