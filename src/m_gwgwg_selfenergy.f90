@@ -1525,6 +1525,7 @@ subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
   call ortho%sum(sigmagwgwg)
 
   write(stdout,*) 'G (W-v) G (W-v) G'
+  write(stdout,*) ' state index  imag frequency index  rest self-energy  G3W2 self-energy'
   do pstate=nsemin,nsemax
     do iomega_sigma=first_omega,last_omega
       write(stdout,'(2(4x,i4),4x,f16.6,1x,f16.6)')  pstate,iomega_sigma, &
