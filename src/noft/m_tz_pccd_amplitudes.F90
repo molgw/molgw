@@ -774,9 +774,9 @@ subroutine calc_t_Jia_diag(ELAGd,RDMd,INTEGd,Jia_diag)
    iorb1=iorb+RDMd%Nfrozen
    do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
     iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-    Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)+(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))                   &
-   &        -real(four*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb1,iorb3)+two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))) &
-   &        +real(INTEGd%ERImol_cmplx(iorb3,iorb3,iorb3,iorb3)+INTEGd%ERImol_cmplx(iorb1,iorb1,iorb1,iorb1))           &
+    Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)+real(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))         &
+   &        -four*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb1,iorb3)+two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1)) &
+   &        +real(INTEGd%ERImol_cmplx(iorb3,iorb3,iorb3,iorb3)+INTEGd%ERImol_cmplx(iorb1,iorb1,iorb1,iorb1))     &
    &        -real(two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2))
     do iorb4=1,RDMd%Npairs ! Occ
      iorb5=iorb+RDMd%Nfrozen
@@ -786,8 +786,8 @@ subroutine calc_t_Jia_diag(ELAGd,RDMd,INTEGd,Jia_diag)
     enddo
     do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
      iorb5=iorb+RDMd%Nfrozen+RDMd%Npairs
-     if(iorb3/=iorb4) then
-      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-real(RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol_cmplx(iorb,iorb5,iorb5,iorb))
+     if(iorb2/=iorb4) then
+      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-real(RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol_cmplx(iorb1,iorb5,iorb5,iorb1))
      endif
     enddo
    enddo
@@ -809,8 +809,8 @@ subroutine calc_t_Jia_diag(ELAGd,RDMd,INTEGd,Jia_diag)
     enddo
     do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
      iorb5=iorb+RDMd%Nfrozen+RDMd%Npairs
-     if(iorb3/=iorb4) then
-      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb,iorb5,iorb5,iorb)
+     if(iorb2/=iorb4) then
+      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
      endif
     enddo
    enddo
