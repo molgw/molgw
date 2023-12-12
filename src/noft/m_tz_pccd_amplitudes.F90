@@ -28,7 +28,7 @@ module m_tz_pCCD_amplitudes
 
  implicit none
 
- private :: calc_t_residues,calc_z_residues,num_calc_Grad_t_amp,num_calc_Grad_z_amp
+ private :: calc_t_residues,calc_z_residues,num_calc_Grad_t_amp,num_calc_Grad_z_amp,calc_t_Jia_diag
 !!***
 
  public :: calc_tz_pCCD_amplitudes
@@ -80,7 +80,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  character(len=200)::msg
  integer,dimension(2)::info_print
  real(dp),allocatable,dimension(:)::diag,Work,diag_tz,Grad_residue
- real(dp),allocatable,dimension(:,:)::y_ij,y_ab
+ real(dp),allocatable,dimension(:,:)::y_ij,y_ab,Jia_diag
 !************************************************************************
 
  Ecorr_new=zero; Ecorr_old=zero; Ecorr_diff=zero;
@@ -112,7 +112,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   enddo
  endif
 
- ! Check if the current t-amplitudes solve the problem
+ ! Check if the current t amplitudes solve the problem
  if(iter_global>-1 .and. .not.keep_occs) then
   converged=.true.       
   allocate(Grad_residue(RDMd%Namplitudes))
@@ -132,16 +132,20 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
 
    iter_t=0
 
+   allocate(Jia_diag(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
+
    do
 
     ! Build t_ia (using the intermediate y_ij)
     call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij) 
+    call calc_t_Jia_diag(ELAGd,RDMd,INTEGd,Jia_diag) 
     do iorb=1,RDMd%Npairs ! Occ
      iorb1=iorb+RDMd%Nfrozen
      do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
       iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
       RDMd%t_pccd(iorb,iorb2)=RDMd%t_pccd_old(iorb,iorb2)-RDMd%tz_residue(iorb,iorb2) &
-      & /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
+      & /(Jia_diag(iorb,iorb2)+tol10)
+      !& /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10) ! This is not stable in the disoc. limit
      enddo
     enddo
 
@@ -186,6 +190,8 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
     if(iter_t==2000) exit
 
    enddo
+
+   deallocate(Jia_diag)
 
   else
 
@@ -729,6 +735,89 @@ subroutine calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
  enddo
 
 end subroutine calc_z_residues
+!!***
+
+!!***
+!!****f* DoNOF/calc_t_Jia_diag
+!! NAME
+!!  calc_t_Jia_diag
+!!
+!! FUNCTION
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine calc_t_Jia_diag(ELAGd,RDMd,INTEGd,Jia_diag) 
+!Arguments ------------------------------------
+!scalars
+ type(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(inout)::INTEGd
+!arrays
+ real(dp),intent(inout),dimension(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))::Jia_diag
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5
+!arrays
+!************************************************************************
+
+ Jia_diag=zero
+ if(INTEGd%complex_ints) then
+  do iorb=1,RDMd%Npairs ! Occ
+   iorb1=iorb+RDMd%Nfrozen
+   do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+    iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+    Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)+(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))                   &
+   &        -real(four*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb1,iorb3)+two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))) &
+   &        +real(INTEGd%ERImol_cmplx(iorb3,iorb3,iorb3,iorb3)+INTEGd%ERImol_cmplx(iorb1,iorb1,iorb1,iorb1))           &
+   &        -real(two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2))
+    do iorb4=1,RDMd%Npairs ! Occ
+     iorb5=iorb+RDMd%Nfrozen
+     if(iorb/=iorb4) then
+      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-real(RDMd%t_pccd_old(iorb4,iorb2)*INTEGd%ERImol_cmplx(iorb5,iorb3,iorb3,iorb5))
+     endif
+    enddo
+    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+     iorb5=iorb+RDMd%Nfrozen+RDMd%Npairs
+     if(iorb3/=iorb4) then
+      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-real(RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol_cmplx(iorb,iorb5,iorb5,iorb))
+     endif
+    enddo
+   enddo
+  enddo
+ else
+  do iorb=1,RDMd%Npairs ! Occ
+   iorb1=iorb+RDMd%Nfrozen
+   do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+    iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+    Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)+(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1)) &
+   &        -four*INTEGd%ERImol(iorb1,iorb3,iorb1,iorb3)+two*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)) &
+   &        +INTEGd%ERImol(iorb3,iorb3,iorb3,iorb3)+INTEGd%ERImol(iorb1,iorb1,iorb1,iorb1)           &
+   &        -two*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2)
+    do iorb4=1,RDMd%Npairs ! Occ
+     iorb5=iorb+RDMd%Nfrozen
+     if(iorb/=iorb4) then
+      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-RDMd%t_pccd_old(iorb4,iorb2)*INTEGd%ERImol(iorb5,iorb3,iorb3,iorb5)
+     endif
+    enddo
+    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+     iorb5=iorb+RDMd%Nfrozen+RDMd%Npairs
+     if(iorb3/=iorb4) then
+      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb,iorb5,iorb5,iorb)
+     endif
+    enddo
+   enddo
+  enddo
+ endif
+
+end subroutine calc_t_Jia_diag
 !!***
 
 end module m_tz_pCCD_amplitudes
