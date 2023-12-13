@@ -174,6 +174,7 @@ module m_inputparam
   logical,protected                :: auto_occupation_
   logical,protected                :: gwgwg_skip_vvv_
   logical,protected                :: gwgwg_skip_vv_
+  logical,protected                :: gwgwg_static_approximation_
 
   real(dp),protected               :: rcut         = 0.0_dp
   real(dp),protected               :: factor_sosex = 1.0_dp
@@ -926,6 +927,7 @@ subroutine read_inputfile_namelist()
 
   gwgwg_skip_vvv_           = yesno_to_logical(gwgwg_skip_vvv)
   gwgwg_skip_vv_            = yesno_to_logical(gwgwg_skip_vv)
+  gwgwg_static_approximation_ = yesno_to_logical(gwgwg_static_approximation)
   print_eri_                = yesno_to_logical(print_eri)
   print_wfn_                = yesno_to_logical(print_wfn)
   print_w_                  = yesno_to_logical(print_w)

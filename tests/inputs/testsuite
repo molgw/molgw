@@ -713,8 +713,8 @@ GW LUMO energy            ,   0.884386         , 0 , 1.0e-4
 
 h2o_gw_contour.in         , GW@HF calculation with contour deformation, noparallel
 SCF Total Energy          , -76.0571524942     , 0 , 1.0e-7
-GW HOMO energy            , -12.790901         , 0 , 1.0e-4
-GW LUMO energy            ,   3.450105         , 0 , 1.0e-4
+GW HOMO energy            , -12.794522         , 0 , 1.0e-4
+GW LUMO energy            ,   3.450246         , 0 , 1.0e-4
 
 h2o_mp3.in                , MP3 total energy with RI
 SCF Total Energy          , -76.0262395455     , 0 , 1.0e-7
@@ -904,14 +904,14 @@ GW LUMO energy            ,      3.390125       , 0 , 1.0e-4
 
 co_gw_dm_imag.in          , G0W0 based on G0W0 density matrix using an imaginary axis integration, noparallel
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
-Kinetic Energy            ,    112.6581338995   , 0 , 1.0e-7
-Nucleus Energy            ,   -309.8372953964   , 0 , 1.0e-7
-Hartree Energy            ,     75.7945279204   , 0 , 1.0e-7
-Exchange Energy           ,    -13.2091598493   , 0 , 1.0e-7
+Kinetic Energy            ,    112.6577241524   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.8363513170   , 0 , 1.0e-7
+Hartree Energy            ,     75.7938038329   , 0 , 1.0e-7
+Exchange Energy           ,    -13.2091319492   , 0 , 1.0e-7
 
 co_gw_dm_dyson.in         , G0W0 density matrix obtained from the Dyson equation solution using a imaginary frequencies, noparallel
 SCF Total Energy          ,   -113.2675617628   , 0 , 1.0e-7
-Trace                     ,     14.006299       , 0 , 1.0e-4
+Trace                     ,     14.006159       , 0 , 1.0e-4
 
 cs_gwdm_minoverlap.in     , G0W0 density matrix used for GW calculations when min_overlap is high
 SCF Total Energy          ,   -435.3493884743   , 0 , 1.0e-7
@@ -962,8 +962,8 @@ ch4_cbs.in                , CBS extrapolation
 SCF Total Energy          ,    -40.4856598233   , 0 , 1.0e-7
 state    5 spin  1        ,     25.861771       , 0 , 1.0e-4
 state    5 spin  1        ,     -0.460572       , 1 , 1.0e-4
-state    5 spin  1        ,    -14.095145       , 2 , 1.0e-4
-state    5 spin  1        ,    -14.555717       , 3 , 1.0e-4
+state    5 spin  1        ,    -14.082090       , 2 , 1.0e-4
+state    5 spin  1        ,    -14.542662       , 3 , 1.0e-4
 
 ch4_gwtdhf.in             , GW calculation with W from TDHF
 SCF Total Energy          ,    -40.2135693443   , 0 , 1.0e-7
@@ -1062,19 +1062,19 @@ GW+SOX HOMO energy        ,  -24.821330        , 0 , 1.0e-4
 
 he_gw+sosex.in            , GW+SOSEX for He
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
-GW+SOSEX HOMO energy      ,  -24.745453        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,  -24.745514        , 0 , 1.0e-4
 
 he_gw+sosex_pade.in       , GW+SOSEX for He on the imaginary axis
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
-GW+SOSEX HOMO energy      ,  -24.745143        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,  -24.745514        , 0 , 1.0e-4
 
 he_gw+sosex2.in           , GW+SOSEX2 for He
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
 GW+SOSEX HOMO energy      ,  -24.670771        , 0 , 1.0e-4
 
-he_gw+sosex2_pade.in      , GW+SOSEX2 for He on the imaginary axis
+he_gw+sosex2_pade.in      , GW+2SOSEX for He on the imaginary axis
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
-GW+SOSEX HOMO energy      ,  -24.670254        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,  -24.670840        , 0 , 1.0e-4
 
 he_gw+gwgwg.in            , GW+GWGWG for He
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
@@ -1082,5 +1082,5 @@ GW+GWGWG HOMO energy      ,  -24.696203        , 0 , 1.0e-4
 
 he_gw+gwgwg_pade.in       , GW+GWGWG for He on the imaginary axis (setting the axis origin)
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
-GW+GWGWG HOMO energy      ,  -24.694923        , 0 , 1.0e-4
+GW+GWGWG HOMO energy      ,  -24.680279        , 0 , 1.0e-4
 

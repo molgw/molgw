@@ -592,7 +592,7 @@ subroutine gw_selfenergy_grid(basis,occupation,energy,c_matrix,se)
 
   !
   ! Initialize wpol_imag any way to store chi(:,:,iomegap)
-  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD)
+  call wpol_imag%init(nstate,occupation,nomega_chi_imag,grid_type=IMAGINARY_QUAD,verbose=.TRUE.)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate,occupation,0,grid_type=NO_GRID)
     call polarizability(.TRUE.,.TRUE.,basis,occupation,energy,c_matrix,erpa,egw,wpol_analytic)

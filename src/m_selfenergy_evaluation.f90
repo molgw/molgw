@@ -26,7 +26,7 @@ module m_selfenergy_evaluation
   use m_linear_response
   use m_gwgwg_selfenergy
 
-  logical,parameter :: arno_static_approximation = .FALSE.
+
 
 contains
 
@@ -43,7 +43,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
   type(energy_contributions),intent(inout) :: en_mbpt
   !=====
   integer                 :: nstate
-  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gwgw0g
+  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gwgwg
   logical                 :: enforce_rpa
   character(len=36)       :: selfenergy_tag
   integer                 :: reading_status
@@ -349,6 +349,14 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         deallocate(zz)
         deallocate(energy_qp_z)
 
+        if( gwgwg_static_approximation_ ) then
+          call issue_warning("selfenergy_evaluation: use Arno's approximation for GWGWG")
+          ! enforce a single frequency located at the GW qp energy
+          call init_selfenergy_grid(static_selfenergy,energy_qp_new,se_gwgwg)
+        else
+          call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_gwgwg)
+        endif
+
         !
         ! selfenergy = GWSOX
         !
@@ -368,47 +376,40 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           call destroy_selfenergy_grid(se_sox)
 
         case(GW0GW0G,GWGW0G,GWGW0RPAG)
-          if( arno_static_approximation ) then
-            call issue_warning('selfenergy_evaluation: use arno approximation for GW0GW0G')
-            ! enforce a single frequency located at the GW qp energy
-            call init_selfenergy_grid(static_selfenergy,energy_qp_new,se_gwgw0g)
-          else
-            call init_selfenergy_grid(calc_type%selfenergy_technique,energy_g,se_gwgw0g)
-          endif
-          call gwgw0g_selfenergy(occupation,energy_g,c_matrix,wpol,se_gwgw0g)
-          if( arno_static_approximation ) then
-            do iomega=-se%nomega,se%nomega
-              se%sigma(iomega,:,:) = se%sigma(iomega,:,:) + se_gwgw0g%sigma(0,:,:)
-            enddo
-          else
-            se%sigma(:,:,:) = se%sigma(:,:,:) + se_gwgw0g%sigma(:,:,:)
-          endif
-          call destroy_selfenergy_grid(se_gwgw0g)
+          call gwgw0g_selfenergy(occupation,energy_g,c_matrix,wpol,se_gwgwg)
+
+          call selfenergy_accumulate(se,se_gwgwg)
+          call destroy_selfenergy_grid(se_gwgwg)
 
         case(GWSOSEX)
           call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
 
         case(GWGWG)
-          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
+          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_gwgwg)
 
           ! Output the GW+SOSEX qp energies before over-riding them
           allocate(energy_qp_z(nstate,nspin))
           allocate(zz(nstate,nspin))
-          call find_qp_energy_linearization(se,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-          call find_qp_energy_graphical(se,exchange_m_vxc_diag,energy,energy_qp_new,zz)
-          call output_qp_energy('GW+SOSEX2',energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
-          call output_qp_energy_yaml('GW+SOSEX2',energy,exchange_m_vxc_diag,se,energy_qp_z,energy_qp_new,zz)
+          call find_qp_energy_linearization(se_gwgwg,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+          call find_qp_energy_graphical(se_gwgwg,exchange_m_vxc_diag,energy,energy_qp_new,zz)
+          call output_qp_energy('GW+SOSEX2',energy,exchange_m_vxc_diag,1,se_gwgwg,energy_qp_z,energy_qp_new,zz)
+          call output_qp_energy_yaml('GW+SOSEX2',energy,exchange_m_vxc_diag,se_gwgwg,energy_qp_z,energy_qp_new,zz)
           call output_homolumo('GW+SOSEX2',occupation,energy_qp_new,nsemin,nsemax)
           call dump_out_energy_yaml('gw+sosex2 energies',energy_qp_new,nsemin,nsemax)
           deallocate(zz)
           deallocate(energy_qp_z)
 
-          call gwgwg_selfenergy(occupation,energy_g,c_matrix,wpol,se)
+          call gwgwg_selfenergy(occupation,energy_g,c_matrix,wpol,se_gwgwg)
+
+          call selfenergy_accumulate(se,se_gwgwg)
+          call destroy_selfenergy_grid(se_gwgwg)
 
         case(GWGWG_NUMERICAL)
-          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se)
+          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_gwgwg)
 
-          call gwgwg_selfenergy_real_grid(basis,occupation,energy_g,c_matrix,se)
+          call gwgwg_selfenergy_real_grid(basis,occupation,energy_g,c_matrix,se_gwgwg)
+          call selfenergy_accumulate(se,se_gwgwg)
+          call destroy_selfenergy_grid(se_gwgwg)
         case default
           call die('selfenergy_evaluation: selfenergy type not recognized')
         end select

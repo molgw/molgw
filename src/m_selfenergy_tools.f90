@@ -1151,5 +1151,32 @@ end subroutine selfenergy_convergence_prediction
 
 
 !=========================================================================
+subroutine selfenergy_accumulate(se,se2)
+  implicit none
+  type(selfenergy_grid),intent(inout) :: se
+  type(selfenergy_grid),intent(in)    :: se2
+  !=====
+  integer :: iomega
+  !=====
+
+  if( se%nomega == se2%nomega  ) then
+    ! se and se2 have the same number of frequencies,
+    ! then simply add them
+    se%sigma(:,:,:) = se%sigma(:,:,:) + se2%sigma(:,:,:)
+  else
+    ! se and se2 have different number of frequencies
+    ! assumme se2 is just a static correction stored in index = 0
+    if( se2%nomega /= 0 ) then
+      call die('selfenergy_accumulate: se2 is not static. I dont know what to do')
+    endif
+    do iomega=-se%nomega,se%nomega
+      se%sigma(iomega,:,:) = se%sigma(iomega,:,:) + se2%sigma(0,:,:)
+    enddo
+  endif
+
+end subroutine selfenergy_accumulate
+
+
+!=========================================================================
 end module m_selfenergy_tools
 !=========================================================================

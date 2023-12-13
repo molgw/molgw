@@ -840,6 +840,14 @@ gwgwg_skip_vv:
   default: 'no'
   comment: EXPERIMENTAL. Skip the 2-virtual+1-occupied-state  contributions in the GWGWG selfenergy.
 
+gwgwg_static_approximation:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: EXPERIMENTAL. Evaluate the GWGWG self-energy at the GW energy only.
+
 gwgamma_tddft:
   family: post
   datatype: yes/no
