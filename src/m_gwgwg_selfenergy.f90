@@ -1387,7 +1387,7 @@ subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
   type(selfenergy_grid),intent(inout) :: se
   !=====
   integer              :: nstate
-  integer              :: iomega_sigma,iomegap,iomegapp
+  integer              :: iomega_sigma,iomegap,iomegapp,iomega_pair
   real(dp)             :: braket1,braket2
   integer              :: pstate,qstate,pqspin
   integer              :: ustate,vstate,wstate
@@ -1398,6 +1398,7 @@ subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
   !type(spectral_function) :: wpol_one
   real(dp) :: vw(nauxil_global),up(nauxil_global),uv(nauxil_global),qw(nauxil_global)
   real(dp) :: erpa,egw
+  real(dp),allocatable :: chi_omegap_up(:,:),chi_omegapp_wq(:,:)
   !=====
 
 
@@ -1431,6 +1432,8 @@ subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,low_rank=.FALSE.)
   endif
 
+  allocate(chi_omegap_up(nauxil_global,ncore_G+1:nvirtual_G-1))
+  allocate(chi_omegapp_wq(nauxil_global,ncore_G+1:nvirtual_G-1))
 
 
   allocate(sigmagwgwg(first_omega:last_omega,nsemin:nsemax,nspin))
@@ -1440,37 +1443,45 @@ subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
     do pstate=nsemin,nsemax
       qstate = pstate ! only the diagonal
 
+      iomega_pair = 0
 
       !
       ! First imaginary axis integral: i omega'
       !
       do iomegap=1,wpol_imag%nomega
-        if( MODULO( iomegap - 1 , ortho%nproc) /= ortho%rank ) cycle
         write(stdout,'(1x,a,i4,a,i4)') 'Quadrature on omega prime: ',iomegap,' / ',wpol_imag%nomega
 
+        !
+        ! Second imaginary axis integral: i omega''
+        !
+        do iomegapp=1,wpol_imag%nomega
+          iomega_pair = iomega_pair + 1
+          if( MODULO( iomega_pair - 1 , ortho%nproc) /= ortho%rank ) cycle
 
-        do ustate=ncore_G+1,nvirtual_G-1
-          do vstate=ncore_G+1,nvirtual_G-1
-            do wstate=ncore_G+1,nvirtual_G-1
+          call DGEMM('N','N',nauxil_global,nvirtual_G-ncore_G-1,nauxil_global, &
+                         1.0_dp,wpol_imag%chi(:,:,iomegap),nauxil_global, &
+                                eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,pstate,pqspin),nauxil_global, &
+                         0.0_dp,chi_omegap_up,nauxil_global)
+
+          call DGEMM('N','N',nauxil_global,nvirtual_G-ncore_G-1,nauxil_global, &
+                         1.0_dp,wpol_imag%chi(:,:,iomegapp),nauxil_global, &
+                                eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,qstate,pqspin),nauxil_global, &
+                         0.0_dp,chi_omegapp_wq,nauxil_global)
+
+          do ustate=ncore_G+1,nvirtual_G-1
+            do vstate=ncore_G+1,nvirtual_G-1
+              do wstate=ncore_G+1,nvirtual_G-1
 
 
-
-              qw(:) = eri_3center_eigen(:,qstate,wstate,pqspin)
-              uv(:) = eri_3center_eigen(:,ustate,vstate,pqspin)
-              up(:) = eri_3center_eigen(:,ustate,pstate,pqspin)
-              vw(:) = eri_3center_eigen(:,vstate,wstate,pqspin)
-
-              ! v * chi( +/- iw') * v
-              braket1 = DOT_PRODUCT( vw(:), MATMUL( wpol_imag%chi(:,:,iomegap), up(:) ) )
-
-              !
-              ! Second imaginary axis integral: i omega''
-              !
-              do iomegapp=1,wpol_imag%nomega
+                ! v * chi( +/- iw') * v
+                vw(:) = eri_3center_eigen(:,vstate,wstate,pqspin)
+                braket1 = DOT_PRODUCT( vw(:), chi_omegap_up(:,ustate) )
 
 
                 ! v * chi( +/- iw'') * v
-                braket2 = DOT_PRODUCT( uv(:) , MATMUL( wpol_imag%chi(:,:,iomegapp) , qw(:) ) )
+                uv(:) = eri_3center_eigen(:,ustate,vstate,pqspin)
+                braket2 = DOT_PRODUCT( uv(:) , chi_omegapp_wq(:,wstate) )
+
 
                 do iomega_sigma=first_omega,last_omega
                   ! +w' +w''
@@ -1511,18 +1522,22 @@ subroutine gwgwg_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
                                 + wpol_imag%weight_quad(iomegap) * wpol_imag%weight_quad(iomegapp)  &
                                    * ( braket1 * braket2 ) * denoms * ( -1.0_dp / (2.0_dp * pi) ) **2
 
-                enddo
+                enddo !iomega_sigma
+
               enddo
             enddo
+          enddo
 
-          enddo 
 
-        enddo 
+        enddo !iomegapp
       enddo !iomegap
 
-    enddo
-  enddo
+    enddo !pstate
+  enddo !pqspin
   call ortho%sum(sigmagwgwg)
+
+  deallocate(chi_omegap_up)
+  deallocate(chi_omegapp_wq)
 
   write(stdout,*) 'G (W-v) G (W-v) G'
   write(stdout,*) ' state index  imag frequency index  rest self-energy  G3W2 self-energy'
