@@ -28,7 +28,8 @@ module m_tz_pCCD_amplitudes
 
  implicit none
 
- private :: calc_t_residues,calc_z_residues,num_calc_Grad_t_amp,num_calc_Grad_z_amp,calc_t_Jia_diag
+ private :: calc_t_residues,calc_z_residues,num_calc_Grad_t_amp,num_calc_Grad_z_amp,calc_t_Jia_diag,calc_E_sd
+ !private :: pCCD,form_delta_OV ! Titou's subroutines
 !!***
 
  public :: calc_tz_pCCD_amplitudes
@@ -72,10 +73,10 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  logical::diagco,converged
  integer,parameter::msave=7
  integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5,ipair
- integer::iflag,Mtosave,Nwork
+ integer::iflag,Mtosave,Nwork,Nvirtual
  real(dp)::tol10=1e-10
  real(dp)::sumdiff_t,sumdiff_z,maxdiff_t,maxdiff_z
- real(dp)::Ecorr_new,Ecorr_old,Ecorr_diff,Ediff
+ real(dp)::Ecorr_new,Ecorr_old,Ecorr_diff,Ediff,Esingle_det
 !arrays
  character(len=200)::msg
  integer,dimension(2)::info_print
@@ -85,10 +86,11 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
 
  Ecorr_new=zero; Ecorr_old=zero; Ecorr_diff=zero;
  maxdiff_t=zero; maxdiff_z=zero; Ediff=Energy;
- iter_t=0; iter_z=0; converged=.false.
+ iter_t=0; iter_z=0; converged=.false.; Nvirtual=RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs);
 
- ! Build diag elements of the Lambda matrix (with HF 1-RDM and 2-RDM)
+ ! Build diag elements of the Lambda matrix (with HF 1-RDM and 2-RDM) and compute SD energy
  call ELAGd%build_sd_diag(RDMd,INTEGd)
+ call calc_E_sd(RDMd,INTEGd,Esingle_det)
  allocate(y_ij(RDMd%Npairs,RDMd%Npairs))
  allocate(y_ab(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
 
@@ -111,6 +113,9 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
    enddo
   enddo
  endif
+
+ !call pCCD(.false.,2000,tol10,7,RDMd%NBF_occ,RDMd%Nfrozen,RDMd%Npairs,Nvirtual,0,INTEGd%ERImol,Vnn,Esingle_det,ELAGd%Lambdas_pp,&
+ !     & RDMd%t_pccd_old)
 
  ! Check if the current t amplitudes solve the problem
  if(iter_global>-1 .and. .not.keep_occs) then
@@ -216,9 +221,21 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
    enddo
    deallocate(Work,diag,diag_tz,Grad_residue)
 
-   ! Update final t_ia and error
+   ! Update final t_ia, error, and Ecorr
    RDMd%t_pccd=RDMd%t_pccd_old
    sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
+   Ecorr_new=zero
+   do iorb=1,RDMd%Npairs ! Occ
+    iorb1=iorb+RDMd%Nfrozen
+    do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+     iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+     if(INTEGd%complex_ints) then
+      Ecorr_new=Ecorr_new+RDMd%t_pccd(iorb,iorb2)*real(INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))
+     else        
+      Ecorr_new=Ecorr_new+RDMd%t_pccd(iorb,iorb2)*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)
+     endif 
+    enddo
+   enddo
 
   endif
 
@@ -370,6 +387,11 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr)
  endif
+ write(msg,'(a,f15.6)') 'Single-Det. Energy |0>        =',Esingle_det
+ call write_output(msg)
+ write(msg,'(a,f15.6)') 'Correlation Energy w.r.t. |0> =',Ecorr_new
+ call write_output(msg)
+ Energy=Esingle_det+Ecorr_new
  write(msg,'(a,f15.6,a,i6,a,i6,a)') 'T-,Z-amp. opt. energy= ',Energy+Vnn,' after ',iter_t,' t-iter. and',&
   & iter_z,' z-iter.'
  call write_output(msg)
@@ -385,10 +407,6 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   call write_output(msg)
   write(msg,'(a,f15.6)') 'Error z-residues        =      ',sumdiff_z
   call write_output(msg)
-  ! This is w.r.t. |0>  (use it only for debug)
-  ! This is w.r.t. |0>  (use it only for debug)
-  !write(msg,'(a,f15.6)') 'Correlation Energy   =',Ecorr_new
-  !call write_output(msg)
   write(msg,'(a,f19.10)') 'Energy difference amp. opt.=',Ediff
   call write_output(msg)
  endif
@@ -819,6 +837,314 @@ subroutine calc_t_Jia_diag(ELAGd,RDMd,INTEGd,Jia_diag)
 
 end subroutine calc_t_Jia_diag
 !!***
+
+!!***
+!!****f* DoNOF/calc_E_sd
+!! NAME
+!!  calc_E_sd
+!!
+!! FUNCTION
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine calc_E_sd(RDMd,INTEGd,Energy_sd)
+!Arguments ------------------------------------
+!scalars
+ real(dp),intent(inout)::Energy_sd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(inout)::INTEGd
+!arrays
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1
+!arrays
+!************************************************************************
+
+ Energy_sd=zero
+ if(INTEGd%complex_ints) then
+  do iorb=1,RDMd%Nfrozen+RDMd%Npairs
+   Energy_sd=Energy_sd+two*real(INTEGd%hCORE_cmplx(iorb,iorb))
+   do iorb1=1,RDMd%Nfrozen+RDMd%Npairs
+    Energy_sd=Energy_sd+real(two*INTEGd%ERImol_cmplx(iorb,iorb1,iorb,iorb1)-INTEGd%ERImol_cmplx(iorb,iorb1,iorb1,iorb))
+   enddo
+  enddo
+ else
+  do iorb=1,RDMd%Nfrozen+RDMd%Npairs
+   Energy_sd=Energy_sd+two*INTEGd%hCORE(iorb,iorb)
+   do iorb1=1,RDMd%Nfrozen+RDMd%Npairs
+    Energy_sd=Energy_sd+two*INTEGd%ERImol(iorb,iorb1,iorb,iorb1)-INTEGd%ERImol(iorb,iorb1,iorb1,iorb)
+   enddo
+  enddo
+ endif
+
+end subroutine calc_E_sd
+!!***
+
+!subroutine pCCD(dotest,maxSCF,thresh,max_diis,nBas,nC,nO,nV,nR,ERI,ENuc,ERHF,eHF,t_amp)
+!
+!! pair CCD module
+!
+!  implicit none
+!
+!! Input variables
+!
+!  logical,intent(in)            :: dotest
+!
+!  integer,intent(in)            :: maxSCF
+!  integer,intent(in)            :: max_diis
+!  real(dp),intent(in)           :: thresh
+!
+!  integer,intent(in)            :: nBas,nC,nO,nV,nR
+!  real(dp),intent(in)    :: ENuc,ERHF
+!  real(dp),intent(in)    :: eHF(nBas)
+!  real(dp),intent(in)    :: ERI(nBas,nBas,nBas,nBas)
+!  real(dp),intent(inout) :: t_amp(nO-nC,nV-nR)
+!
+! Local variables
+!
+!  integer                       :: i,j,a,b
+!
+!  integer                       :: nSCF
+!  real(dp)              :: Conv
+!  real(dp)              :: ECC,EcCC
+!
+!  real(dp),allocatable  :: eO(:)
+!  real(dp),allocatable  :: eV(:)
+!  real(dp),allocatable  :: delta_OV(:,:)
+!
+!  real(dp),allocatable  :: OOOO(:,:)
+!  real(dp),allocatable  :: OOVV(:,:)
+!  real(dp),allocatable  :: OVOV(:,:)
+!  real(dp),allocatable  :: OVVO(:,:)
+!  real(dp),allocatable  :: VVVV(:,:)
+!
+!  real(dp),allocatable  :: y(:,:)
+!
+!  real(dp),allocatable  :: r(:,:)
+!  real(dp),allocatable  :: t(:,:)
+!
+!  integer                       :: n_diis
+!  real(dp)              :: rcond
+!  real(dp),allocatable  :: error_diis(:,:)
+!  real(dp),allocatable  :: t_diis(:,:)
+!  real(dp),external     :: trace_matrix
+!          
+!! Hello world
+!
+!  write(*,*)
+!  write(*,*)'**************************************'
+!  write(*,*)'|     pair CCD calculation           |'
+!  write(*,*)'**************************************'
+!  write(*,*)
+!
+!! Form energy denominator
+!
+!  allocate(eO(nO-nC),eV(nV-nR),delta_OV(nO-nC,nV-nR))
+!
+!  eO(:) = eHF(nC+1:nO)
+!  eV(:) = eHF(nO+1:nBas-nR)
+!
+!  call form_delta_OV(nC,nO,nV,nR,eO,eV,delta_OV)
+!
+!! Create integral batches
+!
+!  allocate(OOOO(nO-nC,nO-nC),OOVV(nO-nC,nV-nR),OVOV(nO-nC,nV-nR),OVVO(nO-nC,nV-nR),VVVV(nV-nR,nV-nR))
+!
+!  do i=1,nO-nC
+!    do j=1,nO-nC
+!      OOOO(i,j) = ERI(nC+i,nC+i,nC+j,nC+j)
+!    end do
+!  end do
+!
+!  do i=1,nO-nC
+!    do a=1,nV-nR
+!      OOVV(i,a) = ERI(nC+i,nC+i,nO+a,nO+a)
+!      OVOV(i,a) = ERI(nC+i,nO+a,nC+i,nO+a)
+!      OVVO(i,a) = ERI(nC+i,nO+a,nO+a,nC+i)
+!    end do
+!  end do
+!
+!  do a=1,nV-nR
+!    do b=1,nV-nR
+!      VVVV(a,b) = ERI(nO+a,nO+a,nO+b,nO+b)
+!    end do
+!  end do
+!
+!! MP2 guess amplitudes
+!
+!  allocate(t(nO-nC,nV-nR))
+!
+!  t(:,:) = -0.5d0*OOVV(:,:)/delta_OV(:,:)
+!
+!  EcCC = 0d0
+!  do i=1,nO-nC
+!    do a=1,nV-nR
+!      EcCC = EcCC + OOVV(i,a)*t(i,a)
+!    end do
+!  end do
+!
+!! Memory allocation for DIIS
+!
+!  allocate(error_diis((nO-nC)*(nV-nR),max_diis),t_diis((nO-nC)*(nV-nR),max_diis))
+!
+!! Initialization
+!
+!  allocate(r(nO-nC,nV-nR),y(nO-nC,nO-nC))
+!
+!  Conv = 1d0
+!  nSCF = 0
+!
+!  n_diis          = 0
+!  t_diis(:,:)     = 0d0
+!  error_diis(:,:) = 0d0
+!
+!!------------------------------------------------------------------------
+!! Main SCF loop
+!!------------------------------------------------------------------------
+!  write(*,*)
+!  write(*,*)'----------------------------------------------------'
+!  write(*,*)'| pair CCD calculation                             |'
+!  write(*,*)'----------------------------------------------------'
+!  write(*,'(1X,A1,1X,A3,1X,A1,1X,A16,1X,A1,1X,A10,1X,A1,1X,A10,1X,A1,1X)') &
+!            '|','#','|','E(pCCD)','|','Ec(pCCD)','|','Conv','|'
+!  write(*,*)'----------------------------------------------------'
+!
+!  do while(Conv > thresh .and. nSCF < maxSCF)
+!
+!  ! Increment 
+!
+!    nSCF = nSCF + 1
+!
+!  ! Form intermediate array
+!    
+!   y(:,:) = 0d0
+!   do i=1,nO-nC
+!     do j=1,nO-nC
+!       do b=1,nV-nR
+!         y(i,j) = y(i,j) + OOVV(j,b)*t(i,b)
+!       end do
+!     end do
+!   end do
+!    
+!   ! Compute residual
+!
+!    do i=1,nO-nC
+!      do a=1,nV-nR
+!
+!        r(i,a) = OOVV(i,a) + 2d0*delta_OV(i,a)*t(i,a) & 
+!               - 2d0*(2d0*OVOV(i,a) - OVVO(i,a) - OOVV(i,a)*t(i,a))*t(i,a)
+!
+!        do j=1,nO-nC
+!          r(i,a) = r(i,a) - 2d0*OOVV(j,a)*t(j,a)*t(i,a) + OOOO(j,i)*t(j,a) + y(i,j)*t(j,a) 
+!        end do 
+!
+!        do b=1,nV-nR
+!          r(i,a) = r(i,a) - 2d0*OOVV(i,b)*t(i,b)*t(i,a) + VVVV(a,b)*t(i,b)
+!        end do 
+!
+!      end do
+!    end do
+!
+!   ! Check convergence 
+!
+!    Conv = maxval(abs(r(:,:)))
+!  
+!   ! Update amplitudes
+!
+!   t(:,:) = t(:,:) - 0.5d0*r(:,:)/delta_OV(:,:)
+!
+!   ! Compute correlation energy
+!
+!    EcCC = 0d0
+!    do i=1,nO-nC    
+!      do a=1,nV-nR
+!        EcCC = EcCC + OOVV(i,a)*t(i,a)
+!     end do
+!   end do
+!
+!   ! Dump results
+!
+!    ECC = ERHF + EcCC
+!
+!    ! DIIS extrapolation
+!
+!!   n_diis = min(n_diis+1,max_diis)
+!!   call DIIS_extrapolation(rcond,nO*nV,nO*nV,n_diis,error_diis,t_diis,-0.5d0*r/delta_OV,t)
+!!
+!!    !  Reset DIIS if required
+!!
+!!   if(abs(rcond) < 1d-15) n_diis = 0
+!!
+!!    write(*,'(1X,A1,1X,I3,1X,A1,1X,F16.10,1X,A1,1X,F10.6,1X,A1,1X,F10.6,1X,A1,1X)') &
+!!      '|',nSCF,'|',ECC+ENuc,'|',EcCC,'|',Conv,'|'
+!!
+!  end do
+!  write(*,*)'----------------------------------------------------'
+!!------------------------------------------------------------------------
+!! End of SCF loop
+!!------------------------------------------------------------------------
+!
+!! Did it actually converge?
+!!
+!  if(nSCF == maxSCF) then
+!
+!    write(*,*)
+!    write(*,*)'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+!    write(*,*)'                 Convergence failed                 '
+!    write(*,*)'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+!
+!    stop
+!
+!  end if
+!
+!  if(dotest) then
+!
+!    call dump_test_value('R','pCCD correlation energy',EcCC)
+!
+!  end if
+!
+!  t_amp = t
+!
+!end subroutine pCCD
+!
+!subroutine form_delta_OV(nC,nO,nV,nR,eO,eV,delta)
+!
+! Form energy denominator for CC
+!
+!  implicit none
+!
+!! Input variables
+!!
+!!  integer,intent(in)            :: nC
+!!  integer,intent(in)            :: nO
+!!  integer,intent(in)            :: nV
+!!  integer,intent(in)            :: nR
+!!  real(dp),intent(in)   :: eO(nO-nC)
+!!  real(dp),intent(in)   :: eV(nV-nR)
+!!
+!! Local variables
+!!
+!!  integer                       :: i,a
+!!
+!! Output variables
+!
+!  real(dp),intent(out)  :: delta(nO-nC,nV-nR)
+!
+!    do i=1,nO-nC
+!      do a=1,nV-nR
+!        delta(i,a) = eV(a) - eO(i)
+!      end do
+!    end do
+!
+!end subroutine form_delta_OV 
 
 end module m_tz_pCCD_amplitudes
 !!***

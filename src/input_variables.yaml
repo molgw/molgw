@@ -1697,6 +1697,14 @@ noft_sta:
   default: 'no'
   comment: Decide whether to use PNOF7 or PNOF7s, but it also affects GNOF (default= 'no', use 'PNOF7' and 'GNOF').
 
+noft_Newton_RapsonOCC:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use Newton-Rapson method in t and z amplitudes optimization in pCCD (default= 'no').
+
 noft_ithresh_lambda:
   family: noft
   datatype: integer
