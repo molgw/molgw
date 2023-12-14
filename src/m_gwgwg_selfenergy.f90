@@ -36,7 +36,6 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   !=====
   integer                 :: nstate
   integer                 :: iomega
-  complex(dp),allocatable :: sigma_gw(:,:,:)
   complex(dp),allocatable :: sigma_sosex(:,:,:)
   complex(dp),allocatable :: sigma_sox(:,:,:)
   integer                 :: astate,bstate,cstate
@@ -93,7 +92,6 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   !
   allocate(sigma_sosex(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(sigma_sox(-se%nomega:se%nomega,nsemin:nsemax,nspin))
-  allocate(sigma_gw(-se%nomega:se%nomega,nsemin:nsemax,nspin))
 
   sigma_sosex(:,:,:)  = 0.0_dp
   sigma_sox(:,:,:)  = 0.0_dp
@@ -363,13 +361,9 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 
 
-  !
-  ! The input sigma contains the GW selfenergy
-  sigma_gw(:,:,:) = se%sigma(:,:,:)
-
 
   forall(pstate=nsemin:nsemax)
-    se%sigma(:,pstate,:) = sigma_gw(:,pstate,:) + sigma_sox(:,pstate,:) + factor_sosex * sigma_sosex(:,pstate,:)
+    se%sigma(:,pstate,:) = sigma_sox(:,pstate,:) + factor_sosex * sigma_sosex(:,pstate,:)
   end forall
 
 
@@ -379,13 +373,16 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
   ! endif
 
 
-  write(stdout,'(/,a)') ' GW+SOSEX self-energy contributions at E0 (eV)'
+  if( ABS( factor_sosex - 1.0_dp ) < 0.001 ) then
+    write(stdout,'(/,a)') ' GW+SOSEX self-energy contributions at E0 (eV)'
+  else
+    write(stdout,'(/,a)') ' GW+SOSEX2 self-energy contributions at E0 (eV)'
+  endif
   write(stdout,'(a)') &
-     '   #          E0       SigC_GW     SigC_SOX   SigC_G(W(w)-v)GvG SigC_TOT'
+     '   #          E0        SigC_SOX   SigC_G(W(w)-v)GvG SigC_TOT'
 
   do pstate=nsemin,nsemax
     write(stdout,'(i4,1x,20(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
-                                         sigma_gw(0,pstate,:)%re*Ha_eV,   &
                                          sigma_sox(0,pstate,:)%re*Ha_eV,  &
                                          sigma_sosex(0,pstate,:)%re*Ha_eV,&
                                          se%sigma(0,pstate,:)%re*Ha_eV
@@ -1185,7 +1182,7 @@ subroutine gwgwg_selfenergy(occupation,energy,c_matrix,wpol,se)
 
 
   !
-  ! The input sigma contains the GW+SOSEX2 selfenergy
+  ! The input sigma contains the 2SOSEX selfenergy
   sigma_rest(:,:,:) = se%sigma(:,:,:)
 
 
@@ -1210,7 +1207,7 @@ subroutine gwgwg_selfenergy(occupation,energy,c_matrix,wpol,se)
                                         SUM(sigma_gwgwg(0,pstate,:,:)%re,DIM=2)*Ha_eV
   enddo
   write(stdout,'(a)') &
-     '   #          E0       SigC_GW+SOSEX2 SigC_G(W-v)G(W-v)G SigC_TOT'
+     '   #          E0       SigC_2SOSEX SigC_G(W-v)G(W-v)G SigC_TOT'
   do pstate=nsemin,nsemax
     write(stdout,'(i4,1x,*(1x,f12.6))') pstate,se%energy0(pstate,:)*Ha_eV,          &
                                         sigma_rest(0,pstate,:)%re*Ha_eV,   &

@@ -22,6 +22,7 @@ module m_acfd
   use m_spectral_function
   use m_spectra
   use m_scf
+  use m_selfenergy_tools
   use m_gw_selfenergy_grid
   use m_linear_response
   use m_numerical_tools,only: coeffs_gausslegint

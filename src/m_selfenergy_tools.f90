@@ -48,6 +48,12 @@ module m_selfenergy_tools
     real(dp),allocatable    :: energy0(:,:)
     complex(dp),allocatable :: sigma(:,:,:)
     complex(dp),allocatable :: sigma_calc(:,:,:)
+  contains
+    procedure :: init     => se_init
+    procedure :: destroy  => se_destroy
+    procedure :: add      => se_add
+    procedure :: reset    => se_reset
+    procedure :: pade_fit => se_pade_fit
   end type
 
 
@@ -546,12 +552,12 @@ end subroutine output_qp_energy_yaml
 
 
 !=========================================================================
-subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
+subroutine se_init(se,selfenergy_technique,energy0)
   implicit none
 
-  integer,intent(in)                  :: selfenergy_technique
-  real(dp),intent(in)                 :: energy0(:,:)
-  type(selfenergy_grid),intent(inout) :: se
+  class(selfenergy_grid),intent(inout) :: se
+  integer,intent(in)                   :: selfenergy_technique
+  real(dp),intent(in)                  :: energy0(:,:)
   !=====
   real(dp),parameter   :: alpha=1.0_dp
   real(dp),parameter   :: beta=1.0_dp
@@ -573,13 +579,13 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
     if( efermi < MAXVAL(energy0(nhomo_G,:)) .OR. efermi > MINVAL(energy0(nhomo_G+1,:)) ) then
       write(stdout,*) 'efermi is out of the HOMO-LUMO gap:',efermi,&
                      MAXVAL(energy0(nhomo_G,:)),MINVAL(energy0(nhomo_G+1,:))
-      call die('init_selfenergy_grid: efermi needs to be in the HOMO-LUMO gap')
+      call die('se_init: efermi needs to be in the HOMO-LUMO gap')
     endif
   else
     if( LBOUND(energy0(:,:),DIM=1) <= nhomo_G .AND. UBOUND(energy0(:,:),DIM=1) >= nhomo_G+1 ) then
       efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G,:)) + MINVAL(energy0(nhomo_G+1,:)) )
     else
-      call die('init_selfenergy_grid: not enough states to find the fermi energy')
+      call die('se_init: not enough states to find the fermi energy')
     endif
   endif
 
@@ -683,13 +689,20 @@ subroutine init_selfenergy_grid(selfenergy_technique,energy0,se)
     allocate(se%sigma_calc(se%nomega_calc,nsemin:nsemax,nspin))
   end select
 
-end subroutine init_selfenergy_grid
+  if( ALLOCATED(se%sigma_calc) ) then
+    se%sigma_calc(:,:,:) = (0.0_dp, 0.0_dp)
+  endif
+  if( ALLOCATED(se%sigma) ) then
+    se%sigma(:,:,:) = (0.0_dp, 0.0_dp)
+  endif
+
+end subroutine se_init
 
 
 !=========================================================================
-subroutine destroy_selfenergy_grid(se)
+subroutine se_destroy(se)
   implicit none
-  type(selfenergy_grid),intent(inout) :: se
+  class(selfenergy_grid),intent(inout) :: se
   !=====
 
   se%nomega      = 0
@@ -701,7 +714,7 @@ subroutine destroy_selfenergy_grid(se)
   if( ALLOCATED(se%sigma_calc) )  deallocate(se%sigma_calc)
   if( ALLOCATED(se%weight_calc) ) deallocate(se%weight_calc)
 
-end subroutine destroy_selfenergy_grid
+end subroutine se_destroy
 
 
 !=========================================================================
@@ -958,10 +971,10 @@ end subroutine self_energy_fit
 
 
 !=========================================================================
-subroutine self_energy_pade(se)
+subroutine se_pade_fit(se)
   implicit none
 
-  type(selfenergy_grid),intent(inout) :: se
+  class(selfenergy_grid),intent(inout) :: se
   !=====
   integer  :: pstate,pspin
   integer  :: iomega,iomega_calc
@@ -993,7 +1006,7 @@ subroutine self_energy_pade(se)
   enddo
 
 
-end subroutine self_energy_pade
+end subroutine se_pade_fit
 
 
 !=========================================================================
@@ -1151,10 +1164,10 @@ end subroutine selfenergy_convergence_prediction
 
 
 !=========================================================================
-subroutine selfenergy_accumulate(se,se2)
+subroutine se_add(se,se2)
   implicit none
-  type(selfenergy_grid),intent(inout) :: se
-  type(selfenergy_grid),intent(in)    :: se2
+  class(selfenergy_grid),intent(inout) :: se
+  class(selfenergy_grid),intent(in)    :: se2
   !=====
   integer :: iomega
   !=====
@@ -1166,15 +1179,24 @@ subroutine selfenergy_accumulate(se,se2)
   else
     ! se and se2 have different number of frequencies
     ! assumme se2 is just a static correction stored in index = 0
-    if( se2%nomega /= 0 ) then
-      call die('selfenergy_accumulate: se2 is not static. I dont know what to do')
-    endif
     do iomega=-se%nomega,se%nomega
       se%sigma(iomega,:,:) = se%sigma(iomega,:,:) + se2%sigma(0,:,:)
     enddo
   endif
 
-end subroutine selfenergy_accumulate
+end subroutine se_add
+
+
+!=========================================================================
+subroutine se_reset(se)
+  implicit none
+  class(selfenergy_grid),intent(inout) :: se
+  !=====
+  !=====
+
+  se%sigma(:,:,:) = (0.0_dp, 0.0_dp)
+
+end subroutine se_reset
 
 
 !=========================================================================

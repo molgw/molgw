@@ -1105,9 +1105,9 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
 
 
   !
-  ! Setup the frequency grid
+  ! Setup the self-energy frequency grid
   !
-  call init_selfenergy_grid(one_shot,energy_gks(nsemin:nsemax,:),se)
+  call se%init(one_shot,energy_gks(nsemin:nsemax,:))
 
 
   !
@@ -1181,7 +1181,7 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
   if( ALLOCATED(fs_virt) ) deallocate(fs_virt,es_virt)
   if( ALLOCATED(fs_occ ) ) deallocate(fs_occ,es_occ)
 
-  call destroy_selfenergy_grid(se)
+  call se%destroy()
 
   call stop_clock(timing_ci_selfenergy)
 
