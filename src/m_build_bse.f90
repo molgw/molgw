@@ -738,7 +738,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
 
   if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
      .OR. TRIM(w_screening)=='TDDFT' ) ) then
-    call clean_allocate('Temporary array for W_lr',wp0_lr,1,nauxil_local,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
+    call clean_allocate('Temporary array for W_lr',wp0_lr,1,nauxil_local_lr,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
     wp0_lr(:,:,:,:) = 0.0_dp
   endif
 
