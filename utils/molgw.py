@@ -31,41 +31,42 @@ except ImportError:
 bohr_ang =  0.52917721092
 Ha_eV    = 27.21138505
 c_speedlight = 137.035999074   # speed of light in atomic units (fine-structure constant inverse)
-periodic_table = [ 'H',                                                                                                  'He', \
-                   'Li', 'Be',                                                              'B',  'C',  'N',  'O',  'F', 'Ne', \
-                   'Na', 'Mg',                                                             'Al', 'Si',  'P',  'S', 'Cl', 'Ar', \
-                    'K', 'Ca', 'Sc', 'Ti',  'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', \
-                   'Rb', 'Sr',  'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te',  'I', 'Xe', \
-                   'Cs', 'Ba', 'La', 'Hf', 'Ta',  'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', \
-                   'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', \
-                   'Th', 'Pa',  'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', \
-                   'Fr', 'Ra', 'Ac', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt' ]
+periodic_table = [ 'H',                                                                                                  'He',
+                   'Li', 'Be',                                                              'B',  'C',  'N',  'O',  'F', 'Ne',
+                   'Na', 'Mg',                                                             'Al', 'Si',  'P',  'S', 'Cl', 'Ar',
+                    'K', 'Ca', 'Sc', 'Ti',  'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr',
+                   'Rb', 'Sr',  'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te',  'I', 'Xe',
+                   'Cs', 'Ba', 
+                   'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 
+                   'Lu', 'Hf', 'Ta',  'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn',
+                   'Fr', 'Ra',
+                   'Ac', 'Th', 'Pa',  'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 
+                   'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt' 
+                ]
+z_element = {element: index+1 for index, element in enumerate(periodic_table)}
 
-path = str(pathlib.Path(__file__).resolve().parent.parent)
-exe  = path + "/molgw"
+molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent)
+exe  = molgw_rootfolder + "/molgw"
 
-#class mgwi:
-#
-#    def __init__(self,inp):
-#        self.input_parameters = inp
 
 ########################################################################
 def check_input(pyinput):
     sanity = True
-    yml = path + '/src/input_variables.yaml'
+    yml = molgw_rootfolder + '/src/input_variables.yaml'
     with open(yml, 'r') as stream:
         try:
             input_vars = load(stream,Loader=Loader)
         except:
-            print('input_variables.yaml file is corrupted')
+            sys.exit('input_variables.yaml file is corrupted')
             pass
     # Check keywords exist
-    keywords = [k for k in input_vars.keys() ]
-    for k in pyinput:
-        if not k.lower() in keywords:
+    valid_keywords = [k for k in input_vars.keys() ]
+    pyinput_lower = [ k.lower() for k in pyinput ]
+    for k in pyinput_lower:
+        if not k in valid_keywords:
             print('Wrong input variable:    ' + k)
             similar = ''
-            for kk in keywords:
+            for kk in valid_keywords:
                 if difflib.SequenceMatcher(None,k,kk).ratio() > 0.6:
                     #print(kk,difflib.SequenceMatcher(None,k,kk).ratio())
                     similar += ' ' + kk
@@ -78,22 +79,31 @@ def check_input(pyinput):
     # Check all mandatory keywords are there
     mandatory = [k for k in input_vars.keys() if input_vars[k]["mandatory"]=="yes" ]
     for k in mandatory:
-        if not k in [key.lower() for key in pyinput]:
+        if not k in [key for key in pyinput_lower]:
             print('Mandatory keyword not present:   ' + k)
             sanity = False
+    # Check that some sort of structure is there
+    structure_kw = [ "natom", "xyz_file", "rawxyz"]
+    if not any(kw in pyinput_lower for kw in structure_kw):
+        print("No structural data given")
+        sanity = False
 
     return sanity
 
 
 ########################################################################
-def run(inputfile="molgw.in",outputfile="",pyinput={},mpirun="",openmp=1,**kwargs):
+def run(inputfile="molgw.in",outputfile="",pyinput={},mpirun="",executable_path="",openmp=1,**kwargs):
+    if len(executable_path) > 0:
+        exe_local = executable_path
+    else:
+        exe_local = exe
     if len(pyinput) > 0:
         print_input_file(pyinput,inputfile)
     os.environ['OMP_NUM_THREADS'] = str(openmp)
     if len(mpirun) == 0:
-        process = subprocess.Popen([exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        process = subprocess.Popen([exe_local,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     else:
-        process = subprocess.Popen(mpirun.split()+[exe,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        process = subprocess.Popen(mpirun.split()+[exe_local,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     output, error = process.communicate()
     if len(outputfile) >0:
         with open(outputfile,'w') as f:
@@ -180,72 +190,15 @@ class structure:
     def __str__(self):
         return self.string()
 
-########################################################################
-class Molgw_outputs:
-    def __init__(self,origin=''):
-        self.files = []
-        self.data = []
-        if len(origin) == 0:
-            return
-        if isinstance(origin, list):
-            origins = origin
-        else:
-            origins = [origin]
-        for orig in origins:
-            if not os.path.isdir(orig):
-                sys.exit(orig + "is not a valid folder")
-            self.files += glob.glob(orig+"/**/*.yaml",recursive=True)
-        self.files = list(set(self.files))
-        for file in self.files:
-            with open(file,'r') as f:
-                self.data.append(load(f,Loader=Loader))
-    def __len__(self):
-        return len(self.files)
-    def __str__(self):
-        s = f'MOLGW results from {len(self.files)} files'
-        for i,file in enumerate(self.files):
-            s+= f"\n - {file:<30}: {self.data[i]['input parameters']['comment']}"
-        return s
-    def __iter__(self):
-        self.current = 0
-        return self
-    def __next__(self):
-        if self.current < len(self):
-            result = self.data[self.current]
-            self.current += 1
-            return result
-        else:
-            raise StopIteration
-        return self.data
-    # Returns a copy of self containing all those calculations
-    # that match the input parameters mentioned in "filters" dictionary
-    def filtering(self,filters,verbose=False):
-       mgo_filtered = Molgw_outputs()
-       if verbose:
-           print("Selection rules:")
-           for key, value in filters.items():
-               print(f"  {key} == {value}?")
-       for f, d in zip(self.files,self.data):
-           corresponds = True
-           for key, value in filters.items():
-               if d["input parameters"][key] != value:
-                   corresponds = False
-           if corresponds:
-               mgo_filtered.files.append(f)
-               mgo_filtered.data.append(d)
-       if verbose:
-           print(f"Found {len(mgo_filtered)} corresponding calculations")
-       return mgo_filtered
-
 
 
 
 ########################################################################
 def get_homo_energy(approx,calc):
     key = approx + " energies"
-    print(key,calc['input parameters']['comment'])
     if key not in calc.keys():
         print(f"Problem reading calculation: {calc['input parameters']['comment']}")
+        print(f"{key} not found")
         sys.exit("Problem")
     energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
@@ -259,12 +212,19 @@ def get_homo_energy(approx,calc):
 ########################################################################
 def get_lumo_energy(approx,calc):
     key = approx + " energies"
+    if key not in calc.keys():
+        print(f"Problem reading calculation: {calc['input parameters']['comment']}")
+        print(f"{key} not found")
+        sys.exit("Problem")
     energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
         energies += [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     else:
         energies += [ float(ei) for ei in calc[key]["spin channel 2"].values()]
     energies.sort()
+    index = int(calc["physical system"]["electrons"]) - 2*(min(list(calc[key]["spin channel 1"].keys()))-1)
+    if index >= len(energies):
+        sys.exit(f"not enough states to get LUMO in {approx} energies")
     return energies[int(calc["physical system"]["electrons"]) - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
 
@@ -325,10 +285,10 @@ def create_gw100_json(filename,data,**kwargs):
 
 
 ########################################################################
-def print_input_file(calc,filename="molgw.in"):
+def print_input_file(pyinput,filename="molgw.in"):
     with open(filename,'w') as f:
         f.write('&molgw\n')
-        for key, value in calc.items():
+        for key, value in pyinput.items():
             if key == "xyz":
                 f.write('  {:30} = {}\n'.format("natom",value.count("\n")) )
             elif key == "rawxyz":
@@ -340,10 +300,10 @@ def print_input_file(calc,filename="molgw.in"):
             else:
                 f.write('  {:30} = \'{}\'\n'.format(key,value) )
         f.write('/\n')
-        if "xyz" in calc:
-            f.write(calc["xyz"])
-        if "rawxyz" in calc:
-            f.write(calc["rawxyz"])
+        if "xyz" in pyinput:
+            f.write(pyinput["xyz"])
+        if "rawxyz" in pyinput:
+            f.write(pyinput["rawxyz"])
 
 
 ########################################################################
@@ -442,5 +402,104 @@ class gaussian_cube:
                  -self.dx[0] * self.dy[2] * self.dz[1] \
                  -self.dx[1] * self.dy[0] * self.dz[2]
         return
+
+
+########################################################################
+class Molgw_input:
+    def __init__(self,dict_in):
+        self.d = dict_in
+    def __str__(self):
+        return str(self.d)
+    def get(self,key):
+        try: 
+            return self.d[key]
+        except KeyError:
+            sys.exit(f"{key} not found in Molgw_in")
+    def set(self,key,value):
+        self.d[key] = value
+    def check(self):
+        return check_input(self.d)
+    def to_file(self,filename):
+        return print_input_file(self.d,filename)
+
+
+########################################################################
+class Molgw_output:
+    def __init__(self,dict_in):
+        self.d = dict_in
+    def __str__(self):
+        return str(self.d)
+    def get(self,key):
+        try: 
+            return self.d[key]
+        except KeyError:
+            sys.exit(f"{key} not found in Molgw_out")
+    def homo_energy(self,approx):
+        return get_homo_energy(approx,self.d)
+    def lumo_energy(self,approx):
+        return get_lumo_energy(approx,self.d)
+    def check(self):
+        return check_calc(self.d)
+    def to_dict(self):
+        return self.d
+
+
+########################################################################
+class Molgw_outputs:
+    def __init__(self,origin=''):
+        self.files = []
+        self.data = []
+        if len(origin) == 0:
+            return
+        if isinstance(origin, list):
+            origins = origin
+        else:
+            origins = [origin]
+        for orig in origins:
+            if not os.path.isdir(orig):
+                sys.exit(orig + "is not a valid folder")
+            self.files += glob.glob(orig+"/**/*.yaml",recursive=True)
+        self.files = list(set(self.files))
+        for file in self.files:
+            with open(file,'r') as f:
+                self.data.append(Molgw_out(load(f,Loader=Loader)))
+    def __len__(self):
+        return len(self.files)
+    def __str__(self):
+        s = f'MOLGW results from {len(self.files)} files'
+        for i,file in enumerate(self.files):
+            s+= f"\n - {file:<30}: {self.data[i].get('input parameters')['comment']}"
+        return s
+    def __iter__(self):
+        self.current = 0
+        return self
+    def __next__(self):
+        if self.current < len(self):
+            result = self.data[self.current]
+            self.current += 1
+            return result
+        else:
+            raise StopIteration
+        return self.data
+    # Returns a copy of self containing all those calculations
+    # that match the input parameters mentioned in "filters" dictionary
+    def filtering(self,filters,verbose=False):
+       mlgo_filtered = Molgw_outputs()
+       if verbose:
+           print("Selection rules:")
+           for key, value in filters.items():
+               print(f"  {key} == {value}?")
+       for f, mlgo in zip(self.files,self.data):
+           corresponds = True
+           for key, value in filters.items():
+               if mlgo.get("input parameters")[key] != value:
+                   corresponds = False
+           if corresponds:
+               mlgo_filtered.files.append(f)
+               mlgo_filtered.data.append(mlgo)
+       if verbose:
+           print(f"Found {len(mlgo_filtered)} corresponding calculations")
+       return mlgo_filtered
+
 
 ########################################################################
