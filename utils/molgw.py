@@ -59,8 +59,12 @@ def check_input(pyinput):
         except:
             sys.exit('input_variables.yaml file is corrupted')
             pass
-    # Check keywords exist
+
     valid_keywords = [k for k in input_vars.keys() ]
+    additional_keywords = ["xyz", "rawxyz"]
+    valid_keywords += additional_keywords
+
+    # Check keywords exist
     pyinput_lower = [ k.lower() for k in pyinput ]
     for k in pyinput_lower:
         if not k in valid_keywords:
@@ -83,7 +87,7 @@ def check_input(pyinput):
             print('Mandatory keyword not present:   ' + k)
             sanity = False
     # Check that some sort of structure is there
-    structure_kw = [ "natom", "xyz_file", "rawxyz"]
+    structure_kw = [ "natom", "xyz_file", "xyz", "rawxyz"]
     if not any(kw in pyinput_lower for kw in structure_kw):
         print("No structural data given")
         sanity = False
@@ -406,6 +410,7 @@ class gaussian_cube:
 
 ########################################################################
 class Molgw_input:
+    """MOLGW input"""
     def __init__(self,dict_in):
         self.d = dict_in
     def __str__(self):
@@ -425,6 +430,7 @@ class Molgw_input:
 
 ########################################################################
 class Molgw_output:
+    """MOLGW output"""
     def __init__(self,dict_in):
         self.d = dict_in
     def __str__(self):
@@ -446,6 +452,7 @@ class Molgw_output:
 
 ########################################################################
 class Molgw_outputs:
+    """MOLGW collection of outputs"""
     def __init__(self,origin=''):
         self.files = []
         self.data = []
@@ -462,7 +469,7 @@ class Molgw_outputs:
         self.files = list(set(self.files))
         for file in self.files:
             with open(file,'r') as f:
-                self.data.append(Molgw_out(load(f,Loader=Loader)))
+                self.data.append(Molgw_output(load(f,Loader=Loader)))
     def __len__(self):
         return len(self.files)
     def __str__(self):
