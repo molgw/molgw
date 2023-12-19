@@ -96,7 +96,7 @@ def check_input(pyinput):
 
 
 ########################################################################
-def run(inputfile="molgw.in",outputfile="",pyinput={},mpirun="",executable_path="",openmp=1,**kwargs):
+def run(inputfile="molgw.in",outputfile="molgw.out",pyinput={},mpirun="",executable_path="",openmp=1,**kwargs):
     if len(executable_path) > 0:
         exe_local = executable_path
     else:
@@ -424,8 +424,12 @@ class Molgw_input:
         self.d[key] = value
     def check(self):
         return check_input(self.d)
+    def to_dict(self):
+        return self.d
     def to_file(self,filename):
         return print_input_file(self.d,filename)
+    def run(self,**kwargs):
+        return Molgw_output(run(pyinput=self.d,**kwargs))
 
 
 ########################################################################
@@ -435,6 +439,8 @@ class Molgw_output:
         self.d = dict_in
     def __str__(self):
         return str(self.d)
+    def keys(self):
+        return [ k for k in self.d.keys() ]
     def get(self,key):
         try: 
             return self.d[key]
@@ -448,6 +454,8 @@ class Molgw_output:
         return check_calc(self.d)
     def to_dict(self):
         return self.d
+    def chemical_formula(self):
+        return get_chemical_formula(self.d)
 
 
 ########################################################################
