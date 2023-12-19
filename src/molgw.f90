@@ -606,7 +606,7 @@ program molgw
 
     !
     ! Set the range of states on which to evaluate the self-energy
-    call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
+    call selfenergy_set_state_range(nstate,occupation)
 
     if( is_virtual_fno ) then
       call calculate_virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)

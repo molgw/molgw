@@ -61,10 +61,11 @@ contains
 
 
 !=========================================================================
-subroutine selfenergy_set_state_range(nstate_in,occupation)
+subroutine selfenergy_set_state_range(nstate_in,occupation,range)
   implicit none
   integer             :: nstate_in
   real(dp),intent(in) :: occupation(:,:)
+  character(len=*),intent(in),optional :: range
   !=====
   integer :: pstate
   !=====
@@ -103,8 +104,13 @@ subroutine selfenergy_set_state_range(nstate_in,occupation)
     endif
   enddo
 
-  nsemin = MAX(ncore_G+1,selfenergy_state_min,1,nhomo_G-selfenergy_state_range)
-  nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate_in,nhomo_G+selfenergy_state_range)
+  if( .NOT. PRESENT(range) ) then
+    nsemin = MAX(ncore_G+1,selfenergy_state_min,1,nhomo_G-selfenergy_state_range)
+    nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate_in,nhomo_G+selfenergy_state_range)
+  else
+    nsemin = MAX(ncore_G+1,1)
+    nsemax = MIN(nvirtual_G-1,nstate_in)
+  endif
 
   write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
 
