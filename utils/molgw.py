@@ -17,7 +17,7 @@ __author__  = "Fabien Bruneval"
 __version__ = "3.2"
 
 import math
-import os, sys, subprocess
+import os, sys, shutil, subprocess
 import difflib
 import json
 import copy
@@ -96,7 +96,13 @@ def check_input(pyinput):
 
 
 ########################################################################
-def run(inputfile="molgw.in",outputfile="molgw.out",pyinput={},mpirun="",executable_path="",openmp=1,**kwargs):
+def run(inputfile="molgw.in",outputfile="molgw.out",pyinput={},mpirun="",executable_path="",openmp=1,tmp="",**kwargs):
+    if len(tmp) > 0:
+        os.makedirs(tmp,exist_ok=True)
+        current_directory = os.getcwd()
+        new_working_directory = current_directory + '/' + tmp
+        #os.chdir(new_working_directory)
+        os.chdir(tmp)
     if len(executable_path) > 0:
         exe_local = executable_path
     else:
@@ -121,6 +127,9 @@ def run(inputfile="molgw.in",outputfile="molgw.out",pyinput={},mpirun="",executa
             print('molgw.yaml file is corrupted')
             results = {}
             pass
+    if len(tmp) > 0:
+        os.chdir(current_directory)
+        shutil.rmtree(tmp)
     return results
 
 
@@ -415,11 +424,8 @@ class Molgw_input:
         self.d = dict_in
     def __str__(self):
         return str(self.d)
-    def get(self,key):
-        try: 
-            return self.d[key]
-        except KeyError:
-            sys.exit(f"{key} not found in Molgw_in")
+    def __getitem__(self, key):
+        return self.d[key]
     def set(self,key,value):
         self.d[key] = value
     def check(self):
@@ -439,13 +445,10 @@ class Molgw_output:
         self.d = dict_in
     def __str__(self):
         return str(self.d)
+    def __getitem__(self, key):
+        return self.d[key]
     def keys(self):
         return [ k for k in self.d.keys() ]
-    def get(self,key):
-        try: 
-            return self.d[key]
-        except KeyError:
-            sys.exit(f"{key} not found in Molgw_out")
     def homo_energy(self,approx):
         return get_homo_energy(approx,self.d)
     def lumo_energy(self,approx):
@@ -461,7 +464,7 @@ class Molgw_output:
 ########################################################################
 class Molgw_outputs:
     """MOLGW collection of outputs"""
-    def __init__(self,origin=''):
+    def __init__(self, origin=''):
         self.files = []
         self.data = []
         if len(origin) == 0:
@@ -496,9 +499,12 @@ class Molgw_outputs:
         else:
             raise StopIteration
         return self.data
+    def __getitem__(self, index):
+        return self.data[index]
+
     # Returns a copy of self containing all those calculations
     # that match the input parameters mentioned in "filters" dictionary
-    def filtering(self,filters,verbose=False):
+    def filtering(self, filters, verbose=False):
        mlgo_filtered = Molgw_outputs()
        if verbose:
            print("Selection rules:")
