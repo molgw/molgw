@@ -462,7 +462,7 @@ class Molgw_output:
 
 
 ########################################################################
-class Molgw_outputs:
+class Molgw_output_collection:
     """MOLGW collection of outputs"""
     def __init__(self, origin=''):
         self.files = []
@@ -486,7 +486,7 @@ class Molgw_outputs:
     def __str__(self):
         s = f'MOLGW results from {len(self.files)} files'
         for i,file in enumerate(self.files):
-            s+= f"\n - {file:<30}: {self.data[i].get('input parameters')['comment']}"
+            s+= f"\n - {file:<30}: {self.data[i]['input parameters']['comment']}"
         return s
     def __iter__(self):
         self.current = 0
@@ -501,11 +501,17 @@ class Molgw_outputs:
         return self.data
     def __getitem__(self, index):
         return self.data[index]
+    def append(self, mlgo, file=""):
+        self.data.append(mlgo)
+        if len(file) > 0:
+            self.files.append(file)
+        else:
+            self.files.append(None)
 
     # Returns a copy of self containing all those calculations
     # that match the input parameters mentioned in "filters" dictionary
-    def filtering(self, filters, verbose=False):
-       mlgo_filtered = Molgw_outputs()
+    def filter(self, filters, verbose=False):
+       mlgo_filtered = Molgw_output_collection()
        if verbose:
            print("Selection rules:")
            for key, value in filters.items():
@@ -513,11 +519,12 @@ class Molgw_outputs:
        for f, mlgo in zip(self.files,self.data):
            corresponds = True
            for key, value in filters.items():
-               if mlgo.get("input parameters")[key] != value:
+               if mlgo["input parameters"][key] != value:
                    corresponds = False
            if corresponds:
-               mlgo_filtered.files.append(f)
-               mlgo_filtered.data.append(mlgo)
+               mlgo_filtered.append(mlgo,file=f)
+               #mlgo_filtered.files.append(f)
+               #mlgo_filtered.data.append(mlgo)
        if verbose:
            print(f"Found {len(mlgo_filtered)} corresponding calculations")
        return mlgo_filtered
