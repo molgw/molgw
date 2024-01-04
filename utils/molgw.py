@@ -96,11 +96,11 @@ def check_input(pyinput):
 
 
 ########################################################################
-def run(inputfile="molgw.in",outputfile="molgw.out",pyinput={},mpirun="",executable_path="",openmp=1,tmp="",**kwargs):
+def run(inputfile="molgw.in",outputfile="molgw.out",pyinput={},mpirun="",executable_path="",openmp=1,tmp="",keep_tmp=False,**kwargs):
     if len(tmp) > 0:
         os.makedirs(tmp,exist_ok=True)
         current_directory = os.getcwd()
-        new_working_directory = current_directory + '/' + tmp
+        #new_working_directory = current_directory + '/' + tmp
         #os.chdir(new_working_directory)
         os.chdir(tmp)
     if len(executable_path) > 0:
@@ -129,7 +129,8 @@ def run(inputfile="molgw.in",outputfile="molgw.out",pyinput={},mpirun="",executa
             pass
     if len(tmp) > 0:
         os.chdir(current_directory)
-        shutil.rmtree(tmp)
+        if not keep_tmp:
+            shutil.rmtree(tmp)
     return results
 
 
@@ -303,7 +304,20 @@ def print_input_file(pyinput,filename="molgw.in"):
         f.write('&molgw\n')
         for key, value in pyinput.items():
             if key == "xyz":
-                f.write('  {:30} = {}\n'.format("natom",value.count("\n")) )
+                curated_xyz = value.strip()
+                if ";" in value:
+                    if not curated_xyz.endswith(";"):
+                        curated_xyz += ";"
+                    curated_xyz = curated_xyz.replace(";","\n")
+                elif "," in value:
+                    if not curated_xyz.endswith(","):
+                        curated_xyz += ","
+                    curated_xyz = curated_xyz.replace(",","\n")
+                else:
+                    curated_xyz += "\n"
+                natom = curated_xyz.count("\n")
+                f.write('  {:30} = {}\n'.format("natom",natom) )
+                pyinput["xyz"] = curated_xyz
             elif key == "rawxyz":
                 continue
             elif key == "vel_projectile":
@@ -485,8 +499,17 @@ class Molgw_output_collection:
         return len(self.files)
     def __str__(self):
         s = f'MOLGW results from {len(self.files)} files'
-        for i,file in enumerate(self.files):
-            s+= f"\n - {file:<30}: {self.data[i]['input parameters']['comment']}"
+        for i, file in enumerate(self.files):
+            if file == None:
+                if "comment" in self.data[i]['input parameters']:
+                    s+= f"\n - {i:04d} file unknown, {self.data[i]['input parameters']['comment']}"
+                else:
+                    s+= f"\n - {i:04d} file unknown, no comment"
+            else:
+                if "comment" in self.data[i]['input parameters']:
+                    s+= f"\n - {i:04d} {file:<30}: {self.data[i]['input parameters']['comment']}"
+                else:
+                    s+= f"\n - {i:04d} {file:<30}: no comment"
         return s
     def __iter__(self):
         self.current = 0
@@ -507,6 +530,9 @@ class Molgw_output_collection:
             self.files.append(file)
         else:
             self.files.append(None)
+    def pop(self,i):
+        self.files.pop(i)
+        self.data.pop(i)
 
     # Returns a copy of self containing all those calculations
     # that match the input parameters mentioned in "filters" dictionary
