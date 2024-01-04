@@ -730,6 +730,13 @@ RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-5
 RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-5
 RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-5
 
+h2o_rt_tddft_camb3lyp_PC2B.in   , RT-TDDFT T=60.0 with CAM-B3LYP, tddft
+SCF Total Energy          , -76.3938220823     , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -76.3937709023     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0031844444     , 0 , 1.0e-5
+RT-TDDFT Dipole Moment    ,   1.9421276421     , 1 , 1.0e-5
+RT-TDDFT Dipole Moment    ,   0.0104520959     , 2 , 1.0e-5
+
 h2o_rt_tddft_hf_PC2B_TZ.in, RT-TDDFT within cc-pVTZ T=200.0 dt=0.5 PC="PC2B", tddft
 SCF Total Energy          , -76.0571529836     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -76.0571529689     , 0 , 1.0e-7
