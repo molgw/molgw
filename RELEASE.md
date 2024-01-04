@@ -3,6 +3,25 @@
 -----------------------------------------
 
 ----------------------------------------
+## What's new in version 3.3
+### Overview
+- Python scripting improved using molgw.py
+- Range-separated hybrid are compatible with RT-TDDFT
+
+### Contributors
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+
+### Changes affecting the usage
+- Running with python or jupyter notebook is more complete.
+New classes for input (`Molgw_input`), output (`Molgw_output`), and collection of ouputs (`Molgw_output_collection`)
+Check out jupyter notebook in `~molgw/docs/running_molgw_with_jupyter.ipynb`
+
+### Changes affecting the compilation
+
+### Changes affecting the developers
+
+
+----------------------------------------
 ## What's new in version 3.2
 ### Overview
 - Double-hybrid functionals (and more range-sep hybs.)

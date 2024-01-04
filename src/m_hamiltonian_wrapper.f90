@@ -260,6 +260,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
   integer                    :: ispin
   real(dp),allocatable       :: hamiltonian_nospin_real(:,:)
   real(dp),allocatable       :: hamiltonian_spin_real(:,:,:)
+  complex(dp),allocatable    :: hamiltonian_spin_cmplx(:,:,:)
   !=====
 
   en_inout%hartree = 0.0_dp
@@ -283,8 +284,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
   if( calc_type%need_exchange ) then
     call setup_exchange_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en_inout%exx)
 
-    ! Rescale with alpha_hybrid for hybrid functionals
-    en_inout%exx_hyb = alpha_hybrid * en_inout%exx
     hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
   endif
 
@@ -318,19 +317,24 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
   !
   ! LR Exchange contribution to the Hamiltonian
   !
-  ! if(calc_type%need_exchange_lr) then
-  !   hamiltonian_spin_real(:,:,:) = 0.0_dp
-  !
-  !     call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_real,eexx)
-  !
-  !   ! Rescale with beta_hybrid for range-separated hybrid functionalsbeta_hybrid
-  !   eexx_hyb = beta_hybrid * eexx
-  !   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_real(:,:,:) * beta_hybrid
-  ! endif
+  if(calc_type%need_exchange_lr) then
+    allocate(hamiltonian_spin_cmplx(basis%nbf,basis%nbf,nspin))
+    hamiltonian_spin_cmplx(:,:,:) = 0.0_dp
+  
+    call setup_exchange_longrange_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_spin_cmplx,en_inout%exx_hyb)
+  
+    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_spin_cmplx(:,:,:) * beta_hybrid
+    deallocate(hamiltonian_spin_cmplx)
+  else
+    en_inout%exx_hyb = 0.0_dp
+  endif
+
+  ! Rescale exchange energy with alpha_hybrid and beta_hybrid for hybrid functionals
+  en_inout%exx_hyb = alpha_hybrid * en_inout%exx + beta_hybrid * en_inout%exx_hyb
 
 
 
-end subroutine  calculate_hamiltonian_hxc_ri_cmplx
+end subroutine calculate_hamiltonian_hxc_ri_cmplx
 
 
 !=========================================================================

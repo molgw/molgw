@@ -965,6 +965,89 @@ end subroutine setup_exchange_ri_cmplx
 
 
 !=========================================================================
+subroutine setup_exchange_longrange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
+  implicit none
+  real(dp),intent(in)     :: occupation(:,:)
+  complex(dp),intent(in)  :: c_matrix(:,:,:)
+  complex(dp),intent(in)  :: p_matrix(:,:,:)
+  complex(dp),intent(out) :: exchange_ao(:,:,:)
+  real(dp),intent(out)    :: eexchange
+  !=====
+  integer                 :: nbf,nstate
+  integer                 :: nocc
+  integer                 :: ibf,jbf,ispin,istate
+  complex(dp),allocatable :: tmp_cmplx(:,:),c_t_cmplx(:,:)
+  integer                 :: ipair,iauxil
+  integer                 :: ibf_auxil_first,nbf_auxil_core
+  !=====
+
+  call start_clock(timing_exchange)
+
+  write(stdout,*) 'Calculate Complex LR Exchange term with Resolution-of-Identity'
+
+  exchange_ao(:,:,:) = (0.0_dp, 0.0_dp)
+
+  ! Find highest occupied state
+  nocc = get_number_occupied_states(occupation)
+
+  nbf    = SIZE(exchange_ao,DIM=1)
+  nstate = SIZE(occupation(:,:),DIM=1)
+
+  allocate(tmp_cmplx(nocc,nbf))
+  allocate(c_t_cmplx(nocc,nbf))
+
+  do ispin=1,nspin
+
+    !$OMP PARALLEL DO
+    do ibf=1,nbf
+      c_t_cmplx(:,ibf) = CONJG( c_matrix(ibf,1:nocc,ispin) ) * SQRT( occupation(1:nocc,ispin) / spin_fact )
+    enddo
+    !$OMP END PARALLEL DO
+
+    do iauxil=1,nauxil_local_lr
+      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
+      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx)
+      do ipair=1,npair
+        ibf = index_basis(1,ipair)
+        jbf = index_basis(2,ipair)
+        tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_t_cmplx(:,jbf) * eri_3center_lr(ipair,iauxil)
+        tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_t_cmplx(:,ibf) * eri_3center_lr(ipair,iauxil)
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+      ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
+      !                    - MATMUL( CONJG(TRANSPOSE(tmp(:,:))) , tmp(:,:) ) / spin_fact
+      ! C = A^H * A + C
+      call ZHERK('L','C',nbf,nocc,-1.0_dp,tmp_cmplx,nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
+
+    enddo
+  enddo
+
+  deallocate(c_t_cmplx)
+  deallocate(tmp_cmplx)
+
+
+  !
+  ! Need to hermitianize exchange_ao
+  do ispin=1,nspin
+    do ibf=1,nbf
+      do jbf=ibf+1,nbf
+        exchange_ao(ibf,jbf,ispin) = CONJG( exchange_ao(jbf,ibf,ispin) )
+      enddo
+    enddo
+  enddo
+  call world%sum(exchange_ao)
+
+  eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * CONJG( p_matrix(:,:,:) ) ) , dp)
+
+  call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_longrange_ri_cmplx
+
+
+!=========================================================================
 ! Calculate the exchange-correlation potential and energy
 ! * subroutine works for both real and complex wavefunctions c_matrix
 !   using "class" syntax of Fortran2003
