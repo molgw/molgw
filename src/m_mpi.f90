@@ -19,21 +19,21 @@ module m_mpi
   logical,parameter :: parallel_grid      = .TRUE.
   logical,parameter :: parallel_auxil     = .TRUE.
 
-!===================================================
-! MPI distribution
-!  Example: ortho%nproc = 2 x  auxil%nproc = 8  = world%nproc = 16
-!
-! world%comm
-!
-! auxil%rank         0 |  1 |  2 |     |  7
-! ortho%rank       ---------------------------
-!      0             0 |  2 |  4 | ... | 14 |-> auxil%comm
-!      1             1 |  3 |  5 | ... | 15 |-> auxil%comm
-!                  ---------------------------
-!                    | |    |    | ... |  | |
-!                    v                    v
-!                 ortho%comm           ortho%comm
-!===================================================
+  !===================================================
+  ! MPI distribution
+  !  Example: ortho%nproc = 2 x  auxil%nproc = 8  = world%nproc = 16
+  !
+  ! world%comm
+  !
+  ! auxil%rank         0 |  1 |  2 |     |  7
+  ! ortho%rank       ---------------------------
+  !      0             0 |  2 |  4 | ... | 14 |-> auxil%comm
+  !      1             1 |  3 |  5 | ... | 15 |-> auxil%comm
+  !                  ---------------------------
+  !                    | |    |    | ... |  | |
+  !                    v                    v
+  !                 ortho%comm           ortho%comm
+  !===================================================
 
 
   integer,protected :: iomaster = 0
@@ -93,7 +93,7 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
   implicit none
 
   integer,intent(in) :: nproc_ortho_in
- !=====
+  !=====
   integer :: color
   integer :: ier
   !=====
@@ -165,20 +165,20 @@ end subroutine init_mpi_other_communicators
 
 !=========================================================================
 subroutine finish_mpi()
- implicit none
- integer :: ier
-!=====
+  implicit none
+  integer :: ier
+  !=====
 
- if(ALLOCATED(task_proc))   deallocate(task_proc)
- if(ALLOCATED(ntask_proc))  deallocate(ntask_proc)
- if(ALLOCATED(task_number)) deallocate(task_number)
+  if(ALLOCATED(task_proc))   deallocate(task_proc)
+  if(ALLOCATED(ntask_proc))  deallocate(ntask_proc)
+  if(ALLOCATED(task_number)) deallocate(task_number)
 
- if(ALLOCATED(task_grid_proc))   deallocate(task_grid_proc)
- if(ALLOCATED(ntask_grid_proc))  deallocate(ntask_grid_proc)
- if(ALLOCATED(task_grid_number)) deallocate(task_grid_number)
+  if(ALLOCATED(task_grid_proc))   deallocate(task_grid_proc)
+  if(ALLOCATED(ntask_grid_proc))  deallocate(ntask_grid_proc)
+  if(ALLOCATED(task_grid_number)) deallocate(task_grid_number)
 
 #if defined(HAVE_MPI)
- call MPI_FINALIZE(ier)
+  call MPI_FINALIZE(ier)
 #endif
 
 end subroutine finish_mpi
@@ -186,105 +186,105 @@ end subroutine finish_mpi
 
 !=========================================================================
 subroutine init_dft_grid_distribution(ngrid)
- implicit none
- integer,intent(inout) :: ngrid
-!=====
+  implicit none
+  integer,intent(inout) :: ngrid
+  !=====
 
- ngrid_mpi = ngrid
+  ngrid_mpi = ngrid
 
- if( grid%nproc > 1 .AND. parallel_grid ) then
-   write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
- endif
+  if( grid%nproc > 1 .AND. parallel_grid ) then
+    write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
+  endif
 
- call distribute_grid_workload()
+  call distribute_grid_workload()
 
- ngrid = ntask_grid_proc(grid%rank)
+  ngrid = ntask_grid_proc(grid%rank)
 
 end subroutine init_dft_grid_distribution
 
 
 !=========================================================================
 subroutine destroy_dft_grid_distribution()
- implicit none
-!=====
+  implicit none
+  !=====
 
- if( ALLOCATED(task_grid_proc) )   deallocate(task_grid_proc)
- if( ALLOCATED(ntask_grid_proc) )  deallocate(ntask_grid_proc)
- if( ALLOCATED(task_grid_number) ) deallocate(task_grid_number)
+  if( ALLOCATED(task_grid_proc) )   deallocate(task_grid_proc)
+  if( ALLOCATED(ntask_grid_proc) )  deallocate(ntask_grid_proc)
+  if( ALLOCATED(task_grid_number) ) deallocate(task_grid_number)
 
 end subroutine destroy_dft_grid_distribution
 
 
 !=========================================================================
 function is_my_grid_task(igrid)
- implicit none
- integer,intent(in) :: igrid
- logical            :: is_my_grid_task
-!=====
+  implicit none
+  integer,intent(in) :: igrid
+  logical            :: is_my_grid_task
+  !=====
 
- is_my_grid_task = ( grid%rank  == task_grid_proc(igrid) )
+  is_my_grid_task = ( grid%rank  == task_grid_proc(igrid) )
 
 end function is_my_grid_task
 
 
 !=========================================================================
 subroutine distribute_grid_workload()
- implicit none
-!=====
- integer            :: igrid,iproc_local
- integer            :: igrid_current
- integer            :: max_grid_per_proc
-!=====
+  implicit none
+  !=====
+  integer            :: igrid,iproc_local
+  integer            :: igrid_current
+  integer            :: max_grid_per_proc
+  !=====
 
 
- allocate(task_grid_proc(ngrid_mpi))
- allocate(ntask_grid_proc(0:grid%nproc-1))
- allocate(task_grid_number(ngrid_mpi))
+  allocate(task_grid_proc(ngrid_mpi))
+  allocate(ntask_grid_proc(0:grid%nproc-1))
+  allocate(task_grid_number(ngrid_mpi))
 
- if( parallel_grid) then
+  if( parallel_grid) then
 
-   write(stdout,'(/,a)') ' Distributing the grid among procs'
+    write(stdout,'(/,a)') ' Distributing the grid among procs'
 
-   ntask_grid_proc(:) = 0
-   max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(grid%nproc) )
-   write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
+    ntask_grid_proc(:) = 0
+    max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(grid%nproc) )
+    write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
 
-   iproc_local=0
-   do igrid=1,ngrid_mpi
+    iproc_local=0
+    do igrid=1,ngrid_mpi
 
-     iproc_local = MODULO(igrid-1,grid%nproc)
+      iproc_local = MODULO(igrid-1,grid%nproc)
 
-     !
-     ! A simple check to avoid unexpected surprises
-     if( iproc_local < 0 .OR. iproc_local >= grid%nproc ) then
-       call die('error in the distribution')
-     endif
+      !
+      ! A simple check to avoid unexpected surprises
+      if( iproc_local < 0 .OR. iproc_local >= grid%nproc ) then
+        call die('error in the distribution')
+      endif
 
-     task_grid_proc(igrid)        = iproc_local
-     ntask_grid_proc(iproc_local) = ntask_grid_proc(iproc_local) + 1
+      task_grid_proc(igrid)        = iproc_local
+      ntask_grid_proc(iproc_local) = ntask_grid_proc(iproc_local) + 1
 
-   enddo
+    enddo
 
-   task_grid_number(:)=0
-   igrid_current=0
-   do igrid=1,ngrid_mpi
-     if( grid%rank == task_grid_proc(igrid) ) then
-       igrid_current = igrid_current + 1
-       task_grid_number(igrid) = igrid_current
-     endif
-   enddo
+    task_grid_number(:)=0
+    igrid_current=0
+    do igrid=1,ngrid_mpi
+      if( grid%rank == task_grid_proc(igrid) ) then
+        igrid_current = igrid_current + 1
+        task_grid_number(igrid) = igrid_current
+      endif
+    enddo
 
- else
-   !
-   ! if parallel_grid is false,
-   ! faking the code with trivial values
-   ntask_grid_proc(:) = ngrid_mpi
-   task_grid_proc(:)  = grid%rank
-   do igrid=1,ngrid_mpi
-     task_grid_number(igrid) = igrid
-   enddo
+  else
+    !
+    ! if parallel_grid is false,
+    ! faking the code with trivial values
+    ntask_grid_proc(:) = ngrid_mpi
+    task_grid_proc(:)  = grid%rank
+    do igrid=1,ngrid_mpi
+      task_grid_number(igrid) = igrid
+    enddo
 
- endif
+  endif
 
 
 end subroutine distribute_grid_workload

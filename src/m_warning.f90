@@ -50,9 +50,10 @@ end subroutine issue_warning
 
 
 !=========================================================================
-subroutine output_all_warnings()
- implicit none
+subroutine output_all_warnings(unit_yaml)
+  implicit none
 
+  integer,intent(in),optional :: unit_yaml
   !=====
   integer :: iwarning
   !=====
@@ -63,6 +64,12 @@ subroutine output_all_warnings()
       write(stdout,'(i2,a,5x,a)') iwarning,'.',warning_list(iwarning)
     enddo
     write(stdout,'(/)')
+  endif
+  if( PRESENT(unit_yaml) ) then
+    write(unit_yaml,'(/,a)')  'warnings:'
+    do iwarning=1,nwarning
+      write(unit_yaml,'(4x,a,a)') '- ',warning_list(iwarning)
+    enddo
   endif
 
 end subroutine output_all_warnings

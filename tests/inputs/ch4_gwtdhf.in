@@ -5,7 +5,8 @@
   basis       = 'aug-cc-pVTZ'
   auxil_basis = 'aug-cc-pVTZ-RI'
 
-  postscf     = 'GWTDDFT'
+  postscf     = 'gw'
+  w_screening = 'tdhf'
 
   selfenergy_state_range = 1
 

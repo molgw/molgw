@@ -1,6 +1,6 @@
 # Input variable list
 
-*Version 3.1*
+*Version 3.2*
 
 ---
 
@@ -76,6 +76,7 @@
 
 ## Correlation and excited states post-treatment input variables 
 
+[analytic_chi](#analytic_chi) 
 [assume_scf_converged](#assume_scf_converged) 
 [acfd_nlambda](#acfd_nlambda) 
 [ci_greens_function](#ci_greens_function) 
@@ -83,15 +84,21 @@
 [ci_nstate_self](#ci_nstate_self) 
 [ci_spin_multiplicity](#ci_spin_multiplicity) 
 [ci_type](#ci_type) 
+[cphf_cpks_0](#cphf_cpks_0) 
 [dft_core](#dft_core) 
 [ecp_small_basis](#ecp_small_basis) 
 [eta](#eta) 
 [frozencore](#frozencore) 
+[gwgwg_skip_vvv](#gwgwg_skip_vvv) 
+[gwgwg_skip_vv](#gwgwg_skip_vv) 
+[gwgwg_static_approximation](#gwgwg_static_approximation) 
 [gwgamma_tddft](#gwgamma_tddft) 
+[mu_origin](#mu_origin) 
 [ncoreg](#ncoreg) 
 [ncorew](#ncorew) 
 [nexcitation](#nexcitation) 
 [nomega_chi_imag](#nomega_chi_imag) 
+[nomega_chi_real](#nomega_chi_real) 
 [nomega_sigma](#nomega_sigma) 
 [nomega_sigma_calc](#nomega_sigma_calc) 
 [nstep_dav](#nstep_dav) 
@@ -117,6 +124,7 @@
 [triplet](#triplet) 
 [use_correlated_density_matrix](#use_correlated_density_matrix) 
 [virtual_fno](#virtual_fno) 
+[w_screening](#w_screening) 
 
 
 ## Natural Orbital Functional Theory 
@@ -161,6 +169,7 @@
 [print_cube](#print_cube) 
 [print_transition_density](#print_transition_density) 
 [print_wfn_files](#print_wfn_files) 
+[print_all_MO_wfn_file](#print_all_MO_wfn_file) 
 [print_density_matrix](#print_density_matrix) 
 [print_eri](#print_eri) 
 [print_hartree](#print_hartree) 
@@ -267,7 +276,7 @@ Specifies the number of Gauss-Legendre quadrature points when integrating over t
 
 **Description:** 
 
-Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of range-independent exact-exchange 
+Only works for Range-Separated hybrid functionals scf='rsh' and double hybrids. Sets the amount of range-independent exact-exchange 
 
 
 ---
@@ -284,6 +293,22 @@ Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of r
 **Description:** 
 
 Sets the amount of output density-matrix for the next iteration. When the SCF cycles have difficulties to converge, one may try to lower this value. 
+
+
+---
+### analytic_chi
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Calculates the spectral decomposition of the response function and then evaluate it on the frequency grid. Only valid for 'GW+FSOS' 
 
 
 ---
@@ -590,6 +615,22 @@ Selects which excitations will be included in the CI expansion. Valid choices ar
 **Description:** 
 
 This is a free expression place. Use it as you wish for commenting, naming, labeling etc. (140 character max just as twitter) 
+
+
+---
+### cphf_cpks_0
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Uses the non-interacting approximation to the CPHF/CPKS. Then, the polarizability is not computed (all two-body interactions are neglected). 
 
 
 ---
@@ -1189,6 +1230,60 @@ EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground
 
 
 ---
+### gwgwg_skip_vv
+
+**experimental** 
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+EXPERIMENTAL. Skip the 2-virtual+1-occupied-state  contributions in the GWGWG selfenergy. 
+
+
+---
+### gwgwg_skip_vvv
+
+**experimental** 
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+EXPERIMENTAL. Skip the 3-virtual-state contributions in the GWGWG selfenergy. 
+
+
+---
+### gwgwg_static_approximation
+
+**experimental** 
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+EXPERIMENTAL. Evaluate the GWGWG self-energy at the GW energy only. 
+
+
+---
 ### ignore_bigrestart
 
 *Optional* 
@@ -1265,7 +1360,7 @@ Sets the tolerance value for the screening of the negligible integrals. Possible
 
 **Description:** 
 
-Works for scf='rsh', 'pbe-qidh', and 'b2plyp'. Sets the amount of Ec^X (X=MP2 or RPA) correlation in double-hybrid DFT functionals. 
+Works for scf='rsh', 'pbe-qidh', and 'b2plyp'. Sets the amount of Ec^MP2 correlation in double-hybrid DFT functionals. 
 
 
 ---
@@ -1412,6 +1507,22 @@ Tells the code to move or not the position of the nuclei. Available options are 
 **Description:** 
 
 Sets the number of processors left to parallelize on other directions. The main direction (auxiliary basis or DFT grid points) is obtained by <b>mpi_nproc</b> / <b>mpi_nproc_ortho</b>, which must be an integer. 
+
+
+---
+### mu_origin
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** real 
+
+**Default:** -100.0 
+
+**Description:** 
+
+Energy of the origin of the imaginary axis used in imaginary integration techniques. mu_origin should be in the HOMO-LUMO gap (preferably situated at a distance not too close to either end of the gap). The default value means the center of the HOMO-LUMO gap. 
 
 
 ---
@@ -1955,7 +2066,23 @@ Threshold used to determine that the energy change in NOFT calcs. is small; henc
 
 **Description:** 
 
-Sets the number of frequencies for the response function used to perform the integral on the imaginary axis 
+Sets the number of frequencies for the response function used to perform the integral on the imaginary axis. 
+
+
+---
+### nomega_chi_real
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** integer 
+
+**Default:** 2 
+
+**Description:** 
+
+Sets the number of frequencies for the response function on the real axis in contour deformation technique. 
 
 
 ---
@@ -2203,6 +2330,22 @@ Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculatio
 **Description:** 
 
 Sets the predictor-corrector scheme in the real-time dynamics. 
+
+
+---
+### print_all_MO_wfn_file
+
+*Optional* 
+
+**Family:** io 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Print all molecular orbitals to the WFN file (default=no)  
 
 
 ---
@@ -3247,7 +3390,7 @@ Triggers the calculation of the triplet final state in TD-DFT or BSE.
 
 **Description:** 
 
-Chooses to use another density matrix for the Fock hamiltonian to be employed in self-energy calculations.                  Used in conjonction with 'pt_density_matrix' or with 'read_fchk' or read an existing DENSITY_MATRIX file. 
+Chooses to use another density matrix for the Fock hamiltonian to be employed in self-energy calculations. Used in conjonction with 'pt_density_matrix' or with 'read_fchk' or read an existing DENSITY_MATRIX file. 
 
 
 ---
@@ -3280,6 +3423,22 @@ Projectile initial velocity. Used for real-time tddft and for linear-response st
 **Description:** 
 
 Activates the Frozen Natural Orbitals technique to span the virtual orbitals subspace with fewer orbitals. The dimension of the space is set up with the input keyword nvirtualg or nvirtualw. Actually the virtual orbital space is determined by the minimum MIN(nvirtualg,nvirtualw). 
+
+
+---
+### w_screening
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** characters 
+
+**Default:** rpa 
+
+**Description:** 
+
+Selects the approximation of the screening W in GW and beyond. Standard GW needs 'rpa' 
 
 
 ---
@@ -3316,6 +3475,6 @@ Specifies the location of the xyz file that contains the atomic positions. It ca
 
 
 
-*Generated by input_variables.py on 30 May 2023* 
+*Generated by input_variables.py on 09 January 2024* 
 
 

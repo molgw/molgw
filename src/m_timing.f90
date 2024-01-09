@@ -181,6 +181,7 @@ subroutine start_clock(itiming)
   integer,intent(in) :: itiming
   !=====
   integer            :: count_tmp
+  character(len=5)   :: msg
   !=====
 
   ! 0 means no timing
@@ -188,7 +189,8 @@ subroutine start_clock(itiming)
 
   if(time_running(itiming)) then
     write(stdout,*) 'clock # is already started:',itiming
-    call die('error in start clock')
+    write(msg,'(i05)') itiming
+    call die('start_clock: clock already started:' // msg)
   endif
 
   time_running(itiming)=.TRUE.
@@ -207,6 +209,7 @@ subroutine stop_clock(itiming)
   integer,intent(in) :: itiming
   !=====
   integer            :: count_tmp
+  character(len=5)   :: msg
   !=====
 
   ! 0 means no timing
@@ -214,7 +217,8 @@ subroutine stop_clock(itiming)
 
   if(.NOT.time_running(itiming)) then
     write(stdout,*) 'clock # has not been started:',itiming
-    call die('error in stop clock')
+    write(msg,'(i05)') itiming
+    call die('stop_clock: clock was never started' // msg)
   endif
 
 
@@ -230,8 +234,8 @@ end subroutine stop_clock
 subroutine output_timing()
 
   implicit none
- !=====
- !=====
+  !=====
+  !=====
 
   write(stdout,'(/,a,/)') '                 --- Timings in (s) and # of calls ---'
 

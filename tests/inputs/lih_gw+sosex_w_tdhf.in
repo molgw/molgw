@@ -1,12 +1,12 @@
 &molgw
-  scf='PBE0'
-  tolscf=1.0e-10
+  scf='HF'
 
-  postscf='G0W0GAMMA0'
+  postscf='GW+SOSEX'
+  w_screening='tdhf'
   selfenergy_state_range=0
 
-  basis='6-31G*'
-  gaussian_type='CART'
+  basis='cc-pVDZ'
+  auxil_basis='cc-pVDZ-RI'
 
   mpi_nproc_ortho=2
 

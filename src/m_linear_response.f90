@@ -23,7 +23,6 @@ module m_linear_response
   use m_spectra
   use m_build_bse
 
-
 contains
 
 
@@ -45,7 +44,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
-  logical                   :: is_bse
+  logical                   :: is_bse,is_tdhf,eri_3center_mo_available
   integer                   :: nmat,nexc
   real(dp)                  :: alpha_local,lambda_
   real(dp),allocatable      :: amb_diag_rpa(:)
@@ -53,7 +52,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   real(dp),allocatable      :: xpy_matrix(:,:),xmy_matrix(:,:)
   real(dp),allocatable      :: eigenvalue(:)
   real(dp),allocatable      :: energy_qp(:,:)
-  logical                   :: is_tddft,is_rpa
+  logical                   :: is_tddft,is_rpa,long_range_true=.true.
   logical                   :: has_manual_tdhf
   integer                   :: reading_status
   integer                   :: tdhffile
@@ -72,9 +71,9 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
   write(stdout,'(/,a)') ' Calculating the polarizability'
   if( PRESENT(lambda) ) then
-     lambda_ = lambda
+    lambda_ = lambda
   else
-     lambda_ = 1.0_dp
+    lambda_ = 1.0_dp
   endif
   if( PRESENT(enforce_spin_multiplicity) ) then
     select case(enforce_spin_multiplicity)
@@ -94,8 +93,24 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     write(stdout,'(a)') ' Singlet final state'
   endif
 
-  if( has_auxil_basis ) &
-    call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+  if( has_auxil_basis ) then
+    if( calc_type%is_lr_mbpt ) then
+      call calculate_eri_3center_eigen_lr(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+    else
+      if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
+        eri_3center_mo_available = ( ALLOCATED(eri_3center_eigen) .AND. ALLOCATED(eri_3center_eigen_lr) )
+        if( .NOT. eri_3center_mo_available ) then
+          call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola,&
+                  long_range=long_range_true)
+        endif
+      else
+        eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
+        if( .NOT. eri_3center_mo_available ) then
+          call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1,timing=timing_aomo_pola)
+        endif
+      endif
+    endif
+  endif
 
   ! Set up all the switches to be able to treat
   ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
@@ -104,10 +119,30 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! Set up flag is_tddft and is_bse
   is_tddft = calc_type%include_tddft_kernel .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
   is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
+  is_tdhf  = (calc_type%include_tddft_kernel .OR. calc_type%include_tdhf_kernel) .AND. .NOT. enforce_rpa
+
+  ! Override choices here
+  if( calculate_w ) then
+    select case(w_screening)
+    case('RPA')
+      ! do nothing
+    case('BSE')
+      ! enforce BSE
+      is_bse   = .TRUE.
+    case('TDHF')
+      is_tdhf = .TRUE.
+    case('TDDFT')
+      is_tdhf  = .TRUE.
+      is_tddft = .TRUE.
+    case default
+      call die('polarizability: invalid choice for w_screening')
+    end select
+  endif
 
   !
   ! Set up exchange content alpha_local
   ! manual_tdhf can override anything
+  alpha_local = 0.0_dp
   inquire(file='manual_tdhf',exist=has_manual_tdhf)
   if(has_manual_tdhf) then
     open(newunit=tdhffile,file='manual_tdhf',status='old')
@@ -116,19 +151,27 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
     call issue_warning(msg)
   else
-    if(calc_type%include_tddft_kernel) then        ! TDDFT or TDHF
+    if( is_tddft .OR. calc_type%include_tddft_kernel ) then        ! TDDFT or TDHF
       alpha_local = alpha_hybrid
-    else if( (is_bse .OR. calc_type%include_tdhf_kernel) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
+    else if( (is_bse .OR. is_tdhf) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
       alpha_local = 1.0_dp
     else                  ! RPA or no_bse_kernel
       alpha_local = 0.0_dp
     endif
   endif
-  if( enforce_rpa ) alpha_local = 0.0_dp
+  !if( enforce_rpa ) alpha_local = 0.0_dp
 
   is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
 
   call start_clock(timing_build_h2p)
+  write(stdout,'(/,1x,a)') 'Summarize the linear response calculation:'
+  write(stdout,'(1x,a16,l1)')       'RPA:          ',is_rpa
+  write(stdout,'(1x,a16,l1)')       'BSE:          ',is_bse
+  write(stdout,'(1x,a16,l1)')       'TDHF:         ',is_tdhf
+  write(stdout,'(1x,a16,l1)')       'TDDFT:        ',is_tddft
+  write(stdout,'(1x,a16,f6.4)')     'hybrid alpha: ',alpha_local
+  write(stdout,'(1x,a16,f6.4)')     'hybrid beta:  ',beta_hybrid
+  write(stdout,*)
 
   !
   ! Prepare the QP energies
@@ -146,7 +189,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! It is stored in object wpol_static
   !
   if( is_bse ) then
-    call init_spectral_function(nstate,occupation,1,wpol_static)
+    call wpol_static%init(nstate,occupation,1,grid_type=STATIC)
     call read_spectral_function(wpol_static,reading_status)
 
     ! If a SCREENED_COULOMB file cannot be found,
@@ -156,7 +199,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
         call die('polarizability: BSE calculation without having a precalculated SCREENED_COULOMB file is impossible ' &
                  // 'unless when using an auxiliary basis')
       endif
-      wpol_static%nprodbasis = nauxil_3center
+      wpol_static%nprodbasis = nauxil_local
       call static_polarizability(nstate,occupation,energy,wpol_static)
     endif
 
@@ -192,9 +235,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
     !
     ! Step 1
-    if( .NOT. (PRESENT(a_matrix) .AND. PRESENT(b_matrix)) ) then
-      call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
-    endif
+    call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
 
 #if defined(HAVE_SCALAPACK)
     call build_apb_hartree_auxil_scalapack(is_triplet_currently,lambda_,desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
@@ -217,7 +258,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     endif
 
     if( is_bse ) then
-      call destroy_spectral_function(wpol_static)
+      call wpol_static%destroy()
     endif
 
     call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,en_rpa)
@@ -239,7 +280,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     ! Step 3
     if( is_bse ) then
       call build_amb_apb_bse(wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
-      call destroy_spectral_function(wpol_static)
+      call wpol_static%destroy()
     endif
 
   endif
@@ -261,15 +302,25 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   call stop_clock(timing_build_h2p)
 
 
-  ! 
+  !
   ! When requesting A and B, calculate them and exit here
   ! (skip diago etc)
   !
-  if( PRESENT(a_matrix) .AND. PRESENT(b_matrix) ) then
+  if( PRESENT(a_matrix) ) then
     a_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
+  endif
+  if( PRESENT(b_matrix) ) then
     b_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) - amb_matrix(:,:) )
+  endif
+  
+  if( PRESENT(a_matrix) .AND. PRESENT(b_matrix) ) then
     call clean_deallocate('A+B',apb_matrix)
     call clean_deallocate('A-B',amb_matrix)
+    if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
+      call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp))
+    endif
+    deallocate(amb_diag_rpa,energy_qp)
+    write(stdout,*) ' Skipping diagonalization after building A and B matrices'
     call stop_clock(timing_pola)
     return
   endif
@@ -340,7 +391,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
   ! Calculate the optical sprectrum
   ! and the dynamic dipole tensor
   !
-  if( calc_type%include_tddft_kernel .OR. is_bse ) then
+  if( is_tdhf .OR. is_tddft .OR. is_bse ) then
     call optical_spectrum(is_triplet_currently,basis,occupation,c_matrix,wpol_out,xpy_matrix,xmy_matrix,eigenvalue)
     select case(TRIM(lower(stopping)))
     case('spherical')
@@ -384,15 +435,15 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     ! If requested write the spectral function on file
     if( print_w_ ) call write_spectral_function(wpol_out)
 
-  else
-    call destroy_spectral_function(wpol_out)
   endif
 
 
   write(stdout,*) 'Deallocate eigenvector array'
   call clean_deallocate('X+Y',xpy_matrix)
 
-  if(has_auxil_basis .AND. .NOT. PRESENT(lambda)) call destroy_eri_3center_eigen()
+  if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
+    call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp))
+  endif
 
   if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
   deallocate(energy_qp)
@@ -401,6 +452,126 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
 
 end subroutine polarizability
+
+
+!=========================================================================
+subroutine coupled_perturbed(basis,occupation,energy,c_matrix,wpol_out)
+
+  implicit none
+
+  type(basis_set),intent(in)            :: basis
+  real(dp),intent(in)                   :: occupation(:,:)
+  real(dp),intent(in)                   :: energy(:,:),c_matrix(:,:,:)
+  type(spectral_function),intent(inout) :: wpol_out
+  !=====
+  integer                   :: ipair,ipair2,m_apb,n_apb,info,lwork,iunit
+  integer                   :: nprow,npcol,myprow,mypcol
+  integer                   :: t_ia,t_jb,jstate,bstate,jbspin,t_jb_global
+  integer                   :: nmat,desc_x(NDEL)
+  real(dp)                  :: egw_tmp,erpa_singlet,energy_jb
+  real(dp),allocatable      :: tmp_matrix(:,:),inv_apb_matrix(:,:),work(:)
+  !=====
+
+  !
+  ! Prepare the big matrices A and B
+  !
+  nmat = wpol_out%npole_reso
+  !
+  ! The distribution of the two matrices have to be the same for A and B
+  ! This is valid also when SCALAPACK is not used!
+  m_apb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+  n_apb = NUMROC(nmat,block_col,ipcol_sd,first_col,npcol_sd)
+  call DESCINIT(desc_x,nmat,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,m_apb),info)
+
+  call clean_allocate('Tmp_Mat',tmp_matrix,m_apb,n_apb)
+  call clean_allocate('(A+B)^-1',inv_apb_matrix,m_apb,n_apb)
+  tmp_matrix(:,:) = 0.0_dp
+  inv_apb_matrix(:,:) = 0.0_dp
+
+  write(stdout,'(/,a,/)') ' Computing the A+B matrix in CPHF/CPKS'
+  if ( cphf_cpks_0_ ) then
+    ! Add only the orbital energy differences to the diagonal
+    write(stdout,'(/,a)') ' Comment: Using the non-interacting approximation in CPHF/CPKS.'
+    write(stdout,'(a,/)') ' (A+B)_ia,jb = (energy_a - energy_i) delta_ij delta_ab'
+    do t_jb_global=1,nmat
+      t_ia = rowindex_global_to_local('S',t_jb_global)
+      t_jb = colindex_global_to_local('S',t_jb_global)
+    
+      jstate = wpol_out%transition_table(1,t_jb_global)
+      bstate = wpol_out%transition_table(2,t_jb_global)
+      jbspin = wpol_out%transition_table(3,t_jb_global)
+      energy_jb = energy(bstate,jbspin) - energy(jstate,jbspin)
+    
+      ! If the diagonal element belongs to this proc, then add it.
+      if( t_ia > 0 .AND. t_jb > 0 ) then
+        tmp_matrix(t_ia,t_jb) = tmp_matrix(t_ia,t_jb) + energy_jb
+      endif
+    enddo
+  else
+    ! Get A and B (tmp_matrix will contain A and inv_apb_matrix will contain B)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_singlet,egw_tmp,wpol_out, &
+                      enforce_spin_multiplicity=1,lambda=1.0_dp,a_matrix=tmp_matrix,b_matrix=inv_apb_matrix)
+  endif
+  
+  inv_apb_matrix(:,:) = tmp_matrix(:,:) + inv_apb_matrix(:,:)
+  tmp_matrix(:,:) = 0.0_dp
+
+  !
+  ! Invert the (A+B) matrix 
+  !
+  call invert_chol_sca(desc_x,inv_apb_matrix)
+
+  ! 
+  ! Symmetrize (A+B)^-1
+  ! 
+  call symmetrize_matrix_sca('L',nmat,desc_x,inv_apb_matrix,desc_x,tmp_matrix)
+
+#if defined(HAVE_SCALAPACK)
+
+  call BLACS_GRIDINFO(desc_x(CTXT_),nprow,npcol,myprow,mypcol)
+  ! if only one proc, then use default coding
+  if( nprow * npcol > 1 ) then
+
+    !
+    ! Print the (A+B)^-1 matrix 
+    !
+    allocate(work(nmat))
+    ! it seems that MKL scalapack/blacs does not have PDLAWRITE
+#if !defined(HAVE_MKL)
+    call PDLAWRITE('inv_apb_mat',nmat,nmat,inv_apb_matrix,1,1,desc_x,0,0,work)
+#endif
+    deallocate(work)
+    open(unit=iunit,file='inv_apb_mat',status='old',position="append")
+    write(iunit,*) SIZE(occupation,DIM=1)
+    close(iunit)
+
+  else
+
+#endif
+
+    !
+    ! Print (A+B)^-1 matrix 
+    !
+    open(unit=iunit,file='inv_apb_mat')
+    write(iunit,*) nmat,nmat
+    do ipair=1,nmat
+      do ipair2=1,nmat
+        if( abs(inv_apb_matrix(ipair,ipair2)) < 1e-8 ) inv_apb_matrix(ipair,ipair2)=zero
+        write(iunit,*) inv_apb_matrix(ipair,ipair2)
+      enddo
+    enddo
+    write(iunit,*) SIZE(occupation,DIM=1)
+    close(iunit)
+
+#if defined(HAVE_SCALAPACK)
+  endif
+#endif
+
+  call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
+  call clean_deallocate('Tmp_Mat',tmp_matrix)
+  call clean_deallocate('(A+B)^-1',inv_apb_matrix)
+
+end subroutine coupled_perturbed
 
 
 !=========================================================================
@@ -417,7 +588,7 @@ subroutine polarizability_onering(basis,energy,c_matrix,vchi0v)
   !=====
 
   nstate = SIZE(energy,DIM=1)
-  call allocate_spectral_function(nauxil_3center,vchi0v)
+  call allocate_spectral_function(nauxil_local,vchi0v)
 
   call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
 
@@ -447,7 +618,7 @@ subroutine get_energy_qp(energy,occupation,energy_qp)
   !=====
   integer  :: nstate
   integer  :: reading_status
-  integer  :: mspin,mstate
+  integer  :: pspin,pstate
   !=====
 
   nstate = SIZE(occupation,DIM=1)
@@ -455,23 +626,27 @@ subroutine get_energy_qp(energy,occupation,energy_qp)
   ! then use it and ignore the ENERGY_QP file
   if( ABS(scissor) > 1.0e-5_dp ) then
 
-    call issue_warning('Using a manual scissor to open up the fundamental gap')
+    call issue_warning('BSE: using a manual scissor to open up the fundamental gap')
 
     write(stdout,'(a,2(1x,f12.6))') ' Scissor operator with value (eV):',scissor*Ha_eV
-    do mspin=1,nspin
-      do mstate=1,nstate
-        if( occupation(mstate,mspin) > completely_empty/spin_fact ) then
-          energy_qp(mstate,mspin) = energy(mstate,mspin)
+    do pspin=1,nspin
+      do pstate=1,nstate
+        if( occupation(pstate,pspin) > completely_empty/spin_fact ) then
+          energy_qp(pstate,pspin) = energy(pstate,pspin)
         else
-          energy_qp(mstate,mspin) = energy(mstate,mspin) + scissor
+          energy_qp(pstate,pspin) = energy(pstate,pspin) + scissor
         endif
       enddo
     enddo
     write(stdout,'(/,a)') ' Scissor updated energies'
-    do mstate=1,nstate
-      write(stdout,'(i5,4(2x,f16.6))') mstate,energy(mstate,:)*Ha_eV,energy_qp(mstate,:)*Ha_eV
+    do pstate=1,nstate
+      write(stdout,'(i5,4(2x,f16.6))') pstate,energy(pstate,:)*Ha_eV,energy_qp(pstate,:)*Ha_eV
     enddo
     write(stdout,*)
+
+  else if( ABS(scissor) > 1.0e-8_dp ) then
+    call issue_warning('BSE: using nor a scissor, nor GW energies')
+    energy_qp(:,:) = energy(:,:)
 
   else
 
@@ -608,14 +783,14 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
 
   write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
 
-  call allocate_spectral_function(nauxil_3center,wpol)
+  call allocate_spectral_function(nauxil_local,wpol)
   wpol%pole(1:wpol%npole_reso) = eigenvalue(:)
 
   nmat = wpol%npole_reso
 
 #if !defined(HAVE_SCALAPACK)
 
-  allocate(eri_3tmp(nauxil_3center,nmat))
+  allocate(eri_3tmp(nauxil_local,nmat))
   do t_jb=1,nmat
     jstate = wpol%transition_table(1,t_jb)
     bstate = wpol%transition_table(2,t_jb)
@@ -628,9 +803,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
   !                                        | Y  X |
   ! => only needs (X+Y)
   !wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
-  call DGEMM('N','N',nauxil_3center,nmat,nmat,DSQRT(spin_fact),eri_3tmp,nauxil_3center, &
-                                                               xpy_matrix,nmat, &
-                                                         0.0d0,wpol%residue_left,nauxil_3center)
+  call DGEMM('N','N',nauxil_local,nmat,nmat,DSQRT(spin_fact),eri_3tmp,nauxil_local, &
+                                                             xpy_matrix,nmat, &
+                                                       0.0d0,wpol%residue_left,nauxil_local)
 
   energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
   !
@@ -641,7 +816,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
 
 #else
 
-  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_3center,nmat)
+  call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_local,nmat)
   do t_jb=1,nmat
     jstate = wpol%transition_table(1,t_jb)
     bstate = wpol%transition_table(2,t_jb)
@@ -651,16 +826,16 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
 
   !
   ! Descriptors
-  mlocal = NUMROC(nauxil_2center,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
-  call DESCINIT(desc_auxil,nauxil_2center,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
+  mlocal = NUMROC(nauxil_global,MB_eri3_mo,iprow_eri3_mo,first_row,nprow_eri3_mo)
+  call DESCINIT(desc_auxil,nauxil_global,nmat,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,mlocal),info)
 
-  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
+  mlocal = NUMROC(nauxil_global,block_row,iprow_sd,first_row,nprow_sd)
   nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
-  call DESCINIT(desc_sd,nauxil_2center,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+  call DESCINIT(desc_sd,nauxil_global,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
 
   call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
 
-  call PDGEMR2D(nauxil_2center,nmat,eri_3tmp,1,1,desc_auxil, &
+  call PDGEMR2D(nauxil_global,nmat,eri_3tmp,1,1,desc_auxil, &
                                  eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
 
   call clean_deallocate('TMP 3-center integrals',eri_3tmp)
@@ -668,7 +843,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
   !
   !   SQRT(spin_fact) * v**1/2 * ( X + Y )
   call clean_allocate('TMP v**1/2 * (X+Y)',vsqrt_xpy,mlocal,nlocal)
-  call PDGEMM('N','N',nauxil_2center,nmat,nmat, &
+  call PDGEMM('N','N',nauxil_global,nmat,nmat, &
                 DSQRT(spin_fact),eri_3tmp_sd,1,1,desc_sd,  &
                                   xpy_matrix,1,1,desc_x,   &
                        0.0_dp,     vsqrt_xpy,1,1,desc_sd)
@@ -676,7 +851,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
   call clean_deallocate('TMP 3-center integrals',eri_3tmp_sd)
 
 
-  call PDGEMR2D(nauxil_2center,nmat,vsqrt_xpy,1,1,desc_sd, &
+  call PDGEMR2D(nauxil_global,nmat,vsqrt_xpy,1,1,desc_sd, &
                              wpol%residue_left,1,1,desc_auxil,cntxt_sd)
   !
   ! Do not forget ortho parallelization direction

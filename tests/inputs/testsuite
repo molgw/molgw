@@ -42,7 +42,7 @@ gKS HOMO energy           ,  -20.795329        , 0 , 1.0e-4
 
 he_wb97x.in               , He with wB97X functional wo RI
 SCF Total Energy          ,   -2.8980609307    , 0 , 1.0e-7
-gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-3   # Loosened criterium
+gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-2   # Loosened criterium
 
 he_pbe_libxc.in           , He with PBE functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8869559704    , 0 , 1.0e-7
@@ -54,7 +54,7 @@ gKS HOMO energy           ,  -18.193561        , 0 , 3.0e-3   # Loosened criteri
 
 he_wb97x_libxc.in         , He with wB97X functional wo RI using LIBXC index
 SCF Total Energy          ,   -2.8980609307    , 0 , 1.0e-7
-gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-3   # Loosened criterium
+gKS HOMO energy           ,  -20.856905        , 0 , 3.0e-2   # Loosened criterium
 
 ne_pbe_autori.in          ,  PBE neon atom cc-pVTZ with auto RI
 SCF Total Energy          , -128.8459979064    , 0 , 1.0e-7
@@ -70,6 +70,9 @@ ne_hf_pautori.in          ,  HF neon atom cc-pVDZ with Pauto RI
 SCF Total Energy          , -128.4891424970    , 0 , 1.0e-7
 gKS HOMO energy           ,  -22.652055        , 0 , 1.0e-4
 gKS LUMO energy           ,   46.078902        , 0 , 1.0e-4
+
+kr_rsh_ortho.in           , Range-separated hybrid with mpi_nproc_ortho
+SCF Total Energy          , -2753.4400353850   , 0 , 1.0e-7
 
 nh3_genuine_ri.in         , PBE ammonia with genuine RI
 SCF Total Energy          ,  -56.4954295025    , 0 , 1.0e-7
@@ -281,6 +284,10 @@ RPA Total Energy          ,  -76.3318887813    , 0 , 1.0e-7
 h2o_pbe_rpap.in           , RPA+ at PBE 
 RPA+ Total Energy         ,  -76.1385986080    , 0 , 1.0e-7
 
+h2o_lc_blyp.in            , RPA at LC-BLYP range-sep hybrid functional with RI
+SCF Total Energy          ,  -76.3121689564    , 0 , 1.0e-7
+RPA Total Energy          ,  -76.3771784300    , 0 , 1.0e-7
+
 h2o_b2plyp.in             , B2PLYP double hybrid functional with RI
 MP2 Energy                ,   -0.0812625983    , 0 , 1.0e-7
 MP2 Total Energy          ,  -76.4074345014    , 0 , 1.0e-7
@@ -288,6 +295,10 @@ MP2 Total Energy          ,  -76.4074345014    , 0 , 1.0e-7
 h2o_pbeqidh.in            , PBE-QIDH double hybrid functional with RI
 MP2 Energy                ,   -0.0936138770    , 0 , 1.0e-7
 MP2 Total Energy          ,  -76.3666106951    , 0 , 1.0e-7
+
+h2o_rsxqidh.in            , RSX-QIDH double hybrid functional with RI
+MP2 Energy                ,   -0.0896689601    , 0 , 1.0e-7
+MP2 Total Energy          ,  -76.3286588826    , 0 , 1.0e-7
 
 h2o_pbe0_dh.in            , PBE0-DH double hybrid functional with RI
 MP2 Energy                ,   -0.0377521092    , 0 , 1.0e-7
@@ -443,7 +454,7 @@ n2_noft.in                , RI-NOFT calculation applied to dissociated N2 with R
 NOFT Total Energy         ,   -108.7519260379  , 0 , 5.0e-5
 
 n2_noft_cpx.in            , RI-NOFT calculation applied to dissociated N2 with RI (complex orbs)
-NOFT Total Energy         ,   -108.7519260379  , 0 , 1.0e-5
+NOFT Total Energy         ,   -109.0322064109  , 0 , 5.0e-5
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
@@ -486,6 +497,13 @@ SCF Total Energy          ,    -78.5912034336   , 0 , 1.0e-7
 Exc. 0001                 ,      4.07380649     , 0 , 1.0e-4
 Exc. 0001                 ,      0.00000000     , 1 , 1.0e-4
 Exc. 0002                 ,      7.64527152     , 0 , 1.0e-4
+Exc. 0002                 ,      0.00000000     , 1 , 1.0e-4
+
+c2h4_cam-b3lyp_singlet.in , TDDFT with CAM-B3LYP for singlet final state
+SCF Total Energy          ,    -78.5350405329   , 0 , 1.0e-7
+Exc. 0001                 ,      8.08483674     , 0 , 1.0e-4
+Exc. 0001                 ,      0.38241977     , 1 , 1.0e-4
+Exc. 0002                 ,      8.33159784     , 0 , 1.0e-4
 Exc. 0002                 ,      0.00000000     , 1 , 1.0e-4
 
 ch4_bse_scissor.in        , BSE CH4 aug-cc-pVDZ without GW (scissor)
@@ -609,24 +627,24 @@ Exc. 0002                 ,      0.03083017     , 1 , 1.0e-4
 Exc. 0005                 ,     11.25700794     , 0 , 1.0e-4
 Exc. 0005                 ,      0.00000000     , 1 , 1.0e-4
 
-lih_gwgamma.in            , LiH: GWSOSEX@PBE0 with non-auxiliary basis parallelization (=ortho paral)
+lih_gw+sosex.in           , LiH: GW+SOSEX@PBE0 with non-auxiliary basis parallelization (=ortho paral)
 SCF Total Energy          ,    -8.0512581571    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0854827210    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.426968        , 0 , 1.0e-4
-GWSOSEX HOMO energy       ,    -8.003938        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,    -8.003938        , 0 , 1.0e-4
 
-lih_gwgamma_nori.in       , LiH: GWSOSEX@PBE0 without RI, noparallel
+lih_gw+sosex_nori.in      , LiH: GW+SOSEX@PBE0 without RI, noparallel
 SCF Total Energy          ,    -8.0461044345    , 0 , 1.0e-7
 RPA correlation energy    ,    -0.0363952366    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.038813        , 0 , 1.0e-4
-GWSOSEX HOMO energy       ,    -7.702063        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,    -7.702063        , 0 , 1.0e-4
 
-lih_gwtddftgamma.in       , LIH: GW_TDDFTGamma@HF (W is obtained from TDHF)
+lih_gw+sosex_w_tdhf.in    , LiH: GW+SOSEX with TDHF screening
 SCF Total Energy          ,    -7.9836862051    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.243410        , 0 , 1.0e-4
-GWSOSEX HOMO energy       ,    -7.332104        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,    -7.332104        , 0 , 1.0e-4
 
-n2_gwgamma.in             , N2: GWSOSEX@BHLYP with frozencore and frozen virtual with ortho paral
+n2_gw+sosex.in            , N2: GW+SOSEX@BHLYP with frozencore and frozen virtual with ortho paral
 SCF Total Energy          ,  -109.4724604609    , 0 , 1.0e-7
 gKS HOMO energy           ,   -13.734359        , 0 , 1.0e-4
 gKS HOMO energy           ,   -13.734359        , 1 , 1.0e-4
@@ -637,10 +655,10 @@ GW HOMO energy            ,   -14.590159        , 0 , 1.0e-4
 GW HOMO energy            ,   -14.590159        , 1 , 1.0e-4
 GW LUMO energy            ,     4.439916        , 0 , 1.0e-4
 GW LUMO energy            ,     4.439916        , 1 , 1.0e-4
-GWSOSEX HOMO energy       ,   -15.238221        , 0 , 1.0e-4
-GWSOSEX HOMO energy       ,   -15.238221        , 1 , 1.0e-4
-GWSOSEX LUMO energy       ,     4.607546        , 0 , 1.0e-4
-GWSOSEX LUMO energy       ,     4.607546        , 1 , 1.0e-4
+GW+SOSEX HOMO energy      ,   -15.238221        , 0 , 1.0e-4
+GW+SOSEX HOMO energy      ,   -15.238221        , 1 , 1.0e-4
+GW+SOSEX LUMO energy      ,     4.607546        , 0 , 1.0e-4
+GW+SOSEX LUMO energy      ,     4.607546        , 1 , 1.0e-4
 
 ethene_p_tdhf.in          , C2H4+: TDHF with doublet configuration (spin unrestricted)
 SCF Total Energy          , -77.7149628447      , 0 , 1.0e-7
@@ -693,6 +711,11 @@ RPA Total energy          , -76.4392995158     , 0 , 1.0e-7
 GW HOMO energy            , -12.175845         , 0 , 1.0e-4
 GW LUMO energy            ,   0.884386         , 0 , 1.0e-4
 
+h2o_gw_contour.in         , GW@HF calculation with contour deformation, noparallel
+SCF Total Energy          , -76.0571524942     , 0 , 1.0e-7
+GW HOMO energy            , -12.794522         , 0 , 1.0e-4
+GW LUMO energy            ,   3.450246         , 0 , 1.0e-4
+
 h2o_mp3.in                , MP3 total energy with RI
 SCF Total Energy          , -76.0262395455     , 0 , 1.0e-7
 MP2 Energy                ,  -0.2022870330     , 0 , 1.0e-7
@@ -706,6 +729,13 @@ RT-TDDFT Total Energy     , -76.0278711836     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-5
 RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-5
 RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-5
+
+h2o_rt_tddft_camb3lyp_PC2B.in   , RT-TDDFT T=60.0 with CAM-B3LYP, tddft
+SCF Total Energy          , -76.3938220823     , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -76.3937709023     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0031844444     , 0 , 1.0e-5
+RT-TDDFT Dipole Moment    ,   1.9421276421     , 1 , 1.0e-5
+RT-TDDFT Dipole Moment    ,   0.0104520959     , 2 , 1.0e-5
 
 h2o_rt_tddft_hf_PC2B_TZ.in, RT-TDDFT within cc-pVTZ T=200.0 dt=0.5 PC="PC2B", tddft
 SCF Total Energy          , -76.0571529836     , 0 , 1.0e-7
@@ -844,6 +874,11 @@ sih4_g0w0@sc-cohsex.in    , G0W0 for SiH4 based on the previous sc-COHSEX run, r
 GW HOMO energy            ,    -12.855076       , 0 , 1.0e-4
 GW LUMO energy            ,      4.073908       , 0 , 1.0e-4
 
+co_efield_rpa.in          , RPA using imag. freqs. (and RI) including an electric field
+Nucleus-Nucleus           ,     22.0808683692   , 0 , 1.0e-7
+SCF Total Energy          ,   -113.1971652965   , 0 , 1.0e-7
+RPA Total Energy          ,   -113.1376200065   , 0 , 1.0e-7
+
 co_gw_dm.in               , G0W0 based on G0W0 density matrix
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
 Kinetic Energy            ,    112.6578090099   , 0 , 1.0e-7
@@ -876,14 +911,14 @@ GW LUMO energy            ,      3.390125       , 0 , 1.0e-4
 
 co_gw_dm_imag.in          , G0W0 based on G0W0 density matrix using an imaginary axis integration, noparallel
 SCF Total Energy          ,   -112.7480846685   , 0 , 1.0e-7
-Kinetic Energy            ,    112.6581338995   , 0 , 1.0e-7
-Nucleus Energy            ,   -309.8372953964   , 0 , 1.0e-7
-Hartree Energy            ,     75.7945279204   , 0 , 1.0e-7
-Exchange Energy           ,    -13.2091598493   , 0 , 1.0e-7
+Kinetic Energy            ,    112.6577241524   , 0 , 1.0e-7
+Nucleus Energy            ,   -309.8363513170   , 0 , 1.0e-7
+Hartree Energy            ,     75.7938038329   , 0 , 1.0e-7
+Exchange Energy           ,    -13.2091319492   , 0 , 1.0e-7
 
 co_gw_dm_dyson.in         , G0W0 density matrix obtained from the Dyson equation solution using a imaginary frequencies, noparallel
 SCF Total Energy          ,   -113.2675617628   , 0 , 1.0e-7
-Trace                     ,     14.006299       , 0 , 1.0e-4
+Trace                     ,     14.006159       , 0 , 1.0e-4
 
 cs_gwdm_minoverlap.in     , G0W0 density matrix used for GW calculations when min_overlap is high
 SCF Total Energy          ,   -435.3493884743   , 0 , 1.0e-7
@@ -934,8 +969,8 @@ ch4_cbs.in                , CBS extrapolation
 SCF Total Energy          ,    -40.4856598233   , 0 , 1.0e-7
 state    5 spin  1        ,     25.861771       , 0 , 1.0e-4
 state    5 spin  1        ,     -0.460572       , 1 , 1.0e-4
-state    5 spin  1        ,    -14.095145       , 2 , 1.0e-4
-state    5 spin  1        ,    -14.555717       , 3 , 1.0e-4
+state    5 spin  1        ,    -14.082090       , 2 , 1.0e-4
+state    5 spin  1        ,    -14.542662       , 3 , 1.0e-4
 
 ch4_gwtdhf.in             , GW calculation with W from TDHF
 SCF Total Energy          ,    -40.2135693443   , 0 , 1.0e-7
@@ -978,6 +1013,10 @@ lih_rpa.in                , RPA energy of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPA Total Energy          ,  -8.0590527892     , 0 , 1.0e-7
 
+lih_rpa-i.in              , RPA-I energy of LiH (identical to RPA)
+SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
+RPA Total Energy          ,  -8.0590527892     , 0 , 1.0e-7
+
 lih_rpax.in               , RPAX energy (RPAx-II) of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx Total Energy         ,  -8.0599498366     , 0 , 1.0e-7
@@ -986,4 +1025,69 @@ lih_rpax-i.in             , RPAX energy (RPAx-I) of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx-I Energy             ,  -0.0483538239     , 0 , 1.0e-7
 RPAx-I Total Energy       ,  -8.0351082545     , 0 , 1.0e-7
+
+lih_gw.in                 , This only prepares ENERGY_QP file
+GW HOMO-LUMO gap          ,    8.053158        , 0 , 1.0e-4
+
+lih_bse-i.in              , BSE energy (BSE-I) of LiH, restart
+SCF Total Energy          ,   -7.9872035011    , 0 , 1.0e-7
+BSE-I Energy              ,   -0.0775580357    , 0 , 1.0e-7
+BSE-I Total Energy        ,   -8.0647615367    , 0 , 1.0e-7
+
+hf_electricfieldx.in      , Finite-electric field along x for HF dimer with PBEsol
+SCF Total Energy          , -100.0398341300    , 0 , 1.0e-7
+gKS HOMO energy           ,   -8.297190        , 0 , 1.0e-4
+gKS LUMO energy           ,    1.095084        , 0 , 1.0e-4
+
+hf_electricfieldy.in      , Finite-electric field along y for HF dimer with PBEsol
+SCF Total Energy          , -100.0398341300    , 0 , 1.0e-7
+gKS HOMO energy           ,   -8.297190        , 0 , 1.0e-4
+gKS LUMO energy           ,    1.095084        , 0 , 1.0e-4
+
+hf_electricfieldz.in      , Finite-electric field along z for HF dimer with PBEsol
+SCF Total Energy          , -100.0391397744    , 0 , 1.0e-7
+gKS HOMO energy           ,   -8.259038        , 0 , 1.0e-4
+gKS LUMO energy           ,    1.090268        , 0 , 1.0e-4
+
+he_gwgwg_numerical.in     , GWGWG with numerical integration
+SCF Total Energy          ,   -2.8552377890    , 0 , 1.0e-7
+GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
+
+he_gwgwg_analytic.in      , GWGWG with analytic formula
+SCF Total Energy          ,   -2.8552377890    , 0 , 1.0e-7
+GW HOMO energy            ,  -23.691585        , 0 , 1.0e-4
+GW+SOSEX2 HOMO energy     ,  -24.139890        , 0 , 1.0e-4
+GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
+
+he_gw+sox.in              , GW+SOX for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOX HOMO energy        ,  -24.821455        , 0 , 1.0e-4
+
+he_gw+sox_pade.in         , GW+SOX for He on the imaginary axis
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOX HOMO energy        ,  -24.821330        , 0 , 1.0e-4
+
+he_gw+sosex.in            , GW+SOSEX for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.745514        , 0 , 1.0e-4
+
+he_gw+sosex_pade.in       , GW+SOSEX for He on the imaginary axis
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.745514        , 0 , 1.0e-4
+
+he_gw+sosex2.in           , GW+SOSEX2 for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.670771        , 0 , 1.0e-4
+
+he_gw+sosex2_pade.in      , GW+2SOSEX for He on the imaginary axis
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+SOSEX HOMO energy      ,  -24.670840        , 0 , 1.0e-4
+
+he_gw+gwgwg.in            , GW+GWGWG for He
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+GWGWG HOMO energy      ,  -24.696203        , 0 , 1.0e-4
+
+he_gw+gwgwg_pade.in       , GW+GWGWG for He on the imaginary axis (setting the axis origin)
+SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+GW+GWGWG HOMO energy      ,  -24.680279        , 0 , 1.0e-4
 

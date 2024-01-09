@@ -305,7 +305,7 @@ subroutine check_capability_libcint(lmax)
 
   if( .NOT. libcint_has_correct_ordering ) then
     call die('check_capability_libcint: your LIBCINT compilation has incompatible p-orbital ordering. ' // &
-             'Please recompile it with -DPXPZPY=1')
+             'Please recompile it with -DPYPZPX=1')
   endif
   deallocate(ovlp)
 
@@ -375,7 +375,7 @@ subroutine set_erf_screening_length_libcint(basis,rcut)
   if( rcut > 1.0e-12_dp ) then
     ! Ensure that LIBCINT can calculated "erf" range-separated Coulomb interaction
     if( .NOT. libcint_has_range_separation ) then
-       call die('set_erf_screening_length_libcint: LIBCINT compilation does not support range separation')
+      call die('set_erf_screening_length_libcint: LIBCINT compilation does not support range separation')
     endif
     basis%LIBCINT_env(LIBCINT_PTR_RANGE_OMEGA+1) = 1.0_C_DOUBLE / rcut
   else

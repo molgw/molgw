@@ -63,20 +63,19 @@ program molgw
   use m_hdf5_tools
   implicit none
 
- !=====
+  !=====
   type(basis_set)            :: basis
   type(basis_set)            :: auxil_basis
   type(spectral_function)    :: wpol
   type(lbfgs_state)          :: lbfgs_plan
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
-  integer                 :: nelect
   integer                 :: nstate
   integer                 :: istep
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
-  real(dp)                :: erpa_tmp,egw_tmp
+  real(dp)                :: erpa_tmp,egw_tmp,eext
   real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
   real(dp),allocatable    :: hamiltonian_nucleus(:,:)
@@ -88,7 +87,8 @@ program molgw
   real(dp),allocatable    :: energy(:,:)
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
- !=====
+  character(len=200)      :: file_name
+  !=====
 
   !
   !
@@ -300,7 +300,9 @@ program molgw
 
     !
     ! External electric field
-    call setup_electric_field(basis,hamiltonian_nucleus)
+    call setup_electric_field(basis,hamiltonian_nucleus,eext)
+    ! MRM: Notice that we add the Nuclei-Electric Field interaction energy to nuc_nuc
+    en_gks%nuc_nuc = en_gks%nuc_nuc + eext
 
     !
     ! Testing the quadrature in Fourier space
@@ -370,15 +372,27 @@ program molgw
         deallocate(hamiltonian_tmp)
 
       case('GAUSSIAN')
-        !call read_gaussian_fchk !TODO
+        write(file_name,'(2a)') trim(output_name),'fchk'
+        if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
+          call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
+        else
+          write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions'
+          write(*,'(a)')   "          or pure/spherical basis functions are employed (set gaussian_type='cart')."
+          write(*,'(a,/)') '          Using a CORE guess instead of a GAUSSIAN guess.'
+          allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
+          hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+          write(stdout,'(/,a)') ' Approximate hamiltonian'
+          call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+          deallocate(hamiltonian_tmp)
+          c_matrix(:,:,nspin) = c_matrix(:,:,1)
+        endif
 
       case default
         call die('molgw: init_hamiltonian option is not valid')
       end select
 
-
       ! The hamiltonian is still spin-independent:
-      c_matrix(:,:,nspin) = c_matrix(:,:,1)
+      if(TRIM(init_hamiltonian)/='GAUSSIAN') c_matrix(:,:,nspin) = c_matrix(:,:,1)
 
     endif
 
@@ -462,8 +476,8 @@ program molgw
   ! This overrides the value of scf_has_converged
   if( assume_scf_converged_ ) scf_has_converged = .TRUE.
   if( .NOT. scf_has_converged ) then
-    call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. &
-                 Use keyword assume_scf_converged to override this security check')
+    call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. ' // &
+                       'Use keyword assume_scf_converged to override this security check')
   endif
 
   !
@@ -501,7 +515,7 @@ program molgw
   if( print_wfn_ )  call plot_wfn(basis,c_matrix)
   if( print_wfn_ )  call plot_rho('GKS',basis,occupation,c_matrix)
   if( print_cube_ ) call plot_cube_wfn('GKS',basis,occupation,c_matrix)
-  if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy)
+  if( print_wfn_files_ )  call print_wfn_file('GKS',basis,occupation,c_matrix,en_gks%total,energy,print_all=print_all_MO_wfn_file_)
   if( print_pdos_ ) then
     call clean_allocate('Square-Root of Overlap S{1/2}',s_matrix_sqrt,basis%nbf,basis%nbf)
     call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
@@ -541,13 +555,6 @@ program molgw
     call calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
   end if
 
-  !
-  ! If RSH calculations were performed, then deallocate the LR integrals which
-  ! are not needed anymore
-  !
-
-  if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
-  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
 
   !
@@ -560,13 +567,10 @@ program molgw
     call get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix,hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_fock)
   endif
 
-
   call clean_deallocate('Overlap matrix S',s_matrix)
   call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
   call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
   call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
-
-
 
   !
   ! Prepare the diagonal of the matrix Sigma_x - Vxc
@@ -577,6 +581,28 @@ program molgw
   endif
   call clean_deallocate('Fock operator F',hamiltonian_fock)
 
+  !
+  ! Linear-response time dependent calculations work for BSE and TDDFT
+  ! or coupled-pertubed HF/KS
+  ! (only if the SCF cycles were converged)
+  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. (scf_has_converged .AND. .NOT. TRIM(postscf) == 'BSE-I') ) then
+    call wpol%init(nstate,occupation,0)
+    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
+    call wpol%destroy()
+  endif
+  if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
+    call wpol%init(nstate,occupation,0)
+    call coupled_perturbed(basis,occupation,energy,c_matrix,wpol) ! Internally, it will call polarizability
+    call wpol%destroy()
+  endif
+
+  !
+  ! If RSH calculations were performed, then deallocate the LR integrals which
+  ! are not needed anymore
+  !
+  if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
+  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+
 
   !
   ! CI calculation (only if SCF cycles were converged)
@@ -586,7 +612,7 @@ program molgw
 
     !
     ! Set the range of states on which to evaluate the self-energy
-    call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
+    call selfenergy_set_state_range(nstate,occupation)
 
     if( is_virtual_fno ) then
       call calculate_virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
@@ -608,7 +634,7 @@ program molgw
       if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'ELECTRONS' ) then
         call full_ci_nelectrons(-1,NINT(electrons)+1,1,en_gks%nuc_nuc)
       endif
-      call full_ci_nelectrons_selfenergy()
+      call full_ci_nelectrons_selfenergy(energy)
     endif
 
 
@@ -626,11 +652,15 @@ program molgw
 
   endif
 
+  if( has_auxil_basis .AND. calc_type%is_lr_mbpt .AND. (rcut_mbpt > 1.0e-6_dp) ) then
+    ! 2-center and 3-center integrals
+    call calculate_eri_ri(basis,auxil_basis,rcut_mbpt)
+  endif
   !
   ! final evaluation for RPAx total energy
   ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
   !
-  if( TRIM(postscf(1:3)) == 'RPA' ) then
+  if( TRIM(postscf(1:3)) == 'RPA' .OR. TRIM(postscf) == 'BSE-I' ) then
     en_mbpt = en_gks
     call acfd_total_energy(basis,nstate,occupation,energy,c_matrix,en_mbpt)
   endif
@@ -689,20 +719,11 @@ program molgw
 
 
   !
-  ! Linear-response time dependent calculations work for BSE and TDDFT
-  ! (only if the SCF cycles were converged)
-  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. scf_has_converged ) then
-    call init_spectral_function(nstate,occupation,0,wpol)
-    call polarizability(.FALSE.,.FALSE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol)
-    call destroy_spectral_function(wpol)
-  endif
-
-  !
   ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
   ! (only if the SCF cycles were converged)
   if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS .AND. scf_has_converged ) then
     en_mbpt = en_gks
-    call selfenergy_evaluation(basis,auxil_basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
+    call selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc,en_mbpt)
     call print_energy_yaml('mbpt energy',en_mbpt)
     call clean_deallocate('Sigx - Vxc',exchange_m_vxc)
   endif
@@ -716,14 +737,15 @@ program molgw
 
   call deallocate_eri()
   if(has_auxil_basis) call destroy_eri_3center()
+  if( has_auxil_basis .AND. calc_type%is_lr_mbpt ) call destroy_eri_3center_lr()
 
   call destroy_basis_set(basis)
   if(has_auxil_basis) call destroy_basis_set(auxil_basis)
   call destroy_atoms()
 
 #if defined(HAVE_LIBCINT)
-    call destroy_libcint(basis)
-    if(has_auxil_basis) call destroy_libcint(auxil_basis)
+  call destroy_libcint(basis)
+  if(has_auxil_basis) call destroy_libcint(auxil_basis)
 #endif
 
   call destroy_cart_to_pure_transforms()

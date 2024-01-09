@@ -883,7 +883,7 @@ function f(j,l,m,a,b)
     f = f + cnk(l,i) * cnk(m,j-i) * a**(l-i) * b**(m+i-j)
   enddo
 
- end function f
+end function f
 
 end subroutine evaluate_gos
 

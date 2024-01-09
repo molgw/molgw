@@ -65,7 +65,8 @@ def clean_run(inp,out,restart):
   if len(mpirun) < 1:
     subprocess.call(['../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
   else:
-    subprocess.call([mpirun,'-n',str(nprocs),'-oversubscribe','../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
+    # mpirun from openmpi may need '-oversubscribe'
+    subprocess.call([mpirun,'-n',str(nprocs),'../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
   fout.close()
   os.chdir('..')
 
@@ -163,9 +164,12 @@ def check_output(out,testinfo):
     if not key_found:
       print(key.rjust(30)+'[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
 
-  if success_in_this_file == len(testinfo) + 1:
+  failures_in_this_file = len(testinfo) + 1 - success_in_this_file
+
+  if failures_in_this_file == 0:
      test_files_success += 1
 
+  return failures_in_this_file
 
 ###################################
 # Parse the command line
@@ -176,7 +180,7 @@ if len(sys.argv) > 1:
   if '--help' in sys.argv:
     print('Run the complete test suite of MOLGW')
     print('  --keep             Keep the temporary folder')
-    print('  --np     n         Set the number of MPI threads to n')
+    print('  --np     n         Set the number of MPI processes to n')
     print('  --nc     n         Set the number of OPENMP threads to n')
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input files      Only run these input files')
@@ -246,7 +250,7 @@ print('Starting MOLGW test suite\n')
 
 if len(mpirun) < 1:
   if( nprocs > 1 ):
-    print('No MPI launcher has been provided. Set the number of MPI threads back to 1')
+    print('No MPI launcher has been provided. Set the number of MPI processes back to 1')
   nprocs = 1
 
 if not os.path.isfile('../molgw') :
@@ -267,7 +271,7 @@ try:
 except:
   ncores = 1
   pass
-print('Running with \033[91m\033[1m{:3d}\033[0m MPI    threads'.format(nprocs))
+print('Running with \033[91m\033[1m{:3d}\033[0m MPI  processes'.format(nprocs))
 print('Running with \033[91m\033[1m{:3d}\033[0m OPENMP threads'.format(ncores))
 print()
 
@@ -275,7 +279,7 @@ print()
 ###################################
 # Create the temporary folder
 ###################################
-tmpfolder='tmp_'+today
+tmpfolder='tmp'
 
 try:
   os.mkdir(tmpfolder)
@@ -484,6 +488,7 @@ skipping_reason    = []
 
 fdiff = open(tmpfolder+'/diff', 'w')
 fdiff.write('#   test index       property tested                     calculated                 reference                 difference        test status \n')
+ffailed = open(tmpfolder+'/failed_tests', 'w')
 
 for iinput in range(ninput):
 
@@ -534,10 +539,13 @@ for iinput in range(ninput):
 
   clean_run(inp,out,restart)
   
-  check_output(out,testinfo[iinput])
+  failures = check_output(out,testinfo[iinput])
+  if failures != 0:
+    ffailed.write(out+"\n")
 
 
 fdiff.close()
+ffailed.close()
 
 print('\n\n===============================')
 print('      Test Suite Summary \n')

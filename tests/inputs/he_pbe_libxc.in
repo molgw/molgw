@@ -3,8 +3,9 @@
 
  basis='aug-cc-pVDZ'
  grid_quality='veryhigh'
+ mixing_scheme='simple'
 
- nscf= 100
+ nscf= 1000
  tolscf=1.0e-10
 
  natom=1

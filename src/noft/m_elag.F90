@@ -361,9 +361,11 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  if(ELAGd%cpx_lambdas) then
   allocate(Eigvec(1,1),Eigvec_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
   Eigvec_cmplx=ELAGd%Lambdas+ELAGd%Lambdas_im*im
+  Eigvec_cmplx=half*(Eigvec_cmplx+transpose(conjg(Eigvec_cmplx)))
  else
   allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Eigvec_cmplx(1,1))
   Eigvec=ELAGd%Lambdas
+  Eigvec=half*(Eigvec+transpose(Eigvec))
  endif
 
  if(present(ekt)) then
@@ -372,7 +374,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
     if(iorb<=RDMd%NBF_occ.and.iorb1<=RDMd%NBF_occ) then
      sqrt_occ_iorb =dsqrt(RDMd%occ(iorb))
      sqrt_occ_iorb1=dsqrt(RDMd%occ(iorb1))
-     if((dabs(sqrt_occ_iorb)>tol6).and.(dabs(sqrt_occ_iorb1)>tol6)) then
+     if((RDMd%occ(iorb)>tol8).and.(RDMd%occ(iorb1)>tol8)) then
       if(ELAGd%cpx_lambdas) then
        Eigvec_cmplx(iorb,iorb1)=Eigvec_cmplx(iorb,iorb1)/(sqrt_occ_iorb*sqrt_occ_iorb1)
       else

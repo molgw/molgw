@@ -56,6 +56,7 @@ module m_scf
     real(dp) :: mp2      = 0.0_dp
     real(dp) :: mp3      = 0.0_dp
     real(dp) :: rpa      = 0.0_dp
+    real(dp) :: bse      = 0.0_dp
     real(dp) :: gw       = 0.0_dp
     real(dp) :: total    = 0.0_dp
     real(dp) :: totalexx = 0.0_dp
@@ -268,8 +269,8 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
   real(dp),allocatable   :: a_matrix(:,:)
   real(dp),allocatable   :: a_matrix_inv(:,:)
   real(dp),allocatable   :: residual_pred(:,:,:)
-  real(dp)               :: residual,work(1)
 #if defined(HAVE_SCALAPACK)
+  real(dp)               :: residual,work(1)
   real(dp),allocatable   :: s_matrix_distrib(:,:)
   real(dp),allocatable   :: x_matrix_distrib(:,:)
   real(dp),allocatable   :: p_matrix_distrib(:,:,:)
@@ -316,9 +317,9 @@ subroutine diis_prediction(s_matrix,x_matrix,p_matrix,ham)
     call matmul_transaba_scalapack(scalapack_block_min,x_matrix,matrix_tmp1,matrix_tmp2)
 
 #if defined(HAVE_SCALAPACK)
-  if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
-    call create_distributed_copy(matrix_tmp2,descr,res_hist(:,:,ispin,1))
-  endif
+    if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
+      call create_distributed_copy(matrix_tmp2,descr,res_hist(:,:,ispin,1))
+    endif
 #else
     res_hist(:,:,ispin,1) = matrix_tmp2(:,:)
 #endif
@@ -556,7 +557,7 @@ subroutine xdiis_prediction(p_matrix,ham)
       !
       ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
       if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
-         exit
+        exit
       endif
 
       if( info <= 0 ) exit
@@ -715,10 +716,8 @@ subroutine density_matrix_preconditioning(hkin,s_matrix,p_matrix_new)
   real(dp),allocatable     :: hkin_inv(:,:)
   real(dp),allocatable     :: delta_p_matrix(:,:)
   real(dp),allocatable     :: p_matrix_new_distrib(:,:,:)
-  integer :: mlocal,nlocal
-  integer :: ilocal,jlocal
-  integer :: iglobal,jglobal
-  integer :: nbf,ispin,ihist
+  integer :: iglobal
+  integer :: nbf,ispin
   real(dp),allocatable :: matrix(:,:)
   real(dp) :: trace_ref,trace_current
   !=====

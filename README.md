@@ -21,10 +21,9 @@ MOLGW implements the following schemes:
 - GGA (PBE, PW91, BLYP)
 - potential-only meta-GGA (BJ, RPP)
 - hybrid functionals (PBE0, B3LYP)
-- double-hybrid functionals (PBE0-DH, PBE-QIDH, and B2PLYP)
-- screened hybrid functionals (HSE03, HSE06)
+- double-hybrid functionals (PBE0-DH, PBE-QIDH, B2PLYP, and RSX-QIDH)
+- screened hybrid functionals (HSE03, HSE06, CAM-B3LYP, and LC-BLYP)
 - any user-developped range-separated hybrid based on wPBEH
-
 - GW@HF or GW@DFT
 - GW/PT2 density-matrix
 - QSGW
@@ -37,6 +36,7 @@ MOLGW implements the following schemes:
 - Bethe-Salpeter equation
 - real-time TDDFT
 - HF/DFT+NOFT (MULLER, CGA, CA, GU, POWER, PNOF5, PNOF7, and GNOF)
+- Molecules subject to external finite electric fields
 
 The Python3 module `molgw.py` is available for automation.
 
@@ -138,4 +138,3 @@ The code should compile properly in parallel with "make -j".
 - Xixi Qi
 - Young-Moo Byun
 - Meiyue Shao
-

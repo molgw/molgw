@@ -328,7 +328,7 @@ subroutine setup_overlap_grad(basis,s_matrix_grad)
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
   write(stdout,'(/,a)') ' Setup gradient of the overlap matrix S (LIBINT)'
 #else
-      call die('setup_overlap_grad: overlap gradient not implemented without LIBINT or LIBCINT one-body gradient terms')
+  call die('setup_overlap_grad: overlap gradient not implemented without LIBINT or LIBCINT one-body gradient terms')
 #endif
 
   do jshell=1,basis%nshell
@@ -736,7 +736,7 @@ end subroutine setup_kinetic
 
 !=========================================================================
 subroutine recalc_kinetic(basis_t,basis_p,hamiltonian_kinetic)
- implicit none
+  implicit none
 
   type(basis_set),intent(in) :: basis_t,basis_p
   real(dp),intent(inout)     :: hamiltonian_kinetic(:,:)
@@ -1568,12 +1568,16 @@ end subroutine setup_giao_rxp_ao
 
 
 !=========================================================================
-subroutine setup_electric_field(basis,hext)
+! Calculate the Hamiltonian and the energy contributions induced by an external electric field
+subroutine setup_electric_field(basis,hext,eext)
   implicit none
   type(basis_set),intent(in)         :: basis
+  real(dp),intent(out)               :: eext
   real(dp),allocatable,intent(inout) :: hext(:,:)
   !=====
-  real(dp),allocatable :: dipole_ao(:,:,:)
+  integer                            :: icenter
+  real(dp)                           :: efield(3)
+  real(dp),allocatable               :: dipole_ao(:,:,:)
   !=====
 
   if( ABS(electric_field_x) < 1.0e-6_dp  &
@@ -1587,6 +1591,14 @@ subroutine setup_electric_field(basis,hext)
                         + electric_field_z * dipole_ao(:,:,3)
 
   deallocate(dipole_ao)
+
+  efield(1) = electric_field_x
+  efield(2) = electric_field_y
+  efield(3) = electric_field_z
+  eext = 0.0_dp
+  do icenter=1,ncenter_nuclei
+    eext = eext - zvalence(icenter) * SUM( xatom(:,icenter) * Efield(:) )
+  enddo
 
 end subroutine setup_electric_field
 
@@ -2059,10 +2071,10 @@ subroutine setup_nucleus_ecp_quadrature(basis,hamiltonian_nucleus)
 
       select case(ecp(ie)%ecp_format)
       case(ECP_PSP6,ECP_PSP8)
-         vr(:) = ecp(ie)%vpspll(iradial,:)
-         if( ALLOCATED(ur) ) then
-           ur(:) = ecp(ie)%wfll(iradial,:)
-         endif
+        vr(:) = ecp(ie)%vpspll(iradial,:)
+        if( ALLOCATED(ur) ) then
+          ur(:) = ecp(ie)%wfll(iradial,:)
+        endif
         ! remove the Coulomb part for the local part: it is treated in the regular routine setup_nucleus
         do iecp=1,necp
           if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component

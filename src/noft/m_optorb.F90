@@ -29,7 +29,7 @@ module m_optorb
  private :: lambda_conv
 !!***
 
- public :: opt_orb 
+ public :: opt_orb,s2_calc 
 !!***
 
 contains
@@ -287,6 +287,186 @@ subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,maxdiff_all,iorbm
  enddo
 
 end subroutine lambda_conv
+!!***
+
+!!***
+!!****f* DoNOF/s2_calc
+!! NAME
+!!  s2_calc
+!!
+!! FUNCTION
+!!  Compute <S^2>
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine s2_calc(RDMd,INTEGd,NO_COEF,NO_COEF_cmplx) 
+!Arguments ------------------------------------
+!scalars
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(inout)::INTEGd
+!arrays
+ real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
+!Local variables ------------------------------
+!scalars
+ integer::NBF2,NsdORBs,NsdVIRT
+ integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorb6,iorb7,iorbmin,iorbmax
+ real(dp)::Delem,Nelect
+ complex(dp)::S2_val
+!arrays
+ integer,allocatable,dimension(:)::coup
+ real(dp),allocatable,dimension(:)::occ,occ_dyn
+ real(dp),allocatable,dimension(:,:)::S_pq_NO
+ complex(dp),allocatable,dimension(:,:)::S_pq_NO_cmplx
+ character(len=200)::msg
+!************************************************************************
+!************************************************************************
+
+ NBF2=2*RDMd%NBF_occ
+ NsdORBs=RDMd%Nfrozen+RDMd%Npairs
+ NsdVIRT=RDMd%NBF_occ-NsdORBs
+ allocate(coup(NBF2),occ(NBF2),occ_dyn(NBF2))
+ occ=zero;occ_dyn=zero;Nelect=zero;
+
+ ! Get sw 1-RDM
+ do iorb=1,RDMd%NBF_occ
+  Delem=RDMd%occ(iorb)
+  Nelect=Nelect+two*Delem
+  if(dabs(Delem)>tol8) then
+   occ(2*iorb-1)=Delem
+   occ(2*iorb)  =occ(2*iorb-1)
+  endif
+  Delem=RDMd%occ_dyn(iorb)
+  if(dabs(Delem)>tol8) then
+   occ_dyn(2*iorb-1)=Delem
+   occ_dyn(2*iorb)  =occ_dyn(2*iorb-1)
+  endif
+ enddo
+ do iorb=1,2*RDMd%Nfrozen
+  occ_dyn(iorb)=zero
+ enddo
+
+ ! Prepare coupling map
+ coup=-1
+ do iorb=1,NsdORBs
+  iorbmin=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+1
+  iorbmax=NsdORBs+RDMd%Ncoupled*(NsdORBs-iorb)+RDMd%Ncoupled
+  do iorb1=1,NsdVIRT
+   iorb2=iorb1+NsdORBs
+   if((iorbmin<=iorb2.and.iorb2<=iorbmax).and.(iorbmax<=RDMd%NBF_occ)) then
+    coup(2*iorb-1) =iorb
+    coup(2*iorb)   =iorb
+    coup(2*iorb2-1)=iorb
+    coup(2*iorb2)  =iorb
+   endif
+  enddo
+ enddo
+ 
+ S2_val=-Nelect*(Nelect-four)/four
+ if(INTEGd%complex_ints) then
+  allocate(S_pq_NO_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
+  S_pq_NO_cmplx=matmul(transpose(NO_COEF_cmplx),matmul(INTEGd%Overlap,NO_COEF_cmplx)) ! S_pq ^alpha beta not
+                                                                                      ! using conjugate
+  ! Calc. <S^2> with the sw 2-RDM
+  do iorb=1,NBF2
+   do iorb1=1,NBF2
+    do iorb2=1,NBF2
+     do iorb3=1,NBF2
+      ! Calculate the ^2D_ij,kl element
+      if((mod(iorb,2)==mod(iorb2,2)).and.(mod(iorb1,2)==mod(iorb3,2))) then
+       if(mod(iorb,2)==0) then
+        iorb4=iorb/2
+        iorb6=iorb2/2
+       else
+        iorb4=(iorb+1)/2
+        iorb6=(iorb2+1)/2
+       endif
+       if(mod(iorb1,2)==0) then
+        iorb5=iorb1/2
+        iorb7=iorb3/2
+       else
+        iorb5=(iorb1+1)/2
+        iorb7=(iorb3+1)/2
+       endif
+       if((mod(iorb,2)==mod(iorb1,2)).and.(iorb==iorb2.and.iorb1==iorb3)) then ! alpha alpha alpha alpha or beta beta beta beta
+        call compu_swdm2(RDMd,occ,occ_dyn,coup,iorb,iorb1,iorb2,iorb3,NBF2,NsdORBs,Delem)
+        S2_val=S2_val+Delem
+       endif
+       if((mod(iorb,2)/=mod(iorb1,2))) then ! alpha beta alpha beta or beta alpha beta alpha
+        call compu_swdm2(RDMd,occ,occ_dyn,coup,iorb,iorb1,iorb2,iorb3,NBF2,NsdORBs,Delem)
+        if(mod(iorb,2)/=0) then ! alpha beta alpha beta
+         S2_val=S2_val-Delem*S_pq_NO_cmplx(iorb4,iorb7)*S_pq_NO_cmplx(iorb5,iorb6)
+        else ! beta alpha beta alpha
+         S2_val=S2_val-Delem*conjg(S_pq_NO_cmplx(iorb4,iorb7)*S_pq_NO_cmplx(iorb5,iorb6))
+        endif
+       endif
+      endif
+     enddo
+    enddo
+   enddo
+  enddo
+  deallocate(S_pq_NO_cmplx)
+ else
+  allocate(S_pq_NO(RDMd%NBF_tot,RDMd%NBF_tot))
+  S_pq_NO=matmul((transpose(NO_COEF)),matmul(INTEGd%Overlap,NO_COEF))
+  ! Calc. <S^2> with the sw 2-RDM
+  do iorb=1,NBF2
+   do iorb1=1,NBF2
+    do iorb2=1,NBF2
+     do iorb3=1,NBF2
+      ! Calculate the ^2D_ij,kl element
+      if((mod(iorb,2)==mod(iorb2,2)).and.(mod(iorb1,2)==mod(iorb3,2))) then
+       if(mod(iorb,2)==0) then
+        iorb4=iorb/2
+        iorb6=iorb2/2
+       else
+        iorb4=(iorb+1)/2
+        iorb6=(iorb2+1)/2
+       endif
+       if(mod(iorb1,2)==0) then
+        iorb5=iorb1/2
+        iorb7=iorb3/2
+       else
+        iorb5=(iorb1+1)/2
+        iorb7=(iorb3+1)/2
+       endif
+       if((mod(iorb,2)==mod(iorb1,2)).and.(iorb==iorb2.and.iorb1==iorb3)) then ! alpha alpha alpha alpha or beta beta beta beta
+        call compu_swdm2(RDMd,occ,occ_dyn,coup,iorb,iorb1,iorb2,iorb3,NBF2,NsdORBs,Delem)
+        S2_val=S2_val+Delem
+       endif
+       if((mod(iorb,2)/=mod(iorb1,2))) then ! alpha beta alpha beta or beta alpha beta alpha
+        call compu_swdm2(RDMd,occ,occ_dyn,coup,iorb,iorb1,iorb2,iorb3,NBF2,NsdORBs,Delem)
+        if(mod(iorb,2)/=0) then ! alpha beta alpha beta
+         S2_val=S2_val-Delem*S_pq_NO(iorb4,iorb7)*S_pq_NO(iorb5,iorb6)
+        else ! beta alpha beta alpha
+         S2_val=S2_val-Delem*S_pq_NO(iorb4,iorb7)*S_pq_NO(iorb5,iorb6)
+        endif
+       endif
+      endif
+     enddo
+    enddo
+   enddo
+  enddo
+  deallocate(S_pq_NO)
+ endif
+ 
+ write(msg,'(a,f10.5,a)') ' Computed <S^2> = ',abs(real(S2_val))
+ call write_output(msg)
+ if(abs(aimag(S2_val))>tol8) then
+  write(msg,'(a,f10.3,a)') ' Warning! Imaginary contribution found evaluating <S^2> = ',aimag(S2_val)
+  call write_output(msg)
+ endif
+ deallocate(coup,occ,occ_dyn) 
+
+end subroutine s2_calc
 !!***
 
 end module m_optorb

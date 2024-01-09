@@ -10,22 +10,22 @@
 module m_linear_algebra
   use m_definitions
   use m_warning,only: die
- 
+
   interface invert
     module procedure invert_dp
     module procedure invert_inplace_dp
     module procedure invert_cdp
     module procedure invert_inplace_cdp
   end interface
- 
+
   interface invert_symmetric
     module procedure invert_symmetric_inplace_dp
   end interface
- 
+
   interface diagonalize_wo_vectors
     module procedure diagonalize_wo_vectors_dp
   end interface
- 
+
   interface diagonalize
     module procedure diagonalize_cdp
     module procedure diagonalize_dp
@@ -34,13 +34,13 @@ module m_linear_algebra
     module procedure diagonalize_inplace_dp
     module procedure diagonalize_inplace_sp
   end interface
- 
+
   interface matrix_lower_to_full
     module procedure matrix_lower_to_full_dp
     module procedure matrix_lower_to_full_cdp
   end interface
- 
- 
+
+
 contains
 
 
@@ -91,15 +91,15 @@ function matrix_trace(matrix)
   !=====
   integer :: n1,i1
   !=====
- 
+
   n1 = SIZE( matrix , DIM=1 )
   if( n1 /= SIZE( matrix , DIM=2 ) ) call die('matrix_trace: non square matrix')
- 
+
   matrix_trace = 0.0_dp
   do i1=1,n1
     matrix_trace = matrix_trace + matrix(i1,i1)
   enddo
- 
+
 end function matrix_trace
 
 
@@ -112,10 +112,10 @@ function matrix_trace_cmplx(matrix)
   !=====
   integer :: n1,i1
   !=====
- 
+
   n1 = SIZE( matrix , DIM=1 )
   if( n1 /= SIZE( matrix , DIM=2 ) ) call die('matrix_trace: non square matrix')
- 
+
   matrix_trace_cmplx = ( 0.0_dp, 0.0_dp )
   do i1=1,n1
     matrix_trace_cmplx = matrix_trace_cmplx + matrix(i1,i1)
@@ -132,7 +132,7 @@ function matrix_is_symmetric(matrix)
   !=====
   integer :: imat,jmat
   !=====
- 
+
   matrix_is_symmetric = .TRUE.
   do imat=1,SIZE(matrix,DIM=1)
     do jmat=1,imat-1
@@ -291,12 +291,12 @@ subroutine diagonalize_wo_vectors_dp(flavor,matrix,eigval)
   integer :: info
   real(dp),allocatable :: work(:)
   !=====
- 
+
   nmat = SIZE(matrix,DIM=1)
   allocate(work(3*nmat-1))
- 
+
   call DSYEV('N','L',nmat,matrix,nmat,eigval,work,3*nmat-1,info)
- 
+
   deallocate(work)
 
 
@@ -322,14 +322,14 @@ subroutine diagonalize_dp(flavor,matrix,eigval,eigvec)
   real(dp),external    :: DLAMCH
   integer              :: neig
   !=====
- 
+
   nmat = SIZE(matrix,DIM=1)
- 
+
   eigvec(:,:) = matrix(:,:)
- 
+
   lwork = -1
   allocate(work(1))
- 
+
   select case(flavor)
   case('r','R')
     allocate(iwork(1))
@@ -348,14 +348,14 @@ subroutine diagonalize_dp(flavor,matrix,eigval,eigvec)
   case default
     call DSYEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,info)
   end select
- 
+
   lwork = NINT(work(1))
   deallocate(work)
- 
+
   if( info /= 0 ) call die('diagonalize_dp: diago failure 1')
- 
+
   allocate(work(lwork))
- 
+
   select case(flavor)
   case('r','R')
     allocate(iwork(liwork))
@@ -369,9 +369,9 @@ subroutine diagonalize_dp(flavor,matrix,eigval,eigvec)
   case default
     call DSYEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,info)
   end select
- 
+
   deallocate(work)
- 
+
   if( info /= 0 ) call die('diagonalize_dp: diago failure 2')
 
 end subroutine diagonalize_dp
@@ -389,16 +389,16 @@ subroutine diagonalize_sp(flavor,matrix,eigval,eigvec)
   real(sp),allocatable :: work(:)
   integer  :: info
   !=====
- 
+
   nmat = SIZE(matrix,DIM=1)
   allocate(work(3*nmat-1))
- 
+
   eigvec(:,:) = matrix(:,:)
- 
+
   call SSYEV('V','L',nmat,eigvec,nmat,eigval,work,3*nmat-1,info)
- 
+
   deallocate(work)
- 
+
   if( info /= 0 ) call die('diagonalize_sp: diago failure 1')
 
 end subroutine diagonalize_sp
@@ -422,12 +422,12 @@ subroutine diagonalize_inplace_dp(flavor,matrix,eigval)
   real(dp),external       :: DLAMCH
   integer                 :: neig
   !=====
- 
+
   nmat = SIZE(matrix,DIM=1)
- 
+
   lwork = -1
   allocate(work(1))
- 
+
   select case(flavor)
   case('r','R')
     allocate(iwork(1))
@@ -445,14 +445,14 @@ subroutine diagonalize_inplace_dp(flavor,matrix,eigval)
   case default
     call DSYEV('V','L',nmat,matrix,nmat,eigval,work,lwork,info)
   end select
- 
+
   lwork = NINT(work(1))
   deallocate(work)
- 
+
   if( info /= 0 ) call die('diagonalize_inplace_dp: diago failure 1')
- 
+
   allocate(work(lwork))
- 
+
   select case(flavor)
   case('r','R')
     allocate(iwork(liwork))
@@ -468,7 +468,7 @@ subroutine diagonalize_inplace_dp(flavor,matrix,eigval)
     call DSYEV('V','L',nmat,matrix,nmat,eigval,work,lwork,info)
   end select
   deallocate(work)
- 
+
   if( info /= 0 ) call die('diagonalize_inplace_dp: diago failure 2')
 
 end subroutine diagonalize_inplace_dp
@@ -485,21 +485,21 @@ subroutine diagonalize_inplace_sp(flavor,matrix,eigval)
   real(sp),allocatable :: work(:)
   integer              :: lwork,info
   !=====
- 
+
   nmat = SIZE(matrix,DIM=1)
- 
+
   lwork = -1
   allocate(work(1))
   call SSYEV('V','L',nmat,matrix,nmat,eigval,work,lwork,info)
   lwork = NINT(work(1))
   deallocate(work)
- 
+
   if( info /= 0 ) call die('diagonalize_inplace_sp: diago failure 1')
- 
+
   allocate(work(lwork))
   call SSYEV('V','L',nmat,matrix,nmat,eigval,work,lwork,info)
   deallocate(work)
- 
+
   if( info /= 0 ) call die('diagonalize_inplace_sp: diago failure 2')
 
 end subroutine diagonalize_inplace_sp
@@ -525,14 +525,14 @@ subroutine diagonalize_cdp(flavor,matrix,eigval,eigvec)
   real(dp),external       :: DLAMCH
   integer                 :: neig
   !=====
- 
+
   nmat = SIZE(matrix,DIM=1)
   eigvec(:,:) = matrix(:,:)
   lwork = -1
- 
+
   allocate(work(1))
   allocate(rwork(1))
- 
+
   select case(flavor)
   case('r','R')
     allocate(iwork(1))
@@ -555,16 +555,16 @@ subroutine diagonalize_cdp(flavor,matrix,eigval,eigvec)
     call ZHEEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,rwork,info)
     lrwork = 3 * nmat - 2
   end select
- 
+
   lwork = NINT(REAL(work(1),dp))
   deallocate(rwork)
   deallocate(work)
- 
+
   if( info /= 0 ) call die('diagonalize_cdp: diago failure 1')
- 
+
   allocate(work(lwork))
   allocate(rwork(lrwork))
- 
+
   select case(flavor)
   case('r','R')
     allocate(iwork(1))
@@ -579,10 +579,10 @@ subroutine diagonalize_cdp(flavor,matrix,eigval,eigvec)
   case default
     call ZHEEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,rwork,info)
   end select
- 
+
   deallocate(work)
   deallocate(rwork)
- 
+
   if( info /= 0 ) call die('diagonalize_cdp: diago failure 2')
 
 end subroutine diagonalize_cdp
@@ -607,13 +607,13 @@ subroutine diagonalize_inplace_cdp(flavor,matrix,eigval)
   real(dp),external       :: DLAMCH
   integer                 :: neig
   !=====
- 
+
   nmat = SIZE(matrix,DIM=1)
- 
+
   lwork = -1
   allocate(work(1))
   allocate(rwork(1))
- 
+
   select case(flavor)
   case('r','R')
     allocate(iwork(1))
@@ -635,16 +635,16 @@ subroutine diagonalize_inplace_cdp(flavor,matrix,eigval)
     call ZHEEV('V','L',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
     lrwork = 3 * nmat - 2
   end select
- 
+
   lwork = NINT(REAL(work(1),dp))
   deallocate(rwork)
   deallocate(work)
- 
+
   if( info /= 0 ) call die('diagonalize_inplace_cdp: diago failure 1')
- 
+
   allocate(work(lwork))
   allocate(rwork(lrwork))
- 
+
   select case(flavor)
   case('r','R')
     allocate(iwork(1))
@@ -660,19 +660,19 @@ subroutine diagonalize_inplace_cdp(flavor,matrix,eigval)
   case default
     call ZHEEV('V','L',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
   end select
- 
+
   deallocate(work)
   deallocate(rwork)
- 
+
   if( info /= 0 ) call die('diagonalize_inplace_cdp: diago failure 2')
- 
+
 end subroutine diagonalize_inplace_cdp
 
 
 !=========================================================================
 subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
   implicit none
- 
+
   real(dp),intent(in)  :: tolerance
   integer,intent(inout) :: nstep
   real(dp),intent(in)  :: ham(:,:)
@@ -687,26 +687,26 @@ subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
   real(dp),allocatable :: lambda(:),alphavec(:,:)
   real(dp)             :: residual_norm
   !=====
- 
+
   write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig
- 
+
   nmat = SIZE(ham(:,:),DIM=1)
   eigval(:) = 0.0_dp
- 
- 
+
+
   mm     = neig
   mm_max = mm * nstep
   if( mm_max > nmat ) then
     nstep = nmat / neig
     mm_max = mm * nstep
   endif
- 
+
   allocate(bb(nmat,mm_max))
   allocate(atilde(mm_max,mm_max))
   allocate(ab(nmat,mm_max))
- 
+
   allocate(qq(nmat,neig))
- 
+
   !
   ! Initialize with stupid coefficients
   bb(:,1:neig) = 0.01_dp
@@ -714,36 +714,36 @@ subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
     bb(ieig,ieig) = 1.0_dp
   end forall
   call orthogonalize(bb(:,1:neig))
- 
- 
+
+
   ab(:,1:mm) = MATMUL( ham(:,:) , bb(:,1:mm) )
- 
- 
+
+
   do icycle=1,nstep
- 
+
     mm = icycle * neig
     write(stdout,*) 'icycle mm',icycle,mm
- 
- 
+
+
     atilde(1:mm,1:mm) = MATMUL( TRANSPOSE(bb(:,1:mm)) , ab(:,1:mm) )
- 
- 
+
+
     allocate(lambda(mm),alphavec(mm,mm))
     call diagonalize(' ',atilde(1:mm,1:mm),lambda,alphavec)
- 
+
     write(stdout,*) 'icycle',icycle,lambda(1:mm)
- 
+
     residual_norm = 0.0_dp
     do ieig=1,neig
- 
+
       qq(:,ieig) = MATMUL( ab(:,1:mm) ,  alphavec(1:mm,ieig) ) &
                     - lambda(ieig) * MATMUL( bb(:,1:mm) , alphavec(1:mm,ieig) )
- 
+
       residual_norm = MAX( residual_norm , NORM2(qq(:,ieig)) )
     enddo
- 
+
     write(stdout,'(1x,a,1x,i4,1x,es12.4)') 'Max residual norm for cycle: ',icycle,residual_norm
- 
+
     !
     ! Convergence reached... or not
     if( icycle == nstep .OR. residual_norm < tolerance ) then
@@ -752,8 +752,8 @@ subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
       deallocate(lambda,alphavec)
       exit
     endif
- 
- 
+
+
     !
     ! New trial vectors
     !
@@ -761,16 +761,16 @@ subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
       bb(imat,mm+ieig) = qq(imat,ieig) / ( lambda(ieig) - ham(imat,imat) )
     end forall
     call orthogonalize(bb(:,:mm+neig))
- 
- 
- 
+
+
+
     ab(:,mm+1:mm+neig) = MATMUL( ham(:,:) , bb(:,mm+1:mm+neig) )
- 
- 
+
+
     deallocate(lambda,alphavec)
- 
+
   enddo ! icycle
- 
+
   deallocate(ab,atilde)
 
 end subroutine diagonalize_davidson
@@ -779,14 +779,14 @@ end subroutine diagonalize_davidson
 !=========================================================================
 subroutine orthogonalize(vec)
   implicit none
- 
+
   real(dp),intent(inout) :: vec(:,:)
   !=====
   integer :: ivec,jvec,nvec
   !=====
- 
+
   nvec = SIZE(vec(:,:),DIM=2)
- 
+
   do ivec=1,nvec
     ! Orthogonalize to previous vectors
     do jvec=1,ivec-1
@@ -802,7 +802,7 @@ end subroutine orthogonalize
 !=========================================================================
 subroutine check_unitarity(cmat)
   implicit none
- 
+
   complex(dp),intent(in) :: cmat(:,:)
   !=====
   real(dp),parameter :: tol=1.0e-9_dp
@@ -810,23 +810,23 @@ subroutine check_unitarity(cmat)
   integer :: imat,jmat
   complex(dp),allocatable :: cmat_tmp(:,:)
   !=====
- 
+
   nmat = SIZE(cmat,DIM=1)
   allocate(cmat_tmp,MOLD=cmat)
- 
+
   cmat_tmp = MATMUL( cmat , TRANSPOSE(CONJG(cmat)) )
   do imat=1,nmat
     do jmat=1,nmat
       if(imat==jmat) then
-       if(ABS(cmat_tmp(imat,jmat)-1.0_dp)>tol) then
-         write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
-         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-       endif
+        if(ABS(cmat_tmp(imat,jmat)-1.0_dp)>tol) then
+          write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
+          call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
+        endif
       else
-       if(ABS(cmat_tmp(imat,jmat))>tol) then
-         write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
-         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-       endif
+        if(ABS(cmat_tmp(imat,jmat))>tol) then
+          write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
+          call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
+        endif
       endif
     enddo
   enddo
@@ -834,15 +834,15 @@ subroutine check_unitarity(cmat)
   do imat=1,nmat
     do jmat=1,nmat
       if(imat==jmat) then
-       if(ABS(cmat_tmp(imat,jmat)-1.0_dp)>tol) then
-         write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
-         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-       endif
+        if(ABS(cmat_tmp(imat,jmat)-1.0_dp)>tol) then
+          write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
+          call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
+        endif
       else
-       if(ABS(cmat_tmp(imat,jmat))>tol) then
-         write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
-         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-       endif
+        if(ABS(cmat_tmp(imat,jmat))>tol) then
+          write(stdout,*) imat,jmat,cmat_tmp(imat,jmat)
+          call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
+        endif
       endif
     enddo
   enddo
@@ -853,12 +853,12 @@ end subroutine check_unitarity
 !=========================================================================
 subroutine cross_product(u1,u2,u3)
   implicit none
- 
+
   real(dp),intent(in)  :: u1(3),u2(3)
   real(dp),intent(out) :: u3(3)
   !=====
   !=====
- 
+
   u3(1) = u1(2) * u2(3) - u1(3) * u2(2)
   u3(2) = u1(3) * u2(1) - u1(1) * u2(3)
   u3(3) = u1(1) * u2(2) - u1(2) * u2(1)
@@ -869,12 +869,12 @@ end subroutine cross_product
 !=========================================================================
 pure function determinant_3x3_matrix(mat) RESULT(det)
   implicit none
- 
+
   real(dp) :: det
   real(dp),intent(in) :: mat(3,3)
   !=====
   !=====
- 
+
   det =  mat(1,1) * mat(2,2) * mat(3,3)  &
        + mat(1,2) * mat(2,3) * mat(3,1)  &
        + mat(1,3) * mat(2,1) * mat(3,2)  &

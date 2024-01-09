@@ -3,12 +3,55 @@
 -----------------------------------------
 
 ----------------------------------------
+## What's new in version 3.3
+### Overview
+- Python scripting improved using molgw.py
+- Range-separated hybrid are compatible with RT-TDDFT
+
+### Contributors
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+
+### Changes affecting the usage
+- Running with python or jupyter notebook is more complete.
+New classes for input (`Molgw_input`), output (`Molgw_output`), and collection of ouputs (`Molgw_output_collection`)
+Check out jupyter notebook in `~molgw/docs/running_molgw_with_jupyter.ipynb`
+
+### Changes affecting the compilation
+
+### Changes affecting the developers
+
+
+----------------------------------------
+## What's new in version 3.2
+### Overview
+- Double-hybrid functionals (and more range-sep hybs.)
+- Finite electric field with `electric_field_x`, `electric_field_y`, `electric_field_z`
+- More standard compilation variables
+
+### Contributors
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+- Mauricio Rodriguez-Mayorga (Universitat d'Alacant, Alicante, Spain)
+
+### Changes affecting the usage
+- `electric_field_x`, `electric_field_y`, `electric_field_z` trigger a finite external electric field
+- `PBEsol` functional available
+
+### Changes affecting the compilation
+- LIBXC should be version 5 or newer
+- Makefile has been standardized to help spack packaging
+- `HAVE_MPI` automatically implies  `HAVE_SCALAPACK` and vice-versa
+
+### Changes affecting the developers
+- Nucleus-nucleus and nucleus-electron energies also contain the interaction with the external electric field interaction if any
+
+
+----------------------------------------
 ## What's new in version 3.1
 ### Overview
 - Simplified compilation
 - Even-tempered basis
 - RPA, RPA+, RPAx (RPAx-II), RPAx-I correlation energies
-- Double-hybrid functionals (e.g. B2PLYP, PBE0-DH, PBE-QIDH, etc.)
+- Double-hybrid functionals (e.g. B2PLYP, PBE0-DH, PBE-QIDH, RSX-QIDH, etc.)
 - Inclusion of more RDMFT functionals (e.g. CGA, CA, GU, and GNOF)
 - GTH pseudo potentials in CP2K format
 - New functionalities in `molgw.py` for running and post-processing series of calculations

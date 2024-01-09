@@ -133,7 +133,7 @@ for molecule in molecule_list:
         else:
             calc["xyz_file"] = '../../structures/' + molecule + '.xyz'
 
-        molgw.print_input_file('molgw.in',calc)
+        molgw.print_input_file(calc,'molgw.in')
 
   
         script.write(executable + ' molgw.in > molgw.out\n')

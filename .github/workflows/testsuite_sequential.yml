@@ -40,10 +40,11 @@ jobs:
       - name: Make
         run: |
           echo "LIBCINT=../libcint-5.2.2/build/libcint.a" > my_machine.arch
-          echo "FCFLAGS=-O1" >> my_machine.arch
+          echo "CPPFLAGS=-cpp" >> my_machine.arch
+          echo "FCFLAGS=-cpp -O1 -fcheck=all" >> my_machine.arch
           make -j 4
 
       - name: Run the test suite
         run: |
-          make github-test
+          make test
 
