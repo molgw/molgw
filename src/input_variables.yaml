@@ -611,7 +611,7 @@ print_c_matrix_cmplx_hdf5:
   default: 'no'
   comment: Prints the time-dependent wave function coefficients c_matrix_cmplx in an HDF5 file called 'rt_tddft.h5'
 
-print_p_matrix_cmplx_hdf5:
+print_p_matrix_MO_block_hdf5:
   family: io_rt_tddft
   datatype: yes/no
   mandatory: 'no'

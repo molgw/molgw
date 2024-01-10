@@ -152,7 +152,7 @@
  write(unit_yaml,'(4x,a,5x,a)') 'print_line_rho_diff_tddft:',yesno_to_TrueFalse(print_line_rho_diff_tddft) 
  write(unit_yaml,'(4x,a,10x,a)') 'print_line_rho_tddft:',yesno_to_TrueFalse(print_line_rho_tddft) 
  write(unit_yaml,'(4x,a,15x,a)') 'print_multipole:',yesno_to_TrueFalse(print_multipole) 
- write(unit_yaml,'(4x,a,5x,a)') 'print_p_matrix_cmplx_hdf5:',yesno_to_TrueFalse(print_p_matrix_cmplx_hdf5) 
+ write(unit_yaml,'(4x,a,2x,a)') 'print_p_matrix_MO_block_hdf5:',yesno_to_TrueFalse(print_p_matrix_MO_block_hdf5) 
  write(unit_yaml,'(4x,a,20x,a)') 'print_pdos:',yesno_to_TrueFalse(print_pdos) 
  write(unit_yaml,'(4x,a,17x,a)') 'print_restart:',yesno_to_TrueFalse(print_restart) 
  write(unit_yaml,'(4x,a,16x,a)') 'print_rho_grid:',yesno_to_TrueFalse(print_rho_grid) 

@@ -152,7 +152,7 @@
   write(stdout,'(1x,a32,6x,a)') 'print_line_rho_diff_tddft',print_line_rho_diff_tddft 
   write(stdout,'(1x,a32,6x,a)') 'print_line_rho_tddft',print_line_rho_tddft 
   write(stdout,'(1x,a32,6x,a)') 'print_multipole',print_multipole 
-  write(stdout,'(1x,a32,6x,a)') 'print_p_matrix_cmplx_hdf5',print_p_matrix_cmplx_hdf5 
+  write(stdout,'(1x,a32,6x,a)') 'print_p_matrix_MO_block_hdf5',print_p_matrix_MO_block_hdf5 
   write(stdout,'(1x,a32,6x,a)') 'print_pdos',print_pdos 
   write(stdout,'(1x,a32,6x,a)') 'print_restart',print_restart 
   write(stdout,'(1x,a32,6x,a)') 'print_rho_grid',print_rho_grid 

@@ -65,7 +65,7 @@
  character(len=3),protected :: print_cube_diff_tddft
  character(len=3),protected :: print_cube_rho_tddft
  character(len=3),protected :: print_c_matrix_cmplx_hdf5
- character(len=3),protected :: print_p_matrix_cmplx_hdf5
+ character(len=3),protected :: print_p_matrix_MO_block_hdf5
  character(len=3),protected :: print_dens_traj
  character(len=3),protected :: print_dens_traj_points_set
  character(len=3),protected :: print_dens_traj_tddft

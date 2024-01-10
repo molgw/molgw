@@ -158,6 +158,72 @@ end subroutine setup_density_matrix_cmplx
 
 
 !=========================================================================
+subroutine setup_density_matrix_MO_cmplx(c_matrix,s_matrix,p_matrix_cmplx,p_matrix_MO_cmplx)
+  implicit none
+
+  real(dp),intent(in) :: c_matrix(:,:,:)
+  real(dp),intent(in) :: s_matrix(:,:)
+  complex(dp),intent(in) :: p_matrix_cmplx(:,:,:)
+  complex(dp),intent(out) :: p_matrix_MO_cmplx(:,:,:)
+  !=====
+  integer :: nbf,nstate
+  integer :: ispin
+  real(dp),allocatable :: SC_matrix_real(:,:)
+  complex(dp),allocatable :: SC_matrix_cmplx(:,:)
+  complex(dp),allocatable :: tmp_matrix_cmplx(:,:)
+  !=====
+
+  call start_clock(timing_density_matrix_MO_cmplx)
+
+  ! P^{MO} = C^T S P^{AO} S C
+  ! P^{MO}: nstate x nstate
+  ! P^{AO}: nbf x nbf
+  ! C: nbf x nstate
+  ! S: nbf x nbf
+  !
+  ! Steps:
+  ! 1. Compute SC: nbf x nstate => real, DSYMM
+  ! 2. Compute P (SC): nbf x nstate => complex, ZHEMM
+  ! 3. Compute (SC)^T (PSC): nstate x nstate => complex, ZGEMM
+
+  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+  nstate = SIZE(c_matrix(:,:,:),DIM=2)
+
+  allocate(SC_matrix_real(nbf, nstate))
+  allocate(SC_matrix_cmplx(nbf, nstate))
+  allocate(tmp_matrix_cmplx(nbf, nstate))
+
+  do ispin=1,nspin
+
+    ! Step 1
+    call DSYMM('L', 'U', nbf, nstate, 1.0d0, s_matrix(:,:), nbf, &
+               c_matrix(:,:,ispin), nbf, 0.0d0, SC_matrix_real(:,:), nbf)
+
+    SC_matrix_cmplx(:,:) = SC_matrix_real(:,:)
+
+    ! Step 2
+    call ZHEMM('L', 'U', nbf, nstate, (1.0d0, 0.0d0), p_matrix_cmplx(:,:,ispin), nbf, &
+               SC_matrix_cmplx, nbf, (0.0d0, 0.0d0), tmp_matrix_cmplx, nbf)
+
+    ! Step 3
+    call ZGEMM('C', 'N', nstate, nstate, nbf, (1.0d0, 0.0d0), &
+               SC_matrix_cmplx(:,:), nbf, &
+               tmp_matrix_cmplx(:,:), nbf, (0.0d0, 0.0d0), &
+               p_matrix_MO_cmplx(:,:,ispin), nstate)
+
+  enddo
+
+  deallocate(SC_matrix_real)
+  deallocate(SC_matrix_cmplx)
+  deallocate(tmp_matrix_cmplx)
+
+  call stop_clock(timing_density_matrix_MO_cmplx)
+
+
+end subroutine setup_density_matrix_MO_cmplx
+
+
+!=========================================================================
 subroutine setup_energy_density_matrix(c_matrix,occupation,energy,q_matrix)
   implicit none
   real(dp),intent(in)  :: c_matrix(:,:,:)

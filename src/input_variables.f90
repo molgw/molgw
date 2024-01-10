@@ -69,7 +69,7 @@
     print_cube_diff_tddft,       &
     print_cube_rho_tddft,       &
     print_c_matrix_cmplx_hdf5,       &
-    print_p_matrix_cmplx_hdf5,       &
+    print_p_matrix_MO_block_hdf5,       &
     print_dens_traj,       &
     print_dens_traj_points_set,       &
     print_dens_traj_tddft,       &
@@ -272,7 +272,7 @@
  print_cube_diff_tddft='no'
  print_cube_rho_tddft='no'
  print_c_matrix_cmplx_hdf5='no'
- print_p_matrix_cmplx_hdf5='no'
+ print_p_matrix_MO_block_hdf5='no'
  print_dens_traj='no'
  print_dens_traj_points_set='no'
  print_dens_traj_tddft='no'
