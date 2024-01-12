@@ -196,8 +196,8 @@ subroutine setup_density_matrix_MO_cmplx(c_matrix,s_matrix,p_matrix_cmplx,p_matr
   do ispin=1,nspin
 
     ! Step 1
-    call DSYMM('L', 'U', nbf, nstate, 1.0d0, s_matrix(:,:), nbf, &
-               c_matrix(:,:,ispin), nbf, 0.0d0, SC_matrix_real(:,:), nbf)
+    call DSYMM('L', 'U', nbf, nstate, 1.0d0, s_matrix(1,1), nbf, &
+               c_matrix(1,1,ispin), nbf, 0.0d0, SC_matrix_real(1,1), nbf)
 
     SC_matrix_cmplx(:,:) = SC_matrix_real(:,:)
 
@@ -206,10 +206,18 @@ subroutine setup_density_matrix_MO_cmplx(c_matrix,s_matrix,p_matrix_cmplx,p_matr
                SC_matrix_cmplx, nbf, (0.0d0, 0.0d0), tmp_matrix_cmplx, nbf)
 
     ! Step 3
+#if defined(HAVE_MKL)
+    call ZGEMMT('L','C', 'N', nstate, nbf, (1.0d0, 0.0d0), &
+                SC_matrix_cmplx(:,:), nbf, &
+                tmp_matrix_cmplx(:,:), nbf, (0.0d0, 0.0d0), &
+                p_matrix_MO_cmplx(:,:,ispin), nstate)
+    call matrix_lower_to_full(p_matrix_MO_cmplx(:,:,ispin))
+#else
     call ZGEMM('C', 'N', nstate, nstate, nbf, (1.0d0, 0.0d0), &
                SC_matrix_cmplx(:,:), nbf, &
                tmp_matrix_cmplx(:,:), nbf, (0.0d0, 0.0d0), &
                p_matrix_MO_cmplx(:,:,ispin), nstate)
+#endif
 
   enddo
 

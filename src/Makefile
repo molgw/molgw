@@ -474,7 +474,7 @@ m_timing.o: m_definitions.f90 m_warning.f90 m_timing.f90
 	$(FC_W_OPTS) -c m_timing.f90 $(LIBXC_INCS)
 
 m_hdf5_tools.o: m_definitions.f90 m_warning.f90 m_hdf5_tools.f90
-	$(FC_W_OPTS) -c m_hdf5_tools.f90 $(LIBXC_INCS) 
+	$(FC_W_OPTS) -c m_hdf5_tools.f90 $(LIBXC_INCS) $(HDF5_INCS)
 
 m_elements.o: m_definitions.f90 m_warning.f90 m_elements.f90
 	$(FC_W_OPTS) -c m_elements.f90 $(LIBXC_INCS)
