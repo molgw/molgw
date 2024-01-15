@@ -336,6 +336,15 @@ def print_input_file(pyinput,filename="molgw.in"):
 ########################################################################
 # Conversions for stopping power
 
+# time conceversion 
+# atomic units to femtosecond
+def time_au_to_fs(t_au):
+    return 2.4188843265857e-2 * t_au
+
+# femtosecond to atomic units
+def time_fs_to_au(t_fs):
+    return t_fs / 2.4188843265857e-2
+
 # velocity conversion
 def vel_kev_to_au(e_kev,mass=1.0):
     return (1000.*e_kev*2.0/Ha_eV/(1836.1253*mass))**0.5
