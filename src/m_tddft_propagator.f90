@@ -407,6 +407,9 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       call hdf_create_group(fid, 'c_matrix')
       call hdf_open_group(fid, 'c_matrix', c_mat_group)
       call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_cmplx, 0)
+
+      ! save the initial complete c_matrix, nstate x nstate
+      call hdf_write_dataset(c_mat_group, 'c_matrix_complete_0_real', c_matrix)
     end if
 
     if( print_p_matrix_MO_block_hdf5_ ) then
@@ -422,19 +425,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       call hdf_write_dataset(p_mat_group, 'snap_0', p_matrix_MO_block)
 
     end if
-
-    ! save the initial complete c_matrix, nstate x nstate
-    call clean_allocate('c_matrix_orth_start_complete_cmplx for HDF5',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
-    allocate(energy_tddft(nstate,nspin))
-    do ispin=1, nspin
-      call diagonalize(postscf_diago_flavor,h_small_cmplx(:,:,ispin),energy_tddft(:,ispin),&
-           c_matrix_orth_start_complete_cmplx(:,:,ispin))
-    end do
-
-    call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_orth_start_complete_cmplx, 0, 'c_matrix_ortho_complete_')
-    call clean_deallocate('c_matrix_orth_start_complete_cmplx for HDF5',c_matrix_orth_start_complete_cmplx)
-
-    call hdf_write_dataset(c_mat_group, 'c_matrix_complete_0_real', c_matrix)
 
   end if
 
