@@ -90,6 +90,7 @@
  character(len=3),protected :: frozencore
  character(len=3),protected :: gwgwg_skip_vvv
  character(len=3),protected :: gwgwg_skip_vv
+ character(len=3),protected :: gwgwg_static_approximation
  character(len=3),protected :: gwgamma_tddft
  real(dp),protected :: mu_origin
  integer,protected :: ncoreg

@@ -193,7 +193,7 @@ subroutine scf_loop(is_restart,&
 
       !
       ! Set the range of states on which to evaluate the self-energy
-      call selfenergy_set_state_range(nstate,occupation)
+      call selfenergy_set_state_range(nstate,occupation,range='all')
 
       allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
       call gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)

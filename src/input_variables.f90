@@ -94,6 +94,7 @@
     frozencore,       &
     gwgwg_skip_vvv,       &
     gwgwg_skip_vv,       &
+    gwgwg_static_approximation,       &
     gwgamma_tddft,       &
     mu_origin,       &
     ncoreg,       &
@@ -300,6 +301,7 @@
  frozencore='no'
  gwgwg_skip_vvv='no'
  gwgwg_skip_vv='no'
+ gwgwg_static_approximation='no'
  gwgamma_tddft='no'
  mu_origin=-100.0_dp 
  ncoreg=0

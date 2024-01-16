@@ -70,6 +70,7 @@
   write(stdout,'(1x,a32,6x,a)') 'gwgamma_tddft',gwgamma_tddft 
   write(stdout,'(1x,a32,6x,a)') 'gwgwg_skip_vv',gwgwg_skip_vv 
   write(stdout,'(1x,a32,6x,a)') 'gwgwg_skip_vvv',gwgwg_skip_vvv 
+  write(stdout,'(1x,a32,6x,a)') 'gwgwg_static_approximation',gwgwg_static_approximation 
   write(stdout,'(1x,a32,6x,a)') 'ignore_bigrestart',ignore_bigrestart 
   write(stdout,'(1x,a32,6x,a)') 'incore',incore 
   write(stdout,'(1x,a32,6x,a)') 'init_hamiltonian',TRIM(init_hamiltonian) 

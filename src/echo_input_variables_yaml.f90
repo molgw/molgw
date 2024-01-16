@@ -70,6 +70,7 @@
  write(unit_yaml,'(4x,a,17x,a)') 'gwgamma_tddft:',yesno_to_TrueFalse(gwgamma_tddft) 
  write(unit_yaml,'(4x,a,17x,a)') 'gwgwg_skip_vv:',yesno_to_TrueFalse(gwgwg_skip_vv) 
  write(unit_yaml,'(4x,a,16x,a)') 'gwgwg_skip_vvv:',yesno_to_TrueFalse(gwgwg_skip_vvv) 
+ write(unit_yaml,'(4x,a,4x,a)') 'gwgwg_static_approximation:',yesno_to_TrueFalse(gwgwg_static_approximation) 
  write(unit_yaml,'(4x,a,13x,a)') 'ignore_bigrestart:',yesno_to_TrueFalse(ignore_bigrestart) 
  write(unit_yaml,'(4x,a,24x,a)') 'incore:',yesno_to_TrueFalse(incore) 
  write(unit_yaml,'(4x,a,14x,a)') 'init_hamiltonian:',TRIM(init_hamiltonian) 

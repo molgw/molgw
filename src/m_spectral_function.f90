@@ -152,8 +152,8 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid_type,omega_max,verbose)
   integer                               :: nlumo_W_spin(nspin)
   integer                               :: nhomo_W_spin(nspin)
   real(dp),parameter                    :: alpha=1.0_dp ! 0.50_dp
-  real(dp),parameter                    :: beta=1.0_dp ! 6.0_dp
-  real(dp),parameter                    :: omega_0=2.5_dp ! Gorling JCP 2022
+  real(dp),parameter                    :: beta=2.0_dp ! 6.0_dp
+  real(dp),parameter                    :: omega_0=2.0_dp ! tweaked value from Arno Foerster
   real(dp),allocatable                  :: omega_quad(:)
   !=====
 
@@ -295,13 +295,17 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid_type,omega_max,verbose)
         write(stdout_,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%im*Ha_eV,sf%weight_quad(iomega)
       enddo
     else
-      call issue_warning("FBFB hack omega freqs")
+      ! Grid from Erhard, Goerling JChemPhys 157, 114105 (2022)
+      call issue_warning("FBFB Goerling hack omega freqs")
       call coeffs_gausslegint(-1.0_dp,1.0_dp,omega_quad,sf%weight_quad,sf%nomega)
 
+      write(stdout_,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
       ! Variable change [-1,1] -> [0,+\inf[
+      write(stdout_,'(a)') '    #    Frequencies (eV)    Quadrature weights'
       do iomega=1,sf%nomega
         sf%weight_quad(iomega) = sf%weight_quad(iomega) * 2.0_dp * omega_0 / ( 1.0_dp - omega_quad(iomega) )**2
         sf%omega(iomega)       = im * omega_0 * ( 1.0_dp + omega_quad(iomega) ) / ( 1.0_dp - omega_quad(iomega) )
+        write(stdout_,'(i5,2(2x,f14.6))') iomega,sf%omega(iomega)%im*Ha_eV,sf%weight_quad(iomega)
       enddo
     endif
     deallocate(omega_quad)

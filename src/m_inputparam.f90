@@ -174,6 +174,7 @@ module m_inputparam
   logical,protected                :: auto_occupation_
   logical,protected                :: gwgwg_skip_vvv_
   logical,protected                :: gwgwg_skip_vv_
+  logical,protected                :: gwgwg_static_approximation_
 
   real(dp),protected               :: rcut         = 0.0_dp
   real(dp),protected               :: factor_sosex = 1.0_dp
@@ -269,25 +270,25 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWSOSEX2','GW+SOSEX2')
+    case('GWSOSEX2','GW+SOSEX2','GW+2SOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
-    case('GWSOSEX2_PADE','GW+SOSEX2_PADE')
+    case('GWSOSEX2_PADE','GW+SOSEX2_PADE','GW+2SOSEX_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWGWGWG','GW+GWGWG')
+    case('GWGWGWG','GW+GWGWG','GW+G3W2')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGWG
       factor_sosex = 2.0_dp
-    case('GWGWGWG_PADE','GW+GWGWG_PADE')
+    case('GWGWGWG_PADE','GW+GWGWG_PADE','GW+G3W2_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGWG
       factor_sosex = 2.0_dp
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWGWGWG_NUMERICAL','GW+GWGWG_NUMERICAL')
+    case('GWGWGWG_NUMERICAL','GW+GWGWG_NUMERICAL','GW+G3W2_NUMERICAL')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGWG_NUMERICAL
       factor_sosex = 2.0_dp
@@ -935,6 +936,7 @@ subroutine read_inputfile_namelist()
 
   gwgwg_skip_vvv_           = yesno_to_logical(gwgwg_skip_vvv)
   gwgwg_skip_vv_            = yesno_to_logical(gwgwg_skip_vv)
+  gwgwg_static_approximation_ = yesno_to_logical(gwgwg_static_approximation)
   print_eri_                = yesno_to_logical(print_eri)
   print_wfn_                = yesno_to_logical(print_wfn)
   print_w_                  = yesno_to_logical(print_w)

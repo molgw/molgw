@@ -194,8 +194,9 @@ force.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_atoms.f90 m_basis_set.f9
 	$(FC_W_OPTS) -c force.f90  $(LIBXC_INCS)
 
 m_selfenergy_evaluation.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_memory.f90 m_scf.f90 \
-                           m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_ao_mo.f90 m_io.f90 \
+                           m_eri.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_ao_mo.f90 m_io.f90 \
                            m_selfenergy_tools.f90 m_virtual_orbital_space.f90 m_gw_selfenergy_grid.f90 m_linear_response.f90 \
+			   m_gwgwg_selfenergy.f90 \
                            m_selfenergy_evaluation.f90
 	$(FC_W_OPTS) -c m_selfenergy_evaluation.f90 $(LIBXC_INCS)
 
@@ -230,7 +231,7 @@ gw_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_scalap
 
 m_gw_selfenergy_grid.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_scalapack.f90 \
       m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 m_linear_algebra.f90 \
-      m_inputparam.f90 m_selfenergy_tools.f90 m_gw_selfenergy_grid.f90
+      m_inputparam.f90 m_selfenergy_tools.f90 m_linear_response.f90 m_gw_selfenergy_grid.f90
 	$(FC_W_OPTS) -c m_gw_selfenergy_grid.f90 $(LIBXC_INCS)
 
 m_build_bse.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_timing.f90 m_warning.f90 m_memory.f90 \
@@ -243,14 +244,15 @@ static_polarizability.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 
         static_polarizability.f90
 	$(FC_W_OPTS) -c static_polarizability.f90 $(LIBXC_INCS)
 
-m_linear_response.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_cart_to_pure.f90 m_scalapack.f90 m_io.f90 \
+m_linear_response.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_cart_to_pure.f90 m_scalapack.f90 \
                    m_inputparam.f90 m_block_diago.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
                    m_spectra.f90 m_build_bse.f90 m_linear_response.f90
 	$(FC_W_OPTS) -c m_linear_response.f90 $(LIBXC_INCS)
 
-m_acfd.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_cart_to_pure.f90 m_scalapack.f90 m_io.f90 \
-          m_inputparam.f90 m_basis_set.f90 m_spectral_function.f90  \
-          m_spectra.f90 m_scf.f90 m_linear_response.f90 m_acfd.f90
+m_acfd.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_cart_to_pure.f90 m_scalapack.f90 m_numerical_tools.f90 \
+          m_inputparam.f90 m_basis_set.f90 m_spectral_function.f90 m_gw_selfenergy_grid.f90 m_selfenergy_tools.f90 \
+          m_spectra.f90 m_scf.f90 m_linear_response.f90 m_dft_grid.f90 m_hamiltonian_twobodies.f90 \
+	  m_acfd.f90
 	$(FC_W_OPTS) -c m_acfd.f90 $(LIBXC_INCS)
 
 m_hamiltonian_onebody.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_memory.f90 m_timing.f90 m_atoms.f90 m_cart_to_pure.f90 m_ecp.f90 m_dft_grid.f90 \
@@ -397,7 +399,7 @@ m_eri_ao_mo.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f
 	$(FC_W_OPTS) -c m_eri_ao_mo.f90 $(LIBXC_INCS)
 
 m_spectra.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_mpi.f90 m_cart_to_pure.f90 \
-               m_scalapack.f90 m_spectral_function.f90 m_hamiltonian_onebody.f90 m_dft_grid.f90 m_spectra.f90
+               m_scalapack.f90 m_spectral_function.f90 m_hamiltonian_onebody.f90 m_spectra.f90
 	$(FC_W_OPTS) -c m_spectra.f90 $(LIBXC_INCS)
 
 m_tddft_fxc.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_dft_grid.f90 m_density_tools.f90 m_libxc_tools.f90 \

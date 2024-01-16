@@ -91,6 +91,7 @@
 [frozencore](#frozencore) 
 [gwgwg_skip_vvv](#gwgwg_skip_vvv) 
 [gwgwg_skip_vv](#gwgwg_skip_vv) 
+[gwgwg_static_approximation](#gwgwg_static_approximation) 
 [gwgamma_tddft](#gwgamma_tddft) 
 [mu_origin](#mu_origin) 
 [ncoreg](#ncoreg) 
@@ -1266,6 +1267,24 @@ EXPERIMENTAL. Skip the 2-virtual+1-occupied-state  contributions in the GWGWG se
 **Description:** 
 
 EXPERIMENTAL. Skip the 3-virtual-state contributions in the GWGWG selfenergy. 
+
+
+---
+### gwgwg_static_approximation
+
+**experimental** 
+
+*Optional* 
+
+**Family:** post 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+EXPERIMENTAL. Evaluate the GWGWG self-energy at the GW energy only. 
 
 
 ---

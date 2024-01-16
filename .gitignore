@@ -13,6 +13,7 @@ src/my_machine*.arch*
 /my_machine*.arch*
 tests/tmp*
 __pycache__/
+.ipynb_checkpoints/
 *.py[cod]
 src/noft/m_gitver.F90
 src/noft/donof/

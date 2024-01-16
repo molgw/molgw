@@ -53,9 +53,9 @@ function element_core(zval,zatom)
       element_core = 0
     else if( zval <= 12.00001 ) then  ! up to Mg
       element_core = 1
-    else if( zval <= 20.00001 ) then  ! up to Ca
+    else if( zval <= 30.00001 ) then  ! up to Zn
       element_core = 5
-    else if( zval <= 38.00001 ) then  ! up to Sr
+    else if( zval <= 48.00001 ) then  ! up to Cd
       element_core = 9
     else
       element_core = 18
