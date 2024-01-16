@@ -401,15 +401,15 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     call hdf_write_dataset(fid, 'occupation', occupation)
     call hdf_write_dataset(fid, 's_matrix', s_matrix)
 
+    ! save the initial complete c_matrix, nstate x nstate
+    call hdf_write_dataset(fid, 'c_matrix_complete_0_real', c_matrix)
+
     if( excit_type%form == EXCIT_LIGHT ) call hdf_write_dataset(fid, 'dipole_ao', dipole_ao)
 
     if( print_c_matrix_cmplx_hdf5_ ) then
       call hdf_create_group(fid, 'c_matrix')
       call hdf_open_group(fid, 'c_matrix', c_mat_group)
       call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_cmplx, 0)
-
-      ! save the initial complete c_matrix, nstate x nstate
-      call hdf_write_dataset(c_mat_group, 'c_matrix_complete_0_real', c_matrix)
     end if
 
     if( print_p_matrix_MO_block_hdf5_ ) then
