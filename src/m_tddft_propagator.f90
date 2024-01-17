@@ -387,9 +387,16 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     call plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize=.TRUE.)
   end if
 
-  ! HANDLING HDF5 files here
+  if( print_p_matrix_MO_block_hdf5_ ) then
+    allocate(p_matrix_MO_cmplx(nstate,nstate,nspin))
+    allocate(p_matrix_MO_block(nocc,nstate-nocc,nspin))
 
-  if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_ ) then
+    call setup_density_matrix_MO_cmplx(c_matrix, s_matrix, p_matrix_cmplx, p_matrix_MO_cmplx)
+    p_matrix_MO_block(:,:,:) = REAL(p_matrix_MO_cmplx(1:nocc,nocc+1:nstate,:), dp)
+  end if
+
+  ! HANDLING HDF5 files here
+  if( (print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_) .and. is_iomaster ) then
 
     call hdf_open_file(fid, 'rt_tddft.h5', status='NEW')
 
@@ -414,14 +421,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
     if( print_p_matrix_MO_block_hdf5_ ) then
 
-      allocate(p_matrix_MO_cmplx(nstate,nstate,nspin))
-      allocate(p_matrix_MO_block(nocc,nstate-nocc,nspin))
-
       call hdf_create_group(fid, 'p_matrix_MO_block')
       call hdf_open_group(fid, 'p_matrix_MO_block', p_mat_group)
-
-      call setup_density_matrix_MO_cmplx(c_matrix, s_matrix, p_matrix_cmplx, p_matrix_MO_cmplx)
-      p_matrix_MO_block(:,:,:) = REAL(p_matrix_MO_cmplx(1:nocc,nocc+1:nstate,:), dp)
       call hdf_write_dataset(p_mat_group, 'snap_0', p_matrix_MO_block)
 
     end if
@@ -542,12 +543,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       if (calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx, &
                                                  istate_cut,file_q_matrix,time_cur)
 
-      if( print_c_matrix_cmplx_hdf5_ ) call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_cmplx, iwrite_step)
-      if( print_p_matrix_MO_block_hdf5_ ) then
+      if( print_c_matrix_cmplx_hdf5_ .and. is_iomaster ) call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_cmplx, iwrite_step)
+      if( print_p_matrix_MO_block_hdf5_) then
         call setup_density_matrix_MO_cmplx(c_matrix, s_matrix, p_matrix_cmplx, p_matrix_MO_cmplx)
         p_matrix_MO_block(:,:,:) = REAL(p_matrix_MO_cmplx(1:nocc,nocc+1:nstate,:), dp)
         write(snap_name, '(A,I0)') 'snap_', iwrite_step
-        call hdf_write_dataset(p_mat_group, TRIM(snap_name), p_matrix_MO_block)
+        if (is_iomaster) call hdf_write_dataset(p_mat_group, TRIM(snap_name), p_matrix_MO_block)
       end if
 
       iwrite_step = iwrite_step + 1
@@ -588,7 +589,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   !********end time loop*******************
 
-  if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_ ) then
+  if( (print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_) .and. is_iomaster ) then
 
     call hdf_write_dataset(fid, 'nsnap', itau)
 
