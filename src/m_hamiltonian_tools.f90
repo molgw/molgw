@@ -173,7 +173,7 @@ subroutine setup_density_matrix_MO_cmplx(c_matrix,s_matrix,p_matrix_cmplx,p_matr
   complex(dp),allocatable :: tmp_matrix_cmplx(:,:)
   !=====
 
-  call start_clock(timing_density_matrix_MO_cmplx)
+  call start_clock(timing_density_matrix_MO)
 
   ! P^{MO} = C^T S P^{AO} S C
   ! P^{MO}: nstate x nstate
@@ -225,10 +225,79 @@ subroutine setup_density_matrix_MO_cmplx(c_matrix,s_matrix,p_matrix_cmplx,p_matr
   deallocate(SC_matrix_cmplx)
   deallocate(tmp_matrix_cmplx)
 
-  call stop_clock(timing_density_matrix_MO_cmplx)
+  call stop_clock(timing_density_matrix_MO)
 
 
 end subroutine setup_density_matrix_MO_cmplx
+
+
+!=========================================================================
+subroutine setup_density_matrix_MO_real(c_matrix,s_matrix,p_matrix_real,p_matrix_MO_real)
+  implicit none
+
+  real(dp),intent(in) :: c_matrix(:,:,:)
+  real(dp),intent(in) :: s_matrix(:,:)
+  real(dp),intent(in) :: p_matrix_real(:,:,:)
+  real(dp),intent(out) :: p_matrix_MO_real(:,:,:)
+  !=====
+  integer :: nbf,nstate
+  integer :: ispin
+  real(dp),allocatable :: SC_matrix_real(:,:)
+  real(dp),allocatable :: tmp_matrix_real(:,:)
+  !=====
+
+  call start_clock(timing_density_matrix_MO)
+
+  ! P^{MO} = C^T S P^{AO} S C
+  ! P^{MO}: nstate x nstate
+  ! P^{AO}: nbf x nbf
+  ! C: nbf x nstate
+  ! S: nbf x nbf
+  !
+  ! Steps:
+  ! 1. Compute SC: nbf x nstate => real, DSYMM
+  ! 2. Compute P (SC): nbf x nstate => complex, ZHEMM
+  ! 3. Compute (SC)^T (PSC): nstate x nstate => complex, ZGEMM
+
+  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+  nstate = SIZE(c_matrix(:,:,:),DIM=2)
+
+  allocate(SC_matrix_real(nbf, nstate))
+  allocate(tmp_matrix_real(nbf, nstate))
+
+  do ispin=1,nspin
+
+    ! Step 1
+    call DSYMM('L', 'L', nbf, nstate, 1.0d0, s_matrix(1,1), nbf, &
+               c_matrix(1,1,ispin), nbf, 0.0d0, SC_matrix_real(1,1), nbf)
+
+    ! Step 2
+    call DSYMM('L', 'L', nbf, nstate, 1.0d0, p_matrix_real(1,1,ispin), nbf, &
+               SC_matrix_real(1,1), nbf, 0.0d0, tmp_matrix_real, nbf)
+
+    ! Step 3
+#if defined(HAVE_MKL)
+    call DGEMMT('L','T', 'N', nstate, nbf, 1.0d0, &
+                SC_matrix_real(1,1), nbf, &
+                tmp_matrix_real(1,1), nbf, 0.0d0, &
+                p_matrix_MO_real(1,1,ispin), nstate)
+    call matrix_lower_to_full(p_matrix_MO_real(:,:,ispin))
+#else
+    call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, &
+               SC_matrix_real(1,1), nbf, &
+               tmp_matrix_real(1,1), nbf, 0.0d0, &
+               p_matrix_MO_real(1,1,ispin), nstate)
+#endif
+
+  enddo
+
+  deallocate(SC_matrix_real)
+  deallocate(tmp_matrix_real)
+
+  call stop_clock(timing_density_matrix_MO)
+
+
+end subroutine setup_density_matrix_MO_real
 
 
 !=========================================================================
