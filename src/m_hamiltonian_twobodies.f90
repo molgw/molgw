@@ -898,7 +898,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
   integer                 :: ibf_auxil_first,nbf_auxil_core
   !=====
 
-  call start_clock(timing_exchange)
+  call start_clock(timing_tddft_exchange)
 
   write(stdout,*) 'Calculate Complex Exchange term with Resolution-of-Identity'
 
@@ -959,7 +959,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
 
   eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * CONJG( p_matrix(:,:,:) ) ) , dp)
 
-  call stop_clock(timing_exchange)
+  call stop_clock(timing_tddft_exchange)
 
 end subroutine setup_exchange_ri_cmplx
 
@@ -981,7 +981,7 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation,c_matrix,p_matrix,exchan
   integer                 :: ibf_auxil_first,nbf_auxil_core
   !=====
 
-  call start_clock(timing_exchange)
+  call start_clock(timing_tddft_exchange)
 
   write(stdout,*) 'Calculate Complex LR Exchange term with Resolution-of-Identity'
 
@@ -1042,7 +1042,7 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation,c_matrix,p_matrix,exchan
 
   eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * CONJG( p_matrix(:,:,:) ) ) , dp)
 
-  call stop_clock(timing_exchange)
+  call stop_clock(timing_tddft_exchange)
 
 end subroutine setup_exchange_longrange_ri_cmplx
 
