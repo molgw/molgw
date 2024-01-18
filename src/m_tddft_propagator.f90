@@ -106,6 +106,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: file_mulliken, file_lowdin
   real(dp)                   :: time_cur
   complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
+  real(dp),allocatable       :: p_matrix_real(:,:,:)
   logical                    :: is_identity_ ! keep this varibale
   !==cube_diff varibales====================================
   real(dp),allocatable       :: cube_density_start(:,:,:,:)
@@ -123,7 +124,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer(HID_T)             :: fid, c_mat_group, p_mat_group
   !==DMD==
   character(len=200)         :: snap_name
-  complex(dp),allocatable    :: p_matrix_MO_cmplx(:,:,:)
+  real(dp),allocatable       :: p_matrix_MO_real(:,:,:)
   real(dp),allocatable       :: p_matrix_MO_block(:,:,:)
 
   call switch_on_rt_tddft_timers()
@@ -388,11 +389,17 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   end if
 
   if( print_p_matrix_MO_block_hdf5_ ) then
-    allocate(p_matrix_MO_cmplx(nstate,nstate,nspin))
+    ! Only the real-part of P_MO is needed,
+    !  since it will be used for a dipole calculation Tr{ P(t) D } where D is symmetric
+    allocate(p_matrix_real(basis%nbf,basis%nbf,nspin))
+    allocate(p_matrix_MO_real(nstate,nstate,nspin))
     allocate(p_matrix_MO_block(nocc,nstate-nocc,nspin))
 
-    call setup_density_matrix_MO_cmplx(c_matrix, s_matrix, p_matrix_cmplx, p_matrix_MO_cmplx)
-    p_matrix_MO_block(:,:,:) = REAL(p_matrix_MO_cmplx(1:nocc,nocc+1:nstate,:), dp)
+    p_matrix_real(:,:,:) = p_matrix_cmplx(:,:,:)%re
+
+    call setup_density_matrix_MO_real(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
+    p_matrix_MO_block(:,:,:) = p_matrix_MO_real(1:nocc,nocc+1:nstate,:)
+    deallocate(p_matrix_real,p_matrix_MO_real)
   end if
 
   ! HANDLING HDF5 files here
@@ -545,10 +552,18 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
       if( print_c_matrix_cmplx_hdf5_ .and. is_iomaster ) call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_cmplx, iwrite_step)
       if( print_p_matrix_MO_block_hdf5_) then
-        call setup_density_matrix_MO_cmplx(c_matrix, s_matrix, p_matrix_cmplx, p_matrix_MO_cmplx)
-        p_matrix_MO_block(:,:,:) = REAL(p_matrix_MO_cmplx(1:nocc,nocc+1:nstate,:), dp)
+        ! Only the real-part of P_MO is needed,
+        !  since it will be used for a dipole calculation Tr{ P(t) D } where D is symmetric
+        allocate(p_matrix_real(basis%nbf,basis%nbf,nspin))
+        allocate(p_matrix_MO_real(nstate,nstate,nspin))
+        p_matrix_real(:,:,:) = p_matrix_cmplx(:,:,:)%re
+
+        call setup_density_matrix_MO_real(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
+        p_matrix_MO_block(:,:,:) = p_matrix_MO_real(1:nocc,nocc+1:nstate,:)
         write(snap_name, '(A,I0)') 'snap_', iwrite_step
         if (is_iomaster) call hdf_write_dataset(p_mat_group, TRIM(snap_name), p_matrix_MO_block)
+        deallocate(p_matrix_real)
+        deallocate(p_matrix_MO_real)
       end if
 
       iwrite_step = iwrite_step + 1
