@@ -22,7 +22,10 @@ import difflib
 import json
 import copy
 import pathlib, glob
-from yaml import load, dump
+try:
+    from yaml import load, dump
+except ImportError:
+    sys.exit("import yaml failed. Please install this module, for instance with  \"pip install PyYAML\".")
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -48,19 +51,20 @@ z_element = {element: index+1 for index, element in enumerate(periodic_table)}
 molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent)
 exe  = molgw_rootfolder + "/molgw"
 
+########################################################################
+try:
+    with open(molgw_rootfolder + '/src/input_variables.yaml', 'r') as stream:
+        input_keywords = load(stream,Loader=Loader)
+except:
+    print("input_variables.yaml file not found or corrupted")
+    input_keywords = {}
+    pass
 
 ########################################################################
 def check_input(pyinput):
     sanity = True
-    yml = molgw_rootfolder + '/src/input_variables.yaml'
-    with open(yml, 'r') as stream:
-        try:
-            input_vars = load(stream,Loader=Loader)
-        except:
-            sys.exit('input_variables.yaml file is corrupted')
-            pass
 
-    valid_keywords = [k for k in input_vars.keys() ]
+    valid_keywords = [k for k in input_keywords.keys() ]
     additional_keywords = ["xyz", "rawxyz"]
     valid_keywords += additional_keywords
 
@@ -81,7 +85,7 @@ def check_input(pyinput):
             sanity = False
 
     # Check all mandatory keywords are there
-    mandatory = [k for k in input_vars.keys() if input_vars[k]["mandatory"]=="yes" ]
+    mandatory = [k for k in input_keywords.keys() if input_keywords[k]["mandatory"]=="yes" ]
     for k in mandatory:
         if not k in [key for key in pyinput_lower]:
             print('Mandatory keyword not present:   ' + k)
