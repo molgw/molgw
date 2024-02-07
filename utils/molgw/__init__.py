@@ -48,7 +48,7 @@ periodic_table = [ 'H',                                                         
                 ]
 z_element = {element: index+1 for index, element in enumerate(periodic_table)}
 
-molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent)
+molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent.parent)
 exe  = molgw_rootfolder + "/molgw"
 
 ########################################################################
@@ -284,22 +284,6 @@ def check_calc(calc):
     except:
         sys.exit(1)
     return valid and calc["scf is converged"]
-
-
-########################################################################
-def create_gw100_json(filename,data,**kwargs):
-    dict_gw100 = dict()
-    dict_gw100["code"]= "MOLGW"
-    dict_gw100["code_version"]= __version__
-    dict_gw100["basis"]= "gaussian"
-    dict_gw100["qpe"]= "solved"
-    dict_gw100["DOI"]= "unpublished"
-
-    dict_gw100.update(kwargs)
-    dict_gw100["data"] = data
-
-    with open(filename, 'w') as json_file:
-        json.dump(dict_gw100,json_file,indent=2,separators=(',', ': '))
 
 
 ########################################################################
