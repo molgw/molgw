@@ -39,6 +39,20 @@ contains
 
 
 !=========================================================================
+pure function norm_factor(nx,ny,nz)
+  implicit none
+
+  integer,intent(in) :: nx,ny,nz
+  real(dp) :: norm_factor
+  !=====
+  !=====
+
+  norm_factor = 1.0_dp /  SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
+
+end function norm_factor
+
+
+!=========================================================================
 subroutine init_gaussian_cart(nx,ny,nz,alpha,x0,ga)
   implicit none
 
@@ -59,8 +73,7 @@ subroutine init_gaussian_cart(nx,ny,nz,alpha,x0,ga)
   ga%common_norm_factor = ( 2.0_dp / pi )**0.75_dp &
                   * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) )
 
-  ga%norm_factor = ga%common_norm_factor &
-                    / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
+  ga%norm_factor = ga%common_norm_factor * norm_factor(nx,ny,nz)
 
   ga%x0(:) = x0(:)
 
@@ -89,7 +102,7 @@ end function compare_gaussian
 
 
 !=========================================================================
-function eval_gaussian(ga,x)
+pure function eval_gaussian(ga,x)
   implicit none
 
   type(gaussian),intent(in) :: ga
