@@ -871,8 +871,8 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
         coeff3(:)=auxil_basis%shell(kshell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
 
         call libint_2center(am1,ng1,x01,alpha1,coeff1, &
-                           am3,ng3,x03,alpha3,coeff3, &
-                           rcut_libint,int_shell)
+                            am3,ng3,x03,alpha3,coeff3, &
+                            rcut_libint,int_shell)
 
         deallocate(alpha1,alpha3)
         deallocate(coeff1,coeff3)

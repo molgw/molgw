@@ -85,7 +85,8 @@ subroutine polarizability_grid_scalapack(occupation,energy,c_matrix,erpa,egw,wpo
   write(stdout,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_global,' x ',nauxil_global
   write(stdout,'(1x,a,i7,a,i7)') 'Distributed in ',wpol%mchi,' x ',wpol%nchi
 
-  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
+  ! Faster when the largest range (virtual states, occupied states) comes first
+  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,nlumo_W,nvirtual_W-1,ncore_W+1,nhomo_W,timing=timing_aomo_pola)
 
 
 
@@ -127,7 +128,7 @@ subroutine polarizability_grid_scalapack(occupation,energy,c_matrix,erpa,egw,wpo
       de   = energy(astate,iaspin)     - energy(istate,iaspin)
       factor_sqrt = SQRT( 2.0_dp * docc * de / ( wpol%omega(iomega)%im**2 + de**2 ) )
 
-      eri3_t(:,t_ia) = eri_3center_eigen(:,istate,astate,iaspin) * factor_sqrt
+      eri3_t(:,t_ia) = eri_3center_eigen(:,astate,istate,iaspin) * factor_sqrt
 
     enddo
 
