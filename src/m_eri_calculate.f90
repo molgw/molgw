@@ -1698,7 +1698,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
       !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
       !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
       !$OMP&                 coeff3,coeff4,x03,x04,shls,cint_info, &
-      !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
+      !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal,factor)
       !$OMP DO REDUCTION(+:libint_calls)
       do ishell=1,auxil_basis%nshell
 
@@ -1802,13 +1802,14 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
               ! Safe guard in case this shell goes beyond the range of the batch
               if( klpair_global < ipair_first .OR. klpair_global > ipair_last ) cycle
 
+              ! By convention, eri_3center contains 1/2 (alpha beta | P ) when alpha = beta
+              factor = MERGE( 0.5_dp, 1.0_dp, index_basis(1,klpair_global) == index_basis(2,klpair_global) )
+
               ! Shift origin due to batches
               klpair_global = klpair_global - ipair_first + 1
               if( iprow_3center /= INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) ) cycle
               ilocal = INDXG2L(klpair_global,MB_3center,0,first_row,nprow_3center)
 
-              ! By convention, eri_3center contains 1/2 (alpha beta | P ) when alpha = beta
-              factor = MERGE( 0.5_dp, 1.0_dp, index_basis(1,klpair_global) == index_basis(2,klpair_global) )
 
               do ibf=1,ni
                 iglobal = auxil_basis%shell(ishell)%istart+ibf-1
