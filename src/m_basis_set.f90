@@ -1328,7 +1328,7 @@ end subroutine print_basis_function
 
 
 !=========================================================================
-function eval_basis_function(bf,x)
+pure function eval_basis_function(bf,x)
   implicit none
   type(basis_function),intent(in) :: bf
   real(dp),intent(in)             :: x(3)
