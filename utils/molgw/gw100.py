@@ -18,6 +18,20 @@ chemical_formulas = {'7446-09-5': 'SO2', '71-30-7': 'C4H5N3O', '66-22-8': 'C4H4N
 
 molecules = list(chemical_formulas.keys())
 
+default_input_parameters = { 
+      'scf': 'pbeh',
+      'alpha_hybrid': 0.75,
+      'postscf': 'g0w0',
+      'basis': 'Def2-TZVPP',
+      'ecp_basis': 'Def2-TZVPP',
+      'auxil_basis': 'pauto',
+      'ecp_auxil_basis': 'pauto',
+      'ecp_elements': 'Xe Ag Rb I',
+      'ecp_type': 'Def2-ECP',
+      'selfenergy_state_range': 2,
+      'frozencore': 'yes'
+              }
+
 
 structures = {
     "7440-37-1": "1\nArgon; atom; s\nAr 0.0 0.0 0.0\n",
@@ -360,7 +374,7 @@ g0w0_hf_homo = {
 }
 
 ########################################################################
-def create_official_json(filename, data, **kwargs):
+def create_official_json(filename = "", data = {}, **kwargs):
     """
         dump a json file named filename in the official format of the GW100 website
     """
@@ -374,21 +388,31 @@ def create_official_json(filename, data, **kwargs):
     dict_gw100.update(kwargs)
     dict_gw100["data"] = data
 
-    with open(filename, 'w') as json_file:
-        json.dump(dict_gw100,json_file,indent=2,separators=(',', ': '))
+    if filename != "":
+        with open(filename, 'w') as json_file:
+            json.dump(dict_gw100,json_file,indent=2,separators=(',', ': '))
+    return dict_gw100
 
 
 ########################################################################
-def correlation_plot(data1,data2):
+def correlation_plot(data1,data2,labels=False):
     fig = plt.figure(figsize=(6, 6))
     xxx = []
     yyy = []
-    for cas in data1.keys():
+    cass = []
+    shared_keys = set(data1.keys()) & set(data2.keys())
+    for cas in shared_keys:
         xxx.append(data1[cas])
         yyy.append(data2[cas])
+        cass.append(cas)
     xmin = min(xxx+yyy) - 0.1
-    plt.plot([xmin,0], [xmin,0], '-', color='black')
+    xmax = max(xxx+yyy) + 0.1
+    plt.plot([xmin,xmax], [xmin,xmax], '-', color='black')
     plt.scatter(xxx, yyy, marker='o')
+    if labels:
+        delta = abs(xmax-xmin) * 0.02
+        for x, y, cas in zip(xxx,yyy,cass):
+            plt.text(x+delta, y-delta, chemical_formulas[cas])
     plt.xlabel("HOMO (eV)")
     plt.ylabel("HOMO (eV)")
     return fig
@@ -399,7 +423,8 @@ def diff(data1,data2):
         Returns a dictionary containing data2 - data1
     """
     errors = dict()
-    for cas in data1.keys():
+    shared_keys = set(data1.keys()) & set(data2.keys())
+    for cas in shared_keys:
         errors[cas] = data2[cas] - data1[cas]
     return errors
 
@@ -408,9 +433,8 @@ def mae_mse_max(data1,data2):
     """
         Returns MAE, MSE, Max errors with data1 being the reference
     """
-    errors = list()
-    for cas in data1.keys():
-        errors.append(data2[cas] - data1[cas])
+    errors = list( diff(data1,data2).values() )
+
     ndata = len(errors)
     mse = sum(errors) / float(ndata)
     mae = sum(np.abs(errors)) / float(ndata)
