@@ -1464,6 +1464,7 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
    iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
    if(iorb/=iorb2) then
     DM2_L(iorb1,iorb3)=xab(iorb,iorb2)
+    DM2_J(iorb1,iorb3)=zero
    endif
   enddo
  enddo

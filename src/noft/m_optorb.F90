@@ -204,13 +204,15 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
  endif
- write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
- call write_output(msg)
- if(imethod==1.and.iter>0) then
-  write(msg,'(a,f15.6,a,i5,a,i5,a)') 'Max. [Lambda_qp - Lambda_pq*]= ',maxdiff_all,' pair (',iorbmax1,',',iorbmax2,')'
+ if(icall>0) then
+  write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
   call write_output(msg)
-  write(msg,'(a,f19.10)') 'Energy difference orb. opt.=',Ediff
-  call write_output(msg)
+  if(imethod==1.and.iter>0) then
+   write(msg,'(a,f15.6,a,i5,a,i5,a)') 'Max. [Lambda_qp - Lambda_pq*]= ',maxdiff_all,' pair (',iorbmax1,',',iorbmax2,')'
+   call write_output(msg)
+   write(msg,'(a,f19.10)') 'Energy difference orb. opt.=',Ediff
+   call write_output(msg)
+  endif
  endif
  
  !if(icall==30) write(*,'(a)') 'Warning! Max. number of iterations (30) reached in orb. optimization'

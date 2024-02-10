@@ -76,7 +76,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  integer::iflag,Mtosave,Nwork,Nvirtual
  real(dp)::tol10=1e-10
  real(dp)::sumdiff_t,sumdiff_z,maxdiff_t,maxdiff_z
- real(dp)::Ecorr_new,Ecorr_old,Ecorr_diff,Ediff,Esingle_det
+ real(dp)::Ecorr_new,Ecorr_old,Ecorr_diff,Ediff,Esingle_det,Energy_dm
 !arrays
  character(len=200)::msg
  integer,dimension(2)::info_print
@@ -381,16 +381,20 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  ! Calc. the final Energy using new RDMs
  iter_global=iter_global+1
  if(INTEGd%complex_ints) then
-  call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+  call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_dm,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
   & INTEGd%ERI_L_cmplx)
  else
-  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_dm,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr)
  endif
- write(msg,'(a,f15.6)') 'Single-Det. Energy |0>        =',Esingle_det
- call write_output(msg)
- write(msg,'(a,f15.6)') 'Correlation Energy w.r.t. |0> =',Ecorr_new
- call write_output(msg)
+ if(iter_t>0 .or. iter_z>0) then
+  write(msg,'(a,f15.6)') 'Single-Det. Energy |0>        =',Esingle_det
+  call write_output(msg)
+  write(msg,'(a,f15.6)') 'Correlation Energy w.r.t. |0> =',Ecorr_new
+  call write_output(msg)
+  write(msg,'(a,f15.6)') 'Energy from 1-RDM and 2-RDM   =',Energy_dm+Vnn
+  call write_output(msg)
+ endif
  Energy=Esingle_det+Ecorr_new
  write(msg,'(a,f15.6,a,i6,a,i6,a)') 'T-,Z-amp. opt. energy= ',Energy+Vnn,' after ',iter_t,' t-iter. and',&
   & iter_z,' z-iter.'
@@ -733,7 +737,7 @@ subroutine calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
      &       INTEGd%ERImol(iorb3,iorb5,iorb5,iorb3)
      sum_tmp=sum_tmp-RDMd%t_pccd(iorb,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
     endif 
-    RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+y_ab(iorb,iorb4)*RDMd%z_pccd_old(iorb,iorb4)
+    RDMd%tz_residue(iorb,iorb2)=RDMd%tz_residue(iorb,iorb2)+y_ab(iorb2,iorb4)*RDMd%z_pccd_old(iorb,iorb4)
     zt_ii=zt_ii+RDMd%t_pccd(iorb,iorb4)*RDMd%z_pccd_old(iorb,iorb4)
    enddo
    if(INTEGd%complex_ints) then
