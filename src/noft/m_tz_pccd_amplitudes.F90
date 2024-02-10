@@ -113,9 +113,6 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   enddo
  endif
 
- !call pCCD(.false.,2000,tol10,7,RDMd%NBF_occ,RDMd%Nfrozen,RDMd%Npairs,Nvirtual,0,INTEGd%ERImol,Vnn,Esingle_det,ELAGd%Lambdas_pp,&
- !     & RDMd%t_pccd_old)
-
  ! Check if the current t amplitudes solve the problem
  if(iter_global>-1 .and. .not.keep_occs) then
   converged=.true.       
@@ -386,7 +383,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_dm,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr)
  endif
- if(iter_t>0 .or. iter_z>0) then
+ if(iter_t>0 .and. iter_z>0) then
   write(msg,'(a,f15.6)') 'Single-Det. Energy |0>        =',Esingle_det
   call write_output(msg)
   write(msg,'(a,f15.6)') 'Correlation Energy w.r.t. |0> =',Ecorr_new
