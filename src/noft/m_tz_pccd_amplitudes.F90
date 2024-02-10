@@ -394,8 +394,12 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   call write_output(msg)
   write(msg,'(a,f15.6)') 'Energy from 1-RDM and 2-RDM   =',Energy_dm+Vnn
   call write_output(msg)
+  Energy=Esingle_det+Ecorr_new
+ else
+  write(msg,'(a,f15.6)') 'Energy from 1-RDM and 2-RDM   =',Energy_dm+Vnn
+  call write_output(msg)
+  Energy=Energy_dm
  endif
- Energy=Esingle_det+Ecorr_new
  write(msg,'(a,f15.6,a,i6,a,i6,a)') 'T-,Z-amp. opt. energy= ',Energy+Vnn,' after ',iter_t,' t-iter. and',&
   & iter_z,' z-iter.'
  call write_output(msg)
