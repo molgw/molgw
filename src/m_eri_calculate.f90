@@ -871,8 +871,8 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis,rcut,mask_auxil
         coeff3(:)=auxil_basis%shell(kshell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
 
         call libint_2center(am1,ng1,x01,alpha1,coeff1, &
-                           am3,ng3,x03,alpha3,coeff3, &
-                           rcut_libint,int_shell)
+                            am3,ng3,x03,alpha3,coeff3, &
+                            rcut_libint,int_shell)
 
         deallocate(alpha1,alpha3)
         deallocate(coeff1,coeff3)
@@ -1574,6 +1574,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
   integer(kind=int8)           :: libint_calls
   integer                      :: ibatch,ipair_first,ipair_last,mpair
   integer                      :: ipair
+  real(dp)                     :: factor
   !=====
   ! variables used to call C
   real(C_DOUBLE)               :: rcut_libint
@@ -1632,7 +1633,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
   !
   if( .NOT. is_longrange ) then
     if( cntxt_3center > 0 ) then
-      mlocal = NUMROC(npair         ,MB_3center,iprow_3center,first_row,nprow_3center)
+      mlocal = NUMROC(npair        ,MB_3center,iprow_3center,first_row,nprow_3center)
       nlocal = NUMROC(nauxil_global,NB_3center,ipcol_3center,first_col,npcol_3center)
       call DESCINIT(desc_eri3,npair,nauxil_global,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
     else
@@ -1644,7 +1645,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
     call clean_allocate('3-center integrals SCALAPACK',eri_3center,mlocal,nlocal)
   else
     if( cntxt_3center > 0 ) then
-      mlocal = NUMROC(npair            ,MB_3center,iprow_3center,first_row,nprow_3center)
+      mlocal = NUMROC(npair           ,MB_3center,iprow_3center,first_row,nprow_3center)
       nlocal = NUMROC(nauxil_global_lr,NB_3center,ipcol_3center,first_col,npcol_3center)
       call DESCINIT(desc_eri3_lr,npair,nauxil_global_lr,MB_3center,NB_3center,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
     else
@@ -1697,7 +1698,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
       !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
       !$OMP&                 kshell,lshell,amk,aml,nk,nl,am3,am4,n3c,n4c,ng3,ng4,alpha3,alpha4,  &
       !$OMP&                 coeff3,coeff4,x03,x04,shls,cint_info, &
-      !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal)
+      !$OMP&                 int_shell,integrals,klpair_global,ilocal,jlocal,factor)
       !$OMP DO REDUCTION(+:libint_calls)
       do ishell=1,auxil_basis%nshell
 
@@ -1801,17 +1802,21 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
               ! Safe guard in case this shell goes beyond the range of the batch
               if( klpair_global < ipair_first .OR. klpair_global > ipair_last ) cycle
 
+              ! By convention, eri_3center contains 1/2 (alpha beta | P ) when alpha = beta
+              factor = MERGE( 0.5_dp, 1.0_dp, index_basis(1,klpair_global) == index_basis(2,klpair_global) )
+
               ! Shift origin due to batches
               klpair_global = klpair_global - ipair_first + 1
               if( iprow_3center /= INDXG2P(klpair_global,MB_3center,0,first_row,nprow_3center) ) cycle
               ilocal = INDXG2L(klpair_global,MB_3center,0,first_row,nprow_3center)
+
 
               do ibf=1,ni
                 iglobal = auxil_basis%shell(ishell)%istart+ibf-1
                 if( ipcol_3center /= INDXG2P(iglobal,NB_3center,0,first_col,npcol_3center) ) cycle
                 jlocal = INDXG2L(iglobal,NB_3center,0,first_col,npcol_3center)
 
-                eri_3center_tmp(ilocal,jlocal) = integrals(ibf,kbf,lbf)
+                eri_3center_tmp(ilocal,jlocal) = integrals(ibf,kbf,lbf) * factor
 
               enddo
             enddo
@@ -1893,13 +1898,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
     call ortho%sum(eri_3center)
     write(stdout,'(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
 
-    ! By convention, eri_3center contains 1/2 (alpha beta | P ) when alpha = beta
-    ! Include a factor 1/2 for pair containing twice the same basis function
-    do ipair=1,npair
-      ibf = index_basis(1,ipair)
-      jbf = index_basis(2,ipair)
-      if( ibf == jbf ) eri_3center(ipair,:) = eri_3center(ipair,:) * 0.5_dp
-    enddo
   else
     call clean_deallocate('LR 2-center integrals',eri_2center_lr)
     call clean_deallocate('LR 2-center integrals inverse square-root',eri_2center_sqrtinv_lr)
@@ -1909,13 +1907,6 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
     call ortho%sum(eri_3center_lr)
     write(stdout,'(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
 
-    ! By convention, eri_3center contains 1/2 (alpha beta | P ) when alpha = beta
-    ! Include a factor 1/2 for pair containing twice the same basis function
-    do ipair=1,npair
-      ibf = index_basis(1,ipair)
-      jbf = index_basis(2,ipair)
-      if( ibf == jbf ) eri_3center_lr(ipair,:) = eri_3center_lr(ipair,:) * 0.5_dp
-    enddo
   endif
 
 
