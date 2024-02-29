@@ -659,7 +659,7 @@ subroutine se_init(se,selfenergy_technique,energy0)
     enddo
     deallocate(omega_gaussleg)
 
-  case(one_shot,contour_deformation)
+  case(one_shot,contour_deformation,exact_dyson)
     !
     ! Most standard case:
     se%nomega = nomega_sigma/2
