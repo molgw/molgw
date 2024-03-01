@@ -537,7 +537,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
                                                     wresidue_sd,1,1,desc_wsd,cntxt_sd)
 
   ! Temporary array sigmagw is created because OPENMP does not want to work directly with se%sigma
-  allocate(sigmagw,SOURCE=se%sigma)
+  allocate(sigmagw,MOLD=se%sigma)
   sigmagw(:,:,:)  = 0.0_dp
 
   do pspin=1,nspin
