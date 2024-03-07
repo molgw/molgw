@@ -345,6 +345,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    endif
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
    call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+   call HESSIANd%diag()
    write(msg,'(a)') ' '
    call write_output(msg)
  endif

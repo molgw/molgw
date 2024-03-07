@@ -59,6 +59,9 @@ module m_hessian
    procedure :: build => build_hessian
    ! Use integrals and the 1,2-RDM to build the Hessian and Gradient.
 
+   procedure :: diag => diag_hessian
+   ! Diagonalize the Hessian matrix and analyze the eigenvalues
+
  end type hessian_t
 
  public :: hessian_init 
@@ -120,9 +123,11 @@ subroutine hessian_init(HESSIANd,NBF_tot,cpx_mos)
  if(cpx_mos) then
   allocate(HESSIANd%Gradient_vec_cmplx(HESSIANd%NDIM_hess))
   allocate(HESSIANd%Hessian_mat_cmplx(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess)) 
+  HESSIANd%Gradient_vec_cmplx=complex_zero; HESSIANd%Hessian_mat_cmplx=complex_zero;
  else 
   allocate(HESSIANd%Gradient_vec(HESSIANd%NDIM_hess))
   allocate(HESSIANd%Hessian_mat(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess)) 
+  HESSIANd%Gradient_vec=zero; HESSIANd%Hessian_mat=zero;
  endif
  
 end subroutine hessian_init
@@ -165,7 +170,6 @@ subroutine hessian_free(HESSIANd)
 
 end subroutine hessian_free
 !!***
-
 
 !!****f* DoNOF/build_hessian
 !! NAME
@@ -309,6 +313,83 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
 ! enddo
 
 end subroutine build_hessian
+!!***
+
+!!****f* DoNOF/diag_hessian
+!! NAME
+!! diag_hessian
+!!
+!! FUNCTION
+!!  Diagonalize the Hessian matrix and evaluate the eigenvalues
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!  HESSIANd%Hessian_mat=Eigenvectors 
+!!  HESSIANd%Hessian_mat_cmplx=Eigenvectors 
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine diag_hessian(HESSIANd)
+!Arguments ------------------------------------
+!scalars
+ class(hessian_t),intent(inout)::HESSIANd
+!arrays
+!Local variables ------------------------------
+ integer::iindex,lwork,info,nneg
+ real(dp)::sum_neg,max_neg
+!scalars
+ real(dp),allocatable,dimension(:)::Work,RWork,Eigeval
+ complex(dp),allocatable,dimension(:)::Work_cmplx
+!arrays
+ character(len=200)::msg
+!************************************************************************
+
+ max_neg=zero; sum_neg=zero; nneg=0;
+
+ allocate(Eigeval(HESSIANd%NDIM_hess))
+ Eigeval=zero
+ 
+ if(HESSIANd%cpx_hessian) then
+  write(*,*) 'banana'
+ else
+  allocate(Work(1))
+  lwork=-1
+  call DSYEV('V','L',HESSIANd%NDIM_hess,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,Eigeval,Work,lwork,info)
+  lwork=nint(Work(1))
+  if(info==0) then
+   deallocate(Work)
+   allocate(Work(lwork))
+   call DSYEV('V','L',HESSIANd%NDIM_hess,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,Eigeval,Work,lwork,info)
+  endif
+  deallocate(Work)
+ endif
+
+ do iindex=1,HESSIANd%NDIM_hess
+  if(abs(Eigeval(iindex))<tol8) then
+   Eigeval(iindex)=zero
+  endif
+  if(Eigeval(iindex)<zero) then
+   nneg=nneg+1
+   sum_neg=sum_neg+Eigeval(iindex)
+   if(Eigeval(iindex)<max_neg) max_neg=Eigeval(iindex)
+  endif
+ enddo
+ 
+  write(msg,'(a,I10)') 'Number of Negative eigenvalues',nneg
+  call write_output(msg)
+  write(msg,'(a,F10.5)') 'Max Negative eigenvalue       ',max_neg
+  call write_output(msg)
+  write(msg,'(a,F10.5)') 'Sum Negative eigenvalues      ',sum_neg
+  call write_output(msg)
+
+ deallocate(Eigeval)
+
+end subroutine diag_hessian
 !!***
 
 end module m_hessian
