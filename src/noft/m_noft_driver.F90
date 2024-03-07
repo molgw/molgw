@@ -26,6 +26,7 @@ module m_noft_driver
  use m_rdmd
  use m_integd
  use m_elag
+ use m_hessian
  use m_optocc
  use m_optorb
  use m_tz_pCCD_amplitudes
@@ -73,6 +74,7 @@ contains
 !! ofile_name=Name of the output file
 !! lowmemERI=Logical parameter to decided whether to store only (NBF_tot,NBF_occ,NBF_occ,NBF_occ) part of the nat. orb. ERIs
 !! restart=Logical parameter to decided whether we do restart
+!! hessian=Logical build and use Hessian matrix
 !! ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB=Integer restart parameters that control the read of checkpoint files (true=1)
 !! lPower=Real exponent used to define the power functional
 !! 
@@ -88,10 +90,11 @@ contains
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
 &  iprintints,itolLambda,ndiis,Enof,tolE_in,Vnn,AOverlap_in,occ_inout,mo_ints,ofile_name,NO_COEF,NO_COEF_cmplx,&
-&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,irange_sep)   ! Optional
+&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,irange_sep,& ! Optional
+&  hessian)                                                                                                            ! Optional
 !Arguments ------------------------------------
 !scalars
- logical,optional,intent(in)::restart,lowmemERI,fcidump
+ logical,optional,intent(in)::restart,lowmemERI,fcidump,hessian
  integer,optional,intent(in)::ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,irange_sep  
  integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,iprintswdmn
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,itolLambda,ndiis  
@@ -101,9 +104,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  real(dp),intent(inout)::Enof
  interface
   subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
-  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx)
+  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
   use m_definitions
   implicit none
+  logical,optional,intent(in)::all_ERIs
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
   real(dp),intent(in)::Occ(NBF_occ)
   real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)
@@ -124,12 +128,13 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  complex(dp),optional,dimension(NBF_tot_in,NBF_tot_in),intent(inout)::NO_COEF_cmplx
 !Local variables ------------------------------
 !scalars
- logical::ekt,diagLpL,restart_param,keep_occs,keep_orbs,cpx_mos
+ logical::ekt,diagLpL,restart_param,keep_occs,keep_orbs,cpx_mos,all_ERI_in,hessian_in
  integer::iorb,iter,ifcidump,irs_noft
  real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val
  type(rdm_t),target::RDMd
  type(integ_t),target::INTEGd
  type(elag_t),target::ELAGd
+ type(hessian_t),target::HESSIANd
 !arrays
  character(len=10)::coef_file
  character(len=100)::sha_git
@@ -137,7 +142,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !************************************************************************
 
  diagLpL=.true.; restart_param=.false.; ifcidump=0; keep_orbs=.false.; keep_occs=.false.; cpx_mos=.false.;
- irs_noft=0;
+ irs_noft=0; all_ERI_in=.false.; hessian_in=.false.;
 
  ! Initialize output
  call gitversion(sha_git) 
@@ -147,6 +152,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  if(present(fcidump)) then 
   if(fcidump) ifcidump=1
  endif
+ 
+! Check whether to print compute the Hessian matrix
+ if(present(hessian)) hessian_in=hessian
 
  ! Check whether to print a FCIDUMP file and the sw-RDMs
  if(present(irange_sep)) then 
@@ -184,7 +192,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  iprintints,itolLambda,ndiis,ifcidump,irs_noft,tolE_in,cpx_mos)
  endif
 
- ! Initialize RDMd, INTEGd, and ELAGd objects.
+ ! Initialize RDMd, INTEGd, ELAGd, and HESSIANd objects.
  if(INOF_in==101) then
   if(present(Lpower)) then
    call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
@@ -204,6 +212,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
  endif
  call elag_init(ELAGd,RDMd%NBF_tot,diagLpL,itolLambda,ndiis,imethorb,tolE_in,cpx_mos)
+ if(hessian_in) then
+   call hessian_init(HESSIANd,RDMd%NBF_tot,cpx_mos)
+ endif
 
  ! Check for the presence of restart files. Then, if they are available read them (only if required)
  if(restart_param) then
@@ -317,6 +328,26 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(iter>=itermax) exit
 
  enddo
+
+ ! Build and diagonalize the Hessian (except for range-sep)
+ if(hessian_in .and. irs_noft==0) then
+   write(msg,'(a)') 'Entering Hessian construction (recomputing all integrals)'
+   call write_output(msg)
+   call INTEGd%free()
+   all_ERI_in=.true.
+   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
+   if(cpx_mos) then
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERI_in)
+   else
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+    & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
+   endif
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+   write(msg,'(a)') ' '
+   call write_output(msg)
+ endif
 
  ! Print <S^2> expectation value (except for pCCD. TODO)
  if(RDMd%INOF>-1) then
@@ -449,8 +480,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  write(msg,'(a)') ' '
  call write_output(msg)
 
- ! Free all allocated RDMd, INTEGd, and ELAGd arrays
+ ! Free all allocated RDMd, INTEGd, ELAGd, and HESSIANd arrays
  call ELAGd%free() 
+ if(hessian_in) then
+  call HESSIANd%free()
+ endif
  call INTEGd%free()
  ! Reallocated INTEGd and print FCIDUMP file if required for real orbs and not rs-NOFT calcs
  if((ifcidump==1.and.(.not.cpx_mos)).and.irs_noft/=0) then
@@ -469,8 +503,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   write(msg,'(a)') ' '
   call write_output(msg)
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
+  all_ERI_in=.true.
   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-  & ERImol=INTEGd%ERImol)
+  & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
   call INTEGd%print_dump(RDMd%Nalpha_elect+RDMd%Nbeta_elect,Vnn)
   call INTEGd%free()
  endif

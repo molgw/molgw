@@ -286,12 +286,12 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
        Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
        restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
        ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
-       fcidump=noft_fcidump_in,irange_sep=irs_noft)
+       fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
     else
       call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
        imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
        Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
-       Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft)
+       Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
     endif
 
   else
@@ -302,12 +302,12 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
        Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
        restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
        ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
-       fcidump=noft_fcidump_in,irange_sep=irs_noft)
+       fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
     else
       call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
        imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
        Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
-       Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft)
+       Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
     endif
 
   endif
@@ -390,9 +390,10 @@ end subroutine noft_energy
 
 !==================================================================
 subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
-                   NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx)
+                   NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
   implicit none
 
+  logical,optional,intent(in)              :: all_ERIs
   integer,intent(in)              :: nbf,nstate_occ,nstate_kji
   real(dp),intent(in)             :: Occ(nstate_occ)
   real(dp),optional,intent(in)    :: NO_COEF(nbf,nbf)
@@ -404,14 +405,16 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
   complex(dp),optional,intent(inout) :: hCORE_cmplx(nbf,nbf)
   complex(dp),optional,intent(inout) :: ERImol_cmplx(nbf,nstate_kji,nstate_kji,nstate_kji)
   !====
-  logical                    :: long_range=.true.
-  integer                    :: istate,jstate,pstate
+  logical                    :: all_ERIs_in=.false.,long_range=.true.
+  integer                    :: istate,jstate,pstate,qstate
   character(len=100)         :: msgw
   real(dp)                   :: ERI_lkji
   real(dp),allocatable       :: occupation(:,:)
   real(dp),allocatable       :: tmp_c_matrix(:,:,:),hamiltonian_xc(:,:,:)
   complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
   !=====
+
+  if(present(all_ERIs)) all_ERIs_in=all_ERIs
 
   ! Comment: Despite the arrays are of size nbf x nbf, we use nstate_noft = num. lin. indep. states in the ERI  transformation.
   ! Doing this, we save some time in the loops because nstate_noft <= nbf
@@ -510,15 +513,27 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
         ERImol_cmplx(:,:,:,:)=complex_zero
         if(has_auxil_basis) then ! RI case
           call calculate_eri_3center_eigen_cmplx(tmp_c_matrix_cmplex,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
-          do istate=1,nstate_occ
-            do jstate=1,nstate_occ
-              do pstate=1,nstate_noft
-                ERImol_cmplx(pstate,istate,jstate,istate)=eri_eigen_ri_cmplx(pstate,jstate,1,istate,istate,1) ! <li|ji> format used for ERImol
-                ERImol_cmplx(pstate,jstate,jstate,istate)=eri_eigen_ri_cmplx(pstate,jstate,1,jstate,istate,1) ! <lj|ji> format used for ERImol
-                ERImol_cmplx(pstate,istate,jstate,jstate)=eri_eigen_ri_cmplx(pstate,jstate,1,istate,jstate,1) ! <li|jj> format used for ERImol
+          if(all_ERIs_in .and. nstate_noft==nstate_kji) then
+           do istate=1,nstate_noft
+            do jstate=1,nstate_noft
+             do pstate=1,nstate_noft
+              do qstate=1,nstate_noft
+               ERImol_cmplx(qstate,pstate,jstate,istate)=eri_eigen_ri_cmplx(qstate,jstate,1,pstate,istate,1)
               enddo
+             enddo
             enddo
-          enddo
+           enddo
+          else
+           do istate=1,nstate_occ
+             do jstate=1,nstate_occ
+               do pstate=1,nstate_noft
+                 ERImol_cmplx(pstate,istate,jstate,istate)=eri_eigen_ri_cmplx(pstate,jstate,1,istate,istate,1) ! <li|ji> format used for ERImol
+                 ERImol_cmplx(pstate,jstate,jstate,istate)=eri_eigen_ri_cmplx(pstate,jstate,1,jstate,istate,1) ! <lj|ji> format used for ERImol
+                 ERImol_cmplx(pstate,istate,jstate,jstate)=eri_eigen_ri_cmplx(pstate,jstate,1,istate,jstate,1) ! <li|jj> format used for ERImol
+               enddo
+             enddo
+           enddo
+          endif
           call destroy_eri_3center_eigen_cmplx(noft_verbose)
         else            ! Normal case (not using RI)
           call form_erimol(nbf,nstate_noft,nstate_kji,c_matrix_cmplx=tmp_c_matrix_cmplex,ERImol_cmplx=ERImol_cmplx)
@@ -531,15 +546,27 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
         ERImol(:,:,:,:)=zero
         if(has_auxil_basis) then ! RI case
           call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose)
-          do istate=1,nstate_occ
-            do jstate=1,nstate_occ
-              do pstate=1,nstate_noft
-                ERImol(pstate,istate,jstate,istate)=eri_eigen_ri(pstate,jstate,1,istate,istate,1) ! <li|ji> format used for ERImol
-                ERImol(pstate,jstate,jstate,istate)=eri_eigen_ri(pstate,jstate,1,jstate,istate,1) ! <lj|ji> format used for ERImol
-                ERImol(pstate,istate,jstate,jstate)=eri_eigen_ri(pstate,jstate,1,istate,jstate,1) ! <li|jj> format used for ERImol
+          if(all_ERIs_in .and. nstate_noft==nstate_kji) then
+           do istate=1,nstate_noft
+            do jstate=1,nstate_noft
+             do pstate=1,nstate_noft
+              do qstate=1,nstate_noft
+               ERImol(qstate,pstate,jstate,istate)=eri_eigen_ri(qstate,jstate,1,pstate,istate,1)
               enddo
+             enddo
             enddo
-          enddo
+           enddo
+          else
+           do istate=1,nstate_occ
+             do jstate=1,nstate_occ
+               do pstate=1,nstate_noft
+                 ERImol(pstate,istate,jstate,istate)=eri_eigen_ri(pstate,jstate,1,istate,istate,1) ! <li|ji> format used for ERImol
+                 ERImol(pstate,jstate,jstate,istate)=eri_eigen_ri(pstate,jstate,1,jstate,istate,1) ! <lj|ji> format used for ERImol
+                 ERImol(pstate,istate,jstate,jstate)=eri_eigen_ri(pstate,jstate,1,istate,jstate,1) ! <li|jj> format used for ERImol
+               enddo
+             enddo
+           enddo
+          endif
           call destroy_eri_3center_eigen(noft_verbose)
         else            ! Normal case (not using RI)
           call form_erimol(nbf,nstate_noft,nstate_kji,c_matrix=tmp_c_matrix,ERImol=ERImol)

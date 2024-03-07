@@ -1541,6 +1541,14 @@ noft_complex:
   default: 'no'
   comment: Use complex molecular orb. coeficients in NOFT calcs. (default=no).
 
+noft_hessian:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Build and use the Hessian for the orbitals. (default=no).
+
 noft_nophases:
   family: noft
   datatype: yes/no

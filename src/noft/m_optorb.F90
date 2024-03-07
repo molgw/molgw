@@ -69,9 +69,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
  type(integ_t),intent(inout)::INTEGd
  interface 
   subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
-  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx)
+  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
   use m_definitions
   implicit none
+  logical,optional,intent(in)::all_ERIs
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
   real(dp),intent(in)::Occ(NBF_occ)
   real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)

@@ -29,12 +29,12 @@ module m_elag
 
  private :: dyson_orbs
 !!***
-!!****t* m_rdmd/rdm_t
+!!****t* m_elag/elag_t
 !! NAME
-!! rdm_t
+!! elag_t
 !!
 !! FUNCTION
-!! Datatype storing noft quantities and arrays needed
+!! Datatype for building the (orbitals) Lagrange multipliers matrix
 !!
 !! SOURCE
 
@@ -149,11 +149,11 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
  if(totMEM>thousand) then  ! Mb to Gb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*tol3,' Gb'
- elseif(totMEM<one) then   ! Mb to Kb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM*thousand,' Kb'
- else                      ! Mb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object  ',totMEM,' Mb'
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object    ',totMEM*tol3,' Gb'
+ elseif(totMEM<one) then   ! Mb to Kb                                
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object    ',totMEM*thousand,' Kb'
+ else                      ! Mb                                      
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing ELAGd object    ',totMEM,' Mb'
  endif
  call write_output(msg)
  ! Allocate arrays
