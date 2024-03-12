@@ -7,14 +7,17 @@
 ### Overview
 - Python scripting improved using molgw.py
 - Range-separated hybrid are compatible with RT-TDDFT
+- The pCCD method is now available as a NOFT functional.
 
 ### Contributors
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+- Mauricio Rodriguez-Mayorga (Institut Néel, Grenoble, France)
 
 ### Changes affecting the usage
 - Running with python or jupyter notebook is more complete.
 New classes for input (`Molgw_input`), output (`Molgw_output`), and collection of ouputs (`Molgw_output_collection`)
 Check out jupyter notebook in `~molgw/docs/running_molgw_with_jupyter.ipynb`
+- The pair-Coupled Clusted doubles (pCCD) method is now available including orbital optimization.
 
 ### Changes affecting the compilation
 
