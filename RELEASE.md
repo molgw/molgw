@@ -18,7 +18,7 @@
 - Running with python or jupyter notebook is more complete.
 New classes for input (`Molgw_input`), output (`Molgw_output`), and collection of ouputs (`Molgw_output_collection`)
 Check out jupyter notebook in `~molgw/docs/running_molgw_with_jupyter.ipynb`
-- The pair-Coupled Cluster doubles (pCCD) method is now available including orbital optimization (with the NOFT module).
+- The pair-Coupled Cluster Doubles (pCCD) method is now available including orbital optimization (with the NOFT module).
 
 ### Changes affecting the compilation
 
