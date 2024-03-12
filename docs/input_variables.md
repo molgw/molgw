@@ -130,8 +130,14 @@
 ## Natural Orbital Functional Theory 
 
 [noft_complex](#noft_complex) 
+[noft_hessian](#noft_hessian) 
+[noft_nophases](#noft_nophases) 
+[noft_confinment](#noft_confinment) 
+[noft_iconfinment](#noft_iconfinment) 
+[noft_iwconfinment](#noft_iwconfinment) 
+[noft_rwconfinment](#noft_rwconfinment) 
 [noft_dft](#noft_dft) 
-[noft_rsintra](#noft_rsintra) 
+[noft_rsinter](#noft_rsinter) 
 [noft_lowmemERI](#noft_lowmemERI) 
 [noft_fcidump](#noft_fcidump) 
 [noft_NOTupdateOCC](#noft_NOTupdateOCC) 
@@ -145,6 +151,7 @@
 [noft_readGAMMAS](#noft_readGAMMAS) 
 [noft_readOCC](#noft_readOCC) 
 [noft_sta](#noft_sta) 
+[noft_Newton_RapsonOCC](#noft_Newton_RapsonOCC) 
 [noft_ithresh_lambda](#noft_ithresh_lambda) 
 [noft_Lpower](#noft_Lpower) 
 [noft_npairs](#noft_npairs) 
@@ -1716,6 +1723,22 @@ Do a NOFT optimization but keeping fixed the orbitals read.
 
 
 ---
+### noft_Newton_RapsonOCC
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Use Newton-Rapson method in t and z amplitudes optimization in pCCD (default= 'no'). 
+
+
+---
 ### noft_complex
 
 *Optional* 
@@ -1729,6 +1752,22 @@ Do a NOFT optimization but keeping fixed the orbitals read.
 **Description:** 
 
 Use complex molecular orb. coeficients in NOFT calcs. (default=no). 
+
+
+---
+### noft_confinment
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Replace all Coulomb electronic-nuclear contributions by a parabolic confinement at the origin. (default=no). 
 
 
 ---
@@ -1780,6 +1819,38 @@ Select the NOFT approx. to use (default= 'GNOF'). Other options are 'PNOF5', 'PN
 
 
 ---
+### noft_hessian
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Build and use the Hessian for the orbitals. (default=no). 
+
+
+---
+### noft_iconfinment
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Add a Hermitian parabolic confinement (purely imaginary) to the one-body Hamiltonian when complex molecular orb. coeficients are used in NOFT calcs. (default=no). 
+
+
+---
 ### noft_ithresh_lambda
 
 *Optional* 
@@ -1793,6 +1864,22 @@ Select the NOFT approx. to use (default= 'GNOF'). Other options are 'PNOF5', 'PN
 **Description:** 
 
 Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity. 
+
+
+---
+### noft_iwconfinment
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** real 
+
+**Default:** 0.0 
+
+**Description:** 
+
+Value of confinement stength in the parabolic confinement described in noft_iconfinment. (default=0.0). 
 
 
 ---
@@ -1840,7 +1927,23 @@ Number of coupled orbs. per pair used in NOFT calcs. (default=2, perfect pairing
 
 **Description:** 
 
-Number of orb. optimization iterations used in DIIS by NOFT module (default=5). 
+Number of orb. optimization iterations used in DIIS by NOFT module (default=5). It is possible to switch off the DIIS with a negative number (e.g. -1). 
+
+
+---
+### noft_nophases
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** yes/no 
+
+**Default:** no 
+
+**Description:** 
+
+Force orbitals to be real even if noft_complex='yes' in NOFT calcs. (default=no). 
 
 
 ---
@@ -2004,7 +2107,7 @@ Use binary files to restart NOFT calcs. (default= 'no').
 
 
 ---
-### noft_rsintra
+### noft_rsinter
 
 *Optional* 
 
@@ -2012,11 +2115,27 @@ Use binary files to restart NOFT calcs. (default= 'no').
 
 **Type:** yes/no 
 
-**Default:** yes 
+**Default:** no 
 
 **Description:** 
 
-Use range-sep of intra-subspace two-body energies in (PNOFi and GNOF). 
+Use range-sep for the inter-subspace two-body interactions in NOFT. 
+
+
+---
+### noft_rwconfinment
+
+*Optional* 
+
+**Family:** noft 
+
+**Type:** real 
+
+**Default:** 0.0 
+
+**Description:** 
+
+Value of confinement stength in the parabolic confinement described in noft_confinment. (default=0.0). 
 
 
 ---
@@ -2288,14 +2407,7 @@ Sets the partition scheme for the xc quadrature. Possible choices are 'becke' or
 
 **Description:** 
 
-Contains the post-processing scheme name. 
-TD stands for TD-DFT or TD-HF.
-BSE stands for Bethe-Salpeter.
-GW stands for perturbative G0W0.
-GnW0 stands for GW with eigenvalue self-consistentcy on G.
-GnWn stands for GW with eigenvalue self-consistentcy on both G and W.
-MP2 stands for guess what.
-GWGAMMA (EXPERIMENTAL) stands for vertex corrections. 
+Contains the post-processing scheme name. TD stands for TD-DFT or TD-HF. BSE stands for Bethe-Salpeter. GW stands for perturbative G0W0. GnW0 stands for GW with eigenvalue self-consistentcy on G. GnWn stands for GW with eigenvalue self-consistentcy on both G and W. MP2 is self-explanatory. 
 
 
 ---
@@ -2937,8 +3049,7 @@ Sets the minimum block size to distribute a non-distributed matrix with SCALAPAC
 
 **Description:** 
 
-Contains the self-consistent scheme name. 
-Try LDA, PBE, HSE06, or HF for instance 
+Contains the self-consistent scheme name. Try LDA, PBE, HSE06, or HF for instance 
 
 
 ---
@@ -3441,6 +3552,6 @@ Specifies the location of the xyz file that contains the atomic positions. It ca
 
 
 
-*Generated by input_variables.py on 13 December 2023* 
+*Generated by input_variables.py on 02 March 2024* 
 
 

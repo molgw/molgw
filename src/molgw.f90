@@ -496,6 +496,17 @@ program molgw
   ! Evaluate spin contamination
   call evaluate_s2_operator(occupation,c_matrix,s_matrix)
 
+  ! Computing on top of a gaussian calculation
+  if( assume_scf_converged_ .and. TRIM(init_hamiltonian)=='GAUSSIAN') then
+    write(file_name,'(2a)') trim(output_name),'fchk'
+    if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
+      call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin,energy=energy)
+      call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy)
+    else
+      call die(' The number of states is not equal to the number of basis functions in Gaussian for restart.')
+    endif
+  endif
+
 
   if( print_multipole_ ) then
     !

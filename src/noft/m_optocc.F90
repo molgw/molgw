@@ -75,7 +75,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
 !Local variables ------------------------------
 !scalars
  logical::diagco,conveg=.false.,debug=.false.,cpx_mos=.false.
- integer,parameter::msave=7,nextv=47,nfcall=6,nfgcal=7,g=28,toobig=2,vneed=4
+ integer,parameter::msave=7
  integer::iorb,igamma,iflag,icall,Mtosave,Nwork
 !arrays
  character(len=200)::msg
@@ -90,13 +90,20 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  allocate(GAMMAs(RDMd%Ngammas),Grad_GAMMAs(RDMd%Ngammas))
  Grad_GAMMAs=zero
  if((iter==-1).and.RDMd%GAMMAs_nread) then 
-  GAMMAs=pi/four           ! Perturbed occ. numbers (i.e pi/4) -> occ(i<Fermi level) = 0.75
+  GAMMAs=pi/four               ! Perturbed occ. numbers (i.e pi/4) -> occ(i<Fermi level) = 0.75
+  if(RDMd%INOF==0) GAMMAs=zero ! HF set occ. to 0 or 1. open-shell TODO
  else
-  if(RDMd%INOF==0) then    ! HF set occ. to 0 or 1. open-shell TODO
+  if(RDMd%INOF==0) then        ! HF set occ. to 0 or 1. open-shell TODO
    GAMMAs=zero
   else
    GAMMAs=RDMd%GAMMAs_old  ! Read from previous run
   endif
+ endif
+
+ if(RDMd%INOF<0) then
+  write(msg,'(a)') 'Error: for pCCD we should not enter m_optocc module.'
+  call write_output(msg)
+  error stop
  endif
 
  ! Check if the current GAMMAs already solve the problem. Is it converged? 
@@ -117,11 +124,12 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
   Grad_GAMMAs(igamma)=zero
  enddo
 
+!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  ! Do iterations if the current GAMMAs do not produce small gradients
  icall=0
  if((.not.conveg).and.(.not.keep_occs)) then 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
-  if(imethod==1) then ! LBFGS
+  if(imethod==1) then ! L-BFGS
    write(msg,'(a)') 'Calling L-BFGS to optimize occ. numbers'
    call write_output(msg)
    Nwork=RDMd%Ngammas*(2*msave+1)+2*msave
@@ -145,12 +153,10 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
     if(icall==2000) exit
    enddo
    deallocate(Work,diag)
-!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
-  else ! TODO add an alternative to L-BFGS
-
   endif
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  endif 
+!-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  
  iter=iter+1
  if(RDMd%INOF==0) then ! Ensure that for HF we keep occ. 0 or 1
@@ -234,7 +240,6 @@ subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,hCORE_cmplx,
  logical::chempot,cpx_mos=.false.
  real(dp)::Energy
 !arrays
- character(len=200)::msg
  real(dp),allocatable,dimension(:)::GAMMAs,Grad_GAMMAs
 !************************************************************************
 
@@ -250,10 +255,7 @@ subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,hCORE_cmplx,
   call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,chempot=chempot)
   call calc_Chem_pot_cmplx(RDMd,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
  else
-  if(RDMd%irange_sep/=0) then
-   write(msg,'(a)') 'Warning! In rs-NOFT the chemical potential is computed without the d Exc / dn contribution.'
-   call write_output(msg)
-  endif
+  ! MRM: Warning! In rs-NOFT, the chemical potential could be computed without the d Exc / dn contribution...
   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,chempot=chempot)
   call calc_Chem_pot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
  endif

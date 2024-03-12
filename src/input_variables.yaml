@@ -1380,22 +1380,6 @@ beta_hybrid:
   comment: Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount
     of long-range exact-exchange
 
-noft_complex:
-  family: noft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Use complex molecular orb. coeficients in NOFT calcs. (default=no).
-
-noft_dft:
-  family: noft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Use the hybdrid approach NOFT + DFT in NOFT calcs. (default=no).
-
 density_matrix_damping:
   family: scf
   datatype: real
@@ -1549,13 +1533,78 @@ scf_diago_flavor:
 #             Natural Orbital Functional Theory input variables
 #============================================================================
 
-noft_rsintra:
+noft_complex:
   family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
-  default: 'yes'
-  comment: Use range-sep of intra-subspace two-body energies in (PNOFi and GNOF).
+  default: 'no'
+  comment: Use complex molecular orb. coeficients in NOFT calcs. (default=no).
+
+noft_hessian:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Build and use the Hessian for the orbitals. (default=no).
+
+noft_nophases:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Force orbitals to be real even if noft_complex='yes' in NOFT calcs. (default=no).
+
+noft_confinment:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Replace all Coulomb electronic-nuclear contributions by a parabolic confinement at the origin. (default=no).
+
+noft_iconfinment:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Add a Hermitian parabolic confinement (purely imaginary) to the one-body Hamiltonian when complex
+   molecular orb. coeficients are used in NOFT calcs. (default=no).
+
+noft_iwconfinment:
+  family: noft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.000
+  comment: Value of confinement stength in the parabolic confinement described in noft_iconfinment. (default=0.0).
+
+noft_rwconfinment:
+  family: noft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.000
+  comment: Value of confinement stength in the parabolic confinement described in noft_confinment. (default=0.0).
+
+noft_dft:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use the hybdrid approach NOFT + DFT in NOFT calcs. (default=no).
+
+noft_rsinter:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use range-sep for the inter-subspace two-body interactions in NOFT.
 
 noft_lowmemERI:
   family: noft
@@ -1661,6 +1710,14 @@ noft_sta:
   default: 'no'
   comment: Decide whether to use PNOF7 or PNOF7s, but it also affects GNOF (default= 'no', use 'PNOF7' and 'GNOF').
 
+noft_Newton_RapsonOCC:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use Newton-Rapson method in t and z amplitudes optimization in pCCD (default= 'no').
+
 noft_ithresh_lambda:
   family: noft
   datatype: integer
@@ -1700,6 +1757,7 @@ noft_ndiis:
   experimental: 'no'
   default: 5
   comment: Number of orb. optimization iterations used in DIIS by NOFT module (default=5).
+    It is possible to switch off the DIIS with a negative number (e.g. -1).
 
 noft_nscf:
   family: noft

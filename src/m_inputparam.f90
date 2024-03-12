@@ -327,7 +327,7 @@ subroutine init_calculation_type(scf,postscf)
     case('EVMP3_SELFENERGY','EVPT3','EVGF3')
       calc_type%selfenergy_approx = PT3
       calc_type%selfenergy_technique = EVSC
-    case('NOFT')
+    case('NOFT','PCCD')
       calc_type%is_noft   =.TRUE.
     case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
       calc_type%selfenergy_approx = TWO_RINGS
@@ -628,6 +628,15 @@ subroutine init_dft_type(key)
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
     dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
     dft_xc(2)%coeff = beta_hybrid
+    dft_xc(2)%gamma = gamma_hybrid
+  case('RSH-NOFT')
+    dft_xc(1)%id = XC_GGA_X_ITYH
+    dft_xc(2)%id = XC_GGA_C_LYPR
+    beta_hybrid   = 1.00_dp
+    dft_xc(1)%coeff = beta_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
+    if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=2.00_dp
+    dft_xc(1)%gamma = gamma_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   case('LDA0')
     alpha_hybrid = 0.25_dp
