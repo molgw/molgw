@@ -58,6 +58,9 @@ module m_hessian
 
    procedure :: build => build_hessian
    ! Use integrals and the 1,2-RDM to build the Hessian and Gradient.
+   
+   procedure :: build_brut => build_hessian_brut
+   ! Use integrals and the 1,2-RDM to build the Hessian and Gradient.
 
    procedure :: diag => diag_hessian
    ! Diagonalize the Hessian matrix and analyze the eigenvalues
@@ -390,6 +393,133 @@ subroutine diag_hessian(HESSIANd)
  deallocate(Eigeval)
 
 end subroutine diag_hessian
+!!***
+
+!!****f* DoNOF/build_hessian_brut
+!! NAME
+!! build_hessian_brut
+!!
+!! FUNCTION
+!!  Build the Hessian matrix and Gradient vector. Note that the electron rep. integrals are given in DIRAC's format
+!!
+!!  For complex orbs. with time-reversal symmetry [i.e. states p_alpha = (p_beta)* ]: 
+!!      < p_alpha q_beta | r_alpha s_beta > =  < p_alpha s_alpha | r_alpha q_alpha >
+!!
+!! INPUTS
+!!  RDMd=Object containg all required variables whose arrays are properly updated
+!!  INTEGd=Object containg all integrals
+!!  ELAGd=Object containg (orbital) Lagrange multipliers matrix (Lambda_pq)
+!!
+!! OUTPUT
+!!  HESSIANd%Hessian_mat=Matrix build with the Hessian
+!!  HESSIANd%Gradient_vec=Vector build with the Gradient
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine build_hessian_brut(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
+!Arguments ------------------------------------
+!scalars
+ class(hessian_t),intent(inout)::HESSIANd
+ class(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(in)::INTEGd
+!arrays
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
+!Local variables ------------------------------
+!scalars
+ integer::iorbp,iorbq,iorbr,iorbs,iorbt,iorbu,iorbv,iorbw
+ real(dp)::hess_pqrs!,h_core,vee
+!arrays
+ real(dp),allocatable,dimension(:,:)::DM1
+ real(dp),allocatable,dimension(:,:,:,:)::DM2
+ character(len=200)::msg
+!************************************************************************
+
+ !h_core=zero; vee=zero; 
+
+ if(.not.HESSIANd%cpx_hessian) then
+  allocate(DM1(RDMd%NBF_tot,RDMd%NBF_tot),DM2(RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot))
+  DM1=zero; DM2=zero;
+  ! Build full 1,2-RDMs
+  do iorbp=1,RDMd%NBF_occ ! p
+   DM1(iorbp,iorbp)=RDMd%occ(iorbp)
+   do iorbq=1,RDMd%NBF_occ ! q
+    DM2(iorbp,iorbq,iorbp,iorbq)=DM2_J(iorbp,iorbq)
+    DM2(iorbp,iorbq,iorbq,iorbp)=DM2_K(iorbp,iorbq)
+    DM2(iorbp,iorbp,iorbq,iorbq)=DM2_L(iorbp,iorbq)
+   enddo
+   DM2(iorbp,iorbp,iorbp,iorbp)=RDMd%DM2_iiii(iorbp)
+  enddo
+  ! Build Hessian
+  do iorbp=1,RDMd%NBF_tot ! p
+   do iorbq=1,RDMd%NBF_tot ! q
+!    h_core=h_core+two*DM1(iorbp,iorbq)*INTEGd%Hcore(iorbp,iorbq)
+    do iorbr=1,RDMd%NBF_tot ! r
+     do iorbs=1,RDMd%NBF_tot ! s
+!      vee=vee+DM2(iorbp,iorbq,iorbr,iorbs)*INTEGd%ERImol(iorbp,iorbq,iorbr,iorbs)
+      hess_pqrs=two*(DM1(iorbq,iorbs)*INTEGd%Hcore(iorbp,iorbr)+DM1(iorbr,iorbp)*INTEGd%Hcore(iorbs,iorbq))
+      if(iorbr==iorbp) then ! p=r
+       do iorbt=1,RDMd%NBF_tot !t
+        hess_pqrs=hess_pqrs-DM1(iorbt,iorbs)*INTEGd%Hcore(iorbt,iorbq) &
+       &                   -DM1(iorbq,iorbt)*INTEGd%Hcore(iorbs,iorbt) 
+        do iorbv=1,RDMd%NBF_tot ! v
+         do iorbw=1,RDMd%NBF_tot ! w
+          hess_pqrs=hess_pqrs-two*DM2(iorbq,iorbv,iorbt,iorbw)*INTEGd%ERImol(iorbs,iorbv,iorbt,iorbw) &
+          &                  -two*DM2(iorbw,iorbt,iorbv,iorbs)*INTEGd%ERImol(iorbw,iorbt,iorbv,iorbq) 
+         enddo
+        enddo
+       enddo 
+!       hess_pqrs=hess_pqrs-ELAGd%Lambdas(iorbq,iorbs)-ELAGd%Lambdas(iorbs,iorbq)
+      endif
+      if(iorbq==iorbs) then ! q=s
+       do iorbt=1,RDMd%NBF_tot !t
+        hess_pqrs=hess_pqrs-DM1(iorbt,iorbp)*INTEGd%Hcore(iorbt,iorbr) &
+       &                   -DM1(iorbr,iorbt)*INTEGd%Hcore(iorbp,iorbt) 
+        do iorbv=1,RDMd%NBF_tot ! v
+         do iorbw=1,RDMd%NBF_tot ! w
+          hess_pqrs=hess_pqrs-two*DM2(iorbr,iorbv,iorbt,iorbw)*INTEGd%ERImol(iorbp,iorbv,iorbt,iorbw) &
+          &                  -two*DM2(iorbw,iorbt,iorbv,iorbp)*INTEGd%ERImol(iorbw,iorbt,iorbv,iorbr) 
+         enddo
+        enddo
+       enddo 
+!       hess_pqrs=hess_pqrs-ELAGd%Lambdas(iorbr,iorbp)-ELAGd%Lambdas(iorbp,iorbr)
+      endif
+      do iorbt=1,RDMd%NBF_tot !t
+       do iorbu=1,RDMd%NBF_tot !u
+        hess_pqrs=hess_pqrs+four*DM2(iorbr,iorbt,iorbp,iorbu)*INTEGd%ERImol(iorbs,iorbt,iorbq,iorbu) &
+        &                  -four*DM2(iorbr,iorbt,iorbp,iorbu)*INTEGd%ERImol(iorbs,iorbt,iorbu,iorbq) &
+        &                  +four*DM2(iorbq,iorbt,iorbs,iorbu)*INTEGd%ERImol(iorbp,iorbt,iorbr,iorbu) &
+        &                  -four*DM2(iorbq,iorbt,iorbs,iorbu)*INTEGd%ERImol(iorbp,iorbt,iorbu,iorbr) &
+        &                  -four*DM2(iorbt,iorbu,iorbp,iorbs)*INTEGd%ERImol(iorbt,iorbu,iorbq,iorbr) &
+        &                  -four*DM2(iorbq,iorbr,iorbt,iorbu)*INTEGd%ERImol(iorbp,iorbs,iorbt,iorbu) 
+       enddo
+      enddo
+      HESSIANd%Hessian_mat(iorbp+RDMd%NBF_tot*(iorbq-1),iorbr+RDMd%NBF_tot*(iorbs-1))=hess_pqrs
+     enddo
+    enddo
+   enddo
+  enddo
+  deallocate(DM1,DM2)
+ endif
+
+! Check that energy contributions are fine
+!write(*,*) h_core,vee
+
+! Check if the Hessian is a symmetric matrix
+ 
+ do iorbp=1,HESSIANd%NDIM_hess
+  do iorbq=1,HESSIANd%NDIM_hess
+   if(abs(HESSIANd%Hessian_mat(iorbp,iorbq)-HESSIANd%Hessian_mat(iorbq,iorbp))>tol8) then
+    write(*,*) iorbp,iorbq,HESSIANd%Hessian_mat(iorbp,iorbq),HESSIANd%Hessian_mat(iorbq,iorbp)
+   endif
+  enddo
+ enddo
+
+end subroutine build_hessian_brut
 !!***
 
 end module m_hessian
