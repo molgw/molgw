@@ -6,8 +6,9 @@
 ## What's new in version 3.3
 ### Overview
 - Python scripting improved using molgw.py
-- Range-separated hybrid are compatible with RT-TDDFT
+- Range-separated hybrid are compatible with RT-TDDFT and LR-TDDFT
 - The pCCD method is now available as a NOFT functional.
+- BSE correlation energy computed in a similar fashion to the RPAx-I one.
 
 ### Contributors
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
@@ -17,7 +18,7 @@
 - Running with python or jupyter notebook is more complete.
 New classes for input (`Molgw_input`), output (`Molgw_output`), and collection of ouputs (`Molgw_output_collection`)
 Check out jupyter notebook in `~molgw/docs/running_molgw_with_jupyter.ipynb`
-- The pair-Coupled Clusted doubles (pCCD) method is now available including orbital optimization.
+- The pair-Coupled Cluster doubles (pCCD) method is now available including orbital optimization (with the NOFT module).
 
 ### Changes affecting the compilation
 
