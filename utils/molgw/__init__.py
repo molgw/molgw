@@ -188,25 +188,28 @@ def read_xyz_file(filename):
 class structure:
     def __init__(self,strucin):
         if type(strucin) == str:
-            self.list = read_xyz_file(strucin)
+            if os.path.exists(strucin):
+                self.list = read_xyz_file(strucin)
+            else:
+                self.list = strucin.split("\n")[2:]
         else:
             self.list = copy.deepcopy(strucin)
-    def print_xyz_file(self,filename,comment=""):
+    def __repr__(self):
+        return "MOLGW structure (angstrom units)"
+    def __str__(self):
+        return self.to_string()
+    def to_file(self,filename,comment=""):
         with open(filename,'w') as f:
             f.write('{}\n'.format(len(self.list)))
             f.write(comment.strip()+'\n')
-            f.write(self.string())
+            f.write(self.to_string())
             #for atom in self.list:
             #    f.write('{:2}   {:14.8f} {:14.8f} {:14.8f}\n'.format(atom[0],float(atom[1]),float(atom[2]),float(atom[3])))
-    def __repr__(self):
-        return "MOLGW structure (angstrom units)"
-    def string(self):
+    def to_string(self):
         s = ''
         for atom in self.list:
-            s += "{:<2} {:.6f} {:.6f} {:.6f} \n".format(*atom[0:4])
+            s += "{:<2} {:.6f} {:.6f} {:.6f} \n".format(atom[0], float(atom[1]), float(atom[2]), float(atom[3]) )
         return s
-    def __str__(self):
-        return self.string()
 
 
 

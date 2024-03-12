@@ -86,7 +86,7 @@ Many example input files can be found in `~molgw/tests/inputs/`
 
 ## Bug reporting
 
-Please use the [issues](https://github.com/bruneval/molgw/issues) section on MOLGW github.
+Please use the [issues](https://github.com/molgw/molgw/issues) section on MOLGW github.
 
 
 ## Information for developers
@@ -127,7 +127,7 @@ and the HTML and markdown documentation files docs/input_variables.html docs/inp
 
 It requires the manual editing of the src/Makefile (sorry).
 Please check carefully the module dependence so to compile and add it to the right "level" of the Makefile.
-The code should compile properly in parallel with "make -j".
+The code should compile properly in parallel with `make -j`.
 
 
 ## Contributors

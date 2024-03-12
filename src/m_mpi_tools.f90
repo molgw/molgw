@@ -67,8 +67,8 @@ subroutine mpic_init(mpic,comm_in)
 
 #if defined(HAVE_MPI)
   mpic%comm = comm_in
-  call MPI_COMM_SIZE(mpic%comm,mpic%nproc,ierror)
-  call MPI_COMM_RANK(mpic%comm,mpic%rank,ierror)
+  call MPI_COMM_SIZE(mpic%comm, mpic%nproc, ierror)
+  call MPI_COMM_RANK(mpic%comm, mpic%rank, ierror)
 #else
   mpic%comm  = 1
   mpic%nproc = 1
@@ -88,7 +88,7 @@ subroutine mpic_barrier(mpic)
   !=====
 
 #if defined(HAVE_MPI)
-  call MPI_BARRIER(mpic%comm,ierror)
+  call MPI_BARRIER(mpic%comm, ierror)
 #endif
 
 end subroutine mpic_barrier
@@ -291,7 +291,7 @@ subroutine mpic_bcast_i(mpic,rank,array)
   implicit none
   class(mpi_communicator),intent(in) :: mpic
   integer,intent(in)    :: rank
-  integer,intent(inout) :: array(:)
+  integer,intent(inout) :: array(..)
   !=====
   integer :: nsize
   integer :: ierror=0
