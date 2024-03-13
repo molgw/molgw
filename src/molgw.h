@@ -10,7 +10,7 @@
 */
 
 #if !defined(MOLGW_VERSION)
-#define MOLGW_VERSION "3.2"
+#define MOLGW_VERSION "3.3"
 #endif
 
 #if !defined(NO_LIBCINT)
