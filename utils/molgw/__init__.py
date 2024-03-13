@@ -183,21 +183,36 @@ def read_xyz_file(filename):
         return structure
 
 ########################################################################
-# structure class is mostly a list of atoms in angstrom
+# Molecule class is mostly a list of atoms in angstrom
 # with a few method to read, print, transform
-class structure:
+class Molecule:
     def __init__(self,strucin):
         if type(strucin) == str:
             if os.path.exists(strucin):
                 self.list = read_xyz_file(strucin)
             else:
-                self.list = strucin.split("\n")[2:]
-        else:
+                tmplist = strucin.split("\n")[2:]
+                tmplist = [item for item in tmplist if item != ""]
+                self.list = [ line.split() for line in tmplist ]
+        elif type(strucin) == Molecule:
             self.list = copy.deepcopy(strucin)
+        else:
+            sys.exit(1)
+    def from_file(self,strucin):
+        if os.path.exists(strucin):
+            self.list = read_xyz_file(strucin)
+        else:
+            sys.exit(f"File {strucin} does not exist")
+    def from_string(self,strucin):
+        tmplist = strucin.split("\n")[2:]
+        tmplist = [item for item in tmplist if item != ""]
+        self.list = [ line.split() for line in tmplist ]
     def __repr__(self):
-        return "MOLGW structure (angstrom units)"
+        return "MOLGW Molecule"
     def __str__(self):
         return self.to_string()
+    def __len__(self):
+        return len(self.list)
     def to_file(self,filename,comment=""):
         with open(filename,'w') as f:
             f.write('{}\n'.format(len(self.list)))
@@ -208,10 +223,8 @@ class structure:
     def to_string(self):
         s = ''
         for atom in self.list:
-            s += "{:<2} {:.6f} {:.6f} {:.6f} \n".format(atom[0], float(atom[1]), float(atom[2]), float(atom[3]) )
+            s += "{:<2} {:.6f} {:.6f} {:.6f}\n".format(atom[0], float(atom[1]), float(atom[2]), float(atom[3]) )
         return s
-
-
 
 
 ########################################################################
@@ -474,7 +487,6 @@ class Molgw_output:
     def chemical_formula(self):
         return get_chemical_formula(self.d)
 
-
 ########################################################################
 class Molgw_output_collection:
     """MOLGW collection of outputs"""
@@ -557,3 +569,6 @@ class Molgw_output_collection:
 
 
 ########################################################################
+
+
+
