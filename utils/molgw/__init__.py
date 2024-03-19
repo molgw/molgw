@@ -100,39 +100,34 @@ def check_input(pyinput):
 
 
 ########################################################################
-def run(inputfile="molgw.in",outputfile="molgw.out",pyinput={},mpirun="",executable_path="",openmp=1,tmp="",keep_tmp=False,**kwargs):
+def run(inputfile="molgw.in", outputfile="molgw.out", pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
     if len(tmp) > 0:
-        os.makedirs(tmp,exist_ok=True)
-        current_directory = os.getcwd()
-        #new_working_directory = current_directory + '/' + tmp
-        #os.chdir(new_working_directory)
-        os.chdir(tmp)
+        os.makedirs(tmp, exist_ok=True)
     if len(executable_path) > 0:
         exe_local = executable_path
     else:
         exe_local = exe
     if len(pyinput) > 0:
-        print_input_file(pyinput,inputfile)
+        print_input_file(pyinput, "./" + tmp + "/" + inputfile)
     os.environ['OMP_NUM_THREADS'] = str(openmp)
     if len(mpirun) == 0:
-        process = subprocess.Popen([exe_local,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        process = subprocess.Popen([exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
-        process = subprocess.Popen(mpirun.split()+[exe_local,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        process = subprocess.Popen(mpirun.split() + [exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
-    if len(outputfile) >0:
-        with open(outputfile,'w') as f:
+    if len(outputfile) > 0:
+        with open("./" + tmp + "/" + outputfile, "w") as f:
             f.write(output.decode("utf-8"))
     if len(error) > 100:
         print(error.decode("utf-8"))
-    with open('molgw.yaml', 'r') as stream:
+    with open("./" + tmp + "/molgw.yaml", "r") as stream:
         try:
-            results = load(stream,Loader=Loader)
+            results = load(stream, Loader=Loader)
         except:
             print('molgw.yaml file is corrupted')
             results = {}
             pass
     if len(tmp) > 0:
-        os.chdir(current_directory)
         if not keep_tmp:
             shutil.rmtree(tmp)
     return results
