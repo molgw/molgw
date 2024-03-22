@@ -1314,6 +1314,16 @@ tddft_charge:
   default: -999.0
   comment: Overall charge in the system fo the TDDFT calculation. Default value means it is equal to 'charge' in the DFT part. But if specified, it can differ from 'charge'.
 
+tddft_magnetization:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the number of unpaired electrons for real-time TDDFT calculations.
+    In other words, this is the difference between the spin up and spin down occupation. For instance, a spin-doublet calculation
+    is obtained with tddft_magnetization=1.0. Only meaningful when nspin=2.
+
 time_sim:
   family: rt_tddft
   datatype: real

@@ -178,9 +178,10 @@ def read_xyz_file(filename):
         return structure
 
 ########################################################################
-# Molecule class is mostly a list of atoms in angstrom
-# with a few method to read, print, transform
 class Molecule:
+    """Molecule class is mostly a list of atoms in angstrom
+    with a few method to read, print, transform
+    """
     def __init__(self,strucin):
         if type(strucin) == str:
             if os.path.exists(strucin):
