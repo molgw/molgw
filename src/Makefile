@@ -89,7 +89,7 @@ all: molgw spectrum
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o m_nofoutput.o
 
-level005: m_warning.o real_spherical_harmonics.o m_lbfgs_intern.o m_integd.o m_rdmd.o
+level005: m_warning.o real_spherical_harmonics.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o
 
 level008: m_mpi_tools.o m_elag.o
 
@@ -144,7 +144,7 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o 
         m_hamiltonian_wrapper.o \
         m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o m_fourier_quadrature.o \
         m_linear_response.o m_acfd.o static_polarizability.o gw_selfenergy.o m_gw_selfenergy_grid.o m_gwgwg_selfenergy.o \
-        m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
+        m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_tz_pccd_amplitudes.o m_noft_driver.o gitver.o \
         m_build_bse.o m_multipole.o m_io.o m_restart.o mp2.o m_noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
         molgw.o
@@ -158,7 +158,7 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o 
                         m_spectral_function.o m_ci.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o \
-                        m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
+                        m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
                         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_tz_pccd_amplitudes.o m_noft_driver.o gitver.o \
                         mp2.o m_noft.o gw_selfenergy.o m_gw_selfenergy_grid.o m_gwgwg_selfenergy.o m_build_bse.o \
                         m_linear_response.o m_acfd.o static_polarizability.o m_multipole.o m_io.o m_restart.o \
@@ -299,6 +299,9 @@ m_integd.o: m_definitions.f90 ./noft/m_integd.F90
 
 m_rdmd.o: m_definitions.f90 ./noft/m_rdmd.F90
 	$(FC_W_OPTS) -c ./noft/m_rdmd.F90
+
+m_anti2unit.o: m_definitions.f90 ./noft/m_anti2unit.F90
+	$(FC_W_OPTS) -c ./noft/m_anti2unit.F90
 
 m_elag.o: m_definitions.f90 ./noft/m_elag.F90
 	$(FC_W_OPTS) -c ./noft/m_elag.F90

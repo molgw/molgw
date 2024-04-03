@@ -29,7 +29,7 @@ module m_optorb
  private :: lambda_conv
 !!***
 
- public :: opt_orb,s2_calc 
+ public :: opt_orb,s2_calc
 !!***
 
 contains
