@@ -309,7 +309,10 @@ subroutine build_elag(ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L,DM2_Jsr,DM2_Lsr)
    enddo
   enddo 
  endif
- !ELAGd%Lambdas=two*ELAGd%Lambdas ! We only need half for 'alpha' orbs to define gradients
+ ELAGd%Lambdas=two*ELAGd%Lambdas        ! We need 'alpha' and 'beta' orbs to define gradients ( i.e. x2 )
+ if(ELAGd%cpx_lambdas) then
+  ELAGd%Lambdas_im=two*ELAGd%Lambdas_im
+ endif
 
  ! TODO 
  if(RDMd%Nsingleocc>0) then

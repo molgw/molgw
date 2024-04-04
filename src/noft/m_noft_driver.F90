@@ -30,6 +30,7 @@ module m_noft_driver
  use m_optocc
  use m_optorb
  use m_tz_pCCD_amplitudes
+ use m_anti2unit
 
  implicit none
 
@@ -276,6 +277,80 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   else
    keep_orbs=.false.
   endif
+ endif
+
+ ! Numerical initial gradient
+ if(.false.) then
+  block
+  logical::nogamma=.true.
+  integer::iorb1,iorb2
+  real(dp)::Energy_in,Gradient,step
+  real(dp),allocatable,dimension(:,:)::U_mat,X_mat,NO_COEF_in
+  if(.not.cpx_mos) then
+   allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),X_mat(RDMd%NBF_tot,RDMd%NBF_tot))
+   allocate(NO_COEF_in(RDMd%NBF_tot,RDMd%NBF_tot))
+   iorb1=1;iorb2=3;step=0.01;
+   U_mat=0.0e0;X_mat=0.0e0;Gradient=0.0e0;NO_COEF_in=NO_COEF;
+   ! kappa_pq=0
+   call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+   NO_COEF_in=matmul(NO_COEF,U_mat)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+   & ERImol=INTEGd%ERImol)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+   Energy_in=Energy_in+Vnn
+   write(*,*) 'Energy: ',Energy_in
+   ! kappa_pq+h
+   X_mat(iorb1,iorb2)=step;X_mat(iorb2,iorb1)=-X_mat(iorb1,iorb2);
+   call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+   NO_COEF_in=matmul(NO_COEF,U_mat)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+   & ERImol=INTEGd%ERImol)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+   Energy_in=Energy_in+Vnn
+   Gradient=Gradient+8.0e0*Energy_in
+   ! kappa_pq+2h
+   X_mat(iorb1,iorb2)=2.0e0*step;X_mat(iorb2,iorb1)=-X_mat(iorb1,iorb2);
+   call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+   NO_COEF_in=matmul(NO_COEF,U_mat)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+   & ERImol=INTEGd%ERImol)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+   Energy_in=Energy_in+Vnn
+   Gradient=Gradient-Energy_in
+   ! kappa_pq-2h
+   X_mat(iorb1,iorb2)=-2.0e0*step;X_mat(iorb2,iorb1)=-X_mat(iorb1,iorb2);
+   call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+   NO_COEF_in=matmul(NO_COEF,U_mat)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+   & ERImol=INTEGd%ERImol)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+   Energy_in=Energy_in+Vnn
+   Gradient=Gradient+Energy_in
+   ! kappa_pq-h
+   X_mat(iorb1,iorb2)=-step;X_mat(iorb2,iorb1)=-X_mat(iorb1,iorb2);
+   call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+   NO_COEF_in=matmul(NO_COEF,U_mat)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+   & ERImol=INTEGd%ERImol)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+   Energy_in=Energy_in+Vnn
+   Gradient=Gradient-8.0e0*Energy_in
+   ! Gradient
+   Gradient=-Gradient/(1.2e1*step)
+   write(*,*) 'Gradient (',iorb1,',',iorb2,'): ',Gradient
+   deallocate(U_mat,X_mat,NO_COEF_in)
+  endif
+  endblock
  endif
 
  ! Orb. and occ. optimization

@@ -85,13 +85,15 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
     do iorb1=1,iorb-1
      Eigvec(iorb,iorb1)=half*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
      Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)
+     ! Print initial Gradients
+     ! write(*,*) iorb,iorb1,two*(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
     enddo
     Eigvec(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
    enddo
   else
    do iorb=1,RDMd%NBF_tot 
     do iorb1=1,iorb-1
-     Eigvec(iorb,iorb1)=ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1)
+     Eigvec(iorb,iorb1)=two*(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
      call scale_F(ELAGd%MaxScaling+9,Eigvec(iorb,iorb1)) ! Scale the Fpq element to avoid divergence
      Eigvec(iorb1,iorb)=Eigvec(iorb,iorb1)               ! Fpq=Fqp
     enddo
@@ -146,8 +148,8 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
   else
    do iorb=1,RDMd%NBF_tot 
     do iorb1=1,iorb-1
-     Eigvec_cmplx(iorb,iorb1)=(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
-     Eigvec_cmplx(iorb,iorb1)=Eigvec_cmplx(iorb,iorb1)+im*(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))
+     Eigvec_cmplx(iorb,iorb1)=two*(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
+     Eigvec_cmplx(iorb,iorb1)=Eigvec_cmplx(iorb,iorb1)+two*im*(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))
      call scale_F_cmplx(ELAGd%MaxScaling+9,Eigvec_cmplx(iorb,iorb1))  ! Scale the Fpq element to avoid divergence
      Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))         ! Fpq=Fqp*
     enddo
