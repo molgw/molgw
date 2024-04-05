@@ -371,9 +371,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
     & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
    endif
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   call HESSIANd%build_brut(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
+   call HESSIANd%build_brut(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
 !   call HESSIANd%diag()
-!   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
 !   call HESSIANd%diag()
    deallocate(U_mat,X_mat,NO_COEF_in)
   endif
@@ -446,10 +447,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
     & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
    endif
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   call HESSIANd%build_brut(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+   call HESSIANd%build_brut(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
    call HESSIANd%diag()
-   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
-   call HESSIANd%diag()
+! TODO
+!   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+!   call HESSIANd%diag()
    write(msg,'(a)') ' '
    call write_output(msg)
  endif
