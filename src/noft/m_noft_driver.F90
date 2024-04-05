@@ -279,18 +279,18 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   endif
  endif
 
- ! Numerical initial gradient
+ ! Numerical initial gradient and hessian
  if(.false.) then
   block
   logical::nogamma=.true.
   integer::iorb1,iorb2
-  real(dp)::Energy_in,Gradient,step
+  real(dp)::Energy_in,Gradient,Hessian,step
   real(dp),allocatable,dimension(:,:)::U_mat,X_mat,NO_COEF_in
   if(.not.cpx_mos) then
    allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),X_mat(RDMd%NBF_tot,RDMd%NBF_tot))
    allocate(NO_COEF_in(RDMd%NBF_tot,RDMd%NBF_tot))
    iorb1=1;iorb2=3;step=0.01;
-   U_mat=0.0e0;X_mat=0.0e0;Gradient=0.0e0;NO_COEF_in=NO_COEF;
+   U_mat=0.0e0;X_mat=0.0e0;Gradient=0.0e0;Hessian=0.0e0;NO_COEF_in=NO_COEF;
    ! kappa_pq=0
    call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
    NO_COEF_in=matmul(NO_COEF,U_mat)
@@ -300,6 +300,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
    & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
    Energy_in=Energy_in+Vnn
+   Hessian=Hessian-3.0e1*Energy_in
+   write(*,*) ' '
+   write(*,*) 'Numerical values'
+   write(*,*) ' '
    write(*,*) 'Energy: ',Energy_in
    ! kappa_pq+h
    X_mat(iorb1,iorb2)=step;X_mat(iorb2,iorb1)=-X_mat(iorb1,iorb2);
@@ -311,6 +315,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
    & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
    Energy_in=Energy_in+Vnn
+   Hessian=Hessian+1.6e1*Energy_in
    Gradient=Gradient+8.0e0*Energy_in
    ! kappa_pq+2h
    X_mat(iorb1,iorb2)=2.0e0*step;X_mat(iorb2,iorb1)=-X_mat(iorb1,iorb2);
@@ -322,6 +327,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
    & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
    Energy_in=Energy_in+Vnn
+   Hessian=Hessian-Energy_in
    Gradient=Gradient-Energy_in
    ! kappa_pq-2h
    X_mat(iorb1,iorb2)=-2.0e0*step;X_mat(iorb2,iorb1)=-X_mat(iorb1,iorb2);
@@ -333,6 +339,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
    & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
    Energy_in=Energy_in+Vnn
+   Hessian=Hessian-Energy_in
    Gradient=Gradient+Energy_in
    ! kappa_pq-h
    X_mat(iorb1,iorb2)=-step;X_mat(iorb2,iorb1)=-X_mat(iorb1,iorb2);
@@ -344,10 +351,30 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
    & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
    Energy_in=Energy_in+Vnn
+   Hessian=Hessian+1.6e1*Energy_in
    Gradient=Gradient-8.0e0*Energy_in
-   ! Gradient
-   Gradient=-Gradient/(1.2e1*step)
+   ! Gradient and Hessian
+   Hessian=Hessian/(1.2e1*step*step)
+   Gradient=Gradient/(1.2e1*step)
    write(*,*) 'Gradient (',iorb1,',',iorb2,'): ',Gradient
+   write(*,*) 'Hessian  (',iorb1,',',iorb2,';',iorb1,',',iorb2,'): ',Hessian
+   write(*,*) 'Analytic values'
+   call write_output(msg)
+   call INTEGd%free()
+   all_ERI_in=.true.
+   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
+   if(cpx_mos) then
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERI_in)
+   else
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+    & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
+   endif
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call HESSIANd%build_brut(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+!   call HESSIANd%diag()
+!   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+!   call HESSIANd%diag()
    deallocate(U_mat,X_mat,NO_COEF_in)
   endif
   endblock
