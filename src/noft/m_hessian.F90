@@ -375,7 +375,7 @@ subroutine diag_hessian(HESSIANd)
  endif
 
  do iindex=1,HESSIANd%NDIM_hess
-  if(abs(Eigeval(iindex))<tol8) then
+  if(abs(Eigeval(iindex))<tol6) then
    Eigeval(iindex)=zero
   endif
   if(Eigeval(iindex)<zero) then
@@ -385,12 +385,12 @@ subroutine diag_hessian(HESSIANd)
   endif
  enddo
  
-  write(msg,'(a,I10)') 'Number of Negative eigenvalues',nneg
-  call write_output(msg)
-  write(msg,'(a,F10.5)') 'Max Negative eigenvalue       ',max_neg
-  call write_output(msg)
-  write(msg,'(a,F10.5)') 'Sum Negative eigenvalues      ',sum_neg
-  call write_output(msg)
+ write(msg,'(a,I10)') 'Number of Negative eigenvalues',nneg
+ call write_output(msg)
+ write(msg,'(a,F10.5)') 'Max Negative eigenvalue       ',max_neg
+ call write_output(msg)
+ write(msg,'(a,F10.5)') 'Sum Negative eigenvalues      ',sum_neg
+ call write_output(msg)
 
  deallocate(Eigeval)
 
