@@ -134,6 +134,9 @@ subroutine diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF,NO_COEF_c
     do iorb1=1,iorb-1
      Eigvec_cmplx(iorb,iorb1)=half*(ELAGd%Lambdas(iorb,iorb1)+ELAGd%Lambdas(iorb1,iorb))
      Eigvec_cmplx(iorb1,iorb)=conjg(Eigvec_cmplx(iorb,iorb1))
+     ! Print initial Gradients
+     ! write(*,*) iorb,iorb1,two*(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1)) &
+     ! &                    +two*im*(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))
     enddo
     Eigvec_cmplx(iorb,iorb)=ELAGd%Lambdas(iorb,iorb)
     Phases(iorb)=-im*(ELAGd%Lambdas_im(iorb,iorb)+ELAGd%Lambdas_im(iorb,iorb))

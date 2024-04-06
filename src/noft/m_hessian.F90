@@ -226,6 +226,7 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
   &              +two*im*(ELAGd%Lambdas_im(iorbq,iorbp)+ELAGd%Lambdas_im(iorbp,iorbq))
     ! TODO
     HESSIANd%Gradient_vec_cmplx(iorbp+RDMd%NBF_tot*(iorbq-1))=grad_pq_cmplx
+    ! write(*,*) iorbp,iorbq,grad_pq_cmplx
    enddo
   enddo
  else
@@ -360,7 +361,16 @@ subroutine diag_hessian(HESSIANd)
  Eigeval=zero
  
  if(HESSIANd%cpx_hessian) then
-  write(*,*) 'banana'
+  allocate(Work_cmplx(1),RWork(3*HESSIANd%NDIM_hess-2))
+  lwork=-1
+  call ZHEEV('V','L',HESSIANd%NDIM_hess,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,Eigeval,Work_cmplx,lwork,RWork,info)
+  lwork=nint(real(Work_cmplx(1)))
+  if(info==0) then
+   deallocate(Work_cmplx)
+   allocate(Work_cmplx(lwork))
+   call ZHEEV('V','L',HESSIANd%NDIM_hess,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,Eigeval,Work_cmplx,lwork,RWork,info)
+  endif
+  deallocate(RWork,Work_cmplx)
  else
   allocate(Work(1))
   lwork=-1
@@ -420,7 +430,7 @@ end subroutine diag_hessian
 !!
 !! SOURCE
 
-subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol)
+subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,ERImol_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::NBF_tot
@@ -430,10 +440,13 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol)
  real(dp),dimension(NBF_tot,NBF_tot,NBF_tot,NBF_tot),intent(in)::DM2
  real(dp),optional,dimension(NBF_tot,NBF_tot),intent(in)::Hcore
  real(dp),optional,dimension(NBF_tot,NBF_tot,NBF_tot,NBF_tot),intent(in)::ERImol
+ complex(dp),optional,dimension(NBF_tot,NBF_tot),intent(in)::Hcore_cmplx
+ complex(dp),optional,dimension(NBF_tot,NBF_tot,NBF_tot,NBF_tot),intent(in)::ERImol_cmplx
 !Local variables ------------------------------
 !scalars
  integer::iorbp,iorbq,iorbr,iorbs,iorbt,iorbu,iorbv
  real(dp)::G_pqrs,G_qprs,G_pqsr,G_qpsr,grad_pq,E_hcore,vee
+ complex(dp)::G_pqrs_cmplx,G_qprs_cmplx,G_pqsr_cmplx,G_qpsr_cmplx,grad_pq_cmplx,E_hcore_cmplx,vee_cmplx
 !arrays
  character(len=200)::msg
 !************************************************************************
@@ -447,7 +460,56 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol)
 
  ! Build Hessian
  if(HESSIANd%cpx_hessian) then
-  write(*,*) 'banana'
+  E_hcore_cmplx=complex_zero; vee_cmplx=complex_zero; 
+  do iorbp=1,NBF_tot ! p
+   do iorbq=1,NBF_tot ! q
+    E_hcore_cmplx=E_hcore_cmplx+two*DM1(iorbp,iorbq)*Hcore_cmplx(iorbp,iorbq)
+    !
+    ! Calc. gradient
+    !
+    grad_pq_cmplx=complex_zero
+    do iorbt=1,NBF_tot !t
+     grad_pq_cmplx=grad_pq_cmplx+two*DM1(iorbt,iorbq)*real(Hcore_cmplx(iorbt,iorbp)) &
+    &                           -two*DM1(iorbp,iorbt)*real(Hcore_cmplx(iorbq,iorbt))
+     grad_pq_cmplx=grad_pq_cmplx+two*im*DM1(iorbt,iorbq)*aimag(Hcore_cmplx(iorbt,iorbp)) &
+    &                           +two*im*DM1(iorbp,iorbt)*aimag(Hcore_cmplx(iorbq,iorbt))
+     do iorbu=1,NBF_tot ! u
+      do iorbv=1,NBF_tot ! v
+       grad_pq_cmplx=grad_pq_cmplx+two*DM2(iorbu,iorbt,iorbv,iorbq)*real(ERImol_cmplx(iorbu,iorbt,iorbv,iorbp)) &
+       &                          -two*DM2(iorbp,iorbu,iorbt,iorbv)*real(ERImol_cmplx(iorbq,iorbu,iorbt,iorbv)) 
+       grad_pq_cmplx=grad_pq_cmplx+two*im*DM2(iorbu,iorbt,iorbv,iorbq)*aimag(ERImol_cmplx(iorbu,iorbt,iorbv,iorbp)) &
+       &                          +two*im*DM2(iorbp,iorbu,iorbt,iorbv)*aimag(ERImol_cmplx(iorbq,iorbu,iorbt,iorbv)) 
+      enddo
+     enddo
+    enddo
+    ! 
+    !
+
+    HESSIANd%Gradient_vec_cmplx(iorbp+NBF_tot*(iorbq-1))=two*grad_pq_cmplx
+     write(*,*) iorbp,iorbq,two*grad_pq_cmplx
+   enddo
+  enddo
+
+  ! Check that energy contributions are fine
+  write(msg,'(a)') ' Energy contributions computed from density matrices'
+  call write_output(msg)
+  write(msg,'(a,f15.6,a)') ' Hcore ',real(E_hcore_cmplx),' a.u.'
+  call write_output(msg)
+  write(msg,'(a,f15.6,a)') ' Vee   ',real(vee_cmplx),' a.u'
+  call write_output(msg)
+  write(msg,'(a)') ' '
+  call write_output(msg)
+
+! Check if the Hessian is a Hermitian matrix
+ 
+! do iorbp=1,HESSIANd%NDIM_hess
+!  do iorbq=1,HESSIANd%NDIM_hess
+!   if(abs(HESSIANd%Hessian_mat(iorbp,iorbq)-conj(HESSIANd%Hessian_mat(iorbq,iorbp)))>tol8) then
+!    write(*,*) iorbp,iorbq,HESSIANd%Hessian_mat(iorbp,iorbq),HESSIANd%Hessian_mat(iorbq,iorbp)
+!   endif
+!  enddo
+! enddo
+
  else
   E_hcore=zero; vee=zero; 
   do iorbp=1,NBF_tot ! p
@@ -617,7 +679,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol)
        enddo
       enddo
       HESSIANd%Hessian_mat(iorbp+NBF_tot*(iorbq-1),iorbr+NBF_tot*(iorbs-1))=G_pqrs+G_qprs+G_pqsr+G_qpsr
-       write(*,*) iorbp,iorbq,iorbr,iorbs,G_pqrs+G_qprs+G_pqsr+G_qpsr
+      ! write(*,*) iorbp,iorbq,iorbr,iorbs,G_pqrs+G_qprs+G_pqsr+G_qpsr
      enddo
     enddo
     HESSIANd%Gradient_vec(iorbp+NBF_tot*(iorbq-1))=two*grad_pq
