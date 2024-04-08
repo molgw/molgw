@@ -23,13 +23,14 @@ module m_optorb
  use m_diagf
  use m_e_grad_occ
  use m_e_grad_occ_cpx
+ use m_anti2unit
 
  implicit none
 
  private :: lambda_conv
 !!***
 
- public :: opt_orb,s2_calc
+ public :: opt_orb,s2_calc,num_grad_hess_orb
 !!***
 
 contains
@@ -482,6 +483,179 @@ subroutine s2_calc(RDMd,INTEGd,NO_COEF,NO_COEF_cmplx)
  deallocate(coup,occ,occ_dyn) 
 
 end subroutine s2_calc
+!!***
+
+!!***
+!!****f* DoNOF/num_grad_hess_orb
+!! NAME
+!!  num_grad_hess_orb
+!!
+!! FUNCTION
+!!  Calculate the numerical orbital rotation gradient and Hessian for a k_pq k_rs rot.
+!!
+!! INPUTS
+!!  mo_ints=External subroutine that computes the hCORE and ERI integrals
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_COEF_cmplx) 
+!Arguments ------------------------------------
+!scalars
+ integer,intent(in)::iorbp,iorbq,iorbr,iorbs
+ real(dp),intent(in)::Vnn
+ real(dp),intent(inout)::Energy
+ type(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(inout)::INTEGd
+ interface 
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
+  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
+  use m_definitions
+  implicit none
+  logical,optional,intent(in)::all_ERIs
+  integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
+  real(dp),intent(in)::Occ(NBF_occ)
+  real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)
+  real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
+  real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
+  real(dp),optional,intent(inout)::ERImolJsr(NBF_tot,NBF_jkl,NBF_jkl)
+  real(dp),optional,intent(inout)::ERImolLsr(NBF_tot,NBF_jkl,NBF_jkl)
+  complex(dp),optional,intent(in)::NO_COEF_cmplx(NBF_tot,NBF_tot)
+  complex(dp),optional,intent(inout)::hCORE_cmplx(NBF_tot,NBF_tot)
+  complex(dp),optional,intent(inout)::ERImol_cmplx(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
+  end subroutine mo_ints
+ end interface
+!arrays
+ real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
+ complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
+!Local variables ------------------------------
+!scalars
+ logical::nogamma=.true.
+ real(dp)::Energy_in,Energy_00,Energy_h0,Energy_mh0,Energy_0h,Energy_0mh,Energy_hh,Energy_mhmh
+ real(dp)::Gradient_pq,Gradient_rs,Hessian_pqrs,step
+!arrays
+ character(len=200)::msg
+ real(dp),allocatable,dimension(:,:)::U_mat,X_mat,NO_COEF_in
+
+!************************************************************************
+
+ write(msg,'(a)') ' '
+ call write_output(msg)
+ write(msg,'(a)') 'Computing orb. rot. numerical Gradient and Hessian'
+ call write_output(msg)
+
+ if(INTEGd%complex_ints) then
+
+ else
+  allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),X_mat(RDMd%NBF_tot,RDMd%NBF_tot))
+  allocate(NO_COEF_in(RDMd%NBF_tot,RDMd%NBF_tot))
+  step=tol3;
+  U_mat=zero;X_mat=zero;Gradient_pq=zero;Gradient_rs=zero;Hessian_pqrs=zero;
+  ! kappa_pq=0,kappa_rs=0
+  call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+  NO_COEF_in=matmul(NO_COEF,U_mat)
+  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+  & ERImol=INTEGd%ERImol)
+  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+  Energy_00=Energy_in+Vnn
+  ! kappa_pq=step,kappa_rs=0
+  X_mat=zero;
+  X_mat(iorbp,iorbq)=step;X_mat(iorbq,iorbp)=-X_mat(iorbp,iorbq);
+  call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+  NO_COEF_in=matmul(NO_COEF,U_mat)
+  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+  & ERImol=INTEGd%ERImol)
+  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+  Energy_h0=Energy_in+Vnn
+  ! kappa_pq=-step,kappa_rs=0
+  X_mat=zero;
+  X_mat(iorbp,iorbq)=-step;X_mat(iorbq,iorbp)=-X_mat(iorbp,iorbq);
+  call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+  NO_COEF_in=matmul(NO_COEF,U_mat)
+  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+  & ERImol=INTEGd%ERImol)
+  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+  Energy_mh0=Energy_in+Vnn
+  ! kappa_pq=0,kappa_rs=step
+  X_mat=zero;
+  X_mat(iorbr,iorbs)=step;X_mat(iorbs,iorbr)=-X_mat(iorbr,iorbs);
+  call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+  NO_COEF_in=matmul(NO_COEF,U_mat)
+  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+  & ERImol=INTEGd%ERImol)
+  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+  Energy_0h=Energy_in+Vnn
+  ! kappa_pq=0,kappa_rs=-step
+  X_mat=zero;
+  X_mat(iorbr,iorbs)=-step;X_mat(iorbs,iorbr)=-X_mat(iorbr,iorbs);
+  call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+  NO_COEF_in=matmul(NO_COEF,U_mat)
+  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+  & ERImol=INTEGd%ERImol)
+  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+  Energy_0mh=Energy_in+Vnn
+  ! kappa_pq=step,kappa_rs=step
+  X_mat=zero;
+  X_mat(iorbp,iorbq)=step;X_mat(iorbq,iorbp)=-X_mat(iorbp,iorbq);
+  X_mat(iorbr,iorbs)=step;X_mat(iorbs,iorbr)=-X_mat(iorbr,iorbs);
+  call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+  NO_COEF_in=matmul(NO_COEF,U_mat)
+  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+  & ERImol=INTEGd%ERImol)
+  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+  Energy_hh=Energy_in+Vnn
+  ! kappa_pq=-step,kappa_rs=-step
+  X_mat=zero;
+  X_mat(iorbp,iorbq)=-step;X_mat(iorbq,iorbp)=-X_mat(iorbp,iorbq);
+  X_mat(iorbr,iorbs)=-step;X_mat(iorbs,iorbr)=-X_mat(iorbr,iorbs);
+  call anti_2_unitary(RDMd%NBF_tot,X_mat=X_mat,U_mat=U_mat)
+  NO_COEF_in=matmul(NO_COEF,U_mat)
+  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_in,hCORE=INTEGd%hCORE, &
+  & ERImol=INTEGd%ERImol)
+  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+  & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+  Energy_mhmh=Energy_in+Vnn
+  ! Gradient and Hessian
+  Gradient_pq=(Energy_h0-Energy_mh0)/(two*step)
+  Gradient_rs=(Energy_0h-Energy_0mh)/(two*step)
+  if((iorbp==iorbr .and. iorbq==iorbs).or.(iorbp==iorbs .and. iorbq==iorbr)) then
+   Hessian_pqrs=(Energy_h0-two*Energy_00+Energy_mh0)/(step*step)
+   if(iorbp==iorbs .and. iorbq==iorbr) Hessian_pqrs=-Hessian_pqrs
+  else
+   Hessian_pqrs=(Energy_hh-Energy_h0-Energy_0h+two*Energy_00-Energy_mh0-Energy_0mh+Energy_mhmh)/(two*step*step)
+  endif
+  write(msg,'(a,f15.6)') 'Energy = ',Energy_00
+  call write_output(msg)
+  write(msg,'(a,i5,a,i5,a,f15.6)') 'Grad(',iorbp,',',iorbq,') = ',Gradient_pq
+  call write_output(msg)
+  write(msg,'(a,i5,a,i5,a,f15.6)') 'Grad(',iorbr,',',iorbs,') = ',Gradient_rs
+  call write_output(msg)
+  write(msg,'(a,i5,a,i5,a,i5,a,i5,a,f15.6)') 'Hess(',iorbp,',',iorbq,';',iorbr,',',iorbs,') = ',Hessian_pqrs
+  call write_output(msg)
+  write(msg,'(a)') ' '
+  call write_output(msg)
+ endif
+
+end subroutine num_grad_hess_orb
 !!***
 
 end module m_optorb
