@@ -26,6 +26,7 @@ module m_tddft_propagator
   use m_dft_grid
   use m_scf
   use m_io
+  use m_hdf5_tools
 
   interface propagate_orth
     module procedure propagate_orth_ham_1
@@ -69,7 +70,6 @@ contains
 
 !=========================================================================
 subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
-  use m_hdf5_tools
   implicit none
 
   type(basis_set),intent(inout) :: basis
@@ -406,6 +406,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   ! HANDLING HDF5 files here
   if( (print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_) .and. is_iomaster ) then
 
+#if defined(HAVE_HDF5)
     call hdf_open_file(fid, 'rt_tddft.h5', status='NEW')
 
     call hdf_write_dataset(fid, 'nbf', basis%nbf)
@@ -434,6 +435,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       call hdf_write_dataset(p_mat_group, 'snap_0', p_matrix_MO_block)
 
     end if
+#endif
 
   end if
 
@@ -561,8 +563,10 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
         call setup_density_matrix_MO_real(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
         p_matrix_MO_block(:,:,:) = p_matrix_MO_real(1:nocc,nocc+1:nstate,:)
-        write(snap_name, '(A,I0)') 'snap_', iwrite_step
+        write(snap_name, '(a,i0)') 'snap_', iwrite_step
+#if defined(HAVE_HDF5)
         if (is_iomaster) call hdf_write_dataset(p_mat_group, TRIM(snap_name), p_matrix_MO_block)
+#endif 
         deallocate(p_matrix_real)
         deallocate(p_matrix_MO_real)
       end if
@@ -607,11 +611,13 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   if( (print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_) .and. is_iomaster ) then
 
+#if defined(HAVE_HDF5)
     call hdf_write_dataset(fid, 'nsnap', itau)
 
     if(print_c_matrix_cmplx_hdf5_) call hdf_close_group(c_mat_group)
     if(print_p_matrix_MO_block_hdf5_) call hdf_close_group(p_mat_group)
     call hdf_close_file(fid)
+#endif
   end if
 
   if(print_tddft_restart_) then

@@ -30,6 +30,7 @@ module m_io
   use m_cart_to_pure
   use m_eri,only: npair
   use m_elements
+  use m_hdf5_tools
 
 
   interface dump_out_matrix
@@ -2357,175 +2358,174 @@ end subroutine calc_density_in_disc_cmplx_regular
 
 !=========================================================================
 subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
- implicit none
- type(basis_set),intent(in)  :: basis
- real(dp),intent(in)         :: occupation(:,:)
- complex(dp),intent(in)      :: c_matrix_cmplx(:,:,:)
- logical,intent(in),optional :: initialize
- !=====
- integer                    :: gt
- integer                    :: nocc(2),nocc_max
- real(dp),parameter         :: length=10.0_dp
- !real(dp),parameter         :: length=5.0_dp
- integer                    :: ibf
- integer                    :: istate,ispin
- complex(dp),allocatable    :: phi_cmplx(:,:)
- real(dp)                   :: u(3),a(3)
- logical                    :: file_exists
- real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ix,iy,iz,icenter,ir
- real(dp),allocatable       :: basis_function_r_cart(:)
- integer,allocatable        :: ocubefile(:,:)
- integer                    :: ocuberho(nspin)
- character(len=200)         :: file_name
- real(dp),allocatable       :: dens_diff(:)
- integer,save               :: snapshot_index
- real(dp),save              :: xmin,xmax,ymin,ymax,zmin,zmax
- real(dp),save              :: dx,dy,dz
- real(dp),allocatable,save  :: rr(:,:)
- real(dp),allocatable,save  :: cube_density_start(:,:)
- !=====
+  implicit none
+  type(basis_set),intent(in)  :: basis
+  real(dp),intent(in)         :: occupation(:,:)
+  complex(dp),intent(in)      :: c_matrix_cmplx(:,:,:)
+  logical,intent(in),optional :: initialize
+  !=====
+  integer                    :: gt
+  integer                    :: nocc(2),nocc_max
+  real(dp),parameter         :: length=10.0_dp
+  integer                    :: ibf
+  integer                    :: istate,ispin
+  complex(dp),allocatable    :: phi_cmplx(:,:)
+  real(dp)                   :: u(3),a(3)
+  logical                    :: file_exists
+  real(dp)                   :: basis_function_r(basis%nbf)
+  integer                    :: ix,iy,iz,icenter,ir
+  real(dp),allocatable       :: basis_function_r_cart(:)
+  integer,allocatable        :: ocubefile(:,:)
+  integer                    :: ocuberho(nspin)
+  character(len=200)         :: file_name
+  real(dp),allocatable       :: dens_diff(:)
+  integer,save               :: snapshot_index
+  real(dp),save              :: xmin,xmax,ymin,ymax,zmin,zmax
+  real(dp),save              :: dx,dy,dz
+  real(dp),allocatable,save  :: rr(:,:)
+  real(dp),allocatable,save  :: cube_density_start(:,:)
+  !=====
 
- call start_clock(timing_print_cube_rho_tddft)
+  call start_clock(timing_print_cube_rho_tddft)
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
+  gt = get_gaussian_type_tag(basis%gaussian_type)
 
- if( .NOT. in_rt_tddft ) then
-   write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
- endif
+  if( .NOT. in_rt_tddft ) then
+    write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
+  endif
 
- ! Find highest occupied state
- nocc = 0
- nocc_max = 0
- do ispin=1,nspin
-   do istate=1,SIZE(occupation,DIM=1)
-     if( occupation(istate,ispin) < completely_empty)  cycle
-     nocc(ispin) = istate
-     if( istate > nocc_max ) nocc_max = istate
-   enddo
-   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
-     call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-   endif
- enddo
-
-
- allocate(phi_cmplx(1:nocc_max,nspin))
- if( .NOT. in_rt_tddft ) then
-   write(stdout,'(a,2(2x,i4))')   ' states:   ',1,nocc_max
- endif
-
- !
- ! First call: initialization and storage
- !
- if( PRESENT(initialize) ) then
-   if( initialize) then
-
-     write(stdout,'(/,1x,a)') 'Initialize density for plots'
-
-     snapshot_index = 0
-     allocate(rr(3,cube_nx*cube_ny*cube_nz))
-     allocate(cube_density_start(cube_nx*cube_ny*cube_nz,nspin))
-
-     ! First find the extreme positions for all the starting positions
-     xmin =MIN(MINVAL( xatom(1,:) ),MINVAL( xbasis(1,:) ))
-     ymin =MIN(MINVAL( xatom(2,:) ),MINVAL( xbasis(2,:) ))
-     zmin =MIN(MINVAL( xatom(3,:) ),MINVAL( xbasis(3,:) ))
-     xmax =MAX(MAXVAL( xatom(1,:) ),MAXVAL( xbasis(1,:) ))
-     ymax =MAX(MAXVAL( xatom(2,:) ),MAXVAL( xbasis(2,:) ))
-     zmax =MAX(MAXVAL( xatom(3,:) ),MAXVAL( xbasis(3,:) ))
-
-     ! Second find the extreme positions for all the final positions
-     !xmin = MIN(xmin , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
-     !ymin = MIN(ymin , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
-     !zmin = MIN(zmin , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
-     !xmax = MAX(xmax , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
-     !ymax = MAX(ymax , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
-     !zmax = MAX(zmax , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
-
-     xmin = xmin - length
-     ymin = ymin - length
-     zmin = zmin - length
-     xmax = xmax + length
-     ymax = ymax + length
-     zmax = zmax + length
-
-     dx = (xmax-xmin)/REAL(cube_nx,dp)
-     dy = (ymax-ymin)/REAL(cube_ny,dp)
-     dz = (zmax-zmin)/REAL(cube_nz,dp)
-
-     ir = 0
-     do ix=1,cube_nx
-       do iy=1,cube_ny
-         do iz=1,cube_nz
-           ir = ir + 1
-           rr(1,ir) = xmin + (ix-1)*dx
-           rr(2,ir) = ymin + (iy-1)*dy
-           rr(3,ir) = zmin + (iz-1)*dz
-         enddo
-       enddo
-     enddo
-     cube_density_start(:,:) = 0.0_dp
-     !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
-     !$OMP DO
-     do ir=1,cube_nx*cube_ny*cube_nz
-       if(MODULO(ir-1,world%nproc)/=world%rank) cycle
-
-       call calculate_basis_functions_r(basis,rr(:,ir),basis_function_r)
-       do ispin=1,nspin
-         phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
-         cube_density_start(ir,ispin)=SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact
-       enddo
-     enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
-
-     call world%sum(cube_density_start)
-
-   else
-     call die('should not happen')
-   endif
+  ! Find highest occupied state
+  nocc = 0
+  nocc_max = 0
+  do ispin=1,nspin
+    do istate=1,SIZE(occupation,DIM=1)
+      if( occupation(istate,ispin) < completely_empty)  cycle
+      nocc(ispin) = istate
+      if( istate > nocc_max ) nocc_max = istate
+    enddo
+    if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
+      call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
+    endif
+  enddo
 
 
- else  ! not first call
+  allocate(phi_cmplx(1:nocc_max,nspin))
+  if( .NOT. in_rt_tddft ) then
+    write(stdout,'(a,2(2x,i4))')   ' states:   ',1,nocc_max
+  endif
 
-   write(stdout,'(/,1x,a)') 'Plot density difference'
+  !
+  ! First call: initialization and storage
+  !
+  if( PRESENT(initialize) ) then
+    if(initialize) then
 
-   snapshot_index = snapshot_index + 1
+      write(stdout,'(/,1x,a)') 'Initialize density for plots'
+
+      snapshot_index = 0
+      allocate(rr(3,cube_nx*cube_ny*cube_nz))
+      allocate(cube_density_start(cube_nx*cube_ny*cube_nz,nspin))
+
+      ! First find the extreme positions for all the starting positions
+      xmin =MIN(MINVAL( xatom(1,:) ),MINVAL( xbasis(1,:) ))
+      ymin =MIN(MINVAL( xatom(2,:) ),MINVAL( xbasis(2,:) ))
+      zmin =MIN(MINVAL( xatom(3,:) ),MINVAL( xbasis(3,:) ))
+      xmax =MAX(MAXVAL( xatom(1,:) ),MAXVAL( xbasis(1,:) ))
+      ymax =MAX(MAXVAL( xatom(2,:) ),MAXVAL( xbasis(2,:) ))
+      zmax =MAX(MAXVAL( xatom(3,:) ),MAXVAL( xbasis(3,:) ))
+
+      ! Second find the extreme positions for all the final positions
+      xmin = MIN(xmin , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
+      ymin = MIN(ymin , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
+      zmin = MIN(zmin , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
+      xmax = MAX(xmax , xatom(1,ncenter_nuclei) + vel_projectile(1) * time_sim )
+      ymax = MAX(ymax , xatom(2,ncenter_nuclei) + vel_projectile(2) * time_sim )
+      zmax = MAX(zmax , xatom(3,ncenter_nuclei) + vel_projectile(3) * time_sim )
+
+      xmin = xmin - length
+      ymin = ymin - length
+      zmin = zmin - length
+      xmax = xmax + length
+      ymax = ymax + length
+      zmax = zmax + length
+
+      dx = (xmax-xmin)/REAL(cube_nx,dp)
+      dy = (ymax-ymin)/REAL(cube_ny,dp)
+      dz = (zmax-zmin)/REAL(cube_nz,dp)
+
+      ir = 0
+      do ix=1,cube_nx
+        do iy=1,cube_ny
+          do iz=1,cube_nz
+            ir = ir + 1
+            rr(1,ir) = xmin + (ix-1)*dx
+            rr(2,ir) = ymin + (iy-1)*dy
+            rr(3,ir) = zmin + (iz-1)*dz
+          enddo
+        enddo
+      enddo
+      cube_density_start(:,:) = 0.0_dp
+      !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+      !$OMP DO
+      do ir=1,cube_nx*cube_ny*cube_nz
+        if(MODULO(ir-1,world%nproc)/=world%rank) cycle
+
+        call calculate_basis_functions_r(basis,rr(:,ir),basis_function_r)
+        do ispin=1,nspin
+          phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
+          cube_density_start(ir,ispin)=SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact
+        enddo
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+
+      call world%sum(cube_density_start)
+
+    else
+      call die('should not happen')
+    endif
 
 
-   if( is_iomaster ) then
-     do ispin=1,nspin
-       write(file_name,'(i4.4,a,i1,a)') snapshot_index,'_',ispin,'dens_diff.cube'
-       open(newunit=ocuberho(ispin),file=file_name)
-       write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
-       write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
-       write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin, zmin
-       write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nx,dx,0.,0.
-       write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_ny,0.,dy,0.
-       write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nz,0.,0.,dz
-       do icenter=1,ncenter_nuclei
-         write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
-       enddo
-     enddo
-   endif
+  else  ! not first call
 
-   call clean_allocate("dens_diff for the cube density",dens_diff,cube_nx*cube_ny*cube_nz,verbose=.FALSE.)
+    write(stdout,'(/,1x,a)') 'Plot density difference'
 
-   do ispin=1,nspin
+    snapshot_index = snapshot_index + 1
 
-     !call start_clock(timing_tmp0)
-     dens_diff(:) = 0.0_dp
 
-     !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
-     !$OMP DO
-     do ir=1,cube_nx*cube_ny*cube_nz
-       if(MODULO(ir-1,world%nproc)/=world%rank) cycle
+    if( is_iomaster ) then
+      do ispin=1,nspin
+        write(file_name,'(i4.4,a,i1,a)') snapshot_index,'_',ispin,'dens_diff.cube'
+        open(newunit=ocuberho(ispin),file=file_name)
+        write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
+        write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
+        write(ocuberho(ispin),'(i6,3(f12.6,2x))') ncenter_nuclei,xmin,ymin, zmin
+        write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nx,dx,0.,0.
+        write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_ny,0.,dy,0.
+        write(ocuberho(ispin),'(i6,3(f12.6,2x))') cube_nz,0.,0.,dz
+        do icenter=1,ncenter_nuclei
+          write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(icenter)),0.0,xatom(:,icenter)
+        enddo
+      enddo
+    endif
 
-       call calculate_basis_functions_r(basis,rr(:,ir),basis_function_r)
+    call clean_allocate("dens_diff for the cube density",dens_diff,cube_nx*cube_ny*cube_nz,verbose=.FALSE.)
 
-       phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
-       dens_diff(ir) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact &
-                              - cube_density_start(ir,ispin)
+    do ispin=1,nspin
+
+      !call start_clock(timing_tmp0)
+      dens_diff(:) = 0.0_dp
+
+      !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+      !$OMP DO
+      do ir=1,cube_nx*cube_ny*cube_nz
+        if(MODULO(ir-1,world%nproc)/=world%rank) cycle
+
+        call calculate_basis_functions_r(basis,rr(:,ir),basis_function_r)
+
+        phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
+        dens_diff(ir) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact &
+                               - cube_density_start(ir,ispin)
 
       enddo
       !$OMP END DO
@@ -3865,38 +3865,36 @@ end subroutine evaluate_memory
 
 !=========================================================================
 subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
- use m_hdf5_tools
- use m_inputparam
- implicit none
- integer(HID_T), intent(in) :: f_or_g_id
- integer,intent(in)          :: isnap
- complex(dp),intent(in)      :: matrix_cmplx(:,:,:)
- character(len=*), intent(in), optional :: matrix_name
- !=====
- character(len=200)          :: file_name, snap_name, m_name
- !=====
+  implicit none
+  integer(HID_T), intent(in) :: f_or_g_id
+  integer,intent(in)          :: isnap
+  complex(dp),intent(in)      :: matrix_cmplx(:,:,:)
+  character(len=*), intent(in), optional :: matrix_name
+  !=====
+  character(len=200)          :: file_name, snap_name, m_name
+  !=====
 
 #if defined(HAVE_HDF5)
 
- if( .NOT. is_iomaster ) return
+  if( .NOT. is_iomaster ) return
 
- if( present(matrix_name) ) then
-   m_name = matrix_name
- else
-   m_name = 'snap_'
- end if
+  if( present(matrix_name) ) then
+    m_name = matrix_name
+  else
+    m_name = 'snap_'
+  end if
 
- write(snap_name,'(a,I0,a)') TRIM(m_name), isnap, '_real'
- call hdf_write_dataset(f_or_g_id, TRIM(snap_name), REAL(matrix_cmplx, dp))
+  write(snap_name,'(a,I0,a)') TRIM(m_name), isnap, '_real'
+  call hdf_write_dataset(f_or_g_id, TRIM(snap_name), REAL(matrix_cmplx, dp))
 
- write(snap_name,'(a,I0,a)') TRIM(m_name), isnap, '_imag'
- call hdf_write_dataset(f_or_g_id, TRIM(snap_name), AIMAG(matrix_cmplx))
+  write(snap_name,'(a,I0,a)') TRIM(m_name), isnap, '_imag'
+  call hdf_write_dataset(f_or_g_id, TRIM(snap_name), AIMAG(matrix_cmplx))
 
 #else
 
-call die('To print matrix_cmplx into an HDF5 file, &
-MOLGW must be compiled with HDF5: HDF5_ROOT must be specified &
-and the -DHAVE_HDF5 compilation option must be activated')
+  call die('dump_matrix_cmplx_hdf5: to print matrix_cmplx into an HDF5 file, ' // &
+           'MOLGW must be compiled with HDF5: HDF5_ROOT must be specified ' // &
+           'and the -DHAVE_HDF5 compilation option must be activated')
 
 #endif
 

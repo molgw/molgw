@@ -49,7 +49,7 @@ subroutine optical_spectrum(is_triplet_currently,basis,occupation,c_matrix,chi,x
   integer                            :: istate,astate,iaspin
   integer                            :: mpspin
   integer                            :: iomega,idir,jdir
-  integer,parameter                  :: nomega=50000
+  integer,parameter                  :: nomega=1000
   complex(dp)                        :: omega(nomega)
   real(dp)                           :: coeff(2*chi%npole_reso),trace
   real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
@@ -338,7 +338,7 @@ subroutine optical_spectrum(is_triplet_currently,basis,occupation,c_matrix,chi,x
   ! Set the frequency mesh
   omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-10.00/Ha_eV)
   !omega(nomega)=MIN(200.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+10.00/Ha_eV)
-  omega(nomega)=MIN(500.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+10.00/Ha_eV)
+  omega(nomega)=MIN(50.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+10.00/Ha_eV)
   do iomega=2,nomega-1
     omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1)
   enddo
