@@ -459,13 +459,13 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   endif
   eri_3center_eigen(:,:,:,:) = 0.0_dp
 
-  call clean_allocate('TMP 3-center ints',tmp1,mstate_min_,mstate_max_,1,nbf,verbose_)
-  call clean_allocate('TMP 3-center ints',c_t ,mstate_min_,mstate_max_,1,nbf,verbose_)
+  call clean_allocate('TMP 3-center ints',tmp1,nstate_min_,nstate_max_,1,nbf,verbose_)
+  call clean_allocate('TMP 3-center ints',c_t ,nstate_min_,nstate_max_,1,nbf,verbose_)
   call clean_allocate('TMP 3-center ints',tmp2,mstate_min_,mstate_max_,nstate_min_,nstate_max_,verbose_)
 
   do klspin=1,nspin
 
-    c_t(:,:)  = TRANSPOSE( c_matrix(:,mstate_min_:mstate_max_,klspin) )
+    c_t(:,:)  = TRANSPOSE( c_matrix(:,nstate_min_:nstate_max_,klspin) )
 
     do iauxil=1,nauxil_local
       if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
@@ -483,12 +483,12 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
       !$OMP END PARALLEL
 
       ! Transformation of the second index
-      call DGEMM('N','N',mstate_count_,nstate_count_,nbf, &
-                 1.0d0,tmp1(mstate_min_,1),mstate_count_,   &
-                       c_matrix(1,nstate_min_,klspin),nbf, &
+      call DGEMM('T','T',mstate_count_,nstate_count_,nbf, &
+                 1.0d0,c_matrix(1,mstate_min_,klspin),nbf, &
+                       tmp1(nstate_min_,1),nstate_count_,   &
                  0.0d0,tmp2(mstate_min_,nstate_min_),mstate_count_)
 
-      ! Transposition happens here!
+      ! Transposition (ij, P) -> (P, ij) happens here!
       eri_3center_eigen(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
                                   = tmp2(mstate_min_:mstate_max_,nstate_min_:nstate_max_)
 
@@ -511,12 +511,12 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
         !$OMP END PARALLEL
 
         ! Transformation of the second index
-        call DGEMM('N','N',mstate_count_,nstate_count_,nbf, &
-                   1.0d0,tmp1(mstate_min_,1),mstate_count_,   &
-                         c_matrix(1,nstate_min_,klspin),nbf, &
+        call DGEMM('T','T',mstate_count_,nstate_count_,nbf, &
+                   1.0d0,c_matrix(1,mstate_min_,klspin),nbf, &
+                         tmp1(nstate_min_,1),nstate_count_,   &
                    0.0d0,tmp2(mstate_min_,nstate_min_),mstate_count_)
 
-        ! Transposition happens here!
+        ! Transposition (ij, P) -> (P, ij) happens here!
         eri_3center_eigen_lr(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
                                     = tmp2(mstate_min_:mstate_max_,nstate_min_:nstate_max_)
 
@@ -767,9 +767,9 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
                        c_matrix_cmplx(1,nstate_min_,klspin),nbf, &
                  complex_zero,tmp2_cmplx(mstate_min_,nstate_min_),mstate_count_)
 
-      ! Transposition (is complex conjugation needed?) happens here!
+      ! Transposition happens here!
       eri_3center_eigen_cmplx(iauxil,mstate_min_:mstate_max_,nstate_min_:nstate_max_,klspin) &
-                                  = ( tmp2_cmplx(mstate_min_:mstate_max_,nstate_min_:nstate_max_) )
+                                  = tmp2_cmplx(mstate_min_:mstate_max_,nstate_min_:nstate_max_)
 
     enddo !iauxil
   enddo !klspin

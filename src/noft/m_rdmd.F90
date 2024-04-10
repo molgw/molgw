@@ -32,9 +32,11 @@ module m_rdmd
  type,public :: rdm_t
 
   logical::GAMMAs_nread=.true.     ! Are GAMMAS read from previous calc.?
+  logical::t_amplitudes_nread=.true. ! Are t-amplitudes read from previous calc.?
+  logical::z_amplitudes_nread=.true. ! Are z-amplitudes read from previous calc.?
   integer::irange_sep=0            ! rs-NOFT calcs. 0=no, 1=intra, 2=ex_corr
   integer::INOF=8                  ! Functional to use (5-> PNOF5, 7-> PNOF7, 8-> GNOF, etc)
-  integer::Ista=0                  ! Use PNOF7s with Ista=1
+  integer::Ista=0                  ! Use PNOF7s or only static/non-dyn part of GNOF with Ista=1
   integer::Nfrozen                 ! Number of frozen orbitals in the NOFT calc.
   integer::Nbeta_elect             ! Number of orbitals containing beta electrons
   integer::Nalpha_elect            ! Number of orbitals containing alpha electrons
@@ -46,6 +48,7 @@ module m_rdmd
   integer::Npairs                  ! Number of electron pairs
   integer::Npairs_p_sing           ! Number of electron pairs plus number of singly occ orbitals
   integer::Ngammas                 ! Number of gammas (independet variables used in occ optimization procedure)
+  integer::Namplitudes             ! Number of t and z pCCD amplitudes
   real(dp)::Lpower=0.53d0          ! Power functional exponent
   real(dp)::Hcut=0.02d0*dsqrt(two) ! Hcut parameter defined in GNOF to determine the Ecorr type (i.e. dyn or nondyn)
 ! arrays 
@@ -56,6 +59,7 @@ module m_rdmd
   real(dp),allocatable,dimension(:)::Docc_gamma,Dfni_ni
   real(dp),allocatable,dimension(:)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
   real(dp),allocatable,dimension(:)::DDM2_gamma_Jsr,DDM2_gamma_Lsr
+  real(dp),allocatable,dimension(:,:)::t_pccd,t_pccd_old,tz_residue,z_pccd,z_pccd_old
 
  contains 
    procedure :: free => rdm_free
@@ -78,6 +82,9 @@ module m_rdmd
 
    procedure :: print_gammas => print_gammas_old
    ! Print GAMMAs_old indep./unconstrained variables.
+
+   procedure :: print_tz_amplitudes => print_tz_amplitudes_old
+   ! Print T and Z CC amplitudes.
 
  end type rdm_t
 
@@ -149,17 +156,23 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  RDMd%Npairs_p_sing=RDMd%Npairs+RDMd%Nsingleocc 
  RDMd%NBF_ldiag=RDMd%NBF_occ*(RDMd%NBF_occ+1)/2
  RDMd%Ngammas=RDMd%Ncoupled*RDMd%Npairs
+ RDMd%Namplitudes=RDMd%Npairs*(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))
  ! Calculate memory needed
- totMEM=5*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas+4*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas
- totMEM=totMEM+RDMd%Ngammas+5*RDMd%NBF_occ
+ if(RDMd%INOF>-1) then
+  totMEM=5*RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas+RDMd%NBF_occ
+ else
+  totMEM=5*RDMd%Namplitudes
+ endif
+ totMEM=totMEM+5*RDMd%NBF_occ*RDMd%NBF_occ+RDMd%NBF_occ*RDMd%Ngammas
+ totMEM=totMEM+RDMd%Ngammas+4*RDMd%NBF_occ
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
  if(totMEM>thousand) then  ! Mb to Gb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*tol3,' Gb'
- elseif(totMEM<one) then   ! Mb to Kb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM*thousand,' Kb'
- else                      ! Mb
-  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object   ',totMEM,' Mb'
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object     ',totMEM*tol3,' Gb'
+ elseif(totMEM<one) then   ! Mb to Kb                                
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object     ',totMEM*thousand,' Kb'
+ else                      ! Mb                                      
+  write(msg,'(a,f10.3,a)') 'Mem. required for storing RDMd object     ',totMEM,' Mb'
  endif 
  call write_output(msg)
  ! Allocate arrays
@@ -169,13 +182,22 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  allocate(RDMd%DM2_Jsr(RDMd%NBF_occ*RDMd%NBF_occ));RDMd%DM2_Jsr(:)=zero;   
  allocate(RDMd%DM2_Lsr(RDMd%NBF_occ*RDMd%NBF_occ));RDMd%DM2_Lsr(:)=zero;   
  allocate(RDMd%Docc_gamma(RDMd%NBF_occ*RDMd%Ngammas));RDMd%Docc_gamma(:)=zero; 
- allocate(RDMd%DDM2_gamma_J(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_J=zero;
- allocate(RDMd%DDM2_gamma_K(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_K=zero; 
- allocate(RDMd%DDM2_gamma_L(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_L=zero; 
- allocate(RDMd%DDM2_gamma_Jsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Jsr=zero; 
- allocate(RDMd%DDM2_gamma_Lsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Lsr=zero; 
+ if(RDMd%INOF>-1) then
+  allocate(RDMd%DDM2_gamma_J(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_J=zero;
+  allocate(RDMd%DDM2_gamma_K(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_K=zero; 
+  allocate(RDMd%DDM2_gamma_L(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_L=zero; 
+  allocate(RDMd%DDM2_gamma_Jsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Jsr=zero; 
+  allocate(RDMd%DDM2_gamma_Lsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Lsr=zero; 
+  allocate(RDMd%Dfni_ni(RDMd%NBF_occ))
+ else
+  allocate(RDMd%t_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd=zero;
+  allocate(RDMd%t_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd_old=zero;
+  allocate(RDMd%z_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%z_pccd=zero;
+  allocate(RDMd%z_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%z_pccd_old=zero;
+  allocate(RDMd%tz_residue(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%tz_residue=zero;
+ endif  
  allocate(RDMd%GAMMAs_old(RDMd%Ngammas));RDMd%GAMMAs_old=zero;
- allocate(RDMd%DM2_iiii(RDMd%NBF_occ),RDMd%Dfni_ni(RDMd%NBF_occ));RDMd%DM2_iiii(RDMd%NBF_occ)=zero; 
+ allocate(RDMd%DM2_iiii(RDMd%NBF_occ));RDMd%DM2_iiii(RDMd%NBF_occ)=zero; 
  allocate(RDMd%occ(RDMd%NBF_occ),RDMd%chempot_orb(RDMd%NBF_occ),RDMd%occ_dyn(RDMd%NBF_occ))
  RDMd%occ=zero; RDMd%chempot_orb=zero; RDMd%occ_dyn=zero;
 
@@ -214,12 +236,21 @@ subroutine rdm_free(RDMd)
  deallocate(RDMd%DM2_iiii)
  deallocate(RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L) 
  deallocate(RDMd%DM2_Jsr,RDMd%DM2_Lsr) 
- deallocate(RDMd%Docc_gamma,RDMd%Dfni_ni) 
- deallocate(RDMd%DDM2_gamma_J)
- deallocate(RDMd%DDM2_gamma_K)
- deallocate(RDMd%DDM2_gamma_L)
- deallocate(RDMd%DDM2_gamma_Jsr)
- deallocate(RDMd%DDM2_gamma_Lsr)
+ deallocate(RDMd%Docc_gamma) 
+ if(RDMd%INOF>-1) then
+  deallocate(RDMd%Dfni_ni) 
+  deallocate(RDMd%DDM2_gamma_J)
+  deallocate(RDMd%DDM2_gamma_K)
+  deallocate(RDMd%DDM2_gamma_L)
+  deallocate(RDMd%DDM2_gamma_Jsr)
+  deallocate(RDMd%DDM2_gamma_Lsr)
+ else
+  deallocate(RDMd%t_pccd)
+  deallocate(RDMd%t_pccd_old)
+  deallocate(RDMd%z_pccd)
+  deallocate(RDMd%z_pccd_old)
+  deallocate(RDMd%tz_residue)
+ endif
 
 end subroutine rdm_free
 !!***
@@ -697,6 +728,60 @@ integer::igamma,iunit=312
 
 end subroutine print_gammas_old
 !!***
+
+!!***
+!!****f* DoNOF/print_amplitudes_old
+!! NAME
+!! print_tz_amplitudes_old
+!!
+!! FUNCTION
+!!  Print the t_pccd and z_pccd vectors allocated in rdm_t to the binary files
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine print_tz_amplitudes_old(RDMd)
+!Arguments ------------------------------------
+!scalars
+ class(rdm_t),intent(inout)::RDMd
+!arrays
+!Local variables ------------------------------
+!scalars
+integer::iamp,aamp,iunit=312
+!arrays
+
+!************************************************************************
+
+ ! Print the t_pccd
+ open(unit=iunit,form='unformatted',file='TAMP')
+ do iamp=1,RDMd%Npairs
+  do aamp=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)
+   write(iunit) iamp,aamp,RDMd%t_pccd(iamp,aamp)
+  enddo
+ enddo
+ write(iunit) 0,0,zero
+ close(iunit)
+
+ ! Print the z_pccd
+ open(unit=iunit,form='unformatted',file='ZAMP')
+ do iamp=1,RDMd%Npairs
+  do aamp=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)
+   write(iunit) iamp,aamp,RDMd%z_pccd(iamp,aamp)
+  enddo
+ enddo
+ write(iunit) 0,0,zero
+ close(iunit)
+
+end subroutine print_tz_amplitudes_old
+!!***
+
 
 end module m_rdmd
 !!***

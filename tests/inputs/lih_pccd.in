@@ -1,0 +1,18 @@
+&molgw
+ scf='hf'
+
+ basis='cc-pVDZ'
+ auxil_basis='PAUTO'
+ gaussian_type='cart' 
+ init_hamiltonian='core'
+
+ natom=2
+
+ postscf='noft'
+ noft_functional='pccd'
+
+
+/
+Li 0.000000000 0.000000000  0.00000
+H  0.000000000 0.000000000  6.00000
+

@@ -389,7 +389,7 @@ subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ER
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-two*step
   call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=grad_igamma-eight*Energy_num
-  ! -2step 
+  ! -2*step 
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
   call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=grad_igamma+Energy_num

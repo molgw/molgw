@@ -819,8 +819,8 @@ subroutine reshuffle_distribution_3center()
   endif
 
   if( cntxt_eri3_ao > 0 ) then
-    mlocal = NUMROC(nauxil_global,MB_eri3_ao,iprow_eri3_ao,first_row,nprow_eri3_ao)
-    nlocal = NUMROC(npair         ,NB_eri3_ao,ipcol_eri3_ao,first_col,npcol_eri3_ao)
+    mlocal = NUMROC(npair        ,MB_eri3_ao,iprow_eri3_ao,first_row,nprow_eri3_ao)
+    nlocal = NUMROC(nauxil_global,NB_eri3_ao,ipcol_eri3_ao,first_col,npcol_eri3_ao)
   else
     mlocal = -1
     nlocal = -1
@@ -831,11 +831,11 @@ subroutine reshuffle_distribution_3center()
   if( cntxt_3center > 0 ) then
     call move_alloc(eri_3center,eri_3center_tmp)
 
-    call DESCINIT(desc3final,nauxil_global,npair,MB_eri3_ao,NB_eri3_ao,first_row,first_col,cntxt_eri3_ao,MAX(1,mlocal),info)
+    call DESCINIT(desc3final,npair,nauxil_global,MB_eri3_ao,NB_eri3_ao,first_row,first_col,cntxt_eri3_ao,MAX(1,mlocal),info)
 
     call clean_allocate('TMP 3-center integrals',eri_3center,mlocal,nlocal)
 
-    call PDGEMR2D(nauxil_global,npair,eri_3center_tmp,1,1,desc_eri3,eri_3center,1,1,desc3final,cntxt_3center)
+    call PDGEMR2D(npair,nauxil_global,eri_3center_tmp,1,1,desc_eri3,eri_3center,1,1,desc3final,cntxt_3center)
     call clean_deallocate('TMP 3-center integrals',eri_3center_tmp)
   else
     call clean_deallocate('3-center integrals',eri_3center)

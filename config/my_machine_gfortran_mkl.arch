@@ -1,0 +1,13 @@
+# Compilation with MKL include
+FC=gfortran 
+
+CPPFLAGS=-DHAVE_MKL
+
+CXX=g++
+FCFLAGS=-cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 
+CXXFLAGS=-cpp -O3 -march=native -mtune=native
+
+# MKL with threads
+LAPACK=-m64  -Wl,--start-group ${MKLROOT}/lib/libmkl_gf_lp64.a ${MKLROOT}/lib/libmkl_sequential.a ${MKLROOT}/lib/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl
+
+LIBCINT=-L/opt/libcint-6.1.2-gcc/ -lcint

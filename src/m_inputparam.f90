@@ -272,25 +272,25 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWSOSEX2','GW+SOSEX2')
+    case('GWSOSEX2','GW+SOSEX2','GW+2SOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
-    case('GWSOSEX2_PADE','GW+SOSEX2_PADE')
+    case('GWSOSEX2_PADE','GW+SOSEX2_PADE','GW+2SOSEX_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWGWGWG','GW+GWGWG')
+    case('GWGWGWG','GW+GWGWG','GW+G3W2')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGWG
       factor_sosex = 2.0_dp
-    case('GWGWGWG_PADE','GW+GWGWG_PADE')
+    case('GWGWGWG_PADE','GW+GWGWG_PADE','GW+G3W2_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGWG
       factor_sosex = 2.0_dp
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWGWGWG_NUMERICAL','GW+GWGWG_NUMERICAL')
+    case('GWGWGWG_NUMERICAL','GW+GWGWG_NUMERICAL','GW+G3W2_NUMERICAL')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGWG_NUMERICAL
       factor_sosex = 2.0_dp
@@ -329,7 +329,7 @@ subroutine init_calculation_type(scf,postscf)
     case('EVMP3_SELFENERGY','EVPT3','EVGF3')
       calc_type%selfenergy_approx = PT3
       calc_type%selfenergy_technique = EVSC
-    case('NOFT')
+    case('NOFT','PCCD')
       calc_type%is_noft   =.TRUE.
     case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
       calc_type%selfenergy_approx = TWO_RINGS
@@ -630,6 +630,15 @@ subroutine init_dft_type(key)
     dft_xc(2)%id = XC_GGA_X_HJS_PBE
     dft_xc(1)%coeff = 1.00_dp - (alpha_hybrid + beta_hybrid)
     dft_xc(2)%coeff = beta_hybrid
+    dft_xc(2)%gamma = gamma_hybrid
+  case('RSH-NOFT')
+    dft_xc(1)%id = XC_GGA_X_ITYH
+    dft_xc(2)%id = XC_GGA_C_LYPR
+    beta_hybrid   = 1.00_dp
+    dft_xc(1)%coeff = beta_hybrid
+    dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
+    if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=2.00_dp
+    dft_xc(1)%gamma = gamma_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   case('LDA0')
     alpha_hybrid = 0.25_dp

@@ -139,7 +139,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   ! tddft_charge = -999.0 is the default value that implies tddft_charge=charge
   if( ABS(tddft_charge+999.0_dp) > 1.0e-5_dp .AND. ABS(tddft_charge-charge)> 1.0e-5_dp ) then
     write(stdout,*) 'Set new occupations for TDDFT'
-    call set_occupation(0.0_dp,electrons+charge-tddft_charge,magnetization,RESHAPE([0.0_dp],[1,1]),occupation)
+    ! electrons already contains -charge
+    call set_occupation(0.0_dp, electrons+charge-tddft_charge, tddft_magnetization, RESHAPE([0.0_dp],[1,1]), occupation)
   endif
 
   if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then

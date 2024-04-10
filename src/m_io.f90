@@ -3366,13 +3366,14 @@ end subroutine read_gaussian_fchk
 ! This routine reads the FCHK file to produce the guess for the MOs:
 ! Author: Mauricio Rodriguez-Mayorga
 !=========================================================================
-subroutine read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
+subroutine read_guess_fchk(c_matrix,file_name,basis,nstate,nspin,energy)
   implicit none
 
   integer,intent(in)     :: nstate,nspin
   type(basis_set),intent(in)   :: basis
-  real(dp),intent(inout) :: c_matrix(:,:,:)
-  character(len=*),intent(in) :: file_name
+  character(len=*),intent(in)  :: file_name
+  real(dp),intent(inout)       :: c_matrix(:,:,:)
+  real(dp),intent(inout),optional :: energy(:,:)
   !=====
   character(len=100) :: keyword
   character(len=256) :: line
@@ -3386,7 +3387,7 @@ subroutine read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
   integer  :: f_aos(10)
   integer  :: g_aos(15)
   integer,allocatable  :: ao_map(:)
-  real(dp),allocatable :: c_coef(:),c_coef_tmp(:)
+  real(dp),allocatable :: c_coef(:),c_coef_tmp(:),energy_tmp(:)
   !=====
 
   allocate(ao_map(basis%nbf),c_coef_tmp(basis%nbf))
@@ -3495,7 +3496,37 @@ subroutine read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
     enddo
     c_matrix(:,istate,1)=c_coef_tmp(ao_map(:))
   enddo
- 
+
+  if (present(energy) ) then
+
+    allocate(energy_tmp(basis%nbf))
+
+    rewind(fu)
+    ! Read the fchk file until the Beta MO coefficients are found
+
+    keyword='Alpha Orbital Energies'
+    found = .FALSE.
+    do while( .NOT. found )
+      read(fu,'(a)',iostat=istat) line
+      if( IS_IOSTAT_END(istat) ) then
+        call issue_warning(TRIM(keyword)//' not found in file')
+        return
+      endif
+      found = ( INDEX(line,TRIM(keyword)) /= 0 )
+    enddo
+    write(stdout,'(/,1x,a)') 'Reading Alpha Orbital Energies '
+    do ijbf=1,(basis%nbf/stride-1)*stride+1,stride
+      read(fu,*) energy_tmp(ijbf:ijbf+stride-1)
+    enddo
+    if( MODULO(basis%nbf,stride) /=0 ) then
+      read(fu,*) energy_tmp((basis%nbf/stride)*stride+1:basis%nbf)
+    endif
+    energy(:,1)=energy_tmp(:)
+
+    deallocate(energy_tmp)
+
+  endif
+
   if ( nspin>1 ) then
 
     rewind(fu)

@@ -26,7 +26,7 @@ module m_gammatodm2
  implicit none
 
  private :: dm2_hartree,dm2_hf,dm2_mbb,dm2_ca,dm2_cga,dm2_gu,dm2_power,dm2_pnof5,dm2_pnof7,dm2_gnof
- private :: dm2_intra
+ private :: dm2_intra,dm2_pccd
 !!***
 
  public :: gamma_to_2rdm
@@ -270,6 +270,8 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
  if(RDMd%INOF==0) then
   call dm2_hf(RDMd,RDMd%Docc_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
+ elseif(RDMd%INOF==-1) then
+  call dm2_pccd(RDMd,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
  elseif(RDMd%INOF==100) then
   call dm2_mbb(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
@@ -301,8 +303,9 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
 !       DM2_Jsr and DDM2_gamma_Jsr
 !                 &
 !       DM2_Lsr and DDM2_gamma_Lsr
+!          (except for pCDD)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- if(RDMd%irange_sep/=0) then
+ if(RDMd%irange_sep/=0 .and. RDMd%INOF>-1) then
   call dm2_hartree(RDMd,RDMd%Docc_gamma,RDMd%DM2_Jsr,RDMd%DDM2_gamma_Jsr)
   if(RDMd%irange_sep==1) then
    call dm2_intra(RDMd,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_Jsr,RDMd%DM2_Lsr,&
@@ -386,7 +389,7 @@ end subroutine dm2_hartree
 !! DM2_iiii=DM2 same orb elements
 !! DM2_J=DM2 elements that use J integrals 
 !! DM2_K=DM2 elements that use K integrals 
-!! DM2_K=DM2 elements that use L integrals 
+!! DM2_L=DM2 elements that use L integrals 
 !! DDM2_gamma_J=Derivative of the DM2 elements w.r.t. gamma that use J integrals 
 !! DDM2_gamma_K=Derivative of the DM2 elements w.r.t. gamma that use K integrals
 !! DDM2_gamma_L=Derivative of the DM2 elements w.r.t. gamma that use L integrals
@@ -1258,28 +1261,31 @@ subroutine dm2_gnof(RDMd,Docc_gamma,Docc_dyn,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,D
   enddo
  enddo
  deallocate(FIs,DFIs)
-!- - - - - - - - - - - - - - - - - - - - - - - - - - -              
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !   Dynamic
-!- - - - - - - - - - - - - - - - - - - - - - - - - - -              
- do iorb=RDMd%Nfrozen+1,RDMd%Nbeta_elect
-  do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
-   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
-   DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
-  &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+! (if Ista = 1 it is ignored and we only retain the non-dyn/static contrib)
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ if(RDMd%Ista==0) then
+  do iorb=RDMd%Nfrozen+1,RDMd%Nbeta_elect
+   do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
+    DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
+    DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
+   &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+   enddo
   enddo
- enddo
- do iorb=RDMd%Nalpha_elect+1,RDMd%NBF_occ
-  do iorb1=RDMd%Nfrozen+1,RDMd%Nbeta_elect
-   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
-   DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
-  &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+  do iorb=RDMd%Nalpha_elect+1,RDMd%NBF_occ
+   do iorb1=RDMd%Nfrozen+1,RDMd%Nbeta_elect
+    DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)-sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
+    DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)-Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
+   &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+   enddo
+   do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
+    DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)+sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
+    DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)+Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
+   &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
+   enddo
   enddo
-  do iorb1=RDMd%Nalpha_elect+1,RDMd%NBF_occ
-   DM2_L(iorb,iorb1) = DM2_L(iorb,iorb1)+sqrt_occ_dyn(iorb)*sqrt_occ_dyn(iorb1)+RDMd%occ_dyn(iorb)*RDMd%occ_dyn(iorb1)
-   DDM2_gamma_L(iorb,iorb1,:) = DDM2_gamma_L(iorb,iorb1,:)+Dsqrt_occ_dyn(iorb,:)*sqrt_occ_dyn(iorb1) &
-  &  +Docc_dyn(iorb,:)*RDMd%occ_dyn(iorb1)      
-  enddo
- enddo
+ endif
  deallocate(sqrt_occ_dyn,Dsqrt_occ_dyn)
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 !                Intra-pair interactions for GNOF(Nc)
@@ -1326,6 +1332,150 @@ subroutine dm2_gnof(RDMd,Docc_gamma,Docc_dyn,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,D
  enddo
 !-----------------------------------------------------------------------
 end subroutine dm2_gnof
+!!***
+
+!!***
+!!****f* DoNOF/dm2_pccd
+!! NAME
+!! dm2_pccd
+!!
+!! FUNCTION
+!!  Build from the occ numbers and the 2-RDM elements for pCCD
+!!  We may need to build RDMd%DM2_Jsr in here for range-sep
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!! DM2_iiii=DM2 same orb elements
+!! DM2_J=DM2 elements that use J integrals 
+!! DM2_K=DM2 elements that use K integrals 
+!! DM2_L=DM2 elements that use L integrals 
+!!
+!! PARENTS
+!!
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
+!Arguments ------------------------------------
+!scalars
+ type(rdm_t),intent(inout)::RDMd
+!arrays
+ real(dp),dimension(RDMd%NBF_occ),intent(inout)::DM2_iiii
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,iorb2,iorb3
+!arrays
+ real(dp),allocatable,dimension(:,:)::xij,xab,xia
+!************************************************************************
+
+!- - - - - - - - - - - - - - - - - - - - - - - -              
+!  Build intermediates
+!- - - - - - - - - - - - - - - - - - - - - - - -              
+ allocate(xij(RDMd%Npairs,RDMd%Npairs));xij=zero;
+ allocate(xab(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));xab=zero;
+ allocate(xia(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));xia=zero;
+ 
+ ! xij
+ do iorb=1,RDMd%Npairs ! Occ
+  do iorb1=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+   xij(iorb,:)=xij(iorb,:)+RDMd%t_pccd(iorb,iorb1)*RDMd%z_pccd(:,iorb1)
+  enddo
+ enddo
+
+ ! xab
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  do iorb1=1,RDMd%Npairs ! Occ
+   xab(iorb,:)=xab(iorb,:)+RDMd%t_pccd(iorb1,:)*RDMd%z_pccd(iorb1,iorb)
+  enddo
+ enddo
+
+ ! xia
+ do iorb=1,RDMd%Npairs ! Occ
+  do iorb1=1,RDMd%Npairs ! Occ
+   xia(iorb,:)=xia(iorb,:)+xij(iorb,iorb1)*RDMd%t_pccd(iorb1,:) 
+  enddo
+ enddo
+
+ ! Build Occ
+ RDMd%occ=zero
+ RDMd%occ(1:RDMd%Nfrozen)=one
+ do iorb=1,RDMd%Npairs ! Occ
+  iorb1=iorb+RDMd%Nfrozen
+  RDMd%occ(iorb1)=one-xij(iorb,iorb)
+ enddo
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  iorb1=iorb+RDMd%Nfrozen+RDMd%Npairs
+  RDMd%occ(iorb1)=xab(iorb,iorb)
+ enddo 
+
+ ! Hartree terms DM2_Jpq = 2NpNq
+ DM2_L=zero; DM2_K=zero;
+ do iorb=1,RDMd%NBF_occ
+  do iorb1=1,RDMd%NBF_occ
+   DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
+  enddo
+ enddo
+
+ ! Build D_ii^ii
+ do iorb=1,RDMd%Nfrozen
+  DM2_iiii(iorb)=RDMd%occ(iorb)
+  DM2_J(iorb,iorb)=zero
+ enddo
+ do iorb=1,RDMd%Npairs ! Occ
+  iorb1=iorb+RDMd%Nfrozen
+  DM2_iiii(iorb1)=one-xij(iorb,iorb)
+  DM2_J(iorb1,iorb1)=zero
+ enddo
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  iorb1=iorb+RDMd%Nfrozen+RDMd%Npairs
+  DM2_iiii(iorb1)=xab(iorb,iorb)
+  DM2_J(iorb1,iorb1)=zero
+ enddo
+
+ ! Build D_ii^pp, D_pp^ii, D_ip,ip, and D_pi,pi 
+ do iorb=1,RDMd%Npairs ! Occ
+  iorb1=iorb+RDMd%Nfrozen
+  ! D_ii^jj and D_ij^ij for i/=j
+  do iorb2=1,RDMd%Npairs ! Occ
+   iorb3=iorb2+RDMd%Nfrozen
+   if(iorb/=iorb2) then
+    DM2_J(iorb1,iorb3)=two*(one-xij(iorb,iorb)-xij(iorb2,iorb2))       
+    DM2_L(iorb1,iorb3)=xij(iorb,iorb2)  
+   endif
+  enddo
+  ! D_ii^aa, D_aa^ii D_ia^ia
+  do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+   iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+   DM2_J(iorb1,iorb3)=two*(xab(iorb2,iorb2)-RDMd%t_pccd(iorb,iorb2)*RDMd%z_pccd(iorb,iorb2))
+   DM2_J(iorb3,iorb1)=DM2_J(iorb1,iorb3)
+   DM2_L(iorb1,iorb3)=RDMd%t_pccd(iorb,iorb2)+xia(iorb,iorb2)-two*RDMd%t_pccd(iorb,iorb2) &
+  &                  *(xab(iorb2,iorb2)+xij(iorb,iorb)-RDMd%t_pccd(iorb,iorb2)*RDMd%z_pccd(iorb,iorb2))
+   DM2_L(iorb3,iorb1)=RDMd%z_pccd(iorb,iorb2)
+  enddo
+ enddo  
+ 
+ ! Build D_aa^bb for a/=b
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  iorb1=iorb+RDMd%Nfrozen+RDMd%Npairs
+  do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+   iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+   if(iorb/=iorb2) then
+    DM2_L(iorb1,iorb3)=xab(iorb,iorb2)
+    DM2_J(iorb1,iorb3)=zero
+   endif
+  enddo
+ enddo
+
+ ! Exchange elements D_pq^qp = -1/2 D_pq^pq for p/=q
+ DM2_K=-half*DM2_J
+
+!-----------------------------------------------------------------------
+ deallocate(xij,xab,xia)
+!-----------------------------------------------------------------------
+end subroutine dm2_pccd
 !!***
 
 end module m_gammatodm2

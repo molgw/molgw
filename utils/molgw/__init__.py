@@ -14,7 +14,7 @@ molgw module contains classes and modules to automate running and reading of MOL
 """
 
 __author__  = "Fabien Bruneval"
-__version__ = "3.2"
+__version__ = "3.3"
 
 import math
 import os, sys, shutil, subprocess
@@ -22,7 +22,10 @@ import difflib
 import json
 import copy
 import pathlib, glob
-from yaml import load, dump
+try:
+    from yaml import load, dump
+except ImportError:
+    sys.exit("import yaml failed. Please install this module, for instance with  \"pip install PyYAML\".")
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -45,22 +48,23 @@ periodic_table = [ 'H',                                                         
                 ]
 z_element = {element: index+1 for index, element in enumerate(periodic_table)}
 
-molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent)
+molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent.parent)
 exe  = molgw_rootfolder + "/molgw"
 
+########################################################################
+try:
+    with open(molgw_rootfolder + '/src/input_variables.yaml', 'r') as stream:
+        input_keywords = load(stream,Loader=Loader)
+except:
+    print("input_variables.yaml file not found or corrupted")
+    input_keywords = {}
+    pass
 
 ########################################################################
 def check_input(pyinput):
     sanity = True
-    yml = molgw_rootfolder + '/src/input_variables.yaml'
-    with open(yml, 'r') as stream:
-        try:
-            input_vars = load(stream,Loader=Loader)
-        except:
-            sys.exit('input_variables.yaml file is corrupted')
-            pass
 
-    valid_keywords = [k for k in input_vars.keys() ]
+    valid_keywords = [k for k in input_keywords.keys() ]
     additional_keywords = ["xyz", "rawxyz"]
     valid_keywords += additional_keywords
 
@@ -81,7 +85,7 @@ def check_input(pyinput):
             sanity = False
 
     # Check all mandatory keywords are there
-    mandatory = [k for k in input_vars.keys() if input_vars[k]["mandatory"]=="yes" ]
+    mandatory = [k for k in input_keywords.keys() if input_keywords[k]["mandatory"]=="yes" ]
     for k in mandatory:
         if not k in [key for key in pyinput_lower]:
             print('Mandatory keyword not present:   ' + k)
@@ -96,39 +100,34 @@ def check_input(pyinput):
 
 
 ########################################################################
-def run(inputfile="molgw.in",outputfile="molgw.out",pyinput={},mpirun="",executable_path="",openmp=1,tmp="",keep_tmp=False,**kwargs):
+def run(inputfile="molgw.in", outputfile="molgw.out", pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
     if len(tmp) > 0:
-        os.makedirs(tmp,exist_ok=True)
-        current_directory = os.getcwd()
-        #new_working_directory = current_directory + '/' + tmp
-        #os.chdir(new_working_directory)
-        os.chdir(tmp)
+        os.makedirs(tmp, exist_ok=True)
     if len(executable_path) > 0:
         exe_local = executable_path
     else:
         exe_local = exe
     if len(pyinput) > 0:
-        print_input_file(pyinput,inputfile)
+        print_input_file(pyinput, "./" + tmp + "/" + inputfile)
     os.environ['OMP_NUM_THREADS'] = str(openmp)
     if len(mpirun) == 0:
-        process = subprocess.Popen([exe_local,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        process = subprocess.Popen([exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
-        process = subprocess.Popen(mpirun.split()+[exe_local,inputfile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        process = subprocess.Popen(mpirun.split() + [exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
-    if len(outputfile) >0:
-        with open(outputfile,'w') as f:
+    if len(outputfile) > 0:
+        with open("./" + tmp + "/" + outputfile, "w") as f:
             f.write(output.decode("utf-8"))
     if len(error) > 100:
         print(error.decode("utf-8"))
-    with open('molgw.yaml', 'r') as stream:
+    with open("./" + tmp + "/molgw.yaml", "r") as stream:
         try:
-            results = load(stream,Loader=Loader)
+            results = load(stream, Loader=Loader)
         except:
             print('molgw.yaml file is corrupted')
             results = {}
             pass
     if len(tmp) > 0:
-        os.chdir(current_directory)
         if not keep_tmp:
             shutil.rmtree(tmp)
     return results
@@ -179,32 +178,49 @@ def read_xyz_file(filename):
         return structure
 
 ########################################################################
-# structure class is mostly a list of atoms in angstrom
-# with a few method to read, print, transform
-class structure:
+class Molecule:
+    """Molecule class is mostly a list of atoms in angstrom
+    with a few method to read, print, transform
+    """
     def __init__(self,strucin):
         if type(strucin) == str:
+            if os.path.exists(strucin):
+                self.list = read_xyz_file(strucin)
+            else:
+                tmplist = strucin.split("\n")[2:]
+                tmplist = [item for item in tmplist if item != ""]
+                self.list = [ line.split() for line in tmplist ]
+        elif type(strucin) == Molecule:
+            self.list = copy.deepcopy(strucin)
+        else:
+            sys.exit(1)
+    def from_file(self,strucin):
+        if os.path.exists(strucin):
             self.list = read_xyz_file(strucin)
         else:
-            self.list = copy.deepcopy(strucin)
-    def print_xyz_file(self,filename,comment=""):
+            sys.exit(f"File {strucin} does not exist")
+    def from_string(self,strucin):
+        tmplist = strucin.split("\n")[2:]
+        tmplist = [item for item in tmplist if item != ""]
+        self.list = [ line.split() for line in tmplist ]
+    def __repr__(self):
+        return "MOLGW Molecule"
+    def __str__(self):
+        return self.to_string()
+    def __len__(self):
+        return len(self.list)
+    def to_file(self,filename,comment=""):
         with open(filename,'w') as f:
             f.write('{}\n'.format(len(self.list)))
             f.write(comment.strip()+'\n')
-            f.write(self.string())
+            f.write(self.to_string())
             #for atom in self.list:
             #    f.write('{:2}   {:14.8f} {:14.8f} {:14.8f}\n'.format(atom[0],float(atom[1]),float(atom[2]),float(atom[3])))
-    def __repr__(self):
-        return "MOLGW structure (angstrom units)"
-    def string(self):
+    def to_string(self):
         s = ''
         for atom in self.list:
-            s += "{:<2} {:.6f} {:.6f} {:.6f} \n".format(*atom[0:4])
+            s += "{:<2} {:.6f} {:.6f} {:.6f}\n".format(atom[0], float(atom[1]), float(atom[2]), float(atom[3]) )
         return s
-    def __str__(self):
-        return self.string()
-
-
 
 
 ########################################################################
@@ -283,22 +299,6 @@ def check_calc(calc):
 
 
 ########################################################################
-def create_gw100_json(filename,data,**kwargs):
-    dict_gw100 = dict()
-    dict_gw100["code"]= "MOLGW"
-    dict_gw100["code_version"]= __version__
-    dict_gw100["basis"]= "gaussian"
-    dict_gw100["qpe"]= "solved"
-    dict_gw100["DOI"]= "unpublished"
-
-    dict_gw100.update(kwargs)
-    dict_gw100["data"] = data
-
-    with open(filename, 'w') as json_file:
-        json.dump(dict_gw100,json_file,indent=2,separators=(',', ': '))
-
-
-########################################################################
 def print_input_file(pyinput,filename="molgw.in"):
     with open(filename,'w') as f:
         f.write('&molgw\n')
@@ -335,6 +335,15 @@ def print_input_file(pyinput,filename="molgw.in"):
 
 ########################################################################
 # Conversions for stopping power
+
+# time conceversion 
+# atomic units to femtosecond
+def time_au_to_fs(t_au):
+    return 2.4188843265857e-2 * t_au
+
+# femtosecond to atomic units
+def time_fs_to_au(t_fs):
+    return t_fs / 2.4188843265857e-2
 
 # velocity conversion
 def vel_kev_to_au(e_kev,mass=1.0):
@@ -474,7 +483,6 @@ class Molgw_output:
     def chemical_formula(self):
         return get_chemical_formula(self.d)
 
-
 ########################################################################
 class Molgw_output_collection:
     """MOLGW collection of outputs"""
@@ -557,3 +565,6 @@ class Molgw_output_collection:
 
 
 ########################################################################
+
+
+

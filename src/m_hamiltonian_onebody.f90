@@ -1582,8 +1582,14 @@ subroutine setup_electric_field(basis,hext,eext)
 
   if( ABS(electric_field_x) < 1.0e-6_dp  &
      .AND. ABS(electric_field_y) < 1.0e-6_dp &
-     .AND. ABS(electric_field_z) < 1.0e-6_dp ) return
+     .AND. ABS(electric_field_z) < 1.0e-6_dp ) then
+    eext = 0.0_dp
+    return
+  endif
 
+  !
+  ! Electronic part of the external static electric field
+  !
   call setup_dipole_ao(basis,dipole_ao)
 
   hext(:,:) = hext(:,:) + electric_field_x * dipole_ao(:,:,1) &
@@ -1592,12 +1598,15 @@ subroutine setup_electric_field(basis,hext,eext)
 
   deallocate(dipole_ao)
 
+  !
+  ! Nuclear part of the external static electric field
+  !
   efield(1) = electric_field_x
   efield(2) = electric_field_y
   efield(3) = electric_field_z
   eext = 0.0_dp
   do icenter=1,ncenter_nuclei
-    eext = eext - zvalence(icenter) * SUM( xatom(:,icenter) * Efield(:) )
+    eext = eext - zvalence(icenter) * SUM( xatom(:,icenter) * efield(:) )
   enddo
 
 end subroutine setup_electric_field

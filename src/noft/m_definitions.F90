@@ -29,6 +29,7 @@ module m_definitions
  real(dp), parameter :: tol6 = 1.0d-6
  real(dp), parameter :: tol8 = 1.0d-8
  real(dp), parameter :: tol9 = 1.0d-9
+ real(dp), parameter :: tol10 = 1.0d-10
  real(dp), parameter :: tol16 = 1.0d-16
  real(dp), parameter :: tol20 = 1.0d-20
  real(dp), parameter :: thousand = 1.0d3
