@@ -8,6 +8,7 @@ endif
 -include ./my_machine.arch
 
 PREFIX ?=
+LDFLAGS ?=
 PYTHON ?= python3
 FCFLAGS ?= -O2 -cpp
 CXXFLAGS ?=-O2
@@ -25,7 +26,7 @@ LIBCINT ?=-lcint
 
 FC_W_OPTS= $(FC) $(FCFLAGS) $(OPENMP) $(CPPFLAGS)
 CXX_W_OPTS= $(CXX) $(CXXFLAGS) $(CPPFLAGS)
-LINKER= $(LIBTOOL) $(FC_W_OPTS)
+LINKER= $(LIBTOOL) $(FC_W_OPTS) $(LDFLAGS)
 
 LINKS= -lstdc++ -lm
 ifeq ($(LIBXC_ROOT),)
