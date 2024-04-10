@@ -1214,13 +1214,13 @@ excit_name:
   default: 'no'
   comment: "Sets the type of excitation of a system in the real-time dynamics.  'GAU' stands for a linearly polarized uniform Gaussian electric field"
 
-excit_omega:
+excit_width:
   family: rt_tddft
   datatype: real
   mandatory: 'no'
   experimental: 'no'
   default: 0.2
-  comment: The excitation pulse width in atomic units for the real-time dynamics.
+  comment: The excitation pulse duration in atomic units for the real-time dynamics.
 
 excit_time0:
   family: rt_tddft

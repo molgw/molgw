@@ -136,7 +136,7 @@
     excit_dir,       &
     excit_kappa,       &
     excit_name,       &
-    excit_omega,       &
+    excit_width,       &
     excit_time0,       &
     n_hist,       &
     n_iter,       &
@@ -347,7 +347,7 @@
  excit_dir=(/ 1.0_dp , 0.0_dp , 0.0_dp /)
  excit_kappa=2e-05_dp 
  excit_name='no'
- excit_omega=0.2_dp 
+ excit_width=0.2_dp 
  excit_time0=3.0_dp 
  n_hist=2
  n_iter=2

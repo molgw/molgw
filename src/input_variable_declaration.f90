@@ -132,7 +132,7 @@
  real(dp),protected :: excit_dir(3)
  real(dp),protected :: excit_kappa
  character(len=256),protected :: excit_name
- real(dp),protected :: excit_omega
+ real(dp),protected :: excit_width
  real(dp),protected :: excit_time0
  integer,protected :: n_hist
  integer,protected :: n_iter

@@ -93,7 +93,7 @@ module m_inputparam
   type excitation_type
     character(len=256)   :: name
     integer              :: form
-    real(dp)             :: kappa, omega, time0
+    real(dp)             :: kappa, width, time0
     real(dp)             :: dir(3)
   end type
 
@@ -423,7 +423,7 @@ subroutine init_excitation_type()
 
   excit_type%name  = excit_name
   excit_type%kappa = excit_kappa
-  excit_type%omega = excit_omega
+  excit_type%width = excit_width
   excit_type%time0 = excit_time0
   excit_type%dir   = excit_dir
 

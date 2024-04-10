@@ -59,8 +59,8 @@
   write(stdout,'(1x,a32,2x,"(",3(es16.8,2x),")")') 'excit_dir',excit_dir 
   write(stdout,'(1x,a32,2x,es16.8)') 'excit_kappa',excit_kappa 
   write(stdout,'(1x,a32,6x,a)') 'excit_name',TRIM(excit_name) 
-  write(stdout,'(1x,a32,2x,es16.8)') 'excit_omega',excit_omega 
   write(stdout,'(1x,a32,2x,es16.8)') 'excit_time0',excit_time0 
+  write(stdout,'(1x,a32,2x,es16.8)') 'excit_width',excit_width 
   write(stdout,'(1x,a32,6x,a)') 'force_energy_qp',force_energy_qp 
   write(stdout,'(1x,a32,6x,a)') 'frozencore',frozencore 
   write(stdout,'(1x,a32,2x,es16.8)') 'gamma_hybrid',gamma_hybrid 

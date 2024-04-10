@@ -38,8 +38,8 @@ module m_tddft_propagator
   real(dp),private                   :: time_read !defaut=0.0_dp
   real(dp),allocatable,private       :: xatom_start(:,:)
   real(dp),allocatable,private       :: xbasis_start(:,:)
-  real(dp),allocatable,private       :: count_atom_e(:,:), count_atom_e_copy(:,:)
   real(dp),private                   :: excit_field_norm
+  real(dp),allocatable,private       :: excit_field_time(:,:)
   logical,private                    :: moving_basis
   !==hamiltonian extrapolation variables==
   real(dp),allocatable,private       :: extrap_coefs(:)
@@ -246,7 +246,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     call setup_nucleus_ecp(basis,hamiltonian_nucleus)
   endif
 
-  if(write_step / time_step - NINT( write_step / time_step ) > 1.0E-10_dp .OR. write_step < time_step ) then
+  if( write_step / time_step - NINT( write_step / time_step ) > 1.0E-10_dp .OR. write_step < time_step ) then
     call die("Tddft error: write_step is not a multiple of time_step or smaller than time_step.")
   end if
 
@@ -331,6 +331,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   ! Number of time steps
   ntau = NINT( (time_sim-time_min) / time_step )
+  allocate(excit_field_time(3,ntau))
 
   if(excit_type%form==EXCIT_LIGHT) then
     call clean_allocate('Dipole_basis for TDDFT',dipole_ao,basis%nbf,basis%nbf,3)
@@ -420,7 +421,14 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     ! save the initial complete c_matrix, nstate x nstate
     call hdf_write_dataset(fid, 'c_matrix_complete_0_real', c_matrix)
 
-    if( excit_type%form == EXCIT_LIGHT ) call hdf_write_dataset(fid, 'dipole_ao', dipole_ao)
+    if( excit_type%form == EXCIT_LIGHT ) then
+      call hdf_write_dataset(fid, 'excitation_kappa', excit_type%kappa)
+      call hdf_write_attribute(fid, 'excitation_kappa', 'excitation_name', excit_type%name)
+      call hdf_write_dataset(fid, 'excitation_width', excit_type%width)
+      call hdf_write_dataset(fid, 'excitation_time0', excit_type%time0)
+      call hdf_write_dataset(fid, 'excitation_dir', excit_type%dir)
+      call hdf_write_dataset(fid, 'dipole_ao', dipole_ao)
+    end if
 
     if( print_c_matrix_cmplx_hdf5_ ) then
       call hdf_create_group(fid, 'c_matrix')
@@ -613,6 +621,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
 #if defined(HAVE_HDF5)
     call hdf_write_dataset(fid, 'nsnap', itau)
+    call hdf_write_dataset(fid, 'excitation_field', excit_field_time)
 
     if(print_c_matrix_cmplx_hdf5_) call hdf_close_group(c_mat_group)
     if(print_p_matrix_MO_block_hdf5_) call hdf_close_group(p_mat_group)
@@ -666,6 +675,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   deallocate(xatom_start)
   deallocate(xbasis_start)
+  deallocate(excit_field_time)
 
   call clean_deallocate('Dipole_basis for TDDFT',dipole_ao)
 
@@ -2655,6 +2665,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   ! Excitation part of the Hamiltonian
   !
   en_tddft%excit = 0.0_dp
+  excit_field_time(:,itau) = 0.0_dp
 
   select case(excit_type%form)
     !
@@ -2664,14 +2675,15 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
     calc_excit_ = .FALSE.
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'GAU' )
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'HSW'  &
-       .AND. ABS(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
+       .AND. ABS(time_cur - excit_type%time0 - excit_type%width/2.0_dp)<=excit_type%width/2.0_dp )
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'STEP' &
-       .AND. ABS(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
+       .AND. ABS(time_cur - excit_type%time0 - excit_type%width/2.0_dp)<=excit_type%width/2.0_dp )
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  &
        .AND. ABS(time_cur - excit_type%time0)<time_step_cur/2.0_dp )
     if( itau == 0 ) calc_excit_=.FALSE.
     if ( calc_excit_ ) then
       call calculate_excit_field(time_cur,excit_field)
+      excit_field_time(:,itau) = excit_field(:)
       excit_field_norm = NORM2(excit_field(:))
       do idir=1,3
         do ispin=1, nspin
@@ -2916,10 +2928,10 @@ subroutine calculate_excit_field(time_cur,excit_field)
 
   select case(excit_type%name)
   case('GAU') !Gaussian electic field
-    excit_field(:) = excit_type%kappa * EXP( -( time_cur-excit_type%time0 )**2 / 2.0_dp / excit_omega**2 ) &
+    excit_field(:) = excit_type%kappa * EXP( -( time_cur-excit_type%time0 )**2 / 2.0_dp / excit_type%width**2 ) &
                      * excit_dir_norm(:)
   case('HSW') !Hann sine window
-    excit_field(:) = excit_type%kappa * SIN( pi / excit_omega * ( time_cur - excit_type%time0  ) )**2 * excit_dir_norm(:)
+    excit_field(:) = excit_type%kappa * SIN( pi / excit_type%width * ( time_cur - excit_type%time0  ) )**2 * excit_dir_norm(:)
   case('DEL') ! Delta excitation
     excit_field(:) = excit_type%kappa * excit_dir_norm(:)
   case('STEP') ! Step excitation
