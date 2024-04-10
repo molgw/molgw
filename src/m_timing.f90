@@ -86,6 +86,8 @@ module m_timing
   integer,parameter :: timing_grid_generation     = 66
   integer,parameter :: timing_grid_wfn            = 67
 
+  integer,parameter :: timing_density_matrix_MO   = 70
+
   integer,parameter :: timing_tmp0                = 90
   integer,parameter :: timing_tmp1                = 91
   integer,parameter :: timing_tmp2                = 92
@@ -354,6 +356,7 @@ subroutine output_timing()
   call output_timing_line('Hamiltonian calculation',timing_tddft_hamiltonian,2)
   call output_timing_line('Kinetic energy',timing_tddft_kin,3)
   call output_timing_line('Complex density matrix',timing_density_matrix_cmplx,3)
+  call output_timing_line('P in MO basis',timing_density_matrix_MO,3)
   call output_timing_line('Electron-Nucleus potential',timing_tddft_hamiltonian_nuc,3)
   call output_timing_line('Auxiliary basis density',timing_tddft_rhoauxil,3)
   call output_timing_line('Hartree potential',timing_tddft_hartree,3)

@@ -10,6 +10,8 @@
 program spectrum
   use m_definitions
   use m_warning
+  use m_string_tools
+  use, intrinsic :: iso_c_binding
   implicit none
 
   integer                    :: ntau,ntau_read,itau,idir,iomega,nomega
@@ -146,12 +148,13 @@ program spectrum
   if(output_damped_) then
     open(newunit=file_dipole_damped, file = name_dipole_damped)
     write(file_dipole_damped,*) "# time(au)                 Dipole_damped_x(D)" // &
-                                "        Dipole_damped_y(D)        Dipole_damped_z(D)   EXP(-m_times(itau) / damp_factor )"
+                               "        Dipole_damped_y(D)        Dipole_damped_z(D)   EXP(-m_times(itau) / damp_factor )"
   endif
   do itau=1,ntau
     dipole_time_damped(itau,:)=dipole_time_ref(itau,:)*EXP(-m_times(itau) / damp_factor )
     if(output_damped_) then
-      write(file_dipole_damped,*) m_times(itau), REAL(dipole_time_damped(itau,:),dp)*au_debye, EXP(-m_times(itau) / damp_factor )
+      write(file_dipole_damped,'(5(es16.8E3, 2x))') m_times(itau), REAL(dipole_time_damped(itau,:),dp)*au_debye,&
+       EXP(-m_times(itau) / damp_factor )
     endif
   enddo
   if(output_damped_) close(file_dipole_damped)
@@ -176,7 +179,7 @@ program spectrum
   if(output_transforms_) then
     open(newunit=file_transforms,file=name_transforms)
     write(file_transforms,*) "# omega(eV), |E_excit_dir(omega)|, real(E_excit_dir(omega))," // &
-                             " aimag(E_excit_dir(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))"
+                            " aimag(E_excit_dir(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))"
   endif
   open(newunit=file_dipolar_spectra,file=name_dipolar_spectra)
   write(file_dipolar_spectra,*) "# omega(eV), transform(dipole_x)/|transform(E_dir)|," // &
@@ -184,26 +187,36 @@ program spectrum
 
   nomega = ntau
   do iomega=1,nomega/2 ! here iomega correspons to frequency
-    omega_factor = 4.0_dp * pi * 2 * pi * (iomega-1) / time_sim / c_speedlight
-    if(2*pi * iomega / time_sim * Ha_eV < 500.0_dp) then
-      write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')  2 * pi * iomega / time_sim * Ha_eV
 
-      do idir=1,3
-        if(ABS(trans_m_excit_field_dir(iomega))>1.0e-15) then
-          write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') &
-                  AIMAG((trans_dipole_time(iomega,idir))/trans_m_excit_field_dir(iomega)) * omega_factor
-        else
-          write(file_dipolar_spectra,"(3(17x,f5.2))",advance='no') -1.0_dp
-        endif
-        if(idir==3) write(file_dipolar_spectra,*)
-      enddo
-      if(output_transforms_) then
-        write(file_transforms,*) pi * iomega / time_sim * Ha_eV, ABS(trans_m_excit_field_dir(iomega)), &
-                                 REAL(trans_m_excit_field_dir(iomega),dp), &
-                                 AIMAG(trans_m_excit_field_dir(iomega)), ABS(trans_dipole_time(iomega,1)), &
-                                 REAL(trans_dipole_time(iomega,1),dp), AIMAG(trans_dipole_time(iomega,1))
+    omega_factor = 4.0_dp * pi * 2.0_dp * pi * (iomega-1) / time_sim / c_speedlight
+
+    write(*,*) omega_factor
+
+    write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')  2.0_dp * pi * iomega / time_sim * Ha_eV
+
+    do idir=1,3
+
+      if(ABS(trans_m_excit_field_dir(iomega))>1.0e-15) then
+        write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') &
+         AIMAG((trans_dipole_time(iomega,idir))/trans_m_excit_field_dir(iomega)) * omega_factor
+      else
+        write(file_dipolar_spectra,"(3(17x,f5.2))",advance='no') -1.0_dp
       endif
+
+      if(idir==3) write(file_dipolar_spectra,*)
+
+    enddo
+
+    if(output_transforms_) then
+      write(file_transforms,"(f16.8,6(2x,es16.8E3))") 2.0_dp * pi * iomega / time_sim * Ha_eV, &
+                               ABS(trans_m_excit_field_dir(iomega)), &
+                               REAL(trans_m_excit_field_dir(iomega),dp), &
+                               AIMAG(trans_m_excit_field_dir(iomega)), &
+                               ABS(trans_dipole_time(iomega,1)), &
+                               REAL(trans_dipole_time(iomega,1),dp), &
+                               AIMAG(trans_dipole_time(iomega,1))
     endif
+
   enddo
 
 
@@ -292,7 +305,7 @@ subroutine get_spectrum_arguments(damp_factor,name_dipole_time,name_excitation, 
       write(stdout,'(1x,a)') "-o , --output file               indicate an ouput spectrum file"
       write(stdout,'(1x,a)') "                                (if different from dipolar_spectra.dat)"
       write(stdout,'(1x,a,a)') "-d , --damping                   damping coefficient in au of time", &
-                             " for the Fourier transform of dipolar moment"
+                              "for the Fourier transform of dipolar moment"
       write(stdout,'(1x,a)') "                               (value by default if 500 au)"
       write(stdout,'(1x,a)') "-od, --output-damped            write damped dipole time dependence in to the dipole_damped.dat file"
       write(stdout,'(1x,a)') "-ot, --output-transfoms         write some Fourier transforms in file transforms.dat"
