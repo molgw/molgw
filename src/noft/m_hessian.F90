@@ -638,12 +638,14 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
       HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)= &
       & + (G_pqrs_cmplx-G_qprs_cmplx-G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! real,real
       & - (G_pqrs_cmplx+G_qprs_cmplx+G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! imag,imag
-      & + four*(G_pqsr_cmplx-G_qprs_cmplx)                                            ! real,imag TODO numerical check it is maybe just 2 or 4
+      & + four*(G_pqsr_cmplx-G_qprs_cmplx)                                            ! real,imag TODO numerical check. is it just 2 or 4 ??
       ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)
+      write(*,*) iorbp,iorbq,iorbr,iorbs,(G_pqrs_cmplx-G_qprs_cmplx-G_pqsr_cmplx+G_qpsr_cmplx) &
+                  -(G_pqrs_cmplx+G_qprs_cmplx+G_pqsr_cmplx+G_qpsr_cmplx)
      enddo
     enddo
     HESSIANd%Gradient_vec_cmplx(ihesa)=two*grad_pq_cmplx
-    ! write(*,*) iorbp,iorbq,two*grad_pq_cmplx
+     write(*,*) iorbp,iorbq,two*grad_pq_cmplx
    enddo
   enddo
 
@@ -662,7 +664,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
   do iorbp=1,HESSIANd%NDIM_hess
    do iorbq=1,HESSIANd%NDIM_hess
     if(abs(HESSIANd%Hessian_mat_cmplx(iorbp,iorbq)-conjg(HESSIANd%Hessian_mat_cmplx(iorbq,iorbp)))>tol8) then
-     write(*,*) iorbp,iorbq,HESSIANd%Hessian_mat_cmplx(iorbp,iorbq),HESSIANd%Hessian_mat_cmplx(iorbq,iorbp)
+     write(*,*) "Err Herm:",iorbp,iorbq,HESSIANd%Hessian_mat_cmplx(iorbp,iorbq),HESSIANd%Hessian_mat_cmplx(iorbq,iorbp)
     endif
    enddo
   enddo
