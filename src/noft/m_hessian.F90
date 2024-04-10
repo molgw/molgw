@@ -678,25 +678,28 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
     E_hcore=E_hcore+two*DM1(iorbp,iorbq)*Hcore(iorbp,iorbq)
     !
     ! Calc. gradient
+    !   Note: The k_pp does not have a real part 
     !
     grad_pq=zero
-    do iorbt=1,NBF_tot !t
-     grad_pq=grad_pq+two*DM1(iorbt,iorbq)*Hcore(iorbt,iorbp) &
-    &               -two*DM1(iorbp,iorbt)*Hcore(iorbq,iorbt)
-     do iorbu=1,NBF_tot ! u
-      do iorbv=1,NBF_tot ! v
-       grad_pq=grad_pq+two*DM2(iorbu,iorbt,iorbv,iorbq)*ERImol(iorbu,iorbt,iorbv,iorbp) &
-       &              -two*DM2(iorbp,iorbu,iorbt,iorbv)*ERImol(iorbq,iorbu,iorbt,iorbv) 
+    if(iorbp/=iorbq) then
+     do iorbt=1,NBF_tot !t
+      grad_pq=grad_pq+two*DM1(iorbt,iorbq)*Hcore(iorbt,iorbp) &
+     &               -two*DM1(iorbp,iorbt)*Hcore(iorbq,iorbt)
+      do iorbu=1,NBF_tot ! u
+       do iorbv=1,NBF_tot ! v
+        grad_pq=grad_pq+two*DM2(iorbu,iorbt,iorbv,iorbq)*ERImol(iorbu,iorbt,iorbv,iorbp) &
+        &              -two*DM2(iorbp,iorbu,iorbt,iorbv)*ERImol(iorbq,iorbu,iorbt,iorbv) 
+       enddo
       enddo
      enddo
-    enddo
+    endif
     ! 
     !
     do iorbr=1,NBF_tot ! r
      do iorbs=1,NBF_tot ! s
       ihesb=iorbr+NBF_tot*(iorbs-1)
       vee=vee+DM2(iorbp,iorbq,iorbr,iorbs)*ERImol(iorbp,iorbq,iorbr,iorbs)
-      if(ihesa>=ihesb) then
+      if(ihesa>=ihesb .and. (iorbp/=iorbq .and. iorbr/=iorbs)) then ! Avoid k_pp and k_rr derivatives 
        ! G_pqrs
        G_pqrs=-two*(DM1(iorbr,iorbq)*Hcore(iorbs,iorbp)+DM1(iorbp,iorbs)*Hcore(iorbq,iorbr))
        if(iorbr==iorbq) then ! q=r
@@ -843,7 +846,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        enddo
        HESSIANd%Hessian_mat(ihesa,ihesb)=G_pqrs+G_qprs+G_pqsr+G_qpsr
        HESSIANd%Hessian_mat(ihesb,ihesa)=HESSIANd%Hessian_mat(ihesa,ihesb)  ! The Real Hessian is symmetric
-      ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat(ihesa,ihesb)
+       ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat(ihesa,ihesb)
       endif
      enddo
     enddo
