@@ -2665,7 +2665,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   ! Excitation part of the Hamiltonian
   !
   en_tddft%excit = 0.0_dp
-  excit_field_time(:,itau) = 0.0_dp
+  if( itau > 0 ) excit_field_time(:,itau) = 0.0_dp
 
   select case(excit_type%form)
     !
