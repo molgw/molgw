@@ -105,12 +105,13 @@ subroutine hessian_init(HESSIANd,NBF_tot,cpx_mos)
 !************************************************************************
 
  HESSIANd%cpx_hessian=cpx_mos
- HESSIANd%NDIM_hess=NBF_tot*NBF_tot
+ HESSIANd%NDIM_hess=NBF_tot*NBF_tot-NBF_tot*(NBF_tot+1)/2
  ! Calculate memory needed
  if(cpx_mos) then
-  totMEM=2*(NBF_tot*NBF_tot*NBF_tot*NBF_tot+NBF_tot*NBF_tot)
+  HESSIANd%NDIM_hess=HESSIANd%NDIM_hess+NBF_tot
+  totMEM=4*HESSIANd%NDIM_hess*HESSIANd%NDIM_hess+2*HESSIANd%NDIM_hess
  else
-  totMEM=NBF_tot*NBF_tot*NBF_tot*NBF_tot+NBF_tot*NBF_tot
+  totMEM=HESSIANd%NDIM_hess*HESSIANd%NDIM_hess+HESSIANd%NDIM_hess
  endif
  totMEM=8*totMEM       ! Bytes
  totMEM=totMEM*tol6    ! Bytes to Mb  
@@ -446,7 +447,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
 !scalars
  integer::ihesa,ihesb
  integer::iorbp,iorbq,iorbr,iorbs,iorbt,iorbu,iorbv
- real(dp)::G_pqrs,G_qprs,G_pqsr,G_qpsr,grad_pq,E_hcore,vee
+ real(dp)::G_pqrs,G_qprs,G_pqsr,G_qpsr,grad_pq
  complex(dp)::G_pqrs_cmplx,G_qprs_cmplx,G_pqsr_cmplx,G_qpsr_cmplx,grad_pq_cmplx,E_hcore_cmplx,vee_cmplx
 !arrays
  character(len=200)::msg
@@ -479,9 +480,9 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
      do iorbu=1,NBF_tot ! u
       do iorbv=1,NBF_tot ! v
        grad_pq_cmplx=grad_pq_cmplx+two*DM2(iorbu,iorbt,iorbv,iorbq)*real(ERImol_cmplx(iorbu,iorbt,iorbv,iorbp)) &
-       &                          -two*DM2(iorbp,iorbu,iorbt,iorbv)*real(ERImol_cmplx(iorbq,iorbu,iorbt,iorbv)) 
+       &                          -two*DM2(iorbp,iorbu,iorbt,iorbv)*real(ERImol_cmplx(iorbq,iorbu,iorbt,iorbv))
        grad_pq_cmplx=grad_pq_cmplx+two*im*DM2(iorbu,iorbt,iorbv,iorbq)*aimag(ERImol_cmplx(iorbu,iorbt,iorbv,iorbp)) &
-       &                          +two*im*DM2(iorbp,iorbu,iorbt,iorbv)*aimag(ERImol_cmplx(iorbq,iorbu,iorbt,iorbv)) 
+       &                          +two*im*DM2(iorbp,iorbu,iorbt,iorbv)*aimag(ERImol_cmplx(iorbq,iorbu,iorbt,iorbv))
       enddo
      enddo
     enddo
@@ -669,35 +670,34 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
 
  else ! Real
 
-  E_hcore=zero; vee=zero; 
+  ihesa=0;
   do iorbp=1,NBF_tot ! p
-   do iorbq=1,NBF_tot ! q
-    ihesa=iorbp+NBF_tot*(iorbq-1)
-    E_hcore=E_hcore+two*DM1(iorbp,iorbq)*Hcore(iorbp,iorbq)
+   do iorbq=iorbp+1,NBF_tot ! q
+    ihesa=ihesa+1
     !
     ! Calc. gradient
     !   Note: The k_pp does not have a real part 
     !
     grad_pq=zero
-    if(iorbp/=iorbq) then
-     do iorbt=1,NBF_tot !t
-      grad_pq=grad_pq+two*DM1(iorbt,iorbq)*Hcore(iorbt,iorbp) &
-     &               -two*DM1(iorbp,iorbt)*Hcore(iorbq,iorbt)
-      do iorbu=1,NBF_tot ! u
-       do iorbv=1,NBF_tot ! v
-        grad_pq=grad_pq+two*DM2(iorbu,iorbt,iorbv,iorbq)*ERImol(iorbu,iorbt,iorbv,iorbp) &
-        &              -two*DM2(iorbp,iorbu,iorbt,iorbv)*ERImol(iorbq,iorbu,iorbt,iorbv) 
-       enddo
+    do iorbt=1,NBF_tot !t
+     grad_pq=grad_pq+two*DM1(iorbt,iorbq)*Hcore(iorbt,iorbp) &
+    &               -two*DM1(iorbp,iorbt)*Hcore(iorbq,iorbt)
+     do iorbu=1,NBF_tot ! u
+      do iorbv=1,NBF_tot ! v
+       grad_pq=grad_pq+two*DM2(iorbu,iorbt,iorbv,iorbq)*ERImol(iorbu,iorbt,iorbv,iorbp) &
+       &              -two*DM2(iorbp,iorbu,iorbt,iorbv)*ERImol(iorbq,iorbu,iorbt,iorbv)
       enddo
      enddo
-    endif
-    ! 
+    enddo
+    HESSIANd%Gradient_vec(ihesa)=two*grad_pq
+    ! write(*,*) iorbp,iorbq,two*grad_pq
     !
+    !
+    ihesb=0;
     do iorbr=1,NBF_tot ! r
-     do iorbs=1,NBF_tot ! s
-      ihesb=iorbr+NBF_tot*(iorbs-1)
-      vee=vee+DM2(iorbp,iorbq,iorbr,iorbs)*ERImol(iorbp,iorbq,iorbr,iorbs)
-      if(ihesa>=ihesb .and. (iorbp/=iorbq .and. iorbr/=iorbs)) then ! Avoid k_pp and k_rr derivatives 
+     do iorbs=iorbr+1,NBF_tot ! s
+      ihesb=ihesb+1
+      if(ihesb>=ihesa) then !  
        ! G_pqrs
        G_pqrs=-two*(DM1(iorbr,iorbq)*Hcore(iorbs,iorbp)+DM1(iorbp,iorbs)*Hcore(iorbq,iorbr))
        if(iorbr==iorbq) then ! q=r
@@ -707,7 +707,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_pqrs=G_pqrs+DM2(iorbu,iorbv,iorbs,iorbt)*ERImol(iorbu,iorbv,iorbp,iorbt) &
-           &            +DM2(iorbp,iorbt,iorbu,iorbv)*ERImol(iorbs,iorbt,iorbu,iorbv) 
+           &            +DM2(iorbp,iorbt,iorbu,iorbv)*ERImol(iorbs,iorbt,iorbu,iorbv)
           enddo
          enddo
         enddo 
@@ -719,7 +719,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_pqrs=G_pqrs+DM2(iorbr,iorbt,iorbu,iorbv)*ERImol(iorbq,iorbt,iorbu,iorbv) &
-           &            +DM2(iorbu,iorbv,iorbq,iorbt)*ERImol(iorbu,iorbv,iorbr,iorbt) 
+           &            +DM2(iorbu,iorbv,iorbq,iorbt)*ERImol(iorbu,iorbv,iorbr,iorbt)
           enddo
          enddo
         enddo 
@@ -848,20 +848,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
       endif
      enddo
     enddo
-    HESSIANd%Gradient_vec(ihesa)=two*grad_pq
-    ! write(*,*) iorbp,iorbq,two*grad_pq
    enddo
   enddo
-
-  ! Check that energy contributions are fine
-  write(msg,'(a)') ' Energy contributions computed from density matrices'
-  call write_output(msg)
-  write(msg,'(a,f15.6,a)') ' Hcore ',E_hcore,' a.u.'
-  call write_output(msg)
-  write(msg,'(a,f15.6,a)') ' Vee   ',vee,' a.u'
-  call write_output(msg)
-  write(msg,'(a)') ' '
-  call write_output(msg)
 
  endif
 
