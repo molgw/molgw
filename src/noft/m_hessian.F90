@@ -635,10 +635,10 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
         &                        +two*DM2(iorbq,iorbs,iorbt,iorbu)*ERImol_cmplx(iorbp,iorbr,iorbt,iorbu)
        enddo
       enddo
-      HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)= &
+      HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)=                                     &
       & + (G_pqrs_cmplx-G_qprs_cmplx-G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! real,real
       & - (G_pqrs_cmplx+G_qprs_cmplx+G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! imag,imag
-!      & + four*(G_pqsr_cmplx-G_qprs_cmplx)                                            ! real,imag TODO numerical check. is it just 2 or 4 ??
+      & + complex_zero*four*(G_pqsr_cmplx-G_qprs_cmplx)                               ! real,imag TODO numerical check. is it just 2 or 4 ??
       ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)
      enddo
     enddo
