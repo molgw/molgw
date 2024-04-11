@@ -305,7 +305,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   all_ERI_in=.true.
 
   if(cpx_mos) then
-   iorbp=1;iorbq=1;iorbr=1;iorbs=3;
+   iorbp=1;iorbq=2;iorbr=1;iorbs=2;
+   call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
+   iorbp=1;iorbq=2;iorbr=2;iorbs=1;
    call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERI_in)
@@ -316,7 +318,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
 !   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
   else
-   iorbp=4;iorbq=3;iorbr=4;iorbs=1;
+   iorbp=1;iorbq=2;iorbr=1;iorbs=2;
+   call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF=NO_COEF)
+   iorbp=1;iorbq=2;iorbr=2;iorbs=1;
    call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF=NO_COEF)
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
    & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)

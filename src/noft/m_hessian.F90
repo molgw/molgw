@@ -500,7 +500,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
         do iorbu=1,NBF_tot ! u
          do iorbv=1,NBF_tot ! v
           G_pqrs_cmplx=G_pqrs_cmplx+DM2(iorbu,iorbv,iorbs,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbp,iorbt) &
-          &                        +DM2(iorbp,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbs,iorbt,iorbu,iorbv) 
+          &                        +DM2(iorbp,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbs,iorbt,iorbu,iorbv)
          enddo
         enddo
        enddo 
@@ -512,7 +512,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
         do iorbu=1,NBF_tot ! u
          do iorbv=1,NBF_tot ! v
           G_pqrs_cmplx=G_pqrs_cmplx+DM2(iorbr,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbq,iorbt,iorbu,iorbv) &
-          &                        +DM2(iorbu,iorbv,iorbq,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbr,iorbt) 
+          &                        +DM2(iorbu,iorbv,iorbq,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbr,iorbt)
          enddo
         enddo
        enddo 
@@ -571,8 +571,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        &                         +DM1(iorbp,iorbt)*Hcore_cmplx(iorbr,iorbt)
         do iorbu=1,NBF_tot ! u
          do iorbv=1,NBF_tot ! v
-          G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbp,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbr,iorbt,iorbu,iorbv) &
-          &                        +DM2(iorbu,iorbv,iorbr,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbp,iorbt) 
+          G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbu,iorbv,iorbr,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbp,iorbt) &
+          &                        +DM2(iorbp,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbr,iorbt,iorbu,iorbv)
          enddo
         enddo
        enddo
@@ -583,8 +583,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        &                         +DM1(iorbs,iorbt)*Hcore_cmplx(iorbq,iorbt)
         do iorbu=1,NBF_tot ! u
          do iorbv=1,NBF_tot ! v
-          G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbu,iorbv,iorbq,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbs,iorbt) &
-          &                        +DM2(iorbs,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbq,iorbt,iorbu,iorbv) 
+          G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbs,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbq,iorbt,iorbu,iorbv) &
+          &                        +DM2(iorbu,iorbv,iorbq,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbs,iorbt)
          enddo
         enddo
        enddo
@@ -638,14 +638,12 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
       HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)= &
       & + (G_pqrs_cmplx-G_qprs_cmplx-G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! real,real
       & - (G_pqrs_cmplx+G_qprs_cmplx+G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! imag,imag
-      & + four*(G_pqsr_cmplx-G_qprs_cmplx)                                            ! real,imag TODO numerical check. is it just 2 or 4 ??
+!      & + four*(G_pqsr_cmplx-G_qprs_cmplx)                                            ! real,imag TODO numerical check. is it just 2 or 4 ??
       ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)
-      write(*,*) iorbp,iorbq,iorbr,iorbs,(G_pqrs_cmplx-G_qprs_cmplx-G_pqsr_cmplx+G_qpsr_cmplx) &
-                  -(G_pqrs_cmplx+G_qprs_cmplx+G_pqsr_cmplx+G_qpsr_cmplx)
      enddo
     enddo
     HESSIANd%Gradient_vec_cmplx(ihesa)=two*grad_pq_cmplx
-     write(*,*) iorbp,iorbq,two*grad_pq_cmplx
+    ! write(*,*) iorbp,iorbq,two*grad_pq_cmplx
    enddo
   enddo
 
