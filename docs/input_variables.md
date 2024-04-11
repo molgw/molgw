@@ -211,7 +211,7 @@
 [excit_dir](#excit_dir)
 [excit_kappa](#excit_kappa)
 [excit_name](#excit_name)
-[excit_omega](#excit_omega)
+[excit_width](#excit_width)
 [excit_time0](#excit_time0)
 [n_hist](#n_hist)
 [n_iter](#n_iter)
@@ -1095,22 +1095,6 @@ Sets the type of excitation of a system in the real-time dynamics.  'GAU' stands
 
 
 ---
-### excit_omega
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** real
-
-**Default:** 0.2
-
-**Description:**
-
-The excitation pulse width in atomic units for the real-time dynamics.
-
-
----
 ### excit_time0
 
 *Optional*
@@ -1124,6 +1108,22 @@ The excitation pulse width in atomic units for the real-time dynamics.
 **Description:**
 
 Center of the excitation pulse in atomic units for the real-time dynamics.
+
+
+---
+### excit_width
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** real
+
+**Default:** 0.2
+
+**Description:**
+
+The excitation pulse duration in atomic units for the real-time dynamics.
 
 
 ---

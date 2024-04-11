@@ -19,7 +19,7 @@
  prop_type='MAG2'
  excit_name='GAU'
  excit_kappa=2e-4
- excit_omega=0.2
+ excit_width=0.2
  excit_time0=3.0
  excit_dir= 1.0  1.0  1.0
  write_step=20.0
