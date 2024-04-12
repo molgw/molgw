@@ -415,7 +415,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
     DM1(iorbp,iorbp)=RDMd%occ(iorbp)
     do iorbq=1,RDMd%NBF_occ ! q
      DM2(iorbp,iorbq,iorbp,iorbq)=RDMd%DM2_J(iorbp+(iorbq-1)*RDMd%NBF_occ)
-     DM2(iorbp,iorbq,iorbq,iorbp)=RDMd%DM2_K(iorbp+(iorbq-1)*RDMd%NBF_occ)
      DM2(iorbp,iorbq,iorbq,iorbp)=RDMd%DM2_K(iorbp+(iorbq-1)*RDMd%NBF_occ) &
      &                           +RDMd%DM2_L(iorbp+(iorbq-1)*RDMd%NBF_occ) ! Adding DM2_L to DM2_K due to time-rev. sym.
      !DM2(iorbp,iorbp,iorbq,iorbq)=RDMd%DM2_L(iorbp+(iorbq-1)*RDMd%NBF_occ)

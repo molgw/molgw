@@ -802,7 +802,6 @@ subroutine num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_in
    & INTEGd%ERI_L_cmplx,nogamma=nogamma)
    Energy_0mh_mh0=Energy_in+Vnn
   endif
-
   ! Gradient and Hessian
   Gradient_pq_cmplx=(Energy_h0_00-Energy_mh0_00)/(two*step)+(Energy_0h_00-Energy_0mh_00)*im/(two*step)
   Gradient_rs_cmplx=(Energy_00_h0-Energy_00_mh0)/(two*step)+(Energy_00_0h-Energy_00_0mh)*im/(two*step)
