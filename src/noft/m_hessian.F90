@@ -109,11 +109,6 @@ subroutine hessian_init(HESSIANd,NBF_tot,cpx_mos)
  ! Calculate memory needed
  if(cpx_mos) then
   HESSIANd%NDIM_hess=HESSIANd%NDIM_hess+NBF_tot
-
-! TODO Remove the following line
-  HESSIANd%NDIM_hess=NBF_tot*NBF_tot
-
-
   totMEM=4*HESSIANd%NDIM_hess*HESSIANd%NDIM_hess+2*HESSIANd%NDIM_hess
  else
   totMEM=HESSIANd%NDIM_hess*HESSIANd%NDIM_hess+HESSIANd%NDIM_hess
@@ -470,8 +465,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
 
   ihesa=0;
   do iorbp=1,NBF_tot ! p
-   do iorbq=1,NBF_tot ! q
-    ihesa=iorbp+NBF_tot*(iorbq-1)
+   do iorbq=iorbp,NBF_tot ! q
+    ihesa=ihesa+1
     !
     ! Calc. gradient
     !
@@ -496,171 +491,164 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
     !
     ihesb=0;
     do iorbr=1,NBF_tot ! r
-     do iorbs=1,NBF_tot ! s
-      ihesb=iorbr+NBF_tot*(iorbs-1)
-      ! G_pqrs_cmplx
-      G_pqrs_cmplx=-two*(DM1(iorbr,iorbq)*Hcore_cmplx(iorbs,iorbp)+DM1(iorbp,iorbs)*Hcore_cmplx(iorbq,iorbr))
-      if(iorbr==iorbq) then ! q=r
-       do iorbt=1,NBF_tot !t
-        G_pqrs_cmplx=G_pqrs_cmplx+DM1(iorbt,iorbs)*Hcore_cmplx(iorbt,iorbp) &
-       &                         +DM1(iorbp,iorbt)*Hcore_cmplx(iorbs,iorbt)
-        do iorbu=1,NBF_tot ! u
-         do iorbv=1,NBF_tot ! v
-          G_pqrs_cmplx=G_pqrs_cmplx+DM2(iorbu,iorbv,iorbs,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbp,iorbt) &
-          &                        +DM2(iorbp,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbs,iorbt,iorbu,iorbv)
+     do iorbs=iorbr,NBF_tot ! s
+      ihesb=ihesb+1
+      if(ihesb>=ihesa) then !  
+       ! G_pqrs_cmplx
+       G_pqrs_cmplx=-two*(DM1(iorbr,iorbq)*Hcore_cmplx(iorbs,iorbp)+DM1(iorbp,iorbs)*Hcore_cmplx(iorbq,iorbr))
+       if(iorbr==iorbq) then ! q=r
+        do iorbt=1,NBF_tot !t
+         G_pqrs_cmplx=G_pqrs_cmplx+DM1(iorbt,iorbs)*Hcore_cmplx(iorbt,iorbp) &
+        &                         +DM1(iorbp,iorbt)*Hcore_cmplx(iorbs,iorbt)
+         do iorbu=1,NBF_tot ! u
+          do iorbv=1,NBF_tot ! v
+           G_pqrs_cmplx=G_pqrs_cmplx+DM2(iorbu,iorbv,iorbs,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbp,iorbt) &
+           &                        +DM2(iorbp,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbs,iorbt,iorbu,iorbv)
+          enddo
          enddo
-        enddo
-       enddo 
-      endif
-      if(iorbp==iorbs) then ! p=s
-       do iorbt=1,NBF_tot !t
-        G_pqrs_cmplx=G_pqrs_cmplx+DM1(iorbt,iorbq)*Hcore_cmplx(iorbt,iorbr) &
-       &                         +DM1(iorbr,iorbt)*Hcore_cmplx(iorbq,iorbt)
-        do iorbu=1,NBF_tot ! u
-         do iorbv=1,NBF_tot ! v
-          G_pqrs_cmplx=G_pqrs_cmplx+DM2(iorbr,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbq,iorbt,iorbu,iorbv) &
-          &                        +DM2(iorbu,iorbv,iorbq,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbr,iorbt)
+        enddo 
+       endif
+       if(iorbp==iorbs) then ! p=s
+        do iorbt=1,NBF_tot !t
+         G_pqrs_cmplx=G_pqrs_cmplx+DM1(iorbt,iorbq)*Hcore_cmplx(iorbt,iorbr) &
+        &                         +DM1(iorbr,iorbt)*Hcore_cmplx(iorbq,iorbt)
+         do iorbu=1,NBF_tot ! u
+          do iorbv=1,NBF_tot ! v
+           G_pqrs_cmplx=G_pqrs_cmplx+DM2(iorbr,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbq,iorbt,iorbu,iorbv) &
+           &                        +DM2(iorbu,iorbv,iorbq,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbr,iorbt)
+          enddo
          enddo
-        enddo
-       enddo 
-      endif
-      do iorbt=1,NBF_tot !t
-       do iorbu=1,NBF_tot !u
-        G_pqrs_cmplx=G_pqrs_cmplx-two*DM2(iorbr,iorbt,iorbq,iorbu)*ERImol_cmplx(iorbs,iorbt,iorbp,iorbu) &
-        &                        -two*DM2(iorbt,iorbr,iorbq,iorbu)*ERImol_cmplx(iorbt,iorbs,iorbp,iorbu) &
-        &                        -two*DM2(iorbp,iorbu,iorbs,iorbt)*ERImol_cmplx(iorbq,iorbu,iorbr,iorbt) &
-        &                        -two*DM2(iorbp,iorbu,iorbt,iorbs)*ERImol_cmplx(iorbq,iorbu,iorbt,iorbr) &
-        &                        +two*DM2(iorbt,iorbu,iorbq,iorbs)*ERImol_cmplx(iorbt,iorbu,iorbp,iorbr) &
-        &                        +two*DM2(iorbp,iorbr,iorbt,iorbu)*ERImol_cmplx(iorbq,iorbs,iorbt,iorbu) 
-       enddo
-      enddo
-      ! G_qprs_cmplx
-      G_qprs_cmplx=-two*(DM1(iorbr,iorbp)*Hcore_cmplx(iorbs,iorbq)+DM1(iorbq,iorbs)*Hcore_cmplx(iorbp,iorbr))
-      if(iorbr==iorbp) then ! p=r
+        enddo 
+       endif
        do iorbt=1,NBF_tot !t
-        G_qprs_cmplx=G_qprs_cmplx+DM1(iorbt,iorbs)*Hcore_cmplx(iorbt,iorbq) &
-       &                         +DM1(iorbq,iorbt)*Hcore_cmplx(iorbs,iorbt)
-        do iorbu=1,NBF_tot ! u
-         do iorbv=1,NBF_tot ! v
-          G_qprs_cmplx=G_qprs_cmplx+DM2(iorbu,iorbv,iorbs,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbq,iorbt) &
-          &                        +DM2(iorbq,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbs,iorbt,iorbu,iorbv)
-         enddo
+        do iorbu=1,NBF_tot !u
+         G_pqrs_cmplx=G_pqrs_cmplx-two*DM2(iorbr,iorbt,iorbq,iorbu)*ERImol_cmplx(iorbs,iorbt,iorbp,iorbu) &
+         &                        -two*DM2(iorbt,iorbr,iorbq,iorbu)*ERImol_cmplx(iorbt,iorbs,iorbp,iorbu) &
+         &                        -two*DM2(iorbp,iorbu,iorbs,iorbt)*ERImol_cmplx(iorbq,iorbu,iorbr,iorbt) &
+         &                        -two*DM2(iorbp,iorbu,iorbt,iorbs)*ERImol_cmplx(iorbq,iorbu,iorbt,iorbr) &
+         &                        +two*DM2(iorbt,iorbu,iorbq,iorbs)*ERImol_cmplx(iorbt,iorbu,iorbp,iorbr) &
+         &                        +two*DM2(iorbp,iorbr,iorbt,iorbu)*ERImol_cmplx(iorbq,iorbs,iorbt,iorbu) 
         enddo
        enddo
-      endif
-      if(iorbq==iorbs) then ! q=s
-       do iorbt=1,NBF_tot !t
-        G_qprs_cmplx=G_qprs_cmplx+DM1(iorbt,iorbp)*Hcore_cmplx(iorbt,iorbr) &
-       &                         +DM1(iorbr,iorbt)*Hcore_cmplx(iorbp,iorbt)
-        do iorbu=1,NBF_tot ! u
-         do iorbv=1,NBF_tot ! v
-          G_qprs_cmplx=G_qprs_cmplx+DM2(iorbr,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbp,iorbt,iorbu,iorbv) &
-          &                        +DM2(iorbu,iorbv,iorbp,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbr,iorbt)
+       ! G_qprs_cmplx
+       G_qprs_cmplx=-two*(DM1(iorbr,iorbp)*Hcore_cmplx(iorbs,iorbq)+DM1(iorbq,iorbs)*Hcore_cmplx(iorbp,iorbr))
+       if(iorbr==iorbp) then ! p=r
+        do iorbt=1,NBF_tot !t
+         G_qprs_cmplx=G_qprs_cmplx+DM1(iorbt,iorbs)*Hcore_cmplx(iorbt,iorbq) &
+        &                         +DM1(iorbq,iorbt)*Hcore_cmplx(iorbs,iorbt)
+         do iorbu=1,NBF_tot ! u
+          do iorbv=1,NBF_tot ! v
+           G_qprs_cmplx=G_qprs_cmplx+DM2(iorbu,iorbv,iorbs,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbq,iorbt) &
+           &                        +DM2(iorbq,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbs,iorbt,iorbu,iorbv)
+          enddo
          enddo
         enddo
-       enddo
-      endif
-      do iorbt=1,NBF_tot !t
-       do iorbu=1,NBF_tot !u
-        G_qprs_cmplx=G_qprs_cmplx-two*DM2(iorbr,iorbt,iorbp,iorbu)*ERImol_cmplx(iorbs,iorbt,iorbq,iorbu) &
-        &                        -two*DM2(iorbt,iorbr,iorbp,iorbu)*ERImol_cmplx(iorbt,iorbs,iorbq,iorbu) &
-        &                        -two*DM2(iorbq,iorbu,iorbs,iorbt)*ERImol_cmplx(iorbp,iorbu,iorbr,iorbt) &
-        &                        -two*DM2(iorbq,iorbu,iorbt,iorbs)*ERImol_cmplx(iorbp,iorbu,iorbt,iorbr) &
-        &                        +two*DM2(iorbt,iorbu,iorbp,iorbs)*ERImol_cmplx(iorbt,iorbu,iorbq,iorbr) &
-        &                        +two*DM2(iorbq,iorbr,iorbt,iorbu)*ERImol_cmplx(iorbp,iorbs,iorbt,iorbu)
-       enddo
-      enddo
-      ! G_pqsr_cmplx
-      G_pqsr_cmplx=-two*(DM1(iorbs,iorbq)*Hcore_cmplx(iorbr,iorbp)+DM1(iorbp,iorbr)*Hcore_cmplx(iorbq,iorbs))
-      if(iorbs==iorbq) then ! q=s
-       do iorbt=1,NBF_tot !t
-        G_pqsr_cmplx=G_pqsr_cmplx+DM1(iorbt,iorbr)*Hcore_cmplx(iorbt,iorbp) &
-       &                         +DM1(iorbp,iorbt)*Hcore_cmplx(iorbr,iorbt)
-        do iorbu=1,NBF_tot ! u
-         do iorbv=1,NBF_tot ! v
-          G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbu,iorbv,iorbr,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbp,iorbt) &
-          &                        +DM2(iorbp,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbr,iorbt,iorbu,iorbv)
+       endif
+       if(iorbq==iorbs) then ! q=s
+        do iorbt=1,NBF_tot !t
+         G_qprs_cmplx=G_qprs_cmplx+DM1(iorbt,iorbp)*Hcore_cmplx(iorbt,iorbr) &
+        &                         +DM1(iorbr,iorbt)*Hcore_cmplx(iorbp,iorbt)
+         do iorbu=1,NBF_tot ! u
+          do iorbv=1,NBF_tot ! v
+           G_qprs_cmplx=G_qprs_cmplx+DM2(iorbr,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbp,iorbt,iorbu,iorbv) &
+           &                        +DM2(iorbu,iorbv,iorbp,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbr,iorbt)
+          enddo
          enddo
         enddo
-       enddo
-      endif
-      if(iorbp==iorbr) then ! p=r
+       endif
        do iorbt=1,NBF_tot !t
-        G_pqsr_cmplx=G_pqsr_cmplx+DM1(iorbt,iorbq)*Hcore_cmplx(iorbt,iorbs) &
-       &                         +DM1(iorbs,iorbt)*Hcore_cmplx(iorbq,iorbt)
-        do iorbu=1,NBF_tot ! u
-         do iorbv=1,NBF_tot ! v
-          G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbs,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbq,iorbt,iorbu,iorbv) &
-          &                        +DM2(iorbu,iorbv,iorbq,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbs,iorbt)
-         enddo
+        do iorbu=1,NBF_tot !u
+         G_qprs_cmplx=G_qprs_cmplx-two*DM2(iorbr,iorbt,iorbp,iorbu)*ERImol_cmplx(iorbs,iorbt,iorbq,iorbu) &
+         &                        -two*DM2(iorbt,iorbr,iorbp,iorbu)*ERImol_cmplx(iorbt,iorbs,iorbq,iorbu) &
+         &                        -two*DM2(iorbq,iorbu,iorbs,iorbt)*ERImol_cmplx(iorbp,iorbu,iorbr,iorbt) &
+         &                        -two*DM2(iorbq,iorbu,iorbt,iorbs)*ERImol_cmplx(iorbp,iorbu,iorbt,iorbr) &
+         &                        +two*DM2(iorbt,iorbu,iorbp,iorbs)*ERImol_cmplx(iorbt,iorbu,iorbq,iorbr) &
+         &                        +two*DM2(iorbq,iorbr,iorbt,iorbu)*ERImol_cmplx(iorbp,iorbs,iorbt,iorbu)
         enddo
        enddo
-      endif
-      do iorbt=1,NBF_tot !t
-       do iorbu=1,NBF_tot !u
-        G_pqsr_cmplx=G_pqsr_cmplx-two*DM2(iorbs,iorbt,iorbq,iorbu)*ERImol_cmplx(iorbr,iorbt,iorbp,iorbu) &
-        &                        -two*DM2(iorbt,iorbs,iorbq,iorbu)*ERImol_cmplx(iorbt,iorbr,iorbp,iorbu) &
-        &                        -two*DM2(iorbp,iorbu,iorbr,iorbt)*ERImol_cmplx(iorbq,iorbu,iorbs,iorbt) &
-        &                        -two*DM2(iorbp,iorbu,iorbt,iorbr)*ERImol_cmplx(iorbq,iorbu,iorbt,iorbs) &
-        &                        +two*DM2(iorbt,iorbu,iorbq,iorbr)*ERImol_cmplx(iorbt,iorbu,iorbp,iorbs) &
-        &                        +two*DM2(iorbs,iorbp,iorbu,iorbt)*ERImol_cmplx(iorbr,iorbq,iorbu,iorbt)
-       enddo
-      enddo
-      ! G_qpsr_cmplx
-      G_qpsr_cmplx=-two*(DM1(iorbs,iorbp)*Hcore_cmplx(iorbr,iorbq)+DM1(iorbq,iorbr)*Hcore_cmplx(iorbp,iorbs))
-      if(iorbs==iorbp) then ! p=s
-       do iorbt=1,NBF_tot !t
-        G_qpsr_cmplx=G_qpsr_cmplx+DM1(iorbt,iorbr)*Hcore_cmplx(iorbt,iorbq) &
-       &                         +DM1(iorbq,iorbt)*Hcore_cmplx(iorbr,iorbt)
-        do iorbu=1,NBF_tot ! u
-         do iorbv=1,NBF_tot ! v
-          G_qpsr_cmplx=G_qpsr_cmplx+DM2(iorbu,iorbv,iorbr,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbq,iorbt) &
-          &                        +DM2(iorbq,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbr,iorbt,iorbu,iorbv)
+       ! G_pqsr_cmplx
+       G_pqsr_cmplx=-two*(DM1(iorbs,iorbq)*Hcore_cmplx(iorbr,iorbp)+DM1(iorbp,iorbr)*Hcore_cmplx(iorbq,iorbs))
+       if(iorbs==iorbq) then ! q=s
+        do iorbt=1,NBF_tot !t
+         G_pqsr_cmplx=G_pqsr_cmplx+DM1(iorbt,iorbr)*Hcore_cmplx(iorbt,iorbp) &
+        &                         +DM1(iorbp,iorbt)*Hcore_cmplx(iorbr,iorbt)
+         do iorbu=1,NBF_tot ! u
+          do iorbv=1,NBF_tot ! v
+           G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbu,iorbv,iorbr,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbp,iorbt) &
+           &                        +DM2(iorbp,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbr,iorbt,iorbu,iorbv)
+          enddo
          enddo
         enddo
-       enddo
-      endif
-      if(iorbq==iorbr) then ! q=r
-       do iorbt=1,NBF_tot !t
-        G_qpsr_cmplx=G_qpsr_cmplx+DM1(iorbt,iorbp)*Hcore_cmplx(iorbt,iorbs) &
-       &                         +DM1(iorbs,iorbt)*Hcore_cmplx(iorbp,iorbt)
-        do iorbu=1,NBF_tot ! u
-         do iorbv=1,NBF_tot ! v
-          G_qpsr_cmplx=G_qpsr_cmplx+DM2(iorbs,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbp,iorbt,iorbu,iorbv) &
-          &                        +DM2(iorbu,iorbv,iorbp,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbs,iorbt)
+       endif
+       if(iorbp==iorbr) then ! p=r
+        do iorbt=1,NBF_tot !t
+         G_pqsr_cmplx=G_pqsr_cmplx+DM1(iorbt,iorbq)*Hcore_cmplx(iorbt,iorbs) &
+        &                         +DM1(iorbs,iorbt)*Hcore_cmplx(iorbq,iorbt)
+         do iorbu=1,NBF_tot ! u
+          do iorbv=1,NBF_tot ! v
+           G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbs,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbq,iorbt,iorbu,iorbv) &
+           &                        +DM2(iorbu,iorbv,iorbq,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbs,iorbt)
+          enddo
          enddo
         enddo
+       endif
+       do iorbt=1,NBF_tot !t
+        do iorbu=1,NBF_tot !u
+         G_pqsr_cmplx=G_pqsr_cmplx-two*DM2(iorbs,iorbt,iorbq,iorbu)*ERImol_cmplx(iorbr,iorbt,iorbp,iorbu) &
+         &                        -two*DM2(iorbt,iorbs,iorbq,iorbu)*ERImol_cmplx(iorbt,iorbr,iorbp,iorbu) &
+         &                        -two*DM2(iorbp,iorbu,iorbr,iorbt)*ERImol_cmplx(iorbq,iorbu,iorbs,iorbt) &
+         &                        -two*DM2(iorbp,iorbu,iorbt,iorbr)*ERImol_cmplx(iorbq,iorbu,iorbt,iorbs) &
+         &                        +two*DM2(iorbt,iorbu,iorbq,iorbr)*ERImol_cmplx(iorbt,iorbu,iorbp,iorbs) &
+         &                        +two*DM2(iorbs,iorbp,iorbu,iorbt)*ERImol_cmplx(iorbr,iorbq,iorbu,iorbt)
+        enddo
        enddo
+       ! G_qpsr_cmplx
+       G_qpsr_cmplx=-two*(DM1(iorbs,iorbp)*Hcore_cmplx(iorbr,iorbq)+DM1(iorbq,iorbr)*Hcore_cmplx(iorbp,iorbs))
+       if(iorbs==iorbp) then ! p=s
+        do iorbt=1,NBF_tot !t
+         G_qpsr_cmplx=G_qpsr_cmplx+DM1(iorbt,iorbr)*Hcore_cmplx(iorbt,iorbq) &
+        &                         +DM1(iorbq,iorbt)*Hcore_cmplx(iorbr,iorbt)
+         do iorbu=1,NBF_tot ! u
+          do iorbv=1,NBF_tot ! v
+           G_qpsr_cmplx=G_qpsr_cmplx+DM2(iorbu,iorbv,iorbr,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbq,iorbt) &
+           &                        +DM2(iorbq,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbr,iorbt,iorbu,iorbv)
+          enddo
+         enddo
+        enddo
+       endif
+       if(iorbq==iorbr) then ! q=r
+        do iorbt=1,NBF_tot !t
+         G_qpsr_cmplx=G_qpsr_cmplx+DM1(iorbt,iorbp)*Hcore_cmplx(iorbt,iorbs) &
+        &                         +DM1(iorbs,iorbt)*Hcore_cmplx(iorbp,iorbt)
+         do iorbu=1,NBF_tot ! u
+          do iorbv=1,NBF_tot ! v
+           G_qpsr_cmplx=G_qpsr_cmplx+DM2(iorbs,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbp,iorbt,iorbu,iorbv) &
+           &                        +DM2(iorbu,iorbv,iorbp,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbs,iorbt)
+          enddo
+         enddo
+        enddo
+       endif
+       do iorbt=1,NBF_tot !t
+        do iorbu=1,NBF_tot !u
+         G_qpsr_cmplx=G_qpsr_cmplx-two*DM2(iorbs,iorbt,iorbp,iorbu)*ERImol_cmplx(iorbr,iorbt,iorbq,iorbu) &
+         &                        -two*DM2(iorbt,iorbs,iorbp,iorbu)*ERImol_cmplx(iorbt,iorbr,iorbq,iorbu) &
+         &                        -two*DM2(iorbq,iorbu,iorbr,iorbt)*ERImol_cmplx(iorbp,iorbu,iorbs,iorbt) &
+         &                        -two*DM2(iorbq,iorbu,iorbt,iorbr)*ERImol_cmplx(iorbp,iorbu,iorbt,iorbs) &
+         &                        +two*DM2(iorbt,iorbu,iorbp,iorbr)*ERImol_cmplx(iorbt,iorbu,iorbq,iorbs) &
+         &                        +two*DM2(iorbq,iorbs,iorbt,iorbu)*ERImol_cmplx(iorbp,iorbr,iorbt,iorbu)
+        enddo
+       enddo
+       HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)=                                     &
+       & + (G_pqrs_cmplx-G_qprs_cmplx-G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! real,real
+       & - (G_pqrs_cmplx+G_qprs_cmplx+G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! imag,imag
+       & + two*(G_pqsr_cmplx-G_qprs_cmplx)                                             ! real,imag and imag,real
+       HESSIANd%Hessian_mat_cmplx(ihesb,ihesa)=conjg(HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)) ! The Complex Hessian is Hermitian
+       ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)
       endif
-      do iorbt=1,NBF_tot !t
-       do iorbu=1,NBF_tot !u
-        G_qpsr_cmplx=G_qpsr_cmplx-two*DM2(iorbs,iorbt,iorbp,iorbu)*ERImol_cmplx(iorbr,iorbt,iorbq,iorbu) &
-        &                        -two*DM2(iorbt,iorbs,iorbp,iorbu)*ERImol_cmplx(iorbt,iorbr,iorbq,iorbu) &
-        &                        -two*DM2(iorbq,iorbu,iorbr,iorbt)*ERImol_cmplx(iorbp,iorbu,iorbs,iorbt) &
-        &                        -two*DM2(iorbq,iorbu,iorbt,iorbr)*ERImol_cmplx(iorbp,iorbu,iorbt,iorbs) &
-        &                        +two*DM2(iorbt,iorbu,iorbp,iorbr)*ERImol_cmplx(iorbt,iorbu,iorbq,iorbs) &
-        &                        +two*DM2(iorbq,iorbs,iorbt,iorbu)*ERImol_cmplx(iorbp,iorbr,iorbt,iorbu)
-       enddo
-      enddo
-      HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)=                                     &
-      & + (G_pqrs_cmplx-G_qprs_cmplx-G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! real,real
-      & - (G_pqrs_cmplx+G_qprs_cmplx+G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! imag,imag
-      & + two*(G_pqsr_cmplx-G_qprs_cmplx)                                             ! real,imag and viceversa
-      ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)
      enddo
     enddo
    enddo
   enddo
-
-! Check if the Hessian is a Hermitian matrix
- 
-!  do iorbp=1,HESSIANd%NDIM_hess
-!   do iorbq=1,HESSIANd%NDIM_hess
-!    if(abs(HESSIANd%Hessian_mat_cmplx(iorbp,iorbq)-conjg(HESSIANd%Hessian_mat_cmplx(iorbq,iorbp)))>tol8) then
-!     write(*,*) "Err Herm:",iorbp,iorbq,HESSIANd%Hessian_mat_cmplx(iorbp,iorbq),HESSIANd%Hessian_mat_cmplx(iorbq,iorbp)
-!    endif
-!   enddo
-!  enddo
 
  else ! Real
 

@@ -731,79 +731,91 @@ subroutine num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_in
   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
   Energy_0mh_0mh=Energy_in+Vnn
   ! kappa_pq_R=step,kappa_pq_I=0,kappa_rs_R=0,kappa_rs_I=step
-  X_mat_cmplx=complex_zero;
-  if(iorbp==iorbr .and. iorbq==iorbs) then
-   X_mat_cmplx(iorbp,iorbq)=step+step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
-  else
-   X_mat_cmplx(iorbp,iorbq)=step;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
-   X_mat_cmplx(iorbr,iorbs)=step*im;X_mat_cmplx(iorbs,iorbr)=-conjg(X_mat_cmplx(iorbr,iorbs));
+  if(iorbp/=iorbq) then
+   X_mat_cmplx=complex_zero;
+   if(iorbp==iorbr .and. iorbq==iorbs) then
+    X_mat_cmplx(iorbp,iorbq)=step+step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
+   else
+    X_mat_cmplx(iorbp,iorbq)=step;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
+    X_mat_cmplx(iorbr,iorbs)=step*im;X_mat_cmplx(iorbs,iorbr)=-conjg(X_mat_cmplx(iorbr,iorbs));
+   endif
+   call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=X_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
+   NO_COEF_in_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_in_cmplx, &
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
+   Energy_h0_0h=Energy_in+Vnn
   endif
-  call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=X_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
-  NO_COEF_in_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
-  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_in_cmplx, &
-  & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
-  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-  call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
-  & INTEGd%ERI_L_cmplx,nogamma=nogamma)
-  Energy_h0_0h=Energy_in+Vnn
   ! kappa_pq_R=-step,kappa_pq_I=0,kappa_rs_R=0,kappa_rs_I=-step
-  X_mat_cmplx=complex_zero;
-  if(iorbp==iorbr .and. iorbq==iorbs) then
-   X_mat_cmplx(iorbp,iorbq)=-step-step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
-  else
-   X_mat_cmplx(iorbp,iorbq)=-step;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
-   X_mat_cmplx(iorbr,iorbs)=-step*im;X_mat_cmplx(iorbs,iorbr)=-conjg(X_mat_cmplx(iorbr,iorbs));
+  if(iorbp/=iorbq) then
+   X_mat_cmplx=complex_zero;
+   if(iorbp==iorbr .and. iorbq==iorbs) then
+    X_mat_cmplx(iorbp,iorbq)=-step-step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
+   else
+    X_mat_cmplx(iorbp,iorbq)=-step;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
+    X_mat_cmplx(iorbr,iorbs)=-step*im;X_mat_cmplx(iorbs,iorbr)=-conjg(X_mat_cmplx(iorbr,iorbs));
+   endif
+   call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=X_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
+   NO_COEF_in_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_in_cmplx, &
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
+   Energy_mh0_0mh=Energy_in+Vnn
   endif
-  call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=X_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
-  NO_COEF_in_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
-  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_in_cmplx, &
-  & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
-  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-  call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
-  & INTEGd%ERI_L_cmplx,nogamma=nogamma)
-  Energy_mh0_0mh=Energy_in+Vnn
   ! kappa_pq_R=0,kappa_pq_I=step,kappa_rs_R=step,kappa_rs_I=0
-  X_mat_cmplx=complex_zero;
-  if(iorbp==iorbr .and. iorbq==iorbs) then
-   X_mat_cmplx(iorbp,iorbq)=step+step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
-  else
-   X_mat_cmplx(iorbp,iorbq)=step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
-   X_mat_cmplx(iorbr,iorbs)=step;X_mat_cmplx(iorbs,iorbr)=-conjg(X_mat_cmplx(iorbr,iorbs));
+  if(iorbr/=iorbs) then
+   X_mat_cmplx=complex_zero;
+   if(iorbp==iorbr .and. iorbq==iorbs) then
+    X_mat_cmplx(iorbp,iorbq)=step+step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
+   else
+    X_mat_cmplx(iorbp,iorbq)=step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
+    X_mat_cmplx(iorbr,iorbs)=step;X_mat_cmplx(iorbs,iorbr)=-conjg(X_mat_cmplx(iorbr,iorbs));
+   endif
+   call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=X_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
+   NO_COEF_in_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_in_cmplx, &
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
+   Energy_0h_h0=Energy_in+Vnn
   endif
-  call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=X_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
-  NO_COEF_in_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
-  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_in_cmplx, &
-  & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
-  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-  call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
-  & INTEGd%ERI_L_cmplx,nogamma=nogamma)
-  Energy_0h_h0=Energy_in+Vnn
   ! kappa_pq_R=0,kappa_pq_I=-step,kappa_rs_R=-step,kappa_rs_I=0
-  X_mat_cmplx=complex_zero;
-  if(iorbp==iorbr .and. iorbq==iorbs) then
-   X_mat_cmplx(iorbp,iorbq)=-step-step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
-  else
-   X_mat_cmplx(iorbp,iorbq)=-step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
-   X_mat_cmplx(iorbr,iorbs)=-step;X_mat_cmplx(iorbs,iorbr)=-conjg(X_mat_cmplx(iorbr,iorbs));
+  if(iorbr/=iorbs) then
+   X_mat_cmplx=complex_zero;
+   if(iorbp==iorbr .and. iorbq==iorbs) then
+    X_mat_cmplx(iorbp,iorbq)=-step-step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
+   else
+    X_mat_cmplx(iorbp,iorbq)=-step*im;X_mat_cmplx(iorbq,iorbp)=-conjg(X_mat_cmplx(iorbp,iorbq));
+    X_mat_cmplx(iorbr,iorbs)=-step;X_mat_cmplx(iorbs,iorbr)=-conjg(X_mat_cmplx(iorbr,iorbs));
+   endif
+   call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=X_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
+   NO_COEF_in_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_in_cmplx, &
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
+   Energy_0mh_mh0=Energy_in+Vnn
   endif
-  call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=X_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
-  NO_COEF_in_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
-  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_in_cmplx, &
-  & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
-  call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-  call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_in,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
-  & INTEGd%ERI_L_cmplx,nogamma=nogamma)
-  Energy_0mh_mh0=Energy_in+Vnn
 
   ! Gradient and Hessian
   Gradient_pq_cmplx=(Energy_h0_00-Energy_mh0_00)/(two*step)+(Energy_0h_00-Energy_0mh_00)*im/(two*step)
   Gradient_rs_cmplx=(Energy_00_h0-Energy_00_mh0)/(two*step)+(Energy_00_0h-Energy_00_0mh)*im/(two*step)
-  if((iorbp==iorbr .and. iorbq==iorbs).or.(iorbp==iorbs .and. iorbq==iorbr)) then
-   Hessian_pqrs_cmplx_RR=(Energy_h0_00-two*Energy_00_00+Energy_mh0_00)/(step*step)
-   if(iorbp==iorbs .and. iorbq==iorbr) Hessian_pqrs_cmplx_RR=-Hessian_pqrs_cmplx_RR
+  if(iorbp==iorbq .or. iorbr==iorbs) then
+   Hessian_pqrs_cmplx_RR=complex_zero
   else
-   Hessian_pqrs_cmplx_RR=(Energy_h0_h0-Energy_h0_00-Energy_00_h0+two*Energy_00_00 &
-   &                     -Energy_mh0_00-Energy_00_mh0+Energy_mh0_mh0)/(two*step*step)
+   if((iorbp==iorbr .and. iorbq==iorbs).or.(iorbp==iorbs .and. iorbq==iorbr)) then
+    Hessian_pqrs_cmplx_RR=(Energy_h0_00-two*Energy_00_00+Energy_mh0_00)/(step*step)
+    if(iorbp==iorbs .and. iorbq==iorbr) Hessian_pqrs_cmplx_RR=-Hessian_pqrs_cmplx_RR
+   else
+    Hessian_pqrs_cmplx_RR=(Energy_h0_h0-Energy_h0_00-Energy_00_h0+two*Energy_00_00 &
+    &                     -Energy_mh0_00-Energy_00_mh0+Energy_mh0_mh0)/(two*step*step)
+   endif
   endif
   if((iorbp==iorbr .and. iorbq==iorbs).or.(iorbp==iorbs .and. iorbq==iorbr)) then
    Hessian_pqrs_cmplx_II=(Energy_0h_00-two*Energy_00_00+Energy_0mh_00)/(step*step)
@@ -812,13 +824,17 @@ subroutine num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_in
    Hessian_pqrs_cmplx_II=(Energy_0h_0h-Energy_0h_00-Energy_00_0h+two*Energy_00_00 &
    &                     -Energy_0mh_00-Energy_00_0mh+Energy_0mh_0mh)/(two*step*step)
   endif
-  Hessian_pqrs_cmplx_RI=-(Energy_h0_0h-Energy_h0_00-Energy_00_0h+two*Energy_00_00 &
+  if(iorbp/=iorbq) then
+   Hessian_pqrs_cmplx_RI=-(Energy_h0_0h-Energy_h0_00-Energy_00_0h+two*Energy_00_00 &
   &                     -Energy_mh0_00-Energy_00_0mh+Energy_mh0_0mh)/(two*step*step)
-  Hessian_pqrs_cmplx_IR=(Energy_0h_h0-Energy_0h_00-Energy_00_h0+two*Energy_00_00 &
+  endif
+  if(iorbr/=iorbs) then
+   Hessian_pqrs_cmplx_IR=(Energy_0h_h0-Energy_0h_00-Energy_00_h0+two*Energy_00_00 &
   &                     -Energy_0mh_00-Energy_00_mh0+Energy_0mh_mh0)/(two*step*step)
-
+  endif
   Hessian_pqrs_cmplx= Hessian_pqrs_cmplx_RR+Hessian_pqrs_cmplx_II &
   &                 +(Hessian_pqrs_cmplx_RI+Hessian_pqrs_cmplx_IR)*im
+  if(iorbp==iorbq .or. iorbr==iorbs) Hessian_pqrs_cmplx=two*Hessian_pqrs_cmplx
   write(msg,'(a,f15.6)') 'Energy = ',Energy_00_00
   call write_output(msg)
   write(msg,'(a,i5,a,i5,a,f15.6,a,f15.6,a)') 'Grad(',iorbp,',',iorbq,') = (', &
