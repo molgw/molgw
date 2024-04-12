@@ -109,6 +109,11 @@ subroutine hessian_init(HESSIANd,NBF_tot,cpx_mos)
  ! Calculate memory needed
  if(cpx_mos) then
   HESSIANd%NDIM_hess=HESSIANd%NDIM_hess+NBF_tot
+
+! TODO Remove the following line
+  HESSIANd%NDIM_hess=NBF_tot*NBF_tot
+
+
   totMEM=4*HESSIANd%NDIM_hess*HESSIANd%NDIM_hess+2*HESSIANd%NDIM_hess
  else
   totMEM=HESSIANd%NDIM_hess*HESSIANd%NDIM_hess+HESSIANd%NDIM_hess
@@ -448,7 +453,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
  integer::ihesa,ihesb
  integer::iorbp,iorbq,iorbr,iorbs,iorbt,iorbu,iorbv
  real(dp)::G_pqrs,G_qprs,G_pqsr,G_qpsr,grad_pq
- complex(dp)::G_pqrs_cmplx,G_qprs_cmplx,G_pqsr_cmplx,G_qpsr_cmplx,grad_pq_cmplx,E_hcore_cmplx,vee_cmplx
+ complex(dp)::G_pqrs_cmplx,G_qprs_cmplx,G_pqsr_cmplx,G_qpsr_cmplx,grad_pq_cmplx
 !arrays
  character(len=200)::msg
 !************************************************************************
@@ -463,11 +468,10 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
  ! Build Hessian
  if(HESSIANd%cpx_hessian) then ! Complex
 
-  E_hcore_cmplx=complex_zero; vee_cmplx=complex_zero; 
+  ihesa=0;
   do iorbp=1,NBF_tot ! p
    do iorbq=1,NBF_tot ! q
     ihesa=iorbp+NBF_tot*(iorbq-1)
-    E_hcore_cmplx=E_hcore_cmplx+two*DM1(iorbp,iorbq)*Hcore_cmplx(iorbp,iorbq)
     !
     ! Calc. gradient
     !
@@ -486,12 +490,14 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
       enddo
      enddo
     enddo
+    HESSIANd%Gradient_vec_cmplx(ihesa)=two*grad_pq_cmplx
+    ! write(*,*) iorbp,iorbq,two*grad_pq_cmplx
     ! 
     !
+    ihesb=0;
     do iorbr=1,NBF_tot ! r
      do iorbs=1,NBF_tot ! s
       ihesb=iorbr+NBF_tot*(iorbs-1)
-      vee_cmplx=vee_cmplx+DM2(iorbp,iorbq,iorbr,iorbs)*ERImol_cmplx(iorbp,iorbq,iorbr,iorbs)
       ! G_pqrs_cmplx
       G_pqrs_cmplx=-two*(DM1(iorbr,iorbq)*Hcore_cmplx(iorbs,iorbp)+DM1(iorbp,iorbs)*Hcore_cmplx(iorbq,iorbr))
       if(iorbr==iorbq) then ! q=r
@@ -597,7 +603,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
         &                        -two*DM2(iorbp,iorbu,iorbr,iorbt)*ERImol_cmplx(iorbq,iorbu,iorbs,iorbt) &
         &                        -two*DM2(iorbp,iorbu,iorbt,iorbr)*ERImol_cmplx(iorbq,iorbu,iorbt,iorbs) &
         &                        +two*DM2(iorbt,iorbu,iorbq,iorbr)*ERImol_cmplx(iorbt,iorbu,iorbp,iorbs) &
-        &                        +two*DM2(iorbp,iorbs,iorbt,iorbu)*ERImol_cmplx(iorbq,iorbr,iorbt,iorbu)
+        &                        +two*DM2(iorbs,iorbp,iorbu,iorbt)*ERImol_cmplx(iorbr,iorbq,iorbu,iorbt)
        enddo
       enddo
       ! G_qpsr_cmplx
@@ -639,34 +645,22 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
       HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)=                                     &
       & + (G_pqrs_cmplx-G_qprs_cmplx-G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! real,real
       & - (G_pqrs_cmplx+G_qprs_cmplx+G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! imag,imag
-      & + complex_zero*four*(G_pqsr_cmplx-G_qprs_cmplx)                               ! real,imag TODO numerical check. is it just 2 or 4 ??
-      ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)
+      & + two*(G_pqsr_cmplx-G_qprs_cmplx)                                             ! real,imag and viceversa
+       write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)
      enddo
     enddo
-    HESSIANd%Gradient_vec_cmplx(ihesa)=two*grad_pq_cmplx
-    ! write(*,*) iorbp,iorbq,two*grad_pq_cmplx
    enddo
   enddo
-
-  ! Check that energy contributions are fine
-  write(msg,'(a)') ' Energy contributions computed from density matrices'
-  call write_output(msg)
-  write(msg,'(a,f15.6,a)') ' Hcore ',real(E_hcore_cmplx),' a.u.'
-  call write_output(msg)
-  write(msg,'(a,f15.6,a)') ' Vee   ',real(vee_cmplx),' a.u'
-  call write_output(msg)
-  write(msg,'(a)') ' '
-  call write_output(msg)
 
 ! Check if the Hessian is a Hermitian matrix
  
-  do iorbp=1,HESSIANd%NDIM_hess
-   do iorbq=1,HESSIANd%NDIM_hess
-    if(abs(HESSIANd%Hessian_mat_cmplx(iorbp,iorbq)-conjg(HESSIANd%Hessian_mat_cmplx(iorbq,iorbp)))>tol8) then
-     write(*,*) "Err Herm:",iorbp,iorbq,HESSIANd%Hessian_mat_cmplx(iorbp,iorbq),HESSIANd%Hessian_mat_cmplx(iorbq,iorbp)
-    endif
-   enddo
-  enddo
+!  do iorbp=1,HESSIANd%NDIM_hess
+!   do iorbq=1,HESSIANd%NDIM_hess
+!    if(abs(HESSIANd%Hessian_mat_cmplx(iorbp,iorbq)-conjg(HESSIANd%Hessian_mat_cmplx(iorbq,iorbp)))>tol8) then
+!     write(*,*) "Err Herm:",iorbp,iorbq,HESSIANd%Hessian_mat_cmplx(iorbp,iorbq),HESSIANd%Hessian_mat_cmplx(iorbq,iorbp)
+!    endif
+!   enddo
+!  enddo
 
  else ! Real
 
