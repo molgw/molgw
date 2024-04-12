@@ -330,8 +330,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    write(*,*) ' '
    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,Hcore=INTEGd%Hcore,ERImol=INTEGd%ERImol)
    write(*,*) ' '
-!   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
-!   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
+   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+   write(*,*) ' '
+   write(*,*) ' end block'
+   write(*,*) ' '
   endif
   deallocate(DM1,DM2)
   endblock

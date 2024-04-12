@@ -211,113 +211,63 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
 !Local variables ------------------------------
 !scalars
+ integer::ihesa,ihesb
  integer::iorbp,iorbq,iorbr,iorbs,iorbt
- real(dp)::G_pqrs,grad_pq
- complex(dp)::G_pqrs_cmplx,grad_pq_cmplx
+ real(dp)::grad_pq,G_pqrs,G_qprs,G_pqsr,G_qpsr
+ complex(dp)::grad_pq_cmplx,G_qprs_cmplx
 !arrays
  character(len=200)::msg
 !************************************************************************
  
+ write(msg,'(a)') ' '
+ call write_output(msg)
+ write(msg,'(a)') 'Building Hessian Matrix'
+ call write_output(msg)
+ write(msg,'(a)') ' '
+ call write_output(msg)
  if(HESSIANd%cpx_hessian) then
-  write(msg,'(a)') 'Computing the complex Hessian Matrix'
-  call write_output(msg)
+
+ else ! Real
+
+  ihesa=0;
   do iorbp=1,RDMd%NBF_tot ! p
-   do iorbq=1,RDMd%NBF_tot ! q
-    grad_pq_cmplx=two*(ELAGd%Lambdas(iorbq,iorbp)-ELAGd%Lambdas(iorbp,iorbq)) &
-  &              +two*im*(ELAGd%Lambdas_im(iorbq,iorbp)+ELAGd%Lambdas_im(iorbp,iorbq))
-    ! TODO
-    HESSIANd%Gradient_vec_cmplx(iorbp+RDMd%NBF_tot*(iorbq-1))=grad_pq_cmplx
-    ! write(*,*) iorbp,iorbq,grad_pq_cmplx
-   enddo
-  enddo
- else
-  write(msg,'(a)') 'Computing the real Hessian matrix '
-  call write_output(msg)
-  do iorbp=1,RDMd%NBF_tot ! p
-   do iorbq=1,RDMd%NBF_tot ! q
-    grad_pq=two*(ELAGd%Lambdas(iorbq,iorbp)-ELAGd%Lambdas(iorbp,iorbq))
+   do iorbq=iorbp+1,RDMd%NBF_tot ! q
+    ihesa=ihesa+1
+    !
+    ! Calc. gradient
+    !   Note: The k_pp does not have a real part 
+    !
+    grad_pq=ELAGd%Lambdas(iorbq,iorbp)-ELAGd%Lambdas(iorbp,iorbq)
+    HESSIANd%Gradient_vec(ihesa)=two*grad_pq
+    ! write(*,*) iorbp,iorbq,two*grad_pq
+    !
+    !
+    ihesb=0;
     do iorbr=1,RDMd%NBF_tot ! r
-     do iorbs=1,RDMd%NBF_tot ! s
-      G_pqrs=zero
-      if(iorbq==iorbs) then ! q=s
-       G_pqrs=G_pqrs-half*(ELAGd%Lambdas(iorbr,iorbp)+ELAGd%Lambdas(iorbp,iorbr))
-       if(iorbq<=RDMd%NBF_occ) then ! q is occ
-        G_pqrs=G_pqrs+two*RDMd%occ(iorbq)*INTEGd%hCORE(iorbp,iorbr)
-        do iorbt=1,RDMd%NBF_occ ! t
-         G_pqrs=G_pqrs+two*DM2_J(iorbq,iorbt) &
-        & *(INTEGd%ERImol(iorbp,iorbt,iorbr,iorbt)-INTEGd%ERImol(iorbp,iorbt,iorbt,iorbr))
-        enddo
+     do iorbs=iorbr+1,RDMd%NBF_tot ! s
+      ihesb=ihesb+1
+      if(ihesb>=ihesa) then !
+       G_pqrs=zero;G_qprs=zero;G_pqsr=zero;G_qpsr=zero;
+       ! G_pqrs
+       if(iorbr==iorbq) then ! r=q
+        G_pqrs=G_pqrs-two*RDMd%occ(iorbr)*INTEGd%Hcore(iorbs,iorbp) &
+        &     +half*(ELAGd%Lambdas(iorbp,iorbs)+ELAGd%Lambdas(iorbs,iorbp))
        endif
-      endif
-      if(iorbp==iorbr) then ! p=r
-       G_pqrs=G_pqrs-half*(ELAGd%Lambdas(iorbq,iorbs)+ELAGd%Lambdas(iorbs,iorbq))
-       if(iorbp<=RDMd%NBF_occ) then ! p is occ
-        G_pqrs=G_pqrs+two*RDMd%occ(iorbp)*INTEGd%hCORE(iorbs,iorbq)
-        do iorbt=1,RDMd%NBF_occ ! t
-         G_pqrs=G_pqrs+two*DM2_J(iorbp,iorbt) &
-        & *(INTEGd%ERImol(iorbs,iorbt,iorbq,iorbt)-INTEGd%ERImol(iorbs,iorbt,iorbt,iorbq))
-        enddo
+       if(iorbp==iorbs) then ! p=s
+        G_pqrs=G_pqrs-two*RDMd%occ(iorbp)*INTEGd%Hcore(iorbq,iorbr) &
+        &     +half*(ELAGd%Lambdas(iorbq,iorbr)+ELAGd%Lambdas(iorbr,iorbq))
        endif
+         ! TODO 2-body terms JKL...
+ 
+       HESSIANd%Hessian_mat(ihesa,ihesb)=G_pqrs+G_qprs+G_pqsr+G_qpsr
+       HESSIANd%Hessian_mat(ihesb,ihesa)=HESSIANd%Hessian_mat(ihesa,ihesb)  ! The Real Hessian is symmetric
+       ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat(ihesa,ihesb)
       endif
-      if(iorbp==iorbs .and. iorbp<=RDMd%NBF_occ) then ! p=s and p is occ
-       do iorbt=1,RDMd%NBF_occ ! t
-        G_pqrs=G_pqrs-two*DM2_L(iorbt,iorbp)*INTEGd%ERImol(iorbt,iorbt,iorbq,iorbr)
-       enddo
-       G_pqrs=G_pqrs-two*RDMd%DM2_iiii(iorbp)*INTEGd%ERImol(iorbp,iorbp,iorbq,iorbr)
-      endif
-      if(iorbq==iorbr .and. iorbq<=RDMd%NBF_occ) then ! q=r and q is occ
-       do iorbt=1,RDMd%NBF_occ ! t
-        G_pqrs=G_pqrs-two*DM2_L(iorbq,iorbt)*INTEGd%ERImol(iorbp,iorbs,iorbt,iorbt)
-       enddo
-       G_pqrs=G_pqrs-two*RDMd%DM2_iiii(iorbq)*INTEGd%ERImol(iorbp,iorbs,iorbq,iorbq)
-      endif
-      if(iorbp<=RDMd%NBF_occ .and. iorbs<=RDMd%NBF_occ) then  ! p & s are occ
-       G_pqrs=G_pqrs-two*DM2_J(iorbp,iorbs)*INTEGd%ERImol(iorbp,iorbs,iorbq,iorbr) &
-      &             -two*DM2_K(iorbp,iorbs)*INTEGd%ERImol(iorbs,iorbp,iorbq,iorbr) 
-      endif
-      if(iorbq<=RDMd%NBF_occ .and. iorbr<=RDMd%NBF_occ) then ! q & r are occ
-       G_pqrs=G_pqrs-two*DM2_J(iorbq,iorbr)*INTEGd%ERImol(iorbp,iorbs,iorbq,iorbr) &
-      &             -two*DM2_K(iorbq,iorbr)*INTEGD%ERImol(iorbp,iorbs,iorbr,iorbq)
-      endif
-      if(iorbp<=RDMd%NBF_occ .and. iorbr<=RDMd%NBF_occ) then  ! p & r are occ
-       G_pqrs=G_pqrs+two*DM2_K(iorbp,iorbr)    &
-      & *(INTEGd%ERImol(iorbs,iorbp,iorbq,iorbr)-INTEGd%ERImol(iorbs,iorbp,iorbr,iorbq))
-       G_pqrs=G_pqrs+two*DM2_L(iorbr,iorbp)    &
-      & *(INTEGd%ERImol(iorbs,iorbr,iorbq,iorbp)-INTEGd%ERImol(iorbs,iorbr,iorbp,iorbq))
-       if(iorbp==iorbr) then ! p=r
-        G_pqrs=G_pqrs+two*RDMd%DM2_iiii(iorbp) &
-      & *(INTEGd%ERImol(iorbs,iorbp,iorbq,iorbp)-INTEGd%ERImol(iorbs,iorbp,iorbp,iorbq))
-       endif
-      endif
-      if(iorbq<=RDMd%NBF_occ .and. iorbs<=RDMd%NBF_occ) then ! q & s are occ
-       G_pqrs=G_pqrs+two*DM2_K(iorbq,iorbs) &
-      & *(INTEGd%ERImol(iorbp,iorbs,iorbr,iorbq)-INTEGd%ERImol(iorbp,iorbs,iorbq,iorbr))
-       G_pqrs=G_pqrs+two*DM2_L(iorbq,iorbs) &
-      & *(INTEGd%ERImol(iorbp,iorbq,iorbr,iorbs)-INTEGd%ERImol(iorbp,iorbq,iorbs,iorbr))
-       if(iorbq==iorbs) then ! q=s
-        G_pqrs=G_pqrs+two*RDMd%DM2_iiii(iorbq) &
-      & *(INTEGd%ERImol(iorbp,iorbq,iorbr,iorbq)-INTEGd%ERImol(iorbp,iorbq,iorbq,iorbr))
-       endif
-      endif
-      HESSIANd%Hessian_mat(iorbp+RDMd%NBF_tot*(iorbq-1),iorbr+RDMd%NBF_tot*(iorbs-1))=G_pqrs
-      ! write(*,*) iorbp,iorbq,iorbr,iorbs,G_pqrs
      enddo
     enddo
-    HESSIANd%Gradient_vec(iorbp+RDMd%NBF_tot*(iorbq-1))=grad_pq
-    ! write(*,*) iorbp,iorbq,grad_pq
    enddo
   enddo
  endif
-
-! Check if the Hessian is a symmetric matrix
-! 
-! do iorbp=1,HESSIANd%NDIM_hess
-!  do iorbq=1,HESSIANd%NDIM_hess
-!   if(abs(HESSIANd%Hessian_mat(iorbp,iorbq)-HESSIANd%Hessian_mat(iorbq,iorbp))>tol8) then
-!    write(*,*) iorbp,iorbq,HESSIANd%Hessian_mat(iorbp,iorbq),HESSIANd%Hessian_mat(iorbq,iorbp)
-!   endif
-!  enddo
-! enddo
 
 end subroutine build_hessian
 !!***
@@ -396,11 +346,11 @@ subroutine diag_hessian(HESSIANd)
   endif
  enddo
  
- write(msg,'(a,I10)') 'Number of Negative eigenvalues',nneg
+ write(msg,'(a,I10)') 'Number of negative eigenvalues',nneg
  call write_output(msg)
- write(msg,'(a,F10.5)') 'Max Negative eigenvalue       ',max_neg
+ write(msg,'(a,F10.5)') 'Max negative eigenvalue       ',max_neg
  call write_output(msg)
- write(msg,'(a,F10.5)') 'Sum Negative eigenvalues      ',sum_neg
+ write(msg,'(a,F10.5)') 'Sum negative eigenvalues      ',sum_neg
  call write_output(msg)
 
  deallocate(Eigeval)
@@ -447,7 +397,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
 !scalars
  integer::ihesa,ihesb
  integer::iorbp,iorbq,iorbr,iorbs,iorbt,iorbu,iorbv
- real(dp)::G_pqrs,G_qprs,G_pqsr,G_qpsr,grad_pq
+ real(dp)::grad_pq,G_pqrs,G_qprs,G_pqsr,G_qpsr
  complex(dp)::grad_pq_cmplx,G_qprs_cmplx!,G_pqrs_cmplx,G_pqsr_cmplx,G_qpsr_cmplx,
 !arrays
  character(len=200)::msg
