@@ -221,7 +221,7 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
  
  write(msg,'(a)') ' '
  call write_output(msg)
- write(msg,'(a)') 'Building Hessian Matrix (N^5 loop)'
+ write(msg,'(a)') 'Building Hessian Matrix (M^5 loop)'
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)
@@ -663,7 +663,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
 
  write(msg,'(a)') ' '
  call write_output(msg)
- write(msg,'(a)') 'Building Hessian Matrix (N^7 loop)'
+ write(msg,'(a)') 'Building Hessian Matrix (M^7 loop)'
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)
