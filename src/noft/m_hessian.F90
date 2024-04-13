@@ -204,16 +204,16 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
 !Arguments ------------------------------------
 !scalars
  class(hessian_t),intent(inout)::HESSIANd
- class(elag_t),intent(inout)::ELAGd
- type(rdm_t),intent(inout)::RDMd
+ class(elag_t),intent(in)::ELAGd
+ type(rdm_t),intent(in)::RDMd
  type(integ_t),intent(in)::INTEGd
 !arrays
- real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(in)::DM2_J,DM2_K,DM2_L
 !Local variables ------------------------------
 !scalars
  integer::ihesa,ihesb
  integer::iorbp,iorbq,iorbr,iorbs,iorbt
- real(dp)::grad_pq,G_pqrs,G_qprs,G_pqsr,G_qpsr
+ real(dp)::grad_pq,G_pqrs,G_qprs,G_pqsr,G_qpsr,tol10=1.0e-10
  complex(dp)::grad_pq_cmplx,G_qprs_cmplx
 !arrays
  character(len=200)::msg
@@ -221,13 +221,19 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
  
  write(msg,'(a)') ' '
  call write_output(msg)
- write(msg,'(a)') 'Building Hessian Matrix'
+ write(msg,'(a)') 'Building Hessian Matrix (N^5 loop)'
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)
- if(HESSIANd%cpx_hessian) then
+
+ ! Build Hessian
+ if(HESSIANd%cpx_hessian) then ! Complex
+
+  HESSIANd%Gradient_vec_cmplx=complex_zero; HESSIANd%Hessian_mat_cmplx=complex_zero;
 
  else ! Real
+
+  HESSIANd%Gradient_vec=zero; HESSIANd%Hessian_mat=zero;
 
   ihesa=0;
   do iorbp=1,RDMd%NBF_tot ! p
@@ -257,9 +263,261 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
         G_pqrs=G_pqrs-two*RDMd%occ(iorbp)*INTEGd%Hcore(iorbq,iorbr) &
         &     +half*(ELAGd%Lambdas(iorbq,iorbr)+ELAGd%Lambdas(iorbr,iorbq))
        endif
-         ! TODO 2-body terms JKL...
- 
-       HESSIANd%Hessian_mat(ihesa,ihesb)=G_pqrs+G_qprs+G_pqsr+G_qpsr
+       if(iorbr<=RDMd%NBF_occ .and. iorbq<=RDMd%NBF_occ) then ! r and q are occ
+        G_pqrs=G_pqrs-two*DM2_J(iorbq,iorbr)*INTEGd%ERImol(iorbq,iorbs,iorbp,iorbr)
+        G_pqrs=G_pqrs-two*DM2_K(iorbr,iorbq)*INTEGd%ERImol(iorbs,iorbq,iorbp,iorbr)
+        G_pqrs=G_pqrs-two*DM2_L(iorbr,iorbq)*INTEGd%ERImol(iorbs,iorbr,iorbp,iorbq)    &
+        &            -two*DM2_L(iorbr,iorbq)*INTEGd%ERImol(iorbr,iorbs,iorbp,iorbq)
+        if(iorbr==iorbq) then
+         G_pqrs=G_pqrs-two*RDMd%DM2_iiii(iorbr)*INTEGd%ERImol(iorbs,iorbr,iorbp,iorbr) &
+        &             -two*RDMd%DM2_iiii(iorbr)*INTEGd%ERImol(iorbr,iorbs,iorbp,iorbr)
+        endif
+       endif
+       if(iorbr==iorbq .and. iorbr<=RDMd%NBF_occ) then ! r=q and r is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_pqrs=G_pqrs-two*DM2_J(iorbr,iorbt)*INTEGd%ERImol(iorbs,iorbt,iorbp,iorbt)
+         G_pqrs=G_pqrs-two*DM2_K(iorbt,iorbr)*INTEGd%ERImol(iorbt,iorbs,iorbp,iorbt)
+        enddo
+       endif
+       if(iorbp<=RDMd%NBF_occ .and. iorbs<=RDMd%NBF_occ) then ! p and s are occ
+        G_pqrs=G_pqrs-two*DM2_J(iorbp,iorbs)*INTEGd%ERImol(iorbq,iorbs,iorbp,iorbr)
+        G_pqrs=G_pqrs-two*DM2_K(iorbp,iorbs)*INTEGd%ERImol(iorbq,iorbs,iorbr,iorbp)
+        G_pqrs=G_pqrs-two*DM2_L(iorbp,iorbs)*INTEGd%ERImol(iorbq,iorbp,iorbr,iorbs)    &
+        &            -two*DM2_L(iorbp,iorbs)*INTEGd%ERImol(iorbq,iorbp,iorbs,iorbr)
+        if(iorbp==iorbs) then
+         G_pqrs=G_pqrs-two*RDMd%DM2_iiii(iorbp)*INTEGd%ERImol(iorbq,iorbp,iorbr,iorbp) &
+        &             -two*RDMd%DM2_iiii(iorbp)*INTEGd%ERImol(iorbq,iorbp,iorbp,iorbr)
+        endif
+       endif
+       if(iorbp==iorbs .and. iorbp<=RDMd%NBF_occ) then ! p=s and p is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_pqrs=G_pqrs-two*DM2_J(iorbp,iorbt)*INTEGd%ERImol(iorbq,iorbt,iorbr,iorbt)
+         G_pqrs=G_pqrs-two*DM2_K(iorbp,iorbt)*INTEGd%ERImol(iorbq,iorbt,iorbt,iorbr)
+        enddo
+       endif
+       if(iorbq<=RDMd%NBF_occ .and. iorbs<=RDMd%NBF_occ) then ! q and s are occ
+        G_pqrs=G_pqrs+two*DM2_J(iorbq,iorbs)*INTEGd%ERImol(iorbq,iorbs,iorbp,iorbr)
+        G_pqrs=G_pqrs+two*DM2_K(iorbs,iorbq)*INTEGd%ERImol(iorbs,iorbq,iorbp,iorbr)
+        if(iorbq==iorbs) then
+         G_pqrs=G_pqrs+two*RDMd%DM2_iiii(iorbq)*INTEGd%ERImol(iorbq,iorbq,iorbp,iorbr)
+        endif
+       endif
+       if(iorbq==iorbs .and. iorbq<=RDMd%NBF_occ) then ! q=s and q is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_pqrs=G_pqrs+two*DM2_L(iorbt,iorbq)*INTEGd%ERImol(iorbt,iorbt,iorbp,iorbr)
+        enddo
+       endif
+       if(iorbp<=RDMd%NBF_occ .and. iorbr<=RDMd%NBF_occ) then ! p and r are occ
+        G_pqrs=G_pqrs+two*DM2_J(iorbp,iorbr)*INTEGd%ERImol(iorbq,iorbs,iorbp,iorbr)
+        G_pqrs=G_pqrs+two*DM2_K(iorbp,iorbr)*INTEGd%ERImol(iorbq,iorbs,iorbr,iorbp)
+        if(iorbp==iorbr) then
+         G_pqrs=G_pqrs+two*RDMd%DM2_iiii(iorbp)*INTEGd%ERImol(iorbq,iorbs,iorbp,iorbp)
+        endif
+       endif
+       if(iorbp==iorbr .and. iorbp<=RDMd%NBF_occ) then ! p=r and p is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_pqrs=G_pqrs+two*DM2_L(iorbp,iorbt)*INTEGd%ERImol(iorbq,iorbs,iorbt,iorbt)
+        enddo
+       endif
+       ! G_qprs
+       if(iorbr==iorbp) then ! r=p
+        G_qprs=G_qprs-two*RDMd%occ(iorbr)*INTEGd%Hcore(iorbs,iorbq) &
+        &     +half*(ELAGd%Lambdas(iorbq,iorbs)+ELAGd%Lambdas(iorbs,iorbq))
+       endif
+       if(iorbq==iorbs) then ! q=s
+        G_qprs=G_qprs-two*RDMd%occ(iorbq)*INTEGd%Hcore(iorbp,iorbr) &
+        &     +half*(ELAGd%Lambdas(iorbp,iorbr)+ELAGd%Lambdas(iorbr,iorbp))
+       endif
+       if(iorbr<=RDMd%NBF_occ .and. iorbp<=RDMd%NBF_occ) then ! r and p are occ
+        G_qprs=G_qprs-two*DM2_J(iorbp,iorbr)*INTEGd%ERImol(iorbp,iorbs,iorbq,iorbr)
+        G_qprs=G_qprs-two*DM2_K(iorbr,iorbp)*INTEGd%ERImol(iorbs,iorbp,iorbq,iorbr)
+        G_qprs=G_qprs-two*DM2_L(iorbr,iorbp)*INTEGd%ERImol(iorbs,iorbr,iorbq,iorbp)    &
+        &            -two*DM2_L(iorbr,iorbp)*INTEGd%ERImol(iorbr,iorbs,iorbq,iorbp)
+        if(iorbr==iorbp) then
+         G_qprs=G_qprs-two*RDMd%DM2_iiii(iorbr)*INTEGd%ERImol(iorbs,iorbr,iorbq,iorbr) &
+        &             -two*RDMd%DM2_iiii(iorbr)*INTEGd%ERImol(iorbr,iorbs,iorbq,iorbr)
+        endif
+       endif
+       if(iorbr==iorbp .and. iorbr<=RDMd%NBF_occ) then ! r=p and r is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_qprs=G_qprs-two*DM2_J(iorbr,iorbt)*INTEGd%ERImol(iorbs,iorbt,iorbq,iorbt)
+         G_qprs=G_qprs-two*DM2_K(iorbt,iorbr)*INTEGd%ERImol(iorbt,iorbs,iorbq,iorbt)
+        enddo
+       endif
+       if(iorbq<=RDMd%NBF_occ .and. iorbs<=RDMd%NBF_occ) then ! q and s are occ
+        G_qprs=G_qprs-two*DM2_J(iorbq,iorbs)*INTEGd%ERImol(iorbp,iorbs,iorbq,iorbr)
+        G_qprs=G_qprs-two*DM2_K(iorbq,iorbs)*INTEGd%ERImol(iorbp,iorbs,iorbr,iorbq)
+        G_qprs=G_qprs-two*DM2_L(iorbq,iorbs)*INTEGd%ERImol(iorbp,iorbq,iorbr,iorbs)    &
+        &            -two*DM2_L(iorbq,iorbs)*INTEGd%ERImol(iorbp,iorbq,iorbs,iorbr)
+        if(iorbq==iorbs) then
+         G_qprs=G_qprs-two*RDMd%DM2_iiii(iorbq)*INTEGd%ERImol(iorbp,iorbq,iorbr,iorbq) &
+        &             -two*RDMd%DM2_iiii(iorbq)*INTEGd%ERImol(iorbp,iorbq,iorbq,iorbr)
+        endif
+       endif
+       if(iorbq==iorbs .and. iorbq<=RDMd%NBF_occ) then ! q=s and q is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_qprs=G_qprs-two*DM2_J(iorbq,iorbt)*INTEGd%ERImol(iorbp,iorbt,iorbr,iorbt)
+         G_qprs=G_qprs-two*DM2_K(iorbq,iorbt)*INTEGd%ERImol(iorbp,iorbt,iorbt,iorbr)
+        enddo
+       endif
+       if(iorbp<=RDMd%NBF_occ .and. iorbs<=RDMd%NBF_occ) then ! p and s are occ
+        G_qprs=G_qprs+two*DM2_J(iorbp,iorbs)*INTEGd%ERImol(iorbp,iorbs,iorbq,iorbr)
+        G_qprs=G_qprs+two*DM2_K(iorbs,iorbp)*INTEGd%ERImol(iorbs,iorbp,iorbq,iorbr)
+        if(iorbp==iorbs) then
+         G_qprs=G_qprs+two*RDMd%DM2_iiii(iorbp)*INTEGd%ERImol(iorbp,iorbp,iorbq,iorbr)
+        endif
+       endif
+       if(iorbp==iorbs .and. iorbp<=RDMd%NBF_occ) then ! p=s and p is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_qprs=G_qprs+two*DM2_L(iorbt,iorbp)*INTEGd%ERImol(iorbt,iorbt,iorbq,iorbr)
+        enddo
+       endif
+       if(iorbq<=RDMd%NBF_occ .and. iorbr<=RDMd%NBF_occ) then ! q and r are occ
+        G_qprs=G_qprs+two*DM2_J(iorbq,iorbr)*INTEGd%ERImol(iorbp,iorbs,iorbq,iorbr)
+        G_qprs=G_qprs+two*DM2_K(iorbq,iorbr)*INTEGd%ERImol(iorbp,iorbs,iorbr,iorbq)
+        if(iorbq==iorbr) then
+         G_qprs=G_qprs+two*RDMd%DM2_iiii(iorbq)*INTEGd%ERImol(iorbp,iorbs,iorbq,iorbq)
+        endif
+       endif
+       if(iorbq==iorbr .and. iorbq<=RDMd%NBF_occ) then ! q=r and q is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_qprs=G_qprs+two*DM2_L(iorbq,iorbt)*INTEGd%ERImol(iorbp,iorbs,iorbt,iorbt)
+        enddo
+       endif
+       ! G_pqsr
+       if(iorbs==iorbq) then ! s=q
+        G_pqsr=G_pqsr-two*RDMd%occ(iorbs)*INTEGd%Hcore(iorbr,iorbp) &
+        &     +half*(ELAGd%Lambdas(iorbp,iorbr)+ELAGd%Lambdas(iorbr,iorbp))
+       endif
+       if(iorbp==iorbr) then ! p=r
+        G_pqsr=G_pqsr-two*RDMd%occ(iorbp)*INTEGd%Hcore(iorbq,iorbs) &
+        &     +half*(ELAGd%Lambdas(iorbq,iorbs)+ELAGd%Lambdas(iorbs,iorbq))
+       endif
+       if(iorbs<=RDMd%NBF_occ .and. iorbq<=RDMd%NBF_occ) then ! s and q are occ
+        G_pqsr=G_pqsr-two*DM2_J(iorbq,iorbs)*INTEGd%ERImol(iorbq,iorbr,iorbp,iorbs)
+        G_pqsr=G_pqsr-two*DM2_K(iorbs,iorbq)*INTEGd%ERImol(iorbr,iorbq,iorbp,iorbs)
+        G_pqsr=G_pqsr-two*DM2_L(iorbs,iorbq)*INTEGd%ERImol(iorbr,iorbs,iorbp,iorbq)    &
+        &            -two*DM2_L(iorbs,iorbq)*INTEGd%ERImol(iorbs,iorbr,iorbp,iorbq)
+        if(iorbs==iorbq) then
+         G_pqsr=G_pqsr-two*RDMd%DM2_iiii(iorbs)*INTEGd%ERImol(iorbr,iorbs,iorbp,iorbs) &
+        &             -two*RDMd%DM2_iiii(iorbs)*INTEGd%ERImol(iorbs,iorbr,iorbp,iorbs)
+        endif
+       endif
+       if(iorbs==iorbq .and. iorbs<=RDMd%NBF_occ) then ! s=q and s is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_pqsr=G_pqsr-two*DM2_J(iorbs,iorbt)*INTEGd%ERImol(iorbr,iorbt,iorbp,iorbt)
+         G_pqsr=G_pqsr-two*DM2_K(iorbt,iorbs)*INTEGd%ERImol(iorbt,iorbr,iorbp,iorbt)
+        enddo
+       endif
+       if(iorbp<=RDMd%NBF_occ .and. iorbr<=RDMd%NBF_occ) then ! p and r are occ
+        G_pqsr=G_pqsr-two*DM2_J(iorbp,iorbr)*INTEGd%ERImol(iorbq,iorbr,iorbp,iorbs)
+        G_pqsr=G_pqsr-two*DM2_K(iorbp,iorbr)*INTEGd%ERImol(iorbq,iorbr,iorbs,iorbp)
+        G_pqsr=G_pqsr-two*DM2_L(iorbp,iorbr)*INTEGd%ERImol(iorbq,iorbp,iorbs,iorbr)    &
+        &            -two*DM2_L(iorbp,iorbr)*INTEGd%ERImol(iorbq,iorbp,iorbr,iorbs)
+        if(iorbp==iorbr) then
+         G_pqsr=G_pqsr-two*RDMd%DM2_iiii(iorbp)*INTEGd%ERImol(iorbq,iorbp,iorbs,iorbp) &
+        &             -two*RDMd%DM2_iiii(iorbp)*INTEGd%ERImol(iorbq,iorbp,iorbp,iorbs)
+        endif
+       endif
+       if(iorbp==iorbr .and. iorbp<=RDMd%NBF_occ) then ! p=r and p is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_pqsr=G_pqsr-two*DM2_J(iorbp,iorbt)*INTEGd%ERImol(iorbq,iorbt,iorbs,iorbt)
+         G_pqsr=G_pqsr-two*DM2_K(iorbp,iorbt)*INTEGd%ERImol(iorbq,iorbt,iorbt,iorbs)
+        enddo
+       endif
+       if(iorbq<=RDMd%NBF_occ .and. iorbr<=RDMd%NBF_occ) then ! q and r are occ
+        G_pqsr=G_pqsr+two*DM2_J(iorbq,iorbr)*INTEGd%ERImol(iorbq,iorbr,iorbp,iorbs)
+        G_pqsr=G_pqsr+two*DM2_K(iorbr,iorbq)*INTEGd%ERImol(iorbr,iorbq,iorbp,iorbs)
+        if(iorbq==iorbr) then
+         G_pqsr=G_pqsr+two*RDMd%DM2_iiii(iorbq)*INTEGd%ERImol(iorbq,iorbq,iorbp,iorbs)
+        endif
+       endif
+       if(iorbq==iorbr .and. iorbq<=RDMd%NBF_occ) then ! q=r and q is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_pqsr=G_pqsr+two*DM2_L(iorbt,iorbq)*INTEGd%ERImol(iorbt,iorbt,iorbp,iorbs)
+        enddo
+       endif
+       if(iorbp<=RDMd%NBF_occ .and. iorbs<=RDMd%NBF_occ) then ! p and s are occ
+        G_pqsr=G_pqsr+two*DM2_J(iorbp,iorbs)*INTEGd%ERImol(iorbq,iorbr,iorbp,iorbs)
+        G_pqsr=G_pqsr+two*DM2_K(iorbp,iorbs)*INTEGd%ERImol(iorbq,iorbr,iorbs,iorbp)
+        if(iorbp==iorbs) then
+         G_pqsr=G_pqsr+two*RDMd%DM2_iiii(iorbp)*INTEGd%ERImol(iorbq,iorbr,iorbp,iorbp)
+        endif
+       endif
+       if(iorbp==iorbs .and. iorbp<=RDMd%NBF_occ) then ! p=s and p is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_pqsr=G_pqsr+two*DM2_L(iorbp,iorbt)*INTEGd%ERImol(iorbq,iorbr,iorbt,iorbt)
+        enddo
+       endif
+       ! G_qpsr
+       if(iorbs==iorbp) then ! p=s
+        G_qpsr=G_qpsr-two*RDMd%occ(iorbs)*INTEGd%Hcore(iorbr,iorbq) &
+        &     +half*(ELAGd%Lambdas(iorbq,iorbr)+ELAGd%Lambdas(iorbr,iorbq))
+       endif
+       if(iorbq==iorbr) then ! q=r
+        G_qpsr=G_qpsr-two*RDMd%occ(iorbq)*INTEGd%Hcore(iorbp,iorbs) &
+        &     +half*(ELAGd%Lambdas(iorbp,iorbs)+ELAGd%Lambdas(iorbs,iorbp))
+       endif
+       if(iorbs<=RDMd%NBF_occ .and. iorbp<=RDMd%NBF_occ) then ! s and p are occ
+        G_qpsr=G_qpsr-two*DM2_J(iorbp,iorbs)*INTEGd%ERImol(iorbp,iorbr,iorbq,iorbs)
+        G_qpsr=G_qpsr-two*DM2_K(iorbs,iorbp)*INTEGd%ERImol(iorbr,iorbp,iorbq,iorbs)
+        G_qpsr=G_qpsr-two*DM2_L(iorbs,iorbp)*INTEGd%ERImol(iorbr,iorbs,iorbq,iorbp)    &
+        &            -two*DM2_L(iorbs,iorbp)*INTEGd%ERImol(iorbs,iorbr,iorbq,iorbp)
+        if(iorbs==iorbp) then
+         G_qpsr=G_qpsr-two*RDMd%DM2_iiii(iorbs)*INTEGd%ERImol(iorbr,iorbs,iorbq,iorbs) &
+        &             -two*RDMd%DM2_iiii(iorbs)*INTEGd%ERImol(iorbs,iorbr,iorbq,iorbs)
+        endif
+       endif
+       if(iorbs==iorbp .and. iorbs<=RDMd%NBF_occ) then ! s=p and s is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_qpsr=G_qpsr-two*DM2_J(iorbs,iorbt)*INTEGd%ERImol(iorbr,iorbt,iorbq,iorbt)
+         G_qpsr=G_qpsr-two*DM2_K(iorbt,iorbs)*INTEGd%ERImol(iorbt,iorbr,iorbq,iorbt)
+        enddo
+       endif
+       if(iorbq<=RDMd%NBF_occ .and. iorbr<=RDMd%NBF_occ) then ! q and r are occ
+        G_qpsr=G_qpsr-two*DM2_J(iorbq,iorbr)*INTEGd%ERImol(iorbp,iorbr,iorbq,iorbs)
+        G_qpsr=G_qpsr-two*DM2_K(iorbq,iorbr)*INTEGd%ERImol(iorbp,iorbr,iorbs,iorbq)
+        G_qpsr=G_qpsr-two*DM2_L(iorbq,iorbr)*INTEGd%ERImol(iorbp,iorbq,iorbs,iorbr)    &
+        &            -two*DM2_L(iorbq,iorbr)*INTEGd%ERImol(iorbp,iorbq,iorbr,iorbs)
+        if(iorbq==iorbr) then
+         G_qpsr=G_qpsr-two*RDMd%DM2_iiii(iorbq)*INTEGd%ERImol(iorbp,iorbq,iorbs,iorbq) &
+        &             -two*RDMd%DM2_iiii(iorbq)*INTEGd%ERImol(iorbp,iorbq,iorbq,iorbs)
+        endif
+       endif
+       if(iorbq==iorbr .and. iorbq<=RDMd%NBF_occ) then ! q=r and q is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_qpsr=G_qpsr-two*DM2_J(iorbq,iorbt)*INTEGd%ERImol(iorbp,iorbt,iorbs,iorbt)
+         G_qpsr=G_qpsr-two*DM2_K(iorbq,iorbt)*INTEGd%ERImol(iorbp,iorbt,iorbt,iorbs)
+        enddo
+       endif
+       if(iorbp<=RDMd%NBF_occ .and. iorbr<=RDMd%NBF_occ) then ! p and r are occ
+        G_qpsr=G_qpsr+two*DM2_J(iorbp,iorbr)*INTEGd%ERImol(iorbp,iorbr,iorbq,iorbs)
+        G_qpsr=G_qpsr+two*DM2_K(iorbr,iorbp)*INTEGd%ERImol(iorbr,iorbp,iorbq,iorbs)
+        if(iorbp==iorbr) then
+         G_qpsr=G_qpsr+two*RDMd%DM2_iiii(iorbp)*INTEGd%ERImol(iorbp,iorbp,iorbq,iorbs)
+        endif
+       endif
+       if(iorbp==iorbr .and. iorbp<=RDMd%NBF_occ) then ! p=r and p is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_qpsr=G_qpsr+two*DM2_L(iorbt,iorbp)*INTEGd%ERImol(iorbt,iorbt,iorbq,iorbs)
+        enddo
+       endif
+       if(iorbq<=RDMd%NBF_occ .and. iorbs<=RDMd%NBF_occ) then ! q and s are occ
+        G_qpsr=G_qpsr+two*DM2_J(iorbq,iorbs)*INTEGd%ERImol(iorbp,iorbr,iorbq,iorbs)
+        G_qpsr=G_qpsr+two*DM2_K(iorbq,iorbs)*INTEGd%ERImol(iorbp,iorbr,iorbs,iorbq)
+        if(iorbq==iorbs) then
+         G_qpsr=G_qpsr+two*RDMd%DM2_iiii(iorbq)*INTEGd%ERImol(iorbp,iorbr,iorbq,iorbq)
+        endif
+       endif
+       if(iorbq==iorbs .and. iorbq<=RDMd%NBF_occ) then ! q=s and q is occ
+        do iorbt=1,RDMd%NBF_occ !t
+         G_qpsr=G_qpsr+two*DM2_L(iorbq,iorbt)*INTEGd%ERImol(iorbp,iorbr,iorbt,iorbt)
+        enddo
+       endif 
+       HESSIANd%Hessian_mat(ihesa,ihesb)=G_pqrs-G_qprs-G_pqsr+G_qpsr
+       if(abs(HESSIANd%Hessian_mat(ihesa,ihesb))<tol10) then
+        HESSIANd%Hessian_mat(ihesa,ihesb)=zero
+       endif
        HESSIANd%Hessian_mat(ihesb,ihesa)=HESSIANd%Hessian_mat(ihesa,ihesb)  ! The Real Hessian is symmetric
        ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat(ihesa,ihesb)
       endif
@@ -306,7 +564,7 @@ subroutine diag_hessian(HESSIANd)
  character(len=200)::msg
 !************************************************************************
 
- max_neg=zero; sum_neg=zero; nneg=0;
+ max_neg=zero; sum_neg=zero; nneg=0; info=0;
 
  allocate(Eigeval(HESSIANd%NDIM_hess))
  Eigeval=zero
@@ -397,7 +655,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
 !scalars
  integer::ihesa,ihesb
  integer::iorbp,iorbq,iorbr,iorbs,iorbt,iorbu,iorbv
- real(dp)::grad_pq,G_pqrs,G_qprs,G_pqsr,G_qpsr
+ real(dp)::grad_pq,G_pqrs,G_qprs,G_pqsr,G_qpsr,tol10=1.0e-10
  complex(dp)::grad_pq_cmplx,G_qprs_cmplx!,G_pqrs_cmplx,G_pqsr_cmplx,G_qpsr_cmplx,
 !arrays
  character(len=200)::msg
@@ -412,6 +670,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
 
  ! Build Hessian
  if(HESSIANd%cpx_hessian) then ! Complex
+ 
+  HESSIANd%Gradient_vec_cmplx=complex_zero; HESSIANd%Hessian_mat_cmplx=complex_zero;
 
   ihesa=0;
   do iorbp=1,NBF_tot ! p
@@ -588,7 +848,10 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        !!  &                        +two*DM2(iorbq,iorbs,iorbt,iorbu)*ERImol_cmplx(iorbp,iorbr,iorbt,iorbu)
        !! enddo
        !!enddo
-       HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)= -four*G_qprs_cmplx 
+       HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)= -four*G_qprs_cmplx
+       if(abs(HESSIANd%Hessian_mat_cmplx(ihesa,ihesb))<tol10) then
+        HESSIANd%Hessian_mat_cmplx(ihesa,ihesb)=complex_zero
+       endif
        !& + (G_pqrs_cmplx-G_qprs_cmplx-G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! real,real
        !& - (G_pqrs_cmplx+G_qprs_cmplx+G_pqsr_cmplx+G_qpsr_cmplx)                    &  ! imag,imag
        !& + two*(G_pqsr_cmplx-G_qprs_cmplx)                                             ! real,imag and imag,real
@@ -601,6 +864,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
   enddo
 
  else ! Real
+ 
+  HESSIANd%Gradient_vec=zero; HESSIANd%Hessian_mat=zero;
 
   ihesa=0;
   do iorbp=1,NBF_tot ! p
@@ -775,6 +1040,9 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
         enddo
        enddo
        HESSIANd%Hessian_mat(ihesa,ihesb)=G_pqrs+G_qprs+G_pqsr+G_qpsr
+       if(abs(HESSIANd%Hessian_mat(ihesa,ihesb))<tol10) then
+        HESSIANd%Hessian_mat(ihesa,ihesb)=zero
+       endif
        HESSIANd%Hessian_mat(ihesb,ihesa)=HESSIANd%Hessian_mat(ihesa,ihesb)  ! The Real Hessian is symmetric
        ! write(*,*) iorbp,iorbq,iorbr,iorbs,HESSIANd%Hessian_mat(ihesa,ihesb)
       endif

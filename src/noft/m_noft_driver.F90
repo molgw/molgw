@@ -281,6 +281,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 
  ! Numerical initial gradient and hessian
  if(.false.) then
+  !iter=itermax
   block
   integer::iorbp,iorbq,iorbr,iorbs
   real(dp),allocatable,dimension(:,:)::DM1
@@ -318,7 +319,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
    write(*,*) ' '
    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,Hcore_cmplx=INTEGd%Hcore_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
-   write(*,*) ' '
+!   write(*,*) ' '
 !   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
 !   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
   else
@@ -329,15 +330,18 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
    write(*,*) ' '
    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,Hcore=INTEGd%Hcore,ERImol=INTEGd%ERImol)
-   write(*,*) ' '
-   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
-   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+!   write(*,*) ' '
+!   RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero;
+!   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
+!   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
    write(*,*) ' '
    write(*,*) ' end block'
    write(*,*) ' '
   endif
   deallocate(DM1,DM2)
   endblock
+  write(msg,'(a)') ' '
+  call write_output(msg)
  endif
 
  ! Orb. and occ. optimization
@@ -432,7 +436,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    deallocate(DM1,DM2)
   endblock
    call HESSIANd%diag()
-! TODO: exploiding only-two indices elements, occ, and lambda intermediate quantity
+!   write(*,*) ' '
+!   RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero;
+!   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
 !   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
 !   call HESSIANd%diag()
    write(msg,'(a)') ' '
