@@ -602,6 +602,22 @@ print_cube_rho_tddft:
   comment: Prints electronic density in a 3D volumetric file with cube format for
     each simulation step in the real-time dynamics
 
+print_c_matrix_cmplx_hdf5:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the time-dependent wave function coefficients c_matrix_cmplx in an HDF5 file called 'rt_tddft.h5'
+
+print_p_matrix_MO_block_hdf5:
+  family: io_rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the time-dependent density matrix in an HDF5 file called 'rt_tddft.h5'
+
 print_dens_traj:
   family: io_rt_tddft
   datatype: yes/no
@@ -1198,13 +1214,13 @@ excit_name:
   default: 'no'
   comment: "Sets the type of excitation of a system in the real-time dynamics.  'GAU' stands for a linearly polarized uniform Gaussian electric field"
 
-excit_omega:
+excit_width:
   family: rt_tddft
   datatype: real
   mandatory: 'no'
   experimental: 'no'
   default: 0.2
-  comment: The excitation pulse width in atomic units for the real-time dynamics.
+  comment: The excitation pulse duration in atomic units for the real-time dynamics.
 
 excit_time0:
   family: rt_tddft

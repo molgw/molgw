@@ -212,7 +212,7 @@
 [excit_dir](#excit_dir)
 [excit_kappa](#excit_kappa)
 [excit_name](#excit_name)
-[excit_omega](#excit_omega)
+[excit_width](#excit_width)
 [excit_time0](#excit_time0)
 [n_hist](#n_hist)
 [n_iter](#n_iter)
@@ -240,6 +240,8 @@
 [calc_spectrum](#calc_spectrum)
 [print_cube_diff_tddft](#print_cube_diff_tddft)
 [print_cube_rho_tddft](#print_cube_rho_tddft)
+[print_c_matrix_cmplx_hdf5](#print_c_matrix_cmplx_hdf5)
+[print_p_matrix_MO_block_hdf5](#print_p_matrix_MO_block_hdf5)
 [print_dens_traj](#print_dens_traj)
 [print_dens_traj_points_set](#print_dens_traj_points_set)
 [print_dens_traj_tddft](#print_dens_traj_tddft)
@@ -1094,22 +1096,6 @@ Sets the type of excitation of a system in the real-time dynamics.  'GAU' stands
 
 
 ---
-### excit_omega
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** real
-
-**Default:** 0.2
-
-**Description:**
-
-The excitation pulse width in atomic units for the real-time dynamics.
-
-
----
 ### excit_time0
 
 *Optional*
@@ -1123,6 +1109,22 @@ The excitation pulse width in atomic units for the real-time dynamics.
 **Description:**
 
 Center of the excitation pulse in atomic units for the real-time dynamics.
+
+
+---
+### excit_width
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** real
+
+**Default:** 0.2
+
+**Description:**
+
+The excitation pulse duration in atomic units for the real-time dynamics.
 
 
 ---
@@ -2496,6 +2498,22 @@ Prints the big RESTART file at the end of the SCF loop. There are two kinds of R
 
 
 ---
+### print_c_matrix_cmplx_hdf5
+
+*Optional*
+
+**Family:** io_rt_tddft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Prints the time-dependent wave function coefficients c_matrix_cmplx in an HDF5 file called 'rt_tddft.h5'
+
+
+---
 ### print_charge_tddft
 
 *Optional*
@@ -2701,6 +2719,22 @@ Prints electronic density along a line, which parameters must be provided in man
 **Description:**
 
 Prints the electric multipole expansion for the electronic density and the nuclei.
+
+
+---
+### print_p_matrix_MO_block_hdf5
+
+*Optional*
+
+**Family:** io_rt_tddft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Prints the time-dependent density matrix in an HDF5 file called 'rt_tddft.h5'
 
 
 ---

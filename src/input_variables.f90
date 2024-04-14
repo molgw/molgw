@@ -68,6 +68,8 @@
     calc_spectrum,       &
     print_cube_diff_tddft,       &
     print_cube_rho_tddft,       &
+    print_c_matrix_cmplx_hdf5,       &
+    print_p_matrix_MO_block_hdf5,       &
     print_dens_traj,       &
     print_dens_traj_points_set,       &
     print_dens_traj_tddft,       &
@@ -134,7 +136,7 @@
     excit_dir,       &
     excit_kappa,       &
     excit_name,       &
-    excit_omega,       &
+    excit_width,       &
     excit_time0,       &
     n_hist,       &
     n_iter,       &
@@ -278,6 +280,8 @@
  calc_spectrum='no'
  print_cube_diff_tddft='no'
  print_cube_rho_tddft='no'
+ print_c_matrix_cmplx_hdf5='no'
+ print_p_matrix_MO_block_hdf5='no'
  print_dens_traj='no'
  print_dens_traj_points_set='no'
  print_dens_traj_tddft='no'
@@ -344,7 +348,7 @@
  excit_dir=(/ 1.0_dp , 0.0_dp , 0.0_dp /)
  excit_kappa=2e-05_dp 
  excit_name='no'
- excit_omega=0.2_dp 
+ excit_width=0.2_dp 
  excit_time0=3.0_dp 
  n_hist=2
  n_iter=2

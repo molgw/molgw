@@ -60,6 +60,7 @@ program molgw
   use m_noft
   use m_linear_response
   use m_acfd
+  use m_hdf5_tools
   implicit none
 
   !=====
@@ -127,7 +128,12 @@ program molgw
   if( move_nuclei == 'relax' ) then
     call lbfgs_init(lbfgs_plan,3*natom,5,diag_guess=2.0_dp)
   endif
-
+ 
+  !
+  ! Initialize the HDF5 environment
+#if defined(HAVE_HDF5)
+  call hdf_init() 
+#endif
 
   !
   ! Nucleus motion loop
@@ -761,6 +767,9 @@ program molgw
 
   call this_is_the_end()
 
+#if defined(HAVE_HDF5)
+  call hdf_finalize() 
+#endif
 
 end program molgw
 

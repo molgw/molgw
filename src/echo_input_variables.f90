@@ -59,8 +59,8 @@
   write(stdout,'(1x,a32,2x,"(",3(es16.8,2x),")")') 'excit_dir',excit_dir 
   write(stdout,'(1x,a32,2x,es16.8)') 'excit_kappa',excit_kappa 
   write(stdout,'(1x,a32,6x,a)') 'excit_name',TRIM(excit_name) 
-  write(stdout,'(1x,a32,2x,es16.8)') 'excit_omega',excit_omega 
   write(stdout,'(1x,a32,2x,es16.8)') 'excit_time0',excit_time0 
+  write(stdout,'(1x,a32,2x,es16.8)') 'excit_width',excit_width 
   write(stdout,'(1x,a32,6x,a)') 'force_energy_qp',force_energy_qp 
   write(stdout,'(1x,a32,6x,a)') 'frozencore',frozencore 
   write(stdout,'(1x,a32,2x,es16.8)') 'gamma_hybrid',gamma_hybrid 
@@ -146,6 +146,7 @@
   write(stdout,'(1x,a32,6x,a)') 'pred_corr',TRIM(pred_corr) 
   write(stdout,'(1x,a32,6x,a)') 'print_all_MO_wfn_file',print_all_MO_wfn_file 
   write(stdout,'(1x,a32,6x,a)') 'print_bigrestart',print_bigrestart 
+  write(stdout,'(1x,a32,6x,a)') 'print_c_matrix_cmplx_hdf5',print_c_matrix_cmplx_hdf5 
   write(stdout,'(1x,a32,6x,a)') 'print_charge_tddft',print_charge_tddft 
   write(stdout,'(1x,a32,6x,a)') 'print_cube',print_cube 
   write(stdout,'(1x,a32,6x,a)') 'print_cube_diff_tddft',print_cube_diff_tddft 
@@ -159,6 +160,7 @@
   write(stdout,'(1x,a32,6x,a)') 'print_line_rho_diff_tddft',print_line_rho_diff_tddft 
   write(stdout,'(1x,a32,6x,a)') 'print_line_rho_tddft',print_line_rho_tddft 
   write(stdout,'(1x,a32,6x,a)') 'print_multipole',print_multipole 
+  write(stdout,'(1x,a32,6x,a)') 'print_p_matrix_MO_block_hdf5',print_p_matrix_MO_block_hdf5 
   write(stdout,'(1x,a32,6x,a)') 'print_pdos',print_pdos 
   write(stdout,'(1x,a32,6x,a)') 'print_restart',print_restart 
   write(stdout,'(1x,a32,6x,a)') 'print_rho_grid',print_rho_grid 

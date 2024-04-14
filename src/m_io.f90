@@ -30,6 +30,7 @@ module m_io
   use m_cart_to_pure
   use m_eri,only: npair
   use m_elements
+  use m_hdf5_tools
 
 
   interface dump_out_matrix
@@ -2358,7 +2359,6 @@ end subroutine calc_density_in_disc_cmplx_regular
 !=========================================================================
 subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
   implicit none
-
   type(basis_set),intent(in)  :: basis
   real(dp),intent(in)         :: occupation(:,:)
   complex(dp),intent(in)      :: c_matrix_cmplx(:,:,:)
@@ -2418,7 +2418,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
   ! First call: initialization and storage
   !
   if( PRESENT(initialize) ) then
-    if( initialize) then
+    if(initialize) then
 
       write(stdout,'(/,1x,a)') 'Initialize density for plots'
 
@@ -2495,7 +2495,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
 
     if( is_iomaster ) then
       do ispin=1,nspin
-        write(file_name,'(i3.3,a,i1,a)') snapshot_index,'_',ispin,'dens_diff.cube'
+        write(file_name,'(i4.4,a,i1,a)') snapshot_index,'_',ispin,'dens_diff.cube'
         open(newunit=ocuberho(ispin),file=file_name)
         write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
         write(ocuberho(ispin),'(a,i4)') 'density difference for spin ',ispin
@@ -2525,7 +2525,7 @@ subroutine plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize)
 
         phi_cmplx(1:nocc(ispin),ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,1:nocc(ispin),ispin) )
         dens_diff(ir) = SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(1:nocc(ispin),ispin) ) * spin_fact &
-                              - cube_density_start(ir,ispin)
+                               - cube_density_start(ir,ispin)
 
       enddo
       !$OMP END DO
@@ -3862,6 +3862,43 @@ subroutine evaluate_memory(nbf,auxil_nbf,nstate,occupation)
 
 end subroutine evaluate_memory
 
+
+!=========================================================================
+subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
+  implicit none
+  integer(HID_T), intent(in) :: f_or_g_id
+  integer,intent(in)          :: isnap
+  complex(dp),intent(in)      :: matrix_cmplx(:,:,:)
+  character(len=*), intent(in), optional :: matrix_name
+  !=====
+  character(len=200)          :: file_name, snap_name, m_name
+  !=====
+
+#if defined(HAVE_HDF5)
+
+  if( .NOT. is_iomaster ) return
+
+  if( present(matrix_name) ) then
+    m_name = matrix_name
+  else
+    m_name = 'snap_'
+  end if
+
+  write(snap_name,'(a,I0,a)') TRIM(m_name), isnap, '_real'
+  call hdf_write_dataset(f_or_g_id, TRIM(snap_name), REAL(matrix_cmplx, dp))
+
+  write(snap_name,'(a,I0,a)') TRIM(m_name), isnap, '_imag'
+  call hdf_write_dataset(f_or_g_id, TRIM(snap_name), AIMAG(matrix_cmplx))
+
+#else
+
+  call die('dump_matrix_cmplx_hdf5: to print matrix_cmplx into an HDF5 file, ' // &
+           'MOLGW must be compiled with HDF5: HDF5_ROOT must be specified ' // &
+           'and the -DHAVE_HDF5 compilation option must be activated')
+
+#endif
+
+ end subroutine dump_matrix_cmplx_hdf5
 
 !=========================================================================
 end module m_io

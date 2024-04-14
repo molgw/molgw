@@ -59,8 +59,8 @@
  write(unit_yaml,'(4x,a,21x,"[",es16.8,", ",es16.8,", ",es16.8,"]")') 'excit_dir:',excit_dir 
  write(unit_yaml,'(4x,a,19x,es16.8)') 'excit_kappa:',excit_kappa 
  write(unit_yaml,'(4x,a,20x,a)') 'excit_name:',TRIM(excit_name) 
- write(unit_yaml,'(4x,a,19x,es16.8)') 'excit_omega:',excit_omega 
  write(unit_yaml,'(4x,a,19x,es16.8)') 'excit_time0:',excit_time0 
+ write(unit_yaml,'(4x,a,19x,es16.8)') 'excit_width:',excit_width 
  write(unit_yaml,'(4x,a,15x,a)') 'force_energy_qp:',yesno_to_TrueFalse(force_energy_qp) 
  write(unit_yaml,'(4x,a,20x,a)') 'frozencore:',yesno_to_TrueFalse(frozencore) 
  write(unit_yaml,'(4x,a,18x,es16.8)') 'gamma_hybrid:',gamma_hybrid 
@@ -146,6 +146,7 @@
  write(unit_yaml,'(4x,a,21x,a)') 'pred_corr:',TRIM(pred_corr) 
  write(unit_yaml,'(4x,a,9x,a)') 'print_all_MO_wfn_file:',yesno_to_TrueFalse(print_all_MO_wfn_file) 
  write(unit_yaml,'(4x,a,14x,a)') 'print_bigrestart:',yesno_to_TrueFalse(print_bigrestart) 
+ write(unit_yaml,'(4x,a,5x,a)') 'print_c_matrix_cmplx_hdf5:',yesno_to_TrueFalse(print_c_matrix_cmplx_hdf5) 
  write(unit_yaml,'(4x,a,12x,a)') 'print_charge_tddft:',yesno_to_TrueFalse(print_charge_tddft) 
  write(unit_yaml,'(4x,a,20x,a)') 'print_cube:',yesno_to_TrueFalse(print_cube) 
  write(unit_yaml,'(4x,a,9x,a)') 'print_cube_diff_tddft:',yesno_to_TrueFalse(print_cube_diff_tddft) 
@@ -159,6 +160,7 @@
  write(unit_yaml,'(4x,a,5x,a)') 'print_line_rho_diff_tddft:',yesno_to_TrueFalse(print_line_rho_diff_tddft) 
  write(unit_yaml,'(4x,a,10x,a)') 'print_line_rho_tddft:',yesno_to_TrueFalse(print_line_rho_tddft) 
  write(unit_yaml,'(4x,a,15x,a)') 'print_multipole:',yesno_to_TrueFalse(print_multipole) 
+ write(unit_yaml,'(4x,a,2x,a)') 'print_p_matrix_MO_block_hdf5:',yesno_to_TrueFalse(print_p_matrix_MO_block_hdf5) 
  write(unit_yaml,'(4x,a,20x,a)') 'print_pdos:',yesno_to_TrueFalse(print_pdos) 
  write(unit_yaml,'(4x,a,17x,a)') 'print_restart:',yesno_to_TrueFalse(print_restart) 
  write(unit_yaml,'(4x,a,16x,a)') 'print_rho_grid:',yesno_to_TrueFalse(print_rho_grid) 

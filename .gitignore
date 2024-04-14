@@ -5,8 +5,8 @@ molgw_*
 *.mod
 *.o
 *.swp
-src/tags
-src/.tags*
+**/tags
+**/.tags*
 src/git_sha.f90
 src/basis_path.f90
 src/my_machine*.arch*

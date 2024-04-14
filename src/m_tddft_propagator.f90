@@ -26,6 +26,7 @@ module m_tddft_propagator
   use m_dft_grid
   use m_scf
   use m_io
+  use m_hdf5_tools
 
   interface propagate_orth
     module procedure propagate_orth_ham_1
@@ -37,8 +38,8 @@ module m_tddft_propagator
   real(dp),private                   :: time_read !defaut=0.0_dp
   real(dp),allocatable,private       :: xatom_start(:,:)
   real(dp),allocatable,private       :: xbasis_start(:,:)
-  real(dp),allocatable,private       :: count_atom_e(:,:), count_atom_e_copy(:,:)
   real(dp),private                   :: excit_field_norm
+  real(dp),allocatable,private       :: excit_field_time(:,:)
   logical,private                    :: moving_basis
   !==hamiltonian extrapolation variables==
   real(dp),allocatable,private       :: extrap_coefs(:)
@@ -105,6 +106,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: file_mulliken, file_lowdin
   real(dp)                   :: time_cur
   complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
+  real(dp),allocatable       :: p_matrix_real(:,:,:)
   logical                    :: is_identity_ ! keep this varibale
   !==cube_diff varibales====================================
   real(dp),allocatable       :: cube_density_start(:,:,:,:)
@@ -118,7 +120,12 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: file_q_matrix(2)
   integer                    :: iocc
   complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
-  !====
+  !==HDF5==
+  integer(HID_T)             :: fid, c_mat_group, p_mat_group
+  !==DMD==
+  character(len=200)         :: snap_name
+  real(dp),allocatable       :: p_matrix_MO_real(:,:,:)
+  real(dp),allocatable       :: p_matrix_MO_block(:,:,:)
 
   call switch_on_rt_tddft_timers()
   call start_clock(timing_tddft_loop)
@@ -239,7 +246,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     call setup_nucleus_ecp(basis,hamiltonian_nucleus)
   endif
 
-  if(write_step / time_step - NINT( write_step / time_step ) > 1.0E-10_dp .OR. write_step < time_step ) then
+  if( write_step / time_step - NINT( write_step / time_step ) > 1.0E-10_dp .OR. write_step < time_step ) then
     call die("Tddft error: write_step is not a multiple of time_step or smaller than time_step.")
   end if
 
@@ -324,6 +331,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   ! Number of time steps
   ntau = NINT( (time_sim-time_min) / time_step )
+  allocate(excit_field_time(3,ntau))
 
   if(excit_type%form==EXCIT_LIGHT) then
     call clean_allocate('Dipole_basis for TDDFT',dipole_ao,basis%nbf,basis%nbf,3)
@@ -380,6 +388,63 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   if( print_cube_diff_tddft_ ) then
     call plot_cube_diff_cmplx(basis,occupation,c_matrix_cmplx,initialize=.TRUE.)
+  end if
+
+  if( print_p_matrix_MO_block_hdf5_ ) then
+    ! Only the real-part of P_MO is needed,
+    !  since it will be used for a dipole calculation Tr{ P(t) D } where D is symmetric
+    allocate(p_matrix_real(basis%nbf,basis%nbf,nspin))
+    allocate(p_matrix_MO_real(nstate,nstate,nspin))
+    allocate(p_matrix_MO_block(nocc,nstate-nocc,nspin))
+
+    p_matrix_real(:,:,:) = p_matrix_cmplx(:,:,:)%re
+
+    call setup_density_matrix_MO_real(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
+    p_matrix_MO_block(:,:,:) = p_matrix_MO_real(1:nocc,nocc+1:nstate,:)
+    deallocate(p_matrix_real,p_matrix_MO_real)
+  end if
+
+  ! HANDLING HDF5 files here
+  if( (print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_) .and. is_iomaster ) then
+
+#if defined(HAVE_HDF5)
+    call hdf_open_file(fid, 'rt_tddft.h5', status='NEW')
+
+    call hdf_write_dataset(fid, 'nbf', basis%nbf)
+    call hdf_write_dataset(fid, 'nstate', nstate)
+    call hdf_write_dataset(fid, 'nocc', nocc)
+
+    call hdf_write_dataset(fid, 'time_step', time_step)
+    call hdf_write_dataset(fid, 'occupation', occupation)
+    call hdf_write_dataset(fid, 's_matrix', s_matrix)
+
+    ! save the initial complete c_matrix, nstate x nstate
+    call hdf_write_dataset(fid, 'c_matrix_complete_0_real', c_matrix)
+
+    if( excit_type%form == EXCIT_LIGHT ) then
+      call hdf_write_dataset(fid, 'excitation_kappa', excit_type%kappa)
+      call hdf_write_attribute(fid, 'excitation_kappa', 'excitation_name', excit_type%name)
+      call hdf_write_dataset(fid, 'excitation_width', excit_type%width)
+      call hdf_write_dataset(fid, 'excitation_time0', excit_type%time0)
+      call hdf_write_dataset(fid, 'excitation_dir', excit_type%dir)
+      call hdf_write_dataset(fid, 'dipole_ao', dipole_ao)
+    end if
+
+    if( print_c_matrix_cmplx_hdf5_ ) then
+      call hdf_create_group(fid, 'c_matrix')
+      call hdf_open_group(fid, 'c_matrix', c_mat_group)
+      call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_cmplx, 0)
+    end if
+
+    if( print_p_matrix_MO_block_hdf5_ ) then
+
+      call hdf_create_group(fid, 'p_matrix_MO_block')
+      call hdf_open_group(fid, 'p_matrix_MO_block', p_mat_group)
+      call hdf_write_dataset(p_mat_group, 'snap_0', p_matrix_MO_block)
+
+    end if
+#endif
+
   end if
 
   if(print_line_rho_diff_tddft_) then
@@ -496,6 +561,24 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       if (calc_q_matrix_) call calculate_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx, &
                                                  istate_cut,file_q_matrix,time_cur)
 
+      if( print_c_matrix_cmplx_hdf5_ .and. is_iomaster ) call dump_matrix_cmplx_hdf5(c_mat_group, c_matrix_cmplx, iwrite_step)
+      if( print_p_matrix_MO_block_hdf5_) then
+        ! Only the real-part of P_MO is needed,
+        !  since it will be used for a dipole calculation Tr{ P(t) D } where D is symmetric
+        allocate(p_matrix_real(basis%nbf,basis%nbf,nspin))
+        allocate(p_matrix_MO_real(nstate,nstate,nspin))
+        p_matrix_real(:,:,:) = p_matrix_cmplx(:,:,:)%re
+
+        call setup_density_matrix_MO_real(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
+        p_matrix_MO_block(:,:,:) = p_matrix_MO_real(1:nocc,nocc+1:nstate,:)
+        write(snap_name, '(a,i0)') 'snap_', iwrite_step
+#if defined(HAVE_HDF5)
+        if (is_iomaster) call hdf_write_dataset(p_mat_group, TRIM(snap_name), p_matrix_MO_block)
+#endif 
+        deallocate(p_matrix_real)
+        deallocate(p_matrix_MO_real)
+      end if
+
       iwrite_step = iwrite_step + 1
 
     end if
@@ -533,6 +616,18 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   end do
 
   !********end time loop*******************
+
+  if( (print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_) .and. is_iomaster ) then
+
+#if defined(HAVE_HDF5)
+    call hdf_write_dataset(fid, 'nsnap', itau)
+    call hdf_write_dataset(fid, 'excitation_field', excit_field_time)
+
+    if(print_c_matrix_cmplx_hdf5_) call hdf_close_group(c_mat_group)
+    if(print_p_matrix_MO_block_hdf5_) call hdf_close_group(p_mat_group)
+    call hdf_close_file(fid)
+#endif
+  end if
 
   if(print_tddft_restart_) then
     if( moving_basis ) then
@@ -580,6 +675,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   deallocate(xatom_start)
   deallocate(xbasis_start)
+  deallocate(excit_field_time)
 
   call clean_deallocate('Dipole_basis for TDDFT',dipole_ao)
 
@@ -2569,6 +2665,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   ! Excitation part of the Hamiltonian
   !
   en_tddft%excit = 0.0_dp
+  if( itau > 0 ) excit_field_time(:,itau) = 0.0_dp
 
   select case(excit_type%form)
     !
@@ -2578,14 +2675,15 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
     calc_excit_ = .FALSE.
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'GAU' )
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'HSW'  &
-       .AND. ABS(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
+       .AND. ABS(time_cur - excit_type%time0 - excit_type%width/2.0_dp)<=excit_type%width/2.0_dp )
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'STEP' &
-       .AND. ABS(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
+       .AND. ABS(time_cur - excit_type%time0 - excit_type%width/2.0_dp)<=excit_type%width/2.0_dp )
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  &
        .AND. ABS(time_cur - excit_type%time0)<time_step_cur/2.0_dp )
     if( itau == 0 ) calc_excit_=.FALSE.
     if ( calc_excit_ ) then
       call calculate_excit_field(time_cur,excit_field)
+      excit_field_time(:,itau) = excit_field(:)
       excit_field_norm = NORM2(excit_field(:))
       do idir=1,3
         do ispin=1, nspin
@@ -2830,10 +2928,10 @@ subroutine calculate_excit_field(time_cur,excit_field)
 
   select case(excit_type%name)
   case('GAU') !Gaussian electic field
-    excit_field(:) = excit_type%kappa * EXP( -( time_cur-excit_type%time0 )**2 / 2.0_dp / excit_omega**2 ) &
+    excit_field(:) = excit_type%kappa * EXP( -( time_cur-excit_type%time0 )**2 / 2.0_dp / excit_type%width**2 ) &
                      * excit_dir_norm(:)
   case('HSW') !Hann sine window
-    excit_field(:) = excit_type%kappa * SIN( pi / excit_omega * ( time_cur - excit_type%time0  ) )**2 * excit_dir_norm(:)
+    excit_field(:) = excit_type%kappa * SIN( pi / excit_type%width * ( time_cur - excit_type%time0  ) )**2 * excit_dir_norm(:)
   case('DEL') ! Delta excitation
     excit_field(:) = excit_type%kappa * excit_dir_norm(:)
   case('STEP') ! Step excitation
