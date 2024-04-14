@@ -154,8 +154,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(fcidump) ifcidump=1
  endif
  
-! Check whether to print compute the Hessian matrix
+! Check whether to compute the Hessian matrix
  if(present(hessian)) hessian_in=hessian
+ if(imethorb/=1) hessian_in=.true.
 
  ! Check whether to print a FCIDUMP file and the sw-RDMs
  if(present(irange_sep)) then 
@@ -207,14 +208,16 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 & Nbeta_elect_in,Nalpha_elect_in,irs_noft)
  endif
  
- if(present(lowmemERI)) then
+ if(present(lowmemERI) .and. (.not.hessian_in .and. imethorb/=1)) then ! The Hessian for Newton Rapson method needs all integrals
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
  else
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
  endif
- call elag_init(ELAGd,RDMd%NBF_tot,diagLpL,itolLambda,ndiis,imethorb,tolE_in,cpx_mos)
+ call elag_init(ELAGd,RDMd%NBF_tot,diagLpL,itolLambda,ndiis,tolE_in,cpx_mos)
  if(hessian_in) then
-   call hessian_init(HESSIANd,RDMd%NBF_tot,cpx_mos)
+  call hessian_init(HESSIANd,RDMd%NBF_tot,cpx_mos)
+ else
+  call hessian_init(HESSIANd,2,cpx_mos)
  endif
 
  ! Check for the presence of restart files. Then, if they are available read them (only if required)
@@ -318,7 +321,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERI_in)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
    write(*,*) ' '
-   call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,Hcore_cmplx=INTEGd%Hcore_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+   call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
 !   write(*,*) ' '
 !   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
 !   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
@@ -329,7 +332,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
    write(*,*) ' '
-   call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,Hcore=INTEGd%Hcore,ERImol=INTEGd%ERImol)
+   call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol)
 !   write(*,*) ' '
 !   RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero;
 !   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
@@ -350,9 +353,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(.not.keep_orbs) then
    call ELAGd%clean_diis()
    if(cpx_mos) then
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
    else   
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF=NO_COEF)
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO_COEF=NO_COEF)
    endif
    if(imethorb==1) then ! For F diag method, print F_pp elements after each global iteration
     call ELAGd%print_Fdiag(RDMd%NBF_tot)
@@ -429,9 +432,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
     DM2(iorbp,iorbp,iorbp,iorbp)=RDMd%DM2_iiii(iorbp)
    enddo
    if(cpx_mos) then
-    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,Hcore_cmplx=INTEGd%Hcore_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
    else
-    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,Hcore=INTEGd%Hcore,ERImol=INTEGd%ERImol)
+    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol)
    endif
    deallocate(DM1,DM2)
   endblock
@@ -578,9 +581,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 
  ! Free all allocated RDMd, INTEGd, ELAGd, and HESSIANd arrays
  call ELAGd%free() 
- if(hessian_in) then
-  call HESSIANd%free()
- endif
+ call HESSIANd%free()
  call INTEGd%free()
  ! Reallocated INTEGd and print FCIDUMP file if required for real orbs and not rs-NOFT calcs
  if((ifcidump==1.and.(.not.cpx_mos)).and.irs_noft/=0) then
@@ -771,8 +772,10 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a,i12)') ' Numb. of iter used in DIIS        ',ndiis
   call write_output(msg)
  else
-  write(msg,'(a,i12)') ' Newton method used in orb opt.    ',imethorb
- call write_output(msg)
+  write(msg,'(a,i12)') ' New. Rap. method used in orb opt. ',imethorb
+  call write_output(msg)
+  write(msg,'(a,e10.3)') ' Tolerance gradient convergence      ',ten**(-itolLambda)
+  call write_output(msg)
  endif
  write(msg,'(a,i11)') ' Max. number of global iterations   ',itermax
  call write_output(msg)
@@ -1108,7 +1111,7 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
  endif
 
  ! Read diag. part of the F matrix for Lambda_pq - Lambda_qp* method
- if(ELAGd%imethod==1.and.ireadFdiag==1) then
+ if(ireadFdiag==1) then
   open(unit=iunit,form='unformatted',file='F_DIAG',iostat=istat,status='old')
   icount=0
   if(istat==0) then

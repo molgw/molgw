@@ -20,6 +20,7 @@ module m_optorb
  use m_rdmd
  use m_integd
  use m_elag
+ use m_hessian
  use m_diagf
  use m_e_grad_occ
  use m_e_grad_occ_cpx
@@ -59,7 +60,7 @@ contains
 !!
 !! SOURCE
 
-subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_COEF_cmplx) 
+subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO_COEF,NO_COEF_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::iter,imethod
@@ -68,6 +69,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
  type(elag_t),intent(inout)::ELAGd
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
+ type(hessian_t),intent(inout)::HESSIANd
  interface 
   subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
   & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
@@ -91,19 +93,52 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
 !Local variables ------------------------------
 !scalars
- logical::convLambda,nogamma,diddiis
- integer::icall,iorbmax1,iorbmax2
+ logical::convLambda,nogamma,diddiis,allocated_DMNs
+ logical::F_meth_printed,NR_meth_printed
+ integer::icall,iorbmax1,iorbmax2,imethod_in
+ integer::iorbp,iorbq
  real(dp)::sumdiff,maxdiff,maxdiff_all,Ediff,Energy_old
 !arrays
+ real(dp),allocatable,dimension(:,:)::DM1
+ real(dp),allocatable,dimension(:,:,:,:)::DM2
+ real(dp),allocatable,dimension(:,:)::U_mat,kappa_mat
+ complex(dp),allocatable,dimension(:,:)::U_mat_cmplx,kappa_mat_cmplx
  character(len=200)::msg
 !************************************************************************
 
+ imethod_in=imethod
+
  Ediff=zero; Energy=zero; Energy_old=zero; convLambda=.false.;nogamma=.true.;
- if((imethod==1).and.(iter==0)) then
+ allocated_DMNs=.false.;F_meth_printed=.false.;NR_meth_printed=.false.;
+
+ if((imethod_in==1).and.(iter==0)) then
   ELAGd%sumdiff_old=zero
  endif
+
+ ! Allocate density matrices for Newton Rapson method
+ if(imethod_in/=1) then
+  allocated_DMNs=.true.
+  if(INTEGd%complex_ints) then
+   allocate(U_mat_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
+  else
+   allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat(RDMd%NBF_tot,RDMd%NBF_tot))
+  endif
+  allocate(DM1(RDMd%NBF_tot,RDMd%NBF_tot),DM2(RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot))
+  DM1=zero; DM2=zero;
+  ! Build full 1,2-RDMs
+  ! Tr[1D] = N/2 , Tr[2D]= N(N-1)/2
+  do iorbp=1,RDMd%NBF_occ ! p
+   DM1(iorbp,iorbp)=RDMd%occ(iorbp)
+   do iorbq=1,RDMd%NBF_occ ! q
+    DM2(iorbp,iorbq,iorbp,iorbq)=RDMd%DM2_J(iorbp+(iorbq-1)*RDMd%NBF_occ)
+    DM2(iorbp,iorbq,iorbq,iorbp)=RDMd%DM2_K(iorbp+(iorbq-1)*RDMd%NBF_occ) &
+    &                           +RDMd%DM2_L(iorbp+(iorbq-1)*RDMd%NBF_occ) ! Adding DM2_L to DM2_K due to time-rev. sym.
+    !DM2(iorbp,iorbp,iorbq,iorbq)=RDMd%DM2_L(iorbp+(iorbq-1)*RDMd%NBF_occ)
+   enddo
+   DM2(iorbp,iorbp,iorbp,iorbp)=RDMd%DM2_iiii(iorbp)
+  enddo
+ endif
  
- icall=0
  if(INTEGd%complex_ints) then
   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
@@ -122,6 +157,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
  endif
+
+ icall=0
  do
   ! If we used a DIIS step, do not stop after DIIS for small Energy dif.
   diddiis=.false.
@@ -131,12 +168,26 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
 
   ! Check if these NO_COEF with the RDMs are already the solution =)
   call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff,maxdiff_all,iorbmax1,iorbmax2)
+  if((imethod_in/=1.and.icall==0).and.maxdiff>tol3) then
+   imethod_in=1
+   if(.not.F_meth_printed) then
+    write(msg,'(a)') 'Building F_matrix orb. opt. method'
+    call write_output(msg)
+    F_meth_printed=.true.
+   endif
+  else
+   if(.not.NR_meth_printed) then
+    write(msg,'(a)') 'Performing Newton Rapson orb. opt. method'
+    call write_output(msg)
+    NR_meth_printed=.true.
+   endif
+  endif
   if(convLambda) then
    write(msg,'(a)') 'Lambda_qp - Lambda_pq* converged for the Hemiticty of Lambda'
    call write_output(msg)
    exit
   else
-   if(imethod==1.and.icall==0) then                                        ! F method: adjust MaxScaling for the rest of orb. icall iterations
+   if(imethod_in==1.and.icall==0) then                                        ! F method: adjust MaxScaling for the rest of orb. icall iterations
     if(iter>2.and.iter>ELAGd%itscale.and.(sumdiff>ELAGd%sumdiff_old)) then ! Parameters chosen from experience to
      ELAGd%itscale=iter+10                                                 ! ensure convergence. Maybe we can set them as input variables?
      ELAGd%MaxScaling=ELAGd%MaxScaling+1
@@ -149,14 +200,24 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   endif
 
   ! Update NO_COEF
-  if(imethod==1) then ! Build F matrix for iterative diagonalization
+  if(imethod_in==1) then ! Build F matrix for iterative diagonalization
    if(INTEGd%complex_ints) then
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF_cmplx=NO_COEF_cmplx) ! Build new NO_COEF and set icall=icall+1
    else
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF=NO_COEF) ! Build new NO_COEF and set icall=icall+1
    endif
-  else                ! Use Newton method to produce new COEFs
-   ! TODO
+  else                ! Use Newton Rapson method to produce new COEFs
+   if(INTEGd%complex_ints) then
+    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+    call HESSIANd%newton_rapson(icall,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa from -H^-1 g
+    call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
+    NO_COEF_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
+   else
+    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol)
+    call HESSIANd%newton_rapson(icall,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa from -H^-1 g
+    call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)
+    NO_COEF=matmul(NO_COEF,U_mat)
+   endif
   endif
 
   ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
@@ -180,7 +241,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   endif
  
   ! Check if we did Diag[(Lambda_pq + Lambda_qp*)/2] for F method (first iteration)
-  if((imethod==1.and.iter==0).and.ELAGd%diagLpL_done) then ! For F method if we did Diag[(Lambda_pq + Lambda_qp*)/2].
+  if((imethod_in==1.and.iter==0).and.ELAGd%diagLpL_done) then ! For F method if we did Diag[(Lambda_pq + Lambda_qp*)/2].
    exit                                                    ! -> Do only one icall iteration before the occ. opt.
   endif
 
@@ -197,7 +258,17 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
   if(icall==30) exit
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  enddo
- 
+
+ ! Remove density matrices used in Newton Rapson method  
+ if(allocated_DMNs) then
+  deallocate(DM1,DM2)
+  if(INTEGd%complex_ints) then
+   deallocate(U_mat_cmplx,kappa_mat_cmplx)
+  else
+   deallocate(U_mat,kappa_mat)
+  endif
+ endif
+
  ! Calc. the final Energy using fixed RDMs and the new NO_COEF (before going back to occ. optimization)
  if(INTEGd%complex_ints) then
   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
@@ -208,7 +279,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,Vnn,Energy,mo_ints,NO_COEF,NO_
  endif
  write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
- if(imethod==1.and.iter>0) then
+ if(iter>0) then
   write(msg,'(a,f15.6,a,i5,a,i5,a)') 'Max. [Lambda_qp - Lambda_pq*]= ',maxdiff_all,' pair (',iorbmax1,',',iorbmax2,')'
   call write_output(msg)
   write(msg,'(a,f19.10)') 'Energy difference orb. opt.=',Ediff

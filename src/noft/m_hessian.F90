@@ -65,6 +65,9 @@ module m_hessian
    procedure :: diag => diag_hessian
    ! Diagonalize the Hessian matrix and analyze the eigenvalues
 
+   procedure :: newton_rapson => newton_rapson_step
+   ! Perfom k = H^-1 g
+
  end type hessian_t
 
  public :: hessian_init 
@@ -219,12 +222,12 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
  character(len=200)::msg
 !************************************************************************
  
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') 'Building Hessian Matrix (M^5 loop)'
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
+! write(msg,'(a)') ' '
+! call write_output(msg)
+! write(msg,'(a)') 'Building Hessian Matrix (M^5 loop)'
+! call write_output(msg)
+! write(msg,'(a)') ' '
+! call write_output(msg)
 
  ! Build Hessian
  if(HESSIANd%cpx_hessian) then ! Complex
@@ -256,11 +259,11 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
        G_pqrs=zero;G_qprs=zero;G_pqsr=zero;G_qpsr=zero;
        ! G_pqrs
        if(iorbr==iorbq) then ! r=q
-        G_pqrs=G_pqrs-two*RDMd%occ(iorbr)*INTEGd%Hcore(iorbs,iorbp) &
+        G_pqrs=G_pqrs-two*RDMd%occ(iorbr)*INTEGd%hCORE(iorbs,iorbp) &
         &     +half*(ELAGd%Lambdas(iorbp,iorbs)+ELAGd%Lambdas(iorbs,iorbp))
        endif
        if(iorbp==iorbs) then ! p=s
-        G_pqrs=G_pqrs-two*RDMd%occ(iorbp)*INTEGd%Hcore(iorbq,iorbr) &
+        G_pqrs=G_pqrs-two*RDMd%occ(iorbp)*INTEGd%hCORE(iorbq,iorbr) &
         &     +half*(ELAGd%Lambdas(iorbq,iorbr)+ELAGd%Lambdas(iorbr,iorbq))
        endif
        if(iorbr<=RDMd%NBF_occ .and. iorbq<=RDMd%NBF_occ) then ! r and q are occ
@@ -321,11 +324,11 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
        endif
        ! G_qprs
        if(iorbr==iorbp) then ! r=p
-        G_qprs=G_qprs-two*RDMd%occ(iorbr)*INTEGd%Hcore(iorbs,iorbq) &
+        G_qprs=G_qprs-two*RDMd%occ(iorbr)*INTEGd%hCORE(iorbs,iorbq) &
         &     +half*(ELAGd%Lambdas(iorbq,iorbs)+ELAGd%Lambdas(iorbs,iorbq))
        endif
        if(iorbq==iorbs) then ! q=s
-        G_qprs=G_qprs-two*RDMd%occ(iorbq)*INTEGd%Hcore(iorbp,iorbr) &
+        G_qprs=G_qprs-two*RDMd%occ(iorbq)*INTEGd%hCORE(iorbp,iorbr) &
         &     +half*(ELAGd%Lambdas(iorbp,iorbr)+ELAGd%Lambdas(iorbr,iorbp))
        endif
        if(iorbr<=RDMd%NBF_occ .and. iorbp<=RDMd%NBF_occ) then ! r and p are occ
@@ -386,11 +389,11 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
        endif
        ! G_pqsr
        if(iorbs==iorbq) then ! s=q
-        G_pqsr=G_pqsr-two*RDMd%occ(iorbs)*INTEGd%Hcore(iorbr,iorbp) &
+        G_pqsr=G_pqsr-two*RDMd%occ(iorbs)*INTEGd%hCORE(iorbr,iorbp) &
         &     +half*(ELAGd%Lambdas(iorbp,iorbr)+ELAGd%Lambdas(iorbr,iorbp))
        endif
        if(iorbp==iorbr) then ! p=r
-        G_pqsr=G_pqsr-two*RDMd%occ(iorbp)*INTEGd%Hcore(iorbq,iorbs) &
+        G_pqsr=G_pqsr-two*RDMd%occ(iorbp)*INTEGd%hCORE(iorbq,iorbs) &
         &     +half*(ELAGd%Lambdas(iorbq,iorbs)+ELAGd%Lambdas(iorbs,iorbq))
        endif
        if(iorbs<=RDMd%NBF_occ .and. iorbq<=RDMd%NBF_occ) then ! s and q are occ
@@ -451,11 +454,11 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
        endif
        ! G_qpsr
        if(iorbs==iorbp) then ! p=s
-        G_qpsr=G_qpsr-two*RDMd%occ(iorbs)*INTEGd%Hcore(iorbr,iorbq) &
+        G_qpsr=G_qpsr-two*RDMd%occ(iorbs)*INTEGd%hCORE(iorbr,iorbq) &
         &     +half*(ELAGd%Lambdas(iorbq,iorbr)+ELAGd%Lambdas(iorbr,iorbq))
        endif
        if(iorbq==iorbr) then ! q=r
-        G_qpsr=G_qpsr-two*RDMd%occ(iorbq)*INTEGd%Hcore(iorbp,iorbs) &
+        G_qpsr=G_qpsr-two*RDMd%occ(iorbq)*INTEGd%hCORE(iorbp,iorbs) &
         &     +half*(ELAGd%Lambdas(iorbp,iorbs)+ELAGd%Lambdas(iorbs,iorbp))
        endif
        if(iorbs<=RDMd%NBF_occ .and. iorbp<=RDMd%NBF_occ) then ! s and p are occ
@@ -616,6 +619,102 @@ subroutine diag_hessian(HESSIANd)
 end subroutine diag_hessian
 !!***
 
+!!****f* DoNOF/newton_rapson_step
+!! NAME
+!! newton_rapson_step
+!!
+!! FUNCTION
+!!  Perform Newton Rapson step to compute new kappa
+!!
+!! INPUTS
+!!  icall
+!!
+!! OUTPUT
+!!  kappa_mat or kappa_cmplx
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine newton_rapson_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmplx)
+!Arguments ------------------------------------
+!scalars
+ integer,intent(inout)::icall
+ integer,intent(in)::NBF_tot
+ class(hessian_t),intent(inout)::HESSIANd
+!arrays
+ real(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::kappa_mat
+ complex(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::kappa_mat_cmplx
+!Local variables ------------------------------
+!scalars
+ integer::iorbp,iorbq,iterm,info
+!arrays
+ integer,allocatable,dimension(:)::IPIV
+ character(len=200)::msg
+!************************************************************************
+
+ allocate(IPIV(HESSIANd%NDIM_hess))
+
+ if(HESSIANd%cpx_hessian) then ! Complex
+
+  call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
+  if(info==0) then
+   HESSIANd%Gradient_vec_cmplx=-HESSIANd%Gradient_vec_cmplx 
+   call ZGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV, &
+   & HESSIANd%Gradient_vec_cmplx,HESSIANd%NDIM_hess,info)
+   if(info==0) then
+    iterm=1
+    do iorbp=1,NBF_tot
+     do iorbq=iorbp+1,NBF_tot
+      kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Gradient_vec_cmplx(iterm)
+      kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
+      iterm=iterm+1
+     enddo
+    enddo
+   endif
+  endif
+
+ else  ! Real
+
+  call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
+  if(info==0) then
+   HESSIANd%Gradient_vec=-HESSIANd%Gradient_vec 
+   call DGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,       &
+   & HESSIANd%Gradient_vec,HESSIANd%NDIM_hess,info)
+   if(info==0) then
+    iterm=1
+    do iorbp=1,NBF_tot
+     do iorbq=iorbp+1,NBF_tot
+      kappa_mat(iorbp,iorbq)=HESSIANd%Gradient_vec(iterm)
+      kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
+      iterm=iterm+1
+     enddo
+    enddo
+   endif
+  endif
+
+ endif
+
+ ! Update iteration counter orb. opt.
+ icall=icall+1
+
+ ! Check if there was an error
+ if(info/=0) then
+  write(msg,'(a)') ' '
+  call write_output(msg)
+  write(msg,'(a)') 'Warning! Error in Newton-Rapson step'
+  call write_output(msg)
+  write(msg,'(a)') ' '
+  call write_output(msg)
+ endif
+
+ deallocate(IPIV)
+
+end subroutine newton_rapson_step
+!!***
+
 !!****f* DoNOF/build_hessian_brut
 !! NAME
 !! build_hessian_brut
@@ -626,7 +725,7 @@ end subroutine diag_hessian
 !! INPUTS
 !!  DM1=First order density matrix (alpha electrons) with N/2 normalization
 !!  DM2=Full spinless 2-RDM with N(N-1)/2 normalization
-!!  Hcore=Hcore integrals (all one-body contributions)
+!!  hCORE=hCORE integrals (all one-body contributions)
 !!  ERImol=Two-electron integrals
 !!
 !! OUTPUT
@@ -639,7 +738,7 @@ end subroutine diag_hessian
 !!
 !! SOURCE
 
-subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,ERImol_cmplx)
+subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,hCORE,ERImol,hCORE_cmplx,ERImol_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::NBF_tot
@@ -647,9 +746,9 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
 !arrays
  real(dp),dimension(NBF_tot,NBF_tot),intent(in)::DM1
  real(dp),dimension(NBF_tot,NBF_tot,NBF_tot,NBF_tot),intent(in)::DM2
- real(dp),optional,dimension(NBF_tot,NBF_tot),intent(in)::Hcore
+ real(dp),optional,dimension(NBF_tot,NBF_tot),intent(in)::hCORE
  real(dp),optional,dimension(NBF_tot,NBF_tot,NBF_tot,NBF_tot),intent(in)::ERImol
- complex(dp),optional,dimension(NBF_tot,NBF_tot),intent(in)::Hcore_cmplx
+ complex(dp),optional,dimension(NBF_tot,NBF_tot),intent(in)::hCORE_cmplx
  complex(dp),optional,dimension(NBF_tot,NBF_tot,NBF_tot,NBF_tot),intent(in)::ERImol_cmplx
 !Local variables ------------------------------
 !scalars
@@ -661,12 +760,12 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
  character(len=200)::msg
 !************************************************************************
 
- write(msg,'(a)') ' '
- call write_output(msg)
- write(msg,'(a)') 'Building Hessian Matrix (M^7 loop)'
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
+! write(msg,'(a)') ' '
+! call write_output(msg)
+! write(msg,'(a)') 'Building Hessian Matrix (M^7 loop)'
+! call write_output(msg)
+! write(msg,'(a)') ' '
+! call write_output(msg)
 
  ! Build Hessian
  if(HESSIANd%cpx_hessian) then ! Complex
@@ -682,10 +781,10 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
     !
     grad_pq_cmplx=complex_zero
     do iorbt=1,NBF_tot !t
-     grad_pq_cmplx=grad_pq_cmplx+two*DM1(iorbt,iorbq)*real(Hcore_cmplx(iorbt,iorbp)) &
-    &                           -two*DM1(iorbp,iorbt)*real(Hcore_cmplx(iorbq,iorbt))
-     grad_pq_cmplx=grad_pq_cmplx+two*im*DM1(iorbt,iorbq)*aimag(Hcore_cmplx(iorbt,iorbp)) &
-    &                           +two*im*DM1(iorbp,iorbt)*aimag(Hcore_cmplx(iorbq,iorbt))
+     grad_pq_cmplx=grad_pq_cmplx+two*DM1(iorbt,iorbq)*real(hCORE_cmplx(iorbt,iorbp)) &
+    &                           -two*DM1(iorbp,iorbt)*real(hCORE_cmplx(iorbq,iorbt))
+     grad_pq_cmplx=grad_pq_cmplx+two*im*DM1(iorbt,iorbq)*aimag(hCORE_cmplx(iorbt,iorbp)) &
+    &                           +two*im*DM1(iorbp,iorbt)*aimag(hCORE_cmplx(iorbq,iorbt))
      do iorbu=1,NBF_tot ! u
       do iorbv=1,NBF_tot ! v
        grad_pq_cmplx=grad_pq_cmplx+two*DM2(iorbu,iorbt,iorbv,iorbq)*real(ERImol_cmplx(iorbu,iorbt,iorbv,iorbp)) &
@@ -705,11 +804,11 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
       ihesb=ihesb+1
       if(ihesb>=ihesa) then !  
        ! G_pqrs_cmplx
-       !!G_pqrs_cmplx=-two*(DM1(iorbr,iorbq)*Hcore_cmplx(iorbs,iorbp)+DM1(iorbp,iorbs)*Hcore_cmplx(iorbq,iorbr))
+       !!G_pqrs_cmplx=-two*(DM1(iorbr,iorbq)*hCORE_cmplx(iorbs,iorbp)+DM1(iorbp,iorbs)*hCORE_cmplx(iorbq,iorbr))
        !!if(iorbr==iorbq) then ! q=r
        !! do iorbt=1,NBF_tot !t
-       !!  G_pqrs_cmplx=G_pqrs_cmplx+DM1(iorbt,iorbs)*Hcore_cmplx(iorbt,iorbp) &
-       !! &                         +DM1(iorbp,iorbt)*Hcore_cmplx(iorbs,iorbt)
+       !!  G_pqrs_cmplx=G_pqrs_cmplx+DM1(iorbt,iorbs)*hCORE_cmplx(iorbt,iorbp) &
+       !! &                         +DM1(iorbp,iorbt)*hCORE_cmplx(iorbs,iorbt)
        !!  do iorbu=1,NBF_tot ! u
        !!   do iorbv=1,NBF_tot ! v
        !!    G_pqrs_cmplx=G_pqrs_cmplx+DM2(iorbu,iorbv,iorbs,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbp,iorbt) &
@@ -720,8 +819,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        !!endif
        !!if(iorbp==iorbs) then ! p=s
        !! do iorbt=1,NBF_tot !t
-       !!  G_pqrs_cmplx=G_pqrs_cmplx+DM1(iorbt,iorbq)*Hcore_cmplx(iorbt,iorbr) &
-       !! &                         +DM1(iorbr,iorbt)*Hcore_cmplx(iorbq,iorbt)
+       !!  G_pqrs_cmplx=G_pqrs_cmplx+DM1(iorbt,iorbq)*hCORE_cmplx(iorbt,iorbr) &
+       !! &                         +DM1(iorbr,iorbt)*hCORE_cmplx(iorbq,iorbt)
        !!  do iorbu=1,NBF_tot ! u
        !!   do iorbv=1,NBF_tot ! v
        !!    G_pqrs_cmplx=G_pqrs_cmplx+DM2(iorbr,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbq,iorbt,iorbu,iorbv) &
@@ -741,11 +840,11 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        !! enddo
        !!enddo
        ! G_qprs_cmplx
-       G_qprs_cmplx=-two*(DM1(iorbr,iorbp)*Hcore_cmplx(iorbs,iorbq)+DM1(iorbq,iorbs)*Hcore_cmplx(iorbp,iorbr))
+       G_qprs_cmplx=-two*(DM1(iorbr,iorbp)*hCORE_cmplx(iorbs,iorbq)+DM1(iorbq,iorbs)*hCORE_cmplx(iorbp,iorbr))
        if(iorbr==iorbp) then ! p=r
         do iorbt=1,NBF_tot !t
-         G_qprs_cmplx=G_qprs_cmplx+DM1(iorbt,iorbs)*Hcore_cmplx(iorbt,iorbq) &
-        &                         +DM1(iorbq,iorbt)*Hcore_cmplx(iorbs,iorbt)
+         G_qprs_cmplx=G_qprs_cmplx+DM1(iorbt,iorbs)*hCORE_cmplx(iorbt,iorbq) &
+        &                         +DM1(iorbq,iorbt)*hCORE_cmplx(iorbs,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_qprs_cmplx=G_qprs_cmplx+DM2(iorbu,iorbv,iorbs,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbq,iorbt) &
@@ -756,8 +855,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        endif
        if(iorbq==iorbs) then ! q=s
         do iorbt=1,NBF_tot !t
-         G_qprs_cmplx=G_qprs_cmplx+DM1(iorbt,iorbp)*Hcore_cmplx(iorbt,iorbr) &
-        &                         +DM1(iorbr,iorbt)*Hcore_cmplx(iorbp,iorbt)
+         G_qprs_cmplx=G_qprs_cmplx+DM1(iorbt,iorbp)*hCORE_cmplx(iorbt,iorbr) &
+        &                         +DM1(iorbr,iorbt)*hCORE_cmplx(iorbp,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_qprs_cmplx=G_qprs_cmplx+DM2(iorbr,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbp,iorbt,iorbu,iorbv) &
@@ -777,11 +876,11 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
         enddo
        enddo
        ! G_pqsr_cmplx
-       !!G_pqsr_cmplx=-two*(DM1(iorbs,iorbq)*Hcore_cmplx(iorbr,iorbp)+DM1(iorbp,iorbr)*Hcore_cmplx(iorbq,iorbs))
+       !!G_pqsr_cmplx=-two*(DM1(iorbs,iorbq)*hCORE_cmplx(iorbr,iorbp)+DM1(iorbp,iorbr)*hCORE_cmplx(iorbq,iorbs))
        !!if(iorbs==iorbq) then ! q=s
        !! do iorbt=1,NBF_tot !t
-       !!  G_pqsr_cmplx=G_pqsr_cmplx+DM1(iorbt,iorbr)*Hcore_cmplx(iorbt,iorbp) &
-       !! &                         +DM1(iorbp,iorbt)*Hcore_cmplx(iorbr,iorbt)
+       !!  G_pqsr_cmplx=G_pqsr_cmplx+DM1(iorbt,iorbr)*hCORE_cmplx(iorbt,iorbp) &
+       !! &                         +DM1(iorbp,iorbt)*hCORE_cmplx(iorbr,iorbt)
        !!  do iorbu=1,NBF_tot ! u
        !!   do iorbv=1,NBF_tot ! v
        !!    G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbu,iorbv,iorbr,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbp,iorbt) &
@@ -792,8 +891,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        !!endif
        !!if(iorbp==iorbr) then ! p=r
        !! do iorbt=1,NBF_tot !t
-       !!  G_pqsr_cmplx=G_pqsr_cmplx+DM1(iorbt,iorbq)*Hcore_cmplx(iorbt,iorbs) &
-       !! &                         +DM1(iorbs,iorbt)*Hcore_cmplx(iorbq,iorbt)
+       !!  G_pqsr_cmplx=G_pqsr_cmplx+DM1(iorbt,iorbq)*hCORE_cmplx(iorbt,iorbs) &
+       !! &                         +DM1(iorbs,iorbt)*hCORE_cmplx(iorbq,iorbt)
        !!  do iorbu=1,NBF_tot ! u
        !!   do iorbv=1,NBF_tot ! v
        !!    G_pqsr_cmplx=G_pqsr_cmplx+DM2(iorbs,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbq,iorbt,iorbu,iorbv) &
@@ -813,11 +912,11 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        !! enddo
        !!enddo
        ! G_qpsr_cmplx
-       !!G_qpsr_cmplx=-two*(DM1(iorbs,iorbp)*Hcore_cmplx(iorbr,iorbq)+DM1(iorbq,iorbr)*Hcore_cmplx(iorbp,iorbs))
+       !!G_qpsr_cmplx=-two*(DM1(iorbs,iorbp)*hCORE_cmplx(iorbr,iorbq)+DM1(iorbq,iorbr)*hCORE_cmplx(iorbp,iorbs))
        !!if(iorbs==iorbp) then ! p=s
        !! do iorbt=1,NBF_tot !t
-       !!  G_qpsr_cmplx=G_qpsr_cmplx+DM1(iorbt,iorbr)*Hcore_cmplx(iorbt,iorbq) &
-       !! &                         +DM1(iorbq,iorbt)*Hcore_cmplx(iorbr,iorbt)
+       !!  G_qpsr_cmplx=G_qpsr_cmplx+DM1(iorbt,iorbr)*hCORE_cmplx(iorbt,iorbq) &
+       !! &                         +DM1(iorbq,iorbt)*hCORE_cmplx(iorbr,iorbt)
        !!  do iorbu=1,NBF_tot ! u
        !!   do iorbv=1,NBF_tot ! v
        !!    G_qpsr_cmplx=G_qpsr_cmplx+DM2(iorbu,iorbv,iorbr,iorbt)*ERImol_cmplx(iorbu,iorbv,iorbq,iorbt) &
@@ -828,8 +927,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        !!endif
        !!if(iorbq==iorbr) then ! q=r
        !! do iorbt=1,NBF_tot !t
-       !!  G_qpsr_cmplx=G_qpsr_cmplx+DM1(iorbt,iorbp)*Hcore_cmplx(iorbt,iorbs) &
-       !! &                         +DM1(iorbs,iorbt)*Hcore_cmplx(iorbp,iorbt)
+       !!  G_qpsr_cmplx=G_qpsr_cmplx+DM1(iorbt,iorbp)*hCORE_cmplx(iorbt,iorbs) &
+       !! &                         +DM1(iorbs,iorbt)*hCORE_cmplx(iorbp,iorbt)
        !!  do iorbu=1,NBF_tot ! u
        !!   do iorbv=1,NBF_tot ! v
        !!    G_qpsr_cmplx=G_qpsr_cmplx+DM2(iorbs,iorbt,iorbu,iorbv)*ERImol_cmplx(iorbp,iorbt,iorbu,iorbv) &
@@ -877,8 +976,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
     !
     grad_pq=zero
     do iorbt=1,NBF_tot !t
-     grad_pq=grad_pq+two*DM1(iorbt,iorbq)*Hcore(iorbt,iorbp) &
-    &               -two*DM1(iorbp,iorbt)*Hcore(iorbq,iorbt)
+     grad_pq=grad_pq+two*DM1(iorbt,iorbq)*hCORE(iorbt,iorbp) &
+    &               -two*DM1(iorbp,iorbt)*hCORE(iorbq,iorbt)
      do iorbu=1,NBF_tot ! u
       do iorbv=1,NBF_tot ! v
        grad_pq=grad_pq+two*DM2(iorbu,iorbt,iorbv,iorbq)*ERImol(iorbu,iorbt,iorbv,iorbp) &
@@ -896,11 +995,11 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
       ihesb=ihesb+1
       if(ihesb>=ihesa) then !  
        ! G_pqrs
-       G_pqrs=-two*(DM1(iorbr,iorbq)*Hcore(iorbs,iorbp)+DM1(iorbp,iorbs)*Hcore(iorbq,iorbr))
+       G_pqrs=-two*(DM1(iorbr,iorbq)*hCORE(iorbs,iorbp)+DM1(iorbp,iorbs)*hCORE(iorbq,iorbr))
        if(iorbr==iorbq) then ! q=r
         do iorbt=1,NBF_tot !t
-         G_pqrs=G_pqrs+DM1(iorbt,iorbs)*Hcore(iorbt,iorbp) &
-        &             +DM1(iorbp,iorbt)*Hcore(iorbs,iorbt)
+         G_pqrs=G_pqrs+DM1(iorbt,iorbs)*hCORE(iorbt,iorbp) &
+        &             +DM1(iorbp,iorbt)*hCORE(iorbs,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_pqrs=G_pqrs+DM2(iorbu,iorbv,iorbs,iorbt)*ERImol(iorbu,iorbv,iorbp,iorbt) &
@@ -911,8 +1010,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        endif
        if(iorbp==iorbs) then ! p=s
         do iorbt=1,NBF_tot !t
-         G_pqrs=G_pqrs+DM1(iorbt,iorbq)*Hcore(iorbt,iorbr) &
-        &             +DM1(iorbr,iorbt)*Hcore(iorbq,iorbt)
+         G_pqrs=G_pqrs+DM1(iorbt,iorbq)*hCORE(iorbt,iorbr) &
+        &             +DM1(iorbr,iorbt)*hCORE(iorbq,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_pqrs=G_pqrs+DM2(iorbr,iorbt,iorbu,iorbv)*ERImol(iorbq,iorbt,iorbu,iorbv) &
@@ -932,11 +1031,11 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
         enddo
        enddo
        ! G_qprs
-       G_qprs=two*(DM1(iorbr,iorbp)*Hcore(iorbs,iorbq)+DM1(iorbq,iorbs)*Hcore(iorbp,iorbr))
+       G_qprs=two*(DM1(iorbr,iorbp)*hCORE(iorbs,iorbq)+DM1(iorbq,iorbs)*hCORE(iorbp,iorbr))
        if(iorbr==iorbp) then ! p=r
         do iorbt=1,NBF_tot !t
-         G_qprs=G_qprs-DM1(iorbt,iorbs)*Hcore(iorbt,iorbq) &
-        &             -DM1(iorbq,iorbt)*Hcore(iorbs,iorbt)
+         G_qprs=G_qprs-DM1(iorbt,iorbs)*hCORE(iorbt,iorbq) &
+        &             -DM1(iorbq,iorbt)*hCORE(iorbs,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_qprs=G_qprs-DM2(iorbu,iorbv,iorbs,iorbt)*ERImol(iorbu,iorbv,iorbq,iorbt) &
@@ -947,8 +1046,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        endif
        if(iorbq==iorbs) then ! q=s
         do iorbt=1,NBF_tot !t
-         G_qprs=G_qprs-DM1(iorbt,iorbp)*Hcore(iorbt,iorbr) &
-        &             -DM1(iorbr,iorbt)*Hcore(iorbp,iorbt)
+         G_qprs=G_qprs-DM1(iorbt,iorbp)*hCORE(iorbt,iorbr) &
+        &             -DM1(iorbr,iorbt)*hCORE(iorbp,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_qprs=G_qprs-DM2(iorbr,iorbt,iorbu,iorbv)*ERImol(iorbp,iorbt,iorbu,iorbv) &
@@ -968,11 +1067,11 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
         enddo
        enddo
        ! G_pqsr
-       G_pqsr=two*(DM1(iorbs,iorbq)*Hcore(iorbr,iorbp)+DM1(iorbp,iorbr)*Hcore(iorbq,iorbs))
+       G_pqsr=two*(DM1(iorbs,iorbq)*hCORE(iorbr,iorbp)+DM1(iorbp,iorbr)*hCORE(iorbq,iorbs))
        if(iorbs==iorbq) then ! q=s
         do iorbt=1,NBF_tot !t
-         G_pqsr=G_pqsr-DM1(iorbt,iorbr)*Hcore(iorbt,iorbp) &
-        &             -DM1(iorbp,iorbt)*Hcore(iorbr,iorbt)
+         G_pqsr=G_pqsr-DM1(iorbt,iorbr)*hCORE(iorbt,iorbp) &
+        &             -DM1(iorbp,iorbt)*hCORE(iorbr,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_pqsr=G_pqsr-DM2(iorbu,iorbv,iorbr,iorbt)*ERImol(iorbu,iorbv,iorbp,iorbt) &
@@ -983,8 +1082,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        endif
        if(iorbp==iorbr) then ! p=r
         do iorbt=1,NBF_tot !t
-         G_pqsr=G_pqsr-DM1(iorbt,iorbq)*Hcore(iorbt,iorbs) &
-        &             -DM1(iorbs,iorbt)*Hcore(iorbq,iorbt)
+         G_pqsr=G_pqsr-DM1(iorbt,iorbq)*hCORE(iorbt,iorbs) &
+        &             -DM1(iorbs,iorbt)*hCORE(iorbq,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_pqsr=G_pqsr-DM2(iorbs,iorbt,iorbu,iorbv)*ERImol(iorbq,iorbt,iorbu,iorbv) &
@@ -1004,11 +1103,11 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
         enddo
        enddo
        ! G_qpsr
-       G_qpsr=-two*(DM1(iorbs,iorbp)*Hcore(iorbr,iorbq)+DM1(iorbq,iorbr)*Hcore(iorbp,iorbs))
+       G_qpsr=-two*(DM1(iorbs,iorbp)*hCORE(iorbr,iorbq)+DM1(iorbq,iorbr)*hCORE(iorbp,iorbs))
        if(iorbs==iorbp) then ! p=s
         do iorbt=1,NBF_tot !t
-         G_qpsr=G_qpsr+DM1(iorbt,iorbr)*Hcore(iorbt,iorbq) &
-        &             +DM1(iorbq,iorbt)*Hcore(iorbr,iorbt)
+         G_qpsr=G_qpsr+DM1(iorbt,iorbr)*hCORE(iorbt,iorbq) &
+        &             +DM1(iorbq,iorbt)*hCORE(iorbr,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_qpsr=G_qpsr+DM2(iorbu,iorbv,iorbr,iorbt)*ERImol(iorbu,iorbv,iorbq,iorbt) &
@@ -1019,8 +1118,8 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,Hcore,ERImol,Hcore_cmplx,
        endif
        if(iorbq==iorbr) then ! q=r
         do iorbt=1,NBF_tot !t
-         G_qpsr=G_qpsr+DM1(iorbt,iorbp)*Hcore(iorbt,iorbs) &
-        &             +DM1(iorbs,iorbt)*Hcore(iorbp,iorbt)
+         G_qpsr=G_qpsr+DM1(iorbt,iorbp)*hCORE(iorbt,iorbs) &
+        &             +DM1(iorbs,iorbt)*hCORE(iorbp,iorbt)
          do iorbu=1,NBF_tot ! u
           do iorbv=1,NBF_tot ! v
            G_qpsr=G_qpsr+DM2(iorbs,iorbt,iorbu,iorbv)*ERImol(iorbp,iorbt,iorbu,iorbv) &

@@ -1728,6 +1728,14 @@ noft_Newton_RapsonOCC:
   default: 'no'
   comment: Use Newton-Rapson method in t and z amplitudes optimization in pCCD (default= 'no').
 
+noft_Newton_RapsonORB:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use Newton-Rapson method in orbital optimization with the Hessian (default= 'no').
+
 noft_ithresh_lambda:
   family: noft
   datatype: integer

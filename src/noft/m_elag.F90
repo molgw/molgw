@@ -43,7 +43,6 @@ module m_elag
   logical::cpx_lambdas=.false.  ! True for complex Lambdas (i.e. complex orbitals)
   logical::diagLpL=.true.       ! Do the diag. using (lambda+lambda)/2?
   logical::diagLpL_done=.false. ! Did we use use (lambda+lambda)/2?
-  integer::imethod=1            ! Method used for optimization (1-> Diag F matrix)
   integer::MaxScaling=0         ! Max scaling reductions employed to avoid divergence of diag[F]
   integer::itscale=1            ! Above this number of iterations we do MaxScaling=MaxScaling+1
   integer::itolLambda=5         ! Integer used to define 10**-itolLambda as threshold of Lambda_qp-Lambda_pq* convergence
@@ -113,11 +112,11 @@ CONTAINS  !=====================================================================
 !!
 !! SOURCE
 
-subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,tolE_in,cpx_mos)
+subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,tolE_in,cpx_mos)
 !Arguments ------------------------------------
 !scalars
  logical,intent(in)::diagLpL_in,cpx_mos
- integer,intent(in)::NBF_tot,itolLambda_in,ndiis_in,imethod_in
+ integer,intent(in)::NBF_tot,itolLambda_in,ndiis_in
  real(dp),intent(in)::tolE_in
  type(elag_t),intent(inout)::ELAGd
 !Local variables ------------------------------
@@ -128,7 +127,6 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
 !************************************************************************
 
  ELAGd%cpx_lambdas=cpx_mos
- ELAGd%imethod=imethod_in
  ELAGd%itolLambda=itolLambda_in
  ELAGd%diagLpL=diagLpL_in
  ELAGd%ndiis=ndiis_in
@@ -137,12 +135,12 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
  ! Calculate memory needed
  if(cpx_mos) then
   totMEM=2*NBF_tot+2*NBF_tot*NBF_tot
-  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+  if(ELAGd%ndiis>0) then
    totMEM=totMEM+2*ELAGd%ndiis_array+8*ELAGd%ndiis_array*NBF_tot*NBF_tot+4*ELAGd%ndiis_array*ELAGd%ndiis_array
   endif
  else
   totMEM=NBF_tot+NBF_tot*NBF_tot
-  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+  if(ELAGd%ndiis>0) then
    totMEM=totMEM+ELAGd%ndiis_array+ELAGd%ndiis_array*NBF_tot*NBF_tot+ELAGd%ndiis_array*ELAGd%ndiis_array
   endif
  endif
@@ -162,13 +160,13 @@ subroutine elag_init(ELAGd,NBF_tot,diagLpL_in,itolLambda_in,ndiis_in,imethod_in,
  allocate(ELAGd%Lambdas(NBF_tot,NBF_tot)) 
  if(cpx_mos) then
   allocate(ELAGd%Lambdas_im(NBF_tot,NBF_tot)) 
-  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+  if(ELAGd%ndiis>0) then
    allocate(ELAGd%Coef_DIIS_cmplx(ELAGd%ndiis_array))
    allocate(ELAGd%F_DIIS_cmplx(ELAGd%ndiis_array,NBF_tot,NBF_tot))
    allocate(ELAGd%DIIS_mat_cmplx(ELAGd%ndiis_array,ELAGd%ndiis_array)) 
   endif
  else 
-  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+  if(ELAGd%ndiis>0) then
    allocate(ELAGd%Coef_DIIS(ELAGd%ndiis_array))
    allocate(ELAGd%F_DIIS(ELAGd%ndiis_array,NBF_tot,NBF_tot))
    allocate(ELAGd%DIIS_mat(ELAGd%ndiis_array,ELAGd%ndiis_array)) 
@@ -211,13 +209,13 @@ subroutine elag_free(ELAGd)
  
  if(ELAGd%cpx_lambdas) then
   deallocate(ELAGd%Lambdas_im)
-  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+  if(ELAGd%ndiis>0) then
    deallocate(ELAGd%Coef_DIIS_cmplx)
    deallocate(ELAGd%F_DIIS_cmplx)
    deallocate(ELAGd%DIIS_mat_cmplx) 
   endif 
  else
-  if(ELAGd%ndiis>0.and.ELAGd%imethod==1) then
+  if(ELAGd%ndiis>0) then
    deallocate(ELAGd%Coef_DIIS)
    deallocate(ELAGd%F_DIIS)
    deallocate(ELAGd%DIIS_mat) 
