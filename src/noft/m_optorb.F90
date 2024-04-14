@@ -60,12 +60,12 @@ contains
 !!
 !! SOURCE
 
-subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO_COEF,NO_COEF_cmplx)
+subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo_ints,NO_COEF,NO_COEF_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::iter,imethod
  real(dp),intent(in)::Vnn
- real(dp),intent(inout)::Energy
+ real(dp),intent(inout)::Energy,maxdiff
  type(elag_t),intent(inout)::ELAGd
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
@@ -93,11 +93,11 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF_cmplx
 !Local variables ------------------------------
 !scalars
- logical::convLambda,nogamma,diddiis,allocated_DMNs
+ logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed
  integer::icall,iorbmax1,iorbmax2,imethod_in
  integer::iorbp,iorbq
- real(dp)::sumdiff,maxdiff,maxdiff_all,Ediff,Energy_old
+ real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
 !arrays
  real(dp),allocatable,dimension(:,:)::DM1
  real(dp),allocatable,dimension(:,:,:,:)::DM2
@@ -109,20 +109,23 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO
  imethod_in=imethod
 
  Ediff=zero; Energy=zero; Energy_old=zero; convLambda=.false.;nogamma=.true.;
- allocated_DMNs=.false.;F_meth_printed=.false.;NR_meth_printed=.false.;
+ allocated_DMNs=.false.;F_meth_printed=.false.;NR_meth_printed=.false.;all_ERIs=.false.;
 
  if((imethod_in==1).and.(iter==0)) then
   ELAGd%sumdiff_old=zero
  endif
 
- ! Allocate density matrices for Newton Rapson method
- if(imethod_in/=1) then
-  allocated_DMNs=.true.
+ ! Select the method
+ if((imethod_in/=1.and.iter>50) .and. (abs(maxdiff)<tol3)) then ! TODO Fix the Newton-Rapson method. Worked only for H2...
+  write(msg,'(a)') 'Performing Newton Rapson for orbital optimization'
+  call write_output(msg)
+  allocated_DMNs=.true.;all_ERIs=.true.;
   if(INTEGd%complex_ints) then
    allocate(U_mat_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
   else
    allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat(RDMd%NBF_tot,RDMd%NBF_tot))
   endif
+  ! Allocate density matrices for Newton Rapson method
   allocate(DM1(RDMd%NBF_tot,RDMd%NBF_tot),DM2(RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot))
   DM1=zero; DM2=zero;
   ! Build full 1,2-RDMs
@@ -137,27 +140,32 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO
    enddo
    DM2(iorbp,iorbp,iorbp,iorbp)=RDMd%DM2_iiii(iorbp)
   enddo
+ else
+  imethod_in=1
+  write(msg,'(a)') 'Building F matrix for orbital optimization'
+  call write_output(msg)
  endif
  
  if(INTEGd%complex_ints) then
   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
-  & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+  & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
  else
   if(INTEGd%irange_sep/=0) then
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
-   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr)
+   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
   else
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
-   & ERImol=INTEGd%ERImol)
+   & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_old,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
  endif
 
+ ! Optimization loop
  icall=0
  do
   ! If we used a DIIS step, do not stop after DIIS for small Energy dif.
@@ -166,22 +174,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO
   ! Build Lambda matrix
   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
 
-  ! Check if these NO_COEF with the RDMs are already the solution =)
+  ! Check if these NO_COEF with the RDMs are already the solution
   call lambda_conv(ELAGd,RDMd,convLambda,sumdiff,maxdiff,maxdiff_all,iorbmax1,iorbmax2)
-  if((imethod_in/=1.and.icall==0).and.maxdiff>tol3) then
-   imethod_in=1
-   if(.not.F_meth_printed) then
-    write(msg,'(a)') 'Building F_matrix orb. opt. method'
-    call write_output(msg)
-    F_meth_printed=.true.
-   endif
-  else
-   if(.not.NR_meth_printed) then
-    write(msg,'(a)') 'Performing Newton Rapson orb. opt. method'
-    call write_output(msg)
-    NR_meth_printed=.true.
-   endif
-  endif
   if(convLambda) then
    write(msg,'(a)') 'Lambda_qp - Lambda_pq* converged for the Hemiticty of Lambda'
    call write_output(msg)
@@ -223,17 +217,17 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO
   ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
   if(INTEGd%complex_ints) then
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
-   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
    call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
    & INTEGd%ERI_L_cmplx,nogamma=nogamma)
   else
    if(INTEGd%irange_sep/=0) then
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-    & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr)
+    & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
    else
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-    & ERImol=INTEGd%ERImol)
+    & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
    endif
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
@@ -343,7 +337,7 @@ subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,maxdiff_all,iorbm
     converg_lamb=.false.
    endif
    if(ELAGd%cpx_lambdas) then
-    if(diff>maxdiff .and.iorb/=iorb1) then ! TODO : check for complex if we really need this
+    if(diff>maxdiff .and.iorb/=iorb1) then
      maxdiff=diff
     endif
    else

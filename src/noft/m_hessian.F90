@@ -66,7 +66,7 @@ module m_hessian
    ! Diagonalize the Hessian matrix and analyze the eigenvalues
 
    procedure :: newton_rapson => newton_rapson_step
-   ! Perfom k = H^-1 g
+   ! Perfom k = - H^-1 g
 
  end type hessian_t
 

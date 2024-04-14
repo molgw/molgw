@@ -394,7 +394,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
                    NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
   implicit none
 
-  logical,optional,intent(in)              :: all_ERIs
+  logical,optional,intent(in)     :: all_ERIs
   integer,intent(in)              :: nbf,nstate_occ,nstate_kji
   real(dp),intent(in)             :: Occ(nstate_occ)
   real(dp),optional,intent(in)    :: NO_COEF(nbf,nbf)

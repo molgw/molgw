@@ -131,12 +131,15 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !scalars
  logical::ekt,diagLpL,restart_param,keep_occs,keep_orbs,cpx_mos,all_ERI_in,hessian_in
  integer::iorb,iter,ifcidump,irs_noft
- real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val
+ integer::iorbp,iorbq,iorbr,iorbs
+ real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val,maxdiff_lambda
  type(rdm_t),target::RDMd
  type(integ_t),target::INTEGd
  type(elag_t),target::ELAGd
  type(hessian_t),target::HESSIANd
 !arrays
+ real(dp),allocatable,dimension(:,:)::DM1
+ real(dp),allocatable,dimension(:,:,:,:)::DM2
  character(len=10)::coef_file
  character(len=100)::sha_git
  character(len=200)::msg
@@ -154,7 +157,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(fcidump) ifcidump=1
  endif
  
-! Check whether to compute the Hessian matrix
+! Check whether to compute the Hessian matrix (for Newton Rapson or to check the eigenvalues)
  if(present(hessian)) hessian_in=hessian
  if(imethorb/=1) hessian_in=.true.
 
@@ -214,7 +217,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
  endif
  call elag_init(ELAGd,RDMd%NBF_tot,diagLpL,itolLambda,ndiis,tolE_in,cpx_mos)
- if(hessian_in) then
+ if(hessian_in) then ! Always allocate the Hessian (even it is with a faked size using M=2 arrays)
   call hessian_init(HESSIANd,RDMd%NBF_tot,cpx_mos)
  else
   call hessian_init(HESSIANd,2,cpx_mos)
@@ -283,16 +286,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
 
  ! Numerical initial gradient and hessian
- if(.false.) then
-  !iter=itermax
-  block
-  integer::iorbp,iorbq,iorbr,iorbs
-  real(dp),allocatable,dimension(:,:)::DM1
-  real(dp),allocatable,dimension(:,:,:,:)::DM2
+ if(.false. .and. hessian_in) then
   allocate(DM1(RDMd%NBF_tot,RDMd%NBF_tot),DM2(RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot))
   DM1=zero; DM2=zero;
-  ! Build full 1,2-RDMs (this could be done outside this subroutine)
-  ! Tr[1D] = N/2 , Tr[2D]= N(N-1)/2
   do iorbp=1,RDMd%NBF_occ ! p
    DM1(iorbp,iorbp)=RDMd%occ(iorbp)
    do iorbq=1,RDMd%NBF_occ ! q
@@ -304,19 +300,13 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    DM2(iorbp,iorbp,iorbp,iorbp)=RDMd%DM2_iiii(iorbp)
   enddo
   ! In brut force mode to build the Hessian matrix elements we need ALL integrals
-  call INTEGd%free()
-  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
+  !call INTEGd%free()
+  !call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
   all_ERI_in=.true.
 
   if(cpx_mos) then
-   iorbp=1;iorbq=1;iorbr=1;iorbs=1;
-   call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
-   iorbp=1;iorbq=2;iorbr=1;iorbs=2;
-   call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
-   iorbp=1;iorbq=2;iorbr=1;iorbs=4;
-   call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
-   iorbp=1;iorbq=3;iorbr=3;iorbs=3;
-   call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
+   !iorbp=1;iorbq=1;iorbr=1;iorbs=1;
+   !call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERI_in)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
@@ -326,8 +316,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
 !   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
   else
-   iorbp=1;iorbq=2;iorbr=1;iorbs=2;
-   call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF=NO_COEF)
+   !iorbp=1;iorbq=2;iorbr=1;iorbs=2;
+   !call num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF=NO_COEF)
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
    & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
@@ -337,12 +327,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !   RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero;
 !   call ELAGd%build(RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_Jsr,RDMd%DM2_Lsr)
 !   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
-   write(*,*) ' '
-   write(*,*) ' end block'
-   write(*,*) ' '
   endif
+  write(*,*) ' '
   deallocate(DM1,DM2)
-  endblock
   write(msg,'(a)') ' '
   call write_output(msg)
  endif
@@ -353,9 +340,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(.not.keep_orbs) then
    call ELAGd%clean_diis()
    if(cpx_mos) then
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO_COEF_cmplx=NO_COEF_cmplx)
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints, &
+    & NO_COEF_cmplx=NO_COEF_cmplx)
    else   
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,mo_ints,NO_COEF=NO_COEF)
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints, &
+    & NO_COEF=NO_COEF)
    endif
    if(imethorb==1) then ! For F diag method, print F_pp elements after each global iteration
     call ELAGd%print_Fdiag(RDMd%NBF_tot)
@@ -413,10 +402,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
     & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
    endif
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-  block
-   integer::iorbp,iorbq
-   real(dp),allocatable,dimension(:,:)::DM1
-   real(dp),allocatable,dimension(:,:,:,:)::DM2
    allocate(DM1(RDMd%NBF_tot,RDMd%NBF_tot),DM2(RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot))
    DM1=zero; DM2=zero;
    ! Build full 1,2-RDMs (this could be done outside this subroutine)
@@ -437,7 +422,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
     call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol)
    endif
    deallocate(DM1,DM2)
-  endblock
    call HESSIANd%diag()
 !   write(*,*) ' '
 !   RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero;
