@@ -217,9 +217,9 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
  integer::ihesa,ihesb
  integer::iorbp,iorbq,iorbr,iorbs,iorbt
  real(dp)::grad_pq,G_pqrs,G_qprs,G_pqsr,G_qpsr,tol10=1.0e-10
- complex(dp)::grad_pq_cmplx,G_qprs_cmplx
+! complex(dp)::grad_pq_cmplx,G_qprs_cmplx
 !arrays
- character(len=200)::msg
+! character(len=200)::msg
 !************************************************************************
  
 ! write(msg,'(a)') ' '
@@ -757,7 +757,7 @@ subroutine build_hessian_brut(HESSIANd,NBF_tot,DM1,DM2,hCORE,ERImol,hCORE_cmplx,
  real(dp)::grad_pq,G_pqrs,G_qprs,G_pqsr,G_qpsr,tol10=1.0e-10
  complex(dp)::grad_pq_cmplx,G_qprs_cmplx!,G_pqrs_cmplx,G_pqsr_cmplx,G_qpsr_cmplx,
 !arrays
- character(len=200)::msg
+! character(len=200)::msg
 !************************************************************************
 
 ! write(msg,'(a)') ' '

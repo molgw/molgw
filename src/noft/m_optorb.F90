@@ -573,12 +573,11 @@ end subroutine s2_calc
 !!
 !! SOURCE
 
-subroutine num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,ELAGd,RDMd,INTEGd,Vnn,mo_ints,NO_COEF,NO_COEF_cmplx) 
+subroutine num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,RDMd,INTEGd,Vnn,mo_ints,NO_COEF,NO_COEF_cmplx) 
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::iorbp,iorbq,iorbr,iorbs
  real(dp),intent(in)::Vnn
- type(elag_t),intent(inout)::ELAGd
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
  interface 
