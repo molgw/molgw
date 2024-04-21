@@ -44,12 +44,13 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   real(dp),intent(out)      :: Enoft
   character(len=100)        :: msgw
   !====
+  logical                   :: file_exists=.false.
   integer                   :: istate,lwork,info,iao,jao
-  integer                   :: nelectrons
+  integer                   :: iorb,iorb1,istat,nelectrons,iunit=366
   integer                   :: imethorb,imethocc,nstate_occ,nstate_beta,nstate_alpha,nstate_coupled
   integer                   :: iNOTupdateOCC,iNOTupdateORB,iprintdmn,iprintswdmn,iprintints,ireadOCC,ireadCOEF
   integer                   :: ireadFdiag,ireadGAMMAs,ista,inof
-  real(dp)                  :: ran_num
+  real(dp)                  :: ran_num,coeff_old
   real(dp),allocatable      :: occ(:,:),energy(:,:),occ_print(:,:)
   real(dp),allocatable      :: NO_COEF(:,:)
   real(dp),allocatable      :: tmp_mat0(:,:),tmp_mat(:,:),Work(:)
@@ -261,6 +262,39 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
     call clean_deallocate('tmp_mat0',tmp_mat0,noft_verbose)
     call clean_deallocate('tmp_mat',tmp_mat,noft_verbose)
     deallocate(Work)
+  endif
+
+  ! Build NO_COEF_cmplx with phases times NO_COEF (real)
+  if(TRIM(init_hamiltonian)=='NOFT' .and. noft_complex=='yes') then
+    inquire(file='NO_COEF_BIN',exist=file_exists)
+    if( file_exists ) then
+      open(unit=iunit,form='unformatted',file='NO_COEF_BIN',iostat=istat,status='old')
+      if(istat==0) then
+       do
+        read(iunit,iostat=istat) iorb,iorb1,coeff_old
+        if(istat/=0) then
+         exit
+        endif
+        if(((iorb/=0).and.(iorb1/=0)).and.iorb*iorb1<=basis%nbf*basis%nbf) then
+         NO_COEF_cmplx(iorb,iorb1)=coeff_old
+        else
+         exit
+        endif
+       enddo
+      endif
+      write(stdout,'(/,a)') ' Adding New Random Imaginary Phases '
+      write(stdout,'(a,/)') ' ---------------------------------- '
+      do istate=1,nstate_noft
+        call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
+        if(noft_nophases=='yes') ran_num=0.0e0
+        write(stdout,'(a,I10,a,f7.5,a,f7.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
+        NO_COEF_cmplx(:,istate)=exp(im*ran_num)*NO_COEF_cmplx(:,istate)
+      enddo
+      write(stdout,*) ' '
+      write(stdout,'(/,a,/)') ' Reading the NO_COEF_BIN file to set the initial complex NO_COEF.'
+    else
+      write(stdout,'(/,a,/)') ' Did not find NO_COEF_BIN file to set the initial complex NO_COEF.'
+    endif
   endif
 
   ! Not ready for open-shell calcs. (TODO)

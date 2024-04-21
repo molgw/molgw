@@ -388,6 +388,16 @@ program molgw
           c_matrix(:,:,nspin) = c_matrix(:,:,1)
         endif
 
+      case('NOFT') ! Equivalent to CORE at this level to avoid cas default and 'die'
+        allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
+
+        hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+
+        write(stdout,'(/,a)') ' Approximate hamiltonian'
+        call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+
+        deallocate(hamiltonian_tmp)
+
       case default
         call die('molgw: init_hamiltonian option is not valid')
       end select
