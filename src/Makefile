@@ -14,13 +14,10 @@ FCFLAGS ?= -O2 -cpp
 CXXFLAGS ?=-O2
 CPPFLAGS ?=
 LAPACK ?=-lblas -llapack
-LIBCINT ?=-lcint
 #SCALAPACK=
 #FFTW_ROOT=
 #ELPA=
 #ELPA_INCS=
-#LIBXC_ROOT=
-#LIBINT_ROOT=
 
 
 
@@ -34,9 +31,10 @@ LINKS= -lstdc++ -lm
 #
 # LIBXC variables
 # 
-# if LIBXC is set, don't do anything
-# if LIBXC_INCS is set, don't do anything
-# if only LIBXC_ROOT is set, then set LIBXC and LIBXC_INCS
+#   if LIBXC is already set, don't do anything
+#   if LIBXC is not set, check out LIBXC_ROOT and set LIBXC accordingly
+#   if LIBXC_INCS is already set, don't do anything
+#   if LIBXC_INCS is not set, check out LIBXC_ROOT and set LIBXC_INCS accordingly
 #
 ##################################
 ifeq ($(LIBXC),)
@@ -58,41 +56,91 @@ endif
 
 ##################################
 #
-# LIBINT variables
+# LIBCINT variables
+#
+#   if LIBCINT is already set, don't do anything
+#   if LIBCINT is not set, check out LIBCINT_ROOT and set LIBCINT accordingly
 #
 ##################################
-ifeq ($(LIBINT_ROOT),)
-  LIBINT=
-  LIBINT_INCS=
-else
-  LIBINT=-L$(LIBINT_ROOT)/lib -lint2
-  LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
+ifeq ($(LIBCINT),)
+  ifeq ($(LIBCINT_ROOT),)
+    LIBCINT= -lcint
+  else
+    LIBCINT= -L$(LIBCINT_ROOT)/lib64/ -lcint
+  endif
+endif
+
+##################################
+#
+# LIBINT variables
+#
+#   if LIBINT is already set, don't do anything
+#   if LIBINT is not set, check out LIBINT_ROOT and set LIBINT accordingly
+#   if LIBINT_INCS is already set, don't do anything
+#   if LIBINT_INCS is not set, check out LIBINT_ROOT and set LIBINT_INCS accordingly
+#
+##################################
+ifeq ($(LIBINT),)
+  ifeq ($(LIBINT_ROOT),)
+    LIBINT=
+  else
+    LIBINT=-L$(LIBINT_ROOT)/lib -lint2
+  endif
+endif
+ifeq ($(LIBINT_INCS),)
+  ifeq ($(LIBINT_ROOT),)
+    LIBINT_INCS=
+  else
+    LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
+  endif
 endif
 
 ##################################
 #
 # FFTW variables
+#   if FFTW is already set, don't do anything
+#   if FFTW is not set, check out FFTW_ROOT and set FFTW accordingly
+#   if FFTW_INCS is already set, don't do anything
+#   if FFTW_INCS is not set, check out FFTW_ROOT and set FFTW_INCS accordingly
 #
 ##################################
-ifeq ($(FFTW_ROOT),)
-  FFTW=
-  FFTW_INCS=
-else
-  FFTW=-L$(FFTW_ROOT)/lib/ -lfftw3
-  FFTW_INCS=-I$(FFTW_ROOT)/include/
+ifeq ($(FFTW),)
+  ifeq ($(FFTW_ROOT),)
+    FFTW=
+  else
+    FFTW=-L$(FFTW_ROOT)/lib/ -lfftw3
+  endif
+endif
+ifeq ($(FFTW_INCS),)
+  ifeq ($(FFTW_ROOT),)
+    FFTW_INCS=
+  else
+    FFTW_INCS=-I$(FFTW_ROOT)/include/
+  endif
 endif
 
 ##################################
 #
 # HDF5 variables
+#   if HDF5 is already set, don't do anything
+#   if HDF5 is not set, check out HDF5_ROOT and set HDF5 accordingly
+#   if HDF5_INCS is already set, don't do anything
+#   if HDF5_INCS is not set, check out HDF5_ROOT and set HDF5_INCS accordingly
 #
 ##################################
-ifeq ($(HDF5_ROOT),)
-  HDF5=
-  HDF5_INCS=
-else
-  HDF5=-L$(HDF5_ROOT)/lib/ -lhdf5 -lhdf5_fortran
-  HDF5_INCS=-I$(HDF5_ROOT)/include/
+ifeq ($(HDF5),)
+  ifeq ($(HDF5_ROOT),)
+    HDF5=
+  else
+    HDF5=-L$(HDF5_ROOT)/lib/ -lhdf5 -lhdf5_fortran
+  endif
+endif
+ifeq ($(HDF5_INCS),)
+  ifeq ($(HDF5_ROOT),)
+    HDF5_INCS=
+  else
+    HDF5_INCS=-I$(HDF5_ROOT)/include/
+  endif
 endif
 
 
@@ -215,7 +263,7 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o 
                         $(LIBINT) $(LIBINT_INCS) \
                         $(ELPA) $(ELPA_INCS) \
                         $(LIBCINT) \
-								$(HDF5) $(HDF5_INCS) \
+			$(HDF5) $(HDF5_INCS) \
                         $(LINKS)
 
 molgw.o: m_definitions.f90 m_warning.f90 m_hdf5_tools.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_lbfgs.f90 \
