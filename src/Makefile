@@ -66,7 +66,7 @@ ifeq ($(LIBCINT),)
   ifeq ($(LIBCINT_ROOT),)
     LIBCINT= -lcint
   else
-    LIBCINT= -L$(LIBCINT_ROOT)/lib64/ -lcint
+    LIBCINT= -L$(LIBCINT_ROOT)/lib64/ -Wl,-rpath,$(LIBCINT_ROOT)/lib64/ -lcint
   endif
 endif
 
