@@ -29,17 +29,38 @@ CXX_W_OPTS= $(CXX) $(CXXFLAGS) $(CPPFLAGS)
 LINKER= $(LIBTOOL) $(FC_W_OPTS) $(LDFLAGS)
 
 LINKS= -lstdc++ -lm
-ifeq ($(LIBXC_ROOT),)
-  LIBXC_INCS=
-  ifeq (,$(findstring -DNO_LIBXC,$(CPPFLAGS)))
-    LIBXC=-lxc
+
+##################################
+#
+# LIBXC variables
+# 
+# if LIBXC is set, don't do anything
+# if LIBXC_INCS is set, don't do anything
+# if only LIBXC_ROOT is set, then set LIBXC and LIBXC_INCS
+#
+##################################
+ifeq ($(LIBXC),)
+  ifeq ($(LIBXC_ROOT),)
+    ifeq (,$(findstring -DNO_LIBXC,$(CPPFLAGS)))
+      LIBXC=-lxc
+    else
+      LIBXC=
+    endif
   else
-    LIBXC=
+    LIBXC=-L$(LIBXC_ROOT)/lib/ -L$(LIBXC_ROOT)/lib64/ -lxc
   endif
-else
-  LIBXC_INCS=-I$(LIBXC_ROOT)/include
-  LIBXC=$(LIBXC_ROOT)/lib/libxc.a
 endif
+ifeq ($(LIBXC_INCS),)
+  ifneq ($(LIBXC_ROOT),)
+    LIBXC_INCS=-I$(LIBXC_ROOT)/include
+  endif
+endif
+
+##################################
+#
+# LIBINT variables
+#
+##################################
 ifeq ($(LIBINT_ROOT),)
   LIBINT=
   LIBINT_INCS=
@@ -47,6 +68,12 @@ else
   LIBINT=-L$(LIBINT_ROOT)/lib -lint2
   LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
 endif
+
+##################################
+#
+# FFTW variables
+#
+##################################
 ifeq ($(FFTW_ROOT),)
   FFTW=
   FFTW_INCS=
@@ -54,6 +81,12 @@ else
   FFTW=-L$(FFTW_ROOT)/lib/ -lfftw3
   FFTW_INCS=-I$(FFTW_ROOT)/include/
 endif
+
+##################################
+#
+# HDF5 variables
+#
+##################################
 ifeq ($(HDF5_ROOT),)
   HDF5=
   HDF5_INCS=
@@ -62,6 +95,8 @@ else
   HDF5_INCS=-I$(HDF5_ROOT)/include/
 endif
 
+
+####################################################
 .PHONY: all clean archive tarball docs input prepare_sourcecode install uninstall
 
 

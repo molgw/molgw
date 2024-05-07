@@ -25,3 +25,4 @@ make install
 In the my_machine.arch do the following:
 1. Specify `HDF5_ROOT`. From the example above, it would be `/opt/apps/hdf5-1.12.2`
 2. Specify the `-DHAVE_HDF5` flag
+3. Possibly need to add `LDFLAGS += -Wl,-rpath,${HDF5_ROOT}/lib/` for dynamic linking
