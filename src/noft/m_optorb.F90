@@ -96,7 +96,6 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed
  integer::icall,iorbmax1,iorbmax2,imethod_in
- integer::iorbp,iorbq
  real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
 !arrays
  real(dp),allocatable,dimension(:)::DM2_L_saved
