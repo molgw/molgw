@@ -256,14 +256,14 @@ subroutine build_hessian(HESSIANd,ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L)
        G_qprs_cmplx=complex_zero;
        if(iorbr==iorbp) then ! r=p
         G_qprs_cmplx=G_qprs_cmplx+half*(ELAGd%Lambdas(iorbq,iorbs)+ELAGd%Lambdas(iorbs,iorbq)) & ! TODO check this
-        &                        +half*(ELAGd%Lambdas_im(iorbq,iorbs)+ELAGd%Lambdas_im(iorbs,iorbq))*im
+        &                        +half*(ELAGd%Lambdas_im(iorbq,iorbs)-ELAGd%Lambdas_im(iorbs,iorbq))*im
         if(iorbr<=RDMd%NBF_occ) then ! r is occ
          G_qprs_cmplx=G_qprs_cmplx-two*RDMd%occ(iorbr)*INTEGd%hCORE_cmplx(iorbs,iorbq)
         endif
        endif
        if(iorbq==iorbs) then ! q=s
         G_qprs_cmplx=G_qprs_cmplx+half*(ELAGd%Lambdas(iorbp,iorbr)+ELAGd%Lambdas(iorbr,iorbp)) & ! TODO check this
-        &                        +half*(ELAGd%Lambdas_im(iorbp,iorbr)+ELAGd%Lambdas_im(iorbr,iorbp))*im
+        &                        +half*(ELAGd%Lambdas_im(iorbr,iorbp)-ELAGd%Lambdas_im(iorbp,iorbr))*im
         if(iorbq<=RDMd%NBF_occ) then ! q is occ
          G_qprs_cmplx=G_qprs_cmplx-two*RDMd%occ(iorbq)*INTEGd%hCORE_cmplx(iorbp,iorbr)
         endif

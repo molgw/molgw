@@ -99,8 +99,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  integer::iorbp,iorbq
  real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
 !arrays
- real(dp),allocatable,dimension(:,:)::DM1
- real(dp),allocatable,dimension(:,:,:,:)::DM2
+ real(dp),allocatable,dimension(:)::DM2_L_saved
  real(dp),allocatable,dimension(:,:)::U_mat,kappa_mat
  complex(dp),allocatable,dimension(:,:)::U_mat_cmplx,kappa_mat_cmplx
  character(len=200)::msg
@@ -126,20 +125,9 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
    allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat(RDMd%NBF_tot,RDMd%NBF_tot))
   endif
   ! Allocate density matrices for Newton Rapson method
-  allocate(DM1(RDMd%NBF_tot,RDMd%NBF_tot),DM2(RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot,RDMd%NBF_tot))
-  DM1=zero; DM2=zero;
-  ! Build full 1,2-RDMs
-  ! Tr[1D] = N/2 , Tr[2D]= N(N-1)/2
-  do iorbp=1,RDMd%NBF_occ ! p
-   DM1(iorbp,iorbp)=RDMd%occ(iorbp)
-   do iorbq=1,RDMd%NBF_occ ! q
-    DM2(iorbp,iorbq,iorbp,iorbq)=RDMd%DM2_J(iorbp+(iorbq-1)*RDMd%NBF_occ)
-    DM2(iorbp,iorbq,iorbq,iorbp)=RDMd%DM2_K(iorbp+(iorbq-1)*RDMd%NBF_occ) &
-    &                           +RDMd%DM2_L(iorbp+(iorbq-1)*RDMd%NBF_occ) ! Adding DM2_L to DM2_K due to time-rev. sym.
-    !DM2(iorbp,iorbp,iorbq,iorbq)=RDMd%DM2_L(iorbp+(iorbq-1)*RDMd%NBF_occ)
-   enddo
-   DM2(iorbp,iorbp,iorbp,iorbp)=RDMd%DM2_iiii(iorbp)
-  enddo
+  allocate(DM2_L_saved(RDMd%NBF_occ*RDMd%NBF_occ))
+  DM2_L_saved=RDMd%DM2_L
+  RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero; ! Time-rev. sym DM2_L - added to -> DM2_K
  else
   imethod_in=1
   write(msg,'(a)') 'Building F matrix for orbital optimization'
@@ -201,13 +189,12 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF=NO_COEF) ! Build new NO_COEF and set icall=icall+1
    endif
   else                ! Use Newton Rapson method to produce new COEFs
+   call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
    if(INTEGd%complex_ints) then
-    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
     call HESSIANd%newton_rapson(icall,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa from -H^-1 g
     call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
     NO_COEF_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
    else
-    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol)
     call HESSIANd%newton_rapson(icall,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa from -H^-1 g
     call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)
     NO_COEF=matmul(NO_COEF,U_mat)
@@ -255,7 +242,9 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 
  ! Remove density matrices used in Newton Rapson method  
  if(allocated_DMNs) then
-  deallocate(DM1,DM2)
+  RDMd%DM2_L=DM2_L_saved
+  RDMd%DM2_K=RDMd%DM2_K-RDMd%DM2_L
+  deallocate(DM2_L_saved)
   if(INTEGd%complex_ints) then
    deallocate(U_mat_cmplx,kappa_mat_cmplx)
   else
