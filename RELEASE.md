@@ -1,6 +1,5 @@
 # MOLGW: Release Notes
 
----
 
 ---
 
@@ -8,10 +7,11 @@
 
 ### Overview
 
-- Python scripting improved using molgw.py
+- G3W2 and 2SOSEX self-energies
 - Range-separated hybrid are compatible with RT-TDDFT and LR-TDDFT
 - The pCCD method is now available as a NOFT functional
 - BSE correlation energy computed in a similar fashion to the RPAx-I one
+- Python scripting improved using molgw.py
 - Support for HDF5 files in RT-TDDFT
 - Unifying the Makefile variables to point to the libraries
 
@@ -23,10 +23,14 @@
 
 ### Changes affecting the usage
 
+- G3W2 and 2SOSEX self-energies can be evaluated with
+  `postscf='GW+G3W2'` or `postscf='GW+2SOSEX'`. The formulas can be found in https://doi.org/10.1021/acs.jctc.4c00090.
+  Two implementations are available: either fully analytic or imaginary frequencies quadratures with `postscf='GW+G3W2_PADE'`.
 - Running with python or jupyter notebook is more complete.
 New classes for input (`Molgw_input`), output (`Molgw_output`), and collection of ouputs (`Molgw_output_collection`)
 Check out jupyter notebooks in `~molgw/docs/running_molgw_with_jupyter.ipynb` and `~molgw/docs/gw100_benchmark.ipynb`.
 - The pair-Coupled Cluster Doubles (pCCD) method is now available including orbital optimization (with the NOFT module).
+- Possibility to use range-separated hybrid in LR-TDDFT and RT-TDDFT
 
 ### Changes affecting the compilation
 
@@ -42,7 +46,7 @@ or specify explicitly the include and linking lines with variables:
 
 ### Changes affecting the developers
 
-- HDF5 fortran sequential writing and reading subroutines are present
+- HDF5 fortran sequential writing and reading subroutines can be used
 
 ----------------------------------------
 ## What's new in version 3.2
