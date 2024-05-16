@@ -42,7 +42,7 @@ contains
 !!  opt_orb
 !!
 !! FUNCTION
-!!  Call the F-matrix method or Newton (Hessian) for orb optimization 
+!!  Call the F-matrix method or Quadratic (Hessian) for orb optimization 
 !!
 !! INPUTS
 !!  iter=Number of global iteration 
@@ -114,8 +114,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
 
  ! Select the method
- if((imethod_in/=1.and.iter>50) .and. (abs(maxdiff)<tol3)) then ! TODO Fix the Newton-Rapson method. Worked only for H2...
-  write(msg,'(a)') 'Performing Newton Rapson for orbital optimization'
+ if((imethod_in/=1.and.iter>10) .and. (abs(maxdiff)<tol3)) then ! TODO Fix the Quadratic method.
+  write(msg,'(a)') 'Performing Quadratic Convergence method for orbital optimization'
   call write_output(msg)
   allocated_DMNs=.true.;all_ERIs=.true.;
   if(INTEGd%complex_ints) then
@@ -123,7 +123,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   else
    allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat(RDMd%NBF_tot,RDMd%NBF_tot))
   endif
-  ! Allocate density matrices for Newton Rapson method
+  ! Allocate density matrices for Quadratic Convergence method
   allocate(DM2_L_saved(RDMd%NBF_occ*RDMd%NBF_occ))
   DM2_L_saved=RDMd%DM2_L
   RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero; ! Time-rev. sym DM2_L - added to -> DM2_K
@@ -187,14 +187,14 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
    else
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF=NO_COEF) ! Build new NO_COEF and set icall=icall+1
    endif
-  else                ! Use Newton Rapson method to produce new COEFs
+  else                ! Use Quadratic Convergence method to produce new COEFs
    call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
    if(INTEGd%complex_ints) then
-    call HESSIANd%newton_rapson(icall,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa from -H^-1 g
+    call HESSIANd%quadratic_conver(icall,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa from -H^-1 g
     call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
     NO_COEF_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
    else
-    call HESSIANd%newton_rapson(icall,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa from -H^-1 g
+    call HESSIANd%quadratic_conver(icall,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa from -H^-1 g
     call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)
     NO_COEF=matmul(NO_COEF,U_mat)
    endif
@@ -239,7 +239,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  enddo
 
- ! Remove density matrices used in Newton Rapson method  
+ ! Restore density matrices used in Quadratic Convergence method  
  if(allocated_DMNs) then
   RDMd%DM2_L=DM2_L_saved
   RDMd%DM2_K=RDMd%DM2_K-RDMd%DM2_L

@@ -156,7 +156,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(fcidump) ifcidump=1
  endif
  
-! Check whether to compute the Hessian matrix (for Newton Rapson or to check the eigenvalues)
+! Check whether to compute the Hessian matrix (for Quadratic Convergence or to check the eigenvalues)
  if(present(hessian)) hessian_in=hessian
  if(imethorb/=1) hessian_in=.true.
 
@@ -210,7 +210,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 & Nbeta_elect_in,Nalpha_elect_in,irs_noft)
  endif
  
- if(present(lowmemERI) .and. (.not.hessian_in .and. imethorb/=1)) then ! The Hessian for Newton Rapson method needs all integrals
+ if(present(lowmemERI) .and. (.not.hessian_in .and. imethorb/=1)) then ! The Hessian for Quadratic Convergence method needs all integrals
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
  else
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
@@ -725,7 +725,7 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a,i12)') ' Numb. of iter used in DIIS        ',ndiis
   call write_output(msg)
  else
-  write(msg,'(a,i12)') ' New. Rap. method used in orb opt. ',imethorb
+  write(msg,'(a,i12)') ' Qua. Con. method used in orb opt. ',imethorb
   call write_output(msg)
   write(msg,'(a,e10.3)') ' Tolerance gradient convergence      ',ten**(-itolLambda)
   call write_output(msg)

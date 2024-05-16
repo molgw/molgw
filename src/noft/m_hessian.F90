@@ -65,8 +65,8 @@ module m_hessian
    procedure :: diag => diag_hessian
    ! Diagonalize the Hessian matrix and analyze the eigenvalues
 
-   procedure :: newton_rapson => newton_rapson_step
-   ! Perfom k = - H^-1 g
+   procedure :: quadratic_conver => quadratic_conver_step
+   ! Perfom k = Eigenvector_i [ H(*,i) ]
 
  end type hessian_t
 
@@ -670,12 +670,14 @@ end subroutine build_hessian
 !!
 !! SOURCE
 
-subroutine diag_hessian(HESSIANd)
+subroutine diag_hessian(HESSIANd,mute)
 !Arguments ------------------------------------
 !scalars
  class(hessian_t),intent(inout)::HESSIANd
+ logical,intent(in),optional::mute
 !arrays
 !Local variables ------------------------------
+ logical::mute_in
  integer::iindex,lwork,info,nneg
  real(dp)::sum_neg,max_neg
 !scalars
@@ -684,6 +686,9 @@ subroutine diag_hessian(HESSIANd)
 !arrays
  character(len=200)::msg
 !************************************************************************
+
+ mute_in=.false.
+ if(present(mute)) mute_in=mute
 
  max_neg=zero; sum_neg=zero; nneg=0; info=0;
 
@@ -725,24 +730,26 @@ subroutine diag_hessian(HESSIANd)
   endif
  enddo
  
- write(msg,'(a,I10)') 'Number of negative eigenvalues',nneg
- call write_output(msg)
- write(msg,'(a,F10.5)') 'Max negative eigenvalue       ',max_neg
- call write_output(msg)
- write(msg,'(a,F10.5)') 'Sum negative eigenvalues      ',sum_neg
- call write_output(msg)
+ if(.not.mute_in) then
+  write(msg,'(a,I10)') 'Number of negative eigenvalues',nneg
+  call write_output(msg)
+  write(msg,'(a,F10.5)') 'Max negative eigenvalue       ',max_neg
+  call write_output(msg)
+  write(msg,'(a,F10.5)') 'Sum negative eigenvalues      ',sum_neg
+  call write_output(msg)
+ endif
 
  deallocate(Eigeval)
 
 end subroutine diag_hessian
 !!***
 
-!!****f* DoNOF/newton_rapson_step
+!!****f* DoNOF/quadratic_conver_step
 !! NAME
-!! newton_rapson_step
+!! quadratic_conver_step
 !!
 !! FUNCTION
-!!  Perform Newton Rapson step to compute new kappa
+!!  Perform Quadratic Convengece step to compute new kappa
 !!
 !! INPUTS
 !!  icall
@@ -756,7 +763,7 @@ end subroutine diag_hessian
 !!
 !! SOURCE
 
-subroutine newton_rapson_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmplx)
+subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(inout)::icall
@@ -767,70 +774,44 @@ subroutine newton_rapson_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmplx)
  complex(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::kappa_mat_cmplx
 !Local variables ------------------------------
 !scalars
- integer::iorbp,iorbq,iterm,info
+ logical::mute=.true.
+ integer::iorbp,iorbq,iterm
 !arrays
- integer,allocatable,dimension(:)::IPIV
  character(len=200)::msg
 !************************************************************************
 
- allocate(IPIV(HESSIANd%NDIM_hess))
-
  if(HESSIANd%cpx_hessian) then ! Complex
 
-  call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
-  if(info==0) then
-   HESSIANd%Gradient_vec_cmplx=-HESSIANd%Gradient_vec_cmplx 
-   call ZGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV, &
-   & HESSIANd%Gradient_vec_cmplx,HESSIANd%NDIM_hess,info)
-   if(info==0) then
-    iterm=1
-    do iorbp=1,NBF_tot
-     do iorbq=iorbp+1,NBF_tot
-      kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Gradient_vec_cmplx(iterm)
-      kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
-      iterm=iterm+1
-     enddo
-    enddo
-   endif
-  endif
+  kappa_mat_cmplx=complex_zero
+  call HESSIANd%diag(mute=mute)
+  iterm=1
+  do iorbp=1,NBF_tot
+   do iorbq=iorbp,NBF_tot
+    kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Hessian_mat_cmplx(iterm,1)
+    kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
+    iterm=iterm+1
+   enddo
+  enddo
 
  else  ! Real
 
-  call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
-  if(info==0) then
-   HESSIANd%Gradient_vec=-HESSIANd%Gradient_vec 
-   call DGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,       &
-   & HESSIANd%Gradient_vec,HESSIANd%NDIM_hess,info)
-   if(info==0) then
-    iterm=1
-    do iorbp=1,NBF_tot
-     do iorbq=iorbp+1,NBF_tot
-      kappa_mat(iorbp,iorbq)=HESSIANd%Gradient_vec(iterm)
-      kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
-      iterm=iterm+1
-     enddo
-    enddo
-   endif
-  endif
+  kappa_mat=zero
+  call HESSIANd%diag(mute=mute)
+  iterm=1
+  do iorbp=1,NBF_tot
+   do iorbq=iorbp+1,NBF_tot
+    kappa_mat(iorbp,iorbq)=HESSIANd%Hessian_mat(iterm,1)
+    kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
+    iterm=iterm+1
+   enddo
+  enddo
 
  endif
 
  ! Update iteration counter orb. opt.
  icall=icall+1
 
- ! Check if there was an error
- if(info/=0) then
-  write(msg,'(a)') ' '
-  call write_output(msg)
-  write(msg,'(a)') 'Warning! Error in Newton-Rapson step'
-  call write_output(msg)
-  write(msg,'(a)') ' '
-  call write_output(msg)
- endif
-
- deallocate(IPIV)
-
-end subroutine newton_rapson_step
+end subroutine quadratic_conver_step
 !!***
 
 !!****f* DoNOF/build_hessian_brut
