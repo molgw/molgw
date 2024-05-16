@@ -12,12 +12,5 @@ CXXFLAGS= -O3 -xhost
 
 LAPACK= -mkl=parallel
 
-SCALAPACK= 
-
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
-#LIBINT_ROOT=${HOME}/src/libint-2.4.2/
-
-FFTW_ROOT=
-
-LIBCINT=

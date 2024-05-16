@@ -12,12 +12,6 @@ CXXFLAGS= -cpp -O2 # -O0 -g -fbounds-check
 
 LAPACK=-L${HOME}/src/lapack-3.8.0/ -llapack -lblas
 
-SCALAPACK=
-
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
-
-LIBINT_ROOT=${HOME}/src/libint-2.4.2/
-
-FFTW_ROOT=
 
 LIBCINT=-lcint

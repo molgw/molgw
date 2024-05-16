@@ -839,29 +839,29 @@ frozencore:
     B-Na have the 1s. Al-Ca have the 1s2s2p. Manual tuning could be achieved with
     ncoreg, ncorew.
 
-gwgwg_skip_vvv:
+g3w2_skip_vvv:
   family: post
   datatype: yes/no
   mandatory: 'no'
-  experimental: 'yes'
+  experimental: 'no'
   default: 'no'
-  comment: EXPERIMENTAL. Skip the 3-virtual-state contributions in the GWGWG selfenergy.
+  comment: Skip the 3-virtual-state contributions in the G3W2 selfenergy.
 
-gwgwg_skip_vv:
+g3w2_skip_vv:
   family: post
   datatype: yes/no
   mandatory: 'no'
-  experimental: 'yes'
+  experimental: 'no'
   default: 'no'
-  comment: EXPERIMENTAL. Skip the 2-virtual+1-occupied-state  contributions in the GWGWG selfenergy.
+  comment: Skip the 2-virtual+1-occupied-state  contributions in the G3W2 selfenergy.
 
-gwgwg_static_approximation:
+g3w2_static_approximation:
   family: post
   datatype: yes/no
   mandatory: 'no'
-  experimental: 'yes'
+  experimental: 'no'
   default: 'no'
-  comment: EXPERIMENTAL. Evaluate the GWGWG self-energy at the GW energy only.
+  comment: Evaluate the G3W2 self-energy at the GW energy only.
 
 gwgamma_tddft:
   family: post

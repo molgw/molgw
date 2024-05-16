@@ -14,12 +14,7 @@ CXXFLAGS= -cpp -O3 -march=native -mtune=native
 # MKL with threads
 LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
 
-SCALAPACK=
-
 LIBXC_ROOT=/opt/libxc-4.3.4/
 
 LIBINT_ROOT=/opt/libint-2.4.2/
 
-FFTW_ROOT=
-
-LIBCINT=

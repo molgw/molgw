@@ -16,8 +16,4 @@ SCALAPACK= -L${MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_
 
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
-#LIBINT_ROOT=${HOME}/src/libint-2.4.2/
-
-FFTW_ROOT=
-
 LIBCINT=-lcint

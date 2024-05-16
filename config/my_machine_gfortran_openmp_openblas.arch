@@ -12,12 +12,7 @@ CXXFLAGS= -cpp -O3 -march=native -mtune=native
 
 LAPACK=  /opt/openblas-0.3.7/lib/libopenblas.a -lm -ldl -lpthread
 
-SCALAPACK=
-
 LIBXC_ROOT=/opt/libxc-4.3.4/
 
 LIBINT_ROOT=/opt/libint-2.4.2/
 
-FFTW_ROOT=
-
-LIBCINT=

@@ -29,12 +29,14 @@
 - Running with python or jupyter notebook is more complete.
 New classes for input (`Molgw_input`), output (`Molgw_output`), and collection of ouputs (`Molgw_output_collection`)
 Check out jupyter notebooks in `~molgw/docs/running_molgw_with_jupyter.ipynb` and `~molgw/docs/gw100_benchmark.ipynb`.
+- Python function `molgw.spectrum.evaluate()` as replacement for spectrum fortran code
 - The pair-Coupled Cluster Doubles (pCCD) method is now available including orbital optimization (with the NOFT module).
 - Possibility to use range-separated hybrid in LR-TDDFT and RT-TDDFT
+- Updated format for RT-TDDFT file `dipole_time.dat`
 
 ### Changes affecting the compilation
 
-- For LIBCINT, LIBINT, FFTW, HDF5, LIBXC, one may either specify the location of the installation folder with variable
+- For LIBCINT, LIBINT, HDF5, LIBXC, one may either specify the location of the installation folder with variable
 ```
 LIBCINT_ROOT=/path/to/libcint/installation/
 ```
@@ -47,6 +49,7 @@ or specify explicitly the include and linking lines with variables:
 ### Changes affecting the developers
 
 - HDF5 fortran sequential writing and reading subroutines can be used
+- spectrum fortran code eliminated, no dependance on FFTW any longer
 
 ----------------------------------------
 ## What's new in version 3.2

@@ -9,12 +9,7 @@ CXXFLAGS=-cpp -O2 # -O0 -g -fbounds-check
 
 LAPACK=-L/opt/lapack-3.9.0/ -llapack -lblas
 
-SCALAPACK=
-
 LIBXC_ROOT=/opt/libxc-4.3.4/
-
-LIBINT_ROOT=
 
 LIBCINT=-lcint
 
-FFTW_ROOT=

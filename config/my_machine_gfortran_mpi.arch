@@ -20,4 +20,3 @@ LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
 LIBCINT=-lcint
 
-FFTW_ROOT=
