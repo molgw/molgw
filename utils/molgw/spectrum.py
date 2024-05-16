@@ -1,8 +1,19 @@
+#!/usr/bin/python3
+##################################################
+#
+# This file is part of MOLGW
+# Authors: Fabien Bruneval, Ivan Maliyov
+#
+# This python submodule provides useful a function to evaluate an optical spectrum from RT-TDDFT
+#
+#
+##################################################
+
 import numpy as np
 from . import __version__, Ha_eV
 
 
-def evaluate(input_file="dipole_time.dat", output_file="spectrum.dat",
+def evaluate(input_file="dipole_time.dat", output_file=None,
              npadding=10, damping_time=None, ntruncate=None ):
     """
        Calculate the optical spectrum in frequency from a dipole series in time
@@ -86,9 +97,11 @@ def evaluate(input_file="dipole_time.dat", output_file="spectrum.dat",
     
     nomega_plot = int(nt_with_padding / 2)
     
-    header = "Frequency (eV)   Spectrum (a.u.)"
-    data = np.column_stack((Omega_eV[:nomega_plot], spectrum[:nomega_plot]))
-    np.savetxt(output_file, data, delimiter='    ', header=header, fmt='% .5e')
-
-    return Omega_eV[:nomega_plot], spectrum[:nomega_plot]
+    if output_file is None:
+        return Omega_eV[:nomega_plot], spectrum[:nomega_plot]
+    else:
+        print(f"Printing spectrum in file: {output_file}")
+        header = "Frequency (eV)   Spectrum (a.u.)"
+        data = np.column_stack((Omega_eV[:nomega_plot], spectrum[:nomega_plot]))
+        np.savetxt(output_file, data, delimiter='    ', header=header, fmt='% .5e')
 
