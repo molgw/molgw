@@ -45,7 +45,7 @@ ifeq ($(LIBXC),)
       LIBXC=
     endif
   else
-    LIBXC=-L$(LIBXC_ROOT)/lib/ -L$(LIBXC_ROOT)/lib64/ -lxc
+    LIBXC=-L$(LIBXC_ROOT)/lib/ -L$(LIBXC_ROOT)/lib64/ -Wl,-rpath,$(LIBXC_ROOT)/lib/ -Wl,-rpath,$(LIBXC_ROOT)/lib64/ -lxc
   endif
 endif
 ifeq ($(LIBXC_INCS),)
