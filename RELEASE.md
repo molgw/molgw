@@ -1,32 +1,52 @@
------------------------------------------
-#    MOLGW: Release Notes
------------------------------------------
+# MOLGW: Release Notes
 
-----------------------------------------
+---
+
+---
+
 ## What's new in version 3.3
+
 ### Overview
+
 - Python scripting improved using molgw.py
 - Range-separated hybrid are compatible with RT-TDDFT and LR-TDDFT
-- The pCCD method is now available as a NOFT functional.
-- BSE correlation energy computed in a similar fashion to the RPAx-I one.
+- The pCCD method is now available as a NOFT functional
+- BSE correlation energy computed in a similar fashion to the RPAx-I one
+- Support for HDF5 files in RT-TDDFT
+- Unifying the Makefile variables to point to the libraries
 
 ### Contributors
+
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
 - Mauricio Rodriguez-Mayorga (Institut Néel, Grenoble, France)
+- Ivan Maliyov (Université Aix-Marseille, France)
 
 ### Changes affecting the usage
+
 - Running with python or jupyter notebook is more complete.
 New classes for input (`Molgw_input`), output (`Molgw_output`), and collection of ouputs (`Molgw_output_collection`)
-Check out jupyter notebook in `~molgw/docs/running_molgw_with_jupyter.ipynb`
+Check out jupyter notebooks in `~molgw/docs/running_molgw_with_jupyter.ipynb` and `~molgw/docs/gw100_benchmark.ipynb`.
 - The pair-Coupled Cluster Doubles (pCCD) method is now available including orbital optimization (with the NOFT module).
 
 ### Changes affecting the compilation
 
+- For LIBCINT, LIBINT, FFTW, HDF5, LIBXC, one may either specify the location of the installation folder with variable
+```
+LIBCINT_ROOT=/path/to/libcint/installation/
+```
+or specify explicitly the include and linking lines with variables:
+```
+ LIBCINT= -L/path/to/libcint/installation/lib64/ -lcint
+ LIBCINT_INCS= -I/path/to/libcint/installation/include/
+```
+
 ### Changes affecting the developers
 
+- HDF5 fortran sequential writing and reading subroutines are present
 
 ----------------------------------------
 ## What's new in version 3.2
+
 ### Overview
 - Double-hybrid functionals (and more range-sep hybs.)
 - Finite electric field with `electric_field_x`, `electric_field_y`, `electric_field_z`
@@ -51,6 +71,7 @@ Check out jupyter notebook in `~molgw/docs/running_molgw_with_jupyter.ipynb`
 
 ----------------------------------------
 ## What's new in version 3.1
+
 ### Overview
 - Simplified compilation
 - Even-tempered basis
@@ -82,6 +103,7 @@ Do not use `-DHAVE_LIBCINT` any longer, else a series of warnings may be issued.
 
 -----------------------------------------
 ## What's new in version 3.0
+
 ### Overview
 - LIBCINT library as an alternative to LIBINT
 - Natural Orbital Functional Theory (NOFT)
@@ -124,6 +146,7 @@ To use LIBCINT, `my_machine.arch` should contain `LIBCINT=-lcint` and preprocess
 
 -----------------------------------------
 ## What's new in version 2.F
+
 ### Overview
 - MOLGW is now compatible with LIBXC 5
 - MOLGW automatically detects the LIBINT configuration. Easier compilation
@@ -143,6 +166,7 @@ To use LIBCINT, `my_machine.arch` should contain `LIBCINT=-lcint` and preprocess
 
 -----------------------------------------
 ## What's new in version 2.E
+
 ### Overview
 - MOLGW proposes automatically an extrapolated GW energy to the  Complete Basis Set limit when using Dunning basis sets
 - GW with analytic continuation is now robust for the HOMO-LUMO gap region. Tested for C60 in aug-cc-pV5Z (>7500 basis functions)
@@ -168,6 +192,7 @@ To use LIBCINT, `my_machine.arch` should contain `LIBCINT=-lcint` and preprocess
 
 -----------------------------------------
 ## What's new in version 2.D
+
 ### Overview
 - Compatibility with gcc/gfortran 10
 - Basis files location can be set from an environment variable MOLGW_BASIS_PATH
@@ -194,6 +219,7 @@ Compiler options such as `-ffree-line-length-none` are not needed any more.
 
 -----------------------------------------
 ## What's new in version 2.C
+
 ### Overview
 - Real-time TDDFT is made available
 - speed-up in the Hartree, Exchange and AO to MO transform
@@ -229,6 +255,7 @@ The latest version of LIBXC can be used. Preprocessing flag `-DLIBXC4` is no lon
 
 -----------------------------------------
 ## What's new in version 2.B
+
 ### Overview
 - automatic generation of an auxiliary basis following the "Auto" and "PAuto" recipes of Gaussian
 - output the Galitskii-Migdal correlation energy = 1/2 Tr[ Sigmac * G ]
@@ -247,6 +274,7 @@ The latest version of LIBXC can be used. Preprocessing flag `-DLIBXC4` is no lon
 
 -----------------------------------------
 ## What's new in version 2.A
+
 ### Overview
 - GW approximation to the density matrix (only for spin-restricted calculations)
 - Third-order perturbation theory (PT3) self-energy (only for spin-restricted calculations)
@@ -290,6 +318,7 @@ Based on our experience, flavor 'R' pointing to (P)DSYEVR is faster but can indu
 
 -----------------------------------------
 ## What's new in version 1.H
+
 ### Overview
 Bug fixes
 
@@ -301,6 +330,7 @@ Use the preprocessor flags -DHAVE_LIBINT_ONEBODY and/or -DHAVE_LIBINT_GRADIENTS
 
 -----------------------------------------
 ## What's new in version 1.G
+
 ### Overview
 Bug fixes, cleaning, and speed-up.
 
@@ -314,12 +344,14 @@ Bug fixes, cleaning, and speed-up.
 
 -----------------------------------------
 ## What's new in version 1.F
+
 ### Overview
 A few bugs specific to the recent versions of the Intel compilers have been fixed.
 
 
 -----------------------------------------
 ## What's new in version 1.E
+
 ### Overview
 Bug fix with respect to previous version for high angular momenta (L>5)
 Considerable speed-up in the diagonalization of the RPA matrix thanks to the use of PDSYEVR instead of PDSYEV
@@ -327,12 +359,14 @@ Considerable speed-up in the diagonalization of the RPA matrix thanks to the use
 
 -----------------------------------------
 ## What's new in version 1.D
+
 ### Overview
 Simple bug fix with respect to previous version
 
 
 -----------------------------------------
 ## What's new in version 1.C
+
 ### Overview
 This release makes better use of the latest version of LIBINT ( >= v2.2.0).
 Together with some internal refactoring of the code and small bug fixes.
