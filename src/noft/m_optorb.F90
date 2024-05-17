@@ -96,7 +96,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed
  integer::icall,istate,iorbmax1,iorbmax2,imethod_in
- real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
+ real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old,fac_qc
 !arrays
  real(dp),allocatable,dimension(:)::DM2_L_saved
  real(dp),allocatable,dimension(:,:)::U_mat,kappa_mat
@@ -185,42 +185,75 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   if(imethod_in==1) then ! Build F matrix for iterative diagonalization
    if(INTEGd%complex_ints) then
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF_cmplx=NO_COEF_cmplx) ! Build new NO_COEF and set icall=icall+1
+    ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+    & INTEGd%ERI_L_cmplx,nogamma=nogamma)
    else
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF=NO_COEF) ! Build new NO_COEF and set icall=icall+1
-   endif
+    ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
+    if(INTEGd%irange_sep/=0) then
+     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+     & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
+    else
+     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+     & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
+    endif
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+    & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+    endif
   else                ! Use QC method to produce new COEFs
+   fac_qc=1.0e0
    call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
    if(INTEGd%complex_ints) then
     call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa from 1st Eigenvector of H
+314 continue
+    kappa_mat_cmplx=fac_qc*kappa_mat_cmplx
     call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
     NO_COEF_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
+    ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+    & INTEGd%ERI_L_cmplx,nogamma=nogamma)
+    if(Energy>Energy_old) then
+     fac_qc=half*half*fac_qc
+     icall=icall+1
+     NO_COEF_cmplx=matmul(NO_COEF_cmplx,transpose(conjg(U_mat_cmplx)))
+     if(icall==30) exit
+     goto 314
+    endif
    else
+    if(INTEGd%irange_sep/=0) then
+     write(msg,'(a)') 'Warning! The Hessian of the range-sep is not available'
+     call write_output(msg)
+     stop
+    endif
     call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa from 1st Eigenvector of H
+315 continue
+    kappa_mat=fac_qc*kappa_mat
     call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)
     NO_COEF=matmul(NO_COEF,U_mat)
+    ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+    & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+    & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+    if(Energy>Energy_old) then
+     fac_qc=half*half*fac_qc
+     icall=icall+1
+     NO_COEF=matmul(NO_COEF,transpose(U_mat))
+     if(icall==30) exit
+     goto 315
+    endif
    endif
   endif
 
-  ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
-  if(INTEGd%complex_ints) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
-   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
-   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
-   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
-  else
-   if(INTEGd%irange_sep/=0) then
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-    & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
-   else
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-    & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
-   endif
-   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
-   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
-  endif
- 
   ! Check if we did Diag[(Lambda_pq + Lambda_qp*)/2] for F method (first iteration)
   if((imethod_in==1.and.iter==0).and.ELAGd%diagLpL_done) then ! For F method if we did Diag[(Lambda_pq + Lambda_qp*)/2].
    exit                                                    ! -> Do only one icall iteration before the occ. opt.

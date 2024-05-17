@@ -146,7 +146,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 
  diagLpL=.true.; restart_param=.false.; ifcidump=0; keep_orbs=.false.; keep_occs=.false.; cpx_mos=.false.;
  irs_noft=0; all_ERI_in=.false.; hessian_in=.false.;
-
+    
  ! Initialize output
  call gitversion(sha_git) 
  call init_output(ofile_name)
@@ -160,9 +160,16 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  if(present(hessian)) hessian_in=hessian
  if(imethorb/=1) hessian_in=.true.
 
- ! Check whether to print a FCIDUMP file and the sw-RDMs
+ ! Check whether to use a range-sep. calculation
  if(present(irange_sep)) then 
   if(irange_sep/=0) irs_noft=irange_sep
+ endif
+
+ ! No Hessian available for range-sep
+ if(irs_noft/=0 .and. hessian_in) then
+  write(msg,'(a)') 'Warning! The Hessian of the range-sep is not available. QC not available'
+  call write_output(msg)
+  stop
  endif
 
  ! Check if we use complex orbs
