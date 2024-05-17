@@ -1736,21 +1736,21 @@ noft_sta:
   default: 'no'
   comment: Decide whether to use PNOF7 or PNOF7s, but it also affects GNOF (default= 'no', use 'PNOF7' and 'GNOF').
 
-noft_Newton_RapsonOCC:
+noft_NR_OCC:
   family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Use Newton-Rapson method in t and z amplitudes optimization in pCCD (default= 'no').
+  comment: Use quasi-Newton-Rapson method for the t and z amplitudes optimization in pCCD (default= 'no').
 
-noft_QuadraticORB:
+noft_QC_ORB:
   family: noft
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Use the Quadratic Convergence method in orbital optimization by using the Hessian (default= 'no').
+  comment: Use the Quadratic Convergence method in orbital optimization by constructing the Hessian (default= 'no').
 
 noft_ithresh_lambda:
   family: noft

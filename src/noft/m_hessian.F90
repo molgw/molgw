@@ -749,10 +749,11 @@ end subroutine diag_hessian
 !! quadratic_conver_step
 !!
 !! FUNCTION
-!!  Perform Quadratic Convengece step to compute new kappa
+!!  Perform Quadratic Convengece (QC) step to compute new kappa
 !!
 !! INPUTS
 !!  icall
+!!  istate = 1 for the GS (use the direction with the lowest eigenvector)
 !!
 !! OUTPUT
 !!  kappa_mat or kappa_cmplx
@@ -763,11 +764,11 @@ end subroutine diag_hessian
 !!
 !! SOURCE
 
-subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmplx)
+subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_mat_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(inout)::icall
- integer,intent(in)::NBF_tot
+ integer,intent(in)::istate,NBF_tot
  class(hessian_t),intent(inout)::HESSIANd
 !arrays
  real(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::kappa_mat
@@ -787,7 +788,7 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
   iterm=1
   do iorbp=1,NBF_tot
    do iorbq=iorbp,NBF_tot
-    kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Hessian_mat_cmplx(iterm,1)
+    kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Hessian_mat_cmplx(iterm,istate)
     kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
     iterm=iterm+1
    enddo
@@ -800,7 +801,7 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
   iterm=1
   do iorbp=1,NBF_tot
    do iorbq=iorbp+1,NBF_tot
-    kappa_mat(iorbp,iorbq)=HESSIANd%Hessian_mat(iterm,1)
+    kappa_mat(iorbp,iorbq)=HESSIANd%Hessian_mat(iterm,istate)
     kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
     iterm=iterm+1
    enddo

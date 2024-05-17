@@ -42,7 +42,7 @@ contains
 !!  opt_orb
 !!
 !! FUNCTION
-!!  Call the F-matrix method or Quadratic (Hessian) for orb optimization 
+!!  Call the F-matrix method or QC (with Hessian) for orb optimization 
 !!
 !! INPUTS
 !!  iter=Number of global iteration 
@@ -95,7 +95,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 !scalars
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed
- integer::icall,iorbmax1,iorbmax2,imethod_in
+ integer::icall,istate,iorbmax1,iorbmax2,imethod_in
  real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
 !arrays
  real(dp),allocatable,dimension(:)::DM2_L_saved
@@ -106,6 +106,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 
  imethod_in=imethod
 
+ istate=1
  Ediff=zero; Energy=zero; Energy_old=zero; convLambda=.false.;nogamma=.true.;
  allocated_DMNs=.false.;F_meth_printed=.false.;NR_meth_printed=.false.;all_ERIs=.false.;
 
@@ -114,8 +115,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
 
  ! Select the method
- if((imethod_in/=1.and.iter>10) .and. (abs(maxdiff)<tol3)) then ! TODO Fix the Quadratic method.
-  write(msg,'(a)') 'Performing Quadratic Convergence method for orbital optimization'
+ if((imethod_in/=1.and.iter>10) .and. (abs(maxdiff)<tol3)) then ! TODO Fix the size of the step in the QC method.
+  write(msg,'(a)') 'Performing QC method for orbital optimization'
   call write_output(msg)
   allocated_DMNs=.true.;all_ERIs=.true.;
   if(INTEGd%complex_ints) then
@@ -123,7 +124,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   else
    allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat(RDMd%NBF_tot,RDMd%NBF_tot))
   endif
-  ! Allocate density matrices for Quadratic Convergence method
+  ! Allocate density matrices for QC method
   allocate(DM2_L_saved(RDMd%NBF_occ*RDMd%NBF_occ))
   DM2_L_saved=RDMd%DM2_L
   RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero; ! Time-rev. sym DM2_L - added to -> DM2_K
@@ -187,14 +188,14 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
    else
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF=NO_COEF) ! Build new NO_COEF and set icall=icall+1
    endif
-  else                ! Use Quadratic Convergence method to produce new COEFs
+  else                ! Use QC method to produce new COEFs
    call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
    if(INTEGd%complex_ints) then
-    call HESSIANd%quadratic_conver(icall,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa from -H^-1 g
+    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa from 1st Eigenvector of H
     call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
     NO_COEF_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
    else
-    call HESSIANd%quadratic_conver(icall,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa from -H^-1 g
+    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa from 1st Eigenvector of H
     call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)
     NO_COEF=matmul(NO_COEF,U_mat)
    endif
@@ -239,7 +240,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  enddo
 
- ! Restore density matrices used in Quadratic Convergence method  
+ ! Restore density matrices used in QC method  
  if(allocated_DMNs) then
   RDMd%DM2_L=DM2_L_saved
   RDMd%DM2_K=RDMd%DM2_K-RDMd%DM2_L

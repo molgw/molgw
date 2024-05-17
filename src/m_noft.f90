@@ -109,8 +109,8 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   if(noft_readFdiag=='yes') ireadFdiag=1
   if(noft_readGAMMAS=='yes') ireadGAMMAs=1
   if(noft_sta=='yes') ista=1
-  if(noft_Newton_RapsonOCC=='yes') imethocc=2
-  if(noft_QuadraticORB=='yes') imethorb=2
+  if(noft_NR_OCC=='yes') imethocc=2
+  if(noft_QC_ORB=='yes') imethorb=2
 
   select case(capitalize(noft_functional))
   case('GNOF')

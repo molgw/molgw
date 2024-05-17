@@ -725,7 +725,7 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a,i12)') ' Numb. of iter used in DIIS        ',ndiis
   call write_output(msg)
  else
-  write(msg,'(a,i12)') ' Qua. Con. method used in orb opt. ',imethorb
+  write(msg,'(a,i12)') ' QC method used in orb opt.        ',imethorb
   call write_output(msg)
   write(msg,'(a,e10.3)') ' Tolerance gradient convergence      ',ten**(-itolLambda)
   call write_output(msg)
