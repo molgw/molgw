@@ -720,7 +720,7 @@ subroutine diag_hessian(HESSIANd,mute)
  endif
 
  do iindex=1,HESSIANd%NDIM_hess
-  if(abs(Eigeval(iindex))<tol6) then
+  if(abs(Eigeval(iindex))<tol5) then
    Eigeval(iindex)=zero
   endif
   if(Eigeval(iindex)<zero) then
@@ -777,35 +777,83 @@ subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_m
 !scalars
  logical::mute=.true.
  integer::iorbp,iorbq,iterm
+ integer::info
 !arrays
+ integer,allocatable,dimension(:)::IPIV
  character(len=200)::msg
 !************************************************************************
 
  if(HESSIANd%cpx_hessian) then ! Complex
 
   kappa_mat_cmplx=complex_zero
-  call HESSIANd%diag(mute=mute)
-  iterm=1
-  do iorbp=1,NBF_tot
-   do iorbq=iorbp,NBF_tot
-    kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Hessian_mat_cmplx(iterm,istate)
-    kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
-    iterm=iterm+1
-   enddo
-  enddo
+
+  allocate(IPIV(HESSIANd%NDIM_hess))
+  call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
+  if(info==0) then
+   HESSIANd%Gradient_vec_cmplx=-HESSIANd%Gradient_vec_cmplx
+   call ZGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV, &
+   & HESSIANd%Gradient_vec_cmplx,HESSIANd%NDIM_hess,info)
+   if(info==0) then
+    iterm=1
+    do iorbp=1,NBF_tot
+     do iorbq=iorbp,NBF_tot
+      kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Gradient_vec_cmplx(iterm)
+      kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
+      iterm=iterm+1
+     enddo
+    enddo
+   else
+    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+    call write_output(msg)
+   endif
+  endif
+  deallocate(IPIV)
+
+!  call HESSIANd%diag(mute=mute)
+!  iterm=1
+!  do iorbp=1,NBF_tot
+!   do iorbq=iorbp,NBF_tot
+!    kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Hessian_mat_cmplx(iterm,istate)
+!    kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
+!    iterm=iterm+1
+!   enddo
+!  enddo
 
  else  ! Real
 
   kappa_mat=zero
-  call HESSIANd%diag(mute=mute)
-  iterm=1
-  do iorbp=1,NBF_tot
-   do iorbq=iorbp+1,NBF_tot
-    kappa_mat(iorbp,iorbq)=HESSIANd%Hessian_mat(iterm,istate)
-    kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
-    iterm=iterm+1
-   enddo
-  enddo
+
+  allocate(IPIV(HESSIANd%NDIM_hess))
+  call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
+  if(info==0) then
+   HESSIANd%Gradient_vec=-HESSIANd%Gradient_vec
+   call DGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,       &
+   & HESSIANd%Gradient_vec,HESSIANd%NDIM_hess,info)
+   if(info==0) then
+    iterm=1
+    do iorbp=1,NBF_tot
+     do iorbq=iorbp+1,NBF_tot
+      kappa_mat(iorbp,iorbq)=HESSIANd%Gradient_vec(iterm)
+      kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
+      iterm=iterm+1
+     enddo
+    enddo
+   else
+    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+    call write_output(msg)
+   endif
+  endif
+  deallocate(IPIV)
+
+!  call HESSIANd%diag(mute=mute)
+!  iterm=1
+!  do iorbp=1,NBF_tot
+!   do iorbq=iorbp+1,NBF_tot
+!    kappa_mat(iorbp,iorbq)=HESSIANd%Hessian_mat(iterm,istate)
+!    kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
+!    iterm=iterm+1
+!   enddo
+!  enddo
 
  endif
 

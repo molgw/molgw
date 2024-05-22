@@ -96,7 +96,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed
  integer::icall,istate,iorbmax1,iorbmax2,imethod_in
- real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old,fac_qc
+ real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
 !arrays
  real(dp),allocatable,dimension(:)::DM2_L_saved
  real(dp),allocatable,dimension(:,:)::U_mat,kappa_mat
@@ -206,12 +206,9 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
     & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
     endif
   else                ! Use QC method to produce new COEFs
-   fac_qc=1.0e0
    call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
    if(INTEGd%complex_ints) then
-    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa from 1st Eigenvector of H
-314 continue
-    kappa_mat_cmplx=fac_qc*kappa_mat_cmplx
+    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa = - H^-1 g
     call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
     NO_COEF_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
     ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
@@ -220,22 +217,13 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
     call INTEGd%eritoeriJKL(RDMd%NBF_occ)
     call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
     & INTEGd%ERI_L_cmplx,nogamma=nogamma)
-    if(Energy>Energy_old) then
-     fac_qc=half*half*fac_qc
-     icall=icall+1
-     NO_COEF_cmplx=matmul(NO_COEF_cmplx,transpose(conjg(U_mat_cmplx)))
-     if(icall==30) exit
-     goto 314
-    endif
    else
     if(INTEGd%irange_sep/=0) then
      write(msg,'(a)') 'Warning! The Hessian of the range-sep is not available'
      call write_output(msg)
      stop
     endif
-    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa from 1st Eigenvector of H
-315 continue
-    kappa_mat=fac_qc*kappa_mat
+    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa = - H^-1 g
     call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)
     NO_COEF=matmul(NO_COEF,U_mat)
     ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
@@ -244,13 +232,6 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
     call INTEGd%eritoeriJKL(RDMd%NBF_occ)
     call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
     & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
-    if(Energy>Energy_old) then
-     fac_qc=half*half*fac_qc
-     icall=icall+1
-     NO_COEF=matmul(NO_COEF,transpose(U_mat))
-     if(icall==30) exit
-     goto 315
-    endif
    endif
   endif
 
