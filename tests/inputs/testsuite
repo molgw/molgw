@@ -1055,15 +1055,15 @@ SCF Total Energy          , -100.0391397744    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.259038        , 0 , 1.0e-4
 gKS LUMO energy           ,    1.090268        , 0 , 1.0e-4
 
-he_gwgwg_numerical.in     , GWGWG with numerical integration
+he_g3w2_numerical.in     , G3W2 with numerical integration
 SCF Total Energy          ,   -2.8552377890    , 0 , 1.0e-7
-GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
+GW+G3W2 HOMO energy      ,  -24.176851        , 0 , 1.0e-4
 
-he_gwgwg_analytic.in      , GWGWG with analytic formula
+he_g3w2_analytic.in      , G3W2 with analytic formula
 SCF Total Energy          ,   -2.8552377890    , 0 , 1.0e-7
 GW HOMO energy            ,  -23.691585        , 0 , 1.0e-4
 GW+SOSEX2 HOMO energy     ,  -24.139890        , 0 , 1.0e-4
-GW+GWGWG HOMO energy      ,  -24.176851        , 0 , 1.0e-4
+GW+G3W2 HOMO energy      ,  -24.176851        , 0 , 1.0e-4
 
 he_gw+sox.in              , GW+SOX for He
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
@@ -1089,11 +1089,11 @@ he_gw+sosex2_pade.in      , GW+2SOSEX for He on the imaginary axis
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
 GW+SOSEX HOMO energy      ,  -24.670840        , 0 , 1.0e-4
 
-he_gw+gwgwg.in            , GW+GWGWG for He
+he_gw+g3w2.in            , GW+G3W2 for He
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
-GW+GWGWG HOMO energy      ,  -24.696203        , 0 , 1.0e-4
+GW+G3W2 HOMO energy      ,  -24.696203        , 0 , 1.0e-4
 
-he_gw+gwgwg_pade.in       , GW+GWGWG for He on the imaginary axis (setting the axis origin)
+he_gw+g3w2_pade.in       , GW+G3W2 for He on the imaginary axis (setting the axis origin)
 SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
-GW+GWGWG HOMO energy      ,  -24.680279        , 0 , 1.0e-4
+GW+G3W2 HOMO energy      ,  -24.680279        , 0 , 1.0e-4
 

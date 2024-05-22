@@ -13,9 +13,6 @@ PYTHON ?= python3
 FCFLAGS ?= -O2 -cpp
 CXXFLAGS ?=-O2
 CPPFLAGS ?=
-LAPACK ?=-lblas -llapack
-#SCALAPACK=
-#FFTW_ROOT=
 #ELPA=
 #ELPA_INCS=
 
@@ -26,6 +23,17 @@ CXX_W_OPTS= $(CXX) $(CXXFLAGS) $(CPPFLAGS)
 LINKER= $(LIBTOOL) $(FC_W_OPTS) $(LDFLAGS)
 
 LINKS= -lstdc++ -lm
+
+##################################
+# LAPACK /SCALAPACK
+# if both LAPACK and SCALAPACK are empty, then set the default
+#
+##################################
+ifeq ($(SCALAPACK),)
+  ifeq ($(LAPACK),)
+    LAPACK ?=-lblas -llapack
+  endif
+endif
 
 ##################################
 #
@@ -45,7 +53,7 @@ ifeq ($(LIBXC),)
       LIBXC=
     endif
   else
-    LIBXC=-L$(LIBXC_ROOT)/lib/ -L$(LIBXC_ROOT)/lib64/ -lxc
+    LIBXC=-L$(LIBXC_ROOT)/lib/ -L$(LIBXC_ROOT)/lib64/ -Wl,-rpath,$(LIBXC_ROOT)/lib/ -Wl,-rpath,$(LIBXC_ROOT)/lib64/ -lxc
   endif
 endif
 ifeq ($(LIBXC_INCS),)
@@ -92,30 +100,6 @@ ifeq ($(LIBINT_INCS),)
     LIBINT_INCS=
   else
     LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
-  endif
-endif
-
-##################################
-#
-# FFTW variables
-#   if FFTW is already set, don't do anything
-#   if FFTW is not set, check out FFTW_ROOT and set FFTW accordingly
-#   if FFTW_INCS is already set, don't do anything
-#   if FFTW_INCS is not set, check out FFTW_ROOT and set FFTW_INCS accordingly
-#
-##################################
-ifeq ($(FFTW),)
-  ifeq ($(FFTW_ROOT),)
-    FFTW=
-  else
-    FFTW=-L$(FFTW_ROOT)/lib/ -lfftw3
-  endif
-endif
-ifeq ($(FFTW_INCS),)
-  ifeq ($(FFTW_ROOT),)
-    FFTW_INCS=
-  else
-    FFTW_INCS=-I$(FFTW_ROOT)/include/
   endif
 endif
 
@@ -170,12 +154,7 @@ molgw:
 	+make  level100
 	+make  ../molgw
 
-spectrum:
-	+make  prepare_sourcecode
-	+make  level000
-	+make  ../spectrum
-
-all: molgw spectrum
+all: molgw
 
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o m_nofoutput.o
@@ -206,7 +185,7 @@ level050: m_hamiltonian_wrapper.o m_restart.o m_multipole.o m_spectra.o m_build_
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_linear_response.o
 
-level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o m_gwgwg_selfenergy.o
+level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o m_g3w2_selfenergy.o
 
 level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o 
 
@@ -217,9 +196,6 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o 
 
 ####################################################
 
-
-../spectrum: m_definitions.o m_warning.o m_string_tools.o spectrum.o 
-	$(LINKER) m_definitions.o m_warning.o m_string_tools.o spectrum.o -o ../spectrum $(FFTW) $(FFTW_INCS) $(LINKS) $(LAPACK)
 
 ../molgw: m_definitions.o m_hdf5_tools.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
@@ -234,7 +210,7 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o 
         m_spectral_function.o m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_ci.o  \
         m_hamiltonian_wrapper.o \
         m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o m_fourier_quadrature.o \
-        m_linear_response.o m_acfd.o static_polarizability.o gw_selfenergy.o m_gw_selfenergy_grid.o m_gwgwg_selfenergy.o \
+        m_linear_response.o m_acfd.o static_polarizability.o gw_selfenergy.o m_gw_selfenergy_grid.o m_g3w2_selfenergy.o \
         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_tz_pccd_amplitudes.o m_noft_driver.o gitver.o \
         m_build_bse.o m_multipole.o m_io.o m_restart.o mp2.o m_noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
@@ -251,7 +227,7 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o 
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o \
                         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
                         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_tz_pccd_amplitudes.o m_noft_driver.o gitver.o \
-                        mp2.o m_noft.o gw_selfenergy.o m_gw_selfenergy_grid.o m_gwgwg_selfenergy.o m_build_bse.o \
+                        mp2.o m_noft.o gw_selfenergy.o m_gw_selfenergy_grid.o m_g3w2_selfenergy.o m_build_bse.o \
                         m_linear_response.o m_acfd.o static_polarizability.o m_multipole.o m_io.o m_restart.o \
                         m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_scf_loop.o m_dm_analysis.o \
                         m_hamiltonian_wrapper.o m_fourier_quadrature.o \
@@ -288,7 +264,7 @@ force.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_atoms.f90 m_basis_set.f9
 m_selfenergy_evaluation.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_memory.f90 m_scf.f90 \
                            m_eri.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_ao_mo.f90 m_io.f90 \
                            m_selfenergy_tools.f90 m_virtual_orbital_space.f90 m_gw_selfenergy_grid.f90 m_linear_response.f90 \
-			   m_gwgwg_selfenergy.f90 \
+			   m_g3w2_selfenergy.f90 \
                            m_selfenergy_evaluation.f90
 	$(FC_W_OPTS) -c m_selfenergy_evaluation.f90 $(LIBXC_INCS)
 
@@ -312,9 +288,9 @@ m_dm_analysis.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_ato
               m_dm_analysis.f90
 	$(FC_W_OPTS) -c m_dm_analysis.f90 $(LIBXC_INCS)
 
-m_gwgwg_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
-      m_inputparam.f90 m_tddft_fxc.f90 m_selfenergy_tools.f90 m_linear_response.f90 m_gwgwg_selfenergy.f90
-	$(FC_W_OPTS) -c m_gwgwg_selfenergy.f90 $(LIBXC_INCS)
+m_g3w2_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
+      m_inputparam.f90 m_tddft_fxc.f90 m_selfenergy_tools.f90 m_linear_response.f90 m_g3w2_selfenergy.f90
+	$(FC_W_OPTS) -c m_g3w2_selfenergy.f90 $(LIBXC_INCS)
 
 gw_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_scalapack.f90 \
                  m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 m_linear_algebra.f90 \
@@ -592,9 +568,6 @@ m_tddft_propagator.o: m_definitions.f90 m_basis_set.f90 m_hamiltonian_wrapper.f9
                       m_inputparam.f90 m_dft_grid.f90 m_scf.f90 m_warning.f90 m_timing.f90 m_density_tools.f90 m_atoms.f90 m_tddft_propagator.f90 
 	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS)
 
-spectrum.o: m_definitions.f90 m_warning.f90 m_string_tools.f90 spectrum.f90
-	$(FC_W_OPTS) -c spectrum.f90  $(FFTW_INCS)
-
 tarball:
 	+make archive
 
@@ -632,7 +605,7 @@ docs:
 	mv notes.pdf ../docs/notes.pdf
 
 clean:
-	$(RM) *.o *.mod ../molgw.tgz ../molgw ../spectrum ./noft/gitver.F90
+	$(RM) *.o *.mod ../molgw.tgz ../molgw ./noft/gitver.F90
 
 install:
 	install -d $(DESTDIR)$(bindir)

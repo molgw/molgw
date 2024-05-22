@@ -6,6 +6,7 @@ FC=mpiifort
 
 CPPFLAGS=-DHAVE_SCALAPACK -DHAVE_MKL
 
+# maybe use icx instead icpc if using a recent version of Intel OneAPI
 CXX=icpc  -std=c++11
 FCFLAGS= -fpp -O3 -xhost -qopt-matmul
 CXXFLAGS= -O3 -xhost  
@@ -15,9 +16,5 @@ LAPACK= -mkl=sequential
 SCALAPACK= -L${MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
 
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
-
-#LIBINT_ROOT=${HOME}/src/libint-2.4.2/
-
-FFTW_ROOT=
 
 LIBCINT=-lcint

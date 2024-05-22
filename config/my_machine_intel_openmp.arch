@@ -5,13 +5,12 @@ FC=ifort
 
 CPPFLAGS=-DHAVE_MKL
 
+# maybe use icx instead icpc if using a recent version of Intel OneAPI
 CXX=icpc -std=c++11
 FCFLAGS= -fpp -O3 -xhost -qopt-matmul
 CXXFLAGS= -O3 -xhost
 
 LAPACK= -mkl=parallel
-
-SCALAPACK=
 
 LIBXC_ROOT=/opt/libxc-4.3.4/
 

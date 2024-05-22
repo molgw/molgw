@@ -7,18 +7,14 @@
  auxil_basis='AUTO'
  mixing_scheme='simple'
  nscf=1000
-
- postscf='gw+gwgwg_numerical'
  mpi_nproc_ortho=1024
+
+ postscf='gw+g3w2'
  
  selfenergy_state_range=0
 
- analytic_chi='yes'
- nomega_chi_real=200
-
  nomega_sigma=3
  step_sigma=0.1
-
  eta=0.10
 
  natom=1

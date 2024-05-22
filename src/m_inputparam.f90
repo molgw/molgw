@@ -51,10 +51,10 @@ module m_inputparam
   integer,parameter :: PT3             = 223
   integer,parameter :: TWO_RINGS       = 224
   integer,parameter :: GWPT3           = 226
-  integer,parameter :: GWGWG           = 229
+  integer,parameter :: G3W2            = 229
   integer,parameter :: GW0GW0G         = 231
   integer,parameter :: GWGW0G          = 232
-  integer,parameter :: GWGWG_NUMERICAL = 233
+  integer,parameter :: G3W2_NUMERICAL  = 233
   integer,parameter :: GWTILDE         = 234
   integer,parameter :: GWGW0RPAG       = 235
 
@@ -174,9 +174,9 @@ module m_inputparam
   logical,protected                :: analytic_chi_
   logical,protected                :: eri3_genuine_
   logical,protected                :: auto_occupation_
-  logical,protected                :: gwgwg_skip_vvv_
-  logical,protected                :: gwgwg_skip_vv_
-  logical,protected                :: gwgwg_static_approximation_
+  logical,protected                :: g3w2_skip_vvv_
+  logical,protected                :: g3w2_skip_vv_
+  logical,protected                :: g3w2_static_approximation_
 
   real(dp),protected               :: rcut         = 0.0_dp
   real(dp),protected               :: factor_sosex = 1.0_dp
@@ -281,18 +281,18 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWGWGWG','GW+GWGWG','GW+G3W2')
+    case('GW+GWGWG', 'GW+G3W2')
       calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = GWGWG
+      calc_type%selfenergy_approx = G3W2
       factor_sosex = 2.0_dp
-    case('GWGWGWG_PADE','GW+GWGWG_PADE','GW+G3W2_PADE')
+    case('GW+GWGWG_PADE', 'GW+G3W2_PADE')
       calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = GWGWG
+      calc_type%selfenergy_approx = G3W2
       factor_sosex = 2.0_dp
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWGWGWG_NUMERICAL','GW+GWGWG_NUMERICAL','GW+G3W2_NUMERICAL')
+    case('GW+GWGWG_NUMERICAL', 'GW+G3W2_NUMERICAL')
       calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = GWGWG_NUMERICAL
+      calc_type%selfenergy_approx = G3W2_NUMERICAL
       factor_sosex = 2.0_dp
     case('GW+GW0GW0G')
       calc_type%is_gw    =.TRUE.
@@ -936,9 +936,9 @@ subroutine read_inputfile_namelist()
   is_virtual_fno            = yesno_to_logical(virtual_fno)
   incore_                   = yesno_to_logical(incore)
 
-  gwgwg_skip_vvv_           = yesno_to_logical(gwgwg_skip_vvv)
-  gwgwg_skip_vv_            = yesno_to_logical(gwgwg_skip_vv)
-  gwgwg_static_approximation_ = yesno_to_logical(gwgwg_static_approximation)
+  g3w2_skip_vvv_           = yesno_to_logical(g3w2_skip_vvv)
+  g3w2_skip_vv_            = yesno_to_logical(g3w2_skip_vv)
+  g3w2_static_approximation_ = yesno_to_logical(g3w2_static_approximation)
   print_eri_                = yesno_to_logical(print_eri)
   print_wfn_                = yesno_to_logical(print_wfn)
   print_w_                  = yesno_to_logical(print_w)

@@ -24,7 +24,7 @@ module m_selfenergy_evaluation
   use m_io
   use m_gw_selfenergy_grid
   use m_linear_response
-  use m_gwgwg_selfenergy
+  use m_g3w2_selfenergy
 
 
 
@@ -43,7 +43,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
   type(energy_contributions),intent(inout) :: en_mbpt
   !=====
   integer                 :: nstate
-  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gw,se_sosex,se_gwgwg
+  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gw,se_sosex,se_g3w2
   logical                 :: enforce_rpa
   character(len=36)       :: selfenergy_tag
   integer                 :: reading_status
@@ -101,8 +101,8 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='GW+SOSEX'
     case(COHSEX)
       selfenergy_tag='COHSEX'
-    case(GWGWG,GWGWG_NUMERICAL)
-      selfenergy_tag='GW+GWGWG'
+    case(G3W2,G3W2_NUMERICAL)
+      selfenergy_tag='GW+G3W2'
     case(GW0GW0G)
       selfenergy_tag='GW+GW0GW0G'
     case(GWGW0G)
@@ -310,13 +310,13 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     endif
 
     !
-    ! GW+SOX or
-    ! GW+SOSEX or GW+GWGWG
+    ! GW+SOX or 
+    ! GW+SOSEX or GW+2SOSEX or GW+G3W2
     !
     if( calc_type%selfenergy_approx == GWSOX &
         .OR. calc_type%selfenergy_approx == GWSOSEX &
-        .OR. calc_type%selfenergy_approx == GWGWG &
-        .OR. calc_type%selfenergy_approx == GWGWG_NUMERICAL &
+        .OR. calc_type%selfenergy_approx == G3W2 &
+        .OR. calc_type%selfenergy_approx == G3W2_NUMERICAL &
         .OR. calc_type%selfenergy_approx == GW0GW0G &
         .OR. calc_type%selfenergy_approx == GWGW0G &
         .OR. calc_type%selfenergy_approx == GWGW0RPAG &
@@ -351,12 +351,12 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         deallocate(zz)
         deallocate(energy_qp_z)
 
-        if( gwgwg_static_approximation_ ) then
-          call issue_warning("selfenergy_evaluation: use Arno's approximation for GWGWG")
+        if( g3w2_static_approximation_ ) then
+          call issue_warning("selfenergy_evaluation: use Arno's approximation for G3W2")
           ! enforce a single frequency located at the GW qp energy
-          call se_gwgwg%init(static_selfenergy,energy_qp_new)
+          call se_g3w2%init(static_selfenergy,energy_qp_new)
         else
-          call se_gwgwg%init(calc_type%selfenergy_technique,energy_g)
+          call se_g3w2%init(calc_type%selfenergy_technique,energy_g)
         endif
 
         !
@@ -378,23 +378,23 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           call se_sox%destroy()
 
         case(GW0GW0G,GWGW0G,GWGW0RPAG)
-          call gwgw0g_selfenergy(occupation,energy_g,c_matrix,wpol,se_gwgwg)
+          call gwgw0g_selfenergy(occupation,energy_g,c_matrix,wpol,se_g3w2)
 
           call se%add(se_gw)
-          call se%add(se_gwgwg)
-          call se_gwgwg%destroy()
+          call se%add(se_g3w2)
+          call se_g3w2%destroy()
 
         case(GWSOSEX)
-          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_gwgwg)
+          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_g3w2)
 
           call se%add(se_gw)
-          call se%add(se_gwgwg)
+          call se%add(se_g3w2)
 
-        case(GWGWG)
-          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_gwgwg)
+        case(G3W2)
+          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_g3w2)
           !call se%reset()
           call se%add(se_gw)
-          call se%add(se_gwgwg)
+          call se%add(se_g3w2)
 
           ! Output the GW+SOSEX qp energies before over-riding them
           allocate(energy_qp_z(nstate,nspin))
@@ -408,21 +408,21 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           deallocate(zz)
           deallocate(energy_qp_z)
 
-          call gwgwg_selfenergy(occupation,energy_g,c_matrix,wpol,se_gwgwg)
+          call g3w2_selfenergy(occupation,energy_g,c_matrix,wpol,se_g3w2)
 
-          ! se_gwgwg contains SOSEX2+GWGWG
+          ! se_g3w2 contains SOSEX2+G3W2
           call se%reset()
           call se%add(se_gw)
-          call se%add(se_gwgwg)
-          call se_gwgwg%destroy()
+          call se%add(se_g3w2)
+          call se_g3w2%destroy()
 
-        case(GWGWG_NUMERICAL)
-          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_gwgwg)
+        case(G3W2_NUMERICAL)
+          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_g3w2)
 
-          call gwgwg_selfenergy_real_grid(basis,occupation,energy_g,c_matrix,se_gwgwg)
+          call g3w2_selfenergy_real_grid(basis,occupation,energy_g,c_matrix,se_g3w2)
           call se%add(se_gw)
-          call se%add(se_gwgwg)
-          call se_gwgwg%destroy()
+          call se%add(se_g3w2)
+          call se_g3w2%destroy()
         case default
           call die('selfenergy_evaluation: selfenergy type not recognized')
         end select
@@ -436,11 +436,11 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         ! Imaginary frequencies implementation
         call gw_selfenergy_grid(basis,occupation,energy_g,c_matrix,se)
         call sox_selfenergy_imag_grid(occupation,energy_g,c_matrix,se)
-        if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == GWGWG ) then
+        if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == G3W2 ) then
           call sosex_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
         endif
-        if( calc_type%selfenergy_approx == GWGWG ) then
-          call gwgwg_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
+        if( calc_type%selfenergy_approx == G3W2 ) then
+          call g3w2_selfenergy_imag_grid(basis,occupation,energy_g,c_matrix,se)
         endif
         call se%pade_fit()
       endif

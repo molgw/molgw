@@ -38,7 +38,6 @@ module m_tddft_propagator
   real(dp),private                   :: time_read !defaut=0.0_dp
   real(dp),allocatable,private       :: xatom_start(:,:)
   real(dp),allocatable,private       :: xbasis_start(:,:)
-  real(dp),private                   :: excit_field_norm
   real(dp),allocatable,private       :: excit_field_time(:,:)
   logical,private                    :: moving_basis
   !==hamiltonian extrapolation variables==
@@ -47,7 +46,7 @@ module m_tddft_propagator
   complex(dp),allocatable,private    :: c_matrix_orth_hist_cmplx(:,:,:,:)
   complex(dp),allocatable,private    :: h_hist_cmplx(:,:,:,:)
   complex(dp),allocatable,private    :: c_matrix_hist_cmplx(:,:,:,:)
-  integer,private                    :: ntau
+  integer, private                    :: ntau
   !==C(t0) initialization variables==
   integer,allocatable                :: atom_state_occ(:,:)
   real(dp),allocatable               :: m_eigenval(:,:)
@@ -64,6 +63,10 @@ module m_tddft_propagator
   type(energy_contributions),private :: en_tddft
   type(basis_set),private            :: basis_t,basis_p
   !type(basis_set),private            :: auxil_basis_t,auxil_basis_p
+
+  integer, private                   :: file_time_data
+  integer, private                   :: file_dipole_time
+  integer, private                   :: file_mulliken, file_lowdin
 
 contains
 
@@ -101,9 +104,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   integer                    :: iatom
   integer                    :: itau
   integer                    :: iwrite_step
-  integer                    :: file_time_data,file_excit_field
-  integer                    :: file_dipole_time
-  integer                    :: file_mulliken, file_lowdin
   real(dp)                   :: time_cur
   complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
   real(dp),allocatable       :: p_matrix_real(:,:,:)
@@ -134,6 +134,11 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   write(stdout,'(x,a,/)')    'RT-TDDFT simulation'
 
   nstate = SIZE(occupation(:,:),DIM=1)
+
+  ! Number of time steps
+  ntau = NINT( ( time_sim - time_min ) / time_step )
+  allocate(excit_field_time(3,0:ntau))
+  excit_field_time(:,:) = 0.0_dp
 
   ! Tweak the occupation if the number of electrons has changed from DFT to TDDFT
   ! tddft_charge = -999.0 is the default value that implies tddft_charge=charge
@@ -329,9 +334,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   ! E_iD = - Tr{P*iD}
   !en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
-  ! Number of time steps
-  ntau = NINT( (time_sim-time_min) / time_step )
-  allocate(excit_field_time(3,ntau))
 
   if(excit_type%form==EXCIT_LIGHT) then
     call clean_allocate('Dipole_basis for TDDFT',dipole_ao,basis%nbf,basis%nbf,3)
@@ -371,7 +373,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   !
   ! Opening files and writing headers in files
-  call initialize_files(file_time_data,file_dipole_time,file_excit_field,file_mulliken,file_lowdin)
+  call open_tddft_files()
 
   !
   ! Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
@@ -462,7 +464,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     call lowdin_pdos_cmplx(basis,s_matrix_sqrt,c_matrix_cmplx,occupation,file_lowdin,time_min)
   end if
 
-  call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field,0)
+  call print_in_tddft_files(time_min,0)
   en_tddft%time = time_min
   write(time_key,'(i8)') 0
   call print_energy_yaml('tddft energy '//TRIM(ADJUSTL(time_key)),en_tddft)
@@ -542,7 +544,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       en_tddft%total = en_tddft%nucleus + en_tddft%kinetic + en_tddft%nuc_nuc &
                       + en_tddft%hartree + en_tddft%exx_hyb + en_tddft%xc + en_tddft%excit
 
-      call print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field,itau)
+      call print_in_tddft_files(time_cur,itau)
       en_tddft%time = time_cur
       write(time_key,'(i8)') iwrite_step
       call print_energy_yaml('tddft energy '//TRIM(ADJUSTL(time_key)),en_tddft)
@@ -638,17 +640,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     end if
   end if
 
-  if( is_iomaster) then
-    close(file_time_data)
-    if( excit_type%form==EXCIT_LIGHT) then
-      close(file_dipole_time)
-      close(file_excit_field)
-    end if
-    if( print_charge_tddft_ ) then
-      !close(file_mulliken)
-      close(file_lowdin)
-    end if
-  end if
+  call close_tddft_files()
 
   call clean_deallocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx)
   call clean_deallocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx)
@@ -730,7 +722,7 @@ subroutine output_timing_one_iter()
   write(stdout,'(/,1x,a)') '**********************************'
   write(stdout,"(1x,a32,2x,f14.6)") "Time of one iteration (s): ", time_one_iter
   write(stdout,"(1x,a32,2x,2(f12.2,1x))") "Estimated calculation time (s), (hrs):", time_one_iter*ntau,  &
-                                                                                     time_one_iter*ntau/3600.0_dp
+                                                                                    time_one_iter*ntau/3600.0_dp
   write(stdout,'(1x,a)') '**********************************'
   flush(stdout)
 
@@ -1704,11 +1696,12 @@ end subroutine initialize_extrap_coefs
 
 
 !=========================================================================
-subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field,itau)
+subroutine print_in_tddft_files(time_cur,itau)
   implicit none
-  integer,intent(in)    :: file_time_data,file_dipole_time,file_excit_field
+
   real(dp),intent(in)   :: time_cur
   integer,intent(in)    :: itau
+  !=====
   !=====
 
   if( .NOT. is_iomaster ) return
@@ -1732,34 +1725,24 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
     write(file_time_data,"(f10.4,8(2x,es16.8e3))") &
      time_cur, en_tddft%total, en_tddft%nuc_nuc, en_tddft%nucleus, en_tddft%kinetic, &
      en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, en_tddft%excit
-    write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
-    write(file_excit_field,'(2f19.10)') time_cur, excit_field_norm
+    write(file_dipole_time,'(f12.5,3(1x,e16.8e3),4x,3(1x,e16.8e3))') time_cur, excit_field_time(:,itau), dipole(:)
     write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
   end select
 
   write(stdout,'(1x,a,/)') '==================================================================================================='
 
-end subroutine print_tddft_values
+end subroutine print_in_tddft_files
 
 
 !=========================================================================
-subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,file_mulliken,file_lowdin)
+subroutine open_tddft_files()
   implicit none
-  integer,intent(inout)    :: file_time_data,file_excit_field,file_dipole_time,file_mulliken,file_lowdin
+  !=====
   !=====
 
   if( .NOT. is_iomaster ) return
 
   open(newunit=file_time_data,file="time_data.dat")
-
-  if(excit_type%form==EXCIT_LIGHT) then
-
-    open(newunit=file_dipole_time,file="dipole_time.dat")
-    open(newunit=file_excit_field,file="excitation_time.dat")
-
-    write(file_excit_field,"(A)") "# time(au)                      E_field_excit_dir(au)"
-
-  end if
 
   if( print_charge_tddft_ ) then
     !open(newunit=file_mulliken, file="mulliken_charge.dat")
@@ -1771,7 +1754,7 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
     write(file_lowdin,"(A)") "# Time (a.u.)    x_proj, y_proj, z_proj (bohr)       q_A"
   end if
 
-  !---------------------------------
+
   select case(excit_type%form)
   case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
     write(file_time_data,"(a10,12(a18))") &
@@ -1783,11 +1766,33 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field,fil
       " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart   ", &
      "     eexx_hyb            exc             eexcit"
 
-    write(file_dipole_time,"(a)") &
-       "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
+    open(newunit=file_dipole_time,file="dipole_time.dat")
+
+    write(file_dipole_time,'(a)') '# time (a.u.)   E_field_x, y, z (a.u.)   Dipole_x,y,z (a.u.)'
+
   end select
 
-end subroutine initialize_files
+end subroutine open_tddft_files
+
+
+!=========================================================================
+subroutine close_tddft_files()
+  implicit none
+  !=====
+  !=====
+
+  if( is_iomaster) then
+    close(file_time_data)
+    if( excit_type%form==EXCIT_LIGHT) then
+      close(file_dipole_time)
+    end if
+    if( print_charge_tddft_ ) then
+      !close(file_mulliken)
+      close(file_lowdin)
+    end if
+  end if
+
+end subroutine close_tddft_files
 
 
 !=========================================================================
@@ -2642,7 +2647,6 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   !=====
   logical              :: calc_excit_
   integer              :: ispin, idir, iatom
-  real(dp)             :: excit_field(3)
   complex(dp)          :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
   integer              :: projectile_list(1),fixed_atom_list(ncenter_nuclei-nprojectile)
   real(dp),allocatable :: hamiltonian_projectile(:,:)
@@ -2665,13 +2669,11 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   ! Excitation part of the Hamiltonian
   !
   en_tddft%excit = 0.0_dp
-  if( itau > 0 ) excit_field_time(:,itau) = 0.0_dp
 
   select case(excit_type%form)
+  case(EXCIT_LIGHT)
     !
     ! Light excitation
-  case(EXCIT_LIGHT)
-    excit_field = 0.0_dp
     calc_excit_ = .FALSE.
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'GAU' )
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'HSW'  &
@@ -2680,24 +2682,21 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
        .AND. ABS(time_cur - excit_type%time0 - excit_type%width/2.0_dp)<=excit_type%width/2.0_dp )
     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  &
        .AND. ABS(time_cur - excit_type%time0)<time_step_cur/2.0_dp )
-    if( itau == 0 ) calc_excit_=.FALSE.
-    if ( calc_excit_ ) then
-      call calculate_excit_field(time_cur,excit_field)
-      excit_field_time(:,itau) = excit_field(:)
-      excit_field_norm = NORM2(excit_field(:))
+
+    if ( calc_excit_ .AND. itau > 0) then
+      call calculate_excit_field(time_cur,excit_field_time(:,itau))
       do idir=1,3
-        do ispin=1, nspin
-          hamiltonian_cmplx(:,:,ispin) = hamiltonian_cmplx(:,:,ispin) - dipole_ao(:,:,idir) * excit_field(idir)
-          en_tddft%excit = en_tddft%excit + REAL(SUM(dipole_ao(:,:,idir) * excit_field(idir) * p_matrix_cmplx(:,:,ispin)),dp)
+        do ispin=1,nspin
+          hamiltonian_cmplx(:,:,ispin) = hamiltonian_cmplx(:,:,ispin) - dipole_ao(:,:,idir) * excit_field_time(idir,itau)
+          en_tddft%excit = en_tddft%excit &
+                 + excit_field_time(idir,itau) * REAL( SUM(dipole_ao(:,:,idir) * p_matrix_cmplx(:,:,ispin)) )
         enddo
       end do
-    else
-      excit_field_norm = 0.0_dp
     end if
 
+  case(EXCIT_PROJECTILE)
     !
     ! Projectile excitation
-  case(EXCIT_PROJECTILE)
 
     !
     ! Move the projectile
@@ -2718,9 +2717,9 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
     en_tddft%excit = REAL( SUM( hamiltonian_projectile(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
     deallocate(hamiltonian_projectile)
 
+  case(EXCIT_PROJECTILE_W_BASIS)
     !
     ! Projectile excitation with moving basis
-  case(EXCIT_PROJECTILE_W_BASIS)
 
     if ( itau > 0 ) then
       !call setup_kinetic(basis,hamiltonian_kinetic)

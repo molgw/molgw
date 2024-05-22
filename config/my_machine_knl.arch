@@ -19,7 +19,5 @@ LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 # Better to use a LIBINT compilation, specifically compiled for KNL (x 2-3 speed-up in the integral evaluation)
 #LIBINT_ROOT=${HOME}/src/libint-2.4.2-knl/
 
-FFTW_ROOT=
-
 LIBCINT=-lcint
 

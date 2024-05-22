@@ -1,5 +1,5 @@
 &molgw
- comment='He GW+GWGWG with imaginary frequency integration'
+ comment='He GW+G3W2'
 
  scf='HF'
 
@@ -9,20 +9,14 @@
  mpi_nproc_ortho=1024
  mixing_scheme='simple'
 
- postscf='gw+gwgwg_pade'
+ postscf='gw+g3w2'
 
  selfenergy_state_range=0
 
  nomega_sigma=31
  step_sigma=0.10
 
- nomega_chi_imag=32
- analytic_chi='no'
-
- nomega_sigma_calc=21
- step_sigma_calc=0.2
-
- mu_origin=-0.50
+ eta=0.001
 
  natom=1
 /

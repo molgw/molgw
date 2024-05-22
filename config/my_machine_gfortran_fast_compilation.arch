@@ -10,13 +10,11 @@ CXXFLAGS= -O0
 # System lapack/blas
 LAPACK= -llapack -lblas
 
-SCALAPACK= 
-
 # System libxc are found
 #LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
 
 # Link to a shared library with RPATH technique
-LIBCINT_PATH=/home/bruneval/devel/spack/opt/spack/linux-fedora39-zen4/gcc-13.2.1/libcint-5.3.0-4p3oc3rkc2vvd5apsbibgwl5ip4rvh7l/lib64/
-LIBCINT=-L${LIBCINT_PATH} -lcint -Wl,-rpath,${LIBCINT_PATH}
+LIBCINT_ROOT=/home/bruneval/devel/spack/opt/spack/linux-fedora39-zen4/gcc-13.2.1/libcint-5.3.0-4p3oc3rkc2vvd5apsbibgwl5ip4rvh7l/
+#LIBCINT=-L${LIBCINT_PATH} -lcint -Wl,-rpath,${LIBCINT_PATH}
 
