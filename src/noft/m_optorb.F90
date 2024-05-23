@@ -208,7 +208,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   else                ! Use QC method to produce new COEFs
    call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
    if(INTEGd%complex_ints) then
-    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa = - H^-1 g
+    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa = - H^-1 g -> norm(kappa)
     call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
     NO_COEF_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
     ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
@@ -223,8 +223,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
      call write_output(msg)
      stop
     endif
-    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa = - H^-1 g
-    call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)
+    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa = - H^-1 g -> norm(kappa)
+    call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)                             
     NO_COEF=matmul(NO_COEF,U_mat)
     ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &

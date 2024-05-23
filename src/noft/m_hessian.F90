@@ -749,7 +749,8 @@ end subroutine diag_hessian
 !! quadratic_conver_step
 !!
 !! FUNCTION
-!!  Perform Quadratic Convengece (QC) step to compute new kappa
+!!  Perform Quadratic Convengece (QC) step to compute new kappa.
+!!  It is the normalized(kappa)
 !!
 !! INPUTS
 !!  icall
@@ -778,7 +779,7 @@ subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_m
  logical::mute=.true.
  integer::iorbp,iorbq,iterm
  integer::info
- real(dp)::norm
+ real(dp)::norm,tol10=1e-10
 !arrays
  integer,allocatable,dimension(:)::IPIV
  character(len=200)::msg
@@ -806,11 +807,14 @@ subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_m
       iterm=iterm+1
      enddo
     enddo
-    kappa_mat_cmplx=kappa_mat_cmplx/sqrt(norm)
+    kappa_mat_cmplx=kappa_mat_cmplx/(sqrt(norm)+tol10)
    else
     write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
     call write_output(msg)
    endif
+  else
+   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+   call write_output(msg)
   endif
   deallocate(IPIV)
 
@@ -844,11 +848,14 @@ subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_m
       iterm=iterm+1
      enddo
     enddo
-    kappa_mat=kappa_mat/sqrt(norm)
+    kappa_mat=kappa_mat/(sqrt(norm)+tol10)
    else
     write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
     call write_output(msg)
    endif
+  else
+   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+   call write_output(msg)
   endif
   deallocate(IPIV)
 
