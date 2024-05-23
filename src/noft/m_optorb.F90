@@ -295,6 +295,7 @@ end subroutine opt_orb
 !!
 !! FUNCTION
 !!  Check if the Lambda matrix already fulfils the condition Lambda_qp-Lambda_pq^* <= tol_dif_lambda.
+!!  (i.e. the gradient of the exp^-kappa parametrization)
 !!
 !! INPUTS
 !!
@@ -327,13 +328,13 @@ subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,maxdiff_all,iorbm
  
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,RDMd%NBF_tot
-   diff=dabs(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
+   diff=two*dabs(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
    if(ELAGd%cpx_lambdas .and. iorb/=iorb1) then
-    diff=diff*diff+(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))**two
+    diff=diff*diff+(two*(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1)))**two
     diff=dsqrt(diff)
    endif
    if(ELAGd%cpx_lambdas .and. iorb1==iorb) then
-    diff=dabs(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))
+    diff=two*dabs(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))
    endif
    sumdiff=sumdiff+diff
    if((diff>=tol_dif_Lambda) .and. converg_lamb) then
