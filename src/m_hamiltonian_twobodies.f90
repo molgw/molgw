@@ -1048,6 +1048,171 @@ end subroutine setup_exchange_longrange_ri_cmplx
 
 
 !=========================================================================
+subroutine setup_exchange_genuine_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
+  implicit none
+  real(dp),intent(in)  :: occupation(:,:)
+  real(dp),intent(in)  :: c_matrix(:,:,:)
+  real(dp),intent(in)  :: p_matrix(:,:,:)
+  real(dp),intent(out) :: exchange_ao(:,:,:)
+  real(dp),intent(out) :: eexchange
+  !=====
+  integer              :: nbf,nstate
+  integer              :: ibf,jbf,ispin,istate
+  integer              :: nocc
+  real(dp),allocatable :: tmp(:,:,:),tmp2(:,:,:)
+  integer              :: ipair,iauxil_local,iauxil_global
+  integer              :: ibf_auxil_first,nbf_auxil_core
+  !=====
+
+  call start_clock(timing_exchange)
+
+  if( ortho%nproc > 1 ) call die('not coded')
+
+  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity (genuine)'
+
+  exchange_ao(:,:,:) = 0.0_dp
+
+  ! Find highest occupied state
+  nocc = get_number_occupied_states(occupation)
+
+  nbf    = SIZE(exchange_ao,DIM=1)
+  nstate = SIZE(occupation(:,:),DIM=1)
+
+  !allocate(tmp(nocc,nbf,nauxil_local))
+  allocate(tmp(nauxil_local,nbf,nocc))
+  allocate(tmp2(nauxil_global,nbf,nocc))
+
+  do ispin=1,nspin
+
+    tmp(:,:,:) = 0.0_dp
+    ! GUILLAUME
+    ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
+    do iauxil_local=1,nauxil_local
+      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP DO REDUCTION(+:tmp)
+      do ipair=1,npair
+        ibf = index_basis(1,ipair)
+        jbf = index_basis(2,ipair)
+        tmp(iauxil_local,ibf,:) = tmp(iauxil_local,ibf,:) + c_matrix(jbf,1:nocc,ispin) * eri_3center(ipair,iauxil_local)
+        tmp(iauxil_local,jbf,:) = tmp(iauxil_local,jbf,:) + c_matrix(ibf,1:nocc,ispin) * eri_3center(ipair,iauxil_local)
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+    enddo
+
+    do istate=1,nocc
+      tmp2(:,:,istate) = MATMUL( eri_2center_inv(:,:) , tmp(:,:,istate) )
+    enddo
+
+    call world%sum(tmp2)
+
+    do jbf=1,nbf
+      do istate=1,nocc
+        do iauxil_local=1,nauxil_local
+          iauxil_global = ibf_auxil_g(iauxil_local)
+          exchange_ao(:,jbf,ispin) = exchange_ao(:,jbf,ispin) &
+                           - occupation(istate,ispin) / spin_fact * tmp(iauxil_local,:,istate) &
+                                  * tmp2(iauxil_global,jbf,istate)
+        enddo
+      enddo
+    enddo
+
+  enddo ! ispin
+  call world%sum(exchange_ao)
+
+  eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
+
+  deallocate(tmp,tmp2)
+
+  call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_genuine_ri
+
+
+!=========================================================================
+subroutine setup_exchange_genuine_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
+  implicit none
+  real(dp),intent(in)  :: occupation(:,:)
+  complex(dp),intent(in)  :: c_matrix(:,:,:)
+  complex(dp),intent(in)  :: p_matrix(:,:,:)
+  complex(dp),intent(out) :: exchange_ao(:,:,:)
+  real(dp),intent(out) :: eexchange
+  !=====
+  integer              :: nbf,nstate
+  integer              :: ibf,jbf,ispin,istate
+  integer              :: nocc
+  complex(dp),allocatable :: tmp(:,:,:),tmp2(:,:,:)
+  integer              :: ipair,iauxil_local,iauxil_global
+  integer              :: ibf_auxil_first,nbf_auxil_core
+  !=====
+
+  call start_clock(timing_exchange)
+
+  if( ortho%nproc > 1 ) call die('not coded')
+
+  write(stdout,*) 'Calculate Complex Exchange term with Resolution-of-Identity (genuine)'
+
+  exchange_ao(:,:,:) = 0.0_dp
+
+  ! Find highest occupied state
+  nocc = get_number_occupied_states(occupation)
+
+  nbf    = SIZE(exchange_ao,DIM=1)
+  nstate = SIZE(occupation(:,:),DIM=1)
+
+  !allocate(tmp(nocc,nbf,nauxil_local))
+  allocate(tmp(nauxil_local,nbf,nocc))
+  allocate(tmp2(nauxil_global,nbf,nocc))
+
+  do ispin=1,nspin
+
+    tmp(:,:,:) = 0.0_dp
+    ! GUILLAUME
+    ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
+    do iauxil_local=1,nauxil_local
+      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP DO REDUCTION(+:tmp)
+      do ipair=1,npair
+        ibf = index_basis(1,ipair)
+        jbf = index_basis(2,ipair)
+        tmp(iauxil_local,ibf,:) = tmp(iauxil_local,ibf,:) + c_matrix(jbf,1:nocc,ispin) * eri_3center(ipair,iauxil_local)
+        tmp(iauxil_local,jbf,:) = tmp(iauxil_local,jbf,:) + c_matrix(ibf,1:nocc,ispin) * eri_3center(ipair,iauxil_local)
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+    enddo
+
+    do istate=1,nocc
+      tmp2(:,:,istate) = MATMUL( eri_2center_inv(:,:) , tmp(:,:,istate) )
+    enddo
+    tmp2 = CONJG(tmp2)
+
+    call world%sum(tmp2)
+
+    do jbf=1,nbf
+      do istate=1,nocc
+        do iauxil_local=1,nauxil_local
+          iauxil_global = ibf_auxil_g(iauxil_local)
+          exchange_ao(:,jbf,ispin) = exchange_ao(:,jbf,ispin) &
+                           - occupation(istate,ispin) / spin_fact * tmp(iauxil_local,:,istate) &
+                                  * tmp2(iauxil_global,jbf,istate)
+        enddo
+      enddo
+    enddo
+
+  enddo ! ispin
+  call world%sum(exchange_ao)
+
+  eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * CONJG( p_matrix(:,:,:) ) ) , dp)
+
+  deallocate(tmp,tmp2)
+
+  call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_genuine_ri_cmplx
+
+
+!=========================================================================
 ! Calculate the exchange-correlation potential and energy
 ! * subroutine works for both real and complex wavefunctions c_matrix
 !   using "class" syntax of Fortran2003
