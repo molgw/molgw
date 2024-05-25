@@ -420,7 +420,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  integer::iorb,iorb1,lwork,info
  real(dp)::sqrt_occ_iorb,sqrt_occ_iorb1
 !arrays
- character(len=10)::coef_file
+ character(len=20)::coef_file
  character(len=200)::msg
  real(dp),allocatable,dimension(:)::Eigval,Eigval_nocc,Work,RWork
  real(dp),allocatable,dimension(:,:)::Eigvec,CANON_COEF
@@ -575,7 +575,7 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,Eigvec_cmplx,NO_COEF,NO_COEF_cmplx)
  logical::cpx_mos=.false.
  integer::iorb,iorb1,iorb2
 !arrays
- character(len=10)::coef_file
+ character(len=20)::coef_file
  character(len=200)::msg
  real(dp),allocatable,dimension(:)::DYSON_occ
  real(dp),allocatable,dimension(:,:)::DYSON_COEF
