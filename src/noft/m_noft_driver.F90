@@ -413,22 +413,22 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  if(RDMd%INOF>-1) then
   if(cpx_mos) then
    call s2_calc(RDMd,INTEGd,NO_COEF_cmplx=NO_COEF_cmplx)
-  ! allocate(NO_COEF_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
-  ! NO_COEF_tmp=zero
-  ! ! Prepare real NOs
-  ! call build_real_nos(RDMd,INTEGd,NO_COEF_tmp,NO_COEF_cmplx)
-  ! ! Print real NOs
-  ! iunit=911
-  ! coef_file='NO_COEF_BIN_REAL'
-  ! open(unit=iunit,form='unformatted',file=coef_file)
-  ! do iorbp=1,RDMd%NBF_tot
-  !  do iorbq=1,RDMd%NBF_tot
-  !   write(iunit) iorbp,iorbq,NO_COEF_tmp(iorbp,iorbq)
-  !  enddo
-  ! enddo
-  ! write(iunit) 0,0,zero
-  ! close(iunit)
-  ! deallocate(NO_COEF_tmp)
+   !allocate(NO_COEF_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
+   !NO_COEF_tmp=zero
+   !! Prepare real NOs
+   !call build_real_nos(RDMd,INTEGd,NO_COEF_tmp,NO_COEF_cmplx)
+   !! Print real NOs
+   !iunit=911
+   !coef_file='NO_COEF_BIN_REAL'
+   !open(unit=iunit,form='unformatted',file=coef_file)
+   !do iorbp=1,RDMd%NBF_tot
+   ! do iorbq=1,RDMd%NBF_tot
+   !  write(iunit) iorbp,iorbq,NO_COEF_tmp(iorbp,iorbq)
+   ! enddo
+   !enddo
+   !write(iunit) 0,0,zero
+   !close(iunit)
+   !deallocate(NO_COEF_tmp)
   else
    call s2_calc(RDMd,INTEGd,NO_COEF=NO_COEF)
   endif
@@ -1398,11 +1398,11 @@ subroutine build_real_nos(RDMd,INTEGd,NO_COEF,NO_COEF_cmplx)
  Eigvals(:)=Density(:,RDMd%NBF_tot)
  write(msg,'(a,f10.5,a)') 'Total occ ',sum(Eigvals(:)),'. From the real density nat. orbs. '
  call write_output(msg)
- do iorbp=1,(RDMd%NBF_occ/10)*10,10
+ do iorbp=1,(RDMd%NBF_tot/10)*10,10
   write(msg,'(f12.6,9f11.6)') Eigvals(iorbp:iorbp+9)
   call write_output(msg)
  enddo
- iorbp=(RDMd%NBF_occ/10)*10+1 
+ iorbp=(RDMd%NBF_tot/10)*10+1 
  write(msg,'(f12.6,*(f11.6))') Eigvals(iorbp:) 
  call write_output(msg)
 
