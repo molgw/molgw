@@ -373,6 +373,8 @@ subroutine init_calculation_type(scf,postscf)
   !
   ! Then read the first part of the calculation specifier
   select case(TRIM(scf))
+  case('READ_COULOMBVERTEX')
+    alpha_hybrid            = 1.00_dp
   case('CI')
     calc_type%is_ci         = .TRUE.
     alpha_hybrid            = 1.00_dp

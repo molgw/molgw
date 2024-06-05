@@ -16,7 +16,8 @@ module m_eri_ao_mo
   use m_basis_set
   use m_timing
   use m_eri
-  use m_inputparam,only: nspin,has_auxil_basis
+  use m_inputparam, only: nspin, has_auxil_basis
+  use m_io, only: yaml_search_keyword
 
 
   real(dp),protected,allocatable :: eri_3center_eigen(:,:,:,:)
@@ -939,6 +940,72 @@ subroutine form_erimol(nbf,nstate_tot,nstate_jkl,c_matrix,c_matrix_cmplx,ERImol,
   endif
 
 end subroutine form_erimol
+
+
+!=========================================================================
+subroutine read_coulombvertex()
+  implicit none
+
+  !=====
+  integer :: nstate, istate, jstate
+  integer :: unitcv, ierr
+  complex(dp),allocatable :: coulomb_vertex(:,:,:)
+  integer, allocatable :: dims(:)
+#if defined(HAVE_MPI)
+  integer(kind=MPI_OFFSET_KIND) :: disp
+#endif
+  !=====
+
+
+  call yaml_search_keyword('CoulombVertex.yaml', 'length', dims)
+  nauxil_global = dims(1)
+  nstate        = dims(2)
+  write(stdout,*) 'ALLOCATE ',dims(:)
+  call distribute_auxil_basis(nauxil_global)
+
+  write(stdout,*) "nauxil_local",nauxil_local
+  write(stdout,*) "nstate",nstate
+  
+  allocate(coulomb_vertex(nauxil_local,nstate,nstate))
+
+#if !defined(HAVE_MPI)
+  write(stdout,*) 'Reading file CoulombVertex.elements'
+  open(newunit=unitcv, file='CoulombVertex.elements', form='unformatted', access='stream', status='old', action='read')
+  read(unitcv) coulomb_vertex(:,:,:)
+  close(unitcv)
+
+#else
+  write(stdout,*) 'Reading file CoulombVertex.elements with MPI-IO'
+  call MPI_FILE_OPEN(MPI_COMM_WORLD,'CoulombVertex.elements', &
+                    MPI_MODE_RDONLY, &
+                    MPI_INFO_NULL,unitcv,ierr)
+ 
+  disp = 0
+  do jstate=1,nstate
+    do istate=1,nstate
+      iauxil_local = 0
+      do ibf_auxil=1,nauxil_global
+        disp = disp + 1
+        if( auxil%rank == iproc_ibf_auxil(ibf_auxil) ) then
+          iauxil_local = iauxil_local + 1
+          call MPI_FILE_READ_AT(unitcv, disp, coulomb_vertex(iauxil_local, istate, jstate), &
+                                1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
+        endif
+        disp = disp + STORAGE_SIZE(coulomb_vertex(1,1,1))
+      enddo
+    enddo
+  enddo
+                  
+  call MPI_FILE_CLOSE(unitcv, ierr)
+#endif
+
+  call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local,1,nstate,1,nstate,1,1)
+
+  write(stdout,*) coulomb_vertex(1,1,1)
+  write(stdout,*) coulomb_vertex(nauxil_local,nstate,nstate)
+
+end subroutine read_coulombvertex
+
 
 !=========================================================================
 end module m_eri_ao_mo

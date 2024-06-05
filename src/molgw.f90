@@ -135,6 +135,10 @@ program molgw
   call hdf_init() 
 #endif
 
+  block
+    call read_coulombvertex()
+    stop 'enough'
+  end block
   !
   ! Nucleus motion loop
   !

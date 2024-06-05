@@ -3898,7 +3898,51 @@ subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
 
 #endif
 
- end subroutine dump_matrix_cmplx_hdf5
+end subroutine dump_matrix_cmplx_hdf5
+
+
+!=========================================================================
+subroutine yaml_search_keyword(filename, keyword, value)
+  implicit none
+
+  character(len=*), intent(in) :: filename
+  character(len=*), intent(in) :: keyword
+  !class(*), allocatable, intent(inout)      :: value(:)
+  integer, allocatable, intent(inout)      :: value(:)
+
+  !=====
+  character(len=256) :: line, kw_value
+  integer :: ios, yaml_unit
+  logical :: found
+  integer :: itmp, index_substring
+  real(dp) :: rtmp
+  !=====
+
+  open(newunit=yaml_unit, file=filename, status='old', action='read', iostat=ios)
+
+  ! Read the file line by line
+  do while (.TRUE.)
+    read(yaml_unit, '(a)', iostat=ios) line
+    if (ios /= 0) exit
+    ! Check if the line contains the keyword
+
+    index_substring = INDEX(line, keyword) 
+    if( index_substring  /= 0) then
+        kw_value = TRIM(ADJUSTL(line(INDEX(line,':')+1:)))
+        found = .true.
+        !select type(value)
+        !type is (integer)
+          read(kw_value,*) itmp
+          call append_to_list(itmp, value)
+        !type is (real(dp))
+        !  read(kw_value,*) rtmp
+        !  call append_to_list(rtmp, value)
+        !end select
+    end if
+  end do
+  close(unit_yaml)
+
+end subroutine yaml_search_keyword
 
 !=========================================================================
 end module m_io
