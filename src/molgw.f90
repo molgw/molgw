@@ -71,11 +71,12 @@ program molgw
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
   integer                 :: nstate
-  integer                 :: istep
+  integer                 :: istep,ilumo,istate
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp,eext
+  real(dp),allocatable    :: one_mo(:)
   real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
   real(dp),allocatable    :: hamiltonian_nucleus(:,:)
@@ -349,7 +350,7 @@ program molgw
       !                         or by reading a Gaussian fchk
       !
       select case(TRIM(init_hamiltonian))
-      case('GUESS')
+      case('GUESS','MIX')
         ! Calculate a very approximate vhxc based on simple gaussians density placed on atoms
         allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
 
@@ -388,7 +389,7 @@ program molgw
           c_matrix(:,:,nspin) = c_matrix(:,:,1)
         endif
 
-      case('NOFT') ! Equivalent to CORE at this level to avoid cas default and 'die'
+      case('NOFT') ! Equivalent to CORE at this level to avoid case default and 'die'
         allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
 
         hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
@@ -404,6 +405,33 @@ program molgw
 
       ! The hamiltonian is still spin-independent:
       if(TRIM(init_hamiltonian)/='GAUSSIAN') c_matrix(:,:,nspin) = c_matrix(:,:,1)
+
+      ! Mixing the HOMO-LUMO for GUESS='MIX' and spin-compensated systems
+      if( (TRIM(init_hamiltonian)=='MIX' .and. abs(magnetization)<1e-8) .and. nspin==2 ) then
+        write(stdout,'(a)') ' Guess including mixing the HOMO-LUMO'
+        allocate(one_mo(basis%nbf))
+        one_mo=zero
+        ilumo=0
+        do istate=1,nstate
+          if(occupation(istate,2)<1e-8 .and. ilumo==0) then
+            ilumo=istate
+          endif
+        enddo
+        write(stdout,'(a,i5)') ' LUMO state ',ilumo
+        ! Spin channel 1
+        ! New HOMO = 1/sqrt(2)  ( HOMO - LUMO )
+        ! New LUMO = 1/sqrt(2)  ( HOMO + LUMO )
+        one_mo(:)=(c_matrix(:,ilumo-1,1)+c_matrix(:,ilumo,1))/sqrt(2.0e0)
+        c_matrix(:,ilumo-1,1)=(c_matrix(:,ilumo-1,1)-c_matrix(:,ilumo,1))/sqrt(2.0e0)
+        c_matrix(:,ilumo,1)=one_mo(:)
+        ! Spin channel 2
+        ! New HOMO = 1/sqrt(2)  ( HOMO + LUMO )
+        ! New LUMO = 1/sqrt(2)  ( HOMO - LUMO )
+        one_mo(:)=(c_matrix(:,ilumo-1,2)+c_matrix(:,ilumo,2))/sqrt(2.0e0)
+        c_matrix(:,ilumo,2)=(c_matrix(:,ilumo-1,2)-c_matrix(:,ilumo,2))/sqrt(2.0e0)
+        c_matrix(:,ilumo-1,2)=one_mo(:)
+        deallocate(one_mo)
+      endif
 
     endif
 
