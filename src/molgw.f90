@@ -135,10 +135,6 @@ program molgw
   call hdf_init() 
 #endif
 
-  block
-    call read_coulombvertex()
-    stop 'enough'
-  end block
   !
   ! Nucleus motion loop
   !
@@ -392,7 +388,7 @@ program molgw
           c_matrix(:,:,nspin) = c_matrix(:,:,1)
         endif
 
-      case('NOFT') ! Equivalent to CORE at this level to avoid cas default and 'die'
+      case('NOFT') ! Equivalent to CORE at this level to avoid case default and 'die'
         allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
 
         hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
@@ -402,12 +398,18 @@ program molgw
 
         deallocate(hamiltonian_tmp)
 
+      case('ABINIT')
+        !FBFB to be filled
       case default
         call die('molgw: init_hamiltonian option is not valid')
       end select
 
       ! The hamiltonian is still spin-independent:
-      if(TRIM(init_hamiltonian)/='GAUSSIAN') c_matrix(:,:,nspin) = c_matrix(:,:,1)
+      select case(TRIM(init_hamiltonian))
+      case('GAUSSIAN', 'ABINIT')
+      case default
+        c_matrix(:,:,nspin) = c_matrix(:,:,1)
+      end select
 
     endif
 
@@ -526,6 +528,14 @@ program molgw
     else
       call die(' The number of states is not equal to the number of basis functions in Gaussian for restart.')
     endif
+  endif
+  !FBFB
+  if( assume_scf_converged_ .AND. TRIM(init_hamiltonian)=='ABINIT' ) then
+    write(*,*) 'FBFB',DOT_PRODUCT(eri_3center(1,:),eri_3center(1,:))*2.0
+    if(has_auxil_basis) call destroy_eri_3center()
+    call read_eigenenergies(basis,energy,occupation,c_matrix)
+    call read_coulombvertex()
+    stop 'enough'
   endif
 
 

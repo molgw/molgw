@@ -3944,6 +3944,58 @@ subroutine yaml_search_keyword(filename, keyword, value)
 
 end subroutine yaml_search_keyword
 
+
+!=========================================================================
+subroutine read_eigenenergies(basis,energy,occupation,c_matrix)
+  implicit none
+
+  type(basis_set),intent(inout) :: basis
+  real(dp),allocatable,intent(inout) :: energy(:,:)
+  real(dp),allocatable,intent(inout) :: occupation(:,:)
+  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
+  !=====
+  real(dp),allocatable :: occupation_tmp(:,:)
+  integer,allocatable :: dims(:)
+  integer :: istate, nstate, nstate_old, nbf, ifile
+  !=====
+
+  if( nspin > 1 ) call die('read_eigenenergies: only spin restricted implemented')
+  write(stdout,'(/,1x,a)') 'Reading EigenEnergies.yaml and Eigenenergies.elements'
+
+  nstate_old = SIZE(occupation, DIM=1)
+
+  call yaml_search_keyword('EigenEnergies.yaml', 'length', dims)
+  nstate = dims(1)
+  nbf    = dims(1)
+  basis%nbf = nbf
+
+  allocate(occupation_tmp,SOURCE=occupation)
+
+  deallocate(energy)
+  deallocate(occupation)
+  call clean_deallocate('Wavefunctions C',c_matrix) 
+  call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)
+  c_matrix(:,:,:) = 0.0_dp
+  do istate=1,nstate
+    c_matrix(istate,istate,1) = 1.0_dp
+  enddo
+
+  allocate(energy(nstate,nspin))
+  allocate(occupation(nstate,nspin))
+  occupation(:,:) = 0.0_dp
+  occupation(1:MIN(nstate,nstate_old),:) = occupation_tmp(1:MIN(nstate,nstate_old),:)
+
+  open(newunit=ifile,file='EigenEnergies.elements',status='old',action='read')
+  do istate=1,nstate
+    read(ifile,*) energy(istate,1)
+  enddo
+
+  deallocate(occupation_tmp)
+
+
+end subroutine read_eigenenergies
+
+
 !=========================================================================
 end module m_io
 !=========================================================================

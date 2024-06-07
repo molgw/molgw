@@ -947,34 +947,55 @@ subroutine read_coulombvertex()
   implicit none
 
   !=====
-  integer :: nstate, istate, jstate
+  integer :: nstate, istate, jstate, ng
   integer :: unitcv, ierr
   complex(dp),allocatable :: coulomb_vertex(:,:,:)
+  complex(dp),allocatable :: coulomb_vertex_ij(:)
   integer, allocatable :: dims(:)
 #if defined(HAVE_MPI)
   integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
   !=====
 
+  if( nspin > 1 ) call die("read_coulombvertex: spin polarized not implemented yet")
+  
+  write(stdout,'(1x,a)') 'Reading CoulombVertex.yaml and CoulombVertex.elements'
 
   call yaml_search_keyword('CoulombVertex.yaml', 'length', dims)
-  nauxil_global = dims(1)
+  ng = dims(1)
   nstate        = dims(2)
-  write(stdout,*) 'ALLOCATE ',dims(:)
+  ! nauxil_global is 2*ng - 1 because of real and imaginary parts
+  ! except for G=0 which is real
+  nauxil_global = 2 * ng - 1
+
   call distribute_auxil_basis(nauxil_global)
 
+  write(stdout,*) "nauxil_global",nauxil_global
   write(stdout,*) "nauxil_local",nauxil_local
   write(stdout,*) "nstate",nstate
   
-  allocate(coulomb_vertex(nauxil_local,nstate,nstate))
+  allocate(coulomb_vertex(ng,nstate,nstate))
+  allocate(coulomb_vertex_ij(ng))
+
+  call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local,1,nstate,1,nstate,1,1)
 
 #if !defined(HAVE_MPI)
   write(stdout,*) 'Reading file CoulombVertex.elements'
   open(newunit=unitcv, file='CoulombVertex.elements', form='unformatted', access='stream', status='old', action='read')
-  read(unitcv) coulomb_vertex(:,:,:)
+  do istate=1,nstate
+    do jstate=1,nstate
+      read(unitcv) coulomb_vertex_ij(:)
+      eri_3center_eigen(1,istate,jstate,1) = coulomb_vertex_ij(1)%re
+      eri_3center_eigen(2:ng,istate,jstate,1) = coulomb_vertex_ij(2:ng)%re
+      eri_3center_eigen(ng+1:2*ng-1,istate,jstate,1) = coulomb_vertex_ij(2:ng)%im
+    enddo
+  enddo
+  write(*,*) '(11|11)',DOT_PRODUCT(eri_3center_eigen(:,1,1,1),eri_3center_eigen(:,1,1,1))
+
   close(unitcv)
 
 #else
+  call die("not yet ready")
   write(stdout,*) 'Reading file CoulombVertex.elements with MPI-IO'
   call MPI_FILE_OPEN(MPI_COMM_WORLD,'CoulombVertex.elements', &
                     MPI_MODE_RDONLY, &
@@ -999,10 +1020,6 @@ subroutine read_coulombvertex()
   call MPI_FILE_CLOSE(unitcv, ierr)
 #endif
 
-  call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local,1,nstate,1,nstate,1,1)
-
-  write(stdout,*) coulomb_vertex(1,1,1)
-  write(stdout,*) coulomb_vertex(nauxil_local,nstate,nstate)
 
 end subroutine read_coulombvertex
 
