@@ -421,14 +421,14 @@ program molgw
         ! Spin channel 1
         ! New HOMO = 1/sqrt(2)  ( HOMO - LUMO )
         ! New LUMO = 1/sqrt(2)  ( HOMO + LUMO )
-        one_mo(:)=(c_matrix(:,ilumo-1,1)+c_matrix(:,ilumo,1))/sqrt(2.0e0)
-        c_matrix(:,ilumo-1,1)=(c_matrix(:,ilumo-1,1)-c_matrix(:,ilumo,1))/sqrt(2.0e0)
+        one_mo(:)=(c_matrix(:,ilumo-1,1)+c_matrix(:,ilumo,1))/sqrt(2.0_dp)
+        c_matrix(:,ilumo-1,1)=(c_matrix(:,ilumo-1,1)-c_matrix(:,ilumo,1))/sqrt(2.0_dp)
         c_matrix(:,ilumo,1)=one_mo(:)
         ! Spin channel 2
         ! New HOMO = 1/sqrt(2)  ( HOMO + LUMO )
         ! New LUMO = 1/sqrt(2)  ( HOMO - LUMO )
-        one_mo(:)=(c_matrix(:,ilumo-1,2)+c_matrix(:,ilumo,2))/sqrt(2.0e0)
-        c_matrix(:,ilumo,2)=(c_matrix(:,ilumo-1,2)-c_matrix(:,ilumo,2))/sqrt(2.0e0)
+        one_mo(:)=(c_matrix(:,ilumo-1,2)+c_matrix(:,ilumo,2))/sqrt(2.0_dp)
+        c_matrix(:,ilumo,2)=(c_matrix(:,ilumo-1,2)-c_matrix(:,ilumo,2))/sqrt(2.0_dp)
         c_matrix(:,ilumo-1,2)=one_mo(:)
         deallocate(one_mo)
       endif
