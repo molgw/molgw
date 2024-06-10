@@ -533,9 +533,8 @@ program molgw
   if( assume_scf_converged_ .AND. TRIM(init_hamiltonian)=='ABINIT' ) then
     write(*,*) 'FBFB',DOT_PRODUCT(eri_3center(1,:),eri_3center(1,:))*2.0
     if(has_auxil_basis) call destroy_eri_3center()
-    call read_eigenenergies(basis,energy,occupation,c_matrix)
+    call read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
     call read_coulombvertex()
-    stop 'enough'
   endif
 
 

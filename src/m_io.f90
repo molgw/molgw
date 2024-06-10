@@ -23,7 +23,7 @@ module m_io
   use m_libxc_tools,only: xc_version
   use m_linear_algebra,only: determinant_3x3_matrix
   use m_inputparam
-  use m_hamiltonian_tools,only: get_number_occupied_states
+  use m_hamiltonian_tools,only: get_number_occupied_states, dump_out_energy
   use m_atoms
   use m_basis_set
   use m_dft_grid,only: calculate_basis_functions_r
@@ -3912,17 +3912,17 @@ subroutine yaml_search_keyword(filename, keyword, value)
 
   !=====
   character(len=256) :: line, kw_value
-  integer :: ios, yaml_unit
+  integer :: ios, tmp_yaml_unit
   logical :: found
   integer :: itmp, index_substring
   real(dp) :: rtmp
   !=====
 
-  open(newunit=yaml_unit, file=filename, status='old', action='read', iostat=ios)
+  open(newunit=tmp_yaml_unit, file=filename, status='old', action='read', iostat=ios)
 
   ! Read the file line by line
   do while (.TRUE.)
-    read(yaml_unit, '(a)', iostat=ios) line
+    read(tmp_yaml_unit, '(a)', iostat=ios) line
     if (ios /= 0) exit
     ! Check if the line contains the keyword
 
@@ -3940,29 +3940,30 @@ subroutine yaml_search_keyword(filename, keyword, value)
         !end select
     end if
   end do
-  close(unit_yaml)
+  close(tmp_yaml_unit)
 
 end subroutine yaml_search_keyword
 
 
 !=========================================================================
-subroutine read_eigenenergies(basis,energy,occupation,c_matrix)
+subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
   implicit none
 
   type(basis_set),intent(inout) :: basis
+  integer,intent(inout)         :: nstate
   real(dp),allocatable,intent(inout) :: energy(:,:)
   real(dp),allocatable,intent(inout) :: occupation(:,:)
   real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
   !=====
   real(dp),allocatable :: occupation_tmp(:,:)
   integer,allocatable :: dims(:)
-  integer :: istate, nstate, nstate_old, nbf, ifile
+  integer :: istate, nstate_old, nbf, ifile
   !=====
 
   if( nspin > 1 ) call die('read_eigenenergies: only spin restricted implemented')
   write(stdout,'(/,1x,a)') 'Reading EigenEnergies.yaml and Eigenenergies.elements'
 
-  nstate_old = SIZE(occupation, DIM=1)
+  nstate_old = nstate
 
   call yaml_search_keyword('EigenEnergies.yaml', 'length', dims)
   nstate = dims(1)
@@ -3991,6 +3992,9 @@ subroutine read_eigenenergies(basis,energy,occupation,c_matrix)
   enddo
 
   deallocate(occupation_tmp)
+
+  write(stdout,*) 'Resizing occupation and energy from ',nstate_old, ' to ', nstate
+  call dump_out_energy('=== HF energies ===',occupation,energy)
 
 
 end subroutine read_eigenenergies
