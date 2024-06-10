@@ -949,11 +949,14 @@ subroutine read_coulombvertex()
   !=====
   integer :: nstate, istate, jstate, ng
   integer :: unitcv, ierr
-  complex(dp),allocatable :: coulomb_vertex(:,:,:)
   complex(dp),allocatable :: coulomb_vertex_ij(:)
+  complex(dp)             :: coulomb_vertex_ijg
   integer, allocatable :: dims(:)
+  integer :: iauxil_local,iauxil_global, ig
+  integer :: complex_length
+  real(dp) :: rtmp
 #if defined(HAVE_MPI)
-  integer(kind=MPI_OFFSET_KIND) :: disp
+  integer(kind=MPI_OFFSET_KIND) :: disp, dispg
 #endif
   !=====
 
@@ -974,7 +977,6 @@ subroutine read_coulombvertex()
   write(stdout,*) "nauxil_local",nauxil_local
   write(stdout,*) "nstate",nstate
   
-  allocate(coulomb_vertex(ng,nstate,nstate))
   allocate(coulomb_vertex_ij(ng))
 
   call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local,1,nstate,1,nstate,1,1)
@@ -990,35 +992,55 @@ subroutine read_coulombvertex()
       eri_3center_eigen(ng+1:2*ng-1,istate,jstate,1) = coulomb_vertex_ij(2:ng)%im
     enddo
   enddo
-  write(*,*) '(11|11)',DOT_PRODUCT(eri_3center_eigen(:,1,1,1),eri_3center_eigen(:,1,1,1))
 
   close(unitcv)
 
 #else
-  call die("not yet ready")
   write(stdout,*) 'Reading file CoulombVertex.elements with MPI-IO'
+  ! complex_length in bytes whereas STORAGE_SIZE is in bits
+  complex_length = STORAGE_SIZE(coulomb_vertex_ijg) / 8
+
   call MPI_FILE_OPEN(MPI_COMM_WORLD,'CoulombVertex.elements', &
-                    MPI_MODE_RDONLY, &
-                    MPI_INFO_NULL,unitcv,ierr)
- 
+                     MPI_MODE_RDONLY, &
+                     MPI_INFO_NULL,unitcv,ierr)
   disp = 0
   do jstate=1,nstate
     do istate=1,nstate
-      iauxil_local = 0
-      do ibf_auxil=1,nauxil_global
-        disp = disp + 1
-        if( auxil%rank == iproc_ibf_auxil(ibf_auxil) ) then
-          iauxil_local = iauxil_local + 1
-          call MPI_FILE_READ_AT(unitcv, disp, coulomb_vertex(iauxil_local, istate, jstate), &
+      do iauxil_local=1,nauxil_local
+        iauxil_global = ibf_auxil_g(iauxil_local)
+        if( istate *jstate == 1 ) write(100+world%rank,*) iauxil_local, iauxil_global
+        if( iauxil_global == 1 ) then 
+          ig = 1
+          dispg = disp  + complex_length * INT(ig-1, KIND=MPI_OFFSET_KIND)
+          call MPI_FILE_READ_AT(unitcv, dispg, coulomb_vertex_ijg, &
                                 1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
+          if( istate * jstate == 1 ) write(100+world%rank,*) '->',ig, dispg, complex_length, coulomb_vertex_ijg
+          eri_3center_eigen(iauxil_local,istate,jstate,1) = coulomb_vertex_ijg%re
+        else if( iauxil_global <= ng ) then
+          ig = iauxil_global
+          dispg = disp  + complex_length * INT(ig-1, KIND=MPI_OFFSET_KIND)
+          call MPI_FILE_READ_AT(unitcv, dispg, coulomb_vertex_ijg, &
+                                1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
+          if( istate *jstate == 1 ) write(100+world%rank,*) '--re>',ig, dispg,coulomb_vertex_ijg
+          eri_3center_eigen(iauxil_local,istate,jstate,1) = coulomb_vertex_ijg%re
+        else
+          ig = iauxil_global - ng + 1
+          dispg = disp  + complex_length * INT(ig-1, KIND=MPI_OFFSET_KIND)
+          call MPI_FILE_READ_AT(unitcv, dispg, coulomb_vertex_ijg, &
+                                1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
+          if( istate *jstate == 1 ) write(100+world%rank,*) '--im>',ig, dispg,coulomb_vertex_ijg
+          eri_3center_eigen(iauxil_local,istate,jstate,1) = coulomb_vertex_ijg%im
         endif
-        disp = disp + STORAGE_SIZE(coulomb_vertex(1,1,1))
       enddo
+      disp = disp + complex_length * INT(ng, KIND=MPI_OFFSET_KIND)
     enddo
   enddo
                   
   call MPI_FILE_CLOSE(unitcv, ierr)
 #endif
+  rtmp = DOT_PRODUCT(eri_3center_eigen(:,1,1,1), eri_3center_eigen(:,1,1,1))
+  call auxil%sum(rtmp)
+  write(stdout,*) 'test (11|11)',rtmp
 
 
 end subroutine read_coulombvertex
