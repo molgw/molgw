@@ -2,6 +2,7 @@
  scf='hf'
  nspin=2
  init_hamiltonian='mix'
+ mixing_scheme='simple'
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
