@@ -1,0 +1,16 @@
+&molgw
+ scf='hf'
+ nspin=2
+ init_hamiltonian='mix'
+ mixing_scheme='simple'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ gaussian_type='cart'
+
+ natom=2
+
+ 
+/
+H  -10.0 0. 0.
+H   10.0 0. 0. 
