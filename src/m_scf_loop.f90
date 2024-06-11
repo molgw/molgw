@@ -397,6 +397,184 @@ subroutine scf_loop(is_restart,&
 
 end subroutine scf_loop
 
+!=========================================================================
+subroutine scf_loop_cmplx(is_restart,&
+                    basis,&
+                    x_matrix,s_matrix,&
+                    hamiltonian_kinetic,hamiltonian_nucleus,&
+                    occupation, &
+                    energy, &
+                    c_matrix_cmplx,en_gks,scf_has_converged)
+  implicit none
+
+  !=====
+  logical,intent(in)                 :: is_restart
+  type(basis_set),intent(inout)      :: basis
+  real(dp),intent(in)                :: x_matrix(:,:)
+  real(dp),intent(in)                :: s_matrix(:,:)
+  real(dp),intent(in)                :: hamiltonian_kinetic(:,:)
+  real(dp),intent(in)                :: hamiltonian_nucleus(:,:)
+  real(dp),intent(inout)             :: occupation(:,:)
+  real(dp),intent(out)               :: energy(:,:)
+  complex(dp),allocatable,intent(inout) :: c_matrix_cmplx(:,:,:)
+  type(energy_contributions),intent(inout) :: en_gks
+  logical,intent(out)                :: scf_has_converged
+  !=====
+  type(spectral_function) :: wpol
+  integer                 :: nstate
+  logical                 :: stopfile_found
+  integer                 :: file_density_matrix
+  integer                 :: ispin,iscf
+  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:)
+  complex(dp),allocatable :: p_matrix_cmplx(:,:,:)
+  !=====
+
+
+  call start_clock(timing_scf)
+
+  nstate = SIZE(x_matrix,DIM=2)
+
+  !
+  ! Initialize the SCF mixing procedure
+  call init_scf(basis%nbf,nstate)
+
+  !
+  ! Allocate the main arrays
+  call clean_allocate('Total Hamiltonian H',hamiltonian_cmplx,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Density matrix P',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
+
+
+  !
+  ! Setup the grids for the quadrature of DFT potential/energy
+  if( calc_type%is_dft ) then
+    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+  endif
+
+  !
+  ! Setup the density matrix: p_matrix
+  call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+
+  !
+  ! Start the big scf loop
+  !
+  do iscf=1,nscf
+    write(stdout,'(/,1x,a)') '-------------------------------------------'
+    write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
+
+
+    en_gks%kinetic = REAL( SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+    en_gks%nucleus = REAL( SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+
+
+    !--Hamiltonian - Hartree Exchange Correlation---
+    call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
+                                            occupation,               &
+                                            c_matrix_cmplx,           &
+                                            p_matrix_cmplx,           &
+                                            hamiltonian_cmplx,en_gks)
+
+    !
+    ! Setup kinetic and nucleus contributions (that are independent of the
+    ! density matrix and therefore of spin channel)
+    !
+    do ispin=1,nspin
+      hamiltonian_cmplx(:,:,ispin) = hamiltonian_cmplx(:,:,ispin)     &
+                      + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+    enddo
+
+    !! Sum up to get the total energy
+    en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
+
+    ! Make sure all the MPI tasks have the exact same Hamiltonian
+    ! It helps stabilizing the SCF cycles in parallel
+    call world%sum(hamiltonian_cmplx)
+    hamiltonian_cmplx(:,:,:) = hamiltonian_cmplx(:,:,:) / REAL(world%nproc,dp)
+
+    ! DIIS or simple mixing on the hamiltonian
+    !call hamiltonian_prediction(s_matrix,x_matrix,p_matrix,hamiltonian,en_gks%total)
+
+
+    !
+    ! Diagonalize the Hamiltonian H
+    ! Generalized eigenvalue problem with overlap matrix S
+    ! H \varphi = E S \varphi
+    ! save the old eigenvalues
+    ! This subroutine works with or without scalapack
+    ! TODO call diagonalize_hamiltonian_scalapack(hamiltonian_cmplx,x_matrix,energy,c_matrix_cmplx)
+    ! Probably will just build S^-1/2 and call diagonalize(flavor, etc)
+
+    call dump_out_energy('=== Energies ===',occupation,energy)
+
+    call output_homolumo('gKS',occupation,energy,1,nstate)
+
+
+    !
+    ! Output the total energy and its components
+    write(stdout,*)
+    write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en_gks%nuc_nuc
+    write(stdout,'(a25,1x,f19.10)') 'Kinetic Energy  (Ha):',en_gks%kinetic
+    write(stdout,'(a25,1x,f19.10)') 'Nucleus Energy  (Ha):',en_gks%nucleus
+    write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hartree
+    if(calc_type%need_exchange) then
+      write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en_gks%exx_hyb
+    endif
+    if( calc_type%is_dft ) then
+      write(stdout,'(a25,1x,f19.10)') 'XC Energy       (Ha):',en_gks%xc
+    endif
+    write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en_gks%total
+
+
+    !
+    ! Setup the new density matrix: p_matrix
+    ! Save the old one for the convergence criterium
+    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+
+ ! TODO   scf_has_converged = check_converged(p_matrix_cmplx)
+    inquire(file='STOP',exist=stopfile_found)
+
+    if( scf_has_converged .OR. stopfile_found ) exit
+
+    !
+    ! end of the big SCF loop
+  enddo
+
+
+  write(stdout,'(/,1x,a)') '=================================================='
+  write(stdout,'(1x,a)') 'The SCF loop ends here'
+  write(stdout,'(1x,a)') '=================================================='
+
+  !
+  ! Cleanly deallocate the integral grid information
+  ! and the scf mixing information
+  !
+  call destroy_scf()
+  if( calc_type%is_dft ) call destroy_dft_grid()
+
+
+  !
+  ! Cleanly deallocate the arrays
+  !
+  call clean_deallocate('Density matrix P',p_matrix_cmplx)
+  call clean_deallocate('Total Hamiltonian H',hamiltonian_cmplx)
+
+  write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
+
+  if( print_yaml_ .AND. is_iomaster ) then
+    if( scf_has_converged ) then
+      write(unit_yaml,'(/,a)') 'scf is converged: True'
+    else
+      write(unit_yaml,'(/,a)') 'scf is converged: False'
+    endif
+    call print_energy_yaml('scf energy',en_gks)
+    call dump_out_energy_yaml('gks energies',energy)
+  endif
+
+  call stop_clock(timing_scf)
+
+end subroutine scf_loop_cmplx
+
 
 !=========================================================================
 subroutine get_fock_operator(basis,p_matrix,c_matrix,occupation,en, &

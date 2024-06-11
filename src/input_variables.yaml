@@ -240,6 +240,14 @@ scf:
   default: ''
   comment: Contains the self-consistent scheme name. Try LDA, PBE, HSE06, or HF for instance
 
+complex_scf:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Perform a ground state calculation with complex molecular orbitals.
+
 tolforce:
   family: general
   datatype: real

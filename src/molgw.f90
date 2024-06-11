@@ -88,6 +88,7 @@ program molgw
   real(dp),allocatable    :: energy(:,:)
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
+  complex(dp),allocatable :: c_matrix_cmplx(:,:,:)
   character(len=200)      :: file_name
   !=====
 
@@ -448,13 +449,25 @@ program molgw
     ! Big SCF loop is in there
     ! Only do it if the calculation is NOT a big restart
     if( .NOT. is_big_restart .AND. nscf > 0 ) then
-      call scf_loop(is_restart,                                     &
-                    basis,                                          &
-                    x_matrix,s_matrix,                              &
-                    hamiltonian_kinetic,hamiltonian_nucleus,        &
-                    occupation,energy,                              &
-                    hamiltonian_fock,                               &
-                    c_matrix,en_gks,scf_has_converged)
+      if(complex_scf=='no') then ! By default we use the real solution of the SCF equations
+        call scf_loop(is_restart,                                     &
+                      basis,                                          &
+                      x_matrix,s_matrix,                              &
+                      hamiltonian_kinetic,hamiltonian_nucleus,        &
+                      occupation,energy,                              &
+                      hamiltonian_fock,                               &
+                      c_matrix,en_gks,scf_has_converged)
+      else ! MRM: Complex SCF is currently implemented only for testing
+        call clean_allocate('Wavefunctions C_cmplx',c_matrix_cmplx,basis%nbf,nstate,nspin)  ! not distributed right now
+        c_matrix_cmplx(:,:,:)=c_matrix(:,:,:)
+        call scf_loop_cmplx(is_restart,                               &
+                      basis,                                          &
+                      x_matrix,s_matrix,                              &
+                      hamiltonian_kinetic,hamiltonian_nucleus,        &
+                      occupation,energy,                              &
+                      c_matrix_cmplx,en_gks,scf_has_converged)
+        call clean_deallocate('Wavefunctions C_cmplx',c_matrix_cmplx)
+      endif
     endif
 
     !
