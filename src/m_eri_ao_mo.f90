@@ -951,7 +951,7 @@ subroutine read_coulombvertex()
   integer :: unitcv, ierr
   complex(dp),allocatable :: coulomb_vertex_ij(:)
   complex(dp)             :: coulomb_vertex_ijg
-  integer, allocatable :: dims(:)
+  integer, allocatable :: yaml_integers(:)
   integer :: iauxil_local,iauxil_global, ig
   integer :: complex_length
   real(dp) :: rtmp
@@ -964,25 +964,34 @@ subroutine read_coulombvertex()
   
   write(stdout,'(1x,a)') 'Reading CoulombVertex.yaml and CoulombVertex.elements'
 
-  call yaml_search_keyword('CoulombVertex.yaml', 'length', dims)
-  ng = dims(1)
-  nstate        = dims(2)
+  !
+  ! Ensure CoulombVertex.yaml has been created with half grid
+  call yaml_search_keyword('CoulombVertex.yaml', 'halfGrid', yaml_integers)
+  if( yaml_integers(1) /= 1 ) then
+    call die('read_coulombvertex: only works for half grid (i.e. real wavefunctions)')
+  endif
+  deallocate(yaml_integers)
+
+  call yaml_search_keyword('CoulombVertex.yaml', 'length', yaml_integers)
+  ng     = yaml_integers(1)
+  nstate = yaml_integers(2)
   ! nauxil_global is 2*ng - 1 because of real and imaginary parts
   ! except for G=0 which is real
   nauxil_global = 2 * ng - 1
 
   call distribute_auxil_basis(nauxil_global)
 
-  write(stdout,*) "nauxil_global",nauxil_global
-  write(stdout,*) "nauxil_local",nauxil_local
-  write(stdout,*) "nstate",nstate
+  !DEBUG
+  !write(stdout,*) "nauxil_global",nauxil_global
+  !write(stdout,*) "nauxil_local",nauxil_local
+  !write(stdout,*) "nstate",nstate
   
   allocate(coulomb_vertex_ij(ng))
 
   call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local,1,nstate,1,nstate,1,1)
 
 #if !defined(HAVE_MPI)
-  write(stdout,*) 'Reading file CoulombVertex.elements'
+  write(stdout,'(/,1x,a)') 'Reading file CoulombVertex.elements'
   open(newunit=unitcv, file='CoulombVertex.elements', form='unformatted', access='stream', status='old', action='read')
   do istate=1,nstate
     do jstate=1,nstate
@@ -996,7 +1005,7 @@ subroutine read_coulombvertex()
   close(unitcv)
 
 #else
-  write(stdout,*) 'Reading file CoulombVertex.elements with MPI-IO'
+  write(stdout,'(/,1x,a)') 'Reading file CoulombVertex.elements with MPI-IO'
   ! complex_length in bytes whereas STORAGE_SIZE is in bits
   complex_length = STORAGE_SIZE(coulomb_vertex_ijg) / 8
 
@@ -1008,27 +1017,23 @@ subroutine read_coulombvertex()
     do istate=1,nstate
       do iauxil_local=1,nauxil_local
         iauxil_global = ibf_auxil_g(iauxil_local)
-        if( istate *jstate == 1 ) write(100+world%rank,*) iauxil_local, iauxil_global
         if( iauxil_global == 1 ) then 
           ig = 1
           dispg = disp  + complex_length * INT(ig-1, KIND=MPI_OFFSET_KIND)
           call MPI_FILE_READ_AT(unitcv, dispg, coulomb_vertex_ijg, &
                                 1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
-          if( istate * jstate == 1 ) write(100+world%rank,*) '->',ig, dispg, complex_length, coulomb_vertex_ijg
           eri_3center_eigen(iauxil_local,istate,jstate,1) = coulomb_vertex_ijg%re
         else if( iauxil_global <= ng ) then
           ig = iauxil_global
           dispg = disp  + complex_length * INT(ig-1, KIND=MPI_OFFSET_KIND)
           call MPI_FILE_READ_AT(unitcv, dispg, coulomb_vertex_ijg, &
                                 1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
-          if( istate *jstate == 1 ) write(100+world%rank,*) '--re>',ig, dispg,coulomb_vertex_ijg
           eri_3center_eigen(iauxil_local,istate,jstate,1) = coulomb_vertex_ijg%re
         else
           ig = iauxil_global - ng + 1
           dispg = disp  + complex_length * INT(ig-1, KIND=MPI_OFFSET_KIND)
           call MPI_FILE_READ_AT(unitcv, dispg, coulomb_vertex_ijg, &
                                 1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
-          if( istate *jstate == 1 ) write(100+world%rank,*) '--im>',ig, dispg,coulomb_vertex_ijg
           eri_3center_eigen(iauxil_local,istate,jstate,1) = coulomb_vertex_ijg%im
         endif
       enddo
@@ -1040,7 +1045,7 @@ subroutine read_coulombvertex()
 #endif
   rtmp = DOT_PRODUCT(eri_3center_eigen(:,1,1,1), eri_3center_eigen(:,1,1,1))
   call auxil%sum(rtmp)
-  write(stdout,*) 'test (11|11)',rtmp
+  write(stdout,*) 'Testing integral (11|11) (Ha):',rtmp
 
 
 end subroutine read_coulombvertex

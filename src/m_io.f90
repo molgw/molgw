@@ -39,6 +39,11 @@ module m_io
     module procedure dump_out_matrix_cdp
   end interface
 
+  interface yaml_search_keyword
+    module procedure yaml_search_keyword_i
+    module procedure yaml_search_keyword_dp
+  end interface
+
 
 contains
 
@@ -3902,12 +3907,11 @@ end subroutine dump_matrix_cmplx_hdf5
 
 
 !=========================================================================
-subroutine yaml_search_keyword(filename, keyword, value)
+subroutine yaml_search_keyword_i(filename, keyword, value)
   implicit none
 
   character(len=*), intent(in) :: filename
   character(len=*), intent(in) :: keyword
-  !class(*), allocatable, intent(inout)      :: value(:)
   integer, allocatable, intent(inout)      :: value(:)
 
   !=====
@@ -3915,6 +3919,42 @@ subroutine yaml_search_keyword(filename, keyword, value)
   integer :: ios, tmp_yaml_unit
   logical :: found
   integer :: itmp, index_substring
+  !=====
+
+  open(newunit=tmp_yaml_unit, file=filename, status='old', action='read', iostat=ios)
+
+  ! Read the file line by line
+  do while (.TRUE.)
+    read(tmp_yaml_unit, '(a)', iostat=ios) line
+    if (ios /= 0) exit
+    ! Check if the line contains the keyword
+
+    index_substring = INDEX(line, keyword) 
+    if( index_substring  /= 0) then
+        kw_value = TRIM(ADJUSTL(line(INDEX(line,':')+1:)))
+        found = .true.
+        read(kw_value,*) itmp
+        call append_to_list(itmp, value)
+    end if
+  end do
+  close(tmp_yaml_unit)
+
+end subroutine yaml_search_keyword_i
+
+
+!=========================================================================
+subroutine yaml_search_keyword_dp(filename, keyword, value)
+  implicit none
+
+  character(len=*), intent(in) :: filename
+  character(len=*), intent(in) :: keyword
+  real(dp), allocatable, intent(inout) :: value(:)
+
+  !=====
+  character(len=256) :: line, kw_value
+  integer :: ios, tmp_yaml_unit
+  logical :: found
+  integer :: index_substring
   real(dp) :: rtmp
   !=====
 
@@ -3930,19 +3970,13 @@ subroutine yaml_search_keyword(filename, keyword, value)
     if( index_substring  /= 0) then
         kw_value = TRIM(ADJUSTL(line(INDEX(line,':')+1:)))
         found = .true.
-        !select type(value)
-        !type is (integer)
-          read(kw_value,*) itmp
-          call append_to_list(itmp, value)
-        !type is (real(dp))
-        !  read(kw_value,*) rtmp
-        !  call append_to_list(rtmp, value)
-        !end select
+        read(kw_value,*) rtmp
+        call append_to_list(rtmp, value)
     end if
   end do
   close(tmp_yaml_unit)
 
-end subroutine yaml_search_keyword
+end subroutine yaml_search_keyword_dp
 
 
 !=========================================================================
@@ -3955,8 +3989,9 @@ subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
   real(dp),allocatable,intent(inout) :: occupation(:,:)
   real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
   !=====
-  real(dp),allocatable :: occupation_tmp(:,:)
-  integer,allocatable :: dims(:)
+  integer,allocatable :: yaml_integers(:)
+  real(dp),allocatable :: yaml_reals(:)
+  real(dp) :: efermi
   integer :: istate, nstate_old, nbf, ifile
   !=====
 
@@ -3965,12 +4000,15 @@ subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
 
   nstate_old = nstate
 
-  call yaml_search_keyword('EigenEnergies.yaml', 'length', dims)
-  nstate = dims(1)
-  nbf    = dims(1)
+  call yaml_search_keyword('EigenEnergies.yaml', 'fermiEnergy', yaml_reals)
+  efermi = yaml_reals(1)
+  write(stdout,'(1x,a,f12.5)') 'Fermi energy from file (eV): ', efermi * Ha_eV
+
+  call yaml_search_keyword('EigenEnergies.yaml', 'length', yaml_integers)
+  nstate = yaml_integers(1)
+  nbf    = yaml_integers(1)
   basis%nbf = nbf
 
-  allocate(occupation_tmp,SOURCE=occupation)
 
   deallocate(energy)
   deallocate(occupation)
@@ -3983,18 +4021,18 @@ subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
 
   allocate(energy(nstate,nspin))
   allocate(occupation(nstate,nspin))
-  occupation(:,:) = 0.0_dp
-  occupation(1:MIN(nstate,nstate_old),:) = occupation_tmp(1:MIN(nstate,nstate_old),:)
 
   open(newunit=ifile,file='EigenEnergies.elements',status='old',action='read')
   do istate=1,nstate
     read(ifile,*) energy(istate,1)
+    occupation(istate,1) = MERGE(2.0_dp, 0.0_dp,  energy(istate,1) < efermi + 1.0e-8 )
   enddo
 
-  deallocate(occupation_tmp)
 
   write(stdout,*) 'Resizing occupation and energy from ',nstate_old, ' to ', nstate
-  call dump_out_energy('=== HF energies ===',occupation,energy)
+  call dump_out_energy('=== HF energies from file ===',occupation,energy)
+  write(stdout,'(1x,a,f10.3)') 'Number of electrons from file: ', SUM(occupation(:,:))
+  if( SUM(occupation(:,:)) < 0.001_dp ) call die('read_eigenenergies: Fermi energy is such that there is no occupied state')
 
 
 end subroutine read_eigenenergies

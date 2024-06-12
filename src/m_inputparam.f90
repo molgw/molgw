@@ -373,7 +373,7 @@ subroutine init_calculation_type(scf,postscf)
   !
   ! Then read the first part of the calculation specifier
   select case(TRIM(scf))
-  case('READ_COULOMBVERTEX')
+  case('NONE')
     alpha_hybrid            = 1.00_dp
   case('CI')
     calc_type%is_ci         = .TRUE.
@@ -1070,6 +1070,17 @@ and the -DHAVE_HDF5 compilation option must be activated')
   !
   ! Interpret the scf and postscf input parameters
   call init_calculation_type(scf,postscf)
+
+  if( TRIM(scf) == 'NONE' ) then
+    if( nscf /= 0 ) then
+      nscf = 0
+      call issue_warning("input variable nscf has been set to zero because of scf='NONE'")
+    endif
+    if( .NOT. assume_scf_converged_ ) then
+      assume_scf_converged_ = .TRUE.
+      call issue_warning("input variable assume_scf_converged has been set to 'yes' because of scf='NONE'")
+    endif
+  endif
 
   !
   ! Some additional checks

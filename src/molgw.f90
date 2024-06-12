@@ -68,11 +68,11 @@ program molgw
   type(basis_set)            :: auxil_basis
   type(spectral_function)    :: wpol
   type(lbfgs_state)          :: lbfgs_plan
-  type(energy_contributions) :: en_gks,en_mbpt,en_noft
+  type(energy_contributions) :: en_gks, en_mbpt, en_noft
   integer                 :: restart_type
   integer                 :: nstate
-  integer                 :: istep
-  logical                 :: is_restart,is_big_restart,is_basis_restart
+  integer                 :: istep, istate
+  logical                 :: is_restart, is_big_restart, is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp,eext
@@ -374,7 +374,7 @@ program molgw
 
       case('GAUSSIAN')
         write(file_name,'(2a)') trim(output_name),'fchk'
-        if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
+        if( basis%nbf==nstate .AND. basis%gaussian_type == 'CART' ) then
           call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
         else
           write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions'
@@ -398,15 +398,21 @@ program molgw
 
         deallocate(hamiltonian_tmp)
 
-      case('ABINIT')
-        !FBFB to be filled
+      case('CC4S_FILES')
+        ! c_matrix is the identity (AO=MO)
+        ! Be careful: orthonormality C**T * S* C /=1 not fulfilled here
+        ! but c_matrix is not meant to be used when init_hamiltonian = 'skip'
+        c_matrix(:,:,:) = 0.0_dp
+        do istate=1,nstate
+          c_matrix(istate,istate,1) = 1.0_dp
+        enddo
       case default
         call die('molgw: init_hamiltonian option is not valid')
       end select
 
       ! The hamiltonian is still spin-independent:
       select case(TRIM(init_hamiltonian))
-      case('GAUSSIAN', 'ABINIT')
+      case('GAUSSIAN', 'CC4S_FILES')
       case default
         c_matrix(:,:,nspin) = c_matrix(:,:,1)
       end select
@@ -520,18 +526,16 @@ program molgw
   call evaluate_s2_operator(occupation,c_matrix,s_matrix)
 
   ! Computing on top of a gaussian calculation
-  if( assume_scf_converged_ .and. TRIM(init_hamiltonian)=='GAUSSIAN') then
+  if( assume_scf_converged_ .AND. TRIM(init_hamiltonian)=='GAUSSIAN') then
     write(file_name,'(2a)') trim(output_name),'fchk'
-    if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
+    if( basis%nbf==nstate .AND. basis%gaussian_type == 'CART' ) then
       call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin,energy=energy)
       call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy)
     else
       call die(' The number of states is not equal to the number of basis functions in Gaussian for restart.')
     endif
   endif
-  !FBFB
-  if( assume_scf_converged_ .AND. TRIM(init_hamiltonian)=='ABINIT' ) then
-    write(*,*) 'FBFB',DOT_PRODUCT(eri_3center(1,:),eri_3center(1,:))*2.0
+  if( TRIM(init_hamiltonian)=='CC4S_FILES' ) then
     if(has_auxil_basis) call destroy_eri_3center()
     call read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
     call read_coulombvertex()
