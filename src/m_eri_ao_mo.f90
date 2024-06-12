@@ -950,13 +950,17 @@ subroutine read_coulombvertex()
   integer :: nstate, istate, jstate, ng
   integer :: unitcv, ierr
   complex(dp),allocatable :: coulomb_vertex_ij(:)
-  complex(dp)             :: coulomb_vertex_ijg
   integer, allocatable :: yaml_integers(:)
   integer :: iauxil_local,iauxil_global, ig
   integer :: complex_length
   real(dp) :: rtmp
 #if defined(HAVE_MPI)
-  integer(kind=MPI_OFFSET_KIND) :: disp, dispg
+  integer(kind=MPI_OFFSET_KIND) :: disp, disp_increment
+  integer :: desc_tmp(NDEL), desc_mo(NDEL)
+  real(dp), allocatable :: eri_3center_tmp(:,:)
+  integer :: mtmp, ntmp, info
+  integer :: nstate2
+  integer :: ijstate_global, ijstate_local
 #endif
   !=====
 
@@ -992,7 +996,7 @@ subroutine read_coulombvertex()
   call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local,1,nstate,1,nstate,1,1)
 
 #if !defined(HAVE_MPI)
-  write(stdout,'(/,1x,a)') 'Reading file CoulombVertex.elements'
+  write(stdout,'(/,1x,a)') 'Reading file CoulombVertex.elements with plain fortran'
   open(newunit=unitcv, file='CoulombVertex.elements', form='unformatted', access='stream', status='old', action='read')
   do istate=1,nstate
     do jstate=1,nstate
@@ -1006,42 +1010,63 @@ subroutine read_coulombvertex()
   close(unitcv)
 
 #else
+
+  ! Create a SCALAPACK matrix (nauxil_global, nstate**2) that is distributed on column index only
+  nstate2 = nstate**2
+  mtmp = NUMROC(nauxil_global,block_row,iprow_cd,first_row,nprow_cd)
+  ntmp = NUMROC(nstate2      ,block_col,ipcol_cd,first_col,npcol_cd)
+  call DESCINIT(desc_tmp,nauxil_global,nstate2,block_row,block_col,first_row,first_col,cntxt_cd,MAX(1,mtmp),info)
+
+  call clean_allocate('Reading 3-center MO integrals',eri_3center_tmp,1,mtmp,1,ntmp)
+
+
   write(stdout,'(/,1x,a)') 'Reading file CoulombVertex.elements with MPI-IO'
+  write(stdout,'(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
+
   ! complex_length in bytes whereas STORAGE_SIZE is in bits
-  complex_length = STORAGE_SIZE(coulomb_vertex_ijg) / 8
+  complex_length = STORAGE_SIZE(coulomb_vertex_ij(1)) / 8
+  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(ng, KIND=MPI_OFFSET_KIND)
 
   call MPI_FILE_OPEN(MPI_COMM_WORLD,'CoulombVertex.elements', &
                      MPI_MODE_RDONLY, &
                      MPI_INFO_NULL,unitcv,ierr)
-  disp = 0
+
+
+  ! Start with -disp_increment, so that when adding disp_increment, we get 0 in the first iteration
+  disp = -disp_increment
+  ijstate_global = 0
   do jstate=1,nstate
     do istate=1,nstate
-      do iauxil_local=1,nauxil_local
-        iauxil_global = ibf_auxil_g(iauxil_local)
-        if( iauxil_global == 1 ) then 
-          ig = 1
-          dispg = disp  + complex_length * INT(ig-1, KIND=MPI_OFFSET_KIND)
-          call MPI_FILE_READ_AT(unitcv, dispg, coulomb_vertex_ijg, &
-                                1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
-          eri_3center_eigen(iauxil_local,istate,jstate,1) = coulomb_vertex_ijg%re
-        else if( iauxil_global <= ng ) then
-          ig = iauxil_global
-          dispg = disp  + complex_length * INT(ig-1, KIND=MPI_OFFSET_KIND)
-          call MPI_FILE_READ_AT(unitcv, dispg, coulomb_vertex_ijg, &
-                                1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
-          eri_3center_eigen(iauxil_local,istate,jstate,1) = coulomb_vertex_ijg%re
-        else
-          ig = iauxil_global - ng + 1
-          dispg = disp  + complex_length * INT(ig-1, KIND=MPI_OFFSET_KIND)
-          call MPI_FILE_READ_AT(unitcv, dispg, coulomb_vertex_ijg, &
-                                1, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
-          eri_3center_eigen(iauxil_local,istate,jstate,1) = coulomb_vertex_ijg%im
-        endif
-      enddo
-      disp = disp + complex_length * INT(ng, KIND=MPI_OFFSET_KIND)
+      ijstate_global = ijstate_global + 1
+      disp = disp + disp_increment
+
+      if( ipcol_cd /= INDXG2P(ijstate_global,block_col,0,first_col,npcol_cd) ) cycle
+      ijstate_local = INDXG2L(ijstate_global,block_col,0,first_col,npcol_cd)
+
+      call MPI_FILE_READ_AT(unitcv, disp, coulomb_vertex_ij, &
+                            ng, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
+
+      eri_3center_tmp(1,ijstate_local)           = coulomb_vertex_ij(1)%re
+      eri_3center_tmp(2:ng,ijstate_local)        = coulomb_vertex_ij(2:ng)%re
+      eri_3center_tmp(ng+1:2*ng-1,ijstate_local) = coulomb_vertex_ij(2:ng)%im
+
     enddo
   enddo
-                  
+
+
+  call DESCINIT(desc_mo,nauxil_global,nstate2,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_local),info)
+
+  !
+  ! Change distribution here
+  write(stdout,'(1x,a,i4,a,i4,a,i4,a,i4,a)') &
+                     'Change MO 3 center integral distribution (', &
+                     nprow_cd, ' x ', npcol_cd, ')   to   (', &
+                     nprow_eri3_mo, ' x ', npcol_eri3_mo, ')'
+  call PDGEMR2D(nauxil_global,nstate2,eri_3center_tmp,1,1,desc_tmp, &
+                                      eri_3center_eigen,1,1,desc_mo,cntxt_eri3_mo)
+
+  call clean_deallocate('Reading 3-center MO integrals',eri_3center_tmp)
+
   call MPI_FILE_CLOSE(unitcv, ierr)
 #endif
   rtmp = DOT_PRODUCT(eri_3center_eigen(:,1,1,1), eri_3center_eigen(:,1,1,1))
