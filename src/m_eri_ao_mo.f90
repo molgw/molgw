@@ -962,6 +962,7 @@ subroutine read_coulombvertex()
 
   if( nspin > 1 ) call die("read_coulombvertex: spin polarized not implemented yet")
   
+  call start_clock(timing_read_coulombvertex)
   write(stdout,'(1x,a)') 'Reading CoulombVertex.yaml and CoulombVertex.elements'
 
   !
@@ -1047,6 +1048,7 @@ subroutine read_coulombvertex()
   call auxil%sum(rtmp)
   write(stdout,*) 'Testing integral (11|11) (Ha):',rtmp
 
+  call stop_clock(timing_read_coulombvertex)
 
 end subroutine read_coulombvertex
 

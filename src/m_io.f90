@@ -3980,7 +3980,7 @@ end subroutine yaml_search_keyword_dp
 
 
 !=========================================================================
-subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
+subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix,hamiltonian_fock)
   implicit none
 
   type(basis_set),intent(inout) :: basis
@@ -3988,11 +3988,12 @@ subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
   real(dp),allocatable,intent(inout) :: energy(:,:)
   real(dp),allocatable,intent(inout) :: occupation(:,:)
   real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
+  real(dp),allocatable,intent(inout) :: hamiltonian_fock(:,:,:)
   !=====
   integer,allocatable :: yaml_integers(:)
   real(dp),allocatable :: yaml_reals(:)
   real(dp) :: efermi
-  integer :: istate, nstate_old, nbf, ifile
+  integer :: istate, nstate_old, ifile
   !=====
 
   if( nspin > 1 ) call die('read_eigenenergies: only spin restricted implemented')
@@ -4006,14 +4007,16 @@ subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
 
   call yaml_search_keyword('EigenEnergies.yaml', 'length', yaml_integers)
   nstate = yaml_integers(1)
-  nbf    = yaml_integers(1)
-  basis%nbf = nbf
+  basis%nbf = nstate
 
 
   deallocate(energy)
   deallocate(occupation)
+  call clean_deallocate('Fock operator F',hamiltonian_fock)
+
   call clean_deallocate('Wavefunctions C',c_matrix) 
   call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)
+  call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
   c_matrix(:,:,:) = 0.0_dp
   do istate=1,nstate
     c_matrix(istate,istate,1) = 1.0_dp
@@ -4023,9 +4026,11 @@ subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
   allocate(occupation(nstate,nspin))
 
   open(newunit=ifile,file='EigenEnergies.elements',status='old',action='read')
+  hamiltonian_fock(:,:,:) = 0.0_dp
   do istate=1,nstate
     read(ifile,*) energy(istate,1)
     occupation(istate,1) = MERGE(2.0_dp, 0.0_dp,  energy(istate,1) < efermi + 1.0e-8 )
+    hamiltonian_fock(istate,istate,1) = energy(istate,1)
   enddo
 
 

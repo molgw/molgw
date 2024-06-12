@@ -537,7 +537,7 @@ program molgw
   endif
   if( TRIM(init_hamiltonian)=='CC4S_FILES' ) then
     if(has_auxil_basis) call destroy_eri_3center()
-    call read_eigenenergies(basis,nstate,energy,occupation,c_matrix)
+    call read_eigenenergies(basis,nstate,energy,occupation,c_matrix,hamiltonian_fock)
     call read_coulombvertex()
   endif
 
