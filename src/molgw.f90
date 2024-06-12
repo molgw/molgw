@@ -71,11 +71,11 @@ program molgw
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
   integer                 :: nstate
-  integer                 :: istep,ilumo,istate
+  integer                 :: istep,ilumo,istate,ispin
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
-  real(dp)                :: erpa_tmp,egw_tmp,eext
+  real(dp)                :: erpa_tmp,egw_tmp,eext,ran_num
   real(dp),allocatable    :: one_mo(:)
   real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
@@ -459,7 +459,16 @@ program molgw
                       c_matrix,en_gks,scf_has_converged)
       else ! MRM: Complex SCF is currently implemented only for testing
         call clean_allocate('Wavefunctions C_cmplx',c_matrix_cmplx,basis%nbf,nstate,nspin)  ! not distributed right now
-        c_matrix_cmplx(:,:,:)=c_matrix(:,:,:)
+        write(stdout,'(/,a)') ' Adding Random Imaginary Phases '
+        write(stdout,'(a,/)') ' ------------------------------ '
+        do istate=1,nstate
+          call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
+          write(stdout,'(a,I10,a,f7.5,a,f7.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
+          do ispin=1,nspin
+            c_matrix_cmplx(:,istate,ispin)=exp(im*ran_num)*c_matrix(:,istate,ispin)
+          enddo
+        enddo
+        write(stdout,*) ' '
         call scf_loop_cmplx(is_restart,                               &
                       basis,                                          &
                       x_matrix,s_matrix,                              &

@@ -420,11 +420,12 @@ subroutine scf_loop_cmplx(is_restart,&
   type(energy_contributions),intent(inout) :: en_gks
   logical,intent(out)                :: scf_has_converged
   !=====
+  character               :: flavor='T'
   type(spectral_function) :: wpol
   integer                 :: nstate
   logical                 :: stopfile_found
   integer                 :: file_density_matrix
-  integer                 :: ispin,iscf
+  integer                 :: ispin,iscf,istate
   complex(dp),allocatable :: hamiltonian_cmplx(:,:,:)
   complex(dp),allocatable :: p_matrix_cmplx(:,:,:)
   !=====
@@ -433,6 +434,11 @@ subroutine scf_loop_cmplx(is_restart,&
   call start_clock(timing_scf)
 
   nstate = SIZE(x_matrix,DIM=2)
+  
+  if(nstate/=basis%nbf) then
+    write(*,'(a)') ' Stop: The complex SCF subroutine needs nstate=basis%nbf'
+    stop
+  endif
 
   !
   ! Initialize the SCF mixing procedure
@@ -442,7 +448,6 @@ subroutine scf_loop_cmplx(is_restart,&
   ! Allocate the main arrays
   call clean_allocate('Total Hamiltonian H',hamiltonian_cmplx,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
-
 
   !
   ! Setup the grids for the quadrature of DFT potential/energy
@@ -465,7 +470,7 @@ subroutine scf_loop_cmplx(is_restart,&
 
     en_gks%kinetic = REAL( SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
     en_gks%nucleus = REAL( SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
-
+    hamiltonian_cmplx=COMPLEX_ZERO
 
     !--Hamiltonian - Hartree Exchange Correlation---
     call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
@@ -491,18 +496,18 @@ subroutine scf_loop_cmplx(is_restart,&
     call world%sum(hamiltonian_cmplx)
     hamiltonian_cmplx(:,:,:) = hamiltonian_cmplx(:,:,:) / REAL(world%nproc,dp)
 
-    ! DIIS or simple mixing on the hamiltonian
+    ! TODO DIIS or simple mixing on the hamiltonian
     !call hamiltonian_prediction(s_matrix,x_matrix,p_matrix,hamiltonian,en_gks%total)
 
 
     !
-    ! Diagonalize the Hamiltonian H
-    ! Generalized eigenvalue problem with overlap matrix S
-    ! H \varphi = E S \varphi
-    ! save the old eigenvalues
-    ! This subroutine works with or without scalapack
-    ! TODO call diagonalize_hamiltonian_scalapack(hamiltonian_cmplx,x_matrix,energy,c_matrix_cmplx)
-    ! Probably will just build S^-1/2 and call diagonalize(flavor, etc)
+    ! H \varphi = S \varphi E
+    ! Diagonalize the Hamiltonian S^-1/2 H S^-1/2
+    do ispin=1,nspin
+      hamiltonian_cmplx(:,:,ispin)=matmul(transpose(x_matrix),matmul(hamiltonian_cmplx(:,:,ispin),x_matrix))
+      call diagonalize(flavor,hamiltonian_cmplx(:,:,ispin),energy(:,ispin),hamiltonian_cmplx(:,:,ispin))
+      c_matrix_cmplx(:,:,ispin)=matmul(x_matrix(:,:),hamiltonian_cmplx(:,:,ispin))
+    enddo
 
     call dump_out_energy('=== Energies ===',occupation,energy)
 
