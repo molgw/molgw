@@ -93,7 +93,11 @@ subroutine calculate_exchange_real(basis,p_matrix,hexx,ex,occupation,c_matrix)
     endif
   else
     if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
-      call setup_exchange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
+      if( .NOT. eri3_genuine_ ) then
+        call setup_exchange_ri(occupation,c_matrix,p_matrix,hexx,eexx)
+      else
+        call setup_exchange_genuine_ri(occupation,c_matrix,p_matrix,hexx,eexx)
+      endif
     else
       !
       ! c_matrix is not provided, then calculate it from the square-root of P
@@ -282,7 +286,11 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
   ! Exchange contribution to the Hamiltonian
   !
   if( calc_type%need_exchange ) then
-    call setup_exchange_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en_inout%exx)
+    if( .NOT. eri3_genuine_ ) then
+      call setup_exchange_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en_inout%exx)
+    else
+      call setup_exchange_genuine_ri_cmplx(occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en_inout%exx)
+    endif
 
     hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
   endif
