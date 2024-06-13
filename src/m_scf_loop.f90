@@ -426,13 +426,16 @@ subroutine scf_loop_cmplx(is_restart,&
   logical                 :: stopfile_found
   integer                 :: file_density_matrix
   integer                 :: ispin,iscf,istate
-  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:),p_matrix_cmplx(:,:,:),eigenvectors_cmplx(:,:,:)
+  real(dp)                :: rms
+  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:),eigenvectors_cmplx(:,:,:)
+  complex(dp),allocatable :: p_matrix_cmplx(:,:,:),p_matrix_cmplx_old(:,:,:)
   complex(dp),allocatable :: ham_hist(:,:,:,:)
   !=====
 
 
   call start_clock(timing_scf)
 
+  rms=1000
   nstate = SIZE(x_matrix,DIM=2)
   
   if(nstate/=basis%nbf) then
@@ -445,6 +448,7 @@ subroutine scf_loop_cmplx(is_restart,&
   call clean_allocate('Total Hamiltonian H',hamiltonian_cmplx,basis%nbf,basis%nbf,nspin)
   call clean_allocate('H eigenvectors',eigenvectors_cmplx,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Density matrix P(old)',p_matrix_cmplx_old,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Hamiltonian history',ham_hist,basis%nbf,basis%nbf,nspin,2)
   ham_hist=COMPLEX_ZERO 
 
@@ -544,10 +548,38 @@ subroutine scf_loop_cmplx(is_restart,&
     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
 
 
- ! TODO   scf_has_converged = check_converged(p_matrix_cmplx)
+ ! SCF convergence check
+    if( iscf > 1) then
+      rms = NORM2( real(p_matrix_cmplx(:,:,:)) - real(p_matrix_cmplx_old(:,:,:)) ) * SQRT( REAL(nspin,dp) ) &
+          + NORM2( aimag(p_matrix_cmplx(:,:,:)) - aimag(p_matrix_cmplx_old(:,:,:)) ) * SQRT( REAL(nspin,dp) )
+      p_matrix_cmplx_old(:,:,:)=p_matrix_cmplx(:,:,:)
+      write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms
+    else
+      p_matrix_cmplx_old(:,:,:)=p_matrix_cmplx(:,:,:)
+    endif
+
+    if( rms < tolscf ) then
+      scf_has_converged = .TRUE.
+      write(stdout,*) ' ===> convergence has been reached'
+      write(stdout,*)
+    else
+      scf_has_converged = .FALSE.
+      write(stdout,*) ' ===> convergence not reached yet'
+      write(stdout,*)
+
+      if( iscf == nscf ) then
+        if( rms > 1.0e-2_dp ) then
+          call issue_warning('SCF convergence is very poor')
+        else if( rms > 1.0e-4_dp ) then
+          call issue_warning('SCF convergence is poor')
+        endif
+      endif
+
+    endif
+
     inquire(file='STOP',exist=stopfile_found)
 
-    if( scf_has_converged .OR. stopfile_found ) exit
+  ! TODO: It stops too early! if( scf_has_converged .OR. stopfile_found ) exit
 
     !
     ! end of the big SCF loop
@@ -568,6 +600,7 @@ subroutine scf_loop_cmplx(is_restart,&
   ! Cleanly deallocate the arrays
   !
   call clean_deallocate('Density matrix P',p_matrix_cmplx)
+  call clean_deallocate('Density matrix P(old)',p_matrix_cmplx_old)
   call clean_deallocate('Total Hamiltonian H',hamiltonian_cmplx)
   call clean_deallocate('H eigenvectors',eigenvectors_cmplx)
   call clean_deallocate('Hamiltonian history',ham_hist)

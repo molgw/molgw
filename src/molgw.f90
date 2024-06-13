@@ -458,8 +458,6 @@ program molgw
                       hamiltonian_fock,                               &
                       c_matrix,en_gks,scf_has_converged)
       else ! Complex SCF is currently implemented only for testing
-           !  TODO: scf_has_converged is never set to TRUE, there is no converge test.
-           !        Thus, we avoid problems in the rest of the code related to post_scf subroutines.
         call clean_allocate('Wavefunctions C_cmplx',c_matrix_cmplx,basis%nbf,nstate,nspin)  ! not distributed right now
         write(stdout,'(/,a)') ' Adding Random Imaginary Phases '
         write(stdout,'(a,/)') ' ------------------------------ '
@@ -478,7 +476,7 @@ program molgw
                       occupation,energy,                              &
                       c_matrix_cmplx,en_gks,scf_has_converged)
         call clean_deallocate('Wavefunctions C_cmplx',c_matrix_cmplx)
-        ! TODO: After this point, c_matrix is still the one from the guess!
+        ! TODO: After this point, c_matrix is still the one from the guess...
       endif
     endif
 
