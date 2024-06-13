@@ -426,8 +426,8 @@ subroutine scf_loop_cmplx(is_restart,&
   logical                 :: stopfile_found
   integer                 :: file_density_matrix
   integer                 :: ispin,iscf,istate
-  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:),eigenvectors_cmplx(:,:,:)
-  complex(dp),allocatable :: p_matrix_cmplx(:,:,:)
+  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:),p_matrix_cmplx(:,:,:),eigenvectors_cmplx(:,:,:)
+  complex(dp),allocatable :: ham_hist(:,:,:,:)
   !=====
 
 
@@ -441,14 +441,12 @@ subroutine scf_loop_cmplx(is_restart,&
   endif
 
   !
-  ! Initialize the SCF mixing procedure
-  call init_scf(basis%nbf,nstate)
-
-  !
   ! Allocate the main arrays
   call clean_allocate('Total Hamiltonian H',hamiltonian_cmplx,basis%nbf,basis%nbf,nspin)
   call clean_allocate('H eigenvectors',eigenvectors_cmplx,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Hamiltonian history',ham_hist,basis%nbf,basis%nbf,nspin,2)
+  ham_hist=COMPLEX_ZERO 
 
   !
   ! Setup the grids for the quadrature of DFT potential/energy
@@ -497,9 +495,18 @@ subroutine scf_loop_cmplx(is_restart,&
     call world%sum(hamiltonian_cmplx)
     hamiltonian_cmplx(:,:,:) = hamiltonian_cmplx(:,:,:) / REAL(world%nproc,dp)
 
-    ! TODO DIIS or simple mixing on the hamiltonian
-    !call hamiltonian_prediction(s_matrix,x_matrix,p_matrix,hamiltonian,en_gks%total)
-
+    !
+    ! Simple mixing on the hamiltonian
+    ! the newest is 1
+    ! the oldest is 2
+    if( iscf > 1) then
+      ham_hist(:,:,:,2)=ham_hist(:,:,:,1)
+    endif
+    ham_hist(:,:,:,1)=hamiltonian_cmplx(:,:,:)
+    if( iscf > 1) then
+      write(stdout,'(/,1x,a,f8.4)') 'Simple mixing with parameter:',alpha_mixing
+      hamiltonian_cmplx(:,:,:) = alpha_mixing * ham_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * ham_hist(:,:,:,2)
+    endif
 
     !
     ! H \varphi = S \varphi E
@@ -553,9 +560,7 @@ subroutine scf_loop_cmplx(is_restart,&
 
   !
   ! Cleanly deallocate the integral grid information
-  ! and the scf mixing information
   !
-  call destroy_scf()
   if( calc_type%is_dft ) call destroy_dft_grid()
 
 
@@ -565,6 +570,7 @@ subroutine scf_loop_cmplx(is_restart,&
   call clean_deallocate('Density matrix P',p_matrix_cmplx)
   call clean_deallocate('Total Hamiltonian H',hamiltonian_cmplx)
   call clean_deallocate('H eigenvectors',eigenvectors_cmplx)
+  call clean_deallocate('Hamiltonian history',ham_hist)
 
   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
 
