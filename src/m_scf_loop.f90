@@ -426,7 +426,7 @@ subroutine scf_loop_cmplx(is_restart,&
   logical                 :: stopfile_found
   integer                 :: file_density_matrix
   integer                 :: ispin,iscf,istate
-  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:)
+  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:),eigenvectors_cmplx(:,:,:)
   complex(dp),allocatable :: p_matrix_cmplx(:,:,:)
   !=====
 
@@ -447,6 +447,7 @@ subroutine scf_loop_cmplx(is_restart,&
   !
   ! Allocate the main arrays
   call clean_allocate('Total Hamiltonian H',hamiltonian_cmplx,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('H eigenvectors',eigenvectors_cmplx,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
 
   !
@@ -505,8 +506,8 @@ subroutine scf_loop_cmplx(is_restart,&
     ! Diagonalize the Hamiltonian S^-1/2 H S^-1/2
     do ispin=1,nspin
       hamiltonian_cmplx(:,:,ispin)=matmul(transpose(x_matrix),matmul(hamiltonian_cmplx(:,:,ispin),x_matrix))
-      call diagonalize(flavor,hamiltonian_cmplx(:,:,ispin),energy(:,ispin),hamiltonian_cmplx(:,:,ispin))
-      c_matrix_cmplx(:,:,ispin)=matmul(x_matrix(:,:),hamiltonian_cmplx(:,:,ispin))
+      call diagonalize(flavor,hamiltonian_cmplx(:,:,ispin),energy(:,ispin),eigenvectors_cmplx(:,:,ispin))
+      c_matrix_cmplx(:,:,ispin)=matmul(x_matrix(:,:),eigenvectors_cmplx(:,:,ispin))
     enddo
 
     call dump_out_energy('=== Energies ===',occupation,energy)
@@ -563,6 +564,7 @@ subroutine scf_loop_cmplx(is_restart,&
   !
   call clean_deallocate('Density matrix P',p_matrix_cmplx)
   call clean_deallocate('Total Hamiltonian H',hamiltonian_cmplx)
+  call clean_deallocate('H eigenvectors',eigenvectors_cmplx)
 
   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
 
