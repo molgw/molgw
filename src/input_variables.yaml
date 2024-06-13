@@ -244,9 +244,9 @@ complex_scf:
   family: general
   datatype: yes/no
   mandatory: 'no'
-  experimental: 'no'
+  experimental: 'yes'
   default: 'no'
-  comment: Perform a ground state calculation with complex molecular orbitals.
+  comment: 'EXPERIMENTAL. Perform a ground state calculation with complex molecular orbitals.'
 
 tolforce:
   family: general
