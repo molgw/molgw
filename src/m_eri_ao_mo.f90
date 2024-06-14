@@ -896,7 +896,7 @@ subroutine form_erimol(nbf,nstate_tot,nstate_jkl,c_matrix,c_matrix_cmplx,ERImol,
 
     deallocate(tmp_pxxx_cmplx,tmp_pxjx_cmplx,tmp_pijx_cmplx)
 
-    elseif(present(c_matrix).and.present(ERImol)) then
+  elseif(present(c_matrix).and.present(ERImol)) then
 
     allocate(tmp_pxxx(nbf,nbf,nbf),tmp_pxjx(nbf,nbf),tmp_pijx(nbf))
 
