@@ -476,7 +476,7 @@ program molgw
                       occupation,energy,                              &
                       c_matrix_cmplx,en_gks,scf_has_converged)
         call clean_deallocate('Wavefunctions C_cmplx',c_matrix_cmplx)
-        ! TODO: After this point, c_matrix is still the one from the guess...
+        ! WARNING! TODO: After this point, c_matrix is still the one from the guess...
       endif
     endif
 
