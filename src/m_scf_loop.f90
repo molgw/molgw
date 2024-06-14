@@ -583,7 +583,8 @@ subroutine scf_loop_cmplx(is_restart,&
 
     inquire(file='STOP',exist=stopfile_found)
 
-  ! TODO: It stops too early! if( scf_has_converged .OR. stopfile_found ) exit
+    ! This typically stops too early. We have to use tolscf<0 !
+    if( scf_has_converged .OR. stopfile_found ) exit
 
     !
     ! end of the big SCF loop

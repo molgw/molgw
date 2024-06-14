@@ -247,6 +247,9 @@ Hartree  HOMO expectation ,  250.895321        , 1 , 1.0e-4
 Exchange HOMO expectation ,  -24.840082        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -24.840082        , 1 , 1.0e-4
 
+beh2_complex_hf.in        , HF with complex orbitals
+SCF Total Energy          , -15.5379349891     , 0 , 1.0e-5
+
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
 Exc. 0001                 ,   32.27823228      , 0 , 1.0e-4
