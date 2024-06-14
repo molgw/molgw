@@ -420,14 +420,12 @@ subroutine scf_loop_cmplx(is_restart,&
   type(energy_contributions),intent(inout) :: en_gks
   logical,intent(out)                :: scf_has_converged
   !=====
-  character               :: flavor='T'
-  type(spectral_function) :: wpol
   integer                 :: nstate
   logical                 :: stopfile_found
-  integer                 :: file_density_matrix
   integer                 :: ispin,iscf,istate
   real(dp)                :: rms
-  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:),eigenvectors_cmplx(:,:,:)
+  complex(dp),allocatable :: hsmall_cmplx(:,:), csmall_cmplx(:,:)
+  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:)
   complex(dp),allocatable :: p_matrix_cmplx(:,:,:),p_matrix_cmplx_old(:,:,:)
   complex(dp),allocatable :: ham_hist(:,:,:,:)
   !=====
@@ -435,18 +433,14 @@ subroutine scf_loop_cmplx(is_restart,&
 
   call start_clock(timing_scf)
 
-  rms=1000
+  rms = 1000.0
   nstate = SIZE(x_matrix,DIM=2)
   
-  if(nstate/=basis%nbf) then
-    write(*,'(a)') ' Stop: The complex SCF subroutine needs nstate=basis%nbf'
-    stop
-  endif
-
   !
   ! Allocate the main arrays
   call clean_allocate('Total Hamiltonian H',hamiltonian_cmplx,basis%nbf,basis%nbf,nspin)
-  call clean_allocate('H eigenvectors',eigenvectors_cmplx,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('H in orthogonalized basis',hsmall_cmplx,nstate,nstate)
+  call clean_allocate('H eigenvectors',csmall_cmplx,nstate,nstate)
   call clean_allocate('Density matrix P',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P(old)',p_matrix_cmplx_old,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Hamiltonian history',ham_hist,basis%nbf,basis%nbf,nspin,2)
@@ -516,9 +510,19 @@ subroutine scf_loop_cmplx(is_restart,&
     ! H \varphi = S \varphi E
     ! Diagonalize the Hamiltonian S^-1/2 H S^-1/2
     do ispin=1,nspin
-      hamiltonian_cmplx(:,:,ispin)=matmul(transpose(x_matrix),matmul(hamiltonian_cmplx(:,:,ispin),x_matrix))
-      call diagonalize(flavor,hamiltonian_cmplx(:,:,ispin),energy(:,ispin),eigenvectors_cmplx(:,:,ispin))
-      c_matrix_cmplx(:,:,ispin)=matmul(x_matrix(:,:),eigenvectors_cmplx(:,:,ispin))
+
+      !
+      ! H' = X**T * H * X
+      ! TODO: slow coding. Use BLAS-level 3 in the future
+      hsmall_cmplx(:,:) = MATMUL(TRANSPOSE(x_matrix), MATMUL(hamiltonian_cmplx(:,:,ispin), x_matrix))
+
+      !
+      ! H' * C' = C' * E
+      call diagonalize(' ',hsmall_cmplx,energy(:,ispin),csmall_cmplx)
+
+      !
+      ! C = X * C'
+      c_matrix_cmplx(:,:,ispin) = MATMUL(x_matrix, csmall_cmplx)
     enddo
 
     call dump_out_energy('=== Energies ===',occupation,energy)
@@ -602,7 +606,8 @@ subroutine scf_loop_cmplx(is_restart,&
   call clean_deallocate('Density matrix P',p_matrix_cmplx)
   call clean_deallocate('Density matrix P(old)',p_matrix_cmplx_old)
   call clean_deallocate('Total Hamiltonian H',hamiltonian_cmplx)
-  call clean_deallocate('H eigenvectors',eigenvectors_cmplx)
+  call clean_deallocate('H in orthogonalized basis',hsmall_cmplx)
+  call clean_deallocate('H eigenvectors',csmall_cmplx)
   call clean_deallocate('Hamiltonian history',ham_hist)
 
   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
