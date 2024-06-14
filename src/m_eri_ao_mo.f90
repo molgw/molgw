@@ -980,9 +980,9 @@ subroutine read_coulombvertex()
   call yaml_search_keyword('CoulombVertex.yaml', 'length', yaml_integers)
   ng     = yaml_integers(1)
   nstate = yaml_integers(2)
-  ! nauxil_global is 2*ng - 1 because of real and imaginary parts
-  ! except for G=0 which is real
-  nauxil_global = 2 * ng - 1
+  write(stdout,'(1x,a,i6,a,i4,a,i4)') 'Dimensions read:',ng,' x ',nstate,' x ',nstate
+  ! nauxil_global is 2*ng because of real and imaginary parts
+  nauxil_global = 2 * ng 
 
   call distribute_auxil_basis(nauxil_global)
 
@@ -1001,9 +1001,8 @@ subroutine read_coulombvertex()
   do istate=1,nstate
     do jstate=1,nstate
       read(unitcv) coulomb_vertex_ij(:)
-      eri_3center_eigen(1,istate,jstate,1) = coulomb_vertex_ij(1)%re
-      eri_3center_eigen(2:ng,istate,jstate,1) = coulomb_vertex_ij(2:ng)%re
-      eri_3center_eigen(ng+1:2*ng-1,istate,jstate,1) = coulomb_vertex_ij(2:ng)%im
+      eri_3center_eigen(1:ng,istate,jstate,1)      = coulomb_vertex_ij(:)%re
+      eri_3center_eigen(ng+1:2*ng,istate,jstate,1) = coulomb_vertex_ij(:)%im
     enddo
   enddo
 
@@ -1046,9 +1045,8 @@ subroutine read_coulombvertex()
       call MPI_FILE_READ_AT(unitcv, disp, coulomb_vertex_ij, &
                             ng, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
 
-      eri_3center_tmp(1,ijstate_local)           = coulomb_vertex_ij(1)%re
-      eri_3center_tmp(2:ng,ijstate_local)        = coulomb_vertex_ij(2:ng)%re
-      eri_3center_tmp(ng+1:2*ng-1,ijstate_local) = coulomb_vertex_ij(2:ng)%im
+      eri_3center_tmp(:,ijstate_local)         = coulomb_vertex_ij(:)%re
+      eri_3center_tmp(ng+1:2*ng,ijstate_local) = coulomb_vertex_ij(:)%im
 
     enddo
   enddo
