@@ -1084,8 +1084,12 @@ and the -DHAVE_HDF5 compilation option must be activated')
   if( nstep_gw > 1 .AND. calc_type%selfenergy_technique /= EVSC ) then
     call die('nstep_gw > 1 is only valid when performing ev-GW. Change either postscf or nstep_gw')
   endif
-  if( eri3_genuine_ .AND. ( calc_type%need_exchange .OR. calc_type%need_exchange_lr ) ) then
-    call die('eri3_genuine does not work with exact-exchange')
+  if( eri3_genuine_ .AND. calc_type%need_exchange_lr ) then
+    call die('eri3_genuine does not work with long-range exact-exchange')
+  endif
+  if( eri3_genuine_ .AND. calc_type%need_exchange ) then
+    !call die('eri3_genuine does not work with exact-exchange')
+    call issue_warning('eri3_genuine with exact-exchange is EXPERIMENTAL')
   endif
   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(eri3_genuine_) ) then
     call die('eri3_genuine is required for moving basis (=excit_name=ion)')
