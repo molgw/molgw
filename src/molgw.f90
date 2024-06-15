@@ -90,6 +90,7 @@ program molgw
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
   complex(dp),allocatable :: c_matrix_cmplx(:,:,:)
+  character(len=6)        :: up_down
   character(len=200)      :: file_name
   !=====
 
@@ -459,17 +460,20 @@ program molgw
                       hamiltonian_fock,                               &
                       c_matrix,en_gks,scf_has_converged)
       else ! Complex SCF is currently implemented only for testing
+        up_down='      '
         call clean_allocate('Wavefunctions C_cmplx',c_matrix_cmplx,basis%nbf,nstate,nspin)  ! not distributed right now
         write(stdout,'(/,a)') ' Adding Random Imaginary Phases '
         write(stdout,'(a,/)') ' ------------------------------ '
         do istate=1,nstate
           call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
           phase_factor=exp(im*ran_num)
-          write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(phase_factor),',',aimag(phase_factor),')'
+          if( nspin==2 ) up_down='  up  '
+          write(stdout,'(a,I10,a,a,f8.5,a,f8.5,a)') ' MO',istate,up_down,': (',real(phase_factor),',',aimag(phase_factor),')'
           c_matrix_cmplx(:,istate,1)=phase_factor*c_matrix(:,istate,1)
           if( nspin==2 ) then
+            up_down=' down '
             phase_factor=conjg(phase_factor)
-            write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(phase_factor),',',aimag(phase_factor),')'
+            write(stdout,'(a,I10,a,a,f8.5,a,f8.5,a)') ' MO',istate,up_down,': (',real(phase_factor),',',aimag(phase_factor),')'
             c_matrix_cmplx(:,istate,2)=phase_factor*c_matrix(:,istate,2) ! Time-rev. sym: spin-down = spin-up*
           endif
         enddo
