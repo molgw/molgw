@@ -485,7 +485,7 @@ program molgw
                       occupation,energy,                              &
                       c_matrix,c_matrix_cmplx,en_gks,scf_has_converged)
         call clean_deallocate('Wavefunctions C_cmplx',c_matrix_cmplx)
-        write(stdout,'(a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
+        write(stdout,'(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
         energy(:,:)=0.0e0_dp
         ! WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.,
         !          the occupation numbers: occupations(:,1) \in [0,2], and orb. energy = 0.0
