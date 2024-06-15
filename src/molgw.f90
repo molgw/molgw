@@ -489,6 +489,10 @@ program molgw
         energy(:,:)=0.0e0_dp
         ! WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.,
         !          the occupation numbers: occupations(:,1) \in [0,2], and orb. energy = 0.0
+        write(stdout,'(/,1x,a)')  'Natural occupations: '
+        write(stdout,'(8(2x,f14.6))') occupation(:,1)
+        write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
+        write(stdout,*)
       endif
     endif
 
