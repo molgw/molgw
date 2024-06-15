@@ -404,7 +404,7 @@ subroutine scf_loop_cmplx(is_restart,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
                     occupation, &
                     energy, &
-                    c_matrix_cmplx,en_gks,scf_has_converged)
+                    c_matrix,c_matrix_cmplx,en_gks,scf_has_converged)
   implicit none
 
   !=====
@@ -416,14 +416,17 @@ subroutine scf_loop_cmplx(is_restart,&
   real(dp),intent(in)                :: hamiltonian_nucleus(:,:)
   real(dp),intent(inout)             :: occupation(:,:)
   real(dp),intent(out)               :: energy(:,:)
+  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
   complex(dp),allocatable,intent(inout) :: c_matrix_cmplx(:,:,:)
   type(energy_contributions),intent(inout) :: en_gks
   logical,intent(out)                :: scf_has_converged
   !=====
   integer                 :: nstate
   logical                 :: stopfile_found
-  integer                 :: ispin,iscf,istate
+  integer                 :: ispin,iscf,jbf,istate
   real(dp)                :: rms
+  real(dp),allocatable    :: s_eigval(:)
+  real(dp),allocatable    :: inv_x_matrix(:,:),matrix_tmp(:,:)
   complex(dp),allocatable :: hsmall_cmplx(:,:), csmall_cmplx(:,:)
   complex(dp),allocatable :: hamiltonian_cmplx(:,:,:)
   complex(dp),allocatable :: p_matrix_cmplx(:,:,:),p_matrix_cmplx_old(:,:,:)
@@ -595,6 +598,43 @@ subroutine scf_loop_cmplx(is_restart,&
   write(stdout,'(1x,a)') 'The SCF loop ends here'
   write(stdout,'(1x,a)') '=================================================='
 
+
+  !
+  ! Store the natural orbital basis representation of the density matrix in c_matrix
+  ! and the occupation numbers in occupation(:,1) \in [0:2]
+  if(nspin==2) then
+    p_matrix_cmplx(:,:,1)=p_matrix_cmplx(:,:,1)+p_matrix_cmplx(:,:,2)
+    p_matrix_cmplx(:,:,2)=COMPLEX_ZERO
+  endif
+  p_matrix_cmplx(:,:,1)=real(p_matrix_cmplx(:,:,1))
+  allocate(s_eigval(basis%nbf),matrix_tmp(basis%nbf,basis%nbf))
+  matrix_tmp(:,:) = s_matrix(:,:)
+  ! Diagonalization with or without SCALAPACK
+  !! S = U*s*U^H
+  call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
+  nstate = COUNT( s_eigval(:) > 1e-05_dp )
+  call clean_allocate('Overlap INV_X * INV_X**H = S',inv_x_matrix,basis%nbf,nstate)
+  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
+  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
+  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',1e-05_dp
+  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',basis%nbf
+  !! INV_X = U*s^(1/2)
+  istate = 0
+  do jbf=1,basis%nbf
+    if( s_eigval(jbf) > 1e-05_dp ) then
+      istate = istate + 1
+      inv_x_matrix(:,istate) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
+    endif
+  enddo
+  deallocate(matrix_tmp,s_eigval)
+  !  diag[ S^1/2 P S^1/2 ] -> V
+  hsmall_cmplx(:,:) = MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_cmplx(:,:,1), inv_x_matrix))
+  call diagonalize(' ',hsmall_cmplx,occupation(:,1),csmall_cmplx)
+  !  C = S^-1/2 V
+  c_matrix_cmplx(:,:,1) = MATMUL(x_matrix, csmall_cmplx)
+  if(nspin==2) occupation(:,2)=0.0e0_dp
+
+
   !
   ! Cleanly deallocate the integral grid information
   !
@@ -610,6 +650,7 @@ subroutine scf_loop_cmplx(is_restart,&
   call clean_deallocate('H in orthogonalized basis',hsmall_cmplx)
   call clean_deallocate('H eigenvectors',csmall_cmplx)
   call clean_deallocate('Hamiltonian history',ham_hist)
+  call clean_deallocate('Overlap INV_X * INV_X**H = S',inv_x_matrix)
 
   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
 

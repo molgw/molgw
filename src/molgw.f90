@@ -483,9 +483,10 @@ program molgw
                       x_matrix,s_matrix,                              &
                       hamiltonian_kinetic,hamiltonian_nucleus,        &
                       occupation,energy,                              &
-                      c_matrix_cmplx,en_gks,scf_has_converged)
+                      c_matrix,c_matrix_cmplx,en_gks,scf_has_converged)
         call clean_deallocate('Wavefunctions C_cmplx',c_matrix_cmplx)
-        ! WARNING! TODO: After this point, c_matrix is still the one from the guess...
+        ! WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.
+        !          and the occupation numbers: occupations(:,1) \in [0,2].
       endif
     endif
 
