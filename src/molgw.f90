@@ -76,6 +76,7 @@ program molgw
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp,eext,ran_num
+  complex(dp)             :: phase_factor
   real(dp),allocatable    :: one_mo(:)
   real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
@@ -463,10 +464,14 @@ program molgw
         write(stdout,'(a,/)') ' ------------------------------ '
         do istate=1,nstate
           call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
-          write(stdout,'(a,I10,a,f7.5,a,f7.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
-          do ispin=1,nspin
-            c_matrix_cmplx(:,istate,ispin)=exp(im*ran_num)*c_matrix(:,istate,ispin)
-          enddo
+          phase_factor=exp(im*ran_num)
+          write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(phase_factor),',',aimag(phase_factor),')'
+          c_matrix_cmplx(:,istate,1)=phase_factor*c_matrix(:,istate,1)
+          if( nspin==2 ) then
+            phase_factor=conjg(phase_factor)
+            write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(phase_factor),',',aimag(phase_factor),')'
+            c_matrix_cmplx(:,istate,2)=phase_factor*c_matrix(:,istate,2) ! Time-rev. sym: spin-down = spin-up*
+          endif
         enddo
         write(stdout,*) ' '
         call scf_loop_cmplx(is_restart,                               &
