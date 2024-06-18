@@ -214,7 +214,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
     do istate=1,nstate_noft
       call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
       if(noft_nophases=='yes') ran_num=0.0e0
-      write(stdout,'(a,I10,a,f7.5,a,f7.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
+      write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
       NO_COEF_cmplx(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
     enddo
     write(stdout,*) ' '
@@ -251,7 +251,7 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
       do istate=1,nstate_noft
         call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
         if(noft_nophases=='yes') ran_num=0.0e0
-        write(stdout,'(a,I10,a,f7.5,a,f7.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
+        write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
         NO_COEF_cmplx(:,istate)=exp(im*ran_num)*NO_COEF_cmplx(:,istate)
       enddo
       write(stdout,*) ' '

@@ -1,0 +1,18 @@
+&molgw
+ scf='hf'
+ nscf=1000
+ complex_scf='yes'
+ tolscf=-1.0e0
+
+ basis='evangelista'
+ auxil_basis='PAUTO'
+ mixing_scheme='simple'
+ gaussian_type='cart'
+ length_unit='bohr'
+
+ natom=3
+
+/
+Be 0.000000 0.000000 0.000000
+H 2.750000 1.275000 0.000000
+H 2.750000 -1.275000 0.000000

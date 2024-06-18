@@ -397,6 +397,277 @@ subroutine scf_loop(is_restart,&
 
 end subroutine scf_loop
 
+!=========================================================================
+subroutine scf_loop_cmplx(is_restart,&
+                    basis,&
+                    x_matrix,s_matrix,&
+                    hamiltonian_kinetic,hamiltonian_nucleus,&
+                    occupation, &
+                    energy, &
+                    c_matrix,c_matrix_cmplx,en_gks,scf_has_converged)
+  implicit none
+
+  !=====
+  logical,intent(in)                 :: is_restart
+  type(basis_set),intent(inout)      :: basis
+  real(dp),intent(in)                :: x_matrix(:,:)
+  real(dp),intent(in)                :: s_matrix(:,:)
+  real(dp),intent(in)                :: hamiltonian_kinetic(:,:)
+  real(dp),intent(in)                :: hamiltonian_nucleus(:,:)
+  real(dp),intent(inout)             :: occupation(:,:)
+  real(dp),intent(out)               :: energy(:,:)
+  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
+  complex(dp),allocatable,intent(inout) :: c_matrix_cmplx(:,:,:)
+  type(energy_contributions),intent(inout) :: en_gks
+  logical,intent(out)                :: scf_has_converged
+  !=====
+  integer                 :: nstate
+  logical                 :: stopfile_found
+  integer                 :: ispin,iscf,jbf,istate
+  real(dp)                :: rms
+  real(dp),allocatable    :: s_eigval(:)
+  real(dp),allocatable    :: inv_x_matrix(:,:),matrix_tmp(:,:)
+  complex(dp),allocatable :: hsmall_cmplx(:,:), csmall_cmplx(:,:)
+  complex(dp),allocatable :: hamiltonian_cmplx(:,:,:)
+  complex(dp),allocatable :: p_matrix_cmplx(:,:,:),p_matrix_cmplx_old(:,:,:)
+  complex(dp),allocatable :: ham_hist(:,:,:,:)
+  !=====
+
+
+  call start_clock(timing_scf)
+
+  rms = 1000.0
+  nstate = SIZE(x_matrix,DIM=2)
+  
+  !
+  ! Allocate the main arrays
+  call clean_allocate('Total Hamiltonian H',hamiltonian_cmplx,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('H in orthogonalized basis',hsmall_cmplx,nstate,nstate)
+  call clean_allocate('H eigenvectors',csmall_cmplx,nstate,nstate)
+  call clean_allocate('Density matrix P',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Density matrix P(old)',p_matrix_cmplx_old,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Hamiltonian history',ham_hist,basis%nbf,basis%nbf,nspin,2)
+  ham_hist=COMPLEX_ZERO 
+
+  !
+  ! Setup the grids for the quadrature of DFT potential/energy
+  if( calc_type%is_dft ) then
+    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+  endif
+
+  !
+  ! Setup the density matrix: p_matrix
+  call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+
+  !
+  ! Start the big scf loop
+  !
+  do iscf=1,nscf
+    write(stdout,'(/,1x,a)') '-------------------------------------------'
+    write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
+
+
+    en_gks%kinetic = REAL( SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+    en_gks%nucleus = REAL( SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+    hamiltonian_cmplx=COMPLEX_ZERO
+
+    !--Hamiltonian - Hartree Exchange Correlation---
+    call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
+                                            occupation,               &
+                                            c_matrix_cmplx,           &
+                                            p_matrix_cmplx,           &
+                                            hamiltonian_cmplx,en_gks)
+
+    !
+    ! Setup kinetic and nucleus contributions (that are independent of the
+    ! density matrix and therefore of spin channel)
+    !
+    do ispin=1,nspin
+      hamiltonian_cmplx(:,:,ispin) = hamiltonian_cmplx(:,:,ispin)     &
+                      + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+    enddo
+
+    !! Sum up to get the total energy
+    en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
+
+    ! Make sure all the MPI tasks have the exact same Hamiltonian
+    ! It helps stabilizing the SCF cycles in parallel
+    call world%sum(hamiltonian_cmplx)
+    hamiltonian_cmplx(:,:,:) = hamiltonian_cmplx(:,:,:) / REAL(world%nproc,dp)
+
+    !
+    ! Simple mixing on the hamiltonian
+    ! the newest is 1
+    ! the oldest is 2
+    if( iscf > 1) then
+      ham_hist(:,:,:,2)=ham_hist(:,:,:,1)
+    endif
+    ham_hist(:,:,:,1)=hamiltonian_cmplx(:,:,:)
+    if( iscf > 1) then
+      write(stdout,'(/,1x,a,f8.4)') 'Simple mixing with parameter:',alpha_mixing
+      hamiltonian_cmplx(:,:,:) = alpha_mixing * ham_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * ham_hist(:,:,:,2)
+    endif
+
+    !
+    ! H \varphi = S \varphi E
+    ! Diagonalize the Hamiltonian S^-1/2 H S^-1/2
+    do ispin=1,nspin
+
+      !
+      ! H' = X**T * H * X
+      ! TODO: slow coding. Use BLAS-level 3 in the future
+      hsmall_cmplx(:,:) = MATMUL(TRANSPOSE(x_matrix), MATMUL(hamiltonian_cmplx(:,:,ispin), x_matrix))
+
+      !
+      ! H' * C' = C' * E
+      call diagonalize(' ',hsmall_cmplx,energy(:,ispin),csmall_cmplx)
+
+      !
+      ! C = X * C'
+      c_matrix_cmplx(:,:,ispin) = MATMUL(x_matrix, csmall_cmplx)
+    enddo
+
+    call dump_out_energy('=== Energies ===',occupation,energy)
+
+    call output_homolumo('gKS',occupation,energy,1,nstate)
+
+
+    !
+    ! Output the total energy and its components
+    write(stdout,*)
+    write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en_gks%nuc_nuc
+    write(stdout,'(a25,1x,f19.10)') 'Kinetic Energy  (Ha):',en_gks%kinetic
+    write(stdout,'(a25,1x,f19.10)') 'Nucleus Energy  (Ha):',en_gks%nucleus
+    write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hartree
+    if(calc_type%need_exchange) then
+      write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en_gks%exx_hyb
+    endif
+    if( calc_type%is_dft ) then
+      write(stdout,'(a25,1x,f19.10)') 'XC Energy       (Ha):',en_gks%xc
+    endif
+    write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en_gks%total
+
+
+    !
+    ! Setup the new density matrix: p_matrix
+    ! Save the old one for the convergence criterium
+    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+
+ ! SCF convergence check
+    if( iscf > 1) then
+      rms = NORM2( real(p_matrix_cmplx(:,:,:)) - real(p_matrix_cmplx_old(:,:,:)) ) * SQRT( REAL(nspin,dp) ) &
+          + NORM2( aimag(p_matrix_cmplx(:,:,:)) - aimag(p_matrix_cmplx_old(:,:,:)) ) * SQRT( REAL(nspin,dp) )
+      p_matrix_cmplx_old(:,:,:)=p_matrix_cmplx(:,:,:)
+      write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms
+    else
+      p_matrix_cmplx_old(:,:,:)=p_matrix_cmplx(:,:,:)
+    endif
+
+    if( rms < tolscf ) then
+      scf_has_converged = .TRUE.
+      write(stdout,*) ' ===> convergence has been reached'
+      write(stdout,*)
+    else
+      scf_has_converged = .FALSE.
+      write(stdout,*) ' ===> convergence not reached yet'
+      write(stdout,*)
+
+      if( iscf == nscf ) then
+        if( rms > 1.0e-2_dp ) then
+          call issue_warning('SCF convergence is very poor')
+        else if( rms > 1.0e-4_dp ) then
+          call issue_warning('SCF convergence is poor')
+        endif
+      endif
+
+    endif
+
+    inquire(file='STOP',exist=stopfile_found)
+
+    ! This typically stops too early. We have to use tolscf<0 !
+    if( scf_has_converged .OR. stopfile_found ) exit
+
+    !
+    ! end of the big SCF loop
+  enddo
+
+
+  write(stdout,'(/,1x,a)') '=================================================='
+  write(stdout,'(1x,a)') 'The SCF loop ends here'
+  write(stdout,'(1x,a)') '=================================================='
+
+
+  !
+  ! Store the natural orbital basis representation of the density matrix in c_matrix
+  ! and the occupation numbers in occupation(:,1) \in [0:2]
+  if(nspin==2) then
+    p_matrix_cmplx(:,:,1)=p_matrix_cmplx(:,:,1)+p_matrix_cmplx(:,:,2)
+    p_matrix_cmplx(:,:,2)=COMPLEX_ZERO
+  endif
+  p_matrix_cmplx(:,:,1)=real(p_matrix_cmplx(:,:,1))
+  allocate(s_eigval(basis%nbf),matrix_tmp(basis%nbf,basis%nbf))
+  matrix_tmp(:,:) = s_matrix(:,:)
+  ! Diagonalization with or without SCALAPACK
+  !! S = U*s*U^H
+  call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
+  nstate = COUNT( s_eigval(:) > 1e-05_dp )
+  call clean_allocate('Overlap INV_X * INV_X**H = S',inv_x_matrix,basis%nbf,nstate)
+  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
+  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
+  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',1e-05_dp
+  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',basis%nbf
+  !! INV_X = U*s^(1/2)
+  istate = 0
+  do jbf=1,basis%nbf
+    if( s_eigval(jbf) > 1e-05_dp ) then
+      istate = istate + 1
+      inv_x_matrix(:,istate) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
+    endif
+  enddo
+  deallocate(matrix_tmp,s_eigval)
+  !  diag[ S^1/2 P S^1/2 ] -> V
+  hsmall_cmplx(:,:) = MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_cmplx(:,:,1), inv_x_matrix))
+  call diagonalize(' ',hsmall_cmplx,occupation(:,1),csmall_cmplx)
+  !  C = S^-1/2 V
+  c_matrix_cmplx(:,:,1) = MATMUL(x_matrix, csmall_cmplx)
+  if(nspin==2) occupation(:,2)=0.0e0_dp
+
+
+  !
+  ! Cleanly deallocate the integral grid information
+  !
+  if( calc_type%is_dft ) call destroy_dft_grid()
+
+
+  !
+  ! Cleanly deallocate the arrays
+  !
+  call clean_deallocate('Density matrix P',p_matrix_cmplx)
+  call clean_deallocate('Density matrix P(old)',p_matrix_cmplx_old)
+  call clean_deallocate('Total Hamiltonian H',hamiltonian_cmplx)
+  call clean_deallocate('H in orthogonalized basis',hsmall_cmplx)
+  call clean_deallocate('H eigenvectors',csmall_cmplx)
+  call clean_deallocate('Hamiltonian history',ham_hist)
+  call clean_deallocate('Overlap INV_X * INV_X**H = S',inv_x_matrix)
+
+  write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
+
+  if( print_yaml_ .AND. is_iomaster ) then
+    if( scf_has_converged ) then
+      write(unit_yaml,'(/,a)') 'scf is converged: True'
+    else
+      write(unit_yaml,'(/,a)') 'scf is converged: False'
+    endif
+    call print_energy_yaml('scf energy',en_gks)
+    call dump_out_energy_yaml('gks energies',energy)
+  endif
+
+  call stop_clock(timing_scf)
+
+end subroutine scf_loop_cmplx
+
 
 !=========================================================================
 subroutine get_fock_operator(basis,p_matrix,c_matrix,occupation,en, &
