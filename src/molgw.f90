@@ -44,6 +44,7 @@ program molgw
   use m_dft_grid
   use m_spectral_function
   use m_hamiltonian_onebody
+  use m_hamiltonian_twobodies
   use m_selfenergy_tools
   use m_selfenergy_evaluation
   use m_scf_loop
@@ -77,8 +78,6 @@ program molgw
   logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp,eext,ran_num
   complex(dp)             :: phase_factor
-  real(dp),allocatable    :: one_mo(:)
-  real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
   real(dp),allocatable    :: hamiltonian_nucleus(:,:)
   real(dp),allocatable    :: hamiltonian_fock(:,:,:)
@@ -212,7 +211,7 @@ program molgw
 
 
     allocate(occupation(nstate,nspin))
-    allocate(    energy(nstate,nspin))
+    allocate(energy(nstate,nspin))
     !
     ! Build the first occupation array
     ! as the energy are not known yet, set temperature to zero
@@ -346,96 +345,7 @@ program molgw
 
 
     if( .NOT. is_restart) then
-
-
-      !
-      ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-      !                         or by reading a Gaussian fchk
-      !
-      select case(TRIM(init_hamiltonian))
-      case('GUESS','MIX')
-        ! Calculate a very approximate vhxc based on simple gaussians density placed on atoms
-        allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-
-        call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
-
-        hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-
-        write(stdout,'(/,a)') ' Approximate hamiltonian'
-        call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-
-        deallocate(hamiltonian_tmp)
-
-      case('CORE')
-        allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-
-        hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-
-        write(stdout,'(/,a)') ' Approximate hamiltonian'
-        call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-
-        deallocate(hamiltonian_tmp)
-
-      case('GAUSSIAN')
-        write(file_name,'(2a)') trim(output_name),'fchk'
-        if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
-          call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
-        else
-          write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions'
-          write(*,'(a)')   "          or pure/spherical basis functions are employed (set gaussian_type='cart')."
-          write(*,'(a,/)') '          Using a CORE guess instead of a GAUSSIAN guess.'
-          allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-          hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-          write(stdout,'(/,a)') ' Approximate hamiltonian'
-          call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-          deallocate(hamiltonian_tmp)
-          c_matrix(:,:,nspin) = c_matrix(:,:,1)
-        endif
-
-      case('NOFT') ! Equivalent to CORE at this level to avoid case default and 'die'
-        allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-
-        hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-
-        write(stdout,'(/,a)') ' Approximate hamiltonian'
-        call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-
-        deallocate(hamiltonian_tmp)
-
-      case default
-        call die('molgw: init_hamiltonian option is not valid')
-      end select
-
-      ! The hamiltonian is still spin-independent:
-      if(TRIM(init_hamiltonian)/='GAUSSIAN') c_matrix(:,:,nspin) = c_matrix(:,:,1)
-
-      ! Mixing the HOMO-LUMO for GUESS='MIX' and spin-compensated systems
-      if( (TRIM(init_hamiltonian)=='MIX' .and. abs(magnetization)<1e-8) .and. nspin==2 ) then
-        write(stdout,'(a)') ' Guess including mixing the HOMO-LUMO'
-        allocate(one_mo(basis%nbf))
-        one_mo=zero
-        ilumo=0
-        do istate=1,nstate
-          if(occupation(istate,2)<1e-8 .and. ilumo==0) then
-            ilumo=istate
-          endif
-        enddo
-        write(stdout,'(a,i5)') ' LUMO state ',ilumo
-        ! Spin channel 1
-        ! New HOMO = 1/sqrt(2)  ( HOMO - LUMO )
-        ! New LUMO = 1/sqrt(2)  ( HOMO + LUMO )
-        one_mo(:)=(c_matrix(:,ilumo-1,1)+c_matrix(:,ilumo,1))/sqrt(2.0_dp)
-        c_matrix(:,ilumo-1,1)=(c_matrix(:,ilumo-1,1)-c_matrix(:,ilumo,1))/sqrt(2.0_dp)
-        c_matrix(:,ilumo,1)=one_mo(:)
-        ! Spin channel 2
-        ! New HOMO = 1/sqrt(2)  ( HOMO + LUMO )
-        ! New LUMO = 1/sqrt(2)  ( HOMO - LUMO )
-        one_mo(:)=(c_matrix(:,ilumo-1,2)+c_matrix(:,ilumo,2))/sqrt(2.0_dp)
-        c_matrix(:,ilumo,2)=(c_matrix(:,ilumo-1,2)-c_matrix(:,ilumo,2))/sqrt(2.0_dp)
-        c_matrix(:,ilumo-1,2)=one_mo(:)
-        deallocate(one_mo)
-      endif
-
+      call init_c_matrix(basis,occupation,x_matrix,hamiltonian_kinetic,hamiltonian_nucleus,c_matrix)
     endif
 
     call stop_clock(timing_prescf)
@@ -466,13 +376,13 @@ program molgw
         write(stdout,'(a,/)') ' ------------------------------ '
         do istate=1,nstate
           call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
-          phase_factor=exp(im*ran_num)
+          phase_factor = exp(im*ran_num)
           if( nspin==2 ) up_down='  up  '
           write(stdout,'(a,I10,a,a,f8.5,a,f8.5,a)') ' MO',istate,up_down,': (',real(phase_factor),',',aimag(phase_factor),')'
           c_matrix_cmplx(:,istate,1)=phase_factor*c_matrix(:,istate,1)
           if( nspin==2 ) then
             up_down=' down '
-            phase_factor=conjg(phase_factor)
+            phase_factor = conjg(phase_factor)
             write(stdout,'(a,I10,a,a,f8.5,a,f8.5,a)') ' MO',istate,up_down,': (',real(phase_factor),',',aimag(phase_factor),')'
             c_matrix_cmplx(:,istate,2)=phase_factor*c_matrix(:,istate,2) ! Time-rev. sym: spin-down = spin-up*
           endif

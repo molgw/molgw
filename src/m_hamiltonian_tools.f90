@@ -19,12 +19,15 @@ module m_hamiltonian_tools
   use m_linear_algebra
   use m_inputparam
 
+
   interface setup_density_matrix
     module procedure setup_density_matrix_real
     module procedure setup_density_matrix_cmplx
   end interface setup_density_matrix
 
+
 contains
+
 
 
 !=========================================================================

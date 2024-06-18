@@ -22,6 +22,7 @@ module m_hamiltonian_twobodies
   use m_dft_grid
   use m_libxc_tools
   use m_io
+  use m_hamiltonian_tools,only: diagonalize_hamiltonian_scalapack
 
 
 contains
@@ -1560,8 +1561,8 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
   use m_eri_calculate
   implicit none
 
-  type(basis_set),intent(inout) :: basis
-  real(dp),intent(out)          :: vhxc_ao(basis%nbf,basis%nbf)
+  type(basis_set),intent(in) :: basis
+  real(dp),intent(out)       :: vhxc_ao(basis%nbf,basis%nbf)
   !=====
   real(dp),allocatable :: weight_batch(:)
   real(dp),allocatable :: basis_function_r_batch(:,:)
@@ -1688,6 +1689,106 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
   call stop_clock(timing_approx_ham)
 
 end subroutine dft_approximate_vhxc
+
+
+!=========================================================================
+! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
+!                         or by reading a Gaussian fchk
+!                         or ...
+subroutine init_c_matrix(basis,occupation,x_matrix,hkin,hnuc,c_matrix)
+  implicit none
+
+  type(basis_set),intent(in) :: basis
+  real(dp),intent(in)        :: occupation(:,:)
+  real(dp),intent(in)        :: x_matrix(:,:)
+  real(dp),intent(in)        :: hkin(:,:), hnuc(:,:)
+  real(dp),intent(out)       :: c_matrix(:,:,:)
+  !=====
+  integer :: nstate, istate, ilumo
+  real(dp),allocatable :: one_mo(:)
+  real(dp),allocatable :: htmp(:,:,:)
+  real(dp) :: energy(basis%nbf,nspin)
+  character(len=200)      :: file_name
+  !=====
+
+  nstate = SIZE(x_matrix,DIM=2)
+  !
+  !
+  select case(TRIM(init_hamiltonian))
+  case('GUESS','MIX')
+    ! Calculate a very approximate vhxc based on simple gaussians density placed on atoms
+    allocate(htmp(basis%nbf,basis%nbf,1))
+
+    call dft_approximate_vhxc(basis,htmp(:,:,1))
+
+    htmp(:,:,1) = htmp(:,:,1) + hkin(:,:) + hnuc(:,:)
+
+    write(stdout,'(/,a)') ' Approximate hamiltonian'
+    call diagonalize_hamiltonian_scalapack(htmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+
+    deallocate(htmp)
+
+  case('CORE', 'NOFT')
+    allocate(htmp(basis%nbf,basis%nbf,1))
+
+    htmp(:,:,1) = hkin(:,:) + hnuc(:,:)
+
+    write(stdout,'(/,a)') ' Approximate hamiltonian'
+    call diagonalize_hamiltonian_scalapack(htmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+
+    deallocate(htmp)
+
+  case('GAUSSIAN')
+    write(file_name,'(2a)') TRIM(output_name),'fchk'
+    if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
+      call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
+    else
+      write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions'
+      write(*,'(a)')   "          or pure/spherical basis functions are employed (set gaussian_type='cart')."
+      write(*,'(a,/)') '          Using a CORE guess instead of a GAUSSIAN guess.'
+      allocate(htmp(basis%nbf,basis%nbf,1))
+      htmp(:,:,1) = hkin(:,:) + hnuc(:,:)
+      write(stdout,'(/,a)') ' Approximate hamiltonian'
+      call diagonalize_hamiltonian_scalapack(htmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+      deallocate(htmp)
+      c_matrix(:,:,nspin) = c_matrix(:,:,1)
+    endif
+
+  case default
+    call die('init_c_matrix: init_hamiltonian option is not valid')
+  end select
+
+  ! The hamiltonian is still spin-independent:
+  if(TRIM(init_hamiltonian)/='GAUSSIAN') c_matrix(:,:,nspin) = c_matrix(:,:,1)
+
+  ! Mixing the HOMO-LUMO for GUESS='MIX' and spin-compensated systems
+  if( (TRIM(init_hamiltonian)=='MIX' .and. abs(magnetization) < 1.0e-8_dp) .and. nspin==2 ) then
+    write(stdout,'(a)') ' Guess including mixing the HOMO-LUMO'
+    allocate(one_mo(basis%nbf))
+    one_mo = zero
+    ilumo = 0
+    do istate=1,nstate
+      if(occupation(istate,2)<1e-8 .and. ilumo==0) then
+        ilumo=istate
+      endif
+    enddo
+    write(stdout,'(a,i5)') ' LUMO state ',ilumo
+    ! Spin channel 1
+    ! New HOMO = 1/sqrt(2)  ( HOMO - LUMO )
+    ! New LUMO = 1/sqrt(2)  ( HOMO + LUMO )
+    one_mo(:)=(c_matrix(:,ilumo-1,1)+c_matrix(:,ilumo,1))/sqrt(2.0_dp)
+    c_matrix(:,ilumo-1,1)=(c_matrix(:,ilumo-1,1)-c_matrix(:,ilumo,1))/sqrt(2.0_dp)
+    c_matrix(:,ilumo,1)=one_mo(:)
+    ! Spin channel 2
+    ! New HOMO = 1/sqrt(2)  ( HOMO + LUMO )
+    ! New LUMO = 1/sqrt(2)  ( HOMO - LUMO )
+    one_mo(:)=(c_matrix(:,ilumo-1,2)+c_matrix(:,ilumo,2))/sqrt(2.0_dp)
+    c_matrix(:,ilumo,2)=(c_matrix(:,ilumo-1,2)-c_matrix(:,ilumo,2))/sqrt(2.0_dp)
+    c_matrix(:,ilumo-1,2)=one_mo(:)
+    deallocate(one_mo)
+  endif
+
+end subroutine init_c_matrix
 
 
 end module m_hamiltonian_twobodies
