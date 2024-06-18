@@ -37,7 +37,6 @@ subroutine setup_hartree(p_matrix,hartree_ao,ehartree)
   !=====
   integer              :: nbf
   integer              :: ibf,jbf,kbf,lbf
-  character(len=100)   :: title
   integer(kind=int8)   :: iint
   integer              :: index_ij,index_kl,stride
   real(dp)             :: fact_ij,fact_kl
@@ -284,10 +283,9 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
   real(dp),intent(out) :: ehartree
   !=====
   integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf
+  integer              :: ibf,kbf,lbf
   integer              :: ipair
   real(dp),allocatable :: x_vector(:)
-  real(dp)             :: rtmp,factor
   integer              :: timing_xxdft_hartree
   real(dp),allocatable :: pmat(:)
   !=====
@@ -388,11 +386,9 @@ subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
   class(*),intent(in)              :: p_matrix(:,:,:)
   real(dp),allocatable,intent(out) :: rho_coeff(:,:)
   !=====
-  integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf
+  integer              :: kbf,lbf
   integer              :: ipair,ispin
   real(dp),allocatable :: x_vector(:)
-  real(dp)             :: factor
   integer              :: timing_xxdft_rhoauxil
   real(dp),allocatable :: pmat(:)
   !=====
@@ -461,10 +457,8 @@ subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
   real(dp),intent(out) :: ehartree
   !=====
   integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf
+  integer              :: ibf,kbf,lbf
   integer              :: ipair,iauxil_local,iauxil_global
-  real(dp),allocatable :: x_vector(:)
-  real(dp)             :: rtmp,factor
   integer              :: timing_xxdft_hartree
   real(dp),allocatable :: vh(:)
   real(dp),allocatable :: rho_coeff_local_nospin(:)
@@ -544,8 +538,7 @@ subroutine setup_exchange(p_matrix,exchange_ao,eexchange)
   real(dp),intent(out) :: exchange_ao(:,:,:)
   real(dp),intent(out) :: eexchange
   !=====
-  integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf,ispin
+  integer              :: ibf,jbf,kbf,lbf
   integer(kind=int8)   :: iint
   integer              :: index_ik,index_lj,stride
   !=====
@@ -633,8 +626,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ao,eexchange)
   real(dp),intent(out) :: exchange_ao(:,:,:)
   real(dp),intent(out) :: eexchange
   !=====
-  integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf,ispin
+  integer              :: ibf,jbf,kbf,lbf
   integer(kind=int8)   :: iint
   integer              :: index_ik,index_lj,stride
   !=====
@@ -725,11 +717,10 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
   real(dp),intent(out) :: eexchange
   !=====
   integer              :: nbf,nstate
-  integer              :: ibf,jbf,ispin,istate
+  integer              :: ibf,jbf,ispin
   integer              :: nocc
   real(dp),allocatable :: tmp(:,:),c_t(:,:)
   integer              :: ipair,iauxil
-  integer              :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_exchange)
@@ -808,11 +799,10 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
   real(dp),intent(out) :: eexchange
   !=====
   integer              :: nbf,nstate
-  integer              :: ibf,jbf,ispin,istate
+  integer              :: ibf,jbf,ispin
   integer              :: nocc
   real(dp),allocatable :: tmp(:,:),c_t(:,:)
   integer              :: ipair,iauxil
-  integer              :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_exchange)
@@ -893,10 +883,9 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
   !=====
   integer                 :: nbf,nstate
   integer                 :: nocc
-  integer                 :: ibf,jbf,ispin,istate
+  integer                 :: ibf,jbf,ispin
   complex(dp),allocatable :: tmp_cmplx(:,:),c_t_cmplx(:,:)
   integer                 :: ipair,iauxil
-  integer                 :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_tddft_exchange)
@@ -976,10 +965,9 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation,c_matrix,p_matrix,exchan
   !=====
   integer                 :: nbf,nstate
   integer                 :: nocc
-  integer                 :: ibf,jbf,ispin,istate
+  integer                 :: ibf,jbf,ispin
   complex(dp),allocatable :: tmp_cmplx(:,:),c_t_cmplx(:,:)
   integer                 :: ipair,iauxil
-  integer                 :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_tddft_exchange)
@@ -1062,7 +1050,6 @@ subroutine setup_exchange_genuine_ri(occupation,c_matrix,p_matrix,exchange_ao,ee
   integer              :: nocc
   real(dp),allocatable :: tmp(:,:,:),tmp2(:,:,:)
   integer              :: ipair,iauxil_local,iauxil_global
-  integer              :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_exchange)
@@ -1144,7 +1131,6 @@ subroutine setup_exchange_genuine_ri_cmplx(occupation,c_matrix,p_matrix,exchange
   integer              :: nocc
   complex(dp),allocatable :: tmp(:,:,:),tmp2(:,:,:)
   integer              :: ipair,iauxil_local,iauxil_global
-  integer              :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_exchange)
@@ -1789,6 +1775,42 @@ subroutine init_c_matrix(basis,occupation,x_matrix,hkin,hnuc,c_matrix)
   endif
 
 end subroutine init_c_matrix
+
+
+!=========================================================================
+subroutine init_c_matrix_cmplx(c_matrix,c_matrix_cmplx)
+  implicit none
+
+  real(dp),intent(in)     :: c_matrix(:,:,:)
+  complex(dp),intent(out) :: c_matrix_cmplx(:,:,:)
+  !=====
+  character(len=6) :: up_down
+  integer :: istate, nstate
+  complex(dp) :: phase_factor
+  real(dp)    :: ran_num
+  !=====
+
+  nstate = SIZE(c_matrix,DIM=2)
+
+  up_down='      '
+  write(stdout,'(/,a)') ' Adding Random Imaginary Phases '
+  write(stdout,'(a,/)') ' ------------------------------ '
+  do istate=1,nstate
+    call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
+    phase_factor = exp(im*ran_num)
+    if( nspin==2 ) up_down='  up  '
+    write(stdout,'(a,I10,a,a,f8.5,a,f8.5,a)') ' MO',istate,up_down,': (',real(phase_factor),',',aimag(phase_factor),')'
+    c_matrix_cmplx(:,istate,1)=phase_factor*c_matrix(:,istate,1)
+    if( nspin==2 ) then
+      up_down=' down '
+      phase_factor = conjg(phase_factor)
+      write(stdout,'(a,I10,a,a,f8.5,a,f8.5,a)') ' MO',istate,up_down,': (',real(phase_factor),',',aimag(phase_factor),')'
+      c_matrix_cmplx(:,istate,2)=phase_factor*c_matrix(:,istate,2) ! Time-rev. sym: spin-down = spin-up*
+    endif
+  enddo
+  write(stdout,*)
+
+end subroutine init_c_matrix_cmplx
 
 
 end module m_hamiltonian_twobodies
