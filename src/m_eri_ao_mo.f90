@@ -1045,7 +1045,7 @@ subroutine read_coulombvertex()
       call MPI_FILE_READ_AT(unitcv, disp, coulomb_vertex_ij, &
                             ng, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
 
-      eri_3center_tmp(:,ijstate_local)         = coulomb_vertex_ij(:)%re
+      eri_3center_tmp(1:ng,ijstate_local)      = coulomb_vertex_ij(:)%re
       eri_3center_tmp(ng+1:2*ng,ijstate_local) = coulomb_vertex_ij(:)%im
 
     enddo
