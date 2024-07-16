@@ -3980,14 +3980,14 @@ end subroutine yaml_search_keyword_dp
 
 
 !=========================================================================
-subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix,hamiltonian_fock)
+subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix,s_matrix,hamiltonian_fock)
   implicit none
 
   type(basis_set),intent(inout) :: basis
   integer,intent(inout)         :: nstate
   real(dp),allocatable,intent(inout) :: energy(:,:)
   real(dp),allocatable,intent(inout) :: occupation(:,:)
-  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
+  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:),s_matrix(:,:)
   real(dp),allocatable,intent(inout) :: hamiltonian_fock(:,:,:)
   !=====
   integer,allocatable :: yaml_integers(:)
@@ -4015,11 +4015,15 @@ subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix,hamiltonia
   call clean_deallocate('Fock operator F',hamiltonian_fock)
 
   call clean_deallocate('Wavefunctions C',c_matrix) 
+  call clean_deallocate('Overlap S',s_matrix)
+  call clean_allocate('Overlap S',s_matrix,basis%nbf,basis%nbf)
   call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)
   call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
   c_matrix(:,:,:) = 0.0_dp
+  s_matrix(:,:) = 0.0_dp
   do istate=1,nstate
     c_matrix(istate,istate,1) = 1.0_dp
+    s_matrix(istate,istate)   = 1.0_dp
   enddo
 
   allocate(energy(nstate,nspin))
