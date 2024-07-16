@@ -46,14 +46,14 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
   integer                    :: nstate,nocc
   logical                    :: density_matrix_found
   integer                    :: file_density_matrix,reading_status
-  integer                    :: ispin,istate
+  integer                    :: ispin
   type(spectral_function)    :: wpol
   type(energy_contributions) :: en_dm_corr
-  real(dp),allocatable       :: h_ii(:,:),exchange_ii(:,:)
+  real(dp),allocatable       :: h_ii(:,:)
   real(dp),allocatable       :: p_matrix_corr(:,:,:)
   real(dp),allocatable       :: hamiltonian_hartree_corr(:,:)
   real(dp),allocatable       :: hamiltonian_exx_corr(:,:,:)
-  real(dp),allocatable       :: c_matrix_tmp(:,:,:),p_matrix_mo(:,:,:)
+  real(dp),allocatable       :: c_matrix_tmp(:,:,:),p_matrix_mo(:,:,:),c_matrix_no_mo(:,:,:)
   real(dp),allocatable       :: occupation_tmp(:,:),natural_occupation(:,:)
   real(dp),allocatable       :: energy_qp(:,:)
   !=====
@@ -79,7 +79,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
   ! Calculate a MBPT density matrix if requested
   if( TRIM(pt_density_matrix) /= 'NO' ) then
     call selfenergy_set_state_range(nstate,occupation)
-    call fock_density_matrix(basis,occupation,energy,c_matrix,hamiltonian_fock,p_matrix_corr)
+    call fock_density_matrix(occupation,energy,c_matrix,hamiltonian_fock,p_matrix_corr)
 
     select case(TRIM(pt_density_matrix))
     case('ONE-RING')
@@ -168,6 +168,8 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
   p_matrix_mo(:,:,:) = -p_matrix_mo(:,:,:)
   do ispin=1,nspin
     call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,p_matrix_mo(:,:,ispin),natural_occupation(:,ispin))
+    ! Rename p_matrix_mo -> c_matrix_no_mo ( coefficients of the natural orbital in the MO basis)
+    call move_alloc(p_matrix_mo,c_matrix_no_mo)
     ! restore the correct positive sign here
     natural_occupation(:,ispin) = -natural_occupation(:,ispin)
     write(stdout,'(/,1x,a,i3)')  'Natural occupations for spin: ',ispin
@@ -178,7 +180,7 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
     !
     ! Get the natural orbital in the AO basis
     ! C_NO^AO = C * C_NO^MO
-    c_matrix_tmp(:,:,ispin) = MATMUL( c_matrix(:,:,ispin) , p_matrix_mo(:,:,ispin) )
+    c_matrix_tmp(:,:,ispin) = MATMUL( c_matrix(:,:,ispin) , c_matrix_no_mo(:,:,ispin) )
 
   enddo
   if( ANY(natural_occupation(:,:) < -0.1_dp) ) then
@@ -196,12 +198,94 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
     call print_wfn_file('MBPT',basis,natural_occupation,c_matrix_tmp,en_dm_corr%total)
   endif
 
-  call clean_deallocate('Density matrix P_MO',p_matrix_mo)
+
+
+  if( .TRUE. ) then
+  block
+    real(dp) :: p_hf(basis%nbf,basis%nbf,nspin)
+    real(dp) :: vhartree_hf(basis%nbf,basis%nbf), sigx_hf(basis%nbf,basis%nbf,nspin)
+    integer  :: istate
+    integer, parameter :: nno = 14
+    real(dp),allocatable :: h_hf_mo(:,:,:)
+    real(dp),allocatable :: h_hf_no(:,:,:), c_matrix_no_mo_small(:,:,:)
+    real(dp),allocatable :: c_matrix_hf_no(:,:,:), c_matrix_hf_mo(:,:,:)
+    real(dp),allocatable :: vhartree_mo(:,:,:), sigx_mo(:,:,:)
+    real(dp) :: energy_hf_no(nno,nspin)
+    real(dp) :: ehartree, eexchange
+
+    write(*,*) 'FBFB calculate in the NO sub space'
+    if( nno < nstate ) then
+      write(stdout,*) 'HF eigenvalues at truncation (eV):', energy(nno,1)*Ha_eV, energy(nno+1,1)*Ha_eV
+      if( ABS(energy(nno,1) - energy(nno+1,1)) < 1.0e-3_dp) then
+        call issue_warning('nno truncation choice breaks an energy shell')
+      endif
+    endif
+
+    allocate(h_hf_mo(nstate,nstate,nspin))
+    allocate(h_hf_no(nno,nno,nspin),c_matrix_no_mo_small(nstate,nno,nspin))
+    c_matrix_no_mo_small(:,:,:) = c_matrix_no_mo(:,1:nno,:)
+
+    h_hf_mo(:,:,:) = 0.0_dp
+    do ispin=1,nspin
+      do istate=1,nstate
+        h_hf_mo(istate,istate,ispin) = energy(istate,ispin)
+      enddo
+    enddo
+    call matrix_ao_to_mo(c_matrix_no_mo_small,h_hf_mo,h_hf_no)
+
+    call dump_out_matrix(.TRUE., "*** HF MO ***", h_hf_mo )
+    call dump_out_matrix(.TRUE., "*** HF NO ***", h_hf_no )
+    deallocate(h_hf_mo)
+
+    do ispin=1,nspin
+      call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,h_hf_no(:,:,ispin),energy_hf_no(:,ispin))
+      write(stdout,*) '************* HF in AO *************'
+      write(stdout,*) energy(:nno,ispin)
+      write(stdout,*) '************* HF in NO *************'
+      write(stdout,*) energy_hf_no(:,ispin)
+    enddo
+    call move_alloc(h_hf_no,c_matrix_hf_no)
+
+    allocate(c_matrix_hf_mo(nstate,nno,nspin))
+    do ispin=1,nspin
+      c_matrix_hf_mo(:,:,ispin) = MATMUL( c_matrix_no_mo_small(:,:,ispin), c_matrix_hf_no(:,:,ispin) )
+    enddo
+
+    write(stdout,*) '***** eri_3center_eigen ALLCOATED*****'
+    write(stdout,*) ALLOCATED(eri_3center_eigen)
+    write(stdout,*) '***** eri_3center_eigen DIM*****'
+    write(stdout,*) SIZE(eri_3center_eigen,DIM=1)
+    write(stdout,*) SIZE(eri_3center_eigen,DIM=2)
+    write(stdout,*) SIZE(eri_3center_eigen,DIM=3)
+    write(stdout,*) SIZE(eri_3center_eigen,DIM=4)
+
+    allocate(vhartree_mo(nstate,nstate,nspin))
+    allocate(sigx_mo(nstate,nstate,nspin))
+    call setup_hartree_mo(occupation, vhartree_mo, ehartree)
+    call setup_exchange_mo(occupation, sigx_mo, eexchange)
+    write(stdout,*) 'Eh Ex (Ha):',ehartree, eexchange
+    deallocate(vhartree_mo)
+    deallocate(sigx_mo)
+
+
+
+    deallocate(c_matrix_no_mo_small)
+    deallocate(c_matrix_hf_no)
+    deallocate(c_matrix_hf_mo)
+    stop 'ENOUGH'
+  end block
+
+  endif
+
+  call clean_deallocate('Density matrix P_MO',c_matrix_no_mo)
   call clean_deallocate('Matrix S * C',c_matrix_tmp)
   deallocate(natural_occupation)
 
 
   if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
+
+
+
 
     !
     ! Nucleus-nucleus repulsion contribution to the energy
@@ -279,19 +363,18 @@ end subroutine get_dm_mbpt
 
 
 !=========================================================================
-subroutine fock_density_matrix(basis,occupation,energy,c_matrix,hfock,p_matrix)
+subroutine fock_density_matrix(occupation,energy,c_matrix,hfock,p_matrix)
   implicit none
 
-  type(basis_set),intent(in)         :: basis
   real(dp),intent(in)                :: occupation(:,:),energy(:,:)
   real(dp),intent(in)                :: c_matrix(:,:,:)
   real(dp),intent(in)                :: hfock(:,:,:)
   real(dp),intent(out)               :: p_matrix(:,:,:)
   !=====
   integer  :: nstate
-  integer  :: pstate,qstate
-  integer  :: istate,jstate
-  integer  :: astate,bstate
+  integer  :: pstate
+  integer  :: istate
+  integer  :: astate
   integer  :: pqspin
   real(dp),allocatable :: p_matrix_mo(:,:,:)
   real(dp),allocatable :: hfock_mo(:,:,:)
@@ -344,7 +427,7 @@ subroutine fock_density_matrix_second_order(basis,occupation,energy,c_matrix,hfo
   real(dp),intent(inout)             :: p_matrix(:,:,:)
   !=====
   integer  :: nstate
-  integer  :: pstate,qstate
+  integer  :: pstate
   integer  :: istate,jstate
   integer  :: astate,bstate
   integer  :: pqspin

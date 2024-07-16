@@ -20,6 +20,7 @@ module m_eri_ao_mo
   use m_io, only: yaml_search_keyword
 
 
+  logical,protected :: eri_3center_mo_stay_in_memory = .FALSE.
   real(dp),protected,allocatable :: eri_3center_eigen(:,:,:,:)
 
   real(dp),protected,allocatable :: eri_3center_eigen_lr(:,:,:,:)
@@ -123,7 +124,7 @@ subroutine calculate_eri_4center_eigen(c_matrix,istate,ijspin,eri_eigenstate_i)
   integer              :: nbf,nstate
   integer              :: klspin
   integer              :: ibf,jbf,kbf,lbf
-  integer              :: jstate,kstate,lstate
+  integer              :: lstate
   real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
   integer(kind=int8)   :: iint
   integer              :: index_ij,index_kl,stride
@@ -250,7 +251,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
   integer              :: nbf,nstate,nstate_maxmin
   integer              :: ijspin,klspin
   integer              :: ibf,jbf,kbf,lbf
-  integer              :: istate,jstate,kstate,lstate
+  integer              :: istate,jstate
   real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:),eri_tmp1b(:,:)
   integer(kind=int8)   :: iint
   integer              :: index_ij,index_kl,stride
@@ -391,7 +392,6 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
   integer              :: mstate_count_,nstate_count_
   integer              :: kbf,lbf,iauxil
-  integer              :: lstate
   integer              :: klspin
   real(dp),allocatable :: tmp1(:,:),tmp2(:,:),c_t(:,:)
   integer              :: ipair
@@ -556,7 +556,6 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix,mstate_min,mstate_max,nstate_
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
   integer              :: mstate_count_,nstate_count_
   integer              :: kbf,lbf,iauxil,nauxil_local_
-  integer              :: lstate
   integer              :: klspin
   real(dp),allocatable :: tmp1(:,:),tmp2(:,:),c_t(:,:)
   integer              :: ipair
@@ -683,7 +682,6 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
   integer              :: mstate_count_,nstate_count_
   integer              :: kbf,lbf,iauxil
-  integer              :: lstate
   integer              :: klspin
   complex(dp),allocatable :: tmp1_cmplx(:,:),tmp2_cmplx(:,:),c_t_cmplx(:,:)
   integer              :: ipair
@@ -798,6 +796,8 @@ subroutine destroy_eri_3center_eigen(verbose,long_range)
   !=====
   logical :: verbose_
   !=====
+
+  if( eri_3center_mo_stay_in_memory ) return
 
   if(PRESENT(verbose)) then
     verbose_ = verbose
@@ -948,13 +948,13 @@ subroutine read_coulombvertex()
 
   !=====
   integer :: nstate, istate, jstate, ng
-  integer :: unitcv, ierr
+  integer :: unitcv
   complex(dp),allocatable :: coulomb_vertex_ij(:)
   integer, allocatable :: yaml_integers(:)
-  integer :: iauxil_local,iauxil_global, ig
-  integer :: complex_length
   real(dp) :: rtmp
 #if defined(HAVE_MPI)
+  integer :: complex_length
+  integer :: ierr
   integer(kind=MPI_OFFSET_KIND) :: disp, disp_increment
   integer :: desc_tmp(NDEL), desc_mo(NDEL)
   real(dp), allocatable :: eri_3center_tmp(:,:)
@@ -968,6 +968,9 @@ subroutine read_coulombvertex()
   
   call start_clock(timing_read_coulombvertex)
   write(stdout,'(1x,a)') 'Reading CoulombVertex.yaml and CoulombVertex.elements'
+
+  ! Keep 3-center ERI in memory forever
+  eri_3center_mo_stay_in_memory = .TRUE.
 
   !
   ! Ensure CoulombVertex.yaml has been created with half grid

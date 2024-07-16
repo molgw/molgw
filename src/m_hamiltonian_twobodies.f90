@@ -18,6 +18,7 @@ module m_hamiltonian_twobodies
   use m_inputparam
   use m_basis_set
   use m_eri_calculate
+  use m_eri_ao_mo
   use m_density_tools
   use m_dft_grid
   use m_libxc_tools
@@ -36,7 +37,6 @@ subroutine setup_hartree(p_matrix,hartree_ao,ehartree)
   !=====
   integer              :: nbf
   integer              :: ibf,jbf,kbf,lbf
-  character(len=100)   :: title
   integer(kind=int8)   :: iint
   integer              :: index_ij,index_kl,stride
   real(dp)             :: fact_ij,fact_kl
@@ -283,10 +283,9 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
   real(dp),intent(out) :: ehartree
   !=====
   integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf
+  integer              :: ibf,kbf,lbf
   integer              :: ipair
   real(dp),allocatable :: x_vector(:)
-  real(dp)             :: rtmp,factor
   integer              :: timing_xxdft_hartree
   real(dp),allocatable :: pmat(:)
   !=====
@@ -387,11 +386,9 @@ subroutine calculate_density_auxilbasis(p_matrix,rho_coeff)
   class(*),intent(in)              :: p_matrix(:,:,:)
   real(dp),allocatable,intent(out) :: rho_coeff(:,:)
   !=====
-  integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf
+  integer              :: kbf,lbf
   integer              :: ipair,ispin
   real(dp),allocatable :: x_vector(:)
-  real(dp)             :: factor
   integer              :: timing_xxdft_rhoauxil
   real(dp),allocatable :: pmat(:)
   !=====
@@ -460,10 +457,8 @@ subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
   real(dp),intent(out) :: ehartree
   !=====
   integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf
+  integer              :: ibf,kbf,lbf
   integer              :: ipair,iauxil_local,iauxil_global
-  real(dp),allocatable :: x_vector(:)
-  real(dp)             :: rtmp,factor
   integer              :: timing_xxdft_hartree
   real(dp),allocatable :: vh(:)
   real(dp),allocatable :: rho_coeff_local_nospin(:)
@@ -543,8 +538,7 @@ subroutine setup_exchange(p_matrix,exchange_ao,eexchange)
   real(dp),intent(out) :: exchange_ao(:,:,:)
   real(dp),intent(out) :: eexchange
   !=====
-  integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf,ispin
+  integer              :: ibf,jbf,kbf,lbf
   integer(kind=int8)   :: iint
   integer              :: index_ik,index_lj,stride
   !=====
@@ -632,8 +626,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ao,eexchange)
   real(dp),intent(out) :: exchange_ao(:,:,:)
   real(dp),intent(out) :: eexchange
   !=====
-  integer              :: nbf
-  integer              :: ibf,jbf,kbf,lbf,ispin
+  integer              :: ibf,jbf,kbf,lbf
   integer(kind=int8)   :: iint
   integer              :: index_ik,index_lj,stride
   !=====
@@ -724,11 +717,10 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
   real(dp),intent(out) :: eexchange
   !=====
   integer              :: nbf,nstate
-  integer              :: ibf,jbf,ispin,istate
+  integer              :: ibf,jbf,ispin
   integer              :: nocc
   real(dp),allocatable :: tmp(:,:),c_t(:,:)
   integer              :: ipair,iauxil
-  integer              :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_exchange)
@@ -770,7 +762,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
       ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
       ! C = A^T * A + C
-      call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp(1,1),nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
+      call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp(1,1),nocc,1.0d0,exchange_ao(:,:,ispin),nbf)
 
     enddo
   enddo
@@ -807,11 +799,10 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
   real(dp),intent(out) :: eexchange
   !=====
   integer              :: nbf,nstate
-  integer              :: ibf,jbf,ispin,istate
+  integer              :: ibf,jbf,ispin
   integer              :: nocc
   real(dp),allocatable :: tmp(:,:),c_t(:,:)
   integer              :: ipair,iauxil
-  integer              :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_exchange)
@@ -854,7 +845,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
       ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
       ! C = A^T * A + C
-      call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp(1,1),nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
+      call DSYRK('L','T',nbf,nocc,-1.0_dp,tmp(1,1),nocc,1.0d0,exchange_ao(:,:,ispin),nbf)
 
     enddo
   enddo
@@ -892,10 +883,9 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
   !=====
   integer                 :: nbf,nstate
   integer                 :: nocc
-  integer                 :: ibf,jbf,ispin,istate
+  integer                 :: ibf,jbf,ispin
   complex(dp),allocatable :: tmp_cmplx(:,:),c_t_cmplx(:,:)
   integer                 :: ipair,iauxil
-  integer                 :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_tddft_exchange)
@@ -975,10 +965,9 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation,c_matrix,p_matrix,exchan
   !=====
   integer                 :: nbf,nstate
   integer                 :: nocc
-  integer                 :: ibf,jbf,ispin,istate
+  integer                 :: ibf,jbf,ispin
   complex(dp),allocatable :: tmp_cmplx(:,:),c_t_cmplx(:,:)
   integer                 :: ipair,iauxil
-  integer                 :: ibf_auxil_first,nbf_auxil_core
   !=====
 
   call start_clock(timing_tddft_exchange)
@@ -1524,6 +1513,98 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
 
 end subroutine dft_approximate_vhxc
 
+
+!=========================================================================
+subroutine setup_hartree_mo(occupation,vhartree_mo,ehartree)
+  implicit none
+
+  real(dp),intent(in) :: occupation(:,:)
+  real(dp),intent(out) :: vhartree_mo(:,:,:)
+  real(dp),optional,intent(out) :: ehartree
+  !=====
+  integer :: nstate, istate, jstate, nocc, ispin
+  real(dp),allocatable :: x_vector(:)
+  !=====
+
+  write(stdout,*) 'Calculate Hartree in MO basis with MO integrals'
+  nstate = SIZE(occupation,DIM=1)
+  nocc = get_number_occupied_states(occupation)
+  allocate(x_vector(nauxil_local))
+
+  if( .NOT. ALLOCATED(eri_3center_eigen)) call die('setup_hartree_mo: MO integrals are not available')
+  write(stdout,*) SIZE(eri_3center_eigen,DIM=1)
+
+  x_vector(:) = 0.0_dp
+  do ispin=1,nspin
+    do istate=1,nocc
+      x_vector(:) = x_vector(:) + occupation(istate,ispin) * eri_3center_eigen(:,istate,istate,ispin)
+    enddo
+  enddo
+  if( auxil%nproc > 1) call die('not coded yet')
+  x_vector(1) = 0.0_dp ! G=0 is removed
+  call auxil%sum(x_vector)
+  do ispin=1,nspin
+    do jstate=1,nstate
+      do istate=1,nstate
+        vhartree_mo(istate,jstate,ispin) = SUM( eri_3center_eigen(:,istate,jstate,ispin) * x_vector(:) )
+      enddo
+    enddo
+  enddo
+  deallocate(x_vector)
+
+  if( PRESENT(ehartree) ) then
+    ehartree = 0.0_dp
+    do ispin=1,nspin
+      do istate=1,nocc
+        ehartree = ehartree + vhartree_mo(istate,istate,ispin) * occupation(istate,ispin) 
+      enddo
+    enddo
+  endif
+
+end subroutine setup_hartree_mo
+
+
+!=========================================================================
+subroutine setup_exchange_mo(occupation,sigx_mo,eexchange)
+  implicit none
+
+  real(dp),intent(in) :: occupation(:,:)
+  real(dp),intent(out) :: sigx_mo(:,:,:)
+  real(dp),optional,intent(out) :: eexchange
+  !=====
+  integer :: nstate, istate, nocc, ispin
+  !=====
+
+  write(stdout,*) 'Calculate exchange in MO basis with MO integrals'
+  nstate = SIZE(occupation,DIM=1)
+  nocc = get_number_occupied_states(occupation)
+
+  if( .NOT. ALLOCATED(eri_3center_eigen)) call die('setup_exchange_mo: MO integrals are not available')
+  write(stdout,*) SIZE(eri_3center_eigen,DIM=1)
+
+  sigx_mo(:,:,:) = 0.0_dp
+  do ispin=1,nspin
+    do istate=1,nocc
+      call DSYRK('L', 'T', nstate, nauxil_local, -occupation(istate,ispin) / spin_fact, &
+                 eri_3center_eigen(:,:,istate,ispin), nauxil_local, &
+                 1.0d0, sigx_mo(:,:,ispin), nstate)
+    enddo
+    call matrix_lower_to_full(sigx_mo(:,:,ispin))
+  enddo
+  call auxil%sum(sigx_mo)
+  write(*,*) sigx_mo(1,1,1)
+  write(*,*) sigx_mo(2,2,1)
+
+  if( PRESENT(eexchange) ) then
+    eexchange = 0.0_dp
+    do ispin=1,nspin
+      do istate=1,nocc
+        eexchange = eexchange + 0.5_dp * sigx_mo(istate,istate,ispin) * occupation(istate,ispin)
+      enddo
+    enddo
+  endif
+
+end subroutine setup_exchange_mo
 
 end module m_hamiltonian_twobodies
 !=========================================================================
