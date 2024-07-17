@@ -273,6 +273,7 @@ subroutine dump_out_matrix_dp(print_matrix,title,matrix)
     if(nspin==2) then
       write(stdout,'(a,i1)') ' spin polarization # ',ispin
     endif
+    write(stdout,'(4x,*(1x,i12))') (imat, imat=1,SIZE(row))
     do imat=1,MIN(mmat,MAXSIZE)
       where( ABS(matrix(imat,1:MIN(nmat,MAXSIZE),ispin)) > 1.0e-5_dp )
       row(:) = matrix(imat,1:MIN(nmat,MAXSIZE),ispin)

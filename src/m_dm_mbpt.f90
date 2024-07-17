@@ -203,13 +203,12 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
   if( .TRUE. ) then
   block
     real(dp) :: p_hf(basis%nbf,basis%nbf,nspin)
-    real(dp) :: vhartree_hf(basis%nbf,basis%nbf), sigx_hf(basis%nbf,basis%nbf,nspin)
     integer  :: istate
     integer, parameter :: nno = 14
     real(dp),allocatable :: h_hf_mo(:,:,:)
     real(dp),allocatable :: h_hf_no(:,:,:), c_matrix_no_mo_small(:,:,:)
     real(dp),allocatable :: c_matrix_hf_no(:,:,:), c_matrix_hf_mo(:,:,:)
-    real(dp),allocatable :: vhartree_mo(:,:,:), sigx_mo(:,:,:)
+    real(dp),allocatable :: vhartree_mo(:,:,:), sigx_mo(:,:,:), kin_vext_mo(:,:,:)
     real(dp) :: energy_hf_no(nno,nspin)
     real(dp) :: ehartree, eexchange
 
@@ -235,12 +234,13 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
 
     call dump_out_matrix(.TRUE., "*** HF MO ***", h_hf_mo )
     call dump_out_matrix(.TRUE., "*** HF NO ***", h_hf_no )
-    deallocate(h_hf_mo)
 
     do ispin=1,nspin
       call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,h_hf_no(:,:,ispin),energy_hf_no(:,ispin))
       write(stdout,*) '************* HF in AO *************'
       write(stdout,*) energy(:nno,ispin)
+      write(stdout,*) '*******'
+      write(stdout,*) energy(nno+1:,ispin)
       write(stdout,*) '************* HF in NO *************'
       write(stdout,*) energy_hf_no(:,ispin)
     enddo
@@ -250,8 +250,9 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
     do ispin=1,nspin
       c_matrix_hf_mo(:,:,ispin) = MATMUL( c_matrix_no_mo_small(:,:,ispin), c_matrix_hf_no(:,:,ispin) )
     enddo
+    call dump_out_matrix(.TRUE., "*** C HF MO ***", c_matrix_hf_mo )
 
-    write(stdout,*) '***** eri_3center_eigen ALLCOATED*****'
+    write(stdout,*) '***** eri_3center_eigen ALLOCATED*****'
     write(stdout,*) ALLOCATED(eri_3center_eigen)
     write(stdout,*) '***** eri_3center_eigen DIM*****'
     write(stdout,*) SIZE(eri_3center_eigen,DIM=1)
@@ -261,11 +262,16 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
 
     allocate(vhartree_mo(nstate,nstate,nspin))
     allocate(sigx_mo(nstate,nstate,nspin))
+    allocate(kin_vext_mo(nstate,nstate,nspin))
     call setup_hartree_mo(occupation, vhartree_mo, ehartree)
     call setup_exchange_mo(occupation, sigx_mo, eexchange)
     write(stdout,*) 'Eh Ex (Ha):',ehartree, eexchange
+    kin_vext_mo(:,:,:) = h_hf_mo(:,:,:) - vhartree_mo - sigx_mo
+    write(stdout,*) 'T+Vext (Ha):',kin_vext_mo(1,1,1)
+    deallocate(kin_vext_mo)
     deallocate(vhartree_mo)
     deallocate(sigx_mo)
+    deallocate(h_hf_mo)
 
 
 

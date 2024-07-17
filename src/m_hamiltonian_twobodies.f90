@@ -1540,8 +1540,8 @@ subroutine setup_hartree_mo(occupation,vhartree_mo,ehartree)
       x_vector(:) = x_vector(:) + occupation(istate,ispin) * eri_3center_eigen(:,istate,istate,ispin)
     enddo
   enddo
-  if( auxil%nproc > 1) call die('not coded yet')
-  x_vector(1) = 0.0_dp ! G=0 is removed
+  !if( auxil%nproc > 1) call die('not coded yet how to find G=0')
+  !x_vector(1) = 0.0_dp ! G=0 is removed
   call auxil%sum(x_vector)
   do ispin=1,nspin
     do jstate=1,nstate
@@ -1556,7 +1556,7 @@ subroutine setup_hartree_mo(occupation,vhartree_mo,ehartree)
     ehartree = 0.0_dp
     do ispin=1,nspin
       do istate=1,nocc
-        ehartree = ehartree + vhartree_mo(istate,istate,ispin) * occupation(istate,ispin) 
+        ehartree = ehartree + 0.5_dp * vhartree_mo(istate,istate,ispin) * occupation(istate,ispin) 
       enddo
     enddo
   endif
@@ -1592,8 +1592,6 @@ subroutine setup_exchange_mo(occupation,sigx_mo,eexchange)
     call matrix_lower_to_full(sigx_mo(:,:,ispin))
   enddo
   call auxil%sum(sigx_mo)
-  write(*,*) sigx_mo(1,1,1)
-  write(*,*) sigx_mo(2,2,1)
 
   if( PRESENT(eexchange) ) then
     eexchange = 0.0_dp

@@ -802,10 +802,12 @@ subroutine reshuffle_distribution_3center()
   implicit none
 
   !=====
+#if defined(HAVE_SCALAPACK)
   integer :: info
   integer :: mlocal,nlocal
   integer :: desc3final(NDEL)
   real(dp),allocatable :: eri_3center_tmp(:,:)
+#endif
   !=====
 
 #if defined(HAVE_SCALAPACK)
