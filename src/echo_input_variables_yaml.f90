@@ -147,6 +147,7 @@
  write(unit_yaml,'(4x,a,9x,a)') 'print_all_MO_wfn_file:',yesno_to_TrueFalse(print_all_MO_wfn_file) 
  write(unit_yaml,'(4x,a,14x,a)') 'print_bigrestart:',yesno_to_TrueFalse(print_bigrestart) 
  write(unit_yaml,'(4x,a,5x,a)') 'print_c_matrix_cmplx_hdf5:',yesno_to_TrueFalse(print_c_matrix_cmplx_hdf5) 
+ write(unit_yaml,'(4x,a,14x,a)') 'print_cc4s_files:',yesno_to_TrueFalse(print_cc4s_files) 
  write(unit_yaml,'(4x,a,12x,a)') 'print_charge_tddft:',yesno_to_TrueFalse(print_charge_tddft) 
  write(unit_yaml,'(4x,a,20x,a)') 'print_cube:',yesno_to_TrueFalse(print_cube) 
  write(unit_yaml,'(4x,a,9x,a)') 'print_cube_diff_tddft:',yesno_to_TrueFalse(print_cube_diff_tddft) 

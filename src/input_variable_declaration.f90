@@ -42,6 +42,7 @@
  character(len=3),protected :: force_energy_qp
  character(len=3),protected :: ignore_bigrestart
  character(len=3),protected :: print_bigrestart
+ character(len=3),protected :: print_cc4s_files
  character(len=3),protected :: print_cube
  character(len=3),protected :: print_transition_density
  character(len=3),protected :: print_wfn_files

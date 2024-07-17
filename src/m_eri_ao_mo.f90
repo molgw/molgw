@@ -947,7 +947,7 @@ end subroutine form_erimol
 
 
 !=========================================================================
-subroutine read_coulombvertex()
+subroutine read_cc4s_coulombvertex()
   implicit none
 
   !=====
@@ -968,7 +968,7 @@ subroutine read_coulombvertex()
 #endif
   !=====
 
-  if( nspin > 1 ) call die("read_coulombvertex: spin polarized not implemented yet")
+  if( nspin > 1 ) call die("read_cc4s_coulombvertex: spin polarized not implemented yet")
   
   call start_clock(timing_read_coulombvertex)
   write(stdout,'(1x,a)') 'Reading CoulombVertex.yaml and CoulombVertex.elements'
@@ -980,7 +980,7 @@ subroutine read_coulombvertex()
   ! Ensure CoulombVertex.yaml has been created with half grid
   call yaml_search_keyword('CoulombVertex.yaml', 'halfGrid', yaml_integers)
   if( yaml_integers(1) /= 1 ) then
-    call die('read_coulombvertex: only works for half grid (i.e. real wavefunctions)')
+    call die('read_cc4s_coulombvertex: only works for half grid (i.e. real wavefunctions)')
   endif
   deallocate(yaml_integers)
 
@@ -1076,11 +1076,11 @@ subroutine read_coulombvertex()
 
   call stop_clock(timing_read_coulombvertex)
 
-end subroutine read_coulombvertex
+end subroutine read_cc4s_coulombvertex
 
 
 !=========================================================================
-subroutine write_coulombvertex(eri_3center_updated)
+subroutine write_cc4s_coulombvertex(eri_3center_updated)
   implicit none
 
   real(dp),intent(in) :: eri_3center_updated(:,:,:,:)
@@ -1102,7 +1102,7 @@ subroutine write_coulombvertex(eri_3center_updated)
 #endif
   !=====
 
-  if( nspin > 1 ) call die("write_coulombvertex: spin polarized not implemented yet")
+  if( nspin > 1 ) call die("write_cc4s_coulombvertex: spin polarized not implemented yet")
 
   
   call start_clock(timing_read_coulombvertex)
@@ -1112,20 +1112,6 @@ subroutine write_coulombvertex(eri_3center_updated)
   call auxil%sum(rtmp)
   write(stdout,'(1x,a,es14.6)') 'Testing integral (11|11) (Ha):',rtmp
 
-  !!
-  !! Ensure CoulombVertex.yaml has been created with half grid
-  !call yaml_search_keyword('CoulombVertex.yaml', 'halfGrid', yaml_integers)
-  !if( yaml_integers(1) /= 1 ) then
-  !  call die('write_coulombvertex: only works for half grid (i.e. real wavefunctions)')
-  !endif
-  !deallocate(yaml_integers)
-
-  !call yaml_search_keyword('CoulombVertex.yaml', 'length', yaml_integers)
-  !ng     = yaml_integers(1)
-  !nstate = yaml_integers(2)
-  !write(stdout,'(1x,a,i6,a,i4,a,i4)') 'Dimensions read:',ng,' x ',nstate,' x ',nstate
-  !! nauxil_global is 2*ng because of real and imaginary parts
-  !nauxil_global = 2 * ng 
 
   ! complex_length in bytes whereas STORAGE_SIZE is in bits
   complex_length = STORAGE_SIZE(coulomb_vertex_ij(1)) / 8
@@ -1134,6 +1120,26 @@ subroutine write_coulombvertex(eri_3center_updated)
   allocate(coulomb_vertex_ij(ng))
   nstate = SIZE(eri_3center_updated,DIM=2)
   nstate2 = nstate**2
+
+  ! Write meta data in a yaml file
+  open(newunit=unitcv, file='new_CoulombVertex.yaml', form='formatted', status='unknown', action='write')
+  write(unitcv,'(a)')    'version: 100'
+  write(unitcv,'(a)')    'type: Tensor'
+  write(unitcv,'(a)')    'scalarType: Complex64'
+  write(unitcv,'(a)')    'dimensions:'
+  write(unitcv,'(a,i8)')    '- length:', ng
+  write(unitcv,'(a)')    '  type: AuxiliaryField'
+  write(unitcv,'(a,i8)')    '- length:', nstate
+  write(unitcv,'(a)')    '  type: State'
+  write(unitcv,'(a,i8)')    '- length:', nstate
+  write(unitcv,'(a)')    '  type: State'
+  write(unitcv,'(a)')    'elements:'
+  write(unitcv,'(a)')    '  type: IeeeBinaryFile'
+  write(unitcv,'(a)')    'unit: 1.0   # Atomic units'
+  write(unitcv,'(a)')    'metaData:'
+  write(unitcv,'(a)')    '  halfGrid: 1'
+  close(unitcv)
+
   write(stdout,*) 'File size (bytes):', INT(complex_length, KIND=8) * INT(ng, KIND=8) * INT(nstate2, KIND = 8)
 
 #if !defined(HAVE_MPI)
@@ -1199,7 +1205,6 @@ subroutine write_coulombvertex(eri_3center_updated)
   enddo
 
 
-
   call clean_deallocate('Reading 3-center MO integrals',eri_3center_tmp)
 
   call MPI_FILE_CLOSE(unitcv, ierr)
@@ -1207,7 +1212,7 @@ subroutine write_coulombvertex(eri_3center_updated)
 
   call stop_clock(timing_read_coulombvertex)
 
-end subroutine write_coulombvertex
+end subroutine write_cc4s_coulombvertex
 
 
 !=========================================================================

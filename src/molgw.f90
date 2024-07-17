@@ -537,10 +537,19 @@ program molgw
   endif
   if( TRIM(init_hamiltonian)=='CC4S_FILES' ) then
     if(has_auxil_basis) call destroy_eri_3center()
-    call read_eigenenergies(basis,nstate,energy,occupation,c_matrix,s_matrix,hamiltonian_fock)
-    call read_coulombvertex()
+    call read_cc4s_eigenenergies(basis,nstate,energy,occupation,c_matrix,s_matrix,hamiltonian_fock)
+    call read_cc4s_coulombvertex()
   endif
 
+  if( print_cc4s_files_ ) then
+    if( TRIM(scf) /= 'HF') then
+      call issue_warning('CC4S are only meaning when using scf=HF')
+    endif
+    call write_cc4s_eigenenergies(occupation,energy)
+    call calculate_eri_3center_eigen(c_matrix,1,nstate,1,nstate)
+    call write_cc4s_coulombvertex(eri_3center_eigen)
+    call destroy_eri_3center_eigen()
+  endif
 
   if( print_multipole_ ) then
     !

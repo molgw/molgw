@@ -531,12 +531,8 @@ subroutine rdm_filtered_cc4s(occupation, energy, c_matrix_no_mo)
       eri_3center_hf_no(:,ino,:,ispin) = MATMUL( work(:,ino,:), c_matrix_hf_mo(:,:,ispin) )
     enddo
   enddo
-  open(newunit=unit_tmp, file='new_EigenEnergies.elements',action='write',form='formatted')
-  do ino=1,rdm_filtering_no
-    write(unit_tmp,'(1x,es16.8)') energy_hf_no(ino,1)
-  enddo
-  close(unit_tmp)
-  call write_coulombvertex(eri_3center_hf_no)
+  call write_cc4s_eigenenergies(occupation,energy_hf_no)
+  call write_cc4s_coulombvertex(eri_3center_hf_no)
 
 
   deallocate(work)

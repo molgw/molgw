@@ -147,6 +147,7 @@
   write(stdout,'(1x,a32,6x,a)') 'print_all_MO_wfn_file',print_all_MO_wfn_file 
   write(stdout,'(1x,a32,6x,a)') 'print_bigrestart',print_bigrestart 
   write(stdout,'(1x,a32,6x,a)') 'print_c_matrix_cmplx_hdf5',print_c_matrix_cmplx_hdf5 
+  write(stdout,'(1x,a32,6x,a)') 'print_cc4s_files',print_cc4s_files 
   write(stdout,'(1x,a32,6x,a)') 'print_charge_tddft',print_charge_tddft 
   write(stdout,'(1x,a32,6x,a)') 'print_cube',print_cube 
   write(stdout,'(1x,a32,6x,a)') 'print_cube_diff_tddft',print_cube_diff_tddft 

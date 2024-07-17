@@ -3981,7 +3981,7 @@ end subroutine yaml_search_keyword_dp
 
 
 !=========================================================================
-subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix,s_matrix,hamiltonian_fock)
+subroutine read_cc4s_eigenenergies(basis,nstate,energy,occupation,c_matrix,s_matrix,hamiltonian_fock)
   implicit none
 
   type(basis_set),intent(inout) :: basis
@@ -3997,7 +3997,7 @@ subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix,s_matrix,h
   integer :: istate, nstate_old, ifile
   !=====
 
-  if( nspin > 1 ) call die('read_eigenenergies: only spin restricted implemented')
+  if( nspin > 1 ) call die('read_cc4s_eigenenergies: only spin restricted implemented')
   write(stdout,'(/,1x,a)') 'Reading EigenEnergies.yaml and Eigenenergies.elements'
 
   nstate_old = nstate
@@ -4042,11 +4042,57 @@ subroutine read_eigenenergies(basis,nstate,energy,occupation,c_matrix,s_matrix,h
   write(stdout,*) 'Resizing occupation and energy from ',nstate_old, ' to ', nstate
   call dump_out_energy('=== HF energies from file ===',occupation,energy)
   write(stdout,'(1x,a,f10.3)') 'Number of electrons from file: ', SUM(occupation(:,:))
-  if( SUM(occupation(:,:)) < 0.001_dp ) call die('read_eigenenergies: Fermi energy is such that there is no occupied state')
+  if( SUM(occupation(:,:)) < 0.001_dp ) call die('read_cc4s_eigenenergies: Fermi energy is such that there is no occupied state')
 
 
-end subroutine read_eigenenergies
+end subroutine read_cc4s_eigenenergies
 
+
+!=========================================================================
+subroutine write_cc4s_eigenenergies(occupation,energy)
+  implicit none
+
+  real(dp),intent(in) :: occupation(:,:)
+  real(dp),intent(in) :: energy(:,:)
+  !=====
+  integer :: unit_file
+  integer :: nstate, istate, nocc
+  real(dp) :: efermi
+  !=====
+
+  if( nspin > 1 ) call die('write_cc4s_eigenenergies: only spin restricted implemented')
+
+  nstate = MIN(SIZE(occupation,DIM=1), SIZE(energy,DIM=1))
+
+  open(newunit=unit_file, file='new_EigenEnergies.elements',action='write',form='formatted')
+  do istate=1,nstate
+    write(unit_file,'(1x,es16.8)') energy(istate,1)
+  enddo
+  close(unit_file)
+
+  nocc = get_number_occupied_states(occupation)
+  efermi = 0.5_dp * ( energy(nocc,1) + energy(nocc+1,1) ) 
+
+  open(newunit=unit_file, file='new_EigenEnergies.yaml',action='write',form='formatted')
+  write(unit_file,'(a)')    'version: 100'
+  write(unit_file,'(a)')    'type: Tensor'
+  write(unit_file,'(a)')    'scalarType: Real64'
+  write(unit_file,'(a)')    'dimensions:'
+  write(unit_file,'(a,i6)') '- length: ', nstate
+  write(unit_file,'(a)')    '  type: State'
+  write(unit_file,'(a)')    'elements:'
+  write(unit_file,'(a)')    '  type: TextFile'
+  write(unit_file,'(a)')    'unit: 1.0     # Hartree units'
+  write(unit_file,'(a)')    'metaData:'
+  write(unit_file,'(a,es16.8)')  '  fermiEnergy:', efermi
+  do istate=1,nstate
+    write(unit_file,'(a,es16.8)') ' - ',energy(istate,1)
+  enddo
+
+  close(unit_file)
+
+
+end subroutine write_cc4s_eigenenergies
 
 !=========================================================================
 end module m_io

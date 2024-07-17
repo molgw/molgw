@@ -45,6 +45,7 @@
     force_energy_qp,       &
     ignore_bigrestart,       &
     print_bigrestart,       &
+    print_cc4s_files,       &
     print_cube,       &
     print_transition_density,       &
     print_wfn_files,       &
@@ -258,6 +259,7 @@
  force_energy_qp='no'
  ignore_bigrestart='no'
  print_bigrestart='yes'
+ print_cc4s_files='no'
  print_cube='no'
  print_transition_density='no'
  print_wfn_files='no'

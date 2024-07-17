@@ -144,6 +144,7 @@ module m_inputparam
   logical,protected                :: print_bigrestart_
   logical,protected                :: print_pdos_
   logical,protected                :: print_spatial_extension_
+  logical,protected                :: print_cc4s_files_
   logical,protected                :: print_cube_
   logical,protected                :: print_wfn_files_
   logical,protected                :: print_all_MO_wfn_file_
@@ -960,6 +961,7 @@ subroutine read_inputfile_namelist()
   gwgamma_tddft_            = yesno_to_logical(gwgamma_tddft)
   use_correlated_density_matrix_ = yesno_to_logical(use_correlated_density_matrix)
   print_tddft_matrices_       = yesno_to_logical(print_tddft_matrices)
+  print_cc4s_files_           = yesno_to_logical(print_cc4s_files)
   print_cube_rho_tddft_       = yesno_to_logical(print_cube_rho_tddft)
   print_cube_diff_tddft_      = yesno_to_logical(print_cube_diff_tddft)
   print_line_rho_tddft_       = yesno_to_logical(print_line_rho_tddft)

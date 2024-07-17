@@ -395,6 +395,14 @@ print_bigrestart:
     Hamiltonian and allows one to completely skip the scf loop or to start over with
     another basis set.'
 
+print_cc4s_files:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints CoulombVertex and EigenEnergies CC4S files with Hartree-Fock SCF data.
+
 print_cube:
   family: io
   datatype: yes/no

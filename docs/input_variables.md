@@ -178,6 +178,7 @@
 [force_energy_qp](#force_energy_qp)
 [ignore_bigrestart](#ignore_bigrestart)
 [print_bigrestart](#print_bigrestart)
+[print_cc4s_files](#print_cc4s_files)
 [print_cube](#print_cube)
 [print_transition_density](#print_transition_density)
 [print_wfn_files](#print_wfn_files)
@@ -2506,6 +2507,22 @@ Prints the big RESTART file at the end of the SCF loop. There are two kinds of R
 **Description:**
 
 Prints the time-dependent wave function coefficients c_matrix_cmplx in an HDF5 file called 'rt_tddft.h5'
+
+
+---
+### print_cc4s_files
+
+*Optional*
+
+**Family:** io
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Prints CoulombVertex and EigenEnergies CC4S files with Hartree-Fock SCF data.
 
 
 ---
