@@ -199,88 +199,8 @@ subroutine get_dm_mbpt(basis,occupation,energy,c_matrix,s_matrix, &
   endif
 
 
-
-  if( .TRUE. ) then
-  block
-    real(dp) :: p_hf(basis%nbf,basis%nbf,nspin)
-    integer  :: istate
-    integer, parameter :: nno = 14
-    real(dp),allocatable :: h_hf_mo(:,:,:)
-    real(dp),allocatable :: h_hf_no(:,:,:), c_matrix_no_mo_small(:,:,:)
-    real(dp),allocatable :: c_matrix_hf_no(:,:,:), c_matrix_hf_mo(:,:,:)
-    real(dp),allocatable :: vhartree_mo(:,:,:), sigx_mo(:,:,:), kin_vext_mo(:,:,:)
-    real(dp) :: energy_hf_no(nno,nspin)
-    real(dp) :: ehartree, eexchange
-
-    write(*,*) 'FBFB calculate in the NO sub space'
-    if( nno < nstate ) then
-      write(stdout,*) 'HF eigenvalues at truncation (eV):', energy(nno,1)*Ha_eV, energy(nno+1,1)*Ha_eV
-      if( ABS(energy(nno,1) - energy(nno+1,1)) < 1.0e-3_dp) then
-        call issue_warning('nno truncation choice breaks an energy shell')
-      endif
-    endif
-
-    allocate(h_hf_mo(nstate,nstate,nspin))
-    allocate(h_hf_no(nno,nno,nspin),c_matrix_no_mo_small(nstate,nno,nspin))
-    c_matrix_no_mo_small(:,:,:) = c_matrix_no_mo(:,1:nno,:)
-
-    h_hf_mo(:,:,:) = 0.0_dp
-    do ispin=1,nspin
-      do istate=1,nstate
-        h_hf_mo(istate,istate,ispin) = energy(istate,ispin)
-      enddo
-    enddo
-    call matrix_ao_to_mo(c_matrix_no_mo_small,h_hf_mo,h_hf_no)
-
-    call dump_out_matrix(.TRUE., "*** HF MO ***", h_hf_mo )
-    call dump_out_matrix(.TRUE., "*** HF NO ***", h_hf_no )
-
-    do ispin=1,nspin
-      call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,h_hf_no(:,:,ispin),energy_hf_no(:,ispin))
-      write(stdout,*) '************* HF in AO *************'
-      write(stdout,*) energy(:nno,ispin)
-      write(stdout,*) '*******'
-      write(stdout,*) energy(nno+1:,ispin)
-      write(stdout,*) '************* HF in NO *************'
-      write(stdout,*) energy_hf_no(:,ispin)
-    enddo
-    call move_alloc(h_hf_no,c_matrix_hf_no)
-
-    allocate(c_matrix_hf_mo(nstate,nno,nspin))
-    do ispin=1,nspin
-      c_matrix_hf_mo(:,:,ispin) = MATMUL( c_matrix_no_mo_small(:,:,ispin), c_matrix_hf_no(:,:,ispin) )
-    enddo
-    call dump_out_matrix(.TRUE., "*** C HF MO ***", c_matrix_hf_mo )
-
-    write(stdout,*) '***** eri_3center_eigen ALLOCATED*****'
-    write(stdout,*) ALLOCATED(eri_3center_eigen)
-    write(stdout,*) '***** eri_3center_eigen DIM*****'
-    write(stdout,*) SIZE(eri_3center_eigen,DIM=1)
-    write(stdout,*) SIZE(eri_3center_eigen,DIM=2)
-    write(stdout,*) SIZE(eri_3center_eigen,DIM=3)
-    write(stdout,*) SIZE(eri_3center_eigen,DIM=4)
-
-    allocate(vhartree_mo(nstate,nstate,nspin))
-    allocate(sigx_mo(nstate,nstate,nspin))
-    allocate(kin_vext_mo(nstate,nstate,nspin))
-    call setup_hartree_mo(occupation, vhartree_mo, ehartree)
-    call setup_exchange_mo(occupation, sigx_mo, eexchange)
-    write(stdout,*) 'Eh Ex (Ha):',ehartree, eexchange
-    kin_vext_mo(:,:,:) = h_hf_mo(:,:,:) - vhartree_mo - sigx_mo
-    write(stdout,*) 'T+Vext (Ha):',kin_vext_mo(1,1,1)
-    deallocate(kin_vext_mo)
-    deallocate(vhartree_mo)
-    deallocate(sigx_mo)
-    deallocate(h_hf_mo)
-
-
-
-    deallocate(c_matrix_no_mo_small)
-    deallocate(c_matrix_hf_no)
-    deallocate(c_matrix_hf_mo)
-    stop 'ENOUGH'
-  end block
-
+  if( rdm_filtering_no > 0 ) then
+    call rdm_filtered_cc4s(occupation, energy, c_matrix_no_mo)
   endif
 
   call clean_deallocate('Density matrix P_MO',c_matrix_no_mo)
@@ -526,6 +446,106 @@ subroutine fock_density_matrix_second_order(basis,occupation,energy,c_matrix,hfo
   call stop_clock(timing_mbpt_dm)
 
 end subroutine fock_density_matrix_second_order
+  
+
+!=========================================================================
+subroutine rdm_filtered_cc4s(occupation, energy, c_matrix_no_mo)
+  implicit none
+  
+  real(dp),intent(in) :: occupation(:,:), energy(:,:)
+  real(dp),intent(in) :: c_matrix_no_mo(:,:,:)
+  !=====
+  !=====
+  integer  :: istate, ino, ispin, nstate
+  integer  :: unit_tmp
+  real(dp),allocatable :: h_hf_mo(:,:,:)
+  real(dp),allocatable :: h_hf_no(:,:,:), c_matrix_no_mo_small(:,:,:)
+  real(dp),allocatable :: c_matrix_hf_no(:,:,:), c_matrix_hf_mo(:,:,:)
+  real(dp),allocatable :: work(:,:,:), eri_3center_hf_no(:,:,:,:)
+  real(dp),allocatable :: energy_hf_no(:,:)
+  !real(dp),allocatable :: vhartree_mo(:,:,:), sigx_mo(:,:,:), kin_vext_mo(:,:,:)
+  !real(dp) :: ehartree, eexchange
+
+  nstate = SIZE(c_matrix_no_mo,DIM=2)
+  allocate(energy_hf_no(rdm_filtering_no,nspin))
+
+  write(stdout,'(/,1x,a,i5)') 'Re-calculate HF in the NO sub space of dimension: ', rdm_filtering_no
+
+  if( rdm_filtering_no < nstate ) then
+    write(stdout,*) 'HF eigenvalues at truncation (eV):', energy(rdm_filtering_no,1) * Ha_eV, &
+                                                          energy(rdm_filtering_no+1,1) * Ha_eV
+    if( ABS(energy(rdm_filtering_no,1) - energy(rdm_filtering_no+1,1)) < 1.0e-3_dp ) then
+      call issue_warning('rdm_filtering_no choice breaks an energy shell (below 1 mHa tolerance)')
+    endif
+  endif
+
+  allocate(h_hf_mo(nstate,nstate,nspin))
+  allocate(h_hf_no(rdm_filtering_no,rdm_filtering_no,nspin))
+  allocate(c_matrix_no_mo_small(nstate,rdm_filtering_no,nspin))
+  c_matrix_no_mo_small(:,:,:) = c_matrix_no_mo(:,1:rdm_filtering_no,:)
+
+  h_hf_mo(:,:,:) = 0.0_dp
+  do ispin=1,nspin
+    do istate=1,nstate
+      h_hf_mo(istate,istate,ispin) = energy(istate,ispin)
+    enddo
+  enddo
+  call matrix_ao_to_mo(c_matrix_no_mo_small,h_hf_mo,h_hf_no)
+
+  !call dump_out_matrix(.TRUE., "*** HF MO ***", h_hf_mo )
+  !call dump_out_matrix(.TRUE., "*** HF NO ***", h_hf_no )
+
+  do ispin=1,nspin
+    call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,h_hf_no(:,:,ispin),energy_hf_no(:,ispin))
+  enddo
+  call move_alloc(h_hf_no,c_matrix_hf_no)
+  call dump_out_energy('=== HF energies in NO subspace ===',occupation,energy_hf_no)
+
+  allocate(c_matrix_hf_mo(nstate,rdm_filtering_no,nspin))
+  do ispin=1,nspin
+    c_matrix_hf_mo(:,:,ispin) = MATMUL( c_matrix_no_mo_small(:,:,ispin), c_matrix_hf_no(:,:,ispin) )
+  enddo
+  !call dump_out_matrix(.TRUE., "*** C HF MO ***", c_matrix_hf_mo )
+
+  !allocate(vhartree_mo(nstate,nstate,nspin))
+  !allocate(sigx_mo(nstate,nstate,nspin))
+  !allocate(kin_vext_mo(nstate,nstate,nspin))
+  !call setup_hartree_mo(occupation, vhartree_mo, ehartree)
+  !call setup_exchange_mo(occupation, sigx_mo, eexchange)
+  !write(stdout,*) 'Eh Ex (Ha):',ehartree, eexchange
+  !kin_vext_mo(:,:,:) = h_hf_mo(:,:,:) - vhartree_mo - sigx_mo
+  !write(stdout,*) 'T+Vext (Ha):',kin_vext_mo(1,1,1)
+  !deallocate(kin_vext_mo)
+  !deallocate(vhartree_mo)
+  !deallocate(sigx_mo)
+  deallocate(h_hf_mo)
+
+  allocate(eri_3center_hf_no(nauxil_local,rdm_filtering_no,rdm_filtering_no,nspin))
+  allocate(work(nauxil_local,rdm_filtering_no,nstate))
+
+  do ispin=1,nspin
+    do istate=1,nstate
+      work(:,:,istate) = MATMUL( eri_3center_eigen(:,:,istate,ispin), c_matrix_hf_mo(:,:,ispin) )
+    enddo
+    do ino=1,rdm_filtering_no
+      eri_3center_hf_no(:,ino,:,ispin) = MATMUL( work(:,ino,:), c_matrix_hf_mo(:,:,ispin) )
+    enddo
+  enddo
+  open(newunit=unit_tmp, file='new_EigenEnergies.elements',action='write',form='formatted')
+  do ino=1,rdm_filtering_no
+    write(unit_tmp,'(1x,es16.8)') energy_hf_no(ino,1)
+  enddo
+  close(unit_tmp)
+  call write_coulombvertex(eri_3center_hf_no)
+
+
+  deallocate(work)
+  deallocate(eri_3center_hf_no)
+  deallocate(c_matrix_no_mo_small)
+  deallocate(c_matrix_hf_no)
+  deallocate(c_matrix_hf_mo)
+
+end subroutine rdm_filtered_cc4s
 
 
 !=========================================================================

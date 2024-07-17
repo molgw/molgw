@@ -1030,6 +1030,14 @@ rcut_mbpt:
   default: 1.0
   comment: EXPERIMENTAL
 
+rdm_filtering_no:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0
+  comment: Number of natural obritals to span the Hilbert space when creating CC4S-compatible files. Default 0 means skip it.
+
 scissor:
   family: post
   datatype: real

@@ -541,7 +541,9 @@ subroutine dump_out_energy(title,occupation,energy)
   !=====
 
   nocc   = get_number_occupied_states(occupation)
-  nstate = SIZE(occupation,DIM=1)
+
+  ! in case occupation and energy arrays have different sizes
+  nstate = MIN( SIZE(occupation,DIM=1) , SIZE(energy,DIM=1) )
 
   write(stdout,'(/,1x,a)') TRIM(title)
 

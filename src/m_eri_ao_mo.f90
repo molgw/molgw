@@ -789,15 +789,17 @@ end subroutine calculate_eri_3center_eigen_cmplx
 
 
 !=================================================================
-subroutine destroy_eri_3center_eigen(verbose,long_range)
+subroutine destroy_eri_3center_eigen(verbose, long_range, force)
   implicit none
 
-  logical,optional,intent(in) :: verbose,long_range
+  logical,optional,intent(in) :: verbose, long_range, force
   !=====
   logical :: verbose_
   !=====
 
-  if( eri_3center_mo_stay_in_memory ) return
+  if( .NOT. PRESENT(force) ) then
+    if( eri_3center_mo_stay_in_memory ) return
+  endif
 
   if(PRESENT(verbose)) then
     verbose_ = verbose
@@ -805,8 +807,10 @@ subroutine destroy_eri_3center_eigen(verbose,long_range)
     verbose_ = .TRUE.
   endif
 
-  if(verbose_) write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
-  call clean_deallocate('3-center MO integrals',eri_3center_eigen,verbose_)
+  if( ALLOCATED(eri_3center_eigen) ) then
+    if(verbose_) write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
+    call clean_deallocate('3-center MO integrals',eri_3center_eigen,verbose_)
+  endif
   if(PRESENT(long_range)) then
     if(long_range) then
       if(verbose_) write(stdout,'(a,/)') ' Destroy 3-center_lr integrals on eigenstates'
@@ -989,10 +993,6 @@ subroutine read_coulombvertex()
 
   call distribute_auxil_basis(nauxil_global)
 
-  !DEBUG
-  !write(stdout,*) "nauxil_global",nauxil_global
-  !write(stdout,*) "nauxil_local",nauxil_local
-  !write(stdout,*) "nstate",nstate
   
   allocate(coulomb_vertex_ij(ng))
 
@@ -1072,11 +1072,142 @@ subroutine read_coulombvertex()
 #endif
   rtmp = DOT_PRODUCT(eri_3center_eigen(:,1,1,1), eri_3center_eigen(:,1,1,1))
   call auxil%sum(rtmp)
-  write(stdout,*) 'Testing integral (11|11) (Ha):',rtmp
+  write(stdout,'(1x,a,es14.6)') 'Testing integral (11|11) (Ha):',rtmp
 
   call stop_clock(timing_read_coulombvertex)
 
 end subroutine read_coulombvertex
+
+
+!=========================================================================
+subroutine write_coulombvertex(eri_3center_updated)
+  implicit none
+
+  real(dp),intent(in) :: eri_3center_updated(:,:,:,:)
+  !=====
+  integer :: nstate, istate, jstate, ng
+  integer :: unitcv
+  complex(dp),allocatable :: coulomb_vertex_ij(:)
+  integer, allocatable :: yaml_integers(:)
+  real(dp) :: rtmp
+  integer :: complex_length
+  integer :: nstate2
+#if defined(HAVE_MPI)
+  integer :: ierr
+  integer(kind=MPI_OFFSET_KIND) :: disp, disp_increment
+  integer :: desc_tmp(NDEL), desc_updated(NDEL)
+  real(dp), allocatable :: eri_3center_tmp(:,:)
+  integer :: mtmp, ntmp, info
+  integer :: ijstate_global, ijstate_local
+#endif
+  !=====
+
+  if( nspin > 1 ) call die("write_coulombvertex: spin polarized not implemented yet")
+
+  
+  call start_clock(timing_read_coulombvertex)
+  write(stdout,'(1x,a)') 'Writing CoulombVertex.yaml and CoulombVertex.elements'
+
+  rtmp = DOT_PRODUCT(eri_3center_updated(:,1,1,1), eri_3center_updated(:,1,1,1))
+  call auxil%sum(rtmp)
+  write(stdout,'(1x,a,es14.6)') 'Testing integral (11|11) (Ha):',rtmp
+
+  !!
+  !! Ensure CoulombVertex.yaml has been created with half grid
+  !call yaml_search_keyword('CoulombVertex.yaml', 'halfGrid', yaml_integers)
+  !if( yaml_integers(1) /= 1 ) then
+  !  call die('write_coulombvertex: only works for half grid (i.e. real wavefunctions)')
+  !endif
+  !deallocate(yaml_integers)
+
+  !call yaml_search_keyword('CoulombVertex.yaml', 'length', yaml_integers)
+  !ng     = yaml_integers(1)
+  !nstate = yaml_integers(2)
+  !write(stdout,'(1x,a,i6,a,i4,a,i4)') 'Dimensions read:',ng,' x ',nstate,' x ',nstate
+  !! nauxil_global is 2*ng because of real and imaginary parts
+  !nauxil_global = 2 * ng 
+
+  ! complex_length in bytes whereas STORAGE_SIZE is in bits
+  complex_length = STORAGE_SIZE(coulomb_vertex_ij(1)) / 8
+
+  ng = nauxil_global / 2
+  allocate(coulomb_vertex_ij(ng))
+  nstate = SIZE(eri_3center_updated,DIM=2)
+  nstate2 = nstate**2
+  write(stdout,*) 'File size (bytes):', INT(complex_length, KIND=8) * INT(ng, KIND=8) * INT(nstate2, KIND = 8)
+
+#if !defined(HAVE_MPI)
+  write(stdout,'(/,1x,a)') 'Writing file new_CoulombVertex.elements with plain fortran'
+  open(newunit=unitcv, file='new_CoulombVertex.elements', form='unformatted', access='stream', status='unknown', action='write')
+  do istate=1,nstate
+    do jstate=1,nstate
+      coulomb_vertex_ij(:) = CMPLX( eri_3center_updated(1:ng,istate,jstate,1) , eri_3center_updated(ng+1:2*ng,istate,jstate,1) )
+      write(unitcv) coulomb_vertex_ij(:)
+    enddo
+  enddo
+
+  close(unitcv)
+
+#else
+
+  ! Create a SCALAPACK matrix (nauxil_global, nstate**2) that is distributed on column index only
+  mtmp = NUMROC(nauxil_global,block_row,iprow_cd,first_row,nprow_cd)
+  ntmp = NUMROC(nstate2      ,block_col,ipcol_cd,first_col,npcol_cd)
+  call DESCINIT(desc_tmp,nauxil_global,nstate2,block_row,block_col,first_row,first_col,cntxt_cd,MAX(1,mtmp),info)
+
+  call clean_allocate('Writing 3-center MO integrals',eri_3center_tmp,1,mtmp,1,ntmp)
+
+  !
+  ! Change distribution here
+  write(stdout,'(1x,a,i4,a,i4,a,i4,a,i4,a)') &
+                     'Change MO 3 center integral distribution (', &
+                     nprow_eri3_mo, ' x ', npcol_eri3_mo, ')   to   (', &
+                     nprow_cd, ' x ', npcol_cd, ')'
+
+  call DESCINIT(desc_updated,nauxil_global,nstate2,MB_eri3_mo,NB_eri3_mo,first_row,first_col,cntxt_eri3_mo,MAX(1,nauxil_local),info)
+  call PDGEMR2D(nauxil_global,nstate2,eri_3center_updated,1,1,desc_updated, &
+                                      eri_3center_tmp,1,1,desc_tmp,cntxt_eri3_mo)
+
+  write(stdout,'(/,1x,a)') 'Writing file new_CoulombVertex.elements with MPI-IO'
+  write(stdout,'(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
+
+  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(ng, KIND=MPI_OFFSET_KIND)
+
+  call MPI_FILE_OPEN(MPI_COMM_WORLD,'new_CoulombVertex.elements', &
+                     MPI_MODE_WRONLY + MPI_MODE_CREATE, &
+                     MPI_INFO_NULL,unitcv,ierr)
+
+
+  ! Start with -disp_increment, so that when adding disp_increment, we get 0 in the first iteration
+  disp = -disp_increment
+  ijstate_global = 0
+  do jstate=1,nstate
+    do istate=1,nstate
+      ijstate_global = ijstate_global + 1
+      disp = disp + disp_increment
+
+      if( ipcol_cd /= INDXG2P(ijstate_global,block_col,0,first_col,npcol_cd) ) cycle
+      ijstate_local = INDXG2L(ijstate_global,block_col,0,first_col,npcol_cd)
+
+      coulomb_vertex_ij(:) = CMPLX( eri_3center_tmp(1:ng,ijstate_local) , eri_3center_tmp(ng+1:2*ng,ijstate_local) )
+
+      call MPI_FILE_WRITE_AT(unitcv, disp, coulomb_vertex_ij, &
+                            ng, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE,ierr)
+
+
+    enddo
+  enddo
+
+
+
+  call clean_deallocate('Reading 3-center MO integrals',eri_3center_tmp)
+
+  call MPI_FILE_CLOSE(unitcv, ierr)
+#endif
+
+  call stop_clock(timing_read_coulombvertex)
+
+end subroutine write_coulombvertex
 
 
 !=========================================================================

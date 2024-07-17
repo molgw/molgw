@@ -771,6 +771,7 @@ program molgw
   !
   ! Cleanly exiting the code
   !
+  call destroy_eri_3center_eigen(force=.TRUE.)
   call clean_deallocate('Wavefunctions C',c_matrix)
   deallocate(energy,occupation)
 

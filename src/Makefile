@@ -145,6 +145,7 @@ molgw:
 	+make  level022
 	+make  level025
 	+make  level030
+	+make  level035
 	+make  level040
 	+make  level045
 	+make  level050
@@ -177,7 +178,9 @@ level025: m_eri.o m_scf.o m_dft_grid.o m_optocc.o m_optorb.o m_tz_pccd_amplitude
 
 level030: m_eri_calculate.o m_density_tools.o m_io.o
 
-level040: m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_tddft_fxc.o m_eri_ao_mo.o
+level035: m_eri_ao_mo.o
+
+level040: m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_tddft_fxc.o
 
 level045: m_spectral_function.o
 
