@@ -64,6 +64,10 @@ subroutine scf_loop(is_restart,&
   logical                 :: stopfile_found
   integer                 :: file_density_matrix
   integer                 :: ispin,iscf
+  integer                 :: ibf,idir
+  real(dp)                :: trace(3)
+  real(dp),allocatable    :: tmp_matrix(:,:)
+  real(dp),allocatable    :: nabla_ao(:,:,:)
   real(dp),allocatable    :: p_matrix(:,:,:)
   real(dp),allocatable    :: hamiltonian(:,:,:)
   real(dp),allocatable    :: hamiltonian_hartree(:,:)
@@ -353,6 +357,22 @@ subroutine scf_loop(is_restart,&
     close(file_density_matrix)
   endif
 
+  if( .false. ) then ! Testing momentum integrals ( m_ij = < iao | nabla_r | jao > ) then Trace[P m] = (0,0,0)
+    allocate(tmp_matrix(basis%nbf,basis%nbf))
+    call setup_nabla_ao(basis,nabla_ao)
+    write(stdout,'(/,a)') ' For m = ( < alpha | nabla_r | beta > )'
+    trace=0.0e0
+    do ispin=1,nspin
+      do idir=1,3
+        tmp_matrix=matmul(p_matrix(:,:,ispin),nabla_ao(:,:,idir))
+        do ibf=1,basis%nbf
+          trace(idir)=trace(idir)+tmp_matrix(ibf,ibf)
+        enddo
+      enddo
+    enddo
+    write(stdout,'(a,3f20.8,/)') ' Trace [P m] = ',trace
+    deallocate(nabla_ao,tmp_matrix)
+  endif
 
   !
   ! Form the final Fock matrix and store it only if needed

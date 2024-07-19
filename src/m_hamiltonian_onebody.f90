@@ -1703,6 +1703,85 @@ end subroutine setup_dipole_ao
 
 
 !=========================================================================
+! Calculate  ( \alpha | \nabla_r | \beta )
+!
+subroutine setup_nabla_ao(basis,nabla_ao)
+  implicit none
+  type(basis_set),intent(in)         :: basis
+  real(dp),allocatable,intent(out)   :: nabla_ao(:,:,:)
+  !=====
+  integer              :: gt
+  integer              :: ishell,jshell
+  integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
+  integer              :: li,lj,ni_cart,nj_cart,i_cart,j_cart
+  integer              :: idir
+  real(dp),allocatable :: dipole_cart(:,:,:)
+#if defined(HAVE_LIBCINT)
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+  real(C_DOUBLE),allocatable :: array_cart(:,:)
+  real(dp),allocatable :: matrix(:,:)
+#endif
+  !=====
+
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Setup nabla matrix (LIBCINT)'
+#else
+  call die("setup_nabla_ao: Setup nabla matrix is only available with LIBCINT")
+#endif
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
+  allocate(nabla_ao(basis%nbf,basis%nbf,3))
+
+
+  do jshell=1,basis%nshell
+    lj        = basis%shell(jshell)%am
+    nj_cart   = number_basis_function_am('CART',lj)
+    jbf1      = basis%shell(jshell)%istart
+    jbf1_cart = basis%shell(jshell)%istart_cart
+    jbf2      = basis%shell(jshell)%iend
+
+    do ishell=1,basis%nshell
+      li        = basis%shell(ishell)%am
+      ni_cart   = number_basis_function_am('CART',li)
+      ibf1      = basis%shell(ishell)%istart
+      ibf1_cart = basis%shell(ishell)%istart_cart
+      ibf2      = basis%shell(ishell)%iend
+
+
+#if defined(HAVE_LIBCINT)
+      allocate(array_cart(ni_cart*nj_cart,3))
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
+      info = cint1e_ovlpip_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                           basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
+
+      do idir=1,3
+        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
+        nabla_ao(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
+      enddo
+      deallocate(matrix)
+
+      deallocate(array_cart)
+#else
+
+      !! TODO
+      nabla_ao(ibf1:ibf2,jbf1:jbf2,:) = zero
+
+#endif
+
+    enddo
+  enddo
+
+  call dump_out_matrix(.FALSE.,'===  Partial AO X ===',nabla_ao(:,:,1))
+  call dump_out_matrix(.FALSE.,'===  Partial AO Y ===',nabla_ao(:,:,2))
+  call dump_out_matrix(.FALSE.,'===  Partial AO Z ===',nabla_ao(:,:,3))
+
+
+end subroutine setup_nabla_ao
+
+
+!=========================================================================
 subroutine calculate_gos_ao_mb(basis,gos_ao)
   implicit none
   type(basis_set),intent(in)          :: basis

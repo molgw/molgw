@@ -110,6 +110,14 @@ module m_libcint_tools
       real(C_DOUBLE),intent(out) :: array_cart(*)
     end function cint1e_rinv_cart
 
+    integer(C_INT) function cint1e_ovlpip_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT,C_DOUBLE
+      integer(C_INT),value  :: natm,nbas
+      real(C_DOUBLE),intent(in) :: env(*)
+      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+      real(C_DOUBLE),intent(out) :: array_cart(*)
+    end function cint1e_ovlpip_cart
+
     integer(C_INT) function cint1e_ipovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
       import :: C_INT,C_DOUBLE
       integer(C_INT),value  :: natm,nbas
