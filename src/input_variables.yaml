@@ -257,6 +257,13 @@ tolforce:
   comment: Sets the target threshold for the maximum force component after nuclei
     relaxation.
 
+x2c:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: 'EXPERIMENTAL. Build the X2C Hamiltonian and orbitals.'
 
 #============================================================================
 #              Hardware input variables (Parallelization)

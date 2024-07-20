@@ -165,6 +165,12 @@ program molgw
 
     if( print_rho_grid_ ) call dm_dump(basis)
 
+    ! If it is a X2C calculation, build H^X2C and diag. to get the spinors
+    if ( TRIM(x2c) == 'yes'  .and. basis%gaussian_type/= 'CART' ) then
+       call die("x2c calculations require cartesian gaussian_type")
+    endif
+    if ( TRIM(x2c) == 'yes'  .and. basis%gaussian_type== 'CART' ) call x2c_init(basis)
+
     !
     ! If an auxiliary basis is given, then set it up now
     if( has_auxil_basis ) then
