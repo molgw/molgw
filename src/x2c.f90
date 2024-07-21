@@ -21,6 +21,7 @@ subroutine x2c_init(basis)
   use m_eri_ao_mo
   use m_inputparam
   use m_hamiltonian_onebody
+  use m_hamiltonian_tools
   use m_libcint_tools
   implicit none
 
@@ -30,12 +31,14 @@ subroutine x2c_init(basis)
   character(len=100)             :: basis_name_1
   character(len=100),allocatable :: basis_name_nrel(:)
   logical                        :: this_is_large
-  integer                        :: istring,ibf,jbf,ishell,jshell,igaus,ngaus,ngaus_nrl
+  integer                        :: istring,ibf,jbf,ishell,jshell,igaus,ngaus,ngaus_nrl,nstate_large
   integer                        :: nshell,nshell_nrel,nbasis,ntyp,shell_typ,shell_typ_nrl
   real(dp)                       :: eext
   real(dp)                       :: Vext_pq(4),S_pq(4),Dz_pq(4),Dy_pq(4),Dx_pq(4)
   complex(dp)                    :: H4c_me
-  logical,allocatable            :: is_large(:),is_large_tmp(:)
+  logical,allocatable            :: is_large(:),is_large_4c(:)
+  real(dp),allocatable           :: Large_s_matrix(:,:)
+  real(dp),allocatable           :: Large_x_matrix(:,:)
   real(dp),allocatable           :: scalar_s_matrix(:,:)
   real(dp),allocatable           :: scalar_nucleus(:,:)
   real(dp),allocatable           :: scalar_nabla_ao(:,:,:) ! < alpha | nabla_r | beta >
@@ -68,15 +71,15 @@ subroutine x2c_init(basis)
                         even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis_nrel)
   nshell=SIZE(basis%shell(:)%icenter)
   nshell_nrel=SIZE(basis_nrel%shell(:)%icenter)
-  allocate(is_large_tmp(nshell))
-  is_large_tmp(:)=.false.
+  allocate(is_large_4c(nshell))
+  is_large_4c(:)=.false.
   do ishell=1,nshell
    shell_typ=basis%shell(ishell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
    ngaus=basis%shell(ishell)%ng
    do jshell=1,nshell_nrel
     shell_typ_nrl=basis_nrel%shell(jshell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
     ngaus_nrl=basis_nrel%shell(jshell)%ng
-    if((shell_typ==shell_typ_nrl .and. ngaus==ngaus_nrl).and.(.not.is_large_tmp(ishell))) then
+    if((shell_typ==shell_typ_nrl .and. ngaus==ngaus_nrl).and.(.not.is_large_4c(ishell))) then
      this_is_large=.true.
      do igaus=1,ngaus
        if( basis%shell(ishell)%coeff(igaus) /= basis_nrel%shell(jshell)%coeff(igaus) .or. &
@@ -84,13 +87,28 @@ subroutine x2c_init(basis)
         this_is_large=.false.
        endif
      enddo
-     is_large_tmp(ishell)=this_is_large
+     is_large_4c(ishell)=this_is_large
     endif 
    enddo
   enddo
+
+  !! Find if nstate_large=basis_nrel%nbf before proceeding
+  call clean_allocate('Large overlap matrix S',Large_s_matrix,basis_nrel%nbf,basis_nrel%nbf)
+  call init_libcint(basis_nrel)
+  call setup_overlap(basis_nrel,Large_s_matrix)
+  call setup_x_matrix(min_overlap,Large_s_matrix,nstate_large,Large_x_matrix)
+  call clean_deallocate('Large overlap matrix S',Large_s_matrix)
+  call clean_deallocate('Large X * X**H = S**-1',Large_x_matrix)
+  call destroy_libcint(basis_nrel)
   
   !! We already found the large component shells. No longer need the large comp. basis
   call destroy_basis_set(basis_nrel)
+
+  !! Do not proceed if nstate/=basis_nrel%nbf because we need to build for each AO^L an AO^S in restricted-KB (see below).
+  if(nstate_large/=basis_nrel%nbf) then
+    write(stdout,'(/,a,i10,i10,/)') 'Nstate and basis_large ',nstate_large,basis_nrel%nbf
+    call die("X2C requires basis sets that are linearly independent.")
+  endif
  
   !! Define atomic basis as large or small
   allocate(is_large(basis%nbf))
@@ -116,13 +134,13 @@ subroutine x2c_init(basis)
     call issue_warning('Shell type >6 in X2C is not implemented!') 
    endif
    do ibf=1,ntyp
-     is_large(ibf+nbasis)=is_large_tmp(ishell)
+     is_large(ibf+nbasis)=is_large_4c(ishell)
    enddo
    nbasis=nbasis+ntyp
   enddo
-  deallocate(is_large_tmp)
+  deallocate(is_large_4c)
 
-  !! Calculate all integrals for UKB H_4C
+  !! Calculate all integrals for unrestricted-KB H_4C
   call init_libcint(basis)
   !! Calculate overlap matrix S
   call clean_allocate('Scalar overlap matrix S',scalar_s_matrix,basis%nbf,basis%nbf)
@@ -140,18 +158,18 @@ subroutine x2c_init(basis)
   !! destroy libcint info
   call destroy_libcint(basis)
 
-  !! Initialize the H_4C UKB
-  write(stdout,'(/,a)') 'Building the 4C Hamiltonian'
+  !! Initialize the H_4C unrestricted-KB
+  write(stdout,'(/,a)') 'Building the 4C Hamiltonian in unrestricted-KB'
   nbasis=2*basis%nbf
-  call clean_allocate('H_4C in UKB',H_4c_ukb_mat,nbasis,nbasis)
+  call clean_allocate('H_4C in unrestricted-KB',H_4c_ukb_mat,nbasis,nbasis)
   call clean_allocate('4C overlap matrix S',s_matrix_4c,nbasis,nbasis)
-  allocate(is_large_tmp(nbasis))
+  allocate(is_large_4c(nbasis))
   H_4c_ukb_mat(:,:)=complex_zero
   s_matrix_4c(:,:)=zero
   do ibf=1,basis%nbf
 
-   is_large_tmp(2*ibf-1)=is_large(ibf)
-   is_large_tmp(2*ibf)=is_large(ibf)
+   is_large_4c(2*ibf-1)=is_large(ibf)
+   is_large_4c(2*ibf)=is_large(ibf)
 
    do jbf=1,basis%nbf
     ! Set H_4c_ukb_mat and s_matrix_4c
@@ -238,30 +256,36 @@ subroutine x2c_init(basis)
    enddo
 
   enddo
-  write(stdout,'(a,/)') 'Completed the 4C Hamiltonian'
+  write(stdout,'(a,/)') 'Completed the 4C Hamiltonian in unrestricted-KB'
 
-  !! No longer need the scalar matrices (integrals) TODO: I will probably need < alpha | nabla_r | beta > in restoring the RKB...
-  deallocate(is_large)
+  !! No longer need these scalar matrices (integrals)
   call clean_deallocate('Scalar overlap matrix S',scalar_s_matrix)
-  call clean_deallocate('Scalar nabla operator D',scalar_nabla_ao)
   call clean_deallocate('Scalar nucleus operator V',scalar_nucleus)
 
   !! Shuffle the matrices to the
   !! ( LL  LS )
   !! ( SL  SS )
   !! shape
-  call shuffle_complex(nbasis,is_large_tmp,H_4c_ukb_mat)
-  call shuffle_real(nbasis,is_large_tmp,s_matrix_4c)
-  deallocate(is_large_tmp)
+  call shuffle_complex(nbasis,is_large_4c,H_4c_ukb_mat)
+  call shuffle_real(nbasis,is_large_4c,s_matrix_4c)
+  call shuffle_real(basis%nbf,is_large,scalar_nabla_ao(:,:,1))
+  call shuffle_real(basis%nbf,is_large,scalar_nabla_ao(:,:,2))
+  call shuffle_real(basis%nbf,is_large,scalar_nabla_ao(:,:,3))
+  deallocate(is_large_4c,is_large)
+
+  !! Set RKB for each AO^L -> build an AO^S
+  !! Use the M_nu,p matrix < nu | sigma . p | p > = \sum_mu S_nu,mu C_mu,p
+  write(stdout,'(/,a)') 'Imposing restricted-KB'
+
+  call clean_deallocate('Scalar nabla operator D',scalar_nabla_ao)
 
   !! TODO
   !! - Lowdin orthogonalize
-  !! - Set RKB (including orthogonalize)
   !! - Diag. to find the eigenvectors (Coef)
   !! - Use Coef to find R decoupling matrix
   !! - Transform to the X2C matrices
 
-  call clean_deallocate('H_4C in UKB',H_4c_ukb_mat)
+  call clean_deallocate('H_4C in unrestricted-KB',H_4c_ukb_mat)
   call clean_deallocate('4C overlap matrix S',s_matrix_4c)
 
   write(stdout,'(/,a)') ' Completed X2C Hamiltonian construction'
