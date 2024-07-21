@@ -30,13 +30,17 @@ subroutine x2c_init(basis)
   character(len=100)             :: basis_name_1
   character(len=100),allocatable :: basis_name_nrel(:)
   logical                        :: this_is_large
-  logical,allocatable            :: is_large(:),is_large_tmp(:)
   integer                        :: istring,ibf,jbf,ishell,jshell,igaus,ngaus,ngaus_nrl
   integer                        :: nshell,nshell_nrel,nbasis,ntyp,shell_typ,shell_typ_nrl
   real(dp)                       :: eext
+  real(dp)                       :: Vext_pq(4),S_pq(4),Dz_pq(4),Dy_pq(4),Dx_pq(4)
+  complex(dp)                    :: H4c_me
+  logical,allocatable            :: is_large(:),is_large_tmp(:)
   real(dp),allocatable           :: scalar_s_matrix(:,:)
   real(dp),allocatable           :: scalar_nucleus(:,:)
   real(dp),allocatable           :: scalar_nabla_ao(:,:,:) ! < alpha | nabla_r | beta >
+  real(dp),allocatable           :: s_matrix_4c(:,:)
+  complex(dp),allocatable        :: H_4c_ukb_mat(:,:)
   !=====
 
   call start_clock(timing_x2c)
@@ -57,7 +61,7 @@ subroutine x2c_init(basis)
       basis_name_1=basis_name_1(1:istring-1)
     endif
   enddo
-  basis_name_nrel(1:ncenter_basis)=basis_name_1
+  basis_name_nrel(:)=basis_name_1
   
   !! Initialize the non-rel. basis (used to find the large component AOs)
   call init_basis_set(basis_path,basis_name_nrel,ecp_basis_name,gaussian_type, &
@@ -118,11 +122,11 @@ subroutine x2c_init(basis)
   enddo
   deallocate(is_large_tmp)
 
-  !! Calculate all integrals for H^X2C
+  !! Calculate all integrals for UKB H_4C
   call init_libcint(basis)
   !! Calculate overlap matrix S
   call clean_allocate('Scalar overlap matrix S',scalar_s_matrix,basis%nbf,basis%nbf)
-  call clean_allocate('Scalar nabla_ao operator M',scalar_nabla_ao,basis%nbf,basis%nbf,3)
+  call clean_allocate('Scalar nabla operator D',scalar_nabla_ao,basis%nbf,basis%nbf,3)
   call clean_allocate('Scalar nucleus operator V',scalar_nucleus,basis%nbf,basis%nbf)
   !! S only depends onto the basis set
   call setup_overlap(basis,scalar_s_matrix)
@@ -132,15 +136,134 @@ subroutine x2c_init(basis)
   call setup_electric_field(basis,scalar_nucleus,eext)
   !! <alpha | nabla_r | beta >
   call setup_nabla_ao(basis,scalar_nabla_ao)
+  write(stdout,'(a)') ' '
   !! destroy libcint info
   call destroy_libcint(basis)
 
+  !! Initialize the H_4C UKB
+  write(stdout,'(/,a)') 'Building the 4C Hamiltonian'
+  nbasis=2*basis%nbf
+  call clean_allocate('H_4C in UKB',H_4c_ukb_mat,nbasis,nbasis)
+  call clean_allocate('4C overlap matrix S',s_matrix_4c,nbasis,nbasis)
+  allocate(is_large_tmp(nbasis))
+  H_4c_ukb_mat(:,:)=complex_zero
+  s_matrix_4c(:,:)=zero
+  do ibf=1,basis%nbf
 
+   is_large_tmp(2*ibf-1)=is_large(ibf)
+   is_large_tmp(2*ibf)=is_large(ibf)
 
-  call clean_deallocate('Scalar overlap matrix S',scalar_s_matrix)
-  call clean_deallocate('Scalar nabla_ao operator M',scalar_nabla_ao)
-  call clean_deallocate('Scalar nucleus operator V',scalar_nucleus)
+   do jbf=1,basis%nbf
+    ! Set H_4c_ukb_mat and s_matrix_4c
+    if(is_large(ibf)) then  ! L
+     if(is_large(jbf)) then  ! LL
+      ! s_matrix_4c
+      s_matrix_4c(2*ibf-1,2*jbf-1)=scalar_s_matrix(ibf,jbf)
+      s_matrix_4c(2*ibf,2*jbf)=scalar_s_matrix(ibf,jbf)
+      ! p1 and q1
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Vext_pq(1)=scalar_nucleus(ibf,jbf)
+      S_pq(1)=scalar_s_matrix(ibf,jbf)
+      H_4c_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      ! p1 and q2
+      H_4c_ukb_mat(2*ibf-1,2*jbf)=complex_zero
+      ! p2 and q1
+      H_4c_ukb_mat(2*ibf,2*jbf-1)=complex_zero
+      ! p2 and q2
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Vext_pq(2)=scalar_nucleus(ibf,jbf)
+      S_pq(2)=scalar_s_matrix(ibf,jbf)
+      H_4c_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+     else                    ! LS
+      ! p1 and q3
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Dz_pq(1)=scalar_nabla_ao(ibf,jbf,3)
+      H_4c_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      ! p1 and q4
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Dx_pq(1)=scalar_nabla_ao(ibf,jbf,1)
+      Dy_pq(1)=scalar_nabla_ao(ibf,jbf,2)
+      H_4c_ukb_mat(2*ibf-1,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      ! p2 and q3
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Dx_pq(2)=scalar_nabla_ao(ibf,jbf,1)
+      Dy_pq(2)=scalar_nabla_ao(ibf,jbf,2)
+      H_4c_ukb_mat(2*ibf,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      ! p2 and q4
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Dz_pq(2)=scalar_nabla_ao(ibf,jbf,3)
+      H_4c_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+     endif
+    else                    ! S 
+     if(is_large(jbf)) then  ! SL
+      ! p3 and q1
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Dz_pq(3)=scalar_nabla_ao(ibf,jbf,3)
+      H_4c_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      ! p3 and q2
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Dx_pq(3)=scalar_nabla_ao(ibf,jbf,1)
+      Dy_pq(3)=scalar_nabla_ao(ibf,jbf,2)
+      H_4c_ukb_mat(2*ibf-1,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      ! p4 and q1
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Dx_pq(4)=scalar_nabla_ao(ibf,jbf,1)
+      Dy_pq(4)=scalar_nabla_ao(ibf,jbf,2)
+      H_4c_ukb_mat(2*ibf,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      ! p4 and q2
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Dz_pq(4)=scalar_nabla_ao(ibf,jbf,3)
+      H_4c_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+     else                    ! SS
+      ! s_matrix_4c
+      s_matrix_4c(2*ibf-1,2*jbf-1)=scalar_s_matrix(ibf,jbf)
+      s_matrix_4c(2*ibf,2*jbf)=scalar_s_matrix(ibf,jbf)
+      ! p3 and q3
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Vext_pq(3)=scalar_nucleus(ibf,jbf)
+      S_pq(3)=scalar_s_matrix(ibf,jbf)
+      H_4c_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      ! p3 and q4
+      H_4c_ukb_mat(2*ibf-1,2*jbf)=complex_zero
+      ! p4 and q3
+      H_4c_ukb_mat(2*ibf,2*jbf-1)=complex_zero
+      ! p4 and q4
+      Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
+      Vext_pq(4)=scalar_nucleus(ibf,jbf)
+      S_pq(4)=scalar_s_matrix(ibf,jbf)
+      H_4c_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+     endif
+    endif  
+ 
+   enddo
+
+  enddo
+  write(stdout,'(a,/)') 'Completed the 4C Hamiltonian'
+
+  !! No longer need the scalar matrices (integrals) TODO: I will probably need < alpha | nabla_r | beta > in restoring the RKB...
   deallocate(is_large)
+  call clean_deallocate('Scalar overlap matrix S',scalar_s_matrix)
+  call clean_deallocate('Scalar nabla operator D',scalar_nabla_ao)
+  call clean_deallocate('Scalar nucleus operator V',scalar_nucleus)
+
+  !! Shuffle the matrices to the
+  !! ( LL  LS )
+  !! ( SL  SS )
+  !! shape
+  call shuffle_complex(nbasis,is_large_tmp,H_4c_ukb_mat)
+  call shuffle_real(nbasis,is_large_tmp,s_matrix_4c)
+  deallocate(is_large_tmp)
+
+  !! TODO
+  !! - Lowdin orthogonalize
+  !! - Set RKB (including orthogonalize)
+  !! - Diag. to find the eigenvectors (Coef)
+  !! - Use Coef to find R decoupling matrix
+  !! - Transform to the X2C matrices
+
+  call clean_deallocate('H_4C in UKB',H_4c_ukb_mat)
+  call clean_deallocate('4C overlap matrix S',s_matrix_4c)
+
   write(stdout,'(/,a)') ' Completed X2C Hamiltonian construction'
   write(stdout,'(a,/)') ' ======================================'
 
@@ -150,5 +273,114 @@ subroutine x2c_init(basis)
   call stop_clock(timing_x2c)
 
 end subroutine x2c_init
+
+!==================================================================
+function H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq) result(H_val)
+  use m_definitions
+  implicit none
+  real(dp),intent(in)  :: Vext_pq(4)
+  real(dp),intent(in)  :: S_pq(4)
+  real(dp),intent(in)  :: Dz_pq(4)
+  real(dp),intent(in)  :: Dy_pq(4)
+  real(dp),intent(in)  :: Dx_pq(4)
+  complex(dp)          :: H_val
+  !=====
+  !=====
+
+  H_val =                           Vext_pq(1) + Vext_pq(2) + Vext_pq(3) + Vext_pq(4)  & 
+    &   +c_speedlight*c_speedlight*(   S_pq(1) +    S_pq(2) -    S_pq(3) -    S_pq(4)) &
+    &   -c_speedlight*im          *(  Dz_pq(1) -   Dz_pq(2) +   Dz_pq(3) -   Dz_pq(4)) &
+    &   -c_speedlight             *(  Dy_pq(1) -   Dy_pq(2) +   Dy_pq(3) -   Dy_pq(4)) &
+    &   -c_speedlight*im          *(  Dx_pq(1) +   Dx_pq(2) +   Dx_pq(3) +   Dx_pq(4))
+
+end function H4c_me
+
+!==================================================================
+
+subroutine shuffle_complex(nbasis,is_large,matrix)
+  use m_definitions
+  implicit none
+  integer,intent(in)        :: nbasis
+  logical,intent(in)        :: is_large(nbasis)
+  complex(dp),intent(inout) :: matrix(nbasis,nbasis)
+  !=====
+  integer                   :: ibf,jbf
+  complex(dp),allocatable   :: tmp_matrix(:,:)
+  !=====
+
+  allocate(tmp_matrix(nbasis,nbasis))
+  jbf=1
+  do ibf=1,nbasis
+   if(is_large(ibf)) then
+    tmp_matrix(jbf,:)=matrix(ibf,:)
+    jbf=jbf+1  
+   endif
+  enddo
+  do ibf=1,nbasis
+   if(.not.is_large(ibf)) then
+    tmp_matrix(jbf,:)=matrix(ibf,:)
+    jbf=jbf+1  
+   endif
+  enddo
+  jbf=1
+  do ibf=1,nbasis
+   if(is_large(ibf)) then
+    matrix(:,jbf)=tmp_matrix(:,ibf)
+    jbf=jbf+1  
+   endif
+  enddo
+  do ibf=1,nbasis
+   if(.not.is_large(ibf)) then
+    matrix(:,jbf)=tmp_matrix(:,ibf)
+    jbf=jbf+1  
+   endif
+  enddo
+  deallocate(tmp_matrix)
+
+end subroutine shuffle_complex
+
+!==================================================================
+
+subroutine shuffle_real(nbasis,is_large,matrix)
+  use m_definitions
+  implicit none
+  integer,intent(in)     :: nbasis
+  logical,intent(in)     :: is_large(nbasis)
+  real(dp),intent(inout) :: matrix(nbasis,nbasis)
+  !=====
+  integer                :: ibf,jbf
+  real(dp),allocatable   :: tmp_matrix(:,:)
+  !=====
+
+  allocate(tmp_matrix(nbasis,nbasis))
+  jbf=1
+  do ibf=1,nbasis
+   if(is_large(ibf)) then
+    tmp_matrix(jbf,:)=matrix(ibf,:)
+    jbf=jbf+1  
+   endif
+  enddo
+  do ibf=1,nbasis
+   if(.not.is_large(ibf)) then
+    tmp_matrix(jbf,:)=matrix(ibf,:)
+    jbf=jbf+1  
+   endif
+  enddo
+  jbf=1
+  do ibf=1,nbasis
+   if(is_large(ibf)) then
+    matrix(:,jbf)=tmp_matrix(:,ibf)
+    jbf=jbf+1  
+   endif
+  enddo
+  do ibf=1,nbasis
+   if(.not.is_large(ibf)) then
+    matrix(:,jbf)=tmp_matrix(:,ibf)
+    jbf=jbf+1  
+   endif
+  enddo
+  deallocate(tmp_matrix)
+
+end subroutine shuffle_real
 
 !==================================================================

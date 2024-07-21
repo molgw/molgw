@@ -72,7 +72,7 @@ program molgw
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
   integer                 :: nstate
-  integer                 :: istep
+  integer                 :: istep,istring
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
@@ -88,7 +88,9 @@ program molgw
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
   complex(dp),allocatable :: c_matrix_cmplx(:,:,:)
+  character(len=100)      :: basis_name_1
   character(len=200)      :: file_name
+  character(len=100),allocatable :: basis_name_nrel(:)
   !=====
 
   !
@@ -169,7 +171,22 @@ program molgw
     if ( TRIM(x2c) == 'yes'  .and. basis%gaussian_type/= 'CART' ) then
        call die("x2c calculations require cartesian gaussian_type")
     endif
-    if ( TRIM(x2c) == 'yes'  .and. basis%gaussian_type== 'CART' ) call x2c_init(basis)
+    if ( TRIM(x2c) == 'yes'  .and. basis%gaussian_type== 'CART' ) then
+       call x2c_init(basis)
+       allocate(basis_name_nrel(ncenter_basis))
+       write(basis_name_1,'(a)') trim(basis_name(1))
+       do istring=1,len(basis_name_1)
+         if( (basis_name_1(istring:istring)=='_' .and. basis_name_1(istring+1:istring+1)=='r') .and.   &
+         &  (  basis_name_1(istring+2:istring+2)=='e' .and. basis_name_1(istring+3:istring+3)=='l') ) then
+           basis_name_1=basis_name_1(1:istring-1)
+         endif
+       enddo
+       basis_name_nrel(:)=basis_name_1
+       call destroy_basis_set(basis)
+       call init_basis_set(basis_path,basis_name_nrel,ecp_basis_name,gaussian_type, &
+          & even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
+       deallocate(basis_name_nrel)
+    endif
 
     !
     ! If an auxiliary basis is given, then set it up now
