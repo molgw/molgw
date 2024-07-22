@@ -23,6 +23,7 @@ module m_hamiltonian_twobodies
   use m_dft_grid
   use m_libxc_tools
   use m_io
+  use m_hamiltonian_tools,only: diagonalize_hamiltonian_scalapack
 
 
 contains
@@ -1037,6 +1038,169 @@ end subroutine setup_exchange_longrange_ri_cmplx
 
 
 !=========================================================================
+subroutine setup_exchange_genuine_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
+  implicit none
+  real(dp),intent(in)  :: occupation(:,:)
+  real(dp),intent(in)  :: c_matrix(:,:,:)
+  real(dp),intent(in)  :: p_matrix(:,:,:)
+  real(dp),intent(out) :: exchange_ao(:,:,:)
+  real(dp),intent(out) :: eexchange
+  !=====
+  integer              :: nbf,nstate
+  integer              :: ibf,jbf,ispin,istate
+  integer              :: nocc
+  real(dp),allocatable :: tmp(:,:,:),tmp2(:,:,:)
+  integer              :: ipair,iauxil_local,iauxil_global
+  !=====
+
+  call start_clock(timing_exchange)
+
+  if( ortho%nproc > 1 ) call die('not coded')
+
+  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity (genuine)'
+
+  exchange_ao(:,:,:) = 0.0_dp
+
+  ! Find highest occupied state
+  nocc = get_number_occupied_states(occupation)
+
+  nbf    = SIZE(exchange_ao,DIM=1)
+  nstate = SIZE(occupation(:,:),DIM=1)
+
+  !allocate(tmp(nocc,nbf,nauxil_local))
+  allocate(tmp(nauxil_local,nbf,nocc))
+  allocate(tmp2(nauxil_global,nbf,nocc))
+
+  do ispin=1,nspin
+
+    tmp(:,:,:) = 0.0_dp
+    ! GUILLAUME
+    ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
+    do iauxil_local=1,nauxil_local
+      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP DO REDUCTION(+:tmp)
+      do ipair=1,npair
+        ibf = index_basis(1,ipair)
+        jbf = index_basis(2,ipair)
+        tmp(iauxil_local,ibf,:) = tmp(iauxil_local,ibf,:) + c_matrix(jbf,1:nocc,ispin) * eri_3center(ipair,iauxil_local)
+        tmp(iauxil_local,jbf,:) = tmp(iauxil_local,jbf,:) + c_matrix(ibf,1:nocc,ispin) * eri_3center(ipair,iauxil_local)
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+    enddo
+
+    do istate=1,nocc
+      tmp2(:,:,istate) = MATMUL( eri_2center_inv(:,:) , tmp(:,:,istate) )
+    enddo
+
+    call world%sum(tmp2)
+
+    do jbf=1,nbf
+      do istate=1,nocc
+        do iauxil_local=1,nauxil_local
+          iauxil_global = ibf_auxil_g(iauxil_local)
+          exchange_ao(:,jbf,ispin) = exchange_ao(:,jbf,ispin) &
+                           - occupation(istate,ispin) / spin_fact * tmp(iauxil_local,:,istate) &
+                                  * tmp2(iauxil_global,jbf,istate)
+        enddo
+      enddo
+    enddo
+
+  enddo ! ispin
+  call world%sum(exchange_ao)
+
+  eexchange = 0.5_dp * SUM( exchange_ao(:,:,:) * p_matrix(:,:,:) )
+
+  deallocate(tmp,tmp2)
+
+  call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_genuine_ri
+
+
+!=========================================================================
+subroutine setup_exchange_genuine_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
+  implicit none
+  real(dp),intent(in)  :: occupation(:,:)
+  complex(dp),intent(in)  :: c_matrix(:,:,:)
+  complex(dp),intent(in)  :: p_matrix(:,:,:)
+  complex(dp),intent(out) :: exchange_ao(:,:,:)
+  real(dp),intent(out) :: eexchange
+  !=====
+  integer              :: nbf,nstate
+  integer              :: ibf,jbf,ispin,istate
+  integer              :: nocc
+  complex(dp),allocatable :: tmp(:,:,:),tmp2(:,:,:)
+  integer              :: ipair,iauxil_local,iauxil_global
+  !=====
+
+  call start_clock(timing_exchange)
+
+  if( ortho%nproc > 1 ) call die('not coded')
+
+  write(stdout,*) 'Calculate Complex Exchange term with Resolution-of-Identity (genuine)'
+
+  exchange_ao(:,:,:) = 0.0_dp
+
+  ! Find highest occupied state
+  nocc = get_number_occupied_states(occupation)
+
+  nbf    = SIZE(exchange_ao,DIM=1)
+  nstate = SIZE(occupation(:,:),DIM=1)
+
+  !allocate(tmp(nocc,nbf,nauxil_local))
+  allocate(tmp(nauxil_local,nbf,nocc))
+  allocate(tmp2(nauxil_global,nbf,nocc))
+
+  do ispin=1,nspin
+
+    tmp(:,:,:) = 0.0_dp
+    ! GUILLAUME
+    ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
+    do iauxil_local=1,nauxil_local
+      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP DO REDUCTION(+:tmp)
+      do ipair=1,npair
+        ibf = index_basis(1,ipair)
+        jbf = index_basis(2,ipair)
+        tmp(iauxil_local,ibf,:) = tmp(iauxil_local,ibf,:) + c_matrix(jbf,1:nocc,ispin) * eri_3center(ipair,iauxil_local)
+        tmp(iauxil_local,jbf,:) = tmp(iauxil_local,jbf,:) + c_matrix(ibf,1:nocc,ispin) * eri_3center(ipair,iauxil_local)
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+    enddo
+
+    do istate=1,nocc
+      tmp2(:,:,istate) = MATMUL( eri_2center_inv(:,:) , tmp(:,:,istate) )
+    enddo
+    tmp2 = CONJG(tmp2)
+
+    call world%sum(tmp2)
+
+    do jbf=1,nbf
+      do istate=1,nocc
+        do iauxil_local=1,nauxil_local
+          iauxil_global = ibf_auxil_g(iauxil_local)
+          exchange_ao(:,jbf,ispin) = exchange_ao(:,jbf,ispin) &
+                           - occupation(istate,ispin) / spin_fact * tmp(iauxil_local,:,istate) &
+                                  * tmp2(iauxil_global,jbf,istate)
+        enddo
+      enddo
+    enddo
+
+  enddo ! ispin
+  call world%sum(exchange_ao)
+
+  eexchange = 0.5_dp * REAL( SUM( exchange_ao(:,:,:) * CONJG( p_matrix(:,:,:) ) ) , dp)
+
+  deallocate(tmp,tmp2)
+
+  call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_genuine_ri_cmplx
+
+
+!=========================================================================
 ! Calculate the exchange-correlation potential and energy
 ! * subroutine works for both real and complex wavefunctions c_matrix
 !   using "class" syntax of Fortran2003
@@ -1384,8 +1548,8 @@ subroutine dft_approximate_vhxc(basis,vhxc_ao)
   use m_eri_calculate
   implicit none
 
-  type(basis_set),intent(inout) :: basis
-  real(dp),intent(out)          :: vhxc_ao(basis%nbf,basis%nbf)
+  type(basis_set),intent(in) :: basis
+  real(dp),intent(out)       :: vhxc_ao(basis%nbf,basis%nbf)
   !=====
   real(dp),allocatable :: weight_batch(:)
   real(dp),allocatable :: basis_function_r_batch(:,:)
@@ -1603,6 +1767,160 @@ subroutine setup_exchange_mo(occupation,sigx_mo,eexchange)
   endif
 
 end subroutine setup_exchange_mo
+
+
+!=========================================================================
+! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
+!                         or by reading a Gaussian fchk
+!                         or ...
+subroutine init_c_matrix(basis,occupation,x_matrix,hkin,hnuc,c_matrix)
+  implicit none
+
+  type(basis_set),intent(in) :: basis
+  real(dp),intent(in)        :: occupation(:,:)
+  real(dp),intent(in)        :: x_matrix(:,:)
+  real(dp),intent(in)        :: hkin(:,:), hnuc(:,:)
+  real(dp),intent(out)       :: c_matrix(:,:,:)
+  !=====
+  integer :: nstate, istate, ilumo
+  real(dp),allocatable :: one_mo(:)
+  real(dp),allocatable :: htmp(:,:,:)
+  real(dp) :: energy(basis%nbf,nspin)
+  character(len=200)      :: file_name
+  !=====
+
+  nstate = SIZE(x_matrix,DIM=2)
+  !
+  !
+  select case(TRIM(init_hamiltonian))
+  case('GUESS','MIX')
+    ! Calculate a very approximate vhxc based on simple gaussians density placed on atoms
+    allocate(htmp(basis%nbf,basis%nbf,1))
+
+    call dft_approximate_vhxc(basis,htmp(:,:,1))
+
+    htmp(:,:,1) = htmp(:,:,1) + hkin(:,:) + hnuc(:,:)
+
+    write(stdout,'(/,a)') ' Approximate hamiltonian'
+    call diagonalize_hamiltonian_scalapack(htmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+
+    deallocate(htmp)
+
+  case('CORE', 'NOFT')
+    allocate(htmp(basis%nbf,basis%nbf,1))
+
+    htmp(:,:,1) = hkin(:,:) + hnuc(:,:)
+
+    write(stdout,'(/,a)') ' Approximate hamiltonian'
+    call diagonalize_hamiltonian_scalapack(htmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+
+    deallocate(htmp)
+
+  case('GAUSSIAN')
+    write(file_name,'(2a)') TRIM(output_name),'fchk'
+    if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
+      call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
+    else
+      write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions'
+      write(*,'(a)')   "          or pure/spherical basis functions are employed (set gaussian_type='cart')."
+      write(*,'(a,/)') '          Using a CORE guess instead of a GAUSSIAN guess.'
+      allocate(htmp(basis%nbf,basis%nbf,1))
+      htmp(:,:,1) = hkin(:,:) + hnuc(:,:)
+      write(stdout,'(/,a)') ' Approximate hamiltonian'
+      call diagonalize_hamiltonian_scalapack(htmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
+      deallocate(htmp)
+      c_matrix(:,:,nspin) = c_matrix(:,:,1)
+    endif
+
+  case('CC4S_FILES')
+    ! c_matrix is the identity (AO=MO)
+    ! Be careful: orthonormality C**T * S* C /=1 not fulfilled here
+    ! but c_matrix is not meant to be used when init_hamiltonian = 'skip'
+    c_matrix(:,:,:) = 0.0_dp
+    do istate=1,nstate
+      c_matrix(istate,istate,1) = 1.0_dp
+    enddo
+
+  case default
+    call die('init_c_matrix: init_hamiltonian option is not valid')
+  end select
+
+
+  ! The hamiltonian is still spin-independent at this stage:
+  select case(TRIM(init_hamiltonian))
+  case('GAUSSIAN', 'CC4S_FILES')
+    ! Don't do anything
+  case default
+    c_matrix(:,:,nspin) = c_matrix(:,:,1)
+  end select
+
+
+  ! Mixing the HOMO-LUMO for GUESS='MIX' and spin-compensated systems
+  if( (TRIM(init_hamiltonian) == 'MIX' .and. ABS(magnetization) < 1.0e-8_dp) .and. nspin == 2 ) then
+    write(stdout,'(a)') ' Guess including mixing the HOMO-LUMO'
+    allocate(one_mo(basis%nbf))
+    one_mo = zero
+    ilumo = 0
+    do istate=1,nstate
+      if(occupation(istate,2)<1e-8 .and. ilumo==0) then
+        ilumo=istate
+      endif
+    enddo
+    write(stdout,'(a,i5)') ' LUMO state ',ilumo
+    ! Spin channel 1
+    ! New HOMO = 1/sqrt(2)  ( HOMO - LUMO )
+    ! New LUMO = 1/sqrt(2)  ( HOMO + LUMO )
+    one_mo(:)=(c_matrix(:,ilumo-1,1)+c_matrix(:,ilumo,1))/sqrt(2.0_dp)
+    c_matrix(:,ilumo-1,1)=(c_matrix(:,ilumo-1,1)-c_matrix(:,ilumo,1))/sqrt(2.0_dp)
+    c_matrix(:,ilumo,1)=one_mo(:)
+    ! Spin channel 2
+    ! New HOMO = 1/sqrt(2)  ( HOMO + LUMO )
+    ! New LUMO = 1/sqrt(2)  ( HOMO - LUMO )
+    one_mo(:)=(c_matrix(:,ilumo-1,2)+c_matrix(:,ilumo,2))/sqrt(2.0_dp)
+    c_matrix(:,ilumo,2)=(c_matrix(:,ilumo-1,2)-c_matrix(:,ilumo,2))/sqrt(2.0_dp)
+    c_matrix(:,ilumo-1,2)=one_mo(:)
+    deallocate(one_mo)
+  endif
+
+
+end subroutine init_c_matrix
+
+
+!=========================================================================
+subroutine init_c_matrix_cmplx(c_matrix,c_matrix_cmplx)
+  implicit none
+
+  real(dp),intent(in)     :: c_matrix(:,:,:)
+  complex(dp),intent(out) :: c_matrix_cmplx(:,:,:)
+  !=====
+  character(len=6) :: up_down
+  integer :: istate, nstate
+  complex(dp) :: phase_factor
+  real(dp)    :: ran_num
+  !=====
+
+  nstate = SIZE(c_matrix,DIM=2)
+
+  up_down='      '
+  write(stdout,'(/,a)') ' Adding Random Imaginary Phases '
+  write(stdout,'(a,/)') ' ------------------------------ '
+  do istate=1,nstate
+    call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
+    phase_factor = exp(im*ran_num)
+    if( nspin==2 ) up_down='  up  '
+    write(stdout,'(a,I10,a,a,f8.5,a,f8.5,a)') ' MO',istate,up_down,': (',real(phase_factor),',',aimag(phase_factor),')'
+    c_matrix_cmplx(:,istate,1)=phase_factor*c_matrix(:,istate,1)
+    if( nspin==2 ) then
+      up_down=' down '
+      phase_factor = conjg(phase_factor)
+      write(stdout,'(a,I10,a,a,f8.5,a,f8.5,a)') ' MO',istate,up_down,': (',real(phase_factor),',',aimag(phase_factor),')'
+      c_matrix_cmplx(:,istate,2)=phase_factor*c_matrix(:,istate,2) ! Time-rev. sym: spin-down = spin-up*
+    endif
+  enddo
+  write(stdout,*)
+
+end subroutine init_c_matrix_cmplx
+
 
 end module m_hamiltonian_twobodies
 !=========================================================================

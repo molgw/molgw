@@ -44,6 +44,7 @@ program molgw
   use m_dft_grid
   use m_spectral_function
   use m_hamiltonian_onebody
+  use m_hamiltonian_twobodies
   use m_selfenergy_tools
   use m_selfenergy_evaluation
   use m_scf_loop
@@ -76,7 +77,6 @@ program molgw
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp,eext
-  real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
   real(dp),allocatable    :: hamiltonian_nucleus(:,:)
   real(dp),allocatable    :: hamiltonian_fock(:,:,:)
@@ -87,6 +87,7 @@ program molgw
   real(dp),allocatable    :: energy(:,:)
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
+  complex(dp),allocatable :: c_matrix_cmplx(:,:,:)
   character(len=200)      :: file_name
   !=====
 
@@ -208,7 +209,7 @@ program molgw
 
 
     allocate(occupation(nstate,nspin))
-    allocate(    energy(nstate,nspin))
+    allocate(energy(nstate,nspin))
     !
     ! Build the first occupation array
     ! as the energy are not known yet, set temperature to zero
@@ -342,81 +343,7 @@ program molgw
 
 
     if( .NOT. is_restart) then
-
-
-      !
-      ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-      !                         or by reading a Gaussian fchk
-      !
-      select case(TRIM(init_hamiltonian))
-      case('GUESS')
-        ! Calculate a very approximate vhxc based on simple gaussians density placed on atoms
-        allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-
-        call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
-
-        hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-
-        write(stdout,'(/,a)') ' Approximate hamiltonian'
-        call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-
-        deallocate(hamiltonian_tmp)
-
-      case('CORE')
-        allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-
-        hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-
-        write(stdout,'(/,a)') ' Approximate hamiltonian'
-        call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-
-        deallocate(hamiltonian_tmp)
-
-      case('GAUSSIAN')
-        write(file_name,'(2a)') trim(output_name),'fchk'
-        if( basis%nbf==nstate .AND. basis%gaussian_type == 'CART' ) then
-          call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
-        else
-          write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions'
-          write(*,'(a)')   "          or pure/spherical basis functions are employed (set gaussian_type='cart')."
-          write(*,'(a,/)') '          Using a CORE guess instead of a GAUSSIAN guess.'
-          allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-          hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-          write(stdout,'(/,a)') ' Approximate hamiltonian'
-          call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-          deallocate(hamiltonian_tmp)
-          c_matrix(:,:,nspin) = c_matrix(:,:,1)
-        endif
-
-      case('NOFT') ! Equivalent to CORE at this level to avoid case default and 'die'
-        allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-
-        hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-
-        write(stdout,'(/,a)') ' Approximate hamiltonian'
-        call diagonalize_hamiltonian_scalapack(hamiltonian_tmp(:,:,1:1),x_matrix,energy(:,1:1),c_matrix(:,:,1:1))
-
-        deallocate(hamiltonian_tmp)
-
-      case('CC4S_FILES')
-        ! c_matrix is the identity (AO=MO)
-        ! Be careful: orthonormality C**T * S* C /=1 not fulfilled here
-        ! but c_matrix is not meant to be used when init_hamiltonian = 'skip'
-        c_matrix(:,:,:) = 0.0_dp
-        do istate=1,nstate
-          c_matrix(istate,istate,1) = 1.0_dp
-        enddo
-      case default
-        call die('molgw: init_hamiltonian option is not valid')
-      end select
-
-      ! The hamiltonian is still spin-independent:
-      select case(TRIM(init_hamiltonian))
-      case('GAUSSIAN', 'CC4S_FILES')
-      case default
-        c_matrix(:,:,nspin) = c_matrix(:,:,1)
-      end select
-
+      call init_c_matrix(basis,occupation,x_matrix,hamiltonian_kinetic,hamiltonian_nucleus,c_matrix)
     endif
 
     call stop_clock(timing_prescf)
@@ -432,13 +359,37 @@ program molgw
     ! Big SCF loop is in there
     ! Only do it if the calculation is NOT a big restart
     if( .NOT. is_big_restart .AND. nscf > 0 ) then
-      call scf_loop(is_restart,                                     &
-                    basis,                                          &
-                    x_matrix,s_matrix,                              &
-                    hamiltonian_kinetic,hamiltonian_nucleus,        &
-                    occupation,energy,                              &
-                    hamiltonian_fock,                               &
-                    c_matrix,en_gks,scf_has_converged)
+      if(complex_scf=='no') then ! By default we use the real solution of the SCF equations
+        call scf_loop(is_restart,                                     &
+                      basis,                                          &
+                      x_matrix,s_matrix,                              &
+                      hamiltonian_kinetic,hamiltonian_nucleus,        &
+                      occupation,energy,                              &
+                      hamiltonian_fock,                               &
+                      c_matrix,en_gks,scf_has_converged)
+      else
+        call issue_warning('Complex SCF is currently implemented only for testing')
+
+        call clean_allocate('Wavefunctions C_cmplx',c_matrix_cmplx,basis%nbf,nstate,nspin)
+        call init_c_matrix_cmplx(c_matrix,c_matrix_cmplx)
+
+        call scf_loop_cmplx(is_restart,                                       &
+                            basis,                                            &
+                            x_matrix,s_matrix,                                &
+                            hamiltonian_kinetic,hamiltonian_nucleus,          &
+                            occupation,energy,                                &
+                            c_matrix,c_matrix_cmplx,en_gks,scf_has_converged)
+        call clean_deallocate('Wavefunctions C_cmplx',c_matrix_cmplx)
+
+        write(stdout,'(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
+        !MARM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.,
+        !          the occupation numbers: occupations(:,1) \in [0,2], and orb. energy = 0.0
+        energy(:,:) = 0.0_dp
+        write(stdout,'(/,1x,a)')  'Natural occupations: '
+        write(stdout,'(8(2x,f14.6))') occupation(:,1)
+        write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
+        write(stdout,*)
+      endif
     endif
 
     !

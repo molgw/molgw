@@ -42,7 +42,7 @@ contains
 !!  opt_orb
 !!
 !! FUNCTION
-!!  Call the F-matrix method or Newton (Hessian) for orb optimization 
+!!  Call the F-matrix method or QC (with Hessian) for orb optimization 
 !!
 !! INPUTS
 !!  iter=Number of global iteration 
@@ -95,7 +95,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 !scalars
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed
- integer::icall,iorbmax1,iorbmax2,imethod_in
+ integer::icall,istate,iorbmax1,iorbmax2,imethod_in
  real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
 !arrays
  real(dp),allocatable,dimension(:)::DM2_L_saved
@@ -106,6 +106,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 
  imethod_in=imethod
 
+ istate=1
  Ediff=zero; Energy=zero; Energy_old=zero; convLambda=.false.;nogamma=.true.;
  allocated_DMNs=.false.;F_meth_printed=.false.;NR_meth_printed=.false.;all_ERIs=.false.;
 
@@ -114,8 +115,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
 
  ! Select the method
- if((imethod_in/=1.and.iter>50) .and. (abs(maxdiff)<tol3)) then ! TODO Fix the Newton-Rapson method. Worked only for H2...
-  write(msg,'(a)') 'Performing Newton Rapson for orbital optimization'
+ if((imethod_in/=1.and.iter>10) .and. (abs(maxdiff)<tol3)) then ! TODO Fix the size of the step in the QC method.
+  write(msg,'(a)') 'Performing QC method for orbital optimization'
   call write_output(msg)
   allocated_DMNs=.true.;all_ERIs=.true.;
   if(INTEGd%complex_ints) then
@@ -123,7 +124,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   else
    allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat(RDMd%NBF_tot,RDMd%NBF_tot))
   endif
-  ! Allocate density matrices for Newton Rapson method
+  ! Allocate density matrices for QC method
   allocate(DM2_L_saved(RDMd%NBF_occ*RDMd%NBF_occ))
   DM2_L_saved=RDMd%DM2_L
   RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero; ! Time-rev. sym DM2_L - added to -> DM2_K
@@ -184,42 +185,56 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   if(imethod_in==1) then ! Build F matrix for iterative diagonalization
    if(INTEGd%complex_ints) then
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF_cmplx=NO_COEF_cmplx) ! Build new NO_COEF and set icall=icall+1
+    ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+    & INTEGd%ERI_L_cmplx,nogamma=nogamma)
    else
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF=NO_COEF) ! Build new NO_COEF and set icall=icall+1
-   endif
-  else                ! Use Newton Rapson method to produce new COEFs
+    ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
+    if(INTEGd%irange_sep/=0) then
+     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+     & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
+    else
+     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+     & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
+    endif
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+    & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+    endif
+  else                ! Use QC method to produce new COEFs
    call HESSIANd%build(ELAGd,RDMd,INTEGd,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
    if(INTEGd%complex_ints) then
-    call HESSIANd%newton_rapson(icall,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa from -H^-1 g
+    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa = - H^-1 g -> norm(kappa)
     call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx,U_mat_cmplx=U_mat_cmplx)
     NO_COEF_cmplx=matmul(NO_COEF_cmplx,U_mat_cmplx)
+    ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+    & INTEGd%ERI_L_cmplx,nogamma=nogamma)
    else
-    call HESSIANd%newton_rapson(icall,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa from -H^-1 g
-    call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)
+    if(INTEGd%irange_sep/=0) then
+     write(msg,'(a)') 'Warning! The Hessian of the range-sep is not available'
+     call write_output(msg)
+     stop
+    endif
+    call HESSIANd%quadratic_conver(icall,istate,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa = - H^-1 g -> norm(kappa)
+    call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat,U_mat=U_mat)                             
     NO_COEF=matmul(NO_COEF,U_mat)
+    ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+    & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+    & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
    endif
   endif
 
-  ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
-  if(INTEGd%complex_ints) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
-   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
-   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
-   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
-  else
-   if(INTEGd%irange_sep/=0) then
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-    & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
-   else
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-    & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
-   endif
-   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
-   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
-  endif
- 
   ! Check if we did Diag[(Lambda_pq + Lambda_qp*)/2] for F method (first iteration)
   if((imethod_in==1.and.iter==0).and.ELAGd%diagLpL_done) then ! For F method if we did Diag[(Lambda_pq + Lambda_qp*)/2].
    exit                                                    ! -> Do only one icall iteration before the occ. opt.
@@ -239,7 +254,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  enddo
 
- ! Remove density matrices used in Newton Rapson method  
+ ! Restore density matrices used in QC method  
  if(allocated_DMNs) then
   RDMd%DM2_L=DM2_L_saved
   RDMd%DM2_K=RDMd%DM2_K-RDMd%DM2_L
@@ -280,6 +295,7 @@ end subroutine opt_orb
 !!
 !! FUNCTION
 !!  Check if the Lambda matrix already fulfils the condition Lambda_qp-Lambda_pq^* <= tol_dif_lambda.
+!!  (i.e. the gradient of the exp^-kappa parametrization)
 !!
 !! INPUTS
 !!
@@ -312,13 +328,13 @@ subroutine lambda_conv(ELAGd,RDMd,converg_lamb,sumdiff,maxdiff,maxdiff_all,iorbm
  
  do iorb=1,RDMd%NBF_tot
   do iorb1=1,RDMd%NBF_tot
-   diff=dabs(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
+   diff=two*dabs(ELAGd%Lambdas(iorb1,iorb)-ELAGd%Lambdas(iorb,iorb1))
    if(ELAGd%cpx_lambdas .and. iorb/=iorb1) then
-    diff=diff*diff+(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))**two
+    diff=diff*diff+(two*(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1)))**two
     diff=dsqrt(diff)
    endif
    if(ELAGd%cpx_lambdas .and. iorb1==iorb) then
-    diff=dabs(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))
+    diff=two*dabs(ELAGd%Lambdas_im(iorb1,iorb)+ELAGd%Lambdas_im(iorb,iorb1))
    endif
    sumdiff=sumdiff+diff
    if((diff>=tol_dif_Lambda) .and. converg_lamb) then

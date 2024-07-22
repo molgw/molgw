@@ -420,7 +420,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  integer::iorb,iorb1,lwork,info
  real(dp)::sqrt_occ_iorb,sqrt_occ_iorb1
 !arrays
- character(len=10)::coef_file
+ character(len=20)::coef_file
  character(len=200)::msg
  real(dp),allocatable,dimension(:)::Eigval,Eigval_nocc,Work,RWork
  real(dp),allocatable,dimension(:,:)::Eigvec,CANON_COEF
@@ -474,6 +474,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
 
  ! Diagonalize
  if(ELAGd%cpx_lambdas) then
+  Eigvec_cmplx=half*Eigvec_cmplx ! Lambda contains alpha and beta
   lwork=-1
   call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,Eigval,Work_cmplx,lwork,RWork,info)
   lwork=nint(real(Work_cmplx(1)))
@@ -483,6 +484,7 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
    call ZHEEV('V','L',RDMd%NBF_tot,Eigvec_cmplx,RDMd%NBF_tot,Eigval,Work_cmplx,lwork,RWork,info)
   endif
  else
+  Eigvec=half*Eigvec ! Lambda contains alpha and beta
   lwork=-1
   call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigval,Work,lwork,info)
   lwork=nint(Work(1))
@@ -523,6 +525,16 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  endif
 
  Eigval_nocc(1:RDMd%NBF_occ)=Eigval(1:RDMd%NBF_occ)
+ do iorb=1,(RDMd%NBF_occ/10)*10,10
+  write(msg,'(f12.6,9f11.6)') Eigval_nocc(iorb:iorb+9)
+  call write_output(msg)
+ enddo
+ iorb=(RDMd%NBF_occ/10)*10+1
+ write(msg,'(f12.6,*(f11.6))') Eigval_nocc(iorb:)
+ call write_output(msg)
+ write(msg,'(a)') 'in eV'
+ call write_output(msg)
+ Eigval_nocc=Ha_ev*Eigval_nocc
  do iorb=1,(RDMd%NBF_occ/10)*10,10
   write(msg,'(f12.6,9f11.6)') Eigval_nocc(iorb:iorb+9)
   call write_output(msg)
@@ -575,7 +587,7 @@ subroutine dyson_orbs(RDMd,INTEGd,Eigvec,Eigvec_cmplx,NO_COEF,NO_COEF_cmplx)
  logical::cpx_mos=.false.
  integer::iorb,iorb1,iorb2
 !arrays
- character(len=10)::coef_file
+ character(len=20)::coef_file
  character(len=200)::msg
  real(dp),allocatable,dimension(:)::DYSON_occ
  real(dp),allocatable,dimension(:,:)::DYSON_COEF

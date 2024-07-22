@@ -2354,7 +2354,7 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
       deallocate(l_matrix_cmplx)
       deallocate(b_matrix_cmplx)
 
-      allocate(c_matrix_previous_cmplx,SOURCE=c_matrix_cmplx(:,:,1))
+      allocate(c_matrix_previous_cmplx,SOURCE=c_matrix_cmplx(:,:,ispin))
       !c_matrix_cmplx(:,:,ispin)  = MATMUL( U_matrix(:,:),c_matrix_cmplx(:,:,ispin))
       call ZGEMM('N','N',nbf,nocc,nbf,(1.0d0,0.0d0),u_matrix_cmplx,nbf, &
                         c_matrix_previous_cmplx,nbf,(0.0d0,0.0d0),c_matrix_cmplx(:,:,ispin),nbf)

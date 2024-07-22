@@ -114,6 +114,11 @@ na08_damping.in           , LDA Na8 cluster with density damping stopped after 2
 SCF Total Energy          , -1232.7456930389   , 0 , 1.0e-7
 Convergence criterium     ,     6.45101E+02    , 0 , 1.0e-1
 
+h2_guess_mix.in           , HF mixing the HOMO-LUMO in nspin=2
+SCF Total Energy          , -0.9985575214      , 0 , 1.0e-5
+gKS HOMO energy           , -13.586058         , 0 , 1.0e-4
+gKS LUMO energy           ,   1.996172         , 0 , 1.0e-4
+
 h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set, noparallel
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
 gKS HOMO energy           , -10.061109         , 0 , 1.0e-4
@@ -241,6 +246,9 @@ Hartree  HOMO expectation ,  250.895321        , 0 , 1.0e-4
 Hartree  HOMO expectation ,  250.895321        , 1 , 1.0e-4
 Exchange HOMO expectation ,  -24.840082        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -24.840082        , 1 , 1.0e-4
+
+beh2_complex_hf.in        , HF with complex orbitals
+SCF Total Energy          , -15.5379349891     , 0 , 1.0e-5
 
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7

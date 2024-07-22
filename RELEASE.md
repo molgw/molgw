@@ -2,6 +2,27 @@
 
 
 ---
+## What's new in version 3.4
+
+### Overview
+
+- Complex wavefunctions
+
+### Contributors
+
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+- Mauricio Rodriguez-Mayorga (Institut Néel, Grenoble, France)
+
+### Changes affecting the results
+- bug fix in Crank-Nicholson propagator in RT-TDDFT with spin
+
+### Changes affecting the usage
+
+### Changes affecting the compilation
+
+### Changes affecting the developers
+
+---
 
 ## What's new in version 3.3
 

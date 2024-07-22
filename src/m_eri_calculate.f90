@@ -1917,10 +1917,10 @@ end subroutine calculate_eri_3center_scalapack
 !=========================================================================
 subroutine calculate_eri_approximate_hartree(basis,x0_rho,coeff_rho,alpha_rho,vhrho)
   implicit none
-  type(basis_set),intent(inout) :: basis
-  real(dp),intent(in)          :: x0_rho(3)
-  real(dp),intent(in)          :: coeff_rho(:),alpha_rho(:)
-  real(dp),intent(inout)       :: vhrho(:,:)
+  type(basis_set),intent(in) :: basis
+  real(dp),intent(in)        :: x0_rho(3)
+  real(dp),intent(in)        :: coeff_rho(:),alpha_rho(:)
+  real(dp),intent(inout)     :: vhrho(:,:)
   !=====
   integer                      :: kshell,lshell
   integer                      :: klshellpair
