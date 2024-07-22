@@ -33,6 +33,7 @@ subroutine x2c_init(basis)
   logical                        :: found_basis_name
   logical                        :: this_is_large
   integer                        :: istring,ibf,jbf,iibf,jjbf,ishell,jshell,igaus,ngaus,ngaus_nrl,nstate_large
+  integer                        :: nstate_rkb
   integer                        :: nshell,nshell_nrel,nbasis,nbasis_L,nbasis_S,ntyp,shell_typ,shell_typ_nrl
   integer                        :: info,lwork
   real(dp)                       :: eext
@@ -279,11 +280,11 @@ subroutine x2c_init(basis)
    enddo
 
   enddo
-  nbasis_L=2*nbasis_L; nbasis_S=2*nbasis_S;
+  nbasis_L=2*nbasis_L; nbasis_S=2*nbasis_S; nstate_rkb=2*nbasis_L;
   write(stdout,'(a,i10)') ' Urestricted-KB Nbasis Large',nbasis_L
   write(stdout,'(a,i10)') ' Urestricted-KB Nbasis Small',nbasis_S
   write(stdout,'(a)') ' Filled (S^-1/2)^Large in wavefunctions C (Lowdin orthonormalization of the Large component)'
-  call clean_allocate('Full wavefunctions C',c_matrix,nbasis_L+nbasis_S,nbasis_L+nbasis_L)
+  call clean_allocate('Full wavefunctions C',c_matrix,nbasis_L+nbasis_S,nstate_rkb)
   c_matrix=complex_zero
   do ibf=1,nbasis_L/2
    do jbf=1,nbasis_L/2
@@ -404,20 +405,19 @@ subroutine x2c_init(basis)
 
   !! Build H_4C in RKB and diagonalize it
   write(stdout,'(/,a)') ' Building the 4C Hamiltonian in restricted-KB'
-  nstate_large=2*nbasis_L
-  write(stdout,'(a,i10)') ' Restricted-KB Nbasis ',nstate_large
-  call clean_allocate('H_4C in restricted-KB',H_4c_rkb_mat,nstate_large,nstate_large)
+  write(stdout,'(a,i10)') ' Restricted-KB Nbasis ',nstate_rkb
+  call clean_allocate('H_4C in restricted-KB',H_4c_rkb_mat,nstate_rkb,nstate_rkb)
   H_4c_rkb_mat=matmul(conjg(transpose(c_matrix)),matmul(H_4c_ukb_mat,c_matrix))
-  allocate(W(nstate_large),U_mat(nstate_large,nstate_large)) 
+  allocate(W(nstate_rkb),U_mat(nstate_rkb,nstate_rkb)) 
   call diagonalize(' ',H_4c_rkb_mat,W,U_mat)
   W(:)=W(:)-c_speedlight*c_speedlight ! NOTE: People add -c^2 I_4 to each < 4c_AO_basis_p | H | 4c_AO_basis_q > term
   write(stdout,'(a,i10)') ' Note: -c^2 was added to each state energy'
   write(stdout,'(1x,a)') '=== Energies ==='
   write(stdout,'(a)') '   #                               (Ha)                       &
   &                         (eV)      '
-  write(stdout,'(a)') '                        spin 1                    spin 2      &
-  &              spin 1                    spin 2'
-  do ibf=1,nstate_large/2
+  write(stdout,'(a)') '                         bar                       ubar       &
+  &               bar                       ubar '
+  do ibf=1,nstate_rkb/2
    write(stdout,'(1x,i5,2(2(1x,f25.5)))') ibf,W(2*ibf-1),W(2*ibf),W(2*ibf-1)*Ha_eV,W(2*ibf)*Ha_eV 
    if(ibf==nbasis_L/2) write(stdout,'(a)') '  --------------------------------------------------------------'
   enddo
