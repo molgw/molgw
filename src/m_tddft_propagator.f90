@@ -33,6 +33,7 @@ module m_tddft_propagator
     module procedure propagate_orth_ham_2
   end interface propagate_orth
 
+  integer, private                   :: ntau
   integer,private                    :: nocc
   real(dp),private                   :: dipole(3)
   real(dp),private                   :: time_read !defaut=0.0_dp
@@ -46,7 +47,7 @@ module m_tddft_propagator
   complex(dp),allocatable,private    :: c_matrix_orth_hist_cmplx(:,:,:,:)
   complex(dp),allocatable,private    :: h_hist_cmplx(:,:,:,:)
   complex(dp),allocatable,private    :: c_matrix_hist_cmplx(:,:,:,:)
-  integer, private                    :: ntau
+
   !==C(t0) initialization variables==
   integer,allocatable                :: atom_state_occ(:,:)
   real(dp),allocatable               :: m_eigenval(:,:)
@@ -135,11 +136,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
 
   nstate = SIZE(occupation(:,:),DIM=1)
 
-  ! Number of time steps
-  ntau = NINT( ( time_sim - time_min ) / time_step )
-  allocate(excit_field_time(3,0:ntau))
-  excit_field_time(:,:) = 0.0_dp
-
   ! Tweak the occupation if the number of electrons has changed from DFT to TDDFT
   ! tddft_charge = -999.0 is the default value that implies tddft_charge=charge
   if( ABS(tddft_charge+999.0_dp) > 1.0e-5_dp .AND. ABS(tddft_charge-charge)> 1.0e-5_dp ) then
@@ -205,10 +201,16 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   else
     c_matrix_cmplx(:,:,:) = c_matrix(:,1:nocc,:)
     !c_matrix_cmplx_scf(:,:,:) = c_matrix(:,1:nocc,:)
-    xatom_start=xatom
-    xbasis_start=xbasis
-    time_min=0.0_dp
+    xatom_start = xatom
+    xbasis_start = xbasis
+    time_min = 0.0_dp
   end if
+
+  ! Number of time steps to be calculated
+  ntau = NINT( ( time_sim - time_min ) / time_step )
+  allocate(excit_field_time(3,0:ntau))
+  excit_field_time(:,:) = 0.0_dp
+
 
   call setup_overlap(basis,s_matrix)
   call setup_sqrt_overlap(s_matrix,s_matrix_sqrt)
@@ -721,8 +723,8 @@ subroutine output_timing_one_iter()
   time_one_iter = get_timing(timing_tddft_one_iter)
   write(stdout,'(/,1x,a)') '**********************************'
   write(stdout,"(1x,a32,2x,f14.6)") "Time of one iteration (s): ", time_one_iter
-  write(stdout,"(1x,a32,2x,2(f12.2,1x))") "Estimated calculation time (s), (hrs):", time_one_iter*ntau,  &
-                                                                                    time_one_iter*ntau/3600.0_dp
+  write(stdout,"(1x,a32,2x,2(f12.2,1x))") "Estimated calculation time (s), (hrs):", time_one_iter * ntau,  &
+                                                                                    time_one_iter * ntau/3600.0_dp
   write(stdout,'(1x,a)') '**********************************'
   flush(stdout)
 
