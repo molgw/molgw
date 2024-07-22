@@ -7,6 +7,7 @@
 ### Overview
 
 - Complex wavefunctions
+- Interface with CC4S
 
 ### Contributors
 
