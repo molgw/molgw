@@ -73,6 +73,7 @@ program molgw
   integer                 :: restart_type
   integer                 :: nstate
   integer                 :: istep,istring
+  logical                 :: found_basis_name
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
@@ -175,11 +176,15 @@ program molgw
        call x2c_init(basis)
        allocate(basis_name_nrel(ncenter_basis))
        write(basis_name_1,'(a)') trim(basis_name(1))
+       found_basis_name=.false.
        do istring=1,len(basis_name_1)
+        if(.not.found_basis_name) then
          if( (basis_name_1(istring:istring)=='_' .and. basis_name_1(istring+1:istring+1)=='r') .and.   &
          &  (  basis_name_1(istring+2:istring+2)=='e' .and. basis_name_1(istring+3:istring+3)=='l') ) then
            basis_name_1=basis_name_1(1:istring-1)
+           found_basis_name=.true.
          endif
+        endif
        enddo
        basis_name_nrel(:)=basis_name_1
        call destroy_basis_set(basis)
