@@ -31,18 +31,24 @@ subroutine x2c_init(basis)
   character(len=100)             :: basis_name_1
   character(len=100),allocatable :: basis_name_nrel(:)
   logical                        :: this_is_large
-  integer                        :: istring,ibf,jbf,ishell,jshell,igaus,ngaus,ngaus_nrl,nstate_large
-  integer                        :: nshell,nshell_nrel,nbasis,ntyp,shell_typ,shell_typ_nrl
+  integer                        :: istring,ibf,jbf,iibf,jjbf,ishell,jshell,igaus,ngaus,ngaus_nrl,nstate_large
+  integer                        :: nshell,nshell_nrel,nbasis,nbasis_L,nbasis_S,ntyp,shell_typ,shell_typ_nrl
+  integer                        :: info,lwork
   real(dp)                       :: eext
   real(dp)                       :: Vext_pq(4),S_pq(4),Dz_pq(4),Dy_pq(4),Dx_pq(4)
-  complex(dp)                    :: H4c_me
+  complex(dp)                    :: MpSqL_me,H4c_me
   logical,allocatable            :: is_large(:),is_large_4c(:)
+  integer,allocatable            :: ipiv(:)
   real(dp),allocatable           :: Large_s_matrix(:,:)
   real(dp),allocatable           :: Large_x_matrix(:,:)
   real(dp),allocatable           :: scalar_s_matrix(:,:)
   real(dp),allocatable           :: scalar_nucleus(:,:)
   real(dp),allocatable           :: scalar_nabla_ao(:,:,:) ! < alpha | nabla_r | beta >
   real(dp),allocatable           :: s_matrix_4c(:,:)
+  complex(dp),allocatable        :: Work(:)
+  complex(dp),allocatable        :: c_matrix_small(:,:)
+  complex(dp),allocatable        :: MpSqL_matrix(:,:)
+  complex(dp),allocatable        :: Small_s_matrix(:,:)
   complex(dp),allocatable        :: H_4c_ukb_mat(:,:)
   !=====
 
@@ -159,14 +165,21 @@ subroutine x2c_init(basis)
   call destroy_libcint(basis)
 
   !! Initialize the H_4C unrestricted-KB
-  write(stdout,'(/,a)') 'Building the 4C Hamiltonian in unrestricted-KB'
+  write(stdout,'(/,a)') ' Building the 4C Hamiltonian in unrestricted-KB'
   nbasis=2*basis%nbf
   call clean_allocate('H_4C in unrestricted-KB',H_4c_ukb_mat,nbasis,nbasis)
   call clean_allocate('4C overlap matrix S',s_matrix_4c,nbasis,nbasis)
   allocate(is_large_4c(nbasis))
   H_4c_ukb_mat(:,:)=complex_zero
   s_matrix_4c(:,:)=zero
+  nbasis_L=0; nbasis_S=0;
   do ibf=1,basis%nbf
+ 
+   if(is_large(ibf)) then
+    nbasis_L=nbasis_L+1
+   else
+    nbasis_S=nbasis_S+1
+   endif
 
    is_large_4c(2*ibf-1)=is_large(ibf)
    is_large_4c(2*ibf)=is_large(ibf)
@@ -256,7 +269,10 @@ subroutine x2c_init(basis)
    enddo
 
   enddo
-  write(stdout,'(a,/)') 'Completed the 4C Hamiltonian in unrestricted-KB'
+  nbasis_L=2*nbasis_L; nbasis_S=2*nbasis_S;
+  write(stdout,'(a,i10)') ' Urestricted-KB Nbasis Large',nbasis_L
+  write(stdout,'(a,i10)') ' Urestricted-KB Nbasis Small',nbasis_S
+  write(stdout,'(a,/)') ' Completed the 4C Hamiltonian in unrestricted-KB'
 
   !! No longer need these scalar matrices (integrals)
   call clean_deallocate('Scalar overlap matrix S',scalar_s_matrix)
@@ -274,17 +290,74 @@ subroutine x2c_init(basis)
   deallocate(is_large_4c,is_large)
 
   !! Set RKB for each AO^L -> build an AO^S
-  !! Use the M_nu,p matrix < nu | sigma . p | p > = \sum_mu S_nu,mu C_mu,p
-  write(stdout,'(/,a)') 'Imposing restricted-KB'
-
+  !! Use the M_nu,p matrix < nu | sigma . p | p > = \sum_mu S_nu,mu C_pq then C=S^-1 M_pSqL
+  write(stdout,'(/,a)') ' Imposing restricted-KB'
+  call clean_allocate('M_pSqL matrix ',MpSqL_matrix,nbasis_S,nbasis_L)
+  call clean_allocate('Small overlap matrix ',Small_s_matrix,nbasis_S,nbasis_S)
+  call clean_allocate('Coefficients matrix small ',c_matrix_small,nbasis_S,nbasis_L)
+  Small_S_matrix(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
+  lwork=-1
+  allocate(ipiv(nbasis_S),Work(1))
+  call zgetrf(nbasis_S,nbasis_S,Small_S_matrix,nbasis_S,ipiv,info)
+  if(info/=0) call die("Error in XC2 computing S_small^-1 in zgetrf")
+  call zgetri(nbasis_S,Small_S_matrix,nbasis_S,ipiv,Work,lwork,info)
+  lwork=nint(real(Work(1)))
+  deallocate(Work)
+  allocate(Work(lwork))
+  call zgetri(nbasis_S,Small_S_matrix,nbasis_S,ipiv,Work,lwork,info)
+  if(info/=0) call die("Error in XC2 computing S_small^-1 in zgetri")
+  deallocate(ipiv,Work)
+  do ibf=1,nbasis_S
+   do jbf=1,nbasis_L
+    Dx_pq=zero;Dy_pq=zero;Dz_pq=zero;
+    iibf=ibf+nbasis_L
+    jjbf=jbf
+    ! S1
+    if(mod(iibf,2)/=0) then
+     iibf=(iibf+1)/2
+     ! L1 
+     if(mod(jjbf,2)/=0) then
+      jjbf=(jjbf+1)/2
+      Dz_pq(1)=scalar_nabla_ao(iibf,jjbf,3)
+     ! L2 
+     else
+      jjbf=jjbf/2
+      Dx_pq(1)=scalar_nabla_ao(iibf,jjbf,1)
+      Dy_pq(1)=scalar_nabla_ao(iibf,jjbf,2)
+     endif
+    ! S2 
+    else
+     iibf=iibf/2
+     ! L1 
+     if(mod(jjbf,2)/=0) then
+      jjbf=(jjbf+1)/2
+      Dx_pq(2)=scalar_nabla_ao(iibf,jjbf,1)
+      Dy_pq(2)=scalar_nabla_ao(iibf,jjbf,2)
+     ! L2 
+     else
+      jjbf=jjbf/2
+      Dz_pq(2)=scalar_nabla_ao(iibf,jjbf,3)
+     endif
+    endif
+    MpSqL_matrix(ibf,jbf)=MpSqL_me(Dx_pq,Dy_pq,Dz_pq)
+   enddo
+  enddo
+  c_matrix_small=matmul(Small_s_matrix,MpSqL_matrix) !! C = S^-1 M_pSqL
+  call clean_deallocate('Small overlap matrix ',Small_s_matrix)
+  call clean_deallocate('M_pSqL matrix ',MpSqL_matrix)
   call clean_deallocate('Scalar nabla operator D',scalar_nabla_ao)
 
+  !! - Lowdin orthogonalize restricted-KB Large and Small basis (separately, I guees)
+
+  write(stdout,'(a,/)') ' Completed restoring restricted-KB'
+
   !! TODO
-  !! - Lowdin orthogonalize
+  !! - Build H_4C in RKB
   !! - Diag. to find the eigenvectors (Coef)
   !! - Use Coef to find R decoupling matrix
   !! - Transform to the X2C matrices
 
+  call clean_deallocate('Coefficients matrix small ',c_matrix_small)
   call clean_deallocate('H_4C in unrestricted-KB',H_4c_ukb_mat)
   call clean_deallocate('4C overlap matrix S',s_matrix_4c)
 
@@ -320,7 +393,23 @@ function H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq) result(H_val)
 end function H4c_me
 
 !==================================================================
+function MpSqL_me(Dx_pq,Dy_pq,Dz_pq) result(M_pSqL)
+  use m_definitions
+  implicit none
+  real(dp),intent(in)  :: Dx_pq(4)
+  real(dp),intent(in)  :: Dy_pq(4)
+  real(dp),intent(in)  :: Dz_pq(4)
+  complex(dp)          :: M_pSqL
+  !=====
+  !=====
 
+  M_pSqL = -im * ( Dx_pq(1) + Dx_pq(2) ) & 
+    &      -     ( Dy_pq(1) - Dy_pq(2) ) &
+    &      -im * ( Dz_pq(1) - Dz_pq(2) ) 
+
+end function MpSqL_me
+
+!==================================================================
 subroutine shuffle_complex(nbasis,is_large,matrix)
   use m_definitions
   implicit none
@@ -364,7 +453,6 @@ subroutine shuffle_complex(nbasis,is_large,matrix)
 end subroutine shuffle_complex
 
 !==================================================================
-
 subroutine shuffle_real(nbasis,is_large,matrix)
   use m_definitions
   implicit none
