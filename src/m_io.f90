@@ -513,7 +513,7 @@ subroutine mulliken_pdos_cmplx(basis,s_matrix,c_matrix_cmplx,occupation,file_mul
   complex(dp)                :: cs_vector_i(basis%nbf)
   integer                    :: iatom_ibf(basis%nbf)
   integer                    :: li_ibf(basis%nbf)
-  integer                    :: iatom_basis, nocc
+  integer                    :: nocc
   character(len=20)          :: myfmt
   integer,parameter          :: lmax = 2
   !=====
@@ -598,9 +598,7 @@ subroutine lowdin_pdos(basis,s_matrix_sqrt,c_matrix,occupation,energy)
   real(dp)                   :: cs_vector_i(basis%nbf)
   integer                    :: iatom_ibf(basis%nbf)
   integer                    :: li_ibf(basis%nbf)
-  integer                    :: iatom_basis
   character(len=4)           :: char4
-  character(len=2)           :: char2
   integer,parameter          :: lmax = 2
   !=====
 
@@ -4085,8 +4083,9 @@ subroutine write_cc4s_eigenenergies(occupation,energy)
   write(unit_file,'(a)')    'unit: 1.0     # Hartree units'
   write(unit_file,'(a)')    'metaData:'
   write(unit_file,'(a,es16.8)')  '  fermiEnergy:', efermi
+  write(unit_file,'(a)')         '  energies:'
   do istate=1,nstate
-    write(unit_file,'(a,es16.8)') ' - ',energy(istate,1)
+    write(unit_file,'(2x,a,es16.8)') '- ',energy(istate,1)
   enddo
 
   close(unit_file)
