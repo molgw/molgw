@@ -410,11 +410,21 @@ subroutine x2c_init(basis)
   H_4c_rkb_mat=matmul(conjg(transpose(c_matrix)),matmul(H_4c_ukb_mat,c_matrix))
   allocate(W(nstate_large),U_mat(nstate_large,nstate_large)) 
   call diagonalize(' ',H_4c_rkb_mat,W,U_mat)
-  write(*,*) W
-  deallocate(W,U_mat) 
+  W(:)=W(:)-c_speedlight*c_speedlight ! NOTE: People add -c^2 I_4 to each < 4c_AO_basis_p | H | 4c_AO_basis_q > term
+  write(stdout,'(a,i10)') ' Note: -c^2 was added to each state energy'
+  write(stdout,'(1x,a)') '=== Energies ==='
+  write(stdout,'(a)') '   #                               (Ha)                       &
+  &                         (eV)      '
+  write(stdout,'(a)') '                        spin 1                    spin 2      &
+  &              spin 1                    spin 2'
+  do ibf=1,nstate_large/2
+   write(stdout,'(1x,i5,2(2(1x,f25.5)))') ibf,W(2*ibf-1),W(2*ibf),W(2*ibf-1)*Ha_eV,W(2*ibf)*Ha_eV 
+   if(ibf==nbasis_L/2) write(stdout,'(a)') '  --------------------------------------------------------------'
+  enddo
+  deallocate(W,U_mat)
+  write(stdout,'(a,/)') ' Built and diagonalized the 4C Hamiltonian in restricted-KB'
 
   !! TODO
-  !! - Diag. to find the eigenvectors (Coef)
   !! - Use Coef to find R decoupling matrix
   !! - Transform to the X2C matrices
 
