@@ -6,7 +6,7 @@
 ! - The construction of the X2C Hamiltonian 
 !=========================================================================
 #include "molgw.h"
-subroutine x2c_init(basis)
+subroutine relativistic_init(basis)
   use m_definitions
   use m_warning
   use m_timing
@@ -483,7 +483,7 @@ subroutine x2c_init(basis)
   deallocate(basis_name_nrel)
   call stop_clock(timing_x2c)
 
-end subroutine x2c_init
+end subroutine relativistic_init
 
 !==================================================================
 function H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq) result(H_val)

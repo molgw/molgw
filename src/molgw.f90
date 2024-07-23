@@ -173,7 +173,7 @@ program molgw
        call die("x2c calculations require cartesian gaussian_type")
     endif
     if ( TRIM(x2c) == 'yes'  .and. basis%gaussian_type== 'CART' ) then
-       call x2c_init(basis)
+       call relativistic_init(basis)
        allocate(basis_name_nrel(ncenter_basis))
        write(basis_name_1,'(a)') trim(basis_name(1))
        found_basis_name=.false.
