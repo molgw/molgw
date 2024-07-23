@@ -379,7 +379,7 @@ subroutine x2c_init(basis)
   write(stdout,'(/,a)') ' Building the H_4C in RKB'
   write(stdout,'(a,i10)') ' RKB Nbasis ',nstate_rkb
   call clean_allocate('H_4C in RKB',H_4c_rkb_mat,nstate_rkb,nstate_rkb)
-  call clean_allocate('UKB to RKB coefficients',c_matrix_ukb2rkb,nbasis_L+nbasis_S,nstate_rkb)
+  call clean_allocate('UKB to RKB coefficients',c_matrix_ukb2rkb,nbasis_L+nbasis_S,nstate_rkb) ! ML+MS x 2ML
    ! c_matrix_ukb2rk
    ! ( 1  0              )
    ! ( 0  c_matrix_small )
@@ -452,6 +452,17 @@ subroutine x2c_init(basis)
   c_matrix=matmul(x_matrix,U_mat) ! NOTE: As we do in m_scf_loop.f90 we multiply S^-1/2 U = c_matrix
   deallocate(W,U_mat)
   write(stdout,'(a,/)') ' Diagonalized the H_4C in RKB'
+
+  !! NOTE: At this state we have all the fixed one-body contributions to H_4C (i.e. kinetic+external potential)
+  !!       to do Dirac-HF/DFT-SCF 4c-calculations. We have a guess (i.e. c_matrix ) that can be used to build
+  !!       the electronic density n(r) = ( MOs(r) 1-RDM MOs(s)^dagger ) with
+  !!                              (  MOs(r) ) = ( AO^RKB (r) )*c_matrix
+  !!                                          = ( AO^L+S (r) )*c_matrix_ukb2rkb*c_matrix
+  !!       (  MOs(r) )_{1 x nbasis_L} is a row vector
+  !!       (  AO^L+S (R) )_{1 x nbasis_L+nbasis_S} is a row vector
+  !!       c_matrix_ukb2rkb _{nbasis_L+nbasis_S x 2*nbasis_L}
+  !!       c_matrix _{2*nbasis_L x  2*nbasis_L}
+  !!       Notice that in SCF calcs. we would only occupy the lowest energy states starting with nbasis_L+1
 
   !! TODO
   !! - Use c_matrix to find the R decoupling matrix
