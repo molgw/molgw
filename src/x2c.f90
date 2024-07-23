@@ -117,7 +117,6 @@ subroutine relativistic_init(basis)
   call init_libcint(basis_nrel)
   call setup_overlap(basis_nrel,s_matrix_large)
   call setup_x_matrix(min_overlap,s_matrix_large,nstate_large,x_matrix_large)
-  call clean_deallocate('Large overlap matrix S',s_matrix_large)
   call destroy_libcint(basis_nrel)
   
   !! We already found the large component shells. No longer need the large comp. basis
@@ -295,13 +294,14 @@ subroutine relativistic_init(basis)
    do jbf=1,nbasis_L/2
     x_matrix(2*ibf-1,2*jbf-1)=x_matrix_large(ibf,jbf)
     x_matrix(2*ibf,2*jbf)=x_matrix_large(ibf,jbf)
-    s_matrix(2*ibf-1,2*jbf-1)=scalar_s_matrix(ibf,jbf)
-    s_matrix(2*ibf,2*jbf)=scalar_s_matrix(ibf,jbf)
+    s_matrix(2*ibf-1,2*jbf-1)=s_matrix_large(ibf,jbf)
+    s_matrix(2*ibf,2*jbf)=s_matrix_large(ibf,jbf)
    enddo
   enddo
   write(stdout,'(a,/)') ' Completed the H_4C in UKB'
 
   !! No longer need these scalar and pure large component matrices (integrals)
+  call clean_deallocate('Large overlap matrix S',s_matrix_large)
   call clean_deallocate('Large X * X^H = S^-1',x_matrix_large)
   call clean_deallocate('Scalar overlap matrix S',scalar_s_matrix)
   call clean_deallocate('Scalar nucleus operator V',scalar_nucleus)
@@ -397,7 +397,7 @@ subroutine relativistic_init(basis)
    ! C^dagger s_matrix_small C = S_SS with S_SS being used to define x_matrix_small=(S^SS)^-1/2
   call clean_allocate('(RKB S_SS)^-1/2 matrix',x_matrix_small,nbasis_L,nbasis_L) 
   s_matrix_small(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
-  x_matrix_small=matmul(transpose(conjg(c_matrix_small)),matmul(s_matrix_small,c_matrix_small))
+  x_matrix_small=matmul(transpose(conjg(c_matrix_small)),matmul(s_matrix_small,c_matrix_small)) ! (C_S)^dagger S_SS C_S ? I
   s_matrix(nbasis_L+1:,nbasis_L+1:)=x_matrix_small(:,:) ! NOTE: save in s_matrix
   allocate(W(nbasis_L),U_mat(nbasis_L,nbasis_L),Tmp_matrix(nbasis_L,nbasis_L)) 
   call diagonalize(' ',x_matrix_small,W,U_mat)
@@ -406,11 +406,11 @@ subroutine relativistic_init(basis)
    Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
   enddo
   x_matrix_small=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
+  x_matrix(nbasis_L+1:,nbasis_L+1:)=x_matrix_small(:,:) ! NOTE: save in x_matrix
    ! C = C (RKB S_SS)^-1/2 
   c_matrix_small=matmul(c_matrix_small,x_matrix_small)
-  x_matrix(nbasis_L+1:,nbasis_L+1:)=x_matrix_small(:,:) ! NOTE: save in x_matrix
-   ! Check that it is orthonormal
-  x_matrix_small=matmul(transpose(conjg(c_matrix_small)),matmul(s_matrix_small,c_matrix_small))
+   ! Check that it is orthonormal -> X^dagger (C_S_UKB)^dagger S_SS_UKB C_S_UKB X = X^dagger S_SS_RKB X
+  x_matrix_small=matmul(transpose(conjg(c_matrix_small)),matmul(s_matrix_small,c_matrix_small)) ! (C_S)^dagger S_SS C_S = I
   do ibf=1,nbasis_L
    do jbf=1,nbasis_L
      if(ibf/=jbf) then
@@ -432,7 +432,7 @@ subroutine relativistic_init(basis)
 
   !! Diagonalize the H_4C in RKB
    ! H^RKB C = S C e -> H_4c_rkb_mat c_matrix = s_matrix c_matrix e
-   ! Building S^-1/2 H^RKB S^-1/2  with S^-1/2 = x_matrix
+   ! Building (S^-1/2)^dagger H^RKB S^-1/2  with S^-1/2 = x_matrix
   write(stdout,'(/,a)') ' Diagonalizing the H_4C in RKB'
   call clean_allocate('Full RKB wavefunctions C',c_matrix,nstate_rkb,nstate_rkb)
   H_4c_rkb_mat=matmul(conjg(transpose(x_matrix)),matmul(H_4c_rkb_mat,x_matrix))
