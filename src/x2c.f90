@@ -42,8 +42,8 @@ subroutine x2c_init(basis)
   logical,allocatable            :: is_large(:),is_large_4c(:)
   integer,allocatable            :: ipiv(:)
   real(dp),allocatable           :: W(:)
-  real(dp),allocatable           :: Large_s_matrix(:,:)
-  real(dp),allocatable           :: Large_x_matrix(:,:)
+  real(dp),allocatable           :: s_matrix_large(:,:)
+  real(dp),allocatable           :: x_matrix_large(:,:)
   real(dp),allocatable           :: scalar_s_matrix(:,:)
   real(dp),allocatable           :: scalar_nucleus(:,:)
   real(dp),allocatable           :: scalar_nabla_ao(:,:,:) ! < alpha | nabla_r | beta >
@@ -51,10 +51,12 @@ subroutine x2c_init(basis)
   complex(dp),allocatable        :: Work(:)
   complex(dp),allocatable        :: U_mat(:,:),Tmp_matrix(:,:)
   complex(dp),allocatable        :: c_matrix(:,:)
+  complex(dp),allocatable        :: c_matrix_ukb2rkb(:,:)
+  complex(dp),allocatable        :: x_matrix(:,:)
   complex(dp),allocatable        :: c_matrix_small(:,:)
   complex(dp),allocatable        :: MpSqL_matrix(:,:)
-  complex(dp),allocatable        :: Small_s_matrix(:,:)
-  complex(dp),allocatable        :: Small_x_matrix(:,:)
+  complex(dp),allocatable        :: s_matrix_small(:,:)
+  complex(dp),allocatable        :: x_matrix_small(:,:)
   complex(dp),allocatable        :: H_4c_ukb_mat(:,:)
   complex(dp),allocatable        :: H_4c_rkb_mat(:,:)
   !=====
@@ -110,11 +112,11 @@ subroutine x2c_init(basis)
   enddo
 
   !! Find if nstate_large=basis_nrel%nbf before proceeding
-  call clean_allocate('Large overlap matrix S',Large_s_matrix,basis_nrel%nbf,basis_nrel%nbf)
+  call clean_allocate('Large overlap matrix S',s_matrix_large,basis_nrel%nbf,basis_nrel%nbf)
   call init_libcint(basis_nrel)
-  call setup_overlap(basis_nrel,Large_s_matrix)
-  call setup_x_matrix(min_overlap,Large_s_matrix,nstate_large,Large_x_matrix)
-  call clean_deallocate('Large overlap matrix S',Large_s_matrix)
+  call setup_overlap(basis_nrel,s_matrix_large)
+  call setup_x_matrix(min_overlap,s_matrix_large,nstate_large,x_matrix_large)
+  call clean_deallocate('Large overlap matrix S',s_matrix_large)
   call destroy_libcint(basis_nrel)
   
   !! We already found the large component shells. No longer need the large comp. basis
@@ -178,7 +180,7 @@ subroutine x2c_init(basis)
   write(stdout,'(/,a)') ' Building the 4C Hamiltonian in unrestricted-KB'
   nbasis=2*basis%nbf
   call clean_allocate('H_4C in unrestricted-KB',H_4c_ukb_mat,nbasis,nbasis)
-  call clean_allocate('4C overlap matrix S',s_matrix_4c,nbasis,nbasis)
+  call clean_allocate('4C UKB overlap matrix S',s_matrix_4c,nbasis,nbasis)
   allocate(is_large_4c(nbasis))
   H_4c_ukb_mat(:,:)=complex_zero
   s_matrix_4c(:,:)=zero
@@ -283,19 +285,19 @@ subroutine x2c_init(basis)
   nbasis_L=2*nbasis_L; nbasis_S=2*nbasis_S; nstate_rkb=2*nbasis_L;
   write(stdout,'(a,i10)') ' Urestricted-KB Nbasis Large',nbasis_L
   write(stdout,'(a,i10)') ' Urestricted-KB Nbasis Small',nbasis_S
-  write(stdout,'(a)') ' Filled (S^-1/2)^Large in wavefunctions C (Lowdin orthonormalization of the Large component)'
-  call clean_allocate('Full wavefunctions C',c_matrix,nbasis_L+nbasis_S,nstate_rkb)
-  c_matrix=complex_zero
+  write(stdout,'(a)') ' Filling (S^-1/2)^Large in full X (Lowdin orthonormalization of the Large component)'
+  call clean_allocate('Full RKB X matrix',x_matrix,nstate_rkb,nstate_rkb)
+  x_matrix=complex_zero
   do ibf=1,nbasis_L/2
    do jbf=1,nbasis_L/2
-    c_matrix(2*ibf-1,2*jbf-1)=Large_x_matrix(ibf,jbf)
-    c_matrix(2*ibf,2*jbf)=Large_x_matrix(ibf,jbf)
+    x_matrix(2*ibf-1,2*jbf-1)=x_matrix_large(ibf,jbf)
+    x_matrix(2*ibf,2*jbf)=x_matrix_large(ibf,jbf)
    enddo
   enddo
   write(stdout,'(a,/)') ' Completed the 4C Hamiltonian in unrestricted-KB'
 
   !! No longer need these scalar and pure large component matrices (integrals)
-  call clean_deallocate('Large X * X**H = S**-1',Large_x_matrix)
+  call clean_deallocate('Large X * X**H = S**-1',x_matrix_large)
   call clean_deallocate('Scalar overlap matrix S',scalar_s_matrix)
   call clean_deallocate('Scalar nucleus operator V',scalar_nucleus)
 
@@ -311,21 +313,21 @@ subroutine x2c_init(basis)
   deallocate(is_large_4c,is_large)
 
   !! Set RKB for each AO^L -> build an AO^S
-  !! Use the M_nu,p matrix < nu | sigma . p | p > = \sum_mu S_nu,mu C_pq then C=S^-1 M_pSqL
+  !! Use the M_pS,qL matrix < pS | sigma . p | qL > = \sum_tS S_pS,tS C_tS,qL then C=S^-1 M_pSqL
   write(stdout,'(/,a)') ' Imposing restricted-KB'
   call clean_allocate('M_pSqL matrix ',MpSqL_matrix,nbasis_S,nbasis_L)
-  call clean_allocate('Small overlap matrix ',Small_s_matrix,nbasis_S,nbasis_S)
+  call clean_allocate('Small overlap matrix ',s_matrix_small,nbasis_S,nbasis_S)
   call clean_allocate('Coefficients matrix small ',c_matrix_small,nbasis_S,nbasis_L)
-  Small_s_matrix(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
+  s_matrix_small(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
   lwork=-1
   allocate(ipiv(nbasis_S),Work(1))
-  call zgetrf(nbasis_S,nbasis_S,Small_s_matrix,nbasis_S,ipiv,info)
+  call zgetrf(nbasis_S,nbasis_S,s_matrix_small,nbasis_S,ipiv,info)
   if(info/=0) call die("Error in XC2 computing S_small^-1 in zgetrf")
-  call zgetri(nbasis_S,Small_s_matrix,nbasis_S,ipiv,Work,lwork,info)
+  call zgetri(nbasis_S,s_matrix_small,nbasis_S,ipiv,Work,lwork,info)
   lwork=nint(real(Work(1)))
   deallocate(Work)
   allocate(Work(lwork))
-  call zgetri(nbasis_S,Small_s_matrix,nbasis_S,ipiv,Work,lwork,info)
+  call zgetri(nbasis_S,s_matrix_small,nbasis_S,ipiv,Work,lwork,info)
   if(info/=0) call die("Error in XC2 computing S_small^-1 in zgetri")
   deallocate(ipiv,Work)
   do ibf=1,nbasis_S
@@ -363,51 +365,71 @@ subroutine x2c_init(basis)
     MpSqL_matrix(ibf,jbf)=MpSqL_me(Dx_pq,Dy_pq,Dz_pq)
    enddo
   enddo
-  c_matrix_small=matmul(Small_s_matrix,MpSqL_matrix) !! C = S^-1 M_pSqL
+  c_matrix_small=matmul(s_matrix_small,MpSqL_matrix) !! C = S^-1 M_pSqL
   call clean_deallocate('M_pSqL matrix ',MpSqL_matrix)
   call clean_deallocate('Scalar nabla operator D',scalar_nabla_ao)
+  write(stdout,'(a,/)') ' Completed imposing restricted-KB'
+
+  !! Build RKB Hamiltonian
+  write(stdout,'(/,a)') ' Building the 4C Hamiltonian in restricted-KB'
+  write(stdout,'(a,i10)') ' Restricted-KB Nbasis ',nstate_rkb
+  call clean_allocate('H_4C in restricted-KB',H_4c_rkb_mat,nstate_rkb,nstate_rkb)
+  call clean_allocate('UKB to RKB coefficients',c_matrix_ukb2rkb,nbasis_L+nbasis_S,nstate_rkb)
+   ! c_matrix_ukb2rk
+   ! ( 1  0              )
+   ! ( 0  c_matrix_small )
+  c_matrix_ukb2rkb=complex_zero
+  do ibf=1,nbasis_L
+   c_matrix_ukb2rkb(ibf,ibf)=1.0e0
+  enddo
+  c_matrix_ukb2rkb(nbasis_L+1:,nbasis_L+1:)=c_matrix_small(:,:)
+  H_4c_rkb_mat=matmul(conjg(transpose(c_matrix_ukb2rkb)),matmul(H_4c_ukb_mat,c_matrix_ukb2rkb))
+  call clean_deallocate('H_4C in unrestricted-KB',H_4c_ukb_mat)
+  write(stdout,'(a,/)') ' Built the 4C Hamiltonian in restricted-KB'
 
   !! - Lowdin orthogonalize restricted-KB Small component basis
-   ! C^dagger Small_s_matrix C = S^SS with S^SS being used to define Small_x_matrix=(S^SS)^-1/2
-  call clean_allocate('(Small_S^{ortho})^-1/2 matrix',Small_x_matrix,nbasis_L,nbasis_L) 
-  Small_s_matrix(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
-  Small_x_matrix=matmul(transpose(conjg(c_matrix_small)),matmul(Small_s_matrix,c_matrix_small))
+  write(stdout,'(/,a)') ' Orthonomalizing the restricted-KB small component'
+   ! C^dagger s_matrix_small C = S^SS with S^SS being used to define x_matrix_small=(S^SS)^-1/2
+  call clean_allocate('(Small S^{ortho})^-1/2 matrix',x_matrix_small,nbasis_L,nbasis_L) 
+  s_matrix_small(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
+  x_matrix_small=matmul(transpose(conjg(c_matrix_small)),matmul(s_matrix_small,c_matrix_small))
   allocate(W(nbasis_L),U_mat(nbasis_L,nbasis_L),Tmp_matrix(nbasis_L,nbasis_L)) 
-  call diagonalize(' ',Small_x_matrix,W,U_mat)
+  call diagonalize(' ',x_matrix_small,W,U_mat)
   Tmp_matrix=complex_zero
   do ibf=1,nbasis_L
    Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
   enddo
-  Small_x_matrix=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
+  x_matrix_small=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
    ! C = C (S^SS)^-1/2 
-  c_matrix_small=matmul(c_matrix_small,Small_x_matrix)
-  c_matrix(nbasis_L+1:,nbasis_L+1:)=c_matrix_small(:,:)
+  c_matrix_small=matmul(c_matrix_small,x_matrix_small)
+  x_matrix(nbasis_L+1:,nbasis_L+1:)=x_matrix_small(:,:) ! NOTE: save in x_matrix
    ! Check that it is orthonormal
-  Small_x_matrix=matmul(transpose(conjg(c_matrix_small)),matmul(Small_s_matrix,c_matrix_small))
+  x_matrix_small=matmul(transpose(conjg(c_matrix_small)),matmul(s_matrix_small,c_matrix_small))
   do ibf=1,nbasis_L
    do jbf=1,nbasis_L
      if(ibf/=jbf) then
-      if(abs(Small_x_matrix(ibf,jbf))>1e-8) then
-       write(stdout,'(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ',ibf,jbf,Small_x_matrix(ibf,jbf)
+      if(abs(x_matrix_small(ibf,jbf))>1e-8) then
+       write(stdout,'(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ',ibf,jbf,x_matrix_small(ibf,jbf)
       endif
      else
-      if(abs(Small_x_matrix(ibf,jbf)-1.0e0)>1e-8) then
-       write(stdout,'(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ',ibf,jbf,Small_x_matrix(ibf,jbf)
+      if(abs(x_matrix_small(ibf,jbf)-1.0e0)>1e-8) then
+       write(stdout,'(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ',ibf,jbf,x_matrix_small(ibf,jbf)
       endif
      endif
    enddo
   enddo
   deallocate(W,U_mat,Tmp_matrix) 
-  call clean_deallocate('Small overlap matrix ',Small_s_matrix)
-  call clean_deallocate('(Small_S^{ortho})^-1/2 matrix ',Small_x_matrix)
+  call clean_deallocate('Small overlap matrix ',s_matrix_small)
+  call clean_deallocate('(Small S^{ortho})^-1/2 matrix ',x_matrix_small)
   call clean_deallocate('Coefficients matrix small ',c_matrix_small)
-  write(stdout,'(a,/)') ' Completed imposing restricted-KB'
+  write(stdout,'(a,/)') ' Completed the orthonomalization of the restricted-KB small component'
 
-  !! Build H_4C in RKB and diagonalize it
-  write(stdout,'(/,a)') ' Building the 4C Hamiltonian in restricted-KB'
-  write(stdout,'(a,i10)') ' Restricted-KB Nbasis ',nstate_rkb
-  call clean_allocate('H_4C in restricted-KB',H_4c_rkb_mat,nstate_rkb,nstate_rkb)
-  H_4c_rkb_mat=matmul(conjg(transpose(c_matrix)),matmul(H_4c_ukb_mat,c_matrix))
+  !! Diagonalize the H_4C in RKB
+   ! H^RKB C = S C e
+   ! Building S^-1/2 H^RKB S^-1/2  
+  write(stdout,'(/,a)') ' Diagonalizing the 4C Hamiltonian in restricted-KB'
+  call clean_allocate('Full RKB wavefunctions C',c_matrix,nstate_rkb,nstate_rkb)
+  H_4c_rkb_mat=matmul(conjg(transpose(x_matrix)),matmul(H_4c_rkb_mat,x_matrix))
   allocate(W(nstate_rkb),U_mat(nstate_rkb,nstate_rkb)) 
   call diagonalize(' ',H_4c_rkb_mat,W,U_mat)
   W(:)=W(:)-c_speedlight*c_speedlight ! NOTE: People add -c^2 I_4 to each < 4c_AO_basis_p | H | 4c_AO_basis_q > term
@@ -421,17 +443,19 @@ subroutine x2c_init(basis)
    write(stdout,'(1x,i5,2(2(1x,f25.5)))') ibf,W(2*ibf-1),W(2*ibf),W(2*ibf-1)*Ha_eV,W(2*ibf)*Ha_eV 
    if(ibf==nbasis_L/2) write(stdout,'(a)') '  --------------------------------------------------------------'
   enddo
+  c_matrix=matmul(x_matrix,U_mat) ! NOTE: as we do in m_scf_loop.f90 we multiply S^-1/2 U = Coefs
   deallocate(W,U_mat)
-  write(stdout,'(a,/)') ' Built and diagonalized the 4C Hamiltonian in restricted-KB'
+  write(stdout,'(a,/)') ' Diagonalized the 4C Hamiltonian in restricted-KB'
 
   !! TODO
-  !! - Use Coef to find R decoupling matrix
-  !! - Transform to the X2C matrices
+  !! - Use c_matrix to find the R decoupling matrix
+  !! - Transform to the X2C matrices ( get  ---> H^X2C to be used in SCF calcs.) 
 
-  call clean_deallocate('Full wavefunctions C',c_matrix)
-  call clean_deallocate('H_4C in unrestricted-KB',H_4c_ukb_mat)
+  call clean_deallocate('Full RKB wavefunctions C',c_matrix)
+  call clean_deallocate('Full RKB X matrix',x_matrix)
   call clean_deallocate('H_4C in restricted-KB',H_4c_rkb_mat)
-  call clean_deallocate('4C overlap matrix S',s_matrix_4c)
+  call clean_deallocate('4C UKB overlap matrix S',s_matrix_4c) !! Can we remove it before? do we need it for X2C decoupling?
+  call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
 
   write(stdout,'(/,a)') ' Completed X2C Hamiltonian construction'
   write(stdout,'(a,/)') ' ======================================'
