@@ -60,6 +60,7 @@ subroutine relativistic_init(basis)
   complex(dp),allocatable        :: s_matrix(:,:)
   complex(dp),allocatable        :: x_matrix(:,:)
   complex(dp),allocatable        :: H_4c_rkb_mat(:,:)
+  complex(dp),allocatable        :: H_4c_rkb_ortho_mat(:,:)
   !=====
 
   call start_clock(timing_x2c)
@@ -432,12 +433,15 @@ subroutine relativistic_init(basis)
 
   !! Diagonalize the H_4C in RKB
    ! H^RKB C = S C e -> H_4c_rkb_mat c_matrix = s_matrix c_matrix e
-   ! Building (S^-1/2)^dagger H^RKB S^-1/2  with S^-1/2 = x_matrix
+   ! Building
+   !          (S^-1/2)^dagger H^RKB S^-1/2 
+   ! with S^-1/2 = x_matrix and ((S^-1/2)^dagger S = S^1/2 because ((S^-1/2)^dagger S S^-1/2 = I
   write(stdout,'(/,a)') ' Diagonalizing the H_4C in RKB'
+  call clean_allocate('H_4C in RKB ortho',H_4c_rkb_ortho_mat,nstate_rkb,nstate_rkb)
   call clean_allocate('Full RKB wavefunctions C',c_matrix,nstate_rkb,nstate_rkb)
-  H_4c_rkb_mat=matmul(conjg(transpose(x_matrix)),matmul(H_4c_rkb_mat,x_matrix))
+  H_4c_rkb_ortho_mat=matmul(conjg(transpose(x_matrix)),matmul(H_4c_rkb_mat,x_matrix))
   allocate(W(nstate_rkb),U_mat(nstate_rkb,nstate_rkb)) 
-  call diagonalize(' ',H_4c_rkb_mat,W,U_mat)
+  call diagonalize(' ',H_4c_rkb_ortho_mat,W,U_mat)
   W(:)=W(:)-c_speedlight*c_speedlight ! NOTE: People add -c^2 I_4 to each < 4c_AO_basis_p | H | 4c_AO_basis_q > term
   write(stdout,'(a,i10)') ' Note: -c^2 was added the energy of each state'
   write(stdout,'(1x,a)') '=== Energies ==='
@@ -451,6 +455,7 @@ subroutine relativistic_init(basis)
   enddo
   c_matrix=matmul(x_matrix,U_mat) ! NOTE: As we do in m_scf_loop.f90 we multiply S^-1/2 U = c_matrix
   deallocate(W,U_mat)
+  call clean_deallocate('H_4C in RKB ortho',H_4c_rkb_ortho_mat)
   write(stdout,'(a,/)') ' Diagonalized the H_4C in RKB'
 
   !! NOTE: At this state we have all the fixed one-body contributions to H_4C (i.e. kinetic+external potential)
