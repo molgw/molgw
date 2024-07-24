@@ -53,7 +53,7 @@ subroutine relativistic_init(basis,is_x2c)
   complex(dp),allocatable        :: A_mat(:,:),B_mat(:,:),R_mat(:,:)
   complex(dp),allocatable        :: U_mat(:,:),Tmp_matrix(:,:)
   complex(dp),allocatable        :: c_matrix_ukb2rkb(:,:) ! NOTE: This is like AO^sph to AO^cart in non-rel. calcs.
-  complex(dp),allocatable        :: H_4c_ukb_mat(:,:)
+  complex(dp),allocatable        :: H_rel_ukb_mat(:,:)
   complex(dp),allocatable        :: MpSqL_matrix(:,:)     ! < AO^S | sigma . p | AO^L > matrix (the projector)
   complex(dp),allocatable        :: c_matrix_small(:,:)
   complex(dp),allocatable        :: s_matrix_small(:,:)
@@ -61,8 +61,8 @@ subroutine relativistic_init(basis,is_x2c)
   complex(dp),allocatable        :: c_matrix(:,:)
   complex(dp),allocatable        :: s_matrix(:,:)
   complex(dp),allocatable        :: x_matrix(:,:)
-  complex(dp),allocatable        :: H_4c_rkb_mat(:,:)
-  complex(dp),allocatable        :: H_4c_rkb_ortho_mat(:,:)
+  complex(dp),allocatable        :: H_rel_rkb_mat(:,:)
+  complex(dp),allocatable        :: H_rel_rkb_ortho_mat(:,:)
   !=====
 
   call start_clock(timing_relativistic)
@@ -164,7 +164,7 @@ subroutine relativistic_init(basis,is_x2c)
   enddo
   deallocate(is_large_4c)
 
-  !! Calculate all integrals for unrestricted-KB H_4C
+  !! Calculate all integrals for unrestricted-KB H_rel
   call init_libcint(basis)
   !! Calculate overlap matrix S
   call clean_allocate('Scalar overlap matrix S',scalar_s_matrix,basis%nbf,basis%nbf)
@@ -182,13 +182,13 @@ subroutine relativistic_init(basis,is_x2c)
   !! destroy libcint info
   call destroy_libcint(basis)
 
-  !! Initialize the H_4C unrestricted-KB
-  write(stdout,'(/,a)') ' Building the H_4C in unrestricted-KB (UKB)'
+  !! Initialize the H_rel unrestricted-KB
+  write(stdout,'(/,a)') ' Building the H_rel in unrestricted-KB (UKB)'
   nbasis=2*basis%nbf
-  call clean_allocate('H_4C in UKB',H_4c_ukb_mat,nbasis,nbasis)
+  call clean_allocate('H_rel in UKB',H_rel_ukb_mat,nbasis,nbasis)
   call clean_allocate('4C UKB overlap matrix S',s_matrix_4c,nbasis,nbasis)
   allocate(is_large_4c(nbasis))
-  H_4c_ukb_mat(:,:)=complex_zero
+  H_rel_ukb_mat(:,:)=complex_zero
   s_matrix_4c(:,:)=zero
   nbasis_L=0; nbasis_S=0;
   do ibf=1,basis%nbf
@@ -203,7 +203,7 @@ subroutine relativistic_init(basis,is_x2c)
    is_large_4c(2*ibf)=is_large(ibf)
 
    do jbf=1,basis%nbf
-    ! Set H_4c_ukb_mat and s_matrix_4c
+    ! Set H_rel_ukb_mat and s_matrix_4c
     if(is_large(ibf)) then  ! L
      if(is_large(jbf)) then  ! LL
       ! s_matrix_4c
@@ -214,56 +214,56 @@ subroutine relativistic_init(basis,is_x2c)
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Vext_pq(1)=scalar_nucleus(ibf,jbf)
       S_pq(1)=scalar_s_matrix(ibf,jbf)
-      H_4c_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
       ! p1 and q2
-      H_4c_ukb_mat(2*ibf-1,2*jbf)=complex_zero
+      H_rel_ukb_mat(2*ibf-1,2*jbf)=complex_zero
       ! p2 and q1
-      H_4c_ukb_mat(2*ibf,2*jbf-1)=complex_zero
+      H_rel_ukb_mat(2*ibf,2*jbf-1)=complex_zero
       ! p2 and q2
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Vext_pq(2)=scalar_nucleus(ibf,jbf)
       S_pq(2)=scalar_s_matrix(ibf,jbf)
-      H_4c_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
      else                    ! LS
       ! p1 and q3
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Dz_pq(1)=scalar_nabla_ao(ibf,jbf,3)
-      H_4c_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
       ! p1 and q4
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Dx_pq(1)=scalar_nabla_ao(ibf,jbf,1)
       Dy_pq(1)=scalar_nabla_ao(ibf,jbf,2)
-      H_4c_ukb_mat(2*ibf-1,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf-1,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
       ! p2 and q3
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Dx_pq(2)=scalar_nabla_ao(ibf,jbf,1)
       Dy_pq(2)=scalar_nabla_ao(ibf,jbf,2)
-      H_4c_ukb_mat(2*ibf,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
       ! p2 and q4
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Dz_pq(2)=scalar_nabla_ao(ibf,jbf,3)
-      H_4c_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
      endif
     else                    ! S 
      if(is_large(jbf)) then  ! SL
       ! p3 and q1
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Dz_pq(3)=scalar_nabla_ao(ibf,jbf,3)
-      H_4c_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
       ! p3 and q2
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Dx_pq(3)=scalar_nabla_ao(ibf,jbf,1)
       Dy_pq(3)=scalar_nabla_ao(ibf,jbf,2)
-      H_4c_ukb_mat(2*ibf-1,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf-1,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
       ! p4 and q1
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Dx_pq(4)=scalar_nabla_ao(ibf,jbf,1)
       Dy_pq(4)=scalar_nabla_ao(ibf,jbf,2)
-      H_4c_ukb_mat(2*ibf,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
       ! p4 and q2
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Dz_pq(4)=scalar_nabla_ao(ibf,jbf,3)
-      H_4c_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
      else                    ! SS
       ! s_matrix_4c
       s_matrix_4c(2*ibf-1,2*jbf-1)=scalar_s_matrix(ibf,jbf)
@@ -272,16 +272,16 @@ subroutine relativistic_init(basis,is_x2c)
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Vext_pq(3)=scalar_nucleus(ibf,jbf)
       S_pq(3)=scalar_s_matrix(ibf,jbf)
-      H_4c_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf-1,2*jbf-1)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
       ! p3 and q4
-      H_4c_ukb_mat(2*ibf-1,2*jbf)=complex_zero
+      H_rel_ukb_mat(2*ibf-1,2*jbf)=complex_zero
       ! p4 and q3
-      H_4c_ukb_mat(2*ibf,2*jbf-1)=complex_zero
+      H_rel_ukb_mat(2*ibf,2*jbf-1)=complex_zero
       ! p4 and q4
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Vext_pq(4)=scalar_nucleus(ibf,jbf)
       S_pq(4)=scalar_s_matrix(ibf,jbf)
-      H_4c_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
+      H_rel_ukb_mat(2*ibf,2*jbf)=H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq)
      endif
     endif  
  
@@ -304,7 +304,7 @@ subroutine relativistic_init(basis,is_x2c)
     s_matrix(2*ibf,2*jbf)=s_matrix_large(ibf,jbf)
    enddo
   enddo
-  write(stdout,'(a,/)') ' Completed the H_4C in UKB'
+  write(stdout,'(a,/)') ' Completed the H_rel in UKB'
 
   !! No longer need these scalar and pure large component matrices (integrals)
   call clean_deallocate('Large overlap matrix S',s_matrix_large)
@@ -316,7 +316,7 @@ subroutine relativistic_init(basis,is_x2c)
   !! ( LL  LS )
   !! ( SL  SS )
   !! shape
-  call shuffle_complex(nbasis,is_large_4c,H_4c_ukb_mat)
+  call shuffle_complex(nbasis,is_large_4c,H_rel_ukb_mat)
   call shuffle_real(nbasis,is_large_4c,s_matrix_4c)
   call shuffle_real(basis%nbf,is_large,scalar_nabla_ao(:,:,1))
   call shuffle_real(basis%nbf,is_large,scalar_nabla_ao(:,:,2))
@@ -382,9 +382,9 @@ subroutine relativistic_init(basis,is_x2c)
   write(stdout,'(a,/)') ' Completed imposing RKB'
 
   !! Build RKB Hamiltonian
-  write(stdout,'(/,a)') ' Building the H_4C in RKB'
+  write(stdout,'(/,a)') ' Building the H_rel in RKB'
   write(stdout,'(a,i10)') ' RKB Nbasis ',nstate_rkb
-  call clean_allocate('H_4C in RKB',H_4c_rkb_mat,nstate_rkb,nstate_rkb)
+  call clean_allocate('H_rel in RKB',H_rel_rkb_mat,nstate_rkb,nstate_rkb)
   call clean_allocate('UKB to RKB coefficients',c_matrix_ukb2rkb,nbasis_L+nbasis_S,nstate_rkb) ! ML+MS x 2ML
    ! c_matrix_ukb2rk
    ! ( 1  0              )
@@ -394,9 +394,9 @@ subroutine relativistic_init(basis,is_x2c)
    c_matrix_ukb2rkb(ibf,ibf)=1.0e0
   enddo
   c_matrix_ukb2rkb(nbasis_L+1:,nbasis_L+1:)=c_matrix_small(:,:)
-  H_4c_rkb_mat=matmul(conjg(transpose(c_matrix_ukb2rkb)),matmul(H_4c_ukb_mat,c_matrix_ukb2rkb))
-  call clean_deallocate('H_4C in UKB',H_4c_ukb_mat)
-  write(stdout,'(a,/)') ' Completed the H_4C in RKB'
+  H_rel_rkb_mat=matmul(conjg(transpose(c_matrix_ukb2rkb)),matmul(H_rel_ukb_mat,c_matrix_ukb2rkb))
+  call clean_deallocate('H_rel in UKB',H_rel_ukb_mat)
+  write(stdout,'(a,/)') ' Completed the H_rel in RKB'
 
   !! - Lowdin orthogonalize restricted-KB Small component basis
   write(stdout,'(/,a)') ' Orthonomalizing the RKB small component'
@@ -437,17 +437,17 @@ subroutine relativistic_init(basis,is_x2c)
   call clean_deallocate('Coefficients matrix small ',c_matrix_small)
   write(stdout,'(a,/)') ' Completed the orthonomalization of the RKB small component'
 
-  !! Diagonalize the H_4C in RKB
-   ! H^RKB C = S C e -> H_4c_rkb_mat c_matrix = s_matrix c_matrix e
+  !! Diagonalize the H_rel in RKB
+   ! H^RKB C = S C e -> H_rel_rkb_mat c_matrix = s_matrix c_matrix e
    ! Building
    !          (S^-1/2)^dagger H^RKB S^-1/2 
    ! with S^-1/2 = x_matrix and ((S^-1/2)^dagger S = S^1/2 because ((S^-1/2)^dagger S S^-1/2 = I
-  write(stdout,'(/,a)') ' Diagonalizing the H_4C in RKB'
-  call clean_allocate('H_4C in RKB ortho',H_4c_rkb_ortho_mat,nstate_rkb,nstate_rkb)
+  write(stdout,'(/,a)') ' Diagonalizing the H_rel in RKB'
+  call clean_allocate('H_rel in RKB ortho',H_rel_rkb_ortho_mat,nstate_rkb,nstate_rkb)
   call clean_allocate('Full RKB wavefunctions C',c_matrix,nstate_rkb,nstate_rkb)
-  H_4c_rkb_ortho_mat=matmul(conjg(transpose(x_matrix)),matmul(H_4c_rkb_mat,x_matrix))
+  H_rel_rkb_ortho_mat=matmul(conjg(transpose(x_matrix)),matmul(H_rel_rkb_mat,x_matrix))
   allocate(W(nstate_rkb),U_mat(nstate_rkb,nstate_rkb),E_state(nstate_rkb)) 
-  call diagonalize(' ',H_4c_rkb_ortho_mat,W,U_mat)
+  call diagonalize(' ',H_rel_rkb_ortho_mat,W,U_mat)
   E_state(1:nbasis_L)=W(nbasis_L+1:2*nbasis_L)
   E_state(nbasis_L+1:2*nbasis_L)=W(1:nbasis_L) 
   W(:)=W(:)-c_speedlight*c_speedlight ! NOTE: People add -c^2 I_4 to each < 4c_AO_basis_p | H | 4c_AO_basis_q > term
@@ -463,10 +463,10 @@ subroutine relativistic_init(basis,is_x2c)
   enddo
   c_matrix=matmul(x_matrix,U_mat) ! NOTE: As we do in m_scf_loop.f90 we multiply S^-1/2 U = c_matrix
   deallocate(W,U_mat)
-  call clean_deallocate('H_4C in RKB ortho',H_4c_rkb_ortho_mat)
-  write(stdout,'(a,/)') ' Diagonalized the H_4C in RKB'
+  call clean_deallocate('H_rel in RKB ortho',H_rel_rkb_ortho_mat)
+  write(stdout,'(a,/)') ' Diagonalized the H_rel in RKB'
 
-  !! NOTE: At this state we have all the fixed one-body contributions to H_4C (i.e. kinetic+external potential)
+  !! NOTE: At this state we have all the fixed one-body contributions to H_rel (i.e. kinetic+external potential)
   !!       to do Dirac-HF/DFT-SCF 4c-calculations. We have a guess (i.e. c_matrix ) that can be used to build
   !!       the electronic density n(r) = ( MOs(r) 1-RDM MOs(s)^dagger ) with
   !!                              (  MOs(r) ) = ( AO^RKB (r) )*c_matrix
@@ -484,7 +484,7 @@ subroutine relativistic_init(basis,is_x2c)
    call clean_deallocate('Full RKB wavefunctions C',c_matrix)
    call clean_deallocate('Full RKB X matrix',x_matrix)
    call clean_deallocate('Full RKB S matrix',s_matrix)
-   call clean_deallocate('H_4C in RKB',H_4c_rkb_mat)
+   call clean_deallocate('H_rel in RKB',H_rel_rkb_mat)
    call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
    
    write(stdout,'(/,a)') ' Completed Relativistic Hamiltonian construction'
@@ -492,8 +492,10 @@ subroutine relativistic_init(basis,is_x2c)
 
   else ! X2C
 
-   !! Build the decoupling matrix R from ->  C_S(-) (C_S(-))^dagger R = - C_S(-) (C_L(-))^dagger ==> A R = B
+   !! Build the decoupling matrix R from ->  C_L(+) (C_L(+))^dagger R = C_L(+) (C_S(+))^dagger ==> A R = B
     ! Rearrange the C matrix to have first the (+) energy states
+    ! NOTE: Our decoupling is not fully cancelling C_L(-) because we apply it not to the the diag. H_rel_rkb_ortho_mat
+    !       but to H C = S C e. Our
    write(stdout,'(/,a)') ' Computing X2C decoupling matrix R'
    allocate(Tmp_matrix(nstate_rkb,nstate_rkb))
    Tmp_matrix(:,1:nbasis_L)=c_matrix(:,nbasis_L+1:nstate_rkb)
@@ -504,11 +506,10 @@ subroutine relativistic_init(basis,is_x2c)
    call clean_allocate('A matrix ',A_mat,nbasis_L,nbasis_L)
    call clean_allocate('B matrix ',B_mat,nbasis_L,nbasis_L)
    call clean_allocate('R matrix ',R_mat,nbasis_L,nbasis_L)
-   Tmp_matrix(:,:)=c_matrix(nbasis_L+1:,nbasis_L+1:)
+   Tmp_matrix(:,:)=c_matrix(1:nbasis_L,1:nbasis_L) ! C^(+,L)
    A_mat=matmul(Tmp_matrix,transpose(conjg(Tmp_matrix)))
-   R_mat(:,:)=c_matrix(1:nbasis_L,nbasis_L+1:)
-   B_mat=matmul(Tmp_matrix,transpose(conjg(Tmp_matrix)))
-   B_mat=-B_mat
+   R_mat(:,:)=c_matrix(nbasis_L+1:,1:nbasis_L)      ! C^(+,S)
+   B_mat=matmul(Tmp_matrix,transpose(conjg(R_mat)))
    lwork=-1
    allocate(ipiv(nbasis_L),Work(1))
    call zgetrf(nbasis_L,nbasis_L,A_mat,nbasis_L,ipiv,info)
@@ -518,7 +519,8 @@ subroutine relativistic_init(basis,is_x2c)
    deallocate(Work)
    allocate(Work(lwork))
    call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
-   R_mat=matmul(A_mat,B_mat) 
+   R_mat=matmul(A_mat,B_mat)
+   R_mat=transpose(conjg(R_mat))
    deallocate(Tmp_matrix)
    write(stdout,'(a,/)') ' Completed R matrix construction'
    
@@ -574,15 +576,68 @@ subroutine relativistic_init(basis,is_x2c)
    
    !! Transform to the X2C matrices (get ---> H^X2C, S^X2C, C^X2C, X^X2C, etc. to be used in SCF calcs.) 
    write(stdout,'(/,a)') ' Decoupling 4C -> X2C'
-   
-   deallocate(E_state)
+    ! H^RKB C = S C e 
+    ! H^RKB  U^dagger  U C = S U^dagger   U C   e
+    ! U H^RKB U^dagger U C = U S U^dagger U C   e
+    !   H^x2c          C^x2c = S^x2c      C^x2c e    
+   allocate(Tmp_matrix(nstate_rkb,nstate_rkb))
+    ! C^x2c = U C
+   Tmp_matrix=matmul(U_mat,c_matrix)
+   deallocate(c_matrix)
+   allocate(c_matrix(nbasis_L,nbasis_L))
+   c_matrix(:,:)=Tmp_matrix(1:nbasis_L,1:nbasis_L)
+    ! S^x2c = U S U^dagger
+   Tmp_matrix=matmul(matmul(U_mat,s_matrix),transpose(conjg(U_mat)))
+   deallocate(s_matrix)
+   allocate(s_matrix(nbasis_L,nbasis_L))
+   s_matrix(:,:)=Tmp_matrix(1:nbasis_L,1:nbasis_L)
+    ! (S^-1/2)^dagger              S              S^-1/2             = I
+    ! U (S^-1/2)^dagger U^dagger   U S U^dagger   U S^-1/2 U^\dagger = I
+    ! X = (S^-1/2)^x2c = U S^-1/2 U^\dagger
+   Tmp_matrix=matmul(matmul(U_mat,x_matrix),transpose(conjg(U_mat)))
+   deallocate(x_matrix)
+   allocate(x_matrix(nbasis_L,nbasis_L))
+   x_matrix(:,:)=Tmp_matrix(1:nbasis_L,1:nbasis_L)
+    ! H^x2c = U H^RKB U^dagger
+   Tmp_matrix=matmul(matmul(U_mat,H_rel_rkb_mat),transpose(conjg(U_mat)))
+   deallocate(H_rel_rkb_mat)
+   allocate(H_rel_rkb_mat(nbasis_L,nbasis_L))
+   H_rel_rkb_mat(:,:)=Tmp_matrix(1:nbasis_L,1:nbasis_L)
+   deallocate(Tmp_matrix)
    write(stdout,'(a,/)') ' Completed decoupling 4C -> X2C'
 
+!!  Use this to show that H^X2C reproduces the (+) energy states written in c_matrix
+!!  block
+!!  complex(dp),allocatable :: tmp0(:,:)
+!!  complex(dp),allocatable :: tmp1(:,:)
+!!  complex(dp),allocatable :: tmp2(:,:)
+!!  allocate(tmp0(nbasis_L,nbasis_L))
+!!  allocate(tmp1(nbasis_L,nbasis_L))
+!!  allocate(tmp2(nbasis_L,nbasis_L))
+!!  write(stdout,'(a)') 'Checking that H^x2c C^x2c = S^x2c C^x2c e(+) decoupling'
+!!  tmp2=complex_zero
+!!  do ibf=1,nbasis_L
+!!   tmp2(ibf,ibf)=E_state(ibf)
+!!  enddo
+!!  tmp0=matmul(H_rel_rkb_mat,c_matrix)
+!!  tmp1=matmul(matmul(s_matrix,c_matrix),tmp2)
+!!  tmp2=tmp0-tmp1
+!!  do ibf=1,nbasis_L
+!!   do jbf=1,nbasis_L
+!!    if(abs(tmp2(ibf,jbf))>1e-8) write(stdout,*) ibf,jbf,tmp2(ibf,jbf)
+!!   enddo
+!!  enddo
+!!  deallocate(tmp0)
+!!  deallocate(tmp1)
+!!  deallocate(tmp2)
+!!  endblock    
+  
+   deallocate(E_state)
    call clean_deallocate('U decoupling matrix ',U_mat)
    call clean_deallocate('Full RKB wavefunctions C',c_matrix)
    call clean_deallocate('Full RKB X matrix',x_matrix)
    call clean_deallocate('Full RKB S matrix',s_matrix)
-   call clean_deallocate('H_4C in RKB',H_4c_rkb_mat)
+   call clean_deallocate('H_rel in RKB',H_rel_rkb_mat)
    call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
 
    write(stdout,'(/,a)') ' Completed X2C Hamiltonian construction'
