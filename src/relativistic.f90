@@ -3,7 +3,7 @@
 ! Author: M. Rodriguez-Mayorga
 !
 ! This file contains
-! - The construction of the X2C Hamiltonian 
+! - The construction of the Relativistic Hamiltonians (4C and X2C) 
 !=========================================================================
 #include "molgw.h"
 subroutine relativistic_init(basis,is_x2c)
@@ -50,7 +50,7 @@ subroutine relativistic_init(basis,is_x2c)
   real(dp),allocatable           :: x_matrix_large(:,:)
   real(dp),allocatable           :: s_matrix_4c(:,:)
   complex(dp),allocatable        :: Work(:)
-  !complex(dp),allocatable        :: A_mat(:,:),B_mat(:,:),R_mat(:,:),V_mat(:,:)
+  complex(dp),allocatable        :: A_mat(:,:),B_mat(:,:),R_mat(:,:)
   complex(dp),allocatable        :: U_mat(:,:),Tmp_matrix(:,:)
   complex(dp),allocatable        :: c_matrix_ukb2rkb(:,:) ! NOTE: This is like AO^sph to AO^cart in non-rel. calcs.
   complex(dp),allocatable        :: H_4c_ukb_mat(:,:)
@@ -67,7 +67,9 @@ subroutine relativistic_init(basis,is_x2c)
 
   call start_clock(timing_relativistic)
 
+
 #if defined(HAVE_LIBCINT)
+
 
   allocate(basis_name_nrel(ncenter_basis))
 
@@ -490,91 +492,91 @@ subroutine relativistic_init(basis,is_x2c)
 
   else ! X2C
 
-!!  !! Build the decoupling matrix R from ->  C_S(-) (C_S(-))^dagger R = - C_S(-) (C_L(-))^dagger ==> A R = B
-!!   ! Rearrange the C matrix to have first the (+) energy states
-!!  write(stdout,'(/,a)') ' Computing X2C decoupling'
-!!  allocate(Tmp_matrix(nstate_rkb,nstate_rkb))
-!!  allocate(U_mat(nstate_rkb,nstate_rkb)) 
-!!  Tmp_matrix(:,1:nbasis_L)=c_matrix(:,nbasis_L+1:nstate_rkb)  
-!!  Tmp_matrix(:,nbasis_L+1:nstate_rkb)=c_matrix(:,1:nbasis_L)  
-!!  c_matrix=Tmp_matrix
-!!  deallocate(Tmp_matrix)
-!!   ! Build the aux. matrices
-!!  call clean_allocate('A matrix ',A_mat,nbasis_L,nbasis_L)
-!!  call clean_allocate('B matrix ',B_mat,nbasis_L,nbasis_L)
-!!  call clean_allocate('R matrix ',R_mat,nbasis_L,nbasis_L)
-!!  A_mat=matmul(c_matrix(nbasis_L+1:,nbasis_L+1:),transpose(conjg(c_matrix(nbasis_L+1:,nbasis_L+1:)))) 
-!!  B_mat=-matmul(c_matrix(nbasis_L+1:,nbasis_L+1:),transpose(conjg(c_matrix(1:nbasis_L,nbasis_L+1:))))
-!!  lwork=-1
-!!  allocate(ipiv(nbasis_L),Work(1))
-!!  call zgetrf(nbasis_L,nbasis_L,A_mat,nbasis_L,ipiv,info)
-!!  if(info/=0) call die("Error in Relativistic computing A^-1 in zgetrf")
-!!  call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
-!!  lwork=nint(real(Work(1)))
-!!  deallocate(Work)
-!!  allocate(Work(lwork))
-!!  call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
-!!  if(info/=0) call die("Error in Relativistic computing A^-1 in zgetri")
-!!  deallocate(ipiv,Work)
-!!  R_mat=matmul(A_mat,B_mat)
-!!  U_mat=complex_zero
-!!  do ibf=1,nstate_rkb
-!!   U_mat(ibf,ibf)=1.0e0
-!!  enddo
-!!  do ibf=1,nbasis_L
-!!   do jbf=1,nbasis_L
-!!    U_mat(ibf,jbf+nbasis_L)=conjg(R_mat(jbf,ibf))
-!!    U_mat(ibf+nbasis_L,jbf)=-R_mat(ibf,jbf)
-!!   enddo
-!!  enddo
-!!  ! Compute normalization matrices
-!!   ! A = 1/ sqrt[ 1+ R^\dagger R  ]
-!!   ! A = 1/ sqrt[ 1+ R R^\dagger  ]
-!!  A_mat=matmul(transpose(conjg(R_mat)),R_mat)
-!!  B_mat=matmul(R_mat,transpose(conjg(R_mat)))
-!!  do ibf=1,nbasis_L
-!!   A_mat(ibf,ibf)=A_mat(ibf,ibf)+1.0e0
-!!   B_mat(ibf,ibf)=B_mat(ibf,ibf)+1.0e0
-!!  enddo
-!!  allocate(W(nbasis_L),V_mat(nbasis_L,nbasis_L),Tmp_matrix(nbasis_L,nbasis_L)) 
-!!  call diagonalize(' ',A_mat,W,V_mat)
-!!  Tmp_matrix=complex_zero
-!!  do ibf=1,nbasis_L
-!!   Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
-!!  enddo  
-!!  A_mat=matmul(matmul(V_mat,Tmp_matrix),transpose(conjg(V_mat)))
-!!  call diagonalize(' ',B_mat,W,V_mat)
-!!  Tmp_matrix=complex_zero
-!!  do ibf=1,nbasis_L
-!!   Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
-!!  enddo  
-!!  B_mat=matmul(matmul(V_mat,Tmp_matrix),transpose(conjg(V_mat)))
-!!  deallocate(Tmp_matrix,V_mat)
-!!  allocate(Tmp_matrix(nstate_rkb,nstate_rkb))
-!!  Tmp_matrix(1:nbasis_L,1:nbasis_L)=A_mat(:,:)  
-!!  Tmp_matrix(nbasis_L+1:,nbasis_L+1:)=B_mat(:,:)
-!!  U_mat=matmul(Tmp_matrix,U_mat)
-!!
-!!block
-!!complex(dp),allocatable::tmp(:,:)
-!!write(*,*) 'MAU ortho Umat'
-!!allocate(tmp(nstate_rkb,nstate_rkb))
-!!tmp=matmul(transpose(conjg(U_mat)),U_mat)
-!!do ibf=1,nstate_rkb
-!! do jbf=1,nstate_rkb
-!!  if(abs(tmp(ibf,jbf))>1.0e-8) write(*,*) ibf,jbf,tmp(ibf,jbf)
-!! enddo
-!!enddo
-!!deallocate(tmp)
-!!endblock
-!!  
-!!  call clean_deallocate('A matrix ',A_mat)
-!!  call clean_deallocate('B matrix ',B_mat)
-!!  call clean_deallocate('R matrix ',R_mat)
-!!  deallocate(W,U_mat,E_state,Tmp_matrix)
-!!  
-  !! - Transform to the X2C matrices ( get  ---> H^X2C to be used in SCF calcs.) 
+   !! Build the decoupling matrix R from ->  C_S(-) (C_S(-))^dagger R = - C_S(-) (C_L(-))^dagger ==> A R = B
+    ! Rearrange the C matrix to have first the (+) energy states
+   write(stdout,'(/,a)') ' Computing X2C decoupling matrix R'
+   allocate(Tmp_matrix(nstate_rkb,nstate_rkb))
+   Tmp_matrix(:,1:nbasis_L)=c_matrix(:,nbasis_L+1:nstate_rkb)
+   Tmp_matrix(:,nbasis_L+1:nstate_rkb)=c_matrix(:,1:nbasis_L)
+   c_matrix=Tmp_matrix
+   deallocate(Tmp_matrix)
+   allocate(Tmp_matrix(nbasis_L,nbasis_L))
+   call clean_allocate('A matrix ',A_mat,nbasis_L,nbasis_L)
+   call clean_allocate('B matrix ',B_mat,nbasis_L,nbasis_L)
+   call clean_allocate('R matrix ',R_mat,nbasis_L,nbasis_L)
+   Tmp_matrix(:,:)=c_matrix(nbasis_L+1:,nbasis_L+1:)
+   A_mat=matmul(Tmp_matrix,transpose(conjg(Tmp_matrix)))
+   R_mat(:,:)=c_matrix(1:nbasis_L,nbasis_L+1:)
+   B_mat=matmul(Tmp_matrix,transpose(conjg(Tmp_matrix)))
+   B_mat=-B_mat
+   lwork=-1
+   allocate(ipiv(nbasis_L),Work(1))
+   call zgetrf(nbasis_L,nbasis_L,A_mat,nbasis_L,ipiv,info)
+   if(info/=0) call die("Error in Relativistic computing A^-1 in zgetrf")
+   call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
+   lwork=nint(real(Work(1)))
+   deallocate(Work)
+   allocate(Work(lwork))
+   call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
+   R_mat=matmul(A_mat,B_mat) 
+   deallocate(Tmp_matrix)
+   write(stdout,'(a,/)') ' Completed R matrix construction'
+   
+    ! Compute normalization matrices
+    ! in A we put 1/ sqrt[ I + X^dagger X ]
+    ! in B we put 1/ sqrt[ I + X X^dagger ]
+   write(stdout,'(/,a)') ' Computing transformation matrices for normalization'
+   A_mat=matmul(transpose(conjg(R_mat)),R_mat)
+   B_mat=matmul(R_mat,transpose(conjg(R_mat)))
+   do ibf=1,nbasis_L
+    A_mat(ibf,ibf)=A_mat(ibf,ibf)+1.0e0
+    B_mat(ibf,ibf)=B_mat(ibf,ibf)+1.0e0
+   enddo
+   allocate(W(nbasis_L),U_mat(nbasis_L,nbasis_L),Tmp_matrix(nbasis_L,nbasis_L))
+   Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
+   call diagonalize(' ',A_mat,W,U_mat)
+   do ibf=1,nbasis_L
+    Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
+   enddo  
+   A_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
+   Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
+   call diagonalize(' ',B_mat,W,U_mat)
+   do ibf=1,nbasis_L
+    Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
+   enddo  
+   B_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
+   deallocate(W,U_mat,Tmp_matrix)
+   write(stdout,'(a,/)') ' Completed transformation matrices for normalization construction'
+   
+   write(stdout,'(/,a)') ' Computing decoupling unitary matrix'
+   call clean_allocate('U transformation matrix ',U_mat,nstate_rkb,nstate_rkb)
+   allocate(Tmp_matrix(nstate_rkb,nstate_rkb))
+   U_mat=complex_zero
+   Tmp_matrix=complex_zero
+    ! Normalization matrix
+   Tmp_matrix(1:nbasis_L,1:nbasis_L)=A_mat(:,:)  
+   Tmp_matrix(nbasis_L+1:,nbasis_L+1:)=B_mat(:,:)
+    ! Decoupling matrix
+   U_mat(nbasis_L+1:,1:nbasis_L)=-R_mat(:,:)
+   R_mat=transpose(conjg(R_mat))
+   U_mat(1:nbasis_L,nbasis_L+1:)=R_mat
+   do ibf=1,nstate_rkb
+    U_mat(ibf,ibf)=1.0e0
+   enddo
+   U_mat=matmul(Tmp_matrix,U_mat)
+   deallocate(Tmp_matrix)
+   call clean_deallocate('A matrix ',A_mat)
+   call clean_deallocate('B matrix ',B_mat)
+   call clean_deallocate('R matrix ',R_mat)
+   write(stdout,'(a,/)') ' Completed decoupling unitary matrix construction'
+   
+   !! Transform to the X2C matrices (get ---> H^X2C, S^X2C, C^X2C, X^X2C, etc. to be used in SCF calcs.) 
+   write(stdout,'(/,a)') ' Decoupling 4C -> X2C'
+   
+   deallocate(E_state)
+   write(stdout,'(a,/)') ' Completed decoupling 4C -> X2C'
 
+   call clean_deallocate('U decoupling matrix ',U_mat)
    call clean_deallocate('Full RKB wavefunctions C',c_matrix)
    call clean_deallocate('Full RKB X matrix',x_matrix)
    call clean_deallocate('Full RKB S matrix',s_matrix)
@@ -585,7 +587,6 @@ subroutine relativistic_init(basis,is_x2c)
    write(stdout,'(a,/)') ' ======================================'
 
   endif
-
 
 
 #endif
