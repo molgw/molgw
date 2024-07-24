@@ -523,9 +523,11 @@ subroutine relativistic_init(basis,is_x2c)
    write(stdout,'(a,/)') ' Completed R matrix construction'
    
     ! Compute normalization matrices
-    ! in A we put 1/ sqrt[ I + X^dagger X ]
-    ! in B we put 1/ sqrt[ I + X X^dagger ]
-   write(stdout,'(/,a)') ' Computing transformation matrices for normalization'
+    ! in A we put 1/ sqrt[ I + R^dagger R ]
+    ! in B we put 1/ sqrt[ I + R R^dagger ]
+   write(stdout,'(/,a)') ' Computing normalization factors for the transformation matrix'
+   write(stdout,'(a)') ' 1/ sqrt[ I + R^dagger R ] '
+   write(stdout,'(a)') ' 1/ sqrt[ I + R R^dagger ] '
    A_mat=matmul(transpose(conjg(R_mat)),R_mat)
    B_mat=matmul(R_mat,transpose(conjg(R_mat)))
    do ibf=1,nbasis_L
@@ -546,7 +548,7 @@ subroutine relativistic_init(basis,is_x2c)
    enddo  
    B_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
    deallocate(W,U_mat,Tmp_matrix)
-   write(stdout,'(a,/)') ' Completed transformation matrices for normalization construction'
+   write(stdout,'(a,/)') ' Completed normalization factors for the transformation matrix'
    
    write(stdout,'(/,a)') ' Computing decoupling unitary matrix'
    call clean_allocate('U transformation matrix ',U_mat,nstate_rkb,nstate_rkb)
