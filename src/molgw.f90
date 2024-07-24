@@ -75,6 +75,7 @@ program molgw
   integer                 :: istep,istring
   logical                 :: found_basis_name
   logical                 :: is_restart,is_big_restart,is_basis_restart
+  logical                 :: is_x2c
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp,eext
@@ -169,11 +170,12 @@ program molgw
     if( print_rho_grid_ ) call dm_dump(basis)
 
     ! If it is a X2C calculation, build H^X2C and diag. to get the spinors
-    if ( TRIM(x2c) == 'yes'  .and. basis%gaussian_type/= 'CART' ) then
+    is_x2c=(TRIM(x2c) == 'yes')
+    if ( is_x2c  .and. basis%gaussian_type/= 'CART' ) then
        call die("x2c calculations require cartesian gaussian_type")
     endif
-    if ( TRIM(x2c) == 'yes'  .and. basis%gaussian_type== 'CART' ) then
-       call relativistic_init(basis)
+    if ( is_x2c  .and. basis%gaussian_type== 'CART' ) then
+       call relativistic_init(basis,is_x2c)
        allocate(basis_name_nrel(ncenter_basis))
        write(basis_name_1,'(a)') trim(basis_name(1))
        found_basis_name=.false.

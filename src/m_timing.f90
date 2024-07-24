@@ -15,7 +15,7 @@ module m_timing
 
   integer,parameter :: timing_total               =  1
 
-  integer,parameter :: timing_x2c                 = 80
+  integer,parameter :: timing_relativistic        = 80
   integer,parameter :: timing_prescf              = 81
   integer,parameter :: timing_scf                 = 82
   integer,parameter :: timing_postscf             = 83
@@ -246,7 +246,7 @@ subroutine output_timing()
 
   write(stdout,'(/,a,/)') '                 -------------------------------------'
 
-  call output_timing_line('Total X2C' ,timing_x2c ,0)
+  call output_timing_line('Total Relativistic' ,timing_relativistic ,0)
   call output_timing_line('Total pre SCF' ,timing_prescf ,0)
   call output_timing_line('Total SCF'     ,timing_scf    ,0)
   call output_timing_line('Total post SCF',timing_postscf,0)

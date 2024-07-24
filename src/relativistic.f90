@@ -6,7 +6,7 @@
 ! - The construction of the X2C Hamiltonian 
 !=========================================================================
 #include "molgw.h"
-subroutine relativistic_init(basis)
+subroutine relativistic_init(basis,is_x2c)
   use m_definitions
   use m_warning
   use m_timing
@@ -26,6 +26,7 @@ subroutine relativistic_init(basis)
   implicit none
 
   type(basis_set),intent(inout)  :: basis
+  logical,intent(in)             :: is_x2c
   !====
   type(basis_set)                :: basis_nrel
   character(len=100)             :: basis_name_1
@@ -41,7 +42,7 @@ subroutine relativistic_init(basis)
   complex(dp)                    :: MpSqL_me,H4c_me ! Functions used to build matrix elements
   logical,allocatable            :: is_large(:),is_large_4c(:)
   integer,allocatable            :: ipiv(:)
-  real(dp),allocatable           :: W(:)
+  real(dp),allocatable           :: W(:),E_state(:)
   real(dp),allocatable           :: scalar_s_matrix(:,:)
   real(dp),allocatable           :: scalar_nucleus(:,:)
   real(dp),allocatable           :: scalar_nabla_ao(:,:,:) ! < alpha | nabla_r | beta >
@@ -49,6 +50,7 @@ subroutine relativistic_init(basis)
   real(dp),allocatable           :: x_matrix_large(:,:)
   real(dp),allocatable           :: s_matrix_4c(:,:)
   complex(dp),allocatable        :: Work(:)
+  !complex(dp),allocatable        :: A_mat(:,:),B_mat(:,:),R_mat(:,:),V_mat(:,:)
   complex(dp),allocatable        :: U_mat(:,:),Tmp_matrix(:,:)
   complex(dp),allocatable        :: c_matrix_ukb2rkb(:,:) ! NOTE: This is like AO^sph to AO^cart in non-rel. calcs.
   complex(dp),allocatable        :: H_4c_ukb_mat(:,:)
@@ -63,14 +65,14 @@ subroutine relativistic_init(basis)
   complex(dp),allocatable        :: H_4c_rkb_ortho_mat(:,:)
   !=====
 
-  call start_clock(timing_x2c)
+  call start_clock(timing_relativistic)
 
 #if defined(HAVE_LIBCINT)
 
   allocate(basis_name_nrel(ncenter_basis))
 
-  write(stdout,'(/,a)') ' X2C Hamiltonian construction'
-  write(stdout,'(a)')   ' ============================'
+  write(stdout,'(/,a)') ' Relativitistic Hamiltonian construction'
+  write(stdout,'(a,/)') ' ======================================='
 
   write(stdout,'(/,a,/)') ' Computing large component reference basis'
   !! Find the reference non-rel. basis
@@ -90,6 +92,7 @@ subroutine relativistic_init(basis)
   !! Initialize the non-rel. basis (used to find the large component AOs)
   call init_basis_set(basis_path,basis_name_nrel,ecp_basis_name,gaussian_type, &
                         even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis_nrel)
+  deallocate(basis_name_nrel)
   nshell=SIZE(basis%shell(:)%icenter)
   nshell_nrel=SIZE(basis_nrel%shell(:)%icenter)
   allocate(is_large_4c(nshell))
@@ -126,7 +129,7 @@ subroutine relativistic_init(basis)
   !! Do not proceed if nstate/=basis_nrel%nbf because we need to build for each AO^L an AO^S in restricted-KB (see below).
   if(nstate_large/=basis_nrel%nbf) then
     write(stdout,'(/,a,i10,i10,/)') 'Nstate and basis_large ',nstate_large,basis_nrel%nbf
-    call die("X2C requires basis sets that are linearly independent.")
+    call die("Relativistic requires basis sets that are linearly independent.")
   endif
  
   !! Define atomic basis as large or small
@@ -150,7 +153,7 @@ subroutine relativistic_init(basis)
    else if(shell_typ==6) then
     ntyp=28
    else 
-    call issue_warning('Shell type >6 in X2C is not implemented!') 
+    call issue_warning('Shell type >6 in Relativistic is not implemented!') 
    endif
    do ibf=1,ntyp
      is_large(ibf+nbasis)=is_large_4c(ishell)
@@ -286,7 +289,7 @@ subroutine relativistic_init(basis)
   nbasis_L=2*nbasis_L; nbasis_S=2*nbasis_S; nstate_rkb=2*nbasis_L;
   write(stdout,'(a,i10)') ' UKB Nbasis Large',nbasis_L
   write(stdout,'(a,i10)') ' UKB Nbasis Small',nbasis_S
-  write(stdout,'(a)') ' Doing Lowdin orthonormalization of the Large component'
+  write(stdout,'(a)') ' Doing Lowdin orthonormalization for the Large component'
   write(stdout,'(a)') ' Filling (S^-1/2)^Large in restricted-KB (RKB) X'
   call clean_allocate('Full RKB X matrix',x_matrix,nstate_rkb,nstate_rkb)
   call clean_allocate('Full RKB S matrix',s_matrix,nstate_rkb,nstate_rkb)
@@ -328,13 +331,13 @@ subroutine relativistic_init(basis)
   lwork=-1
   allocate(ipiv(nbasis_S),Work(1))
   call zgetrf(nbasis_S,nbasis_S,s_matrix_small,nbasis_S,ipiv,info)
-  if(info/=0) call die("Error in XC2 computing S_small^-1 in zgetrf")
+  if(info/=0) call die("Error in Relativistic computing S_small^-1 in zgetrf")
   call zgetri(nbasis_S,s_matrix_small,nbasis_S,ipiv,Work,lwork,info)
   lwork=nint(real(Work(1)))
   deallocate(Work)
   allocate(Work(lwork))
   call zgetri(nbasis_S,s_matrix_small,nbasis_S,ipiv,Work,lwork,info)
-  if(info/=0) call die("Error in XC2 computing S_small^-1 in zgetri")
+  if(info/=0) call die("Error in Relativistic computing S_small^-1 in zgetri")
   deallocate(ipiv,Work)
   do ibf=1,nbasis_S
    do jbf=1,nbasis_L
@@ -391,7 +394,7 @@ subroutine relativistic_init(basis)
   c_matrix_ukb2rkb(nbasis_L+1:,nbasis_L+1:)=c_matrix_small(:,:)
   H_4c_rkb_mat=matmul(conjg(transpose(c_matrix_ukb2rkb)),matmul(H_4c_ukb_mat,c_matrix_ukb2rkb))
   call clean_deallocate('H_4C in UKB',H_4c_ukb_mat)
-  write(stdout,'(a,/)') ' Built the H_4C in RKB'
+  write(stdout,'(a,/)') ' Completed the H_4C in RKB'
 
   !! - Lowdin orthogonalize restricted-KB Small component basis
   write(stdout,'(/,a)') ' Orthonomalizing the RKB small component'
@@ -426,6 +429,7 @@ subroutine relativistic_init(basis)
    enddo
   enddo
   deallocate(W,U_mat,Tmp_matrix) 
+  call clean_deallocate('4C UKB overlap matrix S',s_matrix_4c)
   call clean_deallocate('Small overlap matrix ',s_matrix_small)
   call clean_deallocate('(RBK S_SS)^-1/2 matrix ',x_matrix_small)
   call clean_deallocate('Coefficients matrix small ',c_matrix_small)
@@ -440,10 +444,12 @@ subroutine relativistic_init(basis)
   call clean_allocate('H_4C in RKB ortho',H_4c_rkb_ortho_mat,nstate_rkb,nstate_rkb)
   call clean_allocate('Full RKB wavefunctions C',c_matrix,nstate_rkb,nstate_rkb)
   H_4c_rkb_ortho_mat=matmul(conjg(transpose(x_matrix)),matmul(H_4c_rkb_mat,x_matrix))
-  allocate(W(nstate_rkb),U_mat(nstate_rkb,nstate_rkb)) 
+  allocate(W(nstate_rkb),U_mat(nstate_rkb,nstate_rkb),E_state(nstate_rkb)) 
   call diagonalize(' ',H_4c_rkb_ortho_mat,W,U_mat)
+  E_state(1:nbasis_L)=W(nbasis_L+1:2*nbasis_L)
+  E_state(nbasis_L+1:2*nbasis_L)=W(1:nbasis_L) 
   W(:)=W(:)-c_speedlight*c_speedlight ! NOTE: People add -c^2 I_4 to each < 4c_AO_basis_p | H | 4c_AO_basis_q > term
-  write(stdout,'(a,i10)') ' Note: -c^2 was added the energy of each state'
+  write(stdout,'(a,i10)') ' Note: -c^2 was added to the energy of each state'
   write(stdout,'(1x,a)') '=== Energies ==='
   write(stdout,'(a)') '   #                               (Ha)                       &
   &                         (eV)      '
@@ -467,26 +473,124 @@ subroutine relativistic_init(basis)
   !!       (  AO^L+S (R) )_{1 x nbasis_L+nbasis_S} is a row vector
   !!       c_matrix_ukb2rkb _{nbasis_L+nbasis_S x 2*nbasis_L}
   !!       c_matrix _{2*nbasis_L x  2*nbasis_L}
-  !!       Notice that in SCF calcs. we would only occupy the lowest energy states starting with nbasis_L+1
+  !!       Notice that in SCF calcs. we would only occupy the lowest (+) energy states [i.e. starting with nbasis_L+1]
+  !!
 
-  !! TODO
-  !! - Use c_matrix to find the R decoupling matrix
+  if(.not.is_x2c) then ! 4c-calculations
+
+   deallocate(E_state)
+   call clean_deallocate('Full RKB wavefunctions C',c_matrix)
+   call clean_deallocate('Full RKB X matrix',x_matrix)
+   call clean_deallocate('Full RKB S matrix',s_matrix)
+   call clean_deallocate('H_4C in RKB',H_4c_rkb_mat)
+   call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
+   
+   write(stdout,'(/,a)') ' Completed Relativistic Hamiltonian construction'
+   write(stdout,'(a,/)') ' ==============================================='
+
+  else ! X2C
+
+!!  !! Build the decoupling matrix R from ->  C_S(-) (C_S(-))^dagger R = - C_S(-) (C_L(-))^dagger ==> A R = B
+!!   ! Rearrange the C matrix to have first the (+) energy states
+!!  write(stdout,'(/,a)') ' Computing X2C decoupling'
+!!  allocate(Tmp_matrix(nstate_rkb,nstate_rkb))
+!!  allocate(U_mat(nstate_rkb,nstate_rkb)) 
+!!  Tmp_matrix(:,1:nbasis_L)=c_matrix(:,nbasis_L+1:nstate_rkb)  
+!!  Tmp_matrix(:,nbasis_L+1:nstate_rkb)=c_matrix(:,1:nbasis_L)  
+!!  c_matrix=Tmp_matrix
+!!  deallocate(Tmp_matrix)
+!!   ! Build the aux. matrices
+!!  call clean_allocate('A matrix ',A_mat,nbasis_L,nbasis_L)
+!!  call clean_allocate('B matrix ',B_mat,nbasis_L,nbasis_L)
+!!  call clean_allocate('R matrix ',R_mat,nbasis_L,nbasis_L)
+!!  A_mat=matmul(c_matrix(nbasis_L+1:,nbasis_L+1:),transpose(conjg(c_matrix(nbasis_L+1:,nbasis_L+1:)))) 
+!!  B_mat=-matmul(c_matrix(nbasis_L+1:,nbasis_L+1:),transpose(conjg(c_matrix(1:nbasis_L,nbasis_L+1:))))
+!!  lwork=-1
+!!  allocate(ipiv(nbasis_L),Work(1))
+!!  call zgetrf(nbasis_L,nbasis_L,A_mat,nbasis_L,ipiv,info)
+!!  if(info/=0) call die("Error in Relativistic computing A^-1 in zgetrf")
+!!  call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
+!!  lwork=nint(real(Work(1)))
+!!  deallocate(Work)
+!!  allocate(Work(lwork))
+!!  call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
+!!  if(info/=0) call die("Error in Relativistic computing A^-1 in zgetri")
+!!  deallocate(ipiv,Work)
+!!  R_mat=matmul(A_mat,B_mat)
+!!  U_mat=complex_zero
+!!  do ibf=1,nstate_rkb
+!!   U_mat(ibf,ibf)=1.0e0
+!!  enddo
+!!  do ibf=1,nbasis_L
+!!   do jbf=1,nbasis_L
+!!    U_mat(ibf,jbf+nbasis_L)=conjg(R_mat(jbf,ibf))
+!!    U_mat(ibf+nbasis_L,jbf)=-R_mat(ibf,jbf)
+!!   enddo
+!!  enddo
+!!  ! Compute normalization matrices
+!!   ! A = 1/ sqrt[ 1+ R^\dagger R  ]
+!!   ! A = 1/ sqrt[ 1+ R R^\dagger  ]
+!!  A_mat=matmul(transpose(conjg(R_mat)),R_mat)
+!!  B_mat=matmul(R_mat,transpose(conjg(R_mat)))
+!!  do ibf=1,nbasis_L
+!!   A_mat(ibf,ibf)=A_mat(ibf,ibf)+1.0e0
+!!   B_mat(ibf,ibf)=B_mat(ibf,ibf)+1.0e0
+!!  enddo
+!!  allocate(W(nbasis_L),V_mat(nbasis_L,nbasis_L),Tmp_matrix(nbasis_L,nbasis_L)) 
+!!  call diagonalize(' ',A_mat,W,V_mat)
+!!  Tmp_matrix=complex_zero
+!!  do ibf=1,nbasis_L
+!!   Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
+!!  enddo  
+!!  A_mat=matmul(matmul(V_mat,Tmp_matrix),transpose(conjg(V_mat)))
+!!  call diagonalize(' ',B_mat,W,V_mat)
+!!  Tmp_matrix=complex_zero
+!!  do ibf=1,nbasis_L
+!!   Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
+!!  enddo  
+!!  B_mat=matmul(matmul(V_mat,Tmp_matrix),transpose(conjg(V_mat)))
+!!  deallocate(Tmp_matrix,V_mat)
+!!  allocate(Tmp_matrix(nstate_rkb,nstate_rkb))
+!!  Tmp_matrix(1:nbasis_L,1:nbasis_L)=A_mat(:,:)  
+!!  Tmp_matrix(nbasis_L+1:,nbasis_L+1:)=B_mat(:,:)
+!!  U_mat=matmul(Tmp_matrix,U_mat)
+!!
+!!block
+!!complex(dp),allocatable::tmp(:,:)
+!!write(*,*) 'MAU ortho Umat'
+!!allocate(tmp(nstate_rkb,nstate_rkb))
+!!tmp=matmul(transpose(conjg(U_mat)),U_mat)
+!!do ibf=1,nstate_rkb
+!! do jbf=1,nstate_rkb
+!!  if(abs(tmp(ibf,jbf))>1.0e-8) write(*,*) ibf,jbf,tmp(ibf,jbf)
+!! enddo
+!!enddo
+!!deallocate(tmp)
+!!endblock
+!!  
+!!  call clean_deallocate('A matrix ',A_mat)
+!!  call clean_deallocate('B matrix ',B_mat)
+!!  call clean_deallocate('R matrix ',R_mat)
+!!  deallocate(W,U_mat,E_state,Tmp_matrix)
+!!  
   !! - Transform to the X2C matrices ( get  ---> H^X2C to be used in SCF calcs.) 
 
-  call clean_deallocate('Full RKB wavefunctions C',c_matrix)
-  call clean_deallocate('Full RKB X matrix',x_matrix)
-  call clean_deallocate('Full RKB S matrix',s_matrix)
-  call clean_deallocate('H_4C in RKB',H_4c_rkb_mat)
-  call clean_deallocate('4C UKB overlap matrix S',s_matrix_4c) !! Can we remove it before? do we need it for X2C decoupling?
-  call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
+   call clean_deallocate('Full RKB wavefunctions C',c_matrix)
+   call clean_deallocate('Full RKB X matrix',x_matrix)
+   call clean_deallocate('Full RKB S matrix',s_matrix)
+   call clean_deallocate('H_4C in RKB',H_4c_rkb_mat)
+   call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
 
-  write(stdout,'(/,a)') ' Completed X2C Hamiltonian construction'
-  write(stdout,'(a,/)') ' ======================================'
+   write(stdout,'(/,a)') ' Completed X2C Hamiltonian construction'
+   write(stdout,'(a,/)') ' ======================================'
+
+  endif
+
+
 
 #endif
 
-  deallocate(basis_name_nrel)
-  call stop_clock(timing_x2c)
+  call stop_clock(timing_relativistic)
 
 end subroutine relativistic_init
 
