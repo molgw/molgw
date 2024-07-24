@@ -175,7 +175,7 @@ program molgw
        call die("x2c calculations require cartesian gaussian_type")
     endif
     if ( is_x2c  .and. basis%gaussian_type== 'CART' ) then
-       call relativistic_init(basis,is_x2c)
+       call relativistic_init(basis,is_x2c,electrons)
        allocate(basis_name_nrel(ncenter_basis))
        write(basis_name_1,'(a)') trim(basis_name(1))
        found_basis_name=.false.

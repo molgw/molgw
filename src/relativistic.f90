@@ -6,7 +6,7 @@
 ! - The construction of the Relativistic Hamiltonians (4C and X2C) 
 !=========================================================================
 #include "molgw.h"
-subroutine relativistic_init(basis,is_x2c)
+subroutine relativistic_init(basis,is_x2c,electrons_in)
   use m_definitions
   use m_warning
   use m_timing
@@ -27,6 +27,7 @@ subroutine relativistic_init(basis,is_x2c)
 
   type(basis_set),intent(inout)  :: basis
   logical,intent(in)             :: is_x2c
+  real(dp),intent(in)            :: electrons_in
   !====
   type(basis_set)                :: basis_nrel
   character(len=100)             :: basis_name_1
@@ -35,7 +36,7 @@ subroutine relativistic_init(basis,is_x2c)
   logical                        :: this_is_large
   integer                        :: istring,ibf,jbf,iibf,jjbf,ishell,jshell,igaus,ngaus,ngaus_nrl,nstate_large
   integer                        :: nshell,nshell_nrel,nbasis,nbasis_L,nbasis_S,ntyp,shell_typ,shell_typ_nrl
-  integer                        :: nstate_rkb
+  integer                        :: nstate_rkb,ielectrons
   integer                        :: info,lwork
   real(dp)                       :: eext
   real(dp)                       :: Vext_pq(4),S_pq(4),Dz_pq(4),Dy_pq(4),Dx_pq(4)
@@ -465,6 +466,9 @@ subroutine relativistic_init(basis,is_x2c)
   deallocate(W,U_mat)
   call clean_deallocate('H_rel in RKB ortho',H_rel_rkb_ortho_mat)
   write(stdout,'(a,/)') ' Diagonalized the H_rel in RKB'
+  ielectrons=nint(electrons_in)
+  write(stdout,'(/,/,a25,1x,f19.10,/)') 'Rel Hcore Energy (Ha):',sum(E_state(1:ielectrons)) &
+  & -c_speedlight*c_speedlight*ielectrons
 
   !! NOTE: At this state we have all the fixed one-body contributions to H_rel (i.e. kinetic+external potential)
   !!       to do Dirac-HF/DFT-SCF 4c-calculations. We have a guess (i.e. c_matrix ) that can be used to build
