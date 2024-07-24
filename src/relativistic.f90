@@ -481,6 +481,8 @@ subroutine relativistic_init(basis,is_x2c)
   if(.not.is_x2c) then ! 4c-calculations
 
    deallocate(E_state)
+
+   ! TODO these arrays should be passed by molgw.f90
    call clean_deallocate('Full RKB wavefunctions C',c_matrix)
    call clean_deallocate('Full RKB X matrix',x_matrix)
    call clean_deallocate('Full RKB S matrix',s_matrix)
@@ -614,7 +616,7 @@ subroutine relativistic_init(basis,is_x2c)
 !!  allocate(tmp0(nbasis_L,nbasis_L))
 !!  allocate(tmp1(nbasis_L,nbasis_L))
 !!  allocate(tmp2(nbasis_L,nbasis_L))
-!!  write(stdout,'(a)') 'Checking that H^x2c C^x2c = S^x2c C^x2c e(+) decoupling'
+!!  write(stdout,'(a)') ' Checking that H^x2c C^x2c = S^x2c C^x2c e(+) after decoupling'
 !!  tmp2=complex_zero
 !!  do ibf=1,nbasis_L
 !!   tmp2(ibf,ibf)=E_state(ibf)
@@ -633,6 +635,8 @@ subroutine relativistic_init(basis,is_x2c)
 !!  endblock    
   
    deallocate(E_state)
+   
+   ! TODO these arrays should be passed by molgw.f90
    call clean_deallocate('U decoupling matrix ',U_mat)
    call clean_deallocate('Full RKB wavefunctions C',c_matrix)
    call clean_deallocate('Full RKB X matrix',x_matrix)
