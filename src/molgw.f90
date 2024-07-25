@@ -45,6 +45,7 @@ program molgw
   use m_spectral_function
   use m_hamiltonian_onebody
   use m_hamiltonian_twobodies
+  use m_relativistic
   use m_selfenergy_tools
   use m_selfenergy_evaluation
   use m_scf_loop
@@ -90,6 +91,10 @@ program molgw
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
   complex(dp),allocatable :: c_matrix_cmplx(:,:,:)
+  complex(dp),allocatable :: s_matrix_rel(:,:)
+  complex(dp),allocatable :: x_matrix_rel(:,:)
+  complex(dp),allocatable :: c_matrix_rel(:,:)
+  complex(dp),allocatable :: hamiltonian_kin_nuc_rel(:,:)
   character(len=100)      :: basis_name_1
   character(len=200)      :: file_name
   character(len=100),allocatable :: basis_name_nrel(:)
@@ -172,27 +177,32 @@ program molgw
     ! If it is a X2C calculation, build H^X2C and diag. to get the spinors
     is_x2c=(TRIM(x2c) == 'yes')
     if ( is_x2c  .and. basis%gaussian_type/= 'CART' ) then
-       call die("x2c calculations require cartesian gaussian_type")
+      call die("x2c calculations require cartesian gaussian_type")
     endif
     if ( is_x2c  .and. basis%gaussian_type== 'CART' ) then
-       call relativistic_init(basis,is_x2c,electrons)
-       allocate(basis_name_nrel(ncenter_basis))
-       write(basis_name_1,'(a)') trim(basis_name(1))
-       found_basis_name=.false.
-       do istring=1,len(basis_name_1)
-        if(.not.found_basis_name) then
-         if( (basis_name_1(istring:istring)=='_' .and. basis_name_1(istring+1:istring+1)=='r') .and.   &
-         &  (  basis_name_1(istring+2:istring+2)=='e' .and. basis_name_1(istring+3:istring+3)=='l') ) then
-           basis_name_1=basis_name_1(1:istring-1)
-           found_basis_name=.true.
-         endif
+      call relativistic_init(basis,is_x2c,electrons,c_matrix_rel,s_matrix_rel,x_matrix_rel, &
+      & hamiltonian_kin_nuc_rel)
+      allocate(basis_name_nrel(ncenter_basis))
+      write(basis_name_1,'(a)') trim(basis_name(1))
+      found_basis_name=.false.
+      do istring=1,len(basis_name_1)
+       if(.not.found_basis_name) then
+        if( (basis_name_1(istring:istring)=='_' .and. basis_name_1(istring+1:istring+1)=='r') .and.   &
+        &  (  basis_name_1(istring+2:istring+2)=='e' .and. basis_name_1(istring+3:istring+3)=='l') ) then
+          basis_name_1=basis_name_1(1:istring-1)
+          found_basis_name=.true.
         endif
-       enddo
-       basis_name_nrel(:)=basis_name_1
-       call destroy_basis_set(basis)
-       call init_basis_set(basis_path,basis_name_nrel,ecp_basis_name,gaussian_type, &
-          & even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
-       deallocate(basis_name_nrel)
+       endif
+      enddo
+      basis_name_nrel(:)=basis_name_1
+      call destroy_basis_set(basis) ! Remove _rel from the basis name (use only Large component basis)
+      call init_basis_set(basis_path,basis_name_nrel,ecp_basis_name,gaussian_type, &
+         & even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
+      deallocate(basis_name_nrel)
+      call clean_deallocate('Full RKB wavefunctions C',c_matrix_rel)
+      call clean_deallocate('Full RKB X matrix',x_matrix_rel)
+      call clean_deallocate('Full RKB S matrix',s_matrix_rel)
+      call clean_deallocate('H_rel in RKB',hamiltonian_kin_nuc_rel)
     endif
 
     !

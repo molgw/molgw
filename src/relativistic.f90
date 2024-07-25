@@ -6,7 +6,7 @@
 ! - The construction of the Relativistic Hamiltonians (4C and X2C) 
 !=========================================================================
 #include "molgw.h"
-subroutine relativistic_init(basis,is_x2c,electrons_in)
+module m_relativistic
   use m_definitions
   use m_warning
   use m_timing
@@ -23,11 +23,57 @@ subroutine relativistic_init(basis,is_x2c,electrons_in)
   use m_hamiltonian_onebody
   use m_hamiltonian_tools
   use m_libcint_tools
-  implicit none
+
+ public::relativistic_init
+
+ private::shuffle_real,shuffle_complex,H4c_me,MpSqL_me
+
+contains
+
+!==================================================================
+function H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq) result(H_val)
+  real(dp),intent(in)  :: Vext_pq(4)
+  real(dp),intent(in)  :: S_pq(4)
+  real(dp),intent(in)  :: Dz_pq(4)
+  real(dp),intent(in)  :: Dy_pq(4)
+  real(dp),intent(in)  :: Dx_pq(4)
+  complex(dp)          :: H_val
+  !=====
+  !=====
+
+  H_val =                           Vext_pq(1) + Vext_pq(2) + Vext_pq(3) + Vext_pq(4)  & 
+    &   +c_speedlight*c_speedlight*(   S_pq(1) +    S_pq(2) -    S_pq(3) -    S_pq(4)) &
+    &   -c_speedlight*im          *(  Dz_pq(1) -   Dz_pq(2) +   Dz_pq(3) -   Dz_pq(4)) &
+    &   -c_speedlight             *(  Dy_pq(1) -   Dy_pq(2) +   Dy_pq(3) -   Dy_pq(4)) &
+    &   -c_speedlight*im          *(  Dx_pq(1) +   Dx_pq(2) +   Dx_pq(3) +   Dx_pq(4))
+
+end function H4c_me
+
+!==================================================================
+function MpSqL_me(Dx_pq,Dy_pq,Dz_pq) result(M_pSqL)
+  real(dp),intent(in)  :: Dx_pq(4)
+  real(dp),intent(in)  :: Dy_pq(4)
+  real(dp),intent(in)  :: Dz_pq(4)
+  complex(dp)          :: M_pSqL
+  !=====
+  !=====
+
+  M_pSqL = -im * ( Dx_pq(1) + Dx_pq(2) ) & 
+    &      -     ( Dy_pq(1) - Dy_pq(2) ) &
+    &      -im * ( Dz_pq(1) - Dz_pq(2) ) 
+
+end function MpSqL_me
+
+!=========================================================================
+subroutine relativistic_init(basis,is_x2c,electrons_in,c_matrix,s_matrix,x_matrix,H_rel_rkb_mat)
 
   type(basis_set),intent(inout)  :: basis
   logical,intent(in)             :: is_x2c
   real(dp),intent(in)            :: electrons_in
+  complex(dp),allocatable,dimension(:,:),intent(inout)::c_matrix
+  complex(dp),allocatable,dimension(:,:),intent(inout)::s_matrix
+  complex(dp),allocatable,dimension(:,:),intent(inout)::x_matrix
+  complex(dp),allocatable,dimension(:,:),intent(inout)::H_rel_rkb_mat(:,:)
   !====
   type(basis_set)                :: basis_nrel
   character(len=100)             :: basis_name_1
@@ -40,7 +86,6 @@ subroutine relativistic_init(basis,is_x2c,electrons_in)
   integer                        :: info,lwork
   real(dp)                       :: eext
   real(dp)                       :: Vext_pq(4),S_pq(4),Dz_pq(4),Dy_pq(4),Dx_pq(4)
-  complex(dp)                    :: MpSqL_me,H4c_me ! Functions used to build matrix elements
   logical,allocatable            :: is_large(:),is_large_4c(:)
   integer,allocatable            :: ipiv(:)
   real(dp),allocatable           :: W(:),E_state(:)
@@ -59,10 +104,6 @@ subroutine relativistic_init(basis,is_x2c,electrons_in)
   complex(dp),allocatable        :: c_matrix_small(:,:)
   complex(dp),allocatable        :: s_matrix_small(:,:)
   complex(dp),allocatable        :: x_matrix_small(:,:)
-  complex(dp),allocatable        :: c_matrix(:,:)
-  complex(dp),allocatable        :: s_matrix(:,:)
-  complex(dp),allocatable        :: x_matrix(:,:)
-  complex(dp),allocatable        :: H_rel_rkb_mat(:,:)
   complex(dp),allocatable        :: H_rel_rkb_ortho_mat(:,:)
   !=====
 
@@ -486,11 +527,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in)
 
    deallocate(E_state)
 
-   ! TODO these arrays should be passed by molgw.f90
-   call clean_deallocate('Full RKB wavefunctions C',c_matrix)
-   call clean_deallocate('Full RKB X matrix',x_matrix)
-   call clean_deallocate('Full RKB S matrix',s_matrix)
-   call clean_deallocate('H_rel in RKB',H_rel_rkb_mat)
+   ! TODO these arrays should be passed to molgw.f90 for 4C calcs.
    call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
    
    write(stdout,'(/,a)') ' Completed Relativistic Hamiltonian construction'
@@ -640,12 +677,8 @@ subroutine relativistic_init(basis,is_x2c,electrons_in)
   
    deallocate(E_state)
    
-   ! TODO these arrays should be passed by molgw.f90
+   ! TODO these arrays should be passed by molgw.f90 for full picture change
    call clean_deallocate('U decoupling matrix ',U_mat)
-   call clean_deallocate('Full RKB wavefunctions C',c_matrix)
-   call clean_deallocate('Full RKB X matrix',x_matrix)
-   call clean_deallocate('Full RKB S matrix',s_matrix)
-   call clean_deallocate('H_rel in RKB',H_rel_rkb_mat)
    call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
 
    write(stdout,'(/,a)') ' Completed X2C Hamiltonian construction'
@@ -661,47 +694,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in)
 end subroutine relativistic_init
 
 !==================================================================
-function H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq) result(H_val)
-  use m_definitions
-  implicit none
-  real(dp),intent(in)  :: Vext_pq(4)
-  real(dp),intent(in)  :: S_pq(4)
-  real(dp),intent(in)  :: Dz_pq(4)
-  real(dp),intent(in)  :: Dy_pq(4)
-  real(dp),intent(in)  :: Dx_pq(4)
-  complex(dp)          :: H_val
-  !=====
-  !=====
-
-  H_val =                           Vext_pq(1) + Vext_pq(2) + Vext_pq(3) + Vext_pq(4)  & 
-    &   +c_speedlight*c_speedlight*(   S_pq(1) +    S_pq(2) -    S_pq(3) -    S_pq(4)) &
-    &   -c_speedlight*im          *(  Dz_pq(1) -   Dz_pq(2) +   Dz_pq(3) -   Dz_pq(4)) &
-    &   -c_speedlight             *(  Dy_pq(1) -   Dy_pq(2) +   Dy_pq(3) -   Dy_pq(4)) &
-    &   -c_speedlight*im          *(  Dx_pq(1) +   Dx_pq(2) +   Dx_pq(3) +   Dx_pq(4))
-
-end function H4c_me
-
-!==================================================================
-function MpSqL_me(Dx_pq,Dy_pq,Dz_pq) result(M_pSqL)
-  use m_definitions
-  implicit none
-  real(dp),intent(in)  :: Dx_pq(4)
-  real(dp),intent(in)  :: Dy_pq(4)
-  real(dp),intent(in)  :: Dz_pq(4)
-  complex(dp)          :: M_pSqL
-  !=====
-  !=====
-
-  M_pSqL = -im * ( Dx_pq(1) + Dx_pq(2) ) & 
-    &      -     ( Dy_pq(1) - Dy_pq(2) ) &
-    &      -im * ( Dz_pq(1) - Dz_pq(2) ) 
-
-end function MpSqL_me
-
-!==================================================================
 subroutine shuffle_complex(nbasis,is_large,matrix)
-  use m_definitions
-  implicit none
   integer,intent(in)        :: nbasis
   logical,intent(in)        :: is_large(nbasis)
   complex(dp),intent(inout) :: matrix(nbasis,nbasis)
@@ -743,8 +736,6 @@ end subroutine shuffle_complex
 
 !==================================================================
 subroutine shuffle_real(nbasis,is_large,matrix)
-  use m_definitions
-  implicit none
   integer,intent(in)     :: nbasis
   logical,intent(in)     :: is_large(nbasis)
   real(dp),intent(inout) :: matrix(nbasis,nbasis)
@@ -784,4 +775,6 @@ subroutine shuffle_real(nbasis,is_large,matrix)
 
 end subroutine shuffle_real
 
+!==================================================================
+end module m_relativistic
 !==================================================================
