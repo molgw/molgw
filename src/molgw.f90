@@ -152,6 +152,16 @@ program molgw
 
     call start_clock(timing_prescf)
 
+    ! Check if the correct nspin=2 was provided
+    if(nspin/=2) then
+      call die("x2c calculations require nspin=2")
+    endif
+
+    ! Check if exact exchange is needed. Currently it is not implemented TODO
+    if(calc_type%need_exchange .or. calc_type%need_exchange_lr) then
+      call die("x2c calculations are not available including (lr-)exact exchange")
+    endif
+
     !
     ! Nucleus-nucleus repulsion contribution to the energy
     call nucleus_nucleus_energy(en_gks%nuc_nuc)
@@ -174,7 +184,9 @@ program molgw
     if( print_rho_grid_ ) call dm_dump(basis)
    
    
-    ! Relativistic Hcore = Kinetic + electron-Vext, build H^X2C and diag. to get the spinors  
+    ! Relativistic Hcore = Kinetic + electron-Vext. Build H^X2C and diag. to get the spinors
+    !  sets nstate=2*basis%nbf for X2C
+    !  sets nstate=4*basis%nbf for 4C
     call relativistic_init(basis,is_x2c,electrons,nstate,c_matrix_rel,s_matrix_rel,x_matrix_rel, &
     & hamiltonian_kin_nuc_rel)
     allocate(basis_name_nrel(ncenter_basis))
@@ -221,8 +233,8 @@ program molgw
     endif
 #endif
 
-    allocate(occupation(nstate,nspin))
-    allocate(energy(nstate,nspin))
+    allocate(occupation(basis%nbf,nspin))
+    allocate(energy(basis%nbf,nspin))
     !
     ! Build the first occupation array
     ! as the energy are not known yet, set temperature to zero
@@ -281,7 +293,11 @@ program molgw
     ! Part 2 / 3 : SCF cycles
     !
     !
-    write(stdout,'(/,a,/)') ' TODO: Do SCF here!'
+    call scf_loop_x2c(basis,                                 &
+                      x_matrix_rel,s_matrix_rel,             &
+                      hamiltonian_kin_nuc_rel,               &
+                      occupation,energy,                     &
+                      c_matrix_rel,en_gks,scf_has_converged)
 
 
     call clean_deallocate('Full RKB wavefunctions C',c_matrix_rel)
@@ -539,7 +555,7 @@ program molgw
           call clean_deallocate('Wavefunctions C_cmplx',c_matrix_cmplx)
      
           write(stdout,'(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
-          !MARM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.,
+          !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.,
           !          the occupation numbers: occupations(:,1) \in [0,2], and orb. energy = 0.0
           energy(:,:) = 0.0_dp
           write(stdout,'(/,1x,a)')  'Natural occupations: '
@@ -631,9 +647,11 @@ program molgw
   endif
 #endif
 
-  !
-  ! Evaluate spin contamination
-  call evaluate_s2_operator(occupation,c_matrix,s_matrix)
+  if (.not. is_x2c ) then
+    !
+    ! Evaluate spin contamination
+    call evaluate_s2_operator(occupation,c_matrix,s_matrix)
+  endif
 
   ! Computing on top of a gaussian calculation
   if( assume_scf_converged_ .and. TRIM(init_hamiltonian)=='GAUSSIAN') then

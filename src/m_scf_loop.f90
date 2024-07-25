@@ -688,6 +688,47 @@ subroutine scf_loop_cmplx(is_restart,&
 
 end subroutine scf_loop_cmplx
 
+!=========================================================================
+subroutine scf_loop_x2c(basis,&
+                    x_matrix,s_matrix,&
+                    hamiltonian_hcore,&
+                    occupation, &
+                    energy, &
+                    c_matrix,en_gks,scf_has_converged)
+  implicit none
+
+  !=====
+  type(basis_set),intent(inout)         :: basis
+  complex(dp),intent(in)                :: x_matrix(:,:)
+  complex(dp),intent(in)                :: s_matrix(:,:)
+  complex(dp),intent(in)                :: hamiltonian_hcore(:,:)
+  real(dp),intent(inout)                :: occupation(:,:)
+  real(dp),intent(out)                  :: energy(:,:)
+  complex(dp),allocatable,intent(inout) :: c_matrix(:,:)
+  type(energy_contributions),intent(inout) :: en_gks
+  logical,intent(out)                   :: scf_has_converged
+  !=====
+  complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
+  !=====
+
+
+  call start_clock(timing_scf)
+
+  write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
+
+  if( print_yaml_ .AND. is_iomaster ) then
+    if( scf_has_converged ) then
+      write(unit_yaml,'(/,a)') 'scf is converged: True'
+    else
+      write(unit_yaml,'(/,a)') 'scf is converged: False'
+    endif
+    call print_energy_yaml('scf energy',en_gks)
+    call dump_out_energy_yaml('gks energies',energy)
+  endif
+
+  call stop_clock(timing_scf)
+
+end subroutine scf_loop_x2c
 
 !=========================================================================
 subroutine get_fock_operator(basis,p_matrix,c_matrix,occupation,en, &

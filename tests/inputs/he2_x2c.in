@@ -1,6 +1,7 @@
 &molgw
  scf='pbe'
  tolscf=1.0e-8
+ nspin=2
 
  x2c='yes'
 
