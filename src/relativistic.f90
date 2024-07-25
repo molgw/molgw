@@ -65,11 +65,12 @@ function MpSqL_me(Dx_pq,Dy_pq,Dz_pq) result(M_pSqL)
 end function MpSqL_me
 
 !=========================================================================
-subroutine relativistic_init(basis,is_x2c,electrons_in,c_matrix,s_matrix,x_matrix,H_rel_rkb_mat)
+subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,x_matrix,H_rel_rkb_mat)
 
   type(basis_set),intent(inout)  :: basis
   logical,intent(in)             :: is_x2c
   real(dp),intent(in)            :: electrons_in
+  integer,intent(out)            :: nstate
   complex(dp),allocatable,dimension(:,:),intent(inout)::c_matrix
   complex(dp),allocatable,dimension(:,:),intent(inout)::s_matrix
   complex(dp),allocatable,dimension(:,:),intent(inout)::x_matrix
@@ -527,6 +528,9 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,c_matrix,s_matrix,x_matri
 
    deallocate(E_state)
 
+   ! Set the crucial nstate
+   nstate=nstate_rkb
+
    ! TODO these arrays should be passed to molgw.f90 for 4C calcs.
    call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
    
@@ -680,6 +684,9 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,c_matrix,s_matrix,x_matri
    ! TODO these arrays should be passed by molgw.f90 for full picture change
    call clean_deallocate('U decoupling matrix ',U_mat)
    call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
+
+   ! Set the crucial nstate
+   nstate=nbasis_L
 
    write(stdout,'(/,a)') ' Completed X2C Hamiltonian construction'
    write(stdout,'(a,/)') ' ======================================'
