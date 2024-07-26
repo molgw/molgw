@@ -42,10 +42,13 @@ function H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq) result(H_val)
   !=====
 
   H_val =                           Vext_pq(1) + Vext_pq(2) + Vext_pq(3) + Vext_pq(4)  & 
-    &   +c_speedlight*c_speedlight*(   S_pq(1) +    S_pq(2) -    S_pq(3) -    S_pq(4)) &
+    &   +2.0e0*c_speedlight*c_speedlight*(                  -    S_pq(3) -    S_pq(4)) & ! -c^2 I_4x4 added
     &   -c_speedlight*im          *(  Dz_pq(1) -   Dz_pq(2) +   Dz_pq(3) -   Dz_pq(4)) &
     &   -c_speedlight             *(  Dy_pq(1) -   Dy_pq(2) +   Dy_pq(3) -   Dy_pq(4)) &
     &   -c_speedlight*im          *(  Dx_pq(1) +   Dx_pq(2) +   Dx_pq(3) +   Dx_pq(4))
+
+  ! Symmetric (+) and (-) energy states for the Dirac Hamitonian (i.e. Vext_pq = 0)
+  !  &   +c_speedlight*c_speedlight*(   S_pq(1) +    S_pq(2) -    S_pq(3) -    S_pq(4)) &
 
 end function H4c_me
 
@@ -493,8 +496,6 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   call diagonalize(' ',H_rel_rkb_ortho_mat,W,U_mat)
   E_state(1:nbasis_L)=W(nbasis_L+1:2*nbasis_L)
   E_state(nbasis_L+1:2*nbasis_L)=W(1:nbasis_L) 
-  W(:)=W(:)-c_speedlight*c_speedlight ! NOTE: People add -c^2 I_4 to each < 4c_AO_basis_p | H | 4c_AO_basis_q > term
-  write(stdout,'(a,i10)') ' Note: -c^2 was added to the energy of each state'
   write(stdout,'(1x,a)') '=== Energies ==='
   write(stdout,'(a)') '   #                               (Ha)                       &
   &                         (eV)      '
@@ -509,8 +510,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   call clean_deallocate('H_rel in RKB ortho',H_rel_rkb_ortho_mat)
   write(stdout,'(a,/)') ' Diagonalized the H_rel in RKB'
   ielectrons=nint(electrons_in)
-  write(stdout,'(/,/,a25,1x,f19.10,/)') 'Rel Hcore Energy (Ha):',sum(E_state(1:ielectrons)) &
-  & -c_speedlight*c_speedlight*ielectrons
+  write(stdout,'(/,/,a25,1x,f19.10,/)') 'Rel Hcore Energy (Ha):',sum(E_state(1:ielectrons)) 
 
   !! NOTE: At this state we have all the fixed one-body contributions to H_rel (i.e. kinetic+external potential)
   !!       to do Dirac-HF/DFT-SCF 4c-calculations. We have a guess (i.e. c_matrix ) that can be used to build
@@ -725,7 +725,6 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    H_rel_rkb_ortho_mat=matmul(conjg(transpose(x_matrix)),matmul(H_rel_rkb_mat,x_matrix))
    allocate(U_mat(nstate,nstate),W(nstate)) 
    call diagonalize(' ',H_rel_rkb_ortho_mat,W,U_mat)
-   W(:)=W(:)-c_speedlight*c_speedlight
    write(stdout,'(1x,a)') '=== Energies ==='
    write(stdout,'(a)') '   #                               (Ha)                       &
    &                         (eV)      '
@@ -733,6 +732,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    &               bar                       ubar '
    do ibf=1,nstate/2
     write(stdout,'(1x,i5,2(2(1x,f25.5)))') ibf,W(2*ibf-1),W(2*ibf),W(2*ibf-1)*Ha_eV,W(2*ibf)*Ha_eV 
+    if(ibf==ielectrons/2) write(stdout,'(a)') '  --------------------------------------------------------------'
    enddo
    deallocate(W,U_mat)
    call clean_deallocate('H_X2C ortho',H_rel_rkb_ortho_mat)

@@ -813,7 +813,6 @@ subroutine scf_loop_x2c(basis,&
     !
     ! H' * C' = C' * E
     call diagonalize(' ',hamiltonian_x2c,energy_vec,c_matrix)
-    energy_vec(:)=energy_vec(:)-c_speedlight*c_speedlight
     do istate=1,nstate/2
       energy(istate,1)=energy_vec(2*istate-1)
       energy(istate,2)=energy_vec(2*istate)
