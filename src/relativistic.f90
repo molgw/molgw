@@ -98,7 +98,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   real(dp),allocatable           :: s_matrix_4c(:,:)
   complex(dp),allocatable        :: Work(:)
   complex(dp),allocatable        :: A_mat(:,:),B_mat(:,:),R_mat(:,:)
-  complex(dp),allocatable        :: U_mat(:,:),Tmp_matrix(:,:)
+  complex(dp),allocatable        :: U_mat(:,:),V_mat(:,:),Tmp_matrix(:,:)
   complex(dp),allocatable        :: c_matrix_ukb2rkb(:,:) ! NOTE: This is like AO^sph to AO^cart in non-rel. calcs.
   complex(dp),allocatable        :: H_rel_ukb_mat(:,:)
   complex(dp),allocatable        :: MpSqL_matrix(:,:)     ! < AO^S | sigma . p | AO^L > matrix (the projector)
@@ -638,13 +638,18 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    deallocate(s_matrix)
    allocate(s_matrix(nbasis_L,nbasis_L))
    s_matrix(:,:)=Tmp_matrix(1:nbasis_L,1:nbasis_L)
-    ! (S^-1/2)^dagger              S              S^-1/2             = I
-    ! U (S^-1/2)^dagger U^dagger   U S U^dagger   U S^-1/2 U^\dagger = I
-    ! X = (S^-1/2)^x2c = U S^-1/2 U^\dagger
-   Tmp_matrix=matmul(matmul(U_mat,x_matrix),transpose(conjg(U_mat)))
+    ! X = (S^-1/2)^x2c 
    deallocate(x_matrix)
    allocate(x_matrix(nbasis_L,nbasis_L))
-   x_matrix(:,:)=Tmp_matrix(1:nbasis_L,1:nbasis_L)
+   x_matrix=s_matrix
+   allocate(W(nbasis_L),V_mat(nbasis_L,nbasis_L))
+   call diagonalize(' ',x_matrix,W,V_mat)
+   x_matrix=complex_zero
+   do ibf=1,nbasis_L
+    x_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
+   enddo
+   x_matrix=matmul(matmul(V_mat,x_matrix),transpose(conjg(V_mat)))
+   deallocate(W,V_mat)
     ! H^x2c = U H^RKB U^dagger
    Tmp_matrix=matmul(matmul(U_mat,H_rel_rkb_mat),transpose(conjg(U_mat)))
    deallocate(H_rel_rkb_mat)
@@ -654,6 +659,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    write(stdout,'(a,/)') ' Completed decoupling 4C -> X2C'
 
 !!  Use this to show that H^X2C reproduces the (+) energy states written in c_matrix
+!!  and test other properties of transformed operators
 !!  block
 !!  complex(dp),allocatable :: tmp0(:,:)
 !!  complex(dp),allocatable :: tmp1(:,:)
@@ -674,6 +680,33 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
 !!    if(abs(tmp2(ibf,jbf))>1e-8) write(stdout,*) ibf,jbf,tmp2(ibf,jbf)
 !!   enddo
 !!  enddo
+!!  write(stdout,'(a)') ' Checking Hermiticity of H^x2c'
+!!  do ibf=1,nbasis_L
+!!   do jbf=1,nbasis_L
+!!    if(abs(H_rel_rkb_mat(ibf,jbf)-conjg(H_rel_rkb_mat(jbf,ibf)))>1e-8) then
+!!     write(stdout,*) ibf,jbf,H_rel_rkb_mat(ibf,jbf),H_rel_rkb_mat(jbf,ibf)
+!!    endif
+!!   enddo
+!!  enddo
+!!  write(stdout,'(a)') ' Checking Hermiticity of S^x2c'
+!!  do ibf=1,nbasis_L
+!!   do jbf=1,nbasis_L
+!!    if(abs(s_matrix(ibf,jbf)-conjg(s_matrix(jbf,ibf)))>1e-8) then
+!!     write(stdout,*) ibf,jbf,s_matrix(ibf,jbf),s_matrix(jbf,ibf)
+!!    endif
+!!   enddo
+!!  enddo
+!!  write(stdout,'(a)') ' Checking (X^x2c)^dagger S^x2c X^x2c = I'
+!!  tmp0=matmul(conjg(transpose(x_matrix)),matmul(s_matrix,x_matrix))
+!!  do ibf=1,nbasis_L
+!!   do jbf=1,nbasis_L
+!!    if(ibf/=jbf) then
+!!     if(abs(tmp0(ibf,jbf))>1e-8) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
+!!    else
+!!     if(abs(tmp0(ibf,jbf)-1.0e0)>1e-8) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
+!!    endif
+!!   enddo
+!!  enddo
 !!  deallocate(tmp0)
 !!  deallocate(tmp1)
 !!  deallocate(tmp2)
@@ -687,6 +720,22 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
 
    ! Set the crucial nstate
    nstate=nbasis_L
+   write(stdout,'(/,a)') ' Diagonalizing the H^X2C (for testing)'
+   call clean_allocate('H_X2C ortho',H_rel_rkb_ortho_mat,nstate,nstate)
+   H_rel_rkb_ortho_mat=matmul(conjg(transpose(x_matrix)),matmul(H_rel_rkb_mat,x_matrix))
+   allocate(U_mat(nstate,nstate),W(nstate)) 
+   call diagonalize(' ',H_rel_rkb_ortho_mat,W,U_mat)
+   W(:)=W(:)-c_speedlight*c_speedlight
+   write(stdout,'(1x,a)') '=== Energies ==='
+   write(stdout,'(a)') '   #                               (Ha)                       &
+   &                         (eV)      '
+   write(stdout,'(a)') '                         bar                       ubar       &
+   &               bar                       ubar '
+   do ibf=1,nstate/2
+    write(stdout,'(1x,i5,2(2(1x,f25.5)))') ibf,W(2*ibf-1),W(2*ibf),W(2*ibf-1)*Ha_eV,W(2*ibf)*Ha_eV 
+   enddo
+   deallocate(W,U_mat)
+   call clean_deallocate('H_X2C ortho',H_rel_rkb_ortho_mat)
 
    write(stdout,'(/,a)') ' Completed X2C Hamiltonian construction'
    write(stdout,'(a,/)') ' ======================================'

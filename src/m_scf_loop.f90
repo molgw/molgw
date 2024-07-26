@@ -708,11 +708,206 @@ subroutine scf_loop_x2c(basis,&
   type(energy_contributions),intent(inout) :: en_gks
   logical,intent(out)                   :: scf_has_converged
   !=====
+  integer                 :: nstate
+  logical                 :: stopfile_found
+  integer                 :: iscf,istate,jstate
+  real(dp)                :: rms
+  real(dp),allocatable    :: energy_vec(:)
+  complex(dp),allocatable :: hamiltonian_x2c(:,:)
+  complex(dp),allocatable :: hamiltonian_Vhxc(:,:,:)
   complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
+  complex(dp),allocatable :: p_matrix_LaorLb(:,:,:),p_matrix_LaorLb_old(:,:,:)
+  complex(dp),allocatable :: ham_hist(:,:,:)
   !=====
 
 
   call start_clock(timing_scf)
+
+  rms = 1000.0
+  nstate = 2*basis%nbf ! = 2 basis%nbf
+  
+  !
+  ! Allocate the main arrays
+  call clean_allocate('Total Hamiltonian H',hamiltonian_x2c,nstate,nstate)
+  call clean_allocate('Hxc operator VHxc',hamiltonian_Vhxc,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Coefs. La or Lb C',c_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Density matrix P(old)',p_matrix_LaorLb_old,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Density matrix P',p_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Hamiltonian history',ham_hist,nstate,nstate,2)
+  call clean_allocate('State energies',energy_vec,nstate)
+  ham_hist=COMPLEX_ZERO 
+
+  !
+  ! Setup the grids for the quadrature of DFT potential/energy
+  if( calc_type%is_dft ) then
+    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+  endif
+
+  !
+  ! Setup the density matrix: p_matrix_LaorLb
+  c_matrix_LaorLb=COMPLEX_ZERO
+  do istate=1,nstate/2
+    do jstate=1,nstate/2
+      c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)
+      c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate)
+    enddo
+  enddo
+  call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
+
+
+  !
+  ! Start the big scf loop
+  !
+  do iscf=1,nscf
+    write(stdout,'(/,1x,a)') '-------------------------------------------'
+    write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
+
+    hamiltonian_x2c=COMPLEX_ZERO
+
+    !--Hamiltonian - Hartree Exchange Correlation---
+    call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
+                                            occupation,               &
+                                            c_matrix_LaorLb,          &
+                                            p_matrix_LaorLb,          &
+                                            hamiltonian_Vhxc,en_gks)
+
+    hamiltonian_x2c=COMPLEX_ZERO
+    do istate=1,nstate/2
+      do jstate=1,nstate/2
+         hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_Vhxc(istate,jstate,1)+hamiltonian_Vhxc(istate,jstate,2) 
+         hamiltonian_x2c(2*istate,2*jstate)=hamiltonian_Vhxc(istate,jstate,1)+hamiltonian_Vhxc(istate,jstate,2) 
+      enddo
+    enddo
+write(*,*) 'MAU WIP'
+    !hamiltonian_x2c=hamiltonian_x2c+hamiltonian_hcore
+    hamiltonian_x2c=hamiltonian_hcore
+
+    !! Sum up to get the total energy
+    en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
+
+    ! Make sure all the MPI tasks have the exact same Hamiltonian
+    ! It helps stabilizing the SCF cycles in parallel
+    call world%sum(hamiltonian_x2c)
+    hamiltonian_x2c(:,:) = hamiltonian_x2c(:,:) / REAL(world%nproc,dp)
+
+    !
+    ! Simple mixing on the hamiltonian
+    ! the newest is 1
+    ! the oldest is 2
+    if( iscf > 1) then
+      ham_hist(:,:,2)=ham_hist(:,:,1)
+    endif
+    ham_hist(:,:,1)=hamiltonian_x2c(:,:)
+    if( iscf > 1) then
+      write(stdout,'(/,1x,a,f8.4)') 'Simple mixing with parameter:',alpha_mixing
+      hamiltonian_x2c(:,:) = alpha_mixing * ham_hist(:,:,1) + (1.0_dp - alpha_mixing) * ham_hist(:,:,2)
+    endif
+
+    !
+    ! H' = X**T * H * X
+    ! TODO: slow coding. Use BLAS-level 3 in the future
+    hamiltonian_x2c = MATMUL(TRANSPOSE(CONJG(x_matrix)), MATMUL(hamiltonian_x2c, x_matrix))
+
+    !
+    ! H' * C' = C' * E
+    call diagonalize(' ',hamiltonian_x2c,energy_vec,c_matrix)
+    energy_vec(:)=energy_vec(:)-c_speedlight*c_speedlight
+    do istate=1,nstate/2
+      energy(istate,1)=energy_vec(2*istate-1)
+      energy(istate,2)=energy_vec(2*istate)
+    enddo
+
+    !
+    ! C = X * C'
+    c_matrix(:,:) = MATMUL(x_matrix,c_matrix)
+
+    call dump_out_energy('=== Energies ===',occupation,energy)
+
+    call output_homolumo('gKS',occupation,energy,1,nstate)
+
+
+    !
+    ! Output the total energy and its components
+    write(stdout,*)
+    write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en_gks%nuc_nuc
+    write(stdout,'(a25,1x,f19.10)') 'Kin+Vext Energy (Ha):',en_gks%kinetic
+    write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hartree
+    if(calc_type%need_exchange) then
+      write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en_gks%exx_hyb
+    endif
+    if( calc_type%is_dft ) then
+      write(stdout,'(a25,1x,f19.10)') 'XC Energy       (Ha):',en_gks%xc
+    endif
+    write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en_gks%total
+
+    !
+    ! Setup the new density matrix: p_matrix
+    ! Save the old one for the convergence criterium
+    c_matrix_LaorLb=COMPLEX_ZERO
+    do istate=1,nstate/2
+      do jstate=1,nstate/2
+        c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)
+        c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate)
+      enddo
+    enddo
+    call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
+
+
+ ! SCF convergence check
+    if( iscf > 1) then
+      rms = NORM2( real(p_matrix_LaorLb(:,:,:)) - real(p_matrix_LaorLb_old(:,:,:)) ) * SQRT( REAL(nspin,dp) ) &
+          + NORM2( aimag(p_matrix_LaorLb(:,:,:)) - aimag(p_matrix_LaorLb_old(:,:,:)) ) * SQRT( REAL(nspin,dp) )
+      p_matrix_LaorLb_old(:,:,:)=p_matrix_LaorLb(:,:,:)
+      write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms
+    else
+      p_matrix_LaorLb_old(:,:,:)=p_matrix_LaorLb(:,:,:)
+    endif
+
+    if( rms < tolscf ) then
+      scf_has_converged = .TRUE.
+      write(stdout,*) ' ===> convergence has been reached'
+      write(stdout,*)
+    else
+      scf_has_converged = .FALSE.
+      write(stdout,*) ' ===> convergence not reached yet'
+      write(stdout,*)
+
+      if( iscf == nscf ) then
+        if( rms > 1.0e-2_dp ) then
+          call issue_warning('SCF convergence is very poor')
+        else if( rms > 1.0e-4_dp ) then
+          call issue_warning('SCF convergence is poor')
+        endif
+      endif
+
+    endif
+
+    inquire(file='STOP',exist=stopfile_found)
+
+    ! This typically stops too early. We have to use tolscf<0 !
+    if( scf_has_converged .OR. stopfile_found ) exit
+
+    !
+    ! end of the big SCF loop
+  enddo
+
+
+  !
+  ! Cleanly deallocate the integral grid information
+  !
+  if( calc_type%is_dft ) call destroy_dft_grid()
+
+
+  !
+  ! Cleanly deallocate the arrays
+  !
+  call clean_deallocate('State energies',energy_vec)
+  call clean_deallocate('Hamiltonian history',ham_hist)
+  call clean_deallocate('Density matrix P',p_matrix_LaorLb)
+  call clean_deallocate('Density matrix P(old)',p_matrix_LaorLb_old)
+  call clean_deallocate('Coefs. La or Lb C',c_matrix_LaorLb)
+  call clean_deallocate('Hxc operator VHxc',hamiltonian_Vhxc)
+  call clean_deallocate('Total Hamiltonian H',hamiltonian_x2c)
 
   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
 
