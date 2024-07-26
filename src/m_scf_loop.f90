@@ -714,6 +714,7 @@ subroutine scf_loop_x2c(basis,&
   real(dp)                :: rms
   real(dp),allocatable    :: energy_vec(:)
   complex(dp),allocatable :: hamiltonian_x2c(:,:)
+  complex(dp),allocatable :: p_matrix(:,:)
   complex(dp),allocatable :: hamiltonian_Vhxc(:,:,:)
   complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
   complex(dp),allocatable :: p_matrix_LaorLb(:,:,:),p_matrix_LaorLb_old(:,:,:)
@@ -725,14 +726,15 @@ subroutine scf_loop_x2c(basis,&
 
   rms = 1000.0
   nstate = 2*basis%nbf ! = 2 basis%nbf
-  
+
   !
   ! Allocate the main arrays
   call clean_allocate('Total Hamiltonian H',hamiltonian_x2c,nstate,nstate)
   call clean_allocate('Hxc operator VHxc',hamiltonian_Vhxc,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Coefs. La or Lb C',c_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
-  call clean_allocate('Density matrix P(old)',p_matrix_LaorLb_old,basis%nbf,basis%nbf,nspin)
-  call clean_allocate('Density matrix P',p_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Density matrix P_LaLb(old)',p_matrix_LaorLb_old,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Density matrix P_LaLb',p_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Density matrix P',p_matrix,nstate,nstate)
   call clean_allocate('Hamiltonian history',ham_hist,nstate,nstate,2)
   call clean_allocate('State energies',energy_vec,nstate)
   ham_hist=COMPLEX_ZERO 
@@ -748,8 +750,8 @@ subroutine scf_loop_x2c(basis,&
   c_matrix_LaorLb=COMPLEX_ZERO
   do istate=1,nstate/2
     do jstate=1,nstate/2
-      c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)
-      c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate)
+      c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)+c_matrix(2*istate-1,2*jstate)
+      c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate-1)+c_matrix(2*istate,2*jstate)
     enddo
   enddo
   call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
@@ -762,6 +764,7 @@ subroutine scf_loop_x2c(basis,&
     write(stdout,'(/,1x,a)') '-------------------------------------------'
     write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
+    en_gks%kinetic=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix(:,:)),dp)
     hamiltonian_x2c=COMPLEX_ZERO
 
     !--Hamiltonian - Hartree Exchange Correlation---
@@ -778,12 +781,11 @@ subroutine scf_loop_x2c(basis,&
          hamiltonian_x2c(2*istate,2*jstate)=hamiltonian_Vhxc(istate,jstate,1)+hamiltonian_Vhxc(istate,jstate,2) 
       enddo
     enddo
-write(*,*) 'MAU WIP'
     !hamiltonian_x2c=hamiltonian_x2c+hamiltonian_hcore
     hamiltonian_x2c=hamiltonian_hcore
 
     !! Sum up to get the total energy
-    en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
+    en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
 
     ! Make sure all the MPI tasks have the exact same Hamiltonian
     ! It helps stabilizing the SCF cycles in parallel
@@ -819,7 +821,7 @@ write(*,*) 'MAU WIP'
 
     !
     ! C = X * C'
-    c_matrix(:,:) = MATMUL(x_matrix,c_matrix)
+    c_matrix=MATMUL(x_matrix,c_matrix)
 
     call dump_out_energy('=== Energies ===',occupation,energy)
 
@@ -846,8 +848,8 @@ write(*,*) 'MAU WIP'
     c_matrix_LaorLb=COMPLEX_ZERO
     do istate=1,nstate/2
       do jstate=1,nstate/2
-        c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)
-        c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate)
+        c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)+c_matrix(2*istate-1,2*jstate)
+        c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate-1)+c_matrix(2*istate,2*jstate)
       enddo
     enddo
     call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
@@ -903,8 +905,9 @@ write(*,*) 'MAU WIP'
   !
   call clean_deallocate('State energies',energy_vec)
   call clean_deallocate('Hamiltonian history',ham_hist)
-  call clean_deallocate('Density matrix P',p_matrix_LaorLb)
-  call clean_deallocate('Density matrix P(old)',p_matrix_LaorLb_old)
+  call clean_deallocate('Density matrix P_LaLb',p_matrix_LaorLb)
+  call clean_deallocate('Density matrix P_LaLb(old)',p_matrix_LaorLb_old)
+  call clean_deallocate('Density matrix P',p_matrix)
   call clean_deallocate('Coefs. La or Lb C',c_matrix_LaorLb)
   call clean_deallocate('Hxc operator VHxc',hamiltonian_Vhxc)
   call clean_deallocate('Total Hamiltonian H',hamiltonian_x2c)
