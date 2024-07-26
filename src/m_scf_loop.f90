@@ -715,10 +715,10 @@ subroutine scf_loop_x2c(basis,&
   real(dp),allocatable    :: energy_vec(:)
   complex(dp),allocatable :: occ_matrix(:,:)
   complex(dp),allocatable :: hamiltonian_x2c(:,:)
-  complex(dp),allocatable :: p_matrix(:,:)
+  complex(dp),allocatable :: p_matrix(:,:),p_matrix_old(:,:)  
   complex(dp),allocatable :: hamiltonian_Vhxc(:,:,:)
   complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
-  complex(dp),allocatable :: p_matrix_LaorLb(:,:,:),p_matrix_LaorLb_old(:,:,:)
+  complex(dp),allocatable :: p_matrix_LaorLb(:,:,:)
   complex(dp),allocatable :: ham_hist(:,:,:)
   !=====
 
@@ -739,9 +739,9 @@ subroutine scf_loop_x2c(basis,&
   call clean_allocate('Total Hamiltonian H',hamiltonian_x2c,nstate,nstate)
   call clean_allocate('Hxc operator VHxc',hamiltonian_Vhxc,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Coefs. La or Lb C',c_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
-  call clean_allocate('Density matrix P_LaLb(old)',p_matrix_LaorLb_old,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P_LaLb',p_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P',p_matrix,nstate,nstate)
+  call clean_allocate('Density matrix P(old)',p_matrix_old,nstate,nstate)
   call clean_allocate('Hamiltonian history',ham_hist,nstate,nstate,2)
   call clean_allocate('State energies',energy_vec,nstate)
   ham_hist=COMPLEX_ZERO 
@@ -865,12 +865,12 @@ subroutine scf_loop_x2c(basis,&
 
  ! SCF convergence check
     if( iscf > 1) then
-      rms = NORM2( real(p_matrix_LaorLb(:,:,:)) - real(p_matrix_LaorLb_old(:,:,:)) ) * SQRT( REAL(nspin,dp) ) &
-          + NORM2( aimag(p_matrix_LaorLb(:,:,:)) - aimag(p_matrix_LaorLb_old(:,:,:)) ) * SQRT( REAL(nspin,dp) )
-      p_matrix_LaorLb_old(:,:,:)=p_matrix_LaorLb(:,:,:)
+      rms = NORM2( real(p_matrix(:,:)) - real(p_matrix_old(:,:)) ) * SQRT( REAL(nspin,dp) ) &
+          + NORM2( aimag(p_matrix(:,:)) - aimag(p_matrix_old(:,:)) ) * SQRT( REAL(nspin,dp) )
+      p_matrix_old(:,:)=p_matrix(:,:)
       write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms
     else
-      p_matrix_LaorLb_old(:,:,:)=p_matrix_LaorLb(:,:,:)
+      p_matrix_old(:,:)=p_matrix(:,:)
     endif
 
     if( rms < tolscf ) then
@@ -914,8 +914,8 @@ subroutine scf_loop_x2c(basis,&
   call clean_deallocate('State energies',energy_vec)
   call clean_deallocate('Hamiltonian history',ham_hist)
   call clean_deallocate('Density matrix P_LaLb',p_matrix_LaorLb)
-  call clean_deallocate('Density matrix P_LaLb(old)',p_matrix_LaorLb_old)
   call clean_deallocate('Density matrix P',p_matrix)
+  call clean_deallocate('Density matrix P(old)',p_matrix_old)
   call clean_deallocate('Coefs. La or Lb C',c_matrix_LaorLb)
   call clean_deallocate('Hxc operator VHxc',hamiltonian_Vhxc)
   call clean_deallocate('Total Hamiltonian H',hamiltonian_x2c)
