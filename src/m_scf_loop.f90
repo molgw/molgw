@@ -775,7 +775,6 @@ subroutine scf_loop_x2c(basis,&
     write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
     en_gks%kinetic=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix(:,:)),dp)
-    hamiltonian_x2c=COMPLEX_ZERO
 
     !--Hamiltonian - Hartree Exchange Correlation---
     call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
@@ -787,8 +786,8 @@ subroutine scf_loop_x2c(basis,&
     hamiltonian_x2c=COMPLEX_ZERO
     do istate=1,nstate/2
       do jstate=1,nstate/2
-         hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_Vhxc(istate,jstate,1)+hamiltonian_Vhxc(istate,jstate,2) 
-         hamiltonian_x2c(2*istate,2*jstate)=hamiltonian_Vhxc(istate,jstate,1)+hamiltonian_Vhxc(istate,jstate,2) 
+         hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_Vhxc(istate,jstate,1)!+hamiltonian_Vhxc(istate,jstate,2) 
+         hamiltonian_x2c(2*istate,2*jstate)=hamiltonian_Vhxc(istate,jstate,1)!+hamiltonian_Vhxc(istate,jstate,2) 
       enddo
     enddo
     hamiltonian_x2c=hamiltonian_x2c+hamiltonian_hcore
