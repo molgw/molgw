@@ -710,9 +710,10 @@ subroutine scf_loop_x2c(basis,&
   !=====
   integer                 :: nstate
   logical                 :: stopfile_found
-  integer                 :: iscf,istate,jstate
+  integer                 :: iscf,istate,jstate,nelectrons
   real(dp)                :: rms
   real(dp),allocatable    :: energy_vec(:)
+  complex(dp),allocatable :: occ_matrix(:,:)
   complex(dp),allocatable :: hamiltonian_x2c(:,:)
   complex(dp),allocatable :: p_matrix(:,:)
   complex(dp),allocatable :: hamiltonian_Vhxc(:,:,:)
@@ -726,6 +727,12 @@ subroutine scf_loop_x2c(basis,&
 
   rms = 1000.0
   nstate = 2*basis%nbf ! = 2 basis%nbf
+  nelectrons=nint(sum(occupation(:,1))+sum(occupation(:,2)))
+  allocate(occ_matrix(nstate,nstate))
+  occ_matrix=COMPLEX_ZERO
+  do istate=1,nelectrons
+    occ_matrix(istate,istate)=1.0e0
+  enddo
 
   !
   ! Allocate the main arrays
@@ -746,7 +753,7 @@ subroutine scf_loop_x2c(basis,&
   endif
 
   !
-  ! Setup the density matrix: p_matrix_LaorLb
+  ! Setup the density matrices p_matrix and p_matrix_LaorLb
   c_matrix_LaorLb=COMPLEX_ZERO
   do istate=1,nstate/2
     do jstate=1,nstate/2
@@ -754,6 +761,7 @@ subroutine scf_loop_x2c(basis,&
       c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate-1)+c_matrix(2*istate,2*jstate)
     enddo
   enddo
+  p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
   call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
 
 
@@ -851,6 +859,7 @@ subroutine scf_loop_x2c(basis,&
         c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate-1)+c_matrix(2*istate,2*jstate)
       enddo
     enddo
+    p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
     call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
 
 
