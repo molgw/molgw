@@ -763,6 +763,8 @@ subroutine scf_loop_x2c(basis,&
   enddo
   p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
   call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
+  p_matrix_LaorLb(:,:,1)=p_matrix_LaorLb(:,:,1)+p_matrix_LaorLb(:,:,2)
+  p_matrix_LaorLb(:,:,2)=COMPLEX_ZERO
 
 
   !
@@ -789,8 +791,8 @@ subroutine scf_loop_x2c(basis,&
          hamiltonian_x2c(2*istate,2*jstate)=hamiltonian_Vhxc(istate,jstate,1)+hamiltonian_Vhxc(istate,jstate,2) 
       enddo
     enddo
-    !hamiltonian_x2c=hamiltonian_x2c+hamiltonian_hcore
-    hamiltonian_x2c=hamiltonian_hcore
+    hamiltonian_x2c=hamiltonian_x2c+hamiltonian_hcore
+    !hamiltonian_x2c=hamiltonian_hcore
 
     !! Sum up to get the total energy
     en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
@@ -861,6 +863,8 @@ subroutine scf_loop_x2c(basis,&
     enddo
     p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
     call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
+    p_matrix_LaorLb(:,:,1)=p_matrix_LaorLb(:,:,1)+p_matrix_LaorLb(:,:,2)
+    p_matrix_LaorLb(:,:,2)=COMPLEX_ZERO
 
 
  ! SCF convergence check
