@@ -534,10 +534,11 @@ end subroutine dump_out_occupation
 
 
 !=========================================================================
-subroutine dump_out_energy(title,occupation,energy)
+subroutine dump_out_energy(title,occupation,energy,is_x2c)
   implicit none
   character(len=*),intent(in) :: title
   real(dp),intent(in)         :: occupation(:,:),energy(:,:)
+  logical,intent(in),optional :: is_x2c
   !=====
   integer,parameter :: MAXSIZE=300
   integer  :: istate,nocc,nstate
@@ -552,7 +553,15 @@ subroutine dump_out_energy(title,occupation,energy)
     write(stdout,'(a)') '   #       (Ha)         (eV)      '
   else
     write(stdout,'(a)') '   #              (Ha)                      (eV)      '
-    write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
+    if(present(is_x2c)) then
+      if(is_x2c) then
+        write(stdout,'(a)') '            bar 1       ubar 2        bar 1       ubar 2'
+      else
+        write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
+      endif
+    else
+      write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
+    endif
   endif
   do istate=MAX(1,nocc-MAXSIZE/2),MIN(nstate,nocc+MAXSIZE/2)
     select case(nspin)

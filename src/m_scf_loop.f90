@@ -709,12 +709,13 @@ subroutine scf_loop_x2c(basis,&
   logical,intent(out)                   :: scf_has_converged
   !=====
   integer                 :: nstate
-  logical                 :: stopfile_found
+  logical                 :: is_x2c,stopfile_found
   integer                 :: iscf,istate,jstate,nelectrons
   real(dp)                :: rms
   real(dp),allocatable    :: energy_vec(:)
   complex(dp),allocatable :: occ_matrix(:,:)
   complex(dp),allocatable :: hamiltonian_x2c(:,:)
+  complex(dp),allocatable :: hamiltonian_xc(:,:)
   complex(dp),allocatable :: p_matrix(:,:),p_matrix_old(:,:)  
   complex(dp),allocatable :: hamiltonian_Vhxc(:,:,:)
   complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
@@ -725,6 +726,7 @@ subroutine scf_loop_x2c(basis,&
 
   call start_clock(timing_scf)
 
+  is_x2c = .true.
   rms = 1000.0
   nstate = 2*basis%nbf ! = 2 basis%nbf
   nelectrons=nint(sum(occupation(:,1))+sum(occupation(:,2)))
@@ -758,7 +760,7 @@ subroutine scf_loop_x2c(basis,&
   do istate=1,nstate/2
     do jstate=1,nstate/2
       c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)+c_matrix(2*istate-1,2*jstate)
-      c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate-1)+c_matrix(2*istate,2*jstate)
+      c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate  ,2*jstate-1)+c_matrix(2*istate  ,2*jstate)
     enddo
   enddo
   p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
@@ -776,22 +778,34 @@ subroutine scf_loop_x2c(basis,&
 
     en_gks%kinetic=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix(:,:)),dp)
 
-    !--Hamiltonian - Hartree Exchange Correlation---
-    call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
-                                            occupation,               &
-                                            c_matrix_LaorLb,          &
-                                            p_matrix_LaorLb,          &
-                                            hamiltonian_Vhxc,en_gks)
+    !--Hamiltonian - Hartree ---
+    hamiltonian_Vhxc=COMPLEX_ZERO
+    call calculate_hamiltonian_hartree_x2c(basis,                   &
+                                           occupation,              &
+                                           p_matrix_LaorLb,         &
+                                           hamiltonian_Vhxc,en_gks)
 
     hamiltonian_x2c=COMPLEX_ZERO
     do istate=1,nstate/2
       do jstate=1,nstate/2
-         hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_Vhxc(istate,jstate,1)!+hamiltonian_Vhxc(istate,jstate,2) 
-         hamiltonian_x2c(2*istate,2*jstate)=hamiltonian_Vhxc(istate,jstate,1)!+hamiltonian_Vhxc(istate,jstate,2) 
+         hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_Vhxc(istate,jstate,1) 
+         hamiltonian_x2c(2*istate  ,2*jstate  )=hamiltonian_Vhxc(istate,jstate,1) 
       enddo
     enddo
     hamiltonian_x2c=hamiltonian_x2c+hamiltonian_hcore
-    !hamiltonian_x2c=hamiltonian_hcore
+
+    !--Hamiltonian - Exchange Correlation---
+    hamiltonian_Vhxc=COMPLEX_ZERO
+    !call calculate_hamiltonian_xc_x2c(basis,                   &
+    !                                  occupation,              &
+    !                                  c_matrix_LaorLb,         &
+    !                                  hamiltonian_Vhxc,en_gks)
+    do istate=1,nstate/2
+      do jstate=1,nstate/2
+         hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_x2c(2*istate-1,2*jstate-1)+hamiltonian_Vhxc(istate,jstate,1) 
+         hamiltonian_x2c(2*istate  ,2*jstate  )=hamiltonian_x2c(2*istate  ,2*jstate  )+hamiltonian_Vhxc(istate,jstate,1) 
+      enddo
+    enddo
 
     !! Sum up to get the total energy
     en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
@@ -831,7 +845,7 @@ subroutine scf_loop_x2c(basis,&
     ! C = X * C'
     c_matrix=MATMUL(x_matrix,c_matrix)
 
-    call dump_out_energy('=== Energies ===',occupation,energy)
+    call dump_out_energy('=== Energies ===',occupation,energy,is_x2c=is_x2c)
 
     call output_homolumo('gKS',occupation,energy,1,nstate)
 
@@ -857,7 +871,7 @@ subroutine scf_loop_x2c(basis,&
     do istate=1,nstate/2
       do jstate=1,nstate/2
         c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)+c_matrix(2*istate-1,2*jstate)
-        c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate,2*jstate-1)+c_matrix(2*istate,2*jstate)
+        c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate  ,2*jstate-1)+c_matrix(2*istate  ,2*jstate)
       enddo
     enddo
     p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
@@ -868,7 +882,7 @@ subroutine scf_loop_x2c(basis,&
 
  ! SCF convergence check
     if( iscf > 1) then
-      rms = NORM2( real(p_matrix(:,:)) - real(p_matrix_old(:,:)) ) * SQRT( REAL(nspin,dp) ) &
+      rms = NORM2( real(p_matrix(:,:))  - real(p_matrix_old(:,:)) )  * SQRT( REAL(nspin,dp) ) &
           + NORM2( aimag(p_matrix(:,:)) - aimag(p_matrix_old(:,:)) ) * SQRT( REAL(nspin,dp) )
       p_matrix_old(:,:)=p_matrix(:,:)
       write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms
