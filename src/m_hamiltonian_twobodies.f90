@@ -1329,7 +1329,14 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
           rhor_batch(ispin,:) = rhor_batch(ispin,:) + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
         enddo
       endif
-    else
+
+      ! X2C average them
+      if( trim(x2c)=='yes' ) then
+        rhor_batch(1,:)=( rhor_batch(1,:)+rhor_batch(2,:) )/2.0_dp
+        rhor_batch(2,:)=rhor_batch(1,:)
+      endif
+
+     else
       call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch, &
                                    bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
       if(ALLOCATED(rhocore)) then
@@ -1337,6 +1344,14 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
           rhor_batch(ispin,:)        = rhor_batch(ispin,:)        + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
           grad_rhor_batch(ispin,:,:) = grad_rhor_batch(ispin,:,:) + rhocore_grad(igrid_start:igrid_end,:) / REAL(nspin,dp)
         enddo
+      endif
+
+      ! X2C average them
+      if( trim(x2c)=='yes' ) then
+        rhor_batch(1,:)=( rhor_batch(1,:)+rhor_batch(2,:) )/2.0_dp
+        rhor_batch(2,:)=rhor_batch(1,:)
+        grad_rhor_batch(1,:,:)=( grad_rhor_batch(1,:,:) + grad_rhor_batch(2,:,:) )/2.0_dp
+        grad_rhor_batch(2,:,:)=grad_rhor_batch(1,:,:)
       endif
 
       !$OMP PARALLEL DO
@@ -1350,6 +1365,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
       !$OMP END PARALLEL DO
 
     endif
+  
 
     ! Normalization
     normalization(:)      = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )

@@ -422,18 +422,13 @@ subroutine calculate_hamiltonian_xc_x2c(basis,                  &
   if( calc_type%is_core ) return
 
   !
-  !  XC part of the Hamiltonian
-  !
-
-  !
   ! DFT XC potential is added here
   !
   if( calc_type%is_dft ) then
     allocate(hamiltonian_spin_real(basis%nbf,basis%nbf,nspin))
     call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix_cmplx,hamiltonian_spin_real,en_inout%xc)
     
-    write(*,*) 'TODO: MAU'
-    !hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_spin_real(:,:,:)
+    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_spin_real(:,:,:)
     deallocate(hamiltonian_spin_real)
   endif
 
