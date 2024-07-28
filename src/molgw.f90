@@ -162,6 +162,11 @@ program molgw
       call die("x2c calculations are not available including (lr-)exact exchange")
     endif
 
+    ! Check if the magnetization=0
+    if(abs(magnetization)>1e-8) then
+      call die("x2c calculations only implemented for magnetization=0")
+    endif
+
     !
     ! Nucleus-nucleus repulsion contribution to the energy
     call nucleus_nucleus_energy(en_gks%nuc_nuc)

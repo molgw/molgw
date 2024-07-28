@@ -733,7 +733,7 @@ subroutine scf_loop_x2c(basis,&
   allocate(occ_matrix(nstate,nstate))
   occ_matrix=COMPLEX_ZERO
   do istate=1,nelectrons
-    occ_matrix(istate,istate)=1.0e0
+    occ_matrix(istate,istate)=1.0d0
   enddo
 
   !
@@ -796,10 +796,10 @@ subroutine scf_loop_x2c(basis,&
 
     !--Hamiltonian - Exchange Correlation---
     hamiltonian_Vhxc=COMPLEX_ZERO
-    !call calculate_hamiltonian_xc_x2c(basis,                   &
-    !                                  occupation,              &
-    !                                  c_matrix_LaorLb,         &
-    !                                  hamiltonian_Vhxc,en_gks)
+    call calculate_hamiltonian_xc_x2c(basis,                   &
+                                      occupation,              &
+                                      c_matrix_LaorLb,         &
+                                      hamiltonian_Vhxc,en_gks)
     do istate=1,nstate/2
       do jstate=1,nstate/2
          hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_x2c(2*istate-1,2*jstate-1)+hamiltonian_Vhxc(istate,jstate,1) 
