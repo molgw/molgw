@@ -42,7 +42,7 @@ function H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq) result(H_val)
   !=====
 
   H_val =                           Vext_pq(1) + Vext_pq(2) + Vext_pq(3) + Vext_pq(4)  & 
-    &   +2.0e0*c_speedlight*c_speedlight*(                  -    S_pq(3) -    S_pq(4)) & ! -c^2 I_4x4 added
+    &   +2.0d0*c_speedlight*c_speedlight*(                  -    S_pq(3) -    S_pq(4)) & ! -c^2 I_4x4 added
     &   -c_speedlight*im          *(  Dz_pq(1) -   Dz_pq(2) +   Dz_pq(3) -   Dz_pq(4)) &
     &   -c_speedlight             *(  Dy_pq(1) -   Dy_pq(2) +   Dy_pq(3) -   Dy_pq(4)) &
     &   -c_speedlight*im          *(  Dx_pq(1) +   Dx_pq(2) +   Dx_pq(3) +   Dx_pq(4))
@@ -437,7 +437,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    ! ( 0  c_matrix_small )
   c_matrix_ukb2rkb=complex_zero
   do ibf=1,nbasis_L
-   c_matrix_ukb2rkb(ibf,ibf)=1.0e0
+   c_matrix_ukb2rkb(ibf,ibf)=1.0d0
   enddo
   c_matrix_ukb2rkb(nbasis_L+1:,nbasis_L+1:)=c_matrix_small(:,:)
   H_rel_rkb_mat=matmul(conjg(transpose(c_matrix_ukb2rkb)),matmul(H_rel_ukb_mat,c_matrix_ukb2rkb))
@@ -455,7 +455,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   call diagonalize(' ',x_matrix_small,W,U_mat)
   Tmp_matrix=complex_zero
   do ibf=1,nbasis_L
-   Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
+   Tmp_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
   enddo
   x_matrix_small=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
   x_matrix(nbasis_L+1:,nbasis_L+1:)=x_matrix_small(:,:) ! NOTE: save in x_matrix
@@ -466,11 +466,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   do ibf=1,nbasis_L
    do jbf=1,nbasis_L
      if(ibf/=jbf) then
-      if(abs(x_matrix_small(ibf,jbf))>1e-8) then
+      if(abs(x_matrix_small(ibf,jbf))>1d-8) then
        write(stdout,'(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ',ibf,jbf,x_matrix_small(ibf,jbf)
       endif
      else
-      if(abs(x_matrix_small(ibf,jbf)-1.0e0)>1e-8) then
+      if(abs(x_matrix_small(ibf,jbf)-1.0d0)>1d-8) then
        write(stdout,'(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ',ibf,jbf,x_matrix_small(ibf,jbf)
       endif
      endif
@@ -531,7 +531,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    ! Set the crucial nstate
    nstate=nstate_rkb
 
-   ! TODO these arrays should be passed to molgw.f90 for 4C calcs.
+   ! TODO this array should be passed to molgw.f90 for 4C calcs.
    call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
    
    write(stdout,'(/,a)') ' Completed Relativistic Hamiltonian construction'
@@ -580,20 +580,20 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    A_mat=matmul(transpose(conjg(R_mat)),R_mat)
    B_mat=matmul(R_mat,transpose(conjg(R_mat)))
    do ibf=1,nbasis_L
-    A_mat(ibf,ibf)=A_mat(ibf,ibf)+1.0e0
-    B_mat(ibf,ibf)=B_mat(ibf,ibf)+1.0e0
+    A_mat(ibf,ibf)=A_mat(ibf,ibf)+1.0d0
+    B_mat(ibf,ibf)=B_mat(ibf,ibf)+1.0d0
    enddo
    allocate(W(nbasis_L),U_mat(nbasis_L,nbasis_L),Tmp_matrix(nbasis_L,nbasis_L))
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ',A_mat,W,U_mat)
    do ibf=1,nbasis_L
-    Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
+    Tmp_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
    enddo  
    A_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ',B_mat,W,U_mat)
    do ibf=1,nbasis_L
-    Tmp_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
+    Tmp_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
    enddo  
    B_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
    deallocate(W,U_mat,Tmp_matrix)
@@ -612,7 +612,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    R_mat=transpose(conjg(R_mat))
    U_mat(1:nbasis_L,nbasis_L+1:)=R_mat
    do ibf=1,nstate_rkb
-    U_mat(ibf,ibf)=1.0e0
+    U_mat(ibf,ibf)=1.0d0
    enddo
    U_mat=matmul(Tmp_matrix,U_mat)
    deallocate(Tmp_matrix)
@@ -646,7 +646,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    call diagonalize(' ',x_matrix,W,V_mat)
    x_matrix=complex_zero
    do ibf=1,nbasis_L
-    x_matrix(ibf,ibf)=1.0e0/(sqrt(W(ibf))+1.0e-10) 
+    x_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
    enddo
    x_matrix=matmul(matmul(V_mat,x_matrix),transpose(conjg(V_mat)))
    deallocate(W,V_mat)
@@ -677,13 +677,13 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
 !!  tmp2=tmp0-tmp1
 !!  do ibf=1,nbasis_L
 !!   do jbf=1,nbasis_L
-!!    if(abs(tmp2(ibf,jbf))>1e-8) write(stdout,*) ibf,jbf,tmp2(ibf,jbf)
+!!    if(abs(tmp2(ibf,jbf))>1d-8) write(stdout,*) ibf,jbf,tmp2(ibf,jbf)
 !!   enddo
 !!  enddo
 !!  write(stdout,'(a)') ' Checking Hermiticity of H^x2c'
 !!  do ibf=1,nbasis_L
 !!   do jbf=1,nbasis_L
-!!    if(abs(H_rel_rkb_mat(ibf,jbf)-conjg(H_rel_rkb_mat(jbf,ibf)))>1e-8) then
+!!    if(abs(H_rel_rkb_mat(ibf,jbf)-conjg(H_rel_rkb_mat(jbf,ibf)))>1d-8) then
 !!     write(stdout,*) ibf,jbf,H_rel_rkb_mat(ibf,jbf),H_rel_rkb_mat(jbf,ibf)
 !!    endif
 !!   enddo
@@ -691,7 +691,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
 !!  write(stdout,'(a)') ' Checking Hermiticity of S^x2c'
 !!  do ibf=1,nbasis_L
 !!   do jbf=1,nbasis_L
-!!    if(abs(s_matrix(ibf,jbf)-conjg(s_matrix(jbf,ibf)))>1e-8) then
+!!    if(abs(s_matrix(ibf,jbf)-conjg(s_matrix(jbf,ibf)))>1d-8) then
 !!     write(stdout,*) ibf,jbf,s_matrix(ibf,jbf),s_matrix(jbf,ibf)
 !!    endif
 !!   enddo
@@ -701,9 +701,9 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
 !!  do ibf=1,nbasis_L
 !!   do jbf=1,nbasis_L
 !!    if(ibf/=jbf) then
-!!     if(abs(tmp0(ibf,jbf))>1e-8) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
+!!     if(abs(tmp0(ibf,jbf))>1d-8) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
 !!    else
-!!     if(abs(tmp0(ibf,jbf)-1.0e0)>1e-8) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
+!!     if(abs(tmp0(ibf,jbf)-1.0d0)>1d-8) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
 !!    endif
 !!   enddo
 !!  enddo
@@ -714,7 +714,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   
    deallocate(E_state)
    
-   ! TODO these arrays should be passed by molgw.f90 for full picture change
+   ! TODO these arrays should be passed to molgw.f90 for full picture change
    call clean_deallocate('U decoupling matrix ',U_mat)
    call clean_deallocate('UKB to RKB coefficients',c_matrix_ukb2rkb)
 
