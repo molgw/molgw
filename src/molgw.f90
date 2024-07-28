@@ -73,6 +73,7 @@ program molgw
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
   integer                 :: nstate
+  integer                 :: istate,jstate
   integer                 :: istep,istring
   logical                 :: found_basis_name
   logical                 :: is_restart,is_big_restart,is_basis_restart
@@ -80,6 +81,8 @@ program molgw
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp,eext
+  real(dp),allocatable    :: E_vec(:)
+  real(dp),allocatable    :: vhxc_ao(:,:)
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
   real(dp),allocatable    :: hamiltonian_nucleus(:,:)
   real(dp),allocatable    :: hamiltonian_fock(:,:,:)
@@ -95,6 +98,7 @@ program molgw
   complex(dp),allocatable :: x_matrix_rel(:,:)
   complex(dp),allocatable :: c_matrix_rel(:,:)
   complex(dp),allocatable :: hamiltonian_kin_nuc_rel(:,:)
+  complex(dp),allocatable :: hamiltonian_x2c_guess(:,:)
   character(len=100)      :: basis_name_1
   character(len=200)      :: file_name
   character(len=100),allocatable :: basis_name_nrel(:)
@@ -291,6 +295,24 @@ program molgw
     ! ERI integrals have been computed and stored
     !
 
+    ! GUESS ( = CORE is alredy in c_matrix ) 
+    if(TRIM(init_hamiltonian)=='GUESS') then
+      allocate(vhxc_ao(basis%nbf,basis%nbf),hamiltonian_x2c_guess(nstate,nstate),E_vec(nstate))
+      hamiltonian_x2c_guess=COMPLEX_ZERO
+      call dft_approximate_vhxc(basis,vhxc_ao)
+      do istate=1,nstate/2
+        do jstate=1,nstate/2
+           hamiltonian_x2c_guess(2*istate-1,2*jstate-1)=vhxc_ao(istate,jstate) 
+           hamiltonian_x2c_guess(2*istate  ,2*jstate  )=vhxc_ao(istate,jstate) 
+        enddo
+      enddo
+      hamiltonian_x2c_guess=hamiltonian_x2c_guess+hamiltonian_kin_nuc_rel
+      hamiltonian_x2c_guess=MATMUL(TRANSPOSE(CONJG(x_matrix_rel)),MATMUL(hamiltonian_x2c_guess,x_matrix_rel))
+      call diagonalize(' ',hamiltonian_x2c_guess,E_vec,c_matrix_rel)
+      c_matrix_rel=MATMUL(x_matrix_rel,c_matrix_rel)
+      deallocate(vhxc_ao,hamiltonian_x2c_guess,E_vec)
+    endif
+
     call stop_clock(timing_prescf)
  
     !
@@ -298,6 +320,7 @@ program molgw
     ! Part 2 / 3 : SCF cycles
     !
     !
+    call issue_warning('X2C KS-DFT SCF is currently implemented only for testing')
     call scf_loop_x2c(basis,                                 &
                       x_matrix_rel,s_matrix_rel,             &
                       hamiltonian_kin_nuc_rel,               &
