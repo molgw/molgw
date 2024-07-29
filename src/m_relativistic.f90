@@ -84,6 +84,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   character(len=100),allocatable :: basis_name_nrel(:)
   logical                        :: found_basis_name
   logical                        :: this_is_large
+  integer                        :: nbf_large
   integer                        :: istring,ibf,jbf,iibf,jjbf,ishell,jshell,igaus,ngaus,ngaus_nrl,nstate_large
   integer                        :: nshell,nshell_nrel,nbasis,nbasis_L,nbasis_S,ntyp,shell_typ,shell_typ_nrl
   integer                        :: nstate_rkb,ielectrons
@@ -140,6 +141,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   !! Initialize the non-rel. basis (used to find the large component AOs)
   call init_basis_set(basis_path,basis_name_nrel,ecp_basis_name,gaussian_type, &
                         even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis_nrel)
+  nbf_large=basis_nrel%nbf
   deallocate(basis_name_nrel)
   nshell=SIZE(basis%shell(:)%icenter)
   nshell_nrel=SIZE(basis_nrel%shell(:)%icenter)
@@ -154,8 +156,8 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
     if((shell_typ==shell_typ_nrl .and. ngaus==ngaus_nrl).and.(.not.is_large_4c(ishell))) then
      this_is_large=.true.
      do igaus=1,ngaus
-       if( basis%shell(ishell)%coeff(igaus) /= basis_nrel%shell(jshell)%coeff(igaus) .or. &
-        &  basis%shell(ishell)%alpha(igaus) /= basis_nrel%shell(jshell)%alpha(igaus) ) then
+       if( abs(basis%shell(ishell)%coeff(igaus) - basis_nrel%shell(jshell)%coeff(igaus))>1e-4 .or. &
+        &  abs(basis%shell(ishell)%alpha(igaus) - basis_nrel%shell(jshell)%alpha(igaus))>1e-4 ) then
         this_is_large=.false.
        endif
      enddo
@@ -175,7 +177,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   call destroy_basis_set(basis_nrel)
 
   !! Do not proceed if nstate/=basis_nrel%nbf because we need to build for each AO^L an AO^S in restricted-KB (see below).
-  if(nstate_large/=basis_nrel%nbf) then
+  if(nstate_large/=nbf_large) then
     write(stdout,'(/,a,i10,i10,/)') 'Nstate and basis_large ',nstate_large,basis_nrel%nbf
     call die("Relativistic requires basis sets that are linearly independent.")
   endif
@@ -351,6 +353,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    enddo
   enddo
   write(stdout,'(a,/)') ' Completed the H_rel in UKB'
+  !! Do not proceed if nbasis_L/2 /= nbf_large because we did not find all the large component basis
+  if(nbasis_L/2 /= nbf_large) then
+    write(stdout,'(/,a,i10,i10,/)') 'Nbasis_L/2 and basis%nbf large ',nbasis_L/2,nbf_large
+    call die("Relativistic requires large comp. basis sets in files foo_rel to be also present in files foo.")
+  endif
 
   !! No longer need these scalar and pure large component matrices (integrals)
   call clean_deallocate('Large overlap matrix S',s_matrix_large)
@@ -653,11 +660,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    do ibf=1,nbasis_rkb
     do jbf=1,nbasis_rkb
      if(ibf==jbf) then
-      if(abs(Tmp_matrix_matrix(ibf,jbf)-1.0d0)>1d-8) then
+      if(abs(Tmp_matrix(ibf,jbf)-1.0d0)>1d-8) then
        write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,s_matrix(ibf,jbf)
       endif
      else
-      if(abs(Tmp_matrix_matrix(ibf,jbf))>1d-8) then
+      if(abs(Tmp_matrix(ibf,jbf))>1d-8) then
        write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,s_matrix(ibf,jbf)
       endif
      endif

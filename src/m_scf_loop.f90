@@ -847,7 +847,7 @@ subroutine scf_loop_x2c(basis,&
 
     call dump_out_energy('=== Energies ===',occupation,energy,is_x2c=is_x2c)
 
-    call output_homolumo('gKS',occupation,energy,1,nstate)
+    call output_homolumo('gKS',occupation,energy,1,basis%nbf)
 
 
     !
