@@ -201,7 +201,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    else if(shell_typ==6) then
     ntyp=28
    else 
-    call issue_warning('Shell type >6 in Relativistic is not implemented!') 
+    call die('Shell type >6 in Relativistic is not implemented!') 
    endif
    do ibf=1,ntyp
      is_large(ibf+nbasis)=is_large_4c(ishell)
@@ -567,8 +567,21 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    allocate(Work(lwork))
    call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
    R_mat=matmul(A_mat,B_mat)
+    ! Check that R solves C_L(+) (C_L(+))^dagger R = C_L(+) (C_S(+))^dagger => A R = B
+   Tmp_matrix(:,:)=c_matrix(1:nbasis_L,1:nbasis_L) ! C^(+,L)
+   A_mat=matmul(Tmp_matrix,transpose(conjg(Tmp_matrix)))
+   A_mat=matmul(A_mat,R_mat)
+   A_mat=A_mat-B_mat ! A contains A R - B
+   do ibf=1,nbasis_L
+    do jbf=1,nbasis_L
+      if(abs(A_mat(ibf,jbf))>1d-5) then
+       write(stdout,'(a,i10,i10,2f20.5)') 'Error computing R decoup. matrix. ',ibf,jbf,A_mat(ibf,jbf)
+      endif
+    enddo
+   enddo
    R_mat=transpose(conjg(R_mat))
-   deallocate(Tmp_matrix)
+   deallocate(Tmp_matrix,Work,ipiv)
+   write(stdout,'(a)') ' Checked that the R matrix solves the system of equations'
    write(stdout,'(a,/)') ' Completed R matrix construction'
    
     ! Compute normalization matrices
