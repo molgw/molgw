@@ -455,6 +455,9 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   call diagonalize(' ',x_matrix_small,W,U_mat)
   Tmp_matrix=complex_zero
   do ibf=1,nbasis_L
+   if(abs(W(ibf))<1.0e-8) then
+    write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in (RKB S_SS)^-1/2',ibf,W(ibf)
+   endif
    Tmp_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
   enddo
   x_matrix_small=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
@@ -557,16 +560,28 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    A_mat=matmul(Tmp_matrix,transpose(conjg(Tmp_matrix)))
    R_mat(:,:)=c_matrix(nbasis_L+1:,1:nbasis_L)      ! C^(+,S)
    B_mat=matmul(Tmp_matrix,transpose(conjg(R_mat)))
-   lwork=-1
-   allocate(ipiv(nbasis_L),Work(1))
-   call zgetrf(nbasis_L,nbasis_L,A_mat,nbasis_L,ipiv,info)
-   if(info/=0) call die("Error in Relativistic computing A^-1 in zgetrf")
-   call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
-   lwork=nint(real(Work(1)))
-   deallocate(Work)
-   allocate(Work(lwork))
-   call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
+   allocate(W(nbasis_L),U_mat(nbasis_L,nbasis_L))
+   call diagonalize(' ',A_mat,W,U_mat)
+   R_mat=COMPLEX_ZERO
+   do ibf=1,nbasis_L
+    if(abs(W(ibf))<1.0e-8) then
+     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in A^-1',ibf,W(ibf)
+    endif
+    R_mat(ibf,ibf)=1.0d0/(W(ibf)+1.0e-10)
+   enddo
+   A_mat=matmul(matmul(U_mat,R_mat),transpose(conjg(U_mat)))
    R_mat=matmul(A_mat,B_mat)
+   deallocate(W,U_mat)
+!   lwork=-1
+!   allocate(ipiv(nbasis_L),Work(1))
+!   call zgetrf(nbasis_L,nbasis_L,A_mat,nbasis_L,ipiv,info)
+!   if(info/=0) call die("Error in Relativistic computing A^-1 in zgetrf")
+!   call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
+!   lwork=nint(real(Work(1)))
+!   deallocate(Work)
+!   allocate(Work(lwork))
+!   call zgetri(nbasis_L,A_mat,nbasis_L,ipiv,Work,lwork,info)
+!   R_mat=matmul(A_mat,B_mat)
     ! Check that R solves C_L(+) (C_L(+))^dagger R = C_L(+) (C_S(+))^dagger => A R = B
    Tmp_matrix(:,:)=c_matrix(1:nbasis_L,1:nbasis_L) ! C^(+,L)
    A_mat=matmul(Tmp_matrix,transpose(conjg(Tmp_matrix)))
@@ -580,7 +595,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
     enddo
    enddo
    R_mat=transpose(conjg(R_mat))
-   deallocate(Tmp_matrix,Work,ipiv)
+   deallocate(Tmp_matrix)!,Work,ipiv)
    write(stdout,'(a)') ' Checked that the R matrix solves the system of equations'
    write(stdout,'(a,/)') ' Completed R matrix construction'
    
@@ -600,12 +615,18 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ',A_mat,W,U_mat)
    do ibf=1,nbasis_L
+    if(abs(W(ibf))<1.0e-8) then
+     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in 1/ sqrt[ I + R^dagger R ]',ibf,W(ibf)
+    endif
     Tmp_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
    enddo  
    A_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ',B_mat,W,U_mat)
    do ibf=1,nbasis_L
+    if(abs(W(ibf))<1.0e-8) then
+     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in 1/ sqrt[ I + R R^dagger ]',ibf,W(ibf)
+    endif
     Tmp_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
    enddo  
    B_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
@@ -628,7 +649,22 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
     U_mat(ibf,ibf)=1.0d0
    enddo
    U_mat=matmul(Tmp_matrix,U_mat)
+   Tmp_matrix=matmul(U_mat,transpose(conjg(U_mat)))
+   do ibf=1,nbasis_rkb
+    do jbf=1,nbasis_rkb
+     if(ibf==jbf) then
+      if(abs(Tmp_matrix_matrix(ibf,jbf)-1.0d0)>1d-8) then
+       write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,s_matrix(ibf,jbf)
+      endif
+     else
+      if(abs(Tmp_matrix_matrix(ibf,jbf))>1d-8) then
+       write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,s_matrix(ibf,jbf)
+      endif
+     endif
+    enddo
+   enddo
    deallocate(Tmp_matrix)
+   write(stdout,'(a,/)') ' Checked that the U decoupling matrix is unitary'
    call clean_deallocate('A matrix ',A_mat)
    call clean_deallocate('B matrix ',B_mat)
    call clean_deallocate('R matrix ',R_mat)
@@ -659,6 +695,9 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    call diagonalize(' ',x_matrix,W,V_mat)
    x_matrix=complex_zero
    do ibf=1,nbasis_L
+    if(abs(W(ibf))<1.0e-8) then
+     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in X matrix calc.',ibf,W(ibf)
+    endif
     x_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
    enddo
    x_matrix=matmul(matmul(V_mat,x_matrix),transpose(conjg(V_mat)))
