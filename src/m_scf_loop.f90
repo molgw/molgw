@@ -720,6 +720,10 @@ subroutine scf_loop_x2c(basis,&
   rms = 1000.0
   nstate = 2*basis%nbf ! = 2 basis%nbf
   nelectrons=nint(sum(occupation(:,1))+sum(occupation(:,2)))
+  if(nelectrons>=basis%nbf) call die("The number of electrons cannot be >= than the num. of basis functions")
+  occupation=0.0_dp
+  occupation(1:nelectrons,1)=1.0_dp
+  occupation(1:nelectrons,2)=1.0_dp
   allocate(occ_matrix(nstate,nstate))
   occ_matrix=COMPLEX_ZERO
   do istate=1,nelectrons
@@ -747,10 +751,10 @@ subroutine scf_loop_x2c(basis,&
   !
   ! Setup the density matrices p_matrix and p_matrix_LaorLb
   c_matrix_LaorLb=COMPLEX_ZERO
-  do istate=1,nstate/2
-    do jstate=1,nstate/2
-      c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)+c_matrix(2*istate-1,2*jstate)
-      c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate  ,2*jstate-1)+c_matrix(2*istate  ,2*jstate)
+  do istate=1,basis%nbf
+    do jstate=1,nelectrons
+      c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,jstate) ! L alpha coef. in spin channel 1
+      c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate  ,jstate) ! L beta  coef. in spin channel 2
     enddo
   enddo
   p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
@@ -835,10 +839,15 @@ subroutine scf_loop_x2c(basis,&
     ! C = X * C'
     c_matrix=MATMUL(x_matrix,c_matrix)
 
+    occupation=0.0_dp
+    occupation(1:nelectrons/2,1)=1.0_dp
+    occupation(1:nelectrons/2,2)=1.0_dp
     call dump_out_energy('=== Energies ===',occupation,energy,is_x2c=is_x2c)
 
     call output_homolumo('gKS',occupation,energy,1,basis%nbf)
-
+    occupation=0.0_dp
+    occupation(1:nelectrons,1)=1.0_dp
+    occupation(1:nelectrons,2)=1.0_dp
 
     !
     ! Output the total energy and its components
@@ -858,10 +867,10 @@ subroutine scf_loop_x2c(basis,&
     ! Setup the new density matrix: p_matrix
     ! Save the old one for the convergence criterium
     c_matrix_LaorLb=COMPLEX_ZERO
-    do istate=1,nstate/2
-      do jstate=1,nstate/2
-        c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,2*jstate-1)+c_matrix(2*istate-1,2*jstate)
-        c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate  ,2*jstate-1)+c_matrix(2*istate  ,2*jstate)
+    do istate=1,basis%nbf
+      do jstate=1,nelectrons
+        c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,jstate) ! L alpha coef. in spin channel 1
+        c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate  ,jstate) ! L beta  coef. in spin channel 2
       enddo
     enddo
     p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
