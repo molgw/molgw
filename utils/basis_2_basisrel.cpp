@@ -76,14 +76,14 @@ int main(int argc, char *argv[])
   }
   ofstream write_bas_file(basis_file_out);
   write_bas_file<<prims.size()+basis_s.size()<<endl;
-  write_bas_file<<setprecision(7)<<fixed;
+  write_bas_file<<setprecision(10)<<fixed;
   ibasis=0;
   for(iprim=0;iprim<prims.size();iprim++)
   {
    write_bas_file<<prims[iprim]<<setw(6)<<lls[iprim]<<endl;
    for(jprim=0;jprim<prims[iprim];jprim++)
    {
-    write_bas_file<<setw(15)<<basis_l_all[ibasis].expon<<setw(23)<<basis_l_all[ibasis].coef<<endl;
+    write_bas_file<<setw(20)<<basis_l_all[ibasis].expon<<setw(25)<<basis_l_all[ibasis].coef<<endl;
     ibasis++;
    } 
   }
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     if(basis_s[ibasis].l==l)
     {
      write_bas_file<<1<<setw(6)<<basis_s[ibasis].l<<endl;
-     write_bas_file<<setw(15)<<basis_s[ibasis].expon<<setw(23)<<basis_s[ibasis].coef<<endl;
+     write_bas_file<<setw(20)<<basis_s[ibasis].expon<<setw(25)<<basis_s[ibasis].coef<<endl;
      nprint++;
     }
    }
