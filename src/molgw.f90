@@ -162,9 +162,9 @@ program molgw
       call die("x2c calculations require nspin=2")
     endif
 
-    ! Check if exact exchange is needed. Currently it is not implemented TODO
-    if(calc_type%need_exchange .or. calc_type%need_exchange_lr) then
-      call die("x2c calculations are not available including (lr-)exact exchange")
+    ! Check if lr-exact exchange is needed (it is not implemented TODO)
+    if(calc_type%need_exchange_lr) then
+      call die("x2c calculations are not available including lr-exact exchange")
     endif
 
     ! Check if the magnetization=0

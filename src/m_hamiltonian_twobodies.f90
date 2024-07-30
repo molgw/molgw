@@ -953,6 +953,81 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
 
 end subroutine setup_exchange_ri_cmplx
 
+!=========================================================================
+subroutine setup_exchange_ri_cmplx_2(occupation,c_matrix,exchange_ao)
+  implicit none
+  real(dp),intent(in)     :: occupation(:,:)
+  complex(dp),intent(in)  :: c_matrix(:,:,:)
+  complex(dp),intent(out) :: exchange_ao(:,:,:)
+  !=====
+  integer                 :: nbf,nstate
+  integer                 :: nocc
+  integer                 :: ibf,jbf,ispin,jspin
+  complex(dp),allocatable :: tmp_cmplx1(:,:),c_t_cmplx1(:,:)
+  complex(dp),allocatable :: tmp_cmplx2(:,:),c_t_cmplx2(:,:)
+  integer                 :: ipair,iauxil
+  !=====
+
+  call start_clock(timing_tddft_exchange)
+
+  exchange_ao(:,:,:) = (0.0_dp, 0.0_dp)
+
+  ! Find highest occupied state
+  nocc = get_number_occupied_states(occupation)
+
+  nbf    = SIZE(exchange_ao,DIM=1)
+  nstate = SIZE(occupation(:,:),DIM=1)
+
+  allocate(tmp_cmplx1(nocc,nbf))
+  allocate(c_t_cmplx1(nocc,nbf))
+  allocate(tmp_cmplx2(nocc,nbf))
+  allocate(c_t_cmplx2(nocc,nbf))
+
+  do ispin=1,nspin
+
+    jspin=nspin-(ispin-1)
+
+    !$OMP PARALLEL DO
+    do ibf=1,nbf
+      c_t_cmplx1(:,ibf) = CONJG( c_matrix(ibf,1:nocc,ispin) ) * SQRT( occupation(1:nocc,ispin) / spin_fact )
+      c_t_cmplx2(:,ibf) = CONJG( c_matrix(ibf,1:nocc,jspin) ) * SQRT( occupation(1:nocc,jspin) / spin_fact )
+    enddo
+    !$OMP END PARALLEL DO
+
+    do iauxil=1,nauxil_local
+      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      tmp_cmplx1(:,:) = (0.0_dp, 0.0_dp)
+      tmp_cmplx2(:,:) = (0.0_dp, 0.0_dp)
+      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx)
+      do ipair=1,npair
+        ibf = index_basis(1,ipair)
+        jbf = index_basis(2,ipair)
+        tmp_cmplx1(:,ibf) = tmp_cmplx1(:,ibf) + c_t_cmplx1(:,jbf) * eri_3center(ipair,iauxil)
+        tmp_cmplx1(:,jbf) = tmp_cmplx1(:,jbf) + c_t_cmplx1(:,ibf) * eri_3center(ipair,iauxil)
+        tmp_cmplx2(:,ibf) = tmp_cmplx2(:,ibf) + c_t_cmplx2(:,jbf) * eri_3center(ipair,iauxil)
+        tmp_cmplx2(:,jbf) = tmp_cmplx2(:,jbf) + c_t_cmplx2(:,ibf) * eri_3center(ipair,iauxil)
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+      exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
+                         - MATMUL( CONJG(TRANSPOSE(tmp_cmplx1(:,:))) , tmp_cmplx2(:,:) )
+
+    enddo
+  enddo
+
+  deallocate(c_t_cmplx1)
+  deallocate(tmp_cmplx1)
+  deallocate(c_t_cmplx2)
+  deallocate(tmp_cmplx2)
+
+
+  call world%sum(exchange_ao)
+
+  call stop_clock(timing_tddft_exchange)
+
+end subroutine setup_exchange_ri_cmplx_2
+
 
 !=========================================================================
 subroutine setup_exchange_longrange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexchange)

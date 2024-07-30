@@ -48,6 +48,7 @@ module m_scf
   type energy_contributions
     real(dp) :: nuc_nuc  = 0.0_dp
     real(dp) :: kinetic  = 0.0_dp
+    real(dp) :: kin_nuc  = 0.0_dp
     real(dp) :: nucleus  = 0.0_dp
     real(dp) :: hartree  = 0.0_dp
     real(dp) :: exx_hyb  = 0.0_dp

@@ -770,7 +770,7 @@ subroutine scf_loop_x2c(basis,&
     write(stdout,'(/,1x,a)') '-------------------------------------------'
     write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
-    en_gks%kinetic=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix(:,:)),dp)
+    en_gks%kin_nuc=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix(:,:)),dp)
 
     !--Hamiltonian - Hartree ---
     hamiltonian_Vhxc=COMPLEX_ZERO
@@ -788,21 +788,45 @@ subroutine scf_loop_x2c(basis,&
     enddo
     hamiltonian_x2c=hamiltonian_x2c+hamiltonian_hcore
 
-    !--Hamiltonian - Exchange Correlation---
+    !--Hamiltonian - Exchange Correlation DFT ---
     hamiltonian_Vhxc=COMPLEX_ZERO
-    call calculate_hamiltonian_xc_x2c(basis,                   &
-                                      occupation,              &
-                                      c_matrix_LaorLb,         &
-                                      hamiltonian_Vhxc,en_gks)
-    do istate=1,nstate/2
-      do jstate=1,nstate/2
-         hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_x2c(2*istate-1,2*jstate-1)+hamiltonian_Vhxc(istate,jstate,1) 
-         hamiltonian_x2c(2*istate  ,2*jstate  )=hamiltonian_x2c(2*istate  ,2*jstate  )+hamiltonian_Vhxc(istate,jstate,1) 
+    if( calc_type%is_dft ) then
+      call calculate_hamiltonian_xc_x2c(basis,                   &
+                                        occupation,              &
+                                        c_matrix_LaorLb,         &
+                                        hamiltonian_Vhxc,en_gks)
+      do istate=1,nstate/2
+        do jstate=1,nstate/2
+           hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_x2c(2*istate-1,2*jstate-1)+hamiltonian_Vhxc(istate,jstate,1) 
+           hamiltonian_x2c(2*istate  ,2*jstate  )=hamiltonian_x2c(2*istate  ,2*jstate  )+hamiltonian_Vhxc(istate,jstate,1) 
+        enddo
       enddo
-    enddo
+    endif
+
+    !--Hamiltonian - Exact Exchange ---
+    hamiltonian_Vhxc=COMPLEX_ZERO
+    if(calc_type%need_exchange) then
+      call setup_exchange_ri_cmplx(occupation,c_matrix_LaorLb,p_matrix_LaorLb,hamiltonian_Vhxc,en_gks%exx_hyb)
+      do istate=1,nstate/2
+        do jstate=1,nstate/2
+           ham_hist(2*istate-1,2*jstate-1,1)=hamiltonian_Vhxc(istate,jstate,1) ! L alpha L alpha
+           ham_hist(2*istate  ,2*jstate  ,1)=hamiltonian_Vhxc(istate,jstate,2) ! L beta  L beta
+        enddo
+      enddo
+      hamiltonian_Vhxc=COMPLEX_ZERO
+      call setup_exchange_ri_cmplx_2(occupation,c_matrix_LaorLb,hamiltonian_Vhxc)
+      do istate=1,nstate/2
+        do jstate=1,nstate/2
+           ham_hist(2*istate-1,2*jstate  ,1)=hamiltonian_Vhxc(istate,jstate,1) ! L alpha L beta
+           ham_hist(2*istate  ,2*jstate-1,1)=hamiltonian_Vhxc(istate,jstate,2) ! L beta  L alpha
+        enddo
+      enddo
+      en_gks%exx_hyb=0.5d0*alpha_hybrid*REAL(SUM(ham_hist(:,:,1)*p_matrix(:,:)),dp)
+      hamiltonian_x2c(:,:)=hamiltonian_x2c(:,:)+alpha_hybrid*ham_hist(:,:,1)
+    endif
 
     !! Sum up to get the total energy
-    en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
+    en_gks%total = en_gks%nuc_nuc + en_gks%kin_nuc + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
 
     ! Make sure all the MPI tasks have the exact same Hamiltonian
     ! It helps stabilizing the SCF cycles in parallel
@@ -853,12 +877,12 @@ subroutine scf_loop_x2c(basis,&
     ! Output the total energy and its components
     write(stdout,*)
     write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en_gks%nuc_nuc
-    write(stdout,'(a25,1x,f19.10)') 'Kin+Vext Energy (Ha):',en_gks%kinetic
+    write(stdout,'(a25,1x,f19.10)') 'Kin+Vext Energy (Ha):',en_gks%kin_nuc
     write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hartree
     if(calc_type%need_exchange) then
       write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en_gks%exx_hyb
     endif
-    if( calc_type%is_dft ) then
+    if(calc_type%is_dft) then
       write(stdout,'(a25,1x,f19.10)') 'XC Energy       (Ha):',en_gks%xc
     endif
     write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en_gks%total
