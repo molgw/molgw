@@ -357,23 +357,6 @@ subroutine scf_loop(is_restart,&
     close(file_density_matrix)
   endif
 
-  if( .false. ) then ! Testing momentum integrals ( m_ij = < iao | nabla_r | jao > ) then Trace[P m] = (0,0,0)
-    allocate(tmp_matrix(basis%nbf,basis%nbf))
-    call setup_nabla_ao(basis,nabla_ao)
-    write(stdout,'(/,a)') ' For m = ( < alpha | nabla_r | beta > )'
-    trace=0.0e0
-    do ispin=1,nspin
-      do idir=1,3
-        tmp_matrix=matmul(p_matrix(:,:,ispin),nabla_ao(:,:,idir))
-        do ibf=1,basis%nbf
-          trace(idir)=trace(idir)+tmp_matrix(ibf,ibf)
-        enddo
-      enddo
-    enddo
-    write(stdout,'(a,3f20.8,/)') ' Trace [P m] = ',trace
-    deallocate(nabla_ao,tmp_matrix)
-  endif
-
   !
   ! Form the final Fock matrix and store it only if needed
   !
@@ -690,21 +673,25 @@ end subroutine scf_loop_cmplx
 
 !=========================================================================
 subroutine scf_loop_x2c(basis,&
-                    x_matrix,s_matrix,&
+                    x_matrix,x_matrix_real,&
+                    s_matrix,s_matrix_real,&
                     hamiltonian_hcore,&
                     occupation, &
                     energy, &
-                    c_matrix,en_gks,scf_has_converged)
+                    c_matrix,c_matrix_real,en_gks,scf_has_converged)
   implicit none
 
   !=====
   type(basis_set),intent(inout)         :: basis
+  real(dp),intent(inout)                :: x_matrix_real(:,:)
+  real(dp),intent(inout)                :: s_matrix_real(:,:)
+  real(dp),intent(inout)                :: occupation(:,:)
+  real(dp),intent(out)                  :: energy(:,:)
   complex(dp),intent(in)                :: x_matrix(:,:)
   complex(dp),intent(in)                :: s_matrix(:,:)
   complex(dp),intent(in)                :: hamiltonian_hcore(:,:)
-  real(dp),intent(inout)                :: occupation(:,:)
-  real(dp),intent(out)                  :: energy(:,:)
   complex(dp),allocatable,intent(inout) :: c_matrix(:,:)
+  real(dp),allocatable,intent(inout)    :: c_matrix_real(:,:,:)
   type(energy_contributions),intent(inout) :: en_gks
   logical,intent(out)                   :: scf_has_converged
   !=====
@@ -712,7 +699,10 @@ subroutine scf_loop_x2c(basis,&
   logical                 :: is_x2c,stopfile_found
   integer                 :: iscf,istate,jstate,nelectrons
   real(dp)                :: rms
+  real(dp),allocatable    :: s_eigval(:)
   real(dp),allocatable    :: energy_vec(:)
+  real(dp),allocatable    :: p_matrix_real(:,:,:)
+  real(dp),allocatable    :: inv_x_matrix(:,:),matrix_tmp(:,:)
   complex(dp),allocatable :: occ_matrix(:,:)
   complex(dp),allocatable :: hamiltonian_x2c(:,:)
   complex(dp),allocatable :: hamiltonian_xc(:,:)
@@ -918,6 +908,32 @@ subroutine scf_loop_x2c(basis,&
     ! end of the big SCF loop
   enddo
 
+  !
+  ! Store the natural orbital basis representation of the density matrix in c_matrix_real
+  ! and the occupation numbers in occupation(:,1) \in [0:2]
+  call clean_allocate('Density matrix P real',p_matrix_real,basis%nbf,basis%nbf,nspin)
+  p_matrix_real=0.0_dp; occupation=0.0_dp; c_matrix_real=0.0_dp; energy=0.0_dp;
+  p_matrix_real(:,:,1)=real(p_matrix_LaorLb(:,:,1))                             
+  allocate(s_eigval(basis%nbf),matrix_tmp(basis%nbf,basis%nbf))                 
+  matrix_tmp=s_matrix_real
+  ! Diagonalization with or without SCALAPACK
+  !! S = U*s*U^H
+  call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
+  call clean_allocate('Overlap INV_X * INV_X**H = S real',inv_x_matrix,basis%nbf,basis%nbf)
+  !! INV_X = U*s^(1/2)
+  istate = 0
+  do jstate=1,basis%nbf
+    if( s_eigval(jstate) > 1e-05_dp ) then
+      istate = istate + 1
+      inv_x_matrix(:,istate) = matrix_tmp(:,jstate) * SQRT( s_eigval(jstate) )
+    endif
+  enddo
+  deallocate(matrix_tmp,s_eigval)
+  !  diag[ S^1/2 P S^1/2 ] -> V
+  p_matrix_real(:,:,1) = MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real(:,:,1), inv_x_matrix))
+  call diagonalize(' ',p_matrix_real(:,:,1),occupation(:,1),c_matrix_real(:,:,1))
+  !  C = S^-1/2 V
+  c_matrix_real(:,:,1) = MATMUL(x_matrix_real(:,:), c_matrix_real(:,:,1))
 
   !
   ! Cleanly deallocate the integral grid information
@@ -928,10 +944,12 @@ subroutine scf_loop_x2c(basis,&
   !
   ! Cleanly deallocate the arrays
   !
+  call clean_deallocate('Overlap INV_X * INV_X**H = S real',inv_x_matrix)
   call clean_deallocate('State energies',energy_vec)
   call clean_deallocate('Hamiltonian history',ham_hist)
   call clean_deallocate('Density matrix P_LaLb',p_matrix_LaorLb)
   call clean_deallocate('Density matrix P',p_matrix)
+  call clean_deallocate('Density matrix P real',p_matrix_real)
   call clean_deallocate('Density matrix P(old)',p_matrix_old)
   call clean_deallocate('Coefs. La or Lb C',c_matrix_LaorLb)
   call clean_deallocate('Hxc operator VHxc',hamiltonian_Vhxc)

@@ -316,10 +316,11 @@ program molgw
 
     !
     ! Check deviation from the identity of ( C^x2c)^dagger S C^x2c with the actual overlap matrix S
-    ! and overwrite S and X matrix if the MAE > 1e-3 to preserve orthonormality
+    ! and overwrite S and X matrix if the MAE > 1e-6 to preserve orthonormality
     write(stdout,'(/,a)') ' Checking (C^x2c)^dagger S C^x2c = I'
     call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
     call setup_overlap(basis,s_matrix)
+    call setup_x_matrix(min_overlap,s_matrix,istate,x_matrix)
     allocate(tmp_matrix(nstate,nstate))
     tmp_matrix=COMPLEX_ZERO
     do istate=1,nstate/2
@@ -345,13 +346,12 @@ program molgw
     enddo
     deallocate(tmp_matrix)
     err_x2c_coef=err_x2c_coef/(nstate*nstate)
-    write(stdout,'(a,f10.5)') ' Mean abs. error in (C^x2c)^dagger S C^x2c = I',err_x2c_coef
-    if(err_x2c_coef>1e-3) then
-      ! We prefer to recover orthonormality of the C^x2c states
-      write(stdout,'(a)') ' The MAE > 1e-3, overwriting S and X matrices before doing the SCF procedure'
+    write(stdout,'(a,f10.6)') ' MAE in (C^x2c)^dagger S C^x2c = I',err_x2c_coef
+    if(err_x2c_coef>1e-6) then
+      ! We prefer to enforce orthonormality for the C^x2c states
+      write(stdout,'(a)') ' The MAE > 1e-6, overwriting S and X matrices before doing the SCF procedure'
       s_matrix_rel=COMPLEX_ZERO
       x_matrix_rel=COMPLEX_ZERO
-      call setup_x_matrix(min_overlap,s_matrix,istate,x_matrix)
       do istate=1,nstate/2
         do jstate=1,nstate/2
            s_matrix_rel(2*istate-1,2*jstate-1)=s_matrix(istate,jstate) 
@@ -360,9 +360,7 @@ program molgw
            x_matrix_rel(2*istate  ,2*jstate  )=x_matrix(istate,jstate) 
         enddo
       enddo
-      call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
     endif
-    call clean_deallocate('Overlap matrix S',s_matrix)
 
 
     call stop_clock(timing_prescf)
@@ -372,14 +370,29 @@ program molgw
     ! Part 2 / 3 : SCF cycles
     !
     !
+    write(stdout,'(a)')  ' '
     call issue_warning('X2C KS-DFT SCF is currently implemented only for testing')
-    call scf_loop_x2c(basis,                                 &
-                      x_matrix_rel,s_matrix_rel,             &
-                      hamiltonian_kin_nuc_rel,               &
-                      occupation,energy,                     &
-                      c_matrix_rel,en_gks,scf_has_converged)
+    write(stdout,'(a)')  ' '
+    call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,basis%nbf,nspin)
+    c_matrix_cmplx=COMPLEX_ZERO
+    call scf_loop_x2c(basis,                         &
+                      x_matrix_rel,x_matrix,         &
+                      s_matrix_rel,s_matrix,         &
+                      hamiltonian_kin_nuc_rel,       &
+                      occupation,energy,             &
+                      c_matrix_rel,c_matrix,en_gks,scf_has_converged)
 
+    write(stdout,'(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
+    !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.,
+    !          the occupation numbers: occupations(:,1) \in [0,2], and orb. energy = 0.0
+    energy(:,:) = 0.0_dp
+    write(stdout,'(/,1x,a)')  'Natural occupations: '
+    write(stdout,'(8(2x,f14.6))') occupation(:,1)
+    write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
+    write(stdout,*)
 
+    call clean_deallocate('Overlap matrix S',s_matrix)
+    call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
     call clean_deallocate('Full RKB wavefunctions C',c_matrix_rel)
     call clean_deallocate('Full RKB X matrix',x_matrix_rel)
     call clean_deallocate('Full RKB S matrix',s_matrix_rel)
@@ -727,7 +740,7 @@ program molgw
   endif
 #endif
 
-  if (.not. is_x2c ) then
+  if ( .not. is_x2c ) then
     !
     ! Evaluate spin contamination
     call evaluate_s2_operator(occupation,c_matrix,s_matrix)

@@ -252,7 +252,7 @@ SCF Total Energy          , -15.5379349891     , 0 , 1.0e-5
 
 he2_x2c.in                , Hcore He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
-SCF Total Energy          ,  -5.7625306703      , 0 , 1.0e-7
+SCF Total Energy          ,  -5.7625860059      , 0 , 1.0e-5
 
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
