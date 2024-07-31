@@ -708,6 +708,7 @@ subroutine scf_loop_x2c(basis,&
   complex(dp),allocatable :: hamiltonian_xc(:,:)
   complex(dp),allocatable :: p_matrix(:,:),p_matrix_old(:,:)  
   complex(dp),allocatable :: hamiltonian_Vhxc(:,:,:)
+  complex(dp),allocatable :: hamiltonian_Vhxc2(:,:,:)
   complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
   complex(dp),allocatable :: p_matrix_LaorLb(:,:,:)
   complex(dp),allocatable :: ham_hist(:,:,:)
@@ -734,6 +735,9 @@ subroutine scf_loop_x2c(basis,&
   ! Allocate the main arrays
   call clean_allocate('Total Hamiltonian H',hamiltonian_x2c,nstate,nstate)
   call clean_allocate('Hxc operator VHxc',hamiltonian_Vhxc,basis%nbf,basis%nbf,nspin)
+  if(calc_type%need_exchange) then
+    call clean_allocate('Hxc operator VHxc2',hamiltonian_Vhxc2,basis%nbf,basis%nbf,nspin)
+  endif
   call clean_allocate('Coefs. La or Lb C',c_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P_LaLb',p_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P',p_matrix,nstate,nstate)
@@ -789,8 +793,8 @@ subroutine scf_loop_x2c(basis,&
     hamiltonian_x2c=hamiltonian_x2c+hamiltonian_hcore
 
     !--Hamiltonian - Exchange Correlation DFT ---
-    hamiltonian_Vhxc=COMPLEX_ZERO
     if( calc_type%is_dft ) then
+      hamiltonian_Vhxc=COMPLEX_ZERO
       call calculate_hamiltonian_xc_x2c(basis,                   &
                                         occupation,              &
                                         c_matrix_LaorLb,         &
@@ -804,21 +808,21 @@ subroutine scf_loop_x2c(basis,&
     endif
 
     !--Hamiltonian - Exact Exchange ---
-    hamiltonian_Vhxc=COMPLEX_ZERO
     if(calc_type%need_exchange) then
+      hamiltonian_Vhxc=COMPLEX_ZERO
+      hamiltonian_Vhxc2=COMPLEX_ZERO
       call setup_exchange_ri_cmplx(occupation,c_matrix_LaorLb,p_matrix_LaorLb,hamiltonian_Vhxc,en_gks%exx_hyb)
+      call setup_exchange_ri_cmplx_2(occupation,c_matrix_LaorLb,hamiltonian_Vhxc2)
       do istate=1,nstate/2
         do jstate=1,nstate/2
-           ham_hist(2*istate-1,2*jstate-1,1)=hamiltonian_Vhxc(istate,jstate,1) ! L alpha L alpha
-           ham_hist(2*istate  ,2*jstate  ,1)=hamiltonian_Vhxc(istate,jstate,2) ! L beta  L beta
+           ham_hist(2*istate-1,2*jstate-1,1)=hamiltonian_Vhxc(istate,jstate,1) ! La La La La 
+           ham_hist(2*istate  ,2*jstate  ,1)=hamiltonian_Vhxc(istate,jstate,2) ! Lb Lb Lb Lb
         enddo
       enddo
-      hamiltonian_Vhxc=COMPLEX_ZERO
-      call setup_exchange_ri_cmplx_2(occupation,c_matrix_LaorLb,hamiltonian_Vhxc)
       do istate=1,nstate/2
         do jstate=1,nstate/2
-           ham_hist(2*istate-1,2*jstate  ,1)=hamiltonian_Vhxc(istate,jstate,1) ! L alpha L beta
-           ham_hist(2*istate  ,2*jstate-1,1)=hamiltonian_Vhxc(istate,jstate,2) ! L beta  L alpha
+           ham_hist(2*istate-1,2*jstate  ,1)=hamiltonian_Vhxc2(istate,jstate,2) ! La Lb La Lb  
+           ham_hist(2*istate  ,2*jstate-1,1)=hamiltonian_Vhxc2(istate,jstate,1) ! Lb La Lb La
         enddo
       enddo
       en_gks%exx_hyb=0.5d0*alpha_hybrid*REAL(SUM(ham_hist(:,:,1)*p_matrix(:,:)),dp)
@@ -986,6 +990,9 @@ subroutine scf_loop_x2c(basis,&
   call clean_deallocate('Density matrix P(old)',p_matrix_old)
   call clean_deallocate('Coefs. La or Lb C',c_matrix_LaorLb)
   call clean_deallocate('Hxc operator VHxc',hamiltonian_Vhxc)
+  if(calc_type%need_exchange) then
+    call clean_deallocate('Hxc operator VHxc2',hamiltonian_Vhxc2)
+  endif
   call clean_deallocate('Total Hamiltonian H',hamiltonian_x2c)
 
   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
