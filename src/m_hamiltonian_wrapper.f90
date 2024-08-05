@@ -383,7 +383,10 @@ subroutine calculate_hamiltonian_hartree_x2c(basis,                  &
   !
   call calculate_hartree(basis,p_matrix_cmplx,hamiltonian_nospin_real,eh=en_inout%hartree)
 
-  hamiltonian_hxc_cmplx(:,:,1) = hamiltonian_nospin_real(:,:)
+  do ispin=1,nspin
+    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_nospin_real(:,:)
+  enddo
+
   deallocate(hamiltonian_nospin_real)
 
 

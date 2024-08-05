@@ -772,6 +772,8 @@ subroutine scf_loop_x2c(basis,&
     write(stdout,'(/,1x,a)') '-------------------------------------------'
     write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
+    hamiltonian_x2c=COMPLEX_ZERO
+
     en_gks%kin_nuc=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix(:,:)),dp)
 
     !--Hamiltonian - Hartree ---
@@ -780,12 +782,10 @@ subroutine scf_loop_x2c(basis,&
                                            occupation,              &
                                            p_matrix_LaorLb,         &
                                            hamiltonian_Vhxc,en_gks)
-
-    hamiltonian_x2c=COMPLEX_ZERO
     do istate=1,nstate/2
       do jstate=1,nstate/2
-         hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_Vhxc(istate,jstate,1) 
-         hamiltonian_x2c(2*istate  ,2*jstate  )=hamiltonian_Vhxc(istate,jstate,1) 
+         hamiltonian_x2c(2*istate-1,2*jstate-1)=hamiltonian_Vhxc(istate,jstate,1) ! La spin channel unbar
+         hamiltonian_x2c(2*istate  ,2*jstate  )=hamiltonian_Vhxc(istate,jstate,2) ! Lb spin channel   bar
       enddo
     enddo
     hamiltonian_x2c=hamiltonian_x2c+hamiltonian_hcore
@@ -805,7 +805,7 @@ subroutine scf_loop_x2c(basis,&
       enddo
     endif
 
-    !--Hamiltonian - Exact Exchange ---
+    !--Hamiltonian - Exact Exchange + Time-rev. Exchange ---
     if(calc_type%need_exchange) then
       hamiltonian_Vhxc=COMPLEX_ZERO
       hamiltonian_Vhxc2=COMPLEX_ZERO
@@ -813,18 +813,18 @@ subroutine scf_loop_x2c(basis,&
       call setup_exchange_ri_x2c_2(occupation,c_matrix_LaorLb,hamiltonian_Vhxc2)
       do istate=1,nstate/2
         do jstate=1,nstate/2
-           ham_hist(2*istate-1,2*jstate-1,1)=hamiltonian_Vhxc(istate,jstate,1) ! La La La La 
-           ham_hist(2*istate  ,2*jstate  ,1)=hamiltonian_Vhxc(istate,jstate,2) ! Lb Lb Lb Lb
+           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! La La La La 
+           ham_hist(2*istate  ,2*jstate  ,2)=hamiltonian_Vhxc(istate,jstate,2) ! Lb Lb Lb Lb
         enddo
       enddo
       do istate=1,nstate/2
         do jstate=1,nstate/2
-           ham_hist(2*istate-1,2*jstate  ,1)=hamiltonian_Vhxc2(istate,jstate,2) ! La Lb La Lb  
-           ham_hist(2*istate  ,2*jstate-1,1)=hamiltonian_Vhxc2(istate,jstate,1) ! Lb La Lb La
+           ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! La Lb La Lb  
+           ham_hist(2*istate  ,2*jstate-1,2)=hamiltonian_Vhxc2(istate,jstate,1) ! Lb La Lb La
         enddo
       enddo
-      en_gks%exx_hyb=0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,1)*p_matrix(:,:)),dp)
-      hamiltonian_x2c(:,:)=hamiltonian_x2c(:,:)+alpha_hybrid*ham_hist(:,:,1)
+      en_gks%exx_hyb=0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix(:,:)),dp)
+      hamiltonian_x2c(:,:)=hamiltonian_x2c(:,:)+alpha_hybrid*ham_hist(:,:,2)
     endif
 
     !! Sum up to get the total energy
