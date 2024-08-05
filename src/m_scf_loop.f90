@@ -763,8 +763,6 @@ subroutine scf_loop_x2c(basis,&
   enddo
   p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
   call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
-  p_matrix_LaorLb(:,:,1)=p_matrix_LaorLb(:,:,1)+p_matrix_LaorLb(:,:,2)
-  p_matrix_LaorLb(:,:,2)=COMPLEX_ZERO
 
 
   !
@@ -903,8 +901,6 @@ subroutine scf_loop_x2c(basis,&
     enddo
     p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
     call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
-    p_matrix_LaorLb(:,:,1)=p_matrix_LaorLb(:,:,1)+p_matrix_LaorLb(:,:,2)
-    p_matrix_LaorLb(:,:,2)=COMPLEX_ZERO
 
 
  ! SCF convergence check
@@ -950,6 +946,8 @@ subroutine scf_loop_x2c(basis,&
   ! and the occupation numbers in occupation(:,1) \in [0:2]
   call clean_allocate('Density matrix P real',p_matrix_real,basis%nbf,basis%nbf,nspin)
   p_matrix_real=0.0_dp; occupation=0.0_dp; c_matrix_real=0.0_dp; energy=0.0_dp;
+  p_matrix_LaorLb(:,:,1)=p_matrix_LaorLb(:,:,1)+p_matrix_LaorLb(:,:,2)
+  p_matrix_LaorLb(:,:,2)=COMPLEX_ZERO
   p_matrix_real(:,:,1)=real(p_matrix_LaorLb(:,:,1))                             
   allocate(s_eigval(basis%nbf),matrix_tmp(basis%nbf,basis%nbf))                 
   matrix_tmp=s_matrix_real
