@@ -41,14 +41,14 @@ function H4c_me(Vext_pq,S_pq,Dz_pq,Dy_pq,Dx_pq) result(H_val)
   !=====
   !=====
 
-  H_val =                           Vext_pq(1) + Vext_pq(2) + Vext_pq(3) + Vext_pq(4)  & 
-    &   +2.0d0*c_speedlight*c_speedlight*(                  -    S_pq(3) -    S_pq(4)) & ! -c^2 I_4x4 added
-    &   -c_speedlight*im          *(  Dz_pq(1) -   Dz_pq(2) +   Dz_pq(3) -   Dz_pq(4)) &
-    &   -c_speedlight             *(  Dy_pq(1) -   Dy_pq(2) +   Dy_pq(3) -   Dy_pq(4)) &
-    &   -c_speedlight*im          *(  Dx_pq(1) +   Dx_pq(2) +   Dx_pq(3) +   Dx_pq(4))
+  H_val =                      Vext_pq(1) + Vext_pq(2) + Vext_pq(3) + Vext_pq(4)   & 
+    &   +2.0d0*c_speed*c_speed*(                       -    S_pq(3) -    S_pq(4))  & ! -c^2 I_4x4 added
+    &   -c_speed*im           *(  Dz_pq(1) -   Dz_pq(2) +   Dz_pq(3) -   Dz_pq(4)) &
+    &   -c_speed              *(  Dy_pq(1) -   Dy_pq(2) +   Dy_pq(3) -   Dy_pq(4)) &
+    &   -c_speed*im           *(  Dx_pq(1) +   Dx_pq(2) +   Dx_pq(3) +   Dx_pq(4))
 
   ! Symmetric (+) and (-) energy states for the Dirac Hamitonian (i.e. Vext_pq = 0)
-  !  &   +c_speedlight*c_speedlight*(   S_pq(1) +    S_pq(2) -    S_pq(3) -    S_pq(4)) &
+  !  &   +c_speed*c_speed*(   S_pq(1) +    S_pq(2) -    S_pq(3) -    S_pq(4)) &
 
 end function H4c_me
 

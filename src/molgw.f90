@@ -157,6 +157,10 @@ program molgw
 
     call start_clock(timing_prescf)
 
+    if( .not. has_auxil_basis ) then
+      call die("x2c calculations require an auxiliary basis")
+    endif
+
     ! Check if the correct nspin=2 was provided
     if(nspin/=2) then
       call die("x2c calculations require nspin=2")

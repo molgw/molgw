@@ -265,6 +265,14 @@ x2c:
   default: 'no'
   comment: 'EXPERIMENTAL. Build the X2C Hamiltonian and orbitals.'
 
+c_speed:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 137.035999074
+  comment: Varible used to change the value of the speed of light. Default value 137.035999074.
+
 #============================================================================
 #              Hardware input variables (Parallelization)
 #============================================================================

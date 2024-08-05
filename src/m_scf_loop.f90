@@ -805,7 +805,7 @@ subroutine scf_loop_x2c(basis,&
       enddo
     endif
 
-    !--Hamiltonian - Exact Exchange + Time-rev. Exchange ---
+    !--Hamiltonian - Exact Exchange + TODO: Time-rev. Exchange ---
     if(calc_type%need_exchange) then
       hamiltonian_Vhxc=COMPLEX_ZERO
       hamiltonian_Vhxc2=COMPLEX_ZERO
@@ -813,14 +813,10 @@ subroutine scf_loop_x2c(basis,&
       call setup_exchange_ri_x2c_2(occupation,c_matrix_LaorLb,hamiltonian_Vhxc2)
       do istate=1,nstate/2
         do jstate=1,nstate/2
-           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! La La La La 
-           ham_hist(2*istate  ,2*jstate  ,2)=hamiltonian_Vhxc(istate,jstate,2) ! Lb Lb Lb Lb
-        enddo
-      enddo
-      do istate=1,nstate/2
-        do jstate=1,nstate/2
-           ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! La Lb La Lb  
-           ham_hist(2*istate  ,2*jstate-1,2)=hamiltonian_Vhxc2(istate,jstate,1) ! Lb La Lb La
+           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! < La cross ( La | La ) cross La > 
+           ham_hist(2*istate  ,2*jstate  ,2)=hamiltonian_Vhxc(istate,jstate,2) ! < Lb cross ( Lb | Lb ) cross Lb >
+           ham_hist(2*istate  ,2*jstate-1,2)=hamiltonian_Vhxc2(istate,jstate,1) ! < Lb cross ( La | Lb ) cross La >
+           ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La cross ( Lb | La ) cross Lb >
         enddo
       enddo
       en_gks%exx_hyb=0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix(:,:)),dp)
