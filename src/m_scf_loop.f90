@@ -1,6 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
-! Author: Fabien Bruneval
+! Author: Fabien Bruneval, Mauricio Rodriguez-Mayorga
 !
 ! This module contains
 ! the main SCF loop for Hartree-Fock or generalized Kohn-Sham
