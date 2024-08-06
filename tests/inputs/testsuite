@@ -250,9 +250,20 @@ Exchange HOMO expectation ,  -24.840082        , 1 , 1.0e-4
 beh2_complex_hf.in        , HF with complex orbitals
 SCF Total Energy          , -15.5379349891     , 0 , 1.0e-5
 
-he2_x2c.in                , Hcore He2 atom cc-pVDZ relativistic X2C
+he2_x2c.in                , PBE He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
+XC Energy                 ,  -2.1191496732      , 0 , 1.0e-5
 SCF Total Energy          ,  -5.7625860059      , 0 , 1.0e-5
+
+he2_x2c_hf.in             , HF He2 atom cc-pVDZ relativistic X2C
+Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
+gKS HOMO energy           , -23.631311          , 0 , 1.0e-4
+gKS HOMO energy           , -23.631311          , 1 , 1.0e-4
+gKS LUMO energy           ,  35.987487          , 0 , 1.0e-4
+gKS LUMO energy           ,  35.987487          , 1 , 1.0e-4
+Exchange Energy           ,  -2.0650500764      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7027744721      , 0 , 1.0e-5
+
 
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
