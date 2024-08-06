@@ -35,6 +35,7 @@ MOLGW implements the following schemes:
 - Linear-response TDDFT or TDHF
 - Bethe-Salpeter equation
 - real-time TDDFT
+- X2C relativistic HF/DFT calculations (except for double-hybrid functionals)
 - HF/DFT+NOFT (MULLER, CGA, CA, GU, POWER, PNOF5, PNOF7, and GNOF)
 - Molecules subject to external finite electric fields
 
