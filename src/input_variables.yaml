@@ -265,7 +265,7 @@ x2c:
   default: 'no'
   comment: 'EXPERIMENTAL. Build the X2C Hamiltonian and orbitals.'
 
-c_speed:
+c_speedlight:
   family: general
   datatype: real
   mandatory: 'no'
