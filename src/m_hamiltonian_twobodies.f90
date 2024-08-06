@@ -969,7 +969,7 @@ subroutine setup_exchange_ri_x2c_1(occupation,c_matrix,exchange_ao)
 
   call start_clock(timing_tddft_exchange)
 
-  write(stdout,*) 'Calculate Complex Exchange term with Resolution-of-Identity'
+  write(stdout,*) 'Calculate X2C Exchange term with Resolution-of-Identity'
 
   exchange_ao(:,:,:) = (0.0_dp, 0.0_dp)
 
@@ -1186,6 +1186,158 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation,c_matrix,p_matrix,exchan
   call stop_clock(timing_tddft_exchange)
 
 end subroutine setup_exchange_longrange_ri_cmplx
+
+!=========================================================================
+subroutine setup_lr_exchange_ri_x2c_1(occupation,c_matrix,exchange_ao)
+  implicit none
+  real(dp),intent(in)     :: occupation(:,:)
+  complex(dp),intent(in)  :: c_matrix(:,:,:)
+  complex(dp),intent(out) :: exchange_ao(:,:,:)
+  !=====
+  integer                 :: nbf,nstate
+  integer                 :: nocc
+  integer                 :: ibf,jbf,ispin
+  complex(dp),allocatable :: tmp_cmplx(:,:),c_t_cmplx(:,:)
+  integer                 :: ipair,iauxil
+  !=====
+
+  call start_clock(timing_tddft_exchange)
+
+  write(stdout,*) 'Calculate X2C LR Exchange term with Resolution-of-Identity'
+
+  exchange_ao(:,:,:) = (0.0_dp, 0.0_dp)
+
+  ! Find highest occupied state
+  nocc = get_number_occupied_states(occupation)
+
+  nbf    = SIZE(exchange_ao,DIM=1)
+  nstate = SIZE(occupation(:,:),DIM=1)
+
+  allocate(tmp_cmplx(nocc,nbf))
+  allocate(c_t_cmplx(nocc,nbf))
+
+  do ispin=1,nspin
+
+    !$OMP PARALLEL DO
+    do ibf=1,nbf
+      c_t_cmplx(:,ibf) = CONJG( c_matrix(ibf,1:nocc,ispin) ) * SQRT( occupation(1:nocc,ispin) / spin_fact )
+    enddo
+    !$OMP END PARALLEL DO
+
+    do iauxil=1,nauxil_local_lr
+      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
+      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx)
+      do ipair=1,npair
+        ibf = index_basis(1,ipair)
+        jbf = index_basis(2,ipair)
+        tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_t_cmplx(:,jbf) * eri_3center_lr(ipair,iauxil)
+        tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_t_cmplx(:,ibf) * eri_3center_lr(ipair,iauxil)
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+      ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
+      !                    - MATMUL( CONJG(TRANSPOSE(tmp(:,:))) , tmp(:,:) ) / spin_fact
+      ! C = A^H * A + C
+      call ZHERK('L','C',nbf,nocc,-1.0_dp,tmp_cmplx,nocc,1.0_dp,exchange_ao(1,1,ispin),nbf)
+
+    enddo
+  enddo
+
+  deallocate(c_t_cmplx)
+  deallocate(tmp_cmplx)
+
+
+  !
+  ! Need to hermitianize exchange_ao
+  do ispin=1,nspin
+    do ibf=1,nbf
+      do jbf=ibf+1,nbf
+        exchange_ao(ibf,jbf,ispin) = CONJG( exchange_ao(jbf,ibf,ispin) )
+      enddo
+    enddo
+  enddo
+  call world%sum(exchange_ao)
+
+  call stop_clock(timing_tddft_exchange)
+
+end subroutine setup_lr_exchange_ri_x2c_1
+
+!=========================================================================
+subroutine setup_lr_exchange_ri_x2c_2(occupation,c_matrix,exchange_ao)
+  implicit none
+  real(dp),intent(in)     :: occupation(:,:)
+  complex(dp),intent(in)  :: c_matrix(:,:,:)
+  complex(dp),intent(out) :: exchange_ao(:,:,:)
+  !=====
+  integer                 :: nbf,nstate
+  integer                 :: nocc
+  integer                 :: ibf,jbf,ispin,jspin
+  complex(dp),allocatable :: tmp_cmplx1(:,:),c_t_cmplx1(:,:)
+  complex(dp),allocatable :: tmp_cmplx2(:,:),c_t_cmplx2(:,:)
+  integer                 :: ipair,iauxil
+  !=====
+
+  call start_clock(timing_tddft_exchange)
+
+  exchange_ao(:,:,:) = (0.0_dp, 0.0_dp)
+
+  ! Find highest occupied state
+  nocc = get_number_occupied_states(occupation)
+
+  nbf    = SIZE(exchange_ao,DIM=1)
+  nstate = SIZE(occupation(:,:),DIM=1)
+
+  allocate(tmp_cmplx1(nocc,nbf))
+  allocate(c_t_cmplx1(nocc,nbf))
+  allocate(tmp_cmplx2(nocc,nbf))
+  allocate(c_t_cmplx2(nocc,nbf))
+
+  do ispin=1,nspin
+
+    jspin=nspin-(ispin-1)
+
+    !$OMP PARALLEL DO
+    do ibf=1,nbf
+      c_t_cmplx1(:,ibf) = CONJG( c_matrix(ibf,1:nocc,ispin) ) * SQRT( occupation(1:nocc,ispin) / spin_fact )
+      c_t_cmplx2(:,ibf) = CONJG( c_matrix(ibf,1:nocc,jspin) ) * SQRT( occupation(1:nocc,jspin) / spin_fact )
+    enddo
+    !$OMP END PARALLEL DO
+
+    do iauxil=1,nauxil_local_lr
+      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      tmp_cmplx1(:,:) = (0.0_dp, 0.0_dp)
+      tmp_cmplx2(:,:) = (0.0_dp, 0.0_dp)
+      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx)
+      do ipair=1,npair
+        ibf = index_basis(1,ipair)
+        jbf = index_basis(2,ipair)
+        tmp_cmplx1(:,ibf) = tmp_cmplx1(:,ibf) + c_t_cmplx1(:,jbf) * eri_3center_lr(ipair,iauxil)
+        tmp_cmplx1(:,jbf) = tmp_cmplx1(:,jbf) + c_t_cmplx1(:,ibf) * eri_3center_lr(ipair,iauxil)
+        tmp_cmplx2(:,ibf) = tmp_cmplx2(:,ibf) + c_t_cmplx2(:,jbf) * eri_3center_lr(ipair,iauxil)
+        tmp_cmplx2(:,jbf) = tmp_cmplx2(:,jbf) + c_t_cmplx2(:,ibf) * eri_3center_lr(ipair,iauxil)
+      enddo
+      !$OMP END DO
+      !$OMP END PARALLEL
+      exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
+                         - MATMUL( CONJG(TRANSPOSE(tmp_cmplx1(:,:))) , tmp_cmplx2(:,:) )
+
+    enddo
+  enddo
+
+  deallocate(c_t_cmplx1)
+  deallocate(tmp_cmplx1)
+  deallocate(c_t_cmplx2)
+  deallocate(tmp_cmplx2)
+
+
+  call world%sum(exchange_ao)
+
+  call stop_clock(timing_tddft_exchange)
+
+end subroutine setup_lr_exchange_ri_x2c_2
 
 
 !=========================================================================

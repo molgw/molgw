@@ -162,17 +162,12 @@ program molgw
     endif
 
     ! Check if the correct nspin=2 was provided
-    if(nspin/=2) then
+    if( nspin/=2 ) then
       call die("x2c calculations require nspin=2")
     endif
 
-    ! Check if lr-exact exchange is needed (it is not implemented TODO)
-    if(calc_type%need_exchange_lr) then
-      call die("x2c calculations are not available including lr-exact exchange")
-    endif
-
     ! Check if the magnetization=0
-    if(abs(magnetization)>1e-8) then
+    if( abs(magnetization)>1e-8 ) then
       call die("x2c calculations only implemented for magnetization=0")
     endif
 
@@ -186,7 +181,7 @@ program molgw
     write(stdout,*) 'Setting up the basis set for wavefunctions'
     call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
                         even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
-    if ( basis%gaussian_type/= 'CART' ) then
+    if( basis%gaussian_type/= 'CART' ) then
       call die("x2c calculations require cartesian gaussian_type")
     endif
    

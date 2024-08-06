@@ -721,7 +721,7 @@ subroutine scf_loop_x2c(basis,&
   rms = 1000.0
   nstate = 2*basis%nbf ! = 2 basis%nbf
   nelectrons=nint(sum(occupation(:,1))+sum(occupation(:,2)))
-  if(nelectrons>=basis%nbf) call die("The number of electrons cannot be >= than the num. of basis functions")
+  if(nelectrons>=basis%nbf) call die("In X2C the number of electrons cannot be >= than the num. of basis functions")
   occupation=0.0_dp
   occupation(1:nelectrons,1)=1.0_dp
   occupation(1:nelectrons,2)=1.0_dp
@@ -773,7 +773,8 @@ subroutine scf_loop_x2c(basis,&
     write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
     hamiltonian_x2c=COMPLEX_ZERO
-
+    ham_hist(:,:,2)=COMPLEX_ZERO 
+    en_gks%exx_hyb=0.0_dp
     en_gks%kin_nuc=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix(:,:)),dp)
 
     !--Hamiltonian - Hartree ---
@@ -805,7 +806,27 @@ subroutine scf_loop_x2c(basis,&
       enddo
     endif
 
-    !--Hamiltonian - Exact Exchange + TODO: Time-rev. Exchange ---
+    !
+    ! LR Exchange + Time-rev. LR Exchange ---
+    if(calc_type%need_exchange_lr) then
+      hamiltonian_Vhxc=COMPLEX_ZERO
+      hamiltonian_Vhxc2=COMPLEX_ZERO
+      call setup_lr_exchange_ri_x2c_1(occupation,c_matrix_LaorLb,hamiltonian_Vhxc )
+      call setup_lr_exchange_ri_x2c_2(occupation,c_matrix_LaorLb,hamiltonian_Vhxc2)
+      do istate=1,nstate/2
+        do jstate=1,nstate/2
+           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! < La cross ( La |erf(wr)| La ) cross La >
+           ham_hist(2*istate  ,2*jstate  ,2)=hamiltonian_Vhxc(istate,jstate,2) ! < Lb cross ( Lb |erf(wr)| Lb ) cross Lb >
+           ham_hist(2*istate  ,2*jstate-1,2)=hamiltonian_Vhxc2(istate,jstate,1) ! < Lb cross ( La |erf(wr)| Lb ) cross La >
+           ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La cross ( Lb |erf(wr)| La ) cross Lb >
+        enddo
+      enddo
+      en_gks%exx_hyb=0.5_dp*beta_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix(:,:)),dp)
+      hamiltonian_x2c(:,:)=hamiltonian_x2c(:,:)+beta_hybrid*ham_hist(:,:,2)
+      ham_hist(:,:,2)=COMPLEX_ZERO
+    endif
+
+    !--Hamiltonian - Exact Exchange + Time-rev. Exchange ---
     if(calc_type%need_exchange) then
       hamiltonian_Vhxc=COMPLEX_ZERO
       hamiltonian_Vhxc2=COMPLEX_ZERO
@@ -813,13 +834,13 @@ subroutine scf_loop_x2c(basis,&
       call setup_exchange_ri_x2c_2(occupation,c_matrix_LaorLb,hamiltonian_Vhxc2)
       do istate=1,nstate/2
         do jstate=1,nstate/2
-           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! < La cross ( La | La ) cross La > 
+           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! < La cross ( La | La ) cross La >
            ham_hist(2*istate  ,2*jstate  ,2)=hamiltonian_Vhxc(istate,jstate,2) ! < Lb cross ( Lb | Lb ) cross Lb >
            ham_hist(2*istate  ,2*jstate-1,2)=hamiltonian_Vhxc2(istate,jstate,1) ! < Lb cross ( La | Lb ) cross La >
            ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La cross ( Lb | La ) cross Lb >
         enddo
       enddo
-      en_gks%exx_hyb=0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix(:,:)),dp)
+      en_gks%exx_hyb=en_gks%exx_hyb+0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix(:,:)),dp)
       hamiltonian_x2c(:,:)=hamiltonian_x2c(:,:)+alpha_hybrid*ham_hist(:,:,2)
     endif
 
