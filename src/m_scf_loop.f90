@@ -615,16 +615,16 @@ subroutine scf_loop_cmplx(is_restart,&
   ! Diagonalization with or without SCALAPACK
   !! S = U*s*U^H
   call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
-  nstate = COUNT( s_eigval(:) > 1e-05_dp )
+  nstate = COUNT( s_eigval(:) > min_overlap )
   call clean_allocate('Overlap INV_X * INV_X**H = S',inv_x_matrix,basis%nbf,nstate)
   write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
   write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
-  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',1e-05_dp
+  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',min_overlap
   write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',basis%nbf
   !! INV_X = U*s^(1/2)
   istate = 0
   do jbf=1,basis%nbf
-    if( s_eigval(jbf) > 1e-05_dp ) then
+    if( s_eigval(jbf) > min_overlap ) then
       istate = istate + 1
       inv_x_matrix(:,istate) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
     endif
@@ -975,7 +975,7 @@ subroutine scf_loop_x2c(basis,&
   !! INV_X = U*s^(1/2)
   istate = 0
   do jstate=1,basis%nbf
-    if( s_eigval(jstate) > 1e-05_dp ) then
+    if( s_eigval(jstate) > min_overlap ) then
       istate = istate + 1
       inv_x_matrix(:,istate) = matrix_tmp(:,jstate) * SQRT( s_eigval(jstate) )
     endif
