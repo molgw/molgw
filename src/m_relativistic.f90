@@ -85,7 +85,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   logical                        :: found_basis_name
   logical                        :: this_is_large
   integer                        :: nbf_large
-  integer                        :: istring,ibf,jbf,iibf,jjbf,ishell,jshell,igaus,ngaus,ngaus_nrl,nstate_large
+  integer                        :: istring,ibf,jbf,iibf,jjbf,ishell,jshell,kshell,igaus,ngaus,ngaus_nrl,nstate_large
   integer                        :: nshell,nshell_nrel,nbasis,nbasis_L,nbasis_S,ntyp,shell_typ,shell_typ_nrl
   integer                        :: nstate_rkb,ielectrons
   integer                        :: info,lwork
@@ -147,23 +147,27 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   nshell_nrel=SIZE(basis_nrel%shell(:)%icenter)
   allocate(is_large_4c(nshell))
   is_large_4c(:)=.false.
+  kshell=0
   do ishell=1,nshell
    shell_typ=basis%shell(ishell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
    ngaus=basis%shell(ishell)%ng
-   do jshell=1,nshell_nrel
-    shell_typ_nrl=basis_nrel%shell(jshell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
-    ngaus_nrl=basis_nrel%shell(jshell)%ng
-    if((shell_typ==shell_typ_nrl .and. ngaus==ngaus_nrl).and.(.not.is_large_4c(ishell))) then
-     this_is_large=.true.
-     do igaus=1,ngaus
-       if( abs(basis%shell(ishell)%coeff(igaus) - basis_nrel%shell(jshell)%coeff(igaus))>1e-4 .or. &
-        &  abs(basis%shell(ishell)%alpha(igaus) - basis_nrel%shell(jshell)%alpha(igaus))>1e-4 ) then
-        this_is_large=.false.
-       endif
-     enddo
-     is_large_4c(ishell)=this_is_large
-    endif 
-   enddo
+   if(kshell<nshell_nrel) then
+    do jshell=1,nshell_nrel
+     shell_typ_nrl=basis_nrel%shell(jshell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
+     ngaus_nrl=basis_nrel%shell(jshell)%ng
+     if((shell_typ==shell_typ_nrl .and. ngaus==ngaus_nrl).and.(.not.is_large_4c(ishell))) then
+      this_is_large=.true.
+      do igaus=1,ngaus
+        if( abs(basis%shell(ishell)%coeff(igaus) - basis_nrel%shell(jshell)%coeff(igaus))>1e-4 .or. &
+         &  abs(basis%shell(ishell)%alpha(igaus) - basis_nrel%shell(jshell)%alpha(igaus))>1e-4 ) then
+         this_is_large=.false.
+        endif
+      enddo
+      is_large_4c(ishell)=this_is_large
+      if(is_large_4c(ishell)) kshell=kshell+1
+     endif
+    enddo
+   endif
   enddo
 
   !! Find if nstate_large=basis_nrel%nbf before proceeding
@@ -386,13 +390,42 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   lwork=-1
   allocate(ipiv(nbasis_S),Work(1))
   call zgetrf(nbasis_S,nbasis_S,s_matrix_small,nbasis_S,ipiv,info)
-  if(info/=0) call die("Error in Relativistic computing S_small^-1 in zgetrf")
-  call zgetri(nbasis_S,s_matrix_small,nbasis_S,ipiv,Work,lwork,info)
-  lwork=nint(real(Work(1)))
-  deallocate(Work)
-  allocate(Work(lwork))
-  call zgetri(nbasis_S,s_matrix_small,nbasis_S,ipiv,Work,lwork,info)
-  if(info/=0) call die("Error in Relativistic computing S_small^-1 in zgetri")
+  if(info/=0) then
+   call issue_warning("Error in Relativistic computing S_small^-1 in zgetrf")
+   s_matrix_small(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
+   allocate(W(nbasis_S),U_mat(nbasis_S,nbasis_S))
+   call diagonalize(' ',s_matrix_small,W,U_mat)
+   s_matrix_small=COMPLEX_ZERO
+   do ibf=1,nbasis_S
+    if(abs(W(ibf))<1.0e-8) then
+     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in S_mall^-1',ibf,W(ibf)
+    endif
+    s_matrix_small(ibf,ibf)=1.0d0/(W(ibf)+1.0e-10)
+   enddo
+   s_matrix_small=matmul(matmul(U_mat,s_matrix_small),transpose(conjg(U_mat)))
+   deallocate(W,U_mat)
+  else
+   call zgetri(nbasis_S,s_matrix_small,nbasis_S,ipiv,Work,lwork,info)
+   lwork=nint(real(Work(1)))
+   deallocate(Work)
+   allocate(Work(lwork))
+   call zgetri(nbasis_S,s_matrix_small,nbasis_S,ipiv,Work,lwork,info)
+   if(info/=0) then
+    call issue_warning("Error in Relativistic computing S_small^-1 in zgetri")
+    s_matrix_small(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
+    allocate(W(nbasis_S),U_mat(nbasis_S,nbasis_S))
+    call diagonalize(' ',s_matrix_small,W,U_mat)
+    s_matrix_small=COMPLEX_ZERO
+    do ibf=1,nbasis_S
+     if(abs(W(ibf))<1.0e-8) then
+      write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in S_mall^-1',ibf,W(ibf)
+     endif
+     s_matrix_small(ibf,ibf)=1.0d0/(W(ibf)+1.0e-10)
+    enddo
+    s_matrix_small=matmul(matmul(U_mat,s_matrix_small),transpose(conjg(U_mat)))
+    deallocate(W,U_mat)
+   endif
+  endif
   deallocate(ipiv,Work)
   do ibf=1,nbasis_S
    do jbf=1,nbasis_L
