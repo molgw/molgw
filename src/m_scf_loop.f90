@@ -721,7 +721,7 @@ subroutine scf_loop_x2c(basis,&
   rms = 1000.0
   nstate = 2*basis%nbf ! = 2 basis%nbf
   nelectrons=nint(sum(occupation(:,1))+sum(occupation(:,2)))
-  if(nelectrons>=basis%nbf) call die("In X2C the number of electrons cannot be >= than the num. of basis functions")
+  if(nelectrons>basis%nbf) call die("In X2C the number of electrons cannot be > the num. of basis functions")
   occupation=0.0_dp
   occupation(1:nelectrons,1)=1.0_dp
   occupation(1:nelectrons,2)=1.0_dp
