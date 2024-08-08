@@ -728,14 +728,14 @@ subroutine scf_loop_x2c(basis,&
   allocate(occ_matrix(nstate,nstate))
   occ_matrix=COMPLEX_ZERO
   do istate=1,nelectrons
-    occ_matrix(istate,istate)=1.0d0
+    occ_matrix(istate,istate)=1.0_dp
   enddo
 
   !
   ! Allocate the main arrays
   call clean_allocate('Total Hamiltonian H',hamiltonian_x2c,nstate,nstate)
   call clean_allocate('Hxc operator VHxc',hamiltonian_Vhxc,basis%nbf,basis%nbf,nspin)
-  if(calc_type%need_exchange) then
+  if(calc_type%need_exchange .or. calc_type%need_exchange_lr) then
     call clean_allocate('Hxc operator VHxc2',hamiltonian_Vhxc2,basis%nbf,basis%nbf,nspin)
   endif
   call clean_allocate('Coefs. La or Lb C',c_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
