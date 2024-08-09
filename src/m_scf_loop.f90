@@ -687,7 +687,7 @@ subroutine scf_loop_x2c(basis,&
                     hamiltonian_hcore,&
                     occupation, &
                     energy, &
-                    c_matrix,c_matrix_real,en_gks,scf_has_converged)
+                    c_matrix_rel,c_matrix,en_gks,scf_has_converged)
   implicit none
 
   !=====
@@ -696,11 +696,11 @@ subroutine scf_loop_x2c(basis,&
   real(dp),intent(inout)                :: s_matrix_real(:,:)
   real(dp),intent(inout)                :: occupation(:,:)
   real(dp),intent(out)                  :: energy(:,:)
-  real(dp),intent(inout)                :: c_matrix_real(:,:,:)
+  real(dp),intent(inout)                :: c_matrix(:,:,:)
   complex(dp),intent(in)                :: x_matrix(:,:)
   complex(dp),intent(in)                :: s_matrix(:,:)
   complex(dp),intent(in)                :: hamiltonian_hcore(:,:)
-  complex(dp),allocatable,intent(inout) :: c_matrix(:,:)
+  complex(dp),allocatable,intent(inout) :: c_matrix_rel(:,:)
   type(energy_contributions),intent(inout) :: en_gks
   logical,intent(out)                   :: scf_has_converged
   !=====
@@ -712,10 +712,9 @@ subroutine scf_loop_x2c(basis,&
   real(dp),allocatable    :: energy_vec(:)
   real(dp),allocatable    :: inv_x_matrix(:,:),matrix_tmp(:,:)
   real(dp),allocatable    :: p_matrix_real(:,:)
-  complex(dp),allocatable :: occ_matrix(:,:)
+  complex(dp),allocatable :: occ_matrix_rel(:,:)
   complex(dp),allocatable :: hamiltonian_x2c(:,:)
-  complex(dp),allocatable :: hamiltonian_xc(:,:)
-  complex(dp),allocatable :: p_matrix(:,:),p_matrix_old(:,:)  
+  complex(dp),allocatable :: p_matrix_rel(:,:),p_matrix_rel_old(:,:)  
   complex(dp),allocatable :: hamiltonian_Vhxc(:,:,:)
   complex(dp),allocatable :: hamiltonian_Vhxc2(:,:,:)
   complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
@@ -734,10 +733,10 @@ subroutine scf_loop_x2c(basis,&
   occupation=0.0_dp
   occupation(1:nelectrons,1)=1.0_dp
   occupation(1:nelectrons,2)=1.0_dp
-  allocate(occ_matrix(nstate,nstate))
-  occ_matrix=COMPLEX_ZERO
+  allocate(occ_matrix_rel(nstate,nstate))
+  occ_matrix_rel=COMPLEX_ZERO
   do istate=1,nelectrons
-    occ_matrix(istate,istate)=1.0_dp
+    occ_matrix_rel(istate,istate)=1.0_dp
   enddo
 
   !
@@ -749,8 +748,8 @@ subroutine scf_loop_x2c(basis,&
   endif
   call clean_allocate('Coefs. La or Lb C',c_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
   call clean_allocate('Density matrix P_LaLb',p_matrix_LaorLb,basis%nbf,basis%nbf,nspin)
-  call clean_allocate('Density matrix P',p_matrix,nstate,nstate)
-  call clean_allocate('Density matrix P(old)',p_matrix_old,nstate,nstate)
+  call clean_allocate('Density matrix P',p_matrix_rel,nstate,nstate)
+  call clean_allocate('Density matrix P(old)',p_matrix_rel_old,nstate,nstate)
   call clean_allocate('Hamiltonian history',ham_hist,nstate,nstate,2)
   call clean_allocate('State energies',energy_vec,nstate)
   ham_hist=COMPLEX_ZERO 
@@ -762,15 +761,15 @@ subroutine scf_loop_x2c(basis,&
   endif
 
   !
-  ! Setup the density matrices p_matrix and p_matrix_LaorLb
+  ! Setup the density matrices p_matrix_rel and p_matrix_LaorLb
   c_matrix_LaorLb=COMPLEX_ZERO
   do istate=1,basis%nbf
     do jstate=1,nelectrons
-      c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,jstate) ! L alpha coef. in spin channel 1
-      c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate  ,jstate) ! L beta  coef. in spin channel 2
+      c_matrix_LaorLb(istate,jstate,1)=c_matrix_rel(2*istate-1,jstate) ! L alpha coef. in spin channel 1
+      c_matrix_LaorLb(istate,jstate,2)=c_matrix_rel(2*istate  ,jstate) ! L beta  coef. in spin channel 2
     enddo
   enddo
-  p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
+  p_matrix_rel=matmul(c_matrix_rel,matmul(occ_matrix_rel,transpose(conjg(c_matrix_rel))))
   call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
 
 
@@ -784,7 +783,7 @@ subroutine scf_loop_x2c(basis,&
     hamiltonian_x2c=COMPLEX_ZERO
     ham_hist(:,:,2)=COMPLEX_ZERO 
     en_gks%exx_hyb=0.0_dp
-    en_gks%kin_nuc=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix(:,:)),dp)
+    en_gks%kin_nuc=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix_rel(:,:)),dp)
 
     !--Hamiltonian - Hartree ---
     hamiltonian_Vhxc=COMPLEX_ZERO
@@ -830,7 +829,7 @@ subroutine scf_loop_x2c(basis,&
            ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La cross ( Lb |erf(wr)| La ) cross Lb >
         enddo
       enddo
-      en_gks%exx_hyb=0.5_dp*beta_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix(:,:)),dp)
+      en_gks%exx_hyb=0.5_dp*beta_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix_rel(:,:)),dp)
       hamiltonian_x2c(:,:)=hamiltonian_x2c(:,:)+beta_hybrid*ham_hist(:,:,2)
       ham_hist(:,:,2)=COMPLEX_ZERO
     endif
@@ -849,7 +848,7 @@ subroutine scf_loop_x2c(basis,&
            ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La cross ( Lb | La ) cross Lb >
         enddo
       enddo
-      en_gks%exx_hyb=en_gks%exx_hyb+0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix(:,:)),dp)
+      en_gks%exx_hyb=en_gks%exx_hyb+0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix_rel(:,:)),dp)
       hamiltonian_x2c(:,:)=hamiltonian_x2c(:,:)+alpha_hybrid*ham_hist(:,:,2)
     endif
 
@@ -881,7 +880,7 @@ subroutine scf_loop_x2c(basis,&
 
     !
     ! H' * C' = C' * E
-    call diagonalize(' ',hamiltonian_x2c,energy_vec,c_matrix)
+    call diagonalize(' ',hamiltonian_x2c,energy_vec,c_matrix_rel)
     do istate=1,nstate/2
       energy(istate,1)=energy_vec(2*istate-1)
       energy(istate,2)=energy_vec(2*istate)
@@ -889,7 +888,7 @@ subroutine scf_loop_x2c(basis,&
 
     !
     ! C = X * C'
-    c_matrix=MATMUL(x_matrix,c_matrix)
+    c_matrix_rel=MATMUL(x_matrix,c_matrix_rel)
 
     occupation=0.0_dp
     occupation(1:nelectrons/2,1)=1.0_dp
@@ -916,27 +915,27 @@ subroutine scf_loop_x2c(basis,&
     write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en_gks%total
 
     !
-    ! Setup the new density matrix: p_matrix
+    ! Setup the new density matrix: p_matrix_rel
     ! Save the old one for the convergence criterium
     c_matrix_LaorLb=COMPLEX_ZERO
     do istate=1,basis%nbf
       do jstate=1,nelectrons
-        c_matrix_LaorLb(istate,jstate,1)=c_matrix(2*istate-1,jstate) ! L alpha coef. in spin channel 1
-        c_matrix_LaorLb(istate,jstate,2)=c_matrix(2*istate  ,jstate) ! L beta  coef. in spin channel 2
+        c_matrix_LaorLb(istate,jstate,1)=c_matrix_rel(2*istate-1,jstate) ! L alpha coef. in spin channel 1
+        c_matrix_LaorLb(istate,jstate,2)=c_matrix_rel(2*istate  ,jstate) ! L beta  coef. in spin channel 2
       enddo
     enddo
-    p_matrix=matmul(c_matrix,matmul(occ_matrix,transpose(conjg(c_matrix))))
+    p_matrix_rel=matmul(c_matrix_rel,matmul(occ_matrix_rel,transpose(conjg(c_matrix_rel))))
     call setup_density_matrix_cmplx(c_matrix_LaorLb,occupation,p_matrix_LaorLb)
 
 
  ! SCF convergence check
     if( iscf > 1) then
-      rms = NORM2( real(p_matrix(:,:))  - real(p_matrix_old(:,:)) )  * SQRT( REAL(nspin,dp) ) &
-          + NORM2( aimag(p_matrix(:,:)) - aimag(p_matrix_old(:,:)) ) * SQRT( REAL(nspin,dp) )
-      p_matrix_old(:,:)=p_matrix(:,:)
+      rms = NORM2( real(p_matrix_rel(:,:))  - real(p_matrix_rel_old(:,:)) )  * SQRT( REAL(nspin,dp) ) &
+          + NORM2( aimag(p_matrix_rel(:,:)) - aimag(p_matrix_rel_old(:,:)) ) * SQRT( REAL(nspin,dp) )
+      p_matrix_rel_old(:,:)=p_matrix_rel(:,:)
       write(stdout,'(1x,a,es12.5)') 'Convergence criterium on the density matrix: ',rms
     else
-      p_matrix_old(:,:)=p_matrix(:,:)
+      p_matrix_rel_old(:,:)=p_matrix_rel(:,:)
     endif
 
     if( rms < tolscf ) then
@@ -968,13 +967,13 @@ subroutine scf_loop_x2c(basis,&
   enddo
 
   !
-  ! Store the natural orbital basis representation of the density matrix in c_matrix_real
+  ! Store the natural orbital basis representation of the density matrix in c_matrix
   ! and the occupation numbers in occupation(:,1) \in [0:2]
   call clean_allocate('Density matrix P real',p_matrix_real,basis%nbf,basis%nbf)
-  p_matrix_real=0.0_dp; occupation=0.0_dp; c_matrix_real=0.0_dp; energy=0.0_dp;
+  p_matrix_real=0.0_dp; occupation=0.0_dp; c_matrix=0.0_dp; energy=0.0_dp;
   !do istate=1,nstate/2
   !  do jstate=1,nstate/2
-  !     p_matrix_real(istate,jstate)=real(p_matrix(2*istate-1,2*jstate-1)+p_matrix(2*istate,2*jstate))
+  !     p_matrix_real(istate,jstate)=real(p_matrix_rel(2*istate-1,2*jstate-1)+p_matrix_rel(2*istate,2*jstate))
   !  enddo
   !enddo
   !p_matrix_real=0.5_dp*(p_matrix_real+transpose(p_matrix_real))
@@ -1004,13 +1003,13 @@ subroutine scf_loop_x2c(basis,&
   allocate(matrix_tmp(nstate,nstate))     
   matrix_tmp=0.0_dp
   matrix_tmp=MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real, inv_x_matrix))
-  call diagonalize(' ',matrix_tmp,occupation(:,1),c_matrix_real(:,:,1))
+  call diagonalize(' ',matrix_tmp,occupation(:,1),c_matrix(:,:,1))
   !  C = S^-1/2 V
-  c_matrix_real(:,:,1) = MATMUL(x_matrix_real, c_matrix_real(:,:,1))
+  c_matrix(:,:,1) = MATMUL(x_matrix_real, c_matrix(:,:,1))
   deallocate(matrix_tmp,s_eigval)
   if(nspin==2) then
    occupation(:,2)=0.0_dp
-   c_matrix_real(:,:,2)=0.0_dp
+   c_matrix(:,:,2)=0.0_dp
   endif
 
   !
@@ -1024,9 +1023,9 @@ subroutine scf_loop_x2c(basis,&
   !
   call clean_deallocate('Overlap INV_X * INV_X**H = S real',inv_x_matrix)
   call clean_deallocate('Density matrix P real',p_matrix_real)
-  call clean_deallocate('Density matrix P',p_matrix)
+  call clean_deallocate('Density matrix P',p_matrix_rel)
   call clean_deallocate('Density matrix P_LaLb',p_matrix_LaorLb)
-  call clean_deallocate('Density matrix P(old)',p_matrix_old)
+  call clean_deallocate('Density matrix P(old)',p_matrix_rel_old)
   call clean_deallocate('Coefs. La or Lb C',c_matrix_LaorLb)
   call clean_deallocate('Hxc operator VHxc',hamiltonian_Vhxc)
   call clean_deallocate('Total Hamiltonian H',hamiltonian_x2c)
