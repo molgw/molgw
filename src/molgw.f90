@@ -372,8 +372,8 @@ program molgw
     write(stdout,'(a)')  ' '
     call issue_warning('X2C KS-DFT SCF is currently implemented only for testing')
     write(stdout,'(a)')  ' '
-    call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,basis%nbf,nspin)
-    c_matrix=ZERO
+    call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate/2,nspin)
+     
     call scf_loop_x2c(basis,                         &
                       x_matrix_rel,x_matrix,         &
                       s_matrix_rel,s_matrix,         &

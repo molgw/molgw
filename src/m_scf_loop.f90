@@ -430,6 +430,7 @@ subroutine scf_loop_cmplx(is_restart,&
   real(dp)                :: rms
   real(dp),allocatable    :: s_eigval(:)
   real(dp),allocatable    :: inv_x_matrix(:,:),matrix_tmp(:,:)
+  real(dp),allocatable    :: p_matrix_real(:,:)
   complex(dp),allocatable :: hsmall_cmplx(:,:), csmall_cmplx(:,:)
   complex(dp),allocatable :: hamiltonian_cmplx(:,:,:)
   complex(dp),allocatable :: p_matrix_cmplx(:,:,:),p_matrix_cmplx_old(:,:,:)
@@ -605,11 +606,12 @@ subroutine scf_loop_cmplx(is_restart,&
   !
   ! Store the natural orbital basis representation of the density matrix in c_matrix
   ! and the occupation numbers in occupation(:,1) \in [0:2]
+  call clean_allocate('Density matrix P real',p_matrix_real,basis%nbf,basis%nbf)
   if(nspin==2) then
-    p_matrix_cmplx(:,:,1)=p_matrix_cmplx(:,:,1)+p_matrix_cmplx(:,:,2)
-    p_matrix_cmplx(:,:,2)=COMPLEX_ZERO
+   p_matrix_real(:,:)=real(p_matrix_cmplx(:,:,1)+p_matrix_cmplx(:,:,2))
+  else
+   p_matrix_real(:,:)=real(p_matrix_cmplx(:,:,1))
   endif
-  p_matrix_cmplx(:,:,1)=real(p_matrix_cmplx(:,:,1))
   allocate(s_eigval(basis%nbf),matrix_tmp(basis%nbf,basis%nbf))
   matrix_tmp(:,:) = s_matrix(:,:)
   ! Diagonalization with or without SCALAPACK
@@ -617,6 +619,7 @@ subroutine scf_loop_cmplx(is_restart,&
   call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
   nstate = COUNT( s_eigval(:) > min_overlap )
   call clean_allocate('Overlap INV_X * INV_X**H = S',inv_x_matrix,basis%nbf,nstate)
+  inv_x_matrix=0.0_dp
   write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
   write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
   write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',min_overlap
@@ -629,14 +632,19 @@ subroutine scf_loop_cmplx(is_restart,&
       inv_x_matrix(:,istate) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
     endif
   enddo
-  deallocate(matrix_tmp,s_eigval)
   !  diag[ S^1/2 P S^1/2 ] -> V
-  hsmall_cmplx(:,:) = MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_cmplx(:,:,1), inv_x_matrix))
-  call diagonalize(' ',hsmall_cmplx,occupation(:,1),csmall_cmplx)
+  deallocate(matrix_tmp)
+  allocate(matrix_tmp(nstate,nstate))
+  matrix_tmp=0.0_dp
+  matrix_tmp=MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real, inv_x_matrix))
+  call diagonalize(' ',matrix_tmp,occupation(:,1),c_matrix(:,:,1))
   !  C = S^-1/2 V
-  c_matrix_cmplx(:,:,1) = MATMUL(x_matrix, csmall_cmplx)
-  if(nspin==2) occupation(:,2)=0.0e0_dp
-
+  c_matrix(:,:,1) = MATMUL(x_matrix, c_matrix(:,:,1))
+  deallocate(matrix_tmp,s_eigval)
+  if(nspin==2) then
+   occupation(:,2)=0.0_dp
+   c_matrix(:,:,2)=0.0_dp
+  endif
 
   !
   ! Cleanly deallocate the integral grid information
@@ -647,13 +655,14 @@ subroutine scf_loop_cmplx(is_restart,&
   !
   ! Cleanly deallocate the arrays
   !
+  call clean_deallocate('Overlap INV_X * INV_X**H = S',inv_x_matrix)
+  call clean_deallocate('Density matrix P real',p_matrix_real)
   call clean_deallocate('Density matrix P',p_matrix_cmplx)
   call clean_deallocate('Density matrix P(old)',p_matrix_cmplx_old)
   call clean_deallocate('Total Hamiltonian H',hamiltonian_cmplx)
   call clean_deallocate('H in orthogonalized basis',hsmall_cmplx)
   call clean_deallocate('H eigenvectors',csmall_cmplx)
   call clean_deallocate('Hamiltonian history',ham_hist)
-  call clean_deallocate('Overlap INV_X * INV_X**H = S',inv_x_matrix)
 
   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
 
@@ -687,11 +696,11 @@ subroutine scf_loop_x2c(basis,&
   real(dp),intent(inout)                :: s_matrix_real(:,:)
   real(dp),intent(inout)                :: occupation(:,:)
   real(dp),intent(out)                  :: energy(:,:)
+  real(dp),intent(inout)                :: c_matrix_real(:,:,:)
   complex(dp),intent(in)                :: x_matrix(:,:)
   complex(dp),intent(in)                :: s_matrix(:,:)
   complex(dp),intent(in)                :: hamiltonian_hcore(:,:)
   complex(dp),allocatable,intent(inout) :: c_matrix(:,:)
-  real(dp),allocatable,intent(inout)    :: c_matrix_real(:,:,:)
   type(energy_contributions),intent(inout) :: en_gks
   logical,intent(out)                   :: scf_has_converged
   !=====
@@ -701,8 +710,8 @@ subroutine scf_loop_x2c(basis,&
   real(dp)                :: rms
   real(dp),allocatable    :: s_eigval(:)
   real(dp),allocatable    :: energy_vec(:)
-  real(dp),allocatable    :: p_matrix_real(:,:)
   real(dp),allocatable    :: inv_x_matrix(:,:),matrix_tmp(:,:)
+  real(dp),allocatable    :: p_matrix_real(:,:)
   complex(dp),allocatable :: occ_matrix(:,:)
   complex(dp),allocatable :: hamiltonian_x2c(:,:)
   complex(dp),allocatable :: hamiltonian_xc(:,:)
@@ -963,14 +972,21 @@ subroutine scf_loop_x2c(basis,&
   ! and the occupation numbers in occupation(:,1) \in [0:2]
   call clean_allocate('Density matrix P real',p_matrix_real,basis%nbf,basis%nbf)
   p_matrix_real=0.0_dp; occupation=0.0_dp; c_matrix_real=0.0_dp; energy=0.0_dp;
+  !do istate=1,nstate/2
+  !  do jstate=1,nstate/2
+  !     p_matrix_real(istate,jstate)=real(p_matrix(2*istate-1,2*jstate-1)+p_matrix(2*istate,2*jstate))
+  !  enddo
+  !enddo
+  !p_matrix_real=0.5_dp*(p_matrix_real+transpose(p_matrix_real))
   p_matrix_real(:,:)=real(p_matrix_LaorLb(:,:,1)+p_matrix_LaorLb(:,:,2))
-  allocate(s_eigval(basis%nbf),matrix_tmp(basis%nbf,basis%nbf))                 
-  matrix_tmp=s_matrix_real
+  allocate(s_eigval(basis%nbf),matrix_tmp(basis%nbf,basis%nbf))     
+  matrix_tmp(:,:) = s_matrix_real(:,:)
   ! Diagonalization with or without SCALAPACK
   !! S = U*s*U^H
   call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
   nstate = COUNT( s_eigval(:) > min_overlap )
   call clean_allocate('Overlap INV_X * INV_X**H = S',inv_x_matrix,basis%nbf,nstate)
+  inv_x_matrix=0.0_dp
   write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
   write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
   write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',min_overlap
@@ -978,17 +994,24 @@ subroutine scf_loop_x2c(basis,&
   !! INV_X = U*s^(1/2)
   istate = 0
   do jbf=1,basis%nbf
-    if( s_eigval(jstate) > min_overlap ) then
+    if( s_eigval(jbf) > min_overlap ) then
       istate = istate + 1
       inv_x_matrix(:,istate) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
     endif
   enddo
   !  diag[ S^1/2 P S^1/2 ] -> V
-  p_matrix_real = MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real, inv_x_matrix))
-  call diagonalize(' ',p_matrix_real,occupation(:,1),matrix_tmp)
+  deallocate(matrix_tmp)     
+  allocate(matrix_tmp(nstate,nstate))     
+  matrix_tmp=0.0_dp
+  matrix_tmp=MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real, inv_x_matrix))
+  call diagonalize(' ',matrix_tmp,occupation(:,1),c_matrix_real(:,:,1))
   !  C = S^-1/2 V
-  c_matrix_real(:,:,1) = MATMUL(x_matrix_real, matrix_tmp)
+  c_matrix_real(:,:,1) = MATMUL(x_matrix_real, c_matrix_real(:,:,1))
   deallocate(matrix_tmp,s_eigval)
+  if(nspin==2) then
+   occupation(:,2)=0.0_dp
+   c_matrix_real(:,:,2)=0.0_dp
+  endif
 
   !
   ! Cleanly deallocate the integral grid information
@@ -1000,18 +1023,18 @@ subroutine scf_loop_x2c(basis,&
   ! Cleanly deallocate the arrays
   !
   call clean_deallocate('Overlap INV_X * INV_X**H = S real',inv_x_matrix)
-  call clean_deallocate('State energies',energy_vec)
-  call clean_deallocate('Hamiltonian history',ham_hist)
-  call clean_deallocate('Density matrix P_LaLb',p_matrix_LaorLb)
-  call clean_deallocate('Density matrix P',p_matrix)
   call clean_deallocate('Density matrix P real',p_matrix_real)
+  call clean_deallocate('Density matrix P',p_matrix)
+  call clean_deallocate('Density matrix P_LaLb',p_matrix_LaorLb)
   call clean_deallocate('Density matrix P(old)',p_matrix_old)
   call clean_deallocate('Coefs. La or Lb C',c_matrix_LaorLb)
   call clean_deallocate('Hxc operator VHxc',hamiltonian_Vhxc)
+  call clean_deallocate('Total Hamiltonian H',hamiltonian_x2c)
+  call clean_deallocate('Hamiltonian history',ham_hist)
+  call clean_deallocate('State energies',energy_vec)
   if(calc_type%need_exchange) then
     call clean_deallocate('Hxc operator VHxc2',hamiltonian_Vhxc2)
   endif
-  call clean_deallocate('Total Hamiltonian H',hamiltonian_x2c)
 
   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en_gks%total
 
