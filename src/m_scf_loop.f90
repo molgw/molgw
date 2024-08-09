@@ -697,11 +697,11 @@ subroutine scf_loop_x2c(basis,&
   !=====
   integer                 :: nstate
   logical                 :: is_x2c,stopfile_found
-  integer                 :: iscf,istate,jstate,nelectrons
+  integer                 :: iscf,istate,jstate,jbf,nelectrons
   real(dp)                :: rms
   real(dp),allocatable    :: s_eigval(:)
   real(dp),allocatable    :: energy_vec(:)
-  real(dp),allocatable    :: p_matrix_real(:,:,:)
+  real(dp),allocatable    :: p_matrix_real(:,:)
   real(dp),allocatable    :: inv_x_matrix(:,:),matrix_tmp(:,:)
   complex(dp),allocatable :: occ_matrix(:,:)
   complex(dp),allocatable :: hamiltonian_x2c(:,:)
@@ -961,31 +961,34 @@ subroutine scf_loop_x2c(basis,&
   !
   ! Store the natural orbital basis representation of the density matrix in c_matrix_real
   ! and the occupation numbers in occupation(:,1) \in [0:2]
-  call clean_allocate('Density matrix P real',p_matrix_real,basis%nbf,basis%nbf,nspin)
+  call clean_allocate('Density matrix P real',p_matrix_real,basis%nbf,basis%nbf)
   p_matrix_real=0.0_dp; occupation=0.0_dp; c_matrix_real=0.0_dp; energy=0.0_dp;
-  p_matrix_LaorLb(:,:,1)=p_matrix_LaorLb(:,:,1)+p_matrix_LaorLb(:,:,2)
-  p_matrix_LaorLb(:,:,2)=COMPLEX_ZERO
-  p_matrix_real(:,:,1)=real(p_matrix_LaorLb(:,:,1))                             
+  p_matrix_real(:,:)=real(p_matrix_LaorLb(:,:,1)+p_matrix_LaorLb(:,:,2))
   allocate(s_eigval(basis%nbf),matrix_tmp(basis%nbf,basis%nbf))                 
   matrix_tmp=s_matrix_real
   ! Diagonalization with or without SCALAPACK
   !! S = U*s*U^H
   call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,matrix_tmp,s_eigval)
-  call clean_allocate('Overlap INV_X * INV_X**H = S real',inv_x_matrix,basis%nbf,basis%nbf)
+  nstate = COUNT( s_eigval(:) > min_overlap )
+  call clean_allocate('Overlap INV_X * INV_X**H = S',inv_x_matrix,basis%nbf,nstate)
+  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
+  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
+  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',min_overlap
+  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',basis%nbf
   !! INV_X = U*s^(1/2)
   istate = 0
-  do jstate=1,basis%nbf
+  do jbf=1,basis%nbf
     if( s_eigval(jstate) > min_overlap ) then
       istate = istate + 1
-      inv_x_matrix(:,istate) = matrix_tmp(:,jstate) * SQRT( s_eigval(jstate) )
+      inv_x_matrix(:,istate) = matrix_tmp(:,jbf) * SQRT( s_eigval(jbf) )
     endif
   enddo
-  deallocate(matrix_tmp,s_eigval)
   !  diag[ S^1/2 P S^1/2 ] -> V
-  p_matrix_real(:,:,1) = MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real(:,:,1), inv_x_matrix))
-  call diagonalize(' ',p_matrix_real(:,:,1),occupation(:,1),c_matrix_real(:,:,1))
+  p_matrix_real = MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real, inv_x_matrix))
+  call diagonalize(' ',p_matrix_real,occupation(:,1),matrix_tmp)
   !  C = S^-1/2 V
-  c_matrix_real(:,:,1) = MATMUL(x_matrix_real(:,:), c_matrix_real(:,:,1))
+  c_matrix_real(:,:,1) = MATMUL(x_matrix_real, matrix_tmp)
+  deallocate(matrix_tmp,s_eigval)
 
   !
   ! Cleanly deallocate the integral grid information
