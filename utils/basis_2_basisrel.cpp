@@ -12,6 +12,7 @@ struct basis{
 vector<basis>basis_l_all;
 vector<basis>basis_l;
 vector<basis>basis_s;
+vector<basis>basis_s_unique;
 
 int main(int argc, char *argv[])
 {
@@ -74,8 +75,34 @@ int main(int argc, char *argv[])
     basis_s.push_back({lm1,basis_l[ibasis].expon,coef});
    }
   }
+  for(ibasis=0;ibasis<basis_s.size();ibasis++)
+  {
+   if(ibasis==0) 
+   {
+    basis_s_unique.push_back({basis_s[0].l,basis_s[0].expon,basis_s[0].coef});
+   }
+   else
+   {
+    newprim=true;
+    for(jbasis=0;jbasis<basis_s_unique.size();jbasis++)
+    {
+     if(basis_s[ibasis].l==basis_s_unique[jbasis].l) 
+     {
+      if(basis_s[ibasis].expon==basis_s_unique[jbasis].expon && basis_s[ibasis].coef==basis_s_unique[jbasis].coef)
+      {
+       newprim=false;
+       jbasis=basis_s_unique.size();
+      }
+     }
+    }
+    if(newprim)
+    {
+     basis_s_unique.push_back({basis_s[ibasis].l,basis_s[ibasis].expon,basis_s[ibasis].coef});
+    }
+   }
+  }
   ofstream write_bas_file(basis_file_out);
-  write_bas_file<<prims.size()+basis_s.size()<<endl;
+  write_bas_file<<prims.size()+basis_s_unique.size()<<endl;
   write_bas_file<<setprecision(10)<<fixed;
   ibasis=0;
   for(iprim=0;iprim<prims.size();iprim++)
@@ -90,17 +117,17 @@ int main(int argc, char *argv[])
   nprint=0;l=0;
   do
   {
-   for(ibasis=0;ibasis<basis_s.size();ibasis++)
+   for(ibasis=0;ibasis<basis_s_unique.size();ibasis++)
    {
-    if(basis_s[ibasis].l==l)
+    if(basis_s_unique[ibasis].l==l)
     {
-     write_bas_file<<1<<setw(6)<<basis_s[ibasis].l<<endl;
-     write_bas_file<<setw(20)<<basis_s[ibasis].expon<<setw(25)<<basis_s[ibasis].coef<<endl;
+     write_bas_file<<1<<setw(6)<<basis_s_unique[ibasis].l<<endl;
+     write_bas_file<<setw(20)<<basis_s_unique[ibasis].expon<<setw(25)<<basis_s_unique[ibasis].coef<<endl;
      nprint++;
     }
    }
    l++;
-  }while(nprint!=basis_s.size());
+  }while(nprint!=basis_s_unique.size());
   write_bas_file.close();
  }
  return 0;
