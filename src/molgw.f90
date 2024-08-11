@@ -158,17 +158,17 @@ program molgw
     call start_clock(timing_prescf)
 
     if( .not. has_auxil_basis ) then
-      call die("x2c calculations require an auxiliary basis")
+      call die("X2C calculations require an auxiliary basis")
     endif
 
     ! Check if the correct nspin=2 was provided
     if( nspin/=2 ) then
-      call die("x2c calculations require nspin=2")
+      call die("X2C calculations require nspin=2")
     endif
 
     ! Check if the magnetization=0
     if( abs(magnetization)>1e-8 ) then
-      call die("x2c calculations only implemented for magnetization=0")
+      call die("X2C calculations only implemented for magnetization=0")
     endif
 
     !
@@ -182,7 +182,7 @@ program molgw
     call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
                         even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
     if( basis%gaussian_type/= 'CART' ) then
-      call die("x2c calculations require cartesian gaussian_type")
+      call die("X2C calculations require cartesian gaussian_type")
     endif
    
    
@@ -295,7 +295,7 @@ program molgw
     ! ERI integrals have been computed and stored
     !
 
-    ! init_hamiltonian ( = CORE is alredy in c_matrix ) 
+    ! init_hamiltonian ( = CORE is alredy in c_matrix_rel )
     if(TRIM(init_hamiltonian)=='GUESS') then
       allocate(vhxc_ao(basis%nbf,basis%nbf),hamiltonian_x2c_guess(nstate,nstate),E_vec(nstate))
       hamiltonian_x2c_guess=COMPLEX_ZERO
