@@ -1076,7 +1076,7 @@ subroutine setup_exchange_ri_x2c_2(occupation,c_matrix,exchange_ao)
       tmp_cmplx1(:,:) = (0.0_dp, 0.0_dp)
       tmp_cmplx2(:,:) = (0.0_dp, 0.0_dp)
       !$OMP PARALLEL PRIVATE(ibf,jbf)
-      !$OMP DO REDUCTION(+:tmp_cmplx)
+      !$OMP DO REDUCTION(+:tmp_cmplx1,tmp_cmplx2)
       do ipair=1,npair
         ibf = index_basis(1,ipair)
         jbf = index_basis(2,ipair)
