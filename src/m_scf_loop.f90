@@ -823,10 +823,10 @@ subroutine scf_loop_x2c(basis,&
       call setup_lr_exchange_ri_x2c_2(occupation,c_matrix_LaorLb,hamiltonian_Vhxc2)
       do istate=1,nstate/2
         do jstate=1,nstate/2
-           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! < La cross ( La |erf(wr)| La ) cross La >
-           ham_hist(2*istate  ,2*jstate  ,2)=hamiltonian_Vhxc(istate,jstate,2) ! < Lb cross ( Lb |erf(wr)| Lb ) cross Lb >
-           ham_hist(2*istate  ,2*jstate-1,2)=hamiltonian_Vhxc2(istate,jstate,1) ! < Lb cross ( La |erf(wr)| Lb ) cross La >
-           ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La cross ( Lb |erf(wr)| La ) cross Lb >
+           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! < La tensor_product ( La |erf(wr)| La ) tensor_product La >
+           ham_hist(2*istate  ,2*jstate  ,2)=hamiltonian_Vhxc(istate,jstate,2) ! < Lb tensor_product ( Lb |erf(wr)| Lb ) tensor_product Lb >
+           ham_hist(2*istate  ,2*jstate-1,2)=hamiltonian_Vhxc2(istate,jstate,1) ! < Lb tensor_product ( La |erf(wr)| Lb ) tensor_product La >
+           ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La tensor_product ( Lb |erf(wr)| La ) tensor_product Lb >
         enddo
       enddo
       en_gks%exx_hyb=0.5_dp*beta_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix_rel(:,:)),dp)
@@ -842,10 +842,10 @@ subroutine scf_loop_x2c(basis,&
       call setup_exchange_ri_x2c_2(occupation,c_matrix_LaorLb,hamiltonian_Vhxc2)
       do istate=1,nstate/2
         do jstate=1,nstate/2
-           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! < La cross ( La | La ) cross La >
-           ham_hist(2*istate  ,2*jstate  ,2)=hamiltonian_Vhxc(istate,jstate,2) ! < Lb cross ( Lb | Lb ) cross Lb >
-           ham_hist(2*istate  ,2*jstate-1,2)=hamiltonian_Vhxc2(istate,jstate,1) ! < Lb cross ( La | Lb ) cross La >
-           ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La cross ( Lb | La ) cross Lb >
+           ham_hist(2*istate-1,2*jstate-1,2)=hamiltonian_Vhxc(istate,jstate,1) ! < La tensor_product ( La | La ) tensor_product La >
+           ham_hist(2*istate  ,2*jstate  ,2)=hamiltonian_Vhxc(istate,jstate,2) ! < Lb tensor_product ( Lb | Lb ) tensor_product Lb >
+           ham_hist(2*istate  ,2*jstate-1,2)=hamiltonian_Vhxc2(istate,jstate,1) ! < Lb tensor_product ( La | Lb ) tensor_product La >
+           ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La tensor_product ( Lb | La ) tensor_product Lb >
         enddo
       enddo
       en_gks%exx_hyb=en_gks%exx_hyb+0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix_rel(:,:)),dp)

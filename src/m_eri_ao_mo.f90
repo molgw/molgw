@@ -790,6 +790,55 @@ end subroutine calculate_eri_3center_eigen_cmplx
 
 
 !=================================================================
+subroutine calculate_eri_x2c(c_matrix_rel,ERImol_rel,nstate)
+  implicit none
+  complex(dp),intent(in)      :: c_matrix_rel(:,:)
+  complex(dp),intent(inout)   :: ERImol_rel(:,:,:,:)
+  integer,intent(in)          :: nstate
+  !=====
+  integer                 :: ibf,istate,jstate,kstate,lstate,nbf
+  logical                 :: x2c_verbose=.FALSE.
+  complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
+  !=====
+
+  nbf=nstate/2
+  allocate(c_matrix_LaorLb(nbf,nstate,nspin))
+  ERImol_rel=COMPLEX_ZERO
+
+  !
+  ! Setup the density La or Lb sub-matrices
+  c_matrix_LaorLb=COMPLEX_ZERO
+  do ibf=1,nbf
+    do istate=1,nstate
+      c_matrix_LaorLb(ibf,istate,1)=c_matrix_rel(2*ibf-1,istate) ! L alpha coef. in spin channel 1
+      c_matrix_LaorLb(ibf,istate,2)=c_matrix_rel(2*ibf  ,istate) ! L beta  coef. in spin channel 2
+    enddo
+  enddo
+
+  ! La La La La,  Lb Lb Lb Lb and
+  ! La Lb La Lb,  Lb La Lb La
+  ! The rest of combinations (e.g. La La Lb La or La Lb Lb La, etc) are null due to tensor product definition
+  call calculate_eri_3center_eigen_cmplx(c_matrix_LaorLb,1,nstate,1,nstate,verbose=x2c_verbose)
+  do istate=1,nstate
+    do jstate=1,nstate
+      do kstate=1,nstate
+        do lstate=1,nstate
+          ERImol_rel(istate,jstate,kstate,lstate)=eri_eigen_ri_cmplx(istate,kstate,1,jstate,lstate,1) & ! <La La | La La>
+          &                                      +eri_eigen_ri_cmplx(istate,kstate,2,jstate,lstate,2) & ! <Lb Lb | Lb Lb>
+          &                                      +eri_eigen_ri_cmplx(istate,kstate,1,jstate,lstate,2) & ! <La Lb | La Lb>
+          &                                      +eri_eigen_ri_cmplx(istate,kstate,2,jstate,lstate,1)   ! <Lb La | Lb La>
+        enddo
+      enddo
+    enddo
+  enddo
+  call destroy_eri_3center_eigen_cmplx(x2c_verbose)
+
+ deallocate(c_matrix_LaorLb)
+
+end subroutine calculate_eri_x2c
+
+
+!=================================================================
 subroutine destroy_eri_3center_eigen(verbose,long_range)
   implicit none
 
