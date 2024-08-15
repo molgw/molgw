@@ -790,18 +790,21 @@ end subroutine calculate_eri_3center_eigen_cmplx
 
 
 !=================================================================
-subroutine calculate_eri_x2c(c_matrix_rel,ERImol_rel,nstate)
+subroutine calculate_eri_x2c(c_matrix_rel,ERImol_rel,nstate,nocc)
   implicit none
   complex(dp),intent(in)      :: c_matrix_rel(:,:)
   complex(dp),intent(inout)   :: ERImol_rel(:,:,:,:)
   integer,intent(in)          :: nstate
+  integer,optional,intent(in) :: nocc
   !=====
-  integer                 :: ibf,istate,jstate,kstate,lstate,nbf
+  integer                 :: ibf,istate,jstate,kstate,lstate,nbf,nstate_
   logical                 :: x2c_verbose=.FALSE.
   complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
   !=====
 
   nbf=nstate/2
+  nstate_=nstate
+  if(present(nocc)) nstate_=nocc
   allocate(c_matrix_LaorLb(nbf,nstate,nspin))
   ERImol_rel=COMPLEX_ZERO
 
@@ -817,11 +820,11 @@ subroutine calculate_eri_x2c(c_matrix_rel,ERImol_rel,nstate)
 
   ! La La La La,  Lb Lb Lb Lb, La Lb La Lb, and Lb La Lb La
   ! The rest of combinations (e.g. La La Lb La or La Lb Lb La, etc) are null due to tensor product definition
-  call calculate_eri_3center_eigen_cmplx(c_matrix_LaorLb,1,nstate,1,nstate,verbose=x2c_verbose)
-  do istate=1,nstate
-    do jstate=1,nstate
-      do kstate=1,nstate
-        do lstate=1,nstate
+  call calculate_eri_3center_eigen_cmplx(c_matrix_LaorLb,1,nstate_,1,nstate_,verbose=x2c_verbose)
+  do istate=1,nstate_
+    do jstate=1,nstate_
+      do kstate=1,nstate_
+        do lstate=1,nstate_
           ERImol_rel(istate,jstate,kstate,lstate)=eri_eigen_ri_cmplx(istate,kstate,1,jstate,lstate,1) & ! <La tensor_prod La | La tensor_prod La>
           &                                      +eri_eigen_ri_cmplx(istate,kstate,2,jstate,lstate,2) & ! <Lb tensor_prod Lb | Lb tensor_prod Lb>
           &                                      +eri_eigen_ri_cmplx(istate,kstate,1,jstate,lstate,2) & ! <La tensor_prod Lb | La tensor_prod Lb>

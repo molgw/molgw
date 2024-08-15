@@ -390,6 +390,36 @@ program molgw
     write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
     write(stdout,*)
 
+if(.false.) then
+     block
+     integer  :: nocc
+     real(dp) :: Hcore_E,Vee_H,Vee_x
+     complex(dp)::Val
+     complex(dp),allocatable :: ERImol_rel(:,:,:,:)
+     nocc=nint(sum(occupation(:,1)))
+     allocate(ERImol_rel(nstate,nstate,nstate,nstate))
+     hamiltonian_kin_nuc_rel=matmul(conjg(transpose(c_matrix_rel)),matmul(hamiltonian_kin_nuc_rel,c_matrix_rel))
+     call calculate_eri_x2c(c_matrix_rel,ERImol_rel,nstate,nocc)
+     Hcore_E=0.0_dp; Vee_H=0.0_dp; Vee_x=0.0_dp;
+     do istate=1,nocc
+      Hcore_E=Hcore_E+real(hamiltonian_kin_nuc_rel(istate,istate))
+      do jstate=1,nocc
+       Vee_H=Vee_H+real(ERImol_rel(istate,jstate,istate,jstate))
+       Vee_x=Vee_x-real(ERImol_rel(istate,jstate,jstate,istate))
+      enddo
+     enddo
+     Vee_H=0.5_dp*Vee_H; Vee_x=0.5_dp*Vee_x;
+     write(stdout,*)
+     write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus  (Ha):',en_gks%nuc_nuc
+     write(stdout,'(a25,1x,f19.10)') 'Kin+Vext  Energy (Ha):',Hcore_E
+     write(stdout,'(a25,1x,f19.10)') 'Hartree  Energy  (Ha):',Vee_H
+     write(stdout,'(a25,1x,f19.10)') 'Exchange Energy  (Ha):',Vee_x
+     write(stdout,'(a25,1x,f19.10)') 'Total SD Energy  (Ha):',en_gks%nuc_nuc+Hcore_E+Vee_H+Vee_x
+     write(stdout,*)
+     deallocate(ERImol_rel)
+     endblock
+endif
+
     call clean_deallocate('Overlap matrix S',s_matrix)
     call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
     call clean_deallocate('Full RKB wavefunctions C',c_matrix_rel)
