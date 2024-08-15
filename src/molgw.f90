@@ -390,6 +390,7 @@ program molgw
     write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
     write(stdout,*)
 
+!! TODO make ERImol transf. reproduce the previous values
 if(.false.) then
      block
      integer  :: nocc
