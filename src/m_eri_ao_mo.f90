@@ -815,18 +815,17 @@ subroutine calculate_eri_x2c(c_matrix_rel,ERImol_rel,nstate)
     enddo
   enddo
 
-  ! La La La La,  Lb Lb Lb Lb and
-  ! La Lb La Lb,  Lb La Lb La
+  ! La La La La,  Lb Lb Lb Lb, La Lb La Lb, and Lb La Lb La
   ! The rest of combinations (e.g. La La Lb La or La Lb Lb La, etc) are null due to tensor product definition
   call calculate_eri_3center_eigen_cmplx(c_matrix_LaorLb,1,nstate,1,nstate,verbose=x2c_verbose)
   do istate=1,nstate
     do jstate=1,nstate
       do kstate=1,nstate
         do lstate=1,nstate
-          ERImol_rel(istate,jstate,kstate,lstate)=eri_eigen_ri_cmplx(istate,kstate,1,jstate,lstate,1) & ! <La La | La La>
-          &                                      +eri_eigen_ri_cmplx(istate,kstate,2,jstate,lstate,2) & ! <Lb Lb | Lb Lb>
-          &                                      +eri_eigen_ri_cmplx(istate,kstate,1,jstate,lstate,2) & ! <La Lb | La Lb>
-          &                                      +eri_eigen_ri_cmplx(istate,kstate,2,jstate,lstate,1)   ! <Lb La | Lb La>
+          ERImol_rel(istate,jstate,kstate,lstate)=eri_eigen_ri_cmplx(istate,kstate,1,jstate,lstate,1) & ! <La tensor_prod La | La tensor_prod La>
+          &                                      +eri_eigen_ri_cmplx(istate,kstate,2,jstate,lstate,2) & ! <Lb tensor_prod Lb | Lb tensor_prod Lb>
+          &                                      +eri_eigen_ri_cmplx(istate,kstate,1,jstate,lstate,2) & ! <La tensor_prod Lb | La tensor_prod Lb>
+          &                                      +eri_eigen_ri_cmplx(istate,kstate,2,jstate,lstate,1)   ! <Lb tensor_prod La | Lb tensor_prod La>
         enddo
       enddo
     enddo
