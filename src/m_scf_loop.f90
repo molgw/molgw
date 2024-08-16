@@ -783,7 +783,7 @@ subroutine scf_loop_x2c(basis,&
     hamiltonian_x2c=COMPLEX_ZERO
     ham_hist(:,:,2)=COMPLEX_ZERO 
     en_gks%exx_hyb=0.0_dp
-    en_gks%kin_nuc=REAL(SUM(hamiltonian_hcore(:,:)*p_matrix_rel(:,:)),dp)
+    en_gks%kin_nuc=REAL(SUM(hamiltonian_hcore(:,:)*CONJG(p_matrix_rel(:,:))),dp)
 
     !--Hamiltonian - Hartree ---
     hamiltonian_Vhxc=COMPLEX_ZERO
@@ -829,7 +829,7 @@ subroutine scf_loop_x2c(basis,&
            ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La tensor_product ( Lb |erf(wr)| La ) tensor_product Lb >
         enddo
       enddo
-      en_gks%exx_hyb=0.5_dp*beta_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix_rel(:,:)),dp)
+      en_gks%exx_hyb=0.5_dp*beta_hybrid*REAL(SUM(ham_hist(:,:,2)*CONJG(p_matrix_rel(:,:))),dp)
       hamiltonian_x2c(:,:)=hamiltonian_x2c(:,:)+beta_hybrid*ham_hist(:,:,2)
       ham_hist(:,:,2)=COMPLEX_ZERO
     endif
@@ -848,7 +848,7 @@ subroutine scf_loop_x2c(basis,&
            ham_hist(2*istate-1,2*jstate  ,2)=hamiltonian_Vhxc2(istate,jstate,2) ! < La tensor_product ( Lb | La ) tensor_product Lb >
         enddo
       enddo
-      en_gks%exx_hyb=en_gks%exx_hyb+0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,2)*p_matrix_rel(:,:)),dp)
+      en_gks%exx_hyb=en_gks%exx_hyb+0.5_dp*alpha_hybrid*REAL(SUM(ham_hist(:,:,2)*CONJG(p_matrix_rel(:,:))),dp)
       hamiltonian_x2c(:,:)=hamiltonian_x2c(:,:)+alpha_hybrid*ham_hist(:,:,2)
     endif
 
@@ -904,7 +904,7 @@ subroutine scf_loop_x2c(basis,&
     ! Output the total energy and its components
     write(stdout,*)
     write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en_gks%nuc_nuc
-    write(stdout,'(a25,1x,f19.10)') 'Kin+Vext Energy (Ha):',en_gks%kin_nuc
+    write(stdout,'(a25,1x,f19.10)') 'Hcore Energy    (Ha):',en_gks%kin_nuc
     write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hartree
     if(calc_type%need_exchange) then
       write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en_gks%exx_hyb
@@ -1021,6 +1021,7 @@ subroutine scf_loop_x2c(basis,&
   !
   ! Cleanly deallocate the arrays
   !
+  deallocate(occ_matrix_rel)
   call clean_deallocate('Overlap INV_X * INV_X**H = S real',inv_x_matrix)
   call clean_deallocate('Density matrix P real',p_matrix_real)
   call clean_deallocate('Density matrix P',p_matrix_rel)
@@ -1031,7 +1032,7 @@ subroutine scf_loop_x2c(basis,&
   call clean_deallocate('Total Hamiltonian H',hamiltonian_x2c)
   call clean_deallocate('Hamiltonian history',ham_hist)
   call clean_deallocate('State energies',energy_vec)
-  if(calc_type%need_exchange) then
+  if(calc_type%need_exchange .or. calc_type%need_exchange_lr) then
     call clean_deallocate('Hxc operator VHxc2',hamiltonian_Vhxc2)
   endif
 

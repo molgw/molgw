@@ -390,34 +390,37 @@ program molgw
     write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
     write(stdout,*)
 
-!! TODO make ERImol transf. reproduce the previous values
+!! TODO Use this changes to MO basis in postscf calculations (e.g. MP2, NOFT, GW, etc)
 if(.false.) then
      block
      integer  :: nocc
      real(dp) :: Hcore_E,Vee_H,Vee_x
-     complex(dp)::Val
+     complex(dp),allocatable :: Hcore_mat(:,:)
      complex(dp),allocatable :: ERImol_rel(:,:,:,:)
-     nocc=nint(sum(occupation(:,1)))
-     allocate(ERImol_rel(nstate,nstate,nstate,nstate))
-     hamiltonian_kin_nuc_rel=matmul(conjg(transpose(c_matrix_rel)),matmul(hamiltonian_kin_nuc_rel,c_matrix_rel))
-     call calculate_eri_x2c(c_matrix_rel,ERImol_rel,nstate,nocc)
      Hcore_E=0.0_dp; Vee_H=0.0_dp; Vee_x=0.0_dp;
+     nocc=nint(sum(occupation(:,1)))
+     allocate(Hcore_mat(nstate,nstate))
+     allocate(ERImol_rel(nstate,nstate,nstate,nstate))
+     ! C^T h^AO C  = h^MO
+     Hcore_mat=matmul(conjg(transpose(c_matrix_rel)),matmul(hamiltonian_kin_nuc_rel,c_matrix_rel))
+     call calculate_eri_x2c(c_matrix_rel,ERImol_rel,nstate,nocc)
      do istate=1,nocc
-      Hcore_E=Hcore_E+real(hamiltonian_kin_nuc_rel(istate,istate))
+      Hcore_E=Hcore_E+real(Hcore_mat(istate,istate),dp)
       do jstate=1,nocc
-       Vee_H=Vee_H+real(ERImol_rel(istate,jstate,istate,jstate))
-       Vee_x=Vee_x-real(ERImol_rel(istate,jstate,jstate,istate))
+       Vee_H=Vee_H+real(ERImol_rel(istate,jstate,istate,jstate),dp)
+       Vee_x=Vee_x-real(ERImol_rel(istate,jstate,jstate,istate),dp)
       enddo
      enddo
      Vee_H=0.5_dp*Vee_H; Vee_x=0.5_dp*Vee_x;
      write(stdout,*)
+     write(stdout,'(a25,1x,i19)')    'N occupied states    :',nocc
      write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus  (Ha):',en_gks%nuc_nuc
-     write(stdout,'(a25,1x,f19.10)') 'Kin+Vext  Energy (Ha):',Hcore_E
+     write(stdout,'(a25,1x,f19.10)') 'Hcore    Energy  (Ha):',Hcore_E
      write(stdout,'(a25,1x,f19.10)') 'Hartree  Energy  (Ha):',Vee_H
      write(stdout,'(a25,1x,f19.10)') 'Exchange Energy  (Ha):',Vee_x
      write(stdout,'(a25,1x,f19.10)') 'Total SD Energy  (Ha):',en_gks%nuc_nuc+Hcore_E+Vee_H+Vee_x
      write(stdout,*)
-     deallocate(ERImol_rel)
+     deallocate(Hcore_mat,ERImol_rel)
      endblock
 endif
 
