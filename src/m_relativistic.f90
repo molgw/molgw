@@ -24,7 +24,7 @@ module m_relativistic
   use m_hamiltonian_tools
   use m_libcint_tools
 
- public::relativistic_init
+ public::relativistic_init,check_CdaggerSC_I
 
  private::shuffle_real,shuffle_complex,H4c_me,MpSqL_me
 
@@ -923,6 +923,68 @@ subroutine shuffle_real(nbasis,is_large,matrix)
 
 end subroutine shuffle_real
 
+!
+! Check deviation from the identity of ( C^x2c )^dagger S C^x2c with the actual overlap matrix S
+! and overwrite S and X matrix if the MAE > 1e-6 to preserve orthonormality
 !==================================================================
+subroutine check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,s_matrix,x_matrix)
+
+  type(basis_set),intent(inout)  :: basis
+  real(dp),intent(in)            :: s_matrix(:,:),x_matrix(:,:)
+  complex(dp),intent(inout)      :: c_matrix_rel(:,:),s_matrix_rel(:,:),x_matrix_rel(:,:)
+  !====
+  integer                 :: istate,jstate,nstate
+  real(dp)                :: err_x2c_coef
+  complex(dp),allocatable :: tmp_matrix(:,:)
+  !====
+  
+  nstate=2*basis%nbf
+
+  write(stdout,'(/,a)') ' Checking (C^x2c)^dagger S C^x2c = I'
+  allocate(tmp_matrix(nstate,nstate))
+  tmp_matrix=COMPLEX_ZERO
+  do istate=1,nstate/2
+    do jstate=1,nstate/2
+       tmp_matrix(2*istate-1,2*jstate-1)=s_matrix(istate,jstate)
+       tmp_matrix(2*istate  ,2*jstate  )=s_matrix(istate,jstate)
+    enddo
+  enddo
+  tmp_matrix=matmul(transpose(conjg(c_matrix_rel)),matmul(tmp_matrix,c_matrix_rel))
+  err_x2c_coef=0.0_dp
+  do istate=1,nstate
+    do jstate=1,nstate
+       if(istate==jstate) then
+         if(abs(tmp_matrix(istate,jstate)-1.0_dp)>1e-6) then
+           err_x2c_coef=err_x2c_coef+abs(tmp_matrix(istate,jstate)-1.0_dp)
+         endif
+       else
+         if(abs(tmp_matrix(istate,jstate))>1e-6) then
+           err_x2c_coef=err_x2c_coef+abs(tmp_matrix(istate,jstate))
+         endif
+       endif
+    enddo
+  enddo
+  deallocate(tmp_matrix)
+  err_x2c_coef=err_x2c_coef/(nstate*nstate)
+  write(stdout,'(a,f10.6)') ' MAE in (C^x2c)^dagger S C^x2c = I',err_x2c_coef
+  if(err_x2c_coef>1e-6) then
+    ! We prefer to enforce orthonormality for the C^x2c states
+    write(stdout,'(a)') ' The MAE > 1e-6, overwriting S and X matrices before doing the SCF procedure'
+    s_matrix_rel=COMPLEX_ZERO
+    x_matrix_rel=COMPLEX_ZERO
+    do istate=1,nstate/2
+      do jstate=1,nstate/2
+         s_matrix_rel(2*istate-1,2*jstate-1)=s_matrix(istate,jstate)
+         s_matrix_rel(2*istate  ,2*jstate  )=s_matrix(istate,jstate)
+         x_matrix_rel(2*istate-1,2*jstate-1)=x_matrix(istate,jstate)
+         x_matrix_rel(2*istate  ,2*jstate  )=x_matrix(istate,jstate)
+      enddo
+    enddo
+  endif
+  
+
+end subroutine check_CdaggerSC_I
+!==================================================================
+
 end module m_relativistic
 !==================================================================

@@ -80,9 +80,7 @@ program molgw
   logical                 :: is_x2c
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
-  real(dp)                :: erpa_tmp,egw_tmp,eext,err_x2c_coef
-  real(dp),allocatable    :: E_vec(:)
-  real(dp),allocatable    :: vhxc_ao(:,:)
+  real(dp)                :: erpa_tmp,egw_tmp,eext
   real(dp),allocatable    :: hamiltonian_kinetic(:,:)
   real(dp),allocatable    :: hamiltonian_nucleus(:,:)
   real(dp),allocatable    :: hamiltonian_fock(:,:,:)
@@ -93,13 +91,11 @@ program molgw
   real(dp),allocatable    :: energy(:,:)
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
-  complex(dp),allocatable :: tmp_matrix(:,:)
   complex(dp),allocatable :: c_matrix_cmplx(:,:,:)
   complex(dp),allocatable :: s_matrix_rel(:,:)
   complex(dp),allocatable :: x_matrix_rel(:,:)
   complex(dp),allocatable :: c_matrix_rel(:,:)
   complex(dp),allocatable :: hamiltonian_kin_nuc_rel(:,:)
-  complex(dp),allocatable :: hamiltonian_x2c_guess(:,:)
   character(len=100)      :: basis_name_1
   character(len=200)      :: file_name
   character(len=100),allocatable :: basis_name_nrel(:)
@@ -295,72 +291,25 @@ program molgw
     ! ERI integrals have been computed and stored
     !
 
-    ! init_hamiltonian ( = CORE is alredy in c_matrix_rel )
-    if(TRIM(init_hamiltonian)=='GUESS') then
-      allocate(vhxc_ao(basis%nbf,basis%nbf),hamiltonian_x2c_guess(nstate,nstate),E_vec(nstate))
-      hamiltonian_x2c_guess=COMPLEX_ZERO
-      call dft_approximate_vhxc(basis,vhxc_ao)
-      do istate=1,nstate/2
-        do jstate=1,nstate/2
-           hamiltonian_x2c_guess(2*istate-1,2*jstate-1)=vhxc_ao(istate,jstate) 
-           hamiltonian_x2c_guess(2*istate  ,2*jstate  )=vhxc_ao(istate,jstate) 
-        enddo
-      enddo
-      hamiltonian_x2c_guess=hamiltonian_x2c_guess+hamiltonian_kin_nuc_rel
-      hamiltonian_x2c_guess=MATMUL(TRANSPOSE(CONJG(x_matrix_rel)),MATMUL(hamiltonian_x2c_guess,x_matrix_rel))
-      call diagonalize(' ',hamiltonian_x2c_guess,E_vec,c_matrix_rel)
-      c_matrix_rel=MATMUL(x_matrix_rel,c_matrix_rel)
-      deallocate(vhxc_ao,hamiltonian_x2c_guess,E_vec)
-    endif
+    !
+    ! Init. guess for c_matrix_rel
+    !
+    call init_c_matrix_x2c(basis,c_matrix_rel,x_matrix_rel,hamiltonian_kin_nuc_rel)
 
     !
-    ! Check deviation from the identity of ( C^x2c)^dagger S C^x2c with the actual overlap matrix S
-    ! and overwrite S and X matrix if the MAE > 1e-6 to preserve orthonormality
-    write(stdout,'(/,a)') ' Checking (C^x2c)^dagger S C^x2c = I'
+    ! Calculate overlap matrix S
+    !
     call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
     call setup_overlap(basis,s_matrix)
+    !
+    ! Calculate the square root inverse of the overlap matrix S
+    !
     call setup_x_matrix(min_overlap,s_matrix,istate,x_matrix)
-    allocate(tmp_matrix(nstate,nstate))
-    tmp_matrix=COMPLEX_ZERO
-    do istate=1,nstate/2
-      do jstate=1,nstate/2
-         tmp_matrix(2*istate-1,2*jstate-1)=s_matrix(istate,jstate) 
-         tmp_matrix(2*istate  ,2*jstate  )=s_matrix(istate,jstate) 
-      enddo
-    enddo
-    tmp_matrix=matmul(transpose(conjg(c_matrix_rel)),matmul(tmp_matrix,c_matrix_rel))
-    err_x2c_coef=0.0_dp
-    do istate=1,nstate
-      do jstate=1,nstate
-         if(istate==jstate) then
-           if(abs(tmp_matrix(istate,jstate)-1.0_dp)>1e-6) then
-             err_x2c_coef=err_x2c_coef+abs(tmp_matrix(istate,jstate)-1.0_dp)
-           endif
-         else
-           if(abs(tmp_matrix(istate,jstate))>1e-6) then
-             err_x2c_coef=err_x2c_coef+abs(tmp_matrix(istate,jstate))
-           endif
-         endif
-      enddo
-    enddo
-    deallocate(tmp_matrix)
-    err_x2c_coef=err_x2c_coef/(nstate*nstate)
-    write(stdout,'(a,f10.6)') ' MAE in (C^x2c)^dagger S C^x2c = I',err_x2c_coef
-    if(err_x2c_coef>1e-6) then
-      ! We prefer to enforce orthonormality for the C^x2c states
-      write(stdout,'(a)') ' The MAE > 1e-6, overwriting S and X matrices before doing the SCF procedure'
-      s_matrix_rel=COMPLEX_ZERO
-      x_matrix_rel=COMPLEX_ZERO
-      do istate=1,nstate/2
-        do jstate=1,nstate/2
-           s_matrix_rel(2*istate-1,2*jstate-1)=s_matrix(istate,jstate) 
-           s_matrix_rel(2*istate  ,2*jstate  )=s_matrix(istate,jstate) 
-           x_matrix_rel(2*istate-1,2*jstate-1)=x_matrix(istate,jstate) 
-           x_matrix_rel(2*istate  ,2*jstate  )=x_matrix(istate,jstate) 
-        enddo
-      enddo
-    endif
-
+    !
+    ! Checking (C^x2c)^dagger S C^x2c =? I and overwrite s_matrix_rel and x_matrix_rel if
+    ! the deviation from I is too large
+    !
+    call check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,s_matrix,x_matrix)
 
     call stop_clock(timing_prescf)
  

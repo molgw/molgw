@@ -2132,6 +2132,42 @@ subroutine init_c_matrix_cmplx(c_matrix,c_matrix_cmplx)
 
 end subroutine init_c_matrix_cmplx
 
+!=========================================================================
+subroutine init_c_matrix_x2c(basis,c_matrix_rel,x_matrix_rel,hamiltonian_kin_nuc_rel)
+  implicit none
+
+  type(basis_set),intent(in) :: basis
+  complex(dp),intent(in)     :: hamiltonian_kin_nuc_rel(:,:)
+  complex(dp),intent(inout)  :: c_matrix_rel(:,:),x_matrix_rel(:,:)
+  !=====
+  integer                 :: istate,jstate,nstate
+  real(dp),allocatable    :: E_vec(:)
+  real(dp),allocatable    :: vhxc_ao(:,:)
+  complex(dp),allocatable :: hamiltonian_x2c_guess(:,:)
+  !=====
+ 
+  nstate=2*basis%nbf
+
+  ! init_hamiltonian ( = CORE is alredy in c_matrix_rel )
+  if(TRIM(init_hamiltonian)=='GUESS') then
+    allocate(vhxc_ao(basis%nbf,basis%nbf),hamiltonian_x2c_guess(nstate,nstate),E_vec(nstate))
+    hamiltonian_x2c_guess=COMPLEX_ZERO
+    call dft_approximate_vhxc(basis,vhxc_ao)
+    do istate=1,nstate/2
+      do jstate=1,nstate/2
+         hamiltonian_x2c_guess(2*istate-1,2*jstate-1)=vhxc_ao(istate,jstate)
+         hamiltonian_x2c_guess(2*istate  ,2*jstate  )=vhxc_ao(istate,jstate)
+      enddo
+    enddo
+    hamiltonian_x2c_guess=hamiltonian_x2c_guess+hamiltonian_kin_nuc_rel
+    hamiltonian_x2c_guess=MATMUL(TRANSPOSE(CONJG(x_matrix_rel)),MATMUL(hamiltonian_x2c_guess,x_matrix_rel))
+    call diagonalize(' ',hamiltonian_x2c_guess,E_vec,c_matrix_rel)
+    c_matrix_rel=MATMUL(x_matrix_rel,c_matrix_rel)
+    deallocate(vhxc_ao,hamiltonian_x2c_guess,E_vec)
+  endif
+
+end subroutine init_c_matrix_x2c
+
 
 end module m_hamiltonian_twobodies
 !=========================================================================
