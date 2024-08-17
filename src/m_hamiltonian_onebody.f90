@@ -1715,7 +1715,7 @@ subroutine setup_nabla_ao(basis,nabla_ao)
   integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
   integer              :: li,lj,ni_cart,nj_cart,i_cart,j_cart
   integer              :: idir
-  real(dp),allocatable :: dipole_cart(:,:,:)
+  real(dp),allocatable :: nabla_cart(:,:,:)
 #if defined(HAVE_LIBCINT)
   integer(C_INT) :: info
   integer(C_INT) :: shls(2)
