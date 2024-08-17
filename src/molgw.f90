@@ -342,7 +342,7 @@ program molgw
 !! TODO Use this changes to MO basis in postscf calculations (e.g. MP2, NOFT, GW, etc)
 if(.false.) then
      block
-     integer  :: nocc
+     integer  :: istate,jstate,kstate,lstate,nocc
      real(dp) :: Hcore_E,Vee_H,Vee_x
      complex(dp),allocatable :: Hcore_mat(:,:)
      complex(dp),allocatable :: ERImol_rel(:,:,:,:)
@@ -350,9 +350,21 @@ if(.false.) then
      nocc=nint(sum(occupation(:,1)))
      allocate(Hcore_mat(nstate,nstate))
      allocate(ERImol_rel(nstate,nstate,nstate,nstate))
+     ERImol_rel=COMPLEX_ZERO
      ! C^T h^AO C  = h^MO
      Hcore_mat=matmul(conjg(transpose(c_matrix_rel)),matmul(hamiltonian_kin_nuc_rel,c_matrix_rel))
-     call calculate_eri_x2c(c_matrix_rel,ERImol_rel,nstate,nocc)
+     !call calculate_eri_x2c(c_matrix_rel,nstate)                                                          ! all states
+     call calculate_eri_x2c(c_matrix_rel,nstate,nstate_min=1,nstate_max=nocc,mstate_min=1,mstate_max=nocc) ! only occ states
+     do istate=1,nocc
+       do jstate=1,nocc
+         do kstate=1,nocc
+           do lstate=1,nocc
+             ERImol_rel(istate,jstate,kstate,lstate)=eri_eigen_ri_x2c(istate,kstate,jstate,lstate)
+           enddo
+         enddo
+       enddo
+     enddo
+     call destroy_eri_3center_eigen_x2c()
      do istate=1,nocc
       Hcore_E=Hcore_E+real(Hcore_mat(istate,istate),dp)
       do jstate=1,nocc
