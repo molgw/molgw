@@ -269,7 +269,7 @@ subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
   real(dp)                   :: fact,energy_denom
   complex(dp)                :: tmp_iajb,tmp_ibja
   complex(dp)                :: contrib1
-  integer                    :: ncore
+  integer                    :: ncore,nstate_mp2
   real(dp),allocatable       :: energy_vec(:)
   !=====
 
@@ -295,8 +295,8 @@ subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
   endif
   ncore = 2*ncore
 
-  emp2 = 0.0_dp
-  contrib1 = ( 0.0_dp, 0.0_dp )
+  nstate_mp2 = MIN( 2*nvirtualg-1, nstate )
+
   allocate(energy_vec(nstate))
 
   do istate=1,nstate/2
@@ -304,15 +304,18 @@ subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
     energy_vec(2*istate  )=energy(istate,2)
   enddo
 
+  emp2 = 0.0_dp
+  contrib1 = ( 0.0_dp, 0.0_dp )
+
   do istate=ncore+1,nocc
         
     write(stdout,'(2x,i4,a,i4)') istate-ncore,' / ',nocc-ncore
 
     do jstate=ncore+1,nocc
 
-      do astate=nocc+1,nstate
+      do astate=nocc+1,nstate_mp2
 
-        do bstate=nocc+1,nstate
+        do bstate=nocc+1,nstate_mp2
 
            energy_denom = energy_vec(istate) + energy_vec(jstate) &
                         - energy_vec(astate) - energy_vec(bstate)
