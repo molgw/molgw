@@ -274,6 +274,17 @@ Exchange Energy           ,  -0.7085794276      , 0 , 1.0e-5
 XC Energy                 ,  -1.4272998754      , 0 , 1.0e-5
 SCF Total Energy          ,  -5.7806274790      , 0 , 1.0e-5
 
+he2_x2c_rsx_qidh.in       , RSX-QIDH He2 atom cc-pVDZ relativistic X2C
+Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
+gKS HOMO energy           , -22.175749          , 0 , 1.0e-4
+gKS HOMO energy           , -22.175749          , 1 , 1.0e-4
+gKS LUMO energy           ,  34.283472          , 0 , 1.0e-4
+gKS LUMO energy           ,  34.283472          , 1 , 1.0e-4
+Exchange Energy           ,  -1.6047128570      , 0 , 1.0e-5
+XC Energy                 ,  -0.4829471903      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7317050180      , 0 , 1.0e-5
+MP2 Total Energy          ,  -5.7498444315      , 0 , 1.0e-5
+
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
 Exc. 0001                 ,   32.27823228      , 0 , 1.0e-4

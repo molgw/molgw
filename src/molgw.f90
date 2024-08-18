@@ -72,7 +72,7 @@ program molgw
   type(lbfgs_state)          :: lbfgs_plan
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
-  integer                 :: nstate
+  integer                 :: nstate,nocc
   integer                 :: istate,jstate
   integer                 :: istep,istring
   logical                 :: found_basis_name
@@ -330,10 +330,10 @@ program molgw
                       occupation,energy,             &
                       c_matrix_rel,c_matrix,en_gks,scf_has_converged)
 
+    nocc=nint(SUM(occupation(:,1)))
     write(stdout,'(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
-    !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the scalar dens. mat.,
-    !     the occupation numbers (i.e. occupations(:,1)) are \in [0,2], and orb. energy = 0.0
-    energy(:,:) = 0.0_dp
+    !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the scalar dens. mat.
+    !     and the occupation numbers (i.e. occupations(:,1)) are \in [0,2].
     write(stdout,'(/,1x,a)')  'Natural occupations: '
     write(stdout,'(8(2x,f14.6))') occupation(:,1)
     write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
@@ -342,12 +342,11 @@ program molgw
 !! NOTE: Use this as template to change integrals to the MO basis. This is gonna be used in postscf calculations (e.g. MP2, NOFT, GW, etc).
 if(.false.) then
   block
-  integer  :: istate,jstate,kstate,lstate,nocc
+  integer  :: istate,jstate,kstate,lstate
   real(dp) :: Hcore_E,Vee_H,Vee_x
   complex(dp),allocatable :: Hcore_mat(:,:)
   complex(dp),allocatable :: ERImol_rel(:,:,:,:)
   Hcore_E=0.0_dp; Vee_H=0.0_dp; Vee_x=0.0_dp;
-  nocc=nint(sum(occupation(:,1)))
   allocate(Hcore_mat(nstate,nstate))
   ! C^T h^AO C  = h^MO
   Hcore_mat=matmul(conjg(transpose(c_matrix_rel)),matmul(hamiltonian_kin_nuc_rel,c_matrix_rel))
@@ -385,12 +384,6 @@ if(.false.) then
   endblock
 endif
 
-    call clean_deallocate('Overlap matrix S',s_matrix)
-    call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
-    call clean_deallocate('Full RKB wavefunctions C',c_matrix_rel)
-    call clean_deallocate('Full RKB X matrix',x_matrix_rel)
-    call clean_deallocate('Full RKB S matrix',s_matrix_rel)
-    call clean_deallocate('H_rel in RKB',hamiltonian_kin_nuc_rel)
 
   else ! Non-relativistic
  
@@ -639,12 +632,10 @@ endif
                               hamiltonian_kinetic,hamiltonian_nucleus,          &
                               occupation,energy,                                &
                               c_matrix,c_matrix_cmplx,en_gks,scf_has_converged)
-          call clean_deallocate('Wavefunctions C_cmplx',c_matrix_cmplx)
      
           write(stdout,'(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
-          !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.,
-          !     the occupation numbers (i.e. occupations(:,1)) are \in [0,2], and orb. energy = 0.0
-          energy(:,:) = 0.0_dp
+          !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.
+          !     and the occupation numbers (i.e. occupations(:,1)) are \in [0,2].
           write(stdout,'(/,1x,a)')  'Natural occupations: '
           write(stdout,'(8(2x,f14.6))') occupation(:,1)
           write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
@@ -734,7 +725,7 @@ endif
   endif
 #endif
 
-  if ( .not. is_x2c ) then
+  if ( (.not. is_x2c) .and. (complex_scf=='no') ) then
     !
     ! Evaluate spin contamination
     call evaluate_s2_operator(occupation,c_matrix,s_matrix)
@@ -819,7 +810,10 @@ endif
   call clean_deallocate('Overlap matrix S',s_matrix)
   call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
   call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
+  call clean_deallocate('H_rel in RKB',hamiltonian_kin_nuc_rel)
   call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
+  call clean_deallocate('Full RKB S matrix',s_matrix_rel)
+  call clean_deallocate('Full RKB X matrix',x_matrix_rel)
 
   !
   ! Prepare the diagonal of the matrix Sigma_x - Vxc
@@ -919,18 +913,55 @@ endif
   !
   if( calc_type%is_mp2 ) then
 
-    if(has_auxil_basis) then
-      call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en_gks%mp2)
-    else
-      call mp2_energy(nstate,basis,occupation,c_matrix,energy,en_gks%mp2)
-    endif
+    call set_occupation(0.0_dp,electrons,magnetization,energy,occupation)
 
-    write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
-    write(stdout,*)
-    en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx + en_gks%mp2
+    if( .not. is_x2c ) then ! non-relativistic
 
-    if(kappa_hybrid/=zero) then
-      en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
+      if( complex_scf=='no' ) then ! real
+  
+        if(has_auxil_basis) then
+          call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en_gks%mp2)
+        else
+          call mp2_energy(nstate,basis,occupation,c_matrix,energy,en_gks%mp2)
+        endif
+
+      else                         ! complex
+
+        if(has_auxil_basis) then
+          call mp2_energy_ri_cmplx(nstate,basis,occupation,energy,c_matrix_cmplx,en_gks%mp2)
+        else
+          call issue_warning('MP2 with complex orbitals is available only with RI')
+          en_gks%mp2=0.0_dp
+        endif
+
+      endif
+
+      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
+      write(stdout,*)
+      en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx + en_gks%mp2
+      
+      if(kappa_hybrid/=zero) then
+        en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
+      endif
+
+    else                    ! relativistic
+    
+      if(has_auxil_basis) then
+        call mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,en_gks%mp2,en_gks%exx)
+      else
+        call issue_warning('X2C MP2 is available only with RI')
+        en_gks%exx=0.0_dp
+        en_gks%mp2=0.0_dp
+      endif
+    
+      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
+      write(stdout,*)
+      en_gks%total = en_gks%nuc_nuc + en_gks%kin_nuc + en_gks%hartree + en_gks%exx + en_gks%mp2
+
+      if(kappa_hybrid/=zero) then
+        en_gks%total = en_gks%nuc_nuc + en_gks%kin_nuc + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
+      endif
+
     endif
 
     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en_gks%total
@@ -981,6 +1012,8 @@ endif
   !
   ! Cleanly exiting the code
   !
+  call clean_deallocate('Full RKB wavefunctions C',c_matrix_rel)
+  call clean_deallocate('Wavefunctions C_cmplx',c_matrix_cmplx)
   call clean_deallocate('Wavefunctions C',c_matrix)
   deallocate(energy,occupation)
 

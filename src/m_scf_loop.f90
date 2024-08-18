@@ -544,7 +544,7 @@ subroutine scf_loop_cmplx(is_restart,&
     write(stdout,'(a25,1x,f19.10)') 'Kinetic Energy  (Ha):',en_gks%kinetic
     write(stdout,'(a25,1x,f19.10)') 'Nucleus Energy  (Ha):',en_gks%nucleus
     write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hartree
-    if(calc_type%need_exchange) then
+    if(calc_type%need_exchange .or. calc_type%need_exchange_lr) then
       write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en_gks%exx_hyb
     endif
     if( calc_type%is_dft ) then
@@ -906,7 +906,7 @@ subroutine scf_loop_x2c(basis,&
     write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en_gks%nuc_nuc
     write(stdout,'(a25,1x,f19.10)') 'Hcore Energy    (Ha):',en_gks%kin_nuc
     write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en_gks%hartree
-    if(calc_type%need_exchange) then
+    if(calc_type%need_exchange .or. calc_type%need_exchange_lr) then
       write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en_gks%exx_hyb
     endif
     if(calc_type%is_dft) then

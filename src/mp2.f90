@@ -131,6 +131,227 @@ end subroutine mp2_energy_ri
 
 
 !=========================================================================
+subroutine mp2_energy_ri_cmplx(nstate,basis,occupation,energy,c_matrix_cmplx,emp2)
+  use m_definitions
+  use m_mpi
+  use m_cart_to_pure
+  use m_basis_set
+  use m_eri_ao_mo
+  use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore,kappa_hybrid
+  implicit none
+
+  integer,intent(in)           :: nstate
+  type(basis_set),intent(in)   :: basis
+  real(dp),intent(in)          :: occupation(nstate,nspin),energy(nstate,nspin)
+  complex(dp),intent(in)       :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+  real(dp),intent(out)         :: emp2
+  !====
+  integer                    :: astate,bstate,istate,jstate
+  integer                    :: iaspin,jbspin
+  real(dp)                   :: energy_denom
+  real(dp)                   :: fact
+  complex(dp)                :: tmp_iajb,tmp_ibja
+  complex(dp)                :: contrib1,contrib2
+  integer                    :: nocc(nspin)
+  integer                    :: ncore,nstate_mp2
+  !=====
+
+  call start_clock(timing_mp2_energy)
+
+  write(stdout,'(/,a)') ' RI-MP2 correlation calculation'
+
+  ncore = ncoreg
+  if(is_frozencore) then
+    if( ncore == 0) ncore = atoms_core_states()
+  endif
+
+  call calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,ncore+1,nstate,ncore+1,nstate)
+
+  nstate_mp2 = MIN( nvirtualg-1, nstate )
+
+  emp2 = 0.0_dp
+  contrib1 = ( 0.0_dp, 0.0_dp )
+  contrib2 = ( 0.0_dp, 0.0_dp )
+
+  do iaspin=1,nspin
+    !
+    ! First, set up the list of occupied states
+    nocc(iaspin) = ncore
+    do istate=ncore+1,nstate
+      if( occupation(istate,iaspin) < completely_empty ) cycle
+      nocc(iaspin) = istate
+    enddo
+  enddo
+
+  do iaspin=1,nspin
+
+    do istate=ncore+1,nocc(iaspin)
+
+
+      write(stdout,'(i4,2x,i4,a,i4)') iaspin,istate-ncore,' / ',nocc(iaspin)-ncore
+
+      do jbspin=1,nspin
+
+        do jstate=ncore+1,nocc(jbspin)
+
+          do astate=ncore+1,nstate_mp2
+            if( occupation(astate,iaspin) > spin_fact - completely_empty ) cycle
+
+            do bstate=ncore+1,nstate_mp2
+              if( occupation(bstate,jbspin) > spin_fact - completely_empty ) cycle
+
+              fact =  occupation(istate,iaspin) * ( spin_fact - occupation(astate,iaspin) ) &
+                    *occupation(jstate,jbspin) * ( spin_fact - occupation(bstate,jbspin) ) / spin_fact**2
+
+              energy_denom = energy(istate,iaspin) + energy(jstate,jbspin) &
+                                     - energy(astate,iaspin) - energy(bstate,jbspin)
+              ! Avoid the zero denominators
+              if( ABS(energy_denom) < 1.d-18) then
+                write(stdout,*) 'you skipped something'
+                cycle
+              endif
+
+              energy_denom =  fact / energy_denom
+
+              tmp_iajb = eri_eigen_ri_cmplx(istate,astate,iaspin,jstate,bstate,jbspin)
+
+              contrib1 = contrib1 + 0.5_dp * energy_denom * conjg(tmp_iajb)*tmp_iajb
+
+              if(iaspin==jbspin) then
+                tmp_ibja = eri_eigen_ri_cmplx(istate,bstate,iaspin,jstate,astate,jbspin)
+                contrib2 = contrib2 - 0.5_dp * energy_denom * conjg(tmp_iajb)*tmp_ibja / spin_fact
+              endif
+
+            enddo
+          enddo
+        enddo
+      enddo !jbspin
+
+    enddo ! istate
+
+  enddo !iaspin
+
+  if(kappa_hybrid/=zero) then
+    write(stdout,'(/,a,f16.10)')       ' MP2 contributions will be scaled by :',kappa_hybrid
+    contrib1=kappa_hybrid*contrib1
+    contrib2=kappa_hybrid*contrib2
+  endif
+
+  emp2 = real(contrib1 + contrib2)
+  write(stdout,'(/,a)')       ' MP2 contributions'
+  write(stdout,'(a,f16.10)')   ' 2-ring diagram  :',real(contrib1)
+  write(stdout,'(a,f16.10)')   ' SOX diagram     :',real(contrib2)
+  write(stdout,'(a,f16.10,/)') ' MP2 correlation :',emp2
+
+  call destroy_eri_3center_eigen_cmplx()
+  call stop_clock(timing_mp2_energy)
+
+end subroutine mp2_energy_ri_cmplx
+
+
+!=========================================================================
+subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
+  use m_definitions
+  use m_mpi
+  use m_cart_to_pure
+  use m_basis_set
+  use m_eri_ao_mo
+  use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore,kappa_hybrid
+  implicit none
+
+  integer,intent(in)           :: nstate,nocc
+  type(basis_set),intent(in)   :: basis
+  real(dp),intent(in)          :: energy(basis%nbf,nspin)
+  complex(dp),intent(in)       :: c_matrix_rel(nstate,nstate)
+  real(dp),intent(out)         :: emp2,exx
+  !====
+  integer                    :: astate,bstate,istate,jstate
+  real(dp)                   :: fact,energy_denom
+  complex(dp)                :: tmp_iajb,tmp_ibja
+  complex(dp)                :: contrib1
+  integer                    :: ncore
+  real(dp),allocatable       :: energy_vec(:)
+  !=====
+
+  call start_clock(timing_mp2_energy)
+
+  call calculate_eri_x2c(c_matrix_rel,nstate)
+
+  exx = 0.0_dp
+  do istate=1,nocc
+    do jstate=1,nocc
+      exx=exx-real(eri_eigen_ri_x2c(istate,jstate,jstate,istate),dp)
+    enddo
+  enddo
+  exx = 0.5_dp*exx
+
+
+  write(stdout,'(/,a)') ' X2C RI-MP2 correlation calculation'
+
+  ncore = ncoreg
+  if(is_frozencore) then
+    if( ncore == 0) ncore = atoms_core_states()
+  endif
+  ncore = 2*ncore
+
+  emp2 = 0.0_dp
+  contrib1 = ( 0.0_dp, 0.0_dp )
+  allocate(energy_vec(nstate))
+
+  do istate=1,nstate/2
+    energy_vec(2*istate-1)=energy(istate,1)
+    energy_vec(2*istate  )=energy(istate,2)
+  enddo
+
+  do istate=ncore+1,nocc
+        
+    write(stdout,'(2x,i4,a,i4)') istate-ncore,' / ',nocc-ncore
+
+    do jstate=ncore+1,nocc
+
+      do astate=nocc+1,nstate
+
+        do bstate=nocc+1,nstate
+
+           energy_denom = energy_vec(istate) + energy_vec(jstate) &
+                        - energy_vec(astate) - energy_vec(bstate)
+           ! Avoid the zero denominators
+           if( ABS(energy_denom) < 1.d-18) then
+             write(stdout,*) 'you skipped something'
+             cycle
+           endif
+
+           tmp_iajb = eri_eigen_ri_x2c(istate,astate,jstate,bstate)
+           tmp_ibja = eri_eigen_ri_x2c(istate,bstate,jstate,astate)
+      
+           contrib1 = contrib1 + conjg(tmp_iajb-tmp_ibja)*(tmp_iajb-tmp_ibja)/energy_denom
+
+        enddo
+
+      enddo
+
+    enddo
+
+  enddo
+
+  if(kappa_hybrid/=zero) then
+    write(stdout,'(/,a,f16.10)')       ' MP2 contributions will be scaled by :',kappa_hybrid
+    contrib1=kappa_hybrid*contrib1
+  endif
+
+  emp2 = 0.25_dp*real(contrib1)
+
+  write(stdout,'(/,a)')       ' MP2 contributions'
+  write(stdout,'(a,f16.10,/)') ' MP2 correlation :',emp2
+
+  deallocate(energy_vec)
+  call destroy_eri_3center_eigen_x2c()
+  call stop_clock(timing_mp2_energy)
+
+end subroutine mp2_energy_ri_x2c
+
+
+!=========================================================================
 subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
   use m_definitions
   use m_mpi
