@@ -970,7 +970,7 @@ subroutine scf_loop_x2c(basis,&
   ! Store the natural orbital basis representation of the density matrix in c_matrix
   ! and the occupation numbers in occupation(:,1) \in [0:2]
   call clean_allocate('Density matrix P real',p_matrix_real,basis%nbf,basis%nbf)
-  p_matrix_real=0.0_dp; occupation=0.0_dp; c_matrix=0.0_dp; energy=0.0_dp;
+  p_matrix_real=0.0_dp; occupation=0.0_dp; c_matrix=0.0_dp;
   !do istate=1,nstate/2
   !  do jstate=1,nstate/2
   !     p_matrix_real(istate,jstate)=real(p_matrix_rel(2*istate-1,2*jstate-1)+p_matrix_rel(2*istate,2*jstate))
