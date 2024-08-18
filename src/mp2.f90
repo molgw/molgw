@@ -275,11 +275,12 @@ subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
 
   call start_clock(timing_mp2_energy)
 
+  !call calculate_eri_x2c(c_matrix_rel,nstate,nstate_min=1,nstate_max=nocc,mstate_min=1,mstate_max=nocc) ! only occ states for exx
   call calculate_eri_x2c(c_matrix_rel,nstate)
 
   exx = 0.0_dp
   do istate=1,nocc
-    do jstate=1,nocc
+    do jstate=1,nocc ! Recall         r      r      r'     r'
       exx=exx-real(eri_eigen_ri_x2c(istate,jstate,jstate,istate),dp)
     enddo
   enddo
@@ -341,8 +342,7 @@ subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
 
   emp2 = 0.25_dp*real(contrib1)
 
-  write(stdout,'(/,a)')       ' MP2 contributions'
-  write(stdout,'(a,f16.10,/)') ' MP2 correlation :',emp2
+  write(stdout,'(/,a,f16.10,/)') ' MP2 correlation :',emp2
 
   deallocate(energy_vec)
   call destroy_eri_3center_eigen_x2c()
