@@ -266,7 +266,7 @@ subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
   real(dp),intent(out)         :: emp2,exx
   !====
   integer                    :: astate,bstate,istate,jstate
-  real(dp)                   :: fact,energy_denom
+  real(dp)                   :: energy_denom
   complex(dp)                :: tmp_iajb,tmp_ibja
   complex(dp)                :: contrib1
   integer                    :: ncore,nstate_mp2
