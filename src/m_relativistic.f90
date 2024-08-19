@@ -188,6 +188,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
  
   !! Define atomic basis as large or small
   allocate(is_large(basis%nbf))
+  ntyp=0
   nbasis=0
   is_large=.false.
   do ishell=1,nshell

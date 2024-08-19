@@ -73,7 +73,7 @@ program molgw
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
   integer                 :: nstate,nocc
-  integer                 :: istate,jstate
+  integer                 :: nstate_tmp
   integer                 :: istep,istring
   logical                 :: found_basis_name
   logical                 :: is_restart,is_big_restart,is_basis_restart
@@ -304,7 +304,7 @@ program molgw
     !
     ! Calculate the square root inverse of the overlap matrix S
     !
-    call setup_x_matrix(min_overlap,s_matrix,istate,x_matrix)
+    call setup_x_matrix(min_overlap,s_matrix,nstate_tmp,x_matrix)
     !
     ! Checking (C^x2c)^dagger S C^x2c =? I and overwrite s_matrix_rel and x_matrix_rel if
     ! the deviation from I is too large

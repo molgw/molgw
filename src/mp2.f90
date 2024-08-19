@@ -371,11 +371,8 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
   real(dp),intent(out)       :: emp3
   !====
   integer                    :: astate,bstate,cstate,dstate,istate,jstate,kstate,lstate
-  integer                    :: iaspin,jbspin,kcspin
-  integer                    :: cspin,dspin,kspin,lspin
-  real(dp)                   :: energy_denom
+  integer                    :: iaspin,jbspin
   real(dp)                   :: contrib1,contrib2,contrib3
-  real(dp)                   :: denom1,denom2,numer1,numer2
   integer                    :: nocc(nspin)
   integer                    :: ncore,nstate_mp3
   real(dp)                   :: t_ijab_tilde,x_ijab,t_ijcd,t_klab,t_kjac,t_kiac,t_ikac

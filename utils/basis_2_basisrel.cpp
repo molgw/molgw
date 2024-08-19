@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     else
     {
      newprim=true;
-     for(jbasis=0;jbasis<basis_l.size();jbasis++)
+     for(jbasis=0;jbasis<(int)basis_l.size();jbasis++)
      {
       if(basis_l[jbasis].l==l && basis_l[jbasis].expon==expon)
       {
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
   }
   read_bas_file.close();
   coef=1.0e0;
-  for(ibasis=0;ibasis<basis_l.size();ibasis++)
+  for(ibasis=0;ibasis<(int)basis_l.size();ibasis++)
   {
    if(basis_l[ibasis].l==0)
    {
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     basis_s.push_back({lm1,basis_l[ibasis].expon,coef});
    }
   }
-  for(ibasis=0;ibasis<basis_s.size();ibasis++)
+  for(ibasis=0;ibasis<(int)basis_s.size();ibasis++)
   {
    if(ibasis==0) 
    {
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
    else
    {
     newprim=true;
-    for(jbasis=0;jbasis<basis_s_unique.size();jbasis++)
+    for(jbasis=0;jbasis<(int)basis_s_unique.size();jbasis++)
     {
      if(basis_s[ibasis].l==basis_s_unique[jbasis].l) 
      {
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
   write_bas_file<<prims.size()+basis_s_unique.size()<<endl;
   write_bas_file<<setprecision(10)<<fixed;
   ibasis=0;
-  for(iprim=0;iprim<prims.size();iprim++)
+  for(iprim=0;iprim<(int)prims.size();iprim++)
   {
    write_bas_file<<prims[iprim]<<setw(6)<<lls[iprim]<<endl;
    for(jprim=0;jprim<prims[iprim];jprim++)
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
   nprint=0;l=0;
   do
   {
-   for(ibasis=0;ibasis<basis_s_unique.size();ibasis++)
+   for(ibasis=0;ibasis<(int)basis_s_unique.size();ibasis++)
    {
     if(basis_s_unique[ibasis].l==l)
     {
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     }
    }
    l++;
-  }while(nprint!=basis_s_unique.size());
+  }while(nprint!=(int)basis_s_unique.size());
   write_bas_file.close();
  }
  return 0;

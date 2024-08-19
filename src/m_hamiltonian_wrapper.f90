@@ -408,7 +408,6 @@ subroutine calculate_hamiltonian_xc_x2c(basis,                  &
   type(energy_contributions),intent(inout) :: en_inout
   !=====
   integer                    :: nstate
-  integer                    :: ispin
   real(dp),allocatable       :: hamiltonian_spin_real(:,:,:)
   !=====
 

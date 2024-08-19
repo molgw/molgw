@@ -64,10 +64,6 @@ subroutine scf_loop(is_restart,&
   logical                 :: stopfile_found
   integer                 :: file_density_matrix
   integer                 :: ispin,iscf
-  integer                 :: ibf,idir
-  real(dp)                :: trace(3)
-  real(dp),allocatable    :: tmp_matrix(:,:)
-  real(dp),allocatable    :: nabla_ao(:,:,:)
   real(dp),allocatable    :: p_matrix(:,:,:)
   real(dp),allocatable    :: hamiltonian(:,:,:)
   real(dp),allocatable    :: hamiltonian_hartree(:,:)
@@ -1092,7 +1088,7 @@ subroutine print_hartee_expectation(basis,p_matrix,c_matrix,occupation,hamiltoni
   real(dp),intent(inout)     :: hamiltonian_exx(:,:,:)
   !=====
   integer                 :: restart_type
-  integer                 :: nstate,nocc,istate,ispin
+  integer                 :: nstate,nocc
   real(dp),allocatable    :: c_matrix_restart(:,:,:)
   real(dp),allocatable    :: h_ii(:,:)
   real(dp),allocatable    :: energy_restart(:,:),occupation_restart(:,:)

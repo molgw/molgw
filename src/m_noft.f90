@@ -56,7 +56,6 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   real(dp),allocatable      :: tmp_mat0(:,:),tmp_mat(:,:),Work(:)
   real(dp),allocatable      :: quad_ao(:,:,:,:)
   complex(dp),allocatable   :: NO_COEF_cmplx(:,:)
-  complex(dp),allocatable   :: tmp_mat_cmplx(:,:)
   character(len=200)        :: ofile_name
   !=====
 
