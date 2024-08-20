@@ -473,7 +473,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   write(stdout,'(a,i10)') ' RKB Nbasis ',nstate_rkb
   call clean_allocate('H_rel in RKB',H_rel_rkb_mat,nstate_rkb,nstate_rkb)
   call clean_allocate('UKB to RKB coefficients',c_matrix_ukb2rkb,nbasis_L+nbasis_S,nstate_rkb) ! ML+MS x 2ML
-   ! c_matrix_ukb2rk
+   ! c_matrix_ukb2rkb
    ! ( 1  0              )
    ! ( 0  c_matrix_small )
   c_matrix_ukb2rkb=complex_zero
