@@ -398,10 +398,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    call diagonalize(' ',s_matrix_small,W,U_mat)
    s_matrix_small=COMPLEX_ZERO
    do ibf=1,nbasis_S
-    if(abs(W(ibf))<1.0e-8) then
-     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in S_mall^-1',ibf,W(ibf)
+    if(abs(W(ibf))<min_overlap) then
+     write(stdout,'(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ',min_overlap,' in S_mall^-1',ibf,W(ibf)
+     W(ibf)=min_overlap
     endif
-    s_matrix_small(ibf,ibf)=1.0d0/(W(ibf)+1.0e-10)
+    s_matrix_small(ibf,ibf)=1.0d0/W(ibf)
    enddo
    s_matrix_small=matmul(matmul(U_mat,s_matrix_small),transpose(conjg(U_mat)))
    deallocate(W,U_mat)
@@ -418,10 +419,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
     call diagonalize(' ',s_matrix_small,W,U_mat)
     s_matrix_small=COMPLEX_ZERO
     do ibf=1,nbasis_S
-     if(abs(W(ibf))<1.0e-8) then
-      write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in S_mall^-1',ibf,W(ibf)
+     if(abs(W(ibf))<min_overlap) then
+      write(stdout,'(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ',min_overlap,' in S_mall^-1',ibf,W(ibf)
+      W(ibf)=min_overlap
      endif
-     s_matrix_small(ibf,ibf)=1.0d0/(W(ibf)+1.0e-10)
+     s_matrix_small(ibf,ibf)=1.0d0/W(ibf)
     enddo
     s_matrix_small=matmul(matmul(U_mat,s_matrix_small),transpose(conjg(U_mat)))
     deallocate(W,U_mat)
@@ -496,10 +498,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   call diagonalize(' ',x_matrix_small,W,U_mat)
   Tmp_matrix=complex_zero
   do ibf=1,nbasis_L
-   if(abs(W(ibf))<1.0e-8) then
-    write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in (RKB S_SS)^-1/2',ibf,W(ibf)
+   if(abs(W(ibf))<min_overlap) then
+    write(stdout,'(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ',min_overlap,' in (RKB S_SS)^-1/2',ibf,W(ibf)
+    W(ibf)=min_overlap
    endif
-   Tmp_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
+   Tmp_matrix(ibf,ibf)=1.0d0/sqrt(W(ibf)) 
   enddo
   x_matrix_small=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
   x_matrix(nbasis_L+1:,nbasis_L+1:)=x_matrix_small(:,:) ! NOTE: save in x_matrix
@@ -510,11 +513,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   do ibf=1,nbasis_L
    do jbf=1,nbasis_L
      if(ibf/=jbf) then
-      if(abs(x_matrix_small(ibf,jbf))>1d-8) then
+      if(abs(x_matrix_small(ibf,jbf))>min_overlap) then
        write(stdout,'(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ',ibf,jbf,x_matrix_small(ibf,jbf)
       endif
      else
-      if(abs(x_matrix_small(ibf,jbf)-1.0d0)>1d-8) then
+      if(abs(x_matrix_small(ibf,jbf)-1.0d0)>min_overlap) then
        write(stdout,'(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ',ibf,jbf,x_matrix_small(ibf,jbf)
       endif
      endif
@@ -562,7 +565,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   !!                              (  MOs(r) ) = ( AO^RKB (r) )*c_matrix
   !!                                          = ( AO^L+S (r) )*c_matrix_ukb2rkb*c_matrix
   !!       (  MOs(r) )_{1 x nbasis_L} is a row vector
-  !!       (  AO^L+S (R) )_{1 x nbasis_L+nbasis_S} is a row vector
+  !!       (  AO^L+S (r) )_{1 x nbasis_L+nbasis_S} is a row vector
   !!       c_matrix_ukb2rkb _{nbasis_L+nbasis_S x 2*nbasis_L}
   !!       c_matrix _{2*nbasis_L x  2*nbasis_L}
   !!       Notice that in SCF calcs. we would only occupy the lowest (+) energy states [i.e. starting with nbasis_L+1]
@@ -605,10 +608,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    call diagonalize(' ',A_mat,W,U_mat)
    R_mat=COMPLEX_ZERO
    do ibf=1,nbasis_L
-    if(abs(W(ibf))<1.0e-8) then
-     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in A^-1',ibf,W(ibf)
+    if(abs(W(ibf))<min_overlap) then
+     write(stdout,'(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ',min_overlap,' in A^-1',ibf,W(ibf)
+     W(ibf)=min_overlap
     endif
-    R_mat(ibf,ibf)=1.0d0/(W(ibf)+1.0e-10)
+    R_mat(ibf,ibf)=1.0d0/W(ibf)
    enddo
    A_mat=matmul(matmul(U_mat,R_mat),transpose(conjg(U_mat)))
    R_mat=matmul(A_mat,B_mat)
@@ -656,19 +660,21 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ',A_mat,W,U_mat)
    do ibf=1,nbasis_L
-    if(abs(W(ibf))<1.0e-8) then
-     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in 1/ sqrt[ I + R^dagger R ]',ibf,W(ibf)
+    if(abs(W(ibf))<min_overlap) then
+     write(stdout,'(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ',min_overlap,' in 1/ sqrt[ I + R^dagger R ]',ibf,W(ibf)
+     W(ibf)=min_overlap
     endif
-    Tmp_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
+    Tmp_matrix(ibf,ibf)=1.0d0/sqrt(W(ibf))
    enddo  
    A_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ',B_mat,W,U_mat)
    do ibf=1,nbasis_L
-    if(abs(W(ibf))<1.0e-8) then
-     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in 1/ sqrt[ I + R R^dagger ]',ibf,W(ibf)
+    if(abs(W(ibf))<min_overlap) then
+     write(stdout,'(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ',min_overlap,' in 1/ sqrt[ I + R R^dagger ]',ibf,W(ibf)
+     W(ibf)=min_overlap
     endif
-    Tmp_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
+    Tmp_matrix(ibf,ibf)=1.0d0/sqrt(W(ibf))
    enddo  
    B_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
    deallocate(W,U_mat,Tmp_matrix)
@@ -694,11 +700,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    do ibf=1,nbasis_rkb
     do jbf=1,nbasis_rkb
      if(ibf==jbf) then
-      if(abs(Tmp_matrix(ibf,jbf)-1.0d0)>1d-8) then
+      if(abs(Tmp_matrix(ibf,jbf)-1.0d0)>min_overlap) then
        write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,s_matrix(ibf,jbf)
       endif
      else
-      if(abs(Tmp_matrix(ibf,jbf))>1d-8) then
+      if(abs(Tmp_matrix(ibf,jbf))>min_overlap) then
        write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,s_matrix(ibf,jbf)
       endif
      endif
@@ -736,10 +742,11 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    call diagonalize(' ',x_matrix,W,V_mat)
    x_matrix=complex_zero
    do ibf=1,nbasis_L
-    if(abs(W(ibf))<1.0e-8) then
-     write(stdout,'(a,i5,f20.8)') ' Eigenvalue lower than 1e-8 in X matrix calc.',ibf,W(ibf)
+    if(abs(W(ibf))<min_overlap) then
+     write(stdout,'(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ',min_overlap,' in X matrix calc.',ibf,W(ibf)
+     W(ibf)=min_overlap
     endif
-    x_matrix(ibf,ibf)=1.0d0/(sqrt(W(ibf))+1.0e-10) 
+    x_matrix(ibf,ibf)=1.0d0/sqrt(W(ibf))
    enddo
    x_matrix=matmul(matmul(V_mat,x_matrix),transpose(conjg(V_mat)))
    deallocate(W,V_mat)
@@ -794,9 +801,9 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
 !!  do ibf=1,nbasis_L
 !!   do jbf=1,nbasis_L
 !!    if(ibf/=jbf) then
-!!     if(abs(tmp0(ibf,jbf))>1d-8) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
+!!     if(abs(tmp0(ibf,jbf))>min_overlap) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
 !!    else
-!!     if(abs(tmp0(ibf,jbf)-1.0d0)>1d-8) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
+!!     if(abs(tmp0(ibf,jbf)-1.0d0)>min_overlap) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
 !!    endif
 !!   enddo
 !!  enddo
