@@ -425,7 +425,7 @@ subroutine scf_loop_cmplx(is_restart,&
   integer                 :: ispin,iscf,jbf,istate
   real(dp)                :: rms
   real(dp),allocatable    :: s_eigval(:)
-  real(dp),allocatable    :: inv_x_matrix(:,:),matrix_tmp(:,:)
+  real(dp),allocatable    :: inv_x_matrix(:,:),matrix_tmp(:,:),matrix_tmp2(:,:)
   real(dp),allocatable    :: p_matrix_real(:,:)
   complex(dp),allocatable :: hsmall_cmplx(:,:), csmall_cmplx(:,:)
   complex(dp),allocatable :: hamiltonian_cmplx(:,:,:)
@@ -630,13 +630,13 @@ subroutine scf_loop_cmplx(is_restart,&
   enddo
   !  diag[ S^1/2 P S^1/2 ] -> V
   deallocate(matrix_tmp)
-  allocate(matrix_tmp(nstate,nstate))
-  matrix_tmp=0.0_dp
+  allocate(matrix_tmp(nstate,nstate),matrix_tmp2(nstate,nstate))
+  matrix_tmp=0.0_dp; matrix_tmp2=0.0_dp;
   matrix_tmp=MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real, inv_x_matrix))
-  call diagonalize(' ',matrix_tmp,occupation(:,1),c_matrix(:,:,1))
+  call diagonalize(' ',matrix_tmp,occupation(:,1),matrix_tmp2)
   !  C = S^-1/2 V
-  c_matrix(:,:,1) = MATMUL(x_matrix, c_matrix(:,:,1))
-  deallocate(matrix_tmp,s_eigval)
+  c_matrix(:,:,1) = MATMUL(x_matrix, matrix_tmp2)
+  deallocate(matrix_tmp,matrix_tmp2,s_eigval)
   if(nspin==2) then
    occupation(:,2)=0.0_dp
    c_matrix(:,:,2)=0.0_dp
@@ -1003,10 +1003,6 @@ subroutine scf_loop_x2c(basis,&
   !  C = S^-1/2 V
   c_matrix(:,:,1) = MATMUL(x_matrix_real, c_matrix(:,:,1))
   deallocate(matrix_tmp,s_eigval)
-  if(nspin==2) then
-   occupation(:,2)=0.0_dp
-   c_matrix(:,:,2)=0.0_dp
-  endif
 
   !
   ! Cleanly deallocate the integral grid information
