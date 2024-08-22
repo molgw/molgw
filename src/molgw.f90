@@ -339,9 +339,6 @@ program molgw
     write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
     write(stdout,*)
 
-!! NOTE: Use this as template to change integrals to the MO basis. This is gonna be used in postscf calculations (e.g. NOFT).
-!!  Hcore_mat=matmul(conjg(transpose(c_matrix_rel)),matmul(hamiltonian_kin_nuc_rel,c_matrix_rel))
-
   else ! Non-relativistic
  
     !
@@ -734,8 +731,13 @@ program molgw
     if( nspin /= 1 ) call die('molgw: NOFT calculations need spin-restriction. Set nspin to 1')
 
     en_noft = en_gks
-    call noft_energy(basis,c_matrix,occupation,hamiltonian_kinetic,hamiltonian_nucleus,s_matrix, &
-                     en_noft%total,en_noft%nuc_nuc)
+    if( is_x2c ) then ! relativistic
+      call noft_energy(basis,occupation,en_noft%total,en_noft%nuc_nuc,&
+      &               c_matrix_rel=c_matrix_rel,hkin_nuc_rel=hamiltonian_kin_nuc_rel)
+    else              ! non-relativistic
+      call noft_energy(basis,occupation,en_noft%total,en_noft%nuc_nuc,&
+      &               Aoverlap=s_matrix,c_matrix=c_matrix,hkin=hamiltonian_kinetic,hnuc=hamiltonian_nucleus)
+    endif
 
     write(stdout,'(a,2x,f19.10,/)') ' NOFT Total Energy (Ha):',en_noft%total
     write(stdout,'(/,1x,a)')  'Natural occupations: '

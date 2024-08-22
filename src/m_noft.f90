@@ -32,17 +32,18 @@ module m_noft
 contains
 
 !=========================================================================
-subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
+subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel,hkin,hnuc,hkin_nuc_rel)
   implicit none
 
   type(basis_set),intent(in),target :: basis
-  real(dp),intent(inout)    :: c_matrix(:,:,:)
-  real(dp),intent(in)       :: Aoverlap(:,:)
-  real(dp),intent(in)       :: hkin(:,:),hnuc(:,:)
   real(dp),intent(inout)    :: occupation(:,:)
   real(dp),intent(in)       :: Vnn
   real(dp),intent(out)      :: Enoft
-  character(len=100)        :: msgw
+  real(dp),intent(in),optional        :: Aoverlap(:,:)
+  real(dp),intent(in),optional        :: hkin(:,:),hnuc(:,:)
+  real(dp),intent(inout),optional     :: c_matrix(:,:,:)
+  complex(dp),intent(in),optional     :: hkin_nuc_rel(:,:)
+  complex(dp),intent(inout),optional  :: c_matrix_rel(:,:)
   !====
   logical                   :: file_exists=.false.
   integer                   :: istate,lwork,info,iao,jao
@@ -55,7 +56,9 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   real(dp),allocatable      :: NO_COEF(:,:)
   real(dp),allocatable      :: tmp_mat0(:,:),tmp_mat(:,:),Work(:)
   real(dp),allocatable      :: quad_ao(:,:,:,:)
+  real(dp),allocatable      :: tmp_mat0_cmplx(:,:),tmp_mat_cmplx(:,:)
   complex(dp),allocatable   :: NO_COEF_cmplx(:,:)
+  character(len=100)        :: msgw
   character(len=200)        :: ofile_name
   !=====
 
@@ -71,25 +74,6 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
   write(stdout,'(3a)')  ' writting NOFT results to ',trim(ofile_name),' file.'
   write(stdout,'(a)')   ' =================================================='
   write(stdout,'(/,a)') ' '
-
-  !
-  ! Setup the grids for the quadrature of DFT potential/energy
-  irs_noft=0
-  if( calc_type%is_dft .and. noft_dft=='yes' ) then
-    if(noft_rsinter=='yes') then
-      irs_noft=1
-    else
-      irs_noft=2
-    endif
-    if( .not.calc_type%need_exchange_lr ) then
-      write(msgw,'(a)') 'LR exchange is needed for rs-NOFT.'
-      call die(msgw)
-    endif
-    write(stdout,'(a,f10.5)') ' RS-NOFT amount of exact exchange (alpha_hybrid)           ',alpha_hybrid
-    write(stdout,'(a,f10.5)') ' RS-NOFT amount of long-range exact exchange (beta_hybrid) ',beta_hybrid
-    write(stdout,'(a,f10.5)') ' RS-NOFT error function parameter (gamma_hybrid)           ',gamma_hybrid
-    call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
-  endif
 
   Enoft = zero; occupation = zero; ExcDFT = zero;
   nstate_noft = SIZE(c_matrix,DIM=2) ! Number of lin. indep. molecular orbitals
@@ -149,268 +133,324 @@ subroutine noft_energy(basis,c_matrix,occupation,hkin,hnuc,Aoverlap,Enoft,Vnn)
     call issue_warning(msgw)
   endif
 
-  ! Allocate arrays and initialize them
-  if(noft_complex=='yes') then
-    call clean_allocate('AhCORE_cmplx',AhCORE_cmplx,basis%nbf,basis%nbf)
-  else
-    call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
-  endif
-  call clean_allocate('NO_occ',occ,basis%nbf,1)
-  call clean_allocate('NO_energies',energy,basis%nbf,1)
-  if(noft_complex=='yes') then
-    call clean_allocate('NO_COEF_cmplx',NO_COEF_cmplx,basis%nbf,basis%nbf)
-  else
-    call clean_allocate('NO_COEF',NO_COEF,basis%nbf,basis%nbf)
-  endif
-  occ(:,:)    = zero
-  energy(:,:) = zero
-  ! Save Atomic Orbital hCORE integrals
-  if(noft_complex=='yes') then
-    AhCORE_cmplx(:,:) = hkin(:,:) + hnuc(:,:)
-    if(noft_iconfinment=='yes' .and. noft_iwconfinment>1.0e-6) then
-      write(stdout,'(/,a,f10.5,/)') ' Including a Hermitian confinement with conf. strength ',noft_iwconfinment
-      call setup_quadrupole_ao(basis,quad_ao)
-      do iao=1,basis%nbf
-        do jao=1,iao-1
-          AhCORE_cmplx(iao,jao) = AhCORE_cmplx(iao,jao) &
-                & + im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(iao,jao,1,1) &
-                & + im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(iao,jao,2,2) &
-                & + im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(iao,jao,3,3)
-          AhCORE_cmplx(jao,iao) = AhCORE_cmplx(jao,iao) &
-                & - im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(jao,iao,1,1) &
-                & - im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(jao,iao,2,2) &
-                & - im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(jao,iao,3,3)
-        enddo
-      enddo
-      deallocate(quad_ao) 
-    endif 
-  else
-    AhCORE(:,:) = hkin(:,:) + hnuc(:,:)
-  endif
-  if(noft_confinment=='yes' .and. noft_rwconfinment>1.0e-6) then ! This is Harmonium atom (a.k.a. Hooke's atom -Z/r -> 1/2 w^2 r^2)
-    write(stdout,'(/,a,f10.5,/)') ' Replacing the nuc-elec Coulombic interaction by a parabolic confinement with conf. strength ',&
-            noft_rwconfinment
-    call setup_quadrupole_ao(basis,quad_ao)
-    if(noft_complex=='yes') then
-      AhCORE_cmplx(:,:) = AhCORE_cmplx(:,:) - hnuc(:,:)  &
-           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,1,1) &
-           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,2,2) &
-           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,3,3)
-    else
-      AhCORE(:,:) = AhCORE(:,:) - hnuc(:,:)  &
-           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,1,1) &
-           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,2,2) &
-           & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,3,3)
-    endif
-    deallocate(quad_ao) 
-  endif
+  !
+  ! Perform a relativistic or a non-relativistic NOFT calculations
+  !
+  if(TRIM(x2c) == 'yes') then ! relativistic
 
-  ! Initially copy c_matrix (HF orbs) to NO_COEF
-  if(noft_complex=='yes') then
-    NO_COEF_cmplx(:,:)=complex_zero
-    write(stdout,'(/,a)') ' Adding Random Imaginary Phases '
-    write(stdout,'(a,/)') ' ------------------------------ '
-    do istate=1,nstate_noft
-      call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
-      if(noft_nophases=='yes') ran_num=0.0e0
-      write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
-      NO_COEF_cmplx(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
-    enddo
-    write(stdout,*) ' '
-  else
-    NO_COEF(:,:)=zero
-    do istate=1,nstate_noft
-      NO_COEF(:,istate)=c_matrix(:,istate,1)
-    enddo
-  endif
-  ! Replace NO_COEF by Hcore orbs for the initial GUESS?
-  if(TRIM(init_hamiltonian)=='CORE') then
-    call clean_allocate('tmp_mat0',tmp_mat0,basis%nbf,basis%nbf,noft_verbose)
-    call clean_allocate('tmp_mat',tmp_mat,basis%nbf,basis%nbf,noft_verbose)
-    tmp_mat0(:,:)=zero
-    do istate=1,nstate_noft
-      tmp_mat0(:,istate)=c_matrix(:,istate,1)
-    enddo
-    allocate(Work(1))
-    tmp_mat=matmul(hkin,tmp_mat0)+matmul(hnuc,tmp_mat0)
-    tmp_mat=matmul(transpose(tmp_mat0),tmp_mat)
-    lwork=-1
-    call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
-    lwork=nint(Work(1))
-    if(info==0) then
-      deallocate(Work)
-      allocate(Work(lwork))
-      energy=zero
-      call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
-    endif
-    if(noft_complex=='yes') then
-      NO_COEF_cmplx=matmul(NO_COEF_cmplx,tmp_mat)
-      write(stdout,'(/,a)') ' Adding New Random Imaginary Phases '
-      write(stdout,'(a,/)') ' ---------------------------------- '
-      do istate=1,nstate_noft
-        call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
-        if(noft_nophases=='yes') ran_num=0.0e0
-        write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
-        NO_COEF_cmplx(:,istate)=exp(im*ran_num)*NO_COEF_cmplx(:,istate)
-      enddo
-      write(stdout,*) ' '
-    else
-      NO_COEF=matmul(NO_COEF,tmp_mat)
-    endif
-    write(stdout,'(/,a,/)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
-    call clean_deallocate('tmp_mat0',tmp_mat0,noft_verbose)
-    call clean_deallocate('tmp_mat',tmp_mat,noft_verbose)
-    deallocate(Work)
-  endif
+   nstate_noft=2*basis%nbf
 
-  ! Build NO_COEF_cmplx with phases times NO_COEF (real)
-  if(TRIM(init_hamiltonian)=='NOFT' .and. noft_complex=='yes') then
-    inquire(file='NO_COEF_BIN',exist=file_exists)
-    if( file_exists ) then
-      open(unit=iunit,form='unformatted',file='NO_COEF_BIN',iostat=istat,status='old')
-      if(istat==0) then
-       do
-        read(iunit,iostat=istat) iorb,iorb1,coeff_old
-        if(istat/=0) then
-         exit
-        endif
-        if(((iorb/=0).and.(iorb1/=0)).and.iorb*iorb1<=basis%nbf*basis%nbf) then
-         NO_COEF_cmplx(iorb,iorb1)=coeff_old
-        else
-         exit
-        endif
+   call clean_allocate('AhCORE_cmplx',AhCORE_cmplx,nstate_noft,nstate_noft)
+   call clean_allocate('NO_COEF_cmplx',NO_COEF_cmplx,nstate_noft,nstate_noft)
+   call clean_allocate('NO_energies',energy,nstate_noft,1)
+   AhCORE_cmplx=hkin_nuc_rel; NO_COEF_cmplx=c_matrix_rel;
+
+   ! Recover GUESS=core if required
+   if(TRIM(init_hamiltonian)=='CORE') then
+     call clean_allocate('tmp_mat0_cmplx',tmp_mat0_cmplx,nstate_noft,nstate_noft,noft_verbose)
+     call clean_allocate('tmp_mat_cmplx',tmp_mat_cmplx,nstate_noft,nstate_noft,noft_verbose)
+     tmp_mat_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),matmul(AhCORE_cmplx,NO_COEF_cmplx)) ! Hcore^MO basis
+     call diagonalize(' ',tmp_mat_cmplx,energy(:,1),tmp_mat0_cmplx)
+     NO_COEF_cmplx=matmul(NO_COEF_cmplx,tmp_mat0_cmplx) ! rotate to the basis where Hcore (=Hcore^X2C) is diagonal
+     call clean_deallocate('tmp_mat0_cmplx',tmp_mat0_cmplx,noft_verbose)
+     call clean_deallocate('tmp_mat_cmplx',tmp_mat_cmplx,noft_verbose)
+   endif
+
+   ! TODO: call noft suborutine from module, prepare mo_ints_x2c, etc
+   c_matrix_rel=NO_COEF_cmplx
+    
+   ! Clean arrays
+   call clean_deallocate('NO_energies',energy)
+   call clean_deallocate('AhCORE_cmplx',AhCORE_cmplx)
+   call clean_deallocate('NO_COEF_cmplx',NO_COEF_cmplx)
+
+  else ! non-relativistic
+
+   ! Allocate arrays and initialize them
+   if(noft_complex=='yes') then
+     call clean_allocate('AhCORE_cmplx',AhCORE_cmplx,basis%nbf,basis%nbf)
+   else
+     call clean_allocate('AhCORE',AhCORE,basis%nbf,basis%nbf)
+   endif
+   call clean_allocate('NO_occ',occ,basis%nbf,1)
+   call clean_allocate('NO_energies',energy,basis%nbf,1)
+   if(noft_complex=='yes') then
+     call clean_allocate('NO_COEF_cmplx',NO_COEF_cmplx,basis%nbf,basis%nbf)
+   else
+     call clean_allocate('NO_COEF',NO_COEF,basis%nbf,basis%nbf)
+   endif
+   occ(:,:)    = zero
+   energy(:,:) = zero
+   ! Save Atomic Orbital hCORE integrals
+   if(noft_complex=='yes') then
+     AhCORE_cmplx(:,:) = hkin(:,:) + hnuc(:,:)
+     if(noft_iconfinment=='yes' .and. noft_iwconfinment>1.0e-6) then
+       write(stdout,'(/,a,f10.5,/)') ' Including a Hermitian confinement with conf. strength ',noft_iwconfinment
+       call setup_quadrupole_ao(basis,quad_ao)
+       do iao=1,basis%nbf
+         do jao=1,iao-1
+           AhCORE_cmplx(iao,jao) = AhCORE_cmplx(iao,jao) &
+                 & + im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(iao,jao,1,1) &
+                 & + im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(iao,jao,2,2) &
+                 & + im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(iao,jao,3,3)
+           AhCORE_cmplx(jao,iao) = AhCORE_cmplx(jao,iao) &
+                 & - im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(jao,iao,1,1) &
+                 & - im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(jao,iao,2,2) &
+                 & - im*0.5e0*(noft_iwconfinment*noft_iwconfinment)*quad_ao(jao,iao,3,3)
+         enddo
        enddo
-      endif
-      write(stdout,'(/,a)') ' Adding New Random Imaginary Phases '
-      write(stdout,'(a,/)') ' ---------------------------------- '
-      do istate=1,nstate_noft
-        call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
-        if(noft_nophases=='yes') ran_num=0.0e0
-        write(stdout,'(a,I10,a,f7.5,a,f7.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
-        NO_COEF_cmplx(:,istate)=exp(im*ran_num)*NO_COEF_cmplx(:,istate)
-      enddo
-      write(stdout,*) ' '
-      write(stdout,'(/,a,/)') ' Reading the NO_COEF_BIN file to set the initial complex NO_COEF.'
-    else
-      write(stdout,'(/,a,/)') ' Did not find NO_COEF_BIN file to set the initial complex NO_COEF.'
-    endif
+       deallocate(quad_ao) 
+     endif 
+   else
+     AhCORE(:,:) = hkin(:,:) + hnuc(:,:)
+   endif
+   if(noft_confinment=='yes' .and. noft_rwconfinment>1.0e-6) then ! This is Harmonium atom (a.k.a. Hooke's atom -Z/r -> 1/2 w^2 r^2)
+     write(stdout,'(/,a,f10.5,/)') ' Replacing the nuc-elec Coulombic interaction by a parabolic confinement with conf. strength ',&
+             noft_rwconfinment
+     call setup_quadrupole_ao(basis,quad_ao)
+     if(noft_complex=='yes') then
+       AhCORE_cmplx(:,:) = AhCORE_cmplx(:,:) - hnuc(:,:)  &
+            & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,1,1) &
+            & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,2,2) &
+            & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,3,3)
+     else
+       AhCORE(:,:) = AhCORE(:,:) - hnuc(:,:)  &
+            & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,1,1) &
+            & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,2,2) &
+            & + 0.5e0*(noft_rwconfinment*noft_rwconfinment)*quad_ao(:,:,3,3)
+     endif
+     deallocate(quad_ao) 
+   endif
+   
+   ! Initially copy c_matrix (HF orbs) to NO_COEF
+   if(noft_complex=='yes') then
+     NO_COEF_cmplx(:,:)=complex_zero
+     write(stdout,'(/,a)') ' Adding Random Imaginary Phases '
+     write(stdout,'(a,/)') ' ------------------------------ '
+     do istate=1,nstate_noft
+       call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
+       if(noft_nophases=='yes') ran_num=0.0e0
+       write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
+       NO_COEF_cmplx(:,istate)=exp(im*ran_num)*c_matrix(:,istate,1)
+     enddo
+     write(stdout,*) ' '
+   else
+     NO_COEF(:,:)=zero
+     do istate=1,nstate_noft
+       NO_COEF(:,istate)=c_matrix(:,istate,1)
+     enddo
+   endif
+   ! Replace NO_COEF by Hcore orbs for the initial GUESS?
+   if(TRIM(init_hamiltonian)=='CORE') then
+     call clean_allocate('tmp_mat0',tmp_mat0,basis%nbf,basis%nbf,noft_verbose)
+     call clean_allocate('tmp_mat',tmp_mat,basis%nbf,basis%nbf,noft_verbose)
+     tmp_mat0(:,:)=zero
+     do istate=1,nstate_noft
+       tmp_mat0(:,istate)=c_matrix(:,istate,1)
+     enddo
+     allocate(Work(1))
+     tmp_mat=matmul(hkin,tmp_mat0)+matmul(hnuc,tmp_mat0)
+     tmp_mat=matmul(transpose(tmp_mat0),tmp_mat)
+     lwork=-1
+     call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
+     lwork=nint(Work(1))
+     if(info==0) then
+       deallocate(Work)
+       allocate(Work(lwork))
+       energy=zero
+       call DSYEV('V','L',basis%nbf,tmp_mat,basis%nbf,energy(:,1),Work,lwork,info)
+     endif
+     if(noft_complex=='yes') then
+       NO_COEF_cmplx=matmul(NO_COEF_cmplx,tmp_mat)
+       write(stdout,'(/,a)') ' Adding New Random Imaginary Phases '
+       write(stdout,'(a,/)') ' ---------------------------------- '
+       do istate=1,nstate_noft
+         call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
+         if(noft_nophases=='yes') ran_num=0.0e0
+         write(stdout,'(a,I10,a,f8.5,a,f8.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
+         NO_COEF_cmplx(:,istate)=exp(im*ran_num)*NO_COEF_cmplx(:,istate)
+       enddo
+       write(stdout,*) ' '
+     else
+       NO_COEF=matmul(NO_COEF,tmp_mat)
+     endif
+     write(stdout,'(/,a,/)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
+     call clean_deallocate('tmp_mat0',tmp_mat0,noft_verbose)
+     call clean_deallocate('tmp_mat',tmp_mat,noft_verbose)
+     deallocate(Work)
+   endif
+   
+   ! Build NO_COEF_cmplx with phases times NO_COEF (real)
+   if(TRIM(init_hamiltonian)=='NOFT' .and. noft_complex=='yes') then
+     inquire(file='NO_COEF_BIN',exist=file_exists)
+     if( file_exists ) then
+       open(unit=iunit,form='unformatted',file='NO_COEF_BIN',iostat=istat,status='old')
+       if(istat==0) then
+        do
+         read(iunit,iostat=istat) iorb,iorb1,coeff_old
+         if(istat/=0) then
+          exit
+         endif
+         if(((iorb/=0).and.(iorb1/=0)).and.iorb*iorb1<=basis%nbf*basis%nbf) then
+          NO_COEF_cmplx(iorb,iorb1)=coeff_old
+         else
+          exit
+         endif
+        enddo
+       endif
+       write(stdout,'(/,a)') ' Adding New Random Imaginary Phases '
+       write(stdout,'(a,/)') ' ---------------------------------- '
+       do istate=1,nstate_noft
+         call random_number(ran_num) ! For complex orbs, each one has its own random phase (to have real and imaginary orbs)
+         if(noft_nophases=='yes') ran_num=0.0e0
+         write(stdout,'(a,I10,a,f7.5,a,f7.5,a)') ' MO',istate,': (',real(exp(im*ran_num)),',',aimag(exp(im*ran_num)),')'
+         NO_COEF_cmplx(:,istate)=exp(im*ran_num)*NO_COEF_cmplx(:,istate)
+       enddo
+       write(stdout,*) ' '
+       write(stdout,'(/,a,/)') ' Reading the NO_COEF_BIN file to set the initial complex NO_COEF.'
+     else
+       write(stdout,'(/,a,/)') ' Did not find NO_COEF_BIN file to set the initial complex NO_COEF.'
+     endif
+   endif
+   
+   ! Not ready for open-shell calcs. (TODO)
+   nelectrons = NINT(electrons)
+   nstate_coupled = noft_ncoupled - 1
+   nstate_frozen = (nelectrons-2*noft_npairs)/2
+   nstate_beta = nstate_frozen+noft_npairs
+   nstate_alpha = nstate_beta
+   do
+     nstate_occ=nstate_frozen+noft_npairs*(nstate_coupled+1)
+     if(nstate_occ<=nstate_noft) then
+       exit
+     else
+       nstate_coupled=nstate_coupled-1
+     endif
+   enddo
+   
+   !
+   ! Setup the grids for the quadrature of DFT potential/energy
+   irs_noft=0
+   if( calc_type%is_dft .and. noft_dft=='yes' ) then
+     if(noft_rsinter=='yes') then
+       irs_noft=1
+     else
+       irs_noft=2
+     endif
+     if( .not.calc_type%need_exchange_lr ) then
+       write(msgw,'(a)') 'LR exchange is needed for rs-NOFT.'
+       call die(msgw)
+     endif
+     write(stdout,'(a)') ' '
+     write(stdout,'(a,f10.5)') ' RS-NOFT amount of exact exchange (alpha_hybrid)           ',alpha_hybrid
+     write(stdout,'(a,f10.5)') ' RS-NOFT amount of long-range exact exchange (beta_hybrid) ',beta_hybrid
+     write(stdout,'(a,f10.5)') ' RS-NOFT error function parameter (gamma_hybrid)           ',gamma_hybrid
+     call init_dft_grid(basis,grid_level,dft_xc(1)%needs_gradient,.TRUE.,BATCH_SIZE)
+   endif
+   
+   ! Call module initialization and run NOFT calc.
+   if(noft_complex=='yes') then
+   
+     if(noft_restart=='yes') then
+       call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
+        imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
+        Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
+        restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
+        ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
+        fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
+     else
+       call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
+        imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
+        Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
+        Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
+     endif
+   
+   else
+   
+     if(noft_restart=='yes') then
+       call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
+        imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
+        Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
+        restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
+        ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
+        fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
+     else
+       call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
+        imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
+        Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
+        Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
+     endif
+   
+   endif
+   
+   if( irs_noft/=0 ) then ! Compute total Energy for range-sep NOFT switching off the hamiltonian_xc (we only need hCORE=T+Vext).
+     noft_edft=.true.     ! So, we restart but we will not update orbs nor occs.
+     call clean_allocate('T_Vext',T_Vext,basis%nbf,noft_verbose)
+     write(ofile_name,'(a)') 'tmp_dft_noft'
+     call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
+      imethocc,imethorb,noft_nscf,0,0,0,noft_ithresh_lambda,noft_ndiis,Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),&
+      mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),restart=.true.,ireadGAMMAS=1,ireadOCC=1,&
+      ireadCOEF=1,ireadFdiag=1,iNOTupdateOCC=1,iNOTupdateORB=1,Lpower=noft_Lpower,fcidump=(noft_fcidump=='yes'),irange_sep=irs_noft)
+     Enoft=Enoft+ExcDFT
+     write(stdout,'(/,a,2x,f19.10)')   ' Nucleus-Nucleus (Ha):',Vnn
+     write(stdout,'(a,2x,f19.10)')     ' Hcore Energy (Ha)   :',sum(T_Vext(:)*occ(:,1))
+     write(stdout,'(a,2x,f19.10,/)')   ' XC Energy (Ha)      :',ExcDFT
+     call system("rm tmp_dft_noft")
+     call clean_deallocate('T_Vext',T_Vext,noft_verbose)
+     call destroy_dft_grid()
+   endif
+   
+   ! If required print post-procesing files
+   occupation(1:nstate_occ,1)=occ(1:nstate_occ,1)
+   if(noft_complex=='yes') then
+     if(print_wfn_files_ ) then
+       call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
+       occ_print(1:nstate_noft,1)=occ(1:nstate_noft,1)
+       ! Update c_matrix with real part of optimized NO_COEF
+       do istate=1,nstate_noft
+         c_matrix(:,istate,1)=real(NO_COEF_cmplx(:,istate))
+       enddo
+       call print_wfn_file('NOFT_RE',basis,occ_print,c_matrix,Enoft,energy)
+       ! Update c_matrix with imaginary part of optimized NO_COEF
+       do istate=1,nstate_noft
+         c_matrix(:,istate,1)=aimag(NO_COEF_cmplx(:,istate))
+       enddo
+       call print_wfn_file('NOFT_IM',basis,occ_print,c_matrix,Enoft,energy)
+       call clean_deallocate('Occ_print',occ_print,noft_verbose)
+     endif
+   else
+     ! Update c_matrix with optimized NO_COEF
+     do istate=1,nstate_noft
+       c_matrix(:,istate,1)=NO_COEF(:,istate)
+     enddo
+     ! Select the post-procesing files
+     if(print_wfn_ .or. print_cube_ .or. print_wfn_files_ ) then
+       call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
+       occ_print(1:nstate_noft,1)=occ(1:nstate_noft,1)
+       if( print_wfn_ )  call plot_wfn(basis,c_matrix)
+       if( print_wfn_ )  call plot_rho('NOFT',basis,occ_print,c_matrix)
+       if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ_print,c_matrix)
+       if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,Enoft,energy)
+       call clean_deallocate('Occ_print',occ_print,noft_verbose)
+     endif
+   endif
+   
+   ! Deallocate arrays and print the normal termination
+   if(noft_complex=='yes') then
+     call clean_deallocate('AhCORE_cmplx',AhCORE_cmplx)
+   else
+     call clean_deallocate('AhCORE',AhCORE)
+   endif
+   call clean_deallocate('NO_occ',occ)
+   call clean_deallocate('NO_energies',energy)
+   if(noft_complex=='yes') then
+     call clean_deallocate('NO_COEF_cmplx',NO_COEF_cmplx)
+   else
+     call clean_deallocate('NO_COEF',NO_COEF)
+   endif
+
   endif
 
-  ! Not ready for open-shell calcs. (TODO)
-  nelectrons = NINT(electrons)
-  nstate_coupled = noft_ncoupled - 1
-  nstate_frozen = (nelectrons-2*noft_npairs)/2
-  nstate_beta = nstate_frozen+noft_npairs
-  nstate_alpha = nstate_beta
-  do
-    nstate_occ=nstate_frozen+noft_npairs*(nstate_coupled+1)
-    if(nstate_occ<=nstate_noft) then
-      exit
-    else
-      nstate_coupled=nstate_coupled-1
-    endif
-  enddo
-
-  ! Call module initialization and run NOFT calc.
-  if(noft_complex=='yes') then
-
-    if(noft_restart=='yes') then
-      call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-       imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
-       Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
-       restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
-       ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
-       fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
-    else
-      call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-       imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
-       Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
-       Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
-    endif
-
-  else
-
-    if(noft_restart=='yes') then
-      call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-       imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
-       Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
-       restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
-       ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
-       fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
-    else
-      call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-       imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
-       Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
-       Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
-    endif
-
-  endif
-
-  if( irs_noft/=0 ) then ! Compute total Energy for range-sep NOFT switching off the hamiltonian_xc (we only need hCORE=T+Vext).
-    noft_edft=.true.     ! So, we restart but we will not update orbs nor occs.
-    call clean_allocate('T_Vext',T_Vext,basis%nbf,noft_verbose)
-    write(ofile_name,'(a)') 'tmp_dft_noft'
-    call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
-     imethocc,imethorb,noft_nscf,0,0,0,noft_ithresh_lambda,noft_ndiis,Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),&
-     mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),restart=.true.,ireadGAMMAS=1,ireadOCC=1,&
-     ireadCOEF=1,ireadFdiag=1,iNOTupdateOCC=1,iNOTupdateORB=1,Lpower=noft_Lpower,fcidump=(noft_fcidump=='yes'),irange_sep=irs_noft)
-    Enoft=Enoft+ExcDFT
-    write(stdout,'(/,a,2x,f19.10)')   ' Nucleus-Nucleus (Ha):',Vnn
-    write(stdout,'(a,2x,f19.10)')     ' Hcore Energy (Ha)   :',sum(T_Vext(:)*occ(:,1))
-    write(stdout,'(a,2x,f19.10,/)')   ' XC Energy (Ha)      :',ExcDFT
-    call system("rm tmp_dft_noft")
-    call clean_deallocate('T_Vext',T_Vext,noft_verbose)
-    call destroy_dft_grid()
-  endif
-
-  ! If required print post-procesing files
-  occupation(1:nstate_occ,1)=occ(1:nstate_occ,1)
-  if(noft_complex=='yes') then
-    if(print_wfn_files_ ) then
-      call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
-      occ_print(1:nstate_noft,1)=occ(1:nstate_noft,1)
-      ! Update c_matrix with real part of optimized NO_COEF
-      do istate=1,nstate_noft
-        c_matrix(:,istate,1)=real(NO_COEF_cmplx(:,istate))
-      enddo
-      call print_wfn_file('NOFT_RE',basis,occ_print,c_matrix,Enoft,energy)
-      ! Update c_matrix with imaginary part of optimized NO_COEF
-      do istate=1,nstate_noft
-        c_matrix(:,istate,1)=aimag(NO_COEF_cmplx(:,istate))
-      enddo
-      call print_wfn_file('NOFT_IM',basis,occ_print,c_matrix,Enoft,energy)
-      call clean_deallocate('Occ_print',occ_print,noft_verbose)
-    endif
-  else
-    ! Update c_matrix with optimized NO_COEF
-    do istate=1,nstate_noft
-      c_matrix(:,istate,1)=NO_COEF(:,istate)
-    enddo
-    ! Select the post-procesing files
-    if(print_wfn_ .or. print_cube_ .or. print_wfn_files_ ) then
-      call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
-      occ_print(1:nstate_noft,1)=occ(1:nstate_noft,1)
-      if( print_wfn_ )  call plot_wfn(basis,c_matrix)
-      if( print_wfn_ )  call plot_rho('NOFT',basis,occ_print,c_matrix)
-      if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ_print,c_matrix)
-      if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,Enoft,energy)
-      call clean_deallocate('Occ_print',occ_print,noft_verbose)
-    endif
-  endif
-
-  ! Deallocate arrays and print the normal termination
-  if(noft_complex=='yes') then
-    call clean_deallocate('AhCORE_cmplx',AhCORE_cmplx)
-  else
-    call clean_deallocate('AhCORE',AhCORE)
-  endif
-  call clean_deallocate('NO_occ',occ)
-  call clean_deallocate('NO_energies',energy)
-  if(noft_complex=='yes') then
-    call clean_deallocate('NO_COEF_cmplx',NO_COEF_cmplx)
-  else
-    call clean_deallocate('NO_COEF',NO_COEF)
-  endif
   write(stdout,'(/,a)') ' =================================================='
   write(stdout,'(a)')   ' NOFT SCF loop ends here'
   write(stdout,'(a)')   ' =================================================='
