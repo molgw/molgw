@@ -68,12 +68,14 @@ function MpSqL_me(Dx_pq,Dy_pq,Dz_pq) result(M_pSqL)
 end function MpSqL_me
 
 !=========================================================================
-subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,x_matrix,H_rel_rkb_mat)
+subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,x_matrix,& 
+    &   H_rel_rkb_mat,energy_rel)
 
   type(basis_set),intent(inout)  :: basis
   logical,intent(in)             :: is_x2c
   real(dp),intent(in)            :: electrons_in
   integer,intent(out)            :: nstate
+  real(dp),allocatable,dimension(:),intent(inout)     ::energy_rel
   complex(dp),allocatable,dimension(:,:),intent(inout)::c_matrix
   complex(dp),allocatable,dimension(:,:),intent(inout)::s_matrix
   complex(dp),allocatable,dimension(:,:),intent(inout)::x_matrix
@@ -766,8 +768,9 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
     ! H^x2c = U H^RKB U^dagger
    Tmp_matrix=matmul(matmul(U_mat,H_rel_rkb_mat),transpose(conjg(U_mat)))
    deallocate(H_rel_rkb_mat)
-   allocate(H_rel_rkb_mat(nbasis_L,nbasis_L))
+   allocate(H_rel_rkb_mat(nbasis_L,nbasis_L),energy_rel(nbasis_L))
    H_rel_rkb_mat(:,:)=Tmp_matrix(1:nbasis_L,1:nbasis_L)
+   energy_rel(1:nbasis_L)=E_state(1:nbasis_L)
    deallocate(Tmp_matrix)
    write(stdout,'(a,/)') ' Completed decoupling 4C -> X2C'
 
@@ -946,23 +949,31 @@ end subroutine shuffle_real
 
 !
 ! Check deviation from the identity of ( C^x2c )^dagger S C^x2c with the actual overlap matrix S
-! and overwrite S and X matrix if the MAE > 1e-6 to preserve orthonormality
+! and overwrite S, X, C and H matrices if the MAE > 1e-6 to preserve orthonormality
 !==================================================================
-subroutine check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,s_matrix,x_matrix)
+subroutine check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel, &
+    &      hamiltonian_kin_nuc_rel,s_matrix,x_matrix)
 
   type(basis_set),intent(inout)  :: basis
-  real(dp),intent(in)            :: s_matrix(:,:),x_matrix(:,:)
+  real(dp),intent(in)            :: s_matrix(:,:),x_matrix(:,:),energy_rel(:)
   complex(dp),intent(inout)      :: c_matrix_rel(:,:),s_matrix_rel(:,:),x_matrix_rel(:,:)
+  complex(dp),intent(inout)      :: hamiltonian_kin_nuc_rel(:,:)
   !====
   integer                 :: istate,jstate,nstate
+  integer                 :: info,lwork
   real(dp)                :: err_x2c_coef
+  integer,allocatable     :: ipiv(:)
+  complex(dp),allocatable :: Work(:)
   complex(dp),allocatable :: tmp_matrix(:,:)
+  complex(dp),allocatable :: inv_c_matrix_rel(:,:)
   !====
   
   nstate=2*basis%nbf
 
   write(stdout,'(/,a)') ' Checking (C^x2c)^dagger S C^x2c = I'
+
   allocate(tmp_matrix(nstate,nstate))
+
   tmp_matrix=COMPLEX_ZERO
   do istate=1,nstate/2
     do jstate=1,nstate/2
@@ -985,14 +996,15 @@ subroutine check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,s_matr
        endif
     enddo
   enddo
-  deallocate(tmp_matrix)
   err_x2c_coef=err_x2c_coef/(nstate*nstate)
   write(stdout,'(a,f10.6)') ' MAE in (C^x2c)^dagger S C^x2c = I',err_x2c_coef
   if(err_x2c_coef>1e-6) then
     ! We prefer to enforce orthonormality for the C^x2c states
-    write(stdout,'(a)') ' The MAE > 1e-6, overwriting S and X matrices before doing the SCF procedure'
+    write(stdout,'(a)') ' The MAE > 1e-6, overwriting S, X, C and H matrices before doing the SCF procedure'
     s_matrix_rel=COMPLEX_ZERO
     x_matrix_rel=COMPLEX_ZERO
+
+    write(stdout,'(a)') ' Overwriting the S and X matrices'
     do istate=1,nstate/2
       do jstate=1,nstate/2
          s_matrix_rel(2*istate-1,2*jstate-1)=s_matrix(istate,jstate)
@@ -1001,8 +1013,50 @@ subroutine check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,s_matr
          x_matrix_rel(2*istate  ,2*jstate  )=x_matrix(istate,jstate)
       enddo
     enddo
+
+    if( trim(approx_H_x2c)=='yes' ) then 
+      write(stdout,'(a)') ' Computing inverse of the C_x2c matrix'
+      do istate=1,nstate
+        c_matrix_rel(:,istate)=c_matrix_rel(:,istate)/sqrt(tmp_matrix(istate,istate))
+      enddo
+      allocate(inv_c_matrix_rel(nstate,nstate),ipiv(nstate),Work(1))
+      inv_c_matrix_rel=c_matrix_rel
+      lwork=-1
+      call zgetrf(nstate,nstate,inv_c_matrix_rel,nstate,ipiv,info)
+      if(info/=0) then
+        call die("Error computing ( C_x2c )^-1 in zgetrf")
+      else
+        call zgetri(nstate,inv_c_matrix_rel,nstate,ipiv,Work,lwork,info)
+        lwork=nint(real(Work(1)))
+        deallocate(Work)
+        allocate(Work(lwork))
+        call zgetri(nstate,inv_c_matrix_rel,nstate,ipiv,Work,lwork,info)
+        if(info/=0) call die("Error computing ( C_x2c )^-1 in zgetri")
+      endif
+      
+      write(stdout,'(a)') ' Computing approximate Hamiltonian H^new'
+      write(stdout,'(a)') ' ( H = S C_x2c e and H^dagger = S C_x2c e ) '
+      write(stdout,'(a)') ' H^new = 1/2 ( H + H^dagger ) '
+      tmp_matrix=COMPLEX_ZERO
+      do istate=1,nstate
+        tmp_matrix(istate,istate)=energy_rel(istate)
+      enddo
+      ! H C_x2c = S C_x2c e
+      ! H = S C_x2c e ( C_x2c )^-1
+      ! and we should also have
+      ! H^dagger = S C_x2c e ( C_x2c )^-1
+      tmp_matrix=matmul(tmp_matrix,inv_c_matrix_rel) ! e ( C_x2c )^-1
+      tmp_matrix=matmul(c_matrix_rel,tmp_matrix)     ! C_x2c e ( C_x2c )^-1
+      tmp_matrix=matmul(s_matrix_rel,tmp_matrix)     ! S C_x2c e ( C_x2c )^-1
+      
+      deallocate(inv_c_matrix_rel,ipiv,Work)
+      
+      hamiltonian_kin_nuc_rel=0.5_dp*(tmp_matrix+conjg(transpose(tmp_matrix)))
+    endif
+
   endif
   
+  deallocate(tmp_matrix)
 
 end subroutine check_CdaggerSC_I
 !==================================================================

@@ -148,11 +148,12 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
    ! Recover GUESS=core if required
    if(TRIM(init_hamiltonian)=='CORE') then
      write(msgw,'(a)') 'Set nscf=0 to use init_hamiltonian=CORE in X2C NOFT'
-     if(nscf/=0) call die(msgw)
+     !if(nscf/=0) call die(msgw)
      call clean_allocate('tmp_mat0_cmplx',tmp_mat0_cmplx,nstate_noft,nstate_noft,noft_verbose)
      call clean_allocate('tmp_mat_cmplx',tmp_mat_cmplx,nstate_noft,nstate_noft,noft_verbose)
      tmp_mat_cmplx=matmul(conjg(transpose(NO_COEF_cmplx)),matmul(AhCORE_cmplx,NO_COEF_cmplx)) ! Hcore^MO basis
      call diagonalize(' ',tmp_mat_cmplx,energy(:,1),tmp_mat0_cmplx)
+write(*,*) energy(:,1)
      NO_COEF_cmplx=matmul(NO_COEF_cmplx,tmp_mat0_cmplx) ! rotate to the basis where Hcore (=Hcore^X2C) is diagonal
      call clean_deallocate('tmp_mat0_cmplx',tmp_mat0_cmplx,noft_verbose)
      call clean_deallocate('tmp_mat_cmplx',tmp_mat_cmplx,noft_verbose)

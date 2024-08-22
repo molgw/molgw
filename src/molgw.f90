@@ -89,6 +89,7 @@ program molgw
   real(dp),allocatable    :: s_matrix_sqrt(:,:)
   real(dp),allocatable    :: c_matrix(:,:,:)
   real(dp),allocatable    :: energy(:,:)
+  real(dp),allocatable    :: energy_rel(:)
   real(dp),allocatable    :: occupation(:,:)
   real(dp),allocatable    :: exchange_m_vxc(:,:,:)
   complex(dp),allocatable :: c_matrix_cmplx(:,:,:)
@@ -193,7 +194,7 @@ program molgw
     !  sets nstate=2*basis%nbf for X2C
     !  sets nstate=4*basis%nbf for 4C
     call relativistic_init(basis,is_x2c,electrons,nstate,c_matrix_rel,s_matrix_rel,x_matrix_rel, &
-    & hamiltonian_kin_nuc_rel)
+    & hamiltonian_kin_nuc_rel,energy_rel)
     allocate(basis_name_nrel(ncenter_basis))
     write(basis_name_1,'(a)') trim(basis_name(1))
     found_basis_name=.false.
@@ -292,11 +293,6 @@ program molgw
     !
 
     !
-    ! Init. guess for c_matrix_rel
-    !
-    call init_c_matrix_x2c(basis,c_matrix_rel,x_matrix_rel,hamiltonian_kin_nuc_rel)
-
-    !
     ! Calculate overlap matrix S
     !
     call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
@@ -306,10 +302,17 @@ program molgw
     !
     call setup_x_matrix(min_overlap,s_matrix,nstate_tmp,x_matrix)
     !
-    ! Checking (C^x2c)^dagger S C^x2c =? I and overwrite s_matrix_rel and x_matrix_rel if
-    ! the deviation from I is too large
+    ! Checking (C^x2c)^dagger S C^x2c =? I and overwrite s_matrix_rel, x_matrix_rel, 
+    ! c_matrix_rel and hamiltonian_kin_nuc_rel if the deviation from I is too large
     !
-    call check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,s_matrix,x_matrix)
+    call check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel,&
+    &  hamiltonian_kin_nuc_rel,s_matrix,x_matrix)
+    deallocate(energy_rel)
+
+    !
+    ! Init. guess for c_matrix_rel
+    !
+    call init_c_matrix_x2c(basis,c_matrix_rel,x_matrix_rel,hamiltonian_kin_nuc_rel)
 
     call stop_clock(timing_prescf)
  
