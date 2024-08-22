@@ -752,7 +752,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    allocate(W(nbasis_L),V_mat(nbasis_L,nbasis_L))
    call diagonalize(' ',x_matrix,W,V_mat)
    min_eigval=minval(W(:))
-   write(stdout,'(a,es20.5)') ' Min X matrix calc. eigenvalue ',min_eigval
+   write(stdout,'(a,es20.5)') ' Min X2C X matrix calc. eigenvalue ',min_eigval
    x_matrix=complex_zero
    do ibf=1,nbasis_L
     if(abs(W(ibf))<min_overlap) then
