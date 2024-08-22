@@ -89,7 +89,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   integer                        :: nshell,nshell_nrel,nbasis,nbasis_L,nbasis_S,ntyp,shell_typ,shell_typ_nrl
   integer                        :: nstate_rkb,ielectrons
   integer                        :: info,lwork
-  real(dp)                       :: eext
+  real(dp)                       :: eext,min_eigval
   real(dp)                       :: Vext_pq(4),S_pq(4),Dz_pq(4),Dy_pq(4),Dx_pq(4)
   logical,allocatable            :: is_large(:),is_large_4c(:)
   integer,allocatable            :: ipiv(:)
@@ -262,7 +262,6 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
       ! s_matrix_4c
       s_matrix_4c(2*ibf-1,2*jbf-1)=scalar_s_matrix(ibf,jbf)
       s_matrix_4c(2*ibf,2*jbf)=scalar_s_matrix(ibf,jbf)
-      ! x_matrix_4c (S^-1/2 large)
       ! p1 and q1
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Vext_pq(1)=scalar_nucleus(ibf,jbf)
@@ -396,6 +395,8 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    s_matrix_small(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
    allocate(W(nbasis_S),U_mat(nbasis_S,nbasis_S))
    call diagonalize(' ',s_matrix_small,W,U_mat)
+   min_eigval=minval(W(:))
+   write(stdout,'(a,es20.5)') ' Min S_small^-1 eigenvalue ',min_eigval
    s_matrix_small=COMPLEX_ZERO
    do ibf=1,nbasis_S
     if(abs(W(ibf))<min_overlap) then
@@ -417,6 +418,8 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
     s_matrix_small(1:nbasis_S,1:nbasis_S)=s_matrix_4c(nbasis_L+1:nbasis,nbasis_L+1:nbasis)
     allocate(W(nbasis_S),U_mat(nbasis_S,nbasis_S))
     call diagonalize(' ',s_matrix_small,W,U_mat)
+    min_eigval=minval(W(:))
+    write(stdout,'(a,es20.5)') ' Min S_small^-1 eigenvalue ',min_eigval
     s_matrix_small=COMPLEX_ZERO
     do ibf=1,nbasis_S
      if(abs(W(ibf))<min_overlap) then
@@ -496,6 +499,8 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
   s_matrix(nbasis_L+1:,nbasis_L+1:)=x_matrix_small(:,:) ! NOTE: save in s_matrix
   allocate(W(nbasis_L),U_mat(nbasis_L,nbasis_L),Tmp_matrix(nbasis_L,nbasis_L)) 
   call diagonalize(' ',x_matrix_small,W,U_mat)
+  min_eigval=minval(W(:))
+  write(stdout,'(a,es20.5)') ' Min RKB S_SS eigenvalue ',min_eigval
   Tmp_matrix=complex_zero
   do ibf=1,nbasis_L
    if(abs(W(ibf))<min_overlap) then
@@ -606,6 +611,8 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    B_mat=matmul(Tmp_matrix,transpose(conjg(R_mat)))
    allocate(W(nbasis_L),U_mat(nbasis_L,nbasis_L))
    call diagonalize(' ',A_mat,W,U_mat)
+   min_eigval=minval(W(:))
+   write(stdout,'(a,es20.5)') ' Min A^-1 eigenvalue ',min_eigval
    R_mat=COMPLEX_ZERO
    do ibf=1,nbasis_L
     if(abs(W(ibf))<min_overlap) then
@@ -659,6 +666,8 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    allocate(W(nbasis_L),U_mat(nbasis_L,nbasis_L),Tmp_matrix(nbasis_L,nbasis_L))
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ',A_mat,W,U_mat)
+   min_eigval=minval(W(:))
+   write(stdout,'(a,es20.5)') ' Min 1/ sqrt[ I + R^dagger R ] eigenvalue ',min_eigval
    do ibf=1,nbasis_L
     if(abs(W(ibf))<min_overlap) then
      write(stdout,'(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ',min_overlap,' in 1/ sqrt[ I + R^dagger R ]',ibf,W(ibf)
@@ -669,6 +678,8 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    A_mat=matmul(matmul(U_mat,Tmp_matrix),transpose(conjg(U_mat)))
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ',B_mat,W,U_mat)
+   min_eigval=minval(W(:))
+   write(stdout,'(a,es20.5)') ' Min 1/ sqrt[ I + R R^dagger ] eigenvalue ',min_eigval
    do ibf=1,nbasis_L
     if(abs(W(ibf))<min_overlap) then
      write(stdout,'(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ',min_overlap,' in 1/ sqrt[ I + R R^dagger ]',ibf,W(ibf)
@@ -740,6 +751,8 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    x_matrix=s_matrix
    allocate(W(nbasis_L),V_mat(nbasis_L,nbasis_L))
    call diagonalize(' ',x_matrix,W,V_mat)
+   min_eigval=minval(W(:))
+   write(stdout,'(a,es20.5)') ' Min X matrix calc. eigenvalue ',min_eigval
    x_matrix=complex_zero
    do ibf=1,nbasis_L
     if(abs(W(ibf))<min_overlap) then
