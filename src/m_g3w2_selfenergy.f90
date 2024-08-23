@@ -1964,8 +1964,144 @@ subroutine gwtilde_selfenergy(basis,occupation,energy,c_matrix,se)
   real(dp),intent(in)                :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  integer                 :: nstate,nmat,imat
+  integer                 :: istate,astate,jstate,bstate,iaspin,spole
+  integer                 :: pstate,iomega_sigma
+  real(dp),allocatable    :: x_matrix(:,:),y_matrix(:,:)
+  real(dp),allocatable    :: a_matrix(:,:),b_matrix(:,:)
+  real(dp)                :: erpa_tmp,egw_tmp
+  type(spectral_function) :: wpol
+  complex(dp),allocatable :: sigma_gwtilde(:,:,:)
+  real(dp) :: eri_iajp,eri_ijap,eri_ajip
+  real(dp) :: eri_iabp,eri_ibap,eri_abip
+  real(dp) :: num1,num2
+  real(dp),allocatable    :: axpby_matrix(:,:),aypbx_matrix(:,:)
+  !=====
+
+  call start_clock(timing_gw_self)
+
+  if( .NOT. has_auxil_basis ) call die('gwtilde_selfenergy: not implemented without an auxiliary basis')
+  if( nspin > 1 ) call die('gwtilde_selfenergy: not implemented for spin unrestricted')
+
+  nstate = SIZE(energy,DIM=1)
+
+  write(stdout,*) "**********    GWTIDLE VACONDIO   ****************************"
+
+  call wpol%init(nstate,occupation,0)
+  nmat = wpol%npole_reso
+
+  call clean_allocate('X matrix',x_matrix,nmat,nmat)
+  call clean_allocate('Y matrix',y_matrix,nmat,nmat)
+  call clean_allocate('A matrix',a_matrix,nmat,nmat)
+  call clean_allocate('B matrix',b_matrix,nmat,nmat)
+
+  ! Get A and B, X and Y
+  call polarizability(.FALSE.,.TRUE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol, &
+                       a_matrix=a_matrix,b_matrix=b_matrix,x_matrix=x_matrix,y_matrix=y_matrix)
+
+  !!
+  !! A -> A' in Kresse's notation
+  !! Remove the energy difference on the diagonal
+  !call remove_a_energy_diag(energy,wpol,a_matrix)
+
+
+  !call clean_allocate('AX+BY matrix',axpby_matrix,nmat,nmat)
+  !call clean_allocate('AY+BX matrix',aypbx_matrix,nmat,nmat)
+  !! AX + BY
+  !axpby_matrix(:,:) = MATMUL( a_matrix, x_matrix ) + MATMUL( b_matrix, y_matrix )
+  !! AY + BX
+  !aypbx_matrix(:,:) = MATMUL( a_matrix, y_matrix ) + MATMUL( b_matrix, x_matrix )
+
+  call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
+
+  allocate(sigma_gwtilde(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+  sigma_gwtilde(:,:,:) = 0.0_dp
+
+  do pstate=nsemin,nsemax
+
+    do spole=1,wpol%npole_reso
+
+      do jstate=ncore_G+1,nhomo_G
+
+        num1 = 0.0
+        num2 = 0.0
+        do imat=1,nmat
+          istate = wpol%transition_table(1,imat)
+          astate = wpol%transition_table(2,imat)
+
+          eri_iajp = eri_eigen(istate,astate,1,jstate,pstate,1)
+          eri_ijap = eri_eigen(istate,jstate,1,astate,pstate,1)  ! set to zero to recover GW
+          eri_ajip = eri_eigen(astate,jstate,1,istate,pstate,1)  ! set to zero to recover GW
+
+          num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iajp - x_matrix(imat,spole) * eri_ijap  &
+                      + 2.0 * y_matrix(imat,spole) * eri_iajp - y_matrix(imat,spole) * eri_ajip 
+          num2 = num2 + ( x_matrix(imat,spole) + y_matrix(imat,spole) ) * eri_iajp
+
+        enddo
+
+        sigma_gwtilde(:,pstate,1) = sigma_gwtilde(:,pstate,1) &
+                       +  num1 * num2 &
+                          / ( se%omega(:) + se%energy0(pstate,1) - energy(jstate,1) + wpol%pole(spole) -ieta )
+
+      enddo ! loop over jstate
+
+      do bstate=nhomo_G+1,nvirtual_G-1
+
+        num1 = 0.0
+        num2 = 0.0
+        do imat=1,nmat
+          istate = wpol%transition_table(1,imat)
+          astate = wpol%transition_table(2,imat)
+
+          eri_iabp = eri_eigen(istate,astate,1,bstate,pstate,1)
+          eri_ibap = eri_eigen(istate,bstate,1,astate,pstate,1)  ! set to zero to recover GW
+          eri_abip = eri_eigen(astate,bstate,1,istate,pstate,1)  ! set to zero to recover GW
+
+          num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iabp - x_matrix(imat,spole) * eri_ibap  &
+                      + 2.0 * y_matrix(imat,spole) * eri_iabp - y_matrix(imat,spole) * eri_abip
+          num2 = num2 + ( x_matrix(imat,spole) + y_matrix(imat,spole) ) * eri_iabp
+
+        enddo
+
+        sigma_gwtilde(:,pstate,1) = sigma_gwtilde(:,pstate,1) &
+                       +  num1 * num2 &
+                          / ( se%omega(:) + se%energy0(pstate,1) - energy(bstate,1) - wpol%pole(spole) +ieta )
+
+      enddo ! loop over bstate
+
+    enddo ! loop over spole
+  enddo ! loop over pstate
+
+  se%sigma(:,:,:) = sigma_gwtilde(:,:,:)
+
+  call clean_deallocate('X matrix',x_matrix)
+  call clean_deallocate('Y matrix',y_matrix)
+
+  call clean_deallocate('A matrix',a_matrix)
+  call clean_deallocate('B matrix',b_matrix)
+  call clean_deallocate('AX+BY matrix',axpby_matrix)
+  call clean_deallocate('AY+BX matrix',aypbx_matrix)
+
+  deallocate(sigma_gwtilde)
+  call destroy_eri_3center_eigen()
+  call wpol%destroy()
+  write(stdout,*) "**********    GWTIDLE VACONDIO  *** THE END ****************"
+  call stop_clock(timing_gw_self)
+
+end subroutine gwtilde_selfenergy
+
+
+!=========================================================================
+subroutine gwtilde_selfenergy2(basis,occupation,energy,c_matrix,se)
+  implicit none
+
+  type(basis_set)                    :: basis
+  real(dp),intent(in)                :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                :: c_matrix(:,:,:)
+  type(selfenergy_grid),intent(inout) :: se
+  !=====
   integer                 :: nstate,nmat
-  integer                 :: istate,astate,iaspin,spole,iauxil,it
+  integer                 :: istate,astate,iaspin,spole,iauxil
   integer                 :: pstate,iomega_sigma
   real(dp),allocatable    :: x_matrix(:,:),y_matrix(:,:)
   real(dp),allocatable    :: a_matrix(:,:),b_matrix(:,:)
@@ -2026,12 +2162,13 @@ subroutine gwtilde_selfenergy(basis,occupation,energy,c_matrix,se)
       do pstate=nsemin,nsemax
         eri_ap(:) = eri_3center_eigen(:,pstate,astate,1)
         sigma_gwtilde(:,pstate,1) = sigma_gwtilde(:,pstate,1) &
-                     + DOT_PRODUCT( eri_ap(:) , wpol%residue_left(:,spole) ) &
+                     + DOT_PRODUCT( eri_ap(:) , wpol%residue_left(:,spole) ) * aypbx_matrix(:,spole)  &
                         / ( se%omega(:) + se%energy0(pstate,1) - energy(astate,1) - wpol%pole(spole) )
       enddo
     enddo
   enddo
 
+  se%sigma(:,:,:) = sigma_gwtilde(:,:,:)
 
   call clean_deallocate('X matrix',x_matrix)
   call clean_deallocate('Y matrix',y_matrix)
@@ -2048,7 +2185,8 @@ subroutine gwtilde_selfenergy(basis,occupation,energy,c_matrix,se)
   write(stdout,*) "**********    GWTIDLE   *** THE END ****************"
   call stop_clock(timing_gw_self)
 
-end subroutine gwtilde_selfenergy
+end subroutine gwtilde_selfenergy2
+
 
 end module m_g3w2_selfenergy
 !=========================================================================
