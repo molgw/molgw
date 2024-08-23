@@ -305,7 +305,7 @@ program molgw
     ! Checking (C^x2c)^dagger S C^x2c =? I and overwrite s_matrix_rel, x_matrix_rel, 
     ! c_matrix_rel and hamiltonian_kin_nuc_rel if the deviation from I is too large
     !
-    call check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel,&
+    call check_CdaggerSC_I(basis,electrons,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel,&
     &  hamiltonian_kin_nuc_rel,s_matrix,x_matrix)
     deallocate(energy_rel)
 
@@ -734,7 +734,7 @@ program molgw
 
     en_noft = en_gks
     if( is_x2c ) then ! relativistic
-      call noft_energy(basis,occupation,en_noft%total,en_noft%nuc_nuc,&
+      call noft_energy(basis,occupation,en_noft%total,en_noft%nuc_nuc,  &
       &               c_matrix_rel=c_matrix_rel,hkin_nuc_rel=hamiltonian_kin_nuc_rel)
     else              ! non-relativistic
       if( nspin /= 1 ) call die('molgw: NOFT calculations need spin-restriction. Set nspin to 1')

@@ -951,18 +951,21 @@ end subroutine shuffle_real
 ! Check deviation from the identity of ( C^x2c )^dagger S C^x2c with the actual overlap matrix S
 ! and overwrite S, X, C and H matrices if the MAE > 1e-6 to preserve orthonormality
 !==================================================================
-subroutine check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel, &
+subroutine check_CdaggerSC_I(basis,electrons_in,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel, &
     &      hamiltonian_kin_nuc_rel,s_matrix,x_matrix)
 
   type(basis_set),intent(inout)  :: basis
+  real(dp),intent(in)            :: electrons_in
   real(dp),intent(in)            :: s_matrix(:,:),x_matrix(:,:),energy_rel(:)
   complex(dp),intent(inout)      :: c_matrix_rel(:,:),s_matrix_rel(:,:),x_matrix_rel(:,:)
   complex(dp),intent(inout)      :: hamiltonian_kin_nuc_rel(:,:)
   !====
   integer                 :: istate,jstate,nstate
-  integer                 :: info,lwork
+  integer                 :: info,lwork,ielectrons
   real(dp)                :: err_x2c_coef
   integer,allocatable     :: ipiv(:)
+  real(dp),allocatable    :: W(:)
+  complex(dp),allocatable :: U_mat(:,:)
   complex(dp),allocatable :: Work(:)
   complex(dp),allocatable :: tmp_matrix(:,:)
   complex(dp),allocatable :: inv_c_matrix_rel(:,:)
@@ -1050,8 +1053,33 @@ subroutine check_CdaggerSC_I(basis,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy
       tmp_matrix=matmul(s_matrix_rel,tmp_matrix)     ! S C_x2c e ( C_x2c )^-1
       
       deallocate(inv_c_matrix_rel,ipiv,Work)
-      
+     
+      ! H_new = 1/2 ( H + H^dagger ) 
       hamiltonian_kin_nuc_rel=0.5_dp*(tmp_matrix+conjg(transpose(tmp_matrix)))
+      
+      ! Check eigenvalues of H_new C_x2c = S C_x2c e
+      write(stdout,'(a)') ' Computing eigenvalues of H^new'
+      ielectrons=nint(electrons_in)
+      allocate(W(nstate),U_mat(nstate,nstate))
+      tmp_matrix=matmul(conjg(transpose(x_matrix_rel)),matmul(hamiltonian_kin_nuc_rel,x_matrix_rel))
+      call diagonalize(' ',tmp_matrix,W,U_mat)
+      write(stdout,'(1x,a)') '=== Energies ==='
+      write(stdout,'(a)') '   #                               (Ha)                       &
+      &                         (eV)      '
+      write(stdout,'(a)') '                         bar                       ubar       &
+      &               bar                       ubar '
+      do istate=1,nstate/2
+       write(stdout,'(1x,i5,2(2(1x,f25.5)))') istate,W(2*istate-1),W(2*istate),W(2*istate-1)*Ha_eV,W(2*istate)*Ha_eV 
+       if(istate==ielectrons/2) write(stdout,'(a)') '  --------------------------------------------------------------'
+      enddo
+      !W(:)=abs(W(:)-energy_rel(:))
+      !err_x2c_coef=sum(W(1:2*ielectrons))/(2*ielectrons)
+      !write(stdout,'(/,a,f10.6)') ' MAE in the eigenvalues (2 x Nelectrons window) ',err_x2c_coef
+      !err_x2c_coef=maxval(W(1:2*ielectrons))
+      !write(stdout,'(a,f10.6,/)') ' MAX diff. in the eigenvalues (2 x Nelectrons window) ',err_x2c_coef
+      
+      deallocate(W,U_mat)
+
     endif
 
   endif
