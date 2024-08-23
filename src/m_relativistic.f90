@@ -1003,7 +1003,11 @@ subroutine check_CdaggerSC_I(basis,electrons_in,c_matrix_rel,s_matrix_rel,x_matr
   write(stdout,'(a,f10.6)') ' MAE in (C^x2c)^dagger S C^x2c = I',err_x2c_coef
   if(err_x2c_coef>1e-6) then
     ! We prefer to enforce orthonormality for the C^x2c states
-    write(stdout,'(a)') ' The MAE > 1e-6, overwriting S, X, C and H matrices before doing the SCF procedure'
+    if( trim(approx_H_x2c)=='yes' ) then 
+      write(stdout,'(a)') ' The MAE > 1e-6, overwriting S, X, C and H matrices before doing the SCF procedure'
+    else
+      write(stdout,'(a)') ' The MAE > 1e-6, overwriting S, and X matrices before doing the SCF procedure'
+    endif
     s_matrix_rel=COMPLEX_ZERO
     x_matrix_rel=COMPLEX_ZERO
 
@@ -1037,9 +1041,8 @@ subroutine check_CdaggerSC_I(basis,electrons_in,c_matrix_rel,s_matrix_rel,x_matr
         if(info/=0) call die("Error computing ( C_x2c )^-1 in zgetri")
       endif
       
-      write(stdout,'(a)') ' Computing approximate Hamiltonian H^new'
-      write(stdout,'(a)') ' ( H = S C_x2c e and H^dagger = S C_x2c e ) '
-      write(stdout,'(a)') ' H^new = 1/2 ( H + H^dagger ) '
+      write(stdout,'(a)') ' Computing approximate Hamiltonian H^new = 1/2 ( H + H^dagger )'
+      write(stdout,'(a)') ' with H = S C_x2c e ( C_x2c )^-1 and H^dagger = S C_x2c e ( C_x2c )^-1'
       tmp_matrix=COMPLEX_ZERO
       do istate=1,nstate
         tmp_matrix(istate,istate)=energy_rel(istate)
