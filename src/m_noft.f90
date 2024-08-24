@@ -691,15 +691,15 @@ subroutine mo_ints_x2c(nstate_occ,nstate_kji,NO_COEF_x2c,hCORE_x2c,ERImol_x2c)
      enddo
     else
      do istate=1,nstate_occ
-       do jstate=1,nstate_occ
+       do jstate=1,nstate_occ    ! Delta_ij contributions (Hartee and exchange terms incl. ubar and bar)
          do pstate=1,nstate_noft
            ! For 2nd, 4th, and 5th terms in Eq. 64 Rel-RDMFT paper SciPost Chem. 1, 004 (2022)
            ERImol_x2c(pstate,istate,jstate,istate)=eri_eigen_ri_x2c(pstate,jstate,istate,istate) ! <li|ji> format used for ERImol
            ERImol_x2c(pstate,jstate,jstate,istate)=eri_eigen_ri_x2c(pstate,jstate,jstate,istate) ! <lj|ji> format used for ERImol
          enddo
        enddo
-       do jstate=1,nstate_occ/2
-         do pstate=1,nstate_noft
+       do jstate=1,nstate_occ/2  ! Pi_ij contributions (i.e. <\ubar{i} \bar{i} | \ubar{j} \bar{j}>, <\bar{i} \ubar{i} | \bar{j} \ubar{j}>,
+         do pstate=1,nstate_noft ! <\ubar{i} \bar{i} | \bar{j} \ubar{j}>, and <\bar{i} \ubar{i} | \ubar{j} \bar{j}>)
            ! For 6th and 7th terms in Eq. 64 Rel-RDMFT paper SciPost Chem. 1, 004 (2022) NOTE: Focus on the types of 2-RDM elements NOT on the integrals of Eq. 64
            ERImol_x2c(pstate,istate,2*jstate-1,2*jstate  )=eri_eigen_ri_x2c(pstate,2*jstate-1,istate,2*jstate  ) ! <li|\ubar{j} \bar{j} > format used for ERImol
            ERImol_x2c(pstate,istate,2*jstate  ,2*jstate-1)=eri_eigen_ri_x2c(pstate,2*jstate  ,istate,2*jstate-1) ! <li|\bar{j} \ubar{j} > format used for ERImol
