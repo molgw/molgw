@@ -305,8 +305,10 @@ program molgw
     ! Checking (C^x2c)^dagger S C^x2c =? I and overwrite s_matrix_rel, x_matrix_rel, 
     ! c_matrix_rel and hamiltonian_kin_nuc_rel if the deviation from I is too large
     !
-    call check_CdaggerSC_I(basis,electrons,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel,&
-    &  hamiltonian_kin_nuc_rel,s_matrix,x_matrix)
+    if( trim(check_CdSC_x2c)=='yes' ) then
+      call check_CdaggerSC_I(basis,electrons,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel,&
+      &  hamiltonian_kin_nuc_rel,s_matrix,x_matrix)
+    endif
     deallocate(energy_rel)
 
     !
