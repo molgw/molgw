@@ -1000,7 +1000,7 @@ subroutine check_CdaggerSC_I(basis,electrons_in,c_matrix_rel,s_matrix_rel,x_matr
     enddo
   enddo
   err_x2c_coef=err_x2c_coef/(nstate*nstate)
-  write(stdout,'(a,f10.6)') ' MAE in (C^x2c)^dagger S C^x2c = I',err_x2c_coef
+  write(stdout,'(a,f15.8)') ' MAE in (C^x2c)^dagger S C^x2c = I',err_x2c_coef
   if(err_x2c_coef>1e-6) then
     ! We prefer to enforce orthonormality for the C^x2c states
     if( trim(approx_H_x2c)=='yes' ) then 
