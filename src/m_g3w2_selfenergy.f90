@@ -1974,6 +1974,11 @@ subroutine gwtilde_selfenergy(basis,occupation,energy,c_matrix,se)
   complex(dp),allocatable :: sigma_gwtilde(:,:,:)
   real(dp) :: eri_iajp,eri_ijap,eri_ajip
   real(dp) :: eri_iabp,eri_ibap,eri_abip
+  real(dp),allocatable :: eri_tmp1(:,:), eri_tmp2(:,:), eri_tmp3(:,:)
+  real(dp),allocatable :: eri_tmp1v(:,:), eri_tmp2v(:,:), eri_tmp3v(:,:)
+  real(dp),allocatable :: num_tmp1(:,:), num_tmp2(:,:)
+  real(dp),allocatable :: num_tmp1v(:,:), num_tmp2v(:,:)
+  real(dp),allocatable :: xpy_matrix(:,:)
   real(dp) :: num1,num2
   real(dp),allocatable    :: axpby_matrix(:,:),aypbx_matrix(:,:)
   !=====
@@ -2015,61 +2020,116 @@ subroutine gwtilde_selfenergy(basis,occupation,energy,c_matrix,se)
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
 
   allocate(sigma_gwtilde(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+  allocate(xpy_matrix(nmat,nmat))
+  xpy_matrix(:,:) = x_matrix(:,:) + y_matrix(:,:)
+  allocate(eri_tmp1(nmat,ncore_G+1:nhomo_G))
+  allocate(eri_tmp2(nmat,ncore_G+1:nhomo_G))
+  allocate(eri_tmp3(nmat,ncore_G+1:nhomo_G))
+  allocate(eri_tmp1v(nmat,nhomo_G+1:nvirtual_G-1))
+  allocate(eri_tmp2v(nmat,nhomo_G+1:nvirtual_G-1))
+  allocate(eri_tmp3v(nmat,nhomo_G+1:nvirtual_G-1))
+  allocate(num_tmp1(nmat,ncore_G+1:nhomo_G))
+  allocate(num_tmp2(nmat,ncore_G+1:nhomo_G))
+  allocate(num_tmp1v(nmat,nhomo_G+1:nvirtual_G-1))
+  allocate(num_tmp2v(nmat,nhomo_G+1:nvirtual_G-1))
   sigma_gwtilde(:,:,:) = 0.0_dp
 
   do pstate=nsemin,nsemax
 
-    do spole=1,wpol%npole_reso
+    do jstate=ncore_G+1,nhomo_G
+      do imat=1,nmat
+        istate = wpol%transition_table(1,imat)
+        astate = wpol%transition_table(2,imat)
 
-      do jstate=ncore_G+1,nhomo_G
+        eri_tmp1(imat,jstate) = eri_eigen(istate,astate,1,jstate,pstate,1)
+        eri_tmp2(imat,jstate) = eri_eigen(istate,jstate,1,astate,pstate,1)  ! set to zero to recover GW
+        eri_tmp3(imat,jstate) = eri_eigen(astate,jstate,1,istate,pstate,1)  ! set to zero to recover GW
+     enddo
+   enddo
 
-        num1 = 0.0
-        num2 = 0.0
-        do imat=1,nmat
-          istate = wpol%transition_table(1,imat)
-          astate = wpol%transition_table(2,imat)
+   num_tmp2(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1(:,:) )
 
-          eri_iajp = eri_eigen(istate,astate,1,jstate,pstate,1)
-          eri_ijap = eri_eigen(istate,jstate,1,astate,pstate,1)  ! set to zero to recover GW
-          eri_ajip = eri_eigen(astate,jstate,1,istate,pstate,1)  ! set to zero to recover GW
+   num_tmp1(:,:) = 2.0 * num_tmp2(:,:) &
+                   - MATMUL( TRANSPOSE(x_matrix(:,:)) , eri_tmp2(:,:) ) &
+                   - MATMUL( TRANSPOSE(y_matrix(:,:)) , eri_tmp3(:,:) )
 
-          num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iajp - x_matrix(imat,spole) * eri_ijap  &
-                      + 2.0 * y_matrix(imat,spole) * eri_iajp - y_matrix(imat,spole) * eri_ajip 
-          num2 = num2 + ( x_matrix(imat,spole) + y_matrix(imat,spole) ) * eri_iajp
 
-        enddo
+  !    do spole=1,wpol%npole_reso
 
+  !      num1 = 0.0
+  !      num2 = 0.0
+  !      do imat=1,nmat
+  !        istate = wpol%transition_table(1,imat)
+  !        astate = wpol%transition_table(2,imat)
+
+  !        eri_iajp = eri_eigen(istate,astate,1,jstate,pstate,1)
+  !        eri_ijap = eri_eigen(istate,jstate,1,astate,pstate,1)  ! set to zero to recover GW
+  !        eri_ajip = eri_eigen(astate,jstate,1,istate,pstate,1)  ! set to zero to recover GW
+
+  !        num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iajp - x_matrix(imat,spole) * eri_ijap  &
+  !                    + 2.0 * y_matrix(imat,spole) * eri_iajp - y_matrix(imat,spole) * eri_ajip 
+  !        num2 = num2 + ( x_matrix(imat,spole) + y_matrix(imat,spole) ) * eri_iajp
+
+  !      enddo
+
+    do jstate=ncore_G+1,nhomo_G
+      do spole=1,wpol%npole_reso
         sigma_gwtilde(:,pstate,1) = sigma_gwtilde(:,pstate,1) &
-                       +  num1 * num2 &
+                       +  num_tmp1(spole,jstate) * num_tmp2(spole,jstate) &
                           / ( se%omega(:) + se%energy0(pstate,1) - energy(jstate,1) + wpol%pole(spole) -ieta )
 
-      enddo ! loop over jstate
+      enddo ! loop over spole
+    enddo ! loop over jstate
 
-      do bstate=nhomo_G+1,nvirtual_G-1
+    do bstate=nhomo_G+1,nvirtual_G-1
+      do imat=1,nmat
+        istate = wpol%transition_table(1,imat)
+        astate = wpol%transition_table(2,imat)
 
-        num1 = 0.0
-        num2 = 0.0
-        do imat=1,nmat
-          istate = wpol%transition_table(1,imat)
-          astate = wpol%transition_table(2,imat)
-
-          eri_iabp = eri_eigen(istate,astate,1,bstate,pstate,1)
-          eri_ibap = eri_eigen(istate,bstate,1,astate,pstate,1)  ! set to zero to recover GW
-          eri_abip = eri_eigen(astate,bstate,1,istate,pstate,1)  ! set to zero to recover GW
-
-          num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iabp - x_matrix(imat,spole) * eri_ibap  &
-                      + 2.0 * y_matrix(imat,spole) * eri_iabp - y_matrix(imat,spole) * eri_abip
-          num2 = num2 + ( x_matrix(imat,spole) + y_matrix(imat,spole) ) * eri_iabp
-
-        enddo
-
+        eri_tmp1v(imat,bstate) = eri_eigen(istate,astate,1,bstate,pstate,1)
+        eri_tmp2v(imat,bstate) = eri_eigen(istate,bstate,1,astate,pstate,1)  ! set to zero to recover GW
+        eri_tmp3v(imat,bstate) = eri_eigen(astate,bstate,1,istate,pstate,1)  ! set to zero to recover GW
+     enddo
+   enddo
+   num_tmp2v(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1v(:,:) )
+   num_tmp1v(:,:) = 2.0 * num_tmp2v(:,:) &
+                   - MATMUL( TRANSPOSE(x_matrix(:,:)) , eri_tmp2v(:,:) ) &
+                   - MATMUL( TRANSPOSE(y_matrix(:,:)) , eri_tmp3v(:,:) )
+    do bstate=nhomo_G+1,nvirtual_G-1
+      do spole=1,wpol%npole_reso
         sigma_gwtilde(:,pstate,1) = sigma_gwtilde(:,pstate,1) &
-                       +  num1 * num2 &
+                       +  num_tmp1v(spole,bstate) * num_tmp2v(spole,bstate) &
                           / ( se%omega(:) + se%energy0(pstate,1) - energy(bstate,1) - wpol%pole(spole) +ieta )
+      enddo ! loop over spole
+    enddo ! loop over bstate
 
-      enddo ! loop over bstate
+    !do bstate=nhomo_G+1,nvirtual_G-1
+    !  do spole=1,wpol%npole_reso
 
-    enddo ! loop over spole
+    !    num1 = 0.0
+    !    num2 = 0.0
+    !    do imat=1,nmat
+    !      istate = wpol%transition_table(1,imat)
+    !      astate = wpol%transition_table(2,imat)
+
+    !      eri_iabp = eri_eigen(istate,astate,1,bstate,pstate,1)
+    !      eri_ibap = eri_eigen(istate,bstate,1,astate,pstate,1)  ! set to zero to recover GW
+    !      eri_abip = eri_eigen(astate,bstate,1,istate,pstate,1)  ! set to zero to recover GW
+
+    !      num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iabp - x_matrix(imat,spole) * eri_ibap  &
+    !                  + 2.0 * y_matrix(imat,spole) * eri_iabp - y_matrix(imat,spole) * eri_abip
+    !      num2 = num2 + ( x_matrix(imat,spole) + y_matrix(imat,spole) ) * eri_iabp
+
+    !    enddo
+
+    !    sigma_gwtilde(:,pstate,1) = sigma_gwtilde(:,pstate,1) &
+    !                   +  num1 * num2 &
+    !                      / ( se%omega(:) + se%energy0(pstate,1) - energy(bstate,1) - wpol%pole(spole) +ieta )
+
+
+    !  enddo ! loop over spole
+    !enddo ! loop over bstate
+
   enddo ! loop over pstate
 
   se%sigma(:,:,:) = sigma_gwtilde(:,:,:)
