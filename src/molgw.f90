@@ -77,7 +77,6 @@ program molgw
   integer                 :: istep,istring
   logical                 :: found_basis_name
   logical                 :: is_restart,is_big_restart,is_basis_restart
-  logical                 :: is_x2c
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp,eext
@@ -147,26 +146,11 @@ program molgw
   call hdf_init() 
 #endif
 
-  ! Check if it is a relativistic or non-rel. calculation
-  is_x2c=(TRIM(x2c) == 'yes')
 
-  if ( is_x2c ) then ! Relativistic
+  if ( x2c_ ) then ! Relativistic
 
     call start_clock(timing_prescf)
 
-    if( .not. has_auxil_basis ) then
-      call die("X2C calculations require an auxiliary basis")
-    endif
-
-    ! Check if the correct nspin=2 was provided
-    if( nspin/=2 ) then
-      call die("X2C calculations require nspin=2")
-    endif
-
-    ! Check if the magnetization=0
-    if( abs(magnetization)>1e-8 ) then
-      call die("X2C calculations only implemented for magnetization=0")
-    endif
 
     !
     ! Nucleus-nucleus repulsion contribution to the energy
@@ -178,9 +162,6 @@ program molgw
     write(stdout,*) 'Setting up the basis set for wavefunctions'
     call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
                         even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
-    if( basis%gaussian_type/= 'CART' ) then
-      call die("X2C calculations require cartesian gaussian_type")
-    endif
    
    
     !
@@ -193,7 +174,7 @@ program molgw
     ! Relativistic Hcore = Kinetic + electron-Vext. Build H^X2C and diag. to get the spinors
     !  sets nstate=2*basis%nbf for X2C
     !  sets nstate=4*basis%nbf for 4C
-    call relativistic_init(basis,is_x2c,electrons,nstate,c_matrix_rel,s_matrix_rel,x_matrix_rel, &
+    call relativistic_init(basis,x2c_,electrons,nstate,c_matrix_rel,s_matrix_rel,x_matrix_rel, &
     & hamiltonian_kin_nuc_rel,energy_rel)
     allocate(basis_name_nrel(ncenter_basis))
     write(basis_name_1,'(a)') trim(basis_name(1))
@@ -684,7 +665,7 @@ program molgw
   endif
 #endif
 
-  if ( (.not. is_x2c) .and. (complex_scf=='no') ) then
+  if ( (.not. x2c_) .and. (complex_scf=='no') ) then
     !
     ! Evaluate spin contamination
     call evaluate_s2_operator(occupation,c_matrix,s_matrix)
@@ -735,7 +716,7 @@ program molgw
   if( calc_type%is_noft ) then
 
     en_noft = en_gks
-    if( is_x2c ) then ! relativistic
+    if( x2c_ ) then ! relativistic
       call noft_energy(basis,occupation,en_noft%total,en_noft%nuc_nuc,  &
       &               c_matrix_rel=c_matrix_rel,hkin_nuc_rel=hamiltonian_kin_nuc_rel)
     else              ! non-relativistic
@@ -879,7 +860,7 @@ program molgw
 
     call set_occupation(0.0_dp,electrons,magnetization,energy,occupation)
 
-    if( .not. is_x2c ) then ! non-relativistic
+    if( .not. x2c_ ) then ! non-relativistic
 
       if( complex_scf=='no' ) then ! real
   
