@@ -177,18 +177,11 @@ program molgw
       call relativistic_init(basis,x2c_,electrons,nstate,c_matrix_rel,s_matrix_rel,x_matrix_rel, &
       & hamiltonian_kin_nuc_rel,energy_rel)
       allocate(basis_name_nrel(ncenter_basis))
-      write(basis_name_1,'(a)') trim(basis_name(1))
-      found_basis_name=.false.
-      do istring=1,len(basis_name_1)
-       if(.not.found_basis_name) then
-        if( (basis_name_1(istring:istring)=='_' .and. basis_name_1(istring+1:istring+1)=='r') .and.   &
-        &  (  basis_name_1(istring+2:istring+2)=='e' .and. basis_name_1(istring+3:istring+3)=='l') ) then
-          basis_name_1=basis_name_1(1:istring-1)
-          found_basis_name=.true.
-        endif
-       endif
-      enddo
-      basis_name_nrel(:)=basis_name_1
+
+      basis_name_1 = trim(basis_name(1))
+      istring = INDEX(basis_name_1,'_rel')
+      basis_name_nrel(:)= basis_name_1(1:istring-1)
+
       call destroy_basis_set(basis) ! Remove _rel from the basis name (use only Large component basis)
 
       !
