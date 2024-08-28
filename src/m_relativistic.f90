@@ -221,6 +221,7 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
 
   !! Calculate all integrals for unrestricted-KB H_rel
   call init_libcint(basis)
+
   !! Calculate overlap matrix S
   call clean_allocate('Scalar overlap matrix S',scalar_s_matrix,basis%nbf,basis%nbf)
   call clean_allocate('Scalar nabla operator D',scalar_nabla_ao,basis%nbf,basis%nbf,3)

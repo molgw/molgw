@@ -1019,9 +1019,6 @@ subroutine read_inputfile_namelist()
   if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
   if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
   if( x2c_ ) then
-    if( .not. has_auxil_basis ) then
-      call die("X2C calculations require an auxiliary basis")
-    endif
     ! Check if the correct nspin=2 was provided
     if( nspin/=2 ) then
       call die("X2C calculations require nspin=2")
@@ -1086,6 +1083,11 @@ and the -DHAVE_HDF5 compilation option must be activated')
   if( print_w_ .AND. has_auxil_basis ) then
     call die('input check: print_w is not numerically stable when using an auxiliary basis.' // &
              ' Do not use this keyword and everything is gonna be alright')
+  endif
+  if( x2c_ ) then
+    if( .not. has_auxil_basis ) then
+      call die("X2C calculations require an auxiliary basis")
+    endif
   endif
 
   !
