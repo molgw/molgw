@@ -77,7 +77,6 @@ program molgw
   integer                 :: istep,istring
   logical                 :: found_basis_name
   logical                 :: is_restart,is_big_restart,is_basis_restart
-  logical                 :: is_x2c
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
   real(dp)                :: erpa_tmp,egw_tmp,eext
@@ -147,81 +146,77 @@ program molgw
   call hdf_init() 
 #endif
 
-  ! Check if it is a relativistic or non-rel. calculation
-  is_x2c=(TRIM(x2c) == 'yes')
 
-  if ( is_x2c ) then ! Relativistic
-
+ 
+  !
+  ! Nucleus motion loop
+  !
+  do istep=1,nstep
+ 
+    if( move_nuclei == 'relax' ) then
+      write(stdout,'(/,/,1x,a,i5,/)') ' === LBFGS step ',istep
+    endif
+ 
     call start_clock(timing_prescf)
-
-    if( .not. has_auxil_basis ) then
-      call die("X2C calculations require an auxiliary basis")
-    endif
-
-    ! Check if the correct nspin=2 was provided
-    if( nspin/=2 ) then
-      call die("X2C calculations require nspin=2")
-    endif
-
-    ! Check if the magnetization=0
-    if( abs(magnetization)>1e-8 ) then
-      call die("X2C calculations only implemented for magnetization=0")
-    endif
-
+ 
     !
     ! Nucleus-nucleus repulsion contribution to the energy
     call nucleus_nucleus_energy(en_gks%nuc_nuc)
-   
-    !
-    ! Build up the basis set
-    !
-    write(stdout,*) 'Setting up the basis set for wavefunctions'
-    call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
-                        even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
-    if( basis%gaussian_type/= 'CART' ) then
-      call die("X2C calculations require cartesian gaussian_type")
+ 
+    if( x2c_ ) then
+      !
+      ! Build up the basis set
+      !
+      write(stdout,*) 'Setting up the basis set for wavefunctions'
+      call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
+                          even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
+
+      ! Relativistic Hcore = Kinetic + electron-Vext. Build H^X2C and diag. to get the spinors
+      !  sets nstate=2*basis%nbf for X2C
+      !  sets nstate=4*basis%nbf for 4C
+      call relativistic_init(basis,x2c_,electrons,nstate,c_matrix_rel,s_matrix_rel,x_matrix_rel, &
+      & hamiltonian_kin_nuc_rel,energy_rel)
+      allocate(basis_name_nrel(ncenter_basis))
+
+      basis_name_1 = trim(basis_name(1))
+      istring = INDEX(basis_name_1,'_rel')
+      basis_name_nrel(:)= basis_name_1(1:istring-1)
+
+      call destroy_basis_set(basis) ! Remove _rel from the basis name (use only Large component basis)
+
+      !
+      ! Build up the basis set
+      !
+      write(stdout,*) 'Setting up the basis set for wavefunctions'
+      call init_basis_set(basis_path,basis_name_nrel,ecp_basis_name,gaussian_type, &
+         & even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
+      deallocate(basis_name_nrel)
+
+    else
+      !
+      ! Build up the basis set
+      !
+      write(stdout,*) 'Setting up the basis set for wavefunctions'
+      call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
+                          even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
     endif
-   
-   
+ 
+ 
     !
     ! SCALAPACK distribution that depends on the system specific size, parameters etc.
     call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol)
-   
+ 
     if( print_rho_grid_ ) call dm_dump(basis)
-   
-   
-    ! Relativistic Hcore = Kinetic + electron-Vext. Build H^X2C and diag. to get the spinors
-    !  sets nstate=2*basis%nbf for X2C
-    !  sets nstate=4*basis%nbf for 4C
-    call relativistic_init(basis,is_x2c,electrons,nstate,c_matrix_rel,s_matrix_rel,x_matrix_rel, &
-    & hamiltonian_kin_nuc_rel,energy_rel)
-    allocate(basis_name_nrel(ncenter_basis))
-    write(basis_name_1,'(a)') trim(basis_name(1))
-    found_basis_name=.false.
-    do istring=1,len(basis_name_1)
-     if(.not.found_basis_name) then
-      if( (basis_name_1(istring:istring)=='_' .and. basis_name_1(istring+1:istring+1)=='r') .and.   &
-      &  (  basis_name_1(istring+2:istring+2)=='e' .and. basis_name_1(istring+3:istring+3)=='l') ) then
-        basis_name_1=basis_name_1(1:istring-1)
-        found_basis_name=.true.
-      endif
-     endif
-    enddo
-    basis_name_nrel(:)=basis_name_1
-    call destroy_basis_set(basis) ! Remove _rel from the basis name (use only Large component basis)
-    call init_basis_set(basis_path,basis_name_nrel,ecp_basis_name,gaussian_type, &
-       & even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
-    deallocate(basis_name_nrel)
-
+ 
     !
     ! If an auxiliary basis is given, then set it up now
     if( has_auxil_basis ) then
       write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
       if( TRIM(capitalize(auxil_basis_name(1))) == 'AUTO' .OR. TRIM(capitalize(auxil_basis_name(1))) &
-       & == 'PAUTO' .OR.  TRIM(capitalize(ecp_auxil_basis_name(1))) == 'AUTO' .OR. &
-       &  TRIM(capitalize(ecp_auxil_basis_name(1))) == 'PAUTO' ) then
-        call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam,& 
-        & auto_auxil_lmaxinc,auxil_basis)
+       &   == 'PAUTO' .OR.  TRIM(capitalize(ecp_auxil_basis_name(1))) == 'AUTO' .OR. &
+       &   TRIM(capitalize(ecp_auxil_basis_name(1))) == 'PAUTO' ) then
+        call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam, &
+       & auto_auxil_lmaxinc,auxil_basis)
       else
         call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type, &
                             even_tempered_alpha,even_tempered_beta,even_tempered_n_list,auxil_basis)
@@ -239,8 +234,38 @@ program molgw
     endif
 #endif
 
-    allocate(occupation(basis%nbf,nspin))
-    allocate(energy(basis%nbf,nspin))
+    !
+    ! Calculate overlap matrix S so to obtain "nstate" as soon as possible
+    !
+    call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
+   
+    !
+    ! Build up the overlap matrix S
+    ! S only depends onto the basis set
+    call setup_overlap(basis,s_matrix)
+   
+    !
+    ! Calculate the square root inverse of the overlap matrix S
+    ! Eliminate those eigenvalues that are too small in order to stabilize the
+    ! calculation
+    !
+    ! A crucial parameter is defined here: nstate
+    call setup_x_matrix(min_overlap,s_matrix,nstate,x_matrix)
+   
+    !
+    ! Checking (C^x2c)^dagger S C^x2c =? I and overwrite s_matrix_rel, x_matrix_rel, 
+    ! c_matrix_rel and hamiltonian_kin_nuc_rel if the deviation from I is too large
+    !
+    if( x2c_ ) then
+      if( trim(check_CdSC_x2c)=='yes' ) then
+        call check_CdaggerSC_I(basis,electrons,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel,&
+        &  hamiltonian_kin_nuc_rel,s_matrix,x_matrix)
+      endif
+      deallocate(energy_rel)
+    endif
+   
+    allocate(occupation(nstate,nspin))
+    allocate(energy(nstate,nspin))
     !
     ! Build the first occupation array
     ! as the energy are not known yet, set temperature to zero
@@ -253,15 +278,16 @@ program molgw
     !
     ! ERI are to be stored in the module m_eri
     call prepare_eri(basis)
-    
-    
+   
+   
     call calculation_parameters_yaml(basis%nbf,auxil_basis%nbf,nstate)
-    
+   
     !
     ! Attempt to evaluate the peak memory
     !
     if( memory_evaluation_ ) call evaluate_memory(basis%nbf,auxil_basis%nbf,nstate,occupation)
-
+   
+   
     if( .NOT. has_auxil_basis ) then
       !
       ! If no auxiliary basis is given,
@@ -272,305 +298,154 @@ program molgw
       if(calc_type%need_exchange_lr) then
         call calculate_eri(print_eri_,basis,rcut)
       endif
-    
+   
     else
-    
+   
       ! 2-center and 3-center integrals
       call calculate_eri_ri(basis,auxil_basis,0.0_dp)
-    
-    
+   
+   
       ! If Range-Separated Hybrid are requested
       ! If is_big_restart, these integrals are NOT needed, I chose code this!
       if(calc_type%need_exchange_lr ) then
         ! 2-center and 3-center integrals
         call calculate_eri_ri(basis,auxil_basis,rcut)
       endif
-    
+   
       call reshuffle_distribution_3center()
-    
+   
     endif
     ! ERI integrals have been computed and stored
     !
-
+   
+   
     !
-    ! Calculate overlap matrix S
+    ! Allocate the main arrays
+    ! 2D arrays
+    call clean_allocate('Kinetic operator T',hamiltonian_kinetic,basis%nbf,basis%nbf)
+    call clean_allocate('Nucleus operator V',hamiltonian_nucleus,basis%nbf,basis%nbf)
+    call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
+    call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)  ! not distributed right now
+   
     !
-    call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
-    call setup_overlap(basis,s_matrix)
-    !
-    ! Calculate the square root inverse of the overlap matrix S
-    !
-    call setup_x_matrix(min_overlap,s_matrix,nstate_tmp,x_matrix)
-    !
-    ! Checking (C^x2c)^dagger S C^x2c =? I and overwrite s_matrix_rel, x_matrix_rel, 
-    ! c_matrix_rel and hamiltonian_kin_nuc_rel if the deviation from I is too large
-    !
-    if( trim(check_CdSC_x2c)=='yes' ) then
-      call check_CdaggerSC_I(basis,electrons,c_matrix_rel,s_matrix_rel,x_matrix_rel,energy_rel,&
-      &  hamiltonian_kin_nuc_rel,s_matrix,x_matrix)
+    ! Try to read a RESTART file if it exists
+    if( read_restart_ ) then
+      call read_restart(restart_type,'RESTART',basis,occupation,c_matrix,energy,hamiltonian_fock)
+    else
+      restart_type = NO_RESTART
     endif
-    deallocate(energy_rel)
-
+    is_restart       = ( restart_type /= NO_RESTART )
+    is_big_restart   = ( restart_type == BIG_RESTART )
+    is_basis_restart = ( restart_type == BASIS_RESTART )
+    if( is_restart .AND. (.NOT.is_big_restart) .AND. (.NOT.is_basis_restart) ) write(stdout,*) 'Restarting from a RESTART file'
+    if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
+    if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
+    ! When a BIG RESTART file is provided, assume it contains converged SCF information
+    scf_has_converged = is_big_restart
+   
+   
     !
-    ! Init. guess for c_matrix_rel
+    ! Calculate the parts of the hamiltonian that does not change along
+    ! with the SCF cycles
     !
-    call init_c_matrix_x2c(basis,c_matrix_rel,x_matrix_rel,hamiltonian_kin_nuc_rel)
-
+    ! Kinetic energy contribution
+    call setup_kinetic(basis,hamiltonian_kinetic)
+   
+    !
+    ! Nucleus-electron interaction
+    call setup_nucleus(basis,hamiltonian_nucleus)
+   
+    !
+    ! External electric field
+    call setup_electric_field(basis,hamiltonian_nucleus,eext)
+    !
+    ! Add the Nuclei-Electric Field interaction energy to nuc_nuc
+    en_gks%nuc_nuc = en_gks%nuc_nuc + eext
+   
+    !
+    ! Testing the quadrature in Fourier space
+    !if( .TRUE. ) then
+    !  !                        basis projectile n basis_target
+    !  call setup_overlap_fourier(basis,basis,s_matrix)
+    !  call setup_kinetic_fourier(basis,basis,hamiltonian_kinetic)
+    !  call setup_nucleus_fourier(basis,basis,hamiltonian_nucleus)
+    !endif
+   
+   
+    if( nelement_ecp > 0 ) then
+      call setup_nucleus_ecp(basis,hamiltonian_nucleus)
+    endif
+   
+    !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
+    if( read_tddft_restart_ ) then
+      call check_restart_tddft(nstate,occupation,restart_tddft_is_correct)
+      ! When restart_tddft_is_correct  is TRUE, then override scf_has_converged
+      if( restart_tddft_is_correct ) scf_has_converged = .TRUE.
+    end if
+   
+   
+    if( restart_tddft_is_correct .AND. read_tddft_restart_ ) exit
+   
+   
+    !
+    ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
+    ! ignore the restart file if it is not a big one
+    if( calc_type%selfenergy_technique == QS ) then
+      if( restart_type /= BIG_RESTART ) then
+        call issue_warning('RESTART file has been ignored, since it does not contain the required empty states')
+        is_restart = .FALSE.
+      endif
+    endif
+   
+   
+    if( .NOT. is_restart) then
+      if( .NOT. x2c_ ) then
+        call init_c_matrix(basis,occupation,x_matrix,hamiltonian_kinetic,hamiltonian_nucleus,c_matrix)
+      else
+        !
+        ! Init. guess for c_matrix_rel
+        !
+        call init_c_matrix_x2c(basis,c_matrix_rel,x_matrix_rel,hamiltonian_kin_nuc_rel)
+      endif
+    endif
+   
     call stop_clock(timing_prescf)
- 
+   
+   
     !
     !
     ! Part 2 / 3 : SCF cycles
     !
     !
-    write(stdout,'(a)')  ' '
-    call issue_warning('X2C KS-DFT SCF is currently implemented only for testing')
-    write(stdout,'(a)')  ' '
-    call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate/2,nspin)
-     
-    call scf_loop_x2c(basis,                         &
-                      x_matrix_rel,x_matrix,         &
-                      s_matrix_rel,s_matrix,         &
-                      hamiltonian_kin_nuc_rel,       &
-                      occupation,energy,             &
-                      c_matrix_rel,c_matrix,en_gks,scf_has_converged)
-
-    nocc=nint(SUM(occupation(:,1)))
-    write(stdout,'(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
-    !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the scalar dens. mat.
-    !     and the occupation numbers (i.e. occupations(:,1)) are \in [0,2].
-    write(stdout,'(/,1x,a)')  'Natural occupations: '
-    write(stdout,'(8(2x,f14.6))') occupation(:,1)
-    write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
-    write(stdout,*)
-
-  else ! Non-relativistic
- 
+   
     !
-    ! Nucleus motion loop
-    !
-    do istep=1,nstep
-   
-      if( move_nuclei == 'relax' ) then
-        write(stdout,'(/,/,1x,a,i5,/)') ' === LBFGS step ',istep
-      endif
-   
-      call start_clock(timing_prescf)
-   
-      !
-      ! Nucleus-nucleus repulsion contribution to the energy
-      call nucleus_nucleus_energy(en_gks%nuc_nuc)
-   
-      !
-      ! Build up the basis set
-      !
-      write(stdout,*) 'Setting up the basis set for wavefunctions'
-      call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
-                          even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
-   
-   
-      !
-      ! SCALAPACK distribution that depends on the system specific size, parameters etc.
-      call init_scalapack_other(basis%nbf,eri3_nprow,eri3_npcol)
-   
-      if( print_rho_grid_ ) call dm_dump(basis)
-   
-      !
-      ! If an auxiliary basis is given, then set it up now
-      if( has_auxil_basis ) then
-        write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-        if( TRIM(capitalize(auxil_basis_name(1))) == 'AUTO' .OR. TRIM(capitalize(auxil_basis_name(1))) &
-         &   == 'PAUTO' .OR.  TRIM(capitalize(ecp_auxil_basis_name(1))) == 'AUTO' .OR. &
-         &   TRIM(capitalize(ecp_auxil_basis_name(1))) == 'PAUTO' ) then
-          call init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_auxil_fsam, &
-         & auto_auxil_lmaxinc,auxil_basis)
-        else
-          call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type, &
-                              even_tempered_alpha,even_tempered_beta,even_tempered_n_list,auxil_basis)
-        endif
-      endif
+    ! Big SCF loop is in there
+    ! Only do it if the calculation is NOT a big restart
+    if( .NOT. is_big_restart .AND. nscf > 0 ) then
+      if( x2c_ ) then
 
-#if defined(HAVE_LIBCINT)
-      if( has_auxil_basis) then
-        ! basis object will contain the information for the joint (basis,auxil_basis)
-        call init_libcint(basis,auxil_basis)
-        ! auxil_basis object will contain the information for the sole auxil_basis
-        call init_libcint(auxil_basis)
-      else
-        call init_libcint(basis)
-      endif
-#endif
+        write(stdout,'(a)')  ' '
+        call issue_warning('X2C KS-DFT SCF is currently implemented only for testing')
+        write(stdout,'(a)')  ' '
+         
+        call scf_loop_x2c(basis,                         &
+                          x_matrix_rel,x_matrix,         &
+                          s_matrix_rel,s_matrix,         &
+                          hamiltonian_kin_nuc_rel,       &
+                          occupation,energy,             &
+                          c_matrix_rel,c_matrix,en_gks,scf_has_converged)
 
-      !
-      ! Calculate overlap matrix S so to obtain "nstate" as soon as possible
-      !
-      call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
-     
-      !
-      ! Build up the overlap matrix S
-      ! S only depends onto the basis set
-      call setup_overlap(basis,s_matrix)
-     
-      !
-      ! Calculate the square root inverse of the overlap matrix S
-      ! Eliminate those eigenvalues that are too small in order to stabilize the
-      ! calculation
-      !
-      ! A crucial parameter is defined here: nstate
-      call setup_x_matrix(min_overlap,s_matrix,nstate,x_matrix)
-     
-     
-      allocate(occupation(nstate,nspin))
-      allocate(energy(nstate,nspin))
-      !
-      ! Build the first occupation array
-      ! as the energy are not known yet, set temperature to zero
-      call set_occupation(0.0_dp,electrons,magnetization,energy,occupation)
+        nocc=nint(SUM(occupation(:,1)))
+        write(stdout,'(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
+        !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the scalar dens. mat.
+        !     and the occupation numbers (i.e. occupations(:,1)) are \in [0,2].
+        write(stdout,'(/,1x,a)')  'Natural occupations: '
+        write(stdout,'(8(2x,f14.6))') occupation(:,1)
+        write(stdout,'(1x,a,f14.6)') 'Trace:',SUM(occupation(:,1))
+        write(stdout,*)
 
-      !
-      !
-      ! Precalculate the Coulomb integrals here
-      !
-      !
-      ! ERI are to be stored in the module m_eri
-      call prepare_eri(basis)
-     
-     
-      call calculation_parameters_yaml(basis%nbf,auxil_basis%nbf,nstate)
-     
-      !
-      ! Attempt to evaluate the peak memory
-      !
-      if( memory_evaluation_ ) call evaluate_memory(basis%nbf,auxil_basis%nbf,nstate,occupation)
-     
-     
-      if( .NOT. has_auxil_basis ) then
-        !
-        ! If no auxiliary basis is given,
-        ! then calculate the required 4-center integrals
-        call calculate_eri(print_eri_,basis,0.0_dp)
-        !
-        ! for Range-separated hybrids, calculate the long-range ERI
-        if(calc_type%need_exchange_lr) then
-          call calculate_eri(print_eri_,basis,rcut)
-        endif
-     
       else
-     
-        ! 2-center and 3-center integrals
-        call calculate_eri_ri(basis,auxil_basis,0.0_dp)
-     
-     
-        ! If Range-Separated Hybrid are requested
-        ! If is_big_restart, these integrals are NOT needed, I chose code this!
-        if(calc_type%need_exchange_lr ) then
-          ! 2-center and 3-center integrals
-          call calculate_eri_ri(basis,auxil_basis,rcut)
-        endif
-     
-        call reshuffle_distribution_3center()
-     
-      endif
-      ! ERI integrals have been computed and stored
-      !
-     
-     
-      !
-      ! Allocate the main arrays
-      ! 2D arrays
-      call clean_allocate('Kinetic operator T',hamiltonian_kinetic,basis%nbf,basis%nbf)
-      call clean_allocate('Nucleus operator V',hamiltonian_nucleus,basis%nbf,basis%nbf)
-      call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
-      call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)  ! not distributed right now
-     
-      !
-      ! Try to read a RESTART file if it exists
-      if( read_restart_ ) then
-        call read_restart(restart_type,'RESTART',basis,occupation,c_matrix,energy,hamiltonian_fock)
-      else
-        restart_type = NO_RESTART
-      endif
-      is_restart       = ( restart_type /= NO_RESTART )
-      is_big_restart   = ( restart_type == BIG_RESTART )
-      is_basis_restart = ( restart_type == BASIS_RESTART )
-      if( is_restart .AND. (.NOT.is_big_restart) .AND. (.NOT.is_basis_restart) ) write(stdout,*) 'Restarting from a RESTART file'
-      if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
-      if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
-      ! When a BIG RESTART file is provided, assume it contains converged SCF information
-      scf_has_converged = is_big_restart
-     
-     
-      !
-      ! Calculate the parts of the hamiltonian that does not change along
-      ! with the SCF cycles
-      !
-      ! Kinetic energy contribution
-      call setup_kinetic(basis,hamiltonian_kinetic)
-     
-      !
-      ! Nucleus-electron interaction
-      call setup_nucleus(basis,hamiltonian_nucleus)
-     
-      !
-      ! External electric field
-      call setup_electric_field(basis,hamiltonian_nucleus,eext)
-      !
-      ! Add the Nuclei-Electric Field interaction energy to nuc_nuc
-      en_gks%nuc_nuc = en_gks%nuc_nuc + eext
-     
-      !
-      ! Testing the quadrature in Fourier space
-      !if( .TRUE. ) then
-      !  !                        basis projectile n basis_target
-      !  call setup_overlap_fourier(basis,basis,s_matrix)
-      !  call setup_kinetic_fourier(basis,basis,hamiltonian_kinetic)
-      !  call setup_nucleus_fourier(basis,basis,hamiltonian_nucleus)
-      !endif
-     
-     
-      if( nelement_ecp > 0 ) then
-        call setup_nucleus_ecp(basis,hamiltonian_nucleus)
-      endif
-     
-      !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
-      if( read_tddft_restart_ ) then
-        call check_restart_tddft(nstate,occupation,restart_tddft_is_correct)
-        ! When restart_tddft_is_correct  is TRUE, then override scf_has_converged
-        if( restart_tddft_is_correct ) scf_has_converged = .TRUE.
-      end if
-     
-     
-      if( restart_tddft_is_correct .AND. read_tddft_restart_ ) exit
-     
-     
-      !
-      ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
-      ! ignore the restart file if it is not a big one
-      if( calc_type%selfenergy_technique == QS ) then
-        if( restart_type /= BIG_RESTART ) then
-          call issue_warning('RESTART file has been ignored, since it does not contain the required empty states')
-          is_restart = .FALSE.
-        endif
-      endif
-     
-     
-      if( .NOT. is_restart) then
-        call init_c_matrix(basis,occupation,x_matrix,hamiltonian_kinetic,hamiltonian_nucleus,c_matrix)
-      endif
-     
-      call stop_clock(timing_prescf)
-     
-     
-      !
-      !
-      ! Part 2 / 3 : SCF cycles
-      !
-      !
-     
-      !
-      ! Big SCF loop is in there
-      ! Only do it if the calculation is NOT a big restart
-      if( .NOT. is_big_restart .AND. nscf > 0 ) then
+
         if(complex_scf=='no') then ! By default we use the real solution of the SCF equations
           call scf_loop(is_restart,                                     &
                         basis,                                          &
@@ -581,17 +456,17 @@ program molgw
                         c_matrix,en_gks,scf_has_converged)
         else
           call issue_warning('Complex SCF is currently implemented only for testing')
-     
+   
           call clean_allocate('Wavefunctions C_cmplx',c_matrix_cmplx,basis%nbf,nstate,nspin)
           call init_c_matrix_cmplx(c_matrix,c_matrix_cmplx)
-     
+   
           call scf_loop_cmplx(is_restart,                                       &
                               basis,                                            &
                               x_matrix,s_matrix,                                &
                               hamiltonian_kinetic,hamiltonian_nucleus,          &
                               occupation,energy,                                &
                               c_matrix,c_matrix_cmplx,en_gks,scf_has_converged)
-     
+   
           write(stdout,'(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
           !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.
           !     and the occupation numbers (i.e. occupations(:,1)) are \in [0,2].
@@ -601,58 +476,58 @@ program molgw
           write(stdout,*)
         endif
       endif
-     
-      !
-      ! Big RESTART file written if converged
-      !
-      if( scf_has_converged .AND. print_bigrestart_ ) then
-        call write_restart(BIG_RESTART,basis,occupation,c_matrix,energy,hamiltonian_fock)
+    endif
+   
+    !
+    ! Big RESTART file written if converged
+    !
+    if( scf_has_converged .AND. print_bigrestart_ ) then
+      call write_restart(BIG_RESTART,basis,occupation,c_matrix,energy,hamiltonian_fock)
+    else
+      if( print_restart_ ) then
+        call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy)
+      endif
+    endif
+   
+    !
+    ! If requested, evaluate the forces
+    if( move_nuclei == 'relax' ) then
+      call calculate_force(basis,nstate,occupation,energy,c_matrix)
+      call relax_atoms(lbfgs_plan,en_gks%total)
+      call output_positions()
+   
+      if( MAXVAL(force(:,:)) < tolforce ) then
+        write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are     converged: ',MAXVAL(force(:,:)) , '   < ',tolforce
+        exit
       else
-        if( print_restart_ ) then
-          call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy)
+        write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are not converged: ',MAXVAL(force(:,:)) , '   > ',tolforce
+        !
+        ! If it is not the last step, then deallocate everything and start over
+        if( istep /= nstep ) then
+          call deallocate_eri()
+          if( has_auxil_basis ) call destroy_eri_3center()
+          if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+          call clean_deallocate('Overlap matrix S',s_matrix)
+          call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
+          call clean_deallocate('Fock operator F',hamiltonian_fock)
+          call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
+          call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
+          call clean_deallocate('Wavefunctions C',c_matrix)
+          deallocate(energy,occupation)
+          call destroy_basis_set(basis)
+          if(has_auxil_basis) call destroy_basis_set(auxil_basis)
         endif
       endif
-     
-      !
-      ! If requested, evaluate the forces
-      if( move_nuclei == 'relax' ) then
-        call calculate_force(basis,nstate,occupation,energy,c_matrix)
-        call relax_atoms(lbfgs_plan,en_gks%total)
-        call output_positions()
-     
-        if( MAXVAL(force(:,:)) < tolforce ) then
-          write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are     converged: ',MAXVAL(force(:,:)) , '   < ',tolforce
-          exit
-        else
-          write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are not converged: ',MAXVAL(force(:,:)) , '   > ',tolforce
-          !
-          ! If it is not the last step, then deallocate everything and start over
-          if( istep /= nstep ) then
-            call deallocate_eri()
-            if( has_auxil_basis ) call destroy_eri_3center()
-            if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
-            call clean_deallocate('Overlap matrix S',s_matrix)
-            call clean_deallocate('Overlap X * X**H = S**-1',x_matrix)
-            call clean_deallocate('Fock operator F',hamiltonian_fock)
-            call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
-            call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
-            call clean_deallocate('Wavefunctions C',c_matrix)
-            deallocate(energy,occupation)
-            call destroy_basis_set(basis)
-            if(has_auxil_basis) call destroy_basis_set(auxil_basis)
-          endif
-        endif
-      endif
+    endif
 
 #if defined(HAVE_LIBCINT)
-      ! Reinitialize LIBCINT if atoms move
-      call destroy_libcint(basis)
-      if(has_auxil_basis) call destroy_libcint(auxil_basis)
+    ! Reinitialize LIBCINT if atoms move
+    call destroy_libcint(basis)
+    if(has_auxil_basis) call destroy_libcint(auxil_basis)
 #endif
 
-    enddo ! istep
+  enddo ! istep
 
-  endif ! Relativistic or non-rel.
 
 
   if( move_nuclei == 'relax' ) then
@@ -684,7 +559,7 @@ program molgw
   endif
 #endif
 
-  if ( (.not. is_x2c) .and. (complex_scf=='no') ) then
+  if ( (.not. x2c_) .and. (complex_scf=='no') ) then
     !
     ! Evaluate spin contamination
     call evaluate_s2_operator(occupation,c_matrix,s_matrix)
@@ -735,7 +610,7 @@ program molgw
   if( calc_type%is_noft ) then
 
     en_noft = en_gks
-    if( is_x2c ) then ! relativistic
+    if( x2c_ ) then ! relativistic
       call noft_energy(basis,occupation,en_noft%total,en_noft%nuc_nuc,  &
       &               c_matrix_rel=c_matrix_rel,hkin_nuc_rel=hamiltonian_kin_nuc_rel)
     else              ! non-relativistic
@@ -879,7 +754,7 @@ program molgw
 
     call set_occupation(0.0_dp,electrons,magnetization,energy,occupation)
 
-    if( .not. is_x2c ) then ! non-relativistic
+    if( .not. x2c_ ) then ! non-relativistic
 
       if( complex_scf=='no' ) then ! real
   
@@ -911,7 +786,7 @@ program molgw
     else                    ! relativistic
     
       if(has_auxil_basis) then
-        call mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,en_gks%mp2,en_gks%exx)
+        call mp2_energy_ri_x2c(2*nstate,nocc,basis,energy,c_matrix_rel,en_gks%mp2,en_gks%exx)
       else
         call issue_warning('X2C MP2 is available only with RI')
         en_gks%exx=0.0_dp

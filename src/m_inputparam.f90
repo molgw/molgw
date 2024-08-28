@@ -177,6 +177,7 @@ module m_inputparam
   logical,protected                :: g3w2_skip_vvv_
   logical,protected                :: g3w2_skip_vv_
   logical,protected                :: g3w2_static_approximation_
+  logical,protected                :: x2c_
 
   real(dp),protected               :: rcut         = 0.0_dp
   real(dp),protected               :: factor_sosex = 1.0_dp
@@ -925,6 +926,7 @@ subroutine read_inputfile_namelist()
   partition_scheme   = capitalize(partition_scheme)
   w_screening        = capitalize(w_screening)
 
+  x2c_                      = yesno_to_logical(x2c)
   memory_evaluation_        = yesno_to_logical(memory_evaluation)
   read_restart_             = yesno_to_logical(read_restart)
   ignore_bigrestart_        = yesno_to_logical(ignore_bigrestart)
@@ -1016,6 +1018,24 @@ subroutine read_inputfile_namelist()
   if(nomega_sigma<0)    call die('nomega_sigma < 0')
   if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
   if(auto_auxil_fsam<1.00001_dp) call die('auto_auxil_fsam should be strictly greater to 1. Increase it a bit please')
+  if( x2c_ ) then
+    ! Check if the correct nspin=2 was provided
+    if( nspin/=2 ) then
+      call die("X2C calculations require nspin=2")
+    endif
+    ! Check if the magnetization=0
+    if( abs(magnetization)>1e-8 ) then
+      call die("X2C calculations only implemented for magnetization=0")
+    endif
+    if( .NOT. move_nuclei == 'no' ) then
+      call die("X2C calculations only implemented for move_nuclei=no")
+    endif
+    if( gaussian_type/= 'CART' ) then
+      call die("X2C calculations require cartesian gaussian_type")
+    endif
+    
+  endif
+
 
 
 #if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0)
@@ -1063,6 +1083,11 @@ and the -DHAVE_HDF5 compilation option must be activated')
   if( print_w_ .AND. has_auxil_basis ) then
     call die('input check: print_w is not numerically stable when using an auxiliary basis.' // &
              ' Do not use this keyword and everything is gonna be alright')
+  endif
+  if( x2c_ ) then
+    if( .not. has_auxil_basis ) then
+      call die("X2C calculations require an auxiliary basis")
+    endif
   endif
 
   !
