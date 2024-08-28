@@ -167,7 +167,7 @@ program molgw
       !
       ! Build up the basis set
       !
-      write(stdout,*) 'Setting up the basis set for wavefunctions'
+      write(stdout,*) 'Setting up the L + S basis set for wavefunctions'
       call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
                           even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
 
@@ -187,7 +187,7 @@ program molgw
       !
       ! Build up the basis set
       !
-      write(stdout,*) 'Setting up the basis set for wavefunctions'
+      write(stdout,*) 'Setting up the L basis set for wavefunctions'
       call init_basis_set(basis_path,basis_name_nrel,ecp_basis_name,gaussian_type, &
          & even_tempered_alpha,even_tempered_beta,even_tempered_n_list,basis)
       deallocate(basis_name_nrel)
