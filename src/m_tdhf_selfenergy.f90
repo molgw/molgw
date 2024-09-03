@@ -109,10 +109,18 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       do imat=1,nmat
         istate = wpol%transition_table(1,imat)
         astate = wpol%transition_table(2,imat)
-        wpol%pole(spole) = energy(astate,1) - energy(istate,1)
         write(101,*) istate,astate,spole,x_matrix(imat,spole),y_matrix(imat,spole)
       enddo
+
+      write(*,*) '1?',spole,SUM( x_matrix(:,spole) * x_matrix(:,spole) - y_matrix(:,spole) * y_matrix(:,spole) )
+      write(*,*) '0?',spole,SUM( -y_matrix(:,spole) * x_matrix(:,spole) + x_matrix(:,spole) * y_matrix(:,spole) )
     enddo
+    allocate(xpy_matrix(nmat,nmat))
+    xpy_matrix = MATMUL( TRANSPOSE(x_matrix), x_matrix ) -  MATMUL( TRANSPOSE(y_matrix), y_matrix )
+    call dump_out_matrix(.TRUE.,'===  X**T * X - Y**T * Y ===',xpy_matrix)
+    xpy_matrix = MATMUL(-TRANSPOSE(y_matrix), x_matrix ) +  MATMUL( TRANSPOSE(x_matrix), y_matrix )
+    call dump_out_matrix(.TRUE.,'=== -Y**T * X + x**T * Y ===',xpy_matrix)
+    deallocate(xpy_matrix)
   endif
 
   allocate(sigma_tdhf(-se%nomega:se%nomega,nsemin:nsemax,nspin))
@@ -146,11 +154,25 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       enddo
     enddo
 
-    num_tmp2o(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1o(:,:) )
+    ! Fortran version
+    !num_tmp2o(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1o(:,:) )
+    !num_tmp1o(:,:) = 2.0 * num_tmp2o(:,:) &
+    !                - MATMUL( TRANSPOSE(x_matrix(:,:)) , eri_tmp3o(:,:) ) & ! Here the role of X and Y is swapped
+    !                - MATMUL( TRANSPOSE(y_matrix(:,:)) , eri_tmp2o(:,:) )   ! as compared to Vacondio
 
-    num_tmp1o(:,:) = 2.0 * num_tmp2o(:,:) &
-                    - MATMUL( TRANSPOSE(x_matrix(:,:)) , eri_tmp3o(:,:) ) & ! Here the role of X and Y is swapped
-                    - MATMUL( TRANSPOSE(y_matrix(:,:)) , eri_tmp2o(:,:) )   ! as compared to Vacondio
+    ! BLAS version
+    call DGEMM('T','N',nmat,nhomo_G-ncore_G,nmat, &
+                   1.0d0,xpy_matrix(:,:),nmat,eri_tmp1o(:,:),nmat,&
+                   0.0d0,num_tmp2o(:,:),nmat)
+
+    num_tmp1o(:,:) = 2.0 * num_tmp2o(:,:)
+    call DGEMM('T','N',nmat,nhomo_G-ncore_G,nmat, &
+                  -1.0d0,x_matrix(:,:),nmat,eri_tmp3o(:,:),nmat,&
+                   1.0d0,num_tmp1o(:,:),nmat)
+    call DGEMM('T','N',nmat,nhomo_G-ncore_G,nmat, &
+                  -1.0d0,y_matrix(:,:),nmat,eri_tmp2o(:,:),nmat,&
+                   1.0d0,num_tmp1o(:,:),nmat)
+
 
     do jstate=ncore_G+1,nhomo_G
       do spole=1,wpol%npole_reso
@@ -174,10 +196,24 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
         eri_tmp3v(imat,bstate) = eri_eigen(astate,bstate,1,istate,pstate,1)  ! set to zero to recover GW
       enddo
     enddo
-    num_tmp2v(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1v(:,:) )
-    num_tmp1v(:,:) = 2.0 * num_tmp2v(:,:) &
-                    - MATMUL( TRANSPOSE(x_matrix(:,:)) , eri_tmp2v(:,:) ) & ! Here the role of X and Y is *conserved*
-                    - MATMUL( TRANSPOSE(y_matrix(:,:)) , eri_tmp3v(:,:) )   ! as compared to Vacondio
+
+    ! Fortran version
+    !num_tmp2v(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1v(:,:) )
+    !num_tmp1v(:,:) = 2.0 * num_tmp2v(:,:) &
+    !                - MATMUL( TRANSPOSE(x_matrix(:,:)) , eri_tmp2v(:,:) ) & ! Here the role of X and Y is *conserved*
+    !                - MATMUL( TRANSPOSE(y_matrix(:,:)) , eri_tmp3v(:,:) )   ! as compared to Vacondio
+
+    ! BLAS version
+    call DGEMM('T','N',nmat,nvirtual_G-nhomo_G-1,nmat, &
+                   1.0d0,xpy_matrix(:,:),nmat,eri_tmp1v(:,:),nmat,&
+                   0.0d0,num_tmp2v(:,:),nmat)
+    num_tmp1v(:,:) = 2.0 * num_tmp2v(:,:)
+    call DGEMM('T','N',nmat,nvirtual_G-nhomo_G-1,nmat, &
+                  -1.0d0,x_matrix(:,:),nmat,eri_tmp2v(:,:),nmat,&
+                   1.0d0,num_tmp1v(:,:),nmat)
+    call DGEMM('T','N',nmat,nvirtual_G-nhomo_G-1,nmat, &
+                  -1.0d0,y_matrix(:,:),nmat,eri_tmp3v(:,:),nmat,&
+                   1.0d0,num_tmp1v(:,:),nmat)
 
     do bstate=nhomo_G+1,nvirtual_G-1
       do spole=1,wpol%npole_reso
