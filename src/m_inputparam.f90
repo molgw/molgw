@@ -55,7 +55,7 @@ module m_inputparam
   integer,parameter :: GW0GW0G         = 231
   integer,parameter :: GWGW0G          = 232
   integer,parameter :: G3W2_NUMERICAL  = 233
-  integer,parameter :: GWTILDE         = 234
+  integer,parameter :: SIGMA_TDHF      = 234
   integer,parameter :: GWGW0RPAG       = 235
 
   !
@@ -303,9 +303,9 @@ subroutine init_calculation_type(scf,postscf)
     case('GW+GWGW0RPAG')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGW0RPAG
-    case('GWTILDE')
+    case('SIGMA_TDHF','GWTILDE')
       calc_type%is_gw    =.TRUE.
-      calc_type%selfenergy_approx = GWTILDE
+      calc_type%selfenergy_approx = SIGMA_TDHF
     case('EVGWGAMMA','GNW0GAMMAN','GNW0SOSEX','EVGWSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
