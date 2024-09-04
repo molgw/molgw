@@ -39,7 +39,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   integer                 :: istate,astate,jstate,bstate,iaspin,spole
   integer                 :: pstate,iomega_sigma
   real(dp),allocatable    :: x_matrix(:,:),y_matrix(:,:)
-  !real(dp),allocatable    :: a_matrix(:,:),b_matrix(:,:)
   real(dp)                :: erpa_tmp,egw_tmp
   type(spectral_function) :: wpol
   complex(dp),allocatable :: sigma_tdhf(:,:,:)
@@ -49,7 +48,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   real(dp),allocatable :: num_tmp1v(:,:), num_tmp2v(:,:)
   real(dp),allocatable :: xpy_matrix(:,:)
   real(dp) :: fxc
-  real(dp),allocatable    :: axpby_matrix(:,:),aypbx_matrix(:,:)
   !=====
 
   call start_clock(timing_gw_self)
@@ -68,8 +66,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
 
   call clean_allocate('X matrix',x_matrix,nmat,nmat)
   call clean_allocate('Y matrix',y_matrix,nmat,nmat)
-  !call clean_allocate('A matrix',a_matrix,nmat,nmat)
-  !call clean_allocate('B matrix',b_matrix,nmat,nmat)
 
   ! Get X and Y
   call polarizability(.FALSE.,.TRUE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol, &
@@ -245,11 +241,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   call clean_deallocate('X matrix',x_matrix)
   call clean_deallocate('Y matrix',y_matrix)
 
-  !call clean_deallocate('A matrix',a_matrix)
-  !call clean_deallocate('B matrix',b_matrix)
-  call clean_deallocate('AX+BY matrix',axpby_matrix)
-  call clean_deallocate('AY+BX matrix',aypbx_matrix)
-
   deallocate(sigma_tdhf)
   call destroy_eri_3center_eigen()
   call wpol%destroy()
@@ -290,7 +281,6 @@ subroutine tdhf_vacondio_selfenergy(basis,occupation,energy,c_matrix,se)
   real(dp),allocatable :: num_tmp1v(:,:), num_tmp2v(:,:)
   real(dp),allocatable :: xpy_matrix(:,:)
   real(dp) :: num1,num2
-  real(dp),allocatable    :: axpby_matrix(:,:),aypbx_matrix(:,:)
   !=====
 
   call start_clock(timing_gw_self)
@@ -313,19 +303,6 @@ subroutine tdhf_vacondio_selfenergy(basis,occupation,energy,c_matrix,se)
   ! Get A and B, X and Y
   call polarizability(.FALSE.,.TRUE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol, &
                        a_matrix=a_matrix,b_matrix=b_matrix,x_matrix=x_matrix,y_matrix=y_matrix)
-
-  !!
-  !! A -> A' in Kresse's notation
-  !! Remove the energy difference on the diagonal
-  !call remove_a_energy_diag(energy,wpol,a_matrix)
-
-
-  !call clean_allocate('AX+BY matrix',axpby_matrix,nmat,nmat)
-  !call clean_allocate('AY+BX matrix',aypbx_matrix,nmat,nmat)
-  !! AX + BY
-  !axpby_matrix(:,:) = MATMUL( a_matrix, x_matrix ) + MATMUL( b_matrix, y_matrix )
-  !! AY + BX
-  !aypbx_matrix(:,:) = MATMUL( a_matrix, y_matrix ) + MATMUL( b_matrix, x_matrix )
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
 
@@ -449,8 +426,6 @@ subroutine tdhf_vacondio_selfenergy(basis,occupation,energy,c_matrix,se)
 
   call clean_deallocate('A matrix',a_matrix)
   call clean_deallocate('B matrix',b_matrix)
-  call clean_deallocate('AX+BY matrix',axpby_matrix)
-  call clean_deallocate('AY+BX matrix',aypbx_matrix)
 
   deallocate(sigma_tdhf)
   call destroy_eri_3center_eigen()
