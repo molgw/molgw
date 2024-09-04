@@ -344,6 +344,98 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
 
 end subroutine calculate_hamiltonian_hxc_ri_cmplx
 
+!=========================================================================
+subroutine calculate_hamiltonian_hartree_x2c(basis,                  &
+                                             occupation,             &
+                                             p_matrix_cmplx,         &
+                                             hamiltonian_hxc_cmplx,  &
+                                             en_inout)
+  implicit none
+
+  type(basis_set),intent(inout) :: basis
+  real(dp),intent(in)           :: occupation(:,:)
+  complex(dp),intent(in)        :: p_matrix_cmplx(:,:,:)
+  complex(dp),intent(out)       :: hamiltonian_hxc_cmplx(:,:,:)
+  type(energy_contributions),intent(inout) :: en_inout
+  !=====
+  integer                    :: nstate
+  integer                    :: ispin
+  real(dp),allocatable       :: hamiltonian_nospin_real(:,:)
+  !=====
+
+  en_inout%hartree = 0.0_dp
+
+  nstate = SIZE(occupation,DIM=1)
+
+  ! Initialize real arrays
+  hamiltonian_hxc_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
+
+  !
+  ! For a core only calculation, no need to go any further
+  ! no hartree, no exchange-correlation
+  if( calc_type%is_core ) return
+
+
+  allocate(hamiltonian_nospin_real(basis%nbf,basis%nbf))
+  !
+  ! Hartree contribution to the Hamiltonian
+  ! Hartree contribution is real and depends only on real(p_matrix) but we pass the full p_matrix_cmplx any way
+  !
+  call calculate_hartree(basis,p_matrix_cmplx,hamiltonian_nospin_real,eh=en_inout%hartree)
+
+  do ispin=1,nspin
+    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_nospin_real(:,:)
+  enddo
+
+  deallocate(hamiltonian_nospin_real)
+
+
+
+end subroutine calculate_hamiltonian_hartree_x2c
+
+!=========================================================================
+subroutine calculate_hamiltonian_xc_x2c(basis,                  &
+                                        occupation,             &
+                                        c_matrix_cmplx,         &
+                                        hamiltonian_hxc_cmplx,  &
+                                        en_inout)
+  implicit none
+
+  type(basis_set),intent(inout) :: basis
+  real(dp),intent(in)           :: occupation(:,:)
+  complex(dp),intent(in)        :: c_matrix_cmplx(:,:,:)
+  complex(dp),intent(out)       :: hamiltonian_hxc_cmplx(:,:,:)
+  type(energy_contributions),intent(inout) :: en_inout
+  !=====
+  integer                    :: nstate
+  real(dp),allocatable       :: hamiltonian_spin_real(:,:,:)
+  !=====
+
+  en_inout%xc      = 0.0_dp
+
+  nstate = SIZE(occupation,DIM=1)
+
+  ! Initialize real arrays
+  hamiltonian_hxc_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
+
+  !
+  ! For a core only calculation, no need to go any further
+  ! no hartree, no exchange-correlation
+  if( calc_type%is_core ) return
+
+  !
+  ! DFT XC potential is added here
+  !
+  if( calc_type%is_dft ) then
+    allocate(hamiltonian_spin_real(basis%nbf,basis%nbf,nspin))
+    call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix_cmplx,hamiltonian_spin_real,en_inout%xc)
+    
+    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_spin_real(:,:,:)
+    deallocate(hamiltonian_spin_real)
+  endif
+
+
+end subroutine calculate_hamiltonian_xc_x2c
 
 !=========================================================================
 end module m_hamiltonian_wrapper
