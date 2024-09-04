@@ -24,15 +24,6 @@ module m_tdhf_selfenergy
 contains
 
 
-!              call DGEMM('N','N',nauxil_global,nvirtual_G-nhomo_G-1,nauxil_global, &
-!                         1.0_dp,chi_wwp(:,:),nauxil_global, &
-!                                eri3_a_m,nauxil_global, &
-!                         0.0_dp,tmp,nauxil_global)
-!              call DGEMM('T','N',nvirtual_G-ncore_G-1,nvirtual_G-nhomo_G-1,nauxil_global, &
-!                         1.0_dp,eri3_r_i(:,:),nauxil_global, &
-!                                tmp(:,:),nauxil_global, &
-!                         0.0_dp,braket2_ra(:,:),nvirtual_G-ncore_G-1)
-
 !=========================================================================
 !
 !
@@ -48,18 +39,16 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   integer                 :: istate,astate,jstate,bstate,iaspin,spole
   integer                 :: pstate,iomega_sigma
   real(dp),allocatable    :: x_matrix(:,:),y_matrix(:,:)
-  real(dp),allocatable    :: a_matrix(:,:),b_matrix(:,:)
+  !real(dp),allocatable    :: a_matrix(:,:),b_matrix(:,:)
   real(dp)                :: erpa_tmp,egw_tmp
   type(spectral_function) :: wpol
   complex(dp),allocatable :: sigma_tdhf(:,:,:)
-  real(dp) :: eri_iajp,eri_ijap,eri_ajip
-  real(dp) :: eri_iabp,eri_ibap,eri_abip
   real(dp),allocatable :: eri_tmp1o(:,:), eri_tmp2o(:,:), eri_tmp3o(:,:)
   real(dp),allocatable :: eri_tmp1v(:,:), eri_tmp2v(:,:), eri_tmp3v(:,:)
   real(dp),allocatable :: num_tmp1o(:,:), num_tmp2o(:,:)
   real(dp),allocatable :: num_tmp1v(:,:), num_tmp2v(:,:)
   real(dp),allocatable :: xpy_matrix(:,:)
-  real(dp) :: num1,num2
+  real(dp) :: fxc
   real(dp),allocatable    :: axpby_matrix(:,:),aypbx_matrix(:,:)
   !=====
 
@@ -70,7 +59,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
 
   nstate = SIZE(energy,DIM=1)
 
-  write(stdout,'(/,1x,a)') 'Calculate Sigma_TDHF (Bruneval-Foerster formula'
+  write(stdout,'(/,1x,a)') 'Calculate Sigma_TDHF (Bruneval-Foerster formula)'
 
 
 
@@ -79,16 +68,22 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
 
   call clean_allocate('X matrix',x_matrix,nmat,nmat)
   call clean_allocate('Y matrix',y_matrix,nmat,nmat)
-  call clean_allocate('A matrix',a_matrix,nmat,nmat)
-  call clean_allocate('B matrix',b_matrix,nmat,nmat)
+  !call clean_allocate('A matrix',a_matrix,nmat,nmat)
+  !call clean_allocate('B matrix',b_matrix,nmat,nmat)
 
-  ! Get A and B, X and Y
+  ! Get X and Y
   call polarizability(.FALSE.,.TRUE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol, &
-                       a_matrix=a_matrix,b_matrix=b_matrix,x_matrix=x_matrix,y_matrix=y_matrix)
+                       x_matrix=x_matrix,y_matrix=y_matrix)
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
 
-  ! Enforce PT2 manually
+  if( gwgamma_tddft_ ) then
+    write(stdout,*) 'Include a TDDFT kernel contribution to the vertex'
+    write(stdout,'(1x,a,f12.4)') 'Exact-exchange amount: ',alpha_hybrid
+    call prepare_tddft(.FALSE.,nstate,basis,c_matrix,occupation)
+  endif
+
+  ! Enforce PT2 manually for debug
   if( .FALSE. ) then
     call issue_warning("Enforce PT2 for debug")
     x_matrix(:,:) = 0.0d0
@@ -100,27 +95,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       wpol%pole(spole) = energy(astate,1) - energy(istate,1)
       x_matrix(imat,spole) = 1.0d0
     enddo
-  endif
-  if( .FALSE. ) then
-    call issue_warning("Print X for debug")
-    
-    write(101,*) "# i, a, spole, x_matrix(ia,spole),y_matrix(ia,spole)"
-    do spole=1,nmat
-      do imat=1,nmat
-        istate = wpol%transition_table(1,imat)
-        astate = wpol%transition_table(2,imat)
-        write(101,*) istate,astate,spole,x_matrix(imat,spole),y_matrix(imat,spole)
-      enddo
-
-      write(*,*) '1?',spole,SUM( x_matrix(:,spole) * x_matrix(:,spole) - y_matrix(:,spole) * y_matrix(:,spole) )
-      write(*,*) '0?',spole,SUM( -y_matrix(:,spole) * x_matrix(:,spole) + x_matrix(:,spole) * y_matrix(:,spole) )
-    enddo
-    allocate(xpy_matrix(nmat,nmat))
-    xpy_matrix = MATMUL( TRANSPOSE(x_matrix), x_matrix ) -  MATMUL( TRANSPOSE(y_matrix), y_matrix )
-    call dump_out_matrix(.TRUE.,'===  X**T * X - Y**T * Y ===',xpy_matrix)
-    xpy_matrix = MATMUL(-TRANSPOSE(y_matrix), x_matrix ) +  MATMUL( TRANSPOSE(x_matrix), y_matrix )
-    call dump_out_matrix(.TRUE.,'=== -Y**T * X + x**T * Y ===',xpy_matrix)
-    deallocate(xpy_matrix)
   endif
 
   allocate(sigma_tdhf(-se%nomega:se%nomega,nsemin:nsemax,nspin))
@@ -148,9 +122,29 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
         istate = wpol%transition_table(1,imat)
         astate = wpol%transition_table(2,imat)
 
+        if( gwgamma_tddft_ ) then
+          fxc = eval_fxc_rks_singlet(istate,astate,1,jstate,pstate,1)
+          call grid%sum(fxc)
+          ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
+        endif
+
+        ! Store ( i a | j p )
         eri_tmp1o(imat,jstate) = eri_eigen(istate,astate,1,jstate,pstate,1)
-        eri_tmp2o(imat,jstate) = eri_eigen(istate,jstate,1,astate,pstate,1)  ! set to zero to recover GW
-        eri_tmp3o(imat,jstate) = eri_eigen(astate,jstate,1,istate,pstate,1)  ! set to zero to recover GW
+
+        ! Store ( i j | a p ) which should be set to zero to recover GW
+        eri_tmp2o(imat,jstate) = eri_eigen(istate,jstate,1,astate,pstate,1)
+
+        if( gwgamma_tddft_ ) then
+          eri_tmp2o(imat,jstate) = alpha_hybrid * eri_tmp2o(imat,jstate) - fxc
+        endif
+
+        ! Store ( a j | i p ) which should be set to zero to recover GW
+        eri_tmp3o(imat,jstate) = eri_eigen(astate,jstate,1,istate,pstate,1)
+
+        if( gwgamma_tddft_ ) then
+          eri_tmp3o(imat,jstate) = alpha_hybrid * eri_tmp3o(imat,jstate) - fxc
+        endif
+
       enddo
     enddo
 
@@ -191,9 +185,29 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
         istate = wpol%transition_table(1,imat)
         astate = wpol%transition_table(2,imat)
 
+        if( gwgamma_tddft_ ) then
+          fxc = eval_fxc_rks_singlet(istate,astate,1,bstate,pstate,1)
+          call grid%sum(fxc)
+          ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
+        endif
+
+        ! Store ( i a | b p )
         eri_tmp1v(imat,bstate) = eri_eigen(istate,astate,1,bstate,pstate,1)
-        eri_tmp2v(imat,bstate) = eri_eigen(istate,bstate,1,astate,pstate,1)  ! set to zero to recover GW
-        eri_tmp3v(imat,bstate) = eri_eigen(astate,bstate,1,istate,pstate,1)  ! set to zero to recover GW
+
+        ! Store ( i b | a p ) which should be set to zero to recover GW
+        eri_tmp2v(imat,bstate) = eri_eigen(istate,bstate,1,astate,pstate,1)
+
+        if( gwgamma_tddft_ ) then
+          eri_tmp2v(imat,bstate) = alpha_hybrid * eri_tmp2v(imat,bstate) - fxc
+        endif
+
+        ! Store ( a b | i p ) which should be set to zero to recover GW
+        eri_tmp3v(imat,bstate) = eri_eigen(astate,bstate,1,istate,pstate,1)
+
+        if( gwgamma_tddft_ ) then
+          eri_tmp3v(imat,bstate) = alpha_hybrid * eri_tmp3v(imat,bstate) - fxc
+        endif
+
       enddo
     enddo
 
@@ -231,14 +245,18 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   call clean_deallocate('X matrix',x_matrix)
   call clean_deallocate('Y matrix',y_matrix)
 
-  call clean_deallocate('A matrix',a_matrix)
-  call clean_deallocate('B matrix',b_matrix)
+  !call clean_deallocate('A matrix',a_matrix)
+  !call clean_deallocate('B matrix',b_matrix)
   call clean_deallocate('AX+BY matrix',axpby_matrix)
   call clean_deallocate('AY+BX matrix',aypbx_matrix)
 
   deallocate(sigma_tdhf)
   call destroy_eri_3center_eigen()
   call wpol%destroy()
+
+  if( gwgamma_tddft_ ) then
+    call destroy_tddft()
+  endif
 
   call stop_clock(timing_gw_self)
 
@@ -282,7 +300,7 @@ subroutine tdhf_vacondio_selfenergy(basis,occupation,energy,c_matrix,se)
 
   nstate = SIZE(energy,DIM=1)
 
-  write(stdout,'(/,1x,a)') 'Calculate Sigma_TDHF (Bruneval-Foerster formula'
+  write(stdout,'(/,1x,a)') 'Calculate Sigma_TDHF (Vacondio formula)'
 
   call wpol%init(nstate,occupation,0)
   nmat = wpol%npole_reso
