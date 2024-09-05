@@ -72,7 +72,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     enddo
   enddo
 
-  if( .FALSE. ) then
+  if( calc_type%selfenergy_approx == SIGMA_TDSCHF ) then
     write(stdout,'(/,1x,a)') 'Calculate a static screening'
     allocate(chi_static(nauxil_global,nauxil_global))
     call wpol_static_rpa%init(nstate,occupation,1,grid_type=STATIC)

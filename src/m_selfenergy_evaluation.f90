@@ -112,6 +112,8 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='GW+GWGW0RPAG'
     case(SIGMA_TDHF)
       selfenergy_tag='SIGMA_TDHF'
+    case(SIGMA_TDSCHF)
+      selfenergy_tag='SIGMA_TDSCHF'
     case default
       write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -306,7 +308,8 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     !  sigma_TDHF self-energy (See Vacondio et al., Forster-Bruneval)
     !
-    if( calc_type%selfenergy_approx == SIGMA_TDHF ) then
+    if( calc_type%selfenergy_approx == SIGMA_TDHF &
+        .OR. calc_type%selfenergy_approx == SIGMA_TDSCHF ) then
       call tdhf_selfenergy(basis,occupation,energy_g,c_matrix,se)
     endif
 

@@ -1108,3 +1108,8 @@ GW+G3W2 HOMO energy       ,  -24.680279        , 0 , 1.0e-4
 ne_sigma_tdhf.in          , Sigma_TDHF vertex correction for Neon atom 
 SCF Total Energy          , -128.4891424970    , 0 , 1.0e-7
 SIGMA_TDHF HOMO energy    ,  -20.893601        , 0 , 1.0e-4
+
+ne_sigma_tdschf.in        , Sigma_TDscHF vertex correction for Neon atom 
+SCF Total Energy          , -128.4891424970    , 0 , 1.0e-7
+SIGMA_TDSCHF HOMO energy  ,  -20.762555        , 0 , 1.0e-4
+
