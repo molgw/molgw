@@ -31,23 +31,27 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   implicit none
 
   type(basis_set)                    :: basis
-  real(dp),intent(in)                :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                :: occupation(:,:), energy(:,:)
   real(dp),intent(in)                :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   !=====
-  integer                 :: nstate,nmat,imat
-  integer                 :: istate,astate,jstate,bstate,iaspin,spole
-  integer                 :: pstate,qstate,iomega_sigma
-  real(dp),allocatable    :: x_matrix(:,:),y_matrix(:,:)
-  real(dp)                :: erpa_tmp,egw_tmp
+  integer                 :: nstate, nmat, imat, ibf_auxil
+  integer                 :: istate, astate, jstate, bstate, ustate, iaspin, spole
+  integer                 :: pstate, qstate, iomega_sigma
+  real(dp),allocatable    :: x_matrix(:,:), y_matrix(:,:)
+  real(dp)                :: erpa_tmp, egw_tmp
   type(spectral_function) :: wpol
   complex(dp),allocatable :: sigma_tdhf(:,:,:)
-  real(dp),allocatable :: eri_tmp1o(:,:), eri_tmp2o(:,:), eri_tmp3o(:,:)
-  real(dp),allocatable :: eri_tmp1v(:,:), eri_tmp2v(:,:), eri_tmp3v(:,:)
-  real(dp),allocatable :: num_tmp1o(:,:), num_tmp2o(:,:)
-  real(dp),allocatable :: num_tmp1v(:,:), num_tmp2v(:,:)
-  real(dp),allocatable :: xpy_matrix(:,:)
+  real(dp),allocatable    :: eri_tmp1o(:,:), eri_tmp2o(:,:), eri_tmp3o(:,:)
+  real(dp),allocatable    :: eri_tmp1v(:,:), eri_tmp2v(:,:), eri_tmp3v(:,:)
+  real(dp),allocatable    :: num_tmp1o(:,:), num_tmp2o(:,:)
+  real(dp),allocatable    :: num_tmp1v(:,:), num_tmp2v(:,:)
+  real(dp),allocatable    :: xpy_matrix(:,:)
   real(dp) :: fxc
+  type(spectral_function) :: wpol_static_rpa
+  integer :: state_range, nstate2
+  real(dp),allocatable    :: chi_static(:,:)
+  real(dp),allocatable    :: chi_up(:,:,:),uq(:,:,:)
   !=====
 
   call start_clock(timing_gw_self)
@@ -59,7 +63,36 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
 
   write(stdout,'(/,1x,a)') 'Calculate Sigma_TDHF (Bruneval-Foerster formula)'
 
+  call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
 
+  allocate(uq(nauxil_global,ncore_G+1:nvirtual_G-1,nsemin:nsemax))
+  do qstate=nsemin,nsemax
+    do ustate=ncore_G+1,nvirtual_G-1
+      uq(:,ustate,qstate) = eri_3center_eigen(:,ustate,qstate,1)
+    enddo
+  enddo
+
+  if( .FALSE. ) then
+    write(stdout,'(/,1x,a)') 'Calculate a static screening'
+    allocate(chi_static(nauxil_global,nauxil_global))
+    call wpol_static_rpa%init(nstate,occupation,1,grid_type=STATIC)
+    call wpol_static_rpa%vsqrt_chi_vsqrt_rpa(occupation,energy,c_matrix,verbose=.FALSE.)
+    chi_static(:,:) = wpol_static_rpa%chi(:,:,1)
+    do ibf_auxil=1,nauxil_global
+      chi_static(ibf_auxil,ibf_auxil) = chi_static(ibf_auxil,ibf_auxil) + 1.0_dp
+    enddo
+    allocate(chi_up(nauxil_global,ncore_G+1:nvirtual_G-1,nsemin:nsemax))
+    state_range=nvirtual_G-ncore_G-1
+    nstate2 = state_range * ( nsemax - nsemin +1 )
+    call DGEMM('T','N',nauxil_global,nstate2,nauxil_global, &
+                1.0_dp,chi_static,nauxil_global, &
+                       uq,nauxil_global, &
+                0.0_dp,chi_up,nauxil_global)
+    deallocate(chi_static)
+    uq(:,:,:) = chi_up(:,:,:)
+    deallocate(chi_up)
+  
+  endif
 
   call wpol%init(nstate,occupation,0)
   nmat = wpol%npole_reso
@@ -71,7 +104,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   call polarizability(.FALSE.,.TRUE.,basis,occupation,energy,c_matrix,erpa_tmp,egw_tmp,wpol, &
                        x_matrix=x_matrix,y_matrix=y_matrix)
 
-  call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
 
   if( gwgamma_tddft_ ) then
     write(stdout,*) 'Include a TDDFT kernel contribution to the vertex'
@@ -129,14 +161,16 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
         eri_tmp1o(imat,jstate) = eri_eigen(istate,astate,1,jstate,pstate,1)
 
         ! Store ( i j | a q ) which should be set to zero to recover GW
-        eri_tmp2o(imat,jstate) = eri_eigen(istate,jstate,1,astate,qstate,1)
+        !eri_tmp2o(imat,jstate) = eri_eigen(istate,jstate,1,astate,qstate,1)
+        eri_tmp2o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,1), uq(:,astate,qstate) )
 
         if( gwgamma_tddft_ ) then
           eri_tmp2o(imat,jstate) = alpha_hybrid * eri_tmp2o(imat,jstate) - fxc
         endif
 
         ! Store ( a j | i q ) which should be set to zero to recover GW
-        eri_tmp3o(imat,jstate) = eri_eigen(astate,jstate,1,istate,qstate,1)
+        !eri_tmp3o(imat,jstate) = eri_eigen(astate,jstate,1,istate,qstate,1)
+        eri_tmp3o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,jstate,1), uq(:,istate,qstate) )
 
         if( gwgamma_tddft_ ) then
           eri_tmp3o(imat,jstate) = alpha_hybrid * eri_tmp3o(imat,jstate) - fxc
@@ -192,14 +226,16 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
         eri_tmp1v(imat,bstate) = eri_eigen(istate,astate,1,bstate,pstate,1)
 
         ! Store ( i b | a q ) which should be set to zero to recover GW
-        eri_tmp2v(imat,bstate) = eri_eigen(istate,bstate,1,astate,qstate,1)
+        !eri_tmp2v(imat,bstate) = eri_eigen(istate,bstate,1,astate,qstate,1)
+        eri_tmp2v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,1), uq(:,astate,qstate) )
 
         if( gwgamma_tddft_ ) then
           eri_tmp2v(imat,bstate) = alpha_hybrid * eri_tmp2v(imat,bstate) - fxc
         endif
 
         ! Store ( a b | i q ) which should be set to zero to recover GW
-        eri_tmp3v(imat,bstate) = eri_eigen(astate,bstate,1,istate,qstate,1)
+        !eri_tmp3v(imat,bstate) = eri_eigen(astate,bstate,1,istate,qstate,1)
+        eri_tmp3v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,bstate,1), uq(:,istate,qstate) )
 
         if( gwgamma_tddft_ ) then
           eri_tmp3v(imat,bstate) = alpha_hybrid * eri_tmp3v(imat,bstate) - fxc
