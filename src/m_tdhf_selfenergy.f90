@@ -37,7 +37,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   !=====
   integer                 :: nstate,nmat,imat
   integer                 :: istate,astate,jstate,bstate,iaspin,spole
-  integer                 :: pstate,iomega_sigma
+  integer                 :: pstate,qstate,iomega_sigma
   real(dp),allocatable    :: x_matrix(:,:),y_matrix(:,:)
   real(dp)                :: erpa_tmp,egw_tmp
   type(spectral_function) :: wpol
@@ -109,6 +109,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   sigma_tdhf(:,:,:) = 0.0_dp
 
   do pstate=nsemin,nsemax
+    qstate = pstate
 
     !
     ! Ocuppied states
@@ -119,23 +120,23 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
         astate = wpol%transition_table(2,imat)
 
         if( gwgamma_tddft_ ) then
-          fxc = eval_fxc_rks_singlet(istate,astate,1,jstate,pstate,1)
+          fxc = eval_fxc_rks_singlet(istate,astate,1,jstate,qstate,1)
           call grid%sum(fxc)
           ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
         endif
 
-        ! Store ( i a | j p )
+        ! Store ( i a | j p ) ( and ( i a | j q ) for off-diagonal terms)
         eri_tmp1o(imat,jstate) = eri_eigen(istate,astate,1,jstate,pstate,1)
 
-        ! Store ( i j | a p ) which should be set to zero to recover GW
-        eri_tmp2o(imat,jstate) = eri_eigen(istate,jstate,1,astate,pstate,1)
+        ! Store ( i j | a q ) which should be set to zero to recover GW
+        eri_tmp2o(imat,jstate) = eri_eigen(istate,jstate,1,astate,qstate,1)
 
         if( gwgamma_tddft_ ) then
           eri_tmp2o(imat,jstate) = alpha_hybrid * eri_tmp2o(imat,jstate) - fxc
         endif
 
-        ! Store ( a j | i p ) which should be set to zero to recover GW
-        eri_tmp3o(imat,jstate) = eri_eigen(astate,jstate,1,istate,pstate,1)
+        ! Store ( a j | i q ) which should be set to zero to recover GW
+        eri_tmp3o(imat,jstate) = eri_eigen(astate,jstate,1,istate,qstate,1)
 
         if( gwgamma_tddft_ ) then
           eri_tmp3o(imat,jstate) = alpha_hybrid * eri_tmp3o(imat,jstate) - fxc
@@ -182,23 +183,23 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
         astate = wpol%transition_table(2,imat)
 
         if( gwgamma_tddft_ ) then
-          fxc = eval_fxc_rks_singlet(istate,astate,1,bstate,pstate,1)
+          fxc = eval_fxc_rks_singlet(istate,astate,1,bstate,qstate,1)
           call grid%sum(fxc)
           ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
         endif
 
-        ! Store ( i a | b p )
+        ! Store ( i a | b p ) ( and ( i a | b q ) for off-diagonal terms)
         eri_tmp1v(imat,bstate) = eri_eigen(istate,astate,1,bstate,pstate,1)
 
-        ! Store ( i b | a p ) which should be set to zero to recover GW
-        eri_tmp2v(imat,bstate) = eri_eigen(istate,bstate,1,astate,pstate,1)
+        ! Store ( i b | a q ) which should be set to zero to recover GW
+        eri_tmp2v(imat,bstate) = eri_eigen(istate,bstate,1,astate,qstate,1)
 
         if( gwgamma_tddft_ ) then
           eri_tmp2v(imat,bstate) = alpha_hybrid * eri_tmp2v(imat,bstate) - fxc
         endif
 
-        ! Store ( a b | i p ) which should be set to zero to recover GW
-        eri_tmp3v(imat,bstate) = eri_eigen(astate,bstate,1,istate,pstate,1)
+        ! Store ( a b | i q ) which should be set to zero to recover GW
+        eri_tmp3v(imat,bstate) = eri_eigen(astate,bstate,1,istate,qstate,1)
 
         if( gwgamma_tddft_ ) then
           eri_tmp3v(imat,bstate) = alpha_hybrid * eri_tmp3v(imat,bstate) - fxc
