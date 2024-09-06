@@ -89,7 +89,7 @@ def run(inputfile="molgw.in", outputfile="", yamlfile="",
         with open(outputfile, "w") as f:
             f.write(output.decode("utf-8"))
     else:
-        with open("./" + tmp + "/" + outputfile, "w") as f:
+        with open("./" + tmp + "/molgw.out", "w") as f:
             f.write(output.decode("utf-8"))
     if len(yamlfile) > 0:
         shutil.copy( "./" + tmp + "/molgw.yaml", yamlfile)
