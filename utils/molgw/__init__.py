@@ -100,7 +100,7 @@ def check_input(pyinput):
 
 
 ########################################################################
-def run(inputfile="molgw.in", outputfile="molgw.out", yamlfile="",
+def run(inputfile="molgw.in", outputfile="", yamlfile="",
         pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
 
     if len(tmp) > 0:
@@ -122,6 +122,9 @@ def run(inputfile="molgw.in", outputfile="molgw.out", yamlfile="",
     if len(error) > 100:
         print(error.decode("utf-8"))
     if len(outputfile) > 0:
+        with open(outputfile, "w") as f:
+            f.write(output.decode("utf-8"))
+    else:
         with open("./" + tmp + "/" + outputfile, "w") as f:
             f.write(output.decode("utf-8"))
     if len(yamlfile) > 0:
