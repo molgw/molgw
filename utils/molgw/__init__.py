@@ -100,7 +100,9 @@ def check_input(pyinput):
 
 
 ########################################################################
-def run(inputfile="molgw.in", outputfile="molgw.out", pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
+def run(inputfile="molgw.in", outputfile="molgw.out", yamlfile="",
+        pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
+
     if len(tmp) > 0:
         os.makedirs(tmp, exist_ok=True)
     if len(executable_path) > 0:
@@ -110,16 +112,21 @@ def run(inputfile="molgw.in", outputfile="molgw.out", pyinput={}, mpirun="", exe
     if len(pyinput) > 0:
         print_input_file(pyinput, "./" + tmp + "/" + inputfile)
     os.environ['OMP_NUM_THREADS'] = str(openmp)
+
     if len(mpirun) == 0:
         process = subprocess.Popen([exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         process = subprocess.Popen(mpirun.split() + [exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
+
+    if len(error) > 100:
+        print(error.decode("utf-8"))
     if len(outputfile) > 0:
         with open("./" + tmp + "/" + outputfile, "w") as f:
             f.write(output.decode("utf-8"))
-    if len(error) > 100:
-        print(error.decode("utf-8"))
+    if len(yamlfile) > 0:
+        shutil.copy( "./" + tmp + "/molgw.yaml", yamlfile)
+
     with open("./" + tmp + "/molgw.yaml", "r") as stream:
         try:
             results = load(stream, Loader=Loader)
