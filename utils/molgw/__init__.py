@@ -409,7 +409,7 @@ class Molgw_input:
         elif isinstance(origin, str):
             sys.exit("Reading a text file is not coded yet")
         else:
-            raise TypeError("Molgw_input should be initialized with a dictionary or a file name")
+            raise TypeError("Molgw_input should be initialized with a dictionary or a file path")
     def __str__(self):
         return str(self.d)
     def __getitem__(self, key):
@@ -470,8 +470,20 @@ class Molgw_input:
 ########################################################################
 class Molgw_output:
     """MOLGW output"""
-    def __init__(self,dict_in):
-        self.d = dict_in
+    def __init__(self, origin):
+        if isinstance(origin, dict):
+            self.d = origin
+        elif isinstance(origin, str):
+            try:
+                with open(origin, "r") as stream:
+                    self.d = load(stream, Loader=Loader)
+            except:
+                print(f'{origin} file does not exist or is no proper yaml file')
+                self.d = {}
+                raise FileNotFoundError
+        else:
+            raise TypeError("Molgw_output should be initialized with a dictionary or a yaml file path")
+
     def __str__(self):
         return str(self.d)
     def __getitem__(self, key):
