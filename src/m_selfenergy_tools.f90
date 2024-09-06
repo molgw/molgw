@@ -82,11 +82,11 @@ subroutine selfenergy_set_state_range(nstate_in,occupation,range)
   endif
 
   if( ncore_G > 0 ) then
-    write(stdout,'(a,i4,2x,i4)') 'frozen core approximation in G switched on up to state = ',ncore_G
+    write(stdout,'(1x,a,i4,2x,i4)') 'frozen core approximation in G switched on up to state = ',ncore_G
   endif
 
   if( nvirtual_G <= nstate_in ) then
-    write(stdout,'(a,i4,2x,i4)') 'frozen virtual approximation in G switched on starting with state = ',nvirtual_G
+    write(stdout,'(1x,a,i4,2x,i4)') 'frozen virtual approximation in G switched on starting with state = ',nvirtual_G
   endif
 
   ! Find the HOMO index
