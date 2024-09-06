@@ -61,42 +61,6 @@ except:
     pass
 
 ########################################################################
-def check_input(pyinput):
-    sanity = True
-
-    valid_keywords = [k for k in input_keywords.keys() ]
-    additional_keywords = ["xyz", "rawxyz"]
-    valid_keywords += additional_keywords
-
-    # Check keywords exist
-    pyinput_lower = [ k.lower() for k in pyinput ]
-    for k in pyinput_lower:
-        if not k in valid_keywords:
-            print('Wrong input variable:    ' + k)
-            similar = ''
-            for kk in valid_keywords:
-                if difflib.SequenceMatcher(None,k,kk).ratio() > 0.6:
-                    #print(kk,difflib.SequenceMatcher(None,k,kk).ratio())
-                    similar += ' ' + kk
-            if len(similar) > 0:
-                print(' -> did you mean:   ' + similar)
-            else:
-                print(' -> no similar keyword found')
-            sanity = False
-
-    # Check all mandatory keywords are there
-    mandatory = [k for k in input_keywords.keys() if input_keywords[k]["mandatory"]=="yes" ]
-    for k in mandatory:
-        if not k in [key for key in pyinput_lower]:
-            print('Mandatory keyword not present:   ' + k)
-            sanity = False
-    # Check that some sort of structure is there
-    structure_kw = [ "natom", "xyz_file", "xyz", "rawxyz"]
-    if not any(kw in pyinput_lower for kw in structure_kw):
-        print("No structural data given")
-        sanity = False
-
-    return sanity
 
 
 ########################################################################
@@ -281,21 +245,6 @@ def parse_yaml_files(directory):
     return calc
 
 
-########################################################################
-# check if a calculation dictionary is valid
-# - "scf is converged" exists
-# - "scf is converged" is True
-# - "run" exists ("run" key is written in YAML file at the very end of a MOLGW calculation)
-def check_calc(calc):
-    valid = True
-    try:
-        calc["scf is converged"]
-        calc["run"]
-    except KeyError:
-        valid = False
-    except:
-        sys.exit(1)
-    return valid and calc["scf is converged"]
 
 
 ########################################################################
@@ -442,21 +391,68 @@ class gaussian_cube:
 
 ########################################################################
 class Molgw_input:
-    """MOLGW input"""
-    def __init__(self,dict_in):
-        self.d = dict_in
+    """ MOLGW input class """
+    def __init__(self, origin):
+        """ Input can be a python dictionary or a text file"""
+        if isinstance(origin, dict):
+            self.d = origin
+        elif isinstance(origin, str):
+            sys.exit("Reading a text file is not coded yet")
+        else:
+            raise TypeError("Molgw_input should be initialized with a dictionary or a file name")
     def __str__(self):
         return str(self.d)
     def __getitem__(self, key):
-        return self.d[key]
-    def set(self,key,value):
+        if key not in self.d:
+            raise KeyError(f"Input variable '{key}' not found in the input")
+        else:
+            return self.d[key]
+    def __set__(self, key, value):
         self.d[key] = value
-    def check(self):
-        return check_input(self.d)
+
     def to_dict(self):
         return self.d
     def to_file(self,filename):
         return print_input_file(self.d,filename)
+
+    ####################################################################
+    def check(self):
+        """ Check the sanity of an input file """
+        sanity = True
+        valid_keywords = [k for k in input_keywords.keys() ]
+        additional_keywords = ["xyz", "rawxyz"]
+        valid_keywords += additional_keywords
+    
+        # Check keywords exist
+        pyinput_lower = [ k.lower() for k in self.d ]
+        for k in pyinput_lower:
+            if not k in valid_keywords:
+                print('Wrong input variable:    ' + k)
+                similar = ''
+                for kk in valid_keywords:
+                    if difflib.SequenceMatcher(None,k,kk).ratio() > 0.6:
+                        #print(kk,difflib.SequenceMatcher(None,k,kk).ratio())
+                        similar += ' ' + kk
+                if len(similar) > 0:
+                    print(' -> did you mean:   ' + similar)
+                else:
+                    print(' -> no similar keyword found')
+                sanity = False
+    
+        # Check all mandatory keywords are there
+        mandatory = [k for k in input_keywords.keys() if input_keywords[k]["mandatory"]=="yes" ]
+        for k in mandatory:
+            if not k in [key for key in pyinput_lower]:
+                print('Mandatory keyword not present:   ' + k)
+                sanity = False
+        # Check that some sort of structure is there
+        structure_kw = [ "natom", "xyz_file", "xyz", "rawxyz"]
+        if not any(kw in pyinput_lower for kw in structure_kw):
+            print("No structural data given")
+            sanity = False
+    
+        return sanity
+
     def run(self,**kwargs):
         return Molgw_output(run(pyinput=self.d,**kwargs))
 
@@ -476,12 +472,26 @@ class Molgw_output:
         return get_homo_energy(approx,self.d)
     def lumo_energy(self,approx):
         return get_lumo_energy(approx,self.d)
-    def check(self):
-        return check_calc(self.d)
     def to_dict(self):
         return self.d
     def chemical_formula(self):
         return get_chemical_formula(self.d)
+
+    def check(self):
+        """check if a calculation dictionary is valid
+           - "scf is converged" exists
+           - "scf is converged" is True
+           - "run" exists ("run" key is written in YAML file at the very end of a MOLGW calculation) """
+        valid = True
+        try:
+            self["scf is converged"]
+            self["run"]
+        except KeyError:
+            valid = False
+        except:
+            sys.exit(1)
+        return valid and self["scf is converged"]
+
 
 ########################################################################
 class Molgw_output_collection:
