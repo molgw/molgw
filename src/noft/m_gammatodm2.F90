@@ -21,6 +21,7 @@
 
 module m_gammatodm2
 
+ use m_nofoutput
  use m_rdmd
 
  implicit none
@@ -1367,8 +1368,10 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,iorb2,iorb3
+ real(dp)::err_HermJ,err_HermK,err_HermL
 !arrays
  real(dp),allocatable,dimension(:,:)::xij,xab,xia
+ character(len=200)::msg
 !************************************************************************
 
 !- - - - - - - - - - - - - - - - - - - - - - - -              
@@ -1471,6 +1474,38 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
 
  ! Exchange elements D_pq^qp = -1/2 D_pq^pq for p/=q
  DM2_K=-half*DM2_J
+
+ ! Check for the Hermiticity of the 2-RDM 
+ err_HermJ=zero;err_HermK=zero;err_HermL=zero;
+ do iorb=1,RDMd%NBF_occ
+  do iorb1=iorb,RDMd%NBF_occ
+   err_HermJ=err_HermJ+abs(DM2_J(iorb,iorb1)-DM2_J(iorb1,iorb))
+   err_HermK=err_HermK+abs(DM2_K(iorb,iorb1)-DM2_K(iorb1,iorb))
+   err_HermL=err_HermL+abs(DM2_L(iorb,iorb1)-DM2_L(iorb1,iorb))
+  enddo
+ enddo
+
+ if(abs(err_HermJ)>tol6) then
+  write(msg,'(a,f15.6)') 'Hermiticity error DM2_J       =',err_HermJ
+  call write_output(msg)
+  write(msg,'(a)') 'Enforcing Hermiticity in DM2_J'
+  call write_output(msg)
+  DM2_J=HALF*(DM2_J+transpose(DM2_J))
+ endif
+ if(abs(err_HermK)>tol6) then
+  write(msg,'(a,f15.6)') 'Hermiticity error DM2_K       =',err_HermK
+  call write_output(msg)
+  write(msg,'(a)') 'Enforcing Hermiticity in DM2_K'
+  call write_output(msg)
+  DM2_K=HALF*(DM2_K+transpose(DM2_K))
+ endif
+ if(abs(err_HermL)>tol6) then
+  write(msg,'(a,f15.6)') 'Hermiticity error DM2_L       =',err_HermL
+  call write_output(msg)
+  write(msg,'(a)') 'Enforcing Hermiticity in DM2_L'
+  call write_output(msg)
+  DM2_L=HALF*(DM2_L+transpose(DM2_L))
+ endif
 
 !-----------------------------------------------------------------------
  deallocate(xij,xab,xia)

@@ -7,6 +7,7 @@
 ### Overview
 
 - Complex wavefunctions
+- X2C relativistic wavefunctions for HF/DFT calculations
 
 ### Contributors
 

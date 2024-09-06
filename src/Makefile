@@ -157,7 +157,7 @@ molgw:
 all: molgw
 
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
-          lebedev_quadrature.o pdbssolver1.o boys_function.o m_nofoutput.o
+          lebedev_quadrature.o pdbssolver1.o boys_function.o m_nofoutput.o basis_2_basisrel.o
 
 level005: m_warning.o real_spherical_harmonics.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o
 
@@ -185,7 +185,7 @@ level050: m_hamiltonian_wrapper.o m_restart.o m_multipole.o m_spectra.o m_build_
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_linear_response.o
 
-level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o m_g3w2_selfenergy.o
+level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o m_g3w2_selfenergy.o m_relativistic.o  
 
 level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o 
 
@@ -213,7 +213,8 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o 
         m_linear_response.o m_acfd.o static_polarizability.o gw_selfenergy.o m_gw_selfenergy_grid.o m_g3w2_selfenergy.o \
         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_tz_pccd_amplitudes.o m_noft_driver.o gitver.o \
-        m_build_bse.o m_multipole.o m_io.o m_restart.o mp2.o m_noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o force.o m_tddft_propagator.o\
+        m_build_bse.o m_multipole.o m_io.o m_restart.o mp2.o m_relativistic.o m_noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o \
+        force.o m_tddft_propagator.o\
         molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
@@ -227,7 +228,7 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o 
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o m_pt_density_matrix.o \
                         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
                         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_tz_pccd_amplitudes.o m_noft_driver.o gitver.o \
-                        mp2.o m_noft.o gw_selfenergy.o m_gw_selfenergy_grid.o m_g3w2_selfenergy.o m_build_bse.o \
+                        mp2.o m_relativistic.o m_noft.o gw_selfenergy.o m_gw_selfenergy_grid.o m_g3w2_selfenergy.o m_build_bse.o \
                         m_linear_response.o m_acfd.o static_polarizability.o m_multipole.o m_io.o m_restart.o \
                         m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_scf_loop.o m_dm_analysis.o \
                         m_hamiltonian_wrapper.o m_fourier_quadrature.o \
@@ -408,6 +409,11 @@ mp2.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
        mp2.f90
 	$(FC_W_OPTS) -c mp2.f90 $(LIBXC_INCS)
 
+m_relativistic.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
+       m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 \
+       m_relativistic.f90
+	$(FC_W_OPTS) -c m_relativistic.f90 $(LIBXC_INCS)
+
 m_noft.o: m_definitions.f90 m_mpi.f90 m_cart_to_pure.f90 \
        m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 \
        m_hamiltonian_onebody.f90 m_hamiltonian_twobodies.f90 m_hamiltonian_tools.f90 m_hamiltonian_wrapper.f90 \
@@ -451,6 +457,10 @@ libint_twobody.o: libint_molgw.h libint_twobody.cc
 
 libint_twobody_grad.o: libint_molgw.h libint_twobody_grad.cc
 	$(CXX_W_OPTS) -c libint_twobody_grad.cc $(LIBINT_INCS)
+
+basis_2_basisrel.o: ../utils/basis_2_basisrel.cpp
+	$(CXX) -c ../utils/basis_2_basisrel.cpp
+	$(CXX) basis_2_basisrel.o -o ../utils/basis_2_basisrel
 
 m_libint_tools.o: m_definitions.f90 m_cart_to_pure.f90 m_basis_set.f90 m_libint_tools.f90
 	$(FC_W_OPTS) -c m_libint_tools.f90 $(LIBXC_INCS) $(LIBINT_INCS)
