@@ -96,6 +96,25 @@ end function eri_eigen_ri_cmplx
 
 
 !=========================================================================
+function eri_eigen_ri_x2c(istate,jstate,kstate,lstate)
+  implicit none
+  integer,intent(in) :: istate,jstate,kstate,lstate
+  complex(dp)        :: eri_eigen_ri_x2c
+  !=====
+
+  ! La La La La,  Lb Lb Lb Lb, La Lb La Lb, and Lb La Lb La
+  ! The rest of combinations (e.g. La La Lb La or La Lb Lb La, etc) are null due to tensor product definition
+  eri_eigen_ri_x2c=SUM( eri_3center_eigen_cmplx(:,istate,jstate,1)*eri_3center_eigen_cmplx(:,kstate,lstate,1) & ! <La tensor_prod La | La tensor_prod La>  
+  &               + eri_3center_eigen_cmplx(:,istate,jstate,2)*eri_3center_eigen_cmplx(:,kstate,lstate,2)     & ! <Lb tensor_prod Lb | Lb tensor_prod Lb>
+  &               + eri_3center_eigen_cmplx(:,istate,jstate,1)*eri_3center_eigen_cmplx(:,kstate,lstate,2)     & ! <La tensor_prod Lb | La tensor_prod Lb>
+  &               + eri_3center_eigen_cmplx(:,istate,jstate,2)*eri_3center_eigen_cmplx(:,kstate,lstate,1)    )  ! <Lb tensor_prod La | Lb tensor_prod La>
+
+  call auxil%sum(eri_eigen_ri_x2c)
+
+end function eri_eigen_ri_x2c
+
+
+!=========================================================================
 pure function eri_eigen_ri_paral(istate,jstate,ijspin,kstate,lstate,klspin)
   implicit none
   integer,intent(in) :: ijspin,klspin
@@ -122,7 +141,7 @@ subroutine calculate_eri_4center_eigen(c_matrix,istate,ijspin,eri_eigenstate_i)
   integer              :: nbf,nstate
   integer              :: klspin
   integer              :: ibf,jbf,kbf,lbf
-  integer              :: jstate,kstate,lstate
+  integer              :: lstate
   real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
   integer(kind=int8)   :: iint
   integer              :: index_ij,index_kl,stride
@@ -249,7 +268,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
   integer              :: nbf,nstate,nstate_maxmin
   integer              :: ijspin,klspin
   integer              :: ibf,jbf,kbf,lbf
-  integer              :: istate,jstate,kstate,lstate
+  integer              :: istate,jstate
   real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:),eri_tmp1b(:,:)
   integer(kind=int8)   :: iint
   integer              :: index_ij,index_kl,stride
@@ -390,7 +409,6 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
   integer              :: mstate_count_,nstate_count_
   integer              :: kbf,lbf,iauxil
-  integer              :: lstate
   integer              :: klspin
   real(dp),allocatable :: tmp1(:,:),tmp2(:,:),c_t(:,:)
   integer              :: ipair
@@ -555,7 +573,6 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix,mstate_min,mstate_max,nstate_
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
   integer              :: mstate_count_,nstate_count_
   integer              :: kbf,lbf,iauxil,nauxil_local_
-  integer              :: lstate
   integer              :: klspin
   real(dp),allocatable :: tmp1(:,:),tmp2(:,:),c_t(:,:)
   integer              :: ipair
@@ -682,7 +699,6 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
   integer              :: mstate_count_,nstate_count_
   integer              :: kbf,lbf,iauxil
-  integer              :: lstate
   integer              :: klspin
   complex(dp),allocatable :: tmp1_cmplx(:,:),tmp2_cmplx(:,:),c_t_cmplx(:,:)
   integer              :: ipair
@@ -790,6 +806,44 @@ end subroutine calculate_eri_3center_eigen_cmplx
 
 
 !=================================================================
+subroutine calculate_eri_x2c(c_matrix_rel,nstate,nstate_min,nstate_max,mstate_min,mstate_max)
+  implicit none
+  complex(dp),intent(in)      :: c_matrix_rel(:,:)
+  integer,intent(in)          :: nstate
+  integer,optional,intent(in) :: nstate_min,nstate_max,mstate_min,mstate_max
+  !=====
+  integer                 :: ibf,istate,nbf
+  integer                 :: nstate_min_,nstate_max_,mstate_min_,mstate_max_
+  logical                 :: x2c_verbose=.FALSE.
+  complex(dp),allocatable :: c_matrix_LaorLb(:,:,:)
+  !=====
+
+  nstate_min_=1; nstate_max_=nstate; mstate_min_=1; mstate_max_=nstate;
+  nbf=nstate/2
+  if(present(nstate_min)) nstate_min_=nstate_min
+  if(present(nstate_max)) nstate_max_=nstate_max
+  if(present(mstate_min)) mstate_min_=mstate_min
+  if(present(mstate_min)) mstate_max_=mstate_max
+  allocate(c_matrix_LaorLb(nbf,nstate,nspin))
+
+  !
+  ! Setup the density La or Lb sub-matrices
+  c_matrix_LaorLb=COMPLEX_ZERO
+  do ibf=1,nbf
+    do istate=1,nstate
+      c_matrix_LaorLb(ibf,istate,1)=c_matrix_rel(2*ibf-1,istate) ! L alpha coef. in spin channel 1
+      c_matrix_LaorLb(ibf,istate,2)=c_matrix_rel(2*ibf  ,istate) ! L beta  coef. in spin channel 2
+    enddo
+  enddo
+
+  call calculate_eri_3center_eigen_cmplx(c_matrix_LaorLb,nstate_min_,nstate_max_,mstate_min_,mstate_max_,verbose=x2c_verbose)
+
+  deallocate(c_matrix_LaorLb)
+
+end subroutine calculate_eri_x2c
+
+
+!=================================================================
 subroutine destroy_eri_3center_eigen(verbose,long_range)
   implicit none
 
@@ -835,6 +889,19 @@ subroutine destroy_eri_3center_eigen_cmplx(verbose)
   call clean_deallocate('3-center MO integrals',eri_3center_eigen_cmplx,verbose_)
 
 end subroutine destroy_eri_3center_eigen_cmplx
+
+
+!=================================================================
+subroutine destroy_eri_3center_eigen_x2c()
+  implicit none
+
+  !=====
+  logical :: x2c_verbose=.FALSE.
+  !=====
+
+  call clean_deallocate('3-center MO integrals',eri_3center_eigen_cmplx,x2c_verbose)
+
+end subroutine destroy_eri_3center_eigen_x2c
 
 
 !=================================================================

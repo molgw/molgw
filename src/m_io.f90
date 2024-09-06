@@ -1592,7 +1592,7 @@ subroutine print_wfn_file(rootname,basis,occupation,c_matrix,etotal,energy,print
   allocate(energy_local(nstate,nspin))
 
   energy_local(:,:) = 0.0_dp
-  if(PRESENT(energy)) then
+  if(PRESENT(energy) .and. (complex_scf=='no' .and. x2c=='no') ) then
     energy_local(:,:) = energy(:,:)
   endif
 

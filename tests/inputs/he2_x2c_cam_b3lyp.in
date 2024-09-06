@@ -1,0 +1,17 @@
+&molgw
+ scf='cam-b3lyp'
+ tolscf=1.0e-8
+ nspin=2
+ 
+ x2c='yes'
+ approx_H_x2c='no'
+
+ basis='cc-pVDZ_rel'
+ auxil_basis='PAUTO'
+ gaussian_type='cart'
+
+ natom=2
+
+/
+He   0. 0. 0.
+He   0. 0. 1.7
