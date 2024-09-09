@@ -496,6 +496,9 @@ class Molgw_output:
         return get_lumo_energy(approx,self.d)
     def to_dict(self):
         return self.d
+    def to_file(self, dest):
+        with open(dest, "w") as stream:
+            dump(self.d, stream, Dumper=Dumper)
     def chemical_formula(self):
         return get_chemical_formula(self.d)
 
