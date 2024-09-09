@@ -203,7 +203,7 @@ def get_homo_energy(approx,calc):
     if key not in calc.keys():
         print(f"Problem reading calculation: {calc['input parameters']['comment']}")
         print(f"{key} not found")
-        sys.exit("Problem")
+        return None
     energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
         energies += [ float(ei) for ei in calc[key]["spin channel 1"].values()]
@@ -219,7 +219,7 @@ def get_lumo_energy(approx,calc):
     if key not in calc.keys():
         print(f"Problem reading calculation: {calc['input parameters']['comment']}")
         print(f"{key} not found")
-        sys.exit("Problem")
+        return None
     energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
         energies += [ float(ei) for ei in calc[key]["spin channel 1"].values()]
@@ -588,7 +588,7 @@ class Molgw_output_collection:
        for f, mlgo in zip(self.files,self.data):
            corresponds = True
            for key, value in filters.items():
-               if mlgo["input parameters"][key] != value:
+               if mlgo["input parameters"][key] != value and mlgo["input parameters"][key] != value.upper() :
                    corresponds = False
            if corresponds:
                mlgo_filtered.append(mlgo,file=f)
