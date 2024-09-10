@@ -32,6 +32,50 @@ default_input_parameters = {
       'frozencore': 'yes'
               }
 
+# Number of frozen MO as used by Harding-Klopper
+frozencore = {
+    'H':  0,
+    'He': 0,
+    'Li': 0,
+    'Be': 1,
+    'B': 1,
+    'C': 1,
+    'N': 1,
+    'O': 1,
+    'F': 1,
+    'Ne': 1,
+    'Na': 1,
+    'Mg': 2,
+    'Al': 5,
+    'Si': 5,
+    'P': 5,
+    'S': 5,
+    'Cl': 5,
+    'Ar': 5,
+    'K': 5,
+    'Ti': 5,
+    'Cu': 9,
+    'Ga': 9,
+    'Ge': 9,
+    'As': 9,
+    'Se': 5,
+    'Br': 14,
+    'Kr': 14,
+    'Xe': 0,
+    'I': 4,
+    'Rb': 0,
+    'Ag': 1
+}
+
+def get_frozencore(cas):
+    structure_string = structures[cas]
+    lines = structure_string.split('\n')
+    natom = int(lines[0])
+    frozen_orbitals = 0
+    for iatom in range(natom):
+        element = lines[iatom+2].split()[0]
+        frozen_orbitals += frozencore[element]
+    return frozen_orbitals
 
 structures = {
     "7440-37-1": "1\nArgon; atom; s\nAr 0.0 0.0 0.0\n",
@@ -74,7 +118,7 @@ structures = {
     "124-38-9": "3\nCarbon dioxide; experimental structure from HCP92; s\nO 0.0000 0.0000  1.16\nC 0.0000 0.0000  0.0000\nO 0.0000 0.0000 -1.16\n",
     "463-58-1": "3\nCarbon oxysulfide; Experimental structure from HCP92; s\nO 0.0000 0.0000 1.1578\nC 0.0000 0.0000 0.0000\nS 0.0000 0.0000 -1.5601\n",
     "1603-84-5": "3\nCarbon oxyselenide; Experimental structure from HCP92; s\nO 0.0000 0.0000 1.159\nC 0.0000 0.0000 0.0000\nSe 0.0000 0.0000 -1.709\n",
-    "7446-09-5": "3\nSulfer dioxide; experimental structure from HCP92; m\nS  0.0000 0.0000 0.0000\nO  1.2349 0.0000 0.7226\nO -1.2349 0.0000 0.7226",
+    "7446-09-5": "3\nSulfur dioxide; experimental structure from HCP92; m\nS  0.0000 0.0000 0.0000\nO  1.2349 0.0000 0.7226\nO -1.2349 0.0000 0.7226",
     "75-15-0": "3\nCarbon disulfide; experimental structure from HCP95; s\nC  0.0000 0.0000  0.0000\nS  0.0000 0.0000  1.5526\nS  0.0000 0.0000 -1.5526\n",
     "7783-06-4": "3\nHydrogen sulfide; experimental structure from HCP92; s\nS  0.0000 0.0000 0.0000\nH  0.9617 0.0000 0.9268\nH -0.9617 0.0000 0.9268\n",
     "7783-40-6": "3\nMagnesium fluoride; experimental structure from HCP92; s\nF  0.0000 0.0000  1.771\nMg 0.0000 0.0000  0.0000\nF  0.0000 0.0000 -1.771\n",
@@ -95,7 +139,7 @@ structures = {
     "7803-62-5": "5\nSilane; experimental structure from HCP92; m\nSi  0.0000  0.0000  0.0000\nH   0.8544 -0.8544  0.8544  \nH  -0.8544  0.8544  0.8544    \nH  -0.8544 -0.8544 -0.8544 \nH   0.8544  0.8544 -0.8544 ",
     "7783-63-3": "5\nTitanium fluoride; experimental structure from HCP92; m\nTi  0.0000  0.0000  0.0000\nF   1.0127 -1.0127  1.0127  \nF  -1.0127  1.0127  1.0127    \nF  -1.0127 -1.0127 -1.0127 \nF   1.0127  1.0127 -1.0127 ",
     "7782-65-2": "5\nGermane; experimental structure from HCP92; m\nGe  0.0000  0.0000  0.0000\nH   0.8805 -0.8805  0.8805  \nH  -0.8805  0.8805  0.8805    \nH  -0.8805 -0.8805 -0.8805 \nH   0.8805  0.8805 -0.8805 ",
-    "7783-60-0": "5\nSulfer tetrafluoride; experimental structure from tolles61; m\nS  0.0000  0.0000  0.3726\nF  0.0000  1.6430  0.2731\nF  0.0000 -1.6430  0.2731\nF  1.1969  0.0000 -0.6044\nF -1.1969  0.0000 -0.6044 ",
+    "7783-60-0": "5\nSulfur tetrafluoride; experimental structure from tolles61; m\nS  0.0000  0.0000  0.3726\nF  0.0000  1.6430  0.2731\nF  0.0000 -1.6430  0.2731\nF  1.1969  0.0000 -0.6044\nF -1.1969  0.0000 -0.6044 ",
     "74-85-1": "6\nEthylene; experimental structure from HCP92; s\nC  0.0000 0.0000  0.0000\nC  0.0000 0.0000  1.3290\nH  0.9235 0.0000 -0.5637\nH -0.9235 0.0000 -0.5637\nH  0.9235 0.0000  1.8927\nH -0.9235 0.0000  1.8927",
     "75-73-0": "5\nCarbon tetrafluoride; experimental structure from HCP92; m\nC  0.0000  0.0000  0.0000\nF  0.7638 -0.7638  0.7638  \nF -0.7638  0.7638  0.7638    \nF -0.7638 -0.7638 -0.7638 \nF  0.7638  0.7638 -0.7638 ",
     "507-25-5": "5\nCarbon tetraiodide; experimental structure from HCP92; m\nC  0.0000  0.0000  0.0000\nI  1.2411 -1.2411  1.2411  \nI -1.2411  1.2411  1.2411    \nI -1.2411 -1.2411 -1.2411 \nI  1.2411  1.2411 -1.2411 ",
