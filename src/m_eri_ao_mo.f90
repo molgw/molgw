@@ -298,7 +298,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
 
 
   do istate=nstate_min,nstate_max
-    if( MODULO( istate - nstate_min , ortho%nproc ) /= ortho%rank ) cycle
+    if( MODULO( istate - nstate_min , poorman%nproc ) /= poorman%rank ) cycle
 
     eri_tmp3(:,:,:) = 0.0_dp
 
@@ -378,7 +378,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
   call clean_deallocate('TMP array',eri_tmp2)
   call clean_deallocate('TMP array',eri_tmp3)
 
-  call ortho%sum(eri_4center_eigen_uks)
+  call poorman%sum(eri_4center_eigen_uks)
 
   call stop_clock(timing_eri_4center_eigen)
 
@@ -486,7 +486,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
     c_t(:,:)  = TRANSPOSE( c_matrix(:,nstate_min_:nstate_max_,klspin) )
 
     do iauxil=1,nauxil_local
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
       tmp1(:,:) = 0.0_dp
       !$OMP PARALLEL PRIVATE(kbf,lbf)
@@ -514,7 +514,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
 
     if(PRESENT(long_range)) then
       do iauxil=1,nauxil_local_lr
-        if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+        if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
         tmp1(:,:) = 0.0_dp
         !$OMP PARALLEL PRIVATE(kbf,lbf)
@@ -547,8 +547,8 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   call clean_deallocate('TMP 3-center ints',c_t,verbose_)
   call clean_deallocate('TMP 3-center ints',tmp1,verbose_)
 
-  call ortho%sum(eri_3center_eigen)
-  if( PRESENT(long_range) ) call ortho%sum(eri_3center_eigen_lr)
+  call poorman%sum(eri_3center_eigen)
+  if( PRESENT(long_range) ) call poorman%sum(eri_3center_eigen_lr)
 
   if( PRESENT(timing) ) then
     call stop_clock(timing)
@@ -643,7 +643,7 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix,mstate_min,mstate_max,nstate_
     c_t(:,:)  = TRANSPOSE( c_matrix(:,mstate_min_:mstate_max_,klspin) )
 
     do iauxil=1,nauxil_local_
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
       tmp1(:,:) = 0.0_dp
       !$OMP PARALLEL PRIVATE(kbf,lbf)
@@ -675,7 +675,7 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix,mstate_min,mstate_max,nstate_
   call clean_deallocate('TMP 3-center ints',c_t,verbose_)
   call clean_deallocate('TMP 3-center ints',tmp1,verbose_)
 
-  call ortho%sum(eri_3center_eigen)
+  call poorman%sum(eri_3center_eigen)
 
   if( PRESENT(timing) ) then
     call stop_clock(timing)
@@ -763,7 +763,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
     c_t_cmplx(:,:)  = CONJG( TRANSPOSE( c_matrix_cmplx(:,mstate_min_:mstate_max_,klspin) ) )
 
     do iauxil=1,nauxil_local
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
       tmp1_cmplx(:,:) = complex_zero
       !$OMP PARALLEL PRIVATE(kbf,lbf)
@@ -794,7 +794,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx,mstate_min,mstate_ma
   call clean_deallocate('TMP 3-center ints',c_t_cmplx,verbose_)
   call clean_deallocate('TMP 3-center ints',tmp1_cmplx,verbose_)
 
-  call ortho%sum(eri_3center_eigen_cmplx)
+  call poorman%sum(eri_3center_eigen_cmplx)
 
   if( PRESENT(timing) ) then
     call stop_clock(timing)

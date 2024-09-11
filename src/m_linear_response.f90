@@ -855,8 +855,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,xpy_matrix,eigenvalue,wpol,energy_g
                              wpol%residue_left,1,1,desc_auxil,cntxt_sd)
   !
   ! Do not forget ortho parallelization direction
-  if( ortho%nproc > 1 ) then
-    call ortho%bcast(0,wpol%residue_left)
+  if( poorman%nproc > 1 ) then
+    call poorman%bcast(0,wpol%residue_left)
   endif
 
   call clean_deallocate('TMP v**1/2 * (X+Y)',vsqrt_xpy)

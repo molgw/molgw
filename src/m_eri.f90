@@ -825,8 +825,8 @@ subroutine reshuffle_distribution_3center()
     mlocal = -1
     nlocal = -1
   endif
-  call ortho%max(mlocal)
-  call ortho%max(nlocal)
+  call poorman%max(mlocal)
+  call poorman%max(nlocal)
 
   if( cntxt_3center > 0 ) then
     call move_alloc(eri_3center,eri_3center_tmp)
@@ -843,11 +843,11 @@ subroutine reshuffle_distribution_3center()
   endif
 
   !
-  ! Propagate to the ortho MPI direction
+  ! Propagate to the poorman MPI direction
   if( cntxt_eri3_ao <= 0 ) then
     eri_3center(:,:) = 0.0_dp
   endif
-  call ortho%sum(eri_3center)
+  call poorman%sum(eri_3center)
 #endif
 
 

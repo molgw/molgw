@@ -353,7 +353,7 @@ subroutine setup_hartree_ri(p_matrix,hartree_ao,ehartree)
   !
   ! Sum up the different contribution from different procs
   call world%sum(hartree_ao)
-  hartree_ao(:,:) = hartree_ao(:,:) / REAL(ortho%nproc,dp)
+  hartree_ao(:,:) = hartree_ao(:,:) / REAL(poorman%nproc,dp)
 
   call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',hartree_ao)
 
@@ -464,7 +464,7 @@ subroutine setup_hartree_genuine_ri(p_matrix,rho_coeff,hartree_ao,ehartree)
   real(dp),allocatable :: rho_coeff_local_nospin(:)
   !=====
 
-  if( ortho%nproc > 1 ) call die('setup_hartree_genuine_ri: ortho-parallelization not coded')
+  if( poorman%nproc > 1 ) call die('setup_hartree_genuine_ri: poorman-parallelization not coded')
 
   nbf = SIZE(hartree_ao(:,:),DIM=1)
 
@@ -747,7 +747,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ao,eexchange)
     !$OMP END PARALLEL DO
 
     do iauxil=1,nauxil_local
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp(:,:) = 0.0_dp
       !$OMP PARALLEL PRIVATE(ibf,jbf)
       !$OMP DO REDUCTION(+:tmp)
@@ -830,7 +830,7 @@ subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ao,
     !$OMP END PARALLEL DO
 
     do iauxil=1,nauxil_local_lr
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp(:,:) = 0.0_dp
       !$OMP PARALLEL PRIVATE(ibf,jbf)
       !$OMP DO REDUCTION(+:tmp)
@@ -912,7 +912,7 @@ subroutine setup_exchange_ri_cmplx(occupation,c_matrix,p_matrix,exchange_ao,eexc
     !$OMP END PARALLEL DO
 
     do iauxil=1,nauxil_local
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
       !$OMP PARALLEL PRIVATE(ibf,jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
@@ -991,7 +991,7 @@ subroutine setup_exchange_ri_x2c_1(occupation,c_matrix,exchange_ao)
     !$OMP END PARALLEL DO
 
     do iauxil=1,nauxil_local
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
       !$OMP PARALLEL PRIVATE(ibf,jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
@@ -1072,7 +1072,7 @@ subroutine setup_exchange_ri_x2c_2(occupation,c_matrix,exchange_ao)
     !$OMP END PARALLEL DO
 
     do iauxil=1,nauxil_local
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx1(:,:) = (0.0_dp, 0.0_dp)
       tmp_cmplx2(:,:) = (0.0_dp, 0.0_dp)
       !$OMP PARALLEL PRIVATE(ibf,jbf)
@@ -1146,7 +1146,7 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation,c_matrix,p_matrix,exchan
     !$OMP END PARALLEL DO
 
     do iauxil=1,nauxil_local_lr
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
       !$OMP PARALLEL PRIVATE(ibf,jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
@@ -1225,7 +1225,7 @@ subroutine setup_lr_exchange_ri_x2c_1(occupation,c_matrix,exchange_ao)
     !$OMP END PARALLEL DO
 
     do iauxil=1,nauxil_local_lr
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:,:) = (0.0_dp, 0.0_dp)
       !$OMP PARALLEL PRIVATE(ibf,jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
@@ -1306,7 +1306,7 @@ subroutine setup_lr_exchange_ri_x2c_2(occupation,c_matrix,exchange_ao)
     !$OMP END PARALLEL DO
 
     do iauxil=1,nauxil_local_lr
-      if( MODULO( iauxil - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx1(:,:) = (0.0_dp, 0.0_dp)
       tmp_cmplx2(:,:) = (0.0_dp, 0.0_dp)
       !$OMP PARALLEL PRIVATE(ibf,jbf)
@@ -1358,7 +1358,7 @@ subroutine setup_exchange_genuine_ri(occupation,c_matrix,p_matrix,exchange_ao,ee
 
   call start_clock(timing_exchange)
 
-  if( ortho%nproc > 1 ) call die('not coded')
+  if( poorman%nproc > 1 ) call die('not coded')
 
   write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity (genuine)'
 
@@ -1439,7 +1439,7 @@ subroutine setup_exchange_genuine_ri_cmplx(occupation,c_matrix,p_matrix,exchange
 
   call start_clock(timing_exchange)
 
-  if( ortho%nproc > 1 ) call die('not coded')
+  if( poorman%nproc > 1 ) call die('not coded')
 
   write(stdout,*) 'Calculate Complex Exchange term with Resolution-of-Identity (genuine)'
 

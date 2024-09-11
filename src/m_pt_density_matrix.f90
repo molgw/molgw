@@ -390,7 +390,7 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
   allocate(bra_virt_local(npole_local,nhomo_G+1:nvirtual_G-1))
 
   do astate=nhomo_G+1,nvirtual_G-1
-    if( MODULO( astate - (nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+    if( MODULO( astate - (nhomo_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
     ! A1
     !bra_occ(:,ncore_G+1:nhomo_G) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,pqspin) )
@@ -438,7 +438,7 @@ subroutine gw_density_matrix(occupation,energy,c_matrix,wpol,p_matrix)
   enddo
 
   do istate=ncore_G+1,nhomo_G
-    if( MODULO( istate - (ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+    if( MODULO( istate - (ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
     ! A2
     !bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,pqspin) )

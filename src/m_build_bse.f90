@@ -727,10 +727,10 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,lambda,desc_apb,wpo
   !
   jstate_min = ncore_W+1
   jstate_max = MAXVAL( wpol%transition_table(1,1:wpol%npole_reso) )
-  do irank=0,ortho%rank
+  do irank=0,poorman%rank
     if( irank > 0 ) jstate_min = jstate_max + 1
     jstate_max = MAXVAL( wpol%transition_table(1,1:wpol%npole_reso) )
-    jstate_max = MIN( jstate_min + (jstate_max-jstate_min+1) / (ortho%nproc-irank) - 1 , jstate_max )
+    jstate_max = MIN( jstate_min + (jstate_max-jstate_min+1) / (poorman%nproc-irank) - 1 , jstate_max )
   enddo
 
   call clean_allocate('Temporary array for W',wp0,1,nauxil_local,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)

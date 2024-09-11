@@ -622,7 +622,7 @@ subroutine gw_selfenergy_grid(basis,occupation,energy,c_matrix,se)
       ! Imaginary axis integral
       !
       do iomegap=1,wpol_imag%nomega
-        if( MODULO( iomegap-1, ortho%nproc ) /= ortho%rank ) cycle
+        if( MODULO( iomegap-1, poorman%nproc ) /= poorman%rank ) cycle
 
         allocate(tmp2(nauxil_global,ncore_G+1:nvirtual_G-1))
 
@@ -654,7 +654,7 @@ subroutine gw_selfenergy_grid(basis,occupation,energy,c_matrix,se)
 
     enddo
   enddo
-  call ortho%sum(sigmagw)
+  call poorman%sum(sigmagw)
 
   se%sigma_calc(:,:,:) = sigmagw(:,:,:)
 
@@ -797,7 +797,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
             eri3_r_m(:,:) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,mstate,mpspin)
 
             do astate=nhomo_G+1,nvirtual_G-1
-              if( MODULO( astate - (nhomo_G+1) , ortho%nproc) /= ortho%rank ) cycle
+              if( MODULO( astate - (nhomo_G+1) , poorman%nproc) /= poorman%rank ) cycle
 
               eri3_i_a(:,:) = eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,mpspin)
               eri3_r_a(:,:) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,astate,mpspin)
@@ -866,7 +866,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
             eri3_a_m(:,:) = eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,mstate,mpspin)
 
             do istate=ncore_G+1,nhomo_G
-              if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
+              if( MODULO( istate - (ncore_G+1) , poorman%nproc) /= poorman%rank ) cycle
 
               eri3_a_i(:,:) = eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,mpspin)
               eri3_r_i(:,:) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,mpspin)
@@ -945,7 +945,7 @@ subroutine fsos_selfenergy_grid(basis,energy,occupation,c_matrix,se)
 
     enddo
   enddo
-  call ortho%sum(sigmagw)
+  call poorman%sum(sigmagw)
 
   se%sigma_calc(:,:,:) = se%sigma_calc(:,:,:) + sigmagw(:,:,:)
 

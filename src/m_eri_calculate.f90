@@ -1090,7 +1090,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis,rcut)
   else
     nauxil_kept    = 0
   endif
-  call ortho%max(nauxil_kept)
+  call poorman%max(nauxil_kept)
   nauxil_neglect = auxil_basis%nbf - nauxil_kept
 
 
@@ -1317,8 +1317,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
       mlocal = 0
       nlocal = 0
     endif
-    call ortho%max(mlocal)
-    call ortho%max(nlocal)
+    call poorman%max(mlocal)
+    call poorman%max(nlocal)
     !
     ! Possibility to recalculate a few integrals only
     if( .NOT. recalculation ) then
@@ -1341,8 +1341,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
       mlocal = 0
       nlocal = 0
     endif
-    call ortho%max(mlocal)
-    call ortho%max(nlocal)
+    call poorman%max(mlocal)
+    call poorman%max(nlocal)
     call clean_allocate('LR 3-center integrals SCALAPACK',eri_3center_lr,mlocal,nlocal)
   endif
 
@@ -1526,13 +1526,13 @@ subroutine calculate_integrals_eri_3center_scalapack(basis,auxil_basis,rcut,mask
     if( cntxt_3center < 0 ) then
       eri_3center(:,:) = 0.0_dp
     endif
-    call ortho%sum(eri_3center)
+    call poorman%sum(eri_3center)
     write(stdout,'(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
   else
     if( cntxt_3center < 0 ) then
       eri_3center_lr(:,:) = 0.0_dp
     endif
-    call ortho%sum(eri_3center_lr)
+    call poorman%sum(eri_3center_lr)
     write(stdout,'(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
   endif
 
@@ -1640,8 +1640,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
       mlocal = 0
       nlocal = 0
     endif
-    call ortho%max(mlocal)
-    call ortho%max(nlocal)
+    call poorman%max(mlocal)
+    call poorman%max(nlocal)
     call clean_allocate('3-center integrals SCALAPACK',eri_3center,mlocal,nlocal)
   else
     if( cntxt_3center > 0 ) then
@@ -1652,8 +1652,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
       mlocal = 0
       nlocal = 0
     endif
-    call ortho%max(mlocal)
-    call ortho%max(nlocal)
+    call poorman%max(mlocal)
+    call poorman%max(nlocal)
     call clean_allocate('LR 3-center integrals SCALAPACK',eri_3center_lr,mlocal,nlocal)
   endif
 
@@ -1895,7 +1895,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
     if( cntxt_3center < 0 ) then
       eri_3center(:,:) = 0.0_dp
     endif
-    call ortho%sum(eri_3center)
+    call poorman%sum(eri_3center)
     write(stdout,'(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
 
   else
@@ -1904,7 +1904,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
     if( cntxt_3center < 0 ) then
       eri_3center_lr(:,:) = 0.0_dp
     endif
-    call ortho%sum(eri_3center_lr)
+    call poorman%sum(eri_3center_lr)
     write(stdout,'(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
 
   endif

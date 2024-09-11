@@ -1,6 +1,6 @@
 &molgw
  comment='He GW+SOSEX'
- mpi_nproc_ortho=1024
+ mpi_poorman='yes'
 
  scf='HF'
 

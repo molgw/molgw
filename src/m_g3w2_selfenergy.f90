@@ -104,7 +104,7 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
     !==========================
     do bstate=ncore_G+1,nvirtual_G-1
       if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
-      if( MODULO( bstate-(ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( bstate-(ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       do istate=ncore_G+1,nvirtual_G-1
         if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
@@ -138,7 +138,7 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
     !==========================
     do cstate=ncore_G+1,nvirtual_G-1
       if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty) cycle
-      if( MODULO( cstate-(ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( cstate-(ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       do jstate=ncore_G+1,nvirtual_G-1
         if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
@@ -171,7 +171,7 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
 
   enddo
 
-  call ortho%sum(sigma_sox)
+  call poorman%sum(sigma_sox)
 
 
   if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == G3W2 &
@@ -184,7 +184,7 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
 
       do spole=1,wpol%npole_reso
 
-        if( MODULO( spole - 1 , ortho%nproc ) /= ortho%rank ) cycle
+        if( MODULO( spole - 1 , poorman%nproc ) /= poorman%rank ) cycle
         write(stdout,*) 'SOSEX W poles:',spole,' / ',wpol%npole_reso
 
         pole_s = wpol%pole(spole)
@@ -353,7 +353,7 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
       enddo !spole
     enddo !ispin
 
-    call ortho%sum(sigma_sosex)
+    call poorman%sum(sigma_sosex)
 
   endif
 
@@ -526,7 +526,7 @@ subroutine gwgw0g_selfenergy(occupation,energy,c_matrix,wpol,se)
 
     !==========================
     do bstate=nhomo_G+1,nvirtual_G-1
-      if( MODULO( bstate-(ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( bstate-(ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       do istate=ncore_G+1,nhomo_G
         do kstate=ncore_G+1,nhomo_G
@@ -567,7 +567,7 @@ subroutine gwgw0g_selfenergy(occupation,energy,c_matrix,wpol,se)
 
     !==========================
     do cstate=nhomo_G+1,nvirtual_G-1
-      if( MODULO( cstate-(ncore_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( cstate-(ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       do jstate=ncore_G+1,nhomo_G
         do astate=nhomo_G+1,nvirtual_G-1
@@ -610,7 +610,7 @@ subroutine gwgw0g_selfenergy(occupation,energy,c_matrix,wpol,se)
   enddo
 
 
-  call ortho%sum(sigma_gvgw0g)
+  call poorman%sum(sigma_gvgw0g)
 
 
   if( calc_type%selfenergy_approx == GWGW0G &
@@ -623,7 +623,7 @@ subroutine gwgw0g_selfenergy(occupation,energy,c_matrix,wpol,se)
 
       do spole=1,wpol%npole_reso
 
-        if( MODULO( spole - 1 , ortho%nproc ) /= ortho%rank ) cycle
+        if( MODULO( spole - 1 , poorman%nproc ) /= poorman%rank ) cycle
         write(stdout,*) 'GWGW0G W poles:',spole,' / ',wpol%npole_reso
 
         pole_s = wpol%pole(spole)
@@ -787,7 +787,7 @@ subroutine gwgw0g_selfenergy(occupation,energy,c_matrix,wpol,se)
       enddo !spole
     enddo !ispin
 
-    call ortho%sum(sigma_gwgw0g)
+    call poorman%sum(sigma_gwgw0g)
 
   endif
 
@@ -916,7 +916,7 @@ subroutine g3w2_selfenergy(occupation,energy,c_matrix,wpol,se)
   do pqspin=1,nspin
 
     do spole=1,wpol%npole_reso
-      if( MODULO( spole - 1 , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( spole - 1 , poorman%nproc ) /= poorman%rank ) cycle
       write(stdout,*) 'W poles for G3W2:',spole,' / ',wpol%npole_reso
 
       Omega_s = wpol%pole(spole)
@@ -1175,7 +1175,7 @@ subroutine g3w2_selfenergy(occupation,energy,c_matrix,wpol,se)
     enddo !spole
   enddo !pqspin
 
-  call ortho%sum(sigma_g3w2)
+  call poorman%sum(sigma_g3w2)
 
 
   write(stdout,'(a)') ' Sigma_c(omega) is calculated'
@@ -1300,7 +1300,7 @@ subroutine g3w2_selfenergy_real_grid(basis,occupation,energy,c_matrix,se)
   pqspin=1
 
   do iomegap=-nomega_chi_real,nomega_chi_real
-    if( MODULO( iomegap - 1 , ortho%nproc) /= ortho%rank ) cycle
+    if( MODULO( iomegap - 1 , poorman%nproc) /= poorman%rank ) cycle
     omegap = domega * iomegap
     write(stdout,'(1x,a,i4,es12.4)') 'External omega loop (eV): ',iomegap,omegap*Ha_eV
     call wpol_analytic%evaluate(omegap,chi_omegap)
@@ -1352,7 +1352,7 @@ subroutine g3w2_selfenergy_real_grid(basis,occupation,energy,c_matrix,se)
 
     enddo
   enddo
-  call ortho%sum(sigmag3w2)
+  call poorman%sum(sigmag3w2)
   write(stdout,*) 'Self-energy correction (eV): '
   do pstate=nsemin,nsemax
     do iomega_sigma=first_omega,last_omega
@@ -1453,7 +1453,7 @@ subroutine g3w2_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
         !
         do iomegapp=1,wpol_imag%nomega
           iomega_pair = iomega_pair + 1
-          if( MODULO( iomega_pair - 1 , ortho%nproc) /= ortho%rank ) cycle
+          if( MODULO( iomega_pair - 1 , poorman%nproc) /= poorman%rank ) cycle
 
           call DGEMM('N','N',nauxil_global,nvirtual_G-ncore_G-1,nauxil_global, &
                          1.0_dp,wpol_imag%chi(:,:,iomegap),nauxil_global, &
@@ -1531,7 +1531,7 @@ subroutine g3w2_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
 
     enddo !pstate
   enddo !pqspin
-  call ortho%sum(sigmag3w2)
+  call poorman%sum(sigmag3w2)
 
   deallocate(chi_omegap_up)
   deallocate(chi_omegapp_wq)
@@ -1676,7 +1676,7 @@ subroutine sosex_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
             eri3_r_m(:,:) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,mstate,mpspin)
 
             do astate=nhomo_G+1,nvirtual_G-1
-              if( MODULO( astate - (nhomo_G+1) , ortho%nproc) /= ortho%rank ) cycle
+              if( MODULO( astate - (nhomo_G+1) , poorman%nproc) /= poorman%rank ) cycle
 
               eri3_i_a(:,:) = eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,mpspin)
               eri3_r_a(:,:) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,astate,mpspin)
@@ -1745,7 +1745,7 @@ subroutine sosex_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
             eri3_a_m(:,:) = eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,mstate,mpspin)
 
             do istate=ncore_G+1,nhomo_G
-              if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
+              if( MODULO( istate - (ncore_G+1) , poorman%nproc) /= poorman%rank ) cycle
 
               eri3_a_i(:,:) = eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,mpspin)
               eri3_r_i(:,:) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,mpspin)
@@ -1824,7 +1824,7 @@ subroutine sosex_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
 
     enddo
   enddo
-  call ortho%sum(sigma_sosex)
+  call poorman%sum(sigma_sosex)
 
   se%sigma_calc(:,:,:) = se%sigma_calc(:,:,:) + factor_sosex * sigma_sosex(:,:,:)
 
@@ -1893,7 +1893,7 @@ subroutine sox_selfenergy_imag_grid(occupation,energy,c_matrix,se)
 
     !==========================
     do bstate=nhomo_G+1,nvirtual_G-1
-      if( MODULO( bstate-(nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( bstate-(nhomo_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       do istate=ncore_G+1,nhomo_G
         do kstate=ncore_G+1,nhomo_G
@@ -1916,7 +1916,7 @@ subroutine sox_selfenergy_imag_grid(occupation,energy,c_matrix,se)
 
     !==========================
     do cstate=nhomo_G+1,nvirtual_G-1
-      if( MODULO( cstate-(nhomo_G+1) , ortho%nproc ) /= ortho%rank ) cycle
+      if( MODULO( cstate-(nhomo_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       do jstate=ncore_G+1,nhomo_G
         do astate=nhomo_G+1,nvirtual_G-1
@@ -1939,7 +1939,7 @@ subroutine sox_selfenergy_imag_grid(occupation,energy,c_matrix,se)
 
   enddo
 
-  call ortho%sum(sigma_sox)
+  call poorman%sum(sigma_sox)
   !
   ! The input sigma contains the GW selfenergy
   sigma_gw(:,:,:) = se%sigma_calc(:,:,:)

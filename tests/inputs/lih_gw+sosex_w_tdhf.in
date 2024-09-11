@@ -8,7 +8,7 @@
   basis='cc-pVDZ'
   auxil_basis='cc-pVDZ-RI'
 
-  mpi_nproc_ortho=2
+  mpi_poorman='yes'
 
   natom=2
 /

@@ -16,7 +16,7 @@
  frozencore='yes'
  nvirtualg=18
 
- mpi_nproc_ortho=2
+ mpi_poorman='yes'
 
  natom=2
 /

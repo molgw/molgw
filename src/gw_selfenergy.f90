@@ -69,7 +69,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
   do ispin=1,nspin
     do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-      if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
+      if( MODULO( istate - (ncore_G+1) , poorman%nproc) /= poorman%rank ) cycle
 
       !
       ! Prepare the bra and ket with the knowledge of index istate and pstate
@@ -276,7 +276,7 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
   do ispin=1,nspin
     do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-      if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
+      if( MODULO( istate - (ncore_G+1) , poorman%nproc) /= poorman%rank ) cycle
       !
       ! indeces
       jstate = istate - ncore_G
@@ -695,7 +695,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
   do ispin=1,nspin
     do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-      if( MODULO( istate - (ncore_G+1) , ortho%nproc) /= ortho%rank ) cycle
+      if( MODULO( istate - (ncore_G+1) , poorman%nproc) /= poorman%rank ) cycle
 
       !
       ! Prepare the bra and ket with the knowledge of index istate and pstate

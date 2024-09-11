@@ -1,6 +1,6 @@
 &molgw
  comment='He GW+SOSEX2 on the imaginary axis'
- mpi_nproc_ortho=1024
+ mpi_poorman='yes'
 
  scf='HF'
 
