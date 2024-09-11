@@ -333,15 +333,14 @@ grid_memory:
   comment: Sets the maximum memory usage in Mb allowed to store the wavefunctions
     on the quadrature points for XC integrals.
 
-mpi_nproc_ortho:
+mpi_poorman:
   family: hardware
-  datatype: integer
+  datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
-  default: 1
-  comment: Sets the number of processors left to parallelize on other directions.
-    The main direction (auxiliary basis or DFT grid points) is obtained by <b>mpi_nproc</b>
-    / <b>mpi_nproc_ortho</b>, which must be an integer.
+  default: no
+  comment: Change the strategy for MPI paralelization. Duplicate integrals in memory but parallelelize over molecular orbitals.
+           Useful for correlated calculations where exchange integrals limit the performance of the usual parallelization over the auxiliary basis.
 
 scalapack_block_min:
   family: hardware

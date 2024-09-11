@@ -130,6 +130,7 @@ module m_inputparam
   ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
   complex(dp),protected            :: ieta
 
+  logical,protected                :: mpi_poorman_
   logical,protected                :: use_correlated_density_matrix_
   logical,protected                :: gwgamma_tddft_
   logical,protected                :: memory_evaluation_
@@ -958,6 +959,7 @@ subroutine read_inputfile_namelist()
   print_density_matrix_     = yesno_to_logical(print_density_matrix)
   print_rho_grid_           = yesno_to_logical(print_rho_grid)
   gwgamma_tddft_            = yesno_to_logical(gwgamma_tddft)
+  mpi_poorman_              = yesno_to_logical(mpi_poorman)
   use_correlated_density_matrix_ = yesno_to_logical(use_correlated_density_matrix)
   print_tddft_matrices_       = yesno_to_logical(print_tddft_matrices)
   print_cube_rho_tddft_       = yesno_to_logical(print_cube_rho_tddft)
@@ -1051,17 +1053,6 @@ MOLGW must be compiled with HDF5: HDF5_ROOT must be specified &
 and the -DHAVE_HDF5 compilation option must be activated')
 
 #endif
-
-  if( mpi_nproc_ortho > world%nproc ) then
-    mpi_nproc_ortho = world%nproc
-    call issue_warning('mpi_nproc_ortho has been resized to the max number of processors')
-    write(stdout,'(1x,a,i4)') 'Now mpi_nproc_ortho = ',mpi_nproc_ortho
-  endif
-  if( MODULO( world%nproc , mpi_nproc_ortho) /= 0 ) then
-    write(stdout,'(1x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',world%nproc
-    mpi_nproc_ortho = 1
-    call issue_warning('mpi_nproc_ortho value is invalid. Override it and set mpi_nproc_ortho=1')
-  endif
 
   call init_excitation_type()
   nprojectile = MERGE(1,0,excit_type%form==EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS)

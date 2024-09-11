@@ -128,7 +128,7 @@ program molgw
   call read_inputfile_namelist()
 
   ! Finalize the MPI initialization
-  call init_mpi_other_communicators(mpi_nproc_ortho)
+  call init_mpi_other_communicators(mpi_poorman_)
 
   !
   ! Build all the Cartesian to Pure Gaussian transforms

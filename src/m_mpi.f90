@@ -89,10 +89,10 @@ end subroutine init_mpi_world
 
 
 !=========================================================================
-subroutine init_mpi_other_communicators(nproc_ortho_in)
+subroutine init_mpi_other_communicators(mpi_poorman_)
   implicit none
 
-  integer,intent(in) :: nproc_ortho_in
+  logical,intent(in) :: mpi_poorman_
   !=====
   integer :: color
   integer :: ier
@@ -100,7 +100,11 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
 
 #if defined(HAVE_MPI)
 
-  ortho%nproc = nproc_ortho_in
+  if( mpi_poorman_ ) then
+    ortho%nproc = world%nproc
+  else
+    ortho%nproc = 1
+  endif
 
   !
   ! Set up grid communicator
