@@ -1,5 +1,5 @@
 &molgw
-  mpi_nproc_ortho=16
+  mpi_poorman='yes'
   scf='rsh'
   alpha_hybrid=0.2
   beta_hybrid=0.2

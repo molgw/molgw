@@ -21,18 +21,18 @@ module m_mpi
 
   !===================================================
   ! MPI distribution
-  !  Example: ortho%nproc = 2 x  auxil%nproc = 8  = world%nproc = 16
+  !  Example: poorman%nproc = 2 x  auxil%nproc = 8  = world%nproc = 16
   !
   ! world%comm
   !
   ! auxil%rank         0 |  1 |  2 |     |  7
-  ! ortho%rank       ---------------------------
+  ! poorman%rank       ---------------------------
   !      0             0 |  2 |  4 | ... | 14 |-> auxil%comm
   !      1             1 |  3 |  5 | ... | 15 |-> auxil%comm
   !                  ---------------------------
   !                    | |    |    | ... |  | |
   !                    v                    v
-  !                 ortho%comm           ortho%comm
+  !                 poorman%comm           poorman%comm
   !===================================================
 
 
@@ -52,7 +52,7 @@ module m_mpi
   ! All the MPI communicators are here:
   type(mpi_communicator),protected :: world
   type(mpi_communicator),protected :: auxil
-  type(mpi_communicator),protected :: ortho
+  type(mpi_communicator),protected :: poorman
   type(mpi_communicator),protected :: grid
 
 
@@ -89,10 +89,10 @@ end subroutine init_mpi_world
 
 
 !=========================================================================
-subroutine init_mpi_other_communicators(nproc_ortho_in)
+subroutine init_mpi_other_communicators(mpi_poorman_)
   implicit none
 
-  integer,intent(in) :: nproc_ortho_in
+  logical,intent(in) :: mpi_poorman_
   !=====
   integer :: color
   integer :: ier
@@ -100,7 +100,11 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
 
 #if defined(HAVE_MPI)
 
-  ortho%nproc = nproc_ortho_in
+  if( mpi_poorman_ ) then
+    poorman%nproc = world%nproc
+  else
+    poorman%nproc = 1
+  endif
 
   !
   ! Set up grid communicator
@@ -110,32 +114,32 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
   !
   ! Set up auxil communicator
   !
-  auxil%nproc = world%nproc / ortho%nproc
+  auxil%nproc = world%nproc / poorman%nproc
 
-  color = MODULO( world%rank , ortho%nproc )
+  color = MODULO( world%rank , poorman%nproc )
   call MPI_COMM_SPLIT(world%comm,color,world%rank,auxil%comm,ier);
 
   call auxil%init(auxil%comm)
 
-  if( auxil%nproc /= world%nproc / ortho%nproc ) then
-    write(stdout,*) world%rank,color,auxil%nproc,world%nproc,ortho%nproc
+  if( auxil%nproc /= world%nproc / poorman%nproc ) then
+    write(stdout,*) world%rank,color,auxil%nproc,world%nproc,poorman%nproc
     call die('Problem in init_mpi')
   endif
 
   !
-  ! Set up ortho communicator
+  ! Set up poorman communicator
   !
-  ortho%nproc = world%nproc / auxil%nproc
+  poorman%nproc = world%nproc / auxil%nproc
 
-  color = world%rank / ortho%nproc
-  call MPI_COMM_SPLIT(world%comm,color,world%rank,ortho%comm,ier);
+  color = world%rank / poorman%nproc
+  call MPI_COMM_SPLIT(world%comm,color,world%rank,poorman%comm,ier);
 
-  call ortho%init(ortho%comm)
+  call poorman%init(poorman%comm)
 
 
 #else
-  ortho%rank  = 0
-  ortho%nproc = 1
+  poorman%rank  = 0
+  poorman%nproc = 1
   auxil%nproc = 1
   auxil%rank  = 0
   grid%nproc  = 1
@@ -148,7 +152,7 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
   write(stdout,'(a50,1x,i6)')  'Number of proc:',world%nproc
   write(stdout,'(a50,1x,i6)')  'grid%nproc:    ',grid%nproc
   write(stdout,'(a50,1x,i6)')  'auxil%nproc:   ',auxil%nproc
-  write(stdout,'(a50,1x,i6)')  'ortho%nproc:   ',ortho%nproc
+  write(stdout,'(a50,1x,i6)')  'poorman%nproc:   ',poorman%nproc
   write(stdout,'(a50,1x,i6)')  'Master proc is:',iomaster
   write(stdout,'(a50,6x,l1)') 'Parallelize auxiliary basis:',parallel_auxil
   write(stdout,'(a50,6x,l1)')  'Parallelize XC grid points:',parallel_grid

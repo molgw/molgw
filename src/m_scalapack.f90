@@ -2596,23 +2596,23 @@ subroutine init_scalapack_other(nbf,eri3_nprow,eri3_npcol)
 
   allocate(usermap(auxil%nproc))
   do iproc_auxil=0,auxil%nproc-1
-    usermap(iproc_auxil+1) = iproc_auxil * ortho%nproc
+    usermap(iproc_auxil+1) = iproc_auxil * poorman%nproc
   enddo
   call BLACS_GRIDMAP(cntxt_eri3_ao,usermap,1          ,1,auxil%nproc)
   call BLACS_GRIDMAP(cntxt_eri3_mo,usermap,auxil%nproc,auxil%nproc,1)
   deallocate(usermap)
 
   call BLACS_GRIDINFO(cntxt_eri3_ao,nprow_eri3_ao,npcol_eri3_ao,iprow_eri3_ao,ipcol_eri3_ao)
-  call ortho%max(nprow_eri3_ao)
-  call ortho%max(npcol_eri3_ao)
-  call ortho%max(iprow_eri3_ao)
-  call ortho%max(ipcol_eri3_ao)
+  call poorman%max(nprow_eri3_ao)
+  call poorman%max(npcol_eri3_ao)
+  call poorman%max(iprow_eri3_ao)
+  call poorman%max(ipcol_eri3_ao)
 
   call BLACS_GRIDINFO(cntxt_eri3_mo,nprow_eri3_mo,npcol_eri3_mo,iprow_eri3_mo,ipcol_eri3_mo)
-  call ortho%max(nprow_eri3_mo)
-  call ortho%max(npcol_eri3_mo)
-  call ortho%max(iprow_eri3_mo)
-  call ortho%max(ipcol_eri3_mo)
+  call poorman%max(nprow_eri3_mo)
+  call poorman%max(npcol_eri3_mo)
+  call poorman%max(iprow_eri3_mo)
+  call poorman%max(ipcol_eri3_mo)
 
   ! 3center integrals distribution
   if( eri3_nprow * eri3_npcol == nproc_sca ) then
