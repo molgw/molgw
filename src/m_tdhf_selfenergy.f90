@@ -52,9 +52,10 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   integer :: state_range, nstate2
   real(dp),allocatable    :: chi_static(:,:)
   real(dp),allocatable    :: chi_up(:,:,:),uq(:,:,:)
+  !integer :: nocc, nvirt, nocc_local
   !=====
 
-  call start_clock(timing_gw_self)
+  call start_clock(timing_gwgamma_self)
 
   if( .NOT. has_auxil_basis ) call die('tdhf_selfenergy: not implemented without an auxiliary basis')
   if( nspin > 1 ) call die('tdhf_selfenergy: not implemented for spin unrestricted')
@@ -62,6 +63,15 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   nstate = SIZE(energy,DIM=1)
 
   write(stdout,'(/,1x,a)') 'Calculate Sigma_TDHF (Bruneval-Foerster formula)'
+  if( mpi_poorman_ ) then
+    write(stdout,*) 'Use poor man parallelization'
+    !nocc  = nhomo_G - ncore_G
+    !nvirt = nvirtual_G
+    !nocc_local = NUMROC(nocc, 1, poorman%rank, 0 , poorman%nproc)
+    !nvirt_local = NUMROC(nvirt, 1, poorman%rank, 0 , poorman%nproc)
+    !write(stdout,*) 'Use poor man parallelization', nocc, nocc_local
+    !write(stdout,*)
+  endif
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
 
@@ -147,6 +157,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     ! Ocuppied states
     !
     do jstate=ncore_G+1,nhomo_G
+      !if( MODULO( jstate-(ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
       do imat=1,nmat
         istate = wpol%transition_table(1,imat)
         astate = wpol%transition_table(2,imat)
@@ -158,7 +169,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
         endif
 
         ! Store ( i a | j p ) ( and ( i a | j q ) for off-diagonal terms)
-        eri_tmp1o(imat,jstate) = eri_eigen(istate,astate,1,jstate,pstate,1)
+        eri_tmp1o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,jstate,pstate,1) )
 
         ! Store ( i j | a q ) which should be set to zero to recover GW
         !eri_tmp2o(imat,jstate) = eri_eigen(istate,jstate,1,astate,qstate,1)
@@ -223,7 +234,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
         endif
 
         ! Store ( i a | b p ) ( and ( i a | b q ) for off-diagonal terms)
-        eri_tmp1v(imat,bstate) = eri_eigen(istate,astate,1,bstate,pstate,1)
+        eri_tmp1v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,bstate,pstate,1) )
 
         ! Store ( i b | a q ) which should be set to zero to recover GW
         !eri_tmp2v(imat,bstate) = eri_eigen(istate,bstate,1,astate,qstate,1)
@@ -286,7 +297,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     call destroy_tddft()
   endif
 
-  call stop_clock(timing_gw_self)
+  call stop_clock(timing_gwgamma_self)
 
 end subroutine tdhf_selfenergy
 

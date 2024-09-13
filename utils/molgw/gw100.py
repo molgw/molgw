@@ -32,7 +32,7 @@ default_input_parameters = {
       'frozencore': 'yes'
               }
 
-# Number of frozen MO as used by Harding-Klopper
+# Number of frozen MO as used by Krause-Harding-Klopper
 frozencore = {
     'H':  0,
     'He': 0,
@@ -58,7 +58,7 @@ frozencore = {
     'Ga': 9,
     'Ge': 9,
     'As': 9,
-    'Se': 5,
+    'Se': 9,
     'Br': 14,
     'Kr': 14,
     'Xe': 0,
