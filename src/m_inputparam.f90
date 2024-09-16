@@ -1242,9 +1242,6 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
   !
   ! Read the atom positions if no xyz file is specified
   if( LEN(TRIM(xyz_file)) == 0 ) then
-    !
-    ! In this case, natom must be set to a positive value
-    !if(natom<1) call die('natom<1')
 
     if(excit_type%form == EXCIT_PROJECTILE_W_BASIS) then
       ncenter_basis_max = natom + nghost + nprojectile
@@ -1399,6 +1396,10 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
       endif
     enddo
   enddo
+
+  !
+  ! At this stage, natom must be set to a positive value
+  if( natom < 1 ) call die('setup_nuclei: natom < 1 which should be happening')
 
 end subroutine setup_nuclei
 
