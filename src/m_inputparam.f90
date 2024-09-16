@@ -1399,7 +1399,7 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
 
   !
   ! At this stage, natom must be set to a positive value
-  if( natom < 1 ) call die('setup_nuclei: natom < 1 which should be happening')
+  if( ncenter_basis < 1 ) call die('setup_nuclei: ncenter_basis < 1 which should be happening. Maybe natom is not set?')
 
 end subroutine setup_nuclei
 
