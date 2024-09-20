@@ -37,11 +37,12 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   !=====
   integer                 :: nstate, nmat, imat, ibf_auxil
   integer                 :: istate, astate, jstate, bstate, ustate, iaspin, spole
-  integer                 :: pstate, qstate, iomega_sigma
+  integer                 :: pstate, qstate, iomega_sigma, nmov, nmoo
   real(dp),allocatable    :: x_matrix(:,:), y_matrix(:,:)
   real(dp)                :: erpa_tmp, egw_tmp
   type(spectral_function) :: wpol
-  complex(dp),allocatable :: sigma_tdhf(:,:,:)
+  complex(dp),allocatable :: sigma_tdhf(:,:,:), sigma_tmp(:)
+  real(dp),allocatable    :: eri_i_a(:,:), eri_a_i(:,:), eri_P_ia(:,:)
   real(dp),allocatable    :: eri_tmp1o(:,:), eri_tmp2o(:,:), eri_tmp3o(:,:)
   real(dp),allocatable    :: eri_tmp1v(:,:), eri_tmp2v(:,:), eri_tmp3v(:,:)
   real(dp),allocatable    :: num_tmp1o(:,:), num_tmp2o(:,:)
@@ -51,26 +52,23 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   type(spectral_function) :: wpol_static_rpa
   integer :: state_range, nstate2
   real(dp),allocatable    :: chi_static(:,:)
-  real(dp),allocatable    :: chi_up(:,:,:),uq(:,:,:)
+  real(dp),allocatable    :: chi_up(:,:,:), uq(:,:,:)
   !integer :: nocc, nvirt, nocc_local
   !=====
 
-  call start_clock(timing_gwgamma_self)
 
   if( .NOT. has_auxil_basis ) call die('tdhf_selfenergy: not implemented without an auxiliary basis')
   if( nspin > 1 ) call die('tdhf_selfenergy: not implemented for spin unrestricted')
+  if( nauxil_global /= nauxil_local) call die('tdhf_selfenergy: only implemented without MPI. Try to use OpenMP instead')
 
   nstate = SIZE(energy,DIM=1)
+  nmov = nvirtual_G-nhomo_G-1
+  nmoo = nhomo_G-ncore_G
 
   write(stdout,'(/,1x,a)') 'Calculate Sigma_TDHF (Bruneval-Foerster formula)'
   if( mpi_poorman_ ) then
     write(stdout,*) 'Use poor man parallelization'
-    !nocc  = nhomo_G - ncore_G
-    !nvirt = nvirtual_G
-    !nocc_local = NUMROC(nocc, 1, poorman%rank, 0 , poorman%nproc)
-    !nvirt_local = NUMROC(nvirt, 1, poorman%rank, 0 , poorman%nproc)
-    !write(stdout,*) 'Use poor man parallelization', nocc, nocc_local
-    !write(stdout,*)
+    call die('tdhf_selfenergy: poor man parallelization not implemented yet')
   endif
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
@@ -135,6 +133,9 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     enddo
   endif
 
+  call start_clock(timing_gwgamma_self)
+
+  allocate(sigma_tmp(-se%nomega:se%nomega))
   allocate(sigma_tdhf(-se%nomega:se%nomega,nsemin:nsemax,nspin))
   allocate(xpy_matrix(nmat,nmat))
   xpy_matrix(:,:) = x_matrix(:,:) + y_matrix(:,:)
@@ -151,44 +152,91 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   sigma_tdhf(:,:,:) = 0.0_dp
 
   do pstate=nsemin,nsemax
-    qstate = pstate
+    qstate = pstate ! self-energy is diagonal only (so far)
+
+    call start_clock(timing_tmp1)
 
     !
     ! Ocuppied states
     !
+    ! Fortran version implementation
     do jstate=ncore_G+1,nhomo_G
-      !if( MODULO( jstate-(ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
       do imat=1,nmat
         istate = wpol%transition_table(1,imat)
         astate = wpol%transition_table(2,imat)
 
-        if( gwgamma_tddft_ ) then
-          fxc = eval_fxc_rks_singlet(istate,astate,1,jstate,qstate,1)
-          call grid%sum(fxc)
-          ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
-        endif
-
         ! Store ( i a | j p ) ( and ( i a | j q ) for off-diagonal terms)
-        eri_tmp1o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,jstate,pstate,1) )
+        !eri_tmp1o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,jstate,pstate,1) )
 
         ! Store ( i j | a q ) which should be set to zero to recover GW
-        !eri_tmp2o(imat,jstate) = eri_eigen(istate,jstate,1,astate,qstate,1)
-        eri_tmp2o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,1), uq(:,astate,qstate) )
-
-        if( gwgamma_tddft_ ) then
-          eri_tmp2o(imat,jstate) = alpha_hybrid * eri_tmp2o(imat,jstate) - fxc
-        endif
+        !eri_tmp2o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,1), uq(:,astate,qstate) )
 
         ! Store ( a j | i q ) which should be set to zero to recover GW
-        !eri_tmp3o(imat,jstate) = eri_eigen(astate,jstate,1,istate,qstate,1)
-        eri_tmp3o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,jstate,1), uq(:,istate,qstate) )
-
-        if( gwgamma_tddft_ ) then
-          eri_tmp3o(imat,jstate) = alpha_hybrid * eri_tmp3o(imat,jstate) - fxc
-        endif
+        !eri_tmp3o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,jstate,1), uq(:,istate,qstate) )
 
       enddo
     enddo
+
+    ! DGEMM implementation
+
+    ! Calculate eri_tmp1o = ( i a | j p )
+    allocate(eri_P_ia(nauxil_global,nmat))
+    do imat=1,nmat
+      istate = wpol%transition_table(1,imat)
+      astate = wpol%transition_table(2,imat)
+      eri_P_ia(:,imat) = eri_3center_eigen(:,istate,astate,1)
+    enddo
+    call DGEMM('T', 'N', nmat, nmoo, nauxil_global, &
+               1.0d0, eri_P_ia(:,:), nauxil_global, &
+               eri_3center_eigen(:,ncore_G+1:,pstate,1), nauxil_global, &
+               0.0d0, eri_tmp1o(:,:), nmat)
+    deallocate(eri_P_ia)
+
+    ! Calculate eri_tmp2o = ( i j | a q )
+    allocate(eri_i_a(ncore_G+1:nhomo_G,nhomo_G+1:nvirtual_G-1))
+    do jstate=ncore_G+1,nhomo_G
+      call DGEMM('T', 'N', nmoo, nmov, nauxil_global, &
+                 1.0d0, eri_3center_eigen(:,ncore_G+1:nhomo_G,jstate,1), nauxil_global, &
+                 uq(:,nhomo_G+1:nvirtual_G-1,qstate), nauxil_global, &
+                 0.0d0, eri_i_a(:,:), nmoo)
+      do imat=1,nmat
+        istate = wpol%transition_table(1,imat)
+        astate = wpol%transition_table(2,imat)
+        eri_tmp2o(imat,jstate) = eri_i_a(istate,astate)
+      enddo
+    enddo
+    deallocate(eri_i_a)
+
+    ! Calculate eri_tmp3o = ( a j | i q )
+    allocate(eri_a_i(nhomo_G+1:nvirtual_G-1,ncore_G+1:nhomo_G))
+    do jstate=ncore_G+1,nhomo_G
+      call DGEMM('T', 'N', nmov, nmoo, nauxil_global, &
+                 1.0d0, eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,jstate,1), nauxil_global, &
+                 uq(:,ncore_G+1:nhomo_G,qstate), nauxil_global, &
+                 0.0d0, eri_a_i(:,:), nmov)
+      do imat=1,nmat
+        istate = wpol%transition_table(1,imat)
+        astate = wpol%transition_table(2,imat)
+        eri_tmp3o(imat,jstate) = eri_a_i(astate,istate)
+
+      enddo
+    enddo
+    deallocate(eri_a_i)
+
+    if( gwgamma_tddft_ ) then
+      do jstate=ncore_G+1,nhomo_G
+        do imat=1,nmat
+          istate = wpol%transition_table(1,imat)
+          astate = wpol%transition_table(2,imat)
+
+          fxc = eval_fxc_rks_singlet(istate,astate,1,jstate,qstate,1)
+          call grid%sum(fxc)
+          eri_tmp2o(imat,jstate) = alpha_hybrid * eri_tmp2o(imat,jstate) - fxc
+          eri_tmp3o(imat,jstate) = alpha_hybrid * eri_tmp3o(imat,jstate) - fxc
+          ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
+        enddo
+      enddo
+    endif
 
     ! Fortran version
     !num_tmp2o(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1o(:,:) )
@@ -196,7 +244,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     !                - MATMUL( TRANSPOSE(x_matrix(:,:)) , eri_tmp3o(:,:) ) & ! Here the role of X and Y is swapped
     !                - MATMUL( TRANSPOSE(y_matrix(:,:)) , eri_tmp2o(:,:) )   ! as compared to Vacondio
 
-    ! BLAS version
+    ! DGEMM version
     call DGEMM('T','N',nmat,nhomo_G-ncore_G,nmat, &
                    1.0d0,xpy_matrix(:,:),nmat,eri_tmp1o(:,:),nmat,&
                    0.0d0,num_tmp2o(:,:),nmat)
@@ -210,58 +258,112 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
                    1.0d0,num_tmp1o(:,:),nmat)
 
 
+    sigma_tmp(:) = 0.0_dp
+    !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(+:sigma_tmp)
     do jstate=ncore_G+1,nhomo_G
       do spole=1,wpol%npole_reso
-        sigma_tdhf(:,pstate,1) = sigma_tdhf(:,pstate,1) &
+        sigma_tmp(:) = sigma_tmp(:) &
                        +  num_tmp1o(spole,jstate) * num_tmp2o(spole,jstate) &
                           / ( se%omega(:) + se%energy0(pstate,1) - energy(jstate,1) + wpol%pole(spole) - ieta )
 
       enddo ! loop over spole
     enddo ! loop over jstate
 
+    call stop_clock(timing_tmp1)
+    call start_clock(timing_tmp2)
+
     !
     ! Virtual states
     !
+
+    ! Fortran version implementation
+    !do bstate=nhomo_G+1,nvirtual_G-1
+    !  do imat=1,nmat
+    !    istate = wpol%transition_table(1,imat)
+    !    astate = wpol%transition_table(2,imat)
+    !
+    !    ! Store ( i a | b p ) ( and ( i a | b q ) for off-diagonal terms)
+    !    eri_tmp1v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,bstate,pstate,1) )
+    !
+    !    ! Store ( i b | a q ) which should be set to zero to recover GW
+    !    eri_tmp2v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,1), uq(:,astate,qstate) )
+    !
+    !    ! Store ( a b | i q ) which should be set to zero to recover GW
+    !    eri_tmp3v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,bstate,1), uq(:,istate,qstate) )
+    !  enddo
+    !enddo
+
+    ! DGEMM implementation
+
+    ! Calculate eri_tmp1v = ( i a | b p )
+    allocate(eri_P_ia(nauxil_global,nmat))
+    do imat=1,nmat
+      istate = wpol%transition_table(1,imat)
+      astate = wpol%transition_table(2,imat)
+      eri_P_ia(:,imat) = eri_3center_eigen(:,istate,astate,1)
+    enddo
+    call DGEMM('T', 'N', nmat, nmov, nauxil_global, &
+               1.0d0, eri_P_ia(:,:), nauxil_global, &
+               eri_3center_eigen(:,nhomo_G+1:,pstate,1), nauxil_global, &
+               0.0d0, eri_tmp1v(:,:), nmat)
+    deallocate(eri_P_ia)
+
+    ! Calculate eri_tmp2v = ( i b | a q )
+    allocate(eri_i_a(ncore_G+1:nhomo_G,nhomo_G+1:nvirtual_G-1))
     do bstate=nhomo_G+1,nvirtual_G-1
+      call DGEMM('T', 'N', nmoo, nmov, nauxil_global, &
+                 1.0d0, eri_3center_eigen(:,ncore_G+1:nhomo_G,bstate,1), nauxil_global, &
+                 uq(:,nhomo_G+1:nvirtual_G-1,qstate), nauxil_global, &
+                 0.0d0, eri_i_a(:,:), nmoo)
       do imat=1,nmat
         istate = wpol%transition_table(1,imat)
         astate = wpol%transition_table(2,imat)
+        eri_tmp2v(imat,bstate) = eri_i_a(istate,astate)
+      enddo
+    enddo
+    deallocate(eri_i_a)
 
-        if( gwgamma_tddft_ ) then
-          fxc = eval_fxc_rks_singlet(istate,astate,1,bstate,qstate,1)
-          call grid%sum(fxc)
-          ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
-        endif
-
-        ! Store ( i a | b p ) ( and ( i a | b q ) for off-diagonal terms)
-        eri_tmp1v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,bstate,pstate,1) )
-
-        ! Store ( i b | a q ) which should be set to zero to recover GW
-        !eri_tmp2v(imat,bstate) = eri_eigen(istate,bstate,1,astate,qstate,1)
-        eri_tmp2v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,1), uq(:,astate,qstate) )
-
-        if( gwgamma_tddft_ ) then
-          eri_tmp2v(imat,bstate) = alpha_hybrid * eri_tmp2v(imat,bstate) - fxc
-        endif
-
-        ! Store ( a b | i q ) which should be set to zero to recover GW
-        !eri_tmp3v(imat,bstate) = eri_eigen(astate,bstate,1,istate,qstate,1)
-        eri_tmp3v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,bstate,1), uq(:,istate,qstate) )
-
-        if( gwgamma_tddft_ ) then
-          eri_tmp3v(imat,bstate) = alpha_hybrid * eri_tmp3v(imat,bstate) - fxc
-        endif
+    ! Calculate eri_tmp3v = ( a b | i q )
+    allocate(eri_a_i(nhomo_G+1:nvirtual_G-1,ncore_G+1:nhomo_G))
+    do bstate=nhomo_G+1,nvirtual_G-1
+      call DGEMM('T', 'N', nmov, nmoo, nauxil_global, &
+                 1.0d0, eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,bstate,1), nauxil_global, &
+                 uq(:,ncore_G+1:nhomo_G,qstate), nauxil_global, &
+                 0.0d0, eri_a_i(:,:), nmov)
+      do imat=1,nmat
+        istate = wpol%transition_table(1,imat)
+        astate = wpol%transition_table(2,imat)
+        eri_tmp3v(imat,bstate) = eri_a_i(astate,istate)
 
       enddo
     enddo
+    deallocate(eri_a_i)
 
+    call stop_clock(timing_tmp2)
+
+    if( gwgamma_tddft_ ) then
+      do bstate=nhomo_G+1,nvirtual_G-1
+        do imat=1,nmat
+          istate = wpol%transition_table(1,imat)
+          astate = wpol%transition_table(2,imat)
+
+          fxc = eval_fxc_rks_singlet(istate,astate,1,bstate,qstate,1)
+          call grid%sum(fxc)
+          eri_tmp2v(imat,bstate) = alpha_hybrid * eri_tmp2v(imat,bstate) - fxc
+          eri_tmp3v(imat,bstate) = alpha_hybrid * eri_tmp3v(imat,bstate) - fxc
+          ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
+        enddo
+      enddo
+    endif
+
+    call start_clock(timing_tmp3)
     ! Fortran version
     !num_tmp2v(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1v(:,:) )
     !num_tmp1v(:,:) = 2.0 * num_tmp2v(:,:) &
     !                - MATMUL( TRANSPOSE(x_matrix(:,:)) , eri_tmp2v(:,:) ) & ! Here the role of X and Y is *conserved*
     !                - MATMUL( TRANSPOSE(y_matrix(:,:)) , eri_tmp3v(:,:) )   ! as compared to Vacondio
 
-    ! BLAS version
+    ! DGEMM version
     call DGEMM('T','N',nmat,nvirtual_G-nhomo_G-1,nmat, &
                    1.0d0,xpy_matrix(:,:),nmat,eri_tmp1v(:,:),nmat,&
                    0.0d0,num_tmp2v(:,:),nmat)
@@ -272,14 +374,20 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     call DGEMM('T','N',nmat,nvirtual_G-nhomo_G-1,nmat, &
                   -1.0d0,y_matrix(:,:),nmat,eri_tmp3v(:,:),nmat,&
                    1.0d0,num_tmp1v(:,:),nmat)
+    call stop_clock(timing_tmp3)
+    call start_clock(timing_tmp4)
 
+    !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(+:sigma_tmp)
     do bstate=nhomo_G+1,nvirtual_G-1
       do spole=1,wpol%npole_reso
-        sigma_tdhf(:,pstate,1) = sigma_tdhf(:,pstate,1) &
+        sigma_tmp(:) = sigma_tmp(:) &
                        +  num_tmp1v(spole,bstate) * num_tmp2v(spole,bstate) &
                           / ( se%omega(:) + se%energy0(pstate,1) - energy(bstate,1) - wpol%pole(spole) + ieta )
       enddo ! loop over spole
     enddo ! loop over bstate
+    !$OMP END PARALLEL DO
+    sigma_tdhf(:,pstate,1) = sigma_tmp(:)
+    call stop_clock(timing_tmp4)
 
 
   enddo ! loop over pstate
