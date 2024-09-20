@@ -154,28 +154,28 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   do pstate=nsemin,nsemax
     qstate = pstate ! self-energy is diagonal only (so far)
 
-    call start_clock(timing_tmp1)
 
     !
     ! Ocuppied states
     !
-    ! Fortran version implementation
-    do jstate=ncore_G+1,nhomo_G
-      do imat=1,nmat
-        istate = wpol%transition_table(1,imat)
-        astate = wpol%transition_table(2,imat)
 
-        ! Store ( i a | j p ) ( and ( i a | j q ) for off-diagonal terms)
-        !eri_tmp1o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,jstate,pstate,1) )
+    !! Fortran version implementation
+    !do jstate=ncore_G+1,nhomo_G
+    !  do imat=1,nmat
+    !    istate = wpol%transition_table(1,imat)
+    !    astate = wpol%transition_table(2,imat)
 
-        ! Store ( i j | a q ) which should be set to zero to recover GW
-        !eri_tmp2o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,1), uq(:,astate,qstate) )
+    !    ! Store ( i a | j p ) ( and ( i a | j q ) for off-diagonal terms)
+    !    eri_tmp1o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,jstate,pstate,1) )
 
-        ! Store ( a j | i q ) which should be set to zero to recover GW
-        !eri_tmp3o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,jstate,1), uq(:,istate,qstate) )
+    !    ! Store ( i j | a q ) which should be set to zero to recover GW
+    !    eri_tmp2o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,1), uq(:,astate,qstate) )
 
-      enddo
-    enddo
+    !    ! Store ( a j | i q ) which should be set to zero to recover GW
+    !    eri_tmp3o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,jstate,1), uq(:,istate,qstate) )
+
+    !  enddo
+    !enddo
 
     ! DGEMM implementation
 
@@ -269,8 +269,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       enddo ! loop over spole
     enddo ! loop over jstate
 
-    call stop_clock(timing_tmp1)
-    call start_clock(timing_tmp2)
 
     !
     ! Virtual states
@@ -339,7 +337,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     enddo
     deallocate(eri_a_i)
 
-    call stop_clock(timing_tmp2)
 
     if( gwgamma_tddft_ ) then
       do bstate=nhomo_G+1,nvirtual_G-1
@@ -356,7 +353,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       enddo
     endif
 
-    call start_clock(timing_tmp3)
     ! Fortran version
     !num_tmp2v(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1v(:,:) )
     !num_tmp1v(:,:) = 2.0 * num_tmp2v(:,:) &
@@ -374,8 +370,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     call DGEMM('T','N',nmat,nvirtual_G-nhomo_G-1,nmat, &
                   -1.0d0,y_matrix(:,:),nmat,eri_tmp3v(:,:),nmat,&
                    1.0d0,num_tmp1v(:,:),nmat)
-    call stop_clock(timing_tmp3)
-    call start_clock(timing_tmp4)
 
     !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(+:sigma_tmp)
     do bstate=nhomo_G+1,nvirtual_G-1
@@ -387,7 +381,6 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     enddo ! loop over bstate
     !$OMP END PARALLEL DO
     sigma_tdhf(:,pstate,1) = sigma_tmp(:)
-    call stop_clock(timing_tmp4)
 
 
   enddo ! loop over pstate
