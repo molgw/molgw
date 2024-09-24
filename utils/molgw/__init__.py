@@ -76,6 +76,7 @@ def run(inputfile="molgw.in", outputfile="", yamlfile="",
     if len(pyinput) > 0:
         print_input_file(pyinput, "./" + tmp + "/" + inputfile)
     os.environ['OMP_NUM_THREADS'] = str(openmp)
+    os.environ['MKL_NUM_THREADS'] = str(openmp)
 
     if len(mpirun) == 0:
         process = subprocess.Popen([exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
