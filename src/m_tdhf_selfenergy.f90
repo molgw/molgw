@@ -67,8 +67,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
 
   write(stdout,'(/,1x,a)') 'Calculate Sigma_TDHF (Bruneval-Foerster formula)'
   if( mpi_poorman_ ) then
-    write(stdout,*) 'Use poor man parallelization'
-    call die('tdhf_selfenergy: poor man parallelization not implemented yet')
+    write(stdout,'(5x,a)')   'using poor man parallelization'
   endif
 
   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
@@ -152,6 +151,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   sigma_tdhf(:,:,:) = 0.0_dp
 
   do pstate=nsemin,nsemax
+    if( poorman%rank /= MODULO( pstate - nsemin, poorman%nproc ) ) cycle
     qstate = pstate ! self-energy is diagonal only (so far)
 
 
@@ -384,6 +384,8 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
 
 
   enddo ! loop over pstate
+
+  call poorman%sum(sigma_tdhf)
 
   se%sigma(:,:,:) = sigma_tdhf(:,:,:)
 
