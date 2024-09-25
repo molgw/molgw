@@ -213,6 +213,39 @@ def get_homo_energy(approx,calc):
     energies.sort()
     return energies[int(calc["physical system"]["electrons"])-1 - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
+########################################################################
+def get_homo_nature(calc):
+    key = "mulliken projections"
+    if key not in calc.keys():
+        print(f"Problem reading calculation: {calc['input parameters']['comment']}")
+        print(f"{key} not found")
+        return None
+    if calc[key]["spin channel 1"] == 2:
+        print("spin unrestricted not coded")
+        return None
+    homo_index = int(calc["physical system"]["electrons"]) / 2
+    proj_homo = calc[key]["spin channel 1"][homo_index]
+    proj_homo_total = {}
+    for k, v in proj_homo.items():
+        proj_homo_total[k] = v["total"]
+    return max(proj_homo_total, key=proj_homo_total.get)
+
+########################################################################
+def get_lumo_nature(calc):
+    key = "mulliken projections"
+    if key not in calc.keys():
+        print(f"Problem reading calculation: {calc['input parameters']['comment']}")
+        print(f"{key} not found")
+        return None
+    if calc[key]["spin channel 1"] == 2:
+        print("spin unrestricted not coded")
+        return None
+    lumo_index = int(calc["physical system"]["electrons"]) / 2 + 1
+    proj_lumo = calc[key]["spin channel 1"][lumo_index]
+    proj_lumo_total = {}
+    for k, v in proj_lumo.items():
+        proj_lumo_total[k] = v["total"]
+    return max(proj_lumo_total, key=proj_lumo_total.get)
 
 ########################################################################
 def get_lumo_energy(approx,calc):
@@ -495,6 +528,12 @@ class Molgw_output:
         return get_homo_energy(approx,self.d)
     def lumo_energy(self,approx):
         return get_lumo_energy(approx,self.d)
+    def homo_nature(self):
+        """get the nature of the HOMO based on Mulliken projection"""
+        return get_homo_nature(self.d)
+    def lumo_nature(self):
+        """get the nature of the LUMO based on Mulliken projection"""
+        return get_lumo_nature(self.d)
     def to_dict(self):
         return self.d
     def to_file(self, dest):
@@ -586,15 +625,17 @@ class Molgw_output_collection:
            print("Selection rules:")
            for key, value in filters.items():
                print(f"  {key} == {value}?")
-       for f, mlgo in zip(self.files,self.data):
+       for f, mlgo in zip(self.files, self.data):
            corresponds = True
            for key, value in filters.items():
-               if mlgo["input parameters"][key] != value and mlgo["input parameters"][key] != value.upper() :
-                   corresponds = False
+               if isinstance(value, str):
+                   corresponds = corresponds and value.lower() == mlgo["input parameters"][key].lower()
+               elif isinstance(value, float):
+                   corresponds = corresponds and abs(value - mlgo["input parameters"][key]) < 1.0e-5
+               else:
+                   corresponds = corresponds and value == mlgo["input parameters"][key]
            if corresponds:
-               mlgo_filtered.append(mlgo,file=f)
-               #mlgo_filtered.files.append(f)
-               #mlgo_filtered.data.append(mlgo)
+               mlgo_filtered.append(mlgo, file=f)
        if verbose:
            print(f"Found {len(mlgo_filtered)} corresponding calculations")
        return mlgo_filtered
