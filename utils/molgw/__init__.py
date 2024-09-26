@@ -572,7 +572,7 @@ class Molgw_output_collection:
             origins = [origin]
         for orig in origins:
             if not os.path.isdir(orig):
-                sys.exit(orig + "is not a valid folder")
+                sys.exit(orig + " is not a valid folder")
             self.files += glob.glob(orig+"/**/*.yaml",recursive=True)
         self.files = list(set(self.files))
         for file in self.files:
@@ -628,12 +628,13 @@ class Molgw_output_collection:
        for f, mlgo in zip(self.files, self.data):
            corresponds = True
            for key, value in filters.items():
-               if isinstance(value, str):
-                   corresponds = corresponds and value.lower() == mlgo["input parameters"][key].lower()
+               mlgo_value = mlgo["input parameters"][key]
+               if isinstance(value, str) and isinstance(mlgo_value, str):
+                   corresponds = corresponds and value.lower() == mlgo_value.lower()
                elif isinstance(value, float):
-                   corresponds = corresponds and abs(value - mlgo["input parameters"][key]) < 1.0e-5
+                   corresponds = corresponds and abs(value - mlgo_value) < 1.0e-5
                else:
-                   corresponds = corresponds and value == mlgo["input parameters"][key]
+                   corresponds = corresponds and value == mlgo_value
            if corresponds:
                mlgo_filtered.append(mlgo, file=f)
        if verbose:
