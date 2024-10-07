@@ -1040,10 +1040,12 @@ subroutine read_inputfile_namelist()
 
 
 
-#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0)
+#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0) 
+#if !defined(HAVE_LIBCINT)
   if( move_nuclei /= 'no' ) then
     call die('LIBINT does not contain the gradients of the integrals that are needed when move_nuclei is different from no')
   endif
+#endif
 #endif
 
 #if !defined(HAVE_HDF5)

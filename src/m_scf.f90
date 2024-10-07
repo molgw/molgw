@@ -61,9 +61,11 @@ module m_scf
     real(dp) :: gw       = 0.0_dp
     real(dp) :: total    = 0.0_dp
     real(dp) :: totalexx = 0.0_dp
-    real(dp) :: excit    = 0.0_dp      ! TDDFT excitation energy
-    real(dp) :: id       = 0.0_dp      ! H-iD correction
-    real(dp) :: time     = -1.0_dp     ! time in TDDFT
+    real(dp) :: excit    = 0.0_dp       ! TDDFT excitation energy
+    real(dp) :: id       = 0.0_dp       ! -iD correction
+    real(dp) :: time     = -1.0_dp      ! time in TDDFT
+    real(dp) :: work_p_nonconserv  = 0.0_dp   ! non-conservative work on the projectile in TDDFT
+    real(dp) :: work_p             = 0.0_dp   ! conservative work on the projectile in TDDFT
   end type
 
 #if defined(HAVE_SCALAPACK)
