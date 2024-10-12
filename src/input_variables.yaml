@@ -273,13 +273,37 @@ c_speedlight:
   default: 137.035999074
   comment: Varible used to change the value of the speed of light. Default value 137.035999074.
 
+parabolic_conf:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: Include a parabolic confinement 1/2 w**2 r**2 to the electron-nucleus interaction. Default no. 
+
+rwconfinement:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: w varible used in the parabolic confinement. Default value 0.0.
+
+harmonium:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: Replace the -Z/r interaction with a parabolic confinement 1/2 w**2 r**2 (Harmonium atom). Default no. 
+
 approx_H_x2c:
   family: general
   datatype: yes/no
   mandatory: 'no'
   experimental: 'yes'
   default: 'yes'
-  comment: Build the X2C approximate Hamiltonian (H**new) to reproduce state energies .
+  comment: Build the X2C approximate Hamiltonian (H**new) to reproduce state energies.
     with  H = S C e C**-1, H**dagger S C e C**-1, and H**new = 1/2 ( H + H**dagger). Default yes. 
 
 check_CdSC_x2c:

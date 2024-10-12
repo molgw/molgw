@@ -354,6 +354,7 @@ program molgw
     !
     ! Nucleus-electron interaction
     call setup_nucleus(basis,hamiltonian_nucleus)
+    if( TRIM(parabolic_conf)=='yes' ) call setup_para_conf(basis,hamiltonian_nucleus)
    
     !
     ! External electric field
