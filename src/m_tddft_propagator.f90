@@ -798,7 +798,7 @@ subroutine stationary_c_matrix(basis,               &
 
     do ispin=1, nspin
       ! in ortho basis : M' = X**H * ( H-iD+(mv**2+ deltaE)*S ) * X
-      m_tmp(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
+      m_tmp(:,:,ispin)  = h_cmplx(:,:,ispin) - im * d_matrix(:,:)
       !FBFB Why (1/2) m v**2 ?
       m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
             + (0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2) + tddft_energy_shift ) * s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
@@ -955,7 +955,7 @@ end subroutine setup_d_matrix
 
 !=========================================================================
 ! Calculate force on the projectile in fixed basis
-subroutine setup_fb_force(basis,p_matrix_cmplx,recalc)
+subroutine setup_fixed_basis_force(basis,p_matrix_cmplx,recalc)
   implicit none
   type(basis_set),intent(in)          :: basis
   complex(dp),intent(in)              :: p_matrix_cmplx(:,:,:)
@@ -965,7 +965,7 @@ subroutine setup_fb_force(basis,p_matrix_cmplx,recalc)
   real(dp)                            :: h_nuc_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
   !=====
 
-  write(stdout,'(/,a)') ' Setup mb force (analytic)'
+  write(stdout,'(/,a)') ' Setup fixed basis force (analytic)'
 
 
   call setup_nucleus_grad(basis,h_nuc_grad)
@@ -980,7 +980,7 @@ subroutine setup_fb_force(basis,p_matrix_cmplx,recalc)
   force_projectile(:) = force_projectile(:) + force_nuc_nuc(:,ncenter_nuclei)
 
 
-end subroutine setup_fb_force
+end subroutine setup_fixed_basis_force
 
 
 !=========================================================================
@@ -1300,7 +1300,7 @@ subroutine predictor_corrector(basis,                  &
     en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
     ! Hellman-Feynman force experienced by the projectile
-    call setup_fb_force(basis,p_matrix_cmplx,.FALSE.)
+    call setup_fixed_basis_force(basis,p_matrix_cmplx,.FALSE.)
     ! Moving_basis spurious forces corrections due to incomplete basis
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call setup_mb_force(basis,s_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,occupation,p_matrix_cmplx,.FALSE.)
@@ -1442,7 +1442,7 @@ subroutine predictor_corrector(basis,                  &
                                  h_cmplx,en_tddft,p_matrix_cmplx)
 
     !Fixed bases have Hellman-Feynman force
-    call setup_fb_force(basis,p_matrix_cmplx,.FALSE.)
+    call setup_fixed_basis_force(basis,p_matrix_cmplx,.FALSE.)
     deallocate(p_matrix_cmplx)
 
     !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)

@@ -875,7 +875,13 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
   !=====
 
   call start_clock(timing_hamiltonian_kin)
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Setup gradient of the kinetic part of the Hamiltonian (LIBCINT)'
+#elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
   write(stdout,'(/,a)') ' Setup gradient of the kinetic part of the Hamiltonian (LIBINT)'
+#else
+  call die('setup_kinetic_grad: kinetic gradient not implemented without LIBINT or LIBCINT one-body gradient terms')
+#endif
 
   do jshell=1,basis%nshell
     lj      = basis%shell(jshell)%am
@@ -958,7 +964,7 @@ end subroutine setup_kinetic_grad
 
 
 !=========================================================================
-! Calculate \sum_c ( \alpha | -Z_c/|r - R_c| | \beta )
+! Calculate \sum_c ( \alpha | -Z_c / |r - R_c| | \beta )
 !
 subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   implicit none
@@ -1303,13 +1309,13 @@ end subroutine recalc_nucleus
 
 
 !=========================================================================
-! calculate \nabla_{R_C} ( \nabla_{R_\alpha} \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= 1:ncenter_nuclei
+! calculate \nabla_{R_C} (                   \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= 1:ncenter_nuclei
 !       and              ( \nabla_{R_\alpha} \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= ncenter_nuclei+1
 !
 subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
   implicit none
   type(basis_set),intent(in) :: basis
-  real(dp),intent(out)       :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
+  real(dp),intent(out)       :: hamiltonian_nucleus_grad(:,:,:,:)
   !=====
   integer              :: ishell,jshell
   integer              :: ibf1,ibf2,jbf1,jbf2
@@ -1355,7 +1361,7 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 #endif
 
   if( world%nproc > 1 ) then
-    natom_local=0
+    natom_local = 0
     do icenter=1,ncenter_nuclei
       if( world%rank /= MODULO(icenter-1,world%nproc) ) cycle
       natom_local = natom_local + 1
@@ -1465,7 +1471,7 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
                    hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,3) + matrixA(:,:)
 
 #else
-        call die('nuclear potential gradient not implemented without LIBINT one-body and gradient terms')
+        call die('setup_nucleus_grad: nuclear potential gradient not implemented without LIBINT or LIBCINT one-body and gradient terms')
 #endif
       enddo
       deallocate(alphaA,cA)
