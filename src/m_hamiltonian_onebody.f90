@@ -842,8 +842,7 @@ end subroutine recalc_kinetic
 
 
 !=========================================================================
-! calculate  ( \nabla_{R_\alpha} \alpha | p**2 /2 | \beta)      <--- LIBINT
-!              =  ( \alpha | p**2 /2 | \nabla_r \beta)          <--- LIBCINT
+! calculate  ( \nabla_{R_\alpha} \alpha | p**2 /2 | \beta) 
 subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
   implicit none
   type(basis_set),intent(in) :: basis
