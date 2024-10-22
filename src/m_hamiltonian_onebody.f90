@@ -911,7 +911,7 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
       shls(2) = ishell-1  ! C convention starts with 0
 
       ! returns
-      ! < \nabla_r \phi_\alpha | p**2 / 2 | \phi_\beta >
+      ! < \nabla_r \phi_\beta | p**2 / 2 | \phi_\alpha >
       info = cint1e_ipkin_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
                                basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
       do idir=1,3
@@ -963,7 +963,7 @@ end subroutine setup_kinetic_grad
 
 
 !=========================================================================
-! Calculate \sum_c ( \alpha | -Z_c / |r - R_c| | \beta )
+! Calculate \sum_C ( \alpha | -Z_C / |r - R_C| | \beta )
 !
 subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   implicit none
@@ -1311,10 +1311,11 @@ end subroutine recalc_nucleus
 ! calculate \nabla_{R_C} (                   \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= 1:ncenter_nuclei
 !       and              ( \nabla_{R_\alpha} \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= ncenter_nuclei+1
 !
-subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
+subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad,atom_list)
   implicit none
   type(basis_set),intent(in) :: basis
   real(dp),intent(out)       :: hamiltonian_nucleus_grad(:,:,:,:)
+  integer,intent(in),optional :: atom_list(:)
   !=====
   integer              :: ishell,jshell
   integer              :: ibf1,ibf2,jbf1,jbf2
@@ -1358,6 +1359,9 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 #else
   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian gradient (LIBINT)'
 #endif
+  if( PRESENT(atom_list) ) then
+    write(stdout,'(1x,a,i5,a)') 'Only calculate the contribution from ',SIZE(atom_list),' nucleus/nuclei'
+  endif
 
   if( world%nproc > 1 ) then
     natom_local = 0
@@ -1400,34 +1404,53 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 
 
       do icenter=1,ncenter_nuclei
+        if( PRESENT(atom_list) ) then
+          if( ALL(atom_list(:) /= icenter ) ) cycle
+        endif
         if( world%rank /= MODULO(icenter-1,world%nproc) ) cycle
 
 
         C(:) = xatom(:,icenter)
 
 #if defined(HAVE_LIBCINT)
-        ! returns ( \alpha | 1 / |r-C| | \nabla_r \beta )
-        !               = -( \alpha | 1 / |r-C| | \nabla_RB \beta )
+
+        ! returns = -( \nabla_R_\beta \beta | 1 / |r-R_C| | \alpha )
         call libcint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
                                   amB,contrdepthB,B,alphaB,cB, &
                                   C,array_cart_gradB)
+        ! Get ( \nabla_R_\beta \beta | -Z_C / |r-R_C| | \alpha )
         array_cart_gradB(:,:) = -array_cart_gradB(:,:) * (-zvalence(icenter))
 
-        ! returns ( \beta | 1 / |r-C| | \nabla_r \alpha )
-        !               =  ( \nabla_r \alpha  | 1 / |r-C| | \beta )
-        !               = -( \nabla_RA \alpha | 1 / |r-C| | \beta )
+
+        ! returns = -( \nabla_R_\alpha | 1 / |r-R_C| | \beta )
         call libcint_elecpot_grad(amB,contrdepthB,B,alphaB,cB, &
                                   amA,contrdepthA,A,alphaA,cA, &
                                   C,array_cart_gradA)
+        ! Get ( \nabla_R_\alpha | -Z_C / |r-R_C| | \beta )
         array_cart_gradA(:,:) = -array_cart_gradA(:,:) * (-zvalence(icenter))
 
         do idir=1,3
-          call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradB(:,idir),matrixB)
-          call transform_libint_to_molgw(basis%gaussian_type,lj,li,array_cart_gradA(:,idir),matrixA)
-          hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,idir) =  -TRANSPOSE(matrixA(:,:)) - matrixB(:,:)
-          !hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,idir) =  matrixB(:,:)
+          call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradA(:,idir),matrixA)
+          call transform_libint_to_molgw(basis%gaussian_type,lj,li,array_cart_gradB(:,idir),matrixB)
+
+          ! Store hnuc( C ) =
+          !   ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta )
+          !
+          !    thanks to translational invariance, we have:
+          !    ( \nabla_{R_\alpha} \alpha | -Z_C / |r-R_C| | \beta ) 
+          !          + ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta ) 
+          !             + ( \alpha | -Z_C / |r-R_C| | \nabla_{R_\beta} \beta )  = 0
+          !  Hence,
+          !   ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta ) = - ( \nabla_{R_\alpha} \alpha | -Z_C / |r-R_C| | \beta )
+          !                                                      - ( \nabla_{R_\beta}  \beta  | -Z_C / |r-R_C| | \alpha )
+
+
+          hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,idir) =  -matrixA(:,:) - TRANSPOSE(matrixB(:,:))
+
+          ! Store hnuc_grad( ncenter_nuclei+1 ) =
+          !   ( \nabla_R_\alpha | \sum_C -Z_C / |r-R_C| | \beta )
           hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,idir) = &
-                   hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,idir) + TRANSPOSE(matrixA(:,:))
+                   hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,idir) + matrixA(:,:)
         enddo
 
 
