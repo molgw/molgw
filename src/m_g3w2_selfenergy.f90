@@ -205,36 +205,6 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
         endif
 
 
-        !==========================
-        do istate=ncore_G+1,nvirtual_G-1
-          if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
-          do bstate=ncore_G+1,nvirtual_G-1
-            if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
-            do kstate=ncore_G+1,nvirtual_G-1
-              if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
-
-              !
-              ! calculate only the diagonal !
-              do pstate=nsemin,nsemax
-
-                vcoul = eri_eigen(istate,kstate,ispin,bstate,pstate,ispin)
-                if( gwgamma_tddft_ ) then
-                  fxc = eval_fxc_rks_singlet(istate,kstate,ispin,bstate,pstate,ispin)
-                  call grid%sum(fxc)
-                  vcoul = alpha_hybrid * vcoul - fxc
-                endif
-
-                do iomega=-se%nomega,se%nomega
-                  sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
-                           - bra_s(kstate,pstate) * bra_s(bstate,istate) * vcoul                          &
-                              / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
-                              / ( -pole_s + energy(istate,ispin) - energy(bstate,ispin) + ieta )
-                enddo
-              enddo
-
-            enddo
-          enddo
-        enddo
 
         !==========================
         do istate=ncore_G+1,nvirtual_G-1
@@ -277,6 +247,36 @@ subroutine sosex_selfenergy(basis,occupation,energy,c_matrix,wpol,se)
         enddo
 
         !==========================
+        do jstate=ncore_G+1,nvirtual_G-1
+          if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
+          do astate=ncore_G+1,nvirtual_G-1
+            if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty) cycle
+            do kstate=ncore_G+1,nvirtual_G-1
+              if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
+
+              !
+              ! calculate only the diagonal !
+              do pstate=nsemin,nsemax
+
+                vcoul = eri_eigen(jstate,kstate,ispin,astate,pstate,ispin)
+                if( gwgamma_tddft_ ) then
+                  fxc = eval_fxc_rks_singlet(jstate,kstate,ispin,astate,pstate,ispin)
+                  call grid%sum(fxc)
+                  vcoul = alpha_hybrid * vcoul - fxc
+                endif
+
+                do iomega=-se%nomega,se%nomega
+                  sigma_sosex(iomega,pstate,ispin) = sigma_sosex(iomega,pstate,ispin) &
+                           - bra_s(kstate,pstate) * bra_s(astate,jstate) * vcoul                          &
+                              / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(kstate,ispin) + pole_s - ieta )  &
+                              / ( -pole_s + energy(jstate,ispin) - energy(astate,ispin) + ieta )
+                enddo
+              enddo
+
+            enddo
+          enddo
+        enddo
+
         do astate=ncore_G+1,nvirtual_G-1
           if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty  ) cycle
           do jstate=ncore_G+1,nvirtual_G-1

@@ -123,7 +123,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
             !$OMP END DO
             !$OMP END PARALLEL
 
-            if( (spin_fact - occupation(pstate,ispin))/ spin_fact < completely_empty) then
+            if( (spin_fact - occupation(pstate,ispin)) / spin_fact < completely_empty) then
               energy_gw = energy_gw + fact_empty_i * occupation(pstate,ispin) &
                                * bra(ipole,pstate)**2 / ( energy(pstate,ispin) - energy(istate,ispin) - wpol%pole(ipole) )
             endif

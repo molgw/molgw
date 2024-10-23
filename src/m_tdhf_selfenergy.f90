@@ -39,7 +39,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   integer                 :: istate, astate, jstate, bstate, ustate, iaspin, spole
   integer                 :: pstate, qstate, iomega_sigma, nmov, nmoo
   real(dp),allocatable    :: x_matrix(:,:), y_matrix(:,:)
-  real(dp)                :: erpa_tmp, egw_tmp
+  real(dp)                :: erpa_tmp, egw_tmp, energy_gm1, energy_gm2
   type(spectral_function) :: wpol
   complex(dp),allocatable :: sigma_tdhf(:,:,:), sigma_tmp(:)
   real(dp),allocatable    :: eri_i_a(:,:), eri_a_i(:,:), eri_P_ia(:,:)
@@ -53,7 +53,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   integer :: state_range, nstate2
   real(dp),allocatable    :: chi_static(:,:)
   real(dp),allocatable    :: chi_up(:,:,:), uq(:,:,:)
-  !integer :: nocc, nvirt, nocc_local
+  logical,parameter :: DEBUG_GW=.FALSE.   ! if .TRUE., recover the GW expression
   !=====
 
 
@@ -65,6 +65,8 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
   nmov = nvirtual_G-nhomo_G-1
   nmoo = nhomo_G-ncore_G
 
+  energy_gm1 = 0.0_dp
+  energy_gm2 = 0.0_dp
   write(stdout,'(/,1x,a)') 'Calculate Sigma_TDHF (Bruneval-Foerster formula)'
   if( mpi_poorman_ ) then
     write(stdout,'(5x,a)')   'using poor man parallelization'
@@ -193,6 +195,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     deallocate(eri_P_ia)
 
     ! Calculate eri_tmp2o = ( i j | a q )
+    if( .NOT. DEBUG_GW ) then
     allocate(eri_i_a(ncore_G+1:nhomo_G,nhomo_G+1:nvirtual_G-1))
     do jstate=ncore_G+1,nhomo_G
       call DGEMM('T', 'N', nmoo, nmov, nauxil_global, &
@@ -206,8 +209,12 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       enddo
     enddo
     deallocate(eri_i_a)
+    else
+        eri_tmp2o(:,:) = 0.0_dp
+    endif
 
     ! Calculate eri_tmp3o = ( a j | i q )
+    if( .NOT. DEBUG_GW ) then
     allocate(eri_a_i(nhomo_G+1:nvirtual_G-1,ncore_G+1:nhomo_G))
     do jstate=ncore_G+1,nhomo_G
       call DGEMM('T', 'N', nmov, nmoo, nauxil_global, &
@@ -222,6 +229,9 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       enddo
     enddo
     deallocate(eri_a_i)
+    else
+        eri_tmp3o(:,:) = 0.0_dp
+    endif
 
     if( gwgamma_tddft_ ) then
       do jstate=ncore_G+1,nhomo_G
@@ -268,6 +278,10 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
 
       enddo ! loop over spole
     enddo ! loop over jstate
+    if( pstate > nhomo_G ) then
+      energy_gm1 = energy_gm1 - REAL(sigma_tmp(0))
+    endif
+    sigma_tdhf(:,pstate,1) = sigma_tdhf(:,pstate,1) + sigma_tmp(:)
 
 
     !
@@ -307,6 +321,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
     deallocate(eri_P_ia)
 
     ! Calculate eri_tmp2v = ( i b | a q )
+    if( .NOT. DEBUG_GW ) then
     allocate(eri_i_a(ncore_G+1:nhomo_G,nhomo_G+1:nvirtual_G-1))
     do bstate=nhomo_G+1,nvirtual_G-1
       call DGEMM('T', 'N', nmoo, nmov, nauxil_global, &
@@ -320,8 +335,12 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       enddo
     enddo
     deallocate(eri_i_a)
+    else
+        eri_tmp2v(:,:) = 0.0_dp
+    endif
 
     ! Calculate eri_tmp3v = ( a b | i q )
+    if( .NOT. DEBUG_GW ) then
     allocate(eri_a_i(nhomo_G+1:nvirtual_G-1,ncore_G+1:nhomo_G))
     do bstate=nhomo_G+1,nvirtual_G-1
       call DGEMM('T', 'N', nmov, nmoo, nauxil_global, &
@@ -336,6 +355,9 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       enddo
     enddo
     deallocate(eri_a_i)
+    else
+        eri_tmp3v(:,:) = 0.0_dp
+    endif
 
 
     if( gwgamma_tddft_ ) then
@@ -371,6 +393,7 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
                   -1.0d0,y_matrix(:,:),nmat,eri_tmp3v(:,:),nmat,&
                    1.0d0,num_tmp1v(:,:),nmat)
 
+    sigma_tmp(:) = 0.0_dp
     !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(+:sigma_tmp)
     do bstate=nhomo_G+1,nvirtual_G-1
       do spole=1,wpol%npole_reso
@@ -380,12 +403,19 @@ subroutine tdhf_selfenergy(basis,occupation,energy,c_matrix,se)
       enddo ! loop over spole
     enddo ! loop over bstate
     !$OMP END PARALLEL DO
-    sigma_tdhf(:,pstate,1) = sigma_tmp(:)
+    sigma_tdhf(:,pstate,1) = sigma_tdhf(:,pstate,1) + sigma_tmp(:)
+    if( pstate <= nhomo_G ) then
+      energy_gm2 = energy_gm2 + REAL(sigma_tmp(0))
+    endif
 
 
   enddo ! loop over pstate
 
   call poorman%sum(sigma_tdhf)
+
+  !write(stdout,*) ' **** Galistkii Migdal energy (Ha) **** '
+  !write(stdout,*) energy_gm1, energy_gm2, energy_gm1 + energy_gm2
+  !write(stdout,*) ' ******************************* '
 
   se%sigma(:,:,:) = sigma_tdhf(:,:,:)
 
