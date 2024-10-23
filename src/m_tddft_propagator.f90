@@ -1108,12 +1108,6 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_mat
   do idir=1,3
     do jbf=1,basis%nbf
       if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) cycle
-      !force_projectile(idir) = force_projectile(idir) &
-      !                         -SUM( SUM(p_matrix_cmplx(jbf,:,:),DIM=2) &
-      !                              * ( h_nuc_grad(:,jbf,ncenter_nuclei+1,idir) + h_kin_grad(jbf,:,idir) ) )
-      !force_projectile(idir) = force_projectile(idir) &
-      !                         -SUM( SUM(p_matrix_cmplx(:,jbf,:),DIM=2) &
-      !                              * ( h_nuc_grad(:,jbf,ncenter_nuclei+1,idir) + h_kin_grad(jbf,:,idir) ) )
 
       ! hkin_grad_{alpha beta} = < \nabla_R_{A_alpha} phi_alpha | T | phi_beta >
       ! sum_{alpha beta} P_{alpha beta} \partial T_{alpha beta} / \partial R_A
@@ -1123,14 +1117,11 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_mat
       !      + sum_{alpha beta} P_{beta alpha}  \delta_{A A_alpha} hkin_grad_{alpha beta}    <= relabelling alpha <-> beta
       !     =  sum_{alpha beta} \delta_{A A_alpha} hkin_grad_{alpha beta}   ( P_{alpha beta} + P_{beta alpha} )
       !     =  sum_{alpha beta} \delta_{A A_alpha} hkin_grad_{alpha beta}  2 * Re( P_{alpha beta} )
-      force_projectile(idir) = force_projectile(idir) &
+      force_projectile_nonconserv(idir) = force_projectile_nonconserv(idir) &
                                -SUM( 2.0 * SUM(p_matrix_cmplx(jbf,:,:)%re,DIM=2) * h_kin_grad(jbf,:,idir) )
-      force_projectile(idir) = force_projectile(idir) &
+      force_projectile_nonconserv(idir) = force_projectile_nonconserv(idir) &
                                -SUM( 2.0 * SUM(p_matrix_cmplx(jbf,:,:)%re,DIM=2) * h_nuc_grad(jbf,:,ncenter_nuclei+1,idir) )
     enddo
-    ! projectile is the last index ncenter_nuclei
-    force_projectile(idir) = force_projectile(idir) &
-                             -SUM( SUM(p_matrix_cmplx(:,:,:),DIM=3) * h_nuc_grad(:,:,ncenter_nuclei,idir) )
   enddo
 
 
