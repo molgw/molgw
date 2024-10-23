@@ -303,7 +303,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
 
 
   !
-  ! When requesting A and B, calculate them and exit here
+  ! When requesting A and B and not X or Y, calculate them and exit here
   ! (skip diago etc)
   !
   if( PRESENT(a_matrix) ) then
@@ -313,7 +313,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,occupation,energy,c_matr
     b_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) - amb_matrix(:,:) )
   endif
   
-  if( PRESENT(a_matrix) .AND. PRESENT(b_matrix) ) then
+  if( PRESENT(a_matrix) .AND. PRESENT(b_matrix) .AND. .NOT. PRESENT(x_matrix) .AND. .NOT. PRESENT(y_matrix) ) then
     call clean_deallocate('A+B',apb_matrix)
     call clean_deallocate('A-B',amb_matrix)
     if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then

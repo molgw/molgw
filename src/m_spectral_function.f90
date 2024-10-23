@@ -144,8 +144,8 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid_type,omega_max,verbose)
   real(dp),optional,intent(in)          :: omega_max
   logical,optional,intent(in)           :: verbose
   !=====
-  integer                               :: grid_ = NO_GRID
-  real(dp)                              :: omega_max_ = 1.0_dp
+  integer                               :: grid_
+  real(dp)                              :: omega_max_
   integer                               :: stdout_
   integer                               :: ijspin,istate,jstate,itrans
   integer                               :: iomega
@@ -162,9 +162,13 @@ subroutine sf_init(sf,nstate,occupation,nomega_in,grid_type,omega_max,verbose)
   endif
   if( PRESENT(grid_type) ) then
     grid_ = grid_type
+  else
+    grid_ = NO_GRID
   endif
   if( PRESENT(omega_max) ) then
     omega_max_ = omega_max
+  else
+    omega_max_ = 1.0_dp
   endif
   stdout_ = stdout
   if( PRESENT(verbose) ) then

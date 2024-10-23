@@ -25,6 +25,7 @@ module m_selfenergy_evaluation
   use m_gw_selfenergy_grid
   use m_linear_response
   use m_g3w2_selfenergy
+  use m_tdhf_selfenergy
 
 
 
@@ -109,8 +110,10 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='GW+GWGW0G'
     case(GWGW0RPAG)
       selfenergy_tag='GW+GWGW0RPAG'
-    case(GWTILDE)
-      selfenergy_tag='GWTILDE'
+    case(SIGMA_TDHF)
+      selfenergy_tag='SIGMA_TDHF'
+    case(SIGMA_TDSCHF)
+      selfenergy_tag='SIGMA_TDSCHF'
     case default
       write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -303,10 +306,11 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     endif
 
     !
-    ! Test Starke-Maggio-Kresse
+    !  sigma_TDHF self-energy (See Vacondio et al., Forster-Bruneval)
     !
-    if( calc_type%selfenergy_approx == GWTILDE ) then
-      call gwtilde_selfenergy(basis,occupation,energy_g,c_matrix,se)
+    if( calc_type%selfenergy_approx == SIGMA_TDHF &
+        .OR. calc_type%selfenergy_approx == SIGMA_TDSCHF ) then
+      call tdhf_selfenergy(basis,occupation,energy_g,c_matrix,se)
     endif
 
     !
