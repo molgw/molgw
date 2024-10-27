@@ -95,7 +95,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 !scalars
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed
- integer::icall,istate,iorbmax1,iorbmax2,imethod_in
+ integer::icall,icall_method,istate,iorbmax1,iorbmax2,imethod_in
  real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
 !arrays
  real(dp),allocatable,dimension(:)::DM2_L_saved
@@ -104,6 +104,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  character(len=200)::msg
 !************************************************************************
 
+ icall_method=30
  imethod_in=imethod
 
  istate=1
@@ -115,7 +116,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
 
  ! Select the method
- if((imethod_in/=1.and.iter>10) .and. (abs(maxdiff)<tol3)) then ! TODO Fix the size of the step in the QC method.
+ if(imethod_in/=1.and.iter>10 .and. abs(maxdiff)<tol3) then ! TODO Fix the size of the step in the QC method.
+  icall_method=1; ELAGd%itolLambda=8; ELAGd%tolE=1e-12;
   write(msg,'(a)') 'Performing QC method for orbital optimization'
   call write_output(msg)
   allocated_DMNs=.true.;all_ERIs=.true.;
@@ -249,8 +251,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   endif
   Energy_old=Energy
 
-  ! We allow at most 30 generations of new NO_COEF updates (and integrals)
-  if(icall==30) exit
+  ! We allow at most 30 generations of new NO_COEF updates (and integrals) in Piris Ugalde Algoritms
+  if(icall==icall_method) exit
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  enddo
 
