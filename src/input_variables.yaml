@@ -1647,39 +1647,6 @@ noft_nophases:
   default: 'no'
   comment: Force orbitals to be real even if noft_complex='yes' in NOFT calcs. (default=no).
 
-noft_confinment:
-  family: noft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Replace all Coulomb electronic-nuclear contributions by a parabolic confinement at the origin. (default=no).
-
-noft_iconfinment:
-  family: noft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Add a Hermitian parabolic confinement (purely imaginary) to the one-body Hamiltonian when complex
-   molecular orb. coeficients are used in NOFT calcs. (default=no).
-
-noft_iwconfinment:
-  family: noft
-  datatype: real
-  mandatory: 'no'
-  experimental: 'no'
-  default: 0.000
-  comment: Value of confinement stength in the parabolic confinement described in noft_iconfinment. (default=0.0).
-
-noft_rwconfinment:
-  family: noft
-  datatype: real
-  mandatory: 'no'
-  experimental: 'no'
-  default: 0.000
-  comment: Value of confinement stength in the parabolic confinement described in noft_confinment. (default=0.0).
-
 noft_dft:
   family: noft
   datatype: yes/no
