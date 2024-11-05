@@ -402,7 +402,7 @@
  noft_hessian='no'
  noft_nophases='no'
  noft_dft='no'
- noft_rsinter='yes'
+ noft_rsinter='no'
  noft_lowmemERI='yes'
  noft_fcidump='no'
  noft_NOTupdateOCC='no'

@@ -2176,11 +2176,11 @@ Use binary files to restart NOFT calcs. (default= 'no').
 
 **Type:** yes/no
 
-**Default:** yes
+**Default:** no
 
 **Description:**
 
-Use range-sep for the inter-subspace two-body interactions in NOFT.
+Use range-sep for the inter-subspace two-body interactions in NOFT. (default=no).
 
 
 ---
