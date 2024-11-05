@@ -1640,7 +1640,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
         rhor_batch(2,:)=rhor_batch(1,:)
       endif
 
-     else
+    else
       call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch, &
                                    bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
       if(ALLOCATED(rhocore)) then
