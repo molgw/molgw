@@ -1660,7 +1660,7 @@ noft_rsinter:
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
-  default: 'no'
+  default: 'yes'
   comment: Use range-sep for the inter-subspace two-body interactions in NOFT.
 
 noft_lowmemERI:

@@ -447,7 +447,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
   logical                    :: all_ERIs_in=.false.,long_range=.true.
   integer                    :: istate,jstate,pstate,qstate
   character(len=100)         :: msgw
-  real(dp)                   :: ERI_lkji
+  real(dp)                   :: ERI_lkji,Coef_rs_inter
   real(dp),allocatable       :: occupation(:,:)
   real(dp),allocatable       :: tmp_c_matrix(:,:,:),hamiltonian_xc(:,:,:)
   complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
@@ -486,6 +486,11 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
       call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
       call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
       occupation(:,:)=zero; occupation(:nstate_occ,1)=two*Occ(:nstate_occ);hamiltonian_xc(:,:,:)=zero;
+      if( irs_noft==1 ) then ! For range-sep. of the inter-subspace interaction, we define n^inter(r) = 2(N-2)/(N-1)  \sum_i n_i |MO_i(r)|^2
+        Coef_rs_inter=sum(occupation(:nstate_occ,1))
+        Coef_rs_inter=(Coef_rs_inter-2.0e0)/(Coef_rs_inter-1.0e0)
+        occupation(:,:)=Coef_rs_inter*occupation(:,:)
+      endif
       ! MRM: The first call of mo_ints contains occ(1:Nfrozen+Npairs)=2.0
       if( ANY(occupation(:nstate_occ,1)>completely_empty) ) then
         call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
