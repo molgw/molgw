@@ -1022,12 +1022,10 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_mat
   call setup_overlap_grad(basis,BboldAdagger)
 
   do ibf=1,basis%nbf
-    ! if A is not a projectile then BboldAdagger is zero
-!FBFB
-!I think these lines were a mistake
-!    if( ALL( ABS(basis%bff(ibf)%v0(:)) < 1.0e-6_dp ) ) then
-!      BboldAdagger(ibf,:,:) = 0.0_dp
-!    endif
+    ! If A is not a projectile then BboldAdagger is zero
+    if( ALL( ABS(basis%bff(ibf)%v0(:)) < 1.0e-6_dp ) ) then
+      BboldAdagger(ibf,:,:) = 0.0_dp
+    endif
     Bdagger(ibf,:) =  basis%bff(ibf)%v0(1) * BboldAdagger(ibf,:,1) &
                     + basis%bff(ibf)%v0(2) * BboldAdagger(ibf,:,2) &
                     + basis%bff(ibf)%v0(3) * BboldAdagger(ibf,:,3)
@@ -1076,13 +1074,12 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_mat
 
   deallocate(s_matrix_hess)
   
-  !FBFB not sure about the next lines. Let's erase them
-  !do jbf=1,basis%nbf
-  !  ! if beta is not on a projectile, then the gradient is not contributing to the force on the projectile
-  !  if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) then
-  !    cc_matrix(:,jbf,:) = 0.0_dp
-  !  endif
-  !enddo
+  do jbf=1,basis%nbf
+    ! If beta is not on a projectile, then the gradient is not contributing to the force on the projectile
+    if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) then
+      cc_matrix(:,jbf,:) = 0.0_dp
+    endif
+  enddo
 
   do idir=1,3
     do ispin=1,nspin
