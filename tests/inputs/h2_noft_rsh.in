@@ -14,7 +14,6 @@
  postscf='noft'
  noft_ncoupled=2
  noft_dft='yes'
- noft_rsinter='no'
  
 /
 H  0. 0.  0.35
