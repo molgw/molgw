@@ -297,7 +297,6 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
    ! Setup the grids for the quadrature of DFT potential/energy
    irs_noft=0
    if( calc_type%is_dft .and. noft_dft=='yes' ) then
-     if( nspin /= 1 ) call die('molgw: NOFT calculations need nspin = 1')
      if(noft_rsinter=='yes') then
        irs_noft=1
      else
@@ -499,12 +498,17 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
       ! MRM: The first call of mo_ints contains occ(1:Nfrozen+Npairs)=2.0
       occupation(:,:)=zero; hamiltonian_xc(:,:,:)=zero;
       if( ANY(Occ(:nstate_occ)>completely_empty) ) then
-        do ispin=1,nspin
-          occupation(:nstate_occ,1)=two*Occ(:nstate_occ)
-        enddo
+        if ( nspin==1 ) then
+          occupation(:nstate_occ,1)=2.0e0*Occ(:nstate_occ)
+        else
+          do ispin=1,nspin
+            occupation(:nstate_occ,ispin)=Occ(:nstate_occ)
+          enddo
+        endif
         call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
       endif
       hamiltonian_xc(:,:,1)=SUM(hamiltonian_xc(:,:,:),DIM=3)
+      if ( nspin==2 ) hamiltonian_xc(:,:,1)=0.5e0*hamiltonian_xc(:,:,1)
       hCORE=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
       call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
       call clean_deallocate('occupation',occupation,noft_verbose)
