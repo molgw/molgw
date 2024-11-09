@@ -297,13 +297,14 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
    ! Setup the grids for the quadrature of DFT potential/energy
    irs_noft=0
    if( calc_type%is_dft .and. noft_dft=='yes' ) then
+     if( nspin /= 1 ) call die('molgw: NOFT calculations need nspin = 1')
      if(noft_rsinter=='yes') then
        irs_noft=1
      else
        irs_noft=2
      endif
      if( .not.calc_type%need_exchange_lr ) then
-       write(msgw,'(a)') 'LR exchange is needed for rs-NOFT.'
+       write(msgw,'(a)') 'LR exchange is needed for RS-NOFT.'
        call die(msgw)
      endif
      write(stdout,'(a)') ' '
@@ -367,36 +368,38 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
    
    ! If required print post-procesing files
    occupation(1:nstate_occ,1)=occ(1:nstate_occ,1)
-   if(noft_complex=='yes') then
-     if(print_wfn_files_ ) then
-       call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
-       occ_print(1:nstate_noft,1)=occ(1:nstate_noft,1)
-       ! Update c_matrix with real part of optimized NO_COEF
+   if( irs_noft==0 ) then
+     if(noft_complex=='yes') then
+       if(print_wfn_files_ ) then
+         call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
+         occ_print(1:nstate_noft,1)=occ(1:nstate_noft,1)
+         ! Update c_matrix with real part of optimized NO_COEF
+         do istate=1,nstate_noft
+           c_matrix(:,istate,1)=real(NO_COEF_cmplx(:,istate))
+         enddo
+         call print_wfn_file('NOFT_RE',basis,occ_print,c_matrix,Enoft,energy)
+         ! Update c_matrix with imaginary part of optimized NO_COEF
+         do istate=1,nstate_noft
+           c_matrix(:,istate,1)=aimag(NO_COEF_cmplx(:,istate))
+         enddo
+         call print_wfn_file('NOFT_IM',basis,occ_print,c_matrix,Enoft,energy)
+         call clean_deallocate('Occ_print',occ_print,noft_verbose)
+       endif
+     else
+       ! Update c_matrix with optimized NO_COEF
        do istate=1,nstate_noft
-         c_matrix(:,istate,1)=real(NO_COEF_cmplx(:,istate))
+         c_matrix(:,istate,1)=NO_COEF(:,istate)
        enddo
-       call print_wfn_file('NOFT_RE',basis,occ_print,c_matrix,Enoft,energy)
-       ! Update c_matrix with imaginary part of optimized NO_COEF
-       do istate=1,nstate_noft
-         c_matrix(:,istate,1)=aimag(NO_COEF_cmplx(:,istate))
-       enddo
-       call print_wfn_file('NOFT_IM',basis,occ_print,c_matrix,Enoft,energy)
-       call clean_deallocate('Occ_print',occ_print,noft_verbose)
-     endif
-   else
-     ! Update c_matrix with optimized NO_COEF
-     do istate=1,nstate_noft
-       c_matrix(:,istate,1)=NO_COEF(:,istate)
-     enddo
-     ! Select the post-procesing files
-     if(print_wfn_ .or. print_cube_ .or. print_wfn_files_ ) then
-       call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
-       occ_print(1:nstate_noft,1)=occ(1:nstate_noft,1)
-       if( print_wfn_ )  call plot_wfn(basis,c_matrix)
-       if( print_wfn_ )  call plot_rho('NOFT',basis,occ_print,c_matrix)
-       if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ_print,c_matrix)
-       if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,Enoft,energy)
-       call clean_deallocate('Occ_print',occ_print,noft_verbose)
+       ! Select the post-procesing files
+       if(print_wfn_ .or. print_cube_ .or. print_wfn_files_ ) then
+         call clean_allocate('Occ_print',occ_print,nstate_noft,1,noft_verbose)
+         occ_print(1:nstate_noft,1)=occ(1:nstate_noft,1)
+         if( print_wfn_ )  call plot_wfn(basis,c_matrix)
+         if( print_wfn_ )  call plot_rho('NOFT',basis,occ_print,c_matrix)
+         if( print_cube_ ) call plot_cube_wfn('NOFT',basis,occ_print,c_matrix)
+         if( print_wfn_files_ ) call print_wfn_file('NOFT',basis,occ_print,c_matrix,Enoft,energy)
+         call clean_deallocate('Occ_print',occ_print,noft_verbose)
+       endif
      endif
    endif
    
@@ -445,7 +448,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
   complex(dp),optional,intent(inout) :: ERImol_cmplx(nbf,nstate_kji,nstate_kji,nstate_kji)
   !====
   logical                    :: all_ERIs_in=.false.,long_range=.true.
-  integer                    :: istate,jstate,pstate,qstate
+  integer                    :: istate,jstate,pstate,qstate,ispin
   character(len=100)         :: msgw
   real(dp)                   :: ERI_lkji,Nelectrons,Coef_rs_inter
   real(dp),allocatable       :: occupation(:,:)
@@ -462,9 +465,11 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
   if(noft_complex=='yes') then
 
     ! Build 3D array for complex c_matrix and init hCORE_cmplx
-    call clean_allocate('tmp_c_matrix',tmp_c_matrix_cmplex,nbf,nstate_noft,1,noft_verbose)
+    call clean_allocate('tmp_c_matrix',tmp_c_matrix_cmplex,nbf,nstate_noft,nspin,noft_verbose)
     do istate=1,nstate_noft
-      tmp_c_matrix_cmplex(:,istate,1)=NO_COEF_cmplx(:,istate)
+      do ispin=1,nspin
+        tmp_c_matrix_cmplex(:,istate,ispin)=NO_COEF_cmplx(:,istate)
+      enddo
     enddo
 
     ! T+Vext part
@@ -474,27 +479,32 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
   else
 
     ! Build 3D array for c_matrix and init hCORE
-    call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,1,noft_verbose)
+    call clean_allocate('tmp_c_matrix',tmp_c_matrix,nbf,nstate_noft,nspin,noft_verbose)
     hCORE(:,:)=zero;tmp_c_matrix(:,:,:)=zero;
     do istate=1,nstate_noft
-      tmp_c_matrix(:,istate,1)=NO_COEF(:,istate)
+      do ispin=1,nspin
+        tmp_c_matrix(:,istate,ispin)=NO_COEF(:,istate)
+      enddo
     enddo
 
     ! Add the sr-NOFT term
     if( (irs_noft/=0) .and. (.not.noft_edft) ) then
       ! Prepare the DFT contribution (takes part only during orb. optimization and is switched off for final energy calculation)
-      call clean_allocate('occupation',occupation,nbf,1,noft_verbose)
-      call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,1,noft_verbose)
-      occupation(:,:)=zero; occupation(:nstate_occ,1)=two*Occ(:nstate_occ);hamiltonian_xc(:,:,:)=zero;
+      call clean_allocate('occupation',occupation,nbf,nspin,noft_verbose)
+      call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,nspin,noft_verbose)
       if( irs_noft==1 ) then ! For range-sep. of the inter-subspace interaction, we define n^inter(r) = 2(N-2)/(N-1)  \sum_i n_i |MO_i(r)|^2
-        Nelectrons=sum(occupation(:nstate_occ,1))
+        Nelectrons=2.0e0*sum(Occ(:nstate_occ))
         Coef_rs_inter=(Nelectrons-2.0e0)/(Nelectrons-1.0e0)
-        occupation(:,:)=Coef_rs_inter*occupation(:,:)
       endif
       ! MRM: The first call of mo_ints contains occ(1:Nfrozen+Npairs)=2.0
-      if( ANY(occupation(:nstate_occ,1)>completely_empty) ) then
+      occupation(:,:)=zero; hamiltonian_xc(:,:,:)=zero;
+      if( ANY(Occ(:nstate_occ)>completely_empty) ) then
+        do ispin=1,nspin
+          occupation(:nstate_occ,1)=two*Occ(:nstate_occ)
+        enddo
         call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
       endif
+      hamiltonian_xc(:,:,1)=SUM(hamiltonian_xc(:,:,:),DIM=3)
       hCORE=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
       call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
       call clean_deallocate('occupation',occupation,noft_verbose)
@@ -544,7 +554,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
         call destroy_eri_3center_eigen(verbose=noft_verbose,long_range=long_range)
       else            ! Normal case (not using RI)
         !TODO
-        write(msgw,'(a)') 'LR exchange requires RI for rs-NOFT (hint: include the RI basis).'
+        write(msgw,'(a)') 'LR exchange requires RI for RS-NOFT (hint: include the RI basis).'
         call die(msgw)
       endif
     endif

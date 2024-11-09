@@ -615,7 +615,6 @@ program molgw
       call noft_energy(basis,occupation,en_noft%total,en_noft%nuc_nuc,  &
       &               c_matrix_rel=c_matrix_rel,hkin_nuc_rel=hamiltonian_kin_nuc_rel)
     else              ! non-relativistic
-      if( nspin /= 1 ) call die('molgw: NOFT calculations need spin-restriction. Set nspin to 1')
       call noft_energy(basis,occupation,en_noft%total,en_noft%nuc_nuc,&
       &               Aoverlap=s_matrix,c_matrix=c_matrix,hkin=hamiltonian_kinetic,hnuc=hamiltonian_nucleus)
     endif
