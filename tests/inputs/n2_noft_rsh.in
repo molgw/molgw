@@ -1,6 +1,5 @@
 &molgw
  scf='rsh'
- nspin=2
  alpha_hybrid=0.0
  beta_hybrid =1.0
  gamma_hybrid=0.5

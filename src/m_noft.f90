@@ -450,6 +450,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
   integer                    :: istate,jstate,pstate,qstate,ispin
   character(len=100)         :: msgw
   real(dp)                   :: ERI_lkji,Nelectrons,Coef_rs_inter
+  ! real(dp)                   :: nI,nII,nR,LR,C1,C2
   real(dp),allocatable       :: occupation(:,:)
   real(dp),allocatable       :: tmp_c_matrix(:,:,:),hamiltonian_xc(:,:,:)
   complex(dp),allocatable    :: tmp_c_matrix_cmplex(:,:,:)
@@ -501,8 +502,17 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
         if ( nspin==1 ) then
           occupation(:nstate_occ,1)=2.0e0*Occ(:nstate_occ)
         else
-          do ispin=1,nspin
-            occupation(:nstate_occ,ispin)=Occ(:nstate_occ)
+          ! C1=0.999000999; C2=0.000999001;
+          do istate=1,nstate_occ
+           ! nR=2.0e0*Occ(istate)-1.0e0
+           ! LR=C1*(1.0e0/(1.0e3*nR*nR+1.0e0)-C2)
+           ! nII=2.0e0*Occ(istate)*(1.0e0-LR)
+           ! nI=4.0e0*Occ(istate)-nII
+           ! occupation(istate,1)=0.5e0*nI
+           ! occupation(istate,2)=0.5e0*nII
+            do ispin=1,nspin
+              occupation(istate,ispin)=Occ(istate)
+            enddo
           enddo
         endif
         call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
