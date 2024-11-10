@@ -494,6 +494,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
       ! Prepare the DFT contribution (takes part only during orb. optimization and is switched off for final energy calculation)
       call clean_allocate('occupation',occupation,nbf,nspin,noft_verbose)
       call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,nspin,noft_verbose)
+      Coef_rs_inter=1.0e0
       if( irs_noft==1 ) then ! For range-sep. of the inter-subspace interaction, we define n^inter(r) = 2(N-2)/(N-1)  \sum_i n_i |MO_i(r)|^2
         Nelectrons=2.0e0*sum(Occ(:nstate_occ))
         Coef_rs_inter=(Nelectrons-2.0e0)/(Nelectrons-1.0e0)
@@ -502,7 +503,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
       occupation(:,:)=zero; hamiltonian_xc(:,:,:)=zero;
       if( ANY(Occ(:nstate_occ)>completely_empty) ) then
         if ( nspin==1 ) then ! In principle, this option should not be used because we need nspin=2 to use Pi(r)
-          occupation(:nstate_occ,1)=2.0e0*Occ(:nstate_occ)
+          occupation(:nstate_occ,1)=2.0e0*Coef_rs_inter*Occ(:nstate_occ)
         else
           ! C1=0.999000999; C2=0.000999001;
           do istate=1,nstate_occ
@@ -513,7 +514,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
            ! occupation(istate,1)=0.5e0*nI
            ! occupation(istate,2)=0.5e0*nII
             do ispin=1,nspin
-              occupation(istate,ispin)=Occ(istate)
+              occupation(istate,ispin)=Coef_rs_inter*Occ(istate)
             enddo
           enddo
         endif
