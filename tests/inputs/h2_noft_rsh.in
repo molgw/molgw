@@ -1,9 +1,7 @@
 &molgw
- scf='rsh'
- alpha_hybrid=0.0
- beta_hybrid =1.0
- gamma_hybrid=0.3
- tolscf=1.0e-8
+ scf='rsh-noft'
+ nspin=2
+ tolscf=1.0e-2
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
@@ -16,5 +14,5 @@
  noft_dft='yes'
  
 /
-H  0. 0.  0.35
-H  0. 0. -0.35 
+H  0. 0.    0.
+H  0. 0.  -10. 
