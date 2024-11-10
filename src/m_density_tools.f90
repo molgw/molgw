@@ -139,6 +139,91 @@ end subroutine calc_density_r_batch
 
 
 !=========================================================================
+! Calculate the on-top pair density on a batch for both real and complex wavefunctions
+!
+subroutine calc_PI_r_batch(occupation,dm2_JK,c_matrix,basis_function_r,PIr)
+  implicit none
+
+  real(dp),intent(in)        :: occupation(:,:)
+  real(dp),intent(in)        :: dm2_JK(:,:,:)
+  class(*),intent(in)        :: c_matrix(:,:,:)
+  real(dp),intent(in)        :: basis_function_r(:,:)
+  real(dp),intent(out)       :: PIr(:)
+  !=====
+  integer                 :: nspin,nbf,nstate,nr
+  integer                 :: istate,jstate,ir
+  integer                 :: nocc
+  real(dp),allocatable    :: phir(:,:)
+  complex(dp),allocatable :: phir_cmplx(:,:)
+  complex(dp),allocatable :: basis_function_r_cmplx(:,:)
+  !=====
+
+  nbf    = SIZE(c_matrix,DIM=1)
+  nstate = SIZE(c_matrix,DIM=2)
+  nspin  = SIZE(c_matrix,DIM=3)
+  nr     = SIZE(PIr,DIM=1)
+  nocc   = get_number_occupied_states(occupation)
+
+  if( nocc > nstate ) call die('calc_density_r_batch: c_matrix does not contain all the occupied states')
+
+
+  !phir(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,1)) , basis_function_r(:,:) )
+
+  select type(c_matrix)
+  type is (real(dp))
+
+    allocate(phir(nocc,nr))
+
+    call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,1),nbf,basis_function_r(1,1),nbf,0.d0,phir(1,1),nocc)
+
+    !$OMP PARALLEL DO PRIVATE(istate,jstate)
+    do ir=1,nr
+      PIr(ir) = 0.0
+      do istate=1,nocc
+        do jstate=1,nocc
+          PIr(ir) = PIr(ir) + dm2_JK(1,istate,jstate)*phir(istate,ir)*phir(jstate,ir)*phir(istate,ir)*phir(jstate,ir) ! J
+          PIr(ir) = PIr(ir) + dm2_JK(2,istate,jstate)*phir(istate,ir)*phir(jstate,ir)*phir(jstate,ir)*phir(istate,ir) ! K
+        enddo
+      enddo
+    enddo
+    !$OMP END PARALLEL DO
+
+    deallocate(phir)
+
+  type is (complex(dp))
+
+    allocate(phir_cmplx(nocc,nr))
+    allocate(basis_function_r_cmplx(nbf,nr))
+    basis_function_r_cmplx(:,:) = basis_function_r(:,:)
+    call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,1),nbf, &
+              basis_function_r_cmplx(1,1),nbf,COMPLEX_ZERO,phir_cmplx(1,1),nocc)
+    deallocate(basis_function_r_cmplx)
+
+    !$OMP PARALLEL DO PRIVATE(istate,jstate)
+    do ir=1,nr
+      PIr(ir) = 0.0 
+      do istate=1,nocc
+        do jstate=1,nocc
+          PIr(ir) = PIr(ir) + dm2_JK(1,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
+        &                                                  *phir_cmplx(istate,ir)*phir_cmplx(jstate,ir) ! J
+          PIr(ir) = PIr(ir) + dm2_JK(2,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
+        &                                                  *phir_cmplx(jstate,ir)*phir_cmplx(istate,ir) ! K
+        enddo
+      enddo
+    enddo
+    !$OMP END PARALLEL DO
+
+    deallocate(phir_cmplx)
+
+  class default
+    call die('calc_density_r_batch: not real, not complex')
+  end select
+
+
+end subroutine calc_PI_r_batch
+
+
+!=========================================================================
 ! Calculate the density and its gradient on a batch for both real and complex wavefunctions
 !
 subroutine calc_density_gradr_batch(occupation,c_matrix,bfr,bf_gradx,bf_grady,bf_gradz,rhor,grad_rhor)

@@ -28,7 +28,7 @@ module m_optorb
 
  implicit none
 
- private :: lambda_conv
+ private :: lambda_conv,dm2_JK_3d
 !!***
 
  public :: opt_orb,s2_calc,num_grad_hess_orb
@@ -71,13 +71,14 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  type(integ_t),intent(inout)::INTEGd
  type(hessian_t),intent(inout)::HESSIANd
  interface 
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
   & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
   use m_definitions
   implicit none
   logical,optional,intent(in)::all_ERIs
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
   real(dp),intent(in)::Occ(NBF_occ)
+  real(dp),optional,intent(in)::DM2_JK(2,NBF_occ,NBF_occ)
   real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)
   real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
   real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
@@ -98,6 +99,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  integer::icall,icall_method,istate,iorbmax1,iorbmax2,imethod_in
  real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
 !arrays
+ real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:)::DM2_L_saved
  real(dp),allocatable,dimension(:,:)::U_mat,kappa_mat
  complex(dp),allocatable,dimension(:,:)::U_mat_cmplx,kappa_mat_cmplx
@@ -110,6 +112,11 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  istate=1
  Ediff=zero; Energy=zero; Energy_old=zero; convLambda=.false.;nogamma=.true.;
  allocated_DMNs=.false.;F_meth_printed=.false.;NR_meth_printed=.false.;all_ERIs=.false.;
+
+ ! If RS-NOFT
+ if(INTEGd%irange_sep/=0) then
+  allocate(DM2_JK(2,RDMd%NBF_occ,RDMd%NBF_occ))
+ endif 
 
  if((imethod_in==1).and.(iter==0)) then
   ELAGd%sumdiff_old=zero
@@ -197,7 +204,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF=NO_COEF) ! Build new NO_COEF and set icall=icall+1
     ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
     if(INTEGd%irange_sep/=0) then
-     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+     call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
+     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
      & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
     else
      call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
@@ -267,6 +275,11 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
    deallocate(U_mat,kappa_mat)
   endif
  endif
+
+ ! If RS-NOFT
+ if(INTEGd%irange_sep/=0) then
+  deallocate(DM2_JK)
+ endif 
 
  ! Calc. the final Energy using fixed RDMs and the new NO_COEF (before going back to occ. optimization)
  if(INTEGd%complex_ints) then
@@ -1043,6 +1056,58 @@ subroutine num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,RDMd,INTEGd,Vnn,mo_ints,NO_
  endif
 
 end subroutine num_grad_hess_orb
+!!***
+
+!!***
+!!****f* DoNOF/dm2_JK_3d
+!! NAME
+!! dm2_JK_3d
+!!
+!! FUNCTION
+!!  Build the DM2_JK to be send to the main code for computing PI(r)
+!!  (i.e. the on-top pair density)
+!!
+!! INPUTS
+!! DM2_iiii=DM2 same orb elements
+!! DM2_J=DM2 elements that use J integrals 
+!! DM2_K=DM2 elements that use K integrals 
+!! DM2_L=DM2 elements that use L integrals 
+!!
+!! OUTPUT
+!! DM2_JK
+!!
+!! PARENTS
+!!
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine dm2_JK_3d(NBF_occ,DM2_J,DM2_K,DM2_L,DM2_iiii,DM2_JK)
+!Arguments ------------------------------------
+!scalars
+ integer,intent(in)::NBF_occ
+!arrays
+ real(dp),dimension(NBF_occ),intent(inout)::DM2_iiii
+ real(dp),dimension(NBF_occ,NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
+ real(dp),dimension(2,NBF_occ,NBF_occ),intent(inout)::DM2_JK
+!Local variables ------------------------------
+!scalars
+ integer::iorb
+!arrays
+!************************************************************************
+
+ DM2_JK=zero
+
+ DM2_JK(1,:,:)=DM2_J(:,:)
+ DM2_JK(2,:,:)=DM2_K(:,:)+DM2_L(:,:) ! Time-rev. symmetry
+
+ do iorb=1,NBF_occ
+  DM2_JK(1,iorb,iorb)=DM2_iiii(iorb)
+  DM2_JK(2,iorb,iorb)=zero
+ enddo
+ 
+!-----------------------------------------------------------------------
+end subroutine dm2_JK_3d
 !!***
 
 end module m_optorb

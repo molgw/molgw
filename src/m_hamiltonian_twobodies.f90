@@ -1507,7 +1507,7 @@ end subroutine setup_exchange_genuine_ri_cmplx
 ! Calculate the exchange-correlation potential and energy
 ! * subroutine works for both real and complex wavefunctions c_matrix
 !   using "class" syntax of Fortran2003
-subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,dft_xc_in)
+subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,dft_xc_in,dm2_JK)
   implicit none
 
   integer,intent(in)         :: batch_size
@@ -1517,16 +1517,18 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
   real(dp),intent(out)       :: vxc_ao(:,:,:)
   real(dp),intent(out)       :: exc_xc
   type(dft_xc_info),intent(in),optional :: dft_xc_in(:)
+  real(dp),intent(in),optional          :: dm2_JK(:,:,:)
   !=====
   real(dp),parameter            :: TOL_RHO=1.0e-9_dp
   type(dft_xc_info),allocatable :: dft_xc_local(:)
   integer              :: nstate
-  integer              :: ibf,jbf,ispin
+  integer              :: ibf,jbf,ispin,icoord
   integer              :: ixc
   integer              :: igrid_start,igrid_end,ir
   integer              :: timing_xxdft_xc,timing_xxdft_densities,timing_xxdft_libxc,timing_xxdft_vxc
   real(dp)             :: normalization(nspin)
   real(dp)             :: normalization_core
+  real(dp)             :: rho_r_tot,s_rho_r,grad_rho_r_tot,factor_r
   real(dp),allocatable :: weight_batch(:)
   real(dp),allocatable :: tmp_batch(:,:)
   real(dp),allocatable :: basis_function_r_batch(:,:)
@@ -1537,6 +1539,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
   real(dp),allocatable :: grad_rhor_batch(:,:,:)
   real(dp),allocatable :: dedgd_r_batch(:,:,:)
   integer(C_INT)             :: nr
+  real(C_DOUBLE),allocatable :: PIr_batch(:)
   real(C_DOUBLE),allocatable :: rhor_batch(:,:)
   real(C_DOUBLE),allocatable :: sigma_batch(:,:)
   real(C_DOUBLE),allocatable :: vrho_batch(:,:)
@@ -1604,6 +1607,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
     allocate(exc_batch(nr))
     allocate(vrho_batch(nspin,nr))
     allocate(dedd_r_batch(nspin,nr))
+    if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) allocate(PIr_batch(nr))
 
     if( dft_xc_local(1)%needs_gradient ) then
       allocate(bf_gradx_batch(basis%nbf,nr))
@@ -1623,6 +1627,11 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
     if( dft_xc_local(1)%needs_gradient ) &
       call get_basis_functions_gradr_batch(basis,igrid_start,bf_gradx_batch,bf_grady_batch,bf_gradz_batch)
 
+    ! Get PI(r) on-top pair density
+    if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) then
+      call calc_PI_r_batch(occupation,dm2_JK,c_matrix,basis_function_r_batch,PIr_batch)
+    endif
+
     !
     ! Calculate the density at points r for spin up and spin down
     ! Calculate grad rho at points r for spin up and spin down
@@ -1638,6 +1647,25 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
       if( trim(x2c)=='yes' ) then
         rhor_batch(1,:)=( rhor_batch(1,:)+rhor_batch(2,:) )/2.0_dp
         rhor_batch(2,:)=rhor_batch(1,:)
+      endif
+    
+      ! Use PI(r) on-top pair density to define new spin-with densities
+      if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) then
+        !$OMP PARALLEL DO PRIVATE(rho_r_tot,s_rho_r)
+        do ir=1,nr
+          rho_r_tot=rhor_batch(1,ir)+rhor_batch(2,ir)
+          if( abs(rho_r_tot) > 1d-6 ) then
+            s_rho_r=1.0_dp-4.0_dp*PIr_batch(ir)/(rho_r_tot*rho_r_tot)
+            if ( s_rho_r > 1d-6 ) then
+              s_rho_r=rho_r_tot*dsqrt(s_rho_r) 
+            else
+              s_rho_r=0.0_dp
+            endif
+            rhor_batch(1,ir)=0.5_dp*(rho_r_tot+s_rho_r) 
+            rhor_batch(2,ir)=0.5_dp*(rho_r_tot-s_rho_r) 
+          endif
+        enddo
+        !$OMP END PARALLEL DO
       endif
 
     else
@@ -1656,6 +1684,33 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
         rhor_batch(2,:)=rhor_batch(1,:)
         grad_rhor_batch(1,:,:)=( grad_rhor_batch(1,:,:) + grad_rhor_batch(2,:,:) )/2.0_dp
         grad_rhor_batch(2,:,:)=grad_rhor_batch(1,:,:)
+      endif
+
+      ! Use PI(r) on-top pair density to define new spin-with densities
+      if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) then
+        !$OMP PARALLEL DO PRIVATE(rho_r_tot,s_rho_r,grad_rho_r_tot,factor_r,icoord)
+        do ir=1,nr
+          rho_r_tot=rhor_batch(1,ir)+rhor_batch(2,ir)
+          if( abs(rho_r_tot) > 1d-6 ) then
+            s_rho_r=1.0_dp-4.0_dp*PIr_batch(ir)/(rho_r_tot*rho_r_tot)
+            if ( s_rho_r > 1d-6 ) then
+              s_rho_r=rho_r_tot*dsqrt(s_rho_r) 
+            else
+              s_rho_r=0.0_dp
+            endif
+            ! rho_r
+            rhor_batch(1,ir)=0.5_dp*(rho_r_tot+s_rho_r) 
+            rhor_batch(2,ir)=0.5_dp*(rho_r_tot-s_rho_r)
+            factor_r=rhor_batch(1,ir)/rho_r_tot
+            ! grad_r
+            do icoord=1,3
+              grad_rho_r_tot=grad_rhor_batch(1,ir,icoord)+grad_rhor_batch(2,ir,icoord)
+              grad_rhor_batch(1,ir,icoord)=factor_r*grad_rho_r_tot
+              grad_rhor_batch(2,ir,icoord)=(1.0_dp-factor_r)*grad_rho_r_tot
+            enddo
+          endif
+        enddo
+        !$OMP END PARALLEL DO
       endif
 
       !$OMP PARALLEL DO
@@ -1809,6 +1864,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
     deallocate(basis_function_r_batch)
     deallocate(exc_batch)
     deallocate(rhor_batch)
+    if( ( calc_type%is_noft .and. nspin==2 ) .and. present(dm2_JK) ) deallocate(PIr_batch)
     deallocate(vrho_batch)
     deallocate(dedd_r_batch)
     if( dft_xc_local(1)%needs_gradient ) then

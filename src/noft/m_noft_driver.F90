@@ -103,13 +103,14 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
+  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
   & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
   use m_definitions
   implicit none
   logical,optional,intent(in)::all_ERIs
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
   real(dp),intent(in)::Occ(NBF_occ)
+  real(dp),optional,intent(in)::DM2_JK(2,NBF_occ,NBF_occ)
   real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)
   real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
   real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)

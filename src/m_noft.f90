@@ -430,13 +430,14 @@ end subroutine noft_energy
 
 
 !==================================================================
-subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
+subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
                    NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
   implicit none
 
   logical,optional,intent(in)     :: all_ERIs
   integer,intent(in)              :: nbf,nstate_occ,nstate_kji
   real(dp),intent(in)             :: Occ(nstate_occ)
+  real(dp),optional,intent(in)    :: DM2_JK(2,nstate_occ,nstate_occ)
   real(dp),optional,intent(in)    :: NO_COEF(nbf,nbf)
   real(dp),optional,intent(inout) :: hCORE(nbf,nbf)
   real(dp),optional,intent(inout) :: ERImol(nbf,nstate_kji,nstate_kji,nstate_kji)
@@ -515,7 +516,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,
             enddo
           enddo
         endif
-        call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT)
+        call dft_exc_vxc_batch(BATCH_SIZE,basis_pointer,occupation,tmp_c_matrix,hamiltonian_xc,ExcDFT,dm2_JK=DM2_JK)
       endif
       hamiltonian_xc(:,:,1)=SUM(hamiltonian_xc(:,:,:),DIM=3)
       if ( nspin==2 ) hamiltonian_xc(:,:,1)=0.5e0*hamiltonian_xc(:,:,1)
