@@ -297,6 +297,7 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
    ! Setup the grids for the quadrature of DFT potential/energy
    irs_noft=0
    if( calc_type%is_dft .and. noft_dft=='yes' ) then
+     if( nspin /= 2 ) call die('molgw: RS-NOFT calculations need nspin=2')
      if(noft_rsinter=='yes') then
        irs_noft=1
      else
@@ -500,7 +501,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
       ! MRM: The first call of mo_ints contains occ(1:Nfrozen+Npairs)=2.0
       occupation(:,:)=zero; hamiltonian_xc(:,:,:)=zero;
       if( ANY(Occ(:nstate_occ)>completely_empty) ) then
-        if ( nspin==1 ) then
+        if ( nspin==1 ) then ! In principle, this option should not be used because we need nspin=2 to use Pi(r)
           occupation(:nstate_occ,1)=2.0e0*Occ(:nstate_occ)
         else
           ! C1=0.999000999; C2=0.000999001;
