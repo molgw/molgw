@@ -151,7 +151,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   & INTEGd%ERI_L_cmplx,nogamma=nogamma)
  else
   if(INTEGd%irange_sep/=0) then
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
+   call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
    & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
   else
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
