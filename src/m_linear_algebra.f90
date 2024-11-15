@@ -9,7 +9,7 @@
 #include "molgw.h"
 module m_linear_algebra
   use m_definitions
-  use m_warning,only: die
+  use m_warning,only: die, issue_warning
 
   interface invert
     module procedure invert_dp
@@ -321,17 +321,20 @@ subroutine diagonalize_dp(flavor,matrix,eigval,eigvec)
   real(dp)             :: ABSTOL
   real(dp),external    :: DLAMCH
   integer              :: neig
+  real(sp),allocatable :: work_sp(:)
+  real(sp),allocatable :: matrix_sp(:,:)
+  real(sp),allocatable :: eigval_sp(:)
+  real(sp),allocatable :: eigvec_sp(:,:)
   !=====
 
   nmat = SIZE(matrix,DIM=1)
 
   eigvec(:,:) = matrix(:,:)
 
-  lwork = -1
-  allocate(work(1))
-
   select case(flavor)
   case('r','R')
+    lwork = -1
+    allocate(work(1))
     allocate(iwork(1))
     allocate(matrix_tmp(nmat,nmat))
     allocate(isuppz(2*nmat))
@@ -340,37 +343,73 @@ subroutine diagonalize_dp(flavor,matrix,eigval,eigvec)
     call DSYEVR('V','A','L',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
     liwork = iwork(1)
     deallocate(iwork)
-  case('d','D')
-    allocate(iwork(1))
-    call DSYEVD('V','L',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
-    liwork = iwork(1)
-    deallocate(iwork)
-  case default
-    call DSYEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,info)
-  end select
+    lwork = NINT(work(1))
+    deallocate(work)
 
-  lwork = NINT(work(1))
-  deallocate(work)
+    if( info /= 0 ) call die('diagonalize_dp: diago failure 1')
 
-  if( info /= 0 ) call die('diagonalize_dp: diago failure 1')
-
-  allocate(work(lwork))
-
-  select case(flavor)
-  case('r','R')
+    allocate(work(lwork))
     allocate(iwork(liwork))
     call DSYEVR('V','A','L',nmat,matrix_tmp,nmat,0.d0,0.d0,1,1,ABSTOL,neig,eigval,eigvec,nmat,isuppz,work,lwork,iwork,liwork,info)
     deallocate(iwork,isuppz)
     deallocate(matrix_tmp)
+    deallocate(work)
+
   case('d','D')
+    lwork = -1
+    allocate(work(1))
+    allocate(iwork(1))
+    call DSYEVD('V','L',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
+    liwork = iwork(1)
+    deallocate(iwork)
+    lwork = NINT(work(1))
+    deallocate(work)
+
+    if( info /= 0 ) call die('diagonalize_dp: diago failure 1')
+
+    allocate(work(lwork))
     allocate(iwork(liwork))
     call DSYEVD('V','L',nmat,eigvec,nmat,eigval,work,lwork,iwork,liwork,info)
     deallocate(iwork)
+    deallocate(work)
+
+  case('s','S')
+    call issue_warning('Experimental feature: Convert double to single precision for diagonalization to improve performance. ' // &
+                       'May affect accuracy.')
+
+    lwork = -1
+    allocate(work_sp(1))
+    allocate(eigvec_sp(nmat,nmat))
+    allocate(eigval_sp(nmat))
+    ! double prec to single prec conversion
+    eigvec_sp(:,:) = eigvec(:,:)
+    call SSYEV('V', 'L', nmat, eigvec_sp, nmat, eigval_sp, work_sp, lwork, info)
+    lwork = NINT(work_sp(1))
+    deallocate(work_sp)
+
+    if( info /= 0 ) call die('diagonalize_dp: diago failure 1')
+
+    allocate(work_sp(lwork))
+    call SSYEV('V', 'L', nmat, eigvec_sp, nmat, eigval_sp, work_sp, lwork, info)
+    deallocate(work_sp)
+    ! single prec to double prec conversion
+    eigval(:)   = eigval_sp(:)
+    eigvec(:,:) = eigvec_sp(:,:)
+
   case default
+    lwork = -1
+    allocate(work(1))
     call DSYEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,info)
+    lwork = NINT(work(1))
+    deallocate(work)
+
+    if( info /= 0 ) call die('diagonalize_dp: diago failure 1')
+
+    allocate(work(lwork))
+    call DSYEV('V','L',nmat,eigvec,nmat,eigval,work,lwork,info)
+    deallocate(work)
   end select
 
-  deallocate(work)
 
   if( info /= 0 ) call die('diagonalize_dp: diago failure 2')
 
