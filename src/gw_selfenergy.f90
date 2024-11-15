@@ -66,6 +66,43 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
   energy_gw = 0.0_dp
   se%sigma(:,:,:) = 0.0_dp
 
+#if 0
+  block
+  real(dp), allocatable :: wcoeff(:,:)
+  integer :: file_w, file_e, file_omega
+
+  if( nsemin > ncore_G+1 .OR. nsemax < nvirtual_G-1 ) then
+    call die('increase the selfenergy_state_range for dumping')
+  endif
+
+  open(newunit=file_e, file='energies.dat', form='formatted', status='replace')
+  write(file_e,*) nvirtual_G-ncore_G-1
+  do istate=ncore_G+1,nvirtual_G-1
+    write(file_e,*) energy(istate,1)
+  enddo
+  close(file_e)
+  open(newunit=file_omega, file='omegas.dat', form='formatted', status='replace')
+  write(file_omega,*) wpol%npole_reso
+  do ipole=1,wpol%npole_reso
+    write(file_omega,*) wpol%pole(ipole)
+  enddo
+  close(file_omega)
+  open(newunit=file_w, file='w.bin', form='unformatted', access='stream', status='replace')
+  call clean_allocate('w coeff for dumping',wcoeff,1,wpol%npole_reso,ncore_G+1,nvirtual_G-1)
+  do ispin=1,nspin
+    do istate=ncore_G+1,nvirtual_G-1
+      ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+      wcoeff(:,ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,ispin) )
+      call auxil%sum(wcoeff)
+      write(file_w) wcoeff(:,:)
+    enddo
+  enddo
+  call clean_deallocate('w coeff for dumping',wcoeff)
+  close(file_w)
+  end block
+  call die('DUMP IS DONE! this is normal')
+#endif
+
   do ispin=1,nspin
     do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
@@ -97,7 +134,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
       ! The negative poles of W go with the poles of empty states in G
       fact_full_i   = occupation(istate,ispin) / spin_fact
       fact_empty_i = (spin_fact - occupation(istate,ispin)) / spin_fact
-
 
       do ipole=1,wpol%npole_reso
 
