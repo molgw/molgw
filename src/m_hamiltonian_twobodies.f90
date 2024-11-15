@@ -1627,104 +1627,92 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ao,exc_xc,
     if( dft_xc_local(1)%needs_gradient ) &
       call get_basis_functions_gradr_batch(basis,igrid_start,bf_gradx_batch,bf_grady_batch,bf_gradz_batch)
 
-    ! Get PI(r) on-top pair density
-    if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) then
-      call calc_PI_r_batch(occupation,dm2_JK,c_matrix,basis_function_r_batch,PIr_batch)
-    endif
-
-    !
     ! Calculate the density at points r for spin up and spin down
     ! Calculate grad rho at points r for spin up and spin down
-    if( .NOT. dft_xc_local(1)%needs_gradient ) then
-      call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
-      if(ALLOCATED(rhocore)) then
-        do ispin=1,nspin
-          rhor_batch(ispin,:) = rhor_batch(ispin,:) + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
-        enddo
+    ! Calculate PI at points r (on-top pair density)
+    if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) then ! RS-NOFT
+
+      if( .NOT. dft_xc_local(1)%needs_gradient ) then
+        call die('RS-NOFT not available for LDA functionals')
       endif
 
-      ! X2C average them
-      if( trim(x2c)=='yes' ) then
-        rhor_batch(1,:)=( rhor_batch(1,:)+rhor_batch(2,:) )/2.0_dp
-        rhor_batch(2,:)=rhor_batch(1,:)
-      endif
-    
-      ! Use PI(r) on-top pair density to define new spin-with densities
-      if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) then
-        !$OMP PARALLEL DO PRIVATE(rho_r_tot,s_rho_r)
-        do ir=1,nr
-          rho_r_tot=rhor_batch(1,ir)+rhor_batch(2,ir)
-          if( abs(rho_r_tot) > 1d-6 ) then
-            s_rho_r=1.0_dp-4.0_dp*PIr_batch(ir)/(rho_r_tot*rho_r_tot)
-            if ( s_rho_r > 1d-6 ) then
-              s_rho_r=rho_r_tot*dsqrt(s_rho_r) 
-            else
-              s_rho_r=0.0_dp
-            endif
-            rhor_batch(1,ir)=0.5_dp*(rho_r_tot+s_rho_r) 
-            rhor_batch(2,ir)=0.5_dp*(rho_r_tot-s_rho_r) 
-          endif
-        enddo
-        !$OMP END PARALLEL DO
-      endif
+      call calc_PI_dens_grad_r_batch(occupation,dm2_JK,c_matrix,basis_function_r_batch,PIr_batch,&
+      &                              bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
 
-    else
-      call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch, &
-                                   bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
-      if(ALLOCATED(rhocore)) then
-        do ispin=1,nspin
-          rhor_batch(ispin,:)        = rhor_batch(ispin,:)        + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
-          grad_rhor_batch(ispin,:,:) = grad_rhor_batch(ispin,:,:) + rhocore_grad(igrid_start:igrid_end,:) / REAL(nspin,dp)
-        enddo
-      endif
-
-      ! X2C average them
-      if( trim(x2c)=='yes' ) then
-        rhor_batch(1,:)=( rhor_batch(1,:)+rhor_batch(2,:) )/2.0_dp
-        rhor_batch(2,:)=rhor_batch(1,:)
-        grad_rhor_batch(1,:,:)=( grad_rhor_batch(1,:,:) + grad_rhor_batch(2,:,:) )/2.0_dp
-        grad_rhor_batch(2,:,:)=grad_rhor_batch(1,:,:)
-      endif
-
-      ! Use PI(r) on-top pair density to define new spin-with densities
-      if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) then
-        !$OMP PARALLEL DO PRIVATE(rho_r_tot,s_rho_r,grad_rho_r_tot,factor_r,icoord)
-        do ir=1,nr
-          rho_r_tot=rhor_batch(1,ir)+rhor_batch(2,ir)
-          if( abs(rho_r_tot) > 1d-6 ) then
-            s_rho_r=1.0_dp-4.0_dp*PIr_batch(ir)/(rho_r_tot*rho_r_tot)
-            if ( s_rho_r > 1d-6 ) then
-              s_rho_r=rho_r_tot*dsqrt(s_rho_r) 
-            else
-              s_rho_r=0.0_dp
-            endif
-            ! rho_r
-            rhor_batch(1,ir)=0.5_dp*(rho_r_tot+s_rho_r) 
-            rhor_batch(2,ir)=0.5_dp*(rho_r_tot-s_rho_r)
-            factor_r=rhor_batch(1,ir)/rho_r_tot
-            ! grad_r
-            do icoord=1,3
-              grad_rho_r_tot=grad_rhor_batch(1,ir,icoord)+grad_rhor_batch(2,ir,icoord)
-              grad_rhor_batch(1,ir,icoord)=factor_r*grad_rho_r_tot
-              grad_rhor_batch(2,ir,icoord)=(1.0_dp-factor_r)*grad_rho_r_tot
-            enddo
-          endif
-        enddo
-        !$OMP END PARALLEL DO
-      endif
-
-      !$OMP PARALLEL DO
+      !$OMP PARALLEL DO PRIVATE(rho_r_tot,s_rho_r,grad_rho_r_tot,factor_r,icoord)
       do ir=1,nr
-        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
-        if( nspin == 2 ) then
-          sigma_batch(2,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(2,ir,:) )
-          sigma_batch(3,ir) = DOT_PRODUCT( grad_rhor_batch(2,ir,:) , grad_rhor_batch(2,ir,:) )
+        rho_r_tot=rhor_batch(1,ir)+rhor_batch(2,ir)
+        if( abs(rho_r_tot) > 1d-6 ) then
+          s_rho_r=1.0_dp-4.0_dp*PIr_batch(ir)/(rho_r_tot*rho_r_tot)
+          if ( s_rho_r > 1d-6 ) then
+            s_rho_r=rho_r_tot*dsqrt(s_rho_r) 
+          else
+            s_rho_r=0.0_dp
+          endif
+          ! rho_r
+          rhor_batch(1,ir)=0.5_dp*(rho_r_tot+s_rho_r) 
+          rhor_batch(2,ir)=0.5_dp*(rho_r_tot-s_rho_r)
+          factor_r=rhor_batch(1,ir)/rho_r_tot
+          ! grad_r
+          do icoord=1,3
+            grad_rho_r_tot=grad_rhor_batch(1,ir,icoord)+grad_rhor_batch(2,ir,icoord)
+            grad_rhor_batch(1,ir,icoord)=factor_r*grad_rho_r_tot
+            grad_rhor_batch(2,ir,icoord)=(1.0_dp-factor_r)*grad_rho_r_tot
+          enddo
         endif
+        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
+        sigma_batch(2,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(2,ir,:) )
+        sigma_batch(3,ir) = DOT_PRODUCT( grad_rhor_batch(2,ir,:) , grad_rhor_batch(2,ir,:) )
       enddo
       !$OMP END PARALLEL DO
 
-    endif
+    else ! KS-DFT
+
+      if( .NOT. dft_xc_local(1)%needs_gradient ) then
+        call calc_density_r_batch(occupation,c_matrix,basis_function_r_batch,rhor_batch)
+        if(ALLOCATED(rhocore)) then
+          do ispin=1,nspin
+            rhor_batch(ispin,:) = rhor_batch(ispin,:) + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
+          enddo
+        endif
+      
+        ! X2C average them
+        if( trim(x2c)=='yes' ) then
+          rhor_batch(1,:)=( rhor_batch(1,:)+rhor_batch(2,:) )/2.0_dp
+          rhor_batch(2,:)=rhor_batch(1,:)
+        endif
+      
+      else
+        call calc_density_gradr_batch(occupation,c_matrix,basis_function_r_batch, &
+                                     bf_gradx_batch,bf_grady_batch,bf_gradz_batch,rhor_batch,grad_rhor_batch)
+        if(ALLOCATED(rhocore)) then
+          do ispin=1,nspin
+            rhor_batch(ispin,:)        = rhor_batch(ispin,:)        + rhocore(igrid_start:igrid_end) / REAL(nspin,dp)
+            grad_rhor_batch(ispin,:,:) = grad_rhor_batch(ispin,:,:) + rhocore_grad(igrid_start:igrid_end,:) / REAL(nspin,dp)
+          enddo
+        endif
+      
+        ! X2C average them
+        if( trim(x2c)=='yes' ) then
+          rhor_batch(1,:)=( rhor_batch(1,:)+rhor_batch(2,:) )/2.0_dp
+          rhor_batch(2,:)=rhor_batch(1,:)
+          grad_rhor_batch(1,:,:)=( grad_rhor_batch(1,:,:) + grad_rhor_batch(2,:,:) )/2.0_dp
+          grad_rhor_batch(2,:,:)=grad_rhor_batch(1,:,:)
+        endif
+      
+        !$OMP PARALLEL DO
+        do ir=1,nr
+          sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
+          if( nspin == 2 ) then
+            sigma_batch(2,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(2,ir,:) )
+            sigma_batch(3,ir) = DOT_PRODUCT( grad_rhor_batch(2,ir,:) , grad_rhor_batch(2,ir,:) )
+          endif
+        enddo
+        !$OMP END PARALLEL DO
+      
+      endif
   
+    endif ! selection RS-NOFT or normal KS-DFT
 
     ! Normalization
     normalization(:)      = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )

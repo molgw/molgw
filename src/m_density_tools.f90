@@ -139,23 +139,35 @@ end subroutine calc_density_r_batch
 
 
 !=========================================================================
-! Calculate the on-top pair density on a batch for both real and complex wavefunctions
+! Calculate the density, the gradient, and the on-top pair density on a batch for both real and complex wavefunctions
 !
-subroutine calc_PI_r_batch(occupation,dm2_JK,c_matrix,basis_function_r,PIr)
+subroutine calc_PI_dens_grad_r_batch(occupation,dm2_JK,c_matrix,bfr,PIr,&
+ &                                  bf_gradx,bf_grady,bf_gradz,rhor,grad_rhor)
   implicit none
 
   real(dp),intent(in)        :: occupation(:,:)
   real(dp),intent(in)        :: dm2_JK(:,:,:)
   class(*),intent(in)        :: c_matrix(:,:,:)
-  real(dp),intent(in)        :: basis_function_r(:,:)
+  real(dp),intent(in)        :: bfr(:,:)
   real(dp),intent(out)       :: PIr(:)
+  real(dp),intent(in)        :: bf_gradx(:,:)
+  real(dp),intent(in)        :: bf_grady(:,:)
+  real(dp),intent(in)        :: bf_gradz(:,:)
+  real(dp),intent(out)       :: rhor(:,:)
+  real(dp),intent(out)       :: grad_rhor(:,:,:)
   !=====
   integer                 :: nspin,nbf,nstate,nr
-  integer                 :: istate,jstate,ir
+  integer                 :: istate,jstate,ispin,ir
   integer                 :: nocc
   real(dp),allocatable    :: phir(:,:)
+  real(dp),allocatable    :: phir_gradx(:,:)
+  real(dp),allocatable    :: phir_grady(:,:)
+  real(dp),allocatable    :: phir_gradz(:,:)
   complex(dp),allocatable :: phir_cmplx(:,:)
-  complex(dp),allocatable :: basis_function_r_cmplx(:,:)
+  complex(dp),allocatable :: tmp_cmplx(:,:)
+  complex(dp),allocatable :: phir_gradx_cmplx(:,:)
+  complex(dp),allocatable :: phir_grady_cmplx(:,:)
+  complex(dp),allocatable :: phir_gradz_cmplx(:,:)
   !=====
 
   nbf    = SIZE(c_matrix,DIM=1)
@@ -164,63 +176,95 @@ subroutine calc_PI_r_batch(occupation,dm2_JK,c_matrix,basis_function_r,PIr)
   nr     = SIZE(PIr,DIM=1)
   nocc   = get_number_occupied_states(occupation)
 
-  if( nocc > nstate ) call die('calc_density_r_batch: c_matrix does not contain all the occupied states')
+  if( nocc > nstate ) call die('calc_PIr_rho_grad_r_batch: c_matrix does not contain all the occupied states')
 
+  do ispin=1,nspin
 
-  !phir(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,1)) , basis_function_r(:,:) )
+    select type(c_matrix)
+    type is (real(dp))
 
-  select type(c_matrix)
-  type is (real(dp))
+      allocate(phir(nocc,nr))
+      allocate(phir_gradx(nocc,nr))
+      allocate(phir_grady(nocc,nr))
+      allocate(phir_gradz(nocc,nr))
+      !phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bfr(:,:) )
+      call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bfr(1,1),nbf,0.d0,phir(1,1),nocc)
+      !phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_gradx(:,:) )
+      !phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_grady(:,:) )
+      !phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_gradz(:,:) )
+      call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bf_gradx(1,1),nbf,0.d0,phir_gradx(1,1),nocc)
+      call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bf_grady(1,1),nbf,0.d0,phir_grady(1,1),nocc)
+      call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,ispin),nbf,bf_gradz(1,1),nbf,0.d0,phir_gradz(1,1),nocc)
 
-    allocate(phir(nocc,nr))
-
-    call DGEMM('T','N',nocc,nr,nbf,1.0d0,c_matrix(1,1,1),nbf,basis_function_r(1,1),nbf,0.d0,phir(1,1),nocc)
-
-    !$OMP PARALLEL DO PRIVATE(istate,jstate)
-    do ir=1,nr
-      PIr(ir) = 0.0
-      do istate=1,nocc
-        do jstate=1,nocc
-          PIr(ir) = PIr(ir) + dm2_JK(1,istate,jstate)*phir(istate,ir)*phir(jstate,ir)*phir(istate,ir)*phir(jstate,ir) ! J
-          PIr(ir) = PIr(ir) + dm2_JK(2,istate,jstate)*phir(istate,ir)*phir(jstate,ir)*phir(jstate,ir)*phir(istate,ir) ! K
-        enddo
+      !$OMP PARALLEL DO PRIVATE(istate,jstate)  
+      do ir=1,nr
+        rhor(ispin,ir)        = SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
+        grad_rhor(ispin,ir,1) = 2.0_dp * SUM(  phir(:,ir) * phir_gradx(:,ir) * occupation(:nocc,ispin) )
+        grad_rhor(ispin,ir,2) = 2.0_dp * SUM(  phir(:,ir) * phir_grady(:,ir) * occupation(:nocc,ispin) )
+        grad_rhor(ispin,ir,3) = 2.0_dp * SUM(  phir(:,ir) * phir_gradz(:,ir) * occupation(:nocc,ispin) )
+        if ( ispin==1 ) then
+          PIr(ir) = 0.0
+          do istate=1,nocc
+            do jstate=1,nocc
+              PIr(ir) = PIr(ir) + dm2_JK(1,istate,jstate)*phir(istate,ir)*phir(jstate,ir)*phir(istate,ir)*phir(jstate,ir) ! J
+              PIr(ir) = PIr(ir) + dm2_JK(2,istate,jstate)*phir(istate,ir)*phir(jstate,ir)*phir(jstate,ir)*phir(istate,ir) ! K
+            enddo
+          enddo
+        endif
       enddo
-    enddo
-    !$OMP END PARALLEL DO
+      !$OMP END PARALLEL DO
+      deallocate(phir)
+      deallocate(phir_gradx,phir_grady,phir_gradz)
 
-    deallocate(phir)
+    type is (complex(dp))
+      allocate(phir_cmplx(nocc,nr))
+      allocate(phir_gradx_cmplx(nocc,nr))
+      allocate(phir_grady_cmplx(nocc,nr))
+      allocate(phir_gradz_cmplx(nocc,nr))
+      allocate(tmp_cmplx(nbf,nr))
 
-  type is (complex(dp))
+      tmp_cmplx(:,:) = bfr(:,:)
+      call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx(1,1),nbf,COMPLEX_ZERO,phir_cmplx(1,1),nocc)
+      tmp_cmplx(:,:) = bf_gradx(:,:)
+      call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx(1,1),nbf,COMPLEX_ZERO,phir_gradx_cmplx(1,1),nocc)
+      tmp_cmplx(:,:) = bf_grady(:,:)
+      call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx(1,1),nbf,COMPLEX_ZERO,phir_grady_cmplx(1,1),nocc)
+      tmp_cmplx(:,:) = bf_gradz(:,:)
+      call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx(1,1),nbf,COMPLEX_ZERO,phir_gradz_cmplx(1,1),nocc)
 
-    allocate(phir_cmplx(nocc,nr))
-    allocate(basis_function_r_cmplx(nbf,nr))
-    basis_function_r_cmplx(:,:) = basis_function_r(:,:)
-    call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,1),nbf, &
-              basis_function_r_cmplx(1,1),nbf,COMPLEX_ZERO,phir_cmplx(1,1),nocc)
-    deallocate(basis_function_r_cmplx)
-
-    !$OMP PARALLEL DO PRIVATE(istate,jstate)
-    do ir=1,nr
-      PIr(ir) = 0.0 
-      do istate=1,nocc
-        do jstate=1,nocc
-          PIr(ir) = PIr(ir) + dm2_JK(1,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
-        &                                                  *phir_cmplx(istate,ir)*phir_cmplx(jstate,ir) ! J
-          PIr(ir) = PIr(ir) + dm2_JK(2,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
-        &                                                  *phir_cmplx(jstate,ir)*phir_cmplx(istate,ir) ! K
-        enddo
+      !$OMP PARALLEL DO
+      do ir=1,nr
+        rhor(ispin,ir) = SUM( ABS(phir_cmplx(:,ir))**2 * occupation(:nocc,ispin) )
+        grad_rhor(ispin,ir,1) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_gradx_cmplx(:,ir)) * occupation(:nocc,ispin ) ), dp)
+        grad_rhor(ispin,ir,2) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_grady_cmplx(:,ir)) * occupation(:nocc,ispin ) ), dp)
+        grad_rhor(ispin,ir,3) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_gradz_cmplx(:,ir)) * occupation(:nocc,ispin ) ), dp)
+        if ( ispin==1 ) then
+          PIr(ir) = 0.0 
+          do istate=1,nocc
+            do jstate=1,nocc
+              PIr(ir) = PIr(ir) + dm2_JK(1,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
+            &                                                  *phir_cmplx(istate,ir)*phir_cmplx(jstate,ir) ! J
+              PIr(ir) = PIr(ir) + dm2_JK(2,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
+            &                                                  *phir_cmplx(jstate,ir)*phir_cmplx(istate,ir) ! K
+            enddo
+          enddo
+        endif
       enddo
-    enddo
-    !$OMP END PARALLEL DO
+      !$OMP END PARALLEL DO
 
-    deallocate(phir_cmplx)
+      deallocate(tmp_cmplx)
+      deallocate(phir_cmplx)
+      deallocate(phir_gradx_cmplx,phir_grady_cmplx,phir_gradz_cmplx)
 
-  class default
-    call die('calc_density_r_batch: not real, not complex')
-  end select
+    class default
+      call die('calc_density_gradr_batch: not real, not complex')
+    end select
 
 
-end subroutine calc_PI_r_batch
+  enddo
+
+
+end subroutine calc_PI_dens_grad_r_batch
 
 
 !=========================================================================
