@@ -994,13 +994,13 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
       deallocate(work)
 
     case('s','S')
-      call issue_warning('Experimental feature: Convert double to single precision for diagonalization to improve performance. ' // &
-                         'May affect accuracy.')
+      call issue_warning('Experimental feature: Convert double to single precision for diagonalization ' // & 
+                         'to improve performance. May affect accuracy.')
       lwork = -1
       allocate(work_sp(3))
       allocate(eigval_sp(nglobal))
-      allocate(matrix_sp(SIZE(matrix,DIM=1),SIZE(matrix,DIM=2))
-      allocate(eigvec_sp(SIZE(eigvec,DIM=1),SIZE(eigvec,DIM=2))
+      allocate(matrix_sp(SIZE(matrix,DIM=1),SIZE(matrix,DIM=2)))
+      allocate(eigvec_sp(SIZE(eigvec,DIM=1),SIZE(eigvec,DIM=2)))
       matrix_sp(:,:) = matrix(:,:)
       call PSSYEV('V','L',nglobal,matrix_sp,1,1,desc,eigval_sp,eigvec_sp,1,1,desc_eigvec,work_sp,lwork,info)
 
