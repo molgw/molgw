@@ -1759,14 +1759,6 @@ noft_readOCC:
   default: 'no'
   comment: Read occ. from DM1 file and use them to compute Gammas (the indep. variables in occ. optimization). Default= 'no'.
 
-noft_sta:
-  family: noft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Decide whether to use PNOF7 or PNOF7s, but it also affects GNOF (default= 'no', use 'PNOF7' and 'GNOF').
-
 noft_NR_OCC:
   family: noft
   datatype: yes/no

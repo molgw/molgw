@@ -90,13 +90,15 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
   if(noft_readCOEF=='yes') ireadCOEF=1
   if(noft_readFdiag=='yes') ireadFdiag=1
   if(noft_readGAMMAS=='yes') ireadGAMMAs=1
-  if(noft_sta=='yes') ista=1
   if(noft_NR_OCC=='yes') imethocc=2
   if(noft_QC_ORB=='yes') imethorb=2
 
   select case(capitalize(noft_functional))
   case('GNOF')
     inof=8
+  case('PNOF7S')
+    inof=7
+    ista=1
   case('PNOF7')
     inof=7
   case('PNOF5')
