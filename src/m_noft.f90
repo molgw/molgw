@@ -94,6 +94,9 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
   if(noft_QC_ORB=='yes') imethorb=2
 
   select case(capitalize(noft_functional))
+  case('GNOFS')
+    inof=8
+    ista=3
   case('GNOF')
     inof=8
   case('PNOF7S')

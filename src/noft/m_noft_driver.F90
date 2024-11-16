@@ -661,6 +661,10 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a,i12)') ' GNOF-stat version selected Istat  ',Ista_in
   call write_output(msg)
  endif
+ if(INOF_in==8 .and. Ista_in==3) then
+  write(msg,'(a,i12)') ' GNOFs version selected Istat      ',Ista_in
+  call write_output(msg)
+ endif
  if(INOF_in==0) then
   write(msg,'(a)') ' Using Hartree-Fock approximation'
   call write_output(msg)

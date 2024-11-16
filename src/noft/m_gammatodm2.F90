@@ -1199,7 +1199,7 @@ subroutine dm2_gnof(RDMd,Docc_gamma,Docc_dyn,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,D
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  allocate(FIs(RDMd%NBF_occ),DFIs(RDMd%NBF_occ,RDMd%Ngammas))
  FIs = zero; DFIs = zero;
- if(RDMd%Ista==0) then
+ if(RDMd%Ista==0 .or. RDMd%Ista==3) then
 !- - - - - - - - - - - - - - - - - - - - - - - - - - -  
 !      FIs = (Np*Hp)^1/2
 !- - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1264,7 +1264,7 @@ subroutine dm2_gnof(RDMd,Docc_gamma,Docc_dyn,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,D
  deallocate(FIs,DFIs)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !   Dynamic
-! (if Ista = 1 it is ignored and we only retain the non-dyn/static contrib)
+! (if Ista = 1 or 3, it is ignored and we only retain the non-dyn/static contrib)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  if(RDMd%Ista==0) then
   do iorb=RDMd%Nfrozen+1,RDMd%Nbeta_elect
