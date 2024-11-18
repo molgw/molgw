@@ -130,6 +130,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !Local variables ------------------------------
 !scalars
  logical::ekt,diagLpL,restart_param,keep_occs,keep_orbs,cpx_mos,all_ERI_in,hessian_in
+ logical::file_exists
  integer::iorb,iter,ifcidump,irs_noft
  integer::iorbp,iorbq,iunit
  real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val,maxdiff_lambda
@@ -146,7 +147,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !************************************************************************
 
  diagLpL=.true.; restart_param=.false.; ifcidump=0; keep_orbs=.false.; keep_occs=.false.; cpx_mos=.false.;
- irs_noft=0; all_ERI_in=.false.; hessian_in=.false.;
+ irs_noft=0; all_ERI_in=.false.; hessian_in=.false.; file_exists=.false.;
     
  ! Initialize output
  call gitversion(sha_git) 
@@ -384,6 +385,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 
   ! Check maximum number of iterations
   if(iter>=itermax) exit
+
+  ! Check stop file
+  inquire(file='STOP_NOFT_SCF',exist=file_exists)
+  if(file_exists) exit
 
  enddo
 
