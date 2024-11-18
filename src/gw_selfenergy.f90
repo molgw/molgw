@@ -17,6 +17,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
   use m_spectral_function
   use m_eri_ao_mo
   use m_selfenergy_tools
+  use m_scalapack
   implicit none
 
   integer,intent(in)                  :: nstate,selfenergy_approx

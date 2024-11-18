@@ -159,7 +159,7 @@ all: molgw
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o m_nofoutput.o basis_2_basisrel.o
 
-level005: m_warning.o real_spherical_harmonics.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o
+level005: m_warning.o real_spherical_harmonics.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_scalapack_interface.o
 
 level008: m_mpi_tools.o m_elag.o
 
@@ -218,7 +218,7 @@ level100: pt_selfenergy.o static_polarizability.o gw_selfenergy.o mp2.o force.o 
         molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
-                        m_mpi.o m_mpi_tools.o m_hdf5_tools.o \
+                        m_mpi.o m_mpi_tools.o m_hdf5_tools.o m_scalapack_interface.o \
                         m_libxc_tools.o m_scalapack.o m_timing.o m_memory.o m_inputparam.o \
                         m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
                         m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o m_libcint_tools.o \
@@ -533,7 +533,7 @@ m_atoms.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_linear_algebra.f90 m
 m_ecp.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_string_tools.f90 m_ecp.f90
 	$(FC_W_OPTS) -c m_ecp.f90 $(LIBXC_INCS)
 
-m_scalapack.o: m_definitions.f90 m_warning.f90 m_linear_algebra.f90 m_mpi.f90 m_scalapack.f90
+m_scalapack.o: m_definitions.f90 m_warning.f90 m_linear_algebra.f90 m_mpi.f90 m_scalapack_interface.f90 m_scalapack.f90
 	$(FC_W_OPTS) -c m_scalapack.f90 $(LIBXC_INCS)
 
 m_mpi.o: m_definitions.f90 m_warning.f90 m_mpi_tools.f90  \
@@ -572,6 +572,9 @@ m_warning.o: m_definitions.f90 m_warning.f90
 
 m_libxc_tools.o: m_definitions.f90 m_warning.f90 m_libxc_tools.f90
 	$(FC_W_OPTS) -c m_libxc_tools.f90 $(LIBXC_INCS)
+
+m_scalapack_interface.o: m_scalapack_interface.f90
+	$(FC_W_OPTS) -c m_scalapack_interface.f90 $(LIBXC_INCS)
 
 m_lbfgs.o: m_definitions.f90 m_lbfgs.f90
 	$(FC_W_OPTS) -c m_lbfgs.f90 $(LIBXC_INCS)

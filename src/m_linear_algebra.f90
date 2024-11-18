@@ -395,6 +395,36 @@ subroutine diagonalize_dp(flavor,matrix,eigval,eigvec)
     ! single prec to double prec conversion
     eigval(:)   = eigval_sp(:)
     eigvec(:,:) = eigvec_sp(:,:)
+    deallocate(eigval_sp, eigvec_sp)
+
+  case('e','E')
+    call issue_warning('Experimental feature: Convert double to single precision for diagonalization to improve performance. ' // &
+                       'May affect accuracy.')
+    lwork = -1
+    allocate(work_sp(1))
+    allocate(eigvec_sp(nmat,nmat))
+    allocate(eigval_sp(nmat))
+    allocate(iwork(1))
+    ! double prec to single prec conversion
+    eigvec_sp(:,:) = eigvec(:,:)
+    call SSYEVD('V', 'L', nmat, eigvec_sp, nmat, eigval_sp, work_sp, lwork, iwork, liwork, info)
+    liwork = iwork(1)
+    deallocate(iwork)
+    lwork = NINT(work_sp(1))
+    deallocate(work_sp)
+
+    if( info /= 0 ) call die('diagonalize_dp: diago failure 1')
+
+    allocate(work_sp(lwork))
+    allocate(iwork(liwork))
+    call SSYEVD('V', 'L', nmat, eigvec_sp, nmat, eigval_sp, work_sp, lwork, iwork, liwork, info)
+    deallocate(iwork)
+    deallocate(work_sp)
+    ! single prec to double prec conversion
+    eigval(:)   = eigval_sp(:)
+    eigvec(:,:) = eigvec_sp(:,:)
+    deallocate(eigval_sp, eigvec_sp)
+
 
   case default
     lwork = -1
