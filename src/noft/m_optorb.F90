@@ -72,11 +72,12 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  type(hessian_t),intent(inout)::HESSIANd
  interface 
   subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
-  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
+  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs,Edft_xc)
   use m_definitions
   implicit none
   logical,optional,intent(in)::all_ERIs
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
+  real(dp),optional,intent(inout)::Edft_xc
   real(dp),intent(in)::Occ(NBF_occ)
   real(dp),optional,intent(in)::DM2_JK(2,NBF_occ,NBF_occ)
   real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)
@@ -97,7 +98,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed
  integer::icall,icall_method,istate,iorbmax1,iorbmax2,imethod_in
- real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old
+ real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old,Edft_xc
 !arrays
  real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:)::DM2_L_saved
@@ -110,7 +111,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  imethod_in=imethod
 
  istate=1
- Ediff=zero; Energy=zero; Energy_old=zero; convLambda=.false.;nogamma=.true.;
+ Ediff=zero; Energy=zero; Energy_old=zero; Edft_xc=zero; convLambda=.false.;nogamma=.true.;
  allocated_DMNs=.false.;F_meth_printed=.false.;NR_meth_printed=.false.;all_ERIs=.false.;
 
  ! If RS-NOFT
@@ -153,7 +154,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   if(INTEGd%irange_sep/=0) then
    call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
+   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs,Edft_xc=Edft_xc)
   else
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, & 
    & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
@@ -207,7 +208,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
     if(INTEGd%irange_sep/=0) then
      call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
      call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-     & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs)
+     & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs,Edft_xc=Edft_xc)
     else
      call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
      & ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
@@ -292,6 +293,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
  write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
  call write_output(msg)
+ if(abs(Edft_xc)>tol8) then
+  write(msg,'(a,f15.6)') 'Exc sr-DFT energy    = ',Edft_xc
+  call write_output(msg)
+ endif
  if(iter>0) then
   write(msg,'(a,f15.6,a,i5,a,i5,a)') 'Max. [Lambda_qp - Lambda_pq*]= ',maxdiff_all,' pair (',iorbmax1,',',iorbmax2,')'
   call write_output(msg)
