@@ -969,36 +969,6 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
       call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
       deallocate(iwork)
 
-      call issue_warning('Experimental feature: Convert double to single precision for diagonalization ' // &
-                         'to improve performance. May affect accuracy.')
-      lwork = -1
-      allocate(work_sp(3))
-      liwork = -1
-      allocate(iwork(1))
-      allocate(eigval_sp(nglobal))
-      allocate(matrix_sp(SIZE(matrix,DIM=1),SIZE(matrix,DIM=2)))
-      allocate(eigvec_sp(SIZE(eigvec,DIM=1),SIZE(eigvec,DIM=2)))
-      matrix_sp(:,:) = matrix(:,:)
-      call PSSYEVD('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, &
-                   work_sp, lwork, iwork, liwork, info)
-
-      lwork = NINT(work_sp(1))
-      deallocate(work_sp)
-      allocate(work_sp(lwork))
-      liwork = iwork(1)
-      deallocate(iwork)
-      allocate(iwork(liwork))
-      call PSSYEVD('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, &
-                   work_sp, lwork, iwork, liwork, info)
-      deallocate(iwork)
-      deallocate(work_sp)
-      deallocate(matrix_sp)
-      eigvec(:,:) = eigvec_sp(:,:)
-      eigval(:)   = eigval_sp(:)
-      deallocate(eigvec_sp, eigval_sp)
-
-      deallocate(work)
-
     case('x','X')
       lwork = -1
       allocate(work(3))
@@ -1055,10 +1025,8 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
       allocate(matrix_sp(SIZE(matrix,DIM=1),SIZE(matrix,DIM=2)))
       allocate(eigvec_sp(SIZE(eigvec,DIM=1),SIZE(eigvec,DIM=2)))
       matrix_sp(:,:) = matrix(:,:)
-      write(1000+world%rank,*) lwork, liwork
       call PSSYEVD('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, &
                    work_sp, lwork, iwork, liwork, info)
-      write(1000+world%rank,*) 'info1=',info
 
       lwork = NINT(work_sp(1))
       deallocate(work_sp)
@@ -1066,10 +1034,8 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
       liwork = iwork(1)
       deallocate(iwork)
       allocate(iwork(liwork))
-      write(1000+world%rank,*) lwork, liwork, SIZE(work_sp), SIZE(iwork)
       call PSSYEVD('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, &
                    work_sp, lwork, iwork, liwork, info)
-      write(1000+world%rank,*) 'info2=',info
       deallocate(iwork)
       deallocate(work_sp)
       deallocate(matrix_sp)
@@ -1080,6 +1046,7 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
     case('f','F')
       call issue_warning('Experimental feature: Convert double to single precision for diagonalization ' // &
                          'to improve performance. May affect accuracy.')
+
       lwork = -1
       allocate(work_sp(3))
       liwork = -1
@@ -1088,10 +1055,8 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
       allocate(matrix_sp(SIZE(matrix,DIM=1),SIZE(matrix,DIM=2)))
       allocate(eigvec_sp(SIZE(eigvec,DIM=1),SIZE(eigvec,DIM=2)))
       matrix_sp(:,:) = matrix(:,:)
-      write(1000+world%rank,*) lwork, liwork
-      call PSSYEVD('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, &
-                   work_sp, lwork, iwork, liwork, info)
-      write(1000+world%rank,*) 'info1=',info
+      call PSSYEVR( 'V', 'A', 'L', nglobal, matrix_sp, 1, 1, desc, 0.0, 0.0, 0, 0, &
+                   neigval, neigvec, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, work_sp, lwork, iwork, liwork, info)
 
       lwork = NINT(work_sp(1))
       deallocate(work_sp)
@@ -1099,10 +1064,9 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
       liwork = iwork(1)
       deallocate(iwork)
       allocate(iwork(liwork))
-      write(1000+world%rank,*) lwork, liwork, SIZE(work_sp), SIZE(iwork)
-      call PSSYEVD('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, &
-                   work_sp, lwork, iwork, liwork, info)
-      write(1000+world%rank,*) 'info2=',info
+      call PSSYEVR( 'V', 'A', 'L', nglobal, matrix_sp, 1, 1, desc, 0.0, 0.0, 0, 0, &
+                   neigval, neigvec, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, work_sp, lwork, iwork, liwork, info)
+
       deallocate(iwork)
       deallocate(work_sp)
       deallocate(matrix_sp)
