@@ -187,6 +187,7 @@
  character(len=3),protected :: noft_fcidump
  character(len=3),protected :: noft_NOTupdateOCC
  character(len=3),protected :: noft_NOTupdateORB
+ character(len=3),protected :: noft_NOTvxc
  character(len=256),protected :: noft_functional
  character(len=3),protected :: noft_printdmn
  character(len=3),protected :: noft_printswdmn

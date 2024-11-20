@@ -529,6 +529,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
       endif
       hamiltonian_xc(:,:,1)=SUM(hamiltonian_xc(:,:,:),DIM=3)
       if ( nspin==2 ) hamiltonian_xc(:,:,1)=0.5e0*hamiltonian_xc(:,:,1)
+      if ( noft_NOTvxc=='yes' ) hamiltonian_xc=zero
       hCORE=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
       call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
       call clean_deallocate('occupation',occupation,noft_verbose)

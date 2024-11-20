@@ -103,6 +103,7 @@
   write(stdout,'(1x,a32,2x,es16.8)') 'noft_Lpower',noft_Lpower 
   write(stdout,'(1x,a32,6x,a)') 'noft_NOTupdateOCC',noft_NOTupdateOCC 
   write(stdout,'(1x,a32,6x,a)') 'noft_NOTupdateORB',noft_NOTupdateORB 
+  write(stdout,'(1x,a32,6x,a)') 'noft_NOTvxc',noft_NOTvxc 
   write(stdout,'(1x,a32,6x,a)') 'noft_NR_OCC',noft_NR_OCC 
   write(stdout,'(1x,a32,6x,a)') 'noft_QC_ORB',noft_QC_ORB 
   write(stdout,'(1x,a32,6x,a)') 'noft_complex',noft_complex 

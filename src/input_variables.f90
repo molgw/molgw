@@ -191,6 +191,7 @@
     noft_fcidump,       &
     noft_NOTupdateOCC,       &
     noft_NOTupdateORB,       &
+    noft_NOTvxc,       &
     noft_functional,       &
     noft_printdmn,       &
     noft_printswdmn,       &
@@ -406,6 +407,7 @@
  noft_fcidump='no'
  noft_NOTupdateOCC='no'
  noft_NOTupdateORB='no'
+ noft_NOTvxc='no'
  noft_functional='GNOF'
  noft_printdmn='no'
  noft_printswdmn='no'

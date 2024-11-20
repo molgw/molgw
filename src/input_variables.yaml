@@ -1695,6 +1695,14 @@ noft_NOTupdateORB:
   default: 'no'
   comment: Do a NOFT optimization but keeping fixed the orbitals read.
 
+noft_NOTvxc:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Do a RS-NOFT calculation without Vxc (i.e. adding a one-shot ExcDFT to the NOFT energy).
+
 noft_functional:
   family: noft
   datatype: characters

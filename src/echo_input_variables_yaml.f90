@@ -103,6 +103,7 @@
  write(unit_yaml,'(4x,a,19x,es16.8)') 'noft_Lpower:',noft_Lpower 
  write(unit_yaml,'(4x,a,13x,a)') 'noft_NOTupdateOCC:',yesno_to_TrueFalse(noft_NOTupdateOCC) 
  write(unit_yaml,'(4x,a,13x,a)') 'noft_NOTupdateORB:',yesno_to_TrueFalse(noft_NOTupdateORB) 
+ write(unit_yaml,'(4x,a,19x,a)') 'noft_NOTvxc:',yesno_to_TrueFalse(noft_NOTvxc) 
  write(unit_yaml,'(4x,a,19x,a)') 'noft_NR_OCC:',yesno_to_TrueFalse(noft_NR_OCC) 
  write(unit_yaml,'(4x,a,19x,a)') 'noft_QC_ORB:',yesno_to_TrueFalse(noft_QC_ORB) 
  write(unit_yaml,'(4x,a,18x,a)') 'noft_complex:',yesno_to_TrueFalse(noft_complex) 

@@ -149,6 +149,7 @@
 [noft_fcidump](#noft_fcidump)
 [noft_NOTupdateOCC](#noft_NOTupdateOCC)
 [noft_NOTupdateORB](#noft_NOTupdateORB)
+[noft_NOTvxc](#noft_NOTvxc)
 [noft_functional](#noft_functional)
 [noft_printdmn](#noft_printdmn)
 [noft_printswdmn](#noft_printswdmn)
@@ -1812,6 +1813,22 @@ Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.
 **Description:**
 
 Do a NOFT optimization but keeping fixed the orbitals read.
+
+
+---
+### noft_NOTvxc
+
+*Optional*
+
+**Family:** noft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Do a RS-NOFT calculation without Vxc (i.e. adding a one-shot ExcDFT to the NOFT energy).
 
 
 ---
