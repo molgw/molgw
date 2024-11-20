@@ -28,10 +28,10 @@ module m_optorb
 
  implicit none
 
- private :: lambda_conv,dm2_JK_3d
+ private :: lambda_conv
 !!***
 
- public :: opt_orb,s2_calc,num_grad_hess_orb
+ public :: opt_orb,s2_calc,num_grad_hess_orb,dm2_JK_3d  
 !!***
 
 contains
@@ -72,10 +72,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  type(hessian_t),intent(inout)::HESSIANd
  interface 
   subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
-  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs,Edft_xc)
+  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs,Edft_xc,do_xc_dft)
   use m_definitions
   implicit none
-  logical,optional,intent(in)::all_ERIs
+  logical,optional,intent(in)::all_ERIs,do_xc_dft
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
   real(dp),optional,intent(inout)::Edft_xc
   real(dp),intent(in)::Occ(NBF_occ)

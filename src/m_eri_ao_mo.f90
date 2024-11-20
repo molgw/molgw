@@ -397,15 +397,16 @@ end subroutine destroy_eri_4center_eigen_uks
 
 
 !=================================================================
-subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min,nstate_max,timing,verbose,long_range)
+subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min,nstate_max,timing,verbose,long_range, &
+  &                                    only_one_spin)
   implicit none
   real(dp),intent(in)         :: c_matrix(:,:,:)
   integer,optional,intent(in) :: mstate_min,mstate_max,nstate_min,nstate_max
   integer,optional,intent(in) :: timing
-  logical,optional,intent(in) :: verbose,long_range
+  logical,optional,intent(in) :: verbose,long_range,only_one_spin
   !=====
   logical              :: verbose_,lr_exists=.true.
-  integer              :: nbf,nstate
+  integer              :: nbf,nstate,nspin_
   integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
   integer              :: mstate_count_,nstate_count_
   integer              :: kbf,lbf,iauxil
@@ -413,6 +414,12 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   real(dp),allocatable :: tmp1(:,:),tmp2(:,:),c_t(:,:)
   integer              :: ipair
   !=====
+
+  nspin_ = nspin
+
+  if( PRESENT(only_one_spin) ) then
+    if( only_one_spin ) nspin_ = 1
+  endif
 
   if( PRESENT(long_range) ) then
     if( long_range .AND. (.NOT. ALLOCATED(eri_3center_eigen_lr)) ) lr_exists=.false.
@@ -470,10 +477,10 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
 
   !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
   call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_local, &
-                     mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose_)
+                     mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin_,verbose_)
   if(PRESENT(long_range)) then
     call clean_allocate('3-center_lr MO integrals',eri_3center_eigen_lr,1,nauxil_local_lr, &
-                     mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin,verbose_)
+                     mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin_,verbose_)
   endif
   eri_3center_eigen(:,:,:,:) = 0.0_dp
 
@@ -481,7 +488,7 @@ subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min
   call clean_allocate('TMP 3-center ints',c_t ,nstate_min_,nstate_max_,1,nbf,verbose_)
   call clean_allocate('TMP 3-center ints',tmp2,mstate_min_,mstate_max_,nstate_min_,nstate_max_,verbose_)
 
-  do klspin=1,nspin
+  do klspin=1,nspin_
 
     c_t(:,:)  = TRANSPOSE( c_matrix(:,nstate_min_:nstate_max_,klspin) )
 

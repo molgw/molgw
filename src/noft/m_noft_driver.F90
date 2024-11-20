@@ -104,10 +104,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  real(dp),intent(inout)::Enof
  interface
   subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
-  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs,Edft_xc)
+  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs,Edft_xc,do_xc_dft)
   use m_definitions
   implicit none
-  logical,optional,intent(in)::all_ERIs
+  logical,optional,intent(in)::all_ERIs,do_xc_dft
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
   real(dp),optional,intent(inout)::Edft_xc
   real(dp),intent(in)::Occ(NBF_occ)
@@ -131,16 +131,17 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !Local variables ------------------------------
 !scalars
  logical::ekt,diagLpL,restart_param,keep_occs,keep_orbs,cpx_mos,all_ERI_in,hessian_in
- logical::file_exists
+ logical::file_exists,do_xc_dft
  integer::iorb,iter,ifcidump,irs_noft
  integer::iorbp,iorbq,iunit
- real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val,maxdiff_lambda
+ real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val,maxdiff_lambda,Edft_xc
  type(rdm_t),target::RDMd
  type(integ_t),target::INTEGd
  type(elag_t),target::ELAGd
  type(hessian_t),target::HESSIANd
 !arrays
  real(dp),allocatable,dimension(:,:)::DM1,NO_COEF_tmp
+ real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:,:,:,:)::DM2
  character(len=20)::coef_file
  character(len=100)::sha_git
@@ -392,6 +393,17 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(file_exists) exit
 
  enddo
+
+ ! Compute rs-NOFT Exc_DFT for fixed occ numbers and orbitals (i.e. density and on-top pair density)
+ if(INTEGd%irange_sep/=0) then
+   do_xc_dft=.true. 
+   allocate(DM2_JK(2,RDMd%NBF_occ,RDMd%NBF_occ))
+   call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
+   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERI_in,Edft_xc=Edft_xc,  &
+   & do_xc_dft=do_xc_dft)
+   deallocate(DM2_JK)
+ endif
 
  ! Build and diagonalize the Hessian (except for range-sep)
  if(hessian_in .and. irs_noft==0) then

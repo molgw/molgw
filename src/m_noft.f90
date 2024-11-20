@@ -20,7 +20,7 @@ module m_noft
   use m_noft_driver
 
 
-  logical,parameter,private       :: noft_verbose=.FALSE.
+  logical,parameter,private       :: noft_verbose=.FALSE.,noft_1_spin=.TRUE.
   logical                         :: noft_edft=.FALSE.,noft_fcidump_in=.FALSE.
   integer,private                 :: nstate_noft,nstate_frozen,irs_noft
   real(dp)                        :: ExcDFT,E_t_vext
@@ -437,10 +437,10 @@ end subroutine noft_energy
 
 !==================================================================
 subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
-                   NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs,Edft_xc)
+                   NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs,Edft_xc,do_xc_dft)
   implicit none
 
-  logical,optional,intent(in)     :: all_ERIs
+  logical,optional,intent(in)     :: all_ERIs,do_xc_dft
   integer,intent(in)              :: nbf,nstate_occ,nstate_kji
   real(dp),intent(in)             :: Occ(nstate_occ)
   real(dp),optional,intent(inout) :: Edft_xc
@@ -454,7 +454,7 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
   complex(dp),optional,intent(inout) :: hCORE_cmplx(nbf,nbf)
   complex(dp),optional,intent(inout) :: ERImol_cmplx(nbf,nstate_kji,nstate_kji,nstate_kji)
   !====
-  logical                    :: all_ERIs_in=.false.,long_range=.true.
+  logical                    :: all_ERIs_in=.false.,long_range=.true.,do_xc_dft_tmp=.true.
   integer                    :: istate,jstate,pstate,qstate,ispin
   character(len=100)         :: msgw
   real(dp)                   :: ERI_lkji,Nelectrons,Coef_rs_inter
@@ -496,7 +496,9 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
     enddo
 
     ! Add the sr-NOFT term
-    if( (irs_noft/=0) .and. (.not.noft_edft) ) then
+    if( noft_NOTvxc=='yes ' ) do_xc_dft_tmp=.false.
+    if( present(do_xc_dft) )  do_xc_dft_tmp=.true.
+    if( (irs_noft/=0) .and. (.not.noft_edft .and. do_xc_dft_tmp) ) then
       ! Prepare the DFT contribution (takes part only during orb. optimization and is switched off for final energy calculation)
       call clean_allocate('occupation',occupation,nbf,nspin,noft_verbose)
       call clean_allocate('hamiltonian_xc',hamiltonian_xc,nbf,nbf,nspin,noft_verbose)
@@ -529,7 +531,6 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
       endif
       hamiltonian_xc(:,:,1)=SUM(hamiltonian_xc(:,:,:),DIM=3)
       if ( nspin==2 ) hamiltonian_xc(:,:,1)=0.5e0*hamiltonian_xc(:,:,1)
-      if ( noft_NOTvxc=='yes' ) hamiltonian_xc=zero
       hCORE=matmul(transpose(NO_COEF(:,:)),matmul(hamiltonian_xc(:,:,1),NO_COEF(:,:)))
       call clean_deallocate('hamiltonian_xc',hamiltonian_xc,noft_verbose)
       call clean_deallocate('occupation',occupation,noft_verbose)
@@ -551,7 +552,8 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
     if(present(ERImol) .and. present(ERImolJsr) .and. present(ERImolLsr)) then
       ERImol(:,:,:,:)=zero; ERImolJsr(:,:,:)=zero; ERImolLsr(:,:,:)=zero
       if(has_auxil_basis) then ! RI case
-        call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose,long_range=long_range)
+        call calculate_eri_3center_eigen(tmp_c_matrix,1,nstate_noft,1,nstate_kji,verbose=noft_verbose,long_range=long_range, &
+         &   only_one_spin=noft_1_spin)
         ! <lk| [alpha+beta*erf(gamma r12)]/r12 |ji> format used for ERImol
         ! Hartree : <li|ji>^sr = <li| 1/r12 |ji> - <li| [alpha+beta*erf(gamma r12)]/r12 |ji>
         ! Time-rev: <lk|ii>^sr = <lk| 1/r12 |ii> - <lk| [alpha+beta*erf(gamma r12)]/r12 |ii>
