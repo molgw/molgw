@@ -150,6 +150,7 @@ molgw:
 	+make  level050
 	+make  level060
 	+make  level065
+	+make  level068
 	+make  level070
 	+make  level100
 	+make  ../molgw
