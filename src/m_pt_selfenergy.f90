@@ -7,7 +7,7 @@
 !
 !=========================================================================
 #include "molgw.h"
-subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,se,emp2)
+module m_pt_selfenergy
   use m_definitions
   use m_mpi
   use m_warning
@@ -16,16 +16,26 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
   use m_eri_ao_mo
   use m_inputparam
   use m_selfenergy_tools
+  use m_spectral_function
+  use m_gw_selfenergy_analytic
+  use m_linear_response
+
+
+contains
+
+
+!=========================================================================
+subroutine pt2_selfenergy(selfenergy_approx,basis,occupation,energy,c_matrix,se,emp2)
   implicit none
 
-  integer,intent(in)         :: selfenergy_approx,nstate
+  integer,intent(in)         :: selfenergy_approx
   type(basis_set),intent(in) :: basis
-  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)        :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)        :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   real(dp),intent(out)       :: emp2
   !=====
-  integer                 :: pstate,qstate
+  integer                 :: pstate,qstate,nstate
   complex(dp),allocatable :: selfenergy_ring(:,:,:)
   complex(dp),allocatable :: selfenergy_sox(:,:,:)
   integer                 :: iomega
@@ -43,6 +53,7 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
 
   call start_clock(timing_pt_self)
 
+  nstate = SIZE(energy, DIM=1)
   emp2_ring = 0.0_dp
   emp2_sox  = 0.0_dp
 
@@ -206,29 +217,22 @@ end subroutine pt2_selfenergy
 
 
 !=========================================================================
-subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
-  use m_definitions
-  use m_mpi
-  use m_warning
-  use m_basis_set
-  use m_eri_ao_mo
-  use m_inputparam
-  use m_spectral_function
-  use m_selfenergy_tools
-  use m_linear_response
+subroutine onering_selfenergy(basis,occupation,energy,c_matrix,se,emp2)
   implicit none
 
-  integer,intent(in)         :: nstate
   type(basis_set),intent(in) :: basis
-  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)        :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)        :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   real(dp),intent(out)       :: emp2
   !=====
+  integer                 :: nstate
   type(spectral_function) :: vchi0v
   !=====
 
   call start_clock(timing_pt_self)
+
+  nstate = SIZE(energy, DIM=1)
 
   if( .NOT. has_auxil_basis ) &
     call die('onering_selfenergy: only implemented when an auxiliary basis is available')
@@ -244,9 +248,9 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
   call polarizability_onering(basis,energy,c_matrix,vchi0v)
 
 #if defined(HAVE_SCALAPACK)
-  call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)
+  call gw_selfenergy_scalapack(ONE_RING,basis,occupation,energy,c_matrix,vchi0v,se)
 #else
-  call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)
+  call gw_selfenergy(ONE_RING,basis,occupation,energy,c_matrix,vchi0v,se)
 #endif
 
   call vchi0v%destroy()
@@ -258,7 +262,7 @@ end subroutine onering_selfenergy
 
 
 !=========================================================================
-subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,selfenergy,emp2)
+subroutine pt2_selfenergy_qs(basis,occupation,energy,c_matrix,s_matrix,selfenergy,emp2)
   use m_definitions
   use m_mpi
   use m_warning
@@ -268,15 +272,14 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
   use m_selfenergy_tools
   implicit none
 
-  integer,intent(in)         :: nstate
   type(basis_set),intent(in) :: basis
-  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
-  real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
-  real(dp),intent(out)       :: selfenergy(basis%nbf,basis%nbf,nspin)
+  real(dp),intent(in)        :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)        :: c_matrix(:,:,:)
+  real(dp),intent(in)        :: s_matrix(:,:)
+  real(dp),intent(out)       :: selfenergy(:,:,:)
   real(dp),intent(out)       :: emp2
   !=====
-  integer                 :: pstate,qstate
+  integer                 :: pstate,qstate,nstate
   complex(dp),allocatable :: selfenergy_ring(:,:,:)
   complex(dp),allocatable :: selfenergy_sox(:,:,:)
   integer                 :: istate,jstate,kstate
@@ -295,6 +298,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
   emp2_ring = 0.0_dp
   emp2_sox  = 0.0_dp
 
+  nstate = SIZE(energy, DIM=1)
 
   write(stdout,'(/,a)') ' Perform the second-order self-energy calculation'
   write(stdout,*) 'with the QP self-consistent approach'
@@ -437,7 +441,7 @@ end subroutine pt2_selfenergy_qs
 
 
 !=========================================================================
-subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,occupation,energy,c_matrix,se,emp3)
+subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,basis,occupation,energy,c_matrix,se,emp3)
   use m_definitions
   use m_mpi
   use m_warning
@@ -449,13 +453,13 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
   implicit none
 
   integer,intent(in)         :: selfenergy_approx,selfenergy_technique
-  integer,intent(in)         :: nstate
   type(basis_set),intent(in) :: basis
-  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)        :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)        :: c_matrix(:,:,:)
   type(selfenergy_grid),intent(inout) :: se
   real(dp),intent(out)       :: emp3
   !=====
+  integer                 :: nstate
   integer,parameter       :: ONERING=1,SOX_=2
   integer,parameter       :: Ah=3,Ax=4
   integer,parameter       :: Cd=5,Cx=6
@@ -482,6 +486,8 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
   !=====
 
   call start_clock(timing_pt_self)
+
+  nstate = SIZE(energy, DIM=1)
 
   ! Emp3 is not calculated so far
   emp3 = 0.0_dp
@@ -1079,4 +1085,5 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 end subroutine pt3_selfenergy
 
 
+end module m_pt_selfenergy
 !=========================================================================

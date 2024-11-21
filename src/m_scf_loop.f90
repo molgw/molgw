@@ -28,6 +28,8 @@ module m_scf_loop
   use m_selfenergy_tools
   use m_linear_response
   use m_restart
+  use m_gw_selfenergy_analytic
+  use m_pt_selfenergy
 
 
 
@@ -196,7 +198,7 @@ subroutine scf_loop(is_restart,&
       call selfenergy_set_state_range(nstate,occupation,range='all')
 
       allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-      call gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)
+      call gw_selfenergy_qs(basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)
 
       call dump_out_matrix(.FALSE.,'=== Self-energy ===',matrix_tmp)
       call wpol%destroy()
@@ -216,7 +218,7 @@ subroutine scf_loop(is_restart,&
       call selfenergy_set_state_range(nstate,occupation)
 
       allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-      call pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,matrix_tmp,en_gks%mp2)
+      call pt2_selfenergy_qs(basis,occupation,energy,c_matrix,s_matrix,matrix_tmp,en_gks%mp2)
 
       write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
       write(stdout,*)

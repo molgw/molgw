@@ -63,6 +63,8 @@ program molgw
   use m_linear_response
   use m_acfd
   use m_hdf5_tools
+  use m_mp2_energy
+  use m_force
   implicit none
 
   !=====
@@ -492,7 +494,7 @@ program molgw
     !
     ! If requested, evaluate the forces
     if( move_nuclei == 'relax' ) then
-      call calculate_force(basis,nstate,occupation,energy,c_matrix)
+      call calculate_force(basis,occupation,energy,c_matrix)
       call relax_atoms(lbfgs_plan,en_gks%total)
       call output_positions()
    
@@ -759,15 +761,15 @@ program molgw
       if( complex_scf=='no' ) then ! real
   
         if(has_auxil_basis) then
-          call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en_gks%mp2)
+          call mp2_energy_ri(basis,occupation,energy,c_matrix,en_gks%mp2)
         else
-          call mp2_energy(nstate,basis,occupation,c_matrix,energy,en_gks%mp2)
+          call mp2_energy(basis,occupation,c_matrix,energy,en_gks%mp2)
         endif
 
       else                         ! complex
 
         if(has_auxil_basis) then
-          call mp2_energy_ri_cmplx(nstate,basis,occupation,energy,c_matrix_cmplx,en_gks%mp2)
+          call mp2_energy_ri_cmplx(basis,occupation,energy,c_matrix_cmplx,en_gks%mp2)
         else
           call issue_warning('MP2 with complex orbitals is available only with RI')
           en_gks%mp2=0.0_dp
@@ -814,7 +816,7 @@ program molgw
   !
   if( calc_type%is_mp3 ) then
     if(has_auxil_basis) then
-      call mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,en_gks%mp3)
+      call mp3_energy_ri(basis,occupation,energy,c_matrix,en_gks%mp3)
     else
       call die('MP3 energy without RI not implemented')
     endif

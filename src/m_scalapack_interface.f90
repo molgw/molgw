@@ -15,25 +15,26 @@ module m_scalapack_interface
   !end interface
 
   interface
-    subroutine pssyevd( JOBZ, UPLO, N, A, IA, JA, DESCA, W, Z, IZ, JZ, DESCZ, WORK, LWORK, IWORK, LIWORK, INFO )
+
+    subroutine PSSYEVD( JOBZ, UPLO, N, A, IA, JA, DESCA, W, Z, IZ, JZ, DESCZ, WORK, LWORK, IWORK, LIWORK, INFO )
       import REAL32
       character(len=1), intent(in) :: JOBZ, UPLO
       integer, intent(in) :: N, IA, JA, IZ, JZ, LWORK, LIWORK
       integer, intent(out) :: INFO
       integer, intent(in) :: DESCA(*), DESCZ(*), IWORK(*)
       real(kind=REAL32), intent(inout) :: A(*), W(*), Z(*), WORK(*)
-    end subroutine pssyevd
+    end subroutine PSSYEVD
 
-    subroutine pdsyevd( JOBZ, UPLO, N, A, IA, JA, DESCA, W, Z, IZ, JZ, DESCZ, WORK, LWORK, IWORK, LIWORK, INFO )
+    subroutine PDSYEVD( JOBZ, UPLO, N, A, IA, JA, DESCA, W, Z, IZ, JZ, DESCZ, WORK, LWORK, IWORK, LIWORK, INFO )
       import REAL64
       character(len=1), intent(in) :: JOBZ, UPLO
       integer, intent(in) :: N, IA, JA, IZ, JZ, LWORK, LIWORK
       integer, intent(out) :: INFO
       integer, intent(in) :: DESCA(*), DESCZ(*), IWORK(*)
       real(kind=REAL64), intent(inout) :: A(*), W(*), Z(*), WORK(*)
-    end subroutine pdsyevd
+    end subroutine PDSYEVD
 
-    subroutine pdgemm( TRANSA, TRANSB, M, N, K, &
+    subroutine PDGEMM( TRANSA, TRANSB, M, N, K, &
                ALPHA, A, IA, JA, DESCA, B, IB, JB, DESCB, &
                BETA, C, IC, JC, DESCC )
       import REAL64
@@ -43,7 +44,31 @@ module m_scalapack_interface
       real(kind=REAL64), intent(in) :: ALPHA, BETA
       real(kind=REAL64), intent(in) :: A(*), B(*)
       real(kind=REAL64), intent(out) :: C(*)
-    end subroutine pdgemm
+    end subroutine PDGEMM
+
+    subroutine PDSYMM(SIDE, UPLO, M, N, ALPHA, A, IA, JA, DESCA, B, IB, JB, DESCB, &
+                      BETA, C, IC, JC, DESCC)
+      import REAL64
+      character(len=1), intent(in) :: SIDE, UPLO
+      integer, intent(in) :: M, N
+      real(kind=REAL64), intent(in) :: ALPHA, BETA
+      real(kind=REAL64), intent(in) :: A(*), B(*)
+      real(kind=REAL64), intent(inout) :: C(*)
+      integer, intent(in) :: IA, JA, IB, JB, IC, JC
+      integer, intent(in) :: DESCA(*), DESCB(*), DESCC(*)
+    end subroutine PDSYMM
+
+    subroutine PDGEMR2D(M, N, A, IA, JA, DESCA, B, IB, JB, DESCB, CTXT)
+      import REAL64
+      integer, intent(in) :: M
+      integer, intent(in) :: N
+      real(kind=REAL64), intent(in) :: A(*)
+      real(kind=REAL64), intent(out) :: B(*)
+      integer, intent(in) :: IA, JA, IB, JB
+      integer, intent(in) :: DESCA(*), DESCB(*)
+      integer, intent(in) :: CTXT
+    end subroutine PDGEMR2D
+
   end interface
 
 end module m_scalapack_interface
