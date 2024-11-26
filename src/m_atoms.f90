@@ -98,21 +98,16 @@ subroutine init_atoms(natom_in,nghost_in,nucleus_wo_basis,zatom_read,x_read,vel_
     vel_basis(:,ncenter_basis) = vel_projectile(:)
   endif
 
-  ! For relaxation or dynamics only
-  if( calculate_forces .OR. excit_name == "ION" .OR. excit_name == 'ANTIION' ) then
-    !if( natom_in /= ncenter_nuclei .OR. natom_in /= ncenter_basis ) then
-    !   call die('init_atoms: forces not implemented with ghosts or projectiles')
-    !endif
-    allocate(force(3,ncenter_nuclei))
-    allocate(force_nuc_nuc(3,ncenter_nuclei))
-    allocate(force_kin(3,ncenter_nuclei))
-    allocate(force_nuc(3,ncenter_nuclei))
-    allocate(force_har(3,ncenter_nuclei))
-    allocate(force_exx(3,ncenter_nuclei))
-    allocate(force_exc(3,ncenter_nuclei))
-    allocate(force_ovp(3,ncenter_nuclei))
-    allocate(force_hellfeyn(3,ncenter_nuclei))
-  endif
+  ! Allocate force arrays (tiny memory footprint anyway)
+  allocate(force(3,ncenter_nuclei))
+  allocate(force_nuc_nuc(3,ncenter_nuclei))
+  allocate(force_kin(3,ncenter_nuclei))
+  allocate(force_nuc(3,ncenter_nuclei))
+  allocate(force_har(3,ncenter_nuclei))
+  allocate(force_exx(3,ncenter_nuclei))
+  allocate(force_exc(3,ncenter_nuclei))
+  allocate(force_ovp(3,ncenter_nuclei))
+  allocate(force_hellfeyn(3,ncenter_nuclei))
 
   ! List of atoms is organized as follows:
   ! 1. physical atoms   :    nucleus | basis
