@@ -7,7 +7,7 @@
 !
 !=========================================================================
 #include "molgw.h"
-subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
+module m_force
   use m_definitions
   use m_warning
   use m_timing
@@ -18,15 +18,22 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
   use m_eri_calculate
   use m_hamiltonian_tools
   use m_hamiltonian_onebody
+
+
+contains
+
+
+!=========================================================================
+subroutine calculate_force(basis,occupation,energy,c_matrix)
   implicit none
 
   type(basis_set),intent(inout) :: basis
-  integer,intent(in)            :: nstate
-  real(dp),intent(in)           :: occupation(nstate,nspin)
-  real(dp),intent(in)           :: energy(nstate,nspin)
-  real(dp),intent(in)           :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)           :: occupation(:,:)
+  real(dp),intent(in)           :: energy(:,:)
+  real(dp),intent(in)           :: c_matrix(:,:,:)
   !=====
   real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-2
+  integer                 :: nstate
   integer                 :: ijshellpair,klshellpair
   integer                 :: iatom
   integer                 :: ibf,jbf,kbf,lbf
@@ -50,6 +57,8 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
   endif
 
   call start_clock(timing_force)
+
+  nstate = SIZE(energy, DIM=1)
 
   write(stdout,'(/,1x,a)') 'Calculate the forces'
 
@@ -460,4 +469,5 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
 end subroutine calculate_force
 
 
+end module m_force
 !=========================================================================

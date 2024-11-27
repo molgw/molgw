@@ -7,22 +7,28 @@
 ! - Single excitation contribution to total energy
 !=========================================================================
 #include "molgw.h"
-subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
+module m_mp2_energy
   use m_definitions
   use m_mpi
   use m_cart_to_pure
   use m_basis_set
   use m_eri_ao_mo
   use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore,kappa_hybrid
+
+
+contains
+
+
+!=========================================================================
+subroutine mp2_energy_ri(basis,occupation,energy,c_matrix,emp2)
   implicit none
 
-  integer,intent(in)           :: nstate
   type(basis_set),intent(in)   :: basis
-  real(dp),intent(in)          :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)          :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)          :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)          :: c_matrix(:,:,:)
   real(dp),intent(out)         :: emp2
   !====
-  integer                    :: astate,bstate,istate,jstate
+  integer                    :: astate,bstate,istate,jstate,nstate
   integer                    :: iaspin,jbspin
   real(dp)                   :: energy_denom
   real(dp)                   :: tmp_iajb,tmp_ibja
@@ -33,6 +39,8 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
   !=====
 
   call start_clock(timing_mp2_energy)
+
+  nstate = SIZE(energy, DIM=1)
 
   write(stdout,'(/,a)') ' RI-MP2 correlation calculation'
 
@@ -131,22 +139,15 @@ end subroutine mp2_energy_ri
 
 
 !=========================================================================
-subroutine mp2_energy_ri_cmplx(nstate,basis,occupation,energy,c_matrix_cmplx,emp2)
-  use m_definitions
-  use m_mpi
-  use m_cart_to_pure
-  use m_basis_set
-  use m_eri_ao_mo
-  use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore,kappa_hybrid
+subroutine mp2_energy_ri_cmplx(basis,occupation,energy,c_matrix_cmplx,emp2)
   implicit none
 
-  integer,intent(in)           :: nstate
   type(basis_set),intent(in)   :: basis
-  real(dp),intent(in)          :: occupation(nstate,nspin),energy(nstate,nspin)
-  complex(dp),intent(in)       :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+  real(dp),intent(in)          :: occupation(:,:),energy(:,:)
+  complex(dp),intent(in)       :: c_matrix_cmplx(:,:,:)
   real(dp),intent(out)         :: emp2
   !====
-  integer                    :: astate,bstate,istate,jstate
+  integer                    :: astate,bstate,istate,jstate,nstate
   integer                    :: iaspin,jbspin
   real(dp)                   :: energy_denom
   real(dp)                   :: fact
@@ -157,6 +158,8 @@ subroutine mp2_energy_ri_cmplx(nstate,basis,occupation,energy,c_matrix_cmplx,emp
   !=====
 
   call start_clock(timing_mp2_energy)
+
+  nstate = SIZE(energy, DIM=1)
 
   write(stdout,'(/,a)') ' RI-MP2 correlation calculation'
 
@@ -251,18 +254,12 @@ end subroutine mp2_energy_ri_cmplx
 
 !=========================================================================
 subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
-  use m_definitions
-  use m_mpi
-  use m_cart_to_pure
-  use m_basis_set
-  use m_eri_ao_mo
-  use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore,kappa_hybrid
   implicit none
 
   integer,intent(in)           :: nstate,nocc
   type(basis_set),intent(in)   :: basis
-  real(dp),intent(in)          :: energy(basis%nbf,nspin)
-  complex(dp),intent(in)       :: c_matrix_rel(nstate,nstate)
+  real(dp),intent(in)          :: energy(:,:)
+  complex(dp),intent(in)       :: c_matrix_rel(:,:)
   real(dp),intent(out)         :: emp2,exx
   !====
   integer                    :: astate,bstate,istate,jstate
@@ -274,6 +271,7 @@ subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
   !=====
 
   call start_clock(timing_mp2_energy)
+
 
   !call calculate_eri_x2c(c_matrix_rel,nstate,nstate_min=1,nstate_max=nocc,mstate_min=1,mstate_max=nocc) ! only occ states for exx
   call calculate_eri_x2c(c_matrix_rel,nstate)
@@ -355,21 +353,15 @@ end subroutine mp2_energy_ri_x2c
 
 
 !=========================================================================
-subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
-  use m_definitions
-  use m_mpi
-  use m_cart_to_pure
-  use m_basis_set
-  use m_eri_ao_mo
-  use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore,kappa_hybrid
+subroutine mp3_energy_ri(basis,occupation,energy,c_matrix,emp3)
   implicit none
 
-  integer,intent(in)         :: nstate
   type(basis_set),intent(in) :: basis
-  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)        :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)        :: c_matrix(:,:,:)
   real(dp),intent(out)       :: emp3
   !====
+  integer                    :: nstate
   integer                    :: astate,bstate,cstate,dstate,istate,jstate,kstate,lstate
   integer                    :: iaspin,jbspin
   real(dp)                   :: contrib1,contrib2,contrib3
@@ -379,6 +371,8 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
   !=====
 
   call start_clock(timing_mp2_energy)
+
+  nstate = SIZE(energy, DIM=1)
 
   write(stdout,'(/,a)') ' RI-MP3 correlation calculation'
 
@@ -509,21 +503,15 @@ end subroutine mp3_energy_ri
 
 
 !==================================================================
-subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
-  use m_definitions
-  use m_mpi
-  use m_basis_set
-  use m_eri_ao_mo
-  use m_inputparam,only: nspin,spin_fact,ncoreg,kappa_hybrid
+subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
   implicit none
 
-  integer,intent(in)           :: nstate
   type(basis_set),intent(in)   :: basis
-  real(dp),intent(in)          :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)          :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)          :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)          :: c_matrix(:,:,:)
   real(dp),intent(out)         :: emp2
   !=====
-  integer                    :: astate,bstate,istate,jstate
+  integer                    :: astate,bstate,istate,jstate,nstate
   integer                    :: ibf,jbf,abf,bbf,iaspin,jbspin
   real(dp)                   :: energy_denom
   real(dp)                   :: tmp_ixjx(basis%nbf,basis%nbf)
@@ -536,6 +524,8 @@ subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
   !=====
 
   call start_clock(timing_mp2_energy)
+
+  nstate = SIZE(energy, DIM=1)
 
   write(stdout,*) 'starting the MP2 calculation'
 
@@ -661,4 +651,5 @@ subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
 end subroutine mp2_energy
 
 
+end module m_mp2_energy
 !==================================================================

@@ -22,10 +22,12 @@ module m_selfenergy_evaluation
   use m_selfenergy_tools
   use m_virtual_orbital_space
   use m_io
+  use m_gw_selfenergy_analytic
   use m_gw_selfenergy_grid
   use m_linear_response
   use m_g3w2_selfenergy
-
+  use m_tdhf_selfenergy
+  use m_pt_selfenergy
 
 
 contains
@@ -109,8 +111,10 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       selfenergy_tag='GW+GWGW0G'
     case(GWGW0RPAG)
       selfenergy_tag='GW+GWGW0RPAG'
-    case(GWTILDE)
-      selfenergy_tag='GWTILDE'
+    case(SIGMA_TDHF)
+      selfenergy_tag='SIGMA_TDHF'
+    case(SIGMA_TDSCHF)
+      selfenergy_tag='SIGMA_TDSCHF'
     case default
       write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -230,17 +234,17 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         call gw_selfenergy_imag_scalapack(energy_g,c_matrix,wpol,se)
         call self_energy_polynomial(se)
       case(exact_dyson)
-        call gw_selfenergy_analytic(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
+        call gw_selfenergy_upfolding(calc_type%selfenergy_approx,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
       case default
         ! The SCALAPACK implementation only works for plain vanilla GW
 #if defined(HAVE_SCALAPACK)
         if( has_auxil_basis &
            .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
              .OR. calc_type%selfenergy_approx == GnWn) ) then
-          call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+          call gw_selfenergy_scalapack(calc_type%selfenergy_approx,basis,occupation,energy_g,c_matrix,wpol,se)
         else
 #endif
-          call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+          call gw_selfenergy(calc_type%selfenergy_approx,basis,occupation,energy_g,c_matrix,wpol,se)
 #if defined(HAVE_SCALAPACK)
         endif
 #endif
@@ -272,7 +276,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         call se3%init(static_selfenergy,energy)
 
         ! Sigma^2 = Sigma^{1-ring}_small
-        call onering_selfenergy(nstate_small,basis,occupation(1:nstate_small,:), &
+        call onering_selfenergy(basis,occupation(1:nstate_small,:), &
                                  energy_g(1:nstate_small,:),c_matrix(:,1:nstate_small,:),se2,en_mbpt%mp2)
 
         ! Reset wavefunctions, eigenvalues and number of virtual orbitals in G
@@ -281,7 +285,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         call selfenergy_set_state_range(nstate,occupation)
 
         ! Sigma^3 = Sigma^{1-ring}_big
-        call onering_selfenergy(nstate,basis,occupation,energy_g,c_matrix,se3,en_mbpt%mp2)
+        call onering_selfenergy(basis,occupation,energy_g,c_matrix,se3,en_mbpt%mp2)
 
         if( print_sigma_ ) then
           call write_selfenergy_omega('selfenergy_GW_small'   ,exchange_m_vxc_diag,occupation,energy_g,se)
@@ -303,10 +307,11 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     endif
 
     !
-    ! Test Starke-Maggio-Kresse
+    !  sigma_TDHF self-energy (See Vacondio et al., Forster-Bruneval)
     !
-    if( calc_type%selfenergy_approx == GWTILDE ) then
-      call gwtilde_selfenergy(basis,occupation,energy_g,c_matrix,se)
+    if( calc_type%selfenergy_approx == SIGMA_TDHF &
+        .OR. calc_type%selfenergy_approx == SIGMA_TDSCHF ) then
+      call tdhf_selfenergy(basis,occupation,energy_g,c_matrix,se)
     endif
 
     !
@@ -335,7 +340,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         endif
 
         call se_gw%init(calc_type%selfenergy_technique,energy_g)
-        call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se_gw)
+        call gw_selfenergy(GW,basis,occupation,energy_g,c_matrix,wpol,se_gw)
 
         !
         ! Output the G0W0 results first
@@ -368,7 +373,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           ! Perform a standard SOX calculation
           !
           call se_sox%init(calc_type%selfenergy_technique,energy_g)
-          call pt2_selfenergy(SOX,nstate,basis,occupation,energy_g,c_matrix,se_sox,en_mbpt%mp2)
+          call pt2_selfenergy(SOX,basis,occupation,energy_g,c_matrix,se_sox,en_mbpt%mp2)
 
           !
           ! Finally add up the contributions and then destroy the se_sox object
@@ -454,7 +459,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     .OR. calc_type%selfenergy_approx == ONE_RING  &
     .OR. calc_type%selfenergy_approx == SOX ) then
 
-      call pt2_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
+      call pt2_selfenergy(calc_type%selfenergy_approx,basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
 
       if( ABS( en_mbpt%mp2 ) > 1.0e-8 ) then
         write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_mbpt%mp2
@@ -472,7 +477,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     if( calc_type%selfenergy_approx == PT3 .OR. calc_type%selfenergy_approx == TWO_RINGS ) then
       call pt3_selfenergy(calc_type%selfenergy_approx,calc_type%selfenergy_technique, &
-                         nstate,basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
+                          basis,occupation,energy_g,c_matrix,se,en_mbpt%mp2)
     endif
 
     !
@@ -488,13 +493,13 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       if( reading_status /= 0 ) then
         call polarizability(.FALSE.,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
       endif
-      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+      call gw_selfenergy(GW,basis,occupation,energy_g,c_matrix,wpol,se)
 
       !
       ! Second perform a PT3 calculation minus the ring diagrams
       !
       call se_gwpt3%init(calc_type%selfenergy_technique,energy_g)
-      call pt3_selfenergy(GWPT3,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se_gwpt3,en_mbpt%mp2)
+      call pt3_selfenergy(GWPT3,calc_type%selfenergy_technique,basis,occupation,energy_g,c_matrix,se_gwpt3,en_mbpt%mp2)
 
       !
       ! Finally add up the contributions and then destroy the se_sox object

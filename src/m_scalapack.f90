@@ -15,9 +15,10 @@
 #include "molgw.h"
 module m_scalapack
   use m_definitions
-  use m_warning
+  use m_warning, only: issue_warning, die, msg
   use m_mpi
   use m_linear_algebra
+  use m_scalapack_interface
 #if defined(HAVE_MPI)
   use mpi
 #endif
@@ -918,6 +919,10 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
   integer              :: iclustr(2*nprow_sd*npcol_sd)
   real(dp)             :: gap(nprow_sd*npcol_sd)
   integer,allocatable  :: ifail(:)
+  real(sp),allocatable :: work_sp(:)
+  real(sp),allocatable :: matrix_sp(:,:)
+  real(sp),allocatable :: eigvec_sp(:,:)
+  real(sp),allocatable :: eigval_sp(:)
   !=====
 
   nglobal = SIZE(eigval)
@@ -928,22 +933,45 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
   ! Only call SCALAPACK when using more than 1 proc
   if( nprow * npcol > 1 ) then
 
-    !
-    ! First call to get the dimensions of the work arrays
-    lwork = -1
-    allocate(work(3))
-
     select case(flavor)
     case('r','R')
+      lwork = -1
+      allocate(work(3))
       liwork = -1
       allocate(iwork(1))
       call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0, &
                   neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+
+      lwork = NINT(work(1))
+      deallocate(work)
+      allocate(work(lwork))
+      liwork = iwork(1)
+      deallocate(iwork)
+      allocate(iwork(liwork))
+      call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0, &
+                  neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+      deallocate(iwork)
+      deallocate(work)
+
     case('d','D')
+      lwork = -1
+      allocate(work(3))
       liwork = -1
       allocate(iwork(1))
       call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+
+      lwork = NINT(work(1))
+      deallocate(work)
+      allocate(work(lwork))
+      liwork = iwork(1)
+      deallocate(iwork)
+      allocate(iwork(liwork))
+      call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+      deallocate(iwork)
+
     case('x','X')
+      lwork = -1
+      allocate(work(3))
       liwork = -1
       allocate(iwork(1),ifail(nglobal))
       ABSTOL = PDLAMCH(desc(CTXT_), 'U')
@@ -951,31 +979,10 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
                   ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
                   eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
                   ifail,iclustr,gap,info)
-    case default
-      call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
-    end select
 
-
-    !
-    ! Second call to actually perform the diago
-    lwork = NINT(work(1))
-    deallocate(work)
-    allocate(work(lwork))
-
-    select case(flavor)
-    case('r','R')
-      liwork = iwork(1)
-      deallocate(iwork)
-      allocate(iwork(liwork))
-      call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0, &
-                  neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-      deallocate(iwork)
-    case('d','D')
-      liwork = iwork(1)
-      deallocate(iwork)
-      allocate(iwork(liwork))
-      call PDSYEVD('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
-    case('x','X')
+      lwork = NINT(work(1))
+      deallocate(work)
+      allocate(work(lwork))
       liwork = iwork(1)
       deallocate(iwork)
       allocate(iwork(liwork))
@@ -984,11 +991,105 @@ subroutine diagonalize_outofplace_sca_dp(flavor,matrix,desc,eigval,eigvec,desc_e
                   eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
                   ifail,iclustr,gap,info)
       deallocate(iwork,ifail)
+      deallocate(work)
+
+    case('s','S')
+      call issue_warning('Experimental feature: Convert double to single precision for diagonalization ' // &
+                         'to improve performance. May affect accuracy.')
+      lwork = -1
+      allocate(work_sp(3))
+      allocate(eigval_sp(nglobal))
+      allocate(matrix_sp(SIZE(matrix,DIM=1),SIZE(matrix,DIM=2)))
+      allocate(eigvec_sp(SIZE(eigvec,DIM=1),SIZE(eigvec,DIM=2)))
+      matrix_sp(:,:) = matrix(:,:)
+      call PSSYEV('V','L',nglobal,matrix_sp,1,1,desc,eigval_sp,eigvec_sp,1,1,desc_eigvec,work_sp,lwork,info)
+
+      lwork = NINT(work_sp(1))
+      deallocate(work_sp)
+      allocate(work_sp(lwork))
+      call PSSYEV('V','L',nglobal,matrix_sp,1,1,desc,eigval_sp,eigvec_sp,1,1,desc_eigvec,work_sp,lwork,info)
+      deallocate(work_sp)
+      deallocate(matrix_sp)
+      eigvec(:,:) = eigvec_sp(:,:)
+      eigval(:)   = eigval_sp(:)
+      deallocate(eigvec_sp, eigval_sp)
+
+    case('e','E')
+      call issue_warning('Experimental feature: Convert double to single precision for diagonalization ' // &
+                         'to improve performance. May affect accuracy.')
+      lwork = -1
+      allocate(work_sp(3))
+      liwork = -1
+      allocate(iwork(1))
+      allocate(eigval_sp(nglobal))
+      allocate(matrix_sp(SIZE(matrix,DIM=1),SIZE(matrix,DIM=2)))
+      allocate(eigvec_sp(SIZE(eigvec,DIM=1),SIZE(eigvec,DIM=2)))
+      matrix_sp(:,:) = matrix(:,:)
+      call PSSYEVD('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, &
+                   work_sp, lwork, iwork, liwork, info)
+
+      lwork = NINT(work_sp(1))
+      deallocate(work_sp)
+      allocate(work_sp(lwork))
+      liwork = iwork(1)
+      deallocate(iwork)
+      allocate(iwork(liwork))
+      call PSSYEVD('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, &
+                   work_sp, lwork, iwork, liwork, info)
+      deallocate(iwork)
+      deallocate(work_sp)
+      deallocate(matrix_sp)
+      eigvec(:,:) = eigvec_sp(:,:)
+      eigval(:)   = eigval_sp(:)
+      deallocate(eigvec_sp, eigval_sp)
+
+    case('f','F')
+      call issue_warning('Experimental feature: Convert double to single precision for diagonalization ' // &
+                         'to improve performance. May affect accuracy.')
+
+      lwork = -1
+      allocate(work_sp(3))
+      liwork = -1
+      allocate(iwork(1))
+      allocate(eigval_sp(nglobal))
+      allocate(matrix_sp(SIZE(matrix,DIM=1),SIZE(matrix,DIM=2)))
+      allocate(eigvec_sp(SIZE(eigvec,DIM=1),SIZE(eigvec,DIM=2)))
+      matrix_sp(:,:) = matrix(:,:)
+      call PSSYEVR( 'V', 'A', 'L', nglobal, matrix_sp, 1, 1, desc, 0.0, 0.0, 0, 0, &
+                   neigval, neigvec, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, work_sp, lwork, iwork, liwork, info)
+
+      lwork = NINT(work_sp(1))
+      deallocate(work_sp)
+      allocate(work_sp(lwork))
+      liwork = iwork(1)
+      deallocate(iwork)
+      allocate(iwork(liwork))
+      call PSSYEVR( 'V', 'A', 'L', nglobal, matrix_sp, 1, 1, desc, 0.0, 0.0, 0, 0, &
+                   neigval, neigvec, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, work_sp, lwork, iwork, liwork, info)
+
+      deallocate(iwork)
+      deallocate(work_sp)
+      deallocate(matrix_sp)
+      eigvec(:,:) = eigvec_sp(:,:)
+      eigval(:)   = eigval_sp(:)
+      deallocate(eigvec_sp, eigval_sp)
+
+
     case default
+      lwork = -1
+      allocate(work(3))
       call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+
+      lwork = NINT(work(1))
+      deallocate(work)
+      allocate(work(lwork))
+      call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+      deallocate(work)
+
     end select
 
-    deallocate(work)
+
+
 
   else
 #endif

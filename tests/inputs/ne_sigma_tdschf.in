@@ -1,0 +1,18 @@
+&molgw
+ basis='cc-pVDZ'
+ auxil_basis='pauto'
+
+ scf='hf'
+ nscf=60
+ tolscf=1.0e-12
+
+ postscf='sigma_tdschf'
+ w_screening='bse'
+ selfenergy_state_range=0
+
+ mpi_poorman='yes'
+
+ natom=1
+/
+Ne   0. 0. 0.
+

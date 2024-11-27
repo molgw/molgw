@@ -7,7 +7,7 @@
 !
 !=========================================================================
 #include "molgw.h"
-subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
+module m_gw_selfenergy_analytic
   use m_definitions
   use m_mpi
   use m_timing
@@ -17,15 +17,25 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
   use m_spectral_function
   use m_eri_ao_mo
   use m_selfenergy_tools
+  use m_scalapack
+  use m_linear_algebra,only: diagonalize
+
+
+contains
+
+
+!=========================================================================
+subroutine gw_selfenergy(selfenergy_approx,basis,occupation,energy,c_matrix,wpol,se)
   implicit none
 
-  integer,intent(in)                  :: nstate,selfenergy_approx
+  integer,intent(in)                  :: selfenergy_approx
   type(basis_set)                     :: basis
-  real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)                 :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(spectral_function),intent(in)  :: wpol
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  integer               :: nstate
   integer               :: iomega
   integer               :: ipstate
   integer               :: pstate,bstate
@@ -36,6 +46,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
   !=====
 
   call start_clock(timing_gw_self)
+
+  nstate = SIZE(occupation, DIM=1)
 
   write(stdout,*)
   select case(selfenergy_approx)
@@ -65,6 +77,43 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
   energy_gw = 0.0_dp
   se%sigma(:,:,:) = 0.0_dp
+
+#if 0
+  block
+  real(dp), allocatable :: wcoeff(:,:)
+  integer :: file_w, file_e, file_omega
+
+  if( nsemin > ncore_G+1 .OR. nsemax < nvirtual_G-1 ) then
+    call die('increase the selfenergy_state_range for dumping')
+  endif
+
+  open(newunit=file_e, file='energies.dat', form='formatted', status='replace')
+  write(file_e,*) nvirtual_G-ncore_G-1
+  do istate=ncore_G+1,nvirtual_G-1
+    write(file_e,*) energy(istate,1)
+  enddo
+  close(file_e)
+  open(newunit=file_omega, file='omegas.dat', form='formatted', status='replace')
+  write(file_omega,*) wpol%npole_reso
+  do ipole=1,wpol%npole_reso
+    write(file_omega,*) wpol%pole(ipole)
+  enddo
+  close(file_omega)
+  open(newunit=file_w, file='w.bin', form='unformatted', access='stream', status='replace')
+  call clean_allocate('w coeff for dumping',wcoeff,1,wpol%npole_reso,ncore_G+1,nvirtual_G-1)
+  do ispin=1,nspin
+    do istate=ncore_G+1,nvirtual_G-1
+      ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+      wcoeff(:,ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,ispin) )
+      call auxil%sum(wcoeff)
+      write(file_w) wcoeff(:,:)
+    enddo
+  enddo
+  call clean_deallocate('w coeff for dumping',wcoeff)
+  close(file_w)
+  end block
+  call die('DUMP IS DONE! this is normal')
+#endif
 
   do ispin=1,nspin
     do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
@@ -98,7 +147,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
       fact_full_i   = occupation(istate,ispin) / spin_fact
       fact_empty_i = (spin_fact - occupation(istate,ispin)) / spin_fact
 
-
       do ipole=1,wpol%npole_reso
 
         if( MODULO( ipole - 1 , auxil%nproc ) /= auxil%rank ) cycle
@@ -123,7 +171,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
             !$OMP END DO
             !$OMP END PARALLEL
 
-            if( (spin_fact - occupation(pstate,ispin))/ spin_fact < completely_empty) then
+            if( (spin_fact - occupation(pstate,ispin)) / spin_fact < completely_empty) then
               energy_gw = energy_gw + fact_empty_i * occupation(pstate,ispin) &
                                * bra(ipole,pstate)**2 / ( energy(pstate,ispin) - energy(istate,ispin) - wpol%pole(ipole) )
             endif
@@ -183,27 +231,17 @@ end subroutine gw_selfenergy
 
 
 !=========================================================================
-subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,exchange_m_vxc)
-  use m_definitions
-  use m_mpi
-  use m_timing
-  use m_inputparam
-  use m_warning,only: issue_warning
-  use m_basis_set
-  use m_spectral_function
-  use m_eri_ao_mo
-  use m_linear_algebra,only: diagonalize
-  use m_selfenergy_tools
+subroutine gw_selfenergy_upfolding(selfenergy_approx,basis,occupation,energy,c_matrix,wpol,exchange_m_vxc)
   implicit none
 
-  integer,intent(in)                  :: nstate,selfenergy_approx
+  integer,intent(in)                  :: selfenergy_approx
   type(basis_set)                     :: basis
-  real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin),exchange_m_vxc(nstate,nstate,nspin)
+  real(dp),intent(in)                 :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                 :: c_matrix(:,:,:),exchange_m_vxc(:,:,:)
   type(spectral_function),intent(in)  :: wpol
   !=====
   character(len=4)     :: ctmp
-  integer              :: iomega
+  integer              :: iomega, nstate
   integer              :: ipstate
   integer              :: pstate,bstate
   integer              :: istate,ispin,ipole
@@ -222,21 +260,23 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
   call start_clock(timing_gw_self)
 
+  nstate = SIZE(energy, DIM=1)
+
   write(stdout,*)
   select case(selfenergy_approx)
   case(GW)
     write(stdout,*) 'Perform a one-shot G0W0 calculation with full solution of the Dyson equation'
   case default
     write(stdout,*) 'type:',selfenergy_approx
-    call die('gw_selfenergy: calculation type unknown')
+    call die('gw_selfenergy_upfolding: calculation type unknown')
   end select
 
-  if( nspin > 1 ) call die('gw_selfenergy_analytic: not functional for nspin>1')
+  if( nspin > 1 ) call die('gw_selfenergy_upfolding: not functional for nspin>1')
 
   if( nsemin /= ncore_G+1 .OR. nsemax /= nvirtual_G-1 ) then
     write(stdout,'(1x,a,i5,1x,i5)') 'nsemin ?= ncore_G+1    ',nsemin,ncore_G+1
     write(stdout,'(1x,a,i5,1x,i5)') 'nsemax ?= nvirtual_G-1 ',nsemax,nvirtual_G-1
-    call die('gw_selfenergy_analytic: selfenergy state range should contain all the active states')
+    call die('gw_selfenergy_upfolding: selfenergy state range should contain all the active states')
   endif
 
   if(has_auxil_basis) then
@@ -454,31 +494,21 @@ subroutine gw_selfenergy_analytic(selfenergy_approx,nstate,basis,occupation,ener
 
   call stop_clock(timing_gw_self)
 
-end subroutine gw_selfenergy_analytic
+end subroutine gw_selfenergy_upfolding
 
 
 !=========================================================================
-subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
-  use m_definitions
-  use m_timing
-  use m_warning,only: issue_warning
-  use m_mpi
-  use m_scalapack
-  use m_inputparam
-  use m_basis_set
-  use m_spectral_function
-  use m_eri_ao_mo
-  use m_selfenergy_tools
+subroutine gw_selfenergy_scalapack(selfenergy_approx,basis,occupation,energy,c_matrix,wpol,se)
   implicit none
 
-  integer,intent(in)                  :: nstate,selfenergy_approx
+  integer,intent(in)                  :: selfenergy_approx
   type(basis_set)                     :: basis
-  real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)                 :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(spectral_function),intent(in)  :: wpol
   type(selfenergy_grid),intent(inout) :: se
   !=====
-  integer                 :: pstate,pspin
+  integer                 :: pstate,pspin,nstate
   integer                 :: iomega
   integer                 :: istate,ipole
   real(dp)                :: fact_full_i,fact_empty_i
@@ -495,6 +525,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
   !=====
 
   if(.NOT. has_auxil_basis) return
+
+  nstate = SIZE(energy, DIM=1)
 
 #if defined(HAVE_SCALAPACK)
   call start_clock(timing_gw_self)
@@ -643,26 +675,17 @@ end subroutine gw_selfenergy_scalapack
 
 
 !=========================================================================
-subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,selfenergy)
-  use m_definitions
-  use m_mpi
-  use m_timing
-  use m_inputparam
-  use m_warning,only: issue_warning
-  use m_basis_set
-  use m_spectral_function
-  use m_eri_ao_mo
-  use m_selfenergy_tools
+subroutine gw_selfenergy_qs(basis,occupation,energy,c_matrix,s_matrix,wpol,selfenergy)
   implicit none
 
-  integer,intent(in)                 :: nstate
   type(basis_set)                    :: basis
-  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
-  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
-  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
+  real(dp),intent(in)                :: occupation(:,:),energy(:,:)
+  real(dp),intent(in)                :: c_matrix(:,:,:)
+  real(dp),intent(in)                :: s_matrix(:,:)
   type(spectral_function),intent(in) :: wpol
-  real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
+  real(dp),intent(out)               :: selfenergy(:,:,:)
   !=====
+  integer               :: nstate
   integer               :: ipstate,pstate,qstate,istate
   integer               :: ispin,ipole
   real(dp),allocatable  :: bra(:,:)
@@ -670,6 +693,8 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
   !=====
 
   call start_clock(timing_gw_self)
+
+  nstate = SIZE(energy, DIM=1)
 
   write(stdout,*)
   select case(calc_type%selfenergy_approx)
@@ -797,4 +822,5 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 end subroutine gw_selfenergy_qs
 
 
+end module m_gw_selfenergy_analytic
 !=========================================================================
