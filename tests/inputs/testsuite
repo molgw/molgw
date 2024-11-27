@@ -1137,6 +1137,12 @@ SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
 GW+G3W2 HOMO energy      ,  -24.696203        , 0 , 1.0e-4
 
 he_gw+g3w2_pade.in       , GW+G3W2 for He on the imaginary axis (setting the axis origin)
-SCF Total Energy          ,   -2.8551604777    , 0 , 1.0e-7
+SCF Total Energy         ,   -2.8551604777    , 0 , 1.0e-7
 GW+G3W2 HOMO energy      ,  -24.680279        , 0 , 1.0e-4
+
+he_h_collision_rt-tddft_force.in, RT-TDDFT with force calculation
+SCF Total Energy           ,   -1.8029834147    , 0 , 1.0e-7
+RT-TDDFT Total Energy      ,   -0.9236896915    , 0 , 1.0e-7
+RT-TDDFT work on projectile,   -0.8735542178    , 0 , 1.0e-7
+
 
