@@ -532,7 +532,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                                           * time_step
     endif
 
-    write(stdout,'(1x,a,2(1x,es16.8))') 'Number of electrons from Tr(PS): ', &
+    write(stdout,'(1x,a,2(1x,es16.8))') 'Electron count from Tr(PS): ', &
                                         SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 ) * s_matrix(:,:) )
 
     !
