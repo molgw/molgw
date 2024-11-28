@@ -632,10 +632,11 @@ end subroutine recalc_overlap_grad
 !=========================================================================
 ! Calculate  ( \alpha | p**2 / 2 | \beta )
 !
-subroutine setup_kinetic(basis,hamiltonian_kinetic)
+subroutine setup_kinetic(basis,hamiltonian_kinetic,timing)
   implicit none
   type(basis_set),intent(in) :: basis
   real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
+  integer,optional           :: timing
   !=====
   integer              :: ishell,jshell
   integer              :: ibf1,ibf2,jbf1,jbf2
@@ -873,7 +874,7 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
 #endif
   !=====
 
-  call start_clock(timing_hamiltonian_kin)
+  call start_clock(timing_grad_kin)
 #if defined(HAVE_LIBCINT)
   write(stdout,'(/,a)') ' Setup gradient of the kinetic part of the Hamiltonian (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
@@ -957,7 +958,7 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
   title='===  Kinetic energy contribution (LIBINT) Z ==='
   call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic_grad(:,:,3))
 
-  call stop_clock(timing_hamiltonian_kin)
+  call stop_clock(timing_grad_kin)
 
 end subroutine setup_kinetic_grad
 
@@ -1344,7 +1345,7 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad,atom_list,verbose)
     verbose_ = .FALSE.
   endif
 
-  call start_clock(timing_hamiltonian_nuc)
+  call start_clock(timing_grad_nuc)
 
 #if defined(HAVE_LIBCINT)
   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian gradient (LIBCINT)'
@@ -1575,7 +1576,7 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad,atom_list,verbose)
   enddo
 
 
-  call stop_clock(timing_hamiltonian_nuc)
+  call stop_clock(timing_grad_nuc)
 
 end subroutine setup_nucleus_grad
 
