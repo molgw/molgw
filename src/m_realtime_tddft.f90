@@ -1520,15 +1520,17 @@ subroutine predictor_corrector(basis,                  &
     ! ---------------|t-dt|-----------------|t|----------|t+dt/2)|----------|t+dt|
     !............|H(tddft_history-1)|..........|H(tddft_history)|....|H(tddft_history+1)|.....|H(tddft_history+2)|
   case('PC3','PC4')
-    h_cmplx=(0.0_dp,0.0_dp)
-    h_small_hist_cmplx(:,:,:,tddft_history+2)=(0.0_dp,0.0_dp)
+    h_cmplx = (0.0_dp,0.0_dp)
+    h_small_hist_cmplx(:,:,:,tddft_history+2) = (0.0_dp,0.0_dp)
     !--1--EXTRAPOLATION WITH PREVIOUS STEPS----
     do iextr=1,tddft_history
-      h_small_hist_cmplx(:,:,:,tddft_history+2)=h_small_hist_cmplx(:,:,:,tddft_history+2)+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
+      h_small_hist_cmplx(:,:,:,tddft_history+2) = h_small_hist_cmplx(:,:,:,tddft_history+2) &
+                                                  + extrap_coefs(iextr) * h_small_hist_cmplx(:,:,:,iextr)
     end do
 
     !--2--LOCAL LINEAR INTERPOLATION----| h_cmplx in the 1/2 of the current time interval
-    h_small_hist_cmplx(:,:,:,tddft_history+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,tddft_history)+h_small_hist_cmplx(:,:,:,tddft_history+2))
+    h_small_hist_cmplx(:,:,:,tddft_history+1) = 0.5_dp * ( h_small_hist_cmplx(:,:,:,tddft_history) &
+                                                         + h_small_hist_cmplx(:,:,:,tddft_history+2) )
 
     ! if ( is_iomaster .AND. mod(itau-1,mod_write)==0 ) then
     !   write(name_iter_norm,"(3A,I4.4,A)") "./iter_norm/", TRIM(tddft_predictor_corrector), "_norm_itau_",itau,".dat"
@@ -1555,9 +1557,10 @@ subroutine predictor_corrector(basis,                  &
                                    dipole_ao,               &
                                    h_cmplx,en_tddft)
 
-      c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
+      c_matrix_orth_hist_cmplx(:,:,:,1) = c_matrix_orth_cmplx(:,:,:)
       !--2B--LOCAL LINEAR INTERPOLATION----| h_cmplx in the 1/2 of the current time interval
-      h_small_hist_cmplx(:,:,:,tddft_history+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,tddft_history)+h_small_hist_cmplx(:,:,:,tddft_history+2))
+      h_small_hist_cmplx(:,:,:,tddft_history+1) = 0.5_dp * ( h_small_hist_cmplx(:,:,:,tddft_history) &
+                                                            + h_small_hist_cmplx(:,:,:,tddft_history+2) )
 
       !**COMPARISON**
       !  if( is_iomaster ) then
@@ -1587,11 +1590,12 @@ subroutine predictor_corrector(basis,                  &
     ! ---------------|t-dt|-----------------|t|--------------------|t+dt|
     !............|H(tddft_history-1)|..........|H(tddft_history)|.............|H(tddft_history+1)|
   case('PC5','PC6')
-    h_cmplx=(0.0_dp,0.0_dp)
-    h_small_hist_cmplx(:,:,:,tddft_history+1)=(0.0_dp,0.0_dp)
+    h_cmplx = (0.0_dp,0.0_dp)
+    h_small_hist_cmplx(:,:,:,tddft_history+1) = (0.0_dp,0.0_dp)
     !--1--EXTRAPOLATION WITH PREVIOUS STEPS----
     do iextr=1,tddft_history
-      h_small_hist_cmplx(:,:,:,tddft_history+1)=h_small_hist_cmplx(:,:,:,tddft_history+1)+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
+      h_small_hist_cmplx(:,:,:,tddft_history+1) = h_small_hist_cmplx(:,:,:,tddft_history+1) &
+                                                   + extrap_coefs(iextr) * h_small_hist_cmplx(:,:,:,iextr)
     end do
 
     do i_iter=1,n_iter
