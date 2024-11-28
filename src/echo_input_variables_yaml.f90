@@ -222,6 +222,7 @@
  write(unit_yaml,'(4x,a,20x,es16.8)') 'write_step:',write_step 
  write(unit_yaml,'(4x,a,27x,a)') 'x2c:',yesno_to_TrueFalse(x2c) 
  write(unit_yaml,'(4x,a,22x,a)') 'xyz_file:',TRIM(xyz_file) 
+ write(unit_yaml,'(4x,a,19x,a)') 'yaml_output:',TRIM(yaml_output) 
 
 
 !======================================================================

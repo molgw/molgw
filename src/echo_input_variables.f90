@@ -222,6 +222,7 @@
   write(stdout,'(1x,a32,2x,es16.8)') 'write_step',write_step 
   write(stdout,'(1x,a32,6x,a)') 'x2c',x2c 
   write(stdout,'(1x,a32,6x,a)') 'xyz_file',TRIM(xyz_file) 
+  write(stdout,'(1x,a32,6x,a)') 'yaml_output',TRIM(yaml_output) 
 
 
 !======================================================================

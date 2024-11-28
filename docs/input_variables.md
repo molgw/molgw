@@ -200,6 +200,7 @@
 [print_yaml](#print_yaml)
 [read_fchk](#read_fchk)
 [read_restart](#read_restart)
+[yaml_output](#yaml_output)
 
 
 ## Hardware input variables
@@ -3723,6 +3724,22 @@ EXPERIMENTAL. Build the X2C Hamiltonian and orbitals.
 **Description:**
 
 Specifies the location of the xyz file that contains the atomic positions. It can be used as an alternate route to set atomic coordinate.
+
+
+---
+### yaml_output
+
+*Optional*
+
+**Family:** io
+
+**Type:** characters
+
+**Default:** molgw.yaml
+
+**Description:**
+
+Specifies a file name or path for the YAML formatted output. Default is `molgw.yaml`.
 
 
 

@@ -92,6 +92,7 @@
  character(len=3),protected :: print_yaml
  logical,protected :: print_yaml_
  character(len=256),protected :: read_fchk
+ character(len=256),protected :: yaml_output
  character(len=3),protected :: calc_dens_disc
  logical,protected :: calc_dens_disc_
  character(len=3),protected :: calc_q_matrix

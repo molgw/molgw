@@ -68,6 +68,7 @@
     print_yaml,       &
     read_fchk,       &
     read_restart,       &
+    yaml_output,       &
     calc_dens_disc,       &
     calc_q_matrix,       &
     calc_spectrum,       &
@@ -286,6 +287,7 @@
  print_yaml='yes'
  read_fchk='no'
  read_restart='no'
+ yaml_output='molgw.yaml'
  calc_dens_disc='no'
  calc_q_matrix='no'
  calc_spectrum='no'
