@@ -593,6 +593,14 @@ read_restart:
   default: 'no'
   comment: Read the RESTART file and restart from it.
 
+yaml_output:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'molgw.yaml'
+  comment: Specifies a file name or path for the YAML formatted output. Default is `molgw.yaml`.
+
 
 #============================================================================
 #                  Real time TDDFT input variables

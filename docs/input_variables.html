@@ -23,7 +23,7 @@
 <p>
 <a href=#noft_complex>noft_complex</a> <a href=#noft_hessian>noft_hessian</a> <a href=#noft_nophases>noft_nophases</a> <a href=#noft_confinment>noft_confinment</a> <a href=#noft_iconfinment>noft_iconfinment</a> <a href=#noft_iwconfinment>noft_iwconfinment</a> <a href=#noft_rwconfinment>noft_rwconfinment</a> <a href=#noft_dft>noft_dft</a> <a href=#noft_rsinter>noft_rsinter</a> <a href=#noft_lowmemERI>noft_lowmemERI</a> <a href=#noft_fcidump>noft_fcidump</a> <a href=#noft_NOTupdateOCC>noft_NOTupdateOCC</a> <a href=#noft_NOTupdateORB>noft_NOTupdateORB</a> <a href=#noft_functional>noft_functional</a> <a href=#noft_printdmn>noft_printdmn</a> <a href=#noft_printswdmn>noft_printswdmn</a> <a href=#noft_printints>noft_printints</a> <a href=#noft_readCOEF>noft_readCOEF</a> <a href=#noft_readFdiag>noft_readFdiag</a> <a href=#noft_readGAMMAS>noft_readGAMMAS</a> <a href=#noft_readOCC>noft_readOCC</a> <a href=#noft_sta>noft_sta</a> <a href=#noft_NR_OCC>noft_NR_OCC</a> <a href=#noft_QC_ORB>noft_QC_ORB</a> <a href=#noft_ithresh_lambda>noft_ithresh_lambda</a> <a href=#noft_Lpower>noft_Lpower</a> <a href=#noft_npairs>noft_npairs</a> <a href=#noft_ncoupled>noft_ncoupled</a> <a href=#noft_ndiis>noft_ndiis</a> <a href=#noft_nscf>noft_nscf</a> <a href=#noft_restart>noft_restart</a> <a href=#noft_tolE>noft_tolE</a> <h3>IO input variables</h3>
 <p>
-<a href=#basis_path>basis_path</a> <a href=#cube_nx>cube_nx</a> <a href=#cube_ny>cube_ny</a> <a href=#cube_nz>cube_nz</a> <a href=#cube_state_min>cube_state_min</a> <a href=#cube_state_max>cube_state_max</a> <a href=#force_energy_qp>force_energy_qp</a> <a href=#ignore_bigrestart>ignore_bigrestart</a> <a href=#print_bigrestart>print_bigrestart</a> <a href=#print_cube>print_cube</a> <a href=#print_transition_density>print_transition_density</a> <a href=#print_wfn_files>print_wfn_files</a> <a href=#print_all_MO_wfn_file>print_all_MO_wfn_file</a> <a href=#print_density_matrix>print_density_matrix</a> <a href=#print_eri>print_eri</a> <a href=#print_hartree>print_hartree</a> <a href=#print_multipole>print_multipole</a> <a href=#print_pdos>print_pdos</a> <a href=#print_restart>print_restart</a> <a href=#print_rho_grid>print_rho_grid</a> <a href=#print_sigma>print_sigma</a> <a href=#print_spatial_extension>print_spatial_extension</a> <a href=#print_w>print_w</a> <a href=#print_wfn>print_wfn</a> <a href=#print_yaml>print_yaml</a> <a href=#read_fchk>read_fchk</a> <a href=#read_restart>read_restart</a> <h3>Hardware input variables</h3>
+<a href=#basis_path>basis_path</a> <a href=#cube_nx>cube_nx</a> <a href=#cube_ny>cube_ny</a> <a href=#cube_nz>cube_nz</a> <a href=#cube_state_min>cube_state_min</a> <a href=#cube_state_max>cube_state_max</a> <a href=#force_energy_qp>force_energy_qp</a> <a href=#ignore_bigrestart>ignore_bigrestart</a> <a href=#print_bigrestart>print_bigrestart</a> <a href=#print_cube>print_cube</a> <a href=#print_transition_density>print_transition_density</a> <a href=#print_wfn_files>print_wfn_files</a> <a href=#print_all_MO_wfn_file>print_all_MO_wfn_file</a> <a href=#print_density_matrix>print_density_matrix</a> <a href=#print_eri>print_eri</a> <a href=#print_hartree>print_hartree</a> <a href=#print_multipole>print_multipole</a> <a href=#print_pdos>print_pdos</a> <a href=#print_restart>print_restart</a> <a href=#print_rho_grid>print_rho_grid</a> <a href=#print_sigma>print_sigma</a> <a href=#print_spatial_extension>print_spatial_extension</a> <a href=#print_w>print_w</a> <a href=#print_wfn>print_wfn</a> <a href=#print_yaml>print_yaml</a> <a href=#read_fchk>read_fchk</a> <a href=#read_restart>read_restart</a> <a href=#yaml_output>yaml_output</a> <h3>Hardware input variables</h3>
 <p>
 <a href=#eri3_nbatch>eri3_nbatch</a> <a href=#eri3_npcol>eri3_npcol</a> <a href=#eri3_nprow>eri3_nprow</a> <a href=#grid_memory>grid_memory</a> <a href=#mpi_poorman>mpi_poorman</a> <a href=#scalapack_block_min>scalapack_block_min</a> <h3>Real time TDDFT</h3>
 <p>
@@ -398,6 +398,12 @@ Triggers the reading of an external Gaussian formatted checkpoint file (named ga
 <i>Optional</i><br>
 Default: no<br><br>
 Read the RESTART file and restart from it.</li><br>
+<hr>
+<a name=yaml_output><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>yaml_output</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: molgw.yaml<br><br>
+Specifies a file name or path for the YAML formatted output. Default is `molgw.yaml`.</li><br>
 <hr>
 <a name=calc_dens_disc><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>calc_dens_disc</b>  </span>  
 <br><br>
@@ -1330,5 +1336,5 @@ Default: none<br><br>
 Specifies the location of the xyz file that contains the atomic positions. It can be used as an alternate route to set atomic coordinate.</li><br>
 </ul>
 <br><br><br><br><br><br><br><br>
-<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 11 September 2024</i><br><br></body>
+<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_variables.py on 28 November 2024</i><br><br></body>
 </html>
