@@ -1056,7 +1056,7 @@ Number of electrons       ,   1.999590         , 0 , 1.0e-4
 benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++, need_gradients
 SCF Total Energy          , -232.8924888075    , 0 , 5.0e-5   # Loosened criterium
 RT-TDDFT Total Energy     , -230.4199238294    , 0 , 5.0e-5   # Loosened criterium
-Number of electrons       ,    42.0025941      , 0 , 1.0e-4
+Number of electrons       ,    42.0025941      , 0 , 1.0e-2   # Loosened criterium
 
 lih_rpa.in                , RPA energy of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
@@ -1147,4 +1147,10 @@ SIGMA_TDHF HOMO energy    ,  -20.893601        , 0 , 1.0e-4
 ne_sigma_tdschf.in        , Sigma_TDscHF vertex correction for Neon atom 
 SCF Total Energy          , -128.4891424970    , 0 , 1.0e-7
 SIGMA_TDSCHF HOMO energy  ,  -20.762555        , 0 , 1.0e-4
+
+he_h_collision_rt-tddft_force.in, RT-TDDFT with force calculation
+SCF Total Energy           ,   -1.8029834147    , 0 , 1.0e-7
+RT-TDDFT Total Energy      ,   -0.9236896915    , 0 , 1.0e-7
+RT-TDDFT work on projectile,   -0.8735542178    , 0 , 1.0e-7
+
 

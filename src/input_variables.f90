@@ -144,18 +144,19 @@
     excit_name,       &
     excit_width,       &
     excit_time0,       &
-    n_hist,       &
+    tddft_history,       &
     n_iter,       &
     n_restart_tddft,       &
     ncore_tddft,       &
-    pred_corr,       &
-    prop_type,       &
+    tddft_predictor_corrector,       &
+    tddft_propagator,       &
     projectile_charge_scaling,       &
     r_disc,       &
     tddft_frozencore,       &
     tddft_wfn_t0,       &
     tddft_energy_shift,       &
     tddft_charge,       &
+    tddft_force,       &
     tddft_magnetization,       &
     time_sim,       &
     time_step,       &
@@ -362,18 +363,19 @@
  excit_name='no'
  excit_width=0.2_dp 
  excit_time0=3.0_dp 
- n_hist=2
+ tddft_history=2
  n_iter=2
  n_restart_tddft=50
  ncore_tddft=0
- pred_corr='PC2B'
- prop_type='CN'
+ tddft_predictor_corrector='PC2B'
+ tddft_propagator='CN'
  projectile_charge_scaling=1.0_dp 
  r_disc=200.0_dp 
  tddft_frozencore='no'
  tddft_wfn_t0='SCF'
  tddft_energy_shift=0.0_dp 
  tddft_charge=-999.0_dp 
+ tddft_force='no'
  tddft_magnetization=0.0_dp 
  time_sim=10.0_dp 
  time_step=1.0_dp 

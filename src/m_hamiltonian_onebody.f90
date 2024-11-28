@@ -265,6 +265,10 @@ subroutine recalc_overlap(basis_t,basis_p,s_matrix)
   real(dp),allocatable :: matrix_tp(:,:)
   !=====
 
+  ! If there is no targer, all the basis functions are moving together
+  ! and there is nothing to do
+  if(basis_t%nshell==0) return
+
   ibf1    = basis_t%shell(1)%istart
   ibf2    = basis_t%shell(basis_t%nshell)%iend
 
@@ -290,7 +294,8 @@ end subroutine recalc_overlap
 
 !=========================================================================
 ! Calculate ( \nabla_{R_\alpha} \alpha | \beta )             <-> LIBINT integral
-!                 = - ( \nabla_r \alpha | \beta )            <-> LIBCINT integral
+!                 = - ( \nabla_r \alpha | \beta )
+!                 =   ( \alpha | \nabla_r \beta )            <-> LIBCINT integral
 !
 subroutine setup_overlap_grad(basis,s_matrix_grad)
   implicit none
@@ -627,10 +632,11 @@ end subroutine recalc_overlap_grad
 !=========================================================================
 ! Calculate  ( \alpha | p**2 / 2 | \beta )
 !
-subroutine setup_kinetic(basis,hamiltonian_kinetic)
+subroutine setup_kinetic(basis,hamiltonian_kinetic,timing)
   implicit none
   type(basis_set),intent(in) :: basis
   real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
+  integer,optional           :: timing
   !=====
   integer              :: ishell,jshell
   integer              :: ibf1,ibf2,jbf1,jbf2
@@ -837,6 +843,7 @@ end subroutine recalc_kinetic
 
 
 !=========================================================================
+! calculate  ( \nabla_{R_\alpha} \alpha | p**2 /2 | \beta) 
 subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
   implicit none
   type(basis_set),intent(in) :: basis
@@ -859,10 +866,22 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
   real(C_DOUBLE)                    :: B(3)
   real(C_DOUBLE),allocatable        :: alphaB(:)
   real(C_DOUBLE),allocatable        :: cB(:)
+#if defined(HAVE_LIBCINT)
+  integer        :: idir
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+  real(C_DOUBLE),allocatable        :: array_cart(:,:)
+#endif
   !=====
 
-  call start_clock(timing_hamiltonian_kin)
+  call start_clock(timing_grad_kin)
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Setup gradient of the kinetic part of the Hamiltonian (LIBCINT)'
+#elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
   write(stdout,'(/,a)') ' Setup gradient of the kinetic part of the Hamiltonian (LIBINT)'
+#else
+  call die('setup_kinetic_grad: kinetic gradient not implemented without LIBINT or LIBCINT one-body gradient terms')
+#endif
 
   do jshell=1,basis%nshell
     lj      = basis%shell(jshell)%am
@@ -887,14 +906,26 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
       allocate(array_cart_grady(ni_cart*nj_cart))
       allocate(array_cart_gradz(ni_cart*nj_cart))
 
-#if LIBINT2_DERIV_ONEBODY_ORDER > 0
+#if defined(HAVE_LIBCINT)
+      allocate(array_cart(ni_cart*nj_cart,3))
+      shls(1) = jshell-1  ! C convention starts with 0
+      shls(2) = ishell-1  ! C convention starts with 0
+
+      ! returns
+      ! < \nabla_r \phi_\beta | p**2 / 2 | \phi_\alpha >
+      info = cint1e_ipkin_cart(array_cart, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                               basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env)
+      do idir=1,3
+        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart(:,idir),matrix)
+        hamiltonian_kinetic_grad(ibf1:ibf2,jbf1:jbf2,idir) = matrix(:,:)
+      enddo
+
+      deallocate(array_cart)
+
+#elif LIBINT2_DERIV_ONEBODY_ORDER > 0
       call libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
                                amB,contrdepthB,B,alphaB,cB, &
                                array_cart_gradx,array_cart_grady,array_cart_gradz)
-#else
-      call die('kinetic operator gradient not implemented without LIBINT one-body terms')
-#endif
-      deallocate(alphaA,cA)
 
       ! X
       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradx,matrix)
@@ -907,8 +938,10 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
       ! Z
       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradz,matrix)
       hamiltonian_kinetic_grad(ibf1:ibf2,jbf1:jbf2,3) = matrix(:,:)
-
-
+#else
+      call die('kinetic operator gradient not implemented without LIBINT one-body terms or LIBCINT')
+#endif
+      deallocate(alphaA,cA)
       deallocate(array_cart_gradx)
       deallocate(array_cart_grady)
       deallocate(array_cart_gradz)
@@ -925,13 +958,13 @@ subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
   title='===  Kinetic energy contribution (LIBINT) Z ==='
   call dump_out_matrix(.FALSE.,title,hamiltonian_kinetic_grad(:,:,3))
 
-  call stop_clock(timing_hamiltonian_kin)
+  call stop_clock(timing_grad_kin)
 
 end subroutine setup_kinetic_grad
 
 
 !=========================================================================
-! Calculate \sum_c ( \alpha | -Z_c/|r - R_c| | \beta )
+! Calculate \sum_C ( \alpha | -Z_C / |r - R_C| | \beta )
 !
 subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
   implicit none
@@ -1165,8 +1198,8 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
 
 #if defined(HAVE_LIBCINT)
         call libcint_elecpot(amA,contrdepthA,A,alphaA,cA, &
-                            amB,contrdepthB,B,alphaB,cB, &
-                            C,array_cart_C)
+                             amB,contrdepthB,B,alphaB,cB, &
+                             C,array_cart_C)
         array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
         call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
@@ -1224,8 +1257,8 @@ subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
 
 #if defined(HAVE_LIBCINT)
         call libcint_elecpot(amA,contrdepthA,A,alphaA,cA, &
-                            amB,contrdepthB,B,alphaB,cB, &
-                            C,array_cart_C)
+                             amB,contrdepthB,B,alphaB,cB, &
+                             C,array_cart_C)
         array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:)
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
         call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
@@ -1276,44 +1309,55 @@ end subroutine recalc_nucleus
 
 
 !=========================================================================
-subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
+! calculate \nabla_{R_C} (                   \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= 1:ncenter_nuclei
+!       and              ( \nabla_{R_\alpha} \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= ncenter_nuclei+1
+!
+subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad,atom_list,verbose)
   implicit none
   type(basis_set),intent(in) :: basis
-  real(dp),intent(out)       :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
+  real(dp),intent(out)       :: hamiltonian_nucleus_grad(:,:,:,:)
+  integer,intent(in),optional :: atom_list(:)
+  logical,intent(in),optional :: verbose
   !=====
+  logical              :: verbose_
   integer              :: ishell,jshell
   integer              :: ibf1,ibf2,jbf1,jbf2
   integer              :: natom_local
   integer              :: ni,nj,ni_cart,nj_cart,li,lj
   integer              :: icenter
   character(len=100)   :: title
-  real(dp),allocatable :: matrixA(:,:)
-  real(dp),allocatable :: matrixB(:,:)
-
-  real(C_DOUBLE),allocatable        :: array_cart_gradAx(:)
-  real(C_DOUBLE),allocatable        :: array_cart_gradAy(:)
-  real(C_DOUBLE),allocatable        :: array_cart_gradAz(:)
-  real(C_DOUBLE),allocatable        :: array_cart_gradBx(:)
-  real(C_DOUBLE),allocatable        :: array_cart_gradBy(:)
-  real(C_DOUBLE),allocatable        :: array_cart_gradBz(:)
-  integer(C_INT)                    :: amA,contrdepthA
-  real(C_DOUBLE)                    :: A(3)
-  real(C_DOUBLE),allocatable        :: alphaA(:)
-  real(C_DOUBLE),allocatable        :: cA(:)
-  integer(C_INT)                    :: amB,contrdepthB
-  real(C_DOUBLE)                    :: B(3)
-  real(C_DOUBLE),allocatable        :: alphaB(:)
-  real(C_DOUBLE),allocatable        :: cB(:)
-  real(C_DOUBLE)                    :: C(3)
+  character(len=10)    :: ctmp
+  real(dp),allocatable :: matrixA(:,:), matrixB(:,:)
+  real(C_DOUBLE),allocatable        :: array_cart_gradA(:,:), array_cart_gradB(:,:)
+  integer(C_INT)                    :: amA, contrdepthA, amB, contrdepthB
+  real(C_DOUBLE)                    :: A(3), B(3), C(3)
+  real(C_DOUBLE),allocatable        :: alphaA(:), cA(:), alphaB(:), cB(:)
+#if defined(HAVE_LIBCINT)
+  integer                           :: idir
+  integer(C_INT) :: info
+  integer(C_INT) :: shls(2)
+#endif
   !=====
 
-  if( ncenter_basis /= ncenter_nuclei ) call die('setup_nucleus_grad: not implemented with ghosts or projectiles')
+  if( PRESENT(verbose) ) then
+    verbose_ = verbose
+  else
+    verbose_ = .FALSE.
+  endif
 
-  call start_clock(timing_hamiltonian_nuc)
+  call start_clock(timing_grad_nuc)
 
-  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian gradient (LIBINT)'
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian gradient (LIBCINT)'
+#else
+  call die("setup_nucleus_grad: only implemented when linking with LIBCINT")
+#endif
+  if( PRESENT(atom_list) ) then
+    write(stdout,'(1x,a,i5,a)') 'Only calculate the contribution from ',SIZE(atom_list),' nucleus/nuclei'
+  endif
+
   if( world%nproc > 1 ) then
-    natom_local=0
+    natom_local = 0
     do icenter=1,ncenter_nuclei
       if( world%rank /= MODULO(icenter-1,world%nproc) ) cycle
       natom_local = natom_local + 1
@@ -1322,8 +1366,8 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
     write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',ncenter_nuclei
   endif
 
-  hamiltonian_nucleus_grad(:,:,:,:) = 0.0_dp
 
+  hamiltonian_nucleus_grad(:,:,:,:) = 0.0_dp
   do jshell=1,basis%nshell
     lj      = basis%shell(jshell)%am
     nj_cart = number_basis_function_am('CART',lj)
@@ -1342,67 +1386,173 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
 
       call set_libint_shell(basis%shell(ishell),amA,contrdepthA,A,alphaA,cA)
 
-      allocate(array_cart_gradAx(ni_cart*nj_cart))
-      allocate(array_cart_gradAy(ni_cart*nj_cart))
-      allocate(array_cart_gradAz(ni_cart*nj_cart))
-      allocate(array_cart_gradBx(ni_cart*nj_cart))
-      allocate(array_cart_gradBy(ni_cart*nj_cart))
-      allocate(array_cart_gradBz(ni_cart*nj_cart))
+      allocate(array_cart_gradA(ni_cart*nj_cart,3))
+      allocate(array_cart_gradB(ni_cart*nj_cart,3))
 
 
       do icenter=1,ncenter_nuclei
+        if( PRESENT(atom_list) ) then
+          if( ALL(atom_list(:) /= icenter ) ) cycle
+        endif
         if( world%rank /= MODULO(icenter-1,world%nproc) ) cycle
 
 
         C(:) = xatom(:,icenter)
 
-#if LIBINT2_DERIV_ONEBODY_ORDER > 0
-        call libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
-                                 amB,contrdepthB,B,alphaB,cB, &
-                                 C,                           &
-                                 array_cart_gradAx,array_cart_gradAy,array_cart_gradAz, &
-                                 array_cart_gradBx,array_cart_gradBy,array_cart_gradBz)
-#else
-        call die('nuclear potential gradient not implemented without LIBINT one-body and gradient terms')
+#if defined(HAVE_LIBCINT)
+
+        ! returns = -( \nabla_R_\beta \beta | 1 / |r-R_C| | \alpha )
+        call libcint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
+                                  amB,contrdepthB,B,alphaB,cB, &
+                                  C,array_cart_gradB)
+        ! Get ( \nabla_R_\beta \beta | -Z_C / |r-R_C| | \alpha )
+        array_cart_gradB(:,:) = -array_cart_gradB(:,:) * (-zvalence(icenter))
+
+
+        ! returns = -( \nabla_R_\alpha | 1 / |r-R_C| | \beta )
+        call libcint_elecpot_grad(amB,contrdepthB,B,alphaB,cB, &
+                                  amA,contrdepthA,A,alphaA,cA, &
+                                  C,array_cart_gradA)
+        ! Get ( \nabla_R_\alpha | -Z_C / |r-R_C| | \beta )
+        array_cart_gradA(:,:) = -array_cart_gradA(:,:) * (-zvalence(icenter))
+
+        do idir=1,3
+          call transform_libint_to_molgw(basis%gaussian_type,lj,li,array_cart_gradA(:,idir),matrixA)
+          call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradB(:,idir),matrixB)
+
+#if 0
+          if( idir== 2 .AND. verbose_ ) then
+            if( li == 1 .AND. lj == 2 ) then
+              write(stdout,*) 'FBFB li, lj', li, lj
+              write(stdout,*) 'FBFB ishell, jshell', ishell, jshell
+              write(stdout,*) 'FBFB sizeA', SIZE(TRANSPOSE(matrixA),DIM=1)
+              write(stdout,*) 'FBFB sizeA', SIZE(TRANSPOSE(matrixA),DIM=2)
+              write(stdout,*) 'FBFB sizeB', SIZE(TRANSPOSE(matrixB),DIM=1)
+              write(stdout,*) 'FBFB sizeB', SIZE(TRANSPOSE(matrixB),DIM=2)
+              call dump_out_matrix(verbose_,'matrix A 1 2',TRANSPOSE(matrixA))
+              call dump_out_matrix(verbose_,'matrix B 1 2',TRANSPOSE(matrixB))
+              call dump_out_matrix(verbose_,'matrix -A -B**T 1 2',-TRANSPOSE(matrixA(:,:)) - matrixB(:,:))
+
+              block
+              integer :: ij, ibf_cart, jbf_cart, i_cart, j_cart, ig
+              real(dp) :: nucleus, array_cart(ni_cart*nj_cart), x1(3)
+              real(dp),allocatable :: matrix0(:,:), matrixp1(:,:), matrixm1(:,:), matrix_grady(:,:)
+              real(dp),parameter :: dx=1.0e-4_dp
+              type(basis_set) :: basis_tmp
+
+              ! dy = 0
+              basis_tmp = basis
+              x1(:) = basis%shell(ishell)%x0
+              basis_tmp%shell(ishell)%x0(:) = x1(:)
+              do i_cart=1,ni_cart
+                ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
+                basis_tmp%bfc(ibf_cart)%x0(:) = x1(:)
+                do ig=1,basis_tmp%shell(ishell)%ng
+                  basis_tmp%bfc(ibf_cart)%g(ig)%x0(:) = x1(:)
+                enddo
+              enddo
+
+              ij = 0
+              do i_cart=1,ni_cart
+                do j_cart=1,nj_cart
+                  ij = ij + 1
+                  ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
+                  jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
+                  call nucleus_basis_function(basis_tmp%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(icenter),xatom(:,icenter),nucleus)
+                  array_cart(ij) = nucleus
+                enddo
+              enddo
+              call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix0)
+              call dump_out_matrix(verbose_,'matrix dy=0',matrix0)
+
+              ! + dy
+              basis_tmp = basis
+              x1(:) = basis%shell(ishell)%x0 + dx * [0.0_dp, 1.0_dp, 0.0_dp]
+              basis_tmp%shell(ishell)%x0(:) = x1(:)
+              do i_cart=1,ni_cart
+                ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
+                basis_tmp%bfc(ibf_cart)%x0(:) = x1(:)
+                do ig=1,basis_tmp%shell(ishell)%ng
+                  basis_tmp%bfc(ibf_cart)%g(ig)%x0(:) = x1(:)
+                enddo
+              enddo
+
+              ij = 0
+              do i_cart=1,ni_cart
+                do j_cart=1,nj_cart
+                  ij = ij + 1
+                  ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
+                  jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
+                  call nucleus_basis_function(basis_tmp%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(icenter),xatom(:,icenter),nucleus)
+                  array_cart(ij) = nucleus
+                enddo
+              enddo
+              call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrixp1)
+              call dump_out_matrix(verbose_,'matrix +dy',matrixp1)
+
+              ! - dy
+              basis_tmp = basis
+              x1(:) = basis%shell(ishell)%x0 - dx * [0.0_dp, 1.0_dp, 0.0_dp]
+              basis_tmp%shell(ishell)%x0(:) = x1(:)
+              do i_cart=1,ni_cart
+                ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
+                basis_tmp%bfc(ibf_cart)%x0(:) = x1(:)
+                do ig=1,basis_tmp%shell(ishell)%ng
+                  basis_tmp%bfc(ibf_cart)%g(ig)%x0(:) = x1(:)
+                enddo
+              enddo
+
+              ij = 0
+              do i_cart=1,ni_cart
+                do j_cart=1,nj_cart
+                  ij = ij + 1
+                  ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
+                  jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
+                  call nucleus_basis_function(basis_tmp%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(icenter),xatom(:,icenter),nucleus)
+                  array_cart(ij) = nucleus
+                enddo
+              enddo
+              call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrixm1)
+              call dump_out_matrix(verbose_,'matrix -dy',matrixm1)
+
+              allocate(matrix_grady, MOLD=matrixp1)
+              matrix_grady = (matrixp1 - matrixm1) / (2.0d0*dx)
+              call dump_out_matrix(verbose_,'matrix grad y ',matrix_grady)
+
+              stop 'people dont stop. dont stop til get enough'
+              end block
+
+            endif
+          endif
 #endif
-        array_cart_gradAx(:) = array_cart_gradAx(:) * (-zvalence(icenter))
-        array_cart_gradAy(:) = array_cart_gradAy(:) * (-zvalence(icenter))
-        array_cart_gradAz(:) = array_cart_gradAz(:) * (-zvalence(icenter))
-        array_cart_gradBx(:) = array_cart_gradBx(:) * (-zvalence(icenter))
-        array_cart_gradBy(:) = array_cart_gradBy(:) * (-zvalence(icenter))
-        array_cart_gradBz(:) = array_cart_gradBz(:) * (-zvalence(icenter))
 
-        ! X
-        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAx,matrixA)
-        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBx,matrixB)
-        hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,1) = -matrixA(:,:) - matrixB(:,:)
-        hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,1) = &
-                   hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,1) + matrixA(:,:)
+          ! Store hnuc( C ) =
+          !   ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta )
+          !
+          !    thanks to translational invariance, we have:
+          !    ( \nabla_{R_\alpha} \alpha | -Z_C / |r-R_C| | \beta ) 
+          !          + ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta ) 
+          !             + ( \alpha | -Z_C / |r-R_C| | \nabla_{R_\beta} \beta )  = 0
+          !  Hence,
+          !   ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta ) = - ( \nabla_{R_\alpha} \alpha | -Z_C / |r-R_C| | \beta )
+          !                                                      - ( \nabla_{R_\beta}  \beta  | -Z_C / |r-R_C| | \alpha )
 
-        ! Y
-        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAy,matrixA)
-        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBy,matrixB)
-        hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,2) = -matrixA(:,:) - matrixB(:,:)
-        hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,2) = &
-                   hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,2) + matrixA(:,:)
 
-        ! Z
-        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAz,matrixA)
-        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBz,matrixB)
-        hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,3) = -matrixA(:,:) - matrixB(:,:)
-        hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,3) = &
-                   hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,3) + matrixA(:,:)
+          hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,icenter  ,idir) =  -TRANSPOSE(matrixA(:,:)) - matrixB(:,:)
 
+          ! Store hnuc_grad( ncenter_nuclei+1 ) =
+          !   ( \nabla_R_\alpha | \sum_C -Z_C / |r-R_C| | \beta )
+          hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,idir) = &
+                   hamiltonian_nucleus_grad(ibf1:ibf2,jbf1:jbf2,ncenter_nuclei+1,idir) + TRANSPOSE(matrixA(:,:))
+        enddo
+
+#endif
       enddo
       deallocate(alphaA,cA)
 
 
-      deallocate(array_cart_gradAx)
-      deallocate(array_cart_gradAy)
-      deallocate(array_cart_gradAz)
-      deallocate(array_cart_gradBx)
-      deallocate(array_cart_gradBy)
-      deallocate(array_cart_gradBz)
+      deallocate(array_cart_gradA)
+      deallocate(array_cart_gradB)
       deallocate(matrixA)
       deallocate(matrixB)
 
@@ -1415,14 +1565,18 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
   ! Reduce operation
   call world%sum(hamiltonian_nucleus_grad)
 
-  title='===  Nucleus potential contribution (LIBINT) C1X==='
-  call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,1,1))
-  title='===  Nucleus potential contribution (LIBINT) C1Y==='
-  call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,1,2))
-  title='===  Nucleus potential contribution (LIBINT) C1Z==='
-  call dump_out_matrix(.FALSE.,title,hamiltonian_nucleus_grad(:,:,1,3))
+  do icenter=1,ncenter_nuclei+1
+    write(ctmp,'(i03)') icenter
+    title='===  Nucleus potential contribution (LIBINT) d/dRCX=== ' // ctmp
+    call dump_out_matrix(verbose_,title,hamiltonian_nucleus_grad(:,:,icenter,1))
+    title='===  Nucleus potential contribution (LIBINT) d/dRCY=== ' // ctmp
+    call dump_out_matrix(verbose_,title,hamiltonian_nucleus_grad(:,:,icenter,2))
+    title='===  Nucleus potential contribution (LIBINT) d/dRCZ=== ' // ctmp
+    call dump_out_matrix(verbose_,title,hamiltonian_nucleus_grad(:,:,icenter,3))
+  enddo
 
-  call stop_clock(timing_hamiltonian_nuc)
+
+  call stop_clock(timing_grad_nuc)
 
 end subroutine setup_nucleus_grad
 

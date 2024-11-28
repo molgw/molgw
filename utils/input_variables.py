@@ -108,6 +108,7 @@ for key,value in input_var_dict.items():
     ffor.write(' real(dp),protected :: ' + key +'(3)\n')
   elif value['datatype'] =='yes/no':
     ffor.write(' character(len=3),protected :: ' + key +'\n')
+    ffor.write(' logical,protected :: ' + key +'_\n')
   elif value['datatype'] =='characters':
     ffor.write(' character(len=256),protected :: ' + key +'\n')
   else:

@@ -123,61 +123,61 @@ module m_inputparam
   integer,protected                :: integral_level
   logical,protected                :: has_auxil_basis
   logical,protected                :: has_small_basis
-  logical,protected                :: incore_
+  logical,protected                :: read_restart_
   !
   ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
   ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
   complex(dp),protected            :: ieta
 
-  logical,protected                :: mpi_poorman_
-  logical,protected                :: use_correlated_density_matrix_
-  logical,protected                :: gwgamma_tddft_
-  logical,protected                :: memory_evaluation_
-  logical,protected                :: read_restart_
-  logical,protected                :: ignore_bigrestart_
-  logical,protected                :: force_energy_qp_
-  logical,protected                :: print_eri_
-  logical,protected                :: print_wfn_
-  logical,protected                :: print_w_
-  logical,protected                :: print_sigma_
-  logical,protected                :: print_restart_
-  logical,protected                :: print_bigrestart_
-  logical,protected                :: print_pdos_
-  logical,protected                :: print_spatial_extension_
-  logical,protected                :: print_cube_
-  logical,protected                :: print_wfn_files_
-  logical,protected                :: print_all_MO_wfn_file_
-  logical,protected                :: print_multipole_
-  logical,protected                :: print_hartree_
-  logical,protected                :: print_density_matrix_
-  logical,protected                :: print_rho_grid_
-  logical,protected                :: print_tddft_matrices_
-  logical,protected                :: print_cube_rho_tddft_
-  logical,protected                :: print_cube_diff_tddft_
-  logical,protected                :: print_line_rho_tddft_
-  logical,protected                :: print_line_rho_diff_tddft_
-  logical,protected                :: print_dens_traj_tddft_
-  logical,protected                :: print_c_matrix_cmplx_hdf5_
-  logical,protected                :: print_p_matrix_MO_block_hdf5_
-  logical,protected                :: print_dens_traj_
-  logical,protected                :: print_dens_traj_points_set_
-  logical,protected                :: print_charge_tddft_
-  logical,protected                :: print_transition_density_
-  logical,protected                :: cphf_cpks_0_
-  logical,protected                :: calc_q_matrix_
-  logical,protected                :: calc_dens_disc_
-  logical,protected                :: calc_spectrum_
-  logical,protected                :: read_tddft_restart_
-  logical,protected                :: print_tddft_restart_
-  logical,protected                :: print_yaml_
-  logical,protected                :: assume_scf_converged_
-  logical,protected                :: analytic_chi_
-  logical,protected                :: eri3_genuine_
-  logical,protected                :: auto_occupation_
-  logical,protected                :: g3w2_skip_vvv_
-  logical,protected                :: g3w2_skip_vv_
-  logical,protected                :: g3w2_static_approximation_
-  logical,protected                :: x2c_
+  !logical,protected                :: incore_
+  !logical,protected                :: mpi_poorman_
+  !logical,protected                :: use_correlated_density_matrix_
+  !logical,protected                :: gwgamma_tddft_
+  !logical,protected                :: memory_evaluation_
+  !logical,protected                :: ignore_bigrestart_
+  !logical,protected                :: force_energy_qp_
+  !logical,protected                :: print_eri_
+  !logical,protected                :: print_wfn_
+  !logical,protected                :: print_w_
+  !logical,protected                :: print_sigma_
+  !logical,protected                :: print_restart_
+  !logical,protected                :: print_bigrestart_
+  !logical,protected                :: print_pdos_
+  !logical,protected                :: print_spatial_extension_
+  !logical,protected                :: print_cube_
+  !logical,protected                :: print_wfn_files_
+  !logical,protected                :: print_all_MO_wfn_file_
+  !logical,protected                :: print_multipole_
+  !logical,protected                :: print_hartree_
+  !logical,protected                :: print_density_matrix_
+  !logical,protected                :: print_rho_grid_
+  !logical,protected                :: print_tddft_matrices_
+  !logical,protected                :: print_cube_rho_tddft_
+  !logical,protected                :: print_cube_diff_tddft_
+  !logical,protected                :: print_line_rho_tddft_
+  !logical,protected                :: print_line_rho_diff_tddft_
+  !logical,protected                :: print_dens_traj_tddft_
+  !logical,protected                :: print_c_matrix_cmplx_hdf5_
+  !logical,protected                :: print_p_matrix_MO_block_hdf5_
+  !logical,protected                :: print_dens_traj_
+  !logical,protected                :: print_dens_traj_points_set_
+  !logical,protected                :: print_charge_tddft_
+  !logical,protected                :: print_transition_density_
+  !logical,protected                :: cphf_cpks_0_
+  !logical,protected                :: calc_q_matrix_
+  !logical,protected                :: calc_dens_disc_
+  !logical,protected                :: calc_spectrum_
+  !logical,protected                :: read_tddft_restart_
+  !logical,protected                :: print_tddft_restart_
+  !logical,protected                :: print_yaml_
+  !logical,protected                :: assume_scf_converged_
+  !logical,protected                :: analytic_chi_
+  !logical,protected                :: eri3_genuine_
+  !logical,protected                :: auto_occupation_
+  !logical,protected                :: g3w2_skip_vvv_
+  !logical,protected                :: g3w2_skip_vv_
+  !logical,protected                :: g3w2_static_approximation_
+  !logical,protected                :: x2c_
 
   real(dp),protected               :: rcut         = 0.0_dp
   real(dp),protected               :: factor_sosex = 1.0_dp
@@ -918,9 +918,9 @@ subroutine read_inputfile_namelist()
   mixing_scheme      = capitalize(mixing_scheme)
   length_unit        = capitalize(length_unit)
   init_hamiltonian   = capitalize(init_hamiltonian)
-  prop_type          = capitalize(prop_type)
+  tddft_propagator   = capitalize(tddft_propagator)
   excit_name         = capitalize(excit_name)
-  pred_corr          = capitalize(pred_corr)
+  tddft_predictor_corrector = capitalize(tddft_predictor_corrector)
   ci_greens_function = capitalize(ci_greens_function)
   ci_type            = capitalize(ci_type)
   read_fchk          = capitalize(read_fchk)
@@ -985,6 +985,7 @@ subroutine read_inputfile_namelist()
   analytic_chi_               = yesno_to_logical(analytic_chi)
   eri3_genuine_               = yesno_to_logical(eri3_genuine)
   auto_occupation_            = yesno_to_logical(auto_occupation)
+  tddft_force_                = yesno_to_logical(tddft_force)
 
   tddft_grid_level   = interpret_quality(tddft_grid_quality)
   grid_level         = interpret_quality(grid_quality)
@@ -1042,10 +1043,12 @@ subroutine read_inputfile_namelist()
 
 
 
-#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0)
+#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0) 
+#if !defined(HAVE_LIBCINT)
   if( move_nuclei /= 'no' ) then
     call die('LIBINT does not contain the gradients of the integrals that are needed when move_nuclei is different from no')
   endif
+#endif
 #endif
 
 #if !defined(HAVE_HDF5)
@@ -1112,7 +1115,7 @@ and the -DHAVE_HDF5 compilation option must be activated')
   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(eri3_genuine_) ) then
     call die('eri3_genuine is required for moving basis (=excit_name=ion)')
   endif
-  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(pred_corr(1:2)=='MB') ) then
+  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(tddft_predictor_corrector(1:2)=='MB') ) then
     call die('Predictor-correction scheme is not valid for moving basis. Use instead MB_PC2B for instance')
   endif
 

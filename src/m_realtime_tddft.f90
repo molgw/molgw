@@ -7,7 +7,7 @@
 !
 !=========================================================================
 #include "molgw.h"
-module m_tddft_propagator
+module m_realtime_tddft
   use m_definitions
   use m_memory
   use m_warning
@@ -73,7 +73,7 @@ contains
 
 
 !=========================================================================
-subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
+subroutine realtime_tddft_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
   implicit none
 
   type(basis_set),intent(inout) :: basis
@@ -155,7 +155,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   !                                                => effective hamiltonian = S^{-1} (H - iD)
   !                        moving_basis == .FALSE. => propagate C' = X^{-1} C
   !                                                => effective hamiltonian = H
-  moving_basis = excit_type%form == EXCIT_PROJECTILE_W_BASIS .OR. pred_corr(1:2)=='MB'
+  moving_basis = excit_type%form == EXCIT_PROJECTILE_W_BASIS .OR. tddft_predictor_corrector(1:2)=='MB'
 
   write(stdout,*) 'Splitting basis set into TARGET and PROJECTILE basis sets'
   call split_basis_set(basis,basis_t,basis_p)
@@ -224,7 +224,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   else
     d_matrix(:,:) = 0.0_dp
     if( nstate /= nstate_tmp ) then
-      call die('Error with nstate in the TDDFT propagator')
+      call die('realtime_tddft_propagation: error with nstate in the TDDFT propagator')
     end if
   end if
 
@@ -253,8 +253,8 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     call setup_nucleus_ecp(basis,hamiltonian_nucleus)
   endif
 
-  if( write_step / time_step - NINT( write_step / time_step ) > 1.0E-10_dp .OR. write_step < time_step ) then
-    call die("Tddft error: write_step is not a multiple of time_step or smaller than time_step.")
+  if( write_step / time_step - NINT( write_step / time_step ) > 1.0e-10_dp .OR. write_step < time_step ) then
+    call die("realtime_tddft_propagation: write_step is not a multiple of time_step or smaller than time_step.")
   end if
 
   if( calc_type%is_dft ) then
@@ -303,7 +303,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       case('SCF')
         write(stdout,'(/,1x,a)') '===== C matrix initialization is skipped ====='
       case default
-        call die('calculate_propagation: tddft_wfn_t0 value not recognized')
+        call die('realtime_tddft_propagation: tddft_wfn_t0 value not recognized')
       end select
 
     else
@@ -514,8 +514,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
                              dipole_ao)
 
 
-    !
-    ! debug
+    !DEBUG
     !do ispin=1,nspin
     !  is_identity_ = check_identity_cmplx(MATMUL(MATMUL(TRANSPOSE(CONJG( &
     !  c_matrix_cmplx(:,:,ispin))),s_matrix(:,:)), c_matrix_cmplx(:,:,ispin) ))
@@ -525,10 +524,15 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
     !  end if
     !enddo
 
-    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
-    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+    if( tddft_force_ ) then
+      en_tddft%work_p_nonconserv = en_tddft%work_p_nonconserv &
+                                   + DOT_PRODUCT(force_projectile_nonconserv(:), vel_nuclei(:,ncenter_nuclei)) * time_step
+      en_tddft%work_p            = en_tddft%work_p &
+                                   + DOT_PRODUCT( force_projectile(:), vel_nuclei(:,ncenter_nuclei) ) &
+                                          * time_step
+    endif
 
-    write(stdout,'(1x,a,2(1x,es15.8))') 'Number of electrons from Tr(PS): ', &
+    write(stdout,'(1x,a,2(1x,es16.8))') 'Electron count from Tr(PS): ', &
                                         SUM( SUM( p_matrix_cmplx(:,:,:), DIM=3 ) * s_matrix(:,:) )
 
     !
@@ -550,8 +554,6 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       en_tddft%time = time_cur
       write(time_key,'(i8)') iwrite_step
       call print_energy_yaml('tddft energy '//TRIM(ADJUSTL(time_key)),en_tddft)
-      !FBFB moving_basis spurious forces correction
-      !call setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,.FALSE.)
 
       if ( print_line_rho_tddft_  )     call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
       if ( print_line_rho_diff_tddft_ ) call plot_rho_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx, &
@@ -613,7 +615,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
       end if
     end if
 
-    time_cur = time_min + itau*time_step
+    time_cur = time_min + itau * time_step
     itau = itau + 1
 
     !---
@@ -691,7 +693,7 @@ subroutine calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_t
   call stop_clock(timing_tddft_loop)
   call switch_off_rt_tddft_timers()
 
-end subroutine calculate_propagation
+end subroutine realtime_tddft_propagation
 
 
 !=========================================================================
@@ -705,10 +707,10 @@ subroutine echo_tddft_variables()
   write(stdout,'(2x,a32,6x,l1)') 'Moving basis:',moving_basis
   write(stdout,'(2x,a32,6x,a)')  'Initial wavefunctions:',TRIM(tddft_wfn_t0)
   write(stdout,'(2x,a32,2x,f14.6)') 'Charge:',tddft_charge
-  write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector:',TRIM(pred_corr)
-  write(stdout,'(2x,a32,6x,a)')      'Propagator:',TRIM(prop_type)
+  write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector:',TRIM(tddft_predictor_corrector)
+  write(stdout,'(2x,a32,6x,a)')      'Propagator:',TRIM(tddft_propagator)
   write(stdout,'(2x,a32,2x,i8)')     'Number of propagated states:',nocc
-  write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length for PC:',n_hist
+  write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length for PC:',tddft_history
 
 end subroutine echo_tddft_variables
 
@@ -798,7 +800,7 @@ subroutine stationary_c_matrix(basis,               &
 
     do ispin=1, nspin
       ! in ortho basis : M' = X**H * ( H-iD+(mv**2+ deltaE)*S ) * X
-      m_tmp(:,:,ispin)  = h_cmplx(:,:,ispin) - im*d_matrix(:,:)
+      m_tmp(:,:,ispin)  = h_cmplx(:,:,ispin) - im * d_matrix(:,:)
       !FBFB Why (1/2) m v**2 ?
       m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin)  = m_tmp(basis_t%nbf + 1:,basis_t%nbf + 1:,ispin) &
             + (0.5*SUM(vel_nuclei(:,ncenter_nuclei)**2) + tddft_energy_shift ) * s_matrix(basis_t%nbf + 1:,basis_t%nbf + 1:)
@@ -841,9 +843,8 @@ subroutine stationary_c_matrix(basis,               &
                                  h_small_cmplx,            &
                                  x_matrix,                 &
                                  dipole_ao,                &
-                                 h_cmplx,en_tddft)
+                                 h_cmplx,en_tddft,p_matrix_cmplx)
 
-    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
     en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
 
     if( icycle > 1 ) then
@@ -853,7 +854,7 @@ subroutine stationary_c_matrix(basis,               &
         write(stdout,'(1x,a,/)') "=== CONVERGENCE REACHED ==="
         exit
       else
-        if( icycle == ncycle_max ) call die("=== TDDFT CONVERGENCE NOT REACHED ===")
+        if( icycle == ncycle_max ) call die("stationary_c_matrix: === TDDFT CONVERGENCE NOT REACHED ===")
       end if
     endif
 
@@ -955,30 +956,57 @@ end subroutine setup_d_matrix
 
 
 !=========================================================================
-subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recalc)
+! Calculate force on the projectile in fixed basis
+subroutine setup_fixed_basis_force(basis,p_matrix_cmplx)
   implicit none
   type(basis_set),intent(in)          :: basis
-  real(dp),intent(in)                 :: s_matrix(:,:)
-  complex(dp),intent(in)              :: c_matrix_cmplx(:,:,:)
-  complex(dp),intent(in)              :: h_cmplx(:,:,:)
-  real(dp),intent(in)                 :: occupation(:,:)
-  !real(dp),intent(inout)              :: force_mb_p(3)
-  logical,intent(in)                  :: recalc
+  complex(dp),intent(in)              :: p_matrix_cmplx(:,:,:)
   !=====
-  integer                             :: ibf,idir,istate,jbf,ispin
-  real(dp)                            :: force_mb_p(3)
-  real(dp),allocatable                :: s_matrix_hess(:,:,:,:)
-  real(dp),allocatable                :: s_matrix_inv(:,:)
-  real(dp),allocatable                :: BboldAdagger(:,:,:)
-  real(dp),allocatable                :: BAdagger(:,:)
-  complex(dp),allocatable             :: DboldA1(:,:,:)
-  complex(dp),allocatable             :: DboldA2(:,:,:)
-  complex(dp),allocatable             :: DboldA3(:,:,:)
-  real(dp),allocatable                :: cc_matrix(:,:,:)   ! cc_matrix corresponds to C^A_\alpha\beta in Kunert-Schmidt EPJ-D (2003)
-  complex(dp) :: ctmp(3)
+  integer                             :: idir
+  real(dp)                            :: h_nuc_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
   !=====
 
-  write(stdout,'(/,a)') ' Setup mb force (analytic)'
+  write(stdout,'(/,a)') ' Setup fixed basis force (analytic)'
+
+  call setup_nucleus_grad(basis,h_nuc_grad)
+
+  ! Get the electron-nucleus force
+  do idir=1,3
+    force_projectile(idir) = -SUM( SUM(p_matrix_cmplx(:,:,:),DIM=3) * h_nuc_grad(:,:,ncenter_nuclei,idir) )
+  enddo
+
+  ! Add the nucleus-nucleus force
+  call nucleus_nucleus_force()
+  force_projectile(:) = force_projectile(:) + force_nuc_nuc(:,ncenter_nuclei)
+
+end subroutine setup_fixed_basis_force
+
+
+!=========================================================================
+subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,p_matrix_cmplx,recalc)
+  implicit none
+  type(basis_set),intent(in) :: basis
+  real(dp),intent(in)        :: s_matrix(:,:)
+  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+  complex(dp),intent(in)     :: p_matrix_cmplx(:,:,:)
+  complex(dp),intent(in)     :: h_cmplx(:,:,:)
+  real(dp),intent(in)        :: occupation(:,:)
+  logical,intent(in)         :: recalc
+  !=====
+  integer                    :: ibf,idir,istate,jbf,ispin
+  real(dp),allocatable       :: s_matrix_hess(:,:,:,:)
+  real(dp),allocatable       :: s_matrix_inv(:,:)
+  real(dp),allocatable       :: BboldAdagger(:,:,:)
+  real(dp),allocatable       :: Bdagger(:,:)
+  complex(dp),allocatable    :: DboldA1(:,:,:,:)
+  real(dp),allocatable       :: cc_matrix(:,:,:)  ! cc_matrix corresponds to C^A_\alpha\beta in Kunert-Schmidt EPJ-D (2003)
+  complex(dp),allocatable    :: m_matrix(:,:,:)   ! effective propagation operation S**-1 * ( H - iD)
+  complex(dp)                :: ctmp(3)
+  real(dp)                   :: h_nuc_grad(basis%nbf,basis%nbf,ncenter_nuclei+1,3)
+  real(dp)                   :: h_kin_grad(basis%nbf,basis%nbf,3)
+  !=====
+
+  write(stdout,'(/,a)') ' Setup moving basis force (analytic)'
 
   allocate(s_matrix_hess(basis%nbf,basis%nbf,3,3))
   allocate(s_matrix_inv,MOLD=s_matrix)
@@ -986,62 +1014,42 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   call invert(s_matrix_inv)
 
   allocate(BboldAdagger(basis%nbf,basis%nbf,3))
-  allocate(DboldA1(basis%nbf,basis%nbf,3))
-  allocate(DboldA2(basis%nbf,basis%nbf,3))
-  allocate(DboldA3(basis%nbf,basis%nbf,3))
-  allocate(BAdagger(basis%nbf,basis%nbf))
+  allocate(DboldA1(basis%nbf,basis%nbf,nspin,3))
+  allocate(Bdagger(basis%nbf,basis%nbf))
+  allocate(m_matrix(basis%nbf,basis%nbf,nspin))
 
   call setup_overlap_grad(basis,BboldAdagger)
+
   do ibf=1,basis%nbf
-    ! if A is not a projectile then BboldAdagger is zero
+    ! If A is not a projectile then BboldAdagger is zero
     if( ALL( ABS(basis%bff(ibf)%v0(:)) < 1.0e-6_dp ) ) then
       BboldAdagger(ibf,:,:) = 0.0_dp
     endif
-    BAdagger(ibf,:) = basis%bff(ibf)%v0(1) * BboldAdagger(ibf,:,1) &
+    Bdagger(ibf,:) =  basis%bff(ibf)%v0(1) * BboldAdagger(ibf,:,1) &
                     + basis%bff(ibf)%v0(2) * BboldAdagger(ibf,:,2) &
                     + basis%bff(ibf)%v0(3) * BboldAdagger(ibf,:,3)
   enddo
-
-  do idir=1,3
-    DboldA1(:,:,idir) = MATMUL( BboldAdagger(:,:,idir), MATMUL( s_matrix_inv, h_cmplx(:,:,1) ) ) &
-                        + MATMUL( MATMUL( h_cmplx(:,:,1), s_matrix_inv), TRANSPOSE( BboldAdagger(:,:,idir) ) )
+ 
+  ! M = S^{-1} * ( H - i D )
+  do ispin=1,nspin
+    m_matrix(:,:,ispin) = h_cmplx(:,:,ispin) - im * TRANSPOSE(Bdagger(:,:))
+    m_matrix(:,:,ispin) = MATMUL( s_matrix_inv(:,:) , m_matrix(:,:,ispin) )
   enddo
-
-  ctmp(:) = 0.0_dp
-  ispin=1
+  
   do idir=1,3
-    do istate=1,nocc
-      do ibf=1,basis%nbf
-        do jbf=1,basis%nbf
-          ctmp(idir) = ctmp(idir) + DboldA1(ibf,jbf,idir) &
-                                       * CONJG(c_matrix_cmplx(ibf,istate,ispin)) * c_matrix_cmplx(jbf,istate,ispin) &
-                                       * occupation(istate,ispin)
-        enddo
-      enddo
+    do ispin=1,nspin
+      DboldA1(:,:,ispin,idir) = MATMUL( BboldAdagger(:,:,idir), m_matrix(:,:,ispin) ) 
+      DboldA1(:,:,ispin,idir) = DboldA1(:,:,ispin,idir) + TRANSPOSE( CONJG(DboldA1(:,:,ispin,idir)) )
     enddo
   enddo
-  write(1001,'(3(2x,es16.8))') ctmp(:)%re
 
-
-  do idir=1,3
-    DboldA2(:,:,idir) = im * MATMUL( BAdagger(:,:), MATMUL( s_matrix_inv, TRANSPOSE(BboldAdagger(:,:,idir)) ) ) &
-                        - im * MATMUL( BboldAdagger(:,:,idir) , MATMUL( s_matrix_inv, TRANSPOSE(BAdagger(:,:)) )  )
-  enddo
+  ! F = Tr( DboldA1 * P )
   ctmp(:) = 0.0_dp
-  ispin=1
   do idir=1,3
-    do istate=1,nocc
-      do ibf=1,basis%nbf
-        do jbf=1,basis%nbf
-          ctmp(idir) = ctmp(idir) + DboldA2(ibf,jbf,idir) &
-                                       * CONJG(c_matrix_cmplx(ibf,istate,ispin)) * c_matrix_cmplx(jbf,istate,ispin) &
-                                       * occupation(istate,ispin)
-        enddo
-      enddo
+    do ispin=1,nspin
+      ctmp(idir) = ctmp(idir) + SUM( DboldA1(:,:,ispin,idir) * p_matrix_cmplx(:,:,ispin) )
     enddo
   enddo
-  write(1002,'(3(2x,es16.8))') ctmp(:)%re
-
 
 
   ! This routine returns s_hess = < grad_R_A phi_alpha | grad_R_B phi_beta >
@@ -1064,23 +1072,20 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
   enddo
 
   deallocate(s_matrix_hess)
-
+  
   do jbf=1,basis%nbf
-    ! if beta is not on a projectile, then the gradient is not contributing the for on the projectile
+    ! If beta is not on a projectile, then the gradient is not contributing to the force on the projectile
     if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) then
       cc_matrix(:,jbf,:) = 0.0_dp
     endif
   enddo
 
-  ctmp(:) = 0.0_dp
-  ispin=1
   do idir=1,3
-    do istate=1,nocc
+    do ispin=1,nspin
       do ibf=1,basis%nbf
         do jbf=1,basis%nbf
           ctmp(idir) = ctmp(idir) + im * ( cc_matrix(jbf,ibf,idir) - cc_matrix(ibf,jbf,idir) ) &
-                                        * CONJG(c_matrix_cmplx(ibf,istate,ispin)) * c_matrix_cmplx(jbf,istate,ispin) &
-                                        * occupation(istate,ispin)
+                                        * p_matrix_cmplx(ibf,jbf,ispin)
         enddo
       enddo
     enddo
@@ -1089,8 +1094,30 @@ subroutine setup_mb_force(basis,s_matrix,c_matrix_cmplx,h_cmplx,occupation,recal
 
   deallocate(cc_matrix)
 
-  write(1003,'(3(2x,es16.8))') ctmp(:)%re
-  force_mb_p(:) = ctmp(:)%re
+  force_projectile_nonconserv(:) =  ctmp(:)%re
+
+  call setup_nucleus_grad(basis,h_nuc_grad)
+  call setup_kinetic_grad(basis,h_kin_grad)
+  do idir=1,3
+    do jbf=1,basis%nbf
+      if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) cycle
+
+      ! hkin_grad_{alpha beta} = < \nabla_R_{A_alpha} phi_alpha | T | phi_beta >
+      ! sum_{alpha beta} P_{alpha beta} \partial T_{alpha beta} / \partial R_A
+      !     =  sum_{alpha beta} P_{alpha beta}  \delta_{A A_alpha} hkin_grad_{alpha beta} 
+      !      + sum_{alpha beta} P_{alpha beta}  \delta_{A A_beta} hkin_grad_{beta alpha}
+      !     =  sum_{alpha beta} P_{alpha beta}  \delta_{A A_alpha} hkin_grad_{alpha beta} 
+      !      + sum_{alpha beta} P_{beta alpha}  \delta_{A A_alpha} hkin_grad_{alpha beta}    <= relabelling alpha <-> beta
+      !     =  sum_{alpha beta} \delta_{A A_alpha} hkin_grad_{alpha beta}   ( P_{alpha beta} + P_{beta alpha} )
+      !     =  sum_{alpha beta} \delta_{A A_alpha} hkin_grad_{alpha beta}  2 * Re( P_{alpha beta} )
+      force_projectile_nonconserv(idir) = force_projectile_nonconserv(idir) &
+                               -SUM( 2.0 * SUM(p_matrix_cmplx(jbf,:,:)%re,DIM=2) * h_kin_grad(jbf,:,idir) )
+      force_projectile_nonconserv(idir) = force_projectile_nonconserv(idir) &
+                               -SUM( 2.0 * SUM(p_matrix_cmplx(jbf,:,:)%re,DIM=2) * h_nuc_grad(jbf,:,ncenter_nuclei+1,idir) )
+    enddo
+  enddo
+
+
 
 end subroutine setup_mb_force
 
@@ -1110,17 +1137,18 @@ subroutine mb_related_updates(basis,                &
   real(dp),intent(inout)             :: d_matrix(:,:)
   real(dp),intent(in)                :: time_cur
   real(dp),intent(in)                :: dt_factor
-  logical,intent(in)                 :: need_eri,need_grid
+  logical,intent(in)                 :: need_eri, need_grid
   !=====
   !=====
+
+  call start_clock(timing_update_basis_eri)
 
   ! Update projectile position and its basis center to t+dt/n
   call change_position_one_atom(ncenter_nuclei,xatom_start(:,ncenter_nuclei) &
-       + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step*dt_factor))
+       + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step * dt_factor))
   call change_basis_center_one_atom(ncenter_basis,xbasis_start(:,ncenter_basis) &
-       + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step*dt_factor))
+       + vel_nuclei(:,ncenter_nuclei) * (time_cur - time_read - time_step * dt_factor))
 
-  call start_clock(timing_update_basis_eri)
   if( need_eri ) then
     ! Update all basis and eri
     call update_basis_eri(basis,auxil_basis)
@@ -1192,13 +1220,14 @@ subroutine predictor_corrector(basis,                  &
   real(dp),allocatable,intent(in)    :: dipole_ao(:,:,:)
   !=====
   integer              :: nstate,iextr,i_iter,file_iter_norm
+  complex(dp),allocatable            :: p_matrix_cmplx(:,:,:)
   !=====
 
   nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
 
   write(stdout,'(/,1x,a)') 'PREDICTOR-CORRECTOR BLOCK'
 
-  select case (pred_corr)
+  select case (tddft_predictor_corrector)
     ! ///////////////////////////////////
   case('MB_PC0')
 
@@ -1208,10 +1237,11 @@ subroutine predictor_corrector(basis,                  &
     endif
 
     ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
-    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,tddft_propagator)
 
     ! Evaluate H(t+dt) using C(t+dt)
-    call setup_hamiltonian_cmplx(basis,                  &
+    allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
+    call setup_hamiltonian_cmplx(basis,                      &
                                  nstate,                     &
                                  itau,                       &
                                  time_cur,                   &
@@ -1223,13 +1253,16 @@ subroutine predictor_corrector(basis,                  &
                                  h_small_cmplx,              &
                                  x_matrix,                   &
                                  dipole_ao,                  &
-                                 h_cmplx,en_tddft)
+                                 h_cmplx,en_tddft,p_matrix_cmplx)
+    ! Energies are evaluated at t + dt
+    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+    deallocate(p_matrix_cmplx)
 
 
   case('MB_PC1')
 
     !--1--PREDICTOR----| H(t-3dt/2),H(t-dt/2)-->H(t+dt/4)
-    h_cmplx = -3.0_dp/4.0_dp*h_hist_cmplx(:,:,:,1) + 7.0_dp/4.0_dp*h_hist_cmplx(:,:,:,2)
+    h_cmplx(:,:,:) = -3.0_dp/4.0_dp*h_hist_cmplx(:,:,:,1) + 7.0_dp/4.0_dp*h_hist_cmplx(:,:,:,2)
 
 
     !--2--PREDICTOR----| C(t)---U[M(t+dt/4)]--->C(t+dt/2)
@@ -1240,7 +1273,7 @@ subroutine predictor_corrector(basis,                  &
 
 
     ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
-    call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,prop_type)
+    call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,tddft_propagator)
 
     !--3--CORRECTOR----| C(t+dt/2)-->H(t+dt/2)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
@@ -1249,6 +1282,7 @@ subroutine predictor_corrector(basis,                  &
     endif
 
     ! Evaluate H(t+dt/2)
+    allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
     call setup_hamiltonian_cmplx(basis,                        &
                                  nstate,                       &
                                  itau,                         &
@@ -1261,10 +1295,23 @@ subroutine predictor_corrector(basis,                  &
                                  h_small_cmplx,                &
                                  x_matrix,                     &
                                  dipole_ao,                    &
-                                 h_cmplx,en_tddft)
+                                 h_cmplx,en_tddft,p_matrix_cmplx)
+
+    ! Energies are evaluated at t + dt/2
+    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+
+    ! Hellman-Feynman force experienced by the projectile
+    if( tddft_force_ ) then
+      call setup_fixed_basis_force(basis,p_matrix_cmplx)
+      ! Moving_basis spurious forces corrections due to incomplete basis
+      if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
+        call setup_mb_force(basis,s_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,occupation,p_matrix_cmplx,.FALSE.)
+      endif
+    endif
+    deallocate(p_matrix_cmplx)
 
     !--4--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
-    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,tddft_propagator)
 
     !--5--UPDATE----| C(t+dt)-->C(t); H(t-dt/2)-->H(t-3dt/2); H(t+dt/2)-->H(t-dt/2)
     c_matrix_hist_cmplx(:,:,:,1) = c_matrix_cmplx(:,:,:)
@@ -1278,12 +1325,12 @@ subroutine predictor_corrector(basis,                  &
     h_cmplx = ( 0.0_dp, 0.0_dp )
 
     !--0--EXTRAPOLATE----> H(t+dt/4)
-    do iextr = 1, n_hist
+    do iextr = 1, tddft_history
       h_cmplx = h_cmplx + extrap_coefs(iextr) * h_hist_cmplx(:,:,:,iextr)
     end do
-    ! Shift for next iteration : n_hist-2  <---  n_hist; n_hist-3 <-- n_hist-1
-    if( n_hist > 2 ) then
-      do iextr = 1, n_hist-2
+    ! Shift for next iteration : tddft_history-2  <---  tddft_history; tddft_history-3 <-- tddft_history-1
+    if( tddft_history > 2 ) then
+      do iextr = 1, tddft_history-2
         h_hist_cmplx(:,:,:,iextr) = h_hist_cmplx(:,:,:,iextr+2)
       end do
     end if
@@ -1295,7 +1342,7 @@ subroutine predictor_corrector(basis,                  &
     endif
 
     ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
-    call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,prop_type)
+    call propagate_nonortho(time_step/2.0_dp,s_matrix,d_matrix,c_matrix_hist_cmplx(:,:,:,1),h_cmplx,tddft_propagator)
 
     !--2--EVALUATE----| C(t+dt/2) --> H(t+dt/2)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
@@ -1318,11 +1365,11 @@ subroutine predictor_corrector(basis,                  &
                                  dipole_ao,                    &
                                  h_cmplx,en_tddft)
 
-    ! Save in history : n_hist-1
-    if (n_hist > 1) h_hist_cmplx(:,:,:,n_hist-1) = h_cmplx
+    ! Save in history : tddft_history-1
+    if (tddft_history > 1) h_hist_cmplx(:,:,:,tddft_history-1) = h_cmplx
 
     !--3--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
-    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+    call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,tddft_propagator)
 
     !--4--EVALUATE----| C(t+dt) --> H(t+dt)
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
@@ -1331,6 +1378,7 @@ subroutine predictor_corrector(basis,                  &
     endif
 
     ! Calculate H(t+dt)
+    allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
     call setup_hamiltonian_cmplx(basis,                        &
                                  nstate,                       &
                                  itau,                         &
@@ -1343,16 +1391,19 @@ subroutine predictor_corrector(basis,                  &
                                  h_small_cmplx,                &
                                  x_matrix,                     &
                                  dipole_ao,                    &
-                                 h_cmplx,en_tddft)
+                                 h_cmplx,en_tddft,p_matrix_cmplx)
+    ! Energies are evaluated at t + dt
+    en_tddft%id = REAL( SUM( im*d_matrix(:,:) * CONJG(SUM(p_matrix_cmplx(:,:,:),DIM=3)) ), dp)
+    deallocate(p_matrix_cmplx)
 
     !--5--UPDATE----| C(t+dt) -> C(t); H(t+dt) -> H(t)
     c_matrix_hist_cmplx(:,:,:,1) = c_matrix_cmplx(:,:,:)
-    h_hist_cmplx(:,:,:,n_hist) = h_cmplx
+    h_hist_cmplx(:,:,:,tddft_history) = h_cmplx
 
 
     ! ///////////////////////////////////
   case('PC0')
-    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,tddft_propagator)
     call setup_hamiltonian_cmplx(basis,               &
                                  nstate,                  &
                                  itau,                    &
@@ -1372,12 +1423,14 @@ subroutine predictor_corrector(basis,                  &
     ! Following Cheng and Van Voorhis, Phys Rev B 74 (2006)
   case('PC1')
     !--1--PREDICTOR----| H(2/4),H(6/4)-->H(9/4)
-    h_small_cmplx= -3.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,1)+7.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,2)
+    h_small_cmplx(:,:,:) = -3.0_dp/4.0_dp * h_small_hist_cmplx(:,:,:,1) &
+                          + 7.0_dp/4.0_dp * h_small_hist_cmplx(:,:,:,2)
     !--2--PREDICTOR----| C(8/4)---U[H(9/4)]--->C(10/4)
     call propagate_orth(nstate,basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1), &
-                        c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+                        c_matrix_cmplx,h_small_cmplx,x_matrix,tddft_propagator)
 
     !--3--CORRECTOR----| C(10/4)-->H(10/4)
+    allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
     call setup_hamiltonian_cmplx(basis,                 &
                                  nstate,                    &
                                  itau,                      &
@@ -1390,34 +1443,40 @@ subroutine predictor_corrector(basis,                  &
                                  h_small_cmplx,             &
                                  x_matrix,                  &
                                  dipole_ao,                 &
-                                 h_cmplx,en_tddft)
+                                 h_cmplx,en_tddft,p_matrix_cmplx)
+
+    !Fixed bases have Hellman-Feynman force
+    if( tddft_force_ ) then
+      call setup_fixed_basis_force(basis,p_matrix_cmplx)
+    endif
+    deallocate(p_matrix_cmplx)
 
     !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
-    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,tddft_propagator)
 
     !--5--UPDATE----| C(12/4)-->C(8/4); H(6/4)-->H(2/4); H(10/4)-->H(6/4)
-    c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
-    h_small_hist_cmplx(:,:,:,1)=h_small_hist_cmplx(:,:,:,2)
-    h_small_hist_cmplx(:,:,:,2)=h_small_cmplx(:,:,:)
+    c_matrix_orth_hist_cmplx(:,:,:,1) = c_matrix_orth_cmplx(:,:,:)
+    h_small_hist_cmplx(:,:,:,1) = h_small_hist_cmplx(:,:,:,2)
+    h_small_hist_cmplx(:,:,:,2) = h_small_cmplx(:,:,:)
 
 
     ! ///////////////////////////////////
   case('PC2B')
     h_small_cmplx=(0.0_dp,0.0_dp)
     !--0--EXTRAPOLATE----
-    do iextr=1,n_hist
+    do iextr=1,tddft_history
       h_small_cmplx=h_small_cmplx+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
     end do
-    ! n_hist-2  <---  n_hist; n_hist-3 <-- n_hist-1
-    if(n_hist > 2) then
-      do iextr=1,n_hist-2
+    ! tddft_history-2  <---  tddft_history; tddft_history-3 <-- tddft_history-1
+    if(tddft_history > 2) then
+      do iextr=1,tddft_history-2
         h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+2)
       end do
     end if
 
     !--1--PROPAGATE----| C(t)--U[H(1/4dt)]-->C(t+dt/2)
     call propagate_orth(nstate,basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1), &
-                        c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+                        c_matrix_cmplx,h_small_cmplx,x_matrix,tddft_propagator)
     !--2--CALCULATE- H(t+dt/4)
     call setup_hamiltonian_cmplx(basis,                   &
                                  nstate,                  &
@@ -1433,9 +1492,9 @@ subroutine predictor_corrector(basis,                  &
                                  dipole_ao,               &
                                  h_cmplx,en_tddft)
 
-    if (n_hist > 1) h_small_hist_cmplx(:,:,:,n_hist-1)=h_small_cmplx
+    if (tddft_history > 1) h_small_hist_cmplx(:,:,:,tddft_history-1)=h_small_cmplx
     !--3--PROPAGATION----|
-    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+    call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,tddft_propagator)
 
     call setup_hamiltonian_cmplx(basis,                   &
                                  nstate,                  &
@@ -1453,32 +1512,35 @@ subroutine predictor_corrector(basis,                  &
 
     !--5--UPDATE----|
     c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
-    h_small_hist_cmplx(:,:,:,n_hist)=h_small_cmplx
+    h_small_hist_cmplx(:,:,:,tddft_history)=h_small_cmplx
 
 
     ! ///////////////////////////////////
     ! Iterative propagation with Lagrange interpolation
     ! ---------------|t-dt|-----------------|t|----------|t+dt/2)|----------|t+dt|
-    !............|H(n_hist-1)|..........|H(n_hist)|....|H(n_hist+1)|.....|H(n_hist+2)|
+    !............|H(tddft_history-1)|..........|H(tddft_history)|....|H(tddft_history+1)|.....|H(tddft_history+2)|
   case('PC3','PC4')
-    h_cmplx=(0.0_dp,0.0_dp)
-    h_small_hist_cmplx(:,:,:,n_hist+2)=(0.0_dp,0.0_dp)
+    h_cmplx = (0.0_dp,0.0_dp)
+    h_small_hist_cmplx(:,:,:,tddft_history+2) = (0.0_dp,0.0_dp)
     !--1--EXTRAPOLATION WITH PREVIOUS STEPS----
-    do iextr=1,n_hist
-      h_small_hist_cmplx(:,:,:,n_hist+2)=h_small_hist_cmplx(:,:,:,n_hist+2)+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
+    do iextr=1,tddft_history
+      h_small_hist_cmplx(:,:,:,tddft_history+2) = h_small_hist_cmplx(:,:,:,tddft_history+2) &
+                                                  + extrap_coefs(iextr) * h_small_hist_cmplx(:,:,:,iextr)
     end do
 
     !--2--LOCAL LINEAR INTERPOLATION----| h_cmplx in the 1/2 of the current time interval
-    h_small_hist_cmplx(:,:,:,n_hist+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,n_hist)+h_small_hist_cmplx(:,:,:,n_hist+2))
+    h_small_hist_cmplx(:,:,:,tddft_history+1) = 0.5_dp * ( h_small_hist_cmplx(:,:,:,tddft_history) &
+                                                         + h_small_hist_cmplx(:,:,:,tddft_history+2) )
 
     ! if ( is_iomaster .AND. mod(itau-1,mod_write)==0 ) then
-    !   write(name_iter_norm,"(3A,I4.4,A)") "./iter_norm/", TRIM(pred_corr), "_norm_itau_",itau,".dat"
+    !   write(name_iter_norm,"(3A,I4.4,A)") "./iter_norm/", TRIM(tddft_predictor_corrector), "_norm_itau_",itau,".dat"
     !   open(newunit=file_iter_norm,file=name_iter_norm)
     ! end if
     do i_iter=1,n_iter
-      h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,n_hist+1)
+      h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,tddft_history+1)
       !--3--PREDICTOR (propagation of C(0)-->C(1))
-      call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+      call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx, &
+                          h_small_cmplx,x_matrix,tddft_propagator)
 
       !--4--CORRECTOR----| C(1)-->H(1)
       call setup_hamiltonian_cmplx(basis,                   &
@@ -1490,19 +1552,20 @@ subroutine predictor_corrector(basis,                  &
                                    c_matrix_cmplx,          &
                                    hamiltonian_kinetic,     &
                                    hamiltonian_nucleus,     &
-                                   h_small_hist_cmplx(:,:,:,n_hist+2),           &
+                                   h_small_hist_cmplx(:,:,:,tddft_history+2),           &
                                    x_matrix,                &
                                    dipole_ao,               &
                                    h_cmplx,en_tddft)
 
-      c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
+      c_matrix_orth_hist_cmplx(:,:,:,1) = c_matrix_orth_cmplx(:,:,:)
       !--2B--LOCAL LINEAR INTERPOLATION----| h_cmplx in the 1/2 of the current time interval
-      h_small_hist_cmplx(:,:,:,n_hist+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,n_hist)+h_small_hist_cmplx(:,:,:,n_hist+2))
+      h_small_hist_cmplx(:,:,:,tddft_history+1) = 0.5_dp * ( h_small_hist_cmplx(:,:,:,tddft_history) &
+                                                            + h_small_hist_cmplx(:,:,:,tddft_history+2) )
 
       !**COMPARISON**
       !  if( is_iomaster ) then
       !    if(mod(itau-1,mod_write)==0 ) then
-      !      write(file_iter_norm,*) i_iter, NORM2(ABS(h_small_hist_cmplx(:,:,:,n_hist+1)-h_small_cmplx(:,:,:)))
+      !      write(file_iter_norm,*) i_iter, NORM2(ABS(h_small_hist_cmplx(:,:,:,tddft_history+1)-h_small_cmplx(:,:,:)))
       !    end if
       !  end if
 
@@ -1512,34 +1575,35 @@ subroutine predictor_corrector(basis,                  &
 
     !--5--PROPAGATION----| C(0)---U[H(1/2)]--->C(1)
     call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1), &
-                        c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist+1),x_matrix,prop_type)
+                        c_matrix_cmplx,h_small_hist_cmplx(:,:,:,tddft_history+1),x_matrix,tddft_propagator)
 
     !--6--UPDATE----|C(1)-->C(0)
     c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
-    do iextr=1,n_hist-1
+    do iextr=1,tddft_history-1
       h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+1)
     end do
-    h_small_hist_cmplx(:,:,:,n_hist)=h_small_hist_cmplx(:,:,:,n_hist+2)
+    h_small_hist_cmplx(:,:,:,tddft_history)=h_small_hist_cmplx(:,:,:,tddft_history+2)
 
 
     ! ///////////////////////////////////
     ! Iterative ETRS - enforced time-reversal symmetry
     ! ---------------|t-dt|-----------------|t|--------------------|t+dt|
-    !............|H(n_hist-1)|..........|H(n_hist)|.............|H(n_hist+1)|
+    !............|H(tddft_history-1)|..........|H(tddft_history)|.............|H(tddft_history+1)|
   case('PC5','PC6')
-    h_cmplx=(0.0_dp,0.0_dp)
-    h_small_hist_cmplx(:,:,:,n_hist+1)=(0.0_dp,0.0_dp)
+    h_cmplx = (0.0_dp,0.0_dp)
+    h_small_hist_cmplx(:,:,:,tddft_history+1) = (0.0_dp,0.0_dp)
     !--1--EXTRAPOLATION WITH PREVIOUS STEPS----
-    do iextr=1,n_hist
-      h_small_hist_cmplx(:,:,:,n_hist+1)=h_small_hist_cmplx(:,:,:,n_hist+1)+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
+    do iextr=1,tddft_history
+      h_small_hist_cmplx(:,:,:,tddft_history+1) = h_small_hist_cmplx(:,:,:,tddft_history+1) &
+                                                   + extrap_coefs(iextr) * h_small_hist_cmplx(:,:,:,iextr)
     end do
 
     do i_iter=1,n_iter
       c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
-      h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,n_hist+1)
+      h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,tddft_history+1)
       !--3--PREDICTOR (propagation of C(0)-->C(1))
       call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx, &
-                          h_small_hist_cmplx(:,:,:,n_hist:n_hist+1),x_matrix,"ETRS")
+                          h_small_hist_cmplx(:,:,:,tddft_history:tddft_history+1),x_matrix,"ETRS")
       !--4--CORRECTOR----| C(1)-->H(1)
       call setup_hamiltonian_cmplx(basis,                   &
                                    nstate,                  &
@@ -1550,7 +1614,7 @@ subroutine predictor_corrector(basis,                  &
                                    c_matrix_cmplx,          &
                                    hamiltonian_kinetic,     &
                                    hamiltonian_nucleus,     &
-                                   h_small_hist_cmplx(:,:,:,n_hist+1) ,    &
+                                   h_small_hist_cmplx(:,:,:,tddft_history+1) ,    &
                                    x_matrix,                &
                                    dipole_ao,               &
                                    h_cmplx,en_tddft)
@@ -1562,12 +1626,12 @@ subroutine predictor_corrector(basis,                  &
 
     !--5--PROPAGATION----| C(0)---U[H(1/2)]--->C(!1)
     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx, &
-                         h_small_hist_cmplx(:,:,:,n_hist:n_hist+1),x_matrix,"ETRS")
+                         h_small_hist_cmplx(:,:,:,tddft_history:tddft_history+1),x_matrix,"ETRS")
 
     !--6--UPDATE----|
     c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
     c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
-    do iextr=1,n_hist
+    do iextr=1,tddft_history
       h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+1)
     end do
 
@@ -1610,7 +1674,8 @@ subroutine predictor_corrector(basis,                  &
     h_small_hist_cmplx(:,:,:,1)=h_small_hist_cmplx(:,:,:,2)
 
   case default
-    call die('Invalid choice for the predictor_corrector scheme. Change pred_corr value in the input file')
+    call die('predictor_corrector: Invalid choice for the predictor_corrector scheme. ' &
+              // 'Change tddft_predictor_corrector value in the input file')
 
   end select
 
@@ -1636,9 +1701,9 @@ subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx,c_matrix_cm
   nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
   nbf = SIZE(h_cmplx,DIM=1)
 
-  allocate(m_nodes(n_hist),extrap_coefs(n_hist))
+  allocate(m_nodes(tddft_history),extrap_coefs(tddft_history))
 
-  select case (pred_corr)
+  select case (tddft_predictor_corrector)
   case('PC0','MB_PC0')
     continue
 
@@ -1646,40 +1711,41 @@ subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx,c_matrix_cm
     ham_hist_dim = 2
 
   case('PC2B','MB_PC2B')
-    ham_hist_dim = n_hist
-    do iextr=1,n_hist
+    ham_hist_dim = tddft_history
+    do iextr=1,tddft_history
       m_nodes(iextr) = (iextr - 1.0_dp) * 0.5_dp
     end do
-    x_pred = (n_hist - 1.0_dp) * 0.5_dp + 0.25_dp
-    call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
+    x_pred = (tddft_history - 1.0_dp) * 0.5_dp + 0.25_dp
+    call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,tddft_history)
 
   case('PC3','PC4')
-    ham_hist_dim = n_hist + 2
-    do iextr=1,n_hist
+    ham_hist_dim = tddft_history + 2
+    do iextr=1,tddft_history
       m_nodes(iextr) = iextr - 1.0_dp
     end do
-    x_pred = n_hist
-    if(pred_corr=='PC3') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
-    if(pred_corr=='PC4') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
+    x_pred = tddft_history
+    if(tddft_predictor_corrector=='PC3') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,tddft_history)
+    if(tddft_predictor_corrector=='PC4') call get_extrap_coefs_aspc(extrap_coefs,tddft_history)
 
   case('PC5','PC6')
-    ham_hist_dim = n_hist + 1
-    do iextr=1,n_hist
+    ham_hist_dim = tddft_history + 1
+    do iextr=1,tddft_history
       m_nodes(iextr) = iextr - 1.0_dp
     end do
-    x_pred = n_hist
-    if(pred_corr=='PC5') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
-    if(pred_corr=='PC6') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
+    x_pred = tddft_history
+    if(tddft_predictor_corrector=='PC5') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,tddft_history)
+    if(tddft_predictor_corrector=='PC6') call get_extrap_coefs_aspc(extrap_coefs,tddft_history)
 
   case('PC7' )
     ham_hist_dim = 2
 
   case default
-    call die('Invalid choice for the predictor_corrector scheme. Change pred_corr value in the input file')
+    call die('initialize_extrap_coefs: invalid choice for the predictor_corrector scheme. ' &
+              // ' Change tddft_predictor_corrector value in the input file')
 
   end select
 
-  if( pred_corr /= 'PC0' .OR. pred_corr /= 'MB_PC0' ) then
+  if( tddft_predictor_corrector /= 'PC0' .OR. tddft_predictor_corrector /= 'MB_PC0' ) then
     call clean_allocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx,nstate,nstate,nspin,ham_hist_dim)
     call clean_allocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx,nstate,nocc,nspin,1)
     call clean_allocate('h_hist_cmplx for TDDFT',h_hist_cmplx,nbf,nbf,nspin,ham_hist_dim)
@@ -1712,15 +1778,19 @@ subroutine print_in_tddft_files(time_cur,itau)
      '==================================================================================================='
   write(stdout,'(1x,a,i8,a)') &
      '===================== RT-TDDFT values for time step  ',itau,' ================================='
-  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
-  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en_tddft%total
+  write(stdout,'(a34,1x,f19.10)') 'RT-TDDFT Simulation time    (au):', time_cur
+  write(stdout,'(a34,1x,f19.10)') 'RT-TDDFT Total Energy       (Ha):', en_tddft%total
+  if( tddft_force_ ) then
+    write(stdout,'(a34,1x,f19.10)') 'RT-TDDFT work on projectile (Ha):', en_tddft%work_p + en_tddft%work_p_nonconserv
+  endif
 
   select case(excit_type%form)
   case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
-    write(file_time_data,"(f10.4,12(2x,es16.8e3))") &
+    write(file_time_data,"(f10.4,*(2x,es16.8e3))") &
        time_cur, en_tddft%total, xatom(:,ncenter_nuclei), en_tddft%nuc_nuc, en_tddft%nucleus, &
        en_tddft%kinetic, en_tddft%hartree, en_tddft%exx_hyb, en_tddft%xc, &
-       en_tddft%excit, en_tddft%id
+       en_tddft%excit, en_tddft%id, en_tddft%work_p_nonconserv, en_tddft%work_p, &
+       en_tddft%total + en_tddft%work_p_nonconserv + en_tddft%work_p
     call output_projectile_position()
 
   case(EXCIT_LIGHT)
@@ -1759,9 +1829,9 @@ subroutine open_tddft_files()
 
   select case(excit_type%form)
   case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
-    write(file_time_data,"(a10,12(a18))") &
+    write(file_time_data,"(a10,14(a18))") &
             "# time(au)","e_total","x_proj","y_proj","z_proj","enuc_nuc","enuc_wo_proj","ekin","ehart",&
-            "eexx_hyb","exc","enuc_proj","e_iD"
+            "eexx_hyb","exc","enuc_proj","e_iD","work_proj_noncnsrv","work_proj_cnsrv"
 
   case(EXCIT_LIGHT)
     write(file_time_data,"(a,a)") &
@@ -1840,7 +1910,7 @@ subroutine initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_s
         read(cur_string,*) istate_cut(icut,1)
         istate_cut(icut,2) = nstate
       else
-        call die("manual_q_matrix_param must contain one or two fields.")
+        call die('initialize_q: manual_q_matrix_param must contain one or two fields.')
       end if
 
     end do
@@ -2303,14 +2373,14 @@ end subroutine get_extrap_coefs_aspc
 
 
 !=========================================================================
-subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,prop_type)
+subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,tddft_propagator)
   implicit none
   real(dp),intent(in)         :: time_step_cur
   complex(dp),intent(inout)   :: c_matrix_cmplx(:,:,:)
   complex(dp),intent(in)      :: h_cmplx(:,:,:)
   real(dp),intent(in)         :: s_matrix(:,:)
   real(dp),intent(in)         :: d_matrix(:,:)
-  character(len=4),intent(in) :: prop_type
+  character(len=4),intent(in) :: tddft_propagator
   !=====
   integer                    :: ispin
   integer                    :: ibf,nbf,nocc
@@ -2329,7 +2399,7 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
 
   do ispin=1,nspin
 
-    select case(prop_type)
+    select case(tddft_propagator)
 
     case('CN')
       !! C(t+dt) = U(t, t+dt) * C(t)
@@ -2387,7 +2457,8 @@ subroutine propagate_nonortho(time_step_cur,s_matrix,d_matrix,c_matrix_cmplx,h_c
       deallocate(s_matrix_inverse)
 
     case default
-      call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
+      call die('propagate_nonortho: invalid choice for the propagation algorithm. ' & 
+               // 'Change tddft_propagator or error_prop_types value in the input file')
 
     end select
 
@@ -2402,7 +2473,8 @@ end subroutine propagate_nonortho
 
 
 !=========================================================================
-subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,prop_type)
+subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx, &
+                                h_small_cmplx,x_matrix,tddft_propagator)
   implicit none
 
   integer,intent(in)          :: nstate
@@ -2414,7 +2486,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
   ! for ncore>0 we need to modify the h_small
   complex(dp),intent(inout)   :: h_small_cmplx(nstate,nstate,nspin)
   real(dp),intent(in)         :: x_matrix(basis%nbf,nstate)
-  character(len=4),intent(in) :: prop_type
+  character(len=4),intent(in) :: tddft_propagator
   !=====
   integer                    :: ispin
   integer                    :: istate,jstate
@@ -2436,8 +2508,11 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
   call start_clock(timing_tddft_propagation)
 
   do ispin=1,nspin
-    select case(prop_type)
+    select case(tddft_propagator)
     case('CN')
+      !
+      ! Crank-Nicholson propagator
+
       allocate(l_matrix_cmplx(nstate,nstate))
       allocate(b_matrix_cmplx(nstate,nstate))
       l_matrix_cmplx(:,:) =  im * time_step_cur / 2.0_dp * h_small_cmplx(:,:,ispin)
@@ -2450,16 +2525,16 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 
       call start_clock(timing_propagate_matmul)
       b_matrix_cmplx(:,:)            = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
-      !call dump_out_matrix(.TRUE.,'===  B/L REAL  ===',REAL(b_matrix_cmplx))
-      !call dump_out_matrix(.TRUE.,'===  B/L AIMAG ===',AIMAG(b_matrix_cmplx))
       c_matrix_orth_cmplx(:,:,ispin) = MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin))
 
-      !    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) ) )
       deallocate(l_matrix_cmplx)
       deallocate(b_matrix_cmplx)
-    case('MAG2')
-      allocate(a_matrix_orth_cmplx(nstate,nstate))
 
+    case('MAG2')
+      !
+      ! Magnus 2 propagator
+
+      allocate(a_matrix_orth_cmplx(nstate,nstate))
       !
       ! Frozen core
       if(ncore_tddft > 0) then
@@ -2530,27 +2605,31 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
       deallocate(a_matrix_orth_cmplx)
 
     case default
-      call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
+      call die('propagate_ortho_ham_1: invalid choice for the propagation algorithm. ' & 
+               // 'Change tddft_propagator or error_prop_types value in the input file')
     end select
 
-    !
-    ! C = X * C'
-    ! x_matrix is real, let's use this to save time
-    allocate(m_tmpr1(nstate,nocc),m_tmpr2(basis%nbf,nocc))
-    ! 1. Real part
-    m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%re
-    call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix(1,1),basis%nbf, &
-                                                   m_tmpr1(1,1),nstate,   &
-                                             0.0d0,m_tmpr2(1,1),basis%nbf)
-    c_matrix_cmplx(:,:,ispin)%re = m_tmpr2(:,:)
-    ! 2. Imaginary part
-    m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%im
-    call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix(1,1),basis%nbf, &
-                                                   m_tmpr1(1,1),nstate,   &
-                                             0.0d0,m_tmpr2(1,1),basis%nbf)
-    c_matrix_cmplx(:,:,ispin)%im = m_tmpr2(:,:)
+    ! For debug, it can be interesting to have 0 electron sometimes
+    if( nocc > 0 ) then
+      !
+      ! C = X * C'
+      ! x_matrix is real, let's use this to save time
+      allocate(m_tmpr1(nstate,nocc),m_tmpr2(basis%nbf,nocc))
+      ! 1. Real part
+      m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%re
+      call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix(1,1),basis%nbf, &
+                                                     m_tmpr1(1,1),nstate,   &
+                                               0.0d0,m_tmpr2(1,1),basis%nbf)
+      c_matrix_cmplx(:,:,ispin)%re = m_tmpr2(:,:)
+      ! 2. Imaginary part
+      m_tmpr1(:,:) = c_matrix_orth_cmplx(:,:,ispin)%im
+      call DGEMM('N','N',basis%nbf,nocc,nstate,1.0d0,x_matrix(1,1),basis%nbf, &
+                                                     m_tmpr1(1,1),nstate,   &
+                                               0.0d0,m_tmpr2(1,1),basis%nbf)
+      c_matrix_cmplx(:,:,ispin)%im = m_tmpr2(:,:)
 
-    deallocate(m_tmpr1,m_tmpr2)
+      deallocate(m_tmpr1,m_tmpr2)
+    endif
 
 
     call stop_clock(timing_propagate_matmul)
@@ -2565,7 +2644,7 @@ end subroutine propagate_orth_ham_1
 
 !=========================================================================
 subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx, &
-                                h_small_hist2_cmplx,x_matrix,prop_type)
+                                h_small_hist2_cmplx,x_matrix,tddft_propagator)
   implicit none
 
   integer,intent(in)          :: nstate
@@ -2575,7 +2654,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
   complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nocc,nspin)
   complex(dp),intent(in)      :: h_small_hist2_cmplx(nstate,nstate,nspin,2)
   real(dp),intent(in)         :: x_matrix(basis%nbf,nstate)
-  character(len=4),intent(in) :: prop_type
+  character(len=4),intent(in) :: tddft_propagator
   !=====
   integer             :: ispin,iham
   integer             :: ibf
@@ -2588,7 +2667,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
   !a_matrix_cmplx(:,1:nstate) = MATMUL( x_matrix(:,:) , a_matrix_cmplx(:,:) )
 
   do ispin =1, nspin
-    select case (prop_type)
+    select case (tddft_propagator)
     case('ETRS')
       do iham=1,2
         call diagonalize(postscf_diago_flavor,h_small_hist2_cmplx(:,:,ispin,iham),energy_tddft,a_matrix_orth_cmplx(:,:,iham))
@@ -2604,7 +2683,8 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
                    CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:,1))) ), &
                      c_matrix_orth_cmplx(:,:,ispin) )
     case default
-      call die('Invalid choice of the propagation algorithm for the given PC scheme. Change prop_type value in the input file')
+      call die('propagate_ortho_ham_2: invalid choice for the propagation algorithm. ' & 
+               // 'Change tddft_propagator or error_prop_types value in the input file')
     end select
     c_matrix_cmplx(:,:,ispin) = MATMUL( x_matrix(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
   end do
@@ -2628,7 +2708,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
                                    x_matrix,                &
                                    dipole_ao,               &
                                    hamiltonian_cmplx,       &
-                                   en)
+                                   en,p_matrix_cmplx_out)
 
   implicit none
 
@@ -2645,6 +2725,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   complex(dp),intent(in)          :: c_matrix_cmplx(basis%nbf,nocc,nspin)
   complex(dp),intent(out)         :: hamiltonian_cmplx(basis%nbf,basis%nbf,nspin)
   complex(dp),intent(out)         :: h_small_cmplx(nstate,nstate,nspin)
+  complex(dp),intent(inout),optional :: p_matrix_cmplx_out(basis%nbf,basis%nbf,nspin)
   type(energy_contributions),intent(inout) :: en
   !=====
   logical              :: calc_excit_
@@ -2657,6 +2738,9 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   call start_clock(timing_tddft_hamiltonian)
 
   call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
+  if( PRESENT(p_matrix_cmplx_out) ) then
+    p_matrix_cmplx_out(:,:,:) = p_matrix_cmplx(:,:,:)
+  endif
 
   !--Hamiltonian - Hartree Exchange Correlation---
   call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
@@ -2938,12 +3022,12 @@ subroutine calculate_excit_field(time_cur,excit_field)
   case('STEP') ! Step excitation
     excit_field(:) = excit_type%kappa * excit_dir_norm(:)
   case default
-    call die('Invalid choice for the excitation type. Change excit_type value in the input file')
+    call die('calculate_excit_field: invalid choice for the excitation type. Change excit_type value in the input file')
   end select
 
 end subroutine calculate_excit_field
 
 
 !=========================================================================
-end module m_tddft_propagator
+end module m_realtime_tddft
 !=========================================================================

@@ -27,7 +27,7 @@
 <p>
 <a href=#eri3_nbatch>eri3_nbatch</a> <a href=#eri3_npcol>eri3_npcol</a> <a href=#eri3_nprow>eri3_nprow</a> <a href=#grid_memory>grid_memory</a> <a href=#mpi_poorman>mpi_poorman</a> <a href=#scalapack_block_min>scalapack_block_min</a> <h3>Real time TDDFT</h3>
 <p>
-<a href=#excit_dir>excit_dir</a> <a href=#excit_kappa>excit_kappa</a> <a href=#excit_name>excit_name</a> <a href=#excit_width>excit_width</a> <a href=#excit_time0>excit_time0</a> <a href=#n_hist>n_hist</a> <a href=#n_iter>n_iter</a> <a href=#n_restart_tddft>n_restart_tddft</a> <a href=#ncore_tddft>ncore_tddft</a> <a href=#pred_corr>pred_corr</a> <a href=#prop_type>prop_type</a> <a href=#projectile_charge_scaling>projectile_charge_scaling</a> <a href=#r_disc>r_disc</a> <a href=#tddft_frozencore>tddft_frozencore</a> <a href=#tddft_wfn_t0>tddft_wfn_t0</a> <a href=#tddft_energy_shift>tddft_energy_shift</a> <a href=#tddft_charge>tddft_charge</a> <a href=#tddft_magnetization>tddft_magnetization</a> <a href=#time_sim>time_sim</a> <a href=#time_step>time_step</a> <a href=#vel_projectile>vel_projectile</a> <a href=#tolscf_tddft>tolscf_tddft</a> <h3>IO Real time TDDFT</h3>
+<a href=#excit_dir>excit_dir</a> <a href=#excit_kappa>excit_kappa</a> <a href=#excit_name>excit_name</a> <a href=#excit_width>excit_width</a> <a href=#excit_time0>excit_time0</a> <a href=#tddft_history>tddft_history</a> <a href=#n_iter>n_iter</a> <a href=#n_restart_tddft>n_restart_tddft</a> <a href=#ncore_tddft>ncore_tddft</a> <a href=#tddft_predictor_corrector>tddft_predictor_corrector</a> <a href=#tddft_propagator>tddft_propagator</a> <a href=#projectile_charge_scaling>projectile_charge_scaling</a> <a href=#r_disc>r_disc</a> <a href=#tddft_frozencore>tddft_frozencore</a> <a href=#tddft_wfn_t0>tddft_wfn_t0</a> <a href=#tddft_energy_shift>tddft_energy_shift</a> <a href=#tddft_charge>tddft_charge</a> <a href=#tddft_force>tddft_force</a> <a href=#tddft_magnetization>tddft_magnetization</a> <a href=#time_sim>time_sim</a> <a href=#time_step>time_step</a> <a href=#vel_projectile>vel_projectile</a> <a href=#tolscf_tddft>tolscf_tddft</a> <h3>IO Real time TDDFT</h3>
 <p>
 <a href=#calc_dens_disc>calc_dens_disc</a> <a href=#calc_q_matrix>calc_q_matrix</a> <a href=#calc_spectrum>calc_spectrum</a> <a href=#print_cube_diff_tddft>print_cube_diff_tddft</a> <a href=#print_cube_rho_tddft>print_cube_rho_tddft</a> <a href=#print_c_matrix_cmplx_hdf5>print_c_matrix_cmplx_hdf5</a> <a href=#print_p_matrix_MO_block_hdf5>print_p_matrix_MO_block_hdf5</a> <a href=#print_dens_traj>print_dens_traj</a> <a href=#print_dens_traj_points_set>print_dens_traj_points_set</a> <a href=#print_dens_traj_tddft>print_dens_traj_tddft</a> <a href=#print_line_rho_diff_tddft>print_line_rho_diff_tddft</a> <a href=#print_line_rho_tddft>print_line_rho_tddft</a> <a href=#print_tddft_matrices>print_tddft_matrices</a> <a href=#print_charge_tddft>print_charge_tddft</a> <a href=#print_tddft_restart>print_tddft_restart</a> <a href=#read_tddft_restart>read_tddft_restart</a> <a href=#write_step>write_step</a> <a href=#calc_charge_step>calc_charge_step</a> <br><br><br><hr>
 <br><br><br>
@@ -860,11 +860,11 @@ The excitation pulse duration in atomic units for the real-time dynamics.</li><b
 Default: 3.0<br><br>
 Center of the excitation pulse in atomic units for the real-time dynamics.</li><br>
 <hr>
-<a name=n_hist><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>n_hist</b>  </span>  
+<a name=tddft_history><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_history</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: 2<br><br>
-Number of memorised previous hamiltonian values for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.</li><br>
+Number of stored previous hamiltonian matrices for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.</li><br>
 <hr>
 <a name=n_iter><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>n_iter</b>  </span>  
 <br><br>
@@ -876,7 +876,7 @@ Sets the number of iterations for the PC7 in the real-time dynamics</li><br>
 <br><br>
 <i>Optional</i><br>
 Default: 50<br><br>
-RESTART_TDDFT file will be written during simulation each n_retart_tddft iteration (provided that print_tddft_restart is yes)</li><br>
+RESTART_TDDFT file will be written during simulation each n_restart_tddft iteration (provided that print_tddft_restart is yes)</li><br>
 <hr>
 <a name=ncore_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncore_tddft</b>  </span>  
 <br><br>
@@ -884,13 +884,13 @@ RESTART_TDDFT file will be written during simulation each n_retart_tddft iterati
 Default: 0<br><br>
 Sets the number of frozen core states in the real-time dynamics.</li><br>
 <hr>
-<a name=pred_corr><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>pred_corr</b>  </span>  
+<a name=tddft_predictor_corrector><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_predictor_corrector</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: PC2B<br><br>
 Sets the predictor-corrector scheme in the real-time dynamics.</li><br>
 <hr>
-<a name=prop_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>prop_type</b>  </span>  
+<a name=tddft_propagator><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_propagator</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: CN<br><br>
@@ -931,6 +931,12 @@ Shifts the TDDFT eigenvalues in when tddft_wfn_t0='STATIONARY' to tune the occup
 <i>Optional</i><br>
 Default: -999.0<br><br>
 Overall charge in the system fo the TDDFT calculation. Default value means it is equal to 'charge' in the DFT part. But if specified, it can differ from 'charge'.</li><br>
+<hr>
+<a name=tddft_force><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_force</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Triggers the calculation of the force acting on the projectile</li><br>
 <hr>
 <a name=tddft_magnetization><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_magnetization</b>  </span>  
 <br><br>

@@ -131,13 +131,14 @@ module m_timing
   integer,parameter :: timing_tddft_grid_init        = 139
   integer,parameter :: timing_tddft_grid_generation  = 140
   integer,parameter :: timing_tddft_grid_wfn         = 141
-
   integer,parameter :: timing_tddft_eri_3center      = 142
   integer,parameter :: timing_tddft_eri_3center_ints = 143
   integer,parameter :: timing_tddft_kin              = 144
+  integer,parameter :: timing_grad_kin               = 145
+  integer,parameter :: timing_grad_nuc               = 146
 
 
-  integer,private     :: count_rate,count_max
+  integer,private     :: count_rate, count_max
   logical,private     :: time_running(NTIMING)
   real(dp),private    :: time_start(NTIMING)
   real(dp),private    :: timing(NTIMING)
@@ -334,7 +335,7 @@ subroutine output_timing()
   call output_timing_line('NOFT calculation',timing_noft_energy,1)
 
   ! RT-TDDFT
-  call output_timing_line('TDDFT loop',timing_tddft_loop,1)
+  call output_timing_line('Real-time TDDFT',timing_tddft_loop,1)
   call output_timing_line('TDDFT propagator',timing_tddft_propagation,2)
   call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
   call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
@@ -347,7 +348,7 @@ subroutine output_timing()
   call output_timing_line('Update 3-center ERI',timing_tddft_eri_3center,3)
   call output_timing_line('Integrals evaluation',timing_tddft_eri_3center_ints,4)
   call output_timing_line('Update S and D matrices',timing_update_overlaps,2)
-  call output_timing_line('Gradient of overlap',timing_overlap_grad,3)
+  call output_timing_line('Overlap gradient',timing_overlap_grad,3)
   call output_timing_line('Grid initialization',timing_tddft_grid_init,2)
   call output_timing_line('Grid generation',timing_tddft_grid_generation,3)
   call output_timing_line('Wavefunction evaluation',timing_tddft_grid_wfn,3)
@@ -364,6 +365,8 @@ subroutine output_timing()
   call output_timing_line('Hartree potential',timing_tddft_hartree,3)
   call output_timing_line('Exchange operator',timing_tddft_exchange,3)
   call output_timing_line('XC potential',timing_tddft_xc,3)
+  call output_timing_line('Kinetic energy gradient',timing_grad_kin,3)
+  call output_timing_line('Nucleus energy gradient',timing_grad_nuc,3)
   call output_timing_line('Densities on a grid',timing_tddft_densities,4)
   call output_timing_line('LIBXC calls',timing_tddft_libxc,4)
   call output_timing_line('Setting up Vxc ',timing_tddft_vxc,4)

@@ -90,7 +90,6 @@
   write(stdout,'(1x,a32,6x,a)') 'move_nuclei',TRIM(move_nuclei) 
   write(stdout,'(1x,a32,6x,a)') 'mpi_poorman',mpi_poorman 
   write(stdout,'(1x,a32,2x,es16.8)') 'mu_origin',mu_origin 
-  write(stdout,'(1x,a32,2x,i8)') 'n_hist',n_hist 
   write(stdout,'(1x,a32,2x,i8)') 'n_iter',n_iter 
   write(stdout,'(1x,a32,2x,i8)') 'n_restart_tddft',n_restart_tddft 
   write(stdout,'(1x,a32,2x,i8)') 'natom',natom 
@@ -147,7 +146,6 @@
   write(stdout,'(1x,a32,6x,a)') 'partition_scheme',TRIM(partition_scheme) 
   write(stdout,'(1x,a32,6x,a)') 'postscf',TRIM(postscf) 
   write(stdout,'(1x,a32,6x,a)') 'postscf_diago_flavor',TRIM(postscf_diago_flavor) 
-  write(stdout,'(1x,a32,6x,a)') 'pred_corr',TRIM(pred_corr) 
   write(stdout,'(1x,a32,6x,a)') 'print_all_MO_wfn_file',print_all_MO_wfn_file 
   write(stdout,'(1x,a32,6x,a)') 'print_bigrestart',print_bigrestart 
   write(stdout,'(1x,a32,6x,a)') 'print_c_matrix_cmplx_hdf5',print_c_matrix_cmplx_hdf5 
@@ -178,7 +176,6 @@
   write(stdout,'(1x,a32,6x,a)') 'print_wfn_files',print_wfn_files 
   write(stdout,'(1x,a32,6x,a)') 'print_yaml',print_yaml 
   write(stdout,'(1x,a32,2x,es16.8)') 'projectile_charge_scaling',projectile_charge_scaling 
-  write(stdout,'(1x,a32,6x,a)') 'prop_type',TRIM(prop_type) 
   write(stdout,'(1x,a32,6x,a)') 'pt3_a_diagrams',TRIM(pt3_a_diagrams) 
   write(stdout,'(1x,a32,6x,a)') 'pt_density_matrix',TRIM(pt_density_matrix) 
   write(stdout,'(1x,a32,2x,es16.8)') 'r_disc',r_disc 
@@ -202,9 +199,13 @@
   write(stdout,'(1x,a32,6x,a)') 'tda',tda 
   write(stdout,'(1x,a32,2x,es16.8)') 'tddft_charge',tddft_charge 
   write(stdout,'(1x,a32,2x,es16.8)') 'tddft_energy_shift',tddft_energy_shift 
+  write(stdout,'(1x,a32,6x,a)') 'tddft_force',tddft_force 
   write(stdout,'(1x,a32,6x,a)') 'tddft_frozencore',tddft_frozencore 
   write(stdout,'(1x,a32,6x,a)') 'tddft_grid_quality',TRIM(tddft_grid_quality) 
+  write(stdout,'(1x,a32,2x,i8)') 'tddft_history',tddft_history 
   write(stdout,'(1x,a32,2x,es16.8)') 'tddft_magnetization',tddft_magnetization 
+  write(stdout,'(1x,a32,6x,a)') 'tddft_predictor_corrector',TRIM(tddft_predictor_corrector) 
+  write(stdout,'(1x,a32,6x,a)') 'tddft_propagator',TRIM(tddft_propagator) 
   write(stdout,'(1x,a32,6x,a)') 'tddft_wfn_t0',TRIM(tddft_wfn_t0) 
   write(stdout,'(1x,a32,2x,es16.8)') 'temperature',temperature 
   write(stdout,'(1x,a32,2x,es16.8)') 'time_sim',time_sim 

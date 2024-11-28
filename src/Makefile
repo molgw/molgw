@@ -191,7 +191,7 @@ level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_
 
 level068: m_pt_selfenergy.o m_force.o
 
-level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_tddft_propagator.o m_noft.o m_mp2_energy.o
+level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_realtime_tddft.o m_noft.o m_mp2_energy.o
 
 level100: molgw.o
 
@@ -217,7 +217,7 @@ level100: molgw.o
         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_tz_pccd_amplitudes.o m_noft_driver.o gitver.o \
         m_build_bse.o m_multipole.o m_io.o m_restart.o m_mp2_energy.o m_relativistic.o m_noft.o m_scf_loop.o m_dm_analysis.o m_selfenergy_evaluation.o \
-        m_force.o m_tddft_propagator.o\
+        m_force.o m_realtime_tddft.o\
         molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
@@ -235,7 +235,7 @@ level100: molgw.o
                         m_linear_response.o m_acfd.o m_multipole.o m_io.o m_restart.o \
                         m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_scf_loop.o m_dm_analysis.o \
                         m_hamiltonian_wrapper.o m_fourier_quadrature.o \
-                        pdbssolver1.o m_selfenergy_evaluation.o real_spherical_harmonics.o m_force.o m_tddft_propagator.o \
+                        pdbssolver1.o m_selfenergy_evaluation.o real_spherical_harmonics.o m_force.o m_realtime_tddft.o \
                         molgw.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
@@ -250,7 +250,7 @@ molgw.o: m_definitions.o m_warning.o m_hdf5_tools.o m_timing.o m_memory.o m_inpu
          m_atoms.o m_scf.o m_scalapack.o  m_ecp.o m_io.o \
          m_gaussian.o m_basis_set.o  m_eri.o m_dft_grid.o m_spectral_function.o m_ci.o m_eri_calculate.o m_eri_ao_mo.o \
          m_hamiltonian_onebody.o m_selfenergy_tools.o m_scf_loop.o \
-         m_dm_analysis.o m_tddft_propagator.o m_restart.o m_dm_mbpt.o m_multipole.o \
+         m_dm_analysis.o m_realtime_tddft.o m_restart.o m_dm_mbpt.o m_multipole.o \
          m_virtual_orbital_space.o m_selfenergy_evaluation.o m_noft.o \
          m_fourier_quadrature.o m_libcint_tools.o m_linear_response.o m_acfd.o m_hamiltonian_twobodies.o \
          molgw.f90
@@ -579,11 +579,11 @@ m_lbfgs.o: m_definitions.o m_lbfgs.f90
 m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
-m_tddft_propagator.o: m_definitions.o m_basis_set.o m_hamiltonian_wrapper.o m_memory.o m_linear_algebra.o \
+m_realtime_tddft.o: m_definitions.o m_basis_set.o m_hamiltonian_wrapper.o m_memory.o m_linear_algebra.o \
                       m_hamiltonian_tools.o m_hamiltonian_onebody.o m_string_tools.o m_io.o m_multipole.o \
                       m_inputparam.o m_dft_grid.o m_scf.o m_warning.o m_timing.o m_density_tools.o m_atoms.o m_hdf5_tools.o \
-                      m_tddft_propagator.f90
-	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS)
+                      m_realtime_tddft.f90
+	 $(FC_W_OPTS) -c m_realtime_tddft.f90 $(LIBXC_INCS)
 
 tarball:
 	+make archive

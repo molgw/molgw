@@ -220,18 +220,19 @@
 [excit_name](#excit_name)
 [excit_width](#excit_width)
 [excit_time0](#excit_time0)
-[n_hist](#n_hist)
+[tddft_history](#tddft_history)
 [n_iter](#n_iter)
 [n_restart_tddft](#n_restart_tddft)
 [ncore_tddft](#ncore_tddft)
-[pred_corr](#pred_corr)
-[prop_type](#prop_type)
+[tddft_predictor_corrector](#tddft_predictor_corrector)
+[tddft_propagator](#tddft_propagator)
 [projectile_charge_scaling](#projectile_charge_scaling)
 [r_disc](#r_disc)
 [tddft_frozencore](#tddft_frozencore)
 [tddft_wfn_t0](#tddft_wfn_t0)
 [tddft_energy_shift](#tddft_energy_shift)
 [tddft_charge](#tddft_charge)
+[tddft_force](#tddft_force)
 [tddft_magnetization](#tddft_magnetization)
 [time_sim](#time_sim)
 [time_step](#time_step)
@@ -1608,22 +1609,6 @@ Energy of the origin of the imaginary axis used in imaginary integration techniq
 
 
 ---
-### n_hist
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** integer
-
-**Default:** 2
-
-**Description:**
-
-Number of memorised previous hamiltonian values for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.
-
-
----
 ### n_iter
 
 *Optional*
@@ -1652,7 +1637,7 @@ Sets the number of iterations for the PC7 in the real-time dynamics
 
 **Description:**
 
-RESTART_TDDFT file will be written during simulation each n_retart_tddft iteration (provided that print_tddft_restart is yes)
+RESTART_TDDFT file will be written during simulation each n_restart_tddft iteration (provided that print_tddft_restart is yes)
 
 
 ---
@@ -2520,22 +2505,6 @@ Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculatio
 
 
 ---
-### pred_corr
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** characters
-
-**Default:** PC2B
-
-**Description:**
-
-Sets the predictor-corrector scheme in the real-time dynamics.
-
-
----
 ### print_all_MO_wfn_file
 
 *Optional*
@@ -3016,22 +2985,6 @@ Rescaling of the projectile charge
 
 
 ---
-### prop_type
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** characters
-
-**Default:** CN
-
-**Description:**
-
-Sets the type of propagation algorithm in the real-time dynamics. 'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.
-
-
----
 ### pt3_a_diagrams
 
 *Optional*
@@ -3404,6 +3357,22 @@ Shifts the TDDFT eigenvalues in when tddft_wfn_t0='STATIONARY' to tune the occup
 
 
 ---
+### tddft_force
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Triggers the calculation of the force acting on the projectile
+
+
+---
 ### tddft_frozencore
 
 *Optional*
@@ -3436,6 +3405,22 @@ Sets the number of grid points use to evaluate the exchange-correlation integral
 
 
 ---
+### tddft_history
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** integer
+
+**Default:** 2
+
+**Description:**
+
+Number of stored previous hamiltonian matrices for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.
+
+
+---
 ### tddft_magnetization
 
 *Optional*
@@ -3449,6 +3434,38 @@ Sets the number of grid points use to evaluate the exchange-correlation integral
 **Description:**
 
 Sets the number of unpaired electrons for real-time TDDFT calculations. In other words, this is the difference between the spin up and spin down occupation. For instance, a spin-doublet calculation is obtained with tddft_magnetization=1.0. Only meaningful when nspin=2.
+
+
+---
+### tddft_predictor_corrector
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** characters
+
+**Default:** PC2B
+
+**Description:**
+
+Sets the predictor-corrector scheme in the real-time dynamics.
+
+
+---
+### tddft_propagator
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** characters
+
+**Default:** CN
+
+**Description:**
+
+Sets the type of propagation algorithm in the real-time dynamics. 'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.
 
 
 ---
