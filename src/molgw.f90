@@ -49,7 +49,7 @@ program molgw
   use m_selfenergy_tools
   use m_selfenergy_evaluation
   use m_scf_loop
-  use m_tddft_propagator
+  use m_realtime_tddft
   use m_virtual_orbital_space
   use m_ci
   use m_dm_analysis
@@ -633,7 +633,7 @@ program molgw
   ! RT-TDDFT Simulation (only if SCF cycles were converged)
   !
   if( calc_type%is_real_time .AND. scf_has_converged ) then
-    call calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
+    call realtime_tddft_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
   end if
 
 

@@ -12,9 +12,9 @@
  postscf='real_time'
  time_step=0.5
  time_sim=200.0
- pred_corr="PC2B"
+ tddft_predictor_corrector="PC2B"
  n_hist=3
- prop_type='MAG2'
+ tddft_propagator='MAG2'
  excit_name='GAU'
  excit_kappa=2e-4
  excit_width=0.2

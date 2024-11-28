@@ -17,9 +17,9 @@
   eri3_genuine 			 = 'yes'
   time_step                      = 0.1
   time_sim                       = 20.0
-  pred_corr                      = 'MB_PC2B'
+  tddft_predictor_corrector                      = 'MB_PC2B'
   n_hist                         = 2
-  prop_type                      = 'CN'
+  tddft_propagator                      = 'CN'
   length_unit                    = 'bohr'
   excit_name                     = 'nucleus'
   vel_projectile                 = 0.0 0.0 1.0

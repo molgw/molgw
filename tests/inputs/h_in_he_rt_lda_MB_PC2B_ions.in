@@ -17,9 +17,9 @@
   eri3_genuine 			 = 'yes'
   time_step                      = 0.1
   time_sim                       = 10.0
-  pred_corr                      = 'MB_PC2B'
+  tddft_predictor_corrector                      = 'MB_PC2B'
   n_hist                         = 2
-  prop_type                      = 'CN'
+  tddft_propagator                      = 'CN'
   tddft_wfn_t0                   = 'stationary'
   length_unit                    = 'bohr'
   excit_name                     = 'ion'

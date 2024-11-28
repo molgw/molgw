@@ -11,9 +11,9 @@
  postscf='real_time'
  time_step=0.1
  time_sim=7.0
- pred_corr="PC2B"
+ tddft_predictor_corrector="PC2B"
  n_hist=3
- prop_type='MAG2'
+ tddft_propagator='MAG2'
  excit_name='nucleus'
  vel_projectile= 0.0 0.0 2.0
  write_step=0.1

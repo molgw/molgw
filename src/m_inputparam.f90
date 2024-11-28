@@ -920,9 +920,9 @@ subroutine read_inputfile_namelist()
   mixing_scheme      = capitalize(mixing_scheme)
   length_unit        = capitalize(length_unit)
   init_hamiltonian   = capitalize(init_hamiltonian)
-  prop_type          = capitalize(prop_type)
+  tddft_propagator   = capitalize(tddft_propagator)
   excit_name         = capitalize(excit_name)
-  pred_corr          = capitalize(pred_corr)
+  tddft_predictor_corrector = capitalize(tddft_predictor_corrector)
   ci_greens_function = capitalize(ci_greens_function)
   ci_type            = capitalize(ci_type)
   read_fchk          = capitalize(read_fchk)
@@ -1117,7 +1117,7 @@ and the -DHAVE_HDF5 compilation option must be activated')
   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(eri3_genuine_) ) then
     call die('eri3_genuine is required for moving basis (=excit_name=ion)')
   endif
-  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(pred_corr(1:2)=='MB') ) then
+  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(tddft_predictor_corrector(1:2)=='MB') ) then
     call die('Predictor-correction scheme is not valid for moving basis. Use instead MB_PC2B for instance')
   endif
 

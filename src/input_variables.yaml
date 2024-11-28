@@ -1305,7 +1305,7 @@ ncore_tddft:
   default: 0
   comment: Sets the number of frozen core states in the real-time dynamics.
 
-pred_corr:
+tddft_predictor_corrector:
   family: rt_tddft
   datatype: characters
   mandatory: 'no'
@@ -1313,7 +1313,7 @@ pred_corr:
   default: "PC2B"
   comment: Sets the predictor-corrector scheme in the real-time dynamics.
 
-prop_type:
+tddft_propagator:
   family: rt_tddft
   datatype: characters
   mandatory: 'no'

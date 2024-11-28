@@ -8,10 +8,10 @@
  postscf='real_time'
  time_step=0.1
  time_sim=2.0
- pred_corr="PC2B"
+ tddft_predictor_corrector="PC2B"
  n_hist=3
  n_iter=2
- prop_type='CN'
+ tddft_propagator='CN'
  excit_name='nucleus'
  vel_projectile= 0.0 0.0 2.0
  write_step=1.0

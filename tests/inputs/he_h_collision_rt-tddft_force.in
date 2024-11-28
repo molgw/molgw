@@ -9,9 +9,9 @@
   postscf                        = 'real_time'
   time_step                      = 0.02
   time_sim                       = 10.0
-  pred_corr                      = 'MB_PC1'
+  tddft_predictor_corrector                      = 'MB_PC1'
   n_hist                         = 2
-  prop_type                      = 'CN'
+  tddft_propagator                      = 'CN'
   excit_name                     = 'ION'
   vel_projectile                 = 0.0 0.0 1.0
   write_step                     = 0.1
