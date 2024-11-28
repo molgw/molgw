@@ -1270,13 +1270,13 @@ excit_time0:
   default: 3.0
   comment: Center of the excitation pulse in atomic units for the real-time dynamics.
 
-n_hist:
+tddft_history:
   family: rt_tddft
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
   default: 2
-  comment: 'Number of memorised previous hamiltonian values for its extrapolation
+  comment: 'Number of stored previous hamiltonian matrices for its extrapolation
     in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1);
     etc.'
 
@@ -1294,7 +1294,7 @@ n_restart_tddft:
   mandatory: 'no'
   experimental: 'no'
   default: 50
-  comment: RESTART_TDDFT file will be written during simulation each n_retart_tddft
+  comment: RESTART_TDDFT file will be written during simulation each n_restart_tddft
     iteration (provided that print_tddft_restart is yes)
 
 ncore_tddft:

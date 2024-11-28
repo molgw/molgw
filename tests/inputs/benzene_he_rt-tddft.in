@@ -22,7 +22,6 @@
   write_step                     =  0.05
   time_sim                       =  1.00
   tddft_predictor_corrector      = 'MB_PC1'
-  !n_hist                         = 2
   excit_name                     = 'ion'
   vel_projectile                 = 0.0 0.0 1.0
 

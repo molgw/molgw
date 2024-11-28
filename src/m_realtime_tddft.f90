@@ -710,7 +710,7 @@ subroutine echo_tddft_variables()
   write(stdout,'(2x,a32,6x,a)')      'Predictor-corrector:',TRIM(tddft_predictor_corrector)
   write(stdout,'(2x,a32,6x,a)')      'Propagator:',TRIM(tddft_propagator)
   write(stdout,'(2x,a32,2x,i8)')     'Number of propagated states:',nocc
-  write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length for PC:',n_hist
+  write(stdout,'(2x,a32,2x,i8,/)')     'Hamiltonian history length for PC:',tddft_history
 
 end subroutine echo_tddft_variables
 
@@ -1325,12 +1325,12 @@ subroutine predictor_corrector(basis,                  &
     h_cmplx = ( 0.0_dp, 0.0_dp )
 
     !--0--EXTRAPOLATE----> H(t+dt/4)
-    do iextr = 1, n_hist
+    do iextr = 1, tddft_history
       h_cmplx = h_cmplx + extrap_coefs(iextr) * h_hist_cmplx(:,:,:,iextr)
     end do
-    ! Shift for next iteration : n_hist-2  <---  n_hist; n_hist-3 <-- n_hist-1
-    if( n_hist > 2 ) then
-      do iextr = 1, n_hist-2
+    ! Shift for next iteration : tddft_history-2  <---  tddft_history; tddft_history-3 <-- tddft_history-1
+    if( tddft_history > 2 ) then
+      do iextr = 1, tddft_history-2
         h_hist_cmplx(:,:,:,iextr) = h_hist_cmplx(:,:,:,iextr+2)
       end do
     end if
@@ -1365,8 +1365,8 @@ subroutine predictor_corrector(basis,                  &
                                  dipole_ao,                    &
                                  h_cmplx,en_tddft)
 
-    ! Save in history : n_hist-1
-    if (n_hist > 1) h_hist_cmplx(:,:,:,n_hist-1) = h_cmplx
+    ! Save in history : tddft_history-1
+    if (tddft_history > 1) h_hist_cmplx(:,:,:,tddft_history-1) = h_cmplx
 
     !--3--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
     call propagate_nonortho(time_step,s_matrix,d_matrix,c_matrix_cmplx,h_cmplx,tddft_propagator)
@@ -1398,7 +1398,7 @@ subroutine predictor_corrector(basis,                  &
 
     !--5--UPDATE----| C(t+dt) -> C(t); H(t+dt) -> H(t)
     c_matrix_hist_cmplx(:,:,:,1) = c_matrix_cmplx(:,:,:)
-    h_hist_cmplx(:,:,:,n_hist) = h_cmplx
+    h_hist_cmplx(:,:,:,tddft_history) = h_cmplx
 
 
     ! ///////////////////////////////////
@@ -1464,12 +1464,12 @@ subroutine predictor_corrector(basis,                  &
   case('PC2B')
     h_small_cmplx=(0.0_dp,0.0_dp)
     !--0--EXTRAPOLATE----
-    do iextr=1,n_hist
+    do iextr=1,tddft_history
       h_small_cmplx=h_small_cmplx+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
     end do
-    ! n_hist-2  <---  n_hist; n_hist-3 <-- n_hist-1
-    if(n_hist > 2) then
-      do iextr=1,n_hist-2
+    ! tddft_history-2  <---  tddft_history; tddft_history-3 <-- tddft_history-1
+    if(tddft_history > 2) then
+      do iextr=1,tddft_history-2
         h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+2)
       end do
     end if
@@ -1492,7 +1492,7 @@ subroutine predictor_corrector(basis,                  &
                                  dipole_ao,               &
                                  h_cmplx,en_tddft)
 
-    if (n_hist > 1) h_small_hist_cmplx(:,:,:,n_hist-1)=h_small_cmplx
+    if (tddft_history > 1) h_small_hist_cmplx(:,:,:,tddft_history-1)=h_small_cmplx
     !--3--PROPAGATION----|
     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,x_matrix,tddft_propagator)
 
@@ -1512,30 +1512,30 @@ subroutine predictor_corrector(basis,                  &
 
     !--5--UPDATE----|
     c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
-    h_small_hist_cmplx(:,:,:,n_hist)=h_small_cmplx
+    h_small_hist_cmplx(:,:,:,tddft_history)=h_small_cmplx
 
 
     ! ///////////////////////////////////
     ! Iterative propagation with Lagrange interpolation
     ! ---------------|t-dt|-----------------|t|----------|t+dt/2)|----------|t+dt|
-    !............|H(n_hist-1)|..........|H(n_hist)|....|H(n_hist+1)|.....|H(n_hist+2)|
+    !............|H(tddft_history-1)|..........|H(tddft_history)|....|H(tddft_history+1)|.....|H(tddft_history+2)|
   case('PC3','PC4')
     h_cmplx=(0.0_dp,0.0_dp)
-    h_small_hist_cmplx(:,:,:,n_hist+2)=(0.0_dp,0.0_dp)
+    h_small_hist_cmplx(:,:,:,tddft_history+2)=(0.0_dp,0.0_dp)
     !--1--EXTRAPOLATION WITH PREVIOUS STEPS----
-    do iextr=1,n_hist
-      h_small_hist_cmplx(:,:,:,n_hist+2)=h_small_hist_cmplx(:,:,:,n_hist+2)+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
+    do iextr=1,tddft_history
+      h_small_hist_cmplx(:,:,:,tddft_history+2)=h_small_hist_cmplx(:,:,:,tddft_history+2)+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
     end do
 
     !--2--LOCAL LINEAR INTERPOLATION----| h_cmplx in the 1/2 of the current time interval
-    h_small_hist_cmplx(:,:,:,n_hist+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,n_hist)+h_small_hist_cmplx(:,:,:,n_hist+2))
+    h_small_hist_cmplx(:,:,:,tddft_history+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,tddft_history)+h_small_hist_cmplx(:,:,:,tddft_history+2))
 
     ! if ( is_iomaster .AND. mod(itau-1,mod_write)==0 ) then
     !   write(name_iter_norm,"(3A,I4.4,A)") "./iter_norm/", TRIM(tddft_predictor_corrector), "_norm_itau_",itau,".dat"
     !   open(newunit=file_iter_norm,file=name_iter_norm)
     ! end if
     do i_iter=1,n_iter
-      h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,n_hist+1)
+      h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,tddft_history+1)
       !--3--PREDICTOR (propagation of C(0)-->C(1))
       call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx, &
                           h_small_cmplx,x_matrix,tddft_propagator)
@@ -1550,19 +1550,19 @@ subroutine predictor_corrector(basis,                  &
                                    c_matrix_cmplx,          &
                                    hamiltonian_kinetic,     &
                                    hamiltonian_nucleus,     &
-                                   h_small_hist_cmplx(:,:,:,n_hist+2),           &
+                                   h_small_hist_cmplx(:,:,:,tddft_history+2),           &
                                    x_matrix,                &
                                    dipole_ao,               &
                                    h_cmplx,en_tddft)
 
       c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
       !--2B--LOCAL LINEAR INTERPOLATION----| h_cmplx in the 1/2 of the current time interval
-      h_small_hist_cmplx(:,:,:,n_hist+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,n_hist)+h_small_hist_cmplx(:,:,:,n_hist+2))
+      h_small_hist_cmplx(:,:,:,tddft_history+1)=0.5_dp*(h_small_hist_cmplx(:,:,:,tddft_history)+h_small_hist_cmplx(:,:,:,tddft_history+2))
 
       !**COMPARISON**
       !  if( is_iomaster ) then
       !    if(mod(itau-1,mod_write)==0 ) then
-      !      write(file_iter_norm,*) i_iter, NORM2(ABS(h_small_hist_cmplx(:,:,:,n_hist+1)-h_small_cmplx(:,:,:)))
+      !      write(file_iter_norm,*) i_iter, NORM2(ABS(h_small_hist_cmplx(:,:,:,tddft_history+1)-h_small_cmplx(:,:,:)))
       !    end if
       !  end if
 
@@ -1572,34 +1572,34 @@ subroutine predictor_corrector(basis,                  &
 
     !--5--PROPAGATION----| C(0)---U[H(1/2)]--->C(1)
     call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1), &
-                        c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist+1),x_matrix,tddft_propagator)
+                        c_matrix_cmplx,h_small_hist_cmplx(:,:,:,tddft_history+1),x_matrix,tddft_propagator)
 
     !--6--UPDATE----|C(1)-->C(0)
     c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
-    do iextr=1,n_hist-1
+    do iextr=1,tddft_history-1
       h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+1)
     end do
-    h_small_hist_cmplx(:,:,:,n_hist)=h_small_hist_cmplx(:,:,:,n_hist+2)
+    h_small_hist_cmplx(:,:,:,tddft_history)=h_small_hist_cmplx(:,:,:,tddft_history+2)
 
 
     ! ///////////////////////////////////
     ! Iterative ETRS - enforced time-reversal symmetry
     ! ---------------|t-dt|-----------------|t|--------------------|t+dt|
-    !............|H(n_hist-1)|..........|H(n_hist)|.............|H(n_hist+1)|
+    !............|H(tddft_history-1)|..........|H(tddft_history)|.............|H(tddft_history+1)|
   case('PC5','PC6')
     h_cmplx=(0.0_dp,0.0_dp)
-    h_small_hist_cmplx(:,:,:,n_hist+1)=(0.0_dp,0.0_dp)
+    h_small_hist_cmplx(:,:,:,tddft_history+1)=(0.0_dp,0.0_dp)
     !--1--EXTRAPOLATION WITH PREVIOUS STEPS----
-    do iextr=1,n_hist
-      h_small_hist_cmplx(:,:,:,n_hist+1)=h_small_hist_cmplx(:,:,:,n_hist+1)+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
+    do iextr=1,tddft_history
+      h_small_hist_cmplx(:,:,:,tddft_history+1)=h_small_hist_cmplx(:,:,:,tddft_history+1)+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
     end do
 
     do i_iter=1,n_iter
       c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
-      h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,n_hist+1)
+      h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,tddft_history+1)
       !--3--PREDICTOR (propagation of C(0)-->C(1))
       call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx, &
-                          h_small_hist_cmplx(:,:,:,n_hist:n_hist+1),x_matrix,"ETRS")
+                          h_small_hist_cmplx(:,:,:,tddft_history:tddft_history+1),x_matrix,"ETRS")
       !--4--CORRECTOR----| C(1)-->H(1)
       call setup_hamiltonian_cmplx(basis,                   &
                                    nstate,                  &
@@ -1610,7 +1610,7 @@ subroutine predictor_corrector(basis,                  &
                                    c_matrix_cmplx,          &
                                    hamiltonian_kinetic,     &
                                    hamiltonian_nucleus,     &
-                                   h_small_hist_cmplx(:,:,:,n_hist+1) ,    &
+                                   h_small_hist_cmplx(:,:,:,tddft_history+1) ,    &
                                    x_matrix,                &
                                    dipole_ao,               &
                                    h_cmplx,en_tddft)
@@ -1622,12 +1622,12 @@ subroutine predictor_corrector(basis,                  &
 
     !--5--PROPAGATION----| C(0)---U[H(1/2)]--->C(!1)
     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx, &
-                         h_small_hist_cmplx(:,:,:,n_hist:n_hist+1),x_matrix,"ETRS")
+                         h_small_hist_cmplx(:,:,:,tddft_history:tddft_history+1),x_matrix,"ETRS")
 
     !--6--UPDATE----|
     c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
     c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
-    do iextr=1,n_hist
+    do iextr=1,tddft_history
       h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+1)
     end do
 
@@ -1697,7 +1697,7 @@ subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx,c_matrix_cm
   nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
   nbf = SIZE(h_cmplx,DIM=1)
 
-  allocate(m_nodes(n_hist),extrap_coefs(n_hist))
+  allocate(m_nodes(tddft_history),extrap_coefs(tddft_history))
 
   select case (tddft_predictor_corrector)
   case('PC0','MB_PC0')
@@ -1707,30 +1707,30 @@ subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx,c_matrix_cm
     ham_hist_dim = 2
 
   case('PC2B','MB_PC2B')
-    ham_hist_dim = n_hist
-    do iextr=1,n_hist
+    ham_hist_dim = tddft_history
+    do iextr=1,tddft_history
       m_nodes(iextr) = (iextr - 1.0_dp) * 0.5_dp
     end do
-    x_pred = (n_hist - 1.0_dp) * 0.5_dp + 0.25_dp
-    call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
+    x_pred = (tddft_history - 1.0_dp) * 0.5_dp + 0.25_dp
+    call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,tddft_history)
 
   case('PC3','PC4')
-    ham_hist_dim = n_hist + 2
-    do iextr=1,n_hist
+    ham_hist_dim = tddft_history + 2
+    do iextr=1,tddft_history
       m_nodes(iextr) = iextr - 1.0_dp
     end do
-    x_pred = n_hist
-    if(tddft_predictor_corrector=='PC3') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
-    if(tddft_predictor_corrector=='PC4') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
+    x_pred = tddft_history
+    if(tddft_predictor_corrector=='PC3') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,tddft_history)
+    if(tddft_predictor_corrector=='PC4') call get_extrap_coefs_aspc(extrap_coefs,tddft_history)
 
   case('PC5','PC6')
-    ham_hist_dim = n_hist + 1
-    do iextr=1,n_hist
+    ham_hist_dim = tddft_history + 1
+    do iextr=1,tddft_history
       m_nodes(iextr) = iextr - 1.0_dp
     end do
-    x_pred = n_hist
-    if(tddft_predictor_corrector=='PC5') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
-    if(tddft_predictor_corrector=='PC6') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
+    x_pred = tddft_history
+    if(tddft_predictor_corrector=='PC5') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,tddft_history)
+    if(tddft_predictor_corrector=='PC6') call get_extrap_coefs_aspc(extrap_coefs,tddft_history)
 
   case('PC7' )
     ham_hist_dim = 2

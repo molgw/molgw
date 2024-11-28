@@ -3845,9 +3845,9 @@ subroutine evaluate_memory(nbf,auxil_nbf,nstate,occupation)
   write(stdout,'(/,1x,a)')  '==== RT-TDDFT (never distributed)'
   write(stdout,'(5x,a30,1x,i10)') 'nstate =',nstate
   write(stdout,'(5x,a30,1x,i10)') 'nspin =',nspin
-  write(stdout,'(5x,a30,1x,i10)') 'n_hist =',n_hist
+  write(stdout,'(5x,a30,1x,i10)') 'tddft_history =',tddft_history
   !               h_small_hist_cmplx(:,:,:,:)  h_small_cmplx          h_cmplx
-  mem = REAL(nstate,dp)**2 * nspin * ( n_hist  +    1            ) + REAL(nbf,dp)**2 * nspin
+  mem = REAL(nstate,dp)**2 * nspin * ( tddft_history + 1 ) + REAL(nbf,dp)**2 * nspin
   mem = mem * 16.0_dp / 1024_dp**3
   write(stdout,'(5x,a30,1x,f14.3,1x,a)') 'Memory =',mem,'(Gb)'
 

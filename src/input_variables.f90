@@ -143,7 +143,7 @@
     excit_name,       &
     excit_width,       &
     excit_time0,       &
-    n_hist,       &
+    tddft_history,       &
     n_iter,       &
     n_restart_tddft,       &
     ncore_tddft,       &
@@ -361,7 +361,7 @@
  excit_name='no'
  excit_width=0.2_dp 
  excit_time0=3.0_dp 
- n_hist=2
+ tddft_history=2
  n_iter=2
  n_restart_tddft=50
  ncore_tddft=0

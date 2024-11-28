@@ -195,7 +195,7 @@
  character(len=256),protected :: excit_name
  real(dp),protected :: excit_width
  real(dp),protected :: excit_time0
- integer,protected :: n_hist
+ integer,protected :: tddft_history
  integer,protected :: n_iter
  integer,protected :: n_restart_tddft
  integer,protected :: ncore_tddft

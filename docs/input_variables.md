@@ -219,7 +219,7 @@
 [excit_name](#excit_name)
 [excit_width](#excit_width)
 [excit_time0](#excit_time0)
-[n_hist](#n_hist)
+[tddft_history](#tddft_history)
 [n_iter](#n_iter)
 [n_restart_tddft](#n_restart_tddft)
 [ncore_tddft](#ncore_tddft)
@@ -1608,22 +1608,6 @@ Energy of the origin of the imaginary axis used in imaginary integration techniq
 
 
 ---
-### n_hist
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** integer
-
-**Default:** 2
-
-**Description:**
-
-Number of memorised previous hamiltonian values for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.
-
-
----
 ### n_iter
 
 *Optional*
@@ -1652,7 +1636,7 @@ Sets the number of iterations for the PC7 in the real-time dynamics
 
 **Description:**
 
-RESTART_TDDFT file will be written during simulation each n_retart_tddft iteration (provided that print_tddft_restart is yes)
+RESTART_TDDFT file will be written during simulation each n_restart_tddft iteration (provided that print_tddft_restart is yes)
 
 
 ---
@@ -3417,6 +3401,22 @@ Do not "propagate" states mentioned in the manual_tddft_frozencore file in the r
 **Description:**
 
 Sets the number of grid points use to evaluate the exchange-correlation integrals in real space for the TDDFT kernel. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.
+
+
+---
+### tddft_history
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** integer
+
+**Default:** 2
+
+**Description:**
+
+Number of stored previous hamiltonian matrices for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.
 
 
 ---

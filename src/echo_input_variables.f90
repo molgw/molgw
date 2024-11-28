@@ -90,7 +90,6 @@
   write(stdout,'(1x,a32,6x,a)') 'move_nuclei',TRIM(move_nuclei) 
   write(stdout,'(1x,a32,6x,a)') 'mpi_poorman',mpi_poorman 
   write(stdout,'(1x,a32,2x,es16.8)') 'mu_origin',mu_origin 
-  write(stdout,'(1x,a32,2x,i8)') 'n_hist',n_hist 
   write(stdout,'(1x,a32,2x,i8)') 'n_iter',n_iter 
   write(stdout,'(1x,a32,2x,i8)') 'n_restart_tddft',n_restart_tddft 
   write(stdout,'(1x,a32,2x,i8)') 'natom',natom 
@@ -203,6 +202,7 @@
   write(stdout,'(1x,a32,6x,a)') 'tddft_force',tddft_force 
   write(stdout,'(1x,a32,6x,a)') 'tddft_frozencore',tddft_frozencore 
   write(stdout,'(1x,a32,6x,a)') 'tddft_grid_quality',TRIM(tddft_grid_quality) 
+  write(stdout,'(1x,a32,2x,i8)') 'tddft_history',tddft_history 
   write(stdout,'(1x,a32,2x,es16.8)') 'tddft_magnetization',tddft_magnetization 
   write(stdout,'(1x,a32,6x,a)') 'tddft_predictor_corrector',TRIM(tddft_predictor_corrector) 
   write(stdout,'(1x,a32,6x,a)') 'tddft_propagator',TRIM(tddft_propagator) 

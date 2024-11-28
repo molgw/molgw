@@ -15,7 +15,7 @@
  time_step=0.5
  time_sim=200.0
  tddft_predictor_corrector="PC2B"
- n_hist=3
+ tddft_history=3
  tddft_propagator='MAG2'
  excit_name='GAU'
  excit_kappa=2e-4

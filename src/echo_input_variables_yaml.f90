@@ -90,7 +90,6 @@
  write(unit_yaml,'(4x,a,19x,a)') 'move_nuclei:',TRIM(move_nuclei) 
  write(unit_yaml,'(4x,a,19x,a)') 'mpi_poorman:',yesno_to_TrueFalse(mpi_poorman) 
  write(unit_yaml,'(4x,a,21x,es16.8)') 'mu_origin:',mu_origin 
- write(unit_yaml,'(4x,a,24x,i8)') 'n_hist:',n_hist 
  write(unit_yaml,'(4x,a,24x,i8)') 'n_iter:',n_iter 
  write(unit_yaml,'(4x,a,15x,i8)') 'n_restart_tddft:',n_restart_tddft 
  write(unit_yaml,'(4x,a,25x,i8)') 'natom:',natom 
@@ -203,6 +202,7 @@
  write(unit_yaml,'(4x,a,19x,a)') 'tddft_force:',yesno_to_TrueFalse(tddft_force) 
  write(unit_yaml,'(4x,a,14x,a)') 'tddft_frozencore:',yesno_to_TrueFalse(tddft_frozencore) 
  write(unit_yaml,'(4x,a,12x,a)') 'tddft_grid_quality:',TRIM(tddft_grid_quality) 
+ write(unit_yaml,'(4x,a,17x,i8)') 'tddft_history:',tddft_history 
  write(unit_yaml,'(4x,a,11x,es16.8)') 'tddft_magnetization:',tddft_magnetization 
  write(unit_yaml,'(4x,a,5x,a)') 'tddft_predictor_corrector:',TRIM(tddft_predictor_corrector) 
  write(unit_yaml,'(4x,a,14x,a)') 'tddft_propagator:',TRIM(tddft_propagator) 

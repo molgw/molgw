@@ -19,9 +19,8 @@
   time_sim                       = 20.0
   tddft_wfn_t0                   = 'stationary'
   tolscf_tddft                   = 2.0e-4
-  tddft_predictor_corrector                      = 'MB_PC2B'
-  n_hist                         = 2
-  tddft_propagator                      = 'CN'
+  tddft_predictor_corrector      = 'MB_PC2B'
+  tddft_propagator               = 'CN'
   length_unit                    = 'bohr'
   excit_name                     = 'ion'
   vel_projectile                 = 0.0 0.0 1.0
