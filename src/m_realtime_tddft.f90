@@ -615,7 +615,7 @@ subroutine realtime_tddft_propagation(basis,auxil_basis,occupation,c_matrix,rest
       end if
     end if
 
-    time_cur = time_min + itau*time_step
+    time_cur = time_min + itau * time_step
     itau = itau + 1
 
     !---

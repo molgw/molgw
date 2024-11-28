@@ -335,7 +335,7 @@ subroutine output_timing()
   call output_timing_line('NOFT calculation',timing_noft_energy,1)
 
   ! RT-TDDFT
-  call output_timing_line('TDDFT loop',timing_tddft_loop,1)
+  call output_timing_line('Real-time TDDFT',timing_tddft_loop,1)
   call output_timing_line('TDDFT propagator',timing_tddft_propagation,2)
   call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
   call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
