@@ -268,7 +268,7 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
   if( ANY( ABS( occupation_read(1:MIN(nstate_read,nstate),:) - occupation(1:MIN(nstate_read,nstate),:) )  > 1.0e-5_dp ) ) then
     if( temperature > 1.0e-8_dp) then
       occupation(1:MIN(nstate_read,nstate),:)=occupation_read(1:MIN(nstate_read,nstate),:)
-      write(stdout,'(1xa)') "Reading occupations from a RESTART file"
+      write(stdout,'(1x,a)') "Reading occupations from a RESTART file"
       call dump_out_occupation('=== Occupations ===',occupation)
     else
       call issue_warning('RESTART file: Occupations have changed')

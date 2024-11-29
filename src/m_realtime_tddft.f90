@@ -132,7 +132,7 @@ subroutine realtime_tddft_propagation(basis,auxil_basis,occupation,c_matrix,rest
   call start_clock(timing_tddft_loop)
 
   write(stdout,'(/,/,1x,a)') '=================================================='
-  write(stdout,'(x,a,/)')    'RT-TDDFT simulation'
+  write(stdout,'(1x,a,/)')    'RT-TDDFT simulation'
 
   nstate = SIZE(occupation(:,:),DIM=1)
 
@@ -687,7 +687,7 @@ subroutine realtime_tddft_propagation(basis,auxil_basis,occupation,c_matrix,rest
   !  call destroy_basis_set(auxil_basis_p)
   !end if
 
-  write(stdout,'(/,x,a)') "End of RT-TDDFT simulation"
+  write(stdout,'(/,1x,a)') "End of RT-TDDFT simulation"
   write(stdout,'(1x,a,/)') '=================================================='
 
   call stop_clock(timing_tddft_loop)
@@ -2225,7 +2225,7 @@ subroutine read_restart_tddft(nstate,time_min,occupation,c_matrix_tddft)
   if( ANY( ABS( occupation_read(:,:) - occupation(:,:) )  > 1.0e-5_dp ) ) then
     if( temperature > 1.0e-8_dp) then
       occupation(:,:) = occupation_read(:,:)
-      write(stdout,'(1xa)') "Reading occupations from a RESTART file"
+      write(stdout,'(1x,a)') "Reading occupations from a RESTART file"
       call dump_out_occupation('=== Occupations ===',occupation)
     else
       call issue_warning('RESTART file: Occupations have changed')
