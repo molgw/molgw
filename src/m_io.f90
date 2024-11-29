@@ -200,17 +200,17 @@ subroutine header()
       case('K')
         write(stdout,'(5x,a,f14.3)') 'with OPENMP stack size (Mb): ', REAL(omp_stacksize_value,kind=dp) / 1024.0_dp
         if( REAL(omp_stacksize_value,kind=dp) / 1024.0_dp < 127.9_dp ) then
-          call issue_warning('OMP_STACKSIZE is small. Consider increasing it with, for instance, `export OMP_STACKSIZE=512M`')
+          call issue_warning('OMP_STACKSIZE is maybe small. Consider increasing it with, for instance, `export OMP_STACKSIZE=512M`')
         endif
       case('M')
         write(stdout,'(5x,a,f14.3)') 'with OPENMP stack size (Mb): ', REAL(omp_stacksize_value,kind=dp)
         if( REAL(omp_stacksize_value,kind=dp) < 127.9_dp ) then
-          call issue_warning('OMP_STACKSIZE is small. Consider increasing it with, for instance, `export OMP_STACKSIZE=512M`')
+          call issue_warning('OMP_STACKSIZE is maybe small. Consider increasing it with, for instance, `export OMP_STACKSIZE=512M`')
         endif
       case('G')
         write(stdout,'(5x,a,f14.3)') 'with OPENMP stack size (Mb): ', REAL(omp_stacksize_value,kind=dp) * 1024.0_dp
         if( REAL(omp_stacksize_value,kind=dp) * 1024.0_dp < 127.9_dp ) then
-          call issue_warning('OMP_STACKSIZE is small. Consider increasing it with, for instance, `export OMP_STACKSIZE=512M`')
+          call issue_warning('OMP_STACKSIZE is maybe small. Consider increasing it with, for instance, `export OMP_STACKSIZE=512M`')
         endif
       case default
         write(stdout,'(5x,a)') 'with OPENMP stack size unit not recognized'
