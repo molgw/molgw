@@ -77,7 +77,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     !
     ! Set the character string for the calculation we are currently doing
     select case(calc_type%selfenergy_approx)
-    case(GW)
+    case(GW, DUMP_GW)
       selfenergy_tag='GW'
     case(GnW0)
       write(selfenergy_tag,'(i3)') istep_gw-1
@@ -182,7 +182,8 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
     if(    calc_type%selfenergy_approx == GW          &
       .OR. calc_type%selfenergy_approx == COHSEX      &
       .OR. calc_type%selfenergy_approx == GnW0        &
-      .OR. calc_type%selfenergy_approx == GnWn   ) then
+      .OR. calc_type%selfenergy_approx == GnWn        &
+      .OR. calc_type%selfenergy_approx == DUMP_GW ) then
 
       !
       ! First calculate W except if performing GnW0 for the second and following times
@@ -224,6 +225,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
 
       endif
 
+
       select case(calc_type%selfenergy_technique)
       case(contour_deformation)
         call gw_selfenergy_contour(energy_g,occupation,c_matrix,se)
@@ -234,17 +236,21 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         call gw_selfenergy_imag_scalapack(energy_g,c_matrix,wpol,se)
         call self_energy_polynomial(se)
       case(exact_dyson)
-        call gw_selfenergy_upfolding(calc_type%selfenergy_approx,basis,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
+        call gw_selfenergy_upfolding(calc_type%selfenergy_approx,occupation,energy_g,c_matrix,wpol,exchange_m_vxc)
       case default
         ! The SCALAPACK implementation only works for plain vanilla GW
 #if defined(HAVE_SCALAPACK)
         if( has_auxil_basis &
            .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
              .OR. calc_type%selfenergy_approx == GnWn) ) then
-          call gw_selfenergy_scalapack(calc_type%selfenergy_approx,basis,occupation,energy_g,c_matrix,wpol,se)
+          call gw_selfenergy_scalapack(calc_type%selfenergy_approx,occupation,energy_g,c_matrix,wpol,se)
         else
 #endif
-          call gw_selfenergy(calc_type%selfenergy_approx,basis,occupation,energy_g,c_matrix,wpol,se)
+          if( has_auxil_basis .AND. calc_type%selfenergy_approx == DUMP_GW ) then
+            call dump_gw_ingredients(occupation,energy_g,c_matrix,wpol)
+          else
+            call gw_selfenergy(calc_type%selfenergy_approx,occupation,energy_g,c_matrix,wpol,se)
+          endif
 #if defined(HAVE_SCALAPACK)
         endif
 #endif
@@ -340,7 +346,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         endif
 
         call se_gw%init(calc_type%selfenergy_technique,energy_g)
-        call gw_selfenergy(GW,basis,occupation,energy_g,c_matrix,wpol,se_gw)
+        call gw_selfenergy(GW,occupation,energy_g,c_matrix,wpol,se_gw)
 
         !
         ! Output the G0W0 results first
@@ -493,7 +499,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
       if( reading_status /= 0 ) then
         call polarizability(.FALSE.,.TRUE.,basis,occupation,energy_w,c_matrix,en_mbpt%rpa,en_mbpt%gw,wpol)
       endif
-      call gw_selfenergy(GW,basis,occupation,energy_g,c_matrix,wpol,se)
+      call gw_selfenergy(GW,occupation,energy_g,c_matrix,wpol,se)
 
       !
       ! Second perform a PT3 calculation minus the ring diagrams

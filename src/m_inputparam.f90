@@ -43,6 +43,7 @@ module m_inputparam
   integer,parameter :: GnW0            = 205
   integer,parameter :: GnWn            = 206
   integer,parameter :: GW              = 207
+  integer,parameter :: DUMP_GW         = 208
   integer,parameter :: GWSOSEX         = 217
   integer,parameter :: GWSOX           = 219
   integer,parameter :: PT2             = 220
@@ -236,6 +237,9 @@ subroutine init_calculation_type(scf,postscf)
     case('GW','G0W0')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW
+    case('DUMPGW','DUMP_GW')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = DUMP_GW
     case('G0W0_DYSON')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW

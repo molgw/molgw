@@ -13,7 +13,6 @@ module m_gw_selfenergy_analytic
   use m_timing
   use m_inputparam
   use m_warning,only: issue_warning
-  use m_basis_set
   use m_spectral_function
   use m_eri_ao_mo
   use m_selfenergy_tools
@@ -25,11 +24,10 @@ contains
 
 
 !=========================================================================
-subroutine gw_selfenergy(selfenergy_approx,basis,occupation,energy,c_matrix,wpol,se)
+subroutine gw_selfenergy(selfenergy_approx,occupation,energy,c_matrix,wpol,se)
   implicit none
 
   integer,intent(in)                  :: selfenergy_approx
-  type(basis_set)                     :: basis
   real(dp),intent(in)                 :: occupation(:,:),energy(:,:)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(spectral_function),intent(in)  :: wpol
@@ -77,43 +75,6 @@ subroutine gw_selfenergy(selfenergy_approx,basis,occupation,energy,c_matrix,wpol
 
   energy_gw = 0.0_dp
   se%sigma(:,:,:) = 0.0_dp
-
-#if 0
-  block
-  real(dp), allocatable :: wcoeff(:,:)
-  integer :: file_w, file_e, file_omega
-
-  if( nsemin > ncore_G+1 .OR. nsemax < nvirtual_G-1 ) then
-    call die('increase the selfenergy_state_range for dumping')
-  endif
-
-  open(newunit=file_e, file='energies.dat', form='formatted', status='replace')
-  write(file_e,*) nvirtual_G-ncore_G-1
-  do istate=ncore_G+1,nvirtual_G-1
-    write(file_e,*) energy(istate,1)
-  enddo
-  close(file_e)
-  open(newunit=file_omega, file='omegas.dat', form='formatted', status='replace')
-  write(file_omega,*) wpol%npole_reso
-  do ipole=1,wpol%npole_reso
-    write(file_omega,*) wpol%pole(ipole)
-  enddo
-  close(file_omega)
-  open(newunit=file_w, file='w.bin', form='unformatted', access='stream', status='replace')
-  call clean_allocate('w coeff for dumping',wcoeff,1,wpol%npole_reso,ncore_G+1,nvirtual_G-1)
-  do ispin=1,nspin
-    do istate=ncore_G+1,nvirtual_G-1
-      ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-      wcoeff(:,ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,ispin) )
-      call auxil%sum(wcoeff)
-      write(file_w) wcoeff(:,:)
-    enddo
-  enddo
-  call clean_deallocate('w coeff for dumping',wcoeff)
-  close(file_w)
-  end block
-  call die('DUMP IS DONE! this is normal')
-#endif
 
   do ispin=1,nspin
     do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
@@ -231,11 +192,10 @@ end subroutine gw_selfenergy
 
 
 !=========================================================================
-subroutine gw_selfenergy_upfolding(selfenergy_approx,basis,occupation,energy,c_matrix,wpol,exchange_m_vxc)
+subroutine gw_selfenergy_upfolding(selfenergy_approx,occupation,energy,c_matrix,wpol,exchange_m_vxc)
   implicit none
 
   integer,intent(in)                  :: selfenergy_approx
-  type(basis_set)                     :: basis
   real(dp),intent(in)                 :: occupation(:,:),energy(:,:)
   real(dp),intent(in)                 :: c_matrix(:,:,:),exchange_m_vxc(:,:,:)
   type(spectral_function),intent(in)  :: wpol
@@ -498,11 +458,10 @@ end subroutine gw_selfenergy_upfolding
 
 
 !=========================================================================
-subroutine gw_selfenergy_scalapack(selfenergy_approx,basis,occupation,energy,c_matrix,wpol,se)
+subroutine gw_selfenergy_scalapack(selfenergy_approx,occupation,energy,c_matrix,wpol,se)
   implicit none
 
   integer,intent(in)                  :: selfenergy_approx
-  type(basis_set)                     :: basis
   real(dp),intent(in)                 :: occupation(:,:),energy(:,:)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(spectral_function),intent(in)  :: wpol
@@ -675,10 +634,9 @@ end subroutine gw_selfenergy_scalapack
 
 
 !=========================================================================
-subroutine gw_selfenergy_qs(basis,occupation,energy,c_matrix,s_matrix,wpol,selfenergy)
+subroutine gw_selfenergy_qs(occupation,energy,c_matrix,s_matrix,wpol,selfenergy)
   implicit none
 
-  type(basis_set)                    :: basis
   real(dp),intent(in)                :: occupation(:,:),energy(:,:)
   real(dp),intent(in)                :: c_matrix(:,:,:)
   real(dp),intent(in)                :: s_matrix(:,:)
@@ -820,6 +778,73 @@ subroutine gw_selfenergy_qs(basis,occupation,energy,c_matrix,s_matrix,wpol,selfe
 
 
 end subroutine gw_selfenergy_qs
+
+
+!=========================================================================
+subroutine dump_gw_ingredients(occupation,energy,c_matrix,wpol)
+  implicit none
+
+  real(dp),intent(in)                 :: occupation(:,:), energy(:,:)
+  real(dp),intent(in)                 :: c_matrix(:,:,:)
+  type(spectral_function),intent(in)  :: wpol
+  !=====
+  integer               :: istate, ispin, ipole
+  real(dp), allocatable :: wcoeff(:,:)
+  integer               :: file_w, file_e, file_omega
+  !=====
+
+  write(stdout,'(/,1x,a)') 'Dump on file the GW ingredients'
+
+  if(has_auxil_basis) then
+    call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
+  endif
+
+  if( nsemin > ncore_G+1 .OR. nsemax < nvirtual_G-1 ) then
+    call die('dump_gw_ingredients: increase the selfenergy_state_range for dumping or leave it to the default value')
+  endif
+
+  !
+  ! energies.dat file that contains gKS energies
+  !
+  open(newunit=file_e, file='energies.dat', form='formatted', status='replace')
+  write(file_e,*) nvirtual_G-ncore_G-1
+  do istate=ncore_G+1,nvirtual_G-1
+    write(file_e,*) energy(istate,1)
+  enddo
+  close(file_e)
+  write(stdout,'(1x,a)') 'energies.dat written'
+
+  !
+  ! omegas.dat file that contains RPA neutral excitation energies
+  !
+  open(newunit=file_omega, file='omegas.dat', form='formatted', status='replace')
+  write(file_omega,*) wpol%npole_reso
+  do ipole=1,wpol%npole_reso
+    write(file_omega,*) wpol%pole(ipole)
+  enddo
+  close(file_omega)
+  write(stdout,'(1x,a)') 'omegas.dat written'
+
+  !
+  ! w.bin file that contains the w coefficients:
+  !   w_{pq} = \sum_{P ia} ( p q | P ) ( P | i a) [ X_{ia} + Y_{ia} ]
+  !
+  open(newunit=file_w, file='w.bin', form='unformatted', access='stream', status='replace')
+  call clean_allocate('w coeff for dumping',wcoeff,1,wpol%npole_reso,ncore_G+1,nvirtual_G-1)
+  do ispin=1,nspin
+    do istate=ncore_G+1,nvirtual_G-1
+      ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+      wcoeff(:,ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,ispin) )
+      call auxil%sum(wcoeff)
+      write(file_w) wcoeff(:,:)
+    enddo
+  enddo
+  call clean_deallocate('w coeff for dumping',wcoeff)
+  close(file_w)
+  write(stdout,'(1x,a)') 'w.bin written'
+
+
+end subroutine dump_gw_ingredients
 
 
 end module m_gw_selfenergy_analytic

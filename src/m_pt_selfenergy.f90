@@ -248,9 +248,9 @@ subroutine onering_selfenergy(basis,occupation,energy,c_matrix,se,emp2)
   call polarizability_onering(basis,energy,c_matrix,vchi0v)
 
 #if defined(HAVE_SCALAPACK)
-  call gw_selfenergy_scalapack(ONE_RING,basis,occupation,energy,c_matrix,vchi0v,se)
+  call gw_selfenergy_scalapack(ONE_RING,occupation,energy,c_matrix,vchi0v,se)
 #else
-  call gw_selfenergy(ONE_RING,basis,occupation,energy,c_matrix,vchi0v,se)
+  call gw_selfenergy(ONE_RING,occupation,energy,c_matrix,vchi0v,se)
 #endif
 
   call vchi0v%destroy()
