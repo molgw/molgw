@@ -36,7 +36,7 @@ subroutine gw_selfenergy(selfenergy_approx,occupation,energy,c_matrix,wpol,se)
   integer               :: nstate
   integer               :: iomega
   integer               :: ipstate
-  integer               :: pstate,bstate
+  integer               :: pstate
   integer               :: istate,ispin,ipole
   real(dp),allocatable  :: bra(:,:)
   real(dp)              :: fact_full_i,fact_empty_i
@@ -201,21 +201,25 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx,occupation,energy,c_matrix,
   type(spectral_function),intent(in)  :: wpol
   !=====
   character(len=4)     :: ctmp
-  integer              :: iomega, nstate
+  integer              :: nstate
   integer              :: ipstate
-  integer              :: pstate,bstate
-  integer              :: istate,ispin,ipole
+  integer              :: pstate
+  integer              :: istate,ispin
   real(dp)             :: sign_i,mu
-  real(dp)             :: energy_gw,work(1),weight,nelect,rtmp
+  real(dp)             :: weight
   real(dp),allocatable :: matrix_wing(:,:),matrix_head(:,:),matrix_diag(:)
   real(dp),allocatable :: matrix(:,:),eigval(:)
   integer              :: nmat,mwing,imat,jmat
   integer              :: mstate,jstate
   integer              :: irecord
   integer              :: fu,info
-  integer              :: mlocal,nlocal,ilocal,jlocal,iglobal,jglobal
   integer              :: desc_wing(NDEL),desc_eri(NDEL),desc_wpol(NDEL)
+  integer              :: mlocal, ilocal
+#if defined(HAVE_SCALAPACK)
   integer              :: desc_matrix(NDEL)
+  real(dp)             :: work(1),nelect,rtmp
+  integer              :: nlocal,jlocal,iglobal,jglobal
+#endif
   !=====
 
   call start_clock(timing_gw_self)
@@ -467,6 +471,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,occupation,energy,c_matrix,
   type(spectral_function),intent(in)  :: wpol
   type(selfenergy_grid),intent(inout) :: se
   !=====
+#if defined(HAVE_SCALAPACK)
   integer                 :: pstate,pspin,nstate
   integer                 :: iomega
   integer                 :: istate,ipole
@@ -481,13 +486,15 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,occupation,energy,c_matrix,
   real(dp),allocatable    :: wresidue_sd(:,:)
   real(dp),allocatable    :: bra(:,:)
   complex(dp),allocatable :: sigmagw(:,:,:)
+#endif
   !=====
 
   if(.NOT. has_auxil_basis) return
 
-  nstate = SIZE(energy, DIM=1)
 
 #if defined(HAVE_SCALAPACK)
+  nstate = SIZE(energy, DIM=1)
+
   call start_clock(timing_gw_self)
 
   write(stdout,*)
@@ -792,6 +799,8 @@ subroutine dump_gw_ingredients(occupation,energy,c_matrix,wpol)
   real(dp), allocatable :: wcoeff(:,:)
   integer               :: file_w, file_e, file_omega
   !=====
+
+  if(.NOT. has_auxil_basis) return
 
   write(stdout,'(/,1x,a)') 'Dump on file the GW ingredients'
 

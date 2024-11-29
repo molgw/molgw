@@ -1057,9 +1057,11 @@ subroutine read_inputfile_namelist()
 
 #if !defined(HAVE_HDF5)
 
-  if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_ ) call die('To print c_matrix_cmplx into an HDF5 file, & 
-MOLGW must be compiled with HDF5: HDF5_ROOT must be specified &
-and the -DHAVE_HDF5 compilation option must be activated')
+  if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_ ) then
+    call die('To print c_matrix_cmplx into an HDF5 file, '  // &
+                'MOLGW must be compiled with HDF5: HDF5_ROOT must be specified ' // &
+                'and the -DHAVE_HDF5 compilation option must be activated')
+  endif
 
 #endif
 
