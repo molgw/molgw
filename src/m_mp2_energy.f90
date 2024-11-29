@@ -20,10 +20,9 @@ contains
 
 
 !=========================================================================
-subroutine mp2_energy_ri(basis,occupation,energy,c_matrix,emp2)
+subroutine mp2_energy_ri(occupation,energy,c_matrix,emp2)
   implicit none
 
-  type(basis_set),intent(in)   :: basis
   real(dp),intent(in)          :: occupation(:,:),energy(:,:)
   real(dp),intent(in)          :: c_matrix(:,:,:)
   real(dp),intent(out)         :: emp2
@@ -139,10 +138,9 @@ end subroutine mp2_energy_ri
 
 
 !=========================================================================
-subroutine mp2_energy_ri_cmplx(basis,occupation,energy,c_matrix_cmplx,emp2)
+subroutine mp2_energy_ri_cmplx(occupation,energy,c_matrix_cmplx,emp2)
   implicit none
 
-  type(basis_set),intent(in)   :: basis
   real(dp),intent(in)          :: occupation(:,:),energy(:,:)
   complex(dp),intent(in)       :: c_matrix_cmplx(:,:,:)
   real(dp),intent(out)         :: emp2
@@ -253,11 +251,10 @@ end subroutine mp2_energy_ri_cmplx
 
 
 !=========================================================================
-subroutine mp2_energy_ri_x2c(nstate,nocc,basis,energy,c_matrix_rel,emp2,exx)
+subroutine mp2_energy_ri_x2c(nstate,nocc,energy,c_matrix_rel,emp2,exx)
   implicit none
 
   integer,intent(in)           :: nstate,nocc
-  type(basis_set),intent(in)   :: basis
   real(dp),intent(in)          :: energy(:,:)
   complex(dp),intent(in)       :: c_matrix_rel(:,:)
   real(dp),intent(out)         :: emp2,exx
@@ -353,10 +350,9 @@ end subroutine mp2_energy_ri_x2c
 
 
 !=========================================================================
-subroutine mp3_energy_ri(basis,occupation,energy,c_matrix,emp3)
+subroutine mp3_energy_ri(occupation,energy,c_matrix,emp3)
   implicit none
 
-  type(basis_set),intent(in) :: basis
   real(dp),intent(in)        :: occupation(:,:),energy(:,:)
   real(dp),intent(in)        :: c_matrix(:,:,:)
   real(dp),intent(out)       :: emp3
@@ -503,22 +499,21 @@ end subroutine mp3_energy_ri
 
 
 !==================================================================
-subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
+subroutine mp2_energy(occupation,c_matrix,energy,emp2)
   implicit none
 
-  type(basis_set),intent(in)   :: basis
   real(dp),intent(in)          :: occupation(:,:),energy(:,:)
   real(dp),intent(in)          :: c_matrix(:,:,:)
   real(dp),intent(out)         :: emp2
   !=====
   integer                    :: astate,bstate,istate,jstate,nstate
-  integer                    :: ibf,jbf,abf,bbf,iaspin,jbspin
+  integer                    :: ibf, jbf, abf, bbf, iaspin, jbspin, nbf
   real(dp)                   :: energy_denom
-  real(dp)                   :: tmp_ixjx(basis%nbf,basis%nbf)
-  real(dp)                   :: tmp_iajx(basis%nbf),tmp_ixja(basis%nbf)
-  real(dp)                   :: tmp_iajb,tmp_ibja
+  real(dp)                   :: tmp_iajb, tmp_ibja
   real(dp)                   :: contrib1,contrib2
   real(dp)                   :: fact
+  real(dp),allocatable       :: tmp_iajx(:), tmp_ixja(:)
+  real(dp),allocatable       :: tmp_ixjx(:,:)
   real(dp),allocatable       :: tmp_ixxx(:,:,:)
   integer                    :: nocc
   !=====
@@ -526,6 +521,7 @@ subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
   call start_clock(timing_mp2_energy)
 
   nstate = SIZE(energy, DIM=1)
+  nbf = SIZE(c_matrix(:,:,:),DIM=1)
 
   write(stdout,*) 'starting the MP2 calculation'
 
@@ -535,7 +531,10 @@ subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
   contrib2 = 0.0_dp
 
 
-  allocate(tmp_ixxx(basis%nbf,basis%nbf,basis%nbf))
+  allocate(tmp_iajx(nbf))
+  allocate(tmp_ixja(nbf))
+  allocate(tmp_ixjx(nbf,nbf))
+  allocate(tmp_ixxx(nbf,nbf,nbf))
 
   do iaspin=1,nspin
     !
@@ -553,11 +552,11 @@ subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
       write(stdout,'(i4,2x,i4,a,i4)') iaspin,istate-ncoreg,' / ',nocc
 
       tmp_ixxx(:,:,:) = 0.0_dp
-      do bbf=1,basis%nbf
-        do jbf=1,basis%nbf
+      do bbf=1,nbf
+        do jbf=1,nbf
           if( negligible_basispair(jbf,bbf) ) cycle
-          do abf=1,basis%nbf
-            do ibf=1,basis%nbf
+          do abf=1,nbf
+            do ibf=1,nbf
               if( negligible_basispair(ibf,abf) ) cycle
               tmp_ixxx(abf,jbf,bbf) = tmp_ixxx(abf,jbf,bbf) &
                 + c_matrix(ibf,istate,iaspin) * eri(ibf,abf,jbf,bbf)
@@ -571,9 +570,9 @@ subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
           if( occupation(jstate,jbspin) < completely_empty ) cycle
 
           tmp_ixjx(:,:) = 0.0_dp
-          do bbf=1,basis%nbf
-            do jbf=1,basis%nbf
-              do abf=1,basis%nbf
+          do bbf=1,nbf
+            do jbf=1,nbf
+              do abf=1,nbf
                 tmp_ixjx(abf,bbf) = tmp_ixjx(abf,bbf) + c_matrix(jbf,jstate,jbspin) * tmp_ixxx(abf,jbf,bbf)
               enddo
             enddo
@@ -583,16 +582,16 @@ subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
             if( occupation(astate,iaspin) > spin_fact - completely_empty ) cycle
 
             tmp_iajx(:) = 0.0_dp
-            do bbf=1,basis%nbf
-              do abf=1,basis%nbf
+            do bbf=1,nbf
+              do abf=1,nbf
                 tmp_iajx(bbf) = tmp_iajx(bbf) + c_matrix(abf,astate,iaspin) * tmp_ixjx(abf,bbf)
               enddo
             enddo
 
             if(iaspin==jbspin) then
               tmp_ixja(:) = 0.0_dp
-              do abf=1,basis%nbf
-                do bbf=1,basis%nbf
+              do abf=1,nbf
+                do bbf=1,nbf
                   tmp_ixja(bbf) = tmp_ixja(bbf) + c_matrix(abf,astate,iaspin) * tmp_ixjx(bbf,abf)
                 enddo
               enddo

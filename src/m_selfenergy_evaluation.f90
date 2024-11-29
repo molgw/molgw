@@ -45,14 +45,14 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
   type(energy_contributions),intent(inout) :: en_mbpt
   !=====
   integer                 :: nstate
-  type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3,se_gw,se_sosex,se_g3w2
+  type(selfenergy_grid)   :: se, se2, se3, se_sox, se_gwpt3, se_gw, se_g3w2
   logical                 :: enforce_rpa
   character(len=36)       :: selfenergy_tag
   integer                 :: reading_status
   integer                 :: nstate_small
   type(spectral_function) :: wpol
   real(dp),allocatable    :: zz(:,:)
-  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
+  real(dp),allocatable    :: energy_qp_new(:,:), energy_qp_z(:,:)
   integer                 :: iomega
   integer                 :: istep_gw,pstate
   real(dp),allocatable    :: exchange_m_vxc_diag(:,:)

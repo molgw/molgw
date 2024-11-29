@@ -843,7 +843,8 @@ subroutine dump_gw_ingredients(occupation,energy,c_matrix,wpol)
   do ispin=1,nspin
     do istate=ncore_G+1,nvirtual_G-1
       ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-      wcoeff(:,ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,ispin) )
+      wcoeff(:,ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , &
+                                                 eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,ispin) )
       call auxil%sum(wcoeff)
       write(file_w) wcoeff(:,:)
     enddo

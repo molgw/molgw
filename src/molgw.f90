@@ -75,9 +75,7 @@ program molgw
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
   integer                 :: nstate,nocc
-  integer                 :: nstate_tmp
   integer                 :: istep,istring
-  logical                 :: found_basis_name
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
@@ -761,18 +759,18 @@ program molgw
       if( complex_scf=='no' ) then ! real
   
         if(has_auxil_basis) then
-          call mp2_energy_ri(basis,occupation,energy,c_matrix,en_gks%mp2)
+          call mp2_energy_ri(occupation,energy,c_matrix,en_gks%mp2)
         else
-          call mp2_energy(basis,occupation,c_matrix,energy,en_gks%mp2)
+          call mp2_energy(occupation,c_matrix,energy,en_gks%mp2)
         endif
 
       else                         ! complex
 
         if(has_auxil_basis) then
-          call mp2_energy_ri_cmplx(basis,occupation,energy,c_matrix_cmplx,en_gks%mp2)
+          call mp2_energy_ri_cmplx(occupation,energy,c_matrix_cmplx,en_gks%mp2)
         else
           call issue_warning('MP2 with complex orbitals is available only with RI')
-          en_gks%mp2=0.0_dp
+          en_gks%mp2 = 0.0_dp
         endif
 
       endif
@@ -788,11 +786,11 @@ program molgw
     else                    ! relativistic
     
       if(has_auxil_basis) then
-        call mp2_energy_ri_x2c(2*nstate,nocc,basis,energy,c_matrix_rel,en_gks%mp2,en_gks%exx)
+        call mp2_energy_ri_x2c(2*nstate,nocc,energy,c_matrix_rel,en_gks%mp2,en_gks%exx)
       else
         call issue_warning('X2C MP2 is available only with RI')
-        en_gks%exx=0.0_dp
-        en_gks%mp2=0.0_dp
+        en_gks%exx = 0.0_dp
+        en_gks%mp2 = 0.0_dp
       endif
     
       write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
@@ -816,7 +814,7 @@ program molgw
   !
   if( calc_type%is_mp3 ) then
     if(has_auxil_basis) then
-      call mp3_energy_ri(basis,occupation,energy,c_matrix,en_gks%mp3)
+      call mp3_energy_ri(occupation,energy,c_matrix,en_gks%mp3)
     else
       call die('MP3 energy without RI not implemented')
     endif

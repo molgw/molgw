@@ -251,8 +251,8 @@ molgw.o: m_definitions.o m_warning.o m_hdf5_tools.o m_timing.o m_memory.o m_inpu
          m_gaussian.o m_basis_set.o  m_eri.o m_dft_grid.o m_spectral_function.o m_ci.o m_eri_calculate.o m_eri_ao_mo.o \
          m_hamiltonian_onebody.o m_selfenergy_tools.o m_scf_loop.o \
          m_dm_analysis.o m_realtime_tddft.o m_restart.o m_dm_mbpt.o m_multipole.o \
-         m_virtual_orbital_space.o m_selfenergy_evaluation.o m_noft.o \
-         m_fourier_quadrature.o m_libcint_tools.o m_linear_response.o m_acfd.o m_hamiltonian_twobodies.o \
+         m_virtual_orbital_space.o m_selfenergy_evaluation.o m_noft.o m_relativistic.o \
+         m_fourier_quadrature.o m_libcint_tools.o m_linear_response.o m_acfd.o m_hamiltonian_twobodies.o m_mp2_energy.o m_force.o \
          molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
 
@@ -301,7 +301,7 @@ m_tdhf_selfenergy.o: m_definitions.o m_mpi.o m_timing.o m_warning.o m_basis_set.
 	$(FC_W_OPTS) -c m_tdhf_selfenergy.f90 $(LIBXC_INCS)
 
 m_gw_selfenergy_analytic.o: m_definitions.o m_mpi.o m_timing.o m_warning.o m_scalapack.o \
-                 m_basis_set.o m_spectral_function.o m_eri_ao_mo.o m_linear_algebra.o \
+                 m_spectral_function.o m_eri_ao_mo.o m_linear_algebra.o \
                  m_inputparam.o m_selfenergy_tools.o m_gw_selfenergy_analytic.f90
 	$(FC_W_OPTS) -c m_gw_selfenergy_analytic.f90 $(LIBXC_INCS)
 
@@ -413,12 +413,13 @@ m_mp2_energy.o: m_definitions.o m_mpi.o m_cart_to_pure.o \
 
 m_relativistic.o: m_definitions.o m_mpi.o m_cart_to_pure.o \
        m_basis_set.o m_inputparam.o m_eri_ao_mo.o \
+       m_warning.o m_timing.o m_elements.o m_string_tools.o m_atoms.o m_ecp.o  m_gaussian.o m_hamiltonian_onebody.o m_hamiltonian_tools.o m_libcint_tools.o \
        m_relativistic.f90
 	$(FC_W_OPTS) -c m_relativistic.f90 $(LIBXC_INCS)
 
 m_noft.o: m_definitions.o m_mpi.o m_cart_to_pure.o \
        m_basis_set.o m_inputparam.o m_eri_ao_mo.o \
-       m_hamiltonian_onebody.o m_hamiltonian_twobodies.o m_hamiltonian_tools.o m_hamiltonian_wrapper.o \
+       m_hamiltonian_onebody.o m_hamiltonian_twobodies.o m_hamiltonian_tools.o m_hamiltonian_wrapper.o m_noft_driver.o \
        m_noft.f90
 	$(FC_W_OPTS) -c m_noft.f90 $(LIBXC_INCS)
 
