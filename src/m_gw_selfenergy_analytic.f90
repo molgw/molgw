@@ -805,11 +805,7 @@ subroutine dump_gw_ingredients(occupation,energy,c_matrix,wpol)
   write(stdout,'(/,1x,a)') 'Dump on file the GW ingredients'
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
-  endif
-
-  if( nsemin > ncore_G+1 .OR. nsemax < nvirtual_G-1 ) then
-    call die('dump_gw_ingredients: increase the selfenergy_state_range for dumping or leave it to the default value')
+    call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1,timing=timing_aomo_gw)
   endif
 
   !

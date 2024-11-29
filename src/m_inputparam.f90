@@ -17,7 +17,7 @@ module m_inputparam
   use m_atoms
   use m_elements
   use m_ecp
-  use m_string_tools,only: capitalize,yesno_to_logical,yesno_to_TrueFalse
+  use m_string_tools,only: capitalize, yesno_to_logical, yesno_to_TrueFalse
   use m_libxc_tools
 
 #if !defined(NO_LIBXC)
