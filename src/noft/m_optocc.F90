@@ -57,7 +57,7 @@ contains
 !! SOURCE
 
 subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,&
-& hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+& hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,ERI_Lsr_cmplx)
 !Arguments ------------------------------------
 !scalars
  logical,intent(in)::keep_occs
@@ -72,6 +72,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
  real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE_cmplx
  complex(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx 
+ complex(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr_cmplx,ERI_Lsr_cmplx
 !Local variables ------------------------------
 !scalars
  logical::diagco,conveg=.false.,debug=.false.,cpx_mos=.false.
@@ -108,8 +109,10 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
 
  ! Check if the current GAMMAs already solve the problem. Is it converged? 
  if(cpx_mos) then
-  call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
-  call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+  call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,&
+  &    ERI_Jsr_cmplx,ERI_Lsr_cmplx)
+  call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,&
+  &    ERI_Jsr_cmplx,ERI_Lsr_cmplx)
   !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
  else
   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
@@ -138,8 +141,10 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
    allocate(Work(Nwork),diag(RDMd%Ngammas))
    do
     if(cpx_mos) then
-     call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
-     call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+     call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,&
+     &    ERI_Jsr_cmplx,ERI_Lsr_cmplx)
+     call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,&
+     &    ERI_Jsr_cmplx,ERI_Lsr_cmplx)
      !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
     else
      call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
@@ -165,7 +170,8 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
   RDMd%GAMMAs_old=GAMMAs
  endif
  if(cpx_mos) then
-  call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+  call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,&
+  &    ERI_Jsr_cmplx,ERI_Lsr_cmplx)
  else
   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
  endif
@@ -221,7 +227,8 @@ end subroutine opt_occ
 !!
 !! SOURCE
 
-subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,hCORE_cmplx,&
+ &     ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,ERI_Lsr_cmplx)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
@@ -231,6 +238,7 @@ subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,hCORE_cmplx,
  real(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE_cmplx
  complex(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx 
+ complex(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr_cmplx,ERI_Lsr_cmplx 
 !Local variables ------------------------------
 !scalars
  logical::chempot,cpx_mos=.false.
@@ -248,8 +256,9 @@ subroutine occ_chempot(RDMd,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,hCORE_cmplx,
 
  ! Calc. the 2RDM and derivatives in RDMd
  if(cpx_mos) then
-  call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,chempot=chempot)
-  call calc_Chem_pot_cmplx(RDMd,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+  call calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,&
+  &    ERI_Jsr_cmplx,ERI_Lsr_cmplx,chempot=chempot)
+  call calc_Chem_pot_cmplx(RDMd,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,ERI_Lsr_cmplx)
  else
   ! MRM: Warning! In rs-NOFT, the chemical potential could be computed without the d Exc / dn contribution...
   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,chempot=chempot)

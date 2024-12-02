@@ -632,10 +632,10 @@ subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERI
               ERI_lkji_cmplx=eri_eigen_ri_cmplx(pstate,jstate,1,jstate,istate,1)
               ERImol_cmplx(pstate,jstate,jstate,istate)=alpha_hybrid*ERI_lkji_cmplx &
                +beta_hybrid*eri_eigen_ri_lr_cmplx(pstate,jstate,1,jstate,istate,1)
-              ! Time-rev: <pi|jj> format used for ERImol 
-              ERI_lkji_cmplx=eri_eigen_ri_cmplx(pstate,jstate,1,istate,jstate,1)
-              ERImol_cmplx(pstate,istate,jstate,jstate)=alpha_hybrid*ERI_lkji_cmplx &
-               +beta_hybrid*eri_eigen_ri_lr_cmplx(pstate,jstate,1,istate,jstate,1)
+              ! Time-rev: <pi|jj> -> <pj|ji> format used for ERImol 
+              ERI_lkji_cmplx=eri_eigen_ri_cmplx(pstate,jstate,1,jstate,istate,1)      ! Using K
+              ERImol_cmplx(pstate,istate,jstate,jstate)=alpha_hybrid*ERI_lkji_cmplx & 
+               +beta_hybrid*eri_eigen_ri_lr_cmplx(pstate,jstate,1,jstate,istate,1)    ! Using K
               ERImolLsr_cmplx(pstate,istate,jstate)=ERI_lkji-ERImol_cmplx(pstate,istate,jstate,jstate)
             enddo
           enddo

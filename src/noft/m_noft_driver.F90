@@ -262,14 +262,22 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  iter=-1
  if(cpx_mos) then
-  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
-  & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+  if(INTEGd%irange_sep/=0) then
+   RDMd%occ(1:RDMd%Nfrozen+RDMd%Npairs)=ONE
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,ERImolJsr_cmplx=INTEGd%ERImolJsr_cmplx,&
+   & ERImolLsr_cmplx=INTEGd%ERImolLsr_cmplx)
+  else
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+  endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then ! pCCD
    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
   else ! NOFT
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
-  &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
+  &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
+  &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
   endif
  else
   if(INTEGd%irange_sep/=0) then
@@ -369,7 +377,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
     call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
    else ! NOFT
     call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
-   &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
+   &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx, &
+   &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
    endif
   else
    if(RDMd%INOF<0) then ! pCCD
@@ -403,9 +412,15 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    do_xc_dft=.true. 
    allocate(DM2_JK(2,RDMd%NBF_occ,RDMd%NBF_occ))
    call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
-   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
-   & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERI_in,Edft_xc=Edft_xc,  &
-   & do_xc_dft=do_xc_dft)
+   if(cpx_mos) then
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx,               &
+    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,ERImolJsr_cmplx=INTEGd%ERImolJsr_cmplx, &
+    & ERImolLsr_cmplx=INTEGd%ERImolLsr_cmplx,all_ERIs=all_ERI_in,Edft_xc=Edft_xc,do_xc_dft=do_xc_dft)
+   else
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE,  &
+    & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERI_in,Edft_xc=Edft_xc, &
+    & do_xc_dft=do_xc_dft)
+   endif
    deallocate(DM2_JK)
  endif
 
@@ -524,7 +539,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  if(irs_noft==0 .and. RDMd%INOF>-1) then
   if(cpx_mos) then
    call occ_chempot(RDMd,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
-   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx)
+   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
+   & ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx)
   else 
    call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,&
     ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr)
