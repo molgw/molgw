@@ -103,23 +103,27 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
-  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs,Edft_xc,do_xc_dft)
+  subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
+     &             NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolJsr_cmplx,ERImolLsr_cmplx,all_ERIs,&
+     &             Edft_xc,do_xc_dft)
   use m_definitions
   implicit none
-  logical,optional,intent(in)::all_ERIs,do_xc_dft
-  integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
-  real(dp),optional,intent(inout)::Edft_xc
-  real(dp),intent(in)::Occ(NBF_occ)
-  real(dp),optional,intent(in)::DM2_JK(2,NBF_occ,NBF_occ)
-  real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)
-  real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
-  real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
-  real(dp),optional,intent(inout)::ERImolJsr(NBF_tot,NBF_jkl,NBF_jkl)
-  real(dp),optional,intent(inout)::ERImolLsr(NBF_tot,NBF_jkl,NBF_jkl)
-  complex(dp),optional,intent(in)::NO_COEF_cmplx(NBF_tot,NBF_tot)
-  complex(dp),optional,intent(inout)::hCORE_cmplx(NBF_tot,NBF_tot)
-  complex(dp),optional,intent(inout)::ERImol_cmplx(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
+
+  logical,optional,intent(in)     :: all_ERIs,do_xc_dft
+  integer,intent(in)              :: nbf,nstate_occ,nstate_kji
+  real(dp),intent(in)             :: Occ(nstate_occ)
+  real(dp),optional,intent(inout) :: Edft_xc
+  real(dp),optional,intent(in)    :: DM2_JK(2,nstate_occ,nstate_occ)
+  real(dp),optional,intent(in)    :: NO_COEF(nbf,nbf)
+  real(dp),optional,intent(inout) :: hCORE(nbf,nbf)
+  real(dp),optional,intent(inout) :: ERImol(nbf,nstate_kji,nstate_kji,nstate_kji)
+  real(dp),optional,intent(inout) :: ERImolJsr(nbf,nstate_kji,nstate_kji)
+  real(dp),optional,intent(inout) :: ERImolLsr(nbf,nstate_kji,nstate_kji)
+  complex(dp),optional,intent(in)    :: NO_COEF_cmplx(nbf,nbf)
+  complex(dp),optional,intent(inout) :: hCORE_cmplx(nbf,nbf)
+  complex(dp),optional,intent(inout) :: ERImol_cmplx(nbf,nstate_kji,nstate_kji,nstate_kji)
+  complex(dp),optional,intent(inout) :: ERImolJsr_cmplx(nbf,nstate_kji,nstate_kji)
+  complex(dp),optional,intent(inout) :: ERImolLsr_cmplx(nbf,nstate_kji,nstate_kji)
   end subroutine mo_ints
  end interface
 !arrays
