@@ -3940,7 +3940,104 @@ subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
 
 #endif
 
- end subroutine dump_matrix_cmplx_hdf5
+
+end subroutine dump_matrix_cmplx_hdf5
+
+
+!=========================================================================
+subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
+  implicit none
+
+  type(basis_set),intent(in) :: basis
+  real(dp),intent(in)        :: s_matrix(:,:)
+  real(dp),intent(in)        :: c_matrix(:,:,:)
+  real(dp),intent(in)        :: occupation(:,:), energy(:,:)
+  !=====
+  integer              :: nocc, nstate, istate, ibf
+  real(dp),allocatable :: ham(:,:), sc_matrix(:,:), sce_matrix(:,:)
+  real(dp),allocatable :: rtmp1(:)
+  character(len=10),allocatable :: basis_strings(:)
+#if defined(HAVE_HDF5)
+  integer(HID_T)       :: fid, current_group
+#endif
+  !=====
+
+#if defined(HAVE_HDF5)
+  nstate = SIZE(energy, DIM=1)
+
+  call hdf_open_file(fid, 'molgw_restart.h5', status='NEW')
+
+  call hdf_create_group(fid, 'frame_0000')
+  call hdf_open_group(fid, 'frame_0000', current_group)
+
+  !
+  ! Atomic numbers
+  !
+  allocate(rtmp1(ncenter_basis))
+  rtmp1(:) = REAL(zbasis(:), kind=dp)
+  call hdf_write_dataset(current_group, 'Atomic numbers', rtmp1)
+  deallocate(rtmp1)
+
+
+  !
+  ! Basis set labels
+  !
+  allocate(basis_strings(basis%nbf))
+  basis_strings(:)(:) = '          '
+  do ibf=1,basis%nbf
+    write(basis_strings(ibf)(1:2),'(i2)') basis%bff(ibf)%icenter - 1 ! C-convention starts with 0
+    basis_strings(ibf)(3:4) = element_name( REAL(zbasis(basis%bff(ibf)%icenter), kind=dp))
+    write(basis_strings(ibf)(6:6),'(i1)') basis%bff(ibf)%am + 1
+    basis_strings(ibf)(7:7)   = basis%bff(ibf)%amc
+    write(basis_strings(ibf)(9:10),'(i2)') basis%bff(ibf)%mm
+  enddo
+  call hdf_write_dataset(current_group, 'Basis set labels', basis_strings)
+
+  !
+  ! Coefficients
+  !
+  nocc = get_number_occupied_states(occupation)
+  call hdf_write_dataset(current_group, 'Coefficients', c_matrix(:,1:nocc,1))
+
+  !
+  ! Coordinates
+  !
+  call hdf_write_dataset(current_group, 'Coordinates', xbasis)
+
+  !
+  ! Overlap
+  !
+  call hdf_write_dataset(current_group, 'Overlap', s_matrix)
+
+  allocate(ham(basis%nbf,basis%nbf))
+  allocate(sc_matrix(basis%nbf,nstate))
+  allocate(sce_matrix(basis%nbf,nstate))
+
+  do ibf=1,basis%nbf
+    write(*,*) s_matrix(ibf,ibf)
+  enddo
+
+  sc_matrix(:,:) = MATMUL( s_matrix, c_matrix(:,:,1) )
+
+  do istate=1,nstate
+    sce_matrix(:,istate) = sc_matrix(:,istate) * energy(istate,1)
+  enddo
+  call DGEMM('T', 'N', basis%nbf, basis%nbf, nstate, &
+             1.0d0, sce_matrix, basis%nbf, sc_matrix, basis%nbf, &
+             0.0d0, ham, basis%nbf)
+  call hdf_write_dataset(current_group, 'MOLGW Hamiltonian', ham)
+
+
+  call hdf_close_group(current_group)
+  call hdf_close_file(fid)
+
+#else
+  call die('print_restart_hdf5: HDF5 needed here!')
+#endif
+
+
+end subroutine print_restart_hdf5
+
 
 !=========================================================================
 end module m_io

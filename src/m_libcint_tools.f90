@@ -267,7 +267,7 @@ subroutine check_capability_libcint(lmax)
   fake_env(off+1) = 2.0_C_DOUBLE  ! alpha = 2.0
   off = off + 1
   fake_bas(LIBCINT_PTR_COEFF,1) = off
-  fake_env(off+1) = 1.0    ! coefficient = 1.0
+  fake_env(off+1) = 1.0_C_DOUBLE  ! coefficient = 1.0
 
 
   shls(:) = 0

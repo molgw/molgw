@@ -59,14 +59,14 @@ function legendre_polynomial(ll,mm,xx) result(plgndr)
   real(dp) ::  fact,pll,pmm,pmmp1,somx2
   !=====
 
-  if( mm < 0 .OR. mm > ll .OR. ABS(xx) > 1.0 ) stop 'bad arguments in plgndr'
+  if( mm < 0 .OR. mm > ll .OR. ABS(xx) > 1.0_dp ) stop 'bad arguments in plgndr'
 
-  pmm = 1.0
+  pmm = 1.0_dp
   ! Compute P mm .
   if( mm > 0) then
-    somx2 = SQRT((1.0 - xx) * (1.0 + xx))
+    somx2 = SQRT((1.0_dp - xx) * (1.0_dp + xx))
 
-    fact  = 1.0
+    fact  = 1.0_dp
     do i=1,mm
       pmm=-pmm*fact*somx2
       fact=fact+2.
