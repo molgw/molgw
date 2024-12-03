@@ -136,6 +136,9 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
     write(msgw,'(a)') 'The FCIDUMP file is not available with complex orbitals.'
     call issue_warning(msgw)
   endif
+  if( (noft_dft=='yes' .and. noft_complex=='yes') .and. noft_rsinter=='yes' ) then
+    call die('molgw: RS-NOFT only works with complex orbs. and noft_rsinter="no".')
+  endif
 
   !
   ! Perform a relativistic or a non-relativistic NOFT calculations
