@@ -413,7 +413,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    allocate(DM2_JK(2,RDMd%NBF_occ,RDMd%NBF_occ))
    call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
    if(cpx_mos) then
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx,               &
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF_cmplx=NO_COEF_cmplx,               &
     & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,ERImolJsr_cmplx=INTEGd%ERImolJsr_cmplx, &
     & ERImolLsr_cmplx=INTEGd%ERImolLsr_cmplx,all_ERIs=all_ERI_in,Edft_xc=Edft_xc,do_xc_dft=do_xc_dft)
    else

@@ -86,6 +86,7 @@ subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmp
  character(len=200)::msg
 !************************************************************************
 
+ Energy=zero; Energy_cmplx=complex_zero;
  if(.not.present(nogamma)) then 
   if(present(chempot)) then
    call gamma_to_2rdm(RDMd,GAMMAs,chempot=chempot)
@@ -93,8 +94,6 @@ subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmp
    call gamma_to_2rdm(RDMd,GAMMAs)
   endif
  endif 
-
- Energy=zero; Energy_cmplx=complex_zero;
 
  if(RDMd%Nsingleocc==0) then
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -109,11 +108,11 @@ subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmp
     &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_L,ERI_L_cmplx)
     if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
      Energy_cmplx = Energy_cmplx + RDMd%DM2_iiii(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)                        &
-    &       + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
+    &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
     endif
     if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
      Energy_cmplx = Energy_cmplx + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) &
-    &       + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
+    &      + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
     endif
    enddo
    do ipair=1,RDMd%Npairs
@@ -124,11 +123,11 @@ subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmp
     &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_L,ERI_L_cmplx)
     if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
      Energy_cmplx = Energy_cmplx + RDMd%DM2_iiii(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)                                   &
-    &       + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
+    &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
     endif
     if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
      Energy_cmplx = Energy_cmplx + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) &
-    &       + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
+    &      + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
     endif
     iorb = RDMd%Nalpha_elect+RDMd%Npairs-ipair+1
     Energy_cmplx = Energy_cmplx + RDMd%occ(iorb) * two*hCORE_cmplx(iorb,iorb)                                  &
@@ -137,11 +136,11 @@ subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmp
     &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_L,ERI_L_cmplx)
     if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
      Energy_cmplx = Energy_cmplx + RDMd%DM2_iiii(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)                                   &
-    &       + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
+    &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
     endif
     if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
-     Energy = Energy + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) &
-    &       + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
+     Energy_cmplx = Energy_cmplx + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) &
+    &      + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
     endif
    enddo
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -154,11 +153,11 @@ subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmp
     &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_L,ERI_L_cmplx)
     if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
      Energy_cmplx = Energy_cmplx + RDMd%DM2_iiii(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)                        &
-    &       + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
+    &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
     endif
     if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
      Energy_cmplx = Energy_cmplx + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) &
-    &        + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
+    &      + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
     endif
    enddo
    do ipair=1,RDMd%Npairs
@@ -169,11 +168,11 @@ subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmp
     &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_L,ERI_L_cmplx)
     if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
      Energy_cmplx = Energy_cmplx + RDMd%DM2_iiii(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)                        &
-    &       + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
+    &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
     endif
     if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
      Energy_cmplx = Energy_cmplx + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) &
-    &        + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
+    &      + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
     endif
     do iorb1=1,RDMd%Ncoupled
      iorb = RDMd%Nalpha_elect+RDMd%Ncoupled*(RDMd%Npairs-ipair)+iorb1
@@ -183,13 +182,12 @@ subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmp
      &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_L,ERI_L_cmplx)
      if(RDMd%irange_sep==1) then ! Intra rs-NOFT 
       Energy_cmplx = Energy_cmplx + RDMd%DM2_iiii(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)                       &
-     &       + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
+     &      + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Lsr,ERI_Lsr_cmplx)
      endif
      if(RDMd%irange_sep==2) then ! Hartree rs-NOFT 
       Energy_cmplx = Energy_cmplx + dm2_x_eri_cmplx(RDMd,0,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx) &
-     &        + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
+     &       + dm2_x_eri_cmplx(RDMd,-1,iorb,RDMd%DM2_Jsr,ERI_Jsr_cmplx)
      endif
-
     enddo
    enddo
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -279,7 +279,7 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
        write(stdout,*) ' '
        write(stdout,'(/,a,/)') ' Reading the NO_COEF_BIN file to set the initial complex NO_COEF.'
      else
-       write(stdout,'(/,a,/)') ' Did not find NO_COEF_BIN file to set the initial complex NO_COEF.'
+       write(stdout,'(/,a,/)') ' Could not find the NO_COEF_BIN file to set the initial complex NO_COEF.'
      endif
    endif
    

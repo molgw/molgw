@@ -232,7 +232,7 @@ subroutine calc_PI_dens_grad_r_batch(occupation,dm2_JK,c_matrix,bfr,PIr,&
       tmp_cmplx(:,:) = bf_gradz(:,:)
       call ZGEMM('T','N',nocc,nr,nbf,COMPLEX_ONE,c_matrix(1,1,ispin),nbf,tmp_cmplx(1,1),nbf,COMPLEX_ZERO,phir_gradz_cmplx(1,1),nocc)
 
-      !$OMP PARALLEL DO
+      !$OMP PARALLEL DO PRIVATE(istate,jstate)
       do ir=1,nr
         rhor(ispin,ir) = SUM( ABS(phir_cmplx(:,ir))**2 * occupation(:nocc,ispin) )
         grad_rhor(ispin,ir,1) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_gradx_cmplx(:,ir)) * occupation(:nocc,ispin ) ), dp)
@@ -242,10 +242,10 @@ subroutine calc_PI_dens_grad_r_batch(occupation,dm2_JK,c_matrix,bfr,PIr,&
           PIr(ir) = 0.0 
           do istate=1,nocc
             do jstate=1,nocc
-              PIr(ir) = PIr(ir) + dm2_JK(1,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
-            &                                                  *phir_cmplx(istate,ir)*phir_cmplx(jstate,ir) ! J
-              PIr(ir) = PIr(ir) + dm2_JK(2,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
-            &                                                  *phir_cmplx(jstate,ir)*phir_cmplx(istate,ir) ! K
+              PIr(ir) = PIr(ir) + REAL( dm2_JK(1,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
+            &                                                  *phir_cmplx(istate,ir)*phir_cmplx(jstate,ir) ) ! J
+              PIr(ir) = PIr(ir) + REAL( dm2_JK(2,istate,jstate)*conjg(phir_cmplx(istate,ir)*phir_cmplx(jstate,ir)) &
+            &                                                  *phir_cmplx(jstate,ir)*phir_cmplx(istate,ir) ) ! K
             enddo
           enddo
         endif

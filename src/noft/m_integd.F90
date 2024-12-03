@@ -287,7 +287,7 @@ subroutine eri_to_eriJKL(INTEGd,NBF_occ)
     INTEGd%ERI_L_cmplx(iorb2)=INTEGd%ERImol_cmplx(iorb,iorb1,iorb1,iorb) ! L in <ii|jj> Lij is Kij with time-rev symm
     if(INTEGd%irange_sep/=0) then
      INTEGd%ERI_Jsr_cmplx(iorb2)=INTEGd%ERImolJsr_cmplx(iorb,iorb1,iorb) ! J <ij|ij>^sr
-     INTEGd%ERI_Lsr_cmplx(iorb2)=INTEGd%ERImolLsr_cmplx(iorb,iorb,iorb1) ! L <ii|jj>^sr -> We get Kij^sr here with time-rev symm
+     INTEGd%ERI_Lsr_cmplx(iorb2)=INTEGd%ERImolLsr_cmplx(iorb,iorb,iorb1) ! L <ii|jj>^sr -> We get Kij^sr here with time-rev symm from mo_ints
     endif
     iorb2=iorb2+1
    enddo
