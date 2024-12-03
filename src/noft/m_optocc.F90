@@ -113,7 +113,8 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
   &    ERI_Jsr_cmplx,ERI_Lsr_cmplx)
   call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,&
   &    ERI_Jsr_cmplx,ERI_Lsr_cmplx)
-  !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+  !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,&
+  !&                           ERI_Jsr_cmplx,ERI_Lsr_cmplx)
  else
   call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
@@ -145,7 +146,8 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,hCORE,ERI_J,ERI_K,ERI_
      &    ERI_Jsr_cmplx,ERI_Lsr_cmplx)
      call calc_Grad_occ_cmplx(RDMd,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,&
      &    ERI_Jsr_cmplx,ERI_Lsr_cmplx)
-     !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx)
+     !call num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad_GAMMAs,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,
+     !&                           ERI_Jsr_cmplx,ERI_Lsr_cmplx)
     else
      call calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
      call calc_Grad_occ(RDMd,Grad_GAMMAs,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
