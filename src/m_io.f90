@@ -3953,16 +3953,15 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
   real(dp),intent(in)        :: c_matrix(:,:,:)
   real(dp),intent(in)        :: occupation(:,:), energy(:,:)
   !=====
-  integer              :: nocc, nstate, istate, ibf
-  real(dp),allocatable :: ham(:,:), sc_matrix(:,:), sce_matrix(:,:)
-  real(dp),allocatable :: rtmp1(:)
-  character(len=10),allocatable :: basis_strings(:)
 #if defined(HAVE_HDF5)
+  integer              :: nocc, nstate, istate, ibf, ishell, jshell
+  real(dp), allocatable :: ham(:,:), sc_matrix(:,:), sce_matrix(:,:)
+  real(dp), allocatable :: rtmp1(:)
+  character(len=10),allocatable :: basis_strings(:)
+  integer,allocatable :: shell_counter(:)
   integer(HID_T)       :: fid, current_group
-#endif
   !=====
 
-#if defined(HAVE_HDF5)
   nstate = SIZE(energy, DIM=1)
 
   call hdf_open_file(fid, 'molgw_restart.h5', status='NEW')
@@ -3982,16 +3981,33 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
   !
   ! Basis set labels
   !
+  allocate(shell_counter(basis%nshell))
+  do ishell=1,basis%nshell
+    shell_counter(ishell) = basis%shell(ishell)%am + 1
+    do jshell=1,ishell - 1
+      if( basis%shell(jshell)%icenter == basis%shell(ishell)%icenter &
+          .AND. basis%shell(jshell)%am == basis%shell(ishell)%am ) then
+        shell_counter(ishell) = shell_counter(ishell) + 1
+      endif
+    enddo
+  enddo
+
   allocate(basis_strings(basis%nbf))
   basis_strings(:)(:) = '          '
   do ibf=1,basis%nbf
+    ! Atom index on 2 characters
     write(basis_strings(ibf)(1:2),'(i2)') basis%bff(ibf)%icenter - 1 ! C-convention starts with 0
+
+    ! Element letter on 2 characters
     basis_strings(ibf)(3:4) = element_name( REAL(zbasis(basis%bff(ibf)%icenter), kind=dp))
-    write(basis_strings(ibf)(6:6),'(i1)') basis%bff(ibf)%am + 1
+
+    write(basis_strings(ibf)(6:6),'(i1)') shell_counter(basis%bff(ibf)%shell_index)
     basis_strings(ibf)(7:7)   = basis%bff(ibf)%amc
     write(basis_strings(ibf)(9:10),'(i2)') basis%bff(ibf)%mm
   enddo
   call hdf_write_dataset(current_group, 'Basis set labels', basis_strings)
+
+  deallocate(basis_strings, shell_counter)
 
   !
   ! Coefficients
@@ -4012,10 +4028,6 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
   allocate(ham(basis%nbf,basis%nbf))
   allocate(sc_matrix(basis%nbf,nstate))
   allocate(sce_matrix(basis%nbf,nstate))
-
-  do ibf=1,basis%nbf
-    write(*,*) s_matrix(ibf,ibf)
-  enddo
 
   sc_matrix(:,:) = MATMUL( s_matrix, c_matrix(:,:,1) )
 
