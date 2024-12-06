@@ -4029,12 +4029,20 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
   allocate(sc_matrix(basis%nbf,nstate))
   allocate(sce_matrix(basis%nbf,nstate))
 
-  sc_matrix(:,:) = MATMUL( s_matrix, c_matrix(:,:,1) )
+  !
+  ! Reconstruct the Hamiltonian from C and E
+  !  H =    S * C   * E *  C**T * S**T
+  !    =  ( S * C ) * E * ( S * C )**T
+  !
+  !sc_matrix(:,:) = MATMUL( s_matrix, c_matrix(:,:,1) )
+  call DGEMM('N', 'N', basis%nbf, nstate, basis%nbf, &
+             1.0d0, s_matrix, basis%nbf, c_matrix(:,:,1), basis%nbf, &
+             0.0d0, sc_matrix, basis%nbf)
 
   do istate=1,nstate
     sce_matrix(:,istate) = sc_matrix(:,istate) * energy(istate,1)
   enddo
-  call DGEMM('T', 'N', basis%nbf, basis%nbf, nstate, &
+  call DGEMM('N', 'T', basis%nbf, basis%nbf, nstate, &
              1.0d0, sce_matrix, basis%nbf, sc_matrix, basis%nbf, &
              0.0d0, ham, basis%nbf)
   call hdf_write_dataset(current_group, 'MOLGW Hamiltonian', ham)
