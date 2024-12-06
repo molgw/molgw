@@ -346,7 +346,7 @@ subroutine output_positions()
   if( nghost_ > 0 ) write(stdout,'(a)') ' == ghost list'
   do ighost=ncenter_nuclei-nprojectile+1,ncenter_nuclei-nprojectile+nghost_
     write(stdout,'(1x,a,i3,2x,a8,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
-                                            element_name_long(REAL(zbasis(ighost),dp)),': ',  &
+                                            element_name_long(zbasis(ighost)),': ',  &
                                             xbasis(:,ighost),xbasis(:,ighost)*bohr_A
   enddo
   if( nprojectile > 0 ) then
@@ -374,11 +374,11 @@ subroutine output_projectile_position()
 
     if( zatom(ncenter_nuclei) > 0 ) then
       write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',ncenter_nuclei, &
-                                                            element_name(REAL(zatom(ncenter_nuclei),dp)),': ',  &
+                                                            element_name(zatom(ncenter_nuclei)),': ',  &
                                                             xatom(:,ncenter_nuclei),xatom(:,ncenter_nuclei)*bohr_A
     else
       write(stdout,'(1x,a,i3,2x,a4,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',ncenter_nuclei, &
-                                                            'anti',element_name(REAL(zatom(ncenter_nuclei),dp)),': ',  &
+                                                            'anti',element_name(zatom(ncenter_nuclei)),': ',  &
                                                             xatom(:,ncenter_nuclei),xatom(:,ncenter_nuclei)*bohr_A
     endif
 

@@ -506,7 +506,7 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
       if( print_yaml_) then
         write(unit_yaml,'(8x,a4,a)') ADJUSTL(char4),':'
         do ielement=1,iemax
-          write(unit_yaml,'(12x,a2,a)') ADJUSTL(element_name(REAL(element_list(ielement),dp))),':'
+          write(unit_yaml,'(12x,a2,a)') ADJUSTL(element_name(element_list(ielement))),':'
           do li=0,lmax
             write(char2,'(i2)') li
             write(unit_yaml,'(16x,a2,3x,a,1x,es18.8)') ADJUSTL(char2),':',proj_element(li,ielement)
@@ -3999,7 +3999,7 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
     write(basis_strings(ibf)(1:2),'(i2)') basis%bff(ibf)%icenter - 1 ! C-convention starts with 0
 
     ! Element letter on 2 characters
-    basis_strings(ibf)(3:4) = element_name( REAL(zbasis(basis%bff(ibf)%icenter), kind=dp))
+    basis_strings(ibf)(3:4) = element_name(zbasis(basis%bff(ibf)%icenter))
 
     write(basis_strings(ibf)(6:6),'(i1)') shell_counter(basis%bff(ibf)%shell_index)
     basis_strings(ibf)(7:7)   = basis%bff(ibf)%amc

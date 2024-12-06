@@ -189,43 +189,69 @@ end function element_number
 
 
 !=========================================================================
+! Return the element symbol from the Z number (be it integer or real)
 function element_name(zatom)
   implicit none
-  real(dp),intent(in) :: zatom
+
+  class(*),intent(in) :: zatom
   character(len=2)  :: element_name
   !=====
+  integer :: zatom_int
+  !=====
 
-  if( NINT(zatom) == 0 ) then
+  select type(zatom)
+  type is (integer)
+    zatom_int = zatom
+  type is (real(dp))
+    zatom_int = NINT(zatom)
+  end select
+
+  if( zatom_int == 0 ) then
     element_name='X'
     return
   endif
-  if( NINT(zatom) > nelement_max ) then
+  if( zatom_int > nelement_max ) then
     write(stdout,'(a,i3,a)') 'Element symbol is not one of first ',nelement_max,' elements'
-    call die('element symbol not understood')
+    call die('element_name: element symbol not understood')
   endif
 
-  element_name = element_list(NINT(ABS(zatom)))
+  ! use ABS() for anti-nucleus
+  element_name = element_list(ABS(zatom_int))
 
 
 end function element_name
 
 
 !=========================================================================
+! Return the element symbol from the Z number (be it integer or real)
 function element_name_long(zatom)
   implicit none
-  real(dp),intent(in) :: zatom
+
+  class(*),intent(in) :: zatom
   character(len=8)  :: element_name_long
   !=====
+  integer  :: zatom_int
+  real(dp) :: zatom_real
+  !=====
 
-  if( NINT(zatom) > nelement_max ) then
+  select type(zatom)
+  type is (integer)
+    zatom_int  = zatom
+    zatom_real = zatom
+  type is (real(dp))
+    zatom_int = NINT(zatom)
+    zatom_real = zatom
+  end select
+
+  if( zatom_int > nelement_max ) then
     write(stdout,'(a,i3,a)') 'Element symbol is not one of first ',nelement_max,' elements'
-    call die('element symbol not understood')
+    call die('element_name_long: element symbol not understood')
   endif
 
-  if( zatom > 0.0 .AND. ABS(NINT(zatom)-zatom) < 1.0e-9_dp ) then
-    element_name_long = element_list(NINT(ABS(zatom)))
+  if( zatom_real > 0.0 .AND. ABS(zatom_int - zatom_real) < 1.0e-9_dp ) then
+    element_name_long = element_list(ABS(zatom_int))
   else
-    write(element_name_long,'(f8.4)') zatom
+    write(element_name_long,'(f8.4)') zatom_real
   endif
 
 

@@ -1147,13 +1147,13 @@ subroutine read_inputfile_namelist()
     write(unit_yaml,'(4x,a)') 'atom list:'
     do icenter=1,ncenter_nuclei
       write(unit_yaml,'(8x,a,"[ ",a2,", ",es18.8,", ",es18.8,", ",es18.8,"]")') '- ', &
-                  element_name(REAL(zatom(icenter),dp)),xatom(:,icenter)
+                  element_name(zatom(icenter)),xatom(:,icenter)
     enddo
 
     write(unit_yaml,'(4x,a)') 'basis list:'
     do icenter=1,ncenter_basis
       write(unit_yaml,'(8x,a,"[ ",a2,", ",a,", ",a,"]")') '- ', &
-              element_name(REAL(zbasis(icenter),dp)),TRIM(basis_name(icenter)),TRIM(auxil_basis_name(icenter))
+              element_name(zbasis(icenter)),TRIM(basis_name(icenter)),TRIM(auxil_basis_name(icenter))
     end do
 
   endif

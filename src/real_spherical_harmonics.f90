@@ -25,7 +25,7 @@ function real_spherical_harmonics(ll,mm,cos_theta,phi) result(slm)
   factorial = 1.0_dp
   if( abs_mm > 0 ) then
     do ilm = ll-abs_mm+1,ll+abs_mm
-      factorial = factorial * REAL(ilm,dp)
+      factorial = factorial * REAL(ilm,kind=dp)
     enddo
   endif
 
