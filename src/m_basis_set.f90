@@ -1222,13 +1222,13 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,icenter,x0,v0,alpha,coeff,
   ! check the normalization if requested
   if( normalized ) then
     call overlap_basis_function(bf,bf,overlap)
-    if( ABS(overlap-1.0_dp) > 2.0e-5_dp ) then
+    !
+    ! Rescale the coefficients when necessary
+    ! Criterium is very tight: 10**-14
+    ! since double precision (fortran real64) have 15-17 significant digits in theory
+    !
+    if( ABS( overlap - 1.0_dp ) > 1.0e-14_dp ) then
       bf%coeff(:) = coeff(:) / SQRT( overlap )
-      !     write(stdout,*) 'normalization is different from 1.0',overlap
-      !     write(stdout,*) bf%nx,bf%ny,bf%nz
-      !     write(stdout,*) 'assuming this is a generalized contraction and rescaling coefficients'
-      !     write(stdout,*) bf%coeff(:)
-      !     write(stdout,*)
     endif
   endif
 

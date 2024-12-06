@@ -829,7 +829,7 @@ SCF Total Energy          ,  -76.3757991664     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.3811268142     , 0 , 1.0e-7
 
 h2o_rt_tddft_min_overlap.in , proj wihtout basis nstate ne nbf,tddft
-RT-TDDFT Total Energy     ,  -75.6361896847     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.6361897954     , 0 , 1.0e-7
 
 be2_qsgw_bse.in           , BSE calculation after QSGW for Be2
 gKS HOMO energy           ,  -8.818516          , 0 , 1.0e-4
