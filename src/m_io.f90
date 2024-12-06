@@ -3956,7 +3956,7 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
 #if defined(HAVE_HDF5)
   integer              :: nocc, nstate, istate, ibf, ishell, jshell
   real(dp), allocatable :: ham(:,:), sc_matrix(:,:), sce_matrix(:,:)
-  real(dp), allocatable :: rtmp1(:)
+  real(dp), allocatable :: rtmp1(:), rtmp2(:,:)
   character(len=10),allocatable :: basis_strings(:)
   integer,allocatable :: shell_counter(:)
   integer(HID_T)       :: fid, current_group
@@ -4018,7 +4018,10 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
   !
   ! Coordinates
   !
+  allocate(rtmp2,SOURCE=xbasis)
+  rtmp2(:,:) = rtmp2(:,:) * bohr_A
   call hdf_write_dataset(current_group, 'Coordinates', xbasis)
+  deallocate(rtmp2)
 
   !
   ! Overlap

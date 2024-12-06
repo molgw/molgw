@@ -62,7 +62,6 @@ program molgw
   use m_noft
   use m_linear_response
   use m_acfd
-  use m_hdf5_tools
   use m_mp2_energy
   use m_force
   implicit none
