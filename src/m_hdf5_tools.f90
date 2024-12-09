@@ -104,6 +104,7 @@ module m_hdf5_tools
      module procedure hdf_write_dataset_double_4
      module procedure hdf_write_dataset_double_5
      module procedure hdf_write_dataset_double_6
+     module procedure hdf_write_dataset_string_0
      module procedure hdf_write_dataset_string_1
   end interface hdf_write_dataset
 
@@ -1191,6 +1192,48 @@ contains
   !!----------------------------------------------------------------------------------------
   !!--------------------------------hdf_write_dataset_double--------------------------------
   !!----------------------------------------------------------------------------------------
+
+  !  \brief writes a 1d array to an hdf5 file
+  subroutine hdf_write_dataset_string_0(loc_id, dset_name, data)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    character(len=*), intent(in) :: data        ! data to be written
+
+    integer(SIZE_T) :: dims(1), string_length
+    integer(HID_T) :: dset_id, dspace_id, type_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*,'(A)') "--->hdf_write_dataset_string_0: " // trim(dset_name)
+    end if
+
+    ! set rank and dims
+    dims(1) = 0_SIZE_T ! shape(data, KIND=HID_T)
+    string_length = LEN(data)
+
+    ! create dataspace
+    call h5screate_simple_f(H5S_SCALAR_F, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    call h5tcopy_f (H5T_NATIVE_CHARACTER, type_id, hdferror)
+    call h5tset_size_f (type_id, string_length, hdferror)
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, type_id, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, type_id, data, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_string_0
 
   !  \brief writes a 1d array to an hdf5 file
   subroutine hdf_write_dataset_string_1(loc_id, dset_name, data)

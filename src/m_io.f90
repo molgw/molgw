@@ -3959,7 +3959,7 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
   real(dp), allocatable :: rtmp1(:), rtmp2(:,:)
   character(len=10),allocatable :: basis_strings(:)
   integer,allocatable :: shell_counter(:)
-  integer(HID_T)       :: fid, current_group
+  integer(HID_T)      :: fid, current_group
   !=====
 
   nstate = SIZE(energy, DIM=1)
@@ -3968,6 +3968,8 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
 
   call hdf_create_group(fid, 'frame_0000')
   call hdf_open_group(fid, 'frame_0000', current_group)
+  call hdf_write_dataset(current_group, 'SCF method', TRIM(scf))
+  call hdf_write_dataset(current_group, 'Basis set', TRIM(basis_name(1)))
 
   !
   ! Atomic numbers
