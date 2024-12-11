@@ -429,7 +429,6 @@ subroutine gwgw0g_selfenergy(occupation,energy,c_matrix,wpol,se)
   real(dp),allocatable    :: bra_s(:,:)
   real(dp)                :: v_1,w0_1,w0_2
   real(dp)                :: pole_s
-  real(dp)                :: fxc
   real(dp),allocatable    :: chi_static(:,:)
   real(dp),allocatable    :: ip(:),bk(:),ib(:),kp(:)
   real(dp),allocatable    :: pa(:),jc(:),aj(:),cp(:)
@@ -1393,7 +1392,7 @@ subroutine g3w2_selfenergy_imag_grid(basis,occupation,energy,c_matrix,se)
   complex(dp)          :: denom1,denom2,denom3,denoms
   type(spectral_function) :: wpol_imag,wpol_analytic
   !type(spectral_function) :: wpol_one
-  real(dp) :: vw(nauxil_global),up(nauxil_global),uv(nauxil_global),qw(nauxil_global)
+  real(dp) :: vw(nauxil_global),uv(nauxil_global)
   real(dp) :: erpa,egw
   real(dp),allocatable :: chi_omegap_up(:,:),chi_omegapp_wq(:,:)
   !=====

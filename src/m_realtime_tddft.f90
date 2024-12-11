@@ -203,6 +203,7 @@ subroutine realtime_tddft_propagation(basis,auxil_basis,occupation,c_matrix,rest
     !c_matrix_cmplx_scf(:,:,:) = c_matrix(:,1:nocc,:)
     xatom_start = xatom
     xbasis_start = xbasis
+    time_read = 0.0_dp
     time_min = 0.0_dp
   end if
 
@@ -370,8 +371,6 @@ subroutine realtime_tddft_propagation(basis,auxil_basis,occupation,c_matrix,rest
     call initialize_rho_diff_cmplx(nr_line_rho,point_a,point_b)
     allocate(rho_start(nr_line_rho,nspin))
   end if
-
-  time_min = time_read
 
   !
   ! Opening files and writing headers in files
