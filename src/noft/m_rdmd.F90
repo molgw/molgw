@@ -139,7 +139,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
 
  if(irs_noft/=0) RDMd%irange_sep=irs_noft
  RDMd%INOF=INOF
- if(RDMd%INOF==101) then
+ if(RDMd%INOF==101 .or. RDMd%INOF==70) then
   if(present(Lpower)) then
    RDMd%Lpower=Lpower
   endif

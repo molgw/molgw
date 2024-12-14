@@ -212,7 +212,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
 
  ! Initialize RDMd, INTEGd, ELAGd, and HESSIANd objects.
- if(INOF_in==101) then
+ if(INOF_in==101 .or. INOF_in==70) then
   if(present(Lpower)) then
    call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 &  Nbeta_elect_in,Nalpha_elect_in,irs_noft,Lpower=Lpower)
@@ -765,6 +765,11 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a)') ' Using GNOF approximation'
   call write_output(msg)
   write(msg,'(a)') ' M. Piris, Phys. Rev. Lett., 127, 233001 (2021)'
+  call write_output(msg)
+ elseif(INOF_in==70) then
+  write(msg,'(a)') ' Using PNOF7_SUP approximation'
+  call write_output(msg)
+  write(msg,'(a,i12)') ' PNOF7_SUP version selected Istat  ',Ista_in
   call write_output(msg)
  else
   ! Nth

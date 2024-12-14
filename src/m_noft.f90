@@ -51,7 +51,7 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
   integer                   :: imethorb,imethocc,nstate_occ,nstate_beta,nstate_alpha,nstate_coupled
   integer                   :: iNOTupdateOCC,iNOTupdateORB,iprintdmn,iprintswdmn,iprintints,ireadOCC,ireadCOEF
   integer                   :: ireadFdiag,ireadGAMMAs,ista,inof
-  real(dp)                  :: ran_num,coeff_old
+  real(dp)                  :: ran_num,coeff_old,noft_Lpower_
   real(dp),allocatable      :: occ(:,:),energy(:,:),occ_print(:,:)
   real(dp),allocatable      :: NO_COEF(:,:)
   real(dp),allocatable      :: tmp_mat0(:,:),tmp_mat(:,:),Work(:)
@@ -74,7 +74,7 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
   write(stdout,'(a)')   ' =================================================='
   write(stdout,'(/,a)') ' '
 
-  Enoft = zero; occupation = zero; ExcDFT = zero;
+  Enoft = zero; occupation = zero; ExcDFT = zero; noft_Lpower_=noft_Lpower;
   nstate_noft = SIZE(c_matrix,DIM=2) ! Number of lin. indep. molecular orbitals
 
   ! These varibles will remain fixed for a while
@@ -94,6 +94,9 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
   if(noft_QC_ORB=='yes') imethorb=2
 
   select case(capitalize(noft_functional))
+  case('PNOF7_SUP')
+    inof=70
+    if(abs(noft_Lpower_-0.53_dp)<1e-8) noft_Lpower_=1.0e0
   case('GNOFS')
     inof=8
     ista=3
@@ -330,13 +333,13 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
         imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
         Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
         restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
-        ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
+        ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower_,&
         fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
      else
        call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
         imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
         Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),&
-        Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
+        Lpower=noft_Lpower_,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
      endif
    
    else
@@ -346,13 +349,13 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
         imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
         Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
         restart=(noft_restart=='yes'),ireadGAMMAS=ireadGAMMAS,ireadOCC=ireadOCC,ireadCOEF=ireadCOEF,&
-        ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower,&
+        ireadFdiag=ireadFdiag,iNOTupdateOCC=iNOTupdateOCC,iNOTupdateORB=iNOTupdateORB,Lpower=noft_Lpower_,&
         fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
      else
        call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
         imethocc,imethorb,noft_nscf,iprintdmn,iprintswdmn,iprintints,noft_ithresh_lambda,noft_ndiis,&
         Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),&
-        Lpower=noft_Lpower,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
+        Lpower=noft_Lpower_,fcidump=noft_fcidump_in,irange_sep=irs_noft,hessian=(noft_hessian=='yes'))
      endif
    
    endif
@@ -365,13 +368,13 @@ subroutine noft_energy(basis,occupation,Enoft,Vnn,Aoverlap,c_matrix,c_matrix_rel
        call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
         imethocc,imethorb,noft_nscf,0,0,0,noft_ithresh_lambda,noft_ndiis,Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),&
         mo_ints,ofile_name,NO_COEF_cmplx=NO_COEF_cmplx,lowmemERI=(noft_lowmemERI=='yes'),restart=.true.,ireadGAMMAS=1,&
-        ireadOCC=0,ireadCOEF=1,ireadFdiag=1,iNOTupdateOCC=1,iNOTupdateORB=1,Lpower=noft_Lpower,&
+        ireadOCC=0,ireadCOEF=1,ireadFdiag=1,iNOTupdateOCC=1,iNOTupdateORB=1,Lpower=noft_Lpower_,&
         fcidump=(noft_fcidump=='yes'),irange_sep=irs_noft)
      else
        call run_noft(inof,ista,basis%nbf,nstate_occ,nstate_frozen,noft_npairs,nstate_coupled,nstate_beta,nstate_alpha,&
         imethocc,imethorb,noft_nscf,0,0,0,noft_ithresh_lambda,noft_ndiis,Enoft,noft_tolE,Vnn,Aoverlap,occ(:,1),&
         mo_ints,ofile_name,NO_COEF=NO_COEF,lowmemERI=(noft_lowmemERI=='yes'),restart=.true.,ireadGAMMAS=1,ireadOCC=0,&
-        ireadCOEF=1,ireadFdiag=1,iNOTupdateOCC=1,iNOTupdateORB=1,Lpower=noft_Lpower,fcidump=(noft_fcidump=='yes'),&
+        ireadCOEF=1,ireadFdiag=1,iNOTupdateOCC=1,iNOTupdateORB=1,Lpower=noft_Lpower_,fcidump=(noft_fcidump=='yes'),&
         irange_sep=irs_noft)
      endif
      Enoft=Enoft+ExcDFT
