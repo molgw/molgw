@@ -82,7 +82,10 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
   ilen = LEN(TRIM(ecp_elements))
 
   ! ecp_elements is empty, no ECP needs to be setup
-  if( ilen == 0 ) return
+  if( ilen == 0 ) then
+    nelement_ecp = 0
+    return
+  endif
 
   string = ecp_elements
   write(stdout,'(/,1x,a)') 'Reading ECP element list'
