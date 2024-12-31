@@ -746,11 +746,8 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
 
   write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
-  write(stdout,'(1x,a,i4,a,i6,a)') 'Max auxiliary basis functions ', &
-                                  MAXVAL(nbf_local_iproc(:)),' for processor ',MAXLOC(nbf_local_iproc,DIM=1)
-  write(stdout,'(1x,a,i4,a,i6,a)') 'Min auxiliary basis functions ', &
-                                  MINVAL(nbf_local_iproc(:)),' for processor ',MINLOC(nbf_local_iproc,DIM=1)
-
+  write(stdout,'(a,i6,2x,i6,/)') ' Min-Max auxiliary basis functions on a MPI processor after distribution: ', &
+                                 MINVAL(nbf_local_iproc(:)),MAXVAL(nbf_local_iproc(:))
 
 end subroutine distribute_auxil_basis
 

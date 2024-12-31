@@ -49,7 +49,7 @@ program molgw
   use m_selfenergy_tools
   use m_selfenergy_evaluation
   use m_scf_loop
-  use m_tddft_propagator
+  use m_realtime_tddft
   use m_virtual_orbital_space
   use m_ci
   use m_dm_analysis
@@ -62,7 +62,8 @@ program molgw
   use m_noft
   use m_linear_response
   use m_acfd
-  use m_hdf5_tools
+  use m_mp2_energy
+  use m_force
   implicit none
 
   !=====
@@ -73,9 +74,7 @@ program molgw
   type(energy_contributions) :: en_gks,en_mbpt,en_noft
   integer                 :: restart_type
   integer                 :: nstate,nocc
-  integer                 :: nstate_tmp
   integer                 :: istep,istring
-  logical                 :: found_basis_name
   logical                 :: is_restart,is_big_restart,is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
@@ -483,6 +482,7 @@ program molgw
     ! Big RESTART file written if converged
     !
     if( scf_has_converged .AND. print_bigrestart_ ) then
+      !call print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy)
       call write_restart(BIG_RESTART,basis,occupation,c_matrix,energy,hamiltonian_fock)
     else
       if( print_restart_ ) then
@@ -493,7 +493,7 @@ program molgw
     !
     ! If requested, evaluate the forces
     if( move_nuclei == 'relax' ) then
-      call calculate_force(basis,nstate,occupation,energy,c_matrix)
+      call calculate_force(basis,occupation,energy,c_matrix)
       call relax_atoms(lbfgs_plan,en_gks%total)
       call output_positions()
    
@@ -631,7 +631,7 @@ program molgw
   ! RT-TDDFT Simulation (only if SCF cycles were converged)
   !
   if( calc_type%is_real_time .AND. scf_has_converged ) then
-    call calculate_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
+    call realtime_tddft_propagation(basis,auxil_basis,occupation,c_matrix,restart_tddft_is_correct)
   end if
 
 
@@ -759,18 +759,18 @@ program molgw
       if( complex_scf=='no' ) then ! real
   
         if(has_auxil_basis) then
-          call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en_gks%mp2)
+          call mp2_energy_ri(occupation,energy,c_matrix,en_gks%mp2)
         else
-          call mp2_energy(nstate,basis,occupation,c_matrix,energy,en_gks%mp2)
+          call mp2_energy(occupation,c_matrix,energy,en_gks%mp2)
         endif
 
       else                         ! complex
 
         if(has_auxil_basis) then
-          call mp2_energy_ri_cmplx(nstate,basis,occupation,energy,c_matrix_cmplx,en_gks%mp2)
+          call mp2_energy_ri_cmplx(occupation,energy,c_matrix_cmplx,en_gks%mp2)
         else
           call issue_warning('MP2 with complex orbitals is available only with RI')
-          en_gks%mp2=0.0_dp
+          en_gks%mp2 = 0.0_dp
         endif
 
       endif
@@ -786,11 +786,11 @@ program molgw
     else                    ! relativistic
     
       if(has_auxil_basis) then
-        call mp2_energy_ri_x2c(2*nstate,nocc,basis,energy,c_matrix_rel,en_gks%mp2,en_gks%exx)
+        call mp2_energy_ri_x2c(2*nstate,nocc,energy,c_matrix_rel,en_gks%mp2,en_gks%exx)
       else
         call issue_warning('X2C MP2 is available only with RI')
-        en_gks%exx=0.0_dp
-        en_gks%mp2=0.0_dp
+        en_gks%exx = 0.0_dp
+        en_gks%mp2 = 0.0_dp
       endif
     
       write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en_gks%mp2
@@ -814,7 +814,7 @@ program molgw
   !
   if( calc_type%is_mp3 ) then
     if(has_auxil_basis) then
-      call mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,en_gks%mp3)
+      call mp3_energy_ri(occupation,energy,c_matrix,en_gks%mp3)
     else
       call die('MP3 energy without RI not implemented')
     endif

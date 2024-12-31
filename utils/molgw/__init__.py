@@ -64,7 +64,9 @@ except:
 
 
 ########################################################################
-def run(inputfile="molgw.in", outputfile="molgw.out", pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
+def run(inputfile="molgw.in", outputfile="", yamlfile="",
+        pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
+
     if len(tmp) > 0:
         os.makedirs(tmp, exist_ok=True)
     if len(executable_path) > 0:
@@ -74,16 +76,25 @@ def run(inputfile="molgw.in", outputfile="molgw.out", pyinput={}, mpirun="", exe
     if len(pyinput) > 0:
         print_input_file(pyinput, "./" + tmp + "/" + inputfile)
     os.environ['OMP_NUM_THREADS'] = str(openmp)
+    os.environ['MKL_NUM_THREADS'] = str(openmp)
+
     if len(mpirun) == 0:
         process = subprocess.Popen([exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         process = subprocess.Popen(mpirun.split() + [exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
-    if len(outputfile) > 0:
-        with open("./" + tmp + "/" + outputfile, "w") as f:
-            f.write(output.decode("utf-8"))
+
     if len(error) > 100:
         print(error.decode("utf-8"))
+    if len(outputfile) > 0:
+        with open(outputfile, "w") as f:
+            f.write(output.decode("utf-8"))
+    else:
+        with open("./" + tmp + "/molgw.out", "w") as f:
+            f.write(output.decode("utf-8"))
+    if len(yamlfile) > 0:
+        shutil.copy( "./" + tmp + "/molgw.yaml", yamlfile)
+
     with open("./" + tmp + "/molgw.yaml", "r") as stream:
         try:
             results = load(stream, Loader=Loader)
@@ -193,7 +204,7 @@ def get_homo_energy(approx,calc):
     if key not in calc.keys():
         print(f"Problem reading calculation: {calc['input parameters']['comment']}")
         print(f"{key} not found")
-        sys.exit("Problem")
+        return None
     energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
         energies += [ float(ei) for ei in calc[key]["spin channel 1"].values()]
@@ -202,6 +213,39 @@ def get_homo_energy(approx,calc):
     energies.sort()
     return energies[int(calc["physical system"]["electrons"])-1 - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
+########################################################################
+def get_homo_nature(calc):
+    key = "mulliken projections"
+    if key not in calc.keys():
+        print(f"Problem reading calculation: {calc['input parameters']['comment']}")
+        print(f"{key} not found")
+        return None
+    if calc[key]["spin channel 1"] == 2:
+        print("spin unrestricted not coded")
+        return None
+    homo_index = int(calc["physical system"]["electrons"]) / 2
+    proj_homo = calc[key]["spin channel 1"][homo_index]
+    proj_homo_total = {}
+    for k, v in proj_homo.items():
+        proj_homo_total[k] = v["total"]
+    return max(proj_homo_total, key=proj_homo_total.get)
+
+########################################################################
+def get_lumo_nature(calc):
+    key = "mulliken projections"
+    if key not in calc.keys():
+        print(f"Problem reading calculation: {calc['input parameters']['comment']}")
+        print(f"{key} not found")
+        return None
+    if calc[key]["spin channel 1"] == 2:
+        print("spin unrestricted not coded")
+        return None
+    lumo_index = int(calc["physical system"]["electrons"]) / 2 + 1
+    proj_lumo = calc[key]["spin channel 1"][lumo_index]
+    proj_lumo_total = {}
+    for k, v in proj_lumo.items():
+        proj_lumo_total[k] = v["total"]
+    return max(proj_lumo_total, key=proj_lumo_total.get)
 
 ########################################################################
 def get_lumo_energy(approx,calc):
@@ -209,7 +253,7 @@ def get_lumo_energy(approx,calc):
     if key not in calc.keys():
         print(f"Problem reading calculation: {calc['input parameters']['comment']}")
         print(f"{key} not found")
-        sys.exit("Problem")
+        return None
     energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
         energies += [ float(ei) for ei in calc[key]["spin channel 1"].values()]
@@ -399,7 +443,7 @@ class Molgw_input:
         elif isinstance(origin, str):
             sys.exit("Reading a text file is not coded yet")
         else:
-            raise TypeError("Molgw_input should be initialized with a dictionary or a file name")
+            raise TypeError("Molgw_input should be initialized with a dictionary or a file path")
     def __str__(self):
         return str(self.d)
     def __getitem__(self, key):
@@ -460,8 +504,20 @@ class Molgw_input:
 ########################################################################
 class Molgw_output:
     """MOLGW output"""
-    def __init__(self,dict_in):
-        self.d = dict_in
+    def __init__(self, origin):
+        if isinstance(origin, dict):
+            self.d = origin
+        elif isinstance(origin, str):
+            try:
+                with open(origin, "r") as stream:
+                    self.d = load(stream, Loader=Loader)
+            except:
+                print(f'{origin} file does not exist or is no proper yaml file')
+                self.d = {}
+                raise FileNotFoundError
+        else:
+            raise TypeError("Molgw_output should be initialized with a dictionary or a yaml file path")
+
     def __str__(self):
         return str(self.d)
     def __getitem__(self, key):
@@ -472,8 +528,17 @@ class Molgw_output:
         return get_homo_energy(approx,self.d)
     def lumo_energy(self,approx):
         return get_lumo_energy(approx,self.d)
+    def homo_nature(self):
+        """get the nature of the HOMO based on Mulliken projection"""
+        return get_homo_nature(self.d)
+    def lumo_nature(self):
+        """get the nature of the LUMO based on Mulliken projection"""
+        return get_lumo_nature(self.d)
     def to_dict(self):
         return self.d
+    def to_file(self, dest):
+        with open(dest, "w") as stream:
+            dump(self.d, stream, Dumper=Dumper)
     def chemical_formula(self):
         return get_chemical_formula(self.d)
 
@@ -507,7 +572,7 @@ class Molgw_output_collection:
             origins = [origin]
         for orig in origins:
             if not os.path.isdir(orig):
-                sys.exit(orig + "is not a valid folder")
+                sys.exit(orig + " is not a valid folder")
             self.files += glob.glob(orig+"/**/*.yaml",recursive=True)
         self.files = list(set(self.files))
         for file in self.files:
@@ -560,15 +625,18 @@ class Molgw_output_collection:
            print("Selection rules:")
            for key, value in filters.items():
                print(f"  {key} == {value}?")
-       for f, mlgo in zip(self.files,self.data):
+       for f, mlgo in zip(self.files, self.data):
            corresponds = True
            for key, value in filters.items():
-               if mlgo["input parameters"][key] != value:
-                   corresponds = False
+               mlgo_value = mlgo["input parameters"][key]
+               if isinstance(value, str) and isinstance(mlgo_value, str):
+                   corresponds = corresponds and value.lower() == mlgo_value.lower()
+               elif isinstance(value, float):
+                   corresponds = corresponds and abs(value - mlgo_value) < 1.0e-5
+               else:
+                   corresponds = corresponds and value == mlgo_value
            if corresponds:
-               mlgo_filtered.append(mlgo,file=f)
-               #mlgo_filtered.files.append(f)
-               #mlgo_filtered.data.append(mlgo)
+               mlgo_filtered.append(mlgo, file=f)
        if verbose:
            print(f"Found {len(mlgo_filtered)} corresponding calculations")
        return mlgo_filtered

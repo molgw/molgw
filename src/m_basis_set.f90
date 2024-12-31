@@ -121,21 +121,21 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
   basis%gaussian_type = gaussian_type
 
   !
-  ! LOOP OVER ATOMS
+  ! Loop over basis centers
   !
   do icenter=1,ncenter_basis
     if( nelement_ecp > 0 ) then
       if( ANY( element_ecp(:) == zbasis(icenter) ) ) then
-        basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+        basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                         // '_' // TRIM(ecp_basis_name(icenter)))
         if( TRIM(capitalize(ecp_basis_name(icenter))) == 'NONE' ) cycle
       else
-        basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+        basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                        // '_' // TRIM(basis_name(icenter)))
         if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
       endif
     else
-      basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+      basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                      // '_' // TRIM(basis_name(icenter)))
       if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
     endif
@@ -195,16 +195,16 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type, &
 
     if( nelement_ecp > 0 ) then
       if( ANY( element_ecp(:) == zbasis(icenter) ) ) then
-        basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+        basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                         // '_' // TRIM(ecp_basis_name(icenter)))
         if( TRIM(capitalize(ecp_basis_name(icenter))) == 'NONE' ) cycle
       else
-        basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+        basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                        // '_' // TRIM(basis_name(icenter)))
         if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
       endif
     else
-      basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(REAL(zbasis(icenter),dp)))) &
+      basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                       // '_' //TRIM(basis_name(icenter)))
       if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
     endif
@@ -773,7 +773,6 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
 
       !
       ! Find the unique primitives in the trial set
-      !exponent_selected = PRODUCT( exponent_trial(1:ntrial) )**(1.0_dp/REAL(ntrial,dp))
       exponent_selected = 1.0_dp
       nprim = 0
       do itrial=1,ntrial
@@ -788,7 +787,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name,basis,gaussian_type,auto_a
           exponent_selected = exponent_selected * exponent_trial(itrial)
         endif
       enddo
-      exponent_selected = (exponent_selected)**(1.0_dp/REAL(nprim,dp))
+      exponent_selected = (exponent_selected)**( 1.0_dp / REAL(nprim,kind=dp) )
 
       am_selected = MAX( MAXVAL(am_trial(1:ntrial)) , am_current )
 
@@ -1222,13 +1221,13 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,icenter,x0,v0,alpha,coeff,
   ! check the normalization if requested
   if( normalized ) then
     call overlap_basis_function(bf,bf,overlap)
-    if( ABS(overlap-1.0_dp) > 2.0e-5_dp ) then
+    !
+    ! Rescale the coefficients when necessary
+    ! Criterium is very tight: 10**-14
+    ! since double precision (fortran real64) have 15-17 significant digits in theory
+    !
+    if( ABS( overlap - 1.0_dp ) > 1.0e-14_dp ) then
       bf%coeff(:) = coeff(:) / SQRT( overlap )
-      !     write(stdout,*) 'normalization is different from 1.0',overlap
-      !     write(stdout,*) bf%nx,bf%ny,bf%nz
-      !     write(stdout,*) 'assuming this is a generalized contraction and rescaling coefficients'
-      !     write(stdout,*) bf%coeff(:)
-      !     write(stdout,*)
     endif
   endif
 

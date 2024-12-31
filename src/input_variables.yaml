@@ -617,6 +617,14 @@ read_restart:
   default: 'no'
   comment: Read the RESTART file and restart from it.
 
+yaml_output:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'molgw.yaml'
+  comment: Specifies a file name or path for the YAML formatted output. Default is `molgw.yaml`.
+
 
 #============================================================================
 #                  Real time TDDFT input variables
@@ -1294,13 +1302,13 @@ excit_time0:
   default: 3.0
   comment: Center of the excitation pulse in atomic units for the real-time dynamics.
 
-n_hist:
+tddft_history:
   family: rt_tddft
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
   default: 2
-  comment: 'Number of memorised previous hamiltonian values for its extrapolation
+  comment: 'Number of stored previous hamiltonian matrices for its extrapolation
     in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1);
     etc.'
 
@@ -1318,7 +1326,7 @@ n_restart_tddft:
   mandatory: 'no'
   experimental: 'no'
   default: 50
-  comment: RESTART_TDDFT file will be written during simulation each n_retart_tddft
+  comment: RESTART_TDDFT file will be written during simulation each n_restart_tddft
     iteration (provided that print_tddft_restart is yes)
 
 ncore_tddft:
@@ -1329,7 +1337,7 @@ ncore_tddft:
   default: 0
   comment: Sets the number of frozen core states in the real-time dynamics.
 
-pred_corr:
+tddft_predictor_corrector:
   family: rt_tddft
   datatype: characters
   mandatory: 'no'
@@ -1337,7 +1345,7 @@ pred_corr:
   default: "PC2B"
   comment: Sets the predictor-corrector scheme in the real-time dynamics.
 
-prop_type:
+tddft_propagator:
   family: rt_tddft
   datatype: characters
   mandatory: 'no'
@@ -1393,6 +1401,14 @@ tddft_charge:
   experimental: 'no'
   default: -999.0
   comment: Overall charge in the system fo the TDDFT calculation. Default value means it is equal to 'charge' in the DFT part. But if specified, it can differ from 'charge'.
+
+tddft_force:
+  family: rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Triggers the calculation of the force acting on the projectile
 
 tddft_magnetization:
   family: rt_tddft

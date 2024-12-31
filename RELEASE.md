@@ -1,7 +1,7 @@
 # MOLGW: Release Notes
 
-
 ---
+
 ## What's new in version 3.4
 
 ### Overview
@@ -15,9 +15,15 @@
 - Mauricio Rodriguez-Mayorga (Institut Néel, Grenoble, France)
 
 ### Changes affecting the results
+
 - bug fix in Crank-Nicholson propagator in RT-TDDFT with spin
 
 ### Changes affecting the usage
+
+- RT-TDDFT input variables have been renamed with `tddft_` prefix.
+  - `pred_corr` -> `tddft_predictor_corrector`
+  - `prop_type` -> `tddft_propagator`
+  - `n_hist` -> `tddft_history`
 
 ### Changes affecting the compilation
 

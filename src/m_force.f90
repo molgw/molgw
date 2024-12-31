@@ -7,7 +7,7 @@
 !
 !=========================================================================
 #include "molgw.h"
-subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
+module m_force
   use m_definitions
   use m_warning
   use m_timing
@@ -18,15 +18,22 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
   use m_eri_calculate
   use m_hamiltonian_tools
   use m_hamiltonian_onebody
+
+
+contains
+
+
+!=========================================================================
+subroutine calculate_force(basis,occupation,energy,c_matrix)
   implicit none
 
   type(basis_set),intent(inout) :: basis
-  integer,intent(in)            :: nstate
-  real(dp),intent(in)           :: occupation(nstate,nspin)
-  real(dp),intent(in)           :: energy(nstate,nspin)
-  real(dp),intent(in)           :: c_matrix(basis%nbf,nstate,nspin)
+  real(dp),intent(in)           :: occupation(:,:)
+  real(dp),intent(in)           :: energy(:,:)
+  real(dp),intent(in)           :: c_matrix(:,:,:)
   !=====
   real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-2
+  integer                 :: nstate
   integer                 :: ijshellpair,klshellpair
   integer                 :: iatom
   integer                 :: ibf,jbf,kbf,lbf
@@ -50,6 +57,8 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
   endif
 
   call start_clock(timing_force)
+
+  nstate = SIZE(energy, DIM=1)
 
   write(stdout,'(/,1x,a)') 'Calculate the forces'
 
@@ -124,13 +133,13 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
     force_nuc(:,iatom) = force_nuc(:,iatom) + 2.0_dp * MATMUL( SUM( p_matrix(ibf,:,:),DIM=2) , grad_nucleus(ibf,:,natom+1,:) )
   enddo
 
-  force_hl(:,:) = 0.0_dp
+  force_hellfeyn(:,:) = 0.0_dp
   do iatom=1,natom
-    force_hl(1,iatom) = force_hl(1,iatom) + SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_nucleus(:,:,iatom,1) )
-    force_hl(2,iatom) = force_hl(2,iatom) + SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_nucleus(:,:,iatom,2) )
-    force_hl(3,iatom) = force_hl(3,iatom) + SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_nucleus(:,:,iatom,3) )
+    force_hellfeyn(1,iatom) = force_hellfeyn(1,iatom) + SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_nucleus(:,:,iatom,1) )
+    force_hellfeyn(2,iatom) = force_hellfeyn(2,iatom) + SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_nucleus(:,:,iatom,2) )
+    force_hellfeyn(3,iatom) = force_hellfeyn(3,iatom) + SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_nucleus(:,:,iatom,3) )
   enddo
-  force_nuc(:,:) = force_nuc(:,:) + force_hl(:,:)
+  force_nuc(:,:) = force_nuc(:,:) + force_hellfeyn(:,:)
 
 
   deallocate(grad_nucleus)
@@ -436,12 +445,12 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
   write(stdout,'(/,1x,a)') ' ====== Hellman-Feynman Forces ====== '
   write(*,'(1x,a,22x,a,19x,a,19x,a)') 'Atoms','Fx','Fy','Fz'
   do iatom=1,natom
-    write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'H-F force atom   ',iatom,':',force_hl(:,iatom)
+    write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'H-F force atom   ',iatom,':',force_hellfeyn(:,iatom)
   enddo
   write(stdout,'(/,1x,a)') ' ====== Pulay Forces ====== '
   write(*,'(1x,a,22x,a,19x,a,19x,a)') 'Atoms','Fx','Fy','Fz'
   do iatom=1,natom
-    write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'Pulay force atom ',iatom,':',force(:,iatom) - force_hl(:,iatom)
+    write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'Pulay force atom ',iatom,':',force(:,iatom) - force_hellfeyn(:,iatom)
   enddo
   write(stdout,'(/,1x,a)') ' ====== Total Forces ====== '
   write(*,'(1x,a,22x,a,19x,a,19x,a)') 'Atoms','Fx','Fy','Fz'
@@ -460,4 +469,5 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
 end subroutine calculate_force
 
 
+end module m_force
 !=========================================================================

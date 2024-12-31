@@ -938,8 +938,10 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis,rcut)
 
   is_longrange = (rcut > 1.0e-12_dp)
 
-  if( eri3_genuine_ .AND. is_longrange ) call die('calculate_inverse_eri_2center_scalapack: eri3_genuine is not yet compatible &
-                                                  with range-separated hybrids')
+  if( eri3_genuine_ .AND. is_longrange ) then
+    call die('calculate_inverse_eri_2center_scalapack: eri3_genuine is not yet compatible' // &
+             'with range-separated hybrids')
+  endif
 
   if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
