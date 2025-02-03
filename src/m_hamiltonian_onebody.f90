@@ -1420,112 +1420,6 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad,atom_list,verbose)
           call transform_libint_to_molgw(basis%gaussian_type,lj,li,array_cart_gradA(:,idir),matrixA)
           call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradB(:,idir),matrixB)
 
-#if 0
-          if( idir== 2 .AND. verbose_ ) then
-            if( li == 1 .AND. lj == 2 ) then
-              write(stdout,*) 'FBFB li, lj', li, lj
-              write(stdout,*) 'FBFB ishell, jshell', ishell, jshell
-              write(stdout,*) 'FBFB sizeA', SIZE(TRANSPOSE(matrixA),DIM=1)
-              write(stdout,*) 'FBFB sizeA', SIZE(TRANSPOSE(matrixA),DIM=2)
-              write(stdout,*) 'FBFB sizeB', SIZE(TRANSPOSE(matrixB),DIM=1)
-              write(stdout,*) 'FBFB sizeB', SIZE(TRANSPOSE(matrixB),DIM=2)
-              call dump_out_matrix(verbose_,'matrix A 1 2',TRANSPOSE(matrixA))
-              call dump_out_matrix(verbose_,'matrix B 1 2',TRANSPOSE(matrixB))
-              call dump_out_matrix(verbose_,'matrix -A -B**T 1 2',-TRANSPOSE(matrixA(:,:)) - matrixB(:,:))
-
-              block
-              integer :: ij, ibf_cart, jbf_cart, i_cart, j_cart, ig
-              real(dp) :: nucleus, array_cart(ni_cart*nj_cart), x1(3)
-              real(dp),allocatable :: matrix0(:,:), matrixp1(:,:), matrixm1(:,:), matrix_grady(:,:)
-              real(dp),parameter :: dx=1.0e-4_dp
-              type(basis_set) :: basis_tmp
-
-              ! dy = 0
-              basis_tmp = basis
-              x1(:) = basis%shell(ishell)%x0
-              basis_tmp%shell(ishell)%x0(:) = x1(:)
-              do i_cart=1,ni_cart
-                ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
-                basis_tmp%bfc(ibf_cart)%x0(:) = x1(:)
-                do ig=1,basis_tmp%shell(ishell)%ng
-                  basis_tmp%bfc(ibf_cart)%g(ig)%x0(:) = x1(:)
-                enddo
-              enddo
-
-              ij = 0
-              do i_cart=1,ni_cart
-                do j_cart=1,nj_cart
-                  ij = ij + 1
-                  ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
-                  jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-                  call nucleus_basis_function(basis_tmp%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(icenter),xatom(:,icenter),nucleus)
-                  array_cart(ij) = nucleus
-                enddo
-              enddo
-              call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix0)
-              call dump_out_matrix(verbose_,'matrix dy=0',matrix0)
-
-              ! + dy
-              basis_tmp = basis
-              x1(:) = basis%shell(ishell)%x0 + dx * [0.0_dp, 1.0_dp, 0.0_dp]
-              basis_tmp%shell(ishell)%x0(:) = x1(:)
-              do i_cart=1,ni_cart
-                ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
-                basis_tmp%bfc(ibf_cart)%x0(:) = x1(:)
-                do ig=1,basis_tmp%shell(ishell)%ng
-                  basis_tmp%bfc(ibf_cart)%g(ig)%x0(:) = x1(:)
-                enddo
-              enddo
-
-              ij = 0
-              do i_cart=1,ni_cart
-                do j_cart=1,nj_cart
-                  ij = ij + 1
-                  ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
-                  jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-                  call nucleus_basis_function(basis_tmp%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(icenter),xatom(:,icenter),nucleus)
-                  array_cart(ij) = nucleus
-                enddo
-              enddo
-              call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrixp1)
-              call dump_out_matrix(verbose_,'matrix +dy',matrixp1)
-
-              ! - dy
-              basis_tmp = basis
-              x1(:) = basis%shell(ishell)%x0 - dx * [0.0_dp, 1.0_dp, 0.0_dp]
-              basis_tmp%shell(ishell)%x0(:) = x1(:)
-              do i_cart=1,ni_cart
-                ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
-                basis_tmp%bfc(ibf_cart)%x0(:) = x1(:)
-                do ig=1,basis_tmp%shell(ishell)%ng
-                  basis_tmp%bfc(ibf_cart)%g(ig)%x0(:) = x1(:)
-                enddo
-              enddo
-
-              ij = 0
-              do i_cart=1,ni_cart
-                do j_cart=1,nj_cart
-                  ij = ij + 1
-                  ibf_cart = basis_tmp%shell(ishell)%istart_cart + i_cart - 1
-                  jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-                  call nucleus_basis_function(basis_tmp%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(icenter),xatom(:,icenter),nucleus)
-                  array_cart(ij) = nucleus
-                enddo
-              enddo
-              call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrixm1)
-              call dump_out_matrix(verbose_,'matrix -dy',matrixm1)
-
-              allocate(matrix_grady, MOLD=matrixp1)
-              matrix_grady = (matrixp1 - matrixm1) / (2.0d0*dx)
-              call dump_out_matrix(verbose_,'matrix grad y ',matrix_grady)
-
-              stop 'people dont stop. dont stop til get enough'
-              end block
-
-            endif
-          endif
-#endif
-
           ! Store hnuc( C ) =
           !   ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta )
           !
@@ -1553,8 +1447,8 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad,atom_list,verbose)
 
       deallocate(array_cart_gradA)
       deallocate(array_cart_gradB)
-      deallocate(matrixA)
-      deallocate(matrixB)
+      if( ALLOCATED(matrixA) ) deallocate(matrixA)
+      if( ALLOCATED(matrixB) ) deallocate(matrixB)
 
     enddo
     deallocate(alphaB,cB)
