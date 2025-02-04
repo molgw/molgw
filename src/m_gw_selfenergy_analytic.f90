@@ -795,12 +795,13 @@ subroutine dump_gw_ingredients(occupation,energy,c_matrix,wpol)
   real(dp),intent(in)                 :: c_matrix(:,:,:)
   type(spectral_function),intent(in)  :: wpol
   !=====
-  integer               :: istate, ispin, ipole
+  integer               :: qstate, qspin, ipole
   real(dp), allocatable :: wcoeff(:,:)
-  integer               :: file_w, file_e, file_omega
+  integer               :: file_v, file_w, file_e, file_omega
   !=====
 
   if(.NOT. has_auxil_basis) return
+  if( world%nproc > 1 ) call die('dump_gw_ingredients: not implemented with MPI')
 
   write(stdout,'(/,1x,a)') 'Dump on file the GW ingredients'
 
@@ -813,8 +814,8 @@ subroutine dump_gw_ingredients(occupation,energy,c_matrix,wpol)
   !
   open(newunit=file_e, file='energies.dat', form='formatted', status='replace')
   write(file_e,*) nvirtual_G-ncore_G-1
-  do istate=ncore_G+1,nvirtual_G-1
-    write(file_e,*) energy(istate,1)
+  do qstate=ncore_G+1,nvirtual_G-1
+    write(file_e,*) energy(qstate,1)
   enddo
   close(file_e)
   write(stdout,'(1x,a)') 'energies.dat written'
@@ -836,11 +837,11 @@ subroutine dump_gw_ingredients(occupation,energy,c_matrix,wpol)
   !
   open(newunit=file_w, file='w.bin', form='unformatted', access='stream', status='replace')
   call clean_allocate('w coeff for dumping',wcoeff,1,wpol%npole_reso,ncore_G+1,nvirtual_G-1)
-  do ispin=1,nspin
-    do istate=ncore_G+1,nvirtual_G-1
+  do qspin=1,nspin
+    do qstate=ncore_G+1,nvirtual_G-1
       ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
       wcoeff(:,ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , &
-                                                 eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,istate,ispin) )
+                                                 eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,qstate,qspin) )
       call auxil%sum(wcoeff)
       write(file_w) wcoeff(:,:)
     enddo
@@ -848,6 +849,24 @@ subroutine dump_gw_ingredients(occupation,energy,c_matrix,wpol)
   call clean_deallocate('w coeff for dumping',wcoeff)
   close(file_w)
   write(stdout,'(1x,a)') 'w.bin written'
+
+  !
+  ! v.bin file that contains the Coulomb v on the auxiliary basis
+  ! v = ( P | p q)
+  !
+  open(newunit=file_v, file='v.dat', form='formatted', status='replace')
+  write(file_v,*) nauxil_global
+  write(file_v,*) nvirtual_G-ncore_G-1
+  write(file_v,*) nvirtual_G-ncore_G-1
+  close(file_v)
+  open(newunit=file_v, file='v.bin', form='unformatted', access='stream', status='replace')
+  do qspin=1,nspin
+    do qstate=ncore_G+1,nvirtual_G-1
+      write(file_v) eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,qstate,qspin)
+    enddo
+  enddo
+  close(file_v)
+  write(stdout,'(1x,a)') 'v.bin written'
 
 
 end subroutine dump_gw_ingredients
