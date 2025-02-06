@@ -424,13 +424,13 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   complex(dp),allocatable :: sigma_sosex(:,:,:,:)
   complex(dp),allocatable :: sigma_sox(:,:,:,:)
   integer                 :: astate,bstate,cstate
-  integer                 :: istate,jstate,kstate,ispin,spole
+  integer                 :: istate,jstate,kstate,pspin,spole,tpole
   integer                 :: pstate, qstate
   real(dp),allocatable    :: w_s(:,:)
   real(dp)                :: vcoul, vcoul1, vcoul2
   real(dp)                :: Omega_s
   real(dp)                :: ea, eb, ec, ei, ej, ek
-  real(dp),allocatable    :: omega(:)
+  complex(dp),allocatable :: omega(:)
   ! Store weights for analysis
   ! Huge memory impact
   real(dp),allocatable    :: w_voo_hpl(:,:,:)
@@ -443,6 +443,8 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   real(dp),allocatable    :: w_ovo_hhp(:,:,:)
   real(dp),allocatable    :: w_o_hpl(:,:,:)
   real(dp),allocatable    :: w_v_ppl(:,:,:)
+  integer                 :: file
+  character(len=3)        :: ctmp
   !=====
 
   call start_clock(timing_gwgamma_self)
@@ -471,6 +473,11 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
     call die('sosex_selfenergy_analyzed: auxil_basis is compulsory')
   endif
 
+  ! Only poorman parallelization is authorized here
+  if( poorman%nproc /= world%nproc ) then
+    call die('sosex_selfenergy_analyzed: poorman parallelization is compulsory')
+  endif
+
 
   call clean_allocate('Temporary array',w_s,ncore_G+1,nvirtual_G-1,ncore_G+1,MAX(nhomo_G,nsemax))
 
@@ -480,7 +487,7 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   allocate(sigma_sosex(-se%nomega:se%nomega,nsemin:nsemax,nspin,4))
   allocate(sigma_sox(-se%nomega:se%nomega,nsemin:nsemax,nspin,2))
   sigma_sosex(:,:,:,:) = 0.0_dp
-  sigma_sox(:,:,:,:) = 0.0_dp
+  sigma_sox(:,:,:,:)   = 0.0_dp
 
   !
   ! Allocate weights
@@ -505,39 +512,40 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   allocate(w_vov_pph_sox(nhomo_G+1:nvirtual_G-1,wpol%npole_reso,nsemin:nsemax))
   allocate(w_vov_pph(nhomo_G+1:nvirtual_G-1,wpol%npole_reso,nsemin:nsemax))
 
-  w_v_ppl(:,:,:) = 0.0_dp
-  w_ovv_ppl(:,:,:) = 0.0_dp
-  w_vov_ppl(:,:,:) = 0.0_dp
+  w_v_ppl(:,:,:)       = 0.0_dp
+  w_ovv_ppl(:,:,:)     = 0.0_dp
+  w_vov_ppl(:,:,:)     = 0.0_dp
   w_vov_pph_sox(:,:,:) = 0.0_dp
-  w_vov_pph(:,:,:) = 0.0_dp
-
+  w_vov_pph(:,:,:)     = 0.0_dp
 
 
   write(stdout,*) 'Calculate SOX'
 
-  do ispin=1,nspin
+  do pspin=1,nspin
 
     !==========================
     ! SOX ovo
+
+    ! Looping over resonant poles is an handy way to run over (occ, virt) pairs
     do spole=1,wpol%npole_reso
+      if( MODULO( spole - 1, poorman%nproc ) /= poorman%rank ) cycle
       istate = wpol%transition_table(1,spole)
       bstate = wpol%transition_table(2,spole)
-      if( MODULO( bstate-(nhomo_G+1) , poorman%nproc ) /= poorman%rank ) cycle
-      ei = energy(istate,ispin)
-      eb = energy(bstate,ispin)
+      ei = energy(istate,pspin)
+      eb = energy(bstate,pspin)
 
       do kstate=ncore_G+1,nhomo_G
-        ek = energy(kstate,ispin)
+        ek = energy(kstate,pspin)
         do pstate=nsemin,nsemax
-          omega(:) = se%energy0(pstate,ispin) + se%omega(:)
+          omega(:) = se%energy0(pstate,pspin) + se%omega(:)
           !
           ! calculate only the diagonal!
           qstate = pstate
 
-          vcoul1 = eri_eigen(pstate,istate,ispin,bstate,kstate,ispin)
-          vcoul2 = eri_eigen(istate,bstate,ispin,kstate,qstate,ispin)
+          vcoul1 = eri_eigen(pstate,istate,pspin,bstate,kstate,pspin)
+          vcoul2 = eri_eigen(istate,bstate,pspin,kstate,qstate,pspin)
 
-          sigma_sox(:,pstate,ispin,1) = sigma_sox(:,pstate,ispin,1) &
+          sigma_sox(:,pstate,pspin,1) = sigma_sox(:,pstate,pspin,1) &
               - vcoul1 * vcoul2 / ( omega(:) - ei + eb - ek - ieta )
           w_ovo_hhp_sox(kstate,spole,pstate) = w_ovo_hhp_sox(kstate,spole,pstate) &
                         - vcoul1 * vcoul2
@@ -549,25 +557,26 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
     !==========================
     ! SOX vov
 
+    ! Looping over resonant poles is an handy way to run over (occ, virt) pairs
     do spole=1,wpol%npole_reso
+      if( MODULO( spole - 1, poorman%nproc ) /= poorman%rank ) cycle
       jstate = wpol%transition_table(1,spole)
       astate = wpol%transition_table(2,spole)
-      ea = energy(astate,ispin)
-      ej = energy(jstate,ispin)
-      if( MODULO( astate-(nhomo_G+1) , poorman%nproc ) /= poorman%rank ) cycle
+      ea = energy(astate,pspin)
+      ej = energy(jstate,pspin)
 
       do cstate=nhomo_G+1,nvirtual_G-1
-        ec = energy(cstate,ispin)
+        ec = energy(cstate,pspin)
         do pstate=nsemin,nsemax
-          omega(:) = se%energy0(pstate,ispin) + se%omega(:)
+          omega(:) = se%energy0(pstate,pspin) + se%omega(:)
           !
           ! calculate only the diagonal!
           qstate = pstate
 
-          vcoul1 = eri_eigen(pstate,astate,ispin,jstate,cstate,ispin)
-          vcoul2 = eri_eigen(astate,jstate,ispin,cstate,qstate,ispin)
+          vcoul1 = eri_eigen(pstate,astate,pspin,jstate,cstate,pspin)
+          vcoul2 = eri_eigen(astate,jstate,pspin,cstate,qstate,pspin)
 
-          sigma_sox(:,pstate,ispin,2) = sigma_sox(:,pstate,ispin,2) &
+          sigma_sox(:,pstate,pspin,2) = sigma_sox(:,pstate,pspin,2) &
               - vcoul1 * vcoul2 / ( omega(:) - ea + ej - ec + ieta )
           w_vov_pph_sox(cstate,spole,pstate) = w_vov_pph_sox(cstate,spole,pstate) &
                         - vcoul1 * vcoul2
@@ -575,7 +584,7 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
       enddo
     enddo
 
-  enddo ! ispin
+  enddo ! pspin
 
   call poorman%sum(sigma_sox)
 
@@ -583,7 +592,7 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   write(stdout,*) 'Calculate dynamical SOSEX'
 
 
-  do ispin=1,nspin
+  do pspin=1,nspin
 
     do spole=1,wpol%npole_reso
 
@@ -592,127 +601,170 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
 
       Omega_s = wpol%pole(spole)
 
-      if(has_auxil_basis) then
+      if( has_auxil_basis ) then
         do pstate=ncore_G+1,MAX(nhomo_G,nsemax)
           ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-          w_s(:,pstate)     = MATMUL( wpol%residue_left(:,spole) , eri_3center_eigen(:,:,pstate,ispin) )
+          w_s(:,pstate)     = MATMUL( wpol%residue_left(:,spole) , eri_3center_eigen(:,:,pstate,pspin) )
         enddo
         call auxil%sum(w_s)
       endif
 
-
-
       !==========================
-      ! SOSEX \Sigma^{ovo}
-      do istate=ncore_G+1,nhomo_G
-        do bstate=nhomo_G+1,nvirtual_G-1
-          do kstate=ncore_G+1,nhomo_G
+      ! GW occupied
+      do kstate=ncore_G+1,nhomo_G
+        do pstate=nsemin,nsemax
+          !
+          ! calculate only the diagonal !
+          qstate = pstate
 
-            do pstate=nsemin,nsemax
-              !
-              ! calculate only the diagonal !
-              qstate = pstate
-
-              vcoul = eri_eigen(istate,pstate,ispin,bstate,kstate,ispin)
-
-!             sigma_sosex(:,pstate,ispin,1) = sigma_sosex(:,pstate,ispin,1) &
-!                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
-!                         / ( se%energy0(pstate,ispin) + se%omega(:) &
-!                             - energy(istate,ispin) + energy(bstate,ispin) - energy(kstate,ispin) - ieta ) &
-!                      * ( &
-!                          -1.0_dp / ( energy(istate,ispin) - energy(bstate,ispin) - Omega_s + ieta )    &
-!                          +1.0_dp / ( se%energy0(pstate,ispin) + se%omega(:) - energy(kstate,ispin) + Omega_s - ieta ) &
-!                        )
-
-              sigma_sosex(:,pstate,ispin,1) = sigma_sosex(:,pstate,ispin,1) &
-                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
-           * ( 1.0_dp / ( se%energy0(pstate,ispin) + se%omega(:) &
-                             - energy(istate,ispin) + energy(bstate,ispin) - energy(kstate,ispin) - ieta ) &
-               * (-2.0_dp) * Omega_s / ( energy(istate,ispin) - energy(bstate,ispin) - Omega_s +ieta ) &
-                                  / ( energy(istate,ispin) - energy(bstate,ispin) + Omega_s +ieta ) &
-              - 1.0_dp / ( se%energy0(pstate,ispin) + se%omega(:) - energy(kstate,ispin) + Omega_s - ieta ) &
-                       / ( energy(istate,ispin) - energy(bstate,ispin) + Omega_s +ieta) &
-              )
-              w_ovo_hhp(kstate,spole,pstate) = w_ovo_hhp(kstate,spole,pstate) &
-                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
-                       * REAL(-2.0_dp * Omega_s &
-                       / ( energy(istate,ispin) - energy(bstate,ispin) - Omega_s + ieta) &
-                       / ( energy(istate,ispin) - energy(bstate,ispin) + Omega_s + ieta) )
-
-              w_ovo_hpl(kstate,spole,pstate) = w_ovo_hpl(kstate,spole,pstate) &
-                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
-               * REAL( -1.0_dp / ( energy(istate,ispin) - energy(bstate,ispin) + Omega_s + ieta) )
-
-
-            enddo
-
-          enddo
+          w_o_hpl(kstate,spole,pstate) = w_o_hpl(kstate,spole,pstate) &
+                                         + w_s(kstate,pstate) * w_s(kstate,qstate)
         enddo
       enddo
 
       !==========================
-      ! SOSEX \Sigma^{vov}
-      do astate=nhomo_G+1,nvirtual_G-1
-        do jstate=ncore_G+1,nhomo_G
-          do cstate=nhomo_G+1,nvirtual_G-1
+      ! GW virtual
+      do cstate=nhomo_G+1,nvirtual_G-1
+        do pstate=nsemin,nsemax
+          !
+          ! calculate only the diagonal !
+          qstate = pstate
+          
+          w_v_ppl(cstate,spole,pstate) = w_v_ppl(cstate,spole,pstate) &
+                                         + w_s(cstate,pstate) * w_s(cstate,qstate)
+        enddo
+      enddo
+
+
+      !==========================
+      ! SOSEX \Sigma^{ovo}
+      !do istate=ncore_G+1,nhomo_G
+      !  do bstate=nhomo_G+1,nvirtual_G-1
+      ! Looping over resonant poles is an handy way to run over (occ, virt) pairs
+      do tpole=1,wpol%npole_reso
+          istate = wpol%transition_table(1,tpole)
+          bstate = wpol%transition_table(2,tpole)
+          ei = energy(istate,pspin)
+          eb = energy(bstate,pspin)
+
+          do kstate=ncore_G+1,nhomo_G
+            ek = energy(kstate,pspin)
 
             do pstate=nsemin,nsemax
+              omega(:) = se%energy0(pstate,pspin) + se%omega(:)
               !
               ! calculate only the diagonal !
               qstate = pstate
 
-              vcoul = eri_eigen(astate,pstate,ispin,jstate,cstate,ispin)
+              vcoul = eri_eigen(istate,pstate,pspin,bstate,kstate,pspin)
 
-              !sigma_sosex(:,pstate,ispin,2) = sigma_sosex(:,pstate,ispin,2) &
+!             sigma_sosex(:,pstate,pspin,1) = sigma_sosex(:,pstate,pspin,1) &
+!                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
+!                         / ( se%energy0(pstate,pspin) + se%omega(:) &
+!                             - energy(istate,pspin) + energy(bstate,pspin) - energy(kstate,pspin) - ieta ) &
+!                      * ( &
+!                          -1.0_dp / ( energy(istate,pspin) - energy(bstate,pspin) - Omega_s + ieta )    &
+!                          +1.0_dp / ( se%energy0(pstate,pspin) + se%omega(:) - energy(kstate,pspin) + Omega_s - ieta ) &
+!                        )
+
+            sigma_sosex(:,pstate,pspin,1) = sigma_sosex(:,pstate,pspin,1) &
+                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
+                         * ( &
+                              1.0_dp / ( omega(:) - ei + eb - ek - ieta ) &
+                                * (-2.0_dp) * Omega_s / ( ei - eb - Omega_s + ieta ) &
+                                                      / ( ei - eb + Omega_s + ieta ) &
+                            - 1.0_dp / ( omega(:) - ek + Omega_s - ieta ) &
+                                     / ( ei - eb + Omega_s + ieta ) &
+                            )
+              w_ovo_hhp(kstate,tpole,pstate) = w_ovo_hhp(kstate,tpole,pstate) &
+                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
+                         * REAL( -2.0_dp * Omega_s / ( ei - eb - Omega_s + ieta ) &
+                                                   / ( ei - eb + Omega_s + ieta ) )
+
+              w_ovo_hpl(kstate,spole,pstate) = w_ovo_hpl(kstate,spole,pstate) &
+                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
+                         * REAL( -1.0_dp / ( ei - eb + Omega_s + ieta ) )
+
+
+            enddo
+          enddo
+        !enddo
+      enddo
+
+      !==========================
+      ! SOSEX \Sigma^{vov}
+
+      ! Looping over resonant poles is an handy way to run over (occ, virt) pairs
+      do tpole=1,wpol%npole_reso
+          jstate = wpol%transition_table(1,tpole)
+          astate = wpol%transition_table(2,tpole)
+          ea = energy(astate,pspin)
+          ej = energy(jstate,pspin)
+
+          do cstate=nhomo_G+1,nvirtual_G-1
+            ec = energy(cstate,pspin)
+
+            do pstate=nsemin,nsemax
+              omega(:) = se%energy0(pstate,pspin) + se%omega(:)
+              !
+              ! calculate only the diagonal !
+              qstate = pstate
+
+              vcoul = eri_eigen(astate,pstate,pspin,jstate,cstate,pspin)
+
+              !sigma_sosex(:,pstate,pspin,2) = sigma_sosex(:,pstate,pspin,2) &
               !         + w_s(cstate,qstate) * w_s(astate,jstate) * vcoul &
-              !           / ( se%energy0(pstate,ispin) + se%omega(:) &
-              !               - energy(astate,ispin) + energy(jstate,ispin) - energy(cstate,ispin) + ieta ) &
-              !        * (  1.0_dp / ( energy(astate,ispin) - energy(jstate,ispin) + Omega_s - ieta )    &
-              !            -1.0_dp / ( se%energy0(pstate,ispin) + se%omega(:) - energy(cstate,ispin) - Omega_s + ieta ) )
-              sigma_sosex(:,pstate,ispin,2) = sigma_sosex(:,pstate,ispin,2) &
+              !           / ( se%energy0(pstate,pspin) + se%omega(:) &
+              !               - energy(astate,pspin) + energy(jstate,pspin) - energy(cstate,pspin) + ieta ) &
+              !        * (  1.0_dp / ( energy(astate,pspin) - energy(jstate,pspin) + Omega_s - ieta )    &
+              !            -1.0_dp / ( se%energy0(pstate,pspin) + se%omega(:) - energy(cstate,pspin) - Omega_s + ieta ) )
+              sigma_sosex(:,pstate,pspin,2) = sigma_sosex(:,pstate,pspin,2) &
                          + w_s(cstate,qstate) * w_s(astate,jstate) * vcoul &
-             * ( 1.0_dp / ( se%energy0(pstate,ispin) + se%omega(:) &
-                               - energy(astate,ispin) + energy(jstate,ispin) - energy(cstate,ispin) + ieta ) &
-                 * (-2.0_dp) * Omega_s / ( energy(astate,ispin) - energy(jstate,ispin) + Omega_s + ieta ) &
-                                    / ( energy(astate,ispin) - energy(jstate,ispin) - Omega_s + ieta ) &
-                + 1.0_dp / ( se%energy0(pstate,ispin) + se%omega(:) - energy(cstate,ispin) - Omega_s + ieta ) &
-                         / ( energy(astate,ispin) - energy(jstate,ispin) - Omega_s -ieta) &
-                )
-              w_vov_pph(cstate,spole,pstate) = w_vov_pph(cstate,spole,pstate) &
+                           * ( 1.0_dp / ( omega(:) - ea + ej - ec + ieta ) &
+                               * (-2.0_dp) * Omega_s / ( ea - ej + Omega_s + ieta ) &
+                                                     / ( ea - ej - Omega_s + ieta ) &
+                              + 1.0_dp / ( omega(:) - ec - Omega_s + ieta ) &
+                                       / ( ea - ej - Omega_s - ieta ) &
+                              )
+              w_vov_pph(cstate,tpole,pstate) = w_vov_pph(cstate,tpole,pstate) &
                          + w_s(cstate,qstate) * w_s(astate,jstate) * vcoul &
-                 * REAL( -2.0_dp * Omega_s / ( energy(astate,ispin) - energy(jstate,ispin) + Omega_s + ieta ) &
-                                    / ( energy(astate,ispin) - energy(jstate,ispin) - Omega_s + ieta )  )
-                w_vov_ppl(cstate,spole,pstate) = w_vov_ppl(cstate,spole,pstate) &
+                 * REAL( -2.0_dp * Omega_s / ( ea - ej + Omega_s + ieta ) &
+                                           / ( ea - ej - Omega_s + ieta )  )
+              w_vov_ppl(cstate,spole,pstate) = w_vov_ppl(cstate,spole,pstate) &
                          + w_s(cstate,qstate) * w_s(astate,jstate) * vcoul &
-                 * REAL( 1.0_dp / ( energy(astate,ispin) - energy(jstate,ispin) - Omega_s -ieta)  )
+                 * REAL( 1.0_dp / ( ea - ej - Omega_s - ieta )  )
 
             enddo
 
           enddo
-        enddo
+        !enddo
       enddo
 
       !==========================
       ! SOSEX \Sigma^{ovv}
       do istate=ncore_G+1,nhomo_G
+        ei = energy(istate,pspin)
         do bstate=nhomo_G+1,nvirtual_G-1
+          eb = energy(bstate,pspin)
           do cstate=nhomo_G+1,nvirtual_G-1
+            ec = energy(cstate,pspin)
 
             do pstate=nsemin,nsemax
+              omega(:) = se%energy0(pstate,pspin) + se%omega(:)
               !
               ! calculate only the diagonal !
               qstate = pstate
 
-              vcoul = eri_eigen(istate,pstate,ispin,bstate,cstate,ispin)
+              vcoul = eri_eigen(istate,pstate,pspin,bstate,cstate,pspin)
 
-              sigma_sosex(:,pstate,ispin,3) = sigma_sosex(:,pstate,ispin,3) &
+              sigma_sosex(:,pstate,pspin,3) = sigma_sosex(:,pstate,pspin,3) &
                        + w_s(cstate,qstate) * w_s(bstate,istate) * vcoul &
-                          / ( se%energy0(pstate,ispin) + se%omega(:) - energy(cstate,ispin) - Omega_s + ieta ) &
-                      * ( -1.0_dp / ( energy(istate,ispin) - energy(bstate,ispin) - Omega_s + ieta ) )
-              !FBFB
+                          / ( omega(:) - ec - Omega_s + ieta ) &
+                          * ( -1.0_dp / ( ei - eb - Omega_s + ieta ) )
+
               w_ovv_ppl(cstate,spole,pstate) = w_ovv_ppl(cstate,spole,pstate) &
                       + w_s(cstate,qstate) * w_s(bstate,istate) * vcoul &
-                      * ( -1.0_dp / ( energy(istate,ispin) - energy(bstate,ispin) - Omega_s ) )
+                        * REAL( -1.0_dp / ( ei - eb - Omega_s + ieta ) )
 
             enddo
 
@@ -722,24 +774,28 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
       !==========================
       ! SOSEX \Sigma^{voo}
       do astate=nhomo_G+1,nvirtual_G-1
+        ea = energy(astate,pspin)
         do jstate=ncore_G+1,nhomo_G
+          ej = energy(jstate,pspin)
           do kstate=ncore_G+1,nhomo_G
+            ek = energy(kstate,pspin)
 
             do pstate=nsemin,nsemax
+              omega(:) = se%energy0(pstate,pspin) + se%omega(:)
               !
               ! calculate only the diagonal !
               qstate = pstate
 
-              vcoul = eri_eigen(astate,pstate,ispin,jstate,kstate,ispin)
+              vcoul = eri_eigen(astate,pstate,pspin,jstate,kstate,pspin)
 
-              sigma_sosex(:,pstate,ispin,4) = sigma_sosex(:,pstate,ispin,4) &
+              sigma_sosex(:,pstate,pspin,4) = sigma_sosex(:,pstate,pspin,4) &
                        + w_s(kstate,qstate) * w_s(astate,jstate) * vcoul &
-                          / ( se%energy0(pstate,ispin) + se%omega(:) - energy(kstate,ispin) + Omega_s - ieta ) &
-                      * (  1.0_dp / ( energy(astate,ispin) - energy(jstate,ispin) + Omega_s - ieta ) )
-              !FBFB
+                          / ( omega(:) - ek + Omega_s - ieta ) &
+                          / ( ea - ej + Omega_s - ieta )
+
               w_voo_hpl(kstate,spole,pstate) = w_voo_hpl(kstate,spole,pstate) &
                       + w_s(kstate,qstate) * w_s(astate,jstate) * vcoul &
-                            / ( energy(astate,ispin) - energy(jstate,ispin) + Omega_s )
+                        * REAL( 1.0_dp / ( ea - ej + Omega_s - ieta ) )
 
             enddo
 
@@ -747,79 +803,71 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
         enddo
       enddo
 
-      ! GW
-      do kstate=ncore_G+1,nhomo_G
-        do pstate=nsemin,nsemax
-          !
-          ! calculate only the diagonal !
-          qstate = pstate
-          ! FBFB
-          w_o_hpl(kstate,spole,pstate) = w_o_hpl(kstate,spole,pstate) &
-                      + w_s(kstate,pstate) * w_s(kstate,qstate)
-        enddo
-      enddo
-      do cstate=nhomo_G+1,nvirtual_G-1
-        do pstate=nsemin,nsemax
-          !
-          ! calculate only the diagonal !
-          qstate = pstate
-          ! FBFB
-          w_v_ppl(cstate,spole,pstate) = w_v_ppl(cstate,spole,pstate) &
-                      + w_s(cstate,pstate) * w_s(cstate,qstate)
-        enddo
-      enddo
 
     enddo !spole
-  enddo !ispin
+  enddo !pspin
 
   call poorman%sum(sigma_sosex)
 
 
   write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 
-  ! DEBUG
   do pstate=nsemin,nsemax
-    write(800+pstate,'(a,4x,a)') '  state pole    GW_hpl   SOSEXvoo_hpl   SOSEX_ovo_hpl', &
-                                 '   SOSEX_ovo_hhp   SOX_ovo_hhp'
+    write(ctmp,'(i3.3)') pstate
+
+    open(newunit=file, file='weights_GWSOSEX_occ_state' // ctmp // '.dat', action='write')
+    write(file,'(a,4x,a)') '#  state pole    GW_hpl   SOSEXvoo_hpl   SOSEX_ovo_hpl', &
+                           '   SOSEX_ovo_hhp   SOX_ovo_hhp   Plasmons    particle-hole'
     
     do kstate=ncore_G+1,nhomo_G
       do spole=1,wpol%npole_reso
-        write(800+pstate,'(i4,1x,i4,1x,*(f14.6))') kstate,spole,&
-                                       w_o_hpl(kstate,spole,pstate),&
-                                       w_voo_hpl(kstate,spole,pstate),&
-                                       w_ovo_hpl(kstate,spole,pstate),&
-                                       w_ovo_hhp(kstate,spole,pstate),&
-                                       w_ovo_hhp_sox(kstate,spole,pstate)
+        istate = wpol%transition_table(1,spole)
+        astate = wpol%transition_table(2,spole)
+        write(file,'(i4,1x,i4,1x,*(f14.6))') kstate,spole,&
+                                  w_o_hpl(kstate,spole,pstate),&
+                                  w_voo_hpl(kstate,spole,pstate),&
+                                  w_ovo_hpl(kstate,spole,pstate),&
+                                  w_ovo_hhp(kstate,spole,pstate),&
+                                  w_ovo_hhp_sox(kstate,spole,pstate),&
+                                  wpol%pole(spole),&
+                                  energy(astate,1) - energy(istate,1)
       enddo
     enddo
+    close(file)
 
-    write(900+pstate,'(a,4x,a)') '  state pole    GW_ppl   SOSEXovv_ppl   SOSEX_vov_ppl', &
-                                 '   SOSEX_vov_pph   SOX_vov_pph'
+    open(newunit=file, file='weights_GWSOSEX_virt_state' // ctmp // '.dat', action='write')
+
+    write(file,'(a,4x,a)') '#  state pole    GW_ppl   SOSEXovv_ppl   SOSEX_vov_ppl', &
+                           '   SOSEX_vov_pph   SOX_vov_ppha   Plamons    particle-hole'
     do cstate=nhomo_G+1,nvirtual_G-1
       do spole=1,wpol%npole_reso
-        write(900+pstate,'(i4,1x,i4,1x,*(f14.6))') cstate,spole,&
-                                     w_v_ppl(cstate,spole,pstate),&
-                                     w_ovv_ppl(cstate,spole,pstate),&
-                                     w_vov_ppl(cstate,spole,pstate),&
-                                     w_vov_pph(cstate,spole,pstate),&
-                                     w_vov_pph_sox(cstate,spole,pstate)
+        istate = wpol%transition_table(1,spole)
+        astate = wpol%transition_table(2,spole)
+        write(file,'(i4,1x,i4,1x,*(f14.6))') cstate,spole,&
+                                  w_v_ppl(cstate,spole,pstate),&
+                                  w_ovv_ppl(cstate,spole,pstate),&
+                                  w_vov_ppl(cstate,spole,pstate),&
+                                  w_vov_pph(cstate,spole,pstate),&
+                                  w_vov_pph_sox(cstate,spole,pstate),&
+                                  wpol%pole(spole),&
+                                  energy(astate,1) - energy(istate,1)
       enddo
     enddo
-    write(1000+pstate,'(a)') '# omega  GW  SOXovo SOXvov SOSEXovo SOSEXvov SOSEXovv SOSEXvoo'
+    close(file)
+
+    open(newunit=file, file='selfenergy_GWSOSEX_parts_state' // ctmp // '.dat', action='write')
+    write(file,'(a)') '# omega    SOXovo   SOXvov   SOSEXovo   SOSEXvov   SOSEXovv   SOSEXvoo'
     do iomega=-se%nomega,se%nomega
-      write(1000+pstate,'(*(1x,f12.6))') (se%energy0(pstate,1) + se%omega(iomega) ) * Ha_eV, &
-                                       se%sigma(iomega,pstate,1) * Ha_eV, &
-                                       sigma_sox(iomega,pstate,1,:) * Ha_eV, &
-                                       sigma_sosex(iomega,pstate,1,:) * Ha_eV
+      write(file,'(*(1x,f12.6))') REAL(se%energy0(pstate,1) + se%omega(iomega) ) * Ha_eV, &
+                                  sigma_sox(iomega,pstate,1,:)%re * Ha_eV, &
+                                  sigma_sosex(iomega,pstate,1,:)%re * Ha_eV
     enddo
+    close(file)
   enddo
 
 
-  forall(pstate=nsemin:nsemax)
-    se%sigma(:,pstate,:) = sigma_sox(:,pstate,:,1) + sigma_sox(:,pstate,:,2) &
-                           + factor_sosex * (  sigma_sosex(:,pstate,:,1) + sigma_sosex(:,pstate,:,2) &
-                                             + sigma_sosex(:,pstate,:,3) + sigma_sosex(:,pstate,:,4) )
-  end forall
+  se%sigma(:,:,:) = SUM(sigma_sox(:,:,:,:), DIM=4 ) &
+                     + factor_sosex * SUM(sigma_sosex(:,:,:,:), DIM=4)
 
 
   ! if( print_sigma_) then
@@ -831,7 +879,7 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   if( ABS( factor_sosex - 1.0_dp ) < 0.001 ) then
     write(stdout,'(/,a)') ' GW+SOSEX self-energy contributions at E0 (eV)'
   else
-    write(stdout,'(/,a)') ' GW+SOSEX2 self-energy contributions at E0 (eV)'
+    write(stdout,'(/,a)') ' GW+2SOSEX self-energy contributions at E0 (eV)'
   endif
   write(stdout,'(a)') &
      '   #          E0        SigC_SOX   SigC_G(W(w)-v)GvG SigC_TOT'
