@@ -247,7 +247,7 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
         else
 #endif
           if( has_auxil_basis .AND. calc_type%selfenergy_approx == DUMP_GW ) then
-            call dump_gw_ingredients(occupation,energy_g,c_matrix,wpol)
+            call dump_gw_ingredients(energy_g,c_matrix,wpol)
           else
             call gw_selfenergy(calc_type%selfenergy_approx,occupation,energy_g,c_matrix,wpol,se)
           endif
