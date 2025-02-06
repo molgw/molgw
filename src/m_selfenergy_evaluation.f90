@@ -396,8 +396,12 @@ subroutine selfenergy_evaluation(basis,occupation,energy,c_matrix,exchange_m_vxc
           call se_g3w2%destroy()
 
         case(GWSOSEX)
-          call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_g3w2)
-
+          ! if postscf contains the string ANALYZED then the self-energy is decomposed (slow)
+          if( TRIM(postscf) == 'GW+SOSEX_ANALYZED' .OR. TRIM(postscf) == 'GW+2SOSEX_ANALYZED' ) then
+            call sosex_selfenergy_analyzed(basis,occupation,energy_g,c_matrix,wpol,se_g3w2)
+          else
+            call sosex_selfenergy(basis,occupation,energy_g,c_matrix,wpol,se_g3w2)
+          endif
           call se%add(se_gw)
           call se%add(se_g3w2)
 

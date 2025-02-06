@@ -37,7 +37,7 @@ module m_inputparam
   integer,parameter :: contour_deformation     = 109
 
   !
-  ! Self-energy approximation
+  ! Self-energy approximations
   integer,parameter :: CI              =-201
   integer,parameter :: COHSEX          = 204
   integer,parameter :: GnW0            = 205
@@ -270,14 +270,14 @@ subroutine init_calculation_type(scf,postscf)
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('GWSOSEX','GW+SOSEX','GW+GWGVG')
+    case('GWSOSEX','GW+SOSEX','GW+GWGVG','GW+SOSEX_ANALYZED')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
     case('GWSOSEX_PADE','GW+SOSEX_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWSOSEX2','GW+SOSEX2','GW+2SOSEX')
+    case('GWSOSEX2','GW+SOSEX2','GW+2SOSEX','GW+2SOSEX_ANALYZED')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
