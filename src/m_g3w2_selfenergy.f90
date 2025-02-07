@@ -583,7 +583,7 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
           vcoul2 = eri_eigen(kstate,bstate,pspin,istate,qstate,pspin)
 
           w_ovo_hhp_ring(kstate,tpole,pstate) = w_ovo_hhp_ring(kstate,tpole,pstate) &
-                        + vcoul1 * vcoul2
+                        + spin_fact * vcoul1 * vcoul2
 
         enddo
       enddo
@@ -642,7 +642,7 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
           vcoul2 = eri_eigen(cstate,jstate,pspin,astate,qstate,pspin)
 
           w_vov_pph_ring(cstate,tpole,pstate) = w_vov_pph_ring(cstate,tpole,pstate) &
-                        + vcoul1 * vcoul2
+                        + spin_fact * vcoul1 * vcoul2
         enddo
       enddo
     enddo
@@ -879,8 +879,9 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
     write(ctmp,'(i3.3)') pstate
 
     open(newunit=file, file='weights_GWSOSEX_occ_state' // ctmp // '.dat', action='write')
-    write(file,'(a,4x,a)') '#  state pole    GW_hpl   SOSEXvoo_hpl   SOSEX_ovo_hpl', &
-                           '   SOSEX_ovo_hhp   SOX_ovo_hhp   Plasmons    particle-hole'
+    write(file,'(a,*(a14))') '#state excit', 'GW_hpl   ', 'SOSEXvoo_hpl', 'SOSEXovo_hpl', &
+                           'SOSEXovo_hhp', 'RING_hhp', 'SOX_hhp', 'PT2_hhp',&
+                           'Plamons   ', 'particle-hole'
     
     do kstate=ncore_G+1,nhomo_G
       do spole=1,wpol%npole_reso
@@ -893,6 +894,8 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
                                   w_ovo_hhp(kstate,spole,pstate),&
                                   w_ovo_hhp_ring(kstate,spole,pstate),&
                                   w_ovo_hhp_sox(kstate,spole,pstate),&
+                                  w_ovo_hhp_ring(kstate,spole,pstate) &
+                                    + w_ovo_hhp_sox(kstate,spole,pstate),&
                                   wpol%pole(spole),&
                                   energy(astate,1) - energy(istate,1)
       enddo
@@ -901,8 +904,9 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
 
     open(newunit=file, file='weights_GWSOSEX_virt_state' // ctmp // '.dat', action='write')
 
-    write(file,'(a,4x,a)') '#  state pole    GW_ppl   SOSEXovv_ppl   SOSEX_vov_ppl', &
-                           '   SOSEX_vov_pph   SOX_vov_ppha   Plamons    particle-hole'
+    write(file,'(a,*(a14))') '#state excit', 'GW_ppl   ', 'SOSEXovv_ppl', 'SOSEXvov_ppl', &
+                           'SOSEXvov_pph', 'RING_pph', 'SOX_pph', 'PT2_pph', &
+                           'Plamons   ', 'particle-hole'
     do cstate=nhomo_G+1,nvirtual_G-1
       do spole=1,wpol%npole_reso
         istate = wpol%transition_table(1,spole)
@@ -914,6 +918,8 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
                                   w_vov_pph(cstate,spole,pstate),&
                                   w_vov_pph_ring(cstate,spole,pstate),&
                                   w_vov_pph_sox(cstate,spole,pstate),&
+                                  w_vov_pph_ring(cstate,spole,pstate) &
+                                    + w_vov_pph_sox(cstate,spole,pstate),&
                                   wpol%pole(spole),&
                                   energy(astate,1) - energy(istate,1)
       enddo
