@@ -435,9 +435,11 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   ! Huge memory impact
   real(dp),allocatable    :: w_voo_hpl(:,:,:)
   real(dp),allocatable    :: w_ovv_ppl(:,:,:)
+  real(dp),allocatable    :: w_vov_pph_ring(:,:,:)
   real(dp),allocatable    :: w_vov_pph_sox(:,:,:)
   real(dp),allocatable    :: w_vov_ppl(:,:,:)
   real(dp),allocatable    :: w_vov_pph(:,:,:)
+  real(dp),allocatable    :: w_ovo_hhp_ring(:,:,:)
   real(dp),allocatable    :: w_ovo_hhp_sox(:,:,:)
   real(dp),allocatable    :: w_ovo_hpl(:,:,:)
   real(dp),allocatable    :: w_ovo_hhp(:,:,:)
@@ -496,11 +498,13 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   allocate(w_o_hpl(ncore_G+1:nhomo_G,wpol%npole_reso,nsemin:nsemax))
   allocate(w_voo_hpl(ncore_G+1:nhomo_G,wpol%npole_reso,nsemin:nsemax))
   allocate(w_ovo_hpl(ncore_G+1:nhomo_G,wpol%npole_reso,nsemin:nsemax))
+  allocate(w_ovo_hhp_ring(ncore_G+1:nhomo_G,wpol%npole_reso,nsemin:nsemax))
   allocate(w_ovo_hhp_sox(ncore_G+1:nhomo_G,wpol%npole_reso,nsemin:nsemax))
   allocate(w_ovo_hhp(ncore_G+1:nhomo_G,wpol%npole_reso,nsemin:nsemax))
   w_o_hpl(:,:,:)       = 0.0_dp
   w_voo_hpl(:,:,:)     = 0.0_dp
   w_ovo_hpl(:,:,:)     = 0.0_dp
+  w_ovo_hhp_ring(:,:,:) = 0.0_dp
   w_ovo_hhp_sox(:,:,:) = 0.0_dp
   w_ovo_hhp(:,:,:)     = 0.0_dp
 
@@ -509,12 +513,14 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   allocate(w_v_ppl(nhomo_G+1:nvirtual_G-1,wpol%npole_reso,nsemin:nsemax))
   allocate(w_ovv_ppl(nhomo_G+1:nvirtual_G-1,wpol%npole_reso,nsemin:nsemax))
   allocate(w_vov_ppl(nhomo_G+1:nvirtual_G-1,wpol%npole_reso,nsemin:nsemax))
+  allocate(w_vov_pph_ring(nhomo_G+1:nvirtual_G-1,wpol%npole_reso,nsemin:nsemax))
   allocate(w_vov_pph_sox(nhomo_G+1:nvirtual_G-1,wpol%npole_reso,nsemin:nsemax))
   allocate(w_vov_pph(nhomo_G+1:nvirtual_G-1,wpol%npole_reso,nsemin:nsemax))
 
   w_v_ppl(:,:,:)       = 0.0_dp
   w_ovv_ppl(:,:,:)     = 0.0_dp
   w_vov_ppl(:,:,:)     = 0.0_dp
+  w_vov_pph_ring(:,:,:) = 0.0_dp
   w_vov_pph_sox(:,:,:) = 0.0_dp
   w_vov_pph(:,:,:)     = 0.0_dp
 
@@ -527,10 +533,10 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
     ! SOX ovo
 
     ! Looping over resonant poles is an handy way to run over (occ, virt) pairs
-    do spole=1,wpol%npole_reso
-      if( MODULO( spole - 1, poorman%nproc ) /= poorman%rank ) cycle
-      istate = wpol%transition_table(1,spole)
-      bstate = wpol%transition_table(2,spole)
+    do tpole=1,wpol%npole_reso
+      if( MODULO( tpole - 1, poorman%nproc ) /= poorman%rank ) cycle
+      istate = wpol%transition_table(1,tpole)
+      bstate = wpol%transition_table(2,tpole)
       ei = energy(istate,pspin)
       eb = energy(bstate,pspin)
 
@@ -547,8 +553,37 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
 
           sigma_sox(:,pstate,pspin,1) = sigma_sox(:,pstate,pspin,1) &
               - vcoul1 * vcoul2 / ( omega(:) - ei + eb - ek - ieta )
-          w_ovo_hhp_sox(kstate,spole,pstate) = w_ovo_hhp_sox(kstate,spole,pstate) &
+          w_ovo_hhp_sox(kstate,tpole,pstate) = w_ovo_hhp_sox(kstate,tpole,pstate) &
                         - vcoul1 * vcoul2
+
+        enddo
+      enddo
+    enddo
+
+    !==========================
+    ! RING ovo
+
+    ! Looping over resonant poles is an handy way to run over (occ, virt) pairs
+    do tpole=1,wpol%npole_reso
+      if( MODULO( tpole - 1, poorman%nproc ) /= poorman%rank ) cycle
+      istate = wpol%transition_table(1,tpole)
+      bstate = wpol%transition_table(2,tpole)
+      ei = energy(istate,pspin)
+      eb = energy(bstate,pspin)
+
+      do kstate=ncore_G+1,nhomo_G
+        ek = energy(kstate,pspin)
+        do pstate=nsemin,nsemax
+          omega(:) = se%energy0(pstate,pspin) + se%omega(:)
+          !
+          ! calculate only the diagonal!
+          qstate = pstate
+
+          vcoul1 = eri_eigen(pstate,istate,pspin,bstate,kstate,pspin)
+          vcoul2 = eri_eigen(kstate,bstate,pspin,istate,qstate,pspin)
+
+          w_ovo_hhp_ring(kstate,tpole,pstate) = w_ovo_hhp_ring(kstate,tpole,pstate) &
+                        + vcoul1 * vcoul2
 
         enddo
       enddo
@@ -558,10 +593,10 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
     ! SOX vov
 
     ! Looping over resonant poles is an handy way to run over (occ, virt) pairs
-    do spole=1,wpol%npole_reso
-      if( MODULO( spole - 1, poorman%nproc ) /= poorman%rank ) cycle
-      jstate = wpol%transition_table(1,spole)
-      astate = wpol%transition_table(2,spole)
+    do tpole=1,wpol%npole_reso
+      if( MODULO( tpole - 1, poorman%nproc ) /= poorman%rank ) cycle
+      jstate = wpol%transition_table(1,tpole)
+      astate = wpol%transition_table(2,tpole)
       ea = energy(astate,pspin)
       ej = energy(jstate,pspin)
 
@@ -578,8 +613,36 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
 
           sigma_sox(:,pstate,pspin,2) = sigma_sox(:,pstate,pspin,2) &
               - vcoul1 * vcoul2 / ( omega(:) - ea + ej - ec + ieta )
-          w_vov_pph_sox(cstate,spole,pstate) = w_vov_pph_sox(cstate,spole,pstate) &
+          w_vov_pph_sox(cstate,tpole,pstate) = w_vov_pph_sox(cstate,tpole,pstate) &
                         - vcoul1 * vcoul2
+        enddo
+      enddo
+    enddo
+
+    !==========================
+    ! RING vov
+
+    ! Looping over resonant poles is an handy way to run over (occ, virt) pairs
+    do tpole=1,wpol%npole_reso
+      if( MODULO( tpole - 1, poorman%nproc ) /= poorman%rank ) cycle
+      jstate = wpol%transition_table(1,tpole)
+      astate = wpol%transition_table(2,tpole)
+      ea = energy(astate,pspin)
+      ej = energy(jstate,pspin)
+
+      do cstate=nhomo_G+1,nvirtual_G-1
+        ec = energy(cstate,pspin)
+        do pstate=nsemin,nsemax
+          omega(:) = se%energy0(pstate,pspin) + se%omega(:)
+          !
+          ! calculate only the diagonal!
+          qstate = pstate
+
+          vcoul1 = eri_eigen(pstate,astate,pspin,jstate,cstate,pspin)
+          vcoul2 = eri_eigen(cstate,jstate,pspin,astate,qstate,pspin)
+
+          w_vov_pph_ring(cstate,tpole,pstate) = w_vov_pph_ring(cstate,tpole,pstate) &
+                        + vcoul1 * vcoul2
         enddo
       enddo
     enddo
@@ -828,6 +891,7 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
                                   w_voo_hpl(kstate,spole,pstate),&
                                   w_ovo_hpl(kstate,spole,pstate),&
                                   w_ovo_hhp(kstate,spole,pstate),&
+                                  w_ovo_hhp_ring(kstate,spole,pstate),&
                                   w_ovo_hhp_sox(kstate,spole,pstate),&
                                   wpol%pole(spole),&
                                   energy(astate,1) - energy(istate,1)
@@ -848,6 +912,7 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
                                   w_ovv_ppl(cstate,spole,pstate),&
                                   w_vov_ppl(cstate,spole,pstate),&
                                   w_vov_pph(cstate,spole,pstate),&
+                                  w_vov_pph_ring(cstate,spole,pstate),&
                                   w_vov_pph_sox(cstate,spole,pstate),&
                                   wpol%pole(spole),&
                                   energy(astate,1) - energy(istate,1)
