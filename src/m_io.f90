@@ -3962,6 +3962,8 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
   integer(HID_T)      :: fid, current_group
   !=====
 
+  if( .NOT. is_iomaster ) return
+
   nstate = SIZE(energy, DIM=1)
 
   call hdf_open_file(fid, 'molgw_restart.h5', status='NEW')
