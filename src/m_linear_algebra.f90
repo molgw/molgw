@@ -846,6 +846,7 @@ end subroutine diagonalize_davidson
 
 
 !=========================================================================
+! Gram-Schmidt algorithm
 subroutine orthogonalize(vec)
   implicit none
 
@@ -952,6 +953,89 @@ pure function determinant_3x3_matrix(mat) RESULT(det)
        - mat(1,1) * mat(2,3) * mat(3,2)
 
 end function determinant_3x3_matrix
+
+
+!=========================================================================
+! Fortran translation of a C++ routine by Ivan Duchemin, CEA
+! A(:,:,:)  a series of n square-matrices
+! V(:,:)    unitary tranform
+! tol       tolerance
+! converged logical
+!
+! Find the unitary transform V such that V**T A(:,:,i) V is as diagonal as possible
+!
+subroutine joint_diagonalization(A, tol, V, converged)
+  implicit none
+  real(dp), intent(inout) :: A(:, :, :), V(:, :)
+  real(dp), intent(in)    :: tol
+  logical, intent(out)   :: converged
+  !=====
+  real(dp) :: g(3), theta, c, s, ton, toff
+  real(dp) :: Aip, Aiq, Api, Aqi, Vip, Viq
+  integer :: p, q, i, j
+  integer :: m, n
+  !=====
+
+  m = SIZE(A, DIM=1)
+  n = SIZE(A, DIM=3)
+
+  ! Initialize unitary transform V
+  V(:,:) = 0.0_dp
+  do i = 1, m
+    V(i, i) = 1.0_dp
+  end do
+
+  converged = .FALSE.
+  do while (.NOT. converged)
+    converged = .TRUE.
+    do p = 1, m - 1
+      do q = p + 1, m
+        g(:) = 0.0_dp
+        do i = 1, n
+          g(1) = g(1) + (A(p, p, i) - A(q, q, i ))**2
+          g(2) = g(2) + (A(p, q, i) + A(q, p, i )) * &
+                        (A(p, p, i) - A(q, q, i ))
+          g(3) = g(3) + (A(p, q, i) + A(q, p, i ))**2
+        end do
+
+        ton  = g(1) - g(3)
+        toff = g(2)
+        theta = 0.5_dp * ATAN2(toff, ton + HYPOT(ton, toff))
+        c = COS(theta)
+        s = SIN(theta)
+        converged = converged .AND. (ABS(s) < tol)
+
+        if (ABS(s) > tol) then
+          do j = 1, n
+            do i = 1, m
+              Aip = A(i, p, j)
+              Aiq = A(i, q, j)
+              A(i, p, j) =  c * Aip + s * Aiq
+              A(i, q, j) = -s * Aip + c * Aiq
+            end do
+          end do
+          do j = 1, n
+            do i = 1, m
+              Api = A(p, i, j)
+              Aqi = A(q, i, j)
+              A(p, i, j) =  c * Api + s * Aqi
+              A(q, i, j) = -s * Api + c * Aqi
+            end do
+          end do
+
+          do i = 1, m
+            Vip = V(i, p)
+            Viq = V(i, q)
+            V(i, p) =  c * Vip + s * Viq
+            V(i, q) = -s * Vip + c * Viq
+          end do
+        end if
+      end do
+    end do
+  end do
+
+
+end subroutine joint_diagonalization
 
 
 !=========================================================================
