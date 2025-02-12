@@ -55,6 +55,9 @@
 [tolforce](#tolforce)
 [x2c](#x2c)
 [c_speedlight](#c_speedlight)
+[parabolic_conf](#parabolic_conf)
+[rwconfinement](#rwconfinement)
+[harmonium](#harmonium)
 [approx_H_x2c](#approx_H_x2c)
 [check_CdSC_x2c](#check_CdSC_x2c)
 
@@ -140,16 +143,13 @@
 [noft_complex](#noft_complex)
 [noft_hessian](#noft_hessian)
 [noft_nophases](#noft_nophases)
-[noft_confinment](#noft_confinment)
-[noft_iconfinment](#noft_iconfinment)
-[noft_iwconfinment](#noft_iwconfinment)
-[noft_rwconfinment](#noft_rwconfinment)
 [noft_dft](#noft_dft)
 [noft_rsinter](#noft_rsinter)
 [noft_lowmemERI](#noft_lowmemERI)
 [noft_fcidump](#noft_fcidump)
 [noft_NOTupdateOCC](#noft_NOTupdateOCC)
 [noft_NOTupdateORB](#noft_NOTupdateORB)
+[noft_NOTvxc](#noft_NOTvxc)
 [noft_functional](#noft_functional)
 [noft_printdmn](#noft_printdmn)
 [noft_printswdmn](#noft_printswdmn)
@@ -158,7 +158,6 @@
 [noft_readFdiag](#noft_readFdiag)
 [noft_readGAMMAS](#noft_readGAMMAS)
 [noft_readOCC](#noft_readOCC)
-[noft_sta](#noft_sta)
 [noft_NR_OCC](#noft_NR_OCC)
 [noft_QC_ORB](#noft_QC_ORB)
 [noft_ithresh_lambda](#noft_ithresh_lambda)
@@ -345,7 +344,7 @@ Calculates the spectral decomposition of the response function and then evaluate
 
 **Description:**
 
-Build the X2C approximate Hamiltonian (H**new) to reproduce state energies . with  H = S C e C**-1, H**dagger S C e C**-1, and H**new = 1/2 ( H + H**dagger). Default yes.
+Build the X2C approximate Hamiltonian (H**new) to reproduce state energies. with  H = S C e C**-1, H**dagger S C e C**-1, and H**new = 1/2 ( H + H**dagger). Default yes.
 
 
 ---
@@ -1367,6 +1366,24 @@ EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground
 
 
 ---
+### harmonium
+
+**experimental**
+
+*Optional*
+
+**Family:** general
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Replace the -Z/r interaction with a parabolic confinement 1/2 w**2 r**2 (Harmonium atom). Default no.
+
+
+---
 ### ignore_bigrestart
 
 *Optional*
@@ -1785,6 +1802,22 @@ Do a NOFT optimization but keeping fixed the orbitals read.
 
 
 ---
+### noft_NOTvxc
+
+*Optional*
+
+**Family:** noft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Do a RS-NOFT calculation without Vxc (i.e. adding a one-shot ExcDFT to the NOFT energy).
+
+
+---
 ### noft_NR_OCC
 
 *Optional*
@@ -1830,22 +1863,6 @@ Use the Quadratic Convergence method in orbital optimization by constructing the
 **Description:**
 
 Use complex molecular orb. coeficients in NOFT calcs. (default=no).
-
-
----
-### noft_confinment
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Replace all Coulomb electronic-nuclear contributions by a parabolic confinement at the origin. (default=no).
 
 
 ---
@@ -1913,22 +1930,6 @@ Build and use the Hessian for the orbitals. (default=no).
 
 
 ---
-### noft_iconfinment
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Add a Hermitian parabolic confinement (purely imaginary) to the one-body Hamiltonian when complex molecular orb. coeficients are used in NOFT calcs. (default=no).
-
-
----
 ### noft_ithresh_lambda
 
 *Optional*
@@ -1942,22 +1943,6 @@ Add a Hermitian parabolic confinement (purely imaginary) to the one-body Hamilto
 **Description:**
 
 Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.
-
-
----
-### noft_iwconfinment
-
-*Optional*
-
-**Family:** noft
-
-**Type:** real
-
-**Default:** 0.0
-
-**Description:**
-
-Value of confinement stength in the parabolic confinement described in noft_iconfinment. (default=0.0).
 
 
 ---
@@ -2197,39 +2182,7 @@ Use binary files to restart NOFT calcs. (default= 'no').
 
 **Description:**
 
-Use range-sep for the inter-subspace two-body interactions in NOFT.
-
-
----
-### noft_rwconfinment
-
-*Optional*
-
-**Family:** noft
-
-**Type:** real
-
-**Default:** 0.0
-
-**Description:**
-
-Value of confinement stength in the parabolic confinement described in noft_confinment. (default=0.0).
-
-
----
-### noft_sta
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Decide whether to use PNOF7 or PNOF7s, but it also affects GNOF (default= 'no', use 'PNOF7' and 'GNOF').
+Use range-sep for the inter-subspace two-body interactions in NOFT. (default=no).
 
 
 ---
@@ -2454,6 +2407,24 @@ Sets the starting state beyond which states are excluded from the sum in the Gre
 **Description:**
 
 Sets the starting state beyond which states are excluded from the sum in the screened Coulomb interaction W, in TD-DFT, and in BSE.
+
+
+---
+### parabolic_conf
+
+**experimental**
+
+*Optional*
+
+**Family:** general
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Include a parabolic confinement 1/2 w**2 r**2 to the electron-nucleus interaction. Default no.
 
 
 ---
@@ -3096,6 +3067,22 @@ Read the RESTART file and restart from it.
 **Description:**
 
 Ignore the RESTART_TDDFT file.
+
+
+---
+### rwconfinement
+
+*Optional*
+
+**Family:** general
+
+**Type:** real
+
+**Default:** 0.0
+
+**Description:**
+
+w varible used in the parabolic confinement. Default value 0.0.
 
 
 ---
@@ -3744,6 +3731,6 @@ Specifies a file name or path for the YAML formatted output. Default is `molgw.y
 
 
 
-*Generated by input_variables.py on 28 November 2024*
+*Generated by input_variables.py on 31 December 2024*
 
 

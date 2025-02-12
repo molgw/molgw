@@ -4,6 +4,7 @@
  beta_hybrid =1.0
  gamma_hybrid=0.5
  tolscf=1.0e-1
+ nspin=2
  init_hamiltonian='core'
 
  basis='cc-pVDZ'

@@ -103,21 +103,27 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
-  subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
-  & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
+  subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
+     &             NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolJsr_cmplx,ERImolLsr_cmplx,all_ERIs,&
+     &             Edft_xc,do_xc_dft)
   use m_definitions
   implicit none
-  logical,optional,intent(in)::all_ERIs
-  integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
-  real(dp),intent(in)::Occ(NBF_occ)
-  real(dp),optional,intent(in)::NO_COEF(NBF_tot,NBF_tot)
-  real(dp),optional,intent(inout)::hCORE(NBF_tot,NBF_tot)
-  real(dp),optional,intent(inout)::ERImol(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
-  real(dp),optional,intent(inout)::ERImolJsr(NBF_tot,NBF_jkl,NBF_jkl)
-  real(dp),optional,intent(inout)::ERImolLsr(NBF_tot,NBF_jkl,NBF_jkl)
-  complex(dp),optional,intent(in)::NO_COEF_cmplx(NBF_tot,NBF_tot)
-  complex(dp),optional,intent(inout)::hCORE_cmplx(NBF_tot,NBF_tot)
-  complex(dp),optional,intent(inout)::ERImol_cmplx(NBF_tot,NBF_jkl,NBF_jkl,NBF_jkl)
+
+  logical,optional,intent(in)     :: all_ERIs,do_xc_dft
+  integer,intent(in)              :: nbf,nstate_occ,nstate_kji
+  real(dp),intent(in)             :: Occ(nstate_occ)
+  real(dp),optional,intent(inout) :: Edft_xc
+  real(dp),optional,intent(in)    :: DM2_JK(2,nstate_occ,nstate_occ)
+  real(dp),optional,intent(in)    :: NO_COEF(nbf,nbf)
+  real(dp),optional,intent(inout) :: hCORE(nbf,nbf)
+  real(dp),optional,intent(inout) :: ERImol(nbf,nstate_kji,nstate_kji,nstate_kji)
+  real(dp),optional,intent(inout) :: ERImolJsr(nbf,nstate_kji,nstate_kji)
+  real(dp),optional,intent(inout) :: ERImolLsr(nbf,nstate_kji,nstate_kji)
+  complex(dp),optional,intent(in)    :: NO_COEF_cmplx(nbf,nbf)
+  complex(dp),optional,intent(inout) :: hCORE_cmplx(nbf,nbf)
+  complex(dp),optional,intent(inout) :: ERImol_cmplx(nbf,nstate_kji,nstate_kji,nstate_kji)
+  complex(dp),optional,intent(inout) :: ERImolJsr_cmplx(nbf,nstate_kji,nstate_kji)
+  complex(dp),optional,intent(inout) :: ERImolLsr_cmplx(nbf,nstate_kji,nstate_kji)
   end subroutine mo_ints
  end interface
 !arrays
@@ -129,15 +135,17 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !Local variables ------------------------------
 !scalars
  logical::ekt,diagLpL,restart_param,keep_occs,keep_orbs,cpx_mos,all_ERI_in,hessian_in
+ logical::file_exists,do_xc_dft
  integer::iorb,iter,ifcidump,irs_noft
  integer::iorbp,iorbq,iunit
- real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val,maxdiff_lambda
+ real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val,maxdiff_lambda,Edft_xc
  type(rdm_t),target::RDMd
  type(integ_t),target::INTEGd
  type(elag_t),target::ELAGd
  type(hessian_t),target::HESSIANd
 !arrays
  real(dp),allocatable,dimension(:,:)::DM1,NO_COEF_tmp
+ real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:,:,:,:)::DM2
  character(len=20)::coef_file
  character(len=100)::sha_git
@@ -145,7 +153,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 !************************************************************************
 
  diagLpL=.true.; restart_param=.false.; ifcidump=0; keep_orbs=.false.; keep_occs=.false.; cpx_mos=.false.;
- irs_noft=0; all_ERI_in=.false.; hessian_in=.false.;
+ irs_noft=0; all_ERI_in=.false.; hessian_in=.false.; file_exists=.false.;
     
  ! Initialize output
  call gitversion(sha_git) 
@@ -204,7 +212,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
 
  ! Initialize RDMd, INTEGd, ELAGd, and HESSIANd objects.
- if(INOF_in==101) then
+ if(INOF_in==101 .or. INOF_in==70) then
   if(present(Lpower)) then
    call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 &  Nbeta_elect_in,Nalpha_elect_in,irs_noft,Lpower=Lpower)
@@ -254,14 +262,22 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  call write_output(msg)
  iter=-1
  if(cpx_mos) then
-  call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
-  & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+  if(INTEGd%irange_sep/=0) then
+   RDMd%occ(1:RDMd%Nfrozen+RDMd%Npairs)=ONE
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,ERImolJsr_cmplx=INTEGd%ERImolJsr_cmplx,&
+   & ERImolLsr_cmplx=INTEGd%ERImolLsr_cmplx)
+  else
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
+  endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then ! pCCD
    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
   else ! NOFT
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
-  &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
+  &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
+  &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
   endif
  else
   if(INTEGd%irange_sep/=0) then
@@ -361,7 +377,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
     call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
    else ! NOFT
     call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
-   &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx) ! Also iter=iter+1
+   &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx, &
+   &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
    endif
   else
    if(RDMd%INOF<0) then ! pCCD
@@ -384,7 +401,28 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   ! Check maximum number of iterations
   if(iter>=itermax) exit
 
+  ! Check stop file
+  inquire(file='STOP_NOFT_SCF',exist=file_exists)
+  if(file_exists) exit
+
  enddo
+
+ ! Compute rs-NOFT Exc_DFT for fixed occ numbers and orbitals (i.e. density and on-top pair density)
+ if(INTEGd%irange_sep/=0) then
+   do_xc_dft=.true. 
+   allocate(DM2_JK(2,RDMd%NBF_occ,RDMd%NBF_occ))
+   call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
+   if(cpx_mos) then
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF_cmplx=NO_COEF_cmplx,               &
+    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,ERImolJsr_cmplx=INTEGd%ERImolJsr_cmplx, &
+    & ERImolLsr_cmplx=INTEGd%ERImolLsr_cmplx,all_ERIs=all_ERI_in,Edft_xc=Edft_xc,do_xc_dft=do_xc_dft)
+   else
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE,  &
+    & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERI_in,Edft_xc=Edft_xc, &
+    & do_xc_dft=do_xc_dft)
+   endif
+   deallocate(DM2_JK)
+ endif
 
  ! Build and diagonalize the Hessian (except for range-sep)
  if(hessian_in .and. irs_noft==0) then
@@ -501,7 +539,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  if(irs_noft==0 .and. RDMd%INOF>-1) then
   if(cpx_mos) then
    call occ_chempot(RDMd,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
-   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx)
+   & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
+   & ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx)
   else 
    call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,&
     ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr)
@@ -660,6 +699,10 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a,i12)') ' GNOF-stat version selected Istat  ',Ista_in
   call write_output(msg)
  endif
+ if(INOF_in==8 .and. Ista_in==3) then
+  write(msg,'(a,i12)') ' GNOFs version selected Istat      ',Ista_in
+  call write_output(msg)
+ endif
  if(INOF_in==0) then
   write(msg,'(a)') ' Using Hartree-Fock approximation'
   call write_output(msg)
@@ -722,6 +765,11 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a)') ' Using GNOF approximation'
   call write_output(msg)
   write(msg,'(a)') ' M. Piris, Phys. Rev. Lett., 127, 233001 (2021)'
+  call write_output(msg)
+ elseif(INOF_in==70) then
+  write(msg,'(a)') ' Using PNOF7_SUP approximation'
+  call write_output(msg)
+  write(msg,'(a,i12)') ' PNOF7_SUP version selected Istat  ',Ista_in
   call write_output(msg)
  else
   ! Nth

@@ -645,7 +645,7 @@ subroutine init_dft_type(key)
     beta_hybrid   = 1.00_dp
     dft_xc(1)%coeff = beta_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
-    if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=2.00_dp
+    if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=1.00_dp
     dft_xc(1)%gamma = gamma_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   case('LDA0')

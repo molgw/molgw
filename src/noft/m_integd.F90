@@ -41,7 +41,9 @@ module m_integd
  real(dp),allocatable,dimension(:,:,:)::ERImolJsr,ERImolLsr
  real(dp),allocatable,dimension(:,:,:,:)::ERImol
  complex(dp),allocatable,dimension(:)::ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx
+ complex(dp),allocatable,dimension(:)::ERI_Jsr_cmplx,ERI_Lsr_cmplx
  complex(dp),allocatable,dimension(:,:)::hCORE_cmplx
+ complex(dp),allocatable,dimension(:,:,:)::ERImolJsr_cmplx,ERImolLsr_cmplx
  complex(dp),allocatable,dimension(:,:,:,:)::ERImol_cmplx
 
  contains 
@@ -109,13 +111,19 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,Overlap_in,complex_ints_in,irs_noft
  if(INTEGd%complex_ints) then
   if(present(lowmemERI)) then
    if(lowmemERI) then
-    totMEM=3*2*NBF_ldiag+NBF_tot*NBF_tot+4*NBF_tot*NBF_tot+16*NBF_tot*NBF_occ*NBF_occ*NBF_occ
+    totMEM=5*2*NBF_ldiag+NBF_tot*NBF_tot+4*NBF_tot*NBF_tot+16*NBF_tot*NBF_occ*NBF_occ*NBF_occ
     INTEGd%NBF_jkl=NBF_occ
+    if(INTEGd%irange_sep/=0) then
+     totMEM=totMEM+2*8*NBF_tot*NBF_occ*NBF_occ
+    endif
    else
-    totMEM=3*2*NBF_ldiag+NBF_tot*NBF_tot+4*NBF_tot*NBF_tot+16*NBF_tot*NBF_tot*NBF_tot*NBF_tot
+    totMEM=5*2*NBF_ldiag+NBF_tot*NBF_tot+4*NBF_tot*NBF_tot+16*NBF_tot*NBF_tot*NBF_tot*NBF_tot
+    if(INTEGd%irange_sep/=0) then
+     totMEM=totMEM+2*8*NBF_tot*NBF_occ*NBF_occ
+    endif
    endif
   else
-   totMEM=3*2*NBF_ldiag+NBF_tot*NBF_tot+4*NBF_tot*NBF_tot+16*NBF_tot*NBF_tot*NBF_tot*NBF_tot
+   totMEM=5*2*NBF_ldiag+NBF_tot*NBF_tot+4*NBF_tot*NBF_tot+16*NBF_tot*NBF_tot*NBF_tot*NBF_tot
   endif
  else
   if(present(lowmemERI)) then
@@ -150,7 +158,17 @@ subroutine integ_init(INTEGd,NBF_tot,NBF_occ,Overlap_in,complex_ints_in,irs_noft
  call write_output(msg)
  ! Allocate arrays
  if(INTEGd%complex_ints) then
+  if(INTEGd%irange_sep/=0) then
+   allocate(INTEGd%ERImolJsr_cmplx(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
+   allocate(INTEGd%ERImolLsr_cmplx(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
+  else 
+   allocate(INTEGd%ERImolJsr_cmplx(1,1,1))
+   allocate(INTEGd%ERImolLsr_cmplx(1,1,1))
+  endif
   allocate(INTEGd%ERI_J_cmplx(NBF_ldiag),INTEGd%ERI_K_cmplx(NBF_ldiag),INTEGd%ERI_L_cmplx(NBF_ldiag))
+  allocate(INTEGd%ERI_Jsr_cmplx(NBF_ldiag),INTEGd%ERI_Lsr_cmplx(NBF_ldiag))
+  INTEGd%ERI_J_cmplx=complex_zero; INTEGd%ERI_K_cmplx=complex_zero; INTEGd%ERI_L_cmplx=complex_zero;
+  INTEGd%ERI_Jsr_cmplx=complex_zero; INTEGd%ERI_Lsr_cmplx=complex_zero;
   allocate(INTEGd%hCORE_cmplx(NBF_tot,NBF_tot),INTEGd%Overlap(NBF_tot,NBF_tot))
   allocate(INTEGd%ERImol_cmplx(NBF_tot,INTEGd%NBF_jkl,INTEGd%NBF_jkl,INTEGd%NBF_jkl))
  else
@@ -204,9 +222,13 @@ subroutine integ_free(INTEGd)
  if(INTEGd%complex_ints) then
   deallocate(INTEGd%hCORE_cmplx) 
   deallocate(INTEGd%ERImol_cmplx) 
+  deallocate(INTEGd%ERImolJsr_cmplx) 
+  deallocate(INTEGd%ERImolLsr_cmplx) 
   deallocate(INTEGd%ERI_J_cmplx) 
   deallocate(INTEGd%ERI_K_cmplx) 
   deallocate(INTEGd%ERI_L_cmplx)
+  deallocate(INTEGd%ERI_Jsr_cmplx)
+  deallocate(INTEGd%ERI_Lsr_cmplx)
  else
   deallocate(INTEGd%hCORE) 
   deallocate(INTEGd%ERImol) 
@@ -263,6 +285,10 @@ subroutine eri_to_eriJKL(INTEGd,NBF_occ)
     INTEGd%ERI_J_cmplx(iorb2)=INTEGd%ERImol_cmplx(iorb,iorb1,iorb,iorb1) ! J in <ij|ij>
     INTEGd%ERI_K_cmplx(iorb2)=INTEGd%ERImol_cmplx(iorb,iorb1,iorb1,iorb) ! K in <ij|ji>
     INTEGd%ERI_L_cmplx(iorb2)=INTEGd%ERImol_cmplx(iorb,iorb1,iorb1,iorb) ! L in <ii|jj> Lij is Kij with time-rev symm
+    if(INTEGd%irange_sep/=0) then
+     INTEGd%ERI_Jsr_cmplx(iorb2)=INTEGd%ERImolJsr_cmplx(iorb,iorb1,iorb) ! J <ij|ij>^sr
+     INTEGd%ERI_Lsr_cmplx(iorb2)=INTEGd%ERImolLsr_cmplx(iorb,iorb,iorb1) ! L <ii|jj>^sr -> We get Kij^sr here with time-rev symm from mo_ints
+    endif
     iorb2=iorb2+1
    enddo
   enddo

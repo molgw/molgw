@@ -750,7 +750,6 @@ end subroutine diag_hessian
 !!
 !! FUNCTION
 !!  Perform Quadratic Convengece (QC) step to compute new kappa.
-!!  It is the normalized(kappa)
 !!
 !! INPUTS
 !!  icall
@@ -779,13 +778,10 @@ subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_m
  logical::mute=.true.
  integer::iorbp,iorbq,iterm
  integer::info
- real(dp)::norm,tol10=1e-10
 !arrays
  integer,allocatable,dimension(:)::IPIV
  character(len=200)::msg
 !************************************************************************
-
- norm=zero
 
  if(HESSIANd%cpx_hessian) then ! Complex
 
@@ -801,13 +797,11 @@ subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_m
     iterm=1
     do iorbp=1,NBF_tot
      do iorbq=iorbp,NBF_tot
-      norm=norm+real(conjg(HESSIANd%Gradient_vec_cmplx(iterm))*HESSIANd%Gradient_vec_cmplx(iterm))
       kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Gradient_vec_cmplx(iterm)
       kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
       iterm=iterm+1
      enddo
     enddo
-    kappa_mat_cmplx=kappa_mat_cmplx/(sqrt(norm)+tol10)
    else
     write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
     call write_output(msg)
@@ -842,13 +836,11 @@ subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_m
     iterm=1
     do iorbp=1,NBF_tot
      do iorbq=iorbp+1,NBF_tot
-      norm=norm+HESSIANd%Gradient_vec(iterm)*HESSIANd%Gradient_vec(iterm)
       kappa_mat(iorbp,iorbq)=HESSIANd%Gradient_vec(iterm)
       kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
       iterm=iterm+1
      enddo
     enddo
-    kappa_mat=kappa_mat/(sqrt(norm)+tol10)
    else
     write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
     call write_output(msg)

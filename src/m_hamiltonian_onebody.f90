@@ -1121,6 +1121,52 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
 end subroutine setup_nucleus
 
 
+!================================================================================
+! Calculate  1/2 ( \alpha | w**2 r**2 | \beta ) and add it to hamiltonian_nucleus
+!
+subroutine setup_para_conf(basis,hamiltonian_nucleus)
+  implicit none
+  type(basis_set),intent(in)  :: basis
+  real(dp),intent(inout)      :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+  !=====
+  real(dp),allocatable        :: quad_ao(:,:,:,:)
+  !=====
+
+
+#if defined(HAVE_LIBCINT)
+  write(stdout,'(/,a)') ' Adding a parabolic confinement to the nucleus-electron part of the Hamiltonian (LIBCINT)'
+#elif defined(LIBINT2_SUPPORT_ONEBODY)
+  write(stdout,'(/,a)') ' Adding a parabolic confinement to the nucleus-electron part of the Hamiltonian (LIBINT)'
+#else
+  write(stdout,'(/,a)') ' Adding a parabolic confinement to the nucleus-electron part of the Hamiltonian (internal)'
+#endif
+
+  if(TRIM(harmonium)=='yes') then
+    
+     write(stdout,'(/,a)') ' Replacing the -Z/r potential by 1/2 w**2 r**2 (i.e. Harmonium atom)'
+     hamiltonian_nucleus(:,:) = 0.0e0
+
+  endif
+
+  call setup_quadrupole_ao(basis,quad_ao)
+
+  hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:)         &
+     & + 0.5e0*(rwconfinement*rwconfinement)*quad_ao(:,:,1,1) &
+     & + 0.5e0*(rwconfinement*rwconfinement)*quad_ao(:,:,2,2) &
+     & + 0.5e0*(rwconfinement*rwconfinement)*quad_ao(:,:,3,3)
+
+  deallocate(quad_ao)
+
+  !
+  ! Reduce operation
+  call world%sum(hamiltonian_nucleus)
+
+  call dump_out_matrix(.FALSE.,'===  Parabolic confinement contribution ===',hamiltonian_nucleus)
+
+
+end subroutine setup_para_conf
+
+
 !=========================================================================
 subroutine recalc_nucleus(basis_t,basis_p,hamiltonian_nucleus)
   use m_atoms

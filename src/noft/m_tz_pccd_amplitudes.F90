@@ -378,7 +378,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  iter_global=iter_global+1
  if(INTEGd%complex_ints) then
   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_dm,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
-  & INTEGd%ERI_L_cmplx)
+  & INTEGd%ERI_L_cmplx,INTEGd%ERI_Jsr_cmplx,INTEGd%ERI_Lsr_cmplx)
  else
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_dm,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr)
@@ -412,6 +412,15 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   write(msg,'(a,f15.6)') 'Error z-residues        =      ',sumdiff_z
   call write_output(msg)
   write(msg,'(a,f19.10)') 'Energy difference amp. opt.=',Ediff
+  call write_output(msg)
+  write(msg,'(a)') 'Current occ. numbers '
+  call write_output(msg)
+  do iorb=1,(RDMd%NBF_occ/10)*10,10
+   write(msg,'(f12.6,9f11.6)') two*RDMd%occ(iorb:iorb+9)
+   call write_output(msg)
+  enddo
+  iorb=(RDMd%NBF_occ/10)*10+1
+  write(msg,'(f12.6,*(f11.6))') two*RDMd%occ(iorb:)
   call write_output(msg)
  endif
  write(msg,'(a,i6)') 'Number of global iter. ',iter_global

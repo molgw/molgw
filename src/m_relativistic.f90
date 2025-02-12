@@ -711,15 +711,15 @@ subroutine relativistic_init(basis,is_x2c,electrons_in,nstate,c_matrix,s_matrix,
    enddo
    U_mat=matmul(Tmp_matrix,U_mat)
    Tmp_matrix=matmul(U_mat,transpose(conjg(U_mat)))
-   do ibf=1,nbasis_rkb
-    do jbf=1,nbasis_rkb
+   do ibf=1,nstate_rkb
+    do jbf=1,nstate_rkb
      if(ibf==jbf) then
       if(abs(Tmp_matrix(ibf,jbf)-1.0d0)>min_overlap) then
-       write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,s_matrix(ibf,jbf)
+       write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,Tmp_matrix(ibf,jbf)
       endif
      else
       if(abs(Tmp_matrix(ibf,jbf))>min_overlap) then
-       write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,s_matrix(ibf,jbf)
+       write(stdout,'(a,i5,i5,2f10.5)') ' Error in U matrix',ibf,jbf,Tmp_matrix(ibf,jbf)
       endif
      endif
     enddo
