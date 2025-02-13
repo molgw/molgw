@@ -419,16 +419,18 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   type(spectral_function),intent(inout) :: wpol
   type(selfenergy_grid),intent(inout) :: se
   !=====
+  logical,parameter       :: SCREENED = .FALSE. ! .TRUE. ! .FALSE.
   integer                 :: nstate
   integer                 :: iomega
   complex(dp),allocatable :: sigma_sosex(:,:,:,:)
   complex(dp),allocatable :: sigma_sox(:,:,:,:)
   integer                 :: astate,bstate,cstate
   integer                 :: istate,jstate,kstate,pspin,spole,tpole
-  integer                 :: pstate, qstate
+  integer                 :: pstate, qstate, ustate
+  integer                 :: ibf_auxil
   real(dp),allocatable    :: w_s(:,:)
   real(dp)                :: vcoul, vcoul1, vcoul2
-  real(dp)                :: Omega_s
+  real(dp)                :: Omega_s, norm
   real(dp)                :: ea, eb, ec, ei, ej, ek
   complex(dp),allocatable :: omega(:)
   ! Store weights for analysis
@@ -445,7 +447,9 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   real(dp),allocatable    :: w_ovo_hhp(:,:,:)
   real(dp),allocatable    :: w_o_hpl(:,:,:)
   real(dp),allocatable    :: w_v_ppl(:,:,:)
+  real(dp),allocatable    :: chi_static(:,:), chi_up(:,:,:), up(:,:,:)
   integer                 :: file
+  integer                 :: state_range, nstate2
   character(len=3)        :: ctmp
   !=====
 
@@ -475,6 +479,37 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
     call die('sosex_selfenergy_analyzed: auxil_basis is compulsory')
   endif
 
+  if( SCREENED ) then
+    call issue_warning('hardcoded: use a statically screened Coulomb interaction')
+    call clean_allocate('chi static',chi_static,nauxil_global,nauxil_global)
+    call wpol%evaluate((0.0_dp,0.0_dp),chi_static)
+    do ibf_auxil=1,nauxil_global
+      chi_static(ibf_auxil,ibf_auxil) = chi_static(ibf_auxil,ibf_auxil) + 1.0_dp
+    enddo
+    allocate(up(nauxil_global,ncore_G+1:nvirtual_G-1,nsemin:nsemax))
+    allocate(chi_up(nauxil_global,ncore_G+1:nvirtual_G-1,nsemin:nsemax))
+    state_range = nvirtual_G - ncore_G-1
+    nstate2 = state_range * ( nsemax - nsemin +1 )
+    do pstate=nsemin,nsemax
+      do ustate=ncore_G+1,nvirtual_G-1
+        up(:,ustate,pstate) = eri_3center_eigen(:,ustate,pstate,1)
+      enddo
+    enddo
+    call DGEMM('T','N',nauxil_global,nstate2,nauxil_global, &
+                1.0_dp,chi_static,nauxil_global, &
+                       up,nauxil_global, &
+                0.0_dp,chi_up,nauxil_global)
+    deallocate(up)
+    call clean_deallocate('chi static',chi_static)
+  else
+    allocate(chi_up(nauxil_global,ncore_G+1:nvirtual_G-1,nsemin:nsemax))
+    do pstate=nsemin,nsemax
+      do ustate=ncore_G+1,nvirtual_G-1
+        chi_up(:,ustate,pstate) = eri_3center_eigen(:,ustate,pstate,1)
+      enddo
+    enddo
+  endif
+
   ! Only poorman parallelization is authorized here
   if( poorman%nproc /= world%nproc ) then
     call die('sosex_selfenergy_analyzed: poorman parallelization is compulsory')
@@ -486,7 +521,7 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
   allocate(omega(-se%nomega:se%nomega))
   !
   !
-  allocate(sigma_sosex(-se%nomega:se%nomega,nsemin:nsemax,nspin,4))
+  allocate(sigma_sosex(-se%nomega:se%nomega,nsemin:nsemax,nspin,6))
   allocate(sigma_sox(-se%nomega:se%nomega,nsemin:nsemax,nspin,2))
   sigma_sosex(:,:,:,:) = 0.0_dp
   sigma_sox(:,:,:,:)   = 0.0_dp
@@ -548,7 +583,8 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
           ! calculate only the diagonal!
           qstate = pstate
 
-          vcoul1 = eri_eigen(pstate,istate,pspin,bstate,kstate,pspin)
+          !vcoul1 = eri_eigen(pstate,istate,pspin,bstate,kstate,pspin)
+          vcoul1 = DOT_PRODUCT(chi_up(:,istate,pstate), eri_3center_eigen(:,bstate,kstate,pspin))
           vcoul2 = eri_eigen(istate,bstate,pspin,kstate,qstate,pspin)
 
           sigma_sox(:,pstate,pspin,1) = sigma_sox(:,pstate,pspin,1) &
@@ -608,7 +644,8 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
           ! calculate only the diagonal!
           qstate = pstate
 
-          vcoul1 = eri_eigen(pstate,astate,pspin,jstate,cstate,pspin)
+          !vcoul1 = eri_eigen(pstate,astate,pspin,jstate,cstate,pspin)
+          vcoul1 = DOT_PRODUCT(chi_up(:,astate,pstate), eri_3center_eigen(:,jstate,cstate,pspin))
           vcoul2 = eri_eigen(astate,jstate,pspin,cstate,qstate,pspin)
 
           sigma_sox(:,pstate,pspin,2) = sigma_sox(:,pstate,pspin,2) &
@@ -719,7 +756,8 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
               ! calculate only the diagonal !
               qstate = pstate
 
-              vcoul = eri_eigen(istate,pstate,pspin,bstate,kstate,pspin)
+              !vcoul = eri_eigen(istate,pstate,pspin,bstate,kstate,pspin)
+              vcoul = DOT_PRODUCT(chi_up(:,istate,pstate), eri_3center_eigen(:,bstate,kstate,pspin))
 
 !             sigma_sosex(:,pstate,pspin,1) = sigma_sosex(:,pstate,pspin,1) &
 !                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
@@ -733,11 +771,15 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
             sigma_sosex(:,pstate,pspin,1) = sigma_sosex(:,pstate,pspin,1) &
                        + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
                          * ( &
+                            - 1.0_dp / ( omega(:) - ek + Omega_s - ieta ) &
+                                     / ( ei - eb + Omega_s + ieta ) &
+                            )
+            sigma_sosex(:,pstate,pspin,5) = sigma_sosex(:,pstate,pspin,5) &
+                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
+                         * ( &
                               1.0_dp / ( omega(:) - ei + eb - ek - ieta ) &
                                 * (-2.0_dp) * Omega_s / ( ei - eb - Omega_s + ieta ) &
                                                       / ( ei - eb + Omega_s + ieta ) &
-                            - 1.0_dp / ( omega(:) - ek + Omega_s - ieta ) &
-                                     / ( ei - eb + Omega_s + ieta ) &
                             )
               w_ovo_hhp(kstate,tpole,pstate) = w_ovo_hhp(kstate,tpole,pstate) &
                        + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
@@ -773,7 +815,8 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
               ! calculate only the diagonal !
               qstate = pstate
 
-              vcoul = eri_eigen(astate,pstate,pspin,jstate,cstate,pspin)
+              !vcoul = eri_eigen(astate,pstate,pspin,jstate,cstate,pspin)
+              vcoul = DOT_PRODUCT(chi_up(:,astate,pstate), eri_3center_eigen(:,jstate,cstate,pspin))
 
               !sigma_sosex(:,pstate,pspin,2) = sigma_sosex(:,pstate,pspin,2) &
               !         + w_s(cstate,qstate) * w_s(astate,jstate) * vcoul &
@@ -783,11 +826,16 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
               !            -1.0_dp / ( se%energy0(pstate,pspin) + se%omega(:) - energy(cstate,pspin) - Omega_s + ieta ) )
               sigma_sosex(:,pstate,pspin,2) = sigma_sosex(:,pstate,pspin,2) &
                          + w_s(cstate,qstate) * w_s(astate,jstate) * vcoul &
-                           * ( 1.0_dp / ( omega(:) - ea + ej - ec + ieta ) &
+                           * ( &
+                                1.0_dp / ( omega(:) - ec - Omega_s + ieta ) &
+                                       / ( ea - ej - Omega_s - ieta ) &
+                              )
+              sigma_sosex(:,pstate,pspin,6) = sigma_sosex(:,pstate,pspin,6) &
+                         + w_s(cstate,qstate) * w_s(astate,jstate) * vcoul &
+                           * ( &
+                                1.0_dp / ( omega(:) - ea + ej - ec + ieta ) &
                                * (-2.0_dp) * Omega_s / ( ea - ej + Omega_s + ieta ) &
                                                      / ( ea - ej - Omega_s + ieta ) &
-                              + 1.0_dp / ( omega(:) - ec - Omega_s + ieta ) &
-                                       / ( ea - ej - Omega_s - ieta ) &
                               )
               w_vov_pph(cstate,tpole,pstate) = w_vov_pph(cstate,tpole,pstate) &
                          + w_s(cstate,qstate) * w_s(astate,jstate) * vcoul &
@@ -818,7 +866,8 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
               ! calculate only the diagonal !
               qstate = pstate
 
-              vcoul = eri_eigen(istate,pstate,pspin,bstate,cstate,pspin)
+              !vcoul = eri_eigen(istate,pstate,pspin,bstate,cstate,pspin)
+              vcoul = DOT_PRODUCT(chi_up(:,istate,pstate), eri_3center_eigen(:,bstate,cstate,pspin))
 
               sigma_sosex(:,pstate,pspin,3) = sigma_sosex(:,pstate,pspin,3) &
                        + w_s(cstate,qstate) * w_s(bstate,istate) * vcoul &
@@ -849,7 +898,8 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
               ! calculate only the diagonal !
               qstate = pstate
 
-              vcoul = eri_eigen(astate,pstate,pspin,jstate,kstate,pspin)
+              !vcoul = eri_eigen(astate,pstate,pspin,jstate,kstate,pspin)
+              vcoul = DOT_PRODUCT(chi_up(:,astate,pstate), eri_3center_eigen(:,jstate,kstate,pspin))
 
               sigma_sosex(:,pstate,pspin,4) = sigma_sosex(:,pstate,pspin,4) &
                        + w_s(kstate,qstate) * w_s(astate,jstate) * vcoul &
@@ -890,6 +940,13 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
         astate = wpol%transition_table(2,spole)
         ei = energy(istate,1)
         ea = energy(astate,1)
+        norm = ABS(w_o_hpl(kstate,spole,pstate)) &
+              + ABS(w_voo_hpl(kstate,spole,pstate)) &
+              + ABS(w_ovo_hpl(kstate,spole,pstate)) &
+              + ABS(w_ovo_hhp(kstate,spole,pstate)) &
+              + ABS(w_ovo_hhp_ring(kstate,spole,pstate)) &
+              + ABS(w_ovo_hhp_sox(kstate,spole,pstate))
+        if( norm < 1.0e-5_dp ) cycle
         write(file,'(i4,1x,i4,1x,*(f14.6))') kstate,spole,&
                                   w_o_hpl(kstate,spole,pstate),&
                                   w_voo_hpl(kstate,spole,pstate),&
@@ -917,6 +974,13 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
         astate = wpol%transition_table(2,spole)
         ei = energy(istate,1)
         ea = energy(astate,1)
+        norm = ABS(w_v_ppl(cstate,spole,pstate)) &
+              + ABS(w_ovv_ppl(cstate,spole,pstate)) &
+              + ABS(w_vov_ppl(cstate,spole,pstate)) &
+              + ABS(w_vov_pph(cstate,spole,pstate)) &
+              + ABS(w_vov_pph_ring(cstate,spole,pstate)) &
+              + ABS(w_vov_pph_sox(cstate,spole,pstate))
+        if( norm < 1.0e-5_dp ) cycle
         write(file,'(i4,1x,i4,1x,*(f14.6))') cstate,spole,&
                                   w_v_ppl(cstate,spole,pstate),&
                                   w_ovv_ppl(cstate,spole,pstate),&
@@ -933,7 +997,10 @@ subroutine sosex_selfenergy_analyzed(basis,occupation,energy,c_matrix,wpol,se)
     close(file)
 
     open(newunit=file, file='selfenergy_GWSOSEX_parts_state' // ctmp // '.dat', action='write')
-    write(file,'(a)') '# omega    SOXovo   SOXvov   SOSEXovo   SOSEXvov   SOSEXovv   SOSEXvoo'
+    write(file,'(*(a13))') '# omega', 'SOXovo  ', 'SOXvov  ', &
+                           'SOSEXovo_pl', 'SOSEXvov_pl', &
+                           'SOSEXovv_pl', 'SOSEXvoo_pl', &
+                           'SOSEXovo_hp', 'SOSEXvov_hp'
     do iomega=-se%nomega,se%nomega
       write(file,'(*(1x,f12.6))') REAL(se%energy0(pstate,1) + se%omega(iomega) ) * Ha_eV, &
                                   sigma_sox(iomega,pstate,1,:)%re * Ha_eV, &

@@ -203,7 +203,6 @@ subroutine invert_cdp(matrix,matrix_inv)
   complex(dp),intent(in)  :: matrix(:,:)
   complex(dp),intent(out) :: matrix_inv(:,:)
   !=====
-  integer                 :: info
   !=====
 
   matrix_inv(:,:) = matrix(:,:)
@@ -322,7 +321,6 @@ subroutine diagonalize_dp(flavor,matrix,eigval,eigvec)
   real(dp),external    :: DLAMCH
   integer              :: neig
   real(sp),allocatable :: work_sp(:)
-  real(sp),allocatable :: matrix_sp(:,:)
   real(sp),allocatable :: eigval_sp(:)
   real(sp),allocatable :: eigvec_sp(:,:)
   !=====

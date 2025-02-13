@@ -507,7 +507,7 @@ subroutine output_qp_energy_yaml(calcname,energy0,exchange_m_vxc,se,energy1,ener
   real(dp),intent(in)          :: energy1(:,:)
   real(dp),intent(in),optional :: energy2(:,:),zz(:,:)
   !=====
-  integer          :: pstate,ii,pspin
+  integer          :: pstate,pspin
   real(dp)         :: sigc_qp
   character(len=6) :: char6
   !=====
@@ -523,7 +523,7 @@ subroutine output_qp_energy_yaml(calcname,energy0,exchange_m_vxc,se,energy1,ener
       if( PRESENT(energy2)) then
         sigc_qp = energy2(pstate,pspin) - energy0(pstate,pspin) - exchange_m_vxc(pstate,pspin)
       else
-        sigc_qp = se%sigma(0,pstate,pspin)
+        sigc_qp = se%sigma(0,pstate,pspin)%re
       endif
       write(char6,'(i6)') pstate
       write(unit_yaml,'(12x,a6,a,1x,es18.8)') ADJUSTL(char6),':',sigc_qp * Ha_eV
@@ -565,10 +565,9 @@ subroutine se_init(se,selfenergy_technique,energy0)
   !=====
   real(dp),parameter   :: alpha=1.0_dp
   real(dp),parameter   :: beta=1.0_dp
-  integer              :: iomega,pstate
+  integer              :: iomega
   real(dp),allocatable :: omega_gaussleg(:)
   real(dp)             :: efermi
-  integer              :: iunittmp
   !=====
 
   se%nomega_calc = 0

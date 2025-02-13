@@ -971,12 +971,12 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
 
   if( ALLOCATED(conf_p%keyud) ) then
     ns_occ  = conf_p%nstate
-    write(stdout,'(1x,a,i4)') 'Hole     part will evaluated with excitations: ',ns_occ
+    write(stdout,'(1x,a,i4)') 'Hole     part will be evaluated with excitations: ',ns_occ
     write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_p%nelec,'): ',conf_p%sz
   endif
   if( ALLOCATED(conf_m%keyud) ) then
     ns_virt = conf_m%nstate
-    write(stdout,'(1x,a,i4)') 'Electron part will evaluated with excitations: ',ns_virt
+    write(stdout,'(1x,a,i4)') 'Electron part will be evaluated with excitations: ',ns_virt
     write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_m%nelec,'): ',conf_m%sz
   endif
 
@@ -1699,9 +1699,9 @@ subroutine get_ab()
 end subroutine get_ab
 
 #else
-eigval(:)   = 0.0_dp
-eigvec(:,:) = 0.0_dp
-call die('diagonalize_davidson_ci: only works with a compilation using SCALAPACK')
+  eigval(:)   = 0.0_dp
+  eigvec(:,:) = 0.0_dp
+  call die('diagonalize_davidson_ci: only works with a compilation using SCALAPACK')
 #endif
 
 end subroutine diagonalize_davidson_ci
