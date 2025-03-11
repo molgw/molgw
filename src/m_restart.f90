@@ -145,7 +145,7 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
   !=====
   integer                    :: restartfile
   integer                    :: ispin,istate,ibf,nstate_local
-  logical                    :: file_exists,same_scf,same_basis,same_geometry
+  logical                    :: file_exists,same_scf,same_basis,same_geometry,same_spin
   integer                    :: nstate
   integer                    :: restart_version_read
   integer                    :: restart_type_read
@@ -240,6 +240,7 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
   same_basis = compare_basis_set(basis,basis_read)
   if( .NOT. same_basis) then
     call issue_warning('RESTART file: Basis set has changed')
+    restart_type = SMALL_RESTART
   endif
   if( basis%gaussian_type /= basis_read%gaussian_type ) then
     write(stdout,*) 'The basis type (cartesian or pure) cannot be changed when restarting from a previous calculation'
@@ -249,9 +250,10 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
 
   ! Spin channels
   read(restartfile) nspin_read
-  if( nspin /= nspin_read ) then
+  same_spin = ( nspin == nspin_read )
+  if( .NOT. same_spin ) then
     call issue_warning('RESTART file: Number of spin channels has changed')
-    call die('not implemented yet')
+    restart_type = SMALL_RESTART
   endif
 
 
@@ -259,19 +261,22 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
   read(restartfile) nstate_read
   if( nstate /= nstate_read ) then
     call issue_warning('RESTART file: Number of states has changed')
+    restart_type = SMALL_RESTART
   endif
 
 
   ! Occupations
   allocate(occupation_read(nstate_read,nspin_read))
   read(restartfile) occupation_read(:,:)
-  if( ANY( ABS( occupation_read(1:MIN(nstate_read,nstate),:) - occupation(1:MIN(nstate_read,nstate),:) )  > 1.0e-5_dp ) ) then
+  if( ANY( ABS( occupation_read(1:MIN(nstate_read,nstate),1) - occupation(1:MIN(nstate_read,nstate),1) )  > 1.0e-5_dp ) ) then
     if( temperature > 1.0e-8_dp) then
-      occupation(1:MIN(nstate_read,nstate),:)=occupation_read(1:MIN(nstate_read,nstate),:)
+      occupation(1:MIN(nstate_read,nstate),1) = occupation_read(1:MIN(nstate_read,nstate),1)
+      occupation(1:MIN(nstate_read,nstate),nspin) = occupation_read(1:MIN(nstate_read,nstate),nspin_read)
       write(stdout,'(1x,a)') "Reading occupations from a RESTART file"
       call dump_out_occupation('=== Occupations ===',occupation)
     else
       call issue_warning('RESTART file: Occupations have changed')
+      restart_type = SMALL_RESTART
     endif
   endif
   deallocate(occupation_read)
@@ -281,7 +286,8 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
   allocate(energy_read(nstate_read,nspin_read))
   read(restartfile) energy_read(:,:)
   energy(:,:) = 1000.0_dp
-  energy(1:MIN(nstate,nstate_read),:) = energy_read(1:MIN(nstate,nstate_read),:)
+  energy(1:MIN(nstate,nstate_read),1) = energy_read(1:MIN(nstate,nstate_read),1)
+  energy(1:MIN(nstate,nstate_read),nspin) = energy_read(1:MIN(nstate,nstate_read),nspin_read)
   deallocate(energy_read)
 
 
@@ -299,18 +305,19 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
 
   if( same_basis ) then
     c_matrix(:,:,:) = 0.0_dp
-    do ispin=1,nspin_read
-      do istate=1,MIN(nstate_local,nstate)
-        c_matrix(1:MIN(basis_read%nbf,basis%nbf),istate,ispin) &
-            = c_matrix_read(1:MIN(basis_read%nbf,basis%nbf),istate,ispin)
-      enddo
+    do istate=1,MIN(nstate_local,nstate)
+      c_matrix(1:MIN(basis_read%nbf,basis%nbf),istate,1) &
+          = c_matrix_read(1:MIN(basis_read%nbf,basis%nbf),istate,1)
     enddo
+    do istate=1,MIN(nstate_local,nstate)
+      c_matrix(1:MIN(basis_read%nbf,basis%nbf),istate,nspin) &
+          = c_matrix_read(1:MIN(basis_read%nbf,basis%nbf),istate,nspin_read)
+    enddo
+
     ! Fill the rest of the array with identity
     if( nstate_local < nstate ) then
-      do ispin=1,nspin_read
-        do istate=nstate_local+1,nstate
-          c_matrix(istate,istate,ispin) = 1.0_dp
-        enddo
+      do istate=nstate_local+1,nstate
+        c_matrix(istate,istate,:) = 1.0_dp
       enddo
     endif
   else
@@ -326,13 +333,13 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
     ! Get the scalar products between the old and the new basis sets
     ! Be aware: this is a rectangular matrix
     call setup_overlap_mixedbasis(basis,basis_read,overlap_mixedbasis)
-    do ispin=1,nspin_read
-      c_matrix(:,1:nstate_local,ispin) = MATMUL(overlapm1(:,:), &
-                                             MATMUL(overlap_mixedbasis(:,:) , c_matrix_read(:,1:nstate_local,ispin) ) )
-      ! Fill the rest of the array with identity
-      do istate=nstate_local+1,nstate
-        c_matrix(istate,istate,ispin) = 1.0_dp
-      enddo
+    c_matrix(:,1:nstate_local,1) = MATMUL(overlapm1(:,:), &
+                                         MATMUL(overlap_mixedbasis(:,:) , c_matrix_read(:,1:nstate_local,1) ) )
+    c_matrix(:,1:nstate_local,nspin) = MATMUL(overlapm1(:,:), &
+                                         MATMUL(overlap_mixedbasis(:,:) , c_matrix_read(:,1:nstate_local,nspin_read) ) )
+    ! Fill the rest of the array with identity
+    do istate=nstate_local+1,nstate
+      c_matrix(istate,istate,:) = 1.0_dp
     enddo
     deallocate(overlapm1,overlap_mixedbasis)
 
@@ -343,7 +350,8 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
   endif
 
 
-  if( ignore_bigrestart_ .OR. restart_type_read == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) ) then
+  if( ignore_bigrestart_ .OR. restart_type_read == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) &
+      .OR. .NOT. same_spin ) then
 
     close(restartfile)
     return

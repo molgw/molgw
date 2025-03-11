@@ -110,6 +110,12 @@ SCF Total Energy          , -76.3408991125     , 0 , 1.0e-7
 h2o_pbe0_basis_restart.in, PBE0 water restarting from a previous run with a smaller basis, restart
 SCF Total Energy          , -76.3527592768     , 0 , 1.0e-7
 
+propanol_neutral.in       , Neutral propanol (generate RESTART)
+SCF Total Energy          , -194.1549010191    , 0 , 1.0e-7
+
+propanol_cation_restart.in, propanol cation (use neutral RESTART), restart
+SCF Total Energy          , -193.7189853894    , 0 , 1.0e-7
+
 na08_damping.in           , LDA Na8 cluster with density damping stopped after 2 SCF cycles
 SCF Total Energy          , -1232.7456930389   , 0 , 1.0e-7
 Convergence criterium     ,     6.45101E+02    , 0 , 1.0e-1
