@@ -139,9 +139,10 @@ end function double_factorial
 
 
 !=========================================================================
-subroutine setup_cart_to_pure_transforms()
+subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
   implicit none
 
+  logical, intent(in) :: pypzpx_order_in
   !=====
   integer  :: ni,nic
   integer  :: ii,jj,kk
@@ -238,6 +239,19 @@ subroutine setup_cart_to_pure_transforms()
       enddo
     enddo
   enddo
+
+  ! Fix the p-orbital ordering if necessary
+  if( .NOT. pypzpx_order_in ) then
+    cart_to_pure(1,CARTG)%matrix(1,:) = 0.0_dp
+    cart_to_pure(1,CARTG)%matrix(1,3) = 1.0_dp
+    cart_to_pure(1,CARTG)%matrix(2,1) = 1.0_dp
+    cart_to_pure(1,CARTG)%matrix(3,2) = 1.0_dp
+
+    cart_to_pure_norm(1,PUREG)%matrix(1,:) = 0.0_dp
+    cart_to_pure_norm(1,PUREG)%matrix(1,3) = 1.0_dp / SQRT( double_factorial(1) )
+    cart_to_pure_norm(1,PUREG)%matrix(2,1) = 1.0_dp / SQRT( double_factorial(1) )
+    cart_to_pure_norm(1,PUREG)%matrix(3,2) = 1.0_dp / SQRT( double_factorial(1) )
+  endif
 
 
   !
