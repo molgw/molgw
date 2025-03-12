@@ -131,7 +131,7 @@ program molgw
 
   !
   ! Build all the Cartesian to Pure Gaussian transforms
-  call setup_cart_to_pure_transforms()
+  call setup_cart_to_pure_transforms(pypzpx_order)
 
   !
   ! Prepare relaxation with LBFGS

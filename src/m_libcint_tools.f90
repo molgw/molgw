@@ -12,6 +12,8 @@ module m_libcint_tools
   use m_basis_set
   use m_atoms
 
+  logical,protected :: pypzpx_order = .TRUE.
+
   integer,private,parameter :: LMAX_LIBCINT = 8
   ! LIBCINT normalization is difficult to guess for pure gaussians
   ! So we obtain it from calls to the overlap rountine
@@ -325,10 +327,15 @@ subroutine check_capability_libcint(lmax)
   info = cint1e_ovlp_sph(ovlp, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env)
 #endif
 
-  libcint_has_correct_ordering = ABS( ovlp(5) - ref_value_pz_overlap ) < 1.0e-10_dp
+  pypzpx_order = ABS( ovlp(5) - ref_value_pz_overlap ) < 1.0e-10_dp
 
-  if( .NOT. libcint_has_correct_ordering ) then
-    call die('check_capability_libcint: your LIBCINT compilation has incompatible p-orbital ordering. ' // &
+  if( .NOT. pypzpx_order ) then
+    if( ABS( ovlp(9) - ref_value_pz_overlap ) > 1.0e-10_dp ) then
+      call die('check_capability_libcint: could not determine the p-orbital ordering of LIBCINT. ' // &
+               'Please check your LIBCINT compilation')
+    endif
+
+    call issue_warning('check_capability_libcint: your LIBCINT compilation has incompatible p-orbital ordering. ' // &
              'Please recompile it with -DPYPZPX=1')
   endif
   deallocate(ovlp)
@@ -1179,6 +1186,7 @@ subroutine transform_libcint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_o
   integer :: n1,n2,n1c,n2c
   integer :: ii,i1,i2
   integer :: gt_tag
+  real(dp), allocatable :: matrix_tmp(:,:)
   !=====
 
   gt_tag = get_gaussian_type_tag(gaussian_type)
@@ -1206,6 +1214,22 @@ subroutine transform_libcint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_o
         matrix_out(i1,i2) = array_in(ii) * libcint_pure_norm(am1) * libcint_pure_norm(am2)
       enddo
     enddo
+
+    ! Special treatment for p-orbital in the libcint ordering
+    if( (am1 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(1,:) = matrix_tmp(2,:)
+      matrix_out(2,:) = matrix_tmp(3,:)
+      matrix_out(3,:) = matrix_tmp(1,:)
+      deallocate(matrix_tmp)
+    endif
+    if( (am2 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(:,1) = matrix_tmp(:,2)
+      matrix_out(:,2) = matrix_tmp(:,3)
+      matrix_out(:,3) = matrix_tmp(:,1)
+      deallocate(matrix_tmp)
+    endif
   endif
 
 
@@ -1223,8 +1247,7 @@ subroutine transform_libcint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_ri
   integer :: n1,n2,n3,n1c,n2c,n3c
   integer :: i1,i2,i3,ii
   integer :: gt_tagl,gt_tagr
-  real(dp),allocatable :: matrix_tmp1(:,:)
-  real(dp),allocatable :: matrix_tmp2(:,:)
+  real(dp),allocatable :: matrix_tmp(:,:,:)
   !=====
 
   gt_tagl = get_gaussian_type_tag(gaussian_type_left)
@@ -1268,6 +1291,29 @@ subroutine transform_libcint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_ri
         enddo
       enddo
     enddo
+
+    ! Special treatment for p-orbital in the libcint ordering
+    if( (am1 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(1,:,:) = matrix_tmp(2,:,:)
+      matrix_out(2,:,:) = matrix_tmp(3,:,:)
+      matrix_out(3,:,:) = matrix_tmp(1,:,:)
+      deallocate(matrix_tmp)
+    endif
+    if( (am2 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(:,1,:) = matrix_tmp(:,2,:)
+      matrix_out(:,2,:) = matrix_tmp(:,3,:)
+      matrix_out(:,3,:) = matrix_tmp(:,1,:)
+      deallocate(matrix_tmp)
+    endif
+    if( (am3 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(:,:,1) = matrix_tmp(:,:,2)
+      matrix_out(:,:,2) = matrix_tmp(:,:,3)
+      matrix_out(:,:,3) = matrix_tmp(:,:,1)
+      deallocate(matrix_tmp)
+    endif
   endif
 
 end subroutine transform_libcint_to_molgw_3d

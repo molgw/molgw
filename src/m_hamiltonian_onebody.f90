@@ -40,7 +40,7 @@ contains
 subroutine setup_overlap(basis,s_matrix)
   implicit none
   type(basis_set),intent(in) :: basis
-  real(dp),intent(out)       :: s_matrix(basis%nbf,basis%nbf)
+  real(dp),intent(out)       :: s_matrix(:,:)
   !=====
   integer              :: ishell,jshell
   integer              :: ibf1,ibf2,jbf1,jbf2
