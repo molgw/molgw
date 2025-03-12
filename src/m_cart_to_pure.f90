@@ -12,14 +12,14 @@ module m_cart_to_pure
   use m_warning
 
   type transform
-    real(dp),allocatable    :: matrix(:,:)
+    real(dp), allocatable :: matrix(:,:)
   end type
 
-  type(transform),allocatable,protected :: cart_to_pure     (:,:)
-  type(transform),allocatable,protected :: cart_to_pure_norm(:,:)
+  type(transform), allocatable, protected :: cart_to_pure     (:,:)
+  type(transform), allocatable, protected :: cart_to_pure_norm(:,:)
 
-  integer,parameter         :: CARTG=1
-  integer,parameter         :: PUREG=2
+  integer, parameter :: CARTG = 1
+  integer, parameter :: PUREG = 2
 
 
 contains
@@ -242,11 +242,6 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
 
   ! Fix the p-orbital ordering if necessary
   if( .NOT. pypzpx_order_in ) then
-    cart_to_pure(1,CARTG)%matrix(1,:) = 0.0_dp
-    cart_to_pure(1,CARTG)%matrix(1,3) = 1.0_dp
-    cart_to_pure(1,CARTG)%matrix(2,1) = 1.0_dp
-    cart_to_pure(1,CARTG)%matrix(3,2) = 1.0_dp
-
     cart_to_pure_norm(1,PUREG)%matrix(1,:) = 0.0_dp
     cart_to_pure_norm(1,PUREG)%matrix(1,3) = 1.0_dp / SQRT( double_factorial(1) )
     cart_to_pure_norm(1,PUREG)%matrix(2,1) = 1.0_dp / SQRT( double_factorial(1) )

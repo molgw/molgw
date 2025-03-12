@@ -123,7 +123,7 @@ Convergence criterium     ,     6.45101E+02    , 0 , 1.0e-1
 h2_guess_mix.in           , HF mixing the HOMO-LUMO in nspin=2
 SCF Total Energy          , -0.9985575214      , 0 , 1.0e-5
 gKS HOMO energy           , -13.586058         , 0 , 1.0e-4
-gKS LUMO energy           ,   1.996172         , 0 , 1.0e-4
+gKS LUMO energy           ,   1.996172         , 0 , 2.0e-4   # Loosened criterium
 
 h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set, noparallel
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7

@@ -2090,7 +2090,7 @@ subroutine init_c_matrix(basis,occupation,x_matrix,hkin,hnuc,c_matrix)
 
   case('GAUSSIAN')
     write(file_name,'(2a)') TRIM(output_name),'fchk'
-    if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
+    if( basis%nbf==nstate .AND. basis%gaussian_type == 'CART' ) then
       call read_guess_fchk(c_matrix,file_name,basis,nstate,nspin)
     else
       write(*,'(/,a)') ' Comment: The number of states is not equal to the number of basis functions'
@@ -2112,29 +2112,29 @@ subroutine init_c_matrix(basis,occupation,x_matrix,hkin,hnuc,c_matrix)
   if(TRIM(init_hamiltonian)/='GAUSSIAN') c_matrix(:,:,nspin) = c_matrix(:,:,1)
 
   ! Mixing the HOMO-LUMO for GUESS='MIX' and spin-compensated systems
-  if( (TRIM(init_hamiltonian)=='MIX' .and. abs(magnetization) < 1.0e-8_dp) .and. nspin==2 ) then
+  if( (TRIM(init_hamiltonian) == 'MIX' .AND. abs(magnetization) < 1.0e-8_dp) .AND. nspin == 2 ) then
     write(stdout,'(a)') ' Guess including mixing the HOMO-LUMO'
     allocate(one_mo(basis%nbf))
     one_mo = zero
     ilumo = 0
     do istate=1,nstate
-      if(occupation(istate,2)<1e-8 .and. ilumo==0) then
-        ilumo=istate
+      if( occupation(istate,2) < 1e-8 .AND. ilumo == 0) then
+        ilumo = istate
       endif
     enddo
     write(stdout,'(a,i5)') ' LUMO state ',ilumo
     ! Spin channel 1
     ! New HOMO = 1/sqrt(2)  ( HOMO - LUMO )
     ! New LUMO = 1/sqrt(2)  ( HOMO + LUMO )
-    one_mo(:)=(c_matrix(:,ilumo-1,1)+c_matrix(:,ilumo,1))/sqrt(2.0_dp)
-    c_matrix(:,ilumo-1,1)=(c_matrix(:,ilumo-1,1)-c_matrix(:,ilumo,1))/sqrt(2.0_dp)
-    c_matrix(:,ilumo,1)=one_mo(:)
+    one_mo(:)             = ( c_matrix(:,ilumo-1,1) + c_matrix(:,ilumo,1) ) / SQRT(2.0_dp)
+    c_matrix(:,ilumo-1,1) = ( c_matrix(:,ilumo-1,1) - c_matrix(:,ilumo,1) ) / SQRT(2.0_dp)
+    c_matrix(:,ilumo,1)   = one_mo(:)
     ! Spin channel 2
     ! New HOMO = 1/sqrt(2)  ( HOMO + LUMO )
     ! New LUMO = 1/sqrt(2)  ( HOMO - LUMO )
-    one_mo(:)=(c_matrix(:,ilumo-1,2)+c_matrix(:,ilumo,2))/sqrt(2.0_dp)
-    c_matrix(:,ilumo,2)=(c_matrix(:,ilumo-1,2)-c_matrix(:,ilumo,2))/sqrt(2.0_dp)
-    c_matrix(:,ilumo-1,2)=one_mo(:)
+    one_mo(:)             = ( c_matrix(:,ilumo-1,2) + c_matrix(:,ilumo,2) ) / SQRT(2.0_dp)
+    c_matrix(:,ilumo,2)   = ( c_matrix(:,ilumo-1,2) - c_matrix(:,ilumo,2) ) / SQRT(2.0_dp)
+    c_matrix(:,ilumo-1,2) = one_mo(:)
     deallocate(one_mo)
   endif
 

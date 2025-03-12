@@ -1214,22 +1214,22 @@ subroutine transform_libcint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_o
         matrix_out(i1,i2) = array_in(ii) * libcint_pure_norm(am1) * libcint_pure_norm(am2)
       enddo
     enddo
-  endif
 
-  ! Special treatment for p-orbital in the libcint ordering
-  if( (am1 == 1) .AND. .NOT. pypzpx_order ) then
-    allocate(matrix_tmp, SOURCE=matrix_out)
-    matrix_out(1,:) = matrix_tmp(2,:)
-    matrix_out(2,:) = matrix_tmp(3,:)
-    matrix_out(3,:) = matrix_tmp(1,:)
-    deallocate(matrix_tmp)
-  endif
-  if( (am2 == 1) .AND. .NOT. pypzpx_order ) then
-    allocate(matrix_tmp, SOURCE=matrix_out)
-    matrix_out(:,1) = matrix_tmp(:,2)
-    matrix_out(:,2) = matrix_tmp(:,3)
-    matrix_out(:,3) = matrix_tmp(:,1)
-    deallocate(matrix_tmp)
+    ! Special treatment for p-orbital in the libcint ordering
+    if( (am1 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(1,:) = matrix_tmp(2,:)
+      matrix_out(2,:) = matrix_tmp(3,:)
+      matrix_out(3,:) = matrix_tmp(1,:)
+      deallocate(matrix_tmp)
+    endif
+    if( (am2 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(:,1) = matrix_tmp(:,2)
+      matrix_out(:,2) = matrix_tmp(:,3)
+      matrix_out(:,3) = matrix_tmp(:,1)
+      deallocate(matrix_tmp)
+    endif
   endif
 
 
