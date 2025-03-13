@@ -189,7 +189,7 @@ subroutine header()
 
   call GET_ENVIRONMENT_VARIABLE('OMP_STACKSIZE', omp_stacksize_string, status=omp_stacksize_status)
   if( omp_stacksize_status /= 0 ) then
-    call issue_warning('Using OPENMP but OMP_STACKSIZE environment not set. Default OMP_STACKSIZE is often too small.')
+    call issue_warning('Using OPENMP but OMP_STACKSIZE environment variable not set. Default OMP_STACKSIZE is often too small.')
   else
     len_stacksize = LEN_TRIM(omp_stacksize_string)
 
