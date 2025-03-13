@@ -45,7 +45,6 @@ module m_libcint_tools
   integer,private,parameter :: LIBCINT_env_size=100000
 
   logical,protected :: libcint_has_range_separation
-  logical,protected :: libcint_has_correct_ordering
 
   integer,external  :: cint2e_cart
   integer,external  :: cint2c2e_sph
@@ -282,6 +281,9 @@ subroutine check_capability_libcint(lmax)
   !
   ! Check out if LIBCINT has PYPZPX ordering for p shells
   !
+  ! Calculate a p - p overlap and check where is the pz-pz term
+  ! is it located in position 5 or 9?
+  !
   fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_C_DOUBLE
   off = LIBCINT_PTR_ENV_START
 
@@ -334,9 +336,6 @@ subroutine check_capability_libcint(lmax)
       call die('check_capability_libcint: could not determine the p-orbital ordering of LIBCINT. ' // &
                'Please check your LIBCINT compilation')
     endif
-
-    call issue_warning('check_capability_libcint: your LIBCINT compilation has incompatible p-orbital ordering. ' // &
-             'Please recompile it with -DPYPZPX=1')
   endif
   deallocate(ovlp)
 
