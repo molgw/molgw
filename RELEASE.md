@@ -26,6 +26,8 @@
   - `n_hist` -> `tddft_history`
 
 ### Changes affecting the compilation
+- Intel ifx compiler is supported
+- LLVM/flang compiler is supported
 - Different p-orbital orderings are handled. It's not necessary to compile LIBCINT with `-DPYPZPX=1` anymore.
 
 ### Changes affecting the developers
