@@ -449,17 +449,17 @@ real_spherical_harmonics.o: m_definitions.o real_spherical_harmonics.f90
 lebedev_quadrature.o: lebedev_quadrature.f
 	$(FC_W_OPTS) -c lebedev_quadrature.f $(LIBXC_INCS)
 
-libint_onebody.o: libint_molgw.h libint_onebody.cc
-	$(CXX_W_OPTS) -c libint_onebody.cc $(LIBINT_INCS)
+libint_onebody.o: libint_molgw.h libint_onebody.cpp
+	$(CXX_W_OPTS) -c libint_onebody.cpp $(LIBINT_INCS)
 
-libint_onebody_grad.o: libint_molgw.h libint_onebody_grad.cc
-	$(CXX_W_OPTS) -c libint_onebody_grad.cc $(LIBINT_INCS)
+libint_onebody_grad.o: libint_molgw.h libint_onebody_grad.cpp
+	$(CXX_W_OPTS) -c libint_onebody_grad.cpp $(LIBINT_INCS)
 
-libint_twobody.o: libint_molgw.h libint_twobody.cc
-	$(CXX_W_OPTS) -c libint_twobody.cc $(LIBINT_INCS)
+libint_twobody.o: libint_molgw.h libint_twobody.cpp
+	$(CXX_W_OPTS) -c libint_twobody.cpp $(LIBINT_INCS)
 
-libint_twobody_grad.o: libint_molgw.h libint_twobody_grad.cc
-	$(CXX_W_OPTS) -c libint_twobody_grad.cc $(LIBINT_INCS)
+libint_twobody_grad.o: libint_molgw.h libint_twobody_grad.cpp
+	$(CXX_W_OPTS) -c libint_twobody_grad.cpp $(LIBINT_INCS)
 
 basis_2_basisrel.o: ../utils/basis_2_basisrel.cpp
 	$(CXX) -c ../utils/basis_2_basisrel.cpp
@@ -598,7 +598,7 @@ archive:
             ../docs/ ../config/ ../Makefile  \
             ../tmp/molgw
 	cp -rp  ../src/*.py ../src/*.f90 ../src/*.f  \
-            ../src/*.cc ../src/*.h  \
+            ../src/*.cpp ../src/*.h  \
             ../src/Makefile \
             ../tmp/molgw/src
 	cp -rp  ../src/noft/*.F90 ../src/noft/*.F  \
