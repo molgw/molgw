@@ -642,7 +642,7 @@ subroutine init_dft_type(key)
   case('RSH-NOFT')
     dft_xc(1)%id = XC_GGA_X_ITYH
     dft_xc(2)%id = XC_GGA_C_LYPR
-    beta_hybrid   = 1.00_dp
+    if( abs( beta_hybrid ) < tol8 ) beta_hybrid=1.00_dp
     dft_xc(1)%coeff = beta_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
     if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=1.00_dp
