@@ -808,7 +808,8 @@ subroutine reshuffle_distribution_3center()
   !=====
 
 #if defined(HAVE_SCALAPACK)
-  write(stdout, '(/,a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ', nprow_eri3_ao, ' x ', npcol_eri3_ao
+  write(stdout, '(/,a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ', &
+                                 nprow_eri3_ao, ' x ', npcol_eri3_ao
 
   if( nprow_eri3_ao == nprow_3center .AND. npcol_eri3_ao == npcol_3center .AND. MB_eri3_ao == MB_3center ) then
     write(stdout, *) 'Reshuffling not needed'
@@ -828,7 +829,8 @@ subroutine reshuffle_distribution_3center()
   if( cntxt_3center > 0 ) then
     call move_alloc(eri_3center, eri_3center_tmp)
 
-    call DESCINIT(desc3final, npair, nauxil_global, MB_eri3_ao, NB_eri3_ao, first_row, first_col, cntxt_eri3_ao, MAX(1, mlocal), info)
+    call DESCINIT(desc3final, npair, nauxil_global, MB_eri3_ao, NB_eri3_ao, first_row, first_col, &
+                  cntxt_eri3_ao, MAX(1, mlocal), info)
 
     call clean_allocate('TMP 3-center integrals', eri_3center, mlocal, nlocal)
 
