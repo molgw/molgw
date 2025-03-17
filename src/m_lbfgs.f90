@@ -10,14 +10,14 @@
 module m_lbfgs
   use m_definitions
 
-  type,public :: lbfgs_state
+  type, public :: lbfgs_state
   integer              :: lbfgs_status
   integer              :: ndim
   integer              :: history_record
   integer              :: iter
   real(dp)             :: gtol
-  real(dp),allocatable :: diag(:)
-  real(dp),allocatable :: work(:)
+  real(dp), allocatable :: diag(:)
+  real(dp), allocatable :: work(:)
   real(dp)             :: line_stp
   real(dp)             :: line_stpmin
   real(dp)             :: line_stpmax
@@ -44,13 +44,13 @@ contains
 
 
 !=========================================================================
-subroutine lbfgs_init(lbfgs_plan,ndim,history_record,diag_guess)
+subroutine lbfgs_init(lbfgs_plan, ndim, history_record, diag_guess)
   implicit none
 
-  type(lbfgs_state),intent(inout) :: lbfgs_plan
-  integer,intent(in)              :: ndim
-  integer,intent(in)              :: history_record
-  real(dp),optional,intent(in)    :: diag_guess
+  type(lbfgs_state), intent(inout) :: lbfgs_plan
+  integer, intent(in)              :: ndim
+  integer, intent(in)              :: history_record
+  real(dp), optional, intent(in)    :: diag_guess
   !=====
   integer :: nwork
   !=====
@@ -82,7 +82,7 @@ end subroutine lbfgs_init
 !=========================================================================
 subroutine lbfgs_destroy(lbfgs_plan)
   implicit none
-  type(lbfgs_state),intent(inout) :: lbfgs_plan
+  type(lbfgs_state), intent(inout) :: lbfgs_plan
   !=====
 
   deallocate(lbfgs_plan%work)
@@ -92,12 +92,12 @@ end subroutine lbfgs_destroy
 
 
 !=========================================================================
-function lbfgs_execute(lbfgs_plan,x,f,gradf)
+function lbfgs_execute(lbfgs_plan, x, f, gradf)
   implicit none
-  type(lbfgs_state),intent(inout) :: lbfgs_plan
-  real(dp),intent(inout)          :: x(lbfgs_plan%ndim)
-  real(dp),intent(in)             :: f
-  real(dp),intent(in)             :: gradf(lbfgs_plan%ndim)
+  type(lbfgs_state), intent(inout) :: lbfgs_plan
+  real(dp), intent(inout)          :: x(lbfgs_plan%ndim)
+  real(dp), intent(in)             :: f
+  real(dp), intent(in)             :: gradf(lbfgs_plan%ndim)
   integer                         :: lbfgs_execute
 
   call lbfgs(lbfgs_plan%ndim, lbfgs_plan%history_record, x, f, gradf, lbfgs_plan%diag, lbfgs_plan%work, lbfgs_plan%lbfgs_status, &
@@ -116,34 +116,34 @@ end function lbfgs_execute
 
 
 !=========================================================================
-subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
-                 GTOL,STPMIN,STPMAX,STP,ITER, &
+subroutine lbfgs(N, M, X, F, G, DIAG, W, IFLAG,      &
+                 GTOL, STPMIN, STPMAX, STP, ITER, &
                  INFO, NFEV,                  &
-                 LINE_DGINIT,LINE_FINIT,      &
-                 LINE_STX,LINE_FX,LINE_DGX,   &
-                 LINE_STY,LINE_FY,LINE_DGY,   &
-                 LINE_STMIN,LINE_STMAX,       &
-                 LINE_BRACKT,LINE_STAGE1,LINE_INFOC)
+                 LINE_DGINIT, LINE_FINIT,      &
+                 LINE_STX, LINE_FX, LINE_DGX,   &
+                 LINE_STY, LINE_FY, LINE_DGY,   &
+                 LINE_STMIN, LINE_STMAX,       &
+                 LINE_BRACKT, LINE_STAGE1, LINE_INFOC)
   implicit none
 
-  integer,intent(inout) :: LINE_INFOC
-  integer,intent(inout)  :: ITER,IFLAG,INFO,NFEV
-  integer,intent(in)     :: N,M
-  real(dp),intent(inout) :: GTOL
-  real(dp),intent(in)    :: STPMIN,STPMAX
-  real(dp),intent(inout) :: STP
-  real(dp),intent(in)    :: F
-  real(dp),intent(inout) :: LINE_DGINIT,LINE_FINIT
-  real(dp),intent(inout) :: LINE_STX,LINE_FX,LINE_DGX
-  real(dp),intent(inout) :: LINE_STY,LINE_FY,LINE_DGY
-  real(dp),intent(inout) :: LINE_STMIN,LINE_STMAX
-  logical,intent(inout)  :: LINE_BRACKT,LINE_STAGE1
+  integer, intent(inout) :: LINE_INFOC
+  integer, intent(inout)  :: ITER, IFLAG, INFO, NFEV
+  integer, intent(in)     :: N, M
+  real(dp), intent(inout) :: GTOL
+  real(dp), intent(in)    :: STPMIN, STPMAX
+  real(dp), intent(inout) :: STP
+  real(dp), intent(in)    :: F
+  real(dp), intent(inout) :: LINE_DGINIT, LINE_FINIT
+  real(dp), intent(inout) :: LINE_STX, LINE_FX, LINE_DGX
+  real(dp), intent(inout) :: LINE_STY, LINE_FY, LINE_DGY
+  real(dp), intent(inout) :: LINE_STMIN, LINE_STMAX
+  logical, intent(inout)  :: LINE_BRACKT, LINE_STAGE1
   !arrays
-  real(dp),intent(inout) :: X(N),DIAG(N),W(N*(2*M+1)+2*M)
-  real(dp),intent(in)    :: G(N)
+  real(dp), intent(inout) :: X(N), DIAG(N), W(N*(2*M+1)+2*M)
+  real(dp), intent(in)    :: G(N)
   !=====
-  real(dp) :: FTOL,YS,YY,SQ,YR,BETA
-  integer :: POINT,ISPT,IYPT,MAXFEV,BOUND,NPT,CP,I,INMC,IYCN,ISCN
+  real(dp) :: FTOL, YS, YY, SQ, YR, BETA
+  integer :: POINT, ISPT, IYPT, MAXFEV, BOUND, NPT, CP, I, INMC, IYCN, ISCN
   !=====
 
 
@@ -157,7 +157,7 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
 
   ISPT = N + 2 * M
   IYPT = ISPT + N * M
-  POINT = MAX( 0 , MOD(ITER-1,M) )
+  POINT = MAX( 0 , MOD(ITER-1, M) )
   NPT = POINT * N
   ITER  = ITER + 1
   BOUND = MIN( ITER-1 , M)
@@ -171,12 +171,12 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
 
   else
 
-    call MCSRCH(N,X,F,G,W(ISPT+POINT*N+1),STP,FTOL,MAXFEV,INFO,NFEV, &
-               DIAG,GTOL,STPMIN,STPMAX,LINE_DGINIT,LINE_FINIT, &
-               LINE_STX,LINE_FX,LINE_DGX, &
-               LINE_STY,LINE_FY,LINE_DGY, &
-               LINE_STMIN,LINE_STMAX, &
-               LINE_BRACKT,LINE_STAGE1,LINE_INFOC)
+    call MCSRCH(N, X, F, G, W(ISPT+POINT*N+1), STP, FTOL, MAXFEV, INFO, NFEV, &
+               DIAG, GTOL, STPMIN, STPMAX, LINE_DGINIT, LINE_FINIT, &
+               LINE_STX, LINE_FX, LINE_DGX, &
+               LINE_STY, LINE_FY, LINE_DGY, &
+               LINE_STMIN, LINE_STMAX, &
+               LINE_BRACKT, LINE_STAGE1, LINE_INFOC)
     !
     ! Compute the new step and gradient change
     !
@@ -194,7 +194,7 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
     !  Mathematics of Computation, Vol.24, No.151, pp. 773-782.
     !  ---------------------------------------------------------
     !
-    POINT = MODULO(ITER - 1,M)
+    POINT = MODULO(ITER - 1, M)
     CP = POINT
     if (POINT == 0) CP = M
 
@@ -202,10 +202,10 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
     W(1:N)  = -G(1:N)
 
     CP = POINT
-    do I= 1,BOUND
+    do I= 1, BOUND
       CP = CP - 1
       if (CP ==  -1) CP = M - 1
-      SQ = DOT_PRODUCT(W(ISPT+CP*N+1:ISPT+CP*N+N),W(1:N))
+      SQ = DOT_PRODUCT(W(ISPT+CP*N+1:ISPT+CP*N+N), W(1:N))
       INMC = N + M + CP + 1
       IYCN = IYPT + CP * N
       W(INMC)= W(N+CP+1) * SQ
@@ -214,8 +214,8 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
 
     W(1:N) = DIAG(1:N) * W(1:N)
 
-    do I=1,BOUND
-      YR = DOT_PRODUCT(W(IYPT+CP*N+1:IYPT+CP*N+N),W(1:N))
+    do I=1, BOUND
+      YR = DOT_PRODUCT(W(IYPT+CP*N+1:IYPT+CP*N+N), W(1:N))
       BETA = W(N+CP+1) * YR
       INMC = N + M + CP + 1
       BETA = W(INMC) - BETA
@@ -241,12 +241,12 @@ subroutine lbfgs(N,M,X,F,G,DIAG,W,IFLAG,      &
 
   INFO  = 0
 
-  call MCSRCH(N,X,F,G,W(ISPT+POINT*N+1),STP,FTOL,MAXFEV,INFO,NFEV, &
-             DIAG,GTOL,STPMIN,STPMAX,LINE_DGINIT,LINE_FINIT, &
-             LINE_STX,LINE_FX,LINE_DGX, &
-             LINE_STY,LINE_FY,LINE_DGY, &
-             LINE_STMIN,LINE_STMAX, &
-             LINE_BRACKT,LINE_STAGE1,LINE_INFOC)
+  call MCSRCH(N, X, F, G, W(ISPT+POINT*N+1), STP, FTOL, MAXFEV, INFO, NFEV, &
+             DIAG, GTOL, STPMIN, STPMAX, LINE_DGINIT, LINE_FINIT, &
+             LINE_STX, LINE_FX, LINE_DGX, &
+             LINE_STY, LINE_FY, LINE_DGY, &
+             LINE_STMIN, LINE_STMAX, &
+             LINE_BRACKT, LINE_STAGE1, LINE_INFOC)
 
   if (INFO  ==  -1) then
     IFLAG = 1
@@ -260,30 +260,30 @@ end subroutine lbfgs
 
 
 !=========================================================================
-subroutine mcsrch(N,X,F,G,S,STP,FTOL,MAXFEV,INFO,NFEV,WA, &
-                  GTOL,STPMIN,STPMAX,DGINIT,FINIT, &
-                  STX,FX,DGX,STY,FY,DGY,STMIN,STMAX, &
-                  BRACKT,STAGE1,INFOC)
+subroutine mcsrch(N, X, F, G, S, STP, FTOL, MAXFEV, INFO, NFEV, WA, &
+                  GTOL, STPMIN, STPMAX, DGINIT, FINIT, &
+                  STX, FX, DGX, STY, FY, DGY, STMIN, STMAX, &
+                  BRACKT, STAGE1, INFOC)
   implicit none
 
-  integer,intent(in)     :: N,MAXFEV
-  integer,intent(inout)  :: INFO,NFEV
-  integer,intent(inout)  :: INFOC
-  real(dp),intent(in)    :: GTOL,STPMIN,STPMAX
-  real(dp),intent(in)    :: F,FTOL
-  real(dp),intent(inout) :: STP,DGINIT,FINIT
-  real(dp),intent(inout) :: STX,FX,DGX
-  real(dp),intent(inout) :: STY,FY,DGY
-  real(dp),intent(inout) :: STMIN,STMAX
-  logical,intent(inout) :: BRACKT,STAGE1
-  real(dp),intent(in)     :: G(N)
-  real(dp),intent(inout)  :: X(N),S(N),WA(N)
+  integer, intent(in)     :: N, MAXFEV
+  integer, intent(inout)  :: INFO, NFEV
+  integer, intent(inout)  :: INFOC
+  real(dp), intent(in)    :: GTOL, STPMIN, STPMAX
+  real(dp), intent(in)    :: F, FTOL
+  real(dp), intent(inout) :: STP, DGINIT, FINIT
+  real(dp), intent(inout) :: STX, FX, DGX
+  real(dp), intent(inout) :: STY, FY, DGY
+  real(dp), intent(inout) :: STMIN, STMAX
+  logical, intent(inout) :: BRACKT, STAGE1
+  real(dp), intent(in)     :: G(N)
+  real(dp), intent(inout)  :: X(N), S(N), WA(N)
   !=====
-  real(dp),parameter :: XTOL=1.0e-17_dp
-  real(dp),parameter :: P5     = 0.50_dp
-  real(dp),parameter :: P66    = 0.66_dp
-  real(dp),parameter :: XTRAPF = 4.00_dp
-  real(dp)           :: DG,DGM,DGTEST,DGXM,DGYM,FTEST1,FM,FXM,FYM,WIDTH,WIDTH1
+  real(dp), parameter :: XTOL=1.0e-17_dp
+  real(dp), parameter :: P5     = 0.50_dp
+  real(dp), parameter :: P66    = 0.66_dp
+  real(dp), parameter :: XTRAPF = 4.00_dp
+  real(dp)           :: DG, DGM, DGTEST, DGXM, DGYM, FTEST1, FM, FXM, FYM, WIDTH, WIDTH1
   !=====
 
 
@@ -322,7 +322,7 @@ subroutine mcsrch(N,X,F,G,S,STP,FTOL,MAXFEV,INFO,NFEV,WA, &
     !  FUNCTION HAS A NONPOSITIVE VALUE AND NONNEGATIVE DERIVATIVE.
     !
     if (STAGE1 .AND. F <= FTEST1 .AND. &
-       DG >= MIN(FTOL,GTOL)*DGINIT) STAGE1 = .FALSE.
+       DG >= MIN(FTOL, GTOL)*DGINIT) STAGE1 = .FALSE.
     !
     !  A MODIFIED FUNCTION IS USED TO PREDICT THE STEP ONLY IF
     !  WE HAVE NOT OBTAINED A STEP FOR WHICH THE MODIFIED
@@ -344,7 +344,7 @@ subroutine mcsrch(N,X,F,G,S,STP,FTOL,MAXFEV,INFO,NFEV,WA, &
       !     CALL MCSTEP TO UPDATE THE INTERVAL OF UNCERTAINTY
       !     AND TO COMPUTE THE NEW STEP.
       !
-      call mcstep(STX,FXM,DGXM,STY,FYM,DGYM,STP,FM,DGM,BRACKT,STMIN,STMAX,INFOC)
+      call mcstep(STX, FXM, DGXM, STY, FYM, DGYM, STP, FM, DGM, BRACKT, STMIN, STMAX, INFOC)
       !
       !     RESET THE FUNCTION AND GRADIENT VALUES FOR F.
       !
@@ -357,7 +357,7 @@ subroutine mcsrch(N,X,F,G,S,STP,FTOL,MAXFEV,INFO,NFEV,WA, &
       !     CALL MCSTEP TO UPDATE THE INTERVAL OF UNCERTAINTY
       !     AND TO COMPUTE THE NEW STEP.
       !
-      call mcstep(STX,FX,DGX,STY,FY,DGY,STP,F,DG,BRACKT,STMIN,STMAX,INFOC)
+      call mcstep(STX, FX, DGX, STY, FY, DGY, STP, F, DG, BRACKT, STMIN, STMAX, INFOC)
     endif
     !
     !  FORCE A SUFFICIENT DECREASE IN THE SIZE OF THE
@@ -421,8 +421,8 @@ subroutine mcsrch(N,X,F,G,S,STP,FTOL,MAXFEV,INFO,NFEV,WA, &
   !TO THE PRESENT INTERVAL OF UNCERTAINTY.
   !
   if (BRACKT) then
-    STMIN = MIN(STX,STY)
-    STMAX = MAX(STX,STY)
+    STMIN = MIN(STX, STY)
+    STMAX = MAX(STX, STY)
   else
     STMIN = STX
     STMAX = STP + XTRAPF*(STP - STX)
@@ -430,8 +430,8 @@ subroutine mcsrch(N,X,F,G,S,STP,FTOL,MAXFEV,INFO,NFEV,WA, &
   !
   !FORCE THE STEP TO BE WITHIN THE BOUNDS STPMAX AND STPMIN.
   !
-  STP = MAX(STPMIN,STP)
-  STP = MIN(STP,STPMAX)
+  STP = MAX(STPMIN, STP)
+  STP = MIN(STP, STPMAX)
   !
   !IF AN UNUSUAL TERMINATION IS TO OCCUR THEN LET
   !STP BE THE LOWEST POINT OBTAINED SO FAR.
@@ -454,24 +454,24 @@ end subroutine mcsrch
 
 
 !=========================================================================
-subroutine mcstep(STX,FX,DX,STY,FY,DY,STP,FP,DG,BRACKT,STPMIN,STPMAX,INFO)
+subroutine mcstep(STX, FX, DX, STY, FY, DY, STP, FP, DG, BRACKT, STPMIN, STPMAX, INFO)
   implicit none
 
-  integer,intent(inout)  :: INFO
-  real(dp),intent(in)     :: FP
-  real(dp),intent(inout)  :: STX,FX,DX,STY,FY,DY,STP,DG,STPMIN,STPMAX
-  logical,intent(inout) :: BRACKT
+  integer, intent(inout)  :: INFO
+  real(dp), intent(in)     :: FP
+  real(dp), intent(inout)  :: STX, FX, DX, STY, FY, DY, STP, DG, STPMIN, STPMAX
+  logical, intent(inout) :: BRACKT
   !=====
   logical BOUND
-  real(dp) GAM,P,Q,R,S,SGND,STPC,STPF,STPQ,THETA
+  real(dp) GAM, P, Q, R, S, SGND, STPC, STPF, STPQ, THETA
   !=====
 
   INFO = 0
   !
   ! CHECK THE INPUT PARAMETERS FOR ERRORS.
   !
-  IF ((BRACKT .AND. (STP <= MIN(STX,STY) .OR. &
-     STP >= MAX(STX,STY))) .OR.  &
+  IF ((BRACKT .AND. (STP <= MIN(STX, STY) .OR. &
+     STP >= MAX(STX, STY))) .OR.  &
      DX*(STP-STX) >= 0.0 .OR. STPMAX < STPMIN) RETURN
   !
   ! Determine if the derivatives have opposite sign
@@ -487,7 +487,7 @@ subroutine mcstep(STX,FX,DX,STY,FY,DY,STP,FP,DG,BRACKT,STPMIN,STPMAX,INFO)
   INFO = 1
   BOUND = .TRUE.
   THETA = 3*(FX - FP)/(STP - STX) + DX + DG
-  S = MAX(ABS(THETA),ABS(DX),ABS(DG))
+  S = MAX(ABS(THETA), ABS(DX), ABS(DG))
   GAM = S * SQRT( (THETA/S)**2 - (DX/S)*(DG/S) )
   IF (STP < STX) GAM = -GAM
   P = (GAM - DX) + THETA
@@ -511,7 +511,7 @@ subroutine mcstep(STX,FX,DX,STY,FY,DY,STP,FP,DG,BRACKT,STPMIN,STPMAX,INFO)
   INFO = 2
   BOUND = .FALSE.
   THETA = 3*(FX - FP)/(STP - STX) + DX + DG
-  S = MAX(ABS(THETA),ABS(DX),ABS(DG))
+  S = MAX(ABS(THETA), ABS(DX), ABS(DG))
   GAM = S * SQRT( (THETA/S)**2 - (DX/S)*(DG/S) )
   IF (STP > STX) GAM = -GAM
   P = (GAM - DG) + THETA
@@ -539,12 +539,12 @@ subroutine mcstep(STX,FX,DX,STY,FY,DY,STP,FP,DG,BRACKT,STPMIN,STPMAX,INFO)
   INFO = 3
   BOUND = .TRUE.
   THETA = 3*(FX - FP)/(STP - STX) + DX + DG
-  S = MAX(ABS(THETA),ABS(DX),ABS(DG))
+  S = MAX(ABS(THETA), ABS(DX), ABS(DG))
   !
   !   THE CASE GAM = 0 ONLY ARISES IF THE CUBIC DOES NOT TEND
   !   TO INFINITY IN THE DIRECTION OF THE STEP.
   !
-  GAM = S * SQRT( MAX(0.0D0,(THETA/S)**2 - (DX/S)*(DG/S)) )
+  GAM = S * SQRT( MAX(0.0D0, (THETA/S)**2 - (DX/S)*(DG/S)) )
   IF (STP > STX) GAM = -GAM
   P = (GAM - DG) + THETA
   Q = (GAM + (DX - DG)) + GAM
@@ -581,7 +581,7 @@ subroutine mcstep(STX,FX,DX,STY,FY,DY,STP,FP,DG,BRACKT,STPMIN,STPMAX,INFO)
   BOUND = .FALSE.
   IF (BRACKT) THEN
   THETA = 3*(FP - FY)/(STY - STP) + DY + DG
-  S = MAX(ABS(THETA),ABS(DY),ABS(DG))
+  S = MAX(ABS(THETA), ABS(DY), ABS(DG))
   GAM = S * SQRT( (THETA/S)**2 - (DY/S)*(DG/S) )
   IF (STP > STY) GAM = -GAM
   P = (GAM - DG) + THETA
@@ -618,8 +618,8 @@ subroutine mcstep(STX,FX,DX,STY,FY,DY,STP,FP,DG,BRACKT,STPMIN,STPMAX,INFO)
   !
   ! Compute the new step and safeguard it.
   !
-  STPF = MIN(STPMAX,STPF)
-  STPF = MAX(STPMIN,STPF)
+  STPF = MIN(STPMAX, STPF)
+  STPF = MAX(STPMIN, STPF)
   STP = STPF
   IF (BRACKT .AND. BOUND) THEN
   IF (STY > STX) THEN
