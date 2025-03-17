@@ -504,8 +504,10 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
 #if !defined(HAVE_SCALAPACK)
     !   amb_bb(:,nbbc+1:nbbc+nbba) = MATMUL( amb_matrix(:,:) , bb(:,nbbc+1:nbbc+2*nexcitation) )
     !   apb_bb(:,nbbc+1:nbbc+nbba) = MATMUL( apb_matrix(:,:) , bb(:,nbbc+1:nbbc+2*nexcitation) )
-    call DSYMM('L', 'L', nmat, nbba, 1.0_dp, amb_matrix, nmat, bb(:, nbbc+1:nbbc+nbba), nmat, 0.0_dp, amb_bb(:, nbbc+1:nbbc+nbba),nmat)
-    call DSYMM('L', 'L', nmat, nbba, 1.0_dp, apb_matrix, nmat, bb(:, nbbc+1:nbbc+nbba), nmat, 0.0_dp, apb_bb(:, nbbc+1:nbbc+nbba),nmat)
+    call DSYMM('L', 'L', nmat, nbba, 1.0_dp, amb_matrix, nmat, bb(:, nbbc+1:nbbc+nbba), nmat, &
+               0.0_dp, amb_bb(:, nbbc+1:nbbc+nbba),nmat)
+    call DSYMM('L', 'L', nmat, nbba, 1.0_dp, apb_matrix, nmat, bb(:, nbbc+1:nbbc+nbba), nmat, &
+               0.0_dp, apb_bb(:, nbbc+1:nbbc+nbba),nmat)
 #else
 
     !

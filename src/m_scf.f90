@@ -776,7 +776,8 @@ subroutine density_matrix_preconditioning(hkin, s_matrix, p_matrix_new)
       matrix(:, :) = MATMUL( p_matrix_in(:, :, ispin) , s_matrix )
       trace_ref = matrix_trace(matrix)
 
-      p_matrix_new(:, :, ispin) = p_matrix_in(:, :, ispin) + MATMUL( hkin_inv , p_matrix_new(:, :, ispin) - p_matrix_in(:, :, ispin) )
+      p_matrix_new(:, :, ispin) = p_matrix_in(:, :, ispin) &
+                    + MATMUL( hkin_inv , p_matrix_new(:, :, ispin) - p_matrix_in(:, :, ispin) )
 
       matrix(:, :) = MATMUL( p_matrix_new(:, :, ispin) , s_matrix )
       trace_current = matrix_trace(matrix)

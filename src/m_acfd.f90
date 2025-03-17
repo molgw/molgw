@@ -107,7 +107,8 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
   select case(TRIM(postscf))
   case('RPA', 'RPAP', 'RPA+','RPALR')
     call wpol%init(nstate, occupation, 0)
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, enforce_spin_multiplicity=1)
+    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, &
+                        erpa_singlet, egw_tmp, wpol, enforce_spin_multiplicity=1)
     call wpol%destroy()
     en_mbpt%rpa = erpa_singlet
     write(stdout, '(a,2x,f19.10)') ' RPA Energy      (Ha):', en_mbpt%rpa
@@ -158,7 +159,8 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
 
   case('RPAX', 'RPAX-II')
     call wpol%init(nstate, occupation, 0)
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, enforce_spin_multiplicity=1)
+    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, &
+                        erpa_singlet, egw_tmp, wpol, enforce_spin_multiplicity=1)
     call wpol%destroy()
     en_mbpt%rpa = 0.50_dp * erpa_singlet
 
@@ -169,7 +171,8 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
     write(stdout, '(a,2x,f19.10)') ' Singlet RPAx Energy contribution      (Ha):', en_mbpt%rpa
 
     call wpol%init(nstate, occupation, 0)
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_triplet, egw_tmp, wpol, enforce_spin_multiplicity=3)
+    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_triplet, &
+                        egw_tmp, wpol, enforce_spin_multiplicity=3)
     call wpol%destroy()
     if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
       write(stdout, '(/,a,f16.10)') ' Triplet RPAx Energy scaled by :', kappa_hybrid

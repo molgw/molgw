@@ -898,7 +898,8 @@ subroutine build_ci_hamiltonian_sparse(conf, desc, h)
   call auxil%max(nnztmp)
   write(stdout, '(1x,a,i10)')  'Max CI hamiltonian elements on a proc: ', nnztmp
   ! total number of terms in the triangular matrix is N * (N-1) / 2
-  write(stdout, '(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ', h%nnz_total / REAL(conf%nconf, dp) / REAL(conf%nconf-1, dp) * 200.0_dp
+  write(stdout, '(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ', &
+                               h%nnz_total / REAL(conf%nconf, dp) / REAL(conf%nconf-1, dp) * 200.0_dp
 
   call stop_clock(timing_zeroes_ci)
 
@@ -931,7 +932,8 @@ subroutine build_ci_hamiltonian_sparse(conf, desc, h)
 
   h%nnz_total = REAL( h%col_ptr(mvec+1) , dp)
   call auxil%sum(h%nnz_total)
-  write(stdout, '(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ', h%nnz_total / REAL(conf%nconf, dp) / REAL(conf%nconf-1, dp) * 200.0_dp
+  write(stdout, '(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ', &
+                               h%nnz_total / REAL(conf%nconf, dp) / REAL(conf%nconf-1, dp) * 200.0_dp
 
 
   call stop_clock(timing_ham_ci)
@@ -1318,7 +1320,8 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
 
         mvec_sd = NUMROC(conf_sd%nconf, mb_sd, iprow_eri3_mo, first_row, nprow_eri3_mo)
         nvec_sd = NUMROC(conf_sd%nstate, mb_sd, ipcol_eri3_mo, first_col, npcol_eri3_mo)
-        call DESCINIT(desc_vec_sd, conf_sd%nconf, conf_sd%nstate, mb_sd, mb_sd, first_row, first_col, cntxt_eri3_mo, MAX(1, mvec), info)
+        call DESCINIT(desc_vec_sd, conf_sd%nconf, conf_sd%nstate, mb_sd, mb_sd, first_row, first_col, &
+                      cntxt_eri3_mo, MAX(1, mvec), info)
         call clean_allocate('CISD eigenvectors', eigvec_sd, mvec_sd, nvec_sd)
         eigvec_sd(:, :) = 0.0_dp
         call start_clock(timing_ci_diago)

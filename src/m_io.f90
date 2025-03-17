@@ -1412,7 +1412,8 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
 
   nprim = SUM(basis%bfc(:)%ngaussian)
   write(owfn, '(a80)') 'MOLGW WFN file generated'
-  write(owfn, '(a8,10x,i5,a13,1x,i6,a11,4x,i5,a7)') 'GAUSSIAN', nocc, ' MOL ORBITALS', nprim, ' PRIMITIVES', ncenter_nuclei, ' NUCLEI'
+  write(owfn, '(a8,10x,i5,a13,1x,i6,a11,4x,i5,a7)') 'GAUSSIAN', nocc, ' MOL ORBITALS', nprim, &
+                                                    ' PRIMITIVES', ncenter_nuclei, ' NUCLEI'
   do icenter=1, ncenter_nuclei
     write(owfn, '(a4,i4,4x,a7,i3,a1,1x,3f12.8,a10,f5.1)') el_list(NINT(zatom(icenter))), icenter, &
    '(CENTRE', icenter, ')', xatom(:, icenter), '  CHARGE =', zatom(icenter)
@@ -2347,9 +2348,11 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
 
   if( is_iomaster ) then
     do ispin=1, nspin
-      write(file_name, '(a,i4.4,a,i1,a,i3.3,f0.3,a)') 'disc_dens_', num, "_s_", ispin, "_r_", INT(r_disc), r_disc-INT(r_disc), ".dat"
+      write(file_name, '(a,i4.4,a,i1,a,i3.3,f0.3,a)') 'disc_dens_', num, "_s_", ispin, "_r_", &
+                                                      INT(r_disc), r_disc-INT(r_disc), ".dat"
       open(newunit=file_out(ispin), file=file_name)
-      write(file_out(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
+      write(file_out(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, &
+                                                   '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
     enddo
   endif
 
@@ -2728,7 +2731,8 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
     write(file_name, '(i4.4,a,i1,a)') num, '_', ispin, '_line_density.dat'
     open(newunit=line_rho(ispin), file=file_name)
     !   write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
-    write(line_rho(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
+    write(line_rho(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, &
+                           '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
   enddo
 
   do ir=0, nr
@@ -2755,7 +2759,8 @@ end subroutine plot_rho_cmplx
 
 
 !=========================================================================
-subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur, nr_line_rho, point_a, point_b, rho_start)
+subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur, &
+                               nr_line_rho, point_a, point_b, rho_start)
   implicit none
 
   integer, intent(in)         :: nstate
@@ -2793,7 +2798,8 @@ subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
   do ispin=1, nspin
     write(file_name, '(a,i4.4,a,i1,a)') 'diff_', num, '_', ispin, '_line_density.dat'
     open(newunit=line_rho(ispin), file=file_name)
-    write(line_rho(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
+    write(line_rho(ispin), '(a,f12.6,a,3f12.6)') '# Time: ', time_cur, &
+                                                 '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
   enddo
 
   do ir=1, nr_line_rho
@@ -2859,7 +2865,8 @@ subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_
   do ispin=1, nspin
     write(file_name, '(a)') 'total_initial_line_density.dat'
     open(newunit=line_rho(ispin), file=file_name)
-    write(line_rho(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
+    write(line_rho(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, &
+                                                 '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
   enddo
 
   do ir=1, nr_line_rho
@@ -3170,7 +3177,8 @@ subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
         call calculate_basis_functions_r(basis, rr, basis_function_r)
 
         do ispin=1, nspin
-          phi(cube_state_min:cube_state_max, ispin) = MATMUL( basis_function_r(:) , c_matrix(:, cube_state_min:cube_state_max, ispin) )
+          phi(cube_state_min:cube_state_max, ispin) = MATMUL( basis_function_r(:) , &
+                                                              c_matrix(:, cube_state_min:cube_state_max, ispin) )
         enddo
 
         do istate=cube_state_min, cube_state_max

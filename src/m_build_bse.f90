@@ -392,7 +392,8 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
 
         enddo
 
-        call DGER(m_apb_block, n_apb_block, 2.0_dp*spin_fact*lambda, eri_3center_left, 1, eri_3center_right, 1, apb_block, m_apb_block)
+        call DGER(m_apb_block, n_apb_block, 2.0_dp*spin_fact*lambda, eri_3center_left, 1, eri_3center_right, 1, &
+                  apb_block, m_apb_block)
 
       enddo
 
@@ -681,7 +682,8 @@ end subroutine build_amb_apb_bse
 
 
 !=========================================================================
-subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_matrix)
+subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, wpol, wpol_static, m_apb, n_apb, &
+                                                 amb_matrix, apb_matrix)
   implicit none
 
   real(dp), intent(in)                :: alpha_local, lambda
@@ -736,9 +738,11 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
   call clean_allocate('Temporary array for W', wp0, 1, nauxil_local, ncore_W+1, nvirtual_W-1, jstate_min, jstate_max, 1, nspin)
   wp0(:, :, :, :) = 0.0_dp
 
-  if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
-     .OR. TRIM(w_screening)=='TDDFT' ) ) then
-    call clean_allocate('Temporary array for W_lr', wp0_lr, 1, nauxil_local_lr, ncore_W+1, nvirtual_W-1, jstate_min, jstate_max, 1, nspin)
+  if( ( beta_hybrid > 1.0e-6_dp ) &
+     .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
+       .OR. TRIM(w_screening)=='TDDFT' ) ) then
+    call clean_allocate('Temporary array for W_lr', wp0_lr, 1, nauxil_local_lr, ncore_W+1, nvirtual_W-1, &
+                        jstate_min, jstate_max, 1, nspin)
     wp0_lr(:, :, :, :) = 0.0_dp
   endif
 

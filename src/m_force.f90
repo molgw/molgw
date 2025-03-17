@@ -130,7 +130,8 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   force_nuc(:, :) = 0.0_dp
   do ibf=1, basis%nbf
     iatom = basis%bff(ibf)%icenter
-    force_nuc(:, iatom) = force_nuc(:, iatom) + 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_nucleus(ibf, :, natom+1, :) )
+    force_nuc(:, iatom) = force_nuc(:, iatom) &
+        + 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_nucleus(ibf, :, natom+1, :) )
   enddo
 
   force_hellfeyn(:, :) = 0.0_dp

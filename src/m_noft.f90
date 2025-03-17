@@ -331,14 +331,16 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
      if(noft_restart=='yes') then
        call run_noft(inof, ista, basis%nbf, nstate_occ, nstate_frozen, noft_npairs, nstate_coupled, nstate_beta, nstate_alpha, &
         imethocc, imethorb, noft_nscf, iprintdmn, iprintswdmn, iprintints, noft_ithresh_lambda, noft_ndiis, &
-        Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), mo_ints, ofile_name, NO_COEF_cmplx=NO_COEF_cmplx, lowmemERI=(noft_lowmemERI=='yes'),&
+        Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), mo_ints, ofile_name, NO_COEF_cmplx=NO_COEF_cmplx, &
+        lowmemERI=(noft_lowmemERI=='yes'),&
         restart=(noft_restart=='yes'), ireadGAMMAS=ireadGAMMAS, ireadOCC=ireadOCC, ireadCOEF=ireadCOEF,&
         ireadFdiag=ireadFdiag, iNOTupdateOCC=iNOTupdateOCC, iNOTupdateORB=iNOTupdateORB, Lpower=noft_Lpower_, &
         fcidump=noft_fcidump_in, irange_sep=irs_noft, hessian=(noft_hessian=='yes'))
      else
        call run_noft(inof, ista, basis%nbf, nstate_occ, nstate_frozen, noft_npairs, nstate_coupled, nstate_beta, nstate_alpha, &
         imethocc, imethorb, noft_nscf, iprintdmn, iprintswdmn, iprintints, noft_ithresh_lambda, noft_ndiis, &
-        Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), mo_ints, ofile_name, NO_COEF_cmplx=NO_COEF_cmplx, lowmemERI=(noft_lowmemERI=='yes'),&
+        Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), mo_ints, ofile_name, NO_COEF_cmplx=NO_COEF_cmplx, &
+        lowmemERI=(noft_lowmemERI=='yes'),&
         Lpower=noft_Lpower_, fcidump=noft_fcidump_in, irange_sep=irs_noft, hessian=(noft_hessian=='yes'))
      endif
    

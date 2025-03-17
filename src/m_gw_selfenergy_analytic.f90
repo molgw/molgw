@@ -95,7 +95,8 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
         !$OMP END PARALLEL
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-        w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
+        w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
+                                            eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(w_s)
       endif
 
@@ -255,13 +256,16 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   ! Temporary descriptors
   ! desc_wpol for wpol%residue_left
   mlocal = NUMROC(nauxil_global, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
-  call DESCINIT(desc_wpol, nauxil_global, wpol%npole_reso, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, MAX(1, mlocal), info)
+  call DESCINIT(desc_wpol, nauxil_global, wpol%npole_reso, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
+                cntxt_eri3_mo, MAX(1, mlocal), info)
   ! desc_eri for wpol%residue_left
-  call DESCINIT(desc_eri, nauxil_global, mstate, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, MAX(1, mlocal), info)
+  call DESCINIT(desc_eri, nauxil_global, mstate, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
+                cntxt_eri3_mo, MAX(1, mlocal), info)
 
   ! desc_wing for matrix_wing
   mlocal = NUMROC(mwing, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
-  call DESCINIT(desc_wing, mwing, mstate, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, MAX(1, mlocal), info)
+  call DESCINIT(desc_wing, mwing, mstate, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
+                cntxt_eri3_mo, MAX(1, mlocal), info)
 
 
   call clean_allocate('Matrix head', matrix_head, mstate, mstate)
@@ -440,7 +444,8 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
     close(fu)
     ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
     ! then consider the excitation is occupied
-    write(stdout, '(1x,a,f12.6)') 'Number of electrons: ', spin_fact*SUM( SUM(matrix(1:mstate, :)**2, DIM=1), MASK=(eigval(:) < mu) )
+    write(stdout, '(1x,a,f12.6)') 'Number of electrons: ', & 
+             spin_fact * SUM( SUM(matrix(1:mstate, :)**2, DIM=1), MASK=(eigval(:) < mu) )
     write(stdout, *) '==================================================='
 
 #endif
@@ -701,7 +706,8 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
         !$OMP END PARALLEL
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-        w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
+        w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)), &
+                                            eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(w_s)
       endif
 

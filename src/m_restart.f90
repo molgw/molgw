@@ -217,7 +217,7 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
   read(restartfile) x_read(:, 1:natom_read)
   if( natom_read /= ncenter_nuclei  &
   .OR. ANY( ABS( zatom_read(1:MIN(natom_read, ncenter_nuclei)) - zatom(1:MIN(natom_read, ncenter_nuclei)) ) > 1.0e-5_dp ) &
-  .OR. ANY( ABS(   x_read(:, 1:MIN(natom_read, ncenter_nuclei)) - xatom(:, 1:MIN(natom_read, ncenter_nuclei))   ) > 1.0e-5_dp ) ) then
+  .OR. ANY( ABS(   x_read(:, 1:MIN(natom_read, ncenter_nuclei)) - xatom(:, 1:MIN(natom_read, ncenter_nuclei)) ) > 1.0e-5_dp ) ) then
     same_geometry = .FALSE.
     call issue_warning('RESTART file: Geometry has changed')
   else

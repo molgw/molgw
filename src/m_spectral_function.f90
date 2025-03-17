@@ -851,7 +851,8 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
 
   sf%mchi = nauxil_global
   sf%nchi = nauxil_global
-  call DESCINIT(sf%desc_chi, nauxil_global, nauxil_global, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, sf%mchi), info)
+  call DESCINIT(sf%desc_chi, nauxil_global, nauxil_global, block_row, block_col, first_row, first_col, &
+                cntxt_sd, MAX(1, sf%mchi), info)
   call clean_allocate('Chi', sf%chi, sf%mchi, sf%nchi, sf%nomega, verbose=verbose_)
   write(stdout_, '(1x,a,i7,a,i7)') 'Matrix sizes   ', nauxil_global, ' x ', nauxil_global
   write(stdout_, '(1x,a,i7,a,i7)') 'Distributed in ', sf%mchi, ' x ', sf%nchi

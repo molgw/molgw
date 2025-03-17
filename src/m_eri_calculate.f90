@@ -1314,7 +1314,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
     if( cntxt_3center > 0 ) then
       mlocal = NUMROC(npair         , MB_3center, iprow_3center, first_row, nprow_3center)
       nlocal = NUMROC(nauxil_global, NB_3center, ipcol_3center, first_col, npcol_3center)
-      call DESCINIT(desc_eri3, npair, nauxil_global, MB_3center, NB_3center, first_row, first_col, cntxt_3center, MAX(1, mlocal), info)
+      call DESCINIT(desc_eri3, npair, nauxil_global, MB_3center, NB_3center, first_row, first_col, &
+                    cntxt_3center, MAX(1, mlocal), info)
     else
       mlocal = 0
       nlocal = 0
@@ -1328,8 +1329,10 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
       call clean_deallocate('3-center integrals SCALAPACK', eri_3center)
       call clean_allocate('3-center integrals SCALAPACK', eri_3center, mlocal, nlocal)
     else
-      write(stdout, '(1x,a,i6,a,i6)') '=> This is a recalculation for basis shells: ', COUNT(mask(:)),      ' / ', basis%nshell
-      write(stdout, '(1x,a,i6,a,i6)') '                 and auxiliary basis shells: ', COUNT(mask_auxil(:)), ' / ', auxil_basis%nshell
+      write(stdout, '(1x,a,i6,a,i6)') '=> This is a recalculation for basis shells: ', &
+                                      COUNT(mask(:)),      ' / ', basis%nshell
+      write(stdout, '(1x,a,i6,a,i6)') '                 and auxiliary basis shells: ', &
+                                      COUNT(mask_auxil(:)), ' / ', auxil_basis%nshell
       if( SIZE(eri_3center, DIM=1) /= mlocal .OR. SIZE(eri_3center, DIM=2) /= nlocal ) then
         call die('calculate_integrals_eri_3center_scalapack: recalculation but wrong dimensions of eri_3center')
       endif
@@ -1338,7 +1341,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
     if( cntxt_3center > 0 ) then
       mlocal = NUMROC(npair            , MB_3center, iprow_3center, first_row, nprow_3center)
       nlocal = NUMROC(nauxil_global_lr, NB_3center, ipcol_3center, first_col, npcol_3center)
-      call DESCINIT(desc_eri3_lr, npair, nauxil_global_lr, MB_3center, NB_3center, first_row, first_col, cntxt_3center, MAX(1, mlocal), info)
+      call DESCINIT(desc_eri3_lr, npair, nauxil_global_lr, MB_3center, NB_3center, first_row, first_col, &
+                    cntxt_3center, MAX(1, mlocal), info)
     else
       mlocal = 0
       nlocal = 0
@@ -1371,7 +1375,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
     ! Set nlocal => auxil_basis%nbf
     mlocal = NUMROC(npair          , MB_3center, iprow_3center, first_row, nprow_3center)
     nlocal = NUMROC(auxil_basis%nbf, NB_3center, ipcol_3center, first_col, npcol_3center)
-    call DESCINIT(desc_3tmp, npair, auxil_basis%nbf, MB_3center, NB_3center, first_row, first_col, cntxt_3center, MAX(1, mlocal), info)
+    call DESCINIT(desc_3tmp, npair, auxil_basis%nbf, MB_3center, NB_3center, first_row, first_col, &
+                  cntxt_3center, MAX(1, mlocal), info)
 
 
     !$OMP PARALLEL PRIVATE(ami,ni,do_shell,iglobal,am1,n1c,ng1,alpha1,coeff1,x01, &
@@ -1637,7 +1642,8 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     if( cntxt_3center > 0 ) then
       mlocal = NUMROC(npair        , MB_3center, iprow_3center, first_row, nprow_3center)
       nlocal = NUMROC(nauxil_global, NB_3center, ipcol_3center, first_col, npcol_3center)
-      call DESCINIT(desc_eri3, npair, nauxil_global, MB_3center, NB_3center, first_row, first_col, cntxt_3center, MAX(1, mlocal), info)
+      call DESCINIT(desc_eri3, npair, nauxil_global, MB_3center, NB_3center, first_row, first_col, &
+                    cntxt_3center, MAX(1, mlocal), info)
     else
       mlocal = 0
       nlocal = 0
@@ -1649,7 +1655,8 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     if( cntxt_3center > 0 ) then
       mlocal = NUMROC(npair           , MB_3center, iprow_3center, first_row, nprow_3center)
       nlocal = NUMROC(nauxil_global_lr, NB_3center, ipcol_3center, first_col, npcol_3center)
-      call DESCINIT(desc_eri3_lr, npair, nauxil_global_lr, MB_3center, NB_3center, first_row, first_col, cntxt_3center, MAX(1, mlocal), info)
+      call DESCINIT(desc_eri3_lr, npair, nauxil_global_lr, MB_3center, NB_3center, first_row, first_col, &
+                    cntxt_3center, MAX(1, mlocal), info)
     else
       mlocal = 0
       nlocal = 0
@@ -1693,7 +1700,8 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
       ! Set nlocal => auxil_basis%nbf
       mlocal = NUMROC(mpair          , MB_3center, iprow_3center, first_row, nprow_3center)
       nlocal = NUMROC(auxil_basis%nbf, NB_3center, ipcol_3center, first_col, npcol_3center)
-      call DESCINIT(desc_3tmp, mpair, auxil_basis%nbf, MB_3center, NB_3center, first_row, first_col, cntxt_3center, MAX(1, mlocal), info)
+      call DESCINIT(desc_3tmp, mpair, auxil_basis%nbf, MB_3center, NB_3center, first_row, first_col, &
+                    cntxt_3center, MAX(1, mlocal), info)
 
       call clean_allocate('TMP 3-center integrals', eri_3center_tmp, mlocal, nlocal)
 
@@ -1888,7 +1896,8 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
   call world%sum(libint_calls)
   write(stdout, '(1x,a,7x,i20)')   'Total number of calls to libint: ', libint_calls
   write(stdout, '(1x,a,f8.2)')  'Redundant calls due to parallelization and batches (%): ', &
-                                 ( REAL(libint_calls, dp) / ( REAL(nshellpair, dp)*REAL(auxil_basis%nshell, dp) ) - 1.0_dp ) * 100.0_dp
+                                 ( REAL(libint_calls, dp) / ( REAL(nshellpair, dp) * REAL(auxil_basis%nshell, dp) ) &
+                                                               - 1.0_dp ) * 100.0_dp
 
 
   if( .NOT. is_longrange ) then

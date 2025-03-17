@@ -224,20 +224,27 @@ subroutine calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, bfr, PIr, &
       allocate(tmp_cmplx(nbf, nr))
 
       tmp_cmplx(:, :) = bfr(:, :)
-      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, COMPLEX_ZERO, phir_cmplx(1,1),nocc)
+      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, &
+                 COMPLEX_ZERO, phir_cmplx(1,1),nocc)
       tmp_cmplx(:, :) = bf_gradx(:, :)
-      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, COMPLEX_ZERO, phir_gradx_cmplx(1,1),nocc)
+      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, &
+                 COMPLEX_ZERO, phir_gradx_cmplx(1,1),nocc)
       tmp_cmplx(:, :) = bf_grady(:, :)
-      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, COMPLEX_ZERO, phir_grady_cmplx(1,1),nocc)
+      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, &
+                 COMPLEX_ZERO, phir_grady_cmplx(1,1),nocc)
       tmp_cmplx(:, :) = bf_gradz(:, :)
-      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, COMPLEX_ZERO, phir_gradz_cmplx(1,1),nocc)
+      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, &
+                 COMPLEX_ZERO, phir_gradz_cmplx(1,1),nocc)
 
       !$OMP PARALLEL DO PRIVATE(istate,jstate)
       do ir=1, nr
         rhor(ispin, ir) = SUM( ABS(phir_cmplx(:, ir))**2 * occupation(:nocc, ispin) )
-        grad_rhor(ispin, ir, 1) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir)*CONJG(phir_gradx_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
-        grad_rhor(ispin, ir, 2) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir)*CONJG(phir_grady_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
-        grad_rhor(ispin, ir, 3) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir)*CONJG(phir_gradz_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
+        grad_rhor(ispin, ir, 1) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir) &
+                                  * CONJG(phir_gradx_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
+        grad_rhor(ispin, ir, 2) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir) &
+                                  * CONJG(phir_grady_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
+        grad_rhor(ispin, ir, 3) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir) &
+                                  * CONJG(phir_gradz_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
         if ( ispin==1 ) then
           PIr(ir) = 0.0 
           do istate=1, nocc
@@ -321,9 +328,12 @@ subroutine calc_density_gradr_batch(occupation, c_matrix, bfr, bf_gradx, bf_grad
       !phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_gradx(:,:) )
       !phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_grady(:,:) )
       !phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , bf_gradz(:,:) )
-      call DGEMM('T', 'N', nocc, nr, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, bf_gradx(1, 1), nbf, 0.d0, phir_gradx(1,1),nocc)
-      call DGEMM('T', 'N', nocc, nr, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, bf_grady(1, 1), nbf, 0.d0, phir_grady(1,1),nocc)
-      call DGEMM('T', 'N', nocc, nr, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, bf_gradz(1, 1), nbf, 0.d0, phir_gradz(1,1),nocc)
+      call DGEMM('T', 'N', nocc, nr, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, bf_gradx(1, 1), nbf, &
+                 0.d0, phir_gradx(1,1),nocc)
+      call DGEMM('T', 'N', nocc, nr, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, bf_grady(1, 1), nbf, &
+                 0.d0, phir_grady(1,1),nocc)
+      call DGEMM('T', 'N', nocc, nr, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, bf_gradz(1, 1), nbf, &
+                 0.d0, phir_gradz(1,1),nocc)
 
       !$OMP PARALLEL DO
       do ir=1, nr
@@ -344,20 +354,27 @@ subroutine calc_density_gradr_batch(occupation, c_matrix, bfr, bf_gradx, bf_grad
       allocate(tmp_cmplx(nbf, nr))
 
       tmp_cmplx(:, :) = bfr(:, :)
-      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, COMPLEX_ZERO, phir_cmplx(1,1),nocc)
+      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, &
+                 COMPLEX_ZERO, phir_cmplx(1,1),nocc)
       tmp_cmplx(:, :) = bf_gradx(:, :)
-      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, COMPLEX_ZERO, phir_gradx_cmplx(1,1),nocc)
+      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, &
+                 COMPLEX_ZERO, phir_gradx_cmplx(1,1),nocc)
       tmp_cmplx(:, :) = bf_grady(:, :)
-      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, COMPLEX_ZERO, phir_grady_cmplx(1,1),nocc)
+      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, &
+                 COMPLEX_ZERO, phir_grady_cmplx(1,1),nocc)
       tmp_cmplx(:, :) = bf_gradz(:, :)
-      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, COMPLEX_ZERO, phir_gradz_cmplx(1,1),nocc)
+      call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, &
+                 COMPLEX_ZERO, phir_gradz_cmplx(1,1),nocc)
 
       !$OMP PARALLEL DO
       do ir=1, nr
         rhor(ispin, ir) = SUM( ABS(phir_cmplx(:, ir))**2 * occupation(:nocc, ispin) )
-        grad_rhor(ispin, ir, 1) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir)*CONJG(phir_gradx_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
-        grad_rhor(ispin, ir, 2) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir)*CONJG(phir_grady_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
-        grad_rhor(ispin, ir, 3) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir)*CONJG(phir_gradz_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
+        grad_rhor(ispin, ir, 1) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir) &
+              * CONJG(phir_gradx_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
+        grad_rhor(ispin, ir, 2) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir) &
+              * CONJG(phir_grady_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
+        grad_rhor(ispin, ir, 3) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir) &
+              * CONJG(phir_gradz_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
       enddo
       !$OMP END PARALLEL DO
 
@@ -555,7 +572,8 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis, occupation, c_matrix_cmplx
     enddo
 
     do ispin=1, nspin
-      write(file_out(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
+      write(file_out(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, '  Projectile position (A): ', &
+                                                   xatom(:, ncenter_nuclei)*bohr_A
       do idisc=1, ndisc
         write(file_out(ispin), '(F16.4,F19.10,i6)') (z_min+idisc*dz_disc)*bohr_A, charge_disc(idisc, ispin), &
                                                    count_z_section(idisc, ispin)

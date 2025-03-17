@@ -292,10 +292,12 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
         ! Add the new basis function
         jbf_cart = jbf_cart + 1
         index_in_shell = index_in_shell + 1
-        call init_basis_function(normalized, ng, nx, ny, nz, icenter, x0, v0, alpha, coeff, ishell, index_in_shell, basis%bfc(jbf_cart))
+        call init_basis_function(normalized, ng, nx, ny, nz, icenter, x0, v0, alpha, coeff, ishell, &
+                                 index_in_shell, basis%bfc(jbf_cart))
         if(basis%gaussian_type == 'CART') then
           jbf = jbf + 1
-          call init_basis_function(normalized, ng, nx, ny, nz, icenter, x0, v0, alpha, coeff, ishell, index_in_shell, basis%bff(jbf))
+          call init_basis_function(normalized, ng, nx, ny, nz, icenter, x0, v0, alpha, coeff, ishell, &
+                                   index_in_shell, basis%bff(jbf))
         endif
 
         ! Break the loop when nz is equal to l
@@ -317,7 +319,8 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
         do mm=-am_read, am_read
           jbf = jbf + 1
           index_in_shell = index_in_shell + 1
-          call init_basis_function_pure(normalized, ng, am_read, mm, icenter, x0, v0, alpha, coeff, ishell, index_in_shell, basis%bff(jbf))
+          call init_basis_function_pure(normalized, ng, am_read, mm, icenter, x0, v0, alpha, coeff, ishell, &
+                                        index_in_shell, basis%bff(jbf))
         enddo
       endif
 

@@ -338,7 +338,8 @@ subroutine diagonalize_dp(flavor, matrix, eigval, eigvec)
     allocate(isuppz(2*nmat))
     ABSTOL = DLAMCH('S')
     matrix_tmp(:, :) = matrix(:, :)
-    call DSYEVR('V', 'A', 'L', nmat, matrix_tmp, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, isuppz, work,lwork,iwork,liwork,info)
+    call DSYEVR('V', 'A', 'L', nmat, matrix_tmp, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, &
+                isuppz, work,lwork,iwork,liwork,info)
     liwork = iwork(1)
     deallocate(iwork)
     lwork = NINT(work(1))
@@ -348,7 +349,8 @@ subroutine diagonalize_dp(flavor, matrix, eigval, eigvec)
 
     allocate(work(lwork))
     allocate(iwork(liwork))
-    call DSYEVR('V', 'A', 'L', nmat, matrix_tmp, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, isuppz, work,lwork,iwork,liwork,info)
+    call DSYEVR('V', 'A', 'L', nmat, matrix_tmp, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, &
+                isuppz, work,lwork,iwork,liwork,info)
     deallocate(iwork, isuppz)
     deallocate(matrix_tmp)
     deallocate(work)
@@ -501,7 +503,8 @@ subroutine diagonalize_inplace_dp(flavor, matrix, eigval)
     allocate(eigvec(nmat, nmat))
     ABSTOL=DLAMCH('S')
     allocate(isuppz(2*nmat))
-    call DSYEVR('V', 'A', 'L', nmat, matrix, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, isuppz, work,lwork,iwork,liwork,info)
+    call DSYEVR('V', 'A', 'L', nmat, matrix, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, &
+                isuppz, work, lwork, iwork, liwork, info)
     liwork = iwork(1)
     deallocate(iwork)
   case('d','D')
@@ -523,7 +526,8 @@ subroutine diagonalize_inplace_dp(flavor, matrix, eigval)
   select case(flavor)
   case('r','R')
     allocate(iwork(liwork))
-    call DSYEVR('V', 'A', 'L', nmat, matrix, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, isuppz, work,lwork,iwork,liwork,info)
+    call DSYEVR('V', 'A', 'L', nmat, matrix, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, &
+                isuppz, work, lwork, iwork, liwork, info)
     matrix(:, :) = eigvec(:, :)
     deallocate(eigvec)
     deallocate(iwork, isuppz)
@@ -858,7 +862,8 @@ subroutine orthogonalize(vec)
   do ivec=1, nvec
     ! Orthogonalize to previous vectors
     do jvec=1, ivec-1
-      vec(:, ivec) = vec(:, ivec) - vec(:, jvec) * DOT_PRODUCT( vec(:, ivec) , vec(:, jvec) ) / DOT_PRODUCT( vec(:, jvec) , vec(:, jvec) )
+      vec(:, ivec) = vec(:, ivec) - vec(:, jvec) * DOT_PRODUCT( vec(:, ivec) , vec(:, jvec) ) &
+                                       / DOT_PRODUCT( vec(:, jvec) , vec(:, jvec) )
     enddo
     ! Normalize
     vec(:, ivec) = vec(:, ivec) / NORM2( vec(:, ivec) )

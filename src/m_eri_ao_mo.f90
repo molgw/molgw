@@ -90,7 +90,8 @@ function eri_eigen_ri_cmplx(istate, jstate, ijspin, kstate, lstate, klspin)
   complex(dp)        :: eri_eigen_ri_cmplx
   !=====
 
-  eri_eigen_ri_cmplx = SUM( eri_3center_eigen_cmplx(:, istate, jstate, ijspin) * eri_3center_eigen_cmplx(:, kstate, lstate, klspin) )
+  eri_eigen_ri_cmplx = SUM( eri_3center_eigen_cmplx(:, istate, jstate, ijspin) &
+                            * eri_3center_eigen_cmplx(:, kstate, lstate, klspin) )
 
   call auxil%sum(eri_eigen_ri_cmplx)
 
@@ -105,7 +106,8 @@ function eri_eigen_ri_lr_cmplx(istate, jstate, ijspin, kstate, lstate, klspin)
   complex(dp)        :: eri_eigen_ri_lr_cmplx
   !=====
 
- eri_eigen_ri_lr_cmplx=SUM(eri_3center_eigen_lr_cmplx(:, istate, jstate, ijspin)*eri_3center_eigen_lr_cmplx(:, kstate, lstate, klspin))
+ eri_eigen_ri_lr_cmplx=SUM( eri_3center_eigen_lr_cmplx(:, istate, jstate, ijspin) &
+                            * eri_3center_eigen_lr_cmplx(:, kstate, lstate, klspin))
   
   call auxil%sum(eri_eigen_ri_lr_cmplx)
   
@@ -190,7 +192,8 @@ subroutine calculate_eri_4center_eigen(c_matrix, istate, ijspin, eri_eigenstate_
   ! write this disclaimer only at the first call
   if( disclaimer ) then
     write(stdout, '(1x,a)')        'AO to MO transform using the 8 permutation symmetries'
-    write(stdout, '(1x,a,f9.3,a)') 'Make sure OMP_STACKSIZE is larger than ', REAL(nbf, dp)**3 * REAL(dp, dp) / 1024.0_dp**2, ' (Mb)'
+    write(stdout, '(1x,a,f9.3,a)') 'Make sure OMP_STACKSIZE is larger than ', &
+                                    REAL(nbf, dp)**3 * REAL(dp, dp) / 1024.0_dp**2, ' (Mb)'
     disclaimer = .FALSE.
   endif
   !$OMP PARALLEL PRIVATE(index_ij,index_kl,ibf,jbf,kbf,lbf,stride)
@@ -1020,7 +1023,8 @@ subroutine form_erimol(nbf, nstate_tot, nstate_jkl, c_matrix, c_matrix_cmplx, ER
           do abf=1, nbf
             do ibf=1, nbf
               if( negligible_basispair(ibf, abf) ) cycle
-              tmp_pxxx_cmplx(abf, jbf, bbf)=tmp_pxxx_cmplx(abf, jbf, bbf)+conjg(c_matrix_cmplx(ibf, pstate, 1))*eri(ibf, abf, jbf, bbf)
+              tmp_pxxx_cmplx(abf, jbf, bbf)=tmp_pxxx_cmplx(abf, jbf, bbf) &
+                              + CONJG(c_matrix_cmplx(ibf, pstate, 1)) * eri(ibf, abf, jbf, bbf)
             enddo
           enddo
         enddo

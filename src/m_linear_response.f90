@@ -246,7 +246,10 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
     !
     ! Step 2
-    if(is_tddft) call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, wpol_out, m_apb, n_apb, apb_matrix)
+    if(is_tddft) then
+       call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
+                            wpol_out, m_apb, n_apb, apb_matrix)
+    endif
 
     !
     ! Step 3
@@ -268,12 +271,16 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
     !
     ! Step 1
-    call build_amb_apb_common(is_triplet_currently, lambda_, nmat, basis%nbf, nstate, c_matrix, energy_qp, wpol_out, alpha_local, &
+    call build_amb_apb_common(is_triplet_currently, lambda_, nmat, basis%nbf, nstate, c_matrix, energy_qp, &
+                              wpol_out, alpha_local, &
                               m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, en_rpa)
 
     !
     ! Step 2
-    if(is_tddft) call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, wpol_out, m_apb, n_apb, apb_matrix)
+    if(is_tddft) then
+      call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
+                           wpol_out, m_apb, n_apb, apb_matrix)
+    endif
 
 
     !
@@ -656,7 +663,8 @@ subroutine get_energy_qp(energy, occupation, energy_qp)
     case(0)
       write(stdout, '(a)') ' Reading OK'
     case(1, 2)
-      write(stdout, '(a,/,a)') ' Something happened during the reading of energy_qp file', ' Fill up the QP energies with KS energies'
+      write(stdout, '(a,/,a)') ' Something happened during the reading of energy_qp file', &
+                               ' Fill up the QP energies with KS energies'
       energy_qp(:, :) = energy(:, :)
     case default
       call die('reading_status BUG')

@@ -248,12 +248,18 @@ function eval_fxc_rks_singlet(istate, jstate, ijspin, kstate, lstate, klspin)
 
   if(dft_xc(1)%needs_gradient) then
 
-    grad_ij(1, :, ijspin) = wf_gradr(1, :, istate, ijspin) * wf_r(:, jstate, ijspin) + wf_gradr(1, :, jstate, ijspin) * wf_r(:, istate, ijspin)
-    grad_ij(2, :, ijspin) = wf_gradr(2, :, istate, ijspin) * wf_r(:, jstate, ijspin) + wf_gradr(2, :, jstate, ijspin) * wf_r(:, istate, ijspin)
-    grad_ij(3, :, ijspin) = wf_gradr(3, :, istate, ijspin) * wf_r(:, jstate, ijspin) + wf_gradr(3, :, jstate, ijspin) * wf_r(:, istate, ijspin)
-    grad_kl(1, :, klspin) = wf_gradr(1, :, kstate, klspin) * wf_r(:, lstate, klspin) + wf_gradr(1, :, lstate, klspin) * wf_r(:, kstate, klspin)
-    grad_kl(2, :, klspin) = wf_gradr(2, :, kstate, klspin) * wf_r(:, lstate, klspin) + wf_gradr(2, :, lstate, klspin) * wf_r(:, kstate, klspin)
-    grad_kl(3, :, klspin) = wf_gradr(3, :, kstate, klspin) * wf_r(:, lstate, klspin) + wf_gradr(3, :, lstate, klspin) * wf_r(:, kstate, klspin)
+    grad_ij(1, :, ijspin) = wf_gradr(1, :, istate, ijspin) * wf_r(:, jstate, ijspin) &
+                          + wf_gradr(1, :, jstate, ijspin) * wf_r(:, istate, ijspin)
+    grad_ij(2, :, ijspin) = wf_gradr(2, :, istate, ijspin) * wf_r(:, jstate, ijspin) &
+                          + wf_gradr(2, :, jstate, ijspin) * wf_r(:, istate, ijspin)
+    grad_ij(3, :, ijspin) = wf_gradr(3, :, istate, ijspin) * wf_r(:, jstate, ijspin) &
+                          + wf_gradr(3, :, jstate, ijspin) * wf_r(:, istate, ijspin)
+    grad_kl(1, :, klspin) = wf_gradr(1, :, kstate, klspin) * wf_r(:, lstate, klspin) &
+                          + wf_gradr(1, :, lstate, klspin) * wf_r(:, kstate, klspin)
+    grad_kl(2, :, klspin) = wf_gradr(2, :, kstate, klspin) * wf_r(:, lstate, klspin) &
+                          + wf_gradr(2, :, lstate, klspin) * wf_r(:, kstate, klspin)
+    grad_kl(3, :, klspin) = wf_gradr(3, :, kstate, klspin) * wf_r(:, lstate, klspin) &
+                          + wf_gradr(3, :, lstate, klspin) * wf_r(:, kstate, klspin)
     dot_ij_kl(:, ijspin) = grad_ij(1, :, ijspin) * grad_kl(1, :, klspin) + grad_ij(2, :, ijspin) * grad_kl(2, :, klspin) &
                         + grad_ij(3, :, ijspin) * grad_kl(3, :, klspin)
     dot_rho_ij(:, ijspin) = rho_gradr(1, :, 1) * grad_ij(1, :, ijspin) + rho_gradr(2, :, 1) * grad_ij(2, :, ijspin)  &
@@ -290,12 +296,18 @@ function eval_fxc_uks(istate, jstate, ijspin, kstate, lstate, klspin)
 
   if(dft_xc(1)%needs_gradient) then
 
-    grad_ij(1, :, ijspin) = wf_gradr(1, :, istate, ijspin) * wf_r(:, jstate, ijspin) + wf_gradr(1, :, jstate, ijspin) * wf_r(:, istate, ijspin)
-    grad_ij(2, :, ijspin) = wf_gradr(2, :, istate, ijspin) * wf_r(:, jstate, ijspin) + wf_gradr(2, :, jstate, ijspin) * wf_r(:, istate, ijspin)
-    grad_ij(3, :, ijspin) = wf_gradr(3, :, istate, ijspin) * wf_r(:, jstate, ijspin) + wf_gradr(3, :, jstate, ijspin) * wf_r(:, istate, ijspin)
-    grad_kl(1, :, klspin) = wf_gradr(1, :, kstate, klspin) * wf_r(:, lstate, klspin) + wf_gradr(1, :, lstate, klspin) * wf_r(:, kstate, klspin)
-    grad_kl(2, :, klspin) = wf_gradr(2, :, kstate, klspin) * wf_r(:, lstate, klspin) + wf_gradr(2, :, lstate, klspin) * wf_r(:, kstate, klspin)
-    grad_kl(3, :, klspin) = wf_gradr(3, :, kstate, klspin) * wf_r(:, lstate, klspin) + wf_gradr(3, :, lstate, klspin) * wf_r(:, kstate, klspin)
+    grad_ij(1, :, ijspin) = wf_gradr(1, :, istate, ijspin) * wf_r(:, jstate, ijspin) &
+                          + wf_gradr(1, :, jstate, ijspin) * wf_r(:, istate, ijspin)
+    grad_ij(2, :, ijspin) = wf_gradr(2, :, istate, ijspin) * wf_r(:, jstate, ijspin) &
+                          + wf_gradr(2, :, jstate, ijspin) * wf_r(:, istate, ijspin)
+    grad_ij(3, :, ijspin) = wf_gradr(3, :, istate, ijspin) * wf_r(:, jstate, ijspin) &
+                          + wf_gradr(3, :, jstate, ijspin) * wf_r(:, istate, ijspin)
+    grad_kl(1, :, klspin) = wf_gradr(1, :, kstate, klspin) * wf_r(:, lstate, klspin) &
+                          + wf_gradr(1, :, lstate, klspin) * wf_r(:, kstate, klspin)
+    grad_kl(2, :, klspin) = wf_gradr(2, :, kstate, klspin) * wf_r(:, lstate, klspin) &
+                          + wf_gradr(2, :, lstate, klspin) * wf_r(:, kstate, klspin)
+    grad_kl(3, :, klspin) = wf_gradr(3, :, kstate, klspin) * wf_r(:, lstate, klspin) &
+                          + wf_gradr(3, :, lstate, klspin) * wf_r(:, kstate, klspin)
     dot_ij_kl(:, ijspin) = grad_ij(1, :, ijspin) * grad_kl(1, :, klspin) + grad_ij(2, :, ijspin) * grad_kl(2, :, klspin) &
                         + grad_ij(3, :, ijspin) * grad_kl(3, :, klspin)
     dot_rho_ij(:, ijspin) = rho_gradr(1, :, 1) * grad_ij(1, :, ijspin) + rho_gradr(2, :, 1) * grad_ij(2, :, ijspin)  &
@@ -330,12 +342,18 @@ function eval_fxc_rks_triplet(istate, jstate, ijspin, kstate, lstate, klspin)
 
   if(dft_xc(1)%needs_gradient) then
 
-    grad_ij(1, :, ijspin) = wf_gradr(1, :, istate, ijspin) * wf_r(:, jstate, ijspin) + wf_gradr(1, :, jstate, ijspin) * wf_r(:, istate, ijspin)
-    grad_ij(2, :, ijspin) = wf_gradr(2, :, istate, ijspin) * wf_r(:, jstate, ijspin) + wf_gradr(2, :, jstate, ijspin) * wf_r(:, istate, ijspin)
-    grad_ij(3, :, ijspin) = wf_gradr(3, :, istate, ijspin) * wf_r(:, jstate, ijspin) + wf_gradr(3, :, jstate, ijspin) * wf_r(:, istate, ijspin)
-    grad_kl(1, :, klspin) = wf_gradr(1, :, kstate, klspin) * wf_r(:, lstate, klspin) + wf_gradr(1, :, lstate, klspin) * wf_r(:, kstate, klspin)
-    grad_kl(2, :, klspin) = wf_gradr(2, :, kstate, klspin) * wf_r(:, lstate, klspin) + wf_gradr(2, :, lstate, klspin) * wf_r(:, kstate, klspin)
-    grad_kl(3, :, klspin) = wf_gradr(3, :, kstate, klspin) * wf_r(:, lstate, klspin) + wf_gradr(3, :, lstate, klspin) * wf_r(:, kstate, klspin)
+    grad_ij(1, :, ijspin) = wf_gradr(1, :, istate, ijspin) * wf_r(:, jstate, ijspin) &
+                          + wf_gradr(1, :, jstate, ijspin) * wf_r(:, istate, ijspin)
+    grad_ij(2, :, ijspin) = wf_gradr(2, :, istate, ijspin) * wf_r(:, jstate, ijspin) &
+                          + wf_gradr(2, :, jstate, ijspin) * wf_r(:, istate, ijspin)
+    grad_ij(3, :, ijspin) = wf_gradr(3, :, istate, ijspin) * wf_r(:, jstate, ijspin) &
+                          + wf_gradr(3, :, jstate, ijspin) * wf_r(:, istate, ijspin)
+    grad_kl(1, :, klspin) = wf_gradr(1, :, kstate, klspin) * wf_r(:, lstate, klspin) &
+                          + wf_gradr(1, :, lstate, klspin) * wf_r(:, kstate, klspin)
+    grad_kl(2, :, klspin) = wf_gradr(2, :, kstate, klspin) * wf_r(:, lstate, klspin) &
+                          + wf_gradr(2, :, lstate, klspin) * wf_r(:, kstate, klspin)
+    grad_kl(3, :, klspin) = wf_gradr(3, :, kstate, klspin) * wf_r(:, lstate, klspin) &
+                          + wf_gradr(3, :, lstate, klspin) * wf_r(:, kstate, klspin)
     dot_ij_kl(:, ijspin) = grad_ij(1, :, ijspin) * grad_kl(1, :, klspin) + grad_ij(2, :, ijspin) * grad_kl(2, :, klspin) &
                         + grad_ij(3, :, ijspin) * grad_kl(3, :, klspin)
     dot_rho_ij(:, ijspin) = rho_gradr(1, :, 1) * grad_ij(1, :, ijspin) + rho_gradr(2, :, 1) * grad_ij(2, :, ijspin)  &

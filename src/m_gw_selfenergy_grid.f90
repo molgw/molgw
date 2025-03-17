@@ -79,15 +79,18 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   wpol%nprodbasis = nauxil_local
   wpol%mchi = NUMROC(nauxil_global, block_row, iprow_sd, first_row, nprow_sd)
   wpol%nchi = NUMROC(nauxil_global, block_col, ipcol_sd, first_col, npcol_sd)
-  call DESCINIT(wpol%desc_chi, nauxil_global, nauxil_global, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, wpol%mchi), info)
+  call DESCINIT(wpol%desc_chi, nauxil_global, nauxil_global, block_row, block_col, first_row, first_col, &
+                cntxt_sd, MAX(1, wpol%mchi), info)
   call clean_allocate('Chi', wpol%chi, wpol%mchi, wpol%nchi, wpol%nomega)
 
   write(stdout, '(1x,a,i7,a,i7)') 'Matrix sizes   ', nauxil_global, ' x ', nauxil_global
   write(stdout, '(1x,a,i7,a,i7)') 'Distributed in ', wpol%mchi, ' x ', wpol%nchi
 
   ! Faster when the largest range (virtual states, occupied states) comes first
-  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix, nlumo_W, nvirtual_W-1, ncore_W+1, nhomo_W, timing=timing_aomo_pola)
-
+  if( has_auxil_basis ) then
+    call calculate_eri_3center_eigen(c_matrix, nlumo_W, nvirtual_W-1, ncore_W+1, nhomo_W, &
+                                     timing=timing_aomo_pola)
+  endif
 
 
   !
@@ -693,7 +696,8 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
   real(dp) :: erpa, egw
   ! DGEMM
   integer :: astate, istate
-  real(dp), allocatable :: eri3_i_m(:, :), eri3_i_a(:, :), eri3_r_m(:, :), eri3_r_a(:, :), tmp(:, :), braket1_ri(:, :), braket2_ri(:, :)
+  real(dp), allocatable :: eri3_i_m(:, :), eri3_i_a(:, :), eri3_r_m(:, :), eri3_r_a(:, :)
+  real(dp), allocatable :: tmp(:, :), braket1_ri(:, :), braket2_ri(:, :)
   real(dp), allocatable :: eri3_a_m(:, :), eri3_a_i(:, :), eri3_r_i(:, :), braket1_ra(:, :), braket2_ra(:, :)
   real(dp) :: chi_wp(nauxil_global, nauxil_global), chi_wwp(nauxil_global, nauxil_global)
   !=====

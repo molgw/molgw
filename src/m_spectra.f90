@@ -398,7 +398,8 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
     write(photocrossfile, '(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
     do iomega=1, nomega
       write(dynpolfile, '(11(e18.8,2x))') REAL(omega(iomega), dp)*Ha_eV,                                      &
-                                           (dynamical_pol(iomega, 1, 1)+dynamical_pol(iomega, 2, 2)+dynamical_pol(iomega, 3, 3))/3.0_dp, &
+                                           ( dynamical_pol(iomega, 1, 1) + dynamical_pol(iomega, 2, 2) &
+                                             + dynamical_pol(iomega, 3, 3) ) / 3.0_dp, &
                                            dynamical_pol(iomega, :, :)
       write(photocrossfile, '(11(e18.8,2x))') REAL(omega(iomega), dp)*Ha_eV,                                      &
                                              ( photoabsorp_cross(iomega, 1, 1) &
@@ -503,7 +504,8 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
     write(unit_yaml, '(4x,a)') 'unit: a.u.'
     write(unit_yaml, '(4x,a)') 'q vectors:'
     do iq=1, nq
-      write(unit_yaml, '(8x,a,es16.6,a,es16.6,a,es16.6,a)') '- [', qvec_list(1, iq), ' , ', qvec_list(2, iq), ' , ', qvec_list(3, iq), ']'
+      write(unit_yaml, '(8x,a,es16.6,a,es16.6,a,es16.6,a)') '- [', qvec_list(1, iq), ' , ', &
+                                                qvec_list(2, iq), ' , ', qvec_list(3, iq), ']'
     enddo
   endif
 

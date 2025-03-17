@@ -487,7 +487,8 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   ! A common factor 1/(e_j-e_c) is to be added for the occupied-virtual block (terms A3,A4,A5,A6)
   do bstate=nhomo_G+1, nvirtual_G-1
     do jstate=ncore_G+1, nhomo_G
-      p_matrix_gw(jstate, bstate, pqspin) = p_matrix_gw(jstate, bstate, pqspin) / ( energy(jstate, pqspin) - energy(bstate, pqspin) )
+      p_matrix_gw(jstate, bstate, pqspin) = p_matrix_gw(jstate, bstate, pqspin) &
+                                            / ( energy(jstate, pqspin) - energy(bstate, pqspin) )
     enddo
   enddo
 

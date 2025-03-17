@@ -190,8 +190,10 @@ subroutine spatial_extension(basis, c_matrix)
   do istate=1, SIZE(c_matrix, DIM=2)
     do ispin=1, nspin
 
-      variance(istate, ispin) = DOT_PRODUCT( c_matrix(:, istate, ispin) , MATMUL( trace_quad_ao(:, :)   , c_matrix(:, istate, ispin) ) )
-      mean(istate, ispin)     = DOT_PRODUCT( c_matrix(:, istate, ispin) , MATMUL( trace_dipole_ao(:, :) , c_matrix(:, istate, ispin) ) )
+      variance(istate, ispin) = DOT_PRODUCT( c_matrix(:, istate, ispin), &
+                                  MATMUL( trace_quad_ao(:, :)   , c_matrix(:, istate, ispin) ) )
+      mean(istate, ispin)     = DOT_PRODUCT( c_matrix(:, istate, ispin), &
+                                  MATMUL( trace_dipole_ao(:, :) , c_matrix(:, istate, ispin) ) )
 
     enddo
 

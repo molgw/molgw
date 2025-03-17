@@ -2225,7 +2225,8 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   real(dp) :: erpa, egw
   ! DGEMM
   integer :: astate, istate
-  real(dp), allocatable :: eri3_i_m(:, :), eri3_i_a(:, :), eri3_r_m(:, :), eri3_r_a(:, :), tmp(:, :), braket1_ri(:, :), braket2_ri(:, :)
+  real(dp), allocatable :: eri3_i_m(:, :), eri3_i_a(:, :), eri3_r_m(:, :), eri3_r_a(:, :)
+  real(dp), allocatable :: tmp(:, :), braket1_ri(:, :), braket2_ri(:, :)
   real(dp), allocatable :: eri3_a_m(:, :), eri3_a_i(:, :), eri3_r_i(:, :), braket1_ra(:, :), braket2_ra(:, :)
   real(dp) :: chi_wp(nauxil_global, nauxil_global), chi_wwp(nauxil_global, nauxil_global)
   !=====

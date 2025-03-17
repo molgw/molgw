@@ -357,7 +357,8 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
     call clean_allocate('Initial energies for the frozen core', energies_start, nstate, nspin)
     call clean_allocate('a_matrix_orth_start_cmplx for the frozen core', a_matrix_orth_start_cmplx, nstate, nstate, nspin)
     do ispin=1, nspin
-      call diagonalize(postscf_diago_flavor, h_small_cmplx(:, :, ispin), energies_start(:, ispin), a_matrix_orth_start_cmplx(:, :, ispin))
+      call diagonalize(postscf_diago_flavor, h_small_cmplx(:, :, ispin), energies_start(:, ispin), &
+                       a_matrix_orth_start_cmplx(:, :, ispin))
     end do
   end if
   !====
@@ -451,8 +452,10 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
   end if
 
   if(print_line_rho_diff_tddft_) then
-    call calc_rho_initial_cmplx(nstate, nocc, basis, occupation, c_matrix_cmplx, 0, time_min, nr_line_rho, point_a, point_b, rho_start)
-    call plot_rho_diff_cmplx(nstate, nocc, basis, occupation, c_matrix_cmplx, 0, time_min, nr_line_rho, point_a, point_b, rho_start)
+    call calc_rho_initial_cmplx(nstate, nocc, basis, occupation, c_matrix_cmplx, 0, &
+                                time_min, nr_line_rho, point_a, point_b, rho_start)
+    call plot_rho_diff_cmplx(nstate, nocc, basis, occupation, c_matrix_cmplx, 0, &
+                             time_min, nr_line_rho, point_a, point_b, rho_start)
   end if
 
   if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_dft_grid(basis, occupation, c_matrix_cmplx, 0, time_min)
@@ -1889,7 +1892,8 @@ subroutine initialize_q(nstate, nocc, nspin, c_matrix_orth_start_complete_cmplx,
   call clean_allocate('c_matrix_orth_start for TDDFT', c_matrix_orth_start_complete_cmplx, nstate, nstate, nspin)
   allocate(energy_tddft(nstate))
   do ispin=1, nspin
-    call diagonalize(postscf_diago_flavor, h_small_cmplx(:, :, ispin), energy_tddft, c_matrix_orth_start_complete_cmplx(:, :, ispin))
+    call diagonalize(postscf_diago_flavor, h_small_cmplx(:, :, ispin), energy_tddft, &
+                     c_matrix_orth_start_complete_cmplx(:, :, ispin))
   end do
   deallocate(energy_tddft)
 
@@ -1942,7 +1946,8 @@ end subroutine initialize_q
 
 
 !=========================================================================
-subroutine calculate_q_matrix(occupation, c_matrix_orth_start_complete_cmplx, c_matrix_orth_cmplx, istate_cut, file_q_matrix, time_cur)
+subroutine calculate_q_matrix(occupation, c_matrix_orth_start_complete_cmplx, c_matrix_orth_cmplx, &
+                              istate_cut, file_q_matrix, time_cur)
   implicit none
   real(dp), intent(in)      :: occupation(:, :)
   complex(dp), intent(in)   :: c_matrix_orth_start_complete_cmplx(:, :, :)
@@ -2669,7 +2674,8 @@ subroutine propagate_orth_ham_2(nstate, basis, time_step_cur, c_matrix_orth_cmpl
     select case (tddft_propagator)
     case('ETRS')
       do iham=1, 2
-        call diagonalize(postscf_diago_flavor, h_small_hist2_cmplx(:, :, ispin, iham), energy_tddft, a_matrix_orth_cmplx(:, :, iham))
+        call diagonalize(postscf_diago_flavor, h_small_hist2_cmplx(:, :, ispin, iham), energy_tddft, &
+                         a_matrix_orth_cmplx(:, :, iham))
         propagator_eigen(:, :, iham) = ( 0.0_dp , 0.0_dp )
         do ibf=1, nstate
           propagator_eigen(ibf, ibf, iham) = EXP(-im*time_step_cur/2.d0*energy_tddft(ibf))
