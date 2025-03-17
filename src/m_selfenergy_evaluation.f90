@@ -356,7 +356,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
         call find_qp_energy_linearization(se_gw, exchange_m_vxc_diag, energy, energy_qp_z, zz)
         call find_qp_energy_graphical(se_gw, exchange_m_vxc_diag, energy, energy_qp_new, zz)
         call output_qp_energy('GW', energy, exchange_m_vxc_diag, 1, se_gw, energy_qp_z, energy_qp_new,zz)
-        call output_qp_energy_yaml('GW', energy, exchange_m_vxc_diag, se_gw, energy_qp_z, energy_qp_new,zz)
+        call output_qp_energy_yaml('GW', energy, exchange_m_vxc_diag, se_gw, energy_qp_new,zz)
         call output_homolumo('GW', occupation, energy_qp_new, nsemin,nsemax)
         call dump_out_energy_yaml('gw energies', energy_qp_new, nsemin, nsemax)
         deallocate(zz)
@@ -417,7 +417,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
           call find_qp_energy_linearization(se, exchange_m_vxc_diag, energy, energy_qp_z, zz)
           call find_qp_energy_graphical(se, exchange_m_vxc_diag, energy, energy_qp_new, zz)
           call output_qp_energy('GW+SOSEX2', energy, exchange_m_vxc_diag, 1, se, energy_qp_z, energy_qp_new, zz)
-          call output_qp_energy_yaml('GW+SOSEX2', energy, exchange_m_vxc_diag, se, energy_qp_z, energy_qp_new, zz)
+          call output_qp_energy_yaml('GW+SOSEX2', energy, exchange_m_vxc_diag, se, energy_qp_new, zz)
           call output_homolumo('GW+SOSEX2', occupation, energy_qp_new, nsemin, nsemax)
           call dump_out_energy_yaml('gw+sosex2 energies', energy_qp_new, nsemin, nsemax)
           deallocate(zz)
@@ -546,7 +546,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       call find_qp_energy_graphical(se, exchange_m_vxc_diag, energy, energy_qp_new, zz)
 
       call output_qp_energy(TRIM(selfenergy_tag), energy, exchange_m_vxc_diag, 1, se, energy_qp_z, energy_qp_new, zz)
-      call output_qp_energy_yaml(TRIM(selfenergy_tag), energy, exchange_m_vxc_diag, se, energy_qp_z, energy_qp_new, zz)
+      call output_qp_energy_yaml(TRIM(selfenergy_tag), energy, exchange_m_vxc_diag, se, energy_qp_new, zz)
       deallocate(zz)
       deallocate(energy_qp_z)
     end select

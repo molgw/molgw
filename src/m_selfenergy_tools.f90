@@ -499,14 +499,13 @@ end subroutine output_qp_energy
 
 
 !=========================================================================
-subroutine output_qp_energy_yaml(calcname, energy0, exchange_m_vxc, se, energy1, energy2, zz)
+subroutine output_qp_energy_yaml(calcname, energy0, exchange_m_vxc, se, energy2, zz)
   implicit none
 
-  character(len=*)             :: calcname
-  real(dp), intent(in)          :: energy0(:, :), exchange_m_vxc(:, :)
+  character(len=*)                  :: calcname
+  real(dp), intent(in)              :: energy0(:, :), exchange_m_vxc(:, :)
   type(selfenergy_grid), intent(in) :: se
-  real(dp), intent(in)          :: energy1(:, :)
-  real(dp), intent(in), optional :: energy2(:, :), zz(:, :)
+  real(dp), intent(in), optional    :: energy2(:, :), zz(:, :)
   !=====
   integer          :: pstate, pspin
   real(dp)         :: sigc_qp
@@ -930,15 +929,15 @@ function eval_func(coeff_in, zz)
   complex(dp), intent(in) :: zz
   complex(dp)            :: eval_func
   !=====
-  integer :: ipp
+  integer :: ip
   !=====
 
   eval_func = 0.0_dp
-  do ipp=1, npp
-    eval_func = eval_func + coeff_in(5+(ipp-1)*nparam)**2  &
-                             / ( zz - ( coeff_in(1+(ipp-1)*nparam)**2 - im * coeff_in(3+(ipp-1)*nparam)**2 ) ) &
-                         + coeff_in(6+(ipp-1)*nparam)**2  &
-                             / ( zz + ( coeff_in(2+(ipp-1)*nparam)**2 - im * coeff_in(4+(ipp-1)*nparam)**2 ) )
+  do ip=1, npp
+    eval_func = eval_func + coeff_in(5+(ip-1)*nparam)**2  &
+                             / ( zz - ( coeff_in(1+(ip-1)*nparam)**2 - im * coeff_in(3+(ip-1)*nparam)**2 ) ) &
+                         + coeff_in(6+(ip-1)*nparam)**2  &
+                             / ( zz + ( coeff_in(2+(ip-1)*nparam)**2 - im * coeff_in(4+(ip-1)*nparam)**2 ) )
   enddo
 
 end function eval_func
