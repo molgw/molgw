@@ -534,7 +534,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   ! from cntxt_eri3_mo to cntxt_sd
   mlocal = NUMROC(nauxil_global , block_row, iprow_sd, first_row, nprow_sd)
   nlocal = NUMROC(wpol%npole_reso, block_col, ipcol_sd, first_col, npcol_sd)
-  call DESCINIT(desc_wsd, nauxil_global, wpol%npole_reso, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, mlocal), info)
+  call DESCINIT(desc_wsd, nauxil_global, wpol%npole_reso, block_row, block_col, first_row, first_col, &
+                cntxt_sd, MAX(1, mlocal), info)
   call clean_allocate('TMP distributed W', wresidue_sd, mlocal, nlocal)
   call PDGEMR2D(nauxil_global, wpol%npole_reso, wpol%residue_left, 1, 1, desc_wauxil, &
                                                     wresidue_sd, 1, 1, desc_wsd, cntxt_sd)

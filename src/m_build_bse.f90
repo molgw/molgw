@@ -803,7 +803,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
           enddo
 
           do jstate=jstate_min, jstate_max
-            wp0_i(ncore_W+1:nvirtual_W-1, jstate) = MATMUL( w0_local(:) , eri_3center_eigen(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
+            wp0_i(ncore_W+1:nvirtual_W-1, jstate) = MATMUL( w0_local(:) , &
+                                                            eri_3center_eigen(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
           enddo
           call auxil%sum(wp0_i)
 

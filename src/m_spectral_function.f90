@@ -502,7 +502,8 @@ subroutine write_spectral_function(sf)
   else
     if(is_iomaster) then
       do iprodbasis=1, sf%nprodbasis_total
-        call MPI_FILE_WRITE_AT(wfile, disp, sf%residue_left(iprodbasis, :), sf%npole_reso, MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
+        call MPI_FILE_WRITE_AT(wfile, disp, sf%residue_left(iprodbasis, :), sf%npole_reso, &
+                               MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
         disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1, 1))
       enddo
     endif
@@ -613,7 +614,8 @@ subroutine read_spectral_function(sf, reading_status)
     deallocate(buffer)
   else
     do iprodbasis=1, sf%nprodbasis
-      call MPI_FILE_READ_AT(wfile, disp, sf%residue_left(iprodbasis, :), sf%npole_reso, MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
+      call MPI_FILE_READ_AT(wfile, disp, sf%residue_left(iprodbasis, :), sf%npole_reso, &
+                            MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
       disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1, 1))
     enddo
   endif
