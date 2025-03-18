@@ -824,15 +824,17 @@ subroutine evaluate_s2_operator(occupation, c_matrix, s_matrix)
   real(dp), intent(in)     :: c_matrix(:, :, :)
   real(dp), intent(in)     :: s_matrix(:, :)
   !=====
-  integer                 :: nstate
+  integer                 :: nstate, nbf, nocc1, nocc2
   integer                 :: istate, jstate
   real(dp)                :: s2, s2_exact
   real(dp)                :: n1, n2, nmax, nmin
+  real(dp), allocatable   :: sc2_matrix(:,:), c1sc2_matrix(:,:)
   !=====
 
   if(nspin /= 2) return
 
   nstate = SIZE(occupation, DIM=1)
+  nbf    = SIZE(c_matrix, DIM=1)
 
   n1 = SUM( occupation(:, 1) )  ! Number of spin up   electrons
   n2 = SUM( occupation(:, 2) )  ! Number of spin down electrons
@@ -841,17 +843,33 @@ subroutine evaluate_s2_operator(occupation, c_matrix, s_matrix)
 
   s2_exact = (nmax-nmin)/2.0_dp * ( (nmax-nmin)/2.0_dp + 1.0_dp )
   s2       = s2_exact + nmin
+
+  nocc1 = 0
+  nocc2 = 0
   do istate=1, nstate
-    if( occupation(istate, 1) < completely_empty ) cycle
-    do jstate=1, nstate
-      if( occupation(jstate, 2) < completely_empty ) cycle
-
-      s2 = s2 - ABS( DOT_PRODUCT( c_matrix(:, istate, 1) , MATMUL( s_matrix(:, :) , c_matrix(:, jstate, 2) ) )  &
-                      * occupation(istate, 1) * occupation(jstate, 2) )**2
-
-    enddo
+    if( occupation(istate, 1) > 1.0e-6_dp ) nocc1 = istate
+    if( occupation(istate, 2) > 1.0e-6_dp ) nocc2 = istate
   enddo
 
+  if( nocc1 > 0 .AND. nocc2 > 0 ) then
+    ! S * C_spin2
+    allocate(sc2_matrix(nbf, nocc2))
+    call DSYMM('L', 'L', nbf, nocc2, 1.0d0, s_matrix(1, 1), nbf, &
+                 c_matrix(1, 1, 2), nbf, 0.0d0, sc2_matrix(1, 1), nbf)
+    ! C_spin1 * ( S * C_spin2 )
+    allocate(c1sc2_matrix(nocc1, nocc2))
+    call DGEMM('T', 'N', nocc1, nocc2, nbf, 1.0d0, c_matrix(1, 1, 1), nbf, &
+                                                   sc2_matrix(1, 1), nbf, &
+                                            0.0d0, c1sc2_matrix(1, 1), nocc1)
+  
+    do istate=1, nocc1
+      do jstate=1, nocc2
+        s2 = s2 - ABS( c1sc2_matrix(istate,jstate) * occupation(istate, 1) * occupation(jstate, 2) )**2
+      enddo
+    enddo
+
+    deallocate(sc2_matrix, c1sc2_matrix)
+  endif
 
   write(stdout, '(/,a,f8.4)') ' Total Spin S**2: ', s2
   write(stdout, '(a,f8.4)')   ' Instead of:      ', s2_exact
