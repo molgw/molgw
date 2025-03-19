@@ -14,7 +14,7 @@ molgw module contains classes and modules to automate running and reading of MOL
 """
 
 __author__  = "Fabien Bruneval"
-__version__ = "3.3"
+__version__ = "3.4"
 
 import math
 import os, sys, shutil, subprocess

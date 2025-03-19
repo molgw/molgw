@@ -260,6 +260,8 @@ subroutine header()
   endif
   if( .NOT. libcint_has_range_separation ) then
     write(stdout, '(1x,a,i5)') 'Current LIBCINT compilation has no range-separation capability'
+  else
+    write(stdout, '(1x,a,i5)') 'Current LIBCINT compilation has range-separation capability'
   endif
 #endif
 

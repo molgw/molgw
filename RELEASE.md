@@ -8,6 +8,8 @@
 
 - Complex wavefunctions
 - X2C relativistic wavefunctions for HF/DFT calculations
+- Possibility to link with LIBCINT whatever the p-orbital ordering
+- Support for alternate compilers: LLVM flang/clang++ and Intel ifx/icx
 
 ### Contributors
 
@@ -31,6 +33,7 @@
 - Different p-orbital orderings are handled. It's not necessary to compile LIBCINT with `-DPYPZPX=1` anymore.
 
 ### Changes affecting the developers
+- Source files have been cleaned up. Please use a space after comma `, `
 
 ---
 
