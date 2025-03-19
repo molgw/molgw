@@ -1380,8 +1380,6 @@ subroutine setup_nucleus_grad(basis, hamiltonian_nucleus_grad, atom_list, verbos
   real(C_DOUBLE), allocatable        :: alphaA(:), cA(:), alphaB(:), cB(:)
 #if defined(HAVE_LIBCINT)
   integer                           :: idir
-  integer(C_INT) :: info
-  integer(C_INT) :: shls(2)
 #endif
   !=====
 
@@ -2139,12 +2137,9 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus)
   real(dp), allocatable :: int_fixed_r(:, :)
   real(dp), external    :: real_spherical_harmonics
   integer              :: necp, ie
-  character(len=100)   :: title
   logical              :: element_has_ecp
-  real(dp)             :: r1, r2
   real(dp), allocatable :: vr(:), ur(:)
   real(dp), allocatable :: kb(:, :)
-  integer              :: ir
   real(dp)             :: hamiltonian_ecp(basis%nbf, basis%nbf)
   real(dp), allocatable :: hamiltonian_kb(:, :)
   !=====
@@ -2427,7 +2422,6 @@ subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus)
   real(C_DOUBLE)             :: C(3)
   real(C_DOUBLE), allocatable :: alphaC(:)
   real(C_DOUBLE), allocatable :: cC(:)
-  real(dp) :: nucleus
   integer(C_INT) :: info, ipl, jpl
   integer(C_INT) :: shls(2)
   real(C_DOUBLE), allocatable :: env_local_erf(:)
