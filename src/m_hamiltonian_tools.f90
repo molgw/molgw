@@ -682,7 +682,7 @@ subroutine matrix_ao_to_mo_diag(c_matrix, matrix_in, diag_out)
   real(dp), intent(out) :: diag_out(:, :)
   !=====
   integer              :: nbf, nstate, nspin_local
-  integer              :: ispin, istate, ispin_ham
+  integer              :: ispin, istate
   real(dp), allocatable :: vector_tmp(:)
   !=====
 
@@ -1061,8 +1061,7 @@ subroutine setup_sqrt_overlap(s_matrix, s_matrix_sqrt)
   real(dp), intent(in)                          :: s_matrix(:, :)
   real(dp), allocatable, intent(inout)           :: s_matrix_sqrt(:, :)
   !=====
-  integer  :: nbf
-  integer  :: jbf, i_sign
+  integer  :: nbf, jbf
   real(dp), allocatable :: s_eigval(:)
   real(dp), allocatable :: matrix_tmp(:, :)
   real(dp), allocatable :: y_matrix(:, :)
@@ -1077,21 +1076,14 @@ subroutine setup_sqrt_overlap(s_matrix, s_matrix_sqrt)
 
   matrix_tmp(:, :) = s_matrix(:, :)
   ! Diagonalization with SCALAPACK
-  !! S = U*s*U^H
+  ! S = U*s*U^H
   call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, matrix_tmp, s_eigval)
-
-  ! Fix the sign of eigenvectors in matrix_tmp to be positive on the 1st element
-  !do i_sign = 1,nbf
-  !  if( matrix_tmp(1,i_sign)/abs(matrix_tmp(1,i_sign)) < 0.0_dp ) then
-  !    matrix_tmp(:,i_sign) = -matrix_tmp(:,i_sign)
-  !  end if
-  !enddo
 
   do jbf=1, nbf
     y_matrix(:, jbf) = matrix_tmp(:, jbf) * SQRT( s_eigval(jbf) )
   enddo
 
-  !! Calculate S^{1/2} matrix
+  ! Calculate S^{1/2} matrix
   s_matrix_sqrt(:, :) = MATMUL( matrix_tmp(:, :), TRANSPOSE( y_matrix(:, :) ) )
 
   deallocate(matrix_tmp, s_eigval, y_matrix)
@@ -1207,19 +1199,20 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
   real(dp), intent(out) :: energy(:, :)
   !=====
   integer :: nspin_local, nbf, nstate
+#if defined(HAVE_SCALAPACK)
   integer :: mh, nh, mc, nc, ms, ns
   integer :: nprow, npcol, iprow, ipcol
   integer :: info
-#if defined(HAVE_SCALAPACK)
   integer :: cntxt
   integer :: rank_sca, nprocs_sca
   integer :: desch(NDEL), descc(NDEL), descs(NDEL)
-#endif
-  integer  :: ispin
   integer  :: ilocal, jlocal, iglobal, jglobal
   integer  :: m_small, n_small
-  real(dp), allocatable :: h_small(:, :), h_small2(:, :, :)
   real(dp), allocatable :: ham_local(:, :), c_matrix_local(:, :), s_matrix_local(:, :)
+  real(dp), allocatable :: h_small(:, :)
+#endif
+  integer  :: ispin
+  real(dp), allocatable :: h_small2(:, :, :)
   !=====
 
   nbf         = SIZE(c_matrix, DIM=1)
