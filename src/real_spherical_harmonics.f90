@@ -7,25 +7,25 @@
 !
 !=========================================================================
 #include "molgw.h"
-function real_spherical_harmonics(ll,mm,cos_theta,phi) result(slm)
+function real_spherical_harmonics(ll, mm, cos_theta, phi) result(slm)
   use m_definitions
   implicit none
-  integer,intent(in)  :: ll,mm
-  real(dp),intent(in) :: cos_theta,phi
+  integer, intent(in)  :: ll, mm
+  real(dp), intent(in) :: cos_theta, phi
   real(dp)            :: slm
   !=====
   integer  :: ilm
   integer  :: abs_mm
-  real(dp) :: factor,factorial
-  real(dp),external :: legendre_polynomial
+  real(dp) :: factor, factorial
+  real(dp), external :: legendre_polynomial
   !=====
 
   abs_mm = ABS(mm)
 
   factorial = 1.0_dp
   if( abs_mm > 0 ) then
-    do ilm = ll-abs_mm+1,ll+abs_mm
-      factorial = factorial * REAL(ilm,kind=dp)
+    do ilm = ll-abs_mm+1, ll+abs_mm
+      factorial = factorial * REAL(ilm, kind=dp)
     enddo
   endif
 
@@ -39,24 +39,24 @@ function real_spherical_harmonics(ll,mm,cos_theta,phi) result(slm)
     slm = SIN( abs_mm * phi )
   endif
 
-  slm = slm * factor * legendre_polynomial(ll,abs_mm,cos_theta)
+  slm = slm * factor * legendre_polynomial(ll, abs_mm, cos_theta)
 
 end function real_spherical_harmonics
 
 
 !=========================================================================
-function legendre_polynomial(ll,mm,xx) result(plgndr)
+function legendre_polynomial(ll, mm, xx) result(plgndr)
   use m_definitions
   implicit none
-  integer,intent(in)  :: ll,mm
-  real(dp),intent(in) :: xx
+  integer, intent(in)  :: ll, mm
+  real(dp), intent(in) :: xx
   real(dp)            :: plgndr
   !=====
   ! Computes the associated Legendre polynomial Pml(xx).
   ! Here mm and ll are integers satisfying
   ! 0 <= mm <= ll, while xx lies in the range −1 ≤ xx ≤ 1.
-  integer  :: i,ill
-  real(dp) ::  fact,pll,pmm,pmmp1,somx2
+  integer  :: i, ill
+  real(dp) ::  fact, pll, pmm, pmmp1, somx2
   !=====
 
   if( mm < 0 .OR. mm > ll .OR. ABS(xx) > 1.0_dp ) stop 'bad arguments in plgndr'
@@ -67,7 +67,7 @@ function legendre_polynomial(ll,mm,xx) result(plgndr)
     somx2 = SQRT((1.0_dp - xx) * (1.0_dp + xx))
 
     fact  = 1.0_dp
-    do i=1,mm
+    do i=1, mm
       pmm=-pmm*fact*somx2
       fact=fact+2.
     enddo
@@ -81,7 +81,7 @@ function legendre_polynomial(ll,mm,xx) result(plgndr)
       plgndr=pmmp1
     else
       ! Compute P mm ll , ll>mm + 1.
-      do ill=mm+2,ll
+      do ill=mm+2, ll
         pll = (xx*(2*ill-1) * pmmp1 - (ill+mm-1)*pmm) / ( ill - mm )
         pmm = pmmp1
         pmmp1 = pll

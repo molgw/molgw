@@ -95,22 +95,22 @@ ffor = open(path+'/src/input_variable_declaration.f90','w')
 
 ffor.write(header)
 
-for key,value in input_var_dict.items():
+for key, value in input_var_dict.items():
   # Exclude a few input variable due to name clash
   if key in ['basis','auxil_basis','read_restart']:
     continue
 
   if   value['datatype'] =='integer':
-    ffor.write(' integer,protected :: ' + key +'\n')
+    ffor.write(' integer, protected :: ' + key +'\n')
   elif value['datatype'] =='real':
-    ffor.write(' real(dp),protected :: ' + key +'\n')
+    ffor.write(' real(dp), protected :: ' + key +'\n')
   elif value['datatype'] =='vector_1d_3':
-    ffor.write(' real(dp),protected :: ' + key +'(3)\n')
+    ffor.write(' real(dp), protected :: ' + key +'(3)\n')
   elif value['datatype'] =='yes/no':
-    ffor.write(' character(len=3),protected :: ' + key +'\n')
-    ffor.write(' logical,protected :: ' + key +'_\n')
+    ffor.write(' character(len=3), protected :: ' + key +'\n')
+    ffor.write(' logical, protected :: ' + key +'_\n')
   elif value['datatype'] =='characters':
-    ffor.write(' character(len=256),protected :: ' + key +'\n')
+    ffor.write(' character(len=256), protected :: ' + key +'\n')
   else:
     sys.exit('Datatype of variable '+str(key)+' ('+str(value['datatype'])+') is not known')
 
@@ -135,16 +135,16 @@ for i,key in enumerate(input_var_dict.keys()):
 
 ffor.write('!=====\n\n')
 
-for key,value in input_var_dict.items():
+for key, value in input_var_dict.items():
   if   value['datatype'] =='integer':
-    ffor.write(' '+key+'='+str(value['default'])+'\n')
+    ffor.write(' '+key+' = '+str(value['default'])+'\n')
   elif value['datatype'] =='real':
-    ffor.write(' '+key+'='+str(value['default'])+'_dp \n')
+    ffor.write(' '+key+' = '+str(value['default'])+'_dp \n')
   elif value['datatype'] =='vector_1d_3':
      x,y,z=str(value['default']).strip("()").split(',')
-     ffor.write(' '+key+'='+'(/ '+x+'_dp ,'+y+'_dp ,'+z+'_dp'+' /)'+'\n')
+     ffor.write(' '+key+' = '+'(/ '+x+'_dp ,'+y+'_dp ,'+z+'_dp'+' /)'+'\n')
   elif value['datatype'] =='yes/no' or value['datatype'] =='characters':
-    ffor.write(' '+key+'=\''+str(value['default'])+'\'\n')
+    ffor.write(' '+key+' = \''+str(value['default'])+'\'\n')
   else:
     sys.exit('Datatype of variable '+str(key)+' ('+str(value['datatype'])+') is not known')
 
@@ -175,9 +175,9 @@ for key,value in sorted_var_dict.items():
   else:
     sys.exit('Datatype of variable '+str(key)+' ('+str(value['datatype'])+') is not known')
   if   value['datatype'] =='characters':
-      ffor.write('  write(stdout,'+fortran_format+') \''+key+'\',TRIM('+key+') \n')
+      ffor.write('  write(stdout, '+fortran_format+') \''+key+'\', TRIM('+key+') \n')
   else:
-      ffor.write('  write(stdout,'+fortran_format+') \''+key+'\','+key+' \n')
+      ffor.write('  write(stdout, '+fortran_format+') \''+key+'\', '+key+' \n')
 
 ffor.write('\n\n!======================================================================\n')
 ffor.close()
@@ -191,7 +191,7 @@ ffor = open(path+'/src/echo_input_variables_yaml.f90','w')
 
 ffor.write(header)
 
-for key,value in sorted_var_dict.items():
+for key, value in sorted_var_dict.items():
   key_modif = key
   right_spaces = str( 30 - len(key) )
 
@@ -215,7 +215,7 @@ for key,value in sorted_var_dict.items():
   else:
     sys.exit('Datatype of variable '+str(key)+' ('+str(value['datatype'])+') is not known')
 
-  ffor.write(' write(unit_yaml,'+fortran_format+') \''+key+':\','+key_modif+' \n')
+  ffor.write(' write(unit_yaml, '+fortran_format+') \''+key+':\', '+key_modif+' \n')
 
 ffor.write('\n\n!======================================================================\n')
 ffor.close()

@@ -18,5 +18,5 @@ __pycache__/
 src/noft/m_gitver.F90
 src/noft/donof/
 He_harm*
-utils/basis_2_basisrel
 basis/*_rel
+utils/basis_2_basisrel.x

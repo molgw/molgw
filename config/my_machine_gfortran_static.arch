@@ -1,0 +1,25 @@
+OPENMP=
+
+FC=gfortran
+
+CPPFLAGS= -cpp 
+
+LDFLAGS=-static
+CXX=g++
+FCFLAGS= -O0 -static-libgfortran -march=x86-64 -mtune=generic -fPIC
+CXXFLAGS= -O2 -static-libgcc -march=x86-64 -mtune=generic -fPIC
+
+# link with system blas/lapack (not efficient but safe)
+LAPACK= -llapack -lblas
+
+SCALAPACK= 
+
+LIBXC_PATH=${HOME}/opt/libxc-7.0.0/
+LIBXC_INCS=-I${LIBXC_PATH}/include/
+LIBXC=${LIBXC_PATH}/lib64/libxc.a
+
+LIBCINT_PATH=${HOME}/opt/libcint-6.1.2/
+LIBCINT=${LIBCINT_PATH}/lib64/libcint.a
+
+HDF5_ROOT=
+

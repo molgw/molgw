@@ -116,7 +116,7 @@ ifeq ($(HDF5),)
   ifeq ($(HDF5_ROOT),)
     HDF5=
   else
-    HDF5=-L$(HDF5_ROOT)/lib/ -lhdf5 -lhdf5_fortran
+    HDF5=-L$(HDF5_ROOT)/lib/ -Wl,-rpath,$(HDF5_ROOT)/lib/ -lhdf5 -lhdf5_fortran 
   endif
 endif
 ifeq ($(HDF5_INCS),)
@@ -158,7 +158,7 @@ molgw:
 all: molgw
 
 level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
-          lebedev_quadrature.o pdbssolver1.o boys_function.o m_nofoutput.o basis_2_basisrel.o
+          lebedev_quadrature.o pdbssolver1.o boys_function.o m_nofoutput.o
 
 level005: m_warning.o real_spherical_harmonics.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_scalapack_interface.o
 
@@ -460,10 +460,6 @@ libint_twobody.o: libint_molgw.h libint_twobody.cpp
 
 libint_twobody_grad.o: libint_molgw.h libint_twobody_grad.cpp
 	$(CXX_W_OPTS) -c libint_twobody_grad.cpp $(LIBINT_INCS)
-
-basis_2_basisrel.o: ../utils/basis_2_basisrel.cpp
-	$(CXX) -c ../utils/basis_2_basisrel.cpp
-	$(CXX) basis_2_basisrel.o -o ../utils/basis_2_basisrel
 
 m_libint_tools.o: m_definitions.o m_cart_to_pure.o m_basis_set.o m_libint_tools.f90
 	$(FC_W_OPTS) -c m_libint_tools.f90 $(LIBXC_INCS) $(LIBINT_INCS)

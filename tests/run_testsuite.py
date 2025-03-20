@@ -312,18 +312,20 @@ have_gradients        = 'Running with external LIBINT calculation of the gradien
 #have_libint_forces    = 'Running with external LIBINT calculation of the gradients of the Coulomb integrals' in open(tmpfolder+'/fake.out').read()
 have_libint_forces    = False  # FIXME force calculation is broken as of today
 is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder+'/fake.out').read()
+have_hdf5             = 'Running with HDF5' in open(tmpfolder+'/fake.out').read()
 
 #with open(tmpfolder+'/fake.out','r') as ffake:
 #  for line in ffake:
 #    if 'Perform diagonalizations with (Sca)LAPACK routines' in line:
 #      lapack_diago_flavor = line.split(':')[1].strip()
 
-print('MOLGW details:')
+print('MOLGW compilation details:')
 print('              MOLGW version: ' + version)
 print('                     OPENMP: {}'.format(have_openmp) )
 print('                        MPI: {}'.format(have_mpi) )
 print('                  SCALAPACK: {}'.format(have_scalapack) )
 print('                      LIBXC: {}'.format(have_libxc) )
+print('                       HDF5: {}'.format(have_hdf5) )
 if is_libcint:
     print('                  integrals: LIBCINT' )
 else:
