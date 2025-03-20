@@ -229,6 +229,9 @@ subroutine header()
 #if defined(HAVE_MKL)
   write(stdout, *) 'Running with MKL-extensions to BLAS'
 #endif
+#if defined(HAVE_HDF5)
+  write(stdout, *) 'Running with HDF5'
+#endif
 #if defined(HAVE_MPI) && !defined(HAVE_SCALAPACK)
   call die('Code compiled with SCALAPACK, but without MPI. This is not permitted')
 #endif

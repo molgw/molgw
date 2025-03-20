@@ -116,7 +116,7 @@ ifeq ($(HDF5),)
   ifeq ($(HDF5_ROOT),)
     HDF5=
   else
-    HDF5=-L$(HDF5_ROOT)/lib/ -lhdf5 -lhdf5_fortran
+    HDF5=-L$(HDF5_ROOT)/lib/ -Wl,-rpath,$(HDF5_ROOT)/lib/ -lhdf5 -lhdf5_fortran 
   endif
 endif
 ifeq ($(HDF5_INCS),)
