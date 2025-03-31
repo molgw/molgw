@@ -1671,6 +1671,14 @@ noft_dft:
   default: 'no'
   comment: Use the hybdrid approach NOFT + DFT in NOFT calcs. (default=no).
 
+noft_dft0:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Use the hybdrid approach (DFT+NOFT)@NOFT in NOFT calcs. (default=yes).
+
 noft_rsinter:
   family: noft
   datatype: yes/no

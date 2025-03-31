@@ -555,7 +555,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   enddo
   write(msg,'(a)') ' '
   call write_output(msg)
-  write(msg,'(a,f10.5,a,f10.5,a)') 'Chem. potential ',chempot_val,' (a.u.) ',chempot_val*Ha_eV,' (eV), and per orbital (a.u.)'
+  write(msg,'(a,f10.5,a,e12.5,a)') 'Chem. potential ',chempot_val,' (a.u.) ',chempot_val*Ha_eV,' (eV), and per orbital (a.u.)'
   call write_output(msg)
   do iorb=1,(RDMd%NBF_occ/10)*10,10
    write(msg,'(f12.6,9f11.6)') RDMd%chempot_orb(iorb:iorb+9)
