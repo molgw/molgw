@@ -2003,39 +2003,6 @@ end subroutine calculate_q_matrix
 
 
 !=========================================================================
-function check_identity_cmplx(matrix_cmplx) RESULT(is_identity)
-  implicit none
-  complex(dp), intent(in) :: matrix_cmplx(:, :)
-  logical                :: is_identity
-  !=====
-  real(dp), parameter :: tol=1.0e-9_dp
-  integer            ::  imat, jmat, mmat, nmat
-  !=====
-
-  mmat = SIZE(matrix_cmplx, DIM=1)
-  nmat = SIZE(matrix_cmplx, DIM=1)
-
-  is_identity = .TRUE.
-  do jmat=1, nmat
-    do imat=1, mmat
-      if( imat == jmat ) then
-        if( ABS(matrix_cmplx(imat, jmat) - 1.0_dp) > tol ) then
-          write(stdout, *) "M(imat,imat)/=1 for: ", imat, jmat, matrix_cmplx(imat, jmat)
-          is_identity = .FALSE.
-        end if
-      else
-        if( ABS(matrix_cmplx(imat, jmat)) > tol ) then
-          write(stdout, *) "M(imat,jmat)/=0 for: ", imat, jmat, matrix_cmplx(imat, jmat)
-          is_identity = .FALSE.
-        end if
-      end if
-    end do
-  end do
-
-end function check_identity_cmplx
-
-
-!=========================================================================
 subroutine write_restart_tddft(nstate, time_cur, occupation, c_matrix_tddft)
   implicit none
   integer, intent(in)         :: nstate

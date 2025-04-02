@@ -104,11 +104,11 @@ Quadrupole (a.u.)         ,   -5.234602        , 0 , 1.0e-4
 Quadrupole (a.u.)         ,    0.068177        , 1 , 1.0e-4
 Quadrupole (a.u.)         ,    0.054699        , 2 , 1.0e-4
 
-h2o_pbe0.in               , PBE0 water with a small basis
+h2o_pbe0.in               , PBE0 water with a small basis (generate RESTART)
 SCF Total Energy          , -76.3408991125     , 0 , 1.0e-7
 
 h2o_pbe0_basis_restart.in, PBE0 water restarting from a previous run with a smaller basis, restart
-SCF Total Energy          , -76.3527592768     , 0 , 1.0e-7
+SCF Total Energy          , -76.3536424842     , 0 , 1.0e-7
 
 propanol_neutral.in       , Neutral propanol (generate RESTART)
 SCF Total Energy          , -194.1549010191    , 0 , 1.0e-7

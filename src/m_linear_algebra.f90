@@ -783,7 +783,7 @@ subroutine svd_dp(A, U, S, VT)
   ! Check for success
   if (info /= 0) then
     call die('svd_dp: SVD failed')
-  end if
+  endif
 
   ! Deallocate workspace
   deallocate(work)
@@ -1037,7 +1037,7 @@ subroutine joint_diagonalization(A, tol, V, converged)
   V(:, :) = 0.0_dp
   do i = 1, m
     V(i, i) = 1.0_dp
-  end do
+  enddo
 
   converged = .FALSE.
   do while (.NOT. converged)
@@ -1050,7 +1050,7 @@ subroutine joint_diagonalization(A, tol, V, converged)
           g(2) = g(2) + (A(p, q, i) + A(q, p, i )) * &
                         (A(p, p, i) - A(q, q, i ))
           g(3) = g(3) + (A(p, q, i) + A(q, p, i ))**2
-        end do
+        enddo
 
         ton  = g(1) - g(3)
         toff = g(2)
@@ -1066,30 +1066,86 @@ subroutine joint_diagonalization(A, tol, V, converged)
               Aiq = A(i, q, j)
               A(i, p, j) =  c * Aip + s * Aiq
               A(i, q, j) = -s * Aip + c * Aiq
-            end do
-          end do
+            enddo
+          enddo
           do j = 1, n
             do i = 1, m
               Api = A(p, i, j)
               Aqi = A(q, i, j)
               A(p, i, j) =  c * Api + s * Aqi
               A(q, i, j) = -s * Api + c * Aqi
-            end do
-          end do
+            enddo
+          enddo
 
           do i = 1, m
             Vip = V(i, p)
             Viq = V(i, q)
             V(i, p) =  c * Vip + s * Viq
             V(i, q) = -s * Vip + c * Viq
-          end do
-        end if
-      end do
-    end do
-  end do
+          enddo
+        endif
+      enddo
+    enddo
+  enddo
 
 
 end subroutine joint_diagonalization
+
+
+!=========================================================================
+function check_identity(matrix, tolerance) RESULT(is_identity)
+  implicit none
+  class(*), intent(in) :: matrix(:, :)
+  real(dp), optional, intent(in) :: tolerance
+  logical              :: is_identity
+  !=====
+  real(dp) :: tolerance_
+  integer  :: imat, jmat, mmat, nmat
+  !=====
+
+  if( PRESENT(tolerance) ) then
+    tolerance_ = tolerance
+  else
+    tolerance_ = 1.0e-9_dp
+  endif
+
+  mmat = SIZE(matrix, DIM=1)
+  nmat = SIZE(matrix, DIM=2)
+
+  is_identity = .TRUE.
+  select type(matrix)
+  type is (real(dp))
+    do jmat=1, nmat
+      do imat=1, mmat
+        if( imat == jmat ) then
+          if( ABS(matrix(imat, jmat) - 1.0_dp) > tolerance_ ) then
+            is_identity = .FALSE.
+          endif
+        else
+          if( ABS(matrix(imat, jmat)) > tolerance_ ) then
+            is_identity = .FALSE.
+          endif
+        endif
+      enddo
+    enddo
+  type is (complex(dp))
+    do jmat=1, nmat
+      do imat=1, mmat
+        if( imat == jmat ) then
+          if( ABS(matrix(imat, jmat) - (1.0_dp, 0.0_dp)) > tolerance_ ) then
+            is_identity = .FALSE.
+          endif
+        else
+          if( ABS(matrix(imat, jmat)) > tolerance_ ) then
+            is_identity = .FALSE.
+          endif
+        endif
+      enddo
+    enddo
+  end select
+
+
+end function check_identity
 
 
 !=========================================================================
