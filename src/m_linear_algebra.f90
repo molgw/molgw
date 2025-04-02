@@ -11,6 +11,10 @@ module m_linear_algebra
   use m_definitions
   use m_warning, only: die, issue_warning
 
+  interface svd
+    module procedure svd_dp
+  end interface
+
   interface invert
     module procedure invert_dp
     module procedure invert_inplace_dp
@@ -738,6 +742,53 @@ subroutine diagonalize_inplace_cdp(flavor, matrix, eigval)
   if( info /= 0 ) call die('diagonalize_inplace_cdp: diago failure 2')
 
 end subroutine diagonalize_inplace_cdp
+
+
+!=========================================================================
+! SVD
+! be careful A is destroyed
+subroutine svd_dp(A, U, S, VT)
+  implicit none
+
+  real(dp), intent(inout) :: A(:,:)    ! m x n
+  real(dp), intent(out)   :: U(:,:)   ! m x m
+  real(dp), intent(out)   :: S(:)     ! min(m, n)
+  real(dp), intent(out)   :: VT(:,:)  ! n x n
+  !=====
+  integer :: m, n
+  integer :: info, lwork
+  real(dp), allocatable :: work(:)
+  !=====
+
+  m = SIZE(A, DIM=1)
+  n = SIZE(A, DIM=2)
+
+  if( SIZE(S) /= MIN(m, n) ) then
+    call die('svd_dp: error in dimension of S')
+  endif
+
+  ! Query optimal workspace size
+  lwork = -1
+  allocate(work(1))
+  call DGESVD('A', 'A', m, n, A, m, S, U, m, VT, n, work, lwork, info)
+
+  ! Allocate workspace with the optimal size
+  lwork = int(work(1))
+  deallocate(work)
+  allocate(work(lwork))
+
+  ! Compute SVD
+  call DGESVD('A', 'A', m, n, A, m, S, U, m, VT, n, work, lwork, info)
+
+  ! Check for success
+  if (info /= 0) then
+    call die('svd_dp: SVD failed')
+  end if
+
+  ! Deallocate workspace
+  deallocate(work)
+
+end subroutine svd_dp
 
 
 !=========================================================================

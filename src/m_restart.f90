@@ -14,9 +14,11 @@ module m_restart
   use m_inputparam
   use m_atoms
   use m_basis_set
-  use m_hamiltonian_tools, only: dump_out_occupation
+  use m_hamiltonian_tools, only: dump_out_occupation, orthogonalize_c_matrix
   use m_hamiltonian_onebody, only: setup_overlap_mixedbasis, setup_overlap
   use m_linear_algebra, only: invert
+  use m_io
+  use m_libcint_tools
 
 
   !
@@ -158,7 +160,7 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
   real(dp), allocatable       :: occupation_read(:, :)
   real(dp), allocatable       :: energy_read(:, :)
   real(dp), allocatable       :: c_matrix_read(:, :, :)
-  real(dp), allocatable       :: overlapm1(:, :)
+  real(dp), allocatable       :: overlapm1(:, :), s_matrix(:, :)
   real(dp), allocatable       :: overlap_mixedbasis(:, :)
   !=====
 
@@ -303,6 +305,7 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
     enddo
   enddo
 
+
   if( same_basis ) then
     c_matrix(:, :, :) = 0.0_dp
     do istate=1, MIN(nstate_local, nstate)
@@ -321,26 +324,40 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
       enddo
     endif
   else
+
+
+    allocate(s_matrix(basis%nbf, basis%nbf))
     allocate(overlapm1(basis%nbf, basis%nbf))
-    allocate(overlap_mixedbasis(basis%nbf, basis_read%nbf))
 
     ! Calculate the overlap matrix of the final basis set
-    call setup_overlap(basis, overlapm1)
+    call setup_overlap(basis, s_matrix)
 
     ! Invert the overlap of the final basis set
+    overlapm1(:, :) = s_matrix(:, :)
     call invert(overlapm1)
 
     ! Get the scalar products between the old and the new basis sets
     ! Be aware: this is a rectangular matrix
+    allocate(overlap_mixedbasis(basis%nbf, basis_read%nbf))
     call setup_overlap_mixedbasis(basis, basis_read, overlap_mixedbasis)
     c_matrix(:, 1:nstate_local, 1) = MATMUL(overlapm1(:, :), &
                                          MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_local, 1) ) )
-    c_matrix(:, 1:nstate_local, nspin) = MATMUL(overlapm1(:, :), &
-                                         MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_local, nspin_read) ) )
+
+    ! nspin == 2 take the second spin channel in the RESTART file if it exists
+    !            else copy the first spin channel
+    if( nspin == 2 ) then
+      c_matrix(:, 1:nstate_local, nspin) = MATMUL(overlapm1(:, :), &
+                                           MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_local, nspin_read) ) )
+    endif
     ! Fill the rest of the array with identity
     do istate=nstate_local+1, nstate
       c_matrix(istate, istate, :) = 1.0_dp
     enddo
+
+    ! Orthogonalize new c_matrix so to have exactly C**T * S * C = I
+    call orthogonalize_c_matrix(s_matrix, c_matrix)
+
+    deallocate(s_matrix)
     deallocate(overlapm1, overlap_mixedbasis)
 
     restart_type = BASIS_RESTART

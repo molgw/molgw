@@ -2,6 +2,28 @@
 
 ---
 
+## What's new in version 3.5
+
+### Overview
+
+- RESTART from a different basis made safer
+
+### Contributors
+
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+
+### Changes affecting the results
+
+- Adding an orthogonalization step when reading a RESTART file using a different basis
+
+### Changes affecting the usage
+
+### Changes affecting the compilation
+
+### Changes affecting the developers
+
+---
+
 ## What's new in version 3.4
 
 ### Overview
