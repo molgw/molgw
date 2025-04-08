@@ -1058,8 +1058,8 @@ end subroutine setup_x_matrix
 subroutine setup_sqrt_overlap(s_matrix, s_matrix_sqrt)
   implicit none
 
-  real(dp), intent(in)                          :: s_matrix(:, :)
-  real(dp), allocatable, intent(inout)           :: s_matrix_sqrt(:, :)
+  real(dp), intent(in)                 :: s_matrix(:, :)
+  real(dp), allocatable, intent(inout) :: s_matrix_sqrt(:, :)
   !=====
   integer  :: nbf, jbf
   real(dp), allocatable :: s_eigval(:)
@@ -1089,6 +1089,68 @@ subroutine setup_sqrt_overlap(s_matrix, s_matrix_sqrt)
   deallocate(matrix_tmp, s_eigval, y_matrix)
 
 end subroutine setup_sqrt_overlap
+
+
+!=========================================================================
+! Orthogonalize C coefficients
+! in output C verify C**T S C = I
+subroutine orthogonalize_c_matrix(s_matrix, c_matrix)
+  implicit none
+
+  real(dp), intent(in)    :: s_matrix(:,:)
+  real(dp), intent(inout) :: c_matrix(:, :, :)
+  !=====
+  integer :: ibf, ispin, nbf, nstate, nspin
+  real(dp), allocatable :: xt(:, :)
+  real(dp), allocatable :: eigval(:)
+  !=====
+
+
+  nbf = SIZE(c_matrix, DIM=1)
+  nstate = SIZE(c_matrix, DIM=2)
+  nspin = SIZE(c_matrix, DIM=3)
+
+  !
+  ! One should have
+  !   C**T * S * C = I
+  ! Introduce  S = X * X**T
+  !   so that
+  !   C**T * X * ( X**T * C ) = I
+  !   ( X**T * C )**T  ( X**T * C ) = I
+  !
+  ! ( X**T * C ) are the wavefunctions coefficients in a orthogonal basis
+  ! Gram-Schmidt can be used.
+
+  ! Calculate X such as X * X**T = S
+  allocate(xt(nbf, nbf))
+  allocate(eigval(nbf))
+  xt(:, :) = s_matrix(:, :)
+  call diagonalize(' ', xt, eigval)
+  if( ANY(eigval(:) < 0.0_dp) ) then
+    call die('orthogonalize_c_matrix: overlap is not positive-definite')
+  endif
+  do ibf=1, nbf
+    xt(:, ibf) = xt(:, ibf) * SQRT(eigval(ibf))
+  enddo
+  ! xt = X**T
+  xt(:, :) = TRANSPOSE(xt(:, :))
+  deallocate(eigval)
+
+  do ispin=1, nspin
+    ! C' = X**T * C
+    c_matrix(:, :, ispin) = MATMUL(xt, c_matrix(:, :, ispin))
+
+    ! Gram-Schmidt step
+    call orthogonalize(c_matrix(:, :, ispin))
+
+    ! Get (X**T)**-1 to get back orthogonalized C
+    call invert(xt)
+    c_matrix(:, :, ispin) = MATMUL(xt, c_matrix(:, :, ispin))
+
+  enddo
+
+
+end subroutine orthogonalize_c_matrix
 
 
 !=========================================================================

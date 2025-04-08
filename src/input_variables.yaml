@@ -1614,7 +1614,7 @@ nscf:
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
-  default: 50
+  default: 100
   comment: Sets the maximum number of SCF cycles
 
 partition_scheme:
