@@ -209,13 +209,13 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   real(dp)             :: sign_i, mu
   real(dp)             :: weight
   real(dp), allocatable :: matrix_wing(:, :), matrix_head(:, :), matrix_diag(:)
-  real(dp), allocatable :: matrix(:, :), eigval(:)
+  real(dp), allocatable :: super_matrix(:, :), eigval(:)
   integer              :: nmat, mwing, imat, jmat
   integer              :: mstate, jstate
   integer              :: irecord
   integer              :: fu, info
   integer              :: desc_wing(NDEL), desc_eri(NDEL), desc_wpol(NDEL)
-  integer              :: mlocal, ilocal
+  integer              :: nauxil_local, ilocal, mwing_local
 #if defined(HAVE_SCALAPACK)
   integer              :: desc_matrix(NDEL)
   real(dp)             :: work(1), nelect, rtmp
@@ -255,27 +255,27 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   !
   ! Temporary descriptors
   ! desc_wpol for wpol%residue_left
-  mlocal = NUMROC(nauxil_global, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
+  nauxil_local = NUMROC(nauxil_global, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
   call DESCINIT(desc_wpol, nauxil_global, wpol%npole_reso, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
-                cntxt_eri3_mo, MAX(1, mlocal), info)
+                cntxt_eri3_mo, MAX(1, nauxil_local), info)
   ! desc_eri for wpol%residue_left
   call DESCINIT(desc_eri, nauxil_global, mstate, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
-                cntxt_eri3_mo, MAX(1, mlocal), info)
+                cntxt_eri3_mo, MAX(1, nauxil_local), info)
 
   ! desc_wing for matrix_wing
-  mlocal = NUMROC(mwing, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
+  mwing_local = NUMROC(mwing, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
   call DESCINIT(desc_wing, mwing, mstate, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
-                cntxt_eri3_mo, MAX(1, mlocal), info)
+                cntxt_eri3_mo, MAX(1, mwing_local), info)
 
 
   call clean_allocate('Matrix head', matrix_head, mstate, mstate)
-  call clean_allocate('Matrix wing', matrix_wing, mlocal, mstate)
+  call clean_allocate('Matrix wing', matrix_wing, mwing_local, mstate)
 
 
   allocate(matrix_diag(mwing))
   matrix_head(:, :) = 0.0_dp
   matrix_wing(:, :) = 0.0_dp
-  matrix_diag(:)   = 0.0_dp
+  matrix_diag(:)    = 0.0_dp
 
   matrix_head(:, :) = exchange_m_vxc(ncore_G+1:nvirtual_G-1, ncore_G+1:nvirtual_G-1, 1)  ! spin index set to 1
 
@@ -327,8 +327,8 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   write(stdout, '(a)') ' Matrix is setup'
 
   !
-  ! Dump the matrix on files (1 file per SCALAPACK thread)
-  write(stdout, *) 'Dump the big sparse matrix on disk'
+  ! Dump the super_matrix on files (1 file per SCALAPACK thread)
+  write(stdout, *) 'Dump the large sparse super_matrix on disk'
   write(ctmp, '(i4.4)') world%rank
   open(newunit=fu, file='MATRIX_'//ctmp, form='formatted', action='write')
 
@@ -345,7 +345,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   endif
 
   do jmat=1, mstate
-    do ilocal=1, mlocal
+    do ilocal=1, mwing_local
       imat = INDXL2G(ilocal, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
       write(fu, '(1x,i7,1x,i7,1x,e16.8)') mstate+imat, jmat, matrix_wing(ilocal, jmat)*Ha_eV
     enddo
@@ -354,7 +354,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
 
 
   !
-  ! If the matrix is small enough, then diagonalize it!
+  ! If the super_matrix is small enough, then diagonalize it!
   if( nmat < 13001 ) then
 
     mu = ( MINVAL(energy(nhomo_G+1, :)) + MAXVAL(energy(nhomo_G, :)) ) / 2.0_dp
@@ -362,16 +362,16 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
     allocate(eigval(nmat))
 
 #if defined(HAVE_SCALAPACK)
-    write(stdout, '(1x,a,i4,a,i4)') 'Diagonalize the big sparse matrix as if it were dense with SCALAPACK with distribution: ', &
+    write(stdout, '(1x,a,i4,a,i4)') 'Diagonalize the large sparse super_matrix as if it were dense with SCALAPACK with distribution: ', &
                                   nprow_sd, ' x ', npcol_sd
-    mlocal = NUMROC(nmat, block_row, iprow_sd, first_row, nprow_sd)
+    mwing_local = NUMROC(nmat, block_row, iprow_sd, first_row, nprow_sd)
     nlocal = NUMROC(nmat, block_col, ipcol_sd, first_col, npcol_sd)
-    call DESCINIT(desc_matrix, nmat, nmat, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, mlocal), info)
-    call clean_allocate('Huge matrix', matrix, mlocal, nlocal)
-    matrix(:, :) = 0.0_dp
+    call DESCINIT(desc_matrix, nmat, nmat, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, mwing_local), info)
+    call clean_allocate('Super matrix', super_matrix, mwing_local, nlocal)
+    super_matrix(:, :) = 0.0_dp
 
     write(stdout, *) 'Start copy wing block'
-    call PDGEMR2D(mwing, mstate, matrix_wing, 1, 1, desc_wing, matrix, mstate+1, 1, desc_matrix, cntxt_sd)
+    call PDGEMR2D(mwing, mstate, matrix_wing, 1, 1, desc_wing, super_matrix, mstate+1, 1, desc_matrix, cntxt_sd)
     write(stdout, *) 'copy done'
 
     write(stdout, *) 'Set head block'
@@ -381,34 +381,34 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
       do iglobal=1, mstate
         if( INDXG2P(iglobal, block_row, iprow_sd, first_row, nprow_sd) /= iprow_sd ) cycle
         ilocal = INDXG2L(iglobal, block_row, iprow_sd, first_row, nprow_sd)
-        matrix(ilocal, jlocal) = matrix_head(iglobal, jglobal)
+        super_matrix(ilocal, jlocal) = matrix_head(iglobal, jglobal)
       enddo
     enddo
 
-    write(stdout, *) 'Set big diagonal'
+    write(stdout, *) 'Set large diagonal'
     do iglobal=mstate+1, nmat
       jglobal=iglobal
       if( INDXG2P(iglobal, block_row, iprow_sd, first_row, nprow_sd) /= iprow_sd ) cycle
       if( INDXG2P(jglobal, block_col, ipcol_sd, first_col, npcol_sd) /= ipcol_sd ) cycle
       jlocal = INDXG2L(jglobal, block_col, ipcol_sd, first_col, npcol_sd)
       ilocal = INDXG2L(iglobal, block_row, iprow_sd, first_row, nprow_sd)
-      matrix(ilocal, jlocal) = matrix_diag(iglobal-mstate)
+      super_matrix(ilocal, jlocal) = matrix_diag(iglobal-mstate)
     enddo
 
     write(stdout, *) 'Start diago'
-    call diagonalize_sca('R', matrix, desc_matrix,eigval)
+    call diagonalize_sca('R', super_matrix, desc_matrix,eigval)
     write(stdout, *) 'Diago done'
 
     write(stdout, *) '============== Poles in eV , weight ==============='
     open(newunit=fu, file='GREENS_FUNCTION', action='write')
     nelect = 0.0_dp
     do jmat=1, nmat
-      weight = PDLANGE('F', mstate, 1, matrix, 1, jmat, desc_matrix,work)**2
+      weight = PDLANGE('F', mstate, 1, super_matrix, 1, jmat, desc_matrix,work)**2
       ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
       ! then consider the excitation is occupied
       if( eigval(jmat) < mu ) nelect = nelect + spin_fact * weight
       if( weight > 5.0e-2_dp ) then
-        call PDAMAX(mstate, rtmp, jstate, matrix, 1, jmat, desc_matrix, 1)
+        call PDAMAX(mstate, rtmp, jstate, super_matrix, 1, jmat, desc_matrix, 1)
         call world%max(jstate)
         write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', jstate, ': ', eigval(jmat)*Ha_eV, weight
       endif
@@ -419,37 +419,37 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
     write(stdout, *) '==================================================='
 
 #else
-    write(stdout, *) 'Diagonalize the big sparse matrix as if it were dense'
-    call clean_allocate('Huge matrix', matrix, nmat, nmat)
-    matrix(:, :)                    = 0.0_dp
-    matrix(1:mstate, 1:mstate)      = matrix_head(:, :)
-    matrix(1:mstate, mstate+1:nmat) = TRANSPOSE(matrix_wing(:, :))
-    matrix(mstate+1:nmat, 1:mstate) = matrix_wing(:, :)
+    write(stdout, *) 'Diagonalize the large sparse super_matrix as if it were dense'
+    call clean_allocate('Super matrix', super_matrix, nmat, nmat)
+    super_matrix(:, :)                    = 0.0_dp
+    super_matrix(1:mstate, 1:mstate)      = matrix_head(:, :)
+    super_matrix(1:mstate, mstate+1:nmat) = TRANSPOSE(matrix_wing(:, :))
+    super_matrix(mstate+1:nmat, 1:mstate) = matrix_wing(:, :)
     do imat=mstate+1, nmat
-      matrix(imat, imat) = matrix_diag(imat-mstate)
+      super_matrix(imat, imat) = matrix_diag(imat-mstate)
     enddo
-    call diagonalize('R', matrix,eigval)
+    call diagonalize('R', super_matrix, eigval)
 
-    write(stdout, '(1x,a,i8)') 'Number of poles: ', COUNT( SUM(matrix(1:mstate, :)**2, DIM=1) > 1.0e-3_dp )
+    write(stdout, '(1x,a,i8)') 'Number of non-negligible poles: ', COUNT( SUM(super_matrix(1:mstate, :)**2, DIM=1) > 1.0e-3_dp )
     write(stdout, *) '============== Poles in eV , weight ==============='
     open(newunit=fu, file='GREENS_FUNCTION', action='write')
     do jmat=1, nmat
-      weight = SUM(matrix(1:mstate, jmat)**2)
+      weight = SUM(super_matrix(1:mstate, jmat)**2)
       if( weight > 5.0e-2_dp ) then
-        jstate = MAXLOC(ABS(matrix(1:mstate, jmat)), DIM=1)
+        jstate = MAXLOC(ABS(super_matrix(1:mstate, jmat)), DIM=1)
         write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', jstate, ': ', eigval(jmat)*Ha_eV, weight
       endif
-      write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV, SUM(matrix(1:mstate, jmat)**2)
+      write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV, SUM(super_matrix(1:mstate, jmat)**2)
     enddo
     close(fu)
     ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
     ! then consider the excitation is occupied
     write(stdout, '(1x,a,f12.6)') 'Number of electrons: ', & 
-             spin_fact * SUM( SUM(matrix(1:mstate, :)**2, DIM=1), MASK=(eigval(:) < mu) )
+             spin_fact * SUM( SUM(super_matrix(1:mstate, :)**2, DIM=1), MASK=(eigval(:) < mu) )
     write(stdout, *) '==================================================='
 
 #endif
-    call clean_deallocate('Huge matrix', matrix)
+    call clean_deallocate('Super matrix', super_matrix)
     deallocate(eigval)
 
   endif

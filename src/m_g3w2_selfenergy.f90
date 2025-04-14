@@ -414,8 +414,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
   implicit none
 
   type(basis_set)                    :: basis
-  real(dp), intent(in)                :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)                :: c_matrix(:, :, :)
+  real(dp), intent(in)               :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)               :: c_matrix(:, :, :)
   type(spectral_function), intent(inout) :: wpol
   type(selfenergy_grid), intent(inout) :: se
   !=====
