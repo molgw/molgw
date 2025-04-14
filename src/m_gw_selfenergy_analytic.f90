@@ -362,7 +362,8 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
     allocate(eigval(nmat))
 
 #if defined(HAVE_SCALAPACK)
-    write(stdout, '(1x,a,i4,a,i4)') 'Diagonalize the large sparse super_matrix as if it were dense with SCALAPACK with distribution: ', &
+    write(stdout, '(1x,a,i4,a,i4)') 'Diagonalize the large sparse super_matrix as if ' // &
+                                    'it were dense with SCALAPACK with distribution: ', &
                                   nprow_sd, ' x ', npcol_sd
     mwing_local = NUMROC(nmat, block_row, iprow_sd, first_row, nprow_sd)
     nlocal = NUMROC(nmat, block_col, ipcol_sd, first_col, npcol_sd)
