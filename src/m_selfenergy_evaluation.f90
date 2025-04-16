@@ -115,6 +115,8 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       selfenergy_tag='SIGMA_TDHF'
     case(SIGMA_TDSCHF)
       selfenergy_tag='SIGMA_TDSCHF'
+    case(GW2SOSEXPSD)
+      selfenergy_tag='GW+2SOSEX_PSD'
     case default
       write(stdout, *) 'selfenergy approx not listed:', calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -331,6 +333,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
         .OR. calc_type%selfenergy_approx == GW0GW0G &
         .OR. calc_type%selfenergy_approx == GWGW0G &
         .OR. calc_type%selfenergy_approx == GWGW0RPAG &
+        .OR. calc_type%selfenergy_approx == GW2SOSEXPSD &
       ) then
 
       !
@@ -401,9 +404,20 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
             call sosex_selfenergy_analyzed(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
           else
             call sosex_selfenergy(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
+            !!!FBFB
+            !call issue_warning('FBFB in regular coding: GW + 2SOX + 2SOSEX')
+            !call pt2_selfenergy(SOX, basis, occupation, energy_g, c_matrix, se, en_mbpt%mp2)
+            !!!FBFB
           endif
+
           call se%add(se_gw)
           call se%add(se_g3w2)
+
+        case(GW2SOSEXPSD)
+          call psd_gw2sosex_selfenergy(energy_g, c_matrix, wpol, se_g3w2)
+          call se%reset()
+          call se%add(se_g3w2)
+          call se_g3w2%destroy()
 
         case(G3W2)
           call sosex_selfenergy(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)

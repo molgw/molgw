@@ -59,6 +59,7 @@ module m_inputparam
   integer, parameter :: SIGMA_TDHF      = 234
   integer, parameter :: SIGMA_TDSCHF    = 235
   integer, parameter :: GWGW0RPAG       = 236
+  integer, parameter :: GW2SOSEXPSD     = 237
 
   !
   ! TDDFT variables
@@ -314,6 +315,9 @@ subroutine init_calculation_type(scf, postscf)
     case('SIGMA_TDSCHF')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = SIGMA_TDSCHF
+    case('GW2SOSEXPSD')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GW2SOSEXPSD
     case('EVGWGAMMA', 'GNW0GAMMAN', 'GNW0SOSEX', 'EVGWSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX

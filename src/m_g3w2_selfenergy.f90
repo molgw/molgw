@@ -495,7 +495,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
         up(:, ustate, pstate) = eri_3center_eigen(:, ustate, pstate, 1)
       enddo
     enddo
-    call DGEMM('T', 'N', nauxil_global, nstate2,nauxil_global, &
+    call DGEMM('T', 'N', nauxil_global, nstate2, nauxil_global, &
                 1.0_dp, chi_static, nauxil_global, &
                        up, nauxil_global, &
                 0.0_dp, chi_up, nauxil_global)
@@ -697,7 +697,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     do spole=1, wpol%npole_reso
 
       if( MODULO( spole - 1 , poorman%nproc ) /= poorman%rank ) cycle
-      write(stdout, *) 'SOSEX W poles:', spole, ' / ', wpol%npole_reso
+      write(stdout, *) 'SOSEXanalyzed W poles:', spole, ' / ', wpol%npole_reso
 
       Omega_s = wpol%pole(spole)
 
@@ -717,8 +717,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           ! calculate only the diagonal !
           qstate = pstate
 
-          w_o_hpl(kstate, spole, pstate) = w_o_hpl(kstate, spole, pstate) &
-                                         + w_s(kstate, pstate) * w_s(kstate, qstate)
+          w_o_hpl(kstate, spole, pstate) = w_s(kstate, pstate) * w_s(kstate, qstate)
         enddo
       enddo
 
@@ -730,8 +729,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           ! calculate only the diagonal !
           qstate = pstate
           
-          w_v_ppl(cstate, spole, pstate) = w_v_ppl(cstate, spole, pstate) &
-                                         + w_s(cstate, pstate) * w_s(cstate, qstate)
+          w_v_ppl(cstate, spole, pstate) = w_s(cstate, pstate) * w_s(cstate, qstate)
         enddo
       enddo
 
@@ -1009,9 +1007,12 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     close(file)
   enddo
 
-
   se%sigma(:, :, :) = SUM(sigma_sox(:, :, :, :), DIM=4 ) &
                      + factor_sosex * SUM(sigma_sosex(:, :, :, :), DIM=4)
+  !FBFB
+  !call issue_warning('FBFB analyze coding: 2SOX + 2SOSEX')
+  !se%sigma(:, :, :) =  factor_sosex * SUM(sigma_sox(:, :, :, :), DIM=4 ) &
+  !                   + factor_sosex * SUM(sigma_sosex(:, :, :, :), DIM=4)
 
 
   ! if( print_sigma_) then
@@ -1150,7 +1151,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
       up(:, ustate, pstate) = eri_3center_eigen(:, ustate, pstate, 1)
     enddo
   enddo
-  call DGEMM('T', 'N', nauxil_global, nstate2,nauxil_global, &
+  call DGEMM('T', 'N', nauxil_global, nstate2, nauxil_global, &
               1.0_dp, chi_static, nauxil_global, &
                      up, nauxil_global, &
               0.0_dp, chi_up, nauxil_global)
@@ -2600,6 +2601,149 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
   call stop_clock(timing_gw_self)
 
 end subroutine sox_selfenergy_imag_grid
+
+
+!=========================================================================
+subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
+  implicit none
+
+  real(dp), intent(in)                 :: energy(:, :)
+  real(dp), intent(in)                 :: c_matrix(:, :, :)
+  type(spectral_function), intent(in)  :: wpol
+  type(selfenergy_grid), intent(inout) :: se
+  !=====
+  integer               :: qstate, qspin, spole, pstate, istate, astate
+  integer               :: kstate, cstate
+  integer               :: nstate2
+  real(dp), allocatable :: w_s(:, :, :), w_s_tilde(:, :, :)
+  integer               :: file_v, file_w, file_e, file_omega
+  real(dp)              :: v_paik, v_piak, v_paic, v_piac, ei, ea, Omega_s
+  !=====
+
+  if(.NOT. has_auxil_basis) return
+  if( world%nproc > 1 ) call die('psd_2sosex: not implemented with MPI')
+  if( nspin > 1 ) call die('psd_2sosex: not implemented with spin')
+
+  call start_clock(timing_gwgamma_self)
+
+  write(stdout, *) 'Perform a one-shot GW+2SOSEX PDF calculation'
+
+  if(has_auxil_basis) then
+    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  endif
+
+  call clean_allocate('Store w_s', w_s, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+
+  do qspin=1, nspin
+
+#if 0
+    do qstate=ncore_G+1, nvirtual_G-1
+      ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+      w_s(:, ncore_G+1:nvirtual_G-1, qstate) = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
+                                                 eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
+      call auxil%sum(w_s)
+    enddo
+
+#else
+    ! Collapse the 2nd and 3rd indices
+    nstate2 = ( nvirtual_G - ncore_G - 1 )**2
+    call DGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_local, &
+                1.0_dp, wpol%residue_left(1, 1), nauxil_local, &
+                        eri_3center_eigen(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
+                0.0_dp, w_s(1, ncore_G+1, ncore_G+1), wpol%npole_reso)
+    call auxil%sum(w_s)
+#endif
+
+  enddo
+  qspin = 1
+
+
+  call clean_allocate('Store ~w_s', w_s_tilde, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, nsemin, nsemax)
+
+
+  w_s_tilde(:, :, :) = 0.0_dp
+  do pstate=nsemin, nsemax
+    !$OMP PARALLEL DO PRIVATE(ei, ea, v_paik, v_piak, Omega_s)
+    do kstate=ncore_G+1, nhomo_G
+
+      do istate=ncore_G+1, nhomo_G
+        ei = energy(istate, qspin)
+        do astate=nhomo_G+1, nvirtual_G-1
+          ea = energy(astate, qspin)
+          v_paik = DOT_PRODUCT( eri_3center_eigen(:, pstate, astate, qspin), eri_3center_eigen(:, istate, kstate, qspin) )
+          v_piak = DOT_PRODUCT( eri_3center_eigen(:, pstate, istate, qspin), eri_3center_eigen(:, astate, kstate, qspin) )
+
+          do spole=1, wpol%npole_reso
+            Omega_s = wpol%pole(spole)
+            w_s_tilde(spole, kstate, pstate) = w_s_tilde(spole, kstate, pstate) &
+                + w_s(spole, astate, istate) &
+                      * (  v_paik * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) &
+                         + v_piak * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) )
+          enddo
+
+        enddo
+      enddo
+    enddo
+    !$OMP END PARALLEL DO
+
+    !$OMP PARALLEL DO PRIVATE(ei, ea, v_paic, v_piac, Omega_s)
+    do cstate=nhomo_G+1, nvirtual_G-1
+      do istate=ncore_G+1, nhomo_G
+        ei = energy(istate, qspin)
+        do astate=nhomo_G+1, nvirtual_G-1
+          ea = energy(astate, qspin)
+          v_paic = DOT_PRODUCT( eri_3center_eigen(:, pstate, astate, qspin), eri_3center_eigen(:, istate, cstate, qspin) )
+          v_piac = DOT_PRODUCT( eri_3center_eigen(:, pstate, istate, qspin), eri_3center_eigen(:, astate, cstate, qspin) )
+
+          do spole=1, wpol%npole_reso
+            Omega_s = wpol%pole(spole)
+            w_s_tilde(spole, cstate, pstate) = w_s_tilde(spole, cstate, pstate) &
+                + w_s(spole, astate, istate) &
+                      * (  v_paic * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) &
+                         + v_piac * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) )
+          enddo
+
+        enddo
+      enddo
+    enddo
+    !$OMP END PARALLEL DO
+
+  enddo
+
+
+  ! Add w_s_tilde
+  w_s_tilde(:, :, :) = w_s_tilde(:, :, :) + w_s(:, :, nsemin:nsemax)
+
+  se%sigma(:, :, :) = 0.0_dp
+  do spole=1, wpol%npole_reso
+    Omega_s = wpol%pole(spole)
+    do kstate=ncore_G+1, nhomo_G
+      do pstate=nsemin, nsemax
+        se%sigma(:, pstate, qspin) = se%sigma(:, pstate, qspin) &
+               + w_s_tilde(spole, kstate, pstate)**2  &
+                         / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s - ieta )
+      enddo
+    enddo
+    do cstate=nhomo_G+1, nvirtual_G-1
+      do pstate=nsemin, nsemax
+        se%sigma(:, pstate, qspin) = se%sigma(:, pstate, qspin) &
+               + w_s_tilde(spole, cstate, pstate)**2 &
+                         / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s + ieta )
+      enddo
+    enddo
+  enddo
+
+  call clean_deallocate('Store ~w_s', w_s_tilde)
+
+
+  if(has_auxil_basis) then
+    call destroy_eri_3center_eigen()
+  endif
+
+  call stop_clock(timing_gwgamma_self)
+
+
+end subroutine psd_gw2sosex_selfenergy
 
 
 end module m_g3w2_selfenergy
