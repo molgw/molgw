@@ -2612,16 +2612,18 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
   type(spectral_function), intent(in)  :: wpol
   type(selfenergy_grid), intent(inout) :: se
   !=====
-  integer               :: qstate, qspin, spole, pstate, istate, astate
+  integer               :: qstate, qspin, spole, pstate, istate, astate, iastate
   integer               :: kstate, cstate
   integer               :: nstate2
+  complex(dp), allocatable :: sigma(:, :, :)
   real(dp), allocatable :: w_s(:, :, :), w_s_tilde(:, :, :)
   integer               :: file_v, file_w, file_e, file_omega
   real(dp)              :: v_paik, v_piak, v_paic, v_piac, ei, ea, Omega_s
+  logical, parameter    :: DEBUG_GWSOSEX=.FALSE.
   !=====
 
   if(.NOT. has_auxil_basis) return
-  if( world%nproc > 1 ) call die('psd_2sosex: not implemented with MPI')
+  if( world%nproc /= poorman%nproc ) call die('psd_2sosex: only implemented with poorman MPI parallelization')
   if( nspin > 1 ) call die('psd_2sosex: not implemented with spin')
 
   call start_clock(timing_gwgamma_self)
@@ -2636,15 +2638,14 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
   do qspin=1, nspin
 
-#if 0
-    do qstate=ncore_G+1, nvirtual_G-1
-      ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-      w_s(:, ncore_G+1:nvirtual_G-1, qstate) = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
-                                                 eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
-      call auxil%sum(w_s)
-    enddo
+    !do qstate=ncore_G+1, nvirtual_G-1
+    !  ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+    !  w_s(:, ncore_G+1:nvirtual_G-1, qstate) = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
+    !                                             eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
+    !  call auxil%sum(w_s)
+    !enddo
 
-#else
+    ! w_s^{mn} = w_s^P * ( m n | P)
     ! Collapse the 2nd and 3rd indices
     nstate2 = ( nvirtual_G - ncore_G - 1 )**2
     call DGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_local, &
@@ -2652,7 +2653,6 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
                         eri_3center_eigen(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
                 0.0_dp, w_s(1, ncore_G+1, ncore_G+1), wpol%npole_reso)
     call auxil%sum(w_s)
-#endif
 
   enddo
   qspin = 1
@@ -2666,10 +2666,14 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
     !$OMP PARALLEL DO PRIVATE(ei, ea, v_paik, v_piak, Omega_s)
     do kstate=ncore_G+1, nhomo_G
 
+      iastate = 0
       do istate=ncore_G+1, nhomo_G
         ei = energy(istate, qspin)
         do astate=nhomo_G+1, nvirtual_G-1
           ea = energy(astate, qspin)
+          iastate = iastate + 1
+          if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
+
           v_paik = DOT_PRODUCT( eri_3center_eigen(:, pstate, astate, qspin), eri_3center_eigen(:, istate, kstate, qspin) )
           v_piak = DOT_PRODUCT( eri_3center_eigen(:, pstate, istate, qspin), eri_3center_eigen(:, astate, kstate, qspin) )
 
@@ -2688,10 +2692,15 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
     !$OMP PARALLEL DO PRIVATE(ei, ea, v_paic, v_piac, Omega_s)
     do cstate=nhomo_G+1, nvirtual_G-1
+
+      iastate = 0
       do istate=ncore_G+1, nhomo_G
         ei = energy(istate, qspin)
         do astate=nhomo_G+1, nvirtual_G-1
           ea = energy(astate, qspin)
+          iastate = iastate + 1
+          if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
+
           v_paic = DOT_PRODUCT( eri_3center_eigen(:, pstate, astate, qspin), eri_3center_eigen(:, istate, cstate, qspin) )
           v_piac = DOT_PRODUCT( eri_3center_eigen(:, pstate, istate, qspin), eri_3center_eigen(:, astate, cstate, qspin) )
 
@@ -2710,30 +2719,63 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
   enddo
 
+  call poorman%sum(w_s_tilde)
 
   ! Add w_s_tilde
   w_s_tilde(:, :, :) = w_s_tilde(:, :, :) + w_s(:, :, nsemin:nsemax)
 
-  se%sigma(:, :, :) = 0.0_dp
-  do spole=1, wpol%npole_reso
-    Omega_s = wpol%pole(spole)
-    do kstate=ncore_G+1, nhomo_G
+
+  allocate(sigma, MOLD=se%sigma)
+  sigma(:, :, :) = 0.0_dp
+
+  if( .NOT. DEBUG_GWSOSEX ) then
+    !$OMP PARALLEL PRIVATE(Omega_s) 
+    !$OMP DO REDUCTION(+:sigma)
+    do spole=1, wpol%npole_reso
+      Omega_s = wpol%pole(spole)
       do pstate=nsemin, nsemax
-        se%sigma(:, pstate, qspin) = se%sigma(:, pstate, qspin) &
-               + w_s_tilde(spole, kstate, pstate)**2  &
-                         / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s - ieta )
+        do kstate=ncore_G+1, nhomo_G
+          sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
+                 + w_s_tilde(spole, kstate, pstate)**2  &
+                           / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s - ieta )
+        enddo
+      enddo
+      do pstate=nsemin, nsemax
+        do cstate=nhomo_G+1, nvirtual_G-1
+          sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
+                 + w_s_tilde(spole, cstate, pstate)**2 &
+                           / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s + ieta )
+        enddo
       enddo
     enddo
-    do cstate=nhomo_G+1, nvirtual_G-1
+    !$OMP END DO
+    !$OMP END PARALLEL
+
+  else
+    ! GW + SOSEX
+    do spole=1, wpol%npole_reso
+      Omega_s = wpol%pole(spole)
       do pstate=nsemin, nsemax
-        se%sigma(:, pstate, qspin) = se%sigma(:, pstate, qspin) &
-               + w_s_tilde(spole, cstate, pstate)**2 &
-                         / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s + ieta )
+        do kstate=ncore_G+1, nhomo_G
+          sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
+                 + w_s_tilde(spole, kstate, pstate) * w_s(spole, kstate, pstate)  &
+                           / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s - ieta )
+        enddo
+      enddo
+      do pstate=nsemin, nsemax
+        do cstate=nhomo_G+1, nvirtual_G-1
+          sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
+                 + w_s_tilde(spole, cstate, pstate) * w_s(spole, cstate, pstate) &
+                           / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s + ieta )
+        enddo
       enddo
     enddo
-  enddo
+  endif
 
   call clean_deallocate('Store ~w_s', w_s_tilde)
+
+  se%sigma(:, :, :) = sigma(:, :, :)
+  deallocate(sigma)
 
 
   if(has_auxil_basis) then
