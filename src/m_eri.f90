@@ -450,7 +450,7 @@ subroutine identify_negligible_shellpair(basis)
       shls(4) = ishell-1  ! C convention starts with 0
 
       info = cint2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                        basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+                        basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
 
 #else
       am1 = basis%shell(ishell)%am

@@ -240,7 +240,7 @@ subroutine calculate_eri_4center(basis, rcut)
       shls(4) = ishell-1  ! C convention starts with 0
 
       cint_info = cint2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                             basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+                             basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
 
 #else
       call libint_4center(am1, ng1, x01, alpha1, coeff1, &
@@ -405,7 +405,7 @@ subroutine calculate_eri_4center_shell(basis, rcut, ijshellpair, klshellpair, &
   shls(4) = ishell-1  ! C convention starts with 0
 
   cint_info = cint2e_cart(shell_libint, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                         basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+                         basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
 
 #else
   call libint_4center(am1, ng1, x01, alpha1, coeff1, &
@@ -847,10 +847,10 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
 
         if( auxil_basis%gaussian_type == 'CART' ) then
           cint_info = cint2c2e_cart(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
-                                   auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
+                                   auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, LIBCINT_opt)
         else
           cint_info = cint2c2e_sph(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
-                                  auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, 0_C_LONG)
+                                  auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, LIBCINT_opt)
         endif
         call transform_libcint_to_molgw(auxil_basis%gaussian_type, ami, amk, int_shell, integrals)
 
@@ -1452,10 +1452,10 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
 
         if( basis%gaussian_type == 'CART' ) then
           cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                                   basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+                                   basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
         else
           cint_info = cint3c2e_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                                  basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+                                  basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
         endif
         call transform_libcint_to_molgw(auxil_basis%gaussian_type, ami, basis%gaussian_type, amk, aml, int_shell, integrals)
 
@@ -1774,10 +1774,10 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
 
           if( basis%gaussian_type == 'CART' ) then
             cint_info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                                     basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+                                     basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
           else
             cint_info = cint3c2e_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                                    basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+                                    basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
           endif
           call transform_libcint_to_molgw(auxil_basis%gaussian_type, ami, basis%gaussian_type, amk, aml, int_shell, integrals)
 

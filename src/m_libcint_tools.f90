@@ -12,6 +12,8 @@ module m_libcint_tools
   use m_basis_set
   use m_atoms
 
+  type(C_PTR), protected :: LIBCINT_opt = C_NULL_PTR
+
   logical, protected :: pypzpx_order = .TRUE.
 
   integer, private, parameter :: LMAX_LIBCINT = 8
@@ -46,14 +48,62 @@ module m_libcint_tools
 
   logical, protected :: libcint_has_range_separation
 
-  integer, external  :: cint2e_cart
-  integer, external  :: cint2c2e_sph
-  integer, external  :: cint2c2e_cart
-  integer, external  :: cint3c2e_cart
-  integer, external  :: cint3c2e_sph
-  integer, external  :: cint3c1e_cart
 
   interface
+
+    integer(C_INT) function cint2e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2e_cart
+
+    integer(C_INT) function cint2c2e_sph(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2c2e_sph
+
+    integer(C_INT) function cint2c2e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2c2e_cart
+
+    integer(C_INT) function cint3c2e_sph(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c2e_sph
+
+    integer(C_INT) function cint3c2e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c2e_cart
+
+    integer(C_INT) function cint3c1e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c1e_cart
 
     integer(C_INT) function cint1e_ovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
       import :: C_INT, C_DOUBLE
@@ -273,7 +323,7 @@ subroutine check_capability_libcint(lmax)
 
   shls(:) = 0
 #if defined(HAVE_LIBCINT)
-  info = cint2c2e_cart(integral, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env, 0_C_LONG)
+  info = cint2c2e_cart(integral, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env, LIBCINT_opt)
 #endif
 
   libcint_has_range_separation = ABS( integral(1) - ref_value_screened_integral ) < 1.0e-10_dp
@@ -628,7 +678,7 @@ subroutine libcint_3center(amA, contrdepthA, A, alphaA, cA, &
   shls(3) = 2
 
 #if defined(HAVE_LIBCINT)
-  info = cint3c2e_cart(eriACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, 0_C_LONG)
+  info = cint3c2e_cart(eriACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, LIBCINT_opt)
 #endif
 
 
@@ -1074,7 +1124,7 @@ subroutine libcint_overlap_3center(amA, contrdepthA, A, alphaA, cA, &
   shls(3) = 2
 
 #if defined(HAVE_LIBCINT)
-  info = cint3c1e_cart(ovlpACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, 0_C_LONG)
+  info = cint3c1e_cart(ovlpACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, LIBCINT_opt)
 #endif
 
 
