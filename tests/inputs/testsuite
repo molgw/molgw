@@ -1159,4 +1159,7 @@ SCF Total Energy           ,   -1.8029834147    , 0 , 1.0e-7
 RT-TDDFT Total Energy      ,   -0.9236896915    , 0 , 1.0e-7
 RT-TDDFT work on projectile,   -0.8735542178    , 0 , 1.0e-7
 
+ne_gw2sosex_psd.in, PSD-ized 2SOSEX self-energy
+SCF Total Energy           , -128.5414975632    , 0 , 1.0e-7
+GW+2SOSEX_PSD HOMO energy  ,  -21.798228        , 0 , 1.0e-4
 

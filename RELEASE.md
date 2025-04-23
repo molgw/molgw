@@ -7,10 +7,14 @@
 ### Overview
 
 - RESTART from a different basis made safer
+- Linking with accelerated library `qcint`
 
 ### Contributors
 
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+
+### Changes affecting the usage
+- Positive semi-definite version of GW+2SOSEX self-energy
 
 ### Changes affecting the results
 
@@ -19,6 +23,7 @@
 ### Changes affecting the usage
 
 ### Changes affecting the compilation
+- Possibility to linking against `qcint` or `libcint` without any change
 
 ### Changes affecting the developers
 

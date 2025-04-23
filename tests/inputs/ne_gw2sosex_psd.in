@@ -1,0 +1,21 @@
+&molgw
+ comment='Ne PSD-ized 2SOSEX'
+
+ scf='HF'
+
+ basis='Def2-TZVPP'
+ auxil_basis='PAUTO'
+
+ mixing_scheme='simple'
+
+ postscf='GW+2SOSEX_PSD'
+
+ selfenergy_state_range=0
+
+ eta=0.0001   ! PSD results are sensitive to eta
+
+ natom=1
+ frozencore='yes'
+/
+Ne  0.0 0.0 0.0
+

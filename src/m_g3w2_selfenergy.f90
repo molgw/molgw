@@ -363,7 +363,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
 
 
   forall(pstate=nsemin:nsemax)
-    se%sigma(:, pstate, :) = sigma_sox(:, pstate, :) + factor_sosex * sigma_sosex(:, pstate, :)
+    se%sigma(:, pstate, :) = factor_sox * sigma_sox(:, pstate, :) + factor_sosex * sigma_sosex(:, pstate, :)
   end forall
 
 
@@ -1007,7 +1007,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     close(file)
   enddo
 
-  se%sigma(:, :, :) = SUM(sigma_sox(:, :, :, :), DIM=4 ) &
+  se%sigma(:, :, :) = factor_sox * SUM(sigma_sox(:, :, :, :), DIM=4 ) &
                      + factor_sosex * SUM(sigma_sosex(:, :, :, :), DIM=4)
   !FBFB
   !call issue_warning('FBFB analyze coding: 2SOX + 2SOSEX')
@@ -2619,7 +2619,8 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
   real(dp), allocatable :: w_s(:, :, :), w_s_tilde(:, :, :)
   integer               :: file_v, file_w, file_e, file_omega
   real(dp)              :: v_paik, v_piak, v_paic, v_piac, ei, ea, Omega_s
-  logical, parameter    :: DEBUG_GWSOSEX=.FALSE.
+  ! DEBUG flag
+  character(len=32), parameter :: selfenergy = 'PSD' ! 'GW+2SOX+2SOSEX' ! 'GW+SOSEX' ! 'PSD'  ! 'GW'
   !=====
 
   if(.NOT. has_auxil_basis) return
@@ -2721,29 +2722,28 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
   call poorman%sum(w_s_tilde)
 
-  ! Add w_s_tilde
-  w_s_tilde(:, :, :) = w_s_tilde(:, :, :) + w_s(:, :, nsemin:nsemax)
 
 
   allocate(sigma, MOLD=se%sigma)
   sigma(:, :, :) = 0.0_dp
 
-  if( .NOT. DEBUG_GWSOSEX ) then
-    !$OMP PARALLEL PRIVATE(Omega_s) 
+  select case(TRIM(selfenergy))
+  case('GW')
+    !$OMP PARALLEL PRIVATE(Omega_s)
     !$OMP DO REDUCTION(+:sigma)
     do spole=1, wpol%npole_reso
       Omega_s = wpol%pole(spole)
       do pstate=nsemin, nsemax
         do kstate=ncore_G+1, nhomo_G
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
-                 + w_s_tilde(spole, kstate, pstate)**2  &
+                 + w_s(spole, kstate, pstate)**2  &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s - ieta )
         enddo
       enddo
       do pstate=nsemin, nsemax
         do cstate=nhomo_G+1, nvirtual_G-1
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
-                 + w_s_tilde(spole, cstate, pstate)**2 &
+                 + w_s(spole, cstate, pstate)**2 &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s + ieta )
         enddo
       enddo
@@ -2751,28 +2751,89 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
     !$OMP END DO
     !$OMP END PARALLEL
 
-  else
-    ! GW + SOSEX
+  case('GW+2SOX+2SOSEX')
+    ! GW + 2SOX + 2SOSEX
+    !$OMP PARALLEL PRIVATE(Omega_s)
+    !$OMP DO REDUCTION(+:sigma)
     do spole=1, wpol%npole_reso
       Omega_s = wpol%pole(spole)
       do pstate=nsemin, nsemax
         do kstate=ncore_G+1, nhomo_G
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
-                 + w_s_tilde(spole, kstate, pstate) * w_s(spole, kstate, pstate)  &
+                 + ( w_s(spole, kstate, pstate) + 2.0_dp * w_s_tilde(spole, kstate, pstate) ) &
+                        * w_s(spole, kstate, pstate)  &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s - ieta )
         enddo
       enddo
       do pstate=nsemin, nsemax
         do cstate=nhomo_G+1, nvirtual_G-1
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
-                 + w_s_tilde(spole, cstate, pstate) * w_s(spole, cstate, pstate) &
+                 + ( w_s(spole, cstate, pstate) + 2.0_dp * w_s_tilde(spole, cstate, pstate) ) &
+                        * w_s(spole, cstate, pstate)  &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s + ieta )
         enddo
       enddo
     enddo
-  endif
+    !$OMP END DO
+    !$OMP END PARALLEL
+
+  case('GW+SOSEX')
+    ! GW + SOSEX
+    !$OMP PARALLEL PRIVATE(Omega_s)
+    !$OMP DO REDUCTION(+:sigma)
+    do spole=1, wpol%npole_reso
+      Omega_s = wpol%pole(spole)
+      do pstate=nsemin, nsemax
+        do kstate=ncore_G+1, nhomo_G
+          sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
+                 + ( w_s(spole, kstate, pstate) + w_s_tilde(spole, kstate, pstate) ) &
+                        * w_s(spole, kstate, pstate)  &
+                           / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s - ieta )
+        enddo
+      enddo
+      do pstate=nsemin, nsemax
+        do cstate=nhomo_G+1, nvirtual_G-1
+          sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
+                 + ( w_s(spole, cstate, pstate) + w_s_tilde(spole, cstate, pstate) ) &
+                        * w_s(spole, cstate, pstate)  &
+                           / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s + ieta )
+        enddo
+      enddo
+    enddo
+    !$OMP END DO
+    !$OMP END PARALLEL
+
+  case default
+    !
+    ! This is the full PSD case. The other one are DEBUG
+    !
+    !$OMP PARALLEL PRIVATE(Omega_s)
+    !$OMP DO REDUCTION(+:sigma)
+    do spole=1, wpol%npole_reso
+      Omega_s = wpol%pole(spole)
+      do pstate=nsemin, nsemax
+        do kstate=ncore_G+1, nhomo_G
+          sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
+                 + ( w_s(spole, kstate, pstate) + w_s_tilde(spole, kstate, pstate) )**2  &
+                           / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s - ieta )
+        enddo
+      enddo
+      do pstate=nsemin, nsemax
+        do cstate=nhomo_G+1, nvirtual_G-1
+          sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
+                 + ( w_s(spole, cstate, pstate) + w_s_tilde(spole, cstate, pstate) )**2 &
+                           / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s + ieta )
+        enddo
+      enddo
+    enddo
+    !$OMP END DO
+    !$OMP END PARALLEL
+
+
+  end select
 
   call clean_deallocate('Store ~w_s', w_s_tilde)
+  call clean_deallocate('Store w_s', w_s)
 
   se%sigma(:, :, :) = sigma(:, :, :)
   deallocate(sigma)
