@@ -7,7 +7,7 @@
  auxil_basis='AUTO'
  mixing_scheme='simple'
  nscf=1000
- mpi_nproc_ortho=1024
+ mpi_poorman='yes'
 
  postscf='gw+g3w2'
  

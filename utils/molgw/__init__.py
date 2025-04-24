@@ -14,7 +14,7 @@ molgw module contains classes and modules to automate running and reading of MOL
 """
 
 __author__  = "Fabien Bruneval"
-__version__ = "3.3"
+__version__ = "3.4"
 
 import math
 import os, sys, shutil, subprocess
@@ -61,46 +61,12 @@ except:
     pass
 
 ########################################################################
-def check_input(pyinput):
-    sanity = True
-
-    valid_keywords = [k for k in input_keywords.keys() ]
-    additional_keywords = ["xyz", "rawxyz"]
-    valid_keywords += additional_keywords
-
-    # Check keywords exist
-    pyinput_lower = [ k.lower() for k in pyinput ]
-    for k in pyinput_lower:
-        if not k in valid_keywords:
-            print('Wrong input variable:    ' + k)
-            similar = ''
-            for kk in valid_keywords:
-                if difflib.SequenceMatcher(None,k,kk).ratio() > 0.6:
-                    #print(kk,difflib.SequenceMatcher(None,k,kk).ratio())
-                    similar += ' ' + kk
-            if len(similar) > 0:
-                print(' -> did you mean:   ' + similar)
-            else:
-                print(' -> no similar keyword found')
-            sanity = False
-
-    # Check all mandatory keywords are there
-    mandatory = [k for k in input_keywords.keys() if input_keywords[k]["mandatory"]=="yes" ]
-    for k in mandatory:
-        if not k in [key for key in pyinput_lower]:
-            print('Mandatory keyword not present:   ' + k)
-            sanity = False
-    # Check that some sort of structure is there
-    structure_kw = [ "natom", "xyz_file", "xyz", "rawxyz"]
-    if not any(kw in pyinput_lower for kw in structure_kw):
-        print("No structural data given")
-        sanity = False
-
-    return sanity
 
 
 ########################################################################
-def run(inputfile="molgw.in", outputfile="molgw.out", pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
+def run(inputfile="molgw.in", outputfile="", yamlfile="",
+        pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
+
     if len(tmp) > 0:
         os.makedirs(tmp, exist_ok=True)
     if len(executable_path) > 0:
@@ -110,16 +76,25 @@ def run(inputfile="molgw.in", outputfile="molgw.out", pyinput={}, mpirun="", exe
     if len(pyinput) > 0:
         print_input_file(pyinput, "./" + tmp + "/" + inputfile)
     os.environ['OMP_NUM_THREADS'] = str(openmp)
+    os.environ['MKL_NUM_THREADS'] = str(openmp)
+
     if len(mpirun) == 0:
         process = subprocess.Popen([exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         process = subprocess.Popen(mpirun.split() + [exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
-    if len(outputfile) > 0:
-        with open("./" + tmp + "/" + outputfile, "w") as f:
-            f.write(output.decode("utf-8"))
+
     if len(error) > 100:
         print(error.decode("utf-8"))
+    if len(outputfile) > 0:
+        with open(outputfile, "w") as f:
+            f.write(output.decode("utf-8"))
+    else:
+        with open("./" + tmp + "/molgw.out", "w") as f:
+            f.write(output.decode("utf-8"))
+    if len(yamlfile) > 0:
+        shutil.copy( "./" + tmp + "/molgw.yaml", yamlfile)
+
     with open("./" + tmp + "/molgw.yaml", "r") as stream:
         try:
             results = load(stream, Loader=Loader)
@@ -229,7 +204,7 @@ def get_homo_energy(approx,calc):
     if key not in calc.keys():
         print(f"Problem reading calculation: {calc['input parameters']['comment']}")
         print(f"{key} not found")
-        sys.exit("Problem")
+        return None
     energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
         energies += [ float(ei) for ei in calc[key]["spin channel 1"].values()]
@@ -238,6 +213,39 @@ def get_homo_energy(approx,calc):
     energies.sort()
     return energies[int(calc["physical system"]["electrons"])-1 - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
 
+########################################################################
+def get_homo_nature(calc):
+    key = "mulliken projections"
+    if key not in calc.keys():
+        print(f"Problem reading calculation: {calc['input parameters']['comment']}")
+        print(f"{key} not found")
+        return None
+    if calc[key]["spin channel 1"] == 2:
+        print("spin unrestricted not coded")
+        return None
+    homo_index = int(calc["physical system"]["electrons"]) / 2
+    proj_homo = calc[key]["spin channel 1"][homo_index]
+    proj_homo_total = {}
+    for k, v in proj_homo.items():
+        proj_homo_total[k] = v["total"]
+    return max(proj_homo_total, key=proj_homo_total.get)
+
+########################################################################
+def get_lumo_nature(calc):
+    key = "mulliken projections"
+    if key not in calc.keys():
+        print(f"Problem reading calculation: {calc['input parameters']['comment']}")
+        print(f"{key} not found")
+        return None
+    if calc[key]["spin channel 1"] == 2:
+        print("spin unrestricted not coded")
+        return None
+    lumo_index = int(calc["physical system"]["electrons"]) / 2 + 1
+    proj_lumo = calc[key]["spin channel 1"][lumo_index]
+    proj_lumo_total = {}
+    for k, v in proj_lumo.items():
+        proj_lumo_total[k] = v["total"]
+    return max(proj_lumo_total, key=proj_lumo_total.get)
 
 ########################################################################
 def get_lumo_energy(approx,calc):
@@ -245,7 +253,7 @@ def get_lumo_energy(approx,calc):
     if key not in calc.keys():
         print(f"Problem reading calculation: {calc['input parameters']['comment']}")
         print(f"{key} not found")
-        sys.exit("Problem")
+        return None
     energies = [ float(ei) for ei in calc[key]["spin channel 1"].values()]
     if calc["input parameters"]["nspin"] == 1:
         energies += [ float(ei) for ei in calc[key]["spin channel 1"].values()]
@@ -281,21 +289,6 @@ def parse_yaml_files(directory):
     return calc
 
 
-########################################################################
-# check if a calculation dictionary is valid
-# - "scf is converged" exists
-# - "scf is converged" is True
-# - "run" exists ("run" key is written in YAML file at the very end of a MOLGW calculation)
-def check_calc(calc):
-    valid = True
-    try:
-        calc["scf is converged"]
-        calc["run"]
-    except KeyError:
-        valid = False
-    except:
-        sys.exit(1)
-    return valid and calc["scf is converged"]
 
 
 ########################################################################
@@ -442,21 +435,68 @@ class gaussian_cube:
 
 ########################################################################
 class Molgw_input:
-    """MOLGW input"""
-    def __init__(self,dict_in):
-        self.d = dict_in
+    """ MOLGW input class """
+    def __init__(self, origin):
+        """ Input can be a python dictionary or a text file"""
+        if isinstance(origin, dict):
+            self.d = origin
+        elif isinstance(origin, str):
+            sys.exit("Reading a text file is not coded yet")
+        else:
+            raise TypeError("Molgw_input should be initialized with a dictionary or a file path")
     def __str__(self):
         return str(self.d)
     def __getitem__(self, key):
-        return self.d[key]
-    def set(self,key,value):
+        if key not in self.d:
+            raise KeyError(f"Input variable '{key}' not found in the input")
+        else:
+            return self.d[key]
+    def __set__(self, key, value):
         self.d[key] = value
-    def check(self):
-        return check_input(self.d)
+
     def to_dict(self):
         return self.d
     def to_file(self,filename):
         return print_input_file(self.d,filename)
+
+    ####################################################################
+    def check(self):
+        """ Check the sanity of an input file """
+        sanity = True
+        valid_keywords = [k for k in input_keywords.keys() ]
+        additional_keywords = ["xyz", "rawxyz"]
+        valid_keywords += additional_keywords
+    
+        # Check keywords exist
+        pyinput_lower = [ k.lower() for k in self.d ]
+        for k in pyinput_lower:
+            if not k in valid_keywords:
+                print('Wrong input variable:    ' + k)
+                similar = ''
+                for kk in valid_keywords:
+                    if difflib.SequenceMatcher(None,k,kk).ratio() > 0.6:
+                        #print(kk,difflib.SequenceMatcher(None,k,kk).ratio())
+                        similar += ' ' + kk
+                if len(similar) > 0:
+                    print(' -> did you mean:   ' + similar)
+                else:
+                    print(' -> no similar keyword found')
+                sanity = False
+    
+        # Check all mandatory keywords are there
+        mandatory = [k for k in input_keywords.keys() if input_keywords[k]["mandatory"]=="yes" ]
+        for k in mandatory:
+            if not k in [key for key in pyinput_lower]:
+                print('Mandatory keyword not present:   ' + k)
+                sanity = False
+        # Check that some sort of structure is there
+        structure_kw = [ "natom", "xyz_file", "xyz", "rawxyz"]
+        if not any(kw in pyinput_lower for kw in structure_kw):
+            print("No structural data given")
+            sanity = False
+    
+        return sanity
+
     def run(self,**kwargs):
         return Molgw_output(run(pyinput=self.d,**kwargs))
 
@@ -464,8 +504,20 @@ class Molgw_input:
 ########################################################################
 class Molgw_output:
     """MOLGW output"""
-    def __init__(self,dict_in):
-        self.d = dict_in
+    def __init__(self, origin):
+        if isinstance(origin, dict):
+            self.d = origin
+        elif isinstance(origin, str):
+            try:
+                with open(origin, "r") as stream:
+                    self.d = load(stream, Loader=Loader)
+            except:
+                print(f'{origin} file does not exist or is no proper yaml file')
+                self.d = {}
+                raise FileNotFoundError
+        else:
+            raise TypeError("Molgw_output should be initialized with a dictionary or a yaml file path")
+
     def __str__(self):
         return str(self.d)
     def __getitem__(self, key):
@@ -476,12 +528,35 @@ class Molgw_output:
         return get_homo_energy(approx,self.d)
     def lumo_energy(self,approx):
         return get_lumo_energy(approx,self.d)
-    def check(self):
-        return check_calc(self.d)
+    def homo_nature(self):
+        """get the nature of the HOMO based on Mulliken projection"""
+        return get_homo_nature(self.d)
+    def lumo_nature(self):
+        """get the nature of the LUMO based on Mulliken projection"""
+        return get_lumo_nature(self.d)
     def to_dict(self):
         return self.d
+    def to_file(self, dest):
+        with open(dest, "w") as stream:
+            dump(self.d, stream, Dumper=Dumper)
     def chemical_formula(self):
         return get_chemical_formula(self.d)
+
+    def check(self):
+        """check if a calculation dictionary is valid
+           - "scf is converged" exists
+           - "scf is converged" is True
+           - "run" exists ("run" key is written in YAML file at the very end of a MOLGW calculation) """
+        valid = True
+        try:
+            self["scf is converged"]
+            self["run"]
+        except KeyError:
+            valid = False
+        except:
+            sys.exit(1)
+        return valid and self["scf is converged"]
+
 
 ########################################################################
 class Molgw_output_collection:
@@ -497,7 +572,7 @@ class Molgw_output_collection:
             origins = [origin]
         for orig in origins:
             if not os.path.isdir(orig):
-                sys.exit(orig + "is not a valid folder")
+                sys.exit(orig + " is not a valid folder")
             self.files += glob.glob(orig+"/**/*.yaml",recursive=True)
         self.files = list(set(self.files))
         for file in self.files:
@@ -550,15 +625,18 @@ class Molgw_output_collection:
            print("Selection rules:")
            for key, value in filters.items():
                print(f"  {key} == {value}?")
-       for f, mlgo in zip(self.files,self.data):
+       for f, mlgo in zip(self.files, self.data):
            corresponds = True
            for key, value in filters.items():
-               if mlgo["input parameters"][key] != value:
-                   corresponds = False
+               mlgo_value = mlgo["input parameters"][key]
+               if isinstance(value, str) and isinstance(mlgo_value, str):
+                   corresponds = corresponds and value.lower() == mlgo_value.lower()
+               elif isinstance(value, float):
+                   corresponds = corresponds and abs(value - mlgo_value) < 1.0e-5
+               else:
+                   corresponds = corresponds and value == mlgo_value
            if corresponds:
-               mlgo_filtered.append(mlgo,file=f)
-               #mlgo_filtered.files.append(f)
-               #mlgo_filtered.data.append(mlgo)
+               mlgo_filtered.append(mlgo, file=f)
        if verbose:
            print(f"Found {len(mlgo_filtered)} corresponding calculations")
        return mlgo_filtered

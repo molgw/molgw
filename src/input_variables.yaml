@@ -257,6 +257,63 @@ tolforce:
   comment: Sets the target threshold for the maximum force component after nuclei
     relaxation.
 
+x2c:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: 'EXPERIMENTAL. Build the X2C Hamiltonian and orbitals.'
+
+c_speedlight:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 137.035999074
+  comment: Varible used to change the value of the speed of light. Default value 137.035999074.
+
+parabolic_conf:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: Include a parabolic confinement 1/2 w**2 r**2 to the electron-nucleus interaction. Default no. 
+
+rwconfinement:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: w varible used in the parabolic confinement. Default value 0.0.
+
+harmonium:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: Replace the -Z/r interaction with a parabolic confinement 1/2 w**2 r**2 (Harmonium atom). Default no. 
+
+approx_H_x2c:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'yes'
+  comment: Build the X2C approximate Hamiltonian (H**new) to reproduce state energies.
+    with  H = S C e C**-1, H**dagger S C e C**-1, and H**new = 1/2 ( H + H**dagger). Default yes. 
+
+check_CdSC_x2c:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'yes'
+  comment: Check whether C**dagger S C = I. It sets S_x2c = S and X_x2c = X for large deviations from I.
+    Also, builds the approximate Hamilronian H**new if required. Default yes. 
 
 #============================================================================
 #              Hardware input variables (Parallelization)
@@ -300,15 +357,14 @@ grid_memory:
   comment: Sets the maximum memory usage in Mb allowed to store the wavefunctions
     on the quadrature points for XC integrals.
 
-mpi_nproc_ortho:
+mpi_poorman:
   family: hardware
-  datatype: integer
+  datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
-  default: 1
-  comment: Sets the number of processors left to parallelize on other directions.
-    The main direction (auxiliary basis or DFT grid points) is obtained by <b>mpi_nproc</b>
-    / <b>mpi_nproc_ortho</b>, which must be an integer.
+  default: no
+  comment: Change the strategy for MPI paralelization. Duplicate integrals in memory but parallelelize over molecular orbitals.
+           Useful for correlated calculations where exchange integrals limit the performance of the usual parallelization over the auxiliary basis.
 
 scalapack_block_min:
   family: hardware
@@ -568,6 +624,14 @@ read_restart:
   experimental: 'no'
   default: 'no'
   comment: Read the RESTART file and restart from it.
+
+yaml_output:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'molgw.yaml'
+  comment: Specifies a file name or path for the YAML formatted output. Default is `molgw.yaml`.
 
 
 #============================================================================
@@ -1254,13 +1318,13 @@ excit_time0:
   default: 3.0
   comment: Center of the excitation pulse in atomic units for the real-time dynamics.
 
-n_hist:
+tddft_history:
   family: rt_tddft
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
   default: 2
-  comment: 'Number of memorised previous hamiltonian values for its extrapolation
+  comment: 'Number of stored previous hamiltonian matrices for its extrapolation
     in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1);
     etc.'
 
@@ -1278,7 +1342,7 @@ n_restart_tddft:
   mandatory: 'no'
   experimental: 'no'
   default: 50
-  comment: RESTART_TDDFT file will be written during simulation each n_retart_tddft
+  comment: RESTART_TDDFT file will be written during simulation each n_restart_tddft
     iteration (provided that print_tddft_restart is yes)
 
 ncore_tddft:
@@ -1289,7 +1353,7 @@ ncore_tddft:
   default: 0
   comment: Sets the number of frozen core states in the real-time dynamics.
 
-pred_corr:
+tddft_predictor_corrector:
   family: rt_tddft
   datatype: characters
   mandatory: 'no'
@@ -1297,7 +1361,7 @@ pred_corr:
   default: "PC2B"
   comment: Sets the predictor-corrector scheme in the real-time dynamics.
 
-prop_type:
+tddft_propagator:
   family: rt_tddft
   datatype: characters
   mandatory: 'no'
@@ -1353,6 +1417,14 @@ tddft_charge:
   experimental: 'no'
   default: -999.0
   comment: Overall charge in the system fo the TDDFT calculation. Default value means it is equal to 'charge' in the DFT part. But if specified, it can differ from 'charge'.
+
+tddft_force:
+  family: rt_tddft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Triggers the calculation of the force acting on the projectile
 
 tddft_magnetization:
   family: rt_tddft
@@ -1558,7 +1630,7 @@ nscf:
   datatype: integer
   mandatory: 'no'
   experimental: 'no'
-  default: 50
+  default: 100
   comment: Sets the maximum number of SCF cycles
 
 partition_scheme:
@@ -1607,39 +1679,6 @@ noft_nophases:
   default: 'no'
   comment: Force orbitals to be real even if noft_complex='yes' in NOFT calcs. (default=no).
 
-noft_confinment:
-  family: noft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Replace all Coulomb electronic-nuclear contributions by a parabolic confinement at the origin. (default=no).
-
-noft_iconfinment:
-  family: noft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Add a Hermitian parabolic confinement (purely imaginary) to the one-body Hamiltonian when complex
-   molecular orb. coeficients are used in NOFT calcs. (default=no).
-
-noft_iwconfinment:
-  family: noft
-  datatype: real
-  mandatory: 'no'
-  experimental: 'no'
-  default: 0.000
-  comment: Value of confinement stength in the parabolic confinement described in noft_iconfinment. (default=0.0).
-
-noft_rwconfinment:
-  family: noft
-  datatype: real
-  mandatory: 'no'
-  experimental: 'no'
-  default: 0.000
-  comment: Value of confinement stength in the parabolic confinement described in noft_confinment. (default=0.0).
-
 noft_dft:
   family: noft
   datatype: yes/no
@@ -1654,7 +1693,7 @@ noft_rsinter:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Use range-sep for the inter-subspace two-body interactions in NOFT.
+  comment: Use range-sep for the inter-subspace two-body interactions in NOFT. (default=no).
 
 noft_lowmemERI:
   family: noft
@@ -1687,6 +1726,14 @@ noft_NOTupdateORB:
   experimental: 'no'
   default: 'no'
   comment: Do a NOFT optimization but keeping fixed the orbitals read.
+
+noft_NOTvxc:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Do a RS-NOFT calculation without Vxc (i.e. adding a one-shot ExcDFT to the NOFT energy).
 
 noft_functional:
   family: noft
@@ -1751,14 +1798,6 @@ noft_readOCC:
   experimental: 'no'
   default: 'no'
   comment: Read occ. from DM1 file and use them to compute Gammas (the indep. variables in occ. optimization). Default= 'no'.
-
-noft_sta:
-  family: noft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Decide whether to use PNOF7 or PNOF7s, but it also affects GNOF (default= 'no', use 'PNOF7' and 'GNOF').
 
 noft_NR_OCC:
   family: noft

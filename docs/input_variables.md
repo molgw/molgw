@@ -3,7 +3,7 @@
 --->
 # Input variable list
 
-*Version 3.3*
+*Version 3.4*
 
 ---
 
@@ -53,6 +53,13 @@
 [scf](#scf)
 [complex_scf](#complex_scf)
 [tolforce](#tolforce)
+[x2c](#x2c)
+[c_speedlight](#c_speedlight)
+[parabolic_conf](#parabolic_conf)
+[rwconfinement](#rwconfinement)
+[harmonium](#harmonium)
+[approx_H_x2c](#approx_H_x2c)
+[check_CdSC_x2c](#check_CdSC_x2c)
 
 
 ## Self-consistency input variables
@@ -137,16 +144,13 @@
 [noft_complex](#noft_complex)
 [noft_hessian](#noft_hessian)
 [noft_nophases](#noft_nophases)
-[noft_confinment](#noft_confinment)
-[noft_iconfinment](#noft_iconfinment)
-[noft_iwconfinment](#noft_iwconfinment)
-[noft_rwconfinment](#noft_rwconfinment)
 [noft_dft](#noft_dft)
 [noft_rsinter](#noft_rsinter)
 [noft_lowmemERI](#noft_lowmemERI)
 [noft_fcidump](#noft_fcidump)
 [noft_NOTupdateOCC](#noft_NOTupdateOCC)
 [noft_NOTupdateORB](#noft_NOTupdateORB)
+[noft_NOTvxc](#noft_NOTvxc)
 [noft_functional](#noft_functional)
 [noft_printdmn](#noft_printdmn)
 [noft_printswdmn](#noft_printswdmn)
@@ -155,7 +159,6 @@
 [noft_readFdiag](#noft_readFdiag)
 [noft_readGAMMAS](#noft_readGAMMAS)
 [noft_readOCC](#noft_readOCC)
-[noft_sta](#noft_sta)
 [noft_NR_OCC](#noft_NR_OCC)
 [noft_QC_ORB](#noft_QC_ORB)
 [noft_ithresh_lambda](#noft_ithresh_lambda)
@@ -198,6 +201,7 @@
 [print_yaml](#print_yaml)
 [read_fchk](#read_fchk)
 [read_restart](#read_restart)
+[yaml_output](#yaml_output)
 
 
 ## Hardware input variables
@@ -206,7 +210,7 @@
 [eri3_npcol](#eri3_npcol)
 [eri3_nprow](#eri3_nprow)
 [grid_memory](#grid_memory)
-[mpi_nproc_ortho](#mpi_nproc_ortho)
+[mpi_poorman](#mpi_poorman)
 [scalapack_block_min](#scalapack_block_min)
 
 
@@ -217,18 +221,19 @@
 [excit_name](#excit_name)
 [excit_width](#excit_width)
 [excit_time0](#excit_time0)
-[n_hist](#n_hist)
+[tddft_history](#tddft_history)
 [n_iter](#n_iter)
 [n_restart_tddft](#n_restart_tddft)
 [ncore_tddft](#ncore_tddft)
-[pred_corr](#pred_corr)
-[prop_type](#prop_type)
+[tddft_predictor_corrector](#tddft_predictor_corrector)
+[tddft_propagator](#tddft_propagator)
 [projectile_charge_scaling](#projectile_charge_scaling)
 [r_disc](#r_disc)
 [tddft_frozencore](#tddft_frozencore)
 [tddft_wfn_t0](#tddft_wfn_t0)
 [tddft_energy_shift](#tddft_energy_shift)
 [tddft_charge](#tddft_charge)
+[tddft_force](#tddft_force)
 [tddft_magnetization](#tddft_magnetization)
 [time_sim](#time_sim)
 [time_step](#time_step)
@@ -324,6 +329,24 @@ Sets the amount of output density-matrix for the next iteration. When the SCF cy
 **Description:**
 
 Calculates the spectral decomposition of the response function and then evaluate it on the frequency grid. Only valid for 'GW+FSOS'
+
+
+---
+### approx_H_x2c
+
+**experimental**
+
+*Optional*
+
+**Family:** general
+
+**Type:** yes/no
+
+**Default:** yes
+
+**Description:**
+
+Build the X2C approximate Hamiltonian (H**new) to reproduce state energies. with  H = S C e C**-1, H**dagger S C e C**-1, and H**new = 1/2 ( H + H**dagger). Default yes.
 
 
 ---
@@ -455,6 +478,22 @@ Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of l
 
 
 ---
+### c_speedlight
+
+*Optional*
+
+**Family:** general
+
+**Type:** real
+
+**Default:** 137.035999074
+
+**Description:**
+
+Varible used to change the value of the speed of light. Default value 137.035999074.
+
+
+---
 ### calc_charge_step
 
 *Optional*
@@ -532,6 +571,24 @@ Calculates absorption spectrum in the real-time dynamics
 **Description:**
 
 Sets the total charge of the system. 0 is a neutral system. -2 is a doubly charged anion etc.
+
+
+---
+### check_CdSC_x2c
+
+**experimental**
+
+*Optional*
+
+**Family:** general
+
+**Type:** yes/no
+
+**Default:** yes
+
+**Description:**
+
+Check whether C**dagger S C = I. It sets S_x2c = S and X_x2c = X for large deviations from I. Also, builds the approximate Hamilronian H**new if required. Default yes.
 
 
 ---
@@ -1311,6 +1368,24 @@ EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground
 
 
 ---
+### harmonium
+
+**experimental**
+
+*Optional*
+
+**Family:** general
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Replace the -Z/r interaction with a parabolic confinement 1/2 w**2 r**2 (Harmonium atom). Default no.
+
+
+---
 ### ignore_bigrestart
 
 *Optional*
@@ -1521,19 +1596,19 @@ Tells the code to move or not the position of the nuclei. Available options are 
 
 
 ---
-### mpi_nproc_ortho
+### mpi_poorman
 
 *Optional*
 
 **Family:** hardware
 
-**Type:** integer
+**Type:** yes/no
 
-**Default:** 1
+**Default:** False
 
 **Description:**
 
-Sets the number of processors left to parallelize on other directions. The main direction (auxiliary basis or DFT grid points) is obtained by <b>mpi_nproc</b> / <b>mpi_nproc_ortho</b>, which must be an integer.
+Change the strategy for MPI paralelization. Duplicate integrals in memory but parallelelize over molecular orbitals. Useful for correlated calculations where exchange integrals limit the performance of the usual parallelization over the auxiliary basis.
 
 
 ---
@@ -1550,22 +1625,6 @@ Sets the number of processors left to parallelize on other directions. The main 
 **Description:**
 
 Energy of the origin of the imaginary axis used in imaginary integration techniques. mu_origin should be in the HOMO-LUMO gap (preferably situated at a distance not too close to either end of the gap). The default value means the center of the HOMO-LUMO gap.
-
-
----
-### n_hist
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** integer
-
-**Default:** 2
-
-**Description:**
-
-Number of memorised previous hamiltonian values for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.
 
 
 ---
@@ -1597,7 +1656,7 @@ Sets the number of iterations for the PC7 in the real-time dynamics
 
 **Description:**
 
-RESTART_TDDFT file will be written during simulation each n_retart_tddft iteration (provided that print_tddft_restart is yes)
+RESTART_TDDFT file will be written during simulation each n_restart_tddft iteration (provided that print_tddft_restart is yes)
 
 
 ---
@@ -1745,6 +1804,22 @@ Do a NOFT optimization but keeping fixed the orbitals read.
 
 
 ---
+### noft_NOTvxc
+
+*Optional*
+
+**Family:** noft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Do a RS-NOFT calculation without Vxc (i.e. adding a one-shot ExcDFT to the NOFT energy).
+
+
+---
 ### noft_NR_OCC
 
 *Optional*
@@ -1790,22 +1865,6 @@ Use the Quadratic Convergence method in orbital optimization by constructing the
 **Description:**
 
 Use complex molecular orb. coeficients in NOFT calcs. (default=no).
-
-
----
-### noft_confinment
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Replace all Coulomb electronic-nuclear contributions by a parabolic confinement at the origin. (default=no).
 
 
 ---
@@ -1873,22 +1932,6 @@ Build and use the Hessian for the orbitals. (default=no).
 
 
 ---
-### noft_iconfinment
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Add a Hermitian parabolic confinement (purely imaginary) to the one-body Hamiltonian when complex molecular orb. coeficients are used in NOFT calcs. (default=no).
-
-
----
 ### noft_ithresh_lambda
 
 *Optional*
@@ -1902,22 +1945,6 @@ Add a Hermitian parabolic confinement (purely imaginary) to the one-body Hamilto
 **Description:**
 
 Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.
-
-
----
-### noft_iwconfinment
-
-*Optional*
-
-**Family:** noft
-
-**Type:** real
-
-**Default:** 0.0
-
-**Description:**
-
-Value of confinement stength in the parabolic confinement described in noft_iconfinment. (default=0.0).
 
 
 ---
@@ -2157,39 +2184,7 @@ Use binary files to restart NOFT calcs. (default= 'no').
 
 **Description:**
 
-Use range-sep for the inter-subspace two-body interactions in NOFT.
-
-
----
-### noft_rwconfinment
-
-*Optional*
-
-**Family:** noft
-
-**Type:** real
-
-**Default:** 0.0
-
-**Description:**
-
-Value of confinement stength in the parabolic confinement described in noft_confinment. (default=0.0).
-
-
----
-### noft_sta
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Decide whether to use PNOF7 or PNOF7s, but it also affects GNOF (default= 'no', use 'PNOF7' and 'GNOF').
+Use range-sep for the inter-subspace two-body interactions in NOFT. (default=no).
 
 
 ---
@@ -2297,7 +2292,7 @@ Sets the history record length for Pulay DIIS.
 
 **Type:** integer
 
-**Default:** 50
+**Default:** 100
 
 **Description:**
 
@@ -2417,6 +2412,24 @@ Sets the starting state beyond which states are excluded from the sum in the scr
 
 
 ---
+### parabolic_conf
+
+**experimental**
+
+*Optional*
+
+**Family:** general
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Include a parabolic confinement 1/2 w**2 r**2 to the electron-nucleus interaction. Default no.
+
+
+---
 ### partition_scheme
 
 *Optional*
@@ -2462,22 +2475,6 @@ Contains the post-processing scheme name. TD stands for TD-DFT or TD-HF. BSE sta
 **Description:**
 
 Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations. Available choices are ' ', 'R', 'D', and 'X'.
-
-
----
-### pred_corr
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** characters
-
-**Default:** PC2B
-
-**Description:**
-
-Sets the predictor-corrector scheme in the real-time dynamics.
 
 
 ---
@@ -2977,22 +2974,6 @@ Rescaling of the projectile charge
 
 
 ---
-### prop_type
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** characters
-
-**Default:** CN
-
-**Description:**
-
-Sets the type of propagation algorithm in the real-time dynamics. 'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.
-
-
----
 ### pt3_a_diagrams
 
 *Optional*
@@ -3122,6 +3103,22 @@ Read the RESTART file and restart from it.
 **Description:**
 
 Ignore the RESTART_TDDFT file.
+
+
+---
+### rwconfinement
+
+*Optional*
+
+**Family:** general
+
+**Type:** real
+
+**Default:** 0.0
+
+**Description:**
+
+w varible used in the parabolic confinement. Default value 0.0.
 
 
 ---
@@ -3383,6 +3380,22 @@ Shifts the TDDFT eigenvalues in when tddft_wfn_t0='STATIONARY' to tune the occup
 
 
 ---
+### tddft_force
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Triggers the calculation of the force acting on the projectile
+
+
+---
 ### tddft_frozencore
 
 *Optional*
@@ -3415,6 +3428,22 @@ Sets the number of grid points use to evaluate the exchange-correlation integral
 
 
 ---
+### tddft_history
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** integer
+
+**Default:** 2
+
+**Description:**
+
+Number of stored previous hamiltonian matrices for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.
+
+
+---
 ### tddft_magnetization
 
 *Optional*
@@ -3428,6 +3457,38 @@ Sets the number of grid points use to evaluate the exchange-correlation integral
 **Description:**
 
 Sets the number of unpaired electrons for real-time TDDFT calculations. In other words, this is the difference between the spin up and spin down occupation. For instance, a spin-doublet calculation is obtained with tddft_magnetization=1.0. Only meaningful when nspin=2.
+
+
+---
+### tddft_predictor_corrector
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** characters
+
+**Default:** PC2B
+
+**Description:**
+
+Sets the predictor-corrector scheme in the real-time dynamics.
+
+
+---
+### tddft_propagator
+
+*Optional*
+
+**Family:** rt_tddft
+
+**Type:** characters
+
+**Default:** CN
+
+**Description:**
+
+Sets the type of propagation algorithm in the real-time dynamics. 'CN' stands for Crank-Nickolson. 'MAG2' stands for Magnus 2nd order.
 
 
 ---
@@ -3655,6 +3716,24 @@ Determines the time step for data recording in the real-time dynamics
 
 
 ---
+### x2c
+
+**experimental**
+
+*Optional*
+
+**Family:** general
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+EXPERIMENTAL. Build the X2C Hamiltonian and orbitals.
+
+
+---
 ### xyz_file
 
 *Optional*
@@ -3670,8 +3749,24 @@ Determines the time step for data recording in the real-time dynamics
 Specifies the location of the xyz file that contains the atomic positions. It can be used as an alternate route to set atomic coordinate.
 
 
+---
+### yaml_output
+
+*Optional*
+
+**Family:** io
+
+**Type:** characters
+
+**Default:** molgw.yaml
+
+**Description:**
+
+Specifies a file name or path for the YAML formatted output. Default is `molgw.yaml`.
 
 
-*Generated by input_variables.py on 22 July 2024*
+
+
+*Generated by input_variables.py on 24 April 2025*
 
 

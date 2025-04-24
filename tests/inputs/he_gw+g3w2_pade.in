@@ -6,7 +6,7 @@
  basis='cc-pVDZ'
  auxil_basis='PAUTO'
 
- mpi_nproc_ortho=1024
+ mpi_poorman='yes'
  mixing_scheme='simple'
 
  postscf='gw+g3w2_pade'

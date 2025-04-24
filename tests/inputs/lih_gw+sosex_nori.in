@@ -8,7 +8,7 @@
   basis='6-31G*'
   gaussian_type='CART'
 
-  mpi_nproc_ortho=2
+  mpi_poorman='yes'
 
   natom=2
 /

@@ -1,0 +1,15 @@
+CXX=clang++
+FC=flang-new
+
+# For the time being, flang version 19.1.7 needs option "-mmlir -allow-assumed-rank"
+FCFLAGS=-cpp  -O2 -mmlir -allow-assumed-rank
+CPPFLAGS= -DHAVE_MKL
+
+
+LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+
+LIBCINT_ROOT=${HOME}/opt/libcint-6.1.2/
+LIBXC_ROOT=${HOME}/opt/libxc-7.0.0/
+
+LDFLAGS=-lquadmath
+

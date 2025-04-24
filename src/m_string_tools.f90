@@ -9,7 +9,7 @@
 #include "molgw.h"
 module m_string_tools
   use m_definitions
-  use m_warning,only: die
+  use m_warning, only: die
 
   interface append_to_list
     module procedure append_to_list_i
@@ -32,8 +32,8 @@ pure function lower(str)
   !=====
 
   lower = str
-  do ii=1,LEN_TRIM(str)
-    ic = INDEX(cap,str(ii:ii))
+  do ii=1, LEN_TRIM(str)
+    ic = INDEX(cap, str(ii:ii))
     if (ic > 0) lower(ii:ii) = low(ic:ic)
   enddo
 
@@ -52,8 +52,8 @@ pure function capitalize(str)
   !=====
 
   capitalize = str
-  do ii=1,LEN_TRIM(str)
-    ic = INDEX(low,str(ii:ii))
+  do ii=1, LEN_TRIM(str)
+    ic = INDEX(low, str(ii:ii))
     if (ic > 0) capitalize(ii:ii) = cap(ic:ic)
   enddo
 
@@ -63,7 +63,7 @@ end function capitalize
 !=========================================================================
 function orbital_momentum_number(amc)
   implicit none
-  character(len=1),intent(in) :: amc
+  character(len=1), intent(in) :: amc
   integer :: orbital_momentum_number
   !=====
 
@@ -85,7 +85,7 @@ function orbital_momentum_number(amc)
   case('K')
     orbital_momentum_number = 7
   case default
-    write(stdout,*) amc,capitalize(amc)
+    write(stdout, *) amc, capitalize(amc)
     call die('orbital_momentum_number: keyword unknown')
   end select
 
@@ -95,7 +95,7 @@ end function orbital_momentum_number
 !=========================================================================
 pure function orbital_momentum_name(am)
   implicit none
-  integer,intent(in) :: am
+  integer, intent(in) :: am
   character(len=1) :: orbital_momentum_name
   !=====
 
@@ -134,14 +134,14 @@ end function orbital_momentum_name
 
 
 !=========================================================================
-subroutine append_to_list_i(new_element,list)
+subroutine append_to_list_i(new_element, list)
   implicit none
 
-  integer,intent(in)                :: new_element
-  integer,allocatable,intent(inout) :: list(:)
+  integer, intent(in)                :: new_element
+  integer, allocatable, intent(inout) :: list(:)
   !=====
   integer :: nsize
-  integer,allocatable :: list_old(:)
+  integer, allocatable :: list_old(:)
   !=====
 
   if( ALLOCATED(list) ) then
@@ -167,14 +167,14 @@ end subroutine append_to_list_i
 
 
 !=========================================================================
-subroutine append_to_list_r(new_element,list)
+subroutine append_to_list_r(new_element, list)
   implicit none
 
-  real(dp),intent(in)                :: new_element
-  real(dp),allocatable,intent(inout) :: list(:)
+  real(dp), intent(in)                :: new_element
+  real(dp), allocatable, intent(inout) :: list(:)
   !=====
   integer :: nsize
-  real(dp),allocatable :: list_old(:)
+  real(dp), allocatable :: list_old(:)
   !=====
 
   if( ALLOCATED(list) ) then
@@ -202,21 +202,21 @@ end subroutine append_to_list_r
 !=========================================================================
 pure function get_number_of_elements(string) result(num)
   implicit none
-  character(len=*),intent(in)  :: string
+  character(len=*), intent(in)  :: string
   integer                      :: num
   !=====
-  integer   :: ip,pos
+  integer   :: ip, pos
   !=====
 
   pos = 1
   num = 0
 
   do
-    ip = VERIFY(string(pos:),' ')  !-- Find next non-blank
+    ip = VERIFY(string(pos:), ' ')  !-- Find next non-blank
     if( ip == 0 ) exit             !-- No word found
     num = num + 1                  !-- Found something
     pos = pos + ip - 1             !-- Move to start of the word
-    ip = SCAN(string(pos:),' ')    !-- Find next blank
+    ip = SCAN(string(pos:), ' ')    !-- Find next blank
     if( ip == 0 ) exit             !-- No blank found
     pos = pos + ip - 1             !-- Move to the blank
   end do
@@ -225,14 +225,14 @@ end function get_number_of_elements
 
 
 !=========================================================================
-subroutine string_to_integers(string_in,iarray)
+subroutine string_to_integers(string_in, iarray)
   implicit none
 
-  character(len=*),intent(in) :: string_in
-  integer,intent(inout)       :: iarray(:)
+  character(len=*), intent(in) :: string_in
+  integer, intent(inout)       :: iarray(:)
   !=====
   character(LEN(string_in)) :: string
-  integer                   :: ilen,inextblank,ii
+  integer                   :: ilen, inextblank, ii
   !=====
 
   string = string_in
@@ -241,10 +241,10 @@ subroutine string_to_integers(string_in,iarray)
   ii = 0
   do while( ilen > 0 )
     string = ADJUSTL(string)
-    inextblank = INDEX(string,' ')
+    inextblank = INDEX(string, ' ')
     ii = ii + 1
     if( ii > SIZE(iarray) ) exit
-    read(string(1:inextblank-1),*) iarray(ii)
+    read(string(1:inextblank-1), *) iarray(ii)
     string = string(inextblank+1:)
     ilen = LEN(TRIM(string))
   enddo
@@ -253,14 +253,14 @@ end subroutine string_to_integers
 
 
 !=========================================================================
-subroutine string_to_reals(string_in,rarray)
+subroutine string_to_reals(string_in, rarray)
   implicit none
 
-  character(len=*),intent(in) :: string_in
-  real(dp),intent(inout)      :: rarray(:)
+  character(len=*), intent(in) :: string_in
+  real(dp), intent(inout)      :: rarray(:)
   !=====
   character(LEN(string_in)) :: string
-  integer            :: ilen,inextblank,ii
+  integer            :: ilen, inextblank, ii
   !=====
 
   string = string_in
@@ -269,10 +269,10 @@ subroutine string_to_reals(string_in,rarray)
   ii = 0
   do while( ilen > 0 )
     string = ADJUSTL(string)
-    inextblank = INDEX(string,' ')
+    inextblank = INDEX(string, ' ')
     ii = ii + 1
     if( ii > SIZE(rarray) ) exit
-    read(string(1:inextblank-1),*) rarray(ii)
+    read(string(1:inextblank-1), *) rarray(ii)
     string = string(inextblank+1:)
     ilen = LEN(TRIM(string))
   enddo
@@ -284,17 +284,17 @@ end subroutine string_to_reals
 function get_number_of_lines(filename) result(nlines)
   implicit none
 
-  character(len=*),intent(in)  :: filename
+  character(len=*), intent(in)  :: filename
   integer                      :: nlines
   !=====
   character(len=100)           :: cur_string
-  integer   :: file_unit,io
+  integer   :: file_unit, io
   !=====
 
   nlines=0
   open(newunit=file_unit, file = filename)
   do
-    read(file_unit,'(A)',iostat=io)cur_string
+    read(file_unit, '(A)', iostat=io)cur_string
     if ( io /= 0 ) exit
     nlines=nlines+1
   end do
@@ -306,15 +306,15 @@ end function get_number_of_lines
 !=========================================================================
 function yesno_to_logical(char_in) RESULT(logical_out)
   implicit none
-  character(len=*),intent(in) :: char_in
+  character(len=*), intent(in) :: char_in
   logical                     :: logical_out
   !=====
   !=====
 
   select case(TRIM(capitalize(char_in)))
-  case('YES','Y','.TR','T','TR','TRU')
+  case('YES', 'Y', '.TR','T','TR','TRU')
     logical_out = .TRUE.
-  case('NO','N','.FA','F','FA','FAL')
+  case('NO', 'N', '.FA','F','FA','FAL')
     logical_out = .FALSE.
   case default
     call die('Yes or No, I cannot interpret this input')
@@ -326,7 +326,7 @@ end function yesno_to_logical
 !=========================================================================
 function logical_to_yesno(logical_in) RESULT(yesno)
   implicit none
-  logical,intent(in)          :: logical_in
+  logical, intent(in)          :: logical_in
   character(len=3)            :: yesno
   !=====
   !=====
@@ -342,14 +342,14 @@ end function logical_to_yesno
 !=========================================================================
 function yesno_to_TrueFalse(char_in) RESULT(TrueFalse)
   implicit none
-  character(len=*),intent(in) :: char_in
+  character(len=*), intent(in) :: char_in
   character(len=5)            :: TrueFalse
   !=====
 
   select case(TRIM(capitalize(char_in)))
-  case('YES','Y','.TR','T','TR','TRU')
+  case('YES', 'Y', '.TR','T','TR','TRU')
     TrueFalse = 'True'
-  case('NO','N','.FA','F','FA','FAL')
+  case('NO', 'N', '.FA','F','FA','FAL')
     TrueFalse = 'False'
   case default
     call die('Yes or No, I cannot interpret this input')

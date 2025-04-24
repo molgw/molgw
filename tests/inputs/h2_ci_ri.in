@@ -8,7 +8,7 @@
  alpha_mixing=0.7
  mixing_scheme='simple'
 
- mpi_nproc_ortho=1024
+ mpi_poorman='yes'
 
  postscf='ci'
  ci_nstate=1000

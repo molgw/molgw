@@ -1,5 +1,6 @@
 &molgw
  scf='wB97x'
+ npulay_hist=2
 
  basis='aug-cc-pVDZ'
 
