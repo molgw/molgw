@@ -53,7 +53,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   real(dp), allocatable       :: p_matrix_corr(:, :, :)
   real(dp), allocatable       :: hamiltonian_hartree_corr(:, :)
   real(dp), allocatable       :: hamiltonian_exx_corr(:, :, :)
-  real(dp), allocatable       :: c_matrix_tmp(:, :, :), p_matrix_mo(:, :, :), c_matrix_no_mo(:,:,:)
+  real(dp), allocatable       :: c_matrix_tmp(:, :, :), p_matrix_mo(:, :, :), c_matrix_no_mo(:, :, :)
   real(dp), allocatable       :: occupation_tmp(:, :), natural_occupation(:, :)
   real(dp), allocatable       :: energy_qp(:, :)
   !=====
@@ -88,7 +88,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     case('PT2')
       ! This keyword calculates the PT2 density matrix as it is derived in PT2 theory (differs from MP2 density matrix)
       call pt2_density_matrix(occupation, energy, c_matrix, p_matrix_corr)
-    case('GW','G0W0')
+    case('GW', 'G0W0')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       call wpol%init(nstate, occupation, 0)
       call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, en_dm_corr%rpa, en_dm_corr%gw, wpol)
@@ -157,10 +157,10 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   call clean_allocate('Density matrix P_MO', p_matrix_mo, nstate, nstate, nspin)
 
   do ispin=1, nspin
-    !c_matrix_tmp(:,:,ispin) = MATMUL( s_matrix, c_matrix(:,:,ispin) )
-    call DSYMM('L', 'L', basis%nbf, nstate, 1.0d0, s_matrix(1,1),basis%nbf, &
-                                              c_matrix(1, 1, ispin), basis%nbf,  &
-                                        0.0d0, c_matrix_tmp(1, 1, ispin), basis%nbf)
+    !c_matrix_tmp(:, :, ispin) = MATMUL( s_matrix, c_matrix(:, :, ispin) )
+    call DSYMM('L', 'L', basis%nbf, nstate, 1.0d0, s_matrix(1, 1), basis%nbf, &
+                                                   c_matrix(1, 1, ispin), basis%nbf,  &
+                                            0.0d0, c_matrix_tmp(1, 1, ispin), basis%nbf)
   enddo
   call matrix_ao_to_mo(c_matrix_tmp, p_matrix_corr, p_matrix_mo)
 
@@ -169,7 +169,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   do ispin=1, nspin
     call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, p_matrix_mo(:, :, ispin), natural_occupation(:, ispin))
     call move_alloc(p_matrix_mo, c_matrix_no_mo)
-    ! restore the correct positive sign here
+    ! Restore the correct positive sign here
     natural_occupation(:, ispin) = -natural_occupation(:, ispin)
     write(stdout, '(/,1x,a,i3)')  'Natural occupations for spin: ', ispin
     write(stdout, '(10(2x,f14.6))') natural_occupation(:, ispin)
@@ -198,7 +198,13 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   endif
 
   if( rdm_filtering_no > 0 ) then
-    call rdm_filtered_cc4s(occupation, energy, c_matrix_no_mo)
+    if( ABS( natural_occupation(rdm_filtering_no+1, 1) - natural_occupation(rdm_filtering_no, 1) ) < 1.0e-6_dp ) then
+      write(stdout, '(1x,a,i5,1x,f14.6,4x,i5,1x,f14.6)') 'Natural occupations at filtering truncation:', &
+                                                         rdm_filtering_no, natural_occupation(rdm_filtering_no, 1), &
+                                                         rdm_filtering_no+1, natural_occupation(rdm_filtering_no+1, 1)
+      call issue_warning('rdm_filtering_no choice breaks a shell of natural orbitals')
+    endif
+    call rdm_filtered_cc4s(occupation, energy, c_matrix_no_mo, c_matrix_tmp)
   endif
 
   call clean_deallocate('Density matrix P_MO', p_matrix_mo)
@@ -448,97 +454,107 @@ end subroutine fock_density_matrix_second_order
   
 
 !=========================================================================
-subroutine rdm_filtered_cc4s(occupation, energy, c_matrix_no_mo)
+subroutine rdm_filtered_cc4s(occupation, energy, c_matrix_no_mo, c_matrix_no_ao)
   implicit none
   
-  real(dp),intent(in) :: occupation(:,:), energy(:,:)
-  real(dp),intent(in) :: c_matrix_no_mo(:,:,:)
+  real(dp), intent(in) :: occupation(:, :), energy(:, :)
+  real(dp), intent(in) :: c_matrix_no_mo(:, :, :), c_matrix_no_ao(:, :, :)
   !=====
-  !=====
-  integer  :: istate, ino, ispin, nstate
+  integer  :: istate, ino, ispin, nstate, nbf
   integer  :: unit_tmp
-  real(dp),allocatable :: h_hf_mo(:,:,:)
-  real(dp),allocatable :: h_hf_no(:,:,:), c_matrix_no_mo_small(:,:,:)
-  real(dp),allocatable :: c_matrix_hf_no(:,:,:), c_matrix_hf_mo(:,:,:)
-  real(dp),allocatable :: work(:,:,:), eri_3center_hf_no(:,:,:,:)
-  real(dp),allocatable :: energy_hf_no(:,:)
-  !real(dp),allocatable :: vhartree_mo(:,:,:), sigx_mo(:,:,:), kin_vext_mo(:,:,:)
+  real(dp), allocatable :: h_hf_mo(:, :, :)
+  real(dp), allocatable :: h_hf_no(:, :, :), c_matrix_no_mo_filtered(:, :, :)
+  real(dp), allocatable :: c_matrix_hf_no(:, :, :), c_matrix_hf_ao(:, :, :)
+  real(dp), allocatable :: work(:, :, :), eri_3center_hf_no(:, :, :, :)
+  real(dp), allocatable :: energy_hf_no(:, :)
+  !real(dp), allocatable :: vhartree_mo(:, :, :), sigx_mo(:, :, :), kin_vext_mo(:, :, :)
   !real(dp) :: ehartree, eexchange
+  !=====
 
-  nstate = SIZE(c_matrix_no_mo,DIM=2)
-  allocate(energy_hf_no(rdm_filtering_no,nspin))
+  nbf    = SIZE(c_matrix_no_ao, DIM=2)
+  nstate = SIZE(c_matrix_no_mo, DIM=2)
+  allocate(energy_hf_no(rdm_filtering_no, nspin))
 
-  write(stdout,'(/,1x,a,i5)') 'Re-calculate HF in the NO sub space of dimension: ', rdm_filtering_no
+  write(stdout, '(/,1x,a,i5)') 'Re-calculate HF in the NO sub space of dimension: ', rdm_filtering_no
 
   if( rdm_filtering_no < nstate ) then
-    write(stdout,*) 'HF eigenvalues at truncation (eV):', energy(rdm_filtering_no,1) * Ha_eV, &
-                                                          energy(rdm_filtering_no+1,1) * Ha_eV
-    if( ABS(energy(rdm_filtering_no,1) - energy(rdm_filtering_no+1,1)) < 1.0e-3_dp ) then
+    write(stdout, *) 'HF eigenvalues at truncation (eV):', energy(rdm_filtering_no, 1) * Ha_eV, &
+                                                          energy(rdm_filtering_no+1, 1) * Ha_eV
+    if( ABS(energy(rdm_filtering_no, 1) - energy(rdm_filtering_no+1, 1)) < 1.0e-3_dp ) then
       call issue_warning('rdm_filtering_no choice breaks an energy shell (below 1 mHa tolerance)')
     endif
   endif
 
-  allocate(h_hf_mo(nstate,nstate,nspin))
-  allocate(h_hf_no(rdm_filtering_no,rdm_filtering_no,nspin))
-  allocate(c_matrix_no_mo_small(nstate,rdm_filtering_no,nspin))
-  c_matrix_no_mo_small(:,:,:) = c_matrix_no_mo(:,1:rdm_filtering_no,:)
+  allocate(h_hf_mo(nstate, nstate, nspin))
+  allocate(h_hf_no(rdm_filtering_no, rdm_filtering_no, nspin))
+  allocate(c_matrix_no_mo_filtered(nstate, rdm_filtering_no, nspin))
+  c_matrix_no_mo_filtered(:, :, :) = c_matrix_no_mo(:, 1:rdm_filtering_no, :)
 
-  h_hf_mo(:,:,:) = 0.0_dp
-  do ispin=1,nspin
-    do istate=1,nstate
-      h_hf_mo(istate,istate,ispin) = energy(istate,ispin)
+  h_hf_mo(:, :, :) = 0.0_dp
+  do ispin=1, nspin
+    do istate=1, nstate
+      h_hf_mo(istate, istate, ispin) = energy(istate, ispin)
     enddo
   enddo
-  call matrix_ao_to_mo(c_matrix_no_mo_small,h_hf_mo,h_hf_no)
+  call matrix_ao_to_mo(c_matrix_no_mo_filtered, h_hf_mo, h_hf_no)
 
   !call dump_out_matrix(.TRUE., "*** HF MO ***", h_hf_mo )
   !call dump_out_matrix(.TRUE., "*** HF NO ***", h_hf_no )
 
-  do ispin=1,nspin
-    call diagonalize_scalapack(scf_diago_flavor,scalapack_block_min,h_hf_no(:,:,ispin),energy_hf_no(:,ispin))
+  do ispin=1, nspin
+    call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, h_hf_no(:, :, ispin), energy_hf_no(:, ispin))
   enddo
-  call move_alloc(h_hf_no,c_matrix_hf_no)
-  call dump_out_energy('=== HF energies in NO subspace ===',occupation,energy_hf_no)
+  call move_alloc(h_hf_no, c_matrix_hf_no)
+  call dump_out_energy('=== HF energies in NO subspace ===', occupation, energy_hf_no)
 
-  allocate(c_matrix_hf_mo(nstate,rdm_filtering_no,nspin))
-  do ispin=1,nspin
-    c_matrix_hf_mo(:,:,ispin) = MATMUL( c_matrix_no_mo_small(:,:,ispin), c_matrix_hf_no(:,:,ispin) )
+  allocate(c_matrix_hf_ao(nbf, rdm_filtering_no, nspin))
+  do ispin=1, nspin
+!    c_matrix_hf_mo(:, :, ispin) = MATMUL( c_matrix_no_mo_filtered(:, :, ispin), c_matrix_hf_no(:, :, ispin) )
+    c_matrix_hf_ao(:, :, ispin) = MATMUL( c_matrix_no_ao(:, 1:rdm_filtering_no, ispin),  TRANSPOSE(c_matrix_hf_no(:, :, ispin)) )
   enddo
-  !call dump_out_matrix(.TRUE., "*** C HF MO ***", c_matrix_hf_mo )
+  !call dump_out_matrix(.TRUE., "*** C HF MO ***", c_matrix_hf_ao )
 
-  !allocate(vhartree_mo(nstate,nstate,nspin))
-  !allocate(sigx_mo(nstate,nstate,nspin))
-  !allocate(kin_vext_mo(nstate,nstate,nspin))
+  !allocate(vhartree_mo(nstate, nstate, nspin))
+  !allocate(sigx_mo(nstate, nstate, nspin))
+  !allocate(kin_vext_mo(nstate, nstate, nspin))
   !call setup_hartree_mo(occupation, vhartree_mo, ehartree)
   !call setup_exchange_mo(occupation, sigx_mo, eexchange)
-  !write(stdout,*) 'Eh Ex (Ha):',ehartree, eexchange
-  !kin_vext_mo(:,:,:) = h_hf_mo(:,:,:) - vhartree_mo - sigx_mo
-  !write(stdout,*) 'T+Vext (Ha):',kin_vext_mo(1,1,1)
+  !write(stdout, *) 'Eh Ex (Ha):', ehartree, eexchange
+  !kin_vext_mo(:, :, :) = h_hf_mo(:, :, :) - vhartree_mo - sigx_mo
+  !write(stdout, *) 'T+Vext (Ha):', kin_vext_mo(1, 1, 1)
   !deallocate(kin_vext_mo)
   !deallocate(vhartree_mo)
   !deallocate(sigx_mo)
   deallocate(h_hf_mo)
 
-  allocate(eri_3center_hf_no(nauxil_local,rdm_filtering_no,rdm_filtering_no,nspin))
-  allocate(work(nauxil_local,rdm_filtering_no,nstate))
+  allocate(eri_3center_hf_no(nauxil_local, rdm_filtering_no, rdm_filtering_no, nspin))
+  allocate(work(nauxil_local, rdm_filtering_no, nstate))
 
-  do ispin=1,nspin
-    do istate=1,nstate
-      work(:,:,istate) = MATMUL( eri_3center_eigen(:,:,istate,ispin), c_matrix_hf_mo(:,:,ispin) )
-    enddo
-    do ino=1,rdm_filtering_no
-      eri_3center_hf_no(:,ino,:,ispin) = MATMUL( work(:,ino,:), c_matrix_hf_mo(:,:,ispin) )
-    enddo
-  enddo
-  call write_cc4s_eigenenergies(occupation,energy_hf_no)
-  call write_cc4s_coulombvertex(eri_3center_hf_no)
+  write(stdout, '(/,1x,a)') 'Transform the integrals from AO to filtered MO'
+  call calculate_eri_3center_eigen(c_matrix_hf_ao, 1, rdm_filtering_no, 1, rdm_filtering_no)
+  !do ispin=1, nspin
+  !  do istate=1, nstate
+  !    work(:, :, istate) = MATMUL( eri_3center_eigen(:, :, istate, ispin), c_matrix_hf_mo(:, :, ispin) )
+  !  enddo
+  !  do ino=1, rdm_filtering_no
+  !    eri_3center_hf_no(:, ino, :, ispin) = MATMUL( work(:, ino, :), c_matrix_hf_mo(:, :, ispin) )
+  !  enddo
+  !enddo
 
+  !rtmp = DOT_PRODUCT(eri_3center_eigen(:, 1, 1, 1), eri_3center_eigen(:, 1, 1, 1))
+  !call auxil%sum(rtmp)
+  !write(stdout, '(1x,a,es16.8)') 'Testing integral (11|11) (Ha):', rtmp
+
+  call write_cc4s_eigenenergies(occupation, energy_hf_no, cc4s_output)
+  call write_cc4s_coulombvertex(eri_3center_eigen, cc4s_output)
+
+  call destroy_eri_3center_eigen()
 
   deallocate(work)
   deallocate(eri_3center_hf_no)
-  deallocate(c_matrix_no_mo_small)
+  deallocate(c_matrix_no_mo_filtered)
   deallocate(c_matrix_hf_no)
-  deallocate(c_matrix_hf_mo)
+  deallocate(c_matrix_hf_ao)
 
 end subroutine rdm_filtered_cc4s
 

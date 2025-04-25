@@ -1115,6 +1115,7 @@ subroutine read_cc4s_coulombvertex()
   complex(dp), allocatable :: coulomb_vertex_ij(:)
   integer, allocatable :: yaml_integers(:)
   real(dp) :: rtmp
+  integer :: first_index
 #if defined(HAVE_MPI)
   integer :: complex_length
   integer :: ierr
@@ -1230,7 +1231,8 @@ subroutine read_cc4s_coulombvertex()
 
   call MPI_FILE_CLOSE(unitcv, ierr)
 #endif
-  rtmp = DOT_PRODUCT(eri_3center_eigen(:, 1, 1, 1), eri_3center_eigen(:, 1, 1, 1))
+  first_index = LBOUND(eri_3center_eigen, DIM=2)
+  rtmp = DOT_PRODUCT(eri_3center_eigen(:, first_index, first_index, 1), eri_3center_eigen(:, first_index, first_index, 1))
   call auxil%sum(rtmp)
   write(stdout, '(1x,a,es16.8)') 'Testing integral (11|11) (Ha):', rtmp
 
@@ -1253,7 +1255,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   integer, allocatable :: yaml_integers(:)
   real(dp) :: rtmp
   integer :: complex_length
-  integer :: nstate2
+  integer :: nstate2, first_index
 #if defined(HAVE_MPI)
   integer :: ierr
   integer(kind=MPI_OFFSET_KIND) :: disp, disp_increment
@@ -1273,7 +1275,8 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   call start_clock(timing_read_coulombvertex)
   write(stdout, '(1x,a)') 'Writing CoulombVertex.yaml and CoulombVertex.elements'
 
-  rtmp = DOT_PRODUCT(eri_3center_updated(:, 1, 1, 1), eri_3center_updated(:, 1, 1, 1))
+  first_index = LBOUND(eri_3center_updated, DIM=2)
+  rtmp = DOT_PRODUCT(eri_3center_updated(:, first_index, first_index, 1), eri_3center_updated(:, first_index, first_index, 1))
   call auxil%sum(rtmp)
   write(stdout, '(1x,a,es16.8)') 'Testing integral (11|11) (Ha):', rtmp
 
