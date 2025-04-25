@@ -516,6 +516,14 @@ print_hartree:
   default: 'no'
   comment: Prints the Hartree potential and exchange expectation value on eigenstates.
 
+print_hdf5:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints an HDF5 file with self-consistent field data
+
 print_multipole:
   family: io
   datatype: yes/no

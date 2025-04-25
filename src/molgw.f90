@@ -482,12 +482,17 @@ program molgw
     ! Big RESTART file written if converged
     !
     if( scf_has_converged .AND. print_bigrestart_ ) then
-      !call print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy)
       call write_restart(BIG_RESTART, basis, occupation, c_matrix, energy, hamiltonian_fock)
     else
       if( print_restart_ ) then
         call write_restart(SMALL_RESTART, basis, occupation, c_matrix, energy)
       endif
+    endif
+
+    !
+    ! HDF5 file with scf data
+    if( scf_has_converged .AND. print_hdf5_ ) then
+      call print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy)
     endif
    
     !
