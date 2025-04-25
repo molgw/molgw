@@ -1232,7 +1232,7 @@ subroutine read_cc4s_coulombvertex()
 #endif
   rtmp = DOT_PRODUCT(eri_3center_eigen(:, 1, 1, 1), eri_3center_eigen(:, 1, 1, 1))
   call auxil%sum(rtmp)
-  write(stdout, '(1x,a,es14.6)') 'Testing integral (11|11) (Ha):', rtmp
+  write(stdout, '(1x,a,es16.8)') 'Testing integral (11|11) (Ha):', rtmp
 
   call stop_clock(timing_read_coulombvertex)
 
@@ -1275,7 +1275,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
 
   rtmp = DOT_PRODUCT(eri_3center_updated(:, 1, 1, 1), eri_3center_updated(:, 1, 1, 1))
   call auxil%sum(rtmp)
-  write(stdout, '(1x,a,es14.6)') 'Testing integral (11|11) (Ha):', rtmp
+  write(stdout, '(1x,a,es16.8)') 'Testing integral (11|11) (Ha):', rtmp
 
 
   ! complex_length in bytes whereas STORAGE_SIZE is in bits

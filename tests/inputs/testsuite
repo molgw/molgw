@@ -38,7 +38,8 @@ gKS LUMO energy           ,   10.036631        , 0 , 1.0e-4
 
 he_hf_cc4s_output.in      , HF+MP2 helium atom with output of Cc4s files
 SCF Total Energy          ,  -2.8615142286      , 0 , 1.0e-7
-MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-5
+Testing integral (11|11)  ,   1.02581670E+00    , 0 , 1.0e-7
+MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-7
 
 he_wb97.in                , He with wB97 functional wo RI
 SCF Total Energy          ,   -2.8943088825    , 0 , 1.0e-7
