@@ -1310,8 +1310,8 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
 #if !defined(HAVE_MPI)
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
   open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', access='stream', status='unknown', action='write')
-  do istate=1, nstate
-    do jstate=1, nstate
+  do istate=LBOUND(eri_3center_updated, DIM=2), UBOUND(eri_3center_updated, DIM=2)
+    do jstate=LBOUND(eri_3center_updated, DIM=3), UBOUND(eri_3center_updated, DIM=3)
       coulomb_vertex_ij(:) = CMPLX( eri_3center_updated(1:ng, istate, jstate, 1) , &
                                     eri_3center_updated(ng+1:2*ng, istate, jstate, 1) )
       write(unitcv) coulomb_vertex_ij(:)

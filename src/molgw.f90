@@ -585,8 +585,11 @@ program molgw
     if( TRIM(scf) /= 'HF') then
       call issue_warning("CC4S files are only meaningful when using scf ='HF'. Assuming expert user.")
     endif
-    call write_cc4s_eigenenergies(occupation, energy, cc4s_output)
-    call calculate_eri_3center_eigen(c_matrix, 1, nstate, 1, nstate)
+    ! Call selfenergy_set_state_range to set up ncore_G and nvirtual_G
+    call selfenergy_set_state_range(nstate, occupation)
+    call write_cc4s_eigenenergies(occupation(ncore_G+1:nvirtual_G-1,:), &
+                                  energy(ncore_G+1:nvirtual_G-1,:), cc4s_output)
+    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
     call write_cc4s_coulombvertex(eri_3center_eigen, cc4s_output)
     call destroy_eri_3center_eigen()
   endif
