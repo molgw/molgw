@@ -56,10 +56,10 @@ for i in range(len(fortran_file_list)) :
 
             print(object_file)
             for j in range(len(module_file_list[i])) :
-                if not module_file_list[i][j]+'.f90' in parse :
-                    print('{0:s} is missing'.format((module_file_list[i][j]+'.f90').ljust(24)))
+                if not module_file_list[i][j]+'.o' in parse :
+                    print('{0:s} is missing'.format((module_file_list[i][j]+'.o').ljust(24)))
             for j in range(len(parse)) :
-                if not parse[j].split('.f90')[0] in module_file_list[i] :
+                if not parse[j].split('.o')[0] in module_file_list[i] :
                     print('{0:s} is not needed'.format((parse[j]).ljust(24)))
             print()
     fout.close()

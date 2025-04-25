@@ -12,174 +12,241 @@ module m_libcint_tools
   use m_basis_set
   use m_atoms
 
-  integer,private,parameter :: LMAX_LIBCINT = 8
+  type(C_PTR), protected :: LIBCINT_opt = C_NULL_PTR
+
+  logical, protected :: pypzpx_order = .TRUE.
+
+  integer, private, parameter :: LMAX_LIBCINT = 8
   ! LIBCINT normalization is difficult to guess for pure gaussians
   ! So we obtain it from calls to the overlap rountine
-  real(dp),private :: libcint_pure_norm(0:LMAX_LIBCINT)
+  real(dp), private :: libcint_pure_norm(0:LMAX_LIBCINT)
 
   ! LIBCINT_atm array meaning
-  integer,private,parameter :: LIBCINT_CHARGE_OF  = 1
-  integer,private,parameter :: LIBCINT_PTR_COORD  = 2
-  integer,private,parameter :: LIBCINT_NUC_MOD_OF = 3
-  integer,private,parameter :: LIBCINT_PTR_ZETA   = 4
-  integer,private,parameter :: LIBCINT_ATM_SLOTS  = 6
+  integer, private, parameter :: LIBCINT_CHARGE_OF  = 1
+  integer, private, parameter :: LIBCINT_PTR_COORD  = 2
+  integer, private, parameter :: LIBCINT_NUC_MOD_OF = 3
+  integer, private, parameter :: LIBCINT_PTR_ZETA   = 4
+  integer, private, parameter :: LIBCINT_ATM_SLOTS  = 6
 
   !
   ! LIBCINT_bas array meaning
-  integer,private,parameter :: LIBCINT_ATOM_OF    = 1
-  integer,private,parameter :: LIBCINT_ANG_OF     = 2
-  integer,private,parameter :: LIBCINT_NPRIM_OF   = 3
-  integer,private,parameter :: LIBCINT_NCTR_OF    = 4
-  integer,private,parameter :: LIBCINT_KAPPA_OF   = 5
-  integer,private,parameter :: LIBCINT_PTR_EXP    = 6
-  integer,private,parameter :: LIBCINT_PTR_COEFF  = 7
-  integer,private,parameter :: LIBCINT_BAS_SLOTS  = 8
+  integer, private, parameter :: LIBCINT_ATOM_OF    = 1
+  integer, private, parameter :: LIBCINT_ANG_OF     = 2
+  integer, private, parameter :: LIBCINT_NPRIM_OF   = 3
+  integer, private, parameter :: LIBCINT_NCTR_OF    = 4
+  integer, private, parameter :: LIBCINT_KAPPA_OF   = 5
+  integer, private, parameter :: LIBCINT_PTR_EXP    = 6
+  integer, private, parameter :: LIBCINT_PTR_COEFF  = 7
+  integer, private, parameter :: LIBCINT_BAS_SLOTS  = 8
 
-  integer,private,parameter :: LIBCINT_PTR_COMMON_ORIG = 1
-  integer,private,parameter :: LIBCINT_PTR_RINV_ORIG   = 4
-  integer,private,parameter :: LIBCINT_PTR_RANGE_OMEGA = 8
-  integer,private,parameter :: LIBCINT_PTR_ENV_START   = 20
+  integer, private, parameter :: LIBCINT_PTR_COMMON_ORIG = 1
+  integer, private, parameter :: LIBCINT_PTR_RINV_ORIG   = 4
+  integer, private, parameter :: LIBCINT_PTR_RANGE_OMEGA = 8
+  integer, private, parameter :: LIBCINT_PTR_ENV_START   = 20
 
-  integer,private,parameter :: LIBCINT_env_size=100000
+  integer, private, parameter :: LIBCINT_env_size=100000
 
-  logical,protected :: libcint_has_range_separation
-  logical,protected :: libcint_has_correct_ordering
+  logical, protected :: libcint_has_range_separation
 
-  integer,external  :: cint2e_cart
-  integer,external  :: cint2c2e_sph
-  integer,external  :: cint2c2e_cart
-  integer,external  :: cint3c2e_cart
-  integer,external  :: cint3c2e_sph
-  integer,external  :: cint3c1e_cart
 
   interface
 
+    integer(C_INT) function cint2e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2e_cart
+
+    integer(C_INT) function cint2c2e_sph(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2c2e_sph
+
+    integer(C_INT) function cint2c2e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2c2e_cart
+
+    integer(C_INT) function cint3c2e_sph(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c2e_sph
+
+    integer(C_INT) function cint3c2e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c2e_cart
+
+    integer(C_INT) function cint3c1e_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c1e_cart
+
     integer(C_INT) function cint1e_ovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_ovlp_cart
 
     integer(C_INT) function cint1e_ovlp_sph(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_ovlp_sph
 
     integer(C_INT) function cint1e_r2_origj_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_r2_origj_cart
 
     integer(C_INT) function cint1e_r4_origj_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_r4_origj_cart
 
     integer(C_INT) function cint1e_kin_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_kin_cart
 
     integer(C_INT) function cint1e_nuc_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_nuc_cart
 
     integer(C_INT) function cint1e_rinv_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_rinv_cart
 
     integer(C_INT) function cint1e_ovlpip_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_ovlpip_cart
 
-    integer(C_INT) function cint1e_ipovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+    integer(C_INT) function cint1e_iprinv_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+    end function cint1e_iprinv_cart
+
+    integer(c_int) function cint1e_ipovlp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(c)
+      import :: c_int, c_double
+      integer(c_int), value  :: natm, nbas
+      real(c_double), intent(in) :: env(*)
+      integer(c_int), intent(in) :: shls(*), atm(*), bas(*)
+      real(c_double), intent(out) :: array_cart(*)
     end function cint1e_ipovlp_cart
 
     integer(C_INT) function cint1e_ipovlp_sph(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_ipovlp_sph
 
     integer(C_INT) function cint1e_ipovlpip_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_ipovlpip_cart
 
+    integer(c_int) function cint1e_ipkin_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(c)
+      import :: c_int, c_double
+      integer(c_int), value  :: natm, nbas
+      real(c_double), intent(in) :: env(*)
+      integer(c_int), intent(in) :: shls(*), atm(*), bas(*)
+      real(c_double), intent(out) :: array_cart(*)
+    end function cint1e_ipkin_cart
+
     integer(C_INT) function cint1e_ipovlpip_sph(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_ipovlpip_sph
 
     integer(C_INT) function cint1e_r_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_r_cart
 
     integer(C_INT) function cint1e_rr_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_rr_cart
 
     integer(C_INT) function cint1e_cg_irxp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_cg_irxp_cart
 
     integer(C_INT) function cint1e_giao_irjxp_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
-      import :: C_INT,C_DOUBLE
-      integer(C_INT),value  :: natm,nbas
-      real(C_DOUBLE),intent(in) :: env(*)
-      integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
-      real(C_DOUBLE),intent(out) :: array_cart(*)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_giao_irjxp_cart
 
     !FIXME this interface does not work and I don't know why
@@ -210,22 +277,22 @@ contains
 subroutine check_capability_libcint(lmax)
   implicit none
 
-  integer,intent(inout) :: lmax
+  integer, intent(inout) :: lmax
   !=====
-  real(C_DOUBLE) :: fake_env(50),integral(1)
-  integer(C_INT) :: fake_atm(LIBCINT_ATM_SLOTS,2)
-  integer(C_INT) :: fake_bas(LIBCINT_BAS_SLOTS,2)
+  real(C_DOUBLE) :: fake_env(50), integral(1)
+  integer(C_INT) :: fake_atm(LIBCINT_ATM_SLOTS, 2)
+  integer(C_INT) :: fake_bas(LIBCINT_BAS_SLOTS, 2)
   integer(C_INT) :: shls(2)
-  integer        :: info,off
-  real(dp),parameter :: ref_value_screened_integral = 3.8052728203379578E-002_dp
-  real(dp),parameter :: ref_value_pz_overlap        = 0.22687678568747119_dp
+  integer        :: info, off
+  real(dp), parameter :: ref_value_screened_integral = 3.8052728203379578E-002_dp
+  real(dp), parameter :: ref_value_pz_overlap        = 0.22687678568747119_dp
   integer        :: il
-  real(C_DOUBLE),allocatable :: ovlp(:)
+  real(C_DOUBLE), allocatable :: ovlp(:)
   !=====
 
   ! LIBCINT goes up to lmax=7
   if( lmax > 0 ) then
-    lmax = MIN(lmax,LMAX_LIBCINT)
+    lmax = MIN(lmax, LMAX_LIBCINT)
   else
     lmax = LMAX_LIBCINT
   endif
@@ -239,24 +306,24 @@ subroutine check_capability_libcint(lmax)
   fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.11_C_DOUBLE  ! omega = 0.11 bohr**-1
   off = LIBCINT_PTR_ENV_START
 
-  fake_atm(LIBCINT_CHARGE_OF,1) = 1
-  fake_atm(LIBCINT_PTR_COORD,1) = off
+  fake_atm(LIBCINT_CHARGE_OF, 1) = 1
+  fake_atm(LIBCINT_PTR_COORD, 1) = off
   fake_env(off+1:off+3) = 0.0_C_DOUBLE
   off = off + 3
-  fake_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-  fake_bas(LIBCINT_ANG_OF   ,1)  = 0
-  fake_bas(LIBCINT_NPRIM_OF ,1)  = 1
-  fake_bas(LIBCINT_NCTR_OF  ,1)  = 1
-  fake_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  fake_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+  fake_bas(LIBCINT_ANG_OF   , 1)  = 0
+  fake_bas(LIBCINT_NPRIM_OF , 1)  = 1
+  fake_bas(LIBCINT_NCTR_OF  , 1)  = 1
+  fake_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
   fake_env(off+1) = 2.0_C_DOUBLE  ! alpha = 2.0
   off = off + 1
-  fake_bas(LIBCINT_PTR_COEFF,1) = off
-  fake_env(off+1) = 1.0    ! coefficient = 1.0
+  fake_bas(LIBCINT_PTR_COEFF, 1) = off
+  fake_env(off+1) = 1.0_C_DOUBLE  ! coefficient = 1.0
 
 
   shls(:) = 0
 #if defined(HAVE_LIBCINT)
-  info = cint2c2e_cart(integral, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env, 0_C_LONG)
+  info = cint2c2e_cart(integral, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env, LIBCINT_opt)
 #endif
 
   libcint_has_range_separation = ABS( integral(1) - ref_value_screened_integral ) < 1.0e-10_dp
@@ -264,42 +331,45 @@ subroutine check_capability_libcint(lmax)
   !
   ! Check out if LIBCINT has PYPZPX ordering for p shells
   !
+  ! Calculate a p - p overlap and check where is the pz-pz term
+  ! is it located in position 5 or 9?
+  !
   fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_C_DOUBLE
   off = LIBCINT_PTR_ENV_START
 
   ! Atom 1
-  fake_atm(LIBCINT_CHARGE_OF,1) = 1
-  fake_atm(LIBCINT_PTR_COORD,1) = off
+  fake_atm(LIBCINT_CHARGE_OF, 1) = 1
+  fake_atm(LIBCINT_PTR_COORD, 1) = off
   fake_env(off+1:off+3) = 0.0_C_DOUBLE
   off = off + 3
   ! Atom 2
-  fake_atm(LIBCINT_CHARGE_OF,2) = 1
-  fake_atm(LIBCINT_PTR_COORD,2) = off
+  fake_atm(LIBCINT_CHARGE_OF, 2) = 1
+  fake_atm(LIBCINT_PTR_COORD, 2) = off
   fake_env(off+1) = 0.0_C_DOUBLE
   fake_env(off+2) = 0.0_C_DOUBLE
   fake_env(off+3) = 0.5_C_DOUBLE   ! shift along z axis
   off = off + 3
 
   ! Basis 1
-  fake_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-  fake_bas(LIBCINT_ANG_OF   ,1)  = 1 ! p orbital
-  fake_bas(LIBCINT_NPRIM_OF ,1)  = 1
-  fake_bas(LIBCINT_NCTR_OF  ,1)  = 1
-  fake_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  fake_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+  fake_bas(LIBCINT_ANG_OF   , 1)  = 1 ! p orbital
+  fake_bas(LIBCINT_NPRIM_OF , 1)  = 1
+  fake_bas(LIBCINT_NCTR_OF  , 1)  = 1
+  fake_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
   fake_env(off+1) = 1.0_C_DOUBLE  ! alpha = 1.0
   off = off + 1
-  fake_bas(LIBCINT_PTR_COEFF,1) = off
+  fake_bas(LIBCINT_PTR_COEFF, 1) = off
   fake_env(off+1) = SQRT(4.0_C_DOUBLE * pi) / SQRT( 2.0_C_DOUBLE * 1 + 1 )  &
                      * ( 2.0_C_DOUBLE / pi )**0.75_C_DOUBLE * 2.0_C_DOUBLE
   ! Basis 2
-  fake_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
-  fake_bas(LIBCINT_ANG_OF   ,2)  = 1 ! p orbital
-  fake_bas(LIBCINT_NPRIM_OF ,2)  = 1
-  fake_bas(LIBCINT_NCTR_OF  ,2)  = 1
-  fake_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  fake_bas(LIBCINT_ATOM_OF  , 2)  = 1 ! C convention starts with 0
+  fake_bas(LIBCINT_ANG_OF   , 2)  = 1 ! p orbital
+  fake_bas(LIBCINT_NPRIM_OF , 2)  = 1
+  fake_bas(LIBCINT_NCTR_OF  , 2)  = 1
+  fake_bas(LIBCINT_PTR_EXP  , 2)  = off ! note the 0-based index
   fake_env(off+1) = 1.0_C_DOUBLE  ! alpha = 1.0
   off = off + 1
-  fake_bas(LIBCINT_PTR_COEFF,2) = off
+  fake_bas(LIBCINT_PTR_COEFF, 2) = off
   fake_env(off+1) = SQRT(4.0_C_DOUBLE * pi) / SQRT( 2.0_C_DOUBLE * 1 + 1 )  &
                      * ( 2.0_C_DOUBLE / pi )**0.75_C_DOUBLE * 2.0_C_DOUBLE
   allocate(ovlp(9))
@@ -309,35 +379,37 @@ subroutine check_capability_libcint(lmax)
   info = cint1e_ovlp_sph(ovlp, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env)
 #endif
 
-  libcint_has_correct_ordering = ABS( ovlp(5) - ref_value_pz_overlap ) < 1.0e-10_dp
+  pypzpx_order = ABS( ovlp(5) - ref_value_pz_overlap ) < 1.0e-10_dp
 
-  if( .NOT. libcint_has_correct_ordering ) then
-    call die('check_capability_libcint: your LIBCINT compilation has incompatible p-orbital ordering. ' // &
-             'Please recompile it with -DPYPZPX=1')
+  if( .NOT. pypzpx_order ) then
+    if( ABS( ovlp(9) - ref_value_pz_overlap ) > 1.0e-10_dp ) then
+      call die('check_capability_libcint: could not determine the p-orbital ordering of LIBCINT. ' // &
+               'Please check your LIBCINT compilation')
+    endif
   endif
   deallocate(ovlp)
 
   !
   ! Guess normalization for LIBCINT spherical gaussians
   !
-  do il=0,lmax
+  do il=0, lmax
     fake_env(LIBCINT_PTR_RANGE_OMEGA+1) = 0.0_C_DOUBLE
     off = LIBCINT_PTR_ENV_START
 
-    fake_atm(LIBCINT_CHARGE_OF,1) = 1
-    fake_atm(LIBCINT_PTR_COORD,1) = off
+    fake_atm(LIBCINT_CHARGE_OF, 1) = 1
+    fake_atm(LIBCINT_PTR_COORD, 1) = off
     fake_env(off+1:off+3) = 0.0_C_DOUBLE
     off = off + 3
-    fake_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-    fake_bas(LIBCINT_ANG_OF   ,1)  = il
-    fake_bas(LIBCINT_NPRIM_OF ,1)  = 1
-    fake_bas(LIBCINT_NCTR_OF  ,1)  = 1
-    fake_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+    fake_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+    fake_bas(LIBCINT_ANG_OF   , 1)  = il
+    fake_bas(LIBCINT_NPRIM_OF , 1)  = 1
+    fake_bas(LIBCINT_NCTR_OF  , 1)  = 1
+    fake_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
     fake_env(off+1) = 1.0_C_DOUBLE  ! alpha = 1.0
     off = off + 1
-    fake_bas(LIBCINT_PTR_COEFF,1) = off
+    fake_bas(LIBCINT_PTR_COEFF, 1) = off
     select case(il)
-    case(0,1)
+    case(0, 1)
       fake_env(off+1) = SQRT(4.0_C_DOUBLE * pi) / SQRT( 2.0_C_DOUBLE * il + 1 )  &
                        * ( 2.0_C_DOUBLE / pi )**0.75_C_DOUBLE * 2.0_C_DOUBLE**il
     case default
@@ -359,10 +431,10 @@ end subroutine check_capability_libcint
 
 
 !=========================================================================
-subroutine set_rinv_origin_libcint(x0,env_local)
+subroutine set_rinv_origin_libcint(x0, env_local)
   implicit none
-  real(dp),intent(in)          :: x0(3)
-  real(C_DOUBLE),intent(inout) :: env_local(:)
+  real(dp), intent(in)          :: x0(3)
+  real(C_DOUBLE), intent(inout) :: env_local(:)
   !=====
   !=====
 
@@ -372,10 +444,10 @@ end subroutine set_rinv_origin_libcint
 
 
 !=========================================================================
-subroutine set_erf_screening_length_libcint(basis,rcut)
+subroutine set_erf_screening_length_libcint(basis, rcut)
   implicit none
-  type(basis_set),intent(inout) :: basis
-  real(dp),intent(in)           :: rcut
+  type(basis_set), intent(inout) :: basis
+  real(dp), intent(in)           :: rcut
   !=====
   !=====
 
@@ -394,18 +466,18 @@ end subroutine set_erf_screening_length_libcint
 
 
 !=========================================================================
-subroutine init_libcint(basis1,basis2)
+subroutine init_libcint(basis1, basis2)
   implicit none
-  type(basis_set),intent(inout)       :: basis1
-  type(basis_set),optional,intent(in) :: basis2
+  type(basis_set), intent(inout)       :: basis1
+  type(basis_set), optional, intent(in) :: basis2
   !=====
-  integer :: off,icenter_basis,ishell
+  integer :: off, icenter_basis, ishell
   !=====
 
   if( PRESENT(basis2) ) then
-    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 2 basis sets (basis and auxiliary basis)'
+    write(stdout, '(/,1x,a)') 'Initialize LIBCINT internal data for 2 basis sets (basis and auxiliary basis)'
   else
-    write(stdout,'(/,1x,a)') 'Initialize LIBCINT internal data for 1 basis set (basis or auxiliary basis)'
+    write(stdout, '(/,1x,a)') 'Initialize LIBCINT internal data for 1 basis set (basis or auxiliary basis)'
   endif
 
   basis1%LIBCINT_natm = ncenter_basis
@@ -414,8 +486,8 @@ subroutine init_libcint(basis1,basis2)
     basis1%LIBCINT_nbas = basis1%LIBCINT_nbas + basis2%nshell
   endif
 
-  allocate(basis1%LIBCINT_atm(LIBCINT_ATM_SLOTS,basis1%LIBCINT_natm))
-  allocate(basis1%LIBCINT_bas(LIBCINT_BAS_SLOTS,basis1%LIBCINT_nbas))
+  allocate(basis1%LIBCINT_atm(LIBCINT_ATM_SLOTS, basis1%LIBCINT_natm))
+  allocate(basis1%LIBCINT_bas(LIBCINT_BAS_SLOTS, basis1%LIBCINT_nbas))
   allocate(basis1%LIBCINT_env(LIBCINT_env_size))
   ! Zero-ing the env(:) array is compulsory
   ! Fortan may put garbage (ifort) and C does not like it
@@ -427,24 +499,24 @@ subroutine init_libcint(basis1,basis2)
   basis1%LIBCINT_env(LIBCINT_PTR_COMMON_ORIG+3) = 0.0_C_DOUBLE
   off = LIBCINT_PTR_ENV_START
 
-  do icenter_basis=1,ncenter_basis
-    basis1%LIBCINT_atm(LIBCINT_CHARGE_OF,icenter_basis) = zbasis(icenter_basis)
-    basis1%LIBCINT_atm(LIBCINT_PTR_COORD,icenter_basis) = off ! note the 0-based index
-    basis1%LIBCINT_env(off+1:off+3) = xbasis(:,icenter_basis)
+  do icenter_basis=1, ncenter_basis
+    basis1%LIBCINT_atm(LIBCINT_CHARGE_OF, icenter_basis) = zbasis(icenter_basis)
+    basis1%LIBCINT_atm(LIBCINT_PTR_COORD, icenter_basis) = off ! note the 0-based index
+    basis1%LIBCINT_env(off+1:off+3) = xbasis(:, icenter_basis)
     off = off + 3
   enddo
 
-  do ishell=1,basis1%nshell
-    basis1%LIBCINT_bas(LIBCINT_ATOM_OF  ,ishell)  = basis1%shell(ishell)%icenter - 1 ! C convention starts with 0
-    basis1%LIBCINT_bas(LIBCINT_ANG_OF   ,ishell)  = basis1%shell(ishell)%am
-    basis1%LIBCINT_bas(LIBCINT_NPRIM_OF ,ishell)  = basis1%shell(ishell)%ng
-    basis1%LIBCINT_bas(LIBCINT_NCTR_OF  ,ishell)  = 1   ! so far take shells one at a time (even if they share exponents)
-    basis1%LIBCINT_bas(LIBCINT_PTR_EXP  ,ishell)  = off ! note the 0-based index
+  do ishell=1, basis1%nshell
+    basis1%LIBCINT_bas(LIBCINT_ATOM_OF  , ishell)  = basis1%shell(ishell)%icenter - 1 ! C convention starts with 0
+    basis1%LIBCINT_bas(LIBCINT_ANG_OF   , ishell)  = basis1%shell(ishell)%am
+    basis1%LIBCINT_bas(LIBCINT_NPRIM_OF , ishell)  = basis1%shell(ishell)%ng
+    basis1%LIBCINT_bas(LIBCINT_NCTR_OF  , ishell)  = 1   ! so far take shells one at a time (even if they share exponents)
+    basis1%LIBCINT_bas(LIBCINT_PTR_EXP  , ishell)  = off ! note the 0-based index
     basis1%LIBCINT_env(off+1:off+basis1%shell(ishell)%ng) = basis1%shell(ishell)%alpha(:)
     off = off + basis1%shell(ishell)%ng
-    basis1%LIBCINT_bas(LIBCINT_PTR_COEFF,ishell) = off
+    basis1%LIBCINT_bas(LIBCINT_PTR_COEFF, ishell) = off
     select case(basis1%shell(ishell)%am)
-    case(0,1)
+    case(0, 1)
       basis1%LIBCINT_env(off+1:off+basis1%shell(ishell)%ng) = basis1%shell(ishell)%coeff(:) &
                 * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * basis1%shell(ishell)%am + 1 )
     case default
@@ -456,17 +528,17 @@ subroutine init_libcint(basis1,basis2)
   basis1%LIBCINT_offset = basis1%nshell
 
   if( PRESENT(basis2) ) then
-    do ishell=1,basis2%nshell
-      basis1%LIBCINT_bas(LIBCINT_ATOM_OF  ,basis1%LIBCINT_offset + ishell)  = basis2%shell(ishell)%icenter - 1 ! C convention starts with 0
-      basis1%LIBCINT_bas(LIBCINT_ANG_OF   ,basis1%LIBCINT_offset + ishell)  = basis2%shell(ishell)%am
-      basis1%LIBCINT_bas(LIBCINT_NPRIM_OF ,basis1%LIBCINT_offset + ishell)  = basis2%shell(ishell)%ng
-      basis1%LIBCINT_bas(LIBCINT_NCTR_OF  ,basis1%LIBCINT_offset + ishell)  = 1   ! so far take shells one at a time (even if they share exponents)
-      basis1%LIBCINT_bas(LIBCINT_PTR_EXP  ,basis1%LIBCINT_offset + ishell)  = off ! note the 0-based index
+    do ishell=1, basis2%nshell
+      basis1%LIBCINT_bas(LIBCINT_ATOM_OF  , basis1%LIBCINT_offset + ishell)  = basis2%shell(ishell)%icenter - 1 ! C convention starts with 0
+      basis1%LIBCINT_bas(LIBCINT_ANG_OF   , basis1%LIBCINT_offset + ishell)  = basis2%shell(ishell)%am
+      basis1%LIBCINT_bas(LIBCINT_NPRIM_OF , basis1%LIBCINT_offset + ishell)  = basis2%shell(ishell)%ng
+      basis1%LIBCINT_bas(LIBCINT_NCTR_OF  , basis1%LIBCINT_offset + ishell)  = 1   ! so far take shells one at a time (even if they share exponents)
+      basis1%LIBCINT_bas(LIBCINT_PTR_EXP  , basis1%LIBCINT_offset + ishell)  = off ! note the 0-based index
       basis1%LIBCINT_env(off+1:off+basis2%shell(ishell)%ng) = basis2%shell(ishell)%alpha(:)
       off = off + basis2%shell(ishell)%ng
-      basis1%LIBCINT_bas(LIBCINT_PTR_COEFF,basis1%LIBCINT_offset + ishell) = off
+      basis1%LIBCINT_bas(LIBCINT_PTR_COEFF, basis1%LIBCINT_offset + ishell) = off
       select case(basis2%shell(ishell)%am)
-      case(0,1)
+      case(0, 1)
         basis1%LIBCINT_env(off+1:off+basis2%shell(ishell)%ng) = basis2%shell(ishell)%coeff(:) &
                   * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * basis2%shell(ishell)%am + 1 )
       case default
@@ -475,7 +547,7 @@ subroutine init_libcint(basis1,basis2)
       off = off + basis2%shell(ishell)%ng
     enddo
   endif
-  write(stdout,'(1x,a,i8)') 'LIBCINT environment maximum index: ',off
+  write(stdout, '(1x,a,i8)') 'LIBCINT environment maximum index: ', off
 
 end subroutine init_libcint
 
@@ -483,7 +555,7 @@ end subroutine init_libcint
 !=========================================================================
 subroutine destroy_libcint(basis)
   implicit none
-  type(basis_set),intent(inout) :: basis
+  type(basis_set), intent(inout) :: basis
   !=====
   !=====
 
@@ -498,32 +570,32 @@ end subroutine destroy_libcint
 
 
 !=========================================================================
-subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
-                           amC,contrdepthC,C,alphaC,cC, &
-                           amD,contrdepthD,D,alphaD,cD, &
-                           rcut,eriACD)
+subroutine libcint_3center(amA, contrdepthA, A, alphaA, cA, &
+                           amC, contrdepthC, C, alphaC, cC, &
+                           amD, contrdepthD, D, alphaD, cD, &
+                           rcut, eriACD)
   implicit none
 
-  integer(C_INT),intent(in)    :: amA,contrdepthA
-  real(C_DOUBLE),intent(in)    :: A(:)
-  real(C_DOUBLE),intent(in)    :: alphaA(:)
-  real(C_DOUBLE),intent(in)    :: cA(:)
-  integer(C_INT),intent(in)    :: amC,contrdepthC
-  real(C_DOUBLE),intent(in)    :: C(:)
-  real(C_DOUBLE),intent(in)    :: alphaC(:)
-  real(C_DOUBLE),intent(in)    :: cC(:)
-  integer(C_INT),intent(in)    :: amD,contrdepthD
-  real(C_DOUBLE),intent(in)    :: D(:)
-  real(C_DOUBLE),intent(in)    :: alphaD(:)
-  real(C_DOUBLE),intent(in)    :: cD(:)
-  real(C_DOUBLE),intent(in)    :: rcut
-  real(C_DOUBLE),intent(inout) :: eriACD(:)
+  integer(C_INT), intent(in)    :: amA, contrdepthA
+  real(C_DOUBLE), intent(in)    :: A(:)
+  real(C_DOUBLE), intent(in)    :: alphaA(:)
+  real(C_DOUBLE), intent(in)    :: cA(:)
+  integer(C_INT), intent(in)    :: amC, contrdepthC
+  real(C_DOUBLE), intent(in)    :: C(:)
+  real(C_DOUBLE), intent(in)    :: alphaC(:)
+  real(C_DOUBLE), intent(in)    :: cC(:)
+  integer(C_INT), intent(in)    :: amD, contrdepthD
+  real(C_DOUBLE), intent(in)    :: D(:)
+  real(C_DOUBLE), intent(in)    :: alphaD(:)
+  real(C_DOUBLE), intent(in)    :: cD(:)
+  real(C_DOUBLE), intent(in)    :: rcut
+  real(C_DOUBLE), intent(inout) :: eriACD(:)
   !=====
   real(C_DOUBLE) :: tmp_env(1000)
-  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,3)
-  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,3)
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 3)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 3)
   integer(C_INT) :: shls(3)
-  integer        :: info,off
+  integer        :: info, off
   !=====
 
   tmp_env(:) = 0.0_dp
@@ -535,31 +607,31 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
   endif
   off = LIBCINT_PTR_ENV_START
 
-  tmp_atm(LIBCINT_CHARGE_OF,1) = 1
-  tmp_atm(LIBCINT_PTR_COORD,1) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 1) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 1) = off
   tmp_env(off+1:off+3) = D(1:3)
   off = off + 3
-  tmp_atm(LIBCINT_CHARGE_OF,2) = 1
-  tmp_atm(LIBCINT_PTR_COORD,2) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 2) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 2) = off
   tmp_env(off+1:off+3) = C(1:3)
   off = off + 3
-  tmp_atm(LIBCINT_CHARGE_OF,3) = 1
-  tmp_atm(LIBCINT_PTR_COORD,3) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 3) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 3) = off
   tmp_env(off+1:off+3) = A(1:3)
   off = off + 3
 
   !
   ! D
-  tmp_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,1)  = amD
-  tmp_bas(LIBCINT_NPRIM_OF ,1)  = contrdepthD
-  tmp_bas(LIBCINT_NCTR_OF  ,1)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 1)  = amD
+  tmp_bas(LIBCINT_NPRIM_OF , 1)  = contrdepthD
+  tmp_bas(LIBCINT_NCTR_OF  , 1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthD) = alphaD(1:contrdepthD)
   off = off + contrdepthD
-  tmp_bas(LIBCINT_PTR_COEFF,1) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 1) = off
   select case(amD)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthD) = cD(1:contrdepthD) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amD + 1 )
   case default
     tmp_env(off+1:off+contrdepthD) = cD(1:contrdepthD)
@@ -567,16 +639,16 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
   off = off + contrdepthD
   !
   ! C
-  tmp_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,2)  = amC
-  tmp_bas(LIBCINT_NPRIM_OF ,2)  = contrdepthC
-  tmp_bas(LIBCINT_NCTR_OF  ,2)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 2)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF , 2)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  , 2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 2)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
   off = off + contrdepthC
-  tmp_bas(LIBCINT_PTR_COEFF,2) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 2) = off
   select case(amC)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
   case default
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
@@ -584,16 +656,16 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
   off = off + contrdepthC
   !
   ! A
-  tmp_bas(LIBCINT_ATOM_OF  ,3)  = 2 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,3)  = amA
-  tmp_bas(LIBCINT_NPRIM_OF ,3)  = contrdepthA
-  tmp_bas(LIBCINT_NCTR_OF  ,3)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,3)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 3)  = 2 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 3)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF , 3)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  , 3)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 3)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
   off = off + contrdepthA
-  tmp_bas(LIBCINT_PTR_COEFF,3) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 3) = off
   select case(amA)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
   case default
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
@@ -606,7 +678,7 @@ subroutine libcint_3center(amA,contrdepthA,A,alphaA,cA, &
   shls(3) = 2
 
 #if defined(HAVE_LIBCINT)
-  info = cint3c2e_cart(eriACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, 0_C_LONG)
+  info = cint3c2e_cart(eriACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, LIBCINT_opt)
 #endif
 
 
@@ -614,53 +686,53 @@ end subroutine libcint_3center
 
 
 !=========================================================================
-subroutine libcint_overlap(amA,contrdepthA,A,alphaA,cA, &
-                           amC,contrdepthC,C,alphaC,cC, &
+subroutine libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
+                           amC, contrdepthC, C, alphaC, cC, &
                            ovlpAC)
   implicit none
 
-  integer(C_INT),intent(in)    :: amA,contrdepthA
-  real(C_DOUBLE),intent(in)    :: A(:)
-  real(C_DOUBLE),intent(in)    :: alphaA(:)
-  real(C_DOUBLE),intent(in)    :: cA(:)
-  integer(C_INT),intent(in)    :: amC,contrdepthC
-  real(C_DOUBLE),intent(in)    :: C(:)
-  real(C_DOUBLE),intent(in)    :: alphaC(:)
-  real(C_DOUBLE),intent(in)    :: cC(:)
-  real(C_DOUBLE),intent(inout)    :: ovlpAC(:)
+  integer(C_INT), intent(in)    :: amA, contrdepthA
+  real(C_DOUBLE), intent(in)    :: A(:)
+  real(C_DOUBLE), intent(in)    :: alphaA(:)
+  real(C_DOUBLE), intent(in)    :: cA(:)
+  integer(C_INT), intent(in)    :: amC, contrdepthC
+  real(C_DOUBLE), intent(in)    :: C(:)
+  real(C_DOUBLE), intent(in)    :: alphaC(:)
+  real(C_DOUBLE), intent(in)    :: cC(:)
+  real(C_DOUBLE), intent(inout)    :: ovlpAC(:)
   !=====
   real(C_DOUBLE) :: tmp_env(1000)
-  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,2)
-  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,2)
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 2)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 2)
   integer(C_INT) :: shls(2)
-  integer        :: info,off
+  integer        :: info, off
   !=====
 
   tmp_env(:) = 0.0_dp
 
   off = LIBCINT_PTR_ENV_START
 
-  tmp_atm(LIBCINT_CHARGE_OF,1) = 1
-  tmp_atm(LIBCINT_PTR_COORD,1) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 1) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 1) = off
   tmp_env(off+1:off+3) = C(1:3)
   off = off + 3
-  tmp_atm(LIBCINT_CHARGE_OF,2) = 1
-  tmp_atm(LIBCINT_PTR_COORD,2) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 2) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 2) = off
   tmp_env(off+1:off+3) = A(1:3)
   off = off + 3
 
   !
   ! C
-  tmp_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,1)  = amC
-  tmp_bas(LIBCINT_NPRIM_OF ,1)  = contrdepthC
-  tmp_bas(LIBCINT_NCTR_OF  ,1)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 1)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF , 1)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  , 1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
   off = off + contrdepthC
-  tmp_bas(LIBCINT_PTR_COEFF,1) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 1) = off
   select case(amC)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
   case default
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
@@ -668,16 +740,16 @@ subroutine libcint_overlap(amA,contrdepthA,A,alphaA,cA, &
   off = off + contrdepthC
   !
   ! A
-  tmp_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,2)  = amA
-  tmp_bas(LIBCINT_NPRIM_OF ,2)  = contrdepthA
-  tmp_bas(LIBCINT_NCTR_OF  ,2)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 2)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF , 2)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  , 2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 2)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
   off = off + contrdepthA
-  tmp_bas(LIBCINT_PTR_COEFF,2) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 2) = off
   select case(amA)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
   case default
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
@@ -697,53 +769,53 @@ end subroutine libcint_overlap
 
 
 !=========================================================================
-subroutine libcint_kinetic(amA,contrdepthA,A,alphaA,cA, &
-                           amC,contrdepthC,C,alphaC,cC, &
+subroutine libcint_kinetic(amA, contrdepthA, A, alphaA, cA, &
+                           amC, contrdepthC, C, alphaC, cC, &
                            kinAC)
   implicit none
 
-  integer(C_INT),intent(in)    :: amA,contrdepthA
-  real(C_DOUBLE),intent(in)    :: A(:)
-  real(C_DOUBLE),intent(in)    :: alphaA(:)
-  real(C_DOUBLE),intent(in)    :: cA(:)
-  integer(C_INT),intent(in)    :: amC,contrdepthC
-  real(C_DOUBLE),intent(in)    :: C(:)
-  real(C_DOUBLE),intent(in)    :: alphaC(:)
-  real(C_DOUBLE),intent(in)    :: cC(:)
-  real(C_DOUBLE),intent(inout) :: kinAC(:)
+  integer(C_INT), intent(in)    :: amA, contrdepthA
+  real(C_DOUBLE), intent(in)    :: A(:)
+  real(C_DOUBLE), intent(in)    :: alphaA(:)
+  real(C_DOUBLE), intent(in)    :: cA(:)
+  integer(C_INT), intent(in)    :: amC, contrdepthC
+  real(C_DOUBLE), intent(in)    :: C(:)
+  real(C_DOUBLE), intent(in)    :: alphaC(:)
+  real(C_DOUBLE), intent(in)    :: cC(:)
+  real(C_DOUBLE), intent(inout) :: kinAC(:)
   !=====
   real(C_DOUBLE) :: tmp_env(1000)
-  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,2)
-  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,2)
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 2)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 2)
   integer(C_INT) :: shls(2)
-  integer        :: info,off
+  integer        :: info, off
   !=====
 
   tmp_env(:) = 0.0_dp
 
   off = LIBCINT_PTR_ENV_START
 
-  tmp_atm(LIBCINT_CHARGE_OF,1) = 1
-  tmp_atm(LIBCINT_PTR_COORD,1) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 1) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 1) = off
   tmp_env(off+1:off+3) = C(1:3)
   off = off + 3
-  tmp_atm(LIBCINT_CHARGE_OF,2) = 1
-  tmp_atm(LIBCINT_PTR_COORD,2) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 2) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 2) = off
   tmp_env(off+1:off+3) = A(1:3)
   off = off + 3
 
   !
   ! C
-  tmp_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,1)  = amC
-  tmp_bas(LIBCINT_NPRIM_OF ,1)  = contrdepthC
-  tmp_bas(LIBCINT_NCTR_OF  ,1)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 1)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF , 1)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  , 1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
   off = off + contrdepthC
-  tmp_bas(LIBCINT_PTR_COEFF,1) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 1) = off
   select case(amC)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
   case default
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
@@ -751,16 +823,16 @@ subroutine libcint_kinetic(amA,contrdepthA,A,alphaA,cA, &
   off = off + contrdepthC
   !
   ! A
-  tmp_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,2)  = amA
-  tmp_bas(LIBCINT_NPRIM_OF ,2)  = contrdepthA
-  tmp_bas(LIBCINT_NCTR_OF  ,2)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 2)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF , 2)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  , 2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 2)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
   off = off + contrdepthA
-  tmp_bas(LIBCINT_PTR_COEFF,2) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 2) = off
   select case(amA)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
   case default
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
@@ -780,27 +852,27 @@ end subroutine libcint_kinetic
 
 
 !=========================================================================
-subroutine libcint_elecpot(amA,contrdepthA,A,alphaA,cA, &
-                           amC,contrdepthC,C,alphaC,cC, &
-                           D,elecpotAC)
+subroutine libcint_elecpot(amA, contrdepthA, A, alphaA, cA, &
+                           amC, contrdepthC, C, alphaC, cC, &
+                           D, elecpotAC)
   implicit none
 
-  integer(C_INT),intent(in)    :: amA,contrdepthA
-  real(C_DOUBLE),intent(in)    :: A(:)
-  real(C_DOUBLE),intent(in)    :: alphaA(:)
-  real(C_DOUBLE),intent(in)    :: cA(:)
-  integer(C_INT),intent(in)    :: amC,contrdepthC
-  real(C_DOUBLE),intent(in)    :: C(:)
-  real(C_DOUBLE),intent(in)    :: alphaC(:)
-  real(C_DOUBLE),intent(in)    :: cC(:)
-  real(C_DOUBLE),intent(in)    :: D(:)
-  real(C_DOUBLE),intent(inout) :: elecpotAC(:)
+  integer(C_INT), intent(in)    :: amA, contrdepthA
+  real(C_DOUBLE), intent(in)    :: A(:)
+  real(C_DOUBLE), intent(in)    :: alphaA(:)
+  real(C_DOUBLE), intent(in)    :: cA(:)
+  integer(C_INT), intent(in)    :: amC, contrdepthC
+  real(C_DOUBLE), intent(in)    :: C(:)
+  real(C_DOUBLE), intent(in)    :: alphaC(:)
+  real(C_DOUBLE), intent(in)    :: cC(:)
+  real(C_DOUBLE), intent(in)    :: D(:)
+  real(C_DOUBLE), intent(inout) :: elecpotAC(:)
   !=====
   real(C_DOUBLE) :: tmp_env(1000)
-  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,2)
-  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,2)
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 2)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 2)
   integer(C_INT) :: shls(2)
-  integer        :: info,off
+  integer        :: info, off
   !=====
 
   tmp_env(:) = 0.0_dp
@@ -808,27 +880,27 @@ subroutine libcint_elecpot(amA,contrdepthA,A,alphaA,cA, &
 
   off = LIBCINT_PTR_ENV_START
 
-  tmp_atm(LIBCINT_CHARGE_OF,1) = 1
-  tmp_atm(LIBCINT_PTR_COORD,1) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 1) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 1) = off
   tmp_env(off+1:off+3) = C(1:3)
   off = off + 3
-  tmp_atm(LIBCINT_CHARGE_OF,2) = 1
-  tmp_atm(LIBCINT_PTR_COORD,2) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 2) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 2) = off
   tmp_env(off+1:off+3) = A(1:3)
   off = off + 3
 
   !
   ! C
-  tmp_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,1)  = amC
-  tmp_bas(LIBCINT_NPRIM_OF ,1)  = contrdepthC
-  tmp_bas(LIBCINT_NCTR_OF  ,1)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 1)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF , 1)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  , 1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
   off = off + contrdepthC
-  tmp_bas(LIBCINT_PTR_COEFF,1) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 1) = off
   select case(amC)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
   case default
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
@@ -836,16 +908,16 @@ subroutine libcint_elecpot(amA,contrdepthA,A,alphaA,cA, &
   off = off + contrdepthC
   !
   ! A
-  tmp_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,2)  = amA
-  tmp_bas(LIBCINT_NPRIM_OF ,2)  = contrdepthA
-  tmp_bas(LIBCINT_NCTR_OF  ,2)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 2)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF , 2)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  , 2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 2)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
   off = off + contrdepthA
-  tmp_bas(LIBCINT_PTR_COEFF,2) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 2) = off
   select case(amA)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
   case default
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
@@ -865,79 +937,55 @@ end subroutine libcint_elecpot
 
 
 !=========================================================================
-subroutine libcint_overlap_3center(amA,contrdepthA,A,alphaA,cA, &
-                           amC,contrdepthC,C,alphaC,cC, &
-                           amD,contrdepthD,D,alphaD,cD, &
-                           ovlpACD)
+subroutine libcint_elecpot_grad(amA, contrdepthA, A, alphaA, cA, &
+                                amC, contrdepthC, C, alphaC, cC, &
+                                D, elecpotAC_grad)
   implicit none
 
-  integer(C_INT),intent(in)    :: amA,contrdepthA
-  real(C_DOUBLE),intent(in)    :: A(:)
-  real(C_DOUBLE),intent(in)    :: alphaA(:)
-  real(C_DOUBLE),intent(in)    :: cA(:)
-  integer(C_INT),intent(in)    :: amC,contrdepthC
-  real(C_DOUBLE),intent(in)    :: C(:)
-  real(C_DOUBLE),intent(in)    :: alphaC(:)
-  real(C_DOUBLE),intent(in)    :: cC(:)
-  integer(C_INT),intent(in)    :: amD,contrdepthD
-  real(C_DOUBLE),intent(in)    :: D(:)
-  real(C_DOUBLE),intent(in)    :: alphaD(:)
-  real(C_DOUBLE),intent(in)    :: cD(:)
-  real(C_DOUBLE),intent(inout) :: ovlpACD(:)
+  integer(C_INT), intent(in)    :: amA, contrdepthA
+  real(C_DOUBLE), intent(in)    :: A(:)
+  real(C_DOUBLE), intent(in)    :: alphaA(:)
+  real(C_DOUBLE), intent(in)    :: cA(:)
+  integer(C_INT), intent(in)    :: amC, contrdepthC
+  real(C_DOUBLE), intent(in)    :: C(:)
+  real(C_DOUBLE), intent(in)    :: alphaC(:)
+  real(C_DOUBLE), intent(in)    :: cC(:)
+  real(C_DOUBLE), intent(in)    :: D(:)
+  real(C_DOUBLE), intent(inout) :: elecpotAC_grad(:, :)
   !=====
   real(C_DOUBLE) :: tmp_env(1000)
-  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,3)
-  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,3)
-  integer(C_INT) :: shls(3)
-  integer        :: info,off
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 2)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 2)
+  integer(C_INT) :: shls(2)
+  integer        :: info, off
   !=====
 
   tmp_env(:) = 0.0_dp
+  tmp_env(LIBCINT_PTR_RINV_ORIG+1:LIBCINT_PTR_RINV_ORIG+3) = D(:)
 
   off = LIBCINT_PTR_ENV_START
 
-  tmp_atm(LIBCINT_CHARGE_OF,1) = 1
-  tmp_atm(LIBCINT_PTR_COORD,1) = off
-  tmp_env(off+1:off+3) = D(1:3)
-  off = off + 3
-  tmp_atm(LIBCINT_CHARGE_OF,2) = 1
-  tmp_atm(LIBCINT_PTR_COORD,2) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 1) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 1) = off
   tmp_env(off+1:off+3) = C(1:3)
   off = off + 3
-  tmp_atm(LIBCINT_CHARGE_OF,3) = 1
-  tmp_atm(LIBCINT_PTR_COORD,3) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 2) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 2) = off
   tmp_env(off+1:off+3) = A(1:3)
   off = off + 3
 
   !
-  ! D
-  tmp_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,1)  = amD
-  tmp_bas(LIBCINT_NPRIM_OF ,1)  = contrdepthD
-  tmp_bas(LIBCINT_NCTR_OF  ,1)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
-  tmp_env(off+1:off+contrdepthD) = alphaD(1:contrdepthD)
-  off = off + contrdepthD
-  tmp_bas(LIBCINT_PTR_COEFF,1) = off
-  select case(amD)
-  case(0,1)
-    tmp_env(off+1:off+contrdepthD) = cD(1:contrdepthD) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amD + 1 )
-  case default
-    tmp_env(off+1:off+contrdepthD) = cD(1:contrdepthD)
-  end select
-  off = off + contrdepthD
-  !
   ! C
-  tmp_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,2)  = amC
-  tmp_bas(LIBCINT_NPRIM_OF ,2)  = contrdepthC
-  tmp_bas(LIBCINT_NCTR_OF  ,2)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 1)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF , 1)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  , 1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
   off = off + contrdepthC
-  tmp_bas(LIBCINT_PTR_COEFF,2) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 1) = off
   select case(amC)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
   case default
     tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
@@ -945,16 +993,125 @@ subroutine libcint_overlap_3center(amA,contrdepthA,A,alphaA,cA, &
   off = off + contrdepthC
   !
   ! A
-  tmp_bas(LIBCINT_ATOM_OF  ,3)  = 2 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,3)  = amA
-  tmp_bas(LIBCINT_NPRIM_OF ,3)  = contrdepthA
-  tmp_bas(LIBCINT_NCTR_OF  ,3)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,3)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 2)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF , 2)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  , 2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 2)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
   off = off + contrdepthA
-  tmp_bas(LIBCINT_PTR_COEFF,3) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 2) = off
   select case(amA)
-  case(0,1)
+  case(0, 1)
+    tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
+  case default
+    tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
+  end select
+  off = off + contrdepthA
+
+
+  shls(1) = 0
+  shls(2) = 1
+
+#if defined(HAVE_LIBCINT)
+  info = cint1e_iprinv_cart(elecpotAC_grad, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+#endif
+
+
+end subroutine libcint_elecpot_grad
+
+
+!=========================================================================
+subroutine libcint_overlap_3center(amA, contrdepthA, A, alphaA, cA, &
+                           amC, contrdepthC, C, alphaC, cC, &
+                           amD, contrdepthD, D, alphaD, cD, &
+                           ovlpACD)
+  implicit none
+
+  integer(C_INT), intent(in)    :: amA, contrdepthA
+  real(C_DOUBLE), intent(in)    :: A(:)
+  real(C_DOUBLE), intent(in)    :: alphaA(:)
+  real(C_DOUBLE), intent(in)    :: cA(:)
+  integer(C_INT), intent(in)    :: amC, contrdepthC
+  real(C_DOUBLE), intent(in)    :: C(:)
+  real(C_DOUBLE), intent(in)    :: alphaC(:)
+  real(C_DOUBLE), intent(in)    :: cC(:)
+  integer(C_INT), intent(in)    :: amD, contrdepthD
+  real(C_DOUBLE), intent(in)    :: D(:)
+  real(C_DOUBLE), intent(in)    :: alphaD(:)
+  real(C_DOUBLE), intent(in)    :: cD(:)
+  real(C_DOUBLE), intent(inout) :: ovlpACD(:)
+  !=====
+  real(C_DOUBLE) :: tmp_env(1000)
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 3)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 3)
+  integer(C_INT) :: shls(3)
+  integer        :: info, off
+  !=====
+
+  tmp_env(:) = 0.0_dp
+
+  off = LIBCINT_PTR_ENV_START
+
+  tmp_atm(LIBCINT_CHARGE_OF, 1) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 1) = off
+  tmp_env(off+1:off+3) = D(1:3)
+  off = off + 3
+  tmp_atm(LIBCINT_CHARGE_OF, 2) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 2) = off
+  tmp_env(off+1:off+3) = C(1:3)
+  off = off + 3
+  tmp_atm(LIBCINT_CHARGE_OF, 3) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 3) = off
+  tmp_env(off+1:off+3) = A(1:3)
+  off = off + 3
+
+  !
+  ! D
+  tmp_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 1)  = amD
+  tmp_bas(LIBCINT_NPRIM_OF , 1)  = contrdepthD
+  tmp_bas(LIBCINT_NCTR_OF  , 1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthD) = alphaD(1:contrdepthD)
+  off = off + contrdepthD
+  tmp_bas(LIBCINT_PTR_COEFF, 1) = off
+  select case(amD)
+  case(0, 1)
+    tmp_env(off+1:off+contrdepthD) = cD(1:contrdepthD) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amD + 1 )
+  case default
+    tmp_env(off+1:off+contrdepthD) = cD(1:contrdepthD)
+  end select
+  off = off + contrdepthD
+  !
+  ! C
+  tmp_bas(LIBCINT_ATOM_OF  , 2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 2)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF , 2)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  , 2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 2)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
+  off = off + contrdepthC
+  tmp_bas(LIBCINT_PTR_COEFF, 2) = off
+  select case(amC)
+  case(0, 1)
+    tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amC + 1 )
+  case default
+    tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
+  end select
+  off = off + contrdepthC
+  !
+  ! A
+  tmp_bas(LIBCINT_ATOM_OF  , 3)  = 2 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 3)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF , 3)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  , 3)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 3)  = off ! note the 0-based index
+  tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
+  off = off + contrdepthA
+  tmp_bas(LIBCINT_PTR_COEFF, 3) = off
+  select case(amA)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
   case default
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
@@ -967,7 +1124,7 @@ subroutine libcint_overlap_3center(amA,contrdepthA,A,alphaA,cA, &
   shls(3) = 2
 
 #if defined(HAVE_LIBCINT)
-  info = cint3c1e_cart(ovlpACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, 0_C_LONG)
+  info = cint3c1e_cart(ovlpACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, LIBCINT_opt)
 #endif
 
 
@@ -981,66 +1138,66 @@ end subroutine libcint_overlap_3center
 ! if iproj=1, it reduces to an overlap
 ! if iproj=2, it reduces to an int1e_r2_origj
 ! if iproj=3, it reduces to an int1e_r4_origj
-subroutine libcint_gth_projector(amA,contrdepthA,A,alphaA,cA, &
-                                 amC,contrdepthC,C,alphaC,cC, &
-                                 iproj,ovlpAC)
+subroutine libcint_gth_projector(amA, contrdepthA, A, alphaA, cA, &
+                                 amC, contrdepthC, C, alphaC, cC, &
+                                 iproj, ovlpAC)
   implicit none
 
-  integer(C_INT),intent(in)    :: amA,contrdepthA
-  real(C_DOUBLE),intent(in)    :: A(:)
-  real(C_DOUBLE),intent(in)    :: alphaA(:)
-  real(C_DOUBLE),intent(in)    :: cA(:)
-  integer(C_INT),intent(in)    :: amC,contrdepthC
-  real(C_DOUBLE),intent(in)    :: C(:)
-  real(C_DOUBLE),intent(in)    :: alphaC(:)
-  real(C_DOUBLE),intent(in)    :: cC(:)
-  integer(C_INT),intent(in)    :: iproj
-  real(C_DOUBLE),intent(inout)    :: ovlpAC(:)
+  integer(C_INT), intent(in)    :: amA, contrdepthA
+  real(C_DOUBLE), intent(in)    :: A(:)
+  real(C_DOUBLE), intent(in)    :: alphaA(:)
+  real(C_DOUBLE), intent(in)    :: cA(:)
+  integer(C_INT), intent(in)    :: amC, contrdepthC
+  real(C_DOUBLE), intent(in)    :: C(:)
+  real(C_DOUBLE), intent(in)    :: alphaC(:)
+  real(C_DOUBLE), intent(in)    :: cC(:)
+  integer(C_INT), intent(in)    :: iproj
+  real(C_DOUBLE), intent(inout)    :: ovlpAC(:)
   !=====
   real(C_DOUBLE) :: tmp_env(1000)
-  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS,2)
-  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS,2)
+  integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 2)
+  integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 2)
   integer(C_INT) :: shls(2)
-  integer        :: info,off
+  integer        :: info, off
   !=====
 
   tmp_env(:) = 0.0_dp
 
   off = LIBCINT_PTR_ENV_START
 
-  tmp_atm(LIBCINT_CHARGE_OF,1) = 1
-  tmp_atm(LIBCINT_PTR_COORD,1) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 1) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 1) = off
   tmp_env(off+1:off+3) = C(1:3)
   off = off + 3
-  tmp_atm(LIBCINT_CHARGE_OF,2) = 1
-  tmp_atm(LIBCINT_PTR_COORD,2) = off
+  tmp_atm(LIBCINT_CHARGE_OF, 2) = 1
+  tmp_atm(LIBCINT_PTR_COORD, 2) = off
   tmp_env(off+1:off+3) = A(1:3)
   off = off + 3
 
   !
   ! C
-  tmp_bas(LIBCINT_ATOM_OF  ,1)  = 0 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,1)  = amC
-  tmp_bas(LIBCINT_NPRIM_OF ,1)  = contrdepthC
-  tmp_bas(LIBCINT_NCTR_OF  ,1)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,1)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 1)  = 0 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 1)  = amC
+  tmp_bas(LIBCINT_NPRIM_OF , 1)  = contrdepthC
+  tmp_bas(LIBCINT_NCTR_OF  , 1)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 1)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthC) = alphaC(1:contrdepthC)
   off = off + contrdepthC
-  tmp_bas(LIBCINT_PTR_COEFF,1) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 1) = off
   tmp_env(off+1:off+contrdepthC) = cC(1:contrdepthC)
   off = off + contrdepthC
   !
   ! A
-  tmp_bas(LIBCINT_ATOM_OF  ,2)  = 1 ! C convention starts with 0
-  tmp_bas(LIBCINT_ANG_OF   ,2)  = amA
-  tmp_bas(LIBCINT_NPRIM_OF ,2)  = contrdepthA
-  tmp_bas(LIBCINT_NCTR_OF  ,2)  = 1
-  tmp_bas(LIBCINT_PTR_EXP  ,2)  = off ! note the 0-based index
+  tmp_bas(LIBCINT_ATOM_OF  , 2)  = 1 ! C convention starts with 0
+  tmp_bas(LIBCINT_ANG_OF   , 2)  = amA
+  tmp_bas(LIBCINT_NPRIM_OF , 2)  = contrdepthA
+  tmp_bas(LIBCINT_NCTR_OF  , 2)  = 1
+  tmp_bas(LIBCINT_PTR_EXP  , 2)  = off ! note the 0-based index
   tmp_env(off+1:off+contrdepthA) = alphaA(1:contrdepthA)
   off = off + contrdepthA
-  tmp_bas(LIBCINT_PTR_COEFF,2) = off
+  tmp_bas(LIBCINT_PTR_COEFF, 2) = off
   select case(amA)
-  case(0,1)
+  case(0, 1)
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA) * SQRT(4.0_dp * pi) / SQRT( 2.0_dp * amA + 1 )
   case default
     tmp_env(off+1:off+contrdepthA) = cA(1:contrdepthA)
@@ -1068,43 +1225,60 @@ end subroutine libcint_gth_projector
 
 
 !=========================================================================
-subroutine transform_libcint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_out)
+subroutine transform_libcint_to_molgw_2d(gaussian_type, am1, am2, array_in, matrix_out)
   implicit none
-  character(len=4),intent(in)      :: gaussian_type
-  integer,intent(in)               :: am1,am2
-  real(C_DOUBLE),intent(in)        :: array_in(:)
-  real(dp),allocatable,intent(out) :: matrix_out(:,:)
+  character(len=4), intent(in)      :: gaussian_type
+  integer, intent(in)               :: am1, am2
+  real(C_DOUBLE), intent(in)        :: array_in(:)
+  real(dp), allocatable, intent(out) :: matrix_out(:, :)
   !=====
-  integer :: n1,n2,n1c,n2c
-  integer :: ii,i1,i2
+  integer :: n1, n2, n1c, n2c
+  integer :: ii, i1, i2
   integer :: gt_tag
+  real(dp), allocatable :: matrix_tmp(:, :)
   !=====
 
   gt_tag = get_gaussian_type_tag(gaussian_type)
   n1c = number_basis_function_am('CART',am1)
   n2c = number_basis_function_am('CART',am2)
-  n1  = number_basis_function_am(gaussian_type,am1)
-  n2  = number_basis_function_am(gaussian_type,am2)
+  n1  = number_basis_function_am(gaussian_type, am1)
+  n2  = number_basis_function_am(gaussian_type, am2)
 
-  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2))
+  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1, n2))
 
   if( gt_tag == CARTG ) then
     ii = 0
-    do i1=1,n1
-      do i2=1,n2
+    do i1=1, n1
+      do i2=1, n2
         ii = ii + 1
-        matrix_out(i1,i2) = array_in(ii) * cart_to_pure_norm(am1,CARTG)%matrix(i1,i1) &
-                                         * cart_to_pure_norm(am2,CARTG)%matrix(i2,i2)
+        matrix_out(i1, i2) = array_in(ii) * cart_to_pure_norm(am1, CARTG)%matrix(i1, i1) &
+                                         * cart_to_pure_norm(am2, CARTG)%matrix(i2, i2)
       enddo
     enddo
   else
     ii = 0
-    do i1=1,n1
-      do i2=1,n2
+    do i1=1, n1
+      do i2=1, n2
         ii = ii + 1
-        matrix_out(i1,i2) = array_in(ii) * libcint_pure_norm(am1) * libcint_pure_norm(am2)
+        matrix_out(i1, i2) = array_in(ii) * libcint_pure_norm(am1) * libcint_pure_norm(am2)
       enddo
     enddo
+
+    ! Special treatment for p-orbital in the libcint ordering
+    if( (am1 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(1, :) = matrix_tmp(2, :)
+      matrix_out(2, :) = matrix_tmp(3, :)
+      matrix_out(3, :) = matrix_tmp(1, :)
+      deallocate(matrix_tmp)
+    endif
+    if( (am2 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(:, 1) = matrix_tmp(:, 2)
+      matrix_out(:, 2) = matrix_tmp(:, 3)
+      matrix_out(:, 3) = matrix_tmp(:, 1)
+      deallocate(matrix_tmp)
+    endif
   endif
 
 
@@ -1112,18 +1286,17 @@ end subroutine transform_libcint_to_molgw_2d
 
 
 !=========================================================================
-subroutine transform_libcint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_right,am2,am3,array_in,matrix_out)
+subroutine transform_libcint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_right, am2, am3, array_in, matrix_out)
   implicit none
-  character(len=4),intent(in)      :: gaussian_type_left,gaussian_type_right
-  integer,intent(in)               :: am1,am2,am3
-  real(C_DOUBLE),intent(in)        :: array_in(:)
-  real(dp),allocatable,intent(out) :: matrix_out(:,:,:)
+  character(len=4), intent(in)      :: gaussian_type_left, gaussian_type_right
+  integer, intent(in)               :: am1, am2, am3
+  real(C_DOUBLE), intent(in)        :: array_in(:)
+  real(dp), allocatable, intent(out) :: matrix_out(:, :, :)
   !=====
-  integer :: n1,n2,n3,n1c,n2c,n3c
-  integer :: i1,i2,i3,ii
-  integer :: gt_tagl,gt_tagr
-  real(dp),allocatable :: matrix_tmp1(:,:)
-  real(dp),allocatable :: matrix_tmp2(:,:)
+  integer :: n1, n2, n3, n1c, n2c, n3c
+  integer :: i1, i2, i3, ii
+  integer :: gt_tagl, gt_tagr
+  real(dp), allocatable :: matrix_tmp(:, :, :)
   !=====
 
   gt_tagl = get_gaussian_type_tag(gaussian_type_left)
@@ -1131,11 +1304,11 @@ subroutine transform_libcint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_ri
   n1c = number_basis_function_am('CART',am1)
   n2c = number_basis_function_am('CART',am2)
   n3c = number_basis_function_am('CART',am3)
-  n1  = number_basis_function_am(gaussian_type_left,am1)
-  n2  = number_basis_function_am(gaussian_type_right,am2)
-  n3  = number_basis_function_am(gaussian_type_right,am3)
+  n1  = number_basis_function_am(gaussian_type_left, am1)
+  n2  = number_basis_function_am(gaussian_type_right, am2)
+  n3  = number_basis_function_am(gaussian_type_right, am3)
 
-  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2,n3))
+  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1, n2, n3))
 
   if( gt_tagl /= gt_tagr ) then
     call die('transform_libcint_to_molgw_3d: mixed pure/cart integrals not coded')
@@ -1144,29 +1317,52 @@ subroutine transform_libcint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_ri
   ! When CART -> CART, just normalize (no unitary transform needed)
   if( gt_tagl == CARTG .AND. gt_tagr == CARTG ) then
     ii = 0
-    do i1=1,n1
-      do i2=1,n2
-        do i3=1,n3
+    do i1=1, n1
+      do i2=1, n2
+        do i3=1, n3
           ii = ii + 1
-          matrix_out(i1,i2,i3) = array_in(ii) * cart_to_pure_norm(am1,CARTG)%matrix(i1,i1) &
-                                              * cart_to_pure_norm(am2,CARTG)%matrix(i2,i2) &
-                                              * cart_to_pure_norm(am3,CARTG)%matrix(i3,i3)
+          matrix_out(i1, i2, i3) = array_in(ii) * cart_to_pure_norm(am1, CARTG)%matrix(i1, i1) &
+                                              * cart_to_pure_norm(am2, CARTG)%matrix(i2, i2) &
+                                              * cart_to_pure_norm(am3, CARTG)%matrix(i3, i3)
         enddo
       enddo
     enddo
   else
     ! PURE PURE
     ii = 0
-    do i1=1,n1
-      do i2=1,n2
-        do i3=1,n3
+    do i1=1, n1
+      do i2=1, n2
+        do i3=1, n3
           ii = ii + 1
-          matrix_out(i1,i2,i3) = array_in(ii) * libcint_pure_norm(am1) &
+          matrix_out(i1, i2, i3) = array_in(ii) * libcint_pure_norm(am1) &
                                               * libcint_pure_norm(am2) &
                                               * libcint_pure_norm(am3)
         enddo
       enddo
     enddo
+
+    ! Special treatment for p-orbital in the libcint ordering
+    if( (am1 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(1, :, :) = matrix_tmp(2, :, :)
+      matrix_out(2, :, :) = matrix_tmp(3, :, :)
+      matrix_out(3, :, :) = matrix_tmp(1, :, :)
+      deallocate(matrix_tmp)
+    endif
+    if( (am2 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(:, 1, :) = matrix_tmp(:, 2, :)
+      matrix_out(:, 2, :) = matrix_tmp(:, 3, :)
+      matrix_out(:, 3, :) = matrix_tmp(:, 1, :)
+      deallocate(matrix_tmp)
+    endif
+    if( (am3 == 1) .AND. .NOT. pypzpx_order ) then
+      allocate(matrix_tmp, SOURCE=matrix_out)
+      matrix_out(:, :, 1) = matrix_tmp(:, :, 2)
+      matrix_out(:, :, 2) = matrix_tmp(:, :, 3)
+      matrix_out(:, :, 3) = matrix_tmp(:, :, 1)
+      deallocate(matrix_tmp)
+    endif
   endif
 
 end subroutine transform_libcint_to_molgw_3d

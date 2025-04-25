@@ -1,3 +1,4 @@
+#if 0
 /*
 !=========================================================================
 ! This file is part of MOLGW.
@@ -8,9 +9,10 @@
 !
 !========================================================================= 
 */
+#endif
 
 #if !defined(MOLGW_VERSION)
-#define MOLGW_VERSION "3.3"
+#define MOLGW_VERSION "3.4"
 #endif
 
 #if !defined(NO_LIBCINT)
@@ -23,9 +25,11 @@
 #endif
 #endif
 
+#if 0
 /*
 ! Enforce that HAVE_MPI and HAVE_SCALAPACK are both defined when a single one is defined
 */
+#endif
 #if defined(HAVE_MPI)
 #if !defined(HAVE_SCALAPACK)
 #define HAVE_SCALAPACK

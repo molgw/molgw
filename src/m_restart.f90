@@ -14,17 +14,19 @@ module m_restart
   use m_inputparam
   use m_atoms
   use m_basis_set
-  use m_hamiltonian_tools,only: dump_out_occupation
-  use m_hamiltonian_onebody,only: setup_overlap_mixedbasis, setup_overlap
-  use m_linear_algebra,only: invert
+  use m_hamiltonian_tools, only: dump_out_occupation, orthogonalize_c_matrix
+  use m_hamiltonian_onebody, only: setup_overlap_mixedbasis, setup_overlap
+  use m_linear_algebra, only: invert
+  use m_io
+  use m_libcint_tools
 
 
   !
   ! Restart file types
-  integer,parameter ::           NO_RESTART = 0
-  integer,parameter ::        SMALL_RESTART = 1
-  integer,parameter ::          BIG_RESTART = 2
-  integer,parameter ::        BASIS_RESTART = 3
+  integer, parameter ::           NO_RESTART = 0
+  integer, parameter ::        SMALL_RESTART = 1
+  integer, parameter ::          BIG_RESTART = 2
+  integer, parameter ::        BASIS_RESTART = 3
 
 
 
@@ -32,19 +34,19 @@ contains
 
 
 !=========================================================================
-subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonian_fock)
+subroutine write_restart(restart_type, basis, occupation, c_matrix, energy, hamiltonian_fock)
   implicit none
 
-  integer,intent(in)           :: restart_type
-  type(basis_set),intent(in)   :: basis
-  real(dp),intent(in)          :: occupation(:,:),energy(:,:)
-  real(dp),intent(in)          :: c_matrix(:,:,:)
-  real(dp),optional,intent(in) :: hamiltonian_fock(:,:,:)
+  integer, intent(in)           :: restart_type
+  type(basis_set), intent(in)   :: basis
+  real(dp), intent(in)          :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)          :: c_matrix(:, :, :)
+  real(dp), optional, intent(in) :: hamiltonian_fock(:, :, :)
   !=====
   integer                    :: nstate
-  integer,parameter          :: restart_version=201609
+  integer, parameter          :: restart_version=201609
   integer                    :: restartfile
-  integer                    :: ispin,istate,ibf,nstate_local
+  integer                    :: ispin, istate, ibf, nstate_local
   !=====
 
   !
@@ -61,9 +63,9 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
 
   select case(restart_type)
   case(SMALL_RESTART)
-    write(stdout,'(/,a)') ' Writing a small RESTART file'
+    write(stdout, '(/,a)') ' Writing a small RESTART file'
   case(BIG_RESTART)
-    write(stdout,'(/,a)') ' Writing a big RESTART file'
+    write(stdout, '(/,a)') ' Writing a big RESTART file'
   case default
     call die('write_restart: bug')
   end select
@@ -73,7 +75,7 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
   endif
 
 
-  open(newunit=restartfile,file='RESTART',form='unformatted',action='write')
+  open(newunit=restartfile, file='RESTART', form='unformatted', action='write')
 
   ! An integer to ensure backward compatibility in the future
   write(restartfile) restart_version
@@ -82,28 +84,28 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
   ! Atomic structure
   write(restartfile) ncenter_nuclei
   write(restartfile) zatom(1:ncenter_nuclei)
-  write(restartfile) xatom(:,1:ncenter_nuclei)
+  write(restartfile) xatom(:, 1:ncenter_nuclei)
   ! Calculation type
   write(restartfile) calc_type%scf_name
   ! Basis set
-  call write_basis_set(restartfile,basis)
+  call write_basis_set(restartfile, basis)
   ! Spin channels
   write(restartfile) nspin
   ! Nstate
   write(restartfile) nstate
   ! Occupations
-  write(restartfile) occupation(:,:)
+  write(restartfile) occupation(:, :)
   ! Eigen energies
-  write(restartfile) energy(:,:)
+  write(restartfile) energy(:, :)
 
   ! Number of states written down in the RESTART file
   if( restart_type == SMALL_RESTART ) then
     ! Identify the highest occupied state in order to
     ! save I-O in SMALL_RESTART
     nstate_local = 0
-    do ispin=1,nspin
-      do istate=1,nstate
-        if( ANY( occupation(istate,:) > completely_empty ) ) nstate_local = istate
+    do ispin=1, nspin
+      do istate=1, nstate
+        if( ANY( occupation(istate, :) > completely_empty ) ) nstate_local = istate
       enddo
     enddo
   else
@@ -114,17 +116,17 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
   write(restartfile) nstate_local
 
   ! Wavefunction coefficients C
-  do ispin=1,nspin
-    do istate=1,nstate_local
-      write(restartfile) c_matrix(:,istate,ispin)
+  do ispin=1, nspin
+    do istate=1, nstate_local
+      write(restartfile) c_matrix(:, istate, ispin)
     enddo
   enddo
 
   if(restart_type == BIG_RESTART) then
 
-    do ispin=1,nspin
-      do ibf=1,basis%nbf
-        write(restartfile) hamiltonian_fock(:,ibf,ispin)
+    do ispin=1, nspin
+      do ibf=1, basis%nbf
+        write(restartfile) hamiltonian_fock(:, ibf, ispin)
       enddo
     enddo
 
@@ -137,52 +139,51 @@ end subroutine write_restart
 
 
 !=========================================================================
-subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,energy,hamiltonian_fock)
+subroutine read_restart(restart_type, restart_filename, basis, occupation, c_matrix, energy, hamiltonian_fock)
   implicit none
 
-  integer,intent(out)           :: restart_type
-  character(len=*),intent(in)   :: restart_filename
-  type(basis_set),intent(in)    :: basis
-  real(dp),allocatable,intent(inout) :: occupation(:,:)
-  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:),energy(:,:)
-  real(dp),allocatable,optional,intent(inout) :: hamiltonian_fock(:,:,:)
+  integer, intent(out)           :: restart_type
+  character(len=*), intent(in)   :: restart_filename
+  type(basis_set), intent(in)    :: basis
+  real(dp), allocatable, intent(inout) :: c_matrix(:, :, :), energy(:, :), occupation(:, :)
+  real(dp), allocatable, optional, intent(inout) :: hamiltonian_fock(:, :, :)
   !=====
   integer                    :: restartfile
-  integer                    :: ispin,istate,ibf,nstate_local
-  logical                    :: file_exists,same_scf,same_basis,same_geometry
-  integer                    :: nstate_expected,nstate
+  integer                    :: ispin, istate, ibf, nstate_local
+  logical                    :: file_exists, same_scf, same_basis, same_geometry, same_spin
+  integer                    :: nstate, nstate_expected
   integer                    :: restart_version_read
   integer                    :: restart_type_read
   character(len=100)         :: scf_name_read
   integer                    :: natom_read
-  real(dp),allocatable       :: zatom_read(:),x_read(:,:)
+  real(dp), allocatable       :: zatom_read(:), x_read(:, :)
   type(basis_set)            :: basis_read
   integer                    :: nspin_read
   integer                    :: nstate_read
-  real(dp),allocatable       :: occupation_read(:,:)
-  real(dp),allocatable       :: energy_read(:,:)
-  real(dp),allocatable       :: c_matrix_read(:,:,:)
-  real(dp),allocatable       :: overlapm1(:,:)
-  real(dp),allocatable       :: overlap_mixedbasis(:,:)
+  real(dp), allocatable       :: occupation_read(:, :)
+  real(dp), allocatable       :: energy_read(:, :)
+  real(dp), allocatable       :: c_matrix_read(:, :, :)
+  real(dp), allocatable       :: overlapm1(:, :), s_matrix(:, :)
+  real(dp), allocatable       :: overlap_mixedbasis(:, :)
   !=====
 
-  inquire(file=restart_filename,exist=file_exists)
+  inquire(file=restart_filename, exist=file_exists)
   if(.NOT. file_exists) then
-    write(stdout,'(/,1x,a,1x,a)') TRIM(restart_filename),'file not found'
+    write(stdout, '(/,1x,a,1x,a)') TRIM(restart_filename), 'file not found'
     restart_type = NO_RESTART
     return
   endif
 
   nstate_expected = SIZE(occupation,DIM=1)
 
-  open(newunit=restartfile,file=restart_filename,form='unformatted',status='old',action='read')
+  open(newunit=restartfile, file=restart_filename, form='unformatted', status='old', action='read')
 
 
   ! An integer to ensure backward compatibility in the future
   read(restartfile) restart_version_read
 
   if( restart_version_read == 201602 ) then
-    write(stdout,'(1x,a,i8)') 'Old RESTART file found. Version: ',restart_version_read
+    write(stdout, '(1x,a,i8)') 'Old RESTART file found. Version: ', restart_version_read
     call issue_warning('RESTART file: Old version. Backward compatibility is not ensured. Skipping the reading')
     restart_type = NO_RESTART
     close(restartfile)
@@ -216,18 +217,18 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
 
   ! Atomic structure
   read(restartfile) natom_read
-  allocate(zatom_read(natom_read),x_read(3,natom_read))
+  allocate(zatom_read(natom_read), x_read(3, natom_read))
   read(restartfile) zatom_read(1:natom_read)
-  read(restartfile) x_read(:,1:natom_read)
+  read(restartfile) x_read(:, 1:natom_read)
   if( natom_read /= ncenter_nuclei  &
-  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,ncenter_nuclei)) - zatom(1:MIN(natom_read,ncenter_nuclei)) ) > 1.0e-5_dp ) &
-  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,ncenter_nuclei)) - xatom(:,1:MIN(natom_read,ncenter_nuclei))   ) > 1.0e-5_dp ) ) then
+  .OR. ANY( ABS( zatom_read(1:MIN(natom_read, ncenter_nuclei)) - zatom(1:MIN(natom_read, ncenter_nuclei)) ) > 1.0e-5_dp ) &
+  .OR. ANY( ABS(   x_read(:, 1:MIN(natom_read, ncenter_nuclei)) - xatom(:, 1:MIN(natom_read, ncenter_nuclei)) ) > 1.0e-5_dp ) ) then
     same_geometry = .FALSE.
     call issue_warning('RESTART file: Geometry has changed')
   else
     same_geometry = .TRUE.
   endif
-  deallocate(zatom_read,x_read)
+  deallocate(zatom_read, x_read)
 
 
   ! Calculation type
@@ -240,22 +241,24 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
 
 
   ! Basis set
-  call read_basis_set(restartfile,basis_read)
-  same_basis = compare_basis_set(basis,basis_read)
+  call read_basis_set(restartfile, basis_read)
+  same_basis = compare_basis_set(basis, basis_read)
   if( .NOT. same_basis) then
     call issue_warning('RESTART file: Basis set has changed')
+    restart_type = SMALL_RESTART
   endif
   if( basis%gaussian_type /= basis_read%gaussian_type ) then
-    write(stdout,*) 'The basis type (cartesian or pure) cannot be changed when restarting from a previous calculation'
+    write(stdout, *) 'The basis type (cartesian or pure) cannot be changed when restarting from a previous calculation'
     call die('Erase the RESTART file or change the keyword gaussian_type and start the calculation over')
   endif
 
 
   ! Spin channels
   read(restartfile) nspin_read
-  if( nspin /= nspin_read ) then
+  same_spin = ( nspin == nspin_read )
+  if( .NOT. same_spin ) then
     call issue_warning('RESTART file: Number of spin channels has changed')
-    call die('not implemented yet')
+    restart_type = SMALL_RESTART
   endif
 
 
@@ -265,15 +268,15 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
   nstate = nstate_read
   if( nstate_expected /= nstate_read ) then
     call issue_warning('RESTART file: Number of states has changed')
-    write(stdout,*) 'Resizing arrays to fit the new size'
-    deallocate(energy,occupation)
-    allocate(energy(nstate,nspin),occupation(nstate,nspin))
-    occupation(:,:) = 0.0_dp
+    write(stdout, *) 'Resizing arrays to fit the new size'
+    deallocate(energy, occupation)
+    allocate(energy(nstate, nspin), occupation(nstate, nspin))
+    occupation(:, :) = 0.0_dp
   endif
 
 
   ! Occupations
-  allocate(occupation_read(nstate_read,nspin_read))
+  allocate(occupation_read(nstate_read, nspin_read))
   read(restartfile) occupation_read(:,:)
   if( ANY( ABS( occupation_read(1:nstate,:) - occupation(1:nstate,:) ) > 1.0e-5_dp ) ) then
     if( temperature > 1.0e-8_dp) then
@@ -282,17 +285,18 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
       call dump_out_occupation('=== Occupations ===',occupation)
     else
       call issue_warning('RESTART file: Occupations have changed')
-      occupation(1:nstate,:) = occupation_read(1:nstate,:)
+      occupation(1:nstate, :) = occupation_read(1:nstate, :)
     endif
   endif
   deallocate(occupation_read)
 
 
   ! Eigen energies
-  allocate(energy_read(nstate_read,nspin_read))
-  read(restartfile) energy_read(:,:)
-  energy(:,:) = 1000.0_dp
-  energy(1:nstate,:) = energy_read(1:nstate,:)
+  allocate(energy_read(nstate_read, nspin_read))
+  read(restartfile) energy_read(:, :)
+  energy(:, :) = 1000.0_dp
+  energy(1:MIN(nstate, nstate_read), 1) = energy_read(1:MIN(nstate, nstate_read), 1)
+  energy(1:MIN(nstate, nstate_read), nspin) = energy_read(1:MIN(nstate, nstate_read), nspin_read)
   deallocate(energy_read)
 
 
@@ -301,51 +305,67 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
 
 
   ! Wavefunction coefficients C
-  allocate(c_matrix_read(basis_read%nbf,nstate_local,nspin_read))
-  do ispin=1,nspin_read
-    do istate=1,nstate_local
-      read(restartfile) c_matrix_read(:,istate,ispin)
+  allocate(c_matrix_read(basis_read%nbf, nstate_local, nspin_read))
+  do ispin=1, nspin_read
+    do istate=1, nstate_local
+      read(restartfile) c_matrix_read(:, istate, ispin)
     enddo
   enddo
 
+
   if( same_basis ) then
-    c_matrix(:,:,:) = 0.0_dp
-    do ispin=1,nspin_read
-      do istate=1,MIN(nstate_local,nstate)
-        c_matrix(1:MIN(basis_read%nbf,basis%nbf),istate,ispin) &
-            = c_matrix_read(1:MIN(basis_read%nbf,basis%nbf),istate,ispin)
-      enddo
+    c_matrix(:, :, :) = 0.0_dp
+    do istate=1, MIN(nstate_local, nstate)
+      c_matrix(1:MIN(basis_read%nbf, basis%nbf), istate, 1) &
+          = c_matrix_read(1:MIN(basis_read%nbf, basis%nbf), istate, 1)
     enddo
+    do istate=1, MIN(nstate_local, nstate)
+      c_matrix(1:MIN(basis_read%nbf, basis%nbf), istate, nspin) &
+          = c_matrix_read(1:MIN(basis_read%nbf, basis%nbf), istate, nspin_read)
+    enddo
+
     ! Fill the rest of the array with identity
     if( nstate_local < nstate ) then
-      do ispin=1,nspin_read
-        do istate=nstate_local+1,nstate
-          c_matrix(istate,istate,ispin) = 1.0_dp
-        enddo
+      do istate=nstate_local+1, nstate
+        c_matrix(istate, istate, :) = 1.0_dp
       enddo
     endif
   else
-    allocate(overlapm1(basis%nbf,basis%nbf))
-    allocate(overlap_mixedbasis(basis%nbf,basis_read%nbf))
+
+
+    allocate(s_matrix(basis%nbf, basis%nbf))
+    allocate(overlapm1(basis%nbf, basis%nbf))
 
     ! Calculate the overlap matrix of the final basis set
-    call setup_overlap(basis,overlapm1)
+    call setup_overlap(basis, s_matrix)
 
     ! Invert the overlap of the final basis set
+    overlapm1(:, :) = s_matrix(:, :)
     call invert(overlapm1)
 
     ! Get the scalar products between the old and the new basis sets
     ! Be aware: this is a rectangular matrix
-    call setup_overlap_mixedbasis(basis,basis_read,overlap_mixedbasis)
-    do ispin=1,nspin_read
-      c_matrix(:,1:nstate_local,ispin) = MATMUL(overlapm1(:,:), &
-                                             MATMUL(overlap_mixedbasis(:,:) , c_matrix_read(:,1:nstate_local,ispin) ) )
-      ! Fill the rest of the array with identity
-      do istate=nstate_local+1,nstate
-        c_matrix(istate,istate,ispin) = 1.0_dp
-      enddo
+    allocate(overlap_mixedbasis(basis%nbf, basis_read%nbf))
+    call setup_overlap_mixedbasis(basis, basis_read, overlap_mixedbasis)
+    c_matrix(:, 1:nstate_local, 1) = MATMUL(overlapm1(:, :), &
+                                         MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_local, 1) ) )
+
+    ! nspin == 2 take the second spin channel in the RESTART file if it exists
+    !            else copy the first spin channel
+    if( nspin == 2 ) then
+      c_matrix(:, 1:nstate_local, nspin) = MATMUL(overlapm1(:, :), &
+                                           MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_local, nspin_read) ) )
+    endif
+    ! Fill the rest of the array with identity
+    do istate=nstate_local+1, nstate
+      c_matrix(istate, istate, :) = 1.0_dp
     enddo
-    deallocate(overlapm1,overlap_mixedbasis)
+
+    ! Orthogonalize new c_matrix so to have exactly C**T * S * C = I
+    call orthogonalize_c_matrix(s_matrix, c_matrix)
+
+    deallocate(s_matrix)
+    deallocate(overlapm1, overlap_mixedbasis)
 
     restart_type = BASIS_RESTART
     close(restartfile)
@@ -354,7 +374,8 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
   endif
 
 
-  if( ignore_bigrestart_ .OR. restart_type_read == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) ) then
+  if( ignore_bigrestart_ .OR. restart_type_read == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) &
+      .OR. .NOT. same_spin ) then
 
     close(restartfile)
     return
@@ -363,9 +384,9 @@ subroutine read_restart(restart_type,restart_filename,basis,occupation,c_matrix,
 
     if( same_basis ) then
 
-      do ispin=1,nspin_read
-        do ibf=1,basis_read%nbf
-          read(restartfile) hamiltonian_fock(:,ibf,ispin)
+      do ispin=1, nspin_read
+        do ibf=1, basis_read%nbf
+          read(restartfile) hamiltonian_fock(:, ibf, ispin)
         enddo
       enddo
 

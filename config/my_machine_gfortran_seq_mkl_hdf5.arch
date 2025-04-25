@@ -1,0 +1,25 @@
+
+# Parallel MPI/SCALAPACK compilation with MKL
+FC=gfortran
+
+CPPFLAGS= -cpp -DHAVE_MKL  -DHAVE_HDF5
+
+CXX=g++
+FCFLAGS= -O0 -fcheck=all
+CXXFLAGS= -O0
+
+# MKL without threads
+LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+
+SCALAPACK= 
+
+#LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
+
+#LIBINT_ROOT=${HOME}/src/libint-2.4.2/
+
+# Link to a shared library with RPATH technique
+LIBCINT_PATH=${HOME}/devel/spack/opt/spack/linux-fedora40-zen4/gcc-14.1.1/libcint-6.1.2-2ymwoio2vx3q27ifrsg5koldg7qqpiht/lib64/
+LIBCINT=-L${LIBCINT_PATH} -lcint -Wl,-rpath,${LIBCINT_PATH}
+
+HDF5_ROOT=${HOME}/devel/spack/opt/spack/linux-fedora40-zen4/gcc-14.1.1/hdf5-1.14.3-c7j2dgtw72evlfpxysf7f5b4baxj6m7y/
+

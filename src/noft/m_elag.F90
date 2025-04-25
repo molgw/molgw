@@ -273,7 +273,17 @@ subroutine build_elag(ELAGd,RDMd,INTEGd,DM2_J,DM2_K,DM2_L,DM2_Jsr,DM2_Lsr)
    ELAGd%Lambdas_im(iorb,:)=RDMd%occ(iorb)*aimag(INTEGd%hCORE_cmplx(:,iorb))                                    ! Init: Lambda_pq = n_p hCORE_qp
    ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+RDMd%DM2_iiii(iorb)*real(INTEGd%ERImol_cmplx(:,iorb,iorb,iorb))          ! any->iorb,iorb->iorb
    ELAGd%Lambdas_im(iorb,:)=ELAGd%Lambdas_im(iorb,:)+RDMd%DM2_iiii(iorb)*aimag(INTEGd%ERImol_cmplx(:,iorb,iorb,iorb))   ! any->iorb,iorb->iorb
+   if(INTEGd%irange_sep==1) then
+    ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+RDMd%DM2_iiii(iorb)*real(INTEGd%ERImolJsr_cmplx(:,iorb,iorb))        ! any->iorb,iorb->iorb
+    ELAGd%Lambdas_im(iorb,:)=ELAGd%Lambdas_im(iorb,:)+RDMd%DM2_iiii(iorb)*aimag(INTEGd%ERImolJsr_cmplx(:,iorb,iorb)) ! any->iorb,iorb->iorb
+   endif
    do iorb1=1,RDMd%NBF_occ
+    if(INTEGd%irange_sep/=0) then ! rs-NOFT
+     ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+DM2_Jsr(iorb,iorb1)*real(INTEGd%ERImolJsr_cmplx(:,iorb1,iorb))        ! any->iorb,iorb1->iorb1
+     ELAGd%Lambdas(iorb,:)=ELAGd%Lambdas(iorb,:)+DM2_Lsr(iorb,iorb1)*real(INTEGd%ERImolLsr_cmplx(:,iorb,iorb1))        ! any->iorb1,iorb->iorb1
+     ELAGd%Lambdas_im(iorb,:)=ELAGd%Lambdas_im(iorb,:)+DM2_Jsr(iorb,iorb1)*aimag(INTEGd%ERImolJsr_cmplx(:,iorb1,iorb)) ! any->iorb,iorb1->iorb1
+     ELAGd%Lambdas_im(iorb,:)=ELAGd%Lambdas_im(iorb,:)+DM2_Lsr(iorb,iorb1)*aimag(INTEGd%ERImolLsr_cmplx(:,iorb,iorb1)) ! any->iorb1,iorb->iorb1 (we received K)
+    endif
     if(iorb/=iorb1) then ! Notice that using time-reversal symmetry the orb_p^beta = conjg[orb_p^alpha] then
                          ! Im[lambda_pp] contains DM2_L(iorb_p,iorb_q)*Im[ERImol_cmplx(iorb_p,iorb_q,iorb_q,iorb_p)].
                          ! But ERImol_cmplx(iorb_p,iorb_q,iorb_q,iorb_p) is a REAL *exchange integral*; thus,

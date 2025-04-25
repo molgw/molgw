@@ -12,14 +12,14 @@ module m_cart_to_pure
   use m_warning
 
   type transform
-    real(dp),allocatable    :: matrix(:,:)
+    real(dp), allocatable :: matrix(:, :)
   end type
 
-  type(transform),allocatable,protected :: cart_to_pure     (:,:)
-  type(transform),allocatable,protected :: cart_to_pure_norm(:,:)
+  type(transform), allocatable, protected :: cart_to_pure     (:, :)
+  type(transform), allocatable, protected :: cart_to_pure_norm(:, :)
 
-  integer,parameter         :: CARTG=1
-  integer,parameter         :: PUREG=2
+  integer, parameter :: CARTG = 1
+  integer, parameter :: PUREG = 2
 
 
 contains
@@ -28,7 +28,7 @@ contains
 !=========================================================================
 function get_gaussian_type_tag(gaussian_type)
   implicit none
-  character(len=4),intent(in) :: gaussian_type
+  character(len=4), intent(in) :: gaussian_type
   integer                     :: get_gaussian_type_tag
   !=====
 
@@ -43,10 +43,10 @@ end function get_gaussian_type_tag
 
 
 !=========================================================================
-pure function number_basis_function_am(gaussian_type,am)
+pure function number_basis_function_am(gaussian_type, am)
   implicit none
-  character(len=4),intent(in) :: gaussian_type
-  integer,intent(in)          :: am
+  character(len=4), intent(in) :: gaussian_type
+  integer, intent(in)          :: am
   integer                     :: number_basis_function_am
   !=====
 
@@ -63,7 +63,7 @@ end function number_basis_function_am
 !==========================================
 pure function double_factorial(intin)
   implicit none
-  integer,intent(in) :: intin
+  integer, intent(in) :: intin
   real(dp) :: double_factorial
   !=====
   ! just hard coded for some small integers
@@ -139,33 +139,34 @@ end function double_factorial
 
 
 !=========================================================================
-subroutine setup_cart_to_pure_transforms()
+subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
   implicit none
 
+  logical, intent(in) :: pypzpx_order_in
   !=====
-  integer  :: ni,nic
-  integer  :: ii,jj,kk
-  integer  :: nx,ny,nz
-  integer  :: il,im
-  integer  :: it,iu,is
+  integer  :: ni, nic
+  integer  :: ii, jj, kk
+  integer  :: nx, ny, nz
+  integer  :: il, im
+  integer  :: it, iu, is
   real(dp) :: rtmp
   !=====
 
-  write(stdout,'(/,1x,a,i2)') 'Setting up the cartesian to pure transforms up to l= ',MOLGW_LMAX
+  write(stdout, '(/,1x,a,i2)') 'Setting up the cartesian to pure transforms up to l= ', MOLGW_LMAX
 
-  allocate(cart_to_pure     (0:MOLGW_LMAX,2))
-  allocate(cart_to_pure_norm(0:MOLGW_LMAX,2))
+  allocate(cart_to_pure     (0:MOLGW_LMAX, 2))
+  allocate(cart_to_pure_norm(0:MOLGW_LMAX, 2))
 
   !
   ! First setup trivial transforms in the case of CARTESIAN gaussians
   !
-  do il=0,MOLGW_LMAX
+  do il=0, MOLGW_LMAX
     ni = number_basis_function_am('CART',il)
-    allocate(cart_to_pure     (il,CARTG)%matrix(ni,ni))
-    allocate(cart_to_pure_norm(il,CARTG)%matrix(ni,ni))
-    cart_to_pure(il,CARTG)%matrix(:,:) = 0.0_dp
-    do ii=1,ni
-      cart_to_pure(il,CARTG)%matrix(ii,ii) = 1.0_dp
+    allocate(cart_to_pure     (il, CARTG)%matrix(ni, ni))
+    allocate(cart_to_pure_norm(il, CARTG)%matrix(ni, ni))
+    cart_to_pure(il, CARTG)%matrix(:, :) = 0.0_dp
+    do ii=1, ni
+      cart_to_pure(il, CARTG)%matrix(ii, ii) = 1.0_dp
     enddo
   enddo
 
@@ -173,65 +174,65 @@ subroutine setup_cart_to_pure_transforms()
   !
   ! Second setup the complicated transforms in the case of PURE gaussians
   !
-  do il=0,MOLGW_LMAX
+  do il=0, MOLGW_LMAX
     nic = number_basis_function_am('CART',il)
     ni  = number_basis_function_am('PURE',il)
-    allocate(cart_to_pure(il,PUREG)%matrix(nic,ni))
-    allocate(cart_to_pure_norm(il,PUREG)%matrix(nic,ni))
-    cart_to_pure_norm(il,PUREG)%matrix(:,:) = 0.0_dp
+    allocate(cart_to_pure(il, PUREG)%matrix(nic, ni))
+    allocate(cart_to_pure_norm(il, PUREG)%matrix(nic, ni))
+    cart_to_pure_norm(il, PUREG)%matrix(:, :) = 0.0_dp
 
     kk=0
-    do ii=0,il
+    do ii=0, il
       nx = il - ii
-      do jj=0,ii
+      do jj=0, ii
         kk = kk + 1
         ny = ii - jj
         nz = jj
 
         rtmp = 0.0_dp
-        do it=0,il/2
-          do iu=0,it
+        do it=0, il/2
+          do iu=0, it
             if( 2*it-2*iu == nx .AND. 2*iu == ny .AND. il - 2*it == nz ) then
-              rtmp = rtmp + (-1)**it * 0.50_dp**(2*it) * cnk(il-it,it) * cnk(il,it) * cnk(it,iu)
+              rtmp = rtmp + (-1)**it * 0.50_dp**(2*it) * cnk(il-it, it) * cnk(il, it) * cnk(it, iu)
             endif
           enddo
         enddo
-        cart_to_pure_norm(il,PUREG)%matrix(kk,il+1) = rtmp / SQRT( double_factorial(2*il-1) )
+        cart_to_pure_norm(il, PUREG)%matrix(kk, il+1) = rtmp / SQRT( double_factorial(2*il-1) )
 
-        do im=1,il
+        do im=1, il
           rtmp = 0.0_dp
-          do it=0,(il-im)/2
-            do iu=0,it
-              do is=0,(im-1)/2
+          do it=0, (il-im)/2
+            do iu=0, it
+              do is=0, (im-1)/2
                 if( im + 2*it - 2*iu - 2*is -1 == nx &
                  .AND. 2*iu + 2*is + 1 == ny &
                  .AND. il - im - 2*it == nz ) then
-                  rtmp = rtmp + (-1)**(it+is) * 0.50_dp**(im+2*it) * SQRT( 2.0_dp * ank(il+im,il) / ank(il,il-im) ) &
-                           * cnk(it,iu) * cnk(im,2*is+1) * cnk(il-it,im+it) * cnk(il,it)
+                  rtmp = rtmp + (-1)**(it+is) * 0.50_dp**(im+2*it) * SQRT( 2.0_dp * ank(il+im, il) / ank(il, il-im) ) &
+                           * cnk(it, iu) * cnk(im, 2*is+1) * cnk(il-it, im+it) * cnk(il, it)
                 endif
 
               enddo
             enddo
           enddo
-          cart_to_pure_norm(il,PUREG)%matrix(kk,il+1-im) = rtmp / SQRT( double_factorial(2*il-1) )
+          cart_to_pure_norm(il, PUREG)%matrix(kk, il+1-im) = rtmp / SQRT( double_factorial(2*il-1) )
         enddo
 
-        do im=1,il
+        do im=1, il
           rtmp = 0.0_dp
-          do it=0,(il-im)/2
-            do iu=0,it
-              do is=0,im/2
+          do it=0, (il-im)/2
+            do iu=0, it
+              do is=0, im/2
                 if( im + 2*it - 2*iu - 2*is == nx &
                  .AND. 2*iu + 2*is == ny &
                  .AND. il - im - 2*it == nz ) then
-                  rtmp = rtmp + (-1)**(it+is) * 0.50_dp**(im+2*it) * SQRT( 2.0_dp * ank(il+im,il) / ank(il,il-im) ) &
-                           * cnk(it,iu) * cnk(im,2*is) * cnk(il-it,im+it) * cnk(il,it)
+                  rtmp = rtmp + (-1)**(it+is) * 0.50_dp**(im+2*it) * SQRT( 2.0_dp * ank(il+im, il) / ank(il, il-im) ) &
+                           * cnk(it, iu) * cnk(im, 2*is) * cnk(il-it, im+it) * cnk(il, it)
                 endif
 
               enddo
             enddo
           enddo
-          cart_to_pure_norm(il,PUREG)%matrix(kk,il+1+im) = rtmp / SQRT( double_factorial(2*il-1) )
+          cart_to_pure_norm(il, PUREG)%matrix(kk, il+1+im) = rtmp / SQRT( double_factorial(2*il-1) )
         enddo
 
 
@@ -239,21 +240,29 @@ subroutine setup_cart_to_pure_transforms()
     enddo
   enddo
 
+  ! Fix the p-orbital ordering if necessary
+  if( .NOT. pypzpx_order_in ) then
+    cart_to_pure_norm(1, PUREG)%matrix(1, :) = 0.0_dp
+    cart_to_pure_norm(1, PUREG)%matrix(1, 3) = 1.0_dp / SQRT( double_factorial(1) )
+    cart_to_pure_norm(1, PUREG)%matrix(2, 1) = 1.0_dp / SQRT( double_factorial(1) )
+    cart_to_pure_norm(1, PUREG)%matrix(3, 2) = 1.0_dp / SQRT( double_factorial(1) )
+  endif
+
 
   !
   ! Introduce the normalization coefficient part that depends on (nx,ny,nz)
-  do il=0,MOLGW_LMAX
+  do il=0, MOLGW_LMAX
     kk=0
-    do ii=0,il
+    do ii=0, il
       nx = il - ii
-      do jj=0,ii
+      do jj=0, ii
         kk = kk + 1
         ny = ii - jj
         nz = jj
-        cart_to_pure_norm(il,CARTG)%matrix(kk,:) = cart_to_pure(il,CARTG)%matrix(kk,:) &
+        cart_to_pure_norm(il, CARTG)%matrix(kk, :) = cart_to_pure(il, CARTG)%matrix(kk, :) &
                  / SQRT( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) )
 
-        cart_to_pure(il,PUREG)%matrix(kk,:) = cart_to_pure_norm(il,PUREG)%matrix(kk,:) &
+        cart_to_pure(il, PUREG)%matrix(kk, :) = cart_to_pure_norm(il, PUREG)%matrix(kk, :) &
                      * SQRT( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) )
 
       enddo
@@ -261,8 +270,8 @@ subroutine setup_cart_to_pure_transforms()
   enddo
 
 
-  write(stdout,*) 'Transformations set up completed for both CARTESIAN and PURE Gaussians'
-  write(stdout,*)
+  write(stdout, *) 'Transformations set up completed for both CARTESIAN and PURE Gaussians'
+  write(stdout, *)
 
 end subroutine setup_cart_to_pure_transforms
 
@@ -275,11 +284,11 @@ subroutine destroy_cart_to_pure_transforms()
   integer :: il
   !=====
 
-  do il=0,MOLGW_LMAX
-    deallocate(cart_to_pure_norm(il,CARTG)%matrix)
-    deallocate(cart_to_pure_norm(il,PUREG)%matrix)
-    deallocate(cart_to_pure(il,CARTG)%matrix)
-    deallocate(cart_to_pure(il,PUREG)%matrix)
+  do il=0, MOLGW_LMAX
+    deallocate(cart_to_pure_norm(il, CARTG)%matrix)
+    deallocate(cart_to_pure_norm(il, PUREG)%matrix)
+    deallocate(cart_to_pure(il, CARTG)%matrix)
+    deallocate(cart_to_pure(il, PUREG)%matrix)
   enddo
   deallocate(cart_to_pure_norm)
   deallocate(cart_to_pure)
@@ -288,21 +297,21 @@ end subroutine destroy_cart_to_pure_transforms
 
 
 !=========================================================================
-function cnk(n,k)
+function cnk(n, k)
   implicit none
 
-  integer,intent(in) :: n,k
+  integer, intent(in) :: n, k
   real(dp)           :: cnk
   !=====
   integer  :: i
-  real(dp) :: num,denom
+  real(dp) :: num, denom
   !=====
 
   num   = 1.0_dp
   denom = 1.0_dp
-  do i=0,k-1
-    num   = num   * REAL(n-i,dp)
-    denom = denom * ( REAL(i,dp) + 1.0_dp)
+  do i=0, k-1
+    num   = num   * REAL(n-i, dp)
+    denom = denom * ( REAL(i, dp) + 1.0_dp)
   enddo
   cnk = num / denom
 
@@ -310,18 +319,18 @@ end function cnk
 
 
 !=========================================================================
-function ank(n,k)
+function ank(n, k)
   implicit none
 
-  integer,intent(in) :: n,k
+  integer, intent(in) :: n, k
   real(dp)           :: ank
   !=====
   integer  :: i
   !=====
 
   ank   = 1.0_dp
-  do i=n,k+1,-1
-    ank   = ank   * REAL(i,dp)
+  do i=n, k+1, -1
+    ank   = ank   * REAL(i, dp)
   enddo
 
 end function ank

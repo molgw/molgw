@@ -7,7 +7,7 @@
 !
 !=========================================================================
 module m_scalapack_interface
-  use,intrinsic :: ISO_FORTRAN_ENV, only: REAL32, REAL64
+  use, intrinsic :: ISO_FORTRAN_ENV, only: REAL32, REAL64
 
   !interface pxsyevd
   !  module procedure PSSYEVD

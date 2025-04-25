@@ -104,6 +104,8 @@ module m_hdf5_tools
      module procedure hdf_write_dataset_double_4
      module procedure hdf_write_dataset_double_5
      module procedure hdf_write_dataset_double_6
+     module procedure hdf_write_dataset_string_0
+     module procedure hdf_write_dataset_string_1
   end interface hdf_write_dataset
 
 
@@ -257,7 +259,7 @@ contains
     integer :: hdferror, pos, cpos, str_len
     
     if (hdf_print_messages) then
-       write(*,'(A,A)') "->hdf_exists: " // obj_name
+       write(*, '(A,A)') "->hdf_exists: " // obj_name
     end if
     
     ! check intermediate paths (subgroups)
@@ -280,7 +282,7 @@ contains
        ! return if intermediate path fails
        if (exists .eqv. .false.) then
           if (hdf_print_messages) then
-             write(*,'(A,A,A)') "--->hdf_exists: subpath '", obj_name(1:cpos-1), "' does not exist, return false"
+             write(*, '(A,A,A)') "--->hdf_exists: subpath '", obj_name(1:cpos-1), "' does not exist, return false"
           end if
           exists = .false.
           return
@@ -294,7 +296,7 @@ contains
        !write(*,*) obj_name, exists
        if (exists .eqv. .false.) then
           if (hdf_print_messages) then
-             write(*,'(A,A,A)') "--->hdf_exists: object '", obj_name, "' does not exist, return false"
+             write(*, '(A,A,A)') "--->hdf_exists: object '", obj_name, "' does not exist, return false"
           end if
           exists = .false.
           return
@@ -346,7 +348,7 @@ contains
     character(len=16) :: status2, action2
 
     if (hdf_print_messages) then
-       write(*,'(A)') "->hdf_open_file: " // trim(filename)
+       write(*, '(A)') "->hdf_open_file: " // trim(filename)
     end if
     
     ! open hdf5 interface
@@ -366,7 +368,7 @@ contains
        elseif ( (action2 == 'WRITE') .or. (action2 == 'READWRITE') ) then
           call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, hdferror)
        else
-          write(*,*) "hdf_open: action = ", action2, " not supported." 
+          write(*, *) "hdf_open: action = ", action2, " not supported." 
           stop
        end if
     elseif (status2 == 'NEW') then
@@ -375,7 +377,7 @@ contains
        call system("rm -f " // filename)
        call h5fcreate_f(filename, H5F_ACC_EXCL_F, file_id, hdferror)
     else
-       write(*,*) "hdf_open: status = ", status2, " not supported." 
+       write(*, *) "hdf_open: status = ", status2, " not supported." 
        stop
     end if
     
@@ -392,7 +394,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "->hdf_close_file"
+       write(*, '(A)') "->hdf_close_file"
     end if
     
     call h5fclose_f(file_id, hdferror)
@@ -413,7 +415,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "->hdf_create_group: " // trim(group_name)
+       write(*, '(A)') "->hdf_create_group: " // trim(group_name)
     end if
     
     call h5gcreate_f(loc_id, group_name, grp_id, hdferror)
@@ -435,17 +437,17 @@ contains
     integer :: hdferror
     
     if (hdf_print_messages) then
-       write(*,'(A,A,A)') "->hdf_open_group: '" // trim(group_name) // "'"
+       write(*, '(A,A,A)') "->hdf_open_group: '" // trim(group_name) // "'"
     end if
        
     if (hdf_exists(loc_id, group_name)) then
        if (hdf_print_messages) then
-          write(*,'(A,A,A)') "->hdf_open_group: opening group '" // trim(group_name) // "'"
+          write(*, '(A,A,A)') "->hdf_open_group: opening group '" // trim(group_name) // "'"
        end if
        call h5gopen_f(loc_id, group_name, group_id, hdferror)
     else
        if (hdf_print_messages) then
-          write(*,'(A,A,A)') "->hdf_open_group: group '" // trim(group_name) // "' does not exist, return with error"
+          write(*, '(A,A,A)') "->hdf_open_group: group '" // trim(group_name) // "' does not exist, return with error"
        end if
        hdferror = -1
     end if
@@ -461,7 +463,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "->hdf_close_group"
+       write(*, '(A)') "->hdf_close_group"
     end if
     
     call h5gclose_f(group_id, hdferror)
@@ -481,7 +483,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "->hdf_get_rank"
+       write(*, '(A)') "->hdf_get_rank"
     end if
     
     ! open dataset
@@ -513,7 +515,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "->hdf_get_dims"
+       write(*, '(A)') "->hdf_get_dims"
     end if
     
     ! open dataset
@@ -558,7 +560,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_create_dataset: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_create_dataset: " // trim(dset_name)
     end if
     
     ! set rank and dims
@@ -578,7 +580,7 @@ contains
        call h5dcreate_f(loc_id, dset_name, H5T_NATIVE_DOUBLE, dspace_id, dset_id, hdferror)
        call h5dclose_f(dset_id, hdferror)
     case default
-       write(*,'(A,A,A)') "---> ERROR: dset_type ", dset_type," not supported"
+       write(*, '(A,A,A)') "---> ERROR: dset_type ", dset_type, " not supported"
     end select
     
     ! close all id's
@@ -604,7 +606,7 @@ contains
     character(len=32) :: format_string
     
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_vector_to_dataset_double: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_vector_to_dataset_double: " // trim(dset_name)
     end if
 
     ! open dataset
@@ -618,7 +620,7 @@ contains
     call h5sget_simple_extent_dims_f(dspace_id, dset_dims(1:rank), max_dims(1:rank), hdferror)
 
     ! check size and offset
-    if (size(vector,1) == dset_dims(1)) then
+    if (size(vector, 1) == dset_dims(1)) then
 
        if (all(offset(1:rank-1) <= dset_dims(2:rank)) .and. all(offset(1:rank-1) > 0)) then
 
@@ -630,7 +632,7 @@ contains
           call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, hs_offset(1:rank), hs_count(1:rank), hdferror)
 
           ! set mspace to a vector
-          mdims(1) = size(vector,1)
+          mdims(1) = size(vector, 1)
           call h5screate_simple_f(1, mdims, mspace_id, hdferror)
 
           ! write out vector
@@ -641,12 +643,12 @@ contains
 
        else
           write(format_string, '(A,I0,A,I0,A)') '(A,', rank-1, '(I0,A),A,', rank-1, '(I0,A),A)'
-          write(*,format_string) "--->ERROR: offset=(", (offset(i), ',', i=1,rank-1) , &
-               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2,rank),")"
+          write(*, format_string) "--->ERROR: offset=(", (offset(i), ',', i=1, rank-1) , &
+               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2, rank), ")"
        end if
        
     else
-       write(*,'(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
+       write(*, '(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
             ", is not constent with dset_dims(1)=", dset_dims(1)
     endif
     
@@ -674,7 +676,7 @@ contains
     character(len=32) :: format_string
     
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_vector_to_dataset_integer: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_vector_to_dataset_integer: " // trim(dset_name)
     end if
 
     ! open dataset
@@ -688,7 +690,7 @@ contains
     call h5sget_simple_extent_dims_f(dspace_id, dset_dims(1:rank), max_dims(1:rank), hdferror)
 
     ! check size and offset
-    if (size(vector,1) == dset_dims(1)) then
+    if (size(vector, 1) == dset_dims(1)) then
 
        if (all(offset(1:rank-1) <= dset_dims(2:rank)) .and. all(offset(1:rank-1) > 0)) then
 
@@ -700,7 +702,7 @@ contains
           call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, hs_offset(1:rank), hs_count(1:rank), hdferror)
 
           ! set mspace to a vector
-          mdims(1) = size(vector,1)
+          mdims(1) = size(vector, 1)
           call h5screate_simple_f(1, mdims, mspace_id, hdferror)
 
           ! write out vector
@@ -711,12 +713,12 @@ contains
 
        else
           write(format_string, '(A,I0,A,I0,A)') '(A,', rank-1, '(I0,A),A,', rank-1, '(I0,A),A)'
-          write(*,format_string) "--->ERROR: offset=(", (offset(i), ',', i=1,rank-1) , &
-               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2,rank),")"
+          write(*, format_string) "--->ERROR: offset=(", (offset(i), ',', i=1, rank-1) , &
+               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2, rank), ")"
        end if
        
     else
-       write(*,'(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
+       write(*, '(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
             ", is not constent with dset_dims(1)=", dset_dims(1)
     endif
     
@@ -744,7 +746,7 @@ contains
     character(len=32) :: format_string
     
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_vector_from_dataset_double: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_vector_from_dataset_double: " // trim(dset_name)
     end if
 
     ! open dataset
@@ -758,7 +760,7 @@ contains
     call h5sget_simple_extent_dims_f(dspace_id, dset_dims(1:rank), max_dims(1:rank), hdferror)
 
     ! check size and offset
-    if (size(vector,1) == dset_dims(1)) then
+    if (size(vector, 1) == dset_dims(1)) then
 
        if (all(offset(1:rank-1) <= dset_dims(2:rank)) .and. all(offset(1:rank-1) > 0)) then
 
@@ -770,7 +772,7 @@ contains
           call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, hs_offset(1:rank), hs_count(1:rank), hdferror)
 
           ! set mspace to a vector
-          mdims(1) = size(vector,1)
+          mdims(1) = size(vector, 1)
           call h5screate_simple_f(1, mdims, mspace_id, hdferror)
 
           ! write out vector
@@ -781,12 +783,12 @@ contains
 
        else
           write(format_string, '(A,I0,A,I0,A)') '(A,', rank-1, '(I0,A),A,', rank-1, '(I0,A),A)'
-          write(*,format_string) "--->ERROR: offset=(", (offset(i), ',', i=1,rank-1) , &
-               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2,rank),")"
+          write(*, format_string) "--->ERROR: offset=(", (offset(i), ',', i=1, rank-1) , &
+               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2, rank), ")"
        end if
        
     else
-       write(*,'(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
+       write(*, '(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
             ", is not constent with dset_dims(1)=", dset_dims(1)
     endif
     
@@ -814,7 +816,7 @@ contains
     character(len=32) :: format_string
     
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_vector_from_dataset_integer: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_vector_from_dataset_integer: " // trim(dset_name)
     end if
 
     ! open dataset
@@ -828,7 +830,7 @@ contains
     call h5sget_simple_extent_dims_f(dspace_id, dset_dims(1:rank), max_dims(1:rank), hdferror)
 
     ! check size and offset
-    if (size(vector,1) == dset_dims(1)) then
+    if (size(vector, 1) == dset_dims(1)) then
 
        if (all(offset(1:rank-1) <= dset_dims(2:rank)) .and. all(offset(1:rank-1) > 0)) then
 
@@ -840,7 +842,7 @@ contains
           call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, hs_offset(1:rank), hs_count(1:rank), hdferror)
 
           ! set mspace to a vector
-          mdims(1) = size(vector,1)
+          mdims(1) = size(vector, 1)
           call h5screate_simple_f(1, mdims, mspace_id, hdferror)
 
           ! write out vector
@@ -851,12 +853,12 @@ contains
 
        else
           write(format_string, '(A,I0,A,I0,A)') '(A,', rank-1, '(I0,A),A,', rank-1, '(I0,A),A)'
-          write(*,format_string) "--->ERROR: offset=(", (offset(i), ',', i=1,rank-1) , &
-               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2,rank),")"
+          write(*, format_string) "--->ERROR: offset=(", (offset(i), ',', i=1, rank-1) , &
+               "), is not constent with dset_dims(2:rank)=(", (dset_dims(i), ',', i=2, rank), ")"
        end if
        
     else
-       write(*,'(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
+       write(*, '(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
             ", is not constent with dset_dims(1)=", dset_dims(1)
     endif
     
@@ -879,7 +881,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_update_dataset_integer_0: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_update_dataset_integer_0: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -920,7 +922,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_0: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_double_0: " // trim(dset_name)
     end if
     
     ! set rank and dims
@@ -959,7 +961,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_1: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_double_1: " // trim(dset_name)
     end if
     
     ! set rank and dims
@@ -991,7 +993,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:)           ! data to be written
+    real(dp), intent(in) :: data(:, :)           ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -999,7 +1001,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_2: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_double_2: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1031,7 +1033,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:,:)         ! data to be written
+    real(dp), intent(in) :: data(:, :, :)         ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -1039,7 +1041,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_3: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_double_3: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1071,7 +1073,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:,:,:)       ! data to be written
+    real(dp), intent(in) :: data(:, :, :, :)       ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -1079,7 +1081,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_4: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_double_4: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1111,7 +1113,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:,:,:,:)     ! data to be written
+    real(dp), intent(in) :: data(:, :, :, :, :)     ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -1119,7 +1121,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_5: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_double_5: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1151,7 +1153,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(in) :: data(:,:,:,:,:,:)   ! data to be written
+    real(dp), intent(in) :: data(:, :, :, :, :, :)   ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -1159,7 +1161,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_double_6: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_double_6: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1191,6 +1193,92 @@ contains
   !!--------------------------------hdf_write_dataset_double--------------------------------
   !!----------------------------------------------------------------------------------------
 
+  !  \brief writes a 1d array to an hdf5 file
+  subroutine hdf_write_dataset_string_0(loc_id, dset_name, data)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    character(len=*), intent(in) :: data        ! data to be written
+
+    integer(SIZE_T) :: dims(1), string_length
+    integer(HID_T) :: dset_id, dspace_id, type_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*, '(A)') "--->hdf_write_dataset_string_0: " // trim(dset_name)
+    end if
+
+    ! set rank and dims
+    dims(1) = 0_SIZE_T ! shape(data, KIND=HID_T)
+    string_length = LEN(data)
+
+    ! create dataspace
+    call h5screate_simple_f(H5S_SCALAR_F, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    call h5tcopy_f (H5T_NATIVE_CHARACTER, type_id, hdferror)
+    call h5tset_size_f (type_id, string_length, hdferror)
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, type_id, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, type_id, data, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_string_0
+
+  !  \brief writes a 1d array to an hdf5 file
+  subroutine hdf_write_dataset_string_1(loc_id, dset_name, data)
+
+    integer(HID_T), intent(in) :: loc_id        ! local id in file
+    character(len=*), intent(in) :: dset_name   ! name of dataset
+    character(len=*), intent(in) :: data(:)     ! data to be written
+
+    integer :: rank
+    integer(SIZE_T) :: dims(1), string_length
+    integer(HID_T) :: dset_id, dspace_id, type_id
+    integer :: hdferror
+
+    if (hdf_print_messages) then
+       write(*, '(A)') "--->hdf_write_dataset_string_1: " // trim(dset_name)
+    end if
+
+    ! set rank and dims
+    rank = 1
+    dims = shape(data, KIND=HID_T)
+    string_length = LEN(data(1))
+
+    ! create dataspace
+    call h5screate_simple_f(rank, dims, dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5screate_simple: ", hdferror
+
+    call h5tcopy_f (H5T_NATIVE_CHARACTER, type_id, hdferror)
+    call h5tset_size_f (type_id, string_length, hdferror)
+
+    ! create dataset
+    call h5dcreate_f(loc_id, dset_name, type_id, dspace_id, dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dcreate: ", hdferror
+
+    ! write dataset
+    call h5dwrite_f(dset_id, type_id, data, dims, hdferror)
+    !write(*,'(A20,I0)') "h5dwrite: ", hdferror
+
+    ! close all id's
+    call h5dclose_f(dset_id, hdferror)
+    !write(*,'(A20,I0)') "h5dclose: ", hdferror
+    call h5sclose_f(dspace_id, hdferror)
+    !write(*,'(A20,I0)') "h5sclose: ", hdferror
+
+  end subroutine hdf_write_dataset_string_1
+
   
   !  \brief writes a scalar to an hdf5 file
   subroutine hdf_write_dataset_integer_0(loc_id, dset_name, data)
@@ -1204,7 +1292,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_integer_0: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_integer_0: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1243,7 +1331,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_integer_1: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_integer_1: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1275,7 +1363,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:)            ! data to be written
+    integer, intent(in) :: data(:, :)            ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -1283,7 +1371,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_integer_2: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_integer_2: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1315,7 +1403,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:,:)          ! data to be written
+    integer, intent(in) :: data(:, :, :)          ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -1323,7 +1411,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_integer_3: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_integer_3: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1355,7 +1443,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:,:,:)        ! data to be written
+    integer, intent(in) :: data(:, :, :, :)        ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -1363,7 +1451,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_integer_4: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_integer_4: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1395,7 +1483,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:,:,:,:)      ! data to be written
+    integer, intent(in) :: data(:, :, :, :, :)      ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -1403,7 +1491,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_integer_5: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_integer_5: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1435,7 +1523,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(in) :: data(:,:,:,:,:,:)    ! data to be written
+    integer, intent(in) :: data(:, :, :, :, :, :)    ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -1443,7 +1531,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_dataset_integer_6: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_write_dataset_integer_6: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1489,7 +1577,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_integer_0: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_integer_0: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1522,7 +1610,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_integer_1: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_integer_1: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1548,7 +1636,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:)           ! data to be written
+    integer, intent(out) :: data(:, :)           ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -1556,7 +1644,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_integer_2: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_integer_2: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1582,7 +1670,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:,:)         ! data to be written
+    integer, intent(out) :: data(:, :, :)         ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -1590,7 +1678,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_integer_3: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_integer_3: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1616,7 +1704,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:,:,:)       ! data to be written
+    integer, intent(out) :: data(:, :, :, :)       ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -1624,7 +1712,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_integer_4: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_integer_4: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1650,7 +1738,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:,:,:,:)     ! data to be written
+    integer, intent(out) :: data(:, :, :, :, :)     ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -1658,7 +1746,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_integer_5: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_integer_5: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1684,7 +1772,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    integer, intent(out) :: data(:,:,:,:,:,:)   ! data to be written
+    integer, intent(out) :: data(:, :, :, :, :, :)   ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -1692,7 +1780,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_integer_6: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_integer_6: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1732,7 +1820,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_double_0: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_double_0: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1765,7 +1853,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_double_1: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_double_1: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1791,7 +1879,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:)          ! data to be written
+    real(dp), intent(out) :: data(:, :)          ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(2)
@@ -1799,7 +1887,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_double_1: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_double_1: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1825,7 +1913,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:,:)        ! data to be written
+    real(dp), intent(out) :: data(:, :, :)        ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(3)
@@ -1833,7 +1921,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_double_3: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_double_3: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1859,7 +1947,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:,:,:)      ! data to be written
+    real(dp), intent(out) :: data(:, :, :, :)      ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(4)
@@ -1867,7 +1955,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_double_4: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_double_4: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1893,7 +1981,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:,:,:,:)    ! data to be written
+    real(dp), intent(out) :: data(:, :, :, :, :)    ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(5)
@@ -1901,7 +1989,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_double_5: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_double_5: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1927,7 +2015,7 @@ contains
 
     integer(HID_T), intent(in) :: loc_id        ! local id in file
     character(len=*), intent(in) :: dset_name   ! name of dataset
-    real(dp), intent(out) :: data(:,:,:,:,:,:)  ! data to be written
+    real(dp), intent(out) :: data(:, :, :, :, :, :)  ! data to be written
 
     integer :: rank
     integer(SIZE_T) :: dims(6)
@@ -1935,7 +2023,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_dataset_double_6: " // trim(dset_name)
+       write(*, '(A)') "--->hdf_read_dataset_double_6: " // trim(dset_name)
     end if
 
     ! set rank and dims
@@ -1976,7 +2064,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_attr_double_0: " // trim(obj_name) // "/" //trim(attr_name)
+       write(*, '(A)') "--->hdf_write_attr_double_0: " // trim(obj_name) // "/" //trim(attr_name)
     end if
 
     ! open object
@@ -2024,7 +2112,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_attr_double_1: " // trim(obj_name) // "/" //trim(attr_name)
+       write(*, '(A)') "--->hdf_write_attr_double_1: " // trim(obj_name) // "/" //trim(attr_name)
     end if
 
     ! open object
@@ -2072,7 +2160,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_attr_integer_0: " // trim(obj_name) // "/" // trim(attr_name)
+       write(*, '(A)') "--->hdf_write_attr_integer_0: " // trim(obj_name) // "/" // trim(attr_name)
     end if
 
     ! open object
@@ -2120,7 +2208,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_attr_integer_1: " // trim(obj_name) // "/" //trim(attr_name)
+       write(*, '(A)') "--->hdf_write_attr_integer_1: " // trim(obj_name) // "/" //trim(attr_name)
     end if
 
     ! open object
@@ -2168,7 +2256,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_write_attr_string: " // trim(obj_name) // "/" //trim(attr_name)
+       write(*, '(A)') "--->hdf_write_attr_string: " // trim(obj_name) // "/" //trim(attr_name)
     end if
 
     ! open object
@@ -2225,7 +2313,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_attr_double_0: " // trim(obj_name) // "/" //trim(attr_name)
+       write(*, '(A)') "--->hdf_read_attr_double_0: " // trim(obj_name) // "/" //trim(attr_name)
     end if
 
     ! open object
@@ -2266,7 +2354,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_attr_double_1: " // trim(obj_name) // "/" //trim(attr_name)
+       write(*, '(A)') "--->hdf_read_attr_double_1: " // trim(obj_name) // "/" //trim(attr_name)
     end if
 
     ! open object
@@ -2310,7 +2398,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_attr_integer_0: " // trim(obj_name) // "/" //trim(attr_name)
+       write(*, '(A)') "--->hdf_read_attr_integer_0: " // trim(obj_name) // "/" //trim(attr_name)
     end if
 
     ! open object
@@ -2351,7 +2439,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_attr_integer_1: " // trim(obj_name) // "/" //trim(attr_name)
+       write(*, '(A)') "--->hdf_read_attr_integer_1: " // trim(obj_name) // "/" //trim(attr_name)
     end if
 
     ! open object
@@ -2395,7 +2483,7 @@ contains
     integer :: hdferror
 
     if (hdf_print_messages) then
-       write(*,'(A)') "--->hdf_read_attr_string: " // trim(obj_name) // "/" //trim(attr_name)
+       write(*, '(A)') "--->hdf_read_attr_string: " // trim(obj_name) // "/" //trim(attr_name)
     end if
 
     ! open object

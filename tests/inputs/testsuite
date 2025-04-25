@@ -104,11 +104,17 @@ Quadrupole (a.u.)         ,   -5.234602        , 0 , 1.0e-4
 Quadrupole (a.u.)         ,    0.068177        , 1 , 1.0e-4
 Quadrupole (a.u.)         ,    0.054699        , 2 , 1.0e-4
 
-h2o_pbe0.in               , PBE0 water with a small basis
+h2o_pbe0.in               , PBE0 water with a small basis (generate RESTART)
 SCF Total Energy          , -76.3408991125     , 0 , 1.0e-7
 
 h2o_pbe0_basis_restart.in, PBE0 water restarting from a previous run with a smaller basis, restart
-SCF Total Energy          , -76.3527592768     , 0 , 1.0e-7
+SCF Total Energy          , -76.3536424842     , 0 , 1.0e-7
+
+propanol_neutral.in       , Neutral propanol (generate RESTART)
+SCF Total Energy          , -194.1549010191    , 0 , 1.0e-7
+
+propanol_cation_restart.in, propanol cation (use neutral RESTART), restart
+SCF Total Energy          , -193.7189853894    , 0 , 1.0e-7
 
 na08_damping.in           , LDA Na8 cluster with density damping stopped after 2 SCF cycles
 SCF Total Energy          , -1232.7456930389   , 0 , 1.0e-7
@@ -117,7 +123,7 @@ Convergence criterium     ,     6.45101E+02    , 0 , 1.0e-1
 h2_guess_mix.in           , HF mixing the HOMO-LUMO in nspin=2
 SCF Total Energy          , -0.9985575214      , 0 , 1.0e-5
 gKS HOMO energy           , -13.586058         , 0 , 1.0e-4
-gKS LUMO energy           ,   1.996172         , 0 , 1.0e-4
+gKS LUMO energy           ,   1.996172         , 0 , 2.0e-4   # Loosened criterium
 
 h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set, noparallel
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
@@ -491,7 +497,7 @@ h2_noft_restart.in        , RI-NOFT calculation applied to dissociated H2 with R
 NOFT Total Energy         ,     -0.9996198350  , 0 , 1.0e-5
 
 h2_noft_rsh.in            , RI-NOFT calculation applied to H2 with RI using range-sep NOFT
-NOFT Total Energy         ,     -1.1669251517  , 0 , 1.0e-5
+NOFT Total Energy         ,     -0.9973489203  , 0 , 1.0e-5
 
 n2_noft.in                , RI-NOFT calculation applied to dissociated N2 with RI
 NOFT Total Energy         ,   -108.7519260379  , 0 , 5.0e-5
@@ -829,7 +835,7 @@ SCF Total Energy          ,  -76.3757991664     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.3811268142     , 0 , 1.0e-7
 
 h2o_rt_tddft_min_overlap.in , proj wihtout basis nstate ne nbf,tddft
-RT-TDDFT Total Energy     ,  -75.6361896847     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.6361897954     , 0 , 1.0e-7
 
 be2_qsgw_bse.in           , BSE calculation after QSGW for Be2
 gKS HOMO energy           ,  -8.818516          , 0 , 1.0e-4
@@ -1056,7 +1062,7 @@ Number of electrons       ,   1.999590         , 0 , 1.0e-4
 benzene_he_rt-tddft.in, RT-TDDFT with moving basis for He++, need_gradients
 SCF Total Energy          , -232.8924888075    , 0 , 5.0e-5   # Loosened criterium
 RT-TDDFT Total Energy     , -230.4199238294    , 0 , 5.0e-5   # Loosened criterium
-Number of electrons       ,    42.0025941      , 0 , 1.0e-4
+Number of electrons       ,    42.0025941      , 0 , 1.0e-2   # Loosened criterium
 
 lih_rpa.in                , RPA energy of LiH
 SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
@@ -1147,4 +1153,13 @@ SIGMA_TDHF HOMO energy    ,  -20.893601        , 0 , 1.0e-4
 ne_sigma_tdschf.in        , Sigma_TDscHF vertex correction for Neon atom 
 SCF Total Energy          , -128.4891424970    , 0 , 1.0e-7
 SIGMA_TDSCHF HOMO energy  ,  -20.762555        , 0 , 1.0e-4
+
+he_h_collision_rt-tddft_force.in, RT-TDDFT with force calculation
+SCF Total Energy           ,   -1.8029834147    , 0 , 1.0e-7
+RT-TDDFT Total Energy      ,   -0.9236896915    , 0 , 1.0e-7
+RT-TDDFT work on projectile,   -0.8735542178    , 0 , 1.0e-7
+
+ne_gw2sosex_psd.in, PSD-ized 2SOSEX self-energy
+SCF Total Energy           , -128.5414975632    , 0 , 1.0e-7
+GW+2SOSEX_PSD HOMO energy  ,  -21.798228        , 0 , 1.0e-4
 

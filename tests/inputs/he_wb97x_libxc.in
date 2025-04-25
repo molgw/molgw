@@ -1,5 +1,6 @@
 &molgw
  scf='LIBXC:464'
+ npulay_hist=2
 
  basis='aug-cc-pVDZ'
 

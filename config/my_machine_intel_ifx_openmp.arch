@@ -1,0 +1,19 @@
+OPENMP=-qopenmp 
+PYTHON=python
+
+# Sequential compilation
+FC=ifx
+
+CPPFLAGS= -DHAVE_MKL
+
+CXX=icx 
+FCFLAGS= -fpp -O3 -xhost
+CXXFLAGS= -O3 -xhost
+
+LAPACK= -qmkl=parallel
+
+LIBXC_ROOT=${HOME}/opt/libxc-7.0.0/
+LIBCINT_ROOT=${HOME}/opt/libcint-6.1.2/
+
+LDFLAGS=-lquadmath
+

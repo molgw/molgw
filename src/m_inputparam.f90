@@ -17,7 +17,7 @@ module m_inputparam
   use m_atoms
   use m_elements
   use m_ecp
-  use m_string_tools,only: capitalize,yesno_to_logical,yesno_to_TrueFalse
+  use m_string_tools, only: capitalize, yesno_to_logical, yesno_to_TrueFalse
   use m_libxc_tools
 
 #if !defined(NO_LIBXC)
@@ -26,49 +26,49 @@ module m_inputparam
 
   !
   ! Self-energy evaluation technique
-  integer,parameter :: one_shot                = 101
-  integer,parameter :: QS                      = 102
-  integer,parameter :: EVSC                    = 103
-  integer,parameter :: imaginary_axis_pade     = 104
-  integer,parameter :: static_selfenergy       = 105
-  integer,parameter :: imaginary_axis_integral = 106
-  integer,parameter :: exact_dyson             = 107
-  integer,parameter :: imaginary_axis_homolumo = 108
-  integer,parameter :: contour_deformation     = 109
+  integer, parameter :: one_shot                = 101
+  integer, parameter :: QS                      = 102
+  integer, parameter :: EVSC                    = 103
+  integer, parameter :: imaginary_axis_pade     = 104
+  integer, parameter :: static_selfenergy       = 105
+  integer, parameter :: imaginary_axis_integral = 106
+  integer, parameter :: exact_dyson             = 107
+  integer, parameter :: imaginary_axis_homolumo = 108
+  integer, parameter :: contour_deformation     = 109
 
   !
-  ! Self-energy approximation
-  integer,parameter :: CI              =-201
-  integer,parameter :: COHSEX          = 204
-  integer,parameter :: GnW0            = 205
-  integer,parameter :: GnWn            = 206
-  integer,parameter :: GW              = 207
-  integer,parameter :: GWSOSEX         = 217
-  integer,parameter :: GWSOX           = 219
-  integer,parameter :: PT2             = 220
-  integer,parameter :: ONE_RING        = 221
-  integer,parameter :: SOX             = 222
-  integer,parameter :: PT3             = 223
-  integer,parameter :: TWO_RINGS       = 224
-  integer,parameter :: GWPT3           = 226
-  integer,parameter :: G3W2            = 229
-  integer,parameter :: GW0GW0G         = 231
-  integer,parameter :: GWGW0G          = 232
-  integer,parameter :: G3W2_NUMERICAL  = 233
-  integer,parameter :: SIGMA_TDHF      = 234
-  integer,parameter :: SIGMA_TDSCHF    = 235
-  integer,parameter :: GWGW0RPAG       = 236
+  ! Self-energy approximations
+  integer, parameter :: CI              =-201
+  integer, parameter :: COHSEX          = 204
+  integer, parameter :: GnW0            = 205
+  integer, parameter :: GnWn            = 206
+  integer, parameter :: GW              = 207
+  integer, parameter :: DUMP_GW         = 208
+  integer, parameter :: GWSOSEX         = 217
+  integer, parameter :: GWSOX           = 219
+  integer, parameter :: PT2             = 220
+  integer, parameter :: ONE_RING        = 221
+  integer, parameter :: SOX             = 222
+  integer, parameter :: PT3             = 223
+  integer, parameter :: TWO_RINGS       = 224
+  integer, parameter :: GWPT3           = 226
+  integer, parameter :: G3W2            = 229
+  integer, parameter :: GW0GW0G         = 231
+  integer, parameter :: GWGW0G          = 232
+  integer, parameter :: G3W2_NUMERICAL  = 233
+  integer, parameter :: SIGMA_TDHF      = 234
+  integer, parameter :: SIGMA_TDSCHF    = 235
+  integer, parameter :: GWGW0RPAG       = 236
+  integer, parameter :: GW2SOSEXPSD     = 237
 
   !
   ! TDDFT variables
-  integer,parameter :: EXCIT_NO                 = 501
-  integer,parameter :: EXCIT_LIGHT              = 502
-  integer,parameter :: EXCIT_PROJECTILE         = 503
-  integer,parameter :: EXCIT_PROJECTILE_W_BASIS = 504
+  integer, parameter :: EXCIT_NO                 = 501
+  integer, parameter :: EXCIT_LIGHT              = 502
+  integer, parameter :: EXCIT_PROJECTILE         = 503
+  integer, parameter :: EXCIT_PROJECTILE_W_BASIS = 504
 
-  integer,protected           :: unit_yaml
-  character(len=10),parameter :: filename_yaml = 'molgw.yaml'
-
+  integer, protected           :: unit_yaml
 
   type calculation_type
     character(len=100) :: scf_name
@@ -86,7 +86,7 @@ module m_inputparam
     logical            :: is_noft
     logical            :: is_selfenergy
     logical            :: is_ci
-    logical            :: is_bse,no_bse_kernel,include_tddft_kernel,include_tdhf_kernel
+    logical            :: is_bse, no_bse_kernel, include_tddft_kernel, include_tdhf_kernel
     integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
     integer            :: selfenergy_approx         ! GW, COHSEX, PT2
   end type calculation_type
@@ -102,87 +102,88 @@ module m_inputparam
   ! There are the input variables of MOLGW
   ! They should not be modified anywhere else in the code.
   ! Declare them as protected and work on copies if absolutely necessary.
-  type(calculation_type),protected :: calc_type
-  type(dft_xc_info),allocatable    :: dft_xc(:)
-  type(excitation_type),protected  :: excit_type
-  logical,protected                :: is_frozencore
-  logical,protected                :: is_tddft_frozencore
-  logical,protected                :: is_tda,is_triplet
-  logical,protected                :: is_virtual_fno
-  real(dp),protected               :: spin_fact
-  real(dp),protected               :: electrons
+  type(calculation_type), protected :: calc_type
+  type(dft_xc_info), allocatable    :: dft_xc(:)
+  type(excitation_type), protected  :: excit_type
+  logical, protected                :: is_frozencore
+  logical, protected                :: is_tddft_frozencore
+  logical, protected                :: is_tda, is_triplet
+  logical, protected                :: is_virtual_fno
+  real(dp), protected               :: spin_fact
+  real(dp), protected               :: electrons
 
-  character(len=100),allocatable,protected :: basis_name(:)
-  character(len=100),allocatable,protected :: auxil_basis_name(:)
-  character(len=100),allocatable,protected :: small_basis_name(:)
-  character(len=100),allocatable,protected :: ecp_basis_name(:)
-  character(len=100),allocatable,protected :: ecp_auxil_basis_name(:)
-  character(len=100),allocatable,protected :: ecp_small_basis_name(:)
+  character(len=100), allocatable, protected :: basis_name(:)
+  character(len=100), allocatable, protected :: auxil_basis_name(:)
+  character(len=100), allocatable, protected :: small_basis_name(:)
+  character(len=100), allocatable, protected :: ecp_basis_name(:)
+  character(len=100), allocatable, protected :: ecp_auxil_basis_name(:)
+  character(len=100), allocatable, protected :: ecp_small_basis_name(:)
 
-  integer,protected                :: tddft_grid_level
-  integer,protected                :: grid_level
-  integer,protected                :: ecp_level
-  integer,protected                :: integral_level
-  logical,protected                :: has_auxil_basis
-  logical,protected                :: has_small_basis
-  logical,protected                :: incore_
+  integer, protected                :: tddft_grid_level
+  integer, protected                :: grid_level
+  integer, protected                :: ecp_level
+  integer, protected                :: integral_level
+  logical, protected                :: has_auxil_basis
+  logical, protected                :: has_small_basis
+  logical, protected                :: read_restart_
   !
   ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
   ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
-  complex(dp),protected            :: ieta
+  complex(dp), protected            :: ieta
 
-  logical,protected                :: mpi_poorman_
-  logical,protected                :: use_correlated_density_matrix_
-  logical,protected                :: gwgamma_tddft_
-  logical,protected                :: memory_evaluation_
-  logical,protected                :: read_restart_
-  logical,protected                :: ignore_bigrestart_
-  logical,protected                :: force_energy_qp_
-  logical,protected                :: print_eri_
-  logical,protected                :: print_wfn_
-  logical,protected                :: print_w_
-  logical,protected                :: print_sigma_
-  logical,protected                :: print_restart_
-  logical,protected                :: print_bigrestart_
-  logical,protected                :: print_pdos_
-  logical,protected                :: print_spatial_extension_
-  logical,protected                :: print_cube_
-  logical,protected                :: print_wfn_files_
-  logical,protected                :: print_all_MO_wfn_file_
-  logical,protected                :: print_multipole_
-  logical,protected                :: print_hartree_
-  logical,protected                :: print_density_matrix_
-  logical,protected                :: print_rho_grid_
-  logical,protected                :: print_tddft_matrices_
-  logical,protected                :: print_cube_rho_tddft_
-  logical,protected                :: print_cube_diff_tddft_
-  logical,protected                :: print_line_rho_tddft_
-  logical,protected                :: print_line_rho_diff_tddft_
-  logical,protected                :: print_dens_traj_tddft_
-  logical,protected                :: print_c_matrix_cmplx_hdf5_
-  logical,protected                :: print_p_matrix_MO_block_hdf5_
-  logical,protected                :: print_dens_traj_
-  logical,protected                :: print_dens_traj_points_set_
-  logical,protected                :: print_charge_tddft_
-  logical,protected                :: print_transition_density_
-  logical,protected                :: cphf_cpks_0_
-  logical,protected                :: calc_q_matrix_
-  logical,protected                :: calc_dens_disc_
-  logical,protected                :: calc_spectrum_
-  logical,protected                :: read_tddft_restart_
-  logical,protected                :: print_tddft_restart_
-  logical,protected                :: print_yaml_
-  logical,protected                :: assume_scf_converged_
-  logical,protected                :: analytic_chi_
-  logical,protected                :: eri3_genuine_
-  logical,protected                :: auto_occupation_
-  logical,protected                :: g3w2_skip_vvv_
-  logical,protected                :: g3w2_skip_vv_
-  logical,protected                :: g3w2_static_approximation_
-  logical,protected                :: x2c_
+  !logical,protected                :: incore_
+  !logical,protected                :: mpi_poorman_
+  !logical,protected                :: use_correlated_density_matrix_
+  !logical,protected                :: gwgamma_tddft_
+  !logical,protected                :: memory_evaluation_
+  !logical,protected                :: ignore_bigrestart_
+  !logical,protected                :: force_energy_qp_
+  !logical,protected                :: print_eri_
+  !logical,protected                :: print_wfn_
+  !logical,protected                :: print_w_
+  !logical,protected                :: print_sigma_
+  !logical,protected                :: print_restart_
+  !logical,protected                :: print_bigrestart_
+  !logical,protected                :: print_pdos_
+  !logical,protected                :: print_spatial_extension_
+  !logical,protected                :: print_cube_
+  !logical,protected                :: print_wfn_files_
+  !logical,protected                :: print_all_MO_wfn_file_
+  !logical,protected                :: print_multipole_
+  !logical,protected                :: print_hartree_
+  !logical,protected                :: print_density_matrix_
+  !logical,protected                :: print_rho_grid_
+  !logical,protected                :: print_tddft_matrices_
+  !logical,protected                :: print_cube_rho_tddft_
+  !logical,protected                :: print_cube_diff_tddft_
+  !logical,protected                :: print_line_rho_tddft_
+  !logical,protected                :: print_line_rho_diff_tddft_
+  !logical,protected                :: print_dens_traj_tddft_
+  !logical,protected                :: print_c_matrix_cmplx_hdf5_
+  !logical,protected                :: print_p_matrix_MO_block_hdf5_
+  !logical,protected                :: print_dens_traj_
+  !logical,protected                :: print_dens_traj_points_set_
+  !logical,protected                :: print_charge_tddft_
+  !logical,protected                :: print_transition_density_
+  !logical,protected                :: cphf_cpks_0_
+  !logical,protected                :: calc_q_matrix_
+  !logical,protected                :: calc_dens_disc_
+  !logical,protected                :: calc_spectrum_
+  !logical,protected                :: read_tddft_restart_
+  !logical,protected                :: print_tddft_restart_
+  !logical,protected                :: print_yaml_
+  !logical,protected                :: assume_scf_converged_
+  !logical,protected                :: analytic_chi_
+  !logical,protected                :: eri3_genuine_
+  !logical,protected                :: auto_occupation_
+  !logical,protected                :: g3w2_skip_vvv_
+  !logical,protected                :: g3w2_skip_vv_
+  !logical,protected                :: g3w2_static_approximation_
+  !logical,protected                :: x2c_
 
-  real(dp),protected               :: rcut         = 0.0_dp
-  real(dp),protected               :: factor_sosex = 1.0_dp
+  real(dp), protected               :: rcut         = 0.0_dp
+  real(dp), protected               :: factor_sox   = 1.0_dp
+  real(dp), protected               :: factor_sosex = 1.0_dp
 
   ! Here we call the fortran code that was generated by the python script
   ! Any new variable should be added through the python script
@@ -192,10 +193,10 @@ contains
 
 
 !=========================================================================
-subroutine init_calculation_type(scf,postscf)
+subroutine init_calculation_type(scf, postscf)
   implicit none
 
-  character(len=*),intent(in) :: scf,postscf
+  character(len=*), intent(in) :: scf, postscf
   !=====
   !=====
 
@@ -231,13 +232,16 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GnW0
       calc_type%selfenergy_technique = EVSC
-    case('GNWN','EVGW')
+    case('GNWN', 'EVGW')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GnWn
       calc_type%selfenergy_technique = EVSC
     case('GW','G0W0')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW
+    case('DUMPGW', 'DUMP_GW')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = DUMP_GW
     case('G0W0_DYSON')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW
@@ -246,44 +250,52 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = COHSEX
       calc_type%selfenergy_technique = static_selfenergy
-    case('G0W0_AC','GW_AC','G0W0_PADE','GW_PADE')
+    case('G0W0_AC', 'GW_AC', 'G0W0_PADE','GW_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('G0W0_CONTOUR','GW_CONTOUR')
+    case('G0W0_CONTOUR', 'GW_CONTOUR')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW
       calc_type%selfenergy_technique = contour_deformation
-    case('G0W0_HOMOLUMO','GW_HOMOLUMO')
+    case('G0W0_HOMOLUMO', 'GW_HOMOLUMO')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx    = GW
       calc_type%selfenergy_technique = imaginary_axis_homolumo
-    case('GWSOX','GW+SOX')
+    case('GWSOX', 'GW+SOX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOX
-    case('GWSOX_PADE','GW+SOX_PADE')
+    case('GWSOX_PADE', 'GW+SOX_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOX
       calc_type%selfenergy_technique = imaginary_axis_pade
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('GWSOSEX','GW+SOSEX','GW+GWGVG')
+    case('GWSOSEX', 'GW+SOSEX', 'GW+GWGVG', 'GW+SOSEX_ANALYZED')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
-    case('GWSOSEX_PADE','GW+SOSEX_PADE')
+    case('GWSOSEX_PADE', 'GW+SOSEX_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GWSOSEX2','GW+SOSEX2','GW+2SOSEX')
+    case('GW+2SOX+2SOSEX')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GWSOSEX
+      factor_sox = 2.0_dp
+      factor_sosex = 2.0_dp
+    case('GWSOSEX2', 'GW+SOSEX2', 'GW+2SOSEX', 'GW+2SOSEX_ANALYZED')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
-    case('GWSOSEX2_PADE','GW+SOSEX2_PADE','GW+2SOSEX_PADE')
+    case('GWSOSEX2_PADE', 'GW+SOSEX2_PADE', 'GW+2SOSEX_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
       calc_type%selfenergy_technique = imaginary_axis_pade
+    case('GW2SOSEXPSD', 'GW+2SOSEXPSD', 'GW+2SOSEX_PSD')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GW2SOSEXPSD
     case('GW+GWGWG', 'GW+G3W2')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = G3W2
@@ -306,13 +318,13 @@ subroutine init_calculation_type(scf,postscf)
     case('GW+GWGW0RPAG')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWGW0RPAG
-    case('SIGMA_TDHF','GWTILDE')
+    case('SIGMA_TDHF', 'GWTILDE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = SIGMA_TDHF
     case('SIGMA_TDSCHF')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = SIGMA_TDSCHF
-    case('EVGWGAMMA','GNW0GAMMAN','GNW0SOSEX','EVGWSOSEX')
+    case('EVGWGAMMA', 'GNW0GAMMAN', 'GNW0SOSEX', 'EVGWSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = EVSC
@@ -325,21 +337,21 @@ subroutine init_calculation_type(scf,postscf)
     case('MP3')
       calc_type%is_mp2   =.TRUE.
       calc_type%is_mp3   =.TRUE.
-    case('MP2_SELFENERGY','PT2','GF2')
+    case('MP2_SELFENERGY', 'PT2', 'GF2')
       calc_type%selfenergy_approx = PT2
-    case('MP3_SELFENERGY','PT3','GF3')
+    case('MP3_SELFENERGY', 'PT3', 'GF3')
       calc_type%selfenergy_approx = PT3
-    case('EVMP2_SELFENERGY','EVPT2','EVGF2')
+    case('EVMP2_SELFENERGY', 'EVPT2', 'EVGF2')
       calc_type%selfenergy_approx = PT2
       calc_type%selfenergy_technique = EVSC
-    case('EVMP3_SELFENERGY','EVPT3','EVGF3')
+    case('EVMP3_SELFENERGY', 'EVPT3', 'EVGF3')
       calc_type%selfenergy_approx = PT3
       calc_type%selfenergy_technique = EVSC
-    case('NOFT','PCCD')
+    case('NOFT', 'PCCD')
       calc_type%is_noft   =.TRUE.
-    case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
+    case('TWO_RINGS', 'TWO-RINGS', 'TWORINGS', '2RINGS')
       calc_type%selfenergy_approx = TWO_RINGS
-    case('ONE_RING','ONE-RING','ONERING','1RING')
+    case('ONE_RING', 'ONE-RING', 'ONERING','1RING')
       calc_type%selfenergy_approx = ONE_RING
     case('SOX')
       calc_type%selfenergy_approx = SOX
@@ -350,26 +362,26 @@ subroutine init_calculation_type(scf,postscf)
       calc_type%selfenergy_approx = CI
     case('BSE')
       calc_type%is_bse = .TRUE.
-    case('BSE_RPA','BSE-RPA') ! debug only
+    case('BSE_RPA', 'BSE-RPA') ! debug only
       calc_type%is_bse        = .TRUE.
       calc_type%no_bse_kernel = .TRUE.
     case('TD')
       calc_type%include_tddft_kernel = .TRUE.
-    case('CPHF','CPKS')
+    case('CPHF', 'CPKS')
       calc_type%include_tddft_kernel = .TRUE.
     case('REAL_TIME')
       calc_type%is_real_time = .TRUE.
-    case('RPA','RPAP','RPA_IM','RPAP_IM','RPA+','RPA+_IM','RPA-I')
+    case('RPA', 'RPAP', 'RPA_IM', 'RPAP_IM', 'RPA+','RPA+_IM','RPA-I')
       ! nothing to declare
     case('BSE-I')
       calc_type%is_bse        = .TRUE.
       ! nothing to declare
     case('RPALR')
       calc_type%is_lr_mbpt = .TRUE.
-    case('RPAX','RPAX-I','RPAX-II')
+    case('RPAX', 'RPAX-I','RPAX-II')
       calc_type%include_tdhf_kernel =.TRUE.
     case default
-      write(stdout,*) 'postscf: ',TRIM(postscf)
+      write(stdout, *) 'postscf: ', TRIM(postscf)
       call die('init_calculation_type: Error reading keyword: postscf')
     end select
   endif
@@ -385,7 +397,7 @@ subroutine init_calculation_type(scf,postscf)
   case('CORE')
     alpha_hybrid            = 0.00_dp
     calc_type%is_core       = .TRUE.
-  case('H','HARTREE')
+  case('H', 'HARTREE')
     alpha_hybrid            = 0.0_dp
   case('HF')
     alpha_hybrid            = 1.00_dp
@@ -435,17 +447,17 @@ subroutine init_excitation_type()
 
   if( LEN(TRIM(excit_name)) /= 0 ) then
     select case (excit_type%name)
-    case("ION","ANTIION")
+    case("ION", "ANTIION")
       excit_type%form = EXCIT_PROJECTILE_W_BASIS
-    case("NUCLEUS","ANTINUCLEUS")
+    case("NUCLEUS", "ANTINUCLEUS")
       excit_type%form = EXCIT_PROJECTILE
     case("NO")
       excit_type%form = EXCIT_NO
-    case("GAU","HSW","STEP","DEL")
+    case("GAU", "HSW","STEP","DEL")
       excit_type%form = EXCIT_LIGHT
     case default
-      write(stdout,*) 'error reading excitation name (excit_name variable)'
-      write(stdout,*) TRIM(excit_name)
+      write(stdout, *) 'error reading excitation name (excit_name variable)'
+      write(stdout, *) TRIM(excit_name)
       call die('excit_name is unknown')
     end select
   end if
@@ -457,10 +469,10 @@ end subroutine init_excitation_type
 subroutine init_dft_type(key)
   implicit none
 
-  character(len=*),intent(in)          :: key
+  character(len=*), intent(in)          :: key
   !=====
-  integer              :: ixc,off1,off2
-  real(C_DOUBLE)       :: globalx_libxc,srx_libxc,omega_libxc
+  integer              :: ixc, off1, off2
+  real(C_DOUBLE)       :: globalx_libxc, srx_libxc, omega_libxc
   !=====
 
 
@@ -514,7 +526,7 @@ subroutine init_dft_type(key)
     dft_xc(1)%id    = XC_GGA_X_PBE
     dft_xc(2)%id    = XC_GGA_C_PBE
     alpha_hybrid    = 0.00_dp
-  case('PBE_SOL','PBESOL')
+  case('PBE_SOL', 'PBESOL')
     dft_xc(1)%id    = XC_GGA_X_PBE_SOL
     dft_xc(2)%id    = XC_GGA_C_PBE_SOL
     alpha_hybrid    = 0.00_dp
@@ -570,7 +582,7 @@ subroutine init_dft_type(key)
   case('BHANDH')
     dft_xc(1)%id = XC_HYB_GGA_XC_BHANDH
     alpha_hybrid = 0.50_dp
-  case('BHANDHLYP','BHLYP')
+  case('BHANDHLYP', 'BHLYP')
     dft_xc(1)%id = XC_HYB_GGA_XC_BHANDHLYP
     alpha_hybrid = 0.50_dp
   case('B3LYP')
@@ -643,7 +655,7 @@ subroutine init_dft_type(key)
     beta_hybrid   = 1.00_dp
     dft_xc(1)%coeff = beta_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
-    if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=2.00_dp
+    if( abs( gamma_hybrid - 1000000.0_dp ) < tol8 ) gamma_hybrid=1.00_dp
     dft_xc(1)%gamma = gamma_hybrid
     dft_xc(2)%gamma = gamma_hybrid
   case('LDA0')
@@ -717,23 +729,23 @@ subroutine init_dft_type(key)
     ! using  LIBXC:101+130 for PBE
     !
     ! Check whether the key starts with "LIBXC:")
-    off1 = INDEX(key,"LIBXC:")
+    off1 = INDEX(key, "LIBXC:")
     if( off1 > 0 ) then
-      write(stdout,'(1x,a,a)') 'Reading a manual input of the LIBXC indeces: ',TRIM(key)
+      write(stdout, '(1x,a,a)') 'Reading a manual input of the LIBXC indeces: ', TRIM(key)
       off1 = off1 + 6
 
       ixc = 0
       off2 = off1
       do while( off2 == off1 )
         ! Look for "+" sign to assemble LIBXC functionals
-        off2 = INDEX(key(off1:),"+") - 2 + off1
+        off2 = INDEX(key(off1:), "+") - 2 + off1
         ixc = ixc + 1
         if( ixc > SIZE(dft_xc) ) &
           call die('init_dft_type: too many functionals in the input string. Maximum is 3')
         if( off2 < off1 ) then
-          read(key(off1:),'(i4)') dft_xc(ixc)%id
+          read(key(off1:), '(i4)') dft_xc(ixc)%id
         else
-          read(key(off1:off2),'(i4)') dft_xc(ixc)%id
+          read(key(off1:off2), '(i4)') dft_xc(ixc)%id
           off2 = off2+2
           off1 = off2
         endif
@@ -749,9 +761,9 @@ subroutine init_dft_type(key)
 #if !defined(NO_LIBXC)
   !
   ! If "LIBXC:" syntax, obtain exact-exchange parameters from LIBXC
-  if( INDEX(key,"LIBXC:") > 0 ) then
+  if( INDEX(key, "LIBXC:") > 0 ) then
     ! Assumes hybrid functionals consists of only one XC id
-    call xc_hyb_cam_coef(dft_xc(1)%func,omega_libxc,globalx_libxc,srx_libxc)
+    call xc_hyb_cam_coef(dft_xc(1)%func, omega_libxc, globalx_libxc, srx_libxc)
     gamma_hybrid = omega_libxc
     alpha_hybrid = globalx_libxc + srx_libxc
     beta_hybrid  = -srx_libxc
@@ -773,47 +785,47 @@ subroutine summary_input()
 
   !
   ! Summarize some important input parameters
-  write(stdout,'(/,a,/)')    ' Summary of important input parameters '
-  write(stdout,'(a30,2x,a)') '         SCF type: ',calc_type%scf_name
-  write(stdout,'(a30,2x,a)') '    Post SCF type: ',calc_type%postscf_name
-  write(stdout,'(a30,i4)')   ' number of atoms: ',ncenter_nuclei
-  write(stdout,'(a30,i4)')   ' number of basis centers: ',ncenter_basis
-  write(stdout,'(a30,f10.4)') ' electrons: ',electrons
-  write(stdout,'(a30,f10.4)') ' charge: ',charge
-  write(stdout,'(a30,i4)')   ' spin polarization: ',nspin
-  write(stdout,'(a30,f10.4)') ' magnetization: ',magnetization
-  write(stdout,'(a30,2x,a)') ' basis file path:',TRIM(basis_path)
-  write(stdout,'(a30,2x,a)') ' basis set: ',basis_name(1)
-  write(stdout,'(a30,2x,a)') ' auxiliary basis set: ',auxil_basis_name(1)
-  write(stdout,'(a30,2x,a)') ' gaussian type: ',TRIM(gaussian_type)
-  write(stdout,'(a30,f10.4)') ' global exchange: ',alpha_hybrid
-  write(stdout,'(a30,f10.4)') ' long-range-only exchange: ',beta_hybrid
+  write(stdout, '(/,a,/)')    ' Summary of important input parameters '
+  write(stdout, '(a30,2x,a)') '         SCF type: ', calc_type%scf_name
+  write(stdout, '(a30,2x,a)') '    Post SCF type: ', calc_type%postscf_name
+  write(stdout, '(a30,i4)')   ' number of atoms: ', ncenter_nuclei
+  write(stdout, '(a30,i4)')   ' number of basis centers: ', ncenter_basis
+  write(stdout, '(a30,f10.4)') ' electrons: ', electrons
+  write(stdout, '(a30,f10.4)') ' charge: ', charge
+  write(stdout, '(a30,i4)')   ' spin polarization: ', nspin
+  write(stdout, '(a30,f10.4)') ' magnetization: ', magnetization
+  write(stdout, '(a30,2x,a)') ' basis file path:', TRIM(basis_path)
+  write(stdout, '(a30,2x,a)') ' basis set: ', basis_name(1)
+  write(stdout, '(a30,2x,a)') ' auxiliary basis set: ', auxil_basis_name(1)
+  write(stdout, '(a30,2x,a)') ' gaussian type: ', TRIM(gaussian_type)
+  write(stdout, '(a30,f10.4)') ' global exchange: ', alpha_hybrid
+  write(stdout, '(a30,f10.4)') ' long-range-only exchange: ', beta_hybrid
   if( rcut > 1.0e-6_dp ) then
-    write(stdout,'(a30,f8.4)') ' range-separation (bohr-1): ',gamma_hybrid
+    write(stdout, '(a30,f8.4)') ' range-separation (bohr-1): ', gamma_hybrid
   else
-    write(stdout,'(a30,a)') ' range-separation (bohr-1): ',' none'
+    write(stdout, '(a30,a)') ' range-separation (bohr-1): ', ' none'
   endif
-  write(stdout,*)
+  write(stdout, *)
 
   call output_positions()
 
-  write(stdout,'(a,i5)') ' Number of bonds ',nbond
+  write(stdout, '(a,i5)') ' Number of bonds ', nbond
   if(inversion) then
-    write(stdout,*) 'Molecule has inversion symmetry'
+    write(stdout, *) 'Molecule has inversion symmetry'
   else
-    write(stdout,*) 'Molecule does not have inversion symmetry'
+    write(stdout, *) 'Molecule does not have inversion symmetry'
   endif
   if(linear) then
-    write(stdout,*) 'Molecule is linear'
+    write(stdout, *) 'Molecule is linear'
   else
-    write(stdout,*) 'Molecule is not linear'
+    write(stdout, *) 'Molecule is not linear'
     if(planar) then
-      write(stdout,*) 'Molecule is planar'
+      write(stdout, *) 'Molecule is planar'
     else
-      write(stdout,*) 'Molecule is not planar'
+      write(stdout, *) 'Molecule is not planar'
     endif
   endif
-  write(stdout,*)
+  write(stdout, *)
 
 end subroutine summary_input
 
@@ -823,7 +835,7 @@ subroutine read_inputfile_namelist()
   implicit none
 
   !=====
-  integer              :: idot,ichart,ninput_argument
+  integer              :: idot, ichart, ninput_argument
   character(len=140)   :: input_file_name
   integer              :: inputfile
   logical              :: file_exists
@@ -837,7 +849,7 @@ subroutine read_inputfile_namelist()
   character(len=140)   :: ecp_small_basis
   character(len=256)   :: default_basis_path
   character(len=256)   :: basis_path_env
-  integer              :: istatus,icenter
+  integer              :: istatus, icenter
 
   ! Here we call the fortran code that was generated by the python script
   ! Any new variable should be added through the python script
@@ -854,9 +866,9 @@ subroutine read_inputfile_namelist()
   ! basis_path is set in this priority order:
   ! input file > environment variable > default from the sources
   if( LEN(TRIM(basis_path)) == 0 ) then
-    call GET_ENVIRONMENT_VARIABLE('MOLGW_BASIS_PATH',basis_path_env,status=istatus)
+    call GET_ENVIRONMENT_VARIABLE('MOLGW_BASIS_PATH', basis_path_env, status=istatus)
     if( istatus == 0 ) then
-      write(stdout,'(1x,a,a)') 'Found environment variable: MOLGW_BASIS_PATH=',TRIM(basis_path_env)
+      write(stdout, '(1x,a,a)') 'Found environment variable: MOLGW_BASIS_PATH=', TRIM(basis_path_env)
       basis_path = TRIM(basis_path_env)
     else
       basis_path = default_basis_path
@@ -869,11 +881,11 @@ subroutine read_inputfile_namelist()
 
   select case(ninput_argument)
   case(1)
-    call GET_COMMAND_ARGUMENT(1,VALUE=input_file_name)
-    write(stdout,'(a,a)') ' Opening input file: ',TRIM(input_file_name)
-    inquire(file=TRIM(input_file_name),exist=file_exists)
+    call GET_COMMAND_ARGUMENT(1, VALUE=input_file_name)
+    write(stdout, '(a,a)') ' Opening input file: ', TRIM(input_file_name)
+    inquire(file=TRIM(input_file_name), exist=file_exists)
     if( .NOT. file_exists) then
-      write(stdout,*) 'Tried to open file:',TRIM(input_file_name)
+      write(stdout, *) 'Tried to open file:', TRIM(input_file_name)
       call die('Input file not found')
     endif
     output_name=TRIM(input_file_name)
@@ -888,7 +900,7 @@ subroutine read_inputfile_namelist()
       if(ichart+2>140) exit
     enddo
     output_name=TRIM(output_name(1:idot))
-    open(newunit=inputfile,file=TRIM(input_file_name),status='old')
+    open(newunit=inputfile, file=TRIM(input_file_name), status='old')
   case(0)
     inputfile = 5
     call issue_warning('Deprecated reading from stdin. Please use instead the newer syntax ./molgw inputfile > outfile')
@@ -899,16 +911,16 @@ subroutine read_inputfile_namelist()
   !
   ! Read all the input file in one statement!
   !
-  read(inputfile,molgw)
+  read(inputfile, molgw)
 
 
   ! Here we call the fortran code that was generated by the python script
-  write(stdout,'(/,1x,a,/)') ' === Echo the entire list of input variables  ==='
+  write(stdout, '(/,1x,a,/)') ' === Echo the entire list of input variables  ==='
 #include "echo_input_variables.f90"
-  write(stdout,'(/,1x,a,/)') ' ================================================'
+  write(stdout, '(/,1x,a,/)') ' ================================================'
 
 
-  ieta = (0.0_dp,1.0_dp) * eta
+  ieta = (0.0_dp, 1.0_dp) * eta
 
   scf                = capitalize(scf)
   postscf            = capitalize(postscf)
@@ -920,9 +932,9 @@ subroutine read_inputfile_namelist()
   mixing_scheme      = capitalize(mixing_scheme)
   length_unit        = capitalize(length_unit)
   init_hamiltonian   = capitalize(init_hamiltonian)
-  prop_type          = capitalize(prop_type)
+  tddft_propagator   = capitalize(tddft_propagator)
   excit_name         = capitalize(excit_name)
-  pred_corr          = capitalize(pred_corr)
+  tddft_predictor_corrector = capitalize(tddft_predictor_corrector)
   ci_greens_function = capitalize(ci_greens_function)
   ci_type            = capitalize(ci_type)
   read_fchk          = capitalize(read_fchk)
@@ -987,6 +999,7 @@ subroutine read_inputfile_namelist()
   analytic_chi_               = yesno_to_logical(analytic_chi)
   eri3_genuine_               = yesno_to_logical(eri3_genuine)
   auto_occupation_            = yesno_to_logical(auto_occupation)
+  tddft_force_                = yesno_to_logical(tddft_force)
 
   tddft_grid_level   = interpret_quality(tddft_grid_quality)
   grid_level         = interpret_quality(grid_quality)
@@ -995,14 +1008,14 @@ subroutine read_inputfile_namelist()
 
 
   select case(TRIM(mixing_scheme))
-  case('SIMPLE','PULAY','DIIS','ADIIS','EDIIS')
+  case('SIMPLE', 'PULAY', 'DIIS','ADIIS','EDIIS')
   case default
-    write(stdout,*) TRIM(mixing_scheme)
+    write(stdout, *) TRIM(mixing_scheme)
     call die('mixing scheme not recognized')
   end select
 
   select case(TRIM(pt3_a_diagrams))
-  case('YES','NO','ONLY')
+  case('YES', 'NO','ONLY')
   case default
     call die('pt3_a_diagram input variable can only be yes, no, or only')
   end select
@@ -1044,22 +1057,26 @@ subroutine read_inputfile_namelist()
 
 
 
-#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0)
+#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0) 
+#if !defined(HAVE_LIBCINT)
   if( move_nuclei /= 'no' ) then
     call die('LIBINT does not contain the gradients of the integrals that are needed when move_nuclei is different from no')
   endif
 #endif
+#endif
 
 #if !defined(HAVE_HDF5)
 
-  if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_ ) call die('To print c_matrix_cmplx into an HDF5 file, & 
-MOLGW must be compiled with HDF5: HDF5_ROOT must be specified &
-and the -DHAVE_HDF5 compilation option must be activated')
+  if( print_c_matrix_cmplx_hdf5_ .or. print_p_matrix_MO_block_hdf5_ ) then
+    call die('To print c_matrix_cmplx into an HDF5 file, '  // &
+                'MOLGW must be compiled with HDF5: HDF5_ROOT must be specified ' // &
+                'and the -DHAVE_HDF5 compilation option must be activated')
+  endif
 
 #endif
 
   call init_excitation_type()
-  nprojectile = MERGE(1,0,excit_type%form==EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS)
+  nprojectile = MERGE(1, 0, excit_type%form==EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS)
 
   !
   ! If no nuclei motion is requested, then override nstep and set it to 1
@@ -1067,7 +1084,7 @@ and the -DHAVE_HDF5 compilation option must be activated')
     nstep = 1
   endif
 
-  call setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_auxil_basis,ecp_small_basis)
+  call setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, ecp_auxil_basis, ecp_small_basis)
 
   has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
   has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''
@@ -1087,7 +1104,7 @@ and the -DHAVE_HDF5 compilation option must be activated')
 
   !
   ! Interpret the scf and postscf input parameters
-  call init_calculation_type(scf,postscf)
+  call init_calculation_type(scf, postscf)
 
   !
   ! Some additional checks
@@ -1114,11 +1131,11 @@ and the -DHAVE_HDF5 compilation option must be activated')
   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(eri3_genuine_) ) then
     call die('eri3_genuine is required for moving basis (=excit_name=ion)')
   endif
-  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(pred_corr(1:2)=='MB') ) then
+  if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(tddft_predictor_corrector(1:2)=='MB') ) then
     call die('Predictor-correction scheme is not valid for moving basis. Use instead MB_PC2B for instance')
   endif
 
-  spin_fact = REAL(-nspin+3,dp)
+  spin_fact = REAL(-nspin+3, dp)
   electrons = SUM(zvalence(:)) - charge
 
   ! Echo the interpreted input variables
@@ -1129,24 +1146,24 @@ and the -DHAVE_HDF5 compilation option must be activated')
   ! Here we call the fortran code that was generated by the python script
   !
   if( print_yaml_ .AND. is_iomaster ) then
-    open(newunit=unit_yaml,file=filename_yaml,action='write')
-    write(unit_yaml,'(a)') '---'
-    write(unit_yaml,'(a)') 'input parameters:'
+    open(newunit=unit_yaml, file=TRIM(yaml_output), action='write')
+    write(unit_yaml, '(a)') '---'
+    write(unit_yaml, '(a)') 'input parameters:'
 #include "echo_input_variables_yaml.f90"
 
-    write(unit_yaml,'(/,a)') 'physical system:'
-    write(unit_yaml,'(4x,a,1x,es18.8)') 'electrons:',electrons
-    write(unit_yaml,'(4x,a)') 'length unit: bohr'
-    write(unit_yaml,'(4x,a)') 'atom list:'
-    do icenter=1,ncenter_nuclei
-      write(unit_yaml,'(8x,a,"[ ",a2,", ",es18.8,", ",es18.8,", ",es18.8,"]")') '- ', &
-                  element_name(REAL(zatom(icenter),dp)),xatom(:,icenter)
+    write(unit_yaml, '(/,a)') 'physical system:'
+    write(unit_yaml, '(4x,a,1x,es18.8)') 'electrons:', electrons
+    write(unit_yaml, '(4x,a)') 'length unit: bohr'
+    write(unit_yaml, '(4x,a)') 'atom list:'
+    do icenter=1, ncenter_nuclei
+      write(unit_yaml, '(8x,a,"[ ",a2,", ",es18.8,", ",es18.8,", ",es18.8,"]")') '- ', &
+                  element_name(zatom(icenter)), xatom(:, icenter)
     enddo
 
-    write(unit_yaml,'(4x,a)') 'basis list:'
-    do icenter=1,ncenter_basis
-      write(unit_yaml,'(8x,a,"[ ",a2,", ",a,", ",a,"]")') '- ', &
-              element_name(REAL(zbasis(icenter),dp)),TRIM(basis_name(icenter)),TRIM(auxil_basis_name(icenter))
+    write(unit_yaml, '(4x,a)') 'basis list:'
+    do icenter=1, ncenter_basis
+      write(unit_yaml, '(8x,a,"[ ",a2,", ",a,", ",a,"]")') '- ', &
+              element_name(zbasis(icenter)), TRIM(basis_name(icenter)), TRIM(auxil_basis_name(icenter))
     end do
 
   endif
@@ -1159,7 +1176,7 @@ end subroutine read_inputfile_namelist
 function interpret_quality(quality) result(quality_level)
   implicit none
 
-  character(len=*),intent(in) :: quality
+  character(len=*), intent(in) :: quality
   integer                     :: quality_level
   !=====
   !=====
@@ -1167,13 +1184,13 @@ function interpret_quality(quality) result(quality_level)
   select case(TRIM(quality))
   case('LOW','L')
     quality_level = low
-  case('MEDIUM','MED','M')
+  case('MEDIUM', 'MED','M')
     quality_level = medium
-  case('HIGH','HI','H')
+  case('HIGH', 'HI','H')
     quality_level = high
-  case('VERY HIGH','VERYHIGH','VH')
+  case('VERY HIGH', 'VERYHIGH', 'VH')
     quality_level = very_high
-  case('INSANE','I')
+  case('INSANE', 'I')
     quality_level = insane
   end select
 
@@ -1184,13 +1201,13 @@ end function interpret_quality
 function standardize_basis_name(basis_name_in) result(basis_name_out)
   implicit none
 
-  character(len=*),intent(in)       :: basis_name_in
+  character(len=*), intent(in)       :: basis_name_in
   character(len=LEN(basis_name_in)) :: basis_name_out
   !=====
   integer :: istring
   !=====
 
-  do istring=1,LEN(basis_name_in)
+  do istring=1, LEN(basis_name_in)
 
     basis_name_out(istring:istring) = basis_name_in(istring:istring)
 
@@ -1208,37 +1225,37 @@ end function standardize_basis_name
 
 
 !=========================================================================
-subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_auxil_basis,ecp_small_basis)
+subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, ecp_auxil_basis, ecp_small_basis)
   implicit none
 
-  integer,intent(in)          :: inputfile
-  character(len=*),intent(in) :: basis,auxil_basis,small_basis
-  character(len=*),intent(in) :: ecp_basis,ecp_small_basis,ecp_auxil_basis
+  integer, intent(in)          :: inputfile
+  character(len=*), intent(in) :: basis, auxil_basis, small_basis
+  character(len=*), intent(in) :: ecp_basis, ecp_small_basis, ecp_auxil_basis
   !=====
   integer              :: natom_read
-  integer              :: element,iatom,ielement_ecp,icenter
-  integer              :: info,info1,info2,xyzfile
+  integer              :: element, iatom, ielement_ecp, icenter
+  integer              :: info, info1, info2, xyzfile
   character(len=12)    :: element_symbol
-  real(dp),allocatable :: zatom_read(:),x_read(:,:)
-  character(len=140)   :: ctmp1,ctmp2
+  real(dp), allocatable :: zatom_read(:), x_read(:, :)
+  character(len=140)   :: ctmp1, ctmp2
   character(len=256)   :: line_char
   logical              :: file_exists
   real(dp)             :: length_factor
   integer              :: ncenter_basis_max
-  logical,allocatable  :: nucleus_wo_basis(:)
+  logical, allocatable  :: nucleus_wo_basis(:)
   !=====
 
   select case(TRIM(length_unit))
-  case('A','ANGSTROM')
+  case('A', 'ANGSTROM')
     length_factor = 1.0_dp/bohr_A
-  case('BOHR','AU','A.U','A.U.')
+  case('BOHR', 'AU','A.U','A.U.')
     length_factor = 1.0_dp
   case default
     call die('units for lengths in input file not understood')
   end select
   if( LEN(TRIM(xyz_file)) > 0 ) then
     if( ABS(length_factor - 1.0_dp ) < 1.0e-6_dp  ) then
-      write(stdout,*) 'xyz files are always in Angstrom. However, length_unit was set to bohr'
+      write(stdout, *) 'xyz files are always in Angstrom. However, length_unit was set to bohr'
       call die('Please set length_unit to Angstrom')
     endif
   endif
@@ -1273,15 +1290,15 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
     ecp_auxil_basis_name(:) = standardize_basis_name(ecp_auxil_basis)
     ecp_small_basis_name(:) = standardize_basis_name(ecp_small_basis)
 
-    allocate(x_read(3,natom_read),zatom_read(natom_read))
+    allocate(x_read(3, natom_read), zatom_read(natom_read))
     ncenter_basis = 0
 
-    do iatom=1,natom_read
+    do iatom=1, natom_read
       ! First, read the full line
-      read(inputfile,'(a)') line_char
+      read(inputfile, '(a)') line_char
 
       ! Then, try to interpret it
-      read(line_char,*,iostat=info2) element_symbol,x_read(:,iatom),ctmp1,ctmp2
+      read(line_char, *, iostat=info2) element_symbol, x_read(:, iatom), ctmp1, ctmp2
       if( info2 == 0 ) then
         if( TRIM(capitalize(ctmp1)) == 'NONE' ) then
           nucleus_wo_basis(iatom) = .TRUE.
@@ -1294,7 +1311,7 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
         endif
 
       else
-        read(line_char,*,iostat=info1) element_symbol,x_read(:,iatom),ctmp1
+        read(line_char, *, iostat=info1) element_symbol, x_read(:, iatom), ctmp1
         if( info1 == 0 ) then
           if( TRIM(capitalize(ctmp1)) == 'NONE' ) then
             nucleus_wo_basis(iatom) = .TRUE.
@@ -1310,14 +1327,14 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
           else
             ncenter_basis = ncenter_basis + 1
           endif
-          read(line_char,*) element_symbol,x_read(:,iatom)
+          read(line_char, *) element_symbol, x_read(:, iatom)
 
         endif
       endif
 
       !
       ! First, try to interpret element_symbol as an integer
-      read(element_symbol,*,iostat=info) zatom_read(iatom)
+      read(element_symbol, *, iostat=info) zatom_read(iatom)
       ! If it fails, then assumes it is a character
       if( info /= 0 ) then
         zatom_read(iatom) = element_number(element_symbol)
@@ -1327,18 +1344,18 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
   else
     !
     ! Try to open the xyz file
-    write(stdout,'(a,a)') ' Opening xyz file: ',TRIM(xyz_file)
-    inquire(file=TRIM(xyz_file),exist=file_exists)
+    write(stdout, '(a,a)') ' Opening xyz file: ', TRIM(xyz_file)
+    inquire(file=TRIM(xyz_file), exist=file_exists)
     if( .NOT. file_exists) then
-      write(stdout,*) 'Tried to open the requested xyz file:',TRIM(xyz_file)
+      write(stdout, *) 'Tried to open the requested xyz file:', TRIM(xyz_file)
       call die('xyz file not found')
     endif
-    open(newunit=xyzfile,file=TRIM(xyz_file),status='old')
-    read(xyzfile,*) natom_read
+    open(newunit=xyzfile, file=TRIM(xyz_file), status='old')
+    read(xyzfile, *) natom_read
     if( natom /= 0 .AND. natom+nghost+nprojectile /= natom_read ) then
       call die('the number of atoms in the input file does not correspond to the number of atoms in the xyz file')
     endif
-    read(xyzfile,*)
+    read(xyzfile, *)
 
     !natom_read read from xyz file but not from input file
     ncenter_nuclei = natom_read - nghost
@@ -1361,12 +1378,12 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
     ecp_auxil_basis_name(:) = standardize_basis_name(ecp_auxil_basis)
     ecp_small_basis_name(:) = standardize_basis_name(ecp_small_basis)
 
-    allocate(x_read(3,natom_read),zatom_read(natom_read))
-    do iatom=1,natom_read
-      read(xyzfile,*) element_symbol,x_read(:,iatom)
+    allocate(x_read(3, natom_read), zatom_read(natom_read))
+    do iatom=1, natom_read
+      read(xyzfile, *) element_symbol, x_read(:, iatom)
       !
       ! First, try to interpret element_symbol as an integer
-      read(element_symbol,'(i2)',iostat=info) element
+      read(element_symbol, '(i2)', iostat=info) element
       ! If it fails, then assumes it is a character
       if( info /=0 ) then
         element = element_number(element_symbol)
@@ -1381,19 +1398,19 @@ subroutine setup_nuclei(inputfile,basis,auxil_basis,small_basis,ecp_basis,ecp_au
   endif
 
   ! Conversion to bohr if necessary
-  x_read(:,:) = x_read(:,:) * length_factor
+  x_read(:, :) = x_read(:, :) * length_factor
   ! vel_projectile(:) = vel_projectile(:) * length_factor
   ! For the moment, velocity in input file must be in bohrs per a.u.[time] for any length_factor
 
-  call init_atoms(natom,nghost,nucleus_wo_basis,zatom_read,x_read,vel_projectile, &
-                  (move_nuclei/='no'),excit_type%name,projectile_charge_scaling)
-  deallocate(x_read,zatom_read)
+  call init_atoms(natom, nghost, nucleus_wo_basis, zatom_read, x_read, vel_projectile, &
+                  (move_nuclei/='no'), excit_type%name, projectile_charge_scaling)
+  deallocate(x_read, zatom_read)
 
-  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)
+  call init_ecp(ecp_elements, basis_path, ecp_type, ecp_level)
   ! If ECP are used, tweak the nuclei charges here
   zvalence(:) = zatom(:)
-  do icenter=1,ncenter_nuclei
-    do ielement_ecp=1,nelement_ecp
+  do icenter=1, ncenter_nuclei
+    do ielement_ecp=1, nelement_ecp
       if( ABS( element_ecp(ielement_ecp) - zatom(icenter) ) < 1.0e-5_dp ) then
         zvalence(icenter) = zatom(icenter) - REAL( ecp(ielement_ecp)%ncore , dp )
         exit

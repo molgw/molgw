@@ -1,0 +1,26 @@
+&molgw
+  comment                 = 'He+ -> H+ collision, only one electron, with force calculation'
+
+  scf                            = 'core'
+  basis                          = 'cc-pVTZ'
+  auxil_basis                    = 'auto'
+  eri3_genuine                   = 'yes'
+
+  postscf                        = 'real_time'
+  time_step                      = 0.02
+  time_sim                       = 10.0
+  tddft_predictor_corrector      = 'MB_PC1'
+  tddft_propagator               = 'CN'
+  excit_name                     = 'ION'
+  vel_projectile                 = 0.0 0.0 1.0
+  write_step                     = 0.1
+  tddft_force = 'yes'
+
+  charge                         = 2
+
+  natom                          = 1
+  length_unit                    = 'bohr'
+/
+H         0.0     0.0     0.0 
+He        0.0     1.0    -5.0
+

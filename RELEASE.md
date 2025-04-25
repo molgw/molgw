@@ -1,13 +1,42 @@
 # MOLGW: Release Notes
 
+---
+
+## What's new in version 3.5
+
+### Overview
+
+- RESTART from a different basis made safer
+- Linking with accelerated library `qcint`
+
+### Contributors
+
+- Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+
+### Changes affecting the usage
+- Positive semi-definite version of GW+2SOSEX self-energy
+
+### Changes affecting the results
+
+- Adding an orthogonalization step when reading a RESTART file using a different basis
+
+### Changes affecting the usage
+
+### Changes affecting the compilation
+- Possibility to linking against `qcint` or `libcint` without any change
+
+### Changes affecting the developers
 
 ---
+
 ## What's new in version 3.4
 
 ### Overview
 
 - Complex wavefunctions
 - X2C relativistic wavefunctions for HF/DFT calculations
+- Possibility to link with LIBCINT whatever the p-orbital ordering
+- Support for alternate compilers: LLVM flang/clang++ and Intel ifx/icx
 
 ### Contributors
 
@@ -15,13 +44,23 @@
 - Mauricio Rodriguez-Mayorga (Institut Néel, Grenoble, France)
 
 ### Changes affecting the results
+
 - bug fix in Crank-Nicholson propagator in RT-TDDFT with spin
 
 ### Changes affecting the usage
 
+- RT-TDDFT input variables have been renamed with `tddft_` prefix.
+  - `pred_corr` -> `tddft_predictor_corrector`
+  - `prop_type` -> `tddft_propagator`
+  - `n_hist` -> `tddft_history`
+
 ### Changes affecting the compilation
+- Intel ifx compiler is supported
+- LLVM/flang compiler is supported
+- Different p-orbital orderings are handled. It's not necessary to compile LIBCINT with `-DPYPZPX=1` anymore.
 
 ### Changes affecting the developers
+- Source files have been cleaned up. Please use a space after comma `, `
 
 ---
 
