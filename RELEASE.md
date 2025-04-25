@@ -7,7 +7,7 @@
 ### Overview
 
 - RESTART from a different basis made safer
-- Linking with accelerated library `qcint`
+- Linking with accelerated integral library `qcint`
 - Interface with CC4S
 
 ### Contributors
@@ -17,7 +17,8 @@
 ### Changes affecting the usage
 
 - Positive semi-definite version of GW+2SOSEX self-energy
-- Possibility to export data to CC4S
+- Export data to CC4S for MP2 or coupled-cluster post-processing
+- Import Coulomb integrals and HF eigenvalues in the CC4S formats
 - Possibility to rename the yaml output file with `yaml_output` input variable
 
 ### Changes affecting the results

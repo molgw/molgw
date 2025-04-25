@@ -1,0 +1,11 @@
+&molgw
+ scf ='HF'
+ basis='cc-pVQZ'
+ auxil_basis='pauto'
+
+ postscf='MP2'
+ print_cc4s_files = 'yes'
+
+ natom = 1
+/
+He  0. 0. 0.

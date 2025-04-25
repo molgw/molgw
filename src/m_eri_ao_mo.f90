@@ -1240,11 +1240,13 @@ end subroutine read_cc4s_coulombvertex
 
 
 !=========================================================================
-subroutine write_cc4s_coulombvertex(eri_3center_updated)
+subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   implicit none
 
   real(dp), intent(in) :: eri_3center_updated(:, :, :, :)
+  character(len=*), intent(in), optional :: rootname
   !=====
+  character(len=128) :: rootname_ = 'molgw_'
   integer :: nstate, istate, jstate, ng
   integer :: unitcv
   complex(dp), allocatable :: coulomb_vertex_ij(:)
@@ -1264,6 +1266,9 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated)
 
   if( nspin > 1 ) call die("write_cc4s_coulombvertex: spin polarized not implemented yet")
 
+  if( PRESENT(rootname) ) then
+    rootname_ = rootname
+  endif
   
   call start_clock(timing_read_coulombvertex)
   write(stdout, '(1x,a)') 'Writing CoulombVertex.yaml and CoulombVertex.elements'
@@ -1282,7 +1287,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated)
   nstate2 = nstate**2
 
   ! Write meta data in a yaml file
-  open(newunit=unitcv, file='new_CoulombVertex.yaml', form='formatted', status='unknown', action='write')
+  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.yaml', form='formatted', status='unknown', action='write')
   write(unitcv, '(a)')    'version: 100'
   write(unitcv, '(a)')    'type: Tensor'
   write(unitcv, '(a)')    'scalarType: Complex64'
@@ -1303,8 +1308,8 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated)
   write(stdout, *) 'File size (bytes):', INT(complex_length, KIND=8) * INT(ng, KIND=8) * INT(nstate2, KIND = 8)
 
 #if !defined(HAVE_MPI)
-  write(stdout, '(/,1x,a)') 'Writing file new_CoulombVertex.elements with plain fortran'
-  open(newunit=unitcv, file='new_CoulombVertex.elements', form='unformatted', access='stream', status='unknown', action='write')
+  write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
+  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', access='stream', status='unknown', action='write')
   do istate=1, nstate
     do jstate=1, nstate
       coulomb_vertex_ij(:) = CMPLX( eri_3center_updated(1:ng, istate, jstate, 1) , &
@@ -1336,12 +1341,12 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated)
   call PDGEMR2D(nauxil_global, nstate2, eri_3center_updated, 1, 1, desc_updated, &
                                       eri_3center_tmp, 1, 1, desc_tmp, cntxt_eri3_mo)
 
-  write(stdout, '(/,1x,a)') 'Writing file new_CoulombVertex.elements with MPI-IO'
+  write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with MPI-IO'
   write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
 
   disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(ng, KIND=MPI_OFFSET_KIND)
 
-  call MPI_FILE_OPEN(MPI_COMM_WORLD, 'new_CoulombVertex.elements', &
+  call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // 'CoulombVertex.elements', &
                      MPI_MODE_WRONLY + MPI_MODE_CREATE, &
                      MPI_INFO_NULL, unitcv, ierr)
 

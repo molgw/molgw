@@ -4099,22 +4099,28 @@ end subroutine read_cc4s_eigenenergies
 
 
 !=========================================================================
-subroutine write_cc4s_eigenenergies(occupation, energy)
+subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
   implicit none
 
   real(dp), intent(in) :: occupation(:, :)
   real(dp), intent(in) :: energy(:, :)
+  character(len=*), intent(in), optional :: rootname
   !=====
   integer :: unit_file
   integer :: nstate, istate, nocc
   real(dp) :: efermi
+  character(len=128) :: rootname_ = 'molgw_'
   !=====
 
   if( nspin > 1 ) call die('write_cc4s_eigenenergies: only spin restricted implemented')
 
+  if( PRESENT(rootname) ) then
+    rootname_ = rootname
+  endif
+
   nstate = MIN(SIZE(occupation, DIM=1), SIZE(energy, DIM=1))
 
-  open(newunit=unit_file, file='new_EigenEnergies.elements', action='write', form='formatted')
+  open(newunit=unit_file, file=TRIM(rootname_) // 'EigenEnergies.elements', action='write', form='formatted')
   do istate=1, nstate
     write(unit_file, '(1x,es16.8)') energy(istate, 1)
   enddo
@@ -4123,7 +4129,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy)
   nocc = get_number_occupied_states(occupation)
   efermi = 0.5_dp * ( energy(nocc, 1) + energy(nocc+1, 1) ) 
 
-  open(newunit=unit_file, file='new_EigenEnergies.yaml', action='write', form='formatted')
+  open(newunit=unit_file, file=TRIM(rootname_) // 'EigenEnergies.yaml', action='write', form='formatted')
   write(unit_file, '(a)')    'version: 100'
   write(unit_file, '(a)')    'type: Tensor'
   write(unit_file, '(a)')    'scalarType: Real64'

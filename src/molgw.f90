@@ -224,7 +224,7 @@ program molgw
 
 #if defined(HAVE_LIBCINT)
     if( has_auxil_basis) then
-      ! basis object will contain the information for the joint (basis,auxil_basis)
+      ! basis object will contain the information for the joint (basis, auxil_basis)
       call init_libcint(basis, auxil_basis)
       ! auxil_basis object will contain the information for the sole auxil_basis
       call init_libcint(auxil_basis)
@@ -366,9 +366,9 @@ program molgw
     ! Testing the quadrature in Fourier space
     !if( .TRUE. ) then
     !  !                        basis projectile n basis_target
-    !  call setup_overlap_fourier(basis,basis,s_matrix)
-    !  call setup_kinetic_fourier(basis,basis,hamiltonian_kinetic)
-    !  call setup_nucleus_fourier(basis,basis,hamiltonian_nucleus)
+    !  call setup_overlap_fourier(basis, basis, s_matrix)
+    !  call setup_kinetic_fourier(basis, basis, hamiltonian_kinetic)
+    !  call setup_nucleus_fourier(basis, basis, hamiltonian_nucleus)
     !endif
    
    
@@ -438,7 +438,7 @@ program molgw
         nocc=nint(SUM(occupation(:, 1)))
         write(stdout, '(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
         !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the scalar dens. mat.
-        !     and the occupation numbers (i.e. occupations(:,1)) are \in [0,2].
+        !     and the occupation numbers (i.e. occupations(:, 1)) are \in [0, 2].
         write(stdout, '(/,1x,a)')  'Natural occupations: '
         write(stdout, '(8(2x,f14.6))') occupation(:, 1)
         write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(occupation(:, 1))
@@ -469,7 +469,7 @@ program molgw
    
           write(stdout, '(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
           !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.
-          !     and the occupation numbers (i.e. occupations(:,1)) are \in [0,2].
+          !     and the occupation numbers (i.e. occupations(:, 1)) are \in [0, 2].
           write(stdout, '(/,1x,a)')  'Natural occupations: '
           write(stdout, '(8(2x,f14.6))') occupation(:, 1)
           write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(occupation(:, 1))
@@ -575,18 +575,18 @@ program molgw
       call die(' The number of states is not equal to the number of basis functions in Gaussian for restart.')
     endif
   endif
-  if( TRIM(init_hamiltonian)=='CC4S_FILES' ) then
+  if( TRIM(init_hamiltonian) == 'CC4S_FILES' ) then
     if(has_auxil_basis) call destroy_eri_3center()
-    call read_cc4s_eigenenergies(basis,nstate,energy,occupation,c_matrix,s_matrix,hamiltonian_fock)
+    call read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock)
     call read_cc4s_coulombvertex()
   endif
 
   if( print_cc4s_files_ ) then
     if( TRIM(scf) /= 'HF') then
-      call issue_warning('CC4S are only meaning when using scf=HF')
+      call issue_warning("CC4S files are only meaningful when using scf ='HF'. Assuming expert user.")
     endif
-    call write_cc4s_eigenenergies(occupation,energy)
-    call calculate_eri_3center_eigen(c_matrix,1,nstate,1,nstate)
+    call write_cc4s_eigenenergies(occupation, energy)
+    call calculate_eri_3center_eigen(c_matrix, 1, nstate, 1, nstate)
     call write_cc4s_coulombvertex(eri_3center_eigen)
     call destroy_eri_3center_eigen()
   endif
