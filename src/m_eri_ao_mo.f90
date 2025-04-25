@@ -1307,7 +1307,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated)
   open(newunit=unitcv, file='new_CoulombVertex.elements', form='unformatted', access='stream', status='unknown', action='write')
   do istate=1, nstate
     do jstate=1, nstate
-      coulomb_vertex_ij(:) = CMPLX( eri_3center_updated(1:ng, istate, jstate, 1) ,
+      coulomb_vertex_ij(:) = CMPLX( eri_3center_updated(1:ng, istate, jstate, 1) , &
                                     eri_3center_updated(ng+1:2*ng, istate, jstate, 1) )
       write(unitcv) coulomb_vertex_ij(:)
     enddo
@@ -1331,7 +1331,8 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated)
                      nprow_eri3_mo, ' x ', npcol_eri3_mo, ')   to   (', &
                      nprow_cd, ' x ', npcol_cd, ')'
 
-  call DESCINIT(desc_updated, nauxil_global, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, MAX(1, nauxil_local), info)
+  call DESCINIT(desc_updated, nauxil_global, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, &
+                MAX(1, nauxil_local), info)
   call PDGEMR2D(nauxil_global, nstate2, eri_3center_updated, 1, 1, desc_updated, &
                                       eri_3center_tmp, 1, 1, desc_tmp, cntxt_eri3_mo)
 
